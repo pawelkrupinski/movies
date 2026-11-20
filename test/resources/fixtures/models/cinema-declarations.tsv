@@ -1,0 +1,529 @@
+# Source.all order	88ce40cef149a30d542effc43154fed74dbd123f92fe2d88778628e3b3f41c10
+# Cinema.byCity order	6f50312f05fda693184b66f6260305e4f4b20adf4e86f2d240a0a73d76e5c1a2
+Multikino	models.Multikino$	Multikino Stary Browar	Multikino	multikino	YearRound	797699128
+KinoApollo	models.KinoApollo$	Kino Apollo	Apollo	kino-apollo	YearRound	1769211246
+KinoBulgarska	models.KinoBulgarska$	Kino Bułgarska 19	Bułgarska 19	kino-bulgarska	YearRound	-1470409237
+CharlieMonroe	models.CharlieMonroe$	Kino Malta Charlie Monroe	Malta Charlie Monroe	charlie-monroe	YearRound	1352052014
+Helios	models.Helios$	Helios Posnania	Helios	helios	YearRound	-2137070914
+CinemaCityKinepolis	models.CinemaCityKinepolis$	Cinema City Kinepolis	Kinepolis	cinema-city-kinepolis	YearRound	-302441210
+KinoMuza	models.KinoMuza$	Kino Muza	Muza	kino-muza	YearRound	-480477394
+KinoPalacowe	models.KinoPalacowe$	Kino Pałacowe	Pałacowe	kino-palacowe	YearRound	-746654401
+CinemaCityPoznanPlaza	models.CinemaCityPoznanPlaza$	Cinema City Poznań Plaza	Poznań Plaza	cinema-city-poznan-plaza	YearRound	1941579024
+Rialto	models.Rialto$	Kino Rialto	Rialto	rialto	YearRound	-1847409987
+CinemaCityWroclavia	models.CinemaCityWroclavia$	Cinema City Wroclavia	Wroclavia	cinema-city-wroclavia	YearRound	-1185490642
+CinemaCityKorona	models.CinemaCityKorona$	Cinema City Korona	Korona	cinema-city-korona	YearRound	350658384
+MultikinoPasazGrunwaldzki	models.MultikinoPasazGrunwaldzki$	Multikino Pasaż Grunwaldzki	Pasaż Grunwaldzki	multikino-pasaz-grunwaldzki	YearRound	-1092896241
+HeliosMagnolia	models.HeliosMagnolia$	Helios Magnolia Park	Magnolia	helios-magnolia	YearRound	2003013774
+HeliosAlejaBielany	models.HeliosAlejaBielany$	Helios Aleja Bielany	Aleja Bielany	helios-aleja-bielany	YearRound	1998367819
+KinoNoweHoryzonty	models.KinoNoweHoryzonty$	Kino Nowe Horyzonty	Nowe Horyzonty	kino-nowe-horyzonty	YearRound	1829981762
+DolnoslaskieCentrumFilmowe	models.DolnoslaskieCentrumFilmowe$	Dolnośląskie Centrum Filmowe	DCF	dolnoslaskie-centrum-filmowe	YearRound	-1813160559
+KinoDyskusyjnyKlubFilmowyPolitechnika	models.KinoDyskusyjnyKlubFilmowyPolitechnika$	Dyskusyjny Klub Filmowy Politechnika	Wrocław	kino-dyskusyjny-klub-filmowy-politechnika	YearRound	1856992540
+KinoNowyPafawag	models.KinoNowyPafawag$	Centrum Kultury Nowy Pafawag	Nowy Pafawag	kino-nowy-pafawag	YearRound	1268481487
+CinemaCityArkadia	models.CinemaCityArkadia$	Cinema City Arkadia	Arkadia	cinema-city-arkadia	YearRound	2074369561
+CinemaCityBemowo	models.CinemaCityBemowo$	Cinema City Bemowo	Bemowo	cinema-city-bemowo	YearRound	83612153
+CinemaCityGaleriaPolnocna	models.CinemaCityGaleriaPolnocna$	Cinema City Galeria Północna	Galeria Północna	cinema-city-galeria-polnocna	YearRound	-1526080637
+CinemaCityMokotow	models.CinemaCityMokotow$	Cinema City Mokotów	Mokotów	cinema-city-mokotow	YearRound	-245942950
+CinemaCityPromenada	models.CinemaCityPromenada$	Cinema City Promenada	Promenada	cinema-city-promenada	YearRound	-1138017479
+CinemaCitySadyba	models.CinemaCitySadyba$	Cinema City Sadyba	Sadyba	cinema-city-sadyba	YearRound	566354462
+MultikinoZloteTarasy	models.MultikinoZloteTarasy$	Multikino Złote Tarasy	Złote Tarasy	multikino-zlote-tarasy	YearRound	-441159240
+MultikinoMlociny	models.MultikinoMlociny$	Multikino Młociny	Młociny	multikino-mlociny	YearRound	1149920265
+MultikinoReduta	models.MultikinoReduta$	Multikino Reduta	Reduta	multikino-reduta	YearRound	2113127881
+MultikinoTargowek	models.MultikinoTargowek$	Multikino Targówek	Targówek	multikino-targowek	YearRound	-480277176
+MultikinoWolaPark	models.MultikinoWolaPark$	Multikino Wola Park	Wola Park	multikino-wola-park	YearRound	-184924113
+HeliosBlueCity	models.HeliosBlueCity$	Helios Blue City	Blue City	helios-blue-city	YearRound	1575758275
+KinoMuranow	models.KinoMuranow$	Kino Muranów	Muranów	kino-muranow	YearRound	1216674016
+KinoLuna	models.KinoLuna$	Kino Luna	Luna	kino-luna	YearRound	-480507557
+KinoElektronik	models.KinoElektronik$	Kino Elektronik	Elektronik	kino-elektronik	YearRound	643749291
+KinoIluzjon	models.KinoIluzjon$	Kino Iluzjon	Iluzjon	kino-iluzjon	YearRound	1707475714
+KinoGram	models.KinoGram$	KinoGram	KinoGram	kino-gram	YearRound	-480659786
+KinoKultura	models.KinoKultura$	Kino Kultura	Kultura	kino-kultura	YearRound	-563301645
+KinoAmondo	models.KinoAmondo$	Kino Amondo	Amondo	kino-amondo	YearRound	1766442357
+KinoNaBoku	models.KinoNaBoku$	Kino na Boku	na Boku	kino-na-boku	YearRound	2126199657
+KinoGlebocka66	models.KinoGlebocka66$	Kino Głębocka 66	Głębocka 66	kino-glebocka66	YearRound	695991883
+Kinomuzeum	models.Kinomuzeum$	KINOMUZEUM	Kinomuzeum	kinomuzeum	YearRound	-1261134550
+KinoSwit	models.KinoSwit$	Kino Świt	Świt	kino-swit	YearRound	-480297234
+KinoKepa	models.KinoKepa$	Kino Kępa	Kępa	kino-kepa	YearRound	-480552662
+StacjaFalenica	models.StacjaFalenica$	KINOkawiarnia Stacja Falenica	Stacja Falenica	stacja-falenica	YearRound	1379662279
+SluzewskiDomKultury	models.SluzewskiDomKultury$	Służewski Dom Kultury	SDK	sluzewski-dom-kultury	YearRound	-1915528695
+KinoAtlantic	models.KinoAtlantic$	Kino Atlantic	Atlantic	kino-atlantic	YearRound	-1435972825
+Kinoteka	models.Kinoteka$	Kinoteka	Kinoteka	kinoteka	YearRound	-479331386
+Ujazdowski	models.Ujazdowski$	Kino U-jazdowski	U-jazdowski	ujazdowski	YearRound	-1011128461
+KinoCytadela	models.KinoCytadela$	Kino Cytadela	Cytadela	kino-cytadela	YearRound	-1874047368
+KinoWisla	models.KinoWisla$	Kino Wisła	Wisła	kino-wisla	YearRound	-2001025897
+AdaKinoStudyjne	models.AdaKinoStudyjne$	ADA Kino Studyjne	ADA	ada-kino-studyjne	YearRound	1925637525
+KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha	models.KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha$	Kino Praha	Praha	kino-mazowiecki-teatr-muzyczny-im-jana-kiepury-kino-praha	YearRound	-1515557355
+KinoAlternatywy	models.KinoAlternatywy$	Kino Alternatywy	Alternatywy	kino-alternatywy	YearRound	557997745
+KinoWKadrze	models.KinoWKadrze$	Kino w Kadrze	w Kadrze	kino-wkadrze	YearRound	283745575
+KinoDomSztukiUrsynow	models.KinoDomSztukiUrsynow$	Kino Domu Sztuki	Dom Sztuki	kino-dom-sztuki-ursynow	YearRound	-1111100278
+KinoTerminalKultury	models.KinoTerminalKultury$	Terminal Kultury Gocław	Terminal Kultury	kino-terminal-kultury	YearRound	-989568017
+KinoBielanskiOsrodekKultury	models.KinoBielanskiOsrodekKultury$	Bielański Ośrodek Kultury	BOK Bielany	kino-bielanski-osrodek-kultury	YearRound	-658935688
+KinoWawerskaStrefaKultury	models.KinoWawerskaStrefaKultury$	Wawerska Strefa Kultury	Wawer	kino-wawerska-strefa-kultury	YearRound	548658189
+CinemaCityBonarka	models.CinemaCityBonarka$	Cinema City Bonarka	Bonarka	cinema-city-bonarka	YearRound	-1416197428
+CinemaCityKazimierz	models.CinemaCityKazimierz$	Cinema City Kazimierz	Kazimierz	cinema-city-kazimierz	YearRound	811648432
+CinemaCityZakopianka	models.CinemaCityZakopianka$	Cinema City Zakopianka	Zakopianka	cinema-city-zakopianka	YearRound	1482029955
+MultikinoKrakow	models.MultikinoKrakow$	Multikino Kraków	Multikino	multikino-krakow	YearRound	1924630481
+KinoMikro	models.KinoMikro$	Kino Mikro	Mikro	kino-mikro	YearRound	-2010268595
+MikroBronowice	models.MikroBronowice$	Mikro Bronowice	Mikro Bronowice	mikro-bronowice	YearRound	1646941064
+KinoSfinks	models.KinoSfinks$	Kino Sfinks	Sfinks	kino-sfinks	YearRound	-2019843393
+KinoPodBaranami	models.KinoPodBaranami$	Kino Pod Baranami	Pod Baranami	kino-pod-baranami	YearRound	-1023707549
+KinoKijow	models.KinoKijow$	Kino Kijów	Kijów	kino-kijow	YearRound	-2012116683
+KinoKika	models.KinoKika$	Kino Kika	Kika	kino-kika	YearRound	-480548973
+KinoAgrafka	models.KinoAgrafka$	Kino Agrafka	Agrafka	kino-agrafka	YearRound	-1244251512
+KinoParadox	models.KinoParadox$	Kino Paradox	Paradox	kino-paradox	YearRound	-988374866
+CinemaCityManufaktura	models.CinemaCityManufaktura$	Cinema City Manufaktura	Manufaktura	cinema-city-manufaktura	YearRound	818639625
+MultikinoLodz	models.MultikinoLodz$	Multikino Łódź	Multikino	multikino-lodz	YearRound	1928284593
+HeliosLodz	models.HeliosLodz$	Helios Łódź	Helios	helios-lodz	YearRound	2096598327
+KinoCharlie	models.KinoCharlie$	Kino Charlie	Charlie	kino-charlie	YearRound	544197299
+KinematografLodz	models.KinematografLodz$	Kino Kinematograf	Kinematograf	kinematograf-lodz	YearRound	-916558835
+Nckf	models.Nckf$	Kino NCKF EC1	NCKF EC1	nckf	YearRound	2422256
+KinoTatry	models.KinoTatry$	Kino Tatry	Tatry	kino-tatry	YearRound	-2004033617
+CinemaCityPunkt44	models.CinemaCityPunkt44$	Cinema City Punkt 44	Punkt 44	cinema-city-punkt44	YearRound	-1703974794
+CinemaCitySilesia	models.CinemaCitySilesia$	Cinema City Silesia	Silesia	cinema-city-silesia	YearRound	612961376
+MultikinoKatowice	models.MultikinoKatowice$	Multikino Katowice	Multikino	multikino-katowice	YearRound	1079170269
+HeliosKatowice	models.HeliosKatowice$	Helios Katowice	Helios	helios-katowice	YearRound	-1109269149
+KinoKosmos	models.KinoKosmos$	Kino Kosmos	Kosmos	kino-kosmos	YearRound	2054699457
+KinoSwiatowid	models.KinoSwiatowid$	Kino Światowid	Światowid	kino-swiatowid	YearRound	-1463568004
+KinoteatrRialto	models.KinoteatrRialto$	Kinoteatr Rialto	Kinoteatr Rialto	kinoteatr-rialto	YearRound	42827180
+HeliosSzczecin	models.HeliosSzczecin$	Helios Kupiec	Helios	helios-szczecin	YearRound	183988543
+MultikinoSzczecin	models.MultikinoSzczecin$	Multikino Szczecin	Multikino	multikino-szczecin	YearRound	-1922539335
+KinoPionier	models.KinoPionier$	Kino Pionier 1907	Pionier	kino-pionier	YearRound	-761720449
+HeliosOutletPark	models.HeliosOutletPark$	Helios Outlet Park	Outlet Park	helios-outlet-park	YearRound	1990523637
+KinoZamekSzczecin	models.KinoZamekSzczecin$	Kino Zamek	Zamek	kino-zamek-szczecin	YearRound	-923901874
+HeliosAlfa	models.HeliosAlfa$	Helios Alfa	Alfa	helios-alfa	YearRound	2096267780
+HeliosBiala	models.HeliosBiala$	Helios Biała	Biała	helios-biala	YearRound	560621521
+HeliosJurowiecka	models.HeliosJurowiecka$	Helios Jurowiecka	Jurowiecka	helios-jurowiecka	YearRound	-1639192468
+KinoForum	models.KinoForum$	Kino Forum	Forum	kino-forum	YearRound	-2016547678
+MultikinoGdansk	models.MultikinoGdansk$	Multikino Gdańsk	Multikino	multikino-gdansk	YearRound	1797187578
+HeliosMetropolia	models.HeliosMetropolia$	Helios Metropolia	Metropolia	helios-metropolia	YearRound	-1743330294
+HeliosForum	models.HeliosForum$	Helios Forum	Forum	helios-forum	YearRound	564510979
+HeliosRiviera	models.HeliosRiviera$	Helios Riviera	Riviera	helios-riviera	YearRound	-1074128564
+KinoSpektrum	models.KinoSpektrum$	Kino Spektrum	Spektrum	kino-spektrum	YearRound	423803064
+KinoKameralne	models.KinoKameralne$	Kino Kameralne Cafe	Kameralne	kino-kameralne	YearRound	-208666393
+KinoIkm	models.KinoIkm$	Kino IKM	IKM	kino-ikm	YearRound	954327884
+KinoMuzeumGdansk	models.KinoMuzeumGdansk$	Kino Muzeum	Muzeum	kino-muzeum-gdansk	YearRound	781381516
+KinoZak	models.KinoZak$	Kino Żak	Żak	kino-zak	YearRound	954343909
+KinoPort	models.KinoPort$	KinoPort	KinoPort	kino-port	YearRound	-480394016
+Cinema1Gdansk	models.Cinema1Gdansk$	Cinema1	Cinema1	cinema1-gdansk	YearRound	197368066
+GdynskieCentrumFilmowe	models.GdynskieCentrumFilmowe$	Gdyńskie Centrum Filmowe	GCF	gdynskie-centrum-filmowe	YearRound	105714717
+KinoNaSzekspirowskim	models.KinoNaSzekspirowskim$	Kino na Szekspirowskim	Gdańsk	kino-na-szekspirowskim	YearRound	557483689
+TeatrBoto	models.TeatrBoto$	Teatr Boto	Boto	teatr-boto	YearRound	2044715798
+TeatrAtelier	models.TeatrAtelier$	Teatr Atelier	Atelier	teatr-atelier	YearRound	2143950382
+CinemaCityBydgoszcz	models.CinemaCityBydgoszcz$	Cinema City Bydgoszcz	Cinema City	cinema-city-bydgoszcz	YearRound	671306359
+MultikinoBydgoszcz	models.MultikinoBydgoszcz$	Multikino Bydgoszcz	Multikino	multikino-bydgoszcz	YearRound	-196754981
+HeliosBydgoszcz	models.HeliosBydgoszcz$	Helios Bydgoszcz	Helios	helios-bydgoszcz	YearRound	681099797
+KinoOrzel	models.KinoOrzel$	Kino Orzeł	Orzeł	kino-orzel	YearRound	-2008139425
+CinemaCityLublinFelicity	models.CinemaCityLublinFelicity$	Cinema City Felicity	Felicity	cinema-city-lublin-felicity	YearRound	-1424652997
+CinemaCityLublinPlaza	models.CinemaCityLublinPlaza$	Cinema City Lublin Plaza	Lublin Plaza	cinema-city-lublin-plaza	YearRound	-890955528
+MultikinoLublin	models.MultikinoLublin$	Multikino Lublin	Multikino	multikino-lublin	YearRound	1956060752
+KinoBajka	models.KinoBajka$	Kino Bajka	Bajka	kino-bajka	YearRound	-2020666846
+KinoCkLublin	models.KinoCkLublin$	Kino CK Lublin	CK	kino-ck-lublin	YearRound	1754021727
+KinoChatkaZaka	models.KinoChatkaZaka$	Kino Chatka Żaka	Chatka Żaka	kino-chatka-zaka	YearRound	418951082
+CinemaCityCzestochowaJurajska	models.CinemaCityCzestochowaJurajska$	Cinema City Jurajska	Jurajska	cinema-city-czestochowa-jurajska	YearRound	1924420305
+CinemaCityCzestochowaWolnosc	models.CinemaCityCzestochowaWolnosc$	Cinema City Wolność	Wolność	cinema-city-czestochowa-wolnosc	YearRound	-630915923
+OkfIluzja	models.OkfIluzja$	OKF Iluzja	OKF Iluzja	okf-iluzja	YearRound	-1028500279
+KinoDKFRumcajs	models.KinoDKFRumcajs$	DKF Rumcajs	DKF Rumcajs	kino-dkfrumcajs	YearRound	1475058449
+HeliosRadom	models.HeliosRadom$	Helios Radom	Helios	helios-radom	YearRound	575162517
+MultikinoRadom	models.MultikinoRadom$	Multikino Radom	Multikino	multikino-radom	YearRound	-347595941
+McswElektrowniaCinema	models.McswElektrowniaCinema$	Kino MCSW Elektrownia	Elektrownia	mcsw-elektrownia-cinema	YearRound	1436516490
+HeliosSosnowiec	models.HeliosSosnowiec$	Helios Sosnowiec	Helios	helios-sosnowiec	YearRound	399071082
+CinemaCitySosnowiec	models.CinemaCitySosnowiec$	Cinema City Sosnowiec	Cinema City	cinema-city-sosnowiec	YearRound	389277644
+CinemaCityTorunCzerwonaDroga	models.CinemaCityTorunCzerwonaDroga$	Cinema City Czerwona Droga	Czerwona Droga	cinema-city-torun-czerwona-droga	YearRound	1933435000
+CinemaCityTorunPlaza	models.CinemaCityTorunPlaza$	Cinema City Toruń Plaza	Plaza	cinema-city-torun-plaza	YearRound	-903620424
+KinoCentrumCsw	models.KinoCentrumCsw$	Kino Centrum CSW Toruń	CSW	kino-centrum-csw	YearRound	-1347510300
+Kino1410	models.Kino1410$	Kino 1410	1410	kino1410	YearRound	-481376319
+HeliosKielce	models.HeliosKielce$	Helios Kielce	Helios	helios-kielce	YearRound	457179653
+MultikinoKielce	models.MultikinoKielce$	Multikino Kielce	Multikino	multikino-kielce	YearRound	1916438527
+KinoFenomen	models.KinoFenomen$	Kino Fenomen (WDK)	Fenomen	kino-fenomen	YearRound	-1162229161
+KinoMoskwa	models.KinoMoskwa$	Kino Moskwa	Moskwa	kino-moskwa	YearRound	2111956067
+HeliosRzeszow	models.HeliosRzeszow$	Helios Rzeszów	Helios	helios-rzeszow	YearRound	-602814834
+MultikinoRzeszow	models.MultikinoRzeszow$	Multikino Rzeszów	Multikino	multikino-rzeszow	YearRound	1684537300
+KinoZorza	models.KinoZorza$	Kino Zorza	Zorza	kino-zorza	YearRound	-1998077115
+KinoZaRogiemCafe	models.KinoZaRogiemCafe$	Kino za Rogiem Cafe	za Rogiem	kino-za-rogiem-cafe	YearRound	1101399786
+CinemaCityGliwice	models.CinemaCityGliwice$	Cinema City Gliwice	Cinema City	cinema-city-gliwice	YearRound	-1363504868
+KinoAmok	models.KinoAmok$	Kino Amok	Amok	kino-amok	YearRound	-480842905
+MultikinoZabrze	models.MultikinoZabrze$	Multikino Zabrze	Multikino	multikino-zabrze	YearRound	-1956562566
+KinoRoma	models.KinoRoma$	Kino Roma	Roma	kino-roma	YearRound	-480334608
+KinoPlanetCinemaZabrze	models.KinoPlanetCinemaZabrze$	Planet Cinema Zabrze	Planet Cinema	kino-planet-cinema-zabrze	YearRound	1930513738
+HeliosOlsztyn	models.HeliosOlsztyn$	Helios Olsztyn	Helios	helios-olsztyn	YearRound	641965671
+MultikinoOlsztyn	models.MultikinoOlsztyn$	Multikino Olsztyn	Multikino	multikino-olsztyn	YearRound	-1365649491
+KinoAwangarda2	models.KinoAwangarda2$	Kino Awangarda 2	Awangarda 2	kino-awangarda2	YearRound	-1673888961
+HeliosBielskoBiala	models.HeliosBielskoBiala$	Helios Bielsko-Biała	Helios	helios-bielsko-biala	YearRound	-1213449180
+CinemaCityBielskoBiala	models.CinemaCityBielskoBiala$	Cinema City Bielsko-Biała	Cinema City	cinema-city-bielsko-biala	YearRound	-911984510
+KinoKreska	models.KinoKreska$	Kino Kreska	Kreska	kino-kreska	YearRound	2057058570
+HeliosOpoleKarolinka	models.HeliosOpoleKarolinka$	Helios Karolinka	Karolinka	helios-opole-karolinka	YearRound	729166571
+HeliosOpoleSolaris	models.HeliosOpoleSolaris$	Helios Solaris	Solaris	helios-opole-solaris	YearRound	389506530
+KinoMeduza	models.KinoMeduza$	Kino Meduza	Meduza	kino-meduza	YearRound	2102283695
+KinoStudio	models.KinoStudio$	Studio	Studio	kino-studio	YearRound	-2006566283
+MultikinoRybnik	models.MultikinoRybnik$	Multikino Rybnik	Multikino	multikino-rybnik	YearRound	2131531661
+CinemaCityRybnik	models.CinemaCityRybnik$	Cinema City Rybnik	Cinema City	cinema-city-rybnik	YearRound	559819889
+KinoTeatrZiemiRybnickiej	models.KinoTeatrZiemiRybnickiej$	Teatr Ziemi Rybnickiej	Rybnik	kino-teatr-ziemi-rybnickiej	YearRound	1613443059
+HeliosGorzow	models.HeliosGorzow$	Helios Gorzów Wielkopolski	Helios	helios-gorzow	YearRound	348605302
+MultikinoGorzow	models.MultikinoGorzow$	Multikino Gorzów Wielkopolski	Multikino	multikino-gorzow	YearRound	1807864176
+Kino60Krzesel	models.Kino60Krzesel$	Kino 60 Krzeseł	60 Krzeseł	kino60-krzesel	YearRound	-135850161
+MultikinoElblag	models.MultikinoElblag$	Multikino Elbląg	Multikino	multikino-elblag	YearRound	1747344751
+CinemaCityElblag	models.CinemaCityElblag$	Cinema City Elbląg	Cinema City	cinema-city-elblag	YearRound	175632979
+KinoSwiatowidElblag	models.KinoSwiatowidElblag$	Kino Światowid Elbląg	Światowid Elbląg	kino-swiatowid-elblag	YearRound	1186473907
+HeliosKoszalin	models.HeliosKoszalin$	Helios Koszalin	Helios	helios-koszalin	YearRound	-1588242247
+MultikinoKoszalin	models.MultikinoKoszalin$	Multikino Koszalin	Multikino	multikino-koszalin	YearRound	600197171
+KinoKryterium	models.KinoKryterium$	Kino Kryterium	Kryterium	kino-kryterium	YearRound	1832383091
+HeliosKalisz	models.HeliosKalisz$	Helios Kalisz	Helios	helios-kalisz	YearRound	449997656
+MultikinoKalisz	models.MultikinoKalisz$	Multikino Kalisz	Multikino	multikino-kalisz	YearRound	1909256530
+KinoCentrum3D	models.KinoCentrum3D$	Centrum 3D	Centrum 3D	kino-centrum3-d	YearRound	1064910036
+CinemaCityZielonaGora	models.CinemaCityZielonaGora$	Cinema City Zielona Góra	Cinema City	cinema-city-zielona-gora	YearRound	1996960775
+MultikinoTychy	models.MultikinoTychy$	Multikino Tychy	Multikino	multikino-tychy	YearRound	-345035081
+CinemaCityWalbrzych	models.CinemaCityWalbrzych$	Cinema City Wałbrzych	Cinema City	cinema-city-walbrzych	YearRound	861620442
+KinoApolloWalbrzych	models.KinoApolloWalbrzych$	Kino Apollo Wałbrzych	Apollo	kino-apollo-walbrzych	YearRound	507485128
+MultikinoTarnow	models.MultikinoTarnow$	Multikino Tarnów	Multikino	multikino-tarnow	YearRound	-2127864983
+KinoMillenium	models.KinoMillenium$	Kino Millenium	Millenium	kino-millenium	YearRound	830251997
+KinoMarzenie	models.KinoMarzenie$	Kino Marzenie	Marzenie	kino-marzenie	YearRound	-1485196992
+MultikinoWloclawek	models.MultikinoWloclawek$	Multikino Włocławek	Multikino	multikino-wloclawek	YearRound	374488743
+HeliosLegnica	models.HeliosLegnica$	Helios Legnica	Helios	helios-legnica	YearRound	2062566857
+KinoPiast	models.KinoPiast$	Kino Piast	Piast	kino-piast	YearRound	-2007507606
+HeliosPlock	models.HeliosPlock$	Helios Płock	Helios	helios-plock	YearRound	573653373
+KinoPrzedwiosnie	models.KinoPrzedwiosnie$	Kino Przedwiośnie	Przedwiośnie	kino-przedwiosnie	YearRound	-324267460
+KinoZaRogiem	models.KinoZaRogiem$	Kino za Rogiem	za Rogiem	kino-za-rogiem	YearRound	-1229736019
+CinemaCityBytom	models.CinemaCityBytom$	Cinema City Bytom	Cinema City	cinema-city-bytom	YearRound	-689436961
+KinoBCKBytom	models.KinoBCKBytom$	BCKino Bytom	BCKino	kino-bckbytom	YearRound	-1204233136
+HeliosDabrowaGornicza	models.HeliosDabrowaGornicza$	Helios Dąbrowa Górnicza	Helios	helios-dabrowa-gornicza	YearRound	-1583128269
+KinoKadr	models.KinoKadr$	Kino Studyjne Kadr	Kadr	kino-kadr	YearRound	-480556861
+HeliosNowySacz	models.HeliosNowySacz$	Helios Nowy Sącz	Helios	helios-nowy-sacz	YearRound	-541613274
+KinoSokol	models.KinoSokol$	Kino Sokół	Sokół	kino-sokol	YearRound	-2004548819
+MultikinoSlupsk	models.MultikinoSlupsk$	Multikino Słupsk	Multikino	multikino-slupsk	YearRound	-2146243996
+KinoRejs	models.KinoRejs$	Kino Rejs	Rejs	kino-rejs	YearRound	-480344293
+HeliosJeleniaGora	models.HeliosJeleniaGora$	Helios Jelenia Góra	Helios	helios-jelenia-gora	YearRound	-2116641749
+KinoLot	models.KinoLot$	Kino Lot	Lot	kino-lot	YearRound	954330898
+HeliosPrzemysl	models.HeliosPrzemysl$	Helios Przemyśl	Helios	helios-przemysl	YearRound	1379766288
+KinoCentrum3DPrzemysl	models.KinoCentrum3DPrzemysl$	Centrum 3D Przemyśl	Centrum 3D	kino-centrum3-dprzemysl	YearRound	1677685798
+HeliosKonin	models.HeliosKonin$	Helios Konin	Helios	helios-konin	YearRound	569124369
+KinoOskard	models.KinoOskard$	Kino Oskard	Oskard	kino-oskard	YearRound	-2122306933
+KinoStudyjneCentrum	models.KinoStudyjneCentrum$	Kino Studyjne Centrum	Centrum	kino-studyjne-centrum	YearRound	-1736073781
+KinoIskra	models.KinoIskra$	Kino Iskra	Iskra	kino-iskra	YearRound	-2013664783
+HeliosBelchatow	models.HeliosBelchatow$	Helios Bełchatów	Helios Bełchatów	helios-belchatow	YearRound	-1426796565
+KinoKulturaBelchatow	models.KinoKulturaBelchatow$	Kino Kultura Bełchatów	Kultura	kino-kultura-belchatow	YearRound	-1025152170
+CinemaCityBialaPodlaska	models.CinemaCityBialaPodlaska$	Cinema City Biała Podlaska	Cinema City	cinema-city-biala-podlaska	YearRound	-269505886
+KinoSlawa	models.KinoSlawa$	Kino Sława	Sława	kino-slawa	YearRound	-2004647565
+KinoBielsk	models.KinoBielsk$	Kino Bielsk	Bielsk	kino-bielsk	YearRound	1791078053
+KinoBCK	models.KinoBCK$	Kino BCK	BCK	kino-bck	YearRound	954319883
+KinoWazka	models.KinoWazka$	Kino Ważka	Ważka	kino-wazka	YearRound	-2001257529
+KinoPlaneta	models.KinoPlaneta$	Kino Planeta	Planeta	kino-planeta	YearRound	-688765686
+KinoRegis	models.KinoRegis$	Regis	Regis	kino-regis	YearRound	-2005774273
+KinoKlaps	models.KinoKlaps$	Klaps	Klaps	kino-klaps	YearRound	-2012035932
+KinoAurum	models.KinoAurum$	Kino Aurum	Aurum	kino-aurum	YearRound	-2020986537
+KinoForumBoleslawiec	models.KinoForumBoleslawiec$	Forum	Forum	kino-forum-boleslawiec	YearRound	-2118419248
+KinoKulturaChojnow	models.KinoKulturaChojnow$	Kino Kultura Chojnów	Kultura Chojnów	kino-kultura-chojnow	YearRound	202126179
+KinoBaszta	models.KinoBaszta$	Baszta	Baszta	kino-baszta	YearRound	1784120434
+KinoCentrumBrzeg	models.KinoCentrumBrzeg$	Kino Centrum Brzeg	Centrum Brzeg	kino-centrum-brzeg	YearRound	2121777897
+KinoAstra	models.KinoAstra$	Kino Astra	Astra	kino-astra	YearRound	-2021044302
+KinoOdraBrzegDolny	models.KinoOdraBrzegDolny$	Kino Odra Brzeg Dolny	Odra Brzeg Dolny	kino-odra-brzeg-dolny	YearRound	1524609379
+KinoPoloniaTrzebnica	models.KinoPoloniaTrzebnica$	Kino Polonia Trzebnica	Polonia	kino-polonia-trzebnica	YearRound	-1877571219
+KinoCyfroweKino	models.KinoCyfroweKino$	Cyfrowe Kino	Cyfrowe Kino	kino-cyfrowe-kino	YearRound	1313218939
+KinoCK	models.KinoCK$	Kino CK	CK	kino-ck	YearRound	-2047425433
+KinoZdrojBusko	models.KinoZdrojBusko$	Kino Zdrój Busko	Zdrój	kino-zdroj-busko	YearRound	-1801992096
+KinoGCK	models.KinoGCK$	Kino GCK	GCK	kino-gck	YearRound	954324688
+KinoKadrStaszow	models.KinoKadrStaszow$	Kino Kadr Staszów	Kadr	kino-kadr-staszow	YearRound	395135596
+KinoZorzaChelm	models.KinoZorzaChelm$	Kino Zorza Chełm	Zorza	kino-zorza-chelm	YearRound	706311644
+KinoChDK	models.KinoChDK$	Kino ChDK	ChDK	kino-ch-dk	YearRound	-480789493
+KinoUciechaCzluchow	models.KinoUciechaCzluchow$	Kino Uciecha Człuchów	Uciecha	kino-uciecha-czluchow	YearRound	-2009663008
+KinoZaRogiemBrusy	models.KinoZaRogiemBrusy$	Kino za Rogiem Brusy	Brusy	kino-za-rogiem-brusy	YearRound	-216747106
+KinoCKiSSepolno	models.KinoCKiSSepolno$	CKiS Sępólno Krajeńskie	Sępólno	kino-cki-ssepolno	YearRound	-1436393269
+KinoTucholskiOsrodekKultury	models.KinoTucholskiOsrodekKultury$	Tucholski Ośrodek Kultury	TOK Tuchola	kino-tucholski-osrodek-kultury	YearRound	1559184976
+KinoPanorama	models.KinoPanorama$	Kino Panorama	Panorama	kino-panorama	YearRound	-676033708
+KinoChDKChoszczno	models.KinoChDKChoszczno$	Choszczeński Dom Kultury	Choszczno	kino-ch-dkchoszczno	YearRound	421393598
+KinoDOKDrawno	models.KinoDOKDrawno$	Drawieński Ośrodek Kultury	Drawno	kino-dokdrawno	YearRound	1492659814
+KinoMGOKRecz	models.KinoMGOKRecz$	MGOK Recz	Recz	kino-mgokrecz	YearRound	163510463
+KinoKalejdoskop	models.KinoKalejdoskop$	Kino Kalejdoskop	Kalejdoskop	kino-kalejdoskop	YearRound	426267840
+KinoLydynia	models.KinoLydynia$	Kino Łydynia	Łydynia	kino-lydynia	YearRound	431472421
+KinoSwiatowidPrzasnysz	models.KinoSwiatowidPrzasnysz$	Kino Światowid Przasnysz	Światowid	kino-swiatowid-przasnysz	YearRound	1650365248
+KinoPckulKino	models.KinoPckulKino$	Kino PCKul	Pszczyna	kino-pckul-kino	YearRound	1506476207
+KinoSwitCzechowiceDziedzice	models.KinoSwitCzechowiceDziedzice$	Świt	Świt	kino-swit-czechowice-dziedzice	YearRound	-1733813883
+MultikinoCzechowiceDziedzice	models.MultikinoCzechowiceDziedzice$	Multikino Czechowice-Dziedzice	Multikino	multikino-czechowice-dziedzice	YearRound	-140360709
+KinoSokolDabrowaTarnowska	models.KinoSokolDabrowaTarnowska$	Kino Sokół Dąbrowa Tarnowska	Sokół	kino-sokol-dabrowa-tarnowska	YearRound	496820793
+KinoMCKRadlow	models.KinoMCKRadlow$	Kino MCK Radłów	MCK Radłów	kino-mckradlow	YearRound	-943228907
+KinoCentrumLisiaGora	models.KinoCentrumLisiaGora$	Kino Centrum Lisia Góra	Lisia Góra	kino-centrum-lisia-gora	YearRound	-575597438
+KinoECK	models.KinoECK$	Kino ECK	ECK	kino-eck	YearRound	954322766
+KinoPlanetCinemaElk	models.KinoPlanetCinemaElk$	Planet Cinema Ełk	Planet Cinema	kino-planet-cinema-elk	YearRound	-1437329540
+KinoGwiazdaKetrzyn	models.KinoGwiazdaKetrzyn$	Kino Gwiazda Kętrzyn	Gwiazda	kino-gwiazda-ketrzyn	YearRound	-1986289689
+KinoZodiak	models.KinoZodiak$	Kino Zodiak	Zodiak	kino-zodiak	YearRound	-1811281725
+KinoNowaFalaGizycko	models.KinoNowaFalaGizycko$	Kino Nowa Fala	Nowa Fala	kino-nowa-fala-gizycko	YearRound	113116460
+MultikinoGlogow	models.MultikinoGlogow$	Multikino Głogów	Multikino Głogów	multikino-glogow	YearRound	1804985981
+KinoMOKGlogow	models.KinoMOKGlogow$	MOK Głogów	MOK Głogów	kino-mokglogow	YearRound	-1808780401
+TeatrGryphius	models.TeatrGryphius$	Teatr im. Andreasa Gryphiusa	Gryphius	teatr-gryphius	YearRound	-1588843473
+KinoTrojka	models.KinoTrojka$	Kino Trójka	Trójka	kino-trojka	YearRound	-1979957106
+HeliosGniezno	models.HeliosGniezno$	Helios Gniezno	Helios	helios-gniezno	YearRound	-2115693574
+KinoKulturaGoldap	models.KinoKulturaGoldap$	Kino Kultura Gołdap	Gołdap	kino-kultura-goldap	YearRound	681595234
+KinoDomKulturyGrajewo	models.KinoDomKulturyGrajewo$	Kino Dom Kultury Grajewo	Grajewo	kino-dom-kultury-grajewo	YearRound	-398132254
+KinoRondo	models.KinoRondo$	Kinoteatr Rondo	Rondo	kino-rondo	YearRound	-2005469795
+KinoCKSwiecie	models.KinoCKSwiecie$	Centrum Kultury w Świeciu	Świecie	kino-ckswiecie	YearRound	585809880
+HeliosGrudziadz	models.HeliosGrudziadz$	Helios Grudziądz	Grudziądz	helios-grudziadz	YearRound	-1249365616
+KinoPlon	models.KinoPlon$	Kino Plon	Plon	kino-plon	YearRound	-480396998
+KinoteatrPasja	models.KinoteatrPasja$	Kinoteatr Pasja	Pasja	kinoteatr-pasja	YearRound	692050026
+KinoPokoj	models.KinoPokoj$	Kino Pokój	Pokój	kino-pokoj	YearRound	-2007319384
+KinoteatrHarmonia	models.KinoteatrHarmonia$	Kinoteatr Harmonia	Harmonia	kinoteatr-harmonia	YearRound	-63609478
+KinoKinomax	models.KinoKinomax$	Kinomax	Kinomax	kino-kinomax	YearRound	-905161562
+KinoManhattanJanikowo	models.KinoManhattanJanikowo$	Kino Manhattan	Manhattan	kino-manhattan-janikowo	YearRound	-748045681
+KinoWawrzyn	models.KinoWawrzyn$	Kino Wawrzyn	Wawrzyn	kino-wawrzyn	YearRound	934329099
+KinoIkar	models.KinoIkar$	Kino Ikar	Ikar	kino-ikar	YearRound	-480606926
+KinoNaBiegunach	models.KinoNaBiegunach$	Kino Na Biegunach	Na Biegunach	kino-na-biegunach	YearRound	559049746
+KinoSokolStrzyzow	models.KinoSokolStrzyzow$	Kino Sokół Strzyżów	Sokół	kino-sokol-strzyzow	YearRound	-2136576257
+KinoFarys	models.KinoFarys$	Farys	Farys	kino-farys	YearRound	-2016964622
+KinoKolory	models.KinoKolory$	Kino Kolory	Kolory	kino-kolory	YearRound	2054492941
+KinoJDK	models.KinoJDK$	Kino JDK	JDK Jasło	kino-jdk	YearRound	954327602
+KinoTeatrElektryczny	models.KinoTeatrElektryczny$	Teatr Elektryczny	Skoczów	kino-teatr-elektryczny	YearRound	285523713
+CinemaCityCieszyn	models.CinemaCityCieszyn$	Cinema City Cieszyn	Cieszyn	cinema-city-cieszyn	YearRound	-708235969
+KinoBaltyk	models.KinoBaltyk$	Bałtyk	Bałtyk	kino-baltyk	YearRound	1783906296
+KinoCentrum	models.KinoCentrum$	Centrum	Centrum	kino-centrum	YearRound	470381347
+KinoPegaz	models.KinoPegaz$	Pegaz	Pegaz	kino-pegaz	YearRound	-2007621556
+KinoFeniks	models.KinoFeniks$	RCK Feniks	Feniks	kino-feniks	YearRound	1902165569
+KinoAleKinoLibiaz	models.KinoAleKinoLibiaz$	Ale! Kino	Ale! Kino	kino-ale-kino-libiaz	YearRound	-1169438217
+KinoZbyszekOlkusz	models.KinoZbyszekOlkusz$	Kino Zbyszek Olkusz	Zbyszek	kino-zbyszek-olkusz	YearRound	-388788243
+MultikinoJaworzno	models.MultikinoJaworzno$	Multikino Jaworzno	Multikino	multikino-jaworzno	YearRound	-577884880
+KinoSztuka	models.KinoSztuka$	Kino Sztuka	Sztuka	kino-sztuka	YearRound	-2001038563
+HeliosKedzierzynKozle	models.HeliosKedzierzynKozle$	Helios Kędzierzyn-Koźle	Helios	helios-kedzierzyn-kozle	YearRound	-1597007736
+KinoChemik	models.KinoChemik$	Chemik	Chemik	kino-chemik	YearRound	1818784334
+KinoTwierdza	models.KinoTwierdza$	Kino Twierdza	Twierdza	kino-twierdza	YearRound	-101892841
+KinoPiastOstrzeszow	models.KinoPiastOstrzeszow$	Piast	Piast	kino-piast-ostrzeszow	YearRound	-796606682
+KinoSlonce	models.KinoSlonce$	Kino Słońce	Słońce	kino-slonce	YearRound	-2014123783
+KinoSokolniaKepno	models.KinoSokolniaKepno$	Kino Sokolnia Kępno	Sokolnia	kino-sokolnia-kepno	YearRound	266317406
+KinoMOKNowaRuda	models.KinoMOKNowaRuda$	Kino MOK Nowa Ruda	MOK	kino-moknowa-ruda	YearRound	-871266859
+MultikinoKlodzko	models.MultikinoKlodzko$	Multikino Kłodzko	Multikino	multikino-klodzko	YearRound	-625041072
+KinoBajkaKluczbork	models.KinoBajkaKluczbork$	Kino Bajka Kluczbork	Bajka	kino-bajka-kluczbork	YearRound	1159721071
+KinoCentrumBialogard	models.KinoCentrumBialogard$	Kino Centrum	Centrum	kino-centrum-bialogard	YearRound	1623637542
+KinoGOK	models.KinoGOK$	Kino GOK	GOK	kino-gok	YearRound	954325060
+KinoWybrzeze	models.KinoWybrzeze$	Wybrzeże	Wybrzeże	kino-wybrzeze	YearRound	-1876548057
+KinoZaRogiemChmielno	models.KinoZaRogiemChmielno$	Kino za Rogiem Chmielno	Chmielno	kino-za-rogiem-chmielno	YearRound	-558237770
+KinoKCK	models.KinoKCK$	Kino Kartuskie Centrum Kultury	KCK Kartuzy	kino-kck	YearRound	954328532
+KinoRemus	models.KinoRemus$	Kino Remus	Remus	kino-remus	YearRound	-2005768135
+KinoKrapkowice	models.KinoKrapkowice$	Kino Krapkowice	Krapkowice	kino-krapkowice	YearRound	-1289079155
+KinoMetalowiec	models.KinoMetalowiec$	Metalowiec	Metalowiec	kino-metalowiec	YearRound	-1305400745
+KinoCzyn	models.KinoCzyn$	Kino-Teatr Czyn	Czyn	kino-czyn	YearRound	-480770517
+KinoOpolanka	models.KinoOpolanka$	Kino Opolanka	Opolanka	kino-opolanka	YearRound	-1965826144
+KinoMorskieOko	models.KinoMorskieOko$	Kino Morskie Oko	Morskie Oko	kino-morskie-oko	YearRound	1664703502
+HeliosKrosno	models.HeliosKrosno$	Helios Krosno	Krosno	helios-krosno	YearRound	465796330
+KinoArtKino	models.KinoArtKino$	artKino	artKino	kino-art-kino	YearRound	-928136221
+KinoEcho	models.KinoEcho$	Kino Echo	Echo	kino-echo	YearRound	-480733564
+KinoPrzedwiosnieKrotoszyn	models.KinoPrzedwiosnieKrotoszyn$	Przedwiośnie	Przedwiośnie	kino-przedwiosnie-krotoszyn	YearRound	1852398531
+KinoHel	models.KinoHel$	Kino Hel	Hel	kino-hel	YearRound	954326736
+KinoJaworzyna	models.KinoJaworzyna$	Jaworzyna	Jaworzyna	kino-jaworzyna	YearRound	-2124028234
+KinoMCKGrybow	models.KinoMCKGrybow$	Kino MCKCziE Grybów	Grybów	kino-mckgrybow	YearRound	-1241833710
+KinoGornikLeczyca	models.KinoGornikLeczyca$	Kino Górnik Łęczyca	Górnik	kino-gornik-leczyca	YearRound	358386498
+KinoNoweKinoWarszawa	models.KinoNoweKinoWarszawa$	Nowe Kino Warszawa	Gostynin	kino-nowe-kino-warszawa	YearRound	636318153
+KinoKDK	models.KinoKDK$	Kino KDK	KDK	kino-kdk	YearRound	954328563
+DomKulturyLapy	models.DomKulturyLapy$	Dom Kultury w Łapach	Łapy	dom-kultury-lapy	YearRound	-1973177690
+KinoLeba	models.KinoLeba$	Kino MBP Łeba	Łeba	kino-leba	YearRound	-480523305
+HeliosLegionowo	models.HeliosLegionowo$	Helios Legionowo	Helios Legionowo	helios-legionowo	YearRound	2009566447
+KinoKasynoOficerskie	models.KinoKasynoOficerskie$	Kasyno Oficerskie	Kasyno Oficerskie	kino-kasyno-oficerskie	YearRound	314053326
+KinoNOKNasielsk	models.KinoNOKNasielsk$	Nasielski Ośrodek Kultury	Nasielsk	kino-noknasielsk	YearRound	1980028851
+MultikinoLeszno	models.MultikinoLeszno$	Multikino Leszno	Multikino	multikino-leszno	YearRound	1941804473
+KinoTeatrMiejskiLeszno	models.KinoTeatrMiejskiLeszno$	Kino Teatru Miejskiego w Lesznie	Teatr Miejski	kino-teatr-miejski-leszno	YearRound	1767205858
+KinoIgnacy	models.KinoIgnacy$	Kino Ignacy	Ignacy	kino-ignacy	YearRound	1989892134
+KinoMiejskieCentrumKultury	models.KinoMiejskieCentrumKultury$	Miejskie Centrum Kultury	Aleksandrów	kino-miejskie-centrum-kultury	YearRound	1891783612
+KinoZdroj	models.KinoZdroj$	Kino Zdrój	Zdrój	kino-zdroj	YearRound	-1998405148
+KinoNawojka	models.KinoNawojka$	Kino Nawojka	Nawojka	kino-nawojka	YearRound	1536625366
+HeliosLomza	models.HeliosLomza$	Helios Łomża	Helios	helios-lomza	YearRound	570047443
+KinoJantar	models.KinoJantar$	Kino Jantar	Jantar	kino-jantar	YearRound	2012998349
+KinoCKZambrow	models.KinoCKZambrow$	Kino Centrum Kultury Zambrów	Zambrów	kino-ckzambrow	YearRound	1877146359
+HeliosLubin	models.HeliosLubin$	Helios Lubin	Lubin	helios-lubin	YearRound	570215104
+KinoMuzaLubin	models.KinoMuzaLubin$	Muza	Muza	kino-muza-lubin	YearRound	-528518064
+KinoKarolinka	models.KinoKarolinka$	Kino Karolinka	Karolinka	kino-karolinka	YearRound	214875253
+KinoLukow	models.KinoLukow$	Kino Łuków	Łuków	kino-lukow	YearRound	-2010834709
+KinoRadosc	models.KinoRadosc$	Kino Radość	Radość	kino-radosc	YearRound	-2053237911
+KinoGryf	models.KinoGryf$	Kino Gryf	Gryf	kino-gryf	YearRound	-480659049
+KinoMOKMiedzyrzecz	models.KinoMOKMiedzyrzecz$	Kino MOK Międzyrzecz	MOK Międzyrzecz	kino-mokmiedzyrzecz	YearRound	1929011120
+KinoEva	models.KinoEva$	Kino Eva	Eva	kino-eva	YearRound	954324369
+KinoJednosc	models.KinoJednosc$	Kino Jedność	Jedność	kino-jednosc	YearRound	-1916444389
+KinoSniezka	models.KinoSniezka$	Kino Śnieżka	Śnieżka	kino-sniezka	YearRound	2038143610
+KinoPromien	models.KinoPromien$	Kino Promień	Promień	kino-promien	YearRound	-504087885
+MultikinoMielec	models.MultikinoMielec$	Multikino Mielec	Multikino Mielec	multikino-mielec	YearRound	1973696889
+KinoKosmosMlawa	models.KinoKosmosMlawa$	Kino Kosmos Mława	Kosmos	kino-kosmos-mlawa	YearRound	-494249045
+KinoApolloDzialdowo	models.KinoApolloDzialdowo$	Kino Apollo Działdowo	Apollo	kino-apollo-dzialdowo	YearRound	-1587378733
+KinoTon	models.KinoTon$	Kino Ton	Ton	kino-ton	YearRound	954338580
+KinoNarie	models.KinoNarie$	Kino Narie	Narie	kino-narie	YearRound	-2009576964
+KinoMDKMyszkow	models.KinoMDKMyszkow$	Kino MDK Myszków	MDK Myszków	kino-mdkmyszkow	YearRound	-423965077
+KinoRelaks	models.KinoRelaks$	Kino Relaks	Relaks	kino-relaks	YearRound	-2049319185
+KinoPromienWiecbork	models.KinoPromienWiecbork$	Kino Promień Więcbork	Promień	kino-promien-wiecbork	YearRound	-1931268599
+KinoEuropa	models.KinoEuropa$	Europa	Europa	kino-europa	YearRound	1888437821
+KinoLubon	models.KinoLubon$	Kino Luboń 2.0	Luboń	kino-lubon	YearRound	-2010843367
+KinoSniezkaRabka	models.KinoSniezkaRabka$	Kino Śnieżka Rabka	Śnieżka	kino-sniezka-rabka	YearRound	-627769777
+KinoStopiak	models.KinoStopiak$	Stopiak Cinema	Stopiak	kino-stopiak	YearRound	-2079196590
+KinoWielkopolanin	models.KinoWielkopolanin$	Kino Wielkopolanin	Wielkopolanin	kino-wielkopolanin	YearRound	-1591425117
+KinoOpalenica	models.KinoOpalenica$	Kino Opalenica	Opalenica	kino-opalenica	YearRound	-347525645
+KinoNOKNowyTomysl	models.KinoNOKNowyTomysl$	Nowotomyski Ośrodek Kultury	Nowy Tomyśl	kino-noknowy-tomysl	YearRound	-184967890
+KinoMewaMiedzychod	models.KinoMewaMiedzychod$	Kino Mewa Międzychód	Mewa	kino-mewa-miedzychod	YearRound	1574033749
+KinoZaRogiemSiedlec	models.KinoZaRogiemSiedlec$	Kino za Rogiem w Siedlcu	Siedlec	kino-za-rogiem-siedlec	YearRound	-205772792
+KinoDiana	models.KinoDiana$	Kino Diana	Diana	kino-diana	YearRound	-2018590032
+KinoCinemaN	models.KinoCinemaN$	Cinema N 3D	Cinema N	kino-cinema-n	YearRound	584445630
+KinoOdraOlawa	models.KinoOdraOlawa$	Kino Odra Oława	Odra Oława	kino-odra-olawa	YearRound	2080942731
+GoKinoOlawa	models.GoKinoOlawa$	GO KINO Oława	GO KINO	go-kino-olawa	YearRound	-1081031833
+KinoMazur	models.KinoMazur$	Kino Mazur	Mazur	kino-mazur	YearRound	-2010492412
+KinoMOKiSOlesnica	models.KinoMOKiSOlesnica$	Kino MOKiS Oleśnica	MOKiS Oleśnica	kino-moki-solesnica	YearRound	-988523880
+KinoGrunwald	models.KinoGrunwald$	Kino Grunwald	Grunwald	kino-grunwald	YearRound	-1074134683
+KinoRCKDrzewica	models.KinoRCKDrzewica$	Kino RCK Drzewica	RCK Drzewica	kino-rckdrzewica	YearRound	-697945180
+KinoKoneckieCentrumKultury	models.KinoKoneckieCentrumKultury$	Koneckie Centrum Kultury	Końskie	kino-koneckie-centrum-kultury	YearRound	-2037703130
+KinoMDKOpoczno	models.KinoMDKOpoczno$	MDK Opoczno	Opoczno	kino-mdkopoczno	YearRound	1089015025
+KinoOstrovia	models.KinoOstrovia$	Kino Ostrovia	Ostrovia	kino-ostrovia	YearRound	845796480
+HeliosOstrowWlkp	models.HeliosOstrowWlkp$	Helios Ostrów Wlkp.	Ostrów Wlkp.	helios-ostrow-wlkp	YearRound	-1665166270
+KinoEtiuda	models.KinoEtiuda$	Kino Etiuda	Etiuda	kino-etiuda	YearRound	1887251575
+KinoOOK	models.KinoOOK$	Opatowski Ośrodek Kultury	Opatów	kino-ook	YearRound	954332748
+KinoWislaBrzeszcze	models.KinoWislaBrzeszcze$	Kino Wisła Brzeszcze	Wisła	kino-wisla-brzeszcze	YearRound	1593657749
+KinoNaszeKino	models.KinoNaszeKino$	Nasze Kino	Nasze Kino	kino-nasze-kino	YearRound	282540427
+KinoPlanetCinema	models.KinoPlanetCinema$	Planet Cinema	Planet Cinema	kino-planet-cinema	YearRound	1384848392
+KinoUciecha	models.KinoUciecha$	Kino Uciecha	Uciecha	kino-uciecha	YearRound	-796759181
+KinoOaza	models.KinoOaza$	Kino Oaza	Oaza	kino-oaza	YearRound	-480437032
+KinoWilga	models.KinoWilga$	Kino Wilga	Wilga	kino-wilga	YearRound	-2001032779
+KinoTomi	models.KinoTomi$	Kino Tomi	Tomi	kino-tomi	YearRound	-480275018
+HeliosPabianice	models.HeliosPabianice$	Helios Pabianice	Helios Pabianice	helios-pabianice	YearRound	537922344
+KinoParczew	models.KinoParczew$	Kino Parczew	Parczew	kino-parczew	YearRound	-988294453
+HeliosPila	models.HeliosPila$	Helios Piła	Helios	helios-pila	YearRound	2096711948
+KinoWCKWalcz	models.KinoWCKWalcz$	Kino Wałeckie Centrum Kultury	Wałcz	kino-wckwalcz	YearRound	1053716441
+KinoOsiedlowe	models.KinoOsiedlowe$	Kino Osiedlowe	Osiedlowe	kino-osiedlowe	YearRound	-1105347850
+KinoNotec	models.KinoNotec$	Kino Noteć	Noteć	kino-notec	YearRound	-2009158094
+KinoSwiatowidCzarnkow	models.KinoSwiatowidCzarnkow$	Kino Światowid Czarnków	Światowid	kino-swiatowid-czarnkow	YearRound	-1933073175
+HeliosPiotrkow	models.HeliosPiotrkow$	Helios Piotrków Trybunalski	Helios Piotrków	helios-piotrkow	YearRound	1681235293
+KinoKawiarnia	models.KinoKawiarnia$	Kino Kawiarnia	Kawiarnia	kino-kawiarnia	YearRound	175760782
+KinoMOKPolice	models.KinoMOKPolice$	Kino MOK Police	MOK Police	kino-mokpolice	YearRound	-1548435320
+KinoGryfinskiDomKultury	models.KinoGryfinskiDomKultury$	Gryfiński Dom Kultury	Gryfiński DK	kino-gryfinski-dom-kultury	YearRound	1634511005
+KinoPCA	models.KinoPCA$	Kino PCA	PCA	kino-pca	YearRound	954333327
+CinemaCityJanki	models.CinemaCityJanki$	Cinema City Janki	Janki	cinema-city-janki	YearRound	-682769671
+KinoGrojeckiOsrodekKultury	models.KinoGrojeckiOsrodekKultury$	Grójecki Ośrodek Kultury	Grójec	kino-grojecki-osrodek-kultury	YearRound	342653186
+MultikinoPruszkow	models.MultikinoPruszkow$	Multikino Pruszków	Multikino Pruszków	multikino-pruszkow	YearRound	-856604335
+KinoCKiSPruszkow	models.KinoCKiSPruszkow$	Kino CKiS Pruszków	CKiS Pruszków	kino-cki-spruszkow	YearRound	582885322
+KinoBasn	models.KinoBasn$	Kino Baśń	Baśń	kino-basn	YearRound	-480824519
+KinoMCK	models.KinoMCK$	Kino MCK	MCK	kino-mck	YearRound	954330454
+KinoWarszawa	models.KinoWarszawa$	Kino Warszawa	Warszawa	kino-warszawa	YearRound	-1242813925
+KinoCKiBNowaSarzyna	models.KinoCKiBNowaSarzyna$	Kino CKiB Nowa Sarzyna	CKiB	kino-cki-bnowa-sarzyna	YearRound	1010913419
+KinoKozienickiDomKultury	models.KinoKozienickiDomKultury$	Kozienicki Dom Kultury	Kozienice	kino-kozienicki-dom-kultury	YearRound	-857259237
+KinoSwitZwolen	models.KinoSwitZwolen$	Świt Zwoleń	Świt	kino-swit-zwolen	YearRound	819527825
+KinoSybilla	models.KinoSybilla$	Kino Sybilla	Sybilla	kino-sybilla	YearRound	-1948261931
+KinoRenesans	models.KinoRenesans$	Kino Renesans	Renesans	kino-renesans	YearRound	2055429020
+KinoMDKMakow	models.KinoMDKMakow$	Kino MDK Maków Mazowiecki	MDK Maków	kino-mdkmakow	YearRound	1683750154
+KinoNarew	models.KinoNarew$	Kino Narew	Narew	kino-narew	YearRound	-2009577070
+KinoMDK	models.KinoMDK$	Kino MDK	MDK	kino-mdk	YearRound	954330485
+KinoPromienRawicz	models.KinoPromienRawicz$	Kino Promień Rawicz	Promień	kino-promien-rawicz	YearRound	1389896203
+KinoKrobia	models.KinoKrobia$	Kino Krobia	Krobia	kino-krobia	YearRound	2057340081
+KinoDKGora	models.KinoDKGora$	Dom Kultury w Górze	DK Góra	kino-dkgora	YearRound	1819739837
+KinoZaciszeWasosz	models.KinoZaciszeWasosz$	Kino Zacisze (Wąsosz)	Zacisze Wąsosz	kino-zacisze-wasosz	YearRound	-773868705
+CinemaCity	models.CinemaCity$	Cinema City Ruda Śląska	Cinema City	cinema-city	YearRound	5766172
+KinoPatria	models.KinoPatria$	Patria	Patria	kino-patria	YearRound	-2110016986
+KinoGrajfka	models.KinoGrajfka$	Kino Grajfka	Grajfka	kino-grajfka	YearRound	85292201
+KinoFrajda	models.KinoFrajda$	Kino Frajda	Frajda	kino-frajda	YearRound	1913784785
+KinoZacisze	models.KinoZacisze$	Zacisze	Zacisze	kino-zacisze	YearRound	-716872398
+KinoScenaKultura	models.KinoScenaKultura$	Kino Scena Kultura	Scena Kultura	kino-scena-kultura	YearRound	1003938665
+KinoBaltykRypin	models.KinoBaltykRypin$	Kino Bałtyk Rypin	Bałtyk Rypin	kino-baltyk-rypin	YearRound	392770774
+KinoSokolBrzozow	models.KinoSokolBrzozow$	Kino Sokół Brzozów	Sokół	kino-sokol-brzozow	YearRound	449166928
+KinoSDK	models.KinoSDK$	Kino SDK	SDK	kino-sdk	YearRound	954336251
+KinoOrzelUstrzyki	models.KinoOrzelUstrzyki$	Kino Orzeł Ustrzyki Dolne	Orzeł	kino-orzel-ustrzyki	YearRound	-1441999112
+KinoBieszczadzkiDK	models.KinoBieszczadzkiDK$	Bieszczadzki Dom Kultury	BDK	kino-bieszczadzki-dk	YearRound	-1987536225
+HeliosSiedlce	models.HeliosSiedlce$	Helios Siedlce	Helios	helios-siedlce	YearRound	-202467429
+NoveKinoSiedlce	models.NoveKinoSiedlce$	Nove Kino Siedlce	Nove Kino	nove-kino-siedlce	YearRound	-1170579158
+KinoJutrzenka	models.KinoJutrzenka$	Jutrzenka	Jutrzenka	kino-jutrzenka	YearRound	97535697
+KinoPolonez	models.KinoPolonez$	Kino Polonez	Polonez	kino-polonez	YearRound	-592681502
+KinoCKiSSkierniewice	models.KinoCKiSSkierniewice$	Kino CKiS Skierniewice	CKiS	kino-cki-sskierniewice	YearRound	503322321
+KinoBajkaDarlowo	models.KinoBajkaDarlowo$	Bajka	Bajka	kino-bajka-darlowo	YearRound	63419438
+KinoDK	models.KinoDK$	Kino DK	DK	kino-dk	YearRound	-2047425402
+KinoSmok	models.KinoSmok$	Kino Smok	Smok	kino-smok	YearRound	-480306667
+KinoZacheta	models.KinoZacheta$	Kino Zachęta	Zachęta	kino-zacheta	YearRound	-716915833
+KinoSokolnia	models.KinoSokolnia$	Kino Sokolnia	Sokolnia	kino-sokolnia	YearRound	-288474183
+KinoMok	models.KinoMok$	Kino MOK	MOK	kino-mok	YearRound	954331850
+KinoSokolSokolka	models.KinoSokolSokolka$	Kino Sokół Sokółka	Sokół	kino-sokol-sokolka	YearRound	-1742893547
+KinoSokolSokolowPodlaski	models.KinoSokolSokolowPodlaski$	Kino Sokół Sokołów Podlaski	Sokół	kino-sokol-sokolow-podlaski	YearRound	-263582690
+KinoKongres	models.KinoKongres$	Kino Kongres	Kongres	kino-kongres	YearRound	-733620060
+KinoBasztaSroda	models.KinoBasztaSroda$	Kino Baszta Środa	Baszta Środa	kino-baszta-sroda	YearRound	2064290075
+KinoteatrSlonko	models.KinoteatrSlonko$	Kinoteatr Słonko	Słonko	kinoteatr-slonko	YearRound	74645611
+KinoPodKopula	models.KinoPodKopula$	Kino Pod Kopułą	Pod Kopułą	kino-pod-kopula	YearRound	2124232516
+KinoStarowka	models.KinoStarowka$	Kino Starówka	Starówka	kino-starowka	YearRound	-429345937
+HeliosStalowaWola	models.HeliosStalowaWola$	Helios Stalowa Wola	Helios	helios-stalowa-wola	YearRound	-751348740
+KinoWrzos	models.KinoWrzos$	Kino Wrzos	Wrzos	kino-wrzos	YearRound	-2000750940
+KinoSokolNisko	models.KinoSokolNisko$	Kino Sokół Nisko	Sokół	kino-sokol-nisko	YearRound	1919652431
+KinoMetalowiecNowaDeba	models.KinoMetalowiecNowaDeba$	Kino Metalowiec Nowa Dęba	Metalowiec	kino-metalowiec-nowa-deba	YearRound	-174044446
+KinoJOK	models.KinoJOK$	Kino JOK (Janowski Ośrodek Kultury)	JOK	kino-jok	YearRound	954327943
+KinoKsiazka	models.KinoKsiazka$	Kino Książka	Książka	kino-ksiazka	YearRound	-623891951
+HeliosStarachowice	models.HeliosStarachowice$	Helios Starachowice	Starachowice	helios-starachowice	YearRound	1246259469
+KinoCentrumSkarzyskoKamienna	models.KinoCentrumSkarzyskoKamienna$	Kino Centrum Skarżysko-Kamienna	Centrum	kino-centrum-skarzysko-kamienna	YearRound	-1640128678
+KinoGornik	models.KinoGornik$	Kino Górnik	Górnik	kino-gornik	YearRound	1940153829
+KinoKuznica	models.KinoKuznica$	Kino Kuźnica	Kuźnica	kino-kuznica	YearRound	-550563094
+KinoCKiTIlza	models.KinoCKiTIlza$	Kino CKiT Iłża	CKiT	kino-cki-tilza	YearRound	-77267364
+KinoPDK	models.KinoPDK$	Kino PDK	PDK	kino-pdk	YearRound	954333368
+KinoSCK	models.KinoSCK$	Kino SCK	SCK	kino-sck	YearRound	954336220
+KinoGrazyna	models.KinoGrazyna$	Kino Grażyna	Grażyna	kino-grazyna	YearRound	85787209
+KinoCinemaLumiereSuwalki	models.KinoCinemaLumiereSuwalki$	Cinema Lumiere Suwałki	Cinema Lumiere	kino-cinema-lumiere-suwalki	YearRound	-1572849541
+KinoMOKiS	models.KinoMOKiS$	Kino MOKiS	MOKiS	kino-moki-s	YearRound	-2011074220
+KinoSleza	models.KinoSleza$	Kino Ślęża	Ślęża	kino-sleza	YearRound	-2004643628
+KinoZbyszek	models.KinoZbyszek$	Kino Zbyszek	Zbyszek	kino-zbyszek	YearRound	-667621793
+MultikinoSwidnica	models.MultikinoSwidnica$	Multikino Świdnica	Świdnica	multikino-swidnica	YearRound	-138351952
+KinoSCKStrzegom	models.KinoSCKStrzegom$	Kino SCK Strzegom	SCK	kino-sckstrzegom	YearRound	-557714971
+KinoLewart	models.KinoLewart$	Kino Lewart	Lewart	kino-lewart	YearRound	2074201124
+KinoMilenium	models.KinoMilenium$	Kino Milenium	Milenium	kino-milenium	YearRound	1128960007
+KinoLotSwidnik	models.KinoLotSwidnik$	Kino Lot Świdnik	Lot Świdnik	kino-lot-swidnik	YearRound	-1234893889
+KinoMaxKino	models.KinoMaxKino$	Max Kino	Max Kino	kino-max-kino	YearRound	648971876
+KinoSDKSwiebodzin	models.KinoSDKSwiebodzin$	Kino ŚDK	ŚDK	kino-sdkswiebodzin	YearRound	-133431581
+KinoHalszka	models.KinoHalszka$	Kino Halszka	Halszka	kino-halszka	YearRound	496546385
+KinoteatrGwiazda	models.KinoteatrGwiazda$	Kinoteatr Gwiazda	Gwiazda	kinoteatr-gwiazda	YearRound	562910784
+KinoCKPrzezmierowo	models.KinoCKPrzezmierowo$	Centrum Kultury Przeźmierowo	Przeźmierowo	kino-ckprzezmierowo	YearRound	-330589288
+KinoWolnoscSzczecinek	models.KinoWolnoscSzczecinek$	Kino Wolność	Wolność	kino-wolnosc-szczecinek	YearRound	-557556979
+KinoCinemaLumiere	models.KinoCinemaLumiere$	Cinema Lumiere	Cinema Lumiere	kino-cinema-lumiere	YearRound	-1592313693
+KinoCKiSPruszczGdanski	models.KinoCKiSPruszczGdanski$	Kino CKiS Pruszcz Gdański	Pruszcz Gdański	kino-cki-spruszcz-gdanski	YearRound	-727499385
+HeliosTczew	models.HeliosTczew$	Helios Tczew	Helios	helios-tczew	YearRound	577089983
+KinoPowisle	models.KinoPowisle$	Kino Powiśle	Powiśle	kino-powisle	YearRound	-582696516
+KinoZulawskiOsrodekKultury	models.KinoZulawskiOsrodekKultury$	Żuławski Ośrodek Kultury	Nowy	kino-zulawski-osrodek-kultury	YearRound	555812522
+CinemaCityStarogard	models.CinemaCityStarogard$	Cinema City Starogard Gdański	Cinema City	cinema-city-starogard	YearRound	1832230317
+KinoKadrTomaszowLubelski	models.KinoKadrTomaszowLubelski$	Kino Kadr (Tomaszowski Dom Kultury)	Kadr TL	kino-kadr-tomaszow-lubelski	YearRound	2093293586
+HeliosTomaszow	models.HeliosTomaszow$	Helios Tomaszów Mazowiecki	Helios Tomaszów	helios-tomaszow	YearRound	1017835836
+KinoMCKTkacz	models.KinoMCKTkacz$	MCK Tkacz	Tkacz	kino-mcktkacz	YearRound	802999051
+KinoNadWarta	models.KinoNadWarta$	Kino nad Wartą	nad Wartą	kino-nad-warta	YearRound	-175632989
+KinoTur	models.KinoTur$	Kino Tur	Tur	kino-tur	YearRound	954338770
+KinoCentrumWadowice	models.KinoCentrumWadowice$	Kino Centrum Wadowice	Centrum Wadowice	kino-centrum-wadowice	YearRound	268226892
+KinoCKiF	models.KinoCKiF$	Kino CKiF	CKiF	kino-cki-f	YearRound	-480816220
+KinoMewaBudzyn	models.KinoMewaBudzyn$	Kino Mewa Budzyń	Mewa	kino-mewa-budzyn	YearRound	-1569369313
+KinoMDKWagrowiec	models.KinoMDKWagrowiec$	Kino MDK Wągrowiec	MDK Wągrowiec	kino-mdkwagrowiec	YearRound	-1466217003
+KinoMiescisko	models.KinoMiescisko$	Kino Mieścisko	Mieścisko	kino-miescisko	YearRound	-888889112
+MultikinoRumia	models.MultikinoRumia$	Multikino Rumia	Rumia	multikino-rumia	YearRound	-346991670
+KinoWCK	models.KinoWCK$	Wejherowskie Centrum Kultury	WCK Wejherowo	kino-wck	YearRound	954340064
+KinoZeglarz	models.KinoZeglarz$	Kino Żeglarz	Żeglarz	kino-zeglarz	YearRound	-598589862
+KinoCKGniewino	models.KinoCKGniewino$	Centrum Kultury Gniewino	Gniewino	kino-ckgniewino	YearRound	2144347229
+KinoFregata	models.KinoFregata$	Fregata	Fregata	kino-fregata	YearRound	-798611295
+KinoZaRogiemWielen	models.KinoZaRogiemWielen$	Kino za Rogiem Wieleń	Wieleń	kino-za-rogiem-wielen	YearRound	-1831776401
+KinoMuzaMyslenice	models.KinoMuzaMyslenice$	Kino Muza Myślenice	Muza Myślenice	kino-muza-myslenice	YearRound	-1410126897
+KinoWielickaMediateka	models.KinoWielickaMediateka$	Kino Wielicka Mediateka	Wielicka Mediateka	kino-wielicka-mediateka	YearRound	-2008496381
+KinoSyrena	models.KinoSyrena$	Kino-Teatr Syrena	Syrena	kino-syrena	YearRound	-2002036949
+KinoWDK	models.KinoWDK$	Kino WDK Włodawa	WDK	kino-wdk	YearRound	954340095
+KinoMuzaWloszczowa	models.KinoMuzaWloszczowa$	Kino Muza Włoszczowa	Muza Włoszczowa	kino-muza-wloszczowa	YearRound	-874467857
+HeliosWolomin	models.HeliosWolomin$	Helios Wołomin	Helios Wołomin	helios-wolomin	YearRound	-768851591
+KinoKulturaWolomin	models.KinoKulturaWolomin$	Kino Kultura Wołomin	Kultura Wołomin	kino-kultura-wolomin	YearRound	970111908
+KinoTeatrKurtyna	models.KinoTeatrKurtyna$	Kino-Teatr Kurtyna	Kurtyna	kino-teatr-kurtyna	YearRound	-66102735
+KinoWars	models.KinoWars$	Kino Wars	Wars	kino-wars	YearRound	-480198934
+KinoDobrychFilmow	models.KinoDobrychFilmow$	Kino Dobrych Filmów	Dobrych Filmów	kino-dobrych-filmow	YearRound	1719786864
+KinoMiGOK	models.KinoMiGOK$	Kino MiGOK	MiGOK	kino-mi-gok	YearRound	-2010304312
+KinoSokolZakopane	models.KinoSokolZakopane$	Kino Sokół Zakopane	Sokół	kino-sokol-zakopane	YearRound	1579605760
+KinoGiewont	models.KinoGiewont$	Kino Giewont	Giewont	kino-giewont	YearRound	-168280030
+KinoMiejsce	models.KinoMiejsce$	Kino Miejsce	Miejsce	kino-miejsce	YearRound	861390965
+KinoStylowy	models.KinoStylowy$	CKF Stylowy	Stylowy	kino-stylowy	YearRound	-2070074082
+KinoPionierZary	models.KinoPionierZary$	Pionier	Pionier	kino-pionier-zary	YearRound	-724525619
+KinoMOKCentrum	models.KinoMOKCentrum$	Kino MOK Centrum	MOK Centrum	kino-mokcentrum	YearRound	306397624
+KinoPlanetCinemaZawiercie	models.KinoPlanetCinemaZawiercie$	Planet Cinema Zawiercie	Planet Cinema	kino-planet-cinema-zawiercie	YearRound	-791154383
+KinoTeatrSieradz	models.KinoTeatrSieradz$	Kino Teatr Sieradz	Sieradz	kino-teatr-sieradz	YearRound	-1911646395
+KinoWRatuszu	models.KinoWRatuszu$	Kino w Ratuszu	Ratusz	kino-wratuszu	YearRound	2138596454
+KinoSpojnia	models.KinoSpojnia$	Kino Spójnia	Spójnia	kino-spojnia	YearRound	2101080399
+KinoStaryMlyn	models.KinoStaryMlyn$	Kino Stary Młyn	Stary Młyn	kino-stary-mlyn	YearRound	-416836356
+KinoMOKGlowno	models.KinoMOKGlowno$	MOK Głowno	Głowno	kino-mokglowno	YearRound	-1808765064
+KinoWawel	models.KinoWawel$	Kino Wawel	Wawel	kino-wawel	YearRound	-2001260587
+MultikinoZgorzelec	models.MultikinoZgorzelec$	Multikino Zgorzelec	Multikino	multikino-zgorzelec	YearRound	-434549289
+KinoKadrBogatynia	models.KinoKadrBogatynia$	Kino Kadr Bogatynia	Kadr	kino-kadr-bogatynia	YearRound	-1479462313
+KinoGoplana	models.KinoGoplana$	Kino Goplana	Goplana	kino-goplana	YearRound	13312433
+KinoMewaZlocieniec	models.KinoMewaZlocieniec$	Kino Mewa Złocieniec	Mewa	kino-mewa-zlocieniec	YearRound	1042822236
+KinoOKDrawsko	models.KinoOKDrawsko$	Kino OK Drawsko Pomorskie	Drawsko	kino-okdrawsko	YearRound	-206442760
+KinoRodlo	models.KinoRodlo$	Kino Rodło	Rodło	kino-rodlo	YearRound	-2005479157
+KinoOKJastrowie	models.KinoOKJastrowie$	Ośrodek Kultury Jastrowie	Jastrowie	kino-okjastrowie	YearRound	362690051
+KinoGOKLipka	models.KinoGOKLipka$	GOK Lipka	Lipka	kino-goklipka	YearRound	988748101
+HeliosZory	models.HeliosZory$	Helios Żory	Helios	helios-zory	YearRound	2097015834
+KinoNaStarowce	models.KinoNaStarowce$	Na Starówce	Na Starówce	kino-na-starowce	YearRound	-874904178
+KinoGrodziskieCentrumKultury	models.KinoGrodziskieCentrumKultury$	Kino Grodziskiego Centrum Kultury	GCK Grodzisk	kino-grodziskie-centrum-kultury	YearRound	634503274
+KinoBajkaBlonie	models.KinoBajkaBlonie$	Kino Bajka Błonie	Bajka	kino-bajka-blonie	YearRound	231953223
+KinoODEON	models.KinoODEON$	Kino ODEON	ODEON	kino-odeon	YearRound	-2009561456
+KinoLen	models.KinoLen$	Kino Len	Len	kino-len	YearRound	954330582
+KinoRomaRawa	models.KinoRomaRawa$	Kino Roma Rawa Mazowiecka	Roma	kino-roma-rawa	YearRound	-1987742135
+KinoFenix	models.KinoFenix$	Kino Fenix	Fenix	kino-fenix	YearRound	-2016849793
+KinoJanosik	models.KinoJanosik$	Janosik	Janosik	kino-janosik	YearRound	-2021692450
+KinoPromyk	models.KinoPromyk$	GOK Promyk	Promyk	kino-promyk	YearRound	-2094470383
+CinemaCityChain	models.CinemaCityChain$	Cinema City	Cinema City	cinema-city-chain	YearRound	-689038331
+CineworldChain	models.CineworldChain$	Cineworld	Cineworld	cineworld-chain	YearRound	387267276
+RegalChain	models.RegalChain$	Regal	Regal	regal-chain	YearRound	1367855714
