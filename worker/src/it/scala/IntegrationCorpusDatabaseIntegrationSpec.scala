@@ -30,6 +30,14 @@ class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers
   private def seed(client: MongoClient, name: String): Unit =
     Await.result(client.getDatabase(name).getCollection("probe").insertOne(Document("_id" -> "sentinel")).toFuture(), SpecTimeouts.Io)
 
+  /** Seeds an ended run's database. Its pid is dead, so a parallel suite's sweep may list it the moment the insert
+   *  creates it and drop it under the insert (DatabaseDropPending, code 215, 2026-11-20): reclaimed by another sweep,
+   *  which is what the test asks of every sweep. */
+  private def seedOrphan(client: MongoClient, name: String): Unit =
+    try seed(client, name)
+    catch { case e: com.mongodb.MongoWriteException if e.getError.getCode == DatabaseDropPending => () }
+  private val DatabaseDropPending = 215
+
   "a corpus database" should "be dropped by the time its scope returns" in {
     val client = MongoClient(mongoTarget.uri.value)
     try {
@@ -80,7 +88,8 @@ class IntegrationCorpusDatabaseIntegrationSpec extends AnyFlatSpec with Matchers
       ended.waitFor()
       val orphan = s"${mongoTarget.databasePrefix.value}_sweep-probe_pid${ended.pid()}"
       val live   = IntegrationCorpusDatabase.named(mongoTarget, "sweep-probe-live")
-      Seq(orphan, live).foreach(seed(client, _))
+      seedOrphan(client, orphan)
+      seed(client, live)
       // Only `live` is this test's to drop: the orphan's pid is dead, so every parallel suite's scope sweeps it too, and
       // a drop racing that sweep's failed with DatabaseDropPending. A sweep never takes `live`; one left over takes the orphan.
       try {
