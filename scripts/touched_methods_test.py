@@ -19,9 +19,14 @@ CLEAN_ENV = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
 GENRES = "scrapers/src/main/scala/services/cinemas/Genres.scala"
 
 
+SCRATCH_GIT = os.path.join(HERE, "scratch-git.sh")
+
+
 def git(repo, *args):
-    return subprocess.run(["git", "-C", repo, "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
-                          check=True, capture_output=True, text=True, env=CLEAN_ENV).stdout.strip()
+    """scripts/scratch-git.sh's scratch_git, never a raw git (SharedMachineStateLintSpec)."""
+    return subprocess.run(["bash", "-c", '. "$1"; scratch_git "$2" "${@:3}"', "_", SCRATCH_GIT, repo,
+                           "-c", "user.name=t", "-c", "user.email=t@example.com", *args],
+                          check=True, capture_output=True, text=True).stdout.strip()
 
 
 def write(repo, path, text):

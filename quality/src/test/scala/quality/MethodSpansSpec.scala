@@ -41,14 +41,14 @@ class MethodSpansSpec extends AnyFlatSpec with Matchers {
   "the tool" should "write one row a method of each source it is given" in {
     val root = Files.createTempDirectory("method-spans")
     try {
-      Files.createDirectories(root.resolve("m/src/main/scala"))
-      Files.write(root.resolve("m/src/main/scala/Genres.scala"), source.getBytes(StandardCharsets.UTF_8))
+      Files.createDirectories(root.resolve("lib"))
+      Files.write(root.resolve("lib/Genres.scala"), source.getBytes(StandardCharsets.UTF_8))
       val out = root.resolve("spans.tsv")
-      MethodSpans.main(Array("--root", root.toString, "--out", out.toString, "m/src/main/scala/Genres.scala"))
+      MethodSpans.main(Array("--root", root.toString, "--out", out.toString, "lib/Genres.scala"))
       new String(Files.readAllBytes(out), StandardCharsets.UTF_8).linesIterator.toSeq shouldBe Seq(
-        "m/src/main/scala/Genres.scala\tm/src/main/scala/Genres.scala:Genres.parse\t4\t7",
-        "m/src/main/scala/Genres.scala\tm/src/main/scala/Genres.scala:Genres.parse#2\t9\t10",
-        "m/src/main/scala/Genres.scala\tm/src/main/scala/Genres.scala:Genres.Reader.read\t13\t13")
+        "lib/Genres.scala\tlib/Genres.scala:Genres.parse\t4\t7",
+        "lib/Genres.scala\tlib/Genres.scala:Genres.parse#2\t9\t10",
+        "lib/Genres.scala\tlib/Genres.scala:Genres.Reader.read\t13\t13")
     } finally Files.walk(root).sorted(java.util.Comparator.reverseOrder()).forEach(p => Files.delete(p))
   }
 }

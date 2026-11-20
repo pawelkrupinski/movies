@@ -61,7 +61,7 @@ scratch_git "$repo" commit -qm organised
 
 out=$(run); status=$?
 check "imports already in order: exit 0, said, the tree reused at the new HEAD" "0 1 $(scratch_git "$repo" rev-parse HEAD)" \
-  "$status $(echo "$out" | grep -c 'imports are in order') $(git -C "$work/tree" rev-parse HEAD)"
+  "$status $(echo "$out" | grep -c 'imports are in order') $(scratch_git "$work/tree" rev-parse HEAD)"
 check "--help prints the header" "1" "$("$REPO_ROOT/scripts/scalafix-organize" --help | grep -c '^IMPORTS ORGANISED BY SCALAFIX')"
 scratch_git "$repo" worktree remove --force "$work/tree" >/dev/null 2>&1
 spec_summary
