@@ -82,7 +82,7 @@ flowchart TD
     K --> F[fetch + rebase onto origin/main]
     F --> P[agentctl prepush-check: squash guard]
     P --> G{main red and a production<br/>commit without Fixes-Red?}
-    G -- yes --> WB["joins the waiting batch unchecked: WAITING SHA<br/>the batch: pre-push --checks-only over every waiting change as one"]
+    G -- yes --> WB["its own --checks-only, then WAITING SHA<br/>the batch: pre-push --checks-only over the waiting changes as one"]
     WB --> WP["main green → rebuilt on main; checked again only if<br/>its checks read what main changed; ONE push"]
     WP --> V
     G -- no --> D["scripts/hooks/pre-push --range origin/main..SHA<br/>red gate, path checks, basic + area tests"]
@@ -202,22 +202,22 @@ a new source or an anonymous one, must be in the worker's AOT list): a missing e
 Every change lands through a batch (the owner, 2026-11-20: "batching waiting changes ... structurally, not just now";
 `~/bin/AGENTCTL.md`, "THE BATCH IS THE MECHANISM"). While the gate is red:
 
-- **Joining it**: a production change that must wait (no `Fixes-Red:` naming the red) is NOT checked alone. Its next
-  queue tick moves it to `waiting` unchecked: `WAITING <sha> (entry <id>, n waiting): origin/main is red, so it joins the
-  waiting batch unchecked`.
-- **The pre-check**: the waiting batch pre-checks every waiting change as ONE tree on the current main, in queue order.
-  It runs `pre-push --checks-only` over the combined tip: every check but the red gate, the union of the members'
-  areas. It runs again whenever a change joins or leaves, or main moves. A change that no longer applies is rejected
-  alone, its conflict files named. A generated or hand-written table (the baselines, coupling-exemptions.tsv, ...) is
-  merged row by row, never a conflict. A failure is searched prefix by prefix, and the culprit is rejected only when the
-  failure is its own. A test failing only where main fails too (the red itself) rejects nobody.
+- **Joining it**: a production change that must wait (no `Fixes-Red:` naming the red) is still checked on its own
+  (`--checks-only`, in parallel in the free check trees) and joins the waiting batch: `WAITING <sha> (entry <id>, n
+  waiting)`.
+- **The pre-check**: the waiting batch pre-checks the waiting changes, at most 8 a round in queue order, as ONE tree on
+  the current main: `pre-push --checks-only` over the combined tip, every check but the red gate, the union of their
+  areas. It runs again whenever a change joins or leaves; main moving while red is judged once, at green. A change that
+  no longer applies is rejected alone, its conflict files named; a generated or hand-written table (the baselines,
+  coupling-exemptions.tsv, ...) is merged row by row, never a conflict. A failure is searched prefix by prefix, and the
+  culprit is rejected only when the failure is its own: a test failing only where main fails too (the red itself)
+  rejects nobody. Tools-only changes and red fixes go on landing meanwhile: the pre-check holds no push.
 - **Landing it at green**: the batch is rebuilt on the new main and pushed in ONE push. How much is checked again
   depends on the members:
   - **No check again**: when its members are exactly the pre-checked ones and none of their checks reads what main
     changed since (the red's fix, usually; agentctl's MINIMAL RECHECKS reads the hook's own plans). The verdict is
     `pre-checked as one on <sha>; ... its verdict kept`.
   - **The `--fast-only` check of the combined tip**: when a check of theirs does read what main changed.
-  - **The full landing check (`--range`) over all of them**: when a member was never pre-checked.
 
   Each change then prints `LANDED <sha>` and goes on to its watch (stage 4).
 - **Not for**: tools-only changes, which land while red, and `Fixes-Red:` fixes. A red fix keeps its own lane, checked
