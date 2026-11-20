@@ -336,7 +336,7 @@ whole_side() {
   local sha=$1 cc=$2 snapshot=$3 dir tree serve=0
   dir=$(side_root "$cc" "$sha")/$snapshot
   if [ ! -f "$dir/prod.tsv" ] || { [ "$final" = 1 ] && [ ! -f "$dir/final.tsv" ]; }; then
-    tree=$(tree_of "$sha") || return 2
+    tree=$(tree_of "$sha") || { harness_error "$cc: laying out ${sha:0:12} for its whole side failed (exit $?)"; return 2; }
     identity_log "$cc: resolving ${sha:0:12} whole at $snapshot"
     resolve "$tree" "$cc" "$dir.part" --at "$snapshot" "${answer_args[@]}" ${final_args[@]+"${final_args[@]}"} \
       --mirror-generation "$mirror_gen" >&2 || return 2

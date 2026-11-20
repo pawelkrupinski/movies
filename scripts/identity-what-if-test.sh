@@ -223,5 +223,12 @@ out=$(what_if "$c0" "$c6" 2026-11-06T21:00:00Z --no-serve); rc=$?
 chmod 755 "$work/cache/refs"
 check "a head whose tree cannot be laid out: exit 2, naming the step and its status" "yes" \
   "$(harness_error "HARNESS ERROR.*laying out the head ${c6:0:12}.* failed (exit [0-9]*)" "$rc" "$out")"
+# ...and so does a bisect step whose whole side is not kept and whose tree cannot be laid out
+chmod 555 "$work/cache/refs"
+out=$( cd "$repo" && KINOWO_IDENTITY_CACHE="$work/cache" TMDB_API_KEY=stub spec_bounded scripts/identity-what-if --base "$c0" \
+  --bisect "$c0" "$c6" --listing 'The Venue|The Film' --at "$at" uk 2> "$work/err" ); rc=$?
+chmod 755 "$work/cache/refs"
+check "a bisect step whose tree cannot be laid out: exit 2, naming the commit and the status" "yes" \
+  "$(harness_error "HARNESS ERROR.*laying out ${c6:0:12} for its whole side failed (exit [0-9]*)" "$rc" "$out")"
 
 spec_summary
