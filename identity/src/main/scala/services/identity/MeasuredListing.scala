@@ -43,12 +43,12 @@ final case class MeasuredListing(title: String, rawTitle: Option[String] = None,
    *  title translated, not another title a search hit? */
   private[identity] lazy val originalTranslatesBilled: Boolean =
     originalTitle.exists(original => titles.exists(billed => IdentityMeasures.cognateOf(original, billed)))
-  /** The pieces of the event its billing bills ([[NonFilmEvents.eventBilled]]), each with its counted words
+  /** The pieces of the event its billing bills ([[FilmNess.eventBilled]]), each with its counted words
    *  (a piece with none left out) and whether it bills a performance ([[services.titles.NonMovieEventClassifier.isPerformance]]) — none unless the
    *  whole event bills one, as most billings bill none. Read once per listing, whichever films it is weighed against
    *  (`Acceptance.notPerformedBeside`). */
   private[identity] lazy val performancePieces: Seq[(String, Seq[String], Boolean)] =
-    NonFilmEvents.eventBilled(rawTitle.getOrElse(title)).filter(services.titles.NonMovieEventClassifier.isPerformance(_)).toSeq
+    FilmNess.eventBilled(rawTitle.getOrElse(title)).filter(services.titles.NonMovieEventClassifier.isPerformance(_)).toSeq
       .flatMap(BillingPieces.pieces).map(piece => (piece, IdentityMeasures.countedWords(piece), services.titles.NonMovieEventClassifier.isPerformance(piece)))
       .filter(_._2.nonEmpty)
   /** The billing's event words and its other words ([[FilmNess]]), once per listing. */
@@ -61,10 +61,10 @@ final case class MeasuredListing(title: String, rawTitle: Option[String] = None,
   def creditedBesideYear: Seq[String] = yearCredits.getOrElse(directors)
   /** The season the title names ("2026/27"), by its first year. */
   lazy val seasonYear: Option[Int] = TitleSeason.of(titles, dating.screeningsSeason)
-  /** Does the title name a season further back than a season's record is encored ([[services.identity.Listing.SeasonEncoreLag]])
+  /** Does the title name a season further back than a season's record is encored ([[MeasuredListing.SeasonEncoreLag]])
    *  before the one it screens in — a page kept from that season, its own facts as old as its title ([[Listing.airDays]])? */
   lazy val billsAStaleSeason: Boolean =
-    seasonYear.exists(named => dating.screeningsSeason.exists(_ - named > services.identity.Listing.SeasonEncoreLag))
+    seasonYear.exists(named => dating.screeningsSeason.exists(_ - named > MeasuredListing.SeasonEncoreLag))
   /** The word the title bills several films by ([[MultiFilmBill.marker]]), once per listing: every rule asks. */
   private[identity] lazy val billMarker: Option[String] = MultiFilmBill.marker(titles)
   /** The one title a marathon billed after a dash names ([[MultiFilmBill.billedOne]]), once per listing. */
@@ -187,6 +187,10 @@ final case class MeasuredListing(title: String, rawTitle: Option[String] = None,
 }
 
 object MeasuredListing {
+  /** How many seasons after its own a season's record is still encored ([[services.identity.Listing.airDays]]): the next
+   *  one. */
+  val SeasonEncoreLag = 1
+
   /** What a title relation reads of a listing ([[FamilyScope]]'s relations, the qualifiers' memo). The decorations by identity:
    *  one resolve's listings share its instance, and its structural hash was itself a cost. */
   final class TitleInputs(listing: MeasuredListing) {

@@ -70,21 +70,6 @@ object NonFilmEvents {
    *  the word table's secret screenings ([[TitleWords]]), read on the title's folded words. */
   private val SecretScreening = TitleWords.foldedPattern(TitleWords.Concept.SecretScreening).r
 
-  /** A film screened with the event — the event its companion, the film still the families' to name — or a festival's
-   *  numbered edition billing one of its films ("11. UFF - Teatr weteranów" is a documentary). */
-  private val FilmAttached = """\+|\bpokaz\b|\bseans|\bfilm(?!ow)|^\d+\.\s""".r
-
-  /** "… joined with …": what follows is the companion of what the title bills before it — a performance named only
-   *  there is a screening's ("DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO", Wajda's film), a performance billed
-   *  before it is still one ("Koncert jazzowy połączony z degustacją wina"). */
-  private val JoinedWith = """(?iu)\s*\bpołączon\p{L}*\s+ze?\b""".r
-
-  /** What `raw` bills as the event itself — what precedes "joined with" ([[JoinedWith]]), its companion following — or
-   *  `None` when the billing attaches a screening to it ([[FilmAttached]]): the film is the evening then, the event its
-   *  companion. */
-  private[identity] def eventBilled(raw: String): Option[String] =
-    Option.when(FilmAttached.findFirstIn(raw.toLowerCase(Locale.ROOT)).isEmpty)(JoinedWith.split(raw).head)
-
   /** A performer billed LIVE: a piece of the title ending in the word ("Jan Logemann LIVE: Herr Logemann hebt ab!",
    *  "Jan Preuß LIVE") — never one opening a title, as a film's own name does ("Live and Let Die"), nor followed by what
    *  a screening or a relay bills ("LIVE VIEWING", "Live Score", "Live In Budapest"); a house's relay ("NT Live: …",
@@ -105,7 +90,7 @@ object NonFilmEvents {
   /** A performer billed live ([[PerformerLive]], [[liveAtTheVenue]]), no film named beside the show and no broadcast
    *  named but by its bare "live" ([[ListingShape.relaysNamed]]). `title`: the raw title in lower case. */
   private def liveShow(listing: Listing, title: String): Option[String] =
-    Option.when(FilmAttached.findFirstIn(title).isEmpty && (PerformerLive.findFirstIn(title).isDefined || liveAtTheVenue(title, listing.venue)) &&
+    Option.when(FilmNess.FilmAttached.findFirstIn(title).isEmpty && (PerformerLive.findFirstIn(title).isDefined || liveAtTheVenue(title, listing.venue)) &&
       !ListingShape.relaysNamed(listing, title))("live show")
 
   /** Why `listings` (a cluster's) are an event no film database holds — the first listing's reason — or `None` unless
@@ -210,7 +195,7 @@ object NonFilmEvents {
     Option.when(SecretScreening.findFirstIn(TitleContainment.tokens(raw).mkString(" ")).isDefined)("mystery screening")
       .orElse(Markers.collectFirst { case (reason, marker) if marker.findFirstIn(title).isDefined => reason })
       .filterNot(reason => reason == "franchise marathon" && titled(listing))
-      .filter(reason => reason == "no screening" || reason == "pass" || FilmAttached.findFirstIn(title).isEmpty)
+      .filter(reason => reason == "no screening" || reason == "pass" || FilmNess.FilmAttached.findFirstIn(title).isEmpty)
 
   /** Why `listing` is an event no film database holds, or `None`. `titled`: whether the model's own searches found a
    *  film of its very title ([[FilmTitled]]). */
@@ -221,12 +206,12 @@ object NonFilmEvents {
       val title = raw.toLowerCase(Locale.ROOT)
       if (ListingShape.relays(listing, title)) liveShow(listing, title)
       else marked(listing, raw, title, titled)
-        .orElse(eventBilled(raw).filter(NonMovieEventClassifier.isPerformance(_)).map(_ => "live event"))
+        .orElse(FilmNess.eventBilled(raw).filter(NonMovieEventClassifier.isPerformance(_)).map(_ => "live event"))
         // what the feeds' own filter reads in any language: a reading, a slam, a cabaret, a stand-up night billed as one
         // (DE "Schöne Aussicht - Die Slam Poetry & Songwriting Show - …": no 2007 "Schöne Aussicht")
-        .orElse(Option.when(NonMovieEventClassifier.isNonScreening(raw) && FilmAttached.findFirstIn(title).isEmpty)("non-screening"))
+        .orElse(Option.when(NonMovieEventClassifier.isNonScreening(raw) && FilmNess.FilmAttached.findFirstIn(title).isEmpty)("non-screening"))
         .orElse(liveShow(listing, title))
-        .orElse(Option.when(FilmAttached.findFirstIn(title).isEmpty && TheatreCompany.findFirstIn(title).isDefined &&
+        .orElse(Option.when(FilmNess.FilmAttached.findFirstIn(title).isEmpty && TheatreCompany.findFirstIn(title).isDefined &&
           CinemaTheatre.findFirstIn(title).isEmpty)("theatre company"))
         .orElse(BillingPieces.programmeSlot(raw).map(_ => "programme slot"))
         .orElse(Option.when(BillingPieces.billsAFilmFestival(raw))("film festival"))

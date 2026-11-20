@@ -155,7 +155,7 @@ final case class Listing(
     screenings.season.filter(season => year.isEmpty && IdentityMeasures.titleYearOf(titles).exists(_ < season) &&
       StageRelays.stageWorksBilled(titles, seasonNamed = false).nonEmpty)
   }
-  /** The season it screens in, when its title bills a stage work under a season more than [[Listing.SeasonEncoreLag]]
+  /** The season it screens in, when its title bills a stage work under a season more than [[MeasuredListing.SeasonEncoreLag]]
    *  before it: a season's record is encored the next season at most, so a venue billing an older one may screen its
    *  house's capture of it, or the new season's relay under the page it copied — its days tell
    *  ([[RelayStage.Billed.airedOn]]). UK Flicks' "Royal Ballet & Opera 2024-25: Romeo and Juliet" ×16, screening on 25
@@ -163,7 +163,7 @@ final case class Listing(
    *  Wunderland", on no air day, stays its season's capture. */
   private[identity] lazy val namesAStaleSeason: Option[Int] = {
     val titles = Seq(title, rawTitle)
-    screenings.season.filter(season => TitleSeason.of(titles, Some(season)).exists(named => season - named > Listing.SeasonEncoreLag) &&
+    screenings.season.filter(season => TitleSeason.of(titles, Some(season)).exists(named => season - named > MeasuredListing.SeasonEncoreLag) &&
       StageRelays.stageWorksBilled(titles, seasonNamed = true).nonEmpty)
   }
 
@@ -202,14 +202,16 @@ final case class Listing(
    *  different listings never tie and a set of listings has exactly one sorted presentation. Built on
    *  demand, never kept: [[Listing.ordering]] compares the same fields without it. */
   def sortKey: String = Listing.SortFields.map(_(this)).mkString("\u0000")
+
+  /** Why `film` is no film this listing screens, by its certificate against TMDB's in the venue's country
+   *  ([[Certificates.below]]). */
+  def certifiedBelow(film: Film): Option[String] = Certificates.below(certificate, EvidenceNode.countryOf(cinema), film)
 }
 
 object Listing {
   /** How many seasons before the one it screens in a relay's stated year dates its staging with no further test
    *  ([[Listing.airDays]]): UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025] screening in the 2026/27 season. */
   val StagingPredatesSeason = 1
-  /** How many seasons after its own a season's record is still encored ([[Listing.airDays]]): the next one. */
-  val SeasonEncoreLag = 1
 
   /** Does `now` publish what the stages after the model read differently from `was` — its poster, its screening days, the
    *  names and words its venue's text gives — though the two are equal ([[Listing.equals]] leaves those out)? The model then holds

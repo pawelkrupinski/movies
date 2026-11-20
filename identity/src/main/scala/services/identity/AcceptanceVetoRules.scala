@@ -16,7 +16,7 @@ private[identity] trait AcceptanceVetoRules { this: Acceptance =>
    *  named after the film's title, and whatever record the venue's system attached to it is the namesake its search
    *  found. UK Electric Palace Hastings' "Straight Talk: A Tribute to Dolly Parton" [1992] {Barnet Kellman} is a tribute
    *  show named after her song, not the 1992 film she starred in. Only the event the billing bills is read
-   *  ([[NonFilmEvents.eventBilled]]): a billing attaching a screening ("+ film", "pokaz", a festival's "Closing
+   *  ([[FilmNess.eventBilled]]): a billing attaching a screening ("+ film", "pokaz", a festival's "Closing
    *  Film + Awards") keeps its film, and a performance "joined with" the film is its companion ("DYRYGENT - POŁĄCZONY Z
    *  KONCERTEM MUZYKI NA ŻYWO", Wajda's film). A record titled by the performance itself ("Kabaret", "Die Tribute von
    *  Panem") is the film its event words name. A film of the silent era is screened to a performance — live music is

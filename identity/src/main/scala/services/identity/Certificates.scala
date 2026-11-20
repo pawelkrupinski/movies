@@ -58,12 +58,13 @@ object Certificates {
   def in(certificates: Option[String], country: String): Option[String] =
     certificates.toSeq.flatMap(_.split(',')).collectFirst { case entry if entry.startsWith(s"$country=") => entry.drop(country.length + 1) }
 
-  /** Why `film` is no film `listing` screens: the venue's certificate stands [[StepsBelow]] steps or more below the one
-   *  TMDB records for it in the venue's country — `None` when either is missing or the country's scale reads neither. */
-  def below(listing: Listing, film: Film): Option[String] =
+  /** Why `film` is no film a venue billing it with `certificate` in `country` screens: the venue's certificate stands
+   *  [[StepsBelow]] steps or more below the one TMDB records for it in the venue's country — `None` when either is
+   *  missing or the country's scale reads neither. */
+  def below(certificate: Option[String], country: Option[String], film: Film): Option[String] =
     for {
-      venue   <- listing.certificate
-      country <- EvidenceNode.countryOf(listing.cinema)
+      venue   <- certificate
+      country <- country
       ladder  <- Ladders.get(country)
       own     <- ladder.step(venue)
       rated   <- in(film.certificates, country)

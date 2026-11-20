@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{BilledPiece, CastEvidence, Certificates, FactRelations, FallbackIds, FeedLink, Film, IdentityMeasures, IdentityResolver, Listing, ListingShape, Measure, MeasuredListing, PosterEvidence, ResolverDecision, SourceReliability}
+import services.identity.{BilledPiece, CastEvidence, FactRelations, FallbackIds, FeedLink, Film, IdentityMeasures, IdentityResolver, Listing, ListingShape, Measure, MeasuredListing, PosterEvidence, ResolverDecision, SourceReliability}
 import services.identity.vocabulary.{Answer, ClasspathResource, VenueNames, VoterFamily}
 import play.api.libs.json.{Json, OFormat}
 
@@ -93,7 +93,7 @@ object UnifiedEvidence {
    *  the film, and no other edition than the title numbers). A film the model's own rules accepted ([[ModelRules]]) passed
    *  the model's guards instead ([[Acceptance]]), as today. `listing.runsShort`, `bill.piece` (the billing naming the film
    *  as one piece beside another thing, [[BilledPiece.ofFamilies]]) and `listing.certifiedBelow` (the venue's certificate
-   *  well below TMDB's for the film in its country, [[Certificates.below]]) are guards only, no fitted signals of [[Signals]]: the
+   *  well below TMDB's for the film in its country, [[Listing.certifiedBelow]]) are guards only, no fitted signals of [[Signals]]: the
    *  training rows predate them. */
   val Guards: Seq[String] = Seq("bill.several", "stage.work", "title.anothersOwn", "listing.contradicts", "poster.otherMatches",
     "family.turnedDown", "title.namesNone", "edition.apart", "listing.runsShort", "bill.piece", "listing.certifiedBelow")
@@ -312,7 +312,7 @@ object UnifiedEvidence {
         // the venue's own running time well short of an older film's whole one
         "listing.runsShort"   -> Agreement.runsShort(c.listings, contender.record, Some(c.thisYear)).isDefined,
         // the venue's certificate well below the one TMDB records for the film in its country: another cut, another film
-        "listing.certifiedBelow" -> own.headOption.exists(tmdbFilm => c.listings.exists(Certificates.below(_, tmdbFilm.film).isDefined)),
+        "listing.certifiedBelow" -> own.headOption.exists(tmdbFilm => c.listings.exists(_.certifiedBelow(tmdbFilm.film).isDefined)),
         "venues.current"      -> (venuesOpen >= Agreement.WidelyBilled && current && !deniedRival))
 
       /** The flags of how the billing's title names it, and of its posters. */

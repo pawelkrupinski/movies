@@ -43,23 +43,23 @@ class CertificatesSpec extends AnyFlatSpec with Matchers {
 
   "A venue's certificate" should "deny a film rated three steps or more above it in the venue's country" in {
     // UK Quad Derby's "Obsession (PG)" at 96 minutes: PG is three steps below the 2026 film's BBFC 18
-    Certificates.below(listing(Country.UnitedKingdom, Some("PG")), obsession) shouldBe
+    listing(Country.UnitedKingdom, Some("PG")).certifiedBelow(obsession) shouldBe
       Some("the venue rates it PG, 3 steps below 'Obsession' (2026)'s GB certificate 18")
-    Certificates.below(listing(Country.UnitedKingdom, Some("U")), obsession) shouldBe defined
+    listing(Country.UnitedKingdom, Some("U")).certifiedBelow(obsession) shouldBe defined
     // the scale's own spellings, as German venues bill them
-    Certificates.below(listing(Country.Germany, Some("FSK 0")), obsession) shouldBe defined
+    listing(Country.Germany, Some("FSK 0")).certifiedBelow(obsession) shouldBe defined
   }
 
   it should "deny nothing two steps or fewer below, nor a certificate its country's scale does not read" in {
-    Certificates.below(listing(Country.UnitedKingdom, Some("12A")), obsession) shouldBe None
-    Certificates.below(listing(Country.UnitedKingdom, Some("15")), obsession) shouldBe None
-    Certificates.below(listing(Country.Germany, Some("FSK 6")), obsession) shouldBe None
+    listing(Country.UnitedKingdom, Some("12A")).certifiedBelow(obsession) shouldBe None
+    listing(Country.UnitedKingdom, Some("15")).certifiedBelow(obsession) shouldBe None
+    listing(Country.Germany, Some("FSK 6")).certifiedBelow(obsession) shouldBe None
     // a US rating at a UK venue, a placeholder, or no certificate at all say nothing
-    Certificates.below(listing(Country.UnitedKingdom, Some("G")), obsession) shouldBe None
-    Certificates.below(listing(Country.UnitedKingdom, Some("CERT-TBC")), obsession) shouldBe None
-    Certificates.below(listing(Country.UnitedKingdom, None), obsession) shouldBe None
+    listing(Country.UnitedKingdom, Some("G")).certifiedBelow(obsession) shouldBe None
+    listing(Country.UnitedKingdom, Some("CERT-TBC")).certifiedBelow(obsession) shouldBe None
+    listing(Country.UnitedKingdom, None).certifiedBelow(obsession) shouldBe None
     // nor does a record with no certificate in the venue's country
-    Certificates.below(listing(Country.UnitedKingdom, Some("PG")), obsession.copy(certificates = Some("US=R"))) shouldBe None
+    listing(Country.UnitedKingdom, Some("PG")).certifiedBelow(obsession.copy(certificates = Some("US=R"))) shouldBe None
   }
 
   "A listing" should "carry the certificate its venue bills it with" in {

@@ -285,7 +285,7 @@ object StageRelays {
    *  the day TMDB's 2026/27 record airs, is not the house's 2024/25 relay. A record dated by a year alone ("Opéra national
    *  de Paris 2024: Schwanensee") names no season, and stays [[datedAway]]'s. */
   private def anotherSeasonsRelay(film: Film, season: Int): Boolean =
-    film.season.exists(recorded => math.abs(recorded - season) > services.identity.Listing.SeasonEncoreLag)
+    film.season.exists(recorded => math.abs(recorded - season) > MeasuredListing.SeasonEncoreLag)
   /** Is a record naming no season dated by its year more than [[RecordingLag]] years from `season`? A season's record is
    *  [[anotherSeasonsRelay]]'s to judge. */
   private def datedAway(film: Film, season: Int): Boolean =
