@@ -39,6 +39,9 @@ object WhatIfResolve {
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
   import services.identity.adapters.*, services.identityadapters.*
+  // Listing and the decision values, in either package a ref keeps them: services.identity before 2026-11-20 (lane P7),
+  // services.identity.measures since.
+  import services.identity.measures.*
 
 
   /** A base family as `families.tsv` and `takes.tsv` hold it: its members' keys and the keys it blocks under. */

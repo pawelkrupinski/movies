@@ -1,7 +1,7 @@
 package scripts
 
 import models.Country
-import services.identity.{Listing, OlderRefs, ResolverDecision}
+import services.identity.OlderRefs
 import models.ListingKey
 import services.titles.TitleNormalizer
 import tools.{IdentityJudgements, UnmatchedClusters}
@@ -28,7 +28,13 @@ import java.util.Locale
  *   IdentityExplain <cc> [--venue S] [--title S] [--fixture <cc>.json.gz] [--labels identity-judgements.tsv] [--no-resolve] [--limit N]
  * }}}
  */
+@scala.annotation.nowarn("msg=unused import")
 object IdentityExplain {
+  // Listing and ResolverDecision, in either package a ref keeps them: services.identity before 2026-11-20 (lane P7),
+  // services.identity.measures since.
+  import services.identity.*
+  import services.identity.measures.*
+
 
   final case class Options(country: String = "", venue: Option[String] = None, title: Option[String] = None,
                            fixture: Option[Path] = None, labels: Option[Path] = None, resolve: Boolean = true, limit: Int = 12)
