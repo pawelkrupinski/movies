@@ -141,12 +141,12 @@ object UnifiedEvidence {
     val records = scala.collection.mutable.ArrayBuffer(record)
     val ids     = scala.collection.mutable.Map.empty[String, String]
     def film: String = tmdb.fold(imdb.fold("")(id => s"imdb:$id"))(id => s"tmdb:$id")
-    def is(other: SourceRecord): Boolean = Agreement.joins(records.toSeq, other)
+    def is(other: SourceRecord): Boolean = SameFilm.joins(records.toSeq, other)
   }
 
   /** Every film the cluster's evidence reaches — the TMDB candidates some node scored and did not deny, and each film a
    *  family took or leans to (joined to a TMDB candidate by a shared id, else by its facts, held apart from none of its
-   *  records, as the agreement joins two families' picks: [[Agreement.joins]]) — with its signals. A family's film no id names is none: no film can be shown for it. */
+   *  records, as the agreement joins two families' picks: [[SameFilm.joins]]) — with its signals. A family's film no id names is none: no film can be shown for it. */
   def contenders(c: ClusterEvidence): Seq[Contender] = new Contending(c).contenders
 
   /** One run of [[contenders]] over cluster `c`: the films its evidence reaches, then each one's signals. */
@@ -164,7 +164,7 @@ object UnifiedEvidence {
     private def familyFilms: Vector[Vector[(SourceRecord, Option[FamilyPick])]] = {
       val familyRecords = c.verdicts.sortBy(_.family.ordinal).flatMap(v => v.pick.map(pick => pick.record -> Option(pick)) ++ v.leaning.map(_ -> None))
       familyRecords.foldLeft(Vector.empty[Vector[(SourceRecord, Option[FamilyPick])]]) { (films, entry) =>
-        val (joined, apart) = films.partition(film => Agreement.joins(film.map(_._1), entry._1))
+        val (joined, apart) = films.partition(film => SameFilm.joins(film.map(_._1), entry._1))
         apart :+ (joined.flatten :+ entry)
       }
     }

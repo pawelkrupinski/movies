@@ -223,7 +223,7 @@ private[agreement] final class AgreementCorrections(evidence: AgreementEvidence,
     // (e) the venues' own programmes on `listedOn`'s site, asked only of a take a poster questions: a few venues' a day
     val listed = reading.programmes.filter(_ => questioned).fold[Answer[Option[SourceRecord]]](Answer.Known(None))(answers =>
       VenueListings.listed(listings, new AgreementEvidence.Recording(answers, asked, reads)))
-    val programme = listed.answered.flatten.filter(record => !Agreement.sameFilm(record, modelRecord) && Correction.contradicts(record.film, film))
+    val programme = listed.answered.flatten.filter(record => !SameFilm.sameFilm(record, modelRecord) && Correction.contradicts(record.film, film))
     // (b) the families, asked only of a take another kind of evidence questions
     // the TMDB films the take's evidence reaches besides it: what a family's or the programme's record is matched to
     lazy val reached = (vetoed.map(_._1).toSeq ++ candidatesOf(digested.id, digested.digest, listings)).distinct.filter(_ != model)
@@ -233,7 +233,7 @@ private[agreement] final class AgreementCorrections(evidence: AgreementEvidence,
       else familiesAgainst(listings, model, modelRecord, reached, records, programme.flatMap(_ => listedOn), reads, asked).answered.flatten
     val contradictions = programme.toSeq.map { record =>
       // the TMDB film the programme's record is: one the other evidence or the cluster's own candidates reach
-      val same = (reached ++ against.map(_._1)).distinct.filter(id => records(id).exists(Agreement.sameFilm(record, _)))
+      val same = (reached ++ against.map(_._1)).distinct.filter(id => records(id).exists(SameFilm.sameFilm(record, _)))
       Correction.Against(Correction.Filmweb, same.headOption.filter(_ => same.sizeIs == 1),
         s"the venues' Filmweb programmes list ${record.film.titled} on their days")
     } ++ vetoed.toSeq.map { case (other, bits) =>
@@ -315,7 +315,7 @@ private[agreement] final class AgreementCorrections(evidence: AgreementEvidence,
    *  the one film the take's evidence reaches (`reached`) that its facts are. */
   private def pickedFilm(pick: FamilyPick, reached: => Seq[Int], records: Int => Option[SourceRecord], asked: mutable.Set[Question]): Answer[Option[Int]] =
     evidence.tmdbFilmOf(pick.record.crossIds.get("tmdb").flatMap(_.toIntOption), pick.record.crossIds.get("imdb"), asked) match {
-      case Answer.Known(None) => Answer.Known(reached.filter(film => records(film).exists(Agreement.sameFilm(pick.record, _))) match {
+      case Answer.Known(None) => Answer.Known(reached.filter(film => records(film).exists(SameFilm.sameFilm(pick.record, _))) match {
         case Seq(one) => Some(one)
         case _        => None
       })
@@ -325,7 +325,7 @@ private[agreement] final class AgreementCorrections(evidence: AgreementEvidence,
   /** The film more families take (`mapped`: each pick with its TMDB film) than take the model's, alone at that count —
    *  with what they say. */
   private def outvoting(mapped: Seq[(FamilyPick, Answer[Option[Int]])], model: Int, modelRecord: SourceRecord): Option[(Int, String)] = {
-    val forModel = mapped.collect { case (pick, id) if id.answered.flatten.contains(model) || Agreement.sameFilm(pick.record, modelRecord) => pick.family }
+    val forModel = mapped.collect { case (pick, id) if id.answered.flatten.contains(model) || SameFilm.sameFilm(pick.record, modelRecord) => pick.family }
     val others   = othersTaken(mapped, model, forModel)
     others.headOption.filter { case (_, takers) => takers.size > forModel.size && !others.drop(1).exists(_._2.size == takers.size) }
       .map { case (id, takers) =>

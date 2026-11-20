@@ -38,21 +38,21 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // title alone, the two agreed on the 1968 film for the Royal Ballet's 170-minute relay of the ballet
     val play = SourceRecord(Film("Romeo and Juliet", None, Nil, None, None, None, None, None), Map("imdb" -> "tt2428892", "wikidata" -> "Q83186"))
     val zeff = SourceRecord(film("Romeo and Juliet", 1968, "Franco Zeffirelli", 138), Map("imdb" -> "tt0063518", "tmdb" -> "6003"))
-    Agreement.joins(Seq(play), zeff) shouldBe true
-    Agreement.votesAnotherEntry(Seq(play), zeff) shouldBe true
-    Agreement.votesAnotherEntry(Seq(play), zeff.copy(crossIds = Map("imdb" -> "tt2428892"))) shouldBe false
-    Agreement.votesAnotherEntry(Seq(play), zeff.copy(crossIds = Map("filmweb" -> "1"))) shouldBe false
+    SameFilm.joins(Seq(play), zeff) shouldBe true
+    SameFilm.votesAnotherEntry(Seq(play), zeff) shouldBe true
+    SameFilm.votesAnotherEntry(Seq(play), zeff.copy(crossIds = Map("imdb" -> "tt2428892"))) shouldBe false
+    SameFilm.votesAnotherEntry(Seq(play), zeff.copy(crossIds = Map("filmweb" -> "1"))) shouldBe false
     // a dated taker holds the film by its facts: UK "NFTS Collective Visions of Pleasure: I.K.U" (Wikidata's 2001 film)
     val iku = SourceRecord(film("I.K.U.", 2001, "Shu Lea Cheang", 74), Map("imdb" -> "tt0255233", "tmdb" -> "37982"))
-    Agreement.votesAnotherEntry(Seq(iku), SourceRecord(Film("IKÚ", None, Nil, None, None, None, None, None), Map("tmdb" -> "1192255"))) shouldBe false
+    SameFilm.votesAnotherEntry(Seq(iku), SourceRecord(Film("IKÚ", None, Nil, None, None, None, None, None), Map("tmdb" -> "1192255"))) shouldBe false
     // and so does one beside a bare pick: UK "Thanks for coming FFFL" (Wikidata's bare tt36481185, IMDb's 2026 Cavalier)
     val cavalier = SourceRecord(film("Thanks for Coming", 2026, "Alain Cavalier", 86), Map("imdb" -> "tt41829928"))
     val bareWiki = SourceRecord(Film("Thanks for Coming", None, Nil, None, None, None, None, None), Map("imdb" -> "tt36481185"))
-    Agreement.votesAnotherEntry(Seq(cavalier, bareWiki), cavalier.copy(crossIds = Map("imdb" -> "tt41829928", "tmdb" -> "1670563"))) shouldBe false
+    SameFilm.votesAnotherEntry(Seq(cavalier, bareWiki), cavalier.copy(crossIds = Map("imdb" -> "tt41829928", "tmdb" -> "1670563"))) shouldBe false
     // a site's id Wikidata spells in a space of its own is no other entry (UK "Imamura: Black Rain": RT "22294" in
     // Wikidata, "1035681-black_rain" on RT, one film)
     val bareImamura = SourceRecord(Film("Black Rain", None, Nil, None, None, None, None, None), Map("rt" -> "22294"))
-    Agreement.votesAnotherEntry(Seq(bareImamura), SourceRecord(film("Black Rain", 1989, "Shohei Imamura", 123), Map("rt" -> "1035681-black_rain"))) shouldBe false
+    SameFilm.votesAnotherEntry(Seq(bareImamura), SourceRecord(film("Black Rain", 1989, "Shohei Imamura", 123), Map("rt" -> "1035681-black_rain"))) shouldBe false
   }
 
   it should "agree on nothing when another family names another film, or only two agree" in {
@@ -553,18 +553,18 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
   }
 
   "Two records of one film in two languages" should "be the same film by director, year and a shared title word" in {
-    Agreement.equivalent(film("Die Unbeugsamen", 2021, "Torsten Körner"), film("Die Unbeugsamen – The Undefeated", 2021, "Torsten Körner")) shouldBe true
-    Agreement.equivalent(klondike2022, klondike1932) shouldBe false
+    SameFilm.equivalent(film("Die Unbeugsamen", 2021, "Torsten Körner"), film("Die Unbeugsamen – The Undefeated", 2021, "Torsten Körner")) shouldBe true
+    SameFilm.equivalent(klondike2022, klondike1932) shouldBe false
   }
 
   "Two records of one film crediting its director in two transliterations" should "be the same film by title, year and running time" in {
     // DE "Maria's Lovers" (fixture identity-unmatched): Filmweb's "Andriej Konczałowski", IMDb's "Andrei Konchalovsky"
     val filmweb = film("Kochankowie Marii", 1984, "Andriej Konczałowski", 109).copy(originalTitle = Some("Maria's Lovers"))
     val imdb    = film("Maria's Lovers", 1984, "Andrei Konchalovsky", 109)
-    Agreement.equivalent(filmweb, imdb) shouldBe true
-    Agreement.equivalent(filmweb, imdb.copy(runtime = Some(95))) shouldBe false
-    Agreement.equivalent(filmweb, imdb.copy(year = Some(1985))) shouldBe false
-    Agreement.equivalent(film("Klondike", 2022, "Phil Rosen", 100), klondike2022) shouldBe false
+    SameFilm.equivalent(filmweb, imdb) shouldBe true
+    SameFilm.equivalent(filmweb, imdb.copy(runtime = Some(95))) shouldBe false
+    SameFilm.equivalent(filmweb, imdb.copy(year = Some(1985))) shouldBe false
+    SameFilm.equivalent(film("Klondike", 2022, "Phil Rosen", 100), klondike2022) shouldBe false
   }
 
   "a listing's title" should "name a film whose title only adds a leading article, and no film by a bare article-led fragment" in {

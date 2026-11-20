@@ -19,7 +19,7 @@ class ModelReadOnlySpec extends AnyFlatSpec with Matchers {
   /** file → why it may: its input is already the lean read. */
   private val Allowed = Map(
     "identity/src/main/scala/services/identity/ModelRead.scala" -> "the one read",
-    "identity/src/main/scala/services/identity/IdentityModel.scala" -> "Listing.corpus's own definition",
+    "identity/src/main/scala/services/identity/Listing.scala" -> "Listing.corpus's own definition",
     "worker/src/main/scala/modules/wiring/IdentityModelWiring.scala" -> "the take-up's listings, read lean by IdentityListingIntake.identities",
     "worker/src/test/scala/services/identity/OlderRefs.scala" -> "ModelRead where the ref has it; whole only in a ref from before it")
 

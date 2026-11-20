@@ -43,7 +43,7 @@ class ProvenanceSpec extends AnyFlatSpec with Matchers {
     val files = SourceTrees("identity/src/main/scala/services/identity").scalaFiles
     // where a provenance is DEFINED or carried, not weighed: the table, the listing and its codec, retention's mark, the
     // backer's key, the denials' kinds and the scoring that makes them
-    val definers = Set("Authority.scala", "IdentityModel.scala", "ListingBson.scala", "ListingRetention.scala", "VenueBacking.scala",
+    val definers = Set("Authority.scala", "Listing.scala", "ListingBson.scala", "ListingRetention.scala", "VenueBacking.scala",
       "Denial.scala", "CandidateScoring.scala")
     val Reads = Seq(
       "a listing's kept mark"           -> """(?<![\w.])(_|l|listing|node\.listings\.head)\.kept\b""".r,
