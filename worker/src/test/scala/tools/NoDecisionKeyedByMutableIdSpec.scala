@@ -45,7 +45,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
 
   /** Key types that are content by construction: what they name cannot change under them. */
   private val ContentKeys = Set("Question", "PosterQuestion", "CandidateQuery", "Dependency", "ResolverDecision",
-    "FamilyScope.TitleInputs", "(FamilyScope.TitleInputs, Int)")
+    "MeasuredListing.TitleInputs", "(MeasuredListing.TitleInputs, Int)")
 
   /** Key types that name a listing or a cluster: what they name moves under them. */
   private val IdKey = """\b(?:ListingKey|ClusterId|NodeKey)\b""".r

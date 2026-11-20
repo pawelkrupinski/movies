@@ -41,7 +41,7 @@ class NoRuntimeLookupsInIdentitySpec extends AnyFlatSpec with Matchers {
     "identity/src/main/scala/services/identity/ClasspathResource.scala" ->
       ("the one reader of the checked-in artefacts (weights, decorations, tables, the version stamps); every resource it " +
         "is handed is in a rules closure (IdentityRuntimeInputsSpec)"),
-    "identity/src/main/scala/services/identity/FamilyScope.scala" ->
+    "identity/src/main/scala/services/identity/MeasuredListing.scala" ->
       ("TitleInputs hashes one resolve's shared decorations instance by identity, an in-process memo key whose equals " +
         "compares the same instance (eq): never persisted, never in a version or a receipt"))
 
