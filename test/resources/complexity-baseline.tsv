@@ -9,8 +9,6 @@
 limit	cognitive	10
 limit	cyclomatic	10
 limit	inner-defs	2
-cognitive	base/src/main/scala/tools/EditDistance.scala:EditDistance.between	13
-cognitive	base/src/main/scala/tools/EditDistance.scala:EditDistance.within	12
 cognitive	base/src/main/scala/tools/PersonName.scala:PersonName.capitalizeWord	11
 cognitive	base/src/main/scala/tools/TextNormalization.scala:TextNormalization.titleCaseIfAllCaps	11
 cognitive	common/src/main/scala/models/ListingKey.scala:ListingKey.years	11

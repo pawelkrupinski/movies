@@ -102,14 +102,20 @@ object MetricsController {
     val recent = totalsByService.sortBy(_._1)
     val sb = new StringBuilder
     Families.foreach { family =>
-      sb.append("# HELP ").append(family.name).append(' ').append(family.help).append('\n')
-      sb.append("# TYPE ").append(family.name).append(" gauge\n")
-      recent.foreach { case (service, totals) =>
-        sb.append(family.name).append("{country=\"").append(country).append("\",service=\"")
-          .append(escapeLabel(service)).append("\"} ").append(family.value(totals)).append('\n')
-      }
+      appendGauge(sb, family.name, family.help, country, "service")(recent.map { case (service, totals) => service -> family.value(totals) })
     }
     sb.toString
+  }
+
+  /** One gauge family in the Prometheus text format: its HELP and TYPE lines, then a sample per `(label, value)`,
+   *  labelled with the country and `labelName` = the label, in the order given. */
+  private def appendGauge(sb: StringBuilder, name: String, help: String, country: String, labelName: String)(samples: Seq[(String, Int)]): Unit = {
+    sb.append("# HELP ").append(name).append(' ').append(help).append('\n')
+    sb.append("# TYPE ").append(name).append(" gauge\n")
+    samples.foreach { case (label, value) =>
+      sb.append(name).append("{country=\"").append(country).append("\",").append(labelName).append("=\"")
+        .append(escapeLabel(label)).append("\"} ").append(value).append('\n')
+    }
   }
 
   /** Escape a label value per the Prometheus text format: backslash, double
@@ -156,12 +162,8 @@ object MetricsController {
 
     val sb = new StringBuilder
     FallbackFamilies.foreach { family =>
-      sb.append("# HELP ").append(family.name).append(' ').append(family.help).append('\n')
-      sb.append("# TYPE ").append(family.name).append(" gauge\n")
-      cinemasByClient.toSeq.sortBy(_._1).foreach { case (client, cinemas) =>
-        sb.append(family.name).append("{country=\"").append(country).append("\",client=\"")
-          .append(escapeLabel(client)).append("\"} ").append(family.value(cinemas, activeCinemas)).append('\n')
-      }
+      appendGauge(sb, family.name, family.help, country, "client")(
+        cinemasByClient.toSeq.sortBy(_._1).map { case (client, cinemas) => client -> family.value(cinemas, activeCinemas) })
     }
     sb.toString
   }

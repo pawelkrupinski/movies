@@ -11,17 +11,10 @@ private[models] object UsRosterData {
   // (displayName, pillName, flicks cinema slug, the venue's state, the venue's own town)
   type C = (String, String, String, String, String)
   // (slug, slug qualified with its state, name, state, lat, lon, zoneId, multiTown, towns, cinemas)
-  type R = (String, String, String, String, Double, Double, String, Boolean, Seq[String], Seq[C])
+  type R = RosterTables.ZonedPage[C]
 
-  val pages: Seq[R] = {
-    val cinemasByPage: Map[String, Seq[C]] =
-      GeneratedTable.rows("generated/us-roster/cinemas.tsv")
-        .groupMap(_(0))(cells => (cells(1), cells(2), cells(3), cells(4), cells(5)))
-    GeneratedTable.rows("generated/us-roster/pages.tsv").map { cells =>
-      (cells(0), cells(1), cells(2), cells(3), cells(4).toDouble, cells(5).toDouble, cells(6), cells(7).toBoolean,
-        GeneratedTable.list(cells(8)), cinemasByPage.getOrElse(cells(0), Seq.empty))
-    }
-  }
+  val pages: Seq[R] =
+    RosterTables.zonedPages("generated/us-roster")(cells => (cells(1), cells(2), cells(3), cells(4), cells(5)))
 
   /** (displayName, zoneId) — the venues whose own clock is not their page's. */
   val venueZones: Seq[(String, String)] =

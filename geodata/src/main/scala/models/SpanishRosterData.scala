@@ -11,18 +11,11 @@ private[models] object SpanishRosterData {
   type C = (String, String, Option[String], Option[String])
   // (slug, slug qualified with its autonomous community, name, province, lat, lon,
   //  zoneId, multiTown, towns, cinemas)
-  type R = (String, String, String, String, Double, Double, String, Boolean, Seq[String], Seq[C])
+  type R = RosterTables.ZonedPage[C]
 
-  val pages: Seq[R] = {
-    val cinemasByPage: Map[String, Seq[C]] =
-      GeneratedTable.rows(s"$Directory/cinemas.tsv").groupMap(_(0)) { row =>
-        // The pill reads the display name: the table keeps it once.
-        (row(1), row(1), GeneratedTable.option(row(2)), GeneratedTable.option(row(3)))
-      }
-    GeneratedTable.rows(s"$Directory/pages.tsv").map { row =>
-      (row(0), row(1), row(2), row(3), row(4).toDouble, row(5).toDouble, row(6), row(7).toBoolean,
-        GeneratedTable.list(row(8)), cinemasByPage.getOrElse(row(0), Seq.empty))
-    }
+  val pages: Seq[R] = RosterTables.zonedPages(Directory) { row =>
+    // The pill reads the display name: the table keeps it once.
+    (row(1), row(1), GeneratedTable.option(row(2)), GeneratedTable.option(row(3)))
   }
 
   /** Pages that no longer exist — the provinces Spain's pages were until 2026-10

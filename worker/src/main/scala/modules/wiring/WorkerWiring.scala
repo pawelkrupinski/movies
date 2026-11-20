@@ -77,7 +77,7 @@ class WorkerWiring(
     with CorpusWiring with ResolutionWiring with RatingsWiring with ReadModelWiring
     with MetricsWiring with TaskQueueWiring with AlertingWiring with OperatorWiring with ShareCardWiring
     with InvariantAuditWiring with IdentityProjectionWiring with AgreementWiring with IdentityModelWiring
-    with ClosureWiring {
+    with ClosureWiring with modules.timing.TimeSources {
 
   /** Every setting this wiring reads, typed — resolved over its `env` (the process's in
    *  production, an empty one in a test wiring), so a flip installed into that Env reaches
@@ -140,18 +140,9 @@ class WorkerWiring(
       tuning = MongoTuning.from(configuration, settings.ProcessTier.Worker)), services.MongoRequirement.of(testMode = false, optedOut = configuration.mongoOptional), country, sharedClient = sharedMongoClient)
   }
 
-  /** The one clock this wiring's stamps are taken from — a no-match `TmdbAttempt`, an uptime
-   *  bucket, a scheduled run. The fixture harness pins it, so a replayed corpus is byte-identical
-   *  across arrival orders. */
-  lazy val clock: java.time.Clock = java.time.Clock.systemUTC()
-  /** The one monotonic source elapsed time is measured on — the clock's twin for durations, never a date. */
-  lazy val stopwatch: tools.Stopwatch = tools.Stopwatch.System
-  /** The one blocking sleep this wiring's waits and back-offs are built on — the stopwatch's twin for waiting. */
-  lazy val sleep: scala.concurrent.duration.FiniteDuration => Unit = tools.Sleep.Blocking
-
-  /** The latest year a title may name, read off [[clock]] at each ask: what every title reader this wiring builds
-   *  (and the record accessors they reach) caps a year by. */
-  given latestTitleYear: services.movies.LatestTitleYear = services.movies.LatestTitleYear(clock)
+  // `clock` (which this wiring's stamps are taken from — a no-match `TmdbAttempt`, an uptime bucket, a scheduled run;
+  // the fixture harness pins it, so a replayed corpus is byte-identical across arrival orders), `stopwatch`, `sleep`
+  // and the `latestTitleYear` cap come from [[modules.timing.TimeSources]].
 
   // ── Shared due schedules (eager) ──────────────────────────────────────────
   // The per-venue cadence override `scrapeDueWindow` reads and `ScrapeFreshnessPolicy`

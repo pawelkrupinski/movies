@@ -226,9 +226,11 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/services/resolution/ResolutionStore.scala", "removeForFilm",
       "}.recover { case exception =>") ->
       "the count only feeds an INFO line; a forget that failed leaves the entry, which the next forget retries",
-    ("worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala", "guard",
+    ("worker/src/main/scala/services/scrapes/BestEffortVenueStore.scala", "bestEffort",
       "case Failure(e)     =>") ->
-      "the archive is a record of a scrape that already happened: None is \"not archived\", never read as an empty scrape",
+      ("the archive is a record of a scrape that already happened: None is \"not archived\", never read as an empty " +
+        "scrape; for the guard ledger None IS its typed \"could not read\" (distinct from Some(Fresh)), which " +
+        "ScrapeLanding never writes back over"),
     ("worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala", "stageDays",
       "case Failure(e) =>") ->
       "a failed read of the stage relays' days is not empty days: each relay's are UNKNOWN (LeanListing.unread), which the broadcast take waits on and the next read asks again — counted and logged, the rest of the read standing",
@@ -238,9 +240,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala", "read",
       "case Failure(exception) =>") ->
       "a row the codec refuses holds no listing to keep: read as absent (logged at WARN) the next scrape replaces it, where a failed read would leave the venue's every scrape undecided",
-    ("worker/src/main/scala/services/scrapes/MongoScrapeGuardLedger.scala", "attempt",
-      "case Failure(e)     =>") ->
-      "None IS the ledger's typed \"could not read\" (distinct from Some(Fresh)); ScrapeLanding never writes back over it",
     ("common/src/main/scala/services/tasks/KeyedBulkTaskResultStore.scala", "latest",
       ".recover { case exception =>") ->
       "the /tasks page's last-results panel: an unreadable store shows no results, and nothing is decided from it",

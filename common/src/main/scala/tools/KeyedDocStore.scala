@@ -156,18 +156,24 @@ object MongoKeyedDocStore {
   /** Keys per `_id in [...]` lookup. */
   private val LookupBatch = 500
 
-  /** Every document of `collection` in `_id`-keyset pages of 2,000, each page retried with backoff:
-   *  the way a whole small store is read, whatever it keeps in its documents. */
-  def scanDocuments(collection: MongoCollection[Document], label: String)(each: Seq[Document] => Unit): ScanOutcome =
+  /** Every document of `collection` in `_id`-keyset pages of 2,000, each page retried with backoff and given
+   *  `pageTimeout`: the way a whole small store is read, whatever it keeps in its documents. */
+  def scanDocuments(collection: MongoCollection[Document], label: String, pageTimeout: FiniteDuration = 30.seconds)(
+    each: Seq[Document] => Unit
+  ): ScanOutcome =
     tools.KeysetScan.scan[Document](
       label          = label,
       batchSize      = 2000,
       maxAttempts    = 3,
       initialBackoff = 500.millis,
       keyOf          = _.getString("_id"),
-      fetchPage      = (afterId, limit) => {
-        val find = afterId.fold(collection.find())(a => collection.find(Filters.gt("_id", a)))
-        Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), 30.seconds)
-      },
+      fetchPage      = documentsAfter(collection, pageTimeout)
     )(each)
+
+  /** The [[KeysetScan]] page of `collection` after a `_id` (from the first without one): `limit` documents in `_id`
+   *  order, the read given `timeout`. */
+  def documentsAfter(collection: MongoCollection[Document], timeout: FiniteDuration)(afterId: Option[String], limit: Int): Seq[Document] = {
+    val find = afterId.fold(collection.find())(a => collection.find(Filters.gt("_id", a)))
+    Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), timeout)
+  }
 }

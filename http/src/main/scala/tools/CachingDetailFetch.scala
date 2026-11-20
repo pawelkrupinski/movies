@@ -43,7 +43,7 @@ class CachingDetailFetch(
   // spec asserting on the bound has to run it on the calling thread to know it
   // has happened. Production keeps the common pool.
   maintenance: Executor      = ForkJoinPool.commonPool()
-) extends ForwardingHttpFetch {
+) extends RememberingDetailFetch(underlying) {
 
   // One cache for both outcomes: a URL is either a body or a remembered permanent
   // failure, never both, and sharing the entry means the TTL and the size bound
@@ -55,34 +55,13 @@ class CachingDetailFetch(
       .ticker(ticker)
       .build()
 
-  override def get(url: String): String = cache.getIfPresent(url) match {
-    case CachingDetailFetch.Body(body) => body
-    case CachingDetailFetch.Gone(code) => throw new HttpStatusException(code, "GET", url, None)
-    case null =>
-      try {
-        val body = underlying.get(url)
-        cache.put(url, CachingDetailFetch.Body(body))
-        body
-      } catch {
-        // A 404/410 says something permanent about the URL, so re-asking every pass
-        // buys nothing: it is the same answer, and the film whose detail this is stays
-        // gated on a fetch that will not start succeeding. Every OTHER failure —
-        // timeouts, 5xx, rate limits — says something about right now, and stays
-        // uncached so the next pass retries it. The {404, 410} line lives in
-        // `HttpStatusException.isDurable` — one definition, several callers.
-        case failure: HttpStatusException if HttpStatusException.isDurable(failure.code) =>
-          cache.put(url, CachingDetailFetch.Gone(failure.code))
-          throw failure
-      }
+  protected def remembered(url: String): Option[Either[Int, String]] = Option(cache.getIfPresent(url)).map {
+    case CachingDetailFetch.Body(body) => Right(body)
+    case CachingDetailFetch.Gone(code) => Left(code)
   }
 
-  // Detail fetches don't vary by request header; key on the URL alone.
-  override def get(url: String, headers: Map[String, String]): String = get(url)
-
-  // Raw bytes and posts pass straight through to the underlying fetch (uncached): the
-  // string cache holds UTF-8 bodies, and re-encoding one would mojibake a
-  // legacy single-byte page.
-  protected def around[T](url: String)(call: HttpFetch => T): T = call(underlying)
+  protected def remember(url: String, outcome: Either[Int, String]): Unit =
+    cache.put(url, outcome.fold(CachingDetailFetch.Gone(_), CachingDetailFetch.Body(_)))
 }
 
 object CachingDetailFetch {

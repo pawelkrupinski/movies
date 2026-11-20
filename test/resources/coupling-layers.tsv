@@ -59,6 +59,7 @@ rank	7	services.refresh	the rating refresh sources, run as tasks over the enrich
 #
 # The composition roots' order (layer 5), bottom up.
 rank	0	diagnostics	command-line programs, each its own root
+rank	0	modules.timing	the time every wiring builds on: its clock, stopwatch, sleep and title-year cap
 rank	0	modules.webwiring	the web tier's wiring, area by area
 rank	0	modules.wiring	the worker's wiring, area by area, and WorkerWiring over them
 rank	1	modules	the roots on top: AppLoader, WorkerMain, the filters

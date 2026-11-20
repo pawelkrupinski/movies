@@ -21,13 +21,7 @@ object EditDistance {
       var row      = new Array[Int](b.length + 1)
       var i = 1
       while (i <= a.length) {
-        row(0) = i
-        var j = 1
-        while (j <= b.length) {
-          val substitution = previous(j - 1) + (if (a.charAt(i - 1) == b.charAt(j - 1)) 0 else 1)
-          row(j) = math.min(math.min(row(j - 1) + 1, previous(j) + 1), substitution)
-          j += 1
-        }
+        fillRow(a, b, i, previous, row)
         val swap = previous; previous = row; row = swap
         i += 1
       }
@@ -44,19 +38,25 @@ object EditDistance {
     var row      = new Array[Int](b.length + 1)
     var i = 1
     while (i <= a.length) {
-      row(0) = i
-      var best = row(0)
-      var j = 1
-      while (j <= b.length) {
-        val substitution = previous(j - 1) + (if (a.charAt(i - 1) == b.charAt(j - 1)) 0 else 1)
-        row(j) = math.min(math.min(row(j - 1) + 1, previous(j) + 1), substitution)
-        best   = math.min(best, row(j))
-        j += 1
-      }
-      if (best > max) return false
+      if (fillRow(a, b, i, previous, row) > max) return false
       val swap = previous; previous = row; row = swap
       i += 1
     }
     previous(b.length) <= max
+  }
+
+  /** Row `i` of the distance table (`a`'s first `i` characters against every prefix of `b`) into `row`, from the row
+   *  before it, `previous`; answers the row's smallest cell, the fewest edits any path through it has spent. */
+  private def fillRow(a: String, b: String, i: Int, previous: Array[Int], row: Array[Int]): Int = {
+    row(0) = i
+    var best = i
+    var j = 1
+    while (j <= b.length) {
+      val substitution = previous(j - 1) + (if (a.charAt(i - 1) == b.charAt(j - 1)) 0 else 1)
+      row(j) = math.min(math.min(row(j - 1) + 1, previous(j) + 1), substitution)
+      best   = math.min(best, row(j))
+      j += 1
+    }
+    best
   }
 }

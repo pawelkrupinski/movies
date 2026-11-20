@@ -11,17 +11,15 @@ private[models] object GermanRosterData {
   // (slug, slug qualified with its Bundesland, name, Bundesland, lat, lon, multiTown, towns, cinemas)
   type R = (String, String, String, String, Double, Double, Boolean, Seq[String], Seq[C])
 
-  private def table(name: String) = GeneratedTable.rows(s"generated/de-roster/$name.tsv")
+  private val Directory = "generated/de-roster"
+  private def table(name: String) = GeneratedTable.rows(s"$Directory/$name.tsv")
 
-  val pages: Seq[R] = {
-    val cinemasByPage: Map[String, Seq[C]] = table("cinemas").groupMap(_(0)) { row =>
-      (row(1), row(2), row(3), GeneratedTable.option(row(4)), row(5))
+  val pages: Seq[R] =
+    RosterTables.pages(Directory)(row => (row(1), row(2), row(3), GeneratedTable.option(row(4)), row(5))) {
+      (row, cinemas) =>
+        (row(0), row(1), row(2), row(3), row(4).toDouble, row(5).toDouble, row(6).toBoolean, GeneratedTable.list(row(7)),
+          cinemas)
     }
-    table("pages").map { row =>
-      (row(0), row(1), row(2), row(3), row(4).toDouble, row(5).toDouble, row(6).toBoolean,
-        GeneratedTable.list(row(7)), cinemasByPage.getOrElse(row(0), Seq.empty))
-    }
-  }
 
   /** Pages that no longer exist — the regions Germany's pages were until 2026-10
    *  among them — and the page now holding most of their venues: (slug, slug

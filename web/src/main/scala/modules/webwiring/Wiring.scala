@@ -22,7 +22,7 @@ import settings.MongoAddress
  */
 trait Wiring
     extends MongoWiring with UsersWiring with AuthWiring with ReadModelWiring with DebugWiring with ReviewWiring
-    with AdminWiring with MetricsWiring with SiteWiring with CityPagesWiring {
+    with AdminWiring with MetricsWiring with SiteWiring with CityPagesWiring with modules.timing.TimeSources {
 
   def controllerComponents: ControllerComponents
   def environmentMode: Mode
@@ -50,18 +50,6 @@ trait Wiring
   // Where this deployment's Mongo is (cluster + optional explicit database). Resolved by
   // `AppLoader` like `country`; a test wiring hands in `MongoAddress.Disabled`.
   def mongoAddress: MongoAddress
-
-  // The one wall clock the serving app reads. Everything that asks "what time is it" takes
-  // it by constructor; a test wiring overrides it to pin the time.
-  lazy val clock: java.time.Clock = java.time.Clock.systemUTC()
-  /** The one monotonic source elapsed time is measured on — the clock's twin for durations, never a date. */
-  lazy val stopwatch: tools.Stopwatch = tools.Stopwatch.System
-  /** The one blocking sleep this wiring's waits and back-offs are built on — the stopwatch's twin for waiting. */
-  lazy val sleep: scala.concurrent.duration.FiniteDuration => Unit = tools.Sleep.Blocking
-
-  /** The latest year a title may name, read off [[clock]] at each ask: what the record accessors the debug pages
-   *  render (a venue's representative slot, the display title) cap a title's year by. */
-  given latestTitleYear: services.movies.LatestTitleYear = services.movies.LatestTitleYear(clock)
 
   // Start the data layer. Force the Mongo connection at boot (so connection
   // errors surface in the boot timeline, not mid-request), then start the cache

@@ -7,7 +7,6 @@ import org.bson.{BsonDocument, BsonDocumentWriter, BsonString}
 import org.bson.codecs.EncoderContext
 import org.mongodb.scala.model.{Filters, Projections, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import play.api.Logging
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -35,7 +34,8 @@ class MongoScrapeArchiveRepository(
   collection: String = ScrapeArchiveRepository.Collection,
   // Called once per lean page whose stage relays' days could not be read (`screeningDays`).
   daysUnread: () => Unit = () => ()
-) extends ScrapeArchiveRepository with Logging {
+) extends ScrapeArchiveRepository with BestEffortVenueStore {
+  protected val storeName = "ScrapeArchiveRepository"
 
   private lazy val coll: Option[MongoCollection[StoredScrapeDto]] = sharedDb.map { db =>
     val c = db.withCodecRegistry(ScrapeArchiveCodecs.registry)
@@ -63,7 +63,7 @@ class MongoScrapeArchiveRepository(
       val fields  = encoded.entrySet().asScala.toSeq.filterNot(_.getKey == "_id")
         .map(e => Updates.set(e.getKey, e.getValue))
       val emptied = dto.productElementNames.filterNot(encoded.containsKey).map(Updates.unset).toSeq
-      guard(cinema, "record") {
+      bestEffort(cinema, "record") {
         Await.result(c.updateOne(Filters.eq("_id", dto._id), Updates.combine((fields ++ emptied)*),
           new UpdateOptions().upsert(true)).toFuture(), 30.seconds)
       }
@@ -76,7 +76,7 @@ class MongoScrapeArchiveRepository(
       // blank scrape's marker, landing in between sends it round again, decided afresh. The upsert
       // branch (first-ever sighting of a cinema that has only failed) creates a content-less row,
       // which decodes as `lastSuccess = None`.
-      guard(cinema, "recordBarren") {
+      bestEffort(cinema, "recordBarren") {
         val written = tools.GuardedWrite(MongoScrapeArchiveRepository.BarrenWriteAttempts)(() => barrenGuardRead(cinema)) { asRead =>
           val existing = asRead.map(decodeStored)
           Option.when(!existing.flatMap(_.scrapedAt).exists(_.isAfter(attempt.at))) {
@@ -367,16 +367,6 @@ class MongoScrapeArchiveRepository(
           60.seconds),
         onIncomplete   = failed
       )(consume))
-    }
-
-  /** Every archive operation is best-effort: it records something that already
-   *  happened, so its failure must not propagate into the scrape. */
-  private def guard[A](cinema: Cinema, op: String)(body: => A): Option[A] =
-    Try(body) match {
-      case Success(value) => Some(value)
-      case Failure(e)     =>
-        logger.warn(s"ScrapeArchiveRepository.$op(${cinema.displayName}) failed: ${e.getMessage}")
-        None
     }
 }
 

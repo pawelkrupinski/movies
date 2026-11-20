@@ -1,6 +1,6 @@
 package services
 
-import tools.{ForwardingHttpFetch, HttpFetch, HttpStatusException, MongoTtlIndex, TtlIndexMismatches}
+import tools.{HttpFetch, MongoTtlIndex, RememberingDetailFetch, TtlIndexMismatches}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, documentToUntypedDocument}
 import org.mongodb.scala.model.{Filters, Updates}
 import play.api.Logging
@@ -18,7 +18,7 @@ import scala.util.Try
  * (Helios `/api/movie/{id}`, Cinema City film pages), whose detail is identical
  * across the chain's many locations.
  *
- * Only successful responses are cached (`get` throws on failure exactly like the
+ * Successes and permanent (404/410) failures are cached, nothing else (`get` throws on failure exactly like the
  * underlying fetch, so a transient blip isn't pinned for the TTL). A `null` db
  * disables caching — every call passes straight through. On a cold cache several
  * servers may each fetch+store the same URL once (last write wins); steady state
@@ -37,7 +37,7 @@ class MongoCachingDetailFetch(
   ttlMismatches:  TtlIndexMismatches,
   // What `fetchedAt`/`expireAt` are stamped from, and what a cached document's expiry is judged against.
   clock:          java.time.Clock
-) extends ForwardingHttpFetch with Logging {
+) extends RememberingDetailFetch(underlying) with Logging {
 
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(MongoCachingDetailFetch.Collection))
 
@@ -59,36 +59,11 @@ class MongoCachingDetailFetch(
     thread.start()
   }
 
-  override def get(url: String): String = coll match {
-    case None => underlying.get(url)
-    case Some(c) => cached(c, url) match {
-      case Some(Right(body)) => body
-      case Some(Left(code))  => throw new HttpStatusException(code, "GET", url, None)
-      case None =>
-        try {
-          val body = underlying.get(url)
-          store(c, url, Right(body))
-          body
-        } catch {
-          // A 404/410 describes the URL, not the moment, so every server asking again
-          // next pass gets the same answer — and the film whose detail this is stays
-          // gated on a fetch that will not start succeeding. Remembering it here (rather
-          // than only in-process) is the point of this class: one server learning a page
-          // is gone spares the whole fleet. Everything else stays uncached and retries.
-          case failure: HttpStatusException if HttpStatusException.isDurable(failure.code) =>
-            store(c, url, Left(failure.code))
-            throw failure
-        }
-    }
-  }
+  // A remembered 404/410 is stored here, not only in-process: one server learning a page is gone spares the whole
+  // fleet, which is the point of this class. Without a database nothing is remembered: every GET passes through.
+  protected def remembered(url: String): Option[Either[Int, String]] = coll.flatMap(cached(_, url))
 
-  // Detail fetches don't vary by request header; key on the URL alone.
-  override def get(url: String, headers: Map[String, String]): String = get(url)
-
-  // Raw bytes and posts pass straight through to the underlying fetch (uncached): the
-  // Mongo cache holds UTF-8 bodies, and re-encoding one would mojibake a legacy
-  // single-byte page.
-  protected def around[T](url: String)(call: HttpFetch => T): T = call(underlying)
+  protected def remember(url: String, outcome: Either[Int, String]): Unit = coll.foreach(store(_, url, outcome))
 
   /** `Right(body)` for a cached success, `Left(status)` for a remembered permanent
    *  failure, `None` for a URL this cache has nothing to say about. A document with

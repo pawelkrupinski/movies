@@ -4,12 +4,10 @@ import models.Cinema
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Filters, Projections, Updates}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture}
-import play.api.Logging
 import services.movies.{ScrapeGuardLedger, ScrapeGuardState}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
 
 /**
  * [[ScrapeGuardLedger]] kept in `cinema_scrapes`, as a `guard` sub-document on the
@@ -27,7 +25,8 @@ import scala.util.{Failure, Success, Try}
  * (conservative: no rewire inferred) but never writes back, so the stored count survives.
  * A failed write logs and the next tick writes again.
  */
-class MongoScrapeGuardLedger(sharedDb: Option[MongoDatabase]) extends ScrapeGuardLedger with Logging {
+class MongoScrapeGuardLedger(sharedDb: Option[MongoDatabase]) extends ScrapeGuardLedger with BestEffortVenueStore {
+  protected val storeName = "ScrapeGuardLedger"
 
   private val Field = "guard"
 
@@ -35,23 +34,15 @@ class MongoScrapeGuardLedger(sharedDb: Option[MongoDatabase]) extends ScrapeGuar
     sharedDb.map(_.getCollection[Document](ScrapeArchiveRepository.Collection))
 
   def get(cinema: Cinema): Option[ScrapeGuardState] = coll.fold(Option(ScrapeGuardState.Fresh)) { c =>
-    attempt(cinema, "get")(Await.result(
+    bestEffort(cinema, "get")(Await.result(
       c.find(Filters.eq("_id", cinema.displayName)).projection(Projections.include(Field)).headOption(),
       10.seconds)).map(_.flatMap(_.get[BsonDocument](Field)).fold(ScrapeGuardState.Fresh)(ScrapeGuardState.decode))
   }
 
   def put(cinema: Cinema, state: ScrapeGuardState): Unit = coll.foreach { c =>
-    attempt(cinema, "put")(Await.result(
+    bestEffort(cinema, "put")(Await.result(
       c.updateOne(Filters.eq("_id", cinema.displayName), Updates.set(Field, ScrapeGuardState.encode(state)))
         .toFuture(),
       10.seconds))
   }
-
-  private def attempt[A](cinema: Cinema, op: String)(body: => A): Option[A] =
-    Try(body) match {
-      case Success(value) => Some(value)
-      case Failure(e)     =>
-        logger.warn(s"ScrapeGuardLedger.$op(${cinema.displayName}) failed: ${e.getMessage}")
-        None
-    }
 }

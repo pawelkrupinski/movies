@@ -10,15 +10,11 @@
 # `Duplication: <why>` (CLAUDE.md, "Code quality ratchets").
 limit	copies	0
 limit	clone-tokens	50
-copies	base/src/main/scala/tools/EditDistance.scala	2
 copies	base/src/main/scala/tools/TextNormalization.scala|identity/src/main/scala/services/identity/TitleTextMeasures.scala	2
 copies	common/src/main/scala/models/GermanRoster.scala|common/src/main/scala/models/SpanishRoster.scala	2
-copies	common/src/main/scala/services/MongoCachingDetailFetch.scala|http/src/main/scala/tools/CachingDetailFetch.scala	2
-copies	common/src/main/scala/services/cadence/RatingCadenceStore.scala	2
 copies	common/src/main/scala/services/movies/InPlaceMovieUpdate.scala|common/src/main/scala/services/movies/WholeRecordUpsert.scala	2
 copies	common/src/main/scala/services/scrapes/ScrapeArchiveCodecs.scala|scrapers/src/main/scala/services/cinemas/common/CinemaMovieJson.scala	2
 copies	common/src/main/scala/tools/KeysetScan.scala	2
-copies	geodata/src/main/scala/models/SpanishRosterData.scala|geodata/src/main/scala/models/UsRosterData.scala	2
 copies	identity/src/main/scala/services/identity/ClusterVoting.scala	2
 copies	identity/src/main/scala/services/identity/FamilyScope.scala|identity/src/main/scala/services/identity/ListingScoring.scala	2
 copies	identity/src/main/scala/services/identity/IdentityMeasures.scala|identity/src/main/scala/services/identity/IdentityModel.scala	2
@@ -28,10 +24,7 @@ copies	scrapers/src/main/scala/services/cinemas/pl/AmondoClient.scala|scrapers/s
 copies	scrapers/src/main/scala/services/cinemas/pl/IksorisBookingClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoFenomenClient.scala	2
 copies	scrapers/src/main/scala/services/cinemas/pl/IksorisBookingClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoStylowyClient.scala	2
 copies	scrapers/src/main/scala/services/cinemas/pl/KinoFenomenClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoStylowyClient.scala	2
-copies	web/src/main/scala/controllers/MetricsController.scala	2
-copies	web/src/main/scala/modules/webwiring/Wiring.scala|worker/src/main/scala/modules/wiring/WorkerWiring.scala	2
 copies	worker/src/main/scala/services/enrichment/MetascoreRatings.scala|worker/src/main/scala/services/enrichment/RottenTomatoesRatings.scala	2
 copies	worker/src/main/scala/services/identityadapters/CachedTmdbDocuments.scala|worker/src/main/scala/services/identityadapters/HistoryTmdbDocuments.scala	2
 copies	worker/src/main/scala/services/identityadapters/CoalescedTmdbDocuments.scala|worker/src/main/scala/services/identityadapters/HistoryTmdbDocuments.scala	2
 copies	worker/src/main/scala/services/identityadapters/ModelLookups.scala|worker/src/main/scala/services/identityadapters/StoredTmdbLookups.scala	2
-copies	worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala|worker/src/main/scala/services/scrapes/MongoScrapeGuardLedger.scala	2
