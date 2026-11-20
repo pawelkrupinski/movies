@@ -49,7 +49,7 @@ private[identity] trait AcceptanceVetoRules { this: Acceptance =>
   private[identity] def authorsNamesake(weighing: Weighing, scored: Scored): Option[String] = {
     val listing = scored.listing
     Credits.authorCredited(listing.rawTitle.getOrElse(listing.title))
-      .filter(credit => ListingShape.creditDenies(credit, scored.candidate.film, listing.screeningsSeason))
+      .filter(credit => ListingShape.creditDenies(credit, scored.candidate.film, listing.dating.screeningsSeason))
       .map(credit => s"${Acceptance.named(scored)}: ${credit.work} by ${credit.person}")
   }
 

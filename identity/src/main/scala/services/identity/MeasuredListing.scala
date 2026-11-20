@@ -2,7 +2,7 @@ package services.identity
 
 import services.titles.billing.{BillingParse, BillingPieces}
 import services.titles.{TitleContainment, TitleSeason}
-import services.identity.vocabulary.TitleDecorations
+import services.identity.vocabulary.{ListingDating, TitleDecorations}
 
 /** What one venue published about one film. `decorations`: the venue decorations learned around
  *  titles (`TitleDecorations`), which the title shapes read — not a fact the venue published. */
@@ -10,30 +10,11 @@ final case class MeasuredListing(title: String, rawTitle: Option[String] = None,
                                  year: Option[Int] = None, runtime: Option[Int] = None, directors: Seq[String] = Nil,
                                  countries: Seq[String] = Nil, yearCredits: Option[Seq[String]] = None,
                                  decorations: TitleDecorations = TitleDecorations.None, searchTitles: Seq[String] = Nil,
-                                 /** The season a stage relay billing neither its season nor a year screens in
-                                  *  ([[services.identity.Listing.broadcastSeason]]): searched with its work, never measured. */
-                                 broadcastSeason: Option[Int] = None,
-                                 /** The season its screenings fall in, whatever it states ([[services.identity.Listing.screenedSeason]]):
-                                  *  what picks among a house's records of its work's seasons, never searched. */
-                                 screenedSeason: Option[Int] = None,
-                                 /** The season its first screening falls in, unconditionally ([[services.identity.vocabulary.ScreeningDays.season]]):
-                                  *  the seasons its title can name ([[TitleSeason.near]]). */
-                                 screeningsSeason: Option[Int] = None,
-                                 /** Its screening days, held only where its stated year is more than a season before the season
-                                  *  it screens in ([[services.identity.Listing.airDays]]): what the air-day test reads. */
-                                 airDays: Seq[java.time.LocalDate] = Nil,
+                                 /** What dates its film beside the year it states ([[ListingDating]]). */
+                                 dating: ListingDating = ListingDating.Undated,
                                  /** The age certificate the venue bills it with ([[services.identity.Listing.certificate]]): read
-                                 *  against the film's certificate in the venue's country by the weighted `certificate` measure. */
-                                 certificate: Option[String] = None,
-                                 /** The latest year its film can be from ([[services.identity.Listing.yearUpperBound]]): what
-                                  *  weighs against a film released after it as a stated year would ([[ListingYearReadings.yearBound]]), never for one. */
-                                 yearUpperBound: Option[Int] = None,
-                                 /** The year of the performance a stage relay's synopsis names ([[services.identity.Listing.performanceYear]]):
-                                  *  what dates an encore's relay ([[RelayStage.of]]), never measured. */
-                                 performanceYear: Option[Int] = None,
-                                 /** The year its first screening falls in, where its title bills an anniversary
-                                  *  ([[services.identity.Listing.anniversaryScreeningYear]]): what [[anniversaryFilmYear]] dates the film by. */
-                                 anniversaryScreeningYear: Option[Int] = None) {
+                                  *  against the film's certificate in the venue's country by the weighted `certificate` measure. */
+                                 certificate: Option[String] = None) {
   private def titles: Seq[String] = rawTitle.toSeq :+ title
   /** Its title, then the raw title the venue published — title first, as the title relations read them. */
   def ownTitles: Seq[String] = Seq(title) ++ rawTitle
@@ -79,11 +60,11 @@ final case class MeasuredListing(title: String, rawTitle: Option[String] = None,
    *  read took its year and its credits from different listings (`yearCredits`). */
   def creditedBesideYear: Seq[String] = yearCredits.getOrElse(directors)
   /** The season the title names ("2026/27"), by its first year. */
-  lazy val seasonYear: Option[Int] = TitleSeason.of(titles, screeningsSeason)
+  lazy val seasonYear: Option[Int] = TitleSeason.of(titles, dating.screeningsSeason)
   /** Does the title name a season further back than a season's record is encored ([[services.identity.Listing.SeasonEncoreLag]])
    *  before the one it screens in — a page kept from that season, its own facts as old as its title ([[Listing.airDays]])? */
   lazy val billsAStaleSeason: Boolean =
-    seasonYear.exists(named => screeningsSeason.exists(_ - named > services.identity.Listing.SeasonEncoreLag))
+    seasonYear.exists(named => dating.screeningsSeason.exists(_ - named > services.identity.Listing.SeasonEncoreLag))
   /** The word the title bills several films by ([[MultiFilmBill.marker]]), once per listing: every rule asks. */
   private[identity] lazy val billMarker: Option[String] = MultiFilmBill.marker(titles)
   /** The one title a marathon billed after a dash names ([[MultiFilmBill.billedOne]]), once per listing. */
@@ -126,7 +107,7 @@ final case class MeasuredListing(title: String, rawTitle: Option[String] = None,
    *  2006 film. Of the matched anniversary billings stating no year in prod (2026-11-15), 1238 of 1239 took a film within
    *  a year of it. */
   private[identity] lazy val anniversaryFilmYear: Option[Int] =
-    if (statedYear.isDefined) None else anniversary.zip(anniversaryScreeningYear).map((years, screened) => screened - years)
+    if (statedYear.isDefined) None else anniversary.zip(dating.anniversaryScreeningYear).map((years, screened) => screened - years)
   /** The stage works its titles bill ([[StageRelays.stageWorksBilled]]), no season named. */
   private[identity] def billedStageWorks: Set[String] = StageRelays.stageWorksBilled(titles, seasonNamed = false)
   /** Does the title name an opera or ballet house ([[StageRelays.screenNamesake]]), once per listing: every candidate asks. */

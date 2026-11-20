@@ -2,7 +2,7 @@ package services.identity
 
 import services.titles.TitleSeason
 
-import services.identity.vocabulary.{DetailFacts, TitleDecorations}
+import services.identity.vocabulary.{DetailFacts, ListingDating, TitleDecorations}
 
 /** A listing's evidence once its own detail page is merged in — listing values win, the page
  *  fills gaps. VENUE-FREE on purpose: two venues publishing the same evidence are asking the same
@@ -12,24 +12,12 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
                           decorations: TitleDecorations = TitleDecorations.None, searchTitle: Option[String] = None,
                           /** [[Listing.properTitle]], searched beside `searchTitle`. */
                           properTitle: Option[String] = None,
-                          /** The season a stage relay billing neither its season nor a year screens in ([[Listing.broadcastSeason]]):
-                           *  what its title is searched with, never a fact it states. */
-                          broadcastSeason: Option[Int] = None,
-                          /** The season its screenings fall in, whatever it states ([[Listing.screenedSeason]]). */
-                          screenedSeason: Option[Int] = None,
-                          /** The season its first screening falls in, unconditionally: the seasons its title can name
-                           *  ([[services.titles.TitleSeason.near]]), never a fact it states. */
-                          screeningsSeason: Option[Int] = None,
-                          /** Its screening days, where the air-day test reads them ([[Listing.airDays]]); else empty. */
-                          airDays: Seq[java.time.LocalDate] = Nil,
+                          /** What dates its film beside the year it states ([[ListingDating]]). */
+                          dating: ListingDating = ListingDating.Undated,
                           /** The venue's certificate ([[Listing.certificate]]): what the weighted `certificate` measure reads. */
-                          certificate: Option[String] = None,
-                          /** [[Listing.yearUpperBound]]: weighs against a film released after it, never a year it states. */
-                          yearUpperBound: Option[Int] = None,
-                          /** [[Listing.performanceYear]]: what dates an encore's relay. */
-                          performanceYear: Option[Int] = None,
-                          /** [[Listing.anniversaryScreeningYear]]: what dates the film of an anniversary it bills, never a year it states. */
-                          anniversaryScreeningYear: Option[Int] = None) {
+                          certificate: Option[String] = None) {
+  import dating.{airDays, anniversaryScreeningYear, broadcastSeason, performanceYear, screenedSeason, screeningsSeason, yearUpperBound}
+
   lazy val key: String =
     Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
       runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000") +
@@ -55,16 +43,14 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
   lazy val measured: MeasuredListing =
     MeasuredListing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
-      decorations = decorations, searchTitles = searchTitle.toSeq ++ properTitle, broadcastSeason = broadcastSeason, screenedSeason = screenedSeason,
-      screeningsSeason = screeningsSeason, airDays = airDays, certificate = certificate, yearUpperBound = yearUpperBound,
-      performanceYear = performanceYear, anniversaryScreeningYear = anniversaryScreeningYear)
+      decorations = decorations, searchTitles = searchTitle.toSeq ++ properTitle, dating = dating, certificate = certificate)
 
   /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration nor search title
    *  stripped: what relates two LISTINGS (their families, title must-links and listing-listing
    *  measures). A learned decoration names a FILM to search for and relate to; it never links a
    *  "Horror Season 2026 Dracula" to every other venue's bare "Dracula". */
   lazy val published: MeasuredListing =
-    measured.copy(decorations = TitleDecorations.None, searchTitles = Nil, broadcastSeason = None, screenedSeason = None)
+    measured.copy(decorations = TitleDecorations.None, searchTitles = Nil, dating = dating.copy(broadcastSeason = None, screenedSeason = None))
 
   /** The year this listing states: its own field, else the one its title brackets. */
   def statedYear: Option[Int] = measured.statedYear
@@ -72,7 +58,7 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
   /** The evidence with its stated facts set aside — its titles alone: what a node whose facts a feed copied from an
    *  overruled link is read as ([[FeedLink]]). */
   def titlesOnly: Evidence = copy(year = None, directors = Nil, runtime = None, originalTitle = None, countries = Nil, certificate = None,
-    yearUpperBound = None)
+    dating = dating.copy(yearUpperBound = None))
 }
 
 object Evidence {
@@ -89,6 +75,11 @@ object Evidence {
     decorations   = decorations,
     searchTitle   = listing.searchTitle,
     properTitle   = listing.properTitle,
+    certificate   = listing.certificate.map(_.trim).filter(_.nonEmpty),
+    dating        = datingOf(listing, detail))
+
+  /** What dates `listing`'s film beside its year ([[ListingDating]]), its `detail` page read in. */
+  private def datingOf(listing: Listing, detail: Option[DetailFacts]): ListingDating = ListingDating(
     // a year the detail page states dates the relay as a year the venue's own field does
     broadcastSeason = listing.broadcastSeason.filter(_ => detail.flatMap(_.year).isEmpty),
     screenedSeason  = listing.screenedSeason.filter(_ => detail.flatMap(_.year).isEmpty),
@@ -96,7 +87,6 @@ object Evidence {
     // ...but for a season named too far back, whose page is as old as its title (UK Flicks' "Royal Ballet & Opera
     // 2024-25: Romeo and Juliet", its page dated 2025, screening on the 2026/27 relay's air day)
     airDays         = listing.airDays.filter(_ => detail.flatMap(_.year).isEmpty || listing.namesAStaleSeason.isDefined),
-    certificate     = listing.certificate.map(_.trim).filter(_.nonEmpty),
     yearUpperBound  = listing.yearUpperBound,
     performanceYear = listing.performanceYear,
     anniversaryScreeningYear = listing.anniversaryScreeningYear)

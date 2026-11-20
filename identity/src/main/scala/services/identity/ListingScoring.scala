@@ -61,7 +61,7 @@ private[identity] final class ListingScoring(pool: FamilyPool, scoring: Candidat
   private def namesake(scored: Scored) = relation(scored.candidate.tmdbId) == "exact" && !onlySuggested(scored.candidate.tmdbId)
   private val vetoed = country.fold(Map.empty[Int, Denial])(ReleaseVeto.of(_, measured, namesake,
     scored => scored.number("venues.corroborating").exists(_ > 0) || acceptance.weights.factsSupport(scored))) ++
-    country.fold(Map.empty[Int, Denial])(ReleaseVeto.ofCurrent(_, listing.screeningsSeason, measured, namesake, ownFacts = source == venue,
+    country.fold(Map.empty[Int, Denial])(ReleaseVeto.ofCurrent(_, listing.dating.screeningsSeason, measured, namesake, ownFacts = source == venue,
       acceptance.weights.factsSupport))
   private val candidates = if (vetoed.isEmpty) measured else measured.map { scored =>
     val id = scored.candidate.tmdbId

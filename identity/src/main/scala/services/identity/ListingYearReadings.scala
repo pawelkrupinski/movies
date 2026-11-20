@@ -45,7 +45,7 @@ private[identity] object ListingYearReadings {
    *  director). DE Kommunales Kino im Künstlerhaus' "Close", linked to Cineamo's 148857m (premiered 2004), is Lukas
    *  Dhont's 2022 film that Passage Kinos Leipzig dates and times from its own source. */
   private def yearBound(l: MeasuredListing, f: Film, country: Option[String], corroboratingVenues: Int, m: Map[String, Measure]): Map[String, Measure] =
-    l.yearUpperBound.filter(_ => l.year.isEmpty && corroboratingVenues == 0) match {
+    l.dating.yearUpperBound.filter(_ => l.year.isEmpty && corroboratingVenues == 0) match {
       case Some(bound) =>
         val released = if (f.releases.isEmpty) f.year else f.closestYear(bound, country)
         if (released.exists(_ - bound > YearWindow.PublishedAdjacency)) m ++ Map("year.delta" -> delta(Some(bound), released), "year.distance" -> absDelta(Some(bound), released))

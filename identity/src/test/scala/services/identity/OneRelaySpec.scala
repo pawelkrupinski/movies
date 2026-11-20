@@ -151,12 +151,12 @@ class OneRelaySpec extends AnyFlatSpec with Matchers {
     def billed(day: LocalDate) = on(listing(KinoMuza, "Royal Ballet & Opera 2024-25: Romeo and Juliet", year = Some(2025),
       director = Some("Kenneth MacMillan"), runtime = Some(210)), day)
     def taken(l: Listing) = IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key).film
-    withClue(measured(billed(airs)).airDays)(taken(billed(airs)) shouldBe Some(1702789))
+    withClue(measured(billed(airs)).dating.airDays)(taken(billed(airs)) shouldBe Some(1702789))
     // a screening on no air day of it keeps the season its title names: never the 2026/27 relay
     taken(billed(LocalDate.of(2027, 1, 10))) should not be Some(1702789)
     // a season a record is still encored in reads as billed: last season's, screening on the new relay's day
-    measured(on(listing(KinoMuza, "Royal Ballet & Opera 2025-26: Romeo and Juliet"), airs)).airDays shouldBe empty
+    measured(on(listing(KinoMuza, "Royal Ballet & Opera 2025-26: Romeo and Juliet"), airs)).dating.airDays shouldBe empty
     // and a season billed with no stage work is no relay's
-    measured(on(listing(KinoMuza, "Berliner Philharmoniker 2017/18"), airs)).airDays shouldBe empty
+    measured(on(listing(KinoMuza, "Berliner Philharmoniker 2017/18"), airs)).dating.airDays shouldBe empty
   }
 }

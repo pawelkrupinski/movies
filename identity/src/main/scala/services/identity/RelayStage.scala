@@ -50,16 +50,16 @@ private[identity] object RelayStage {
     if (!searchedInItsSeason(l)) None
     else {
       val works   = unencored(unclosed(l)).billedStageWorks
-      val stated  = l.year.orElse(StageRelays.bannerYear(l)).orElse(closingYear(l)).filter(year => l.screeningsSeason.forall(year >= _))
-      val dated   = if (billsAnEncore(l)) l.performanceYear else l.titleYear.orElse(stated)
+      val stated  = l.year.orElse(StageRelays.bannerYear(l)).orElse(closingYear(l)).filter(year => l.dating.screeningsSeason.forall(year >= _))
+      val dated   = if (billsAnEncore(l)) l.dating.performanceYear else l.titleYear.orElse(stated)
       // an encore dating no performance airs one of its screenings' season or the season before, as a season's record is
       // encored the next season at most: US Showcase's "The Metropolitan Opera: Samson et Dalila ENCORE (2026)" (9 December
       // 2026) is the Met's 2026/27 broadcast of 5 December
-      val encored = Option.when(billsAnEncore(l))(l.screeningsSeason).flatten
+      val encored = Option.when(billsAnEncore(l))(l.dating.screeningsSeason).flatten
       val seasons = l.seasonYear.map(Set(_)).orElse(dated.orElse(encored).map(year => Set(year - 1, year))).getOrElse(Set.empty)
       Option.when(works.nonEmpty && seasons.nonEmpty)(
         Billed(l.relay.houses.filter(services.titles.StageHouse.namesAHouseInParticular), works, seasons, StageRelays.bannerNamesItsHouse(l),
-          dated.filter(_ => l.seasonYear.isEmpty), l.screeningsSeason, l.airDays))
+          dated.filter(_ => l.seasonYear.isEmpty), l.dating.screeningsSeason, l.dating.airDays))
     }
   }
 
@@ -86,7 +86,7 @@ private[identity] object RelayStage {
    *  "Royal Ballet: The Nutcracker (2021)", screening in 2026/27: the 2021 recording, a production of its own season. */
   def production(l: MeasuredListing): Option[Production] = {
     val houses = particularHouses(l)
-    val season = l.seasonYear.orElse(l.screeningsSeason).filter(season => l.relayBilled.forall(_.seasons(season)))
+    val season = l.seasonYear.orElse(l.dating.screeningsSeason).filter(season => l.relayBilled.forall(_.seasons(season)))
     // a work the house's own fragment carries ("Jezioro łabędzie z opéra national de paris") is billed all the same
     lazy val works = l.relay.workIds ++ StageRelays.stageWorksBilled(l.ownTitles, seasonNamed = true)
     Option.when(houses.nonEmpty && season.nonEmpty && !namesTwoHouses(l) && works.nonEmpty)(
@@ -189,7 +189,7 @@ private[identity] object RelayStage {
   /** Is `year` one a relay's title can close on: the year its screenings' season opens or the next (the owner,
    *  2026-11-16) — "… 2026" in December 2026, "… 27" in January 2027 — never one past it ("… 99" is no 2099 relay), nor
    *  any while it has no screenings to read a season by. */
-  private def inItsSeason(l: MeasuredListing, year: Int): Boolean = l.screeningsSeason.exists(season => year == season || year == season + 1)
+  private def inItsSeason(l: MeasuredListing, year: Int): Boolean = l.dating.screeningsSeason.exists(season => year == season || year == season + 1)
 
   /** The year a title closes on, unbracketed, after its work: UK Palace Cinema Gorleston's "RBO: THE NUTCRACKER 2026"
    *  (1 December 2026) dates the 2026/27 relay by it, as The Beehive Honiton's "The Met: La Fanciulla del West 27" (26

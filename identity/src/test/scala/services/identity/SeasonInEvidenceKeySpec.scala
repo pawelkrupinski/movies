@@ -50,10 +50,10 @@ class SeasonInEvidenceKeySpec extends AnyFlatSpec with Matchers {
   // ([[MeasuredListing.anniversaryFilmYear]]), so it keys the evidence -- but only where an anniversary is billed
   "a listing billing an anniversary" should "carry the year it first screens in, and a listing billing none no year of its days" in {
     val host = listing(KinoMuza, "The Host: 20th Anniversary").copy(screenings = october.screenings)
-    Evidence.of(host, None).measured.anniversaryScreeningYear shouldBe Some(2027)
+    Evidence.of(host, None).measured.dating.anniversaryScreeningYear shouldBe Some(2027)
     Evidence.of(host, None).key should include ("anniversaryScreened:2027")
     val film = listing(KinoMuza, "The Host").copy(screenings = october.screenings)
-    Evidence.of(film, None).measured.anniversaryScreeningYear shouldBe None
+    Evidence.of(film, None).measured.dating.anniversaryScreeningYear shouldBe None
     Evidence.of(film, None).key shouldBe Evidence.of(film.copy(screenings = may.screenings), None).key
   }
 }

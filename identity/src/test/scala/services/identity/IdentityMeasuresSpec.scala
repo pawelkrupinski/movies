@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.ListingDating
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scala.concurrent.duration.DurationInt
@@ -214,62 +216,62 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   // UK Picture House Uckfield's "(ROH)" series (capture 2026-10-13): "Tosca (ROH)" {Oliver Mears} [205′] screens the RBO
   // 2026/27 relay, whose record no search of the work's name reaches; a credit kept the season out of its searches
   "a relay billing its house beside a credit or a running time" should "be searched with the season its screenings fall in" in {
-    val tosca = MeasuredListing("Tosca (ROH)", runtime = Some(205), directors = Seq("Oliver Mears"), screenedSeason = Some(2026))
+    val tosca = MeasuredListing("Tosca (ROH)", runtime = Some(205), directors = Seq("Oliver Mears"), dating = ListingDating(screenedSeason = Some(2026)))
     IdentityMeasures.searchQueries(tosca) should contain ("Tosca 2026")
     // a film named like a stage work, no house billed: its season is no search of it
-    IdentityMeasures.searchQueries(MeasuredListing("Tosca", runtime = Some(105), directors = Seq("Benoît Jacquot"), screenedSeason = Some(2026))) should
+    IdentityMeasures.searchQueries(MeasuredListing("Tosca", runtime = Some(105), directors = Seq("Benoît Jacquot"), dating = ListingDating(screenedSeason = Some(2026)))) should
       not contain "Tosca 2026"
     // a bare stage work stating only a running time names no staging: UK Empire Theatre Halstead's "Romeo and Juliet"
     // [170′], screening on 25 May 2027, is searched with its season, which reaches the RBO 2026/27 relay aired that day
-    IdentityMeasures.searchQueries(MeasuredListing("Romeo and Juliet", runtime = Some(170), screenedSeason = Some(2026))) should
+    IdentityMeasures.searchQueries(MeasuredListing("Romeo and Juliet", runtime = Some(170), dating = ListingDating(screenedSeason = Some(2026)))) should
       contain ("Romeo and Juliet 2026")
     // a year it states that closes the season it screens in is searched as the season's opening year too, as the season's
     // record is titled: UK Riverside Theatre Woodbridge's "Romeo and Juliet (2027)", screening on 25 May 2027, reached the
     // RBO 2026/27 relay only by joining a sibling whose search did ("Romeo and Juliet 2027" finds nothing)
-    IdentityMeasures.searchQueries(MeasuredListing("Romeo and Juliet (2027)", screeningsSeason = Some(2026))) should
+    IdentityMeasures.searchQueries(MeasuredListing("Romeo and Juliet (2027)", dating = ListingDating(screeningsSeason = Some(2026)))) should
       contain allOf ("Romeo and Juliet 2027", "Romeo and Juliet 2026")
     // a year of another season names none of the one it screens in
-    IdentityMeasures.searchQueries(MeasuredListing("Romeo and Juliet (2029)", screeningsSeason = Some(2026))) should not contain "Romeo and Juliet 2026"
+    IdentityMeasures.searchQueries(MeasuredListing("Romeo and Juliet (2029)", dating = ListingDating(screeningsSeason = Some(2026)))) should not contain "Romeo and Juliet 2026"
     // …but a film's title going on past the work names no relay: the musical's name is only its head
-    IdentityMeasures.searchQueries(MeasuredListing("Lord Of The Rings: The Fellowship Of The Ring", runtime = Some(178), screenedSeason = Some(2026))) should
+    IdentityMeasures.searchQueries(MeasuredListing("Lord Of The Rings: The Fellowship Of The Ring", runtime = Some(178), dating = ListingDating(screenedSeason = Some(2026)))) should
       not contain "Lord of the Rings 2026"
     // Flicks dates the relay by the page it links: the year it states is searched, and the season it screens in beside it
-    val carmen = IdentityMeasures.searchQueries(MeasuredListing("Royal Opera House: Carmen", year = Some(2024), runtime = Some(220), screenedSeason = Some(2026)))
+    val carmen = IdentityMeasures.searchQueries(MeasuredListing("Royal Opera House: Carmen", year = Some(2024), runtime = Some(220), dating = ListingDating(screenedSeason = Some(2026))))
     carmen should contain allOf ("Carmen 2024", "Carmen 2026")
     // a relay series' banner beside the work bills the relay as a house does: UK Picture House Uckfield's "Otello (MET)"
     // [200′], Savoy Worksop's "MET:Otello" and DCA's "Live from the Met: Manon" (recording 573) screen the Met's 2026/27
     // relays, which no search of the work's name alone reaches
-    IdentityMeasures.searchQueries(MeasuredListing("Otello (MET)", runtime = Some(200), screenedSeason = Some(2026))) should contain ("Otello 2026")
-    IdentityMeasures.searchQueries(MeasuredListing("MET:Otello", runtime = Some(200), screenedSeason = Some(2026))) should contain ("Otello 2026")
-    IdentityMeasures.searchQueries(MeasuredListing("Live from the Met: Manon", runtime = Some(240), screenedSeason = Some(2026))) should
+    IdentityMeasures.searchQueries(MeasuredListing("Otello (MET)", runtime = Some(200), dating = ListingDating(screenedSeason = Some(2026)))) should contain ("Otello 2026")
+    IdentityMeasures.searchQueries(MeasuredListing("MET:Otello", runtime = Some(200), dating = ListingDating(screenedSeason = Some(2026)))) should contain ("Otello 2026")
+    IdentityMeasures.searchQueries(MeasuredListing("Live from the Met: Manon", runtime = Some(240), dating = ListingDating(screenedSeason = Some(2026)))) should
       contain ("Manon 2026")
     // a relay's title closing on a two-digit year is searched without it: UK The Beehive Honiton's "The Met: La Fanciulla
     // del West 27" (UK mirror 2026-11-15) reaches the Met's 2026/27 record, which TMDB titles with no season, only by
     // "La Fanciulla del West"; "La Fanciulla del West 27" and "La Fanciulla del West 2026" find nothing
-    IdentityMeasures.searchQueries(MeasuredListing("The Met: La Fanciulla del West 27", screeningsSeason = Some(2026))) should
+    IdentityMeasures.searchQueries(MeasuredListing("The Met: La Fanciulla del West 27", dating = ListingDating(screeningsSeason = Some(2026)))) should
       contain ("La Fanciulla del West")
     // a title naming no relay keeps its two digits: "Apollo 13" is no year
-    IdentityMeasures.searchQueries(MeasuredListing("Apollo 13", screeningsSeason = Some(2026))) should not contain "Apollo"
+    IdentityMeasures.searchQueries(MeasuredListing("Apollo 13", dating = ListingDating(screeningsSeason = Some(2026)))) should not contain "Apollo"
   }
 
   // the owner, 2026-11-16 (choice b): a relay's closing year is read only as its screenings' season year or the next one
   "a relay's closing year" should "date it only as the year its screenings' season opens or the next, else stay its title's digits" in {
     // UK Palace Cinema Gorleston's "RBO: THE NUTCRACKER 2026" (1 December 2026), The Beehive Honiton's "The Met: La
     // Fanciulla del West 27" (26 January 2027): both the 2026/27 season's
-    RelayStage.of(MeasuredListing("RBO: THE NUTCRACKER 2026", screeningsSeason = Some(2026))).map(_.seasons) shouldBe Some(Set(2025, 2026))
-    RelayStage.of(MeasuredListing("The Met: La Fanciulla del West 27", screeningsSeason = Some(2026))).map(_.seasons) shouldBe Some(Set(2026, 2027))
+    RelayStage.of(MeasuredListing("RBO: THE NUTCRACKER 2026", dating = ListingDating(screeningsSeason = Some(2026)))).map(_.seasons) shouldBe Some(Set(2025, 2026))
+    RelayStage.of(MeasuredListing("The Met: La Fanciulla del West 27", dating = ListingDating(screeningsSeason = Some(2026)))).map(_.seasons) shouldBe Some(Set(2026, 2027))
     // " 99", " 58" and " 2031" are no year of its season: no 2099, 2058 nor 2031 relay; two digits stay in its search
     Seq("The Met: La Fanciulla del West 99", "The Met: La Fanciulla del West 58", "The Met: La Fanciulla del West 2031").foreach { title =>
-      withClue(title) { RelayStage.of(MeasuredListing(title, screeningsSeason = Some(2026))).toSeq.flatMap(_.seasons).filter(_ > 2027) shouldBe empty }
+      withClue(title) { RelayStage.of(MeasuredListing(title, dating = ListingDating(screeningsSeason = Some(2026)))).toSeq.flatMap(_.seasons).filter(_ > 2027) shouldBe empty }
     }
     Seq("The Met: La Fanciulla del West 99", "The Met: La Fanciulla del West 58").foreach { title =>
-      withClue(title) { IdentityMeasures.searchQueries(MeasuredListing(title, screeningsSeason = Some(2026))) should not contain "La Fanciulla del West" }
+      withClue(title) { IdentityMeasures.searchQueries(MeasuredListing(title, dating = ListingDating(screeningsSeason = Some(2026)))) should not contain "La Fanciulla del West" }
     }
     // no screenings' season to read it by: no closing year either
     IdentityMeasures.searchQueries(MeasuredListing("The Met: La Fanciulla del West 27")) should not contain "La Fanciulla del West"
     // a title naming no relay keeps its digits, as ever
-    RelayStage.of(MeasuredListing("Apollo 13", screeningsSeason = Some(2026))) shouldBe None
-    IdentityMeasures.searchQueries(MeasuredListing("Apollo 13", screeningsSeason = Some(2026))) should not contain "Apollo"
+    RelayStage.of(MeasuredListing("Apollo 13", dating = ListingDating(screeningsSeason = Some(2026)))) shouldBe None
+    IdentityMeasures.searchQueries(MeasuredListing("Apollo 13", dating = ListingDating(screeningsSeason = Some(2026)))) should not contain "Apollo"
   }
 
   // UK Lanternhouse's "Obsession (18)" (wrong-match hunt 10-14): the whole title, searched as billed, found only "80 Day
@@ -344,19 +346,19 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   // DE Eulenspiegel's "King Kong" (Cineamo 244m, German premiere 1933-12-01): since f5784855d an old premiere states no
   // year, and the listing took the 2005 remake. The premiere still bounds the film: none premieres before it is made.
   "a year upper bound" should "weigh as the year it bounds against a film released after it, and only there" in {
-    val bounded = MeasuredListing("King Kong", yearUpperBound = Some(1933))
+    val bounded = MeasuredListing("King Kong", dating = ListingDating(yearUpperBound = Some(1933)))
     measures(bounded, Film("King Kong", year = Some(2005)))("year.delta") shouldBe Number(-72)
     measures(bounded, Film("King Kong", year = Some(2005)))("year.distance") shouldBe Number(72)
     // a film from before the bound's year is no match by it, only not ruled out: no year-equality reward
-    measures(MeasuredListing("Rope", yearUpperBound = Some(1963)), Film("Rope", year = Some(1948)))("year.delta") shouldBe Missing("listing")
+    measures(MeasuredListing("Rope", dating = ListingDating(yearUpperBound = Some(1963))), Film("Rope", year = Some(1948)))("year.delta") shouldBe Missing("listing")
     measures(bounded, Film("King Kong", year = Some(1932)))("year.delta") shouldBe Missing("listing")
     // the film made the premiere's very year is read as of the stated year: DE "Der kleine Prinz" (Cineamo 334199m,
     // premiered 1972) is the 1972 film, not the 1962 or the 1974 namesake
     measures(bounded, Film("King Kong", year = Some(1933)))("year.delta") shouldBe Number(0)
-    measures(MeasuredListing("Der kleine Prinz", yearUpperBound = Some(1972)), Film("Der kleine Prinz", year = Some(1972)))("year.distance") shouldBe Number(0)
-    measures(MeasuredListing("Der kleine Prinz", yearUpperBound = Some(1972)), Film("Der kleine Prinz", year = Some(1962)))("year.delta") shouldBe Missing("listing")
+    measures(MeasuredListing("Der kleine Prinz", dating = ListingDating(yearUpperBound = Some(1972))), Film("Der kleine Prinz", year = Some(1972)))("year.distance") shouldBe Number(0)
+    measures(MeasuredListing("Der kleine Prinz", dating = ListingDating(yearUpperBound = Some(1972))), Film("Der kleine Prinz", year = Some(1962)))("year.delta") shouldBe Missing("listing")
     // a year past the premiere by the adjacency a festival premiere is dated by, and a release TMDB dates by it, are no contradiction
-    measures(MeasuredListing("Momo", yearUpperBound = Some(2024)), Film("Momo", year = Some(2025)))("year.delta") shouldBe Missing("listing")
+    measures(MeasuredListing("Momo", dating = ListingDating(yearUpperBound = Some(2024))), Film("Momo", year = Some(2025)))("year.delta") shouldBe Missing("listing")
     measures(bounded, Film("King Kong", year = Some(2005), releases = Some("DE1933-")))("year.delta") shouldBe Missing("listing")
     // a year the listing states is its own evidence, the bound unread
     measures(bounded.copy(year = Some(2005)), Film("King Kong", year = Some(2005)))("year.delta") shouldBe Number(0)
@@ -367,7 +369,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   // 104 minutes, from its own source -- was 18 years past it (year.delta -6.85, the cannot-link cut at 16.5%).
   "a year upper bound" should "state nothing against a film another venue's own facts back" in {
     val close = Film("Close", year = Some(2022))
-    def corroborated(venues: Int) = IdentityMeasures.listingFilm(MeasuredListing("Close", yearUpperBound = Some(2004)), close, None, 0, venues)
+    def corroborated(venues: Int) = IdentityMeasures.listingFilm(MeasuredListing("Close", dating = ListingDating(yearUpperBound = Some(2004))), close, None, 0, venues)
     corroborated(0)("year.delta") shouldBe Number(-18)
     corroborated(1)("year.delta") shouldBe Missing("listing")
     corroborated(1)("year.distance") shouldBe Missing("listing")
@@ -422,14 +424,14 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   // prod US 2026-11-15: Alamo Drafthouse ×15 "The Host: 20th Anniversary", screening in 2026 and stating no year, names
   // Bong Joon-ho's 2006 film and Niccol's 2013 one alike: it stayed BelowThreshold, the anniversary unread
   it should "date a listing stating no year by the year it screens in less the anniversary's, for its film only" in {
-    val host = MeasuredListing("The Host: 20th Anniversary", anniversaryScreeningYear = Some(2026))
+    val host = MeasuredListing("The Host: 20th Anniversary", dating = ListingDating(anniversaryScreeningYear = Some(2026)))
     val bong = Film("The Host", year = Some(2006))
     measures(host, bong)("year.delta") shouldBe Number(0)
     measures(host, bong)("year.distance") shouldBe Number(0)
     measures(host, bong.copy(year = Some(2007)))("year.delta") shouldBe Number(-1)
     // a re-release tours into the year after its anniversary: DE Filmpalette's "LA HAINE (30TH ANNIVERSARY)", screening
     // in 2026, is Kassovitz's 1995 film, read as dated, not as a year early (a `year.delta` of 1 weighs against a film)
-    val laHaine = MeasuredListing("LA HAINE (30TH ANNIVERSARY)", anniversaryScreeningYear = Some(2026))
+    val laHaine = MeasuredListing("LA HAINE (30TH ANNIVERSARY)", dating = ListingDating(anniversaryScreeningYear = Some(2026)))
     measures(laHaine, Film("La Haine", year = Some(1995)))("year.delta") shouldBe Number(0)
     measures(laHaine, Film("La Haine", year = Some(1995)))("year.distance") shouldBe Number(0)
     measures(laHaine, Film("La Haine", year = Some(1996)))("year.delta") shouldBe Number(0)
@@ -439,7 +441,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(host, Film("The Host", year = Some(2013)))("year.delta") shouldBe Missing("listing")
     // a year the listing states is its own fact, and a listing billing no anniversary is dated by nothing
     measures(host.copy(year = Some(2013)), bong)("year.delta") shouldBe Number(7)
-    measures(MeasuredListing("The Host", anniversaryScreeningYear = Some(2026)), bong)("year.delta") shouldBe Missing("listing")
+    measures(MeasuredListing("The Host", dating = ListingDating(anniversaryScreeningYear = Some(2026))), bong)("year.delta") shouldBe Missing("listing")
     measures(MeasuredListing("The Host: 20th Anniversary"), bong)("year.delta") shouldBe Missing("listing")
   }
 
@@ -562,12 +564,12 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
 
   "a stage work billed with neither its season nor a year" should "be searched by its work's names and the season it is broadcast in" in {
     // PL Kino Amok's "Samson i Dalila", Kino Powiśle's "OPERA-MAKBET - retransmisja", screening in the 2026/27 season
-    IdentityMeasures.searchQueries(MeasuredListing("Samson i Dalila", broadcastSeason = Some(2026))) should contain allOf ("Samson et Dalila 2026", "Samson and Delilah 2026")
-    IdentityMeasures.searchQueries(MeasuredListing("Opera-makbet - retransmisja", broadcastSeason = Some(2026))) should contain ("Macbeth 2026")
+    IdentityMeasures.searchQueries(MeasuredListing("Samson i Dalila", dating = ListingDating(broadcastSeason = Some(2026)))) should contain allOf ("Samson et Dalila 2026", "Samson and Delilah 2026")
+    IdentityMeasures.searchQueries(MeasuredListing("Opera-makbet - retransmisja", dating = ListingDating(broadcastSeason = Some(2026)))) should contain ("Macbeth 2026")
     // with no broadcast season, no season is searched
     IdentityMeasures.searchQueries(MeasuredListing("Samson i Dalila")).exists(_.endsWith(" 2026")) shouldBe false
     // a work only contained mid-title, or opening a title naming no season, is no stage work billed: "Manon des sources"
-    IdentityMeasures.searchQueries(MeasuredListing("Manon des sources", broadcastSeason = Some(2026))).exists(_.endsWith(" 2026")) shouldBe false
+    IdentityMeasures.searchQueries(MeasuredListing("Manon des sources", dating = ListingDating(broadcastSeason = Some(2026)))).exists(_.endsWith(" 2026")) shouldBe false
   }
 
   "a double bill" should "search each work on its own" in {
@@ -937,7 +939,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   }
 
   "a stage house's relay" should "deny another production of its work than the season its screenings fall in" in {
-    def relay(title: String, year: Option[Int] = None) = MeasuredListing(title, year = year, screenedSeason = Some(2026))
+    def relay(title: String, year: Option[Int] = None) = MeasuredListing(title, year = year, dating = ListingDating(screenedSeason = Some(2026)))
     def another(listing: MeasuredListing, film: Film, country: String = "GB") = StageRelays.anotherProduction(listing, film, Some(country))
     // UK Savoy Boston's "Opéra De Paris Ballet - Notre-Dame de Paris" ×6, screening March 2027 (the Paris Opera's Dec 2025
     // recording), took La Scala's 2013 "La Scala Ballet: Notre-Dame de Paris" (790330) by the work's name alone
@@ -956,7 +958,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     another(relay("Met Opera 2026-27: Tosca"), Film("Royal Ballet & Opera 2026/27: Tosca", year = Some(2027))) shouldBe true
     another(relay("RBO Cinema Season 2026-27: Romeo and Juliet"), rboRomeo) shouldBe false
     // as a billing naming its season reads it (no screened season then: [[MeasuredListing.screenedSeason]])
-    def named(title: String) = MeasuredListing(title, screeningsSeason = Some(2026))
+    def named(title: String) = MeasuredListing(title, dating = ListingDating(screeningsSeason = Some(2026)))
     another(named("Balet z Opery Paryskiej 2026-2027: Romeo i Julia"), rboRomeo) shouldBe true
     another(named("RBO Cinema Season 2026-27: Macbeth"), Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026))) shouldBe false
     another(named("Royal Ballet and Opera Sezon Kinowy 2026-27: Romeo i Julia"), rboRomeo) shouldBe false
@@ -1003,7 +1005,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     another(relay("Phantom of the Opera"), Film("The Phantom of the Opera (Royal Albert Hall)", year = Some(2011))) shouldBe false
     // a record naming no house, or no screenings to date the relay, denies nothing
     another(paris, Film("Notre-Dame de Paris", year = Some(1956))) shouldBe false
-    another(paris.copy(screenedSeason = None), scala) shouldBe false
+    another(paris.copy(dating = paris.dating.copy(screenedSeason = None)), scala) shouldBe false
   }
 
   "a stage house's relay" should "read a house's initials that punctuation splits" in {
@@ -1284,7 +1286,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // record of the relay (1791571, 2027). The 40 minutes weighed -4.26 and left the one node of their shared boxoffice id
     // at 37.1%, under the cut.
     val record = Film("National Theatre Live: Hay Fever", year = Some(2027), runtime = Some(120), directors = Some(Seq("Emily Burns")))
-    def relay(title: String, runtime: Int) = MeasuredListing(title, runtime = Some(runtime), screeningsSeason = Some(2026))
+    def relay(title: String, runtime: Int) = MeasuredListing(title, runtime = Some(runtime), dating = ListingDating(screeningsSeason = Some(2026)))
     val billed = measures(relay("National Theatre Live: Hay Fever", 160), record)
     billed("runtime.delta") shouldBe Missing("listing")
     IdentityMeasures.runtimeContradicts(billed) shouldBe false

@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.ListingDating
+
 import services.titles.billing.BillingParse
 
 import models.KinoMuza
@@ -79,7 +81,7 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     // DE Pornfilmfestival Berlin (recording 38713274617): "The more the merrier", a shorts programme, took Stevens' 1943
     // comedy at 39.1% on its bare title — as "Cyberfuck" took the 2026 film
     def billed(raw: String, year: Option[Int] = None, runtime: Option[Int] = None) =
-      MeasuredListing(raw.split(": ").last, Some(raw), year = year, runtime = runtime, screeningsSeason = Some(2026))
+      MeasuredListing(raw.split(": ").last, Some(raw), year = year, runtime = runtime, dating = ListingDating(screeningsSeason = Some(2026)))
     val merrier = Film("The More the Merrier", year = Some(1943))
     val cyber   = Film("Cyberfuck", year = Some(2026))
     ListingShape.festivalsCatalogueNamesake(billed("Pornfilmfestival: The more the merrier"), merrier) shouldBe true
@@ -100,7 +102,7 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     // DE Pornfilmfestival Berlin (recording 573): "The Dating Game" took Netflix's 2024 "Woman of the Hour" (TMDB's German
     // alternative title "The Dating Game") at 50.7% beside Violet Du Feng's 2025 documentary of that title
     def billed(raw: String, year: Option[Int] = None) =
-      MeasuredListing(raw.split(": ").last, Some(raw), year = year, screeningsSeason = Some(2026))
+      MeasuredListing(raw.split(": ").last, Some(raw), year = year, dating = ListingDating(screeningsSeason = Some(2026)))
     val hour   = Film("Woman of the Hour", year = Some(2024), directors = Some(Seq("Anna Kendrick")))
     val dating = Film("The Dating Game", year = Some(2025), directors = Some(Seq("Violet Du Feng")))
     ListingShape.festivalsOlderNamesake(billed("Pornfilmfestival: The Dating Game"), hour, dating) shouldBe true

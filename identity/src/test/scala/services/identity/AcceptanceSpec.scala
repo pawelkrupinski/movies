@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.ListingDating
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.IdentityMeasures.{ListingFilm, Qualifiers}
@@ -84,7 +86,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
   it should "take the record of the season its screenings broadcast it in, whatever earlier year dates its staging" in {
     // ...and screening on 25 May 2027, the day "Royal Ballet & Opera 2026/27: Romeo and Juliet" airs: its 2025 dates the
     // staging's premiere, not the broadcast; the 2021/22 record stays another season's
-    val rj = MeasuredListing("The Royal Ballet: Romeo & Juliet", year = Some(2025), runtime = Some(170), screenedSeason = Some(2026))
+    val rj = MeasuredListing("The Royal Ballet: Romeo & Juliet", year = Some(2025), runtime = Some(170), dating = ListingDating(screenedSeason = Some(2026)))
     val season = (1702789, Film("Royal Ballet & Opera 2026/27: Romeo and Juliet", year = Some(2027)), Some(7))
     acceptance.byRule("season-record")(ranked(rj, season)).map(_._1.candidate.tmdbId) shouldBe Some(1702789)
     acceptance.byRule("season-record")(ranked(rj, (875143, Film("The Royal Ballet: Romeo and Juliet (2021/22)", runtime = Some(170)), Some(5)))) shouldBe None
@@ -94,18 +96,18 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // UK recording 38342304766: ~30 venues bill the RBO's Swan Lake relay of 22 April 2027 with no season or year
     // ("Royal Ballet & Opera: Swan Lake", Pocklington Arts Centre); TMDB holds the house's 2024/25 and 2026/27
     // records of it, so each venue's listing was left unidentified as a film of its own.
-    val swanLake = MeasuredListing("Royal Ballet & Opera: Swan Lake", broadcastSeason = Some(2026), screenedSeason = Some(2026))
+    val swanLake = MeasuredListing("Royal Ballet & Opera: Swan Lake", dating = ListingDating(broadcastSeason = Some(2026), screenedSeason = Some(2026)))
     val seasons  = Seq((1300034, Film("Royal Ballet & Opera 2024/25: Swan Lake", year = Some(2025)), Some(1)),
       (1702782, Film("Royal Ballet & Opera 2026/27: Swan Lake", year = Some(2027)), Some(2)))
     acceptance.byRule("season-record")(ranked(swanLake, seasons *)).map(_._1.candidate.tmdbId) shouldBe Some(1702782)
     // screening in neither season leaves the two to nobody
-    acceptance.byRule("season-record")(ranked(swanLake.copy(broadcastSeason = Some(2028), screenedSeason = Some(2028)), seasons *)) shouldBe None
+    acceptance.byRule("season-record")(ranked(swanLake.copy(dating = swanLake.dating.copy(broadcastSeason = Some(2028), screenedSeason = Some(2028))), seasons *)) shouldBe None
   }
 
   "a relay billing its house and no season" should "take its house's record of the season its screenings broadcast it in" in {
     // Prod UK 2026-10-13: Filmhouse Newlyn's "MET: Macbeth" screening 17 October 2026 took the Met's 2014 staging by
     // house-production, beside its 2026/27 record; Kendal's "Romeo & Juliet - The Royal Ballet" (May 2027) took 2013's.
-    val macbeth     = MeasuredListing("MET: Macbeth", broadcastSeason = Some(2026), screenedSeason = Some(2026))
+    val macbeth     = MeasuredListing("MET: Macbeth", dating = ListingDating(broadcastSeason = Some(2026), screenedSeason = Some(2026)))
     val staging2014 = (295526, Film("The Metropolitan Opera - Verdi: Macbeth", year = Some(2014), runtime = Some(169)), Some(1))
     val season2026  = (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026)), Some(2))
     taken(ranked(macbeth, staging2014, season2026)) shouldBe Some(1703622)
@@ -113,36 +115,35 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.pooled(ranked(macbeth, staging2014, season2026)).map(_._1.candidate.tmdbId) shouldBe Some(1703622)
     // ...but a year before the season its screenings fall in dates the staging: UK Aldeburgh's "Royal Ballet: The
     // Nutcracker" [2025], screening in the 2026/27 season, took the 2025/26 record by its year once pooled
-    val nutcracker = MeasuredListing("Royal Ballet: The Nutcracker", year = Some(2025), runtime = Some(140), screenedSeason = Some(2026), screeningsSeason = Some(2026))
+    val nutcracker = MeasuredListing("Royal Ballet: The Nutcracker", year = Some(2025), runtime = Some(140), dating = ListingDating(screenedSeason = Some(2026), screeningsSeason = Some(2026)))
     val season2025 = (1483678, Film("Royal Ballet & Opera 2025/26: The Nutcracker", year = Some(2025)), Some(1))
     acceptance.byRule("relay-record")(ranked(nutcracker, season2025)) shouldBe None
     // a year dating a relay spans two seasons: of a record in each, the one dated that very year — UK Palace Cinema
     // Gorleston's "RBO: THE NUTCRACKER 2026" (1 December 2026) is the 2026/27 relay, not the 2025/26 one
-    val gorleston  = MeasuredListing("RBO: THE NUTCRACKER", rawTitle = Some("RBO: THE NUTCRACKER 2026"), year = Some(2026), screeningsSeason = Some(2026))
+    val gorleston  = MeasuredListing("RBO: THE NUTCRACKER", rawTitle = Some("RBO: THE NUTCRACKER 2026"), year = Some(2026), dating = ListingDating(screeningsSeason = Some(2026)))
     val nutcracker2026 = (1702761, Film("Royal Ballet & Opera 2026/27: The Nutcracker", year = Some(2026)), Some(2))
     acceptance.byRule("relay-record")(ranked(gorleston, season2025, nutcracker2026)).map(_._1.candidate.tmdbId) shouldBe Some(1702761)
     // its venue states no year: the one its title closes on dates the relay (recording 573)
-    val gorlestonAsBilled = MeasuredListing("RBO: THE NUTCRACKER 2026", searchTitles = Seq("Royal Ballet & Opera: THE NUTCRACKER 2026"), screeningsSeason = Some(2026))
+    val gorlestonAsBilled = MeasuredListing("RBO: THE NUTCRACKER 2026", searchTitles = Seq("Royal Ballet & Opera: THE NUTCRACKER 2026"), dating = ListingDating(screeningsSeason = Some(2026)))
     acceptance.byRule("relay-record")(ranked(gorlestonAsBilled, season2025, nutcracker2026)).map(_._1.candidate.tmdbId) shouldBe Some(1702761)
     // ...and so does a year it closes on shortened to two digits: UK The Beehive Honiton's "The Met: La Fanciulla del West
     // 27" (26 January 2027, UK mirror 2026-11-15) is the Met's 2026/27 relay aired 23 January 2027, whose record TMDB
     // titles with no season; its "The Met: Samson and Delilah 26" (December 2026) the 2026/27 Samson
-    val fanciulla   = MeasuredListing("The Met: La Fanciulla del West 27", screeningsSeason = Some(2026))
+    val fanciulla   = MeasuredListing("The Met: La Fanciulla del West 27", dating = ListingDating(screeningsSeason = Some(2026)))
     val fanciulla27 = (1703629, Film("The Metropolitan Opera: La Fanciulla del West", year = Some(2027),
       released = Some(java.time.LocalDate.of(2027, 1, 23))), None)
     val fanciulla18 = (552397, Film("The Metropolitan Opera: La Fanciulla del West", year = Some(2018),
       released = Some(java.time.LocalDate.of(2018, 10, 27))), Some(1))
     acceptance.byRule("relay-record")(ranked(fanciulla, fanciulla18, fanciulla27)).map(_._1.candidate.tmdbId) shouldBe Some(1703629)
-    val samsonShort   = MeasuredListing("The Met: Samson and Delilah 26", screeningsSeason = Some(2026))
+    val samsonShort   = MeasuredListing("The Met: Samson and Delilah 26", dating = ListingDating(screeningsSeason = Some(2026)))
     val samsonSeason  = (1703624, Film("The Metropolitan Opera 2026/27: Samson et Dalila", year = Some(2026)), None)
     acceptance.byRule("relay-record")(ranked(samsonShort, samsonSeason)).map(_._1.candidate.tmdbId) shouldBe Some(1703624)
     // two digits before its screenings' season date nothing, as four do not
-    acceptance.byRule("relay-record")(ranked(MeasuredListing("The Met: La Fanciulla del West 18", screeningsSeason = Some(2026)), fanciulla18, fanciulla27)) shouldBe None
+    acceptance.byRule("relay-record")(ranked(MeasuredListing("The Met: La Fanciulla del West 18", dating = ListingDating(screeningsSeason = Some(2026))), fanciulla18, fanciulla27)) shouldBe None
     // a record of its screenings' season aired on a day it screens is the broadcast, whatever older year its title dates
     // the staging by: UK Ilkley's "The Royal Ballet: The Nutcracker (2025)" (1 December 2026, recording 573) is the 2026/27
     // relay aired 29 November -- 112 Flicks venues bill it "RBO Cinema Season 2026-27: The Nutcracker (2025)"
-    def ilkley(day: Int, month: Int) = MeasuredListing("The Royal Ballet: The Nutcracker (2025)", screeningsSeason = Some(2026),
-      airDays = Seq(java.time.LocalDate.of(2026, month, day)))
+    def ilkley(day: Int, month: Int) = MeasuredListing("The Royal Ballet: The Nutcracker (2025)", dating = ListingDating(screeningsSeason = Some(2026), airDays = Seq(java.time.LocalDate.of(2026, month, day))))
     val aired2025 = (1483678, Film("Royal Ballet & Opera 2025/26: The Nutcracker", year = Some(2025), released = Some(java.time.LocalDate.of(2025, 12, 10))), Some(1))
     val aired2026 = (1702761, Film("Royal Ballet & Opera 2026/27: The Nutcracker", year = Some(2026), released = Some(java.time.LocalDate.of(2026, 11, 29))), Some(2))
     acceptance.byRule("relay-record")(ranked(ilkley(1, 12), aired2025, aired2026)).map(_._1.candidate.tmdbId) shouldBe Some(1702761)
@@ -153,7 +154,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // Metropolitan Opera: Samson et Dalila ENCORE (2026)" {Louisa Proske} (9 December 2026, recording 573) is the Met's
     // 2026/27 Samson (Darko Tresnjak), not the 2018 one; Proske directs the Met's 2026/27 Macbeth
     val samsonEncore = MeasuredListing("The Metropolitan Opera: Samson et Dalila ENCORE (2026)", runtime = Some(234), directors = Seq("Louisa Proske"),
-      searchTitles = Seq("The Metropolitan Opera: Samson et Dalila (2026)"), screeningsSeason = Some(2026))
+      searchTitles = Seq("The Metropolitan Opera: Samson et Dalila (2026)"), dating = ListingDating(screeningsSeason = Some(2026)))
     val samson2026 = (1703624, Film("The Metropolitan Opera 2026/27: Samson et Dalila", year = Some(2026), directors = Some(Seq("Darko Tresnjak"))), Some(2))
     val samson2018 = (543703, Film("The Metropolitan Opera: Samson et Dalila", year = Some(2018), directors = Some(Seq("Gary Halvorson"))), Some(6))
     val macbethMet = (1703622, Film("The Metropolitan Opera: Macbeth", year = Some(2026), directors = Some(Seq("Louisa Proske"))), None)
@@ -161,11 +162,11 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // a credit no record of another of its house's works carries still denies
     acceptance.byRule("relay-record")(ranked(samsonEncore, samson2026, samson2018)) shouldBe None
     // a record of another season than its screenings' is no staging it screens, however its house bills the work
-    acceptance.byRule("season-record")(ranked(macbeth.copy(broadcastSeason = Some(2027), screenedSeason = Some(2027)), staging2014, season2026)) shouldBe None
+    acceptance.byRule("season-record")(ranked(macbeth.copy(dating = macbeth.dating.copy(broadcastSeason = Some(2027), screenedSeason = Some(2027))), staging2014, season2026)) shouldBe None
     // nor is another house's: "MET" names no Royal Ballet & Opera
     acceptance.byRule("season-record")(ranked(macbeth, (1, Film("Royal Ballet & Opera 2026/27: Macbeth", year = Some(2027)), Some(1)))) shouldBe None
 
-    val romeo = MeasuredListing("Romeo & Juliet - The Royal Ballet", broadcastSeason = Some(2026), screenedSeason = Some(2026))
+    val romeo = MeasuredListing("Romeo & Juliet - The Royal Ballet", dating = ListingDating(broadcastSeason = Some(2026), screenedSeason = Some(2026)))
     taken(ranked(romeo, (476204, Film("Romeo and Juliet (Royal Ballet)", year = Some(2013), runtime = Some(168)), Some(1)),
       (1451897, Film("The Royal Ballet: Romeo and Juliet", year = Some(2025), runtime = Some(175)), Some(3)),
       (1702789, Film("Royal Ballet & Opera 2026/27: Romeo and Juliet", year = Some(2027)), Some(2)))) shouldBe Some(1702789)
@@ -176,21 +177,21 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // it screens on 17 October 2026; an encore of an old capture screening in that season, on no air day, keeps its year
     val day       = java.time.LocalDate.of(2026, 10, 17)
     val season    = (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026), released = Some(day)), Some(1))
-    val revival   = MeasuredListing("MET Opera: Macbeth (Verdi)", year = Some(2014), screenedSeason = Some(2026), airDays = Seq(day.plusDays(1)))
+    val revival   = MeasuredListing("MET Opera: Macbeth (Verdi)", year = Some(2014), dating = ListingDating(screenedSeason = Some(2026), airDays = Seq(day.plusDays(1))))
     acceptance.byRule("season-record")(ranked(revival, season)).map(_._1.candidate.tmdbId) shouldBe Some(1703622)
-    acceptance.byRule("season-record")(ranked(revival.copy(airDays = Seq(day.plusMonths(4))), season)) shouldBe None
+    acceptance.byRule("season-record")(ranked(revival.copy(dating = revival.dating.copy(airDays = Seq(day.plusMonths(4)))), season)) shouldBe None
   }
 
   it should "take the season record of its work when its title dates it by a bare year" in {
     // Prod UK 2026-10-13: The Beehive Honiton's "RBO: Tosca 27" and "RBO: Swan Lake 27", and Chichester's "Macbeth (Met
     // Opera)", each left its season's record, TMDB's first hit, below the threshold.
-    taken(ranked(MeasuredListing("RBO: Tosca 27", broadcastSeason = Some(2026), screenedSeason = Some(2026)),
+    taken(ranked(MeasuredListing("RBO: Tosca 27", dating = ListingDating(broadcastSeason = Some(2026), screenedSeason = Some(2026))),
       (1702784, Film("Royal Ballet & Opera 2026/27: Tosca", year = Some(2027)), Some(1)),
       (1482356, Film("Royal Ballet & Opera 2025/26: Tosca", year = Some(2025), runtime = Some(195)), Some(2)))) shouldBe Some(1702784)
-    taken(ranked(MeasuredListing("RBO: Swan Lake 27", broadcastSeason = Some(2026), screenedSeason = Some(2026)),
+    taken(ranked(MeasuredListing("RBO: Swan Lake 27", dating = ListingDating(broadcastSeason = Some(2026), screenedSeason = Some(2026))),
       (1702782, Film("Royal Ballet & Opera 2026/27: Swan Lake", year = Some(2027)), Some(1)),
       (1300034, Film("Royal Ballet & Opera 2024/25: Swan Lake", year = Some(2025), runtime = Some(210)), Some(2)))) shouldBe Some(1702782)
-    taken(ranked(MeasuredListing("Macbeth (Met Opera)", broadcastSeason = Some(2026), screenedSeason = Some(2026)),
+    taken(ranked(MeasuredListing("Macbeth (Met Opera)", dating = ListingDating(broadcastSeason = Some(2026), screenedSeason = Some(2026))),
       (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026)), Some(1)))) shouldBe Some(1703622)
   }
 
@@ -198,14 +199,14 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // Identity measure on recording 38363428661: DE "PARIS OPERA: ROMEO UND JULIA" ×12 took the Royal Ballet's 2026/27
     // record by the word "opera", UK "La Fanciulla Del West - Royal Opera" the Met's, and ES "Manon de Jules Massenet -
     // Ópera (Cine)" ×14 MacMillan's ballet — "Manon" names Massenet's opera too, and "Ópera" no house.
-    taken(ranked(MeasuredListing("PARIS OPERA: ROMEO UND JULIA", broadcastSeason = Some(2026), screenedSeason = Some(2026)),
+    taken(ranked(MeasuredListing("PARIS OPERA: ROMEO UND JULIA", dating = ListingDating(broadcastSeason = Some(2026), screenedSeason = Some(2026))),
       (1702789, Film("RBO 2026/27: Romeo und Julia (The Royal Ballet)", year = Some(2027)), Some(1)))) shouldBe None
-    taken(ranked(MeasuredListing("La Fanciulla Del West - Royal Opera", broadcastSeason = Some(2026), screenedSeason = Some(2026)),
+    taken(ranked(MeasuredListing("La Fanciulla Del West - Royal Opera", dating = ListingDating(broadcastSeason = Some(2026), screenedSeason = Some(2026))),
       (1703629, Film("The Metropolitan Opera 2026/27: La Fanciulla del West", year = Some(2027)), Some(1)))) shouldBe None
-    taken(ranked(MeasuredListing("Manon de Jules Massenet - Ópera (Cine)", broadcastSeason = Some(2026), screenedSeason = Some(2026)),
+    taken(ranked(MeasuredListing("Manon de Jules Massenet - Ópera (Cine)", dating = ListingDating(broadcastSeason = Some(2026), screenedSeason = Some(2026))),
       (1702757, Film("Royal Ballet & Opera 2026/27: Manon", year = Some(2026)), Some(1)))) shouldBe None
     // a banner naming no house, over the one work it names, still takes its season's record
-    taken(ranked(MeasuredListing("OPERA-PARSIFAL", broadcastSeason = Some(2026), screenedSeason = Some(2026)),
+    taken(ranked(MeasuredListing("OPERA-PARSIFAL", dating = ListingDating(broadcastSeason = Some(2026), screenedSeason = Some(2026))),
       (1703636, Film("The Metropolitan Opera 2026/27: Parsifal", year = Some(2027)), Some(1)))) shouldBe Some(1703636)
   }
 
@@ -214,11 +215,11 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // threshold; DE recording 38351832400: "RBO live 2027: Tosca" took the ROH's 2011 Tosca by IMDb's suggestion, and
     // Cinema Stuttgart's "Metropolitan Opera: Macbeth (Verdi)" the Met's 2014 staging.
     val samson1949 = (29993, Film("Samson and Delilah", year = Some(1949), runtime = Some(134)), Some(2))
-    taken(ranked(MeasuredListing("OPERA-SAMSON I DALILA", broadcastSeason = Some(2026), screenedSeason = Some(2026)),
+    taken(ranked(MeasuredListing("OPERA-SAMSON I DALILA", dating = ListingDating(broadcastSeason = Some(2026), screenedSeason = Some(2026))),
       (1703624, Film("The Metropolitan Opera 2026/27: Samson et Dalila", year = Some(2026)), Some(1)), samson1949)) shouldBe Some(1703624)
     taken(ranked(MeasuredListing("RBO live 2027: Tosca"), (181442, Film("Royal Opera House: Tosca", year = Some(2011), runtime = Some(128)), Some(1)),
       (1702784, Film("Royal Ballet & Opera 2026/27: Tosca", year = Some(2027)), Some(2)))) shouldBe Some(1702784)
-    taken(ranked(MeasuredListing("Metropolitan Opera: Macbeth (Verdi)", broadcastSeason = Some(2026), screenedSeason = Some(2026)),
+    taken(ranked(MeasuredListing("Metropolitan Opera: Macbeth (Verdi)", dating = ListingDating(broadcastSeason = Some(2026), screenedSeason = Some(2026))),
       (295526, Film("The Metropolitan Opera - Verdi: Macbeth", year = Some(2014), runtime = Some(169)), Some(1)),
       (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026)), Some(2)))) shouldBe Some(1703622)
   }
@@ -240,7 +241,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       "Met Opera in Association with RBO: Macbeth (12A)" -> macbeth) // Theatr Mwldan Cardigan
     billed.filterNot { case (title, record) =>
       StageRelays.stageWorksBilled(Seq(title), seasonNamed = false).nonEmpty &&
-        taken(ranked(MeasuredListing(title, broadcastSeason = Some(2026), screenedSeason = Some(2026)), record)).contains(record._1)
+        taken(ranked(MeasuredListing(title, dating = ListingDating(broadcastSeason = Some(2026), screenedSeason = Some(2026))), record)).contains(record._1)
     }.map(_._1) shouldBe empty
   }
 

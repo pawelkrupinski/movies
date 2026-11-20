@@ -201,7 +201,7 @@ object ListingShape {
    *  comedy, its "No Mercy" (Willinger's 2026 documentary) not Pearce's 1986 thriller — beside "Cyberfuck", the 2026 film
    *  at the same 39.1% on the same bare title. */
   def festivalsCatalogueNamesake(listing: MeasuredListing, film: Film): Boolean =
-    film.year.exists(year => listing.screeningsSeason.exists(_ - year >= FestivalCatalogueYears)) && festivalsBareBilling(listing, film)
+    film.year.exists(year => listing.dating.screeningsSeason.exists(_ - year >= FestivalCatalogueYears)) && festivalsBareBilling(listing, film)
 
   /** Is the listing a bare billing under a FILM FESTIVAL's banner that names none of `film`'s directors — no year,
    *  director or running time stated, the banner a colon or a pipe closes naming a film festival? Its title names the

@@ -138,7 +138,7 @@ private[identity] object YearRuntimeMeasures {
    *  season's own relay, not the house's earlier recording of the work, whose shorter running time still tells it apart
    *  (UK "Royal Ballet: La Bayadère" [170′], screening in 2026/27, is no 2018 recording of 128 minutes, 555004). */
   private def recordsTheScreenedSeason(l: MeasuredListing, f: Film): Boolean =
-    l.screeningsSeason.exists(season => f.year.exists(year => year == season || year == season + 1))
+    l.dating.screeningsSeason.exists(season => f.year.exists(year => year == season || year == season + 1))
 
   /** Does the listing's billing join an event to its film ([[joinedEvents]]: "+ Q&A", "+ Recorded Q&A", "+ Interval"),
    *  whose minutes its running time may hold beside the film's? A second feature ("Panem-Mockingjay 1+2") is no event. */

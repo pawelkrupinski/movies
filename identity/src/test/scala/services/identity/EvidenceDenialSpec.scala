@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.vocabulary.ListingDating
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -29,13 +31,13 @@ class EvidenceDenialSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "deny another production of its work than the season its screenings fall in" in {
-    val paris = MeasuredListing("Opéra De Paris Ballet - Notre-Dame de Paris", screenedSeason = Some(2026))
+    val paris = MeasuredListing("Opéra De Paris Ballet - Notre-Dame de Paris", dating = ListingDating(screenedSeason = Some(2026)))
     val scala = Film("La Scala Ballet: Notre-Dame de Paris", Some("Roland Petit: Notre-Dame de Paris (Teatro alla Scala)"), year = Some(2013))
     denial(paris, scala) shouldBe Some("another production of its work than the season its screenings fall in" -> Denial.Kind.Evidence)
   }
 
   it should "deny a catalogue namesake of a bare billing under a film festival's banner" in {
-    val billed = MeasuredListing("The more the merrier", Some("Pornfilmfestival: The more the merrier"), screeningsSeason = Some(2026))
+    val billed = MeasuredListing("The more the merrier", Some("Pornfilmfestival: The more the merrier"), dating = ListingDating(screeningsSeason = Some(2026)))
     denial(billed, Film("The More the Merrier", year = Some(1943)), "DE") shouldBe
       Some("a catalogue namesake of a bare billing under a film festival's banner" -> Denial.Kind.Evidence)
   }

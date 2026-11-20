@@ -77,7 +77,7 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
    *  every rule, as [[seasonProduction]] does a season the title names — a house's other stagings of the work (the Met's
    *  2014 "Macbeth", the Royal Ballet's 2013 "Romeo and Juliet") are other broadcasts than the one the venue screens. */
   private[identity] def broadcastSeasonRecord(weighing: Weighing): Option[Accepted] = seasonRecord(weighing).filter { case (record, _) =>
-    record.listing.screenedSeason.exists(record.candidate.film.season.contains)
+    record.listing.dating.screenedSeason.exists(record.candidate.film.season.contains)
   }
   /** The relay's record ([[relayRecord]]) or the season record its screenings' season names ([[broadcastSeasonRecord]]),
    *  with the rule naming it: what pre-empts the rules after [[seasonProduction]]. */
@@ -113,7 +113,7 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
    *  38342304766, ~30 venues billing no season or year), screening on 22 April 2027, is the 2026/27 record, not the
    *  house's 2024/25 one. */
   private[identity] def ofItsBroadcastSeason(records: Seq[Scored]): Seq[Scored] =
-    records.headOption.flatMap(_.listing.screenedSeason).filter(_ => records.sizeIs > 1)
+    records.headOption.flatMap(_.listing.dating.screenedSeason).filter(_ => records.sizeIs > 1)
       .map(season => records.filter(record => record.candidate.film.season.contains(season)))
       .filter(_.nonEmpty).getOrElse(records)
 }

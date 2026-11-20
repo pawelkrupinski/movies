@@ -253,7 +253,7 @@ object StageRelays {
    *  it reaches — keeps the 2015 broadcast the shared Flicks page dates it by. `country`: the venue's (ISO-3166-1), where
    *  a cinema season's banner is read ([[services.titles.StageHouse.isSeasonBanner]]). */
   def anotherProduction(listing: MeasuredListing, film: Film, country: Option[String]): Boolean =
-    listing.billsAStageHouse && (anotherHousesRelay(listing, film, country) || listing.screenedSeason.exists(season =>
+    listing.billsAStageHouse && (anotherHousesRelay(listing, film, country) || listing.dating.screenedSeason.exists(season =>
       anotherSeasonsRelay(film, season) || billsAnotherHouse(listing, film) && (
         if (billsAHouseInParticular(listing)) services.evidence.ListingConstraints.seasonsApart(Some(season), film.season, film.year).isDefined
         else listing.year.isEmpty && listing.relay.workIds.nonEmpty && datedAway(film, season))))
@@ -267,7 +267,7 @@ object StageRelays {
    *  Pocklington's "Royal Ballet & Opera: Macbeth" (the owner, 2026-11-13) — in the countries whose venues bill it so:
    *  PL's "Royal Ballet and Opera Sezon Kinowy" and DE's "RBO Kino Saison" bill only the house's own relays. */
   private def anotherHousesRelay(listing: MeasuredListing, film: Film, country: Option[String]): Boolean =
-    listing.seasonYear.orElse(listing.screenedSeason).isDefined && billsAHouseInParticular(listing) &&
+    listing.seasonYear.orElse(listing.dating.screenedSeason).isDefined && billsAHouseInParticular(listing) &&
       !listing.relay.houses.exists(services.titles.StageHouse.isSeasonBanner(_, country)) && billsAnotherHouse(listing, film)
   /** Is `f` its own house's RECORDING of the work, dated by a year alone at most [[RecordingLag]] years before the season
    *  the relay's title names — what a cinema season screens of a house's staging, released years after it was filmed? DE
@@ -413,7 +413,7 @@ object StageRelays {
    *  names the relay as much as any film of the title: UK Theatr Gwaun Fishguard's "Romeo and Juliet", screening on 25 May
    *  2027 beside the "Royal Ballet & Opera 2026/27: Romeo and Juliet" its own search finds, is no proof of Zeffirelli's. */
   def bareWorksSeasonRecord(l: MeasuredListing, f: Film): Boolean =
-    barelyTimed(l) && l.screenedSeason.exists(f.season.contains) && stageWorks(f).exists(l.billedStageWorks)
+    barelyTimed(l) && l.dating.screenedSeason.exists(f.season.contains) && stageWorks(f).exists(l.billedStageWorks)
 
   /** Is the listing's whole title a stage work, stating no year and no credit — a running time at most, which
    *  [[MeasuredListing.broadcastSeason]] reads as naming its staging? A running time names no staging by itself: UK Empire Theatre
@@ -445,13 +445,13 @@ object StageRelays {
    *  season record naming a stage work the listing bills, under the listing's house ([[bannerNamesItsHouse]])? A relay
    *  airs on its house's published dates, so a venue screening it then screens that season's broadcast. */
   def screenedSeasonRecord(l: MeasuredListing, f: Film): Boolean =
-    l.screenedSeason.exists(f.season.contains) &&
+    l.dating.screenedSeason.exists(f.season.contains) &&
       stageWorks(f).exists(l.billedStageWorks) && bannerNamesItsHouse(l, f) && airsOnItsDay(l, f)
 
   /** Does a listing whose year is more than a season before its screened season ([[MeasuredListing.airDays]]) screen on the
    *  record's air day — its release date, give or take [[AirDayWindow]] days? A nearer year passes with no test. */
   private def airsOnItsDay(l: MeasuredListing, f: Film): Boolean =
-    l.airDays.isEmpty || f.released.exists(aired => l.airDays.exists(day => math.abs(java.time.temporal.ChronoUnit.DAYS.between(aired, day)) <= AirDayWindow))
+    l.dating.airDays.isEmpty || f.released.exists(aired => l.dating.airDays.exists(day => math.abs(java.time.temporal.ChronoUnit.DAYS.between(aired, day)) <= AirDayWindow))
   /** How many days from a relay's release date a screening still airs it: a venue's own date, a time zone apart. */
   val AirDayWindow = 3
 

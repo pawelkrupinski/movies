@@ -37,15 +37,15 @@ private[identity] object SearchMeasures {
     if (l.seasonYear.isDefined) Nil
     // the year as the relay's record reads it ([[RelayStage]]): its field, its title's bracket, its banner ("RBO live 2027: Tosca"), else its
     // broadcast season -- or nothing searched "Tosca 2027", and the house's 2026/27 record could stay out of the pool
-    else (l.statedYear.orElse(StageRelays.bannerYear(l)).orElse(l.broadcastSeason).toSeq ++
-      l.screenedSeason.filter(_ => RelayStage.searchedInItsSeason(l) || StageRelays.barelyTimed(l)) ++ closedSeason(l)).distinct.flatMap(year => workSearches(l, year))
+    else (l.statedYear.orElse(StageRelays.bannerYear(l)).orElse(l.dating.broadcastSeason).toSeq ++
+      l.dating.screenedSeason.filter(_ => RelayStage.searchedInItsSeason(l) || StageRelays.barelyTimed(l)) ++ closedSeason(l)).distinct.flatMap(year => workSearches(l, year))
 
   /** The season its screenings fall in, when the year it states is the one that season CLOSES: a season record carries
    *  the year it opens ("Royal Ballet & Opera 2026/27: Romeo and Juliet"), which TMDB's search finds by "Romeo and Juliet
    *  2026", never by "Romeo and Juliet 2027". UK Riverside Theatre Woodbridge's "Romeo and Juliet (2027)", screening on
    *  25 May 2027, reached the RBO relay aired that day only by joining a sibling whose search did: a take that came and
    *  went with the family's venues (structural fix 2). A function of the listing's own year and days. */
-  private def closedSeason(l: MeasuredListing): Option[Int] = l.screeningsSeason.filter(season => l.statedYear.contains(season + 1))
+  private def closedSeason(l: MeasuredListing): Option[Int] = l.dating.screeningsSeason.filter(season => l.statedYear.contains(season + 1))
 
   /** The work `l` bills searched beside `year`, under each of its search names ("Manon 2026"). */
   private[identity] def workSearches(l: MeasuredListing, year: Int): Seq[String] =
