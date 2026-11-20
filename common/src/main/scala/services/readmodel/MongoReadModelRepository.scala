@@ -1,27 +1,26 @@
 package services.readmodel
 
-import tools.ChangeStreamCallback
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 
-import services.movies.DecodeFailureMetrics
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.reflect.ClassTag
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument, OperationType}
 import models.{CityScreening, ResolvedMovie}
-import org.bson.{BsonDocumentReader, BsonTimestamp}
 import org.bson.codecs.{Codec, DecoderContext}
+import org.bson.{BsonDocumentReader, BsonTimestamp}
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Aggregates, CountOptions, Filters, Indexes, Projections, ReplaceOneModel, Sorts}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
+import services.movies.DecodeFailureMetrics
+import tools.ChangeStreamCallback
 import tools.KeysetScan
-
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.reflect.ClassTag
-import scala.util.{Failure, Success, Try}
-import scala.util.control.NonFatal
 
 /**
  * MongoDB-backed read model. Persists the denormalised projection to two

@@ -1,6 +1,6 @@
 package controllers
 
-import play.api.mvc._
+import play.api.mvc.*
 
 /**
  * Serves `GET /api/picker/:country` — one country's `/` picker fragment, the markup

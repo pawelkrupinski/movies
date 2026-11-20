@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import models._
-import services.titles.FormatTags
-import tools.HttpFetch
+import java.time.LocalDateTime
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{ListingPageScraper, ScraperParse}
-
-import java.time.LocalDateTime
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import services.titles.FormatTags
+import tools.HttpFetch
 
 /**
  * Kino Ślęża (Sobótka, run by the Regionalne Centrum Kultury Sobótka). Its

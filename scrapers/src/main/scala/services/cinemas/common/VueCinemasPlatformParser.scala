@@ -1,14 +1,14 @@
 package services.cinemas.common
 
-import services.cinemas.common.ScraperParse.jsonText
+import java.time.LocalDateTime
 import java.util.Locale
 
-import models.{Cinema, CinemaMovie, Movie, Showtime}
-import play.api.libs.json._
-import models.TrailerEmbed
-
-import java.time.LocalDateTime
 import scala.util.Try
+
+import models.TrailerEmbed
+import models.{Cinema, CinemaMovie, Movie, Showtime}
+import play.api.libs.json.*
+import services.cinemas.common.ScraperParse.jsonText
 
 /**
  * Pure JSON → `Seq[CinemaMovie]` for the Vue Cinemas platform films endpoint

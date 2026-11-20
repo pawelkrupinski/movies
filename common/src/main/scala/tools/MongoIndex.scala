@@ -1,18 +1,19 @@
 package tools
 
+import java.util.concurrent.TimeUnit
+
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+import scala.util.{Failure, Success, Try}
+
 import com.mongodb.MongoCommandException
 import org.bson.conversions.Bson
 import org.bson.{BsonArray, BsonDocument, BsonInt64, BsonNumber, BsonValue}
-import org.mongodb.scala.bson.collection.immutable.{Document => ImmutableDocument}
+import org.mongodb.scala.bson.collection.immutable.Document as ImmutableDocument
 import org.mongodb.scala.model.IndexOptions
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
-
-import java.util.concurrent.TimeUnit
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
-import scala.util.{Failure, Success, Try}
 
 /** Ensure an index exists with the wanted options — and, when an earlier PLAIN index of
  *  the same keys is in the way of a wanted UNIQUE one, convert that index in place.

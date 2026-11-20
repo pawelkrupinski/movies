@@ -1,14 +1,15 @@
 package controllers
 
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
+import java.time.{Duration as JDuration, Instant}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import org.mongodb.scala.model.{Filters, Projections, Sorts}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import play.api.Logging
 import services.movies.{MovieRepository, ScreeningsRepository}
-
-import java.time.{Duration => JDuration, Instant}
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * How current the local read-mirror's copy of ONE country's database is — the

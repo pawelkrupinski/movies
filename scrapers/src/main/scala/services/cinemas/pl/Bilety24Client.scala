@@ -1,18 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
 import java.util.Locale
 
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import org.jsoup.Jsoup
 import services.cinemas.common.ScraperParse
+import services.cinemas.common.SynopsisProse
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, FilmDetail, VenueCredits}
 import services.titles.FormatTags
 import services.titles.TitleNormalizer
-import models._
 import tools.{HttpFetch, HttpRead}
-import org.jsoup.Jsoup
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, FilmDetail, VenueCredits}
-
-import scala.jdk.CollectionConverters._
 
 /**
  * Cinemas hosted on the Bilety24 platform (e.g. Kino Luna, Kino Elektronik).

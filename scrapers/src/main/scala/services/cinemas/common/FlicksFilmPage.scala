@@ -1,13 +1,14 @@
 package services.cinemas.common
 
-import services.cinemas.common.ScraperParse.jsonText
-import tools.JsonLdBlocks
+import java.time.LocalDate
+
+import scala.jdk.CollectionConverters.*
+
 import org.jsoup.nodes.Document
 import org.jsoup.parser.Parser
 import play.api.libs.json.{JsArray, JsLookupResult, JsObject, JsString, Json}
-
-import java.time.LocalDate
-import scala.jdk.CollectionConverters._
+import services.cinemas.common.ScraperParse.jsonText
+import tools.JsonLdBlocks
 
 /**
  * A Flicks film page — `<market base>/movie/<slug>/`, the page every Flicks listing's `filmUrl` names — read

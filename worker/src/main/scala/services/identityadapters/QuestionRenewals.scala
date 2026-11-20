@@ -1,10 +1,10 @@
 package services.identityadapters
 
+import java.time.Clock
+
+import play.api.Logging
 import services.identity.*
 import services.identity.measures.ResolverDecision
-import play.api.Logging
-
-import java.time.Clock
 import services.identity.vocabulary.{CandidateQuery, Question}
 
 /**

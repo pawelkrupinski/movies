@@ -1,17 +1,18 @@
 package services.venuepages
 
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonString}
-import org.mongodb.scala.model.{Filters, Sorts, UpdateOptions, Updates}
-import play.api.Logging
-import services.cinemas.common.FilmDetail
-
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+
 import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonString}
+import org.mongodb.scala.model.{Filters, Sorts, UpdateOptions, Updates}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
+import play.api.Logging
+import services.cinemas.common.FilmDetail
 
 /** One venue detail page: the enricher group that reads it and the page it names. */
 final case class VenuePageKey(detailGroup: String, page: String) {

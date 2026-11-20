@@ -1,10 +1,8 @@
 package services.movies
 
 import models.{CacheKey, FilmId, StoredMovieRecord}
-
-import services.titles.TitleNormalizer
-
 import models.{Cinema, CinemaMovie, MovieRecord, Source, SourceData}
+import services.titles.TitleNormalizer
 
 /**
  * Read surface of the enrichment store — pure reads, no side effects.

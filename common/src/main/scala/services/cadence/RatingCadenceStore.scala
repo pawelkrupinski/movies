@@ -1,18 +1,19 @@
 package services.cadence
 
-import models.{RatingChange, RatingChangeStats}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
-import org.mongodb.scala.model.Filters
-import com.mongodb.client.model.UpdateOptions
-import play.api.Logging
-import tools.{KeysetScan, MongoKeyedDocStore}
-
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+
 import scala.concurrent.Await
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.Try
+
+import com.mongodb.client.model.UpdateOptions
+import models.{RatingChange, RatingChangeStats}
+import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
+import org.mongodb.scala.model.Filters
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
+import play.api.Logging
+import tools.{KeysetScan, MongoKeyedDocStore}
 
 /**
  * Per-(rating source, film) change history, keyed by the SAME dedup string the

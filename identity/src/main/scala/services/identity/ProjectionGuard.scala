@@ -1,9 +1,9 @@
 package services.identity
 
-import models.StoredMovieRecord
-
-import models.{Source, ShowtimesDigest}
 import java.time.LocalDateTime
+
+import models.StoredMovieRecord
+import models.{Source, ShowtimesDigest}
 
 /**
  * The projection's own "trust what we have" (docs/design/identity-resolver.md §11): a projection

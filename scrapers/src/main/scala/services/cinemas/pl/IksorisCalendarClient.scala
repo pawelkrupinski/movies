@@ -1,16 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse.jsonText
-import services.titles.FormatTags
-import models._
+import java.time.{LocalDate, LocalDateTime, YearMonth}
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import play.api.libs.json.{JsValue, Json}
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon, ScraperParse, SlotsToMovies}
+import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
-
-import java.time.{LocalDate, LocalDateTime, YearMonth}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * The iKsoris booking platform's "Moduł Internet STARTER" skin (SoftCOM

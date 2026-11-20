@@ -1,19 +1,18 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
+import java.time.{LocalDate, LocalDateTime, LocalTime}
 
-import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, HttpRead}
+import scala.jdk.CollectionConverters.*
+import scala.util.{Success, Try}
 
-import models._
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ListingPages}
 import tools.Whitespace.collapsedSpaces
-
-import java.time.{LocalDate, LocalDateTime, LocalTime}
-import scala.jdk.CollectionConverters._
-import scala.util.{Success, Try}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Zamek — the cinema screen of the Zamek Książąt Pomorskich (Castle of the

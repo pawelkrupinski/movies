@@ -1,7 +1,7 @@
 package services.identity.measures
 
-import services.titles.{TitleWords, YearWindow}
 import services.identity.vocabulary.PopularityBucket
+import services.titles.{TitleWords, YearWindow}
 
 /**
  * The raw MEASUREMENTS the calibrated identity score reads: what one listing's own evidence says

@@ -1,9 +1,10 @@
 package services.movies
 
-import models.{MovieRecord, Source, SourceData}
-
 import java.time.Instant
+
 import scala.util.Try
+
+import models.{MovieRecord, Source, SourceData}
 
 /**
  * What `MovieRepository.upsert` writes to `movies` for one film, and whether it has to —

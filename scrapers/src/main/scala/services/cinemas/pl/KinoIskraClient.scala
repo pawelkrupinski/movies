@@ -1,20 +1,19 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
-import services.titles.NonMovieEventClassifier
+import java.time.{LocalDate, LocalDateTime}
 import java.util.Locale
-import services.titles.FormatTags
 
-import models._
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import models.CountryNames
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import models.CountryNames
+import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScraperParse, SlotsToMovies}
+import services.titles.FormatTags
+import services.titles.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
 
 /**
  * Kino Iskra (Augustów). The venue's own site replaced Filmweb as the source:

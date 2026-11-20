@@ -1,6 +1,6 @@
 package controllers
 
-import play.api.mvc._
+import play.api.mvc.*
 
 /** The support page every app-store listing has to register a URL for. Apple
  *  checks it during review and rejects a support URL that only shows the

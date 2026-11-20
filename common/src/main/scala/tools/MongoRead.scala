@@ -1,7 +1,7 @@
 package tools
 
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{Await, Future}
 
 /**
  * A repository's read of Mongo, answered as the [[ReadOutcome]] it is: the document, its

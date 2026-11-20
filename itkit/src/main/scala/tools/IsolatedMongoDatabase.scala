@@ -1,9 +1,9 @@
 package tools
 
-import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
-
 import scala.concurrent.Await
 import scala.util.control.NonFatal
+
+import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 
 /**
  * A throwaway database with a name nobody else can be using, for specs that need

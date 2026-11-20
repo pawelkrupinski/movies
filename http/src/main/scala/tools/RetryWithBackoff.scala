@@ -1,9 +1,9 @@
 package tools
 
-import play.api.Logging
-
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.control.NonFatal
+
+import play.api.Logging
 
 /**
  * Generic attempts-bounded retry with exponential backoff for production

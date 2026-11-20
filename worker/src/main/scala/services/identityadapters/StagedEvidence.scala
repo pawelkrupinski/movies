@@ -2,8 +2,8 @@ package services.identityadapters
 
 import services.identity.*
 import services.identity.measures.{DecisionTrace, Listing, ResolverDecision}
-import services.identity.staging.{StagedFact, StagedNode}
 import services.identity.measures.{Film, Measure}
+import services.identity.staging.{StagedFact, StagedNode}
 
 /**
  * What the staging screen lists of what a take was decided on (docs/design/identity-questions.md, "The staging

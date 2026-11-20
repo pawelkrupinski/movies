@@ -1,8 +1,7 @@
 package services.readmodel
 
+import models.*
 import services.evidence.LatestTitleYear
-
-import models._
 import services.titles.TitleNormalizer
 
 /**

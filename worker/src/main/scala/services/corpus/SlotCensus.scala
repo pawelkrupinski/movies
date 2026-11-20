@@ -1,9 +1,10 @@
 package services.corpus
 
-import models.{City, Source, SourceData, VenueClock, ShowtimesDigest}
-import services.titles.TitleNormalizer
-import services.readmodel.ReadModelProjection
 import java.time.{ZoneId, ZoneOffset}
+
+import models.{City, Source, SourceData, VenueClock, ShowtimesDigest}
+import services.readmodel.ReadModelProjection
+import services.titles.TitleNormalizer
 
 /** One venue slot's part: its title group ([[ReadModelProjection.titleKeyOf]]), its city, the zone its venue keeps
  *  time in, and its showtime starts — the lean slot's own array. */

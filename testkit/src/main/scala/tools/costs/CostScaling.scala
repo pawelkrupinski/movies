@@ -1,9 +1,9 @@
 package tools.costs
 
-import org.scalatest.Assertions.fail
-
 import java.lang.reflect.{InvocationHandler, InvocationTargetException, Method, Proxy}
 import java.util.concurrent.atomic.AtomicLong
+
+import org.scalatest.Assertions.fail
 
 /**
  * "Run the operation at N and at 4N, and hold its WORK to a budget" — the shape of every

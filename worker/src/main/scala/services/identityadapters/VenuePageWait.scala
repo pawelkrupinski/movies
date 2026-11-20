@@ -1,8 +1,8 @@
 package services.identityadapters
 
+import services.cinemas.common.DetailEnricher
 import services.identity.*
 import services.identity.measures.Listing
-import services.cinemas.common.DetailEnricher
 import services.tasks.TaskProducer
 import services.venuepages.ReadVenuePageTasks
 

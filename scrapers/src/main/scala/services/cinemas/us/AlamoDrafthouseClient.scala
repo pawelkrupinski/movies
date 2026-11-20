@@ -1,11 +1,12 @@
 package services.cinemas.us
 
+import java.time.LocalDate
+
+import scala.concurrent.duration.*
+
 import models.{Cinema, CinemaMovie}
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ListingFeed}
 import tools.{HttpFetch, HttpRead}
-
-import java.time.LocalDate
-import scala.concurrent.duration._
 
 /**
  * Alamo Drafthouse — 40 US venues, served off the chain's own public JSON API

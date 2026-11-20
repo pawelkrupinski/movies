@@ -1,9 +1,9 @@
 package services.identity.vocabulary
 
-import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
-import models.ListingKey
+import scala.jdk.CollectionConverters.*
 
-import scala.jdk.CollectionConverters._
+import models.ListingKey
+import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
 
 /** A [[ListingKey]] as a BSON subdocument — the one encoding every identity collection
  *  (`identity_pins`, `identity_model_families`, `identity_traces`) stores a listing in. */

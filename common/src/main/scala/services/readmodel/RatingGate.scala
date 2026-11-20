@@ -1,7 +1,6 @@
 package services.readmodel
 
 import models.StoredMovieRecord
-
 import models.{RatingSearchUrls, ResolvedMovie, ResolvedRatings}
 
 /**

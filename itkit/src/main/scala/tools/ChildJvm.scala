@@ -1,12 +1,13 @@
 package tools
 
-import settings.{HarnessConfiguration, JavaClassPath, JavaHome}
-
 import java.net.URLClassLoader
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
+
 import scala.util.Try
+
+import settings.{HarnessConfiguration, JavaClassPath, JavaHome}
 
 /** Runs a `main` in a fresh JVM on this test run's classpath. For behaviour that depends on what
  *  ran FIRST in the process -- a JDK setting read once, a lazily created global -- which the specs'

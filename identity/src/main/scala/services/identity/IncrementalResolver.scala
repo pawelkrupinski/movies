@@ -1,14 +1,12 @@
 package services.identity
 
-import models.ListingKey
-
-import services.titles.TitleNormalizer
-
 import scala.collection.mutable
 
+import models.ListingKey
+import services.identity.measures.{Listing, Resolution, ResolverDecision}
 import services.identity.vocabulary.MultiMaps.*
 import services.identity.vocabulary.{AnswersChanged, CandidateQuery, PinConstraints, Question, TitleDecorations}
-import services.identity.measures.{Listing, Resolution, ResolverDecision}
+import services.titles.TitleNormalizer
 
 /**
  * The identity model kept current EVENT BY EVENT — listings a scrape saw, listings it no longer

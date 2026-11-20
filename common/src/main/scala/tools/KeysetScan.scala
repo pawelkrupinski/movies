@@ -1,8 +1,8 @@
 package tools
 
 
-import scala.concurrent.{Await, ExecutionContext, Future, blocking}
 import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.{Await, ExecutionContext, Future, blocking}
 import scala.util.{Failure, Success, Try}
 
 /**

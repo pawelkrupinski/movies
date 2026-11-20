@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import models._
-import tools.{HttpFetch, HttpRead}
+import java.time.LocalDateTime
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
-
-import java.time.LocalDateTime
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Zacisze (Piekary Śląskie). Its repertoire lives on the venue's own

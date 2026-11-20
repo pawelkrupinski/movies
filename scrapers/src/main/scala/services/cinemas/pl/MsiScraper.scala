@@ -1,13 +1,14 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import models._
-import org.jsoup.Jsoup
-import services.cinemas.common.{SlotsToMovies, SynopsisProse}
-
 import java.time.{LocalDateTime, YearMonth}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{SlotsToMovies, SynopsisProse}
 
 /**
  * Shared parsing logic for the MSI ticketing platform used by several Polish

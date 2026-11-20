@@ -1,10 +1,9 @@
 package services.movies
 
-import models.{CacheKey, FilmId, StoredMovieRecord}
-
-import services.titles.TitleNormalizer
-
 import scala.annotation.unused
+
+import models.{CacheKey, FilmId, StoredMovieRecord}
+import services.titles.TitleNormalizer
 
 /**
  * The read side of the `movies` store: every lookup and scan, and the facts about the

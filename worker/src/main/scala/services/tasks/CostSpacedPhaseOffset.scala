@@ -1,8 +1,8 @@
 package services.tasks
 
-import tools.DueBoundary
-
 import java.util.concurrent.atomic.AtomicReference
+
+import tools.DueBoundary
 
 /**
  * The scrape schedule's phases, spaced by what each cinema COSTS the queue rather

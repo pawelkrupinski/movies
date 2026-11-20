@@ -1,8 +1,8 @@
 package services.movies
 
-import models.{CacheKey, FilmId}
-
 import scala.collection.mutable
+
+import models.{CacheKey, FilmId}
 
 /**
  * The permanent [[FilmId]] behind each resident key, and back — what the cache asks before every

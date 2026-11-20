@@ -1,9 +1,8 @@
 package modules.wiring
 
-import settings.ScrapeChunkSpread
-
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, FallbackEligibility}
 import services.tasks.{ChunkFanOut, ChunkRun, ChunkRunDeadlines, ChunkSlices, ChunkedListingPublisher, FailedChunkPlan, HostDownDeferrals, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, MongoChunkScrapeStore, ScrapeCadence, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight}
+import settings.ScrapeChunkSpread
 
 
 /** ── Chunked (map-reduce) scrape machinery ──────────────────────────────────

@@ -1,10 +1,10 @@
 package services.venuepages
 
+import java.time.Instant
+
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.tasks.{DueWindow, Enqueued, TaskProducer}
 import services.tasktypes.TaskType
-
-import java.time.Instant
 
 /**
  * When a venue detail page is due: the ONE schedule the periodic [[DetailReaper]] enqueues on and the

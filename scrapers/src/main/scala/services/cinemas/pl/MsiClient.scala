@@ -1,18 +1,18 @@
 package services.cinemas.pl
 
-import services.titles.NonMovieEventClassifier
+import java.time.{LocalDate, YearMonth}
 import java.util.Locale
 
-import services.cinemas.common.ScraperParse
-import services.titles.FormatTags
-import models._
-import tools.{HttpFetch, HttpRead, ReadOutcome}
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ListingPages, ScrapeHorizon}
+import scala.util.Try
 
-import java.time.{LocalDate, YearMonth}
+import models.*
 import play.api.Logging
 import play.api.libs.json.{JsArray, JsObject, JsValue}
-import scala.util.Try
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ListingPages, ScrapeHorizon}
+import services.titles.FormatTags
+import services.titles.NonMovieEventClassifier
+import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 /**
  * Generic client for any cinema running on the MSI ticketing platform (the

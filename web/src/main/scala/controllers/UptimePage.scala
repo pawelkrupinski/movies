@@ -1,9 +1,9 @@
 package controllers
 
+import java.time.Instant
+
 import play.twirl.api.Html
 import services.fallback.FallbackStore
-
-import java.time.Instant
 
 /** The /uptime page ([[UptimeController]]) around its triaged sections: the cinemas currently served by
  *  the Filmweb fallback and the venues every source dropped, rendered below the triage, for ONE

@@ -1,9 +1,9 @@
 package controllers
 
-import play.api.mvc._
-import services.users.UserRepository
-
 import scala.concurrent.{ExecutionContext, Future}
+
+import play.api.mvc.*
+import services.users.UserRepository
 
 /** Session + email-allowlist gate for the app's operational/admin endpoints —
  *  the title-rules editor, `/uptime`, `/tasks`, and the `/…/debug/rehydrate`

@@ -1,11 +1,11 @@
 package services.identityadapters
 
+import play.api.Logging
 import services.identity.*
 import services.identity.measures.{Listing, ResolverDecision}
-import play.api.Logging
+import services.identity.vocabulary.{Answer, CandidateQuery}
 import services.tasks.{BulkRefreshResult, RefreshableSource, RefreshableSources}
 import tools.{HttpFetch, HttpPath}
-import services.identity.vocabulary.{Answer, CandidateQuery}
 
 /**
  * An operator's "these TMDB films were just edited": each film's record fetched again into the model's TMDB store, then

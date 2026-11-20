@@ -1,10 +1,11 @@
 package services.sharecards
 
+import java.time.Clock
+
+import scala.util.{Failure, Success, Try}
+
 import play.api.Logging
 import services.facebook.FacebookFetches
-
-import java.time.Clock
-import scala.util.{Failure, Success, Try}
 
 /** A country's due films in the fleet's re-scrape queue expanded into their pages ([[RescrapeTarget.Page]], no quota:
  *  `pages` is a read-model read), each marked with whether Facebook holds a preview of it ([[FacebookFetches]]), so

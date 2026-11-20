@@ -1,11 +1,11 @@
 package services.identity
 
-import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
-
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.chaining.scalaUtilChainingOps
-import services.identity.vocabulary.{BsonFields, CandidateQuery, ListingKeyBson, Question}
+
+import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
 import services.identity.measures.{DecisionTrace, ResolverDecision}
+import services.identity.vocabulary.{BsonFields, CandidateQuery, ListingKeyBson, Question}
 
 /** A [[ResolverDecision]] as BSON fields — the one encoding every identity collection storing a
  *  decision uses (`identity_model_families`). */

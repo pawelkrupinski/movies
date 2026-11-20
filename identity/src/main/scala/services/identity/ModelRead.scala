@@ -1,8 +1,8 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie, LeanListing}
-import services.titles.TitleNormalizer
 import services.identity.measures.Listing
+import services.titles.TitleNormalizer
 
 /** How the identity model reads a venue's films — ONE read, wherever they come from: prod's take-up of the scrape
  *  archives (`IdentityListingIntake.identities`: the lean read, [[LeanListing.leanFilm]], done server-side in Mongo),

@@ -1,10 +1,11 @@
 package services.review
 
-import models.ListingKey
-
 import java.time.Instant
+
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, blocking}
+
+import models.ListingKey
 
 /** What the cards of the clusters on screen read from their [[ReviewSource]] — and only theirs: their members' slot
  *  rows, venue pages and feeds, and the films they weigh. */

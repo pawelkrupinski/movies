@@ -1,17 +1,17 @@
 package services.identityadapters
 
-import services.identity.*
-import services.identity.measures.Listing
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
+
+import models.ListingKey
 import org.bson.{BsonDocument, BsonInt64, BsonString}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, Indexes, ReplaceOneModel, ReplaceOptions, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
-import models.ListingKey
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
+import services.identity.*
+import services.identity.measures.Listing
 
 /**
  * Every listing that left the country's billing, with its last-seen facts and when it left ([[ListingRetention.Departed]]),

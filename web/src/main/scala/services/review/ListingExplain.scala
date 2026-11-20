@@ -1,12 +1,12 @@
 package services.review
 
-import models.Country
-import services.identity.ListingTrace
-import services.identity.measures.ResolverDecision
-import models.ListingKey
-
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+
+import models.Country
+import models.ListingKey
+import services.identity.ListingTrace
+import services.identity.measures.ResolverDecision
 
 /**
  * One production listing explained (`/debug/review/listing`): its current take, where its take history is, the latest

@@ -1,7 +1,8 @@
 package services.enrichment
 
 import java.time.Clock
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 
 /**
  * The durable per-film backoff of the OMDb id backfill ([[OmdbBackfill]]): a film OMDb could not identify is not asked

@@ -1,19 +1,18 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
+import java.time.{LocalDate, LocalDateTime}
 import java.util.Locale
-import services.titles.FormatTags
 
-import models._
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
+import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScraperParse}
+import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Gwiazda (Kętrzyn). The venue's own Statamic site replaced Filmweb as the

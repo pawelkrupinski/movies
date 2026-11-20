@@ -1,8 +1,8 @@
 package tools
 
-import play.api.Logger
-
 import java.time.Duration
+
+import play.api.Logger
 
 /**
  * Logs a failure once, not on every ask that hits it again.

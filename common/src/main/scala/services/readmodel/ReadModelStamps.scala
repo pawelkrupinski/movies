@@ -1,7 +1,8 @@
 package services.readmodel
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 
 /** [[WebReadModel]]'s change stamps: the model-wide `lastModified`, and each city's conditional-GET
  *  validator under it, each moving only when what it covers changes. `formerSlugs` names the slugs

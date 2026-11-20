@@ -1,9 +1,10 @@
 package services.tasks
 
 import java.time.Instant
-import tools.DueBoundary
 
 import scala.concurrent.duration.FiniteDuration
+
+import tools.DueBoundary
 
 /**
  * A single, deterministic per-key refresh schedule, shared by a periodic *reaper*

@@ -1,6 +1,6 @@
 package services.cinemas.pl
 
-import models._
+import models.*
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, DetailEnricher, FilmDetail, ListingFeed}
 
 /**

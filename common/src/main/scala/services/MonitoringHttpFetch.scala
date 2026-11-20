@@ -1,10 +1,10 @@
 package services
 
-import tools.{CallerCancelled, ForwardingHttpFetch, HttpFetch, HttpStatusException, Stopwatch}
-
 import java.io.IOException
 import java.net.URI
 import java.util.concurrent.CompletableFuture
+
+import tools.{CallerCancelled, ForwardingHttpFetch, HttpFetch, HttpStatusException, Stopwatch}
 
 /**
  *  Wraps an `HttpFetch` to feed every call's outcome to the `UptimeMonitor`,

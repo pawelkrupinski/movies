@@ -1,8 +1,10 @@
 package services.sharecards
 
-import play.api.Logging
 import java.time.Instant
+
 import scala.util.Try
+
+import play.api.Logging
 
 /** What a share-card render asks for when a film's previews on Facebook are out of date. */
 trait ShareCardRescrapes {

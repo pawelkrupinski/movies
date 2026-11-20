@@ -1,16 +1,12 @@
 package services.movies
 
+import java.util.concurrent.ConcurrentHashMap
+
 import models.{CacheKey, FilmId, LeanRecords, StoredMovieRecord, StringPool}
-
-import services.titles.TitleNormalizer
-
-
-
 import models.{MovieRecord, Source, SourceData, ShowtimesDigest}
 import play.api.Logging
+import services.titles.TitleNormalizer
 import tools.Stoppable
-
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Caffeine-backed `MovieCache` with write-through to `MovieRepository`.

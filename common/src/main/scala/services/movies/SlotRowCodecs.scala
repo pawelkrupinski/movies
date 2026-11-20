@@ -1,10 +1,10 @@
 package services.movies
 
-import models.{Showtime, SourceData}
-import org.bson.{BsonReader, BsonType, BsonWriter}
-import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
-
 import java.time.Instant
+
+import models.{Showtime, SourceData}
+import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
+import org.bson.{BsonReader, BsonType, BsonWriter}
 
 /** The fields every slot-keyed side row carries — its composite `_id`, `filmId`, `slotKey`, `updatedAt` and
  *  `listingKey` — read field by field as the macro codec reads them (an absent or null `listingKey` is `None`); each

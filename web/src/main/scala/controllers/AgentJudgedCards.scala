@@ -1,10 +1,10 @@
 package controllers
 
-import models.Country
-import services.review.{DigestItem, LabelRow, ReviewCard, ReviewCluster, ReviewDigest, TmdbPosterLookup}
-
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, blocking}
+
+import models.Country
+import services.review.{DigestItem, LabelRow, ReviewCard, ReviewCluster, ReviewDigest, TmdbPosterLookup}
 
 /** The Agent-judged tab's cards: each take awaiting the user's word ([[ReviewDigest.pending]]) as the cluster of its
  *  listing, its film named as TMDB names it where the row files no title (asked live through `tmdbPosters`; none

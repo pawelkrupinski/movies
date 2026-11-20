@@ -1,19 +1,19 @@
 package services.cinemas.uk
 
-import services.cinemas.common.SynopsisProse
+import java.time.LocalDate
+import java.util.Locale
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
 
 import models.{CinemaMovie, UkRoster}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import play.api.Logging
+import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse}
-import tools.{HttpFetch, HttpRead}
 import tools.Whitespace.collapsedSpaces
-
-import java.time.LocalDate
-import java.util.Locale
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Derby QUAD. Its Spektrix box office (`derbyquad`) lists the programme, but files a film with

@@ -1,21 +1,19 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
-
-import services.cinemas.common.ScraperParse
-
+import java.time.LocalDateTime
 import java.util.Locale
 
-import models._
-import tools.{HttpFetch, HttpRead}
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages}
-
-import java.time.LocalDateTime
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import tools.{HttpFetch, HttpRead}
 
 class RialtoClient(http: HttpFetch
 ) extends CinemaScraper with DetailEnricher {

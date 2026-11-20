@@ -1,8 +1,8 @@
 package tools
 
-import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
-
 import scala.concurrent.Await
+
+import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 
 /**
  * A database name no other `it/` suite shares, for a spec that operates on the WHOLE

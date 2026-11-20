@@ -1,11 +1,12 @@
 package tools
 
+import java.util.concurrent.ConcurrentHashMap
+
+import scala.jdk.CollectionConverters.*
+
 import io.prometheus.metrics.core.metrics.Counter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.mongodb.scala.MongoCollection
-
-import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
 
 /**
  * Every Mongo write that threw, counted per database and collection, and every command Mongo refused for want of a

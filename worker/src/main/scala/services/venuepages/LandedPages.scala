@@ -1,8 +1,8 @@
 package services.venuepages
 
-import services.cinemas.common.{DetailEnricher, FilmDetail}
-
 import java.util.Locale
+
+import services.cinemas.common.{DetailEnricher, FilmDetail}
 
 /**
  * What the film rows took of each venue page ([[StoredVenuePage.landed]]), against which a fresh read is measured: the

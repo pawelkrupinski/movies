@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, HttpRead}
-import models._
+import java.time.{Instant, LocalDateTime}
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.{SingleSiteScraper, OnlyMovieEventsFilter, SlotsToMovies, ListingPages}
-
-import java.time.{Instant, LocalDateTime}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Muzeum — the cinema at the Museum of the Second World War in Gdańsk

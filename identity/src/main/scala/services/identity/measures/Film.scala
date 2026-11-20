@@ -1,7 +1,7 @@
 package services.identity.measures
 
-import services.titles.{SearchTitles, TitleContainment, TitleSeason}
 import services.identity.vocabulary.FilmCast
+import services.titles.{SearchTitles, TitleContainment, TitleSeason}
 
 /** What TMDB says about a candidate film. `directors`/`countries` are `None` when the film's
  *  details were not fetched, which is not the same as TMDB crediting nobody. `countries` are

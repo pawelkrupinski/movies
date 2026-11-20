@@ -1,8 +1,8 @@
 package tools.contracts
 
-import play.api.libs.json.{JsObject, Json}
-
 import java.nio.file.{Files, Path, Paths}
+
+import play.api.libs.json.{JsObject, Json}
 
 /**
  * The checked-in retry/error classification table (`test/resources/retry-classification.json`)

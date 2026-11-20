@@ -1,9 +1,9 @@
 package controllers
 
+import java.nio.file.{Files, Path}
+
 import models.Country
 import settings.ShareCardDirectoryTemplate
-
-import java.nio.file.{Files, Path}
 
 /** The share cards this process can read off its own disk: a dev server's copy of what the worker draws, under
  *  `KINOWO_SHARE_CARD_DIR` ([[ShareCardDirectoryTemplate]]; `scripts/dev-server.sh` points it at

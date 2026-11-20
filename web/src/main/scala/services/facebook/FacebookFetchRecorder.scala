@@ -1,13 +1,14 @@
 package services.facebook
 
-import play.api.Logging
-import tools.{ThreadPools, LogThrottle, ScheduledTick, TickRecorder, TickRun}
-
 import java.time.{Clock, Instant}
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
+
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import play.api.Logging
+import tools.{ThreadPools, LogThrottle, ScheduledTick, TickRecorder, TickRun}
 
 /**
  * Records each film page Facebook's crawler fetches into [[FacebookFetches]] — the pages

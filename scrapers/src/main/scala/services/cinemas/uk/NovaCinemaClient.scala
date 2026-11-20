@@ -1,16 +1,17 @@
 package services.cinemas.uk
 
-import models._
+import java.time.LocalDate
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+import scala.util.matching.Regex
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{AgeRating, CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
-
-import java.time.LocalDate
-import scala.jdk.CollectionConverters._
-import scala.util.Try
-import scala.util.matching.Regex
 
 /**
  * Nova Cinema, Woking — a seven-screen independent Flicks lists with no times. It sells

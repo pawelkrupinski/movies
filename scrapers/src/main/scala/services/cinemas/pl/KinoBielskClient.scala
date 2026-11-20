@@ -1,18 +1,18 @@
 package services.cinemas.pl
 
-import java.util.Locale
-
-import services.cinemas.common.ScraperParse
-import models._
-import tools.HttpFetch
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
-
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneOffset}
-import scala.jdk.CollectionConverters._
+import java.util.Locale
+
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
+import tools.HttpFetch
 
 /**
  * Bielski Dom Kultury's cinema page ("Kino Bielsk", `bdkbielsk.pl/kino/`) is

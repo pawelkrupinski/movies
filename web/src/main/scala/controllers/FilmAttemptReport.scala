@@ -1,14 +1,14 @@
 package controllers
 
-import models.{EnrichmentAttempt, RatingChangeStats}
-import services.attempts.{EnrichmentAttemptReader, RatingKeys}
-
-import services.cadence.{RatingCadence, RatingCadenceReader}
-import services.freshness.FreshnessKind
-
 import java.time.Instant
+
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{Await, ExecutionContext, Future}
+
+import models.{EnrichmentAttempt, RatingChangeStats}
+import services.attempts.{EnrichmentAttemptReader, RatingKeys}
+import services.cadence.{RatingCadence, RatingCadenceReader}
+import services.freshness.FreshnessKind
 
 /**
  * One rating source's enrichment state for ONE film, as the /debug row's expand

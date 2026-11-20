@@ -1,17 +1,16 @@
 package services.corpus
 
-import services.movies.*
-
-import play.api.Logging
-import tools.Stoppable
-import tools.{TickRecorder}
-
-import services.schedule.{OccurrenceKey, ScheduledRunStore}
-
 import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.Try
+
+import play.api.Logging
+import services.movies.*
+import services.schedule.{OccurrenceKey, ScheduledRunStore}
+import tools.Stoppable
+import tools.TickRecorder
 
 /**
  * Daily tick: the retired-venue sweep ([[RetiredVenueRows]]) every day, and once a WEEK the

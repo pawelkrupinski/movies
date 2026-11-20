@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import services.titles.FormatTags
-import models._
-import tools.{HttpFetch, HttpRead}
+import java.time.LocalDateTime
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.{SingleSiteScraper, ScrapedSlot, SlotsToMovies}
-
-import java.time.LocalDateTime
-import scala.jdk.CollectionConverters._
+import services.titles.FormatTags
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Gdyńskie Centrum Filmowe (Gdynia) — the city's art-house cinema, run by

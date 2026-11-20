@@ -1,11 +1,9 @@
 package modules.webwiring
 
-import services.MongoRequirement
-
-import settings.MongoTuning
-
 import play.api.Mode
 import services.MongoConnection
+import services.MongoRequirement
+import settings.MongoTuning
 
 /** ── Mongo ─────────────────────────────────────────────────────────────────
  *  The one `MongoClient` this process opens, and the two database views on it:

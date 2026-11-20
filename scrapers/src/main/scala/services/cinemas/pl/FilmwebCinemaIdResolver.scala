@@ -1,14 +1,14 @@
 package services.cinemas.pl
 
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
 
 import models.{Cinema, City, Country}
 import play.api.libs.json.{Json, Reads}
 import tools.{BoundedParallel, HttpFetch, HttpRead}
-
-import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Resolves each modelled Polish [[Cinema]] to Filmweb's internal cinema id at

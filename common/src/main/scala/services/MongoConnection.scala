@@ -1,14 +1,14 @@
 package services
 
-import tools.MongoWriteErrors
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.{Failure, Success, Try}
+
 import models.Country
-import settings.MongoConnectionSettings
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
+import settings.MongoConnectionSettings
+import tools.MongoWriteErrors
 
 /**
  * Single Mongo connection shared across every repository. Prior to this,

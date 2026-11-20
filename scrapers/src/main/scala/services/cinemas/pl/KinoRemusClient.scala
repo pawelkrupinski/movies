@@ -1,19 +1,18 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
+import java.time.LocalDateTime
 import java.util.Locale
-import services.titles.FormatTags
 
-import models._
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse, SlotsToMovies, OnlyMovieEventsFilter}
+import services.titles.FormatTags
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
-
-import java.time.LocalDateTime
-import scala.jdk.CollectionConverters._
 
 /**
  * Kino Remus (Kościerzyna), the Kościerski Dom Kultury's cinema. Its programme

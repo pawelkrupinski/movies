@@ -1,8 +1,7 @@
 package services.movies
 
-import models.{CacheKey, FilmId, LeanRecords, StoredMovieRecord}
-
 import models.MovieRecord
+import models.{CacheKey, FilmId, LeanRecords, StoredMovieRecord}
 
 /**
  * The [[CorpusMirror]]'s change-stream applies: each upsert, venue-slots change and delete another writer made to the

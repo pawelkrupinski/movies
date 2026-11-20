@@ -1,7 +1,6 @@
 package services.movies
 
 import models.{LeanRecords, StringPool}
-
 import models.{MovieRecord, SourceData, ShowtimesDigest}
 /** How [[CaffeineMovieCache]] shapes a row to hold it resident: its slots' showtimes stripped while
  *  `screenings` holds them (`stripShowtimes`), and every string a slot repeats across cinemas taken

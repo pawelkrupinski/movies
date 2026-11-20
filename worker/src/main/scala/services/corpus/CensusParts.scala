@@ -1,14 +1,15 @@
 package services.corpus
 
-import models.{CacheKey, City, StoredMovieRecord}
-import services.evidence.LatestTitleYear
-import services.titles.TitleNormalizer
-import play.api.Logging
-
 import java.time.Clock
 import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.{CacheKey, City, StoredMovieRecord}
+import play.api.Logging
+import services.evidence.LatestTitleYear
+import services.titles.TitleNormalizer
 
 /** Each film's part in the [[CorpusCensus]] ([[FilmCensus]]), as of the last drain, and the time-free subsets'
  *  running sums over them; and the films the cache changed since, noted for the next drain to derive. Keyed by `K`

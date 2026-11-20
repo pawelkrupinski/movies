@@ -1,20 +1,18 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
-import services.cinemas.common.SlotsToMovies
-
+import java.time.{LocalDate, LocalDateTime}
 import java.util.Locale
 
-import services.cinemas.common.ScraperParse
-import models._
-import org.jsoup.Jsoup
-import tools.{HttpFetch, HttpRead}
-import org.jsoup.nodes.Element
-import services.cinemas.common.{SingleSiteScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import scala.jdk.CollectionConverters.*
 
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
+import models.*
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.SynopsisProse
+import services.cinemas.common.{SingleSiteScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * KINOMUZEUM (Muzeum Sztuki Nowoczesnej, Warszawa). The `/pl/repertuar` page is

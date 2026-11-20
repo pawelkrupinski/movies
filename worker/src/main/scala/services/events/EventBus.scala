@@ -1,10 +1,11 @@
 package services.events
 
+import java.util.concurrent.CopyOnWriteArrayList
+
+import scala.util.control.NonFatal
+
 import play.api.Logging
 import services.tasktypes.TaskType
-
-import java.util.concurrent.CopyOnWriteArrayList
-import scala.util.control.NonFatal
 
 /**
  * Domain-level events published by core services. Listeners subscribe by

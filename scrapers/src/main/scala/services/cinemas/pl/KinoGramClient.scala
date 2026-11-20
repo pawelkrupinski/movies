@@ -1,16 +1,17 @@
 package services.cinemas.pl
 
+import java.time.Instant
+
+import scala.util.Try
+
+import models.*
+import models.TrailerEmbed
+import play.api.libs.json.*
+import services.cinemas.common.CinemaScraper
 import services.cinemas.common.ScraperParse
 import services.cinemas.common.ScraperParse.jsonText
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
-import models._
-import play.api.libs.json._
-import models.TrailerEmbed
-import services.cinemas.common.CinemaScraper
-
-import java.time.Instant
-import scala.util.Try
 
 /**
  * KinoGram (Warszawa, Fabryka Norblina). The ticketing backend is an Apollo

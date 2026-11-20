@@ -1,12 +1,13 @@
 package services.cinemas.pl
 
-import tools.{HttpFetch, HttpRead}
-import models._
+import java.time.LocalDate
+
+import scala.util.Try
+
+import models.*
 import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon}
 import services.titles.TitleNormalizer
-
-import java.time.LocalDate
-import scala.util.Try
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Client for the LEGACY per-venue bilety24.pl SUBDOMAINS (e.g.

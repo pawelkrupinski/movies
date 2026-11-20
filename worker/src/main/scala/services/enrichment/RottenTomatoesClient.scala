@@ -1,13 +1,14 @@
 package services.enrichment
 
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+
+import scala.jdk.CollectionConverters.*
+
 import org.jsoup.Jsoup
 import services.enrichment.scraping.{JsonLdAggregateRating, RottenTomatoesScorecard}
 import services.titles.TitleMatch
 import tools.{ConcurrentCandidateProbe, HttpFetch, HttpRead}
-
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
-import scala.jdk.CollectionConverters._
 
 /**
  * Tries to resolve a film title to its canonical Rotten Tomatoes page URL and,

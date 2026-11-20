@@ -1,18 +1,19 @@
 package services.scrapes
 
-import models.{ArchivedScrape, BarrenAttempt, Cinema, CinemaMovie, ContentStamp, LeanListing, SuccessfulScrape}
+import java.time.Instant
+
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+import scala.util.{Failure, Success, Try}
+
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.UpdateOptions
-import org.bson.{BsonDocument, BsonDocumentWriter, BsonString}
+import models.{ArchivedScrape, BarrenAttempt, Cinema, CinemaMovie, ContentStamp, LeanListing, SuccessfulScrape}
 import org.bson.codecs.EncoderContext
+import org.bson.{BsonDocument, BsonDocumentWriter, BsonString}
 import org.mongodb.scala.model.{Filters, Projections, Updates}
 import org.mongodb.scala.{FindObservable, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-
-import java.time.Instant
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
-import scala.util.{Failure, Success, Try}
 
 /**
  * Mongo-backed `ScrapeArchiveRepository`, collection `cinema_scrapes` — one row

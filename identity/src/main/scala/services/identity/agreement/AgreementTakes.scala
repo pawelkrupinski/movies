@@ -1,10 +1,10 @@
 package services.identity.agreement
 
+import scala.collection.mutable
+
 import services.identity.BilledPiece
 import services.identity.measures.{Listing, PosterEvidence, ResolverDecision}
 import services.identity.vocabulary.{Answer, DetailFacts, ProseWords, Question, VoterFamily}
-
-import scala.collection.mutable
 
 /** The stage's takes of a cluster the model left unmatched: the film the families agree on, a fill rule's, the venue
  *  posters' vote, the broadcast its screening days name and its catalogue ids' — each refused where a venue's synopsis

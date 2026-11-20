@@ -1,9 +1,10 @@
 package services.identity
 
-import models.ListingKey
-
 import java.time.Clock
+
 import scala.concurrent.duration.*
+
+import models.ListingKey
 import services.identity.measures.ResolverDecision
 
 /**

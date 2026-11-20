@@ -1,16 +1,16 @@
 package services.readmodel
 
-import models.StoredMovieRecord
-
-import play.api.Logging
-import services.movies.{BootCorpusReader, BootReadEnd}
-import services.evidence.LatestTitleYear
-import services.titles.TitleNormalizer
-
 import java.util.concurrent.atomic.AtomicReference
-import scala.concurrent.{Await, ExecutionContext, Future, Promise}
+
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.Try
+
+import models.StoredMovieRecord
+import play.api.Logging
+import services.evidence.LatestTitleYear
+import services.movies.{BootCorpusReader, BootReadEnd}
+import services.titles.TitleNormalizer
 
 /** What the read-model projector's boot reads take from the cache's boot hydrate, in place of a
  *  corpus read of their own.

@@ -1,12 +1,13 @@
 package services.identityadapters
 
+import java.util.concurrent.Executor
+
+import scala.collection.mutable
+
+import play.api.Logging
 import services.identity.*
 import services.identity.measures.{Listing, Resolution, ResolverDecision}
-import play.api.Logging
 import services.titles.TitleNormalizer
-
-import java.util.concurrent.Executor
-import scala.collection.mutable
 
 /**
  * How often each RULE fires on the live listings, counted over each WRITTEN projection of the whole corpus: per rule id,

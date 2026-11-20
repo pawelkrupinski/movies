@@ -2,15 +2,15 @@ package diagnostics
 
 
 
-import tools.TlsTrust
+import services.cinemas.roster.ChainDirectory
+import services.cinemas.roster.RosterFinding.DirectoryNotRead
 import tools.FetchedPage
 import tools.HttpFetch
 import tools.ProxyChain
 import tools.ResidentialShards
 import tools.SessionWarmingHttpFetch
 import tools.Stopwatch
-import services.cinemas.roster.ChainDirectory
-import services.cinemas.roster.RosterFinding.DirectoryNotRead
+import tools.TlsTrust
 
 /**
  * How [[RosterAudit]] reaches the chains' own venue lists. Multikino's sits

@@ -1,12 +1,12 @@
 package controllers
 
-import org.apache.pekko.NotUsed
-import org.apache.pekko.stream.{Materializer, OverflowStrategy}
-import org.apache.pekko.stream.scaladsl.Source
-import play.api.Mode
-import play.api.mvc._
-
 import scala.concurrent.ExecutionContext
+
+import org.apache.pekko.NotUsed
+import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.stream.{Materializer, OverflowStrategy}
+import play.api.Mode
+import play.api.mvc.*
 
 /**
  * Dev-only Server-Sent Events feed of `movies` change-stream events for the

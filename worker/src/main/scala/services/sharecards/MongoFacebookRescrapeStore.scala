@@ -1,19 +1,21 @@
 package services.sharecards
 
-import com.mongodb.MongoWriteException
-import com.mongodb.client.model.{FindOneAndUpdateOptions, ReturnDocument, UpdateOptions}
-import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
-import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonInt64, BsonString}
-import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
-import play.api.Logging
-import tools.MongoErrors
-import services.facebook.MongoFacebookSlots
 import java.time.Instant
 import java.util.Date
+
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
+
+import com.mongodb.MongoWriteException
+import com.mongodb.client.model.{FindOneAndUpdateOptions, ReturnDocument, UpdateOptions}
+import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonInt64, BsonString}
+import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
+import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
+import play.api.Logging
+import services.facebook.MongoFacebookSlots
+import tools.MongoErrors
 
 /**
  * The store in one Mongo collection of the fleet database: an entry per key (`_id`), and the

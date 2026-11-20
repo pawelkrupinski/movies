@@ -1,11 +1,12 @@
 package controllers
 
-import models._
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.collection.mutable.ArrayBuffer
+
+import models.*
 import play.api.Logging
 import services.readmodel.WebReadModel
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.collection.mutable.ArrayBuffer
 
 // What the listing IS, apart from how a request asks for it: the schedules the web serves,
 // read from the read model. A file of its own because the convergence legs read their

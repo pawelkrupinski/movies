@@ -1,10 +1,11 @@
 package services.cinemas.common
 
+import java.time.Clock
+
+import scala.util.control.NonFatal
+
 import models.CinemaMovie
 import services.UptimeRecorder
-
-import java.time.Clock
-import scala.util.control.NonFatal
 
 /**
  * Decorator that records a scrape's *outcome* against the `UptimeMonitor`

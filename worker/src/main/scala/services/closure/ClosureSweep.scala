@@ -1,10 +1,10 @@
 package services.closure
 
+import java.time.{Clock, Instant}
+
 import play.api.Logging
 import services.scrapes.VenueClosure
 import services.scrapes.VenueClosure.{SourceDrop, Verdict}
-
-import java.time.{Clock, Instant}
 
 /**
  * Runs every rostered venue through [[VenueClosure]] once a day.

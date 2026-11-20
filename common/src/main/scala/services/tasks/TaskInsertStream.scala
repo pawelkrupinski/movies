@@ -1,15 +1,15 @@
 package services.tasks
 
-import tools.ChangeStreamCallback
+import java.time.Instant
+import java.util.concurrent.atomic.AtomicReference
+
+import scala.concurrent.duration.FiniteDuration
 
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, OperationType}
 import org.mongodb.scala.{Document, Observer, Subscription}
 import play.api.Logging
 import services.movies.ChangeStreamReopen
-
-import java.time.Instant
-import java.util.concurrent.atomic.AtomicReference
-import scala.concurrent.duration.FiniteDuration
+import tools.ChangeStreamCallback
 
 /**
  * The `tasks` change-stream SUBSCRIPTION behind [[MongoTaskQueue.watchWaiting]]: one

@@ -2,12 +2,12 @@ package modules.wiring
 
 import services.corpus.CorpusCensus
 import services.corpus.CorpusCensusMetrics
+import services.metrics.worker.RetiredVenueCensus
+import services.metrics.worker.{CorpusSeriesBinder, ReadModelSeriesBinder}
 import services.tasks.CinemaContentCensus
 import services.tasks.CinemaScrapeCensus
 import services.tasks.RatingRunCensus
 import services.tasks.TaskPipelineBinder
-import services.metrics.worker.{CorpusSeriesBinder, ReadModelSeriesBinder}
-import services.metrics.worker.RetiredVenueCensus
 
 /** This country's slice of the process-wide `/metrics` registry: the
  *  per-country metric binders, the cache-occupancy gauges, and the

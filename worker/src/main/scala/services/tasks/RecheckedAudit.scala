@@ -1,16 +1,15 @@
 package services.tasks
 
-import services.tasktypes.TaskType
+import java.time.Clock
 
-import settings.AuditSample
+import scala.concurrent.duration.*
+import scala.util.Random
 
 import io.prometheus.metrics.core.metrics.Counter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import play.api.Logging
-
-import java.time.Clock
-import scala.concurrent.duration.*
-import scala.util.Random
+import services.tasktypes.TaskType
+import settings.AuditSample
 
 /**
  * A RUNTIME INVARIANT, CHECKED BY SAMPLE: every run draws `sampleSize` ids at random, asks `check`

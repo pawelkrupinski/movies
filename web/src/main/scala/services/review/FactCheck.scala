@@ -1,8 +1,8 @@
 package services.review
 
-import services.titles.billing.DecorationWords
 import services.identity.measures.ListingShape
 import services.identity.measures.{FactRelations, IdentityMeasures}
+import services.titles.billing.DecorationWords
 
 /** One thing some venues state about a listing that the film contradicts — every venue stating it, once. */
 final case class Disagreement(venues: Seq[String], verb: Disagreement.Verb, claim: String) {

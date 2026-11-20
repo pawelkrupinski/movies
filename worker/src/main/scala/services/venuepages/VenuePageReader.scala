@@ -1,9 +1,9 @@
 package services.venuepages
 
+import java.time.Clock
+
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome}
 import services.events.VenueDetailRead
-
-import java.time.Clock
 
 /**
  * Reads a venue detail page into `venue_pages`, the one place its facts are written: fetch it, store

@@ -1,12 +1,13 @@
 package services.tasks
 
+import java.time.Clock
+
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import org.mongodb.scala.{Document, MongoDatabase}
 import play.api.Logging
 import tools.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
-
-import java.time.Clock
-import scala.concurrent.duration.*
-import scala.util.Try
 
 /** A chunk's last page and what it parsed to, by (cinema, chunk key): what lets a page identical to
  *  the last one skip its parse (`ScrapeChunkHandler`). A memo that cannot answer answers None, and the

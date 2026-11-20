@@ -1,13 +1,14 @@
 package services.cinemas.us
 
-import models._
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element, TextNode}
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScraperParse}
 import tools.{HttpFetch, HttpRead, ReadOutcome}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
 
 /**
  * A house of Mitchell Theatres (mitchelltheatres.com), the Kansas / Oklahoma / Texas / New

@@ -1,16 +1,17 @@
 package services.corpus
 
+import java.time.Clock
+import java.util.concurrent.TimeUnit
+
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.City
 import play.api.Logging
 import services.movies.MovieCache
 import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
-
-import java.time.Clock
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Every `movies`-census gauge the worker exposes ([[CensusGauges]]) — `WorkerCorpusMetrics`, `WorkerSourceFilmsMetrics`,

@@ -1,13 +1,13 @@
 package services.identity
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{IndexOptions, Indexes, InsertManyOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 
 /** One film's entry in the FilmId map: today's opaque string id (legacy `title|year` or `f…`) and
  *  the counter [[IdAssigner]] knows the film by. */

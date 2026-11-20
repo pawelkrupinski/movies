@@ -1,8 +1,8 @@
 package services.identity
 
-import models.ListingKey
-
 import java.util.Locale
+
+import models.ListingKey
 import services.identity.measures.{DecisionTrace, Listing, ResolverDecision}
 
 /** A listing still published whose take a projection changed — THE change list every reader of what a projection changed

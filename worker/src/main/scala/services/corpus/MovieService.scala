@@ -1,20 +1,18 @@
 package services.corpus
 
-import models.{CacheKey, SlotFields, StoredMovieRecord}
-
-import services.movies.*
+import scala.util.{Failure, Try}
 
 import clients.TmdbClient
+import models.{CacheKey, SlotFields, StoredMovieRecord}
+import models.{MovieRecord, Source, SourceData, TitleSearch, Tmdb}
 import play.api.Logging
 import services.events.{EventBus, ImdbIdMissing}
 import services.freshness.{FreshnessKind, FreshnessStore}
-import services.tasks.{RatingTasks, TaskWorker}
-
-import models.{MovieRecord, Source, SourceData, TitleSearch, Tmdb}
 import services.identity.StoredIdentityConfidence
 import services.identity.measures.PinnedGateMeasures
 import services.identity.vocabulary.Hit
-import scala.util.{Failure, Try}
+import services.movies.*
+import services.tasks.{RatingTasks, TaskWorker}
 
 /**
  * The films' TMDB side, as the identity projection writes it: a film's details fetched BY ID for a

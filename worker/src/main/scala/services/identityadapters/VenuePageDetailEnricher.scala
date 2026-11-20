@@ -1,8 +1,8 @@
 package services.identityadapters
 
 import services.cinemas.common.{DetailEnricher, FilmDetail}
-import tools.LookupQuery
 import services.identity.vocabulary.ObservationReads
+import tools.LookupQuery
 
 /**
  * A venue's detail as the identity model reads it: from venue_pages ([[VenuePageIndex]]), never fetched

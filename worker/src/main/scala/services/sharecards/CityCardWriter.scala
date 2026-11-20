@@ -1,12 +1,13 @@
 package services.sharecards
 
+import java.nio.file.{Files, Path}
+import java.time.Clock
+
+import scala.util.Try
+
 import models.City
 import play.api.Logging
 import tools.{CityCardRenderer, Digest}
-
-import java.nio.file.{Files, Path}
-import java.time.Clock
-import scala.util.Try
 
 /** Draws a city's card from its current films ([[CityFilms]]) and writes it to the share-card directory — or, when it
  *  would be the picture already on disk, only marks it rendered now. When a city is due is [[CityCardService]]'s. */

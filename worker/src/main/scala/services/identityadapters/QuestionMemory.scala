@@ -1,9 +1,9 @@
 package services.identityadapters
 
-import services.identity.*
-import org.bson.{BsonDocument, BsonInt64, BsonString}
-
 import java.time.{Clock, Instant}
+
+import org.bson.{BsonDocument, BsonInt64, BsonString}
+import services.identity.*
 import services.identity.vocabulary.{AnswersChanged, BsonFields, Question, QuestionKind}
 
 /**

@@ -1,9 +1,10 @@
 package services.cinemas.common
 
-import models.{Cinema, CinemaMovie, VenueClock}
-
 import java.time.Clock
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
+
+import models.{Cinema, CinemaMovie, VenueClock}
 
 /**
  * Does a scrape that DID return screenings hold none in the next [[Window]]?

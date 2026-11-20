@@ -1,8 +1,8 @@
 package services.scrapes
 
-import models.{ArchivedScrape, BarrenAttempt, Cinema, CinemaMovie, ContentStamp, LeanListing, ScrapeAttempt, ScrapeOutcome, SuccessfulScrape}
-
 import scala.util.{Success, Try}
+
+import models.{ArchivedScrape, BarrenAttempt, Cinema, CinemaMovie, ContentStamp, LeanListing, ScrapeAttempt, ScrapeOutcome, SuccessfulScrape}
 
 /**
  * The read side of the scrape archive: a venue's row, scans of them all, and the content stamps.

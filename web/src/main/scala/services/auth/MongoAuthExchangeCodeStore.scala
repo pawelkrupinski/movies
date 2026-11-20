@@ -1,16 +1,17 @@
 package services.auth
 
-import com.mongodb.client.model.{IndexOptions => JIndexOptions}
+import java.time.Instant
+import java.util.concurrent.TimeUnit
+
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
+
+import com.mongodb.client.model.IndexOptions as JIndexOptions
 import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonString}
 import org.mongodb.scala.model.{Filters, Indexes}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import play.api.Logging
-
-import java.time.Instant
-import java.util.concurrent.TimeUnit
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * [[AuthExchangeCodeStore]] on Mongo, in the SHARED users database.

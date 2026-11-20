@@ -1,12 +1,13 @@
 package services.cinemas.pl
 
-import play.api.libs.json.{JsObject, Json}
-import services.identity.vocabulary.ScreeningDays
-import services.identity.agreement.Showing
-import tools.{HttpFetch, HttpRead}
-
 import java.time.LocalDate
+
 import scala.util.Try
+
+import play.api.libs.json.{JsObject, Json}
+import services.identity.agreement.Showing
+import services.identity.vocabulary.ScreeningDays
+import tools.{HttpFetch, HttpRead}
 
 /**
  * A Polish venue's programme as Filmweb lists it — every film it screens over Filmweb's window, by Filmweb's film id,

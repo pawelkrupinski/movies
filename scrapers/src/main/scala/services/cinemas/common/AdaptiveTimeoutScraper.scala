@@ -1,10 +1,10 @@
 package services.cinemas.common
 
+import java.util.concurrent.{Callable, ExecutionException, ExecutorService, TimeUnit, TimeoutException}
+
 import models.CinemaMovie
 import play.api.Logging
 import tools.HostScrapeStats
-
-import java.util.concurrent.{Callable, ExecutionException, ExecutorService, TimeUnit, TimeoutException}
 
 /**
  * Decorator that bounds a single scrape's wall-clock to an ADAPTIVE budget

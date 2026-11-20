@@ -1,7 +1,7 @@
 package services.identity
 
-import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredListing, Scored}
 import services.identity.AcceptanceRule.Weighing
+import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredListing, Scored}
 
 /** What the acceptance rules that take a film by how its title is searched and billed ask: the exact and segment top
  *  hits, IMDb's suggestion, and the sole result ([[AcceptanceRuleTable]]).

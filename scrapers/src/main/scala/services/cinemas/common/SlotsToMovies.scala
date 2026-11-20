@@ -1,8 +1,8 @@
 package services.cinemas.common
 
-import models._
-
 import java.time.LocalDateTime
+
+import models.*
 
 /** One screening as a plain listing scraper reads it: a cleaned film title, its time, and
   * the few links/tokens the page carries. A client whose films carry nothing more builds these

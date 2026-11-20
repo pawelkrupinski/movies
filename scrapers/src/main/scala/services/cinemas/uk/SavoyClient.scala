@@ -1,19 +1,20 @@
 package services.cinemas.uk
 
-import services.cinemas.common.ScraperParse.jsonText
-import models._
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
+import models.CountryNames
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
-import play.api.libs.json._
-import models.CountryNames
+import play.api.libs.json.*
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.{AgeRating, CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies, VenueCategory}
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Savoy Systems — the UK independent-cinema ticketing platform whose venue sites are

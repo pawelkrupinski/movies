@@ -1,13 +1,14 @@
 package services.auth
 
-import play.api.libs.json.Json
-
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Base64
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
+
 import scala.util.Try
+
+import play.api.libs.json.Json
 
 /**
  * A verified Facebook `signed_request` payload. Today we only read

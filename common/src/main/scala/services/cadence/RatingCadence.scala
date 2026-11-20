@@ -1,8 +1,10 @@
 package services.cadence
 
+import java.time.{Duration as JDuration, Instant, LocalDate}
+
+import scala.concurrent.duration.*
+
 import models.{RatingChange, RatingChangeStats}
-import java.time.{Duration => JDuration, Instant, LocalDate}
-import scala.concurrent.duration._
 
 object RatingCadence {
   /** Fastest cadence — a fresh or just-changed film is rechecked this often. */

@@ -1,18 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
+import java.time.{LocalDate, LocalDateTime}
 
-import services.cinemas.common.SlotsToMovies
+import scala.jdk.CollectionConverters.*
 
-import services.cinemas.common.ScraperParse
-import models._
-import tools.{HttpFetch, HttpRead}
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Pod Baranami (Kraków) — historic arthouse cinema on Rynek Główny.

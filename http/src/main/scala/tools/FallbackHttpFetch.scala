@@ -1,8 +1,8 @@
 package tools
 
-import play.api.Logging
-
 import scala.util.control.NonFatal
+
+import play.api.Logging
 
 /**
  * Tries each backend in order, returning the first successful body.

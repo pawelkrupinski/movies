@@ -1,17 +1,18 @@
 package controllers
 
-import models.User
-import play.api.Logging
-import play.api.libs.json.{JsValue, Json}
-import play.api.mvc._
-import services.auth.{AuthExchangeCodes, NativeTokenVerifier, OauthAccounts, OauthProfile, OauthProvider}
-import services.users.UserRepository
-
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Clock
 import java.util.UUID
+
 import scala.util.{Failure, Success, Try}
+
+import models.User
+import play.api.Logging
+import play.api.libs.json.{JsValue, Json}
+import play.api.mvc.*
+import services.auth.{AuthExchangeCodes, NativeTokenVerifier, OauthAccounts, OauthProfile, OauthProvider}
+import services.users.UserRepository
 
 /**
  * OAuth2 authorization-code flow controller. Two endpoints per

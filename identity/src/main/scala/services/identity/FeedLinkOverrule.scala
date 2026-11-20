@@ -1,7 +1,8 @@
 package services.identity
 
-import services.identity.measures.{Candidate, Evidence, EvidenceNode, IdentityMeasures, MeasuredListing, SourceReliability}
 import scala.collection.mutable
+
+import services.identity.measures.{Candidate, Evidence, EvidenceNode, IdentityMeasures, MeasuredListing, SourceReliability}
 import services.identity.vocabulary.{CatalogueId, ScreeningDays}
 
 /** A family's feed links ([[FeedLink]]) read against its pool ([[FamilyScope]]): the TMDB film a node's TMDB-keyed feed

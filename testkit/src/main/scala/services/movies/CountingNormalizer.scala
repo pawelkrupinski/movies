@@ -1,8 +1,8 @@
 package services.movies
 
-import services.titles.TitleNormalizer
-
 import java.util.concurrent.atomic.AtomicInteger
+
+import services.titles.TitleNormalizer
 
 /** A [[TitleNormalizer]] over `rules` that counts its `sanitize` calls — the unit of cost the
  *  scaling specs bound. `counted` narrows it to the titles a spec cares about. */

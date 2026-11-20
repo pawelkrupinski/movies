@@ -1,11 +1,9 @@
 package services.movies
 
-import services.evidence.LatestTitleYear
 import models.{FilmId, StoredMovieRecord}
-
-import services.titles.TitleNormalizer
-
 import models.{Showtime, Source, SourceData}
+import services.evidence.LatestTitleYear
+import services.titles.TitleNormalizer
 
 /** How [[MongoMovieRepository]] makes a stored `movies` row whole again: its slots from
  *  `movie_slots` and its showtimes from `screenings`, each side collection when it is wired.

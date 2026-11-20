@@ -2,6 +2,7 @@ package clients.tools
 
 import java.io.FileNotFoundException
 import java.nio.charset.StandardCharsets
+
 import scala.io.{Codec, Source}
 
 /** Reads a recorded fixture file whole, as a `String` — the one place this

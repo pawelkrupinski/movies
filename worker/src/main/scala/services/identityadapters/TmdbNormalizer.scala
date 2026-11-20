@@ -1,17 +1,18 @@
 package services.identityadapters
 
-import services.identity.measures.*
+import java.net.{URI, URLDecoder}
+import java.nio.charset.StandardCharsets
+
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
+
 import clients.{TmdbJson, TmdbResponses}
 import play.api.Logging
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import services.enrichment.ImdbClient
-import tools.{ForwardingHttpFetch, HttpFetch, HttpStatusException}
-
-import java.net.{URI, URLDecoder}
-import java.nio.charset.StandardCharsets
-import scala.util.{Failure, Success, Try}
-import scala.util.control.NonFatal
+import services.identity.measures.*
 import services.identity.vocabulary.{PopularityBucket, ProseWords}
+import tools.{ForwardingHttpFetch, HttpFetch, HttpStatusException}
 
 /**
  * Each identity response, as it arrives, into [[TmdbStore]]'s normalized documents — read through

@@ -1,11 +1,11 @@
 package modules
 
+import scala.concurrent.Future
+
 import models.Country
-import services.metrics.web.{LegacyAddressKind, LegacyAddressMetrics}
 import org.apache.pekko.stream.Materializer
 import play.api.mvc.{Filter, RequestHeader, Result, Results}
-
-import scala.concurrent.Future
+import services.metrics.web.{LegacyAddressKind, LegacyAddressMetrics}
 
 /**
  * 301s every path under a slug that is not a page of THIS deployment's country

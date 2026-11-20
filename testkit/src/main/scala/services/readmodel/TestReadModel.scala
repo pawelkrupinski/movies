@@ -1,12 +1,12 @@
 package services.readmodel
 
-import models.StoredMovieRecord
+import java.time.Clock
 
-import services.movies.SingleCountryNormalizer.titleNormalizer
+import scala.concurrent.duration.FiniteDuration
 
 import models.MovieRecord
-import java.time.Clock
-import scala.concurrent.duration.FiniteDuration
+import models.StoredMovieRecord
+import services.movies.SingleCountryNormalizer.titleNormalizer
 import tools.SpecClock.given
 
 /**

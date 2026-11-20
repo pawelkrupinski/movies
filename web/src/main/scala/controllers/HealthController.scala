@@ -1,7 +1,7 @@
 package controllers
 
 import play.api.libs.json.Json
-import play.api.mvc._
+import play.api.mvc.*
 
 /** The kubelet's two questions, answered separately because they want opposite things.
  *

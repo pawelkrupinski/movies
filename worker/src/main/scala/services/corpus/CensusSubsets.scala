@@ -1,8 +1,8 @@
 package services.corpus
 
 import models.MovieRecord
-import services.metrics.worker.{WorkerCorpusMetrics, WorkerSourceFilmsMetrics}
 import services.evidence.LatestTitleYear
+import services.metrics.worker.{WorkerCorpusMetrics, WorkerSourceFilmsMetrics}
 
 /** The census's series names: the corpus subsets of the [[CorpusCensus]] — those that do not move with the clock
  *  ([[StaticNames]]) in the order of their bits in [[FilmCensus.subsets]] — and the scopes a city's films are served in. */

@@ -1,12 +1,11 @@
 package services.metrics.worker
 
-import tools.ChangeStreamLiveness
+import java.time.Instant
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.movies.{ChangeStreamMetrics, ScreeningsMetrics}
-
-import java.time.Instant
+import tools.ChangeStreamLiveness
 
 /** The change-stream series: each cursor's liveness (last delivery, apply backlog and lag), and what
  *  the `movies`, `screenings` and `movie_slots` cursors delivered and applied. Every series is seeded

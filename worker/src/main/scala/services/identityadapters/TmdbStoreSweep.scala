@@ -1,9 +1,10 @@
 package services.identityadapters
 
-import play.api.Logging
-
 import java.time.Clock
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
+
+import play.api.Logging
 
 /**
  * The normalized TMDB store's retention: what it keeps is only what the model still reads.

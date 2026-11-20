@@ -1,9 +1,8 @@
 package services.movies
 
-import services.evidence.{LatestTitleYear, TmdbLessEligibility}
 import models.CacheKey
-
 import models.MovieRecord
+import services.evidence.{LatestTitleYear, TmdbLessEligibility}
 
 /** One enrichment a merge can invalidate by changing the input field(s) it
  *  resolves from. Mapped to a concrete worker task + freshness kind by the

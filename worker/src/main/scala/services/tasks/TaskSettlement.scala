@@ -1,10 +1,11 @@
 package services.tasks
 
-import services.tasks.WorkerTaskMetrics.Outcome
-import play.api.Logging
-
 import java.time.{Clock, Instant}
+
 import scala.util.{Failure, Success, Try}
+
+import play.api.Logging
+import services.tasks.WorkerTaskMetrics.Outcome
 
 /**
  * What a task the pool ran comes to on the queue, from what its handler answered: completed (Done,

@@ -1,10 +1,9 @@
 package services.identity
 
 import models.ListingKey
-
-import services.titles.TitleForms
-import services.identity.vocabulary.{PinConstraints, TitleDecorations}
 import services.identity.measures.{EvidenceNode, Listing, ResolverDecision}
+import services.identity.vocabulary.{PinConstraints, TitleDecorations}
+import services.titles.TitleForms
 
 /** Why a listing resolved as it did and sits where it does — the resolve's own stages, told:
  *  its node; every family key it has and why, and every title piece it does not block under and

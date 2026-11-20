@@ -1,14 +1,14 @@
 package services.movies
 
+import java.time.Instant
+
 import models.{Showtime, SourceData, TitleSearch}
-import org.bson.{BsonReader, BsonType, BsonWriter}
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
 import org.bson.codecs.configuration.{CodecProvider, CodecRegistry}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
+import org.bson.{BsonReader, BsonType, BsonWriter}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import services.PersistedCodecs
-
-import java.time.Instant
 
 private[movies] final class BackwardCompatibleSourceDataCodec(
     macroCodec: Codec[SourceData], showtimeCodec: Codec[Showtime], titleSearchCodec: Codec[TitleSearch]) extends Codec[SourceData] {

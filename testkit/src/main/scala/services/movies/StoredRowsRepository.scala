@@ -1,14 +1,11 @@
 package services.movies
 
-import tools.ChangeStreamLiveness
-
-import models.{CacheKey, FilmId, StoredMovieRecord}
-
-import services.titles.TitleNormalizer
+import scala.collection.mutable
 
 import models.MovieRecord
-
-import scala.collection.mutable
+import models.{CacheKey, FilmId, StoredMovieRecord}
+import services.titles.TitleNormalizer
+import tools.ChangeStreamLiveness
 
 /** A [[MovieRepository]] that answers `findAll` with the rows it was given and RECORDS
  *  writes without applying them — for specs about what a cache or a fold does with a

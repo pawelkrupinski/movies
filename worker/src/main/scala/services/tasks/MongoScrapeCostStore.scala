@@ -1,5 +1,10 @@
 package services.tasks
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonInt32}
 import org.mongodb.scala.model.{Filters, PushOptions, UpdateOptions, Updates}
@@ -7,11 +12,6 @@ import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture
 import play.api.Logging
 import tools.MongoKeyedDocStore
 import tools.ScanOutcome
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * The `scrape_costs` collection in the country's database: one `{_id: dedupKey,

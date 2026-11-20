@@ -1,8 +1,8 @@
 package tools
 
-import play.api.libs.json.{JsNumber, JsReadable, JsString, JsValue}
-
 import scala.util.Try
+
+import play.api.libs.json.{JsNumber, JsReadable, JsString, JsValue}
 
 /**
  * Read a JSON scalar the way every scraper and rating reader wants it.

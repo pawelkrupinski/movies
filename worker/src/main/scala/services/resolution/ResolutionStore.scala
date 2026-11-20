@@ -1,15 +1,16 @@
 package services.resolution
 
-import com.mongodb.client.model.ReplaceOptions
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.model.{Filters, Projections}
-import play.api.Logging
-
 import java.time.{Clock, Instant}
 import java.util.concurrent.ConcurrentHashMap
+
 import scala.concurrent.Await
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.Try
+
+import com.mongodb.client.model.ReplaceOptions
+import org.mongodb.scala.model.{Filters, Projections}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
+import play.api.Logging
 
 /**
  * The durable boundary behind a [[ResolutionCache]]: a string `hintKey` → the

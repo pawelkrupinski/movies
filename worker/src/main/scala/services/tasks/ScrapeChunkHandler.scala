@@ -1,11 +1,10 @@
 package services.tasks
 
-import services.tasktypes.TaskType
+import java.time.Clock
 
 import play.api.Logging
 import services.cinemas.common.ChunkedCinemaScraper
-
-import java.time.Clock
+import services.tasktypes.TaskType
 
 /**
  * Handles a `ScrapeChunk` task (the MAP): fetch + parse one chunk of a chunked

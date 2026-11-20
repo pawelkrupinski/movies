@@ -1,8 +1,8 @@
 package services.identity.vocabulary
 
-import services.identity.vocabulary.FamilyClosure.Edge
-import services.evidence.ListingConstraints.{CannotLink, MustLink}
 import models.ListingKey
+import services.evidence.ListingConstraints.{CannotLink, MustLink}
+import services.identity.vocabulary.FamilyClosure.Edge
 
 /**
  * The pin set as the resolver reads it — HARD constraints, stronger than every derived rule

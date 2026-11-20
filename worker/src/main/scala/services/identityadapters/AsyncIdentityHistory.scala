@@ -1,8 +1,8 @@
 package services.identityadapters
 
-import play.api.Logging
+import scala.concurrent.duration.*
 
-import scala.concurrent.duration._
+import play.api.Logging
 
 /**
  * `inner`, written on a thread of its own: [[append]] only offers the entries to a bounded queue and returns — the

@@ -1,7 +1,8 @@
 package services.titles
 
-import tools.Whitespace.collapsedSpaces
 import java.util.Locale
+
+import tools.Whitespace.collapsedSpaces
 
 /**
  * The single source of truth for peeling a screen-format / language tag off a

@@ -1,11 +1,12 @@
 package services.identityadapters
 
-import tools.LookupQuery
-
 import java.util.concurrent.atomic.AtomicLong
+
 import scala.util.control.NoStackTrace
+
 import services.identity.vocabulary.Answer
 import services.identity.vocabulary.toAnswer
+import tools.LookupQuery
 
 /** The questions one resolve found unanswered, counted by KIND — the method, host and path with
  *  ids and query stripped (`GET api.themoviedb.org/3/search/movie`, `DETAIL`) — so a tick says

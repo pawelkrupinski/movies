@@ -1,8 +1,8 @@
 package services.tasks
 
-import tools.DueBoundary
+import scala.concurrent.duration.*
 
-import scala.concurrent.duration._
+import tools.DueBoundary
 
 /**
  * Default cadence knobs for the cinema-scrape reaper, in one place so the

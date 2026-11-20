@@ -1,9 +1,9 @@
 package controllers
 
-import play.api.libs.json.{JsObject, Json}
-
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, ZoneId}
+
+import play.api.libs.json.{JsObject, Json}
 
 /** A film's showtimes as schema.org ScreeningEvents ([[FilmStructuredData]]): one per showtime, at its
  *  cinema, booked at its booking link (else the film's page). */

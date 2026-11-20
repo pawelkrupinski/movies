@@ -1,13 +1,12 @@
 package services.enrichment
 
-import tools.JsonScalars
-
-import play.api.libs.json._
-import services.titles.{TitleMatch, YearWindow}
-import tools.{HttpFetch, HttpRead, ReadOutcome, TextNormalization}
-
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+
+import play.api.libs.json.*
+import services.titles.{TitleMatch, YearWindow}
+import tools.JsonScalars
+import tools.{HttpFetch, HttpRead, ReadOutcome, TextNormalization}
 
 /**
  * Cinemeta (Stremio's public catalogue addon) as an IMDb-id resolver of last

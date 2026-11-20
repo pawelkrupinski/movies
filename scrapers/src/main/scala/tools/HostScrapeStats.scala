@@ -1,7 +1,7 @@
 package tools
 
 import scala.collection.mutable
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
  * In-memory, thread-safe per-host scrape-duration stats that back the adaptive

@@ -1,14 +1,14 @@
 package services.movies
 
-import tools.ChangeStreamCallback
+import java.util.concurrent.atomic.AtomicReference
+
+import scala.reflect.ClassTag
 
 import com.mongodb.client.model.changestream.ChangeStreamDocument
 import org.bson.BsonDocument
 import org.mongodb.scala.{Document, MongoCollection, Observer, Subscription}
 import play.api.Logging
-
-import java.util.concurrent.atomic.AtomicReference
-import scala.reflect.ClassTag
+import tools.ChangeStreamCallback
 
 /**
  * ONE side collection's change-stream subscription — `screenings` or `movie_slots` —

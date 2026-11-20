@@ -1,13 +1,13 @@
 package services.identityadapters
 
-import services.identity.*
+import java.time.Clock
+
 import org.bson.{BsonDocument, BsonInt32, BsonString}
 import org.mongodb.scala.bson.BsonArray
 import services.enrichment.{LetterboxdClient, WikidataClient}
-
-import java.time.Clock
-import services.identity.vocabulary.{Answer, BsonFields, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueLinkPages, CatalogueLinks, CatalogueQuestion, CatalogueSources}
+import services.identity.*
 import services.identity.vocabulary.toAnswer
+import services.identity.vocabulary.{Answer, BsonFields, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueLinkPages, CatalogueLinks, CatalogueQuestion, CatalogueSources}
 
 /**
  * The catalogue mappings the agreement's catalogue take reads ([[agreement.Catalogue]]): what each catalogue id maps to,

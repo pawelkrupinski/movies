@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, HttpRead}
-import models._
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element, TextNode}
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapedSlot, SlotsToMovies}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Pionier 1907 (Szczecin) — the oldest continuously-operating cinema in

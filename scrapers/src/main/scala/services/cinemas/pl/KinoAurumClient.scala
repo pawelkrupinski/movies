@@ -1,11 +1,11 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse.jsonText
+import models.*
+import play.api.libs.json.*
 import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, HttpRead}
-import models._
-import play.api.libs.json._
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
+import tools.{HttpFetch, HttpRead}
 
 
 /**

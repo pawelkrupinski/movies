@@ -1,9 +1,9 @@
 package modules
 
+import scala.concurrent.Future
+
 import org.apache.pekko.stream.Materializer
 import play.api.mvc.{Filter, RequestHeader, Result, Results}
-
-import scala.concurrent.Future
 
 /**
  * Refuses a state-changing request (POST/PUT/PATCH/DELETE) that comes from

@@ -1,10 +1,11 @@
 package controllers
 
+import javax.inject.Inject
+
+import scala.concurrent.{ExecutionContext, Future}
+
 import org.apache.pekko.stream.Materializer
 import play.api.mvc.{Filter, RequestHeader, Result}
-
-import javax.inject.Inject
-import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * Adds a Content-Security-Policy header (and a small set of related

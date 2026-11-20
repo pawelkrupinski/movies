@@ -1,11 +1,11 @@
 package controllers
 
-import play.api.i18n.Messages
-import play.api.libs.json.{JsObject, Json}
-
 import java.time.format.TextStyle
 import java.time.{DayOfWeek, Month}
 import java.util.Locale
+
+import play.api.i18n.Messages
+import play.api.libs.json.{JsObject, Json}
 
 /**
  * The locale data `shared.js` needs at runtime that ISN'T a translated

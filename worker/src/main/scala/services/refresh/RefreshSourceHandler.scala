@@ -1,10 +1,10 @@
 package services.refresh
 
+import java.time.Clock
+
 import play.api.Logging
 import services.tasks.{BulkTaskResult, BulkTaskResultStore, HandlerOutcome, RefreshableSources, Task, TaskHandler}
 import services.tasktypes.TaskType
-
-import java.time.Clock
 
 /**
  * The queue's handler of [[TaskType.RefreshSource]]: the named source refreshed for the task's keys on the worker's

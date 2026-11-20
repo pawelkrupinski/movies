@@ -1,15 +1,16 @@
 package services.review
 
+import java.time.Instant
+import java.util.concurrent.atomic.AtomicLong
+
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-
-import java.time.Instant
-import java.util.concurrent.atomic.AtomicLong
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 
 /** The storage seam of the review answers: append one, read them all back in the order they were
  *  given. What an answer history MEANS ([[ReviewAnswers]]) is never a backend's to decide. */

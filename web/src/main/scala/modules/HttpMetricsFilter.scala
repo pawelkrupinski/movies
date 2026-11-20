@@ -1,10 +1,10 @@
 package modules
 
-import play.api.mvc.{EssentialAction, EssentialFilter, Result}
-import services.metrics.web.{WebHttpMetrics, WebRouteUsageMetrics}
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
+
+import play.api.mvc.{EssentialAction, EssentialFilter, Result}
+import services.metrics.web.{WebHttpMetrics, WebRouteUsageMetrics}
 
 /**
  * Counts and times every inbound request into [[WebHttpMetrics]], and stamps

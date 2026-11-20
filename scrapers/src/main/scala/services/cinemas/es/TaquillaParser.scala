@@ -1,12 +1,13 @@
 package services.cinemas.es
 
-import models.{Cinema, CinemaMovie, Movie, Showtime}
-import play.api.libs.json._
-
 import java.time.{LocalDate, LocalDateTime, LocalTime}
+
+import scala.util.Try
+
+import models.{Cinema, CinemaMovie, Movie, Showtime}
+import play.api.libs.json.*
 import services.cinemas.common.ScraperParse
 import services.cinemas.es.SpanishFeedText.{certificate, field, fold}
-import scala.util.Try
 
 /**
  * Pure JSON → `CinemaMovie` transformation for taquilla.com's venue endpoints

@@ -1,13 +1,12 @@
 package services.movies
 
+import scala.concurrent.duration.FiniteDuration
+
 import models.MovieRecordMerge
 import models.{CacheKey, FilmId, StoredMovieRecord}
-
 import models.{MovieRecord, ShowtimesDigest}
 import settings.{BootHydrateMaxAttempts, BootHydrateRetryInterval}
 import tools.TickRun
-
-import scala.concurrent.duration.FiniteDuration
 
 /**
  * The [[CorpusMirror]]'s corpus reads: the boot hydrate (retried while the store answers empty, its pages handed to

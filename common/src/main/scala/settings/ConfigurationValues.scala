@@ -1,6 +1,7 @@
 package settings
 
 import java.nio.file.Path
+
 import scala.concurrent.duration.FiniteDuration
 
 // One type per configuration value [[ProcessConfiguration]] resolves (a test harness's own are in

@@ -1,18 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
-
+import java.time.{LocalDate, LocalDateTime}
 import java.util.Locale
 
-import services.titles.FormatTags
-import tools.{HttpFetch, HttpRead}
-import play.api.libs.json._
-import models.{Cinema, CinemaMovie, Movie, Showtime}
-import services.cinemas.common.{AgeRating, DetailFetchOutcome, FilmDetail}
-
-import java.time.{LocalDate, LocalDateTime}
 import scala.util.Try
+
+import models.{Cinema, CinemaMovie, Movie, Showtime}
+import play.api.libs.json.*
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.{AgeRating, DetailFetchOutcome, FilmDetail}
+import services.titles.FormatTags
 import services.titles.TitleNormalizer
+import tools.{HttpFetch, HttpRead}
 
 class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, titles: TitleNormalizer) {
 

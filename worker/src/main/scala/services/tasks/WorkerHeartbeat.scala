@@ -1,12 +1,13 @@
 package services.tasks
 
+import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import play.api.Logging
 import tools.Stoppable
 import tools.{ThreadPools, TickRecorder, TickRun, ScheduledTick}
-
-import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
-import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Periodic one-line log of the task-queue depth — the worker's activity signal.

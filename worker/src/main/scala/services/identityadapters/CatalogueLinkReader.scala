@@ -1,8 +1,8 @@
 package services.identityadapters
 
 import services.identity.*
-import tools.{HttpFetch, HttpRead, HttpStatusException}
 import services.identity.vocabulary.{CatalogueId, CatalogueLinkPages, CatalogueLinks}
+import tools.{HttpFetch, HttpRead, HttpStatusException}
 
 /** Reads a venue film page's catalogue links through the fetch its client scrapes with — `readers`, one per
  *  declaration; a page gone for good (404/410) links none, any other failure throws. */

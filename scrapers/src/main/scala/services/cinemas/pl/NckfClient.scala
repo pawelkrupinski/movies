@@ -1,17 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import scala.math.Ordering.Implicits.infixOrderingOps
-import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
+import java.time.{LocalDate, LocalDateTime}
 
-import models._
+import scala.jdk.CollectionConverters.*
+import scala.math.Ordering.Implicits.infixOrderingOps
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Element, TextNode}
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
 import tools.HttpFetch
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Narodowe Centrum Kultury Filmowej (NCKF) — the cinematheque run by EC1 Łódź

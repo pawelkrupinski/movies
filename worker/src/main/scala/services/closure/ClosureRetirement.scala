@@ -1,8 +1,8 @@
 package services.closure
 
-import services.scrapes.VenueClosure.{SourceDrop, VenueSignal}
-
 import scala.util.control.NonFatal
+
+import services.scrapes.VenueClosure.{SourceDrop, VenueSignal}
 
 /** The closed venues a sweep found, retired: a venue in a data-driven roster handed to [[RetirementDispatch]] (one
  *  request per roster directory), one off the roster -- or with no dispatch wired -- recorded and paged to be retired

@@ -2,9 +2,9 @@ package modules.webwiring
 
 import controllers.{CadenceController, CorpusListing, DebugController, DebugCountries, DebugReadModelController, DebugReadModels, DebugStack, DebugStreamController, RefreshingSnapshot, FileSnapshotStore, RehydrateController, SnapshotStore, TuneController}
 import play.api.Mode
-import services.{MongoConnection, ServiceTags}
 import services.movies.{MongoMovieChangeFeed, MongoMovieRepository}
 import services.readmodel.MongoReadModelRepository
+import services.{MongoConnection, ServiceTags}
 
 /** ── /debug ────────────────────────────────────────────────────────────────
  *  The dev-only corpus inspector: one `DebugStack` of read-only views per

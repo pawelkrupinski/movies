@@ -1,13 +1,12 @@
 package services.metrics.worker
 
-import tools.ThreadPools
+import scala.concurrent.duration.*
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
 import services.movies.{RetiredVenueRows, ScreeningsRepository, SlotsRepository}
-
-import scala.concurrent.duration._
+import tools.ThreadPools
 
 /**
  * Counts the side-collection rows (`screenings`, `movie_slots`) filed under a venue this

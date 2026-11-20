@@ -1,13 +1,14 @@
 package services.tasks
 
-import play.api.Logging
-import tools.Stoppable
-import services.schedule.{OccurrenceKey, ScheduledRunStore}
-import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
-
 import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
+
+import play.api.Logging
+import services.schedule.{OccurrenceKey, ScheduledRunStore}
+import tools.Stoppable
+import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 
 /**
  * A job run once per `interval` window, first after `initialDelay`, on its own daemon thread —

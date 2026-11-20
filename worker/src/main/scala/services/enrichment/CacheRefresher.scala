@@ -1,13 +1,12 @@
 package services.enrichment
 
-import models.CacheKey
+import scala.util.{Failure, Success, Try}
 
+import models.CacheKey
 import models.MovieRecord
 import play.api.Logging
 import services.movies.MovieCache
 import services.tasks.BulkRefreshResult
-
-import scala.util.{Failure, Success, Try}
 
 /**
  * What every rating source's refresher answers, whatever the source: [[ImdbRatings]] (the IMDb id another stage

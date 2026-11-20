@@ -1,10 +1,10 @@
 package services.closure
 
+import java.time.Instant
+
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.{MongoDatabase, documentToUntypedDocument}
 import tools.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
-
-import java.time.Instant
 
 /** What the closure sweep found a venue to be. */
 enum LedgerKind(val stored: String) {

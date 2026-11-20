@@ -1,7 +1,6 @@
 package services.tasks
 
 import services.tasktypes.TaskType
-
 import tools.contracts.FailsOnPurpose
 
 /** A [[TaskQueue]] whose READS throw — the counts and the monitoring snapshot — while

@@ -1,8 +1,8 @@
 package diagnostics
 
-import play.api.libs.json._
-
 import java.time.LocalDateTime
+
+import play.api.libs.json.*
 
 /**
  * Deterministic JSON rendering for [[FilmwebDiff]]: a third output alongside the

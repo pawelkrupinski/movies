@@ -1,10 +1,10 @@
 package settings
 
+import scala.concurrent.duration.FiniteDuration
+import scala.jdk.CollectionConverters.*
+
 import com.mongodb.{ConnectionString, MongoCompressor}
 import org.mongodb.scala.MongoClientSettings
-
-import scala.concurrent.duration.FiniteDuration
-import scala.jdk.CollectionConverters._
 
 /** What one [[services.MongoConnection]] opens, as one typed value: the cluster it dials (`uri`, none: disabled), the database
  *  it binds (`database`), how it dials ([[MongoTuning]]) and the

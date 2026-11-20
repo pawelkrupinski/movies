@@ -1,9 +1,9 @@
 package services.metrics.web
 
-import services.metrics.CacheGauge
-import tools.CacheOccupancy
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import io.prometheus.metrics.model.snapshots.Unit as PrometheusUnit
+import services.metrics.CacheGauge
+import tools.CacheOccupancy
 
 /**
  * `kinowo_web_cache_*` — what each of the web tier's in-heap caches holds,

@@ -1,14 +1,15 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import models._
-import tools.HttpFetch
-import org.jsoup.Jsoup
-import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
-
 import java.time.{LocalDate, LocalDateTime, MonthDay}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
+import tools.HttpFetch
 
 /**
  * Kino Praha (Mazowiecki Teatr Muzyczny im. Jana Kiepury, Warszawa). Its own

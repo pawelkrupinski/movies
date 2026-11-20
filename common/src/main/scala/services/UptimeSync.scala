@@ -1,15 +1,15 @@
 package services
 
-import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.model.Filters
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
 import org.mongodb.scala.bson.conversions.Bson
+import org.mongodb.scala.model.Filters
+import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, documentToUntypedDocument}
 import play.api.Logging
 import tools.RetryWithBackoff
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /** The cross-process half of [[UptimeMonitor]]: what a process READS from
  *  `uptimeBuckets` — the boot `hydrate` of the display window and, on the

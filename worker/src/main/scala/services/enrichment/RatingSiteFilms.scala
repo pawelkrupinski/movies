@@ -1,8 +1,7 @@
 package services.enrichment
 
-import models.CacheKey
-
 import clients.TmdbClient
+import models.CacheKey
 import models.MovieRecord
 import services.evidence.LatestTitleYear
 import services.titles.TitleNormalizer

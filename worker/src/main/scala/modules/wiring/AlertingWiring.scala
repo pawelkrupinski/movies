@@ -1,13 +1,13 @@
 package modules.wiring
 
-import settings.{AlertRoute, TelegramRoute, FilmwebDropThreshold, ProcessConfiguration}
+import java.util.concurrent.TimeUnit
+
+import scala.concurrent.duration.FiniteDuration
 
 import services.alerts.{AlertBurst, BurstLimitedPager, FilmwebDropAlerter, TelegramAlertKind, TelegramNotifier}
 import services.cinemas.common.ScrapeOutcomeListener
 import services.metrics.worker.EnvGatedFeature
-
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.FiniteDuration
+import settings.{AlertRoute, TelegramRoute, FilmwebDropThreshold, ProcessConfiguration}
 
 /** The Telegram alerters, each wired only when its bot token + chat id are
  *  configured (absent in CI / local without secrets → no alerts). An alerter left

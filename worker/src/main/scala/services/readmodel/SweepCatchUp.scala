@@ -1,11 +1,9 @@
 package services.readmodel
 
-import tools.ChangeStreamLiveness
-
 import models.StoredMovieRecord
-
 import play.api.Logging
 import services.movies.MovieRepository
+import tools.ChangeStreamLiveness
 
 /** THE SELF-HEAL FOR A SILENT CHANGE STREAM, run by each prune sweep ([[CorpusSweep]]). A terminal
  *  cursor error reopens itself; a cursor that is open and delivering nothing — a server-side stall,

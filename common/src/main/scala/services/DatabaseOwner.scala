@@ -1,13 +1,13 @@
 package services
 
-import tools.MongoErrors
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+
 import models.Country
-import org.mongodb.scala.{MongoDatabase, SingleObservableFuture}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Filters
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
+import org.mongodb.scala.{MongoDatabase, SingleObservableFuture}
+import tools.MongoErrors
 
 /** Which country a Mongo database belongs to.
   *

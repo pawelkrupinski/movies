@@ -1,16 +1,16 @@
 package settings
 
-import tools.ProxyUser
-import tools.ProxyPassword
-import tools.PaceKnob
-import tools.HostPace
+import java.nio.file.Path
 import java.util.Locale
+
+import scala.concurrent.duration.*
 
 import models.Country
 import tools.Env
-
-import java.nio.file.Path
-import scala.concurrent.duration.*
+import tools.HostPace
+import tools.PaceKnob
+import tools.ProxyPassword
+import tools.ProxyUser
 
 /**
  * THE one resolver of this process's configuration. It is the only code that reads a

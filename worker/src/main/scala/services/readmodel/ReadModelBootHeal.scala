@@ -1,8 +1,8 @@
 package services.readmodel
 
-import play.api.Logging
-
 import scala.util.Try
+
+import play.api.Logging
 
 /** THE BOOT HEAL of the read model: every ready row one of whose cards or venues the read model lacks, projected
  *  before the first prune sweep ([[ReadModelSweeper]]) can delete the card it has under an old id. Asks exactly

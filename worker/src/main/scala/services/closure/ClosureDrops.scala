@@ -1,11 +1,11 @@
 package services.closure
 
+import java.time.Instant
+
 import models.ArchivedScrape
 import services.fallback.FallbackStore
 import services.scrapes.ScrapeArchiveReader
 import services.scrapes.VenueClosure.SourceDrop
-
-import java.time.Instant
 
 /** What the scrape archive says of each candidate: whether its sources dropped it ([[ClosureCandidate.dropped]]),
  *  and whether the gone-venue alert already paged its current page-gone spell. Read with `scan`, never `findAll`:

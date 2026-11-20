@@ -1,7 +1,8 @@
 package tools
 
-import tools.Whitespace.collapsedSpaces
 import scala.util.control.NonFatal
+
+import tools.Whitespace.collapsedSpaces
 
 /**
  * What reading an upstream said — the one shape every client reads through, so that

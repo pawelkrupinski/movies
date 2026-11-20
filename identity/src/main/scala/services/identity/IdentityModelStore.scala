@@ -1,16 +1,16 @@
 package services.identity
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+
+import models.ListingKey
+import org.bson.codecs.configuration.CodecRegistries
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonString, BsonValue}
-import org.bson.codecs.configuration.CodecRegistries
 import org.mongodb.scala.model.{Filters, ReplaceOptions, UpdateOneModel, UpdateOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import models.ListingKey
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import services.identity.vocabulary.{BsonFields, CandidateQuery, DocumentDigest, ListingKeyBson}
 import services.identity.measures.ResolverDecision
+import services.identity.vocabulary.{BsonFields, CandidateQuery, DocumentDigest, ListingKeyBson}
 
 /** One family of the incremental model as stored: what it decided, what it blocks under, what it
  *  asked and read, the node each listing was, and the digest of the corpus facts it read — all an

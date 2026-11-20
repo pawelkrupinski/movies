@@ -1,10 +1,9 @@
 package services.identity
 
-import services.identity.measures.{IdentityMeasures, ListingShape, Scored}
-import services.titles.billing.Credits
-
-import services.titles.NonMovieEventClassifier
 import services.identity.AcceptanceRule.Weighing
+import services.identity.measures.{IdentityMeasures, ListingShape, Scored}
+import services.titles.NonMovieEventClassifier
+import services.titles.billing.Credits
 
 /** What the vetoes of [[AcceptanceRuleTable.Vetoes]] ask of any rule's take: whether the billing is something else than
  *  the film it found — a performance beside it, an author's namesake, a staged show's own record, an event no film, a

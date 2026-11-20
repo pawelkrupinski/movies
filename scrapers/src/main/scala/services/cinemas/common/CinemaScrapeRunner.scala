@@ -1,11 +1,11 @@
 package services.cinemas.common
 
+import java.time.Clock
+
 import models.{Cinema, CinemaMovie, ScrapeAttempt}
 import play.api.Logging
 import services.movies.ScrapeSink
 import services.scrapes.ScrapeArchiveRepository
-
-import java.time.Clock
 
 /**
  * The per-cinema scrape core: fetch a cinema's current listings and hand them to the identity intake,

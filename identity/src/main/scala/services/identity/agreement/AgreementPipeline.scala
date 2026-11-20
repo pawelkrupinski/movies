@@ -1,12 +1,12 @@
 package services.identity.agreement
 
-import services.identity.{IdentityCalibration, IdentityLookups, NonFilmEvents}
+import scala.collection.mutable
+
+import models.ListingKey
 import services.identity.measures.{Listing, PosterEvidence, Resolution, ResolverDecision}
 import services.identity.vocabulary.{Answer, CatalogueAnswers, PosterAnswers, Question, VoterFamily}
-import models.ListingKey
+import services.identity.{IdentityCalibration, IdentityLookups, NonFilmEvents}
 import services.titles.TitleNormalizer
-
-import scala.collection.mutable
 
 /**
  * What each model decision is TAKEN AS ([[decide]]): a model take read by its CORRECTION ([[AgreementCorrections]]), a

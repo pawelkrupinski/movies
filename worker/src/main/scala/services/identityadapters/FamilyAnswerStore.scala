@@ -1,16 +1,17 @@
 package services.identityadapters
 
-import services.identity.*
+import java.time.Clock
+
+import scala.concurrent.duration.FiniteDuration
+import scala.jdk.CollectionConverters.*
+
 import org.bson.{BsonDocument, BsonInt32, BsonInt64, BsonString}
 import org.mongodb.scala.bson.BsonArray
+import services.identity.*
 import services.identity.agreement.{AnswerFeed, FamilyAnswers, Showing, SourceHit, SourceRecord}
 import services.identity.vocabulary.VoterFamily
-
-import java.time.Clock
-import scala.concurrent.duration.FiniteDuration
-import scala.jdk.CollectionConverters._
-import services.identity.vocabulary.{Answer, BsonFields, Question, ScreeningDays}
 import services.identity.vocabulary.toAnswer
+import services.identity.vocabulary.{Answer, BsonFields, Question, ScreeningDays}
 
 /**
  * What the other film database FAMILIES answered ([[VoterFamily]]): each one's title and person searches' films and

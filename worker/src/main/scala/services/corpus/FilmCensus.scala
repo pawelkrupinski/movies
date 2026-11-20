@@ -1,12 +1,11 @@
 package services.corpus
 
 import models.StoredMovieRecord
-
-import services.evidence.LatestTitleYear
 import models.{MovieRecord, Source}
+import services.evidence.LatestTitleYear
 import services.movies.StoredMovieDto
-import services.titles.TitleNormalizer
 import services.readmodel.ReadModelProjection
+import services.titles.TitleNormalizer
 
 /** One film's part in the [[CorpusCensus]], from the film as the cache holds it.
  *

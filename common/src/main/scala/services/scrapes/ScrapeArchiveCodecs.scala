@@ -1,13 +1,13 @@
 package services.scrapes
 
+import java.time.Instant
+
 import models.{ArchivedScrape, BarrenAttempt, Cinema, CinemaMovie, ContentStamp, Movie, ScrapeOutcome, Showtime, SuccessfulScrape}
-import org.bson.codecs.configuration.CodecRegistry
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
+import org.bson.codecs.configuration.CodecRegistry
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 import services.PersistedCodecs
 import services.movies.{JavaTimeCodecs, ShowtimeCodec}
-
-import java.time.Instant
 
 /** Storage mirror of one `CinemaMovie`. Identical to the domain type minus
  *  `cinema` — every film in a row belongs to the row's cinema, so repeating it

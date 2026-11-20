@@ -1,10 +1,10 @@
 package services.cinemas
 
-import models._
+import java.time.LocalDate
+
+import models.*
 import services.cinemas.common.{CinemaScraper, FlicksClient, GatsbyBoxOfficeClient, VueCinemasPlatformClient}
 import services.cinemas.uk.{BfiSouthbankClient, CineworldClient, NovaCinemaClient, OdeonClient, QuadDerbyClient, SavoyClient, SpektrixClient, TheOldCourtClient, TicketsolveClient, UkFeed, UkSourcesData, UkVenueSources}
-
-import java.time.LocalDate
 
 /**
  * Every UK venue's scraper, as [[CinemaScraperCatalog]] files them: the chains' own sites and the

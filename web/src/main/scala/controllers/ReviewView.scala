@@ -1,7 +1,7 @@
 package controllers
 
 import services.identity.measures.ResolverDecision
-import services.review._
+import services.review.*
 
 /** Everything `review.scala.html` renders. */
 final case class ReviewView(page: ReviewPage, country: String, cards: Seq[ReviewCard], total: Int, answeredHidden: Int,

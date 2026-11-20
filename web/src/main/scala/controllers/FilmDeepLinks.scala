@@ -1,10 +1,10 @@
 package controllers
 
-import models.{City, ResolvedMovie}
-import services.readmodel.WebReadModel
-
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
+
+import models.{City, ResolvedMovie}
+import services.readmodel.WebReadModel
 
 /** A film page's address resolved to its film's schedule in a city ([[FilmPageController]]): by title (`?title=`,
  *  re-decoded when a chat app encoded it twice) or by the canonical `/{city}/movie/{slug}`, the schedules

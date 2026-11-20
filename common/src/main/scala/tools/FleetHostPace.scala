@@ -1,14 +1,15 @@
 package tools
 
-import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.bson.BsonDateTime
-import org.mongodb.scala.model.{Filters, FindOneAndUpdateOptions, ReturnDocument}
-import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture}
-
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+
 import scala.concurrent.Await
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
+
+import org.mongodb.scala.bson.BsonDateTime
+import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.model.{Filters, FindOneAndUpdateOptions, ReturnDocument}
+import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture}
 
 /**
  * One outbound pace per host for the WHOLE FLEET — every country's worker against the same origin from the same egress —

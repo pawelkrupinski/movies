@@ -1,7 +1,6 @@
 package controllers
 
 import java.util.Locale
-
 import java.util.concurrent.ConcurrentHashMap
 
 /** The closed set of host labels the anonymous poster-telemetry beacon

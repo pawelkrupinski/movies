@@ -1,13 +1,14 @@
 package services.cinemas.pl
 
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import services.cinemas.common.{FilmPageCard, ListingPageScraper, ScraperParse, SlotsToMovies}
 import tools.HttpFetch
-import models._
-import org.jsoup.nodes.Document
-import org.jsoup.Jsoup
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
 
 /**
  * Kino za Rogiem Cafe (Rzeszów) — a small independent cinema running a custom

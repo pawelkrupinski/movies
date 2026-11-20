@@ -1,15 +1,16 @@
 package services.identityadapters
 
-import services.identity.measures.Resolution
-import play.api.Logging
-import tools.Stoppable
-import services.identity.staging.{ChangeFeed, IdentityStaging, StagedCluster, StagingEvent}
-import tools.{ThreadPools, ScheduledTick, TickRecorder}
-
 import java.time.Clock
 import java.util.concurrent.TimeUnit
+
 import scala.concurrent.duration.*
 import scala.util.control.NonFatal
+
+import play.api.Logging
+import services.identity.measures.Resolution
+import services.identity.staging.{ChangeFeed, IdentityStaging, StagedCluster, StagingEvent}
+import tools.Stoppable
+import tools.{ThreadPools, ScheduledTick, TickRecorder}
 
 /**
  * Publishes what this country's identity takes still wait on, and what they decided, for the staging screen

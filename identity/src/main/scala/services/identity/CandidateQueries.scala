@@ -1,8 +1,8 @@
 package services.identity
 
 import services.identity.measures.{Evidence, IdentityMeasures}
-import services.titles.billing.Credits
 import services.identity.vocabulary.CandidateQuery
+import services.titles.billing.Credits
 
 /**
  * CANDIDATE GENERATION's question set (docs/design/identity-resolver.md, phase 2, stage a): what

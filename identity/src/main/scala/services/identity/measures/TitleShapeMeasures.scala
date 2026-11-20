@@ -1,11 +1,11 @@
 package services.identity.measures
 
-import services.titles.billing.{BillingParse, DecorationWords, NumberedTitles}
-import services.titles.TitleContainment
+import services.identity.vocabulary.TitleDecorations
 import services.titles.SearchTitles
+import services.titles.TitleContainment
+import services.titles.billing.{BillingParse, DecorationWords, NumberedTitles}
 
 import IdentityMeasures.*
-import services.identity.vocabulary.TitleDecorations
 
 /** The parts a title numbers, its capitalised tags, and the SHAPES it is billed in — the titles a listing's billing
  *  can stand for, delimited, quoted, or with its screening year dropped.

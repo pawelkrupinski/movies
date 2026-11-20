@@ -2,7 +2,8 @@ package tools
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.{AtomicInteger, AtomicReference, AtomicReferenceArray}
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.{Failure, Try}
 
 /**

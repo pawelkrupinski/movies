@@ -1,11 +1,11 @@
 package tools
 
-import play.api.Logger
-
 import java.net.http.{HttpClient, HttpConnectTimeoutException, HttpRequest, HttpResponse, HttpTimeoutException}
 import java.net.{CookieManager, CookiePolicy}
 import java.time.Duration
 import java.util.concurrent.{CompletableFuture, CountDownLatch, ExecutionException, TimeUnit, TimeoutException}
+
+import play.api.Logger
 
 /** How [[RealHttpFetch]]'s requests go out: the JDK clients it sends on (one per connect budget and HTTP version the
  *  host policies ask for, through `proxy` when configured, handshaking with `tls`), and one exchange -- its redirects

@@ -1,12 +1,12 @@
 package services.identity
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+
 import org.mongodb.scala.bson.BsonInt64
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, InsertManyOptions, Projections}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * The venue slots the identity projection last kept in its memo ([[VenueSlotMemo]]), as fingerprints: what each

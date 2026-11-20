@@ -1,19 +1,17 @@
 package tools.persistence
 
-import tools.SpecTimeouts
+import scala.compiletime.{erasedValue, summonInline}
+import scala.concurrent.Await
+import scala.reflect.ClassTag
+import scala.util.{Failure, Success, Try}
 
 import org.bson.codecs.configuration.CodecRegistry
 import org.bson.codecs.{DecoderContext, EncoderContext}
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoDatabase, SingleObservableFuture}
-
+import tools.SpecTimeouts
 import tools.{IntegrationMongoTarget, IsolatedMongoDatabase}
-
-import scala.compiletime.{erasedValue, summonInline}
-import scala.concurrent.Await
-import scala.reflect.ClassTag
-import scala.util.{Failure, Success, Try}
 
 /**
  * Writes a [[FullyPopulated]] value of every type in a [[services.PersistedCodecs]] list

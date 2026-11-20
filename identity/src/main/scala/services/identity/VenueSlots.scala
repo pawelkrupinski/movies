@@ -1,17 +1,15 @@
 package services.identity
 
-import models.StoredMovieRecord
-
-import services.evidence.LatestTitleYear
-
-import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData, ListingKey, ShowtimesDigest}
-import services.movies.{CinemaSlotBuilder, ScrapeListing, ScreeningTokens, VenuePageFacts}
-import services.evidence.ListingConstraints
 import models.MovieRecordMerge
+import models.StoredMovieRecord
+import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData, ListingKey, ShowtimesDigest}
+import services.evidence.LatestTitleYear
+import services.evidence.ListingConstraints
+import services.identity.measures.Listing
+import services.identity.vocabulary.{ClasspathResource, ContentHash, SortedLongMap}
+import services.movies.{CinemaSlotBuilder, ScrapeListing, ScreeningTokens, VenuePageFacts}
 import services.titles.TitleNormalizer
 import services.titles.YearWindow
-import services.identity.vocabulary.{ClasspathResource, ContentHash, SortedLongMap}
-import services.identity.measures.Listing
 
 // Everything a venue slot is built and fingerprinted by, and nothing else: this file is what the venue slot code version
 // digests (`IdentityRulesSources.VenueSlotRoots`), so a change to the rest of the projection keeps every recorded slot.

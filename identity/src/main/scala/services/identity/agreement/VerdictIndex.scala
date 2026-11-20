@@ -1,8 +1,8 @@
 package services.identity.agreement
 
-import services.identity.vocabulary.{Dependency, Memo}
-
 import scala.collection.mutable
+
+import services.identity.vocabulary.{Dependency, Memo}
 
 /**
  * The verdicts the agreement stage keeps, by their cluster's key — each a cache of its receipt ([[Memo]]), standing while

@@ -1,6 +1,6 @@
 package controllers
 
-import play.api.mvc._
+import play.api.mvc.*
 
 /** Addresses this site no longer mints but still answers, each with a redirect onto
  *  the one it mints now: the pre-rename Polish `/film…` / `/filmy` paths, the

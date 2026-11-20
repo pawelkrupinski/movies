@@ -2,6 +2,7 @@ package services.identity.measures
 
 import services.identity.measures.IdentityMeasures.*
 import services.titles.YearWindow
+
 import Measure.{Category, Number}
 
 /** What a listing-film measurement set's YEAR measures read once the plain deltas are taken ([[IdentityMeasures.listingFilmTitled]]):

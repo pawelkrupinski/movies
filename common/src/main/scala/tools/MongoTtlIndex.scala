@@ -1,14 +1,15 @@
 package tools
 
-import com.mongodb.client.model.{IndexOptions => JIndexOptions}
-import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
-import org.mongodb.scala.model.Indexes
-import play.api.Logging
-
 import java.util.concurrent.TimeUnit
+
 import scala.concurrent.Await
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
+
+import com.mongodb.client.model.IndexOptions as JIndexOptions
+import org.mongodb.scala.model.Indexes
+import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
+import play.api.Logging
 
 /** Bring a single-field TTL index in line with a wanted `expireAfterSeconds`, by
  *  READING IT BACK FIRST and then REBUILDING it if it disagrees.

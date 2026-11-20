@@ -1,11 +1,11 @@
 package services.identity.agreement
 
+import scala.collection.mutable
+
+import models.ListingKey
 import services.identity.IdentityCalibration
 import services.identity.measures.{Listing, Resolution, ResolverDecision}
 import services.identity.vocabulary.{Question, VoterFamily}
-import models.ListingKey
-
-import scala.collection.mutable
 
 /**
  * The film a cluster the model left unmatched is, when ≥3 other film database families agree on it ([[Agreement]]) —

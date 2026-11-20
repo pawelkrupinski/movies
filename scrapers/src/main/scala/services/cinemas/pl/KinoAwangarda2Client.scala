@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import services.titles.FormatTags
-import models._
-import tools.HttpFetch
+import java.time.{LocalDate, LocalDateTime, LocalTime, Period}
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
-
-import java.time.{LocalDate, LocalDateTime, LocalTime, Period}
-import scala.jdk.CollectionConverters._
+import services.titles.FormatTags
+import tools.HttpFetch
 
 /**
  * Kino Awangarda 2 (Olsztyn). A bespoke Joomla site whose weekly repertoire is a

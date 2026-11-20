@@ -1,8 +1,8 @@
 package services.identity
 
 import models.Country
-import settings.CommitSha
 import services.identity.measures.{Listing, ResolverDecision}
+import settings.CommitSha
 
 /**
  * The log lines of a projection's take changes ([[TakeChange]]): one per listing whose TMDB film moved, and a summary

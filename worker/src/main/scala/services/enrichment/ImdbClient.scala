@@ -1,12 +1,12 @@
 package services.enrichment
 
-import play.api.libs.json._
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+
+import play.api.libs.json.*
 import services.titles.SamePerson
 import services.titles.TitleMatch
 import tools.{HttpFetch, HttpRead, ReadOutcome}
-
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 /**
  * Direct IMDb ratings via the public CDN GraphQL endpoint that imdb.com itself

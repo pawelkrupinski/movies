@@ -1,8 +1,8 @@
 package controllers
 
-import models.{City, Showtime, UsRoster}
-
 import java.time.LocalDateTime
+
+import models.{City, Showtime, UsRoster}
 
 /**
  * When a city's showtimes count as started — `Showtime.isUpcoming`'s cutoff — judged at each

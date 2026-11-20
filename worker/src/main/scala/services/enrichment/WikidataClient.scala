@@ -1,13 +1,13 @@
 package services.enrichment
 
 
-import play.api.libs.json._
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+
+import play.api.libs.json.*
 import services.titles.YearWindow
 import settings.WikidataUserAgent
 import tools.{HttpFetch, HttpRead, ReadOutcome, TextNormalization}
-
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 /**
  * Harvests film-database cross-reference ids from a Filmweb entity id via

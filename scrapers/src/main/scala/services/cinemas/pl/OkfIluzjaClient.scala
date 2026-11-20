@@ -1,15 +1,15 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
-
-import services.cinemas.common.ScraperParse
-import models._
-import tools.{HttpFetch, HttpRead}
-import org.jsoup.Jsoup
-import services.cinemas.common.SingleSiteScraper
-
 import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import org.jsoup.Jsoup
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SingleSiteScraper
+import services.cinemas.common.SlotsToMovies
+import tools.{HttpFetch, HttpRead}
 
 /**
  * OKF Iluzja (Kino Studyjne Iluzja), Częstochowa — the art-house screen of

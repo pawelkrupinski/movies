@@ -1,17 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{ScraperParse, ListingPages}
-import scala.math.Ordering.Implicits.infixOrderingOps
-import services.cinemas.common.CinemaScraper
+import java.time.{LocalDate, LocalDateTime}
 
-import models._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+import scala.math.Ordering.Implicits.infixOrderingOps
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{ScraperParse, ListingPages}
 import tools.{HttpFetch, HttpRead}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 
 /**
  * Kino Tatry — the independent repertory cinema at ul. Sienkiewicza 40 in Łódź.

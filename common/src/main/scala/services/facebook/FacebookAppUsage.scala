@@ -1,14 +1,15 @@
 package services.facebook
 
-import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.{MongoCollection, SingleObservableFuture}
-import org.mongodb.scala.model.{Filters, UpdateOptions, Updates}
-import play.api.libs.json.{JsObject, Json}
-
 import java.time.{Clock, Instant}
+
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 import scala.util.Try
+
+import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.model.{Filters, UpdateOptions, Updates}
+import org.mongodb.scala.{MongoCollection, SingleObservableFuture}
+import play.api.libs.json.{JsObject, Json}
 
 /** The share (%) of the app's hourly allowance Facebook says is spent: past 100 it refuses the
  *  app (code 4) until enough of the last hour's calls have aged out. */

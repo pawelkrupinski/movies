@@ -1,13 +1,12 @@
 package services.enrichment
 
-import models.CacheKey
-
 import java.util.Locale
 
+import models.CacheKey
 import models.{MovieRecord, EmbeddedYear}
 import services.evidence.{LatestTitleYear, TmdbLessEligibility}
-import services.titles.TitleNormalizer
 import services.titles.SearchTitles
+import services.titles.TitleNormalizer
 
 /**
  * Rating-site links for a film TMDB has no record of — asked only once TMDB was asked and found

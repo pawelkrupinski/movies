@@ -1,20 +1,19 @@
 package services.cinemas.pl
 
-import tools.JsonLdBlocks
-import services.cinemas.common.SlotsToMovies
-
+import java.time.{LocalDateTime, ZonedDateTime}
 import java.util.Locale
 
-import tools.{HttpFetch, ParallelDetailFetch, HttpRead}
-import models._
-import play.api.libs.json._
-import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, ScraperParse}
-
-import java.time.{LocalDateTime, ZonedDateTime}
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import play.api.libs.json.*
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.{CinemaScraper, ScraperParse}
+import tools.JsonLdBlocks
+import tools.{HttpFetch, ParallelDetailFetch, HttpRead}
 
 class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
 

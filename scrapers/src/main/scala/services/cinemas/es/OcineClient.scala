@@ -1,10 +1,10 @@
 package services.cinemas.es
 
+import java.time.{LocalDate, ZoneId}
+
 import models.{Cinema, CinemaMovie}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon, ListingFeed}
 import tools.{HttpFetch, HttpRead}
-
-import java.time.{LocalDate, ZoneId}
 
 /**
  * Ocine (Spain) — each venue off its OWN ticketing server,

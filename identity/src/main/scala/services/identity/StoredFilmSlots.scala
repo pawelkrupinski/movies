@@ -1,15 +1,13 @@
 package services.identity
 
 import models.StoredMovieRecord
-
-import services.evidence.LatestTitleYear
-
 import models.{CinemaShowing, MovieRecord, Source, SourceData, EmbeddedYear, ListingKey}
-import services.movies.ScrapeListing
+import services.evidence.LatestTitleYear
 import services.evidence.ListingConstraints
+import services.identity.measures.Listing
+import services.movies.ScrapeListing
 import services.titles.TitleNormalizer
 import services.titles.YearWindow
-import services.identity.measures.Listing
 
 /** A stored film a listing is on before a projection — the film it inherits its id from
  *  ([[ProjectionIndexing.index]]): its film id and TMDB id. */

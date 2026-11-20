@@ -1,16 +1,16 @@
 package services.movies
 
-import services.evidence.LatestTitleYear
-import models.{CacheKey, StoredMovieRecord}
-
-import models.{MovieRecord, SourceData}
-import play.api.Logging
-import tools.Stoppable
-
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.{CacheKey, StoredMovieRecord}
+import models.{MovieRecord, SourceData}
+import play.api.Logging
+import services.evidence.LatestTitleYear
+import tools.Stoppable
 
 /**
  * Drops rows that no cinema is currently showing — an empty (or husk-only) cinema

@@ -1,6 +1,6 @@
 package modules.wiring
 
-import settings.{EnrichmentMaxEnqueuePerTick, EnrichmentTickInterval, OmdbBackfillInterval}
+import scala.concurrent.duration.DurationInt
 
 import services.attempts.{EnrichmentAttemptStore, MongoEnrichmentAttemptStore}
 import services.cadence.{MongoRatingCadenceStore, RatingCadenceStore}
@@ -9,8 +9,7 @@ import services.events.ImdbIdMissing
 import services.freshness.FreshnessKind
 import services.tasks.{BulkCadenceRecorder, ClaimedEnqueueReaper, EnrichTaskKeys, EnrichmentReaper, OmdbBackfillReaper, RatingEnqueuer, RatingHandler, TaskHandler}
 import services.tasktypes.TaskType
-
-import scala.concurrent.duration.DurationInt
+import settings.{EnrichmentMaxEnqueuePerTick, EnrichmentTickInterval, OmdbBackfillInterval}
 
 
 /** Rating refresh: the four rating sources (IMDb's `ImdbRatings`, each URL-keyed site's port run by

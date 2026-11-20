@@ -1,14 +1,15 @@
 package services.sharecards
 
+import java.time.{Clock, Instant}
+
+import scala.util.Try
+
 import models.ResolvedMovie
 import play.api.Logging
 import services.events.{DomainEvent, TaskFinished}
 import services.readmodel.ReadModelReader
 import services.tasks.{EnqueueResult, TaskProducer}
 import services.tasktypes.TaskType
-
-import java.time.{Clock, Instant}
-import scala.util.Try
 
 /**
  * Renders the cards no input change asked for — every film on screen at boot (the first rollout, a

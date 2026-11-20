@@ -1,10 +1,10 @@
 package services.readmodel
 
-import tools.ChangeStreamLiveness
-
-
 import java.util.concurrent.TimeUnit
+
 import scala.concurrent.duration.{Duration, FiniteDuration}
+
+import tools.ChangeStreamLiveness
 
 /** How a prune sweep's heal verdict ([[SweepVerdict]]) waits for the change stream to apply what it
  *  had in flight when the sweep let go of the projection lock. */

@@ -1,10 +1,8 @@
 package services.movies
 
 import models.{CacheKey, FilmId, StoredMovieRecord}
-
-import services.titles.TitleNormalizer
-
 import models.{MovieRecord, Showtime, SourceData, ListingKey}
+import services.titles.TitleNormalizer
 import tools.contracts.FailsOnPurpose
 
 /**

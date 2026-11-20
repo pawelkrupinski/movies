@@ -1,14 +1,15 @@
 package services.movies
 
+import java.time.Instant
+
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+
 import com.mongodb.client.model.ReplaceOptions
 import models.{Showtime, ListingKey}
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, ReplaceOneModel, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-
-import java.time.Instant
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * Per-cinema showtimes, split out of the embedded `movies.sourceData` map into

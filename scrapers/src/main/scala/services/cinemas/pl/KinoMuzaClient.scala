@@ -1,18 +1,18 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
-import services.cinemas.common.ScraperParse
-import org.jsoup.nodes.{Document, Element}
-import models.*
-import tools.{HttpFetch, HttpRead}
-import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail}
-
 import java.time.{LocalDate, Period}
+
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import org.jsoup.nodes.{Document, Element}
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SynopsisProse
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.titles.TitleNormalizer
+import tools.{HttpFetch, HttpRead}
 
 class KinoMuzaClient(http: HttpFetch, today: => LocalDate,
                      titles: TitleNormalizer)

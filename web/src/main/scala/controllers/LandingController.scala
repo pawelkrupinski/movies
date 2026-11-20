@@ -2,7 +2,7 @@ package controllers
 
 import models.{Country, DeploymentOrigins}
 import play.api.i18n.Lang
-import play.api.mvc._
+import play.api.mvc.*
 
 /**
  * The bare `/` entry point, which serves two different screens depending on

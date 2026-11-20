@@ -1,9 +1,9 @@
 package controllers
 
+import java.time.Instant
+
 import play.api.mvc.{Result, Results}
 import services.review.{LabelRow, ReviewAnswers, ReviewCard, ReviewCluster, ReviewPage}
-
-import java.time.Instant
 
 /**
  * A review page of cards (`review.scala.html`): the clusters selected, the answered ones hidden unless asked for,

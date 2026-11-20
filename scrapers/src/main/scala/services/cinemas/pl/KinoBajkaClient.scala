@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import models._
-import org.jsoup.Jsoup
-import tools.HttpFetch
-import services.titles.TitleNormalizer
-import play.api.libs.json.{JsObject, Json}
-import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
-
 import java.time.{LocalDate, LocalDateTime}
+
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import play.api.libs.json.{JsObject, Json}
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
+import services.titles.TitleNormalizer
+import tools.HttpFetch
 
 /**
  * Kino Bajka (Lublin) — the art-house cinema run by Centrum Kultury, at

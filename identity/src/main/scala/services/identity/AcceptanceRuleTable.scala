@@ -1,7 +1,7 @@
 package services.identity
 
-import services.identity.measures.{FactRelations, IdentityMeasures, MultiFilmBill}
 import services.identity.AcceptanceRule.{First, Need, NeedOf, NoneOf, One, PickedBy, Veto}
+import services.identity.measures.{FactRelations, IdentityMeasures, MultiFilmBill}
 
 /** EVERY ACCEPTANCE RULE, one row each, in the order they are tried: what a node takes ALONE ([[aloneRules]]), what a
  *  cluster takes on its POOLED evidence ([[pooledRules]]), and the VETOES every rule's take is asked after it

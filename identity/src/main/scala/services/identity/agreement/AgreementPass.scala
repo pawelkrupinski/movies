@@ -1,9 +1,9 @@
 package services.identity.agreement
 
+import scala.collection.mutable
+
 import services.identity.measures.ResolverDecision
 import services.identity.vocabulary.{Answer, PosterAnswers, PosterHash, PosterQuestion, Question, VoterFamily}
-
-import scala.collection.mutable
 
 /** One apply at the families' `version`: where its takes and corrections note what they wait on (`asked`: the families'
  *  questions, the IMDb ids TMDB was not asked about, the posters, the catalogue questions and the records to read again

@@ -1,9 +1,9 @@
 package tools
 
-import play.api.Logger
-
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
+
+import play.api.Logger
 
 /**
  * One run of a scheduled tick whose failure must not cancel the schedule — and must not vanish

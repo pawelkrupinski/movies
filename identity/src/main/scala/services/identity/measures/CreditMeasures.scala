@@ -1,7 +1,8 @@
 package services.identity.measures
 
-import IdentityMeasures.*
 import services.titles.TitleContainment
+
+import IdentityMeasures.*
 import Measure.Category
 
 /** How a listing's director credits relate to a film's: the director relation, and a credit read by search or by title.

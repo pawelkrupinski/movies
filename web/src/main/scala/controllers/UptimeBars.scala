@@ -1,11 +1,11 @@
 package controllers
 
-import services.UptimeHistory
-import services.UptimeMonitor.{BucketDurationMs, BucketSnapshot, MaxBuckets, bucketTimestamp}
-
 import java.time.format.DateTimeFormatter
 import java.time.{Clock, Instant, ZoneId}
 import java.util.Locale
+
+import services.UptimeHistory
+import services.UptimeMonitor.{BucketDurationMs, BucketSnapshot, MaxBuckets, bucketTimestamp}
 
 /** The uptime grid's bars, every bucket window stamped in the deployment's country's time (the UK
  *  page in London time, not Warsaw's): each service's 96-slot series for the page ([[rowBuilder]])

@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import models._
-import services.titles.FormatTags
+import java.time.LocalDateTime
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.HttpFetch
-import services.titles.TitleNormalizer
 import services.cinemas.common.{ListingPageScraper, ScraperParse}
-
-import java.time.LocalDateTime
-import scala.jdk.CollectionConverters._
+import services.titles.FormatTags
+import services.titles.TitleNormalizer
+import tools.HttpFetch
 
 /**
  * Cyfrowe Kino (Środa Śląska, run by the Dom Kultury). Its listing at

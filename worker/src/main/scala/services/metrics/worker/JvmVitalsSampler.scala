@@ -1,17 +1,18 @@
 package services.metrics.worker
 
-import io.prometheus.metrics.core.metrics.Gauge
-import io.prometheus.metrics.model.registry.PrometheusRegistry
-import play.api.Logging
-import tools.ThreadPools
-
 import java.lang.management.ManagementFactory
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import java.util.concurrent.TimeUnit
 import javax.management.ObjectName
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.Try
+
+import io.prometheus.metrics.core.metrics.Gauge
+import io.prometheus.metrics.model.registry.PrometheusRegistry
+import play.api.Logging
+import tools.ThreadPools
 
 /**
  * Periodic JVM native-memory + vitals sampler, on the SAME registry/`/metrics`

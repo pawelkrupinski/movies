@@ -1,10 +1,11 @@
 package services.identity.vocabulary
 
-import services.movies.MovieChangeStream
-
 import java.time.Clock
 import java.util.concurrent.{RejectedExecutionException, ScheduledExecutorService, ScheduledFuture, TimeUnit}
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
+
+import services.movies.MovieChangeStream
 
 /**
  * Runs `run` a short while after it is asked to, as events arrive — the identity projection of what moved (the

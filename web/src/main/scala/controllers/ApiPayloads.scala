@@ -1,6 +1,6 @@
 package controllers
 
-import models._
+import models.*
 import play.api.libs.json.{Json, Writes}
 
 // ── JSON API types ──────────────────────────────────────────────────────

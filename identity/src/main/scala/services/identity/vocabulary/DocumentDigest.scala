@@ -1,12 +1,12 @@
 package services.identity.vocabulary
 
+import scala.concurrent.Await
+import scala.concurrent.duration.FiniteDuration
+
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonDocument, BsonInt64}
 import org.mongodb.scala.model.{Filters, Projections, WriteModel}
 import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
-
-import scala.concurrent.Await
-import scala.concurrent.duration.FiniteDuration
 
 /** A stored document's content digest, which a rewrite of an unchanged document is skipped by: the model's families
  *  (`MongoIdentityModelStore`) and the traces (`MongoIdentityTraceStore`) both keep one. In a file of its own so the

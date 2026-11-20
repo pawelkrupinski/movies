@@ -1,11 +1,12 @@
 package tools
 
-import com.sun.management.HotSpotDiagnosticMXBean
-import play.api.Logging
-
 import java.lang.management.ManagementFactory
 import java.nio.file.Files
+
 import scala.util.{Failure, Success, Try}
+
+import com.sun.management.HotSpotDiagnosticMXBean
+import play.api.Logging
 
 /**
  * Writes an HPROF heap dump on demand via the HotSpot diagnostic MXBean — the

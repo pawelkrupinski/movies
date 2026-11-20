@@ -1,10 +1,10 @@
 package modules.wiring
 
-import play.api.Logging
-import tools.Stopwatch
-
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
+
+import play.api.Logging
+import tools.Stopwatch
 
 /**
  * A worker boot's steps, each timed, and the slow ones run off the boot path.

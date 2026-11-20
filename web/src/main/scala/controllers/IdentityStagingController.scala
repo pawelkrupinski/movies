@@ -1,10 +1,10 @@
 package controllers
 
-import play.api.libs.json.Json
-import play.api.mvc._
-import services.identity.staging.IdentityStaging
-
 import java.time.Instant
+
+import play.api.libs.json.Json
+import play.api.mvc.*
+import services.identity.staging.IdentityStaging
 
 /**
  * `/debug/identity/staging` — the staging screen (docs/design/identity-questions.md, "The staging screen"): every

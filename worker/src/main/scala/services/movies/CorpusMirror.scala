@@ -1,17 +1,15 @@
 package services.movies
 
-import models.{CacheKey, FilmId, StoredMovieRecord}
-
-import services.titles.TitleNormalizer
-
-
-import models.MovieRecord
-import settings.{BootHydrateMaxAttempts, BootHydrateRetryInterval, CacheRehydrateInterval}
-import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
-
 import java.util.concurrent.TimeUnit
+
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.Try
+
+import models.MovieRecord
+import models.{CacheKey, FilmId, StoredMovieRecord}
+import services.titles.TitleNormalizer
+import settings.{BootHydrateMaxAttempts, BootHydrateRetryInterval, CacheRehydrateInterval}
+import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
 
 /**
  * The resident corpus of a [[CaffeineMovieCache]] as its [[CorpusMirror]] reaches it: the store

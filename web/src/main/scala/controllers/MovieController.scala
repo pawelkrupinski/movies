@@ -1,7 +1,7 @@
 package controllers
 
 import models.City
-import play.api.mvc._
+import play.api.mvc.*
 
 /** The city listing (`/{city}/`, `/{city}/movies`, [[ListingResponse]]) and its faceted browse pages ([[BrowsePage]]),
  *  each behind our cities' check and the genre-link canonicalisation. */

@@ -1,6 +1,12 @@
 package services.cinemas.uk
 
-import models._
+import java.time.{LocalDate, OffsetDateTime}
+import java.util.Locale
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
@@ -8,11 +14,6 @@ import services.cinemas.common.{AgeRating, CinemaScraper, OnlyMovieEventsFilter,
 import services.titles.BbfcCertificate
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
-
-import java.time.{LocalDate, OffsetDateTime}
-import java.util.Locale
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Ticketsolve — the box office of arts centres in Wales, Northern Ireland and the

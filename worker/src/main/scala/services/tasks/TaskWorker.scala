@@ -1,19 +1,18 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
-import settings.WorkerPoolSize
-
-import tools.Stoppable
-import play.api.Logging
-
 import java.net.InetAddress
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
+
 import scala.collection.mutable
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import play.api.Logging
+import services.tasktypes.TaskType
+import settings.WorkerPoolSize
+import tools.Stoppable
 
 /** Does the actual work for one task type. The first thing a handler should do
  *  is re-check freshness and return `Skipped` if the data is already current —

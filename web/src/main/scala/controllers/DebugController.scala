@@ -1,8 +1,8 @@
 package controllers
 
-import models._
-import play.api.mvc._
+import models.*
 import play.api.Mode
+import play.api.mvc.*
 
 /**
  * The dev-only corpus table of `/debug` and its rows' detail. Its siblings answer elsewhere: the rating

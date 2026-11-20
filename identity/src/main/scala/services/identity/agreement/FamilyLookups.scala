@@ -1,12 +1,12 @@
 package services.identity.agreement
 
-import services.titles.TitleContainment
-
 import scala.collection.mutable
+
 import services.identity.IdentityLookups
-import services.identity.measures.Listing
 import services.identity.measures.Film
+import services.identity.measures.Listing
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit}
+import services.titles.TitleContainment
 
 /** A family's answers as the resolver's lookups — the family as the film database, as TMDB is to the model. Its ids
  *  are numbered as this resolve meets them (it asks its questions in one sorted order), so the resolve is a function of

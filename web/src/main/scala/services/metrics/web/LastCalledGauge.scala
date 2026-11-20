@@ -1,10 +1,10 @@
 package services.metrics.web
 
-import io.prometheus.metrics.core.metrics.GaugeWithCallback
-import io.prometheus.metrics.model.registry.PrometheusRegistry
-
 import java.time.{Clock, Instant}
 import java.util.concurrent.ConcurrentHashMap
+
+import io.prometheus.metrics.core.metrics.GaugeWithCallback
+import io.prometheus.metrics.model.registry.PrometheusRegistry
 
 /**
  * A retirement signal's LAST-CALLED gauge: the Unix time each label combination was last

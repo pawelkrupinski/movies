@@ -1,9 +1,9 @@
 package services.identity.agreement
 
+import scala.annotation.unused
+
 import services.identity.measures.{Film, IdentityMeasures}
 import services.identity.vocabulary.{Answer, VoterFamily}
-
-import scala.annotation.unused
 
 /** One film a family's search names: the family's own id for it, and its title and year as the search gave them. */
 final case class SourceHit(id: String, title: String, originalTitle: Option[String], year: Option[Int])

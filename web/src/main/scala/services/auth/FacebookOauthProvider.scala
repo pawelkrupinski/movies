@@ -1,9 +1,8 @@
 package services.auth
 
 import play.api.libs.json.Json
-import tools.HttpFetch
-
 import services.auth.GoogleOauthProvider.{formEncode, urlEncode}
+import tools.HttpFetch
 
 /**
  * Facebook OAuth (Facebook Login) — same authorization-code flow as

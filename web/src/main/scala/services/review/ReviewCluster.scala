@@ -1,10 +1,10 @@
 package services.review
 
-import models.Country
-import services.identity.measures.ResolverDecision
-import models.ListingKey
-
 import java.time.Instant
+
+import models.Country
+import models.ListingKey
+import services.identity.measures.ResolverDecision
 
 /** A film the resolver weighed for a cluster: its probability where the explanation states one, and
  *  whether a member's own evidence denied it (and why). */

@@ -1,13 +1,13 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{ListingPageScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
-import services.titles.FormatTags
-import models._
-import tools.HttpFetch
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-
-import scala.jdk.CollectionConverters._
+import services.cinemas.common.{ListingPageScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
+import services.titles.FormatTags
+import tools.HttpFetch
 
 /**
  * Kino Lot (MOK Świdnik) — an UNRELATED venue from the Jelenia Góra cinema of

@@ -1,10 +1,11 @@
 package services.movies
 
+import java.time.Clock
+
+import scala.concurrent.duration.*
+
 import play.api.Logging
 import tools.StampedRows
-
-import java.time.Clock
-import scala.concurrent.duration._
 
 /**
  * Deletes the per-film enrichment state of films the corpus no longer holds.

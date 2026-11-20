@@ -1,11 +1,11 @@
 package services.attempts
 
+import scala.util.Try
+
 import models.{AttemptOutcome, EnrichmentAttempt}
 import org.mongodb.scala.{Document, MongoDatabase, documentToUntypedDocument}
 import play.api.Logging
 import tools.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
-
-import scala.util.Try
 
 /**
  * The last enrichment attempt per (rating source, film), keyed by the SAME dedup

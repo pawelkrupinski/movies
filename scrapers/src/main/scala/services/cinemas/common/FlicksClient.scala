@@ -1,10 +1,11 @@
 package services.cinemas.common
 
-import tools.{HttpFetch, HttpRead}
-import models._
-
 import java.time.LocalDate
+
 import scala.util.Try
+
+import models.*
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Flicks — a nationwide cinema-listings aggregator (chains + independents) that

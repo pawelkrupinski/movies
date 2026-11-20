@@ -1,10 +1,9 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
 import models.{Country, MovieRecord}
-import services.freshness.FreshnessKind
 import services.evidence.LatestTitleYear
+import services.freshness.FreshnessKind
+import services.tasktypes.TaskType
 
 /**
  * The four rating sources and the single thing that decides whether a row can be

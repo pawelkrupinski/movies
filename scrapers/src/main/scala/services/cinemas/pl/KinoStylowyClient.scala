@@ -1,19 +1,18 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
+import java.time.{LocalDate, LocalDateTime}
 import java.util.Locale
-import services.titles.FormatTags
 
-import models._
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
+import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, DayPickerProgramme, ScraperParse, SlotsToMovies}
+import services.titles.FormatTags
 import tools.HttpFetch
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * CKF Stylowy (Zamość). A bespoke site whose repertoire is one page per day,

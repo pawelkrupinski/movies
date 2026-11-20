@@ -1,11 +1,11 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
-import tools.contracts.FailsOnPurpose
-
 import java.time.Instant
+
 import scala.concurrent.duration.FiniteDuration
+
+import services.tasktypes.TaskType
+import tools.contracts.FailsOnPurpose
 
 /** A [[TaskQueue]] whose enqueues, while [[failing]], come back [[EnqueueResult.Failed]] — the answer `MongoTaskQueue`
  *  gives a write Mongo could not take — and otherwise land on the in-memory store, so a spec can fail a periodic

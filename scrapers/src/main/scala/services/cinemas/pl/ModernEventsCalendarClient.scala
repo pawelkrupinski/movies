@@ -1,17 +1,18 @@
 package services.cinemas.pl
 
-import models._
-import services.titles.FormatTags
+import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, LocalDateTime, LocalTime, YearMonth}
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import play.api.libs.json.{JsObject, JsString, Json}
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ScraperParse, SlotsToMovies}
+import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
-
-import java.time.{LocalDate, LocalDateTime, LocalTime, YearMonth}
-import java.time.format.DateTimeFormatter
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /** The WordPress page on which a venue embeds its Modern Events Calendar
  *  shortcode. The shortcode's own attributes (skin, category filter) travel

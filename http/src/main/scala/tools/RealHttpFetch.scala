@@ -1,12 +1,13 @@
 package tools
 
-import play.api.Logging
-
 import java.net.URI
 import java.net.http.HttpRequest
 import java.time.Duration
 import java.util.concurrent.CompletableFuture
+
 import scala.annotation.unused
+
+import play.api.Logging
 
 class RealHttpFetch(
   proxy: Option[ProxyConfig] = None,

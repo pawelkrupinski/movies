@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import models._
-import services.titles.FormatTags
-import tools.{HttpFetch, HttpRead}
+import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon, ScraperParse}
-
-import java.time.{LocalDate, LocalDateTime}
-import java.time.format.DateTimeFormatter
-import scala.jdk.CollectionConverters._
+import services.titles.FormatTags
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino KADR (Tomaszowski Dom Kultury, Tomaszów Lubelski) — not to be confused

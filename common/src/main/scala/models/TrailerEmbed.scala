@@ -1,8 +1,8 @@
 package models
 
+import java.net.URI
 import java.util.Locale
 
-import java.net.URI
 import scala.util.Try
 
 /**

@@ -1,6 +1,6 @@
 package controllers
 
-import play.api.mvc._
+import play.api.mvc.*
 import services.readmodel.WebReadModel
 
 /** `POST /{city}/debug/rehydrate`: reload the in-memory read-model caches from Mongo.

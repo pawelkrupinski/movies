@@ -1,12 +1,12 @@
 package services.auth
 
-import play.api.libs.json.{JsArray, Json}
-import tools.HttpFetch
-
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.spec.RSAPublicKeySpec
 import java.util.Base64
+
+import play.api.libs.json.{JsArray, Json}
+import tools.HttpFetch
 
 class AppleTokenValidator(http: HttpFetch, appleBundleId: settings.AppleBundleId, clock: java.time.Clock) {
   private val bundleId = appleBundleId.value

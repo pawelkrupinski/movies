@@ -1,16 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import services.titles.FormatTags
-import models._
-import tools.{HttpFetch, HttpRead, ReadOutcome}
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies, VenueCredits}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import services.titles.FormatTags
+import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 /**
  * Kino Kreska — the cinema run by Studio Filmów Rysunkowych in Bielsko-Biała.

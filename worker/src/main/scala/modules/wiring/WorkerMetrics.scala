@@ -1,27 +1,24 @@
 package modules.wiring
 
+import io.prometheus.metrics.core.metrics.{Counter, Gauge}
+import io.prometheus.metrics.model.registry.PrometheusRegistry
+import models.Country
+import services.alerts.TelegramNotificationMetrics
 import services.corpus.CorpusCensus
 import services.identityadapters.IdentityAgreementMetrics
 import services.identityadapters.IdentityLookupFillMetrics
 import services.identityadapters.IdentityModelGauges
 import services.identityadapters.IdentityProjectionGauges
 import services.identityadapters.IdentityTakeMetrics
+import services.metrics.*
+import services.metrics.worker.{EnvGatedFeatureMetrics, HttpBreakerMetrics, JvmVitalsSampler, PaidEgressMetrics, RetiredVenueCensus, StringPoolMetrics, TtlIndexMetrics, WorkerCacheMetrics, WorkerCitySeasonMetrics, WorkerCorpusMetrics, WorkerHttpMetrics, WorkerResolutionMetrics, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
 import services.tasks.CinemaContentCensus
 import services.tasks.CinemaScrapeCensus
 import services.tasks.ListingIncompleteMetrics
 import services.tasks.ParkedScrapeMetrics
 import services.tasks.RatingRunCensus
 import services.tasks.WorkerTaskMetrics
-import services.metrics.*
-import services.metrics.worker.{EnvGatedFeatureMetrics, HttpBreakerMetrics, JvmVitalsSampler, PaidEgressMetrics, RetiredVenueCensus, StringPoolMetrics, TtlIndexMetrics, WorkerCacheMetrics, WorkerCitySeasonMetrics, WorkerCorpusMetrics, WorkerHttpMetrics, WorkerResolutionMetrics, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
-
-import services.alerts.TelegramNotificationMetrics
-
 import tools.{CacheOccupancy, ThreadPools}
-
-import io.prometheus.metrics.core.metrics.{Counter, Gauge}
-import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.Country
 
 /**
  * The process-wide worker metrics bundle: ONE Prometheus registry and ONE set of

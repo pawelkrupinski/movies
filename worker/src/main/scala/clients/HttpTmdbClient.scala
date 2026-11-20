@@ -1,10 +1,11 @@
 package clients
 
-import play.api.libs.json._
-import _root_.tools.{HttpFetch, HttpStatusException}
-
 import java.util.Locale
+
 import scala.util.Try
+
+import _root_.tools.{HttpFetch, HttpStatusException}
+import play.api.libs.json.*
 
 /**
  * Bridges exhibitor film titles to IMDB ids via The Movie DB.

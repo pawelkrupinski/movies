@@ -1,9 +1,9 @@
 package services.identity.agreement
 
-import services.identity.measures.{Listing, ResolverDecision}
-import models.ListingKey
-
 import scala.collection.concurrent.TrieMap
+
+import models.ListingKey
+import services.identity.measures.{Listing, ResolverDecision}
 
 /** The CORRECTION of a film the model took by its own rules ([[AgreementPipeline.decide]]): the take read against the
  *  evidence that can contradict it — withdrawn or switched where that evidence says so, else as the model took it — and

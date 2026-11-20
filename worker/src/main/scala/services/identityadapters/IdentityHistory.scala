@@ -1,15 +1,16 @@
 package services.identityadapters
 
+import java.util.concurrent.ConcurrentLinkedQueue
+
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+
 import org.bson.{BsonDateTime, BsonDocument, BsonString}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, Indexes, InsertManyOptions, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
-
-import java.util.concurrent.ConcurrentLinkedQueue
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 
 /**
  * One moment of the identity system's history ([[IdentityHistory]]): what one input or take was before and after, at

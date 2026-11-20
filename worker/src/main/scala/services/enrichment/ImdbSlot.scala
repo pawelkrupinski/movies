@@ -1,8 +1,8 @@
 package services.enrichment
 
-import models.SourceData
-
 import java.util.Locale
+
+import models.SourceData
 
 /** How IMDb's details of a film become its `SourceData(Imdb)` slot. */
 object ImdbSlot {

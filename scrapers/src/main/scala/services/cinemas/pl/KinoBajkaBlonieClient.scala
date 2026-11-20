@@ -1,16 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{AgeRating, CinemaScraper, ScrapeHorizon, ScraperParse, ListingPages}
-import services.titles.FormatTags
-import models._
-import play.api.libs.json.Json
-import tools.{HttpFetch, HttpRead}
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import play.api.libs.json.Json
+import services.cinemas.common.{AgeRating, CinemaScraper, ScrapeHorizon, ScraperParse, ListingPages}
+import services.titles.FormatTags
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Bajka, the cinema of Centrum Kultury w Błoniu (`kino.blonie.pl`, a bespoke

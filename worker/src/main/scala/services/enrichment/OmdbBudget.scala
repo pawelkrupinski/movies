@@ -1,12 +1,13 @@
 package services.enrichment
 
+import java.time.{Instant, LocalDate, ZoneId}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, FindOneAndUpdateOptions, ReturnDocument, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture}
-
-import java.time.{Instant, LocalDate, ZoneId}
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * The fleet's ONE daily OMDb budget: every country's worker holds the same key, and OMDb's free plan answers 1,000

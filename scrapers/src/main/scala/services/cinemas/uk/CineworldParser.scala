@@ -1,9 +1,9 @@
 package services.cinemas.uk
 
-import play.api.libs.json._
-import services.cinemas.common.{FilmDetail, GatsbyBoxOfficeParser}
-
 import scala.util.Try
+
+import play.api.libs.json.*
+import services.cinemas.common.{FilmDetail, GatsbyBoxOfficeParser}
 
 /**
  * Pure JSON → [[FilmDetail]] transformation for Cineworld's per-film detail

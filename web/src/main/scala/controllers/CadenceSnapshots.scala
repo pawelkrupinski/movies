@@ -1,10 +1,11 @@
 package controllers
 
-import services.cadence.CadenceReport
-
 import java.time.Instant
-import scala.concurrent.{Await, ExecutionContext, Future}
+
 import scala.concurrent.duration.DurationInt
+import scala.concurrent.{Await, ExecutionContext, Future}
+
+import services.cadence.CadenceReport
 
 /** The rating cadence report read from one country's [[DebugStack]] snapshots ([[CadenceController]]'s page). */
 object CadenceSnapshots {

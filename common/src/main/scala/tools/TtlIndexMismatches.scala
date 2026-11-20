@@ -1,7 +1,8 @@
 package tools
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 
 /** Collections whose TTL expiry is known to disagree with the code, published as
  *  `kinowo_worker_ttl_index_mismatches` by `services.metrics.worker.TtlIndexMetrics`. One instance

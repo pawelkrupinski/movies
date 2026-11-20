@@ -1,10 +1,9 @@
 package services.identity.measures
 
-import services.titles.billing.DecorationWords
 import java.util.Locale
 
 import models.EmbeddedYear
-
+import services.titles.billing.DecorationWords
 import services.titles.{TitleContainment, TitleSeason}
 
 import IdentityMeasures.*

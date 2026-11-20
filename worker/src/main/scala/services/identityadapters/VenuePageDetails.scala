@@ -1,7 +1,7 @@
 package services.identityadapters
 
-import services.identity.vocabulary.ObservationReads
 import services.cinemas.common.DetailEnricher
+import services.identity.vocabulary.ObservationReads
 
 /** A listing's venue detail as venue_pages holds it ([[VenuePageIndex]]): each enricher read through the index, never
  *  fetched ([[VenuePageDetailEnricher]]) -- a page not read yet is a gap, counted by one [[LookupGaps]]. */

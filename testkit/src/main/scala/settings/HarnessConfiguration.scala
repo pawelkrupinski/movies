@@ -1,11 +1,10 @@
 package settings
 
+import java.nio.file.Path
 import java.util.Locale
 
 import models.Country
 import tools.Env
-
-import java.nio.file.Path
 
 /**
  * The resolver of the configuration only a test, replay or measuring HARNESS reads: the

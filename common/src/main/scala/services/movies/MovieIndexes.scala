@@ -1,12 +1,12 @@
 package services.movies
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import org.mongodb.scala.model.{Filters, IndexOptions, Indexes}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
 
 /** The `movies` collection's indexes, built on [[MongoMovieRepository]]'s first use. */
 private[movies] object MovieIndexes extends Logging {

@@ -1,14 +1,14 @@
 package services.tasks
 
-import settings.LivenessStaleAfter
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+
+import scala.concurrent.duration.*
 
 import play.api.Logging
+import settings.LivenessStaleAfter
 import tools.Stoppable
 import tools.{ThreadPools, ScheduledTick, TickRecorder}
-
-import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
-import java.util.concurrent.atomic.AtomicBoolean
-import scala.concurrent.duration._
 
 /**
  * Last-resort backstop against a WEDGED-but-alive JVM. The worker's

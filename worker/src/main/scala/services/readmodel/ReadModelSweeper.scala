@@ -1,11 +1,10 @@
 package services.readmodel
 
-import tools.{ScheduledTick, TickRecorder, TickRun}
+import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 
 import play.api.Logging
 import settings.{ReadModelPruneBootDelay, ReadModelPruneInterval}
-
-import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+import tools.{ScheduledTick, TickRecorder, TickRun}
 
 /**
  * The read model's whole-corpus passes, beside [[ReadModelProjector]]'s per-row projection of each

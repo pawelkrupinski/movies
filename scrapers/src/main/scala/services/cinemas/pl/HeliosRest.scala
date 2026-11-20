@@ -1,12 +1,13 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import services.cinemas.common.ScraperParse.jsonText
-import play.api.libs.json._
-
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZonedDateTime}
+
 import scala.util.Try
+
+import play.api.libs.json.*
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScraperParse.jsonText
 
 /** Helios's REST API (restapi.helios.pl) as data: what one venue's `/screening`, `/event`, `/movie/{id}` and
  *  `/screen/{id}` bodies read into. [[HeliosRestFeed]] fetches them; [[HeliosClient]] reconciles them with the NUXT

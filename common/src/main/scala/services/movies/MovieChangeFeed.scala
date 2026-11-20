@@ -1,10 +1,9 @@
 package services.movies
 
-import tools.ChangeStreamLiveness
+import scala.annotation.unused
 
 import models.{FilmId, StoredMovieRecord}
-
-import scala.annotation.unused
+import tools.ChangeStreamLiveness
 
 /**
  * The `movies` store's change stream: out-of-band changes delivered to attached consumers,

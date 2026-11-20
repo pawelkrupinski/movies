@@ -1,9 +1,9 @@
 package services.identityadapters
 
+import models.ListingKey
 import services.identity.*
 import services.identity.measures.ResolverDecision
 import services.identity.staging.{StagedCluster, StagedTake, StagingEvent}
-import models.ListingKey
 
 /** A staging-screen snapshot's ([[StagingSnapshots]]) documents of the projections' change lists, its clusters keyed by
  *  `clusterKey` ([[agreement.AgreementStage.keyOf]]). */

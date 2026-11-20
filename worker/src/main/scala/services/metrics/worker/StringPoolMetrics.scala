@@ -1,9 +1,8 @@
 package services.metrics.worker
 
-import models.StringPool
-
 import io.prometheus.metrics.core.metrics.GaugeWithCallback
 import io.prometheus.metrics.model.registry.PrometheusRegistry
+import models.StringPool
 
 /**
  * `kinowo_worker_string_pool_*` — whether [[StringPool]] is still interning, or

@@ -1,7 +1,8 @@
 package services.cinemas.common
 
 import java.util.concurrent.ConcurrentLinkedQueue
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 
 /**
  * Whether one scrape read its whole listing — decided from the outcome of every page read,

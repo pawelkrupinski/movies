@@ -1,21 +1,19 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
-import services.cinemas.common.SlotsToMovies
-
+import java.time.LocalDateTime
 import java.util.Locale
 
-import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, HttpRead}
-import models._
-import org.jsoup.Jsoup
-import services.cinemas.common.{SingleSiteScraper, ListingPages}
-
-import java.time.LocalDateTime
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.SynopsisProse
+import services.cinemas.common.{SingleSiteScraper, ListingPages}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Służewski Dom Kultury cinema (Warszawa). The Joomla "kino" category page is

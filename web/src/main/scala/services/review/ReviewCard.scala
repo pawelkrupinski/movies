@@ -1,7 +1,8 @@
 package services.review
 
-import play.api.libs.json.JsObject
 import java.time.Instant
+
+import play.api.libs.json.JsObject
 
 /** A cluster as a review card renders it. `shown` is the film put forward (the match or best surviving candidate);
  *  `updatedAt` the recently-matched page's stand-in for when it was decided. */

@@ -1,13 +1,14 @@
 package services.cinemas.us
 
-import models._
+import java.time.{LocalDate, LocalDateTime, LocalTime}
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{CinemaScraper, ListingPages, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
 import tools.{HttpFetch, HttpRead, ReadOutcome}
-
-import java.time.{LocalDate, LocalDateTime, LocalTime}
-import scala.jdk.CollectionConverters._
 
 /**
  * A venue whose site runs on CinemaPlus (cinemaplus.com), the ticketing platform small US

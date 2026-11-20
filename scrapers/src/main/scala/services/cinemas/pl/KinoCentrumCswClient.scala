@@ -1,12 +1,13 @@
 package services.cinemas.pl
 
-import tools.{HttpFetch, HttpRead}
-import models._
-import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
-
 import java.time.{LocalDate, LocalDateTime}
+
 import scala.util.Try
+
+import models.*
+import play.api.libs.json.*
+import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Centrum CSW (Toruń) — the film screen of Centrum Sztuki Współczesnej

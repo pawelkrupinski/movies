@@ -1,11 +1,11 @@
 package services.cinemas.pl
 
+import java.time.LocalDateTime
+
 import models.{Cinema, CinemaMovie, Movie, Multikino, Showtime}
-import play.api.libs.json._
+import play.api.libs.json.*
 import services.cinemas.common.{AgeRating, ScraperParse, VueCinemasPlatformParser}
 import services.titles.TitleNormalizer
-
-import java.time.LocalDateTime
 
 /**
  * Pure JSON → `CinemaMovie` transformation for the Multikino API response.

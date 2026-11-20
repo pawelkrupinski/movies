@@ -1,7 +1,7 @@
 package services.identityadapters
 
-import services.identity.vocabulary.Hit
 import org.bson.BsonDocument
+import services.identity.vocabulary.Hit
 
 /**
  * `inner`'s documents, every read and write forwarded as asked: the base of a layer over the store's documents that

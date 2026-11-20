@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import models._
-import services.titles.FormatTags
+import java.time.LocalDate
+import java.util.Locale
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ScraperParse, SlotsToMovies}
+import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead, ReadOutcome}
-
-import java.time.LocalDate
-import java.util.Locale
-import scala.jdk.CollectionConverters._
 
 /**
  * Kino Marzenie (Tarnów, run by Tarnowskie Centrum Kultury). Its repertoire

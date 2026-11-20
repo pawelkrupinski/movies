@@ -1,10 +1,11 @@
 package services.metrics.worker
 
+import java.util.concurrent.TimeUnit
+
+import scala.concurrent.duration.FiniteDuration
+
 import play.api.Logging
 import tools.{ThreadPools, ScheduledTick, TickRecorder}
-
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.FiniteDuration
 
 /**
  * The sample-on-a-timer scaffolding every census in this package shares: take the first

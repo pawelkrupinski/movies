@@ -1,10 +1,10 @@
 package models
 
-import play.api.libs.json.{JsObject, Json}
-
 import java.util.Properties
 
 import scala.util.Using
+
+import play.api.libs.json.{JsObject, Json}
 
 /**
  * Which mobile client versions this server still serves, and where to send the

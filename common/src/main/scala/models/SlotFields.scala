@@ -2,6 +2,7 @@ package models
 
 import java.net.URI
 import java.util.Locale
+
 import scala.util.Try
 
 /**

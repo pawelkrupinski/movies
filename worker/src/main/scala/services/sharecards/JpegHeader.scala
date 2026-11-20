@@ -1,6 +1,7 @@
 package services.sharecards
 
 import java.nio.file.{Files, Path}
+
 import scala.util.{Try, Using}
 
 /** What a JPEG's header says about the decode it would cost, read before any pixel is. */

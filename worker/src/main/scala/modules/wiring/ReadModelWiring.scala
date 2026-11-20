@@ -1,10 +1,9 @@
 package modules.wiring
 
-import settings.ShareCardFirstHold
-
 import services.identity.{EvidenceRatingGate, IdentityCalibration}
 import services.readmodel.RatingGate
 import services.readmodel.{BootCorpusStudy, MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelBoot, ReadModelDerivationPass, ReadModelProjector, ReadModelReader, ReadModelSweeper, ReadModelWriter, ShareCardGate, StreamApplyWait}
+import settings.ShareCardFirstHold
 
 /** ── Denormalised read model (web_movies + web_screenings) ───────────────────
  *  The worker projects every `movies` write into the two read-model collections

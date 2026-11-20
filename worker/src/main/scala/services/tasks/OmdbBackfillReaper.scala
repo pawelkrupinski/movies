@@ -1,13 +1,12 @@
 package services.tasks
 
-import tools.ThreadPools
+import java.time.Clock
 
-import settings.OmdbBackfillInterval
+import scala.concurrent.duration.*
 
 import services.schedule.{AlwaysClaimScheduledRunStore, ScheduledRunStore}
-
-import java.time.Clock
-import scala.concurrent.duration._
+import settings.OmdbBackfillInterval
+import tools.ThreadPools
 
 /**
  * Hourly, cluster-claimed ENQUEUER for the OMDb identifier backfill. The sweep

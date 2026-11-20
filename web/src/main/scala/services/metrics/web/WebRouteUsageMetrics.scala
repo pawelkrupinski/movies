@@ -1,12 +1,13 @@
 package services.metrics.web
 
+import java.time.Clock
+import java.util.concurrent.ConcurrentHashMap
+
+import scala.jdk.CollectionConverters.*
+
 import io.prometheus.metrics.core.metrics.GaugeWithCallback
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import play.api.mvc.RequestHeader
-
-import java.time.Clock
-import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
 
 /**
  * The retirement signal for EVERY route: when each route pattern was last called,

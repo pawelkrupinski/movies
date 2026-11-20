@@ -1,15 +1,15 @@
 package services.identityadapters
 
-import services.identity.measures.PosterEvidence
-import org.bson.{BsonDocument, BsonInt32, BsonInt64, BsonNull}
-import org.mongodb.scala.bson.BsonArray
-import services.identity.vocabulary.PosterQuestion
-import services.sharecards.{PosterDownload, PosterFailure, PosterShrinker}
-
 import java.nio.file.Files
 import java.time.Clock
-import services.identity.vocabulary.{Answer, BsonFields, PosterAnswers, PosterHash}
+
+import org.bson.{BsonDocument, BsonInt32, BsonInt64, BsonNull}
+import org.mongodb.scala.bson.BsonArray
+import services.identity.measures.PosterEvidence
+import services.identity.vocabulary.PosterQuestion
 import services.identity.vocabulary.toAnswer
+import services.identity.vocabulary.{Answer, BsonFields, PosterAnswers, PosterHash}
+import services.sharecards.{PosterDownload, PosterFailure, PosterShrinker}
 
 /**
  * The posters' hashes the agreement stage reads ([[PosterEvidence]]): a venue's poster by its URL, and a TMDB film's

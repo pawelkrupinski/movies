@@ -1,19 +1,19 @@
 package services.users
 
-import tools.ChangeStreamLiveness
+import java.time.Instant
 
-import com.mongodb.{ErrorCategory, MongoServerException}
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import com.mongodb.client.model.{FindOneAndUpdateOptions, ReturnDocument}
+import com.mongodb.{ErrorCategory, MongoServerException}
 import models.UserState
 import org.bson.BsonDocument
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
-
-import scala.concurrent.Await
-import java.time.Instant
-import scala.concurrent.duration._
-import scala.util.Try
+import tools.ChangeStreamLiveness
 
 /**
  * Per-user state store — per-country hidden films and the language pick,

@@ -1,12 +1,12 @@
 package services.identityadapters
 
+import scala.jdk.CollectionConverters.*
+
+import models.ListingKey
+import org.bson.{BsonArray, BsonBoolean, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonString, BsonValue}
 import services.identity.*
 import services.identity.measures.{Evidence, Listing, ResolverDecision}
-import org.bson.{BsonArray, BsonBoolean, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonString, BsonValue}
 import services.identity.vocabulary.VoterFamily
-import models.ListingKey
-
-import scala.jdk.CollectionConverters._
 
 /**
  * Each take the projection moves, kept in the history ([[HistoryEntry.Take]], by the listing's key) with what decided

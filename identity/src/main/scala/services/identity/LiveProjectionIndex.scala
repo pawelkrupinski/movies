@@ -1,12 +1,12 @@
 package services.identity
 
+import scala.collection.mutable
+
 import models.{LeanRecords, ListingKey, Source, SourceData, StoredMovieRecord}
 import services.evidence.LatestTitleYear
-import services.titles.TitleNormalizer
-
-import scala.collection.mutable
-import services.identity.vocabulary.StoredSlots
 import services.identity.measures.{Listing, ResolverDecision}
+import services.identity.vocabulary.StoredSlots
+import services.titles.TitleNormalizer
 
 /**
  * The [[ProjectionIndex]] kept from one projection to the next and moved only where its inputs moved, so a projection

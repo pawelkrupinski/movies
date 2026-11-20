@@ -1,12 +1,13 @@
 package tools
 
-import play.api.Logging
-
 import java.io.IOException
 import java.net.{InetSocketAddress, Socket}
 import java.nio.charset.StandardCharsets.ISO_8859_1
 import java.util.Base64
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
+
+import play.api.Logging
 
 /** One cheap yes/no health check of an egress dependency — the check a scrape is parked on and un-parked by
  *  (`services.tasks.ProxyParking`). */

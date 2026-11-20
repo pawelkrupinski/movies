@@ -1,12 +1,13 @@
 package services.cinemas.common
 
-import tools.PersonName
-import models._
-import org.jsoup.parser.Parser
-import org.jsoup.nodes.Element
-
 import java.time.{LocalDate, LocalDateTime, LocalTime}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import org.jsoup.nodes.Element
+import org.jsoup.parser.Parser
+import tools.PersonName
 
 /** One day's sessions fragment of a Flicks venue (`<market base>/cinema/sessions/<slug>/<YYYY-MM-DD>/`, see
  *  [[FlicksClient]]) read into its session slots: a `cinema-times__article` card per film, its sessions under it. */

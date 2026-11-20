@@ -1,10 +1,9 @@
 package services.identityadapters
 
+import models.MovieRecord
 import models.{CacheKey, FilmId}
-
 import services.identity.*
 import services.movies.{MovieCache, WriteOutcome}
-import models.MovieRecord
 
 /** The identity projection's writes of its planned films to the store ([[IdentityProjection]]): their order under the
  *  store's unique indexes, the independent ones side by side, a cycle broken by parking, retirements between. Logs under

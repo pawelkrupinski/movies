@@ -2,8 +2,8 @@ package models
 
 import java.time.LocalDateTime
 
-import play.api.libs.functional.syntax._
-import play.api.libs.json._
+import play.api.libs.functional.syntax.*
+import play.api.libs.json.*
 
 /** A showtime as JSON — the shape `Json.format` derived while `Showtime` was a case class (it no
  *  longer is; see it): `dateTime`, then `bookingUrl` and `room` when set, then `format`, always.

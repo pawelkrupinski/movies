@@ -1,7 +1,7 @@
 package controllers
 
 import play.api.Mode
-import play.api.mvc._
+import play.api.mvc.*
 
 /** The dev-only `/debug/readmodel` pages: the read model (`web_movies` plus per-film
  *  `web_screenings` counts) of `?country=` (the serving country by default) — the

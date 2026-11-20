@@ -1,9 +1,9 @@
 package services.cinemas.pl
 
+import models.*
 import services.cinemas.common.ScraperParse
-import models._
-import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Nowa Fala (Giżycko). Its programme at `kino.gizycko.pl/repertuar/` is

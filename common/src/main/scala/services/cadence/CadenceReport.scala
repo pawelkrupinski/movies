@@ -1,11 +1,12 @@
 package services.cadence
 
-import models.{RatingChange, RatingChangeStats}
-import tools.DueBoundary
+import java.time.Instant
 import java.util.Locale
 
-import java.time.Instant
 import scala.concurrent.duration.FiniteDuration
+
+import models.{RatingChange, RatingChangeStats}
+import tools.DueBoundary
 
 /**
  * Pure shaping of the `rating_cadence` records into the dev cadence page's view

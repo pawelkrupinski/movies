@@ -1,11 +1,12 @@
 package tools
 
-import play.api.Logger
-
 import java.net.http.{HttpConnectTimeoutException, HttpResponse, HttpTimeoutException}
 import java.nio.charset.StandardCharsets
 import java.time.Duration
+
 import scala.concurrent.duration.FiniteDuration
+
+import play.api.Logger
 
 /** What a [[RealHttpFetch]] exchange's reply or failure becomes -- a decoded body, or a typed status failure -- and how
  *  each is logged, on `logger` (the fetch's own). `requestTimeoutFor` / `connectTimeoutFor` are the fetch's budgets,

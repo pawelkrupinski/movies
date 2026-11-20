@@ -1,9 +1,9 @@
 package services.movies
 
+import scala.util.control.NonFatal
+
 import org.slf4j.{Marker, MarkerFactory}
 import play.api.{Logger, MarkerContext}
-
-import scala.util.control.NonFatal
 
 /**
  * What a repository WRITE did — the write-side twin of the checked reads

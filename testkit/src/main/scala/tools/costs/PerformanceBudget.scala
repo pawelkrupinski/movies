@@ -1,11 +1,12 @@
 package tools.costs
 
-import org.scalatest.Assertion
-import org.scalatest.Assertions.{fail, succeed}
-
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path, Paths, StandardOpenOption}
+
 import scala.util.Try
+
+import org.scalatest.Assertion
+import org.scalatest.Assertions.{fail, succeed}
 
 /**
  * What one hot path may cost: heap allocated, or operations done (cache rebuilds, rows fetched, Mongo

@@ -1,16 +1,16 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
-
-import services.cinemas.common.ScraperParse
-import org.jsoup.nodes.{Document, Element}
-import models._
-import tools.{HttpFetch, HttpRead}
-import org.jsoup.Jsoup
-import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
-
 import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import org.jsoup.Jsoup
+import org.jsoup.nodes.{Document, Element}
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Zorza (Rzeszów) — run by Regionalna Fundacja Filmowa. The cinema

@@ -1,24 +1,23 @@
 package modules
 
-import modules.webwiring.Wiring
+import scala.concurrent.Future
 
 import controllers.{AssetsComponents, CspFilter, TruncationTolerantHttpErrorHandler}
+import models.Country
+import modules.webwiring.Wiring
+import play.api.*
 import play.api.ApplicationLoader.Context
 import play.api.http.{HttpErrorConfig, HttpErrorHandler}
 import play.api.mvc.{EssentialFilter, Handler}
 import play.api.routing.Router
-import play.api.routing.sird._
-import play.api._
-import models.Country
-import settings.MongoAddress
-import settings.{ApplicationMode, ProcessConfiguration}
-import tools.{ConstructByType, Env, IssuerCertificateFetching}
+import play.api.routing.sird.*
 import play.filters.HttpFiltersComponents
 import play.filters.cors.CORSComponents
 import play.filters.gzip.GzipFilterComponents
 import router.Routes
-
-import scala.concurrent.Future
+import settings.MongoAddress
+import settings.{ApplicationMode, ProcessConfiguration}
+import tools.{ConstructByType, Env, IssuerCertificateFetching}
 
 /**
  * Compile-time DI entry point. Replaces Guice + the three `play.modules.enabled`

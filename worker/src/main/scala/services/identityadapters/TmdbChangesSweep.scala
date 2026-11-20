@@ -1,16 +1,17 @@
 package services.identityadapters
 
-import services.identity.measures.*
+import java.time.{Clock, LocalDate, ZoneOffset}
+
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+import scala.util.control.NonFatal
+
 import clients.TmdbClient
-import services.identityadapters.TmdbIdentityReads.*
 import org.bson.{BsonArray, BsonDocument, BsonInt32, BsonString}
 import play.api.Logging
+import services.identity.measures.*
+import services.identityadapters.TmdbIdentityReads.*
 import tools.{DueBoundary, ForwardingHttpFetch, HttpFetch}
-
-import java.time.{Clock, LocalDate, ZoneOffset}
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
-import scala.util.control.NonFatal
 
 /**
  * Keeps the normalized TMDB store current through TMDB's own change lists, so no edit to an answer

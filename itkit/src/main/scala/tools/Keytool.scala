@@ -1,9 +1,9 @@
 package tools
 
-import settings.JavaHome
-
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.TimeUnit
+
+import settings.JavaHome
 
 /** The JDK's own `keytool`, for specs that mint certificates and key stores — the JDK has no
  *  public API for minting a certificate. Fails loudly, with keytool's output, on a non-zero exit. */

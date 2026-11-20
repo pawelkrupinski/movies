@@ -1,16 +1,16 @@
 package services.identityadapters
 
-import services.identity.*
-import services.identity.measures.Listing
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
+
+import models.ListingKey
 import org.bson.{BsonDocument, BsonInt64, BsonString}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import models.ListingKey
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
+import services.identity.*
+import services.identity.measures.Listing
 
 /**
  * The listings whose newest version the model's input gate holds ([[ListingReadiness]], docs/design/identity-structural-fixes.md

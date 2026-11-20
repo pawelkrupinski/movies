@@ -1,8 +1,8 @@
 package tools
 
-import play.api.Logging
+import scala.concurrent.duration.*
 
-import scala.concurrent.duration._
+import play.api.Logging
 
 /**
  * A PROACTIVE per-host request pacer: each paced host's requests are spaced `intervalFor(url)` apart by the slots

@@ -1,14 +1,15 @@
 package services.cinemas.uk
 
+import java.time.{LocalDate, LocalDateTime, MonthDay, Period}
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import models._
-import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
-
-import java.time.{LocalDate, LocalDateTime, MonthDay, Period}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import tools.{HttpFetch, HttpRead}
 
 /**
  * The Old Court, Windsor — an arts centre whose cinema strand we could not read.

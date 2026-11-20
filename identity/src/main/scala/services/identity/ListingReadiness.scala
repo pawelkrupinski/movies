@@ -1,7 +1,7 @@
 package services.identity
 
-import services.identity.vocabulary.Question
 import services.identity.measures.Listing
+import services.identity.vocabulary.Question
 
 /**
  * The model's input gate (docs/design/identity-structural-fixes.md, fix 1: asking apart from deciding): which questions a

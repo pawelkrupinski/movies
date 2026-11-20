@@ -1,12 +1,13 @@
 package services.facebook
 
-import play.api.libs.json.Json
-
 import java.net.URI
 import java.net.URLEncoder
 import java.net.http.HttpRequest
 import java.nio.charset.StandardCharsets
+
 import scala.util.Try
+
+import play.api.libs.json.Json
 
 /** Asks Facebook to fetch a page again, so a preview it cached (image included) is replaced. */
 trait FacebookGraph {

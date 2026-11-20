@@ -1,7 +1,7 @@
 package services.identity
 
-import services.titles.TitleForms
 import services.identity.measures.Listing
+import services.titles.TitleForms
 
 /**
  * How long a listing's IDENTITY FACTS live (the owner, 2026-10-30, identity design: "Drop showings, keep movie details

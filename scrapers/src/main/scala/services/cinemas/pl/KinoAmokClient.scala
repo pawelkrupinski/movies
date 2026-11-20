@@ -1,14 +1,15 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, HttpRead}
-import models._
-import org.jsoup.nodes.Document
-import org.jsoup.Jsoup
-import services.cinemas.common.{SingleSiteScraper, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
-
 import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{SingleSiteScraper, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Amok (Gliwice) — studyjne cinema run by CSW Górnośląskie Centrum Kultury.

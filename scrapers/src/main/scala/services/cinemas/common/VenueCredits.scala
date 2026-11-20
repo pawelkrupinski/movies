@@ -1,10 +1,11 @@
 package services.cinemas.common
 
+import java.util.Locale
+
+import scala.util.matching.Regex
+
 import models.CountryNames
 import tools.Whitespace.collapsedSpaces
-
-import java.util.Locale
-import scala.util.matching.Regex
 
 /**
  * The film facts a Polish venue types into the free-text description of its own event page —

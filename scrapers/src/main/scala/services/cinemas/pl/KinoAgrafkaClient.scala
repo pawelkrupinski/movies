@@ -1,14 +1,15 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{CreditedScreening, ListingFacts, ListingPageScraper, ScraperParse, SlotsToMovies}
-import models._
-import tools.HttpFetch
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import models.CountryNames
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
-import models.CountryNames
+import services.cinemas.common.{CreditedScreening, ListingFacts, ListingPageScraper, ScraperParse, SlotsToMovies}
+import tools.HttpFetch
 
 /**
  * Kino Agrafka (Kraków) — an independent arthouse cinema run by Fundacja

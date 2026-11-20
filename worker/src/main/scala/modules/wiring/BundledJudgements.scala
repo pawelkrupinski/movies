@@ -1,10 +1,11 @@
 package modules.wiring
 
-import services.identity.TakeJudgements
-
 import java.nio.charset.StandardCharsets
+
 import scala.io.Source
 import scala.util.Using
+
+import services.identity.TakeJudgements
 
 /** The hand judgements of takes the worker is built with (`/identity-judgements.tsv`, generated from
  *  `test/resources/fixtures/identity-judgements.tsv` by build.sbt), read once at the composition root and handed to

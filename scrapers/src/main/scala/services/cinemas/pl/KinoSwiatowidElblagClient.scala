@@ -1,16 +1,17 @@
 package services.cinemas.pl
 
-import services.titles.NonMovieEventClassifier
-import models._
-import services.titles.FormatTags
-import tools.{HttpFetch, HttpRead}
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon, ScraperParse}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import services.titles.FormatTags
+import services.titles.NonMovieEventClassifier
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Światowid (Elbląg — not to be confused with [[KinoSwiatowid]], its

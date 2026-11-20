@@ -1,9 +1,10 @@
 package services.movies
 
-import play.api.Logger
-
 import java.time.Instant
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
+
+import play.api.Logger
 
 /**
  * What one sweep of retired-venue rows removed: rows per side collection, and the rows

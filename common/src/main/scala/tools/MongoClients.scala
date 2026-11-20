@@ -1,11 +1,11 @@
 package tools
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import org.mongodb.scala.{MongoClient, MongoClientSettings, SingleObservableFuture}
 import play.api.Logging
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
 
 /** The `MongoClient`s a process SHARES across several database views on one cluster -- one pool, one Netty event loop,
  *  one replica-set monitor thread set for N countries, instead of a full client each (the RSS blow-up

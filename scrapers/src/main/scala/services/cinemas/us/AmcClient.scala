@@ -1,10 +1,10 @@
 package services.cinemas.us
 
+import java.time.LocalDate
+
 import models.{Cinema, CinemaMovie}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon, ListingFeed}
 import tools.{HttpFetch, HttpRead}
-
-import java.time.LocalDate
 
 /**
  * AMC Theatres — the largest US chain (523 theatres on its own roster, 519 of

@@ -1,9 +1,7 @@
 package services.identityadapters
 
-import models.{FilmId, StoredMovieRecord}
-
-
 import models.ListingKey
+import models.{FilmId, StoredMovieRecord}
 import services.identity.*
 import services.identity.measures.Resolution
 /** How a written identity projection's take changes are told ([[IdentityProjection]]): to the metrics (the changes, and

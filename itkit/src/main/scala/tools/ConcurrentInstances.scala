@@ -1,13 +1,14 @@
 package tools
 
+import java.util.concurrent.locks.LockSupport
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue, CyclicBarrier, TimeUnit}
+
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+
 import com.mongodb.event.{CommandFailedEvent, CommandListener, CommandStartedEvent, CommandSucceededEvent}
 import com.mongodb.{ConnectionString, MongoClientSettings}
 import org.mongodb.scala.{MongoClient, MongoDatabase}
-
-import java.util.concurrent.locks.LockSupport
-import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue, CyclicBarrier, TimeUnit}
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 
 /**
  * Two (or N) instances of one tier against ONE Mongo database, doing the same work at the same

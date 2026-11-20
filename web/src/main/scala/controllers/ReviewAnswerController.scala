@@ -1,14 +1,15 @@
 package controllers
 
+import java.nio.file.Path
+import java.time.Clock
+
+import scala.util.{Failure, Success, Try}
+
 import models.Country
 import play.api.Mode
 import play.api.libs.json.{JsValue, Json}
-import play.api.mvc._
-import services.review._
-
-import java.nio.file.Path
-import java.time.Clock
-import scala.util.{Failure, Success, Try}
+import play.api.mvc.*
+import services.review.*
 
 /**
  * The dev-only review pages' writes (`/debug/review/answer`, `/export`) and the answers' history: an answer goes to

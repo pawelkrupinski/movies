@@ -1,14 +1,14 @@
 package controllers
 
-import org.apache.pekko.stream.{Materializer, OverflowStrategy}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.*
+
 import org.apache.pekko.stream.scaladsl.Source
+import org.apache.pekko.stream.{Materializer, OverflowStrategy}
 import play.api.libs.json.Json
-import play.api.mvc._
+import play.api.mvc.*
 import services.UptimeHistory
 import services.UptimeMonitor.BucketListener
-
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
 
 /** `GET /uptime/stream`: the /uptime page's live feed, each changed bucket as the page labels it. */
 class UptimeStreamController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeHistory, bars: UptimeBars)

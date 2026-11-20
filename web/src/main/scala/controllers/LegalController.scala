@@ -1,6 +1,6 @@
 package controllers
 
-import play.api.mvc._
+import play.api.mvc.*
 
 // Static legal pages: the privacy policy and the Facebook-required data
 // deletion instructions. No dependencies beyond the rendered Twirl views, so

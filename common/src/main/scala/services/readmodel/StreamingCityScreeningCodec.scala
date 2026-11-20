@@ -1,9 +1,9 @@
 package services.readmodel
 
 import models.{CityScreening, Showtime}
-import services.movies.ShowtimeCodec
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.bson.{BsonReader, BsonType, BsonWriter}
+import services.movies.ShowtimeCodec
 
 /**
  * A `web_screenings` row read field by field, its showtimes through the movies' hand-written

@@ -1,9 +1,10 @@
 package tools
 
 import java.time.{Clock, Duration, Instant}
-import java.util.concurrent.{ConcurrentHashMap, ConcurrentSkipListMap}
 import java.util.concurrent.atomic.AtomicLong
-import scala.jdk.CollectionConverters._
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentSkipListMap}
+
+import scala.jdk.CollectionConverters.*
 
 /**
  * WHEN EACH CHANGE-STREAM CURSOR LAST DELIVERED AN EVENT — the liveness signal the

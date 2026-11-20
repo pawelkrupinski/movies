@@ -1,7 +1,8 @@
 package services.identity
 
-import services.identity.measures.{Candidate, Evidence, EvidenceNode, IdentityMeasures, MeasuredListing, RelayStage, Scored, SearchMeasures, SourceReliability}
 import scala.collection.mutable
+
+import services.identity.measures.{Candidate, Evidence, EvidenceNode, IdentityMeasures, MeasuredListing, RelayStage, Scored, SearchMeasures, SourceReliability}
 import services.identity.vocabulary.{CatalogueId, Denial}
 
 /** One family's scoring: every member node's candidates — the family's pool — scored on the node's

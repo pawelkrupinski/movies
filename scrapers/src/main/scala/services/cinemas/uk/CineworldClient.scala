@@ -1,12 +1,11 @@
 package services.cinemas.uk
 
+import java.time.LocalDate
 import java.util.Locale
 
 import models.{Cinema, CinemaMovie, CineworldChain, Source}
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, GatsbyBoxOfficeClient, ListingFeed}
 import tools.HttpFetch
-
-import java.time.LocalDate
 
 /**
  * Cineworld — the UK's second-largest chain (87 sites). Cineworld relaunched

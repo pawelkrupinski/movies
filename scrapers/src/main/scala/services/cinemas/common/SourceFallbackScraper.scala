@@ -1,12 +1,13 @@
 package services.cinemas.common
 
+import java.time.{Clock, Instant, ZoneOffset}
+
+import scala.concurrent.duration.*
+import scala.util.control.NonFatal
+
 import models.{CinemaMovie, SeparateRuns}
 import services.UptimeRecorder
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore}
-
-import java.time.{Clock, Instant, ZoneOffset}
-import scala.concurrent.duration._
-import scala.util.control.NonFatal
 
 /**
  * Decorator that serves showtimes from a SECONDARY source when the cinema's own

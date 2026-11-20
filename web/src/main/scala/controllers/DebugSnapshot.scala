@@ -1,14 +1,15 @@
 package controllers
 
-import play.api.Logging
-
 import java.io.{InputStream, ObjectInputStream, ObjectOutputStream, ObjectStreamClass}
 import java.nio.file.{Files, Path, StandardCopyOption}
-import java.time.{Clock, Duration => JDuration, Instant}
+import java.time.{Clock, Duration as JDuration, Instant}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
+
+import scala.concurrent.duration.*
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
-import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try, Using}
+
+import play.api.Logging
 
 /** One `/debug` read: the value, the newest `updatedAt` the mirror held when it was
  *  read, and WHEN it was read — `None` for a read made for this very request. The

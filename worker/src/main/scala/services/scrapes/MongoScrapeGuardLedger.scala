@@ -1,13 +1,13 @@
 package services.scrapes
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+
 import models.Cinema
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Filters, Projections, Updates}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture}
 import services.movies.{ScrapeGuardLedger, ScrapeGuardState}
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * [[ScrapeGuardLedger]] kept in `cinema_scrapes`, as a `guard` sub-document on the

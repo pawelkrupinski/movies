@@ -1,11 +1,12 @@
 package tools
 
-import play.api.Logging
-
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.control.NonFatal
+
+import play.api.Logging
 
 /**
  * A shared, per-host rate-limit gate wrapping any `HttpFetch`.

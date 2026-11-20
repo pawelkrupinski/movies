@@ -1,11 +1,11 @@
 package modules.wiring
 
 import scala.concurrent.duration.DurationInt
-import settings.{BootHydrateRetryInterval, CacheRehydrateInterval}
 
+import services.corpus.StrandedSideRowsCleanup
 import services.movies.{CaffeineMovieCache, CorpusMirror, MongoMovieChangeFeed, MongoMovieRepository, MovieChangeFeed, MovieChangeStream, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, ResumeTokenStore, RetiredVenueRows, ScreeningTokens, VenueRoster, ScreeningsRepository, SlotsRepository, UnscreenedCleanup}
 import services.titles.TitleNormalizer
-import services.corpus.StrandedSideRowsCleanup
+import settings.{BootHydrateRetryInterval, CacheRehydrateInterval}
 
 /** ── MovieRecord cache (write-through) ───────────────────────────────────────
  *  The `movies` corpus and its side collections, the write-through cache every

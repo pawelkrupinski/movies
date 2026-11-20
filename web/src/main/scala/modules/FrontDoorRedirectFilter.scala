@@ -1,13 +1,13 @@
 package modules
 
+import scala.concurrent.Future
+
 import controllers.{PageMeta, ServedCity}
 import models.{BareSlugTarget, Country}
-import services.metrics.web.{LegacyAddressKind, LegacyAddressMetrics}
 import org.apache.pekko.stream.Materializer
 import play.api.i18n.Messages
 import play.api.mvc.{Filter, RequestHeader, Result, Results}
-
-import scala.concurrent.Future
+import services.metrics.web.{LegacyAddressKind, LegacyAddressMetrics}
 
 /**
  * On the brand FRONT DOOR — `showtimes.cc/` itself, which the deployment mounted

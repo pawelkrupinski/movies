@@ -1,14 +1,14 @@
 package services.movies
 
-import tools.ChangeStreamLiveness
+import java.util.concurrent.atomic.AtomicReference
+
+import scala.util.Try
 
 import com.mongodb.client.model.changestream.ChangeStreamDocument
 import org.bson.BsonDocument
 import org.mongodb.scala.{Observer, Subscription}
 import play.api.Logging
-
-import java.util.concurrent.atomic.AtomicReference
-import scala.util.Try
+import tools.ChangeStreamLiveness
 
 /** [[MovieChangeStream]]'s `movies` cursor: opened after a resume position, each event's post-image
  *  decoded and handed to the apply side ([[MovieChangeApply]]) as a re-read of its film — or, with no

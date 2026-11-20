@@ -1,6 +1,7 @@
 package tools
 
 import java.util.concurrent.ExecutorService
+
 import scala.concurrent.ExecutionContext
 
 /** A spec's own thread pool, for as long as `body` runs: `threads` daemon threads named `name`, built through

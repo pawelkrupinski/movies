@@ -1,8 +1,8 @@
 package services.identity.vocabulary
 
-import models.ListingKey
-
 import java.time.Instant
+
+import models.ListingKey
 
 /** What a pin asserts about its listings. */
 enum PinClaim {

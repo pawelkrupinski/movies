@@ -1,13 +1,13 @@
 package controllers
 
+import java.time.Instant
+import java.time.format.DateTimeFormatter
+
 import models.UserState
 import play.api.Logging
 import play.api.libs.json.{JsNull, JsValue, Json}
-import play.api.mvc._
+import play.api.mvc.*
 import services.users.{HiddenFilmsChange, UserChangeTimeCache, UserRepository, UserStateRepository}
-
-import java.time.Instant
-import java.time.format.DateTimeFormatter
 
 /**
  * REST endpoint for the authenticated user's personalization state — the

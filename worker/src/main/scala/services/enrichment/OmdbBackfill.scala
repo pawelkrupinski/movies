@@ -1,12 +1,12 @@
 package services.enrichment
 
-import models.CacheKey
+import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 
+import scala.util.control.NonFatal
+
+import models.CacheKey
 import services.movies.MovieCache
 import services.tasks.BulkRefreshResult
-
-import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
-import scala.util.control.NonFatal
 
 /**
  * OMDb IMDb-id backfill: recovers a missing `imdbId` by title+year search. It

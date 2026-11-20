@@ -1,12 +1,11 @@
 package services.identity
 
-import services.identity.measures.{FilmNess, Listing, ListingShape}
-import services.titles.billing.BillingPieces
-
-import services.titles.NonMovieEventClassifier
-import services.titles.{TitleContainment, TitleWords}
-
 import java.util.Locale
+
+import services.identity.measures.{FilmNess, Listing, ListingShape}
+import services.titles.NonMovieEventClassifier
+import services.titles.billing.BillingPieces
+import services.titles.{TitleContainment, TitleWords}
 
 /**
  * Whether a cluster the model left unmatched is a confident NON-FILM event — a concert, a yoga class, a horror

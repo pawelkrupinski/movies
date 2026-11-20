@@ -1,11 +1,9 @@
 package services.evidence
 
 import models.SlotFields
-
+import models.{Cinema, Filmweb, Imdb, MovieRecord, MovieRecordMerge, Source, SourceData, Tmdb}
 import services.titles.TitleContainment
 import services.titles.TitleNormalizer
-
-import models.{Cinema, Filmweb, Imdb, MovieRecord, MovieRecordMerge, Source, SourceData, Tmdb}
 
 /**
  * A record's readings built on its ONE representative slot per venue ([[cinemaData]]): the evidence a resolution

@@ -1,12 +1,13 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{ListingPages, ScrapeHorizon}
-import services.cinemas.pl.HeliosRest._
-import tools.{HttpFetch, HttpRead}
-
 import java.time.LocalDate
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.Try
+
+import services.cinemas.common.{ListingPages, ScrapeHorizon}
+import services.cinemas.pl.HeliosRest.*
+import tools.{HttpFetch, HttpRead}
 
 /** One Helios venue's REST read ([[HeliosRest]]): its screenings and event screenings over the scrape horizon, then
  *  the film bodies and screen names they name. `detailFetch` carries the per-film and per-screen bodies (the

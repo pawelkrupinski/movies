@@ -1,8 +1,8 @@
 package services.enrichment
 
-import models.{Imdb, MovieRecord, Source, SourceData}
-
 import java.util.Locale
+
+import models.{Imdb, MovieRecord, Source, SourceData}
 
 /** What an IMDb read writes on a row, its country names in the deployment's `language` (Polish "Wielka Brytania" on
  *  `kinowo`, English "United Kingdom" on the UK site): the rating, when its badge moved, and the details slot, when its

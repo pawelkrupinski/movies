@@ -1,9 +1,9 @@
 package services.enrichment.scraping
 
-import tools.{HtmlScripts, JsonScalars}
-import play.api.libs.json.{JsValue, Json}
-
 import scala.util.Try
+
+import play.api.libs.json.{JsValue, Json}
+import tools.{HtmlScripts, JsonScalars}
 
 /**
  * Extract the Tomatometer (critics) percentage from RT's `media-scorecard-json`

@@ -1,13 +1,14 @@
 package tools
 
+import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
+
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{BulkWriteOptions, DeleteOneModel, Filters, Sorts}
 import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
-
-import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * The storage half of a retention sweep over a keyed store: which rows were last written before a

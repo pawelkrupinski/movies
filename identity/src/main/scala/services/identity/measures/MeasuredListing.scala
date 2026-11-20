@@ -1,8 +1,8 @@
 package services.identity.measures
 
+import services.identity.vocabulary.{ListingDating, TitleDecorations}
 import services.titles.billing.{BillingParse, BillingPieces}
 import services.titles.{TitleContainment, TitleSeason}
-import services.identity.vocabulary.{ListingDating, TitleDecorations}
 
 /** What one venue published about one film. `decorations`: the venue decorations learned around
  *  titles (`TitleDecorations`), which the title shapes read — not a fact the venue published. */

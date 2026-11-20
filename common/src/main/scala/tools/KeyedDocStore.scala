@@ -1,16 +1,17 @@
 package tools
 
-import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, ReplaceOptions, Sorts}
-import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
-import play.api.Logging
-
 import java.time.Instant
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
+
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, ReplaceOptions, Sorts}
+import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
+import play.api.Logging
 
 /**
  * How a store's value is stored: the document's fields beside its `_id`, and back. Shared by the

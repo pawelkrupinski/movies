@@ -1,11 +1,11 @@
 package services.metrics.web
 
+import java.time.Clock
+
 import io.prometheus.metrics.core.metrics.Counter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.SlugRedirectKind
 import play.api.mvc.RequestHeader
-
-import java.time.Clock
 
 /**
  * The retirement signal for the OLD ADDRESSES of cities — which kind of legacy

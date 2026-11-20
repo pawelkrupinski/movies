@@ -2,26 +2,26 @@ package diagnostics
 
 
 
+import java.io.PrintWriter
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
+import scala.util.{Failure, Success, Try}
+
+import models.*
+import play.api.libs.json.Json
+import services.cinemas.CinemaScraperCatalog
+import services.cinemas.common.CinemaScraper
+import services.cinemas.pl.FilmwebCinemaIdResolver.{Fuzzy, Override, OverrideSuppressed, Resolution, Source, Unmatched}
+import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 import tools.DaemonExecutors
-import tools.TlsTrust
 import tools.HttpFetch
 import tools.IssuerCertificateFetching
 import tools.ProxyTunnelAuthentication
 import tools.RealHttpFetch
 import tools.ResidentialShards
-import models._
-import services.cinemas.CinemaScraperCatalog
-import services.cinemas.common.CinemaScraper
-import services.cinemas.pl.FilmwebCinemaIdResolver.{Fuzzy, Override, OverrideSuppressed, Resolution, Source, Unmatched}
-import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
-
-import play.api.libs.json.Json
-
-import java.io.PrintWriter
-import java.time.{LocalDate, LocalDateTime}
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
-import scala.util.{Failure, Success, Try}
+import tools.TlsTrust
 
 /**
  * Diagnostic: compare OUR scrapers' screenings against Filmweb's, per cinema.

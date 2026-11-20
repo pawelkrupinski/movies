@@ -1,7 +1,6 @@
 package services.identity.vocabulary
 
 import models.StoredMovieRecord
-
 import models.{CinemaShowing, ListingKey, Source, SourceData}
 
 /** The slots of a stored film as a projection's index reads them ([[StoredSlots.of]], [[LiveProjectionIndex]]):

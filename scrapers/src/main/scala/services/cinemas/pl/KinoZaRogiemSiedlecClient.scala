@@ -1,14 +1,15 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import models._
-import tools.{HttpFetch, HttpRead}
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino za Rogiem w Siedlcu (GOK Siedlec, Wielkopolska — near Wolsztyn, NOT the

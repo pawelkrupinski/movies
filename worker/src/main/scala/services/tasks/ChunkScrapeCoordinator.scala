@@ -1,9 +1,8 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
 import play.api.Logging
 import services.events.{DomainEvent, TaskFinished}
+import services.tasktypes.TaskType
 
 /**
  * The fan-IN of a chunked scrape: subscribes to `TaskFinished(ScrapeChunk)` (an

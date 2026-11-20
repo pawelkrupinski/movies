@@ -1,13 +1,14 @@
 package services.cinemas.de
 
-import models._
+import java.time.LocalDate
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{ScrapeHorizon, ScrapedSlot, ScraperParse, SingleSiteScraper, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
-
-import java.time.LocalDate
-import scala.jdk.CollectionConverters._
 
 /**
  * Rex Kino-Center Schifferstadt — a two-screen town cinema that takes bookings by

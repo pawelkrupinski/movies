@@ -1,13 +1,14 @@
 package services.enrichment
 
-import play.api.Logging
-import services.Drainable
-import services.events.{DomainEvent, ImdbIdMissing}
-
 import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUnit}
+
 import scala.concurrent.ExecutionContextExecutorService
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
+
+import play.api.Logging
+import services.Drainable
+import services.events.{DomainEvent, ImdbIdMissing}
 
 /**
  * Recovers missing IMDb ids off the bus: each `ImdbIdMissing` is resolved ([[ImdbIdRecovery]]) on the resolver's own

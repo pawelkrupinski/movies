@@ -1,19 +1,18 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
-import java.util.Locale
-
-import services.cinemas.common.ScraperParse
-import play.api.libs.json.Json
-import models._
-import org.jsoup.Jsoup
-import tools.{HttpFetch, HttpRead}
-import services.cinemas.common.{ChunkedCinemaScraper, SingleSiteScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
-
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
+import java.util.Locale
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import org.jsoup.Jsoup
+import play.api.libs.json.Json
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SynopsisProse
+import services.cinemas.common.{ChunkedCinemaScraper, SingleSiteScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Nowe Horyzonty (Wrocław) — the largest arthouse cinema in Poland, with

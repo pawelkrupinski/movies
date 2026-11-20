@@ -1,13 +1,13 @@
 package services.cinemas.common
 
-import play.api.Logging
-import play.api.libs.json.Json
-import tools.{EgressProviderException, HttpStatusException}
-
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.nio.charset.StandardCharsets
 import java.util.Base64
+
+import play.api.Logging
+import play.api.libs.json.Json
+import tools.{EgressProviderException, HttpStatusException}
 
 /**
  * Wrapper around Zyte API's `/v1/extract` endpoint, used as a proxy backend

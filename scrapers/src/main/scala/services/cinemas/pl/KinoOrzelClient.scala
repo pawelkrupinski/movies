@@ -1,13 +1,14 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import models._
-import tools.HttpFetch
-import org.jsoup.Jsoup
-import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
-
 import java.time.LocalDateTime
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import org.jsoup.Jsoup
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
+import tools.HttpFetch
 
 /**
  * Kino Orzeł — the art-house screen run by Miejskie Centrum Kultury in

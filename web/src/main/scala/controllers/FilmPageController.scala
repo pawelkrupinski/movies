@@ -1,7 +1,7 @@
 package controllers
 
-import models._
-import play.api.mvc._
+import models.*
+import play.api.mvc.*
 
 /** The film pages: `/{city}/movie/:slug`, and the pre-slug `/{city}/movie?title=…` address. Rendered for nobody, as
  *  the listing is ([[MovieController]]): no `UserRepository`, so no response can vary by session. */

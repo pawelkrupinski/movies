@@ -1,8 +1,8 @@
 package services.tasks
 
-import services.cinemas.common.{CinemaScrapeRunner, CinemaScraper}
-
 import java.time.Clock
+
+import services.cinemas.common.{CinemaScrapeRunner, CinemaScraper}
 
 /**
  * One unchunked cinema's scrape, run through `CinemaScrapeRunner` (which also enqueues any deferred

@@ -1,13 +1,12 @@
 package services.identity
 
-import services.identity.measures.{BannerHouses, Candidate, Evidence, EvidenceNode, Listing, MeasuredListing, Resolution, ResolverDecision, TakeOutcome}
-import models.ListingKey
-
-import services.titles.TitleForms
-
 import scala.util.Random
 import scala.util.hashing.MurmurHash3
+
+import models.ListingKey
+import services.identity.measures.{BannerHouses, Candidate, Evidence, EvidenceNode, Listing, MeasuredListing, Resolution, ResolverDecision, TakeOutcome}
 import services.identity.vocabulary.CandidateQuery
+import services.titles.TitleForms
 
 /**
  * THE POPULATION PROPERTY (docs/investigations/2026-11-01-flip-unification.md, stage 1): as a title's listings only

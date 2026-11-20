@@ -3,6 +3,7 @@ package quality
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import java.util.concurrent.Executors
+
 import scala.jdk.CollectionConverters.*
 
 /**

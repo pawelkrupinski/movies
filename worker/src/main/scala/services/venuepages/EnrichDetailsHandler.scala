@@ -1,14 +1,12 @@
 package services.venuepages
 
+import java.time.Clock
+
 import models.CacheKey
-
-import services.tasks.{HandlerOutcome, Task, TaskHandler}
-import services.tasktypes.TaskType
-
 import play.api.Logging
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome}
-
-import java.time.Clock
+import services.tasks.{HandlerOutcome, Task, TaskHandler}
+import services.tasktypes.TaskType
 
 /** Builds the dedup key, freshness key, and payload for an `EnrichDetails` task.
  *  The dedup key encodes `(detailGroup, film)` so "enrich film F for group G"

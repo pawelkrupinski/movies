@@ -1,9 +1,10 @@
 package services.readmodel
 
-import models.{CityScreening, ResolvedMovie}
-
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+
 import scala.collection.mutable
+
+import models.{CityScreening, ResolvedMovie}
 
 /**
  * In-memory [[ReadModelReader]] + [[ReadModelWriter]] for tests — full

@@ -1,9 +1,9 @@
 package services.cinemas.common
 
+import scala.concurrent.duration.*
+
 import models.CinemaMovie
 import tools.RetryWithBackoff
-
-import scala.concurrent.duration._
 
 /**
  * Decorator that wraps any `CinemaScraper.fetch()` with attempt-bounded

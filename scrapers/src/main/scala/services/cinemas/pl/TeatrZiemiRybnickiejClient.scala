@@ -1,19 +1,18 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-
+import java.time.LocalDateTime
 import java.util.Locale
 
-import tools.{HttpFetch, HttpRead}
-import models._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.{SingleSiteScraper, ListingPages}
-
-import java.time.LocalDateTime
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Teatr Ziemi Rybnickiej runs a cinema programme on its own site rather than

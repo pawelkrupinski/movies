@@ -1,8 +1,8 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
 import java.time.Instant
+
+import services.tasktypes.TaskType
 
 /**
  * Summary a full-corpus `refreshAll` walk produces — the counts each `*Ratings`

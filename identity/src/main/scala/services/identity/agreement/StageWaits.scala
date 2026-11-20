@@ -1,9 +1,9 @@
 package services.identity.agreement
 
+import scala.collection.concurrent.TrieMap
+
 import services.identity.measures.{ResolverDecision, WaitingOn}
 import services.identity.vocabulary.{Dependency, Question}
-
-import scala.collection.concurrent.TrieMap
 
 /** What the stage waits on, cluster by cluster, as the last [[AgreementStage.apply]] left it: the waits it keeps —
  *  `waiting` (a cluster's families' questions or its fill's TMDB answers), `takeWaits` (an agreed take pending on its

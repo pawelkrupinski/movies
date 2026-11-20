@@ -1,10 +1,10 @@
 package services.enrichment
 
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead, ReadOutcome}
-
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Cross-references a film's external ids via Letterboxd. Every Letterboxd film

@@ -1,7 +1,7 @@
 package services.identityadapters
 
-import services.identity.vocabulary.Question
 import services.identity.staging.StagedQuestion
+import services.identity.vocabulary.Question
 
 /** A question as the staging screen lists it ([[StagingSnapshots]]): who it is asked of, its text and its last ask's outcome. */
 object StagedQuestions {

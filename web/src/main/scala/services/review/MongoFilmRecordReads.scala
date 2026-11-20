@@ -1,10 +1,10 @@
 package services.review
 
+import scala.jdk.CollectionConverters.*
+
+import org.mongodb.scala.ObservableFuture
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Filters, Projections}
-import org.mongodb.scala.ObservableFuture
-
-import scala.jdk.CollectionConverters._
 
 /** The review reads of the resolver's stored TMDB records and posters, and of the corpus's served listings. */
 trait MongoFilmRecordReads extends MongoReviewReads {

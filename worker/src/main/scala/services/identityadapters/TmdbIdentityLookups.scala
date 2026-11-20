@@ -1,15 +1,15 @@
 package services.identityadapters
 
-import services.identity.*
-import services.identity.measures.{FallbackIds, Listing}
+import scala.util.Try
+
 import clients.TmdbClient
-import services.identityadapters.TmdbIdentityReads.*
 import services.cinemas.common.DetailEnricher
 import services.enrichment.ImdbClient
-
-import scala.util.Try
+import services.identity.*
 import services.identity.measures.Film
+import services.identity.measures.{FallbackIds, Listing}
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ProseWords}
+import services.identityadapters.TmdbIdentityReads.*
 
 /**
  * [[IdentityLookups]] answered by TMDB, IMDb's title suggestions and the venues' own detail pages

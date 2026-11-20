@@ -1,9 +1,9 @@
 package services.metrics
 
+import java.io.ByteArrayOutputStream
+
 import io.prometheus.metrics.expositionformats.PrometheusTextFormatWriter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-
-import java.io.ByteArrayOutputStream
 
 /** Renders a [[PrometheusRegistry]] as Prometheus text exposition (version
  *  0.0.4) — the body both apps' `/metrics` endpoints serve.

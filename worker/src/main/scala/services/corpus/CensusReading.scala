@@ -1,10 +1,10 @@
 package services.corpus
 
+import java.time.Clock
+
 import models.{City, StoredMovieRecord}
 import services.evidence.LatestTitleYear
 import services.titles.TitleNormalizer
-
-import java.time.Clock
 
 /** The census at one instant: each corpus subset, films served by (city, scope), upcoming showtimes by city, and
  *  the widest film's cinema slots. */

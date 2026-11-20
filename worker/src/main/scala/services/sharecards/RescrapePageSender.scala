@@ -1,8 +1,8 @@
 package services.sharecards
 
-import services.facebook.FacebookGraph
-
 import java.time.Clock
+
+import services.facebook.FacebookGraph
 
 /** A country's due pages in the fleet's re-scrape queue sent to Facebook -- ONE a tick, when the fleet's next slot has
  *  come round, one Facebook holds a preview of before any it never fetched. What each answer does to the page and to

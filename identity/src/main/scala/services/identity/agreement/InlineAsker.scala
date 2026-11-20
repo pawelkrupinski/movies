@@ -1,8 +1,8 @@
 package services.identity.agreement
 
-import services.identity.vocabulary.Question
-
 import scala.collection.mutable
+
+import services.identity.vocabulary.Question
 
 /**
  * The agreement stage's INLINE ASKS (`askNow`): a cluster, or a model take's correction, met in a SHAPE (its listings'

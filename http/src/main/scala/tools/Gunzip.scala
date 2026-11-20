@@ -2,6 +2,7 @@ package tools
 
 import java.io.ByteArrayInputStream
 import java.util.zip.GZIPInputStream
+
 import scala.util.control.NonFatal
 
 /** Decompresses a gzipped byte payload, looping while the output still

@@ -1,11 +1,9 @@
 package services.identity
 
-import models.StoredMovieRecord
-
-
 import models.ListingKey
-import services.titles.TitleNormalizer
+import models.StoredMovieRecord
 import services.identity.measures.ResolverDecision
+import services.titles.TitleNormalizer
 
 /** A cluster across projections: the TMDB film a matched one is (the clusters of one film are one), or an unmatched
  *  decision's first listing — so a cluster that did not move is the same one next tick, whatever moved around it. */

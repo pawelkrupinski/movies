@@ -1,8 +1,10 @@
 package services.sharecards
 
-import services.facebook.FacebookSlots
 import java.time.Instant
+
 import scala.concurrent.duration.*
+
+import services.facebook.FacebookSlots
 
 /** Where the fleet's re-scrapes wait, and the quota they share. Storage only: what to do with an
  *  entry is [[FacebookRescrapeDrain]]'s. */

@@ -1,11 +1,11 @@
 package services.cinemas.pl
 
+import java.time.LocalDate
+
 import models.Cinema
 import services.cinemas.common.CinemaScraper
 import services.titles.TitleNormalizer
 import tools.HttpFetch
-
-import java.time.LocalDate
 
 /**
  * One Polish venue as its town's [[PolishVenueRegistry]] declares it: the cinema and the source its scraper reads,

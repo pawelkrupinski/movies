@@ -1,9 +1,9 @@
 package controllers
 
+import java.time.LocalDate
+
 import models.City
 import play.api.libs.json.{JsValue, Json}
-
-import java.time.LocalDate
 
 /** A city's JSON payloads for the mobile apps — `/api/repertoire`, `/api/details` and
  *  `/api/cinemas` — as the bodies [[ConditionalResponse]] serves.

@@ -1,8 +1,8 @@
 package services.closure
 
-import services.scrapes.VenueClosure.{FallbackEvidence, SourceDrop, VenueSignal}
-
 import java.time.{Instant, LocalDate, ZoneOffset}
+
+import services.scrapes.VenueClosure.{FallbackEvidence, SourceDrop, VenueSignal}
 
 /** A closure's evidence in one line, for the page, the ledger and the PR body. */
 object ClosureEvidence {

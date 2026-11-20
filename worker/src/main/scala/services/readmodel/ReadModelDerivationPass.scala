@@ -1,8 +1,7 @@
 package services.readmodel
 
-import tools.TickRun
-
 import play.api.Logging
+import tools.TickRun
 
 /** THE DERIVATION PASS: one content slice of the whole-corpus re-projection a derivation change
  *  owes, per tick.

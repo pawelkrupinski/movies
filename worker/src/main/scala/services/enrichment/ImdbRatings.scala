@@ -1,12 +1,12 @@
 package services.enrichment
 
-import models.CacheKey
+import java.util.concurrent.atomic.AtomicInteger
 
+import scala.util.{Failure, Try}
+
+import models.CacheKey
 import services.movies.MovieCache
 import services.tasks.BulkRefreshResult
-
-import java.util.concurrent.atomic.AtomicInteger
-import scala.util.{Failure, Try}
 
 /**
  * IMDb rating maintenance — the IMDb side of the `*Ratings` pattern.

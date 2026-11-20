@@ -1,8 +1,8 @@
 package services.identity
 
-import models.ListingKey
-
 import scala.collection.mutable
+
+import models.ListingKey
 
 /** How the identity model's update cuts its work into regions and resolves them ([[IncrementalResolver]]): units of
  *  listings packed into bounded batches, and the batches resolved in order, on the calling thread or side by side. */

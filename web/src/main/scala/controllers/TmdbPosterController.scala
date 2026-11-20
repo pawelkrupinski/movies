@@ -2,7 +2,7 @@ package controllers
 
 import models.Country
 import play.api.Mode
-import play.api.mvc._
+import play.api.mvc.*
 import services.review.TmdbPosterLookup
 
 /** A review candidate's TMDB poster (`/debug/review/tmdb-poster/:tmdbId`), looked up live ([[TmdbPosterLookup]]; none

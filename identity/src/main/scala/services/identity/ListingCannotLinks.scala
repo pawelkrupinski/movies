@@ -1,7 +1,7 @@
 package services.identity
 
-import services.identity.measures.{EvidenceNode, IdentityMeasures, Measure, MeasuredListing, MultiFilmBill, RelayStage}
 import services.evidence.ListingConstraints
+import services.identity.measures.{EvidenceNode, IdentityMeasures, Measure, MeasuredListing, MultiFilmBill, RelayStage}
 
 /** Whether two nodes' own evidence keeps them apart ([[ConstraintEdges]]): the seasons their titles name, or the learned
  *  "listing-listing" scope over a fact both publish, as each node's scope reads its facts; and the film-less event each

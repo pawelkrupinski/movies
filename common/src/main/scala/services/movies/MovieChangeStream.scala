@@ -1,12 +1,10 @@
 package services.movies
 
-import tools.ChangeStreamLiveness
-
-import models.StoredMovieRecord
-
 import com.mongodb.client.model.changestream.ChangeStreamDocument
+import models.StoredMovieRecord
 import org.bson.BsonDocument
 import org.mongodb.scala.Observer
+import tools.ChangeStreamLiveness
 
 /**
  * The `movies` change-stream SUBSCRIPTION: one shared cursor, decoded once and fanned

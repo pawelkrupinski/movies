@@ -1,11 +1,12 @@
 package services.review
 
-import com.github.benmanes.caffeine.cache.{CacheLoader, LoadingCache, Ticker}
-import services.identity.measures.ResolverDecision
-
 import java.time.{Clock, Duration, Instant}
 import java.util.concurrent.{Executor, ForkJoinPool, TimeUnit}
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
+
+import com.github.benmanes.caffeine.cache.{CacheLoader, LoadingCache, Ticker}
+import services.identity.measures.ResolverDecision
 
 /**
  * A country's [[ReviewSource]] whose page reads are kept, and answered while a re-read runs behind them: the two

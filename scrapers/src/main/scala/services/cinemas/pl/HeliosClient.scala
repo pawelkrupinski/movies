@@ -1,16 +1,15 @@
 package services.cinemas.pl
 
+import java.time.LocalDate
 import java.util.Locale
 
-import tools.{HeliosFetch, HttpFetch, HttpRead}
-import models._
+import models.*
 import services.cinemas.common.{CinemaScraper, ListingFeed}
 import services.cinemas.pl.HeliosNuxt.{BookingBase, cleanTitle}
 import services.cinemas.pl.HeliosRest.{ApiScreening, RestData}
-
-import java.time.LocalDate
 import services.titles.TitleNormalizer
 import tools.Whitespace.collapsedSpaces
+import tools.{HeliosFetch, HttpFetch, HttpRead}
 
 // `today` is injected so tests can pin it: the REST `/screening` + `/event`
 // URLs bake the date window, and the recorded fixtures were captured for a

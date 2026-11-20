@@ -1,13 +1,13 @@
 package services.identityadapters
 
-import services.identity.agreement.SuspectTakes
-import services.identity.*
-import services.identity.measures.{Listing, Resolution}
-import play.api.Logging
-
 import java.time.{Clock, LocalDate, ZoneId}
 import java.util.concurrent.Executor
+
+import play.api.Logging
+import services.identity.*
+import services.identity.agreement.SuspectTakes
 import services.identity.measures.Film
+import services.identity.measures.{Listing, Resolution}
 
 /**
  * The live resolve's SUSPECT TAKES ([[SuspectTakes]]), counted per signal over each WRITTEN projection of the whole corpus:

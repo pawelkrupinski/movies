@@ -1,8 +1,8 @@
 package services.readmodel
 
-import models.ResolvedMovie
-
 import scala.collection.mutable
+
+import models.ResolvedMovie
 
 /**
  * What this process knows it has written to the read model, per card, per screenings row and per source row: the

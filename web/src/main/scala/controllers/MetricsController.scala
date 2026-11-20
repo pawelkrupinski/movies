@@ -1,6 +1,6 @@
 package controllers
 
-import play.api.mvc._
+import play.api.mvc.*
 import services.UptimeHistory
 import services.UptimeMonitor.RecentTotals
 import services.fallback.{FallbackState, FallbackStore}

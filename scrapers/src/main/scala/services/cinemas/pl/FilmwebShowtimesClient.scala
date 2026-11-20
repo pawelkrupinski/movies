@@ -1,19 +1,19 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse.jsonText
-import services.cinemas.common.SlotsToMovies
-
-import models._
-import tools.{HttpFetch, HttpRead, ParallelDetailFetch}
-import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, ListingFeed, ListingPages, ScraperParse, SourceUrlResolving}
-
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.{LocalDate, LocalTime}
 import java.util.concurrent.TimeoutException
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.{Failure, Try}
+
+import models.*
+import play.api.libs.json.*
+import services.cinemas.common.ScraperParse.jsonText
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.{CinemaScraper, ListingFeed, ListingPages, ScraperParse, SourceUrlResolving}
+import tools.{HttpFetch, HttpRead, ParallelDetailFetch}
 
 /**
  * Universal Filmweb showtimes scraper, driven by Filmweb's JSON API rather

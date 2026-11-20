@@ -1,12 +1,10 @@
 package services.identity
 
-import models.StoredMovieRecord
-
-import services.evidence.LatestTitleYear
-
 import models.ListingKey
-import services.titles.TitleNormalizer
+import models.StoredMovieRecord
+import services.evidence.LatestTitleYear
 import services.identity.measures.Resolution
+import services.titles.TitleNormalizer
 
 /** How a projection's [[ProjectionIndex]] is built afresh from the whole listing set, the resolution and the stored films
  *  — each a pass over the corpus — by the readings of slots ([[StoredFilmListings]]) and clusters ([[Cluster.of]]) the kept

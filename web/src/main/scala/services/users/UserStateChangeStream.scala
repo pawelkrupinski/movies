@@ -1,13 +1,12 @@
 package services.users
 
-import tools.ChangeStreamLiveness
-
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.UserState
 import org.bson.BsonDocument
 import org.mongodb.scala.{MongoCollection, MongoDatabase, Observer, Subscription}
 import play.api.Logging
 import services.movies.{ChangeEventDecoder, ChangeStreamReopen}
+import tools.ChangeStreamLiveness
 
 /** The `userStates` change stream behind [[MongoUserStateRepository.watchChanges]]: one consumer at a time (see
  *  [[UserStateRepository.watchChanges]]), a dead cursor reopened by its [[ChangeStreamReopen]] driver, and its

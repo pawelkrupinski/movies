@@ -1,14 +1,15 @@
 package services.cinemas.pl
 
-import models._
-import tools.HttpFetch
+import java.time.LocalDateTime
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
-
-import java.time.LocalDateTime
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import tools.HttpFetch
 
 /**
  * Kino Spektrum (Gdańsk — part of the Klub Filmowy Kot, Trójmiasto city scope).

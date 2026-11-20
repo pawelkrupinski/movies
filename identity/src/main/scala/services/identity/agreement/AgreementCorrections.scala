@@ -1,11 +1,11 @@
 package services.identity.agreement
 
-import services.identity.measures.{Evidence, Listing, ListingShape, PosterEvidence, ResolverDecision}
-import services.identity.measures.Film
-import services.identity.vocabulary.{Answer, Dependency, PosterHash, PosterQuestion, Question, VoterFamily}
-import models.ListingKey
-
 import scala.collection.mutable
+
+import models.ListingKey
+import services.identity.measures.Film
+import services.identity.measures.{Evidence, Listing, ListingShape, PosterEvidence, ResolverDecision}
+import services.identity.vocabulary.{Answer, Dependency, PosterHash, PosterQuestion, Question, VoterFamily}
 
 /** The stage's reading of a film the MODEL took against the evidence that can contradict it ([[Correction]]): the
  *  stored correction while it stands, else the venue posters, the venues' programmes on `listedOn`'s site and the

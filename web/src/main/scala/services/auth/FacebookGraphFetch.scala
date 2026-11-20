@@ -1,12 +1,13 @@
 package services.auth
 
+import java.net.URI
+import java.net.http.HttpRequest
+
+import scala.util.{Failure, Success, Try}
+
 import play.api.Logging
 import services.facebook.{AppUsage, FacebookGraphClient, FacebookUsageBrake}
 import tools.{GetOnlyHttpFetch, HttpStatusException}
-
-import java.net.URI
-import java.net.http.HttpRequest
-import scala.util.{Failure, Success, Try}
 
 /**
  * The Graph API calls a Facebook sign-in makes (the token exchange, `/me`, `debug_token`), each

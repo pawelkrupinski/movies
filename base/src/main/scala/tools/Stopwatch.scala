@@ -1,6 +1,7 @@
 package tools
 
 import java.util.concurrent.atomic.AtomicLong
+
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 /**

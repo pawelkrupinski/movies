@@ -1,13 +1,14 @@
 package services.cinemas.common
 
-import models.{Cinema, CinemaMovie, TimeZones}
-import tools.{HttpFetch, HttpRead}
-
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDate
+
 import scala.util.Try
 import scala.util.control.NonFatal
+
+import models.{Cinema, CinemaMovie, TimeZones}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Scraper for Webedia's Gatsby-hosted "box office" cinema platform — one

@@ -1,15 +1,16 @@
 package services.cinemas.common
 
-import models._
+import java.time.{LocalDate, LocalDateTime, OffsetDateTime, ZoneId}
+import java.util.Locale
+
+import scala.util.Try
+
+import models.*
 import play.api.Logging
-import play.api.libs.json._
+import play.api.libs.json.*
 import services.cinemas.common.ScraperParse.jsonText
 import services.titles.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead, TextNormalization}
-
-import java.time.{LocalDate, LocalDateTime, OffsetDateTime, ZoneId}
-import java.util.Locale
-import scala.util.Try
 
 /** A venue as kinoheld.de knows it: the id its GraphQL API filters shows by, and the
  *  path of its public programme page (`/kino/<city>/<venue>`), which the API never

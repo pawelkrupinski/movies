@@ -1,9 +1,10 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
 import java.time.Instant
+
 import scala.concurrent.duration.FiniteDuration
+
+import services.tasktypes.TaskType
 
 /**
  * A [[TaskQueue]] that hands every call to `delegate` — the base of a decorator,

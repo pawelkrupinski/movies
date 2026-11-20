@@ -1,18 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
-import services.cinemas.common.SlotsToMovies
-
-import services.cinemas.common.ScraperParse
-import models._
-import tools.{HttpFetch, HttpRead}
-import org.jsoup.Jsoup
-import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ListingPages}
-
 import java.time.{Instant, LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.SynopsisProse
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ListingPages}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino U-jazdowski (CSW Zamek Ujazdowski, Warszawa). The repertoire page lists

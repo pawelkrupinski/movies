@@ -1,16 +1,17 @@
 package services.identity.staging
 
-import com.mongodb.client.model.{BulkWriteOptions, ReplaceOneModel, ReplaceOptions}
-import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
-import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.model.{Filters, Projections}
-import play.api.libs.json.{Json, OFormat}
-
 import java.time.{Clock, Instant}
 import java.util.Date
+
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Await
 import scala.concurrent.duration.*
+
+import com.mongodb.client.model.{BulkWriteOptions, ReplaceOneModel, ReplaceOptions}
+import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.model.{Filters, Projections}
+import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
+import play.api.libs.json.{Json, OFormat}
 
 /** One named value of what a take was decided on, as the screen lists it ("year" → "2013", "measure year.gap" → "0"). */
 final case class StagedFact(name: String, value: String)

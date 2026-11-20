@@ -1,7 +1,7 @@
 package controllers
 
 import play.api.libs.json.Json
-import play.api.mvc._
+import play.api.mvc.*
 import services.users.{AccountDeletion, UserRepository}
 
 /** `DELETE /api/me`: the signed-in visitor's account, gone. */

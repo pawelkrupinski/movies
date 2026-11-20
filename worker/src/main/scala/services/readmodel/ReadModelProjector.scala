@@ -1,11 +1,9 @@
 package services.readmodel
 
-import models.StoredMovieRecord
-
-import services.evidence.LatestTitleYear
-
 import models.ResolvedMovie
+import models.StoredMovieRecord
 import play.api.Logging
+import services.evidence.LatestTitleYear
 import services.movies.{MovieChangeFeed, MovieRepositoryReader}
 
 /**

@@ -4,7 +4,7 @@ import java.util.Locale
 
 import play.api.Logging
 import play.api.libs.json.Json
-import play.api.mvc._
+import play.api.mvc.*
 import services.auth.FacebookSignedRequest
 import services.users.{AccountDeletion, UserRepository}
 

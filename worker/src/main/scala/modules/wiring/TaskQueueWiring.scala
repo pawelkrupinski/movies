@@ -1,14 +1,13 @@
 package modules.wiring
 
-import settings.{HeapDumpDirectory, LivenessStaleAfter, WorkerPoolSize}
+import scala.concurrent.duration.DurationLong
 
 import services.events.TaskFinished
 import services.freshness.{FreshnessStore, MongoFreshnessStore}
-import services.tasks.MeteredTaskQueue
 import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, ScheduledRunStore}
+import services.tasks.MeteredTaskQueue
 import services.tasks.{CachingTaskQueue, LivenessWatchdog, MongoTaskQueue, TaskQueue, TaskWorker, WorkerHeartbeat}
-
-import scala.concurrent.duration.DurationLong
+import settings.{HeapDumpDirectory, LivenessStaleAfter, WorkerPoolSize}
 
 /** The durable task queue every scrape / enrichment rides, the freshness stamps
  *  and cluster-wide run claims the reapers schedule from, and the fixed pool

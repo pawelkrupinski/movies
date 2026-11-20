@@ -1,9 +1,9 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.Film
 import services.identity.measures.{Listing, Resolution, ResolverDecision, WaitingOn}
 import services.identity.staging.{StagedCluster, StagedQuestion, StagingBeat, StagingEvent}
-import services.identity.measures.Film
 import services.identity.vocabulary.Question
 
 /**

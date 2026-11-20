@@ -1,12 +1,11 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
-import play.api.Logging
-import models.Cinema
-import services.cinemas.common.CinemaScraper
-
 import java.time.Clock
+
+import models.Cinema
+import play.api.Logging
+import services.cinemas.common.CinemaScraper
+import services.tasktypes.TaskType
 
 /**
  * Handles a `ScrapeCinema` task: scrape one cinema, unless it is no longer due

@@ -1,10 +1,10 @@
 package services.identity.measures
 
-import services.titles.billing.DecorationWords
 import services.identity.measures.IdentityMeasures.*
-import services.titles.{TitleContainment, TitleSeason, TitleWords}
 import services.titles.SearchTitles
 import services.titles.StageHouse.{HouseCommonWords, namesAHouseInParticular, namesOneHouse, particularWords}
+import services.titles.billing.DecorationWords
+import services.titles.{TitleContainment, TitleSeason, TitleWords}
 
 /**
  * How a STAGE HOUSE's relay is billed — a season production, a house's banner on a work, the stage works a title names

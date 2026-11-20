@@ -1,6 +1,7 @@
 package tools
 
 import java.util.concurrent.CompletableFuture
+
 import scala.annotation.unused
 
 /**

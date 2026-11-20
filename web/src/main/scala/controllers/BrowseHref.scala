@@ -1,11 +1,10 @@
 package controllers
 
-import models.CityPath
-
-import models.City
-
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+
+import models.City
+import models.CityPath
 
 /** Per-axis browse links (`/{city}/movies?country=…` etc.). City comes in
  *  implicitly so call sites in city-scoped templates read unchanged.

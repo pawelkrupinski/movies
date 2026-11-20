@@ -1,8 +1,8 @@
 package services.identity.vocabulary
 
-import org.bson.{BsonDocument, BsonInvalidOperationException, BsonReader, BsonType, BsonValue}
+import scala.jdk.CollectionConverters.*
 
-import scala.jdk.CollectionConverters._
+import org.bson.{BsonDocument, BsonInvalidOperationException, BsonReader, BsonType, BsonValue}
 
 /** Reading a stored identity document field by field off a [[BsonReader]] — the wire bytes of a reply, or a
  *  `BsonDocumentReader` over a document in hand — straight into the model's types, with no tree of maps between:

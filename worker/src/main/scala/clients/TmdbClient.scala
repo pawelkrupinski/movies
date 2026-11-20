@@ -1,10 +1,10 @@
 package clients
 
-import play.api.libs.json._
-
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
+
+import play.api.libs.json.*
 
 /**
  * THE TMDB PORT: every read the worker asks of The Movie DB -- title searches, a film's records and cross-ids, posters,

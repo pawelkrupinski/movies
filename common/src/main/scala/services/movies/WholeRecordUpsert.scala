@@ -1,15 +1,14 @@
 package services.movies
 
-import models.{CacheKey, FilmId, StoredMovieRecord}
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
 
 import com.mongodb.client.model.ReplaceOptions
+import models.{CacheKey, FilmId, StoredMovieRecord}
 import models.{MovieRecord, Source, SourceData}
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
 
 /** THE WHOLE-RECORD WRITE of a film — [[MongoMovieRepository.upsert]], the path every scrape merge takes: the stored
  *  document read first, the duplicate-key guard, then `movie_slots`, `movies` and `screenings` in that order, each

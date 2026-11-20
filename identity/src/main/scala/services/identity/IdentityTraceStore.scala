@@ -1,15 +1,15 @@
 package services.identity
 
-import services.identity.measures.{DecisionTrace, IdentityMeasures}
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
+import scala.util.chaining.scalaUtilChainingOps
+
+import models.ListingKey
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, IndexModel, Indexes, Projections, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import models.ListingKey
-
-import scala.concurrent.Await
-import scala.concurrent.duration.DurationInt
-import scala.util.chaining.scalaUtilChainingOps
+import services.identity.measures.{DecisionTrace, IdentityMeasures}
 import services.identity.vocabulary.{BsonFields, DocumentDigest, ListingKeyBson}
 
 /** Which rules decided one listing ([[DecisionTrace]], plus the title rules its title took), filed under its

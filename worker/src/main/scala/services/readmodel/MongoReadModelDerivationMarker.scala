@@ -1,12 +1,12 @@
 package services.readmodel
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.{Success, Try}
+
 import com.mongodb.client.model.ReplaceOptions
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, SingleObservableFuture}
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.{Success, Try}
 
 /**
  * [[ReadModelDerivationMarker]] as two documents in the country database's `read_model_derivation`

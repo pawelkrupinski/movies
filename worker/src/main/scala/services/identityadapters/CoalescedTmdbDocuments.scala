@@ -1,11 +1,12 @@
 package services.identityadapters
 
-import org.bson.BsonDocument
-
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{CompletableFuture, ConcurrentLinkedQueue, ExecutionException, Semaphore, TimeUnit, TimeoutException}
+
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
+
+import org.bson.BsonDocument
 
 /**
  * `inner`, its concurrent whole-document reads ([[get]]) and writes ([[put]]) each made as ONE

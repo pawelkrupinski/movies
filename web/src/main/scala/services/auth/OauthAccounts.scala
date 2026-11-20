@@ -1,10 +1,10 @@
 package services.auth
 
-import models.User
-import services.users.UserRepository
-
 import java.time.Clock
 import java.util.Locale
+
+import models.User
+import services.users.UserRepository
 
 /** The account a provider's profile signs in as: keyed by the lower-cased email,
  *  created on first sign-in, refreshed (provider, its `sub`, name, avatar, last

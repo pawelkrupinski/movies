@@ -1,11 +1,12 @@
 package services.cinemas.common
 
-import models._
-import play.api.libs.json._
-import tools.{HttpFetch, HttpRead}
-
 import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
+
 import scala.util.Try
+
+import models.*
+import play.api.libs.json.*
+import tools.{HttpFetch, HttpRead}
 
 /**
  * A venue whose programme is a Wix Events list on its own Wix site — a small house

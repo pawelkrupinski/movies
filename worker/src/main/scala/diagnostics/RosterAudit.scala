@@ -2,19 +2,20 @@ package diagnostics
 
 
 
-import tools.Sleep
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Paths, StandardOpenOption}
+
+import scala.util.{Failure, Success}
+
+import models.Country
+import services.cinemas.CinemaScraperCatalog
+import services.cinemas.roster.{ChainDirectory, RosterFinding, RosterLocationAudit, RosterSourceReader, SourceReading}
 import tools.AdaptiveParallel
 import tools.IssuerCertificateFetching
 import tools.ProxyTunnelAuthentication
 import tools.RealHttpFetch
+import tools.Sleep
 import tools.Stopwatch
-import models.Country
-import services.cinemas.CinemaScraperCatalog
-import services.cinemas.roster.{ChainDirectory, RosterFinding, RosterLocationAudit, RosterSourceReader, SourceReading}
-
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths, StandardOpenOption}
-import scala.util.{Failure, Success}
 
 /**
  * The ONLINE half of the cinema-roster audit (the offline half is

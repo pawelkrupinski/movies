@@ -1,8 +1,8 @@
 package services.identity
 
 import models.ListingKey
-import services.identity.vocabulary.{FamilyClosure, ResolverEdge}
 import services.identity.measures.EvidenceNode
+import services.identity.vocabulary.{FamilyClosure, ResolverEdge}
 
 /** The pins' own edges between a family's nodes ([[ConstraintEdges]]), and which derived edges they leave standing. */
 private[identity] final class PinEdges(scoring: CandidateScoring) {

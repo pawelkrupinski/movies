@@ -1,17 +1,17 @@
 package services.cinemas.pl
 
+import java.time.{LocalDate, LocalDateTime, LocalTime}
 import java.util.Locale
 
-import services.cinemas.common.{ScraperParse, ListingPages}
-import tools.{HttpFetch, HttpRead}
-import models._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
-
-import java.time.{LocalDate, LocalDateTime, LocalTime}
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import services.cinemas.common.{ScraperParse, ListingPages}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Żak — the film screen of Klub Żak in Gdańsk (Trójmiasto). The site

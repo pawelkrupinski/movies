@@ -1,13 +1,13 @@
 package services
 
-import tools.{HttpFetch, MongoTtlIndex, RememberingDetailFetch, TtlIndexMismatches}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, documentToUntypedDocument}
-import org.mongodb.scala.model.{Filters, Updates}
-import play.api.Logging
-
 import scala.concurrent.Await
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.Try
+
+import org.mongodb.scala.model.{Filters, Updates}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, documentToUntypedDocument}
+import play.api.Logging
+import tools.{HttpFetch, MongoTtlIndex, RememberingDetailFetch, TtlIndexMismatches}
 
 /**
  * [[HttpFetch]] decorator that caches successful GET bodies in the ONE Mongo collection every chain

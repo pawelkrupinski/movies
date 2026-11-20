@@ -1,14 +1,14 @@
 package services.identityadapters
 
-import services.identity.*
 import play.api.Logging
+import services.identity.*
+import services.identity.vocabulary.PosterAnswers
 import services.identity.vocabulary.VoterFamily
+import services.identity.vocabulary.{CatalogueQuestion, Question}
 import services.tasks.HandlerOutcome.{Done, Skipped}
 import services.tasks.{HandlerOutcome, Task, TaskHandler}
 import services.tasktypes.TaskType
 import tools.CircuitOpenException
-import services.identity.vocabulary.{CatalogueQuestion, Question}
-import services.identity.vocabulary.PosterAnswers
 
 /**
  * Asks the agreement's questions, each by its kind: a family's search, record or programme of the family's live source

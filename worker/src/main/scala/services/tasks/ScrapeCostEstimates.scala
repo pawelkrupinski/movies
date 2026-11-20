@@ -1,8 +1,8 @@
 package services.tasks
 
-import settings.ScrapeTasksPerVenue
-
 import java.util.concurrent.atomic.AtomicReference
+
+import settings.ScrapeTasksPerVenue
 
 /**
  * What each cinema's scrape is expected to cost the queue, in tasks — read by the

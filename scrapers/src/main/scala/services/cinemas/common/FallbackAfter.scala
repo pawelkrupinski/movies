@@ -1,6 +1,7 @@
 package services.cinemas.common
 
 import java.time.{Duration, Instant}
+
 import scala.concurrent.duration.FiniteDuration
 
 /** When a failing primary has failed long enough to hand its venue to the fallback

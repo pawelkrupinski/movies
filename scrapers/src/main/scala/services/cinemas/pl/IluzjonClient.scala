@@ -1,18 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
-import services.cinemas.common.SlotsToMovies
-
-import services.cinemas.common.ScraperParse
-import models._
-import org.jsoup.Jsoup
-import tools.{HttpFetch, HttpRead}
-import org.jsoup.nodes.Element
-import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
-
 import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.SynopsisProse
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Iluzjon (Filmoteka Narodowa, Warszawa). The `/repertuar.html` page is a

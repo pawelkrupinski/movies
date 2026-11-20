@@ -1,11 +1,12 @@
 package tools
 
-import play.api.Logging
-
 import java.security.KeyStore
 import java.security.cert.{CertificateException, CertificateFactory, X509Certificate}
 import javax.net.ssl.{SSLContext, TrustManager, TrustManagerFactory, X509TrustManager}
+
 import scala.util.{Try, Using}
+
+import play.api.Logging
 
 /**
  * Builds an [[javax.net.ssl.SSLContext]] that trusts the JDK's default CAs PLUS

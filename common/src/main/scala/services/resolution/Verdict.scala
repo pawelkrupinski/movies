@@ -1,8 +1,7 @@
 package services.resolution
 
-import services.evidence.FilmEvidence
-
 import models.SourceData
+import services.evidence.FilmEvidence
 import services.titles.SamePerson
 
 /**

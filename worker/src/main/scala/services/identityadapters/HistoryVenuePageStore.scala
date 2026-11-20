@@ -1,7 +1,7 @@
 package services.identityadapters
 
-import services.venuepages.{StoredVenuePage, VenuePage, VenuePageKey, VenuePageStore}
 import services.cinemas.common.FilmDetail
+import services.venuepages.{StoredVenuePage, VenuePage, VenuePageKey, VenuePageStore}
 
 /** `inner`, every page whose ANSWER a read moved — its detail, or its being gone — appended to `history` as `venue_pages`
  *  holds it (`answer:venue_pages`, by page id): what a listing's venue detail said at any moment, for a replay. A re-read

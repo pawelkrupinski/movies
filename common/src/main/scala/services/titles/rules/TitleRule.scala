@@ -1,9 +1,9 @@
 package services.titles.rules
 
-import models.Country
-
-import scala.util.matching.Regex
 import scala.util.control.NonFatal
+import scala.util.matching.Regex
+
+import models.Country
 
 /** One editable regex-replace step in the title-normalisation pipeline.
  *

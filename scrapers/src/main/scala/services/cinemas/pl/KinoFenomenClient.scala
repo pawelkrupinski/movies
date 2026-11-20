@@ -1,15 +1,15 @@
 package services.cinemas.pl
 
+import java.time.LocalDateTime
 import java.util.Locale
 
-import services.cinemas.common.ScraperParse
-import models._
-import tools.{HttpFetch, HttpRead}
-import org.jsoup.Jsoup
-import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
+import scala.jdk.CollectionConverters.*
 
-import java.time.LocalDateTime
-import scala.jdk.CollectionConverters._
+import models.*
+import org.jsoup.Jsoup
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Fenomen — the art-house cinema of Wojewódzki Dom Kultury im. Józefa

@@ -1,11 +1,12 @@
 package services.movies
 
-import play.api.Logging
-
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.Try
+
+import play.api.Logging
 
 /**
  * Reopens ONE change-stream cursor after it dies.

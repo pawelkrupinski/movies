@@ -1,7 +1,7 @@
 package controllers
 
 import play.api.libs.json.{JsObject, Json}
-import play.api.mvc._
+import play.api.mvc.*
 import services.config.{EnvConfigAdmin, EnvConfigRow, TimeKnobFormat}
 
 /**

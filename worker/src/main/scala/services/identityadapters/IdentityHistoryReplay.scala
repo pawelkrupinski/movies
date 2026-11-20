@@ -1,11 +1,11 @@
 package services.identityadapters
 
+import java.util.concurrent.ConcurrentHashMap
+
+import models.ListingKey
+import org.bson.BsonDocument
 import services.identity.*
 import services.identity.measures.Listing
-import org.bson.BsonDocument
-import models.ListingKey
-
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * A past moment of the identity system, rebuilt from what it reads now and the history written since

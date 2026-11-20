@@ -1,19 +1,19 @@
 package modules
 
-import modules.wiring.WorkerWiring
-import modules.wiring.BootSteps
+import java.net.InetSocketAddress
+import java.util.concurrent.CountDownLatch
+
+import scala.util.control.NonFatal
 
 import com.sun.net.httpserver.HttpServer
 import models.Country
+import modules.wiring.BootSteps
+import modules.wiring.WorkerWiring
 import org.mongodb.scala.MongoClient
 import play.api.Logging
 import settings.MongoTuning
 import settings.{HealthPort, HeapDumpDirectory, ProcessConfiguration}
 import tools.{AnyThrowable, ExecutionBudget, IssuerCertificateFetching, ProxyTunnelAuthentication}
-
-import java.net.InetSocketAddress
-import java.util.concurrent.CountDownLatch
-import scala.util.control.NonFatal
 
 /**
  * Entry point for the scrape/enrich worker. A plain `def main` (not `extends

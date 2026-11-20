@@ -1,7 +1,7 @@
 package services.cinemas.common
 
-import services.movies.ScreeningTokens
 import models.{Cinema, Showtime, Source, SourceData}
+import services.movies.ScreeningTokens
 
 /**
  * The per-film detail fields a cinema fetches *separately* from its listing —

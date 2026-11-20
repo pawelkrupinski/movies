@@ -1,10 +1,10 @@
 package controllers
 
+import java.util.Locale
+
 import models.{CityScreening, Country, ResolvedMovie}
 import play.api.mvc.RequestHeader
 import services.readmodel.ReadModelReader
-
-import java.util.Locale
 
 /** One country's read model as `/debug/readmodel` reads it, and where that is (shown on the page). */
 final case class DebugReadModel(reader: ReadModelReader, source: String,

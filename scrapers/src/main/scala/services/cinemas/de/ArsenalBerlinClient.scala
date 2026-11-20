@@ -1,16 +1,17 @@
 package services.cinemas.de
 
-import models._
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse, SlotsToMovies}
+import play.api.libs.json.*
 import services.cinemas.common.ScraperParse.jsonText
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse, SlotsToMovies}
 import services.titles.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
 
 /**
  * Arsenal – Institut für Film und Videokunst (Berlin) — a repertory house whose programme is

@@ -1,11 +1,11 @@
 package tools
 
+import scala.concurrent.Await
+
 import org.bson.BsonTimestamp
 import org.mongodb.scala.bson.Document
 import org.mongodb.scala.model.{Accumulators, Aggregates, Filters, Sorts}
 import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
-
-import scala.concurrent.Await
 
 /**
  * How many writes Mongo actually performed against one database since a starting point —

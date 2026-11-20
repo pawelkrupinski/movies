@@ -1,12 +1,12 @@
 package services.cinemas.pl
 
+import java.time.LocalDateTime
+
+import models.*
 import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapedSlot, SingleSiteScraper, SlotsToMovies}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
-import models._
-import services.cinemas.common.{ScrapedSlot, SingleSiteScraper, SlotsToMovies}
-
-import java.time.LocalDateTime
 
 /**
  * Kino Diana (Prudnik). Its ticketing site biletykinodiana.pl is a Ticket

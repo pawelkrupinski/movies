@@ -1,13 +1,13 @@
 package services.review
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+
 import org.bson.conversions.Bson
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture}
 import tools.KeysetScan
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /** What every review read stands on: one country's database on the local read-mirror ([[MongoReviewSource]]), each
  *  call bounded, a whole-collection read keyset-paged. */

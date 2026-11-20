@@ -1,8 +1,8 @@
 package services.users
 
-import org.bson.{BsonArray, BsonDocument, BsonString, BsonValue}
+import scala.jdk.CollectionConverters.*
 
-import scala.jdk.CollectionConverters._
+import org.bson.{BsonArray, BsonDocument, BsonString, BsonValue}
 
 /** The aggregation-expression pieces the user stores' atomic update pipelines are
  *  built from. User text always travels inside [[literal]], since a string starting

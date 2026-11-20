@@ -1,13 +1,13 @@
 package services.tasks
 
-import play.api.Logging
-import services.freshness.{FreshnessKind, FreshnessStore}
-
-import scala.concurrent.duration.FiniteDuration
-
 import java.time.Clock
 import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
+
+import scala.concurrent.duration.FiniteDuration
+import scala.jdk.CollectionConverters.*
+
+import play.api.Logging
+import services.freshness.{FreshnessKind, FreshnessStore}
 
 /**
  * Decides whether a finished scrape attempt advances the cinema's due schedule —

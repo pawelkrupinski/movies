@@ -1,12 +1,13 @@
 package services.tasks
 
+import java.time.{Clock, Instant}
+
+import scala.concurrent.duration.*
+
 import models.Cinema
 import play.api.Logging
 import services.cinemas.common.{CinemaScraper, ScrapeErrors}
 import services.scrapes.{GoneUpstream, ScrapeArchiveReader}
-
-import java.time.{Clock, Instant}
-import scala.concurrent.duration._
 
 /**
  * What the scrape archive says about a venue's page — gone upstream, or read lately — and so whether a

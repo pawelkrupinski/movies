@@ -1,13 +1,14 @@
 package tools
 
-import play.api.Logging
-
-import java.time.{Duration => JDuration, Instant}
-import java.util.concurrent.{CompletableFuture, CompletionException, ConcurrentHashMap}
+import java.time.{Duration as JDuration, Instant}
 import java.util.concurrent.atomic.AtomicReference
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import java.util.concurrent.{CompletableFuture, CompletionException, ConcurrentHashMap}
+
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
+
+import play.api.Logging
 
 /** Thrown — fast, with NO wire call — when a host's breaker is OPEN. An
  *  `IOException` so every caller that already degrades on a fetch failure (cinema

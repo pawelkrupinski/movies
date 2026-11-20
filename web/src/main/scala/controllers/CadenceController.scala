@@ -1,8 +1,8 @@
 package controllers
 
-import models._
-import play.api.mvc._
+import models.*
 import play.api.Mode
+import play.api.mvc.*
 
 /** The dev-only rating cadence page (`/debug/cadence`) of the country `debugCountries` selects. */
 class CadenceController(cc: ControllerComponents, debugCountries: DebugCountries, environment: Mode,

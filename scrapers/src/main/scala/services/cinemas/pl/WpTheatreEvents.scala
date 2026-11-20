@@ -1,11 +1,11 @@
 package services.cinemas.pl
 
+import scala.jdk.CollectionConverters.*
+
 import models.{Cinema, CinemaMovie}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{ScrapedSlot, ScraperParse, SlotsToMovies}
-
-import scala.jdk.CollectionConverters._
 
 /** A WordPress "Theater for WP" (`wp_theatre`) programme page: one self-contained `div.wp_theatre_event` per
  *  screening -- `.wp_theatre_event_title a` (title and the venue's own film page), `.wp_theatre_event_startdate` (a

@@ -1,7 +1,6 @@
 package services.tasks
 
 import models.CacheKey
-
 import services.cadence.RatingCadenceStore
 import services.freshness.FreshnessKind
 

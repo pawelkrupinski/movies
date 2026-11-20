@@ -1,12 +1,12 @@
 package controllers
 
+import scala.util.control.NonFatal
+
 import models.User
 import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{RequestHeader, Result, Results, Session}
 import services.users.UserRepository
-
-import scala.util.control.NonFatal
 
 /**
  * Who is signed in on this request — the one place that turns the session's

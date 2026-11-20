@@ -1,8 +1,8 @@
 package modules.wiring
 
 
-import services.enrichment.{CinemetaClient, ImdbCrossReferences, ImdbIdLadder, ImdbIdRecovery, ImdbIdResolver, ImdbSuggestions}
 import services.corpus.MovieService
+import services.enrichment.{CinemetaClient, ImdbCrossReferences, ImdbIdLadder, ImdbIdRecovery, ImdbIdResolver, ImdbSuggestions}
 import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, UnresolvedPolicy, WriteThroughResolutionCache}
 
 /** A film's TMDB side once the identity model has named it (`MovieService`), IMDb-id recovery, the

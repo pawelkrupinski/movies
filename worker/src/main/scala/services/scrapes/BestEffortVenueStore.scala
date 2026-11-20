@@ -1,9 +1,9 @@
 package services.scrapes
 
+import scala.util.{Failure, Success, Try}
+
 import models.Cinema
 import play.api.Logging
-
-import scala.util.{Failure, Success, Try}
 
 /** A store of per-venue scrape records whose every operation is best effort: what it keeps records something that
  *  already happened (a scrape, the guards' state after it), so a failure is logged — `<storeName>.<op>(<venue>)

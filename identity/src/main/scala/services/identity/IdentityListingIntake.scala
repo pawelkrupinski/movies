@@ -1,14 +1,15 @@
 package services.identity
 
-import models.{Cinema, CinemaMovie, LeanListing, ScrapeAttempt, VenueClock, ListingKey}
-import services.movies.{ScrapeGuardLedger, ScrapeGuardState, ListingIntakeMetrics, ScrapeSink}
-import services.titles.TitleNormalizer
-import services.scrapes.{ScrapeArchiveReader, ScrapeArchiveRepository}
-
 import java.time.Clock
+
 import scala.util.{Failure, Success, Try}
-import services.identity.vocabulary.{ListingIntake, ListingValuePool, StripedLocks}
+
+import models.{Cinema, CinemaMovie, LeanListing, ScrapeAttempt, VenueClock, ListingKey}
 import services.identity.measures.Listing
+import services.identity.vocabulary.{ListingIntake, ListingValuePool, StripedLocks}
+import services.movies.{ScrapeGuardLedger, ScrapeGuardState, ListingIntakeMetrics, ScrapeSink}
+import services.scrapes.{ScrapeArchiveReader, ScrapeArchiveRepository}
+import services.titles.TitleNormalizer
 
 /**
  * A cut-over country's scrape sink (docs/design/identity-resolver.md §8, phase 5): each venue's

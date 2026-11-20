@@ -1,8 +1,8 @@
 package services.metrics.worker
 
-import services.metrics.CacheGauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import io.prometheus.metrics.model.snapshots.Unit as PrometheusUnit
+import services.metrics.CacheGauge
 
 /**
  * `kinowo_worker_cache_*` — what each in-process cache holds, against what it is

@@ -1,9 +1,9 @@
 package services.cinemas.pl
 
-import models._
+import models.*
+import services.cinemas.common.ListingPageScraper
 import services.titles.FormatTags
 import tools.HttpFetch
-import services.cinemas.common.ListingPageScraper
 
 /**
  * Kino Sokół (Brzozowski Dom Kultury, Brzozów). Its repertoire at

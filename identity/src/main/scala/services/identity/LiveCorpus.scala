@@ -1,15 +1,13 @@
 package services.identity
 
-import services.identity.measures.{BannerHouses, Candidate, Evidence, EvidenceNode, Film, IdentityMeasures, Listing, MeasuredListing, StageRelays}
-import models.ListingKey
-
-import services.titles.TitleForms
-
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 
+import models.ListingKey
+import services.identity.measures.{BannerHouses, Candidate, Evidence, EvidenceNode, Film, IdentityMeasures, Listing, MeasuredListing, StageRelays}
 import services.identity.vocabulary.MultiMaps.*
 import services.identity.vocabulary.{Answer, AnswersChanged, CandidateQuery, FamilyClosure, Hit, PinConstraints, Question, TitleDecorations}
+import services.titles.TitleForms
 
 /**
  * The corpus context ([[CorpusContext]]) kept current event by event: every fact is held per key —

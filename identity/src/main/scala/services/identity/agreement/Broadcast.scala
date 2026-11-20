@@ -1,9 +1,9 @@
 package services.identity.agreement
 
-import services.titles.billing.{BillingPieces, DecorationWords}
-import services.identity.measures.{Listing, ListingShape}
 import services.identity.measures.{FactRelations, Film, IdentityMeasures, MeasuredListing, StageRelays}
+import services.identity.measures.{Listing, ListingShape}
 import services.identity.vocabulary.{Answer, ScreeningDays}
+import services.titles.billing.{BillingPieces, DecorationWords}
 
 /**
  * The BROADCAST DATE JOIN: a stage relay airs on its house's published dates — the Met's "Samson et Dalila" live on

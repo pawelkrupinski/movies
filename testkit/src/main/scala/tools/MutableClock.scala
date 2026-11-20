@@ -1,8 +1,8 @@
 package tools
 
-import com.github.benmanes.caffeine.cache.Ticker
-
 import java.time.{Clock, Duration, Instant, ZoneId, ZoneOffset}
+
+import com.github.benmanes.caffeine.cache.Ticker
 
 /** A [[java.time.Clock]] a spec moves by hand, so anything that measures an AGE or an
  *  expiry can be asserted to the second instead of raced against wall time — the ONE

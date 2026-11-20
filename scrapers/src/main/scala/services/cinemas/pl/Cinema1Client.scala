@@ -1,17 +1,17 @@
 package services.cinemas.pl
 
+import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
+
+import scala.concurrent.duration.*
+import scala.util.Try
+
+import models.*
+import play.api.libs.json.*
 import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.SlotsToMovies
-
-import tools.{HttpFetch, HttpRead}
-import models._
-import play.api.libs.json._
 import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages}
-
-import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
-import java.time.format.DateTimeFormatter
-import scala.concurrent.duration._
-import scala.util.Try
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Cinema1 (Gdańsk Morena) — a single-venue booking site built on the

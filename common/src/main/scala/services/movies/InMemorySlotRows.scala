@@ -2,7 +2,8 @@ package services.movies
 
 import java.time.{Clock, Instant}
 import java.util.concurrent.CopyOnWriteArrayList
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 
 /**
  * The in-memory store both side-collection fakes ARE: `filmId -> (slotKey -> row)` under

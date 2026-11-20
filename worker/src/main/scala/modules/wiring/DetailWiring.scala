@@ -1,13 +1,12 @@
 package modules.wiring
 
+import scala.concurrent.duration.DurationInt
+
+import services.cinemas.common.DetailEnricher
 import services.tasks.ClaimedEnqueueReaper
 import services.venuepages.{DetailPages, DetailReaper, DetailRowLanding, DetailSchedule, EnrichDetailsHandler, LandedPages, ReadVenuePageHandler,
   RecordedPageReader, VenuePageReader}
 import settings.{DetailMaxEnqueuePerTick, DetailTickInterval}
-
-import services.cinemas.common.DetailEnricher
-
-import scala.concurrent.duration.DurationInt
 
 
 /** Deferred per-film detail: the cinemas that scrape BARE and fill their detail

@@ -1,15 +1,16 @@
 package services.identityadapters
 
+import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUnit}
+
+import scala.concurrent.duration.FiniteDuration
+import scala.jdk.CollectionConverters.*
+import scala.util.control.NonFatal
+
+import play.api.Logging
 import services.identity.*
 import services.identity.measures.{Listing, Resolution}
-import play.api.Logging
-import services.titles.TitleNormalizer
-
-import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUnit}
-import scala.concurrent.duration.FiniteDuration
-import scala.jdk.CollectionConverters._
-import scala.util.control.NonFatal
 import services.identity.vocabulary.{AnswersChanged, CandidateQuery, ObservationReads}
+import services.titles.TitleNormalizer
 
 /** The model as a reader sees it: its resolution, what its lookups do not know yet, its listings. */
 final case class ModelSnapshot(resolution: Resolution, gaps: AnswersChanged, listings: Seq[Listing],

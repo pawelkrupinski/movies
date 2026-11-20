@@ -1,11 +1,11 @@
 package services.closure
 
+import java.time.Instant
+
 import models.{ArchivedScrape, Cinema}
 import services.fallback.FallbackState
 import services.scrapes.VenueClosure.SourceDrop
 import services.scrapes.{GoneUpstream, VenueClosure}
-
-import java.time.Instant
 
 /** A rostered venue the sweep judges, whether it has a fallback feed to corroborate it, and
  *  the page its primary scrapes (`CinemaScraper.sourceUrl`) — the page whose 404 is the

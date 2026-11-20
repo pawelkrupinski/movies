@@ -1,15 +1,16 @@
 package services.cinemas.es
 
-import models.{Cinema, CinemaMovie, Movie, Showtime}
-import play.api.libs.json._
-
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+
+import scala.util.Try
+
+import models.{Cinema, CinemaMovie, Movie, Showtime}
+import play.api.libs.json.*
 import services.cinemas.common.ScraperParse
 import services.cinemas.es.SpanishFeedText.{certificate, field, fold}
-import scala.util.Try
 
 /**
  * Pure page → `CinemaMovie` transformation for an Artesiete venue's own page

@@ -1,8 +1,8 @@
 package controllers
 
-import models.{City, Country}
-
 import java.time.Instant
+
+import models.{City, Country}
 
 /** The crawl files a deployment serves — `robots.txt` and the sitemaps — and
  *  which of their shapes a request wants: the brand front door (the shared apex)

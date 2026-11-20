@@ -1,11 +1,11 @@
 package services.tasks
 
-import services.tasktypes.TaskType
+import java.time.Clock
+
+import scala.util.Try
 
 import play.api.Logging
-
-import java.time.Clock
-import scala.util.Try
+import services.tasktypes.TaskType
 
 /** The queue side of a [[ScrapeReaper]] tick: how much scrape work is already waiting, and the
  *  enqueue of the venues admitted. */

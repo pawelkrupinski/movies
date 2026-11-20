@@ -1,17 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
-import services.cinemas.common.{CreditedScreening, ListingFacts, ListingPageScraper, ScraperParse, SlotsToMovies}
-import services.titles.FormatTags
-import models._
-import tools.HttpFetch
-import org.jsoup.Jsoup
-import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail}
-
 import java.time.LocalDateTime
 import java.util.Locale
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import org.jsoup.Jsoup
+import services.cinemas.common.SynopsisProse
+import services.cinemas.common.{CreditedScreening, ListingFacts, ListingPageScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.titles.FormatTags
+import tools.HttpFetch
 
 /**
  * Kino Paradox (Kraków) — independent arthouse cinema. The venue publishes a

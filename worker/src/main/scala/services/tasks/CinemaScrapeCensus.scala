@@ -1,16 +1,16 @@
 package services.tasks
 
-import services.metrics.worker.SampledCensus
-import tools.ThreadPools
+import java.time.{Clock, Instant}
+
+import scala.concurrent.duration.*
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Cinema, Country}
 import services.cinemas.common.CinemaScraper
 import services.freshness.FreshnessStore
-
-import java.time.{Clock, Instant}
-import scala.concurrent.duration._
+import services.metrics.worker.SampledCensus
+import tools.ThreadPools
 
 /**
  * Surfaces how STALE a country's most-neglected cinema is — the age of the

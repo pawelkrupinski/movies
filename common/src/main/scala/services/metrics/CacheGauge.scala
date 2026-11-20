@@ -1,9 +1,9 @@
 package services.metrics
 
-import tools.CacheOccupancy
 import io.prometheus.metrics.core.metrics.GaugeWithCallback
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import io.prometheus.metrics.model.snapshots.Unit as PrometheusUnit
+import tools.CacheOccupancy
 
 /**
  * One `{country, cache}`-labelled callback gauge over a set of caches, reading a

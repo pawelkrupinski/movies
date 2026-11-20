@@ -1,10 +1,11 @@
 package services.identityadapters
 
-import services.identity.agreement.AnswerFeed
-
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{ConcurrentSkipListMap, CopyOnWriteArrayList}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import services.identity.agreement.AnswerFeed
 
 /**
  * The [[AnswerFeed]] of one [[IdentityTmdbLayer]]: its TMDB store, its family-answer store and the worker's venue page

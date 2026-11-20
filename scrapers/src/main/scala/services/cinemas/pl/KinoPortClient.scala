@@ -1,20 +1,19 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-
+import java.time.{LocalDate, LocalDateTime}
 import java.util.Locale
 
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import models._
 import play.api.libs.json.{JsValue, Json}
-import tools.{HttpFetch, HttpRead}
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 import tools.Whitespace.collapsedSpaces
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import tools.{HttpFetch, HttpRead}
 
 /**
  * KinoPort — the art-house screen run by GCSW (Gdańskie Centrum Sztuki

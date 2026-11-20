@@ -1,11 +1,11 @@
 package services.identity.agreement
 
-import services.identity.{IdentityLookups, ShortFilms}
+import models.ListingKey
 import services.identity.measures.{Evidence, Listing, ListingShape, Resolution, ResolverDecision, SourceReliability}
 import services.identity.measures.{FactRelations, Film, IdentityMeasures, MeasuredListing, TmdbFilmRecord}
 import services.identity.vocabulary.TitleDecorations
+import services.identity.{IdentityLookups, ShortFilms}
 import services.titles.billing.DecorationWords
-import models.ListingKey
 import services.titles.{TitleContainment, TitleWords}
 
 /**

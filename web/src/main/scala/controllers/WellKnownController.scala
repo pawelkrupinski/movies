@@ -1,11 +1,11 @@
 package controllers
 
-import models.InstalledBuildSlugs
-import play.api.libs.json.{JsArray, JsObject, JsTrue, Json}
-import play.api.mvc._
-
 import scala.io.Source
 import scala.util.Using
+
+import models.InstalledBuildSlugs
+import play.api.libs.json.{JsArray, JsObject, JsTrue, Json}
+import play.api.mvc.*
 
 /**
  * Serves the mobile app-association files that let `https://kinowo.net/...`

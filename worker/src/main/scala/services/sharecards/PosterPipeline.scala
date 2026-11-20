@@ -1,20 +1,20 @@
 package services.sharecards
 
-import java.util.Locale
-
-import play.api.Logging
-import tools.{OgCardRenderer, PosterDecode, PosterDecodeGate, TlsTrust}
-
 import java.awt.image.BufferedImage
 import java.io.{ByteArrayOutputStream, InputStream}
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.nio.file.{Files, Path}
 import java.time.Duration
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
+
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.{Try, Using}
+
+import play.api.Logging
+import tools.{OgCardRenderer, PosterDecode, PosterDecodeGate, TlsTrust}
 
 /** Smaller renditions of a poster URL to try before the original, where the source offers one —
  *  most posters then never reach a giant decode. Of the poster hosts in the corpus (fixture survey,

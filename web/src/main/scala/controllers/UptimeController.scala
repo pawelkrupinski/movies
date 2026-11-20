@@ -1,6 +1,6 @@
 package controllers
 
-import play.api.mvc._
+import play.api.mvc.*
 import services.UptimeHistory
 
 /** `GET /uptime`: the operator's page of every service's health — each scraper's and source's bars,

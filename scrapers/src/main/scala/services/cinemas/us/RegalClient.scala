@@ -1,12 +1,12 @@
 package services.cinemas.us
 
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
 import models.{Cinema, CinemaMovie, RegalChain, Source}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome,
   FilmDetail, ScrapeHorizon, ListingFeed}
 import tools.{HttpFetch, HttpRead}
-
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 /**
  * Regal Cinemas — the United States' largest chain (~400 venues).

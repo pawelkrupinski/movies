@@ -1,11 +1,12 @@
 package services.users
 
-import com.github.benmanes.caffeine.cache.{Cache, Ticker}
-import play.api.Logging
-
 import java.time.Instant
 import java.util.concurrent.TimeUnit
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
+
+import com.github.benmanes.caffeine.cache.{Cache, Ticker}
+import play.api.Logging
 
 /** When a user's stored state last changed, if this cache currently has an
  *  answer. `None` means "don't know" — never seen, evicted, expired, or the

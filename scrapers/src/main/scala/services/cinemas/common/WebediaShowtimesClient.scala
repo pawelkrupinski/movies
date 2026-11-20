@@ -1,11 +1,12 @@
 package services.cinemas.common
 
+import java.time.LocalDate
+
+import scala.util.Try
+
+import models.*
 import services.titles.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
-import models._
-
-import java.time.LocalDate
-import scala.util.Try
 
 /**
  * Webedia website-JSON showtimes scraper — the surviving reach into the

@@ -1,10 +1,10 @@
 package services.closure
 
+import scala.util.Try
+
 import services.scrapes.VenueClosure.{FallbackEvidence, SourceDrop, VenueSignal}
 import services.scrapes.{OwnSiteEvidence, VenueClosure, VenueWebsites}
 import tools.HttpFetch
-
-import scala.util.Try
 
 /** A page the retirement PR's live re-check reads again: the venue's own `website`,
  *  or a second `listing` that dropped it. */

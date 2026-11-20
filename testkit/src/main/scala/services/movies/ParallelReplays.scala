@@ -1,7 +1,8 @@
 package services.movies
 
 import java.util.concurrent.Executors
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 /**

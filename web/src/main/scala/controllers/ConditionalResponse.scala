@@ -1,11 +1,11 @@
 package controllers
 
+import java.time.Instant
+
 import models.City
 import org.apache.pekko.util.ByteString
 import play.api.mvc.Results.{NotModified, Ok}
 import play.api.mvc.{RequestHeader, Result}
-
-import java.time.Instant
 
 /** Conditional-GET + compressed-response cache for a response that is
  *  byte-identical for every client at the current read-model version — the

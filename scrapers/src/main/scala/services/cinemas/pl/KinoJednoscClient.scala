@@ -1,17 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
+import java.time.{LocalDate, LocalDateTime}
 
-import services.cinemas.common.{ScraperParse, ListingPages}
-import tools.{HttpFetch, HttpRead}
-import models._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import services.cinemas.common.SingleSiteScraper
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.{ScraperParse, ListingPages}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Jedność (Sędziszów Małopolski). WordPress site with a two-level layout:

@@ -1,16 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import models._
-import tools.{HttpFetch, HttpRead}
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
-
 import java.nio.charset.Charset
 import java.time.LocalDate
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Grunwald (Olsztynek). Its home page (`kino.olsztynek.com.pl`) is a

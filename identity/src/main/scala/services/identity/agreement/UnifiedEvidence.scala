@@ -1,10 +1,10 @@
 package services.identity.agreement
 
-import services.identity.{BilledPiece, FeedLink, IdentityResolver}
+import play.api.libs.json.{Json, OFormat}
 import services.identity.measures.{CastEvidence, FallbackIds, Listing, ListingShape, PosterEvidence, ResolverDecision, SourceReliability}
 import services.identity.measures.{FactRelations, Film, IdentityMeasures, Measure, MeasuredListing}
 import services.identity.vocabulary.{Answer, ClasspathResource, VenueNames, VoterFamily}
-import play.api.libs.json.{Json, OFormat}
+import services.identity.{BilledPiece, FeedLink, IdentityResolver}
 
 /**
  * The UNIFIED evidence model's signals: every signal the resolver's model and the agreement stage after it read about

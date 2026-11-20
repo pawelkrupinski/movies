@@ -1,18 +1,19 @@
 package services.cinemas.pl
 
-import services.titles.NonMovieEventClassifier
-import services.cinemas.common.ScraperParse.jsonText
-import tools.JsonLdBlocks
-import play.api.Logging
-import tools.{HttpFetch, HttpRead}
-import models._
-import play.api.libs.json._
-import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
-
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
+
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import play.api.Logging
+import play.api.libs.json.*
+import services.cinemas.common.ScraperParse.jsonText
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
+import services.titles.NonMovieEventClassifier
+import tools.JsonLdBlocks
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Generic client for any cinema ticketed through the biletyna.pl platform. The

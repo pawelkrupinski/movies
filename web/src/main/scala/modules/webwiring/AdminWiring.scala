@@ -1,9 +1,9 @@
 package modules.webwiring
 
 import controllers.{AdminAction, EnvConfigController, ImageEventController, TaskRunController, TasksController, UptimeBars, UptimeController, UptimePage, UptimeStreamController, UptimeTriage}
-import services.{UptimeMonitor, UptimeTier}
 import services.fallback.{FallbackStore, MongoFallbackStore}
 import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQueue, TaskQueue}
+import services.{UptimeMonitor, UptimeTier}
 
 /** ── Operator pages ────────────────────────────────────────────────────────
  *  What sits behind the `AdminAction` gate: /uptime, /tasks and /admin/config,

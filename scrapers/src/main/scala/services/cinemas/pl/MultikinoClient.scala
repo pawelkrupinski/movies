@@ -1,9 +1,9 @@
 package services.cinemas.pl
 
 import models.{Cinema, CinemaMovie, Multikino}
-import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, ListingFeed}
 import services.titles.TitleNormalizer
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Multikino fetches `microservice/showings/cinemas/0011/films` and hands the

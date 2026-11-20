@@ -1,7 +1,7 @@
 package services.identity.measures
 
-import services.titles.billing.{BillJoins, BillingParse}
 import services.titles.TitleContainment
+import services.titles.billing.{BillJoins, BillingParse}
 
 import IdentityMeasures.*
 import Measure.Category

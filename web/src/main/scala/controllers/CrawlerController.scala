@@ -1,6 +1,6 @@
 package controllers
 
-import play.api.mvc._
+import play.api.mvc.*
 
 /** What a crawler asks for before any page: `robots.txt` and the sitemaps, cut by
  *  [[CrawlerFiles]] from the live schedules and each city's own stamp. */

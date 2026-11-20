@@ -1,16 +1,17 @@
 package services.identityadapters
 
-import services.identity.*
-import clients.TmdbClient
-import play.api.Logging
-import settings.IdentityLookupFillRate
-import tools.{CircuitOpenException, ForwardingHttpFetch, HttpFetch, HttpStatusException, RequestedHost}
-
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.control.NonFatal
+
+import clients.TmdbClient
+import play.api.Logging
+import services.identity.*
 import services.identity.vocabulary.{Answer, AnswersChanged, Question}
+import settings.IdentityLookupFillRate
+import tools.{CircuitOpenException, ForwardingHttpFetch, HttpFetch, HttpStatusException, RequestedHost}
 
 /** One fill round's live asks: at most `allowance`, one per `pace`, and none to a host after it
  *  overloaded. `deferred` counts the gaps it had no budget left for. Single-threaded by

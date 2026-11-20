@@ -1,14 +1,15 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import org.jsoup.nodes.{Document, Element}
-import models._
-import tools.{HttpFetch, HttpRead}
-import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies, ListingPages}
-
 import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import org.jsoup.Jsoup
+import org.jsoup.nodes.{Document, Element}
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies, ListingPages}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Sfinks (Kraków, Nowa Huta) — the film screen run by Ośrodek Kultury im.

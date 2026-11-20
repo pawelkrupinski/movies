@@ -1,13 +1,14 @@
 package services.cinemas.us
 
-import services.cinemas.common.ScraperParse.jsonText
+import java.time.{LocalDate, OffsetDateTime, ZoneOffset}
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import org.jsoup.Jsoup
-import play.api.libs.json._
-
-import java.time.{LocalDate, OffsetDateTime, ZoneOffset}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import play.api.libs.json.*
+import services.cinemas.common.ScraperParse.jsonText
 
 /**
  * Pure HTML/JSON → model transformation for AMC Theatres. No I/O: [[AmcClient]]

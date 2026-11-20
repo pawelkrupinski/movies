@@ -1,15 +1,16 @@
 package services.movies
 
-import tools.KeysetScan
+import java.time.Instant
+
+import scala.concurrent.duration.*
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.reflect.ClassTag
+import scala.util.Try
+
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.{Aggregates, Filters, Projections}
 import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
-
-import java.time.Instant
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.concurrent.duration._
-import scala.reflect.ClassTag
-import scala.util.Try
+import tools.KeysetScan
 
 /**
  * What every slot-keyed side collection answers and does whatever its row type — the seam

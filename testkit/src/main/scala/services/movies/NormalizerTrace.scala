@@ -1,9 +1,5 @@
 package services.movies
 
-import services.titles.TitleNormalizer
-
-import play.api.libs.json.{JsArray, JsObject, JsString, Json}
-
 import java.io.{BufferedWriter, OutputStreamWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
@@ -11,6 +7,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.GZIPOutputStream
 
 import scala.jdk.CollectionConverters.*
+
+import play.api.libs.json.{JsArray, JsObject, JsString, Json}
+import services.titles.TitleNormalizer
 
 /**
  * Every distinct title reading a process made, and what it read: the trace `scripts/identity-measure --footprint` replays

@@ -1,10 +1,11 @@
 package services.sharecards
 
+import java.time.{Clock, Instant}
+
+import scala.concurrent.duration.*
+
 import play.api.Logging
 import services.readmodel.{ReadModelReader, ScreeningRef}
-
-import java.time.{Clock, Instant}
-import scala.concurrent.duration.*
 
 /** Each of `cities`' (slugs') films, the most widely shown first, for its city card ([[CityCardWriter]]).
  *

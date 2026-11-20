@@ -1,13 +1,12 @@
 package modules.wiring
 
-import services.enrichment.ResolveImdbIdHandler
-import settings.ConfigRefreshInterval
+import scala.concurrent.duration.DurationLong
 
 import services.config.{EnvConfigService, MongoEnvOverrideStore, MongoEnvRegistryStore}
+import services.enrichment.ResolveImdbIdHandler
 import services.tasks.{BulkRefreshHandler, BulkRefreshResult, BulkTaskResultStore, MongoBulkTaskResultStore, TaskHandler}
 import services.tasktypes.TaskType
-
-import scala.concurrent.duration.DurationLong
+import settings.ConfigRefreshInterval
 
 /** What an operator drives from the web app: the live-config registry behind
  *  `/admin/config`, and the corpus-wide / per-row refresh handlers behind the

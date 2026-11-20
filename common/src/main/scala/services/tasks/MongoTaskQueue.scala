@@ -1,22 +1,21 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
-import com.mongodb.{MongoWriteException, WriteConcern}
-import com.mongodb.client.model.{IndexOptions => JIndexOptions}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.bson.BsonString
-import org.mongodb.scala.model.{Accumulators, Aggregates, Filters, FindOneAndUpdateOptions, Indexes, ReturnDocument, Updates}
-
-import play.api.Logging
-import services.movies.ChangeStreamReopen
-
 import java.time.Instant
 import java.util.UUID
+
 import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import com.mongodb.client.model.IndexOptions as JIndexOptions
+import com.mongodb.{MongoWriteException, WriteConcern}
+import org.mongodb.scala.bson.BsonString
+import org.mongodb.scala.model.{Accumulators, Aggregates, Filters, FindOneAndUpdateOptions, Indexes, ReturnDocument, Updates}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
+import play.api.Logging
+import services.movies.ChangeStreamReopen
+import services.tasktypes.TaskType
 
 /**
  * Mongo-backed `TaskQueue`, collection `tasks`. Document shape:

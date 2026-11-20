@@ -1,17 +1,18 @@
 package services.freshness
 
-import com.mongodb.client.model.UpdateOptions
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.{Filters, Indexes, Sorts}
-import play.api.Logging
-import tools.KeysetScan
-
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+
+import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future, Promise}
-import scala.concurrent.duration._
 import scala.util.Try
+
+import com.mongodb.client.model.UpdateOptions
+import org.mongodb.scala.bson.conversions.Bson
+import org.mongodb.scala.model.{Filters, Indexes, Sorts}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
+import play.api.Logging
+import tools.KeysetScan
 
 /**
  * Records when each unit of network-touching work (a cinema scrape, a movie's

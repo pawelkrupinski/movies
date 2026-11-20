@@ -1,10 +1,10 @@
 package tools
 
-import com.github.benmanes.caffeine.cache.Cache
-
 import java.lang.invoke.{MethodHandles, VarHandle}
 import java.nio.ByteOrder
 import java.nio.charset.StandardCharsets
+
+import com.github.benmanes.caffeine.cache.Cache
 
 /**
  * A PURE parse of a page, done once per distinct content: a search page Metacritic or Rotten Tomatoes answered is

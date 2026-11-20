@@ -1,8 +1,8 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
 import scala.util.Try
+
+import services.tasktypes.TaskType
 
 /**
  * Runs a claimed task through the handler registered for its type — its outbound requests asked for on

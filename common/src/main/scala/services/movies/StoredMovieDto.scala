@@ -1,10 +1,10 @@
 package services.movies
 
-import services.evidence.LatestTitleYear
-import models.{MovieRecord, Source, SourceData, StoredMovieRecord, TmdbAttempt}
-import services.titles.TitleNormalizer
-
 import java.time.Instant
+
+import models.{MovieRecord, Source, SourceData, StoredMovieRecord, TmdbAttempt}
+import services.evidence.LatestTitleYear
+import services.titles.TitleNormalizer
 
 /** Wire form of [[models.TmdbAttempt]]. */
 case class StoredTmdbAttempt(evidence: String, at: Instant)

@@ -1,10 +1,10 @@
 package services.cinemas.common
 
+import java.time.LocalDate
+
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import tools.{HttpFetch, HttpRead}
-
-import java.time.LocalDate
 
 /**
  * A programme served a page per day, whose own page for today links the other days in a picker.

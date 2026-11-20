@@ -1,10 +1,11 @@
 package services.tasks
 
+import java.time.Clock
+
+import scala.concurrent.duration.*
+
 import play.api.Logging
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ListingReads}
-
-import java.time.Clock
-import scala.concurrent.duration._
 
 /**
  * The PLAN ("split") step of a chunked scrape, called from `ScrapeCinemaHandler`

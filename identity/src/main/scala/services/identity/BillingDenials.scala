@@ -1,9 +1,9 @@
 package services.identity
 
+import scala.collection.mutable
+
 import services.identity.measures.{CastEvidence, EvidenceNode, Film, ListingShape, TitleRelationMeasures}
 import services.titles.billing.BillingPieces
-
-import scala.collection.mutable
 
 /** What a node's billing says it is, which rules a film out for it ([[NodeDenials]]): a film festival billed by its name
  *  alone, a silent film of the sound era, a cast field naming none of the film's cast. */

@@ -1,17 +1,17 @@
 package services.tasks
 
-import services.metrics.worker.SampledCensus
-import tools.ThreadPools
+import java.time.{Clock, Instant}
+
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{BarrenAttempt, ContentStamp, Country, SuccessfulScrape}
 import services.cinemas.common.CinemaScraper
+import services.metrics.worker.SampledCensus
 import services.scrapes.{ForwardingScrapeArchive, ScrapeArchiveReader, ScrapeArchiveRepository}
-
-import java.time.{Clock, Instant}
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import tools.ThreadPools
 
 /**
  * Surfaces cinemas that SCRAPE fine and produce nothing — the failure mode no

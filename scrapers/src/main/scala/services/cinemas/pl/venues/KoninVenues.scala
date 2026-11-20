@@ -1,7 +1,7 @@
 package services.cinemas.pl.venues
 
-import models._
-import services.cinemas.pl._
+import models.*
+import services.cinemas.pl.*
 
 /** The Polish venues wired near Konin: see [[PolishVenueRegistry]]. */
 object KoninVenues extends PolishVenueRegistry {

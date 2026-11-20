@@ -1,19 +1,19 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
-
-import services.cinemas.common.{ScraperParse, SynopsisProse}
-import models._
-import play.api.libs.json._
-import org.jsoup.Jsoup
-import tools.{HttpFetch, HttpRead}
-import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
-
 import java.time.LocalDateTime
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
 import models.CountryNames
+import org.jsoup.Jsoup
+import play.api.libs.json.*
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.{ScraperParse, SynopsisProse}
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.titles.TitleNormalizer
+import tools.{HttpFetch, HttpRead}
 
 class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
 ) extends SingleSiteScraper with DetailEnricher {

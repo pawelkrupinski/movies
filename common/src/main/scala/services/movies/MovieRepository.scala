@@ -1,10 +1,9 @@
 package services.movies
 
+import scala.concurrent.duration.*
+
 import models.{CacheKey, FilmId}
-
 import models.{MovieRecord, Source, SourceData}
-
-import scala.concurrent.duration._
 
 /**
  * Persistent store for `(title, year) → MovieRecord` records: the writer contract,

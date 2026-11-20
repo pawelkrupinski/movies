@@ -1,7 +1,8 @@
 package services.readmodel
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 
 /**
  * Film id -> the cities screening it, so a movie document's change bumps only those cities'

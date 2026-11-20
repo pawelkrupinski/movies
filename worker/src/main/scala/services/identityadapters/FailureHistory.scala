@@ -1,8 +1,8 @@
 package services.identityadapters
 
-import tools.HttpStatusException
-
 import scala.util.{Failure, Try}
+
+import tools.HttpStatusException
 
 /** Where a TMDB or IMDb read that filed no answer — a 429, a timeout, the circuit open — is kept ([[TmdbNormalizer]]):
  *  the answer a take went without. A durable non-answer (a 404) is an answer, filed by the store, never kept here. */

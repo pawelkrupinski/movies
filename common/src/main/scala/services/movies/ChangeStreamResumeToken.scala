@@ -1,11 +1,10 @@
 package services.movies
 
 import java.util.Locale
+import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 
 import org.bson.BsonDocument
 import play.api.Logging
-
-import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 
 /**
  * Keeps ONE change-stream's resume token in its [[ResumeTokenStore]] (`change_stream_tokens`,

@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import services.titles.FormatTags
-import models._
-import tools.HttpFetch
-import org.jsoup.Jsoup
-import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
-
 import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
+import services.titles.FormatTags
+import tools.HttpFetch
 
 /**
  * Kino Krapkowice — the cinema run by the Krapkowicki Dom Kultury. Its

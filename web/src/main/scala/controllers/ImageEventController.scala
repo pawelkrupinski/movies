@@ -1,7 +1,7 @@
 package controllers
 
 import play.api.libs.json.{JsObject, JsValue}
-import play.api.mvc._
+import play.api.mvc.*
 
 /** `POST /uptime/img-event`: the poster-load beacon every visitor's browser sends, recorded as
  *  the uptime monitor's `img:` rows ([[ImageLoadBeacon]]). */

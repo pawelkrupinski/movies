@@ -1,11 +1,12 @@
 package services.scrapes
 
+import java.util.Locale
+
+import scala.util.{Failure, Success, Try, Using}
+
 import play.api.libs.json.Json
 import services.scrapes.VenueClosure.VenueSignal
 import tools.{HttpStatusException, UnresolvedHost}
-
-import java.util.Locale
-import scala.util.{Failure, Success, Try, Using}
 
 /**
  * What a venue's OWN website says about the venue — the evidence [[VenueClosure]]

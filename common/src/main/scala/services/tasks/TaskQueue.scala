@@ -1,9 +1,10 @@
 package services.tasks
 
-import services.tasktypes.TaskType
+import java.time.Instant
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
-import java.time.Instant
+
+import services.tasktypes.TaskType
 
 /** A claimed unit of work handed to a handler. The queue's bookkeeping
  *  (state, lease, worker) is deliberately not exposed — the handler only needs

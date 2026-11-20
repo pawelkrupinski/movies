@@ -1,8 +1,7 @@
 package services.identity.measures
 
-import services.titles.TitleSeason
-
 import services.identity.vocabulary.{DetailFacts, ListingDating, TitleDecorations}
+import services.titles.TitleSeason
 
 /** A listing's evidence once its own detail page is merged in — listing values win, the page
  *  fills gaps. VENUE-FREE on purpose: two venues publishing the same evidence are asking the same

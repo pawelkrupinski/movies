@@ -1,6 +1,6 @@
 package services.cinemas
 
-import models._
+import models.*
 import services.cinemas.common.FlicksMarket
 import services.cinemas.uk.{UkFeed, UkSourcesData}
 

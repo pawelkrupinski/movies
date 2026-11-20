@@ -1,11 +1,12 @@
 package services.readmodel
 
+import java.util.concurrent.ConcurrentHashMap
+
+import scala.jdk.CollectionConverters.*
+
 import models.{Cinema, City, CityScreening, Country, ResolvedMovie}
 import play.api.Logging
 import tools.TickRun
-
-import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
 
 /**
  * The serving app's warm view of the denormalised read model. Holds the two

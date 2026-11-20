@@ -1,15 +1,14 @@
 package services.tasks
 
-import tools.ChangeStreamLiveness
+import java.time.Instant
 
-import services.metrics.worker.ChangeStreamSeries
-import services.metrics.worker.CorpusWriteSeries
-import services.metrics.PrometheusExposition
-import services.metrics.worker.ReadModelSeries
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-
-import java.time.Instant
+import services.metrics.PrometheusExposition
+import services.metrics.worker.ChangeStreamSeries
+import services.metrics.worker.CorpusWriteSeries
+import services.metrics.worker.ReadModelSeries
+import tools.ChangeStreamLiveness
 
 /**
  * Prometheus instrumentation for the worker's task pipeline -- the worker-side

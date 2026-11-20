@@ -1,9 +1,9 @@
 package controllers
 
+import java.time.LocalDate
+
 import models.{Cinema, Opening}
 import play.api.libs.json.{JsObject, Json, Writes}
-
-import java.time.LocalDate
 
 /** A seasonal venue's typical window, months 1..12 both inclusive, and whether `today`
  *  falls outside it: `{"cinema": "Freiluftkino Kreuzberg", "opens": 5, "closes": 9, "offSeason": true}`.

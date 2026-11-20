@@ -1,9 +1,9 @@
 package tools
 
-import java.nio.{ByteOrder, MappedByteBuffer}
 import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths, StandardOpenOption}
+import java.nio.{ByteOrder, MappedByteBuffer}
 
 /** This JVM's HotSpot perf data — the shared-memory counters `jstat` reads (`hsperfdata_<user>/<pid>`),
  *  mapped once and read live. Some counters exist nowhere else: how many classes came from the AOT

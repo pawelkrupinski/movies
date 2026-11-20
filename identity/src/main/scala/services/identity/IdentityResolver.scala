@@ -1,10 +1,9 @@
 package services.identity
 
-import services.identity.measures.{EvidenceNode, Film, Listing, Measure, Resolution, ResolverDecision}
 import models.ListingKey
-
-import services.titles.TitleForms
+import services.identity.measures.{EvidenceNode, Film, Listing, Measure, Resolution, ResolverDecision}
 import services.identity.vocabulary.{CandidateQuery, PinConstraints, TitleDecorations}
+import services.titles.TitleForms
 
 /**
  * `resolve(E)`: film identity as a pure, deterministic function of a SET of listings and the

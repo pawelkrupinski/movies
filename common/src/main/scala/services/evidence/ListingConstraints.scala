@@ -1,8 +1,7 @@
 package services.evidence
 
-import services.titles.TitleNormalizer
-
 import models.{MovieRecord, SourceData}
+import services.titles.TitleNormalizer
 
 /**
  * THE constraint model: every rule that says two pieces of listing evidence cannot be one film

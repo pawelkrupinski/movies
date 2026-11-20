@@ -1,9 +1,10 @@
 package tools.costs
 
-import org.scalatest.Assertions.fail
-
 import java.lang.management.ManagementFactory
+
 import scala.concurrent.duration.{DurationLong, FiniteDuration}
+
+import org.scalatest.Assertions.fail
 
 /**
  * CPU time a block takes on the calling thread: the bound a spec puts on how much WORK something is, where allocation

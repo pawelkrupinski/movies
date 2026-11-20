@@ -1,11 +1,12 @@
 package tools
 
-import play.api.Logging
-
 import java.util.concurrent.{Callable, ExecutionException, TimeUnit, TimeoutException, Future as JavaFuture}
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future}
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
+
+import play.api.Logging
 
 /** Parallel detail-page fetch, each fetch bounded by `timeout`.
  *

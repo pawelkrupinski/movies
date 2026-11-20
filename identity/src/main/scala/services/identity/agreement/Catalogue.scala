@@ -1,10 +1,10 @@
 package services.identity.agreement
 
+import scala.collection.mutable
+
+import services.identity.measures.SourceReliability.Trust
 import services.identity.measures.{Listing, ListingShape, SourceReliability}
 import services.identity.vocabulary.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, CatalogueSources, Question, VoterFamily}
-import services.identity.measures.SourceReliability.Trust
-
-import scala.collection.mutable
 
 /**
  * The film a cluster's own catalogue ids name ([[services.identity.vocabulary.CatalogueSources]]): the venue's exact naming of it in

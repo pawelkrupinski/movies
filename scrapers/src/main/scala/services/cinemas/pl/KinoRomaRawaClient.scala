@@ -1,15 +1,15 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
+import java.time.{LocalDate, LocalDateTime}
 
-import models._
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
+import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScraperParse}
 import tools.{HttpFetch, HttpRead}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
 
 /**
  * Cyfrowe Kino Roma HD (Rawa Mazowiecka), run by the town's MDK on a bespoke

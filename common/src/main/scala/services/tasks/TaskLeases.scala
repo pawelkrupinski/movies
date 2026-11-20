@@ -1,10 +1,11 @@
 package services.tasks
 
-import play.api.Logging
-
 import java.time.Instant
+
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
+
+import play.api.Logging
 
 /** Which task rows a lease rule applies to: every condition given must hold. The rules state their
  *  conditions as this data so the Mongo store translates them to a filter and the in-memory store

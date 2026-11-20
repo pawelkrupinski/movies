@@ -1,13 +1,14 @@
 package tools
 
-import org.mongodb.scala.bson.{BsonDateTime, BsonString}
+import java.time.Instant
+
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+
 import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.bson.{BsonDateTime, BsonString}
 import org.mongodb.scala.model.{Filters, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-
-import java.time.Instant
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /** The hosts one breaker chain (`chain`: the worker's `scrape` or `enrich` phase) left unrecovered, in its country's
  *  `http_unrecovered_hosts`: one document per (chain, host), written as a host opens or an open host's probe fails

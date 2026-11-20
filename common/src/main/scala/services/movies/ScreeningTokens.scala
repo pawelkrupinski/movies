@@ -1,9 +1,9 @@
 package services.movies
 
-import play.api.Logging
-
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+
+import play.api.Logging
 
 /**
  * The ONE vocabulary of tokens a showtime badge may carry, and the mapping from

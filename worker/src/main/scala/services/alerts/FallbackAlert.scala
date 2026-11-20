@@ -1,10 +1,10 @@
 package services.alerts
 
+import java.time.Duration
+
 import models.Opening
 import services.cinemas.common.SourceFallbackScraper
 import services.fallback.{FallbackEvent, FallbackState}
-
-import java.time.Duration
 
 /**
  * Turns a fallback transition into the Telegram alert text — but only for the

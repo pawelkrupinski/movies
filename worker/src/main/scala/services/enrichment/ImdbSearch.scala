@@ -1,6 +1,6 @@
 package services.enrichment
 
-import play.api.libs.json._
+import play.api.libs.json.*
 import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 /**

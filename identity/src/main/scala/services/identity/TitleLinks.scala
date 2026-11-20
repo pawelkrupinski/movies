@@ -1,10 +1,10 @@
 package services.identity
 
-import services.identity.measures.{EvidenceNode, MultiFilmBill}
-import services.titles.TitleForms
-
 import scala.collection.mutable
+
+import services.identity.measures.{EvidenceNode, MultiFilmBill}
 import services.identity.vocabulary.PinConstraints
+import services.titles.TitleForms
 
 /** How two nodes' TITLES relate: the keys a title blocks under, the delimited segments it carries,
  *  and whether two titles must-link them. */

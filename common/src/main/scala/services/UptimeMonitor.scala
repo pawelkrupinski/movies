@@ -1,18 +1,19 @@
 package services
 
-import tools.{MongoTtlIndex, TtlIndexMismatches}
-import com.mongodb.client.model.UpdateOptions
 import java.util.concurrent.TimeUnit
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, SingleObservableFuture}
-import org.mongodb.scala.model.{Filters, Indexes, Updates}
-import play.api.Logging
-
-import java.util.concurrent.{ConcurrentHashMap, ConcurrentSkipListMap, ScheduledExecutorService}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference}
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentSkipListMap, ScheduledExecutorService}
+
 import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import com.mongodb.client.model.UpdateOptions
+import org.mongodb.scala.model.{Filters, Indexes, Updates}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, SingleObservableFuture}
+import play.api.Logging
+import tools.{MongoTtlIndex, TtlIndexMismatches}
 
 /**
  * The in-memory 15-minute buckets behind /uptime, persisted to `uptimeBuckets`: the one

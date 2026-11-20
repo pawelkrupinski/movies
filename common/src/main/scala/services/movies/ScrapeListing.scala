@@ -1,13 +1,12 @@
 package services.movies
 
 import models.MovieRecordMerge
+import models.{Cinema, CinemaMovie, SourceData, EmbeddedYear}
 import services.evidence.{LatestTitleYear, ListingConstraints}
 import services.titles.StageHouse
 import services.titles.TitleFacts
 import services.titles.TitleNormalizer
 import services.titles.TitleSeason
-
-import models.{Cinema, CinemaMovie, SourceData, EmbeddedYear}
 /**
  * A venue's listing as the cache will record it: each title cleaned by the
  * venue's own rules, every screening badged with its film's format tokens through

@@ -1,7 +1,6 @@
 package services.enrichment
 
 import models.CacheKey
-
 import models.MovieRecord
 import services.enrichment.SiteRatings.{Found, PageRead}
 import services.resolution.{ResolutionCache, ResolutionKeys}

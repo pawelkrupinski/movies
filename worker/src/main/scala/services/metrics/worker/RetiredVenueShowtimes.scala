@@ -1,9 +1,9 @@
 package services.metrics.worker
 
+import java.time.{Clock, ZoneId}
+
 import models.Country
 import services.movies.{ScreeningsRepository, SlotKeyed, VenueRoster}
-
-import java.time.{Clock, ZoneId}
 
 /** The upcoming showtimes on screenings rows filed under venues the roster no longer lists — what
  *  [[RetiredVenueCensus]] reports as `kinowo_worker_retired_venue_future_showtimes`. */

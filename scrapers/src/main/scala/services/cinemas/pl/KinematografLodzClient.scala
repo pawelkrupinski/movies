@@ -1,17 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import scala.math.Ordering.Implicits.infixOrderingOps
-import services.cinemas.common.ListingPageScraper
+import java.time.LocalDate
 
-import models._
+import scala.jdk.CollectionConverters.*
+import scala.math.Ordering.Implicits.infixOrderingOps
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import tools.HttpFetch
-
-import java.time.LocalDate
-import scala.jdk.CollectionConverters._
+import services.cinemas.common.ListingPageScraper
+import services.cinemas.common.ScraperParse
 import services.titles.TitleNormalizer
+import tools.HttpFetch
 
 /**
  * Kino Kinematograf w Łodzi — the cinema inside the Muzeum Kinematografii

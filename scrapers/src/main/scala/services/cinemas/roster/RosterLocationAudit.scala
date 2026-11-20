@@ -1,9 +1,9 @@
 package services.cinemas.roster
 
+import java.time.LocalDate
+
 import models.GeoPoint
 import tools.Slugify
-
-import java.time.LocalDate
 
 /** One venue the online audit checks: where we file it, and the source page
  *  that should agree. `expectedTowns` is [[models.City.townsOf]]. */

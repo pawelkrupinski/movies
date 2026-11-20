@@ -1,15 +1,16 @@
 package services.tasks
 
+import java.time.{Clock, Instant, LocalDate}
+
+import scala.concurrent.duration.*
+import scala.util.{Failure, Success, Try}
+
 import models.Country
 import play.api.Logging
 import services.attempts.RatingKeys
 import services.cadence.{RatingCadence, RatingCadenceStore}
-import services.movies.MovieCacheReader
 import services.evidence.LatestTitleYear
-
-import java.time.{Clock, Instant, LocalDate}
-import scala.concurrent.duration._
-import scala.util.{Failure, Success, Try}
+import services.movies.MovieCacheReader
 
 /** Each film's release date in the deployment's country, as far as the worker knows it. */
 trait ReleaseDates {

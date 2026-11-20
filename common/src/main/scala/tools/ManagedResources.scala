@@ -1,10 +1,11 @@
 package tools
 
-import play.api.Logging
-
 import java.util.concurrent.{ConcurrentLinkedDeque, ExecutorService, TimeUnit}
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.control.NonFatal
+
+import play.api.Logging
 
 /**
  * What a composition root built that must be shut: every executor, scheduler and closeable the wiring

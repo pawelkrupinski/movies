@@ -1,17 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
+import java.time.{LocalDate, LocalDateTime, LocalTime}
 
-import services.cinemas.common.ScraperParse
-import services.titles.FormatTags
-import models._
-import tools.{HttpFetch, HttpRead}
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
-
-import java.time.{LocalDate, LocalDateTime, LocalTime}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SlotsToMovies
+import services.titles.FormatTags
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Patria (Ruda Śląska) — a single-screen independent cinema hosted on a

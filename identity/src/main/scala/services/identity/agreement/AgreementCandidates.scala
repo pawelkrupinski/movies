@@ -1,9 +1,10 @@
 package services.identity.agreement
 
 import scala.collection.mutable
+
 import services.identity.IdentityLookups
-import services.identity.measures.{Evidence, FallbackIds, Listing, ListingShape, PosterEvidence}
 import services.identity.measures.MeasuredListing
+import services.identity.measures.{Evidence, FallbackIds, Listing, ListingShape, PosterEvidence}
 import services.identity.vocabulary.{Answer, CandidateQuery, Dependency, Memo, PosterAnswers, PosterHash, PosterQuestion, Question, VoterFamily}
 
 /** The TMDB films a cluster's own evidence reaches, as the stage's takes and corrections read them: its candidates, its

@@ -1,12 +1,12 @@
 package services.identity.agreement
 
-import services.identity.IdentityLookups
-import services.identity.measures.{Listing, ResolverDecision}
-import services.identity.measures.IdentityMeasures
-import services.identity.vocabulary.{Answer, Dependency, Question}
-
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
+
+import services.identity.IdentityLookups
+import services.identity.measures.IdentityMeasures
+import services.identity.measures.{Listing, ResolverDecision}
+import services.identity.vocabulary.{Answer, Dependency, Question}
 
 /**
  * The families' VERDICT on each cluster the model left unmatched ([[verdictOf]]): the one held ([[VerdictIndex]]) while

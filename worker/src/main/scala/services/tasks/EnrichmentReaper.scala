@@ -1,13 +1,13 @@
 package services.tasks
 
-import settings.EnrichmentMaxEnqueuePerTick
+import java.time.{Clock, Instant}
+
+import scala.concurrent.duration.*
 
 import play.api.Logging
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.MovieCacheReader
-
-import java.time.{Clock, Instant}
-import scala.concurrent.duration._
+import settings.EnrichmentMaxEnqueuePerTick
 
 /**
  * Periodically enqueues rating-refresh tasks for stale rows — the queue-based

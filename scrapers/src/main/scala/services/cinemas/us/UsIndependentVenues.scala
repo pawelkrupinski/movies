@@ -1,10 +1,10 @@
 package services.cinemas.us
 
+import java.time.{LocalDate, ZoneId}
+
 import models.Cinema
 import services.cinemas.common.CinemaScraper
 import tools.HttpFetch
-
-import java.time.{LocalDate, ZoneId}
 
 /**
  * The US independents whose OWN site is the scrape primary, keyed by the roster

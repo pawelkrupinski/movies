@@ -1,7 +1,7 @@
 package services.identity
 
-import services.identity.vocabulary.RuleKind
 import services.identity.measures.Resolution
+import services.identity.vocabulary.RuleKind
 
 /**
  * THE PER-RULE MONOTONICITY CONTRACT (structural step 4 of docs/investigations/2026-11-01-flip-unification.md): every rule

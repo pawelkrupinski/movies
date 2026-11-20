@@ -1,12 +1,10 @@
 package services.readmodel
 
 import models.FilmId
-
-import services.evidence.LatestTitleYear
-
 import models.{CityScreening, ResolvedMovie}
-import services.readmodel.RatingGate
+import services.evidence.LatestTitleYear
 import services.movies.MovieRepositoryReader
+import services.readmodel.RatingGate
 
 /**
  * STORED CONTENT MATCHES A FRESH RE-READ: a sampled card's `web_movies` document and its

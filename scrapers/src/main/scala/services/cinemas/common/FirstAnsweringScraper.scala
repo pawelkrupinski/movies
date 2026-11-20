@@ -1,8 +1,8 @@
 package services.cinemas.common
 
-import models.CinemaMovie
-
 import scala.util.{Failure, Success, Try}
+
+import models.CinemaMovie
 
 /**
  * A venue's ordered FALLBACK CHAIN as one scraper: each source in turn, serving the

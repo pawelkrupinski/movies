@@ -1,15 +1,14 @@
 package services.movies
 
-import services.evidence.LatestTitleYear
-import models.{ShowtimePool, StoredMovieRecord}
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 import models.{Showtime, SourceData}
+import models.{ShowtimePool, StoredMovieRecord}
 import org.bson.conversions.Bson
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.model.Filters
-
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
+import services.evidence.LatestTitleYear
 
 /** THE STITCHED CORPUS SCAN of [[MongoMovieRepository]]: `movies` read a keyset page at a time ([[MoviesKeysetPages]]),
  *  each page's side rows read for exactly the films it holds, and the page handed on whole ([[MovieSideStitch]]) —

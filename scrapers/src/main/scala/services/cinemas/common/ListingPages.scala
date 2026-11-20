@@ -1,10 +1,11 @@
 package services.cinemas.common
 
-import tools.ParallelDetailFetch
-
 import java.util.concurrent.TimeoutException
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.{Failure, Try}
+
+import tools.ParallelDetailFetch
 
 /**
  * The failure rule for a listing spread over several pages (one per day, month,

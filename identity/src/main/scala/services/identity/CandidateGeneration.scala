@@ -1,10 +1,10 @@
 package services.identity
 
-import services.titles.TitleForms
-
 import scala.collection.mutable
-import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, PinConstraints, TitleDecorations}
+
 import services.identity.measures.{Candidate, Evidence, EvidenceNode, FallbackIds, Listing}
+import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, PinConstraints, TitleDecorations}
+import services.titles.TitleForms
 
 /** Stage A of [[IdentityResolver]]: each listing's own detail page merged into its [[Evidence]],
  *  listings with identical evidence as one [[EvidenceNode]], every node's [[CandidateQueries]]

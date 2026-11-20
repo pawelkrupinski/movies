@@ -2,6 +2,7 @@ package services.identityadapters
 
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicReference
+
 import scala.util.control.NonFatal
 
 /**

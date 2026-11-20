@@ -1,6 +1,6 @@
 package tools
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
  * A recoverable failure asked again on the spot: a request that timed out, lost its connection or met a server error is

@@ -1,16 +1,16 @@
 package services.tasks
 
-import settings.ScrapeInitialDelay
-
-import tools.{ScheduledTick, Stoppable, TickRecorder}
-import play.api.Logging
-import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-
 import java.time.{Clock, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+
 import scala.concurrent.Await
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.Try
+
+import play.api.Logging
+import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
+import settings.ScrapeInitialDelay
+import tools.{ScheduledTick, Stoppable, TickRecorder}
 
 /**
  * Periodically enqueues a `ScrapeCinema` task for every cinema that is due under

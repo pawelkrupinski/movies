@@ -1,13 +1,13 @@
 package services.movies
 
-import com.mongodb.client.model.changestream.ChangeStreamDocument
-import org.bson.{BsonDocument, BsonDocumentReader}
-import org.bson.codecs.{Decoder, DecoderContext}
-import org.bson.codecs.configuration.CodecRegistry
-import play.api.Logging
-
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
+
+import com.mongodb.client.model.changestream.ChangeStreamDocument
+import org.bson.codecs.configuration.CodecRegistry
+import org.bson.codecs.{Decoder, DecoderContext}
+import org.bson.{BsonDocument, BsonDocumentReader}
+import play.api.Logging
 
 /**
  * Decodes a change event's post-image OURSELVES, after the driver has handed it over as a

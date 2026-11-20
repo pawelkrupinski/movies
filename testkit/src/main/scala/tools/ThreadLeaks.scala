@@ -1,7 +1,7 @@
 package tools
 
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 
 /** Threads a spec's subject started and did not end: what a composition root's `stop()` must leave none of. */
 object ThreadLeaks {

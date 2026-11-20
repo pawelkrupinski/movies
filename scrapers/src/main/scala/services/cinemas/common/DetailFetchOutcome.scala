@@ -1,8 +1,8 @@
 package services.cinemas.common
 
-import tools.{AbsentReason, HttpFetch, HttpRead, ReadOutcome}
-
 import scala.util.{Failure, Success, Try}
+
+import tools.{AbsentReason, HttpFetch, HttpRead, ReadOutcome}
 
 /**
  * What a per-film detail fetch actually said, as `EnrichDetailsHandler` needs to

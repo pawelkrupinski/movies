@@ -1,12 +1,11 @@
 package services.identity
 
-import services.identity.measures.{BannerHouses, Candidate, Evidence, Film, Listing, MeasuredListing, Resolution}
-import models.ListingKey
-
-import services.titles.TitleForms
-
 import scala.collection.concurrent.TrieMap
+
+import models.ListingKey
+import services.identity.measures.{BannerHouses, Candidate, Evidence, Film, Listing, MeasuredListing, Resolution}
 import services.identity.vocabulary.{Answer, CandidateQuery, ContentHash, Dependency, DetailFacts, Hit, PinConstraints, ProseWords, Question}
+import services.titles.TitleForms
 
 /**
  * THE FAMILY DEPENDENCY INDEX (docs/design/identity-no-drift.md, "One family index"): for every family of a corpus resolve, everything

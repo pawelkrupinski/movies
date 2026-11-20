@@ -1,8 +1,9 @@
 package tools
 
 import java.io.IOException
-import java.net.{InetAddress, URI}
 import java.net.http.{HttpRequest, HttpResponse}
+import java.net.{InetAddress, URI}
+
 import scala.util.Try
 
 /**

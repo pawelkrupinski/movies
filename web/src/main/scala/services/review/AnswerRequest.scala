@@ -1,8 +1,8 @@
 package services.review
 
-import play.api.libs.json._
-
 import java.time.Instant
+
+import play.api.libs.json.*
 
 /**
  * An answer as the review page posts it: the card's payload ([[ReviewCard.payload]]), the verdict, and —

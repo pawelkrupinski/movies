@@ -1,6 +1,6 @@
 package tools
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
  * A non-2xx HTTP response surfaced as a typed exception so callers and

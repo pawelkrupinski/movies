@@ -1,9 +1,9 @@
 package controllers
 
+import scala.util.Try
+
 import models.{Country, ListingKey}
 import services.review.{LabelRow, ListingExplain}
-
-import scala.util.Try
 
 /** What the dev-only review pages read of one cluster or listing of a country ([[ReviewReads]]' sources): a card's
  *  "Why" fold-out, the listings a title is billed as, and one listing explained. */

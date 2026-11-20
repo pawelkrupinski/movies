@@ -1,13 +1,13 @@
 package services.identity.agreement
 
-import org.mongodb.scala.bson.collection.immutable.Document
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+
 import org.bson.BsonDocument
+import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonInt64, BsonString}
 import org.mongodb.scala.model.{Filters, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /** One live cluster's key as stored: the stage's counter ([[services.identity.vocabulary.StableNames]]) and the cluster's first listing
  *  ([[services.identity.StoredFamily.idOf]]) — what a restart re-attaches the key by. */

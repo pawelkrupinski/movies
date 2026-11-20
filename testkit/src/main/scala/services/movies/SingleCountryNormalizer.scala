@@ -1,8 +1,7 @@
 package services.movies
 
-import services.titles.TitleNormalizer
-
 import models.Country
+import services.titles.TitleNormalizer
 
 /**
  * The rule set a SINGLE-COUNTRY spec keys under. The overwhelming majority of

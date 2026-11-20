@@ -1,13 +1,11 @@
 package services.movies
 
-import services.evidence.LatestTitleYear
-import tools.ChangeStreamLiveness
+import scala.collection.mutable
 
 import models.{CacheKey, FilmId, StoredMovieRecord}
-
 import models.{MovieRecord, Source, SourceData}
-
-import scala.collection.mutable
+import services.evidence.LatestTitleYear
+import tools.ChangeStreamLiveness
 
 /**
  * In-memory `MovieRepository` for tests — full write-through semantics without

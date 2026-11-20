@@ -1,9 +1,8 @@
 package services.identity.measures
 
-import services.titles.billing.BillingPieces
-
-import services.titles.TitleContainment
 import services.identity.vocabulary.PosterHash
+import services.titles.TitleContainment
+import services.titles.billing.BillingPieces
 
 /**
  * What a cluster's venue posters say about its candidate films — a bounded guard beside the calibrated model, which

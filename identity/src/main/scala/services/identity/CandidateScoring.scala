@@ -1,12 +1,11 @@
 package services.identity
 
-import services.identity.measures.{BannerHouses, Candidate, EvidenceNode, Film, IdentityMeasures, ListingShape, Measure, MeasuredListing, MultiFilmBill, RelayStage, StageRelays}
-import services.titles.billing.BillingParse
+import scala.collection.mutable
 
 import services.evidence.ListingConstraints
-
-import scala.collection.mutable
+import services.identity.measures.{BannerHouses, Candidate, EvidenceNode, Film, IdentityMeasures, ListingShape, Measure, MeasuredListing, MultiFilmBill, RelayStage, StageRelays}
 import services.identity.vocabulary.{Denial, PinConstraints}
+import services.titles.billing.BillingParse
 
 /** How every node scores the candidates it has an evidence path to, family by family
  *  (each family its [[FamilyScope]]), with the corpus-wide facts the scoring reads: which house each banner is,

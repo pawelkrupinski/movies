@@ -1,9 +1,9 @@
 package tools
 
-import play.api.Logging
-
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
+
+import play.api.Logging
 
 /**
  * Run a side-effecting function over a collection with bounded concurrency,

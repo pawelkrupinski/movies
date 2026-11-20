@@ -1,21 +1,19 @@
 package services.tasks
 
-import models.CacheKey
+import java.time.{Clock, Instant}
 
-import services.metrics.worker.SampledCensus
-import tools.ThreadPools
-
-import services.evidence.LatestTitleYear
+import scala.concurrent.duration.*
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
+import models.CacheKey
 import models.{Country, MovieRecord}
+import services.evidence.LatestTitleYear
 import services.freshness.{FreshnessKind, FreshnessStore}
+import services.metrics.worker.SampledCensus
 import services.movies.MovieCacheReader
 import services.tasks.RatingSources.RatingSource
-
-import java.time.{Clock, Instant}
-import scala.concurrent.duration._
+import tools.ThreadPools
 
 /**
  * Surfaces the rating runs that HAVEN'T happened — the gap the first-attempt

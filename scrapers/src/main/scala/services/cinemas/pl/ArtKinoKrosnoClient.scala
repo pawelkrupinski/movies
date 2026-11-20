@@ -1,18 +1,18 @@
 package services.cinemas.pl
 
+import java.time.{LocalDate, LocalDateTime, LocalTime}
 import java.util.Locale
 
-import services.cinemas.common.ScraperParse
-import models._
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
 import org.jsoup.nodes.{Element, Node, TextNode}
 import org.jsoup.select.NodeVisitor
-import tools.HttpFetch
-import org.jsoup.Jsoup
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
-
-import java.time.{LocalDate, LocalDateTime, LocalTime}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import tools.HttpFetch
 
 /**
  * artKino — the cinema of Regionalne Centrum Kultur Pogranicza in Krosno. Its

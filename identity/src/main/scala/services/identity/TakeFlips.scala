@@ -1,8 +1,8 @@
 package services.identity
 
-import models.ListingKey
-
 import scala.collection.mutable
+
+import models.ListingKey
 
 /**
  * A REPLAY'S FLIPS: every listing's served take, recorded at each step of an incremental replay (each projection, each

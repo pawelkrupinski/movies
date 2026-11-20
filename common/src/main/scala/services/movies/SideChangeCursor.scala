@@ -1,9 +1,10 @@
 package services.movies
 
-import tools.ChangeStreamLiveness
-
 import java.util.concurrent.atomic.AtomicReference
+
 import scala.util.Try
+
+import tools.ChangeStreamLiveness
 
 /** One of [[MovieChangeStream]]'s side-collection cursors — `screenings` or `movie_slots` — with its
  *  own demand window and its own coalescing counter, ringing into the shared apply ([[MovieChangeApply]]).

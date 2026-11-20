@@ -1,10 +1,11 @@
 package services.scrapes
 
+import java.time.{Duration as JDuration, Instant}
+
+import scala.concurrent.duration.*
+
 import models.{ArchivedScrape, BarrenAttempt, ScrapeOutcome}
 import tools.HttpStatusException
-
-import java.time.{Duration => JDuration, Instant}
-import scala.concurrent.duration._
 
 /**
  * When a cinema's page has stopped existing rather than merely failing.

@@ -1,9 +1,9 @@
 package services.cinemas.common
 
-import tools.{CountingHttpFetch, FallbackHttpFetch, HttpFetch, HttpOutcomeRecorder}
-
 import java.net.http.HttpClient
 import java.time.Duration
+
+import tools.{CountingHttpFetch, FallbackHttpFetch, HttpFetch, HttpOutcomeRecorder}
 
 /**
  * Builds the `HttpFetch` for a cinema whose origin firewall blocks both our

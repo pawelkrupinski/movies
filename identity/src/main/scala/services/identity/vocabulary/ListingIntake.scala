@@ -1,10 +1,10 @@
 package services.identity.vocabulary
 
+import java.time.LocalDateTime
+
 import models.{Cinema, CinemaMovie, ListingKey}
 import services.movies.{ScrapeGuardState, ScrapeHealth, ListingIntakeMetrics, ScrapeListing}
 import services.titles.TitleNormalizer
-
-import java.time.LocalDateTime
 
 /**
  * Which listing a cut-over country's venue is taken to publish after a scrape

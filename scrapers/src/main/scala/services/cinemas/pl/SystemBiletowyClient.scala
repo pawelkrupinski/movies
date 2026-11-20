@@ -1,17 +1,18 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse.jsonText
-import services.titles.FormatTags
-import services.cinemas.common.ScraperParse
-import services.titles.TitleNormalizer
-import models._
-import tools.{HttpFetch, HttpRead, UnexpectedBodyException}
-import org.jsoup.Jsoup
-import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
-
 import java.time.{LocalDateTime, OffsetDateTime}
+
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import play.api.libs.json.*
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScraperParse.jsonText
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
+import services.titles.FormatTags
+import services.titles.TitleNormalizer
+import tools.{HttpFetch, HttpRead, UnexpectedBodyException}
 
 /**
  * Generic client for cinemas ticketed through the VisualSoft ticketing platform

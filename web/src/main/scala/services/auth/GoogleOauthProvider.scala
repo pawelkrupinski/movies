@@ -1,10 +1,10 @@
 package services.auth
 
-import play.api.libs.json.Json
-import tools.HttpFetch
-
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+
+import play.api.libs.json.Json
+import tools.HttpFetch
 
 /**
  * Google OAuth2 (authorization-code flow) — `openid+email+profile`

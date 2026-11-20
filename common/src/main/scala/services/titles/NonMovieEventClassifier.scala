@@ -2,9 +2,9 @@ package services.titles
 
 import java.util.Locale
 
-import models.CinemaMovie
-
 import scala.util.matching.Regex
+
+import models.CinemaMovie
 /** Decides whether a scraped listing is a live STAGE/MUSIC event rather than a
  *  film. Small municipal & arthouse venues sell tickets to their own concerts,
  *  stand-up nights, kabaret shows, recitals and theatre plays through the same

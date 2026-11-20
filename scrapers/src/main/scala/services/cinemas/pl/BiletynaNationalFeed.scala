@@ -1,13 +1,14 @@
 package services.cinemas.pl
 
-import com.github.benmanes.caffeine.cache.{AsyncCache, Expiry, Ticker}
-import play.api.libs.json._
-import tools.{HttpFetch, HttpRead}
-
 import java.net.URI
 import java.util.concurrent.{CompletableFuture, Executor}
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.Try
+
+import com.github.benmanes.caffeine.cache.{AsyncCache, Expiry, Ticker}
+import play.api.libs.json.*
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Every biletyna.pl event in the country, read off the site's own `/ajax/events`

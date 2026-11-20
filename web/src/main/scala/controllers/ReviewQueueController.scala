@@ -1,7 +1,7 @@
 package controllers
 
 import play.api.Mode
-import play.api.mvc._
+import play.api.mvc.*
 import services.review.ReviewPage
 
 /**

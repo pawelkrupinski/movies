@@ -1,13 +1,14 @@
 package services.identityadapters
 
+import java.util.concurrent.ConcurrentHashMap
+
+import scala.jdk.CollectionConverters.*
+import scala.util.control.NonFatal
+
+import play.api.Logging
 import services.identity.*
 import services.identity.measures.Listing
-import play.api.Logging
 import services.titles.TitleNormalizer
-
-import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
-import scala.util.control.NonFatal
 
 /**
  * The model's kept listings ([[ListingRetention]], R1: a pure function of the inputs): every listing that left, with its

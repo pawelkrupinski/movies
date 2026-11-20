@@ -1,10 +1,10 @@
 package services.identity.agreement
 
-import services.identity.measures.{Resolution, ResolverDecision}
-import services.identity.vocabulary.Question
-
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
+
+import services.identity.measures.{Resolution, ResolverDecision}
+import services.identity.vocabulary.Question
 
 /**
  * The takes the agreement stage serves while a cluster's take waits ([[served]]): each as decided, but one that lost its

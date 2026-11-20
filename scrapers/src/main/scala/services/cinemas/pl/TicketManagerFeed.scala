@@ -1,11 +1,12 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.util.Try
+
 import org.jsoup.Jsoup
 import play.api.libs.json.{JsArray, Json}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.util.Try
+import services.cinemas.common.ScraperParse
 
 /**
  * The "Ticket Manager" box office (ASP.NET MVC) that small Polish culture houses

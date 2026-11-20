@@ -1,9 +1,9 @@
 package tools
 
+import java.awt.GraphicsEnvironment
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.awt.GraphicsEnvironment
 
 /** What every unit-test JVM must be pinned to. Each module's unit specs run in a JVM of their own, forked by sbt:
  *  project/ForkedTests.scala pins worker's (and every other unit module's), build.sbt pins web's (Play forks it). */

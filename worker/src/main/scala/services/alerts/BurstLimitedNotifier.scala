@@ -1,6 +1,7 @@
 package services.alerts
 
 import java.time.{Clock, Instant}
+
 import scala.concurrent.duration.FiniteDuration
 
 /** How many pages a [[BurstLimitedNotifier]] lets through per `window`. */

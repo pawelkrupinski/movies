@@ -1,12 +1,12 @@
 package controllers
 
-import models.CityPath
-
-import models.City
-
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+
 import scala.annotation.targetName
+
+import models.City
+import models.CityPath
 
 /** Build the `/{city}/movie/{slug}` URL used to deep-link a single film page
  *  from anywhere in the app — the main repertoire list, per-cinema page, debug

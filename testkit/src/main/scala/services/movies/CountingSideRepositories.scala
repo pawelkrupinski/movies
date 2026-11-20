@@ -1,7 +1,8 @@
 package services.movies
 
-import models.{Showtime, SourceData, ListingKey}
 import java.util.concurrent.atomic.AtomicInteger
+
+import models.{Showtime, SourceData, ListingKey}
 
 /**
  * Pass-through decorators over the two side-collection stores that COUNT which read and

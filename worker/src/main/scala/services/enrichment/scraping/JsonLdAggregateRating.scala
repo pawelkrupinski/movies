@@ -1,7 +1,7 @@
 package services.enrichment.scraping
 
-import tools.{JsonLdBlocks, JsonScalars}
 import play.api.libs.json.JsValue
+import tools.{JsonLdBlocks, JsonScalars}
 
 /**
  * Helper for parsing the `aggregateRating.ratingValue` field out of a page's

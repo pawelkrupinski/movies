@@ -1,8 +1,8 @@
 package services.identity
 
-import services.identity.measures.Film
-import org.mongodb.scala.bson.BsonArray
 import org.bson.{BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
+import org.mongodb.scala.bson.BsonArray
+import services.identity.measures.Film
 import services.identity.vocabulary.{BsonFields, FilmCast}
 
 /** A film's record as native BSON — explicit, like [[ResolverDecisionBson]]: an absent field is

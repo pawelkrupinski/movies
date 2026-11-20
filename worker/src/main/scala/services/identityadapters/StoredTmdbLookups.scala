@@ -1,15 +1,16 @@
 package services.identityadapters
 
-import services.identity.*
-import services.identity.measures.*
+import java.util.concurrent.ConcurrentHashMap
+
+import scala.jdk.CollectionConverters.*
+
 import org.bson.{BsonDocument, BsonValue}
 import services.enrichment.ImdbClient
-
-import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
+import services.identity.*
+import services.identity.measures.*
 import services.identity.measures.Film
-import services.identity.vocabulary.{Answer, BsonFields, CandidateQuery, Hit, ObservationReads, ProseWords}
 import services.identity.vocabulary.toAnswer
+import services.identity.vocabulary.{Answer, BsonFields, CandidateQuery, Hit, ObservationReads, ProseWords}
 
 /**
  * The identity model's TMDB and IMDb questions answered from [[TmdbStore]]'s normalized documents

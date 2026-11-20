@@ -1,18 +1,19 @@
 package services.tasks
 
-import com.mongodb.MongoWriteException
-import com.mongodb.client.model.{IndexOptions => JIndexOptions}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.bson.{BsonArray, BsonString}
-import org.mongodb.scala.model.{Filters, FindOneAndReplaceOptions, Indexes, ReturnDocument, Updates}
-import play.api.Logging
-
 import java.time.Instant
 import java.util.concurrent.TimeUnit
+
 import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import com.mongodb.MongoWriteException
+import com.mongodb.client.model.IndexOptions as JIndexOptions
+import org.mongodb.scala.bson.{BsonArray, BsonString}
+import org.mongodb.scala.model.{Filters, FindOneAndReplaceOptions, Indexes, ReturnDocument, Updates}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
+import play.api.Logging
 
 /**
  * Mongo-backed [[ChunkScrapeStore]] (write concern `{w:1, j:false}`, like the

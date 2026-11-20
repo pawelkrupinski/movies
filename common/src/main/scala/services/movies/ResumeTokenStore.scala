@@ -1,14 +1,14 @@
 package services.movies
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import org.bson.BsonDocument
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, SingleObservableFuture}
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Where a change stream's resume position is kept, one document per stream (`_id = streamId`) —

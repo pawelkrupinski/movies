@@ -1,11 +1,12 @@
 package services.sharecards
 
-import play.api.Logging
-import tools.OgCardRenderer
-
 import java.time.{Clock, Instant}
 import javax.imageio.ImageIO
+
 import scala.util.Try
+
+import play.api.Logging
+import tools.OgCardRenderer
 
 /**
  * The drawing of a film's share card for a render: on its current BASE (everything but the rating badges, kept as the

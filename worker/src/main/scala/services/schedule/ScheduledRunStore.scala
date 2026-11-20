@@ -1,18 +1,19 @@
 package services.schedule
 
+import java.util.concurrent.TimeUnit
+
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import com.mongodb.MongoWriteException
-import com.mongodb.client.model.{IndexOptions => JIndexOptions}
-import org.mongodb.scala.{MongoCollection, SingleObservableFuture}
+import com.mongodb.client.model.IndexOptions as JIndexOptions
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonDateTime, BsonString}
 import org.mongodb.scala.model.Indexes
+import org.mongodb.scala.{MongoCollection, SingleObservableFuture}
 import play.api.Logging
 import tools.MongoErrors
-
-import java.util.concurrent.TimeUnit
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Cluster-wide, one-shot claim on a single scheduled occurrence. Each worker

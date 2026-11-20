@@ -1,8 +1,8 @@
 package services.identityadapters
 
+import models.ListingKey
 import services.identity.ListingBson
 import services.identity.measures.Listing
-import models.ListingKey
 
 /** What the model's drain keeps in the identity history of the listings it takes in and lets go
  *  ([[IdentityModelService]], [[HistoryEntry.Listing]]): what a replay of a moment's takes resolves. */

@@ -1,13 +1,14 @@
 package services.users
 
+import java.time.Instant
+
+import scala.jdk.CollectionConverters.*
+
 import models.UserState
 import org.bson.{BsonArray, BsonDateTime, BsonDocument, BsonInt32, BsonString, BsonValue}
 import org.mongodb.scala.model.{Aggregates, Field}
 import org.mongodb.scala.{MongoCollection, MongoDatabase}
 import play.api.Logger
-
-import java.time.Instant
-import scala.jdk.CollectionConverters._
 
 /** How `userStates` is laid out in Mongo: its codec, its unique `userId` index, and the server-side pipelines the
  *  writes of [[MongoUserStateRepository]] are. */

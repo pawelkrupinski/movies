@@ -1,20 +1,20 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
-import services.cinemas.common.ScraperParse
-import models._
-import tools.{HttpFetch, HttpRead}
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
-
 import java.time.{LocalDate, Period}
 import java.util.Locale
+
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SynopsisProse
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 import services.titles.TitleNormalizer
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Ursynowskie Centrum Kultury „Alternatywy" (Warszawa). Filmweb carries no

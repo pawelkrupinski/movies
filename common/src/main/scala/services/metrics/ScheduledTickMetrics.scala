@@ -1,11 +1,12 @@
 package services.metrics
 
+import java.time.Clock
+
+import scala.concurrent.duration.FiniteDuration
+
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import tools.TickRecorder
-
-import java.time.Clock
-import scala.concurrent.duration.FiniteDuration
 
 /**
  * Every periodic loop's pulse, on one tier's registry ([[ScheduledTickMetrics.worker]] or

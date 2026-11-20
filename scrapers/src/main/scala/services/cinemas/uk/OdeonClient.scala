@@ -1,10 +1,10 @@
 package services.cinemas.uk
 
-import tools.{HttpFetch, HttpRead, HttpStatusException}
-import models._
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon, ListingFeed}
-
 import java.time.LocalDate
+
+import models.*
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon, ListingFeed}
+import tools.{HttpFetch, HttpRead, HttpStatusException}
 
 /**
  * ODEON (odeon.co.uk) — the UK's largest chain (100+ venues), scraped through

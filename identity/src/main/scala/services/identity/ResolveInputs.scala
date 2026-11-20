@@ -1,7 +1,7 @@
 package services.identity
 
-import services.titles.TitleNormalizer
 import services.identity.vocabulary.{Pin, PinConstraints, TitleDecorations}
+import services.titles.TitleNormalizer
 
 /**
  * What a resolve of production's listings reads besides the listings and their lookups: the curation's pins, the

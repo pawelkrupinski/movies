@@ -1,16 +1,17 @@
 package services.cinemas.pl
 
-import models._
-import services.titles.FormatTags
-import tools.{HttpFetch, HttpRead}
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, ScraperParse}
-
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import services.titles.FormatTags
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Świt (DK Świt, Warszawa). The `/kino/` page renders every film as a card

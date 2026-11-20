@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import java.time.Clock
+
 import services.identity.vocabulary.{Question, QuestionSystem}
 
 /**

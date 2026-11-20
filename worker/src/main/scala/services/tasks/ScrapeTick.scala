@@ -1,15 +1,15 @@
 package services.tasks
 
-import settings.ScrapeEnqueueSpreadSlices
-
-import tools.{ScheduledTick, TickRecorder, TickRun}
-import play.api.Logging
-
 import java.time.Instant
-import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
-import scala.concurrent.duration._
+import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+
+import scala.concurrent.duration.*
 import scala.util.Try
+
+import play.api.Logging
+import settings.ScrapeEnqueueSpreadSlices
+import tools.{ScheduledTick, TickRecorder, TickRun}
 
 /**
  * One [[ScrapeReaper]] tick's work: enqueue every stale cinema, most-overdue first ([[DueScrapes]]),

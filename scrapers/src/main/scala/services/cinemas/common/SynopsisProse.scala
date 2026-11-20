@@ -1,8 +1,8 @@
 package services.cinemas.common
 
-import org.jsoup.nodes.Element
+import scala.jdk.CollectionConverters.*
 
-import scala.jdk.CollectionConverters._
+import org.jsoup.nodes.Element
 
 /**
  * A venue's synopsis as prose: the text of its container with paragraph, line and emphasis structure kept as

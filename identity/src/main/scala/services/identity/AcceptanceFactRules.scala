@@ -1,8 +1,8 @@
 package services.identity
 
+import services.identity.AcceptanceRule.Weighing
 import services.identity.measures.{FactRelations, Film, IdentityMeasures, Measure, MultiFilmBill, Scored, SearchMeasures, StageRelays}
 import services.titles.YearWindow
-import services.identity.AcceptanceRule.Weighing
 
 /** What the acceptance rules that take a film by the listing's facts ask — a sole work, a director's work or title, a
  *  dated title ([[AcceptanceRuleTable]]) — and the fallback a no-match may fall back to, unless its facts contradict it.

@@ -1,10 +1,10 @@
 package services.review
 
+import java.time.Instant
+
+import org.mongodb.scala.ObservableFuture
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Aggregates, Filters, Projections, Sorts}
-import org.mongodb.scala.ObservableFuture
-
-import java.time.Instant
 
 /** The review reads of the listings themselves: their slot rows, their venues' own film pages and their feeds. */
 trait MongoListingReads extends MongoReviewReads {

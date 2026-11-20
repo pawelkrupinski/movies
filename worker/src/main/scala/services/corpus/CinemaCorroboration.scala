@@ -1,8 +1,7 @@
 package services.corpus
 
-import services.evidence.LatestTitleYear
-
 import models.{MovieRecord, Tmdb}
+import services.evidence.LatestTitleYear
 import services.resolution.{Candidate, Contradiction, Verdict}
 
 /**

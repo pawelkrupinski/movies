@@ -1,17 +1,17 @@
 package services.cinemas.common
 
+import java.time.temporal.TemporalAmount
+import java.time.{LocalDate, LocalDateTime, LocalTime, MonthDay, Period}
 import java.util.Locale
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+import scala.util.matching.Regex
 
 import org.jsoup.nodes.{Document, Element, TextNode}
 import play.api.libs.json.{JsArray, JsLookupResult, JsValue}
 import tools.JsonScalars
 import tools.Whitespace.collapsedSpaces
-
-import java.time.{LocalDate, LocalDateTime, LocalTime, MonthDay, Period}
-import java.time.temporal.TemporalAmount
-import scala.jdk.CollectionConverters._
-import scala.util.Try
-import scala.util.matching.Regex
 
 /** Parsing snippets shared by the hand-rolled cinema scrapers. Each of these
   * shapes was copy-pasted across several `*Client`s before — keeping one copy

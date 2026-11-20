@@ -1,12 +1,12 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
+import java.time.LocalDateTime
+
+import scala.util.Try
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
-import play.api.libs.json._
-
-import java.time.LocalDateTime
-import scala.util.Try
+import play.api.libs.json.*
+import services.cinemas.common.SlotsToMovies
 import services.titles.TitleNormalizer
 
 /** Per-cinema Helios configuration: which `Cinema` the scrape feeds, the page

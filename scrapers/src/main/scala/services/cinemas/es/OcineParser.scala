@@ -1,13 +1,14 @@
 package services.cinemas.es
 
-import models.{Cinema, CinemaMovie, Movie, Showtime}
-import play.api.libs.json._
-import services.cinemas.common.ScraperParse
-import services.cinemas.es.SpanishFeedText.{certificate, field}
-
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import java.util.Locale
+
 import scala.util.Try
+
+import models.{Cinema, CinemaMovie, Movie, Showtime}
+import play.api.libs.json.*
+import services.cinemas.common.ScraperParse
+import services.cinemas.es.SpanishFeedText.{certificate, field}
 
 /**
  * Pure JSON → `CinemaMovie` transformation for an Ocine venue's own ticketing

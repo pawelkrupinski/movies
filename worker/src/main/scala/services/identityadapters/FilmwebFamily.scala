@@ -1,9 +1,9 @@
 package services.identityadapters
 
-import services.identity.measures.Film
-import services.identity.vocabulary.VoterFamily
 import services.enrichment.FilmwebClient
 import services.identity.agreement.{Showing, SourceHit, SourceRecord}
+import services.identity.measures.Film
+import services.identity.vocabulary.VoterFamily
 
 /** Filmweb's search (its own and other languages' titles) and its film records — films only, never a series — and, in
  *  Poland, each venue's programme there (`programmes`: [[services.cinemas.pl.FilmwebProgrammes]]). */

@@ -1,18 +1,17 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
-import services.cinemas.common.SlotsToMovies
-
-import services.cinemas.common.ScraperParse
-import services.titles.FormatTags
-import models._
-import tools.{HttpFetch, HttpRead}
-import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages}
-
 import java.time.LocalDateTime
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
+import org.jsoup.Jsoup
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.SynopsisProse
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages}
+import services.titles.FormatTags
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Cinemas in the Nove Kino chain (e.g. Atlantic, Warszawa). Each cinema's

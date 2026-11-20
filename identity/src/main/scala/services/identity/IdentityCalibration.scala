@@ -1,9 +1,10 @@
 package services.identity
 
-import services.identity.measures.{IdentityMeasures, Measure}
 import play.api.libs.json.{Json, OFormat}
-import Measure.{Category, Missing, Number}
+import services.identity.measures.{IdentityMeasures, Measure}
 import services.identity.vocabulary.ClasspathResource
+
+import Measure.{Category, Missing, Number}
 
 /**
  * The identity resolver's calibrated evidence model, as DATA: `identity-weights.json`, produced

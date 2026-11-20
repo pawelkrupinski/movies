@@ -1,8 +1,8 @@
 package tools
 
-import models.Country
-
 import java.nio.file.{Path, Paths}
+
+import models.Country
 
 /**
  * An operator tool's command line, read strictly against the options it declares: an option it does not declare, a

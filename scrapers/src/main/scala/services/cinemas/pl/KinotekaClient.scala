@@ -1,20 +1,18 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
-import services.cinemas.common.SlotsToMovies
-
+import java.time.LocalDateTime
 import java.util.Locale
 
-import services.cinemas.common.ScraperParse
-import models._
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
-import tools.{HttpFetch, HttpRead}
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.titles.TitleNormalizer
-
-import java.time.LocalDateTime
-import scala.jdk.CollectionConverters._
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kinoteka (Warszawa, PKiN). The `/repertuar/` page is per-day; its date nav

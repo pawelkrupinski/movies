@@ -1,8 +1,8 @@
 package services.movies
 
-import org.mongodb.scala.Subscription
-
 import java.util.concurrent.atomic.AtomicReference
+
+import org.mongodb.scala.Subscription
 
 /**
  * Bounds how far a change stream may run AHEAD of the apply that consumes it.

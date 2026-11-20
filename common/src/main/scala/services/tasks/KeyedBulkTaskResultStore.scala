@@ -1,14 +1,14 @@
 package services.tasks
 
-import services.tasktypes.TaskType
+import java.time.Instant
+
+import scala.util.Try
 
 import org.mongodb.scala.bson.{BsonBoolean, BsonDateTime, BsonInt32, BsonString}
 import org.mongodb.scala.{Document, MongoDatabase, documentToUntypedDocument}
 import play.api.Logging
+import services.tasktypes.TaskType
 import tools.{DocCodec, KeyedDocStore, MongoKeyedDocStore}
-
-import java.time.Instant
-import scala.util.Try
 
 /**
  * The [[BulkTaskResultStore]] over its rows — exactly one per bulk `taskType` (keyed on

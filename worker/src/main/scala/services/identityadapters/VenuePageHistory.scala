@@ -1,7 +1,7 @@
 package services.identityadapters
 
-import services.venuepages.{MongoVenuePageStore, VenuePage}
 import org.bson.BsonDocument
+import services.venuepages.{MongoVenuePageStore, VenuePage}
 
 /** A venue page's answers in the identity history (`answer:venue_pages`, by page id), as `venue_pages` holds them:
  *  what [[HistoryVenuePageStore]] appends and a replay reads back ([[IdentityHistoryReplay]]). */

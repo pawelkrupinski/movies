@@ -1,10 +1,11 @@
 package services.tasks
 
-import settings.{ScrapeBootRamp, ScrapeChunkSpread, ScrapeMaxEnqueuePerTick, ScrapeMaxOutstandingTasks, ScrapeTasksPerVenue}
-
-import java.time.{Duration => JDuration, Instant}
+import java.time.{Duration as JDuration, Instant}
 import java.util.concurrent.atomic.AtomicReference
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
+
+import settings.{ScrapeBootRamp, ScrapeChunkSpread, ScrapeMaxEnqueuePerTick, ScrapeMaxOutstandingTasks, ScrapeTasksPerVenue}
 
 /**
  * How much one [[ScrapeReaper]] tick may admit: the per-tick venue cap (ramped up after boot) and the

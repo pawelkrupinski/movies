@@ -1,13 +1,13 @@
 package services.tasks
 
-import play.api.Logging
-import tools.ProxyProbe
-
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
-
 import java.time.{Clock, Instant}
 import java.util.concurrent.ConcurrentHashMap
+
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
+
+import play.api.Logging
+import tools.ProxyProbe
 
 /**
  * The cinemas parked because the residential proxy is down — parked on that CAUSE, not on their own failure count —

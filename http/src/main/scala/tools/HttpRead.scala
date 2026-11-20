@@ -1,8 +1,8 @@
 package tools
 
-import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
-
 import scala.util.control.NonFatal
+
+import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 
 /**
  * The read every client makes through [[HttpFetch]], returning a [[ReadOutcome]] instead

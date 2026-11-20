@@ -1,9 +1,5 @@
 package services.movies
 
-import services.titles.TitleNormalizer
-
-import play.api.libs.json.{JsObject, Json}
-
 import java.io.{BufferedReader, InputStreamReader, PrintWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path, Paths}
@@ -11,6 +7,9 @@ import java.util.zip.GZIPInputStream
 
 import scala.collection.mutable
 import scala.util.Try
+
+import play.api.libs.json.{JsObject, Json}
+import services.titles.TitleNormalizer
 
 /**
  * A [[NormalizerTrace]] read again under THIS checkout's title rules: every reading the traced resolve made, made again

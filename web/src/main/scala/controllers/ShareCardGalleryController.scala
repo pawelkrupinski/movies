@@ -1,10 +1,10 @@
 package controllers
 
+import java.nio.file.Files
+
 import org.apache.pekko.util.ByteString
 import play.api.Mode
-import play.api.mvc._
-
-import java.nio.file.Files
+import play.api.mvc.*
 
 /** The dev-only share-card gallery: `/debug/share-cards/cities` (every city card of `?country=` plus its home card)
  *  and `/debug/share-cards/movies` (the cards of the first `?limit=` films it is showing), and the card files

@@ -1,7 +1,7 @@
 package services.freshness
 
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /** The kinds of network-touching work whose recency we track so a scheduler can
  *  skip it when it was done recently enough. Each kind owns a short `label` that

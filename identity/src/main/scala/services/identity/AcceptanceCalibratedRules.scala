@@ -1,7 +1,7 @@
 package services.identity
 
-import services.identity.measures.{Film, IdentityMeasures, ListingShape, MultiFilmBill, Scored, TitleTextMeasures}
 import services.identity.AcceptanceRule.Weighing
+import services.identity.measures.{Film, IdentityMeasures, ListingShape, MultiFilmBill, Scored, TitleTextMeasures}
 
 /** What the acceptance rules that take a film by its calibrated probability ask — favoured and unrivalled
  *  ([[AcceptanceRuleTable]]) — and the candidate the evidence leans to.

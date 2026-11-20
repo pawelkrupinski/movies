@@ -1,14 +1,15 @@
 package services.cinemas.pl
 
-import models._
-import tools.{HttpFetch, HttpRead}
+import java.time.{LocalDate, LocalDateTime, LocalTime}
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
-
-import java.time.{LocalDate, LocalDateTime, LocalTime}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import tools.{HttpFetch, HttpRead}
 
 /**
  * DKF Rumcajs (Częstochowa) — a Dyskusyjny Klub Filmowy (film discussion club)

@@ -1,14 +1,15 @@
 package services.cinemas.common
 
-import models._
-import play.api.libs.json._
+import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
+
+import scala.util.Try
+
+import models.*
+import play.api.libs.json.*
 import services.cinemas.common.ScraperParse.jsonText
 import services.titles.FormatTags
 import services.titles.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
-
-import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
-import scala.util.Try
 
 /**
  * One German venue's programme from Cineamo — the showtime platform ~1,300 German

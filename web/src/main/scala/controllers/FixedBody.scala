@@ -1,10 +1,10 @@
 package controllers
 
+import java.nio.charset.StandardCharsets
+
 import org.apache.pekko.util.ByteString
 import play.api.mvc.Results.{NotModified, Ok}
 import play.api.mvc.{RequestHeader, Result}
-
-import java.nio.charset.StandardCharsets
 
 /**
  * A response body fixed for the life of the process — the apps' catalog, their

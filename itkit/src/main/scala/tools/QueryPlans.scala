@@ -1,14 +1,15 @@
 package tools
 
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue}
+
+import scala.concurrent.Await
+import scala.jdk.CollectionConverters.*
+
 import com.mongodb.event.{CommandListener, CommandStartedEvent, CommandSucceededEvent}
 import com.mongodb.{ConnectionString, MongoClientSettings}
 import org.bson.{BsonArray, BsonDocument, BsonString, BsonValue}
 import org.mongodb.scala.{MongoClient, MongoDatabase, ObservableFuture, SingleObservableFuture}
-
-import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue}
-import java.util.concurrent.atomic.AtomicLong
-import scala.concurrent.Await
-import scala.jdk.CollectionConverters._
 
 /**
  * The query plan of every command a piece of code sends to Mongo, read with `explain` against a real

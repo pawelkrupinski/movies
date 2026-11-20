@@ -1,13 +1,12 @@
 package services.movies
 
-import tools.ChangeStreamLiveness
+import java.util.concurrent.atomic.AtomicInteger
+
+import scala.jdk.CollectionConverters.*
 
 import models.StoredMovieRecord
-
 import play.api.Logging
-
-import java.util.concurrent.atomic.AtomicInteger
-import scala.jdk.CollectionConverters.*
+import tools.ChangeStreamLiveness
 
 /**
  * The APPLY side of [[MovieChangeStream]]: every film-change event its three cursors deliver

@@ -1,8 +1,8 @@
 package services.corpus
 
-import models.{City, Showtime, ShowtimesDigest, VenueClock}
-
 import java.time.{Clock, Instant, LocalDateTime, ZoneId, ZoneOffset}
+
+import models.{City, Showtime, ShowtimesDigest, VenueClock}
 
 /** One census pass's running counts, film by film: the cards served per city and scope, the showtimes ahead per
  *  city, the unresolved films still screening and the widest film ([[CensusTally.at]]: against one instant). */

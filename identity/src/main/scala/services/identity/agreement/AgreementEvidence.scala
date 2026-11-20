@@ -1,13 +1,13 @@
 package services.identity.agreement
 
-import services.identity.{IdentityCalibration, IdentityLookups}
-import services.identity.measures.Listing
-import services.identity.measures.Film
-import services.identity.vocabulary.{Answer, CandidateQuery, Dependency, DetailFacts, Hit, Question, VoterFamily}
-import models.ListingKey
-import services.titles.TitleNormalizer
-
 import scala.collection.mutable
+
+import models.ListingKey
+import services.identity.measures.Film
+import services.identity.measures.Listing
+import services.identity.vocabulary.{Answer, CandidateQuery, Dependency, DetailFacts, Hit, Question, VoterFamily}
+import services.identity.{IdentityCalibration, IdentityLookups}
+import services.titles.TitleNormalizer
 
 /**
  * The EVIDENCE the agreement stage decides on, and how it is read: the families' answers, the venues' pages and TMDB's

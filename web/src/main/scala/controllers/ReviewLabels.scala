@@ -1,9 +1,10 @@
 package controllers
 
-import services.review.{LabelRow, LabelsTsv}
-
 import java.nio.file.Path
+
 import scala.util.{Failure, Success, Try}
+
+import services.review.{LabelRow, LabelsTsv}
 
 /** The labels file the review pages show beside each card (`identity-judgements.tsv`): one that cannot be read is said
  *  so on the page, never shown as "no labels". */

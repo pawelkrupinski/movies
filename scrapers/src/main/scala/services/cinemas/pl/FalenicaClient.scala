@@ -1,17 +1,16 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 
-import services.cinemas.common.ScraperParse
-import services.titles.FormatTags
-import org.jsoup.nodes.{Document, Element}
-import models._
-import tools.{HttpFetch, HttpRead}
+import models.*
 import org.jsoup.Jsoup
+import org.jsoup.nodes.{Document, Element}
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages}
-
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import services.titles.FormatTags
+import tools.{HttpFetch, HttpRead}
 
 /**
  * KINOkawiarnia Stacja Falenica (Warszawa). The `/repertuar/` page lists each

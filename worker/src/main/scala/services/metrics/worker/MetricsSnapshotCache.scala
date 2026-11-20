@@ -1,11 +1,12 @@
 package services.metrics.worker
 
-import play.api.Logging
-
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.atomic.AtomicReference
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.control.NonFatal
+
+import play.api.Logging
 
 /**
  * Renders the Prometheus exposition OFF the scrape request path.

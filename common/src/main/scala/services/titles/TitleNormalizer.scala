@@ -1,10 +1,10 @@
 package services.titles
 
-import models.{Cinema, Country}
-import services.titles.rules.{TitleRuleKey, TitleRuleSet}
-
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+
+import models.{Cinema, Country}
+import services.titles.rules.{TitleRuleKey, TitleRuleSet}
 
 /**
  * Title normalisation under ONE country's rule set.

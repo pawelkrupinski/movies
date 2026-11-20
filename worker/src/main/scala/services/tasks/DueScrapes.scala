@@ -1,10 +1,11 @@
 package services.tasks
 
-import services.freshness.{FreshnessKind, FreshnessStore}
-import services.cinemas.common.CinemaScraper
-
 import java.time.Instant
+
 import scala.concurrent.Future
+
+import services.cinemas.common.CinemaScraper
+import services.freshness.{FreshnessKind, FreshnessStore}
 
 /**
  * The roster's venues due a scrape, most overdue first — what a [[ScrapeReaper]] tick admits from.

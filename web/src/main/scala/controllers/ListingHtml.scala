@@ -1,9 +1,9 @@
 package controllers
 
+import java.time.LocalDateTime
+
 import models.City
 import play.api.mvc.RequestHeader
-
-import java.time.LocalDateTime
 
 /** The city listing's HTML (`views.html.repertoire`): the schedules [[ListingResponse]] built, with the OG meta derived
  *  from the request's `?…` filter parameters, the canonical folded back onto the bare listing and the listing's

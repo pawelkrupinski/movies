@@ -1,13 +1,13 @@
 package services.tasks
 
-import services.tasktypes.TaskType
+import java.time.Clock
+
+import scala.util.Try
 
 import services.attempts.EnrichmentAttemptStore
 import services.cadence.RatingCadenceStore
 import services.freshness.{FreshnessKind, FreshnessStore}
-
-import java.time.Clock
-import scala.util.Try
+import services.tasktypes.TaskType
 
 /**
  * Handles one rating-refresh task by delegating to the existing per-row refresh

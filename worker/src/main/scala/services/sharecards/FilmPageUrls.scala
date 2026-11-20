@@ -1,9 +1,9 @@
 package services.sharecards
 
+import java.time.Clock
+
 import models.{CityPath, Country}
 import services.readmodel.{FilmSlugs, ReadModelReader}
-
-import java.time.Clock
 
 /**
  * A film's page in every city it screens in, on the country's public origin — the URLs a

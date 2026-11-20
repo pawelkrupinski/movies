@@ -2,10 +2,10 @@ package quality
 
 import java.nio.charset.StandardCharsets
 
+import scala.jdk.CollectionConverters.*
+
 import net.sourceforge.pmd.cpd.{CPDConfiguration, CPDReport, CpdAnalysis}
 import net.sourceforge.pmd.lang.document.FileId
-
-import scala.jdk.CollectionConverters.*
 
 /**
  * DUPLICATED BLOCKS across the production sources: PMD's copy-paste detector (CPD) over their Scala tokens, every run

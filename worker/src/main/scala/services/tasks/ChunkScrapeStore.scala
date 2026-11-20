@@ -1,6 +1,7 @@
 package services.tasks
 
 import java.time.Instant
+
 import scala.concurrent.duration.FiniteDuration
 
 /** One active chunked-scrape run for a cinema (keyed by cinema displayName). */

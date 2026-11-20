@@ -1,6 +1,7 @@
 package tools
 
 import java.util.concurrent.atomic.AtomicInteger
+
 import scala.concurrent.{ExecutionContext, Future}
 
 /**

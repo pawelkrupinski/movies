@@ -1,13 +1,13 @@
 package services.config
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
 
 /** The set of admin config overrides, cached in-memory so [[lookup]] is a cheap
  *  per-read call (it backs [[tools.Env]]'s override source). The cache is the

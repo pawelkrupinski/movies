@@ -1,10 +1,10 @@
 package services.cinemas.common
 
-import models.{Cinema, CinemaMovie, Movie, Showtime}
-import play.api.libs.json._
-
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+
+import models.{Cinema, CinemaMovie, Movie, Showtime}
+import play.api.libs.json.*
 
 /**
  * Serialises a chunk's slice of a listing (a `Seq[CinemaMovie]`) to/from JSON

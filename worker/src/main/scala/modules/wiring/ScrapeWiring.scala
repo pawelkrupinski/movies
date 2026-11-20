@@ -1,22 +1,22 @@
 package modules.wiring
 
-import settings.{ScrapeBootRamp, ScrapeEnqueueSpreadSlices, ScrapeInitialDelay, ScrapeMaxEnqueuePerTick, ScrapeMaxOutstandingTasks, ScrapeTasksPerVenue}
+import java.util.concurrent.ExecutorService
+
+import scala.concurrent.duration.DurationLong
 
 import models.Cinema
 import services.MongoCachingDetailFetch
-import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
-import services.cinemas.de.GermanFeed
-import services.cinemas.common.{AdaptiveTimeoutScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackAfter, FallbackEligibility, FirstAnsweringScraper, FlicksClient, ListingFeed, RetryingCinemaScraper, SourceFallbackScraper, SourceUrlResolution, UptimeRecordingScraper}
-import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 import services.alerts.{FallbackAlert, GoneVenueAlertingArchive}
+import services.cinemas.common.{AdaptiveTimeoutScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackAfter, FallbackEligibility, FirstAnsweringScraper, FlicksClient, ListingFeed, RetryingCinemaScraper, SourceFallbackScraper, SourceUrlResolution, UptimeRecordingScraper}
+import services.cinemas.de.GermanFeed
+import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
+import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
-import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.schedule.AlwaysClaimScheduledRunStore
+import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.tasks.{ClaimedPeriodicTask, InMemoryScrapeCostStore, MongoScrapeCostStore, ProxyParking, ScrapeCadence, ScrapeCinemaHandler, ScrapeCostEstimates, ScrapeCostStore, ScrapeFreshnessPolicy, ScrapePhasePlanner, ScrapeReaper, DueScrapes, ScrapeAdmission, ScrapeEnqueuer, ScrapeTick, VenuePageHistory, PlainCinemaScrape}
+import settings.{ScrapeBootRamp, ScrapeEnqueueSpreadSlices, ScrapeInitialDelay, ScrapeMaxEnqueuePerTick, ScrapeMaxOutstandingTasks, ScrapeTasksPerVenue}
 import tools.{DaemonExecutors, HostScrapeStats}
-
-import java.util.concurrent.ExecutorService
-import scala.concurrent.duration.DurationLong
 
 /** The per-city scraper graph, the wraps every production scrape runs under
  *  (retry, adaptive timeout, uptime recording, Filmweb/Flicks fallback), and the

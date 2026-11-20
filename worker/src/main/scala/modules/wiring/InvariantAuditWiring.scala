@@ -1,13 +1,12 @@
 package modules.wiring
 
-import settings.{ReadModelAuditSample, ShareCardAuditSample}
+import scala.concurrent.duration.*
 
 import services.readmodel.ReadModelContentAudit
 import services.sharecards.ShareCardAudit
 import services.tasks.{ClaimedEnqueueReaper, Enqueued, RecheckedAudit, RecheckedAuditHandler, TaskHandler}
 import services.tasktypes.TaskType
-
-import scala.concurrent.duration.*
+import settings.{ReadModelAuditSample, ShareCardAuditSample}
 
 /** ── Runtime invariants checked by sample ─────────────────────────────────────
  *  Two hourly audits on the task queue, each a claimed recurring enqueue (one replica per window)

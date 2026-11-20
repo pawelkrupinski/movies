@@ -1,8 +1,8 @@
 package services.resolution
 
-import com.github.benmanes.caffeine.cache.Cache
-
 import java.util.concurrent.TimeUnit
+
+import com.github.benmanes.caffeine.cache.Cache
 
 /**
  * Caches the result of an expensive identity resolution — `hintKey` → a TMDB

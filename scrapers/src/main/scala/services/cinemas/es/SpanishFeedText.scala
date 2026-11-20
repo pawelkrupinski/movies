@@ -1,9 +1,9 @@
 package services.cinemas.es
 
+import java.util.Locale
+
 import play.api.libs.json.{JsNumber, JsString, JsValue}
 import tools.TextNormalization
-
-import java.util.Locale
 
 /** How the Spanish box-office feeds (taquilla.com's JSON, Artesiete's session
  *  props, Ocine's ticketing API) spell a field and a certificate, read the one way every Spanish own-source

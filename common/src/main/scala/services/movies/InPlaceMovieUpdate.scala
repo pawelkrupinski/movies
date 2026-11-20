@@ -1,14 +1,13 @@
 package services.movies
 
-import models.{CacheKey, FilmId, StoredMovieRecord}
+import scala.concurrent.Await
 
 import com.mongodb.client.model.UpdateOptions
+import models.{CacheKey, FilmId, StoredMovieRecord}
 import models.{MovieRecord, Source, SourceData}
 import org.mongodb.scala.bson.BsonString
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoCollection, SingleObservableFuture}
-
-import scala.concurrent.Await
 
 /** THE FIELD-LEVEL UPDATE of a stored film — [[MongoMovieRepository.updateIfPresent]]: the diff from `before` to
  *  `after` split into its three writes (the `movies` patch, the showtime deltas to `screenings`, the slot deltas to

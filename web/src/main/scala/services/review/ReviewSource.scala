@@ -1,9 +1,10 @@
 package services.review
 
-import services.identity.measures.ResolverDecision
-
 import java.time.Instant
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import services.identity.measures.ResolverDecision
 
 /** What a venue said about a listing, in one place it said it (its listing row, or its own film page). */
 final case class VenueFacts(title: Option[String] = None, originalTitle: Option[String] = None, year: Option[Int] = None,

@@ -1,7 +1,6 @@
 package services.readmodel
 
 import models.{FilmId, StoredMovieRecord}
-
 import play.api.Logging
 
 /**

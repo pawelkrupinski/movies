@@ -1,17 +1,18 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import services.titles.FormatTags
-import tools.{HttpFetch, HttpRead}
-import services.titles.TitleNormalizer
-import models._
-import org.jsoup.Jsoup
-import services.cinemas.common.{SingleSiteScraper, ListingPages, OnlyMovieEventsFilter, ScrapeHorizon, ScrapedSlot, SlotsToMovies}
-
-import java.time.{LocalDate, LocalDateTime, YearMonth}
 import java.time.format.DateTimeFormatter
-import scala.jdk.CollectionConverters._
+import java.time.{LocalDate, LocalDateTime, YearMonth}
+
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{SingleSiteScraper, ListingPages, OnlyMovieEventsFilter, ScrapeHorizon, ScrapedSlot, SlotsToMovies}
+import services.titles.FormatTags
+import services.titles.TitleNormalizer
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Kijów (Kraków) — independent cinema at al. Krasińskiego 34. The venue

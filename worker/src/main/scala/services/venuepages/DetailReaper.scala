@@ -1,18 +1,17 @@
 package services.venuepages
 
+import java.time.{Clock, Instant}
+
+import scala.concurrent.duration.*
+
 import models.CacheKey
-
-import settings.DetailMaxEnqueuePerTick
-
 import models.{Cinema, MovieRecord, Source}
 import play.api.Logging
 import services.cinemas.common.DetailEnricher
-import services.movies.MovieCacheReader
 import services.evidence.LatestTitleYear
+import services.movies.MovieCacheReader
 import services.tasks.Enqueued
-
-import java.time.{Clock, Instant}
-import scala.concurrent.duration._
+import settings.DetailMaxEnqueuePerTick
 
 /**
  * Periodically enqueues `EnrichDetails` tasks for every deferred cinema's

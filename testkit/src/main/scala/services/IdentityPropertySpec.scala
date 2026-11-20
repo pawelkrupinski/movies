@@ -1,12 +1,12 @@
 package services
 
+import scala.util.Random
+
 import org.scalacheck.{Gen, Shrink}
 import org.scalactic.anyvals.PosInt
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-
-import scala.util.Random
 
 /**
  * Base for the `*PropertySpec`s that state the identity core's invariants —

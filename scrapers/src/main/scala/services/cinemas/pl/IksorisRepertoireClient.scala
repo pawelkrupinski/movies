@@ -1,14 +1,15 @@
 package services.cinemas.pl
 
-import models._
-import services.titles.FormatTags
+import java.time.{LocalDate, LocalDateTime}
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DayPickerProgramme, ScraperParse, SlotsToMovies}
+import services.titles.FormatTags
 import tools.HttpFetch
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * The day-by-day repertoire of an iKsoris ticketing site (SoftCOM Wrocław's

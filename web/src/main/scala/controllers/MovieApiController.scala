@@ -1,9 +1,9 @@
 package controllers
 
-import models.City
-import play.api.mvc._
-
 import java.time.LocalDate
+
+import models.City
+import play.api.mvc.*
 
 /** The per-city JSON the mobile apps (and the web page's own fetches) read:
  *  `/{city}/api/repertoire`, `/api/details` and `/api/cinemas`. Rendered for

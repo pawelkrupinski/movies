@@ -1,19 +1,20 @@
 package services.cinemas.uk
 
-import models._
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets.UTF_8
+import java.time.{Duration, LocalDate}
+
+import scala.annotation.tailrec
+import scala.jdk.CollectionConverters.*
+import scala.util.{Failure, Success, Try}
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, ListingPages, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
 import services.titles.BbfcCertificate
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
-
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets.UTF_8
-import java.time.{Duration, LocalDate}
-import scala.annotation.tailrec
-import scala.jdk.CollectionConverters._
-import scala.util.{Failure, Success, Try}
 
 /**
  * BFI Southbank — the BFI's four NFT screens, which Flicks lists with no times. The BFI's

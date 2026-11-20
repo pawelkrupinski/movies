@@ -1,7 +1,7 @@
 package services.identityadapters
 
-import services.identity.measures.*
 import clients.TmdbClient
+import services.identity.measures.*
 import services.identity.measures.Film
 import services.identity.vocabulary.ProseWords
 

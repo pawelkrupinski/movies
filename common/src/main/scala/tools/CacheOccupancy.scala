@@ -1,8 +1,8 @@
 package tools
 
-import com.github.benmanes.caffeine.cache.Cache
-
 import scala.jdk.OptionConverters.*
+
+import com.github.benmanes.caffeine.cache.Cache
 
 /**
  * What one in-process cache is holding, against what it is allowed to hold.

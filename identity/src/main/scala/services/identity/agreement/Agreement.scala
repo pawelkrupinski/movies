@@ -1,16 +1,15 @@
 package services.identity.agreement
 
-import services.titles.billing.BillingPieces
-
-import services.identity.{Acceptance, IdentityCalibration, IdentityLookups, IdentityResolver}
-import services.identity.measures.{Listing, ListingShape, PosterEvidence, SourceReliability}
-import services.identity.measures.{FactRelations, Film, IdentityMeasures}
-import services.identity.vocabulary.{Answer, Question}
-import services.identity.vocabulary.toAnswer
-import services.identity.measures.SourceReliability.{Fact, Trust}
-import services.titles.{TitleContainment, TitleNormalizer}
-
 import scala.collection.mutable
+
+import services.identity.measures.SourceReliability.{Fact, Trust}
+import services.identity.measures.{FactRelations, Film, IdentityMeasures}
+import services.identity.measures.{Listing, ListingShape, PosterEvidence, SourceReliability}
+import services.identity.vocabulary.toAnswer
+import services.identity.vocabulary.{Answer, Question}
+import services.identity.{Acceptance, IdentityCalibration, IdentityLookups, IdentityResolver}
+import services.titles.billing.BillingPieces
+import services.titles.{TitleContainment, TitleNormalizer}
 
 object Agreement {
 

@@ -1,8 +1,8 @@
 package services.review
 
+import org.mongodb.scala.ObservableFuture
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Filters, Projections}
-import org.mongodb.scala.ObservableFuture
 
 /** The review reads of the corpus's films: their cards from what the read model serves (else their TMDB slot), and
  *  the films several sites' ids name. */

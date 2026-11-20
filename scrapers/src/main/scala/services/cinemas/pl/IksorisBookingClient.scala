@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import models._
-import services.titles.FormatTags
-import tools.{HttpFetch, HttpRead}
+import java.time.LocalDate
+import java.time.LocalDateTime
+
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
-
-import java.time.LocalDate
-import java.time.LocalDateTime
-import scala.jdk.CollectionConverters._
+import services.titles.FormatTags
+import tools.{HttpFetch, HttpRead}
 
 /** One venue's install of the iKsoris ticketing platform: the host it runs on
  *  and the event group (`idg`) that holds its film screenings — other groups on

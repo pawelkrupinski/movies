@@ -2,6 +2,7 @@ package tools
 
 
 import java.net.URI
+
 import scala.util.Try
 
 /** One external request, canonically: the method, the credential-masked URL and, where the body

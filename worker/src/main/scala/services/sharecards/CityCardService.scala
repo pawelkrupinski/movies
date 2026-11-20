@@ -1,11 +1,12 @@
 package services.sharecards
 
+import java.time.Clock
+
+import scala.concurrent.duration.*
+
 import models.City
 import services.tasks.{DueWindow, Enqueued, TaskProducer}
 import services.tasktypes.TaskType
-
-import java.time.Clock
-import scala.concurrent.duration.*
 
 /**
  * The country's CITY share cards: one per city in the catalog, `city-<slug>.jpg` in the share-card

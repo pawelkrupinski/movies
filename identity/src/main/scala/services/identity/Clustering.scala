@@ -1,8 +1,9 @@
 package services.identity
 
-import IdentityResolver.{FamilyCrossing, Mutation}
-import services.identity.vocabulary.{FamilyClosure, ResolverEdge}
 import services.identity.measures.EvidenceNode
+import services.identity.vocabulary.{FamilyClosure, ResolverEdge}
+
+import IdentityResolver.{FamilyCrossing, Mutation}
 
 /** The CLUSTERING stage of a resolve ([[IdentityResolver]]): the constraint edges between a family's nodes
  *  ([[ConstraintEdges]]) and the clusters [[ConstraintSolver]] makes of them -- round A over the films the nodes took

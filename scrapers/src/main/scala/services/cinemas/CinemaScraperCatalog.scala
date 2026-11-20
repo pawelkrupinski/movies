@@ -1,16 +1,17 @@
 package services.cinemas
 
-import models._
-import tools.{CachingDetailFetch, HttpFetch}
-import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, WebediaMarket, WebediaShowtimesClient}
+import java.time.Clock
+
+import scala.concurrent.duration.*
+
+import models.*
 import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, KinoheldClient, KinoprogrammClient, SecondFeedFacts, WixEventsClient}
+import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, WebediaMarket, WebediaShowtimesClient}
 import services.cinemas.de.{ArsenalBerlinClient, GermanFeed, GermanSources, RexSchifferstadtClient}
 import services.cinemas.es.{ArtesieteClient, OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues, UsIndependentVenues}
 import services.titles.TitleNormalizer
-
-import java.time.Clock
-import scala.concurrent.duration._
+import tools.{CachingDetailFetch, HttpFetch}
 
 /**
  * The single place that constructs every cinema's live scraper and files them under

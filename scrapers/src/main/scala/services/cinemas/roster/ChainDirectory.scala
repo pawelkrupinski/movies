@@ -1,12 +1,12 @@
 package services.cinemas.roster
 
-import services.cinemas.common.ScraperParse.jsonText
+import java.time.LocalDate
+
 import models.GeoPoint
 import play.api.libs.json.{JsValue, Json}
 import services.cinemas.common.CinemaScraper
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.pl.{CinemaCityClient, MultikinoClient}
-
-import java.time.LocalDate
 
 /**
  * A chain's own list of its venues — the ONLINE roster audit's source for the

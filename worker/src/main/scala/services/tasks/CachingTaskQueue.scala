@@ -1,12 +1,12 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
-import com.github.benmanes.caffeine.cache.Cache
-
 import java.time.Instant
 import java.util.concurrent.TimeUnit
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
+
+import com.github.benmanes.caffeine.cache.Cache
+import services.tasktypes.TaskType
 
 /**
  * A [[TaskQueue]] decorator that suppresses redundant `enqueue` round-trips with a

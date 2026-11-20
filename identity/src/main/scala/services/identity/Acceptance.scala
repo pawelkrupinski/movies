@@ -1,9 +1,9 @@
 package services.identity
 
-import services.identity.measures.{DecisionTrace, IdentityMeasures, Measure, Scored}
 import services.identity.AcceptanceRule.Weighing
 import services.identity.measures.IdentityMeasures.ListingFilm
 import services.identity.measures.Scored.Accepted
+import services.identity.measures.{DecisionTrace, IdentityMeasures, Measure, Scored}
 
 /** Which of a listing's scored candidates — ranked best first, the denied ones among them — it TAKES, and at what
  *  confidence: [[aloneNamed]] for a node on its own evidence, [[pooled]] for a cluster's pooled evidence. Every rule is

@@ -1,18 +1,19 @@
 package services.cinemas.uk
 
-import models._
-import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
-import services.cinemas.common.ScraperParse.jsonText
-import services.titles.BbfcCertificate
-import tools.Whitespace.collapsedSpaces
-import tools.{HttpFetch, HttpRead, ReadOutcome}
-
 import java.time.{LocalDate, LocalDateTime}
 import java.util.Locale
 import java.util.regex.Pattern
+
 import scala.util.Try
 import scala.util.matching.Regex
+
+import models.*
+import play.api.libs.json.*
+import services.cinemas.common.ScraperParse.jsonText
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
+import services.titles.BbfcCertificate
+import tools.Whitespace.collapsedSpaces
+import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 /**
  * Spektrix — the box office most UK arts centres sell through (the ICA, Broadway

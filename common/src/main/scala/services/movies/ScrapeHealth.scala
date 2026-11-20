@@ -2,7 +2,7 @@ package services.movies
 
 import java.util.Locale
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
  * Is this tick's listing a believable picture of the venue's board, or a degraded

@@ -1,14 +1,14 @@
 package services.config
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
 import tools.Env
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
 
 /** The cross-process catalogue of discovered config knobs. Each process
  *  [[publish]]es the (non-secret) knobs it has read, with the value it's

@@ -1,15 +1,15 @@
 package services.enrichment
 
-import models.CacheKey
+import java.util.concurrent.atomic.AtomicInteger
 
+import scala.util.{Failure, Success, Try}
+
+import models.CacheKey
 import models.{MovieRecord, SourceData}
 import services.enrichment.SiteRatings.{Found, Page, PageRead}
 import services.movies.MovieCache
 import services.tasks.BulkRefreshResult
 import tools.Stopwatch
-
-import java.util.concurrent.atomic.AtomicInteger
-import scala.util.{Failure, Success, Try}
 
 /**
  * The enrichment flow every URL-keyed rating site shares, over the site's port ([[SiteRatings.Site]], below): the queue's per-row

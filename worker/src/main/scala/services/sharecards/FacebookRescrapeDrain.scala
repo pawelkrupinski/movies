@@ -1,11 +1,12 @@
 package services.sharecards
 
-import play.api.Logging
-import tools.{LogThrottle, ThreadPools}
-
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
+
+import play.api.Logging
+import tools.{LogThrottle, ThreadPools}
 
 /**
  * A country's side of draining the fleet queue, one [[tick]] every [[RescrapePacing.TickEvery]]

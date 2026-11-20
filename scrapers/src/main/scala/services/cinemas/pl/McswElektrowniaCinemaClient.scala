@@ -1,17 +1,17 @@
 package services.cinemas.pl
 
+import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, LocalDateTime}
 import java.util.Locale
 
-import services.cinemas.common.ScraperParse
-import tools.{HttpFetch, HttpRead}
-import models._
-import org.jsoup.Jsoup
-import services.cinemas.common.{SingleSiteScraper, ListingPages, ScrapeHorizon, SlotsToMovies}
-
-import java.time.{LocalDate, LocalDateTime}
-import java.time.format.DateTimeFormatter
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{SingleSiteScraper, ListingPages, ScrapeHorizon, SlotsToMovies}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * MCSW Elektrownia cinema (Radom) — the film screen of the Mazowieckie

@@ -1,9 +1,9 @@
 package services.identity
 
-import services.identity.measures.Film
-import org.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonString, BsonValue}
+import scala.jdk.CollectionConverters.*
 
-import scala.jdk.CollectionConverters._
+import org.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonString, BsonValue}
+import services.identity.measures.Film
 import services.identity.vocabulary.{BsonFields, FilmCast}
 
 /**

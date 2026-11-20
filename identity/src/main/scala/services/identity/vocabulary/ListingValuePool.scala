@@ -1,8 +1,8 @@
 package services.identity.vocabulary
 
-import models.{CinemaMovie, Movie, Showtime}
-
 import java.time.LocalDateTime
+
+import models.{CinemaMovie, Movie, Showtime}
 
 /** One listing read's repeated values, held once: a cut-over projection holds every venue's listing at
  *  once while it resolves and writes, and a film at a hundred venues of one feed arrived as a hundred

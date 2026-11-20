@@ -1,9 +1,9 @@
 package services.identityadapters
 
-import services.identity.measures.Listing
-import services.identity.vocabulary.{Answer, DetailFacts}
 import models.Cinema
 import services.cinemas.common.DetailEnricher
+import services.identity.measures.Listing
+import services.identity.vocabulary.{Answer, DetailFacts}
 
 /** A listing's venue detail through its cinema's enricher: the page's facts as the model reads them. */
 final class VenueDetails(enrichers: Seq[DetailEnricher], gaps: TmdbIdentityLookups.Gaps) {

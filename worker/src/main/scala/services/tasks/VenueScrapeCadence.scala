@@ -1,11 +1,11 @@
 package services.tasks
 
-import settings.ScrapeFreshness
+import java.time.{Clock, Duration as JDuration}
+
+import scala.concurrent.duration.*
 
 import models.{Cinema, CinemaMovie, VenueClock}
-
-import java.time.{Clock, Duration => JDuration}
-import scala.concurrent.duration._
+import settings.ScrapeFreshness
 
 /**
  * Shortens a THIN venue's own next scrape interval when its just-landed listing

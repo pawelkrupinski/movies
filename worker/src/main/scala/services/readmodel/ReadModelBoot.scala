@@ -1,9 +1,9 @@
 package services.readmodel
 
+import scala.util.Try
+
 import play.api.Logging
 import tools.Stoppable
-
-import scala.util.Try
 
 /**
  * The [[ReadModelProjector]]'s boot and its change-stream subscription: the boot reads -- the projector's seed from the

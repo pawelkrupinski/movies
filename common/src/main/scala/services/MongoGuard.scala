@@ -1,15 +1,15 @@
 package services
 
-import tools.{MongoErrors, MongoWriteErrors}
-import com.mongodb.MongoWriteException
-import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
-import org.bson.{BsonDocument, BsonValue}
-import org.bson.conversions.Bson
-import org.mongodb.scala.{MongoCollection, SingleObservableFuture}
-import org.mongodb.scala.model.Filters
-
 import scala.concurrent.Await
 import scala.concurrent.duration.FiniteDuration
+
+import com.mongodb.MongoWriteException
+import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
+import org.bson.conversions.Bson
+import org.bson.{BsonDocument, BsonValue}
+import org.mongodb.scala.model.Filters
+import org.mongodb.scala.{MongoCollection, SingleObservableFuture}
+import tools.{MongoErrors, MongoWriteErrors}
 
 /**
  * The Mongo half of a [[tools.GuardedWrite]]: a filter that matches a row only while the fields a

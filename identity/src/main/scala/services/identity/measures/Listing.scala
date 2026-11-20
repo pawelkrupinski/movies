@@ -1,12 +1,10 @@
 package services.identity.measures
 
 import models.SlotFields
-
 import models.{Cinema, CinemaMovie, ListingKey}
+import services.identity.vocabulary.{CatalogueId, DetailFacts, ListedCast, ProseWords, ScreeningDays, VenueNames}
 import services.movies.ScrapeListing
 import services.titles.{TitleNormalizer, TitleSeason}
-
-import services.identity.vocabulary.{CatalogueId, DetailFacts, ListedCast, ProseWords, ScreeningDays, VenueNames}
 
 /*
  * The identity resolver's vocabulary (docs/design/identity-resolver.md, phase 2). Everything here

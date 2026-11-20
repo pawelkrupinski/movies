@@ -1,14 +1,15 @@
 package services.cinemas
 
+import java.time.LocalDate
+
+import scala.concurrent.duration.*
+
 import models.VenueClock
-import tools.HttpFetch
 import services.cinemas.common.{CinemaScraper, MultiListingScraper}
-import services.cinemas.pl._
+import services.cinemas.pl.*
 import services.cinemas.pl.PolishVenue.Route
 import services.titles.TitleNormalizer
-
-import java.time.LocalDate
-import scala.concurrent.duration._
+import tools.HttpFetch
 
 /**
  * Every Polish venue's scraper, as [[CinemaScraperCatalog]] files them: built from `venues`, the towns' venue

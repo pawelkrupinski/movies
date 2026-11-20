@@ -1,13 +1,13 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
-import play.api.Logging
-
 import java.time.Clock
 import java.util.concurrent.atomic.AtomicBoolean
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
+
+import play.api.Logging
+import services.tasktypes.TaskType
 
 /**
  * Handles an operator-triggered, corpus-wide refresh task (the `/tasks` page

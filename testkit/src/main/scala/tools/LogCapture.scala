@@ -1,12 +1,13 @@
 package tools
 
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue}
+
+import scala.jdk.CollectionConverters.*
+
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.classic.{Level, Logger as LogbackLogger}
 import ch.qos.logback.core.AppenderBase
 import org.slf4j.LoggerFactory
-
-import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue}
-import scala.jdk.CollectionConverters.*
 
 /**
  * Collects the log events a block of test code emits, safely under a parallel suite run.

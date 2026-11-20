@@ -1,10 +1,10 @@
 package services.tasks
 
+import java.util.concurrent.ConcurrentHashMap
+
 import io.prometheus.metrics.core.metrics.{Counter, GaugeWithCallback}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.tasks.ProxyParking.Cause
-
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Venues whose scrapes are parked, by `country` and `cause` (`services.tasks.ProxyParking.Cause`):

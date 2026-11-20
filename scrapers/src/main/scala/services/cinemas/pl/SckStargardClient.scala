@@ -2,15 +2,15 @@ package services.cinemas.pl
 
 import java.util.Locale
 
-import services.cinemas.common.ScraperParse
-import services.titles.FormatTags
-import models._
-import tools.HttpFetch
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
-
-import scala.jdk.CollectionConverters._
+import services.titles.FormatTags
+import tools.HttpFetch
 
 /**
  * Kino SCK — Stargardzkie Centrum Kultury (Stargard). Its repertoire at

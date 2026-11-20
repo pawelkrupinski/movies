@@ -1,20 +1,18 @@
 package services.identityadapters
 
-import models.StoredMovieRecord
-
-import services.identity.*
-import services.identity.measures.{Listing, Resolution}
-
+import java.time.{Clock, LocalDateTime, ZoneOffset}
 import java.util.Locale
 
-import models.{Cinema, ListingKey}
-import play.api.Logging
-import services.movies.MovieCache
-
-import java.time.{Clock, LocalDateTime, ZoneOffset}
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
+
+import models.StoredMovieRecord
+import models.{Cinema, ListingKey}
+import play.api.Logging
+import services.identity.*
+import services.identity.measures.{Listing, Resolution}
+import services.movies.MovieCache
 
 /** What one projection did: the resolution and the plan (none when it was refused before
  *  them), how many films it wrote and retired, the writes the store declined, and why it was

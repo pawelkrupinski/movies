@@ -1,12 +1,13 @@
 package services.enrichment
 
+import java.time.Instant
+
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import org.mongodb.scala.{Document, MongoDatabase}
 import play.api.Logging
 import tools.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
-
-import java.time.Instant
-import scala.concurrent.duration._
-import scala.util.Try
 
 /** A recorded OMDb resolution attempt for a film — when it last ran, and how many
  *  consecutive MISSES so far (the exponential-backoff level). */

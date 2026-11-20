@@ -1,10 +1,11 @@
 package services.review
 
-import play.api.libs.json.{JsObject, Json}
-
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import play.api.libs.json.{JsObject, Json}
 
 /**
  * One take awaiting the user's word on the Agent-judged tab (`/debug/review/agent-judged`): an agent's judgement in

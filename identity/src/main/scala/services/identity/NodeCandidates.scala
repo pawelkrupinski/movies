@@ -1,8 +1,8 @@
 package services.identity
 
 import services.identity.measures.{IdentityMeasures, Listing, ResolverDecision, StageRelays}
-import services.titles.TitleForms
 import services.identity.vocabulary.{PinConstraints, TitleDecorations}
+import services.titles.TitleForms
 
 /** A node's candidates as its family scored them, and its banners with the houses they are read as: what a report reading
  *  why a listing took what it took prints of a focused node ([[NodeCandidates.of]]). */

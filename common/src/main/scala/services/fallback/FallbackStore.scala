@@ -1,17 +1,18 @@
 package services.fallback
 
-import com.mongodb.client.model.UpdateOptions
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.bson.{BsonArray, BsonBoolean, BsonDateTime, BsonInt32, BsonNull, BsonString, BsonValue}
-import org.mongodb.scala.model.Filters
-import play.api.Logging
-
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+
 import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import com.mongodb.client.model.UpdateOptions
+import org.mongodb.scala.bson.{BsonArray, BsonBoolean, BsonDateTime, BsonInt32, BsonNull, BsonString, BsonValue}
+import org.mongodb.scala.model.Filters
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
+import play.api.Logging
 
 /**
  * Persistence for per-cinema Filmweb-fallback state. Pure storage — the

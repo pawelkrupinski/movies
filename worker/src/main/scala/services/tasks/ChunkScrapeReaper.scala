@@ -1,13 +1,14 @@
 package services.tasks
 
-import play.api.Logging
-import tools.Stoppable
-import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
-import tools.{ScheduledTick, TickRecorder}
-
 import java.time.Clock
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
+
+import play.api.Logging
+import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
+import tools.Stoppable
+import tools.{ScheduledTick, TickRecorder}
 
 /**
  * The time-based half of a chunked scrape. The [[ChunkScrapeCoordinator]] reduces a run

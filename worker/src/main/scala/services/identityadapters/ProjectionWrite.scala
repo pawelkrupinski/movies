@@ -1,16 +1,14 @@
 package services.identityadapters
 
-import models.{CacheKey, FilmId, LeanRecords, StoredMovieRecord}
-
-import services.identity.*
-import services.identity.measures.Resolution
-
-import models.MovieRecord
-import services.movies.MovieCache
-import services.titles.TitleNormalizer
-
 import scala.util.Try
 import scala.util.chaining.scalaUtilChainingOps
+
+import models.MovieRecord
+import models.{CacheKey, FilmId, LeanRecords, StoredMovieRecord}
+import services.identity.*
+import services.identity.measures.Resolution
+import services.movies.MovieCache
+import services.titles.TitleNormalizer
 
 /** The WRITE stage of THE IDENTITY PROJECTION ([[IdentityProjection]]): the FilmId map extended, the films that changed
  *  completed (their venue slots built in full by `slotSource` over the projection's index) and written, the ids no film

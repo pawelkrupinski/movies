@@ -1,10 +1,10 @@
 package services.readmodel
 
+import java.util.concurrent.TimeUnit
+
 import models.ResolvedMovie
 import play.api.Logging
 import settings.ShareCardFirstHold
-
-import java.util.concurrent.TimeUnit
 
 /**
  * THE FIRST-PUBLISH GATE, and the projector's one face of the share-card store ([[ShareCardLedger]]).

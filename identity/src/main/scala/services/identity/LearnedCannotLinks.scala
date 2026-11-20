@@ -1,9 +1,10 @@
 package services.identity
 
-import services.identity.measures.{IdentityMeasures, Measure}
 import services.evidence.ListingConstraints.CannotLink
-import Measure.Category
+import services.identity.measures.{IdentityMeasures, Measure}
 import services.identity.vocabulary.Denial
+
+import Measure.Category
 
 /** The identity resolver's LEARNED cannot-links: the rules of the calibration artefact (`identity-weights.json`) and its
  *  certified probability cuts, beside the hand-written ones of [[services.evidence.ListingConstraints]]. */

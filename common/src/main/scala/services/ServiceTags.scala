@@ -1,16 +1,17 @@
 package services
 
-import tools.{KeysetScan, MongoIndex}
-import com.mongodb.client.model.{IndexOptions => JIndexOptions, UpdateOptions}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
-import play.api.Logging
-
 import java.util.concurrent.ConcurrentHashMap
+
 import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import com.mongodb.client.model.{IndexOptions as JIndexOptions, UpdateOptions}
+import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
+import play.api.Logging
+import tools.{KeysetScan, MongoIndex}
 
 /** Per-SERVICE (per-row, not per-bucket) labels — a generic tag mechanism the
  *  /uptime page renders as chips next to a row. Static metadata, decoupled from

@@ -1,17 +1,18 @@
 package services.cinemas.us
 
-import models._
+import java.time.temporal.ChronoUnit
+import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
+import java.util.Locale
+
+import scala.util.matching.Regex
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
-import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
+import play.api.libs.json.*
 import services.cinemas.common.ScraperParse.jsonText
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
-
-import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
-import java.time.temporal.ChronoUnit
-import java.util.Locale
-import scala.util.matching.Regex
 
 /**
  * A single-screen venue whose programme is a Squarespace EVENTS collection — the

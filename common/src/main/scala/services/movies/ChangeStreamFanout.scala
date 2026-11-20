@@ -1,9 +1,10 @@
 package services.movies
 
-import play.api.Logging
-
 import java.util.concurrent.CopyOnWriteArrayList
+
 import scala.util.control.NonFatal
+
+import play.api.Logging
 
 /**
  * Fans a SINGLE change source out to many consumers, so the source is read and

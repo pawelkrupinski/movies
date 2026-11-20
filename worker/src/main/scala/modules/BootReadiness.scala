@@ -1,8 +1,8 @@
 package modules
 
-import tools.Stopwatch
-
 import scala.concurrent.duration.FiniteDuration
+
+import tools.Stopwatch
 
 /**
  * What `/ready` reports: whether the process's heavy boot work has SETTLED — every country's

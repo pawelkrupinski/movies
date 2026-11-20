@@ -1,15 +1,15 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{ScraperParse, SlotsToMovies}
+import java.time.LocalDateTime
 
-import tools.{HttpFetch, HttpRead}
-import models._
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, ListingPages}
-
-import java.time.LocalDateTime
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import services.cinemas.common.{ScraperParse, SlotsToMovies}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Kultura (Warszawa, SFP). The page loads its schedule via AJAX: the main

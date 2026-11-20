@@ -1,10 +1,11 @@
 package services.scrapes
 
+import java.time.{Duration as JDuration, Instant}
+
+import scala.concurrent.duration.*
+
 import models.{ArchivedScrape, Opening}
 import services.fallback.FallbackState
-
-import java.time.{Duration => JDuration, Instant}
-import scala.concurrent.duration._
 
 /**
  * Whether a venue has CLOSED, beyond the doubt that [[GoneUpstream]] leaves — in two

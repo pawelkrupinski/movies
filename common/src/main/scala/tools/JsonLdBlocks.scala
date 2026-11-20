@@ -1,10 +1,10 @@
 package tools
 
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
 import org.jsoup.nodes.Element
 import play.api.libs.json.{JsValue, Json}
-
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * A page's `<script type="application/ld+json">` blocks — the schema.org data a cinema page publishes its

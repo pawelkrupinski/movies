@@ -1,10 +1,11 @@
 package services.metrics
 
-import io.prometheus.metrics.model.snapshots._
-
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import io.prometheus.metrics.model.snapshots.*
 
 /**
  * THE METRIC CATALOGUE: every application metric family as the code declares it at boot — its name, type, the sample

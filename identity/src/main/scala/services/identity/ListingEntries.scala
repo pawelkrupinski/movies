@@ -1,8 +1,8 @@
 package services.identity
 
-import models.ListingKey
-
 import scala.collection.mutable
+
+import models.ListingKey
 import services.identity.measures.ResolverDecision
 
 /**

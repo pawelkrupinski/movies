@@ -1,14 +1,15 @@
 package services.identityadapters
 
+import java.util.concurrent.ConcurrentHashMap
+
+import scala.collection.mutable
+import scala.jdk.CollectionConverters.*
+import scala.util.control.NonFatal
+
+import models.ListingKey
+import play.api.Logging
 import services.identity.*
 import services.identity.measures.Listing
-import play.api.Logging
-import models.ListingKey
-
-import java.util.concurrent.ConcurrentHashMap
-import scala.collection.mutable
-import scala.jdk.CollectionConverters._
-import scala.util.control.NonFatal
 import services.identity.vocabulary.Question
 
 /**

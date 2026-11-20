@@ -1,10 +1,9 @@
 package services.cinemas.common
 
+import java.net.URI
 import java.util.Locale
 
 import models.{Cinema, CinemaMovie}
-
-import java.net.URI
 
 /**
  * Single contract every cinema-source obeys: a name (`cinema`), a thunk

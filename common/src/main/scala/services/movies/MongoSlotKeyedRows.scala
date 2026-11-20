@@ -1,13 +1,13 @@
 package services.movies
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.reflect.ClassTag
+import scala.util.Try
+
 import com.mongodb.WriteConcern
 import org.mongodb.scala.model.{Filters, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.reflect.ClassTag
-import scala.util.Try
 
 /**
  * A Mongo side collection keyed by [[SlotKeyed]] — `screenings` and `movie_slots` share the addressing, so what follows

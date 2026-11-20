@@ -1,13 +1,13 @@
 package services.movies
 
-import tools.KeysetScan
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+
 import org.bson.conversions.Bson
 import org.mongodb.scala.model.{Filters, Projections, Sorts}
 import org.mongodb.scala.{Document, MongoCollection, ObservableFuture}
 import play.api.Logging
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
+import tools.KeysetScan
 
 /** THE KEYSET PAGING of the `movies` collection by `_id`, which every corpus scan of [[MongoMovieRepository]] reads
  *  through — the documents, and the bare `_id`s. Reads one `batchSize`-row page at a time — each a fresh, bounded

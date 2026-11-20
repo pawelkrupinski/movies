@@ -1,9 +1,8 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
 import play.api.Logging
 import services.cinemas.common.ChunkedCinemaScraper
+import services.tasktypes.TaskType
 
 /**
  * Handles a `ScrapeChunkReduce` task (the REDUCE): load every stored chunk slice

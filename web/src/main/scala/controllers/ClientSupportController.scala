@@ -1,7 +1,7 @@
 package controllers
 
 import models.ClientSupport
-import play.api.mvc._
+import play.api.mvc.*
 
 /**
  * Serves `GET /api/client-support` — the minimum client version each mobile

@@ -1,12 +1,12 @@
 package services.tasks
 
+import java.util.concurrent.ConcurrentHashMap
+
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Cinema
 import play.api.Logging
 import services.cinemas.common.{ListingCompleteness, ListingCompletenessRecorder}
-
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * `kinowo_worker_scrape_listing_incomplete_total{country,reason}` — every listing landed

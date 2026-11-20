@@ -3,6 +3,7 @@ package tools
 import java.awt.image.BufferedImage
 import java.util.concurrent.Semaphore
 import javax.imageio.ImageIO
+
 import scala.util.Using
 
 /**

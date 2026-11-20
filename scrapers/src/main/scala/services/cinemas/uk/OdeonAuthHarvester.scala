@@ -1,18 +1,19 @@
 package services.cinemas.uk
 
-import play.api.libs.json.Json
-import play.api.Logging
-import services.cinemas.common.ZyteClient
-import tools.{EgressProviderException, HttpOutcome, HttpOutcomeRecorder}
-
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Duration
 import java.util.Base64
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.control.NonFatal
 import scala.util.matching.Regex
+
+import play.api.Logging
+import play.api.libs.json.Json
+import services.cinemas.common.ZyteClient
+import tools.{EgressProviderException, HttpOutcome, HttpOutcomeRecorder}
 
 /**
  * Supplies [[OdeonClient]] with a short-lived Vista Bearer JWT.

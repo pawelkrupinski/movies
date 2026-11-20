@@ -1,8 +1,8 @@
 package clients
 
-import play.api.libs.json._
-
 import java.util.Locale
+
+import play.api.libs.json.*
 
 /**
  * How each TMDB response body is read: ONE parser per response, shared by [[TmdbClient]]'s own

@@ -1,9 +1,10 @@
 package services.review
 
-import org.mongodb.scala.bson.{BsonDocument, BsonValue}
-
 import java.time.{Instant, LocalDateTime, ZoneOffset}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import org.mongodb.scala.bson.{BsonDocument, BsonValue}
 
 /** The review reads' field readers over the mirror's BSON documents ([[MongoReviewSource]]). */
 private[review] object ReviewBson {

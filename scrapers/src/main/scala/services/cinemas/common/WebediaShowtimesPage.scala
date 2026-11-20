@@ -1,12 +1,13 @@
 package services.cinemas.common
 
-import services.cinemas.common.ScraperParse.jsonText
-import models._
-import play.api.libs.json._
-
 import java.time.LocalDateTime
 import java.util.Locale
+
 import scala.util.Try
+
+import models.*
+import play.api.libs.json.*
+import services.cinemas.common.ScraperParse.jsonText
 
 /** One `/_/showtimes/theater-<id>/d-<date>/p-<n>/` JSON page of a Webedia site ([[WebediaShowtimesClient]]) read
  *  into its films, their showtimes and each showtime's format tokens. */

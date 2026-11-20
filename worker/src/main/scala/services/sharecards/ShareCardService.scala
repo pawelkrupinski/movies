@@ -1,15 +1,16 @@
 package services.sharecards
 
+import java.time.{Clock, Instant}
+import java.util.concurrent.ConcurrentHashMap
+
+import scala.concurrent.duration.*
+
 import models.{Country, ResolvedMovie}
 import play.api.Logging
 import services.readmodel.ShareCardLedger
 import services.tasks.{EnqueueResult, TaskProducer}
 import services.tasktypes.TaskType
 import tools.Digest
-
-import java.time.{Clock, Instant}
-import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.duration.*
 
 /**
  * The worker's side of the share cards: what the projection asks ([[ShareCardLedger]]), and the

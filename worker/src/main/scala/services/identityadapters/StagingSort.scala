@@ -1,9 +1,9 @@
 package services.identityadapters
 
+import models.ListingKey
 import services.identity.*
 import services.identity.measures.{Resolution, ResolverDecision, WaitingOn}
 import services.identity.staging.{StagedCluster, StagingEvent}
-import models.ListingKey
 
 /** How a staging-screen snapshot ([[StagingSnapshots]]) sorts the clusters of a resolution against its events: by
  *  `waitingOn` (what a cluster waits on now) and `keyOf` (a cluster's key on the screen). */

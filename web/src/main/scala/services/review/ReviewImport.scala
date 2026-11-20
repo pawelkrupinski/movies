@@ -1,8 +1,8 @@
 package services.review
 
-import play.api.libs.json._
-
 import java.time.Instant
+
+import play.api.libs.json.*
 
 /**
  * The answers given on the hand-built review pages (the published artifacts), as [[ReviewAnswer]]s.

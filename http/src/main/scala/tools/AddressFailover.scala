@@ -5,7 +5,8 @@ import java.net.spi.InetAddressResolver.LookupPolicy
 import java.time.{Clock, Duration, Instant}
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 
 /** WHICH OF A HOST'S ADDRESSES THE JVM CONNECTS TO, and the next one when that one will not connect.
  *

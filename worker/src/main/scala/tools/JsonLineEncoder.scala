@@ -1,11 +1,12 @@
 package tools
 
+import java.nio.charset.StandardCharsets
+
+import scala.jdk.CollectionConverters.*
+
 import ch.qos.logback.classic.spi.{ILoggingEvent, ThrowableProxyUtil}
 import ch.qos.logback.core.encoder.EncoderBase
 import org.slf4j.event.KeyValuePair
-
-import java.nio.charset.StandardCharsets
-import scala.jdk.CollectionConverters.*
 
 /**
  * The worker's stdout format: ONE JSON object per log line — `level`, `logger`, `thread`, `message`, then the logger

@@ -1,7 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{IdentityCalibration, IdentityLookups}
 import services.identity.vocabulary.{Answer, CatalogueAnswers, PosterAnswers, Question, VoterFamily}
+import services.identity.{IdentityCalibration, IdentityLookups}
 import services.titles.TitleNormalizer
 
 /**

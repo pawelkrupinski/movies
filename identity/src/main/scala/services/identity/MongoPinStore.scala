@@ -1,15 +1,16 @@
 package services.identity
 
+import java.time.Instant
+
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonInt32, BsonNull, BsonValue}
 import org.mongodb.scala.model.{Filters, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
-
-import java.time.Instant
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
 import services.identity.vocabulary.{ListingKeyBson, Pin, PinClaim, PinStore}
 
 /**

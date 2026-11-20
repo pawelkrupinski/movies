@@ -1,17 +1,16 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
+import scala.jdk.CollectionConverters.*
 
-import services.cinemas.common.ScraperParse
-import services.titles.FormatTags
-import models._
+import models.*
 import org.jsoup.Jsoup
-import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Document
-import services.titles.TitleNormalizer
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapedSlot, SlotsToMovies, VenueCredits}
-
-import scala.jdk.CollectionConverters._
+import services.titles.FormatTags
+import services.titles.TitleNormalizer
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Client for cinemas on the CURRENT bilety24.pl platform, whose venue pages now

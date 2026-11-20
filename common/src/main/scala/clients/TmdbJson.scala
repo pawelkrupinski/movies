@@ -1,8 +1,8 @@
 package clients
 
-import play.api.libs.json.JsValue
-
 import scala.util.Try
+
+import play.api.libs.json.JsValue
 
 /** How a TMDB response's fields read, wherever they are read — the client's parsers and the identity
  *  model's film record alike, so the two cannot drift on what a field means. */

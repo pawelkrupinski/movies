@@ -1,12 +1,13 @@
 package services.readmodel
 
+import java.util.concurrent.TimeUnit
+
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.util.Try
+
 import play.api.Logging
 import settings.{ReadModelColdRetryInterval, ReadModelReloadInterval}
 import tools.{ScheduledTick, Stoppable, ThreadPools, TickRecorder, TickRun}
-
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
-import scala.util.Try
 
 /** What keeps [[WebReadModel]] current over a pod's life: at boot it hydrates the model and opens
  *  its change streams ([[ReadModelStreams.open]]), then runs two ticks on one scheduler — the

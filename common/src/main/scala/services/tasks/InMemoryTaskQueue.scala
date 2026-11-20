@@ -1,12 +1,13 @@
 package services.tasks
 
-import services.tasktypes.TaskType
-
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+
 import scala.concurrent.duration.FiniteDuration
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
+
+import services.tasktypes.TaskType
 
 /**
  * In-memory `TaskQueue` for tests and Mongo-less dev. Mirrors

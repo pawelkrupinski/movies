@@ -1,17 +1,15 @@
 package modules.wiring
 
 
-import settings.MongoTuning
+import scala.concurrent.duration.*
 
-import settings.{PosterDecodeMemoryCap, ShareCardBackfillMaxBacklog, ShareCardMinimumFree, ShareCardStorageBudget}
-
+import services.MongoConnection
 import services.readmodel.ShareCardLedger
 import services.sharecards.*
-import services.MongoConnection
 import services.tasks.{ClaimedEnqueueReaper, Enqueued, TaskHandler}
 import services.tasktypes.TaskType
-
-import scala.concurrent.duration.*
+import settings.MongoTuning
+import settings.{PosterDecodeMemoryCap, ShareCardBackfillMaxBacklog, ShareCardMinimumFree, ShareCardStorageBudget}
 
 /** ── Film and city share cards ──────────────────────────────────────────────
  *  The worker renders each film's and each city's Open Graph card into this country's share-card directory

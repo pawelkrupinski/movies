@@ -1,18 +1,18 @@
 package services.cinemas.pl
 
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Locale
-import services.titles.FormatTags
 
-import models._
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{AgeRating, ListingPageScraper, ScraperParse, SlotsToMovies, SynopsisProse}
+import services.titles.FormatTags
 import tools.HttpFetch
-
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Łuków (Łukowski Ośrodek Kultury). The venue's own WordPress site replaced

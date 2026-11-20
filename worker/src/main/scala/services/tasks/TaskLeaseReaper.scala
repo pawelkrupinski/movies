@@ -1,12 +1,13 @@
 package services.tasks
 
-import play.api.Logging
-import tools.{ScheduledTick, ThreadPools, TickRecorder}
-
 import java.time.{Clock, Instant}
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 import scala.util.Try
+
+import play.api.Logging
+import tools.{ScheduledTick, ThreadPools, TickRecorder}
 
 /**
  * The [[TaskWorker]] pool's one shared timer thread: it returns expired leases to waiting every

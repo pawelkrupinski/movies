@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse.jsonText
-import services.cinemas.common.ScraperParse
-import models._
-import tools.{HttpFetch, HttpRead}
-import play.api.libs.json.{JsObject, Json}
-import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ScrapedSlot, SlotsToMovies}
-
-import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, LocalDateTime}
+
 import scala.util.Try
+
+import models.*
+import play.api.libs.json.{JsObject, Json}
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScraperParse.jsonText
+import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ScrapedSlot, SlotsToMovies}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * The cinema run by Janowski Ośrodek Kultury (JOK), Janów Lubelski. It's a

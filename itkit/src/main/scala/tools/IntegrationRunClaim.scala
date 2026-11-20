@@ -1,11 +1,12 @@
 package tools
 
-import org.mongodb.scala.{Document, MongoClient, ObservableFuture, SingleObservableFuture}
-import org.mongodb.scala.model.{Filters, ReplaceOptions}
-
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+
 import scala.concurrent.Await
+
+import org.mongodb.scala.model.{Filters, ReplaceOptions}
+import org.mongodb.scala.{Document, MongoClient, ObservableFuture, SingleObservableFuture}
 
 /**
  * One `MONGODB_DB` prefix, one run: the claim that makes a second run on the same prefix FAIL,

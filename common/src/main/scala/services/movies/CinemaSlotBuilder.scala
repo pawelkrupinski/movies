@@ -1,9 +1,8 @@
 package services.movies
 
 import models.MovieRecordMerge
-import models.{FilmRuntime, SlotFields, StringPool}
-
 import models.{CinemaMovie, SourceData}
+import models.{FilmRuntime, SlotFields, StringPool}
 import tools.{PersonName, TextNormalization}
 
 /**

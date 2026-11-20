@@ -1,7 +1,8 @@
 package tools
 
 import java.lang.management.{ManagementFactory, MemoryType}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 
 /**
  * How full the heap stays: what its pools held after their last collection, as a share of the heap's maximum — the live

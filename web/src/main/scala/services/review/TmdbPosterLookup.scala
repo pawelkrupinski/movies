@@ -1,9 +1,9 @@
 package services.review
 
+import java.util.Locale
+
 import play.api.libs.json.Json
 import services.identity.vocabulary.PosterAnswers
-
-import java.util.Locale
 
 /**
  * A film's TMDB poster asked of TMDB live: for the dev-only review pages, when no stored read gives a candidate one — the

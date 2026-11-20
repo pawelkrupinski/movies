@@ -1,6 +1,7 @@
 package tools.persistence
 
 import java.time.{Instant, LocalDate, LocalDateTime}
+
 import scala.compiletime.summonAll
 import scala.deriving.Mirror
 import scala.reflect.ClassTag

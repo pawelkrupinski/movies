@@ -1,10 +1,10 @@
 package services.review
 
-import models.ListingKey
-
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Instant
+
+import models.ListingKey
 
 /** What a reviewer said about a cluster. `Undo` withdraws the answer the cluster's card showed ([[ReviewAnswers.current]]). */
 enum ReviewVerdict(val code: String, val label: String) {

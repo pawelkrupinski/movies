@@ -1,17 +1,16 @@
 package services.cinemas.us
 
-import services.cinemas.common.ScraperParse.jsonText
-import services.cinemas.common.SlotsToMovies
-
+import java.time.{LocalDate, LocalDateTime}
 import java.util.Locale
+
+import scala.util.Try
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import org.jsoup.Jsoup
-import play.api.libs.json._
+import play.api.libs.json.*
+import services.cinemas.common.ScraperParse.jsonText
+import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.{FilmDetail, ReReleaseBilling}
-
-import java.time.{LocalDate, LocalDateTime}
-import scala.util.Try
 
 /**
  * Pure JSON → `CinemaMovie` transformation for Alamo Drafthouse's own schedule

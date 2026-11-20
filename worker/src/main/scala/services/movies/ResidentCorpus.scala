@@ -1,14 +1,12 @@
 package services.movies
 
-import models.{CacheKey, FilmId, StoredMovieRecord, StringPool}
-
-import services.titles.TitleNormalizer
+import java.util.Locale
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.MovieRecord
+import models.{CacheKey, FilmId, StoredMovieRecord, StringPool}
 import play.api.Logging
-
-import java.util.Locale
+import services.titles.TitleNormalizer
 
 /**
  * The resident corpus of a [[CaffeineMovieCache]]: the Caffeine map of every stored film, its [[CorpusIndex]], how a

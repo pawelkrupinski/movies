@@ -1,12 +1,13 @@
 package controllers
 
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
+
+import scala.util.Try
+
 import models.{City, Country}
 import play.api.Logging
 import tools.{ThreadPools, ScheduledTick, TickRecorder}
-
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
-import scala.util.Try
 
 /**
  * Samples, once a minute, how many films the web is currently serving per city

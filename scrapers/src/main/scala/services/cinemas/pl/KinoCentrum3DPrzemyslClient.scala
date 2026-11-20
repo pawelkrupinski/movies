@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import models._
-import tools.{HttpFetch, HttpRead}
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
-
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
+import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Centrum 3D (Przemyśl) — the film screen run by Centrum Kulturalne w Przemyślu.

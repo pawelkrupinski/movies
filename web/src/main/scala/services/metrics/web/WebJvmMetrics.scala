@@ -1,7 +1,7 @@
 package services.metrics.web
 
-import services.metrics.{JvmProcessMetrics, PrometheusExposition}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
+import services.metrics.{JvmProcessMetrics, PrometheusExposition}
 
 /**
  * The web app's Prometheus registry, carrying the JVM + process resource

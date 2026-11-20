@@ -1,11 +1,12 @@
 package controllers
 
-import services.review.{JudgedListings, LabelRow, ReviewCard, ReviewCluster, ReviewSelection}
-
 import java.time.{Clock, Instant}
+
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, blocking}
 import scala.util.Try
+
+import services.review.{JudgedListings, LabelRow, ReviewCard, ReviewCluster, ReviewSelection}
 
 /** The clusters each dev-only review queue selects ([[ReviewQueueController]]): the unmatched ranked by what an
  *  answer settles, those the resolver rated matchable and still left, and those it matched lately. */

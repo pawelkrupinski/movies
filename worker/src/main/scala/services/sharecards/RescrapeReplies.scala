@@ -1,9 +1,9 @@
 package services.sharecards
 
+import java.time.Clock
+
 import play.api.Logging
 import services.facebook.{AppUsage, FacebookReply, FacebookScrape, FacebookUsageBrake}
-
-import java.time.Clock
 
 /** What Facebook's answer to a re-scrape does. Sent: the page is gone from the queue, and when Facebook says the app's
  *  hourly allowance is nearly spent the fleet waits ([[FacebookUsageBrake]]) before the next. Rate-limited: the whole

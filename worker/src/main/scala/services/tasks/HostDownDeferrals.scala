@@ -1,10 +1,10 @@
 package services.tasks
 
-import play.api.Logging
-import tools.{AllBackendsFailedException, CircuitOpenException}
-
 import java.time.{Clock, Instant}
 import java.util.concurrent.ConcurrentHashMap
+
+import play.api.Logging
+import tools.{AllBackendsFailedException, CircuitOpenException}
 
 /**
  * A task whose fetch the host's circuit breaker refused never reached the wire: it is `Deferred` — the

@@ -1,12 +1,12 @@
 package controllers
 
+import java.util.UUID
+
 import models.User
 import play.api.Logging
-import play.api.mvc._
+import play.api.mvc.*
 import services.auth.AuthExchangeCodes
 import services.users.UserRepository
-
-import java.util.UUID
 
 /**
  * Hands a live session to a deployment the session cookie cannot reach, and takes it away again.

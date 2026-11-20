@@ -1,8 +1,8 @@
 package services.identity.measures
 
-import services.titles.billing.{BillingParse, BillingPieces, Credits}
-import services.titles.NonMovieEventClassifier
 import services.identity.measures.IdentityMeasures.withoutLeadingArticle
+import services.titles.NonMovieEventClassifier
+import services.titles.billing.{BillingParse, BillingPieces, Credits}
 import services.titles.{TitleContainment, TitleSeason, TitleWords}
 
 /**

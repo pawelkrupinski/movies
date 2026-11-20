@@ -1,8 +1,8 @@
 package services.identity.vocabulary
 
-import models.ListingKey
-
 import scala.collection.mutable
+
+import models.ListingKey
 
 /**
  * Stable names for clusters, by OVERLAP: the one rule behind the projection's film ids ([[IdAssigner]]) and the agreement

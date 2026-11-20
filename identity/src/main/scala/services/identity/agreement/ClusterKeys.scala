@@ -1,11 +1,11 @@
 package services.identity.agreement
 
+import scala.collection.mutable
+
+import models.ListingKey
 import services.identity.StoredFamily
 import services.identity.measures.{Resolution, ResolverDecision}
 import services.identity.vocabulary.StableNames
-import models.ListingKey
-
-import scala.collection.mutable
 
 /**
  * The agreement stage's cluster KEYS ([[StableNames]], docs/design/identity-cluster-identity.md): a counter of its own,

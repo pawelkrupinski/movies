@@ -1,13 +1,13 @@
 package services.cinemas.uk
 
+import java.time.{LocalDate, OffsetDateTime}
 import java.util.Locale
 
-import models._
-import play.api.libs.json._
-import services.cinemas.common.AgeRating
-
-import java.time.{LocalDate, OffsetDateTime}
 import scala.util.Try
+
+import models.*
+import play.api.libs.json.*
+import services.cinemas.common.AgeRating
 
 /**
  * Pure parsers for Odeon's Vista `WSVistaWebClient/ocapi/v1` JSON — kept out of

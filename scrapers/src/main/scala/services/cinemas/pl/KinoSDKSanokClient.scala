@@ -1,14 +1,15 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import org.jsoup.nodes.{Document, Element}
-import models._
-import tools.HttpFetch
-import services.cinemas.common.{CinemaScraper, DayPickerProgramme, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
-
 import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.nodes.{Document, Element}
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{CinemaScraper, DayPickerProgramme, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
+import tools.HttpFetch
 
 /**
  * Sanocki Dom Kultury (Kino SDK, Sanok) — ticketed via the MSI / Bilety24

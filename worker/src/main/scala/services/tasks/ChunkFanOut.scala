@@ -1,13 +1,13 @@
 package services.tasks
 
-import services.tasktypes.TaskType
+import java.time.Instant
+
+import scala.concurrent.duration.*
 
 import play.api.Logging
-import settings.ScrapeChunkSpread
 import services.cinemas.common.ChunkedCinemaScraper
-
-import java.time.Instant
-import scala.concurrent.duration._
+import services.tasktypes.TaskType
+import settings.ScrapeChunkSpread
 
 /**
  * The fan-out of a started chunked run: one `ScrapeChunk` task per key, staggered across the spread

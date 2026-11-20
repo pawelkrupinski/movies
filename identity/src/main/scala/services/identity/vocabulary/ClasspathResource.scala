@@ -1,9 +1,10 @@
 package services.identity.vocabulary
 
-import play.api.libs.json.{Json, Reads}
-
 import java.nio.charset.StandardCharsets
+
 import scala.io.Source
+
+import play.api.libs.json.{Json, Reads}
 
 /** The identity rules' checked-in artefacts read off the classpath — weights, tables, the build's version stamps — each
  *  as what a missing one means to its reader. */

@@ -1,9 +1,9 @@
 package services.cinemas.common
 
+import java.util.Locale
+
 import models.CinemaMovie
 import services.titles.NonMovieEventClassifier
-
-import java.util.Locale
 
 /** The category a mixed venue — a cinema that is also its town's theatre, gig room and lecture hall — files an event
  *  under in its own ticketing: Savoy's `TypeDescription` ("Films", "Live Music", "Theatre On Screen"), a box office's

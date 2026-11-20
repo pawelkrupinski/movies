@@ -1,11 +1,12 @@
 package services.metrics.worker
 
+import java.util.concurrent.{ConcurrentHashMap, CopyOnWriteArrayList}
+
+import scala.jdk.CollectionConverters.*
+
 import io.prometheus.metrics.core.metrics.{Counter, GaugeWithCallback}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import tools.CircuitBreakerMeter
-
-import java.util.concurrent.{ConcurrentHashMap, CopyOnWriteArrayList}
-import scala.jdk.CollectionConverters._
 
 /**
  * The per-host circuit breakers ([[tools.HostCircuitBreakerHttpFetch]]) as metrics, by `country` and

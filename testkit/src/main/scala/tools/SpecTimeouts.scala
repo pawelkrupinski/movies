@@ -1,8 +1,8 @@
 package tools
 
-import settings.HarnessConfiguration
-
 import scala.concurrent.duration.*
+
+import settings.HarnessConfiguration
 
 /**
  * THE timing policy for every wait a test makes — an `Await`, a latch, a `Future.get`, a

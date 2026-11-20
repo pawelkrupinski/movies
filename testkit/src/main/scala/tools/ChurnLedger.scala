@@ -1,11 +1,12 @@
 package tools
 
+import java.util.concurrent.atomic.AtomicLong
+
+import scala.collection.mutable
+import scala.jdk.CollectionConverters.*
+
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import io.prometheus.metrics.model.snapshots.{CounterSnapshot, Labels}
-
-import java.util.concurrent.atomic.AtomicLong
-import scala.collection.mutable
-import scala.jdk.CollectionConverters._
 
 /**
  * Everything a pass over UNCHANGED input could have written, asked, re-keyed or

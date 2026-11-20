@@ -1,10 +1,10 @@
 package services.identity.measures
 
-import services.titles.billing.DecorationWords
-import play.api.libs.json.{JsValue, Json}
-
 import scala.util.Try
+
+import play.api.libs.json.{JsValue, Json}
 import services.identity.vocabulary.{FilmCast, ProseWords}
+import services.titles.billing.DecorationWords
 
 /**
  * TMDB's record of one film, as the identity measures read it, from every answer TMDB gave about

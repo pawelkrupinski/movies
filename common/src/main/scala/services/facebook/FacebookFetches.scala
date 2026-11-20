@@ -1,15 +1,16 @@
 package services.facebook
 
-import com.mongodb.client.model.{BulkWriteOptions, UpdateOneModel, UpdateOptions}
-import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
-import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.model.{Filters, Projections, Updates}
-import tools.{MongoTtlIndex, TtlIndexMismatches}
-
 import java.time.Instant
 import java.util.Date
+
 import scala.concurrent.Await
 import scala.concurrent.duration.*
+
+import com.mongodb.client.model.{BulkWriteOptions, UpdateOneModel, UpdateOptions}
+import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.model.{Filters, Projections, Updates}
+import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
+import tools.{MongoTtlIndex, TtlIndexMismatches}
 
 /**
  * THE FILM PAGES FACEBOOK HAS FETCHED, and when — the web records each fetch by Facebook's

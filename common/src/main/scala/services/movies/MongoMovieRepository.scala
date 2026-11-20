@@ -1,21 +1,20 @@
 package services.movies
 
-import services.evidence.LatestTitleYear
-import models.{CacheKey, FilmId, StoredMovieRecord}
+import java.time.Instant
 
-import services.titles.TitleNormalizer
+import scala.concurrent.Await
+import scala.concurrent.duration.*
 
 import com.mongodb.WriteConcern
 import models.MovieRecord
+import models.{CacheKey, FilmId, StoredMovieRecord}
+import org.bson.conversions.Bson
 import org.mongodb.scala.bson.{BsonDateTime, BsonDocument}
 import org.mongodb.scala.model.{Aggregates, Filters, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import org.bson.conversions.Bson
 import play.api.Logging
-
-import java.time.Instant
-import scala.concurrent.Await
-import scala.concurrent.duration._
+import services.evidence.LatestTitleYear
+import services.titles.TitleNormalizer
 
 /**
  * MongoDB-backed `MovieRepository`. Persists records to the `movies` collection.

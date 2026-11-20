@@ -1,11 +1,12 @@
 package services.identityadapters
 
-import services.cinemas.common.{DetailEnricher, FilmDetail}
-import tools.LookupQuery
-import services.venuepages.{VenuePage, VenuePageKey, VenuePageStore}
-
 import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
+
+import services.cinemas.common.{DetailEnricher, FilmDetail}
+import services.venuepages.{VenuePage, VenuePageKey, VenuePageStore}
+import tools.LookupQuery
 
 /**
  * The venue detail pages as the identity model reads them: `venue_pages`, the one place every page read

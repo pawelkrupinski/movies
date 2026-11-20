@@ -1,18 +1,16 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SynopsisProse
-
-import services.cinemas.common.SlotsToMovies
-
 import java.util.Locale
 
-import services.cinemas.common.{ScraperParse, ListingPages}
-import tools.{HttpFetch, HttpRead}
-import models._
+import scala.concurrent.duration.*
+
+import models.*
 import org.jsoup.Jsoup
 import services.cinemas.common.SingleSiteScraper
-
-import scala.concurrent.duration._
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.SynopsisProse
+import services.cinemas.common.{ScraperParse, ListingPages}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Kępa at PROM Kultury Saska Kępa (Warszawa). The "kino-kepa" category

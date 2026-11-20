@@ -1,12 +1,12 @@
 package services.identity.agreement
 
-import services.identity.{ForwardingIdentityLookups, IdentityCalibration, IdentityLookups}
+import scala.collection.mutable
+
+import models.ListingKey
 import services.identity.measures.Listing
 import services.identity.vocabulary.{Answer, DetailFacts, VoterFamily}
-import models.ListingKey
+import services.identity.{ForwardingIdentityLookups, IdentityCalibration, IdentityLookups}
 import services.titles.TitleNormalizer
-
-import scala.collection.mutable
 
 /** Each family's verdict over a cluster's listings ([[Agreement.verdict]]), kept with everything its resolve read — each of
  *  the family's answers and each venue page, by the digest of what it read, nothing there yet too — and handed back while

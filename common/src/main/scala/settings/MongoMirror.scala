@@ -1,9 +1,9 @@
 package settings
 
-import org.mongodb.scala.MongoClientSettings
-
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.Try
+
+import org.mongodb.scala.MongoClientSettings
 
 /** The local read-mirror's connection settings (`MONGODB_MOVIES_MIRROR_URI`): a LAN Mongo kept synced from prod, so a
  *  full-corpus read is a LAN hop instead of the prod tunnel. Never relied on: a mirror that does not answer within

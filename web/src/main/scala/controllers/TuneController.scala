@@ -1,7 +1,7 @@
 package controllers
 
 import play.api.Mode
-import play.api.mvc._
+import play.api.mvc.*
 
 /** The dev-only visual-tuning pages, `/{city}/debug/tune` and its film-detail sibling:
  *  the real card and film partials over in-process sample films ([[TuneSamples]]), so

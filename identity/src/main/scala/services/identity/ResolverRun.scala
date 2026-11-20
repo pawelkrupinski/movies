@@ -1,10 +1,10 @@
 package services.identity
 
 import models.ListingKey
+import services.identity.measures.{EvidenceNode, Resolution, ResolverDecision}
+import services.identity.vocabulary.ResolverEdge
 
 import IdentityResolver.Mutation
-import services.identity.vocabulary.ResolverEdge
-import services.identity.measures.{EvidenceNode, Resolution, ResolverDecision}
 
 /** Stage B of a resolve ([[IdentityResolver]]), per family: it SEQUENCES the stages and owns none of their steps --
  *  [[Clustering]]'s round A, [[ClusterVoting]]'s votes for the clusters no member took a film alone in, Clustering's final

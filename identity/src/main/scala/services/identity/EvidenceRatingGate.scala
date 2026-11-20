@@ -1,8 +1,7 @@
 package services.identity
 
-import models.StoredMovieRecord
-
 import models.ResolvedMovie
+import models.StoredMovieRecord
 import services.readmodel.RatingGate
 
 /** The live [[RatingGate]] (docs/design/identity-resolver.md, "Confidence-gated ratings"): its confidence the

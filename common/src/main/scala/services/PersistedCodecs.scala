@@ -1,9 +1,9 @@
 package services
 
+import scala.compiletime.erasedValue
+
 import org.bson.codecs.configuration.{CodecProvider, CodecRegistry}
 import org.mongodb.scala.bson.codecs.Macros
-
-import scala.compiletime.erasedValue
 
 /**
  * A BSON codec registry together with the list of case classes it writes to Mongo.

@@ -2,6 +2,7 @@ package tools
 
 import java.time.Duration
 import java.util.concurrent.{AbstractExecutorService, Callable, Delayed, RejectedExecutionException, ScheduledExecutorService, ScheduledFuture, TimeUnit}
+
 import scala.collection.mutable
 
 /** A [[ScheduledExecutorService]] whose delayed tasks run only when the spec moves `clock` past

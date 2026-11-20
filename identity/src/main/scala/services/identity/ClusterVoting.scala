@@ -1,7 +1,7 @@
 package services.identity
 
-import services.identity.measures.{Candidate, EvidenceNode, IdentityMeasures, ResolverDecision, Scored}
 import services.identity.measures.Scored.Accepted
+import services.identity.measures.{Candidate, EvidenceNode, IdentityMeasures, ResolverDecision, Scored}
 import services.identity.vocabulary.{Denial, RateBounds, ResolverEdge}
 
 /** GROUP-LEVEL VOTING for the clusters no member matched alone: a facts-free cluster in a split

@@ -1,11 +1,11 @@
 package services.closure
 
-import models.{Cinema, GermanRoster, SpanishRoster, UsRoster}
-import play.api.libs.json.{JsObject, Json}
-
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.Duration
+
+import models.{Cinema, GermanRoster, SpanishRoster, UsRoster}
+import play.api.libs.json.{JsObject, Json}
 
 /** A data-driven roster's directory under `data/` — the one whose `retired.json` takes
  *  the venue's id (see `data/scripts/retired_venues.py`). */

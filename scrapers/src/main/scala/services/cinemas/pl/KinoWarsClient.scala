@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import models._
-import services.titles.FormatTags
+import java.time.LocalDateTime
+
+import scala.annotation.tailrec
+import scala.jdk.CollectionConverters.*
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse, SlotsToMovies}
+import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
-
-import java.time.LocalDateTime
-import scala.annotation.tailrec
-import scala.jdk.CollectionConverters._
 
 /**
  * Kino Wars (Wysokie Mazowieckie). Filmweb carries only a sliver of this venue;

@@ -1,12 +1,11 @@
 package services.identityadapters
 
-import services.identity.*
-import services.evidence.LatestTitleYear
-import services.titles.TitleNormalizer
+import scala.util.{Failure, Success, Try}
 
 import models.{ListingKey, MovieRecord}
-
-import scala.util.{Failure, Success, Try}
+import services.evidence.LatestTitleYear
+import services.identity.*
+import services.titles.TitleNormalizer
 
 /** The DRAFT stage of THE IDENTITY PROJECTION ([[IdentityProjection]]): how it drafts the films a scope names — each film's
  *  record from its venues' slots ([[IdentityProjectionPlan.draftOf]], built by `slotSource`) — the venue slot memo's where nothing a slot is built from moved,

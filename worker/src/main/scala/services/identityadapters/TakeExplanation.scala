@@ -1,8 +1,8 @@
 package services.identityadapters
 
-import org.bson.BsonDocument
+import scala.jdk.CollectionConverters.*
 
-import scala.jdk.CollectionConverters._
+import org.bson.BsonDocument
 
 /**
  * Why a listing changed film at a moment, from the identity history alone — nothing resolved again

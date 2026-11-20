@@ -1,7 +1,6 @@
 package services.tasks
 
 import models.CacheKey
-
 import models.MovieRecord
 import play.api.Logging
 import services.movies.{EnrichmentRetrigger, RetriggerKind}

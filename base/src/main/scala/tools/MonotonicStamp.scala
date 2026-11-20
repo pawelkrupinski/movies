@@ -1,7 +1,7 @@
 package tools
 
-import java.time.{Clock, Instant}
 import java.time.temporal.ChronoUnit
+import java.time.{Clock, Instant}
 import java.util.concurrent.atomic.AtomicReference
 
 /** A change stamp that only moves forward. A wall clock is coarse and can step back, so two

@@ -1,9 +1,9 @@
 package services.identityadapters
 
+import java.time.Clock
+
 import org.mongodb.scala.MongoDatabase
 import tools.CacheOccupancy
-
-import java.time.Clock
 
 /**
  * The identity model's answers from TMDB, IMDb and the other film database families, as one layer over one

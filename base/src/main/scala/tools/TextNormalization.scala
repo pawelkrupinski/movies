@@ -3,9 +3,10 @@ package tools
 import java.text.Normalizer
 import java.util.Locale
 import java.util.regex.Pattern
-import org.jsoup.Jsoup
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
+
+import org.jsoup.Jsoup
 
 /**
  * Shared text-normalization primitives. CLAUDE.md threshold-2 extraction:

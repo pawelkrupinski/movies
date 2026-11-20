@@ -1,13 +1,13 @@
 package services.config
 
-import settings.ConfigRefreshInterval
+import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+
+import scala.concurrent.duration.*
 
 import play.api.Logging
+import settings.ConfigRefreshInterval
 import tools.Stoppable
 import tools.{ThreadPools, Env, ScheduledTick, TickRecorder, TickRun}
-
-import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
-import scala.concurrent.duration._
 
 /**
  * Keeps a process's config knobs in sync with the admin overrides and publishes

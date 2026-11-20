@@ -1,17 +1,17 @@
 package services.enrichment
 
-import java.util.Locale
-
-import play.api.libs.json._
-import services.titles.SamePerson
-import services.titles.{TitleMatch, YearWindow}
-import tools.{HttpFetch, HttpRead, ReadOutcome, TextNormalization}
-
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.{Clock, Instant}
-import scala.concurrent.duration._
+import java.util.Locale
+
+import scala.concurrent.duration.*
 import scala.util.control.NonFatal
+
+import play.api.libs.json.*
+import services.titles.SamePerson
+import services.titles.{TitleMatch, YearWindow}
+import tools.{HttpFetch, HttpRead, ReadOutcome, TextNormalization}
 
 /**
  * Feature-gated OMDb (omdbapi.com) client that recovers an IDENTIFIER, not a

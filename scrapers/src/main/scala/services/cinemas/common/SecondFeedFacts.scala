@@ -1,10 +1,11 @@
 package services.cinemas.common
 
+import java.time.LocalDateTime
+
+import scala.util.{Failure, Success, Try}
+
 import models.CinemaMovie
 import play.api.Logging
-
-import java.time.LocalDateTime
-import scala.util.{Failure, Success, Try}
 
 /**
  * A venue's listing from its primary feed, with the facts its SECOND feed states about the very same screenings put on

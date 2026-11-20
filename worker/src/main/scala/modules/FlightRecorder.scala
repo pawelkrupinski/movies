@@ -1,10 +1,11 @@
 package modules
 
-import settings.HeapDumpDirectory
-
-import java.time.{Clock, ZoneOffset}
 import java.time.format.DateTimeFormatter
+import java.time.{Clock, ZoneOffset}
+
 import scala.concurrent.duration.FiniteDuration
+
+import settings.HeapDumpDirectory
 
 /** A profile of the running worker, on demand — what `/profile` starts. */
 trait FlightRecorder {

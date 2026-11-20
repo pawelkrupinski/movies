@@ -1,10 +1,10 @@
 package tools
 
-import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
-import settings.MongoUri
-
 import scala.concurrent.Await
 import scala.util.control.NonFatal
+
+import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
+import settings.MongoUri
 
 /**
  * The one shape of a test database name that belongs to ONE run: `…_pid<pid>…`, the owning JVM's

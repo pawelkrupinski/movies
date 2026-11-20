@@ -1,10 +1,10 @@
 package services.cinemas
 
+import java.time.Clock
+
 import services.cinemas.pl.MultikinoClient
 import services.cinemas.uk.OdeonBearer
 import tools.{HttpFetch, ProxyChain, Stopwatch}
-
-import java.time.Clock
 
 /**
  * The routes the catalog's venues fetch through, one per kind of venue whose origin refuses the

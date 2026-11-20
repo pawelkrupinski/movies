@@ -1,15 +1,16 @@
 package services.cinemas.pl
 
-import services.cinemas.common.ScraperParse
-import org.jsoup.nodes.{Document, Element}
-import models._
-import tools.{HttpFetch, HttpRead}
-import org.jsoup.Jsoup
-import services.cinemas.common.{ChunkedCinemaScraper, SingleSiteScraper, ScrapedSlot, SlotsToMovies}
-
 import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
+
+import models.*
+import org.jsoup.Jsoup
+import org.jsoup.nodes.{Document, Element}
+import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ChunkedCinemaScraper, SingleSiteScraper, ScrapedSlot, SlotsToMovies}
+import tools.{HttpFetch, HttpRead}
 
 /**
  * Kino Moskwa (Kielce) — a WordPress site using the My Calendar plugin. The

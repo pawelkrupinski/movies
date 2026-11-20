@@ -2,8 +2,9 @@ package tools
 
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.{ExecutionContextExecutorService, Future}
+
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{ExecutionContextExecutorService, Future}
 
 /**
  * An execution context plus the in-flight bookkeeping that tells when it has gone

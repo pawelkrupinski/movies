@@ -3,6 +3,7 @@ package tools
 import java.net.{URI, URLDecoder}
 import java.nio.charset.StandardCharsets
 import java.util.Locale
+
 import scala.util.Try
 
 /** The name a poster's origin is counted under on /metrics (`poster_host`): its REGISTRABLE domain.

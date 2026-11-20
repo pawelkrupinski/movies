@@ -1,17 +1,17 @@
 package services.users
 
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+import scala.util.Try
+
 import com.mongodb.client.model.{FindOneAndUpdateOptions, ReturnDocument, Updates}
-import org.bson.{BsonDocument, BsonDocumentWriter, BsonInt32}
-import org.bson.codecs.EncoderContext
-import org.mongodb.scala.bson.conversions.Bson
 import models.User
+import org.bson.codecs.EncoderContext
+import org.bson.{BsonDocument, BsonDocumentWriter, BsonInt32}
+import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Persistent store for authenticated users. Identity is the user's

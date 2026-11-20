@@ -1,14 +1,13 @@
 package services.enrichment
 
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.util.Locale
 
-import play.api.libs.json._
+import play.api.libs.json.*
 import services.titles.SamePerson
 import services.titles.{TitleMatch, YearWindow}
 import tools.{HttpFetch, HttpRead, ReadOutcome, SynopsisSimilarity, TextNormalization}
-
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 /**
  * Looks up Filmweb metadata (canonical page URL + 1–10 user rating) for a Polish

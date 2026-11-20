@@ -1,7 +1,8 @@
 package services.identity
 
-import services.identity.measures.{FactRelations, Film, Measure, MeasuredListing, SourceReliability, StageRelays}
 import services.identity.measures.IdentityMeasures.*
+import services.identity.measures.{FactRelations, Film, Measure, MeasuredListing, SourceReliability, StageRelays}
+
 import Measure.Number
 
 /** Who backs a film from a title group: the listing's venue, and whose claim its facts are — the venue's own, or the feed

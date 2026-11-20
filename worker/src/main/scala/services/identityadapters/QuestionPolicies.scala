@@ -1,10 +1,10 @@
 package services.identityadapters
 
+import scala.concurrent.duration.*
+
 import services.freshness.{Freshness, FreshnessKind}
 import services.identity.vocabulary.QuestionKind
 import services.venuepages.MongoVenuePageStore
-
-import scala.concurrent.duration._
 
 /**
  * What each kind of identity question is held to, in one table: where its answer is stored, when it is asked again,

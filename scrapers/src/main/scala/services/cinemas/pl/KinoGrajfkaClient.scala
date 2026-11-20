@@ -1,14 +1,15 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPageScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
-import tools.HttpFetch
-import models._
+import java.time.LocalDate
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
+import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-
-import java.time.LocalDate
-import scala.jdk.CollectionConverters._
-import scala.util.Try
+import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPageScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
+import tools.HttpFetch
 
 /**
  * Kino Grajfka (Chorzowskie Centrum Kultury), Chorzów — a custom WordPress

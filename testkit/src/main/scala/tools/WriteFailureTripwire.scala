@@ -1,5 +1,10 @@
 package tools
 
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path, Paths, StandardOpenOption}
+
+import scala.jdk.CollectionConverters.*
+
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.classic.{Logger as LogbackLogger, LoggerContext}
 import ch.qos.logback.core.AppenderBase
@@ -7,11 +12,6 @@ import org.scalatest.Reporter
 import org.scalatest.events.*
 import org.slf4j.LoggerFactory
 import services.movies.RepositoryWrite
-
-import scala.jdk.CollectionConverters.*
-
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths, StandardOpenOption}
 
 /**
  * Fails an `it/` or `e2e` run in which any repository WRITE failed — the failure the

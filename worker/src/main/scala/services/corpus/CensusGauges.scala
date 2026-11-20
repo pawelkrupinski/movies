@@ -1,9 +1,9 @@
 package services.corpus
 
+import java.time.Instant
+
 import io.prometheus.metrics.core.metrics.Gauge
 import models.City
-
-import java.time.Instant
 
 /** The census gauges of one country's `cities`: the corpus subsets, the films served by (city, scope), the upcoming
  *  showtimes by city, the widest film, and each city's off-season verdict. */

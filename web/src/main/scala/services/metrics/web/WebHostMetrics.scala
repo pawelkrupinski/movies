@@ -1,11 +1,12 @@
 package services.metrics.web
 
-import io.prometheus.metrics.core.metrics.GaugeWithCallback
-import io.prometheus.metrics.model.registry.PrometheusRegistry
-
 import java.io.File
 import java.nio.file.{Files, Path, Paths}
+
 import scala.util.Try
+
+import io.prometheus.metrics.core.metrics.GaugeWithCallback
+import io.prometheus.metrics.model.registry.PrometheusRegistry
 
 /**
  * `kinowo_web_host_memory_*` + `kinowo_web_host_disk_*` — how much RAM and disk

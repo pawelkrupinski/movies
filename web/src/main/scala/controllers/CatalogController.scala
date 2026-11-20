@@ -1,7 +1,7 @@
 package controllers
 
 import models.Catalog
-import play.api.mvc._
+import play.api.mvc.*
 
 /**
  * Serves `GET /api/catalog` — the global country + city catalog the mobile apps

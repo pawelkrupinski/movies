@@ -1,13 +1,14 @@
 package services.movies
 
+import java.time.Instant
+
+import scala.concurrent.Await
+import scala.concurrent.duration.*
+
 import com.mongodb.client.model.ReplaceOptions
 import models.{Source, SourceData}
 import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, ReplaceOneModel}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-
-import java.time.Instant
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * Per-cinema `SourceData` slots, split out of the embedded `movies.sourceData` map

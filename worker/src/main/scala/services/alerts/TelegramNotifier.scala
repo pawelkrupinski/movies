@@ -1,14 +1,15 @@
 package services.alerts
 
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+import java.util.Locale
+
+import scala.util.{Failure, Success, Try}
+
 import play.api.Logging
 import services.fallback.FallbackEvent
 import tools.HttpFetch
 import tools.Whitespace.collapsedSpaces
-
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
-import java.util.Locale
-import scala.util.{Failure, Success, Try}
 
 /** Which in-app alert a Telegram message is: the `kind` label on
  *  `kinowo_worker_telegram_notifications_total` and the `kind=` field of the

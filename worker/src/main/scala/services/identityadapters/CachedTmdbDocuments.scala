@@ -1,14 +1,15 @@
 package services.identityadapters
 
+import java.util.concurrent.atomic.AtomicLongArray
+
+import scala.jdk.CollectionConverters.*
+
 import com.github.benmanes.caffeine.cache.Cache
 import org.bson.codecs.{BsonDocumentCodec, EncoderContext}
 import org.bson.io.BasicOutputBuffer
 import org.bson.{BsonBinaryWriter, BsonDocument, BsonDouble, BsonInt32, BsonString, RawBsonDocument}
-import tools.CacheOccupancy
-
-import java.util.concurrent.atomic.AtomicLongArray
-import scala.jdk.CollectionConverters._
 import services.identity.vocabulary.Hit
+import tools.CacheOccupancy
 
 /**
  * `inner`, its ANSWER reads ([[answers]]) kept across projection ticks: each tick's prefetch asked the

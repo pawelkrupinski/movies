@@ -1,10 +1,11 @@
 package tools
 
-import org.scalatest.{Args, Status, Suite, SuiteMixin}
-
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentLinkedQueue
+
 import scala.jdk.CollectionConverters.*
+
+import org.scalatest.{Args, Status, Suite, SuiteMixin}
 
 /**
  * A suite's temp directories and files, deleted when the suite ends — passed or failed — and, should the JVM stop

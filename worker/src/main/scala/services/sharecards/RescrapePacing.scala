@@ -1,8 +1,8 @@
 package services.sharecards
 
-import services.facebook.FacebookUsageBrake
-
 import scala.concurrent.duration.*
+
+import services.facebook.FacebookUsageBrake
 
 /** The pace of the fleet's Facebook re-scrapes, which every country's [[FacebookRescrapeDrain]] keeps. */
 object RescrapePacing {

@@ -1,11 +1,11 @@
 package services.review
 
-import org.mongodb.scala.model.{Filters, Projections}
-import org.mongodb.scala.ObservableFuture
-import services.identity.{MongoIdentityModelStore, ResolverDecisionBson}
-import services.identity.measures.ResolverDecision
+import scala.jdk.CollectionConverters.*
 
-import scala.jdk.CollectionConverters._
+import org.mongodb.scala.ObservableFuture
+import org.mongodb.scala.model.{Filters, Projections}
+import services.identity.measures.ResolverDecision
+import services.identity.{MongoIdentityModelStore, ResolverDecisionBson}
 
 /** The review reads of the resolver's decisions and the listings' decision traces. */
 trait MongoDecisionReads extends MongoReviewReads {

@@ -1,6 +1,6 @@
 package settings
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /** How a [[services.MongoConnection]] dials — the boot probe's patience, the pool's size and the
  *  `appName` it introduces itself by — as opposed to where ([[MongoAddress]]). Resolved once

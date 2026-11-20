@@ -1,12 +1,12 @@
 package services.identity
 
-import services.identity.measures.{Evidence, EvidenceNode, IdentityMeasures, Scored}
+import scala.annotation.tailrec
+
 import services.identity.measures.IdentityMeasures.ListingFilm
 import services.identity.measures.Scored.Accepted
-import services.titles.TitleForms
-
-import scala.annotation.tailrec
+import services.identity.measures.{Evidence, EvidenceNode, IdentityMeasures, Scored}
 import services.identity.vocabulary.FamilyClosure
+import services.titles.TitleForms
 
 /** The FAMILIES: the closure over title keys and the films members accept, grown until stable —
  *  a node matching a film another family's listings match joins that family, and its pool. Each

@@ -1,8 +1,8 @@
 package services.cinemas.common
 
-import models.CinemaMovie
-
 import java.time.{LocalDate, YearMonth}
+
+import models.CinemaMovie
 
 /**
  * How far ahead a venue's programme is scraped — ONE convention, shared by every client

@@ -1,16 +1,15 @@
 package services.cinemas.us
 
-import services.cinemas.common.ScraperParse.jsonText
-import services.cinemas.common.SlotsToMovies
-
+import java.time.{LocalDate, LocalDateTime}
 import java.util.Locale
 
-import models.{Cinema, CinemaMovie, Movie, Showtime}
-import play.api.libs.json._
-import services.cinemas.common.{AgeRating, FilmDetail}
-
-import java.time.{LocalDate, LocalDateTime}
 import scala.util.Try
+
+import models.{Cinema, CinemaMovie, Movie, Showtime}
+import play.api.libs.json.*
+import services.cinemas.common.ScraperParse.jsonText
+import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.{AgeRating, FilmDetail}
 
 /**
  * Pure JSON → model transformation for Regal's `getShowtimes` API. No I/O:

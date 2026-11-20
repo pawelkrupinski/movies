@@ -1,12 +1,10 @@
 package services.movies
 
-import tools.ChangeStreamLiveness
-
-import models.{FilmId, StoredMovieRecord}
-
 import com.mongodb.client.model.changestream.FullDocument
+import models.{FilmId, StoredMovieRecord}
 import org.bson.BsonDocument
 import org.mongodb.scala.Document
+import tools.ChangeStreamLiveness
 
 /**
  * The `movies` store's change stream, mixed into a [[MongoMovieRepository]] that serves consumers

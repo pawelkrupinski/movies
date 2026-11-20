@@ -1,7 +1,7 @@
 package services.identity
 
-import services.identity.vocabulary.Denial
 import services.identity.measures.DecisionTrace
+import services.identity.vocabulary.Denial
 
 /** The identity rules a RULE ABLATION run switches off: each named as the identity trace names it (`accept:<rule>`,
  *  `veto:<id of its reason>`, `join:<kind>`, `apart:<id of its reason>`), or a family of them by a trailing `*`

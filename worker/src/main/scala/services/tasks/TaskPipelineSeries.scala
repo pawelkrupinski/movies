@@ -1,10 +1,10 @@
 package services.tasks
 
+import java.time.Instant
+
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.tasktypes.TaskType
-
-import java.time.Instant
 
 /** The task pipeline's series: what is enqueued, started and finished, how long a worked task ran, the
  *  queue's depth and held-back work, the first-rating delay, and the chunk page memo. Every series is

@@ -5,7 +5,8 @@ import java.lang.reflect.{InvocationHandler, Method, Modifier, ParameterizedType
 import java.nio.file.{Files, Path, Paths}
 import java.util.concurrent.{CompletableFuture, CopyOnWriteArrayList}
 import java.util.jar.JarFile
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 
 /**
  * Reflection over the DECORATORS of a trait — the classes that implement a trait by

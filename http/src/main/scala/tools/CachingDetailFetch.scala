@@ -1,9 +1,10 @@
 package tools
 
-import com.github.benmanes.caffeine.cache.{Cache, Ticker, Weigher}
-
 import java.util.concurrent.{Executor, ForkJoinPool, TimeUnit}
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
+
+import com.github.benmanes.caffeine.cache.{Cache, Ticker, Weigher}
 
 /**
  * [[HttpFetch]] decorator that caches successful GET bodies for a TTL, keyed by

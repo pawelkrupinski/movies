@@ -1,9 +1,9 @@
 package services.movies
 
+import java.time.{Instant, LocalDateTime, ZoneOffset}
+
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.bson.{BsonReader, BsonWriter}
-
-import java.time.{Instant, LocalDateTime, ZoneOffset}
 
 /**
  * Hand-written JSR-310 codecs the mongo-scala driver doesn't ship. Shared by

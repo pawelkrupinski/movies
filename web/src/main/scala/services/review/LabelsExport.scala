@@ -3,7 +3,8 @@ package services.review
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import java.time.Instant
-import scala.jdk.CollectionConverters._
+
+import scala.jdk.CollectionConverters.*
 
 /** One row of `test/resources/fixtures/identity-judgements.tsv` (its columns: `scripts/ci/identity_judgements.py`): a
  *  listing (country, the venue or `*` for every venue billing the raw title, the raw title) judged right or wrong for

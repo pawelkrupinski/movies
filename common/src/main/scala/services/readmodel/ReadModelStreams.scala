@@ -1,10 +1,10 @@
 package services.readmodel
 
+import scala.util.Try
+
 import play.api.Logging
 import settings.{ReadModelColdRetryInterval, ReadModelReloadInterval}
 import tools.TickRun
-
-import scala.util.Try
 
 /** The keeper of [[WebReadModel]]'s two change streams (`web_movies` / `web_screenings`): opens them
  *  at boot from a checkpoint taken before the hydrate, reopens each one that ENDED on the cold-retry

@@ -1,9 +1,8 @@
 package services.enrichment
 
-import services.evidence.LatestTitleYear
-import services.evidence.CinemaSlotReadings.evidence
-
 import models.MovieRecord
+import services.evidence.CinemaSlotReadings.evidence
+import services.evidence.LatestTitleYear
 
 /**
  * Is a STORED rating-site page (Rotten Tomatoes, Metacritic) another film's?

@@ -1,11 +1,10 @@
 package services.tasks
 
-import models.CacheKey
+import java.time.Clock
 
+import models.CacheKey
 import services.freshness.FreshnessStore
 import services.tasktypes.TaskType
-
-import java.time.Clock
 
 /**
  * Puts one retriggered task on the queue. A rating task's dedup and freshness are keyed on the stable tmdbId, so the
