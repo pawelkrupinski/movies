@@ -68,7 +68,8 @@ locally (unless it takes longer than 15 mins) then / otherwise merge to main and
 - **Merge on green = main green**: the red gate (stage 3, step 3). Tools-only commits and `Fixes-Red:` fixes land
   while red, as before. A production change while main is red WAITS: "when waiting for main to go green, merge all
   waiting changes into one waiting branch (always use the same name) and merge it when main is green" (the owner,
-  2026-10-26) — `agentctl land` puts it on the local `waiting` branch and it lands with the others in one push (stage 2b).
+  2026-10-26) — it joins the waiting batch, which pre-checks every waiting change as one while red and lands them in one
+  push at green (stage 2b).
 - **After merging, main's CI tests everything** (Main, the convergence on its lane, verify), and `agentctl land`
   watches Main and the convergence for your commit and tells you if they go red (stage 4).
 
@@ -81,8 +82,8 @@ flowchart TD
     K --> F[fetch + rebase onto origin/main]
     F --> P[agentctl prepush-check: squash guard]
     P --> G{main red and a production<br/>commit without Fixes-Red?}
-    G -- yes --> WB["cherry-pick onto the waiting branch<br/>pre-push --checks-only on the combined tip<br/>WAITING SHA"]
-    WB --> WP["processor: main green → rebuild waiting on main,<br/>dry run, ONE push, delete waiting"]
+    G -- yes --> WB["joins the waiting batch unchecked: WAITING SHA<br/>the batch: pre-push --checks-only over every waiting change as one"]
+    WB --> WP["main green → rebuilt on main; checked again only if<br/>its checks read what main changed; ONE push"]
     WP --> V
     G -- no --> D["scripts/hooks/pre-push --range origin/main..SHA<br/>red gate, path checks, basic + area tests"]
     D -- fails --> N[NOT LANDED + the tail]
@@ -147,8 +148,7 @@ not a NOT LANDED after a whole check (`~/bin/AGENTCTL.md`, "OVERLAPPING CHANGES 
 5. `prepush-check` (the squash guard): refuses when `origin/main...HEAD` returns more than 2 files to an older main
    version — what `git reset --soft` onto a moved main does (`git revert` commits are exempt for their own files);
 6. **main red?** When ci-why's gate is red and a pushed commit touches a production path without a `Fixes-Red:`
-   naming a red run, the change goes onto the `waiting` branch instead (stage 2b) and land keeps running until it
-   lands. Tools-only and Fixes-Red changes go on, as the hook lets them;
+   naming a red run, the change joins the waiting batch instead (stage 2b) and land keeps running until it lands. Tools-only and Fixes-Red changes go on, as the hook lets them;
 7. **check first**: `scripts/hooks/pre-push --range origin/main..<sha>` — the whole hook (stage 3) over exactly what
    will be pushed, pushing nothing. A failure is `NOT LANDED: the pre-push checks failed` and nothing is pushed;
 8. `git push origin <sha>:refs/heads/main` (argv asserted free of `--no-verify` and `--force`): the hook runs again
@@ -197,25 +197,31 @@ the row it wants, `--reads <spec>` what it reads. A file a row names runs the `s
 Dockerfile-only or AOT-list-only push ran none; a pattern selects its spec only when the check runs anyway), and a scraper change selects `AotClassListSpec` (a new class there,
 a new source or an anonymous one, must be in the worker's AOT list): a missing entry fails locally in seconds.
 
-## Stage 2b: the `waiting` branch, while main is red
+## Stage 2b: the waiting batch, while main is red
 
-`agentctl waiting status|cancel <id>|run` (`~/bin/AGENTCTL.md`, "waiting"):
+Every change lands through a batch (the owner, 2026-11-20: "batching waiting changes ... structurally, not just now";
+`~/bin/AGENTCTL.md`, "THE BATCH IS THE MECHANISM"). While the gate is red:
 
-- **One branch, always `waiting`**, local to the main clone, in the worktree `~/projects/movies-wt-waiting`; it
-  exists only while changes wait.
-- **Joining it** (inside `land`, under the landing lock): the change's commits are cherry-picked onto `waiting`
-  (created from origin/main when missing) and `scripts/hooks/pre-push --checks-only origin/main..waiting` runs there
-  — every check but the red gate, over the combined tip: the basic tests and every touched area's. A conflict or a
-  failure rejects only that change, with the output; the others stay. Otherwise `WAITING <sha> (n changes queued on
-  waiting)`, the lock is released, and land waits for its change's verdict.
-- **Landing it**: one processor per repo (detached, locked) polls the gate. Once main is green it rebuilds `waiting` on
-  the current origin/main change by change (one that no longer applies is rejected alone), runs the hook's
-  `--fast-only` check over the combined tip (the `sbt` check, the touched files' lints, and every check a touched
-  union-merged file selects, e.g. `judgements`: the rebase wrote that file and no change's own check saw it), pushes the
-  whole branch in ONE push through the hook, and deletes the branch. Each waiting land then prints
-  `LANDED <sha>` and goes on to its watch (stage 4). A failing batch is searched prefix by prefix and only the first
-  failing change rejected.
-- **Not for**: tools-only changes and `Fixes-Red:` fixes (they land while red).
+- **Joining it**: a production change that must wait (no `Fixes-Red:` naming the red) is NOT checked alone. Its next
+  queue tick moves it to `waiting` unchecked: `WAITING <sha> (entry <id>, n waiting): origin/main is red, so it joins the
+  waiting batch unchecked`.
+- **The pre-check**: the waiting batch pre-checks every waiting change as ONE tree on the current main, in queue order.
+  It runs `pre-push --checks-only` over the combined tip: every check but the red gate, the union of the members'
+  areas. It runs again whenever a change joins or leaves, or main moves. A change that no longer applies is rejected
+  alone, its conflict files named. A generated or hand-written table (the baselines, coupling-exemptions.tsv, ...) is
+  merged row by row, never a conflict. A failure is searched prefix by prefix, and the culprit is rejected only when the
+  failure is its own. A test failing only where main fails too (the red itself) rejects nobody.
+- **Landing it at green**: the batch is rebuilt on the new main and pushed in ONE push. How much is checked again
+  depends on the members:
+  - **No check again**: when its members are exactly the pre-checked ones and none of their checks reads what main
+    changed since (the red's fix, usually; agentctl's MINIMAL RECHECKS reads the hook's own plans). The verdict is
+    `pre-checked as one on <sha>; ... its verdict kept`.
+  - **The `--fast-only` check of the combined tip**: when a check of theirs does read what main changed.
+  - **The full landing check (`--range`) over all of them**: when a member was never pre-checked.
+
+  Each change then prints `LANDED <sha>` and goes on to its watch (stage 4).
+- **Not for**: tools-only changes, which land while red, and `Fixes-Red:` fixes. A red fix keeps its own lane, checked
+  and pushed alone first: in 2026-11-17..20 a red fix landed in a median 14 min, a batch member in 56.
 
 ## Stage 2c: the backlog batch, while changes queue at green
 
@@ -223,12 +229,10 @@ The owner (2026-11-17): "batch whenever there's a backlog, not only on red". Wit
 30-40 min check of its own, most of it waiting for a ci-runner check slot. So at green, with no batch open, 2 or more
 queued changes that no checker has taken yet are checked TOGETHER (`~/bin/AGENTCTL.md`, "THE BACKLOG BATCH"):
 
-- **Who joins**: up to 4, in queue order (`Fixes-Red:` first). Never an identity change (a path that can move takes, what this
-  hook's `--identity-change` names: the resolver and its worker adapters, the title rules, words and normalizer, the
-  judgements -- narrower than the `identity` area, whose specs a common/ change may run and still batch, 2026-11-19 --
-  or a G5 identity-model commit), a change landed with `agentctl land --no-batch`, a
-  red fix, or a combined-tree verification round: those are checked alone, beside the batch. A change that does not
-  apply on top of the others is left out and checked alone.
+- **Who joins**: up to 8, in queue order. Identity changes join too (2026-11-20): the batch's check runs the union of its
+  members' areas, and G5's drift check of a tip holding more than one identity-model commit tells which one moved takes.
+  Never a change landed with `agentctl land --no-batch`, a red fix, or a combined-tree verification round: those are
+  checked alone, beside the batch. A change that does not apply on top of the others is left out and checked alone.
 - **The check**: the batch's tip gets the FULL landing check a change gets (`--range`; on ci-runner a precommit-check
   round on `check/batch-<tip>`, area tests and heavy rows included), not `--fast-only`: no member was checked alone. It
   takes ONE check tree.
