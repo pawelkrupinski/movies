@@ -8,6 +8,9 @@ name: Coupling exemptions
 # is not empty, the report job opens an issue assigned to the owner, or refreshes its body if one is already open
 # (scripts/ci/scheduled-failure-issue.sh `alert`). The owner reads it and strikes any row he does not accept. The next
 # week with no new rows closes the issue. No sbt run: the list comes from git history.
+# The same report lists the week's FIX-REPLAY EXEMPTIONS (the owner, 2026-11-20: a gate red's fix lands only with
+# `Fix-Replay: <command>`, which agentctl runs, or `Fix-Replay: none — <why>`, "listed in the owner's weekly report like
+# exemptions"): `scripts/ci/fix_replay_exemptions.py --since 7d`, each `none` with its commit, reds and reason.
 on:
     schedule:
         # Mondays 10:47 UTC, a slot no other scheduled job uses
@@ -44,9 +47,12 @@ jobs:
               run: |
                   scripts/coupling-report --new-exemptions --since 7d > "$RUNNER_TEMP/exemptions.md"
                   cat "$RUNNER_TEMP/exemptions.md" >> "$GITHUB_STEP_SUMMARY"
+                  scripts/ci/fix_replay_exemptions.py --since 7d > "$RUNNER_TEMP/fix-replay.md"
+                  { echo; cat "$RUNNER_TEMP/fix-replay.md"; } >> "$GITHUB_STEP_SUMMARY"
                   rows="$(grep -c '^- ' "$RUNNER_TEMP/exemptions.md" || true)"
-                  if [ "$rows" -gt 0 ]; then
-                      echo "found=$rows new coupling exemption row(s) this week: their reasons and commits are in the run's summary (scripts/coupling-report --new-exemptions --since 7d); strike any you do not accept" >> "$GITHUB_OUTPUT"
+                  nones="$(grep -c '^- ' "$RUNNER_TEMP/fix-replay.md" || true)"
+                  if [ "$rows" -gt 0 ] || [ "$nones" -gt 0 ]; then
+                      echo "found=$rows new coupling exemption row(s) and $nones Fix-Replay: none exemption(s) this week: their reasons and commits are in the run's summary (scripts/coupling-report --new-exemptions --since 7d, scripts/ci/fix_replay_exemptions.py --since 7d); strike any you do not accept" >> "$GITHUB_OUTPUT"
                   fi
 
     # New rows open (or refresh) one issue assigned to the owner, closed by the next week with none. A failed run opens

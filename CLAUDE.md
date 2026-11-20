@@ -49,7 +49,7 @@ Identity takes -- exactly those three, the owner's gate (2026-10-27; the takes r
 2026-11-08, which every convergence run's preflight dispatches) -- is red (running, queued and cancelled runs say nothing, nor an incomplete run red only in aggregates like
 Identity takes' `verdict complete`: a run whose takes rows did not all decide, agentctl's NO VERDICT; the drift explorer's replay runs under its own workflow, never a gate run), a push lands only as a fix for it: every pushed
 commit touching a production path (`*/src/main/`, `conf/`, `build.sbt`, `project/`, `infra/nix/`, `Dockerfile`)
-carries a `Fixes-Red: <run>` trailer naming any red run of the current episode (failed since the last green, failing the same way). Tools-only commits (scripts, docs, `.claude/` skills,
+carries a `Fixes-Red: <run>` trailer naming any red run of the current episode (failed since the last green, failing the same way), and with it `Fix-Replay: <command>`, which `agentctl land` runs to see it fail on main and pass at the fix, or `Fix-Replay: none — <specific why>` for a red that cannot replay (the owner, 2026-11-20; listed weekly; `docs/landing-process.md`, stage 5). Tools-only commits (scripts, docs, `.claude/` skills,
 `*/src/test|it|fixtures/`, `test/resources/`, `.github/`) land while red without one. The hook enforces it;
 `PREPUSH_SKIP=redgate` bypasses — say so. A gate gh cannot read refuses a production push.
 **Every trailer** (`Fixes-Red:`, `Coupling:`, `Complexity:`, `Length:`, `Pure-Move:`, ...) **counts only in the message's final block, beside `Co-Authored-By:` with no blank line between**; anywhere else git ignores it (pre-push's `scripts/ci/trailers.py lint` warns).

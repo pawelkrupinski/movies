@@ -10,7 +10,9 @@ import scala.sys.process.Process
 /** The weekly exemption report (`.github/workflows/coupling-exemptions.yml`; the owner, 2026-11-19: agent exemptions
  *  "reported weekly"). The week's new rows reach the run's summary, and when there are any, one owner-assigned issue
  *  (report-scheduled-run's `alert`). A week with none raises no alert, so the next clean run closes that issue. The
- *  list step's script runs here with `scripts/coupling-report` stubbed to print what the real one prints. */
+ *  same report lists the week's `Fix-Replay: none` exemptions (the owner, 2026-11-20: a gate red's fix that agentctl
+ *  ran no replay of, "listed in the owner's weekly report like exemptions"). The list step's script runs here with
+ *  `scripts/coupling-report` and `scripts/ci/fix_replay_exemptions.py` stubbed to print what the real ones print. */
 class CouplingExemptionsWorkflowSpec extends AnyFlatSpec with Matchers {
   private lazy val workflow = RepoFile.read(".github/workflows/coupling-exemptions.yml")
   private lazy val list     = RepoFile.stepScript(workflow, "List the week's new exemptions")
@@ -31,14 +33,29 @@ class CouplingExemptionsWorkflowSpec extends AnyFlatSpec with Matchers {
       |No exemption rows added.
       |""".stripMargin
 
-  /** The list step run against a stub report printing `report`: (its exit, the summary, the outputs). */
-  private def runList(report: String): (Int, String, String) = {
+  private val NonesListed =
+    """# Fix-Replay exemptions since 7d (on origin/main)
+      |
+      |- 2026-11-20 0a1b2c3d4 Fixes-Red: 2600: the hosted runner lost its disk mid-job (infra); no code path replays it
+      |  commit: web: the fix
+      |""".stripMargin
+  private val NoNones =
+    """# Fix-Replay exemptions since 7d (on origin/main)
+      |
+      |No `Fix-Replay: none` exemptions.
+      |""".stripMargin
+
+  /** The list step run against stub reports printing `report` and `nones`: (its exit, the summary, the outputs). */
+  private def runList(report: String, nones: String = NoNones): (Int, String, String) = {
     val dir  = Files.createTempDirectory("coupling-exemptions")
     val stub = dir.resolve("scripts/coupling-report")
-    Files.createDirectories(stub.getParent)
+    val replays = dir.resolve("scripts/ci/fix_replay_exemptions.py")
+    Files.createDirectories(replays.getParent)
     Files.writeString(dir.resolve("report.md"), report)
+    Files.writeString(dir.resolve("nones.md"), nones)
     Files.writeString(stub, "#!/usr/bin/env bash\n[ \"$*\" = '--new-exemptions --since 7d' ] || exit 9\ncat \"$(dirname \"$0\")/../report.md\"\n")
-    stub.toFile.setExecutable(true)
+    Files.writeString(replays, "#!/usr/bin/env bash\n[ \"$*\" = '--since 7d' ] || exit 9\ncat \"$(dirname \"$0\")/../../nones.md\"\n")
+    Seq(stub, replays).foreach(_.toFile.setExecutable(true))
     val (summary, output) = (dir.resolve("summary.md"), dir.resolve("output"))
     Seq(summary, output).foreach(Files.writeString(_, ""))
     val exit = Process(Seq("bash", "-e", "-o", "pipefail", "-c", list), dir.toFile,
@@ -55,13 +72,21 @@ class CouplingExemptionsWorkflowSpec extends AnyFlatSpec with Matchers {
 
   it should "say how many rows are new when there are any, for the issue" in {
     val (_, _, output) = runList(Listed)
-    output should startWith("found=2 new coupling exemption row(s) this week")
+    output should startWith("found=2 new coupling exemption row(s) and 0 Fix-Replay: none exemption(s) this week")
+  }
+
+  it should "list the week's Fix-Replay: none exemptions in the summary and raise the issue for them alone" in {
+    val (exit, summary, output) = runList(NoneListed, NonesListed)
+    exit shouldBe 0
+    summary should include("Fixes-Red: 2600: the hosted runner lost its disk mid-job (infra)")
+    output should startWith("found=0 new coupling exemption row(s) and 1 Fix-Replay: none exemption(s) this week")
   }
 
   it should "find nothing in a week with no new rows, and still pass" in {
     val (exit, summary, output) = runList(NoneListed)
     exit shouldBe 0
     summary should include("No exemption rows added.")
+    summary should include("No `Fix-Replay: none` exemptions.")
     output shouldBe ""
   }
 

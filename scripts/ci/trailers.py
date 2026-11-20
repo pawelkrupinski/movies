@@ -27,8 +27,8 @@ import sys
 from typing import Callable, Iterable, List, NamedTuple, Optional
 
 # Every trailer key a ratchet, commit rule or the red gate reads.
-KNOWN_KEYS = ("Coupling", "Complexity", "Duplication", "Length", "Pure-Move", "Fixes-Red", "Identity-Design",
-              "Drift-Harness-Refactor")
+KNOWN_KEYS = ("Coupling", "Complexity", "Duplication", "Length", "Pure-Move", "Fixes-Red", "Fix-Replay",
+              "Identity-Design", "Drift-Harness-Refactor")
 KEY_LINE = re.compile(r"^(\s*)(" + "|".join(map(re.escape, KNOWN_KEYS)) + r")\s*:(.*)$", re.IGNORECASE)
 CANONICAL = {k.lower(): k for k in KNOWN_KEYS}
 

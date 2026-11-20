@@ -438,6 +438,18 @@ for the push itself — when every production commit in it carries `Fixes-Red:` 
 episode. If your commit turned main red, fix it at once with a `Fixes-Red: <run>` trailer in the final trailer block,
 beside `Co-Authored-By`.
 
+**A gate red's fix carries its replay** (the owner, 2026-11-20: "approve and enforce for gate reds"; agentctl policy
+`fix-replay`). A `Fixes-Red:` naming a red of Main, Identity model convergence or Identity takes also carries, in the
+same final block, `Fix-Replay: <command>`: the narrowest command that fails where the red fails (a `testOnly`, a
+script's self-test). `agentctl land` runs it on the rebased head, at `origin/main` and at your fix, each in a throwaway
+detached worktree (30 min a side), and the change counts as the fix only on base=FAIL head=PASS: head=FAIL is your fix
+refuted before it lands, base=PASS a command that does not reach the red. The proof rides with the submission and the
+queue's check refuses a gate fix without it. A red that genuinely cannot replay (infra, a CI-only race) says why
+instead: `Fix-Replay: none — <why>` (a specific reason, 30+ characters, no "n/a", "flaky" or "can't"); those are listed
+weekly for the owner beside the coupling exemptions (`scripts/ci/fix_replay_exemptions.py --since 7d`, the Coupling
+exemptions workflow). A red outside the gate whose `.github/red-workflows.tsv` row names a `replay` keeps its own
+`Fix-Replay: <that command> base=FAIL head=PASS`, and a missing one only warns.
+
 **A fix matches the red it fixes, not one run number** (2026-11-05: a fix naming Main #2164, then #2172, sat WAITING
 while each push landing meanwhile started a new run failing the same way, #2173, #2174; main stayed red ~5.5 h until it
 was re-trailered by hand, twice). The red EPISODE is the gating workflow's failed runs on main since its last green. A
@@ -463,6 +475,7 @@ reports. Its first green run proves it: `scripts/ci/gating_checks.py prove --wor
 | `NOT LANDED: rebase onto origin/main conflicts in: …` | your change conflicts with main | resolve by hand (`git rebase origin/main`), land again |
 | `NOT LANDED: prepush-check refused: … would be reverted/deleted back to an older main version` | a squash onto a moved main | rebuild your commits on current main by rebase, never `reset --soft` |
 | `<workflow> is RED on main: run …` / `NOT LANDED: the red gate refused the push` | a gating run is red and a production commit lacks `Fixes-Red:` | `agentctl ci-why`; wait (`agentctl wait run <id>` in the background) for the green run, or add `Fixes-Red:` only if your commit fixes that run |
+| `NOT LANDED: <workflow> #n […] is a gate red: …` | your `Fixes-Red:` names a gate red and carries no `Fix-Replay:`, or agentctl's replay did not see base=FAIL head=PASS, or a `Fix-Replay: none` reason is too vague | add `Fix-Replay: <command>` (agentctl runs it), fix what the replay says, or give a specific `Fix-Replay: none — <why>` (stage 5) |
 | `red-build gate UNREAD (…): the push is REFUSED` | the gate could not be read (gh not logged in, API error, no answer after 3 tries); it fails closed, so a production push is refused (a tools-only push still lands) | not logged in: `gh auth status` (and `gh auth login`); otherwise the network to github.com; land again |
 | `<tool> not found: the <check> check cannot run, so the push is BLOCKED` | a local tool is missing | install it as the message says; `eval "$(~/bin/agentctl env --print)"` for sbt/java |
 | `GitOps manifests STALE … BLOCKED` | `infra/bin/fetch-gitops` could not reach movies-gitops | the network to github.com, then land again |
@@ -493,7 +506,8 @@ reports. Its first green run proves it: `scripts/ci/gating_checks.py prove --wor
   and `git push --no-verify` exist in the hook for a person; agents never use them, on any commit or push, `measure/`
   branches included. `agentctl land` refuses to run with `PREPUSH_SKIP` set and asserts no `--no-verify` in its push
   argv. A missing tool is fixed, not skipped.
-- **`Fixes-Red:` only for a real fix** of the named run. A tools-only commit needs none.
+- **`Fixes-Red:` only for a real fix** of the named run, and for a gate red with its `Fix-Replay:` (stage 5). A
+  tools-only commit needs none.
 - **Never rerun to green.** A red is investigated to its cause (CLAUDE.md, "Investigate every red"); a test that
   passes on a second run is flaky and gets fixed.
 - **Rebase onto current `origin/main` before any local check** (`land` does); never `reset --soft` onto a moved main.
