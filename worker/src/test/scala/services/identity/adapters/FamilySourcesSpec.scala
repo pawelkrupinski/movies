@@ -5,7 +5,7 @@ import services.identityadapters.*
 import clients.tools.FixtureFile
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.enrichment.{FilmwebClient, ImdbClient, MetacriticClient, RottenTomatoesClient, WikidataClient}
+import services.enrichment.{FilmwebClient, ImdbClient, ImdbSearch, MetacriticClient, RottenTomatoesClient, WikidataClient}
 import tools.{HttpFetch, HttpStatusException, RoutingHttpFetch}
 
 /** Each film database family read live, from recorded answers: its title search's films (films only), and its record
@@ -16,13 +16,13 @@ class FamilySourcesSpec extends AnyFlatSpec with Matchers {
   private final class ImdbFetch extends HttpFetch {
     override def get(url: String): String = throw new HttpStatusException(404, "GET", url, None)
     override def post(url: String, body: String, contentType: String): String =
-      if (body == ImdbClient.titleSearchBody("Diuna")) FixtureFile.resource("fixtures/imdb/title_search_diuna_films_and_series.json")
+      if (body == ImdbSearch.titleSearchBody("Diuna")) FixtureFile.resource("fixtures/imdb/title_search_diuna_films_and_series.json")
       else if (ImdbClient.identityRecordId(body).contains("tt43338336")) FixtureFile.resource("fixtures/imdb/identity_record_kuzma.json")
       else throw new HttpStatusException(404, "POST", url, None)
   }
 
   "IMDb as a family" should "find films by any language's title, never a series, and link its record by IMDb id" in {
-    val imdb = new ImdbFamily(new ImdbClient(new ImdbFetch))
+    val imdb = new ImdbFamily(new ImdbClient(new ImdbFetch), new ImdbSearch(new ImdbFetch))
     imdb.titled("Diuna").map(_.id) shouldBe Seq("tt1160419", "tt15239678", "tt31378509", "tt0087182", "tt15331462", "tt22084616")
     val kuzma = imdb.record("tt43338336")
     kuzma.map(r => (r.film.title, r.film.year, r.film.directors, r.crossIds)) shouldBe

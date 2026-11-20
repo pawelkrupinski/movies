@@ -121,7 +121,7 @@ trait AgreementWiring { self: WorkerWiring =>
       new services.identity.agreement.MongoAgreementKeys(_))
   /** The families' live sources the agreement fill asks. */
   lazy val familySources: Map[services.identity.vocabulary.VoterFamily, services.identityadapters.FamilySource] = {
-    val all: Seq[services.identityadapters.FamilySource] = Seq(new services.identityadapters.ImdbFamily(imdbClient),
+    val all: Seq[services.identityadapters.FamilySource] = Seq(new services.identityadapters.ImdbFamily(imdbClient, imdbSearch),
       new services.identityadapters.WikiFamily(wikidataClient, country.language.getLanguage),
       new services.identityadapters.FilmwebFamily(filmwebClient, venue => filmwebProgrammes.fold(Seq.empty[services.identity.agreement.Showing])(_.of(venue))),
       new services.identityadapters.RottenTomatoesFamily(rottenTomatoesClient), new services.identityadapters.MetacriticFamily(metacriticClient))

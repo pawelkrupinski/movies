@@ -1,7 +1,7 @@
 package modules.wiring
 
 import clients.{HttpTmdbClient, TmdbClient}
-import services.enrichment.{FilmwebClient, ImdbClient, LetterboxdClient, LetterboxdIdResolver, MetacriticClient, MongoOmdbBudget, OMDbClient, OmdbBudget, RottenTomatoesClient, WikidataClient}
+import services.enrichment.{FilmwebClient, ImdbClient, ImdbSearch, LetterboxdClient, LetterboxdIdResolver, MetacriticClient, MongoOmdbBudget, OMDbClient, OmdbBudget, RottenTomatoesClient, WikidataClient}
 import services.metrics.worker.WorkerHttpMetrics
 import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, HostCircuitBreakerHttpFetch, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MongoUnrecoveredHosts, PacedHttpFetch, RealHttpFetch, RetryingHttpFetch, ThrottledHttpFetch, TlsTrust, UnrecoveredHosts}
 import services.MonitoringHttpFetch
@@ -129,6 +129,7 @@ trait HttpWiring { self: WorkerWiring =>
   lazy val tmdbJsonBodies: tools.JsonBodies = new tools.JsonBodies
   lazy val filmwebClient = new FilmwebClient(enrichmentFetch)
   lazy val imdbClient = new ImdbClient(enrichmentFetch)
+  lazy val imdbSearch = new ImdbSearch(enrichmentFetch)
   lazy val metacriticClient = new MetacriticClient(enrichmentFetch)
   lazy val rottenTomatoesClient = new RottenTomatoesClient(enrichmentFetch)
   // OMDb (omdbapi.com) — feature-gated fallback for the three IMDb-keyed ratings.

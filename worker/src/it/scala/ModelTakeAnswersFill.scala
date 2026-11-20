@@ -102,7 +102,7 @@ object ModelTakeAnswersFill {
     val store    = new FamilyAnswerStore(docs, tools.SpecClock.Pinned)
     val families = UnmatchedClusters.familiesOf(c.country)
     val fetch    = new ExperimentCacheFetch(cache)
-    val sources: Map[VoterFamily, FamilySource] = Seq(new ImdbFamily(new services.enrichment.ImdbClient(fetch)),
+    val sources: Map[VoterFamily, FamilySource] = Seq(new ImdbFamily(new services.enrichment.ImdbClient(fetch), new services.enrichment.ImdbSearch(fetch)),
       new WikiFamily(new services.enrichment.WikidataClient(fetch), c.country.language.getLanguage),
       new FilmwebFamily(new services.enrichment.FilmwebClient(fetch)), new RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(fetch)),
       new MetacriticFamily(new services.enrichment.MetacriticClient(fetch))).filter(s => families.contains(s.family)).map(s => s.family -> s).toMap

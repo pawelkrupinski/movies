@@ -12,7 +12,7 @@ import tools.HttpFetch
  *  one). */
 object LiveFamilySources {
   def of(fetch: HttpFetch, country: models.Country, families: Seq[VoterFamily]): Map[VoterFamily, FamilySource] =
-    Seq(new ImdbFamily(new services.enrichment.ImdbClient(fetch)),
+    Seq(new ImdbFamily(new services.enrichment.ImdbClient(fetch), new services.enrichment.ImdbSearch(fetch)),
       new WikiFamily(new services.enrichment.WikidataClient(fetch), country.language.getLanguage),
       new FilmwebFamily(new services.enrichment.FilmwebClient(fetch),
         services.cinemas.pl.FilmwebProgrammes.resolving(fetch, () => new models.VenueClock(java.time.Clock.systemUTC()).todayInPoland).of),
