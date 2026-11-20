@@ -16,10 +16,6 @@ copies	common/src/main/scala/models/GermanRoster.scala|common/src/main/scala/mod
 copies	common/src/main/scala/services/MongoCachingDetailFetch.scala|http/src/main/scala/tools/CachingDetailFetch.scala	2
 copies	common/src/main/scala/services/cadence/RatingCadenceStore.scala	2
 copies	common/src/main/scala/services/movies/InPlaceMovieUpdate.scala|common/src/main/scala/services/movies/WholeRecordUpsert.scala	2
-copies	common/src/main/scala/services/movies/MovieCodecs.scala	2
-copies	common/src/main/scala/services/movies/ScreeningsRepository.scala|common/src/main/scala/services/movies/SlotsRepository.scala	12
-copies	common/src/main/scala/services/movies/SlotsRepository.scala	2
-copies	common/src/main/scala/services/readmodel/MongoReadModelRepository.scala	4
 copies	common/src/main/scala/services/scrapes/ScrapeArchiveCodecs.scala|scrapers/src/main/scala/services/cinemas/common/CinemaMovieJson.scala	2
 copies	common/src/main/scala/tools/KeysetScan.scala	2
 copies	geodata/src/main/scala/models/SpanishRosterData.scala|geodata/src/main/scala/models/UsRosterData.scala	2
@@ -39,5 +35,4 @@ copies	worker/src/main/scala/services/enrichment/MetascoreRatings.scala|worker/s
 copies	worker/src/main/scala/services/identityadapters/CachedTmdbDocuments.scala|worker/src/main/scala/services/identityadapters/HistoryTmdbDocuments.scala	2
 copies	worker/src/main/scala/services/identityadapters/CoalescedTmdbDocuments.scala|worker/src/main/scala/services/identityadapters/HistoryTmdbDocuments.scala	2
 copies	worker/src/main/scala/services/identityadapters/ModelLookups.scala|worker/src/main/scala/services/identityadapters/StoredTmdbLookups.scala	2
-copies	worker/src/main/scala/services/movies/CorpusHydrate.scala|worker/src/main/scala/services/movies/CorpusStreamApplies.scala	2
 copies	worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala|worker/src/main/scala/services/scrapes/MongoScrapeGuardLedger.scala	2

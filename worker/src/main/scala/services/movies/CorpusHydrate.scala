@@ -23,12 +23,7 @@ private[movies] final class CorpusHydrate(
   sleep:                  FiniteDuration => Unit,
   logger:                 play.api.Logger
 ) {
-  private val repository    = corpus.repository
-  private val normalizer    = corpus.normalizer
-  private val residentShape = corpus.shape
-  private val corpusIndex   = corpus.index
-  import corpus.{evict, store, touch}
-  private def get(key: CacheKey): Option[MovieRecord] = corpus.held(key)
+  import corpus.{evict, held as get, index as corpusIndex, normalizer, repository, shape as residentShape, store, touch}
 
   // Set once a rehydrate's corpus read has been answered whole — an empty corpus included — and
   // never cleared: from then on a failed read only leaves the cache a little stale. Initialised
@@ -96,23 +91,26 @@ private[movies] final class CorpusHydrate(
     // None: a read that could not complete, or an empty answer refused — nothing put or evicted.
     readByKey(onPage, findingAll).flatMap { case (byKey, rows) =>
       val tFindAllMs = findingAll.millis
-      if (refusesEmpty(rows, tFindAllMs)) None
-      else {
-        val populating = tools.Stopwatch.start()
-        val changed    = populate(byKey, marks)
-        val removed    = evictGone(byKey, marks)
-        cacheMetrics.recordRehydrate(changed, removed)
-        if (changed > 0 || removed > 0)
-          logger.info(s"MovieCache rehydrate: caught $changed changed row(s) + $removed orphan-delete(s) " +
-            "the change stream missed.")
-        // Hydrate is a PURE LOAD: it rebuilds the cache from Mongo and stops. Which listings are one
-        // film is the identity projection's to decide, never the load's.
-        if (rows > 0)
-          logger.info(s"Hydrated $rows enrichment(s) from Mongo — findAll=${tFindAllMs}ms populate=${populating.millis}ms.")
-        touch()
-        Some(rows)
-      }
+      Option.unless(refusesEmpty(rows, tFindAllMs)) { putAll(byKey, rows, marks, tFindAllMs); rows }
     }
+  }
+
+  /** Put the `rows` read, by key, into the resident corpus and evict the keys gone from it — each under the marks
+   *  taken before the read — and say what the backstop caught. */
+  private def putAll(byKey: java.util.LinkedHashMap[CacheKey, CorpusHydrate.HydratedRows], rows: Int,
+                     marks: FilmWriteFence.Marks, tFindAllMs: Long): Unit = {
+    val populating = tools.Stopwatch.start()
+    val changed    = populate(byKey, marks)
+    val removed    = evictGone(byKey, marks)
+    cacheMetrics.recordRehydrate(changed, removed)
+    if (changed > 0 || removed > 0)
+      logger.info(s"MovieCache rehydrate: caught $changed changed row(s) + $removed orphan-delete(s) " +
+        "the change stream missed.")
+    // Hydrate is a PURE LOAD: it rebuilds the cache from Mongo and stops. Which listings are one
+    // film is the identity projection's to decide, never the load's.
+    if (rows > 0)
+      logger.info(s"Hydrated $rows enrichment(s) from Mongo — findAll=${tFindAllMs}ms populate=${populating.millis}ms.")
+    touch()
   }
 
   /** Whether a complete read of `rows` documents is one the rehydrate must not act on.

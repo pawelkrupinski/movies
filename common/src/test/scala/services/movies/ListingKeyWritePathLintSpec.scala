@@ -48,12 +48,12 @@ class ListingKeyWritePathLintSpec extends AnyFlatSpec with Matchers {
     withClue("build a `movie_slots` row with `StoredSlotDto.of`, never its constructor: ") {
       constructions("StoredSlotDto").toSet shouldBe Set(
         "common/src/main/scala/services/movies/SlotsRepository.scala" -> 1,  // the factory
-        "common/src/main/scala/services/movies/MovieCodecs.scala"     -> 1)  // a stored row read back, with the key it holds
+        "common/src/main/scala/services/movies/SlotRowCodecs.scala"   -> 1)  // a stored row read back, with the key it holds
     }
     withClue("build a `screenings` row with `StoredScreeningsDto.of`, never its constructor: ") {
       constructions("StoredScreeningsDto").toSet shouldBe Set(
         "common/src/main/scala/services/movies/ScreeningsRepository.scala" -> 1,  // the factory
-        "common/src/main/scala/services/movies/MovieCodecs.scala"          -> 1)  // a stored row read back, with the key it holds
+        "common/src/main/scala/services/movies/SlotRowCodecs.scala"        -> 1)  // a stored row read back, with the key it holds
     }
   }
 

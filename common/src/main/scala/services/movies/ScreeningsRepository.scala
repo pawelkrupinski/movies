@@ -1,18 +1,15 @@
 package services.movies
 
-import tools.KeysetScan
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import models.{Showtime, ListingKey}
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, ReplaceOneModel, Sorts, Updates}
+import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, ReplaceOneModel, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import play.api.Logging
 
 import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Per-cinema showtimes, split out of the embedded `movies.sourceData` map into
@@ -247,7 +244,8 @@ class MongoScreeningsRepository(
   decodeFailures:       services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop
 ) extends ScreeningsRepository
     with WatchedSlotKeyedRows[StoredScreeningsDto](ScreeningsRepository.Collection, _.filmId, resumeTokens, metrics, decodeFailures, stopwatch)
-    with Logging {
+    with MongoSlotKeyedRows[StoredScreeningsDto]("ScreeningsRepository", ScreeningsRepository.Collection,
+      SlotKeyed.Paging(findAllBatchSize, findAllBatchAttempts, findAllBatchBackoff), writeMetrics) {
   import ScreeningsRepository.IdSep
 
   private lazy val coll: Option[MongoCollection[StoredScreeningsDto]] = sharedDb.map { db =>
@@ -303,27 +301,12 @@ class MongoScreeningsRepository(
         .map(_.groupBy(_.filmId).map { case (film, rows) => learn(film, rows.map(_.showtimes)); film -> rows.map(d => d.slotKey -> d.showtimes).toMap })
     }
 
-  /** Every film's screenings, keyset-paged by `_id` (via [[KeysetScan]]) rather than pulled
-   *  through ONE unbounded `find().toFuture()`, which recursed the async Mongo driver into a
-   *  `StackOverflowError` on a driver I/O thread once the collection grew (Sentry KINOWO-19).
-   *  An INCOMPLETE scan (a page still failing after retries) THROWS: it answered an empty map,
-   *  which reads as "no film has a screening" — the corpus-wide version of the empty answer
+  /** Every film's screenings, keyset-paged ([[MongoSlotKeyedRows.allRowsChecked]]). An INCOMPLETE scan THROWS: it
+   *  answered an empty map, which reads as "no film has a screening" — the corpus-wide version of the empty answer
    *  `StitchedCorpusScan.scanStitched` refuses page by page. */
   def findAll(): Map[String, Map[String, Seq[Showtime]]] = coll.fold(Map.empty[String, Map[String, Seq[Showtime]]]) { c =>
-    KeysetScan.collect[StoredScreeningsDto, StoredScreeningsDto](
-      label          = "ScreeningsRepository keyset batch",
-      batchSize      = findAllBatchSize,
-      maxAttempts    = findAllBatchAttempts,
-      initialBackoff = findAllBatchBackoff,
-      keyOf          = _._id,
-      fetchPage      = (afterId, limit) => {
-        val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-        Await.result(c.find(filter).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Screenings).toFuture(), 60.seconds)
-      },
-      onIncomplete   = exception =>
-        logger.warn(s"ScreeningsRepository.findAll keyset scan failed after retries: " +
-          s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
-    )(Seq(_)).required.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap
+    allRowsChecked(c, tools.MongoReplies.Screenings)(_._id).required
+      .groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap
   }
 
   /** ONE bulk round-trip: every slot's upsert plus a single `deleteMany` of whatever
@@ -394,7 +377,7 @@ class MongoScreeningsRepository(
     // A read that fails, and a row that is absent, both read as "differs" and write.
     if (!roster.admitsWrite(ScreeningsRepository.Collection, filmId, slotKey)) WriteOutcome.Written
     else write("upsertSlot", s"ScreeningsRepository.upsertSlot($filmId,$slotKey)") {
-      if (storedRow(c, filmId, slotKey).contains(row))
+      if (storedRow(c, filmId, slotKey).map(_.listed).contains(row))
         metrics.recordWrite(ScreeningsMetrics.Outcome.Unchanged, 1)
       else {
         upsertOne(c, filmId, slotKey, row)
@@ -418,13 +401,6 @@ class MongoScreeningsRepository(
     }
   }
 
-  /** One stored row, or None when it is absent OR unreadable — the two cases
-   *  `upsertSlot` treats alike, because both mean "we cannot say this write is redundant". */
-  private def storedRow(c: MongoCollection[StoredScreeningsDto],
-                        filmId: String, slotKey: String): Option[ListedShowtimes] =
-    Try(Await.result(c.find(Filters.eq("_id", idOf(filmId, slotKey))).first().toFuture(), 10.seconds))
-      .toOption.flatMap(Option(_)).map(_.listed)
-
   def deleteSlot(filmId: String, slotKey: String): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     write("deleteSlot", s"ScreeningsRepository.deleteSlot($filmId,$slotKey)") {
       deleteOne(c, filmId, slotKey)
@@ -443,27 +419,9 @@ class MongoScreeningsRepository(
     }
   }
 
-  def filmIdsChecked(): tools.ReadOutcome[Set[String]] =
-    coll.fold[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty))(SlotKeyed.distinctFilmIdsChecked(_, "ScreeningsRepository", logger.warn(_)))
-
-  private val idPaging = SlotKeyed.Paging(findAllBatchSize, findAllBatchAttempts, findAllBatchBackoff)
-
-  def rowIdsChecked(): tools.ReadOutcome[Set[String]] =
-    coll.fold[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty))(SlotKeyed.rowIdsChecked(_, "ScreeningsRepository", logger.warn(_), idPaging))
-
-  def rowWrittenAtChecked(): tools.ReadOutcome[Map[String, java.time.Instant]] =
-    coll.fold[tools.ReadOutcome[Map[String, java.time.Instant]]](tools.ReadOutcome.Answered(Map.empty))(SlotKeyed.rowWrittenAtChecked(_, "ScreeningsRepository", logger.warn(_), idPaging))
-
-
-  override def existingRowIdsChecked(ids: Set[String]): tools.ReadOutcome[Set[String]] =
-    coll.fold[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty))(SlotKeyed.existingRowIdsChecked(_, ids, "ScreeningsRepository", logger.warn(_)))
-
-  def deleteRows(ids: Set[String]): Long =
-    coll.fold(0L)(SlotKeyed.deleteRows(_, ids, ScreeningsRepository.Collection, writeMetrics, logger))
-
-  def deleteFilms(filmIds: Set[String]): Long = {
+  override def deleteFilms(filmIds: Set[String]): Long = {
     forget(filmIds)
-    coll.fold(0L)(SlotKeyed.deleteFilms(_, filmIds, ScreeningsRepository.Collection, writeMetrics, logger))
+    super.deleteFilms(filmIds)
   }
 
   private def upsertOne(c: MongoCollection[StoredScreeningsDto], filmId: String, slotKey: String, row: ListedShowtimes): Unit = {
@@ -477,4 +435,5 @@ class MongoScreeningsRepository(
 
   /** What [[WatchedSlotKeyedRows]] watches, ringing `onChange(filmId)` for every change: the caller re-reads and stitches the film. */
   protected def watchedCollection: Option[MongoCollection[StoredScreeningsDto]] = coll
+  protected def rowsCollection: Option[MongoCollection[StoredScreeningsDto]]    = coll
 }

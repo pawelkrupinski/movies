@@ -39,14 +39,16 @@ final class InMemorySlotRows[A](clock: Clock, stored: (String, String, A) => A) 
     val rows = written.map { case (k, row) => k -> stored(filmId, k, row) }
     ringIf(filmId, lock.synchronized {
       val current = byFilm.getOrElse(filmId, Map.empty)
-      if (current == rows) false
-      else {
-        if (rows.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, rows)
-        (current.keySet -- rows.keySet).foreach(k => stamps.remove(SlotKeyed.idOf(filmId, k)))
-        rows.foreach { case (k, row) => if (!current.get(k).contains(row)) stamp(filmId, k) }
-        true
-      }
+      current != rows && { replaceRows(filmId, current, rows); true }
     })
+  }
+
+  /** Put `rows` in place of the film's `current` ones, stamping each row that changed and dropping the stamps of the
+   *  rows gone. Caller holds `lock`. */
+  private def replaceRows(filmId: String, current: Map[String, A], rows: Map[String, A]): Unit = {
+    if (rows.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, rows)
+    (current.keySet -- rows.keySet).foreach(k => stamps.remove(SlotKeyed.idOf(filmId, k)))
+    rows.foreach { case (k, row) => if (!current.get(k).contains(row)) stamp(filmId, k) }
   }
 
   def upsert(filmId: String, slotKey: String, written: A): Unit = {

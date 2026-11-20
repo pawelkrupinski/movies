@@ -110,22 +110,28 @@ class MongoReadModelRepository(
     coll match {
       case Some(c) =>
         val codec = ReadModelCodecs.registry.get(implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]])
-        KeysetScan.scan[BsonDocument](
-          label          = label,
-          batchSize      = findAllBatchSize,
-          maxAttempts    = findAllBatchAttempts,
-          initialBackoff = findAllBatchBackoff,
-          keyOf          = _.getString("_id").getValue,
-          fetchPage      = (afterId, limit) => {
-            val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-            val found  = c.find[BsonDocument](filter)
-            Await.result(projection.fold(found)(found.projection).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
-          },
-          onIncomplete   = exception =>
-            logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: ${exception.getMessage} — scan incomplete")
-        )(batch => decodeTolerant(batch, codec, label, c.namespace.getCollectionName).foreach(f))
+        rawPages(c, label, projection, "scan incomplete")(batch => decodeTolerant(batch, codec, label, c.namespace.getCollectionName).foreach(f))
       case None => tools.ScanOutcome.complete
     }
+
+  /** Every document of `c` as stored (`projection` of it, when given), one keyset page of raw documents at a time
+   *  ([[KeysetScan]]): the `_id` it keys on is always present, so a document the codec would refuse still moves the
+   *  scan on. A scan that still fails after its retries is logged under `label`, saying what that `means`. */
+  private def rawPages(c: MongoCollection[?], label: String, projection: Option[org.bson.conversions.Bson], means: String)
+                      (onPage: Seq[BsonDocument] => Unit): tools.ScanOutcome =
+    KeysetScan.scan[BsonDocument](
+      label          = label,
+      batchSize      = findAllBatchSize,
+      maxAttempts    = findAllBatchAttempts,
+      initialBackoff = findAllBatchBackoff,
+      keyOf          = _.getString("_id").getValue,
+      fetchPage      = (afterId, limit) => {
+        val found = c.find[BsonDocument](afterId.fold(Filters.empty())(Filters.gt("_id", _)))
+        Await.result(projection.fold(found)(found.projection).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
+      },
+      onIncomplete   = exception =>
+        logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: ${exception.getMessage} — $means")
+    )(onPage)
 
   /** Decode a page of raw documents into `A`, SKIPPING (and logging with the `_id`) any that
    *  fail — one malformed/legacy document must sink only itself, never the whole keyset page.
@@ -184,23 +190,8 @@ class MongoReadModelRepository(
   )(decode: BsonDocument => A): tools.ReadOutcome[Seq[A]] = collection match {
     case Some(c) =>
       val buf = Vector.newBuilder[A]
-      val complete = KeysetScan.scan[BsonDocument](
-        label          = label,
-        batchSize      = findAllBatchSize,
-        maxAttempts    = findAllBatchAttempts,
-        initialBackoff = findAllBatchBackoff,
-        keyOf          = _.getString("_id").getValue,
-        fetchPage      = (afterId, limit) => {
-          val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-          Await.result(
-            c.find[BsonDocument](filter).projection(projection).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(),
-            60.seconds)
-        },
-        onIncomplete   = exception =>
-          logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: " +
-            s"${exception.getMessage} — the read fails; nothing is pruned or healed on it")
-      )(batch => buf ++= batch.map(decode))
-      complete.collected(buf.result())
+      rawPages(c, label, Some(projection), "the read fails; nothing is pruned or healed on it")(batch => buf ++= batch.map(decode))
+        .collected(buf.result())
     case None => tools.ReadOutcome.Answered(Seq.empty)
   }
 

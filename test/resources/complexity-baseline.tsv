@@ -18,9 +18,6 @@ cognitive	common/src/main/scala/models/Showtime.scala:Showtime.commonUrlPrefix	1
 cognitive	common/src/main/scala/models/ShowtimePool.scala:ShowtimePool.share	12
 cognitive	common/src/main/scala/models/SlotFields.scala:SlotFields.showtimes	15
 cognitive	common/src/main/scala/services/MonitoringHttpFetch.scala:MonitoringHttpFetch.getAsync	11
-cognitive	common/src/main/scala/services/movies/ChangeStreamMetrics.scala:ChangeStreamMetrics.updateKinds#2	12
-cognitive	common/src/main/scala/services/movies/InMemorySlotRows.scala:InMemorySlotRows.replaceFilm	11
-cognitive	common/src/main/scala/services/movies/SlotsRepository.scala:MongoSlotsRepository.upsertSlots	12
 cognitive	common/src/main/scala/tools/CacheOccupancy.scala:CacheOccupancy.of	13
 cognitive	common/src/main/scala/tools/HtmlScripts.scala:HtmlScripts.Scripts.scriptFrom	14
 cognitive	common/src/main/scala/tools/HtmlScripts.scala:HtmlScripts.closing	11
@@ -58,5 +55,4 @@ cognitive	worker/src/main/scala/services/identityadapters/ProjectionDrift.scala:
 cognitive	worker/src/main/scala/services/identityadapters/StagingSort.scala:StagingSort.apply	15
 cognitive	worker/src/main/scala/services/identityadapters/TmdbStore.scala:TmdbStore.updateAll	11
 cognitive	worker/src/main/scala/services/identityadapters/TmdbStoreSweep.scala:TmdbStoreSweep.sweep	11
-cognitive	worker/src/main/scala/services/movies/CorpusHydrate.scala:CorpusHydrate.rehydrateFrom	11
 cognitive	worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala:MongoScrapeArchiveRepository.scanRows	12

@@ -1,17 +1,14 @@
 package services.movies
 
-import tools.KeysetScan
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
 import models.{Source, SourceData}
-import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, ReplaceOneModel, Sorts}
+import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, ReplaceOneModel}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import play.api.Logging
 
 import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.Try
 
 /**
  * Per-cinema `SourceData` slots, split out of the embedded `movies.sourceData` map
@@ -298,7 +295,8 @@ class MongoSlotsRepository(
   decodeFailures:       services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop
 ) extends SlotsRepository
     with WatchedSlotKeyedRows[StoredSlotDto](SlotsRepository.Collection, _.filmId, resumeTokens, metrics, decodeFailures, stopwatch)
-    with Logging {
+    with MongoSlotKeyedRows[StoredSlotDto]("SlotsRepository", SlotsRepository.Collection,
+      SlotKeyed.Paging(findAllBatchSize, findAllBatchAttempts, findAllBatchBackoff), writeMetrics) {
   import SlotKeyed.idOf
 
   private lazy val coll: Option[MongoCollection[StoredSlotDto]] = sharedDb.map { db =>
@@ -313,16 +311,17 @@ class MongoSlotsRepository(
    *  the old silent `getOrElse(Seq.empty)` meant the one read whose failure can empty a
    *  live film left no trace at all. */
   def findForFilmChecked(filmId: String): tools.ReadOutcome[Map[String, SourceData]] =
-    coll.fold[tools.ReadOutcome[Map[String, SourceData]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
-      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(SlotKeyed.filmFilter(filmId)).batchSize(tools.MongoReplies.Default).toFuture())
-        .map(_.map(d => d.slotKey -> d.slot).toMap), s"SlotsRepository.findForFilm($filmId)", logger.warn(_))
-    }
+    slotsMatching(SlotKeyed.filmFilter(filmId), s"findForFilm($filmId)")
 
   /** One `_id` range per venue, so only those venues' rows are read and decoded. */
   override def findAtCinemasChecked(filmId: String, cinemas: Set[String]): tools.ReadOutcome[Map[String, SourceData]] =
+    slotsMatching(SlotKeyed.atCinemasFilter(filmId, cinemas), s"findAtCinemas($filmId)")
+
+  /** One film's slots matching `filter`, by slot key — the read logged as `what` when it fails. */
+  private def slotsMatching(filter: org.bson.conversions.Bson, what: String): tools.ReadOutcome[Map[String, SourceData]] =
     coll.fold[tools.ReadOutcome[Map[String, SourceData]]](tools.ReadOutcome.Answered(Map.empty)) { c =>
-      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(SlotKeyed.atCinemasFilter(filmId, cinemas)).batchSize(tools.MongoReplies.Default).toFuture())
-        .map(_.map(d => d.slotKey -> d.slot).toMap), s"SlotsRepository.findAtCinemas($filmId)", logger.warn(_))
+      SlotKeyed.logged(tools.MongoRead(30.seconds)(c.find(filter).batchSize(tools.MongoReplies.Default).toFuture())
+        .map(_.map(d => d.slotKey -> d.slot).toMap), s"SlotsRepository.$what", logger.warn(_))
     }
 
   /** ONE `filmId $in [...]` query, served by the `filmId` index. */
@@ -338,22 +337,7 @@ class MongoSlotsRepository(
    *  never "the film has no slots" for a caller to prune on. */
   def findAllChecked(): tools.ReadOutcome[Map[String, Map[String, SourceData]]] = coll match {
     case Some(c) =>
-      val buf = Vector.newBuilder[StoredSlotDto]
-      val complete = KeysetScan.scan[StoredSlotDto](
-        label          = "SlotsRepository keyset batch",
-        batchSize      = findAllBatchSize,
-        maxAttempts    = findAllBatchAttempts,
-        initialBackoff = findAllBatchBackoff,
-        keyOf          = _._id,
-        fetchPage      = (afterId, limit) => {
-          val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
-          Await.result(c.find(filter).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), 60.seconds)
-        },
-        onIncomplete   = exception =>
-          logger.warn(s"SlotsRepository.findAll keyset scan failed after retries: " +
-            s"${exception.getClass.getSimpleName}: ${exception.getMessage} — returning empty")
-      )(batch => buf ++= batch)
-      complete.collected(buf.result().groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap)
+      allRowsChecked(c, tools.MongoReplies.Default)(_._id).map(_.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap)
     // No collection wired at all — not a failure, there is simply nothing to read.
     case None => tools.ReadOutcome.Answered(Map.empty)
   }
@@ -398,7 +382,7 @@ class MongoSlotsRepository(
     // composite `_id`. A row that already holds exactly what we would write must not be written.
     // A read that fails, and a row that is absent, both read as "differs" and write.
     write("upsertSlot", s"SlotsRepository.upsertSlot($filmId,$slotKey)") {
-      if (roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey) && !storedSlot(c, filmId, slotKey).contains(slot)) {
+      if (roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey) && !storedRow(c, filmId, slotKey).map(_.slot).contains(slot)) {
         val dto = StoredSlotDto.of(filmId, slotKey, slot, clock.instant())
         Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       }
@@ -414,16 +398,20 @@ class MongoSlotsRepository(
     coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
       if (slots.isEmpty) WriteOutcome.Written
       else write("upsertSlots", s"SlotsRepository.upsertSlots($filmId, ${slots.size} slots)") {
-        val admitted = slots.filter { case (slotKey, _) => roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey) }
-        val now      = clock.instant()
-        val replaces = changedOf(admitted, storedSlots(c, filmId, admitted.keySet)).map { case (slotKey, slot) =>
-          val dto = StoredSlotDto.of(filmId, slotKey, slot, now)
-          ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
-        }
-        if (replaces.nonEmpty) Await.result(c.bulkWrite(replaces, new BulkWriteOptions().ordered(false)).toFuture(), 30.seconds)
+        writeChanged(c, filmId, slots.filter { case (slotKey, _) => roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey) })
         WriteOutcome.Written
       }
     }
+
+  /** Replace, in one unordered bulk write, each of the film's `slots` that is not already stored as it is. */
+  private def writeChanged(c: MongoCollection[StoredSlotDto], filmId: String, slots: Map[String, SourceData]): Unit = {
+    val now      = clock.instant()
+    val replaces = changedOf(slots, storedSlots(c, filmId, slots.keySet)).map { case (slotKey, slot) =>
+      val dto = StoredSlotDto.of(filmId, slotKey, slot, now)
+      ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
+    }
+    if (replaces.nonEmpty) Await.result(c.bulkWrite(replaces, new BulkWriteOptions().ordered(false)).toFuture(), 30.seconds)
+  }
 
   /** The `slots` not already held exactly as `held` stores them. A failed read says no row is redundant, so every
    *  one writes — as `upsertSlot` writes an unreadable row. */
@@ -442,11 +430,6 @@ class MongoSlotsRepository(
   private def write(op: String, what: => String)(body: => WriteOutcome): WriteOutcome =
     RepositoryWrite.attempt(SlotsRepository.Collection, op, what, writeMetrics, logger)(body)
 
-  /** One row's stored slot, or None when it is absent OR unreadable — the two cases `upsertSlot`
-   *  treats alike, because both mean "we cannot say this write is redundant". */
-  private def storedSlot(c: MongoCollection[StoredSlotDto], filmId: String, slotKey: String): Option[SourceData] =
-    Try(Await.result(c.find(Filters.eq("_id", idOf(filmId, slotKey))).first().toFuture(), 10.seconds))
-      .toOption.flatMap(Option(_)).map(_.slot)
 
   def deleteSlot(filmId: String, slotKey: String): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     write("deleteSlot", s"SlotsRepository.deleteSlot($filmId,$slotKey)") {
@@ -466,27 +449,7 @@ class MongoSlotsRepository(
     }
   }
 
-  def filmIdsChecked(): tools.ReadOutcome[Set[String]] =
-    coll.fold[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty))(SlotKeyed.distinctFilmIdsChecked(_, "SlotsRepository", logger.warn(_)))
-
-  private val idPaging = SlotKeyed.Paging(findAllBatchSize, findAllBatchAttempts, findAllBatchBackoff)
-
-  def rowIdsChecked(): tools.ReadOutcome[Set[String]] =
-    coll.fold[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty))(SlotKeyed.rowIdsChecked(_, "SlotsRepository", logger.warn(_), idPaging))
-
-  def rowWrittenAtChecked(): tools.ReadOutcome[Map[String, java.time.Instant]] =
-    coll.fold[tools.ReadOutcome[Map[String, java.time.Instant]]](tools.ReadOutcome.Answered(Map.empty))(SlotKeyed.rowWrittenAtChecked(_, "SlotsRepository", logger.warn(_), idPaging))
-
-
-  override def existingRowIdsChecked(ids: Set[String]): tools.ReadOutcome[Set[String]] =
-    coll.fold[tools.ReadOutcome[Set[String]]](tools.ReadOutcome.Answered(Set.empty))(SlotKeyed.existingRowIdsChecked(_, ids, "SlotsRepository", logger.warn(_)))
-
-  def deleteRows(ids: Set[String]): Long =
-    coll.fold(0L)(SlotKeyed.deleteRows(_, ids, SlotsRepository.Collection, writeMetrics, logger))
-
-  def deleteFilms(filmIds: Set[String]): Long =
-    coll.fold(0L)(SlotKeyed.deleteFilms(_, filmIds, SlotsRepository.Collection, writeMetrics, logger))
-
   /** What [[WatchedSlotKeyedRows]] watches, ringing `onChange(filmId)` for every change: the caller re-reads and stitches the film. */
   protected def watchedCollection: Option[MongoCollection[StoredSlotDto]] = coll
+  protected def rowsCollection: Option[MongoCollection[StoredSlotDto]]    = coll
 }

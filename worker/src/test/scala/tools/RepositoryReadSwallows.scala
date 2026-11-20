@@ -30,11 +30,8 @@ object RepositoryReadSwallows {
     ("common/src/main/scala/services/movies/WholeRecordUpsert.scala", "collidesWithAnother",
       "Try(Await.result(movies.find(Filters.and(") ->
       "the collision pre-check only: a sibling holding the key or tmdbId is still refused by the unique index at the write (handled as IdentityHeld below)",
-    ("common/src/main/scala/services/movies/ScreeningsRepository.scala", "storedRow",
-      "Try(Await.result(c.find(Filters.eq(\"_id\", idOf(filmId, slotKey))).first().toFuture(), 10.seconds))") ->
-      "absent and unreadable are both 'cannot prove this write redundant': either way the row is written, the safe direction",
-    ("common/src/main/scala/services/movies/SlotsRepository.scala", "storedSlot",
-      "Try(Await.result(c.find(Filters.eq(\"_id\", idOf(filmId, slotKey))).first().toFuture(), 10.seconds))") ->
+    ("common/src/main/scala/services/movies/MongoSlotKeyedRows.scala", "storedRow",
+      "Try(Await.result(c.find(Filters.eq(\"_id\", SlotKeyed.idOf(filmId, slotKey))).first().toFuture(), 10.seconds)).toOption.flatMap(Option(_))") ->
       "absent and unreadable are both 'cannot prove this write redundant': either way the row is written, the safe direction",
     ("worker/src/main/scala/services/resolution/ResolutionStore.scala", "get",
       "Try(Await.result(c.find(Filters.and(Filters.eq(\"_id\", hintKey), Filters.gte(\"at\", cutoff))).headOption(), 5.seconds))") ->

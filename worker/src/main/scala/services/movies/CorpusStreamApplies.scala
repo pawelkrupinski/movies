@@ -10,12 +10,7 @@ import models.MovieRecord
  * cache's own writes ([[FilmWriteFence]]). `logger` is the cache's, which the mirror has always logged as.
  */
 private[movies] final class CorpusStreamApplies(corpus: MirroredCorpus, logger: play.api.Logger) {
-  private val repository    = corpus.repository
-  private val normalizer    = corpus.normalizer
-  private val residentShape = corpus.shape
-  private val corpusIndex   = corpus.index
-  import corpus.{changed, evict, store, touch}
-  private def get(key: CacheKey): Option[MovieRecord] = corpus.held(key)
+  import corpus.{changed, evict, held as get, index as corpusIndex, normalizer, repository, shape as residentShape, store, touch}
 
   /** Apply one out-of-band upsert from the change stream to the in-memory cache.
    *  Mirrors a single row of `rehydrate` — a direct `positive.put`, bypassing

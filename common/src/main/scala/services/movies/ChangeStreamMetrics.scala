@@ -123,21 +123,20 @@ object ChangeStreamMetrics {
    *  it touched (e.g. a scrape that also settled `tmdbAttempt` ⇒ source_data +
    *  identity). An unrecognised field falls to `other`. */
   def updateKinds(updatedFieldKeys: Set[String]): Set[String] = {
-    val nonMeta = updatedFieldKeys.filter(_ != "updatedAt")
-    if (nonMeta.isEmpty) Set(Kind.UpdatedAtOnly)
-    else {
-      val topLevel = nonMeta.map(_.takeWhile(_ != '.'))
-      val kinds = Set.newBuilder[String]
-      // `retainedSynopses` is slot CONTENT kept after a slot was pruned — the same kind
-      // of change as a `sourceData` write, and it reaches the wire the same way now that
-      // `MovieRecordPatch` carries it.
-      if (topLevel.contains("sourceData") || topLevel.contains("retainedSynopses")) kinds += Kind.SourceData
-      if (topLevel.exists(RatingFields))   kinds += Kind.Rating
-      if (topLevel.exists(IdentityFields)) kinds += Kind.Identity
-      val result = kinds.result()
-      if (result.isEmpty) Set(Kind.Other) else result
-    }
+    val topLevel = updatedFieldKeys.filter(_ != "updatedAt").map(_.takeWhile(_ != '.'))
+    val kinds    = FieldKinds.collect { case (fields, kind) if topLevel.exists(fields) => kind }.toSet
+    if (topLevel.isEmpty) Set(Kind.UpdatedAtOnly)
+    else if (kinds.isEmpty) Set(Kind.Other)
+    else kinds
   }
+
+  /** Each kind an update can touch, by the top-level fields that are it. `retainedSynopses` is slot CONTENT kept
+   *  after a slot was pruned — the same kind of change as a `sourceData` write, and it reaches the wire the same way
+   *  now that `MovieRecordPatch` carries it. */
+  private val FieldKinds: Seq[(Set[String], String)] = Seq(
+    Set("sourceData", "retainedSynopses") -> Kind.SourceData,
+    RatingFields                          -> Kind.Rating,
+    IdentityFields                        -> Kind.Identity)
 
   val noop: ChangeStreamMetrics = new ChangeStreamMetrics {
     def recordEvent(op: String): Unit        = ()
