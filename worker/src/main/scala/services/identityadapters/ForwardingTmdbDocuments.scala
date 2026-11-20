@@ -1,6 +1,6 @@
 package services.identityadapters
 
-import services.identity.Hit
+import services.identity.vocabulary.Hit
 import org.bson.BsonDocument
 
 /**

@@ -7,7 +7,7 @@ import services.enrichment.ImdbClient
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
 import services.identity.Film
-import services.identity.vocabulary.{Answer, BsonFields, CandidateQuery, DetailFacts, Hit, ObservationReads, ProseWords}
+import services.identity.vocabulary.{Answer, BsonFields, CandidateQuery, Hit, ObservationReads, ProseWords}
 import services.identity.vocabulary.toAnswer
 
 /**
