@@ -3,6 +3,7 @@ package services.identityadapters
 import models.{CacheKey, FilmId, LeanRecords, StoredMovieRecord}
 
 import services.identity.*
+import services.identity.measures.Resolution
 
 import models.MovieRecord
 import services.movies.MovieCache

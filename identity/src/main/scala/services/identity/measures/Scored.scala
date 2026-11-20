@@ -1,6 +1,5 @@
-package services.identity
+package services.identity.measures
 
-import services.identity.measures.{IdentityMeasures, Measure, MeasuredListing}
 import services.identity.vocabulary.Denial
 
 /** A candidate scored for `listing`, which its own title searches ranked at `rank` (best,

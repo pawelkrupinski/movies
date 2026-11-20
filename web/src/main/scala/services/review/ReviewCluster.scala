@@ -1,7 +1,7 @@
 package services.review
 
 import models.Country
-import services.identity.ResolverDecision
+import services.identity.measures.ResolverDecision
 import models.ListingKey
 
 import java.time.Instant

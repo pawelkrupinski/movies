@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Resolution, ResolverDecision, StoredFamily}
+import services.identity.StoredFamily
+import services.identity.measures.{Resolution, ResolverDecision}
 import services.identity.vocabulary.StableNames
 import models.ListingKey
 

@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{ForwardingIdentityLookups, IdentityCalibration, IdentityLookups, Listing}
+import services.identity.{ForwardingIdentityLookups, IdentityCalibration, IdentityLookups}
+import services.identity.measures.Listing
 import services.identity.vocabulary.{Answer, DetailFacts, VoterFamily}
 import models.ListingKey
 import services.titles.TitleNormalizer

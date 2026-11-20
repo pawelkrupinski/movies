@@ -6,6 +6,7 @@ import services.titles.TitleNormalizer
 
 import scala.collection.mutable
 import services.identity.vocabulary.StoredSlots
+import services.identity.measures.{Listing, ResolverDecision}
 
 /**
  * The [[ProjectionIndex]] kept from one projection to the next and moved only where its inputs moved, so a projection

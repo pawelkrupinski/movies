@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.Listing
 import org.bson.{BsonDocument, BsonInt64, BsonString}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, Indexes, ReplaceOneModel, ReplaceOptions, Updates}

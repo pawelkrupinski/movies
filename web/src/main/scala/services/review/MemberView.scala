@@ -12,7 +12,7 @@ final case class MemberView(key: ListingKey, slot: Option[SlotFacts], page: Opti
   /** What the listing row states, then the venue's own film page. */
   def facts: Seq[VenueFacts] = slot.map(_.facts).toSeq ++ page.toSeq
   lazy val factsFromCatalogue: Boolean =
-    services.identity.SourceReliability.feedStated(feed.toSeq.flatMap(_.catalogueIds), pageUrl)
+    services.identity.measures.SourceReliability.feedStated(feed.toSeq.flatMap(_.catalogueIds), pageUrl)
   /** The year and directors the VENUE stated — its key's, else its listing row's, else its own page's — and none
    *  when its listing's facts are a feed catalogue's: those are no venue's statement to check an answer against. */
   lazy val member: ReviewMember = {

@@ -1,6 +1,5 @@
-package services.identity
+package services.identity.measures
 
-import services.identity.measures.{FactRelations, Film}
 import services.identity.vocabulary.VenueNames
 
 /**

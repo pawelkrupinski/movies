@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{Certificates, Film, IdentityMeasures, Measure, MeasuredListing, TmdbFilmRecord}
+import services.identity.measures.{Certificates, Film, IdentityMeasures, Listing, Measure, MeasuredListing, TmdbFilmRecord}
 import models.{Cinema, CinemaMovie, City, Country, Movie}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{Film, IdentityMeasures, MeasuredListing}
+import services.identity.measures.{Candidate, Film, IdentityMeasures, MeasuredListing, Scored}
 import org.scalatest.funsuite.AnyFunSuite
 
 class FilmNessSpec extends AnyFunSuite {

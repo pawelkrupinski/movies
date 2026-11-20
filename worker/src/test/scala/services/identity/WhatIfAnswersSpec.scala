@@ -11,6 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters._
 import services.identity.vocabulary.{Answer, CandidateQuery, PosterHash, PosterQuestion}
+import services.identity.measures.PosterEvidence
 
 /** Where a what-if's answers come from ([[WhatIfAnswers]]): a question the mirror's store lacks is asked of the real
  *  service once, through the worker's own client and parser, filed into the LOCAL store (never the mirror) keyed as

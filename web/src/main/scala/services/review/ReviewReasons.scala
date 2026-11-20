@@ -1,6 +1,7 @@
 package services.review
 
-import services.identity.{ListingTrace, ResolverDecision}
+import services.identity.ListingTrace
+import services.identity.measures.ResolverDecision
 
 /** What a decision stored beside its explanation: the facts its members contradicted each other on, the catalogue it
  *  fell back to, each film-database family's agreement-stage answer (family → the id it named) and how many of the
@@ -37,7 +38,7 @@ final case class ListingReasons(trace: ListingTrace) {
   def against: Seq[Contribution] = contributions.filter(_.weight < 0).sortBy(_.weight)
   def neutral: Seq[Contribution] = contributions.filter(_.weight == 0)
   /** A refusal that names a denial or a veto — a guard that blocked the film, not a rule that merely didn't fire. */
-  def isVeto(refusal: services.identity.DecisionTrace.Refusal): Boolean =
+  def isVeto(refusal: services.identity.measures.DecisionTrace.Refusal): Boolean =
     refusal.detail.contains("denied") || refusal.why.contains("veto") || refusal.rule.contains("veto")
   /** The rule ids that took, joined, set apart or vetoed — the refusals are listed whole on their own. */
   def rulesApplied: Seq[String] = trace.rules.filterNot(_.startsWith("refused:"))

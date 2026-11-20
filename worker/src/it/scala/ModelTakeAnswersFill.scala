@@ -3,6 +3,7 @@ package integration
 import services.identityadapters.{AgreementQuestions, FamilyAnswerStore, FamilySource, FilmwebFamily, ImdbFamily,
   InMemoryTmdbDocuments, MetacriticFamily, PosterAnswerStore, RottenTomatoesFamily, TmdbKind, WikiFamily}
 import services.identity._
+import services.identity.measures.{FallbackIds, Listing, PosterEvidence, ResolverDecision}
 
 import services.identity.agreement.{Agreement, FamilyAnswers, FamilyVerdict, SourceHit, SourceRecord}
 import services.identity.vocabulary.VoterFamily

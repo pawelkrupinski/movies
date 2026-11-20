@@ -10,6 +10,7 @@ import services.movies.SingleCountryNormalizer
 import java.time.LocalDate
 import services.identity.vocabulary.{CatalogueId, ListedCast, ProseWords, ScreeningDays}
 import services.identity.vocabulary.VenueNames
+import services.identity.measures.Listing
 
 /**
  * A listing's equality is what the model holds a re-published listing to: an equal one is not resolved again, and its

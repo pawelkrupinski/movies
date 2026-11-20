@@ -299,10 +299,10 @@ class ArchiveReplayWiring(
   /** The recording's capture of the listings prod's model kept for their facts alone ([[ProdRetained]]): none unless
    *  the replay names its recording's. Overridden where a recording is replayed (the convergence rows, the takes
    *  check), read as a def: `WorkerWiring`'s own initialisation may reach the store below first. */
-  def recordedRetained: Seq[services.identity.Listing] = Nil
+  def recordedRetained: Seq[services.identity.measures.Listing] = Nil
 
   /** The recorded kept listings of the venues this replay holds (a sample's draw holds some). */
-  private def retainedOfReplay: Seq[services.identity.Listing] = recordedRetained.filter(l => archivedListings.contains(l.cinema))
+  private def retainedOfReplay: Seq[services.identity.measures.Listing] = recordedRetained.filter(l => archivedListings.contains(l.cinema))
 
   // The model's take-up reads the recorded set as prod's reads its store (ListingRetention.retainedAt): the model's
   // input is the listings billed AND those kept, never the billed alone. No history behind a recording's set.
@@ -313,12 +313,12 @@ class ArchiveReplayWiring(
   /** When the replayed recording was made: its newest scrape (none archived: now, as a take-up dates an undated one). */
   private def recordedAt: java.time.Instant = countryRows.flatMap(_.lastSuccess.map(_.at)).maxOption.getOrElse(clock.instant())
 
-  override protected def identityHeldBefore(): Seq[services.identity.Listing] = Nil
+  override protected def identityHeldBefore(): Seq[services.identity.measures.Listing] = Nil
 
   /** The kept listings a resolve of this replay reads beside the listings billed ([[services.identity.ModelRead.corpus]]
    *  of [[archivedListings]]): the recorded set under the take-up's own rule, so a whole resolve (the takes check) and
    *  the model read the same input. */
-  def retainedListings(billed: Seq[services.identity.Listing]): Seq[services.identity.Listing] =
+  def retainedListings(billed: Seq[services.identity.measures.Listing]): Seq[services.identity.measures.Listing] =
     services.identity.ListingRetention.retained(retainedOfReplay, billed, titleNormalizer)
 
   /** One scraper per archived cinema, replacing the catalogue's HTTP clients.

@@ -1,10 +1,10 @@
 package services.identity
 
-import services.identity.measures.MeasuredListing
+import services.identity.measures.{MeasuredListing, Scored}
 import scala.annotation.tailrec
 
 import services.identity.Acceptance.Refused
-import services.identity.Scored.Accepted
+import services.identity.measures.Scored.Accepted
 
 /** An acceptance rule as one row of data ([[AcceptanceRuleTable]] holds every row): its NAME — the trace's
  *  `refused:<rule>:<why>`, the ablation's `accept:<rule>` — what it REQUIRES of the ranking before it weighs anyone, how

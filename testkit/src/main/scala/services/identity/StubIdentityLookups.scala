@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.Film
+import services.identity.measures.{Film, Listing}
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit}
 
 /** A source that has asked everything and found no film anywhere: no venue detail page, every

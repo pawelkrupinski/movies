@@ -1,6 +1,7 @@
 package integration
 
 import services.identity._
+import services.identity.measures.{Listing, Resolution}
 import services.identityadapters.TmdbIdentityLookups
 import models.ListingKey
 import tools._

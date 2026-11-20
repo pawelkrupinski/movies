@@ -2,7 +2,8 @@ package services.identityadapters
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.identity.{Regroupings, ResolverDecision}
+import services.identity.Regroupings
+import services.identity.measures.ResolverDecision
 import services.identity.agreement.SuspectTakes
 
 /**

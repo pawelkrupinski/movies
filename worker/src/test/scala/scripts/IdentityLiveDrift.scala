@@ -3,6 +3,7 @@ package scripts
 import models.{Country, ListingKey}
 import play.api.libs.json.{JsObject, JsString, Json}
 import services.identity._
+import services.identity.measures.{Resolution, ResolverDecision, WaitingOn}
 import services.movies.ScrapeListing
 import services.titles.TitleNormalizer
 import services.identityadapters.TmdbStore

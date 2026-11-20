@@ -5,6 +5,7 @@ import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, Post
   TmdbKind}
 import play.api.libs.json.{JsArray, JsNull, JsNumber, JsObject, JsString, Json}
 import services.identity._
+import services.identity.measures.{Listing, Resolution, ResolverDecision}
 
 import models.ListingKey
 import tools._

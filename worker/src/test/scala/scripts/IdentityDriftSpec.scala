@@ -312,8 +312,8 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     val listings          = slice.core ++ slice.context
     val model             = inputs.incremental(lookups, reads.normalizer, new InMemoryIdentityModelStore, "rules", IdentityTraceSink.Discard)
     val flips             = new TakeFlips
-    private var seen      = Seq.empty[services.identity.Listing]
-    private def takesOf(decisions: Seq[services.identity.ResolverDecision]) =
+    private var seen      = Seq.empty[services.identity.measures.Listing]
+    private def takesOf(decisions: Seq[services.identity.measures.ResolverDecision]) =
       decisions.flatMap(d => d.members.map(_ -> IdentitySlice.filmOf(d))).toMap
     def takes(title: String): Map[String, String] =
       takesOf(model.decisions).collect { case (key, film) if key.rawTitle == title => key.venue -> film }
@@ -332,7 +332,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
       model.batch(seen = kept, gone = leaving.map(_.key).filterNot(kept.map(_.key).toSet))
       check(step)
     }
-    def held: Seq[services.identity.Listing] = model.listings
+    def held: Seq[services.identity.measures.Listing] = model.listings
     def filed(step: String, queries: Set[CandidateQuery], films: Set[Int]): Unit = {
       lookups.held = lookups.held -- queries.map(query => s"q:${query.sortKey}") -- films.map(film => s"f:$film")
       model.batch(answered = AnswersChanged(queries, films))
@@ -536,9 +536,9 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     val (arriving, booted) = run.listings.partition(l => core(l.key))
     var answered = false
     val readiness = new services.identity.ListingReadiness {
-      def awaiting(listing: services.identity.Listing): Set[services.identity.vocabulary.Question] =
+      def awaiting(listing: services.identity.measures.Listing): Set[services.identity.vocabulary.Question] =
         if (answered) Set.empty else Set(services.identity.vocabulary.Question.VenuePage(listing.key))
-      def ask(listing: services.identity.Listing, questions: Set[services.identity.vocabulary.Question]): Unit = ()
+      def ask(listing: services.identity.measures.Listing, questions: Set[services.identity.vocabulary.Question]): Unit = ()
     }
     val worker = new IdentityDrift.Worker(run.readsAt(clock), seed = 8, gatePercent = 100, clock, gating = _ => readiness)
     worker.boot(booted); worker.project()

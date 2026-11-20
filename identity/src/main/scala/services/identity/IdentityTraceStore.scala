@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.IdentityMeasures
+import services.identity.measures.{DecisionTrace, IdentityMeasures}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, IndexModel, Indexes, Projections, ReplaceOneModel, ReplaceOptions}

@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.ResolverDecision
 import services.identity.staging.{StagedCluster, StagedTake, StagingEvent}
 import models.ListingKey
 

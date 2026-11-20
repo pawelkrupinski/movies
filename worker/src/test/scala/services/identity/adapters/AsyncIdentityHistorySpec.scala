@@ -11,6 +11,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.duration._
 import services.identity.vocabulary.ObservationReads
+import services.identity.measures.Listing
 
 /** The history never holds its callers ([[AsyncIdentityHistory]]): with its store blocked outright — Mongo stalled — the
  *  model's drains and the TMDB store's filings go on and finish all the same, a full queue drops and counts, and

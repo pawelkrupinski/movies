@@ -7,6 +7,7 @@ import tools.IndependentCases
 
 import scala.util.Random
 import services.identity.vocabulary.{ListingKeyBson, TitleDecorations}
+import services.identity.measures.Listing
 
 /** The incremental model taken up from its store after a restart: whatever moved while it was
  *  down — listings, answers — it decides as a resolve of what it holds, re-resolving only the

@@ -160,11 +160,11 @@ object ReviewDigest {
    *  no other), with the film judged put forward and the film the model took, if another, among the candidates it lost to.
    *  The model's decision of the listing gives the explanation and the other candidates; a listing the model holds no
    *  decision for gets an empty one. Answered under the item's own id: one listing and film each. */
-  def clusterOf(country: models.Country, item: DigestItem, decisions: Seq[services.identity.ResolverDecision]): ReviewCluster = {
+  def clusterOf(country: models.Country, item: DigestItem, decisions: Seq[services.identity.measures.ResolverDecision]): ReviewCluster = {
     val key      = decisions.iterator.flatMap(_.members).find(k => k.rawTitle == item.rawTitle && (item.venue == "*" || k.venue == item.venue))
     val member   = key.getOrElse(models.ListingKey.Published(if (item.venue == "*") "" else item.venue, item.rawTitle, None, Nil))
     val seed     = key.flatMap(k => decisions.find(_.members.contains(k))).map(ReviewCluster.of(country, _))
-      .getOrElse(ReviewCluster(country, Seq(member), None, 0.0, services.identity.ResolverDecision.Basis.NoCandidate, Nil, false, Nil))
+      .getOrElse(ReviewCluster(country, Seq(member), None, 0.0, services.identity.measures.ResolverDecision.Basis.NoCandidate, Nil, false, Nil))
     val judged   = item.film.tmdb
     val agrees   = judged.isDefined && seed.film == judged
     val tookOther = seed.film.filterNot(judged.contains).map(ReviewCandidate(_, Some(seed.confidence)))

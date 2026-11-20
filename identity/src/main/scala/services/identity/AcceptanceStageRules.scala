@@ -1,8 +1,8 @@
 package services.identity
 
-import services.identity.measures.{FactRelations, IdentityMeasures, MeasuredListing, RelayStage, StageRelays}
+import services.identity.measures.{FactRelations, IdentityMeasures, MeasuredListing, RelayStage, Scored, StageRelays}
 import services.identity.AcceptanceRule.Weighing
-import services.identity.Scored.Accepted
+import services.identity.measures.Scored.Accepted
 import services.titles.YearWindow
 
 /** What the acceptance rules of a stage relay ask: the house's production, the relay's record ([[RelayStage]]), and the

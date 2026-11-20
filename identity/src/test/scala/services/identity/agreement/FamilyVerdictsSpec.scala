@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{FilmTable, IdentityCalibration, Listing}
+import services.identity.{FilmTable, IdentityCalibration}
+import services.identity.measures.Listing
 import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, Question, VoterFamily}
 import models.KinoMuza

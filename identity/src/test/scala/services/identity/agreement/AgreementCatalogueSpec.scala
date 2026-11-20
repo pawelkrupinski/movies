@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{FilmTable, IdentityCalibration, IdentityLookups, Listing, Resolution, ResolverDecision}
+import services.identity.{FilmTable, IdentityCalibration, IdentityLookups}
+import services.identity.measures.{Listing, Resolution, ResolverDecision}
 import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, DetailFacts, Hit, Question, VoterFamily}
 import models.{Kinoteka, Multikino}

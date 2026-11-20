@@ -1,4 +1,5 @@
 package services.identity
+import services.identity.measures.{Resolution, ResolverDecision}
 
 /**
  * THE HAND JUDGEMENTS OF TAKES as the live worker reads them: `test/resources/fixtures/identity-judgements.tsv` (its

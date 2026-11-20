@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.identity.FilmTable.F
 import services.movies.SingleCountryNormalizer
 import services.identity.vocabulary.{PinConstraints, TitleDecorations}
+import services.identity.measures.Listing
 
 /** The group vote ([[ClusterVoting.vote]]) over a cluster the test names, so the solver's split — which no recording
  *  reproduces — is given rather than hoped for. */

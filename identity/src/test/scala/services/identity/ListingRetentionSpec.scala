@@ -5,6 +5,7 @@ import org.scalatest.matchers.should.Matchers
 import services.titles.TitleNormalizer
 
 import scala.util.Random
+import services.identity.measures.Listing
 
 /**
  * [[ListingRetention]] keeps a listing that left while a present listing of the country bills its title, read by its

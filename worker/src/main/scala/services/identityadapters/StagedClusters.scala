@@ -1,6 +1,6 @@
 package services.identityadapters
 
-import services.identity.*
+import services.identity.measures.{ResolverDecision, WaitingOn}
 import services.identity.staging.{StagedCluster, StagedFact, StagedQuestion}
 import services.identity.vocabulary.Question
 

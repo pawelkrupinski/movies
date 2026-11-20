@@ -7,7 +7,7 @@ import play.api.Mode
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import play.twirl.api.HtmlFormat
-import services.identity.ResolverDecision
+import services.identity.measures.ResolverDecision
 import models.ListingKey
 import services.review._
 

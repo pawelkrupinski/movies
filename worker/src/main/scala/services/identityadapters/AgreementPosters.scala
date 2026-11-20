@@ -1,6 +1,6 @@
 package services.identityadapters
 
-import services.identity.*
+import services.identity.measures.PosterEvidence
 import org.bson.{BsonDocument, BsonInt32, BsonInt64, BsonNull}
 import org.mongodb.scala.bson.BsonArray
 import services.identity.vocabulary.PosterQuestion

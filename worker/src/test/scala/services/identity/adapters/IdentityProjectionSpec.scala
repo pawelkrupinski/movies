@@ -14,6 +14,7 @@ import services.scrapes.InMemoryScrapeArchiveRepository
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import services.identity.vocabulary.Question
+import services.identity.measures.{Listing, ResolverDecision}
 
 /**
  * The identity projection wired over the real cache and an in-memory store: what a cut-over

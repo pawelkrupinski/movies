@@ -7,7 +7,7 @@ import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.us.AlamoDrafthouseClient
-import services.identity.Listing
+import services.identity.measures.Listing
 import services.identity.vocabulary.CatalogueId
 
 import services.titles.TitleNormalizer

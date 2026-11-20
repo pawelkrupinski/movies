@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.{DecisionTrace, ResolverDecision}
 
 /** The model as a reader sees it ([[ModelSnapshot]]), built from the engine only when read, on the model's thread
  *  ([[IdentityModelService.current]]): its resolution, gaps, listings and questions to renew, with each new listing the

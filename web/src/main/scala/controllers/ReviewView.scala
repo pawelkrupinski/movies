@@ -1,6 +1,6 @@
 package controllers
 
-import services.identity.ResolverDecision
+import services.identity.measures.ResolverDecision
 import services.review._
 
 /** Everything `review.scala.html` renders. */

@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.{FallbackIds, Listing}
 import clients.TmdbClient
 import services.identityadapters.TmdbIdentityReads.*
 import services.cinemas.common.DetailEnricher

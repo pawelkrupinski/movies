@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredListing, MultiFilmBill, TmdbFilmRecord}
+import services.identity.measures.{Evidence, EvidenceNode, FallbackIds, Film, IdentityMeasures, Listing, ListingShape, Measure, MeasuredListing, MultiFilmBill, Resolution, ResolverDecision, TmdbFilmRecord}
 import services.titles.billing.BillingParse
 
 import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany, HeliosMagnolia, KinoApollo, KinoBulgarska, KinoCytadela, KinoDKFRumcajs, KinoMikro, KinoMuza, KinoOaza, KinoPalacowe, Kinoteka, Multikino, MultikinoPasazGrunwaldzki, Rialto, StacjaFalenica, UkRoster, ListingKey}

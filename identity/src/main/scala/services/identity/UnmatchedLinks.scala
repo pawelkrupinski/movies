@@ -1,6 +1,7 @@
 package services.identity
 
 import models.{Filmweb, FilmwebPages, Imdb, MovieRecord}
+import services.identity.measures.ResolverDecision
 
 /** What an unmatched film of a draft ([[FilmRecordDrafts]]) is linked by. */
 private[identity] object UnmatchedLinks {

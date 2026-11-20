@@ -3,6 +3,7 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.TakeJudgements.Judgement
+import services.identity.measures.{Resolution, ResolverDecision}
 
 /** The hand judgements as the worker reads them ([[TakeJudgements]]): the file's rows, and the verdict they give a take. */
 class TakeJudgementsSpec extends AnyFlatSpec with Matchers {

@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.ResolverDecision
 import play.api.Logging
 
 import java.time.Clock

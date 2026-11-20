@@ -13,6 +13,7 @@ import scala.util.hashing.MurmurHash3
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 import services.identity.vocabulary.RuleKind
+import services.identity.measures.{Listing, Resolution}
 
 /**
  * THE POPULATION PROPERTY over REAL families (docs/investigations/2026-11-01-flip-unification.md, stage 1): every

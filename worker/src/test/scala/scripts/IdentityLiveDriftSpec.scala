@@ -3,7 +3,8 @@ package scripts
 import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{ResolverDecision, TakeChange}
+import services.identity.TakeChange
+import services.identity.measures.ResolverDecision
 import models.ListingKey
 import tools.ProdFilm
 
@@ -60,7 +61,7 @@ class IdentityLiveDriftSpec extends AnyFlatSpec with Matchers with ScratchDirect
   "asServed" should "withdraw a take a hand judgement calls wrong, as prod's projection serves it, and leave the others" in {
     val cadiz   = key("mk2 Bahía de Cádiz", "Pavarotti 90th – the Grand Tribute 26-27")
     val ingenio = key("mk2 El Ingenio", "Pavarotti 90th – the Grand Tribute 26-27")
-    val resolved = services.identity.Resolution(Seq(
+    val resolved = services.identity.measures.Resolution(Seq(
       ResolverDecision(Seq(cadiz, ingenio), Some(1767032), 0.99, ResolverDecision.Basis.OwnMatch, Seq("segment-top-hit"))(),
       decision(muza, Some(238))), 2, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val judged = new services.identity.TakeJudgements.Index(Seq(

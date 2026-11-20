@@ -2,6 +2,7 @@ package services.identityadapters
 
 import models.{Cinema, ListingKey, StoredMovieRecord}
 import services.identity.*
+import services.identity.measures.ResolverDecision
 import services.evidence.LatestTitleYear
 import services.titles.TitleNormalizer
 

@@ -1,4 +1,4 @@
-package services.identity
+package services.identity.measures
 
 /** A node: the listings sharing one evidence. Named by its smallest listing's sort key. */
 private[identity] final class EvidenceNode(val evidence: Evidence, val listings: Seq[Listing]) {

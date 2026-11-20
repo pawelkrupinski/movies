@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{BilledPiece, Listing, PosterEvidence, ResolverDecision}
+import services.identity.BilledPiece
+import services.identity.measures.{Listing, PosterEvidence, ResolverDecision}
 import services.identity.vocabulary.{Answer, DetailFacts, ProseWords, Question, VoterFamily}
 
 import scala.collection.mutable
@@ -50,7 +51,7 @@ private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candi
     pieceOf(v, listings).fold(agreedTake(cluster) match {
       // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
       // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
-      case AgreementTakes.Take.Taken(agreed) if listings.exists(services.identity.ListingShape.stagesAWork) =>
+      case AgreementTakes.Take.Taken(agreed) if listings.exists(services.identity.measures.ListingShape.stagesAWork) =>
         ruleTake(AgreementTakes.BroadcastTake, cluster).getOrElse(agreed)
       case AgreementTakes.Take.Taken(agreed) => agreed
       case AgreementTakes.Take.Pending       => takeWaits(id) = ClusterWait(digest, asking.toSet); decision
@@ -119,7 +120,7 @@ private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candi
   /** The listings whose text is their VENUE's own — none whose facts a feed catalogue states, its text describing the
    *  catalogue's entry ([[services.identity.SourceReliability]]) — each with its detail page's facts, where read. */
   private def venueStated(listings: Seq[Listing]): Seq[(Listing, Option[DetailFacts])] =
-    listings.filter(services.identity.SourceReliability.decides(_, services.identity.SourceReliability.Fact.Names))
+    listings.filter(services.identity.measures.SourceReliability.decides(_, services.identity.measures.SourceReliability.Fact.Names))
       .map(listing => listing -> venues.detail(listing).answered.flatten)
 
   /** The decision with the film a fill rule took — pending while TMDB was not asked about its IMDb id yet or the venue

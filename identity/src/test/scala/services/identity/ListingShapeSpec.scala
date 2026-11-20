@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{Film, MeasuredListing, StageRelays}
+import services.identity.measures.{Evidence, Film, ListingShape, MeasuredListing, SourceReliability, StageRelays}
 import services.identity.vocabulary.ListingDating
 
 import services.titles.billing.BillingParse

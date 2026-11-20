@@ -5,6 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import models.ListingKey
 import settings.CommitSha
+import services.identity.measures.{DecisionTrace, Listing, ResolverDecision}
 
 /** A take change's line names why it moved — the rules, the runner-up, what blocked a listing no rule took — and a
  *  command that replays it; the tick's summary counts every take by kind and basis, and how many went unlogged. */

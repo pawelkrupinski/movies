@@ -1,7 +1,7 @@
 package controllers
 
 import models.Country
-import services.identity.ResolverDecision
+import services.identity.measures.ResolverDecision
 import services.review.{DigestItem, LabelRow, ReviewAnswers, ReviewCard, ReviewCards, ReviewCluster, ReviewDigest, ReviewSource}
 
 import java.time.Instant

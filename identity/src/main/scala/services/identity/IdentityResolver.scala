@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{Film, Measure}
+import services.identity.measures.{EvidenceNode, Film, Listing, Measure, Resolution, ResolverDecision}
 import models.ListingKey
 
 import services.titles.TitleForms
@@ -112,7 +112,7 @@ object IdentityResolver {
     }
 
   /** Every node holding a listing `focused` selects, with its candidates as its family scores them (best first). */
-  private[identity] def focusedScored(stages: ResolveStages)(focused: Listing => Boolean): Seq[(EvidenceNode, Seq[services.identity.Scored])] =
+  private[identity] def focusedScored(stages: ResolveStages)(focused: Listing => Boolean): Seq[(EvidenceNode, Seq[services.identity.measures.Scored])] =
     stages.generation.nodes.filter(_.listings.exists(focused)).map(node => node -> stages.families.scoredOf(node))
 
   /** A [[resolve]], and every node's candidates as that same resolve scored them ([[evidenceOf]], read only when asked):

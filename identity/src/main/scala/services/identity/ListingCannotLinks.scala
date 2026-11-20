@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{IdentityMeasures, Measure, MeasuredListing, MultiFilmBill, RelayStage}
+import services.identity.measures.{EvidenceNode, IdentityMeasures, Measure, MeasuredListing, MultiFilmBill, RelayStage}
 import services.evidence.ListingConstraints
 
 /** Whether two nodes' own evidence keeps them apart ([[ConstraintEdges]]): the seasons their titles name, or the learned

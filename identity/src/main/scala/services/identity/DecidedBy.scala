@@ -1,6 +1,7 @@
 package services.identity
 
 import models.ListingKey
+import services.identity.measures.{DecisionTrace, ResolverDecision}
 
 /**
  * Which stage decided a listing's take, and by which rule — each as ONE short id, what a take-change line

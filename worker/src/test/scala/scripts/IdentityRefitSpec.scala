@@ -188,7 +188,7 @@ class IdentityRefitSpec extends AnyFlatSpec with Matchers with ScratchDirectorie
   // ── the captures ──
 
   "A splice" should "keep every captured cluster a change decides alike, and replace one it decides otherwise whole" in {
-    import services.identity.ResolverDecision
+    import services.identity.measures.ResolverDecision
     def key(n: Int) = models.ListingKey.Native("Kino", s"https://kino.example/$n", s"Film $n")
     def decision(film: Option[Int], members: Int*) = ResolverDecision(members.map(key), film, 0.9, ResolverDecision.Basis.values.head, Seq("why"))()
     val captured = Seq(decision(Some(1), 1, 2), decision(None, 3), decision(Some(5), 4))
@@ -201,7 +201,7 @@ class IdentityRefitSpec extends AnyFlatSpec with Matchers with ScratchDirectorie
   }
 
   it should "replace whole every cluster a chain of shared listings reaches from a moved one, across the three partitions" in {
-    import services.identity.ResolverDecision
+    import services.identity.measures.ResolverDecision
     def key(n: Int) = models.ListingKey.Native("Kino", s"https://kino.example/$n", s"Film $n")
     def decision(film: Option[Int], members: Int*) = ResolverDecision(members.map(key), film, 0.9, ResolverDecision.Basis.values.head, Seq("why"))()
     // listing 3 joins film 1 now; the capture held 3 beside 6, the control resolve 6 beside 7 and 8: one chain, every

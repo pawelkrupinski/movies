@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{BannerHouses, FactRelations, Film, IdentityMeasures, Measure, MeasuredListing, PinnedGateMeasures, RelayStage, StageRelays}
+import services.identity.measures.{BannerHouses, FactRelations, Film, IdentityMeasures, Measure, MeasuredListing, PinnedGateMeasures, RelayStage, SourceReliability, StageRelays}
 import services.identity.vocabulary.ListingDating
 
 import org.scalatest.flatspec.AnyFlatSpec

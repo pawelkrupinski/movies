@@ -1,6 +1,5 @@
-package services.identity
+package services.identity.measures
 
-import services.identity.measures.{Film, Measure}
 import models.ListingKey
 import services.identity.vocabulary.{CandidateQuery, Question, ResolverEdge}
 

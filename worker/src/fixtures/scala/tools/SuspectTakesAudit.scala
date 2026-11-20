@@ -73,8 +73,8 @@ object SuspectTakesAudit {
    *  `integration.SuspectTakesDump` writes it): every listing — a taken one as its venue's page states it — the
    *  decisions, and each taken film's record. What a leg leaves beside its verdict, so a signal is tuned on the very takes
    *  the leg judged. */
-  def capture(country: models.Country, corpus: SuspectTakes.Corpus, decisions: Seq[services.identity.ResolverDecision],
-              listings: Seq[services.identity.Listing]): UnmatchedClusters.Capture = {
+  def capture(country: models.Country, corpus: SuspectTakes.Corpus, decisions: Seq[services.identity.measures.ResolverDecision],
+              listings: Seq[services.identity.measures.Listing]): UnmatchedClusters.Capture = {
     val stated = corpus.takes.map(t => t.listing.key -> t.listing).toMap
     UnmatchedClusters.Capture(country, listings.map(l => stated.getOrElse(l.key, l)), decisions, Map.empty,
       corpus.takes.flatMap(t => t.tmdb.map(_ -> Option(t.record))).toMap, Map.empty, Set.empty, Map.empty, Map.empty)

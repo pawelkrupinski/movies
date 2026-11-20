@@ -3,9 +3,9 @@ package services.review
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.DecisionTrace
-import services.identity.ResolverDecision
-import services.identity.ResolverDecision.Basis
+import services.identity.measures.DecisionTrace
+import services.identity.measures.ResolverDecision
+import services.identity.measures.ResolverDecision.Basis
 import models.ListingKey
 
 class ReviewPrioritySpec extends AnyFlatSpec with Matchers {

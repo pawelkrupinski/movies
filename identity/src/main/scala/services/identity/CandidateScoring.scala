@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{BannerHouses, Film, IdentityMeasures, Measure, MeasuredListing, MultiFilmBill, RelayStage, StageRelays}
+import services.identity.measures.{BannerHouses, Candidate, EvidenceNode, Film, IdentityMeasures, ListingShape, Measure, MeasuredListing, MultiFilmBill, RelayStage, StageRelays}
 import services.titles.billing.BillingParse
 
 import services.evidence.ListingConstraints

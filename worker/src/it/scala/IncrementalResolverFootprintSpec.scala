@@ -7,6 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
 
 import java.time.LocalDateTime
+import services.identity.measures.Listing
 
 /** What the model keeps per listing beside the corpus: which listing it holds and which family it is
  *  in. Two maps over the same keys kept a hash node each per listing, and the family id boxed —

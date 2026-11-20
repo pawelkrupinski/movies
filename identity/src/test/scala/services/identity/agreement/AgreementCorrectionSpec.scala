@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{FilmTable, ForwardingIdentityLookups, IdentityCalibration, Listing, Resolution, ResolverDecision}
+import services.identity.{FilmTable, ForwardingIdentityLookups, IdentityCalibration}
+import services.identity.measures.{Listing, Resolution, ResolverDecision}
 import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, CandidateQuery, Hit, PosterAnswers, PosterHash, PosterQuestion, Question, ScreeningDays, VoterFamily}
 import models.Multikino

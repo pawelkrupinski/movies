@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{IdentityCalibration, IdentityLookups, Listing}
+import services.identity.{IdentityCalibration, IdentityLookups}
+import services.identity.measures.Listing
 import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, CandidateQuery, Dependency, DetailFacts, Hit, Question, VoterFamily}
 import models.ListingKey
@@ -167,7 +168,7 @@ private[agreement] object AgreementEvidence {
    *  on it — what its verdict and take are read and kept by. */
   final case class Cluster(id: String, listings: Seq[Listing], digest: Long)
   /** The decision's listings, sorted by key. */
-  def sortedListings(decision: services.identity.ResolverDecision, listingOf: ListingKey => Option[Listing]): Seq[Listing] =
+  def sortedListings(decision: services.identity.measures.ResolverDecision, listingOf: ListingKey => Option[Listing]): Seq[Listing] =
     decision.members.flatMap(listingOf).sortBy(_.key)(using ListingKey.ordering)
   /** One of `listings`, by its key: a receipt reads the detail page of its cluster's own listings alone. */
   def listingIn(listings: Seq[Listing]): ListingKey => Option[Listing] = key => listings.find(_.key == key)
@@ -192,7 +193,7 @@ private[agreement] object AgreementEvidence {
 
   /** `inner`, a listings site's catalogue entry linked as a listing's page read as no page at all ([[AgreementCandidates.uncatalogued]]). */
   final class CatalogueBlind(inner: IdentityLookups) extends services.identity.ForwardingIdentityLookups(inner) {
-    private def entry(listing: Listing) = listing.page.exists(services.identity.SourceReliability.listingsSiteEntry)
+    private def entry(listing: Listing) = listing.page.exists(services.identity.measures.SourceReliability.listingsSiteEntry)
     override def hasDetail(listing: Listing): Boolean                  = !entry(listing) && inner.hasDetail(listing)
     override def detail(listing: Listing): Answer[Option[DetailFacts]] = if (entry(listing)) Answer.Known(None) else inner.detail(listing)
   }

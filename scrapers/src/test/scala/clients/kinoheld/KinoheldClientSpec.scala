@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.LoneElement
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{KinoheldClient, ListingReads}
-import services.identity.SourceReliability
+import services.identity.measures.SourceReliability
 import tools.HttpFetch
 
 import java.io.IOException

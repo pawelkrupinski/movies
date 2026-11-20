@@ -45,8 +45,8 @@ trait IdentityModelWiring { self: WorkerWiring =>
       services.identityadapters.MongoRetainedListingStore.indexed(_, clock))
   /** The listings the identity history last saw the model hold: what the kept set starts from before it was ever
    *  persisted (`RetainedListingStore.fromHistory`). */
-  protected def identityHeldBefore(): Seq[services.identity.Listing] =
-    mongoConnection.database.fold(Seq.empty[services.identity.Listing]) { db =>
+  protected def identityHeldBefore(): Seq[services.identity.measures.Listing] =
+    mongoConnection.database.fold(Seq.empty[services.identity.measures.Listing]) { db =>
       val reader = new services.identityadapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches)
       services.identityadapters.RetainedListingStore.fromHistory(
         reader.since(Seq(services.identityadapters.HistoryEntry.Listing), clock.millis() - services.identityadapters.IdentityHistory.Kept.toMillis))
@@ -105,6 +105,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
   // store and asked live on a gap (`cutoverLookups`).
   lazy val identityModel: services.identityadapters.IdentityModelService = {
     import services.identity._
+    import services.identity.measures.Listing
     import services.identityadapters.IdentityModelService
     val pinStore = new MongoPinStore(mongoConnection.database)
     var tracked  = Option.empty[TrackedLookups]

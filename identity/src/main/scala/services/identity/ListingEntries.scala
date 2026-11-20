@@ -3,6 +3,7 @@ package services.identity
 import models.ListingKey
 
 import scala.collection.mutable
+import services.identity.measures.ResolverDecision
 
 /**
  * What a [[LiveProjectionIndex]] knows per listing key — the listing published under it, its previous film, its cluster,

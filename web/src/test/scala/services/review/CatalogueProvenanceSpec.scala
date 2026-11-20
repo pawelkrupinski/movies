@@ -42,7 +42,7 @@ class CatalogueProvenanceSpec extends AnyFlatSpec with Matchers {
       Some(VenueFacts(year = Some(2019), directors = Seq("May el-Toukhy"), runtime = Some(127), countries = Seq("DK"))),
       Some(ListingFeed(Seq(CatalogueId("bilety24", "1")), 3, Some("2026-10-06 18:00"), Some("2026-10-09 18:00"))))
     val card = ReviewCard(ReviewCluster(models.Country.Germany, Seq(fed.key, own.key), None, 0.2,
-      services.identity.ResolverDecision.Basis.BelowThreshold, Nil, fallback = false, Nil), Seq(fed, own), Map.empty, Nil, None, None)
+      services.identity.measures.ResolverDecision.Basis.BelowThreshold, Nil, fallback = false, Nil), Seq(fed, own), Map.empty, Nil, None, None)
     card.claims.venueSays shouldBe Seq("Original title" -> "Dronningen", "Year" -> "2019", "Director" -> "May el-Toukhy",
       "Cast" -> (1 to 9).map(i => s"Actor $i").mkString(", "), "Runtime" -> "127 min",
       "Country" -> "DK", "Catalogue ids" -> "bilety24=1", "Screenings" -> "5 · 2026-10-06 18:00 → 2026-10-09 18:00")

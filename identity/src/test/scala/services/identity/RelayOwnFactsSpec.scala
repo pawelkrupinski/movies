@@ -8,6 +8,7 @@ import tools.IndependentCases
 
 import FilmTable.{F, listing}
 import services.identity.vocabulary.{TitleDecorations, VenueNames}
+import services.identity.measures.Listing
 
 /**
  * A plain listing is denied an event-cinema relay's record when its OWN facts contradict that record (the owner,

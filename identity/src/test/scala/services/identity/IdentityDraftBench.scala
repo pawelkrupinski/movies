@@ -7,6 +7,7 @@ import tools.SpecClock.given
 import models.{Cinema, CinemaMovie, Country, Movie, Showtime, UsCinema, ListingKey}
 import services.movies.{CinemaSlotBuilder, ScreeningTokens, SingleCountryNormalizer}
 import java.time.LocalDateTime
+import services.identity.measures.{Listing, Resolution, ResolverDecision}
 
 /** A steady identity-projection draft at worker-us's size (~100k listings, ~2.1k films, a skewed
  *  venue spread), timed and allocation-counted per tick: run with

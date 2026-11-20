@@ -18,7 +18,7 @@ object SourceRecord {
     SourceRecord(film, Map("tmdb" -> tmdbId.toString) ++ IdentityMeasures.imdbId(film.imdbNumber).map("imdb" -> _))
 
   /** The TMDB film a no-match leans to, as the agreement links it: by its TMDB and IMDb ids alone. */
-  def ofLeaning(lean: services.identity.ResolverDecision.Leaning): SourceRecord =
+  def ofLeaning(lean: services.identity.measures.ResolverDecision.Leaning): SourceRecord =
     SourceRecord(Film(""), Map("tmdb" -> lean.film.toString) ++ IdentityMeasures.imdbId(lean.imdbNumber).map("imdb" -> _))
 }
 

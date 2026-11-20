@@ -7,6 +7,7 @@ import services.titles.TitleNormalizer
 
 import FilmTable.listing
 import services.identity.vocabulary.{CandidateQuery, PinConstraints, ScreeningDays, TitleDecorations}
+import services.identity.measures.{Evidence, Listing}
 
 /** The season a stage work's screenings fall in is read by its season rules ([[SearchMeasures.stageWorkQueries]]'s closing
  *  year, [[RelayStage.of]], [[StageRelays.bareWorksSeasonRecord]]), so it is part of the evidence a node is keyed by

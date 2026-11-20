@@ -5,6 +5,7 @@ import models.StoredMovieRecord
 
 import models.ListingKey
 import services.titles.TitleNormalizer
+import services.identity.measures.ResolverDecision
 
 /** A cluster across projections: the TMDB film a matched one is (the clusters of one film are one), or an unmatched
  *  decision's first listing — so a cluster that did not move is the same one next tick, whatever moved around it. */

@@ -3,7 +3,8 @@ package tools
 import models.StoredMovieRecord
 
 import models.{Source, ListingKey}
-import services.identity.{ResolverDecision, TakeJudgements}
+import services.identity.TakeJudgements
+import services.identity.measures.ResolverDecision
 import scala.collection.mutable
 
 /** One venue's listing of a replayed film: its slot key (`"<cinema>␟<titleKey>"`, what production's

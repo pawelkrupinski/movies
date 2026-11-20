@@ -3,6 +3,7 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.vocabulary.ProseWords
+import services.identity.measures.Listing
 
 class ProseWordsSpec extends AnyFlatSpec with Matchers {
 

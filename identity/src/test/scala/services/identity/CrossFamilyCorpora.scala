@@ -3,6 +3,7 @@ package services.identity
 import models.{Helios, KinoApollo, Multikino, Rialto}
 import models.ListingKey
 import services.titles.TitleNormalizer
+import services.identity.measures.Listing
 
 /** Corpora whose families' decisions hang on what OTHER families hold — the corpus-wide facts
  *  (`CorpusContext`) an incremental model must keep current. */

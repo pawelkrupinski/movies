@@ -10,6 +10,7 @@ import tools.{HttpStatusException, ManualScheduler, MutableClock, TestWiring}
 
 import scala.util.{Failure, Success}
 import services.identity.vocabulary.ObservationReads
+import services.identity.measures.Listing
 
 /**
  * A take that flipped in production, resolved again at each side of the flip from the history alone

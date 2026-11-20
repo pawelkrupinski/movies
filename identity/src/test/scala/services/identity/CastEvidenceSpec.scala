@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.Film
+import services.identity.measures.{CastEvidence, Evidence, EvidenceNode, Film, Listing}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.vocabulary.{FilmCast, ListedCast, TitleDecorations, VenueNames}

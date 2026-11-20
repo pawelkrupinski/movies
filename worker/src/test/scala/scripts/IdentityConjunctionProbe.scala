@@ -3,6 +3,7 @@ package scripts
 import services.identity.agreement.{Agreement, UnifiedEvidence, VenueListings}
 import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
 import services.identity._
+import services.identity.measures.{Evidence, FallbackIds, Listing, PosterEvidence, ResolverDecision}
 
 import models.ListingKey
 import services.titles.TitleNormalizer

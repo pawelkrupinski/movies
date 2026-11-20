@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.util.concurrent.ConcurrentHashMap
 import services.identity.vocabulary.{Answer, PosterAnswers, PosterHash}
+import services.identity.measures.ResolverDecision
 
 /**
  * [[NonFilmEvents]] over the clusters the model leaves unmatched on the recorded full corpora ([[UnmatchedClusters]]'

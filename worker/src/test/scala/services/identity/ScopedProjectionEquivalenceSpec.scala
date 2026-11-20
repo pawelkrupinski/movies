@@ -13,6 +13,7 @@ import services.movies.{CinemaSlotBuilder, InMemoryMovieRepository, VenuePageFac
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.util.Random
 import services.identity.vocabulary.Question
+import services.identity.measures.{DecisionTrace, Listing, Resolution, ResolverDecision}
 
 /**
  * A projection of a SCOPE — only the films its changes reach ([[ProjectionScope]]) — leaves the store exactly as a

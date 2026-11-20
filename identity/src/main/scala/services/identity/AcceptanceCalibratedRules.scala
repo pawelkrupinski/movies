@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{Film, IdentityMeasures, MultiFilmBill, TitleTextMeasures}
+import services.identity.measures.{Film, IdentityMeasures, ListingShape, MultiFilmBill, Scored, TitleTextMeasures}
 import services.identity.AcceptanceRule.Weighing
 
 /** What the acceptance rules that take a film by its calibrated probability ask — favoured and unrivalled

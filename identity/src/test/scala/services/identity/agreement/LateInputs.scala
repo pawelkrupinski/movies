@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{IdentityCalibration, IdentityLookups, IdentityResolver, InMemoryIdentityModelStore, IncrementalResolver, Listing, Resolution}
+import services.identity.{IdentityCalibration, IdentityLookups, IdentityResolver, InMemoryIdentityModelStore, IncrementalResolver}
+import services.identity.measures.{Listing, Resolution}
 import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, AnswersChanged, CandidateQuery, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, DetailFacts, Hit, Pin, PinConstraints, PosterAnswers, PosterHash, PosterQuestion, ProseWords, Question, TitleDecorations, VoterFamily}
 

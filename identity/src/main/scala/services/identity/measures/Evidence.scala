@@ -1,6 +1,5 @@
-package services.identity
+package services.identity.measures
 
-import services.identity.measures.{MeasuredListing, StageRelays}
 import services.titles.TitleSeason
 
 import services.identity.vocabulary.{DetailFacts, ListingDating, TitleDecorations}

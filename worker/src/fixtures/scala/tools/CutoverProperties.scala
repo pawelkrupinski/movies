@@ -3,7 +3,7 @@ package tools
 import models.StoredMovieRecord
 
 import models.{Cinema, CinemaMovie, CinemaShowing, ListingKey}
-import services.identity.Listing
+import services.identity.measures.Listing
 import services.identityadapters.ProjectionTick
 /**
  * The identity projection's guaranteed properties (docs/design/identity-resolver.md §7), checked

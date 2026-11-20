@@ -2,7 +2,7 @@ package integration
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.Evidence
+import services.identity.measures.Evidence
 import services.identity.measures.Film
 import IdentityReferee.Verdict
 

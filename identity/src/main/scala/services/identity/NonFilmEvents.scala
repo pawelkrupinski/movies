@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.FilmNess
+import services.identity.measures.{FilmNess, Listing, ListingShape}
 import services.titles.billing.BillingPieces
 
 import services.titles.NonMovieEventClassifier

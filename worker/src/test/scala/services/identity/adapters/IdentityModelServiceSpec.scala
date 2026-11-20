@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identity.measures.Film
+import services.identity.measures.{Film, Listing, ResolverDecision, TakeOutcome}
 import services.identity.vocabulary.PosterQuestion
 
 import services.identityadapters.*

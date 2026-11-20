@@ -3,7 +3,8 @@ package services.identity.agreement
 import services.titles.TitleContainment
 
 import scala.collection.mutable
-import services.identity.{IdentityLookups, Listing}
+import services.identity.IdentityLookups
+import services.identity.measures.Listing
 import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit}
 

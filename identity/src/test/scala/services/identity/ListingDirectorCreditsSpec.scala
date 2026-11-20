@@ -5,6 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
 import services.identity.vocabulary.DetailFacts
+import services.identity.measures.{Evidence, Listing}
 
 /** The people a listing credits as its directors, as the identity model reads them: one per person, though venues
  *  join two in one credit. PL corpus of recording 37071880312. */

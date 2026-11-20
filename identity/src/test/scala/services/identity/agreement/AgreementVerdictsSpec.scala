@@ -46,8 +46,8 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
     val families = Map[VoterFamily, FamilyAnswers](VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt46658626" -> SourceRecord(tour, Map("imdb" -> "tt46658626"))))) ++
       Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
     val listings = Seq(models.KinoMuza, models.Multikino, models.KinoPalacowe).map(services.identity.FilmTable.listing(_, "SEVENTEEN World Tour 'NEW_'"))
-    val model = services.identity.Resolution(Seq(services.identity.ResolverDecision(listings.map(_.key), None, 0.2,
-      services.identity.ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size, listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val model = services.identity.measures.Resolution(Seq(services.identity.measures.ResolverDecision(listings.map(_.key), None, 0.2,
+      services.identity.measures.ResolverDecision.Basis.BelowThreshold, Nil)()), listings.size, listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     val stored = new InMemoryAgreementVerdicts
     AgreementStageFixture(families, NoVenueDetails, normalizer, services.identity.IdentityCalibration.resolver, tmdbOf = _ => services.identity.vocabulary.Answer.Known(None),
       stored, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(NoVenueDetails),

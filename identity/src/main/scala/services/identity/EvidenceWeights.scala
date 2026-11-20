@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{IdentityMeasures, Measure}
+import services.identity.measures.{IdentityMeasures, Measure, Scored}
 import services.identity.measures.IdentityMeasures.ListingFilm
 
 /** How much a scored candidate is the listing's film on what the LISTING'S OWN facts say — the

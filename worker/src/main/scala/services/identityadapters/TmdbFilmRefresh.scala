@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.{Listing, ResolverDecision}
 import play.api.Logging
 import services.tasks.{BulkRefreshResult, RefreshableSource, RefreshableSources}
 import tools.{HttpFetch, HttpPath}

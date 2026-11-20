@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.IdentityMeasures
+import services.identity.measures.{Evidence, IdentityMeasures}
 import services.titles.billing.Credits
 import services.identity.vocabulary.CandidateQuery
 

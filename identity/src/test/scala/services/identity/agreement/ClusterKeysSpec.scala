@@ -3,7 +3,8 @@ package services.identity.agreement
 import models.{KinoMuza, KinoPalacowe, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{FilmTable, Listing, Resolution, ResolverDecision, StoredFamily}
+import services.identity.{FilmTable, StoredFamily}
+import services.identity.measures.{Listing, Resolution, ResolverDecision}
 import models.ListingKey
 
 import scala.collection.mutable

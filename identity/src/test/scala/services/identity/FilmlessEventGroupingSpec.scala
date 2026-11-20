@@ -9,6 +9,7 @@ import services.titles.TitleNormalizer
 
 import FilmTable.{F, listing}
 import services.identity.vocabulary.ScreeningDays
+import services.identity.measures.{Listing, Resolution}
 
 /**
  * Billings of one film-less event ([[NonFilmEvents.facts]]) are one web film whatever running time each venue

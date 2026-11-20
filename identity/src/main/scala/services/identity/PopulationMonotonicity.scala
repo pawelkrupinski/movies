@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{BannerHouses, MeasuredListing}
+import services.identity.measures.{BannerHouses, Candidate, Evidence, EvidenceNode, Listing, MeasuredListing, Resolution, ResolverDecision, TakeOutcome}
 import models.ListingKey
 
 import services.titles.TitleForms

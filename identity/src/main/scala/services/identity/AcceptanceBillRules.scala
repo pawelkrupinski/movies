@@ -1,8 +1,8 @@
 package services.identity
 
-import services.identity.measures.{IdentityMeasures, MeasuredListing, MultiFilmBill}
+import services.identity.measures.{IdentityMeasures, MeasuredListing, MultiFilmBill, Scored}
 import services.titles.billing.BillingPieces
-import services.identity.Scored.Accepted
+import services.identity.measures.Scored.Accepted
 
 /** What makes a listing a BILL of several works, which no acceptance rule takes a film of: two works a conjunction, a "+",
  *  a slash or an "and" joins, or a programme a word bills as several films — and the one film such a word may still name.

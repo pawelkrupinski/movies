@@ -7,6 +7,7 @@ import services.movies.SingleCountryNormalizer
 
 import scala.util.Random
 import services.identity.vocabulary.{CatalogueId, TitleDecorations}
+import services.identity.measures.{Listing, Resolution}
 
 /**
  * A kept listing ([[Listing.kept]], [[ListingRetention]]) never joins a present listing whose feed link the PRESENT

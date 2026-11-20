@@ -1,7 +1,7 @@
 package services.identity.agreement
 
 import services.titles.billing.{BillingPieces, DecorationWords}
-import services.identity.{Listing, ListingShape}
+import services.identity.measures.{Listing, ListingShape}
 import services.identity.measures.{FactRelations, Film, IdentityMeasures, MeasuredListing, StageRelays}
 import services.identity.vocabulary.{Answer, ScreeningDays}
 
@@ -198,7 +198,7 @@ object Broadcast {
     def of(listing: Listing, measured: MeasuredListing): Billing = {
       val titles = Seq(listing.title, listing.rawTitle).distinct.map(tagApart)
       val named  = measured.seasonYear.isDefined
-      val stated = if (ListingShape.venueStated(listing)) measured else services.identity.Evidence.of(listing, None).measured
+      val stated = if (ListingShape.venueStated(listing)) measured else services.identity.measures.Evidence.of(listing, None).measured
       Billing(StageRelays.stageWorksBilled(titles, named), measured.seasonYear, bannerOf(titles, StageRelays.billedIn(_, named).nonEmpty), measured,
         stated, measured.directors)
     }

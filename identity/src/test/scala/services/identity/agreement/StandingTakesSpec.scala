@@ -3,7 +3,8 @@ package services.identity.agreement
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{FilmTable, Listing, Resolution, ResolverDecision}
+import services.identity.FilmTable
+import services.identity.measures.{Listing, Resolution, ResolverDecision}
 import services.identity.vocabulary.{PosterAnswers, Question}
 
 /** A cluster's last settled take stands while its take waits ([[StandingTakes]]): served in the waiting take's place,

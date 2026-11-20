@@ -9,6 +9,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CinemaSlotBuilder, ScreeningTokens, SingleCountryNormalizer}
 import java.time.{Instant, LocalDateTime}
+import services.identity.measures.{DecisionTrace, Listing, Resolution, ResolverDecision}
 
 /**
  * The identity projection's pure decisions over hand-built decisions: which film keeps which id,

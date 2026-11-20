@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{IdentityMeasures, MeasuredListing, StageRelays}
+import services.identity.measures.{Candidate, IdentityMeasures, MeasuredListing, Scored, StageRelays}
 import services.identity.measures.IdentityMeasures.ListingFilm
 import services.identity.vocabulary.Denial
 

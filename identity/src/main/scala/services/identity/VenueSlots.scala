@@ -11,6 +11,7 @@ import models.MovieRecordMerge
 import services.titles.TitleNormalizer
 import services.titles.YearWindow
 import services.identity.vocabulary.{ClasspathResource, ContentHash, SortedLongMap}
+import services.identity.measures.Listing
 
 // Everything a venue slot is built and fingerprinted by, and nothing else: this file is what the venue slot code version
 // digests (`IdentityRulesSources.VenueSlotRoots`), so a change to the rest of the projection keeps every recorded slot.

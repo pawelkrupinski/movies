@@ -3,7 +3,8 @@ package services.review
 import clients.tools.FixtureFile
 import models.Country
 import org.mongodb.scala.bson.BsonDocument
-import services.identity.{ResolverDecision, ResolverDecisionBson}
+import services.identity.ResolverDecisionBson
+import services.identity.measures.ResolverDecision
 
 import scala.jdk.CollectionConverters._
 

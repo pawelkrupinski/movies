@@ -2,7 +2,8 @@ package services.review
 
 import org.mongodb.scala.model.{Filters, Projections}
 import org.mongodb.scala.ObservableFuture
-import services.identity.{MongoIdentityModelStore, ResolverDecision, ResolverDecisionBson}
+import services.identity.{MongoIdentityModelStore, ResolverDecisionBson}
+import services.identity.measures.ResolverDecision
 
 import scala.jdk.CollectionConverters._
 

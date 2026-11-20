@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.{Evidence, Listing, ResolverDecision}
 import org.bson.{BsonArray, BsonBoolean, BsonDocument, BsonDouble, BsonInt32, BsonInt64, BsonString, BsonValue}
 import services.identity.vocabulary.VoterFamily
 import models.ListingKey

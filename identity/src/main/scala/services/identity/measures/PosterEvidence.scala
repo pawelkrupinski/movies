@@ -1,6 +1,5 @@
-package services.identity
+package services.identity.measures
 
-import services.identity.measures.{FactRelations, Film, IdentityMeasures}
 import services.titles.billing.BillingPieces
 
 import services.titles.TitleContainment

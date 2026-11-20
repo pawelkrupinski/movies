@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.Listing
 import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ProseWords, Question}
 

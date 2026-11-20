@@ -437,7 +437,7 @@ abstract class CountryConvergenceBehaviour(
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env, sharedLive) {
       override lazy val clock: java.time.Clock = CountryConvergenceBehaviour.this.clock
       override lazy val freshnessStore = dayOneAsks.asking(storage.freshness)
-      override def recordedRetained: Seq[services.identity.Listing] = CountryConvergenceBehaviour.this.recordedRetained
+      override def recordedRetained: Seq[services.identity.measures.Listing] = CountryConvergenceBehaviour.this.recordedRetained
       override def recordedTmdbAnswers: Option[tools.ProdLookupInputs.Captured] = CountryConvergenceBehaviour.this.recordedTmdbAnswers
     }
     // Before the boot: the next-day leg names, for an unchanged film it finds rewritten, the day-one write no re-ask followed.
@@ -758,7 +758,7 @@ abstract class CountryConvergenceBehaviour(
   /** The recording's capture of the listings prod's model kept for their facts alone, beside its corpus
    *  ([[tools.ProdRetained]]): the model's input beyond the listings billed, resumed at its take-up as prod's is. None
    *  for a generated corpus, or a recording made before the capture. */
-  private lazy val recordedRetained: Seq[services.identity.Listing] =
+  private lazy val recordedRetained: Seq[services.identity.measures.Listing] =
     if (!CorpusFixture.exists(corpusKey)) Nil
     else {
       val kept = tools.ProdRetained.readIn(CorpusFixture.pathFor(corpusKey).getParent, country.code)
@@ -1114,7 +1114,7 @@ abstract class CountryConvergenceBehaviour(
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env, sharedLive,
         tmdbBodies = passBodies) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
-      override def recordedRetained: Seq[services.identity.Listing] = CountryConvergenceBehaviour.this.recordedRetained
+      override def recordedRetained: Seq[services.identity.measures.Listing] = CountryConvergenceBehaviour.this.recordedRetained
       override def recordedTmdbAnswers: Option[tools.ProdLookupInputs.Captured] = CountryConvergenceBehaviour.this.recordedTmdbAnswers
     }
     // A cut-over pass lands and projects through the identity model (see `rescrapeCutover`); a replayed

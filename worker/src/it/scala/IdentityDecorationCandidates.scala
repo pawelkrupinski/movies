@@ -138,7 +138,7 @@ object IdentityDecorationCandidates {
             if (withheld.nonEmpty && t.film.nonEmpty && reference.get(k).exists(_.film == t.film)) "restored"
             else if (was.nonEmpty) "move"
             // a double programme matches neither of its works: a stripped banner must not make it a single film's
-            else if (services.identity.ListingShape.billsSeveral(listing) || MultiFilmBill.billsTwoWorks(MeasuredListing(listing.title, Some(listing.rawTitle), decorations = base))) "wrong"
+            else if (services.identity.measures.ListingShape.billsSeveral(listing) || MultiFilmBill.billsTwoWorks(MeasuredListing(listing.title, Some(listing.rawTitle), decorations = base))) "wrong"
             else UnmatchedClusters.verdict(UnmatchedClusters.Take(cc, key.venue, key.rawTitle, t.film.stripPrefix("tmdb:").toIntOption.filter(_ => t.film.startsWith("tmdb:")),
               Option.when(t.film.startsWith("imdb:"))(t.film.stripPrefix("imdb:")), "", t.title), labels) match {
               case Some(true)  => "right"

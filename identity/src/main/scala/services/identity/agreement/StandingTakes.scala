@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Resolution, ResolverDecision}
+import services.identity.measures.{Resolution, ResolverDecision}
 import services.identity.vocabulary.Question
 
 import scala.collection.concurrent.TrieMap

@@ -8,6 +8,7 @@ import services.scrapes.{ForwardingScrapeArchive, InMemoryScrapeArchiveRepositor
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import services.identity.vocabulary.ScreeningDays
+import services.identity.measures.Listing
 
 /** The projection's listing read (`IdentityListingIntake.projectedByVenue`) holds what it read and reads again only the
  *  venues whose listing moved — read whole, the two archives were most of Mongo's outbound traffic (the US's 308 MB

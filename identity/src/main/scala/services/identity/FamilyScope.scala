@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{IdentityMeasures, MeasuredListing, RelayStage, SearchMeasures}
+import services.identity.measures.{Candidate, Evidence, EvidenceNode, IdentityMeasures, MeasuredListing, RelayStage, Scored, SearchMeasures, SourceReliability}
 import scala.collection.mutable
 import services.identity.vocabulary.{CatalogueId, Denial}
 

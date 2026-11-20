@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{IdentityMeasures, MeasuredListing}
+import services.identity.measures.{Candidate, EvidenceNode, IdentityMeasures, MeasuredListing, SourceReliability}
 import services.identity.vocabulary.Denial
 
 /** The denial a feed's copied original title makes in a family ([[FamilyScope]]): a film only the title a feed copied

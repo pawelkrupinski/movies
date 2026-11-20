@@ -9,6 +9,7 @@ import models.ListingKey
 import tools.{HttpStatusException, MutableClock, TestWiring}
 
 import scala.util.{Failure, Success}
+import services.identity.measures.{Listing, ResolverDecision}
 
 /** "Why did this listing change film then?" answered from the history alone ([[TakeExplanation]]): a take moved by the
  *  projection is kept with its line's fields, its decision's members and its listings' reads ([[TakeHistory]]), and the

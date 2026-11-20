@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.Measure
+import services.identity.measures.{DecisionTrace, EvidenceNode, Measure, ResolverDecision, Scored}
 import services.identity.measures.IdentityMeasures.ListingFilm
 import services.identity.vocabulary.ResolverEdge
 

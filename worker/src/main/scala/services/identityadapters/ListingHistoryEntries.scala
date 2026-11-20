@@ -1,6 +1,7 @@
 package services.identityadapters
 
-import services.identity.{Listing, ListingBson}
+import services.identity.ListingBson
+import services.identity.measures.Listing
 import models.ListingKey
 
 /** What the model's drain keeps in the identity history of the listings it takes in and lets go

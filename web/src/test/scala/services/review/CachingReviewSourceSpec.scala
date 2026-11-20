@@ -2,7 +2,7 @@ package services.review
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.ResolverDecision
+import services.identity.measures.ResolverDecision
 import models.ListingKey
 
 import java.time.{Duration, Instant}

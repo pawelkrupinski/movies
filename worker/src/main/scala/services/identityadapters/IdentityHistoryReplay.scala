@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.Listing
 import org.bson.BsonDocument
 import models.ListingKey
 

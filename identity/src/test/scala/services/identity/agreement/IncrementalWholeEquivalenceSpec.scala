@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{FilmTable, GeneratedIdentityCorpus, IdentityCalibration, IdentityLookups, IdentityResolver, InMemoryIdentityModelStore, IncrementalResolver, Listing, Resolution, ResolverDecision, TakeFlips}
+import services.identity.{FilmTable, GeneratedIdentityCorpus, IdentityCalibration, IdentityLookups, IdentityResolver, InMemoryIdentityModelStore, IncrementalResolver, TakeFlips}
+import services.identity.measures.{Listing, Resolution, ResolverDecision}
 import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, AnswersChanged, CandidateQuery, DetailFacts, Hit, PosterAnswers, PosterHash, PosterQuestion, Question, ScreeningDays, TitleDecorations, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino, ListingKey}
@@ -173,10 +174,10 @@ object IncrementalWholeEquivalenceSpec {
   /** What `d` serves: its TMDB film, its fallback's `source:id`, or none -- whatever its outcome. */
   def servedOf(d: ResolverDecision): String = d.film.map(id => s"tmdb:$id").orElse(d.fallback.map(f => s"${f.source}:${f.id}")).getOrElse("none")
   /** An outcome as the properties compare it: a decided film, "none", or "pending:<what it serves meanwhile>". */
-  def outcomeString(outcome: services.identity.TakeOutcome, d: ResolverDecision): String = outcome match {
-    case services.identity.TakeOutcome.Pending(_)  => s"pending:${servedOf(d)}"
-    case services.identity.TakeOutcome.Taken(film) => film
-    case services.identity.TakeOutcome.NoFilm(_)   => "none"
+  def outcomeString(outcome: services.identity.measures.TakeOutcome, d: ResolverDecision): String = outcome match {
+    case services.identity.measures.TakeOutcome.Pending(_)  => s"pending:${servedOf(d)}"
+    case services.identity.measures.TakeOutcome.Taken(film) => film
+    case services.identity.measures.TakeOutcome.NoFilm(_)   => "none"
   }
   def isPending(outcome: String): Boolean = outcome.startsWith("pending")
   private val normalizer  = SingleCountryNormalizer.titleNormalizer
@@ -514,7 +515,7 @@ object IncrementalWholeEquivalenceSpec {
     def stepwise(steps: Int = 30, provisional: () => Unit = () => ()): Option[String] =
       (Iterator.range(0, steps).map(_ => event()) ++ Iterator(()).map(_ => finish())).zipWithIndex.flatMap { case (label, step) =>
         val now = applied()
-        now.decisions.foreach(d => if (servedOf(d) != "none" && stage.waits.outcomeOf(d).isInstanceOf[services.identity.TakeOutcome.Pending])
+        now.decisions.foreach(d => if (servedOf(d) != "none" && stage.waits.outcomeOf(d).isInstanceOf[services.identity.measures.TakeOutcome.Pending])
           d.members.foreach(_ => provisional()))
         difference(now, whole(settled = false)).map(d => s"seed $seed, step $step ($label): $d")
       }.nextOption()

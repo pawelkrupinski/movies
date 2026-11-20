@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.IdentityMeasures
+import services.identity.measures.{Evidence, IdentityMeasures, Listing, Resolution}
 import tools.SpecPool
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

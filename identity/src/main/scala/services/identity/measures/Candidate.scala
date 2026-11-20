@@ -1,6 +1,5 @@
-package services.identity
+package services.identity.measures
 
-import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, Hit}
 
 /** A film some listing of a family may be: its TMDB id and what TMDB says about it — its own

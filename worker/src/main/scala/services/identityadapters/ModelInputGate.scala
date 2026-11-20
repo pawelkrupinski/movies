@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.Listing
 import play.api.Logging
 import models.ListingKey
 

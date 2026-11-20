@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.ResolverDecision
+import services.identity.measures.ResolverDecision
 import services.identity.vocabulary.{Answer, PosterAnswers, PosterHash, PosterQuestion, Question, VoterFamily}
 
 import scala.collection.mutable

@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Listing, ResolverDecision}
+import services.identity.measures.{Listing, ResolverDecision}
 import services.identity.vocabulary.{Answer, Dependency, Question}
 
 import scala.collection.mutable

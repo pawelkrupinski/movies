@@ -114,7 +114,7 @@ class ReviewAnswersSpec extends AnyFlatSpec with Matchers {
     val page    = "https://www.flicks.us/movie/bts-world-tour/"
     val members = (1 to 300).map(i => ListingKey.Native(s"Cinema $i", page, "BTS WORLD TOUR")) :+
       ListingKey.Published("Kino Muza", "Macbeth", Some(1971), Seq("Roman Polański"))
-    val decision = ReviewFixtures.heldDecision.copy(members = members)(services.identity.DecisionTrace.Empty)
+    val decision = ReviewFixtures.heldDecision.copy(members = members)(services.identity.measures.DecisionTrace.Empty)
     val card     = ReviewCards.build(new InMemoryReviewSource(Seq(decision)), Seq(ReviewCluster.of(models.Country.UnitedStates, decision) -> (None: Option[Instant])),
       Nil, new ReviewAnswers.Index(Nil)).head
     val payload  = card.payload(ReviewPage.Recent)

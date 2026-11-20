@@ -3,6 +3,7 @@ package services.identityadapters
 import models.StoredMovieRecord
 
 import services.identity.*
+import services.identity.measures.{Listing, Resolution}
 
 import java.util.Locale
 

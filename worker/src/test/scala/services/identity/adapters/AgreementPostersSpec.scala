@@ -15,6 +15,7 @@ import java.nio.file.{Files, Path, StandardCopyOption}
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import services.identity.vocabulary.{Answer, PosterAnswers, PosterHash, Question}
+import services.identity.measures.PosterEvidence
 
 /** The posters the agreement's poster evidence reads: hashed from the real images (recorded in
  *  `test/resources/fixtures/identity-posters`: Kino Patria's "Dyrygent" poster, and TMDB's `/images` answers and 185-wide

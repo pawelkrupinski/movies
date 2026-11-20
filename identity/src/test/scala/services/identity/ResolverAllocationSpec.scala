@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{CreditRelation, Film, IdentityMeasures, Measure, MeasuredListing}
+import services.identity.measures.{Candidate, CreditRelation, Film, IdentityMeasures, Measure, MeasuredListing, Scored}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

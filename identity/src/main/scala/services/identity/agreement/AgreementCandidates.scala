@@ -1,7 +1,8 @@
 package services.identity.agreement
 
 import scala.collection.mutable
-import services.identity.{Evidence, FallbackIds, IdentityLookups, Listing, ListingShape, PosterEvidence}
+import services.identity.IdentityLookups
+import services.identity.measures.{Evidence, FallbackIds, Listing, ListingShape, PosterEvidence}
 import services.identity.measures.MeasuredListing
 import services.identity.vocabulary.{Answer, CandidateQuery, Dependency, Memo, PosterAnswers, PosterHash, PosterQuestion, Question, VoterFamily}
 
@@ -33,7 +34,7 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
    *  2018–19 page). None for a cluster whose listings bill no stage work or link no such page, nor while a search the
    *  read asks has no answer. */
   private[agreement] def uncatalogued(listings: Seq[Listing], lookups: IdentityLookups): Seq[Int] =
-    if (!listings.exists(ListingShape.stagesAWork) || !listings.exists(_.page.exists(services.identity.SourceReliability.listingsSiteEntry))) Nil
+    if (!listings.exists(ListingShape.stagesAWork) || !listings.exists(_.page.exists(services.identity.measures.SourceReliability.listingsSiteEntry))) Nil
     else {
       searchedFilms(listings, new AgreementEvidence.CatalogueBlind(lookups)).getOrElse(Nil)
     }

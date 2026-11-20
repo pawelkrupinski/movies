@@ -6,6 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.titles.NonMovieEventClassifier
 import services.titles.TitleNormalizer
+import services.identity.measures.{Listing, ListingShape}
 
 /** Each reader of the one word table ([[services.titles.TitleWords]]) reads a concept in every language a country bills
  *  in — the words each rule's own list lacked before the table: a German anniversary, a German ballet house, a German

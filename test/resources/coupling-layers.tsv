@@ -46,7 +46,7 @@ rank	2	services.users	the accounts and their state
 rank	4	services.auth	the sign-in flows over the accounts
 rank	4	services.closure	the venue closure checks and retirements over the scrape records
 rank	2	services.identity.vocabulary	the identity model's vocabulary: answers, questions, pins, hashes, decorations and the other values every stage reads
-rank	3	services.identity.measures	the identity model's measures: IdentityMeasures, the *Measures objects, MeasuredListing, Film and Measure, what every rule and score reads of a listing and a film, above its vocabulary
+rank	3	services.identity.measures	the identity model's measures: IdentityMeasures, the *Measures objects, MeasuredListing, Film and Measure, what every rule and score reads of a listing and a film, above its vocabulary; the listing they read (Listing, Evidence, ListingShape, SourceReliability) and the verdicts written in them (Candidate, Scored, ResolverDecision, Resolution, DecisionTrace)
 rank	4	services.identity	the identity model: the resolver, its rules, scoring and projection over the measures, the readings scrapers and clients build
 rank	4	services.identity.agreement	the identity model's agreement stage: the film databases' votes over the model's takes, above the model
 rank	4	services.identity.staging	the identity model's staged inputs: the change feed and staging events the resolver reads

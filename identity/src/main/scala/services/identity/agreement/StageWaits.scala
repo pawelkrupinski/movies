@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{ResolverDecision, WaitingOn}
+import services.identity.measures.{ResolverDecision, WaitingOn}
 import services.identity.vocabulary.{Dependency, Question}
 
 import scala.collection.concurrent.TrieMap
@@ -41,15 +41,15 @@ final class StageWaits(waiting: TrieMap[String, ClusterWait], takeWaits: TrieMap
    *  the model or the stage still waits on something ([[ResolverDecision.awaits]], [[waitingOn]]: a verdict's or a
    *  correction's questions unanswered, a fill's TMDB answers), NoFilm when nothing is. Read, never stored: the served
    *  decision stays the object the projection diffs by. */
-  def outcomeOf(decision: ResolverDecision): services.identity.TakeOutcome = {
+  def outcomeOf(decision: ResolverDecision): services.identity.measures.TakeOutcome = {
     // every question its verdict, its take and its correction still lack -- an attempted one too: the settle rule decides
     // without an answer whose ask failed (`tried`), but a failure in its backoff is still pending, not absent (P1). Served as
     // the stage serves it; typed as what it is. A film taken while its correction still waits is Pending too: the
     // correction may move it (the property "refine each take as answers are only filed": Lalka 1001 -> 1002)
     val stage = if (decision.members.isEmpty) Set.empty[Question] else stageWaits(keyOf(decision), decision)
     decision.outcome match {
-      case taken: services.identity.TakeOutcome.Taken => if (stage.isEmpty) taken else services.identity.TakeOutcome.Pending(stage)
-      case model                                  => if (stage.isEmpty) model else services.identity.TakeOutcome.Pending(decision.awaits ++ stage)
+      case taken: services.identity.measures.TakeOutcome.Taken => if (stage.isEmpty) taken else services.identity.measures.TakeOutcome.Pending(stage)
+      case model                                  => if (stage.isEmpty) model else services.identity.measures.TakeOutcome.Pending(decision.awaits ++ stage)
     }
   }
 

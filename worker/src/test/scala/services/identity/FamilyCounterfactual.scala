@@ -6,6 +6,7 @@ import models.ListingKey
 import services.titles.TitleNormalizer
 
 import java.time.Instant
+import services.identity.measures.Listing
 
 /**
  * THE OFFLINE COUNTERFACTUAL FLIP PREDICTOR, on the LOCAL prod mirror (`mongodb://127.0.0.1:28017`, read-only): the

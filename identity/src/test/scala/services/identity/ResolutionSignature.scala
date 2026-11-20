@@ -1,6 +1,7 @@
 package services.identity
 
 import models.ListingKey
+import services.identity.measures.{Resolution, ResolverDecision}
 
 /** What two models must agree on to decide alike: every decision (its listings, film, confidence
  *  and basis) and the partition into families. */

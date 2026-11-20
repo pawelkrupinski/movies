@@ -1,6 +1,5 @@
-package services.identity
+package services.identity.measures
 
-import services.identity.measures.{Certificates, Film, IdentityMeasures, MeasuredListing, StageRelays}
 import models.SlotFields
 
 import models.{Cinema, CinemaMovie, ListingKey}

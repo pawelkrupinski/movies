@@ -3,7 +3,7 @@ package integration
 import models.UkRoster
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Listing, ResolverDecision}
+import services.identity.measures.{Listing, ResolverDecision}
 import services.identity.vocabulary.CatalogueId
 import models.ListingKey
 import tools.{HostPacing, HttpFetch, HttpStatusException}

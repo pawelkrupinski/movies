@@ -306,10 +306,10 @@ class ReviewPagesSpec extends AnyFlatSpec with Matchers with tools.ScratchDirect
   }
 
   "the queue" should "rank by the listings an answer settles, and say on each card how many and why the resolver is unsure" in {
-    val crowded = services.identity.ResolverDecision((1 to 6).map(i => models.ListingKey.Published(s"Kino $i", "Kandydaci śmierci", None, Nil)),
-      None, 0.48, services.identity.ResolverDecision.Basis.BelowThreshold, Seq("best rejected candidate 1703629 at 52.3% (title overlap)"))()
-    val pooled  = services.identity.ResolverDecision(Seq(models.ListingKey.Published("Kino Z", "Dolly", None, Nil)), Some(500), 0.7,
-      services.identity.ResolverDecision.Basis.PooledMatch, Nil)()
+    val crowded = services.identity.measures.ResolverDecision((1 to 6).map(i => models.ListingKey.Published(s"Kino $i", "Kandydaci śmierci", None, Nil)),
+      None, 0.48, services.identity.measures.ResolverDecision.Basis.BelowThreshold, Seq("best rejected candidate 1703629 at 52.3% (title overlap)"))()
+    val pooled  = services.identity.measures.ResolverDecision(Seq(models.ListingKey.Published("Kino Z", "Dolly", None, Nil)), Some(500), 0.7,
+      services.identity.measures.ResolverDecision.Basis.PooledMatch, Nil)()
     val c = new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev,
       Map(Country.Poland -> new InMemoryReviewSource(Seq(heldDecision, crowded, matchedDecision, pooled))),
       new ReviewAnswers(new InMemoryReviewAnswerStore), tempFile("labels", ".tsv"), clock)
@@ -341,7 +341,7 @@ class ReviewPagesSpec extends AnyFlatSpec with Matchers with tools.ScratchDirect
   "every review page" should "read its countries side by side, not one after another" in {
     // Each country's read waits until the other's has started: read in turn, the first would wait out the barrier.
     val barrier = new java.util.concurrent.CyclicBarrier(2)
-    def meeting(held: Seq[services.identity.ResolverDecision]): ReviewSource = new ReviewSource {
+    def meeting(held: Seq[services.identity.measures.ResolverDecision]): ReviewSource = new ReviewSource {
       private val source = new InMemoryReviewSource(held)
       export source.{decisions as _, *}
       def decisions(unmatchedOnly: Boolean) = { barrier.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); source.decisions(unmatchedOnly) }

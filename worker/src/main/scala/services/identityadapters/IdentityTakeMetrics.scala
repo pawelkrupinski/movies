@@ -2,7 +2,7 @@ package services.identityadapters
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.identity.ResolverDecision
+import services.identity.measures.ResolverDecision
 
 /**
  * Every take the identity projection last wrote, by basis (`ResolverDecision.Basis`: every way a cluster is matched or

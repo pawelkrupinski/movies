@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{IdentityCalibration, IdentityLookups, Listing, NonFilmEvents, PosterEvidence, Resolution, ResolverDecision}
+import services.identity.{IdentityCalibration, IdentityLookups, NonFilmEvents}
+import services.identity.measures.{Listing, PosterEvidence, Resolution, ResolverDecision}
 import services.identity.vocabulary.{Answer, CatalogueAnswers, PosterAnswers, Question, VoterFamily}
 import models.ListingKey
 import services.titles.TitleNormalizer

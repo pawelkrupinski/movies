@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.TmdbFilmRecord
+import services.identity.measures.{Scored, TmdbFilmRecord}
 import services.identity.vocabulary.Denial
 
 /** The RELEASE VETO: among the films a listing's bare title names exactly (its NAMESAKES), one TMDB dates no release of in the venue's country, while it dates one of a

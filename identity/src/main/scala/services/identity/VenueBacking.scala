@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{FactRelations, Film, Measure, MeasuredListing, StageRelays}
+import services.identity.measures.{FactRelations, Film, Measure, MeasuredListing, SourceReliability, StageRelays}
 import services.identity.measures.IdentityMeasures.*
 import Measure.Number
 
@@ -15,7 +15,7 @@ object Backer {
   val Kept = '\u0002'
   def apply(venue: String, source: String): String = if (source == venue) venue else s"$venue$Join$source"
   /** `listing`'s entry: its venue and whose claim its facts are, marked when it is kept. */
-  def of(listing: services.identity.Listing): String = {
+  def of(listing: services.identity.measures.Listing): String = {
     val key = apply(listing.venue, SourceReliability.claimOf(listing))
     if (listing.kept) s"$Kept$key" else key
   }

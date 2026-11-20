@@ -1,7 +1,7 @@
 package services.review
 
 import com.github.benmanes.caffeine.cache.{CacheLoader, LoadingCache, Ticker}
-import services.identity.ResolverDecision
+import services.identity.measures.ResolverDecision
 
 import java.time.{Clock, Duration, Instant}
 import java.util.concurrent.{Executor, ForkJoinPool, TimeUnit}

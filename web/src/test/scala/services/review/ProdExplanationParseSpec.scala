@@ -3,8 +3,8 @@ package services.review
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.ResolverDecision
-import services.identity.ResolverDecision.Basis
+import services.identity.measures.ResolverDecision
+import services.identity.measures.ResolverDecision.Basis
 
 /** The review pages' reading of the resolver's explanation lines, against REAL prod decisions ([[ProdReviewSample]]). */
 class ProdExplanationParseSpec extends AnyFlatSpec with Matchers {

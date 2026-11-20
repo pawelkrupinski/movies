@@ -4,6 +4,7 @@ import models.{KinoApollo, Multikino, Rialto}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
+import services.identity.measures.Listing
 
 /** A rule the ablation harness switches off stops deciding, and the next rule in line decides instead. */
 class RuleAblationSpec extends AnyFlatSpec with Matchers {

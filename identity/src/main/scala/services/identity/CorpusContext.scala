@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{BannerHouses, Film, IdentityMeasures, MeasuredListing, StageRelays}
+import services.identity.measures.{BannerHouses, Candidate, Evidence, EvidenceNode, Film, IdentityMeasures, Listing, MeasuredListing, StageRelays}
 import services.identity.vocabulary.{CandidateQuery, ContentHash, TitleDecorations}
 
 /**

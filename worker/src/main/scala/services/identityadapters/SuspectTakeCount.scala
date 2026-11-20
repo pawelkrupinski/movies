@@ -2,6 +2,7 @@ package services.identityadapters
 
 import services.identity.agreement.SuspectTakes
 import services.identity.*
+import services.identity.measures.{Listing, Resolution}
 import play.api.Logging
 
 import java.time.{Clock, LocalDate, ZoneId}

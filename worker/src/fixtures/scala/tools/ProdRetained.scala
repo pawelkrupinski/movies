@@ -3,7 +3,8 @@ package tools
 import services.identityadapters.{MongoRetainedListingStore, RetainedListingStore}
 import org.bson.BsonDocument
 
-import services.identity.{Listing, ListingBson}
+import services.identity.ListingBson
+import services.identity.measures.Listing
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}

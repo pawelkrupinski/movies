@@ -3,7 +3,8 @@ package scripts
 import testsupport.SourceTrees
 import models.Country
 import play.api.libs.json.{JsArray, JsObject, Json}
-import services.identity.{Backer, IdentityCalibration, SourceReliability, VenueBacking}
+import services.identity.{Backer, IdentityCalibration, VenueBacking}
+import services.identity.measures.SourceReliability
 import services.identity.measures.{BannerHouses, Film, IdentityMeasures, Measure}
 import services.identity.vocabulary.TitleDecorations
 import services.identity.agreement.Agreement

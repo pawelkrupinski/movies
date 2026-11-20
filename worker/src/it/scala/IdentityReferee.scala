@@ -1,6 +1,6 @@
 package integration
 
-import services.identity.Evidence
+import services.identity.measures.Evidence
 import services.identity.measures.{Film, IdentityMeasures, Measure}
 
 /**

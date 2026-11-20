@@ -2,6 +2,7 @@ package integration
 
 import models.{ArchivedScrape, Country}
 import services.identity._
+import services.identity.measures.{Listing, ResolverDecision}
 import services.identityadapters.TmdbIdentityLookups
 import models.ListingKey
 import services.titles.TitleNormalizer

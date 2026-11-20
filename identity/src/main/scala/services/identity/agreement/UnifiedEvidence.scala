@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{BilledPiece, CastEvidence, FallbackIds, FeedLink, IdentityResolver, Listing, ListingShape, PosterEvidence, ResolverDecision, SourceReliability}
+import services.identity.{BilledPiece, FeedLink, IdentityResolver}
+import services.identity.measures.{CastEvidence, FallbackIds, Listing, ListingShape, PosterEvidence, ResolverDecision, SourceReliability}
 import services.identity.measures.{FactRelations, Film, IdentityMeasures, Measure, MeasuredListing}
 import services.identity.vocabulary.{Answer, ClasspathResource, VenueNames, VoterFamily}
 import play.api.libs.json.{Json, OFormat}

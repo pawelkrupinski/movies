@@ -36,7 +36,7 @@ class VenuePosterSpec extends AnyFlatSpec with Matchers {
     val a = MemberView(ListingKey.Native("Muza", "https://muza/queen", "Queen"), None, None, feed(Some("https://muza/queen.jpg")))
     val b = MemberView(ListingKey.Native("Bajka", "https://bajka/queen", "Queen"), None, None, feed(Some("https://muza/queen.jpg")))
     val card = ReviewCard(ReviewCluster(models.Country.Germany, Seq(fed.key, a.key, b.key), None, 0.2,
-      services.identity.ResolverDecision.Basis.BelowThreshold, Nil, fallback = false, Nil), Seq(fed, a, b), Map.empty, Nil, None, None)
+      services.identity.measures.ResolverDecision.Basis.BelowThreshold, Nil, fallback = false, Nil), Seq(fed, a, b), Map.empty, Nil, None, None)
     card.claims.posters shouldBe Seq("https://muza/queen.jpg", "https://webedia/queen.jpg")
   }
 

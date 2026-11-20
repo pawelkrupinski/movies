@@ -54,7 +54,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     val fed = ListingKey.Published("Planken Lichtspiele Mannheim", "Queen", None, Nil)
     val own = ListingKey.Native("Atlantis Kino", "https://atlantis/queen", "Queen")
     new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Germany -> new InMemoryReviewSource(
-      Seq(services.identity.ResolverDecision(Seq(fed, own), None, 0.2, services.identity.ResolverDecision.Basis.BelowThreshold, Nil)()),
+      Seq(services.identity.measures.ResolverDecision(Seq(fed, own), None, 0.2, services.identity.measures.ResolverDecision.Basis.BelowThreshold, Nil)()),
       slotsHeld = Map(
         fed -> SlotFacts(VenueFacts(year = Some(2020), directors = Seq("Someone")), now),
         own -> SlotFacts(VenueFacts(year = Some(2019), directors = Seq("May el-Toukhy")), now)),
@@ -82,7 +82,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
   private val listed = {
     val key = models.ListingKey.Native("Bielański Ośrodek Kultury", "https://biletyna.pl/dla-dzieci/Podrozniczek?eid=701872", "Podróżniczek")
     new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
-      Seq(services.identity.ResolverDecision(Seq(key), None, 0.9, services.identity.ResolverDecision.Basis.NoCandidate, Nil)()),
+      Seq(services.identity.measures.ResolverDecision(Seq(key), None, 0.9, services.identity.measures.ResolverDecision.Basis.NoCandidate, Nil)()),
       feedsHeld = Map((key.venue, key.rawTitle) -> ListingFeed(Nil, 1, None, None, Some(listedPoster))))),
       new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
   }
@@ -101,7 +101,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       (47 to 50).map(i => models.ListingKey.Native(s"Cinema $i", s"https://cinema$i.example/kandydaci", "Kandydaci śmierci"))
     val film = FilmCard(1703629, None, Some("Kandydaci"), None, Some(2026), Seq("Maciej Kozłowski"), None, None, None)
     new ReviewPages(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(
-      Seq(services.identity.ResolverDecision(keys, None, 0.3, services.identity.ResolverDecision.Basis.BelowThreshold,
+      Seq(services.identity.measures.ResolverDecision(keys, None, 0.3, services.identity.measures.ResolverDecision.Basis.BelowThreshold,
         Seq("best rejected candidate 1703629 at 52.3% (title overlap)"))()), filmsHeld = Map(film.tmdb -> film))),
       new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
   }

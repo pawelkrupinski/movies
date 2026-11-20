@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.Film
+import services.identity.measures.{Film, Listing}
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ObservationReads, Question}
 
 /** `inner`, each question it answers named to `reads` while it is asked. With a `pool`, a

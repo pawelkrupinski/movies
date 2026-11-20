@@ -34,14 +34,14 @@ limit	distance	20
 limit	distance-min-types	8
 limit	distance-measure	2
 module-edge	common->base	56
-module-edge	common->geodata	12
+module-edge	common->geodata	14
 module-edge	common->http	65
 module-edge	http->base	10
 module-edge	identity->base	25
-module-edge	identity->common	514
+module-edge	identity->common	516
 module-edge	identity->http	6
 module-edge	scrapers->base	51
-module-edge	scrapers->common	1532
+module-edge	scrapers->common	1538
 module-edge	scrapers->geodata	4
 module-edge	scrapers->http	362
 module-edge	scrapers->identity	8
@@ -56,7 +56,7 @@ module-edge	worker->http	178
 module-edge	worker->identity	537
 module-edge	worker->scrapers	148
 ce	clients	3
-ce	controllers	23
+ce	controllers	24
 ce	diagnostics	5
 ce	models	1
 ce	modules	12
@@ -80,7 +80,7 @@ ce	services.fallback	1
 ce	services.freshness	2
 ce	services.identity	10
 ce	services.identity.agreement	7
-ce	services.identity.measures	6
+ce	services.identity.measures	7
 ce	services.identity.staging	3
 ce	services.identity.vocabulary	5
 ce	services.identityadapters	20
@@ -100,5 +100,3 @@ ce	services.users	4
 ce	services.venuepages	12
 ce	settings	2
 ce	tools	0
-distance	services.identity	30
-distance-cap	services.identity	32

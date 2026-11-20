@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.Film
+import services.identity.measures.{Film, Listing}
 import scala.annotation.unused
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ProseWords}
 

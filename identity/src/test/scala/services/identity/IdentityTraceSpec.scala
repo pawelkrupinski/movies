@@ -5,6 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
 import scala.collection.mutable
+import services.identity.measures.{DecisionTrace, Listing, ResolverDecision}
 
 /** The identity trace: which rules decided each listing — recorded on the decision, filed per listing by the
  *  incremental model, and never kept in its memory. */

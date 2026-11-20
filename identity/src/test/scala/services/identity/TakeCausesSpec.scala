@@ -3,6 +3,7 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import models.ListingKey
+import services.identity.measures.ResolverDecision
 
 /** The causes no listing's leaving decides (the projection's spec holds those): what set the projection off, whether the
  *  store holds this process's takes, and whether a decision took another film. */

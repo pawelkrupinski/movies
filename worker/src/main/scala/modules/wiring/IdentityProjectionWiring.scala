@@ -43,7 +43,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
 
   // The projection reads the model's resolution.
   /** The answers a listing's own questions are filed under, as the take-change lines and the history name them. */
-  private lazy val takeReads: services.identity.Listing => Seq[String] =
+  private lazy val takeReads: services.identity.measures.Listing => Seq[String] =
     services.identityadapters.TakeReads.of(country.language.toLanguageTag)
   lazy val identityProjection: IdentityProjection = {
     // every piece logs under the projection's own logger, as its lines always have
@@ -155,7 +155,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
     new services.identityadapters.StagingSnapshots(waitingOn = agreementStage.waits.waitingOn,
       outcomes = identityQuestionMemory.outcomes,
       storedFilm = { val records = storedLookups(); id => records.film(id).answered.flatten },
-      read = () => identityProjection.lastProjected.fold(Iterator.empty[services.identity.Listing])(_.read()),
+      read = () => identityProjection.lastProjected.fold(Iterator.empty[services.identity.measures.Listing])(_.read()),
       clusterKey = agreementStage.keyOf)
 
   // ── When it projects: on the trigger, at boot once the model is taken up, and the hourly reconcile ─────────────

@@ -1,6 +1,6 @@
 package services.identityadapters
 
-import services.identity.*
+import services.identity.measures.Resolution
 import play.api.Logging
 import tools.Stoppable
 import services.identity.staging.{ChangeFeed, IdentityStaging, StagedCluster, StagingEvent}

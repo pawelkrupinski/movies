@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{FilmTable, IdentityCalibration, Listing, Resolution, ResolverDecision}
+import services.identity.{FilmTable, IdentityCalibration}
+import services.identity.measures.{Listing, Resolution, ResolverDecision}
 import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, PosterQuestion, Question, VoterFamily}
 import models.{KinoMuza, ListingKey}
@@ -90,8 +91,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
     var answered = false
     val tmdb = new services.identity.IdentityLookups {
-      def hasDetail(listing: services.identity.Listing): Boolean = false
-      def detail(listing: services.identity.Listing) = Answer.Known(None)
+      def hasDetail(listing: services.identity.measures.Listing): Boolean = false
+      def detail(listing: services.identity.measures.Listing) = Answer.Known(None)
       def candidates(query: services.identity.vocabulary.CandidateQuery) = if (answered) Answer.Known(Nil) else Answer.Unknown
       def film(tmdbId: Int) = Answer.Known(None)
     }
@@ -171,7 +172,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val families = Map(
       VoterFamily.Wiki -> new HeldFamilyAnswers(VoterFamily.Wiki, Map("Q1" -> SourceRecord(film, Map("tmdb" -> "1483101")))),
       VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty))
-    def decided(one: services.identity.Listing, rules: services.identity.agreement.UnifiedRules) = {
+    def decided(one: services.identity.measures.Listing, rules: services.identity.agreement.UnifiedRules) = {
       val model = Resolution(Seq(ResolverDecision(Seq(one.key), None, 0.14, ResolverDecision.Basis.BelowThreshold, Nil)()), 1, Map(one.key -> 0),
         Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
       AgreementStageFixture(families, NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
@@ -196,7 +197,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   it should "take, by the pinned cast.venue rule, of two namesakes the one two of whose top-billed cast the venue's own text names" in {
     // PL Kino CK Lublin "Lalka" (fixture identity-unmatched; its own page, ck-lublin.bilety24.pl/wydarzenie/?id=162455): the
     // model weighs Kawalski's 2026 film and Has's 1968 one alike; the page names Dorociński, Urzędowska and Kondrat
-    import services.identity.{IdentityLookups, Listing}
+    import services.identity.IdentityLookups
+    import services.identity.measures.Listing
     import services.identity.vocabulary.{CandidateQuery, DetailFacts, Hit, VenueNames}
     val ckLublin = "Miłość, która nie zna granic i ambicja, która nie zna ceny. „Lalka” powraca jako wielka filmowa opowieść. " +
       "Marcin Dorociński, Kamila Urzędowska i Marek Kondrat spotykają się na wielkim ekranie w ekranizacji powieści Bolesława Prusa."
@@ -319,7 +321,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   it should "take no film the families agree on whose namesake's TMDB description the venue's synopsis names over its own, saying why" in {
     // PL Janosik "edukacja MH: Binti" (identity-unmatched capture): IMDb, Wikidata and Filmweb agree on Shamte's 2021 film;
     // the venue's page describes Migom's 2019 one — a girl in Belgium who meets Elias
-    import services.identity.{IdentityLookups, Listing}
+    import services.identity.IdentityLookups
+    import services.identity.measures.Listing
     import services.identity.vocabulary.{CandidateQuery, DetailFacts, Hit, ProseWords}
     val shamte = Film("Binti", Some("Binti"), Nil, Some(2021), Some(98), Some(Seq("Seko Shamte")), None, None)
     val migom  = Film("Binti", Some("Binti"), Nil, Some(2019), Some(90), Some(Seq("Frederike Migom")), None, None)
@@ -397,8 +400,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val two = agreeing().view.filterKeys(Set(VoterFamily.Imdb, VoterFamily.Wiki)).toMap ++ Map(
       VoterFamily.Filmweb -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map.empty), VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map.empty))
     val tmdb = new services.identity.IdentityLookups {
-      def hasDetail(listing: services.identity.Listing): Boolean = false
-      def detail(listing: services.identity.Listing) = Answer.Known(None)
+      def hasDetail(listing: services.identity.measures.Listing): Boolean = false
+      def detail(listing: services.identity.measures.Listing) = Answer.Known(None)
       def candidates(query: services.identity.vocabulary.CandidateQuery) = Answer.Known(Nil)
       def film(tmdbId: Int) = Answer.Known(Option.when(tmdbId == 913760)(klondike))
     }
@@ -422,8 +425,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val two = agreeing().view.filterKeys(Set(VoterFamily.Imdb, VoterFamily.Wiki)).toMap ++ Map(
       VoterFamily.Filmweb -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map.empty), VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map.empty))
     val tmdb = new services.identity.IdentityLookups {
-      def hasDetail(listing: services.identity.Listing): Boolean = false
-      def detail(listing: services.identity.Listing) = Answer.Known(None)
+      def hasDetail(listing: services.identity.measures.Listing): Boolean = false
+      def detail(listing: services.identity.measures.Listing) = Answer.Known(None)
       def candidates(query: services.identity.vocabulary.CandidateQuery) = Answer.Known(Nil)
       def film(tmdbId: Int) = Answer.Known(Option.when(tmdbId == 913760)(klondike))
     }
@@ -448,8 +451,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       VoterFamily.Filmweb -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map.empty), VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map.empty))
     var filed = false
     val tmdb = new services.identity.IdentityLookups {
-      def hasDetail(listing: services.identity.Listing): Boolean = false
-      def detail(listing: services.identity.Listing) = Answer.Known(None)
+      def hasDetail(listing: services.identity.measures.Listing): Boolean = false
+      def detail(listing: services.identity.measures.Listing) = Answer.Known(None)
       def candidates(query: services.identity.vocabulary.CandidateQuery) = Answer.Known(Nil)
       def film(tmdbId: Int) = if (!filed) Answer.Unknown else Answer.Known(Option.when(tmdbId == 913760)(klondike))
     }
@@ -475,8 +478,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val alone   = Map(VoterFamily.Imdb -> agreeing()(VoterFamily.Imdb)) ++
       Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
     def page(facts: Option[services.identity.vocabulary.DetailFacts]) = new services.identity.IdentityLookups {
-      def hasDetail(listing: services.identity.Listing): Boolean = facts.isDefined
-      def detail(listing: services.identity.Listing) = Answer.Known(facts)
+      def hasDetail(listing: services.identity.measures.Listing): Boolean = facts.isDefined
+      def detail(listing: services.identity.measures.Listing) = Answer.Known(facts)
       def candidates(query: services.identity.vocabulary.CandidateQuery) = Answer.Known(Nil)
       def film(tmdbId: Int) = Answer.Known(None)
     }
@@ -499,8 +502,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val alone   = Map(VoterFamily.Imdb -> agreeing()(VoterFamily.Imdb)) ++
       Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map(family => family -> new HeldFamilyAnswers(family, Map.empty))
     val page = new services.identity.IdentityLookups {
-      def hasDetail(listing: services.identity.Listing): Boolean = true
-      def detail(listing: services.identity.Listing) = Answer.Known(Some(services.identity.vocabulary.DetailFacts(Some(2022), Seq("Maryna Er Gorbach"), Some(100), None)))
+      def hasDetail(listing: services.identity.measures.Listing): Boolean = true
+      def detail(listing: services.identity.measures.Listing) = Answer.Known(Some(services.identity.vocabulary.DetailFacts(Some(2022), Seq("Maryna Er Gorbach"), Some(100), None)))
       def candidates(query: services.identity.vocabulary.CandidateQuery) = Answer.Known(Nil)
       def film(tmdbId: Int) = Answer.Known(None)
     }
@@ -515,14 +518,14 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
    *  take the 2019 "Let It Snow", the model's best candidate (`vote`) — their records linking `linked` beside their own ids. */
   private def reviewSitesOnly(linked: Map[String, String], tmdbOf: String => Answer[Option[Int]],
                               vote: Option[ResolverDecision.Leaning] = Some(ResolverDecision.Leaning(913760, 0)),
-                              billed: services.identity.Listing = bare): (AgreementStage, InMemoryAgreementVerdicts, ResolverDecision) = {
+                              billed: services.identity.measures.Listing = bare): (AgreementStage, InMemoryAgreementVerdicts, ResolverDecision) = {
     val reviews = Map(
       VoterFamily.Metacritic     -> new HeldFamilyAnswers(VoterFamily.Metacritic, Map("klondike" -> SourceRecord(klondike, Map("metacritic" -> "klondike") ++ linked))),
       VoterFamily.RottenTomatoes -> new HeldFamilyAnswers(VoterFamily.RottenTomatoes, Map("klondike_2022" -> SourceRecord(klondike, Map("rt" -> "klondike_2022") ++ linked))),
       VoterFamily.Imdb           -> new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty))
     val tmdb = new services.identity.IdentityLookups {
-      def hasDetail(listing: services.identity.Listing): Boolean = false
-      def detail(listing: services.identity.Listing) = Answer.Known(None)
+      def hasDetail(listing: services.identity.measures.Listing): Boolean = false
+      def detail(listing: services.identity.measures.Listing) = Answer.Known(None)
       def candidates(query: services.identity.vocabulary.CandidateQuery) = Answer.Known(Nil)
       def film(tmdbId: Int) = Answer.Known(Option.when(tmdbId == 913760)(klondike))
     }
@@ -821,7 +824,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     // bound, until its answers are in ([[AgreementStage.standing]]); the first, decided again before any apply had served
     // it, has no previous take
     applies.map(_.count(_.film.isDefined)) shouldBe Seq(2, 2, 2)
-    applies.map(_.count(d => stage.waits.outcomeOf(d).isInstanceOf[services.identity.TakeOutcome.Taken])).last shouldBe 0
+    applies.map(_.count(d => stage.waits.outcomeOf(d).isInstanceOf[services.identity.measures.TakeOutcome.Taken])).last shouldBe 0
     stage.backlog shouldBe false
     verdicts.all().filter(_.correction.isEmpty) shouldBe empty
   }
@@ -856,7 +859,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     again.apply(resolution, listingOf, version = 1).decisions.head.film shouldBe Some(913760)   // the restart trusts what it kept
     again.apply(resolution, listingOf, version = 2).decisions.head shouldBe resolution.decisions.head
     verdicts.all().filter(_.correction.isEmpty).map(_.agreed) shouldBe Seq(None)
-    val matchedNow = resolution.copy(decisions = resolution.decisions.map(_.copy(film = Some(1))(services.identity.DecisionTrace.Empty)))
+    val matchedNow = resolution.copy(decisions = resolution.decisions.map(_.copy(film = Some(1))(services.identity.measures.DecisionTrace.Empty)))
     again.apply(matchedNow, listingOf, version = 2)
     verdicts.all().filter(_.correction.isEmpty) shouldBe empty
   }

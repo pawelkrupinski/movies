@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{IdentityCalibration, Listing, Resolution, ResolverDecision}
+import services.identity.IdentityCalibration
+import services.identity.measures.{Listing, Resolution, ResolverDecision}
 import services.identity.vocabulary.{Question, VoterFamily}
 import models.ListingKey
 

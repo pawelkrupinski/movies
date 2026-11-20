@@ -1,6 +1,6 @@
 package services.review
 
-import services.identity.ResolverDecision
+import services.identity.measures.ResolverDecision
 
 import java.time.Instant
 import scala.jdk.CollectionConverters._

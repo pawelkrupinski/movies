@@ -3,6 +3,7 @@ package integration
 import services.identity.agreement.{Agreement, FamilyAnswers, UnifiedEvidence}
 import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
 import services.identity._
+import services.identity.measures.{Evidence, FallbackIds, Listing, PosterEvidence, ResolverDecision}
 
 import services.identity.vocabulary.VoterFamily
 import models.ListingKey

@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{IdentityLookups, Listing, ResolverDecision}
+import services.identity.IdentityLookups
+import services.identity.measures.{Listing, ResolverDecision}
 import services.identity.measures.IdentityMeasures
 import services.identity.vocabulary.{Answer, Dependency, Question}
 

@@ -57,13 +57,13 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
   private def sweep(archived: Map[Cinema, Seq[CinemaMovie]]) = {
     val source = new Recording
     val names  = scala.collection.mutable.ArrayBuffer.empty[String]
-    val summary = IdentityLookupSweep.run(services.identity.Listing.corpus(archived, titleNormalizer), source, titleNormalizer, names += _)
+    val summary = IdentityLookupSweep.run(services.identity.measures.Listing.corpus(archived, titleNormalizer), source, titleNormalizer, names += _)
     (summary, source.asked, names.toSeq)
   }
 
   "the sweep" should "ask exactly the resolver's questions: every listing's CandidateQueries, its detail page, and every named film's record" in {
     val (summary, asked, names) = sweep(corpus)
-    val listings = services.identity.Listing.corpus(corpus, titleNormalizer)
+    val listings = services.identity.measures.Listing.corpus(corpus, titleNormalizer)
     // What the resolver's own definitions say it must ask, derived from the SAME functions.
     val source = new Recording
     val evidences = listings.map(l => Evidence.of(l, if (source.hasDetail(l)) source.detail(l).answered.flatten else None))
@@ -99,7 +99,7 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
   }
 
   "a sweep with a pool" should "ask its lookups side by side, and ask and answer exactly what it does one at a time" in pooled { pool =>
-    val listed  = services.identity.Listing.corpus(corpus, titleNormalizer)
+    val listed  = services.identity.measures.Listing.corpus(corpus, titleNormalizer)
     val serial  = new Recording(latency = 5)
     val serialNames = scala.collection.mutable.ArrayBuffer.empty[String]
     val serialSummary = IdentityLookupSweep.run(listed, serial, titleNormalizer, serialNames += _)
@@ -117,7 +117,7 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
     val page   = Some("https://kinoteka.pl/film/1")
     val shared = corpus.updated(Kinoteka, corpus(Kinoteka) :+ listing(Kinoteka, "Rozważna i romantyczna", page = page))
     val side   = new Recording
-    IdentityLookupSweep.run(services.identity.Listing.corpus(shared, titleNormalizer), side, titleNormalizer, pool = Some(pool))
+    IdentityLookupSweep.run(services.identity.measures.Listing.corpus(shared, titleNormalizer), side, titleNormalizer, pool = Some(pool))
     side.asked.count(_ == s"detail ${page.get}") shouldBe 1
   }
 }

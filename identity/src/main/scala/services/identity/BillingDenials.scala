@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{Film, TitleRelationMeasures}
+import services.identity.measures.{CastEvidence, EvidenceNode, Film, ListingShape, TitleRelationMeasures}
 import services.titles.billing.BillingPieces
 
 import scala.collection.mutable

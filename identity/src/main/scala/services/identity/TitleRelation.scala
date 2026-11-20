@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{Film, IdentityMeasures, MeasuredListing, RelayStage}
+import services.identity.measures.{Evidence, Film, IdentityMeasures, Listing, MeasuredListing, RelayStage}
 import services.titles.TitleForms
 import services.identity.vocabulary.{FamilyClosure, TitleDecorations}
 

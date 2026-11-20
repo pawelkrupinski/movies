@@ -82,7 +82,7 @@ object IdentityListingsBench {
     val steady = usedAfterGc()
     val whole  = intake.projectedByVenue(live)                                  // whole again
     val during = usedAfterGc()
-    val modelled = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[services.identity.Listing, java.lang.Boolean])
+    val modelled = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[services.identity.measures.Listing, java.lang.Boolean])
     model.foreach(modelled.add)
     val copies = whole.iterator.flatMap(_._2).count(p => !modelled.contains(p.listing))
     println(f"the projection's whole read, beside the model's ${model.size} listings: held ${(during - steady) / 1e6}%.0f MB more " +

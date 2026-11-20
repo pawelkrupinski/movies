@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.Film
+import services.identity.measures.{Film, Listing}
 import integration.Reachable
 import models.{CinemaMovie, Helios, Movie, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -42,6 +42,6 @@ class IdentityTraceRetentionSpec extends AnyFlatSpec with Matchers {
     val handOver = pending.getOrElse(fail("no trace hand-over"))
     handOver.iterator.flatMap(_.build()).flatMap(_.rules).count(_.startsWith("refused:")) should be > 0
     val kept = Reachable.count(handOver, outside = Seq(Namesakes, normalizer, IdentityCalibration.resolver))
-    withClue("scored candidates the pending hand-over keeps: ")(kept.getOrElse("services.identity.Scored", 0L) shouldBe 0L)
+    withClue("scored candidates the pending hand-over keeps: ")(kept.getOrElse("services.identity.measures.Scored", 0L) shouldBe 0L)
   }
 }

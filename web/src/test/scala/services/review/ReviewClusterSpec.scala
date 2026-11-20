@@ -3,7 +3,7 @@ package services.review
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.ResolverDecision.Basis
+import services.identity.measures.ResolverDecision.Basis
 import models.ListingKey
 
 import java.time.Instant
@@ -46,8 +46,8 @@ class ReviewClusterSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "keep a stable id however its members are ordered" in {
-    val a = heldDecision.copy(members = Seq(Held, Matched))(services.identity.DecisionTrace.Empty)
-    val b = heldDecision.copy(members = Seq(Matched, Held))(services.identity.DecisionTrace.Empty)
+    val a = heldDecision.copy(members = Seq(Held, Matched))(services.identity.measures.DecisionTrace.Empty)
+    val b = heldDecision.copy(members = Seq(Matched, Held))(services.identity.measures.DecisionTrace.Empty)
     ReviewCluster.of(Country.Poland, a).id shouldBe ReviewCluster.of(Country.Poland, b).id
     ReviewCluster.of(Country.Poland, a).id should have length 16
   }
@@ -65,14 +65,14 @@ class ReviewClusterSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave out a cluster that fell back to another database's film" in {
-    val fellBack = heldDecision.copy(fallback = Some(services.identity.ResolverDecision.Fallback("imdb", "tt1", 0.9)))(services.identity.DecisionTrace.Empty)
+    val fellBack = heldDecision.copy(fallback = Some(services.identity.measures.ResolverDecision.Fallback("imdb", "tt1", 0.9)))(services.identity.measures.DecisionTrace.Empty)
     ReviewSelection.matchable(Seq(ReviewCluster.of(Country.Poland, fellBack)), 0.5, None) shouldBe empty
   }
 
   "the recently matched page" should "list matched clusters whose listing was written since, least confident first" in {
     val now     = Instant.parse("2026-10-06T10:00:00Z")
     val second  = ListingKey.Native("Kino X", "https://x/y", "Y")
-    val sure    = matchedDecision.copy(members = Seq(second), confidence = 0.99)(services.identity.DecisionTrace.Empty)
+    val sure    = matchedDecision.copy(members = Seq(second), confidence = 0.99)(services.identity.measures.DecisionTrace.Empty)
     val all     = clusters :+ ReviewCluster.of(Country.Poland, sure)
     val updated = Map(ListingKey.serialised(Matched) -> now.minusSeconds(3600), ListingKey.serialised(second) -> now.minusSeconds(60),
       ListingKey.serialised(Held) -> now.minusSeconds(60))

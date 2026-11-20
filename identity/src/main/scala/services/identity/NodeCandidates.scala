@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{IdentityMeasures, StageRelays}
+import services.identity.measures.{IdentityMeasures, Listing, ResolverDecision, StageRelays}
 import services.titles.TitleForms
 import services.identity.vocabulary.{PinConstraints, TitleDecorations}
 
@@ -23,7 +23,7 @@ object NodeCandidates {
         s"'$title'${year.fold("")(filmYear => s" ($filmYear)")} — $explanation"
   }
   object CandidateScore {
-    private[identity] def of(scored: services.identity.Scored, calibration: IdentityCalibration): CandidateScore =
+    private[identity] def of(scored: services.identity.measures.Scored, calibration: IdentityCalibration): CandidateScore =
       CandidateScore(scored.candidate.tmdbId, scored.candidate.film.title, scored.candidate.film.year, scored.probability, scored.rank,
         scored.denial.map(_.why), scored.seasonProduction, scored.houseProduction, calibration.explain(IdentityMeasures.ListingFilm, scored.measures),
         scored.untaken, scored.denial.flatMap(_.releasedBeside))

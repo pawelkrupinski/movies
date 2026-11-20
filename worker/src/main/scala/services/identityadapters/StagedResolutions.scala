@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.WaitingOn
 import services.identity.staging.StagedCluster
 import services.identity.vocabulary.Question
 

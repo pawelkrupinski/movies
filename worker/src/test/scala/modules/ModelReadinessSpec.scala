@@ -4,7 +4,8 @@ import modules.wiring.WorkerWiring
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Listing, ListingReadiness}
+import services.identity.ListingReadiness
+import services.identity.measures.Listing
 import services.identity.vocabulary.Question
 
 /** The model's input gate is on (2026-11-06, with the gate's asks of what answers led to): a listing waits on its venue

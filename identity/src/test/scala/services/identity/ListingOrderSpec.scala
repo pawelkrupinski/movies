@@ -7,6 +7,7 @@ import services.movies.SingleCountryNormalizer
 
 import java.time.LocalDateTime
 import scala.util.Random
+import services.identity.measures.Listing
 
 /** A listing's total order is its fields in turn — the order of the `\u0000`-joined sort key, which
  *  a listing no longer carries: one such string per listing held was ~30 MB on the US worker. */

@@ -3,6 +3,7 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.vocabulary.{Answer, CandidateQuery, Pin, PinClaim, ProseWords}
+import services.identity.measures.Listing
 
 /** A member read by name is its value where the ref's code has it and None where it does not — never a compile error
  *  (the compile into old refs itself: scripts/identity-slice-old-ref-test.sh). */

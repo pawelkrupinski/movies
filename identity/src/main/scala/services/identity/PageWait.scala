@@ -1,4 +1,5 @@
 package services.identity
+import services.identity.measures.Listing
 
 /**
  * Which listings' venue detail pages (director, runtime, original title) are not read yet: each is asked for

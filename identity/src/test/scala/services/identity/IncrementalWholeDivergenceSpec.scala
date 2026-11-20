@@ -8,6 +8,7 @@ import tools.IndependentCases
 
 import scala.util.Random
 import services.identity.vocabulary.TitleDecorations
+import services.identity.measures.Listing
 
 /**
  * The places the incremental model and a whole resolve could come apart by mechanism alone

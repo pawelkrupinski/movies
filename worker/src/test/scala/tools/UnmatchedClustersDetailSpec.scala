@@ -3,7 +3,7 @@ package tools
 import models.{Country, KinoApollo}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.Listing
+import services.identity.measures.Listing
 import services.identity.vocabulary.DetailFacts
 import models.ListingKey
 

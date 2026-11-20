@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.Film
+import services.identity.measures.{Film, Listing}
 import models.{Helios, KinoMuza}
 import services.titles.TitleNormalizer
 import FilmTable.{F, listing}

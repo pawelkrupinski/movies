@@ -2,6 +2,7 @@ package services.identity
 
 import scala.collection.mutable
 import services.identity.vocabulary.Denial
+import services.identity.measures.EvidenceNode
 
 /** What rules a film out for one node of a family ([[FamilyScope]]) before its evidence is scored: a pin, its feed link
  *  overruled, a copied title, a title naming it only by the venue's name, a tag or a programme slot, a festival billed

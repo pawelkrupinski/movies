@@ -1,6 +1,7 @@
 package tools
 
-import services.identity.{IdentityCalibration, IdentityLookups, IdentityResolver, Listing, ModelRead, ResolveInputs, TrackedLookups}
+import services.identity.{IdentityCalibration, IdentityLookups, IdentityResolver, ModelRead, ResolveInputs, TrackedLookups}
+import services.identity.measures.Listing
 import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ObservationReads}
 import services.identityadapters.TmdbIdentityLookups

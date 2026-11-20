@@ -1,8 +1,8 @@
 package services.identity
 
-import services.identity.measures.IdentityMeasures
+import services.identity.measures.{Evidence, EvidenceNode, IdentityMeasures, Scored}
 import services.identity.measures.IdentityMeasures.ListingFilm
-import services.identity.Scored.Accepted
+import services.identity.measures.Scored.Accepted
 import services.titles.TitleForms
 
 import scala.annotation.tailrec

@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Listing, ResolverDecision}
+import services.identity.measures.{Listing, ResolverDecision}
 import models.ListingKey
 
 import scala.collection.concurrent.TrieMap

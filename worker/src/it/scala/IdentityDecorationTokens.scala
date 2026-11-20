@@ -4,7 +4,7 @@ import play.api.libs.json.Json
 import services.identity.{DecorationSegments, DecorationTokens}
 import services.identity.measures.{MeasuredListing, MultiFilmBill}
 import services.identity.vocabulary.TitleDecorations
-import services.identity.ListingShape
+import services.identity.measures.ListingShape
 import models.ListingKey
 import services.titles.TitleContainment
 import tools.{CommandLine, ConvergenceStorage}
@@ -53,7 +53,7 @@ object IdentityDecorationTokens {
       val spread: String => DecorationTokens.Spread = t => spreads.getOrElseUpdate(t,
         DecorationTokens.Spread(venuesOf.get(t).fold(0)(_.size), filmsOf.get(t).fold(0)(_.size), inRecords.getOrElse(t, 0)))
 
-      def double(x: services.identity.Listing) =
+      def double(x: services.identity.measures.Listing) =
         ListingShape.billsSeveral(x) || MultiFilmBill.billsTwoWorks(MeasuredListing(x.title, Some(x.rawTitle), decorations = base))
       def heldOut(venue: String) = Math.floorMod(scala.util.hashing.MurmurHash3.stringHash(venue), 5) == 0
 
@@ -86,7 +86,7 @@ object IdentityDecorationTokens {
       // the unmatched listings: the edge runs a model strips, as proposals for the detector
       val known = (r: (String, Seq[String])) => (if (r._1 == "prefix") base.prefixes else base.suffixes)(r._2)
       val unmatched = byKey.toSeq.filter { case (k, x) => taken(k).film.isEmpty && !double(x) }.sortBy(_._2.sortKey)
-      def proposals(innerOf: ((String, ListingKey), services.identity.Listing) => Option[Seq[String]]) = unmatched.flatMap { case (k, x) =>
+      def proposals(innerOf: ((String, ListingKey), services.identity.measures.Listing) => Option[Seq[String]]) = unmatched.flatMap { case (k, x) =>
         innerOf(k, x).toSeq.flatMap { inner =>
           val tokens = TitleContainment.tokens(x.rawTitle)
           val start  = tokens.indexOfSlice(inner)
@@ -123,7 +123,7 @@ object IdentityDecorationTokens {
         val p = (x.e.venue, DecorationSegments.place(x.segs, i)); val (d, n) = priorCounts(p)
         priorCounts(p) = (d + (if (x.labels(i)) 1 else 0), n + 1)
       })
-      def contextOf(k: (String, ListingKey), x: services.identity.Listing, own: Option[(String, Boolean)] = None): DecorationSegments.Context =
+      def contextOf(k: (String, ListingKey), x: services.identity.measures.Listing, own: Option[(String, Boolean)] = None): DecorationSegments.Context =
         new DecorationSegments.Context {
           private val siblings = clusterTitles.getOrElse((k._1, taken(k).cluster), Nil).filterNot(_._1 == k).map(_._2).toSet
           def venues(segment: String) = segVenues.get(segment).fold(0)(_.size)
@@ -146,7 +146,7 @@ object IdentityDecorationTokens {
         }
       val searchOf: (String, String) => Option[Seq[Seq[String]]] = (cc, text) => corpora.answers.get(cc).flatMap(_.search(text))
         .map(_.map(h => TitleContainment.tokens(h.title)))
-      def segFeatures(k: (String, ListingKey), x: services.identity.Listing, segs: IndexedSeq[DecorationSegments.Segment], labels: Option[IndexedSeq[Boolean]]) = {
+      def segFeatures(k: (String, ListingKey), x: services.identity.measures.Listing, segs: IndexedSeq[DecorationSegments.Segment], labels: Option[IndexedSeq[Boolean]]) = {
         segs.indices.map { i =>
           val own = labels.map(l => DecorationSegments.place(segs, i) -> l(i))
           val ctx = contextOf(k, x, own)

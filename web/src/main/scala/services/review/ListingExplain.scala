@@ -1,7 +1,8 @@
 package services.review
 
 import models.Country
-import services.identity.{ListingTrace, ResolverDecision}
+import services.identity.ListingTrace
+import services.identity.measures.ResolverDecision
 import models.ListingKey
 
 import java.net.URLEncoder

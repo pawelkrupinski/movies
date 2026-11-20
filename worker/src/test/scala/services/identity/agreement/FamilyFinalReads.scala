@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{FamilyIndex, IdentityLookups, Listing, Resolution}
+import services.identity.{FamilyIndex, IdentityLookups}
+import services.identity.measures.{Listing, Resolution}
 import services.identity.vocabulary.{ContentHash, Dependency, Question}
 import models.ListingKey
 import tools.{MutableClock, UnmatchedClusters}

@@ -8,6 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer
 import tools.SpecClock.given
 import java.time.LocalDateTime
+import services.identity.measures.Resolution
 
 class ProjectionDraftCompleteSpec extends AnyFlatSpec with Matchers {
 

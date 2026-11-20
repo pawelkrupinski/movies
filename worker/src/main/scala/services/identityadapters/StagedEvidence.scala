@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.{DecisionTrace, Listing, ResolverDecision}
 import services.identity.staging.{StagedFact, StagedNode}
 import services.identity.measures.{Film, Measure}
 

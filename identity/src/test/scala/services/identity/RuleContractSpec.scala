@@ -5,6 +5,7 @@ import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.Correction
 import models.ListingKey
 import services.identity.vocabulary.{RuleKind, VoterFamily}
+import services.identity.measures.{DecisionTrace, ResolverDecision}
 
 /** Every rule a closed list names declares its kind in [[RuleContract]]: a new rule with none fails here (the population
  *  walk, PopulationMonotonicitySpec, fails on one it sees decide a real take). */

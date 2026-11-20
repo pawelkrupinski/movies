@@ -24,6 +24,7 @@ import services.identity.vocabulary.ObservationReads
 import services.identity.vocabulary.Question
 import services.identity.vocabulary.Answer
 import services.identity.vocabulary.DetailFacts
+import services.identity.measures.Listing
 
 /** The identity model's venue detail, read from venue_pages: a page answers once it is read there, and
  *  its read is announced; answers move only at the model's settle, which reports every one that moved. */

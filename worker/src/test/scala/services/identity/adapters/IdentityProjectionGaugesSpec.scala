@@ -5,7 +5,8 @@ import services.metrics.{ExpositionSamples, PrometheusExposition}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{ResolverDecision, TakeChange, TakeReversals}
+import services.identity.{TakeChange, TakeReversals}
+import services.identity.measures.ResolverDecision
 import models.ListingKey
 
 /** The take changes by basis and change, and the take reversals per country and per billing: what the take alerts read. */

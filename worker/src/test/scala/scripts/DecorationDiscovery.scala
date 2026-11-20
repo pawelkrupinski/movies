@@ -2,7 +2,8 @@ package scripts
 
 import testsupport.SourceTrees
 import models.Country
-import services.identity.{ListingShape, _}
+import services.identity._
+import services.identity.measures.ListingShape
 import services.identity.measures._
 import models.ListingKey
 import services.titles.{TitleContainment, TitleNormalizer}

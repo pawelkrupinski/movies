@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{FilmTable, ForwardingIdentityLookups, IdentityLookups, Listing}
+import services.identity.{FilmTable, ForwardingIdentityLookups, IdentityLookups}
+import services.identity.measures.Listing
 import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, DetailFacts, Hit, Pin, PinClaim, PosterHash, ProseWords, ScreeningDays, VoterFamily}
 import models.{KinoMuza, KinoPalacowe, Multikino}
@@ -72,9 +73,9 @@ class LateInputEquivalenceSpec extends AnyFlatSpec with Matchers {
     // the record's arrival moved its basis (none found -> vetoed), and the case had its teeth from that alone
     val s = cbeebies.head
     LateInputs.matters(s) shouldBe false
-    LateInputs.takes(new LateInputs.Run(s).whole()).map(_._4).distinct shouldBe Seq(services.identity.ResolverDecision.Basis.Event)
+    LateInputs.takes(new LateInputs.Run(s).whole()).map(_._4).distinct shouldBe Seq(services.identity.measures.ResolverDecision.Basis.Event)
     Restart.values.foreach(restart =>
-      LateInputs.takes(new LateInputs.Run(s).incremental(restart)).map(_._4).distinct shouldBe Seq(services.identity.ResolverDecision.Basis.Event))
+      LateInputs.takes(new LateInputs.Run(s).incremental(restart)).map(_._4).distinct shouldBe Seq(services.identity.measures.ResolverDecision.Basis.Event))
   }
 }
 

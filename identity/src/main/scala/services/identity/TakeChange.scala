@@ -3,6 +3,7 @@ package services.identity
 import models.ListingKey
 
 import java.util.Locale
+import services.identity.measures.{DecisionTrace, Listing, ResolverDecision}
 
 /** A listing still published whose take a projection changed — THE change list every reader of what a projection changed
  *  reads (the take-change lines and counter, the staging screen, the drift check's kinds): one per listing, with its film

@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.{Resolution, ResolverDecision}
 import services.identity.staging.{StagedFact, StagedListing, StagedTake}
 import models.ListingKey
 import services.identity.measures.Film

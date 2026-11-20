@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{FilmTable, IdentityCalibration, IdentityLookups, Listing, Resolution, ResolverDecision}
+import services.identity.{FilmTable, IdentityCalibration, IdentityLookups}
+import services.identity.measures.{Listing, Resolution, ResolverDecision}
 import services.identity.measures.{Film, IdentityMeasures}
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, Question, ScreeningDays, VoterFamily}
 import models.{KinoMuza, Multikino}
@@ -62,7 +63,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     // …and so when the cluster's listings reach one record each, neither denied beside the other in any one's pool
     val listing = screening("Royal Opera House: Carmen", "2026-11-10")
     def recordOf(f: FilmTable.F) = f.id -> new FilmTable(Seq(f), normalizer).film(f.id).answered.flatten.get
-    Broadcast.take(Seq(listing), services.identity.Evidence.of(_, None).measured, Seq(recordOf(rohCarmen), recordOf(rboCarmen)))()
+    Broadcast.take(Seq(listing), services.identity.measures.Evidence.of(_, None).measured, Seq(recordOf(rohCarmen), recordOf(rboCarmen)))()
       .toOption.flatten.map(_.film) shouldBe Some(rboCarmen.id)
   }
 

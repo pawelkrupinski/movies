@@ -10,6 +10,7 @@ import org.scalatest.matchers.should.Matchers
 import models.ListingKey
 
 import scala.concurrent.Await
+import services.identity.measures.DecisionTrace
 
 /** The identity trace over Mongo: a listing's rules and a rule's listings are each one indexed read, a
  *  family's replace drops its old traces, and the whole of it is one bulk write. */

@@ -11,6 +11,7 @@ import scala.collection.concurrent.TrieMap
 import scala.jdk.CollectionConverters._
 import scala.util.Random
 import services.identity.vocabulary.{ContentHash, Dependency}
+import services.identity.measures.Listing
 
 /**
  * THE PER-FAMILY CONVERGENCE CHECK, keyed by the family index ([[FamilyIndex]]): every family's POPULATION LATTICE walked

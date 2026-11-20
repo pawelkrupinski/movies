@@ -1,6 +1,7 @@
 package services.identityadapters
 
 import services.identity.*
+import services.identity.measures.{Listing, Resolution}
 import play.api.Logging
 import services.titles.TitleNormalizer
 

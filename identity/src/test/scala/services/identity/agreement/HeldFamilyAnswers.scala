@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{IdentityLookups, Listing}
+import services.identity.IdentityLookups
+import services.identity.measures.Listing
 import services.identity.measures.{Film, IdentityMeasures}
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, PosterAnswers, PosterHash, PosterQuestion, VoterFamily}
 

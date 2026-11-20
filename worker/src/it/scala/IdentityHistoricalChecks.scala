@@ -1,6 +1,6 @@
 package integration
 
-import services.identity.{Evidence, Listing}
+import services.identity.measures.{Evidence, Listing}
 import models.ListingKey
 
 /**
