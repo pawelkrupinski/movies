@@ -253,7 +253,10 @@ packages. **The package graph has no cycle** (0 since 2026-11-18, the owner's de
 (tools < models < settings < clients/services < controllers < modules/diagnostics) and, inside the services and
 composition-root layers, its RANK: a package uses only its own layer and rank or lower ones, so an edge that would close
 a cycle is refused first as an upward edge, saying which direction is allowed; a new package takes its row (and rank) in
-the commit adding it, and an `allow` row, a moved layer or a changed rank needs the same trailer as a baseline rise. The
+the commit adding it, and an `allow` row, a moved layer or a changed rank needs the same trailer as a baseline rise. A
+package is its top two segments, unless a deeper one has a row of its own there (`services.identity.agreement`): that one is
+measured as a package of its own -- its cycles, rank, Ca/Ce/D and rows (the owner's "do b", 2026-11-20; `limit
+distance-measure 2`, which re-took the distance rows and kept their ceilings). The
 ratchet also holds the code to `test/resources/coupling-baseline.tsv`: no new cross-module edge kind, no package's Ce
 past its row. **Two limits** (the owner, 2026-11-18): a class's fan-out ≤ 9 and, for a package of 8+ types, its
 distance D ≤ 0.20. **Fan-out counts only COLLABORATORS** (the owner, 2026-11-19: "ignore data types and other

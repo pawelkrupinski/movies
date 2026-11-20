@@ -44,7 +44,9 @@ rank	2	services.scrapes	the venues' scrape records and archives
 rank	2	services.users	the accounts and their state
 rank	3	services.auth	the sign-in flows over the accounts
 rank	3	services.closure	the venue closure checks and retirements over the scrape records
-rank	3	services.identity	the identity model: the resolver, its agreement stage, the readings scrapers and clients build
+rank	3	services.identity	the identity model: the resolver, its measures and rules, the readings scrapers and clients build
+rank	3	services.identity.agreement	the identity model's agreement stage: the film databases' votes over the model's takes, above the model
+rank	3	services.identity.staging	the identity model's staged inputs: the change feed and staging events the resolver reads
 rank	3	services.metrics	the metrics plumbing and the series of the packages below it
 rank	4	services.cinemas	the cinema scrapers and their contract, building the identity model's readings
 rank	4	services.review	the takes' review: fact checks and explanations over the identity model

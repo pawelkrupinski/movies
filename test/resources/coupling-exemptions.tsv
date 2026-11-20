@@ -26,6 +26,9 @@
 #               and the collaborators it needs
 #   package     distance: one package past the limit by its role (no `*`): an agent's exemption, its why naming the role
 #               and why its balance of abstractness and stability is right
+#               -- the package AS MEASURED: a sub-package without a layer-table row of its own is inside it
+#               (services.metrics.web and .worker, under `package services.metrics`); one given such a row is a package
+#               of its own, which this row no longer covers, and takes its own row
 #   contract    (column 3: the contract's name) the classes matching `pattern` are its USERS: their fan-out counts every
 #               member of that contract they use as one dependency
 #   member      (column 3: the contract's name) `pattern` is one of the contract's member types -- at most 8 a contract
@@ -48,6 +51,7 @@ foundation	tools	exempt	coupling	generic utilities and the HTTP and Mongo layers
 foundation	settings	exempt	coupling	typed configuration values, read by every layer: stable and concrete
 foundation	services.titles	exempt	identity	the title text as a pure function library (TitleNormalizer, FormatTags): stable and concrete, nothing to abstract
 package	services.metrics	exempt	coupling	metric bundles: concrete series at the system edge, common's shared plumbing (exposition, cache gauges, JVM and tick series) under each tier's own (services.metrics.web, services.metrics.worker), each registering its own Prometheus families; no caller swaps a bundle, so a trait per bundle would be the single-implementation trait CLAUDE.md forbids	2026-11-20
+foundation	services.identity.staging	exempt	identity	the identity model's staging records (StagedCluster, StagedTake, StagingEvent) and their one store, read by the worker's publisher and the web's staging page: stable value types, concrete on purpose
 contract	services.cinemas.*	scrape	scrapers	a scraper's side of the scrape contract (CLAUDE.md: a new cinema is a new CinemaXClient on it): the twelve types every scraper is written against are one dependency, not twelve
 member	services.cinemas.common.CinemaScraper	scrape	scrapers	the contract's entry point: what a scraper is
 member	services.cinemas.common.ScraperParse	scrape	scrapers	the shared parse helpers every scraper reads its page with

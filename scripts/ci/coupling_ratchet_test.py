@@ -234,6 +234,23 @@ class CouplingRatchetTest(RatchetHarness):
         self.assert_fails(measured, "limit fanout-measure raised 1 -> 2", "fanout rows taken again under new limits",
                           rng=f"{self.base}..{head}")
 
+    def test_a_package_measure_change_takes_the_distance_rows_again_keeping_their_ceilings(self):
+        # deeper packages measured on their own (Coupling.PackageMeasure 2): services.movies' consumers now count its
+        # sub-package apart, its true D 55 -- taken again under the trailer, its ceiling (48 + 2) kept
+        measured = rows("limit\tdistance-measure\t2", "distance\tservices.movies\t55", "distance-cap\tservices.movies\t50",
+                        drop=("distance",))
+        head = self.commit({BASELINE: measured}, "re-measure\n\nCoupling: deeper packages measured on their own")
+        self.assert_passes(measured, rng=f"{self.base}..{head}")
+        raised = measured.replace("distance-cap\tservices.movies\t50", "distance-cap\tservices.movies\t57")
+        head = self.commit({BASELINE: raised}, "re-measure, a fresh ceiling\n\nCoupling: deeper packages measured on their own")
+        self.assert_fails(raised, "distance-cap services.movies raised 50 -> 57 -- a ceiling only falls", rng=f"{self.base}..{head}")
+
+    def test_a_package_measure_change_without_a_trailer_fails(self):
+        measured = rows("limit\tdistance-measure\t2", "distance\tservices.movies\t55", drop=("distance",))
+        head = self.commit({BASELINE: measured}, "re-measure, no why")
+        self.assert_fails(measured, "limit distance-measure raised 1 -> 2", "distance rows taken again under new limits",
+                          rng=f"{self.base}..{head}")
+
     def test_a_baseline_keeping_its_measure_takes_no_rows_again(self):
         measured = rows("limit\tfanout-measure\t2")
         mid = self.commit({BASELINE: measured}, "re-measure\n\nCoupling: measurement fix")
@@ -668,6 +685,24 @@ class CouplingRenameTest(RatchetHarness):
         head = self.commit({BASELINE: raised}, "it rose")
         self.assert_fails(raised, "distance services.resolve added at 31", "but 31 is past services.identity's frozen row 30",
                           rng=f"{base}..{head}")
+
+    def test_a_renamed_deeper_package_with_a_row_of_its_own_keeps_its_distance_row(self):
+        # services.identity.agreement is measured as a package of its own (its `rank` row), so its sources moving to
+        # services.identity.voting (ranked in its place) rename IT -- not services.identity into services.identity
+        def ranked(pkg):
+            return LAYER_ROWS + f"rank\t2\t{pkg}\tover the model\n"
+        def sources(pkg):
+            return {f"identity/src/main/scala/{pkg.replace('.', '/')}/{old}.scala": identity_class(old).replace(
+                "package services.identity", f"package {pkg}") for old, _, _ in REAL_RENAMES}
+        before = frozen_identity() + "distance\tservices.identity.agreement\t30\n" + cap("services.identity.agreement", 30) + "\n"
+        base = self.commit({BASELINE: before, LAYERS: ranked("services.identity.agreement"),
+                            **sources("services.identity.agreement")}, "the agreement measured on its own")
+        after = frozen_identity() + "distance\tservices.identity.voting\t30\n" + cap("services.identity.voting", 30) + "\n"
+        files = {BASELINE: after, LAYERS: ranked("services.identity.voting"), **sources("services.identity.voting")}
+        files.update({path: None for path in sources("services.identity.agreement")})
+        head = self.commit(files, "the agreement renamed")
+        out = self.assert_passes(after, rng=f"{base}..{head}")
+        self.assertIn("distance services.identity.agreement (30) renamed to services.identity.voting", out)
 
 
 # A FAN-OUT ROW ADDED (the owner, 2026-11-19: "3 a yes with specific reason"): an agent may exempt a genuinely new class

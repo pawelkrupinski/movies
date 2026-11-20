@@ -38,7 +38,10 @@
 # read as the rename.
 #
 # A measurement fix (`limit fanout-measure` raised: a count that missed real uses, or charged a class with
-# another's) re-takes the rows at their true values, as a changed limit does, under its `Coupling:` trailer.
+# another's; `limit distance-measure` raised: a package measured otherwise, 2 = a package of three or more segments with
+# a layer-table row of its own measured apart from its parent, 2026-11-20) re-takes the rows at their true values, as a
+# changed limit does, under its `Coupling:` trailer. A distance re-measure keeps every ceiling: a row it takes again
+# above its ceiling leaves that package no split headroom until it falls back under.
 #
 # A SPLIT (the owner, 2026-11-18; the union rule, 2026-11-18): a frozen class X cut into pieces may freeze the pieces
 # past the limit at their new values when a commit of the range carries `Coupling: split of <X>` (`... into <A>, <B>`
@@ -109,10 +112,12 @@ DISTANCE_CUT = ("move a leaf value type down to models or tools, or a trait to t
 PRESENCE = ("module-edge", "cycle-edge")  # only the pair is held, its weight is information (a cycle edge: none at all)
 VALUED = ("ce", "fanout", "distance")
 FROZEN = (("fanout", "class", "fan-out"), ("distance", "package", "distance D (hundredths)"))  # only an exemption admits a new one
-DEFAULT_LIMITS = {"fanout": 9, "fanout-measure": 1, "new-package-ce": 8, "distance": 20, "distance-min-types": 8}
-# How a frozen kind is measured (project/Coupling.scala's FanOutMeasure): a baseline without the row is measure 1. A
-# measurement fix raises it, re-taking the kind's rows at their true values under its `Coupling:` trailer.
-MEASURES = ("fanout-measure",)
+DEFAULT_LIMITS = {"fanout": 9, "fanout-measure": 1, "new-package-ce": 8, "distance": 20, "distance-min-types": 8,
+                  "distance-measure": 1}
+# How a frozen kind is measured (project/Coupling.scala's FanOutMeasure, PackageMeasure): a baseline without the row is
+# measure 1. A measurement fix raises it, re-taking the kind's rows at their true values under its `Coupling:` trailer;
+# a distance re-measure keeps every ceiling (THE CEILING): it re-takes the rows, never the owner's caps.
+MEASURES = ("fanout-measure", "distance-measure")
 
 Rows = Dict[Tuple[str, str], int]
 Edges = Dict[str, List[str]]  # "<from package>-><to package>" -> its class references, "<from class> -> <to class>"
@@ -227,6 +232,7 @@ class RenameEvidence:
         self._pure: Dict[str, bool] = {}
         self._sources: Dict[Tuple[str, str], Optional[str]] = {}
         self._packages: Dict[Tuple[str, str], str] = {}
+        self._units: Dict[str, Set[str]] = {}
 
     def _read(self) -> None:
         if self._renames is None:
@@ -250,8 +256,12 @@ class RenameEvidence:
         return self._sources[(rev, cls)]
 
     def package(self, rev: str, path: str) -> str:
+        """The package of source `path` at `rev`, as the ratchet measured it there (its layer table's units)."""
+        if rev not in self._units:
+            self._units[rev] = layer_units(file_at(rev, LAYERS_PATH))
         if (rev, path) not in self._packages:
-            self._packages[(rev, path)] = package_of(".".join(re.findall(r"^package\s+([\w.]+)", file_at(rev, path), re.M)) + ".X")
+            declared = ".".join(re.findall(r"^package\s+([\w.]+)", file_at(rev, path), re.M))
+            self._packages[(rev, path)] = package_of(declared + ".X", self._units[rev])
         return self._packages[(rev, path)]
 
     def pure(self, sha: str) -> bool:
@@ -408,10 +418,22 @@ def took_over(base: str, head: str, origin: str, piece: str, copies: Set[Tuple[s
     return len(taken) >= MIN_MOVED_MEMBERS, ""
 
 
-def package_of(cls: str) -> str:
-    """A class's package as the report groups it (Coupling.packageOf): its full package cut to the top two segments."""
+def package_of(cls: str, units: Set[str] = frozenset()) -> str:
+    """A class's package as the report groups it (Coupling.packageOf): the longest of `units` (the deeper packages
+    measured on their own, `layer_units`) that is its full package or holds it, else the full package cut to its top two
+    segments."""
     full = cls.rpartition(".")[0]
-    return ".".join(full.split(".")[:2]) if full else "<root>"
+    if not full:
+        return "<root>"
+    held = [u for u in units if full == u or full.startswith(u + ".")]
+    return max(held, key=len) if held else ".".join(full.split(".")[:2])
+
+
+def layer_units(layers_text: str) -> Set[str]:
+    """The packages of three or more segments the layer table gives a row of their own (Coupling.Layers.units): each is
+    measured as a package of its own, not as part of its top two segments."""
+    rows, _, ranks = parse_layers(layers_text)
+    return {p for p in list(rows) + list(ranks) if p.count(".") >= 2}
 
 
 def recorded_refs(text: str) -> Dict[str, Set[str]]:
@@ -523,12 +545,13 @@ def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Fanouts]
             admitted |= set(pieces)
             # the packages holding X or a piece, and those the split's references reach: each piece is one more outside
             # class using them (Ca counts classes), so their instability falls and their distance may rise
-            packages |= {package_of(c) for c in internal} | {package_of(t) for t in union if not t.startswith("contract:")}
+            units = layer_units(file_at(head, LAYERS_PATH))
+            packages |= {package_of(c, units) for c in internal} | {package_of(t, units) for t in union if not t.startswith("contract:")}
             notes.append(f"{summary}: their references ({len(union)}) within {original}'s {frozen[original]}")
     return admitted, packages, notes, refused
 
 
-LIMIT_KEYS = {"fanout": ("fanout", "fanout-measure"), "distance": ("distance", "distance-min-types")}
+LIMIT_KEYS = {"fanout": ("fanout", "fanout-measure"), "distance": ("distance", "distance-min-types", "distance-measure")}
 
 
 def refrozen(old: Rows, new: Rows, kind: str) -> bool:
@@ -538,6 +561,13 @@ def refrozen(old: Rows, new: Rows, kind: str) -> bool:
     old_lim, new_lim = limits(old), limits(new)
     return any((("limit", key) not in old and key not in MEASURES) or old_lim.get(key) != new_lim.get(key)
                for key in LIMIT_KEYS[kind])
+
+
+def remeasured_only(old: Rows, new: Rows, kind: str) -> bool:
+    """Whether only how `kind` is measured changed between `old` and `new` (its MEASURES row), not a limit."""
+    old_lim, new_lim = limits(old), limits(new)
+    keys = LIMIT_KEYS[kind]
+    return all(old_lim.get(k) == new_lim.get(k) for k in keys if k not in MEASURES) and refrozen(old, new, kind)
 
 
 def ceilings(rows: Rows) -> Dict[str, int]:
@@ -574,7 +604,7 @@ def frozen_growth(old: Rows, new: Rows, split: Set[str] = frozenset(), split_pac
                     out.append(f"{kind} {key} raised {before[key]} -> {value}" + past_ceiling(key, value, cap))
             elif not moved(key, value, before, after) and not (kind == "fanout" and key in split) and (kind, key) not in renamed:
                 out.append(f"{kind} {key} added at {value}")
-    if not refrozen(old, new, "distance"):
+    if not refrozen(old, new, "distance") or remeasured_only(old, new, "distance"):
         was = ceilings(old)
         for key, cap in sorted(ceilings(new).items()):
             if key in was and cap > was[key]:
@@ -1152,7 +1182,8 @@ def split_check(current_path: str, fanouts_path: str, original: str, pieces: Lis
             print(f"  piece {piece}: fan-out {'-' if v is None else v} -- {mark} {e['frozen']}")
         print(f"  union of references: {len(e['union'])}, of them outside {e['original']}'s set: {len(e['new'])}"
               + (f" ({', '.join(e['new'][:5])}{', ...' if len(e['new']) > 5 else ''})" if e["new"] else " (a subset)"))
-    reached = packages or ({package_of(c) for c in pieces + [original]})
+    units = layer_units(file_at(rng.split("..", 1)[1], LAYERS_PATH))
+    reached = packages or ({package_of(c, units) for c in pieces + [original]})
     old_d, new_d = of_kind(before, "distance"), of_kind(measured, "distance")
     caps = ceilings(before)
     for pkg in sorted(set(old_d) | set(new_d)):

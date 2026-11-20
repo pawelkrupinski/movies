@@ -34,6 +34,65 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     Coupling.fullPackageOf("services.identity.agreement.AgreementStage") shouldBe "services.identity.agreement"
   }
 
+  it should "be the longest deeper package measured on its own that holds it, its top two segments when none does" in {
+    val units = Set("services.identity.agreement", "services.identity.agreement.votes", "services.identity.staging")
+    Coupling.packageOf("services.identity.agreement.AgreementStage", units) shouldBe "services.identity.agreement"
+    Coupling.packageOf("services.identity.agreement.votes.Vote", units) shouldBe "services.identity.agreement.votes"
+    Coupling.packageOf("services.identity.agreement.inner.Helper", units) shouldBe "services.identity.agreement"
+    Coupling.packageOf("services.identity.IdentityResolver", units) shouldBe "services.identity"
+    Coupling.packageOf("services.identity.projection.FilmPlans", units) shouldBe "services.identity"
+    Coupling.packageOf("services.identityadapters.TakeReads", units) shouldBe "services.identityadapters"
+  }
+
+  // services.identity <-> services.identity.agreement: one package, no cycle, until the agreement is measured on its own
+  private val deeper = Graph(
+    Seq(t("services.identity.Question", "identity"), t("services.identity.Resolver", "identity"),
+      t("services.identity.agreement.Stage", "identity"), t("services.identity.agreement.Family", "identity"), t("models.Film")),
+    Set("services.identity.Question" -> "services.identity.agreement.Family", "services.identity.agreement.Stage" -> "services.identity.Resolver",
+      "services.identity.Resolver" -> "models.Film"))
+
+  "a deeper package with a row of its own" should "be measured as a package: its Ca, Ce and D, and the cycles through it" in {
+    Coupling.packages(deeper).map(_.name) shouldBe Seq("models", "services.identity")
+    Coupling.cycles(deeper) shouldBe empty
+    val split = deeper.copy(units = Set("services.identity.agreement"))
+    val byName = Coupling.packages(split).map(p => p.name -> p).toMap
+    byName.keySet shouldBe Set("models", "services.identity", "services.identity.agreement")
+    (byName("services.identity.agreement").types, byName("services.identity.agreement").ca, byName("services.identity.agreement").ce) shouldBe ((2, 1, 1))
+    (byName("services.identity").ca, byName("services.identity").ce, byName("services.identity").cePackages) shouldBe ((1, 2, 2))
+    Coupling.cycles(split).map(_.packages) shouldBe Seq(Seq("services.identity", "services.identity.agreement"))
+    Coupling.baselineRows(split) should contain("cycle-edge\tservices.identity->services.identity.agreement\t1")
+    Coupling.edgeRows(split) should contain(
+      "services.identity.agreement->services.identity\tservices.identity.agreement.Stage->services.identity.Resolver")
+  }
+
+  it should "need an exemption row of its own: its parent's `package` row covers it only while it is measured inside the parent" in {
+    // services.metrics.web: concrete series every tier reads (D 1). Without a row of its own it is services.metrics, which
+    // the `package services.metrics` row exempts; once measured apart, that row (one package, never a prefix) no longer
+    // covers it -- the row neither lapses for the parent nor widens to the child unseen: the child takes its own row
+    val metrics = Graph(Seq(t("services.metrics.web.PageSeries"), t("services.metrics.web.CacheSeries"), t("services.metrics.Registry"),
+        t("controllers.Home", "web")),
+      Set("controllers.Home" -> "services.metrics.web.PageSeries", "controllers.Home" -> "services.metrics.web.CacheSeries",
+        "controllers.Home" -> "services.metrics.Registry"))
+    val exempt = Coupling.Exemptions.parse(Seq("package\tservices.metrics\texempt\tcoupling\tmetric bundles: concrete series, none swapped"))
+    def distanceRows(g: Graph) = Coupling.baselineRows(g, exemptions = exempt, distanceMinTypes = 2).filter(_.startsWith("distance\t"))
+    distanceRows(metrics) shouldBe empty
+    distanceRows(metrics.copy(units = Set("services.metrics.web"))) shouldBe Seq("distance\tservices.metrics.web\t100")
+    val both = Coupling.Exemptions.parse(Seq("package\tservices.metrics\texempt\tcoupling\tmetric bundles: concrete series, none swapped",
+      "package\tservices.metrics.web\texempt\tcoupling\tthe web tier's metric bundles: concrete series, none swapped"))
+    Coupling.baselineRows(metrics.copy(units = Set("services.metrics.web")), exemptions = both, distanceMinTypes = 1)
+      .filter(_.startsWith("distance\t")) shouldBe empty
+  }
+
+  it should "take its rank from its own row, and be held to it" in {
+    val table = Coupling.Layers.parse(Seq("layer\t1\tmodels\td", "layer\t2\tservices\ta", "rank\t0\tservices.identity\tthe model",
+      "rank\t1\tservices.identity.agreement\tover the model"))
+    table.units shouldBe Set("services.identity.agreement")
+    Coupling.Layers.parse(Seq("layer\t2\tservices\ta", "layer\t0\tservices.identity.low\tb")).units shouldBe Set("services.identity.low")
+    Coupling.rankViolations(deeper.copy(units = table.units), table) shouldBe
+      Seq(("services.identity", "services.identity.agreement") -> Seq("services.identity.Question" -> "services.identity.agreement.Family"))
+    Coupling.rankViolations(deeper, table) shouldBe empty
+  }
+
   "an object's member" should "be named as a class's member: an object and its class are one type" in {
     Coupling.normalize("clients.TmdbClient$.Page") shouldBe "clients.TmdbClient.Page"
     Coupling.normalize("models.Film") shouldBe "models.Film"
@@ -108,6 +167,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
   "the baseline rows" should "hold the limits, the module and cycle edges, every package's Ce and the fan-outs past the limit" in {
     Coupling.baselineRows(graph, fanOutLimit = 2, newPackageCeLimit = 15, distanceMinTypes = 100) shouldBe Seq(
       "limit\tfanout\t2", "limit\tfanout-measure\t4", "limit\tnew-package-ce\t15", "limit\tdistance\t20", "limit\tdistance-min-types\t100",
+      "limit\tdistance-measure\t2",
       "module-edge\tcommon->base\t1", "module-edge\tworker->base\t1", "module-edge\tworker->common\t2",
       "cycle-edge\tmodels->services.movies\t1", "cycle-edge\tservices.movies->models\t1",
       "ce\tmodels\t1", "ce\tservices.movies\t2", "ce\ttools\t0", "ce\tworker\t3",
@@ -521,13 +581,15 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     rows.map(_.head).toSet -- Set("limit", "module-edge", "ce", "fanout", "distance", "distance-cap") shouldBe empty // no cycle-edge: the graph has none
     all(rows.map(_(2))) should fullyMatch regex "[0-9]+"
     rows.map(r => (r(0), r(1))).distinct.size shouldBe rows.size
-    // every frozen distance row carries its ceiling (scripts/ci/coupling_ratchet.py, THE CEILING), at or above the row
+    // every frozen distance row carries its ceiling (scripts/ci/coupling_ratchet.py, THE CEILING), at most 0.02 above the
+    // row; a row a re-measure took again (`limit distance-measure`) may sit above its kept ceiling, until it falls back under
     val distance = rows.collect { case Seq("distance", pkg, d) => pkg -> d.toInt }.toMap
     val caps = rows.collect { case Seq("distance-cap", pkg, c) => pkg -> c.toInt }.toMap
     caps.keySet shouldBe distance.keySet
-    all(distance.map { case (pkg, d) => caps(pkg) - d }) should (be >= 0 and be <= 2)
+    all(distance.map { case (pkg, d) => caps(pkg) - d }) should be <= 2
     rows.collect { case Seq("limit", key, value) => key -> value.toInt }.toMap shouldBe
       Map("fanout" -> Coupling.DefaultFanOutLimit, "fanout-measure" -> Coupling.FanOutMeasure, "new-package-ce" -> Coupling.DefaultNewPackageCeLimit,
-        "distance" -> Coupling.DefaultDistanceLimit, "distance-min-types" -> Coupling.DefaultDistanceMinTypes)
+        "distance" -> Coupling.DefaultDistanceLimit, "distance-min-types" -> Coupling.DefaultDistanceMinTypes,
+        "distance-measure" -> Coupling.PackageMeasure)
   }
 }

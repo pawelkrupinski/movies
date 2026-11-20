@@ -32,8 +32,9 @@ couplingReport := {
   val args = Def.spaceDelimited("<rows out> [<markdown out> [<edges out> [<fanouts out> [<collaborators out>]]]]").parsed
   require(args.size >= 1 && args.size <= 5, "couplingReport <rows out> [<markdown out> [<edges out> [<fanouts out> [<collaborators out>]]]]")
   val started = System.nanoTime
-  val graph = CouplingAnalysis.graph(baseDirectory.value, couplingUnits.value, fileConverter.value)
   val layers = Some(kinowo.build.Coupling.Layers.parse(IO.readLines(baseDirectory.value / "test" / "resources" / "coupling-layers.tsv")))
+  // a package of three or more segments with a layer-table row of its own is measured as a package of its own
+  val graph = CouplingAnalysis.graph(baseDirectory.value, couplingUnits.value, fileConverter.value).copy(units = layers.get.units)
   val exemptions = kinowo.build.Coupling.Exemptions.parse(IO.readLines(baseDirectory.value / "test" / "resources" / "coupling-exemptions.tsv"))
   IO.writeLines(file(args(0)), kinowo.build.Coupling.BaselineHeader ++ kinowo.build.Coupling.baselineRows(graph, layers = layers, exemptions = exemptions))
   if (args.size >= 2) IO.write(file(args(1)), kinowo.build.Coupling.report(graph, couplingDeclared.value, layers = layers, exemptions = exemptions))

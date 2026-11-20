@@ -8,6 +8,8 @@
 #                new-package-ce: a
 #                package without a ce row at most this Ce; distance (hundredths) and distance-min-types: a package of
 #                that many types or more without a distance row (or an exemption) has at most this D
+#                distance-measure: how a package is counted (2: one of three or more segments with a layer-table
+#                row of its own apart from its parent)
 #   module-edge  <from>-><to>, the class references across it: a new pair is a new cross-module edge kind
 #   cycle-edge   <from>-><to>, a package edge inside a package cycle (a strongly connected component): never held here --
 #                the package graph has no cycle, and the ratchet fails on any such row, in the code or in this file
@@ -30,8 +32,9 @@ limit	fanout-measure	4
 limit	new-package-ce	8
 limit	distance	20
 limit	distance-min-types	8
+limit	distance-measure	2
 module-edge	common->base	56
-module-edge	common->geodata	14
+module-edge	common->geodata	12
 module-edge	common->http	65
 module-edge	http->base	10
 module-edge	identity->base	25
@@ -53,19 +56,19 @@ module-edge	worker->http	175
 module-edge	worker->identity	534
 module-edge	worker->scrapers	150
 ce	clients	3
-ce	controllers	21
+ce	controllers	22
 ce	diagnostics	5
 ce	models	1
 ce	modules	12
 ce	modules.timing	2
 ce	modules.webwiring	21
-ce	modules.wiring	32
+ce	modules.wiring	34
 ce	services	3
 ce	services.alerts	6
 ce	services.attempts	3
 ce	services.auth	5
 ce	services.cadence	2
-ce	services.cinemas	9
+ce	services.cinemas	10
 ce	services.closure	5
 ce	services.config	2
 ce	services.corpus	13
@@ -75,7 +78,9 @@ ce	services.facebook	2
 ce	services.fallback	1
 ce	services.freshness	2
 ce	services.identity	8
-ce	services.identityadapters	15
+ce	services.identity.agreement	5
+ce	services.identity.staging	2
+ce	services.identityadapters	17
 ce	services.metrics	6
 ce	services.movies	5
 ce	services.readmodel	6
@@ -92,7 +97,7 @@ ce	services.users	4
 ce	services.venuepages	11
 ce	settings	2
 ce	tools	0
-distance	services.identity	42
+distance	services.identity	48
 distance-cap	services.identity	44
 distance	services.movies	27
 distance-cap	services.movies	29

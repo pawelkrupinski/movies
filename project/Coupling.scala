@@ -37,8 +37,11 @@ object Coupling {
    *  supertypes among the types ([[supertypeClosure]]). */
   final case class Graph(types: Seq[Type], edges: Set[(String, String)], data: Set[String] = Set.empty,
                          collaboratorWhy: Map[String, String] = Map.empty, coupledEdges: Option[Set[(String, String)]] = None,
-                         supertypes: Map[String, Set[String]] = Map.empty) {
+                         supertypes: Map[String, Set[String]] = Map.empty, units: Set[String] = Set.empty) {
     val byName: Map[String, Type] = types.map(t => t.name -> t).toMap
+    /** A class's package as this graph measures it ([[Coupling.packageOf]] over `units`, the deeper packages measured
+     *  on their own: [[Layers.units]]). */
+    def packageOf(name: String): String = Coupling.packageOf(name, units)
     /** The edges between two distinct known types. */
     val known: Set[(String, String)] = edges.filter { case (from, to) => from != to && byName.contains(from) && byName.contains(to) }
     /** The known edges into a COLLABORATOR: what a class's fan-out and fan-in count -- `coupledEdges` when measured
@@ -52,10 +55,14 @@ object Coupling {
   /** A class's full package: its name less the last segment (`<root>` for none). */
   def fullPackageOf(name: String): String = { val i = name.lastIndexOf('.'); if (i < 0) "<root>" else name.substring(0, i) }
 
-  /** A class's package as the report groups it: the full package cut to its top two segments. */
-  def packageOf(name: String): String = {
+  /** A class's package as the report groups it: the longest of `units` (packages of three or more segments measured on
+   *  their own, [[Layers.units]]) that is its full package or holds it, else the full package cut to its top two
+   *  segments -- `services.identity.agreement.AgreementStage` is in `services.identity.agreement` when that is a unit,
+   *  in `services.identity` when it is not. */
+  def packageOf(name: String, units: Set[String] = Set.empty): String = {
     val full = fullPackageOf(name)
-    if (full == "<root>") full else full.split('.').take(2).mkString(".")
+    val unit = units.toSeq.filter(u => full == u || full.startsWith(u + ".")).sortBy(-_.length).headOption
+    if (full == "<root>") full else unit.getOrElse(full.split('.').take(2).mkString("."))
   }
 
   /** A class's name without the `$` Zinc records a member of an object under (`clients.TmdbClient$.Page` is
@@ -321,7 +328,7 @@ object Coupling {
   }
 
   def packages(g: Graph): Seq[PackageStats] = {
-    val pkg = g.types.map(t => t.name -> packageOf(t.name)).toMap
+    val pkg = g.types.map(t => t.name -> g.packageOf(t.name)).toMap
     val cross = g.known.toSeq.filter { case (from, to) => pkg(from) != pkg(to) }
     val ce = cross.groupBy { case (from, _) => pkg(from) }.map { case (p, es) => p -> es.map(_._2).toSet.size }
     val ca = cross.groupBy { case (_, to) => pkg(to) }.map { case (p, es) => p -> es.map(_._1).toSet.size }
@@ -333,14 +340,14 @@ object Coupling {
 
   /** Package edges: (from package, to package) -> the class->class references making it. */
   def packageEdges(g: Graph): Map[(String, String), Seq[(String, String)]] =
-    g.known.toSeq.map { case e @ (from, to) => (packageOf(from), packageOf(to)) -> e }.filter { case ((a, b), _) => a != b }
+    g.known.toSeq.map { case e @ (from, to) => (g.packageOf(from), g.packageOf(to)) -> e }.filter { case ((a, b), _) => a != b }
       .groupBy(_._1).map { case (k, v) => k -> v.map(_._2).sorted }
 
   /** Every class->class dependency, one `<from package>-><to package><TAB><from class>-><to class>` line each (a
    *  package's own, `p->p`, too: what a move out of it must take along), sorted: the evidence behind the rows
    *  (scripts/coupling-report --out keeps it as edges.tsv; the ratchet names a refused edge's references from it). */
   def edgeRows(g: Graph): Seq[String] =
-    g.known.toSeq.map { case (x, y) => s"${packageOf(x)}->${packageOf(y)}\t$x->$y" }.sorted
+    g.known.toSeq.map { case (x, y) => s"${g.packageOf(x)}->${g.packageOf(y)}\t$x->$y" }.sorted
 
   /** Every class's held fan-out ([[heldTargets]]), one `<class><TAB><fan-out><TAB><target>,<target>...` line each,
    *  sorted: what a `Coupling: split of <X>` claim holds -- each piece's count, and the union of what the pieces and X's
@@ -411,6 +418,9 @@ object Coupling {
     def rankOf(pkg: String): Option[Int] = ranks.get(pkg)
     /** Whether `layer` orders its packages: some `rank` row names a package of it. */
     def ordered(layer: Int): Boolean = ranks.keys.exists(p => layerOf(p).contains(layer))
+    /** The packages of three or more segments a row of their own names (`rank services.identity.agreement`): each is
+     *  measured as a package of its own ([[packageOf]]), not as part of its top two segments. */
+    def units: Set[String] = (rows.map(_._1) ++ ranks.keys).filter(_.count(_ == '.') >= 2).toSet
   }
 
   object Layers {
@@ -625,6 +635,10 @@ object Coupling {
    *  ([[withoutImportCharge]]); 4, only COLLABORATORS counted ([[Collaborators]]: a data type, nested ones judged by
    *  themselves, is no coupling). */
   val FanOutMeasure = 4
+  /** How a package is measured, held as a limit row so a measurement fix re-takes the frozen distance rows (keeping
+   *  their ceilings): 1, every class in its top two segments; 2, a package of three or more segments with a layer-table
+   *  row of its own measured apart ([[Layers.units]], 2026-11-20). */
+  val PackageMeasure = 2
   /** The outside packages a package with no row may depend on. */
   val DefaultNewPackageCeLimit = 8
   /** The distance from the main sequence, in hundredths, above which a package needs a frozen row or an exemption. */
@@ -642,7 +656,7 @@ object Coupling {
                    layers: Option[Layers] = None, exemptions: Exemptions = Exemptions.empty,
                    distanceLimit: Int = DefaultDistanceLimit, distanceMinTypes: Int = DefaultDistanceMinTypes): Seq[String] = {
     val limits = Seq(s"limit\tfanout\t$fanOutLimit", s"limit\tfanout-measure\t$FanOutMeasure", s"limit\tnew-package-ce\t$newPackageCeLimit",
-      s"limit\tdistance\t$distanceLimit", s"limit\tdistance-min-types\t$distanceMinTypes")
+      s"limit\tdistance\t$distanceLimit", s"limit\tdistance-min-types\t$distanceMinTypes", s"limit\tdistance-measure\t$PackageMeasure")
     val modules = moduleEdges(g).toSeq.sorted.map { case ((a, b), n) => s"module-edge\t$a->$b\t$n" }
     val cycleEdges = cycles(g).flatMap(_.edges).map { case ((a, b), refs) => s"cycle-edge\t$a->$b\t${refs.size}" }.sorted
     val pkgs = packages(g)
@@ -669,6 +683,8 @@ object Coupling {
     "#                new-package-ce: a",
     "#                package without a ce row at most this Ce; distance (hundredths) and distance-min-types: a package of",
     "#                that many types or more without a distance row (or an exemption) has at most this D",
+    "#                distance-measure: how a package is counted (2: one of three or more segments with a layer-table",
+    "#                row of its own apart from its parent)",
     "#   module-edge  <from>-><to>, the class references across it: a new pair is a new cross-module edge kind",
     "#   cycle-edge   <from>-><to>, a package edge inside a package cycle (a strongly connected component): never held here --",
     "#                the package graph has no cycle, and the ratchet fails on any such row, in the code or in this file",

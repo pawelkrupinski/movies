@@ -13,6 +13,8 @@ trap 'rm -rf "$work"' EXIT
 
 # <name> @@ <exact text in the tool> @@ <what replaces it>
 mutants=(
+  'a deeper package with a row of its own is cut to two segments @@ held = [u for u in units if full == u or full.startswith(u + ".")] @@ held = []'
+  'a distance re-measure raises the ceilings with the rows @@ if not refrozen(old, new, "distance") or remeasured_only(old, new, "distance"): @@ if not refrozen(old, new, "distance"):'
   'a new module edge passes @@ if key not in of_kind(baseline, "module-edge"): @@ if False:'
   'a new cycle passes @@ for key, refs in sorted(of_kind(current, "cycle-edge").items()): @@ for key, refs in []:'
   'a cycle recorded in the baseline passes @@ recorded = sorted(of_kind(baseline, "cycle-edge")) @@ recorded = []'
@@ -91,8 +93,8 @@ mutants=(
   'update reads no side of a conflict @@ for stage in (1, 2, 3): @@ for stage in ():'
   'a split may raise distance without bound @@ value - before[key] <= DISTANCE_SPLIT_TOLERANCE @@ True'
   'the distance tolerance is 3 @@ DISTANCE_SPLIT_TOLERANCE = 2 @@ DISTANCE_SPLIT_TOLERANCE = 3'
-  'a refused split raises distance @@ packages |= {package_of(c) for c in internal} | {package_of(t) for t in union if not t.startswith("contract:")} @@ pass'
-  'a split credits no package it uses @@ | {package_of(t) for t in union if not t.startswith("contract:")} @@ | set()'
+  'a refused split raises distance @@ packages |= {package_of(c, units) for c in internal} | {package_of(t, units) for t in union if not t.startswith("contract:")} @@ pass'
+  'a split credits no package it uses @@ | {package_of(t, units) for t in union if not t.startswith("contract:")} @@ | set()'
   'a split may raise any package distance @@ and key in split_packages and value @@ and value'
   'any piece takes over code @@ if not ok:
                 why.append @@ if False:
