@@ -2578,6 +2578,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // label the inline rewrite leaves alone.
   // A click on the detail poster shows it full-screen; the ✕, a click
   // anywhere on the overlay, and Escape each close it again.
+  // Zawodowcy's highest-priority cinema poster is Kino Malta's listing copy, WordPress's 200x288 thumbnail: upscaled
+  // into the 480x720 slot it was a blur (the owner, 2026-11-20). The browser loads Helios's full-size poster instead.
+  "the /movie poster" should "load a full-size poster before a cinema's small thumbnail copy" in {
+    onPath("/movie/" + tools.Slugify("Zawodowcy")) { page =>
+      val loaded = "(src => _imgDirectUrl(src) || src)(document.querySelector('.poster-img').getAttribute('src'))"
+      page.evalString(loaded) should endWith("movies.helios.pl/images/Zawodowcyplakat.png")
+      page.evalString("document.querySelector('.poster-img').getAttribute('src')") should not include "-200x288."
+    }
+  }
+
   "the /movie poster" should "open full-screen on click and close on ✕, backdrop click, or Escape" in {
     onPath(filmTarget) { page =>
       val open = "document.getElementById('poster-lightbox').checkVisibility()"

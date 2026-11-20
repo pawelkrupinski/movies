@@ -151,13 +151,11 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers with StopsItsWi
       regular.movie.releaseYear    shouldBe Some(2026)
 
       // posterUrl: no Multikino slot scrapes the anchor in this Poznań-centric
-      // corpus, so the Charlie Monroe (Kino Malta) poster wins the merge: the original of the 200x288 copy
-      // the listing shows (`ResizedPoster.fullSize`).
-      // Specific URL nailed down — a parser regression dropping the poster
-      // field would shift this.
-      regular.posterUrl shouldBe Some(
-        "https://www.kinomalta.pl/wp-content/uploads/2026/05/zawodowcy-zawodowcy-plakat-po-zmniejszeniu.jpg"
-      )
+      // corpus. Charlie Monroe (Kino Malta) ranks first among the cinemas, but its
+      // listing shows WordPress's 200x288 copy, which gives way to a full-size
+      // poster (`ResizedPoster.isSmall`): Helios's. Specific URL nailed down — a
+      // parser regression dropping the poster field would shift this.
+      regular.posterUrl shouldBe Some("https://movies.helios.pl/images/Zawodowcyplakat.png")
 
       // City-scoped synopsis (`ResolvedMovie.synopsisFor(Poznań)`, since these
       // schedules come from `toSchedules(Poznan, …)`): the best blurb among the
