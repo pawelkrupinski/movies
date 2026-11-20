@@ -8,6 +8,7 @@ import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObs
 import java.time.Instant
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.reflect.ClassTag
 import scala.util.Try
 
 /**
@@ -87,11 +88,27 @@ trait SlotKeyedRows {
 
 /**
  * [[SlotKeyedRows]] over a Mongo side collection's change cursor: both Mongo stores watch through
- * one [[SideCollectionWatch]] under their own persisted resume token, which `close` saves.
+ * one [[SideCollectionWatch]] under their own persisted resume token, which `close` saves. Built here
+ * from each store's parts, so the two wire their watch alike.
+ *
+ * @param collectionName the collection watched, which names its resume token too.
+ * @param filmIdOf       the film a changed row belongs to.
  */
-trait WatchedSlotKeyedRows extends SlotKeyedRows {
-  protected def changes: Option[SideCollectionWatch[?]]
-  protected def resumeToken: ChangeStreamResumeToken
+trait WatchedSlotKeyedRows[Dto: ClassTag](
+  collectionName: String,
+  filmIdOf:       Dto => String,
+  resumeTokens:   ResumeTokenStore,
+  metrics:        SideCollectionChangeMetrics,
+  decodeFailures: DecodeFailureMetrics,
+  stopwatch:      tools.Stopwatch
+) extends SlotKeyedRows {
+  /** The collection watched; `None` (no database) watches nothing. */
+  protected def watchedCollection: Option[MongoCollection[Dto]]
+
+  private val resumeToken = new ChangeStreamResumeToken(collectionName, resumeTokens, stopwatch)
+
+  private lazy val changes: Option[SideCollectionWatch[Dto]] =
+    watchedCollection.map(c => new SideCollectionWatch(collectionName, c, filmIdOf, resumeToken, metrics, decodeFailures, stopwatch))
 
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     changes.map(_.watch((rowId, applied) => onChange(SlotKeyed.filmIdOf(rowId), applied), demand))

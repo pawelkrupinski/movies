@@ -192,8 +192,6 @@ services.movies.MongoMovieRepository	tools.MongoRead
 services.movies.MongoMovieRepository	tools.MonotonicStampSequence
 services.movies.MongoMovieRepository	tools.ReadOutcome
 services.movies.MongoMovieRepository	tools.Stopwatch
-services.movies.MongoScreeningsRepository	services.movies.ChangeStreamReopen
-services.movies.MongoScreeningsRepository	services.movies.ChangeStreamResumeToken
 services.movies.MongoScreeningsRepository	services.movies.DecodeFailureMetrics
 services.movies.MongoScreeningsRepository	services.movies.MovieCodecs
 services.movies.MongoScreeningsRepository	services.movies.RemovalAudit
@@ -202,7 +200,6 @@ services.movies.MongoScreeningsRepository	services.movies.RepositoryWriteMetrics
 services.movies.MongoScreeningsRepository	services.movies.ResumeTokenStore
 services.movies.MongoScreeningsRepository	services.movies.ScreeningsMetrics
 services.movies.MongoScreeningsRepository	services.movies.ScreeningsSplit
-services.movies.MongoScreeningsRepository	services.movies.SideCollectionWatch
 services.movies.MongoScreeningsRepository	services.movies.SlotKeyed
 services.movies.MongoScreeningsRepository	services.movies.StoredScreeningsDto
 services.movies.MongoScreeningsRepository	services.movies.VenueRoster
@@ -210,8 +207,6 @@ services.movies.MongoScreeningsRepository	tools.KeysetScan
 services.movies.MongoScreeningsRepository	tools.MongoRead
 services.movies.MongoScreeningsRepository	tools.ReadOutcome
 services.movies.MongoScreeningsRepository	tools.Stopwatch
-services.movies.MongoSlotsRepository	services.movies.ChangeStreamReopen
-services.movies.MongoSlotsRepository	services.movies.ChangeStreamResumeToken
 services.movies.MongoSlotsRepository	services.movies.DecodeFailureMetrics
 services.movies.MongoSlotsRepository	services.movies.MovieCodecs
 services.movies.MongoSlotsRepository	services.movies.RemovalAudit
@@ -219,7 +214,6 @@ services.movies.MongoSlotsRepository	services.movies.RepositoryWrite
 services.movies.MongoSlotsRepository	services.movies.RepositoryWriteMetrics
 services.movies.MongoSlotsRepository	services.movies.ResumeTokenStore
 services.movies.MongoSlotsRepository	services.movies.SideCollectionChangeMetrics
-services.movies.MongoSlotsRepository	services.movies.SideCollectionWatch
 services.movies.MongoSlotsRepository	services.movies.SlotKeyed
 services.movies.MongoSlotsRepository	services.movies.StoredSlotDto
 services.movies.MongoSlotsRepository	services.movies.VenueRoster

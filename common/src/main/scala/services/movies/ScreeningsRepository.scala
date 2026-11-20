@@ -245,7 +245,9 @@ class MongoScreeningsRepository(
   writeMetrics:         RepositoryWriteMetrics = RepositoryWriteMetrics.noop,
   // Where a row this store's change stream could not decode is counted — see [[ChangeEventDecoder]].
   decodeFailures:       services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop
-) extends ScreeningsRepository with WatchedSlotKeyedRows with Logging {
+) extends ScreeningsRepository
+    with WatchedSlotKeyedRows[StoredScreeningsDto](ScreeningsRepository.Collection, _.filmId, resumeTokens, metrics, decodeFailures, stopwatch)
+    with Logging {
   import ScreeningsRepository.IdSep
 
   private lazy val coll: Option[MongoCollection[StoredScreeningsDto]] = sharedDb.map { db =>
@@ -254,8 +256,6 @@ class MongoScreeningsRepository(
     SlotKeyed.ensureIndexes(c)
     c
   }
-
-  protected val resumeToken: ChangeStreamResumeToken = new ChangeStreamResumeToken(ScreeningsRepository.Collection, resumeTokens, stopwatch)
 
   private def idOf(filmId: String, slotKey: String): String = s"$filmId$IdSep$slotKey"
 
@@ -475,10 +475,6 @@ class MongoScreeningsRepository(
     Await.result(c.deleteOne(Filters.eq("_id", idOf(filmId, slotKey))).toFuture(), 10.seconds); ()
   }
 
-  /** Watch the `screenings` collection; ring `onChange(filmId)` for every change. The
-   *  caller re-reads + stitches the film. The cursor itself — resume token, demand,
-   *  reopen, metrics, the delete's `_id` parse — is [[SideCollectionWatch]], shared with
-   *  `movie_slots`. */
-  protected lazy val changes: Option[SideCollectionWatch[StoredScreeningsDto]] =
-    coll.map(c => new SideCollectionWatch(ScreeningsRepository.Collection, c, _.filmId, resumeToken, metrics, decodeFailures, stopwatch))
+  /** What [[WatchedSlotKeyedRows]] watches, ringing `onChange(filmId)` for every change: the caller re-reads and stitches the film. */
+  protected def watchedCollection: Option[MongoCollection[StoredScreeningsDto]] = coll
 }

@@ -296,7 +296,9 @@ class MongoSlotsRepository(
   writeMetrics:         RepositoryWriteMetrics = RepositoryWriteMetrics.noop,
   // Where a row this store's change stream could not decode is counted — see [[ChangeEventDecoder]].
   decodeFailures:       services.movies.DecodeFailureMetrics = services.movies.DecodeFailureMetrics.noop
-) extends SlotsRepository with WatchedSlotKeyedRows with Logging {
+) extends SlotsRepository
+    with WatchedSlotKeyedRows[StoredSlotDto](SlotsRepository.Collection, _.filmId, resumeTokens, metrics, decodeFailures, stopwatch)
+    with Logging {
   import SlotKeyed.idOf
 
   private lazy val coll: Option[MongoCollection[StoredSlotDto]] = sharedDb.map { db =>
@@ -305,8 +307,6 @@ class MongoSlotsRepository(
     SlotKeyed.ensureIndexes(c)
     c
   }
-
-  protected val resumeToken: ChangeStreamResumeToken = new ChangeStreamResumeToken(SlotsRepository.Collection, resumeTokens, stopwatch)
 
  /** A FAILED read is answered as one rather than passing an empty map off as "this film has
    *  no cinemas" — see the trait doc for what believing that emptiness costs. Logged too:
@@ -487,9 +487,6 @@ class MongoSlotsRepository(
   def deleteFilms(filmIds: Set[String]): Long =
     coll.fold(0L)(SlotKeyed.deleteFilms(_, filmIds, SlotsRepository.Collection, writeMetrics, logger))
 
-  /** Watch `movie_slots`; ring `onChange(filmId)` for every change. The cursor itself is
-   *  [[SideCollectionWatch]], shared with `screenings`, under this collection's own
-   *  persisted resume token. */
-  protected lazy val changes: Option[SideCollectionWatch[StoredSlotDto]] =
-    coll.map(c => new SideCollectionWatch(SlotsRepository.Collection, c, _.filmId, resumeToken, metrics, decodeFailures, stopwatch))
+  /** What [[WatchedSlotKeyedRows]] watches, ringing `onChange(filmId)` for every change: the caller re-reads and stitches the film. */
+  protected def watchedCollection: Option[MongoCollection[StoredSlotDto]] = coll
 }

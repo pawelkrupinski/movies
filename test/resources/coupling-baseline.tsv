@@ -30,7 +30,7 @@ limit	fanout-measure	4
 limit	new-package-ce	8
 limit	distance	20
 limit	distance-min-types	8
-module-edge	common->base	55
+module-edge	common->base	56
 module-edge	common->geodata	12
 module-edge	common->http	65
 module-edge	http->base	10
@@ -106,8 +106,8 @@ fanout	services.movies.CorpusMirror	10
 fanout	services.movies.InPlaceMovieUpdate	11
 fanout	services.movies.MongoMovieChangeFeed	13
 fanout	services.movies.MongoMovieRepository	20
-fanout	services.movies.MongoScreeningsRepository	18
-fanout	services.movies.MongoSlotsRepository	17
+fanout	services.movies.MongoScreeningsRepository	15
+fanout	services.movies.MongoSlotsRepository	14
 fanout	services.movies.MovieChangeStream	14
 fanout	services.movies.MoviesChangeCursor	12
 fanout	services.movies.SideCollectionWatch	10
