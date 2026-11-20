@@ -58,14 +58,14 @@ private[identity] object RelayStage {
       val encored = Option.when(billsAnEncore(l))(l.screeningsSeason).flatten
       val seasons = l.seasonYear.map(Set(_)).orElse(dated.orElse(encored).map(year => Set(year - 1, year))).getOrElse(Set.empty)
       Option.when(works.nonEmpty && seasons.nonEmpty)(
-        Billed(l.relay.houses.filter(StageRelays.namesAHouseInParticular), works, seasons, StageRelays.bannerNamesItsHouse(l),
+        Billed(l.relay.houses.filter(services.titles.StageHouse.namesAHouseInParticular), works, seasons, StageRelays.bannerNamesItsHouse(l),
           dated.filter(_ => l.seasonYear.isEmpty), l.screeningsSeason, l.airDays))
     }
   }
 
   /** The PRODUCTION a stage house's relay billing names, read off its title as data rather than dropped as decoration:
    *  @param houses the houses its banner names in particular ("Opéra de Paris", "Royal Ballet & Opera", PL "Balet z Opery
-   *                Paryskiej" — [[StageRelays.Relay.houses]], [[StageRelays.namesAHouseInParticular]])
+   *                Paryskiej" — [[StageRelays.Relay.houses]], [[services.titles.StageHouse.namesAHouseInParticular]])
    *  @param works  the stage works its title names, in any language ([[StageRelays.Relay.workIds]])
    *  @param season the season of the performance it screens: the one its title names ("2026/27", "26/27"), else the one
    *                its screenings fall in, unless its title dates another season's performance ([[of]])
@@ -96,22 +96,22 @@ private[identity] object RelayStage {
   /** The keys of the production `l` bills ([[Production.keys]]), none when it bills none. */
   def relayKeys(l: Listing): Set[String] = l.production.fold(Set.empty[String])(_.keys)
   /** Do `a` and `b` bill one production ([[Production]]): one house's relay of one stage work in one season, however each
-   *  venue spells the house's banner beside the work ([[StageRelays.namesOneHouse]]: "Opéra de Paris", "The Opéra
+   *  venue spells the house's banner beside the work ([[services.titles.StageHouse.namesOneHouse]]: "Opéra de Paris", "The Opéra
    *  National de Paris", PL "Balet z Opery Paryskiej")? Two houses' relays of one work in one season stay two (the Royal
    *  Ballet's "La Bayadère" of 9 February 2027 and the Paris Opera's of 31 January), as do two seasons' of one house's. */
-  def oneRelay(a: Listing, b: Listing): Boolean = oneProduction(a, b, StageRelays.namesOneHouse)
-  /** Do `a` and `b` bill one production ([[oneRelay]]) under one house's name spelt alike ([[StageRelays.nameOneHouseAlike]]:
+  def oneRelay(a: Listing, b: Listing): Boolean = oneProduction(a, b, services.titles.StageHouse.namesOneHouse)
+  /** Do `a` and `b` bill one production ([[oneRelay]]) under one house's name spelt alike ([[services.titles.StageHouse.nameOneHouseAlike]]:
    *  "Opéra de Paris" and "The Opéra National de Paris"; "Swan Lake The Royal Ballet" and "RBO Cinema Season 2026-27: Swan
    *  Lake") — not "The Metropolitan Opera" and "Met Opera", one word opening the other? Between such billings the learned
    *  listing-listing cut reads only a fact they disagree on ([[ConstraintEdges]]): lifted between "The Metropolitan Opera-
    *  Manon" and the Met's "Met Opera 2026-27: Manon" spellings, it moved UK Stowmarket's and Corby's takes (recording 573). */
-  def oneRelaySpeltAlike(a: Listing, b: Listing): Boolean = oneProduction(a, b, StageRelays.nameOneHouseAlike)
+  def oneRelaySpeltAlike(a: Listing, b: Listing): Boolean = oneProduction(a, b, services.titles.StageHouse.nameOneHouseAlike)
   private def oneProduction(a: Listing, b: Listing, sameHouse: (Seq[String], Seq[String]) => Boolean): Boolean =
     (a.production, b.production) match {
       case (Some(x), Some(y)) => x.season == y.season && (x.works & y.works).nonEmpty && x.houses.exists(house => y.houses.exists(sameHouse(house, _)))
       case _                  => false
     }
-  private def particularHouses(l: Listing): Seq[Seq[String]] = l.relay.houses.filter(StageRelays.namesAHouseInParticular)
+  private def particularHouses(l: Listing): Seq[Seq[String]] = l.relay.houses.filter(services.titles.StageHouse.namesAHouseInParticular)
   /** Does `l` bill two houses that are not one — its houses, and each word naming one alone: a relay series' banner word
    *  ("MET": no house as a word of its own, [[searchedInItsSeason]]) or a house's initials ("RBO")? Whose relay it is the banner does not say: UK The Flavel's "RBO/MET
    *  presents MACBETH", Northallerton's "RBO: MACBETH (MET)" and Cardigan's "Met Opera in Association with RBO: Macbeth"
@@ -121,13 +121,13 @@ private[identity] object RelayStage {
     val banners = l.ownTitles.flatMap(title => services.titles.StageHouse.initialsJoined(services.titles.TitleContainment.tokens(title).toSeq))
       .filter(word => ParticularBannerWords(word) || services.titles.StageHouse.initials(word)).distinct.map(Seq(_))
     val houses  = particularHouses(l) ++ banners
-    houses.exists(a => houses.exists(b => !StageRelays.namesOneHouse(a, b)))
+    houses.exists(a => houses.exists(b => !services.titles.StageHouse.namesOneHouse(a, b)))
   }
   /** The banner words naming a relay series in particular ("Met", "Metropolitan", "NT"), never a season's word. */
-  private lazy val ParticularBannerWords: Set[String] = HouseBannerWords.filter(word => StageRelays.namesAHouseInParticular(Seq(word)))
+  private lazy val ParticularBannerWords: Set[String] = HouseBannerWords.filter(word => services.titles.StageHouse.namesAHouseInParticular(Seq(word)))
 
   /** Is `l` a relay searched with the season its screenings fall in ([[Listing.screenedSeason]],
-   *  [[StageRelays.stageWorkQueries]]) — its title billing a stage house or a relay series' banner
+   *  [[SearchMeasures.stageWorkQueries]]) — its title billing a stage house or a relay series' banner
    *  ([[services.titles.TitleWords.Concept.HouseBanner]]) beside its work? A house's season record carries the work and
    *  the season, which no search of the work's name alone reaches: UK Picture House Uckfield's "Tosca (ROH)", "Otello
    *  (MET)", Savoy Worksop's "MET:Otello" and DCA's "Live from the Met: Manon" screen the 2026/27 relays. "Met" names no

@@ -23,7 +23,7 @@ private[identity] object TitleRelationMeasures {
    *
    *  So is a record BILLING the listing's work under the listing's house ([[StageRelays.billing]]): the same
    *  banner once seasons and bracketed years are dropped ("The Metropolitan Opera: Manon (2027)"
-   *  and "The Metropolitan Opera 2026/27: Manon"), one abbreviating the other ([[StageRelays.abbreviates]]), or
+   *  and "The Metropolitan Opera 2026/27: Manon"), one abbreviating the other ([[services.titles.StageHouse.abbreviates]]), or
    *  the house the listing's banner was learned to be (`houses`). The first two are the names
    *  alone, so two listings read them too: UK "NT LIVE: Golden Boy (15)" [180′] and "National
    *  Theatre Live: Golden Boy" [150′] measured an `overlap`, which with the half hour between them

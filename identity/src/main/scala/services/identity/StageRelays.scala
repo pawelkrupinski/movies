@@ -4,12 +4,14 @@ import services.titles.billing.DecorationWords
 import services.identity.IdentityMeasures.*
 import services.titles.{TitleContainment, TitleSeason, TitleWords}
 import services.titles.SearchTitles
+import services.titles.StageHouse.{HouseCommonWords, abbreviates, namesAHouseInParticular, namesOneHouse, particularWords}
 
 /**
  * How a STAGE HOUSE's relay is billed — a season production, a house's banner on a work, the stage works a title names
  * in whatever language — read for the identity measures ([[IdentityMeasures]]): seasons and works, banners and the
- * houses they are learned to be ([[StageRelays.Houses]]), relays ([[StageRelays.Relay]]) and the searches a relay asks.
- * Measures only: what any of it is worth is the calibration's.
+ * houses they are learned to be ([[StageRelays.Houses]]), relays ([[StageRelays.Relay]]). How a house's NAME is read
+ * is [[services.titles.StageHouse]]'s; the searches a relay asks are [[SearchMeasures]]'. Measures only: what any of it is
+ * worth is the calibration's.
  */
 object StageRelays {
 
@@ -64,14 +66,15 @@ object StageRelays {
 
   /** Each segment's key — and each stage work it names, in whatever language ([[StageWorks]]): PL's "Royal Ballet and
    *  Opera Sezon Kinowy 2026-27: Dziadek do orzechów" is the season's "Royal Ballet & Opera 2026/27: The Nutcracker". */
-  private val SentenceStop = java.util.regex.Pattern.compile("""\.\s+""")
   private def seasonlessWorks(titles: Seq[String]): Set[String] = {
     val seasonless = titles.filter(t => TitleSeason.of(Seq(t)).isEmpty)
     val keys = seasonless.map(key).filter(_.nonEmpty).toSet
-    // a work's name may run on into a translated subtitle after a full stop: "Cosi fan tutte. Tak czynią wszystkie"
-    val named = keys ++ seasonless.map(t => key(SentenceStop.split(t, 2).head)).filter(_.nonEmpty)
+    val named = keys ++ seasonless.map(t => key(beforeItsSubtitle(t))).filter(_.nonEmpty)
     keys ++ named.flatMap(StageWorks.resolver.named).map(work => s"work:$work")
   }
+  private val SentenceStop = java.util.regex.Pattern.compile("""\.\s+""")
+  /** A work's name before the translated subtitle a full stop may run it on into: "Cosi fan tutte. Tak czynią wszystkie". */
+  private[identity] def beforeItsSubtitle(title: String): String = SentenceStop.split(title, 2).head
 
   /** A title read as a HOUSE BILLING A WORK: the work both titles carry as a whole delimited
    *  piece (a title shape of each), and what each title adds to it along one edge — its banner,
@@ -176,7 +179,7 @@ object StageRelays {
   }
   /** A venue's words for how it screens a relay, which name no work ([[Relay]]'s `workWords`): UK Lowther Pavilion's "On
    *  Screen: The Royal Ballet SWAN LAKE (12A)", screening 25 April 2027, read "screen" as its work and denied the house's
-   *  2026/27 record, leaving it the 2024 one. Not a relay word ([[RelayWords]]): "EOS" abbreviates "Exhibition on Screen"
+   *  2026/27 record, leaving it the 2024 one. Not a relay word ([[services.titles.StageHouse.RelayWords]]): "EOS" abbreviates "Exhibition on Screen"
    *  by it. */
   private val ScreeningWords = Set("screen")
   /** Is `fragment` only the art form, a relay's word or a year ("Opera 2026", "Live")? It names no work and no house, so
@@ -292,73 +295,6 @@ object StageRelays {
    *  Wolfhagen's "National Opera Paris: Schwanensee", screening December 2026, is the Paris Opera's "Opéra national de
    *  Paris 2024: Schwanensee", which its venues bill so. */
   private val RecordingLag = 2
-
-  /** A relay's own words, which a house's name is billed WITH but never abbreviated by ("NT Live" of "National Theatre
-   *  Live" is "NT"). ES taquilla's "(Cine)" tags how a relay screens ("Ópera Cosi fan tutte (Cine)"), and names no work. */
-  private val RelayWords = Set("live", "hd", "kino", "cinema", "cinemas", "cine", "im", "in", "aus", "at", "from", "presents", "season", "saison", "sezon", "kinowy")
-  /** Words a house's name shares with any other's — the art form in each language, the kind of institution ("National",
-   *  "Staatsoper", "Opera House", "Theatre", "Company": English National Ballet is not Dutch National Ballet, nor the Wiener
-   *  Staatsoper the Bayerische), articles, prepositions and a relay's own words ("Live", "im Kino", "Season") — which say
-   *  nothing about WHICH house. */
-  private val HouseCommonWords: Set[String] = RelayWords ++ Set("opera", "operas", "oper", "opern", "opery", "operze", "ballet", "ballets",
-    "ballett", "balet", "baletu", "balletto", "national", "nationale", "nacional", "nazionale", "narodowa", "narodowy", "staatsoper", "state",
-    "house", "company", "theatre", "theater", "teatro", "teatr", "the", "and", "und", "of", "de", "du", "des", "di", "del", "der", "die",
-    "das", "la", "le", "les", "el", "los", "las", "z", "w", "na")
-  /** A house name's words that say WHICH house: two letters or more, no number, none of [[HouseCommonWords]]. */
-  private def particularWords(name: Seq[String]): Seq[String] =
-    name.filter(word => word.length >= 2 && !word.forall(_.isDigit) && !HouseCommonWords(word))
-  /** Does a house fragment's words ([[Relay.houses]]) name a house IN PARTICULAR — a word beside the art form and a relay's
-   *  own ([[particularWords]]): "Met Opera", "Opéra national de Paris", "RB&O", never "Opera" or "Ballet Live"? */
-  private[identity] def namesAHouseInParticular(house: Seq[String]): Boolean =
-    particularWords(services.titles.StageHouse.initialsJoined(house)).nonEmpty
-  /** Do two house names NAME one house: a word in common beyond [[HouseCommonWords]], one's word a prefix of the other's
-   *  ("Met", "Metropolitan"), or one's word the other's initials ("RBO" of "Royal Ballet & Opera", "ROH" of "Royal Opera
-   *  House"), or two names of one house ([[services.titles.StageHouse]]: "ROH" and "Royal Ballet & Opera", the house renamed)? Never a
-   *  name of common words alone ("Opera", "The Ballet"): it names no house in particular. Numbers are no part of a name
-   *  ("RBO 26/27"). */
-  private[identity] def namesOneHouse(a: Seq[String], b: Seq[String]): Boolean = {
-    def own(name: Seq[String]) = particularWords(services.titles.StageHouse.initialsJoined(name))
-    def initials(name: Seq[String]) = services.titles.StageHouse.initialsOf(name)
-    val (ownA, ownB) = (own(a), own(b))
-    ownA.exists(x => ownB.exists(y => x == y || (x.length >= 3 && y.startsWith(x)) || (y.length >= 3 && x.startsWith(y)))) ||
-      ownA.exists(x => x.length >= 2 && x == initials(b)) || ownB.exists(y => y.length >= 2 && y == initials(a)) ||
-      oneHouseRenamed(ownA.toSet, ownB.toSet)
-  }
-  /** Do two house names name one house by a word they share, initials or two names of one house ([[namesOneHouse]]) — not
-   *  by one word merely opening the other ("Met" of "Metropolitan")? */
-  private[identity] def nameOneHouseAlike(a: Seq[String], b: Seq[String]): Boolean = {
-    def own(name: Seq[String]) = particularWords(services.titles.StageHouse.initialsJoined(name))
-    def initials(name: Seq[String]) = services.titles.StageHouse.initialsOf(name)
-    val (ownA, ownB) = (own(a), own(b))
-    ownA.exists(ownB.contains) || ownA.exists(x => x.length >= 2 && x == initials(b)) || ownB.exists(y => y.length >= 2 && y == initials(a)) ||
-      oneHouseRenamed(ownA.toSet, ownB.toSet)
-  }
-  /** Each multi-named house's names ([[services.titles.StageHouse]]) as the words that say which house ([[particularWords]]). */
-  private lazy val housesByName: Seq[Set[Set[String]]] =
-    services.titles.StageHouse.namedWithInitials.map(_.map(name => particularWords(name).toSet).filter(_.nonEmpty).toSet)
-  /** Are `a` and `b` — particular words — exactly two names of one house: a banner spelling one of its names, nothing
-   *  more ("Royal Shakespeare" spells none of the Royal Opera House's)? */
-  private def oneHouseRenamed(a: Set[String], b: Set[String]): Boolean =
-    a.nonEmpty && b.nonEmpty && housesByName.exists(names => names(a) && names(b))
-
-  /** Is one house name the other's ABBREVIATION — one short word, its relay's words aside, the initials of the other's
-   *  several ("NT Live" of "National Theatre Live", "RBO" of "Royal Ballet & Opera")? A name, whatever house its banner
-   *  was learned as: UK "NT Live" was learned as itself, from one record filing "NT Live: …" among its alternatives, and
-   *  Flicks' "NT Live: Hay Fever" ×131 read its own record as an overlap. Initials only, never a word two houses share:
-   *  "Royal Shakespeare Company" is no "Royal Ballet & Opera", nor "National Theatre at Home" "NT Live". */
-  private[identity] def abbreviates(a: Seq[String], b: Seq[String]): Boolean =
-    shortName(a).exists(initialsOf(b).contains) || shortName(b).exists(initialsOf(a).contains)
-  /** A house name's words an abbreviation spells: no number, relay word or word houses never initial. */
-  private def initialledWords(name: Seq[String]): Seq[String] =
-    name.filterNot(word => word.forall(_.isDigit) || RelayWords(word) || services.titles.StageHouse.UninitialledWords(word))
-  /** The one short word a house name is, as an abbreviation ([[abbreviates]]). */
-  private def shortName(name: Seq[String]): Option[String] = initialledWords(name) match {
-    case Seq(one) if one.length >= 2 && one.length <= 4 => Some(one)
-    case _                                             => None
-  }
-  /** The initials of a house name of several words. */
-  private def initialsOf(name: Seq[String]): Option[String] =
-    Option(initialledWords(name)).filter(_.sizeIs >= 2).map(_.flatMap(_.headOption).mkString)
 
   /** Does the film's record bill the listing's work under the listing's OWN house — the banner the
    *  listing puts on the work, spelt as the record spells it or learned to be it (`Houses.same`)?
@@ -515,7 +451,7 @@ object StageRelays {
    *  off ([[IdentityMeasures.withoutPossessives]]): "Alice’s Adventures in Wonderland" read as "alice", "s", … named no
    *  work, so UK Cineworld's "Royal Ballet and Opera: Alice’s Adventures in Wonderland" ×126 was no relay of one.
    *  A piece ENDING in a work's name bills it only in a title naming its season (`seasonNamed`: a piece of one, as
-   *  [[seasonProductionQueries]] asks of "Jacques Offenbach LES CONTES D´HOFFMANN") or billing a house (`housed`,
+   *  [[SearchMeasures.seasonProductionQueries]] asks of "Jacques Offenbach LES CONTES D´HOFFMANN") or billing a house (`housed`,
    *  [[readsEndingWorks]]): its composer
    *  or the house's word before it ("Opera-makbet", "MET Manon", "Met Opera 2026/27: Camille Saint-Saëns SAMSON ET
    *  DALILA"). Elsewhere the words before it make another title: "I Play Rocky" (the musical "Rocky"), "Wild Horse
@@ -534,43 +470,12 @@ object StageRelays {
   def stageWorks(f: Film): Set[String] = stageWorksNamed(f.titles.flatMap(pieces))
   /** The stage works ([[StageWorks]]) the keys of `parts` name. */
   private def stageWorksNamed(parts: Seq[String]): Set[String] = parts.map(key).filter(_.nonEmpty).flatMap(StageWorks.resolver.named).toSet
-  /** A stage broadcast a venue bills with no season but with its year — DE "Royal Ballet & Opera im Kino: Manon"
-   *  [2026] — searched as its work's name and that year ("Manon 2026"): the house's season record carries both, while
-   *  the work alone ranks it below every namesake film. A relay billing its house, a credit or a running time beside it,
-   *  is searched with the season its screenings fall in too: UK Picture House Uckfield's "Tosca (ROH)" {Oliver Mears}
-   *  [205′] and Flicks' "Royal Opera House: Carmen" [220′] ×13 screen the RBO 2026/27 relays, whose records the work's
-   *  name alone never reaches — which season's record it is stays the season rules' to tell ([[Listing.screenedSeason]]).
-   *  So is a bare work beside a running time ([[barelyTimed]]: UK Empire Theatre Halstead's "Romeo and Juliet" [170′]).
-   *  Beside a year it states as well: Flicks dates "Royal Opera House: Carmen" 2024, the year of the page it links, and
-   *  "Carmen 2024" finds the 2024 revival, never the 2026/27 broadcast its venues screen in November 2026.
-   *  KNOWN GAP (convergence 38627416973, accepted.tsv): UK Lonsdale Alhambra Penrith's "RB&O 26/27: <work>" ×3 reached
-   *  the season's record only by joining its other billings' cluster; once those took it alone, the learned
-   *  listing-listing cut kept Penrith apart and it takes none. Alone it takes the record (IdentityResolverCasesSpec's
-   *  short-season case): the follow-up is the corpus-level join. */
-  private[identity] def stageWorkQueries(l: Listing): Seq[String] =
-    if (l.seasonYear.isDefined) Nil
-    // the year as the relay's record reads it ([[RelayStage]]): its field, its title's bracket, its banner ("RBO live 2027: Tosca"), else its
-    // broadcast season -- or nothing searched "Tosca 2027", and the house's 2026/27 record could stay out of the pool
-    else (l.statedYear.orElse(bannerYear(l)).orElse(l.broadcastSeason).toSeq ++
-      l.screenedSeason.filter(_ => RelayStage.searchedInItsSeason(l) || barelyTimed(l)) ++ closedSeason(l)).distinct.flatMap(year => workSearches(l, year))
-
-  /** The season its screenings fall in, when the year it states is the one that season CLOSES: a season record carries
-   *  the year it opens ("Royal Ballet & Opera 2026/27: Romeo and Juliet"), which TMDB's search finds by "Romeo and Juliet
-   *  2026", never by "Romeo and Juliet 2027". UK Riverside Theatre Woodbridge's "Romeo and Juliet (2027)", screening on
-   *  25 May 2027, reached the RBO relay aired that day only by joining a sibling whose search did: a take that came and
-   *  went with the family's venues (structural fix 2). A function of the listing's own year and days. */
-  private def closedSeason(l: Listing): Option[Int] = l.screeningsSeason.filter(season => l.statedYear.contains(season + 1))
-
-  /** Do the season rules read the season `l`'s screenings fall in ([[closedSeason]], [[RelayStage.of]],
+  /** Do the season rules read the season `l`'s screenings fall in ([[SearchMeasures.stageWorkQueries]], [[RelayStage.of]],
    *  [[bareWorksSeasonRecord]])? Wherever its billing names a stage house or a stage work. That season is then part of the
    *  evidence its node is keyed by ([[Evidence.key]]): UK Riverside's "Romeo and Juliet (2027)", screening on 25 May 2027,
    *  searches "Romeo and Juliet 2026" and a billing alike screening in October 2027 does not — one node held both, searched
    *  as whichever listing headed it. */
   private[identity] def readsItsScreeningsSeason(l: Listing): Boolean = l.billsAStageHouse || l.billedStageWorks.nonEmpty
-
-  /** The work `l` bills searched beside `year`, under each of its search names ("Manon 2026"). */
-  private[identity] def workSearches(l: Listing, year: Int): Seq[String] =
-    l.billedStageWorks.toSeq.sorted.flatMap(StageWorks.resolver.searchNames).map(name => s"$name $year")
 
   /** Is `f` the season record of the work `l`'s whole title bills bare ([[barelyTimed]]), of the very season its
    *  screenings fall in ([[Listing.screenedSeason]])? A house relays the work that season, and a bare billing of it then
@@ -585,7 +490,7 @@ object StageRelays {
    *  no search of the work's name alone reaches — the broadcast join ([[agreement.Broadcast]]) tells it from a film by
    *  its day. A credit does name one (Jacquot's "Tosca"), and a title going on past the work is a film's ("Lord Of The
    *  Rings: The Fellowship Of The Ring", the musical's name only its head). */
-  private def barelyTimed(l: Listing): Boolean =
+  private[identity] def barelyTimed(l: Listing): Boolean =
     l.statedYear.isEmpty && l.directors.isEmpty && l.ownTitles.exists(title => StageWorks.resolver.named(key(title)).nonEmpty)
 
   private val BannerYear = """(?<![\p{N}])(20\d{2})(?![\p{N}/–—-])""".r
@@ -598,7 +503,7 @@ object StageRelays {
     Some(PerformanceYear.findAllMatchIn(text).map(_.group(1).toInt).toSeq.distinct).collect { case Seq(one) => one }
 
   /** The one year a relay's banner dates its broadcast by — a piece of its title naming no stage work, beside one that
-   *  does: DE "RBO live 2027: Tosca". A year beside the work is the work's own ("Macbeth 2026" is [[stageWorkQueries]]'). */
+   *  does: DE "RBO live 2027: Tosca". A year beside the work is the work's own ("Macbeth 2026" is [[SearchMeasures.stageWorkQueries]]'). */
   def bannerYear(l: Listing): Option[Int] = {
     val (works, banners) = l.ownTitles.flatMap(t => PieceBreak.split(withoutSeasons(t)).toSeq)
       .partition(piece => StageWorks.resolver.named(key(BannerYear.replaceAllIn(piece, ""))).nonEmpty)
@@ -646,21 +551,4 @@ object StageRelays {
   /** The words a billing names its art by: an opera's, a ballet's ([[ofItsArt]]). */
   private val OperaWords  = Set("opera", "operas", "oper", "opern", "opery", "operze", "opere")
   private val BalletWords = Set("ballet", "ballets", "ballett", "balet", "baletu", "balletto")
-
-  /** A season production searched as its WORK AND ITS SEASON ("Manon 2026"): a house's record of
-   *  it ("Royal Ballet & Opera 2026/27: Manon") carries both, however the venue spells the house,
-   *  while the work alone ranks it below every namesake. Only the pieces of a title naming the
-   *  season ask it, without a bracketed year. */
-  private[identity] def seasonProductionQueries(l: Listing): Seq[String] =
-    l.seasonYear.toSeq.flatMap { season =>
-      val seasonTitles = l.ownTitles.filter(t => TitleSeason.of(Seq(t)).isDefined)
-      val works = shapes(seasonTitles).filter(t => TitleSeason.of(Seq(t)).isEmpty).map(withoutYears(_).trim).filter(_.nonEmpty).distinct
-      // a work named in another language than the record's is asked for by its search name too ("The Nutcracker 2026")
-      // — including one named before a translated subtitle ("Cosi fan tutte. Tak czynią wszystkie"), as the match reads it
-      // — and by every other name of the work it is filed under, a house's own ("Samson et Dalila 2026"), the work billed
-      // within the piece too ("Camille Saint-Saëns SAMSON ET DALILA")
-      val translated = works.flatMap(work => (StageWorks.resolver.named(key(work)) ++ StageWorks.resolver.named(key(SentenceStop.split(work, 2).head)) ++
-        stageWorksBilled(Seq(work), seasonNamed = true).toSeq).toSeq.sorted.distinct.flatMap(StageWorks.resolver.searchNames))
-      (works ++ translated).distinct.map(work => s"$work $season")
-    }
 }

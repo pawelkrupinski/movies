@@ -1,12 +1,12 @@
 package services.identity
 
 import services.titles.billing.Credits
-import services.titles.TitleContainment
+import services.titles.{TitleContainment, TitleSeason}
 
 import IdentityMeasures.*
 
-/** The searches a listing issues, the works it credits, the IMDb ids and titles it reads, and the title groups and
- *  rivals of its candidates.
+/** The searches a listing issues (a stage relay's by its work and its season among them), the works it credits, the
+ *  IMDb ids and titles it reads, and the title groups and rivals of its candidates.
  *  Part of [[IdentityMeasures]], which exports it. */
 private[identity] object SearchMeasures {
   /** The title searches a listing's evidence issues: every title shape and its original title,
@@ -14,10 +14,58 @@ private[identity] object SearchMeasures {
    *  re-release). ONE definition: the calibration's candidate pools, the resolver's queries and
    *  the recording sweep all read it. */
   def searchQueries(l: Listing): Seq[String] = {
-    val asked = l.shapes ++ l.originalTitle ++ StageRelays.seasonProductionQueries(l) ++ StageRelays.stageWorkQueries(l) ++ MultiFilmBill.billedWorks(l) ++ uncredited(l) ++
+    val asked = l.shapes ++ l.originalTitle ++ seasonProductionQueries(l) ++ stageWorkQueries(l) ++ MultiFilmBill.billedWorks(l) ++ uncredited(l) ++
       IdentityMeasures.shapes(RelayStage.shortYearCut(l))
     (asked ++ asked.flatMap(beforeItsYear)).map(_.trim).filter(_.nonEmpty).distinct
   }
+
+  /** A stage broadcast a venue bills with no season but with its year — DE "Royal Ballet & Opera im Kino: Manon"
+   *  [2026] — searched as its work's name and that year ("Manon 2026"): the house's season record carries both, while
+   *  the work alone ranks it below every namesake film. A relay billing its house, a credit or a running time beside it,
+   *  is searched with the season its screenings fall in too: UK Picture House Uckfield's "Tosca (ROH)" {Oliver Mears}
+   *  [205′] and Flicks' "Royal Opera House: Carmen" [220′] ×13 screen the RBO 2026/27 relays, whose records the work's
+   *  name alone never reaches — which season's record it is stays the season rules' to tell ([[Listing.screenedSeason]]).
+   *  So is a bare work beside a running time ([[StageRelays.barelyTimed]]: UK Empire Theatre Halstead's "Romeo and Juliet" [170′]).
+   *  Beside a year it states as well: Flicks dates "Royal Opera House: Carmen" 2024, the year of the page it links, and
+   *  "Carmen 2024" finds the 2024 revival, never the 2026/27 broadcast its venues screen in November 2026.
+   *  KNOWN GAP (convergence 38627416973, accepted.tsv): UK Lonsdale Alhambra Penrith's "RB&O 26/27: <work>" ×3 reached
+   *  the season's record only by joining its other billings' cluster; once those took it alone, the learned
+   *  listing-listing cut kept Penrith apart and it takes none. Alone it takes the record (IdentityResolverCasesSpec's
+   *  short-season case): the follow-up is the corpus-level join. */
+  private[identity] def stageWorkQueries(l: Listing): Seq[String] =
+    if (l.seasonYear.isDefined) Nil
+    // the year as the relay's record reads it ([[RelayStage]]): its field, its title's bracket, its banner ("RBO live 2027: Tosca"), else its
+    // broadcast season -- or nothing searched "Tosca 2027", and the house's 2026/27 record could stay out of the pool
+    else (l.statedYear.orElse(StageRelays.bannerYear(l)).orElse(l.broadcastSeason).toSeq ++
+      l.screenedSeason.filter(_ => RelayStage.searchedInItsSeason(l) || StageRelays.barelyTimed(l)) ++ closedSeason(l)).distinct.flatMap(year => workSearches(l, year))
+
+  /** The season its screenings fall in, when the year it states is the one that season CLOSES: a season record carries
+   *  the year it opens ("Royal Ballet & Opera 2026/27: Romeo and Juliet"), which TMDB's search finds by "Romeo and Juliet
+   *  2026", never by "Romeo and Juliet 2027". UK Riverside Theatre Woodbridge's "Romeo and Juliet (2027)", screening on
+   *  25 May 2027, reached the RBO relay aired that day only by joining a sibling whose search did: a take that came and
+   *  went with the family's venues (structural fix 2). A function of the listing's own year and days. */
+  private def closedSeason(l: Listing): Option[Int] = l.screeningsSeason.filter(season => l.statedYear.contains(season + 1))
+
+  /** The work `l` bills searched beside `year`, under each of its search names ("Manon 2026"). */
+  private[identity] def workSearches(l: Listing, year: Int): Seq[String] =
+    l.billedStageWorks.toSeq.sorted.flatMap(StageWorks.resolver.searchNames).map(name => s"$name $year")
+
+  /** A season production searched as its WORK AND ITS SEASON ("Manon 2026"): a house's record of
+   *  it ("Royal Ballet & Opera 2026/27: Manon") carries both, however the venue spells the house,
+   *  while the work alone ranks it below every namesake. Only the pieces of a title naming the
+   *  season ask it, without a bracketed year. */
+  private[identity] def seasonProductionQueries(l: Listing): Seq[String] =
+    l.seasonYear.toSeq.flatMap { season =>
+      val seasonTitles = l.ownTitles.filter(t => TitleSeason.of(Seq(t)).isDefined)
+      val works = shapes(seasonTitles).filter(t => TitleSeason.of(Seq(t)).isEmpty).map(withoutYears(_).trim).filter(_.nonEmpty).distinct
+      // a work named in another language than the record's is asked for by its search name too ("The Nutcracker 2026")
+      // — including one named before a translated subtitle ("Cosi fan tutte. Tak czynią wszystkie"), as the match reads it
+      // — and by every other name of the work it is filed under, a house's own ("Samson et Dalila 2026"), the work billed
+      // within the piece too ("Camille Saint-Saëns SAMSON ET DALILA")
+      val translated = works.flatMap(work => (StageWorks.resolver.named(key(work)) ++ StageWorks.resolver.named(key(StageRelays.beforeItsSubtitle(work))) ++
+        StageRelays.stageWorksBilled(Seq(work), seasonNamed = true).toSeq).toSeq.sorted.distinct.flatMap(StageWorks.resolver.searchNames))
+      (works ++ translated).distinct.map(work => s"$work $season")
+    }
 
   /** A title up to the year it dates itself by in a bracket ("Człowiek z żelaza (1981) 4K" →
    *  "Człowiek z żelaza"): TMDB's search finds nothing for the bracketed spelling, and a search is

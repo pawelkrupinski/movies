@@ -88,7 +88,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   }
 
   /** The films that were the only result of one of `listing`'s title searches ([[Acceptance]]'s `sole-result`) — but for
-   *  a billing naming no house, not of a search of its work beside a season ([[StageRelays.stageWorkQueries]]): those put
+   *  a billing naming no house, not of a search of its work beside a season ([[SearchMeasures.stageWorkQueries]]): those put
    *  the season's records in its pool for the broadcast join to tell apart by its days ([[agreement.Broadcast]]), and one
    *  record titled with that year is no answer to which house's staging a bare work is. UK Empire Halstead's "Carmen"
    *  [215′] and Riverside Woodbridge's "Carmen (2026)" screen the RBO 2026/27 relay on its day, 10 November 2026; "Carmen
@@ -96,7 +96,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private def soleResultsOf(listing: IdentityMeasures.Listing, reached: CandidateGeneration.Reach): Set[Int] =
     if (RelayStage.searchedInItsSeason(listing)) reached.soleResults
     else {
-      val seasonSearches = StageRelays.stageWorkQueries(listing).map(_.trim).toSet
+      val seasonSearches = SearchMeasures.stageWorkQueries(listing).map(_.trim).toSet
       if (seasonSearches.isEmpty) reached.soleResults else reached.soleResultsBeside(seasonSearches)
     }
 

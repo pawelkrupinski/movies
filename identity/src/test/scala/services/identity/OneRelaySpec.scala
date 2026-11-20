@@ -26,7 +26,7 @@ class OneRelaySpec extends AnyFlatSpec with Matchers {
   "A relay billing" should "carry its house, work, season, encore and live as data, not decoration" in {
     def production(title: String, day: LocalDate) = measured(on(listing(KinoMuza, title), day)).production
     val paris = production("Opéra De Paris Ballet - La Bayadère", ParisDay).get
-    paris.houses.map(StageRelays.namesOneHouse(_, Seq("paris", "opera"))) should contain (true)
+    paris.houses.map(services.titles.StageHouse.namesOneHouse(_, Seq("paris", "opera"))) should contain (true)
     paris.works should contain allElementsOf StageWorks.resolver.named(StageRelays.wholeKey("La Bayadère"))
     paris.season shouldBe 2026
     (paris.encore, paris.live) shouldBe ((false, false))

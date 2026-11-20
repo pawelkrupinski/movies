@@ -7,7 +7,7 @@ import services.titles.TitleNormalizer
 
 import FilmTable.listing
 
-/** The season a stage work's screenings fall in is read by its season rules ([[StageRelays.stageWorkQueries]]'s closing
+/** The season a stage work's screenings fall in is read by its season rules ([[SearchMeasures.stageWorkQueries]]'s closing
  *  year, [[RelayStage.of]], [[StageRelays.bareWorksSeasonRecord]]), so it is part of the evidence a node is keyed by
  *  ([[Evidence.key]]): two listings billing the same work alike but screening in different seasons are two questions,
  *  each searched with its own season. UK Riverside Theatre Woodbridge's "Romeo and Juliet (2027)", screening on 25 May

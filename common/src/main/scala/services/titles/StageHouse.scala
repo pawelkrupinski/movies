@@ -3,8 +3,11 @@ package services.titles
 /** An opera or ballet HOUSE as a title bills it: the word table's house words ([[TitleWords.Concept.StageHouse]]), the
  *  houses billed under more than one name (`stage-houses.tsv`, hand-kept: Covent Garden's Royal Opera House, Royal Ballet
  *  and Opera since 2024, billed under both names and both initials), and every name's initials, derived from it ("RBO",
- *  "ROH"; never listed). Read by the identity model (a relay's house, its banner) and by a venue's slots (two seasons of
- *  one staging are two productions; a programme's two seasons are not), so both read one house. */
+ *  "ROH"; never listed) — and how a house's NAME is read whatever a banner spells it: which of its words say which house
+ *  ([[particularWords]]), whether two names name one house ([[namesOneHouse]]), whether one abbreviates the other
+ *  ([[abbreviates]]). Read by the identity model (a relay's house, its banner, the house a banner is learned to be) and
+ *  by a venue's slots (two seasons of one staging are two productions; a programme's two seasons are not), so both read
+ *  one house. */
 object StageHouse {
   val Resource = "stage-houses.tsv"
 
@@ -106,4 +109,70 @@ object StageHouse {
     val words = TitleContainment.tokens(title)
     words.exists(word => Words(word) && !initials(word)) || StandaloneInitials.exists(_.findFirstIn(title).isDefined) || splitInitials(words)
   }
+
+  // ── a house's NAME, however a banner spells it ──
+  /** A relay's own words, which a house's name is billed WITH but never abbreviated by ("NT Live" of "National Theatre
+   *  Live" is "NT"). ES taquilla's "(Cine)" tags how a relay screens ("Ópera Cosi fan tutte (Cine)"), and names no work. */
+  private val RelayWords = Set("live", "hd", "kino", "cinema", "cinemas", "cine", "im", "in", "aus", "at", "from", "presents", "season", "saison", "sezon", "kinowy")
+  /** Words a house's name shares with any other's — the art form in each language, the kind of institution ("National",
+   *  "Staatsoper", "Opera House", "Theatre", "Company": English National Ballet is not Dutch National Ballet, nor the Wiener
+   *  Staatsoper the Bayerische), articles, prepositions and a relay's own words ("Live", "im Kino", "Season") — which say
+   *  nothing about WHICH house. */
+  val HouseCommonWords: Set[String] = RelayWords ++ Set("opera", "operas", "oper", "opern", "opery", "operze", "ballet", "ballets",
+    "ballett", "balet", "baletu", "balletto", "national", "nationale", "nacional", "nazionale", "narodowa", "narodowy", "staatsoper", "state",
+    "house", "company", "theatre", "theater", "teatro", "teatr", "the", "and", "und", "of", "de", "du", "des", "di", "del", "der", "die",
+    "das", "la", "le", "les", "el", "los", "las", "z", "w", "na")
+  /** A house name's words that say WHICH house: two letters or more, no number, none of [[HouseCommonWords]]. */
+  def particularWords(name: Seq[String]): Seq[String] =
+    name.filter(word => word.length >= 2 && !word.forall(_.isDigit) && !HouseCommonWords(word))
+  /** Does a house fragment's words (a relay's banner) name a house IN PARTICULAR — a word beside the art form
+   *  and a relay's own ([[particularWords]]): "Met Opera", "Opéra national de Paris", "RB&O", never "Opera" or "Ballet Live"? */
+  def namesAHouseInParticular(house: Seq[String]): Boolean =
+    particularWords(initialsJoined(house)).nonEmpty
+
+  /** Do two house names NAME one house: a word in common beyond [[HouseCommonWords]], one's word a prefix of the other's
+   *  ("Met", "Metropolitan"), or one's word the other's initials ("RBO" of "Royal Ballet & Opera", "ROH" of "Royal Opera
+   *  House"), or two names of one house ([[namedWithInitials]]: "ROH" and "Royal Ballet & Opera", the house renamed)? Never a
+   *  name of common words alone ("Opera", "The Ballet"): it names no house in particular. Numbers are no part of a name
+   *  ("RBO 26/27"). */
+  def namesOneHouse(a: Seq[String], b: Seq[String]): Boolean =
+    namesOneHouseBy(a, b)((x, y) => x == y || (x.length >= 3 && y.startsWith(x)) || (y.length >= 3 && x.startsWith(y)))
+  /** Do two house names name one house by a word they share, initials or two names of one house ([[namesOneHouse]]) — not
+   *  by one word merely opening the other ("Met" of "Metropolitan")? */
+  def nameOneHouseAlike(a: Seq[String], b: Seq[String]): Boolean = namesOneHouseBy(a, b)(_ == _)
+  /** Do `a` and `b` name one house: a particular word of each meeting as `meet` says, one's word the other's initials, or
+   *  the two names of one house renamed ([[oneHouseRenamed]])? */
+  private def namesOneHouseBy(a: Seq[String], b: Seq[String])(meet: (String, String) => Boolean): Boolean = {
+    def own(name: Seq[String]) = particularWords(initialsJoined(name))
+    val (ownA, ownB) = (own(a), own(b))
+    ownA.exists(x => ownB.exists(meet(x, _))) ||
+      ownA.exists(x => x.length >= 2 && x == initialsOf(b)) || ownB.exists(y => y.length >= 2 && y == initialsOf(a)) ||
+      oneHouseRenamed(ownA.toSet, ownB.toSet)
+  }
+  /** Each multi-named house's names ([[namedWithInitials]]) as the words that say which house ([[particularWords]]). */
+  private lazy val housesByName: Seq[Set[Set[String]]] =
+    namedWithInitials.map(_.map(name => particularWords(name).toSet).filter(_.nonEmpty).toSet)
+  /** Are `a` and `b` — particular words — exactly two names of one house: a banner spelling one of its names, nothing
+   *  more ("Royal Shakespeare" spells none of the Royal Opera House's)? */
+  private def oneHouseRenamed(a: Set[String], b: Set[String]): Boolean =
+    a.nonEmpty && b.nonEmpty && housesByName.exists(names => names(a) && names(b))
+
+  /** Is one house name the other's ABBREVIATION — one short word, its relay's words aside, the initials of the other's
+   *  several ("NT Live" of "National Theatre Live", "RBO" of "Royal Ballet & Opera")? A name, whatever house its banner
+   *  was learned as: UK "NT Live" was learned as itself, from one record filing "NT Live: …" among its alternatives, and
+   *  Flicks' "NT Live: Hay Fever" ×131 read its own record as an overlap. Initials only, never a word two houses share:
+   *  "Royal Shakespeare Company" is no "Royal Ballet & Opera", nor "National Theatre at Home" "NT Live". */
+  def abbreviates(a: Seq[String], b: Seq[String]): Boolean =
+    shortName(a).exists(abbreviationOf(b).contains) || shortName(b).exists(abbreviationOf(a).contains)
+  /** A house name's words an abbreviation spells: no number, relay word or word houses never initial. */
+  private def initialledWords(name: Seq[String]): Seq[String] =
+    name.filterNot(word => word.forall(_.isDigit) || RelayWords(word) || UninitialledWords(word))
+  /** The one short word a house name is, as an abbreviation ([[abbreviates]]). */
+  private def shortName(name: Seq[String]): Option[String] = initialledWords(name) match {
+    case Seq(one) if one.length >= 2 && one.length <= 4 => Some(one)
+    case _                                             => None
+  }
+  /** The initials of a house name of several words, as an abbreviation spells them ([[initialledWords]]). */
+  private def abbreviationOf(name: Seq[String]): Option[String] =
+    Option(initialledWords(name)).filter(_.sizeIs >= 2).map(_.flatMap(_.headOption).mkString)
 }

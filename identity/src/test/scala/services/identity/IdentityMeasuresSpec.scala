@@ -884,22 +884,22 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   "two names of one renamed house" should "name one house, and no other house that shares a word with one of them" in {
     // UK "Tosca (ROH)" beside TMDB's "Royal Ballet & Opera 2026/27: Tosca": the Royal Opera House renamed itself in 2024
     def words(name: String) = name.split(" ").toSeq
-    StageRelays.namesOneHouse(words("roh"), words("royal ballet opera")) shouldBe true
-    StageRelays.namesOneHouse(words("rbo live"), words("royal opera house")) shouldBe true
-    StageRelays.namesOneHouse(words("roh"), words("rbo")) shouldBe true
-    StageRelays.namesOneHouse(words("roh"), words("royal shakespeare company")) shouldBe false
-    StageRelays.namesOneHouse(words("roh"), words("the metropolitan opera")) shouldBe false
+    services.titles.StageHouse.namesOneHouse(words("roh"), words("royal ballet opera")) shouldBe true
+    services.titles.StageHouse.namesOneHouse(words("rbo live"), words("royal opera house")) shouldBe true
+    services.titles.StageHouse.namesOneHouse(words("roh"), words("rbo")) shouldBe true
+    services.titles.StageHouse.namesOneHouse(words("roh"), words("royal shakespeare company")) shouldBe false
+    services.titles.StageHouse.namesOneHouse(words("roh"), words("the metropolitan opera")) shouldBe false
   }
 
   "a house's initials split by punctuation" should "name the house they spell" in {
     // DE Kinopolis' "Carmen (RB+O 2026/27)" ×2 was denied its season's "RBO 2026/27: Carmen (The Royal Opera)" as another
     // house's season production, and took the Salzburg Festival's 2026 "Carmen": "RB+O" folds to the words "rb" and "o"
     def words(name: String) = name.split(" ").toSeq
-    StageRelays.namesOneHouse(words("rb o 2026 27"), words("rbo 2026 27 the royal opera")) shouldBe true
-    StageRelays.namesOneHouse(words("rb o live"), words("royal ballet opera")) shouldBe true
-    StageRelays.namesOneHouse(words("rb o"), words("the metropolitan opera")) shouldBe false
+    services.titles.StageHouse.namesOneHouse(words("rb o 2026 27"), words("rbo 2026 27 the royal opera")) shouldBe true
+    services.titles.StageHouse.namesOneHouse(words("rb o live"), words("royal ballet opera")) shouldBe true
+    services.titles.StageHouse.namesOneHouse(words("rb o"), words("the metropolitan opera")) shouldBe false
     // short words that are no initials stay apart: "de la" spells no house
-    StageRelays.namesOneHouse(words("opera de la bastille"), words("teatro de la zarzuela")) shouldBe false
+    services.titles.StageHouse.namesOneHouse(words("opera de la bastille"), words("teatro de la zarzuela")) shouldBe false
   }
 
   "a stage house's relay" should "deny a record of another work, in no language its work goes by" in {
@@ -913,7 +913,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // 25 April 2027, is the house's 2026/27 Swan Lake, which "screen" denied, leaving it the 2024 record
     StageRelays.namesAnotherWork(Listing("On Screen: The Royal Ballet SWAN LAKE (12A)"), Film("Royal Ballet & Opera 2026/27: Swan Lake")) shouldBe false
     // and "EOS" still abbreviates "Exhibition on Screen" by it
-    StageRelays.abbreviates(Seq("eos"), Seq("exhibition", "on", "screen")) shouldBe true
+    services.titles.StageHouse.abbreviates(Seq("eos"), Seq("exhibition", "on", "screen")) shouldBe true
     // a title naming nothing but its house names no work, and a film's title naming no house is no relay's
     StageRelays.namesAnotherWork(Listing("Royal Ballet & Opera Live"), Film("RBO 2026/27: Tosca (The Royal Opera)")) shouldBe false
     StageRelays.namesAnotherWork(Listing("Das Phantom der Oper"), Film("The Phantom of the Opera")) shouldBe false

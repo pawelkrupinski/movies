@@ -10,7 +10,7 @@ the RBO 2026/27 relay of "Romeo and Juliet" (tmdb:1702789, aired 25 May 2027) in
 ## The mechanism
 
 **Riverside: a search the year hid.** A relay whose title states a year searches its work beside that year
-(`StageRelays.stageWorkQueries`). TMDB titles the season's record by the year the season OPENS ("Royal Ballet & Opera
+(`SearchMeasures.stageWorkQueries`). TMDB titles the season's record by the year the season OPENS ("Royal Ballet & Opera
 2026/27: Romeo and Juliet"): "Romeo and Juliet 2026" finds it, "Romeo and Juliet 2027" finds nothing. A stated year also
 keeps the screened season out of the searches (`Listing.screenedSeason` is only read for a title stating no year). So
 Riverside alone never reached 1702789, and the broadcast join (`agreement.Broadcast`, over the films the cluster's own
