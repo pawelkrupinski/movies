@@ -4,6 +4,8 @@ import services.identity.{FilmIdCounterStore, IdentityListingIntake, InMemoryFil
 import services.identityadapters.IdentityProjection
 import services.movies.{CinemaSlotBuilder, ScrapeHealth}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
+import services.tasks.SettleReaper
+import settings.SettleInterval
 
 /**
  * How a country's films are made (docs/design/identity-resolver.md §8; the cut-over itself in §18):
@@ -155,7 +157,29 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       storedFilm = { val records = storedLookups(); id => records.film(id).answered.flatten },
       read = () => identityProjection.lastProjected.fold(Iterator.empty[services.identity.Listing])(_.read()),
       clusterKey = agreementStage.keyOf)
+
+  // ── When it projects: on the trigger, at boot once the model is taken up, and the hourly reconcile ─────────────
+  // The worker projects as its identity model takes its scrapes in (`identityProjectionTrigger`), from the boot's first
+  // projection on; the clock runs only the whole corpus's reconciliation, every `IdentityProjection.ReconcileEvery` from
+  // an hour after boot, so each has a projection before it to measure its drift against. One that did not settle is
+  // tried again by the trigger, not an hour later.
+  def settleTick(): Unit = if (!identityProjection.reconcileQuietly()) identityProjectionTrigger.retry()
+  def bootProjectionTick(): Unit = if (!identityProjection.projectQuietly()) identityProjectionTrigger.retry()
+  // The boot's projection runs the moment the identity model is taken up — the first moment one can succeed; a take-up
+  // retried after a failure runs it then — on the trigger's scheduler, never behind the reconcile's claim: an hourly
+  // window a previous pod already claimed skipped it, and every projection on scrapes waits for it — a restarted worker
+  // projected nothing until the next hour (2026-10-04, US/UK/DE 20:10–21:00). Five minutes after boot before that, a
+  // delay no measure chose: PL's model is up in seconds. It is a projection, not a reconcile: with none before it there
+  // is no drift to measure.
+  def identityModelTakenUp(): Unit = identityProjectionTrigger.once(scala.concurrent.duration.Duration.Zero)(bootProjectionTick())
+  lazy val settleReaper = {
+    managedResources.stopping(new SettleReaper(() => settleTick(),
+    interval = SettleInterval(services.identityadapters.IdentityProjection.ReconcileEvery),
+    initialDelay = SettleReaper.InitialDelay(services.identityadapters.IdentityProjection.ReconcileEvery),
+    runStore = scheduledRunStore, clock = clock, ticks = ticks, threadPools = threadPools))
+  }
 }
+
 
 
 object IdentityProjectionWiring {

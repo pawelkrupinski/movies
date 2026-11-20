@@ -506,7 +506,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "project on scrapes once the boot's projection ran, and count that one as no reconcile" in {
-    // The boot path (ResolutionWiring.bootProjectionTick) is projectQuietly: through tick(), which lets every projection
+    // The boot path (IdentityProjectionWiring.bootProjectionTick) is projectQuietly: through tick(), which lets every projection
     // the model's scrapes ask for run — any other way in, and each would wait for the first forever (9b8d0aacc's outage).
     val s = new Scenario(new Random(9))
     val w = world(s, IdentityProjection.ScopedBetweenWhole)
