@@ -1,6 +1,7 @@
 package scripts
 
-import services.identity.{InMemoryIdentityModelStore, IncrementalResolver, Listing, OlderRefs}
+import services.identity.{InMemoryIdentityModelStore, IncrementalResolver, OlderRefs}
+import services.identity.measures.Listing
 
 import java.nio.file.{Files, Path, Paths}
 import tools.SliceHttp
