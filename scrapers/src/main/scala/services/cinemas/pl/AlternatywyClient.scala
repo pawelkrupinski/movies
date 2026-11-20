@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
@@ -82,9 +84,6 @@ class AlternatywyClient(
         cinema    = cinema,
         posterUrl = group.flatMap(_.posterUrl).headOption,
         filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }
@@ -163,7 +162,7 @@ object AlternatywyClient {
   private[cinemas] def parseDetail(html: String): FilmDetail = {
     val doc      = Jsoup.parse(html)
     val synopsis = Option(doc.selectFirst("div.elementor-widget-theme-post-content div.elementor-widget-container"))
-      .map(el => ScraperParse.cleanSynopsis(el)).filter(_.length > 20)
+      .map(el => SynopsisProse.cleanSynopsis(el)).filter(_.length > 20)
     val credited = doc.select("h2.elementor-heading-title").asScala.iterator
       .map(h2 => h2.html.split("(?i)<br\\s*/?>").iterator.map(p => Jsoup.parse(p).text.trim).filter(_.nonEmpty).toSeq)
       .map(lines => (lines, lines.indexWhere(_.toLowerCase(Locale.ROOT).startsWith("reżyseria"))))

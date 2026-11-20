@@ -176,7 +176,6 @@ class FlicksClient(
           cinema      = cinema,
           posterUrl   = head.posterUrl,
           filmUrl     = Some(s"$baseUrl/movie/${head.slug}/"),
-          synopsis    = None,
           cast        = head.cast,
           director    = head.directors,
           showtimes   = showtimes,

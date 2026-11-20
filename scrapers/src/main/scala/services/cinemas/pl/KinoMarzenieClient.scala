@@ -99,9 +99,6 @@ class KinoMarzenieClient(
         cinema    = cinema,
         posterUrl = head.poster,
         filmUrl   = head.filmUrl,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

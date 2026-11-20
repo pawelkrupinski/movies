@@ -68,11 +68,6 @@ object KinoBielskClient {
       CinemaMovie(
         movie     = Movie(title, releaseYear = group.head.year),
         cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

@@ -37,10 +37,6 @@ class KinoKulturaChojnowClient(http: HttpFetch, override val cinema: Cinema = Ki
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = group.flatMap(_.screening.posterUrl).headOption,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

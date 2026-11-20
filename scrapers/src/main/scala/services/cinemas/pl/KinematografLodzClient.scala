@@ -178,8 +178,6 @@ object KinematografLodzClient {
       cinema    = cinema,
       posterUrl = poster,
       filmUrl   = filmUrl,
-      synopsis  = None,
-      cast      = Seq.empty,
       director  = rawTitle.toSeq.flatMap(titles.titleFacts(cinema, _).directors),
       showtimes = Seq(Showtime(dt, bookingUrl = None))
     )

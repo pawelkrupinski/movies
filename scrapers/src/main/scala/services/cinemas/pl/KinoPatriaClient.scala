@@ -96,21 +96,27 @@ object KinoPatriaClient {
   /** A film as its item shows it: the title and showtimes its section gives, and the credits and running time every
    *  item carries — `amy-movie-field-amy_director`/`_actor` (one link a name) and `amy-movie-field-duration`
    *  ("01 godzin 46 minut"). The item's synopsis is cut short ("…"), so it is left to the enrichment. */
-  private def filmOf(item: org.jsoup.nodes.Element, title: String, cinema: Cinema, posterUrl: Option[String], filmUrl: Option[String],
-                     showtimes: Seq[Showtime]): CinemaMovie = {
+  /** A film item's film — its title, the poster `posterSelector` picks, its page, runtime and credits — screening
+   *  at `showtimes`; none without a title or a showtime. */
+  private def filmOf(item: org.jsoup.nodes.Element, posterSelector: String, cinema: Cinema,
+                     showtimes: Seq[Showtime]): Option[CinemaMovie] = {
     def names(field: String) = item.select(s"div.amy-movie-field-$field div.amy-movie-custom-field-content a").asScala.toSeq
       .map(_.text.trim).filter(_.nonEmpty)
-    CinemaMovie(
-      movie     = Movie(title, runtimeMinutes = Option(item.selectFirst(".amy-movie-field-duration"))
-        .flatMap(duration => ScraperParse.hoursMinutesRuntime(duration.text))),
-      cinema    = cinema,
-      posterUrl = posterUrl,
-      filmUrl   = filmUrl,
-      synopsis  = None,
-      cast      = names("amy_actor"),
-      director  = names("amy_director"),
-      showtimes = showtimes.sortBy(_.dateTime)
-    )
+    val title = Option(item.selectFirst("h3.amy-movie-field-title a"))
+      .map(a => FormatTags.stripFormatTags(a.text.trim))
+      .filter(_.nonEmpty)
+    title.filter(_ => showtimes.nonEmpty).map { title =>
+      CinemaMovie(
+        movie     = Movie(title, runtimeMinutes = Option(item.selectFirst(".amy-movie-field-duration"))
+          .flatMap(duration => ScraperParse.hoursMinutesRuntime(duration.text))),
+        cinema    = cinema,
+        posterUrl = Option(item.selectFirst(posterSelector)).flatMap(ScraperParse.imageUrl(_)),
+        filmUrl   = Option(item.selectFirst("h3.amy-movie-field-title a[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),
+        cast      = names("amy_actor"),
+        director  = names("amy_director"),
+        showtimes = showtimes.sortBy(_.dateTime)
+      )
+    }
   }
 
   // ── Daily section ─────────────────────────────────────────────────────────
@@ -141,14 +147,6 @@ object KinoPatriaClient {
 
       // For each movie item, extract title + times from the amy-item-{id} div
       dailyBlock.select("div.amy-movie-item").asScala.toSeq.flatMap { item =>
-        val title = Option(item.selectFirst("h3.amy-movie-field-title a"))
-          .map(a => FormatTags.stripFormatTags(a.text.trim))
-          .filter(_.nonEmpty)
-        val posterUrl = Option(item.selectFirst("div.amy-movie-item-poster img[src]"))
-          .flatMap(ScraperParse.imageUrl(_))
-        val filmUrl = Option(item.selectFirst("h3.amy-movie-field-title a[href]"))
-          .map(_.attr("abs:href")).filter(_.nonEmpty)
-
         // Find the amy-item-{id} div that belongs to this movie item.
         val showtimeDiv = item.select("div[class~=amy-item-]").asScala.headOption
         val movieId = showtimeDiv.flatMap { div =>
@@ -167,7 +165,7 @@ object KinoPatriaClient {
           t <- times
         } yield Showtime(LocalDateTime.of(d, t), bookingUrl = None)
 
-        title.filter(_ => showtimes.nonEmpty).map(filmOf(item, _, cinema, posterUrl, filmUrl, showtimes))
+        filmOf(item, "div.amy-movie-item-poster img[src]", cinema, showtimes)
       }
     }
 
@@ -182,14 +180,6 @@ object KinoPatriaClient {
                                   today: LocalDate): Seq[CinemaMovie] =
     Option(doc.selectFirst("div.amy-movie-showtimews-1")).toSeq.flatMap { weeklyBlock =>
       weeklyBlock.select("div.amy-movie-item").asScala.toSeq.flatMap { item =>
-        val title = Option(item.selectFirst("h3.amy-movie-field-title a"))
-          .map(a => FormatTags.stripFormatTags(a.text.trim))
-          .filter(_.nonEmpty)
-        val posterUrl = Option(item.selectFirst("div.amy-movie-item-front img[src]"))
-          .flatMap(ScraperParse.imageUrl(_))
-        val filmUrl = Option(item.selectFirst("h3.amy-movie-field-title a[href]"))
-          .map(_.attr("abs:href")).filter(_.nonEmpty)
-
         val showtimes = item.select("div.amy-cell").asScala.toSeq.flatMap { cell =>
           // The amy-head contains two child divs: day-of-week name and "DD.MM"
           val dateText = cell.select("div.amy-head div").asScala
@@ -209,7 +199,7 @@ object KinoPatriaClient {
           } yield Showtime(LocalDateTime.of(d, t), bookingUrl = None)
         }
 
-        title.filter(_ => showtimes.nonEmpty).map(filmOf(item, _, cinema, posterUrl, filmUrl, showtimes))
+        filmOf(item, "div.amy-movie-item-front img[src]", cinema, showtimes)
       }
     }
 }

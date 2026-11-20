@@ -40,20 +40,19 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaSc
   // First comma-separated chunk is the director, all chunks between director
   // and the year are production countries.
   private def extractMeta(section: Element): (Seq[String], Seq[String], Option[Int], Option[Int]) =
-    Option(section.selectFirst("p.movie-meta")).map { meta =>
-      val text = meta.text()
-      if (!text.startsWith("reż. ")) (Seq.empty, Seq.empty, None, None)
-      else {
-        val afterRez  = text.stripPrefix("reż. ")
-        val parts     = afterRez.split(",\\s*").map(_.trim)
-        val yearIndex   = parts.indexWhere(_.matches("\\d{4} r\\."))
-        val director  = if (yearIndex >= 1) parts(0).split(",").map(_.trim).filter(_.nonEmpty).toSeq else Seq.empty
-        val countries = if (yearIndex > 1) parts.slice(1, yearIndex).filter(_.nonEmpty).toSeq else Seq.empty
-        val year      = if (yearIndex >= 0) Try(parts(yearIndex).replaceAll("[^0-9]", "").toInt).toOption else None
-        val runtime   = RuntimePat.findFirstMatchIn(text).flatMap(m => Try(m.group(1).toInt).toOption)
-        (director, countries, year, runtime)
-      }
-    }.getOrElse((Seq.empty, Seq.empty, None, None))
+    Option(section.selectFirst("p.movie-meta")).map(_.text()).filter(_.startsWith("reż. "))
+      .fold((Seq.empty[String], Seq.empty[String], Option.empty[Int], Option.empty[Int]))(metaLine)
+
+  /** A `reż. …` line's (directors, countries, year, runtime). */
+  private def metaLine(text: String): (Seq[String], Seq[String], Option[Int], Option[Int]) = {
+    val parts     = text.stripPrefix("reż. ").split(",\\s*").map(_.trim)
+    val yearIndex = parts.indexWhere(_.matches("\\d{4} r\\."))
+    val director  = if (yearIndex >= 1) parts(0).split(",").map(_.trim).filter(_.nonEmpty).toSeq else Seq.empty
+    val countries = if (yearIndex > 1) parts.slice(1, yearIndex).filter(_.nonEmpty).toSeq else Seq.empty
+    val year      = if (yearIndex >= 0) Try(parts(yearIndex).replaceAll("[^0-9]", "").toInt).toOption else None
+    val runtime   = RuntimePat.findFirstMatchIn(text).flatMap(m => Try(m.group(1).toInt).toOption)
+    (director, countries, year, runtime)
+  }
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PageUrl)
   override def sourceUrl: Option[String] = Some(PageUrl)
@@ -109,7 +108,6 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaSc
           posterUrl = posterUrl,
           filmUrl   = Some(filmUrl),
           synopsis  = synopsis,
-          cast      = Seq.empty,
           director  = director,
           showtimes = slots.toSeq.sortBy(_.dateTime)
         )

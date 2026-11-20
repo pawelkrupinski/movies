@@ -120,8 +120,6 @@ object SquarespaceEventsClient {
         posterUrl = jsonText(event \ "assetUrl"),
         filmUrl   = pageOf(event, siteUrl),
         synopsis  = jsonText(event \ "excerpt").map(html => clean(Jsoup.parse(html).text())).filter(_.nonEmpty),
-        cast      = Nil,
-        director  = Nil,
         showtimes = showtimes
       )
     }

@@ -88,7 +88,7 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
   }
 
   // Synopses now carry \n\n paragraph breaks from the scraper
-  // (ScraperParse.blockText); the detail page renders them via a dedicated
+  // (SynopsisProse.blockText); the detail page renders them via a dedicated
   // `.synopsis` class with `white-space: pre-wrap` so they don't fuse into one
   // block (the other .meta-value blocks must NOT get pre-wrap — their markup is
   // source-whitespace-sensitive).

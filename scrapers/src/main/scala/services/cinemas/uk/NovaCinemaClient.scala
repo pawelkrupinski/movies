@@ -104,8 +104,6 @@ object NovaCinemaClient {
         posterUrl   = Option(show.selectFirst("figure img[src]")).flatMap(posterOf),
         filmUrl     = link.map(_.attr("abs:href")).filter(_.nonEmpty),
         synopsis    = Option(show.selectFirst("p.d-lg-inline")).map(_.text.trim).filter(_.nonEmpty),
-        cast        = Seq.empty,
-        director    = Seq.empty,
         showtimes   = showtimes,
         ageRating   = Option(show.selectFirst("h4 img[alt]")).flatMap(img => CertificateAlt.findFirstMatchIn(img.attr("alt")))
           .flatMap(m => AgeRating.normalize(m.group(1)))

@@ -89,11 +89,7 @@ final class CopiedFeedDetector(pairs: Gauge, country: Country, watched: Set[Cine
     val copied = shared.collect {
       case (other, n) if n >= MinListings && n >= MinShare * fingerprints.length && !DistinctVenuePairs.contains(cinema, other) => other
     }.toSet
-    held.remove(cinema).foreach(_.foreach { fp =>
-      owners.get(fp).map(_.filterNot(_ == cinema)).foreach(rest => if (rest.isEmpty) owners.remove(fp) else owners.update(fp, rest))
-    })
-    fingerprints.foreach(fp => owners.update(fp, cinema :: owners.getOrElse(fp, Nil)))
-    held.update(cinema, fingerprints)
+    hold(cinema, fingerprints)
     val before = copying.getOrElse(cinema, Set.empty)
     if (copied != before) {
       if (copied.isEmpty) copying.remove(cinema) else copying.update(cinema, copied)
@@ -105,6 +101,15 @@ final class CopiedFeedDetector(pairs: Gauge, country: Country, watched: Set[Cine
         s"lists '${other.displayName}'s sessions."))
       publish()
     }
+  }
+
+  /** `cinema`'s listings indexed by `fingerprints` in place of the ones it held before. */
+  private def hold(cinema: Cinema, fingerprints: Array[Long]): Unit = {
+    held.remove(cinema).foreach(_.foreach { fp =>
+      owners.get(fp).map(_.filterNot(_ == cinema)).foreach(rest => if (rest.isEmpty) owners.remove(fp) else owners.update(fp, rest))
+    })
+    fingerprints.foreach(fp => owners.update(fp, cinema :: owners.getOrElse(fp, Nil)))
+    held.update(cinema, fingerprints)
   }
 
   private def pairsNow: Set[(String, String)] =

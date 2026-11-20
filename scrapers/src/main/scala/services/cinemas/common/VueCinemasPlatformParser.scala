@@ -34,6 +34,13 @@ object VueCinemasPlatformParser {
   private def parseFilm(film: JsValue, cinema: Cinema, root: String): Option[CinemaMovie] =
     jsonText(film \ "filmTitle").map(titled(film, _, cinema, root))
 
+  /** The platform's `trailers: [<url>]` (shared with Multikino's API): the first entry, as a YouTube watch URL; none
+   *  when it is not a YouTube URL. `hasTrailer` can stay true after the array empties out, so only the array counts. */
+  private[cinemas] def youTubeTrailer(film: JsValue): Option[String] =
+    (film \ "trailers").asOpt[JsArray].flatMap(_.value.headOption)
+      .flatMap(_.asOpt[String]).filter(_.nonEmpty)
+      .flatMap(u => TrailerEmbed.youTubeId(u).map(id => s"https://www.youtube.com/watch?v=$id"))
+
   private def titled(film: JsValue, title: String, cinema: Cinema, root: String): CinemaMovie = {
     val sessions = (film \ "showingGroups").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
       .flatMap(g => (g \ "sessions").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty))
@@ -48,9 +55,7 @@ object VueCinemasPlatformParser {
         // year unset and let TMDB rank on title (same call MultikinoParser
         // makes against the same upstream schema).
         releaseYear    = None,
-        genres         = (film \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-                           .flatMap(g => (g \ "name").asOpt[String].orElse(g.asOpt[String]))
-                           .filter(_.nonEmpty),
+        genres         = ScraperParse.jsonNames(film \ "genres"),
         // Non-empty on decorated runs ("Chicken Run (2000)" → "Chicken Run",
         // "La La Land (10th Anniversary)" → "La La Land"), which is exactly the
         // TMDB-search fallback it's there for.
@@ -69,9 +74,7 @@ object VueCinemasPlatformParser {
       // under "mxc" — one film, one key across both platforms.
       externalIds = ((film \ "filmId").asOpt[String].filter(_.nonEmpty).map("vue" -> _) ++
                      (film \ "movieXchangeCode").asOpt[String].filter(_.nonEmpty).map("mxc" -> _)).toMap,
-      trailerUrl  = (film \ "trailers").asOpt[JsArray].flatMap(_.value.headOption)
-                      .flatMap(_.asOpt[String]).filter(_.nonEmpty)
-                      .flatMap(u => TrailerEmbed.youTubeId(u).map(id => s"https://www.youtube.com/watch?v=$id")),
+      trailerUrl  = youTubeTrailer(film),
       // `certificate` is `{name, description, src}`; `name` is the BBFC label
       // ("15", "PG", lower-case "12a"). AgeRating drops the "tbc" placeholder
       // upstream carries before a film is classified.

@@ -76,8 +76,6 @@ object KinoLukowClient {
         posterUrl = Option(film.selectFirst("a.kino-film-poster img")).flatMap(ScraperParse.imageUrl(_)),
         filmUrl   = Option(film.selectFirst("h3.kino-film-title a")).map(_.attr("abs:href")).filter(_.nonEmpty),
         synopsis  = text("p.kino-film-desc").filter(Truncated.findFirstIn(_).isEmpty),
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes,
         ageRating = AgeRating.normalizeDroppingNoRestriction(text("span.kino-film-age"))
       )

@@ -191,10 +191,7 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
    *  the empty list for Wajda-cycle pages and other layouts that don't
    *  carry the marker. */
   def parseGenres(html: String): Seq[String] =
-    GenrePat.findFirstMatchIn(html).map { m =>
-      m.group(1).trim.stripSuffix(",").trim
-        .split(",").map(_.trim).filter(_.nonEmpty).toSeq
-    }.getOrElse(Seq.empty)
+    GenrePat.findFirstMatchIn(html).toSeq.flatMap(m => ScraperParse.commaItems(m.group(1)))
 
   /** YouTube trailer URL from the Elementor button block. Returns the
    *  canonical `youtube.com/watch?v=ID` form when the captured URL parses
@@ -253,18 +250,36 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
     MetadataMarkers.exists(text.contains)
 
   def parseHtml(html: String): Seq[CinemaMovie] = {
-    val links   = EventLinkPat.findAllMatchIn(html)
-      .map(m => LinkOccurrence(m.start, m.group(1), m.group(2))).toList
-    val titles  = TitlePat.findAllMatchIn(html).map(m => (m.start, m.group(1).trim)).toList
-    val dates   = DatePat.findAllMatchIn(html).map(m => (m.start, m.group(1))).toList
-    val details = DetailLinkPat.findAllMatchIn(html).map(m => (m.start, m.group(1))).toList
+    val marks  = new PageMarks(html)
+    val events = marks.links.groupBy(_.url).toSeq.flatMap { case (url, occurrences) => marks.screening(url, occurrences) }
 
-    // Each event renders four anchors on the page (desktop time + desktop "Kup
-    // bilet" + same pair for mobile). Group by URL, take the first pair: the
-    // title that falls between the time anchor and its "Kup bilet" sibling
-    // belongs to that event. The "Czytaj opis" detail link sits just past the
-    // "Kup bilet" button inside the same card.
-    val events = links.groupBy(_.url).toSeq.flatMap { case (url, occurrences) =>
+    SlotsToMovies.fold(events, _.title, r => Showtime(r.dateTime, Some(r.bookingUrl)), distinctBy = SlotsToMovies.keepEvery) {
+      (title, rows, showtimes) =>
+        val sorted = rows.sortBy(_.dateTime)
+        CinemaMovie(
+          movie     = Movie(title, rawTitle = sorted.map(_.rawTitle).headOption),
+          cinema    = KinoApollo,
+          posterUrl = sorted.flatMap(_.posterUrl).headOption,
+          filmUrl   = pickFilmUrl(sorted.flatMap(_.detailUrl)),
+          showtimes = showtimes
+        )
+    }
+  }
+
+  /** The page's anchors, titles, dates and detail links, each at its offset in the page: a card is read off the
+   *  marks between its anchors. */
+  private final class PageMarks(html: String) {
+    val links: List[LinkOccurrence] = EventLinkPat.findAllMatchIn(html)
+      .map(m => LinkOccurrence(m.start, m.group(1), m.group(2))).toList
+    private val titles  = TitlePat.findAllMatchIn(html).map(m => (m.start, m.group(1).trim)).toList
+    private val dates   = DatePat.findAllMatchIn(html).map(m => (m.start, m.group(1))).toList
+    private val details = DetailLinkPat.findAllMatchIn(html).map(m => (m.start, m.group(1))).toList
+
+    /** One event's screening off its anchors. Each event renders four anchors on the page (desktop time + desktop
+     *  "Kup bilet" + same pair for mobile): the first pair counts, and the title that falls between the time anchor
+     *  and its "Kup bilet" sibling belongs to that event. The "Czytaj opis" detail link sits just past the
+     *  "Kup bilet" button inside the same card. */
+    def screening(url: String, occurrences: Seq[LinkOccurrence]): Option[ScreeningRow] = {
       val sorted = occurrences.sortBy(_.offset)
       for {
         timeOcc <- sorted.find(o => TimeOnlyPat.matches(o.label))
@@ -278,21 +293,6 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
         val detail  = details.find { case (o, _) => o > kupOcc.offset }.map(_._2)
         ScreeningRow(url, dt, cleanTitle(title), title, poster, detail)
       }
-    }
-
-    SlotsToMovies.fold(events, _.title, r => Showtime(r.dateTime, Some(r.bookingUrl)), distinctBy = SlotsToMovies.keepEvery) {
-      (title, rows, showtimes) =>
-        val sorted = rows.sortBy(_.dateTime)
-        CinemaMovie(
-          movie     = Movie(title, rawTitle = sorted.map(_.rawTitle).headOption),
-          cinema    = KinoApollo,
-          posterUrl = sorted.flatMap(_.posterUrl).headOption,
-          filmUrl   = pickFilmUrl(sorted.flatMap(_.detailUrl)),
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = Seq.empty,
-          showtimes = showtimes
-        )
     }
   }
 

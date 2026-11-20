@@ -9,7 +9,7 @@ import models._
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -24,7 +24,7 @@ import scala.util.Try
  * year / countries / genres / synopsis, degrading to listing-only on failure.
  */
 class MuranowClient(http: HttpFetch, today: => LocalDate
-) extends CinemaScraper with DetailEnricher {
+) extends SingleSiteScraper with DetailEnricher {
 
 
   val cinema: Cinema = KinoMuranow
@@ -34,12 +34,9 @@ class MuranowClient(http: HttpFetch, today: => LocalDate
 
   private case class RawSlot(slug: String, title: String, dateTime: LocalDateTime, poster: Option[String], bookingUrl: Option[String])
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
-  def fetch(): Seq[CinemaMovie] = fetchBare()
-
-  private def fetchBare(): Seq[CinemaMovie] = {
+  def fetch(): Seq[CinemaMovie] = {
     val document  = Jsoup.parse(HttpRead.page(http, RepertoireUrl))
     val year = MuranowClient.yearFromLabel(Option(document.selectFirst("p.calendar-seance-full__month-label")).map(_.text).getOrElse(""), today.getYear)
 
@@ -73,9 +70,6 @@ class MuranowClient(http: HttpFetch, today: => LocalDate
         cinema     = cinema,
         posterUrl  = group.flatMap(_.poster).headOption,
         filmUrl    = if (slug.startsWith("/")) Some(BaseUrl + slug) else None,
-        synopsis   = None,
-        cast       = Seq.empty,
-        director   = Seq.empty,
         showtimes  = showtimes,
         trailerUrl = None
       )

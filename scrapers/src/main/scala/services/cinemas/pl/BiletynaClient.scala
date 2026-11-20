@@ -8,7 +8,7 @@ import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
 
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -103,7 +103,7 @@ object BiletynaClient {
    *  default: the non-default ones matched TMDB within 5 minutes for 39 of 49 films checked. */
   private def runtimeOf(duration: String): Option[Int] = duration.trim match {
     case IsoDuration(hours, minutes) =>
-      Some(Option(hours).map(_.toInt).getOrElse(0) * 60 + Option(minutes).map(_.toInt).getOrElse(0))
+      Some(ScraperParse.minutesOf(hours, minutes))
         .filter(m => m > 0 && m != DefaultDurationMinutes)
     case _ => None
   }
@@ -155,8 +155,6 @@ object BiletynaClient {
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
         filmUrl   = group.map(_.url).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
         director  = parsed.directors,
         showtimes = showtimes
       )
@@ -257,21 +255,26 @@ object BiletynaClient {
       val hall = HallFilter.findFirstMatchIn(html)
         .flatMap(m => (Json.parse(m.group(1)) \ "0" \ "hall_id").asOpt[Long]).map(HallId(_))
         .getOrElse(throw new IllegalStateException(s"${page.url} lists $PageEventCap events but names no hall to page the rest from"))
-      val origin = CinemaScraper.hostsOf(page.url).headOption.fold(BiletynaOrigin)(host => s"https://$host")
       @annotation.tailrec
       def fetchFrom(feedPage: Int, acc: Vector[JsValue]): Vector[JsValue] = {
         if (feedPage > MaxFeedPages)
           throw new IllegalStateException(s"${page.url}: event feed for hall ${hall.value} did not end after $MaxFeedPages pages")
-        val records = feedRecords(page.url, HttpRead.page(http, 
-          s"$origin/ajax/events?params%5Bh%5D=${hall.value}&h=${hall.value}&ipp=$FeedPageSize&page=$feedPage"))
-        // Records none of which read (a renamed field, a new date format) would
-        // cut the venue at 50 again as surely as an error would.
-        if (records.nonEmpty && records.flatMap(parseFeedEvent).isEmpty)
-          throw new IllegalStateException(s"${page.url}: none of the ${records.size} records on event-feed page $feedPage parse")
+        val records = hallFeedPage(http, page, hall, feedPage)
         if (records.size < FeedPageSize) acc ++ records else fetchFrom(feedPage + 1, acc ++ records)
       }
       fetchFrom(1, Vector.empty)
     }
+
+  /** Page `feedPage` of `hall`'s event feed, on the place page's own host. Records none of which read (a renamed
+   *  field, a new date format) throw: they would cut the venue at 50 again as surely as an error would. */
+  private def hallFeedPage(http: HttpFetch, page: BiletynaPlacePage, hall: HallId, feedPage: Int): Seq[JsValue] = {
+    val origin  = CinemaScraper.hostsOf(page.url).headOption.fold(BiletynaOrigin)(host => s"https://$host")
+    val records = feedRecords(page.url, HttpRead.page(http,
+      s"$origin/ajax/events?params%5Bh%5D=${hall.value}&h=${hall.value}&ipp=$FeedPageSize&page=$feedPage"))
+    if (records.nonEmpty && records.flatMap(parseFeedEvent).isEmpty)
+      throw new IllegalStateException(s"${page.url}: none of the ${records.size} records on event-feed page $feedPage parse")
+    records
+  }
 
   // Every event the page lists, parseable or not — the cap counts them all.
   private def pageEventCount(html: String): Int =

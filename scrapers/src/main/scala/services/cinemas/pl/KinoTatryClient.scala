@@ -99,9 +99,6 @@ object KinoTatryClient {
           cinema      = cinema,
           posterUrl   = Option(card.selectFirst("img.wp-post-image")).flatMap(ScraperParse.imageUrl(_)),
           filmUrl     = Option(card.selectFirst("a.btn-theme[href]")).map(_.absUrl("href")).filter(_.nonEmpty),
-          synopsis    = None,
-          cast        = Seq.empty,
-          director    = Seq.empty,
           showtimes   = showtimes
         ))
       }

@@ -2,8 +2,7 @@ package services.cinemas.pl
 
 import models.{Cinema, CinemaMovie, Movie, Multikino, Showtime}
 import play.api.libs.json._
-import services.cinemas.common.AgeRating
-import models.TrailerEmbed
+import services.cinemas.common.{AgeRating, ScraperParse, VueCinemasPlatformParser}
 import services.titles.TitleNormalizer
 
 import java.time.LocalDateTime
@@ -50,7 +49,7 @@ object MultikinoParser {
       director    = names(film, "director"),
       showtimes   = sessions.flatMap(parseSession).toSeq,
       externalIds = (multikinoId.map("mk" -> _) ++ mxcId.map("mxc" -> _)).toMap,
-      trailerUrl  = trailerOf(film),
+      trailerUrl  = VueCinemasPlatformParser.youTubeTrailer(film),
       // Same Vue-platform `certificate = {name, description, src}` shape the UK
       // reads (see VueCinemasPlatformParser) — `name` is the Polish rating label
       // ("15+", "18+"). `normalizeDroppingNoRestriction` drops the "TBC"
@@ -91,25 +90,12 @@ object MultikinoParser {
       // upstream backfill flows through automatically — the merge layer
       // demotes Multikino under TMDB/Filmweb so an empty list here is
       // harmless when richer sources have data.
-      genres         = (film \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-                         .flatMap(g => (g \ "name").asOpt[String].orElse(g.asOpt[String]))
-                         .filter(_.nonEmpty)
+      genres         = ScraperParse.jsonNames(film \ "genres")
     )
   }
 
   private def names(film: JsValue, field: String): Seq[String] =
     (film \ field).asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-
-  // Multikino's API exposes `trailers: [<url>]` on films that have one
-  // (alongside `hasTrailer` which sometimes stays true even after the
-  // array empties out — only the array entries are usable). Take the
-  // first entry; only commit when it parses as a YouTube URL we can
-  // embed.
-  private def trailerOf(film: JsValue): Option[String] =
-    (film \ "trailers").asOpt[JsArray]
-      .flatMap(_.value.headOption).flatMap(_.asOpt[String])
-      .filter(_.nonEmpty)
-      .flatMap(u => TrailerEmbed.youTubeId(u).map(id => s"https://www.youtube.com/watch?v=$id"))
 
   private def parseSession(session: JsValue): Option[Showtime] =
     (session \ "startTime").asOpt[String].map { startTime =>

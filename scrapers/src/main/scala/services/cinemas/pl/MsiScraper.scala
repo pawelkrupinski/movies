@@ -369,10 +369,8 @@ private[cinemas] object MsiScraper {
           ),
           cinema    = cinema,
           posterUrl = metas.flatMap(_.posterUrl).headOption,
-          filmUrl   = None,
           synopsis  = metas.flatMap(_.synopsis).headOption,
           synopsisExcerpt = metas.flatMap(_.synopsisExcerpt).headOption,
-          cast      = Seq.empty,
           director  = metas.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
           showtimes = showtimes
         )

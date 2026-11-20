@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.titles.NonMovieEventClassifier
 import java.util.Locale
 import services.titles.FormatTags
@@ -192,5 +194,5 @@ object KinoIskraClient {
   /** The synopsis: the record's small paragraph that carries no `<b>` label. */
   private def synopsisOf(document: Document): Option[String] =
     document.select("p.small.mb-3").asScala.find(_.selectFirst("b") == null)
-      .map(ScraperParse.cleanSynopsis(_)).filter(_.nonEmpty)
+      .map(SynopsisProse.cleanSynopsis(_)).filter(_.nonEmpty)
 }

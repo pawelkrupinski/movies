@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
@@ -7,7 +9,7 @@ import play.api.libs.json.Json
 import models._
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
+import services.cinemas.common.{ChunkedCinemaScraper, SingleSiteScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime}
@@ -31,7 +33,7 @@ import scala.jdk.CollectionConverters._
  * window (and thus the fixture replay) is deterministic.
  */
 class NoweHoryzontyClient(http: HttpFetch, today: => LocalDate
-) extends ChunkedCinemaScraper with DetailEnricher {
+) extends ChunkedCinemaScraper with SingleSiteScraper with DetailEnricher {
 
   val cinema: Cinema = KinoNoweHoryzonty
   override val detailGroup: String = "nowe-horyzonty"
@@ -49,8 +51,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: => LocalDate
   private def dayUrl(date: LocalDate): String =
     s"$BaseUrl/rep.json?dzien=${date.format(DayFmt)}&forwardback=$Forwardback"
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   /** Walk forward until the programme runs out, instead of fetching a fixed week.
    *
@@ -98,11 +99,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: => LocalDate
       else Some(CinemaMovie(
         movie     = Movie(title = primary.title),
         cinema    = cinema,
-        posterUrl = None,
         filmUrl   = Some(s"$BaseUrl/op.s?id=$filmId"),
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       ))
     }
@@ -136,22 +133,16 @@ class NoweHoryzontyClient(http: HttpFetch, today: => LocalDate
    *  `div.seanserep a.xseans` anchors are that day's slots. The date is the
    *  `date` we requested — the blob carries only the `HH:mm` time per slot. */
   private def parseDay(lista: String, date: LocalDate): Seq[RawSlot] =
-    Jsoup.parse(lista).select("div.boks").asScala.toSeq.flatMap { card =>
-      val link = Option(card.selectFirst("a.tyt[href^=\"op.s?id=\"]"))
-                   .orElse(Option(card.selectFirst("a[href^=\"op.s?id=\"]")))
-      (for {
-        a      <- link
-        filmId <- FilmIdPat.findFirstMatchIn(a.attr("href")).map(_.group(1))
-        title   = a.text.trim if title.nonEmpty
-      } yield card.select("div.seanserep a.xseans[href]").asScala.toSeq.flatMap { slot =>
-        val href = slot.attr("href")
-        for {
-          eventId <- NoweHoryzontyClient.EventIdPat.findFirstMatchIn(href).map(_.group(1))
-          time    <- ScraperParse.parseHHmm(slot.text.trim)
-        } yield RawSlot(filmId, title, eventId, date.atTime(time),
-                        if (href.startsWith("http")) href else s"$BaseUrl/$href")
-      }).getOrElse(Seq.empty)
-    }
+    for {
+      card    <- Jsoup.parse(lista).select("div.boks").asScala.toSeq
+      a       <- Option(card.selectFirst("a.tyt[href^=\"op.s?id=\"]")).orElse(Option(card.selectFirst("a[href^=\"op.s?id=\"]"))).toSeq
+      filmId  <- FilmIdPat.findFirstMatchIn(a.attr("href")).map(_.group(1)).toSeq
+      title    = a.text.trim if title.nonEmpty
+      slot    <- card.select("div.seanserep a.xseans[href]").asScala.toSeq
+      href     = slot.attr("href")
+      eventId <- NoweHoryzontyClient.EventIdPat.findFirstMatchIn(href).map(_.group(1))
+      time    <- ScraperParse.parseHHmm(slot.text.trim)
+    } yield RawSlot(filmId, title, eventId, date.atTime(time), if (href.startsWith("http")) href else s"$BaseUrl/$href")
 }
 
 object NoweHoryzontyClient {
@@ -183,7 +174,7 @@ object NoweHoryzontyClient {
    *  The block also wraps a `gatunek:` genre `<h4>` (and other event-note `<h4>`s)
    *  plus, for some films, a foreign-language version of the plot behind a bare
    *  `FR:` / `EN:` label `<h4>`. Drop everything from the foreign label onward, then
-   *  let [[ScraperParse.cleanSynopsis]] strip the `<h4>` labels and join the
+   *  let [[SynopsisProse.cleanSynopsis]] strip the `<h4>` labels and join the
    *  remaining `<p>` paragraphs with blank lines — the old `selectFirst("… p")`
    *  kept only the FIRST paragraph, truncating multi-paragraph synopses. */
   private def synopsisProse(container: org.jsoup.nodes.Element): String = {
@@ -195,7 +186,7 @@ object NoweHoryzontyClient {
         while (sib != null) { val next = sib.nextElementSibling(); sib.remove(); sib = next }
         marker.remove()
       }
-    ScraperParse.cleanSynopsis(el, "h4")
+    SynopsisProse.cleanSynopsis(el, "h4")
   }
 
   private def crrow(document: org.jsoup.nodes.Document, label: String): Option[String] =

@@ -24,7 +24,7 @@ import scala.jdk.CollectionConverters._
  * "Stalker (1979)", "Pan's Labyrinth" and "The Broken Circle Breakdown" carry their English title only), so
  * none is read. A re-release gets its own page dated by its re-run — see [[ReReleaseBilling]].
  */
-object FlicksFilmPage {
+object FlicksFilmPage extends SlimmedPage {
 
   def parse(html: String, slug: String, today: LocalDate): FilmDetail =
     parseDocument(Parser.htmlParser().parseInput(slimmedReader(html), ""), slug, today)
@@ -52,22 +52,15 @@ object FlicksFilmPage {
     )
   }
 
-  /** `html` as the parts [[parse]] reads — the head (og:image), the hero (title, year and runtime line, poster) and
-   *  every schema.org block after it — without the showtimes tabs between, so the parser does not tokenise them. A page
-   *  is ~350 KB and the tabs nearly all of it; whole-page parsing was 42% of a US detail drain's CPU (JFR, run
-   *  37619819275). Cut where the tabs open (`id="movie-tabs"`), as [[keptRanges]] says. */
-  private[common] def slimmedReader(html: String): java.io.Reader = new RangesReader(html, keptRanges(html))
-
-  /** [[slimmedReader]]'s text as a string — for the spec. */
-  private[common] def slimmed(html: String): String = {
-    val out = new java.io.StringWriter(html.length); slimmedReader(html).transferTo(out); out.toString
-  }
-
-  /** The head and hero — everything before the tabs — then each schema.org block after them, in order. The whole page
+  /** The parts of `html` [[parse]] reads — the head (og:image), the hero (title, year and runtime line, poster) and
+   *  every schema.org block after it — without the showtimes tabs between. A page is ~350 KB and the tabs nearly all
+   *  of it; whole-page parsing was 42% of a US detail drain's CPU (JFR, run 37619819275). Cut where the tabs open
+   *  (`id="movie-tabs"`): the head and hero — everything before the tabs — then each schema.org block after them, in
+   *  order. The whole page
    *  when there is no tabs mark, or any hero markup comes after it (the cut would drop what the parse reads there). A
    *  block is a `<script>` whose own opening tag names the type, so a mention in inline JS is no block, and each is
    *  kept once: ranges strictly in order, never overlapping. */
-  private def keptRanges(html: String): Array[Int] = html.indexOf(TabsMark) match {
+  protected def keptRanges(html: String): Array[Int] = html.indexOf(TabsMark) match {
     // forward from the tabs, never `lastIndexOf` from the end: a page with any non-Latin-1 character is a UTF-16 string,
     // whose backward search is a plain loop over the whole ~350 KB -- 16% of a US resolve (JFR, 2026-10-15) -- where
     // the forward one is the JVM's vectorised intrinsic

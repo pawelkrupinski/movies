@@ -113,7 +113,6 @@ object RegalParser {
         Some(CinemaMovie(
           movie     = Movie(title = group.head._2),
           cinema    = cinema,
-          posterUrl = None,
           // The film's stable per-chain reference AND the URL its detail is
           // fetched from — see `RegalClient.fetchFilmDetail`. Regal's public
           // film page is `/movies/<slug>-<code>` and the code alone does NOT
@@ -122,9 +121,6 @@ object RegalParser {
           // an internal reference (it surfaces only on the dev-only /debug
           // pages), so the API URL is the honest thing to carry.
           filmUrl   = Some(RegalClient.filmDetailUrl(code)),
-          synopsis  = None,
-          cast      = Nil,
-          director  = Nil,
           showtimes = showtimes,
           // The chain's own film id, kept so a later pass can join to it.
           externalIds = Map("regal" -> code)

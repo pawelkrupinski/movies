@@ -93,10 +93,7 @@ object KinoMetalowiecNowaDebaClient {
         ),
         cinema     = cinema,
         posterUrl  = block.flatMap(_.posterUrl),
-        filmUrl    = None,
         synopsis   = block.flatMap(_.synopsis),
-        cast       = Seq.empty,
-        director   = Seq.empty,
         showtimes  = showtimes,
         trailerUrl = block.flatMap(_.trailer),
         ageRating  = block.flatMap(_.age)

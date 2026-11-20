@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import java.util.Locale
 import services.titles.FormatTags
 
@@ -101,7 +103,7 @@ object KinoTomiClient {
     def names(value: Option[String]): Seq[String] =
       value.toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).distinct
 
-    val synopsis = about.map(ScraperParse.cleanSynopsis(_, "ul")).filter(_.nonEmpty)
+    val synopsis = about.map(SynopsisProse.cleanSynopsis(_, "ul")).filter(_.nonEmpty)
     val runtime = doc.select(".duration-area .item").asScala
       .find(_.selectFirst(".fa-clock") != null).flatMap(i => ScraperParse.hoursMinutesRuntime(i.text))
     val trailer = Option(doc.selectFirst("a.video-popup[href]"))

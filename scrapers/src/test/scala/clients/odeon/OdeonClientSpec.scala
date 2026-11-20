@@ -6,6 +6,7 @@ import models.UkRoster
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.common.ScrapeHorizon
 import services.cinemas.uk.{OdeonBearer, OdeonClient, OdeonParser}
 
 import java.time.LocalDate
@@ -137,7 +138,7 @@ class OdeonClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   // delete those films entirely.
   it should "plan every advertised day, however far out, and bound only the absurd" in {
     val days = client(today = LocalDate.of(2026, 6, 1)).planChunks()
-    val cap  = LocalDate.of(2026, 6, 1).plusDays(OdeonClient.MaxHorizonDays.toLong).toString
+    val cap  = LocalDate.of(2026, 6, 1).plusDays(ScrapeHorizon.MaxDays.toLong).toString
     all(days) should be <= cap                 // ISO dates order lexicographically
     days should contain("2026-12-13")          // advance date — KEPT now
   }

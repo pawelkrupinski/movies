@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.SlotsToMovies
 
 import services.cinemas.common.ScraperParse
@@ -40,9 +42,7 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(CinemaUrl)
 
-  def fetch(): Seq[CinemaMovie] = fetchBare()
-
-  private def fetchBare(): Seq[CinemaMovie] = {
+  def fetch(): Seq[CinemaMovie] = {
     val today = HttpRead.page(http, s"$CinemaUrl/repertuar.php")
     val dates = DatePat.findAllMatchIn(today).map(_.group(1)).toSeq.distinct
     val htmls = today +:
@@ -64,9 +64,6 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
         filmUrl   = Some(s"$CinemaUrl/film.php?id=$filmId"),
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes,
         trailerUrl = None
       )
@@ -123,7 +120,7 @@ object NoveKinoClient {
   // "Wielkie piękno – napisy"); `FormatTags.extractFormatTags` peels it into
   // format tokens (handling every separator + trailing tag shape) while leaving a
   // real dash-bearing title ("Mission - Impossible") intact, and the clean title
-  // groups the presentation variants into one row (see `fetchBare`).
+  // groups the presentation variants into one row (see `fetch`).
 
   def parseDateTime(day: String, hour: String): Option[LocalDateTime] =
     ScraperParse.isoDateAtClock(day, hour)
@@ -138,24 +135,21 @@ object NoveKinoClient {
   /** The "Czas trwania" value's minute count: "120 minut", "82 minuty". */
   private val RuntimeMinutes = """(\d+)\s*min""".r
 
-  private def dd(document: org.jsoup.nodes.Document, label: String): Option[String] =
-    ScraperParse.ddField(document, label)
-
   def parseDetail(html: String): Detail = {
     val document = Jsoup.parse(html)
     Detail(
-      year      = dd(document, "rok produkcji").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      runtime   = dd(document, "czas trwania").flatMap(RuntimeMinutes.findFirstMatchIn).flatMap(_.group(1).toIntOption),
-      countries = dd(document, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      genres    = dd(document, "gatunek").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)).map(tools.TextNormalization.titleCaseIfAllLower),
-      director  = dd(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      cast      = dd(document, "obsada").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      year      = ScraperParse.ddField(document, "rok produkcji").flatMap(ScraperParse.firstFourDigitsIn),
+      runtime   = ScraperParse.ddField(document, "czas trwania").flatMap(RuntimeMinutes.findFirstMatchIn).flatMap(_.group(1).toIntOption),
+      countries = ScraperParse.ddItems(document, "kraj produkcji"),
+      genres    = ScraperParse.ddItems(document, "gatunek").map(tools.TextNormalization.titleCaseIfAllLower),
+      director  = ScraperParse.ddItems(document, "reżyseria"),
+      cast      = ScraperParse.ddItems(document, "obsada"),
       // `section.text_panel` wraps an "Opis filmu" header `<div class=panel-header>`
       // then the prose `<p>`s. `selectFirst("… p")` kept only the FIRST paragraph,
       // truncating multi-paragraph plots; select the whole panel, drop the header,
-      // and let ScraperParse.cleanSynopsis join every `<p>` with blank lines.
+      // and let SynopsisProse.cleanSynopsis join every `<p>` with blank lines.
       synopsis  = Option(document.selectFirst("section.text_panel"))
-                    .map(ScraperParse.cleanSynopsis(_, ".panel-header")).filter(_.length > 20),
+                    .map(SynopsisProse.cleanSynopsis(_, ".panel-header")).filter(_.length > 20),
       // The film page embeds a single YouTube `/embed/` iframe in its slider.
       trailer   = document.select("iframe[src]").asScala.iterator.map(_.attr("src")).filter(_.nonEmpty)
                     .flatMap(ScraperParse.canonicalTrailer).nextOption()

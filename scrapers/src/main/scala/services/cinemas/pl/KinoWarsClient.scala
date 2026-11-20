@@ -133,8 +133,6 @@ object KinoWarsClient {
         posterUrl  = post.poster,
         filmUrl    = post.filmUrl,
         synopsis   = post.synopsis,
-        cast       = Seq.empty,
-        director   = Seq.empty,
         showtimes  = showtimes,
         trailerUrl = post.trailer,
         ageRating  = post.ageRating

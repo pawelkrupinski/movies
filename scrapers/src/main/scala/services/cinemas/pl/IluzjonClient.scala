@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.SlotsToMovies
 
 import services.cinemas.common.ScraperParse
@@ -7,7 +9,7 @@ import models._
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -26,7 +28,7 @@ import scala.jdk.CollectionConverters._
  * doesn't expose — runtime, director, countries, synopsis, original title.
  */
 class IluzjonClient(http: HttpFetch, today: => LocalDate
-) extends CinemaScraper with DetailEnricher {
+) extends SingleSiteScraper with DetailEnricher {
 
 
   val cinema: Cinema = KinoIluzjon
@@ -39,12 +41,9 @@ class IluzjonClient(http: HttpFetch, today: => LocalDate
   private case class RawSlot(filmId: String, title: String, dateTime: LocalDateTime, room: Option[String],
                              booking: Option[String], poster: Option[String], detailPath: String)
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
-  def fetch(): Seq[CinemaMovie] = fetchBare()
-
-  private def fetchBare(): Seq[CinemaMovie] = {
+  def fetch(): Seq[CinemaMovie] = {
     val document = Jsoup.parse(HttpRead.page(http, ListingUrl))
 
     // h3 date headers and screening rows in document order; fold to attach each
@@ -60,9 +59,6 @@ class IluzjonClient(http: HttpFetch, today: => LocalDate
         cinema    = cinema,
         posterUrl = primary.poster,
         filmUrl   = Some(primary.detailPath),
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }
@@ -103,13 +99,11 @@ class IluzjonClient(http: HttpFetch, today: => LocalDate
         val title   = m.group(3).trim
         val room    = Option(row.selectFirst("div.location")).map(_.text.trim.replaceAll("[()]", "").trim).filter(_.nonEmpty)
         val booking = Option(row.selectFirst("div.info-add a[href*=bilety.iluzjon]")).map(_.attr("href")).filter(_.nonEmpty)
-        val poster  = Option(row.selectFirst("div.image img[src]")).map(_.attr("src")).filter(_.nonEmpty).map(abs)
-        val detailP = if (href.startsWith("http")) href.takeWhile(_ != '?') else s"$BaseUrl/${href.stripPrefix("/").takeWhile(_ != '?')}"
+        val poster  = Option(row.selectFirst("div.image img[src]")).map(_.attr("src")).filter(_.nonEmpty).map(ScraperParse.onSite(BaseUrl))
+        val detailP = ScraperParse.onSite(BaseUrl)(href.takeWhile(_ != '?'))
         RawSlot(filmId, title, date.atTime(t), room, booking, poster, detailP)
       }
     }
-
-  private def abs(u: String): String = if (u.startsWith("http")) u else s"$BaseUrl/${u.stripPrefix("/")}"
 }
 
 object IluzjonClient {
@@ -132,22 +126,19 @@ object IluzjonClient {
   )
   object Detail { val empty: Detail = Detail(None, None, Seq.empty, Seq.empty, Seq.empty, None, None, None) }
 
-  private def dd(document: org.jsoup.nodes.Document, label: String): Option[String] =
-    ScraperParse.ddField(document, label)
-
   def parseDetail(html: String): Detail = {
     val document = Jsoup.parse(html)
     Detail(
-      runtimeMinutes = dd(document, "czas trwania").flatMap(ScraperParse.firstNumberIn),
-      year           = dd(document, "rok produkcji").flatMap(ScraperParse.firstFourDigitsIn),
-      countries      = dd(document, "kraj produkcji").toSeq.flatMap(ScraperParse.commaItems),
-      director       = dd(document, "reżyseria").toSeq.flatMap(ScraperParse.commaItems),
-      cast           = dd(document, "obsada").toSeq.flatMap(ScraperParse.commaItems),
-      originalTitle  = dd(document, "tytuł oryg"),
-      synopsis       = Option(document.selectFirst("h4:contains(Opis filmu) + div.content")).map(ScraperParse.blockText(_).trim)
-                         .orElse(Option(document.selectFirst("div.content p")).map(ScraperParse.blockText(_).trim)).filter(_.length > 20),
+      runtimeMinutes = ScraperParse.ddField(document, "czas trwania").flatMap(ScraperParse.firstNumberIn),
+      year           = ScraperParse.ddField(document, "rok produkcji").flatMap(ScraperParse.firstFourDigitsIn),
+      countries      = ScraperParse.ddItems(document, "kraj produkcji"),
+      director       = ScraperParse.ddItems(document, "reżyseria"),
+      cast           = ScraperParse.ddItems(document, "obsada"),
+      originalTitle  = ScraperParse.ddField(document, "tytuł oryg"),
+      synopsis       = Option(document.selectFirst("h4:contains(Opis filmu) + div.content")).map(SynopsisProse.blockText(_).trim)
+                         .orElse(Option(document.selectFirst("div.content p")).map(SynopsisProse.blockText(_).trim)).filter(_.length > 20),
       poster         = Option(document.selectFirst("div.plakat img[src]")).map(_.attr("src")).filter(_.nonEmpty)
-                         .map(u => if (u.startsWith("http")) u else s"https://www.iluzjon.fn.org.pl/${u.stripPrefix("/")}")
+                         .map(ScraperParse.onSite("https://www.iluzjon.fn.org.pl"))
     )
   }
 }

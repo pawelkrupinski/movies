@@ -8,7 +8,7 @@ import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ListingPages}
+import services.cinemas.common.{SingleSiteScraper, ListingPages}
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
@@ -33,7 +33,7 @@ import scala.util.Try
  * each field by label so a film missing a field (or a whole block) just yields
  * `None`/empty for it rather than dropping the film.
  */
-class TeatrZiemiRybnickiejClient(http: HttpFetch) extends CinemaScraper {
+class TeatrZiemiRybnickiejClient(http: HttpFetch) extends SingleSiteScraper {
 
   val cinema: Cinema = KinoTeatrZiemiRybnickiej
 
@@ -42,8 +42,7 @@ class TeatrZiemiRybnickiejClient(http: HttpFetch) extends CinemaScraper {
   // test FakeHttpFetch both go through it) rejects the raw brackets.
   private val ListingUrl = s"$BaseUrl/wydarzenia?type%5B%5D=film&month=default"
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = {
     val detailUrls = parseListing(HttpRead.page(http, ListingUrl))

@@ -152,9 +152,8 @@ class WebediaShowtimesClient(
       cinema      = cinema,
       ageRating   = raw.ageRating,
       posterUrl   = raw.posterUrl,
-      filmUrl     = None,   // no stable public film-page URL is derivable from the JSON
+      // no filmUrl: no stable public film-page URL is derivable from the JSON
       synopsis    = raw.synopsis,
-      cast        = Seq.empty,
       director    = raw.director,
       showtimes   = showtimes,
       externalIds = Map("webedia" -> raw.internalId.toString)

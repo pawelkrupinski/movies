@@ -176,9 +176,6 @@ private[cinemas] object SlotsToMovies {
         cinema    = cinema,
         posterUrl = group.flatMap(_.posterUrl).headOption,
         filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }
@@ -193,9 +190,6 @@ private[cinemas] object SlotsToMovies {
         cinema    = cinema,
         posterUrl = head.posterUrl,
         filmUrl   = Some(filmUrlOf(slug)),
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }
@@ -209,10 +203,7 @@ private[cinemas] object SlotsToMovies {
         movie     = Movie(title, runtimeMinutes = facts.flatMap(_.runtime).headOption, releaseYear = facts.flatMap(_.year).headOption,
                           countries = facts.map(_.countries).find(_.nonEmpty).getOrElse(Seq.empty)),
         cinema    = cinema,
-        posterUrl = None,
         filmUrl   = filmUrl,
-        synopsis  = None,
-        cast      = Seq.empty,
         director  = facts.map(_.directors).find(_.nonEmpty).getOrElse(Seq.empty),
         showtimes = showtimes
       )

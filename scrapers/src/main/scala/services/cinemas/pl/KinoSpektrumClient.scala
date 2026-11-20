@@ -47,9 +47,6 @@ class KinoSpektrumClient(http: HttpFetch, override val cinema: Cinema) extends L
         movie     = Movie(title, runtimeMinutes = group.flatMap(_.runtime).headOption),
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
         director  = group.map(_.director).find(_.nonEmpty).getOrElse(Seq.empty),
         showtimes = showtimes
       )

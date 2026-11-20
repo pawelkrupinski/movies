@@ -6,7 +6,7 @@ import services.cinemas.common.{ScraperParse, ListingPages}
 import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.SingleSiteScraper
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.concurrent.duration._
@@ -28,12 +28,11 @@ import scala.util.Try
  * empty for the venue.
  */
 class KinoJednoscClient(http: HttpFetch, override val cinema: Cinema = KinoJednosc)
-    extends CinemaScraper {
+    extends SingleSiteScraper {
 
   import KinoJednoscClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = {
     val films = parseListing(HttpRead.page(http, ListingUrl))
@@ -47,11 +46,7 @@ class KinoJednoscClient(http: HttpFetch, override val cinema: Cinema = KinoJedno
       Some(CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
-        posterUrl = None,
         filmUrl   = group.headOption.map(_._2),
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       ))
     }

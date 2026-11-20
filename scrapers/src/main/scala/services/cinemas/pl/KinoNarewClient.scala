@@ -53,40 +53,15 @@ object KinoNarewClient {
   // "godz. 17.00/2D/dubbing" — the hour/minute separator is a literal dot.
   private val GodzTime  = raw"""godz\.?\s*${ScraperParse.ClockPartsDotted}""".r
 
-  private case class RawSlot(
-    title:     String,
-    dateTime:  java.time.LocalDateTime,
-    format:    List[String],
-    runtime:   Option[Int],
-    countries: Seq[String],
-    year:      Option[Int],
-    genres:    Seq[String],
-    synopsis:  Option[String]
-  )
+  private case class RawSlot(movie: Movie, dateTime: java.time.LocalDateTime, format: List[String], synopsis: Option[String])
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
     val blocks = document.select("div.wp-block-group.is-content-justification-space-between").asScala.toSeq
     val slots = blocks.flatMap(parseFilm)
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, None, format = s.format)) { (title, group, showtimes) =>
-      val first = group.head
-      CinemaMovie(
-        movie     = Movie(
-          title          = title,
-          runtimeMinutes = first.runtime,
-          releaseYear    = first.year,
-          countries      = first.countries,
-          genres         = first.genres
-        ),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = first.synopsis,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
+    SlotsToMovies.fold(slots, _.movie.title, s => Showtime(s.dateTime, None, format = s.format)) { (_, group, showtimes) =>
+      CinemaMovie(movie = group.head.movie, cinema = cinema, synopsis = group.head.synopsis, showtimes = showtimes)
     }
   }
 
@@ -126,7 +101,7 @@ object KinoNarewClient {
         val synopsis = if (synopsisIndex >= 0) paragraphs.lift(synopsisIndex + 1).map(_.text.trim).filter(_.nonEmpty) else None
 
         ranges.flatMap { case (from, to) => ScraperParse.dailyRange(from, to, t) }
-          .map(dt => RawSlot(title, dt, format, runtime, countries, year, genres, synopsis))
+          .map(dt => RawSlot(Movie(title, runtime, year, countries = countries, genres = genres), dt, format, synopsis))
       case _ => Seq.empty
     }
   }

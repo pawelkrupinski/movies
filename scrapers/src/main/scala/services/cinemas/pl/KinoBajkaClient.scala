@@ -67,9 +67,6 @@ class KinoBajkaClient(http: HttpFetch, override val cinema: Cinema, titles: Titl
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
         filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

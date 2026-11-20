@@ -111,10 +111,6 @@ object IksorisBookingClient {
                           countries = head.countries, genres = head.genres),
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

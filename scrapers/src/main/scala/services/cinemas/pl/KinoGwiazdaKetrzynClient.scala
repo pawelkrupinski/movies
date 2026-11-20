@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import java.util.Locale
 import services.titles.FormatTags
 
@@ -110,7 +112,7 @@ object KinoGwiazdaKetrzynClient {
       posterUrl  = card.posterUrl,
       filmUrl    = Some(card.filmUrl),
       synopsis   = Option(document.selectFirst("section[aria-labelledby=description-heading] h2 + div"))
-        .map(ScraperParse.cleanSynopsis(_)).filter(_.nonEmpty),
+        .map(SynopsisProse.cleanSynopsis(_)).filter(_.nonEmpty),
       cast       = definition(document, "Obsada").toSeq
         .flatMap(dd => Credits.replaceAllIn(dd, "").split(",")).map(_.trim).filter(_.nonEmpty),
       director   = definition(document, "Rezyseria").toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty),

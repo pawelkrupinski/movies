@@ -111,11 +111,7 @@ object KinoKreskaClient {
       CinemaMovie(
         movie     = Movie(FormatTags.stripFormatTags(title)),
         cinema    = cinema,
-        posterUrl = None,
         filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

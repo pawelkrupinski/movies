@@ -68,11 +68,6 @@ object KinoEvaClient {
           rawTitle       = Option(head.rawTitle).filter(_ != title)
         ),
         cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes,
         ageRating = group.flatMap(_.age).headOption
       )
@@ -105,7 +100,6 @@ object KinoEvaClient {
 
   /** "1h 30min" → 90; "95min" → 95; anything without a number → None. */
   private def runtimeOf(text: String): Option[Int] =
-    Runtime.findAllMatchIn(text).find(m => m.group(1) != null || m.group(2) != null).map { m =>
-      Option(m.group(1)).map(_.toInt * 60).getOrElse(0) + Option(m.group(2)).map(_.toInt).getOrElse(0)
-    }
+    Runtime.findAllMatchIn(text).find(m => m.group(1) != null || m.group(2) != null)
+      .map(m => ScraperParse.minutesOf(m.group(1), m.group(2)))
 }

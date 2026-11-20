@@ -148,11 +148,6 @@ object CineamoClient {
                               originalTitle = same.flatMap(_.originalTitle).headOption,
                               releaseYearUpperBound = premiere.filter(_ => year.isEmpty).map(_.getYear)),
           cinema      = cinema,
-          posterUrl   = None,
-          filmUrl     = None,
-          synopsis    = None,
-          cast        = Nil,
-          director    = Nil,
           showtimes   = showtimes,
           externalIds = same.flatMap(_.catalogueId).headOption.map(CatalogueSource -> _).toMap,
           trailerUrl  = same.head.trailerUrl

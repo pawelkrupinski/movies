@@ -81,8 +81,6 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
         cinema    = cinema,
         posterUrl = c.poster,
         filmUrl   = Some(c.detailUrl),
-        synopsis  = None,
-        cast      = Seq.empty,
         director  = detail.director,
         showtimes = sorted
       ))

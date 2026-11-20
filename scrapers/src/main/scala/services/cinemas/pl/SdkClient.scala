@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.SlotsToMovies
 
 import java.util.Locale
@@ -8,7 +10,7 @@ import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, ListingPages}
+import services.cinemas.common.{SingleSiteScraper, ListingPages}
 
 import java.time.LocalDateTime
 import scala.concurrent.duration._
@@ -21,7 +23,7 @@ import scala.util.Try
  * date+time and poster, linking to an event page with the auditorium, biletyna
  * booking link, director / countries / year / runtime and synopsis.
  */
-class SdkClient(http: HttpFetch) extends CinemaScraper {
+class SdkClient(http: HttpFetch) extends SingleSiteScraper {
 
   val cinema: Cinema = SluzewskiDomKultury
 
@@ -32,8 +34,7 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
 
   private case class Item(title: String, dateTime: LocalDateTime, detailUrl: String, poster: Option[String])
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = {
     val items = listingPages().flatMap(parseListPage)
@@ -57,8 +58,7 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
         posterUrl = primary.poster,
         filmUrl   = Some(primary.detailUrl),
         synopsis  = d.flatMap(x => Option(x.selectFirst("div.item-fulltext")).orElse(Option(x.selectFirst("div.com-content-article__body"))))
-                      .map(ScraperParse.blockText(_).trim).filter(_.length > 20),
-        cast      = Seq.empty,
+                      .map(SynopsisProse.blockText(_).trim).filter(_.length > 20),
         director  = d.toSeq.flatMap(metaLi(_, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))),
         showtimes = showtimes
       )
@@ -85,20 +85,18 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
   }
 
   private def parseListPage(html: String): Seq[Item] =
-    Jsoup.parse(html).select("div.item-content").asScala.toSeq.flatMap { element =>
-      val link = Option(element.selectFirst("a[href*=/wydarzenia/rodzaj-wydarzenia/kino/]"))
-      link.flatMap { a =>
-        val title = a.attr("title").trim.replaceFirst("(?i)\\s*/\\s*(kino|film|z cyklu).*$", "").replaceAll("[„”\"“]", "").trim
-        val dt    = DateTimePat.findFirstMatchIn(element.text).flatMap { m =>
-          ScraperParse.parseDate(m.group(1)).flatMap(d => ScraperParse.clockAt(m, 2).map(d.atTime))
-        }
-        val poster = Option(element.selectFirst("figure.item-image img[src]")).map(_.attr("src")).filter(_.nonEmpty)
-                       .map(u => if (u.startsWith("http")) u else s"$BaseUrl/${u.stripPrefix("/")}")
-        for { t <- Option(title).filter(_.nonEmpty); d <- dt } yield {
-          val href = a.attr("href")
-          Item(t, d, if (href.startsWith("http")) href else s"$BaseUrl/${href.stripPrefix("/")}", poster)
-        }
-      }
+    for {
+      element <- Jsoup.parse(html).select("div.item-content").asScala.toSeq
+      a       <- Option(element.selectFirst("a[href*=/wydarzenia/rodzaj-wydarzenia/kino/]"))
+      title   <- Some(a.attr("title").trim.replaceFirst("(?i)\\s*/\\s*(kino|film|z cyklu).*$", "").replaceAll("[„”\"“]", "").trim)
+                   .filter(_.nonEmpty)
+      m       <- DateTimePat.findFirstMatchIn(element.text)
+      day     <- ScraperParse.parseDate(m.group(1))
+      time    <- ScraperParse.clockAt(m, 2)
+    } yield {
+      val poster = Option(element.selectFirst("figure.item-image img[src]")).map(_.attr("src")).filter(_.nonEmpty)
+        .map(ScraperParse.onSite(BaseUrl))
+      Item(title, day.atTime(time), ScraperParse.onSite(BaseUrl)(a.attr("href")), poster)
     }
 
   private def booking(document: org.jsoup.nodes.Document): Option[String] =

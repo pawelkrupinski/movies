@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.SlotsToMovies
 
 import java.util.Locale
@@ -8,7 +10,7 @@ import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
-import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.titles.TitleNormalizer
 
 import java.time.LocalDateTime
@@ -32,7 +34,7 @@ import scala.jdk.CollectionConverters._
  * these to exactly the old whole-scrape output.
  */
 class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
-) extends ChunkedCinemaScraper with DetailEnricher {
+) extends ChunkedCinemaScraper with SingleSiteScraper with DetailEnricher {
 
 
   val cinema: Cinema = Kinoteka
@@ -45,8 +47,7 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
   private case class RawSlot(slug: String, title: String, genres: Seq[String], dateTime: LocalDateTime,
                              booking: Option[String], poster: Option[String])
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   /** The date nav off the listing page = one chunk per day. A failed fetch here
    *  fails the whole scrape (recorded as a normal outcome), as before. */
@@ -76,9 +77,6 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
         filmUrl   = if (slug.nonEmpty) Some(s"$BaseUrl/film/$slug/") else None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes,
         trailerUrl = None
       )
@@ -124,22 +122,17 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
 
   private def parsePage(html: String): Seq[RawSlot] =
     Jsoup.parse(html).select("article.e-movie").asScala.toSeq.flatMap { art =>
-      val link = Option(art.selectFirst("h3.e-movie__heading a[href]"))
-      val slug = link.flatMap(a => SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1)))
-      val title = link.map(_.text.trim).filter(_.nonEmpty)
-      (slug, title) match {
-        case (Some(s), Some(t)) =>
-          val genres = Option(art.selectFirst("p.e-movie__category")).map(_.text.trim).filter(_.nonEmpty)
-                         .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)).map(tools.TextNormalization.titleCaseIfAllLower)
-          art.select("a[data-hour][data-day]").asScala.toSeq.flatMap { a =>
-            val day  = a.attr("data-day"); val hour = a.attr("data-hour")
-            KinotekaClient.parseDateTime(day, hour).map { dt =>
-              val booking = Seq("data-buy-link", "href").map(a.attr).find(v => v.nonEmpty && v != "#")
-              val poster  = Option(a.attr("data-poster-link")).filter(_.nonEmpty)
-              RawSlot(s, t, genres, dt, booking, poster)
-            }
-          }
-        case _ => Seq.empty
+      val genres = Option(art.selectFirst("p.e-movie__category")).toSeq.flatMap(c => ScraperParse.commaItems(c.text))
+        .map(tools.TextNormalization.titleCaseIfAllLower)
+      for {
+        link  <- Option(art.selectFirst("h3.e-movie__heading a[href]")).toSeq
+        slug  <- SlugPat.findFirstMatchIn(link.attr("href")).map(_.group(1)).toSeq
+        title <- Some(link.text.trim).filter(_.nonEmpty).toSeq
+        a     <- art.select("a[data-hour][data-day]").asScala.toSeq
+        dt    <- KinotekaClient.parseDateTime(a.attr("data-day"), a.attr("data-hour"))
+      } yield {
+        val booking = Seq("data-buy-link", "href").map(a.attr).find(v => v.nonEmpty && v != "#")
+        RawSlot(slug, title, genres, dt, booking, poster = Option(a.attr("data-poster-link")).filter(_.nonEmpty))
       }
     }
 }
@@ -159,8 +152,13 @@ object KinotekaClient {
                           synopsis: Option[String], poster: Option[String], trailer: Option[String],
                           heading: Option[String], ageRating: Option[String])
 
+  private val FactsLabels = "dl.p-movie-details__general-info dt"
+
   private def dd(document: org.jsoup.nodes.Document, label: String): Option[String] =
-    ScraperParse.ddField(document, label, "dl.p-movie-details__general-info dt")
+    ScraperParse.ddField(document, label, FactsLabels)
+
+  private def ddItems(document: org.jsoup.nodes.Document, label: String): Seq[String] =
+    ScraperParse.ddItems(document, label, FactsLabels)
 
   def parseDetail(html: String): Detail = {
     val document = Jsoup.parse(html)
@@ -171,9 +169,9 @@ object KinotekaClient {
       runtime       = dd(document, "czas trwania filmu").flatMap(ScraperParse.firstNumberIn),
       year          = dd(document, "data premiery").flatMap(ScraperParse.firstFourDigitsIn),
       originalTitle = dd(document, "oryginalny tytuł").filter(_.nonEmpty),
-      countries     = dd(document, "kraj produkcji").toSeq.flatMap(ScraperParse.commaItems),
-      director      = dd(document, "reżyseria").toSeq.flatMap(ScraperParse.commaItems),
-      cast          = dd(document, "obsada").toSeq.flatMap(ScraperParse.commaItems),
+      countries     = ddItems(document, "kraj produkcji"),
+      director      = ddItems(document, "reżyseria"),
+      cast          = ddItems(document, "obsada"),
       // Event pages append an agenda ("Harmonogram wydarzenia: godz. 18:00 –
       // …") plus a partner/sponsor list as trailing <p>s of the body. When such
       // an agenda heading is present, keep only the prose paragraphs before it.
@@ -181,7 +179,7 @@ object KinotekaClient {
                         val ps = body.select("p").asScala.toSeq
                         if (ps.exists(_.text.trim.toLowerCase(Locale.ROOT).startsWith("harmonogram")))
                           ps.map(_.text.trim).takeWhile(!_.toLowerCase(Locale.ROOT).startsWith("harmonogram")).filter(_.nonEmpty).mkString("\n\n")
-                        else ScraperParse.blockText(body).trim
+                        else SynopsisProse.blockText(body).trim
                       }.map(_.trim).filter(_.length > 20)
                         .orElse(Option(document.selectFirst("meta[property=og:description]")).map(_.attr("content").trim)).filter(_.length > 20),
       // The hero poster is a `<picture class="p-movie-details__hero-poster">`

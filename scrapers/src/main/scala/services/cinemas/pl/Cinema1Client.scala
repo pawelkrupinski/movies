@@ -74,7 +74,6 @@ class Cinema1Client(
           movie     = Movie(m.title, m.runtimeMinutes, m.releaseYear, countries = m.countries, genres = m.genres),
           cinema    = cinema,
           posterUrl = m.posters.headOption,
-          filmUrl   = None,
           synopsis  = m.synopsis,
           cast      = m.cast,
           director  = m.director,

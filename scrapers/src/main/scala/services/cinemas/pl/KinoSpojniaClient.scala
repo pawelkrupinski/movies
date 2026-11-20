@@ -119,11 +119,7 @@ object KinoSpojniaClient {
           genres         = metas.map(_.genres).find(_.nonEmpty).getOrElse(Seq.empty)
         ),
         cinema    = cinema,
-        posterUrl = None,
         filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

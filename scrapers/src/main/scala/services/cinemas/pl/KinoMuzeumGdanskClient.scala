@@ -5,7 +5,7 @@ import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies, ListingPages}
+import services.cinemas.common.{SingleSiteScraper, OnlyMovieEventsFilter, SlotsToMovies, ListingPages}
 
 import java.time.{Instant, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -32,12 +32,11 @@ import scala.util.Try
  * `/repertuar` page is films only — non-film museum events live on a separate
  * `/wydarzenia` listing.
  */
-class KinoMuzeumGdanskClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper with OnlyMovieEventsFilter {
+class KinoMuzeumGdanskClient(http: HttpFetch, override val cinema: Cinema) extends SingleSiteScraper with OnlyMovieEventsFilter {
 
   import KinoMuzeumGdanskClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     val base     = HttpRead.page(http, RepertoireUrl)
@@ -89,31 +88,28 @@ object KinoMuzeumGdanskClient {
    *  with no year, so we pair the page's already-known `date` with the
    *  `screening-meta-hour` instead of re-parsing the displayed date. */
   private[cinemas] def parseDay(html: String, date: java.time.LocalDate): Seq[RawSlot] =
-    Jsoup.parse(html).select("li.screening-it-wrapper").asScala.toSeq.flatMap { li =>
-      val title = text(li, "div.attr-value-title")
-      val hour  = text(li, "span.screening-meta-hour").flatMap(ScraperParse.parseHHmm)
-      (title, hour) match {
-        case (Some(t), Some(h)) =>
-          val booking = Option(li.selectFirst("a.item-tickets[href]")).map(_.attr("href")).filter(_.nonEmpty)
-          val poster  = Option(li.selectFirst("div.item-image-thumb img[src]")).map(_.attr("src")).filter(_.nonEmpty)
-                          .map(u => if (u.startsWith("http")) u else BaseUrl + u)
-          val filmUrl = Option(li.selectFirst("a.h-underline[href]")).map(_.attr("href")).filter(_.nonEmpty)
-                          .map(u => if (u.startsWith("http")) u else BaseUrl + u)
-          Some(RawSlot(
-            title     = t,
-            dateTime  = h.atDate(date),
-            booking   = booking,
-            poster    = poster,
-            countries = splitField(text(li, "span.movie-meta-country").map(stripLabel("Kraj"))),
-            genres    = splitField(text(li, "span.movie-meta-categories")).map(tools.TextNormalization.titleCaseIfAllLower),
-            director  = splitField(text(li, "span.movie-meta-director").map(stripDirectorLabel)),
-            runtime   = text(li, "span.movie-meta-duration").flatMap(parseRuntime),
-            year      = text(li, "span.movie-meta-year").flatMap(parseYear),
-            filmUrl   = filmUrl
-          ))
-        case _ => Seq.empty
-      }
-    }
+    for {
+      li <- Jsoup.parse(html).select("li.screening-it-wrapper").asScala.toSeq
+      t  <- text(li, "div.attr-value-title")
+      h  <- text(li, "span.screening-meta-hour").flatMap(ScraperParse.parseHHmm)
+    } yield RawSlot(
+      title     = t,
+      dateTime  = h.atDate(date),
+      booking   = attribute(li, "a.item-tickets[href]", "href"),
+      poster    = attribute(li, "div.item-image-thumb img[src]", "src").map(onSite),
+      countries = splitField(text(li, "span.movie-meta-country").map(stripLabel("Kraj"))),
+      genres    = splitField(text(li, "span.movie-meta-categories")).map(tools.TextNormalization.titleCaseIfAllLower),
+      director  = splitField(text(li, "span.movie-meta-director").map(stripDirectorLabel)),
+      runtime   = text(li, "span.movie-meta-duration").flatMap(parseRuntime),
+      year      = text(li, "span.movie-meta-year").flatMap(parseYear),
+      filmUrl   = attribute(li, "a.h-underline[href]", "href").map(onSite)
+    )
+
+  /** The non-empty `name` attribute of the first element under `li` that `selector` matches. */
+  private def attribute(li: Element, selector: String, name: String): Option[String] =
+    Option(li.selectFirst(selector)).map(_.attr(name)).filter(_.nonEmpty)
+
+  private def onSite(url: String): String = if (url.startsWith("http")) url else BaseUrl + url
 
   /** One `CinemaMovie` per film title; showtimes deduped by (dateTime, booking)
    *  and sorted. Shares the listing metadata captured off the first slot. */
@@ -131,8 +127,6 @@ object KinoMuzeumGdanskClient {
         cinema    = cinema,
         posterUrl = rows.flatMap(_.poster).headOption,
         filmUrl   = rows.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
         director  = primary.director,
         showtimes = showtimes
       )

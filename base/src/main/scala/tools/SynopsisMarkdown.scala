@@ -2,7 +2,7 @@ package tools
 
 /**
  * The film synopsis carries a tiny, fixed markdown subset — `**bold**` and
- * `*italic*` (plus `***bold+italic***`) — emitted by `ScraperParse.blockText`
+ * `*italic*` (plus `***bold+italic***`) — emitted by `SynopsisProse.blockText`
  * from the cinema pages' `<b>`/`<strong>`/`<i>`/`<em>` tags, alongside the
  * `\n`/`\n\n` paragraph breaks. This is the single place that understands that
  * subset, so the web renderer and the plain-text consumers can't drift:
@@ -59,7 +59,7 @@ object SynopsisMarkdown {
 
   /** Normalise a synopsis to clean, well-formed markdown — applied once at the
    *  read boundary ([[models.MovieRecord.synopsis]]) so EVERY source path is
-   *  guaranteed valid, whether the markers came from `ScraperParse.blockText`,
+   *  guaranteed valid, whether the markers came from `SynopsisProse.blockText`,
    *  a cinema JSON `description` that already held `**`, or anything else.
    *
    *  First [[collapseRepeats]] a CMS-duplicated blurb back to one copy, then keep

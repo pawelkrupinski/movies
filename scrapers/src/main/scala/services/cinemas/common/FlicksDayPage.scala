@@ -10,7 +10,7 @@ import scala.jdk.CollectionConverters._
 
 /** One day's sessions fragment of a Flicks venue (`<market base>/cinema/sessions/<slug>/<YYYY-MM-DD>/`, see
  *  [[FlicksClient]]) read into its session slots: a `cinema-times__article` card per film, its sessions under it. */
-object FlicksDayPage {
+object FlicksDayPage extends SlimmedPage {
 
   private[common] val SlugPat    = """/movie/([^/?#]+)""".r
   private val DigitsPat  = """(\d+)""".r
@@ -42,23 +42,11 @@ object FlicksDayPage {
   private def commaList(value: String): List[String] =
     value.split(",").iterator.map(_.trim).filter(_.nonEmpty).toList
 
-  /** One session slot off the fragment: the film's slug (stable id) + title +
-   *  metadata (constant across a film's sessions) and the single screening. */
-  case class RawFlicksSlot(
-    slug:           String,
-    title:          String,
-    runtimeMinutes: Option[Int],
-    posterUrl:      Option[String],
-    directors:      Seq[String],
-    contentId:      Option[String],
-    cast:           Seq[String],
-    genres:         Seq[String],
-    trailerUrl:     Option[String],
-    ageRating:      Option[String],
-    dateTime:       LocalDateTime,
-    booking:        Option[String],
-    format:         List[String]
-  )
+  /** One session slot off the fragment: the film's card (its slug, a stable id, title and metadata, constant across
+   *  a film's sessions) and the single screening. */
+  final case class RawFlicksSlot(card: FilmCard, dateTime: LocalDateTime, booking: Option[String], format: List[String]) {
+    export card.*
+  }
 
   /** Parse one day's sessions fragment for the given calendar date. Pure +
    *  public so the spec feeds it the recorded HTML directly. */
@@ -72,13 +60,9 @@ object FlicksDayPage {
     }
 
   /** What a film card states once for all its sessions. */
-  private final case class FilmCard(slug: String, title: String, runtimeMinutes: Option[Int], posterUrl: Option[String],
-                                    directors: Seq[String], contentId: Option[String], cast: Seq[String],
-                                    genres: Seq[String], trailerUrl: Option[String], ageRating: Option[String]) {
-    def slot(dateTime: LocalDateTime, booking: Option[String], format: List[String]): RawFlicksSlot =
-      RawFlicksSlot(slug, title, runtimeMinutes, posterUrl, directors, contentId, cast, genres, trailerUrl, ageRating,
-        dateTime, booking, format)
-  }
+  final case class FilmCard(slug: String, title: String, runtimeMinutes: Option[Int], posterUrl: Option[String],
+                            directors: Seq[String], contentId: Option[String], cast: Seq[String],
+                            genres: Seq[String], trailerUrl: Option[String], ageRating: Option[String])
 
   private def filmCardOf(article: Element, market: FlicksMarket): Option[FilmCard] =
     for {
@@ -127,24 +111,14 @@ object FlicksDayPage {
         // screening is still a screening.
         val booking = button.map(_.attr("href")).filter(_.nonEmpty)
         val label   = Option(li.selectFirst("span.times-calendar-times__el__label span")).map(_.text.trim).filter(_.nonEmpty)
-        card.slot(LocalDateTime.of(date, time), booking, label.toList)
+        RawFlicksSlot(card, LocalDateTime.of(date, time), booking, label.toList)
       }
     }
 
-  /** `html` without what [[parseDay]] never reads, so the parser does not tokenise it: every
-   *  `data-eventjson` of a film card after its first non-empty one (each session button carries
-   *  the same blob, entity-escaped — a third of a busy venue's day), and inline `<svg>` icons
-   *  (a fifth). Parsing was 7% of a US worker's CPU (JFR, 2026-10-01). Streamed to the parser
-   *  as kept ranges of `html`: building the slimmed string cost a third of what it saved. */
-  private[common] def slimmedReader(html: String): java.io.Reader = new RangesReader(html, keptRanges(html))
-
-  /** [[slimmedReader]]'s text as a string — for the spec. */
-  private[common] def slimmed(html: String): String = {
-    val out = new java.io.StringWriter(html.length); slimmedReader(html).transferTo(out); out.toString
-  }
-
-  /** The `[from, until)` ranges of `html` the parse keeps, in order, flattened. */
-  private def keptRanges(html: String): Array[Int] = new KeptRanges(html).result()
+  /** The ranges of `html` [[parseDay]] reads, in order, flattened: without every `data-eventjson` of a film card after
+   *  its first non-empty one (each session button carries the same blob, entity-escaped — a third of a busy venue's
+   *  day), and inline `<svg>` icons (a fifth). Parsing was 7% of a US worker's CPU (JFR, 2026-10-01). */
+  protected def keptRanges(html: String): Array[Int] = new KeptRanges(html).result()
 
   /** One pass over `html` for [[keptRanges]]: the next `<article`, `<svg` and `data-eventjson` ahead, and what is kept
    *  up to the nearest. */

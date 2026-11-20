@@ -5,7 +5,7 @@ import org.jsoup.nodes.{Document, Element}
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapedSlot, SlotsToMovies}
+import services.cinemas.common.{ChunkedCinemaScraper, SingleSiteScraper, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -45,12 +45,11 @@ class KinoMoskwaClient(
   http:             HttpFetch,
   override val cinema: Cinema = KinoMoskwa,
   today:            => LocalDate
-) extends ChunkedCinemaScraper {
+) extends ChunkedCinemaScraper with SingleSiteScraper {
 
   import KinoMoskwaClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   /** The mini-calendar on today's page lists the event-days (today inclusive) =
    *  one chunk per day. Fetching today's page here is the nav fetch. */

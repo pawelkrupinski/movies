@@ -76,16 +76,17 @@ class BiletynaNationalFeed(http: HttpFetch, halls: Set[BiletynaPlacePage], loadO
     // than `ipp` asked — a clamp — the FIRST page is already short, and stopping there kept a
     // slice of the country as the whole of it. So a short first page is checked against the
     // second: anything there means the server's own page size is the first page's.
-    val first    = records(1)
-    val second   = Option.when(first.size < PageSize && first.nonEmpty)(records(2))
-    val pageSize = if (second.exists(_.nonEmpty)) first.size else PageSize
+    val first           = records(1)
+    lazy val secondPage = records(2)
+    val pageSize        = if (first.size < PageSize && first.nonEmpty && secondPage.nonEmpty) first.size else PageSize
+    def recordsOn(feedPage: Int) = if (feedPage == 2) secondPage else records(feedPage)
     @annotation.tailrec
     def fetchFrom(feedPage: Int, page: Seq[JsValue], acc: Vector[(HallPath, JsValue)]): Vector[(HallPath, JsValue)] = {
       val merged = acc ++ ours(page)
       if (page.size < pageSize) merged
       else if (feedPage >= MaxPages)
         throw new IllegalStateException(s"biletyna's national event feed did not end after $MaxPages pages of $pageSize")
-      else fetchFrom(feedPage + 1, if (feedPage == 1) second.getOrElse(records(2)) else records(feedPage + 1), merged)
+      else fetchFrom(feedPage + 1, recordsOn(feedPage + 1), merged)
     }
     fetchFrom(1, first, Vector.empty).groupMap(_._1)(_._2)
   }

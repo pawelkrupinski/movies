@@ -44,11 +44,7 @@ class KinoCentrumCswClient(
       CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
-        posterUrl = None,
         filmUrl   = Some(s"$BaseUrl${group.head.href}"),
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

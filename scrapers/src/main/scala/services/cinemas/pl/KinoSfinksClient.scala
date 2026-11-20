@@ -105,13 +105,9 @@ class KinoSfinksClient(http: HttpFetch, override val cinema: Cinema
       CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
-        posterUrl = None,
         // The earliest screening's detail page — the metadata is film-level, so
         // any one screening's page serves; pick deterministically.
         filmUrl   = group.sortBy(_.dateTime).flatMap(_.detailUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

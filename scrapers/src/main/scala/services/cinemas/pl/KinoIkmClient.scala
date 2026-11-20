@@ -53,8 +53,6 @@ class KinoIkmClient(
         cinema    = cinema,
         posterUrl = group.flatMap(_.filmUrl).flatMap(posters.get).headOption,
         filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
         director  = group.flatMap(_.directors).distinct,
         showtimes = showtimes
       )

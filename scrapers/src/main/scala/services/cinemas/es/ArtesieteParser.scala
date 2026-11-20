@@ -64,7 +64,6 @@ object ArtesieteParser {
       filmUrl     = Some(s"$baseUrl/FilmPage/$id/${segment(title)}"),
       synopsis    = field(first, "Sinopsis"),
       cast        = field(first, "Interpretes").toSeq.flatMap(ScraperParse.commaItems),
-      director    = Nil,
       showtimes   = showtimes,
       externalIds = Map("artesiete" -> id),
       trailerUrl  = field(first, "Video"),

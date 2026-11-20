@@ -79,10 +79,7 @@ object MitchellTheatresClient {
         movie     = Movie(title = block.attr("data-title").trim, runtimeMinutes = runtimeOf(block)),
         cinema    = cinema,
         posterUrl = Option(block.selectFirst("img.moviePoster")).flatMap(ScraperParse.imageUrl(_)),
-        filmUrl   = None,
         synopsis  = labelled(block, "Plot Summary:"),
-        cast      = Nil,
-        director  = Nil,
         showtimes = showtimes,
         trailerUrl = Option(block.selectFirst(".reveal-modal a[href*=youtube.com/watch]")).map(_.absUrl("href")).filter(_.nonEmpty),
         ageRating = Option(block.selectFirst("td.movietitle img.ratings")).map(_.attr("title").stripPrefix("MPAA Rating:").trim)

@@ -4,7 +4,7 @@ import services.cinemas.common.ScraperParse
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 import models._
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{ScrapedSlot, SingleSiteScraper, SlotsToMovies}
 
 import java.time.LocalDateTime
 
@@ -17,31 +17,16 @@ import java.time.LocalDateTime
  * `[]` → zero showtimes on /uptime).
  */
 class KinoDianaClient(http: HttpFetch, override val cinema: Cinema = KinoDiana)
-    extends CinemaScraper {
+    extends SingleSiteScraper {
 
   import KinoDianaClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   // The feed IS the listing: a failed fetch fails the scrape (red), not an empty one.
   def fetch(): Seq[CinemaMovie] =
-    SlotsToMovies.fold(
-      parseFeed(HttpRead.page(http, FeedUrl)),
-      keyOf      = _._1,
-      showtimeOf = { case (_, dt, booking) => Showtime(dt, booking) }
-    ) { (title, _, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(parseFeed(HttpRead.page(http, FeedUrl)).map { case (title, dateTime, booking) => ScrapedSlot(title, dateTime, booking) },
+      cinema)
 }
 
 object KinoDianaClient {

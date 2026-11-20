@@ -134,9 +134,6 @@ class FilmwebShowtimesClient(
         cinema      = cinema,
         posterUrl   = info.flatMap(_.posterUrl),
         filmUrl     = Some(filmPageUrl(filmId)),
-        synopsis    = None,
-        cast        = Seq.empty,
-        director    = Seq.empty,
         showtimes   = showtimes,
         externalIds = Map("filmweb" -> filmId.toString)
       )

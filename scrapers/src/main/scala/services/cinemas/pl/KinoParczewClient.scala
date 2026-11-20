@@ -84,7 +84,6 @@ object KinoParczewClient {
         posterUrl = Option(document.selectFirst("img[itemprop=image]")).flatMap(ScraperParse.imageUrl(_)),
         filmUrl   = Some(url),
         synopsis  = synopsisOf(document),
-        cast      = Seq.empty,
         // A name has a letter in it: the site fills an unknown director with a ".." placeholder.
         director  = fields.get("reżyseria").map(_.text.split(",").toSeq.map(_.trim).filter(_.exists(_.isLetter)))
                       .getOrElse(Seq.empty),

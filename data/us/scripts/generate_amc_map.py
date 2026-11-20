@@ -3,7 +3,7 @@
 
 Emits two files, both checked in:
   docs/venue-maps/AMC-VENUE-MAP.tsv                       (the table + provenance)
-  scrapers/src/main/scala/services/cinemas/us/AmcVenueMap.scala   (what the catalogue reads)
+  geodata/src/main/resources/generated/us-amc-venues.tsv  (what the catalogue reads, through AmcVenueMap)
 
 WHY A JOIN AND NOT A RULE. Our US roster (data/us/venues.json, harvested from
 flicks.us) and AMC's own roster disagree on venue NAMES in ~30% of cases: flicks
@@ -35,7 +35,9 @@ import time
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
+sys.path.insert(0, os.path.join(ROOT, "data", "scripts"))
 from vault_env import ensure_vault_env  # noqa: E402 -- found via the path set just above
+from generated_tables import write_table  # noqa: E402
 GRAPH = "https://graph.amctheatres.com/"
 
 # A row is kept only when the join is one of these, in order. Anything else is
@@ -163,32 +165,8 @@ def main():
     tsv_path = os.path.join(ROOT, "docs", "venue-maps", "AMC-VENUE-MAP.tsv")
     open(tsv_path, "w").write("\n".join(lines) + "\n")
 
-    scala = [
-        "package services.cinemas.us", "", "/**",
-        " * Our US venues that AMC serves from its OWN origin, mapped to the two slugs its",
-        " * public URL and GraphQL are addressed by: the market its theatre page sits under",
-        " * and the theatre itself (`/movie-theatres/<market>/<theatre>`).", " *",
-        " * GENERATED — see `docs/venue-maps/AMC-VENUE-MAP.tsv` for the same table with the",
-        " * provenance columns, and `data/us/scripts/generate_amc_map.py` for the join. It is",
-        " * built from AMC's OWN roster (`viewer.theatres`, %d theatres) matched to" % len(roster),
-        " * `data/us/venues.json` by coordinates, and a row exists only where that join was",
-        " * verified — %d of our %d AMC venues. The %d that did not match are absent" % (len(rows), len(venues), len(unmatched)),
-        " * from AMC's current roster (closed or sold sites the aggregator still lists) and",
-        " * stay on flicks.us, which is why this is a lookup rather than a rule: a venue with",
-        " * no row simply keeps its aggregator scraper.", " *",
-        " * Keyed by the venue's flicks.us slug rather than its `Cinema`, because that slug is",
-        " * the stable identifier `UsRoster` already carries per venue",
-        " * (`UsRoster.flicksSlugByCinema`) — keying by `Cinema` would mean materialising %d" % len(rows),
-        " * roster lookups here just to invert them again in the catalogue.", " */",
-        "object AmcVenueMap {",
-        "  /** flicks.us venue slug -> (AMC market slug, AMC theatre slug). */",
-        "  val byFlicksSlug: Map[String, (String, String)] = Map(",
-    ]
-    for slug, m in rows:
-        scala.append(f'    "{slug}" -> ("{m["theatre"]["marketSlug"]}", "{m["theatre"]["slug"]}"),')
-    scala += ["  )", "}", ""]
-    open(os.path.join(ROOT, "worker", "src", "main", "scala", "services", "cinemas", "us",
-                      "AmcVenueMap.scala"), "w").write("\n".join(scala))
+    write_table(os.path.join(ROOT, "geodata", "src", "main", "resources", "generated", "us-amc-venues.tsv"),
+                [[slug, m["theatre"]["marketSlug"], m["theatre"]["slug"]] for slug, m in rows])
 
     print(f"wrote {len(rows)} rows; {len(unmatched)} unmatched")
     for v in unmatched:

@@ -116,11 +116,7 @@ object IksorisCalendarClient {
       CinemaMovie(
         movie     = Movie(title, rawTitle = Some(group.head.rawTitle).filter(_ != title)),
         cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
         synopsis  = group.flatMap(_.synopsis).headOption,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

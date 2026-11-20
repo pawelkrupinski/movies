@@ -154,8 +154,6 @@ object ArsenalBerlinClient {
           cinema    = cinema,
           posterUrl = byTime.flatMap(_.posterUrl).headOption,
           filmUrl   = byTime.flatMap(_.pageUrl).headOption,
-          synopsis  = None,
-          cast      = Nil,
           director  = byTime.map(_.director).find(_.nonEmpty).getOrElse(Nil),
           showtimes = showtimes
         )

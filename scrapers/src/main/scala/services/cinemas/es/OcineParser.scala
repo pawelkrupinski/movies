@@ -83,7 +83,6 @@ object OcineParser {
         // The payload's `poster` is the JPEG itself, base64-inlined (~30KB per
         // film), not a URL — there is nothing linkable to store. TMDB supplies
         // the poster downstream.
-        posterUrl   = None,
         filmUrl     = Some(s"$baseUrl/#/DetallPelicula/$id"),
         synopsis    = field(root, "sinopsis"),
         cast        = Seq("actor1", "actor2", "actriu1", "actriu2").flatMap(field(root, _)),

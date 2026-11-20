@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import java.util.Locale
 import services.titles.FormatTags
 
@@ -87,11 +89,7 @@ object KinoRemusClient {
       CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
-        posterUrl = None,
         filmUrl   = pages.get(titleKey(title)),
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }
@@ -128,8 +126,8 @@ object KinoRemusClient {
    *  (title/genre/age/version, runtime, and on event-style pages the date and
    *  the `godz. … cena biletu` line) and the closing "Bilety do nabycia" note. */
   private def synopsisOf(content: Element): String =
-    ScraperParse.cleanSynopsisWithout(content) { p =>
+    SynopsisProse.cleanSynopsisWithout(content) { p =>
       val own = p.text.trim
-      own.isEmpty || own.startsWith("Bilety do nabycia") || ScraperParse.isAllBold(p)
+      own.isEmpty || own.startsWith("Bilety do nabycia") || SynopsisProse.isAllBold(p)
     }
 }

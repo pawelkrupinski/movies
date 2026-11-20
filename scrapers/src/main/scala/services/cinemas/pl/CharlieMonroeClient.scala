@@ -9,7 +9,7 @@ import tools.{HttpFetch, ParallelDetailFetch, HttpRead}
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ScraperParse}
 
 import java.time.{LocalDateTime, ZonedDateTime}
 import scala.concurrent.duration._
@@ -42,15 +42,15 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
     if (urls.isEmpty) movies
     else {
       val details = fetchDetails(urls)
-      movies.map { m =>
-        val d = m.filmUrl.flatMap(details.get).getOrElse(DetailFacts.empty)
-        val withCountries =
-          if (d.countries.isEmpty) m else m.copy(movie = m.movie.copy(countries = d.countries))
-        if (d.director.isEmpty || withCountries.director.nonEmpty) withCountries
-        else withCountries.copy(director = d.director)
-      }
+      movies.map(m => withFacts(m, m.filmUrl.flatMap(details.get).getOrElse(DetailFacts.empty)))
     }
   }
+
+  /** The film page's countries over the listing's, its directors where the listing names none. */
+  private def withFacts(movie: CinemaMovie, facts: DetailFacts): CinemaMovie =
+    movie.copy(
+      movie    = if (facts.countries.isEmpty) movie.movie else movie.movie.copy(countries = facts.countries),
+      director = if (movie.director.isEmpty) facts.director else movie.director)
 
   private def fetchDetails(urls: Seq[String]): Map[String, DetailFacts] =
     ParallelDetailFetch("charlie-monroe-detail", urls, 1.minute)(fetchDetailFactsFor)
@@ -123,8 +123,6 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
           posterUrl = details.posterUrl.orElse(sorted.flatMap(_.posterUrl).headOption),
           filmUrl   = details.filmUrl,
           synopsis  = details.synopsis,
-          cast      = Seq.empty,
-          director  = Seq.empty,
           showtimes = showtimes
         )
     }
@@ -159,10 +157,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
   )
 
   private def parseDuration(iso: String): Option[Int] =
-    """PT(?:(\d+)H)?(?:(\d+)M)?""".r.findFirstMatchIn(iso).map { m =>
-      Option(m.group(1)).map(_.toInt * 60).getOrElse(0) +
-      Option(m.group(2)).map(_.toInt).getOrElse(0)
-    }.filter(_ > 0)
+    """PT(?:(\d+)H)?(?:(\d+)M)?""".r.findFirstMatchIn(iso).map(m => ScraperParse.minutesOf(m.group(1), m.group(2))).filter(_ > 0)
 
   private def parseScreeningEvent(json: JsValue): Option[ScreeningEntry] =
     Try {

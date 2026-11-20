@@ -5,7 +5,7 @@ import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
 
 
 /**
@@ -52,25 +52,9 @@ object KinoAurumClient {
         date  <- (fields \ "data" \ "stringValue").asOpt[String]
         time  <- (fields \ "godzina" \ "stringValue").asOpt[String]
         dt    <- ScraperParse.parseDateTime(s"$date $time")
-      } yield (title, dt)
+      } yield ScrapedSlot(title, dt)
     }
 
-    SlotsToMovies.fold(
-      slots,
-      keyOf      = _._1,
-      showtimeOf = s => Showtime(s._2, None),
-      distinctBy = _.dateTime
-    ) { (title, _, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema, distinctBy = _.dateTime)
   }
 }

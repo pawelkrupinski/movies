@@ -135,10 +135,8 @@ object KinoChatkaZakaClient {
           rawTitle       = Some(entry.rawTitle)
         ),
         cinema    = cinema,
-        posterUrl = None, // the calendar exposes only the venue logo, no film poster
+        // no posterUrl: the calendar exposes only the venue logo, no film poster
         filmUrl   = Some(entry.detailUrl),
-        synopsis  = None,
-        cast      = Seq.empty,
         director  = detail.director,
         showtimes = showtimes
       )

@@ -101,9 +101,6 @@ object HeliosNuxt {
           cinema    = config.cinema,
           posterUrl = movies.flatMap(_.posterUrl).headOption,
           filmUrl   = urls.find(_.contains("/filmy/")).orElse(urls.headOption),
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = Seq.empty,
           showtimes = showtimes
         ))
     }

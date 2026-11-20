@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.SlotsToMovies
 
 import java.util.Locale
@@ -9,7 +11,7 @@ import models._
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{SingleSiteScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -22,7 +24,7 @@ import scala.jdk.CollectionConverters._
  * Section headers omit the year, so `today` supplies it.
  */
 class KinomuzeumClient(http: HttpFetch, today: => LocalDate
-) extends CinemaScraper with DetailEnricher with OnlyMovieEventsFilter {
+) extends SingleSiteScraper with DetailEnricher with OnlyMovieEventsFilter {
 
 
   val cinema: Cinema = Kinomuzeum
@@ -34,12 +36,9 @@ class KinomuzeumClient(http: HttpFetch, today: => LocalDate
   private case class RawSlot(slug: String, title: String, dateTime: LocalDateTime, runtime: Option[Int],
                              booking: Option[String], poster: Option[String])
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
-  protected def fetchUnfiltered(): Seq[CinemaMovie] = fetchBare()
-
-  private def fetchBare(): Seq[CinemaMovie] = {
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     val document = Jsoup.parse(HttpRead.page(http, ListingUrl))
 
     var date: Option[LocalDate] = None
@@ -61,9 +60,6 @@ class KinomuzeumClient(http: HttpFetch, today: => LocalDate
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
         filmUrl   = if (slug.nonEmpty) Some(s"$BaseUrl/wydarzenia/$slug") else None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }
@@ -138,7 +134,7 @@ object KinomuzeumClient {
       year      = meta(document, "rok produkcji").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
       countries = meta(document, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
       director  = meta(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      synopsis  = Option(document.selectFirst("div.block-element.text .description")).map(ScraperParse.blockText(_).trim)
+      synopsis  = Option(document.selectFirst("div.block-element.text .description")).map(SynopsisProse.blockText(_).trim)
                     .orElse(Option(document.selectFirst("meta[property=og:description]")).map(_.attr("content").trim))
                     .filter(_.length > 20),
       poster    = ScraperParse.ogImage(document)

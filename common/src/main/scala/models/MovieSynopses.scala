@@ -59,7 +59,7 @@ private[models] final class MovieSynopses(record: MovieRecord) {
   /** Best synopsis over `candidates` — the paragraphed-then-longest selection
    *  shared by [[synopsis]], [[forCity]] and [[nonCinema]].
    *  "Best" = a paragraphed blurb (one carrying a `\n`/`\n\n` break, see
-   *  `ScraperParse.blockText`) beats an unbroken single block, and only among
+   *  `SynopsisProse.blockText`) beats an unbroken single block, and only among
    *  candidates that tie on that does the longest win — a wall of text reads
    *  worse than a properly broken-up one even when marginally longer.
    *

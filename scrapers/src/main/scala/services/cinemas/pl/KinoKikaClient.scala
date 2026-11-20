@@ -4,7 +4,7 @@ import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{SingleSiteScraper, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -29,12 +29,11 @@ import scala.util.Try
  * The room name is extracted from the location div (e.g. "sala KIKA",
  * "sala PUFA") and stored in `Showtime.room`.
  */
-class KinoKikaClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper {
+class KinoKikaClient(http: HttpFetch, override val cinema: Cinema) extends SingleSiteScraper {
 
   import KinoKikaClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = {
     val html  = HttpRead.page(http, RepertoireUrl)
@@ -44,11 +43,6 @@ class KinoKikaClient(http: HttpFetch, override val cinema: Cinema) extends Cinem
       CinemaMovie(
         movie     = Movie(tools.TextNormalization.titleCaseIfAllLower(title)),
         cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

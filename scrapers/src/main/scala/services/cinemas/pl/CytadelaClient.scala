@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.SlotsToMovies
 
 import services.cinemas.common.ScraperParse
@@ -7,7 +9,7 @@ import models._
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -22,7 +24,7 @@ import scala.util.Try
  * — the latter is the JS app shell.)
  */
 class CytadelaClient(http: HttpFetch
-) extends CinemaScraper with DetailEnricher {
+) extends SingleSiteScraper with DetailEnricher {
 
 
   val cinema: Cinema = KinoCytadela
@@ -35,8 +37,7 @@ class CytadelaClient(http: HttpFetch
                              year: Option[Int], director: Seq[String], runtime: Option[Int],
                              booking: Option[String], poster: Option[String])
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = parseListing(HttpRead.page(http, ListingUrl))
 
@@ -56,8 +57,6 @@ class CytadelaClient(http: HttpFetch
         cinema    = cinema,
         posterUrl = primary.poster,
         filmUrl   = if (slug.nonEmpty) Some(s"$BaseUrl/kino-film/$slug") else None,
-        synopsis  = None,
-        cast      = Seq.empty,
         director  = primary.director,
         showtimes = showtimes
       )
@@ -80,7 +79,7 @@ class CytadelaClient(http: HttpFetch
       // TUTAJ" link, or a "W programie:" event agenda. These are plain text
       // after the prose (not separate elements), so truncate at the first
       // footer marker.
-      val synopsis = Option(document.selectFirst("div.article-info__text.description")).map(ScraperParse.blockText(_).trim)
+      val synopsis = Option(document.selectFirst("div.article-info__text.description")).map(SynopsisProse.blockText(_).trim)
         .map(CytadelaClient.FooterMarker.replaceFirstIn(_, "").trim).filter(_.length > 20)
       FilmDetail(synopsis = synopsis)
     }
@@ -101,7 +100,7 @@ class CytadelaClient(http: HttpFetch
       val rt     = spans.flatMap(x => """(?i)czas:\s*(\d+)\s*min""".r.findFirstMatchIn(x).map(_.group(1).toInt)).headOption
       val booking = Option(item.selectFirst("a.repertoire-item__container__button--dark[href]")).map(_.attr("href")).filter(_.nonEmpty)
       val poster  = Option(item.selectFirst("img.repertoire-item__image[src]")).map(_.attr("src")).filter(_.nonEmpty)
-                      .map(u => if (u.startsWith("http")) u else s"$BaseUrl/${u.stripPrefix("/")}")
+                      .map(ScraperParse.onSite(BaseUrl))
       RawSlot(s, t, date.atTime(tm), genres, year, directory, rt, booking, poster)
     }
   }

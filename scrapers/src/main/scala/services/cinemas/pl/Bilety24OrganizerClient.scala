@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.ScraperParse
 import services.titles.FormatTags
 import models._
@@ -178,7 +180,7 @@ object Bilety24OrganizerClient {
     * ([[VenueCredits]]). */
   private[cinemas] def parseDetail(document: Document): FilmDetail = {
     val description = Option(document.selectFirst("div.description"))
-    val synopsis = description.map(ScraperParse.cleanSynopsis(_, "a", "p", "em")).filter(_.length > 20)
+    val synopsis = description.map(SynopsisProse.cleanSynopsis(_, "a", "p", "em")).filter(_.length > 20)
     val credits  = description.map(d => VenueCredits.parse(ScraperParse.blockLinesOf(d))).getOrElse(FilmDetail())
     credits.copy(synopsis = synopsis, posterUrl = ScraperParse.ogImage(document))
   }

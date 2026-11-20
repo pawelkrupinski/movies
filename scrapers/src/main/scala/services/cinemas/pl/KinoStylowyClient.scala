@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import java.util.Locale
 import services.titles.FormatTags
 
@@ -96,9 +98,6 @@ object KinoStylowyClient {
         cinema     = cinema,
         posterUrl  = head.poster,
         filmUrl    = head.filmUrl,
-        synopsis   = None,
-        cast       = Seq.empty,
-        director   = Seq.empty,
         showtimes  = showtimes,
         trailerUrl = head.trailer,
         ageRating  = head.ageRating
@@ -161,7 +160,7 @@ object KinoStylowyClient {
         .filter(_.nonEmpty)
     val synopsis = doc.select("#pageFilm h2.labelh2").asScala.find(_.text.trim.startsWith("Opis"))
       .flatMap(h => Option(h.nextElementSibling))
-      .map(ScraperParse.cleanSynopsis(_)).filter(_.nonEmpty)
+      .map(SynopsisProse.cleanSynopsis(_)).filter(_.nonEmpty)
 
     FilmDetail(
       synopsis       = synopsis,

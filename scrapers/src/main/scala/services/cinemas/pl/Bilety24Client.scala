@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
@@ -76,7 +78,7 @@ object Bilety24Client {
     // (Instagram/Facebook handles, "Więcej: www…"). Drop the anchors and the
     // placeholder and strip any plain-text URLs left behind.
     val description = Option(document.selectFirst("div.title-description-content"))
-    val synopsis = description.map(ScraperParse.cleanSynopsis(_, "a", "p.read-more")).filter(_.length > 20)
+    val synopsis = description.map(SynopsisProse.cleanSynopsis(_, "a", "p.read-more")).filter(_.length > 20)
     // What the venue typed of the film into the same box ("Reżyseria: …", "Czas trwania: 45 minut").
     val credits  = description.map(d => VenueCredits.parse(ScraperParse.blockLinesOf(d))).getOrElse(FilmDetail())
 
@@ -119,14 +121,13 @@ object Bilety24Client {
   // inactive/disabled buttons use href="#".
   private def showtimeOf(a: org.jsoup.nodes.Element, baseUrl: String, titleFormat: List[String]): Option[Showtime] = {
     val href = a.attr("href")
-    if (href == "#") None
-    else ButtonTitlePat.findFirstMatchIn(a.attr("title")).flatMap { m =>
-      ScraperParse.parseDateTime(s"${m.group(2)} ${m.group(3)}").map { dt =>
-        val booking   = if (href.startsWith("http")) href else baseUrl + href
-        val buttonFmt = Option(a.selectFirst("span.b24-button__format")).map(_.text.trim)
-                        .filter(_.nonEmpty).map(_.split("\\s+").toList.filter(_.nonEmpty)).getOrElse(Nil)
-        Showtime(dt, Some(booking), None, if (buttonFmt.nonEmpty) buttonFmt else titleFormat)
-      }
+    for {
+      m  <- ButtonTitlePat.findFirstMatchIn(a.attr("title")) if href != "#"
+      dt <- ScraperParse.parseDateTime(s"${m.group(2)} ${m.group(3)}")
+    } yield {
+      val buttonFormat = Option(a.selectFirst("span.b24-button__format")).toList.flatMap(_.text.split("\\s+")).filter(_.nonEmpty)
+      Showtime(dt, Some(if (href.startsWith("http")) href else baseUrl + href),
+        format = if (buttonFormat.nonEmpty) buttonFormat else titleFormat)
     }
   }
 

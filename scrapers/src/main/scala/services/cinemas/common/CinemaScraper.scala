@@ -131,6 +131,14 @@ trait CinemaScraper {
   }
 }
 
+/** A scraper of one site whose root is also the venue's public page: its [[scrapeHosts]] and [[sourceUrl]] are both
+ *  [[siteUrl]]'s, so the host it fetches from and the link /uptime shows cannot drift apart. */
+trait SingleSiteScraper extends CinemaScraper {
+  protected def siteUrl: String
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(siteUrl)
+  override def sourceUrl: Option[String] = Some(siteUrl)
+}
+
 object CinemaScraper {
   /** A scrape's listing, whether a fallback served it, and whether every page it read
    *  answered ([[ListingReads]]) — see [[CinemaScraper.fetchWithSource]]. */

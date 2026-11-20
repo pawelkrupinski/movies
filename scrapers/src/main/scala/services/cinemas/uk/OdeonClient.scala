@@ -59,7 +59,7 @@ class OdeonClient(
   override def sourceUrl: Option[String] = None
   override def sourceKey: Option[String] = Some(s"${CinemaScraper.urlKey(ApiBase)}/sites/$siteId")
 
-  /** The venue's business dates, bounded to `[today, today+MaxHorizonDays]`. One
+  /** The venue's business dates, bounded to `[today, today + ScrapeHorizon.MaxDays]`. One
    *  `film-screening-dates` call names exactly the days the venue has a
    *  programme on (Odeon advertises event/advance dates months out), so we fetch
    *  only those — no request per empty day. A fetch failure (or a missing token)
@@ -67,7 +67,7 @@ class OdeonClient(
    *  the venue's last-known listing rather than narrowing it to a guess. */
   def planChunks(): Seq[String] =
     OdeonParser.parseScreeningDates(authorisedPage(datesUrl))
-      .filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong)))
+      .filter(ScrapeHorizon.includes(today))
       .map(_.toString)
 
   /** Fetch + parse ONE business date's showtimes into that day's films. Throws
@@ -123,10 +123,4 @@ object OdeonClient {
 
   /** Vista's media CDN on the same host — the films' posters ([[OdeonParser.posterUrl]]). */
   val MediaCdn = "https://vwc.odeon.co.uk/CDN"
-
-  /** The shared scrape horizon — see [[services.cinemas.common.ScrapeHorizon]].
-   *  `film-screening-dates` advertises event/advance dates months out (observed ~4.5),
-   *  and we fetch every advertised day; this only bounds a stray far-future one. Was 160,
-   *  which cut the tail off the listing and so had scrape-prune delete it. */
-  val MaxHorizonDays = ScrapeHorizon.MaxDays
 }

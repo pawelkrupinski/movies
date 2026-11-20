@@ -13,6 +13,12 @@ class ScrapeHorizonSpec extends AnyFlatSpec with Matchers {
   private val from  = LocalDate.of(2026, 9, 24)
   private val boom  = new RuntimeException("down")
 
+  "ScrapeHorizon.includes" should "hold the days from today to MaxDays ahead, both ends included" in {
+    val today = LocalDate.of(2026, 6, 1)
+    Seq(today.minusDays(1), today, today.plusDays(ScrapeHorizon.MaxDays.toLong), today.plusDays(ScrapeHorizon.MaxDays + 1L))
+      .map(ScrapeHorizon.includes(today)) shouldBe Seq(false, true, true, false)
+  }
+
   "ScrapeHorizon.liveDays" should "keep the live days across a probe that threw" in {
     ScrapeHorizon.liveDays(from, maxEmptyDays = 3) { day =>
       if (day == from) throw boom else day == from.plusDays(1)

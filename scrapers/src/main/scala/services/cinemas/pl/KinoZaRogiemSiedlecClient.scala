@@ -62,9 +62,6 @@ class KinoZaRogiemSiedlecClient(
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
         filmUrl   = head.bookingUrl,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }
@@ -94,17 +91,11 @@ object KinoZaRogiemSiedlecClient {
 
   /** Every product page from 1 until one comes back with no `li.product`
    *  entries (or [[MaxPages]] is hit). */
-  private[cinemas] def fetchPages(http: HttpFetch): Seq[String] = {
-    def loop(page: Int, acc: List[String]): List[String] =
-      if (page > MaxPages) acc
-      else {
-        val url  = if (page == 1) RepertoireUrl else s"$RepertoireUrl?product-page=$page"
-        val html = HttpRead.page(http, url)
-        if (Jsoup.parse(html, BaseUrl).select("ul.products li.product").isEmpty) acc
-        else loop(page + 1, html :: acc)
-      }
-    loop(1, Nil).reverse
-  }
+  private[cinemas] def fetchPages(http: HttpFetch): Seq[String] =
+    Iterator.from(1).take(MaxPages)
+      .map(page => HttpRead.page(http, if (page == 1) RepertoireUrl else s"$RepertoireUrl?product-page=$page"))
+      .takeWhile(html => !Jsoup.parse(html, BaseUrl).select("ul.products li.product").isEmpty)
+      .toList
 
   /** The catalogue entry in the product's description tab: its linked terms, and the running time the
    *  `taxonomy-czas_trwania` row prints bare ("80"), in minutes. */

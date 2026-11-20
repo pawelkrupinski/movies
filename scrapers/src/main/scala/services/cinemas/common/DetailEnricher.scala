@@ -3,7 +3,7 @@ package services.cinemas.common
 import services.movies.LatestTitleYear
 
 import services.movies.ScreeningTokens
-import models.{Cinema, MovieRecord, Source, SourceData}
+import models.{Cinema, MovieRecord, Showtime, Source, SourceData}
 
 /**
  * The per-film detail fields a cinema fetches *separately* from its listing —
@@ -99,36 +99,34 @@ case class FilmDetail(
   /** `authoritative` flips each detail-owned field from "fill the gap" to "the
    *  page just told us, believe it" — never overwriting with nothing either way. */
   private def merged(slot: SourceData, screeningTokens: ScreeningTokens, authoritative: Boolean): SourceData = {
-    def opt[A](detail: Option[A], existing: Option[A]): Option[A] =
-      if (authoritative) detail.orElse(existing) else existing.orElse(detail)
-    def seq[A](detail: Seq[A], existing: Seq[A]): Seq[A] =
-      if (authoritative && detail.nonEmpty) detail else if (existing.nonEmpty) existing else detail
+    val (first, second) = if (authoritative) (pageFields, slot) else (slot, pageFields)
+    def seq[A](field: SourceData => Seq[A]): Seq[A] = Some(field(first)).filter(_.nonEmpty).getOrElse(field(second))
     slot.copy(
       // Detail-owned: what the page's own metadata block states about the film.
-      synopsis       = opt(synopsis, slot.synopsis),
-      cast           = seq(cast, slot.cast),
-      director       = seq(director, slot.director),
-      runtimeMinutes = opt(runtimeMinutes, slot.runtimeMinutes),
-      releaseYear    = opt(releaseYear, slot.releaseYear),
-      originalTitle  = opt(originalTitle, slot.originalTitle),
-      countries      = seq(countries, slot.countries),
-      genres         = seq(genres, slot.genres),
-      ageRating      = opt(ageRating, slot.ageRating),
+      synopsis       = first.synopsis.orElse(second.synopsis),
+      cast           = seq(_.cast),
+      director       = seq(_.director),
+      runtimeMinutes = first.runtimeMinutes.orElse(second.runtimeMinutes),
+      releaseYear    = first.releaseYear.orElse(second.releaseYear),
+      originalTitle  = first.originalTitle.orElse(second.originalTitle),
+      countries      = seq(_.countries),
+      genres         = seq(_.genres),
+      ageRating      = first.ageRating.orElse(second.ageRating),
       // Listing-owned, on both paths: re-scraped every tick, so they never go
       // stale the way a once-fetched detail does, and several clients prefer the
       // listing's own poster over the detail page's.
       posterUrl      = slot.posterUrl.orElse(posterUrl),
       trailerUrl     = slot.trailerUrl.orElse(trailerUrl),
-      // Badge the film's showings with the detail-page language, but never
-      // overwrite a per-screening format the listing already set. Through
-      // `ScreeningTokens` like every other badge — this is the second way a
-      // source's own words reach a showtime, and a detail page words them as
-      // freely as a listing does.
-      showtimes      = if (format.isEmpty) slot.showtimes
-                       else slot.showtimes.map(st =>
-                         if (st.format.isEmpty) st.copy(format = screeningTokens.normalize(format)) else st)
+      showtimes      = badged(slot.showtimes, screeningTokens)
     )
   }
+
+  /** The film's showings badged with the detail-page language, never overwriting a per-screening format the listing
+   *  already set. Through `ScreeningTokens` like every other badge — this is the second way a source's own words
+   *  reach a showtime, and a detail page words them as freely as a listing does. */
+  private def badged(showtimes: Seq[Showtime], screeningTokens: ScreeningTokens): Seq[Showtime] =
+    if (format.isEmpty) showtimes
+    else showtimes.map(st => if (st.format.isEmpty) st.copy(format = screeningTokens.normalize(format)) else st)
 }
 
 /**

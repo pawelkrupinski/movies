@@ -7,7 +7,7 @@ import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.LocalDateTime
 import scala.util.Try
@@ -15,7 +15,7 @@ import models.CountryNames
 import services.titles.TitleNormalizer
 
 class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
-) extends CinemaScraper with DetailEnricher {
+) extends SingleSiteScraper with DetailEnricher {
 
   val cinema: Cinema = KinoPalacowe
   private val BaseUrl = "https://kinopalacowe.pl"
@@ -113,11 +113,8 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
   /** Genres from the `Gatunek[:] <list>` marker in the metadata blob, when
    *  present. Returns the empty list for the many pages that omit it. */
   def parseGenres(html: String): Seq[String] =
-    GenrePat.findFirstMatchIn(html).map { m =>
-      m.group(1).trim.stripSuffix(",").trim
-        .split(",").map(_.trim).filter(_.nonEmpty)
-        .map(tools.TextNormalization.titleCaseIfAllLower).toSeq
-    }.getOrElse(Seq.empty)
+    GenrePat.findFirstMatchIn(html).toSeq.flatMap(m => ScraperParse.commaItems(m.group(1)))
+      .map(tools.TextNormalization.titleCaseIfAllLower)
 
   /** Pałacowe trailer URL parsed from the film page's gallery anchor.
    *  Returns the canonical `youtube.com/watch?v=ID` form when the captured
@@ -126,8 +123,7 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
   def parseTrailer(html: String): Option[String] =
     TrailerPat.findFirstMatchIn(html).map(_.group(1)).flatMap(ScraperParse.canonicalTrailer)
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = parseBare(fetchAllEntries())
 
@@ -141,8 +137,6 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
           posterUrl = first.posterUrl,
           filmUrl   = first.filmUrl,
           synopsis   = first.synopsis,
-          cast       = Seq.empty,
-          director   = Seq.empty,
           showtimes  = showtimes,
           trailerUrl = None
         )

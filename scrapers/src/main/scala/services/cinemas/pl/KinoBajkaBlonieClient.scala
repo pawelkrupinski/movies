@@ -132,8 +132,6 @@ object KinoBajkaBlonieClient {
         posterUrl   = Option(page.selectFirst("img.film-poster")).flatMap(ScraperParse.imageUrl(_)),
         filmUrl     = Some(url),
         synopsis    = Option(page.selectFirst("div.prose")).map(_.text.trim).filter(_.nonEmpty),
-        cast        = Seq.empty,
-        director    = Seq.empty,
         showtimes   = dateTimes.map(Showtime(_, None, format = format)),
         trailerUrl  = trailerOf(page),
         ageRating   = facts.lift(ageAt).flatMap(AgeRating.polishMinimumAge)

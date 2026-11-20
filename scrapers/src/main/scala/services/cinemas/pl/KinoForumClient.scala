@@ -58,11 +58,6 @@ class KinoForumClient(
       CinemaMovie(
         movie     = Movie(title, runtimeMinutes = first.runtimeMinutes, countries = first.countries),
         cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

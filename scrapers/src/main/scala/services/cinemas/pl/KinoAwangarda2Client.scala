@@ -93,11 +93,6 @@ object KinoAwangarda2Client {
       CinemaMovie(
         movie     = Movie(title, countries = group.flatMap(_.countries).distinct),
         cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

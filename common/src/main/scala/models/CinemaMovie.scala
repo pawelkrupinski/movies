@@ -1,13 +1,15 @@
 package models
 
+// A listing names its film, venue and showtimes; whatever else it carries is optional, empty where the venue does
+// not say it (TMDB and the detail enrichment fill the rest downstream).
 case class CinemaMovie(
   movie:       Movie,
   cinema:      Cinema,
-  posterUrl:   Option[String],
-  filmUrl:     Option[String],
-  synopsis:    Option[String],
-  cast:        Seq[String],
-  director:    Seq[String],
+  posterUrl:   Option[String]      = None,
+  filmUrl:     Option[String]      = None,
+  synopsis:    Option[String]      = None,
+  cast:        Seq[String]         = Seq.empty,
+  director:    Seq[String]         = Seq.empty,
   showtimes:   Seq[Showtime],
   externalIds: Map[String, String] = Map.empty,
   // URL of a video the cinema page surfaces for the film (YouTube watch / embed,

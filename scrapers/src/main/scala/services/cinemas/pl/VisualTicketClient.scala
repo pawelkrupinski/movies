@@ -7,7 +7,7 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -75,23 +75,7 @@ object VisualTicketClient {
     //   a.btn-buy              — per-screening ticket booking link
     val slots = doc.select("div.event-item").asScala.toSeq.filter(isFilmAt(_, locationId)).flatMap(slotOf)
 
-    SlotsToMovies.fold(
-      slots,
-      keyOf      = _._1,
-      showtimeOf = s => Showtime(s._2, s._3),
-      distinctBy = s => (s.dateTime, s.bookingUrl)
-    ) { (title, _, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
   private def isFilmAt(item: Element, locationId: Int): Boolean = {
@@ -100,7 +84,7 @@ object VisualTicketClient {
       Option(item.selectFirst("div.event-group-label")).map(_.text.trim.toLowerCase(Locale.ROOT)).getOrElse("").contains("film")
   }
 
-  private def slotOf(item: Element): Option[(String, LocalDateTime, Option[String])] =
+  private def slotOf(item: Element): Option[ScrapedSlot] =
     for {
       rawDate  <- Option(item.attr("data-date")).filter(_.nonEmpty)
       rawTime  <- Option(item.attr("data-time")).filter(_.nonEmpty)
@@ -111,5 +95,5 @@ object VisualTicketClient {
       rawTitle  = SeansFimowyRe.replaceFirstIn(span.text.trim, "").trim
       if rawTitle.nonEmpty
       bookingUrl = Option(item.selectFirst("a.btn-buy")).map(_.attr("abs:href")).filter(_.nonEmpty)
-    } yield (rawTitle, LocalDateTime.of(date, time), bookingUrl)
+    } yield ScrapedSlot(rawTitle, LocalDateTime.of(date, time), bookingUrl)
 }

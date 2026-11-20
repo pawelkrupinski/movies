@@ -3,10 +3,10 @@ package services.cinemas.de
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{ScrapeHorizon, ScrapedSlot, ScraperParse, SingleSiteScraper, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.LocalDate
 import scala.jdk.CollectionConverters._
 
 /**
@@ -30,10 +30,8 @@ class RexSchifferstadtClient(
   override val cinema: Cinema,
   /** The day the yearless dates are placed from, asked per scrape: today in Germany. */
   today: => LocalDate
-) extends CinemaScraper {
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(page)
-
-  override def sourceUrl: Option[String] = Some(page)
+) extends SingleSiteScraper {
+  protected def siteUrl: String = page
 
   /** The week's showtimes from today on: the table keeps the days already past. */
   def fetch(): Seq[CinemaMovie] = {
@@ -46,8 +44,6 @@ object RexSchifferstadtClient {
   private val Clock = ScraperParse.ClockText.r
   private val Day   = """(\d{1,2})\.(\d{1,2})\.""".r
 
-  private final case class Slot(title: String, dateTime: LocalDateTime)
-
   def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html)
     var title    = Option.empty[String]
@@ -55,22 +51,11 @@ object RexSchifferstadtClient {
       if (el.tagName == "h2") { title = Some(el.text.trim).filter(_.nonEmpty); Nil }
       else { val slots = title.toSeq.flatMap(t => week(el, t, today)); title = None; slots }
     }
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, None)) { (title, _, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
   /** One film's week table: the first row's days, every later row's times by column. */
-  private def week(table: Element, title: String, today: LocalDate): Seq[Slot] =
+  private def week(table: Element, title: String, today: LocalDate): Seq[ScrapedSlot] =
     table.select("tr").asScala.toSeq match {
       case header +: rows =>
         val days = header.select("td, th").asScala.toSeq.map { cell =>
@@ -83,7 +68,7 @@ object RexSchifferstadtClient {
           date         <- day.toSeq
           clock        <- Clock.findAllIn(cell.text).toSeq
           time         <- ScraperParse.parseHHmm(clock).toSeq
-        } yield Slot(title, date.atTime(time))
+        } yield ScrapedSlot(title, date.atTime(time))
       case _ => Nil
     }
 }

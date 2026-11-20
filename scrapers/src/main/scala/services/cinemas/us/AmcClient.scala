@@ -104,7 +104,7 @@ class AmcClient(
   /** The days to scrape, read off the venue page's own day picker — the exact
    *  days AMC advertises, so no request is spent on a day the venue never
    *  listed and no advertised day is missed. Bounded to
-   *  `[today, today + MaxHorizonDays]` so a stray far-future option cannot
+   *  `[today, today + ScrapeHorizon.MaxDays]` so a stray far-future option cannot
    *  balloon the per-venue chunk fan-out.
    *
    *  The page is the ONLY source of days — there is no fixed-grid fallback. A
@@ -122,7 +122,7 @@ class AmcClient(
     val html  = HttpRead.page(http, venueUrl(marketSlug, theatreSlug))
     val day   = today
     val dates = AmcParser.parseDates(html)
-      .filter(d => !d.isBefore(day) && !d.isAfter(day.plusDays(MaxHorizonDays.toLong)))
+      .filter(ScrapeHorizon.includes(day))
     if (dates.isEmpty && !AmcParser.hasDatePicker(html))
       throw new IllegalStateException(
         s"AMC venue page for '$theatreSlug' carried no date picker")
@@ -143,14 +143,6 @@ object AmcClient {
 
   val SiteUrl  = "https://www.amctheatres.com"
   val GraphUrl = "https://graph.amctheatres.com/"
-
-  /** The shared scrape horizon — see [[ScrapeHorizon]] for why it is a sanity
-   *  bound rather than a budget, and what capping it cost. AMC's picker names
-   *  exactly which days exist, so no day is fetched blind; this only stops a
-   *  stray far-future option fanning a venue out. Deliberately the SAME number
-   *  the other chain clients use, so a venue's primary and its flicks fallback
-   *  cover one window and neither prunes the other's tail. */
-  val MaxHorizonDays: Int = ScrapeHorizon.MaxDays
 
   /** A venue's public showtimes page, and the day-list source. */
   def venueUrl(marketSlug: String, theatreSlug: String): String =

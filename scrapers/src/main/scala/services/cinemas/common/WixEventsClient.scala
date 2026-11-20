@@ -34,10 +34,8 @@ class WixEventsClient(
   override val cinema: Cinema,
   /** The day the listing is read from, asked per scrape: today at the venue. */
   today: => LocalDate
-) extends CinemaScraper {
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(page)
-
-  override def sourceUrl: Option[String] = Some(page)
+) extends SingleSiteScraper {
+  protected def siteUrl: String = page
 
   def fetch(): Seq[CinemaMovie] = {
     val from = today
@@ -51,8 +49,6 @@ object WixEventsClient {
   /** "KINO: ", "KINO-Extra: ", "Kino: " in front of the film's title. */
   private val EveningLabel = """(?i)^kino(?:-[\p{L}]+)?\s*:\s*""".r
 
-  private final case class Slot(title: String, dateTime: LocalDateTime)
-
   def filmTitle(title: String): String = EveningLabel.replaceFirstIn(title.trim, "").trim
 
   /** The page's events at `postcode`, one row per title. A page with no events data
@@ -65,27 +61,16 @@ object WixEventsClient {
     val events = lists.flatten.filter(e => (e \ "scheduling").isDefined)
     val slots = events.filter(e => (e \ "location" \ "fullAddress" \ "postalCode").asOpt[String].contains(postcode))
       .flatMap(slot(_, zone))
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, None)) { (title, _, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
-  private def slot(event: JsValue, zone: ZoneId): Option[Slot] = {
+  private def slot(event: JsValue, zone: ZoneId): Option[ScrapedSlot] = {
     val config = event \ "scheduling" \ "config"
     for {
       raw   <- (event \ "title").asOpt[String]
       title  = filmTitle(raw) if title.nonEmpty
       if !(config \ "scheduleTbd").asOpt[Boolean].contains(true)
       start <- (config \ "startDate").asOpt[String].flatMap(s => Try(Instant.parse(s)).toOption)
-    } yield Slot(title, LocalDateTime.ofInstant(start, zone))
+    } yield ScrapedSlot(title, LocalDateTime.ofInstant(start, zone))
   }
 }

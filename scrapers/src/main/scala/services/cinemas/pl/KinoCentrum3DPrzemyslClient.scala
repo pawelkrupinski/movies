@@ -47,11 +47,8 @@ class KinoCentrum3DPrzemyslClient(http: HttpFetch, override val cinema: Cinema)
       CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
-        posterUrl = None,
         filmUrl   = group.sortBy(_.dateTime).map(_.url).headOption,
         synopsis  = group.flatMap(_.synopsis).headOption,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

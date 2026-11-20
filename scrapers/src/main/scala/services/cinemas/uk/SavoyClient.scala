@@ -267,7 +267,6 @@ object SavoyClient {
         posterUrl   = programme.poster,
         filmUrl     = programme.url,
         synopsis    = credit.fold(programme.synopsis)(c => Some(c.rest).filter(_.nonEmpty)),
-        cast        = Seq.empty,
         director    = credit.toSeq.flatMap(_.director),
         showtimes   = showtimes,
         externalIds = programme.id.map("savoy" -> _).toMap,
@@ -318,15 +317,15 @@ object SavoyClient {
    *  title heading ("Sense and Sensibility / SHOWTIMES") — names; `None` for an untitled
    *  (image) link, which leaves the film before it current. */
   private def programmeOf(mark: Element): Option[Programme] = {
-    val isLink  = mark.tagName == "a"
-    val heading = if (isLink) Option(mark.parent) else Some(mark)
-    val text    = if (isLink) mark.text else TitleSuffix.replaceFirstIn(mark.ownText, "")
+    val link    = Option.when(mark.tagName == "a")(mark)
+    val heading = link.fold(Some(mark))(a => Option(a.parent))
+    val text    = link.fold(TitleSuffix.replaceFirstIn(mark.ownText, ""))(_.text)
     Some(text.collapsedSpaces).filter(_.nonEmpty).map { title =>
       val block = Option(mark.closest(".programme")).orElse(heading.flatMap(h => Option(h.parent)))
       Programme(
         title       = title,
-        url         = if (isLink) Some(mark.attr("abs:href")) else None,
-        id          = if (isLink) ProgrammeId.findFirstMatchIn(mark.attr("href")).map(_.group(1)) else None,
+        url         = link.map(_.attr("abs:href")),
+        id          = link.flatMap(a => ProgrammeId.findFirstMatchIn(a.attr("href")).map(_.group(1))),
         certificate = heading.flatMap(h => Certificate.findFirstMatchIn(h.ownText)).map(_.group(1).trim),
         // The block's artwork, never an image inside a heading: Folkestone's Silver Screen
         // prints the BBFC certificate badge beside the title, and no artwork at all.
@@ -356,16 +355,19 @@ object SavoyClient {
   /** The index just past the `}` closing the object opened at `start`, skipping braces
    *  inside string literals (titles and synopses carry them). */
   private def endOfObject(s: String, start: Int): Int = {
-    var depth = 0; var inString = false; var i = start
-    while (i < s.length) {
-      val c = s.charAt(i)
-      if (inString) { if (c == '\\') i += 1 else if (c == '"') inString = false }
-      else if (c == '"') inString = true
-      else if (c == '{') depth += 1
-      else if (c == '}') { depth -= 1; if (depth == 0) return i + 1 }
-      i += 1
-    }
-    throw new IllegalArgumentException("the 'var Events' literal never closes")
+    @annotation.tailrec
+    def scan(i: Int, depth: Int, inString: Boolean): Int =
+      if (i >= s.length) throw new IllegalArgumentException("the 'var Events' literal never closes")
+      else (s.charAt(i), inString) match {
+        case ('\\', true)               => scan(i + 2, depth, inString)
+        case ('"', _)                   => scan(i + 1, depth, !inString)
+        case (_, true)                  => scan(i + 1, depth, inString)
+        case ('{', _)                   => scan(i + 1, depth + 1, inString)
+        case ('}', _) if depth == 1     => i + 1
+        case ('}', _)                   => scan(i + 1, depth - 1, inString)
+        case _                          => scan(i + 1, depth, inString)
+      }
+    scan(start, 0, inString = false)
   }
 
   private def titleOf(event: JsObject): Option[String] =

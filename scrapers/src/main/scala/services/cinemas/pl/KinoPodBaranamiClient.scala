@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.SlotsToMovies
 
 import services.cinemas.common.ScraperParse
@@ -7,7 +9,7 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -38,12 +40,11 @@ class KinoPodBaranamiClient(
   http:             HttpFetch,
   override val cinema: Cinema,
   today:            => LocalDate
-) extends CinemaScraper with DetailEnricher {
+) extends SingleSiteScraper with DetailEnricher {
 
   import KinoPodBaranamiClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = {
     val html  = HttpRead.pageBytes(http, RepertoireUrl)
@@ -59,11 +60,7 @@ class KinoPodBaranamiClient(
       CinemaMovie(
         movie     = Movie(title, originalTitle = group.flatMap(_.originalTitle).headOption),
         cinema    = cinema,
-        posterUrl = None,
         filmUrl   = filmUrl,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }
@@ -169,9 +166,9 @@ object KinoPodBaranamiClient {
     val (countries, prodYear) = fields.get("produkcja").map(ScraperParse.productionMeta).getOrElse((Seq.empty, None))
     val premieraYear = fields.get("premiera").flatMap(ScraperParse.yearIn)
     val synopsis = Option(doc.selectFirst("div#column_wide div.bot > p"))
-      .map(p => ScraperParse.cleanSynopsis(p, "div")).filter(_.length > 20)
+      .map(p => SynopsisProse.cleanSynopsis(p, "div")).filter(_.length > 20)
     val poster = Option(doc.selectFirst("td[width=130] a[href]")).map(_.attr("href").trim)
-      .filter(_.nonEmpty).map(h => if (h.startsWith("http")) h else s"$BaseUrl/${h.stripPrefix("/")}")
+      .filter(_.nonEmpty).map(ScraperParse.onSite(BaseUrl))
     FilmDetail(
       synopsis       = synopsis,
       cast           = people("aktorzy"),

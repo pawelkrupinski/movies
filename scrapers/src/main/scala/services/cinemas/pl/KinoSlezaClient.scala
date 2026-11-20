@@ -54,10 +54,7 @@ object KinoSlezaClient {
       movie     = Movie(title, genres = genresOf(movie)),
       cinema    = cinema,
       posterUrl = Option(movie.selectFirst("figure.movie-img img")).flatMap(ScraperParse.imageUrl(_)),
-      filmUrl   = None,
       synopsis  = Option(movie.selectFirst("span.description")).map(_.text.trim).filter(_.length > 20),
-      cast      = Seq.empty,
-      director  = Seq.empty,
       showtimes = showtimes
     )
 

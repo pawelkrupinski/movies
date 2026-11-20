@@ -44,36 +44,23 @@ object DomKulturyLapyClient {
   private val RuntimePat = """(\d+)g\.\s*(?:(\d+)m\.)?""".r
 
   private case class RawSlot(
-    title:      String,
-    dateTime:   LocalDateTime,
-    runtime:    Option[Int],
-    countries:  Seq[String],
-    year:       Option[Int],
-    genres:     Seq[String],
-    synopsis:   String,
-    filmUrl:    Option[String]
+    movie:    Movie,
+    dateTime: LocalDateTime,
+    synopsis: String,
+    filmUrl:  Option[String]
   )
 
   def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
     val slots = document.select("div.wp-block-columns").asScala.toSeq.flatMap(parseBlock(_, today))
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, None)) { (title, group, showtimes) =>
+    SlotsToMovies.fold(slots, _.movie.title, s => Showtime(s.dateTime, None)) { (_, group, showtimes) =>
       val first = group.head
       CinemaMovie(
-        movie     = Movie(
-          title          = title,
-          runtimeMinutes = first.runtime,
-          releaseYear    = first.year,
-          countries      = first.countries,
-          genres         = first.genres
-        ),
+        movie     = first.movie,
         cinema    = cinema,
-        posterUrl = None,
         filmUrl   = first.filmUrl,
         synopsis  = Some(first.synopsis).filter(_.nonEmpty),
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }
@@ -107,7 +94,7 @@ object DomKulturyLapyClient {
       val genres     = parts.lift(2).map(_.split(",").toSeq.map(_.trim).filter(_.nonEmpty)).getOrElse(Seq.empty)
       val filmUrl    = Option(columns.closest("div.post")).flatMap(post => Option(post.selectFirst("h4 a[href]")))
         .map(_.attr("abs:href")).filter(_.nonEmpty)
-      RawSlot(title, LocalDateTime.of(date, time), runtime, countries, year, genres, synopsis, filmUrl)
+      RawSlot(Movie(title, runtime, year, countries = countries, genres = genres), LocalDateTime.of(date, time), synopsis, filmUrl)
     }
   }
 }

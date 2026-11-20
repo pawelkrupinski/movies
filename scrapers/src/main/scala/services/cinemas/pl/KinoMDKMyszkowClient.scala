@@ -88,8 +88,6 @@ object KinoMDKMyszkowClient {
       posterUrl = block.flatMap(b => Option(b.selectFirst("img[src]"))).flatMap(ScraperParse.imageUrl(_)),
       filmUrl   = Some(url),
       synopsis  = block.flatMap(synopsisOf),
-      cast      = Seq.empty,
-      director  = Seq.empty,
       showtimes = dates.map(d => Showtime(LocalDateTime.of(d, time), None)).sortBy(_.dateTime)
     )
   }

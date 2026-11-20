@@ -198,8 +198,6 @@ object BfiSouthbankClient {
         posterUrl   = card.image,
         filmUrl     = Some(filmUrl(card.slug)),
         synopsis    = card.synopsis,
-        cast        = Seq.empty,
-        director    = Seq.empty,
         showtimes   = showtimes,
         externalIds = Map("bfi" -> card.slug),
         ageRating   = card.certificate

@@ -60,9 +60,6 @@ object CyfroweKinoClient {
       posterUrl = Option(item.selectFirst(".amy-movie-item-poster img"))
                     .flatMap(img => if (img.hasAttr("data-src")) ScraperParse.imageUrl(img, "data-src") else ScraperParse.imageUrl(img)),
       filmUrl   = Option(item.selectFirst("h3.amy-movie-field-title a")).map(_.absUrl("href")).filter(_.nonEmpty),
-      synopsis  = None,
-      cast      = Seq.empty,
-      director  = Seq.empty,
       showtimes = showtimes
     )
 

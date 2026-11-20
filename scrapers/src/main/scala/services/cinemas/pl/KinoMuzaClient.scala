@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.ScraperParse
 import org.jsoup.nodes.{Document, Element}
 import models.*
@@ -57,7 +59,7 @@ class KinoMuzaClient(http: HttpFetch, today: => LocalDate,
     // rest, so only prose paragraphs survive.
     val paragraphs = document.select("div.col-lg-7.paragraph > p").asScala
       .filter(p => Option(p.selectFirst("a")).isEmpty)
-      .map(p => ScraperParse.stripUrls(p.text().trim))
+      .map(p => SynopsisProse.stripUrls(p.text().trim))
       .filter(_.nonEmpty)
       .toSeq
     if (paragraphs.isEmpty) None else Some(paragraphs.mkString("\n\n"))
@@ -144,10 +146,7 @@ class KinoMuzaClient(http: HttpFetch, today: => LocalDate,
         // listing's posterUrl as None means the merge in
         // `MovieCache.recordCinemaScrape` can't clobber the detail-page
         // portrait on subsequent ticks.
-        posterUrl = None,
         filmUrl   = Option(preview.selectFirst("a[href*=/movie/]")).map(_.attr("href")),
-        synopsis  = None,
-        cast      = Seq.empty,
         director  = director,
         showtimes = showtimesOf(preview).sortBy(_.dateTime)
       )

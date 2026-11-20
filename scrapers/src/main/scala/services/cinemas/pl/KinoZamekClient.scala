@@ -174,10 +174,7 @@ object KinoZamekClient {
         CinemaMovie(
           movie     = Movie(ScraperParse.sentenceCase(stripStrand(rawTitle))),
           cinema    = cinema,
-          posterUrl = None,
           filmUrl   = Some(url),
-          synopsis  = None,
-          cast      = Seq.empty,
           director  = group.flatMap(_.director).distinct,
           // The castle sells at the box office and through the portal that went
           // dark, so there is no per-screening booking link to carry.

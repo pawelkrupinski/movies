@@ -1,6 +1,6 @@
 package services.cinemas.pl
 
-import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.{ScraperParse, SlotsToMovies}
 
 import tools.{HttpFetch, HttpRead}
 import models._
@@ -55,10 +55,6 @@ class KinoKulturaClient(http: HttpFetch) extends CinemaScraper {
         movie     = Movie(title = primary.title, runtimeMinutes = None, releaseYear = None),
         cinema    = cinema,
         posterUrl = primary.poster,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }
@@ -70,7 +66,7 @@ class KinoKulturaClient(http: HttpFetch) extends CinemaScraper {
     val byId = document.select("img.poster_photo").asScala.toSeq.flatMap { img =>
       val src = img.attr("src")
       PosterPat.findFirstMatchIn(src).map(_.group(1)).map { id =>
-        val poster = Some(if (src.startsWith("http")) src else s"$BaseUrl/${src.stripPrefix("/")}")
+        val poster = Some(ScraperParse.onSite(BaseUrl)(src))
         id -> (img.attr("title").trim, poster)
       }
     }.toMap

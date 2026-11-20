@@ -6,7 +6,7 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
+import services.cinemas.common.{SingleSiteScraper, ScrapedSlot, SlotsToMovies}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -33,12 +33,11 @@ import scala.jdk.CollectionConverters._
  * Year inference: `data-date` already carries the four-digit year, so no
  * guessing is needed.
  */
-class GdynskieCentrumFilmoweClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper {
+class GdynskieCentrumFilmoweClient(http: HttpFetch, override val cinema: Cinema) extends SingleSiteScraper {
 
   import GdynskieCentrumFilmoweClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   // gcf.org.pl's WordPress origin flaps: ~10–25% of requests come back HTTP 500,
   // independent of our request shape (headers, UA, IP — confirmed by an A/B probe

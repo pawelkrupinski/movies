@@ -1,14 +1,12 @@
 package services.cinemas.pl
 
-import java.util.Locale
-
 import services.cinemas.common.ScraperParse
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 import services.titles.TitleNormalizer
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, ListingPages, OnlyMovieEventsFilter, ScrapeHorizon, ScrapedSlot, SlotsToMovies}
+import services.cinemas.common.{SingleSiteScraper, ListingPages, OnlyMovieEventsFilter, ScrapeHorizon, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, YearMonth}
 import java.time.format.DateTimeFormatter
@@ -45,12 +43,11 @@ class KinoKijowClient(
   override val cinema: Cinema,
   today:            => LocalDate,
   titles:           TitleNormalizer
-) extends CinemaScraper with OnlyMovieEventsFilter {
+) extends SingleSiteScraper with OnlyMovieEventsFilter {
 
   import KinoKijowClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     // Each month is read once: the walk parses a month to learn whether the
@@ -76,12 +73,6 @@ object KinoKijowClient {
   val BaseUrl = "https://kupbilet.kijow.pl"
 
   private val MonthFmt = DateTimeFormatter.ofPattern("yyyy-MM")
-
-  // Polish 3-letter month abbreviations as they appear in the MSI portal
-  private val PolishMonthAbbr: Map[String, Int] = Map(
-    "sty" -> 1, "lut" -> 2, "mar" -> 3, "kwi" -> 4, "maj" -> 5, "cze" -> 6,
-    "lip" -> 7, "sie" -> 8, "wrz" -> 9, "paź" -> 10, "lis" -> 11, "gru" -> 12
-  )
 
   // "07 cze 10:30" — day, Polish month abbr, time
   // `\p{L}`, not `\w`: Java's `\w` is ASCII-only by default, so "10 paź 18:00"
@@ -134,10 +125,9 @@ object KinoKijowClient {
   private def parseDateTimePat(s: String, month: YearMonth): Option[LocalDateTime] =
     DateTimePat.findFirstMatchIn(s).flatMap { m =>
       val day   = m.group(1).toInt
-      val abbr  = m.group(2).toLowerCase(Locale.ROOT)
       val hhmm  = m.group(3)
       for {
-        mo <- PolishMonthAbbr.get(abbr)
+        mo <- ScraperParse.polishMonthAbbrev(m.group(2))  // the MSI portal's "lip"
         t  <- ScraperParse.parseHHmm(hhmm)
         // Use the month's year; if the day's month doesn't match the page's month
         // (e.g. a "30 lip" date on a "2026-06" page), still accept it — the MSI

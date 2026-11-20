@@ -85,8 +85,6 @@ object KinoSokolStrzyzowClient {
       posterUrl = Option(article.selectFirst(".screening-poster img[src]")).flatMap(ScraperParse.imageUrl(_)),
       filmUrl   = Option(titleAnchor.attr("abs:href")).filter(_.nonEmpty),
       synopsis  = Option(article.selectFirst(".screening-excerpt")).map(_.text.trim).filter(_.nonEmpty),
-      cast      = Seq.empty,
-      director  = Seq.empty,
       showtimes = showtimes
     )
   }

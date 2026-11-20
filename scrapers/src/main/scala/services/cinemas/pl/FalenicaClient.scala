@@ -1,12 +1,14 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.ScraperParse
 import services.titles.FormatTags
 import org.jsoup.nodes.{Document, Element}
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages}
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages}
 
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
@@ -33,7 +35,7 @@ import scala.jdk.CollectionConverters._
  * `<iframe>` embed but a `<button class="entry-trailer" data-youtube-id="…">`.
  */
 class FalenicaClient(http: HttpFetch
-) extends CinemaScraper with DetailEnricher {
+) extends SingleSiteScraper with DetailEnricher {
 
 
   val cinema: Cinema = StacjaFalenica
@@ -44,8 +46,7 @@ class FalenicaClient(http: HttpFetch
 
   private case class Film(slug: String, title: String, format: List[String], runtime: Option[Int], director: Seq[String], poster: Option[String])
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = {
     // A WordPress `__trashed-N` slug isn't necessarily dead: the venue trashes
@@ -69,8 +70,6 @@ class FalenicaClient(http: HttpFetch
         cinema    = cinema,
         posterUrl = f.poster,
         filmUrl   = Some(s"$BaseUrl/filmy/${f.slug}/"),
-        synopsis  = None,
-        cast      = Seq.empty,
         director  = f.director,
         showtimes = showtimes,
         trailerUrl = None
@@ -96,7 +95,7 @@ class FalenicaClient(http: HttpFetch
         // redesigned theme, not nested inside it) plus a leading "O filmie"
         // heading, dropped so it doesn't leak into the first line.
         synopsis   = Option(document.selectFirst("article.entry-description"))
-                       .map(ScraperParse.cleanSynopsis(_, "h2")).filter(_.length > 20),
+                       .map(SynopsisProse.cleanSynopsis(_, "h2")).filter(_.length > 20),
         // The trailer is a `<button class="entry-trailer" data-youtube-id="…">`
         // (no more `<video>`/`<iframe>` embed); route the id through the same
         // canonicaliser every scraper uses by rebuilding a watch URL from it.
@@ -119,7 +118,7 @@ class FalenicaClient(http: HttpFetch
                          .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
         val poster   = Option(art.selectFirst("div.repe_outer")).map(_.attr("style"))
                          .flatMap(ScraperParse.cssUrl)
-                         .map(u => if (u.startsWith("http")) u else s"$BaseUrl/${u.stripPrefix("/")}")
+                         .map(ScraperParse.onSite(BaseUrl))
         Film(slug, title, format, runtime, director, poster)
       }
     }

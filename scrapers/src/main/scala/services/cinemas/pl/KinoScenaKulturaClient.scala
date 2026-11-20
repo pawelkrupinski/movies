@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.ScraperParse
 import models._
 import tools.HttpFetch
@@ -74,10 +76,7 @@ object KinoScenaKulturaClient {
                           genres = group.flatMap(_.genres).distinct),
         cinema    = cinema,
         posterUrl = group.flatMap(_.posterUrl).headOption,
-        filmUrl   = None,
         synopsis  = group.flatMap(_.synopsis).headOption,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }
@@ -92,7 +91,7 @@ object KinoScenaKulturaClient {
       title     = title,
       dateTime  = dt,
       posterUrl = Option(block.selectFirst("div.event-img img")).flatMap(ScraperParse.imageUrl(_)),
-      synopsis  = Option(block.selectFirst("div.event-desc")).map(ScraperParse.blockText(_).trim).filter(_.length > 20),
+      synopsis  = Option(block.selectFirst("div.event-desc")).map(SynopsisProse.blockText(_).trim).filter(_.length > 20),
       genres    = genresOf(block),
       runtime   = runtimeOf(block)
     )

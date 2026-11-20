@@ -315,9 +315,6 @@ object AlamoDrafthouseParser {
       posterUrl   = show.posterUrl,
       filmUrl     = Some(s"${AlamoDrafthouseClient.BaseUrl}/show/${show.slug}"),
       // Not carried by the venue payload: the show's own detail ([[parseDetail]]) fills them.
-      synopsis    = None,
-      cast        = Seq.empty,
-      director    = Seq.empty,
       showtimes   = showtimes,
       // Alamo's own show slug — stable across venues AND across a film's
       // presentation variants, so a merge can recognise the same film at two

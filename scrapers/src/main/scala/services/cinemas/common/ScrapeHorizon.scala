@@ -35,6 +35,9 @@ import java.time.{LocalDate, YearMonth}
 object ScrapeHorizon {
   val MaxDays: Int = 730
 
+  /** Whether `day` lies in the horizon of a scrape planned on `today`: `[today, today + MaxDays]`. */
+  def includes(today: LocalDate)(day: LocalDate): Boolean = !day.isBefore(today) && !day.isAfter(today.plusDays(MaxDays.toLong))
+
   /** The listing from `day` on: each film's showtimes before it dropped, and a film left with none dropped too — for
    *  a page that still prints the days already past (a programme week's table, an events list). */
   def startingOn(day: LocalDate)(movies: Seq[CinemaMovie]): Seq[CinemaMovie] =

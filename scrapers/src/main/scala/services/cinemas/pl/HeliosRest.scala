@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.ScraperParse.jsonText
 import play.api.libs.json._
 
@@ -124,9 +125,7 @@ object HeliosRest {
   // write boundary so the display layer doesn't have to special-case
   // this source's casing.
   private def genres(js: JsValue): Seq[String] =
-    (js \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-      .flatMap(g => (g \ "name").asOpt[String]).filter(_.nonEmpty)
-      .map(tools.TextNormalization.titleCaseIfAllLower)
+    ScraperParse.jsonNames(js \ "genres").map(tools.TextNormalization.titleCaseIfAllLower)
 
   // Helios ships `trailers: [<youtube embed URL>]`. Take the first
   // entry; for non-embed YouTube URLs (live API has been seen to mix

@@ -6,7 +6,7 @@ import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -34,12 +34,11 @@ import scala.jdk.CollectionConverters._
 class KinoFenomenClient(
   http: HttpFetch,
   override val cinema: Cinema = KinoFenomen
-) extends CinemaScraper with DetailEnricher {
+) extends SingleSiteScraper with DetailEnricher {
 
   import KinoFenomenClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = {
     val html = HttpRead.page(http, ListingUrl)
@@ -57,8 +56,6 @@ class KinoFenomenClient(
         // use it as the filmUrl. Each showing keeps its own `/event/view/id/`
         // booking link.
         filmUrl   = head.artistUrl,
-        synopsis  = None,
-        cast      = Seq.empty,
         director  = head.directors,
         showtimes = showtimes
       )

@@ -124,7 +124,7 @@ class RegalClient(
    *  row on. Sharing one chunk list across the batch is precisely what keeps
    *  every venue's URLs identical.
    *
-   *  Bounded to `[today, today + MaxHorizonDays]` — the shared sanity valve
+   *  Bounded to `[today, today + ScrapeHorizon.MaxDays]` — the shared sanity valve
    *  against a stray far-future date, NOT a coverage target. Regal advertises
    *  well past a fixed window (measured 2026-08-30: 111 distinct dates chain-
    *  wide, reaching 2027-06-09) and every advertised day is fetched.
@@ -134,7 +134,7 @@ class RegalClient(
    *  to a guess. An EMPTY list is expected data for a batch with nothing on. */
   def planChunks(): Seq[String] =
     RegalParser.parseDates(HttpRead.page(http, indexUrl(batch)))
-      .filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong)))
+      .filter(ScrapeHorizon.includes(today))
       .map(_.toString)
 
   /** Fetch + parse ONE date's response, keeping this theatre's slice. A throw
@@ -148,11 +148,6 @@ class RegalClient(
 object RegalClient {
 
   val BaseUrl = "https://www.regmovies.com"
-
-  /** The shared scrape horizon — see [[ScrapeHorizon]] for why it is a sanity
-   *  bound rather than a budget. The batch index names exactly which days exist,
-   *  so no day is fetched blind and this only trims a garbage far-future date. */
-  val MaxHorizonDays = ScrapeHorizon.MaxDays
 
   /** Regal's `date=` parameter is US-style `M-d-yyyy` with NO zero padding
    *  ("9-12-2026", not "09-12-2026") — the format its own front end sends. */

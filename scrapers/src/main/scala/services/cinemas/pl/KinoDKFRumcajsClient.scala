@@ -87,8 +87,6 @@ object KinoDKFRumcajsClient {
       CinemaMovie(
         movie     = Movie(film.title),
         cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
         synopsis  = film.synopsis,
         cast      = film.cast,
         director  = film.director,

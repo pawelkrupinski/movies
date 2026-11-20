@@ -72,9 +72,6 @@ class TheOldCourtClient(
         cinema    = cinema,
         posterUrl = first.posterUrl,
         filmUrl   = Some(first.eventUrl),
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

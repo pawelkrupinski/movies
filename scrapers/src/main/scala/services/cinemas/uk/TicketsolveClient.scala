@@ -145,8 +145,6 @@ object TicketsolveClient {
         posterUrl   = Option(show.selectFirst("images url[size=large]")).map(_.text.trim).filter(_.nonEmpty),
         filmUrl     = child(show, "url"),
         synopsis    = child(show, "description").map(Jsoup.parse(_).text.trim).filter(_.nonEmpty),
-        cast        = Seq.empty,
-        director    = Seq.empty,
         showtimes   = showtimes,
         externalIds = Option(show.attr("id")).filter(_.nonEmpty).map("ticketsolve" -> _).toMap,
         ageRating   = group.flatMap(_.certificate).headOption.flatMap(AgeRating.normalize)

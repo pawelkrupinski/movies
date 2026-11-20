@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
@@ -86,7 +88,6 @@ object KinoRomaRawaClient {
           posterUrl  = Option(doc.selectFirst(".single__image img[src]")).flatMap(ScraperParse.imageUrl(_)),
           filmUrl    = Some(url),
           synopsis   = Option(doc.selectFirst("div.single__text[itemprop=description]")).map(plot).filter(_.nonEmpty),
-          cast       = Seq.empty,
           director   = props("director"),
           showtimes  = showtimes,
           trailerUrl = Option(doc.selectFirst(".single__video iframe[src]")).map(_.attr("abs:src")).flatMap(ScraperParse.canonicalTrailer),
@@ -108,5 +109,5 @@ object KinoRomaRawaClient {
   /** The description minus the venue's box-office notices: paragraphs set
    *  entirely in `<strong>` (pre-sale dates, prices, group bookings). */
   private def plot(description: Element): String =
-    ScraperParse.cleanSynopsisWithout(description)(ScraperParse.isAllBold)
+    SynopsisProse.cleanSynopsisWithout(description)(SynopsisProse.isAllBold)
 }

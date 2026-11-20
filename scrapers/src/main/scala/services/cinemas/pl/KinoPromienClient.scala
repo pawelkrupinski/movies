@@ -66,11 +66,7 @@ class KinoPromienClient(
       CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
-        posterUrl = None,
         filmUrl   = group.map(_._3).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

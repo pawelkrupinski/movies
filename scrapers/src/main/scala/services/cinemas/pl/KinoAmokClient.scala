@@ -5,7 +5,7 @@ import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
+import services.cinemas.common.{SingleSiteScraper, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -36,12 +36,11 @@ class KinoAmokClient(
   http:             HttpFetch,
   override val cinema: Cinema,
   today:            => LocalDate
-) extends CinemaScraper with OnlyMovieEventsFilter {
+) extends SingleSiteScraper with OnlyMovieEventsFilter {
 
   import KinoAmokClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   // The repertoire also sells the venue's own evenings — "Siesta – Trylogia Afrykańska | Spotkanie autorskie z Marcinem
   // Kydryńskim i koncert muzyki na żywo" — which the identity resolver then matched to the 1987 film "Sjesta".

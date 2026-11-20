@@ -1,5 +1,7 @@
 package services.cinemas.uk
 
+import services.cinemas.common.SynopsisProse
+
 import models.{CinemaMovie, UkRoster}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -81,7 +83,7 @@ object QuadDerbyClient {
       } yield label.text.trim.stripSuffix(":").toLowerCase(Locale.ROOT) -> value
     }.toMap
     FilmDetail(
-      synopsis       = Option(document.selectFirst("div.event__description")).map(ScraperParse.blockText(_).trim).filter(_.nonEmpty),
+      synopsis       = Option(document.selectFirst("div.event__description")).map(SynopsisProse.blockText(_).trim).filter(_.nonEmpty),
       director       = facts.get("director").toSeq.flatMap(ScraperParse.listItems),
       runtimeMinutes = facts.get("running time").flatMap(Minutes.findFirstIn).map(_.toInt).filter(_ > 0),
       releaseYear    = facts.get("year").flatMap(ScraperParse.yearIn),

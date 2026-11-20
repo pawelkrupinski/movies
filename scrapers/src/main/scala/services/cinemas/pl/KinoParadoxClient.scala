@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.{CreditedScreening, ListingFacts, ListingPageScraper, ScraperParse, SlotsToMovies}
 import services.titles.FormatTags
 import models._
@@ -144,7 +146,7 @@ object KinoParadoxClient {
     val runtime  = fields.get("czas trwania").flatMap(v => """(\d+)""".r.findFirstIn(v)).map(_.toInt).filter(_ > 0)
     val format   = fields.get("wersja językowa").map(FormatTags.formatTokensIn).getOrElse(Nil)
     val synopsis = Option(doc.selectFirst("div.single-os-hero__desc-col"))
-      .map(el => ScraperParse.cleanSynopsis(el)).filter(_.length > 20)
+      .map(el => SynopsisProse.cleanSynopsis(el)).filter(_.length > 20)
     val poster   = Option(doc.selectFirst("div.single-os-hero__img-col img[src]"))
       .map(_.attr("src").trim).filter(_.nonEmpty)
     FilmDetail(

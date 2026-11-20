@@ -65,7 +65,6 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
         posterUrl = Option(card.selectFirst("img[src]")).map(_.attr("src")).filter(_.nonEmpty),
         filmUrl   = detailUrl,
         synopsis  = Option(card.selectFirst("p.text-gray-700")).map(_.text.trim).filter(_.length > 20),
-        cast      = Seq.empty,
         director  = director,
         showtimes = showtimes.map(_.copy(format = version))
       )

@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.SlotsToMovies
 
 import java.util.Locale
@@ -9,7 +11,7 @@ import models._
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -22,7 +24,7 @@ import scala.util.Try
  * page adds director, production countries, year and the full synopsis.
  */
 class AmondoClient(http: HttpFetch
-) extends CinemaScraper with DetailEnricher {
+) extends SingleSiteScraper with DetailEnricher {
 
 
   val cinema: Cinema = KinoAmondo
@@ -34,12 +36,9 @@ class AmondoClient(http: HttpFetch
   private case class RawSlot(slug: String, title: String, genres: Seq[String], dateTime: LocalDateTime,
                              room: Option[String], booking: Option[String], poster: Option[String])
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
-  def fetch(): Seq[CinemaMovie] = fetchBare()
-
-  private def fetchBare(): Seq[CinemaMovie] = {
+  def fetch(): Seq[CinemaMovie] = {
     val document = Jsoup.parse(HttpRead.page(http, RepertoireUrl))
 
     val slots = document.select("div[id^=schedule-]").asScala.toSeq.flatMap { pane =>
@@ -55,9 +54,6 @@ class AmondoClient(http: HttpFetch
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
         filmUrl   = if (slug.nonEmpty) Some(s"$BaseUrl/movies/$slug/") else None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }
@@ -173,11 +169,11 @@ object AmondoClient {
       // sibling paragraphs, dropping the "KUP BILET" anchor either way.
       synopsis       = Option(document.selectFirst("div.filmPosterSection__plot")).flatMap { plot =>
                          Option(plot.parent).map { blurb =>
-                           val plotText = ScraperParse.cleanSynopsis(plot, "a")
+                           val plotText = SynopsisProse.cleanSynopsis(plot, "a")
                            val paraText = blurb.select("> p").asScala.toSeq
                              .filter(p => Option(p.selectFirst("a.gooutButton")).isEmpty)
                              .map(_.text.trim).filter(_.nonEmpty)
-                           ScraperParse.stripUrls((plotText +: paraText).filter(_.nonEmpty).mkString(" ").trim)
+                           SynopsisProse.stripUrls((plotText +: paraText).filter(_.nonEmpty).mkString(" ").trim)
                          }
                        }.filter(_.length > 20)
     )

@@ -1,12 +1,14 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.SlotsToMovies
 
 import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ListingPages}
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ListingPages}
 
 import java.time.{Instant, LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -30,7 +32,7 @@ import scala.util.Try
 class UjazdowskiClient(
   http:  HttpFetch,
   today: => LocalDate
-) extends CinemaScraper with DetailEnricher {
+) extends SingleSiteScraper with DetailEnricher {
 
 
   val cinema: Cinema = Ujazdowski
@@ -44,12 +46,9 @@ class UjazdowskiClient(
 
   private case class RawSlot(slug: String, title: String, dateTime: LocalDateTime, meta: Option[String], poster: Option[String])
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
-  def fetch(): Seq[CinemaMovie] = fetchBare()
-
-  private def fetchBare(): Seq[CinemaMovie] = {
+  def fetch(): Seq[CinemaMovie] = {
     val main   = HttpRead.page(http, ListingUrl)
     val navUts = UtPat.findAllMatchIn(main).map(_.group(1)).toSeq
 
@@ -88,8 +87,6 @@ class UjazdowskiClient(
           cinema    = cinema,
           posterUrl = group.flatMap(_.poster).headOption,
           filmUrl   = Some(detailUrl(slug)),
-          synopsis  = None,
-          cast      = Seq.empty,
           director  = meta.director,
           showtimes = showtimes
         )
@@ -110,8 +107,8 @@ class UjazdowskiClient(
       FilmDetail(
         // Some descriptions embed a source/related link as plain-text URL; strip
         // it so the synopsis stays prose-only. cleanSynopsis also keeps the
-        // <p>/<br> paragraph structure (ScraperParse.blockText).
-        synopsis      = Option(document.selectFirst("div.body.max-w")).map(ScraperParse.cleanSynopsis(_)).filter(_.length > 20),
+        // <p>/<br> paragraph structure (SynopsisProse.blockText).
+        synopsis      = Option(document.selectFirst("div.body.max-w")).map(SynopsisProse.cleanSynopsis(_)).filter(_.length > 20),
         originalTitle = UjazdowskiClient.originalTitleOf(document),
         director      = UjazdowskiClient.programmeOf(document).map(_.director).distinct
       )

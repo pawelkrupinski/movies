@@ -184,9 +184,6 @@ object SystemBiletowyClient {
                     countries = firstOf(_.countries), originalTitle = first(_.originalTitle)),
       cinema    = cinema,
       posterUrl = sorted.flatMap(_.poster).headOption,
-      filmUrl   = None,
-      synopsis  = None,
-      cast      = Seq.empty,
       director  = firstOf(_.director),
       showtimes = showtimes
     )

@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SynopsisProse
+
 import services.cinemas.common.SlotsToMovies
 
 import java.util.Locale
@@ -8,7 +10,7 @@ import services.cinemas.common.{ScraperParse, ListingPages}
 import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.SingleSiteScraper
 
 import scala.concurrent.duration._
 
@@ -18,7 +20,7 @@ import scala.concurrent.duration._
  * date+time, a `reż. … , Country Year, NNN'` metadata line, the booking link
  * and synopsis. Films are grouped by their (de-prefixed) title.
  */
-class PromKepaClient(http: HttpFetch) extends CinemaScraper {
+class PromKepaClient(http: HttpFetch) extends SingleSiteScraper {
 
   val cinema: Cinema = KinoKepa
 
@@ -26,8 +28,7 @@ class PromKepaClient(http: HttpFetch) extends CinemaScraper {
   private val ListingUrl = s"$BaseUrl/events/category/kino-kepa/"
   private val EventPat   = """/wydarzenie/([a-z0-9-]+)""".r
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = {
     val listing = HttpRead.page(http, ListingUrl)
@@ -49,7 +50,6 @@ class PromKepaClient(http: HttpFetch) extends CinemaScraper {
         posterUrl = primary.poster,
         filmUrl   = Some(s"$BaseUrl/wydarzenie/${primary.slug}"),
         synopsis  = primary.synopsis,
-        cast      = Seq.empty,
         director  = primary.director,
         showtimes = showtimes
       ))
@@ -85,7 +85,7 @@ object PromKepaClient {
         year      = meta.map(_.group(3).toInt),
         countries = meta.toSeq.flatMap(_.group(2).split("[,/]").map(_.trim).filter(_.nonEmpty)),
         director  = meta.toSeq.flatMap(_.group(1).split(",").map(_.trim).filter(_.nonEmpty)),
-        synopsis  = Option(document.selectFirst("div.single_content")).map(ScraperParse.blockText(_).trim)
+        synopsis  = Option(document.selectFirst("div.single_content")).map(SynopsisProse.blockText(_).trim)
                       // (?s) so the booking-footer cut spans the paragraph newlines blockText now keeps.
                       .map(_.replaceAll("(?is)\\s*bilet[^.]*\\d+\\s*zł.*$", "").trim).filter(_.length > 20),
         poster    = Option(document.selectFirst("div.image_item img.wp-post-image[src]")).map(_.attr("src")).filter(_.nonEmpty)

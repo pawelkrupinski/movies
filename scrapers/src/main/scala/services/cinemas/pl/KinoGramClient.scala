@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.ScraperParse.jsonText
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
@@ -57,19 +58,15 @@ class KinoGramClient(http: HttpFetch) extends CinemaScraper {
           countries      = jsonText(movie \ "country")
                              .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
                              .map(KinoGramClient.toPolishCountry),
-          genres         = (movie \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-                             .flatMap(g => (g \ "name").asOpt[String]).filter(_.nonEmpty)
-                             .map(tools.TextNormalization.titleCaseIfAllLower)
+          genres         = ScraperParse.jsonNames(movie \ "genres").map(tools.TextNormalization.titleCaseIfAllLower)
         ),
         cinema    = cinema,
         posterUrl = firstString(movie, "posters").filter(_.nonEmpty),
-        filmUrl   = None,
         // description is bilingual: "[PL] …polski… [/PL] [EN] …english… [/EN]".
         // Keep only the Polish part.
         synopsis  = (movie \ "description").asOpt[String]
                       .map(_.replaceFirst("^\\[PL\\]\\s*", "").split("\\[/PL\\]").head.trim)
                       .filter(_.nonEmpty).map(tools.TextNormalization.stripHtml),
-        cast      = Seq.empty,
         director  = (movie \ "director").asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
         showtimes = showtimesOf(group, format),
         externalIds = Map.empty,

@@ -6,7 +6,7 @@ import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon, SlotsToMovies}
+import services.cinemas.common.{SingleSiteScraper, ListingPages, ScrapeHorizon, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
@@ -53,12 +53,11 @@ class McswElektrowniaCinemaClient(
   http:              HttpFetch,
   override val cinema: Cinema = McswElektrowniaCinema,
   today:             => LocalDate
-) extends CinemaScraper {
+) extends SingleSiteScraper {
 
   import McswElektrowniaCinemaClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = {
     // Follow the programme rather than assume a week of it: on 2026-08-05 the
@@ -81,10 +80,6 @@ class McswElektrowniaCinemaClient(
             genres = head.parts.genres),
           cinema    = cinema,
           posterUrl = head.posterUrl,
-          filmUrl   = None,
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = Seq.empty,
           showtimes = showtimes,
           ageRating = head.parts.ageRating
         )

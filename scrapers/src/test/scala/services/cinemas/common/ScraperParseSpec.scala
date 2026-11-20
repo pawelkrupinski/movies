@@ -301,6 +301,31 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.ddField(document, "gatunek") shouldBe None // no such dt
   }
 
+  "ddItems" should "split the <dd> after the label into its comma-separated items" in {
+    val document = Jsoup.parse("<dl><dt>Obsada</dt><dd> Jan Kowalski,  Anna Nowak , </dd><dt>Rok</dt><dd></dd></dl>")
+    ScraperParse.ddItems(document, "obsada") shouldBe Seq("Jan Kowalski", "Anna Nowak")
+    ScraperParse.ddItems(document, "rok")    shouldBe empty
+  }
+
+  "onSite" should "keep an absolute URL and put a path, with or without its slash, under the site" in {
+    val onSite = ScraperParse.onSite("https://kino.pl")
+    onSite("https://cdn.kino.pl/a.jpg") shouldBe "https://cdn.kino.pl/a.jpg"
+    onSite("/film/x")                   shouldBe "https://kino.pl/film/x"
+    onSite("film/x")                    shouldBe "https://kino.pl/film/x"
+  }
+
+  "jsonNames" should "read a list of named objects or bare strings, dropping empty names" in {
+    val film = play.api.libs.json.Json.parse("""{"genres": [{"name": "Dramat"}, "Komedia", {"name": ""}, {"id": 3}]}""")
+    ScraperParse.jsonNames(film \ "genres")  shouldBe Seq("Dramat", "Komedia")
+    ScraperParse.jsonNames(film \ "missing") shouldBe empty
+  }
+
+  "minutesOf" should "add the hours and minutes a pattern captured, an unmatched group as none" in {
+    ScraperParse.minutesOf("1", "30") shouldBe 90
+    ScraperParse.minutesOf(null, "95") shouldBe 95
+    ScraperParse.minutesOf("2", null)  shouldBe 120
+  }
+
   "extractFormatTags" should "split a parenthesised format tag into clean title + display tokens" in {
     FormatTags.extractFormatTags("Film (2D NAPISY)")  shouldBe (("Film", List("2D", "NAP")))
     FormatTags.extractFormatTags("Film (2D DUBBING)") shouldBe (("Film", List("2D", "DUB")))
@@ -443,10 +468,10 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   }
 
   "stripUrls" should "remove http(s) and bare www tokens and tidy the whitespace they leave" in {
-    ScraperParse.stripUrls("Świetny film. Więcej: www.example.pl")  shouldBe "Świetny film. Więcej:"
-    ScraperParse.stripUrls("Zobacz https://foo.bar/x teraz")        shouldBe "Zobacz teraz"
-    ScraperParse.stripUrls("Instagram: https://instagram.com/abc")  shouldBe "Instagram:"
-    ScraperParse.stripUrls("Opis bez żadnych linków.")              shouldBe "Opis bez żadnych linków."
+    SynopsisProse.stripUrls("Świetny film. Więcej: www.example.pl")  shouldBe "Świetny film. Więcej:"
+    SynopsisProse.stripUrls("Zobacz https://foo.bar/x teraz")        shouldBe "Zobacz teraz"
+    SynopsisProse.stripUrls("Instagram: https://instagram.com/abc")  shouldBe "Instagram:"
+    SynopsisProse.stripUrls("Opis bez żadnych linków.")              shouldBe "Opis bez żadnych linków."
   }
 
   "cleanSynopsis" should "drop the named junk sub-trees and strip residual plain-text URLs" in {
@@ -457,7 +482,7 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
         |  <div class="terminy"><h2>Dostępne terminy</h2><a>Kup bilet</a></div>
         |  <p>Więcej: www.kino.pl</p>
         |</div>""".stripMargin
-    val out = ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.tresc"), "div.terminy", "div.trailer")
+    val out = SynopsisProse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.tresc"), "div.terminy", "div.trailer")
     out should include ("Prawdziwy opis filmu o miłości i stracie")
     out should not include "Dostępne terminy"
     out should not include "Kup bilet"
@@ -467,66 +492,66 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
 
   it should "operate on a clone, leaving the live DOM intact for other fields" in {
     val el = Jsoup.parse("""<div class="c"><span class="junk">x</span>opis</div>""").selectFirst("div.c")
-    ScraperParse.cleanSynopsis(el, "span.junk")
+    SynopsisProse.cleanSynopsis(el, "span.junk")
     Option(el.selectFirst("span.junk")) should not be empty // original untouched
   }
 
   it should "preserve paragraph breaks between sibling <p> blocks" in {
     val html = """<div class="t"><p>Pierwszy akapit opisu filmu.</p><p>Drugi akapit, osobny.</p></div>"""
-    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
+    SynopsisProse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
       "Pierwszy akapit opisu filmu.\n\nDrugi akapit, osobny."
   }
 
   it should "drop a URL-only paragraph without leaving a blank-line gap" in {
     val html = """<div class="t"><p>Prawdziwy opis.</p><p>https://youtu.be/x</p><p>Ostatni akapit.</p></div>"""
-    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
+    SynopsisProse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
       "Prawdziwy opis.\n\nOstatni akapit."
   }
 
   it should "render <br> as a single line break and <p> as a blank line" in {
     val html = """<div class="t"><p>Linia jeden<br>Linia dwa</p><p>Akapit dwa.</p></div>"""
-    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
+    SynopsisProse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
       "Linia jeden\nLinia dwa\n\nAkapit dwa."
   }
 
   "blockText" should "fall back to flat text when the element has no block children" in {
-    ScraperParse.blockText(Jsoup.parse("<span>Jeden akapit bez struktury.</span>").selectFirst("span")).trim shouldBe
+    SynopsisProse.blockText(Jsoup.parse("<span>Jeden akapit bez struktury.</span>").selectFirst("span")).trim shouldBe
       "Jeden akapit bez struktury."
   }
 
   it should "preserve <b>/<strong> as **bold** and <i>/<em> as *italic*" in {
     val html = """<div class="t"><p>Zwykły <b>pogrubiony</b> i <em>kursywa</em> tekst.</p></div>"""
-    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
+    SynopsisProse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
       "Zwykły **pogrubiony** i *kursywa* tekst."
   }
 
   it should "skip empty emphasis tags so they can't emit a bare ****" in {
     val html = """<div class="t"><p>Opis<b></b> filmu.</p></div>"""
-    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe "Opis filmu."
+    SynopsisProse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe "Opis filmu."
   }
 
   it should "move whitespace inside an emphasis tag outside the markers (so CommonMark renders it)" in {
     // `<b>pogrubiony </b>` would otherwise emit `**pogrubiony **`, which iOS
     // (strict CommonMark) renders literally — the space must hop outside.
     val html = """<div class="t"><p>A <b>pogrubiony </b>tekst.</p></div>"""
-    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe "A **pogrubiony** tekst."
+    SynopsisProse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe "A **pogrubiony** tekst."
   }
 
   it should "drop an emphasis tag whose content is only whitespace" in {
     val html = """<div class="t"><p>A <b> </b>B.</p></div>"""
-    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe "A B."
+    SynopsisProse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe "A B."
   }
 
   it should "skip block-spanning emphasis (can't bold across a paragraph) and keep the prose" in {
     val html = """<div class="t"><b><p>Pierwszy akapit.</p><p>Drugi akapit.</p></b></div>"""
-    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
+    SynopsisProse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe
       "Pierwszy akapit.\n\nDrugi akapit."
   }
 
   it should "skip nested emphasis (only the leaf wins, no broken ***…* **)" in {
     val html = """<div class="t"><p>W filmie <b><i>Tytuł</i></b> coś.</p></div>"""
     // The <b> contains an <i>, so bold is skipped; the leaf <i> still emphasises.
-    ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe "W filmie *Tytuł* coś."
+    SynopsisProse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t")) shouldBe "W filmie *Tytuł* coś."
   }
 
   it should "not throw when an emphasis tag wraps only a Unicode space (em-space survives .text.trim)" in {
@@ -534,7 +559,7 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     // whitespace to the tidy pass — the all-whitespace pair must collapse, not
     // index past the segment end.
     val html = "<div class=\"t\"><p>A <b>\u2003</b>B.</p></div>"
-    val out = ScraperParse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t"))
+    val out = SynopsisProse.cleanSynopsis(Jsoup.parse(html).selectFirst("div.t"))
     out should not include "**"
     out should startWith ("A")
     out should endWith ("B.")

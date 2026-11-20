@@ -103,10 +103,7 @@ class KinoPortClient(
           releaseYear    = group.flatMap(_.releaseYear).headOption
         ),
         cinema    = cinema,
-        posterUrl = None,
         filmUrl   = Some(first.postUrl),
-        synopsis  = None,
-        cast      = Seq.empty,
         director  = first.director,
         showtimes = showtimes
       )

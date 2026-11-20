@@ -7,7 +7,7 @@ import org.jsoup.nodes.{Document, Element}
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -46,7 +46,7 @@ class KinoZorzaClient(
   http:             HttpFetch,
   override val cinema: Cinema = KinoZorza,
   today:            => LocalDate
-) extends CinemaScraper with DetailEnricher {
+) extends SingleSiteScraper with DetailEnricher {
 
   import KinoZorzaClient._
 
@@ -56,8 +56,7 @@ class KinoZorzaClient(
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     DetailFetchOutcome.page(http, ref).map(parseDetail)
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = {
     val html = HttpRead.page(http, RepertoireUrl)
@@ -70,11 +69,7 @@ class KinoZorzaClient(
       CinemaMovie(
         movie     = Movie(head.title),
         cinema    = cinema,
-        posterUrl = None,
         filmUrl   = Some(BaseUrl + head.filmUrl),
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

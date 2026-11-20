@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SingleSiteScraper
+
 import services.cinemas.common.SlotsToMovies
 
 import java.util.Locale
@@ -36,13 +38,12 @@ import services.titles.TitleNormalizer
  */
 class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
                 today: => LocalDate,
-                titles: TitleNormalizer) extends CinemaScraper {
+                titles: TitleNormalizer) extends SingleSiteScraper {
 
   private val BaseUrl  = "https://bok.waw.pl"
   private val Warsaw   = models.TimeZones.Poland
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
   // BOK runs two screens off one site, one listing path each.
   override def sourceKey: Option[String] = Some(s"${CinemaScraper.urlKey(BaseUrl)}/$prefix")
 

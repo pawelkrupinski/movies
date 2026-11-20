@@ -6,7 +6,7 @@ import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.SingleSiteScraper
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -41,12 +41,11 @@ import scala.jdk.CollectionConverters._
 class OkfIluzjaClient(
   http:              HttpFetch,
   override val cinema: Cinema = OkfIluzja
-) extends CinemaScraper {
+) extends SingleSiteScraper {
 
   import OkfIluzjaClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
+  protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = {
     val html = HttpRead.page(http, WeeklyUrl)
@@ -62,9 +61,6 @@ class OkfIluzjaClient(
         cinema    = cinema,
         posterUrl = Some(head.posterUrl).filter(_.nonEmpty),
         filmUrl   = Some(head.filmUrl),
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
         showtimes = showtimes
       )
     }

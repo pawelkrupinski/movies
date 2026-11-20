@@ -5,7 +5,7 @@ import services.cinemas.common.SlotsToMovies
 import services.titles.FormatTags
 
 import models._
-import org.jsoup.nodes.Document
+import org.jsoup.nodes.{Document, Element}
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse}
@@ -250,17 +250,19 @@ object EkobiletClient {
 
   /** Dated screenings off a film detail page. */
   private[cinemas] def parseShowtimes(html: String, today: LocalDate): Seq[Showtime] =
-    Jsoup.parse(html, BaseUrl).select("div.event-buy[data-href]").asScala.toSeq.flatMap { row =>
-      for {
-        dateStr <- Option(row.selectFirst("strong.primary-color")).map(_.text.trim)
-        dayMonth <- ScraperParse.parseDayMonth(dateStr)  // "10 cze"
-        time     <- Option(row.selectFirst("span.fw-bold")).flatMap(s => ScraperParse.parseHHmm(s.text))
-        // This year's date unless it lies past the grace before `today`: "5 sty" seen
-        // in December is next January, while a row left on the page the day after it
-        // screened stays in the past instead of becoming a phantom a year out.
-        date     <- ScraperParse.upcomingDate(dayMonth, today)
-      } yield Showtime(date.atTime(time), Option(row.attr("data-href")).filter(_.nonEmpty))
-    }.distinctBy(s => (s.dateTime, s.bookingUrl))
+    Jsoup.parse(html, BaseUrl).select("div.event-buy[data-href]").asScala.toSeq.flatMap(rowShowtime(_, today))
+      .distinctBy(s => (s.dateTime, s.bookingUrl))
+
+  /** A `div.event-buy` row's screening: its date ("10 cze") and time, and its booking link. This year's date unless
+   *  it lies past the grace before `today`: "5 sty" seen in December is next January, while a row left on the page
+   *  the day after it screened stays in the past instead of becoming a phantom a year out. */
+  private def rowShowtime(row: Element, today: LocalDate): Option[Showtime] =
+    for {
+      dateText <- Option(row.selectFirst("strong.primary-color")).map(_.text.trim)
+      dayMonth <- ScraperParse.parseDayMonth(dateText)
+      time     <- Option(row.selectFirst("span.fw-bold")).flatMap(s => ScraperParse.parseHHmm(s.text))
+      date     <- ScraperParse.upcomingDate(dayMonth, today)
+    } yield Showtime(date.atTime(time), Option(row.attr("data-href")).filter(_.nonEmpty))
 
   /** The chrono-row landing skin: every upcoming showtime as a flat
    *  `div.event-buy[data-href]` row carrying its OWN title
@@ -275,11 +277,8 @@ object EkobiletClient {
         titleElement <- Option(row.selectFirst("div.ps-2.primary-color.fw-bold"))
         title = listingTitle(titleElement.text)
         if title.nonEmpty
-        dateStr  <- Option(row.selectFirst("strong.primary-color")).map(_.text.trim)
-        dayMonth <- ScraperParse.parseDayMonth(dateStr)  // "25 wrz"
-        time     <- Option(row.selectFirst("span.fw-bold")).flatMap(s => ScraperParse.parseHHmm(s.text))
-        date     <- ScraperParse.upcomingDate(dayMonth, today)
-      } yield (title, date.atTime(time), Option(row.attr("data-href")).filter(_.nonEmpty))
+        showtime     <- rowShowtime(row, today)
+      } yield (title, showtime.dateTime, showtime.bookingUrl)
     }.distinctBy(identity)
 
   /** Parse a film detail page into its `FilmDetail`, off the off-canvas info

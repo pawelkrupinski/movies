@@ -9,6 +9,7 @@ import java.util.Locale
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages}
 
 import java.time.LocalDateTime
@@ -26,8 +27,6 @@ class RialtoClient(http: HttpFetch
 
 
   private val DateTimePat = raw"""- (\d{4}-\d{2}-\d{2}) (${ScraperParse.IsoClockText}) -""".r
-  private val RuntimePat  = """(\d+)\s*min""".r
-  private val YearPat     = """\b((?:19|20)\d{2})\b""".r
   // The event page (not the repertoire listing) heads the description with a
   // pipe-delimited parameters line whose first segment is the genre list:
   //   `<p class="movie-parameters">Dramat, Komedia | 120 min</p>`
@@ -69,9 +68,7 @@ class RialtoClient(http: HttpFetch
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(RepertoireUrl, BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
-  def fetch(): Seq[CinemaMovie] = fetchBare()
-
-  private def fetchBare(): Seq[CinemaMovie] = {
+  def fetch(): Seq[CinemaMovie] = {
     val filmEntries = parseRepertoire(HttpRead.page(http, RepertoireUrl))
 
     val eventDataByUrl: Map[String, Option[EventData]] =
@@ -90,7 +87,6 @@ class RialtoClient(http: HttpFetch
           posterUrl = primary.posterUrl,
           filmUrl   = Some(primary.eventUrl),
           synopsis  = primary.synopsis,
-          cast      = Seq.empty,
           director  = primary.director,
           showtimes = allShowtimes
         ))
@@ -109,41 +105,17 @@ class RialtoClient(http: HttpFetch
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     DetailFetchOutcome.page(http, ref).map { html =>
-      val document    = Jsoup.parse(html)
-      val genres = parseGenres(html)
-      val synopsisOpt = Option(document.selectFirst("span.text")).flatMap { span =>
-        val lines   = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
-        val emptyIndex = lines.indexWhere(_.isEmpty)
-        val synLines = if (emptyIndex >= 0) lines.drop(emptyIndex + 1) else Array.empty[String]
-        val synText  = synLines.filter(_.nonEmpty).mkString("\n").trim
-        Option(synText).filter(_.nonEmpty)
-      }
-      val fullText = Option(document.selectFirst("span.text")).map(_.text()).getOrElse("")
-      val runtime  = RuntimePat.findFirstMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption)
-      val year     = YearPat.findAllMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption).toSeq.headOption
-      val director = Option(document.selectFirst("span.text")).toSeq.flatMap { span =>
-        val lines = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
-        lines.find(_.startsWith("Reż. ")).map(_.stripPrefix("Reż. ").trim).filter(_.nonEmpty)
-          .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-      }
-      val countries: Seq[String] = Option(document.selectFirst("span.text")).toSeq.flatMap { span =>
-        val lines = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
-        val countryPat = """(?s)^(.+?)\s*,?\s+(?:19|20)\d{2}\b""".r
-        lines.find(l => YearPat.findFirstMatchIn(l).isDefined && !l.toLowerCase(Locale.ROOT).startsWith("reż"))
-          .flatMap(l => countryPat.findFirstMatchIn(l).map(_.group(1).trim))
-          .map(_.stripSuffix(",").trim)
-          .filter(_.nonEmpty)
-          .toSeq
-          .flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-      }
+      val span     = Option(Jsoup.parse(html).selectFirst("span.text"))
+      val lines    = span.map(RialtoClient.textLines).getOrElse(Array.empty[String])
+      val fullText = span.map(_.text()).getOrElse("")
       FilmDetail(
-        synopsis       = synopsisOpt,
+        synopsis       = RialtoClient.synopsisOf(lines),
         cast           = Seq.empty,
-        director       = director,
-        runtimeMinutes = runtime,
-        releaseYear    = year,
-        countries      = countries,
-        genres         = genres
+        director       = RialtoClient.directorsOf(lines),
+        runtimeMinutes = RialtoClient.runtimeIn(fullText),
+        releaseYear    = RialtoClient.yearIn(fullText),
+        countries      = RialtoClient.countriesOf(lines),
+        genres         = parseGenres(html)
       )
     }
 
@@ -163,33 +135,11 @@ class RialtoClient(http: HttpFetch
         val posterUrl = Option(block.selectFirst(".list-item-image img[src], .image img[src]"))
                           .map(_.attr("src"))
 
-        val (synopsis, director, runtime, year, countries) = Option(block.selectFirst("span.text")) match {
-          case None => (None, Seq.empty[String], None, None, Seq.empty[String])
-          case Some(span) =>
-            val lines    = span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
-            val directory      = lines.find(_.startsWith("Reż. ")).map(_.stripPrefix("Reż. ").trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-            val emptyIndex = lines.indexWhere(_.isEmpty)
-            val synLines = if (emptyIndex >= 0) lines.drop(emptyIndex + 1) else Array.empty[String]
-            val synText  = synLines.filter(_.nonEmpty).mkString("\n").trim
-            val fullText = lines.mkString(" ")
-            val rt       = RuntimePat.findFirstMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption)
-            val yr       = YearPat.findAllMatchIn(fullText).flatMap(m => Try(m.group(1).toInt).toOption).toSeq.headOption
-            // The metadata line on Rialto looks like "Ukraina 2026, 90 minut" or
-            // "Polska, Niemcy, 2026, 124 min" — everything before the first
-            // 4-digit year is the production country (or comma-separated
-            // countries). Strip the optional trailing comma left from the
-            // "..Niemcy, 2026" form.
-            val countryPat = """(?s)^(.+?)\s*,?\s+(?:19|20)\d{2}\b""".r
-            val cs = lines.find(l => YearPat.findFirstMatchIn(l).isDefined && !l.toLowerCase(Locale.ROOT).startsWith("reż"))
-              .flatMap(l => countryPat.findFirstMatchIn(l).map(_.group(1).trim))
-              .map(_.stripSuffix(",").trim)
-              .filter(_.nonEmpty)
-              .toSeq
-              .flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-            (Option(synText).filter(_.nonEmpty), directory, rt, yr, cs)
-        }
+        val lines    = Option(block.selectFirst("span.text")).map(RialtoClient.textLines).getOrElse(Array.empty[String])
+        val fullText = lines.mkString(" ")
 
-        FilmEntry(title, eventUrl, posterUrl, synopsis, director, runtime, year, countries)
+        FilmEntry(title, eventUrl, posterUrl, RialtoClient.synopsisOf(lines), RialtoClient.directorsOf(lines),
+          RialtoClient.runtimeIn(fullText), RialtoClient.yearIn(fullText), RialtoClient.countriesOf(lines))
       }.filterNot(e => isNonFilmEntry(e.title))
     }
 
@@ -221,6 +171,38 @@ class RialtoClient(http: HttpFetch
 }
 
 object RialtoClient {
+
+  private val RuntimePat = """(\d+)\s*min""".r
+  private val YearPat    = """\b((?:19|20)\d{2})\b""".r
+  // The metadata line on Rialto looks like "Ukraina 2026, 90 minut" or "Polska, Niemcy, 2026, 124 min" — everything
+  // before the first 4-digit year is the production country (or comma-separated countries).
+  private val CountriesPat = """(?s)^(.+?)\s*,?\s+(?:19|20)\d{2}\b""".r
+
+  /** A film's `span.text` description as its `<br>`-separated lines, each as plain text: the director line
+   *  (`Reż. ...`), the countries-year-runtime line, then after a blank line the synopsis. */
+  private def textLines(span: Element): Array[String] =
+    span.html().split("(?i)<br\\s*/?>").map(l => Jsoup.parseBodyFragment(l).body().text().trim)
+
+  /** Every non-blank line after the first blank one. */
+  private def synopsisOf(lines: Array[String]): Option[String] = {
+    val emptyIndex = lines.indexWhere(_.isEmpty)
+    val synopsisLines = if (emptyIndex >= 0) lines.drop(emptyIndex + 1) else Array.empty[String]
+    Option(synopsisLines.filter(_.nonEmpty).mkString("\n").trim).filter(_.nonEmpty)
+  }
+
+  private def directorsOf(lines: Array[String]): Seq[String] =
+    lines.find(_.startsWith("Reż. ")).toSeq.flatMap(l => ScraperParse.commaItems(l.stripPrefix("Reż. ")))
+
+  /** The countries before the year on the first line naming a year that is not the director line; the optional
+   *  trailing comma of the "..Niemcy, 2026" form dropped. */
+  private def countriesOf(lines: Array[String]): Seq[String] =
+    lines.find(l => YearPat.findFirstMatchIn(l).isDefined && !l.toLowerCase(Locale.ROOT).startsWith("reż"))
+      .flatMap(l => CountriesPat.findFirstMatchIn(l).map(_.group(1).trim.stripSuffix(",")))
+      .toSeq.flatMap(ScraperParse.commaItems)
+
+  private def runtimeIn(text: String): Option[Int] = RuntimePat.findFirstMatchIn(text).flatMap(m => Try(m.group(1).toInt).toOption)
+
+  private def yearIn(text: String): Option[Int] = YearPat.findFirstMatchIn(text).flatMap(m => Try(m.group(1).toInt).toOption)
 
   /** Rialto-specific title cleanup: drop the cycle prefix and the event-
    *  decoration suffix. Casing is NOT done here — the shared, banner-aware
