@@ -521,4 +521,104 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     SignedInUser(FakeRequest().withSession(session(back).data.toSeq*), repository).map(_.id) shouldBe Some("alice@example.com")
   }
 
+
+  // ── every refusal, word for word ─────────────────────────────────────────
+  //
+  // The bodies and statuses the apps and the browser see when a flow does not
+  // finish. Pinned whole so a restructuring of how they are reached cannot
+  // change what they say.
+
+  private def callbackWith(ctl: AuthController, query: String, session: (String, String)*) =
+    ctl.callback("google")(FakeRequest("GET", s"/auth/google/callback$query").withSession(session*))
+
+  private val FreshSession = Seq("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
+
+  "Every refused flow" should "answer start's refusals with their own words" in {
+    val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
+    val unknown = ctl.start("facebook")(FakeRequest("GET", "/auth/facebook/start"))
+    status(unknown) shouldBe NOT_FOUND
+    contentAsString(unknown) shouldBe "Provider not configured: facebook"
+    val badChallenge = ctl.start("google")(FakeRequest("GET", "/auth/google/start?platform=ios&challenge=not%20base64"))
+    status(badChallenge) shouldBe BAD_REQUEST
+    contentAsString(badChallenge) shouldBe "challenge must be base64url(SHA-256(verifier)), unpadded"
+  }
+
+  it should "name each failed callback check in a 400" in {
+    val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
+    val reasons = Seq(
+      ctl.callback("facebook")(FakeRequest("GET", "/auth/facebook/callback?code=C&state=S").withSession(FreshSession*))
+                                                     -> "Unknown provider: facebook",
+      callbackWith(ctl, "?state=S", FreshSession*)    -> "Missing code",
+      callbackWith(ctl, "?code=C", FreshSession*)     -> "Missing state",
+      callbackWith(ctl, "?code=C&state=S")            -> "Missing session state — start over from /auth",
+      callbackWith(ctl, "?code=C&state=S", "oauthState" -> "S")
+                                                     -> "Missing session provider",
+      callbackWith(ctl, "?code=C&state=S", "oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTimestamp" -> "soon")
+                                                     -> "Missing or unparseable oauthStateTimestamp",
+      callbackWith(ctl, "?code=C&state=T", FreshSession*)
+                                                     -> "OAuth state mismatch (possible CSRF)",
+      callbackWith(ctl, "?code=C&state=S", "oauthState" -> "S", "oauthProvider" -> "facebook", "oauthStateTimestamp" -> NowMs.toString)
+                                                     -> "Provider mismatch: session=facebook, callback=google",
+      callbackWith(ctl, "?code=C&state=S", "oauthState" -> "S", "oauthProvider" -> "google",
+        "oauthStateTimestamp" -> (NowMs - 600001).toString)
+                                                     -> "OAuth state expired (issued 600s ago, max 10min)"
+    )
+    for ((result, reason) <- reasons) {
+      status(result) shouldBe BAD_REQUEST
+      contentAsString(result) shouldBe s"OAuth callback failed: $reason"
+    }
+  }
+
+  it should "say only 'try again' when the sign-in itself fails" in {
+    val (ctl, _, _) = fixture(new FakeProvider("google", OauthProfile(sub = "G-2", email = None, None, None)))
+    val result = callbackWith(ctl, "?code=C&state=S", FreshSession*)
+    status(result) shouldBe INTERNAL_SERVER_ERROR
+    contentAsString(result) shouldBe "Couldn't complete sign-in. Please try again."
+  }
+
+  it should "answer the native endpoints' refusals as JSON errors" in {
+    val (ctl, repository, codes) = fixture(new FakeProvider("google", OauthProfile(sub = "G-2", email = None, None, None)))
+    def token(body: play.api.libs.json.JsObject) = ctl.token()(FakeRequest("POST", "/auth/token").withBody(body))
+    def exchange(body: play.api.libs.json.JsObject) = ctl.exchange()(FakeRequest("POST", "/auth/exchange").withBody(body))
+    val answers = Seq(
+      token(play.api.libs.json.Json.obj("token" -> "t"))           -> (BAD_REQUEST, "missing provider"),
+      token(play.api.libs.json.Json.obj("provider" -> "google"))   -> (BAD_REQUEST, "missing token"),
+      token(play.api.libs.json.Json.obj("provider" -> "google", "token" -> "C", "redirectUri" -> "kinowo://auth"))
+                                                                   -> (INTERNAL_SERVER_ERROR, "Couldn't complete sign-in."),
+      exchange(play.api.libs.json.Json.obj())                      -> (UNAUTHORIZED, "invalid or expired code"),
+      exchange(play.api.libs.json.Json.obj("code" -> "nope"))      -> (UNAUTHORIZED, "invalid or expired code"),
+      exchange(play.api.libs.json.Json.obj("code" -> codes.mint("nobody@example.com", challenge = None)))
+                                                                   -> (UNAUTHORIZED, "user not found")
+    )
+    for ((result, (expectedStatus, error)) <- answers) {
+      status(result) shouldBe expectedStatus
+      contentAsJson(result) shouldBe play.api.libs.json.Json.obj("error" -> error)
+    }
+    repository.findById("nobody@example.com") shouldBe empty
+  }
+
+  "AuthController.start" should "replace every key of a flow abandoned earlier, and keep the rest of the session" in {
+    val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
+    val result = ctl.start("google")(FakeRequest("GET", "/auth/google/start").withSession(
+      "oauthState" -> "OLD", "oauthProvider" -> "facebook", "oauthStateTimestamp" -> "1",
+      "mobileClient" -> "1", AuthController.MobileChallengeKey -> "c", "lang" -> "en"))
+    val sess = session(result)
+    sess.data.keySet shouldBe Set("oauthState", "oauthProvider", "oauthStateTimestamp", "lang")
+    sess.get("oauthState").value should not be "OLD"
+    sess.get("oauthProvider").value shouldBe "google"
+    sess.get("oauthStateTimestamp").value shouldBe NowMs.toString
+    sess.get("lang").value shouldBe "en"
+  }
+
+  "A finished web sign-in" should "spend every key of its flow and keep the rest of the session" in {
+    val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
+    val result = callbackWith(ctl, "?code=C&state=S", (FreshSession :+ ("lang" -> "en"))*)
+    status(result) shouldBe SEE_OTHER
+    redirectLocation(result).value shouldBe "/"
+    val sess = session(result)
+    sess.get("lang").value shouldBe "en"
+    sess.get("userId").value shouldBe "alice@example.com"
+    Seq("oauthState", "oauthProvider", "oauthStateTimestamp", "mobileClient", AuthController.MobileChallengeKey)
+      .flatMap(sess.get) shouldBe empty
+  }
 }
