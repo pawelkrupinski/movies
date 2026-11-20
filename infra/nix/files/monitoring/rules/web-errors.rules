@@ -10,7 +10,7 @@
 # 500 to every visitor, because none of them reads a response code. `TargetDown` is the closest and
 # it only says the pod answers `/metrics`.
 #
-# `kinowo_web_http_requests_total` (services/metrics/WebHttpMetrics.scala) is the one series that
+# `kinowo_web_http_requests_total` (web's WebHttpMetrics) is the one series that
 # says the site is answering at all, and until this file nothing alerted on it.
 #
 # --------------------------------------------------------------------------------------------------
