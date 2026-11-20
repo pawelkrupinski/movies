@@ -111,7 +111,7 @@ those is expensive to change once a `Country` is switchable.
    exist under `web/src/main/assets/img/` (phase 4). `webOrigin = Some(...)` is
    what makes it `switchable` (appears in the navbar country switcher) and
    self-serve its OG origin.
-2. **City roster** (`City.scala`) — the sealed `City` model. Two shapes:
+2. **City roster** (`City.scala`) — the sealed `City` model (Poland's 41 majors in `MajorPolishCities.scala`). Two shapes:
    - **Hand-authored case objects** (Poland's 41 majors, London): `case object X
      extends City(slug, CityLabels(...), lat, lon, ZoneId.of(...))` — kept only
      where a page needs something no data row carries (Polish declension,

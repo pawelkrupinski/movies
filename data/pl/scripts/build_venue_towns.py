@@ -49,7 +49,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[3]
 GEONAMES = ROOT / "data" / "pl" / "geonames" / "PL.txt"
 PAGES = ROOT / "data/pl/pages.json"
 CINEMA = ROOT / "common/src/main/scala/models/Cinema.scala"
-CITY = ROOT / "common/src/main/scala/models/City.scala"
+CITY = ROOT / "common/src/main/scala/models/MajorPolishCities.scala"
 OUT = ROOT / "data" / "pl" / "venues.json"
 
 POPULATED = {

@@ -23,10 +23,10 @@ town centres — 25 km is roughly a half-hour drive on Polish county roads.
 
 What is Polish here is the edges: a venue's town is its annotation in
 `Cinema.scala` (`venues.json`), the majors are the hand-declined `case object`s
-in City.scala, each anchor needs its locative, and a page is grouped under its
+in MajorPolishCities.scala, each anchor needs its locative, and a page is grouped under its
 voivodeship.
 
-Inputs: data/pl/venues.json (venue → town, today's page), common/.../City.scala
+Inputs: data/pl/venues.json (venue → town, today's page), common/.../MajorPolishCities.scala
 (the pages that exist now and their coordinates), data/pl/town_forms.json (the
 locative of each anchor, hand-checked), and the GeoNames Poland dump:
 
@@ -51,7 +51,7 @@ from town_pages import km, slugify  # noqa: E402,F401  (slugify: the tests' and 
 VENUES = ROOT / "data/pl/venues.json"
 FORMS = ROOT / "data/pl/town_forms.json"
 OUT = ROOT / "data/pl/pages.json"
-CITY_SCALA = ROOT / "common/src/main/scala/models/City.scala"
+CITY_SCALA = ROOT / "common/src/main/scala/models/MajorPolishCities.scala"
 GEONAMES = ROOT / "data/pl/geonames/PL.txt"
 
 MAJOR_SLUGS = [
@@ -100,7 +100,7 @@ def load_gazetteer(path=None):
 
 def current_pages():
     """slug → (object, nominative, lat, lon) for every Polish City declared today."""
-    src = CITY_SCALA.read_text(encoding="utf-8").split("// ── United Kingdom")[0]
+    src = CITY_SCALA.read_text(encoding="utf-8")
     pages = {}
     for m in re.finditer(r'case object (\w+) extends (?:MajorPolish)?City\(\s*slug\s*=\s*"([^"]+)",\s*labels\s*=\s*CityLabels\('
                          r'nominative = "([^"]+)".*?lat\s*=\s*([\d.]+),\s*lon\s*=\s*([\d.]+)', src, re.S):
@@ -180,7 +180,7 @@ def main():
     forms = json.loads(FORMS.read_text(encoding="utf-8")) if FORMS.exists() else {}
     prior = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else None
     # The pages the last build produced (slug → the town it is named after), or,
-    # before the first build, every Polish city declared in City.scala.
+    # before the first build, every Polish city declared in MajorPolishCities.scala.
     previous = ({p["slug"]: p["anchor"] for p in prior["pages"]} if prior
                 else {slug: nom for slug, (_, nom, _, _) in current_pages().items()})
     prior_retired = prior["retired"] if prior else {}
