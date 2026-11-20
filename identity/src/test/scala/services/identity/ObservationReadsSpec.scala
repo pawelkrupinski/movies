@@ -21,12 +21,17 @@ class ObservationReadsSpec extends AnyFlatSpec with Matchers {
     reads.changedBy(Map("k" -> change.get)).queries shouldBe Set(earlier)
   }
 
-  it should "wake two filers of one key neither, merged" in {
+  // Two filings of one key in one drain window merge into one change (IdentityModelService's queue). Only the newest
+  // filer has read what the key now holds: the earlier one read content the later filing replaced, so it is asked
+  // again. Excusing both left Odeon's "Catching Fire (2026)" holding a search read from before the fill's record of
+  // 101299 replaced it, on Sunrise on the Reaping (Main #2716, HardClusterConvergence's outage pass, 1 run in 8).
+  it should "wake, of two filers of one key merged, the one whose filing the other replaced" in {
     val reads = new ObservationReads
     var first, second = Option.empty[ObservationReads.Change]
     asked(reads, earlier) { first = Some(reads.changed()) }
     asked(reads, filer) { second = Some(reads.changed()) }
-    reads.changedBy(Map("k" -> first.get.merge(second.get))).queries shouldBe empty
+    reads.changedBy(Map("k" -> first.get.merge(second.get))).queries shouldBe Set(earlier)
+    reads.changedBy(Map("k" -> second.get.merge(first.get))).queries shouldBe Set(earlier)
   }
 
   "a change no question filed" should "wake every question that reads the key" in {

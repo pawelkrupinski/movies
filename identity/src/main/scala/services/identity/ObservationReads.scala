@@ -51,18 +51,19 @@ class ObservationReads {
 
   /** New content was filed (under the key the caller pairs it with), now: by the question this thread is asking, if it
    *  is asking one. */
-  def changed(): Change = Change(ticks.incrementAndGet(), asking.get.toSet, filed = asking.get.isDefined)
+  def changed(): Change = Change(ticks.incrementAndGet(), asking.get, filed = asking.get.isDefined)
   /** New content, now, filed by no question's ask: a venue page read, a sweep's re-fetch. */
-  def announced(): Change = Change(ticks.incrementAndGet(), Set.empty, filed = false)
+  def announced(): Change = Change(ticks.incrementAndGet(), None, filed = false)
 
   /** The questions whose answers new content under `keys` can change: every question that reads one. */
   def changedBy(keys: Iterable[String]): AnswersChanged = synchronized(answersOf(keys.flatMap(readers.get(_).fold(Set.empty[Question])(_.questions)).toSet))
 
   /** The questions whose answers each change can have changed: those that read its key and began asking before it, but
-   *  never one that filed it -- it has read what it filed -- and, for a change no question filed, every reader. */
+   *  never the one that filed its newest content -- it has read what the key holds -- and, for a change no question
+   *  filed, every reader. */
   def changedBy(changes: Map[String, Change]): AnswersChanged = synchronized(answersOf(changes.toSeq.flatMap { case (key, change) =>
     readers.get(key).fold(Set.empty[Question])(_.questions).filter(question =>
-      !change.filed || (!change.filers(question) && keysOf.get(question).forall(_.at < change.at)))
+      !change.filed || (!change.newestFiler.contains(question) && keysOf.get(question).forall(_.at < change.at)))
   }.toSet))
 
   private def answersOf(questions: Set[Question]): AnswersChanged =
@@ -92,10 +93,13 @@ object ObservationReads {
   /** When a question began asking, and the keys it read. */
   private final case class Asked(at: Long, keys: Set[String])
 
-  /** A key's change: announced at `at` (the latest of several merged), by `filers` -- the questions whose own asks
-   *  filed it -- when every announcement of it was `filed` by one; a change anyone else announced wakes every reader. */
-  final case class Change(at: Long, filers: Set[Question], filed: Boolean) {
-    def merge(other: Change): Change = Change(at max other.at, filers ++ other.filers, filed && other.filed)
+  /** A key's change: announced at `at` (the latest of several merged), its newest content filed by `newestFiler`'s own
+   *  ask, when every announcement of it was `filed` by a question; a change anyone else announced wakes every reader.
+   *  Merged, only the newer filing's filer is kept: an earlier filer read content the newer filing replaced, so it is
+   *  woken like any other reader (Main #2716: excusing every filer left one holding a superseded search). */
+  final case class Change(at: Long, newestFiler: Option[Question], filed: Boolean) {
+    def merge(other: Change): Change =
+      Change(at max other.at, if (other.at >= at) other.newestFiler else newestFiler, filed && other.filed)
   }
 
   /** Reads nothing: a reader nobody tracks. */
