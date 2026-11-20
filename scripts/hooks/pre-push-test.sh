@@ -90,6 +90,8 @@ check "a drift slice runs the flip backlog check (the population walk over it), 
 check "...and so do the flip backlog (with the identity area), the struck flips and the drift-gate seeds" \
   "allowlists driftguards sbt flipbacklog identity|flipbacklog|flipbacklog" \
   "$(plan test/resources/fixtures/identity-flip-backlog.tsv)|$(plan test/resources/fixtures/drift-gate-seeds.tsv)|$(plan scripts/ci/population_walk_diff.py | grep -o flipbacklog)"
+check "the stamp carry table runs the stampcarry check (its rows proven again), and no identity area" "stampcarry" \
+  "$(plan test/resources/identity-stamp-carry.tsv)"
 check "an identity spec runs them (and, a spec, the self-tests reading every spec)" "driftguards scripttests sbt identity" "$(plan identity/src/test/scala/services/identity/agreement/MemoSpec.scala)"
 # NO PAGE AREA (the owner, 2026-11-17, "B1"): the page specs and Playwright run after landing, on Main's page-tests rows
 check "a template runs the sbt check (web compiles it, PageSnapshotSpec reads it), no page area" "sbt" "$(plan web/src/main/twirl/views/repertoire.scala.html)"

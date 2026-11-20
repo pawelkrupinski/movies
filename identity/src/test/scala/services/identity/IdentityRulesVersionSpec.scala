@@ -1,7 +1,7 @@
 package services.identity
 
 import testsupport.SourceTrees
-import kinowo.build.SourceDigest
+import kinowo.build.{SourceDigest, StampCarry}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.VersionedSources.{main, resource, unlexable}
@@ -16,6 +16,8 @@ import java.nio.file.Files
 class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
 
   private lazy val digested: Seq[String] = resource("/services/identity/identity-rules-sources.txt").linesIterator.toSeq
+  // the raw digest; the version the worker reads is what the stamp carry makes of it
+  private val Digest = "/services/identity/identity-rules-digest.txt"
 
   "the rules version" should "digest the resolver, what it reaches and the data it reads" in {
     digested should contain allOf ("identity/src/main/scala/services/identity/IncrementalResolver.scala", "identity/src/main/scala/services/identity/IdentityModelStore.scala",
@@ -68,8 +70,16 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be the digest of exactly those files, so no other file can move it" in {
-    resource(IdentityRules.Resource) shouldBe SourceDigest.of(digested, read())
+    resource(Digest) shouldBe SourceDigest.of(digested, read())
     IdentityRules.codeVersion shouldBe resource(IdentityRules.Resource)
+  }
+
+  // A proven-equivalent change keeps the stamp its stored families were decided under (`project/StampCarry.scala`):
+  // the version is the digest's carried stamp, which is the digest itself when no row of the table carries it.
+  it should "be the stamp the carry table carries its digest to" in {
+    val table = main.resolve(StampCarry.Table)
+    val rows  = StampCarry.parse(Files.readAllLines(table, StandardCharsets.UTF_8).toArray(Array.empty[String]).toSeq)
+    IdentityRules.codeVersion shouldBe StampCarry.version("identity-rules", resource(Digest), rows)
   }
 
   it should "lex every Scala source it digests, so none falls back to its bytes and moves on a comment edit" in {
@@ -81,8 +91,8 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
   it should "not move on a comment-only edit to a file it digests, and move on a code edit" in {
     val measures = "identity/src/main/scala/services/identity/measures/IdentityMeasures.scala"
     val commented = SourceDigest.of(digested, read(measures -> (text => text.replaceFirst("\n", "\n// a note, and /* another */   \n\n"))))
-    commented shouldBe resource(IdentityRules.Resource)
+    commented shouldBe resource(Digest)
     val edited = SourceDigest.of(digested, read(measures -> (text => text + "\nprivate object SourceDigestProbe { val x = 1 }\n")))
-    edited should not be resource(IdentityRules.Resource)
+    edited should not be resource(Digest)
   }
 }

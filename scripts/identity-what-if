@@ -510,9 +510,18 @@ fi
 # line a country finished. A `.` head counts as its commit only with no uncommitted edits to tracked files.
 verdict_head=$head_sha
 [ "$head_sha" != . ] || { [ -z "$(git -C "$repo" status --porcelain --untracked-files=no)" ] && verdict_head=$(git -C "$repo" rev-parse HEAD); }
+# With the takes moved (the model's and the final diff's rows) and how: every family or the selection, final takes or the
+# model's -- a whole, nothing-moved verdict of every country is what carries a stamp (scripts/identity-stamp-carry).
 record_verdict() { # <cc> <diff exit>
   [ "$verdict_head" != . ] || return 0
-  what_if_record_verdict "$verdict_head" "$base_sha" "$1" "$([ "$2" = 0 ] && echo "done" || echo "verify-failed")" "$out/takes-diff-$1.tsv"
+  local moved=- mode f files=("$out/takes-diff-$1.tsv")
+  [ "$final" = 0 ] || files+=("$out/final-diff-$1.tsv")
+  # a diff it did not write counts as unknown, never as none moved
+  for f in "${files[@]}"; do [ -f "$f" ] || files=(); done
+  [ "${#files[@]}" = 0 ] || moved=$(cat "${files[@]}" | grep -cv '^country' || true)
+  mode="$([ "$all" = 1 ] || [ "$verify" = 1 ] && echo whole || echo selected),$([ "$final" = 1 ] && echo final || echo model-only)"
+  what_if_record_verdict "$verdict_head" "$base_sha" "$1" "$([ "$2" = 0 ] && echo "done" || echo "verify-failed")" "$out/takes-diff-$1.tsv" \
+    "$moved" "$mode"
 }
 identity_log "base $base_sha, head $head_label; laying out and compiling the refs (once each)"
 # Each step before the resolve that fails says which it was and its status (Order independence #90: an exit 2 here

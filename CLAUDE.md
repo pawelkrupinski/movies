@@ -388,9 +388,22 @@ Before an ad-hoc test or a full convergence leg (10–90 min), use the local too
 the mirror's tailer fenced for the run so both sides read one copy;
 `scripts/pure-move-check <base>..<head>` first: a pure code move -- files, packages, classes renamed -- owes no what-if,
 and its commit says `Pure-Move: verified`),
+`scripts/identity-stamp-carry propose <base>..<head>` (a proven-equivalent change keeps the identity stamps, below),
 `scripts/identity-refit`. Which tool
 answers which question, flags, speed and data sources: `identity-investigation` skill. **Name these tools in every
 subagent brief.**
+
+**A proven-equivalent identity change keeps its stamps** (the owner, 2026-11-20): the identity stamps (`identity-rules`,
+`agreement-rules`, `venue-slot`; `build.sbt`) are the digests of their code, and a moved stamp re-decides every stored
+family, verdict or slot on the next worker boot -- unless a row of `test/resources/identity-stamp-carry.tsv`
+(`project/StampCarry.scala`) carries the new digest to the deployed one's stamp. After a pure move or a refactor that a
+`scripts/identity-what-if --all` of all five countries moved no take of, run `scripts/identity-stamp-carry propose
+<base>..<head>` and commit the rows it writes on their own (never by hand). The pre-push `stampcarry` check proves every
+added or changed row again for exactly its base and head (pure-move-check re-run, or the recorded what-if verdict
+re-read; both digests rebuilt) and refuses any it cannot. Never carried: a range saying `Identity-Design:`, the drift
+harness, and -- for a what-if, which sees today's corpus only -- the title rules, a module's resources or a store or
+codec; a what-if never carries `venue-slot`. A carried stamp means no re-resolve on boot; a bumped one, the partial
+re-resolve of what the change can reach.
 
 **Heavy identity work runs on CI, not the laptop** (the user, 2026-10-21): measure with
 `scripts/identity-measure --base X --head Y` (pushes a `measure/<user>/…` branch the run deletes itself); any other

@@ -117,6 +117,28 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
     store.rulesVersion shouldBe Some("v2")
   }
 
+  // The worker's boot reads its code version off the build's stamp (`IdentityRules.codeVersion`): a digest proven to
+  // decide what the deployed one decides carries the deployed one's stamp (`project/StampCarry.scala`), so its boot
+  // takes every stored family up as it stands; a digest no proof carries is a stamp of its own, and re-resolves them all.
+  it should "re-resolve nothing on a boot whose code digest moved but carries the stamp its families were decided under" in {
+    val corpus   = GeneratedIdentityCorpus.generate(13L, normalizer, films = 12, listings = 48)
+    val store    = new InMemoryIdentityModelStore
+    val (deployed, moved, proven) = ("a" * 64, "b" * 64, "c" * 64)
+    val carry    = kinowo.build.StampCarry.parse(Seq(Seq("identity-rules", proven, deployed, "pure-move", "1" * 40, "2" * 40).mkString("\t")))
+    def booted(digest: String): Int = {
+      val model = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store,
+        rules = kinowo.build.StampCarry.version("identity-rules", digest, carry))
+      model.restore(corpus.listings)
+      model.familiesResolved
+    }
+    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store,
+      rules = kinowo.build.StampCarry.version("identity-rules", deployed, carry)).batch(seen = corpus.listings)
+    val families = store.families().size
+    booted(proven) shouldBe 0
+    store.rulesVersion shouldBe Some(deployed)
+    booted(moved) should be >= families
+  }
+
   /** A model store and a trace store that remember every id a replace dropped. */
   private final class RecordingStores {
     val familiesDropped = scala.collection.mutable.ListBuffer.empty[Set[String]]

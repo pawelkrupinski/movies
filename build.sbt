@@ -384,8 +384,13 @@ lazy val identity = (project in file("identity"))
     // changes none of it keeps the fingerprints a restarted worker reuses its stored slots by.
     // Both digest a Scala source's code, not its comments or spare whitespace (`project/SourceDigest.scala`): a
     // comment-only edit moves neither. Paths are the repository's (`identity/src/main/...`, `common/src/main/...`).
+    // Each stamp (`<name>-version.txt`) is its digest (`<name>-digest.txt`) unless a proven row of the stamp carry table
+    // carries that digest to an earlier one's stamp (`project/StampCarry.scala`): a pure move or a refactor proven to move
+    // no take keeps every stored family. No table (a tree laid out without test/resources): no carry, every stamp its digest.
     Compile / resourceGenerators += Def.task {
       val repo     = (LocalRootProject / baseDirectory).value
+      val table    = repo / kinowo.build.StampCarry.Table
+      val carries  = if (table.isFile) kinowo.build.StampCarry.parse(IO.readLines(table)) else Nil
       val modules  = Seq(
         IdentityRulesSources.Module("identity", (Compile / compile).value),
         IdentityRulesSources.Module("common", (common / Compile / compile).value),
@@ -403,10 +408,13 @@ lazy val identity = (project in file("identity"))
         // under the module's own package (`ClasspathResource.Stamps`): a stale copy elsewhere can never shadow it
         val stamps  = (Compile / resourceManaged).value / "services" / "identity"
         val version = stamps / s"$name-version.txt"
+        val digested = stamps / s"$name-digest.txt"
         val listed  = stamps / s"$name-sources.txt"
-        IO.write(version, kinowo.build.SourceDigest.of(paths, kinowo.build.SourceDigest.tracked(repo)))
+        val digest  = kinowo.build.SourceDigest.of(paths, kinowo.build.SourceDigest.tracked(repo))
+        IO.write(digested, digest)
+        IO.write(version, kinowo.build.StampCarry.version(name, digest, carries))
         IO.write(listed, paths.mkString("\n"))
-        Seq(version, listed)
+        Seq(version, digested, listed)
       }
     }.taskValue,
     libraryDependencies ++= Seq(
@@ -415,9 +423,9 @@ lazy val identity = (project in file("identity"))
       Dependencies.icu4j,
       scalatestPlay % Test, scalatestScalaCheck % Test),
     Test / unmanagedSources ++= sharedTestDoubles.value ++ identityTestDoubles.value,
-    // The build's source digest (the identity rules and venue slot versions) and the test-impact selection's reader
+    // The build's source digest and stamp carry (the identity rules and venue slot versions) and the test-impact selection's reader
     // names, compiled here too so their specs check the very code the build runs.
-    Test / unmanagedSources ++= Seq("SourceDigest.scala", "ReaderNames.scala").map((LocalRootProject / baseDirectory).value / "project" / _)
+    Test / unmanagedSources ++= Seq("SourceDigest.scala", "StampCarry.scala", "ReaderNames.scala").map((LocalRootProject / baseDirectory).value / "project" / _)
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(ForkedTests.settings(Test, heap = "1g"))

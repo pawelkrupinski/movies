@@ -1,0 +1,7 @@
+# THE STAMP CARRY (project/StampCarry.scala; the owner, 2026-11-20): a digest of the identity code proven to decide what an
+# earlier digest decides carries that one's stamp, so a deploy of it re-decides no stored family, verdict or venue slot.
+# Rows are written by `scripts/identity-stamp-carry propose <base>..<head>`, never by hand, and the pre-push hook's
+# `stampcarry` check proves every row a push adds or changes again (refusing any it cannot). A row is never edited: a
+# digest with no row is its own stamp, as before.
+#
+# stamp	digest (head's raw)	equals (base's raw)	proof (pure-move | what-if)	base	head

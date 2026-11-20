@@ -151,6 +151,13 @@
 #                 identity-what-if runs the check itself -- and verified only when present. Such a commit's paths select
 #                 no `identity` area and no identity heavy rows (A VERIFIED PURE MOVE OWES NO IDENTITY AREA, below);
 #                 the commits without the claim still do. Seconds a commit
+#   `stampcarry`  scripts/identity-stamp-carry verify over the pushed range, on a change to the stamp carry table
+#                 (test/resources/identity-stamp-carry.tsv; project/StampCarry.scala): every row the push adds or changes
+#                 is proven again -- its pure-move-check re-run, or its recorded identity-what-if verdict (every country,
+#                 every family, no take moved) re-read, for exactly the row's base and head, and both digests made again
+#                 by the build over those commits' trees. A row it cannot prove refuses the push: a carried stamp keeps
+#                 every worker's stored families on the next boot, so only a proven-equivalent change may carry one.
+#                 Seconds when the rows' trees are compiled (propose compiled them), a compile a tree when not
 #   `flipbacklog` THE FLIP BACKLOG IS COMPLETE (Main #2515: 97d260d67 committed the Ratzeburg Grinch drift slice with its
 #                 `drift` row alone; PopulationMonotonicitySpec failed main on four A -> B -> A takes no `population` row
 #                 named, and a slice changed alone selected no check at all), on a change to the flip backlog, the
@@ -464,7 +471,7 @@ is_drift_path() { # <path>
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
     local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 metricalerts=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 oldrefs=0 path
-    local identity=0 allowlists=0 driftguards=0 newchecks=0 schedules=0 flipbacklog=0
+    local identity=0 allowlists=0 driftguards=0 newchecks=0 schedules=0 flipbacklog=0 stampcarry=0
     local tools script_test_reads glob
     # What a repo-reading self-test declares it reads (run-script-tests' READS): a workflow, a .py or a spec edit runs
     # the `scripttests` check, which selects that test (download_artifact_layout_test.py's workflow, Tool self-tests
@@ -561,6 +568,7 @@ plan() {
             test/resources/fixtures/identity-slices/*|scripts/ci/population_walk_diff*.py) flipbacklog=1 ;;
         esac
         case "$path" in .github/workflows/*|.github/gating-checks.tsv|scripts/ci/gating_checks*|scripts/hooks/pre-push) newchecks=1 ;; esac
+        case "$path" in test/resources/identity-stamp-carry.tsv) stampcarry=1 ;; esac
         case "$path" in .github/workflows/*|infra/nix/files/scheduled-workflows.json|infra/nix/files/scheduled_dispatch.py) schedules=1 ;; esac
     done
     # an area runs only when local-tests.txt (beside this hook) names tests for it
@@ -581,6 +589,7 @@ plan() {
     [ $shellcheck = 1 ] && echo shellcheck
     [ $sbt = 1 ] && echo sbt
     [ $flipbacklog = 1 ] && echo flipbacklog
+    [ $stampcarry = 1 ] && echo stampcarry
     [ $identity = 1 ] && echo identity
     [ $oldrefs = 1 ] && echo oldrefs
     [ $ios = 1 ] && echo ios
@@ -2115,6 +2124,15 @@ check_puremove() {
                 rc=1
             fi
         done < <(git rev-list --reverse "$r")
+    done
+    return $rc
+}
+# A CARRIED STAMP IS PROVEN (the header's `stampcarry`): every carry row the push adds or changes, proven again
+check_stampcarry() {
+    local r rc=0
+    need stampcarry python3 "install Python 3 (brew install python)" || return 1
+    for r in "${ranges[@]}"; do
+        scripts/identity-stamp-carry verify "$r" || rc=1
     done
     return $rc
 }

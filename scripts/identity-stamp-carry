@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# THE STAMP CARRY (project/StampCarry.scala; the owner, 2026-11-20): a commit whose identity change is PROVEN to change no
+# decision keeps the stamps its parent deployed under, so workers boot on it without re-resolving every family; an
+# unproven change bumps them, as before. The proofs are rows of test/resources/identity-stamp-carry.tsv.
+#
+#   scripts/identity-stamp-carry propose <base>..<head> [--proof pure-move|what-if]
+#   scripts/identity-stamp-carry verify <old>..<new>
+#   scripts/identity-stamp-carry stamps <ref>
+#
+#   propose  proves <base>..<head> (scripts/pure-move-check, else a recorded `scripts/identity-what-if --all` verdict of
+#            every country with no take moved) and appends a row for each stamp the range moves and the proof carries
+#            (a what-if carries no venue slot, nor the agreement rules with --model-only): commit the table after the
+#            change, in a commit of its own. Nothing is written when no proof holds.
+#   verify   the pre-push hook's `stampcarry` check: every row the table at <new> holds and <old>'s does not, proven again
+#            -- its proof re-run or re-read for exactly its base and head, its digests made again by the build. Any row
+#            it cannot prove refuses the push.
+#   stamps   each stamp's RAW digest at <ref> (`<stamp> TAB <digest>`), made by the build over the ref's identity tree
+#            (identity-tools.sh's identity_tree, the what-if's own: one compile serves both), cached until a source moves
+#
+# What holds a row, and what never carries (Identity-Design, the drift harness, a what-if over the title rules, resources
+# or stores): scripts/identity_stamp_carry.py; its tests: scripts/identity_stamp_carry_test.py.
+# Exit 0 done, 1 refused, 2 usage or undecidable.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+case "${1:-}" in
+  -h|--help|"") usage_from_header; exit 0 ;;
+  stamps) ;;
+  *) exec python3 -I "$(dirname "$0")/identity_stamp_carry.py" "$@" ;;
+esac
+[ -n "${2:-}" ] || { echo "stamps <ref>" >&2; exit 2; }
+# shellcheck disable=SC2034 # read by identity-tools.sh's identity_log
+IDENTITY_TOOL=identity-stamp-carry
+# shellcheck source=scripts/identity-tools.sh
+. "$(dirname "$0")/identity-tools.sh"
+# the what-if's tool files, so the tree is the one it lays out and compiles (a tree claimed by other tool files is laid out
+# again); only identity's own resources are built here, so a base the files cannot compile with still gives its stamps
+eval "$(sed -n '/^TOOL_FILES=(/,/)/p' "$IDENTITY_REPO/scripts/identity-what-if")"
+tree=$(identity_tree "$2" "${TOOL_FILES[@]}") || exit 2
+kept=$tree/target/identity-tools/stamps
+fresh() {
+  [ -s "$kept" ] && [ -z "$(find "$tree/build.sbt" "$tree/project" "$tree"/*/src/main -newer "$kept" -type f -print -quit 2>/dev/null)" ]
+}
+make_stamps() {
+  fresh && return 0
+  local log=$tree/target/identity-tools/stamps.log dir name file
+  mkdir -p "$(dirname "$kept")"
+  : > "$kept.started"
+  identity_log "building the identity stamps of $2 in $tree"
+  jvm_slot_take "$IDENTITY_TOOL"
+  # shellcheck disable=SC2046 # jvm_cpu_options: none, or one option
+  if ! (cd "$tree" && sbt $(jvm_cpu_options | sed 's/^/-J/') -batch "identity/Compile/managedResources") > "$log" 2>&1; then
+    jvm_slot_release; tail -30 "$log" >&2; identity_log "the build failed in $tree (log: $log)"; return 1
+  fi
+  jvm_slot_release
+  # the stamps this build wrote (it writes them every run): a tree seeded from another Scala version's build holds that
+  # one's stale copies beside them
+  dir=$(find "$tree/identity/target" -path '*resource_managed/main/services/identity/identity-rules-version.txt' -newer "$kept.started" -print -quit)
+  [ -n "$dir" ] || { identity_log "the build wrote no stamps under $tree/identity/target"; return 1; }
+  dir=$(dirname "$dir")
+  : > "$kept.part"
+  for name in identity-rules venue-slot agreement-rules; do
+    # the raw digest: a build from before the stamp carry wrote it as the version itself
+    file=$dir/$name-digest.txt; [ -f "$file" ] || file=$dir/$name-version.txt
+    printf '%s\t%s\n' "$name" "$(tr -d '[:space:]' < "$file")" >> "$kept.part"
+  done
+  mv "$kept.part" "$kept"
+}
+identity_locked "stamps-$(basename "$tree")" make_stamps "$@" || exit 2
+cat "$kept"
