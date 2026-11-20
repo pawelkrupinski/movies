@@ -1,6 +1,8 @@
 package models
 
-sealed abstract class Cinema(val displayName: String, val pillName: String) extends Source {
+/** A venue. Closed by its package-private constructor rather than `sealed`: nothing matches over the venues, so
+ *  `sealed` only pinned their declarations into this file, and only `models` may declare one. */
+abstract class Cinema private[models] (val displayName: String, val pillName: String) extends Source {
   /** Whether the venue screens all year or only in a season ([[Opening]]): generated from
    *  its name for the data-driven rosters (`data/scripts/seasonal_venues.py`), overridden
    *  by hand for a seasonal Polish or UK venue below.
