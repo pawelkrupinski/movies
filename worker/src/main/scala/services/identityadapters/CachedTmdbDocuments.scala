@@ -35,7 +35,7 @@ import services.identity.vocabulary.Hit
  */
 final class CachedTmdbDocuments(inner: TmdbDocuments & TmdbDocumentRetention, maxBytes: Long = CachedTmdbDocuments.MaxBytes,
                                 maxHitBytes: Long = CachedTmdbDocuments.MaxHitBytes)
-    extends TmdbDocuments with TmdbDocumentRetention {
+    extends ForwardingTmdbDocuments(inner) with TmdbDocumentRetention {
   import CachedTmdbDocuments._
 
   private val held: Cache[Key, Array[Byte]] =
@@ -55,8 +55,6 @@ final class CachedTmdbDocuments(inner: TmdbDocuments & TmdbDocumentRetention, ma
   private val writesBegun = new AtomicLongArray(Stripes)
   private val writesEnded = new AtomicLongArray(Stripes)
   private def stripe(key: Key): Int = (key.hashCode & Int.MaxValue) % Stripes
-
-  def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = inner.get(kind, ids)
 
   override def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = {
     val (found, missed) = heldAnswers(kind, ids)
@@ -96,7 +94,7 @@ final class CachedTmdbDocuments(inner: TmdbDocuments & TmdbDocumentRetention, ma
     got
   }
 
-  def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = writing(kind, docs.map(_._1))(inner.put(kind, docs))
+  override def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = writing(kind, docs.map(_._1))(inner.put(kind, docs))
 
   def fetchedBefore(kind: TmdbKind, cutoff: Long): Seq[(String, Long)] = inner.fetchedBefore(kind, cutoff)
   def deleteIfStill(kind: TmdbKind, stamped: Seq[(String, Long)]): Int =

@@ -24,7 +24,8 @@ import services.identity.vocabulary.Hit
  * one that fails is retried request by request, so one bad document fails only its own caller. Every
  * other call passes through.
  */
-final class CoalescedTmdbDocuments(inner: TmdbDocuments, maxBatch: Int = CoalescedTmdbDocuments.MaxBatch) extends TmdbDocuments {
+final class CoalescedTmdbDocuments(inner: TmdbDocuments, maxBatch: Int = CoalescedTmdbDocuments.MaxBatch)
+    extends ForwardingTmdbDocuments(inner) {
   import CoalescedTmdbDocuments.Coalescer
 
   private val reads = TmdbKind.values.map(kind => kind -> new Coalescer[Seq[String], Map[String, BsonDocument]](maxBatch)({ asked =>
@@ -40,14 +41,9 @@ final class CoalescedTmdbDocuments(inner: TmdbDocuments, maxBatch: Int = Coalesc
     else batch.map(docs => Try(inner.put(kind, docs)))
   })).toMap
 
-  def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = if (ids.isEmpty) Map.empty else reads(kind)(ids)
-  def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit    = if (docs.nonEmpty) writes(kind)(docs)
-
-  // Forwarded each, never left to the trait's defaults: those read through `get`, which here is the batched whole-document
-  // read — and would bypass the inner store's own answers (its projection, or the cache that keeps them).
-  override def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = inner.answers(kind, ids)
-  override def filmHits(ids: Seq[String]): Map[String, Hit] = inner.filmHits(ids)
-  override def answersReadThrough(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = inner.answersReadThrough(kind, ids)
+  // The batched whole-document read and write; every answer read is the inner store's own (ForwardingTmdbDocuments).
+  override def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = if (ids.isEmpty) Map.empty else reads(kind)(ids)
+  override def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit    = if (docs.nonEmpty) writes(kind)(docs)
 
   /** Calls made and not yet returned, across every kind's reads and writes. */
   private[services] def calling: Int = (reads.values ++ writes.values).map(_.calling).sum

@@ -12,11 +12,7 @@ import services.identity.vocabulary.Hit
  * and its writer is a queue ([[AsyncIdentityHistory]]).
  */
 final class HistoryTmdbDocuments(inner: TmdbDocuments & TmdbDocumentRetention, history: IdentityHistory, clock: java.time.Clock,
-                                 build: String) extends TmdbDocuments with TmdbDocumentRetention {
-  def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = inner.get(kind, ids)
-  override def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = inner.answers(kind, ids)
-  override def filmHits(ids: Seq[String]): Map[String, Hit] = inner.filmHits(ids)
-  override def answersReadThrough(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = inner.answersReadThrough(kind, ids)
+                                 build: String) extends ForwardingTmdbDocuments(inner) with TmdbDocumentRetention {
   def fetchedBefore(kind: TmdbKind, cutoff: Long): Seq[(String, Long)] = inner.fetchedBefore(kind, cutoff)
 
   /** Each family answer's value as last kept here, by its hash: a re-file alike is no entry. Bounded: one forgotten is
@@ -24,7 +20,7 @@ final class HistoryTmdbDocuments(inner: TmdbDocuments & TmdbDocumentRetention, h
   private val lastFamily: com.github.benmanes.caffeine.cache.Cache[String, java.lang.Integer] =
     tools.BoundedCache.ofSize(HistoryTmdbDocuments.FamiliesHeld).build[String, java.lang.Integer]()
 
-  def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = {
+  override def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = {
     inner.put(kind, docs)
     if ((history ne IdentityHistory.Discard) && (kind == TmdbKind.Family || kind == TmdbKind.Marker)) {
       val at = clock.millis()

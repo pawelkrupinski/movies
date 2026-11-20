@@ -16,14 +16,14 @@ import services.identity.vocabulary.toAnswer
  * credits, an IMDb title through its suggestions and each suggestion's find, a film by its record —
  * exactly as `TmdbIdentityLookups` answers them from the responses those documents were parsed from.
  * A document the store does not hold yet is `Unknown` (the fill's question), never "no film".
- * Venue detail pages are `details`' (the venue page index's).
+ * Venue detail pages are `details`' (the venue page index's): every question but TMDB's and IMDb's is forwarded there.
  *
  * Every document a question reads is filed with `reads` under its [[TmdbStore.keyOf]] key, so a
  * document that changes re-asks exactly the questions that read it. A [[prefetch]] loads a slice's
  * documents in a few batched reads — questions, then the people and finds they name, then their films.
  */
 final class StoredTmdbLookups(store: TmdbStore, language: String, details: IdentityLookups, reads: ObservationReads)
-    extends IdentityLookups {
+    extends ForwardingIdentityLookups(details) {
   import StoredTmdbLookups._
 
   // What the latest prefetch holds: each prefetch fills a holding of its OWN and puts it in place of the last, and a
@@ -78,10 +78,10 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   /** Let go of every document, film and hit the last prefetch holds. */
   private def release(): Unit = holding = new Holding
 
-  def hasDetail(listing: Listing): Boolean                  = details.hasDetail(listing)
-  def detail(listing: Listing): Answer[Option[DetailFacts]] = details.detail(listing)
+  /** Its films are TMDB's (a fallback source's aside, [[FallbackIds]]), however `details` numbers its own. */
+  override def numbersFilmsByTmdbId: Boolean = true
 
-  def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
+  override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
     case CandidateQuery.Title(text) =>
       document(TmdbKind.Query, TmdbStore.titleSearchId(language, text)).toAnswer.flatMap(d => hitsOf(intsOf(d)))
     case CandidateQuery.Director(name) => directed(name)
@@ -117,7 +117,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
       }).map(_.flatten.distinctBy(_.tmdbId))
     }
 
-  def film(tmdbId: Int): Answer[Option[Film]] =
+  override def film(tmdbId: Int): Answer[Option[Film]] =
     if (FallbackIds.isFallback(tmdbId)) fallbackFilm(tmdbId)
     else { val now = holding; Option(now.held(TmdbKind.Film).get(tmdbId.toString)) match {
       // One record object per film a prefetch holds: decoded again for every listing a family weighs against it, each

@@ -876,4 +876,20 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.store.foundFirst("tt0166924") shouldBe Some(Some(film))
     w.store.foundFirst("tt0000001") shouldBe Some(None)
   }
+
+  "the store's lookups" should "leave a listing's venue page to their details, and number their films by TMDB id whatever details do" in {
+    val pages = mutable.ArrayBuffer.empty[Listing]
+    val details = new ForwardingIdentityLookups(UnansweredTmdbLookups) {
+      override def hasDetail(listing: Listing): Boolean = true
+      override def detail(listing: Listing): Answer[Option[DetailFacts]] = Answer.Failed
+      override def numbersFilmsByTmdbId: Boolean = false
+      override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit = pages ++= details
+    }
+    val lookups = new StoredTmdbLookups(new World().store, language, details, new ObservationReads)
+    val listing = Listing(models.KinoMuza, models.ListingKey.Published("Kino Muza", "Diuna", None, Nil), "Diuna", "Diuna", "Diuna", None, Nil,
+      None, None, None)
+    (lookups.hasDetail(listing), lookups.detail(listing), lookups.numbersFilmsByTmdbId) shouldBe ((true, Answer.Failed, true))
+    lookups.prefetch(Nil, Nil, Seq(listing))
+    pages.toSeq shouldBe Seq(listing)
+  }
 }

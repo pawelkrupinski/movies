@@ -162,26 +162,31 @@ final class ModelInputGate(
    *  told to the metrics. One still waiting has its failed questions asked again once their backoff ended
    *  ([[ListingReadiness.retry]]). */
   private def promote(skip: ListingKey => Boolean): Seq[Listing] = {
-    val promotedAfter = mutable.ArrayBuffer.empty[Double]
-    val bounded       = mutable.ArrayBuffer.empty[Double]
     val taken = pending.values.asScala.toSeq.filterNot(h => skip(h.newest.key)).sortBy(h => ListingKey.serialised(h.newest.key))
-      .flatMap { h =>
-        val late  = overdue(h)
-        val waits = if (late) Set.empty[Question] else readiness.awaiting(h.newest)
-        val held  = (clock.millis() - h.since) / 1000.0
-        if (waits.isEmpty) {
-          pending.remove(h.newest.key); (if (late) bounded else promotedAfter) += held; releasedStandIns ++= h.standIn; Some(h.newest)
-        }
-        else {
-          if (waits != h.waits) { askLedTo(h, waits); pending.put(h.newest.key, h.copy(waits = waits)) }
-          // a failed poster holds the listing (QuestionMemory.admits): asked again here once its backoff ends
-          readiness.retry(h.newest, waits)
-          None
-        }
-      }
-    if (promotedAfter.nonEmpty) metrics.promoted(promotedAfter.toSeq, atBoot = false)
-    if (bounded.nonEmpty) { metrics.bounded(bounded.toSeq); logger.warn(s"identity model: ${bounded.size} held listing(s) taken in past the ${maxHold.toMinutes} min bound") }
-    taken
+      .flatMap(promoted)
+    val (bounded, inTime) = taken.partition(_.late)
+    if (inTime.nonEmpty) metrics.promoted(inTime.map(_.heldSeconds), atBoot = false)
+    if (bounded.nonEmpty) { metrics.bounded(bounded.map(_.heldSeconds)); logger.warn(s"identity model: ${bounded.size} held listing(s) taken in past the ${maxHold.toMinutes} min bound") }
+    taken.map(_.listing)
+  }
+  /** `held` taken in when its questions were all attempted or it is [[overdue]] -- its stand-in released -- else
+   *  [[stillHeld]]. */
+  private def promoted(held: Held): Option[ModelInputGate.Promoted] = {
+    val late  = overdue(held)
+    val waits = if (late) Set.empty[Question] else readiness.awaiting(held.newest)
+    val heldSeconds = (clock.millis() - held.since) / 1000.0
+    if (waits.nonEmpty) { stillHeld(held, waits); None }
+    else {
+      pending.remove(held.newest.key); releasedStandIns ++= held.standIn
+      Some(ModelInputGate.Promoted(held.newest, late, heldSeconds))
+    }
+  }
+  /** `held`, still waiting on `waits`: the questions its answers led to asked ([[askLedTo]]) and its hold moved to them,
+   *  and its failed questions asked again -- a failed poster holds the listing (QuestionMemory.admits): asked again here
+   *  once its backoff ends. */
+  private def stillHeld(held: Held, waits: Set[Question]): Unit = {
+    if (waits != held.waits) { askLedTo(held, waits); pending.put(held.newest.key, held.copy(waits = waits)) }
+    readiness.retry(held.newest, waits)
   }
   /** The questions `held`'s listing waits on now that it did not when last asked -- those its answers led to (a title's
    *  search names films whose records it then waits on) -- asked ahead as its first ones were. Left to the agreement's
@@ -249,6 +254,9 @@ object ModelInputGate {
    *  The one bound of a take held on its answers: the agreement stage's previous take standing while a refreshed answer's
    *  questions are checked has it too ([[agreement.AgreementStage.HoldAtMost]]). */
   val MaxHold: java.time.Duration = agreement.AgreementStage.HoldAtMost
+
+  /** A held listing taken in: its newest version, whether past the bound (`late`), and how long it was held. */
+  private final case class Promoted(listing: Listing, late: Boolean, heldSeconds: Double)
 
   /** A listing whose newest version (`newest`, billed at `venue`) the gate holds on `waits` since `since`; the model reads
    *  `ready` meanwhile -- none for a listing new to it. */

@@ -17,28 +17,35 @@ final class ProjectionDrift(normalizer: TitleNormalizer, metrics: IdentityProjec
    *  with what of it moved ([[ProjectionDrift.moved]]) — the input the scope did not see. */
   def apply(moved: ProjectionScope, freed: Set[String], index: ProjectionIndex, tick: ProjectionTick,
             stored: Seq[StoredMovieRecord]): Unit = tick.plan.foreach { plan =>
-    def inside(scope: ProjectionScope, f: ProjectedFilm) = scope.films(f.id.value) || f.members.exists(scope.listings)
-    @scala.annotation.tailrec
-    def closed(scope: ProjectionScope): ProjectionScope =
-      ProjectionScope.widened(index, scope, plan.films.filter(inside(scope, _)).map(_.key), freed, normalizer) match {
-        case Some(wider) => closed(wider)
-        case None        => scope
-      }
-    val scope  = closed(moved)
+    val scope  = closed(moved, freed, index, plan)
     val before = stored.iterator.filter(r => !scope.films(r.id.value)).map(r => r.id -> r).toMap
-    // a film that moved its key alone names both keys: the key a projection derives is the drift to read then
-    val missed = tick.changed.filterNot(inside(scope, _)).map(f => f.id.value -> before.get(f.id).fold("new")(s =>
-      ProjectionDrift.moved(s.record, f.record) match {
-        case "key" => s"key ${s.key(normalizer)} -> ${f.key}, titled '${s.title}' -> '${f.title}'"
-        case what  => what
-      })) ++ plan.retired.map(_.value).filterNot(scope.films).map(_ -> "retired")
+    val missed = tick.changed.filterNot(ProjectionDrift.inside(scope, _)).map(f => f.id.value -> before.get(f.id).fold("new")(movedFrom(_, f))) ++
+      plan.retired.map(_.value).filterNot(scope.films).map(_ -> "retired")
     metrics.drifted(missed.size)
     if (missed.nonEmpty) logger.warn(s"identity projection drift: the whole projection changed ${missed.size} film(s) the scoped one " +
       s"would have left: ${missed.sortBy(_._1).take(20).map { case (id, what) => s"$id ($what)" }.mkString(", ")}")
   }
+
+  /** `scope` closed over the key collisions of the films `plan` projects inside it: widened until nothing widens it. */
+  @scala.annotation.tailrec
+  private def closed(scope: ProjectionScope, freed: Set[String], index: ProjectionIndex, plan: ProjectionPlan): ProjectionScope =
+    ProjectionScope.widened(index, scope, plan.films.filter(ProjectionDrift.inside(scope, _)).map(_.key), freed, normalizer) match {
+      case Some(wider) => closed(wider, freed, index, plan)
+      case None        => scope
+    }
+
+  /** What of `now` moved from the film `was` stored: a film that moved its key alone names both keys -- the key a
+   *  projection derives is the drift to read then. */
+  private def movedFrom(was: StoredMovieRecord, now: ProjectedFilm): String = ProjectionDrift.moved(was.record, now.record) match {
+    case "key" => s"key ${was.key(normalizer)} -> ${now.key}, titled '${was.title}' -> '${now.title}'"
+    case what  => what
+  }
 }
 
 private[services] object ProjectionDrift {
+  /** Is `film` inside `scope`: one of its films, or holding one of its listings? */
+  private def inside(scope: ProjectionScope, film: ProjectedFilm): Boolean = scope.films(film.id.value) || film.members.exists(scope.listings)
+
   /** What of a film moved from `was` to `now`, briefly: its own fields (by name), and the sources whose slots differ
    *  ([[LeanRecords.slotsEqual]]), the first few named, else its key — what a drift line names each film it missed by. */
   def moved(was: MovieRecord, now: MovieRecord): String = {

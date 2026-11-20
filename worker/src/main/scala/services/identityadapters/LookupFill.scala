@@ -79,14 +79,17 @@ final class LookupFillLiveFetch(fetch: HttpFetch, budget: LookupFillBudget) exte
       // The one classifier: a 404/410 is TMDB's answer ("nothing here"); everything else taught nothing.
       case absent if tools.ReadOutcome.isAbsent(absent) =>
         budget.answeredBy(host); throw absent
-      case NonFatal(e) =>
-        budget.failedAt(host, e)
-        val overload = LookupFillLiveFetch.isOverload(e)
-        // The host only: a URL may carry a key.
-        logger.info(s"identity lookup fill: $host failed (${e.getClass.getSimpleName}${if (overload) ", overload" else ""})")
-        if (overload) budget.backOff(host)
-        throw e
+      case NonFatal(e) => failedAt(host, e); throw e
     }
+  }
+
+  /** A read of `host` that taught nothing (`e`), counted -- and an overload backed off: no more asks to it this round. */
+  private def failedAt(host: String, e: Throwable): Unit = {
+    budget.failedAt(host, e)
+    val overload = LookupFillLiveFetch.isOverload(e)
+    // The host only: a URL may carry a key.
+    logger.info(s"identity lookup fill: $host failed (${e.getClass.getSimpleName}${if (overload) ", overload" else ""})")
+    if (overload) budget.backOff(host)
   }
 }
 

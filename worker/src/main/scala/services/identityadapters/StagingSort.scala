@@ -10,29 +10,36 @@ private[services] final class StagingSort(waitingOn: ResolverDecision => Waiting
   /** Each cluster of `resolution` sorted: waiting now, settled after staging, or a wait begun and ended between two
    *  publishes; the clusters and listings each basis holds; and each changed listing's cluster now. */
   def apply(resolution: Resolution, wasStaging: Map[String, StagedCluster], digest: StagingSort.EventDigest): StagingSort.Sorted = {
-    val waiting  = Seq.newBuilder[(String, ResolverDecision, WaitingOn)]
-    val settled  = Map.newBuilder[String, ResolverDecision]
-    val between  = Seq.newBuilder[(String, ResolverDecision, StagingEvent.Waiting)]
-    val clustersBy   = scala.collection.mutable.HashMap.empty[String, Int]
-    val listingsBy   = scala.collection.mutable.HashMap.empty[String, Int]
-    // each changed listing's cluster now: only those changed are looked up
-    val changedListings = digest.changed.iterator.map(_.change.listing).toSet
-    val clusterOf       = scala.collection.mutable.HashMap.empty[ListingKey, ResolverDecision]
-    resolution.decisions.foreach { decision =>
-      if (decision.members.nonEmpty) {
-        val key   = keyOf(decision)
-        val waits = waitingOn(decision)
-        val basis = decision.basis.toString
-        clustersBy(basis) = clustersBy.getOrElse(basis, 0) + 1
-        listingsBy(basis) = listingsBy.getOrElse(basis, 0) + decision.members.size
-        if (changedListings.nonEmpty) decision.members.foreach(m => if (changedListings(m)) clusterOf(m) = decision)
-        if (!waits.settled) waiting += ((key, decision, waits))
-        else if (wasStaging.contains(key)) settled += key -> decision
-        // a wait begun and ended between two publishes: since it began, when it ended, and on what
-        else digest.startedOf.get(key).foreach(w => between += ((key, decision, w)))
-      }
+    val clusters = resolution.decisions.filter(_.members.nonEmpty)
+    val byBasis  = clusters.groupBy(_.basis.toString)
+    val (waiting, settled, between) = byWait(clusters, wasStaging, digest)
+    StagingSort.Sorted(waiting, settled, between, byBasis.view.mapValues(_.size).toMap,
+      byBasis.view.mapValues(_.iterator.map(_.members.size).sum).toMap, clustersOfChanged(clusters, digest))
+  }
+
+  /** `clusters` by their wait: waiting now, settled after staging, or a wait begun and ended between two publishes --
+   *  since it began, when it ended, and on what. */
+  private def byWait(clusters: Seq[ResolverDecision], wasStaging: Map[String, StagedCluster], digest: StagingSort.EventDigest)
+      : (Seq[(String, ResolverDecision, WaitingOn)], Map[String, ResolverDecision], Seq[(String, ResolverDecision, StagingEvent.Waiting)]) = {
+    val waiting = Seq.newBuilder[(String, ResolverDecision, WaitingOn)]
+    val settled = Map.newBuilder[String, ResolverDecision]
+    val between = Seq.newBuilder[(String, ResolverDecision, StagingEvent.Waiting)]
+    clusters.foreach { decision =>
+      val key   = keyOf(decision)
+      val waits = waitingOn(decision)
+      if (!waits.settled) waiting += ((key, decision, waits))
+      else if (wasStaging.contains(key)) settled += key -> decision
+      else digest.startedOf.get(key).foreach(w => between += ((key, decision, w)))
     }
-    StagingSort.Sorted(waiting.result(), settled.result(), between.result(), clustersBy.toMap, listingsBy.toMap, clusterOf)
+    (waiting.result(), settled.result(), between.result())
+  }
+
+  /** Each changed listing's cluster now: only those changed are looked up. */
+  private def clustersOfChanged(clusters: Seq[ResolverDecision], digest: StagingSort.EventDigest): collection.Map[ListingKey, ResolverDecision] = {
+    val changed   = digest.changed.iterator.map(_.change.listing).toSet
+    val clusterOf = scala.collection.mutable.HashMap.empty[ListingKey, ResolverDecision]
+    if (changed.nonEmpty) clusters.foreach(decision => decision.members.foreach(m => if (changed(m)) clusterOf(m) = decision))
+    clusterOf
   }
 }
 

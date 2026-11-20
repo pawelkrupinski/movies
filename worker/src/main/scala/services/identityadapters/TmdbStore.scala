@@ -195,24 +195,33 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock,
     val moved = locks.locking(distinct.map(keyOf(kind, _))) {
       val now     = clock.millis()
       val before  = docs.get(kind, distinct)
-      val written = distinct.flatMap { id =>
-        def value = before.get(id).map(unstamped)
-        val after = change(id, value)   // `change` may edit what it is given: compare with a fresh copy
-        if (!value.contains(after)) Some((id, after.append(ChangedAt, BsonInt64(now)).append(FetchedAt, BsonInt64(now)), true))
-        else before.get(id).filter(d => renew && fetchedAt(d).forall(_ < now - RenewEvery.toMillis))
-          .map(d => (id, d.clone().append(FetchedAt, BsonInt64(now)), false))
-      }
+      val written = distinct.flatMap(id => rewritten(id, before.get(id), renew, now)(change))
       if (written.nonEmpty) docs.put(kind, written.map { case (id, d, _) => id -> d })
-      // each value that moved into the history, before and after — read already, no read of its own; the history's
-      // writer is a queue (AsyncIdentityHistory), so this never waits on it
-      if (history ne IdentityHistory.Discard) history.append(written.collect { case (id, d, true) =>
-        HistoryEntry(HistoryEntry.answer(kind), id, now, before.get(id).map(HistoryTmdbDocuments.valueOf(kind, _)),
-          Some(HistoryTmdbDocuments.valueOf(kind, d)), build)
-      })
+      historyOfMoved(kind, written, before, now)
       written.collect { case (id, _, true) => id }
     }
     moved.foreach(id => feed.publish(keyOf(kind, id)))
   }
+
+  /** Document `id` (`was`, when the store holds it) as [[updateAll]] writes it, `now`, and whether its value moved:
+   *  `change`d and stamped changed when its value moved, else only re-stamped when `renew` and due, else not written. */
+  private def rewritten(id: String, was: Option[BsonDocument], renew: Boolean, now: Long)(
+      change: (String, Option[BsonDocument]) => BsonDocument): Option[(String, BsonDocument, Boolean)] = {
+    def value = was.map(unstamped)
+    val after = change(id, value)   // `change` may edit what it is given: compare with a fresh copy
+    if (!value.contains(after)) Some((id, after.append(ChangedAt, BsonInt64(now)).append(FetchedAt, BsonInt64(now)), true))
+    else was.filter(d => renew && fetchedAt(d).forall(_ < now - RenewEvery.toMillis))
+      .map(d => (id, d.clone().append(FetchedAt, BsonInt64(now)), false))
+  }
+
+  /** Each value of `written` that moved into the history, before and after — read already, no read of its own; the
+   *  history's writer is a queue (AsyncIdentityHistory), so this never waits on it. */
+  private def historyOfMoved(kind: TmdbKind, written: Seq[(String, BsonDocument, Boolean)], before: Map[String, BsonDocument],
+                             now: Long): Unit =
+    if (history ne IdentityHistory.Discard) history.append(written.collect { case (id, d, true) =>
+      HistoryEntry(HistoryEntry.answer(kind), id, now, before.get(id).map(HistoryTmdbDocuments.valueOf(kind, _)),
+        Some(HistoryTmdbDocuments.valueOf(kind, d)), build)
+    })
 
   /** A title search's (or find's) films, in its order, each hit's fields kept on its film. */
   private[services] def question(id: String, films: Seq[Hit]): Unit = {

@@ -129,23 +129,30 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
     }
     catch {
       case scala.util.control.NonFatal(e) =>
-        // a host's open breaker or the fleet pacer turning the ask away (CircuitOpenException) is a WAIT against that host:
-        // remembered and held back as a failure is (and released when the host is back), but counted as no failure, so a
-        // flapping host spends no poster's attempts; one blocked for TurnAwayGiveUp still ends, as a failure given up on
-        val turnedAway = e.isInstanceOf[CircuitOpenException]
-        metrics.asked(label, if (turnedAway) AgreementQuestionMetrics.Deferred else AgreementQuestionMetrics.Failed)
-        val host     = AgreementQuestions.hostOf(e, requested.last)
-        val failures = if (turnedAway) memory.turnedAway(questions, host) else memory.failed(questions, host)
+        val failures = remembered(questions, label, e, AgreementQuestions.hostOf(e, requested.last))
         logger.debug(s"agreement: $what failed (${e.getMessage}), asked again once its wait ends")
-        val givenUp = failures.collect {
-          case (Question.Poster(poster), times) if times >= QuestionPolicies.PosterGiveUpAttempts => poster
-        }
-        // its last attempt failed too: given up on, read as unread rather than waited on for ever
-        givenUp.foreach(posters.giveUp)
-        if (givenUp.nonEmpty) memory.unanswered(givenUp.map(Question.Poster(_)))
+        givenUpPosters(failures)
         // attempted, though nothing was filed: a cluster waiting on it may settle now (AgreementStage.settles)
         filed()
         Done
     }
+  }
+
+  /** `questions`' ask that failed with `e` at `host`, remembered and counted under `label`: a host's open breaker or the
+   *  fleet pacer turning the ask away (CircuitOpenException) is a WAIT against that host -- remembered and held back as a
+   *  failure is (and released when the host is back), but counted as no failure, so a flapping host spends no poster's
+   *  attempts; one blocked for TurnAwayGiveUp still ends, as a failure given up on. Each question's failures in a row. */
+  private def remembered(questions: Seq[Question], label: String, e: Throwable, host: Option[String]): Map[Question, Int] =
+    if (e.isInstanceOf[CircuitOpenException]) { metrics.asked(label, AgreementQuestionMetrics.Deferred); memory.turnedAway(questions, host) }
+    else { metrics.asked(label, AgreementQuestionMetrics.Failed); memory.failed(questions, host) }
+
+  /** The posters among `failures` whose last attempt failed too, reaching their give-up count: given up on, read as
+   *  unread rather than waited on for ever. */
+  private def givenUpPosters(failures: Map[Question, Int]): Unit = {
+    val givenUp = failures.collect {
+      case (Question.Poster(poster), times) if times >= QuestionPolicies.PosterGiveUpAttempts => poster
+    }
+    givenUp.foreach(posters.giveUp)
+    if (givenUp.nonEmpty) memory.unanswered(givenUp.map(Question.Poster(_)))
   }
 }
