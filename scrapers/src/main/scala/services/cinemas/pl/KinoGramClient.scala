@@ -58,7 +58,7 @@ class KinoGramClient(http: HttpFetch) extends CinemaScraper {
           countries      = jsonText(movie \ "country")
                              .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
                              .map(KinoGramClient.toPolishCountry),
-          genres         = ScraperParse.jsonNames(movie \ "genres").map(tools.TextNormalization.titleCaseIfAllLower)
+          genres         = ScraperParse.jsonObjectNames(movie \ "genres").map(tools.TextNormalization.titleCaseIfAllLower)
         ),
         cinema    = cinema,
         posterUrl = firstString(movie, "posters").filter(_.nonEmpty),

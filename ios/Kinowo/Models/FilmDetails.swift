@@ -56,7 +56,7 @@ extension Array where Element == FilmDetails {
 
 /// The `synopsis` carries a tiny markdown subset — `**bold**`, `*italic*` (and
 /// `***both***`) — plus `\n`/`\n\n` paragraph breaks, emitted server-side by
-/// `ScraperParse.blockText`. Render it as an `AttributedString` that PRESERVES
+/// `SynopsisProse.blockText`. Render it as an `AttributedString` that PRESERVES
 /// the whitespace/newlines and only applies the inline bold/italic —
 /// `.inlineOnlyPreservingWhitespace` does both (the default markdown syntax
 /// would collapse the paragraph breaks). Falls back to the raw string if

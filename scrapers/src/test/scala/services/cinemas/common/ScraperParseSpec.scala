@@ -320,6 +320,11 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.jsonNames(film \ "missing") shouldBe empty
   }
 
+  "jsonObjectNames" should "read only the named objects of a list, as Helios's genres were always read" in {
+    val film = play.api.libs.json.Json.parse("""{"genres": [{"name": "dramat"}, "Komedia", {"name": ""}]}""")
+    ScraperParse.jsonObjectNames(film \ "genres") shouldBe Seq("dramat")
+  }
+
   "minutesOf" should "add the hours and minutes a pattern captured, an unmatched group as none" in {
     ScraperParse.minutesOf("1", "30") shouldBe 90
     ScraperParse.minutesOf(null, "95") shouldBe 95

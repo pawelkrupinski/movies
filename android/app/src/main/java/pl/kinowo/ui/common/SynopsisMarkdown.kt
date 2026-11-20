@@ -10,7 +10,7 @@ import androidx.compose.ui.text.withStyle
 /**
  * The synopsis arrives over `/api/details` carrying a tiny markdown subset —
  * `**bold**`, `*italic*` (and `***both***`) — plus `\n`/`\n\n` paragraph breaks,
- * emitted server-side by `ScraperParse.blockText`. Compose has no markdown
+ * emitted server-side by `SynopsisProse.blockText`. Compose has no markdown
  * renderer, so parse the inline emphasis into an [AnnotatedString] with
  * bold/italic spans; newlines pass through untouched (the `Text` renders them).
  *

@@ -125,7 +125,7 @@ object HeliosRest {
   // write boundary so the display layer doesn't have to special-case
   // this source's casing.
   private def genres(js: JsValue): Seq[String] =
-    ScraperParse.jsonNames(js \ "genres").map(tools.TextNormalization.titleCaseIfAllLower)
+    ScraperParse.jsonObjectNames(js \ "genres").map(tools.TextNormalization.titleCaseIfAllLower)
 
   // Helios ships `trailers: [<youtube embed URL>]`. Take the first
   // entry; for non-embed YouTube URLs (live API has been seen to mix

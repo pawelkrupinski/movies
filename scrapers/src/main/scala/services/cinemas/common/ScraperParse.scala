@@ -3,7 +3,7 @@ package services.cinemas.common
 import java.util.Locale
 
 import org.jsoup.nodes.{Document, Element, TextNode}
-import play.api.libs.json.{JsArray, JsLookupResult}
+import play.api.libs.json.{JsArray, JsLookupResult, JsValue}
 import tools.JsonScalars
 import tools.Whitespace.collapsedSpaces
 
@@ -404,8 +404,13 @@ private[cinemas] object ScraperParse {
   /** A feed's list of named things — `[{"name": "Dramat"}, …]` or bare strings — as its non-empty names, in order;
    *  none when the list is missing. */
   def jsonNames(list: JsLookupResult): Seq[String] =
-    list.asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-      .flatMap(item => (item \ "name").asOpt[String].orElse(item.asOpt[String])).filter(_.nonEmpty)
+    jsonItems(list).flatMap(item => (item \ "name").asOpt[String].orElse(item.asOpt[String])).filter(_.nonEmpty)
+
+  /** [[jsonNames]] for a feed whose list holds only named objects: a bare string in it is no name. */
+  def jsonObjectNames(list: JsLookupResult): Seq[String] =
+    jsonItems(list).flatMap(item => (item \ "name").asOpt[String]).filter(_.nonEmpty)
+
+  private def jsonItems(list: JsLookupResult): Seq[JsValue] = list.asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
 
   private val DigitRun  = """(\d+)""".r
   private val FourDigits = """(\d{4})""".r
