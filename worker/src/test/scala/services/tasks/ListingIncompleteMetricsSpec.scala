@@ -1,6 +1,6 @@
 package services.tasks
 
-import services.metrics.PrometheusExposition
+import services.metrics.{ExpositionSamples, PrometheusExposition}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -12,7 +12,7 @@ import services.cinemas.common.ListingCompleteness
 class ListingIncompleteMetricsSpec extends AnyFlatSpec with Matchers {
 
   private def scraped(registry: PrometheusRegistry, name: String, labels: (String, String)*): Double =
-    PrometheusExposition.sample(PrometheusExposition.render(registry), name,
+    ExpositionSamples.sample(PrometheusExposition.render(registry), name,
       labels.map { case (k, v) => s"""$k="$v"""" }.mkString(",")).getOrElse(fail(s"no $name{$labels}"))
 
   "the recorder" should "count incomplete landings by reason, and nothing for a complete one" in {

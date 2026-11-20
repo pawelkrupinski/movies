@@ -36,7 +36,7 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
   }
 
   private def gauge(text: String, subset: String): Option[Double] =
-    PrometheusExposition.sample(text, WorkerCorpusMetrics.Name, s"""country="pl",subset="$subset"""")
+    ExpositionSamples.sample(text, WorkerCorpusMetrics.Name, s"""country="pl",subset="$subset"""")
 
   // A mix exercising every subset: each record opts into a distinct combination.
   private val corpus = Seq(

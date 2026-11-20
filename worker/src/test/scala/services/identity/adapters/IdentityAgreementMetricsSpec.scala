@@ -1,7 +1,7 @@
 package services.identity.adapters
 
 import services.identityadapters.{AgreementQuestionMetrics, IdentityAgreementMetrics}
-import services.metrics.PrometheusExposition
+import services.metrics.{ExpositionSamples, PrometheusExposition}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -10,7 +10,8 @@ import services.identity.agreement.{AgreementStage, VoterFamily}
 /** The agreement's series read 0 from boot — a backlog asked and none at all look different from no data — and carry
  *  the stage's last pass and each question's outcome. */
 class IdentityAgreementMetricsSpec extends AnyFlatSpec with Matchers {
-  import PrometheusExposition.{render, sample}
+  import PrometheusExposition.render
+  import ExpositionSamples.sample
 
   "the agreement's series" should "read 0 from boot, before the stage or any question reports" in {
     val registry = new PrometheusRegistry()

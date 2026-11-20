@@ -17,7 +17,7 @@ import services.metrics.CorpusMetricsFixtures._
 class WorkerShowtimesMetricsSpec extends AnyFlatSpec with Matchers {
 
   private def gauge(text: String, city: String): Option[Double] =
-    PrometheusExposition.sample(text, WorkerShowtimesMetrics.Name, s"""city="$city",country="pl"""")
+    ExpositionSamples.sample(text, WorkerShowtimesMetrics.Name, s"""city="$city",country="pl"""")
 
   "The corpus census" should "sum upcoming showtimes per city, dropping past slots" in {
     val counts = reading(upcomingCorpus).showtimes

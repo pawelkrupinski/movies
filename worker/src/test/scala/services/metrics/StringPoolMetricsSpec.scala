@@ -30,14 +30,14 @@ class StringPoolMetricsSpec extends AnyFlatSpec with Matchers with OptionValues 
 
   "the intern-pool metrics" should "export occupancy, its cap, evictions and hit ratio" in {
     val text = scrape()
-    PrometheusExposition.value(text, "kinowo_worker_string_pool_entries")         should not be empty
-    PrometheusExposition.value(text, "kinowo_worker_string_pool_max_entries")     should not be empty
-    PrometheusExposition.value(text, "kinowo_worker_string_pool_evictions_total") should not be empty
-    PrometheusExposition.value(text, "kinowo_worker_string_pool_hit_ratio")       should not be empty
+    ExpositionSamples.value(text, "kinowo_worker_string_pool_entries")         should not be empty
+    ExpositionSamples.value(text, "kinowo_worker_string_pool_max_entries")     should not be empty
+    ExpositionSamples.value(text, "kinowo_worker_string_pool_evictions_total") should not be empty
+    ExpositionSamples.value(text, "kinowo_worker_string_pool_hit_ratio")       should not be empty
   }
 
   it should "publish the cap from the pool itself, so a dashboard can't go stale against a retune" in {
-    val published = PrometheusExposition.value(scrape(), "kinowo_worker_string_pool_max_entries")
+    val published = ExpositionSamples.value(scrape(), "kinowo_worker_string_pool_max_entries")
     published shouldBe Some(StringPool.MaxEntries.toDouble)
   }
 
@@ -51,7 +51,7 @@ class StringPoolMetricsSpec extends AnyFlatSpec with Matchers with OptionValues 
     val pool = new StringPool
     pool.canonical("exported occupancy probe")
     pool.canonical("a second probe")
-    PrometheusExposition.value(scrape(pool), "kinowo_worker_string_pool_entries").value shouldBe 2.0
-    PrometheusExposition.value(scrape(), "kinowo_worker_string_pool_entries").value shouldBe 0.0
+    ExpositionSamples.value(scrape(pool), "kinowo_worker_string_pool_entries").value shouldBe 2.0
+    ExpositionSamples.value(scrape(), "kinowo_worker_string_pool_entries").value shouldBe 0.0
   }
 }

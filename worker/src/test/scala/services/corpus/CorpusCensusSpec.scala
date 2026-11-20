@@ -3,7 +3,7 @@ package services.corpus
 import models.CacheKey
 
 import services.metrics.CorpusMetricsFixtures
-import services.metrics.PrometheusExposition
+import services.metrics.{ExpositionSamples, PrometheusExposition}
 import services.metrics.ReferenceCensus
 import services.metrics.WorkerCitySeasonMetrics
 import services.metrics.WorkerCorpusMetrics
@@ -199,9 +199,9 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     census.publish()
 
     val text = PrometheusExposition.render(registry)
-    PrometheusExposition.sample(text, CorpusCensus.IncompleteMetricName, """country="pl"""") shouldBe Some(2.0)
-    PrometheusExposition.sample(text, WorkerCorpusMetrics.Name, s"""country="pl",subset="${Subset.Total}"""") shouldBe None
-    PrometheusExposition.sample(text, WorkerShowtimesMetrics.Name, """city="poznan",country="pl"""") shouldBe Some(0.0)
+    ExpositionSamples.sample(text, CorpusCensus.IncompleteMetricName, """country="pl"""") shouldBe Some(2.0)
+    ExpositionSamples.sample(text, WorkerCorpusMetrics.Name, s"""country="pl",subset="${Subset.Total}"""") shouldBe None
+    ExpositionSamples.sample(text, WorkerShowtimesMetrics.Name, """city="poznan",country="pl"""") shouldBe Some(0.0)
   }
 
   it should "not count a tick over a cache that holds the whole corpus" in {
@@ -210,7 +210,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     val census   = censusOver(cacheOver(splitRepository()), registry, metrics = CorpusCensusMetrics.prometheus(counter, "pl"))
     census.seed()
     census.publish()
-    PrometheusExposition.sample(PrometheusExposition.render(registry), CorpusCensus.IncompleteMetricName, """country="pl"""") shouldBe Some(0.0)
+    ExpositionSamples.sample(PrometheusExposition.render(registry), CorpusCensus.IncompleteMetricName, """country="pl"""") shouldBe Some(0.0)
   }
 
   // ── Kept, not re-read ───────────────────────────────────────────────────────────────────────────
@@ -360,7 +360,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
       WorkerSourceFilmsMetrics.gauge(registry), WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry),
       WorkerCitySeasonMetrics.gauge(registry), "xx", Seq(allSeasonal, mixed, yearRound), clock, threadPools = tools.ThreadPools.Unmanaged)
     def offSeason(city: City): Option[Double] =
-      PrometheusExposition.sample(PrometheusExposition.render(registry), WorkerCitySeasonMetrics.Name, s"""city="${city.slug}",country="xx"""")
+      ExpositionSamples.sample(PrometheusExposition.render(registry), WorkerCitySeasonMetrics.Name, s"""city="${city.slug}",country="xx"""")
 
     census.publish()
     (offSeason(allSeasonal), offSeason(mixed), offSeason(yearRound)) shouldBe (Some(1.0), Some(0.0), Some(0.0))
@@ -387,7 +387,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
       WorkerSourceFilmsMetrics.gauge(registry), WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry),
       WorkerCitySeasonMetrics.gauge(registry), "xx", Seq(seasonalTown, yearRound), clock, threadPools = tools.ThreadPools.Unmanaged)
     def offSeason(city: City): Option[Double] =
-      PrometheusExposition.sample(PrometheusExposition.render(registry), WorkerCitySeasonMetrics.Name, s"""city="${city.slug}",country="xx"""")
+      ExpositionSamples.sample(PrometheusExposition.render(registry), WorkerCitySeasonMetrics.Name, s"""city="${city.slug}",country="xx"""")
 
     census.publish()
     (offSeason(seasonalTown), offSeason(yearRound)) shouldBe (Some(1.0), Some(0.0))

@@ -82,9 +82,9 @@ class JvmVitalsSamplerSpec extends AnyFlatSpec with Matchers {
     sampler.sample()
     val text = PrometheusExposition.render(registry)
 
-    PrometheusExposition.sample(text, JvmVitalsSampler.Name, """category="Thread"""") shouldBe
+    ExpositionSamples.sample(text, JvmVitalsSampler.Name, """category="Thread"""") shouldBe
       Some(59815.0 * 1024)
-    PrometheusExposition.sample(text, JvmVitalsSampler.Name, """category="GC"""") shouldBe
+    ExpositionSamples.sample(text, JvmVitalsSampler.Name, """category="GC"""") shouldBe
       Some(68058.0 * 1024)
   }
 
@@ -97,8 +97,8 @@ class JvmVitalsSamplerSpec extends AnyFlatSpec with Matchers {
     val text = PrometheusExposition.render(registry)
 
     val committedSum = JvmVitalsSampler.parseCommittedByCategory(nmtSummary).values.sum
-    PrometheusExposition.value(text, JvmVitalsSampler.RssName) shouldBe Some(812345.0 * 1024)
-    PrometheusExposition.value(text, JvmVitalsSampler.GapName) shouldBe
+    ExpositionSamples.value(text, JvmVitalsSampler.RssName) shouldBe Some(812345.0 * 1024)
+    ExpositionSamples.value(text, JvmVitalsSampler.GapName) shouldBe
       Some((812345L * 1024 - committedSum).toDouble)
   }
 
@@ -108,9 +108,9 @@ class JvmVitalsSamplerSpec extends AnyFlatSpec with Matchers {
     val text = PrometheusExposition.render(registry)
 
     JvmVitalsSampler.SeedCategories.foreach { c =>
-      PrometheusExposition.sample(text, JvmVitalsSampler.Name, s"""category="$c"""") shouldBe Some(0.0)
+      ExpositionSamples.sample(text, JvmVitalsSampler.Name, s"""category="$c"""") shouldBe Some(0.0)
     }
-    PrometheusExposition.value(text, JvmVitalsSampler.RssName) shouldBe Some(0.0)
-    PrometheusExposition.value(text, JvmVitalsSampler.GapName) shouldBe Some(0.0)
+    ExpositionSamples.value(text, JvmVitalsSampler.RssName) shouldBe Some(0.0)
+    ExpositionSamples.value(text, JvmVitalsSampler.GapName) shouldBe Some(0.0)
   }
 }

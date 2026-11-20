@@ -32,7 +32,7 @@ class TtlIndexMetricsSpec extends AnyFlatSpec with Matchers {
   }
 
   "the TTL-index gauge" should "be exported" in {
-    PrometheusExposition.value(scrape(), "kinowo_worker_ttl_index_mismatches") should not be empty
+    ExpositionSamples.value(scrape(), "kinowo_worker_ttl_index_mismatches") should not be empty
   }
 
   /** THE POINT OF A COUNT RATHER THAN A LABELLED SERIES. An alerting expression fires
@@ -41,18 +41,18 @@ class TtlIndexMetricsSpec extends AnyFlatSpec with Matchers {
    *  scrape did — the mistake `MongodNoPrimary` was written as and paged on. Zero has
    *  to be a value this metric actually publishes. */
   it should "publish ZERO when every index agrees, rather than going absent" in {
-    PrometheusExposition.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(0.0)
+    ExpositionSamples.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(0.0)
   }
 
   it should "count an index the reconciler could not bring into line" in {
     val mismatches = new TtlIndexMismatches
     mismatches.recordForSpec(sentinel)
-    PrometheusExposition.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(1.0)
+    ExpositionSamples.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(1.0)
   }
 
   it should "count only the mismatches its own process recorded" in {
     new TtlIndexMismatches().recordForSpec(sentinel)
-    PrometheusExposition.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(0.0)
+    ExpositionSamples.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(0.0)
   }
 
   /** THE COLLISION THIS GAUGE WOULD OTHERWISE HIDE. A worker JVM builds one wiring per
@@ -65,17 +65,17 @@ class TtlIndexMetricsSpec extends AnyFlatSpec with Matchers {
     val mismatches = new TtlIndexMismatches
     mismatches.recordForSpec("kinowo_pl.uptimeBuckets")
     mismatches.recordForSpec("kinowo_de.uptimeBuckets")
-    PrometheusExposition.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(2.0)
+    ExpositionSamples.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(2.0)
     mismatches.resolvedForSpec("kinowo_de.uptimeBuckets")
     withClue("Germany's healthy index cleared Poland's broken one: ")(
-      PrometheusExposition.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(1.0))
+      ExpositionSamples.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(1.0))
   }
 
   it should "fall back to zero once that index is reconciled, so the alert clears itself" in {
     val mismatches = new TtlIndexMismatches
     mismatches.recordForSpec(sentinel)
     mismatches.resolvedForSpec(sentinel)
-    PrometheusExposition.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(0.0)
+    ExpositionSamples.value(scrape(mismatches), "kinowo_worker_ttl_index_mismatches") shouldBe Some(0.0)
   }
 
   it should "add no country label of its own — one reconciler serves every country in the JVM" in {

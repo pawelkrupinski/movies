@@ -6,7 +6,7 @@ package services.metrics
  * exposition.
  *
  * Both tiers' cache specs need this and neither can use the plain
- * `PrometheusExposition.sample`, which matches a label string EXACTLY — these
+ * `ExpositionSamples.sample`, which matches a label string EXACTLY — these
  * families carry two labels, and a spec should not have to know which order the
  * client writes them in or what the other one's value is.
  *

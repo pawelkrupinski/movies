@@ -25,13 +25,13 @@ class ScheduledTickMetricsSpec extends AnyFlatSpec with Matchers {
 
     ticks.started("scrape-reaper", 1.minute, 5.minutes)
     val armed = PrometheusExposition.render(metrics.registry)
-    PrometheusExposition.sample(armed, LastSuccess, Labels) shouldBe Some(armedAt + 300)
-    PrometheusExposition.sample(armed, Interval, Labels) shouldBe Some(60.0)
+    ExpositionSamples.sample(armed, LastSuccess, Labels) shouldBe Some(armedAt + 300)
+    ExpositionSamples.sample(armed, Interval, Labels) shouldBe Some(60.0)
 
     clock.advance(java.time.Duration.ofMinutes(7))
     ticks.completed("scrape-reaper", 2.minutes)
     val ran = PrometheusExposition.render(metrics.registry)
-    PrometheusExposition.sample(ran, LastSuccess, Labels) shouldBe Some(armedAt + 420)
-    PrometheusExposition.sample(ran, Interval, Labels) shouldBe Some(120.0) // an /admin/config flip, read afresh
+    ExpositionSamples.sample(ran, LastSuccess, Labels) shouldBe Some(armedAt + 420)
+    ExpositionSamples.sample(ran, Interval, Labels) shouldBe Some(120.0) // an /admin/config flip, read afresh
   }
 }

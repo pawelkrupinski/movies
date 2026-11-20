@@ -1,7 +1,7 @@
 package services.identity.adapters
 
 import services.identityadapters.IdentityModelGauges
-import services.metrics.PrometheusExposition
+import services.metrics.{ExpositionSamples, PrometheusExposition}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -11,7 +11,8 @@ import services.identity.agreement.AgreementStage
  *  previous takes standing while a refreshed answer's questions are checked -- so one pair of alerts
  *  (IdentityInputGateStuck / IdentityInputGateWaitsLong) pages on either. */
 class IdentityModelGaugesSpec extends AnyFlatSpec with Matchers {
-  import PrometheusExposition.{render, sample}
+  import PrometheusExposition.render
+  import ExpositionSamples.sample
 
   "the held gauges" should "sum the gate's and the stage's holds, the oldest of either, and count a stage hold past the bound" in {
     val registry = new PrometheusRegistry()

@@ -17,23 +17,23 @@ class EnvGatedFeatureMetricsSpec extends AnyFlatSpec with Matchers {
     val registry = new PrometheusRegistry()
     new EnvGatedFeatureMetrics(registry).recordAlerters("pl", Seq(off, on))
     val text = PrometheusExposition.render(registry)
-    PrometheusExposition.sample(text, "kinowo_worker_alerter_enabled", """alerter="filmweb_drop",country="pl"""") shouldBe Some(0.0)
-    PrometheusExposition.sample(text, "kinowo_worker_alerter_enabled", """alerter="staging_stuck",country="pl"""") shouldBe Some(1.0)
+    ExpositionSamples.sample(text, "kinowo_worker_alerter_enabled", """alerter="filmweb_drop",country="pl"""") shouldBe Some(0.0)
+    ExpositionSamples.sample(text, "kinowo_worker_alerter_enabled", """alerter="staging_stuck",country="pl"""") shouldBe Some(1.0)
   }
 
   it should "publish alerter=\"none\" at 1 for a country that runs no alerter, so the family exists there too" in {
     val registry = new PrometheusRegistry()
     new EnvGatedFeatureMetrics(registry).recordAlerters("de", Nil)
     val text = PrometheusExposition.render(registry)
-    PrometheusExposition.sample(text, "kinowo_worker_alerter_enabled", """alerter="none",country="de"""") shouldBe Some(1.0)
+    ExpositionSamples.sample(text, "kinowo_worker_alerter_enabled", """alerter="none",country="de"""") shouldBe Some(1.0)
   }
 
   it should "export each integration as 1 or 0" in {
     val registry = new PrometheusRegistry()
     new EnvGatedFeatureMetrics(registry).recordIntegrations(Seq(EnvGatedFeature("sentry", Seq(settings.MissingSetting("SENTRY_DSN"))), EnvGatedFeature("tmdb", Nil)))
     val text = PrometheusExposition.render(registry)
-    PrometheusExposition.sample(text, "kinowo_worker_integration_enabled", """integration="sentry"""") shouldBe Some(0.0)
-    PrometheusExposition.sample(text, "kinowo_worker_integration_enabled", """integration="tmdb"""") shouldBe Some(1.0)
+    ExpositionSamples.sample(text, "kinowo_worker_integration_enabled", """integration="sentry"""") shouldBe Some(0.0)
+    ExpositionSamples.sample(text, "kinowo_worker_integration_enabled", """integration="tmdb"""") shouldBe Some(1.0)
   }
 
   "EnvGatedFeature.disabledWarning" should "name each disabled feature and the keys that switched it off" in {

@@ -1,6 +1,6 @@
 package services.tasks
 
-import services.metrics.PrometheusExposition
+import services.metrics.{ExpositionSamples, PrometheusExposition}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{Cinema, CinemaCityArkadia, CinemaCityKinepolis, CinemaCityWroclavia, Country}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -121,8 +121,8 @@ class CinemaScrapeCensusSpec extends AnyFlatSpec with Matchers {
     census.sample()
 
     val exposition = PrometheusExposition.render(registry)
-    PrometheusExposition.sample(exposition, CinemaScrapeCensus.OldestAgeName, """country="pl"""")    shouldBe Some(7200.0)
-    PrometheusExposition.sample(exposition, CinemaScrapeCensus.NeverScrapedName, """country="pl"""") shouldBe Some(1.0)
+    ExpositionSamples.sample(exposition, CinemaScrapeCensus.OldestAgeName, """country="pl"""")    shouldBe Some(7200.0)
+    ExpositionSamples.sample(exposition, CinemaScrapeCensus.NeverScrapedName, """country="pl"""") shouldBe Some(1.0)
   }
 
   it should "publish the age quantiles and the due venues per mode from the reaper's due schedule" in {
@@ -131,10 +131,10 @@ class CinemaScrapeCensusSpec extends AnyFlatSpec with Matchers {
     censusOver(registry, Seq(fresh, stale, nevers), chunked = Set[Cinema](fresh, stale)).sample()
 
     val exposition = PrometheusExposition.render(registry)
-    PrometheusExposition.sample(exposition, CinemaScrapeCensus.AgeQuantileName, """country="pl",quantile="0.5"""") shouldBe Some(120.0)
-    PrometheusExposition.sample(exposition, CinemaScrapeCensus.AgeQuantileName, """country="pl",quantile="0.9"""") shouldBe Some(7200.0)
-    PrometheusExposition.sample(exposition, CinemaScrapeCensus.DueVenuesName, """country="pl",mode="direct"""")   shouldBe Some(1.0)
-    PrometheusExposition.sample(exposition, CinemaScrapeCensus.DueVenuesName, """country="pl",mode="chunked"""")  shouldBe Some(1.0)
+    ExpositionSamples.sample(exposition, CinemaScrapeCensus.AgeQuantileName, """country="pl",quantile="0.5"""") shouldBe Some(120.0)
+    ExpositionSamples.sample(exposition, CinemaScrapeCensus.AgeQuantileName, """country="pl",quantile="0.9"""") shouldBe Some(7200.0)
+    ExpositionSamples.sample(exposition, CinemaScrapeCensus.DueVenuesName, """country="pl",mode="direct"""")   shouldBe Some(1.0)
+    ExpositionSamples.sample(exposition, CinemaScrapeCensus.DueVenuesName, """country="pl",mode="chunked"""")  shouldBe Some(1.0)
   }
 
   it should "seed every series at zero from construction so the panel has no boot gap" in {
@@ -144,13 +144,13 @@ class CinemaScrapeCensusSpec extends AnyFlatSpec with Matchers {
     censusOver(registry, Seq(stale))
 
     val exposition = PrometheusExposition.render(registry)
-    PrometheusExposition.sample(exposition, CinemaScrapeCensus.OldestAgeName, """country="pl"""")    shouldBe Some(0.0)
-    PrometheusExposition.sample(exposition, CinemaScrapeCensus.NeverScrapedName, """country="pl"""") shouldBe Some(0.0)
+    ExpositionSamples.sample(exposition, CinemaScrapeCensus.OldestAgeName, """country="pl"""")    shouldBe Some(0.0)
+    ExpositionSamples.sample(exposition, CinemaScrapeCensus.NeverScrapedName, """country="pl"""") shouldBe Some(0.0)
     Seq("0.5", "0.9").foreach { q =>
-      PrometheusExposition.sample(exposition, CinemaScrapeCensus.AgeQuantileName, s"""country="pl",quantile="$q"""") shouldBe Some(0.0)
+      ExpositionSamples.sample(exposition, CinemaScrapeCensus.AgeQuantileName, s"""country="pl",quantile="$q"""") shouldBe Some(0.0)
     }
     Seq("direct", "chunked").foreach { mode =>
-      PrometheusExposition.sample(exposition, CinemaScrapeCensus.DueVenuesName, s"""country="pl",mode="$mode"""") shouldBe Some(0.0)
+      ExpositionSamples.sample(exposition, CinemaScrapeCensus.DueVenuesName, s"""country="pl",mode="$mode"""") shouldBe Some(0.0)
     }
   }
 }

@@ -18,7 +18,7 @@ import services.metrics.WorkerSourceFilmsMetrics.Scope
 class WorkerSourceFilmsMetricsSpec extends AnyFlatSpec with Matchers {
 
   private def gauge(text: String, city: String, scope: String): Option[Double] =
-    PrometheusExposition.sample(text, WorkerSourceFilmsMetrics.Name, s"""city="$city",country="pl",scope="$scope"""")
+    ExpositionSamples.sample(text, WorkerSourceFilmsMetrics.Name, s"""city="$city",country="pl",scope="$scope"""")
 
   "The corpus census" should "count distinct ready films per city, by scope" in {
     val counts = reading(upcomingCorpus).served

@@ -2,7 +2,7 @@ package services.tasks
 
 import models.{CacheKey, StoredMovieRecord}
 
-import services.metrics.PrometheusExposition
+import services.metrics.{ExpositionSamples, PrometheusExposition}
 import tools.SpecClock.given
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -181,8 +181,8 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
   }
 
   private def gauge(text: String, name: String, site: String): Option[Double] =
-    PrometheusExposition.sample(text, name, s"""country="pl",site="$site"""")
+    ExpositionSamples.sample(text, name, s"""country="pl",site="$site"""")
 
   private def ukGauge(text: String, name: String, site: String): Option[Double] =
-    PrometheusExposition.sample(text, name, s"""country="uk",site="$site"""")
+    ExpositionSamples.sample(text, name, s"""country="uk",site="$site"""")
 }

@@ -1,7 +1,7 @@
 package services.identity.adapters
 
 import services.identityadapters.IdentityProjectionGauges
-import services.metrics.PrometheusExposition
+import services.metrics.{ExpositionSamples, PrometheusExposition}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -10,7 +10,8 @@ import models.ListingKey
 
 /** The take changes by basis and change, and the take reversals per country and per billing: what the take alerts read. */
 class IdentityProjectionGaugesSpec extends AnyFlatSpec with Matchers {
-  import PrometheusExposition.{render, sample}
+  import PrometheusExposition.render
+  import ExpositionSamples.sample
 
   private def change(venue: String, title: String, before: Option[Int], after: Option[Int]) =
     TakeChange(ListingKey.Published(venue, title, None, Nil), Some(s"film-$title"), before, after)
