@@ -124,6 +124,13 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
       if (backed.sizeIs < 2) Nil else cluster.flatMap(_.listings.map(_.key -> backed))
     }
 
+
+  /** The nodes outside `cluster` that a title edge links one of its members to. */
+  private def titleLinkedOutside(cluster: Seq[EvidenceNode], titleEdges: Seq[ResolverEdge]): Set[String] = {
+    val inside = cluster.map(_.id).toSet
+    titleEdges.flatMap(edge => if (inside(edge.a)) Seq(edge.b) else if (inside(edge.b)) Seq(edge.a) else Nil).toSet -- inside
+  }
+
   /** The films a facts-free cluster's TITLE FAMILY backs by OWN statements, each with the venues backing it: the siblings a
    *  title must-link of round A joins it to ([[familyMajority]]'s) that publish a fact of their own (a year, a director,
    *  a runtime) and took a film ALONE on it (`accepted`), a season's billing apart. Empty for a cluster publishing a
@@ -134,8 +141,7 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
                 titleEdges: Seq[ResolverEdge]): Map[Int, Set[String]] =
     if (cluster.exists(_.evidence.measured.publishesAFact)) Map.empty
     else {
-      val inside = cluster.map(_.id).toSet
-      val linked = titleEdges.flatMap(edge => if (inside(edge.a)) Seq(edge.b) else if (inside(edge.b)) Seq(edge.a) else Nil).toSet -- inside
+      val linked = titleLinkedOutside(cluster, titleEdges)
       members.filter(sibling => linked(sibling.id) && accepted.contains(sibling.id) && sibling.evidence.measured.publishesAFact &&
         sibling.evidence.measured.seasonYear.isEmpty).groupMapReduce(sibling => accepted(sibling.id))(_.venues.toSet)(_ ++ _)
     }
@@ -163,8 +169,7 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
   def familyMajority(cluster: Seq[EvidenceNode], members: Seq[EvidenceNode], accepted: Map[String, Int],
                      titleEdges: Seq[ResolverEdge]): Option[(Int, Double, String)] =
     Option.when(!cluster.exists(_.evidence.measured.publishesAFact)) {
-      val inside   = cluster.map(_.id).toSet
-      val linked   = titleEdges.flatMap(edge => if (inside(edge.a)) Seq(edge.b) else if (inside(edge.b)) Seq(edge.a) else Nil).toSet -- inside
+      val linked   = titleLinkedOutside(cluster, titleEdges)
       // A sibling whose title names a SEASON names a house's production of the work, which the
       // bare title does not: its venues say nothing about which house's the bare one is.
       val taking   = members.filter(sibling => linked(sibling.id) && accepted.contains(sibling.id) && sibling.evidence.measured.seasonYear.isEmpty)
