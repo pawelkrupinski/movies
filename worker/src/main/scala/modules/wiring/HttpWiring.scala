@@ -16,28 +16,30 @@ trait HttpWiring { self: WorkerWiring =>
   // once on the first request and tells the monitor which hosts are cinema
   // scrapes — suppressed, since RetryingCinemaScraper already tracks each cinema
   // under its displayName.
-  // ThrottledHttpFetch sits closest to the wire: a per-host 429 gate that pauses
-  // ALL callers to a rate-limited host together (honoring Retry-After) instead of
-  // each of the ~12 concurrent TMDB callers retrying independently into the same
-  // burst. Inside MonitoringHttpFetch so its waits don't skew uptime.
-  // The per-host circuit breaker sits closest to the wire: after a few consecutive
-  // timeouts/5xx from a host it OPENS and fast-fails every further call to that
-  // host for a cooldown, so a slow/hanging origin (Helios's restapi, 2026-06-23)
-  // stops pinning the ParallelDetailFetch slots for its whole timeout on every
-  // call. Generalises RealHttpFetch's static per-host timeout policy (HostPolicies) to
-  // any host, with no allowlist. Wrapped by ThrottledHttpFetch (429 gate) and
-  // MonitoringHttpFetch (so a fast-fail still shows as the real unavailability).
-  // The per-process PacedHttpFetch is innermost: the PROACTIVE half of rate-limit handling,
-  // pacing the hosts whose HostPolicies row names a minRequestInterval (Filmstarts)
-  // so we stay under the limit instead of rediscovering it via 429 every sweep.
-  // Inside the breaker so a fast-failed call never waits for (or consumes) a slot,
-  // and inside the 429 gate so a real Retry-After still overrides the steady pace.
-  // CountingHttpFetch is INNERMOST (around the leaf RealHttpFetch): it tallies
-  // every wire attempt's outcome into kinowo_worker_http_total for THIS country
-  // under the chain's call PHASE label. Innermost is deliberate — each 429 retry
-  // (ThrottledHttpFetch) and each scraper backoff retry re-hits the leaf as a
-  // distinct call, so every attempt is counted once; a circuit-breaker fast-fail
-  // never reaches here and so isn't miscounted as a real attempt.
+  // The chain, outermost first (built by `phaseFetch` and `HttpWiring.pacedWire`):
+  //   MonitoringHttpFetch -> fleet PacedHttpFetch -> ThrottledHttpFetch -> RetryingHttpFetch
+  //     -> HostCircuitBreakerHttpFetch -> per-process PacedHttpFetch -> CountingHttpFetch -> RealHttpFetch.
+  // MonitoringHttpFetch is outermost so the paces' and the gate's waits don't skew uptime, and a breaker's
+  // fast-fail still shows as the real unavailability.
+  // The fleet PacedHttpFetch holds every worker of the fleet to a host's fleet-wide interval (FleetHostPace).
+  // ThrottledHttpFetch is the per-host 429 gate: it pauses ALL callers to a rate-limited host together
+  // (honoring Retry-After) instead of each of the ~12 concurrent TMDB callers retrying independently into the
+  // same burst. Outside the per-process pace, so a real Retry-After still overrides the steady pace.
+  // RetryingHttpFetch asks a timeout, a lost connection or a server error again on the spot, each try
+  // through the breaker.
+  // The per-host circuit breaker: after a few consecutive timeouts/5xx from a host it OPENS and fast-fails
+  // every further call to that host for a cooldown, so a slow/hanging origin (Helios's restapi, 2026-06-23)
+  // stops pinning the ParallelDetailFetch slots for its whole timeout on every call. Generalises
+  // RealHttpFetch's static per-host timeout policy (HostPolicies) to any host, with no allowlist.
+  // The per-process PacedHttpFetch is the PROACTIVE half of rate-limit handling, pacing the hosts whose
+  // HostPolicies row names a minRequestInterval (Filmstarts) so we stay under the limit instead of
+  // rediscovering it via 429 every sweep. Inside the breaker so a fast-failed call never waits for (or
+  // consumes) a slot.
+  // CountingHttpFetch is INNERMOST (around the leaf RealHttpFetch): it tallies every wire attempt's outcome
+  // into kinowo_worker_http_total for THIS country under the chain's call PHASE label. Innermost is
+  // deliberate — each 429 retry (ThrottledHttpFetch), each on-the-spot retry and each scraper backoff retry
+  // re-hits the leaf as a distinct call, so every attempt is counted once; a circuit-breaker fast-fail never
+  // reaches here and so isn't miscounted as a real attempt.
   //
   // ── Phase split ───────────────────────────────────────────────────────────
   // We build the SAME chain twice, once per call phase (see WorkerHttpMetrics.Phase),
