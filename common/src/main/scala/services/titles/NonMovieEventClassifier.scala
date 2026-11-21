@@ -151,7 +151,7 @@ object NonMovieEventClassifier {
   /** The broadcast veto without its bare " live": a comedy night bills itself "Comedy LIVE!", a karaoke night
    *  "Karaoke LIVE", and neither is a broadcast. The named broadcasts (Met, Royal Ballet & Opera, NT Live, André
    *  Rieu) still veto. Lazy: [[BroadcastMarkers]] is defined further down this object. */
-  private lazy val NeutralBroadcastVeto = BroadcastMarkers.filterNot(_ == " live") :+ "live viewing"
+  private[titles] lazy val NeutralBroadcastVeto = BroadcastMarkers.filterNot(_ == " live") :+ "live viewing"
 
   /** [[isScreenedBroadcast]] by a broadcast's NAME alone — its bare " live" aside, which a performer's own show bills
    *  too ("Jan Logemann LIVE: …"). */
@@ -164,10 +164,15 @@ object NonMovieEventClassifier {
    *  vocabulary, whole: "LIVE VIEWING", "NT Live"), no work's? Words alone, case and punctuation aside: "The
    *  Metamorphosis" carries "the met" and is a work. */
   def isBroadcastLabel(piece: String): Boolean = {
-    def words(s: String) = s.toLowerCase(Locale.ROOT).split("""[^\p{L}\p{N}]+""").filter(_.nonEmpty).toSeq
-    val own = words(piece)
-    own.nonEmpty && NeutralBroadcastVeto.exists(marker => words(marker) == own)
+    val own = labelWords(piece)
+    own.nonEmpty && BroadcastLabels.contains(own)
   }
+
+  private lazy val LabelWordBreak = """[^\p{L}\p{N}]+""".r
+  private def labelWords(s: String): Seq[String] = LabelWordBreak.split(s.toLowerCase(Locale.ROOT)).filter(_.nonEmpty).toSeq
+  /** [[NeutralBroadcastVeto]]'s markers as [[isBroadcastLabel]] compares them, split once: every record's every billed
+   *  work asks, and splitting each marker again per ask was 60% of a corpus context's build (DE take-up, JFR 2026-11-21). */
+  private lazy val BroadcastLabels: Set[Seq[String]] = NeutralBroadcastVeto.map(labelWords).toSet
 
   /** The listings box-office staff create to try their own site, billed as such: BFI Southbank's "Z Test Show
    *  please ignore" (2026-10-12), Spektrix's "Website Test Event 2". A test NAMED as a show, event or screening —
