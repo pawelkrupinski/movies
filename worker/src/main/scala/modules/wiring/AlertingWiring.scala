@@ -61,13 +61,13 @@ trait AlertingWiring { self: WorkerWiring =>
 }
 
 object AlertingWiring {
-  /** Every alerter this country runs, on or off. The Filmweb two are left out where
-   *  Filmweb is not wired at all: off by design there, and a 0 would page for nothing. */
+  /** Every alerter this country runs, on or off. The fallback route is every country's: it pages each
+   *  fallback spell (Filmweb's or another aggregator's), the gone-venue alert and the closure sweep; its
+   *  `filmweb_fallback` name is the one the alert rules and dashboards know it by. The Filmweb drop
+   *  alerter is left out where Filmweb is not wired at all: off by design there, and a 0 would page for nothing. */
   def alerters(configuration: ProcessConfiguration, filmwebEnabled: Boolean): Seq[EnvGatedFeature] = {
     def feature(name: String, route: AlertRoute) = EnvGatedFeature.from(name, configuration.telegramRoute(route))
-    val filmweb =
-      if (filmwebEnabled) Seq(feature("filmweb_fallback", AlertRoute.FilmwebFallback), feature("filmweb_drop", AlertRoute.FilmwebDrop))
-      else Nil
-    filmweb
+    feature("filmweb_fallback", AlertRoute.FilmwebFallback) +:
+      (if (filmwebEnabled) Seq(feature("filmweb_drop", AlertRoute.FilmwebDrop)) else Nil)
   }
 }

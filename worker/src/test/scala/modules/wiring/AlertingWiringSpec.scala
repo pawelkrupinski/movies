@@ -36,8 +36,16 @@ class AlertingWiringSpec extends AnyFlatSpec with Matchers {
     alerters.filterNot(_.enabled) shouldBe empty
   }
 
-  it should "not report the Filmweb alerters at all for a country that has no Filmweb path" in {
+  it should "not report the Filmweb drop alerter for a country that has no Filmweb path" in {
     // Off by design there, not by misconfiguration: exporting a 0 would page for nothing.
-    AlertingWiring.alerters(resolved(afterTheGitopsFix), filmwebEnabled = false) shouldBe empty
+    AlertingWiring.alerters(resolved(afterTheGitopsFix), filmwebEnabled = false).map(_.name) shouldBe Seq("filmweb_fallback")
+  }
+
+  // The fallback route pages every country's own-site fallbacks (Flicks, the German and Spanish
+  // aggregators), the gone-venue alert and the closure sweep, not only Filmweb's: a country without
+  // Filmweb missing its chat id had all of those off with no gauge and no WARN.
+  it should "report the fallback route off in a country without Filmweb, which pages its other fallbacks" in {
+    AlertingWiring.alerters(resolved(tokenOnly), filmwebEnabled = false) shouldBe Seq(
+      EnvGatedFeature("filmweb_fallback", Seq(MissingSetting("KINOWO_FALLBACK_TG_CHAT_ID"))))
   }
 }
