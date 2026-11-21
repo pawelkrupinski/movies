@@ -165,6 +165,35 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
     } finally cleanup.stop()
   }
 
+  /** The backstop's day is claimed before its sweep runs, and the claim is one-shot: a sweep that failed on its
+   *  Thursday (a Mongo blip) left the rows a whole week more. It is owed to the next tick instead. */
+  it should "run a failed backstop again on the next tick, not a week later" in {
+    var failures   = 1
+    var swept      = 0
+    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer) {
+      override def deleteStrandedSideRows(): StrandedSideRows =
+        if (failures > 0) { failures -= 1; throw new RuntimeException("mongo went away") }
+        else { swept += 1; super.deleteStrandedSideRows() }
+    }
+    // A Thursday, the backstop's day.
+    val clock     = new _root_.tools.MutableClock(java.time.Instant.parse("2026-10-08T10:00:00Z"))
+    val scheduler = new HeldScheduler
+    val cleanup = new StrandedSideRowsCleanup(repository, () => RetiredVenueRows.none, () => (),
+      StrandedSideRowsCleanup.weekly(new services.schedule.InMemoryScheduledRunStore, clock), scheduler)
+    try {
+      cleanup.start()
+      val tick = scheduler.ticks.head._1
+      tick.run()                                              // Thursday: claimed, and the sweep throws
+      swept shouldBe 0
+      clock.advance(java.time.Duration.ofDays(1))             // Friday: not the backstop's day, but it is owed
+      tick.run()
+      swept shouldBe 1
+      clock.advance(java.time.Duration.ofDays(1))             // Saturday: paid, nothing owed
+      tick.run()
+      swept shouldBe 1
+    } finally cleanup.stop()
+  }
+
   /** What the backstop is a backstop FOR: retiring a film (the identity projection's removal of a
    *  merge's loser, or of a film no venue lists) deletes its side rows at that moment, no sweep run. */
   "retiring a film" should "take its side rows with it, without the sweep" in {

@@ -59,8 +59,12 @@ class StrandedSideRowsCleanup(
   private val StartupDelaySeconds = services.metrics.worker.SampledCensus.firstDelay(services.metrics.worker.SampledCensus.Slots.StrandedSideRows,
     scala.concurrent.duration.Duration(RunEveryHours, "hours")).toSeconds
 
+  // A backstop sweep that failed on its day: run on the next tick, due or not. Its day's claim is spent (claims are
+  // one-shot), so `strandedDue` would otherwise not say so again for a week. Only the tick thread touches it.
+  private var backstopOwed = false
+
   /** One sweep. Public so a script or a spec can run it on demand; the tick calls the same
-   *  method when `strandedDue`. */
+   *  method when `strandedDue` (or when the last due sweep failed). */
   def removeStranded(): StrandedSideRows = repository.deleteStrandedSideRows()
 
   /** One retired-venue sweep, on demand — the daily tick runs it after [[removeStranded]]'s turn. */
@@ -73,7 +77,7 @@ class StrandedSideRowsCleanup(
     scheduler.scheduleAtFixedRate(
       () => {
         val steps = Seq(
-          Try(if (strandedDue()) { removeStranded(); () }).recover {
+          Try(if (backstopOwed || strandedDue()) { backstopOwed = true; removeStranded(); backstopOwed = false }).recover {
             case exception => logger.warn(s"Stranded side-row cleanup tick failed: ${exception.getMessage}"); throw exception
           },
           Try { removeRetiredVenues(); () }.recover {
