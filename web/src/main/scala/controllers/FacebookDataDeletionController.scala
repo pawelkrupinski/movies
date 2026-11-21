@@ -13,7 +13,7 @@ import services.users.{AccountDeletion, UserRepository}
  * Facebook Login → Settings → User Data Deletion).
  *
  * When a user removes our app from their Facebook account, Facebook
- * POSTimestamp a `signed_request` to `POST /facebook/data-deletion`. We verify
+ * POSTs a `signed_request` to `POST /facebook/data-deletion`. We verify
  * it against the app secret, look up the local user by their Facebook
  * id (`provider=facebook`, `providerSub=<user_id>`), delete their row +
  * state, and return the JSON receipt Meta requires:
@@ -67,16 +67,16 @@ class FacebookDataDeletionController(
     }
 
   /** The receipt confirms the deletion to Meta, so it goes out only once the
-   *  account was found and deleted, or found absent. A lookup that FAILED is
-   *  neither: answer 503 so Meta retries, instead of confirming a deletion
-   *  that never ran. */
+   *  account was found and deleted, or found absent. A lookup or a delete that
+   *  FAILED is neither: answer 503 so Meta retries, instead of confirming a
+   *  deletion that never ran. */
   private def deleteAccountOf(facebookUserId: String): Either[Result, Unit] =
-    scala.util.Try(userRepository.findByProviderSub("facebook", facebookUserId)).toEither match {
+    scala.util.Try(userRepository.findByProviderSub("facebook", facebookUserId).map { user => accountDeletion.delete(user.id); user })
+      .toEither match {
       case Left(e) =>
-        logger.warn(s"Facebook data-deletion: account lookup for fb $facebookUserId failed: ${e.getMessage}")
+        logger.warn(s"Facebook data-deletion: deleting the account of fb $facebookUserId failed: ${e.getMessage}")
         Left(ServiceUnavailable(Json.obj("error" -> "account store unavailable, retry later")))
       case Right(Some(user)) =>
-        accountDeletion.delete(user.id)
         Right(logger.info(s"Facebook data-deletion: removed account ${user.id} (fb $facebookUserId)"))
       case Right(None) =>
         Right(logger.info(s"Facebook data-deletion: no local account for fb $facebookUserId — nothing to delete"))

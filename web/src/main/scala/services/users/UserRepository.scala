@@ -34,6 +34,7 @@ trait UserRepository {
 
   def findByProviderSub(provider: String, providerSub: String): Option[User]
 
+  /** THROWS when the store cannot perform it — see [[AccountDeletion]]. */
   def delete(id: String): Unit
 
   /** Write `user` as the whole row — except `sessionVersion`, which never
@@ -96,13 +97,10 @@ class MongoUserRepository(database: Option[MongoDatabase]) extends UserRepositor
     )
   }
 
+  // A failure PROPAGATES, as a read's does: the deletion's callers answer "done" on return.
   def delete(id: String): Unit = coll.foreach { c =>
-    Try {
-      Await.result(c.deleteOne(Filters.eq("id", id)).toFuture(), 10.seconds)
-      ()
-    }.recover {
-      case exception => logger.warn(s"UserRepository.delete($id) failed: ${exception.getMessage}")
-    }
+    Await.result(c.deleteOne(Filters.eq("id", id)).toFuture(), 10.seconds)
+    ()
   }
 
   def upsert(user: User): User = coll.fold(user) { c =>

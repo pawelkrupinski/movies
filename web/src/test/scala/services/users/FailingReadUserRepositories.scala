@@ -18,3 +18,10 @@ class FailingReadUserStateRepository(failure: => Throwable = new RuntimeExceptio
   extends InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned) with FailsOnPurpose {
   override def find(userId: String): Option[UserState] = throw failure
 }
+
+/** A [[UserRepository]] whose `delete` THROWS — the shape `MongoUserRepository` gives a caller when
+ *  Mongo cannot be written. An account deletion must then answer "unavailable", never "done". */
+class FailingDeleteUserRepository(failure: => Throwable = new RuntimeException("users unwritable"))
+  extends InMemoryUserRepository with FailsOnPurpose {
+  override def delete(id: String): Unit = throw failure
+}

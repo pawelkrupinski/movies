@@ -80,6 +80,17 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
     contentAsString(result) should not include ("confirmation_code")
   }
 
+  it should "answer 503 — not confirm the deletion — when the account cannot be deleted" in {
+    val users  = new services.users.FailingDeleteUserRepository
+    val states = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
+    seedFacebookUser(users, states, "fb-777")
+    val ctl = new FacebookDataDeletionController(Helpers.stubControllerComponents(), models.Country.Poland,
+      Some(settings.FacebookAppSecret(Secret)), users, new AccountDeletion(users, states))
+    val result = ctl.callback()(callbackRequest(FacebookSignedRequestFixture.forUser(Secret, "fb-777")))
+    status(result) shouldBe SERVICE_UNAVAILABLE
+    contentAsString(result) should not include ("confirmation_code")
+  }
+
   it should "delete the matching local account and return the JSON receipt" in {
     val (ctl, userRepository, stateRepository) = fixture()
     seedFacebookUser(userRepository, stateRepository, "fb-777")

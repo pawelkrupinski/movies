@@ -649,4 +649,13 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     sess.get("userId")           shouldBe empty
     sess.get("extra")            shouldBe empty
   }
+
+  it should "answer 503 and keep the session, not 204, when the store cannot delete" in {
+    val (_, stateRepository, userRepository) = fixture(userRepository = new services.users.FailingDeleteUserRepository)
+    val result = accountController(stateRepository, userRepository).deleteAccount()(FakeRequest("DELETE", "/api/me").withSession("userId" -> "u1"))
+
+    status(result)                           shouldBe SERVICE_UNAVAILABLE
+    header("Cache-Control", result)          shouldBe Some(PerUserResponse.CacheControl)
+    header("Set-Cookie", result)             shouldBe None // the browser keeps its session cookie
+  }
 }

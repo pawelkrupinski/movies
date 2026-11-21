@@ -10,7 +10,9 @@ import org.scalatest.matchers.should.Matchers
  * short selection timeout keeps each op to ~200ms). A lookup that could not run must
  * THROW: `None` is "no such user" / "no state yet", and every caller acts on it — the
  * session is signed out, the user rebuilt as new, a Facebook deletion confirmed without
- * running, an empty hidden-films list served with a fresh validator.
+ * running, an empty hidden-films list served with a fresh validator. A DELETE that could
+ * not run must throw too: an account deletion answers "done" — a 204, Meta's receipt —
+ * on its return.
  */
 class MongoUserRepositoriesUnreachableSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
@@ -35,7 +37,15 @@ class MongoUserRepositoriesUnreachableSpec extends AnyFlatSpec with Matchers wit
     logged.map(_.getFormattedMessage).filter(_.contains("unreachable.users")) should not be empty
   }
 
+  it should "throw, not return as if done, when a delete cannot reach Mongo" in {
+    an[Exception] should be thrownBy users.delete("alice@example.com")
+  }
+
   "MongoUserStateRepository.find" should "throw, not answer None, when it cannot reach Mongo" in {
     an[Exception] should be thrownBy states.find("alice@example.com")
+  }
+
+  "MongoUserStateRepository.delete" should "throw, not return as if done, when it cannot reach Mongo" in {
+    an[Exception] should be thrownBy states.delete("alice@example.com")
   }
 }

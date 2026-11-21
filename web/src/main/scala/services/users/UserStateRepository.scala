@@ -54,7 +54,8 @@ trait UserStateRepository {
   def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState]
 
   /** Remove this user's state row entirely. Used by the account-deletion
-   *  endpoint alongside `UserRepository.delete`. */
+   *  endpoint alongside `UserRepository.delete`; THROWS when the store cannot
+   *  perform it (see [[AccountDeletion]]). */
   def delete(userId: String): Unit
 
   /** Stream out-of-band writes/deletes to `userStates` as they happen — see
@@ -150,12 +151,8 @@ class MongoUserStateRepository(
     }
 
   def delete(userId: String): Unit = coll.foreach { c =>
-    Try {
-      tools.MongoWriteErrors.counted(c)(Await.result(c.deleteOne(Filters.eq("userId", userId)).toFuture(), 10.seconds))
-      ()
-    }.recover {
-      case exception => logger.warn(s"UserStateRepository.delete($userId) failed: ${exception.getMessage}")
-    }
+    tools.MongoWriteErrors.counted(c)(Await.result(c.deleteOne(Filters.eq("userId", userId)).toFuture(), 10.seconds))
+    ()
   }
 
   override def changeStreamLiveness: ChangeStreamLiveness = changes.liveness
