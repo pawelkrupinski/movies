@@ -7,6 +7,7 @@ never carries a venue slot; a range saying Identity-Design or a what-if over the
 import hashlib
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -16,6 +17,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOL = os.path.join(HERE, "identity_stamp_carry.py")
 sys.path.insert(0, HERE)
+import identity_stamp_carry as stamp_carry  # noqa: E402
 from pure_move_check_test import CLEAN_ENV, FOO, FOO_PATH, NEW_FOO_PATH, SIBLING, USER, Repo  # noqa: E402
 
 TABLE = "test/resources/identity-stamp-carry.tsv"
@@ -255,6 +257,21 @@ class StampCarryTest(unittest.TestCase):
         self.assertIn("Carry the identity stamps", self.repo.git("log", "-1", "--format=%s"))
         committed = self.repo.git("rev-parse", "HEAD").strip()
         self.assertEqual(0, self.run_tool("verify", f"{second}..{committed}")[0])
+
+    def test_auto_carries_a_pure_move_beside_a_web_or_worker_only_commit_which_moves_no_stamp(self):
+        first = self.move_foo()
+        self.repo.write("web/src/main/assets/js/shared.js", "export const x = 1;\n")
+        self.repo.write("worker/src/main/scala/services/tasks/TaskWorker.scala", "object TaskWorker { val n = 2 }\n")
+        second = self.repo.commit("web and worker only: neither module is in any stamp's closure")
+        code, out = self.run_tool("auto", f"{self.base}..{second}")
+        self.assertEqual(0, code, out)
+        self.assertNotIn("proves nothing", out)
+        self.assertEqual({(self.base, first)}, {(r[4], r[5]) for r in self.table_rows()}, out)
+
+    def test_the_digested_modules_are_the_builds_own(self):
+        with open(os.path.join(os.path.dirname(HERE), "build.sbt")) as f:
+            built = set(re.findall(r'IdentityRulesSources\.Module\("(\w+)"', f.read()))
+        self.assertEqual(built, set(stamp_carry.DIGESTED_MODULES))
 
     def test_auto_writes_nothing_when_one_commit_proves_nothing(self):
         self.move_foo()
