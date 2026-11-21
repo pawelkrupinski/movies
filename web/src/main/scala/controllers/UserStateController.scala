@@ -120,10 +120,19 @@ class UserStateController(
    *  when it can already prove nothing changed since then. The cache is
    *  keyed by userId alone, not (userId, country) — it tracks the WHOLE
    *  document's `updatedAt`, so a change to a DIFFERENT country's list
-   *  also (over-cautiously) invalidates this one's fast path. That's a
-   *  missed optimization, never a wrong answer: the cache only ever
-   *  proves "nothing at all changed", which safely implies "this
-   *  country's subset didn't either". */
+   *  also (over-cautiously) invalidates this one's fast path — a missed
+   *  optimization only: "nothing at all changed" safely implies "this
+   *  country's subset didn't either".
+   *
+   *  It CAN be wrong, for as long as the change stream lags: a write made
+   *  through another pod is not in this pod's cache until its event arrives,
+   *  so until then the cache's older instant proves "unchanged" and a client
+   *  holding the previous `Last-Modified` gets a 304. A stream that fails
+   *  clears the cache and an entry expires after its TTL (see
+   *  `CaffeineUserChangeTimeCache`), which bounds a stall; the lag itself is not
+   *  bounded here. In practice the path seldom fires at all: `Last-Modified`
+   *  carries whole seconds and `updatedAt` milliseconds, so only a change
+   *  stamped on the second itself is "not after" the client's validator. */
   private def cacheProvenUnchanged(userId: String, ifNoneMatch: Option[String], ifModifiedSince: Option[Instant]): Option[Instant] =
     if (ifNoneMatch.isEmpty) ifModifiedSince.flatMap(ims => userChangeTimeCache.lastChangeAt(userId).filter(!_.isAfter(ims)))
     else None
