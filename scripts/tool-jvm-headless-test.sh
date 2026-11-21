@@ -12,7 +12,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # a launch: `java -` at a command or array start, outside comments, in any non-test script -- text files only, never
 # an installed dependency tree (an npm package's binaries and vendored scripts are not the repository's)
 launches() {
-  grep -rnIE --exclude-dir=node_modules '(^|[(;&|"[:space:]])java -' "$@" 2>/dev/null \
+  grep -rnIE --exclude-dir=node_modules '(^|[(&;|"[:space:]])java -' "$@" 2>/dev/null \
     | grep -vE '^[^:]+-test\.sh:|^[^:]+_test\.py:|^[^:]+:[0-9]+:[[:space:]]*#'
 }
 missing() { launches "$@" | grep -v -- '-Djava.awt.headless=true' | cut -d: -f1,2; }
