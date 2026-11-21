@@ -46,8 +46,7 @@
 @_loginModal(oauthProviders)
 
 @_sharedJsConfig(Seq.empty, Map.empty[String, String], oauthProviders, pinnedToday)
-<script src="@routes.Assets.versioned("js/i18n.js")"></script>
-<script src="@routes.Assets.versioned("js/shared.js")"></script>
+@_sharedScripts(deferred = false)
 
 <div class="container-fluid py-4 px-4">
   <h1 style="font-size:1.3rem; font-weight:600; margin-bottom:1.2rem; color:#eee;">@heading</h1>

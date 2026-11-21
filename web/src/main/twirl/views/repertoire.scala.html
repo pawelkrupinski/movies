@@ -41,8 +41,7 @@
 @_hiddenModal()
 
 @_sharedJsConfig(allCinemas, cinemaPills, oauthProviders, pinnedToday, controllers.CinemaSeasons.byName(city.cinemas, renderedAt.toLocalDate))
-<script defer src="@routes.Assets.versioned("js/i18n.js")"></script>
-<script defer src="@routes.Assets.versioned("js/shared.js")"></script>
+@_sharedScripts(deferred = true)
 
 @* The listing's only heading. Visually hidden because the design opens straight
    onto the card grid with no title bar — but the page had no `<h1>` at all, so

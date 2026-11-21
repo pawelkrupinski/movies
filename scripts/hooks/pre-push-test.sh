@@ -10,7 +10,7 @@ printf '\033[36m▸\033[0m pre-push --plan\n'
 # plan <path>... -> the selected checks, space-separated
 plan() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --plan | tr '\n' ' ' | sed 's/ $//'; }
 
-check "production JS runs ESLint and the sbt check (no page area: the page tests run on Main, 2026-11-17)" "eslint sbt" "$(plan web/src/main/assets/js/shared.js)"
+check "production JS runs ESLint and the sbt check (no page area: the page tests run on Main, 2026-11-17)" "eslint sbt" "$(plan web/src/main/assets/js/shared/city.js)"
 check "a page spec's JS runs ESLint and the sbt check" "eslint sbt" "$(plan web/src/page/resources/landing/hold-picker-panes.js)"
 check "the ESLint config runs ESLint" "eslint" "$(plan eslint.config.js)"
 check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/storage-access-in-try.js)"
