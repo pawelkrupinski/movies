@@ -9,7 +9,8 @@ import org.scalatest.matchers.should.Matchers
  * Main workflow always on gh, measurements always on ci" -- so no `movies-main` label, and no MOVIES_MEASURE_RUNNERS
  * escape back to hosted for a measurement).
  * With the repository variable MOVIES_CI_RUNNERS=self-hosted, a landing check's jobs (precommit-check.yml, on a check/ branch)
- * ask for ci-runner's `movies-check` slots, a measurement's convergence legs (any ref off main: a measure/ branch) and every
+ * ask for ci-runner's `movies-check` slots -- but its identity shards, GitHub's hosted runners either way (the owner,
+ * 2026-11-21: ci-runner's check CPU was the landing's binding constraint) --, a measurement's convergence legs (any ref off main: a measure/ branch) and every
  * convergence bisect for `movies-measure`, and the light jobs around them for `movies` (either kind of slot) -- the
  * slots are infra's nix/hosts/ci-runner/movies-runners.nix. Main's own runs never leave GitHub's hosted runners, so
  * they stop queueing behind the others for GitHub Free's 20. Unset, every job is hosted again: the fallback while
@@ -88,32 +89,34 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
 
   private val RunId = "44061032302"
 
-  /** A landing check's labels at `ref` (a job asking for several, joined by `,`), its plan job's `check-runner` output
-   *  as the plan step writes it for that ref. */
-  private def landing(ref: String, vars: Map[String, String] = SelfHosted): Map[String, String] = {
-    val plan = RepoFile.jobs(yml("precommit-check.yml"))("plan")
-    withClue("the plan step names the lane by the branch, and the run's pin: ") {
-      plan should include("""case "$GITHUB_REF" in refs/heads/check/red-*) lane=movies-check-red-fix ;; *) lane=movies-check ;; esac""")
-      plan should include("""echo "check-runner=[\"$lane\",\"movies-run-$GITHUB_RUN_ID\"]" >> "$GITHUB_OUTPUT"""")
-    }
-    val lane = if (ref.startsWith("refs/heads/check/red-")) "movies-check-red-fix" else "movies-check"
-    labels("precommit-check.yml",
-      ctx(ref, vars).copy(runId = RunId, outputs = Map("plan.check-runner" -> s"""["$lane","movies-run-$RunId"]""")))
-  }
+  /** A landing check's labels at `ref` (a job asking for several, joined by `,`). */
+  private def landing(ref: String, vars: Map[String, String] = SelfHosted): Map[String, String] =
+    labels("precommit-check.yml", ctx(ref, vars).copy(runId = RunId))
 
-  "a landing check" should "run every job on ci-runner's movies-check slots, pinned to its run, its plan on the light lane" in {
+  /** The identity shards' job: on GitHub's hosted runners whatever MOVIES_CI_RUNNERS says (the owner, 2026-11-21). */
+  private val Identity = "check-identity"
+
+  "a landing check" should "run the rest on ci-runner's movies-check slots, pinned to its run, its plan on the light lane" in {
     // OLDEST FIRST (2026-11-17, runner_scheduler.py PIN_PREFIX): the run's pin lets the scheduler start a runner that
     // can take this run's jobs alone, for the oldest queued one; the plan job, on the light lane, is not pinned
     val check = landing("refs/heads/check/x")
-    check should not be empty
+    check.keySet shouldBe Set("plan", "check", Identity)
     check("plan") shouldBe "movies"
-    all(check.removed("plan").values) shouldBe s"movies-check,movies-run-$RunId"
+    check("check") shouldBe s"movies-check,movies-run-$RunId"
+  }
+
+  it should "run the identity shards on GitHub's hosted runners, ci-runner on or off (the owner, 2026-11-21)" in {
+    // ci-runner's check CPU (~3 check containers) was the landing's binding constraint: the shards queued p50 9.6 / p90
+    // 28 min for ~10 min of work; hosted, they take none of its check slots. A plain label, no expression: nothing a
+    // run's variables or its plan's outputs say can put them back on ci-runner
+    runsOn("precommit-check.yml")(Identity) shouldBe "ubuntu-26.04"
+    for (ref <- Seq("refs/heads/check/x", "refs/heads/check/red-x"); vars <- Seq(SelfHosted, Map.empty[String, String]))
+      withClue(s"$ref, $vars: ")(landing(ref, vars)(Identity) shouldBe "ubuntu-26.04")
   }
 
   it should "run a gate-red fix's on the red-fix check lane, served first (runner_scheduler.py CHECK_LANES, 2026-11-17)" in {
     val red = landing("refs/heads/check/red-20261117-110122-movies-x-2ed6cd")
-    red.removed("plan") should not be empty
-    all(red.removed("plan").values) shouldBe s"movies-check-red-fix,movies-run-$RunId"
+    red("check") shouldBe s"movies-check-red-fix,movies-run-$RunId"
     all(landing("refs/heads/check/red-x", vars = Map.empty).values) should startWith("ubuntu-")
   }
 

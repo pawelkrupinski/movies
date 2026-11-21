@@ -48,7 +48,8 @@ Landing is the cost, so land fewer, bigger, cleaner changes and keep working whi
    hook's `stampcarry` check proves each row again.
 6. **Local layers, narrowed:** `scripts/sbt-warm "<module>/testOnly <the specs you touched or that read it>"`, the
    module's `testUnit` only when you changed shared code, `scripts/run-script-tests --changed origin/main` for any
-   script. The landing check runs the rest on ci-runner -- don't run it twice on the laptop.
+   script. The landing check runs the rest on CI (ci-runner; the identity shards on GitHub's hosted runners) -- don't
+   run it twice on the laptop.
 7. **Rebase onto origin/main, then land:** `~/bin/agentctl land --until-done > <scratchpad>/land-<lane>-<n>.log 2>&1`
    (Bash `run_in_background=true`). Conflicts in the generated baselines resolve themselves (the queue merges or
    regenerates them).
@@ -406,9 +407,11 @@ added compile, unit and lint plans itself) forces the full round. No shared file
 `precommit-share.sh` gives the `identity` share `PREPUSH_MODE=--checks-only` over `<full base>..HEAD` (the plan names it,
 so `check (identity k/4)` runs; the rest is the verify round's). Disjoint modules -> the plain verify round.
 
-**The landing check on ci-runner** (`precommit-check.yml`, agentctl's remote checks) runs the hook's checks in parallel
-jobs: `check (rest)` and `check (identity k/4)` (the identity area's specs, beside the rest since 2026-11-01, in four
-shards since 2026-11-21: two ran ~13 min each). `check (oldrefs)` is gone (2026-11-21): identity-slice's old-ref
+**The landing check** (`precommit-check.yml`, agentctl's remote checks) runs the hook's checks in parallel
+jobs: `check (rest)` on ci-runner and `check (identity k/4)` (the identity area's specs, beside the rest since
+2026-11-01, in four shards since 2026-11-21: two ran ~13 min each) on GitHub's hosted runners (`ubuntu-26.04`) since
+2026-11-21, the owner's call: ci-runner's ~3 check containers were the landing's binding constraint and the shards
+queued p50 9.6 / p90 28 min there for a ~10-min run. The measure lanes stay on ci-runner. `check (oldrefs)` is gone (2026-11-21): identity-slice's old-ref
 compile runs after landing, on Main. `check (rest)` runs the script self-tests beside its other checks (`scripts/ci/hook-beside.sh`:
 the hook twice at once, since 2026-11-18) and, after its sbt check, each of Main's heavy rows the change can move
 (`PREPUSH_HEAVY_ROWS=1`; their own job until 2026-11-18, which waited up to 17 min for a slot): `itrest` / `itidentity`

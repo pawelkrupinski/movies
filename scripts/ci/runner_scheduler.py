@@ -104,7 +104,8 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
   * THE WARM CHECK RUNNER (the owner, 2026-11-18, "8"): a check job queued ~30 s with nothing ahead of it -- up to a tick
     before this saw it, ~7 s to start and register its ephemeral runner. A runner registered ahead with a lane's label
     alone takes no check job (each asks for its run's pin, OLDEST FIRST), so while a precommit-check run's plan runs,
-    ONE check runner is registered with the lane and pin its later checks (identity's shards, the old refs) ask for,
+    ONE check runner is registered with the lane and pin its later checks ask for (none since 2026-11-21: the old refs
+    went to Main and identity's shards to GitHub's hosted runners, so this registers a runner nothing takes -- to retire),
     admitted as a check is, after every queued one; with nothing of its run queued or to come it goes after
     warm_grace_seconds, its cores back to measurements. And while a check is queued or to come, a tick every
     busy_tick_seconds, not tick_seconds.
@@ -205,7 +206,7 @@ PIN_PREFIX = "movies-run-"
 LANDING_MEASURE_LANES = MEASURE_LANES[:2]
 OPTIONAL_MEASURE_LANES = (STAGE_LANE, LABELS["measure"], CONSUMER_LANE)
 # THE WARM CHECK RUNNER (the owner, 2026-11-18, "8"): the job whose run's later check jobs are known before they queue --
-# precommit-check's plan, which the identity shards and the old refs `need` (decide's warm_check)
+# precommit-check's plan, which no ci-runner job `needs` since 2026-11-21 (decide's warm_check; to retire, above)
 WARM_WORKFLOW = "Pre-commit check"
 WARM_PLAN_JOB = "plan"
 CLASS_OF = {label: cls for cls, label in LABELS.items()} | {lane: cls for cls, order in LANES.items() for lane in order}

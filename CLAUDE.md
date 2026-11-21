@@ -398,7 +398,8 @@ the end. Per-service limits: `external-api-rate-limits` skill.
 
 ## Investigating identity, scraper or CI failures
 
-CI runs on GitHub's hosted runners.
+CI runs on GitHub's hosted runners (Main, convergence on main, and since 2026-11-21 the landing check's identity
+shards); the rest of the landing check and every measurement run on ci-runner.
 
 **Writing a workflow (WorkflowPlanSpec):** inputs, refs, run ids and skip decisions are evaluated in ONE plan job (a
 root: `preflight`/`plan`) and every other job reads `needs.<plan>.outputs.<name>`. A step with its own `timeout-minutes` starts `. scripts/ci/bounded-step.sh`
