@@ -1802,6 +1802,36 @@
         }
       }
     },
+    "filtersheet.delete_account_failed": {
+      "comment": "Alert message when the server did not delete the account; the user stays signed in.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dein Konto konnte nicht gelöscht werden. Versuche es erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't delete your account. Try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo eliminar tu cuenta. Inténtalo de nuevo."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się usunąć konta. Spróbuj ponownie."
+          }
+        }
+      }
+    },
     "filtersheet.dimension": {
       "comment": "Filter axis: 2D vs 3D. Section header and picker label.",
       "extractionState": "manual",

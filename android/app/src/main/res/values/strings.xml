@@ -102,6 +102,7 @@
     <string name="account">Konto</string>
     <string name="sign_out">Wyloguj</string>
     <string name="delete_account">Usuń konto</string>
+    <string name="delete_account_failed">Nie udało się usunąć konta. Spróbuj ponownie.</string>
     <string name="sign_in">Zaloguj się</string>
     <string name="sign_in_google">Zaloguj przez Google</string>
     <string name="sign_in_facebook">Zaloguj przez Facebook</string>

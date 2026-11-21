@@ -139,12 +139,15 @@ final class AuthService: NSObject {
         }
     }
 
-    func deleteAccount() async {
-        _ = try? await session.data(for: AuthRequests.deleteAccount(base: kinowoBaseURL))
+    /// Deletes the account and signs out, or, when the server did not delete it (see
+    /// `AccountDeletion.delete`), keeps the user signed in and returns false.
+    func deleteAccount() async -> Bool {
+        guard await AccountDeletion.delete(session: session, base: kinowoBaseURL) else { return false }
         user = nil
         if let cookies = HTTPCookieStorage.shared.cookies(for: kinowoBaseURL) {
             cookies.forEach { HTTPCookieStorage.shared.deleteCookie($0) }
         }
+        return true
     }
 }
 

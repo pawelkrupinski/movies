@@ -96,6 +96,7 @@
     <string name="account">Account</string>
     <string name="sign_out">Sign out</string>
     <string name="delete_account">Delete account</string>
+    <string name="delete_account_failed">Couldn\'t delete your account. Try again.</string>
     <string name="sign_in">Sign in</string>
     <string name="sign_in_google">Sign in with Google</string>
     <string name="sign_in_facebook">Sign in with Facebook</string>

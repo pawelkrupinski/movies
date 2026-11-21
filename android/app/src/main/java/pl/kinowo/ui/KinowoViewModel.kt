@@ -431,10 +431,24 @@ class KinowoViewModel(
 
     fun signOut() = viewModelScope.launch { authRepository.signOut() }
 
+    /** Set when the server did not delete the account (see
+     *  [AuthRepository.deleteAccount]): the Filtry sheet says so until dismissed. */
+    private val _deleteAccountFailed = MutableStateFlow(false)
+    val deleteAccountFailed: StateFlow<Boolean> = _deleteAccountFailed.asStateFlow()
+
+    fun dismissDeleteAccountFailure() {
+        _deleteAccountFailed.value = false
+    }
+
     /** Delete the account, then wipe local prefs — matches iOS, which clears
-     *  hidden films (every country's) + disabled cinemas after `deleteAccount()`. */
+     *  hidden films (every country's) + disabled cinemas after `deleteAccount()`.
+     *  When the server kept the account, the user stays signed in with every
+     *  local pref, and [deleteAccountFailed] is raised. */
     fun deleteAccount() = viewModelScope.launch {
-        authRepository.deleteAccount()
+        if (!authRepository.deleteAccount()) {
+            _deleteAccountFailed.value = true
+            return@launch
+        }
         prefs.clearAllHiddenFilms()
         prefs.setDisabledCinemas(emptySet())
         // Otherwise a stale per-country migration flag survives into the next

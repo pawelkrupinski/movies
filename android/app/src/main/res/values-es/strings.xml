@@ -96,6 +96,7 @@
     <string name="account">Cuenta</string>
     <string name="sign_out">Cerrar sesión</string>
     <string name="delete_account">Eliminar la cuenta</string>
+    <string name="delete_account_failed">No se pudo eliminar tu cuenta. Inténtalo de nuevo.</string>
     <string name="sign_in">Iniciar sesión</string>
     <string name="sign_in_google">Iniciar sesión con Google</string>
     <string name="sign_in_facebook">Iniciar sesión con Facebook</string>

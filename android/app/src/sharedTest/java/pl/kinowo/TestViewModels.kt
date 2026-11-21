@@ -54,7 +54,8 @@ fun offlineClientSupportGate() = ClientSupportGate({ throw IOException("offline"
  * [sync] / [location] to observe or steer those collaborators, [catalogSeed]
  * (a bundled-seed envelope) for a country catalog other than the fallback,
  * [clientSupportGate] to have the server answer that this version is unsupported
- * (the default's fetch fails, so the app stays usable).
+ * (the default's fetch fails, so the app stays usable), [authBaseUrl] for a
+ * local server the account calls (sign-in, deletion) reach instead.
  */
 fun testKinowoViewModel(
     context: Context,
@@ -65,13 +66,14 @@ fun testKinowoViewModel(
     http: OkHttpClient = OkHttpClient(),
     catalogSeed: String? = null,
     clientSupportGate: ClientSupportGate = offlineClientSupportGate(),
+    authBaseUrl: String = UNREACHABLE_BASE_URL,
 ): KinowoViewModel {
     val api = KinowoApi(baseUrl = UNREACHABLE_BASE_URL, client = http, userAgent = TEST_USER_AGENT)
     return KinowoViewModel(
         repository = repository ?: RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer())),
         detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer())),
         prefs = prefs,
-        authRepository = AuthRepository(http, PersistentCookieJar(context), baseUrl = UNREACHABLE_BASE_URL,
+        authRepository = AuthRepository(http, PersistentCookieJar(context), baseUrl = authBaseUrl,
             pendingVerifier = SharedPrefsPendingVerifierStore(context), userAgent = TEST_USER_AGENT),
         sync = sync,
         catalogApi = CinemaCatalogApi { CinemaCatalog.EMPTY },

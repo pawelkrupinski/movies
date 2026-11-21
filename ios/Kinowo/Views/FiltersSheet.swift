@@ -243,6 +243,8 @@ struct AccountSection: View {
     @Environment(AuthService.self) private var authService
     // Gate the actual sign-out behind a yes/no confirmation.
     @State private var showSignOutConfirm = false
+    // The server kept the account (it answered other than 2xx, or never answered).
+    @State private var showDeleteAccountFailed = false
 
     var body: some View {
         if let user = authService.user {
@@ -266,10 +268,18 @@ struct AccountSection: View {
                 }
                 Button("filtersheet.delete_account", role: .destructive) {
                     Task {
-                        await authService.deleteAccount()
+                        guard await authService.deleteAccount() else {
+                            showDeleteAccountFailed = true
+                            return
+                        }
                         prefs.clearAllHiddenFilms()
                         prefs.setDisabledCinemas([])
                     }
+                }
+                .alert("filtersheet.delete_account", isPresented: $showDeleteAccountFailed) {
+                    Button("filtersheet.done", role: .cancel) {}
+                } message: {
+                    Text("filtersheet.delete_account_failed")
                 }
             }
         } else {

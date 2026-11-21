@@ -1,14 +1,18 @@
 package pl.kinowo.ui
 
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import pl.kinowo.KinowoViewModelHarness
+import pl.kinowo.contracts.MockWebServerRule
+import pl.kinowo.contracts.answerEveryRequestWith
 import pl.kinowo.data.UserPreferences
 
 /**
@@ -23,6 +27,10 @@ import pl.kinowo.data.UserPreferences
  * This test was deleted once for hanging the JVM when it shared a Gradle fork
  * with `CitySwitchSuppressionWiringTest` — see [pl.kinowo.KinowoViewModelHarness]
  * for the wedged-DataStore-lock root cause and the teardown that fixes it.
+ *
+ * The wipe happens only once the server answered a 2xx: it answers 503 when
+ * its user store is unreachable and the account was not deleted, and then the
+ * app keeps every local pref and says so.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -31,14 +39,22 @@ class DeleteAccountClearsSyncStateTest {
     @get:Rule
     val harness = KinowoViewModelHarness()
 
-    @Test
-    fun deleteAccountClearsThePerCountryHiddenFilmsMigrationFlag() {
-        val prefs = UserPreferences(harness.context)
+    // Every request, the ViewModel's own session check included, gets one status.
+    @get:Rule
+    val mock = MockWebServerRule()
+
+    private fun syncedPrefs() = UserPreferences(harness.context).also { prefs ->
         runBlocking {
             prefs.setHiddenFilmsMigrated("pl", true)
             prefs.setHiddenFilmsValidators("pl", "\"etag\"", "Tue, 19 May 2026 12:00:00 GMT")
         }
-        val vm = harness.viewModel(prefs = prefs)
+    }
+
+    @Test
+    fun deleteAccountClearsThePerCountryHiddenFilmsMigrationFlag() {
+        mock.server.answerEveryRequestWith(204)
+        val prefs = syncedPrefs()
+        val vm = harness.viewModel(prefs = prefs, authBaseUrl = mock.baseUrl)
 
         harness.settle(vm.deleteAccount())
 
@@ -50,5 +66,25 @@ class DeleteAccountClearsSyncStateTest {
             )
             assertNull(prefs.hiddenFilmsEtag("pl"))
         }
+    }
+
+    @Test
+    fun aDeletionTheServerRefusedKeepsTheLocalPrefsAndSaysSo() {
+        mock.server.answerEveryRequestWith(503)
+        val prefs = syncedPrefs()
+        val vm = harness.viewModel(prefs = prefs, authBaseUrl = mock.baseUrl)
+
+        harness.settle(vm.deleteAccount())
+
+        assertTrue("a 503 must surface the failure", vm.deleteAccountFailed.value)
+        runBlocking {
+            assertTrue(
+                "the server kept the account, so its local sync state must stay too",
+                prefs.isHiddenFilmsMigrated("pl"),
+            )
+            assertEquals("\"etag\"", prefs.hiddenFilmsEtag("pl"))
+        }
+        vm.dismissDeleteAccountFailure()
+        assertFalse(vm.deleteAccountFailed.value)
     }
 }

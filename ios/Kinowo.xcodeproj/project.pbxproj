@@ -75,6 +75,7 @@
 		DD0000000000000000A5C2 /* ClientSupportStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5C2 /* ClientSupportStore.swift */; };
 		DD0000000000000000A5D2 /* KinowoUserAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5D2 /* KinowoUserAgent.swift */; };
 		DD0000000000000000A5D1 /* AuthRequests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5D1 /* AuthRequests.swift */; };
+		DD0000000000000000A5D3 /* AccountDeletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A5D3 /* AccountDeletion.swift */; };
 		DD00000000000000000E06 /* CatalogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E06 /* CatalogStore.swift */; };
 		DD00000000000000000018 /* FilmDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000018 /* FilmDetailView.swift */; };
 		DD00000000000000000019 /* FlowLayoutMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000019 /* FlowLayoutMath.swift */; };
@@ -213,6 +214,7 @@
 		CC0000000000000000A5C2 /* ClientSupportStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientSupportStore.swift; sourceTree = "<group>"; };
 		CC0000000000000000A5D2 /* KinowoUserAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KinowoUserAgent.swift; sourceTree = "<group>"; };
 		CC0000000000000000A5D1 /* AuthRequests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthRequests.swift; sourceTree = "<group>"; };
+		CC0000000000000000A5D3 /* AccountDeletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDeletion.swift; sourceTree = "<group>"; };
 		CC00000000000000000E06 /* CatalogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogStore.swift; sourceTree = "<group>"; };
 		CC00000000000000000018 /* FilmDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailView.swift; sourceTree = "<group>"; };
 		CC00000000000000000019 /* FlowLayoutMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayoutMath.swift; sourceTree = "<group>"; };
@@ -340,6 +342,7 @@
 				CC00000000000000000034 /* HiddenFilmsClient.swift */,
 				CC00000000000000000037 /* LanguageClient.swift */,
 				CC0000000000000000A5D1 /* AuthRequests.swift */,
+				CC0000000000000000A5D3 /* AccountDeletion.swift */,
 				CC000000000000000000A1 /* PkceVerifier.swift */,
 			);
 			path = Auth;
@@ -656,6 +659,7 @@
 				DD0000000000000000A5C2 /* ClientSupportStore.swift in Sources */,
 				DD0000000000000000A5D2 /* KinowoUserAgent.swift in Sources */,
 				DD0000000000000000A5D1 /* AuthRequests.swift in Sources */,
+				DD0000000000000000A5D3 /* AccountDeletion.swift in Sources */,
 				DD00000000000000000E06 /* CatalogStore.swift in Sources */,
 				DD00000000000000000018 /* FilmDetailView.swift in Sources */,
 				DD00000000000000000019 /* FlowLayoutMath.swift in Sources */,

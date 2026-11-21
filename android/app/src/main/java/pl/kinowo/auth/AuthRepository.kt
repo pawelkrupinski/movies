@@ -93,14 +93,21 @@ class AuthRepository(
         clearSession()
     }
 
-    suspend fun deleteAccount() = withContext(Dispatchers.IO) {
+    /** Delete the account and sign out — only when the server answers a 2xx.
+     *  It answers 503 when its user store is unreachable and the account was
+     *  NOT deleted (the session is kept); that, any other status and a network
+     *  error leave the user signed in and return false. */
+    suspend fun deleteAccount(): Boolean = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url("$baseUrl/api/me")
             .header("User-Agent", userAgent)
             .delete()
             .build()
-        runCatchingCancellable { client.newCall(request).execute().close() }
-        clearSession()
+        val deleted = runCatchingCancellable {
+            client.newCall(request).execute().use { it.isSuccessful }
+        }.getOrDefault(false)
+        if (deleted) clearSession()
+        deleted
     }
 
     private fun clearSession() {

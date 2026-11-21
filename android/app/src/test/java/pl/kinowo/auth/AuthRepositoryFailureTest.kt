@@ -4,6 +4,9 @@ import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import kotlin.coroutines.cancellation.CancellationException
@@ -71,5 +74,48 @@ class AuthRepositoryFailureTest {
         val thrown = runCatching { auth.checkSession() }.exceptionOrNull()
 
         assertTrue("expected a CancellationException, got $thrown", thrown is CancellationException)
+    }
+
+    private suspend fun signedIn(): AuthRepository {
+        server.enqueue(MockResponse().setBody("""{"provider":"google","email":"a@b.c"}"""))
+        return repository(mock.baseUrl).also {
+            it.checkSession()
+            assertNotNull(it.user.value)
+        }
+    }
+
+    /** `DELETE /api/me` answers 503 when the server's user store is
+     *  unreachable and the account was NOT deleted (the session is kept):
+     *  the app must keep the user signed in, not show the account as gone. */
+    @Test
+    fun deleteAccountTheServerRefusedKeepsTheUserSignedIn() = runBlocking {
+        val auth = signedIn()
+        server.enqueue(MockResponse().setResponseCode(503))
+
+        assertFalse(auth.deleteAccount())
+
+        assertNotNull(auth.user.value)
+    }
+
+    @Test
+    fun deleteAccountOnAnUnreachableServerKeepsTheUserSignedIn() = runBlocking {
+        val auth = signedIn()
+        server.shutdown()
+
+        assertFalse(auth.deleteAccount())
+
+        assertNotNull(auth.user.value)
+    }
+
+    @Test
+    fun deleteAccountSignsOutOnA2xx() = runBlocking {
+        val auth = signedIn()
+        server.enqueue(MockResponse().setResponseCode(204))
+
+        assertTrue(auth.deleteAccount())
+
+        assertNull(auth.user.value)
+        server.takeRequest() // the session check
+        assertEquals("DELETE", server.takeRequest().method)
     }
 }

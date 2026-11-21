@@ -55,12 +55,13 @@ class KinowoViewModelHarness : ExternalResource() {
         location: GrantedLocationSource = GrantedLocationSource { null },
         catalogSeed: String? = null,
         clientSupportGate: ClientSupportGate = offlineClientSupportGate(),
+        authBaseUrl: String = UNREACHABLE_BASE_URL,
     ): KinowoViewModel {
         val http = OkHttpClient().also { clients += it }
         val factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                testKinowoViewModel(context, repository, prefs, sync, location, http, catalogSeed, clientSupportGate) as T
+                testKinowoViewModel(context, repository, prefs, sync, location, http, catalogSeed, clientSupportGate, authBaseUrl) as T
         }
         val store = ViewModelStore().also { stores += it }
         return ViewModelProvider(store, factory)[KinowoViewModel::class.java]

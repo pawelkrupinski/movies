@@ -47,6 +47,7 @@ let authTargets: [Target] = [
             "Auth/ObservedValues.swift",
             "Auth/PkceVerifier.swift",
             "Auth/AuthRequests.swift",
+            "Auth/AccountDeletion.swift",
             "Storage/UserPreferences.swift",
             // The country registry + persisted selection: `kinowoBaseURL`
             // (UserProfile) and `UserPreferences` route the API base URL and

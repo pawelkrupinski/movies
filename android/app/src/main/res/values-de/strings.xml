@@ -96,6 +96,7 @@
     <string name="account">Konto</string>
     <string name="sign_out">Abmelden</string>
     <string name="delete_account">Konto löschen</string>
+    <string name="delete_account_failed">Dein Konto konnte nicht gelöscht werden. Versuche es erneut.</string>
     <string name="sign_in">Anmelden</string>
     <string name="sign_in_google">Mit Google anmelden</string>
     <string name="sign_in_facebook">Mit Facebook anmelden</string>
