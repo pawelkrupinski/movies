@@ -1,4 +1,4 @@
-# 2026-11-21 — an original title links only to the OTHER title; house-production needs a banner naming its house — LANDED
+# 2026-11-21 — an original title links only to the OTHER title (PARKED); house-production needs a banner naming its house (LANDED)
 
 - **Why:** the identity code review (review/identity) found `TitleRelation.sameOriginal` matching a node's original
   title against its OWN whole title, so a listing billing its title as its own original ("Dune" / "Dune") drew a tier-3
@@ -32,3 +32,15 @@ parent's `TitleRelation.scala` the slice passes; with the parent's `StageRelays.
 commit (604134d1a) was reverted -- the banner guard only compensated for the link change -- so its two cures wait on a
 version of the original-title link that keeps the walk monotone. Reproducer:
 `scripts/sbt-warm 'worker/testOnly services.identity.PopulationMonotonicityPart2Spec -- -z "uk-keswick-alhambra-ntlive-hayfever"'`.
+
+## Relanded: the banner guard alone; the link change parked (2026-11-21)
+
+Each half measured alone on the reverted base: `TitleRelation.sameOriginal` alone fails the Hay Fever slice (the A -> B
+-> A above); `StageRelays.namesTheHouse` alone passes PopulationMonotonicityPart1-4Spec, every drift slice
+(`scripts.IdentityDriftSlices*`), IdentitySliceCasesSpec and MatchedTakesLabelSpec. The guard is what cured UK Lowther
+"On Screen: Notre-Dame De Paris" (tmdb:790330), so it relands alone with that cure; DE Kino Central's "Tronthaim:
+Berlin - Die Sinfonie" (tmdb:68594, by `join:original-title`) waits on the link change. Why the link change walks
+A -> B -> A was not found: the self-original links had glued the Hay Fever relay spellings at tier 3, and without them
+"NT Encore" and "NT Recorded Live: Hay Fever" join the NT Live cluster only while the listings bridging them are present.
+A version keeping the walk monotone needs that bridge understood first (the slice above, `--orders`); the plain fix is
+kept as the reverted 604134d1a.

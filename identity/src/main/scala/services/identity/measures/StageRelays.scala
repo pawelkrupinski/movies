@@ -2,7 +2,7 @@ package services.identity.measures
 
 import services.identity.measures.IdentityMeasures.*
 import services.titles.SearchTitles
-import services.titles.StageHouse.{HouseCommonWords, namesAHouseInParticular, namesOneHouse, particularWords}
+import services.titles.StageHouse.{HouseCommonWords, abbreviates, namesAHouseInParticular, namesOneHouse, particularWords}
 import services.titles.billing.DecorationWords
 import services.titles.{TitleContainment, TitleSeason, TitleWords}
 
@@ -320,8 +320,14 @@ object StageRelays {
    *  "Das Boot - Directors Cut" record its "house" bills alike. */
   def billsUnderItsHouse(listing: MeasuredListing, film: Film, houses: BannerHouses): Boolean =
     (listing.seasonYear.isEmpty || film.season.isEmpty) &&
-      billings(listing, film).exists(billed => houses.same(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse) &&
+      billings(listing, film).exists(billed => houses.same(billed) && namesTheHouse(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse) &&
         !namesAnEdition(billed.listingWords) && !namesAnEdition(billed.filmWords) && (film.season.isEmpty || spellsItsHouse(billed)))
+  /** Does the listing's banner NAME the record's house (spell, share or hold a word of, abbreviate it), not merely learned
+   *  as it? UK Lowther's programme banner "On Screen", learned as La Scala Ballet, took its 2013 "Notre-Dame de Paris". */
+  private def namesTheHouse(billed: Billing): Boolean =
+    billed.listingHouse == billed.filmHouse || abbreviates(billed.listingWords, billed.filmWords) ||
+      billed.listingWords.filter(_.lengthIs >= 3).exists(word =>
+        billed.filmWords.filter(_.lengthIs >= 3).exists(house => word.contains(house) || house.contains(word)))
   /** A banner of edition words alone, a possessive's lone letter aside ("director s cut"). */
   private def namesAnEdition(banner: Seq[String]): Boolean = {
     val words = banner.filter(_.lengthIs > 1)
