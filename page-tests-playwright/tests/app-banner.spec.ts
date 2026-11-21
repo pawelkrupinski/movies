@@ -103,7 +103,8 @@ test.describe('app banner', () => {
       };
       requestAnimationFrame(sample);
     });
-    await page.route('**/js/shared*.js', async (route) => {
+    // Every shared script, however they are cut: `js/shared.js`, or the modules under `js/shared/`.
+    await page.route((url) => /\/js\/shared(\.js|\/[\w-]+\.js)$/.test(url.pathname), async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 500));
       await route.continue();
     });

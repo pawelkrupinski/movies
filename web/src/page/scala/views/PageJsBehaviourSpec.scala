@@ -408,7 +408,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private val PageHelpers = Seq(
     "common/dom.js", "debug/corpus-table.js", "film/film-page.js", "layout/navbar.js", "listing/carousel.js",
     "listing/expiry.js", "listing/filtry.js", "listing/grid.js", "listing/posters.js",
-    "user-state/user-state.js")
+    "user-state/user-state.js", "common/shared-scripts.js")
 
   /** Open `url` in a fresh tab with [[PageHelpers]] installed. Cancels the test
    *  cleanly when Chrome wasn't located in beforeAll. */
@@ -1657,6 +1657,286 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalBool("typeof closeAuthMenu === 'function'") shouldBe true
       page.evalBool("typeof openLoginModal === 'function'") shouldBe true
       page.evalBool("typeof closeLoginModal === 'function'") shouldBe true
+    }
+  }
+
+  // ── The shared scripts' contract with the pages ──────────────────────────
+  //
+  // Every function the templates' inline `on…=` handlers and inline `<script>`
+  // blocks (and `i18n.js`) call into the shared scripts, by name. A module that
+  // fails to load, or loads without one of these, leaves a control that throws
+  // `ReferenceError` on its first tap — so the list is what the templates call
+  // today (grep for `name(` outside comments), not what the scripts happen to
+  // define.
+  private val FunctionsThePagesCall = Seq(
+    "badgeFormatMatch", "closeAnonymousNag", "closeDialogOnBackdrop", "closeHiddenModal", "closeLoginModal",
+    "closeOtherCitiesModal", "compareCards", "copyFilterLinkToClipboard", "dateBounds", "filterHiddenModal",
+    "foldShowings", "getCastFilter", "getCountryFilter", "getDirectorFilter", "getDisabledCinemas",
+    "getFormatFilter", "getFromMinutes", "getHidden", "getSortBy", "getSubmenuFilter", "goToCityPicker",
+    "isSubsequence", "lockSearchZoom", "onDateSelect", "onFormatChange", "onSearchInput", "onSortChange",
+    "openHiddenModal", "openLoginModal", "openOtherCitiesModal", "pickDay", "refreshDateLabels",
+    "resetFormatFilter", "schedulePosterRetry", "scheduleServerSync", "searchOriginDay", "showAllFilms",
+    "syncDateToURL", "toggleAllCinemas", "toggleAuthMenu", "toggleFormatPanel", "toggleSubmenu",
+    "truncateAllShowings", "undoTruncation", "unlockSearchZoom", "updateEmptyState")
+
+  // Every page kind that loads the shared scripts: the listing (deferred), the film
+  // page and the facet listing (both in-order, not deferred), and a signed-in listing.
+  private def pagesLoadingTheSharedScripts: Seq[String] =
+    Seq("/", s"/movie/${tools.Slugify(firstFixtureTitle)}", "/filmy?country=Polska", "/li")
+
+  "the shared scripts" should "define every function the pages' inline handlers and scripts call, on every page" in {
+    for (path <- pagesLoadingTheSharedScripts) onPath(path) { page =>
+      withClue(path) {
+        page.evalString(s"JSON.stringify(__sharedScripts.missingFunctions(${Json.toJson(FunctionsThePagesCall)}))") shouldBe "[]"
+      }
+    }
+  }
+
+  // Every script under `assets/js/` is either one every city page loads or one
+  // only its own page does — so a script added there and never given its tag,
+  // or a tag left naming a script that is gone, shows up here.
+  private val PageSpecificScripts = Set("debugTable.js", "viewportInfo.js")
+  private def scriptsEveryCityPageLoads: Seq[String] = {
+    val root = java.nio.file.Paths.get("web/src/main/assets/js")
+    val all = java.nio.file.Files.walk(root)
+    try all.filter(_.toString.endsWith(".js")).map(p => root.relativize(p).toString).toArray.toSeq.map(_.toString)
+    finally all.close()
+  }.filterNot(PageSpecificScripts).sorted
+
+  it should "be loaded, every one of them, by every page" in {
+    val expected = scriptsEveryCityPageLoads
+    expected should contain ("i18n.js")
+    for (path <- pagesLoadingTheSharedScripts) onPath(path) { page =>
+      withClue(path) {
+        Json.parse(page.evalString(
+          "JSON.stringify([...document.scripts].map(s => s.src && new URL(s.src).pathname).filter(p => p && p.includes('/assets/js/')).map(p => p.slice(p.indexOf('/assets/js/') + '/assets/js/'.length)))"
+        )).as[Seq[String]].sorted shouldBe expected
+      }
+    }
+  }
+
+  // A module that fails to load, or that runs before one it reads at load time,
+  // raises an error the page's own handlers never see. The recorder is installed
+  // ahead of every script, then the page is loaded again under it.
+  it should "load and boot on every page without a script error" in {
+    for (path <- pagesLoadingTheSharedScripts :+ "/many-showtimes") onPath(path) { page =>
+      page.reload()
+      withClue(path) {
+        page.evalString("JSON.stringify(__sharedScripts.errors())") shouldBe "[]"
+        // Booted: the listing's cloak is gone once `bootView` has run its first pass.
+        page.evalBool("document.documentElement.classList.contains('grid-cloak')") shouldBe false
+      }
+    }
+  }
+
+  // Two capture-phase `click` listeners both swallow a tap: the floating search's
+  // tap-away dismiss and an open dropdown's click-outside close. The one registered
+  // first wins, and today that is the search's — so with both armed, the tap only
+  // drops the keyboard and the panel stays open for the next one. Loading the
+  // dropdown code ahead of the search code would flip that.
+  it should "let a phone's tap away from the search field act before an open panel's click-outside close" in {
+    onPath("/") { page =>
+      page.setViewport(380, 800)
+      page.evalString("JSON.stringify(__sharedScripts.tapCardWithSearchFocusedAndPanelOpen())") shouldBe
+        """{"searchFocused":false,"panelOpen":true,"clickPrevented":true}"""
+    }
+  }
+
+  "the Filtry city row" should "go to this deployment's own picker, asking for a city" in {
+    onPath("/") { page =>
+      page.navigateBy("goToCityPicker()")
+      page.evalString("location.pathname + location.search") shouldBe "/?pick=city"
+    }
+  }
+
+  "a submenu's Wszystkie row" should "uncheck and re-check every entry, the count badge following" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      openFiltry(page)
+      val before = visibleCardCount(page)
+      val entries = page.evalInt("document.querySelectorAll('#country-list input:not(.submenu-all)').length")
+      entries should be > 1
+      def setAll(checked: Boolean): Unit =
+        page.eval(s"var all = document.querySelector('#country-list .submenu-all'); all.checked = $checked; all.onchange()")
+      def checkedEntries = page.evalInt("document.querySelectorAll('#country-list input:not(.submenu-all):checked').length")
+      def badge = page.evalString("var b = document.getElementById('country-row-count'); b.style.display + '|' + b.textContent")
+
+      setAll(false)
+      checkedEntries shouldBe 0
+      badge shouldBe s"|0/$entries"
+      visibleCardCount(page) should be < before
+
+      setAll(true)
+      checkedEntries shouldBe entries
+      badge should startWith ("none|")
+      visibleCardCount(page) shouldBe before
+    }
+  }
+
+  "the Sale submenu's Wszystkie row" should "flip every room, and every cinema's count badge with them" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      openFiltry(page)
+      def setAll(checked: Boolean): Unit =
+        page.eval(s"var all = document.querySelector('#room-list .submenu-all'); all.checked = $checked; all.onchange()")
+      def checkedRooms = page.evalInt("document.querySelectorAll('#room-list .room-cinema-list input:checked').length")
+      def shownBadges = page.evalString(
+        "JSON.stringify([...document.querySelectorAll('#room-list .room-cinema-count')].map(c => c.style.display === 'none' ? '' : c.textContent))")
+      val rooms = page.evalInt("document.querySelectorAll('#room-list .room-cinema-list input').length")
+      rooms should be > 1
+
+      setAll(false)
+      checkedRooms shouldBe 0
+      Json.parse(shownBadges).as[Seq[String]].foreach(_ should startWith ("0/"))
+
+      setAll(true)
+      checkedRooms shouldBe rooms
+      Json.parse(shownBadges).as[Seq[String]].foreach(_ shouldBe "")
+    }
+  }
+
+  // Before localStorage, both lists lived in cookies — which silently dropped
+  // writes past ~4 KB. A browser still carrying one gets it lifted across once.
+  "the legacy cookie lists" should "move into localStorage on load, the cookies cleared" in {
+    onPath("/") { page =>
+      page.eval("localStorage.clear()")
+      page.eval("""document.cookie = 'hiddenFilms=' + encodeURIComponent(JSON.stringify(['Cookie Film'])) + '; path=/'""")
+      page.eval("""document.cookie = 'disabledCinemas=' + encodeURIComponent(JSON.stringify(['Cookie Cinema'])) + '; path=/'""")
+      try {
+        page.reload()
+        page.evalString("JSON.stringify(getHidden())") shouldBe """["Cookie Film"]"""
+        page.evalString("JSON.stringify(getDisabledCinemas())") shouldBe """["Cookie Cinema"]"""
+        page.evalBool("/(^|; )(hiddenFilms|disabledCinemas)=/.test(document.cookie)") shouldBe false
+      } finally {
+        page.eval("document.cookie = 'hiddenFilms=; max-age=0; path=/'; document.cookie = 'disabledCinemas=; max-age=0; path=/'")
+        page.eval("localStorage.clear()")
+      }
+    }
+  }
+
+  "the login modal" should "open, and close on its ✕ and on a tap on its backdrop" in {
+    onLoggedInIndex { page =>
+      def open = page.evalBool("document.getElementById('login-dialog').open")
+      page.eval("openLoginModal()")
+      open shouldBe true
+      page.eval("document.querySelector('#login-dialog .login-modal-close').click()")
+      open shouldBe false
+      page.eval("openLoginModal()")
+      // A tap outside the card lands on the dialog element itself.
+      page.eval("document.getElementById('login-dialog').click()")
+      open shouldBe false
+    }
+  }
+
+  it should "stay open on a tap inside its card" in {
+    onLoggedInIndex { page =>
+      page.eval("openLoginModal(); document.querySelector('#login-dialog .login-modal-title').click()")
+      page.evalBool("document.getElementById('login-dialog').open") shouldBe true
+      page.eval("closeLoginModal()")
+    }
+  }
+
+  // The sign-out mark is a one-shot: a page that lands signed out, as it should,
+  // clears it and stays — only a page still showing the avatar is fetched again.
+  "a sign-out mark on a page that renders signed out" should "be cleared, without a reload" in {
+    onPath("/") { page =>
+      page.eval("sessionStorage.setItem('signedOut', '1')")
+      page.reload()
+      page.eval("window.__stillTheSameDocument = true")
+      page.awaitRenderedFrame()
+      page.evalString("String(sessionStorage.getItem('signedOut'))") shouldBe "null"
+      page.evalBool("window.__stillTheSameDocument === true") shouldBe true
+    }
+  }
+
+  "re-checking a cinema" should "drop it from disabledCinemas and bring its showings back" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      // A cinema with showings in the fixture, so switching it off visibly narrows the grid.
+      val cinema = page.evalString("document.querySelector('#film-grid .cinema-group[data-cinema]').dataset.cinema")
+      def shownGroups = page.evalInt(
+        s"[...document.querySelectorAll('#film-grid .cinema-group')].filter(g => g.dataset.cinema === ${jsString(cinema)} && g.style.display !== 'none').length")
+      val before = shownGroups
+      before should be > 0
+      page.eval(s"__filtry.setCinema(${jsString(cinema)}, false)")
+      page.evalString("JSON.stringify(getDisabledCinemas())") shouldBe Json.stringify(Json.arr(cinema))
+      shownGroups shouldBe 0
+      page.eval(s"__filtry.setCinema(${jsString(cinema)}, true)")
+      page.evalString("JSON.stringify(getDisabledCinemas())") shouldBe "[]"
+      shownGroups shouldBe before
+    }
+  }
+
+  "the room tooltip" should "name a showtime's room while the pointer is over it, and hide once it leaves" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val badge = "#film-grid .badge-time[data-room]"
+      page.eval(s"document.querySelector('$badge').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))")
+      page.evalString("document.getElementById('room-tooltip').style.display") shouldBe "block"
+      page.evalString("document.getElementById('room-tooltip').textContent") shouldBe
+        page.evalString(s"document.querySelector('$badge').dataset.room")
+      page.eval("document.body.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))")
+      page.evalString("document.getElementById('room-tooltip').style.display") shouldBe "none"
+    }
+  }
+
+  it should "show on a long press, and not on a tap released before it" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      val touch = (kind: String) =>
+        s"document.querySelector('#film-grid .badge-time[data-room]').dispatchEvent(new TouchEvent('$kind', { bubbles: true }))"
+      val displayAfter = (ms: Int) =>
+        page.evalString(s"new Promise(done => setTimeout(() => done(document.getElementById('room-tooltip').style.display), $ms))")
+      page.eval(touch("touchstart") + "; " + touch("touchend"))
+      displayAfter(700) should not be "block"
+      page.eval(touch("touchstart"))
+      page.waitFor("document.getElementById('room-tooltip').style.display === 'block'")
+      page.waitFor("document.getElementById('room-tooltip').style.display === 'none'")
+    }
+  }
+
+  "the IMDb pill on Android Chrome" should "open the IMDb app through its intent:// link instead of the web page" in {
+    onPath("/") { page =>
+      val imdb = "#film-grid a.rating-imdb[href*=\"/title/tt\"]"
+      page.evalBool(s"__sharedScripts.clickPrevented('$imdb')") shouldBe false
+      page.send("Emulation.setUserAgentOverride", Json.obj("userAgent" ->
+        "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"))
+      page.reload()
+      page.evalBool(s"__sharedScripts.clickPrevented('$imdb')") shouldBe true
+    }
+  }
+
+  "the Copy-link button" should "say it copied, then go back to its own label" in {
+    onPath("/") { page =>
+      val button = "document.querySelector('[onclick^=\"copyFilterLinkToClipboard\"]')"
+      val label = page.evalString(s"$button.textContent")
+      page.eval(s"$button.click()")
+      page.waitFor(s"$button.textContent === t('nav.copied')")
+      page.waitFor(s"$button.textContent === ${jsString(label)}")
+    }
+  }
+
+  it should "copy through the old execCommand path where there is no clipboard API" in {
+    onPath("/") { page =>
+      val button = "document.querySelector('[onclick^=\"copyFilterLinkToClipboard\"]')"
+      page.eval("Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })")
+      page.eval(s"$button.click()")
+      page.evalBool(s"$button.textContent === t('nav.copied')") shouldBe true
+      page.evalBool("document.querySelectorAll('textarea').length === 0") shouldBe true
+    }
+  }
+
+  // A tab coming back to the foreground retries every poster that gave up, from
+  // its primary URL and the start of the backoff — as the iOS app does on
+  // returning to the foreground.
+  "returning to the tab" should "restart a failed poster's chain from its primary, the backoff reset" in {
+    onPath("/") { page =>
+      page.eval("var img = document.querySelector('img[data-original-src]'); img.dataset.retryAttempt = '3'; img.dataset.retryGen = '2'; img.dataset.fallbackIndex = '1'")
+      page.eval("document.dispatchEvent(new Event('visibilitychange'))")
+      page.evalString("var img = document.querySelector('img[data-original-src]'); [img.dataset.retryAttempt, img.dataset.retryGen, String(img.dataset.fallbackIndex)].join('|')") shouldBe
+        "0|3|undefined"
+      page.evalBool("var img = document.querySelector('img[data-original-src]'); img.getAttribute('src') === img.dataset.originalSrc + (img.dataset.originalSrc.includes('?') ? '&' : '?') + '_kinowo_t=3'") shouldBe true
     }
   }
 
