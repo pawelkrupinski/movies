@@ -1884,12 +1884,13 @@
   // language switch matches what the server would have rendered in that
   // language. `KINOWO_LOCALE.daysFull` is Monday-first, matching
   // `LocalDate.getDayOfWeek.getValue - 1`; `getDay()` below is Sunday-first,
-  // hence the `+6 % 7` rebase.
+  // hence the `+6 % 7` rebase. "This year" is the PAGE's day (`pageToday()`,
+  // the city clock the server labelled from), never the device's.
   function formatDateLabel(isoDate) {
     const [year, month, day] = isoDate.split('-').map(Number);
     const dayOfWeek       = new Date(year, month - 1, day).getDay();
     const mondayFirstIdx  = (dayOfWeek + 6) % 7;
-    const currentYear     = new Date().getFullYear();
+    const currentYear     = Number(pageToday().slice(0, 4));
     const yearSuffix      = year === currentYear ? '' : ' ' + year;
     return KINOWO_LOCALE.daysFull[mondayFirstIdx] + ' ' + day + ' ' + MONTHS[month - 1] + yearSuffix;
   }

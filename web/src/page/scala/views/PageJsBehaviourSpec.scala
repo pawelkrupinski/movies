@@ -3378,6 +3378,23 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Regression: the re-rendered header decided "is this year's date?" by the
+  // DEVICE clock (`new Date().getFullYear()`), not the page's own day
+  // (`pageToday()`, the city clock the server labelled from) — a device clock
+  // or zone across New Year from the city's drops or adds the year, and every
+  // label spec here would start failing on 2027-01-01 against 2026 fixtures.
+  it should "spell out the year by the page's day, not the device clock's" in {
+    onPath("/") { page =>
+      val isoDate = page.evalString("document.querySelector('.date-group[data-date]').dataset.date")
+      val pageDay = LocalDate.parse(isoDate).plusYears(1)
+      page.eval(s"__grid.clockAt(Date.UTC(${pageDay.getYear}, ${pageDay.getMonthValue - 1}, ${pageDay.getDayOfMonth}, 12))")
+      page.eval("applyLanguage('en')")
+
+      page.evalString("document.querySelector('.date-group[data-date] .date-label').textContent") shouldBe
+        controllers.DateFormatter.format(LocalDate.parse(isoDate), pageDay, Locale.ENGLISH)
+    }
+  }
+
   // Regression: a visitor with an EXISTING stored pick reloading the page
   // (not switching language interactively) must see the date headers in
   // their picked language on the FRESH boot pass, not just after a manual
