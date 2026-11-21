@@ -26,6 +26,9 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
   private val ListingUrl = "https://dkswit.com.pl/kino/"
   private val DateFmt    = DateTimeFormatter.ofPattern("yyyyMMdd")
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
+  private val RuntimePat = """(\d+)\s*min""".r
+  private val DirectorPat = """(?i)reżyseria:\s*([^•|<]+)""".r
+  private val DetailLinkPat = """window\.location='([^']+)'""".r
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ListingUrl)
   override def sourceUrl: Option[String] = Some(ListingUrl)
@@ -45,11 +48,10 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
 
     title.filter(_ => showtimes.nonEmpty).map { t =>
       val cardText = card.text
-      val runtime  = """(\d+)\s*min""".r.findFirstMatchIn(cardText).map(_.group(1).toInt)
+      val runtime  = RuntimePat.findFirstMatchIn(cardText).map(_.group(1).toInt)
       val infoLine = Option(card.selectFirst("p.text-gray-600")).map(_.text).getOrElse("")
       val year     = YearPat.findFirstMatchIn(infoLine).map(_.group(1).toInt)
-      val director = """(?i)reżyseria:\s*([^•|<]+)""".r.findFirstMatchIn(infoLine).map(_.group(1).trim)
-                       .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      val director = DirectorPat.findFirstMatchIn(infoLine).toSeq.flatMap(m => ScraperParse.commaItems(m.group(1)))
       // The genre badge is the purple-tinted pill on the card; the blue one is
       // the "Napisy PL" subtitle tag, so scope to the purple class.
       val genres   = card.select("span[class*=text-purple]").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty)
@@ -59,7 +61,7 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
       // `FormatTags` title strip has nothing to peel off it.
       val version  = card.select("span[class*=text-blue]").asScala.toSeq
                        .flatMap(b => FormatTags.formatTokensIn(b.text)).distinct.toList
-      val detailUrl = Option(card.attr("onclick")).flatMap(o => """window\.location='([^']+)'""".r.findFirstMatchIn(o).map(_.group(1)))
+      val detailUrl = Option(card.attr("onclick")).flatMap(o => DetailLinkPat.findFirstMatchIn(o).map(_.group(1)))
       CinemaMovie(
         movie     = Movie(title = t, runtimeMinutes = runtime, releaseYear = year, genres = genres),
         cinema    = cinema,

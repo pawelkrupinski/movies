@@ -51,4 +51,11 @@ class SwitClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Zawodowcy").showtimes.map(_.format).distinct shouldBe Seq(Nil)
   }
 
+  it should "read the director, synopsis, poster and detail page off the card" in {
+    val m = byTitle("Diabeł ubiera się u Prady 2")
+    m.director          shouldBe Seq("David Frankel")
+    m.synopsis.map(_.take(40)) shouldBe Some("Miranda Priestly walczy ze swoją byłą as")
+    m.posterUrl         shouldBe Some("https://dkswit.com.pl/app/uploads/2026/05/diabel-prady.jpg")
+    m.filmUrl           shouldBe Some("https://dkswit.com.pl/wydarzenia/diabel-ubiera-sie-u-prady-2/")
+  }
 }
