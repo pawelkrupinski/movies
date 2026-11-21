@@ -7,6 +7,6 @@
 #              boot -- is far above the measure's own noise and holds a real regression
 #   phase      <phase> <families> <bytes a family> <nanoseconds a family> (time recorded, never held)
 tolerance	2
-phase	resolve	325	55847491	26971001
-phase	boot	331	54818934	26365473
-phase	boot-steady	325	18556745	7353208
+phase	resolve	325	48062652	40184121
+phase	boot	331	47175184	39811926
+phase	boot-steady	325	15674603	10355691
