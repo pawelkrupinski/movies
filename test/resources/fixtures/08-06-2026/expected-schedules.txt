@@ -1195,7 +1195,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Fenomen (WDK) / Wolność po włosku / —
   Kino IKM / Wolność po włosku / —
-  Kino Kępa / Wolność po włosku / —
+  Kino Kępa / Wolność po włosku / 2025
   Kino Muranów / Wolność po włosku / 2025
   Kino Muza / Wolność po włosku / 2025
   Kino Pałacowe / Cinema Italia Oggi: Wolność po włosku / 2025
@@ -1495,7 +1495,7 @@ cinemaScrapes:
   Kino Echo / Diabeł ubiera się u Prady 2 / —
   Kino GCK / Diabeł ubiera się u Prady 2 / —
   Kino Kijów / Diabeł ubiera się u Prady 2 / —
-  Kino Kępa / Diabeł ubiera się u Prady 2 / —
+  Kino Kępa / Diabeł ubiera się u Prady 2 / 2026
   Kino MOKiS / Diabeł ubiera się u Prady 2 / —
   Kino Moskwa / DIABEŁ UBIERA SIĘ U PRADY 2 / —
   Kino Na Biegunach / Diabeł ubiera się u prady 2 / —
@@ -2568,7 +2568,7 @@ cinemaScrapes:
   KINOMUZEUM / Erupcja / 2025
   Kino Amok / Erupcja / —
   Kino Kika / ERUPCJA / —
-  Kino Kępa / Erupcja / —
+  Kino Kępa / Erupcja / 2025
   Kino Luna / Erupcja / —
   Kino Malta Charlie Monroe / Erupcja / —
   Kino Muranów / Erupcja / 2026
@@ -10449,7 +10449,7 @@ cinemaFilmUrls:
 cinemaScrapes:
   Kino Fenomen (WDK) / Wolność po włosku / —
   Kino IKM / Wolność po włosku / —
-  Kino Kępa / Wolność po włosku / —
+  Kino Kępa / Wolność po włosku / 2025
   Kino Muranów / Wolność po włosku / 2025
   Kino Muza / Wolność po włosku / 2025
   Kino Pałacowe / Cinema Italia Oggi: Wolność po włosku / 2025

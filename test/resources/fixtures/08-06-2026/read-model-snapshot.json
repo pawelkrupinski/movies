@@ -82923,7 +82923,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-14T12:15:00",
       "bookingUrl" : "https://sklep.muzhp.pl/rezerwacja/rezerwacja/numerowane.html?id=17464&idt=f0a1b6f5f7c2ee1b510279d214d52226",
-      "format" : [ ]
+      "format" : [ "DUB" ]
     } ],
     "listingKeys" : [ "N\u0000Kino Cytadela\u0000https://muzhp.pl/kino-film/tom-i-jerry-przygoda-w-muzeum\u0000Tom i Jerry. Przygoda w muzeum" ]
   }, {
@@ -83901,7 +83901,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-14T14:15:00",
       "bookingUrl" : "https://sklep.muzhp.pl/rezerwacja/rezerwacja/numerowane.html?id=17465&idt=bfbcc130dfb594f1b6f7caf48ce77573",
-      "format" : [ ]
+      "format" : [ "NAP" ]
     } ],
     "listingKeys" : [ "N\u0000Kino Cytadela\u0000https://muzhp.pl/kino-film/dobry-chlopiec\u0000Dobry chłopiec" ]
   }, {
@@ -93566,7 +93566,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-13T12:15:00",
       "bookingUrl" : "https://sklep.muzhp.pl/rezerwacja/rezerwacja/numerowane.html?id=17407&idt=09339608fb1dda08e8c0ec0a33833433",
-      "format" : [ ]
+      "format" : [ "LEK" ]
     } ],
     "listingKeys" : [ "N\u0000Kino Cytadela\u0000https://muzhp.pl/kino-film/dzieci-z-bullerbyn\u0000Dzieci z Bullerbyn" ]
   }, {
@@ -146247,15 +146247,15 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-13T11:00:00",
       "bookingUrl" : "https://sklep.muzhp.pl/rezerwacja/rezerwacja/numerowane.html?id=17460&idt=cf89b5bfb69d4bd4fe6ffff050851436",
-      "format" : [ ]
+      "format" : [ "LEK" ]
     }, {
       "dateTime" : "2026-06-14T11:00:00",
       "bookingUrl" : "https://sklep.muzhp.pl/rezerwacja/rezerwacja/numerowane.html?id=17461&idt=0c381d43ec0ba451247ee84ac2061434",
-      "format" : [ ]
+      "format" : [ "LEK" ]
     }, {
       "dateTime" : "2026-06-20T11:00:00",
       "bookingUrl" : "https://sklep.muzhp.pl/rezerwacja/rezerwacja/numerowane.html?id=17462&idt=f168acf12bcf485025b5346227047823",
-      "format" : [ ]
+      "format" : [ "LEK" ]
     } ],
     "listingKeys" : [ "N\u0000Kino Cytadela\u0000https://muzhp.pl/kino-film/niesamowite-przygody-skarpetek-3-ale-kosmos\u0000Niesamowite przygody skarpetek 3. Ale kosmos!" ]
   }, {
@@ -167378,7 +167378,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-20T12:15:00",
       "bookingUrl" : "https://sklep.muzhp.pl/rezerwacja/rezerwacja/numerowane.html?id=17466&idt=ca71a64bbc7ceb0d8dc57a6b27911612",
-      "format" : [ ]
+      "format" : [ "DUB" ]
     } ],
     "listingKeys" : [ "N\u0000Kino Cytadela\u0000https://muzhp.pl/kino-film/niesamowita-historia-mumbo-jumbo\u0000Niesamowita historia Mumbo Jumbo" ]
   }, {
@@ -182295,7 +182295,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-13T14:00:00",
       "bookingUrl" : "https://sklep.muzhp.pl/rezerwacja/rezerwacja/numerowane.html?id=17443&idt=c44f0d9244cab0d55283662c74e79426",
-      "format" : [ ]
+      "format" : [ "NAP" ]
     } ],
     "listingKeys" : [ "N\u0000Kino Cytadela\u0000https://muzhp.pl/kino-film/testament-ann-lee-1\u0000Testament Ann Lee" ]
   }, {
