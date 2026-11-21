@@ -11,9 +11,11 @@ import scala.meta.tokens.Token
  * definition, "Cognitive Complexity", G. Ann Campbell, 2017), its CYCLOMATIC complexity (McCabe), the INNER DEFS it
  * holds (CLAUDE.md: "refactor past two inner methods") and its length in lines.
  *
- * A method is a `def` with a body that no other `def` encloses. What a method holds -- its nested defs, its lambdas,
- * the members of a class it builds -- is folded into it, as Sonar folds nested functions and lambdas: they add NESTING,
- * not methods of their own.
+ * A method is a `def` with a body that no other `def` encloses, and likewise a member `val`, `lazy val`, `var` or
+ * `given ... =` alias with a right-hand side (named after what it binds: a pattern's names joined with commas, an
+ * anonymous given `given`): a lambda-valued val is a function in all but name, and its branches went unmeasured until
+ * 2026-11-21. What a method holds -- its nested defs, its lambdas, its local vals, the members of a class it builds --
+ * is folded into it, as Sonar folds nested functions and lambdas: they add NESTING, not methods of their own.
  *
  * Cognitive complexity, Sonar's three rules in Scala's terms:
  *  - a STRUCTURAL increment, +1 plus the nesting level, for each `if` (not an `else if`), `match`, partial-function
@@ -48,23 +50,38 @@ object MethodMeasures {
   def methods(tree: Tree): Seq[Method] = {
     val found = Seq.newBuilder[Method]
     def visit(t: Tree, owners: List[String]): Unit = t match {
-      case d: Defn.Def => found += measure(d, owners.reverse.mkString("."))
-      case c: Defn.Class  => c.children.foreach(visit(_, c.name.value :: owners))
-      case c: Defn.Trait  => c.children.foreach(visit(_, c.name.value :: owners))
-      case c: Defn.Object => c.children.foreach(visit(_, c.name.value :: owners))
-      case c: Defn.Enum   => c.children.foreach(visit(_, c.name.value :: owners))
-      case g: Defn.Given  => g.children.foreach(visit(_, (if (g.name.value.isEmpty) "given" else g.name.value) :: owners))
-      case p: Pkg.Object  => p.children.foreach(visit(_, p.name.value :: owners))
-      case other          => other.children.foreach(visit(_, owners))
+      case d: Defn.Def        => found += measure(d.name.value, d, d.body, owners)
+      case v: Defn.Val        => found += measure(patternName(v.pats), v, v.rhs, owners)
+      case v: Defn.Var        => found += measure(patternName(v.pats), v, v.body, owners)
+      case g: Defn.GivenAlias => found += measure(givenName(g.name), g, g.body, owners)
+      case c: Defn.Class      => c.children.foreach(visit(_, c.name.value :: owners))
+      case c: Defn.Trait      => c.children.foreach(visit(_, c.name.value :: owners))
+      case c: Defn.Object     => c.children.foreach(visit(_, c.name.value :: owners))
+      case c: Defn.Enum       => c.children.foreach(visit(_, c.name.value :: owners))
+      case g: Defn.Given      => g.children.foreach(visit(_, givenName(g.name) :: owners))
+      case p: Pkg.Object      => p.children.foreach(visit(_, p.name.value :: owners))
+      case other              => other.children.foreach(visit(_, owners))
     }
     visit(tree, Nil)
     found.result()
   }
 
-  private def measure(d: Defn.Def, owner: String): Method = {
+  private def givenName(name: Name): String = if (name.value.isEmpty) "given" else name.value
+
+  /** A val's name: the names its pattern binds, joined with commas; `val` for a pattern binding none. */
+  private def patternName(patterns: Seq[Pat]): String = {
+    def bound(t: Tree): Seq[String] = t match {
+      case v: Pat.Var => Seq(v.name.value)
+      case other      => other.children.flatMap(bound)
+    }
+    Some(patterns.flatMap(bound).mkString(",")).filter(_.nonEmpty).getOrElse("val")
+  }
+
+  private def measure(name: String, definition: Tree, body: Tree, owners: List[String]): Method = {
     val score = new Score
-    score.walk(d.body, 0)
-    Method(owner, d.name.value, d.pos.startLine + 1, d.pos.endLine + 1, score.cognitive, 1 + score.cyclomatic, score.innerDefs)
+    score.walk(body, 0)
+    Method(owners.reverse.mkString("."), name, definition.pos.startLine + 1, definition.pos.endLine + 1,
+      score.cognitive, 1 + score.cyclomatic, score.innerDefs)
   }
 
   private val LogicalOperators = Set("&&", "||")

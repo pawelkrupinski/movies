@@ -6,8 +6,8 @@ import java.nio.file.{Files, Path, Paths}
 /**
  * WHERE EACH METHOD OF A SOURCE IS, for the refactoring tools that work on the methods a change touches
  * (scripts/mutation-check, scripts/coverage-touched: scripts/touched_methods.py intersects these spans with a diff's
- * hunks). The methods are [[MethodMeasures]]' own -- a `def` no other `def` encloses, its nested defs and lambdas folded
- * in -- keyed as the quality ratchets key them (`<path>:<Owner.method>`, a second method of one name in a file `#2`).
+ * hunks). The methods are [[MethodMeasures]]' own -- a `def` (or a member val, var or given alias) no other `def`
+ * encloses, its nested defs and lambdas folded in -- keyed as the quality ratchets key them (`<path>:<Owner.method>`, a second method of one name in a file `#2`).
  *
  *   quality.MethodSpans --root <repository> --out <tsv> <path>...
  *
