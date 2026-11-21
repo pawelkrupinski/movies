@@ -103,6 +103,21 @@ class JvmVitalsSamplerSpec extends AnyFlatSpec with Matchers {
       Some((812345L * 1024 - committedSum).toDouble)
   }
 
+  // With NMT off (no -XX:NativeMemoryTracking, or the MBean call failing) nothing is on the books, and
+  // RSS − 0 would publish the whole RSS as "off-book" native memory: a false leak signal.
+  it should "leave the off-book gap unpublished when NMT reports no categories, while RSS still is" in {
+    val registry = new PrometheusRegistry()
+    val sampler  = new JvmVitalsSampler(
+      registry, readNmtSummary = () => "Native memory tracking is not enabled", readProcStatus = () => procStatus,
+      threadPools = tools.ThreadPools.Unmanaged)
+
+    sampler.sample()
+    val text = PrometheusExposition.render(registry)
+
+    ExpositionSamples.value(text, JvmVitalsSampler.RssName) shouldBe Some(812345.0 * 1024)
+    ExpositionSamples.value(text, JvmVitalsSampler.GapName) shouldBe Some(0.0)
+  }
+
   it should "seed the common categories at 0 before the first sample" in {
     val registry = new PrometheusRegistry()
     new JvmVitalsSampler(registry, readNmtSummary = () => "", threadPools = tools.ThreadPools.Unmanaged) // constructed, not sampled

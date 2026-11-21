@@ -43,8 +43,8 @@ import tools.ThreadPools
  * `vmNativeMemory("summary")` (no `jcmd` needed — the box is JRE-only). It
  * requires `-XX:NativeMemoryTracking=summary` (set in each worker overlay's
  * JAVA_OPTS). If NMT is off the command returns a "not enabled" string, the
- * parser yields no categories, the gauges stay at their seeded 0 and the sampler
- * logs once — it never throws.
+ * parser yields no categories, the category and gap gauges stay at their seeded 0 (RSS is still
+ * published) — it never throws.
  */
 class JvmVitalsSampler(
   registry:       PrometheusRegistry,
@@ -88,10 +88,8 @@ class JvmVitalsSampler(
     val committed = parseCommittedByCategory(Try(readNmtSummary()).getOrElse(""))
     committed.foreach { case (category, bytes) => nativeMemory.labelValues(category).set(bytes.toDouble) }
     val rss = parseVmRssBytes(Try(readProcStatus()).getOrElse(""))
-    rss.foreach { r =>
-      processRss.set(r.toDouble)
-      offbookGap.set((r - committed.values.sum).toDouble)
-    }
+    rss.foreach(r => processRss.set(r.toDouble))
+    offbookBytes(committed, rss).foreach(gap => offbookGap.set(gap.toDouble))
     if (tick % LogEveryTicks == 0) logger.info(vitalsLine(committed, rss))
     tick += 1
   }
@@ -142,6 +140,11 @@ object JvmVitalsSampler {
   def parseVmRssBytes(procStatus: String): Option[Long] =
     VmRssLine.findFirstMatchIn(procStatus).map(_.group(1).toLong * 1024L)
 
+  /** RSS − the NMT-committed total, when both are known. With no NMT categories (NMT off, or its read
+   *  failed) nothing is on the books and the difference would be the whole RSS, not an off-book climb. */
+  def offbookBytes(committedByCategory: Map[String, Long], rssBytes: Option[Long]): Option[Long] =
+    rssBytes.filter(_ => committedByCategory.nonEmpty).map(_ - committedByCategory.values.sum)
+
   /** One durable log line: uptime + heap/nonheap + threads + native total + RSS +
    *  off-book gap + top native categories by committed size. */
   def vitalsLine(committedByCategory: Map[String, Long], rssBytes: Option[Long]): String = {
@@ -152,7 +155,7 @@ object JvmVitalsSampler {
     val uptimeMin     = ManagementFactory.getRuntimeMXBean.getUptime / 60000
     val nativeTotal   = committedByCategory.values.sum
     val rssStr        = rssBytes.map(r => s"${r / MB}m").getOrElse("n/a")
-    val gapStr        = rssBytes.map(r => s"${(r - nativeTotal) / MB}m").getOrElse("n/a")
+    val gapStr        = offbookBytes(committedByCategory, rssBytes).map(gap => s"${gap / MB}m").getOrElse("n/a")
     val top = committedByCategory.toSeq.sortBy(-_._2).take(4)
       .map { case (c, b) => s"$c=${b / MB}m" }.mkString(" ")
     s"VITALS uptime=${uptimeMin}m heap=${heapMb}m nonheap=${nonHeapMb}m threads=$threads " +
