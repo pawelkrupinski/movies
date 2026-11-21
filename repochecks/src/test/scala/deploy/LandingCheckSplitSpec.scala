@@ -26,7 +26,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     names should not be empty
     names.filterNot(n => globs.exists(matches(_, n))) shouldBe empty
     // an expanded matrix name is one too
-    Seq("check (identity 1/2)").filterNot(n => globs.exists(matches(_, n))) shouldBe empty
+    Seq("check (identity 1/4)").filterNot(n => globs.exists(matches(_, n))) shouldBe empty
   }
 
   "the landing check" should "run identity and the old refs in jobs of their own, each with a cap of its own" in {
@@ -78,17 +78,17 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
 
   /** The identity module's tests ran after the sbt check in the rest's job: 292 s then 585 s, a 15.9-minute job (run
    *  41276112019; docs/investigations/2026-11-01-twenty-runners.md), then in one job of their own (~12.5 min), then three
-   *  shards. TWO since 2026-11-17: an identity landing ran 7 check jobs on ci-runner's ~4 check slots, in waves (3 days to
-   *  11-17: 44 identity landings, land -> LANDED p50 54 min, runner wait p50 25 min; 7 jobs against the others' 3), and
-   *  the third shard's ~3 min of specs cost a whole job's setup and a slot. Created only for a change the plan gives an
-   *  identity check, each half the selected specs (scripts/ci/shard_tests.py). */
-  "the identity check" should "run in two shards beside the rest, only when the plan names it" in {
+   *  shards, then two (2026-11-17: an identity landing ran 7 check jobs on ci-runner's ~4 check slots, in waves). FOUR
+   *  since 2026-11-21 (the owner's "(3)"): two shards ran ~13 min each over ~5,500 tests, the landing's longest job; a
+   *  quarter runs ~6.5 min, and the identity landings are 41% of all (2026-11-19..21). Created only for a
+   *  change the plan gives an identity check, each a quarter of the selected specs (scripts/ci/shard_tests.py). */
+  "the identity check" should "run in four shards beside the rest, only when the plan names it" in {
     val identity = jobs("check-identity")
     identity should include("needs: [ plan ]")
     identity should include("if: ${{ needs.plan.outputs.identity == 'true' }}")
-    identity should include("shard: [1, 2]")
-    identity should include("PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/2")
-    identity should include("name: check (identity ${{ matrix.shard }}/2)")
+    identity should include("shard: [1, 2, 3, 4]")
+    identity should include("PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/4")
+    identity should include("name: check (identity ${{ matrix.shard }}/4)")
     RepoFile.read("scripts/hooks/pre-push") should include("scripts/ci/shard_tests.py --shard \"$PREPUSH_IDENTITY_SHARD\"")
   }
 

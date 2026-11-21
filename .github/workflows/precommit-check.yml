@@ -46,7 +46,7 @@ env:
 
 jobs:
     # WHAT THE CHANGE SELECTS (scripts/ci/precommit-share.sh checks plan: the hook's own selection, PREPUSH_LIST=1), for
-    # the jobs that run only when it names their share: the old refs and identity's two shards (Main's heavy rows ride the
+    # the jobs that run only when it names their share: the old refs and identity's four shards (Main's heavy rows ride the
     # rest's job since 2026-11-18). NOT HERE (the owner, 2026-11-17, "B1"): the page
     # area and `e2e (rest)`, which run after landing on Main's own rows (a week: 0 failures in 14 page and 95 e2e checks,
     # 317 and 303 runner-minutes). A job the plan does not name is
@@ -99,8 +99,8 @@ jobs:
     # 4025 (a 124-path batch) spent 7 min on scripttests, 8 on sbt, 13 on identity and 37 on page, and ran out of its 80
     # minutes with oldrefs, ios and identitydrift still to go. `check (rest)` runs every selected check but the old refs
     # and identity -- Main's heavy rows among them since 2026-11-18 (their own job, created after the plan, waited up to
-    # 17 min for a slot: one run's `heavy rows` queued 10:09-10:45Z) -- ; `check (identity k/2)` half of identity's specs
-    # each; `check (oldrefs)` the old refs beside them.
+    # 17 min for a slot: one run's `heavy rows` queued 10:09-10:45Z) -- ; `check (identity k/4)` a quarter of identity's
+    # specs each; `check (oldrefs)` the old refs beside them.
     # (`check (page)`, the page area alone after all of them, is gone: the page tests run on Main since 2026-11-17.)
     check:
         name: check (rest)
@@ -235,13 +235,13 @@ jobs:
 
     # THE IDENTITY SHARDS: the identity module's tests ran after the sbt check in the rest's job (292 s then 585 s, a
     # 15.9-minute job, run 41276112019), then in one job of their own beside it (~12.5 min: 2.5 min selecting, 10 min of
-    # ~300 specs, run 41373956176), then in three. Now in TWO, after the plan (2026-11-17: an identity landing ran 7 check
-    # jobs on ci-runner's ~4 check slots, in waves -- 44 identity landings in 3 days, land -> LANDED p50 54 min, runner wait
-    # p50 25 min -- and the third shard's ~3 min of specs cost a job's setup and a slot): every shard selects the same specs
-    # (the hook's test-impact selection) and runs half of them (PREPUSH_IDENTITY_SHARD, scripts/ci/shard_tests.py: each class in exactly one shard,
+    # ~300 specs, run 41373956176), then in three, then in two (2026-11-17: an identity landing ran 7 check jobs on
+    # ci-runner's ~4 check slots, in waves). FOUR since 2026-11-21 (the owner's "(3)"): two shards of ~5,500 tests ran ~13
+    # min each, the landing's longest job, for 41% of landings (2026-11-19..21); a quarter runs ~6.5 min. Every shard
+    # selects the same specs (the hook's test-impact selection) and runs a quarter of them (PREPUSH_IDENTITY_SHARD, scripts/ci/shard_tests.py: each class in exactly one shard,
     # balanced on scripts/ci/shard-weights-identity.tsv). A change the hook gives no identity check sets nothing up.
     check-identity:
-        name: check (identity ${{ matrix.shard }}/2)
+        name: check (identity ${{ matrix.shard }}/4)
         # only for a change the plan gives an identity check: the shards created at t=0 for a scripts change waited up
         # to 20 min for a slot under load, to do nothing (precommit-check run 41403785550: 26 min wall, 10 runner-min)
         needs: [ plan ]
@@ -251,7 +251,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                shard: [1, 2]
+                shard: [1, 2, 3, 4]
         steps:
             - uses: actions/checkout@v5
               with:
@@ -314,7 +314,7 @@ jobs:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   TMPDIR: ${{ runner.temp }}/hook
                   SHARE: identity
-                  PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/2
+                  PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/4
                   KINOWO_POPULATION_WALK_ROWS: ${{ runner.temp }}/population-walk-rows
               run: |
                   mkdir -p "$TMPDIR"
