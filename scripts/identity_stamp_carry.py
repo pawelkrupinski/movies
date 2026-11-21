@@ -219,9 +219,12 @@ def write_rows(table: str, new: list[Row]):
         print(f"{len(new)} row(s) added to {table}: commit it (the hook's stampcarry check proves each again)")
 
 
-# What may move a stamp: a module's main code or resources, or the build. A line of code changed (not only a comment or
-# whitespace) in one: read from the diff alone, so it errs toward yes -- a yes is proven or left to bump, never carried.
-MAY_MOVE = re.compile(r"^([a-z]+/src/main/|build\.sbt$|project/)")
+# What may move a stamp: the main code or resources of a module the stamps' closures walk (build.sbt's
+# `IdentityRulesSources.Module`s: the identity module and what it is built on -- never web, worker or scrapers, which it
+# cannot reach), or the build. A line of code changed (not only a comment or whitespace) in one: read from the diff
+# alone, so it errs toward yes -- a yes is proven or left to bump, never carried.
+DIGESTED_MODULES = ("identity", "common", "geodata", "base", "http")
+MAY_MOVE = re.compile(rf"^(({'|'.join(DIGESTED_MODULES)})/src/main/|build\.sbt$|project/)")
 COMMENT_ONLY = re.compile(r"^[+-]\s*(//|\*|/\*|\*/|$)")
 
 
