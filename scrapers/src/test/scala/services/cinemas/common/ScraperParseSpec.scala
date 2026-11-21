@@ -254,6 +254,15 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.cssUrl("color: red") shouldBe None
   }
 
+  "runtimeMinutesIn" should "read the first count of minutes, spaced or not, and nothing without one" in {
+    ScraperParse.runtimeMinutesIn("0+ • 119 min.")        shouldBe Some(119)
+    ScraperParse.runtimeMinutesIn("Czas: 45min")          shouldBe Some(45)
+    ScraperParse.runtimeMinutesIn("90 minut, 2D")         shouldBe Some(90)
+    ScraperParse.runtimeMinutesIn("120 min / 2 x 60 min") shouldBe Some(120)
+    ScraperParse.runtimeMinutesIn("komedia, 2026")        shouldBe None
+    ScraperParse.runtimeMinutesIn("95 MIN")               shouldBe None // case-sensitive, as the clients it replaced
+  }
+
   "hoursMinutesRuntime" should "read the Polish spellings and the short 1h 50m one" in {
     ScraperParse.hoursMinutesRuntime("1 godz. 37 min.") shouldBe Some(97)
     ScraperParse.hoursMinutesRuntime("95 min") shouldBe Some(95)

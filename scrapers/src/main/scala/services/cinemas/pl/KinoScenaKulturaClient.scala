@@ -49,8 +49,6 @@ object KinoScenaKulturaClient {
   /** The `/YYYY-MM-DD-HH-mm` tail of a screening's `/repertuar/<slug>/…` link. */
   private val DateTimePat = """/(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})$""".r
 
-  /** The "… | 124 min." runtime tail of the event-attribute line. */
-  private val RuntimePat = """(\d+)\s*min""".r
 
   private case class RawSlot(
     title:     String,
@@ -114,5 +112,5 @@ object KinoScenaKulturaClient {
   /** Runtime in minutes from the "… | 124 min." tail of the attribute line. */
   private def runtimeOf(block: Element): Option[Int] =
     Option(block.selectFirst("div.event-attribute")).map(_.text)
-      .flatMap(RuntimePat.findFirstMatchIn).map(_.group(1).toInt)
+      .flatMap(ScraperParse.runtimeMinutesIn)
 }

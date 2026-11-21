@@ -195,7 +195,7 @@ object PionierClient {
     * plausible feature length so a stray number can't masquerade as a runtime. */
   private def parseRuntime(s: String): Option[Int] = {
     val hours = """(\d+)\s*h""".r.findFirstMatchIn(s).map(_.group(1).toInt)
-    val mins  = """(\d+)\s*min""".r.findFirstMatchIn(s).map(_.group(1).toInt)
+    val mins  = ScraperParse.runtimeMinutesIn(s)
     val total = hours match {
       case Some(h) => Some(h * 60 + mins.getOrElse(0))
       case None    => mins.orElse("""(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt))

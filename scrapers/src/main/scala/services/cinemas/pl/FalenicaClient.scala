@@ -112,7 +112,7 @@ class FalenicaClient(http: HttpFetch
       val (title, format) = FormatTags.extractFormatTags(a.text.trim)
       SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1)).filter(_ => title.nonEmpty).map { slug =>
         val czas     = Option(art.selectFirst("div.repe_czas")).map(_.text.trim).getOrElse("")
-        val runtime  = """(\d+)\s*min""".r.findFirstMatchIn(czas).map(_.group(1).toInt)
+        val runtime  = ScraperParse.runtimeMinutesIn(czas)
         val director = """(?i)reż\.\s*(.+)$""".r.findFirstMatchIn(czas).map(_.group(1).trim)
                          .toSeq.flatMap(ScraperParse.commaItems)
         val poster   = Option(art.selectFirst("div.repe_outer")).map(_.attr("style"))

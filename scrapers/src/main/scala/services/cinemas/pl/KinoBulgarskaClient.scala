@@ -35,7 +35,6 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaSc
   private def parsePolishDate(text: String): Option[LocalDate] =
     ScraperParse.parseDayMonth(text).flatMap(ScraperParse.upcomingDate(_, today, grace = Period.ofMonths(6)))
 
-  private val RuntimePat = """(\d+)\s*min""".r
 
   // movie-meta is formatted "reż. <DIRECTORS…>, <COUNTRIES…>, YEAR r., DURATION min."
   // First comma-separated chunk is the director, all chunks between director
@@ -51,7 +50,7 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaSc
     val director  = if (yearIndex >= 1) ScraperParse.commaItems(parts(0)) else Seq.empty
     val countries = if (yearIndex > 1) parts.slice(1, yearIndex).filter(_.nonEmpty).toSeq else Seq.empty
     val year      = if (yearIndex >= 0) Try(parts(yearIndex).replaceAll("[^0-9]", "").toInt).toOption else None
-    val runtime   = RuntimePat.findFirstMatchIn(text).flatMap(m => Try(m.group(1).toInt).toOption)
+    val runtime   = ScraperParse.runtimeMinutesIn(text)
     (director, countries, year, runtime)
   }
 

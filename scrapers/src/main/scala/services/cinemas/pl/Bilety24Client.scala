@@ -54,15 +54,14 @@ object Bilety24Client {
 
   // Buy-button title: "Kup bilet - Film: <Title> - YYYY-MM-DD HH:MM - <City>"
   private val ButtonTitlePat = raw"""Kup bilet - Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(${ScraperParse.IsoClockText})\s*-""".r
-  private val RuntimePat      = """(\d+)\s*min""".r
 
   /** A Bilety24 event page's `p.movie-parameters` pipe line ("Dramat | Komedia | 120 min"): the runtime, and every
    *  other segment a genre (title-cased when the page shouts it). Shared by every venue on a Bilety24 shop. */
   private[pl] def movieParameters(document: org.jsoup.nodes.Document): (Option[Int], Seq[String]) = {
     val parameters = Option(document.selectFirst("p.movie-parameters")).map(_.text.trim).getOrElse("")
     val segments   = parameters.split("\\|").map(_.trim).filter(_.nonEmpty).toSeq
-    val runtime    = segments.flatMap(s => RuntimePat.findFirstMatchIn(s).map(_.group(1).toInt)).headOption
-    val genres     = segments.filterNot(s => RuntimePat.findFirstMatchIn(s).isDefined).map(tools.TextNormalization.titleCaseIfAllLower)
+    val runtime    = segments.flatMap(ScraperParse.runtimeMinutesIn).headOption
+    val genres     = segments.filterNot(s => ScraperParse.runtimeMinutesIn(s).isDefined).map(tools.TextNormalization.titleCaseIfAllLower)
     (runtime, genres)
   }
 

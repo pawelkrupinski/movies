@@ -87,7 +87,6 @@ object KinoKadrTomaszowLubelskiClient {
   private val DateFormat = DateTimeFormatter.ofPattern("dd-MM-yyyy")
 
   private val NoncePat   = """data\.append\(\s*"security"\s*,\s*"([0-9a-f]+)"\s*\)""".r
-  private val RuntimePat = """(\d+)\s*min""".r
 
   private[cinemas] def parseDay(html: String, day: LocalDate, cinema: Cinema): Seq[CinemaMovie] =
     Jsoup.parse(html, BaseUrl).select("article.movie-card").asScala.toSeq.flatMap(parseFilm(_, day, cinema))
@@ -107,7 +106,7 @@ object KinoKadrTomaszowLubelskiClient {
       movie     = Movie(
         title,
         runtimeMinutes = Option(article.selectFirst(".movie-info span")).map(_.text)
-                            .flatMap(RuntimePat.findFirstMatchIn).map(_.group(1).toInt),
+                            .flatMap(ScraperParse.runtimeMinutesIn),
         genres         = Option(article.selectFirst(".movie-extra span.movie-genre")).map(_.text).toSeq
                             .flatMap(ScraperParse.commaItems)
       ),

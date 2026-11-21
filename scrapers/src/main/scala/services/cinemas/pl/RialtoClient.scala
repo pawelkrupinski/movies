@@ -170,7 +170,6 @@ class RialtoClient(http: HttpFetch
 
 object RialtoClient {
 
-  private val RuntimePat = """(\d+)\s*min""".r
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
   // The metadata line on Rialto looks like "Ukraina 2026, 90 minut" or "Polska, Niemcy, 2026, 124 min" — everything
   // before the first 4-digit year is the production country (or comma-separated countries).
@@ -198,7 +197,7 @@ object RialtoClient {
       .flatMap(l => CountriesPat.findFirstMatchIn(l).map(_.group(1).trim.stripSuffix(",")))
       .toSeq.flatMap(ScraperParse.commaItems)
 
-  private def runtimeIn(text: String): Option[Int] = RuntimePat.findFirstMatchIn(text).flatMap(m => Try(m.group(1).toInt).toOption)
+  private def runtimeIn(text: String): Option[Int] = ScraperParse.runtimeMinutesIn(text)
 
   private def yearIn(text: String): Option[Int] = YearPat.findFirstMatchIn(text).flatMap(m => Try(m.group(1).toInt).toOption)
 

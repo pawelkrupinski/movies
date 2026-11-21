@@ -55,7 +55,6 @@ object KinoMetalowiecNowaDebaClient {
 
   private val DayHeader    = """^(\d{1,2})\s+(\p{L}+)$""".r
   private val Screening    = raw"""^(${ScraperParse.ClockText})\s+(.+)$$""".r
-  private val Minutes      = """(\d+)\s*min""".r
   private val AgeYears     = """(\d+)\s*\+""".r
   private val YouTubeUrl   = """"youtube_url":"([^"]+)"""".r
   private val DetailsMark  = "DATA WYŚWIETLANIA"
@@ -145,7 +144,7 @@ object KinoMetalowiecNowaDebaClient {
                       .flatMap(w => Option(w.selectFirst("img[src]"))).flatMap(ScraperParse.imageUrl(_)).headOption,
         synopsis  = fields.get(SynopsisLabel).filter(_.nonEmpty),
         genres    = fields.get(GenreLabel).toSeq.flatMap(_.split("/")).map(_.trim).filter(_.nonEmpty),
-        runtime   = fields.get(RuntimeLabel).flatMap(Minutes.findFirstMatchIn).map(_.group(1).toInt),
+        runtime   = fields.get(RuntimeLabel).flatMap(ScraperParse.runtimeMinutesIn),
         // "b/o" (no restriction) is a marker, not a rating, so only "N+" counts.
         age       = fields.get(AgeLabel).flatMap(AgeYears.findFirstMatchIn).map(m => s"${m.group(1)}+"),
         trailer   = widgets.filter(_.hasClass("elementor-widget-video"))

@@ -26,7 +26,6 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
   private val ListingUrl = "https://dkswit.com.pl/kino/"
   private val DateFmt    = DateTimeFormatter.ofPattern("yyyyMMdd")
   private val YearPat    = """\b((?:19|20)\d{2})\b""".r
-  private val RuntimePat = """(\d+)\s*min""".r
   private val DirectorPat = """(?i)reżyseria:\s*([^•|<]+)""".r
   private val DetailLinkPat = """window\.location='([^']+)'""".r
 
@@ -48,7 +47,7 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
 
     title.filter(_ => showtimes.nonEmpty).map { t =>
       val cardText = card.text
-      val runtime  = RuntimePat.findFirstMatchIn(cardText).map(_.group(1).toInt)
+      val runtime  = ScraperParse.runtimeMinutesIn(cardText)
       val infoLine = Option(card.selectFirst("p.text-gray-600")).map(_.text).getOrElse("")
       val year     = YearPat.findFirstMatchIn(infoLine).map(_.group(1).toInt)
       val director = DirectorPat.findFirstMatchIn(infoLine).toSeq.flatMap(m => ScraperParse.commaItems(m.group(1)))

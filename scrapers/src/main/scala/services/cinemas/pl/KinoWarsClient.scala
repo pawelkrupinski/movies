@@ -91,7 +91,6 @@ object KinoWarsClient {
    *  the synopsis prose is never read as a screening. */
   private val ScreeningDay = """^\d{1,2}\.\d{1,2}\.\d{4}(?=\s*r\.)""".r
   private val TimeToken = raw"""\b(${ScraperParse.ClockText})\b""".r
-  private val Runtime   = """(\d+)\s*min""".r
   /** The trailing `/ PL` (Polish film) or bare `/` left once a version word is peeled. */
   private val TrailingVersionSlash = """\s*/\s*(?:PL)?\s*$""".r
 
@@ -170,7 +169,7 @@ object KinoWarsClient {
         title     = title,
         rawTitle  = rawTitle,
         format    = format,
-        runtime   = meta.flatMap(Runtime.findFirstMatchIn).flatMap(_.group(1).toIntOption),
+        runtime   = meta.flatMap(ScraperParse.runtimeMinutesIn),
         genres    = meta.toSeq.flatMap(genresOf),
         ageRating = meta.flatMap(AgeRating.polishMinimumAge),
         synopsis  = synopsisOf(paragraphs),
@@ -186,7 +185,7 @@ object KinoWarsClient {
    *  a segment that is itself an age rating or a runtime means there is none. */
   private def genresOf(meta: String): Seq[String] =
     meta.split('|').headOption.toSeq
-      .filterNot(segment => AgeRating.polishMinimumAge(segment).isDefined || Runtime.findFirstIn(segment).isDefined)
+      .filterNot(segment => AgeRating.polishMinimumAge(segment).isDefined || ScraperParse.runtimeMinutesIn(segment).isDefined)
       .flatMap(_.split(','))
       .map(_.trim)
       .filter(_.nonEmpty)

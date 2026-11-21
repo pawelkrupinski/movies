@@ -173,7 +173,6 @@ object KinoFenomenClient {
     } yield RawSlot(t, ldt, booking, poster, format, directors, year, artistUrl)
   }
 
-  private val RuntimeMinPat = """(\d+)\s*min""".r
 
   private val HeadMarkerPat = """(?i)^(reżyseria|występują):""".r
 
@@ -214,10 +213,10 @@ object KinoFenomenClient {
     val metaParts = lines.find(_.startsWith("/")).toSeq
       .flatMap(_.stripPrefix("/").split("/").map(_.trim).filter(_.nonEmpty))
     val year      = metaParts.flatMap(YearTokenPat.findFirstIn).headOption.map(_.toInt)
-    val runtime   = metaParts.flatMap(p => RuntimeMinPat.findFirstMatchIn(p).map(_.group(1).toInt)).headOption
+    val runtime   = metaParts.flatMap(ScraperParse.runtimeMinutesIn).headOption
     val countries = metaParts.headOption.toSeq.flatMap(ScraperParse.commaItems)
     val genres    = metaParts.drop(1)
-      .filterNot(p => YearTokenPat.findFirstIn(p).isDefined || RuntimeMinPat.findFirstMatchIn(p).isDefined)
+      .filterNot(p => YearTokenPat.findFirstIn(p).isDefined || ScraperParse.runtimeMinutesIn(p).isDefined)
     // Synopsis = the prose lines: long, and not one of the marker/meta/title lines.
     val synopsis  = lines.filter(l => l.length > 60 && !l.startsWith("/") &&
                       !l.toLowerCase(Locale.ROOT).startsWith("reżyseria") && !l.toLowerCase(Locale.ROOT).startsWith("występują"))

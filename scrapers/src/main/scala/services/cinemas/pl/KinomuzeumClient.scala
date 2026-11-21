@@ -96,7 +96,7 @@ class KinomuzeumClient(http: HttpFetch, today: => LocalDate
       dt   <- KinomuzeumClient.parseTime(date, time)
     } yield {
       val title   = a.text.trim
-      val runtime = spans.flatMap(s => """(\d+)\s*min""".r.findFirstMatchIn(s).map(_.group(1).toInt)).headOption
+      val runtime = spans.flatMap(ScraperParse.runtimeMinutesIn).headOption
       val booking = Option(c.selectFirst("a[href*=nienumerowane]")).map(_.attr("href")).filter(_.nonEmpty)
       val poster  = Option(c.selectFirst("img[width=320]")).orElse(Option(c.selectFirst("img[src]")))
                       .map(_.attr("src")).filter(_.nonEmpty)

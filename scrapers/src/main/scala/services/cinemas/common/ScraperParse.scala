@@ -374,6 +374,12 @@ private[cinemas] object ScraperParse {
     Some(hours * 60 + minutes).filter(_ > 0)
   }
 
+  private val MinutesCount = """(\d+)\s*min""".r
+
+  /** The first "<n> min" in `s` — "119 min.", "45min", "Czas: 90 minut" — as its minutes; `None` when there is none.
+   *  Case-sensitive, as every client reading it was: "MIN" is no match. */
+  def runtimeMinutesIn(s: String): Option[Int] = MinutesCount.findFirstMatchIn(s).flatMap(_.group(1).toIntOption)
+
   private val FourDigitYear = """(?:19|20)\d{2}""".r
 
   /** A cinema "production" line — "USA 2026", "Polska, Kanada, Hiszpania, 2026" —

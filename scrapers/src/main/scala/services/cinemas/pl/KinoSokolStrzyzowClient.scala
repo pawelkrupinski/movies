@@ -51,7 +51,6 @@ object KinoSokolStrzyzowClient {
   val BaseUrl       = "https://dksokol.eu"
   val RepertoireUrl = s"$BaseUrl/kino/"
 
-  private val RuntimePat = """(\d+)\s*min""".r
   private val AgePat     = """(?i)^\s*od\s+\d""".r
 
   def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] =
@@ -60,8 +59,8 @@ object KinoSokolStrzyzowClient {
   private def parseArticle(article: Element, cinema: Cinema, today: LocalDate): Option[CinemaMovie] = {
     val titleElement = Option(article.selectFirst(".screening-info h3 a"))
     val badges  = article.select(".screening-meta-badges span").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty)
-    val runtime = badges.flatMap(RuntimePat.findFirstMatchIn).map(_.group(1).toInt).headOption
-    val genres  = badges.filterNot(b => RuntimePat.findFirstIn(b).isDefined || AgePat.findFirstIn(b).isDefined)
+    val runtime = badges.flatMap(ScraperParse.runtimeMinutesIn).headOption
+    val genres  = badges.filterNot(b => ScraperParse.runtimeMinutesIn(b).isDefined || AgePat.findFirstIn(b).isDefined)
 
     val showtimes = article.select(".screening-terms li").asScala.toSeq.flatMap { li =>
       for {

@@ -80,7 +80,6 @@ object KinoBajkaClient {
   val PageUrl = s"$BaseUrl/repertuar/"
 
   // The `m` caption folds "genres · format · NNN min"; the trailing run is runtime.
-  private val DurationPat = """(\d+)\s*min""".r
 
   private case class RawSlot(
     title:    String,
@@ -101,7 +100,7 @@ object KinoBajkaClient {
     val filmUrl = (film \ "u").asOpt[String].filter(_.nonEmpty)
     val poster  = (film \ "p").asOpt[String].filter(_.nonEmpty).map(ResizedPoster.fullSize)
     val runtime = (film \ "m").asOpt[String]
-                    .flatMap(DurationPat.findFirstMatchIn).map(_.group(1).toInt)
+                    .flatMap(ScraperParse.runtimeMinutesIn)
 
     title.toSeq.flatMap { t =>
       (film \ "s").asOpt[Seq[JsObject]].getOrElse(Seq.empty).flatMap { slot =>

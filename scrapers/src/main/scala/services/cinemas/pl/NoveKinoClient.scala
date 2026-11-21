@@ -131,14 +131,12 @@ object NoveKinoClient {
   final case class Detail(year: Option[Int], runtime: Option[Int], countries: Seq[String], genres: Seq[String],
                           director: Seq[String], cast: Seq[String], synopsis: Option[String], trailer: Option[String])
 
-  /** The "Czas trwania" value's minute count: "120 minut", "82 minuty". */
-  private val RuntimeMinutes = """(\d+)\s*min""".r
 
   def parseDetail(html: String): Detail = {
     val document = Jsoup.parse(html)
     Detail(
       year      = ScraperParse.ddField(document, "rok produkcji").flatMap(ScraperParse.firstFourDigitsIn),
-      runtime   = ScraperParse.ddField(document, "czas trwania").flatMap(RuntimeMinutes.findFirstMatchIn).flatMap(_.group(1).toIntOption),
+      runtime   = ScraperParse.ddField(document, "czas trwania").flatMap(ScraperParse.runtimeMinutesIn),
       countries = ScraperParse.ddItems(document, "kraj produkcji"),
       genres    = ScraperParse.ddItems(document, "gatunek").map(tools.TextNormalization.titleCaseIfAllLower),
       director  = ScraperParse.ddItems(document, "reżyseria"),
