@@ -239,10 +239,11 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
     if (canonicalised.nonEmpty) canonicalised else TitleText.strippedKey(tidied)
   }
 
-  /** Corpus-independent stable key — the same collapse as `mergeKeyLookup`'s
-   *  most-aggressive tier (`stripPunct` of `canonical`), applied
-   *  unconditionally rather than gated on a sibling reducing to the same
-   *  form. Used as the persistent documentId in `MovieRepository`/`MovieCache`
+  /** Corpus-independent stable key — the collapse of `mergeKeyLookup`'s
+   *  most-aggressive tier (punctuation stripped from `canonical`, by the
+   *  Unicode-aware `TitleText.strippedKey` rather than that tier's ASCII-only
+   *  `stripPunct`), applied unconditionally rather than gated on a sibling
+   *  reducing to the same form. Used as the persistent documentId in `MovieRepository`/`MovieCache`
    *  so the cache key is stable across refresh ticks and write sites: every
    *  cinema-reported variant of the same film (Arabic/Roman, colon-or-not,
    *  &/i, "Gwiezdne Wojny:" prefix) lands on the same key without needing to

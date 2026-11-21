@@ -37,15 +37,6 @@ object TitleText {
     "XIX" -> "19", "XX" -> "20"
   )
 
-  // Always-applied transformation: standalone (space-delimited) multi-letter Roman
-  // numerals → Arabic, CASE-INSENSITIVELY so "Mortal Kombat II" (chains) and
-  // "Mortal kombat ii" (a lower-casing cinema) fold to the same `mortalkombat2`
-  // rather than splitting. `sanitize` runs this AFTER `canonical` (not before): a
-  // decoration glued to a numeral with no separating space ("Mortal Kombat II-
-  // dubbing" → token "II-") hides the numeral until canonical strips the
-  // decoration, so normalising first stranded it as Roman while the stripped
-  // display form ("Mortal Kombat II") deromanised it — the two then sanitized to
-  // different keys and the film never settled (the staging re-divert loop).
   /** The clean-up every scraped title needs before anything reads it — decoding
    *  first, then spacing, because a decoded `&quot;` can itself end up flush
    *  against the next word.
@@ -100,6 +91,15 @@ object TitleText {
   def spaceAfterSentenceMark(s: String): String =
     MissingSentenceSpace.replaceAllIn(s, m => java.util.regex.Matcher.quoteReplacement(m.group(1) + " "))
 
+  // Always-applied transformation: standalone (space-delimited) multi-letter Roman
+  // numerals → Arabic, CASE-INSENSITIVELY so "Mortal Kombat II" (chains) and
+  // "Mortal kombat ii" (a lower-casing cinema) fold to the same `mortalkombat2`
+  // rather than splitting. `sanitize` runs this AFTER `canonical` (not before): a
+  // decoration glued to a numeral with no separating space ("Mortal Kombat II-
+  // dubbing" → token "II-") hides the numeral until canonical strips the
+  // decoration, so normalising first stranded it as Roman while the stripped
+  // display form ("Mortal Kombat II") deromanised it — the two then sanitized to
+  // different keys and the film never settled (the staging re-divert loop).
   def normalize(title: String): String =
     title.split(" ").map(word => RomanToArabic.getOrElse(word.toUpperCase(Locale.ROOT), word)).mkString(" ")
 

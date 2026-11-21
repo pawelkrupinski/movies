@@ -5,8 +5,8 @@ import models.Country
 
 /** An immutable, compiled snapshot of all title rules, grouped by tier and
  *  pre-sorted so the hot normalisation path is a fold over a small list of
- *  pre-compiled regexes. `TitleNormalizer` holds one of these in a swappable
- *  `@volatile` slot, replaced wholesale when the change stream reports an edit.
+ *  pre-compiled regexes. Each `TitleNormalizer` holds one for good (its `rules`):
+ *  a country's rule set is built once, from the checked-in table.
  *
  *  Tier composition:
  *  {{{
