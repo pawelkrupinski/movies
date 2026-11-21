@@ -51,7 +51,9 @@ final class ClusterKeys(store: AgreementKeys) {
     val before  = keyed
     // on the first apply, every key stored: re-attached by first listing, else retired — and the counter past them all
     val stored  = Option.when(first)(store.all())
-    stored.foreach(held => nextKey = nextKey max held.next)   // a retired key is never handed out again, keyed now or not
+    // a retired key is never handed out again, keyed now or not -- nor a stored one past the counter: the keys are
+    // written before the counter, and a write that stored the keys and lost the counter left it below them
+    stored.foreach(held => nextKey = nextKey max held.next max held.keys.map(_.key + 1).maxOption.getOrElse(0L))
     val unkeyed = mutable.ArrayBuffer.empty[ResolverDecision]
     resolution.decisions.foreach { decision =>
       if (decision.members.nonEmpty) { val key = before.get(decision); if (key != null) keys.put(decision, key) else unkeyed += decision }
@@ -81,7 +83,7 @@ final class ClusterKeys(store: AgreementKeys) {
     open.indices.foreach(j => keyOfIndex(open(j)) = assigned.names(j))
     val retired = (gone.iterator.map(_._1) ++ stored.iterator.flatMap(_.keys.map(_.key))).toSet -- keyOfIndex
     val moved   = unkeyed.indices.collect { case i if !storedFirsts.get(keyOfIndex(i)).contains(firstOf(i)) => StoredKey(keyOfIndex(i), firstOf(i)) }
-    // stored first: a write that fails leaves the keys as they were, and the next apply keys the same decisions again
+    // stored first: a write that fails leaves this apply's keys unheld, and the next apply keys the same decisions again
     if (retired.nonEmpty || moved.nonEmpty || assigned.nextFresh != counter) store.replace(retired, moved, assigned.nextFresh)
     nextKey = assigned.nextFresh
     stored.foreach { _ => firsts.clear(); firsts ++= storedFirsts }

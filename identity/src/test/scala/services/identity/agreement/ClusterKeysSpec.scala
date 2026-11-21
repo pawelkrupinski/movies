@@ -63,6 +63,14 @@ class ClusterKeysSpec extends AnyFlatSpec with Matchers {
     store.all().keys.map(_.key).toSet shouldBe Set(0L, 2L, 3L)
   }
 
+  it should "hand out no stored key again when a write stored keys but not the counter past them" in {
+    val store = new InMemoryAgreementKeys
+    // the moved keys written, the counter's write lost: 0 and 1 stored, the counter still at 1
+    store.replace(Set.empty, Seq(StoredKey(0, StoredFamily.idOf(Seq(muza.key))), StoredKey(1, StoredFamily.idOf(Seq(multikino.key)))), 1L)
+    val (named, _) = applied(new ClusterKeys(store), first = true, cluster(muza), cluster(multikino), cluster(palacowe))
+    named shouldBe Seq("0", "1", "2")
+  }
+
   "The last apply's keys" should "stay readable once the next apply published its own" in {
     val keys = new ClusterKeys(new InMemoryAgreementKeys)
     val one  = cluster(muza)
