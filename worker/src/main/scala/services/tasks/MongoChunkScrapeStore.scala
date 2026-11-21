@@ -118,9 +118,13 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
     Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).map(toRun)
   }
 
+  // A failed delete THROWS: swallowed, a run doc left behind kept the venue from being planned again until its deadline,
+  // which then reduced a run with nothing stored. The run goes first, so a retry finds no run and the chunks it could
+  // not drop go with their TTL.
   def completeRun(cinema: String, runId: String): Unit = {
-    runs.foreach(c => Try(Await.result(c.deleteOne(Filters.and(Filters.eq("_id", cinema), Filters.eq("runId", runId))).toFuture(), 10.seconds)))
-    chunks.foreach(c => Try(Await.result(c.deleteMany(Filters.and(Filters.eq("cinema", cinema), Filters.eq("runId", runId))).toFuture(), 10.seconds)))
+    runs.foreach(c => Await.result(c.deleteOne(Filters.and(Filters.eq("_id", cinema), Filters.eq("runId", runId))).toFuture(), 10.seconds))
+    chunks.foreach(c => Await.result(c.deleteMany(Filters.and(Filters.eq("cinema", cinema), Filters.eq("runId", runId))).toFuture(), 10.seconds))
+    ()
   }
 }
 

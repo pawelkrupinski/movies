@@ -26,4 +26,10 @@ class MongoChunkScrapeStoreUnreachableSpec extends AnyFlatSpec with Matchers wit
   it should "throw when a chunk's write cannot reach Mongo, so the chunk task retries" in {
     an[Exception] should be thrownBy store.storeChunk("Kino X", "run-1", "2026-10-01", StoredChunk("[]"), java.time.Instant.EPOCH)
   }
+
+  // Swallowed, a run doc whose delete failed stayed active after its reduce: the venue could not be planned again
+  // until the run's deadline, which then reduced a run with nothing stored.
+  it should "throw when completing a run cannot reach Mongo, so the reduce retries" in {
+    an[Exception] should be thrownBy store.completeRun("Kino X", "run-1")
+  }
 }
