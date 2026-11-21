@@ -1,7 +1,7 @@
 @(oauthProviders: Set[String])(implicit messages: play.api.i18n.Messages)
 @*
    Login modal — rendered once per page, a native modal `<dialog>` the "Zaloguj
-   się" pill in `_navbar` opens (shared.js `openLoginModal`). Two large buttons (Google,
+   się" pill in `_navbar` opens (`auth.js` `openLoginModal`). Two large buttons (Google,
    Facebook) link to the `/auth/<provider>/start` route which 302s to the
    provider's consent page. Only providers wired in `Wiring.oauthProviders`
    (i.e. with both env vars set) render here.

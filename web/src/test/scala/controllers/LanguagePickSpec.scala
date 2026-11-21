@@ -12,7 +12,7 @@ import play.api.test.Helpers._
  * The plain city listing renders the SAME bytes for every visitor, no matter
  * what language they carry — `MovieController` always renders the
  * deployment's own default `Messages` now; an explicit language pick swaps
- * the visible copy client-side (`shared.js`'s `applyLanguage`), never by
+ * the visible copy client-side (`i18n.js`'s `applyLanguage`), never by
  * re-rendering server-side.
  *
  * This is the regression coverage for a real production bug: the OLD design

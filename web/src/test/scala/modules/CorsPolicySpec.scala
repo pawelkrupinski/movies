@@ -27,7 +27,7 @@ import scala.concurrent.Await
  * echoes any `Origin` back alongside `Access-Control-Allow-Credentials: true`,
  * which is a licence for any page to read `/api/me` (name, email) and to delete
  * the account behind a same-site-but-cross-origin request. Nothing of ours
- * needs credentialed cross-origin calls: every `fetch` in `shared.js` is
+ * needs credentialed cross-origin calls: every `fetch` in `js/shared/` is
  * same-origin, and the native apps don't speak CORS at all.
  */
 class CorsPolicySpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {

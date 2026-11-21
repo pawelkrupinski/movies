@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // The Filtry button (`#format-filter-btn`) toggles the dropdown
 // panel (`#format-panel`) open/closed. The panel is `display: none`
 // by default; clicking the button flips it; clicking the document
-// outside closes it (delegated handler in shared.js).
+// outside closes it (delegated handler in `js/shared/`).
 
 test.describe('Filtry dropdown panel', { tag: '@agnostic' }, () => {
 
@@ -36,7 +36,7 @@ test.describe('Filtry dropdown panel', { tag: '@agnostic' }, () => {
     await page.locator('#format-filter-btn').click();
     await expect(page.locator('#format-panel')).toBeVisible();
 
-    // Click the document body well away from the panel. The shared.js
+    // Click the document body well away from the panel. The `js/shared/`
     // capture-phase guard calls `closeOtherPanels(null)` whenever a click
     // lands outside an open dropdown.
     await page.evaluate(() => document.body.click());

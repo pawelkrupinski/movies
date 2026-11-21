@@ -77,10 +77,10 @@ class TestHttpServer(
         val routeKey = if (rawQ == null) path else s"$path?$rawQ"
         // `/assets/*` is served from the web app's assets directory on disk
         // (`web/src/main/assets/*`, the same source Play's Assets controller
-        // serves in prod) so the rendered page can load `shared.js` + the
+        // serves in prod) so the rendered page can load `js/shared/` + the
         // inline-linked CSS in the test the same way prod does. Tests that
-        // call shared.js functions (hideFilm, applyFilters, …) or assert on
-        // rendered geometry need this — without shared.js every CDP eval hits
+        // call `js/shared/` functions (hideFilm, applyFilters, …) or assert on
+        // rendered geometry need this — without `js/shared/` every CDP eval hits
         // `ReferenceError: <fn> is not defined`. HTML routes still come from
         // `routes`; assets always fall through to disk.
         // Fixed diagnostic endpoint, independent of `routes`: echoes back the

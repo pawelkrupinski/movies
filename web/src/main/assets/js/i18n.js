@@ -10,11 +10,11 @@
 // generated from `messages*` by `I18nPackGenerator` — see
 // `controllers.I18nPacks`).
 //
-// A STANDALONE script (not folded into `shared.js`) because it has two
-// independent consumers: `shared.js`-loading pages (repertoire, browse,
+// A STANDALONE script (not folded into `js/shared/`) because it has two
+// independent consumers: `js/shared/`-loading pages (repertoire, browse,
 // film — where `_sharedJsConfig.scala.html` embeds `#i18n-packs`) AND
 // `landing.scala.html`, a fully self-contained page with its own inline
-// script that never loads `shared.js` at all. Load this BEFORE either.
+// script that never loads `js/shared/` at all. Load this BEFORE either.
 //
 // `data-i18n="key"` on an element swaps its text (or, with `data-i18n-html`,
 // its innerHTML — only `login.nag`'s translator-authored `<strong>` markup
@@ -80,9 +80,9 @@ function applyLanguage(code) {
   // Date headers (`.date-label`) and the plural showtime noun are derived
   // from KINOWO_LOCALE, not `[data-i18n]` text — they're computed from the
   // raw date/count, not a translated string. Splice the picked language's
-  // arrays IN PLACE (never reassign `KINOWO_LOCALE.day2 = …`) so `shared.js`'s
+  // arrays IN PLACE (never reassign `KINOWO_LOCALE.day2 = …`) so `js/shared/`'s
   // `DAY2`/`MONTHS` — captured once as references to these same arrays —
-  // pick the change up without shared.js needing its own applyLanguage hook.
+  // pick the change up without `js/shared/` needing its own applyLanguage hook.
   var pageLocale = typeof KINOWO_LOCALE !== 'undefined' && KINOWO_LOCALE.locales && KINOWO_LOCALE.locales[code];
   if (pageLocale) {
     [['day2', pageLocale.day2], ['daysFull', pageLocale.daysFull], ['months', pageLocale.months]]
@@ -98,11 +98,11 @@ function applyLanguage(code) {
   var select = document.getElementById('language-select');
   if (select) select.value = code;
   // Re-render whatever's already on screen using the arrays just updated
-  // above — `shared.js` (repertoire/film pages) defines this; `landing.scala.html`
+  // above — `js/shared/` (repertoire/film pages) defines this; `landing.scala.html`
   // shows no dates, so it never defines it and this is a no-op there.
   if (typeof window.refreshDateLabels === 'function') window.refreshDateLabels();
   // Same shape, for the "… +N seansów"/"… +N showings" truncation link:
-  // `_showtimeNoun` (shared.js) already reads `KINOWO_LOCALE.showtime` fresh
+  // `_showtimeNoun` (`showings.js`) already reads `KINOWO_LOCALE.showtime` fresh
   // on every call, so it would render correctly on the NEXT filter pass
   // regardless — but nothing re-triggers a pass on a language switch by
   // itself, so an already-rendered link kept its old-language noun until an
@@ -117,7 +117,7 @@ window.applyLanguage = applyLanguage;
 // Language picker — an in-place swap, no navigation, no `/lang/:code` round
 // trip. Persists the pick so it survives future page loads, on every page,
 // not just the one it was made on (applied by the boot block below). For a
-// logged-in user it also reaches the account (`shared.js`'s server sync,
+// logged-in user it also reaches the account (`js/shared/`'s server sync,
 // `/api/me/state`'s `language` field), so it's restored on any device they
 // next sign into — anonymous visitors keep this as a device-local pick only.
 function onLanguageChange(code) {
@@ -150,9 +150,9 @@ window.onLanguageChange = onLanguageChange;
 //     loaded yet — on film/browse/landing this used to mean a returning
 //     visitor's stored pick never reached most of the page's translated
 //     strings (or the date headers specifically — `refreshDateLabels`,
-//     defined in `shared.js`, isn't even a function yet at this point).
+//     defined in `js/shared/`, isn't even a function yet at this point).
 //  2. Again on `DOMContentLoaded`, once the whole document — and
-//     `shared.js`, wherever a page loads it — is guaranteed to have run.
+//     `js/shared/`, wherever a page loads it — is guaranteed to have run.
 //     This is what actually reaches the markup call 1 missed. It is not
 //     conditional on `currentLang` having changed (call 1 already set that),
 //     so on a page where call 1 already saw the full DOM

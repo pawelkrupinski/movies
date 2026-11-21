@@ -11,7 +11,7 @@ import scala.util.Try
  *  Low-cardinality on purpose. A CDN's shard hosts (`de.web.img2.acsta.net`, `…img3…`) and a chain's
  *  per-venue subdomains (`arthousecrouchend.savoysystems.co.uk`) fail together and are one series;
  *  the full host is the uptime page's job (`img:` rows), not Prometheus's. A weserv URL counts under
- *  the origin it fronts, the way the browser beacon unwraps it (shared.js `originHost`).
+ *  the origin it fronts, the way the browser beacon unwraps it (`js/shared/` `originHost`).
  *
  *  The same rule is applied by the synthetic poster probes' discovery
  *  (infra/nix/files/synthetic-probe-targets.sh, `poster_family`), so a probe's `poster_host` and

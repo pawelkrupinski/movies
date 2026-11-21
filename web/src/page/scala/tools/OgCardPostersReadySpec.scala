@@ -143,7 +143,7 @@ class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAft
   // Every poster check that ran during the slide saw the wrong posters (one
   // clipped Hoppers at the screen edge on Renfrewshire, 2026-10-09), so the
   // blank cards of PRs #216 and #217 passed them all. Under
-  // prefers-reduced-motion the page commits the day in place (shared.js
+  // prefers-reduced-motion the page commits the day in place (`js/shared/`
   // runSlide), so screenshotCity must emulate it. This fixture's pickDay
   // stands in for the slide: a blank poster unless motion is reduced.
   it should "change the day under prefers-reduced-motion, so pickDay never slides" in withRepertoireUrl("") { (c, url) =>
@@ -205,7 +205,7 @@ class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAft
   // Split cities (London) open the "Choose your areas" modal over the grid on
   // first load; DismissAreaPickerJs clicks its "Show listings" button so the
   // card captures posters, not the modal. The button's real apply/close logic
-  // lives in shared.js; here a stand-in onclick that removes the overlay proves
+  // lives in `js/shared/`; here a stand-in onclick that removes the overlay proves
   // the generator selects and clicks the right element.
   private val areaPickerHtml =
     """<!DOCTYPE html><html><head><meta charset="utf-8"></head>

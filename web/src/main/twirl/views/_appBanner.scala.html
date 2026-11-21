@@ -3,7 +3,7 @@
    runs in the inline script right after the markup: synchronously, while the
    parser is still above the navbar, so the banner is up (and the page pushed
    down by it) before the first paint. It used to be revealed by the deferred
-   `shared.js`, one frame after its checks — the navbar painted at the top and
+   `js/shared/`, one frame after its checks — the navbar painted at the top and
    then dropped by the banner's height, a layout shift every visitor saw.
 
    Two independent localStorage gates decide it. The interval cap is

@@ -36,7 +36,7 @@ test.describe('search-pill tap-away on mobile portrait', () => {
     const image = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
     await expect(image).toBeVisible();
     // Whether the tap's click was cancelled, read once its dispatch is over: a capture listener on `window` runs
-    // before shared.js's on `document` (which stops propagation), and its timeout after every listener.
+    // before `js/shared/`'s on `document` (which stops propagation), and its timeout after every listener.
     await page.evaluate(() => window.addEventListener('click', (e) => {
       setTimeout(() => { (window as unknown as { tapPrevented: boolean }).tapPrevented = e.defaultPrevented; });
     }, { capture: true, once: true }));

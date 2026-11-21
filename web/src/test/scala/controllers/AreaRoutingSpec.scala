@@ -99,7 +99,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   // The metro is still what gets remembered — but the CLIENT writes the cookie
   // now, not the response. The listing has to reach Cloudflare with no
   // `Set-Cookie` or the edge bypasses the cache for it (measured: DYNAMIC ->
-  // BYPASS with that header the only thing left on the response), so `shared.js`
+  // BYPASS with that header the only thing left on the response), so `js/shared/`
   // writes `city=` on load from `CURRENT_CITY`. What this page owes is therefore
   // the right slug in that constant; that the cookie is then written is asserted
   // in a real browser by `PageJsBehaviourSpec`.
@@ -110,7 +110,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "name its country for the client, and not carry every country's city catalog" in {
-    // `shared.js` keys a visitor's per-country state by this; the whole catalog it
+    // `js/shared/` keys a visitor's per-country state by this; the whole catalog it
     // was once looked up in is the `/` picker's to embed, not every listing's.
     val html = contentAsString(usController().movie.index("los-angeles")(req("/los-angeles/")))
     html should include ("CURRENT_COUNTRY     = \"us\"")

@@ -1,9 +1,9 @@
 @(allCinemas: Seq[String], cinemaPills: Map[String, String], oauthProviders: Set[String], pinnedToday: Option[java.time.LocalDate] = None, cinemaSeasons: play.api.libs.json.JsObject = play.api.libs.json.JsObject.empty)(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
    Inline-`<script>` block that emits the page-bound JS constants
-   the externalized `shared.js` reads at top level:
+   the shared scripts (`js/shared/`, `_sharedScripts`) read at top level:
    HAS_OAUTH_PROVIDERS, ALL_CINEMAS, CINEMA_PILLS. Everything else
-   in the shared JS moved to `public/js/shared.js` so iOS Safari
+   in the shared JS lives in those external files so iOS Safari
    (and every other engine with a URL-keyed script cache) can parse
    it ONCE per session and reuse the parsed bytecode across
    navigations to / and /movie.
@@ -11,12 +11,12 @@
    Top-level `const` in classic `<script>` tags lives in the page's
    shared "script global lexical environment", so the constants
    declared here are visible to the subsequent
-   `<script src="…/shared.js">` block.
+   `<script src="…/js/shared/…">` tags.
 
    NOTHING HERE MAY DEPEND ON WHO IS ASKING. `IS_LOGGED_IN` used to, and it was
    the last user-specific byte in the listing page after the avatar moved out of
    `_authMenu`; one flag saying `true` is all it takes to make a response
-   un-shareable. shared.js now reads its own DOM for that answer, which is right
+   un-shareable. `auth.js` now reads its own DOM for that answer, which is right
    both before hydration (nobody) and after it (whoever `/api/me` named).
 *@
 <script>
@@ -30,7 +30,7 @@
   window.CINEMA_AREAS       = @controllers.ScriptJson.embed(play.api.libs.json.Json.toJson(city.areas.map(g => play.api.libs.json.Json.obj("name" -> g.area.label, "slug" -> g.area.slug, "cinemas" -> g.cinemaDisplayNames))));
   @* The page's seasonal venues (open-air, drive-in) by name: `{opens, closes, offSeason}`,
      `offSeason` decided on the server's clock (`controllers.CinemaSeasons`) so the filter
-     panel never re-derives it. Emitted only where there are any; shared.js reads
+     panel never re-derives it. Emitted only where there are any; `cinemas.js` reads
      `window.CINEMA_SEASONS || {}`. *@
   @if(cinemaSeasons.value.nonEmpty){window.CINEMA_SEASONS = @controllers.ScriptJson.embed(cinemaSeasons);}
   const CURRENT_CITY        = "@city.slug";
@@ -43,30 +43,30 @@
      "Today" listed tomorrow. `window.`-scoped (not a lexical const) so tests
      can move a rendered page to another zone. *@
   window.CITY_TIMEZONE      = "@city.zoneId.getId";
-  @* The country this city belongs to — what `shared.js` keys a signed-in
+  @* The country this city belongs to — what `hidden-films-sync.js` keys a signed-in
      visitor's per-country state by (`/api/me/{country}/hidden-films`). Just the
      code: the whole multi-country catalog it used to be looked up in was ~170 KB
      on every page, and the `/` picker, the one page that browses it, embeds its
      own (`landing.scala.html`). *@
   const CURRENT_COUNTRY     = "@city.country.code";
-  @* Per-deployment locale for shared.js: weekday/month arrays and the
+  @* Per-deployment locale for the shared scripts: weekday/month arrays and the
      showtime plural rule + forms — for EVERY deployed language (`locales`),
      not just this deployment's default, so `i18n.js`'s `applyLanguage` can
      re-derive the date headers in whichever language the visitor picks.
-     Replaces the Polish literals shared.js used to hardcode
+     Replaces the Polish literals shared.js (as it was) used to hardcode
      (DAY2/MONTHS/_showtimeNoun). Translated UI strings live in the pack
      below instead — see `JsLocale`'s own doc. *@
   const KINOWO_LOCALE       = @controllers.ScriptJson.embedSerialized(controllers.JsLocale.json(messages));
   @* Page-test ONLY (never emitted in prod): a fixture render passes its corpus's
-     capture date as `pinnedToday`, pinning shared.js "today" so the `#date-filter`
+     capture date as `pinnedToday`, pinning `dates.js`'s "today" so the `#date-filter`
      day assertions don't age out as the real clock advances past the recorded
-     corpus. None in prod → shared.js falls back to `new Date()`. *@
+     corpus. None in prod → `dates.js` falls back to `new Date()`. *@
   @for(d <- pinnedToday){window.KINOWO_PINNED_TODAY = "@d";}
 </script>
 @* All four `messages*` bundles, flattened to one JSON object, generated at
    build time from the bundles themselves (`I18nPackGenerator`, wired into
    `web`'s `Compile / resourceGenerators` in build.sbt) so they stay the one
-   source of truth. `shared.js`'s `applyLanguage`/`t()` read this to swap the
+   source of truth. `i18n.js`'s `applyLanguage`/`t()` read this to swap the
    visible UI language client-side, with no server round trip — see
    `controllers.I18nPacks`. `type="application/json"`, not `text/javascript`:
    this is data the script below parses, never executed itself. *@

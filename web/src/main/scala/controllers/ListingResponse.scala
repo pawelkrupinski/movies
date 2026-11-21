@@ -60,7 +60,7 @@ final class ListingResponse(cityRequests: CityRequests, movieControllerService: 
    *  cookie, and a shared cache cannot hand one visitor's page to another — the rule
    *  `CachePolicy.RevalidatedAnywhere` states, met structurally rather than by
    *  inspection.
-   *  Whoever is signed in is layered on after first paint, by `shared.js` off
+   *  Whoever is signed in is layered on after first paint, by `js/shared/` off
    *  `/api/me` (which is `no-store`, so it cannot be shared either).
    *
    *  `?filter=` variants keep `private, no-cache`: still client-independent, but
@@ -78,7 +78,7 @@ final class ListingResponse(cityRequests: CityRequests, movieControllerService: 
   // `DYNAMIC` -> `BYPASS` the moment a Cache Rule made it eligible, with the
   // `city=` cookie the only thing left on it. The cookie exists so the bare
   // `/` landing can bounce a returning visitor to their city; it is
-  // `httpOnly = false` precisely so the client owns it, and `shared.js`
+  // `httpOnly = false` precisely so the client owns it, and `js/shared/`
   // writes it on load with the same name, path and lifetime. The filtered
   // branch below is `private, no-cache`, so it keeps setting it server-side
   // and a visitor with no JS is still remembered.

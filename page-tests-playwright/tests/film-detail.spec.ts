@@ -385,7 +385,7 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
 
   // The showings tree does NOT fold — it renders every cinema, and what
   // narrows it is the visitor's own Filtry selection, applied by the page's
-  // `applyFilters` off shared.js's `disabledCinemas` (a list of DISPLAY names).
+  // `applyFilters` off `js/shared/`'s `disabledCinemas` (a list of DISPLAY names).
   // The pills answer to Filtry too, and the fold counts only what survives it:
   // "the first ten" must mean ten a visitor can actually use, not slots 1-10 of
   // a list they have mostly switched off.

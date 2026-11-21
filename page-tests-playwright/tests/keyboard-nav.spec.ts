@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { gotoAndWaitForCards, setDateFilter, waitForCards } from './helpers';
 
-// Document-level keydown handler in shared.js maps ArrowLeft / Right
+// Document-level keydown handler in `js/shared/` maps ArrowLeft / Right
 // to `stepDate(-1 / 1)` — the same function the navbar's date-arrow
 // buttons call. Keyboard-only users can cycle the date filter
 // without reaching for the on-screen controls.

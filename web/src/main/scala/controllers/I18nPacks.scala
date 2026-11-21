@@ -6,7 +6,7 @@ import scala.io.Source
  *  `messages.de`/`messages.es`, flattened to one JSON object, produced by
  *  `project/I18nPackGenerator.scala` (wired into the `web` project's
  *  `Compile / resourceGenerators` in `build.sbt`). Embedded once per page
- *  (`_sharedJsConfig.scala.html`) so `shared.js` can swap the visible UI
+ *  (`_sharedJsConfig.scala.html`) so `js/shared/` can swap the visible UI
  *  language in place, with no server round trip and no extra request.
  *
  *  `messages.*` stays the only place a translator edits; this is derived,

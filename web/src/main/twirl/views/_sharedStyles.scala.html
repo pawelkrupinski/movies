@@ -12,7 +12,7 @@
      Bootstrap used to load as a render-blocking <link> in every page <head>
      purely for the reboot defaults + grid + the handful of utilities below.
      These are the verbatim 5.3.3 rules for every Bootstrap class the templates
-     actually use (audited across all `*.scala.html` + `shared.js`), inlined so
+     actually use (audited across all `*.scala.html` + `js/shared/`), inlined so
      first paint no longer waits on a second CSS request. Copying the real
      values means the render is unchanged. If a new template needs another
      Bootstrap class, add its rule here — don't re-add the stylesheet. */
@@ -551,7 +551,7 @@
      Escape. The dialog itself is a transparent full-viewport layer that centres
      its card — the UA margin/padding/border/size limits reset — and the dim is
      its `::backdrop`, so a click on the dialog element itself landed outside
-     the card (shared.js `closeDialogOnBackdrop`). */
+     the card (`overlays.js` `closeDialogOnBackdrop`). */
   dialog.modal-dialog {
     position: fixed; inset: 0;
     width: auto; height: auto; max-width: none; max-height: none;
@@ -565,7 +565,7 @@
   /* A modal dialog doesn't stop the page scrolling under it (a swipe on a phone
      still moves it), so the root stops scrolling while one is open. */
   html:has(dialog.modal-dialog[open]) { overflow: hidden; }
-  /* The city-entry area picker (shared.js `showAreaPicker`) keeps its navy dim. */
+  /* The city-entry area picker (`cinemas.js` `showAreaPicker`) keeps its navy dim. */
   #area-picker-overlay::backdrop { background: rgba(5,5,20,.72); }
 
   /* Login modal card. */
@@ -1036,10 +1036,10 @@
     }
   }
 
-  /* ── Day carousel (shared.js) ──────────────────────────────────────────────
+  /* ── Day carousel (`js/shared/`) ──────────────────────────────────────────────
      `#view-pager` is the carousel viewport; `#day-track` is a flex row of
      full-viewport-width day columns. The real grid (`<main id="view-root">`)
-     is the centre column and is always present; shared.js mounts a prev + next
+     is the centre column and is always present; `js/shared/` mounts a prev + next
      column (each a clone of `#film-grid` filtered to that neighbouring day)
      only for the duration of a slide, then translates `#day-track` to reveal
      them. `overflow-x: clip` hides the off-screen columns without creating a
@@ -1050,7 +1050,7 @@
      `overflow`, so all three share the page's single vertical scroll. The
      revealed neighbour therefore lines up at the same `scrollY` offset for
      free. While neighbours are mounted (`.day-track--armed`) the track is
-     parked at `-100vw` so the centre column stays in view; shared.js sets the
+     parked at `-100vw` so the centre column stays in view; `js/shared/` sets the
      live `translateX` inline on top of that during a drag. */
   #view-pager { position: relative; overflow-x: clip; }
   #day-track { display: flex; align-items: flex-start; will-change: transform; }
@@ -1072,7 +1072,7 @@
      allows minus `pan-x`). */
   #view-pager .container-fluid { touch-action: pan-y pinch-zoom; }
 
-  /* First-run swipe hint (phones). shared.js adds `.visible` once per day until
+  /* First-run swipe hint (phones). `js/shared/` adds `.visible` once per day until
      the first swipe; base state is `visibility:hidden` so it never intercepts a
      tap and reads as hidden to assistive tech / tests. Centred near the bottom,
      above the cards, with a soft frosted pill. (In portrait it's lifted higher
@@ -1124,7 +1124,7 @@
      (~460 px intrinsic-size keeps the scrollbar from jumping on measure). */
   #film-grid > .col { content-visibility: auto; contain-intrinsic-size: 0 460px; }
   /* Anti-FOUC cloak: the server renders every film for every date (no server-
-     side day filter), and shared.js `bootView` prunes to the selected day +
+     side day filter), and `boot.js` `bootView` prunes to the selected day +
      the viewer's locally-hidden films only on DOMContentLoaded — after first
      paint. Without this the full unfiltered grid flashes for a frame, then
      visibly collapses. The `grid-cloak` class is added to <html> by a blocking
@@ -1159,7 +1159,7 @@
       left: 50%;
       transform: translateX(-50%);
       /* `--keyboard-inset` is the height the iOS on-screen keyboard steals from
-         the visual viewport, fed in by `trackSearchKeyboard()` (shared.js) while
+         the visual viewport, fed in by `trackSearchKeyboard()` (`js/shared/`) while
          the field is focused. `position: fixed; bottom:` is measured against the
          LAYOUT viewport, which the keyboard does NOT shrink — so without this the
          pill (and the text you're typing) hides BEHIND the keyboard. Adding the

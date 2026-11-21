@@ -282,7 +282,7 @@ class AuthController(
    *
    *  The HTML pages stopped rendering the avatar so that a shared cache could
    *  hold them (`CachePolicy.RevalidatedAnywhere`), which moved the whole
-   *  per-user surface here: `shared.js` calls this on every page load and builds
+   *  per-user surface here: `js/shared/` calls this on every page load and builds
    *  the account menu from the answer. So this response, and only this response,
    *  is the one nothing may keep a copy of — a stored 200 is an avatar rebuilt
    *  after a sign-out, or on a device the answer was never for. */

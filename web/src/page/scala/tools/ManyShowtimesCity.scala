@@ -10,7 +10,7 @@ import java.time.LocalDateTime
  * packed onto its first cinema, today's date-group — enough on its own to
  * push a city over `MovieControllerService.LargeCityShowtimeThreshold` so
  * the day-carousel's instant-swap path (`usesInstantDayChange` in
- * shared.js) can be driven without a real city's worth of scraped data.
+ * `js/shared/`) can be driven without a real city's worth of scraped data.
  * Both the Scala CDP spec and the Playwright fixture server build their
  * large-city fixture here, so the shape they drive can't drift apart — the
  * same rule `ManyCinemaFilm` follows for the cinema-fold fixture.

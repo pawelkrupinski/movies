@@ -52,7 +52,7 @@ enum CachePolicy {
    *  `models.User`, and `MovieController` holds no `UserRepository`, so no
    *  session cookie can move a byte of them. What is per-user went the other way
    *  instead — `/api/me` and `/api/me/state` answer about one person and say
-   *  `private, no-store` (`PerUserResponse`), and `shared.js` layers their
+   *  `private, no-store` (`PerUserResponse`), and `js/shared/` layers their
    *  answer onto the cached page after first paint. Filtered listings, facet
    *  pages and film pages stay `BrowserOnly`: client-independent too, but one
    *  URL per filter per city is not worth an edge entry each. A shared cache in
@@ -60,7 +60,7 @@ enum CachePolicy {
    *
    *  ⚠️ AND NO `Set-Cookie` ON SUCH A RESPONSE. Cloudflare bypasses the cache
    *  for anything carrying one — measured, the listing went `DYNAMIC` ->
-   *  `BYPASS` with the `city=` cookie the only thing left on it. `shared.js`
+   *  `BYPASS` with the `city=` cookie the only thing left on it. `js/shared/`
    *  writes that cookie now. */
   case RevalidatedAnywhere
 }

@@ -137,7 +137,7 @@ object FixtureServerMain {
     // `/{city}/many-showtimes` — the listing re-seated with 10,500 synthetic
     // showtimes on one film so it crosses
     // `MovieControllerService.LargeCityShowtimeThreshold`, driving the day
-    // carousel's instant-swap path (shared.js `usesInstantDayChange`). No
+    // carousel's instant-swap path (`day-carousel.js` `usesInstantDayChange`). No
     // corpus city in this fixture is remotely that size on its own.
     def manyShowtimesPageFor(c: City): String = {
       implicit val ci: City = c

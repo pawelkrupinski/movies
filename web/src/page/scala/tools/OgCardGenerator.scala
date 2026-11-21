@@ -238,7 +238,7 @@ object OgCardGenerator {
 
   /** Click the area-picker's "Show listings" button if the modal is showing, so
    *  a split city's card (London) captures the poster grid instead of the
-   *  "Choose your areas" overlay. `shared.js` builds the picker as
+   *  "Choose your areas" overlay. `js/shared/` builds the picker as
    *  `#area-picker-overlay` with a single (idless) `<button>` that, on click,
    *  applies the checked areas (all, by default) and removes the overlay. Guarded
    *  by `if(b)`, so it's a harmless no-op on the flat cities that never render a
@@ -291,7 +291,7 @@ object OgCardGenerator {
       // slide looked at the wrong posters and passed; the lazy posters only
       // started loading as they slid into view, and the blank cards of PRs
       // #216 / #217 were screenshotted that way. Under reduced motion the page
-      // commits the day in place (shared.js runSlide).
+      // commits the day in place (`day-carousel.js` runSlide).
       page.send("Emulation.setEmulatedMedia", Json.obj(
         "features" -> Json.arr(Json.obj("name" -> "prefers-reduced-motion", "value" -> "reduce"))))
       try page.waitFor(RepertoireLoadedJs, timeoutMs = 4000, pollMs = 100)

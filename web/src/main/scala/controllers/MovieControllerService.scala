@@ -252,12 +252,12 @@ object MovieControllerService {
    *  film of the busiest cities several times over. A New York schedule set is ~4 MB. */
   val BuiltSchedules: Long = 10_000
   /** Above this many showtimes on one page, the day carousel's clone-and-slide
-   *  preview (`shared.js` `buildDayColumn`, cloning the whole `#film-grid` to
+   *  preview (`day-carousel.js` `buildDayColumn`, cloning the whole `#film-grid` to
    *  build a sliding neighbour-day preview) costs enough DOM-cloning that a
    *  swipe visibly stutters on a phone — Salt Lake City (28k showtimes, 40
    *  cinemas) measured ~17.5k DOM nodes per clone, two clones per swipe.
    *  `ListingHtml.render` stamps `isLargeCity` onto `#view-root` as
-   *  `data-large-city`, and `shared.js` skips straight to an in-place
+   *  `data-large-city`, and `js/shared/` skips straight to an in-place
    *  re-filter instead of cloning + animating when it's set. Desktop is
    *  unaffected — the carousel's slide/clone already only runs behind
    *  `pointer: coarse`. */

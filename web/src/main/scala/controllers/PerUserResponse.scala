@@ -6,7 +6,7 @@ import play.api.mvc.Result
  * Cache headers for a response that was produced FOR SOMEBODY.
  *
  * Nothing renders a person into an HTML page any more: the listing, film and
- * browse views are byte-identical for every visitor, and `shared.js` asks
+ * browse views are byte-identical for every visitor, and `js/shared/` asks
  * `/api/me` who is looking (see `_authMenu`). That moved the whole of this
  * site's per-user surface into a handful of JSON endpoints and auth redirects —
  * which makes THEM the thing that must never be re-used, and makes the header

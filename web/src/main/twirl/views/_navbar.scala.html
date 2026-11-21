@@ -5,7 +5,7 @@
      - Date + search                                            — right cluster
      - Hidden-films flyout button (auto-shown when set)        — right cluster
      - Filtry dropdown (includes the cinema picker)            — right cluster
-     - Login pill (shared.js swaps in the avatar menu once
+     - Login pill (`js/shared/` swaps in the avatar menu once
        `/api/me` answers — see `_authMenu`)                     — far right (desktop)
                                                                  row-1 right (mobile)
 
@@ -124,12 +124,12 @@
       <div class="panel-divider"></div>
 
       @* The CHECKBOXES carry `autocomplete="off"`, and so does every checkbox
-         shared.js builds into the panels below. An engine replays saved form
+         `js/shared/` builds into the panels below. An engine replays saved form
          state positionally within a (name, type) queue, so the built boxes --
          gone from a freshly parsed document -- shifted their values onto the
          static ones and left a phantom IMAX filter that blanked the day.
          Marking the built ones is what stops the shift; marking these, plus
-         `resetFilterControls` in shared.js, is the belt, because the attribute
+         `resetFilterControls` in `filter-url.js`, is the belt, because the attribute
          is honoured unevenly and this failure is a blank listing.
 
          The search box and the selects deliberately DON'T carry it: measured,
@@ -155,7 +155,7 @@
       }
       @* Only where some showtime, on any day of the listing, is IMAX --
          `MovieControllerService.hasImaxShowtime`. Elsewhere the checkbox could
-         only blank the page. shared.js treats a missing `#format-imax` as
+         only blank the page. `js/shared/` treats a missing `#format-imax` as
          "no IMAX filter". *@
       @if(showImaxFilter) {
         <label class="panel-label"><input type="checkbox" autocomplete="off" id="format-imax"           onchange="onFormatChange()"> <span data-i18n="nav.imaxOnly">@messages("nav.imaxOnly")</span></label>
@@ -201,7 +201,7 @@
       }
 
       @* Language picker — independent of both city and country. Picking one
-         swaps the visible UI language IN PLACE (`onLanguageChange`, shared.js)
+         swaps the visible UI language IN PLACE (`onLanguageChange`, `js/shared/`)
          against the language pack every page embeds — no navigation, no
          server round trip. `messages.lang.code` below is always the
          deployment's own fixed default (the server never renders any other
