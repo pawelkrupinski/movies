@@ -1,7 +1,5 @@
 package services.movies
 
-import java.util.Locale
-
 import scala.concurrent.duration.*
 
 /**
@@ -140,30 +138,12 @@ object ScrapeHealth {
    *  With a recorded key, only a change between two KNOWN keys counts; a scrape
    *  reporting none is not evidence of a rewire.
    *
-   *  A venue with NO recorded key landed before keys were recorded — and one rewired
-   *  before then never lands again to record one, because the guards reject every
-   *  tick of its new source (Baszta again, and a dozen DE/US venues). Treating a
-   *  missing key as a rewire would switch the guards off for every venue on the
-   *  first tick after keys shipped, so the stored rows are asked instead: the sites
-   *  their film links point at (`storedSites`) against the sites this tick's links
-   *  point at (`batchSites`), see [[siteOf]]. Disjoint, both non-empty, is a
-   *  different source — the same scraper, however degraded its fetch, links its
-   *  films to the same site it always has. Either side without links says nothing,
-   *  and the guards stay on. A rewire within one site (bilety24 organiser to
-   *  organiser) is not visible this way; that venue clears through the guards'
-   *  ordinary grace. */
-  def isRewire(stored: Option[String], current: Option[String],
-               storedSites: Set[String] = Set.empty, batchSites: Set[String] = Set.empty): Boolean =
-    stored match {
-      case Some(_) => current.isDefined && stored != current
-      case None    => storedSites.nonEmpty && batchSites.nonEmpty && storedSites.intersect(batchSites).isEmpty
-    }
-
-  /** The site a film link points at, as [[isRewire]] compares them: the host,
-   *  lower-cased, without a leading `www.`. */
-  def siteOf(url: String): Option[String] =
-    scala.util.Try(java.net.URI.create(url.trim).getHost).toOption.flatMap(Option(_))
-      .map(_.toLowerCase(Locale.ROOT).stripPrefix("www.")).filter(_.nonEmpty)
+   *  A venue with NO recorded key landed before keys were recorded, so it is never
+   *  called a rewire: treating a missing key as one would switch the guards off for
+   *  every venue on the first tick after keys shipped. A keyless venue rewired before
+   *  then clears through the guards' ordinary grace, and records its key when it lands. */
+  def isRewire(stored: Option[String], current: Option[String]): Boolean =
+    stored.isDefined && current.isDefined && stored != current
 
   /** The breadth guard's answer for one tick, stateful the same way [[Depth]] is. */
   enum Breadth {
