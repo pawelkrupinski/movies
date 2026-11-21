@@ -38,13 +38,11 @@ cp "$REPO_ROOT/scripts/identity-slice" "$REPO_ROOT/scripts/identity-explain" "$R
 mkdir -p "$repo/scripts/ci" && cp "$REPO_ROOT"/scripts/ci/identity_*.py "$repo/scripts/ci/"  # the shared modules the diff imports
 cp "$REPO_ROOT/scripts/ci/population_walk_diff.py" "$repo/scripts/ci/"  # --emit-drift-slice files the walk's rows with it
 printf 'kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\n' > "$repo/test/resources/fixtures/identity-flip-backlog.tsv"
-for f in worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala/scripts/IdentityExplain.scala worker/src/fixtures/scala/tools/OlderRefTypes.scala worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala \
-  worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala \
-  worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala worker/src/fixtures/scala/tools/CatalogueFill.scala \
-  worker/src/fixtures/scala/tools/FiledAnswers.scala worker/src/fixtures/scala/tools/ProdMirror.scala \
-  worker/src/fixtures/scala/tools/IdentityJudgements.scala worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala; do
-  echo "// $f" > "$repo/$f"
-done
+# the files the tool drops into every ref, read from its own TOOL_FILES: a hand-kept copy of the list drifted from it
+# (measures/OlderRefsPackage.scala written into a directory never made, OlderRefs.scala, ReplayOrder.scala and three
+# more left out), so the trees laid out here lacked files every real ref gets
+tool_files=$(sed -n '/^TOOL_FILES=(/,/)/p' "$REPO_ROOT/scripts/identity-slice" | tr ' ()' '\n\n\n' | grep '\.scala$')
+for f in $tool_files; do mkdir -p "$(dirname "$repo/$f")" && echo "// $f" > "$repo/$f"; done
 # the modules besides the resolver's own that its classpath compiles
 for module in scrapers geodata; do mkdir -p "$repo/$module/src/main" && echo "// $module" > "$repo/$module/src/main/Module.scala"; done
 echo "build" > "$repo/build.sbt"
@@ -143,6 +141,7 @@ rm "$cache/refs/$base/test/resources/fixtures/identity-judgements.tsv"
 IDENTITY_REPO=$repo bash -c '. "$1/scripts/identity-tools.sh" && identity_tree_judgements "$2" "$3"' _ "$repo" "$base" "$cache/refs/$base"
 check "...and into a tree laid out before they were" "1" "$(grep -c '^country' "$cache/refs/$base/test/resources/fixtures/identity-judgements.tsv" 2>/dev/null)"
 check "...with the tool's files dropped in" "// worker/src/test/scala/scripts/IdentitySlice.scala" "$(cat "$cache/refs/$base/worker/src/test/scala/scripts/IdentitySlice.scala")"
+check "...every one of them" "" "$(for f in $tool_files; do [ -f "$cache/refs/$base/$f" ] || echo "$f"; done)"
 check "each ref decides on the SAME recording" "2" "$(grep -c -- "--recording $cache/recordings/777/pair/test/resources/fixtures" "$work/calls")"
 check "...each reading prod's filed answers from this checkout's capture" "2" "$(grep -c -- "--families $repo/test/resources/fixtures/identity-unmatched/de.json.gz" "$work/calls")"
 check "...each under its own commit" "1" "$(grep -c -- "--ref $head" "$work/calls")"
