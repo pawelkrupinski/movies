@@ -43,7 +43,13 @@ private[movies] final class WholeRecordUpsert(
     // film", and the decision is where that is pinned. Read here, beside the replace it feeds,
     // so `NoUnguardedReadModifyWriteSpec` sees the pair (and its allowlisted WHY).
     val stored   = Try(Await.result(movies.find(Filters.eq("_id", id)).limit(1).toFuture(), 10.seconds)).map(_.headOption)
-    if (collidesWithAnother(id, key, e, stored.toOption.flatten)) {
+    val collision = collidesWithAnother(id, key, e, stored.toOption.flatten)
+    if (collision.isFailure)
+      // Not knowing is no answer: writing on would land the slots before a `movies` write the
+      // index may refuse, the strand the pre-check exists to prevent. Reported, so the caller's
+      // next identical scrape retries the whole upsert.
+      RepositoryWrite.unit(MovieRepository.Collection, "upsert", label, writeMetrics, logger)(collision.get)
+    else if (collision.get) {
       logIdentityHeld(label, e, "")
       WriteOutcome.IdentityHeld
     } else {
@@ -96,15 +102,18 @@ private[movies] final class WholeRecordUpsert(
    *  revisited (the since-deleted `UnresolvedTmdbReaper` treated `tmdbId`+`tmdbAttempt` both absent
    *  as "never even tried"). Checking for that sibling before either write means a real collision
    *  refuses the whole upsert — slots included — leaving the film exactly as it was, instead of
-   *  leaving the two collections disagreeing about it forever. */
+   *  leaving the two collections disagreeing about it forever. A check that could not be read is
+   *  the failure it is, never "no collision". */
   private def collidesWithAnother(id: String, key: String, e: MovieRecord,
-                                  storedDoc: Option[StoredMovieDto]): Boolean =
-    MoviesUpsert.identityChanging(storedDoc.map(d => MoviesUpsert.Identity(d.key, d.tmdbId)), key, e.tmdbId) &&
+                                  storedDoc: Option[StoredMovieDto]): Try[Boolean] =
+    if (!MoviesUpsert.identityChanging(storedDoc.map(d => MoviesUpsert.Identity(d.key, d.tmdbId)), key, e.tmdbId))
+      scala.util.Success(false)
+    else
       Try(Await.result(movies.find(Filters.and(
         Filters.ne("_id", id),
         Filters.or(List(Some(Filters.eq("key", key)), e.tmdbId.map(t => Filters.eq("tmdbId", t))).flatten*)
-      )).limit(1).toFuture(), 10.seconds)).toOption
-        .exists(_.exists(d => MoviesUpsert.heldBy(key, e.tmdbId)(MoviesUpsert.Identity(d.key, d.tmdbId))))
+      )).limit(1).toFuture(), 10.seconds))
+        .map(_.exists(d => MoviesUpsert.heldBy(key, e.tmdbId)(MoviesUpsert.Identity(d.key, d.tmdbId))))
 
   private def logIdentityHeld(label: String, e: MovieRecord, detail: String): Unit =
     logger.warn(s"$label refused: another document already holds its " +

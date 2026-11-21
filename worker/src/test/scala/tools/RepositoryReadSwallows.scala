@@ -27,9 +27,6 @@ object RepositoryReadSwallows {
     ("common/src/main/scala/services/UptimeSync.scala", "hydrate",
       "def hydrate(c: MongoCollection[Document]): Unit = Try {") ->
       "a boot hydrate of an in-memory map: a failed read leaves it as it was (empty = the documented cold start) and is logged",
-    ("common/src/main/scala/services/movies/WholeRecordUpsert.scala", "collidesWithAnother",
-      "Try(Await.result(movies.find(Filters.and(") ->
-      "the collision pre-check only: a sibling holding the key or tmdbId is still refused by the unique index at the write (handled as IdentityHeld below)",
     ("common/src/main/scala/services/movies/MongoSlotKeyedRows.scala", "storedRow",
       "Try(Await.result(c.find(Filters.eq(\"_id\", SlotKeyed.idOf(filmId, slotKey))).first().toFuture(), 10.seconds)).toOption.flatMap(Option(_))") ->
       "absent and unreadable are both 'cannot prove this write redundant': either way the row is written, the safe direction",
