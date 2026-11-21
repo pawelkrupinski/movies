@@ -70,7 +70,7 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
 - Checks are selected by the paths the push changes (eslint, roster drift, snapshot stamp, one warm sbt run of the
   lint specs — every repo-reading lint spec too on a change under `scripts/`, `.github/`, `.claude/`, `CLAUDE.md`,
   `build.sbt`, `project/` or test trees — dashboards, scripttests incl. the Linux leg when Docker is up, actionlint,
-  shellcheck on added warnings, oldrefs, ios compile, judgements lint).
+  shellcheck on added warnings, ios compile, judgements lint; identity-slice's old-ref compile runs on Main, after landing).
 - **Red gate:** before the path checks, the hook reads the newest COMPLETED run on main of Main, Identity model
   convergence and Identity takes -- exactly those three (the owner, 2026-10-27; Identity takes, the takes rows, since
   2026-11-08; one bounded `gh run list` each; gh unreachable → warned, not blocked).

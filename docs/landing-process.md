@@ -77,6 +77,12 @@ locally (unless it takes longer than 15 mins) then / otherwise merge to main and
   and `local-tests.txt`, `check (page)` and the `e2e` heavy row left the landing check. Main's `page-tests-*` and
   `e2e (*)` rows are gate rows (`.github/gating-checks.tsv`): a failure is a normal gate red with a fixer. Running the
   page layer locally for a UI change (`scripts/page-tests-local`) is recommended insurance, not a landing requirement.
+- **After landing too, on Main (the owner, 2026-11-21):** identity-slice's old-ref compile (main.yml's
+  `old-ref-compile`, a gate row: 1 catch in 27 landing checks, at a p90 of 20 min; no hook check, landing-check job
+  or land-precheck rule any more) and the identity area's slowest specs (FamilyIndexCompleteness, the four
+  IdentityDriftSlices, FamilyConvergenceSlices, the four ReadSetClosure parts: 0 catches no other spec made in 356
+  landing checks over 14 days, ~1,750 of the shards' ~3,750 suite-seconds; Main's worker rows run them). A failure
+  there is a normal gate red with a fixer.
 - **Merge on green = main green**: the red gate (stage 3, step 3). Tools-only commits and `Fixes-Red:` fixes land
   while red, as before. A production change while main is red WAITS: "when waiting for main to go green, merge all
   waiting changes into one waiting branch (always use the same name) and merge it when main is green" (the owner,
@@ -181,7 +187,7 @@ must not take longer, so it never runs before the queue). It answers "will the l
 visible now?" in ~20-60 s on a warm checkout:
 
 - **rebase**: the change replayed onto origin/main by `git replay`, touching no ref or file; a conflict names its files;
-- **rules**: the hook's own `allowlists driftguards newchecks judgements shellcheck actionlint oldrefs` checks
+- **rules**: the hook's own `allowlists driftguards newchecks judgements shellcheck actionlint` checks
   (`PREPUSH_ONLY`, `--checks-only`, so not the red gate), the stranded-trailer rule with them;
 - **lints**: the specs the LINT REGISTRY (`scripts/hooks/lint-registry.tsv`) selects for the pushed paths, in one
   `scripts/sbt-warm` call, its JVM admitted by the governor as a landing check's (`KINOWO_GOV_CLASS=check`).
@@ -343,10 +349,8 @@ changes are verified and pushed TOGETHER (`~/bin/AGENTCTL.md`, "THE PUSH BATCH")
 | `shellcheck` | `*.sh`, `scripts/hooks/*`, any extensionless tool whose shebang names a shell (`scripts/sbt-warm`, ...) | shellcheck; fails only on warnings the push adds | seconds |
 | `sbt` (+ basic) | Scala/Java, `build.sbt`, `project/`, Grafana dashboards, templates and browser assets (`web/src/main/{twirl,assets}/`, `web/src/page/`), scripts/workflows under `scripts/`, `.github/`, `infra/`; and anything the lint specs read (`scripts/`, `.github/`, `.claude/`, `CLAUDE.md`, `build.sbt`, `project/`, `*/src/test/`, `*/src/it/`, page specs, worker fixtures, `testkit/`) | one sbt run: the Test/It/Page compiles of every touched module and its dependants (`--compile-plan`), the five standing lints, and on a repo-read change every `deploy/*Spec` and `tools/{No*,*Lint*}Spec` (`--lint-plan`) bar the server-booting ones; GitOps-reading specs only after `infra/bin/fetch-gitops` succeeds; then THE BASIC TESTS, `local-tests.txt`'s `basic` lines, in the same run | lints ~30 s + basic ~5 min warm; more cold |
 | `sbt`'s coupling step | a deployed module's `src/main` (`geodata base http common identity scrapers worker web`), `build.sbt`, `coupling.sbt`, `project/*.scala`, `test/resources/coupling-baseline.tsv`, `test/resources/coupling-layers.tsv`, `test/resources/coupling-exemptions.tsv`, `scripts/ci/coupling_ratchet.py` (`--coupling-plan < paths` prints them) | in the sbt check's one run, `couplingReport` (the production class graph from Zinc's analyses, `project/Coupling.scala`), then `scripts/ci/coupling_ratchet.py check`: ANY package cycle edge refuses (named with its class references; no trailer or baseline row excuses one), as do an edge into a higher layer or, inside the ordered services and composition-root layers, a higher rank (`test/resources/coupling-layers.tsv`, naming the direction allowed) and a package without its layer or rank; against the baseline, a new cross-module edge kind, a package's Ce -- the outside packages it uses -- past its row (a package without one: past 8), a class's fan-out (a declared contract's members counted once) or a package's distance D past its frozen row refuses, and so does a class newly past the fan-out limit (9) or a package of 8+ types newly past the distance limit (0.20), which only an exemption row admits (`test/resources/coupling-exemptions.tsv`), never `--update` or a trailer; so does a baseline grown, a layer table loosened (an `allow` row, a moved layer or rank) or an exemption table loosened (a row added, a limit changed, a contract's member added or dropped), in the pushed range unless a commit changing it carries `Coupling: <why>`. A declared contract past 8 members refuses whatever the trailer (a `contract-size` row grandfathers one declared before the cap: `scrape`, 12). Falls are said and pass (`scripts/coupling-report --update` records them, no trailer). `PREPUSH_SKIP=coupling` skips it | ~0.2 s after the compiles warm (all eight modules' Compile analyses; an out-of-date module compiles first) |
-| `identity` | the identity paths (step 8) | FIRST `scripts/identity-slice-coverage` (local-tests.txt's `identity first` line: SLICE ANSWER COVERAGE -- every pinned slice case and drift slice replayed at the pushed code, every request one asks that its fixture lacks named at once; a failure ends the area there, naming each slice, request and `scripts/identity-slice-coverage --repin`, which pins them all from their recordings), then `scripts/hooks/local-tests.txt`'s `identity` sbt lines, one `scripts/sbt-warm` call | coverage ~30 s warm (~2.5 min under load); then ~5 min warm (`identity/test` 52 s; the services.identity.*/titles.rules.*/scripts.* aggregate ~4 min; the scraper specs the change reaches, ~12 s: a title-rule change reaches every scraper spec that cleans titles with the rules, Main #2266) |
+| `identity` | the identity paths (step 8) | FIRST `scripts/identity-slice-coverage` (local-tests.txt's `identity first` line: SLICE ANSWER COVERAGE -- every pinned slice case and drift slice replayed at the pushed code, every request one asks that its fixture lacks named at once; a failure ends the area there, naming each slice, request and `scripts/identity-slice-coverage --repin`, which pins them all from their recordings), then `scripts/hooks/local-tests.txt`'s `identity` sbt lines, one `scripts/sbt-warm` call -- less the slowest specs that caught nothing no other did (FamilyIndexCompleteness, the four IdentityDriftSlices, FamilyConvergenceSlices, the four ReadSetClosure parts: Main runs them, after landing, since 2026-11-21); in the landing check four shards of it, `check (identity k/4)` | coverage ~30 s warm (~2.5 min under load); then ~5 min warm (`identity/test` 52 s; the services.identity.*/titles.rules.*/scripts.* aggregate ~4 min; the scraper specs the change reaches, ~12 s: a title-rule change reaches every scraper spec that cleans titles with the rules, Main #2266) |
 | `sbt`'s quality step | a deployed module's `src/main` Scala, `quality/**`, `project/Dependencies.scala`, `test/resources/{complexity,length,duplication}-baseline.tsv`, `scripts/ci/quality_ratchet.py` (`--quality-plan < paths` prints them) | in the sbt check's one run, `quality/runMain quality.QualityReport` (every production method measured from its source with scalameta: no compile of what it measures), then `scripts/ci/quality_ratchet.py check` against the baselines: a method past a limit with no baseline row (cognitive 10, cyclomatic 10, inner defs 2, 50 lines) or a source past 500 lines, or either past its frozen row, refuses, and so does a new clone group of 50+ tokens (PMD CPD, `package`/`import` lines blanked, run beside the parse) or a group gaining a copy; so does a baseline grown in the pushed range unless a commit changing it carries its trailer (`Complexity: <why>`, `Length: <why>`, `Duplication: <why>`). Falls are said and pass (`scripts/quality-report --update` records them, no trailer). `PREPUSH_SKIP=quality` skips it | ~7 s warm (CPD's one thread the long pole) |
-| `identity` | the identity paths (step 8) | FIRST `scripts/identity-slice-coverage` (local-tests.txt's `identity first` line: SLICE ANSWER COVERAGE -- every pinned slice case and drift slice replayed at the pushed code, every request one asks that its fixture lacks named at once; a failure ends the area there, naming each slice, request and `scripts/identity-slice-coverage --repin`, which pins them all from their recordings), then `scripts/hooks/local-tests.txt`'s `identity` sbt lines, one `scripts/sbt-warm` call | coverage ~30 s warm (~2.5 min under load); then ~5 min warm (`identity/test` 52 s; the services.identity.*/titlerules.*/scripts.* aggregate ~4 min; the scraper specs the change reaches, ~12 s: a title-rule change reaches every scraper spec that cleans titles with the rules, Main #2266) |
-| `oldrefs` | a file in `identity-slice`'s or `title-trace`'s `TOOL_FILES` | `scripts/identity-slice-old-ref-test.sh` | incremental; minutes the first time |
 | `ios` | `ios/` | `scripts/ios-compile-check.sh` | minutes |
 
 10. **Verdict.** `all clear (<n>s)` and the pass stored for reuse, or
@@ -387,15 +391,16 @@ the narrower round misses is caught on Main): a file BOTH sides change, or a for
 check selects -> the full round. The hook, its lint registry, local-tests.txt and `scripts/ci/precommit-share.sh` are
 SELECTION paths: agentctl compares, for the change's paths, the hook's `--plan` / `--compile-plan` / `--unit-plan` /
 `--lint-plan`, the local-tests lines of the areas run, and the union of what `precommit-share.sh checks
-rest|identity|oldrefs|plan` runs, at the full check's tip and the rebased tip -- only a check added (the verify round runs
+rest|identity|plan` runs, at the full check's tip and the rebased tip -- only a check added (the verify round runs
 added compile, unit and lint plans itself) forces the full round. No shared file but an sbt module both sides touch
 (MODULE OVERLAP) -> the verify round PLUS the area tests: the branch is `check/verifyareas-<full base>-<id>`, on which
 `precommit-share.sh` gives the `identity` share `PREPUSH_MODE=--checks-only` over `<full base>..HEAD` (the plan names it,
-so `check (identity k/2)` runs; the rest is the verify round's). Disjoint modules -> the plain verify round.
+so `check (identity k/4)` runs; the rest is the verify round's). Disjoint modules -> the plain verify round.
 
 **The landing check on ci-runner** (`precommit-check.yml`, agentctl's remote checks) runs the hook's checks in parallel
-jobs: `check (rest)`, `check (identity)` (the identity module's tests, beside the rest since 2026-11-01),
-and `check (oldrefs)`. `check (rest)` runs the script self-tests beside its other checks (`scripts/ci/hook-beside.sh`:
+jobs: `check (rest)` and `check (identity k/4)` (the identity area's specs, beside the rest since 2026-11-01, in four
+shards since 2026-11-21: two ran ~13 min each). `check (oldrefs)` is gone (2026-11-21): identity-slice's old-ref
+compile runs after landing, on Main. `check (rest)` runs the script self-tests beside its other checks (`scripts/ci/hook-beside.sh`:
 the hook twice at once, since 2026-11-18) and, after its sbt check, each of Main's heavy rows the change can move
 (`PREPUSH_HEAVY_ROWS=1`; their own job until 2026-11-18, which waited up to 17 min for a slot): `itrest` / `itidentity`
 (`IT_ROW=<row> sbt itAll` against a throwaway MongoDB named to them alone, `PREPUSH_HEAVY_MONGODB_URI`; `itidentity`, the
@@ -427,10 +432,10 @@ already released) and watches it for the landed sha (`watch_landed`):
 - **Verdict**: `WATCH OK: Main #n green, convergence #m green, takes #k green`; `WATCH RED: <workflow> #n <failed jobs>` plus the
   `ci-why` summary, the moment either is red; `WATCH UNKNOWN` after 3 h undecided or 10 failed reads.
 
-Outside the watch and the gate: **Tool self-tests** (`tool-self-tests.yml`: every script self-test and
-identity-slice's old-ref compile, on each push to main touching their paths). Their reds are the tooling's, listed by
-`ci-why` outside the gate; they close no push. The same tests run before landing, in the hook's `scripttests` and
-`oldrefs` checks, for every change touching them -- so a push whose very tree a full landing check passed skips them
+Outside the watch and the gate: **Tool self-tests** (`tool-self-tests.yml`: every script self-test, on each push to
+main touching their paths). Their reds are the tooling's, listed by `ci-why` outside the gate; they close no push. The
+same tests run before landing, in the hook's `scripttests` check, for every change touching them -- so a push whose
+very tree a full landing check passed skips them
 (`scripts/ci/landing_check_for_tree.py`: keyed on the tree and the run's conclusion, never a branch name; the fast-only
 batch check, which runs no script tests, counts for nothing), and anything that landed some other way runs them all.
 

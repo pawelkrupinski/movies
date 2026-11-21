@@ -24,9 +24,12 @@ CI is the safety net, not the test plan: land once the layers are green locally,
 | `scripts/run-script-tests` (every `<tool>-test.sh` / `<tool>_test.py`, found by name — a new self-test needs no wiring) | any change under `scripts/`, `.github/scripts/`, `.github/actions/` or the mobile `*/scripts/`; `--changed <base>` narrows, `--linux` runs CI's ubuntu container |
 
 **The page layers and e2e run after landing, on Main** (the owner, 2026-11-17, "B1": in a week of landing checks the
-page area failed 0 of 14, ~23 min each, and `e2e (rest)` 0 of 95). Neither the pre-push hook nor the landing check runs
-them, and landing does not require them; Main's `page-tests-*` and `e2e (*)` rows are gate rows, so a failure there is
-a normal gate red with a fixer. When you change UI, still run the page layer you touched locally as cheap insurance
+page area failed 0 of 14, ~23 min each, and `e2e (rest)` 0 of 95). **So do identity-slice's old-ref compile and the
+identity area's slowest specs** (the owner, 2026-11-21: FamilyIndexCompleteness, the IdentityDriftSlices, FamilyConvergenceSlices,
+the ReadSetClosure parts; `local-tests.txt` lists them). Neither the pre-push hook nor the landing check runs
+them, and landing does not require them; Main's `page-tests-*`, `e2e (*)`, worker and `identity-slice old-ref compile`
+rows are gate rows, so a failure there is a normal gate red with a fixer. Before landing the identity area runs in four
+shards, and the landing check's `itidentity` row (the hard-cluster convergence) runs for worker code too. When you change UI, still run the page layer you touched locally as cheap insurance
 (`scripts/page-tests-local`, `web/PageTest/test`) -- and the commit gate's fail-before/pass-after test for a visible
 change is still a PageTest or Playwright test you run yourself.
 
