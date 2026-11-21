@@ -15,6 +15,6 @@ class FailingReadUserRepository(failure: => Throwable = new RuntimeException("us
 /** A [[UserStateRepository]] whose `find` THROWS while writes still land — see
  *  [[FailingReadUserRepository]]. A failed read must never be served as an empty state. */
 class FailingReadUserStateRepository(failure: => Throwable = new RuntimeException("user state unreadable"))
-  extends InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned) with FailsOnPurpose {
+  extends InMemoryUserStateRepository with FailsOnPurpose {
   override def find(userId: String): Option[UserState] = throw failure
 }

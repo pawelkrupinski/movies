@@ -9,9 +9,7 @@ import org.mongodb.scala.model.Filters
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ChangeStreamReopen
-import services.users.{UserSessionVersionContract, CaffeineUserChangeTimeCache, UserStateRows, UserStateWritesContract, MongoUserRepository, UserCodecs}
-import tools.Eventually.{awaitStreamLive, eventually, poll}
+import services.users.{UserSessionVersionContract, UserStateRows, UserStateWritesContract, MongoUserRepository, UserCodecs}
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -24,7 +22,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   private lazy val isolated = tools.IsolatedMongoDatabase.open(mongoTarget, "user-repository")
   private lazy val database = isolated.database
   private lazy val users    = new MongoUserRepository(Some(database))
-  private lazy val states   = new services.users.MongoUserStateRepository(Some(database), new services.users.UserStateChangeStream(Some(database), _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System))
+  private lazy val states   = new services.users.MongoUserStateRepository(Some(database))
   // For seeding whole rows: the production store has no whole-row write (see `UserStateRows`).
   protected def seed(state: UserState): Unit = UserStateRows.replace(database, state)
 
@@ -39,7 +37,7 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
   // read that variable and open a MongoClient of its own, behind the composition root.
   "The users stores" should "stay disabled when handed no database, never opening their own connection" in {
     val ownUsers  = new MongoUserRepository(None)
-    val ownStates = new services.users.MongoUserStateRepository(None, new services.users.UserStateChangeStream(None, _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System))
+    val ownStates = new services.users.MongoUserStateRepository(None)
     try {
       ownUsers.enabled  shouldBe false
       ownStates.enabled shouldBe false
@@ -201,48 +199,6 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     Await.result(database.getCollection("userStates").countDocuments(Filters.eq("userId", userId)).toFuture(), SpecTimeouts.Io) shouldBe 1
   }
 
-  // The real cursor, not the in-memory ring: a `userStates` row's `_id` is a driver-generated
-  // ObjectId, so a DELETE event's documentKey carries no `userId` at all. The change-time
-  // cache must still stop vouching for that user — a stale entry would answer a later
-  // conditional GET with 304 for state that no longer exists.
-  // In its own database: the cursor watches the whole collection, and in the shared one every
-  // sibling spec's `userStates` write reaches it (the shape that flaked a `screenings` watcher).
-  it should "stream a delete through to the change-time cache, even though the event key names no user" in
-    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "userstate-stream-delete") { db =>
-      val isolated = new services.users.MongoUserStateRepository(Some(db), new services.users.UserStateChangeStream(Some(db), _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System))
-      val cache    = new CaffeineUserChangeTimeCache(isolated)
-      val userId   = "__integration-test-state-stream-delete"
-      cache.start()
-      try {
-        // The cursor opens at "now", asynchronously: write until it delivers before writing the row under test.
-        val warm = "__integration-test-state-stream-warm"
-        awaitStreamLive("a warm-up row", poll(SpecTimeouts.Pace.toMillis)(cache.lastChangeAt(warm).isDefined))(pass =>
-          UserStateRows.replace(db, UserState(warm, Set(s"W$pass"), Set.empty, Now)))
-        UserStateRows.replace(db, UserState(userId, Set("X"), Set.empty, Now))
-        eventually(cache.lastChangeAt(userId) shouldBe Some(Now))
-
-        isolated.delete(userId)
-        eventually(cache.lastChangeAt(userId) shouldBe None)
-      } finally cache.stop()
-    }
-
-  // One row the codec refuses used to END the cursor (the driver decoded every post-image), and
-  // the reopen opened at "now", past every write made meanwhile. It is one skipped event now:
-  // counted, and reported as lost track (whose row changed, to what, is unknowable).
-  it should "keep its change stream open past a row it cannot decode" in
-    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "userstate-malformed") { db =>
-      val counted  = new java.util.concurrent.ConcurrentLinkedQueue[String]()
-      val isolated = new services.users.MongoUserStateRepository(Some(db), new services.users.UserStateChangeStream(Some(db), _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System, decodeFailures = collection => { counted.add(collection); () }))
-      tools.MalformedChangeEventProbe.failure(
-        seen => isolated.watchChanges(state => seen(state.userId), _ => (), () => ()).get,
-        n => { UserStateRows.replace(db, UserState(s"__integration-test-user$n", Set.empty, Set.empty, Now)); s"__integration-test-user$n" },
-        () => Await.result(db.getCollection("userStates").insertOne(org.mongodb.scala.Document(
-          "userId" -> "__integration-test-malformed", "hiddenFilms" -> "not an array", "disabledCinemas" -> Seq.empty[String],
-          "updatedAt" -> new java.util.Date(0L))).toFuture(), SpecTimeouts.Io)
-      ) shouldBe None
-      counted.toArray.toSeq shouldBe Seq("userStates")
-    }
-
   // Every web pod runs this on boot. Dropping and re-creating the index each time rebuilt it
   // for nothing and, between the drop and the create, left `userStates` with no index at all —
   // no uniqueness for a concurrent first write to hit, and a collection scan for every `find`.
@@ -257,46 +213,16 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         .get("accesses").value.asDocument()
       (accesses.get("since"), accesses.get("ops").asNumber().longValue())
     }
-    val booted = new services.users.MongoUserStateRepository(Some(database), new services.users.UserStateChangeStream(Some(database), _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System))
+    val booted = new services.users.MongoUserStateRepository(Some(database))
     try booted.enabled shouldBe true finally booted.close() // boots once: the index exists, unique
     Await.result(coll.find(Filters.eq("userId", "__integration-test-index-use"))
       .hint(org.mongodb.scala.bson.collection.immutable.Document("userId" -> 1)).toFuture(), SpecTimeouts.Io)
     val before = userIdIndexAccesses()
     before._2 should be >= 1L
-    val rebooted = new services.users.MongoUserStateRepository(Some(database), new services.users.UserStateChangeStream(Some(database), _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System))
+    val rebooted = new services.users.MongoUserStateRepository(Some(database))
     try {
       rebooted.enabled shouldBe true
       userIdIndexAccesses() shouldBe before
     } finally rebooted.close()
   }
-
-  // THE REOPEN GAP. A dead `userStates` cursor reopens at "now", so a write made between the
-  // death and the reopen is never delivered. The death's `onDisconnect` only covered what the
-  // listener knew THEN; the reopen must report losing track again, so nothing a listener picked
-  // up in the gap is trusted past it. Runs in its own database: killing the cursor means
-  // dropping the collection, and the shared spec DB's `userStates` carries the unique index
-  // other cases depend on.
-  it should "report lost track again when a dead cursor reopens" in
-    tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "userstate-reopen") { db =>
-    val raw     = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
-    val pendingReopen = new java.util.concurrent.atomic.AtomicReference[() => Unit]()
-    val manualReopen: (String, () => Unit) => ChangeStreamReopen =
-      (name, reopen) => new ChangeStreamReopen(name, reopen, (_, run) => pendingReopen.set(run))
-    val mongo    = new services.users.MongoUserStateRepository(Some(db), new services.users.UserStateChangeStream(Some(db), _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System, reopenDriver = manualReopen))
-    val lostTrack = new java.util.concurrent.atomic.AtomicInteger(0)
-    val delivered = new java.util.concurrent.atomic.AtomicInteger(0)
-    val handle   = mongo.watchChanges(_ => { delivered.incrementAndGet(); () }, _ => (), () => { lostTrack.incrementAndGet(); () })
-    try {
-      // Dropping the collection ends only a cursor that is open: write until it delivers first.
-      awaitStreamLive("a warm-up row", poll(SpecTimeouts.Pace.toMillis)(delivered.get() > 0))(pass =>
-        Await.result(raw.insertOne(UserState(s"__integration-test-warm-$pass", Set.empty, Set.empty, Now)).toFuture(), SpecTimeouts.Io))
-      Await.result(raw.drop().toFuture(), SpecTimeouts.Io) // the cursor's terminal end
-      eventually(Option(pendingReopen.get()) should not be empty)
-      val atDeath = lostTrack.get()
-
-      pendingReopen.get()() // the reopen fires
-      eventually(lostTrack.get() should be > atDeath)
-    } finally handle.foreach(_.close())
-    }
-
 }

@@ -41,7 +41,7 @@ object UserState {
     UserState(userId, Set.empty, Set.empty, now)
 
   /** The `updatedAt` a write stamps over a row last stamped `previous` — the
-   *  source of `Last-Modified` / `UserChangeTimeCache`, so it must move even when two
+   *  source of `Last-Modified`, so it must move even when two
    *  writes land in the same millisecond (Mongo stores `updatedAt` as a
    *  millisecond BSON date): now, or one millisecond past `previous`, whichever
    *  is later. `MongoUserStateRepository` computes the same rule server-side,
