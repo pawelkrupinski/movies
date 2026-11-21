@@ -463,6 +463,18 @@ weekly for the owner beside the coupling exemptions (`scripts/ci/fix_replay_exem
 exemptions workflow). A red outside the gate whose `.github/red-workflows.tsv` row names a `replay` keeps its own
 `Fix-Replay: <that command> base=FAIL head=PASS`, and a missing one only warns.
 
+**An unproven fix keeps its fixer; diagnostics say so** (the owner, 2026-11-21: Order independence #94's
+`Fixes-Red: 94` commit only added diagnostics, and agentctl stood its fixer down for a day). For a red outside the gate,
+a `Fixes-Red:` without a `Fix-Replay:` agentctl ran (base=FAIL head=PASS) lands as UNPROVEN: the red stays with its
+fixer (`fix-unproven`) until its verification run decides it -- green clears it, the same failure hands it back to the
+same fixer. A commit that only collects evidence (more logging, a job summary, a diagnostic step) says
+`Diagnoses-Red: <run>` instead: it never counts as the fix, and once it lands agentctl dispatches the red's workflow
+to collect the evidence and tells the fixer the run's verdict. The pre-push trailer lint (`scripts/ci/trailers.py`)
+suggests it for a `Fixes-Red:` commit touching only CI or report plumbing. A landed fix's verification is dispatched
+as it lands unless `.github/red-workflows.tsv` says `verify_dispatch no` (a workflow over ~60 runner-minutes a run);
+one whose verification misses its deadline goes back to a fixer, escalated (`~/bin/AGENTCTL.md`, VERIFY PROMPTLY BY
+DEFAULT).
+
 **A fix matches the red it fixes, not one run number** (2026-11-05: a fix naming Main #2164, then #2172, sat WAITING
 while each push landing meanwhile started a new run failing the same way, #2173, #2174; main stayed red ~5.5 h until it
 was re-trailered by hand, twice). The red EPISODE is the gating workflow's failed runs on main since its last green. A
@@ -519,8 +531,8 @@ reports. Its first green run proves it: `scripts/ci/gating_checks.py prove --wor
   and `git push --no-verify` exist in the hook for a person; agents never use them, on any commit or push, `measure/`
   branches included. `agentctl land` refuses to run with `PREPUSH_SKIP` set and asserts no `--no-verify` in its push
   argv. A missing tool is fixed, not skipped.
-- **`Fixes-Red:` only for a real fix** of the named run, and for a gate red with its `Fix-Replay:` (stage 5). A
-  tools-only commit needs none.
+- **`Fixes-Red:` only for a real fix** of the named run, and for a gate red with its `Fix-Replay:` (stage 5); a
+  commit that only collects evidence says `Diagnoses-Red:` (stage 5). A tools-only commit needs none.
 - **Never rerun to green.** A red is investigated to its cause (CLAUDE.md, "Investigate every red"); a test that
   passes on a second run is flaky and gets fixed.
 - **Rebase onto current `origin/main` before any local check** (`land` does); never `reset --soft` onto a moved main.

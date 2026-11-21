@@ -16,8 +16,14 @@ its own, as if it were pushed alone: every commit whose step grows the file must
 per-commit measure: each change records its rows in its own commit (agentctl folds a regenerated baseline into the
 member's commit), so no per-commit sbt run is needed.
 
+DIAGNOSTICS ARE NO FIX (agentctl, 2026-11-21: a853b2ee4 said `Fixes-Red: 94` and only added diagnostics to Order
+independence; agentctl took it for the red's fix, released the fixer, and nobody worked the red for a day): a commit
+that only collects evidence says `Diagnoses-Red: <run>`, which never moves the red to fix-pending. `lint` suggests it for
+a `Fixes-Red:` commit touching only CI or report plumbing (`plumbing_only`).
+
   scripts/ci/trailers.py lint --range A..B [--range ...]   warn (stderr) about every misplaced known-trailer line of
-                                                           the pushed commits; always exits 0 (pre-push runs it)"""
+                                                           the pushed commits, and every Fixes-Red commit of plumbing
+                                                           alone; always exits 0 (pre-push runs it)"""
 
 from __future__ import annotations
 
@@ -28,7 +34,9 @@ from typing import Callable, Iterable, List, NamedTuple, Optional
 
 # Every trailer key a ratchet, commit rule or the red gate reads.
 KNOWN_KEYS = ("Coupling", "Complexity", "Duplication", "Length", "Pure-Move", "Fixes-Red", "Fix-Replay",
-              "Identity-Design", "Drift-Harness-Refactor")
+              "Diagnoses-Red", "Identity-Design", "Drift-Harness-Refactor")
+# CI and report plumbing: what a commit collecting a red's evidence touches, and a fix seldom does alone
+PLUMBING = (".github/", "scripts/run-script-tests", "scripts/ci/report", "scripts/ci/job-summary", "docs/")
 KEY_LINE = re.compile(r"^(\s*)(" + "|".join(map(re.escape, KNOWN_KEYS)) + r")\s*:(.*)$", re.IGNORECASE)
 CANONICAL = {k.lower(): k for k in KNOWN_KEYS}
 
@@ -118,6 +126,25 @@ def unjustified_rises(rng: str, path: str, key: str, rose: Callable[[str, str], 
     return refused
 
 
+def plumbing_only(paths: Iterable[str]) -> bool:
+    """Every path is CI or report plumbing (PLUMBING), or Markdown."""
+    paths = list(paths)
+    return bool(paths) and all(p.startswith(PLUMBING) or p.endswith(".md") for p in paths)
+
+
+def diagnoses_hint(sha: str) -> Optional[str]:
+    """The suggestion for a `Fixes-Red:` commit of plumbing alone (DIAGNOSTICS ARE NO FIX), or None."""
+    message = message_of(sha)
+    if not any(k == "fixes-red" for k, _v in parsed(message)):
+        return None
+    paths = git("diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha).split()
+    if not plumbing_only(paths):
+        return None
+    return ("it says `Fixes-Red:` but touches only CI or report plumbing (" + ", ".join(paths[:3])
+            + (", ..." if len(paths) > 3 else "") + "): if it only collects evidence, say `Diagnoses-Red: <run>` "
+            "instead -- a Fixes-Red moves the red to fix-pending and stands its fixer down")
+
+
 def main(argv: List[str]) -> int:
     usage = "usage: trailers.py lint --range A..B [--range ...]"
     if not argv or argv[0] != "lint" or len(argv) < 3 or len(argv[1:]) % 2 or any(a != "--range" for a in argv[1::2]):
@@ -128,6 +155,9 @@ def main(argv: List[str]) -> int:
             for sha in git("rev-list", "--reverse", rng).split():
                 for m in misplaced(message_of(sha)):
                     print(f"trailers: {sha[:9]}: {explain(m)}", file=sys.stderr)
+                hint = diagnoses_hint(sha)
+                if hint:
+                    print(f"trailers: {sha[:9]}: {hint}", file=sys.stderr)
     except subprocess.CalledProcessError as e:
         print(f"trailers: could not read the range: {(e.stderr or '').strip() or e}", file=sys.stderr)
     return 0

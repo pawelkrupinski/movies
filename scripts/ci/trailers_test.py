@@ -105,6 +105,22 @@ class RangeTest(unittest.TestCase):
         head = self.commit({"a.txt": "b\n"}, f"raise it\n\nComplexity: the one state machine\n{CO}")
         self.assertEqual((0, ""), self.lint(f"{self.base}..{head}"))
 
+    def test_lint_suggests_diagnoses_red_for_a_fixes_red_commit_of_plumbing_alone(self):
+        """2026-11-21, a853b2ee4: `Fixes-Red: 94` on diagnostics only; agentctl stood the red's fixer down for it."""
+        os.makedirs(os.path.join(self.repo, ".github/workflows"))
+        head = self.commit({".github/workflows/o.yml": "log more\n"}, f"log the seed\n\nFixes-Red: 94\n{CO}")
+        rc, out = self.lint(f"{self.base}..{head}")
+        self.assertEqual(0, rc, out)
+        self.assertIn(f"{head[:9]}: it says `Fixes-Red:` but touches only CI or report plumbing (.github/workflows/o.yml)"
+                      ": if it only collects evidence, say `Diagnoses-Red: <run>` instead", out)
+
+    def test_lint_says_nothing_of_a_fixes_red_commit_touching_code_or_a_diagnoses_red_one(self):
+        os.makedirs(os.path.join(self.repo, ".github"))
+        fix = self.commit({"a.txt": "fixed\n", ".github/o.yml": "x\n"}, f"fix it\n\nFixes-Red: 94\n{CO}")
+        diag = self.commit({".github/o.yml": "y\n"}, f"log it\n\nDiagnoses-Red: 94\n{CO}")
+        self.assertEqual((0, ""), self.lint(f"{self.base}..{diag}"))
+        self.assertTrue(fix)
+
     def test_notes_name_only_commits_changing_the_path(self):
         os.chdir(self.repo)
         try:
