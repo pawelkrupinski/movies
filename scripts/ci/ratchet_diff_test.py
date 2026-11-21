@@ -25,6 +25,7 @@ JS = "test/resources/js-quality-baseline.tsv"
 JS_LIMITS = "limit\tcognitive\t10\nlimit\tdistance\t0.2\n"
 OLD_SRC = "web/src/main/scala/services/Old.scala"
 NEW_SRC = "web/src/main/scala/services/moved/Old.scala"
+UNTOUCHED_SRC = "web/src/main/scala/services/Untouched.scala"
 SOURCE = "".join(f"  def line{i}(x: Int): Int = x * {i} + {i * i} // a body git can follow\n" for i in range(30))
 
 
@@ -43,12 +44,13 @@ BASE_FILES = {
     DUPLICATION: "limit\tcopies\t0\n",
     COUPLING: coupling("fanout\tservices.web.Hub\t20", "fanout\tservices.web.Shrunk\t15", "distance\tservices.web\t30"),
     OLD_SRC: "package services\n\nobject Old {\n" + SOURCE + "}\n",
+    UNTOUCHED_SRC: "package services\n\nobject Untouched {\n  val table: Seq[Int] = Seq(1)\n}\n",
     JS: JS_LIMITS + "cognitive\tweb/src/main/assets/js/a.js:render\t15\ndistance\tinfra/version-dashboard/src\t0.85\n",
 }
 HEAD_FILES = {
     COMPLEXITY: complexity(f"cognitive\t{NEW_SRC}:Old.run\t30", "cognitive\tweb/src/main/scala/A.scala:A.fall\t18",
                            "inner-defs\tweb/src/main/scala/B.scala:B.fresh\t3"),
-    LENGTH: BASE_FILES[LENGTH],
+    LENGTH: BASE_FILES[LENGTH] + f"method-lines\t{UNTOUCHED_SRC}:Untouched.table\t70\n",
     COUPLING: coupling("fanout\tservices.movies.Hub\t20", "fanout\tservices.web.Shrunk\t12", "distance\tservices.web\t31",
                        "cycle-edge\tservices.a->services.b\t2"),
     OLD_SRC: None,
@@ -100,6 +102,8 @@ class RatchetDiffTest(unittest.TestCase):
         self.assertEqual(["25", "18", "fell"], rows[("cognitive", "web/src/main/scala/A.scala:A.fall")])
         self.assertEqual(["14", "-", "removed (within the limit)"], rows[("cyclomatic", "web/src/main/scala/A.scala:A.gone")])
         self.assertEqual(["-", "3", "new"], rows[("inner-defs", "web/src/main/scala/B.scala:B.fresh")])
+        self.assertEqual(["-", "70", "measured"], rows[("method-lines", f"{UNTOUCHED_SRC}:Untouched.table")],
+                         "a new row of a source the range left unchanged was newly measured, not newly written")
         self.assertEqual(["30", "30", "moved"], rows[("cognitive", f"{OLD_SRC}:Old.run => {NEW_SRC}:Old.run")])
         self.assertEqual(["20", "20", "moved"], rows[("fanout", "services.web.Hub => services.movies.Hub")])
         self.assertEqual(["15", "12", "fell"], rows[("fanout", "services.web.Shrunk")])
@@ -121,7 +125,8 @@ class RatchetDiffTest(unittest.TestCase):
         out = self.run_tool("--head", self.head)
         self.assertIn("| metric | row | before | after | change |", out)
         self.assertIn("| fanout | `services.web.Shrunk` | 15 | 12 | fell |", out)
-        self.assertIn("| cognitive | 15 | 2 -> 2 | 55 -> 48 | 1 | 0 | 0 | 0 | 1 | 2 -> 2 |", out)
+        self.assertIn("| method-lines | 50 | 1 -> 2 | 60 -> 130 | 0 | 0 | 0 | 1 | 0 | 0 | 1 -> 2 |", out)
+        self.assertIn("| cognitive | 15 | 2 -> 2 | 55 -> 48 | 1 | 0 | 0 | 0 | 0 | 1 | 2 -> 2 |", out)
 
     def test_measured_rows_show_a_fall_the_baselines_never_recorded(self):
         measured = os.path.join(self.dir.name, "coupling-rows.tsv")
