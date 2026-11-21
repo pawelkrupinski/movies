@@ -209,9 +209,12 @@ def violations(current: Rows, baseline: Rows, ranks: Dict[str, int] = None, edge
 
 
 def moved(key: str, value: int, old: Dict[str, int], new: Dict[str, int]) -> bool:
-    """Whether `key` is a frozen row that moved: a row of the same simple name, at or above `value`, gone from `new`."""
+    """Whether `key` is a frozen row that moved: a row of the same simple name, at or above `value`, gone from `new` --
+    and no more rows of that simple name new in `new` than gone from it: one row gone to two is no move."""
     simple = key.rsplit(".", 1)[-1]
-    return any(k.rsplit(".", 1)[-1] == simple and k not in new and v >= value for k, v in old.items())
+    gone = [v for k, v in old.items() if k.rsplit(".", 1)[-1] == simple and k not in new]
+    arrived = [k for k in new if k.rsplit(".", 1)[-1] == simple and k not in old]
+    return any(v >= value for v in gone) and len(arrived) <= len(gone)
 
 
 # scripts/pure-move-check's code; COUPLING_PURE_MOVE_CHECK names it for a copy of this tool elsewhere (the mutation test's)

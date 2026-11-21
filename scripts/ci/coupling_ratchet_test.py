@@ -196,6 +196,10 @@ class CouplingRatchetTest(RatchetHarness):
         self.assert_passes(rows("fanout\tservices.corpus.MovieService\t35", drop=("fanout",)))
         self.assert_fails(rows("fanout\tservices.corpus.MovieService\t36", drop=("fanout",)), "past the limit 9")
 
+    def test_a_frozen_class_that_moved_keeps_its_row_once_not_for_two_new_classes(self):
+        self.assert_fails(rows("fanout\tservices.corpus.MovieService\t30", "fanout\tservices.titles.MovieService\t30",
+                               drop=("fanout",)), "past the limit 9")
+
     def test_update_never_admits_a_class_past_the_limit_whatever_the_trailer(self):
         grown = rows("fanout\tworker.Wiring\t10")
         head = self.commit({BASELINE: grown}, "record it\n\nCoupling: it is only one more")
