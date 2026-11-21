@@ -335,7 +335,7 @@ class StampCarryTest(unittest.TestCase):
         self.repo.write(NEW_FOO_PATH, self.repo.read(NEW_FOO_PATH).replace("value * 2", "value * 3"))
         return self.repo.commit("change Foo")
 
-    def test_auto_carries_a_rebased_change_by_the_what_if_taken_before_the_rebase(self):
+    def test_auto_carries_a_rebased_change_by_the_what_if_taken_before_the_rebase_as_the_pushed_commits(self):
         self.repo.git("checkout", "-q", "-b", "lane")
         before_rebase = self.change_foo()
         self.record_what_if(before_rebase, self.base)                  # the lane's what-if, on its own base
@@ -348,11 +348,44 @@ class StampCarryTest(unittest.TestCase):
         self.assertEqual(0, code, out)
         rows = self.table_rows()
         self.assertEqual(["agreement-rules", "identity-rules"], sorted(r[0] for r in rows), out)
-        self.assertEqual({("what-if", self.base, before_rebase)}, {(r[3], r[4], r[5]) for r in rows})
+        # the rows cite the PUSHED commits, the rebase's: ci-runner has no pre-rebase lane commit to rebuild a stamp of
+        self.assertEqual({("what-if", main, head)}, {(r[3], r[4], r[5]) for r in rows})
         self.assertEqual(fake_stamp(self.repo, head, "identity-rules"), next(r[1] for r in rows if r[0] == "identity-rules"))
         committed = self.repo.git("rev-parse", "HEAD").strip()
         # the carry commit holds the record it stands on: ci-runner, with no what-if cache, proves it too
         self.assertEqual(0, self.run_tool("verify", f"{head}..{committed}", cache=os.path.join(self.tmp.name, "none"))[0])
+
+    def rebase_lane_change(self) -> tuple[str, str, str]:
+        """A change made and proposed on a lane, then rebased onto a main that moved outside the code (agentctl land's
+        rebase): (the lane's change, main, the rebased change)."""
+        self.repo.git("checkout", "-q", "-b", "lane")
+        lane = self.change_foo()
+        self.record_what_if(lane, self.base)
+        self.assertEqual(0, self.run_tool("propose", f"{self.base}..{lane}", "--proof", "what-if")[0])
+        self.repo.commit("carry the identity stamps")                    # the rows, committed on the lane
+        self.repo.git("checkout", "-q", "-")
+        self.repo.write("docs/notes.md", "main moved, outside the code\n")
+        main = self.repo.commit("main moves on")
+        self.repo.git("cherry-pick", lane, f"{lane}..lane")               # the rebase: the change, then its rows
+        return lane, main, self.repo.git("rev-parse", "HEAD").strip()
+
+    def test_rows_written_before_a_rebase_are_refused_where_the_lane_commits_are_not_pushed(self):
+        lane, main, pushed = self.rebase_lane_change()
+        code, out = self.run_tool("verify", f"{main}..{pushed}", cache=os.path.join(self.tmp.name, "none"))
+        self.assertEqual(1, code, out)                                    # ci-runner refused it; the laptop passed it
+        self.assertIn(f"{lane[:12]}, which is not in the pushed history", out)
+
+    def test_a_committed_verdict_of_another_diff_is_refused(self):
+        head = self.change_foo()
+        self.record_what_if(head, self.base)
+        self.assertEqual(0, self.run_tool("propose", f"{self.base}..{head}", "--proof", "what-if")[0])
+        verdict = f"test/resources/identity-what-if-verdicts/{head}-{self.base}.tsv"
+        lines = self.repo.read(verdict).splitlines()
+        self.repo.write(verdict, "\n".join(l if not l.startswith("patch-id\t") else "patch-id\t" + "0" * 40 for l in lines) + "\n")
+        before, after = self.land_rows()
+        code, out = self.run_tool("verify", f"{before}..{after}", cache=os.path.join(self.tmp.name, "none"))
+        self.assertEqual(1, code, out)
+        self.assertIn("is of another diff", out)
 
     def test_auto_leaves_a_change_with_no_code_alone(self):
         self.repo.write("docs/notes.md", "words\n")

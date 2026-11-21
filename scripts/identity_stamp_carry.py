@@ -129,6 +129,14 @@ def cached_verdict(head: str, base: str) -> str:
         return f.read()
 
 
+def diff_id(base: str, head: str) -> str:
+    """The stable patch-id of base..head's whole diff (`git patch-id --stable`): the same for a change rebased onto a main
+    that moved elsewhere, another for any other diff; "" for an empty one."""
+    diff = git("diff", "--binary", base, head)
+    done = subprocess.run(["git", "patch-id", "--stable"], input=diff, capture_output=True, text=True)
+    return done.stdout.split()[0] if done.stdout.strip() else ""
+
+
 def verdict_path(head: str, base: str) -> str:
     return f"{VERDICTS}/{head}-{base}.tsv"
 
@@ -173,6 +181,11 @@ def covered(proof: str, base: str, head: str, at: str | None = None) -> tuple[se
     if blind:
         why.append(f"a what-if sees today's corpus only, and the range changes what it cannot vouch for: {' '.join(blind)}")
     verdicts = what_if_verdicts(head, base, at)
+    if at is not None and verdicts:
+        recorded = verdicts.get("patch-id", ["", ""])[1]
+        if recorded != diff_id(base, head):
+            why.append(f"the committed what-if verdict is of another diff (patch-id {recorded[:12] or 'none'}, not "
+                       f"{base[:12]}..{head[:12]}'s {diff_id(base, head)[:12]})")
     final = True
     for cc in COUNTRIES:
         v = verdicts.get(cc)
@@ -232,8 +245,10 @@ def carry_rows(proof: str, base: str, head: str, carried: set[str], before: dict
     return new
 
 
-def write_rows(table: str, new: list[Row]) -> list[str]:
-    """Appends the rows to `table`, and copies each what-if row's record beside it (VERDICTS): the files to commit."""
+def write_rows(table: str, new: list[Row], ran: dict[tuple[str, str], tuple[str, str]] | None = None) -> list[str]:
+    """Appends the rows to `table`, and copies each what-if row's record beside it (VERDICTS), bound to the row's diff by
+    its patch-id: the files to commit. `ran` maps a row's (base, head) to the (base, head) the what-if ran under, when a
+    rebase moved them (auto)."""
     if not new:
         return []
     with open(table, "a") as f:
@@ -242,8 +257,10 @@ def write_rows(table: str, new: list[Row]) -> list[str]:
     for base, head in sorted({(r.base, r.head) for r in new if r.proof == "what-if"}):
         path = verdict_path(head, base)
         os.makedirs(os.path.dirname(path), exist_ok=True)
+        ran_base, ran_head = (ran or {}).get((base, head), (base, head))
         with open(path, "w") as f:
-            f.write(cached_verdict(head, base))
+            f.write(cached_verdict(ran_head, ran_base))
+            f.write(f"patch-id\t{diff_id(base, head)}\t{ran_head}\t{ran_base}\n")
         written.append(path)
     print(f"{len(new)} row(s) added to {table}: commit it with {', '.join(written[1:]) or 'nothing else'}"
           " (the hook's stampcarry check proves each again)")
@@ -297,7 +314,9 @@ def auto(rng: str, table: str, commit: bool) -> int:
     """agentctl land's step after its rebase (scripts/land-before-queue): carry what the pushed range proves, by itself.
     The whole range by a recorded whole what-if of its very diff, else commit by commit by pure-move-check. One commit
     that may move a stamp and proves nothing bumps the head's stamps whatever the rest prove -- the head is what deploys,
-    and its stamp is its chain's end -- so then nothing is built and no row written."""
+    and its stamp is its chain's end -- so then nothing is built and no row written. A what-if taken before the land's
+    rebase is written for the PUSHED commits (the same diff, the stamps alike on both sides), its record bound to that
+    diff's patch-id: `verify` refuses a row citing a commit the push does not hold, and a record of another diff."""
     base, head = (sha_of(r) for r in rng.split("..", 1))
     commits = git("rev-list", "--reverse", "--first-parent", f"{base}..{head}").split()
     moving = [c for c in commits if may_move(c)]
@@ -321,18 +340,25 @@ def auto(rng: str, table: str, commit: bool) -> int:
                       "nothing (no pure move, no whole what-if of the range): the push bumps its stamps")
                 return 0
             steps.append(("pure-move", parent, c, carried))
-    needed = sorted({sha for _, b, h, _ in steps for sha in (b, h)} | ({head} if steps[0][0] == "what-if" else set()))
+    needed = sorted({sha for _, b, h, _ in steps for sha in (b, h)} | ({base, head} if steps[0][0] == "what-if" else set()))
     with ThreadPoolExecutor(max_workers=3) as pool:
         stamps = dict(zip(needed, pool.map(stamps_of, needed)))
     new: list[Row] = []
+    ran: dict[tuple[str, str], tuple[str, str]] = {}
     for proof, b, h, carried in steps:
         if proof == "what-if":
-            stale = {s for s in carried if stamps[head][s] != stamps[h][s]}
+            # the what-if ran on the lane's commits (b..h), before the rebase; the rows cite the PUSHED ones (base..head,
+            # the same diff: range_verdict), which every checker has -- for a stamp whose digests the rebase kept on both
+            # sides, so the carry proven of b..h is the carry of base..head
+            stale = {s for s in carried if stamps[head][s] != stamps[h][s] or stamps[base][s] != stamps[b][s]}
             for s in sorted(stale):
-                print(f"{s}: the head's code is not the what-if's ({stamps[head][s][:12]}, not {stamps[h][s][:12]}): it bumps")
-            carried = carried - stale
-        new += carry_rows(proof, b, h, carried, stamps[b], stamps[h], table)
-    written = write_rows(table, new)
+                print(f"{s}: the pushed code is not the what-if's (head {stamps[head][s][:12]} / {stamps[h][s][:12]}, base "
+                      f"{stamps[base][s][:12]} / {stamps[b][s][:12]}): it bumps")
+            ran[(base, head)] = (b, h)
+            new += carry_rows(proof, base, head, carried - stale, stamps[base], stamps[head], table)
+        else:
+            new += carry_rows(proof, b, h, carried, stamps[b], stamps[h], table)
+    written = write_rows(table, new, ran)
     if new and commit:
         git("add", *written)
         git("-c", "commit.gpgsign=false", "commit", "-q", "-m", f"Carry the identity stamps over {base[:10]}..{head[:10]}: {len(new)} proven row(s)\n\n"
@@ -355,6 +381,10 @@ def verify(rng: str) -> int:
         label = f"{r.stamp} {r.digest[:12]} ({r.proof} {r.base[:12]}..{r.head[:12]})"
         if r.stamp not in STAMPS:
             refusals.append(f"{label}: no stamp {r.stamp}")
+            continue
+        if subprocess.run(["git", "merge-base", "--is-ancestor", r.head, new], capture_output=True).returncode != 0:
+            refusals.append(f"{label}: it cites {r.head[:12]}, which is not in the pushed history (rows written before a "
+                            f"rebase: scripts/identity-stamp-carry auto <base>..<head> writes them for the rebased commits)")
             continue
         try:
             key = (r.proof, r.base, r.head)
