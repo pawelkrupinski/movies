@@ -171,18 +171,27 @@ private[identity] final class CoalescedTraceWrites(write: (Set[String], Iterator
   }
   private var closed = false
 
-  private val writer = Thread.ofPlatform().daemon().name("identity-traces").start(() =>
-    try while (true) {
-      val (gone, builds) = synchronized {
-        while (!closed && removed.isEmpty && pending.isEmpty) wait()
-        if (closed) throw new InterruptedException("closed")
-        val taken = (removed.toSet, pending.values.toList)
-        removed.clear(); pending.clear(); writing = true
-        taken
-      }
-      try write(gone, builds.iterator.flatMap(_())) catch { case scala.util.control.NonFatal(e) => failed(gone, e) }
-      finally synchronized { writing = false; notifyAll() }
-    } catch { case _: InterruptedException => () })
+  private val writer = Thread.ofPlatform().daemon().name("identity-traces").start(() => writeUntilClosed())
+
+  /** The writer thread's life: everything handed over written in turn, until [[close]] interrupts it. */
+  private def writeUntilClosed(): Unit =
+    try while (true) writeNext() catch { case _: InterruptedException => () }
+
+  /** Waits for a hand-over, then writes everything that waits as one: a failed write is reported, never thrown. */
+  private def writeNext(): Unit = {
+    val (gone, builds) = takeWaiting()
+    try write(gone, builds.iterator.flatMap(_())) catch { case scala.util.control.NonFatal(e) => failed(gone, e) }
+    finally synchronized { writing = false; notifyAll() }
+  }
+
+  /** What waits -- the removals and every pending family's build -- taken at once, marked as writing. */
+  private def takeWaiting(): (Set[String], List[() => IterableOnce[ListingTrace]]) = synchronized {
+    while (!closed && removed.isEmpty && pending.isEmpty) wait()
+    if (closed) throw new InterruptedException("closed")
+    val taken = (removed.toSet, pending.values.toList)
+    removed.clear(); pending.clear(); writing = true
+    taken
+  }
 }
 
 object MongoIdentityTraceStore {
