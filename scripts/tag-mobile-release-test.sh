@@ -67,4 +67,13 @@ scratch_git "$REPO" commit -q -m second
 bash "$REPO/scripts/tag-mobile-release.sh" ios 3.0.0 "$first" >/dev/null 2>&1
 check "tags the given sha argument, not HEAD" "$first" "$(scratch_git "$REPO" rev-parse mobile-ios-3.0.0)"
 
+# ── a git configured to sign every tag (tag.gpgsign, the owner's ~/.gitconfig) ──
+# A signed tag is an annotated one and needs a message; with none, `git tag` fails
+# ("no tag message?"), and 2.0.14 and 2.0.19 shipped untagged. The bookkeeping tag
+# must not depend on the machine's signing setup.
+# scratch-git.sh pins tag.gpgsign=false through GIT_CONFIG_VALUE_3; this one run turns it on.
+GIT_CONFIG_VALUE_3=true bash "$REPO/scripts/tag-mobile-release.sh" ios 4.0.0 >/dev/null 2>&1
+check "tags even where git signs every tag by default" "mobile-ios-4.0.0" \
+  "$(scratch_git "$REPO" tag -l mobile-ios-4.0.0)"
+
 spec_summary

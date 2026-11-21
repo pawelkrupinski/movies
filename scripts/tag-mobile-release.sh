@@ -25,7 +25,10 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$repo_root/scripts/log.sh"
 
 tag="mobile-$platform-$version"
-if ! git -C "$repo_root" tag -f "$tag" "$sha" >/dev/null 2>&1; then
+# --no-sign: a machine with tag.gpgsign set (the owner's ~/.gitconfig) turns every `git tag` into a signed
+# annotated tag that needs a message, so a bare `tag -f` failed there ("no tag message?") and 2.0.14 and 2.0.19
+# shipped untagged. This is a lightweight bookkeeping tag; it must not depend on the machine's signing setup.
+if ! git -C "$repo_root" tag --no-sign -f "$tag" "$sha" >/dev/null 2>&1; then
   warn "could not create tag $tag locally — not pushing"
   exit 0
 fi
