@@ -166,15 +166,7 @@ object PopulationMonotonicity {
     // a family is walked only when it starts inside the budget; none when it does not
     def walkedInTime(members: Seq[Listing]): Option[(Option[FamilyFlips], Int)] =
       Option.when(started.seconds < budgetSeconds)(new FamilyWalk(members, subsets, whole).walked(nodeOf, count, steps))
-    val walks: Seq[Option[(Option[FamilyFlips], Int)]] =
-      if (threads <= 1 || fits.sizeIs < 2) fits.map { case (_, members) => walkedInTime(members) }
-      else {
-        // the caller's switched-off rules, on every thread the walk runs on (RuleAblation holds per thread)
-        val off  = RuleAblation.switchedOff
-        val pool = tools.DaemonExecutors.boundedEC("population-walk", threads)
-        try fits.map { case (_, members) => pool.submit(() => RuleAblation.disabling(off)(walkedInTime(members))) }.map(_.get)
-        finally { val _ = pool.shutdownNow() }
-      }
+    val walks     = Regions.inOrder(fits, threads) { case (_, members) => walkedInTime(members) }
     val walked    = walks.count(_.isDefined)
     val apart     = walks.flatten.map(_._2).sum
     val flipped   = walks.flatten.flatMap(_._1)
