@@ -29,11 +29,20 @@ class StoreWriteFailureLoggingSpec extends AnyFlatSpec with Matchers with Before
 
   "MongoRatingCadenceStore.record" should "warn when the cadence could not be written" in {
     val store  = new MongoRatingCadenceStore(database)
-    val logged = warnings(classOf[MongoRatingCadenceStore].getName) {
-      store.record("imdb|tt0000001", Some("7.1"), java.time.Instant.parse("2026-11-21T00:00:00Z"))
-      // Fire-and-forget: the failure arrives on the driver's thread once server selection gives up (200 ms).
-      Thread.sleep(_root_.tools.SpecTimeouts.quiet(scala.concurrent.duration.Duration(2, "seconds")).toMillis)
+    // Fire-and-forget: the failure is logged on the driver's thread once server selection gives up, after `record`
+    // returned -- so this listens on the logger for as long as that takes.
+    val logger = _root_.tools.LogCapture.logbackLogger(classOf[MongoRatingCadenceStore].getName)
+    val heard  = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    val ear    = new ch.qos.logback.core.AppenderBase[ch.qos.logback.classic.spi.ILoggingEvent] {
+      override def append(event: ch.qos.logback.classic.spi.ILoggingEvent): Unit =
+        if (event.getLevel == ch.qos.logback.classic.Level.WARN) { heard.add(event.getFormattedMessage); () }
     }
-    logged.exists(_.contains("Rating-cadence write failed for imdb|tt0000001")) shouldBe true
+    ear.setContext(logger.getLoggerContext); ear.start(); logger.addAppender(ear)
+    try {
+      store.record("imdb|tt0000001", Some("7.1"), java.time.Instant.parse("2026-11-21T00:00:00Z"))
+      _root_.tools.Eventually.eventually(
+        heard.toArray.exists(_.toString.contains("Rating-cadence write failed for imdb|tt0000001")) shouldBe true,
+        timeoutMs = _root_.tools.SpecTimeouts.Io.toMillis)
+    } finally { logger.detachAppender(ear); ear.stop() }
   }
 }
