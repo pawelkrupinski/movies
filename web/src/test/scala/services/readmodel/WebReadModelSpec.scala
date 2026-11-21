@@ -180,6 +180,38 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.stop()
   }
 
+  // Two reloads at once (the /rehydrate button during a backstop reload) shared ONE slot for what
+  // the streams applied meanwhile: the first to finish cleared it, and the other then evicted a
+  // movie a stream had just applied, as absent from its older read.
+  "reload" should "keep what a stream applied during it when another reload ran meanwhile" in {
+    final class ActingOnFirstRead extends InMemoryReadModelRepository {
+      @volatile var duringFirstReload: Option[() => Unit] = None
+      override def findAllMovies(): Seq[ResolvedMovie] = {
+        val snapshot = super.findAllMovies()
+        duringFirstReload.foreach { act => duringFirstReload = None; act() }
+        snapshot
+      }
+    }
+    val repository = new ActingOnFirstRead
+    repository.upsertMovie(movie("belle|2021"))
+    val rm = TestReadModel.kept(repository, clock = _root_.tools.SpecClock.Pinned)
+    rm.start()
+    val second = new java.util.concurrent.atomic.AtomicReference[Thread]()
+    repository.duringFirstReload = Some { () =>
+      val other = new Thread(() => { rm.reload(); () })
+      second.set(other)
+      other.start()
+      other.join(1000)                              // runs to its end unless reloads take turns
+      repository.upsertMovie(movie("late|2026"))    // a stream applies it after this reload's read
+    }
+
+    rm.reload()
+    second.get.join(10000)
+
+    rm.movie("late|2026") shouldBe defined
+    rm.stop()
+  }
+
   // ── Backstop: cheap drift check, not an unconditional full reload ────────────
 
   private def started(repository: InMemoryReadModelRepository,

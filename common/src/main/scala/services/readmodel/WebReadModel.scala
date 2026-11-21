@@ -255,11 +255,16 @@ class WebReadModel(
    *  for a 101k corpus — the buffered read and its `groupBy` beside the live
    *  buckets, ~400 MB each, in a 1 GiB heap. What the stream keeps per row is its
    *  id, which the row already holds. */
-  def reload(): Int = {
+  def reload(): Int = reloads.synchronized {
     val during = new WebReadModel.Streamed
     streamedDuringReload.set(Some(during))
     try reloadAround(during) finally streamedDuringReload.set(None)
   }
+
+  // Reloads take turns: the slot below is ONE, so a second reload running beside the first (the
+  // /rehydrate button during a backstop reload) took it over, the first to finish cleared it, and
+  // the other then evicted what a stream applied after its read.
+  private val reloads = new Object
 
   // What the change streams applied while a reload runs: newer than the reload's read, so the reload
   // neither overwrites nor evicts it. Each applier records it BEFORE it writes, and the reload
