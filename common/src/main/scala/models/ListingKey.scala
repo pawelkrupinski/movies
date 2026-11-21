@@ -107,7 +107,7 @@ object ListingKey {
    *  directors (published) — the order of the tuple `(venue, kind, page, raw, year as text, directors joined by NUL)`,
    *  compared field by field rather than built per comparison: sorting a US projection's ~100k keys made two tuples,
    *  a year string and a joined string at every one of its ~2M comparisons. */
-  implicit val ordering: Ordering[ListingKey] = new Ordering[ListingKey] {
+  implicit object ordering extends Ordering[ListingKey] {
     def compare(a: ListingKey, b: ListingKey): Int = {
       val byVenue = a.venue.compareTo(b.venue)
       if (byVenue != 0) byVenue
