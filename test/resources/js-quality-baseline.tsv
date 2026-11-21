@@ -21,15 +21,6 @@ limit	cycle	0
 cognitive	infra/version-dashboard/src/mobile-release/version.ts:decideVersion	11
 cognitive	infra/version-dashboard/src/mobile/release-run.ts:start	19
 cognitive	infra/version-dashboard/src/mobile/view.ts:platformBlock	12
-cognitive	web/src/main/assets/js/i18n.js:applyLanguage	11
-cognitive	web/src/main/assets/js/shared/day-carousel.js:animateToDay	12
-cognitive	web/src/main/assets/js/shared/day-carousel.js:document.addEventListener('pointermove') callback	16
-cognitive	web/src/main/assets/js/shared/day-carousel.js:stepDate	11
-cognitive	web/src/main/assets/js/shared/filter-url.js:applyFiltersFromURL	36
-cognitive	web/src/main/assets/js/shared/filter-url.js:buildShareURL	15
-cognitive	web/src/main/assets/js/shared/hidden-films-sync.js:bootMergeFromServer	17
-cognitive	web/src/main/assets/js/shared/language-sync.js:reconcileLanguage	12
-cognitive	web/src/main/assets/js/shared/showings.js:foldShowings	36
 cyclomatic	infra/version-dashboard/src/mobile-release/ios.ts:poll() callback	13
 cyclomatic	infra/version-dashboard/src/mobile-release/ios.ts:syncPrivacyPolicyUrls	12
 cyclomatic	infra/version-dashboard/src/mobile/release-run.ts:poll	11
@@ -37,35 +28,11 @@ cyclomatic	infra/version-dashboard/src/mobile/release-run.ts:start	16
 cyclomatic	infra/version-dashboard/src/mobile/stores.ts:androidReleaseState	14
 cyclomatic	infra/version-dashboard/src/mobile/stores.ts:iosReleaseState	16
 cyclomatic	infra/version-dashboard/src/mobile/view.ts:platformBlock	16
-cyclomatic	web/src/main/assets/js/i18n.js:applyLanguage	11
-cyclomatic	web/src/main/assets/js/shared/day-carousel.js:animateToDay	11
-cyclomatic	web/src/main/assets/js/shared/day-carousel.js:document.addEventListener('pointermove') callback	11
-cyclomatic	web/src/main/assets/js/shared/day-carousel.js:stepDate	12
-cyclomatic	web/src/main/assets/js/shared/filter-url.js:applyFiltersFromURL	26
-cyclomatic	web/src/main/assets/js/shared/filter-url.js:buildShareURL	19
-cyclomatic	web/src/main/assets/js/shared/filters.js:filtersActive	11
-cyclomatic	web/src/main/assets/js/shared/hidden-films-sync.js:bootMergeFromServer	21
-cyclomatic	web/src/main/assets/js/shared/language-sync.js:reconcileLanguage	13
-cyclomatic	web/src/main/assets/js/shared/showings.js:foldShowings	16
-inner-defs	web/src/main/assets/js/debugTable.js:wireExpandableTable	3
 method-lines	infra/version-dashboard/src/exec.ts:anonymous	61
 method-lines	infra/version-dashboard/src/exec.ts:spawnExecutor	62
 method-lines	infra/version-dashboard/src/mobile/page.ts:createMobilePage	63
 method-lines	infra/version-dashboard/src/server.ts:main	81
-method-lines	web/src/main/assets/js/i18n.js:applyLanguage	57
-method-lines	web/src/main/assets/js/shared/cinemas.js:showAreaPicker	102
-method-lines	web/src/main/assets/js/shared/filter-url.js:applyFiltersFromURL	96
-method-lines	web/src/main/assets/js/shared/filter-url.js:buildShareURL	56
-method-lines	web/src/main/assets/js/shared/filters.js:buildRoomPanel	106
-method-lines	web/src/main/assets/js/shared/filters.js:cinemas.forEach() callback	57
-method-lines	web/src/main/assets/js/shared/hidden-films-sync.js:bootMergeFromServer	68
-method-lines	web/src/main/assets/js/shared/showings.js:foldShowings	56
-file-lines	web/src/main/assets/js/shared/day-carousel.js	578
-copies	web/src/main/assets/js/shared/filters.js	2
 fanout	web/src/main/assets/js/shared/boot.js	10
 distance	infra/version-dashboard/src	0.85
 distance	infra/version-dashboard/src/mobile	0.53
 cycle	infra/version-dashboard/src|infra/version-dashboard/src/mobile	2
-cycle	web/src/main/assets/js/shared/auth.js|web/src/main/assets/js/shared/overlays.js	2
-cycle	web/src/main/assets/js/shared/cinemas.js|web/src/main/assets/js/shared/filters.js|web/src/main/assets/js/shared/hidden-films-sync.js|web/src/main/assets/js/shared/hidden-films.js	4
-cycle	web/src/main/assets/js/shared/dates.js|web/src/main/assets/js/shared/day-carousel.js|web/src/main/assets/js/shared/search.js	3
