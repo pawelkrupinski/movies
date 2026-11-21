@@ -147,6 +147,8 @@ final case class MeasuredListing(title: String, rawTitle: Option[String] = None,
   private[identity] lazy val billedTitles: Seq[Seq[String]] =
     ownTitles.flatMap(t => Seq(t, BillingParse(t).formatless)).map(IdentityMeasures.yearlessTokens).distinct
   private[identity] lazy val billedWorks: Set[Seq[String]] = shapes.map(IdentityMeasures.yearlessTokens).toSet.filter(_.nonEmpty)
+  /** [[billedWorks]] that one of its [[billedTitles]] bills under a banner ([[StageRelays.banneredWorks]]), once per listing. */
+  private[identity] lazy val banneredWorks: Set[Seq[String]] = StageRelays.banneredWorks(this)
   /** Does the venue publish a FACT beside its title — a year (field, bracket or season), a
    *  running time, a director, a country, or an original title that is not its title again
    *  ([[IdentityMeasures.repeatsItsTitle]])? */
