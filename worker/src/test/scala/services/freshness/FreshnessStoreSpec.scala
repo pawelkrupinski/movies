@@ -180,4 +180,29 @@ class FreshnessStoreSpec extends AnyFlatSpec with Matchers {
     attempts shouldBe 4 // retried the whole budget, not a single fail-open attempt
     ready.future.isCompleted shouldBe true
   }
+
+  // The boot hydrate runs in the background while the worker already works: a merge's invalidate or a
+  // handler's markFresh can land before the hydrate's page reaches that key. The page holds the stamp
+  // as Mongo had it before that write, so putting it would bring an invalidated stamp back (the
+  // re-enrichment the merge asked for is skipped until the TTL) or roll a new stamp back to an old one.
+  "StampMirror" should "keep a stamp written or dropped during the hydrate over the older one the hydrate reads" in {
+    val mirror = new StampMirror
+    mirror.put("imdb|tmdb:1", t0.plusSeconds(60))
+    mirror.remove("imdb|tmdb:2")
+    mirror.hydrate("imdb|tmdb:1", t0)
+    mirror.hydrate("imdb|tmdb:2", t0)
+    mirror.hydrate("imdb|tmdb:3", t0)
+    mirror.get("imdb|tmdb:1") shouldBe Some(t0.plusSeconds(60))
+    mirror.get("imdb|tmdb:2") shouldBe None
+    mirror.get("imdb|tmdb:3") shouldBe Some(t0)
+  }
+
+  it should "stop tracking the worker's writes once the hydrate is done" in {
+    val mirror = new StampMirror
+    mirror.put("k", t0)
+    mirror.hydrated()
+    mirror.writtenDuringHydrate shouldBe 0
+    mirror.put("k", t0.plusSeconds(1))
+    mirror.writtenDuringHydrate shouldBe 0
+  }
 }

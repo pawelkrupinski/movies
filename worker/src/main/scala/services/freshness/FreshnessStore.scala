@@ -113,7 +113,7 @@ class MongoFreshnessStore(
   // The wait between failed scrape-phase hydrate attempts: the root's `sleep`.
   sleep:            FiniteDuration => Unit
 ) extends FreshnessStore with Logging {
-  private val mirror = new ConcurrentHashMap[String, Instant]()
+  private val mirror = new StampMirror
   // Relaxed `{w:1, j:false}` like the task queue: freshness stamps are a cache
   // (a lost write just means a redundant re-fetch later), so the journal/majority
   // wait per stamp is wasted cost on the shared-cpu Mongo. Reuse the queue's concern.
@@ -139,6 +139,7 @@ class MongoFreshnessStore(
       thread.setDaemon(true)
       thread.start()
     case None =>
+      mirror.hydrated()
       scrapeReady.trySuccess(())
       restReady.trySuccess(())
   }
@@ -148,10 +149,10 @@ class MongoFreshnessStore(
     case _                          => restReady.future
   }
 
-  override def lastFetchedAt(key: String): Option[Instant] = Option(mirror.get(key))
+  override def lastFetchedAt(key: String): Option[Instant] = mirror.get(key)
 
   override def retention: tools.StampedRows = {
-    val held = tools.StampedRows.inMap(mirror)(identity)
+    val held = tools.StampedRows.inMap(mirror.stamps)(identity)
     coll.fold(held)(c => tools.StampedRows.mirrored(tools.StampedRows.inMongo(c, "lastFetchedAt"), held))
   }
 
@@ -208,13 +209,14 @@ class MongoFreshnessStore(
       10.seconds
     )).recover { case exception => logger.warn(s"Freshness index create failed: ${exception.getMessage}") }
     val scrapeLabel = FreshnessKind.CinemaScrape.label
-    MongoFreshnessStore.hydrateInPhases(
+    try MongoFreshnessStore.hydrateInPhases(
       loadScrape  = () => hydrateInto(c, Filters.eq("kind", scrapeLabel), 15.seconds, "scrape"),
       scrapeReady = scrapeReady,
       loadRest    = () => { hydrateInto(c, Filters.ne("kind", scrapeLabel), 60.seconds, "enrichment"); () },
       restReady   = restReady,
       sleep       = sleep
     )
+    finally mirror.hydrated()
   }
 
   /** Load the stamps matching `filter` into the mirror. Returns true only if the
@@ -239,10 +241,43 @@ class MongoFreshnessStore(
         Await.result(c.find(paged).sort(Sorts.ascending("_id")).limit(limit).batchSize(tools.MongoReplies.Default).toFuture(), timeout)
       },
       onIncomplete   = exception => logger.warn(s"Freshness $label hydrate keyset scan failed: ${exception.getMessage}")
-    )(batch => batch.foreach(document => MongoFreshnessStore.stampOf(document).foreach { case (key, at) => mirror.put(key, at); count += 1 }))
+    )(batch => batch.foreach(document => MongoFreshnessStore.stampOf(document).foreach { case (key, at) => mirror.hydrate(key, at); count += 1 }))
     if (count > 0) logger.info(s"Hydrated $count $label freshness stamp(s) from Mongo.")
     complete.isComplete
   }
+}
+
+/** [[MongoFreshnessStore]]'s in-memory stamps, filled by the boot hydrate in the background while the
+ *  worker already writes them. A stamp the worker writes or drops during the hydrate is newer than the
+ *  Mongo page the hydrate reads, so the hydrate never overwrites it: a key a merge invalidated stays
+ *  stale, and a fresh stamp is not rolled back to the one Mongo held before it. */
+private[freshness] final class StampMirror {
+  val stamps = new ConcurrentHashMap[String, Instant]()
+  private val written = ConcurrentHashMap.newKeySet[String]()
+  @volatile private var hydrating = true
+
+  def get(key: String): Option[Instant] = Option(stamps.get(key))
+
+  def put(key: String, at: Instant): Unit = { noteWrite(key); stamps.put(key, at); () }
+
+  def remove(key: String): Unit = { noteWrite(key); stamps.remove(key); () }
+
+  /** A stamp read by the hydrate: kept unless the worker wrote or dropped `key` since the hydrate began.
+   *  The check and the put are one atomic step on the key, so a write racing it either lands after it
+   *  (and wins) or is seen by it. */
+  def hydrate(key: String, at: Instant): Unit = {
+    stamps.compute(key, (k, current) => if (written.contains(k)) current else at)
+    ()
+  }
+
+  /** The hydrate is over: the worker's writes need no tracking any more. */
+  def hydrated(): Unit = { hydrating = false; written.clear() }
+
+  /** How many keys the worker has written during the hydrate. */
+  def writtenDuringHydrate: Int = written.size
+
+  // Noted BEFORE the write, so a hydrate of the key that runs after it sees the note.
+  private def noteWrite(key: String): Unit = if (hydrating) { written.add(key); () }
 }
 
 object MongoFreshnessStore {
