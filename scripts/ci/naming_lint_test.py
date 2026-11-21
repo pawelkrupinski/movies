@@ -67,6 +67,13 @@ class NamingLintTest(unittest.TestCase):
         self.assertIn("services.sweeps: CacheSweep", out)
         self.assertIn("SweepCache", out)
 
+    def test_a_type_with_a_scala_3_modifier_is_a_top_level_name(self):
+        self.commit({f"{DIR}/CacheSweep.scala": scala("CacheSweep", kind="open class"),
+                     f"{DIR}/SweepCache.scala": scala("SweepCache", kind="transparent trait")}, "both")
+        rc, out = self.lint()
+        self.assertEqual(1, rc, out)
+        self.assertIn("services.sweeps: CacheSweep", out)
+
     def test_the_same_words_in_two_packages_pass(self):
         self.commit({f"{DIR}/CacheSweep.scala": scala("CacheSweep"),
                      "common/src/main/scala/tools/SweepCache.scala": scala("SweepCache", package="tools")}, "apart")
