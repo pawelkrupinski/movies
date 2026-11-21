@@ -4,7 +4,7 @@ import Foundation
 /// "All" and remembers the day it was on; clearing the search goes back there -- unless a day was
 /// picked while it ran (a tap, a swipe), which then stays. While the search shows every day, the
 /// days it brought in are drawn lighter (`outsideDays`). The web's twin is `onSearchInput` in
-/// `js/shared/search.js`, Android's `SearchDay.kt`.
+/// `js/shared/search-day.js`, Android's `SearchDay.kt`.
 struct SearchDay: Equatable, Sendable {
     /// The day the listing was on when the search began; nil while no search runs.
     private(set) var origin: DateFilter?
