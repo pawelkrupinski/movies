@@ -6,8 +6,9 @@ import org.scalatest.matchers.should.Matchers
 /**
  * THE DEVELOPMENT TOOLING'S OWN TESTS RUN OFF THE GATE (ci-failures-2026-10-30, recommendation 1): the script
  * self-tests and identity-slice's old-ref compile turned Main red 12 times in five days, each about time or process
- * lifecycle on a loaded host, none about a user-visible behaviour. They run in tool-self-tests.yml, on every push to
- * main touching what they test, and before landing in the pre-push hook's `scripttests` and `oldrefs` checks.
+ * lifecycle on a loaded host, none about a user-visible behaviour. The script self-tests run in tool-self-tests.yml, on
+ * every push to main touching what they test, and before landing in the pre-push hook's `scripttests` check. The
+ * old-ref compile is a row of Main since 2026-11-21 (the owner, "(5)"), and runs before landing no more (OldRefRowSpec).
  */
 class ToolSelfTestsOffGateSpec extends AnyFlatSpec with Matchers {
   private lazy val ci    = RepoFile.withoutComments(RepoFile.read(".github/workflows/ci.yml"))
@@ -26,30 +27,27 @@ class ToolSelfTestsOffGateSpec extends AnyFlatSpec with Matchers {
   private def covers(pattern: String, path: String): Boolean =
     path.matches(pattern.split("\\*\\*", -1).map(_.split("\\*", -1).map(java.util.regex.Pattern.quote).mkString("[^/]*")).mkString(".*"))
 
-  "Main's CI (ci.yml)" should "run neither the script self-tests nor the old-ref compile" in {
+  "Main's CI (ci.yml)" should "run neither the script self-tests nor the old-ref compile (main.yml's own row does)" in {
     RepoFile.jobs(ci).keySet should not contain "script-tests"
     ci should not include "scripts/run-script-tests"
     ci should not include "identity-slice-old-ref-test.sh"
   }
 
-  "tool-self-tests.yml" should "run every script self-test and the old-ref compile, on pushes to main" in {
+  "tool-self-tests.yml" should "run every script self-test, on pushes to main, and the old-ref compile no more" in {
     val jobs = RepoFile.jobs(tools)
     jobs("script-tests") should include("run: scripts/run-script-tests")
-    jobs("old-ref-compile") should include("bash scripts/identity-slice-old-ref-test.sh")
+    jobs.keySet should not contain "old-ref-compile"
+    tools should not include "identity-slice-old-ref-test.sh"
     RepoFile.block(tools, "on") should include("branches: [main]")
   }
 
   // the owner, 2026-11-18: 165 runner-minutes in two days ran again what the landing check had run on the same tree
-  it should "skip both for a tree a landing check passed, by its tree and the run's conclusion, never a branch name" in {
+  it should "skip them for a tree a landing check passed, by its tree and the run's conclusion, never a branch name" in {
     val jobs = RepoFile.jobs(tools)
     jobs("plan") should include("scripts/ci/landing_check_for_tree.py \"$(git rev-parse 'HEAD^{tree}')\"")
     jobs("plan") should include("actions: read")
     jobs("plan") should not include "github.ref"
-    for (job <- Seq("script-tests", "old-ref-compile")) {
-      jobs(job) should include("needs: [ plan ]")
-      jobs(job) should include("if: ${{ needs.plan.outputs.run == 'true'")
-    }
-    // ...or, for the old-ref compile, to save the old refs' dependencies GitHub lacks (OldRefDepsCacheSpec)
+    jobs("script-tests") should include("needs: [ plan ]")
     jobs("script-tests") should include("if: ${{ needs.plan.outputs.run == 'true' }}")
     RepoFile.read("scripts/ci/landing_check_for_tree.py") should include("head_commit.tree_id")
   }
@@ -61,19 +59,11 @@ class ToolSelfTestsOffGateSpec extends AnyFlatSpec with Matchers {
     roots.filterNot(r => paths.contains(s"$r/**")) shouldBe empty
   }
 
-  it should "run on a change to every file identity-slice and title-trace drop into an old ref" in {
-    val toolFiles = Seq("scripts/identity-slice", "scripts/title-trace").flatMap { tool =>
-      """(?s)TOOL_FILES=\(([^)]*)\)""".r.findFirstMatchIn(RepoFile.read(tool)).getOrElse(fail(s"$tool: no TOOL_FILES"))
-        .group(1).split("\\s+").filter(_.nonEmpty).toSeq
-    }
-    toolFiles should not be empty
-    toolFiles.filterNot(f => paths.exists(covers(_, f))) shouldBe empty
-  }
-
-  "the pre-push hook" should "still run both before a change touching them lands" in {
+  "the pre-push hook" should "still run the script self-tests before a change touching them lands, the old refs no more" in {
     val hook = RepoFile.read("scripts/hooks/pre-push")
     hook should include("scripts/run-script-tests --changed")
-    hook should include("scripts/identity-slice-old-ref-test.sh")
+    hook should not include "check_oldrefs()"
+    hook.linesIterator.map(_.trim).filter(_.endsWith("echo oldrefs")).toSeq shouldBe empty
   }
 
   it should "run on a change to every checked-in file the judgements lint's self-test reads" in {

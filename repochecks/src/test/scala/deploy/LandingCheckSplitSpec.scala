@@ -29,19 +29,31 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     Seq("check (identity 1/4)").filterNot(n => globs.exists(matches(_, n))) shouldBe empty
   }
 
-  "the landing check" should "run identity and the old refs in jobs of their own, each with a cap of its own" in {
-    Map("check" -> "rest", "check-identity" -> "identity", "check-oldrefs" -> "oldrefs").foreach { case (job, share) =>
+  "the landing check" should "run identity in jobs of its own, each with a cap of its own" in {
+    Map("check" -> "rest", "check-identity" -> "identity").foreach { case (job, share) =>
       jobs(job) should include(s"SHARE: $share")
       jobs(job) should include("""scripts/ci/precommit-share.sh env "$SHARE" >> "$GITHUB_ENV"""")
       jobs(job) should include("timeout --kill-after=60 80m ")
       jobs(job) should include("""scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE"""")
     }
     val share = RepoFile.read("scripts/ci/precommit-share.sh")
-    // old refs are another job's in every mode; identity only for a change's own checks (--checks-only): the
-    // fast-only and verify-only sets carry no identity area, and verify-only's identity unit tests ride the rest's sbt
-    share should include("""elsewhere="oldrefs"; [ "$mode" != --checks-only ] || elsewhere+=" identity"""")
+    // identity is another job's only for a change's own checks (--checks-only): the fast-only and verify-only sets
+    // carry no identity area, and verify-only's identity unit tests ride the rest's sbt
+    share should include("""elsewhere=""; [ "$mode" != --checks-only ] || elsewhere="identity"""")
     share should include("PREPUSH_LIST=1")
-    jobs("check-oldrefs") should include("KINOWO_IDENTITY_CACHE: ${{ runner.temp }}/kinowo-identity")
+  }
+
+  /** The owner, 2026-11-21 ("(5)"): identity-slice's old-ref compile caught 1 change in 27 landing checks, at a p90 of
+   *  20 min. It runs after landing, as Main's `old-ref-compile` row (a gate row: .github/gating-checks.tsv), never
+   *  before: no landing-check job, no hook check, no land-precheck rule. */
+  "the landing check" should "leave identity-slice's old-ref compile to Main, after landing" in {
+    jobs.keySet should not contain "check-oldrefs"
+    jobs("plan") should not include "outputs.oldrefs"
+    RepoFile.read("scripts/hooks/pre-push") should not include "check_oldrefs()"
+    RepoFile.read("scripts/land-precheck") should not include " oldrefs\""
+    RepoFile.jobs(RepoFile.read(".github/workflows/main.yml"))("old-ref-compile") should include(
+      "bash scripts/identity-slice-old-ref-test.sh")
+    RepoFile.read(".github/gating-checks.tsv") should include("main.yml\tidentity-slice old-ref compile\t")
   }
 
   /** The owner, 2026-11-17 ("B1"): the page area and `e2e (rest)` run only after landing, on Main's own rows -- in a week
@@ -67,13 +79,13 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
 
   /** A job sets up sbt, Node and the tools only when the hook would run a check of its share there (the hook's own
    *  selection, PREPUSH_LIST=1: precommit-share.sh); its hook step always runs, so a selection the cheap step missed
-   *  fails there rather than going unchecked. The jobs the plan does not name (old refs, identity) are skipped. */
+   *  fails there rather than going unchecked. The jobs the plan does not name (identity) are skipped. */
   "every check job" should "set up only for a share with checks, its hook step never skipped" in {
-    Seq("check", "check-identity", "check-oldrefs").foreach { job =>
+    Seq("check", "check-identity").foreach { job =>
       RepoFile.step(jobs(job), "The pre-push hook's checks of the change") should not include "if:"
       jobs(job) should include("if: steps.share.outputs.checks != ''")
     }
-    jobs("check-oldrefs") should include("if: ${{ needs.plan.outputs.oldrefs == 'true' }}")
+    jobs("check-identity") should include("if: ${{ needs.plan.outputs.identity == 'true' }}")
   }
 
   /** The identity module's tests ran after the sbt check in the rest's job: 292 s then 585 s, a 15.9-minute job (run

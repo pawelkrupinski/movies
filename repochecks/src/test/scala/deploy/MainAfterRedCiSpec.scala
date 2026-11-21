@@ -8,15 +8,17 @@ import org.scalatest.matchers.should.Matchers
  * (2026-10-22). Both images are built inside ci, in its `e2e (corpus)` row, under their SHA tags only (2026-11-01: the
  * worker's was a job of its own, `image-worker`); nothing ships either until ci and gates are green.
  *
- * Every job but `gates` (t=0) and `kick-convergence` needs `ci`
+ * Every job but `gates` (t=0), `kick-convergence` and the `old-ref-compile` row needs `ci`
  * and `gates`, directly or through a job that does, and carries no status function in its `if:`, so the implicit
  * `success()` skips it. `kick-convergence` is the deliberate exception: it hangs off nothing so convergence
- * starts at the push, red ci or not (KickConvergenceWiringSpec); behind `ci` it started ~50 min later.
+ * starts at the push, red ci or not (KickConvergenceWiringSpec); behind `ci` it started ~50 min later. The old-ref
+ * compile (2026-11-21) is a test row that ships nothing: it needs `gates` alone (its plan) and no publish needs it, so a
+ * red there is a gate red that holds no deploy.
  */
 class MainAfterRedCiSpec extends AnyFlatSpec with Matchers {
   private lazy val jobs = RepoFile.jobs(RepoFile.read(".github/workflows/main.yml"))
 
-  private val Unconditional = Set("ci", "gates", "kick-convergence")
+  private val Unconditional = Set("ci", "gates", "kick-convergence", "old-ref-compile")
 
   private def needs(block: String): Set[String] =
     block.linesIterator.map(_.trim).collectFirst {
@@ -50,6 +52,11 @@ class MainAfterRedCiSpec extends AnyFlatSpec with Matchers {
         cond should not include "failure()"
       }
     }
+  }
+
+  "the old-ref compile" should "ship nothing and hold no publish: it needs the plan alone, and nothing needs it" in {
+    needs(jobs("old-ref-compile")) shouldBe Set("gates")
+    jobs.keySet.filter(n => needs(jobs(n)).contains("old-ref-compile")) shouldBe empty
   }
 
   "kick-convergence" should "not be skipped by a red ci" in {

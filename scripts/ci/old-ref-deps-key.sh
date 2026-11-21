@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The old refs' dependency cache: its key and fallback prefix, as GITHUB_OUTPUT lines (.github/actions/old-ref-deps).
 #
-# WHY: the oldrefs check compiles the identity tools into pinned old refs (scripts/identity-slice-old-ref-test.sh's
+# WHY: the old-ref compile (main.yml's old-ref-compile row) compiles the identity tools into pinned old refs (scripts/identity-slice-old-ref-test.sh's
 # floors), each with ITS OWN build: sbt 1.13.0 where main is on 1.13.1, and the libraries of its day. Main's dependency
 # cache holds only main's build, so every check downloaded the floors' sbt and libraries from Maven Central, and a 429
 # there failed the check (run 44807195909, 2026-11-20). The floors are fixed commits, so what their builds resolve is

@@ -130,26 +130,26 @@ push() { # <range> -> exit code; stderr in $gate/err
 }
 
 # The repository as pre-push-gate-test.sh's cases leave it for the tools and reuse specs: a hooks directory and a foreign
-# core.hooksPath, the script-test runner with --linux, the tools' TOOL_FILES and their old-ref test stubbed, sbt and java
-# stubbed -- `oldrefs_base` that commit, and `oldrefs_push` a push changing one path on it.
+# core.hooksPath, the script-test runner with --linux, the snapshot stamp's inputs check stubbed (the failing check the
+# known-red cases ride: no JVM, a log of its own), sbt and java stubbed -- `fixture_base` that commit, and
+# `snapshot_push` a push changing one path on it.
 gate_fixture() {
   mkdir -p "$grepo/scripts/hooks"
   scratch_git "$grepo" config core.hooksPath "$gate/foreign-hooks"
 printf '#!/usr/bin/env bash\necho "$*" >> "$STUB_RUNNER_ARGS"\ncase "$*" in *--linux*) [ -z "${STUB_NO_DOCKER:-}" ] || { echo "run-script-tests: --linux needs a running Docker" >&2; exit 2; }; exit "${STUB_LINUX_EXIT:-0}" ;; esac; exit 0\n' > "$grepo/scripts/run-script-tests"
   chmod +x "$grepo/scripts/run-script-tests"
   scratch_git "$grepo" add scripts/run-script-tests && scratch_git "$grepo" commit -qm "a runner with --linux"
-printf '#!/usr/bin/env bash\nTOOL_FILES=(tools/A.scala\n  tools/B.scala)\n' > "$grepo/scripts/identity-slice"
-printf '#!/usr/bin/env bash\nTOOL_FILES=(tools/T.scala)\n' > "$grepo/scripts/title-trace"
-printf '#!/usr/bin/env bash\necho ran >> "$STUB_OLDREFS_RAN"\necho "${STUB_OLDREFS_LINE:-FAIL: tools compile into c0ffee}" \nexit "${STUB_OLDREFS_EXIT:-0}"\n' \
-  > "$grepo/scripts/identity-slice-old-ref-test.sh"
-scratch_git "$grepo" add scripts && scratch_git "$grepo" commit -qm "the tools, stubbed"
-# the check wants an sbt and a java to compile with (CI's script-test container has neither: stubbed); the stubbed test needs neither
+printf '#!/usr/bin/env bash\necho ran >> "$STUB_SNAPSHOT_RAN"\necho "${STUB_SNAPSHOT_LINE:-FAIL: the snapshot inputs moved at c0ffee}" \nexit "${STUB_SNAPSHOT_EXIT:-0}"\n' \
+  > "$grepo/scripts/read-model-snapshot-inputs.sh"
+chmod +x "$grepo/scripts/read-model-snapshot-inputs.sh"
+scratch_git "$grepo" add scripts && scratch_git "$grepo" commit -qm "the snapshot inputs check, stubbed"
+# the sbt check wants an sbt and a java (CI's script-test container has neither): stubbed, for the tools spec's cases
 mkdir -p "$gate/sbt"; printf '#!/bin/sh\nexit 1\n' > "$gate/sbt/sbt"; printf '#!/bin/sh\nexit 0\n' > "$gate/sbt/java"
 chmod +x "$gate/sbt/sbt" "$gate/sbt/java"
-  oldrefs_base="$(scratch_git "$grepo" rev-parse HEAD)"
+  fixture_base="$(scratch_git "$grepo" rev-parse HEAD)"
 }
-oldrefs_push() { # <path> [<env>...] -> exit code, then how often the old-ref test ran; stderr in $gate/err
+snapshot_push() { # <path> [<env>...] -> exit code, then how often the snapshot check ran; stderr in $gate/err
   local path=$1 head; shift
-  scratch_git "$grepo" reset -q --hard "$oldrefs_base"; head="$(commit_paths "change $path" -- "$path")"; rm -f "$gate/ran"
-  (cd "$grepo" && all_green env PATH="$gate/sbt:$PATH" PREPUSH_SKIP="$pathchecks" STUB_OLDREFS_RAN="$gate/ran" "$@" \
-    bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$head" >/dev/null 2>"$gate/err"); echo "$? $(cat "$gate/ran" 2>/dev/null | wc -l | tr -d ' ')"; }
+  scratch_git "$grepo" reset -q --hard "$fixture_base"; head="$(commit_paths "change $path" -- "$path")"; rm -f "$gate/ran"
+  (cd "$grepo" && all_green env PREPUSH_SKIP="${pathchecks/ snapshot / }" STUB_SNAPSHOT_RAN="$gate/ran" "$@" \
+    bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$fixture_base..$head" >/dev/null 2>"$gate/err"); echo "$? $(cat "$gate/ran" 2>/dev/null | wc -l | tr -d ' ')"; }

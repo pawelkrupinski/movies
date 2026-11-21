@@ -139,11 +139,12 @@ check "the resolver, an identity adapter, a title rule, the title words, the nor
 check "...a common model, a testkit helper, an identity spec, a capture or a slice is not, though the area runs for it" "||||" \
   "$(kinds common/src/main/scala/models/FilmId.scala)|$(kinds testkit/src/main/scala/tools/MutableClock.scala)|$(kinds identity/src/test/scala/services/identity/MemoSpec.scala)|$(kinds test/resources/fixtures/identity-unmatched/pl.json.gz)|$(kinds test/resources/fixtures/drift-slices/pl-a/expected.tsv)"
 check "...and one take path among others makes the change one" "identity" "$(kinds web/src/main/scala/A.scala identity/src/main/scala/B.scala)"
-# A file identity-slice or title-trace drops into old refs (their TOOL_FILES) compiles into each tool's floor ref.
-check "a file identity-slice drops into old refs compiles the tools into their floors (a fixtures tool: the identity area too)" "driftguards sbt identity oldrefs" \
+# A file identity-slice or title-trace drops into old refs (their TOOL_FILES) is compiled into each tool's floor ref after
+# landing, on Main's `identity-slice old-ref compile` row (the owner, 2026-11-21, "(5)": 1 catch in 27 landing checks, at
+# a p90 of 20 min): no check before landing.
+check "a file identity-slice drops into old refs runs no old-ref compile before landing (a fixtures tool: the identity area)" "driftguards sbt identity" \
   "$(plan worker/src/fixtures/scala/tools/MemoLookups.scala)"
-check "...and one title-trace drops in (an identity test: the identity area's tests too)" "driftguards scripttests sbt identity oldrefs" "$(plan worker/src/test/scala/services/identity/TitleTrace.scala)"
-check "a fixtures-config file neither tool drops in compiles no floor (the identity area runs: the drift-slice replays read it)" "driftguards sbt identity" "$(plan worker/src/fixtures/scala/tools/EnrichmentCache.scala)"
+check "...nor one title-trace drops in (an identity test: the identity area's tests)" "driftguards scripttests sbt identity" "$(plan worker/src/test/scala/services/identity/TitleTrace.scala)"
 
 # `sbt compile` skips the Test and It configs: f20a6b5dd's new `protected def wire` made a worker
 # it/ spec's local val ambiguous and reached CI unseen. The sbt check compiles the test configs of

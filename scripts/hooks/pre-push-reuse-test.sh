@@ -12,7 +12,7 @@ gate_fixture
 # expensive check here is the counting script-test runner. What must hold: ANY difference runs everything.
 printf '\033[36m▸\033[0m pre-push: a passed run is reused for the same tree only\n'
 reuse="$gate/reuse"; mkdir -p "$reuse"
-scratch_git "$grepo" reset -q --hard "$oldrefs_base"
+scratch_git "$grepo" reset -q --hard "$fixture_base"
 printf '#!/usr/bin/env bash\necho ran >> "$STUB_RUNS"\nexit "${STUB_RUNNER_EXIT:-0}"\n' > "$grepo/scripts/run-script-tests"
 chmod +x "$grepo/scripts/run-script-tests"
 scratch_git "$grepo" add scripts/run-script-tests && scratch_git "$grepo" commit -qm "a counting runner"
@@ -85,7 +85,7 @@ going_run="$(printf '{"id":55,"path":".github/workflows/precommit-check.yml","co
 going_push() { reuse_push "$rbase..$going_head" PREPUSH_NO_REUSE=1 GH_MAIN="[$green]" GH_IMC="[$green]" PREPUSH_REMOTE_RUN=55 \
   STUB_RUN="$going_run" STUB_RUN_JOBS="{\"jobs\":[$1]}"; }
 job() { printf '{"status":"%s","conclusion":%s,"name":"%s"}' "$1" "$2" "$3"; }
-checks_green="$(job completed '"success"' plan),$(job completed '"success"' 'check (rest)'),$(job completed '"skipped"' 'check (oldrefs)')"
+checks_green="$(job completed '"success"' plan),$(job completed '"success"' 'check (rest)')"
 # Every jobs list is built here, at the top level: under bash 3.2 (the floor the hook's scripttests check runs these at,
 # run-script-tests --bash /bin/bash) a \" or a quoted ')' inside a $(...) nested in a "$(...)" reached the stub mangled,
 # its jq read nothing, and all four cases below failed in the push while passing under bash 5 (2026-11-07)

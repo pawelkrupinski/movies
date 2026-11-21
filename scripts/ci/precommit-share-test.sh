@@ -31,11 +31,11 @@ check "...the identity share is identity" "identity" "$(share checks identity)"
 check "...no old-ref share" "" "$(share checks oldrefs)"
 check "...the plan names the checks of the jobs after it" "driftguards sbt identity" "$(share checks plan)"
 check "...the rest's environment: the heavy rows its own, in no job of their own waiting for a slot (2026-11-18)" \
-    "PREPUSH_MODE=--checks-only PREPUSH_RANGE=$(g merge-base HEAD origin/main)..HEAD PREPUSH_HEAVY_ROWS=1 PREPUSH_ELSEWHERE=oldrefs identity" \
+    "PREPUSH_MODE=--checks-only PREPUSH_RANGE=$(g merge-base HEAD origin/main)..HEAD PREPUSH_HEAVY_ROWS=1 PREPUSH_ELSEWHERE=identity" \
     "$(share env rest | tr '\n' ' ' | sed 's/ $//')"
 check "...an identity shard's" "PREPUSH_ONLY=identity" "$(share env identity | tail -1)"
 check "a batch's fast check: everything is the rest's, its fast set" "sbt|" "$(REF=check/fast-ab12 share checks rest)|$(REF=check/fast-ab12 share checks identity)"
-check "...and its rest leaves identity to nobody (the fast set has none)" "PREPUSH_ELSEWHERE=oldrefs" \
+check "...and its rest leaves nothing to another job (the fast set has no identity; the old refs compile on Main)" "PREPUSH_ELSEWHERE=" \
     "$(REF=check/fast-ab12 share env rest | tail -1)"
 full="$(g rev-parse origin/main)"
 g update-ref refs/remotes/origin/main HEAD # main moved: the identity change landed
@@ -43,7 +43,7 @@ change worker/src/test/resources/fixture.json
 check "a change's combined-tree verification: the rest's, the sbt check (its unit tests) for a resource alone" "sbt|" \
     "$(REF="check/verify-$full-x" share checks rest)|$(REF="check/verify-$full-x" share checks identity)"
 check "...over what landed since its full check and the change, together" \
-    "PREPUSH_MODE=--verify-only PREPUSH_RANGE=$full..HEAD PREPUSH_HEAVY_ROWS=1 PREPUSH_ELSEWHERE=oldrefs" \
+    "PREPUSH_MODE=--verify-only PREPUSH_RANGE=$full..HEAD PREPUSH_HEAVY_ROWS=1 PREPUSH_ELSEWHERE=" \
     "$(REF="check/verify-$full-x" share env rest | tr '\n' ' ' | sed 's/ $//')"
 check "...a branch naming no commit fails" "1" \
     "$( (cd "$repo" && GITHUB_REF_NAME="check/verify-$(printf '0%.0s' $(seq 40))-x" bash scripts/ci/precommit-share.sh env rest > /dev/null 2>&1); echo $?)"

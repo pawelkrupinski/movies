@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154 # the stubs' and the fixture's variables, set in pre-push-test-lib.sh
-# pre-push's red gate -- only a commit declared a fix for a red run lands -- and the script tests and old-ref compile a
-# push's paths select.
+# pre-push's red gate -- only a commit declared a fix for a red run lands -- and the script tests a push's paths
+# select.
 # Run: bash scripts/hooks/pre-push-gate-test.sh (the shared harness: pre-push-test-lib.sh)
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pre-push-test-lib.sh"
 
@@ -295,28 +295,5 @@ floor=""
 mode=--range
 check "...while a plain check runs the whole selection, as ever" "0 --changed $runner_base" "$(script_push) $(cat "$gate/args")"
 mode=""
-# ── oldrefs: a push changing a tool's TOOL_FILES runs the old-ref compile test, read from the tools of the pushed tree ──
-printf '#!/usr/bin/env bash\nTOOL_FILES=(tools/A.scala\n  tools/B.scala)\n' > "$grepo/scripts/identity-slice"
-printf '#!/usr/bin/env bash\nTOOL_FILES=(tools/T.scala)\n' > "$grepo/scripts/title-trace"
-printf '#!/usr/bin/env bash\necho ran >> "$STUB_OLDREFS_RAN"\necho "${STUB_OLDREFS_LINE:-FAIL: tools compile into c0ffee}" \nexit "${STUB_OLDREFS_EXIT:-0}"\n' \
-  > "$grepo/scripts/identity-slice-old-ref-test.sh"
-scratch_git "$grepo" add scripts && scratch_git "$grepo" commit -qm "the tools, stubbed"
-# the check wants an sbt and a java to compile with (CI's script-test container has neither: stubbed); the stubbed test needs neither
-mkdir -p "$gate/sbt"; printf '#!/bin/sh\nexit 1\n' > "$gate/sbt/sbt"; printf '#!/bin/sh\nexit 0\n' > "$gate/sbt/java"
-chmod +x "$gate/sbt/sbt" "$gate/sbt/java"
-oldrefs_base="$(scratch_git "$grepo" rev-parse HEAD)"
-oldrefs_push() { # <path> [<env>...] -> exit code, then how often the old-ref test ran; stderr in $gate/err
-  local path=$1 head; shift
-  scratch_git "$grepo" reset -q --hard "$oldrefs_base"; head="$(commit_paths "change $path" -- "$path")"; rm -f "$gate/ran"
-  (cd "$grepo" && all_green env PATH="$gate/sbt:$PATH" PREPUSH_SKIP="$pathchecks" STUB_OLDREFS_RAN="$gate/ran" "$@" \
-    bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$head" >/dev/null 2>"$gate/err"); echo "$? $(cat "$gate/ran" 2>/dev/null | wc -l | tr -d ' ')"; }
-check "a push changing identity-slice's tool file runs the old-ref compile" "0 1" "$(oldrefs_push tools/B.scala)"
-check "...and title-trace's" "0 1" "$(oldrefs_push tools/T.scala)"
-check "...a failing compile blocks the push, its output shown" "1 1 1 1" \
-  "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1) $(grep -c 'oldrefs FAILED' "$gate/err") $(grep -c 'FAIL: tools compile into c0ffee' "$gate/err")"
-check "a file neither tool drops in does not run it" "0 0" "$(oldrefs_push tools/C.scala)"
-check "PREPUSH_SKIP=oldrefs skips it, said out loud" "0 0 1" \
-  "$(oldrefs_push tools/A.scala PREPUSH_SKIP="$pathchecks oldrefs") $(grep -c 'oldrefs SKIPPED' "$gate/err")"
-
 
 spec_summary

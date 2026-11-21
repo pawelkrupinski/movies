@@ -12,15 +12,15 @@ gate_fixture
 # against the push. Fail-closed: no baseline for the base, every failure blocks.
 printf '\033[36m▸\033[0m pre-push: the known-red baseline\n'
 known="$gate/known"; mkdir -p "$known"
-# the baseline of oldrefs_base: the hook's own output of a run whose old-ref compile fails with the default line
-{ echo "pre-push baseline $oldrefs_base"; oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 >/dev/null; cat "$gate/err"; } \
-  > "$known/$oldrefs_base.out"
-check "the baseline run itself failed the old-ref compile" "1" "$(grep -c 'oldrefs FAILED' "$known/$oldrefs_base.out")"
-mv "$known/$oldrefs_base.out" "$known/$oldrefs_base"
+# the baseline of fixture_base: the hook's own output of a run whose snapshot check fails with the default line
+{ echo "pre-push baseline $fixture_base"; snapshot_push test/resources/fixtures/08-06-2026/A.json STUB_SNAPSHOT_EXIT=1 >/dev/null; cat "$gate/err"; } \
+  > "$known/$fixture_base.out"
+check "the baseline run itself failed the snapshot check" "1" "$(grep -c 'snapshot FAILED' "$known/$fixture_base.out")"
+mv "$known/$fixture_base.out" "$known/$fixture_base"
 check "a failure plain main shares is said, not blocking" "0 1 1 1" \
-  "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED: oldrefs' "$gate/err") $(grep -c 'FAIL: tools compile into c0ffee' "$gate/err")"
+  "$(snapshot_push test/resources/fixtures/08-06-2026/A.json STUB_SNAPSHOT_EXIT=1 PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED: snapshot' "$gate/err") $(grep -c 'FAIL: the snapshot inputs moved at c0ffee' "$gate/err")"
 # ...wherever the host's mktemp puts the hook's temp files (2026-10-31: GNU mktemp honours $TMPDIR, on a GitHub runner
-# /home/runner/work/_temp/...; the check's `full log: <tmp>/oldrefs.log` line differed run to run and no Linux land's
+# /home/runner/work/_temp/...; the check's `full log: <tmp>/<check>.log` line differed run to run and no Linux land's
 # known red held, while macOS's mktemp, ignoring $TMPDIR, passed). A GNU-like mktemp and a $TMPDIR outside /tmp and
 # /var/folders, so this case fails the same way on a Mac.
 mkdir -p "$gate/gnumktemp"; realmktemp="$(command -v mktemp)"
@@ -28,24 +28,24 @@ printf '#!/bin/sh\n[ "$*" = -d ] && exec "%s" -d "${TMPDIR%%/}/tmp.XXXXXXXXXX"\n
   > "$gate/gnumktemp/mktemp"; chmod +x "$gate/gnumktemp/mktemp"
 mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}"; hosttmp="$(mktemp -d "${XDG_CACHE_HOME:-$HOME/.cache}/kinowo-hook-tmpdir.XXXXXX")"
 gnu=(PATH="$gate/gnumktemp:$gate/sbt:$PATH" TMPDIR="$hosttmp")
-cp "$known/$oldrefs_base" "$gate/baseline.kept"
-{ echo "pre-push baseline $oldrefs_base"; oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 "${gnu[@]}" >/dev/null; cat "$gate/err"; } \
-  > "$known/x" && mv "$known/x" "$known/$oldrefs_base"
+cp "$known/$fixture_base" "$gate/baseline.kept"
+{ echo "pre-push baseline $fixture_base"; snapshot_push test/resources/fixtures/08-06-2026/A.json STUB_SNAPSHOT_EXIT=1 "${gnu[@]}" >/dev/null; cat "$gate/err"; } \
+  > "$known/x" && mv "$known/x" "$known/$fixture_base"
 check "...its temp files under a \$TMPDIR the host's mktemp honours (GNU): the baseline names them there" "1" \
-  "$(grep -c "full log: $hosttmp/tmp\." "$known/$oldrefs_base")"
+  "$(grep -c "full log: $hosttmp/tmp\." "$known/$fixture_base")"
 check "...and the same failure, its temp paths differing, is still said, not blocking" "0 1 1" \
-  "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 "${gnu[@]}" PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED: oldrefs' "$gate/err")"
-rm -rf "$hosttmp"; mv "$gate/baseline.kept" "$known/$oldrefs_base"
+  "$(snapshot_push test/resources/fixtures/08-06-2026/A.json STUB_SNAPSHOT_EXIT=1 "${gnu[@]}" PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED: snapshot' "$gate/err")"
+rm -rf "$hosttmp"; mv "$gate/baseline.kept" "$known/$fixture_base"
 check "...a failure plain main does not share blocks" "1 1 0" \
-  "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 STUB_OLDREFS_LINE="Error: a new break" PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED' "$gate/err")"
+  "$(snapshot_push test/resources/fixtures/08-06-2026/A.json STUB_SNAPSHOT_EXIT=1 STUB_SNAPSHOT_LINE="Error: a new break" PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED' "$gate/err")"
 check "...a change fixing the baseline's failure passes" "0 1 0" \
-  "$(oldrefs_push tools/A.scala PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED' "$gate/err")"
+  "$(snapshot_push test/resources/fixtures/08-06-2026/A.json PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED' "$gate/err")"
 check "...no baseline for the base: every failure blocks, said" "1 1 1" \
-  "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 PREPUSH_BASELINE_DIR="$known/none") $(grep -c 'no known-red baseline for base' "$gate/err")"
-sed '1s/.*/pre-push baseline of something else/' "$known/$oldrefs_base" > "$known/x" && mv "$known/x" "$known/$oldrefs_base"
+  "$(snapshot_push test/resources/fixtures/08-06-2026/A.json STUB_SNAPSHOT_EXIT=1 PREPUSH_BASELINE_DIR="$known/none") $(grep -c 'no known-red baseline for base' "$gate/err")"
+sed '1s/.*/pre-push baseline of something else/' "$known/$fixture_base" > "$known/x" && mv "$known/x" "$known/$fixture_base"
 check "...a baseline file not naming the base: every failure blocks" "1 1 1" \
-  "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 PREPUSH_BASELINE_DIR="$known") $(grep -c 'does not start' "$gate/err")"
-check "...and without PREPUSH_BASELINE_DIR, as ever" "1 1" "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1)"
+  "$(snapshot_push test/resources/fixtures/08-06-2026/A.json STUB_SNAPSHOT_EXIT=1 PREPUSH_BASELINE_DIR="$known") $(grep -c 'does not start' "$gate/err")"
+check "...and without PREPUSH_BASELINE_DIR, as ever" "1 1" "$(snapshot_push test/resources/fixtures/08-06-2026/A.json STUB_SNAPSHOT_EXIT=1)"
 rm -rf "$known"
 
 # ── A CHECK'S TOOL MISSING BLOCKS THE PUSH, WITH THE FIX: never a silent skip ───────────────────────────────────────
@@ -71,11 +71,11 @@ path_without() { # <tool>...
 # a push changing <path> with only <checks> run (every other path check and the red gate skipped) -> exit code; stderr in
 # $gate/err
 tool_push() { # <path> <checks> [<env>...]
-  local path=$1 skip=" $pathchecks oldrefs redgate " c head; shift
+  local path=$1 skip=" $pathchecks redgate " c head; shift
   for c in $1; do skip="${skip/ $c / }"; done; shift
-  scratch_git "$grepo" reset -q --hard "$oldrefs_base"; head="$(commit_paths "change $path" -- "$path")"
+  scratch_git "$grepo" reset -q --hard "$fixture_base"; head="$(commit_paths "change $path" -- "$path")"
   (cd "$grepo" && all_green env PREPUSH_SKIP="$skip" "$@" \
-    bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$head" >/dev/null 2>"$gate/err"); echo $?; }
+    bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$fixture_base..$head" >/dev/null 2>"$gate/err"); echo $?; }
 nosbt="$(path_without sbt)"
 check "sbt not on PATH: the sbt check BLOCKS the push" "1 1" "$(tool_push src/X.scala sbt PATH="$nosbt") $(grep -c 'sbt FAILED' "$gate/err")"
 check "...saying how to put it there (sdkman's sbt and java, or its init line)" "1 1" \
@@ -124,8 +124,6 @@ check "...its row naming the path, nothing said of it" "0" \
   "$(tool_push worker/src/test/scala/deploy/ReadsWiringSpec.scala sbt PATH="$gate/sbt:$PATH" >/dev/null; grep -c 'ReadsWiringSpec reads' "$gate/err")"
 rm -rf "$grepo/data" "$grepo/worker/src/test/scala/deploy/ReadsWiringSpec.scala"
 rm -rf "$grepo/scripts"
-check "the old-ref compile with no sbt: BLOCKED" "1 1" \
-  "$(tool_push tools/A.scala oldrefs PATH="$nosbt") $(grep -c 'oldrefs FAILED' "$gate/err")"
 check "shellcheck missing: the shellcheck check BLOCKS, with the fix" "1 1" \
   "$(tool_push x.sh shellcheck PATH="$(path_without shellcheck)") $(grep -c 'brew install shellcheck' "$gate/err")"
 check "actionlint missing: a workflow push BLOCKS, with the fix" "1 1" \
@@ -153,22 +151,22 @@ check "gh missing on a judgements push: BLOCKED (the served-takes check needs it
 # `pre-push STALLED: <check>` and exit 75, the stall signal agentctl land reads
 mkdir -p "$gate/hungpy"; printf '#!/bin/sh\n[ "$1" = -c ] && exit 0\necho $$ >> "$PY_HANGS"\nexec sleep 86400\n' > "$gate/hungpy/python3"
 chmod +x "$gate/hungpy/python3"; : > "$gate/py-hung"
-scratch_git "$grepo" reset -q --hard "$oldrefs_base"; thung="$(commit_paths "change dashboards" -- infra/test/test_dashboards.py)"
-code="$(cd "$grepo" && all_green spec_bounded env PREPUSH_SKIP="${pathchecks/dashboards/} oldrefs redgate" PATH="$gate/hungpy:$PATH" \
+scratch_git "$grepo" reset -q --hard "$fixture_base"; thung="$(commit_paths "change dashboards" -- infra/test/test_dashboards.py)"
+code="$(cd "$grepo" && all_green spec_bounded env PREPUSH_SKIP="${pathchecks/dashboards/} redgate" PATH="$gate/hungpy:$PATH" \
   PY_HANGS="$gate/py-hung" PREPUSH_STALL_SECONDS=2 KINOWO_STALL_POLL_SECONDS=1 \
-  bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$thung" >/dev/null 2>"$gate/err"; echo $?)"
+  bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$fixture_base..$thung" >/dev/null 2>"$gate/err"; echo $?)"
 check "a check making no progress is ended: exit 75, \`pre-push STALLED: <check>\`, no hung step left" "75 1 0" \
   "$code $(grep -c '^pre-push STALLED: dashboards' "$gate/err") $(spec_still_running "$gate/py-hung")"
 # ...while one busy past the bound (CPU in its processes) is no stall, however loaded the machine: busy, it is runnable at
 # every poll, whatever CPU share it gets (it loops in bash builtins, forking nothing)
 printf '#!/usr/bin/env bash\n[ "$1" = -c ] && exit 0\nend=$((SECONDS + 4)); while [ "$SECONDS" -lt "$end" ]; do :; done\n' > "$gate/hungpy/python3"
-code="$(cd "$grepo" && all_green spec_bounded env PREPUSH_SKIP="${pathchecks/dashboards/} oldrefs redgate" PATH="$gate/hungpy:$PATH" \
+code="$(cd "$grepo" && all_green spec_bounded env PREPUSH_SKIP="${pathchecks/dashboards/} redgate" PATH="$gate/hungpy:$PATH" \
   PREPUSH_STALL_SECONDS=2 KINOWO_STALL_POLL_SECONDS=1 KINOWO_STALL_CPU_CENTIS=10 \
-  bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$thung" >/dev/null 2>"$gate/err"; echo $?)"
+  bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$fixture_base..$thung" >/dev/null 2>"$gate/err"; echo $?)"
 check "...while a check busy past the bound passes" "0 0" "$code $(grep -c 'STALLED' "$gate/err")"
 # The red gate: its TOOLS missing block like any check's; GitHub itself unreachable blocks a production push too.
-scratch_git "$grepo" reset -q --hard "$oldrefs_base"; tplain="$(commit_paths "a production change" -- web/src/main/scala/A.scala)"
-gate_push() { (cd "$grepo" && PREPUSH_SKIP="$pathchecks" "$@" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$tplain" \
+scratch_git "$grepo" reset -q --hard "$fixture_base"; tplain="$(commit_paths "a production change" -- web/src/main/scala/A.scala)"
+gate_push() { (cd "$grepo" && PREPUSH_SKIP="$pathchecks" "$@" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$fixture_base..$tplain" \
   >/dev/null 2>"$gate/err"); echo $?; }
 check "gh missing on a GitHub push: the red gate BLOCKS, with the fix" "1 1" \
   "$(gate_push env PATH="$(path_without gh)") $(grep -c 'brew install gh' "$gate/err")"

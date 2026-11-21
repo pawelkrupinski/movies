@@ -6,7 +6,8 @@
 #   precommit-share.sh checks <share>  the checks the hook runs for <share>, space-separated (none: an empty line)
 #
 # <share>: `rest` (every selected check but the other shares', Main's heavy rows among them: no job of their own,
-# which waited up to 17 min for a slot of its own, 2026-11-18), `identity`, `oldrefs`, or `plan` (every check of the
+# which waited up to 17 min for a slot of its own, 2026-11-18), `identity`, `oldrefs` (none since 2026-11-21: the old
+# refs compile after landing, on Main; kept for agentctl, which still asks it), or `plan` (every check of the
 # jobs after it: the plan job's). The mode is the branch's:
 # check/fast-<id> is agentctl's batch check (--fast-only: the sbt check and the touched files' linters, all in `rest`),
 # check/verify-<full base sha>-<id> a change's combined-tree verification (--verify-only, all in `rest` too: the change
@@ -47,7 +48,7 @@ area_mode=$mode; [ -z "$areas" ] || [ "$share" != identity ] || area_mode=--chec
 vars=("PREPUSH_MODE=$area_mode" "PREPUSH_RANGE=$range")
 case "$share" in
     rest)
-        elsewhere="oldrefs"; [ "$mode" != --checks-only ] || elsewhere+=" identity"
+        elsewhere=""; [ "$mode" != --checks-only ] || elsewhere="identity"
         vars+=("PREPUSH_HEAVY_ROWS=1" "PREPUSH_ELSEWHERE=$elsewhere") ;;
     plan) ;;
     *) vars+=("PREPUSH_ONLY=$share") ;;

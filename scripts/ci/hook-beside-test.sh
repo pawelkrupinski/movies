@@ -34,9 +34,9 @@ run() { # [env...]: hook-beside over the fake hook; its output to $work/out, its
     echo $?
 }
 
-code="$(run CHECKS="scripttests sbt actionlint" PREPUSH_ELSEWHERE="oldrefs identity" WAIT_FOR_OTHER=1)"
+code="$(run CHECKS="scripttests sbt actionlint" PREPUSH_ELSEWHERE="identity" WAIT_FOR_OTHER=1)"
 check "scripttests and the rest's other checks run at once, each told its part" "0 0 1 1" \
-  "$code $(grep -c 'NEVER SAW' "$work/out") $(grep -c '^only ONLY=scripttests ' "$work/out") $(grep -c '^rest ONLY= ELSEWHERE=oldrefs identity scripttests args=--checks-only base..HEAD$' "$work/out")"
+  "$code $(grep -c 'NEVER SAW' "$work/out") $(grep -c '^only ONLY=scripttests ' "$work/out") $(grep -c '^rest ONLY= ELSEWHERE=identity scripttests args=--checks-only base..HEAD$' "$work/out")"
 check "...the beside run's output printed whole after the rest's, never interleaved" "rest only" \
   "$(grep -oE '^(rest|only) ' "$work/out" | tr -d ' ' | tr '\n' ' ' | sed 's/ $//')"
 check "...and kept in the job's temp dir, where its failure steps read the logs" "1" \
@@ -53,9 +53,9 @@ code="$(run CHECKS="scripttests sbt" PREPUSH_ONLY=scripttests WAIT_FOR_OTHER=1)"
 check "an inherited PREPUSH_ONLY never reaches the rest's part" "0 0 1" \
   "$code $(grep -c 'NEVER SAW' "$work/out") $(grep -c '^rest ONLY= ELSEWHERE=scripttests ' "$work/out")"
 
-code="$(run CHECKS="sbt actionlint" PREPUSH_ELSEWHERE="oldrefs identity")"
+code="$(run CHECKS="sbt actionlint" PREPUSH_ELSEWHERE="identity")"
 check "no scripttests in the share: the hook runs once, as it is" "0 1 0" \
-  "$code $(grep -c '^rest ONLY= ELSEWHERE=oldrefs identity args=' "$work/out") $(grep -c '^only' "$work/out")"
+  "$code $(grep -c '^rest ONLY= ELSEWHERE=identity args=' "$work/out") $(grep -c '^only' "$work/out")"
 code="$(run CHECKS="scripttests" RC_REST=3)"
 check "scripttests alone: nothing to run beside it, the hook once, its exit the job's" "3 1 0" \
   "$code $(grep -c '^rest ' "$work/out") $(grep -c '^only' "$work/out")"

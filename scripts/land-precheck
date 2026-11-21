@@ -10,7 +10,7 @@
 #           conflict names its files (docs and CLAUDE.md collide most)
 #   rules   the pre-push hook's own commit-rule and linter checks over <base>..<head>, alone (PREPUSH_ONLY): allowlists,
 #           driftguards (Fixes-Red / Drift-Slice / Drift-Harness-Refactor / Identity-Design), newchecks, judgements,
-#           the shellcheck and actionlint checks, and oldrefs (the tool files compiled into the older refs, only when they changed);
+#           the shellcheck and actionlint checks (the old refs compile after landing, on Main, since 2026-11-21);
 #           the stranded-trailer rule runs too. Not the red gate: a red main makes a change WAIT, not fail.
 #   lints   the lint specs the hook's registry (scripts/hooks/lint-registry.tsv) selects for the pushed paths, in one
 #           scripts/sbt-warm call (seconds on a warm checkout; a cold one compiles first), admitted by the governor as a
@@ -73,7 +73,7 @@ fi
 
 # ── rules: the hook's own checks, alone ──
 t=$SECONDS
-PREPUSH_NO_REUSE=1 PREPUSH_ONLY="allowlists driftguards newchecks judgements shellcheck actionlint oldrefs" \
+PREPUSH_NO_REUSE=1 PREPUSH_ONLY="allowlists driftguards newchecks judgements shellcheck actionlint" \
     bounded "${PRECHECK_RULES_SECONDS:-300}" scripts/hooks/pre-push --checks-only "$base_sha..$head_sha" > "$tmp/rules" 2>&1
 case $? in
     0) report rules PASS $t ;;

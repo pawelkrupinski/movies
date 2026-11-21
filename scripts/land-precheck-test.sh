@@ -63,7 +63,7 @@ printf '\033[36m▸\033[0m a clean change passes, every step named and timed\n'
 check "exit 0" "0" "$(precheck)"
 check "each step reports PASS" "3" "$(grep -cE '^precheck (rebase|rules|lints) PASS \([0-9]+ s\)' "$testroot/out")"
 check "the hook runs once, alone on the commit-rule and linter checks, over origin/main..HEAD, never reusing a pass" \
-  "1 yes yes" "$(grep -c '^hook' "$log") $(grep -q -- '--checks-only [0-9a-f]*\.\.[0-9a-f]* only=allowlists driftguards newchecks judgements shellcheck actionlint oldrefs reuse=1' "$log" && echo yes || echo no) $(grep -q 'trailers\|redgate' "$log" && echo no || echo yes)"
+  "1 yes yes" "$(grep -c '^hook' "$log") $(grep -q -- '--checks-only [0-9a-f]*\.\.[0-9a-f]* only=allowlists driftguards newchecks judgements shellcheck actionlint reuse=1' "$log" && echo yes || echo no) $(grep -q 'trailers\|redgate' "$log" && echo no || echo yes)"
 check "the selected lints run in one sbt-warm call, a testOnly per module, the GitOps-reading specs among them once fetched" \
   "sbt-warm common/Test/testOnly tools.BLintSpec; worker/Test/testOnly tools.ALintSpec deploy.AGitopsSpec" \
   "$(grep '^sbt-warm' "$log")"

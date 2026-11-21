@@ -104,6 +104,7 @@ test/resources/fixtures/identity-judgements.tsv
 .github/actions/install-actionlint/action.yml
 .github/actions/job-telemetry/action.yml
 .github/actions/mark-grafana-deploy/action.yml
+.github/actions/old-ref-deps/action.yml
 .github/actions/order-compare/action.yml
 .github/actions/pull-pinned-image/action.yml
 .github/actions/report-scheduled-run/action.yml
@@ -144,6 +145,7 @@ scripts/ci/commit_rules.py
 scripts/ci/convergence-row-minutes.tsv
 scripts/ci/convergence_slots.py
 scripts/ci/corpus_shape_diff.py
+scripts/ci/coursier-forget-errors.sh
 scripts/ci/dispatch-takes.sh
 scripts/ci/dispatch.sh
 scripts/ci/download-run-artifacts.sh
@@ -168,10 +170,12 @@ scripts/ci/jdk-pin.sh
 scripts/ci/jfr-every-jvm.sh
 scripts/ci/job_metrics.py
 scripts/ci/job_metrics_test.py
+scripts/ci/jvm-offline-env.sh
 scripts/ci/keep-previous-origins.sh
 scripts/ci/measure-lane.sh
 scripts/ci/memory-guard-stop.sh
 scripts/ci/memory-guard.sh
+scripts/ci/old-ref-deps-key.sh
 scripts/ci/order-passes-present.sh
 scripts/ci/population-walk-diff
 scripts/ci/population_walk_diff.py
@@ -187,6 +191,7 @@ scripts/ci/tree-unchanged.sh
 scripts/identity-fetch-recording.sh
 scripts/identity-judge-cards
 scripts/identity-slice
+scripts/identity-slice-old-ref-test.sh
 scripts/identity_slice_diff.py
 scripts/it-local.sh
 scripts/label-lookup
@@ -196,6 +201,8 @@ scripts/local-mirror/start-local-mongo.sh
 scripts/own-mongod.sh
 scripts/read-model-snapshot-inputs.sh
 scripts/sbt-warm
+scripts/shell-spec.sh
+scripts/title-trace
 scripts/tool-conventions.sh
 scripts/zinc_orphans.py
 # END GENERATED

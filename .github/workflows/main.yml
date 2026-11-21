@@ -116,6 +116,8 @@ jobs:
             worker-changed: ${{ steps.changed-worker.outputs.changed }}
             # Whether this run may ship at all: main only. A dispatch on a branch measures Main and ships nothing.
             ship: ${{ github.ref == 'refs/heads/main' }}
+            # whether identity-slice's old-ref compile runs (the `old-ref-compile` row below)
+            old-ref-compile: ${{ steps.old-ref-run.outputs.run }}
         steps:
             # Full history, BLOBLESS — the tier gates below diff against each tier's last DEPLOYED
             # commit, which a shallow checkout would not have; commits and trees only.
@@ -244,6 +246,61 @@ jobs:
                       infra/jvm/worker.options
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
+
+            # The old ref is pinned, so only what this checkout brings to it can change the verdict: the tool files
+            # (identity-slice's and title-trace's TOOL_FILES, every one listed below -- IdentitySliceOldRefGateSpec),
+            # the scripts that lay the ref out, and the JDK/sbt setup. A push touching none of them skips the compile.
+            - name: Did this change touch what identity-slice brings to an old ref?
+              id: slice-tools
+              uses: ./.github/actions/changed-paths
+              with:
+                  patterns: |
+                      worker/src/test/scala/scripts/IdentitySlice.scala
+                      worker/src/test/scala/scripts/IdentityExplain.scala
+                      worker/src/test/scala/services/identity/IdentitySlicing.scala
+                      worker/src/test/scala/services/identity/OlderRefs.scala
+                      worker/src/test/scala/services/identity/TitleTrace.scala
+                      worker/src/fixtures/scala/tools/**
+                      worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala
+                      worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala
+                      worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala
+                      worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala
+                      common/src/main/scala/tools/TempDirectories.scala
+                      scripts/identity-slice
+                      scripts/title-trace
+                      scripts/identity-tools.sh
+                      scripts/tool-conventions.sh
+                      scripts/identity-slice-old-ref-test.sh
+                      .github/actions/setup-sbt-build/**
+                      .github/workflows/main.yml
+
+            # THE OLD REFS' DEPENDENCIES (.github/actions/old-ref-deps): the floors' sbt launcher and libraries, which main's
+            # dependency cache does not hold, saved by the old-ref compile on main so no run downloads them twice (a 429
+            # from Maven Central failed the landing check's old refs, run 44807195909). Asked here, without a download: on
+            # a missing entry runs that compile whatever else this plan decided.
+            - name: Which old refs' dependency entry would a check restore?
+              id: old-ref-deps-key
+              run: scripts/ci/old-ref-deps-key.sh >> "$GITHUB_OUTPUT"
+            - id: old-ref-deps-paths
+              uses: ./.github/actions/sbt-deps-key
+            - name: Does GitHub hold it?
+              id: old-ref-deps-lookup
+              uses: actions/cache/restore@v5
+              with:
+                  path: ${{ steps.old-ref-deps-paths.outputs.paths }}
+                  key: ${{ steps.old-ref-deps-key.outputs.key }}
+                  lookup-only: 'true'
+            - name: Does the old-ref compile run?
+              id: old-ref-run
+              # (whatever the ref: only main's run saves, the save step's own condition, CacheSavePolicySpec)
+              env:
+                  CHANGED: ${{ steps.slice-tools.outputs.changed }}
+                  HIT: ${{ steps.old-ref-deps-lookup.outputs.cache-hit }}
+              run: |
+                  if [ "$CHANGED" = true ]; then echo "run=true" >> "$GITHUB_OUTPUT"; echo "the push touched what the tools bring to an old ref"
+                  elif [ "$HIT" != true ]; then echo "run=true" >> "$GITHUB_OUTPUT"; echo "no cached old-ref dependencies: compiling to save them"
+                  else echo "run=false" >> "$GITHUB_OUTPUT"; echo "nothing the old refs see changed"
+                  fi
             - uses: ./.github/actions/job-telemetry
               if: ${{ !cancelled() }}
               with:
@@ -355,6 +412,102 @@ jobs:
     # where both tiers' publish steps live — so editing it redeploys BOTH tiers. There is no
     # sub-file granularity to be had.
     #
+    # IDENTITY-SLICE'S OLD REFS, AFTER LANDING (the owner, 2026-11-21, "(5)"): scripts/identity-slice drops this checkout's
+    # tool files into every ref it slices; they must compile into old code too (83b869548 broke every older ref). A real
+    # sbt compile of each floor scripts/identity-slice-old-ref-test.sh names, of the tree kept across runs. Before
+    # landing it was the landing check's `check (oldrefs)` (1 catch in 27 runs, p90 20 min) and off the gate in Tool
+    # self-tests after it; now a row of Main, beside ci and needed by no publish: a red is a gate red with a fixer
+    # (.github/gating-checks.tsv), and never holds a deploy.
+    old-ref-compile:
+        name: identity-slice old-ref compile
+        # gates decides (WorkflowPlanSpec): a push touching what the tools bring to an old ref, or no cached entry of
+        # the old refs' dependencies to restore (this run saves it, .github/actions/old-ref-deps)
+        needs: [ gates ]
+        if: ${{ needs.gates.outputs.old-ref-compile == 'true' }}
+        runs-on: ubuntu-26.04
+        timeout-minutes: 40
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+
+            # sbt, the JDK and a compiled target/ to seed the old tree's compile from, restored only: no build here
+            # is one to save. The integration rows' family first (every module's main + test), then any.
+            - uses: ./.github/actions/setup-sbt-build
+              with:
+                  target-cache-restore-only: 'true'
+                  target-cache-restore-keys: |
+                      sbt-target-it-${{ runner.os }}-
+                      sbt-target-unit-worker-${{ runner.os }}-
+                      sbt-target-${{ runner.os }}-
+
+            # Over the dependency cache setup-sbt-build restored; on an exact hit every JVM below runs offline.
+            - name: Restore the old refs' dependencies
+              id: old-ref-deps
+              uses: ./.github/actions/old-ref-deps
+
+            # The old ref's laid-out, COMPILED tree, kept across runs: a run that finds it recompiles only the tool
+            # files it drops in. Keyed by the tool files, so an unchanged set restores an exact match; a changed set
+            # restores the newest tree and compiles the difference.
+            - name: Restore identity-slice's compiled old ref
+              id: old-ref-cache
+              uses: actions/cache/restore@v5
+              with:
+                  path: ${{ runner.temp }}/kinowo-identity/refs
+                  key: identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala', 'common/src/main/scala/tools/TempDirectories.scala', 'scripts/identity-slice', 'scripts/title-trace', 'scripts/identity-tools.sh') }}
+                  restore-keys: |
+                      identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala', 'common/src/main/scala/tools/TempDirectories.scala', 'scripts/identity-slice', 'scripts/title-trace', 'scripts/identity-tools.sh') }}-
+                      identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-
+
+            # Every floor's sbt runs, even over a tree whose classpath is current (identity_classpath answers that from its
+            # file, starting no sbt): what a save keeps must be what the floors' builds resolve, and on a hit, sbt
+            # resolving them offline is the proof the entry holds it all.
+            - name: Make every floor's build resolve
+              run: '[ ! -d "$RUNNER_TEMP/kinowo-identity/refs" ] || find "$RUNNER_TEMP/kinowo-identity/refs" -path "*/target/identity-tools/classpath" -delete'
+
+            - name: identity-slice's tool files still compile into a ref from before them
+              id: old-ref-verdict
+              timeout-minutes: 30
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  # every floor scripts/identity-slice-old-ref-test.sh compiles into: the checkout is shallow, so a
+                  # floor not fetched here fails by name (68370c42d added 9bb54c1a4 there, not here: Main 1807, 1814)
+                  git fetch --no-tags --depth=1 origin c2974e3aaea73fb841096a24316fb5e872154de9 9bb54c1a4912644383d5ed2f02686fe0ed720ece e90d2b498a0f7a26faa55b7d7cdea51d48285df8
+                  KINOWO_IDENTITY_CACHE="$RUNNER_TEMP/kinowo-identity" bash scripts/identity-slice-old-ref-test.sh
+
+            # The runner abandons a timed-out step's processes; ended here before anything reads the tree.
+            - name: End the timed-out step's processes
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
+
+            # NOTHING WRITES THE REF'S TREE WHILE THE SAVE READS IT: a JVM left from the compile (or a kept --serve
+            # JVM) runs in the refs tree, so ending every JVM there ends exactly them.
+            - name: End the old-ref compile's JVMs before its tree is kept
+              if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+              run: '[ ! -d "$RUNNER_TEMP/kinowo-identity/refs" ] || scripts/ci/stop-stray-sbt.sh "$RUNNER_TEMP/kinowo-identity/refs"'
+
+            # The floors' dependencies, once: only from a green compile of every floor (an entry is never rewritten, so a
+            # partial one would stand for good), main's alone (CacheSavePolicySpec), coursier's negative records dropped.
+            - name: Forget coursier's failed downloads before the old refs' dependencies are kept
+              if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.old-ref-verdict.outcome == 'success' && steps.old-ref-deps.outputs.cache-hit != 'true' }}
+              run: scripts/ci/coursier-forget-errors.sh
+            - name: Keep the old refs' dependencies
+              if: ${{ !cancelled() && github.ref == 'refs/heads/main' && steps.old-ref-verdict.outcome == 'success' && steps.old-ref-deps.outputs.cache-hit != 'true' }}
+              uses: actions/cache/save@v5
+              with:
+                  path: ${{ steps.old-ref-deps.outputs.paths }}
+                  key: ${{ steps.old-ref-deps.outputs.key }}
+
+            # What the compile got done, kept when it is news: a red verdict (what a cold tree got through, so the next
+            # run compiles only the rest) or a tool set the restored tree was not compiled for. Under a key of its own
+            # (a cache key is written once), restored by the prefix above; main's alone (CacheSavePolicySpec).
+            - name: Keep identity-slice's compiled old ref, red or green
+              if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (steps.old-ref-verdict.outcome != 'success' || !startsWith(steps.old-ref-cache.outputs.cache-matched-key, steps.old-ref-cache.outputs.cache-primary-key)) }}
+              uses: actions/cache/save@v5
+              with:
+                  path: ${{ runner.temp }}/kinowo-identity/refs
+                  key: ${{ steps.old-ref-cache.outputs.cache-primary-key }}-${{ github.run_id }}
+
     # BOTH TIERS `needs: ci`: a push that fails ci publishes nothing. It also keeps the runner budget
     # intact — a job that waits for ci takes a slot ci has already given back (`CiRunnerBudgetSpec`).
     #

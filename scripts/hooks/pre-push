@@ -74,11 +74,9 @@
 #                 composite actions' `run:` blocks (scripts/ci/shellcheck-action-runs.sh)
 #   `shellcheck`  changed *.sh, hook scripts and extensionless tools with a shell shebang (is_shell_path) —
 #                 fails only on warnings the push ADDS, so a file that was already noisy can still be edited
-#   `oldrefs`     scripts/identity-slice-old-ref-test.sh, on a change to a file identity-slice or title-trace drops into
-#                 the refs they decide under (each tool's TOOL_FILES, read from the tool): each tool compiles into its
-#                 oldest supported ref (the floor that test names), in the tree kept under ~/.cache/kinowo-identity/refs --
-#                 an incremental compile once laid out. Only CI's integration job ran it, and 0ab79600b broke
-#                 `identity-slice --compiles c2974e3aa` unseen while GitHub was down (fixed in 4eded3e81)
+#   (no `oldrefs` check: identity-slice's old-ref compile, scripts/identity-slice-old-ref-test.sh, runs after landing, on
+#                 Main's `identity-slice old-ref compile` row -- the owner, 2026-11-21, "(5)": it caught 1 change in 27
+#                 landing checks, at a p90 of 20 min)
 #   `itrest` `itidentity` `e2ecorpus`  THE HEAVY ROWS, in the landing check only (PREPUSH_HEAVY_ROWS=1, precommit-check.yml's
 #                 `check (rest)` job, after its sbt check): Main's `integration-test (rest)` and `(identity)` (`IT_ROW=<row> sbt itAll`,
 #                 against the job's throwaway MongoDB, $PREPUSH_HEAVY_MONGODB_URI: theirs alone) and, with the identity row, `e2e (corpus)`
@@ -231,7 +229,7 @@
 # the named checks.
 #
 # A MISSING LOCAL TOOL BLOCKS THE PUSH, saying how to fix it -- never a skip (user, 2026-10-21: an agent's push, sbt off
-# its PATH, skipped the sbt check and landed unchecked). sbt and a java that runs (sbt, oldrefs), shellcheck,
+# its PATH, skipped the sbt check and landed unchecked). sbt and a java that runs (sbt), shellcheck,
 # actionlint, npm (eslint), python3 (drift, dashboards, judgements, metricalerts) and the drift's timezonefinder and metricalerts' PyYAML (the
 # pinned venvs scripts/python-venv builds by itself; blocked only when it cannot), gh (judgements; the
 # red gate); the red gate unread blocks a production
@@ -354,15 +352,6 @@ Zero=0000000000000000000000000000000000000000
 
 skipped() { case " ${PREPUSH_SKIP:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
-# The files identity-slice and title-trace drop into every ref they decide under: each tool's TOOL_FILES=( … ), read
-# from the tool itself, one per line.
-tool_files() {
-    local tool
-    for tool in scripts/identity-slice scripts/title-trace; do
-        [ -f "$tool" ] && sed -n '/^TOOL_FILES=(/,/)/{s/^TOOL_FILES=(//;s/).*$//;p;}' "$tool" | tr ' ' '\n'
-    done | grep -v '^$' || true
-}
-
 # Whether the repo-reading lint specs (`--lint-plan`) read <path>: scripts, workflows, skills, the docs, the build, the
 # test, it and page trees, the fixtures.
 read_by_lint_specs() { # <path>
@@ -470,14 +459,13 @@ is_drift_path() { # <path>
 # ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
-    local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 metricalerts=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 oldrefs=0 path
+    local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 metricalerts=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 path
     local identity=0 allowlists=0 driftguards=0 newchecks=0 schedules=0 flipbacklog=0 stampcarry=0
-    local tools script_test_reads glob
+    local script_test_reads glob
     # What a repo-reading self-test declares it reads (run-script-tests' READS): a workflow, a .py or a spec edit runs
     # the `scripttests` check, which selects that test (download_artifact_layout_test.py's workflow, Tool self-tests
     # #259-263, landed without it).
     script_test_reads="$("$(dirname "${BASH_SOURCE[0]}")/../run-script-tests" --reads 2>/dev/null)"
-    tools=" $(tool_files | tr '\n' ' ') "
     local registry_files
     registry_files="$(registry_files)"
     local all_paths=""
@@ -557,7 +545,6 @@ plan() {
             test/resources/fixtures/corpus/expected-hard-clusters-*|\
             scripts/ci/identity_judgements*.py|scripts/ci/identity_takes*.py) judgements=1 ;;
         esac
-        case "$tools" in *" $path "*) oldrefs=1 ;; esac
         case "$path" in .github/allow-lists.txt|scripts/ci/commit_rules*.py) allowlists=1 ;; esac
         [ -f .github/allow-lists.txt ] && grep -qxF -- "$path" .github/allow-lists.txt && allowlists=1
         { is_identity_path "$path" || is_identity_reach_path "$path"; } && identity=1
@@ -591,7 +578,6 @@ plan() {
     [ $flipbacklog = 1 ] && echo flipbacklog
     [ $stampcarry = 1 ] && echo stampcarry
     [ $identity = 1 ] && echo identity
-    [ $oldrefs = 1 ] && echo oldrefs
     [ $ios = 1 ] && echo ios
     [ "${PREPUSH_HEAVY_ROWS:-}" = 1 ] && [ $sbt = 1 ] && heavy_rows "$all_paths"
     return 0
@@ -1593,7 +1579,8 @@ check_drift() {
 }
 
 check_snapshot() {
-    scripts/read-model-snapshot-inputs.sh check "$head_sha"
+    scripts/read-model-snapshot-inputs.sh check "$head_sha" > "$tmp/snapshot.log" 2>&1 \
+        || { tail -40 "$tmp/snapshot.log" >&2; warn "full log: $tmp/snapshot.log"; return 1; }
 }
 
 check_dashboards() {
@@ -2193,14 +2180,6 @@ check_itrest() {
 }
 check_itidentity() { heavy_row itidentity itAll IT_ROW=identity; }
 check_e2ecorpus() { heavy_row e2ecorpus e2eCorpus; }
-
-# The tools' files compile into each tool's floor ref (scripts/identity-slice-old-ref-test.sh names them): an
-# incremental compile in the floor's cached tree, minutes only the first time a machine lays it out.
-check_oldrefs() {
-    need_jvm oldrefs || return 1
-    env -u OLD_REFS bash scripts/identity-slice-old-ref-test.sh > "$tmp/oldrefs.log" 2>&1 \
-        || { grep -v '^PASS\|✓' "$tmp/oldrefs.log" | tail -60 >&2; warn "full log: $tmp/oldrefs.log"; return 1; }
-}
 
 check_ios() {
     scripts/ios-compile-check.sh
