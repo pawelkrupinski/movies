@@ -2,7 +2,6 @@ package services.identityadapters
 
 import scala.concurrent.Await
 import scala.concurrent.duration.*
-import scala.util.Try
 
 import models.ListingKey
 import org.bson.{BsonDocument, BsonInt64, BsonString}
@@ -56,7 +55,7 @@ object RetainedListingStore {
    *  each with the facts it was last taken in with: the departed listings a take-up reads when the store was never written. */
   def fromHistory(entries: Seq[HistoryEntry]): Seq[Listing] =
     entries.iterator.filter(_.kind == HistoryEntry.Listing).toSeq.groupBy(_.id).valuesIterator
-      .flatMap(_.maxBy(_.at).after).flatMap(doc => Try(ListingBson.of(doc)).toOption).toSeq
+      .flatMap(_.maxBy(_.at).after).flatMap(StoredListing.decoded(_, "identity history")).toSeq
       .sortBy(l => ListingKey.serialised(l.key))
 }
 
@@ -155,7 +154,7 @@ object MongoRetainedListingStore {
 
   /** A document as [[docOf]] writes it -- or as written before departures were dated -- read back; None for the marker. */
   def departedOf(doc: BsonDocument): Option[ListingRetention.Departed] =
-    Option(doc.get("listing")).filter(_.isDocument).flatMap(l => Try(ListingBson.of(l.asDocument)).toOption).map { listing =>
+    Option(doc.get("listing")).filter(_.isDocument).flatMap(l => StoredListing.decoded(l.asDocument, "retained listings")).map { listing =>
       val at = Option(doc.get("departedAt")).filter(_.isNumber).map(_.asNumber.longValue).getOrElse(ListingRetention.Unknown)
       ListingRetention.Departed(listing, at)
     }

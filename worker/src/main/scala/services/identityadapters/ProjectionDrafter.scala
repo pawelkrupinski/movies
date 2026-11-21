@@ -89,7 +89,7 @@ final class ProjectionDrafter(normalizer: TitleNormalizer, slotSource: VenueSlot
   }
 }
 
-object ProjectionDrafter {
+object ProjectionDrafter extends play.api.Logging {
   /** One projection's drafts: the scope they ended on, the draft (what the guard reads), the draft with its films' TMDB
    *  details (what the write completes), the plan, and the venue slots reused and built and the misses by cause. */
   final case class Drafted(scope: ProjectionScope, draft: ProjectionDraft, detailed: ProjectionDraft, plan: ProjectionPlan,
@@ -102,9 +102,12 @@ object ProjectionDrafter {
   /** Each draft whose film is new to its record, with that film's TMDB details — fetched side by
    *  side, since each is its own film's: one at a time, a country's first projection waited on
    *  ~2,250 of them in a row (a US boot). The details builder owns the TMDB side; what the projection
-   *  derived stays the projection's, and a fetch that fails leaves its draft as it was. */
+   *  derived stays the projection's, and a fetch that fails leaves its draft as it was, said out loud. */
   private[services] def detailed(drafts: Seq[FilmDraft], details: (MovieRecord, Int) => Option[MovieRecord]): Seq[FilmDraft] =
     tools.BoundedParallel.map("identity-projection-details", drafts, DetailsConcurrency) { d =>
-      d.needsDetails.fold(d)(film => Try(details(d.record, film)).toOption.flatten.fold(d)(d.withDetails))
+      d.needsDetails.fold(d) { film =>
+        Try(details(d.record, film)).fold(e => { logger.warn(s"identity projection: TMDB details of $film failed, drafted without them: $e"); None },
+          identity).fold(d)(d.withDetails)
+      }
     }
 }

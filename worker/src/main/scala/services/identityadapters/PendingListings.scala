@@ -2,7 +2,6 @@ package services.identityadapters
 
 import scala.concurrent.Await
 import scala.concurrent.duration.*
-import scala.util.Try
 
 import models.ListingKey
 import org.bson.{BsonDocument, BsonInt64, BsonString}
@@ -72,7 +71,7 @@ object MongoPendingListingStore {
   /** A document as [[docOf]] writes it, read back; None for one whose key no longer parses. */
   def pendingOf(doc: BsonDocument): Option[PendingListingStore.Pending] =
     Option(doc.get("_id")).filter(_.isString).flatMap(id => ListingKey.parse(id.asString.getValue)).map { key =>
-      val ready = Option(doc.get("ready")).filter(_.isDocument).flatMap(l => Try(ListingBson.of(l.asDocument)).toOption)
+      val ready = Option(doc.get("ready")).filter(_.isDocument).flatMap(l => StoredListing.decoded(l.asDocument, "pending listings"))
       val since = Option(doc.get("since")).filter(_.isNumber).map(_.asNumber.longValue).getOrElse(0L)
       PendingListingStore.Pending(key, ready, since)
     }
