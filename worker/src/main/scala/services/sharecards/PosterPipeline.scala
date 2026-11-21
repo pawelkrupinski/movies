@@ -425,7 +425,7 @@ class ShareCardPosters(store: ShareCardStore, download: PosterDownload, shrinker
     outcome match {
       case Right((image, bytes)) =>
         metrics.posterFetch(PosterFailure.None)
-        store.writeAtomically(store.posterPath(filmId), bytes, ShareCardPosters.key(url))
+        cache(filmId, url, bytes)
         Some(image)
       case Left(reason) =>
         metrics.posterFetch(reason)
@@ -433,6 +433,16 @@ class ShareCardPosters(store: ShareCardStore, download: PosterDownload, shrinker
         None
     }
   }
+
+  /** Keep the poster for the next render. Only a cache: a write it cannot make (the directory refusing
+   *  a new file, which a card already on disk is still overwritten past, or an IO failure) leaves this
+   *  render its poster and the next one a fetch. */
+  private def cache(filmId: String, url: String, bytes: Array[Byte]): Unit =
+    try store.writeAtomically(store.posterPath(filmId), bytes, ShareCardPosters.key(url))
+    catch {
+      case refused: NoRoomForShareCard => logger.debug(s"share card: poster for $filmId not cached: ${refused.getMessage}")
+      case exception: java.io.IOException => logger.warn(s"share card: poster for $filmId not cached: ${exception.getMessage}")
+    }
 
   /** The film, the host and why — what `poster_fetch_total{reason}` counts but cannot name. */
   private def logFailure(filmId: String, url: String, reason: String): Unit = {

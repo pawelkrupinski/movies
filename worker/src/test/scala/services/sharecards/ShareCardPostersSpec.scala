@@ -49,6 +49,17 @@ class ShareCardPostersSpec extends AnyFlatSpec with Matchers with ScratchDirecto
     rig.download.calls.get(url).get shouldBe 1
   }
 
+  // A full directory refuses the poster file, a NEW file, while a card already on disk is still
+  // overwritten in place: losing the poster there re-drew a film's card WITHOUT the poster it had.
+  it should "still hand back a downloaded poster when the directory has no room to cache it" in {
+    val full  = new ShareCardRoom(0L, () => Long.MaxValue)
+    full.measured(overBudget = true)
+    val store = new ShareCardStore(tempDirectory("share-cards-"), full)
+    val rig   = new Rig(store = store)
+    rig.posters.load(film1, Seq(url)).map(_._1) shouldBe Some(url)
+    Files.exists(store.posterPath(film1)) shouldBe false
+  }
+
   "A film's poster load" should "count once per film: a failing primary whose fallback works is no failure" in {
     val primary  = "https://multikino.example/403.jpg"
     val series   = new ShareCardMetrics.Series(Seq("pl"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
