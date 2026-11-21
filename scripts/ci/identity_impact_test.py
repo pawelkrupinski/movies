@@ -252,6 +252,29 @@ class PlanTest(unittest.TestCase):
         finally:
             os.unlink(fh.name)
 
+    # THE SLOWEST IDENTITY SPECS RUN AFTER LANDING (the owner, 2026-11-21, "(2)"): in 356 landing checks over 14 days the
+    # family-index completeness walk, the four drift-slice replays, the family convergence over the slices and the four
+    # read-set closure parts (~1,750 of the shards' ~3,750 suite-seconds) caught nothing no other spec did; Main's worker
+    # rows still run them. The identity set's own lines leave them out, whatever the selection reaches (ALL included).
+    AFTER_LANDING = ["services.identity.FamilyIndexCompletenessSpec", "scripts.IdentityDriftSlicesSpec",
+                     "scripts.IdentityDriftSlicesShard1Spec", "scripts.IdentityDriftSlicesShard2Spec",
+                     "scripts.IdentityDriftSlicesShard3Spec", "services.identity.FamilyConvergenceSlicesSpec",
+                     "services.identity.ReadSetClosurePart1Spec", "services.identity.ReadSetClosurePart2Spec",
+                     "services.identity.ReadSetClosurePart3Spec", "services.identity.ReadSetClosurePart4Spec"]
+
+    def test_the_identity_set_leaves_the_slowest_specs_to_main(self):
+        local_tests = os.path.join(os.path.dirname(HERE), "hooks", "local-tests.txt")
+        with open(local_tests, encoding="utf-8") as fh:
+            lines = [l.split(None, 2)[2].strip() for l in fh if re.match(r"identity\s+sbt\s", l)]
+        kept = {"services.identity.PopulationMonotonicityPart1Spec", "services.identity.IdentitySliceCasesSpec",
+                "scripts.IdentityRefitMeasureAllSpec"}
+        every = {"worker": set(self.AFTER_LANDING) | kept}
+        planned = " ".join(ii.plan(lines, ["the build changed"], {}, None, every_test=every))
+        self.assertEqual([c for c in self.AFTER_LANDING if c in planned.split()], [])
+        self.assertEqual(sorted(c for c in kept if c in planned.split()), sorted(kept))
+        planned = " ".join(ii.plan(lines, [], every, None))
+        self.assertEqual([c for c in self.AFTER_LANDING if c in planned.split()], [])
+
     def test_a_line_that_runs_no_classes_is_kept(self):
         self.assertEqual(ii.plan(["Test/compile"] + SET, [], {}, None), ["Test/compile"])
 

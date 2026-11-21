@@ -43,7 +43,12 @@ fast sbt repochecks/testOnly deploy.WorkflowScriptsRunnableSpec deploy.SharedFil
 # -- not IdentitySliceCasesSpec's first "lacks answers" of one case, a push at a time (main #2180: Halstead, Keswick).
 identity first scripts/identity-slice-coverage
 identity sbt identity/test
-identity sbt testOnly services.identity.* services.titles.rules.* scripts.* tools.HardClusterRatchetSpec
+# AFTER LANDING, ON MAIN (the owner, 2026-11-21, "(2)"): the slowest specs that caught nothing no other spec did in 356
+# landing checks over 14 days (VictoriaLogs CI, 11-07..21), ~1,750 of the shards' ~3,750 suite-seconds -- the family-index
+# completeness walk (~440 s), the four drift-slice replays (~800 s), the family convergence over the slices (~165 s, its 2
+# failures both beside MatchedTakesLabelSpec's) and the four read-set closure parts (~350 s). Main's worker rows run them
+# (build.sbt's HeavyRows / WorkerRestSuites / IdentitySecondRowSuites), as gate rows.
+identity sbt testOnly services.identity.* services.titles.rules.* scripts.* tools.HardClusterRatchetSpec -services.identity.FamilyIndexCompletenessSpec -scripts.IdentityDriftSlices*Spec -services.identity.FamilyConvergenceSlicesSpec -services.identity.ReadSetClosurePart*Spec
 # the scraper specs the change reaches: a scraper cleans its titles with its venue's title rules and the country's
 # TitleNormalizer, so a title-rule row or normalizer change is a scraper change (Main #2266: helios-suffix-9 dropped,
 # caught only by HeliosClientFullRepertoireSpec; what-if and the takes measure replay stored titles, never a scraper).
