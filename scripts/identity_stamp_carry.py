@@ -252,10 +252,12 @@ def write_rows(table: str, new: list[Row]) -> list[str]:
 
 # What may move a stamp: the main code or resources of a module the stamps' closures walk (build.sbt's
 # `IdentityRulesSources.Module`s: the identity module and what it is built on -- never web, worker or scrapers, which it
-# cannot reach), or the build. A line of code changed (not only a comment or whitespace) in one: read from the diff
-# alone, so it errs toward yes -- a yes is proven or left to bump, never carried.
+# cannot reach), build.sbt, or a file of project/ the stamps are made by (build.sbt's stamp task: what to digest, the
+# digest, the carry) -- not the rest of project/, which measures or tests the code. A line of code changed (not only a
+# comment or whitespace) in one: read from the diff alone, so it errs toward yes -- a yes is proven or left to bump.
 DIGESTED_MODULES = ("identity", "common", "geodata", "base", "http")
-MAY_MOVE = re.compile(rf"^(({'|'.join(DIGESTED_MODULES)})/src/main/|build\.sbt$|project/)")
+STAMP_BUILD_FILES = ("project/IdentityRulesSources.scala", "project/SourceDigest.scala", "project/StampCarry.scala")
+MAY_MOVE = re.compile(rf"^(({'|'.join(DIGESTED_MODULES)})/src/main/|build\.sbt$|{'|'.join(map(re.escape, STAMP_BUILD_FILES))}$)")
 COMMENT_ONLY = re.compile(r"^[+-]\s*(//|\*|/\*|\*/|$)")
 
 

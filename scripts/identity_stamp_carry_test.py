@@ -298,6 +298,23 @@ class StampCarryTest(unittest.TestCase):
             built = set(re.findall(r'IdentityRulesSources\.Module\("(\w+)"', f.read()))
         self.assertEqual(built, set(stamp_carry.DIGESTED_MODULES))
 
+    def test_a_build_file_the_stamps_are_not_made_by_moves_no_stamp(self):
+        first = self.move_foo()
+        self.repo.write("project/ReaderNames.scala", "object ReaderNames { val n = 2 }\n")
+        second = self.repo.commit("a test-selection table: no stamp is made by it")
+        code, out = self.run_tool("auto", f"{self.base}..{second}")
+        self.assertEqual(0, code, out)
+        self.assertEqual({(self.base, first)}, {(r[4], r[5]) for r in self.table_rows()}, out)
+
+    def test_the_build_files_the_stamps_are_made_by_are_the_builds_own(self):
+        with open(os.path.join(os.path.dirname(HERE), "build.sbt")) as f:
+            text = f.read()
+        task = text[text.index("val table    = repo / kinowo.build.StampCarry.Table"):]
+        task = task[:task.index("}.taskValue")]
+        project = {n[:-len(".scala")] for n in os.listdir(os.path.join(os.path.dirname(HERE), "project")) if n.endswith(".scala")}
+        used = {name for name in re.findall(r"\b([A-Z]\w+)\.", task) if name in project}
+        self.assertEqual({f"project/{name}.scala" for name in used}, set(stamp_carry.STAMP_BUILD_FILES))
+
     def test_auto_writes_nothing_when_one_commit_proves_nothing(self):
         self.move_foo()
         head = self.change_foo_moved()
