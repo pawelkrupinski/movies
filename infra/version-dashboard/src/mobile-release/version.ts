@@ -66,12 +66,19 @@ export function decideVersion(evidence: VersionEvidence, requested?: string): Ve
   const decision = (version: string, reason: string): VersionDecision => ({ version, bump: version !== evidence.onMain, reason });
 
   if (requested !== undefined) {
-    if (!isVersion(requested)) throw new Error(`'${requested}' is not a dotted numeric version (e.g. 2.1.0)`);
-    if (!shippable(requested)) throw new Error(`${requested} cannot ship: ${released.has(requested) ? "a store has already released it" : `it is not newer than the released ${newestReleased}`}`);
-    if (compareVersions(requested, evidence.onMain) < 0) throw new Error(`${requested} is older than main's ${evidence.onMain}`);
+    assertRequestable(requested, evidence.onMain, released, newestReleased);
     return decision(requested, "requested");
   }
   if (shippable(evidence.onMain)) return decision(evidence.onMain, `main's ${evidence.onMain} is newer than anything either store released`);
   const next = nextPatch(newestReleased ?? evidence.onMain);
   return decision(next, `${newestReleased} is the newest release on either store; bumping both to ${next}`);
+}
+
+/** Throws unless `requested` may ship: a dotted version no store released, newer than every release
+ * and not older than main's. */
+function assertRequestable(requested: string, onMain: string, released: ReadonlySet<string>, newestReleased: string | null): void {
+  if (!isVersion(requested)) throw new Error(`'${requested}' is not a dotted numeric version (e.g. 2.1.0)`);
+  if (released.has(requested)) throw new Error(`${requested} cannot ship: a store has already released it`);
+  if (newestReleased !== null && compareVersions(requested, newestReleased) <= 0) throw new Error(`${requested} cannot ship: it is not newer than the released ${newestReleased}`);
+  if (compareVersions(requested, onMain) < 0) throw new Error(`${requested} is older than main's ${onMain}`);
 }

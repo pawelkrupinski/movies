@@ -5,7 +5,7 @@
  */
 import { ago } from "../shared/age.js";
 import { html, type Raw } from "../shared/html.js";
-import { NOTES_LANGUAGES, PLAY_NOTES_LIMIT, plannedVersion, type Commit, type MobileState, type Platform, type ReleaseRun } from "./model.js";
+import { NOTES_LANGUAGES, PLAY_NOTES_LIMIT, plannedVersion, type Commit, type MobileState, type Platform, type ReleasedPlatform, type ReleaseRun } from "./model.js";
 
 /** Where each platform's pending version waits to go live. */
 const STORE_OF: Readonly<Record<string, string>> = { iOS: "Apple", Android: "Google Play" };
@@ -16,30 +16,41 @@ function platformBlock(platform: Platform): Raw {
     const unlock = platform.vaultLocked ? html` <button class=needs-live data-action=unlock-vault>Unlock with Touch ID</button>` : "";
     return html`${heading}<div class=err>${platform.error}${unlock}</div>`;
   }
-  const submitted = platform.submitted;
-  const pendingVersion = platform.pending?.version ?? "?";
-  // Its own line, ABOVE live: the version on its way out is what this page is usually opened for.
-  const pending = platform.pending
-    ? html`<div class=sub><b>${pendingVersion}</b>: submitted to ${STORE_OF[platform.name] ?? "the store"}, will be live <span class=hint>(${platform.pending.state ?? "?"})</span>${submitted ? html` from <code>${submitted.commit.slice(0, 10)}</code>` : ""}</div>`
-    : "";
-  const released = platform.baseline ? html` · released from <code>${platform.baseline.slice(0, 10)}</code>` : "";
-  const liveExtra = platform.liveExtra ? html` <span class=hint>(${platform.liveExtra})</span>` : "";
-  const line = html`${heading}${pending}<div class=sub><b>${platform.liveVersion ?? "?"}</b>: live${liveExtra}${released}</div>`;
+  const line = html`${heading}${versionLines(platform)}`;
   if (platform.error) return html`${line}<div class=note>${platform.error}</div>`;
   const commits = platform.commits;
   if (commits === null) return html`${line}<div class=note>could not read git history for this platform</div>`;
   if (!commits.length) {
     return html`${line}<div class=note>up to date — nothing merged here since the release that shipped the live version</div>`;
   }
+  return html`${line}${unreleasedCommits(commits, platform)}`;
+}
+
+/** The pending version's line, if one is on its way, and the live version's. */
+function versionLines(platform: ReleasedPlatform): Raw {
+  const submitted = platform.submitted;
+  // Its own line, ABOVE live: the version on its way out is what this page is usually opened for.
+  const pending = platform.pending
+    ? html`<div class=sub><b>${platform.pending.version ?? "?"}</b>: submitted to ${STORE_OF[platform.name] ?? "the store"}, will be live <span class=hint>(${platform.pending.state ?? "?"})</span>${submitted ? html` from <code>${submitted.commit.slice(0, 10)}</code>` : ""}</div>`
+    : "";
+  const released = platform.baseline ? html` · released from <code>${platform.baseline.slice(0, 10)}</code>` : "";
+  const liveExtra = platform.liveExtra ? html` <span class=hint>(${platform.liveExtra})</span>` : "";
+  return html`${pending}<div class=sub><b>${platform.liveVersion ?? "?"}</b>: live${liveExtra}${released}</div>`;
+}
+
+/** The commits merged since the live version's release, each marked in or out of the submitted build. */
+function unreleasedCommits(commits: readonly Commit[], platform: ReleasedPlatform): Raw {
   const cells = (commit: Commit) => html`<td class=sv><span class=sha title='${commit.sha}'>${commit.short}</span></td><td class=mut>${commit.date}</td><td>${commit.subject}</td>`;
+  const submitted = platform.submitted;
   if (!submitted) {
     const rows = commits.map((commit) => html`<tr>${cells(commit)}</tr>`);
-    return html`${line}<table><tr><th>commit</th><th>date</th><th>subject</th></tr>${rows}</table><div class=sub>${commits.length} commit(s) not yet released</div>`;
+    return html`<table><tr><th>commit</th><th>date</th><th>subject</th></tr>${rows}</table><div class=sub>${commits.length} commit(s) not yet released</div>`;
   }
+  const pendingVersion = platform.pending?.version ?? "?";
   const inBuild = new Set(submitted.includes);
   const rows = commits.map((commit) => html`<tr>${cells(commit)}${inBuild.has(commit.sha) ? html`<td>in ${pendingVersion}</td>` : html`<td class=mut>not submitted</td>`}</tr>`);
   const carried = commits.filter((commit) => inBuild.has(commit.sha)).length;
-  return html`${line}<table><tr><th>commit</th><th>date</th><th>subject</th><th>submission</th></tr>${rows}</table><div class=sub>${commits.length} commit(s) not yet released: ${carried} in ${pendingVersion}, ${commits.length - carried} not submitted yet</div>`;
+  return html`<table><tr><th>commit</th><th>date</th><th>subject</th><th>submission</th></tr>${rows}</table><div class=sub>${commits.length} commit(s) not yet released: ${carried} in ${pendingVersion}, ${commits.length - carried} not submitted yet</div>`;
 }
 
 /**

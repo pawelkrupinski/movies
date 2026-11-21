@@ -38,11 +38,9 @@ export function releaseEnvironment(home = homedir(), exists: (path: string) => b
   return env;
 }
 
-export function createMobilePage(
-  wake: WakeSource,
-  live = new MobileLive(mobileSources()),
-  unlockVault: () => Promise<void> = vaultSecrets().unlock,
-  releases: ReleaseRuns = new ReleaseRuns({
+/** The real release runs: scripts/mobile-ship.sh under the vault, its state outside the repository. */
+function mobileReleaseRuns(live: MobileLive): ReleaseRuns {
+  return new ReleaseRuns({
     script: join(REPO_DIR, "scripts", "mobile-ship.sh"),
     cwd: REPO_DIR,
     env: releaseEnvironment(),
@@ -51,7 +49,14 @@ export function createMobilePage(
     processes: realDetachedProcesses,
     now: Date.now,
     publish: (run) => live.showRelease(run),
-  }),
+  });
+}
+
+export function createMobilePage(
+  wake: WakeSource,
+  live = new MobileLive(mobileSources()),
+  unlockVault: () => Promise<void> = vaultSecrets().unlock,
+  releases: ReleaseRuns = mobileReleaseRuns(live),
 ): Page<MobileState> & { live: MobileLive } {
   // A sleep outlives the 10-minute timer; the page re-reads the stores as soon as the Mac wakes.
   wake.onWake(() => void live.rebuild());
@@ -70,34 +75,37 @@ export function createMobilePage(
       releases.stop();
     },
     renderBody: (snapshot) => renderMobile(snapshot.state, Date.now()).__raw,
-    routes(app: FastifyInstance) {
-      // Starts a build and answers at once: the new state reaches every tab over the event stream,
-      // so the wait is visible on the page rather than in a request somebody is staring at.
-      app.post("/mobile/refresh", async () => {
-        void live.rebuild();
-        return { ok: true };
-      });
-      // Pops a Touch ID dialog on this Mac naming the dashboard's own process; the grant lasts until
-      // the dashboard restarts. Answers once the person has touched the sensor (or refused).
-      app.post("/mobile/unlock-vault", async () => {
-        try {
-          await unlockVault();
-        } catch (error) {
-          return { ok: false, error: error instanceof Error ? error.message : String(error) };
-        }
-        void live.rebuild();
-        return { ok: true };
-      });
-      // The release button: `{"mode": "plan"}` is the dry run, `{"mode": "release", "notes": {"pl": …}}` ships under a
-      // fresh plan. Answers once the run has started; its output reaches the page as snapshots, and
-      // the run outlives this process (see release-run.ts).
-      app.post<{ Body: { mode?: unknown; notes?: unknown } }>("/mobile/release", async (request, reply) => {
-        const { mode, notes } = request.body ?? {};
-        if (mode !== "plan" && mode !== "release") return reply.code(400).send({ error: "mode must be plan or release" });
-        if (notes !== undefined && (typeof notes !== "object" || notes === null)) return reply.code(400).send({ error: "notes must be an object" });
-        const answer = releases.start(mode, (notes ?? {}) as Record<string, unknown>);
-        return reply.code(answer.status).send(answer.payload);
-      });
-    },
+    routes: (app) => mobileRoutes(app, live, unlockVault, releases),
   };
+}
+
+/** The page's buttons: refresh, the vault's Touch ID unlock and the release runs. */
+function mobileRoutes(app: FastifyInstance, live: MobileLive, unlockVault: () => Promise<void>, releases: ReleaseRuns): void {
+  // Starts a build and answers at once: the new state reaches every tab over the event stream,
+  // so the wait is visible on the page rather than in a request somebody is staring at.
+  app.post("/mobile/refresh", async () => {
+    void live.rebuild();
+    return { ok: true };
+  });
+  // Pops a Touch ID dialog on this Mac naming the dashboard's own process; the grant lasts until
+  // the dashboard restarts. Answers once the person has touched the sensor (or refused).
+  app.post("/mobile/unlock-vault", async () => {
+    try {
+      await unlockVault();
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+    void live.rebuild();
+    return { ok: true };
+  });
+  // The release button: `{"mode": "plan"}` is the dry run, `{"mode": "release", "notes": {"pl": …}}` ships under a
+  // fresh plan. Answers once the run has started; its output reaches the page as snapshots, and
+  // the run outlives this process (see release-run.ts).
+  app.post<{ Body: { mode?: unknown; notes?: unknown } }>("/mobile/release", async (request, reply) => {
+    const { mode, notes } = request.body ?? {};
+    if (mode !== "plan" && mode !== "release") return reply.code(400).send({ error: "mode must be plan or release" });
+    if (notes !== undefined && (typeof notes !== "object" || notes === null)) return reply.code(400).send({ error: "notes must be an object" });
+    const answer = releases.start(mode, (notes ?? {}) as Record<string, unknown>);
+    return reply.code(answer.status).send(answer.payload);
+  });
 }

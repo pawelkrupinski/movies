@@ -1,4 +1,4 @@
-import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { build } from "esbuild";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -45,9 +45,8 @@ function streamSnapshots(page: Page<unknown>, request: FastifyRequest, reply: Fa
   });
 }
 
-async function main(): Promise<void> {
-  const pages = createPages();
-  const app = Fastify({ logger: { level: "warn" }, forceCloseConnections: true });
+/** Answers only this Mac's own browser, takes writes only from its own pages, and caches nothing. */
+function guardRequests(app: FastifyInstance): void {
   app.addHook("onRequest", async (request, reply) => {
     if (!isLocalHost(request.headers.host, PORT)) return reply.code(421).send("this dashboard answers only http://127.0.0.1 and http://localhost");
     const fetchSite = request.headers["sec-fetch-site"];
@@ -59,7 +58,10 @@ async function main(): Promise<void> {
   app.addHook("onSend", async (_request, reply) => {
     reply.header("Cache-Control", "no-store");
   });
+}
 
+/** The shared stylesheet and each page's script and stylesheet, built once at start-up. */
+async function serveAssets(app: FastifyInstance, pages: readonly Page<unknown>[]): Promise<void> {
   const assets = new Map<string, { type: string; body: string }>();
   assets.set("styles.css", { type: "text/css", body: await readFile(join(ROOT, "web", "styles.css"), "utf8") });
   for (const page of pages) {
@@ -71,7 +73,10 @@ async function main(): Promise<void> {
     if (!asset) return reply.code(404).send("not found");
     return reply.type(asset.type).send(asset.body);
   });
+}
 
+/** Each page's HTML, event stream and own routes; `/` redirects to the first. */
+function routePages(app: FastifyInstance, pages: readonly Page<unknown>[]): void {
   const [home] = pages;
   if (home) app.get("/", async (_request, reply) => reply.redirect(home.path));
   for (const page of pages) {
@@ -81,9 +86,13 @@ async function main(): Promise<void> {
     app.get(`/events/${page.name}`, (request, reply) => streamSnapshots(page, request, reply));
     page.routes?.(app);
   }
+}
 
-  // What the watchdog probes. HTTP rather than a bare TCP connect, so a wedged event loop -- which
-  // still accepts connections at the kernel -- reads as down.
+/**
+ * What the watchdog probes. HTTP rather than a bare TCP connect, so a wedged event loop -- which
+ * still accepts connections at the kernel -- reads as down.
+ */
+function serveHealth(app: FastifyInstance, pages: readonly Page<unknown>[]): void {
   app.get("/healthz", async () => ({
     ok: true,
     draining: isDraining(),
@@ -93,6 +102,15 @@ async function main(): Promise<void> {
       return [page.name, { version, checkedAt }];
     })),
   }));
+}
+
+async function main(): Promise<void> {
+  const pages = createPages();
+  const app = Fastify({ logger: { level: "warn" }, forceCloseConnections: true });
+  guardRequests(app);
+  await serveAssets(app, pages);
+  routePages(app, pages);
+  serveHealth(app, pages);
 
   let stopping = false;
   let autodeploy: Autodeploy | null = null;

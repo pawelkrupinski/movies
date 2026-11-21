@@ -185,6 +185,12 @@ interface AscVersion {
  * user could have them. The `sort` query parameter 400s on this endpoint (PARAMETER_ERROR.ILLEGAL),
  * so the ordering is done here rather than trusted from Apple.
  */
+/** Sort order: the newest `createdDate` first, a version without one last. */
+function newestCreatedFirst(a: AscVersion, b: AscVersion): number {
+  const [x, y] = [a.createdDate ?? "", b.createdDate ?? ""];
+  return x > y ? -1 : x < y ? 1 : 0;
+}
+
 export async function iosReleaseState(get: (path: string) => Promise<unknown>, sleep: Sleep = realSleep): Promise<StoreState> {
   let data: { data?: { attributes: AscVersion }[] };
   try {
@@ -197,7 +203,7 @@ export async function iosReleaseState(get: (path: string) => Promise<unknown>, s
   if (!Array.isArray(data?.data)) return { error: "App Store Connect answered without a version list", networkError: false };
   const versions = data.data
     .map((version) => version.attributes)
-    .sort((a, b) => ((b.createdDate ?? "") < (a.createdDate ?? "") ? -1 : (b.createdDate ?? "") > (a.createdDate ?? "") ? 1 : 0));
+    .sort(newestCreatedFirst);
   const live = versions.find((version) => version.appStoreState === "READY_FOR_SALE") ?? null;
   const newest = versions[0] ?? null;
   const pending = newest && (!live || newest.versionString !== live.versionString)

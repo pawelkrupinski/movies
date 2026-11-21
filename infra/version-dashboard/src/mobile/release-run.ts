@@ -102,24 +102,13 @@ export class ReleaseRuns {
   /** `notes`: the release's "What's new" by language (ignored for a plan); blank ones are dropped. */
   start(mode: ReleaseRun["mode"], notes: Readonly<Record<string, unknown>> = {}): ReleaseReply {
     this.poll();
-    if (this.current && !this.current.done) return refuse(409, `a ${this.current.mode === "plan" ? "dry run" : "release"} is already running`);
-    if (mode === "release") {
-      const plan = this.current;
-      if (!plannedVersion(plan)) return refuse(409, "nothing planned to ship -- run the dry run first");
-      if (plan && this.options.now() - plan.startedAt > PLAN_MAX_AGE_MS) return refuse(409, "the dry run is over 30 minutes old -- plan again");
-    }
+    const refusal = this.refusal(mode);
+    if (refusal) return refuse(409, refusal);
     const typed = mode === "release" ? releaseNotes(notes) : {};
     if (typeof typed === "string") return refuse(400, typed);
-    const { script, cwd, env, secrets, stateDir, processes } = this.options;
-    mkdirSync(stateDir, { recursive: true });
-    rmSync(this.file("exit"), { force: true });
-    writeFileSync(this.file("output.log"), "");
-    // Written afresh every run, so one release's text never rides along on the next.
-    const notesDir = join(stateDir, "notes");
-    rmSync(notesDir, { recursive: true, force: true });
-    mkdirSync(notesDir);
-    for (const [language, text] of Object.entries(typed)) writeFileSync(join(notesDir, `${language}.txt`), text);
+    const notesDir = this.freshState(typed);
     const flags = mode === "plan" ? ["--dry-run"] : Object.keys(typed).length ? ["--notes-dir", notesDir] : [];
+    const { script, cwd, env, secrets, processes } = this.options;
     const argv = [secrets.bin, "run", secrets.namespace, ...secrets.names, "--", "/bin/sh", "-c", RECORD_EXIT, "mobile-ship", this.file("exit"), script, ...flags];
     let pid: number;
     try {
@@ -131,6 +120,31 @@ export class ReleaseRuns {
     writeFileSync(this.file("run.json"), JSON.stringify(this.started));
     this.poll();
     return { status: 202, payload: { ok: true } };
+  }
+
+  /** Why a `mode` run cannot start now, or null: one run at a time, and a release only under a fresh
+   * plan that found a version to ship. */
+  private refusal(mode: ReleaseRun["mode"]): string | null {
+    const current = this.current;
+    if (current && !current.done) return `a ${current.mode === "plan" ? "dry run" : "release"} is already running`;
+    if (mode === "plan") return null;
+    if (!current || !plannedVersion(current)) return "nothing planned to ship -- run the dry run first";
+    if (this.options.now() - current.startedAt > PLAN_MAX_AGE_MS) return "the dry run is over 30 minutes old -- plan again";
+    return null;
+  }
+
+  /** Clears the last run's exit code and log and writes this run's notes; returns the notes' directory.
+   * The notes are written afresh every run, so one release's text never rides along on the next. */
+  private freshState(notes: ReleaseNotes): string {
+    const { stateDir } = this.options;
+    mkdirSync(stateDir, { recursive: true });
+    rmSync(this.file("exit"), { force: true });
+    writeFileSync(this.file("output.log"), "");
+    const notesDir = join(stateDir, "notes");
+    rmSync(notesDir, { recursive: true, force: true });
+    mkdirSync(notesDir);
+    for (const [language, text] of Object.entries(notes)) writeFileSync(join(notesDir, `${language}.txt`), text);
+    return notesDir;
   }
 
   /** After a restart: show the newest run again, and follow it if it is still going. */
@@ -149,7 +163,6 @@ export class ReleaseRuns {
     if (!started) return;
     const exitText = readOr(this.file("exit"), null);
     const done = exitText !== null || !this.options.processes.alive(started.pid);
-    const exitCode = exitText === null ? null : Number.parseInt(exitText.trim(), 10);
     const lines = (readOr(this.file("output.log"), "") ?? "").split("\n");
     if (lines.at(-1) === "") lines.pop();
     const run: ReleaseRun = {
@@ -157,7 +170,7 @@ export class ReleaseRuns {
       startedAt: started.startedAt,
       lines: lines.slice(-LINE_CAP),
       done,
-      exit: exitCode === null || Number.isNaN(exitCode) ? null : exitCode,
+      exit: recordedExit(exitText),
     };
     this.current = run;
     this.options.publish(run);
@@ -182,6 +195,13 @@ function releaseNotes(notes: Readonly<Record<string, unknown>>): ReleaseNotes | 
     if (text) typed[language as keyof ReleaseNotes] = text;
   }
   return typed;
+}
+
+/** The exit code `RECORD_EXIT` wrote; null before it wrote one, or for text that is no number. */
+function recordedExit(text: string | null): number | null {
+  if (text === null) return null;
+  const code = Number.parseInt(text.trim(), 10);
+  return Number.isNaN(code) ? null : code;
 }
 
 function readOr<T>(path: string, fallback: T): string | T {

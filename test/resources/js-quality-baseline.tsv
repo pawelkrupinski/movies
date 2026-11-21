@@ -18,17 +18,7 @@ limit	clone-tokens	50
 limit	fanout	9
 limit	distance	0.2
 limit	cycle	0
-cognitive	infra/version-dashboard/src/mobile-release/version.ts:decideVersion	11
-cognitive	infra/version-dashboard/src/mobile/release-run.ts:start	19
-cognitive	infra/version-dashboard/src/mobile/view.ts:platformBlock	12
-cyclomatic	infra/version-dashboard/src/mobile-release/ios.ts:poll() callback	13
-cyclomatic	infra/version-dashboard/src/mobile-release/ios.ts:syncPrivacyPolicyUrls	12
-cyclomatic	infra/version-dashboard/src/mobile/release-run.ts:poll	11
-cyclomatic	infra/version-dashboard/src/mobile/release-run.ts:start	16
 cyclomatic	infra/version-dashboard/src/mobile/stores.ts:androidReleaseState	14
 cyclomatic	infra/version-dashboard/src/mobile/stores.ts:iosReleaseState	16
-cyclomatic	infra/version-dashboard/src/mobile/view.ts:platformBlock	16
-method-lines	infra/version-dashboard/src/mobile/page.ts:createMobilePage	63
-method-lines	infra/version-dashboard/src/server.ts:main	81
 fanout	web/src/main/assets/js/shared/boot.js	10
 distance	infra/version-dashboard/src/mobile	0.53

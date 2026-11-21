@@ -112,25 +112,31 @@ async function poll<T>(pace: Pace, what: string, intervalMs: number, attempts: n
  */
 export async function waitForBuild(asc: AscApi, buildId: string, pace: Pace): Promise<void> {
   await poll(pace, `build ${buildId} to finish processing`, 30_000, 61, async () => {
-    let build: { data?: { attributes?: Record<string, unknown> } };
-    try {
-      build = (await asc.get(`/v1/builds/${buildId}`)) as typeof build;
-    } catch (error) {
-      if (error instanceof HttpError && error.status === 404) {
-        pace.log(`build ${buildId} waiting for Apple to pick up the upload (not listed yet)`);
-        return null;
-      }
-      throw error;
+    const attributes = await listedBuild(asc, buildId);
+    if (attributes === null) {
+      pace.log(`build ${buildId} waiting for Apple to pick up the upload (not listed yet)`);
+      return null;
     }
-    const state = text(build.data?.attributes?.["processingState"]);
+    const state = text(attributes["processingState"]);
     if (state === "VALID") {
-      if (build.data?.attributes?.["expired"] === true) throw new Error(`build ${buildId} has expired`);
+      if (attributes["expired"] === true) throw new Error(`build ${buildId} has expired`);
       return true;
     }
     if (state === "FAILED" || state === "INVALID") throw new Error(`build ${buildId} is ${state}`);
     pace.log(`build ${buildId} ${state || "listed, no processing state yet"}`);
     return null;
   });
+}
+
+/** The build's attributes; null while it is not listed (a 404: Apple has not started processing it). */
+async function listedBuild(asc: AscApi, buildId: string): Promise<Record<string, unknown> | null> {
+  try {
+    const build = (await asc.get(`/v1/builds/${buildId}`)) as { data?: { attributes?: Record<string, unknown> } };
+    return build.data?.attributes ?? {};
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 404) return null;
+    throw error;
+  }
 }
 
 /** The newest usable (processed, unexpired) build already uploaded for `version`, for a resumed run. */
@@ -217,16 +223,12 @@ interface JsonApiDocument extends JsonApiList {
  * silently ignored -- so this runs after the version record exists and before it is submitted.
  */
 export async function syncPrivacyPolicyUrls(asc: AscApi, pace: Pace): Promise<void> {
-  const infos = (await asc.get(`/v1/apps/${IOS_APP_ID}/appInfos?include=appInfoLocalizations`)) as JsonApiDocument;
-  const editable = (infos.data ?? []).find((info) => EDITABLE.has(text(info.attributes?.["state"]) || text(info.attributes?.["appStoreState"])));
-  if (!editable) {
+  const localizations = await editableAppInfoLocalizations(asc);
+  if (!localizations) {
     pace.log("privacy policy URLs: no editable app info, left as they are");
     return;
   }
-  // A to-many relationship: `data` is a list here, not the single reference JsonApiList types it as.
-  const refs: unknown = editable.relationships?.["appInfoLocalizations"]?.data;
-  const ids = new Set(Array.isArray(refs) ? refs.map((ref: { id: string }) => ref.id) : []);
-  for (const localization of (infos.included ?? []).filter((item) => ids.has(item.id))) {
+  for (const localization of localizations) {
     const locale = text(localization.attributes?.["locale"]);
     const url = PRIVACY_POLICY_URLS[locale];
     if (!url || text(localization.attributes?.["privacyPolicyUrl"]) === url) continue;
@@ -235,6 +237,17 @@ export async function syncPrivacyPolicyUrls(asc: AscApi, pace: Pace): Promise<vo
     });
     pace.log(`privacyPolicyUrl[${locale}] → ${url}`);
   }
+}
+
+/** The localizations of the app info that can still change (see above); null when there is none. */
+async function editableAppInfoLocalizations(asc: AscApi): Promise<NonNullable<JsonApiDocument["included"]> | null> {
+  const infos = (await asc.get(`/v1/apps/${IOS_APP_ID}/appInfos?include=appInfoLocalizations`)) as JsonApiDocument;
+  const editable = (infos.data ?? []).find((info) => EDITABLE.has(text(info.attributes?.["state"]) || text(info.attributes?.["appStoreState"])));
+  if (!editable) return null;
+  // A to-many relationship: `data` is a list here, not the single reference JsonApiList types it as.
+  const refs: unknown = editable.relationships?.["appInfoLocalizations"]?.data;
+  const ids = new Set(Array.isArray(refs) ? refs.map((ref: { id: string }) => ref.id) : []);
+  return (infos.included ?? []).filter((item) => ids.has(item.id));
 }
 
 /**
