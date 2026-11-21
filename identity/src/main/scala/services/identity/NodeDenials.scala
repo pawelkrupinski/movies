@@ -27,11 +27,18 @@ private[identity] final class NodeDenials(scoring: CandidateScoring, links: Feed
     Option.when(scoring.pinDenies(node, id))("pinned never this film")
       .orElse(links.overruledDenial(node, id)).map(Denial(_))
       .orElse(copied.namedOnlyByCopiedTitle(node, candidateById(id)))
-      .orElse((Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
-      .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))
-      .orElse(Option.when(namesOnlyAProgrammeSlot(node, candidateById(id)))("its title names it only by a festival's programme slot"))
-      .orElse(billing.of(node, candidateById(id).film))
+      .orElse(billedDenial(node, id).map(Denial(_)))
+
+  /** Why `node`'s own billing rules `id` out: its title naming it only by the venue's name, a tag or a programme slot,
+   *  the billing itself ([[BillingDenials]]), or a relay's record its own text contradicts. */
+  private def billedDenial(node: EvidenceNode, id: Int): Option[String] = {
+    val candidate = candidateById(id)
+    Option.when(namesOnlyItsVenue(node, candidate))("its title names it only by the venue's own name")
+      .orElse(Option.when(namesOnlyATag(node, candidate))("its title names it only by a programme tag billed beside many titles"))
+      .orElse(Option.when(namesOnlyAProgrammeSlot(node, candidate))("its title names it only by a festival's programme slot"))
+      .orElse(billing.of(node, candidate.film))
       // a plain billing whose own text credits another film's director, never the relay's
-      .orElse(Option.when(RelayRecords.contradictedByOwnText(node.listings, candidateById(id).film,
-        scoring.generation.reached(node).filterNot(_ == id).map(other => candidateById(other).film)))(RelayRecords.OwnTextDenial)).map(Denial(_)))
+      .orElse(Option.when(RelayRecords.contradictedByOwnText(node.listings, candidate.film,
+        scoring.generation.reached(node).filterNot(_ == id).map(other => candidateById(other).film)))(RelayRecords.OwnTextDenial))
+  }
 }
