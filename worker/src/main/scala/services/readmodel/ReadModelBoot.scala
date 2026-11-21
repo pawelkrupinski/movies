@@ -7,7 +7,7 @@ import tools.Stoppable
 
 /**
  * The [[ReadModelProjector]]'s boot and its change-stream subscription: the boot reads -- the projector's seed from the
- * read model, the sweeper's missing-card heal and the projector's corpus lessons -- in order ([[prepare]]); the attach
+ * read model, the sweeper's missing-card heal and the corpus lessons, the seed and lessons [[ReadModelBootSeed]]'s -- in order ([[prepare]]); the attach
  * that holds every change the stream delivers until those boot reads are done, and the release projecting them after
  * ([[attach]]); the watch that opens the stream ([[watch]]). The projector applies each change; this decides when it may.
  *
@@ -21,6 +21,7 @@ final class ReadModelBoot(
   bootStudy: Option[BootCorpusStudy] = None
 ) extends Stoppable with ContinuingSteps with Logging {
   private val projection = projector.projection
+  private val seed       = ReadModelBootSeed(projector)
 
   @volatile private var watchHandle: Option[AutoCloseable] = None
 
@@ -40,12 +41,12 @@ final class ReadModelBoot(
     // life of the process. Without a seed each card is rewritten on its first projection, and the
     // first sweep heals what the missing-card heal would have: costly, but the projector runs.
     try {
-      projector.seedFromReadModel()
+      seed.fromReadModel()
       val study = bootStudy.flatMap(_.take())
       sweeper.healMissingCards(study)
       // Without the hydrate's rows, read them for the lessons, off the boot thread: without them every film's first
       // venue change after the boot is re-read whole (78 of the US's 78 venue applies in half an hour, 2026-10-01).
-      study.fold { scheduler.execute(() => continuing("read model: learning the corpus failed")(projector.learnFromCorpus())); () }(projector.learnAtBoot)
+      study.fold { scheduler.execute(() => continuing("read model: learning the corpus failed")(seed.learnFromCorpus())); () }(seed.learnAtBoot)
     } catch {
       case scala.util.control.NonFatal(exception) =>
         logger.error(s"read model: the boot reads failed (${exception.getClass.getSimpleName}: ${exception.getMessage}) — " +
