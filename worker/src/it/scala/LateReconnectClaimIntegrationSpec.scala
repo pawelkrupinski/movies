@@ -78,6 +78,26 @@ class LateReconnectClaimIntegrationSpec extends AnyFlatSpec with Matchers with E
       } finally connection.close()
     }
 
+  // The worker's fleet database (its host pace, its OMDb budget, the Facebook re-scrapes) was opened
+  // Optional: one probe timing out at boot left it disabled for the process's life, the pace and the
+  // budget silently per-process. Wanted reconnects it, asks for the restart that rebinds them, and
+  // still never refuses the boot.
+  "a wanted connection unreachable at boot" should "reconnect in the background and then ask for a restart" in
+    tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "late-reconnect-wanted") { db =>
+      val attempts = new java.util.concurrent.atomic.AtomicInteger(0)
+      val connection = new MongoConnection(settings.MongoConnectionSettings(Some(mongoTarget.uri), settings.MongoDatabaseName(db.name), probing(2.seconds)), services.MongoRequirement.Wanted,
+        onConnected = _ => if (attempts.incrementAndGet() == 1) throw new com.mongodb.MongoTimeoutException("unreachable at boot"))
+      try {
+        connection.database shouldBe None
+        connection.boundDegraded shouldBe true
+        eventually(connection.database should not be empty)(using PatienceConfig(SpecTimeouts.Settle, Span(1, Seconds)), implicitly)
+        connection.restartRequired shouldBe true
+      } finally connection.close()
+      val misconfigured = new MongoConnection(settings.MongoConnectionSettings(Some(mongoTarget.uri), settings.MongoDatabaseName(db.name), probing(2.seconds)), services.MongoRequirement.Wanted,
+        onConnected = _ => throw new IllegalArgumentException("not a reachability failure"))
+      try { misconfigured.database shouldBe None; misconfigured.boundDegraded shouldBe false } finally misconfigured.close()
+    }
+
   // A connection bound to a SHARED client does not own it (the worker closes it once, after
   // every borrowing connection). A close landing while the reconnect's probe was in flight
   // made the reconnect close "its" client — the shared one, under every other country.

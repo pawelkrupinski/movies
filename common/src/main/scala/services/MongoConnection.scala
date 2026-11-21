@@ -80,6 +80,10 @@ class MongoConnection(
 
   private val connectionRequired = required == MongoRequirement.Required
 
+  // Set by `init` (so declared before `initResult`): the boot's connect failed only on reachability, and this
+  // requirement reconnects such a connection in the background.
+  private var unreachableAtBoot = false
+
   // Stops the background reconnect. Without it a closed connection keeps probing
   // — and could publish a live client into a connection its owner has already
   // torn down — plus every test that exercises the degraded path would leak a
@@ -99,16 +103,15 @@ class MongoConnection(
   // `retryInBackground`). `@volatile` so readers on request threads see it.
   @volatile private var initResult: (Option[MongoClient], Option[MongoDatabase]) = init()
 
-  // A `required` connection still without a database after `init` is the degraded one
-  // (every other required failure threw): reconnect in the background. Started only
-  // HERE, once `initResult` is assigned — the reconnect loop reads it straight away,
-  // and started from inside `init` it could read the unassigned field, die on an NPE,
-  // and leave the connection degraded for good.
-  if (connectionRequired && initResult._2.isEmpty) settings.connectionString.foreach(retryInBackground)
+  // A connection that found Mongo unreachable at boot is the degraded one (a required one's every other
+  // failure threw): reconnect in the background. Started only HERE, once `initResult` is assigned — the
+  // reconnect loop reads it straight away, and started from inside `init` it could read the unassigned
+  // field, die on an NPE, and leave the connection degraded for good.
+  if (unreachableAtBoot) settings.connectionString.foreach(retryInBackground)
 
-  /** A required connection that found Mongo unreachable at boot: every repository wired from
+  /** A required (or wanted) connection that found Mongo unreachable at boot: every repository wired from
    *  [[database]] then holds `None` for good — see [[DatabaseBinding]]. */
-  val boundDegraded: Boolean = connectionRequired && initResult._2.isEmpty
+  val boundDegraded: Boolean = unreachableAtBoot
 
   /** The reconnect published a database nothing wired at boot will read: restart to use it. */
   def restartRequired: Boolean = boundDegraded && initResult._2.isDefined
@@ -154,8 +157,8 @@ class MongoConnection(
    *  once it answers. Daemon thread so it never holds shutdown open. The backoff
    *  matters as much as the retry: a tight loop of connect probes from every web
    *  machine is the same stampede that kept the cluster down, so back off to a
-   *  minute and stay there. Only reached when `required` — an optional connection
-   *  that failed stays disabled, as before. */
+   *  minute and stay there. Only reached for a required or wanted connection that was
+   *  unreachable — an optional one that failed stays disabled, as before. */
   private def retryInBackground(connectionString: String): Unit =
     startReconnect(s"mongo-reconnect-$dbName", () => reconnectFrom(connectionString, waitSeconds = 5L))
 
@@ -232,12 +235,14 @@ class MongoConnection(
    *  (see DatabaseBinding). A MISCONFIGURATION still aborts: nothing about a bad URI
    *  or bad credentials fixes itself, so failing loudly at boot is right. */
   private def unconnected(connectionString: String, exception: Throwable): (Option[MongoClient], Option[MongoDatabase]) = {
-    val hint = MongoConnection.localUriHint(connectionString)
-    if (connectionRequired && !MongoConnection.isTransient(exception))
+    val hint      = MongoConnection.localUriHint(connectionString)
+    val transient = MongoConnection.isTransient(exception)
+    if (connectionRequired && !transient)
       throw new IllegalStateException(
         s"MongoConnection init failed and a Mongo connection is required — refusing to start: ${exception.getMessage}$hint",
         exception)
-    if (connectionRequired)
+    unreachableAtBoot = transient && required != MongoRequirement.Optional
+    if (unreachableAtBoot)
       logger.error(s"MongoConnection to $dbName is UNREACHABLE (${exception.getMessage}) — " +
         s"starting DEGRADED rather than crash-looping; retrying in the background.$hint")
     else

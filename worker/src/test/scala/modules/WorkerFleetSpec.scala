@@ -56,4 +56,11 @@ class WorkerFleetSpec extends AnyFlatSpec with Matchers {
   it should "be true for a single-country worker with a fresh pulse" in {
     new WorkerFleet(Seq(fresh)).isAlive shouldBe true
   }
+
+  // The fleet database was opened Optional whatever the country's requirement: a probe failing at boot
+  // disabled the fleet's host pace and OMDb budget for good, and its reconnect could not restart anything.
+  "The fleet database" should "be wanted (reconnected) where the country's own is required, optional where it is" in {
+    modules.wiring.ShareCardWiring.fleetRequirement(services.MongoRequirement.Required) shouldBe services.MongoRequirement.Wanted
+    modules.wiring.ShareCardWiring.fleetRequirement(services.MongoRequirement.Optional) shouldBe services.MongoRequirement.Optional
+  }
 }

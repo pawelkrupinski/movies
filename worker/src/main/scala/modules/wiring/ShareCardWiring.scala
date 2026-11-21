@@ -68,11 +68,13 @@ trait ShareCardWiring { self: WorkerWiring =>
     taskQueue, shareCardRescrapes, shareCardMetrics, clock)
 
   /** The fleet database — one for every country's worker, on the same cluster (and, in a
-   *  multi-country process, the same client) as the country's own. Optional: unreachable or
-   *  refused, it is only the Facebook re-scrapes that stop. */
+   *  multi-country process, the same client) as the country's own. Never refuses the boot: refused, it is the
+   *  Facebook re-scrapes, the fleet's host pace and its OMDb budget that go without it. Wanted where the country's
+   *  own is required: one probe failing at boot no longer leaves them without it for the process's life — it
+   *  reconnects in the background, and the worker restarts to rebind them ([[databaseBindings]]). */
   lazy val fleetMongoConnection: MongoConnection =
     new MongoConnection(settings.MongoConnectionSettings.of(mongoAddress.uri, fleetDatabaseName,
-      MongoTuning.from(configuration, settings.ProcessTier.Worker)), services.MongoRequirement.Optional, sharedMongoClient)
+      MongoTuning.from(configuration, settings.ProcessTier.Worker)), ShareCardWiring.fleetRequirement(mongoRequirement), sharedMongoClient)
 
   /** `MONGODB_FLEET_DB`, else `kinowo_fleet` ([[services.FleetDatabase]]). */
   lazy val fleetDatabaseName: settings.MongoDatabaseName = services.FleetDatabase.name(configuration.fleetDatabase)
@@ -165,6 +167,11 @@ trait ShareCardWiring { self: WorkerWiring =>
 }
 
 object ShareCardWiring {
+  /** The fleet database's requirement for a worker whose own database is `countrys`: wanted (reconnected) where
+   *  the country's is required, optional where the country's is (a test, a local opt-out). */
+  def fleetRequirement(countrys: services.MongoRequirement): services.MongoRequirement =
+    if (countrys == services.MongoRequirement.Required) services.MongoRequirement.Wanted else services.MongoRequirement.Optional
+
   /** When the daily share-card prune runs, past midnight UTC: a fixed time, so its burst of
    *  deletions lands at one place on the dashboard however the day's deploys fall. */
   val DailyPruneAt: FiniteDuration = 3.hours

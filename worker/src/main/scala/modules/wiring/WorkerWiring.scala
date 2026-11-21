@@ -136,8 +136,14 @@ class WorkerWiring(
   // anything can prune or write against it (see [[services.DatabaseOwner]]).
   lazy val mongoConnection: MongoConnection = {
     MongoConnection.forCountry(mongoAddress.copy(database = Some(mongoDbName)).connectionFor(country,
-      tuning = MongoTuning.from(configuration, settings.ProcessTier.Worker)), services.MongoRequirement.of(testMode = false, optedOut = configuration.mongoOptional), country, sharedClient = sharedMongoClient)
+      tuning = MongoTuning.from(configuration, settings.ProcessTier.Worker)), mongoRequirement, country, sharedClient = sharedMongoClient)
   }
+
+  protected lazy val mongoRequirement: services.MongoRequirement =
+    services.MongoRequirement.of(testMode = false, optedOut = configuration.mongoOptional)
+
+  /** Every database this wiring bound at boot: a reconnect to any of them asks for a restart ([[services.DatabaseBinding]]). */
+  def databaseBindings: Seq[services.DatabaseBinding] = Seq(mongoConnection, fleetMongoConnection)
 
   // `clock` (which this wiring's stamps are taken from — a no-match `TmdbAttempt`, an uptime bucket, a scheduled run;
   // the fixture harness pins it, so a replayed corpus is byte-identical across arrival orders), `stopwatch`, `sleep`
