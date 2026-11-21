@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# THE JS/TS QUALITY REPORT: the Scala code-quality and coupling measures (CLAUDE.md, "Code quality ratchets" and
+# "Coupling is reviewed") taken over the JavaScript and TypeScript, per area (scripts/js-quality/areas.tsv). A REPORT,
+# not a gate: no baseline, nothing in pre-push or CI reads it.
+#
+#   scripts/js-quality-report                      the markdown report to stdout
+#   scripts/js-quality-report --out DIR            also keep report.md, functions.tsv, coupling.tsv and over-limit.tsv
+#                                                  (`kind<TAB>key<TAB>value`, every item over a limit) in DIR
+#   scripts/js-quality-report --root DIR [--area NAME[:globals]=PATH[,PATH...]]...
+#                                                  another checkout (e.g. ~/projects/events --area app=packages);
+#                                                  --areas FILE reads the areas from a file of areas.tsv's shape
+#
+# The measures and their tools (scripts/js-quality/package.json, pinned; installed by `npm ci` there on first run):
+#   cognitive complexity  <= 10   eslint-plugin-sonarjs `cognitive-complexity` (Sonar's own implementation)
+#   cyclomatic complexity <= 10   ESLint core `complexity`
+#   inner defs            <= 2    named functions (declarations, `const f = () =>`) a function holds; not callbacks
+#   function length       <= 50   ESLint core `max-lines-per-function` (physical lines; IIFEs not counted)
+#   file length           <= 500  physical lines
+#   clone groups (50+ tokens)     jscpd, import/require lines skipped, pairs joined into groups
+#   fan-out <= 9, cycles, D <= 0.20 (directories of 8+ modules)
+#                                 dependency-cruiser's resolved imports; for classic browser scripts (kind `globals`)
+#                                 the `/* global */` lines resolved to the file whose `/* exported */` offers the name
+# Each JS function is measured by itself, a callback as a function of its own (Scala folds lambdas into their
+# method); a module stands for a class and its directory for a package; fan-out counts every module used.
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+tools="$here/js-quality"
+root="$(cd "$here/.." && pwd)" out="" args=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --root) root="$(cd "$2" && pwd)"; shift ;;
+        --out) out="$2"; shift ;;
+        --area|--areas) args+=("$1" "$2"); shift ;;
+        -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) echo "js-quality-report: unknown argument $1" >&2; exit 2 ;;
+    esac
+    shift
+done
+command -v node >/dev/null || { echo "js-quality-report: node is not installed" >&2; exit 2; }
+if [ ! -x "$tools/node_modules/.bin/eslint" ] || [ "$tools/package-lock.json" -nt "$tools/node_modules/.package-lock.json" ]; then
+    command -v npm >/dev/null || { echo "js-quality-report: npm is not installed (needed once, to install the tools)" >&2; exit 2; }
+    echo "js-quality-report: installing the tools (npm ci in $tools)" >&2
+    (cd "$tools" && npm ci --no-audit --no-fund --silent) >&2
+fi
+if [ -z "$out" ]; then out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT; fi
+node "$tools/report.js" --root "$root" --out "$out" ${args[@]+"${args[@]}"}

@@ -1,0 +1,7 @@
+# The movies checkout's JS/TS areas: name<TAB>kind<TAB>paths (space-separated). kind: globals (classic browser
+# scripts sharing one global scope, coupled through /* global */ lines) or imports (ES modules, CommonJS, TypeScript).
+web-js	globals	web/src/main/assets/js
+page-tests	globals	web/src/page
+version-dashboard	imports	infra/version-dashboard
+playwright	imports	page-tests-playwright
+scripts	imports	scripts eslint-rules eslint.config.js

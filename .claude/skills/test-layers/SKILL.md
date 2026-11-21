@@ -97,6 +97,8 @@ is that the local toolchain is missing (e.g. no full Xcode for
   trailer. `--update` after a cleanup records the falls (no trailer). A measure change runs `quality/Test/test`
   (Sonar's published examples) and `scripts/run-script-tests quality` (the ratchet and its mutation test).
   `scripts/hotspots` ranks where to clean first (churn × complexity, change-coupled pairs): a report, not a layer.
+  `scripts/js-quality-report` takes the same measures (and fan-out, cycles, distance) over the JS/TS, per area
+  (`scripts/js-quality/areas.tsv`; `--root DIR --area NAME=PATH` for another checkout): a report, no baseline, no gate.
 
 ## Refactoring safety tools (on demand; reports, never gates)
 
