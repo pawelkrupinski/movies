@@ -5,3 +5,5 @@
 # digest with no row is its own stamp, as before.
 #
 # stamp	digest (head's raw)	equals (base's raw)	proof (pure-move | what-if)	base	head
+identity-rules	485c27d5b948b2b3b1cc245cee60d2cb7859a96f343cd59dd872093920a62cb5	271bb42db5194cf34792a00cc30469c1102ab6ba313536aabfd9d2ac1692cae3	what-if	e94caf82b326029ea3ff736b79e3e0726a21925e	ce46b378496fac414a28443f08cd24474f31a27c
+agreement-rules	2b9d1e875f0cd52366faff45cb70e2e8e679c700471d2ea0357a2327710710ec	1ed2e30b7b1ee0f9e5d0218c9365093cbd87e843b1eac526387d5cc66c553bff	what-if	e94caf82b326029ea3ff736b79e3e0726a21925e	ce46b378496fac414a28443f08cd24474f31a27c
