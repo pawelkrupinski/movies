@@ -13,7 +13,8 @@ import scala.concurrent.Future
 /**
  * A body fixed for the life of the process, served under its content ETag: a 304
  * to any `If-None-Match` that offers the tag however it is spelled, otherwise the
- * body — gzipped for a client that takes it — with the caller's `Cache-Control`.
+ * body — gzipped for a client that takes it — with the caller's `Cache-Control`
+ * plus `no-transform`.
  */
 class FixedBodySpec extends AnyFlatSpec with Matchers {
 
@@ -24,11 +25,19 @@ class FixedBodySpec extends AnyFlatSpec with Matchers {
   private def gunzip(bytes: Array[Byte]): String =
     new String(new GZIPInputStream(new ByteArrayInputStream(bytes)).readAllBytes(), StandardCharsets.UTF_8)
 
-  "a FixedBody" should "name its content with a quoted 16-hex ETag, and its URL version without the quotes" in {
-    body.etag shouldBe tools.Digest.contentEtag(text)
-    body.etag should fullyMatch regex "\"[0-9a-f]{16}\""
-    body.version shouldBe body.etag.stripPrefix("\"").stripSuffix("\"")
+  // WEAK, because the gzipped and the plain body share one tag and no bytes — which a
+  // strong validator may not do (see `CachePolicy`).
+  "a FixedBody" should "name its content with a weak 16-hex ETag, and its URL version as the bare hex" in {
+    body.etag shouldBe "W/" + tools.Digest.contentEtag(text)
+    body.etag should fullyMatch regex "W/\"[0-9a-f]{16}\""
+    body.version should fullyMatch regex "[0-9a-f]{16}"
+    body.etag should include (body.version)
     FixedBody.json(text + " ").etag should not be body.etag
+  }
+
+  // What the apps' bundled catalog seed and every copy they stored before this carry.
+  it should "answer 304 to its tag offered strong" in {
+    status(serve("If-None-Match" -> tools.Digest.contentEtag(text))) shouldBe NOT_MODIFIED
   }
 
   it should "serve the plain body, with its validators, to a client that refuses gzip" in {
@@ -37,7 +46,7 @@ class FixedBodySpec extends AnyFlatSpec with Matchers {
     contentType(result) shouldBe Some("application/json")
     contentAsString(result) shouldBe text
     header("ETag", result) shouldBe Some(body.etag)
-    header("Cache-Control", result) shouldBe Some("no-cache")
+    header("Cache-Control", result) shouldBe Some("no-cache, no-transform")
     header("Vary", result) shouldBe Some("Accept-Encoding")
     header("Content-Encoding", result) shouldBe None
   }
@@ -50,9 +59,11 @@ class FixedBodySpec extends AnyFlatSpec with Matchers {
     gunzip(contentAsBytes(result).toArray) shouldBe text
   }
 
-  it should "pass the caller's Cache-Control through" in {
+  // `no-transform` or the tag reaches nobody: Cloudflare recompresses gzip and drops the ETag of
+  // bytes it rewrote (see `CachePolicy`).
+  it should "pass the caller's Cache-Control through, with no-transform" in {
     header("Cache-Control", Future.successful(body.serve(FakeRequest(), "public, max-age=31536000, immutable"))) shouldBe
-      Some("public, max-age=31536000, immutable")
+      Some("public, max-age=31536000, immutable, no-transform")
   }
 
   it should "answer 304, bodiless and with the 200's validators, to its own tag" in {
@@ -60,12 +71,12 @@ class FixedBodySpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe NOT_MODIFIED
     contentAsString(result) shouldBe ""
     header("ETag", result) shouldBe Some(body.etag)
-    header("Cache-Control", result) shouldBe Some("no-cache")
+    header("Cache-Control", result) shouldBe Some("no-cache, no-transform")
     header("Vary", result) shouldBe Some("Accept-Encoding")
   }
 
   it should "answer 304 to its tag offered weak, or in a list" in {
-    status(serve("If-None-Match" -> s"W/${body.etag}")) shouldBe NOT_MODIFIED
+    status(serve("If-None-Match" -> body.etag)) shouldBe NOT_MODIFIED
     status(serve("If-None-Match" -> s""""0000000000000000", ${body.etag}""")) shouldBe NOT_MODIFIED
     status(serve("If-None-Match" -> "*")) shouldBe NOT_MODIFIED
   }
