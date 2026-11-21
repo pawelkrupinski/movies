@@ -7,7 +7,7 @@ IMDb row 'Both Blocked' (2024): threw HttpStatusException; id=tt6 rating=2.0 slo
 IMDb row 'No Such Title' (2024): answered -; id=tt8 rating=4.0 slot=-; writes=0; again answered -, writes=0
 IMDb row 'No Id' (2024): answered -; id=- rating=- slot=-; writes=0; again answered -, writes=0
 IMDb row 'Snow Held' (2023): answered -; id=tt7 rating=8.0 slot=SourceData(Some(Snow Leopard),None,Some(Snow Leopard),None,None,List(Pengyue Qiao, Zhang Wen, Chengxuan Wu),List(Lixing Wang),None,Some(2020),List(),List(),None,None,None,List(),None,None,None,None,List()); writes=1; again answered -, writes=0
-IMDb walk: walked=Some(8) changed=Some(6) discovered=Some(0) failed=Some(1) message=tick done in Nms — 6 changed, 1 failed, 1 unchanged. writes=6
+IMDb walk: walked=Some(8) changed=Some(5) discovered=Some(0) failed=Some(1) message=tick done in Nms — 5 changed, 1 failed, 2 unchanged. writes=6
   Kuzma (2026): id=tt1 rating=7.4 slot=SourceData(Some(Kuzma),None,Some(Kuzma),None,None,List(Svitlana Babiichuk, Vitalii Bardetskyi, Volodymyr Bebeshko, Irina Bilyk),List(Artem Hryhorian),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List())
   Snow Leopard (2023): id=tt2 rating=6.0 slot=SourceData(Some(Snow Leopard),None,Some(Snow Leopard),None,None,List(Pengyue Qiao, Zhang Wen, Chengxuan Wu),List(Lixing Wang),None,Some(2020),List(),List(),None,None,None,List(),None,None,None,None,List())
   Details Blocked (2024): id=tt3 rating=6.0 slot=-

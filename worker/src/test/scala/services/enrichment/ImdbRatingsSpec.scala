@@ -123,6 +123,25 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     summary.message should include ("0 failed")
   }
 
+  // A row whose rating read failed while its details read moved the slot was counted failed AND
+  // changed, so "unchanged" (walked - changed - failed) went negative.
+  it should "count a row whose rating read failed once, as failed, even when its details slot moved" in {
+    val repository = new InMemoryMovieRepository(Seq(("A", None, mkEnrichment("tt1", rating = Some(5.0)))), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val ratingFails = new ImdbClient(http = new HttpFetch {
+      def get(url: String): String = throw new RuntimeException("ImdbClient uses POST")
+      override def post(url: String, body: String, contentType: String): String =
+        if (body.contains("TitleDetails")) """{"data":{"title":{"titleText":{"text":"Fresh title"}}}}"""
+        else throw new RuntimeException("HTTP 503")
+    })
+
+    val summary = ImdbSourcesOf.ratings(cache, ratingFails).refreshAll()
+
+    cache.get(cache.keyOf("A", None)).flatMap(_.data.get(models.Imdb)).flatMap(_.title) shouldBe Some("Fresh title")
+    (summary.walked, summary.changed, summary.failed) shouldBe ((Some(1), Some(0), Some(1)))
+    summary.message should include ("0 unchanged")
+  }
+
   it should "record each bulk-observed rating change into the adaptive cadence (and nothing for unchanged rows)" in {
     val repository = new InMemoryMovieRepository(Seq(
       ("A", None, MovieRecord(imdbId = Some("tt1"), imdbRating = Some(5.0), tmdbId = Some(101))),

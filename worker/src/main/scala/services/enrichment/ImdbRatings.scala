@@ -94,7 +94,8 @@ class ImdbRatings(
         update.rating.foreach(r => logger.debug(s"IMDb refresh: ${key.cleanTitle} $id ${enrichment.imdbRating.getOrElse("—")} → $r"))
         cache.putIfPresent(key, update.applyTo)
         update.badge.foreach(badge => recordCadenceChange(key, enrichment.tmdbId, Some(badge)))
-        changed.incrementAndGet()
+        // Each row counts once: one whose rating read failed is a failure, whatever its slot did.
+        if (ratingResult.isSuccess) changed.incrementAndGet()
       }
     }
     val took = startedAt.millis
