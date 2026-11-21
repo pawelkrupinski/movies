@@ -1229,6 +1229,26 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.stop()
   }
 
+  // Two same-title, same-year films: the IMDb address decides which keeps the bare slug
+  // (`FilmSlugs.newestFirst`), so an upsert that only gains an IMDb link re-addresses them. The
+  // memo was keyed on title and year alone and kept serving the bare slug to the other film.
+  it should "re-address two namesakes when one of them gains its IMDb link" in {
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(titled("lalka-a", "Lalka", Some(2026)))
+    repository.upsertMovie(titled("lalka-b", "Lalka", Some(2026)))
+    repository.upsertScreening(screening("s-waw", "lalka-a", "warszawa"))
+    val rm = started(repository)
+    rm.filmSlugs.idFor("lalka") shouldBe Some("lalka-a")
+    val warsawBefore = rm.lastModifiedFor("warszawa")
+
+    repository.upsertMovie(titled("lalka-b", "Lalka", Some(2026))
+      .copy(ratings = ratings.copy(imdbUrl = Some("https://www.imdb.com/title/tt0000002/"))))
+
+    rm.filmSlugs.idFor("lalka") shouldBe Some("lalka-b")
+    rm.lastModifiedFor("warszawa") should be > warsawBefore   // lalka-a's card links elsewhere now
+    rm.stop()
+  }
+
   // ── A delete of something we never held changed nothing ─────────────────────
 
   it should "not invalidate every city when a delete names a film it does not hold" in {

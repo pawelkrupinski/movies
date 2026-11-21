@@ -62,10 +62,10 @@ class WebReadModel(
 
   private val filmCities = new FilmCities
 
-  /** The projection `FilmSlugs` is a pure function of. Two movie documents with
-   *  equal keys assign identical addresses, so a change between them is
+  /** The projection `FilmSlugs` is a pure function of ([[FilmSlugs.addressedBy]]). Two movie
+   *  documents with equal keys assign identical addresses, so a change between them is
    *  city-scopable; a change to one is not. */
-  private def slugKey(m: ResolvedMovie): (String, Option[Int]) = (m.title, m.releaseYear)
+  private def slugKey(m: ResolvedMovie) = FilmSlugs.addressedBy(m)
 
   /** True when the two documents are equal everywhere except `synopsisByCity` —
    *  the one field whose effect is confined to named cities. */
@@ -87,12 +87,12 @@ class WebReadModel(
   def movie(id: String): Option[ResolvedMovie] = Option(movies.get(id))
   def allMovies(): Seq[ResolvedMovie]           = movies.values.asScala.toSeq
 
-  /** An index that is a pure function of the (id, title, releaseYear) corpus,
+  /** An index that is a pure function of the films' [[slugKey]]s,
    *  rebuilt only when that corpus changes: it walks every movie, and a request
    *  would otherwise redo that work every time.
    *
    *  VERSIONED BY THE FILM CORPUS, NOT BY EVERY CHANGE. The stamps' floor moves
-   *  only when a film enters, leaves, or changes title/year — the only things
+   *  only when a film enters, leaves, or changes its [[slugKey]] — the only things
    *  that can re-address anything. Keyed on the model-wide stamp instead, a
    *  showtime edit anywhere discarded the map and the next render rebuilt every
    *  address in the corpus; screenings are the bulk of all events, so the memo
@@ -171,7 +171,7 @@ class WebReadModel(
     // with no timestamp, so structural equality is exactly the question "would
     // any client see different bytes?".
     if (!previous.contains(m)) {
-      // A film ENTERING the corpus, or changing title/year, reshuffles addresses
+      // A film ENTERING the corpus, or changing its slug key, reshuffles addresses
       // corpus-wide (see [[ReadModelStamps]]'s floor).
       if (!previous.exists(slugKey(_) == slugKey(m))) stamps.touchEveryCity()
       // A blurb that landed for ONE city is one city's change. `synopsisFor`

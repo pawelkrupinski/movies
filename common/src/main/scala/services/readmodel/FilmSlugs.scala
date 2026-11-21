@@ -33,7 +33,7 @@ import models.ResolvedMovie
  *  and one-to-one no matter what the corpus holds.
  *
  *  Assignment is deterministic — a pure function of the corpus, ordered by
- *  `(releaseYear desc, title, tmdbId, _id)` — so the same read model always
+ *  `(releaseYear desc, title, IMDb address, _id)` ([[newestFirst]]) — so the same read model always
  *  produces the same addresses, and two web pods serve the same links. Films
  *  are identified by `_id` rather than title precisely because titles are what
  *  collide here.
@@ -94,6 +94,11 @@ object FilmSlugs {
    *  also outranks a film that has none, since an unresolved row is the worse
    *  holder of a contested address. `_id` remains only as the total-order
    *  backstop for a pair with neither a distinguishing year nor an IMDb id. */
+  /** Everything of a film the addressing reads besides its `_id`: two documents equal here are
+   *  addressed alike, so a change that leaves this alone re-addresses nothing. */
+  private[readmodel] def addressedBy(m: ResolvedMovie): (String, Option[Int], Option[String]) =
+    (m.title, m.releaseYear, m.ratings.imdbUrl)
+
   private[readmodel] def newestFirst(m: ResolvedMovie): (Boolean, Int, String, Boolean, String, String) =
     (m.releaseYear.isEmpty, -m.releaseYear.getOrElse(0), m.title,
      m.ratings.imdbUrl.isEmpty, m.ratings.imdbUrl.getOrElse(""), m._id)
