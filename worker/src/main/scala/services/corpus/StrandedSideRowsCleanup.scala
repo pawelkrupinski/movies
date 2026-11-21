@@ -67,6 +67,10 @@ class StrandedSideRowsCleanup(
    *  method when `strandedDue` (or when the last due sweep failed). */
   def removeStranded(): StrandedSideRows = repository.deleteStrandedSideRows()
 
+  /** The stranded backstop, when it is due or still owed: owed until it completes. */
+  private def backstopIfDue(): Unit =
+    if (backstopOwed || strandedDue()) { backstopOwed = true; removeStranded(); backstopOwed = false }
+
   /** One retired-venue sweep, on demand — the daily tick runs it after [[removeStranded]]'s turn. */
   def removeRetiredVenues(): RetiredVenueRows = retiredVenues()
 
@@ -77,7 +81,7 @@ class StrandedSideRowsCleanup(
     scheduler.scheduleAtFixedRate(
       () => {
         val steps = Seq(
-          Try(if (backstopOwed || strandedDue()) { backstopOwed = true; removeStranded(); backstopOwed = false }).recover {
+          Try(backstopIfDue()).recover {
             case exception => logger.warn(s"Stranded side-row cleanup tick failed: ${exception.getMessage}"); throw exception
           },
           Try { removeRetiredVenues(); () }.recover {
