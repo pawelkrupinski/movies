@@ -204,6 +204,25 @@ head=$(scratch_git "$repo" rev-parse HEAD)
 mkdir -p "$work/cache/refs/$head/stray"
 check "a ref's tree left half laid out is laid out again, whole" "build" "$(cat "$(tools identity_tree HEAD)/build.sbt" 2>/dev/null)"
 check "...not nested inside the half" "0" "$(find "$work/cache/refs/$head" -maxdepth 1 -name '*.part' | wc -l | tr -d ' ')"
+# identity_tree under pipefail (identity-what-if's `set -euo pipefail`): tar may stop reading at the archive's end
+# while git archive still writes its last record's padding, and git then dies of SIGPIPE, silently, failing a whole
+# layout (Order independence #90 and #97: "laying out the base ... failed (exit 1)", nothing else). A git whose
+# archive writes on after the end, past a tar that has finished, must still give a whole tree.
+mkdir -p "$work/slow-git"
+cat > "$work/slow-git/git" <<'SLOWGIT'
+#!/usr/bin/env bash
+case " $* " in
+  *" archive "*) "$REAL_GIT" "$@" || exit; sleep 1; exec head -c 4194304 /dev/zero ;;
+  *) exec "$REAL_GIT" "$@" ;;
+esac
+SLOWGIT
+chmod +x "$work/slow-git/git"
+slow=$(KINOWO_JVM_GATE_FOLLOW_MAIN=0 KINOWO_IDENTITY_CACHE="$work/cache-slow" REAL_GIT="$(command -v git)" \
+  PATH="$work/slow-git:$PATH" spec_bounded bash -c 'set -o pipefail; . "$1"; IDENTITY_REPO="$2"; identity_tree HEAD' \
+  _ "$REPO_ROOT/scripts/identity-tools.sh" "$repo" 2> "$work/err-slow")
+check "a ref is laid out whole under pipefail though git archive writes on past tar's end" "build" \
+  "$(cat "$slow/build.sbt" 2>/dev/null || cat "$work/err-slow")"
+rm -rf "$work/cache-slow"
 rm -rf "$work/cache/refs"
 ( tools identity_tree HEAD > "$work/t1" ) & ( tools identity_tree HEAD > "$work/t2" ) & wait
 check "two agents laying out one ref at once get one whole tree" "build build 1" \

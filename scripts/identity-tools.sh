@@ -332,7 +332,20 @@ identity_tree_judgements() {
   local sha=$1 dir=$2
   [ -f "$dir/$IDENTITY_JUDGEMENTS" ] && return 0
   git -C "$IDENTITY_REPO" cat-file -e "$sha:$IDENTITY_JUDGEMENTS" 2>/dev/null || return 0
-  git -C "$IDENTITY_REPO" archive "$sha" -- "$IDENTITY_JUDGEMENTS" | tar -x -C "$dir"
+  identity_archive_into "$dir" "$sha" -- "$IDENTITY_JUDGEMENTS"
+}
+
+# identity_archive_into <dir> <sha> <git archive paths...> -> the paths of <sha> extracted into <dir>. Through a file,
+# never a pipe: tar may stop reading at the archive's end while git archive still writes its last record's padding,
+# and under pipefail (identity-what-if's) git's SIGPIPE then failed the layout with nothing said (Order independence
+# #90, #97). Each side's failure is its own, and named.
+identity_archive_into() {
+  local dir=$1 sha=$2 tarball; shift 2
+  tarball=$dir.tar-$$
+  git -C "$IDENTITY_REPO" archive -o "$tarball" "$sha" "$@" ||
+    { rm -f "$tarball"; identity_log "git archive of $sha failed"; return 1; }
+  tar -x -C "$dir" -f "$tarball" || { rm -f "$tarball"; identity_log "extracting $sha into $dir failed"; return 1; }
+  rm -f "$tarball"
 }
 
 # identity_tree_layout <ref> <sha> <dir> -> the ref's sources in <dir>, laid out beside it and moved in whole
@@ -348,7 +361,7 @@ identity_tree_layout() {
   identity_log "laying out $ref ($sha) in $dir"
   part=$dir.part
   rm -rf "$part" "$dir"; mkdir -p "$part"
-  git -C "$IDENTITY_REPO" archive "$sha" -- . ':(exclude)test/resources' ':(exclude)ios' ':(exclude)android' | tar -x -C "$part" || return 1
+  identity_archive_into "$part" "$sha" -- . ':(exclude)test/resources' ':(exclude)ios' ':(exclude)android' || return 1
   identity_tree_judgements "$sha" "$part" || return 1
   # Seed the compile from the nearest compiled code (APFS clones, no copy): sbt recompiles only what the ref changed.
   local seed apart=""
