@@ -1110,7 +1110,7 @@ check_stranded_trailers() {
             for key in Fixes-Red Red-Unrelated New-Check Retires Pure-Move; do
                 declared="$(git log -1 --format=%B "$commit" | grep -ciE "^$key:" || true)"
                 [ "$declared" -gt 0 ] || continue
-                parsed="$(git log -1 --format="%(trailers:key=$key,valueonly)" "$commit" | grep -c . || true)"
+                parsed="$(git log -1 --format="%(trailers:key=$key,valueonly,unfold)" "$commit" | grep -c . || true)"
                 [ "$parsed" -ge "$declared" ] && continue
                 warn "${commit:0:9}: a $key: line outside the message's closing trailer block, where git reads no trailer"
                 bad=1
@@ -1200,7 +1200,7 @@ check_redgate() {
             [ "$ok" = 1 ] && continue
             warn "${commit:0:9} carries no Fixes-Red: trailer naming a run of the red episode (red:$reds)"
             bad=1
-        done < <(git log --format='%H%x09%(trailers:key=Fixes-Red,valueonly,separator=%x2C)' "$r")
+        done < <(git log --format='%H%x09%(trailers:key=Fixes-Red,valueonly,unfold,separator=%x2C)' "$r")
     done
     [ "$bad" = 0 ] && { log "every pushed production commit is declared a fix for a red run"; return 0; }
     warn "main is red: only a fix for it lands. Add 'Fixes-Red: <run id>' to each commit's message (git commit --amend"
@@ -1376,13 +1376,13 @@ fi
 # scripts-only drift-explorer fix the paths never selected it for turned Main #2172's commit rules red.
 if ! grep -qx driftguards <<< "$checks"; then
     for r in "${ranges[@]}"; do
-        [ -n "$(git log --format='%(trailers:key=Fixes-Red,valueonly)' "$r" | grep -v '^$' || true)" ] || continue
+        [ -n "$(git log --format='%(trailers:key=Fixes-Red,valueonly,unfold)' "$r" | grep -v '^$' || true)" ] || continue
         checks="$(printf '%s\ndriftguards' "$checks" | grep -v '^$')"; break
     done
 fi
 # A PURE MOVE'S CLAIM HOLDS (the header's `puremove`), whatever the commit touches: selected by the trailer alone.
 for r in "${ranges[@]}"; do
-    [ -n "$(git log --format='%(trailers:key=Pure-Move,valueonly)' "$r" | grep -v '^$' || true)" ] || continue
+    [ -n "$(git log --format='%(trailers:key=Pure-Move,valueonly,unfold)' "$r" | grep -v '^$' || true)" ] || continue
     checks="$(printf '%s\npuremove' "$checks" | grep -v '^$')"; break
 done
 # A VERIFIED PURE MOVE OWES NO IDENTITY AREA (2026-11-19, the owner's "make it simpler and faster": an identity check's
@@ -1396,7 +1396,7 @@ if grep -qE "$PureMoveAreas" <<< "$checks"; then
     unclaimed="" claimed_any=""
     for r in "${ranges[@]}"; do
         for sha in $(git rev-list "$r"); do
-            if [ "$(git log -1 --format='%(trailers:key=Pure-Move,valueonly)' "$sha" | grep -v '^$' || true)" = verified ]; then
+            if [ "$(git log -1 --format='%(trailers:key=Pure-Move,valueonly,unfold)' "$sha" | grep -v '^$' || true)" = verified ]; then
                 claimed_any=1; continue
             fi
             unclaimed+="$(git diff-tree --no-commit-id --name-only -r -m --root "$sha")"$'\n'
@@ -1433,7 +1433,7 @@ if [ "$to_main" = 1 ] && [ -z "$fast_only" ] && [ -f .github/identity-drift-path
     drift_touched=""; touches_list .github/identity-drift-paths.txt && drift_touched=1
     if [ -n "$drift_touched" ]; then
         for r in "${ranges[@]}"; do
-            drift_reds+="$(git log --format='%(trailers:key=Red-Unrelated,valueonly,separator=%x2C)%x09%(trailers:key=Fixes-Red,valueonly,separator=%x2C)' "$r" \
+            drift_reds+="$(git log --format='%(trailers:key=Red-Unrelated,valueonly,unfold,separator=%x2C)%x09%(trailers:key=Fixes-Red,valueonly,unfold,separator=%x2C)' "$r" \
                 | awk -F'\t' '$1 == "" { print $2 }' | tr ',; ' '\n' | sed 's/^#//' | grep -E '^[0-9]+$' || true)"$'\n'
         done
         drift_reds="$(printf '%s' "$drift_reds" | grep -v '^$' | LC_ALL=C sort -un | tr '\n' ' ' | sed 's/ $//')"
@@ -1445,7 +1445,7 @@ if [ "$to_main" = 1 ] && [ -z "$fast_only" ] && [ -f .github/identity-drift-path
     fi
     for r in "${ranges[@]}"; do
         [ -n "$drift_birth" ] || [ -z "$drift_touched" ] && break
-        [ -z "$(git log --format='%(trailers:key=New-Check,valueonly)' "$r" | grep -v '^$' || true)" ] || drift_birth="New-Check:"
+        [ -z "$(git log --format='%(trailers:key=New-Check,valueonly,unfold)' "$r" | grep -v '^$' || true)" ] || drift_birth="New-Check:"
     done
     { [ -z "$drift_reds" ] && [ -z "$drift_birth" ]; } || checks="$(printf '%s\nidentitydrift' "$checks" | grep -v '^$')"
 fi
@@ -2111,7 +2111,7 @@ check_puremove() {
     need puremove python3 "install Python 3 (brew install python)" || return 1
     for r in "${ranges[@]}"; do
         while IFS= read -r sha; do
-            claim="$(git log -1 --format='%(trailers:key=Pure-Move,valueonly)' "$sha" | grep -v '^$' || true)"
+            claim="$(git log -1 --format='%(trailers:key=Pure-Move,valueonly,unfold)' "$sha" | grep -v '^$' || true)"
             [ -n "$claim" ] || continue
             if [ "$claim" != verified ]; then
                 warn "puremove: ${sha:0:9} says 'Pure-Move: $claim': the trailer is 'Pure-Move: verified', or none"; rc=1; continue

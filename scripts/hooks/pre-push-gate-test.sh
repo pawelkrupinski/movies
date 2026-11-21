@@ -44,6 +44,10 @@ jobs_of 38520439037 "test (a)" ci
 check "a fix naming an earlier run of the red episode, failing the same way, lands" "0" \
   "$(STUB_JOBS_DIR="$jobsdir" GH_MAIN="[$newer,$cancelled,$named,$green]" GH_IMC="[$green]" push "$gbase..$fixing")"
 check "...said out loud" "1" "$(grep -c "Fixes-Red: 38520439037: a run of Main's red episode failing as run 38520439099" "$gate/err")"
+folded="$(commit_paths "a production fix naming two runs, folded" $'Fixes-Red: 1;\n 38520439037' -- web/src/main/scala/A.scala)"
+check "a Fixes-Red: value continued on an indented line is read whole: the run it names there counts" "0" \
+  "$(GH_IMC="[$red,$green]" push "$plain..$folded")"
+scratch_git "$grepo" reset -q --hard "$plain"
 bynumber="$(commit_paths "a production fix by run number" "Fixes-Red: #2172" -- web/src/main/scala/A.scala)"
 check "...named by its run number too" "0" \
   "$(STUB_JOBS_DIR="$jobsdir" GH_MAIN="[$newer,$named,$green]" GH_IMC="[$green]" push "$plain..$bynumber")"

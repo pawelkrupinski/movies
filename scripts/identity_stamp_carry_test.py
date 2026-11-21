@@ -247,6 +247,13 @@ class StampCarryTest(unittest.TestCase):
         self.assertEqual(1, code, out)
         self.assertIn("Identity-Design", out)
 
+    def test_an_identity_design_trailer_continued_on_an_indented_line_is_said_whole(self):
+        head = self.change_foo("a new rule\n\nIdentity-Design: docs/design/x.md, measured\n over all five countries")
+        self.record_what_if(head, self.base)
+        code, out = self.run_tool("propose", f"{self.base}..{head}", "--proof", "what-if")
+        self.assertEqual(1, code, out)
+        self.assertIn("'Identity-Design: docs/design/x.md, measured over all five countries'", out)
+
     def test_a_what_if_over_the_models_data_or_a_store_never_carries(self):
         for path in ("identity/src/main/resources/identity-weights.json",
                      "identity/src/main/scala/services/identity/IdentityModelStore.scala",

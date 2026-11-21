@@ -153,7 +153,7 @@ def covered(proof: str, base: str, head: str, at: str | None = None) -> tuple[se
         return set(), [f"{base[:12]} is not an ancestor of {head[:12]}"]
     why = []
     for sha in git("rev-list", f"{base}..{head}").split():
-        design = git("log", "-1", "--format=%(trailers:key=Identity-Design,valueonly)", sha).strip()
+        design = git("log", "-1", "--format=%(trailers:key=Identity-Design,valueonly,unfold)", sha).strip()
         if design:
             why.append(f"{sha[:12]} says 'Identity-Design: {design}': a rule change by design is decided again, never carried")
     changed = git("diff", "--name-only", "-M", base, head).split()
