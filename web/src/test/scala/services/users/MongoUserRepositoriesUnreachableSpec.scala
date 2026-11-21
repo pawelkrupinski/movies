@@ -41,6 +41,14 @@ class MongoUserRepositoriesUnreachableSpec extends AnyFlatSpec with Matchers wit
     an[Exception] should be thrownBy users.delete("alice@example.com")
   }
 
+  // A sign-in answers with a cookie naming the row `upsert` returns: one never written
+  // is a "signed in" redirect onto a session every later request reads as signed out.
+  it should "throw, not answer the row as stored, when an upsert cannot reach Mongo" in {
+    an[Exception] should be thrownBy users.upsert(models.User(
+      id = "alice@example.com", provider = "google", providerSub = "G-1", email = Some("alice@example.com"),
+      displayName = None, avatarUrl = None, createdAt = java.time.Instant.EPOCH, lastSeenAt = java.time.Instant.EPOCH))
+  }
+
   "MongoUserStateRepository.find" should "throw, not answer None, when it cannot reach Mongo" in {
     an[Exception] should be thrownBy states.find("alice@example.com")
   }

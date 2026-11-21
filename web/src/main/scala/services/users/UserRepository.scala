@@ -44,7 +44,7 @@ trait UserRepository {
    *
    *  Answers the row as stored by that same step, so a sign-in puts the version
    *  the row now holds in its cookie rather than its stale copy's, which the
-   *  revoke already killed. A store that could not write answers `user`. */
+   *  revoke already killed. THROWS when the store could not write. */
   def upsert(user: User): User
 
   /** Logout, which signs out everywhere: bump `id`'s `sessionVersion` by one in ONE atomic
@@ -103,16 +103,12 @@ class MongoUserRepository(database: Option[MongoDatabase]) extends UserRepositor
     ()
   }
 
+  // A failure PROPAGATES: a sign-in hands out a cookie naming the row this returns, and
+  // one never written is a session every later request reads as signed out.
   def upsert(user: User): User = coll.fold(user) { c =>
-    Try {
-      Option(Await.result(c.findOneAndUpdate(Filters.eq("id", user.id), MongoUserRepository.upsertPipeline(user),
-        new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER)).toFuture(), 10.seconds))
-        .getOrElse(user)
-    }.recover {
-      case exception =>
-        logger.warn(s"UserRepository.upsert(${user.id}) failed: ${exception.getMessage}")
-        user
-    }.get
+    Option(Await.result(c.findOneAndUpdate(Filters.eq("id", user.id), MongoUserRepository.upsertPipeline(user),
+      new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER)).toFuture(), 10.seconds))
+      .getOrElse(user)
   }
 
   def revokeSessions(id: String): Option[User] = coll.flatMap { c =>
