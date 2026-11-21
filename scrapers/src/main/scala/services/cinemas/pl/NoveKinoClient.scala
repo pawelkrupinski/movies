@@ -100,8 +100,8 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema
           val poster = Option(row.selectFirst("div.repertoire-movie-poster img[src]")).map(_.attr("src")).filter(_.nonEmpty)
                          .map(u => if (u.startsWith("http")) u else BaseUrl + u)
           val desc   = Option(row.selectFirst("div.repertoire-movie-description")).map(_.text).getOrElse("")
-          val countries = NoveKinoClient.after(desc, "produkcja").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-          val genres    = NoveKinoClient.after(desc, "gatunek").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+          val countries = NoveKinoClient.after(desc, "produkcja").toSeq.flatMap(ScraperParse.commaItems)
+          val genres    = NoveKinoClient.after(desc, "gatunek").toSeq.flatMap(ScraperParse.commaItems)
                             .map(tools.TextNormalization.titleCaseIfAllLower)
           row.select("a.repertoire-movie-time[data-day][data-hour]").asScala.toSeq.flatMap { a =>
             val booking = Option(a.attr("data-buy-link")).filter(_.nonEmpty)

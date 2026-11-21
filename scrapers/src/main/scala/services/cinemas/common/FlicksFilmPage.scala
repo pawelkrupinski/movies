@@ -46,7 +46,7 @@ object FlicksFilmPage extends SlimmedPage {
       runtimeMinutes = heroMeta.flatMap(MinutesPattern.findFirstMatchIn).headOption.map(_.group(1).toInt)
         .orElse(text("duration").flatMap(isoMinutes)).filter(_ > 0),
       releaseYear    = year.flatMap(ReReleaseBilling.filmYear(_, s"$title $slug", today)),
-      countries      = text("countryOfOrigin").toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty),
+      countries      = text("countryOfOrigin").toSeq.flatMap(ScraperParse.commaItems),
       genres         = names("genre"),
       posterUrl      = heroPoster(document).orElse(ScraperParse.ogImage(document).filter(_.contains(PosterPath))),
       trailerUrl     = movie.flatMap(m => jsonText(m \ "trailer" \ "url"))

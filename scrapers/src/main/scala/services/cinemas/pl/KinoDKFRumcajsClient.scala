@@ -9,6 +9,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
+import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -149,7 +150,7 @@ object KinoDKFRumcajsClient {
       .flatMap(pat.findFirstMatchIn)
       .map(_.group(1))
       .toSeq.headOption.toSeq
-      .flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      .flatMap(ScraperParse.commaItems)
 
   /** The synopsis is the first substantial plain paragraph (not a Reżyseria/
    *  Obsada/Scenariusz metadata line, not the country/runtime footer). */

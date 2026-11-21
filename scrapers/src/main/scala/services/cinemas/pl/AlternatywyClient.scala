@@ -168,8 +168,7 @@ object AlternatywyClient {
       .map(lines => (lines, lines.indexWhere(_.toLowerCase(Locale.ROOT).startsWith("reżyseria"))))
       .find { case (_, at) => at >= 0 }
     val (director, countries, year) = credited.map { case (lines, at) =>
-      val dir      = lines(at).replaceFirst("(?i)^reżyseria:?\\s*", "")
-                       .split(",").map(_.trim).filter(_.nonEmpty).toSeq
+      val dir      = ScraperParse.commaItems(lines(at).replaceFirst("(?i)^reżyseria:?\\s*", ""))
       val (cs, yr) = lines.lift(at + 1).map(ScraperParse.productionMeta).getOrElse((Nil, None))
       (dir, cs, yr)
     }.getOrElse((Seq.empty, Nil, None))

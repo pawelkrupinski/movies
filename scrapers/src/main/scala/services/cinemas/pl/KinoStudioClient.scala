@@ -260,7 +260,7 @@ object KinoStudioClient {
       val value = bold(line)
       meta.copy(
         year      = YearPat.findFirstMatchIn(value).flatMap(m => Try(m.group(1).toInt).toOption),
-        countries = YearPat.replaceAllIn(value, "").split(",").map(_.trim).filter(_.nonEmpty).toSeq)
+        countries = ScraperParse.commaItems(YearPat.replaceAllIn(value, "")))
     }),
     MetaField(Seq("czas trwania"), _.runtime.isEmpty,
       (meta, line) => meta.copy(runtime = RuntimePat.findFirstMatchIn(bold(line)).flatMap(m => Try(m.group(1).toInt).toOption)))
@@ -273,7 +273,7 @@ object KinoStudioClient {
       .map(_.text).getOrElse("").replaceAll("\\u00A0", " ").trim
 
   private def boldList(line: String): Seq[String] =
-    bold(line).split(",").map(_.trim).filter(_.nonEmpty).toSeq
+    ScraperParse.commaItems(bold(line))
 
   /** Labels of the one metadata paragraph — any of them means the whole
    *  `<br>`-separated block is worth splitting apart. */

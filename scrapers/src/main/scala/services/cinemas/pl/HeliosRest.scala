@@ -116,7 +116,7 @@ object HeliosRest {
 
   private def nonEmptyText(js: JsValue, field: String): Option[String] = (js \ field).asOpt[String].filter(_.nonEmpty)
 
-  private def commaList(text: Option[String]): Seq[String] = text.toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+  private def commaList(text: Option[String]): Seq[String] = text.toSeq.flatMap(ScraperParse.commaItems)
 
   private def firstString(js: JsValue, field: String): Option[String] =
     (js \ field).asOpt[JsArray].flatMap(_.value.headOption).flatMap(_.asOpt[String])

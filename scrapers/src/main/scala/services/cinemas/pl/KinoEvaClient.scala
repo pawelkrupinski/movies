@@ -87,7 +87,7 @@ object KinoEvaClient {
         title    = titleOf(rawTitle),
         rawTitle = rawTitle,
         dateTime = LocalDateTime.of(date, time),
-        genres   = titleCell.text.trim.stripPrefix(heading.ownText.trim).split(",").toSeq.map(_.trim).filter(_.nonEmpty),
+        genres   = ScraperParse.commaItems(titleCell.text.trim.stripPrefix(heading.ownText.trim)),
         age      = details.flatMap(AgeRating.polishMinimumAge).headOption,
         runtime  = details.flatMap(runtimeOf).headOption
       )

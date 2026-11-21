@@ -105,7 +105,7 @@ object KinoGwiazdaKetrzynClient {
       movie = Movie(
         title          = title,
         runtimeMinutes = meta.collectFirst { case Runtime(minutes) => minutes.toInt },
-        genres         = meta.find(isGenreList).toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+        genres         = meta.find(isGenreList).toSeq.flatMap(ScraperParse.commaItems)
       ),
       cinema     = cinema,
       posterUrl  = card.posterUrl,
@@ -113,8 +113,8 @@ object KinoGwiazdaKetrzynClient {
       synopsis   = Option(document.selectFirst("section[aria-labelledby=description-heading] h2 + div"))
         .map(SynopsisProse.cleanSynopsis(_)).filter(_.nonEmpty),
       cast       = definition(document, "Obsada").toSeq
-        .flatMap(dd => Credits.replaceAllIn(dd, "").split(",")).map(_.trim).filter(_.nonEmpty),
-      director   = definition(document, "Rezyseria").toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty),
+        .flatMap(dd => ScraperParse.commaItems(Credits.replaceAllIn(dd, ""))),
+      director   = definition(document, "Rezyseria").toSeq.flatMap(ScraperParse.commaItems),
       showtimes  = showtimes,
       trailerUrl = document.select("a[href]").asScala.find(_.text.trim == "Zwiastun")
         .flatMap(a => ScraperParse.canonicalTrailer(a.attr("href"))),

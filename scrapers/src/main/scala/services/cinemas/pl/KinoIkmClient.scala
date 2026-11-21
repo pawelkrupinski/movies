@@ -109,7 +109,7 @@ object KinoIkmClient {
 
   def parseDirectors(h4: String): Seq[String] =
     DirectorPat.findFirstMatchIn(h4).map(_.group(1).trim).toSeq
-      .flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      .flatMap(ScraperParse.commaItems)
 
   private[cinemas] case class RawSlot(
     title:     String,

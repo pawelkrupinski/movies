@@ -81,7 +81,7 @@ object KinoParadoxClient {
   private[cinemas] def parseMeta(itemDirector: String): ListingFacts = {
     val parts = itemDirector.split("/").iterator.map(_.trim).filter(_.nonEmpty).toSeq
     val directors = parts.find(_.toLowerCase(Locale.ROOT).startsWith("reż"))
-      .map(_.replaceFirst("(?i)^reż\\.?\\s*", "").split(",").map(_.trim).filter(_.nonEmpty).toSeq)
+      .map(d => ScraperParse.commaItems(d.replaceFirst("(?i)^reż\\.?\\s*", "")))
       .getOrElse(Seq.empty)
     val year    = parts.iterator.flatMap(p => YearPat.findFirstIn(p)).map(_.toInt).nextOption()
     val runtime = parts.iterator.flatMap(p => RuntimePat.findFirstMatchIn(p)).map(_.group(1).toInt).nextOption()
@@ -92,7 +92,7 @@ object KinoParadoxClient {
       .filterNot(_.toLowerCase(Locale.ROOT).startsWith("reż"))
       .filterNot(p => YearOnlyPat.matches(p))
       .filterNot(p => RuntimePat.matches(p))
-      .flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSeq
+      .flatMap(ScraperParse.commaItems).toSeq
     ListingFacts(directors, countries, year, runtime)
   }
 
@@ -141,7 +141,7 @@ object KinoParadoxClient {
       for { l <- label; v <- value } yield l -> v
     }.toMap
     def people(label: String): Seq[String] =
-      fields.get(label).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      fields.get(label).toSeq.flatMap(ScraperParse.commaItems)
     val (countries, year) = fields.get("produkcja").map(ScraperParse.productionMeta).getOrElse((Nil, None))
     val runtime  = fields.get("czas trwania").flatMap(v => """(\d+)""".r.findFirstIn(v)).map(_.toInt).filter(_ > 0)
     val format   = fields.get("wersja językowa").map(FormatTags.formatTokensIn).getOrElse(Nil)

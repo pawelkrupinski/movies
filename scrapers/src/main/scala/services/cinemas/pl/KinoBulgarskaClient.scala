@@ -48,7 +48,7 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaSc
   private def metaLine(text: String): (Seq[String], Seq[String], Option[Int], Option[Int]) = {
     val parts     = text.stripPrefix("reż. ").split(",\\s*").map(_.trim)
     val yearIndex = parts.indexWhere(_.matches("\\d{4} r\\."))
-    val director  = if (yearIndex >= 1) parts(0).split(",").map(_.trim).filter(_.nonEmpty).toSeq else Seq.empty
+    val director  = if (yearIndex >= 1) ScraperParse.commaItems(parts(0)) else Seq.empty
     val countries = if (yearIndex > 1) parts.slice(1, yearIndex).filter(_.nonEmpty).toSeq else Seq.empty
     val year      = if (yearIndex >= 0) Try(parts(yearIndex).replaceAll("[^0-9]", "").toInt).toOption else None
     val runtime   = RuntimePat.findFirstMatchIn(text).flatMap(m => Try(m.group(1).toInt).toOption)

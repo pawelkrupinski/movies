@@ -72,7 +72,7 @@ object KinoSpojniaClient {
   )
 
   private[cinemas] def parseGrayMeta(line: String): GrayMeta = {
-    val tokens  = line.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+    val tokens  = ScraperParse.commaItems(line)
     val runtime = tokens.iterator.flatMap(t => RuntimeTokenPat.findFirstMatchIn(t)).map(_.group(1).toInt).nextOption()
     val yearIdx = tokens.indexWhere(t => YearTokenPat.matches(t))
     if (yearIdx < 0) GrayMeta(runtime = runtime)

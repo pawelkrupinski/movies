@@ -169,8 +169,8 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
     DetailMeta(
       runtime       = parseRuntime(html),
       synopsis      = parseSynopsis(html),
-      director      = DirectorPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      cast          = CastPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim.stripSuffix(",").trim).filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      director      = DirectorPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim).filter(_.nonEmpty).toSeq.flatMap(ScraperParse.commaItems),
+      cast          = CastPat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim.stripSuffix(",").trim).filter(_.nonEmpty).toSeq.flatMap(ScraperParse.commaItems),
       year          = parseYear(html),
       originalTitle = OriginalTitlePat.findFirstMatchIn(firstEditorHtml).map(_.group(1).trim).filter(_.nonEmpty),
       countries     = parseCountries(html),
@@ -209,7 +209,7 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
   // countries empty.
   def parseCountries(html: String): Seq[String] =
     ProducentPat.findFirstMatchIn(html).map { m =>
-      m.group(1).trim.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+      ScraperParse.commaItems(m.group(1).trim)
     }.filter(_.forall(CountryNames.isPolish)).getOrElse(Seq.empty)
 
   def parseRuntime(html: String): Option[Int] =

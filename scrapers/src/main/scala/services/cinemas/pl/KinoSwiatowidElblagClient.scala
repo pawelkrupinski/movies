@@ -123,7 +123,7 @@ object KinoSwiatowidElblagClient {
   private def metaOf(text: String): Option[(Seq[String], Option[Int])] =
     text match {
       case MetaPat(genresPart, runtimeDigits, _) =>
-        val genres = genresPart.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+        val genres = ScraperParse.commaItems(genresPart)
         Some((genres, Try(runtimeDigits.toInt).toOption))
       case _ => None
     }

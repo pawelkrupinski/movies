@@ -154,12 +154,12 @@ object AmondoClient {
     val prod = infoLi(document, "produkcja")
     val year = prod.flatMap(s => """\b((?:19|20)\d{2})\b""".r.findFirstMatchIn(s).map(_.group(1).toInt))
     val countries = prod.map(s => s.replaceAll("""\b(?:19|20)\d{2}\b.*$""", "").trim.stripSuffix(","))
-                      .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+                      .toSeq.flatMap(ScraperParse.commaItems)
     Detail(
       runtimeMinutes = infoLi(document, "czas trwania").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
       year           = year,
       countries      = countries,
-      director       = infoLi(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      director       = infoLi(document, "reżyseria").toSeq.flatMap(ScraperParse.commaItems),
       // The plot lives in `div.filmPosterSection__plot`, but the DOM varies:
       // sometimes the prose is inside that div (prefixed with a "KUP BILET"
       // booking anchor), sometimes the div is empty and the prose sits in a

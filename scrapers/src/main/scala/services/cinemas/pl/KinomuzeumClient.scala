@@ -130,8 +130,8 @@ object KinomuzeumClient {
     Detail(
       runtime   = meta(document, "czas trwania").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
       year      = meta(document, "rok produkcji").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
-      countries = meta(document, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      director  = meta(document, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      countries = meta(document, "kraj produkcji").toSeq.flatMap(ScraperParse.commaItems),
+      director  = meta(document, "reżyseria").toSeq.flatMap(ScraperParse.commaItems),
       synopsis  = Option(document.selectFirst("div.block-element.text .description")).map(SynopsisProse.blockText(_).trim)
                     .orElse(Option(document.selectFirst("meta[property=og:description]")).map(_.attr("content").trim))
                     .filter(_.length > 20),

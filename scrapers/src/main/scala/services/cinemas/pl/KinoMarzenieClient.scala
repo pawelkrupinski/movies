@@ -133,7 +133,7 @@ object KinoMarzenieClient {
       Option(item.selectFirst("span.color-3")).flatMap(label => Option(label.nextElementSibling).map(value =>
         label.text.trim.stripSuffix(":").trim.toLowerCase(Locale.ROOT) -> value.text.trim))
     }.toMap
-    def names(label: String) = fields.get(label).toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+    def names(label: String) = fields.get(label).toSeq.flatMap(ScraperParse.commaItems)
     FilmDetail(
       director       = names("reżyseria"),
       cast           = names("obsada"),

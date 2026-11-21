@@ -148,7 +148,7 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
       } yield d.atTime(t) -> b
     }
 
-  private def splitCsv(s: String): Seq[String] = s.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+  private def splitCsv(s: String): Seq[String] = ScraperParse.commaItems(s)
 
   private def metaRow(document: Document, label: String): Option[String] =
     document.select("div.meta-row").asScala.find(_.text.toLowerCase(Locale.ROOT).contains(label))

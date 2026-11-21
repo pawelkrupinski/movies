@@ -93,7 +93,7 @@ object KinoNarewClient {
         val format = godzParagraph.map(p => FormatTags.formatTokensIn(p.text)).getOrElse(Nil)
 
         val fields = paragraphs.find(p => p.text.contains("Gatunek")).map(fieldsOf).getOrElse(Map.empty)
-        val genres = fields.get("gatunek").map(_.split(",").toSeq.map(_.trim).filter(_.nonEmpty)).getOrElse(Seq.empty)
+        val genres = fields.get("gatunek").map(ScraperParse.commaItems).getOrElse(Seq.empty)
         val (countries, year) = fields.get("kraj").map(ScraperParse.productionMeta).getOrElse((Nil, None))
         val runtime = fields.get("czas trwania").flatMap(v => """\d+""".r.findFirstIn(v)).flatMap(n => Try(n.toInt).toOption)
 

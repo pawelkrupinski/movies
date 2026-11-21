@@ -95,7 +95,7 @@ object MultikinoParser {
   }
 
   private def names(film: JsValue, field: String): Seq[String] =
-    (film \ field).asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+    (film \ field).asOpt[String].filter(_.nonEmpty).toSeq.flatMap(ScraperParse.commaItems)
 
   private def parseSession(session: JsValue): Option[Showtime] =
     (session \ "startTime").asOpt[String].map { startTime =>

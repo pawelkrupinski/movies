@@ -51,13 +51,13 @@ class SdkClient(http: HttpFetch) extends SingleSiteScraper {
       CinemaMovie(
         movie     = Movie(title = title, runtimeMinutes = d.flatMap(metaLi(_, "czas trwania").flatMap(intIn)),
                           releaseYear = d.flatMap(metaLi(_, "rok produkcji").flatMap(yearIn)),
-                          countries = d.toSeq.flatMap(metaLi(_, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)))),
+                          countries = d.toSeq.flatMap(metaLi(_, "kraj produkcji").toSeq.flatMap(ScraperParse.commaItems))),
         cinema    = cinema,
         posterUrl = primary.poster,
         filmUrl   = Some(primary.detailUrl),
         synopsis  = d.flatMap(x => Option(x.selectFirst("div.item-fulltext")).orElse(Option(x.selectFirst("div.com-content-article__body"))))
                       .map(SynopsisProse.blockText(_).trim).filter(_.length > 20),
-        director  = d.toSeq.flatMap(metaLi(_, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))),
+        director  = d.toSeq.flatMap(metaLi(_, "reżyseria").toSeq.flatMap(ScraperParse.commaItems)),
         showtimes = showtimes
       )
     }

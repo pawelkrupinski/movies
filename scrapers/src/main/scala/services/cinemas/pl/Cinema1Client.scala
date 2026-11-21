@@ -10,7 +10,7 @@ import models.*
 import play.api.libs.json.*
 import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.SlotsToMovies
-import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages}
+import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScraperParse}
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -175,5 +175,5 @@ object Cinema1Client {
   }.getOrElse(None)
 
   private def splitNames(raw: Option[String]): Seq[String] =
-    raw.getOrElse("").split(",").map(_.trim).filter(_.nonEmpty).toSeq
+    ScraperParse.commaItems(raw.getOrElse(""))
 }

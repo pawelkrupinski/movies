@@ -193,7 +193,7 @@ object KinoZakClient {
     DirectorAfterRez.findFirstMatchIn(text) match {
       case None => (Seq.empty, None)
       case Some(m) =>
-        val director = m.group(1).split(",").map(_.trim).filter(_.nonEmpty).toSeq
+        val director = ScraperParse.commaItems(m.group(1))
         // The year is the first standalone 19xx/20xx token AFTER the director.
         val year = ProductionYear.findFirstMatchIn(text.substring(m.end)).map(_.group(1).toInt)
         (director, year)

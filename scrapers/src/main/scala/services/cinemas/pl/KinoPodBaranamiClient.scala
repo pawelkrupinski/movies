@@ -160,7 +160,7 @@ object KinoPodBaranamiClient {
     val doc    = Jsoup.parse(html)
     val fields = Option(doc.selectFirst("div.indent")).map(ScraperParse.strongLabeledFields).getOrElse(Map.empty)
     def people(label: String): Seq[String] =
-      fields.get(label).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      fields.get(label).toSeq.flatMap(ScraperParse.commaItems)
     val runtime = fields.get("czas trwania").flatMap(v => """(\d+)""".r.findFirstIn(v)).map(_.toInt).filter(_ > 0)
     val (countries, prodYear) = fields.get("produkcja").map(ScraperParse.productionMeta).getOrElse((Seq.empty, None))
     val premieraYear = fields.get("premiera").flatMap(ScraperParse.yearIn)

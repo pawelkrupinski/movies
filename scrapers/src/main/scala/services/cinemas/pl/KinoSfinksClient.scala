@@ -190,7 +190,7 @@ object KinoSfinksClient {
       .map(_.text.trim).filter(_.nonEmpty)
 
   private def splitList(s: Option[String]): Seq[String] =
-    s.toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+    s.toSeq.flatMap(ScraperParse.commaItems)
 
   /** Parse a screening detail page into its film-level metadata. `Produkcja /
    *  rok` folds country + year ("USA 1999") — the trailing 4-digit run is the

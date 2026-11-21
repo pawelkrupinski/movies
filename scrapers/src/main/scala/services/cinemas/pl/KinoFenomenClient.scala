@@ -210,12 +210,12 @@ object KinoFenomenClient {
       .flatMap(splitHead)
     def after(marker: String): Seq[String] =
       lines.find(_.toLowerCase(Locale.ROOT).startsWith(marker)).toSeq
-        .flatMap(_.replaceFirst("(?i)^" + marker + ":?\\s*", "").split(",").map(_.trim).filter(_.nonEmpty))
+        .flatMap(line => ScraperParse.commaItems(line.replaceFirst("(?i)^" + marker + ":?\\s*", "")))
     val metaParts = lines.find(_.startsWith("/")).toSeq
       .flatMap(_.stripPrefix("/").split("/").map(_.trim).filter(_.nonEmpty))
     val year      = metaParts.flatMap(YearTokenPat.findFirstIn).headOption.map(_.toInt)
     val runtime   = metaParts.flatMap(p => RuntimeMinPat.findFirstMatchIn(p).map(_.group(1).toInt)).headOption
-    val countries = metaParts.headOption.toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+    val countries = metaParts.headOption.toSeq.flatMap(ScraperParse.commaItems)
     val genres    = metaParts.drop(1)
       .filterNot(p => YearTokenPat.findFirstIn(p).isDefined || RuntimeMinPat.findFirstMatchIn(p).isDefined)
     // Synopsis = the prose lines: long, and not one of the marker/meta/title lines.

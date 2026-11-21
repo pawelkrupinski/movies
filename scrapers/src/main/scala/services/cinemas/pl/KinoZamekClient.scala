@@ -231,7 +231,7 @@ object KinoZamekClient {
       .takeWhile(p => ScreeningLine.findFirstMatchIn(p.text).isEmpty)
       .collectFirst { case Paragraph(DirectorLine(names), _) => names }
       .toSeq
-      .flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      .flatMap(ScraperParse.commaItems)
 
   /** The dates in `p.event-details` (`12-06-2026, 13-06-2026, …`) — the only
     * place on the page that carries a year. */

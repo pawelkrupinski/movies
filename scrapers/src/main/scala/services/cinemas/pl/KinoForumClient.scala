@@ -92,7 +92,7 @@ object KinoForumClient {
     } yield {
       val booking = Option(row.selectFirst("a.more")).map(_.attr("href")).filter(_.nonEmpty)
       val countries = Option(row.selectFirst(".repertoire-row__production")).map(_.text.trim).filter(_.nonEmpty)
-        .map(_.split(",").iterator.map(_.trim).filter(_.nonEmpty).toSeq).getOrElse(Seq.empty)
+        .map(ScraperParse.commaItems).getOrElse(Seq.empty)
       RawSlot(title, LocalDateTime.of(date, time), booking, Some(runtime), countries)
     }
 }

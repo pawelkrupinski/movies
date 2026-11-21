@@ -108,7 +108,7 @@ object KinoStylowyClient {
     Option(card.selectFirst("a.card-title")).toSeq.flatMap { link =>
       val title = Option(link.selectFirst("strong")).getOrElse(link).text.trim
       val info  = Option(card.selectFirst("p.card-text.text-secondary"))
-      val genres = info.toSeq.flatMap(_.ownText.split(",")).map(_.trim).filter(_.nonEmpty)
+      val genres = info.toSeq.flatMap(e => ScraperParse.commaItems(e.ownText))
       val age    = info.flatMap(i => Option(i.selectFirst("em.badge"))).flatMap(ageOf)
       val filmUrl = Option(link.attr("abs:href")).filter(_.nonEmpty)
       val poster  = Option(card.selectFirst(".startRepertuarPoster img[src]")).flatMap(ScraperParse.imageUrl(_))
@@ -142,7 +142,7 @@ object KinoStylowyClient {
     val meta = Option(doc.selectFirst("#pageFilm div.text-secondary.border-top"))
     val originalTitle = meta.flatMap(m => Option(m.selectFirst("strong"))).map(_.text.trim).filter(_.nonEmpty)
     // "/ Francja, Belgia, 2025, animowany": countries precede the year, genres follow it.
-    val parts = meta.toSeq.flatMap(_.ownText.stripPrefix("/").trim.stripPrefix("/").split(",")).map(_.trim).filter(_.nonEmpty)
+    val parts = meta.toSeq.flatMap(m => ScraperParse.commaItems(m.ownText.stripPrefix("/").trim.stripPrefix("/")))
     val yearAt = parts.indexWhere(Year.matches)
     val (countries, year, genres) =
       if (yearAt < 0) (Seq.empty, None, Seq.empty)

@@ -165,14 +165,14 @@ class KinoMuzaClient(http: HttpFetch, today: => LocalDate,
     val (directorLines, otherLines) = infoLines.partition(_.matches("(?i)^reż\\..*"))
     val director  = directorLines.headOption
       .map(_.replaceFirst("(?i)^reż\\.\\s*", "").trim)
-      .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      .toSeq.flatMap(ScraperParse.commaItems)
     // The first other line is the country list unless it instead carries a
     // year/runtime token (some entries omit the country line entirely).
     // Split on "," for co-productions ("Polska, Niemcy" → two entries).
     val countries = otherLines.headOption
       .filterNot(_.matches(".*\\b(?:19|20)\\d{2}\\b.*"))
       .filterNot(_.matches(".*\\d+\\s*[\\u2019'].*"))
-      .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      .toSeq.flatMap(ScraperParse.commaItems)
     (director, countries)
   }
 

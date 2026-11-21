@@ -8,7 +8,7 @@ import scala.util.Try
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json.*
 import services.cinemas.common.SlotsToMovies
-import services.cinemas.common.{AgeRating, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{AgeRating, DetailFetchOutcome, FilmDetail, ScraperParse}
 import services.titles.FormatTags
 import services.titles.TitleNormalizer
 import tools.{HttpFetch, HttpRead}
@@ -231,14 +231,14 @@ object CinemaCityClient {
     val js  = FilmDetailsRe.findFirstMatchIn(html).flatMap(m => Try(Json.parse(m.group(1))).toOption)
     val castRaw   = js.flatMap(j => (j \ "cast").asOpt[String]).filter(_.nonEmpty)
     val cast      = castRaw.map(s => tools.TextNormalization.dropTrailingPartialNameIfLong(s))
-                      .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+                      .toSeq.flatMap(ScraperParse.commaItems)
     val director  = js.flatMap(j => (j \ "directors").asOpt[String]).filter(_.nonEmpty)
-                      .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+                      .toSeq.flatMap(ScraperParse.commaItems)
     val synopsis  = js.flatMap(j => (j \ "synopsis").asOpt[String]).filter(_.nonEmpty)
       .map(tools.TextNormalization.stripHtml)
     val countries = parseCountries(html)
       .orElse(js.flatMap(j => (j \ "releaseCountry").asOpt[String]).filter(_.nonEmpty)
-        .map(s => s.split(",").map(_.trim).filter(_.nonEmpty).toSeq))
+        .map(ScraperParse.commaItems))
       .getOrElse(Seq.empty)
     // `filmDetails.categoriesAttributes` is a list of English lowercase
     // genre tokens (`"comedy"`, `"drama"`, `"sci-fi"`). Map the common
@@ -313,5 +313,5 @@ object CinemaCityClient {
   private[cinemas] def parseCountries(html: String): Option[Seq[String]] =
     ProductionLineRe.findFirstMatchIn(html).map { m =>
       TrailingYearRe.replaceFirstIn(m.group(1), "").trim
-    }.filter(_.nonEmpty).map(_.split(",").map(_.trim).filter(_.nonEmpty).toSeq)
+    }.filter(_.nonEmpty).map(ScraperParse.commaItems)
 }

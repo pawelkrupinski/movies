@@ -69,7 +69,7 @@ object KinoLukowClient {
         movie = Movie(
           title          = title,
           runtimeMinutes = text("p.kino-film-meta").flatMap(Minutes.findFirstMatchIn(_)).map(_.group(1).toInt),
-          genres         = text("p.kino-film-genres").toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+          genres         = text("p.kino-film-genres").toSeq.flatMap(ScraperParse.commaItems)
         ),
         cinema    = cinema,
         posterUrl = Option(film.selectFirst("a.kino-film-poster img")).flatMap(ScraperParse.imageUrl(_)),

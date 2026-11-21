@@ -147,7 +147,7 @@ object VueCinemasPlatformParser {
 
   /** Cast/director arrive as one comma-separated string on both brands. */
   private def splitPeople(raw: Option[String]): Seq[String] =
-    raw.filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty).toSeq)
+    raw.filter(_.nonEmpty).toSeq.flatMap(ScraperParse.commaItems)
 
   private def absoluteUrl(url: Option[String], root: String): Option[String] =
     url.map(_.trim).filter(_.nonEmpty).map(u => if (u.startsWith("http")) u else root + u)

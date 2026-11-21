@@ -100,7 +100,7 @@ object KinoTomiClient {
       case i  => facts.get("obsada").filter(_.nonEmpty).orElse(items.lift(i + 1))
     }
     def names(value: Option[String]): Seq[String] =
-      value.toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).distinct
+      value.toSeq.flatMap(ScraperParse.commaItems).distinct
 
     val synopsis = about.map(SynopsisProse.cleanSynopsis(_, "ul")).filter(_.nonEmpty)
     val runtime = doc.select(".duration-area .item").asScala

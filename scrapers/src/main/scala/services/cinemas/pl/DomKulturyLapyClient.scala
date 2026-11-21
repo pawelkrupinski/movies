@@ -92,7 +92,7 @@ object DomKulturyLapyClient {
         m.group(1).toInt * 60 + Option(m.group(2)).map(_.toInt).getOrElse(0)
       }
       val (countries, year) = parts.lift(1).map(ScraperParse.productionMeta).getOrElse((Nil, None))
-      val genres     = parts.lift(2).map(_.split(",").toSeq.map(_.trim).filter(_.nonEmpty)).getOrElse(Seq.empty)
+      val genres     = parts.lift(2).map(ScraperParse.commaItems).getOrElse(Seq.empty)
       val filmUrl    = Option(columns.closest("div.post")).flatMap(post => Option(post.selectFirst("h4 a[href]")))
         .map(_.attr("abs:href")).filter(_.nonEmpty)
       RawSlot(Movie(title, runtime, year, countries = countries, genres = genres), LocalDateTime.of(date, time), synopsis, filmUrl)

@@ -200,7 +200,7 @@ object NoweHoryzontyClient {
     val prod    = crrow(document, "produkcja")
     val year    = prod.flatMap(s => YearPat.findFirstMatchIn(s).map(_.group(1).toInt))
     val countries = prod.map(s => YearPat.replaceAllIn(s, "")).map(_.trim.stripSuffix(","))
-                      .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+                      .toSeq.flatMap(ScraperParse.commaItems)
     val genreRaw = crrow(document, "gatunek")
       .orElse(Option(document.selectFirst("h4:contains(gatunek)")).map(_.text))
       .map(_.replaceFirst("(?i)^[^:]*:\\s*", "").trim)

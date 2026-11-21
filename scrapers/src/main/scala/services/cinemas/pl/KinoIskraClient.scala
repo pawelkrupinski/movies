@@ -188,7 +188,7 @@ object KinoIskraClient {
     lines.find(p => Option(p.selectFirst("b")).exists(_.text.replace(' ', ' ').trim.startsWith(label)))
       .map(_.ownText.replace(' ', ' ').trim).filter(_.nonEmpty)
 
-  private def names(list: String): Seq[String] = list.split(",").toSeq.map(_.trim).filter(_.nonEmpty)
+  private def names(list: String): Seq[String] = ScraperParse.commaItems(list)
 
   /** The synopsis: the record's small paragraph that carries no `<b>` label. */
   private def synopsisOf(document: Document): Option[String] =

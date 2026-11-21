@@ -8,6 +8,7 @@ import scala.util.Try
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import org.jsoup.Jsoup
 import play.api.libs.json.*
+import services.cinemas.common.ScraperParse
 import services.cinemas.common.ScraperParse.jsonText
 
 /**
@@ -160,7 +161,7 @@ object AmcParser {
    *  string ("JOHN CENA, LANA CONDOR, Will Forte"), so each is split here rather
    *  than stored with the separator baked in. */
   private def splitList(value: String): Seq[String] =
-    value.split(",").iterator.map(_.trim).filter(_.nonEmpty).toSeq.distinct
+    ScraperParse.commaItems(value).distinct
 
   /** The day's `items` array. Its ABSENCE is a response we failed to parse and
    *  throws; an empty array is a day with nothing on. */

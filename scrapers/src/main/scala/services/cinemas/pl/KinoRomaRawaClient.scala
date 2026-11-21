@@ -74,7 +74,7 @@ object KinoRomaRawaClient {
         val movie = Option(doc.selectFirst("hgroup.single__header"))
         def props(name: String): Seq[String] =
           movie.toSeq.flatMap(_.select(s"[itemprop=$name]").asScala.toSeq)
-            .flatMap(_.text.split(",")).map(_.trim).filter(_.nonEmpty)
+            .flatMap(e => ScraperParse.commaItems(e.text))
         def prop(name: String): Option[String] = props(name).headOption
         CinemaMovie(
           movie = Movie(

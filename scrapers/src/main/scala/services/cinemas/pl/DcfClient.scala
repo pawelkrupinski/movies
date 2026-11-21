@@ -161,10 +161,10 @@ object DcfClient {
         val infoLine = lines.headOption.getOrElse("")
         val parts    = infoLine.split("\\|").map(_.trim).filter(_.nonEmpty)
         val director = parts.find(_.toLowerCase(Locale.ROOT).startsWith("reż")).map(_.replaceFirst("(?i)^reż\\.?\\s*", "").trim)
-                          .filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+                          .filter(_.nonEmpty).toSeq.flatMap(ScraperParse.commaItems)
         val year     = YearPat.findFirstMatchIn(infoLine).map(_.group(1).toInt)
         val country  = parts.find(p => !p.toLowerCase(Locale.ROOT).startsWith("reż") && YearPat.findFirstMatchIn(p).isEmpty)
-                          .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+                          .toSeq.flatMap(ScraperParse.commaItems)
         // The block sometimes ends with an organiser footer ("Więcej:
         // www.<film>.pl"); drop URL-only / "Więcej: <url>" lines and strip any
         // residual plain-text URL so it never lands in the synopsis.

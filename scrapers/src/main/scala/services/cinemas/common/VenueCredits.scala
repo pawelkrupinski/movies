@@ -170,7 +170,7 @@ object VenueCredits {
       val (directors, rest) =
         if (after.contains("|")) { val (d, r) = after.span(_ != '|'); (names(d), items(r.drop(1))) }
         else {
-          val (d, r) = after.split(",").iterator.map(_.trim).filter(_.nonEmpty).toSeq.span(!isProductionItem(_))
+          val (d, r) = ScraperParse.commaItems(after).span(!isProductionItem(_))
           (d.flatMap(names), r.flatMap(items))
         }
       val countries = rest.filter(isCountry).map(stripYear).distinct

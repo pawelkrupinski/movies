@@ -109,7 +109,7 @@ object KinoKadrTomaszowLubelskiClient {
         runtimeMinutes = Option(article.selectFirst(".movie-info span")).map(_.text)
                             .flatMap(RuntimePat.findFirstMatchIn).map(_.group(1).toInt),
         genres         = Option(article.selectFirst(".movie-extra span.movie-genre")).map(_.text).toSeq
-                            .flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+                            .flatMap(ScraperParse.commaItems)
       ),
       cinema      = cinema,
       posterUrl   = Option(article.selectFirst(".movie-poster img[src]")).flatMap(ScraperParse.imageUrl(_)),

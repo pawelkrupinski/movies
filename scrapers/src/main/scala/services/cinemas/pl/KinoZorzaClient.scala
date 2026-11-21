@@ -87,7 +87,7 @@ object KinoZorzaClient {
   /** The film page's `<strong>label:</strong> value` facts under `div#movie-details`. */
   private[cinemas] def parseDetail(html: String): FilmDetail = {
     val fields = Option(Jsoup.parse(html, BaseUrl).selectFirst("div#movie-details")).map(ScraperParse.strongLabeledFields).getOrElse(Map.empty)
-    def names(label: String) = fields.get(label).toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+    def names(label: String) = fields.get(label).toSeq.flatMap(ScraperParse.commaItems)
     FilmDetail(
       director       = names("reżyseria"),
       countries      = names("produkcja"),

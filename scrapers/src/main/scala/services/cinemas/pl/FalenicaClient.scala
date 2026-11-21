@@ -114,7 +114,7 @@ class FalenicaClient(http: HttpFetch
         val czas     = Option(art.selectFirst("div.repe_czas")).map(_.text.trim).getOrElse("")
         val runtime  = """(\d+)\s*min""".r.findFirstMatchIn(czas).map(_.group(1).toInt)
         val director = """(?i)reż\.\s*(.+)$""".r.findFirstMatchIn(czas).map(_.group(1).trim)
-                         .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+                         .toSeq.flatMap(ScraperParse.commaItems)
         val poster   = Option(art.selectFirst("div.repe_outer")).map(_.attr("style"))
                          .flatMap(ScraperParse.cssUrl)
                          .map(ScraperParse.onSite(BaseUrl))

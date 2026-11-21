@@ -156,5 +156,5 @@ object KinoMuzeumGdanskClient {
     s.replaceFirst(s"(?i)^$label\\s*", "").trim
 
   private def splitField(s: Option[String]): Seq[String] =
-    s.toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+    s.toSeq.flatMap(ScraperParse.commaItems)
 }

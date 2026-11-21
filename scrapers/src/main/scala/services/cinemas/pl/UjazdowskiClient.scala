@@ -170,7 +170,7 @@ object UjazdowskiClient {
   def parseMeta(s: String): Meta =
     MetaPat.findFirstMatchIn(s) match {
       case Some(m) => Meta(
-        director  = m.group(1).split(",").map(_.trim).filter(_.nonEmpty).toSeq,
+        director  = ScraperParse.commaItems(m.group(1)),
         countries = m.group(2).split("[,/]").map(_.trim).filter(_.nonEmpty).toSeq,
         year      = Some(m.group(3).toInt),
         runtime   = Some(m.group(4).toInt)

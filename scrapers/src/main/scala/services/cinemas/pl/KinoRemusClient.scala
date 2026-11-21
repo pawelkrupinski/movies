@@ -115,7 +115,7 @@ object KinoRemusClient {
       synopsis       = content.map(synopsisOf).filter(_.nonEmpty),
       runtimeMinutes = content.flatMap(c => c.select("p").asScala.find(_.text.contains("Czas trwania")))
                          .flatMap(p => ScraperParse.hoursMinutesRuntime(p.text)),
-      genres         = header.toSeq.flatMap(_.group(1).split(",")).map(_.trim).filter(_.nonEmpty),
+      genres         = header.toSeq.flatMap(m => ScraperParse.commaItems(m.group(1))),
       ageRating      = AgeRating.normalize(header.map(_.group(2))),
       posterUrl      = ScraperParse.ogImage(doc)
     )

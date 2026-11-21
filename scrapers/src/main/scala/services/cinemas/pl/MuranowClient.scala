@@ -171,10 +171,10 @@ object MuranowClient {
       runtimeMinutes = field(document, "field-movie-duration").flatMap(screeningRuntime),
       year           = field(document, "field-movie-production-year").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
       countries      = fields(document, "field-movie-production-country"),
-      genres         = field(document, "field-movie-category").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+      genres         = field(document, "field-movie-category").toSeq.flatMap(ScraperParse.commaItems)
                          .map(tools.TextNormalization.titleCaseIfAllLower),
-      director       = field(document, "field-movie-director").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
-      cast           = field(document, "field-movie-cast").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+      director       = field(document, "field-movie-director").toSeq.flatMap(ScraperParse.commaItems),
+      cast           = field(document, "field-movie-cast").toSeq.flatMap(ScraperParse.commaItems),
       originalTitle  = field(document, "field-movie-original-title"),
       // Retrospective screenings lead the body with a credits-only paragraph
       // ("<title> <orig> reż. <dir>, <country>, <year>, <NN> min") before the
