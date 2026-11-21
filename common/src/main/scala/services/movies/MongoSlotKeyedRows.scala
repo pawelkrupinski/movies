@@ -34,7 +34,7 @@ trait MongoSlotKeyedRows[Dto: ClassTag](
   protected final lazy val rowsCollection: Option[MongoCollection[Dto]] = sharedDb.map { db =>
     val c = db.withCodecRegistry(MovieCodecs.registry).getCollection[Dto](collectionName)
       .withWriteConcern(WriteConcern.W1.withJournal(false))
-    SlotKeyed.ensureIndexes(c)
+    SlotKeyed.ensureIndexes(db, collectionName, storeName)
     c
   }
 

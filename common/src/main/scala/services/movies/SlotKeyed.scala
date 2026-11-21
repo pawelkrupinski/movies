@@ -5,7 +5,6 @@ import java.time.Instant
 import scala.concurrent.duration.*
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.ClassTag
-import scala.util.Try
 
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.{Aggregates, Filters, Projections}
@@ -280,10 +279,12 @@ object SlotKeyed {
 
   /** The indexes both side collections carry: `filmId` for the per-film reads and deletes, and
    *  `listingKey` for a read by listing. Best effort, like every index here: a
-   *  store without one still answers, by a collection scan. */
-  def ensureIndexes[T](c: MongoCollection[T]): Unit =
+   *  store without one still answers, by a collection scan -- which is why one that
+   *  could not be built is logged ([[tools.MongoIndex.ensure]]). */
+  def ensureIndexes(database: org.mongodb.scala.MongoDatabase, collection: String, label: String): Unit =
     Seq("filmId", ListingKeyField).foreach(field =>
-      Try(Await.result(c.createIndex(org.mongodb.scala.model.Indexes.ascending(field)).toFuture(), 10.seconds)))
+      tools.MongoIndex.ensure(database, collection, org.mongodb.scala.model.Indexes.ascending(field),
+        new org.mongodb.scala.model.IndexOptions(), label))
 
   /** [[SlotKeyedRows.rowWrittenAtChecked]] for a Mongo side collection: `_id` + `updatedAt`
    *  projected server-side. A row with no `updatedAt` (none is written without one) reads as
