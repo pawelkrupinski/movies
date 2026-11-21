@@ -15,7 +15,6 @@
 workflow	verify_dispatch	replay	why
 Alert backtest	yes	infra/bin/backtest-alerts-replay --local --from-run {run}	scoped to the alerts the red run named, replayed on the laptop over its cached copy of ci-runner's nightly Prometheus blocks (infra/bin/backtest-alerts-local; minutes once warm), no paid service
 Record scrape fixtures	no	-	scrapes every cinema through paid proxies: wait for the nightly
-Order independence	no	-	~204 runner-minutes a run (median of 3, 2026-11-21: the shuffled unit suites, the ios XCUITest classes alone): wait for the 02:40Z slot
 Nightly stress	no	-	~76 runner-minutes a run (median of 3, 2026-11-21): wait for the night
 Identity drift explorer	no	-	~225 runner-minutes a full run (2026-11-21): wait for the nightly
 Identity family explorer	no	-	~254 runner-minutes a full run (2026-11-21): wait for the nightly
