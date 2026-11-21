@@ -28,4 +28,24 @@ class MongoOmdbBudgetIntegrationSpec extends AnyFlatSpec with Matchers with Inte
     de.markSpent(reset)
     pl.take(OmdbAsk.NewFilm, reset) shouldBe OmdbBudget.Spent(Instant.parse("2026-10-28T05:00:00Z"))
   }
+
+  // The day's first permits race to create its document: the loser's upsert met the winner's id and was
+  // read as "spent" with the day's count at 1, sending a new film's IMDb id to the next OMDb day.
+  it should "grant every worker's first permits of a day that race to open it" in {
+    import java.util.concurrent.{CyclicBarrier, Executors, TimeUnit}
+    val workers = 8
+    val pool    = Executors.newFixedThreadPool(workers)
+    try {
+      val refused = (1 to 20).flatMap { dayOffset =>
+        val day     = Instant.parse("2027-01-01T17:00:00Z").plus(java.time.Duration.ofDays(dayOffset.toLong))
+        val barrier = new CyclicBarrier(workers)
+        val takes   = (1 to workers).map { _ =>
+          val budget = new MongoOmdbBudget(isolated.database, limit = 1000)
+          pool.submit(() => { barrier.await(); budget.take(OmdbAsk.NewFilm, day) })
+        }
+        takes.map(_.get(30, TimeUnit.SECONDS)).filter(_ != OmdbBudget.Granted)
+      }
+      refused shouldBe empty
+    } finally pool.shutdownNow()
+  }
 }

@@ -6,7 +6,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.*
 
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.model.{Filters, FindOneAndUpdateOptions, ReturnDocument, Updates}
+import org.mongodb.scala.model.{Filters, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture}
 
 /**
@@ -125,20 +125,27 @@ final class MongoOmdbBudget(db: MongoDatabase, limit: Int = OmdbBudget.DailyLimi
   def take(ask: OmdbAsk, now: Instant): OmdbBudget.Permit = {
     val day     = OmdbBudget.dayOf(now).toString
     val ceiling = OmdbBudget.ceiling(ask, limit, now)
-    val below   = Filters.and(Filters.eq("_id", day), Filters.or(Filters.exists("used", false), Filters.lt("used", ceiling)))
     if (ceiling <= 0) OmdbBudget.Spent(OmdbBudget.retryAt(ask, usedOn(day), limit, now))
-    else
-      try {
-        Await.result(collection.findOneAndUpdate(below, Updates.inc("used", 1),
-          FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER)).toFutureOption(), Timeout)
-        OmdbBudget.Granted
-      } catch {
-        // The day's document exists and is at this ask's ceiling: the upsert met its id.
-        // A findAndModify's upsert reports the clash as a command error, not a write error (MongoFleetHostPace).
-        case e: com.mongodb.MongoException if e.getCode == 11000 =>
-          OmdbBudget.Spent(OmdbBudget.retryAt(ask, usedOn(day), limit, now))
+    else {
+      open(day)
+      val below = Filters.and(Filters.eq("_id", day), Filters.lt("used", ceiling))
+      Await.result(collection.findOneAndUpdate(below, Updates.inc("used", 1)).toFutureOption(), Timeout) match {
+        case Some(_) => OmdbBudget.Granted
+        case None    => OmdbBudget.Spent(OmdbBudget.retryAt(ask, usedOn(day), limit, now)) // at this ask's ceiling
       }
+    }
   }
+
+  /** Create the day's document at 0 unless it exists, so the conditional increment never upserts: an upsert whose
+   *  filter also reads `used` met a worker opening the same day as a duplicate key, indistinguishable from "spent".
+   *  Two workers opening it at once still clash on the id (the filter is the id alone, which the server retries, and
+   *  a clash left over means the document is there either way). */
+  private def open(day: String): Unit =
+    try {
+      Await.result(collection.updateOne(Filters.eq("_id", day), Updates.setOnInsert("used", 0),
+        org.mongodb.scala.model.UpdateOptions().upsert(true)).toFuture(), Timeout)
+      ()
+    } catch { case e: com.mongodb.MongoException if e.getCode == 11000 => () }
 
   def markSpent(now: Instant): Unit = {
     Await.result(collection.updateOne(Filters.eq("_id", OmdbBudget.dayOf(now).toString), Updates.max("used", limit),
