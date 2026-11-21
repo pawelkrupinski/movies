@@ -61,6 +61,11 @@ class ExemptionsTest(unittest.TestCase):
         self.commit(f"web: the fix\n\nFixes-Red: 2600\nFix-Replay: none -- {REASON}\n{CO}")
         self.assertIn(f"Fixes-Red: 2600: {REASON}", self.report())
 
+    def test_a_reason_folded_onto_a_continuation_line_is_listed_whole(self):
+        head, tail = REASON.split(" ", 1)
+        self.commit(f"web: the fix\n\nFixes-Red: 2600\nFix-Replay: none — {head}\n {tail}\n{CO}")
+        self.assertIn(f"Fixes-Red: 2600: {REASON}\n", self.report())
+
     def test_a_replayed_fix_and_a_misplaced_line_are_not_exemptions(self):
         self.commit(f"web: replayed\n\nFixes-Red: 2601\nFix-Replay: sbt 'web/testOnly X'\n{CO}")
         self.commit(f"web: prose\n\nFix-Replay: none — {REASON}\n\nFixes-Red: 2602\n{CO}")

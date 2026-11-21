@@ -370,7 +370,7 @@ MIN_MOVED_MEMBERS = 2
 
 def split_claims(rng: str) -> List[Tuple[str, List[str]]]:
     """The `Coupling: split of <X> [into <A>, <B>]` trailers of the commits of `rng`: (X, the pieces named)."""
-    log = git("log", "--format=%x00%(trailers:key=Coupling,valueonly,separator=%x1e)", rng)
+    log = git("log", "--format=%x00%(trailers:key=Coupling,valueonly,unfold,separator=%x1e)", rng)
     claims = []
     for value in (v.strip() for entry in log.split("\x00") for v in entry.split("\x1e")):
         m = SPLIT_TRAILER.match(value)
@@ -824,7 +824,7 @@ def exemption_columns(text: str) -> Dict[Tuple[str, str], List[str]]:
 
 def coupling_trailers(sha: str) -> List[str]:
     """The `Coupling:` trailers of `sha` as git reads them (the final trailer block)."""
-    out = git("log", "-1", "--format=%(trailers:key=Coupling,valueonly,separator=%x1e)", sha)
+    out = git("log", "-1", "--format=%(trailers:key=Coupling,valueonly,unfold,separator=%x1e)", sha)
     return [v.strip() for v in out.split("\x1e") if v.strip()]
 
 

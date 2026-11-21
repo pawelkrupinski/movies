@@ -46,8 +46,8 @@ def exemptions(since: str, rev: str) -> List[Exemption]:
     (`7d`, or anything `git log --since` reads), oldest first."""
     days = re.fullmatch(r"(\d+)d", since)
     after = f"{days.group(1)} days ago" if days else since
-    fmt = FIELD.join(("%H", "%cs", "%s", "%(trailers:key=Fixes-Red,valueonly,separator=%x2c )",
-                      "%(trailers:key=Fix-Replay,valueonly,separator=%x1d)")) + RECORD
+    fmt = FIELD.join(("%H", "%cs", "%s", "%(trailers:key=Fixes-Red,valueonly,unfold,separator=%x2c )",
+                      "%(trailers:key=Fix-Replay,valueonly,unfold,separator=%x1d)")) + RECORD
     out = []
     for record in git("log", "--reverse", f"--since={after}", f"--format={fmt}", rev).split(RECORD):
         cols = record.strip("\n").split(FIELD)
