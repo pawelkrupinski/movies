@@ -290,7 +290,7 @@ root="$(git rev-parse --show-toplevel)" || exit 1
 # the dry runs (the plan modes, --range, --checks-only, --fast-only, --verify-only), which name the file they mean.
 # THE PLAN MODES print what a push would run (or summarise a log) and exit: ONE list, read here and by the root
 # check below (--lint-plan was in that one only, so a lint-plan query from another checkout ran that checkout's copy).
-is_plan_mode() { case "${1:-}" in --plan|--compile-plan|--coupling-plan|--quality-plan|--identity-change|--unit-plan|--unit-universe|--lint-plan|--script-test-plan|--failure-summary) return 0 ;; esac; return 1; }
+is_plan_mode() { case "${1:-}" in --plan|--compile-plan|--coupling-plan|--quality-plan|--identity-change|--unit-plan|--unit-universe|--lint-plan|--per-file-lints|--script-test-plan|--failure-summary) return 0 ;; esac; return 1; }
 is_plan_mode "${1:-}" && dry_run=1 || dry_run=0
 case "${1:-}" in --range|--checks-only|--fast-only|--verify-only) dry_run=1 ;; esac
 case "$dry_run" in
@@ -659,8 +659,25 @@ heavy_rows() { # <paths, one per line>
 # geodata, base → http → common → identity → testkit → scrapers → worker (test->fixtures on scrapers) → web (page->fixtures) → e2e. The build
 # itself touches them all.
 compile_plan() {
-    local common=0 identity=0 testkit=0 scrapers=0 repochecks=0 worker=0 worker_it=0 web=0 e2e=0 path
+    local common=0 identity=0 testkit=0 scrapers=0 repochecks=0 worker=0 worker_it=0 web=0 e2e=0 path tests=""
     while IFS= read -r path; do
+        # A TEST TREE IS ITS MODULE'S TESTS' ALONE (2026-11-21, landing-speed proposal 1): `<m>/src/test|it|page/` is
+        # compiled by <m>'s Test config and those extending it (It, Page) -- no module depends on another's Test but the
+        # worker's It on repochecks' (`it->test`, below; build.sbt's dependsOn, held by pre-push-test.sh) -- so it
+        # compiles none of the modules downstream of <m>, which compile <m>'s main and fixtures alone.
+        case "$path" in
+            repochecks/src/test/*.scala|repochecks/src/test/*.java) repochecks=1; worker_it=1; continue ;;
+            worker/src/it/*.scala|worker/src/it/*.java) worker_it=1; continue ;;
+            web/src/it/*.scala|web/src/it/*.java) tests="$tests web/It/compile"; continue ;;
+            web/src/page/*.scala|web/src/page/*.java) tests="$tests web/Page/compile"; continue ;;
+            web/src/test/*.scala|web/src/test/*.java) tests="$tests web/Test/compile web/It/compile web/Page/compile"; continue ;;
+            worker/src/test/*.scala|worker/src/test/*.java) tests="$tests worker/Test/compile"; worker_it=1; continue ;;
+            base/src/test/*.scala|http/src/test/*.scala|geodata/src/test/*.scala|common/src/test/*.scala|common/src/test/*.java)
+                tests="$tests ${path%%/*}/Test/compile"; continue ;;
+            identity/src/test/*.scala|identity/src/test/*.java) tests="$tests identity/Test/compile"; continue ;;
+            scrapers/src/test/*.scala|scrapers/src/test/*.java) tests="$tests scrapers/Test/compile"; continue ;;
+            testkit/src/test/*.scala) tests="$tests testkit/Test/compile"; continue ;;
+        esac
         case "$path" in
             build.sbt|project/*)  common=1 ;;
             common/*.scala|common/*.java|geodata/*.scala|base/*.scala|http/*.scala)   common=1 ;;
@@ -695,6 +712,15 @@ compile_plan() {
     [ $worker = 0 ] && [ $worker_it = 1 ] && echo worker/It/compile
     [ $web = 1 ] && printf '%s\n' web/Test/compile web/It/compile web/Page/compile
     [ $e2e = 1 ] && echo e2e/Test/compile
+    # the test trees' own configs, those the modules above do not already compile
+    local config
+    for config in $tests; do
+        case "$config" in
+            common/*|base/*|http/*|geodata/*) [ $common = 1 ] && [ "${config%%/*}" = common ] ;; identity/*) [ $identity = 1 ] ;; testkit/*) [ $testkit = 1 ] ;;
+            scrapers/*) [ $scrapers = 1 ] ;; worker/*) [ $worker = 1 ] ;; web/*) [ $web = 1 ] ;; *) false ;;
+        esac && continue
+        echo "$config"
+    done | awk '!seen[$0]++'
     return 0
 }
 
@@ -818,6 +844,9 @@ unit_plan() {
 # changes sharing a lint and kept no verdict in 11-19..21. scripts/hooks/lint-registry-test.sh fails when a
 # repo-reading spec has no row, or a row misses a path its spec's source names (lint_registry_reads.py);
 # scripts/ci/lint_reads_trace.py runs each spec and fails on a file it opened that its row does not select.
+# `--per-file-lints` prints the `@per-file` specs among them that the paths select by what the spec reads alone, not by
+# its own code: a spec judging each file alone (scripts/ci/lint_per_file_check.py proves it), which agentctl's MINIMAL
+# RECHECKS counts as shared only where both sides change one file (a full round anyway) or one side changes its code.
 # Skip all but the `*` rows with PREPUSH_SKIP=lintspecs.
 LintRegistry="$(dirname "${BASH_SOURCE[0]}")/lint-registry.tsv"
 # The lints every sbt check runs, whatever the push touches: the registry's `*` rows.
@@ -882,8 +911,8 @@ without_unfetched_gitops() {
         case "$line" in *" -- "*) printf '%s%s -- %s\n' "${line%% -- *}" "$add" "${line#* -- }" ;; *) printf '%s%s\n' "$line" "$add" ;; esac
     done
 }
-lint_plan() {
-    local paths own spec reads word path selected
+lint_plan() { # [per-file]: only the `@per-file` specs the paths select by what the spec reads, never by its own code
+    local paths own spec reads word path selected mode="${1:-}"
     paths="$(cat)"
     [ -f "$LintRegistry" ] || return 0
     own=" $(printf '%s\n' "$paths" | own_code_modules | tr '\n' ' ')"
@@ -899,7 +928,7 @@ lint_plan() {
                 '*') selected=1 ;;
                 -) selected=-1; break ;;
                 @repo) [ -n "$paths" ] && selected=1 ;;
-                @gitops|@code) ;;
+                @gitops|@code|@per-file) ;;
                 # a leading `*/` is ONE directory, a module: `*/src/test/*` never reaches android/app/src/test/
                 '*/'*) while IFS= read -r path; do
                        # shellcheck disable=SC2254 # the registry's pattern, matched as a pattern
@@ -912,6 +941,12 @@ lint_plan() {
             esac
             [ $selected = 1 ] && break
         done
+        if [ "$mode" = per-file ]; then
+            [ $selected = 1 ] || continue
+            case " $reads " in *" @per-file "*) ;; *) continue ;; esac
+            case "$own " in *" ${spec%%:*} "*) continue ;; esac
+            echo "$spec"; continue
+        fi
         # its own code: a test-side path its module's Test config compiles
         [ $selected = 0 ] && case "$own " in *" ${spec%%:*} "*) selected=1 ;; esac
         [ $selected = 1 ] || continue
@@ -965,6 +1000,7 @@ case "${1:-}" in
     --unit-universe) unit_universe; exit 0 ;;
     --source-lints) source_lint_lines "${2:-}"; exit 0 ;;
     --lint-plan)    lint_plan; exit 0 ;;
+    --per-file-lints) lint_plan per-file; exit 0 ;;
     --script-test-plan) script_test_plan; exit $? ;;
     --failure-summary) failure_summary "$2"; exit 0 ;;
 esac

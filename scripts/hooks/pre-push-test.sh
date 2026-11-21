@@ -203,8 +203,22 @@ printf '\033[36m▸\033[0m pre-push --compile-plan\n'
 compiles() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --compile-plan | tr '\n' ' ' | sed 's/ $//'; }
 check "a worker source compiles worker's Test and It configs, and e2e's tests over it" \
   "worker/Test/compile worker/It/compile e2e/Test/compile" "$(compiles worker/src/main/scala/A.scala)"
-check "a worker it/ spec compiles the same" \
-  "worker/Test/compile worker/It/compile e2e/Test/compile" "$(compiles worker/src/it/scala/ASpec.scala)"
+# A TEST TREE IS ITS MODULE'S TESTS' ALONE (2026-11-21): nothing compiles against another module's Test but the worker's
+# It against repochecks' -- the build's dependsOn, held here -- so a test change compiles its own configs only
+check "a worker it/ spec compiles worker's It config alone" "worker/It/compile" "$(compiles worker/src/it/scala/ASpec.scala)"
+check "a worker spec compiles worker's Test and It (which extends it), not e2e" "worker/It/compile worker/Test/compile" \
+  "$(compiles worker/src/test/scala/ASpec.scala)"
+check "a common spec compiles common's tests alone, an identity spec identity's, a base spec base's" \
+  "common/Test/compile|identity/Test/compile|base/Test/compile" \
+  "$(compiles common/src/test/scala/ASpec.scala)|$(compiles identity/src/test/scala/ASpec.scala)|$(compiles base/src/test/scala/ASpec.scala)"
+check "a web spec compiles web's Test and the It and Page configs extending it; a page spec Page alone" \
+  "web/Test/compile web/It/compile web/Page/compile|web/Page/compile" \
+  "$(compiles web/src/test/scala/ASpec.scala)|$(compiles web/src/page/scala/ASpec.scala)"
+check "...and a common spec beside a common source adds nothing to the source's plan" "$(compiles common/src/main/scala/A.scala)" \
+  "$(compiles common/src/main/scala/A.scala common/src/test/scala/ASpec.scala)"
+check "the build has no module depending on another's tests but the worker's It on repochecks' (the narrowing's premise)" \
+  'repochecks % "test->fixtures;it->test;it->fixtures")' \
+  "$(grep -E '%[^%]*"[^"]*->(test|it|page)\b' "$REPO_ROOT/build.sbt" | grep -v '^ *//' | sed 's/^ *//; s/.*\(repochecks %\)/\1/')"
 check "a web source compiles web's Test, It and Page configs, and e2e's tests" \
   "web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" "$(compiles web/app/A.scala)"
 check "worker's fixtures config also compiles web's, whose Page config builds on it" \
@@ -242,13 +256,16 @@ out="$(lints worker/src/main/scala/A.scala)"
 check "a production Scala source runs the standing lints and the production-source scans, not a test-tree scan nor the workflow specs" \
   "yes yes yes no no" "$(has "$out" worker:tools.NoWallClockInTestsSpec) $(has "$out" repochecks:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.NoUnboundedMongoReadSpec) $(has "$out" worker:tools.LoadIndependentTestsSpec) $(has "$out" repochecks:deploy.WorkflowPlanSpec)"
 # A test-side path is what the test-tree scans read, and the code the lint specs compile with (their own code).
-for changed in build.sbt web/src/test/scala/ASpec.scala worker/src/fixtures/scala/tools/X.scala worker/src/it/scala/XSpec.scala; do
+for changed in build.sbt web/src/test/scala/ASpec.scala worker/src/fixtures/scala/tools/X.scala; do
   out="$(lints "$changed")"
   # The script self-test and dispatch-gate specs spawn bash and git, so they are `it` specs now (unit specs reach no
   # real dependency, 2026-10-27): main's integration-test row runs them, this unit lint plan no longer can.
   check "$changed runs the literal-wait, raw-git, sleep and real-dependency lints, not the it-side self-test and dispatch-gate specs" \
     "yes yes yes yes no no" "$(has "$out" worker:tools.NoLiteralWaitBoundSpec) $(has "$out" repochecks:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.NoSleepInTestsSpec) $(has "$out" worker:tools.NoRealDependenciesInUnitSpecsSpec) $(has "$out" worker:deploy.ScriptSelfTestsRunInCiSpec) $(has "$out" worker:deploy.ConvergenceDispatchGateSpec)"
 done
+out="$(lints worker/src/it/scala/XSpec.scala)"
+check "an it/ spec runs the literal-wait, raw-git and sleep lints, not the unit-spec dependency lint (no unit spec is it)" \
+  "yes yes yes no" "$(has "$out" worker:tools.NoLiteralWaitBoundSpec) $(has "$out" repochecks:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.NoSleepInTestsSpec) $(has "$out" worker:tools.NoRealDependenciesInUnitSpecsSpec)"
 # ...but a script, workflow, skill or CLAUDE.md is none of theirs: each row reads what its spec opens (the owner,
 # 2026-11-21: the `@repo` rows these once selected made every two changes share a lint in agentctl's MINIMAL RECHECKS)
 for changed in scripts/x.sh .github/workflows/x.yml .claude/skills/x/SKILL.md CLAUDE.md; do
@@ -396,8 +413,8 @@ if command -v shellcheck >/dev/null; then
   mkdir -p "$repo/worker/src/it/scala"; echo 'object B' > "$repo/worker/src/it/scala/B.scala"
   scratch_git "$repo" add worker; scratch_git "$repo" commit -qm "adds a worker it/ source"
   (cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)
-  check "a worker push compiles its Test and It configs in the lints' one sbt invocation" \
-    "worker/Test/compile worker/It/compile e2e/Test/compile" \
+  check "a worker it/ push compiles its It config in the lints' one sbt invocation" \
+    "worker/It/compile" \
     "$(grep -E '^[a-z0-9]+/[A-Za-z]+/compile$' "$scratch/sbt-args" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
   check "...ahead of the lints, which still run" "1" "$(grep -c 'worker/Test/testOnly' "$scratch/sbt-args" 2>/dev/null)"
   check "...and runs no unit tests (the landing check's are its areas')" "0" \

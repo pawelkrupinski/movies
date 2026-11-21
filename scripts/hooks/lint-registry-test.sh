@@ -58,6 +58,16 @@ check "a spec's own code runs it (its source, a helper its module's tests compil
   "$(has "$(lints repochecks/src/test/scala/deploy/WorkflowPlanSpec.scala)" repochecks:deploy.WorkflowPlanSpec) $(has "$(lints worker/src/test/scala/tools/ScalaSourceScan.scala)" worker:tools.LoadIndependentTestsSpec) $(has "$(lints repochecks/src/test/scala/deploy/FixtureServerBootOverlapSpec.scala)" repochecks:deploy.FixtureServerBootOverlapSpec)"
 check "...the manifests in place (PREPUSH_GITOPS=1), a @gitops spec its paths select" "no yes" \
   "$(has "$(lints infra/nix/modules/roles/k3s-server.nix)" repochecks:deploy.NodeCpuBudgetSpec) $(has "$(printf 'infra/nix/modules/roles/k3s-server.nix\n' | PREPUSH_GITOPS=1 scripts/hooks/pre-push --lint-plan | tr '\n' ' ')" repochecks:deploy.NodeCpuBudgetSpec)"
+# PER-FILE LINTS (2026-11-21): a spec judging each file alone is shared by two changes only through a file both change or
+# its own code -- what agentctl reads off --per-file-lints
+check "every @per-file row says how its spec judges a file alone (and was proved: lint_per_file_check.py)" "" \
+  "$(grep -v '^#' "$registry" | awk -F'\t' '(" " $2 " ") ~ / @per-file / && $3 !~ /per-file/ { print $1 }' | tr '\n' ' ' | sed 's/ $//')"
+perfile() { printf '%s\n' "$@" | scripts/hooks/pre-push --per-file-lints | tr '\n' ' ' | sed 's/ $//'; }
+check "--per-file-lints: a script selects NoSettingFallbackSpec by what it reads, never a spec comparing files" "yes no" \
+  "$(has "$(perfile scripts/x.sh)" repochecks:deploy.NoSettingFallbackSpec) $(has "$(perfile scripts/x.sh .github/workflows/x.yml)" repochecks:deploy.IdentityTakesWiringSpec)"
+check "...nor one whose own code the paths change (its rule against the other side's files)" "no" \
+  "$(has "$(perfile scripts/x.sh repochecks/src/test/scala/deploy/NoSettingFallbackSpec.scala)" repochecks:deploy.NoSettingFallbackSpec)"
+check "...and --lint-plan still runs it" "yes" "$(has "$(lints scripts/x.sh)" repochecks:deploy.NoSettingFallbackSpec)"
 check "every selected spec is a registry row" "" \
   "$(comm -23 <(printf '%s\n' scripts/x.sh worker/src/main/scala/A.scala | PREPUSH_GITOPS=1 scripts/hooks/pre-push --lint-plan | LC_ALL=C sort -u) <(rows | LC_ALL=C sort -u) | tr '\n' ' ' | sed 's/ $//')"
 printf '\033[36m▸\033[0m a row selects its spec for every path the spec reads\n'
