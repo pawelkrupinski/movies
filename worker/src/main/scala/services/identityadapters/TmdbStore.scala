@@ -337,11 +337,11 @@ object TmdbStore {
   /** Was `d` given longer than `age` ago — or never stamped: an answer to ask again. */
   def olderThan(d: BsonDocument, age: FiniteDuration, clock: java.time.Clock): Boolean = fetchedAt(d).forall(clock.millis() - _ > age.toMillis)
 
-  /** A film's hit as the questions naming it read it: from its record once known, else the hit
-   *  fields a search or credit gave. `None` when neither is held (the film was never named). */
   /** What [[filmHit]] reads of a film's document: its record's hit fields ([[IdentityAnswerBson.hitOf]]), else a search's hit. */
   val HitFields: Seq[String] = Seq("record.title", "record.originalTitle", "record.year", "record.popularity", "hit")
 
+  /** A film's hit as the questions naming it read it: from its record once known, else the hit
+   *  fields a search or credit gave. `None` when neither is held (the film was never named). */
   def filmHit(id: Int, film: BsonDocument): Option[Hit] =
     Option(film.get("record")).filter(_.isDocument).map(record => IdentityAnswerBson.hitOf(id, record.asDocument, PopularityBucket.rounded(0.0)))
       .orElse(Option(film.get("hit")).map(h => hitOf(id, h.asDocument)))
