@@ -20,8 +20,11 @@ test.describe('zoomed portrait card gaps', () => {
     // only one film in Poznań — too few for the "two cards on one row" pair this
     // spec measures the gap between. "anytime" always renders the full grid.
     // That is the whole repertoire in one document, so this takes the budget
-    // `day-pill-hover` takes for it: on a contended laptop (load 116,
-    // 2026-11-21) the two settle frames alone outlasted the default 30s.
+    // `day-pill-hover` takes for it. Every wait here is on a real condition
+    // (`settleLayout`: two frames, then the day pills' 150ms colour transitions);
+    // measured 2026-11-21 at load ~20, goto 150-210ms and settle 120-140ms on
+    // the zoomed Chromium phones, ~1.2s / 50ms on WebKit. At load 116 the same
+    // frames were not delivered inside 30s: CPU starvation, not a slow wait.
     test.slow();
     await gotoAndWaitForCards(page, '/poznan/?date=anytime');
   });
