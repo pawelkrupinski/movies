@@ -120,12 +120,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     // The keys two stored families claim, found in one pass — not by grouping every stored key.
     val claimed = { val once = mutable.HashSet.empty[ListingKey]
                     stored.iterator.flatMap(_.family.listings).filterNot(once.add).toSet }
-    val (standing, fallen) = stored.partition { family =>
-      family.family.listings.forall(key => isHeld(key) && !claimed(key)) &&
-        family.family.nodeKeys.forall { case (key, node) => corpus.nodeKeyOf(key).contains(node) } &&
-        (mutation == Mutation.TrustStored || clock.slices(corpus.slice(family.family.reads).digest) == family.digest) &&
-        titles.forall(readsTitlesAlike(family, _))
-    }
+    val (standing, fallen) = stored.partition(stands(_, claimed, titles))
     // A standing family's slice digests to what it stored — the check above just computed it — so it
     // is kept, not digested again (half a UK take-up's hashing when it was).
     standing.foreach(family => remember(family.family, family.digest))
@@ -143,6 +138,14 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     }
     ruled()
   }
+
+  /** Does a stored family stand at a restore: its listings all held and claimed by no other, still the same nodes, its
+   *  corpus facts reading the same (its slice's digest), and -- the title rules moved -- the title rules read alike? */
+  private def stands(family: StoredFamily, claimed: Set[ListingKey], titles: Option[TitleRuleChange]): Boolean =
+    family.family.listings.forall(key => isHeld(key) && !claimed(key)) &&
+      family.family.nodeKeys.forall { case (key, node) => corpus.nodeKeyOf(key).contains(node) } &&
+      (mutation == Mutation.TrustStored || clock.slices(corpus.slice(family.family.reads).digest) == family.digest) &&
+      titles.forall(readsTitlesAlike(family, _))
 
   /** Does a stored family read the title rules as it read them, after they changed ([[TitleRuleChange]])? Its members as
    *  the model reads them, and every title it read through the title forms; a family stored before either was kept

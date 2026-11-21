@@ -212,8 +212,7 @@ object MongoIdentityModelStore {
     var reads: CorpusContext.Reads              = null
     var nodes: Vector[(ListingKey, String)]     = null
     var digest: java.lang.Long                  = null
-    var titleKeys, titleSearches: Set[String]   = null
-    var members: Option[Long]                   = None
+    val titles                                  = new TitleFields
     BsonFields.document(reader) {
       case "_id"       => id = reader.readString()
       case "listings"  => listings = { val all = Set.newBuilder[ListingKey]; BsonFields.bucketed(reader)(all += ListingKeyBson.read(reader)); all.result() }
@@ -224,10 +223,7 @@ object MongoIdentityModelStore {
       case "reads"     => reads = readReads(reader)
       case "nodes"     => nodes = readNodes(reader)
       case "digest"    => digest = reader.readInt64()
-      case "titleKeys" => titleKeys = readTitles(reader)
-      case "titleSearches" => titleSearches = readTitles(reader)
-      case "members"   => members = Some(reader.readInt64())
-      case _           => reader.skipValue()
+      case _           => titles.read(reader)
     }
     val held = BsonFields.required(listings, "listings")
     StoredFamily(BsonFields.required(id, "_id"), IdentityResolver.RegionFamily(
@@ -235,7 +231,22 @@ object MongoIdentityModelStore {
       BsonFields.required(queries, "queries"), BsonFields.required(films, "films"), BsonFields.required(reads, "reads"),
       sharedNodes(held, BsonFields.required(nodes, "nodes"))),
       BsonFields.required(digest, "digest").longValue,
-      Option.when(titleKeys != null && titleSearches != null)(TitleFormInputs(titleKeys, titleSearches)), members)
+      titles.inputs, titles.members)
+  }
+
+  /** A family's fields of a title-rule change ([[StoredFamily.titles]], [[StoredFamily.members]]), absent from a family
+   *  stored before they were kept; every other field it does not know is skipped. */
+  private final class TitleFields {
+    private var keys, searches: Set[String] = null
+    var members: Option[Long] = None
+    /** The field the reader is at, its name read already. */
+    def read(reader: org.bson.BsonReader): Unit = reader.getCurrentName match {
+      case "titleKeys"     => keys = readTitles(reader)
+      case "titleSearches" => searches = readTitles(reader)
+      case "members"       => members = Some(reader.readInt64())
+      case _               => reader.skipValue()
+    }
+    def inputs: Option[TitleFormInputs] = for (k <- Option(keys); s <- Option(searches)) yield TitleFormInputs(k, s)
   }
 
   /** One instance of each listing key and each node text per family: the `nodes` pairs repeat the `listings` keys
