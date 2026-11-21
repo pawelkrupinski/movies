@@ -66,7 +66,7 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
   /** Was `node`'s own match of `film` WITHDRAWN by a sibling's denial that it is not the work billed ([[onlyWithdrawn]])? */
   private def withdrawnFrom(node: EvidenceNode, film: Int): Boolean = {
     val scope = families.scopeOf(node)
-    !families.bestOf.contains(node.id) && !FeedLink.linkedFilm(node.listings).contains(film) && scope.takenAlone(node).exists { case ((best, _), _) =>
+    !families.bestOf.contains(node.id) && !scope.feedLinked(node).exists(_._2 == film) && scope.takenAlone(node).exists { case ((best, _), _) =>
       best.candidate.tmdbId == film && families.siblingDenying(node, scope.members, scope, best,
         id => scope.takenAlone(scoring.generation.nodeById(id)).map(_._1._1)).exists { case (_, denial) =>
         denial.denial.exists(_.kind match {
