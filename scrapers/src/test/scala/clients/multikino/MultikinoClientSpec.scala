@@ -677,4 +677,19 @@ class MultikinoClientSpec extends AnyFlatSpec with Matchers {
     MultikinoParser.cleanTitle("Diabeł ubiera się u Prady 2", titleNormalizer) shouldBe "Diabeł ubiera się u Prady 2"
   }
 
+  // ── One film's every field, as the recorded API states it ──────────────────
+  it should "read a film's credits, ids, original title, synopsis and each session's screen and version" in {
+    val film = results.find(_.externalIds.get("mk").contains("HO00002732")).getOrElse(fail("HO00002732 missing"))
+    film.externalIds         shouldBe Map("mk" -> "HO00002732", "mxc" -> "3ce9a86f-2ab1-419e-9956-0918027fd8ad")
+    film.director            shouldBe Seq("Gooseworx")
+    film.cast                shouldBe Seq("Lizzie Freeman", "Michael Kovach", "Marissa Lenti", "Ashley Nichols")
+    film.movie.originalTitle shouldBe Some("The Amazing Digital Circus: The Last Act")
+    film.movie.releaseYear   shouldBe None // releaseDate is the Polish (re-)release, never the production year
+    film.filmUrl             shouldBe Some("https://www.multikino.pl/filmy/the-amazing-digital-circus-ostatni-akt")
+    film.synopsis.map(_.take(30)) shouldBe Some("Internetowy fenomen „The Amazi")
+    film.showtimes.find(_.dateTime == LocalDateTime.of(2026, 6, 4, 17, 0)) shouldBe Some(Showtime(
+      LocalDateTime.of(2026, 6, 4, 17, 0),
+      Some("https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0011/HO00002732/97229"),
+      Some("Sala 6"), List("2D", "DUB")))
+  }
 }
