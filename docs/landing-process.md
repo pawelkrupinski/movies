@@ -79,7 +79,8 @@ locally (unless it takes longer than 15 mins) then / otherwise merge to main and
   page layer locally for a UI change (`scripts/page-tests-local`) is recommended insurance, not a landing requirement.
 - **After landing too, on Main (the owner, 2026-11-21):** identity-slice's old-ref compile (main.yml's
   `old-ref-compile`, a gate row: 1 catch in 27 landing checks, at a p90 of 20 min; no hook check, landing-check job
-  or land-precheck rule any more) and the identity area's slowest specs (FamilyIndexCompleteness, the four
+  or land-precheck rule any more; it diffs from where it last passed on main, `refs/verified/old-ref-compile`
+  via `scripts/ci/verified-ref.sh`, so a replaced run's tool change is still compiled) and the identity area's slowest specs (FamilyIndexCompleteness, the four
   IdentityDriftSlices, FamilyConvergenceSlices, the four ReadSetClosure parts: 0 catches no other spec made in 356
   landing checks over 14 days, ~1,750 of the shards' ~3,750 suite-seconds; Main's worker rows run them). A failure
   there is a normal gate red with a fixer.

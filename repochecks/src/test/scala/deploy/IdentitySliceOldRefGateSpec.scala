@@ -63,6 +63,22 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
     decide should include("""if [ "$CHANGED" = true ]; then echo "run=true"""")
   }
 
+  /** 2026-11-21: diffed from the push's `before`, a tool change in a push whose queued Main run a newer push replaced
+   *  was never compiled. The gate diffs from where the compile last passed on main (refs/verified/old-ref-compile,
+   *  scripts/ci/verified-ref.sh: verified-ref-test.sh's replaced run), and only a green compile on main advances it. */
+  it should "diff from where the compile last passed on main, which only a green compile moves" in {
+    val jobs = RepoFile.jobs(RepoFile.read(Workflow))
+    RepoFile.step(jobs("gates"), "Where did the old-ref compile last pass on main?") should include(
+      "bash scripts/ci/verified-ref.sh base old-ref-compile")
+    gate should include("base: ${{ steps.old-ref-base.outputs.base }}")
+    val advance = RepoFile.step(jobs("old-ref-compile"), "Record where the old-ref compile last passed on main")
+    advance should include("run: bash scripts/ci/verified-ref.sh advance old-ref-compile")
+    advance should include("steps.old-ref-verdict.outcome == 'success'")
+    advance should include("github.ref == 'refs/heads/main'")
+    jobs("old-ref-compile") should include("contents: write")
+    jobs("old-ref-compile") should include("fetch-depth: 0")
+  }
+
   /** Kept by a step of its own, red or green: an `actions/cache` step saves only on a green job, so a cold tree that
    *  missed the verdict's ceiling was never kept and every run after started cold again (Main 1820). */
   it should "keep what a red compile got through, under a key of its own the restore's prefix finds" in {

@@ -18,7 +18,7 @@ trap 'rm -rf "$work"' EXIT
 repo="$work/repo"
 scratch_repo "$repo" -b main
 mkdir -p "$repo/scripts/ci" "$repo/.github" "$repo/test/resources/fixtures" "$work/bin"
-cp "$REPO_ROOT/scripts/ci/commit-rules-ci.sh" "$REPO_ROOT/scripts/ci/commit_rules.py" "$REPO_ROOT/scripts/ci/trailers.py" "$repo/scripts/ci/"
+cp "$REPO_ROOT/scripts/ci/commit-rules-ci.sh" "$REPO_ROOT/scripts/ci/verified-ref.sh" "$REPO_ROOT/scripts/ci/commit_rules.py" "$REPO_ROOT/scripts/ci/trailers.py" "$repo/scripts/ci/"
 list=test/resources/fixtures/identity-flips-allow.tsv
 printf '# the registry\n%s\n' "$list" > "$repo/.github/allow-lists.txt"
 printf '# reviewed flips\ncountry\tvenue\trawTitle\treason\n' > "$repo/$list"
