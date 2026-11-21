@@ -204,6 +204,21 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     ExpositionSamples.sample(text, WorkerShowtimesMetrics.Name, """city="poznan",country="pl"""") shouldBe Some(0.0)
   }
 
+  // `start` seeds once: a seed that threw left the census publishing nothing, every tick, until the next restart.
+  it should "seed again on the next tick when the first seed failed" in {
+    val registry = new PrometheusRegistry()
+    val counter  = CorpusCensus.incompleteCounter(registry)
+    var failures = 1
+    val cache = new services.movies.CaffeineMovieCache(splitRepository(), normalizer = normalizer, clock = CorpusMetricsFixtures.clock) {
+      override def onResident(listener: (CacheKey, Option[models.StoredMovieRecord]) => Unit): Unit =
+        if (failures > 0) { failures -= 1; throw new IllegalStateException("cache busy") } else super.onResident(listener)
+    }
+    val census = censusOver(cache, registry, metrics = CorpusCensusMetrics.prometheus(counter, "pl"))
+    an[IllegalStateException] should be thrownBy census.seed()
+    census.publish() shouldBe tools.TickRun.Completed
+    ExpositionSamples.sample(PrometheusExposition.render(registry), CorpusCensus.IncompleteMetricName, """country="pl"""") shouldBe Some(0.0)
+  }
+
   it should "not count a tick over a cache that holds the whole corpus" in {
     val registry = new PrometheusRegistry()
     val counter  = CorpusCensus.incompleteCounter(registry)

@@ -73,11 +73,13 @@ final class CorpusCensus(
   /** The census as the films the cache holds now give it, against the clock now. */
   def reading(): CensusReading = parts.drainedReading()._1
 
-  /** Publish [[reading]] — or, while the cache does not hold the whole corpus, nothing, counted as a miss. The
+  /** Publish [[reading]] (seeding first, when the seed has not yet succeeded) — or, while the cache does not hold the
+   *  whole corpus, nothing, counted as a miss. The
    *  off-season verdicts are published either way: they read no corpus. [[TickRun.Incomplete]] for a miss (its gauges
    *  keep old values), or a reading with a film it could not count. */
   def publish(): TickRun = {
     gauges.seasons(clock.instant())
+    if (!seeded) seedLogged()
     if (!seeded || !cache.hydrated) {
       metrics.recordIncompleteSample()
       logger.warn("corpus-census: the cache does not hold the whole corpus yet — census gauges keep their previous " +
@@ -101,12 +103,19 @@ final class CorpusCensus(
     seeded = true
   }
 
+  // A seed that failed is tried again by the next publish: seeded once at start, it left the census publishing nothing
+  // for the life of the process. A second registration only notes the same films again.
+  private def seedLogged(): Unit = {
+    Try(seed()).recover { case e => logger.warn(s"corpus-census could not count the cache: ${e.getMessage}") }
+    ()
+  }
+
   /** [[seed]], then publish at once and on every
    *  [[publishInterval]]. The first count — a derivation per film, no read — runs on the census's own thread, never
    *  the boot's. */
   def start(): Unit = {
     scheduler.execute { () =>
-      Try(seed()).recover { case e => logger.warn(s"corpus-census could not count the cache: ${e.getMessage}") }
+      seedLogged()
       publishQuietly()
     }
     ticks.started("corpus-census", publishInterval, publishInterval)
