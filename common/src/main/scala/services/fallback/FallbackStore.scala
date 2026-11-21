@@ -92,7 +92,8 @@ class MongoFallbackStore(
   /** Writes are SYNCHRONOUS (unlike the hot-path freshness store): a cinema
    *  enters/leaves fallback at most a few times a day, so the round-trip cost is
    *  irrelevant, and a deterministic write keeps the state machine + status page
-   *  honest. Try-guarded so a Mongo hiccup can never break the scrape tick. */
+   *  honest. Try-guarded so a Mongo hiccup can never break the scrape tick, and logged at
+   *  WARN: the mirror keeps the state, so this pod and Mongo disagree until a restart. */
   def put(state: FallbackState): Unit = {
     mirror.put(state.cinema, state)
     coll.foreach { c =>
@@ -101,7 +102,7 @@ class MongoFallbackStore(
           c.updateOne(Filters.eq("_id", state.cinema), tools.MongoUpdates.setEach(toDocument(state)), new UpdateOptions().upsert(true)).toFuture(),
           10.seconds
         )
-      }.recover { case exception => logger.debug(s"Filmweb-fallback write failed for ${state.cinema}: ${exception.getMessage}") }
+      }.recover { case exception => logger.warn(s"Filmweb-fallback write failed for ${state.cinema}: ${exception.getMessage}") }
     }
   }
 
