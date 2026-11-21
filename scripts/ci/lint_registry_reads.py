@@ -5,9 +5,10 @@ Default: the registry rows that miss a path their spec reads. Each registered sp
 reads of the repository (`reads`, below: a spec reading tools/devpanel/scripts/devpanel.py with a row that never
 selected on tools/ turned Main red, 2026-11-06; one reading the Dockerfile, a path with no slash, was never seen at
 all, Main #2547/#2550). A push carrying that path is put to the hook itself (`pre-push --lint-plan`, the GitOps
-manifests in place), so `*`, `@repo`, `@gitops` and globs are judged by the one implementation. A directory is probed
-by one file of each extension under it (a spec scanning it reads the kinds it scans): one selecting probe is enough. A
-path git ignores is never probed: no push carries it.
+manifests in place), so `*`, `@code`, `@gitops`, globs and a spec's own code are judged by the one implementation. A
+directory is probed by one file of each extension under it (a spec scanning it reads the kinds it scans): one selecting
+probe is enough. A path git ignores is never probed: no push carries it. What a spec opens through a name no literal
+gives (a file a workflow names, a walk's files) the dynamic half sees: scripts/ci/lint_reads_trace.py runs the spec.
 Prints `<spec>TAB<literal>` for each miss; nothing when every row covers what its spec reads. Run from the root.
 
 WHAT A SPEC READS (`reads`), from its string literals:
@@ -98,7 +99,8 @@ def reads(text, repo):
         candidates.setdefault(literal, []).extend(probes(literal, repo))
     for literal in set(ROOT_LITERAL.findall(text)) & repo.root_files:
         candidates.setdefault(literal, []).append(literal)
-    for literal in set(RESOURCE_CALL.findall(text)):
+    # a resource named at run time (`getResource("/" + pkg)`: compiled classes, no checked-in file) names nothing here
+    for literal in {r for r in RESOURCE_CALL.findall(text) if r.strip("/")}:
         candidates.setdefault(literal, []).extend(p for root in repo.resource_roots for p in probes(root + literal.rstrip("/"), repo))
     keep = set(pushable(sorted({p for paths in candidates.values() for p in paths
                                 if not p.startswith(("target/", ".git/"))}), repo))

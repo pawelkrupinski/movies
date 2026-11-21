@@ -28,21 +28,36 @@ for spec in $(rows); do
 done
 check "every row names a spec that exists (stale rows: drop them)" "" "${gone% }"
 check "no spec has two rows" "" "$(rows | LC_ALL=C sort | uniq -d | tr '\n' ' ' | sed 's/ $//')"
-check "every row's reads are *, @repo, @gitops, - or a path pattern" "" \
+check "every row's reads are *, @code, @repo, @gitops, - or a path pattern" "" \
   "$(grep -v '^#' "$registry" 2>/dev/null | grep -v '^$' | awk -F'\t' 'NF < 2 || $2 == "" { print $1 }' | tr '\n' ' ' | sed 's/ $//')"
+# WHAT A ROW READS IS WHAT ITS SPEC OPENS (the owner, 2026-11-21): 175 `@repo` rows, selected by any script, workflow,
+# skill or test-tree path, made every two changes share a lint, and agentctl's MINIMAL RECHECKS kept no verdict. A
+# spec reading the whole tree keeps `@repo`, and says why in its row.
+check "no row reads the whole tree without saying why" "" \
+  "$(grep -v '^#' "$registry" | awk -F'\t' '(" " $2 " ") ~ / @repo / && $3 == "" { print $1 }' | tr '\n' ' ' | sed 's/ $//')"
 
 printf '\033[36m▸\033[0m the hook selects from it\n'
 lints() { printf '%s\n' "$@" | scripts/hooks/pre-push --lint-plan | tr '\n' ' ' | sed 's/ $//'; }
 has() { case " $1 " in *" $2 "*) echo yes ;; *) echo no ;; esac; }
 out="$(lints worker/src/main/scala/services/A.scala)"
-check "a production Scala source runs the source scans the name patterns missed, and the standing lints" "yes yes yes" \
-  "$(has "$out" worker:tools.LoadIndependentTestsSpec) $(has "$out" worker:tools.InMemoryStoresRoundTripSpec) $(has "$out" worker:tools.NoWallClockInTestsSpec)"
-check "...but not a spec reading only scripts and workflows" "no" "$(has "$out" repochecks:deploy.WorkflowPlanSpec)"
+check "a production Scala source runs the production-source scans, and the standing lints" "yes yes yes" \
+  "$(has "$out" worker:tools.InMemoryStoresRoundTripSpec) $(has "$out" common:services.PersistedCodecsLintSpec) $(has "$out" worker:tools.NoWallClockInTestsSpec)"
+check "...but not a spec reading only scripts and workflows, nor one scanning only the test trees" "no no" \
+  "$(has "$out" repochecks:deploy.WorkflowPlanSpec) $(has "$out" worker:tools.LoadIndependentTestsSpec)"
+check "a test source runs the test-tree scans (LoadIndependentTestsSpec, which no name pattern matched: D3)" "yes" \
+  "$(has "$(lints scrapers/src/test/scala/clients/XSpec.scala)" worker:tools.LoadIndependentTestsSpec)"
 out="$(lints scripts/x.sh)"
-check "a script runs the @repo specs, not a @gitops one without the manifests, never a '-' one" "yes no no" \
-  "$(has "$out" repochecks:deploy.WorkflowPlanSpec) $(has "$out" repochecks:deploy.NodeCpuBudgetSpec) $(has "$out" repochecks:deploy.FixtureServerBootOverlapSpec)"
-check "...the manifests in place (PREPUSH_GITOPS=1), the @gitops specs too" "yes" \
-  "$(has "$(printf 'scripts/x.sh\n' | PREPUSH_GITOPS=1 scripts/hooks/pre-push --lint-plan | tr '\n' ' ')" repochecks:deploy.NodeCpuBudgetSpec)"
+check "a script runs the specs reading scripts, not the production-source scans, not a @gitops one without the manifests" \
+  "yes no no" "$(has "$out" repochecks:deploy.IdentityTakesWiringSpec) $(has "$out" common:services.PersistedCodecsLintSpec) $(has "$out" repochecks:deploy.NodeCpuBudgetSpec)"
+out="$(lints .github/workflows/x.yml)"
+check "a workflow runs the workflow specs, not a production-source scan" "yes no" \
+  "$(has "$out" repochecks:deploy.WorkflowPlanSpec) $(has "$out" common:services.PersistedCodecsLintSpec)"
+check "a leading */ is one module: android/app/src/test/ runs no test-tree scan" "no no" \
+  "$(has "$(lints android/app/src/test/java/X.kt)" worker:tools.LoadIndependentTestsSpec) $(has "$(lints android/app/src/main/java/X.kt)" common:services.PersistedCodecsLintSpec)"
+check "a spec's own code runs it (its source, a helper its module's tests compile with), never a '-' row" "yes yes no" \
+  "$(has "$(lints repochecks/src/test/scala/deploy/WorkflowPlanSpec.scala)" repochecks:deploy.WorkflowPlanSpec) $(has "$(lints worker/src/test/scala/tools/ScalaSourceScan.scala)" worker:tools.LoadIndependentTestsSpec) $(has "$(lints repochecks/src/test/scala/deploy/FixtureServerBootOverlapSpec.scala)" repochecks:deploy.FixtureServerBootOverlapSpec)"
+check "...the manifests in place (PREPUSH_GITOPS=1), a @gitops spec its paths select" "no yes" \
+  "$(has "$(lints infra/nix/modules/roles/k3s-server.nix)" repochecks:deploy.NodeCpuBudgetSpec) $(has "$(printf 'infra/nix/modules/roles/k3s-server.nix\n' | PREPUSH_GITOPS=1 scripts/hooks/pre-push --lint-plan | tr '\n' ' ')" repochecks:deploy.NodeCpuBudgetSpec)"
 check "every selected spec is a registry row" "" \
   "$(comm -23 <(printf '%s\n' scripts/x.sh worker/src/main/scala/A.scala | PREPUSH_GITOPS=1 scripts/hooks/pre-push --lint-plan | LC_ALL=C sort -u) <(rows | LC_ALL=C sort -u) | tr '\n' ' ' | sed 's/ $//')"
 printf '\033[36m▸\033[0m a row selects its spec for every path the spec reads\n'

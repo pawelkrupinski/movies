@@ -204,14 +204,19 @@ came up, a bound ran out) leaves the change to the landing check. Run it yoursel
 `scripts/land-precheck`; `agentctl land --no-fast-precheck` starts none (name it in your report).
 
 **The lint registry.** The hook's `sbt` check selects its lint specs from that table, each row naming what the spec
-reads (`*` always, `@repo` the repo-reading paths, `@gitops` with the manifests fetched, a pattern such as `*.scala`
-for a source scan, `-` never), not from a spec's name: LoadIndependentTestsSpec and InMemoryStoresRoundTripSpec
+reads -- WHAT THE SPEC OPENS, nothing wider (the owner, 2026-11-21: agentctl keeps a change's verdict when main moved
+outside what its checks read, and 175 `@repo` rows, selected by any script, workflow, skill or test-tree path, made
+every two changes share a lint): a pattern such as `.github/workflows/*` or `*/src/main/scala/*`, `*` always, `@code`
+its own code alone (every row is also selected by the test-side code its spec compiles with), `@gitops` with the
+manifests fetched, `-` never -- not from a spec's name: LoadIndependentTestsSpec and InMemoryStoresRoundTripSpec
 matched no name pattern and turned Main red 7 times. A new repo-reading spec needs its row:
 `scripts/hooks/lint-registry-test.sh` fails without it. So does EVERY SPEC READING A CHECKED-IN OR GENERATED ARTEFACT
 (the owner, 2026-11-18, after Main #2547/#2550 and #2601 passed every local check): a literal naming a repo path or a root
 file (`"Dockerfile"`), a classpath resource it opens (`getResourceAsStream("/routes")`), or any resource opener or
 `RepoFile` call -- `scripts/ci/lint_registry_reads.py --missing` names such a spec without a row, `--suggest` prints
-the row it wants, `--reads <spec>` what it reads. A file a row names runs the `sbt` check by itself (a
+the row it wants, `--reads <spec>` what it reads. What a spec opens by a name no literal gives,
+`scripts/ci/lint_reads_trace.py <spec>` sees by running it (each file's access time): it names every file the spec
+opened that its row does not select, and `--suggest` the row its reads want -- run it for a new or widened row. A file a row names runs the `sbt` check by itself (a
 Dockerfile-only or AOT-list-only push ran none; a pattern selects its spec only when the check runs anyway), and a scraper change selects `AotClassListSpec` (a new class there,
 a new source or an anonymous one, must be in the worker's AOT list): a missing entry fails locally in seconds.
 

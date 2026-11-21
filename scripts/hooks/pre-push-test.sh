@@ -172,6 +172,8 @@ check "...and the measure, its dependencies, the baselines, the ratchet and the 
   "$(qualities quality/src/main/scala/quality/MethodMeasures.scala project/Dependencies.scala test/resources/complexity-baseline.tsv test/resources/length-baseline.tsv test/resources/duplication-baseline.tsv scripts/ci/quality_ratchet.py scripts/ci/naming_lint.py)"
 check "...but no test, tool, template, Java source or script does" "" \
   "$(qualities worker/src/test/scala/A.scala testkit/src/main/scala/A.scala e2e/src/main/scala/A.scala web/src/main/java/A.java web/src/main/twirl/a.scala.html scripts/x.sh)"
+# what the ratchet reads, exactly (landing-speed proposal 1, 2026-11-21): the measure's own tests decide no row
+check "...nor the measure's own tests" "" "$(qualities quality/src/test/scala/quality/MethodMeasuresSpec.scala)"
 check "a quality baseline alone runs the sbt check (where the quality step rides)" "sbt" "$(plan test/resources/complexity-baseline.tsv)"
 check "...and so does the ratchet (beside its self-tests)" "sbt" "$(plan scripts/ci/quality_ratchet.py | tr ' ' '\n' | grep -x sbt)"
 check "...and the naming lint" "sbt" "$(plan scripts/ci/naming_lint.py | tr ' ' '\n' | grep -x sbt)"
@@ -227,24 +229,33 @@ check "a dashboard alone compiles nothing extra" "" \
 # read (lint-registry-test.sh holds the registry complete).
 printf '\033[36m▸\033[0m pre-push --lint-plan\n'
 lints() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --lint-plan | tr '\n' ' ' | sed 's/ $//'; }
-Always="scrapers:services.cinemas.NoWallClockInClientsSpec web:deploy.GrafanaWebMetricCoverageSpec worker:deploy.GrafanaMetricCoverageSpec repochecks:deploy.NoSilencedGhCurlSpec worker:tools.NoWallClockInTestsSpec"
+Always="common:tools.NoEnvLocalReadersSpec scrapers:services.cinemas.NoWallClockInClientsSpec web:deploy.GrafanaWebMetricCoverageSpec worker:deploy.GrafanaMetricCoverageSpec repochecks:deploy.NoSilencedGhCurlSpec repochecks:deploy.SharedMachineStateLintSpec worker:tools.NoWallClockInTestsSpec"
 has() { case " $1 " in *" $2 "*) echo yes ;; *) echo no ;; esac; }
 out="$(lints worker/src/main/scala/A.scala)"
-check "a production Scala source runs the standing lints and the source scans (the registry's *.scala rows), not the workflow specs" \
-  "yes yes yes no" "$(has "$out" worker:tools.NoWallClockInTestsSpec) $(has "$out" repochecks:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.LoadIndependentTestsSpec) $(has "$out" repochecks:deploy.WorkflowPlanSpec)"
-for changed in scripts/x.sh .github/workflows/x.yml .claude/skills/x/SKILL.md CLAUDE.md build.sbt web/src/test/scala/ASpec.scala \
-  worker/src/fixtures/scala/tools/X.scala worker/src/it/scala/XSpec.scala; do
+check "a production Scala source runs the standing lints and the production-source scans, not a test-tree scan nor the workflow specs" \
+  "yes yes yes no no" "$(has "$out" worker:tools.NoWallClockInTestsSpec) $(has "$out" repochecks:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.NoUnboundedMongoReadSpec) $(has "$out" worker:tools.LoadIndependentTestsSpec) $(has "$out" repochecks:deploy.WorkflowPlanSpec)"
+# A test-side path is what the test-tree scans read, and the code the lint specs compile with (their own code).
+for changed in build.sbt web/src/test/scala/ASpec.scala worker/src/fixtures/scala/tools/X.scala worker/src/it/scala/XSpec.scala; do
   out="$(lints "$changed")"
   # The script self-test and dispatch-gate specs spawn bash and git, so they are `it` specs now (unit specs reach no
   # real dependency, 2026-10-27): main's integration-test row runs them, this unit lint plan no longer can.
   check "$changed runs the literal-wait, raw-git, sleep and real-dependency lints, not the it-side self-test and dispatch-gate specs" \
     "yes yes yes yes no no" "$(has "$out" worker:tools.NoLiteralWaitBoundSpec) $(has "$out" repochecks:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.NoSleepInTestsSpec) $(has "$out" worker:tools.NoRealDependenciesInUnitSpecsSpec) $(has "$out" worker:deploy.ScriptSelfTestsRunInCiSpec) $(has "$out" worker:deploy.ConvergenceDispatchGateSpec)"
 done
+# ...but a script, workflow, skill or CLAUDE.md is none of theirs: each row reads what its spec opens (the owner,
+# 2026-11-21: the `@repo` rows these once selected made every two changes share a lint in agentctl's MINIMAL RECHECKS)
+for changed in scripts/x.sh .github/workflows/x.yml .claude/skills/x/SKILL.md CLAUDE.md; do
+  out="$(lints "$changed")"
+  check "$changed runs none of the test-tree scans (the standing ones aside)" "no no no yes" \
+    "$(has "$out" worker:tools.NoLiteralWaitBoundSpec) $(has "$out" worker:tools.NoSleepInTestsSpec) $(has "$out" worker:tools.NoRealDependenciesInUnitSpecsSpec) $(has "$out" repochecks:deploy.SharedMachineStateLintSpec)"
+done
 out="$(lints scripts/x.sh)"
-check "...and the common source lints" "yes" "$(has "$out" common:tools.SourceControlCharactersLintSpec)"
-check "...but not a spec that needs the GitOps manifests, nor one that boots a server" "no no" \
+check "...a script runs the specs reading scripts, not the common source lints" "yes no" \
+  "$(has "$out" repochecks:deploy.IdentityTakesWiringSpec) $(has "$out" common:tools.SourceControlCharactersLintSpec)"
+out="$(lints infra/nix/modules/roles/k3s-server.nix)"
+check "...a spec's own read without the manifests: not a spec that needs the GitOps manifests, nor one that boots a server" "no no" \
   "$(has "$out" repochecks:deploy.NodeCpuBudgetSpec) $(has "$out" worker:deploy.FixtureServerBootSpec)"
-out="$(PREPUSH_GITOPS=1 lints scripts/x.sh)"
+out="$(PREPUSH_GITOPS=1 lints infra/nix/modules/roles/k3s-server.nix)"
 check "...the GitOps manifests in place (PREPUSH_GITOPS=1), the specs reading them too, still none that boots a server" "yes no" \
   "$(has "$out" repochecks:deploy.NodeCpuBudgetSpec) $(has "$out" worker:deploy.FixtureServerBootSpec)"
 # A @gitops row naming paths of its own (the alert-rule specs read the rules AND the worker overlays) is still a GitOps

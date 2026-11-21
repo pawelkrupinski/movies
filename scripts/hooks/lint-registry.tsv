@@ -1,235 +1,246 @@
 # THE LINT REGISTRY: every repo-reading spec the pre-push `sbt` check may run (`scripts/hooks/pre-push --lint-plan`),
 # and the pushed paths that select it. One row a spec: `<module>:<package.Spec>` TAB `<reads>` [TAB `<why>`].
-# <reads>, space-separated, any of them selecting it:
-#   *        every push the sbt check runs for: the standing lints
-#   @repo    a path the repo-reading lint specs read (read_by_lint_specs in the hook: scripts, workflows, skills, the
-#            docs, the build, the test trees, the fixtures)
-#   @gitops  as @repo, but only with the GitOps manifests in place (PREPUSH_GITOPS=1: infra/bin/fetch-gitops fetched them)
-#   <glob>   a pushed path matching this bash pattern (`*.scala`: the spec scans Scala sources, main ones included);
-#            a FILE a row names (no pattern character) also runs the sbt check itself, alone (the hook's plan: a
+# <reads>, space-separated, any of them selecting it -- WHAT THE SPEC OPENS, nothing wider (the owner, 2026-11-21:
+# agentctl keeps a change's verdict when main moved only outside what its checks read, and the 175 `@repo` rows this
+# table had, selected by any script, workflow, skill or test-tree path, made every two changes share a lint):
+#   <glob>   a pushed path matching this bash pattern (`*` crosses `/`, but a leading `*/` is ONE directory, a module:
+#            `*/src/test/*` never reaches android/app/src/test/): `.github/workflows/*.yml` for a spec keeping the
+#            workflows, `*/src/main/scala/*` for one scanning the production sources, a file for one it reads by name.
+#            A FILE a row names (no pattern character) also runs the sbt check itself, alone (the hook's plan: a
 #            Dockerfile-only push ran none); a pattern selects its spec only when the check runs anyway
+#   *        every push the sbt check runs for: the standing lints
+#   @code    nothing besides its own code: every row but a `-` one is selected by the code its spec is compiled with,
+#            a test-side path (a test, it, page or fixtures tree, testkit/, the build) whose compile plan holds the
+#            spec's module's Test config; `@code` is the row of a spec that opens no file of the tree
+#   @repo    every path: a spec that reads the whole tree (none does, 2026-11-21)
+#   @gitops  it reads the GitOps manifests too: in the plan only with them in place (PREPUSH_GITOPS=1: infra/bin/
+#            fetch-gitops fetched them); scripts/gitops-specs runs these rows against a movies-gitops push
 #   -        never in the plan; <why> says why (it boots a server, another check runs it, ...)
+# A production source or a main resource the code under test reads through the classpath is no read of a row (the
+# unit tests own it): a spec reading production sources from disk names them (`*/src/main/scala/*`).
 # A spec is selected by this table, not by its name (review 2026-11-06, D3: LoadIndependentTestsSpec and
 # InMemoryStoresRoundTripSpec matched no name pattern and turned Main red 7 times). scripts/hooks/lint-registry-test.sh
 # fails when a repo-reading spec -- a tools/ No*/*Lint* spec, any deploy/ spec, one using a source-scan helper
 # (ScalaSourceScan, ModuleSources, SourceTrees, RepoRoot, WorkflowText), or ANY SPEC READING A CHECKED-IN OR GENERATED
 # ARTEFACT (a literal naming a repo path or a root file, a classpath resource it opens, any resource opener or RepoFile
 # call: the reader lint, scripts/ci/lint_registry_reads.py --missing; --suggest prints the row it wants) -- has no row
-# here, or a row names no spec. A new spec reading one: add its row, with a glob for every path outside @repo that it
-# reads (lint_registry_reads.py derives them from its literals, `--reads <spec>` shows them; the test fails on a miss) and,
-# for what no literal names (a resource through a constant), by hand. scripts/land-precheck runs the same selection.
-common:models.OgCardAssetsSpec	@repo *.scala web/src/main/assets/img/*
-common:models.UkPagesSpec	@repo data/uk/* geodata/src/main/resources/generated/uk-*
+# here, or a row names no spec, or misses a path its spec's source names (`--reads <spec>` shows them).
+# THE READS ARE PROVED BY RUNNING THE SPECS: scripts/ci/lint_reads_trace.py runs each spec alone in its own JVM and names
+# every tracked file it opened that its row does not select (seen by the file's access time: any API, any child);
+# `--suggest <spec>` prints the row its reads want. Run it for a new or changed row (2026-11-21: every row, 0 misses).
+# scripts/land-precheck runs the same selection.
+# THE ARTEFACT READERS (the owner, 2026-11-18): every spec that reads a checked-in or generated artefact -- a repo path, a
+# root file, a classpath resource -- has its row, so a change to that artefact selects it before landing (Main #2547/#2550,
+# #2601). scripts/ci/lint_registry_reads.py --missing names a reader with no row; --suggest prints the row it would want.
+common:models.OgCardAssetsSpec	web/src/main/assets/img/*
+common:models.UkPagesSpec	data/uk/* geodata/src/main/resources/generated/uk-*
 common:models.CinemaDeclarationsSpec	test/resources/fixtures/models/cinema-declarations.tsv common/src/main/scala/models/* data/*	pins every hand-declared venue; a venue or roster change re-pins it
-common:services.PersistedCodecsLintSpec	@repo *.scala
-common:services.movies.ListingKeyWritePathLintSpec	@repo *.scala
-common:services.movies.SideCollectionDeleteOwnershipSpec	@repo *.scala
-common:testsupport.ModuleSourcesSpec	@repo *.scala
-common:tools.CouplingSpec	@repo test/resources/coupling-baseline.tsv test/resources/coupling-layers.tsv test/resources/coupling-exemptions.tsv	the coupling baseline in the rows' shape, its limits the build's, and the layer table parsing (the ratchet itself is the sbt check's coupling step)
-common:tools.ExemptionSlackSpec	@repo common/src/test/scala/tools/couplingfixture/slack/* project/ExemptionSlack.scala project/ClassReferences.scala	the exemption slack over its fixture's compiled classes (read from the test classpath)
-common:tools.DeepExpressionLintSpec	@repo *.scala
-common:tools.JvmDefaultsLintSpec	@repo *.scala
-common:tools.NoEnvLocalReadersSpec	@repo *.scala
-common:tools.ProcessAccessLintSpec	@repo *.scala
-common:tools.ProcessConfigurationSpec	@repo *.scala
-common:tools.SourceControlCharactersLintSpec	@repo *.scala
-common:tools.SourceTreeWalksLintSpec	@repo *.scala geodata/src/main/resources/generated/* web/src/main/assets/img/* web/src/main/twirl/*	its allowlist names these trees as text: the globs only keep lint_registry_reads.py whole
+common:services.PersistedCodecsLintSpec	*/src/main/scala/* e2e/src/* repochecks/src/* web/src/it/scala/* worker/src/it/scala/*
+common:services.movies.ListingKeyWritePathLintSpec	*/src/main/scala/* e2e/src/* repochecks/src/*
+common:services.movies.SideCollectionDeleteOwnershipSpec	*/src/main/scala/* e2e/src/* repochecks/src/*
+common:testsupport.ModuleSourcesSpec	*/src/main/scala/* e2e/src/* repochecks/src/*
+common:tools.CouplingSpec	common/src/test/scala/tools/couplingfixture/imports/Charged.scala test/resources/*	the coupling baseline in the rows' shape, its limits the build's, and the layer table parsing (the ratchet itself is the sbt check's coupling step)
+common:tools.ExemptionSlackSpec	common/src/test/scala/tools/couplingfixture/slack/* project/ExemptionSlack.scala project/ClassReferences.scala	the exemption slack over its fixture's compiled classes (read from the test classpath)
+common:tools.DeepExpressionLintSpec	*/src/*/scala/*
+common:tools.JvmDefaultsLintSpec	*/src/fixtures/scala/* */src/test/scala/* geodata/src/* itkit/src/* web/src/it/scala/* web/src/page/scala/* worker/src/it/scala/*
+common:tools.NoEnvLocalReadersSpec	*	walks the whole tree, every code file of 13 kinds, and judges each file alone: a standing lint (it reads nearly every push; no two changes' files meet in one verdict)
+common:tools.ProcessAccessLintSpec	*/src/*/*
+common:tools.ProcessConfigurationSpec	common/src/main/scala/settings/ProcessConfiguration.scala testkit/src/main/scala/settings/HarnessConfiguration.scala
+common:tools.SourceControlCharactersLintSpec	*/src/*/scala/*
+common:tools.SourceTreeWalksLintSpec	*/src/*/*.java */src/*/*.scala geodata/src/main/resources/generated/* web/src/main/assets/img/* web/src/main/twirl/*	its allowlist names these trees as text: the globs only keep lint_registry_reads.py whole
 e2e:services.movies.E2eWiringsStoppedSpec	-	e2e's wiring rule over its own specs: e2e's suites run it (the lint plan compiles no e2e spec)
 identity:services.identity.IdentityRulesVersionSpec	-	the identity stamp's digest over identity's sources: identity's unit tests run it (the lint plan runs no identity spec)
 identity:services.identity.ProvenanceSpec	-	the identity rule sites' provenance reads: identity's unit tests run it (the lint plan runs no identity spec)
 identity:services.identity.ReaderNamesSpec	-	the test-impact selection's naming rules, reading the repository's source-tree declarations: identity's unit tests run it (the lint plan runs no identity spec)
-scrapers:clients.tools.ToolMainsSpec	@repo *.scala
+scrapers:clients.tools.ToolMainsSpec	scrapers/src/test/scala/*
 scrapers:services.cinemas.FilmwebCinemaIdResolverSpec	-	a parser spec reading its captured fixtures by name, no lint: scrapers' unit tests run it
 scrapers:services.cinemas.NoWallClockInClientsSpec	*
-scrapers:services.cinemas.SharedDetailCacheSpec	@repo *.scala
+scrapers:services.cinemas.SharedDetailCacheSpec	scrapers/src/main/scala/services/cinemas/*
 web:deploy.GrafanaWebMetricCoverageSpec	*
-web:deploy.LogbackVersionParitySpec	@repo
-web:deploy.PlayVersionParitySpec	@repo
-web:deploy.WebMetricsAtBootSpec	@repo *.scala infra/test/app-metrics-catalogue/* web/src/main/resources/routes
-web:tools.NoEnvCountryOutsideWiringSpec	@repo *.scala
-repochecks:deploy.ActionPinningSpec	@repo
-repochecks:deploy.ActionsCachePruneWiringSpec	@repo
-repochecks:deploy.AlertIsNotRedSpec	@repo
-repochecks:deploy.AllowListRatchetSpec	@repo test/resources/fixtures/*
-repochecks:deploy.AndroidBuildCacheVersionCodeSpec	@repo android/app/build.gradle.kts infra/version-dashboard/src/mobile-release/release.ts
-repochecks:deploy.AotCacheOptionsSpec	@gitops
-repochecks:deploy.BotPullRequestBranchSpec	@repo
-repochecks:deploy.CacheSavePolicySpec	@repo
+web:deploy.LogbackVersionParitySpec	project/Dependencies.scala
+web:deploy.PlayVersionParitySpec	project/Dependencies.scala project/plugins.sbt
+web:deploy.WebMetricsAtBootSpec	web/src/main/scala/* web/src/main/resources/routes infra/test/app-metrics-catalogue/*
+web:tools.NoEnvCountryOutsideWiringSpec	web/src/main/scala/* web/src/main/twirl/*
+repochecks:deploy.ActionPinningSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
+repochecks:deploy.ActionsCachePruneWiringSpec	.github/workflows/*
+repochecks:deploy.AlertIsNotRedSpec	.github/actions/report-scheduled-run/action.yml .github/workflows/decodo-probe.yml .github/workflows/identity-ci-staleness.yml .github/workflows/identity-findings-report.yml .github/workflows/record-scrape-fixtures.yml .github/workflows/security-headers.yml scripts/ci/scheduled-failure-issue.sh scripts/ci/identity-ci-staleness.sh scripts/ci/recording-preflight.sh
+repochecks:deploy.AllowListRatchetSpec	test/resources/fixtures/* .github/allow-lists.txt .github/identity-drift-gate-paths.txt .github/workflows/ci.yml .github/workflows/precommit-check.yml scripts/ci/commit-rules-ci.sh scripts/hooks/pre-push
+repochecks:deploy.AndroidBuildCacheVersionCodeSpec	.github/workflows/android.yml android/app/build.gradle.kts infra/version-dashboard/src/mobile-release/release.ts
+repochecks:deploy.AotCacheOptionsSpec	@gitops build.sbt infra/jvm/web.options infra/jvm/worker.options
+repochecks:deploy.BotPullRequestBranchSpec	.github/workflows/*
+repochecks:deploy.CacheSavePolicySpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
 repochecks:deploy.ChangeStreamSilenceAlertSpec	@gitops infra/nix/files/monitoring/rules/*
-repochecks:deploy.CiDispatchOrderSpec	@repo
-repochecks:deploy.CiImageMirrorSpec	@repo Dockerfile
-repochecks:deploy.CiPinnedImageSpec	@repo
-repochecks:deploy.CiRowScopeSpec	@repo
-repochecks:deploy.CiRowTimeoutSpec	@repo
-repochecks:deploy.CiRunnerBudgetSpec	@repo
-worker:deploy.CinemaScrapeStalenessAlertSpec	@gitops infra/nix/files/monitoring/* infra/nix/modules/roles/prometheus.nix
-repochecks:deploy.CompositeActionStepKeysSpec	@repo
-repochecks:deploy.ConvergenceBisectEmptyPlanSpec	@repo
-repochecks:deploy.ConvergenceBisectPermissionsSpec	@repo
-repochecks:deploy.ConvergenceBisectTriggerSpec	@repo
-repochecks:deploy.ConvergenceConcurrencyConfigSpec	@repo
-worker:deploy.ConvergenceFillWiringSpec	@repo
-worker:deploy.ConvergenceLegWiringSpec	@repo *.scala
-repochecks:deploy.ConvergencePublishMainOnlySpec	@repo
-repochecks:deploy.ConvergenceReuseSpec	@repo
-repochecks:deploy.ConvergenceRunnerMemorySpec	@repo
-repochecks:deploy.CouplingExemptionsWorkflowSpec	@repo
-repochecks:deploy.CoursierLauncherSpec	@repo
-repochecks:deploy.DebugMirrorListSpec	@repo
-repochecks:deploy.DeployImageReuseSpec	@repo Dockerfile
-repochecks:deploy.DevServerHeapCanarySpec	@repo tools/devpanel/* .jvmopts
-repochecks:deploy.DiscoveryPullRequestArtefactsSpec	@repo *.scala android/app/src/main/* data/uk/* geodata/src/main/resources/generated/* ios/Kinowo/*
-repochecks:deploy.E2eShardCoverageSpec	@repo *.scala
+repochecks:deploy.CiDispatchOrderSpec	.github/workflows/ci.yml
+repochecks:deploy.CiImageMirrorSpec	.github/workflows/* .github/actions/setup-buildx/action.yml Dockerfile scripts/ci/build-image.sh
+repochecks:deploy.CiPinnedImageSpec	.github/actions/* .github/workflows/* scripts/ci/* .github/pinned-images.tsv
+repochecks:deploy.CiRowScopeSpec	.github/workflows/branch-ci.yml .github/workflows/ci.yml .github/workflows/main.yml
+repochecks:deploy.CiRowTimeoutSpec	.github/workflows/ci.yml .github/workflows/identity-rule-ablation.yml .github/workflows/identity-run.yml .github/actions/download-artifacts/*
+repochecks:deploy.CiRunnerBudgetSpec	.github/workflows/ci.yml .github/workflows/main.yml
+worker:deploy.CinemaScrapeStalenessAlertSpec	@gitops infra/nix/modules/roles/prometheus.nix infra/nix/files/monitoring/*
+repochecks:deploy.CompositeActionStepKeysSpec	.github/actions/*.yaml .github/actions/*.yml
+repochecks:deploy.ConvergenceBisectEmptyPlanSpec	.github/workflows/convergence-bisect.yml
+repochecks:deploy.ConvergenceBisectPermissionsSpec	.github/workflows/convergence-bisect.yml
+repochecks:deploy.ConvergenceBisectTriggerSpec	.github/workflows/*
+repochecks:deploy.ConvergenceConcurrencyConfigSpec	.github/workflows/identity-model-convergence.yml .github/workflows/convergence-bisect.yml
+worker:deploy.ConvergenceFillWiringSpec	.github/actions/convergence-bisect-request/action.yml .github/actions/convergence-fill/action.yml .github/actions/convergence-publish/action.yml .github/actions/convergence-setup/action.yml .github/scripts/convergence-publish.sh .github/scripts/convergence-setup.sh .github/scripts/restore-enrichment-tree.sh .github/workflows/convergence-fill.yml .github/workflows/country-convergence-leg.yml .github/workflows/identity-model-convergence.yml .github/scripts/convergence-fill.sh
+worker:deploy.ConvergenceLegWiringSpec	.github/actions/convergence-findings/action.yml .github/actions/convergence-publish/action.yml .github/actions/convergence-setup/action.yml .github/actions/sbt-target-cache/action.yml .github/scripts/convergence-findings-summary.sh .github/scripts/convergence-publish.sh .github/scripts/convergence-setup.sh .github/scripts/pack-enrichment-tree.sh .github/scripts/unpack-fixture-archive.sh .github/workflows/convergence-daily.yml .github/workflows/country-convergence-leg.yml .github/workflows/identity-decorations.yml .github/workflows/identity-model-convergence.yml .github/workflows/identity-takes.yml .github/workflows/main.yml .github/workflows/record-scrape-fixtures.yml build.sbt e2e/src/test/scala/services/movies/CountryConvergenceBehaviour.scala e2e/src/test/scala/services/movies/OrderIndependence.scala scripts/ci/convergence_reuse.py scripts/ci/dispatch-takes.sh scripts/ci/identity-drift-check.sh scripts/ci/jfr-every-jvm.sh scripts/ci/order-phases.sh scripts/ci/wait-for-mongo-tunnel.sh scripts/hard-clusters.sh scripts/identity-fetch-recording.sh scripts/identity-measure scripts/restore-country-corpus.sh worker/src/fixtures/scala/tools/IdentityLookupSweep.scala .github/actions/setup-jdk/* scripts/ci/drift-replays-compare.sh scripts/ci/stop-stray-sbt.sh
+repochecks:deploy.ConvergencePublishMainOnlySpec	.github/actions/convergence-publish/action.yml .github/actions/convergence-setup/action.yml .github/scripts/convergence-publish.sh .github/workflows/country-convergence-leg.yml .github/workflows/identity-model-convergence.yml .github/workflows/record-scrape-fixtures.yml .github/workflows/verify-scrape-recording.yml
+repochecks:deploy.ConvergenceReuseSpec	.github/scripts/kick-convergence.sh .github/workflows/convergence-daily.yml .github/workflows/country-convergence-leg.yml .github/workflows/identity-model-convergence.yml
+repochecks:deploy.ConvergenceRunnerMemorySpec	.github/actions/convergence-setup/action.yml .github/workflows/country-convergence-leg.yml .github/workflows/identity-model-convergence.yml .github/workflows/record-scrape-fixtures.yml
+repochecks:deploy.CouplingExemptionsWorkflowSpec	.github/workflows/coupling-exemptions.yml scripts/ci/fix_replay_exemptions.py scripts/coupling-report
+repochecks:deploy.CoursierLauncherSpec	.github/actions/coursier-launcher/action.yml .github/workflows/scala-steward.yml scripts/ci/fetch-verified.sh scripts/ci/serve-file.sh
+repochecks:deploy.DebugMirrorListSpec	common/src/main/resources/debug-mirror-collections.json
+repochecks:deploy.DeployImageReuseSpec	.github/actions/mark-grafana-deploy/mark.sh .github/workflows/ci.yml .github/workflows/main.yml Dockerfile
+repochecks:deploy.DevServerHeapCanarySpec	.jvmopts scripts/dev-server.sh scripts/review-server tools/devpanel/*
+repochecks:deploy.DiscoveryPullRequestArtefactsSpec	.github/workflows/discover-cinemas.yml android/app/src/main/* data/uk/* geodata/src/main/resources/generated/* ios/Kinowo/*
+repochecks:deploy.E2eShardCoverageSpec	e2e/src/test/scala/services/movies/* .github/workflows/ci.yml build.sbt
 repochecks:deploy.FixtureServerBootOverlapSpec	-	boots a fixture server: not a file lint
-repochecks:deploy.FleetDatabaseConfigSpec	@gitops
-repochecks:deploy.FluxImageAutomationSpec	@gitops
-repochecks:deploy.FluxWebhookReceiverSpec	@gitops infra/nix/hosts/monitoring-1/default.nix infra/k8s-secrets/secrets.map
-repochecks:deploy.GitHubRunnerLabelSpec	@repo
-repochecks:deploy.GrafanaAnnotationSsoBypassSpec	@repo infra/nix/hosts/monitoring-1/default.nix infra/nix/modules/roles/public-proxy.nix
-repochecks:deploy.GrafanaCityEmptyQualifierSpec	@repo
-worker:deploy.GrafanaCorpusIntegritySpec	@repo infra/nix/files/monitoring/grafana/dashboards/*
-repochecks:deploy.GrafanaEnrichmentSourceAlertSpec	@repo
-repochecks:deploy.GrafanaFieldMatcherIdSpec	@repo
-repochecks:deploy.GrafanaGcChartsSpec	@repo infra/nix/files/monitoring/grafana/dashboards/*
-repochecks:deploy.GrafanaIdleRatioSpec	@repo
+repochecks:deploy.FleetDatabaseConfigSpec	@gitops @code
+repochecks:deploy.FluxImageAutomationSpec	@gitops @code
+repochecks:deploy.FluxWebhookReceiverSpec	@gitops infra/k8s-secrets/secrets.map infra/nix/hosts/monitoring-1/default.nix
+repochecks:deploy.GitHubRunnerLabelSpec	.github/workflows/*
+repochecks:deploy.GrafanaAnnotationSsoBypassSpec	.github/actions/mark-grafana-deploy/mark.sh infra/nix/hosts/monitoring-1/default.nix infra/nix/modules/roles/public-proxy.nix
+repochecks:deploy.GrafanaCityEmptyQualifierSpec	infra/nix/files/monitoring/rules/* infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml
+worker:deploy.GrafanaCorpusIntegritySpec	infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml worker/src/test/resources/logback-test.xml infra/nix/files/monitoring/grafana/dashboards/*
+repochecks:deploy.GrafanaEnrichmentSourceAlertSpec	infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml
+repochecks:deploy.GrafanaFieldMatcherIdSpec	infra/nix/files/monitoring/grafana/dashboards/apps/*
+repochecks:deploy.GrafanaGcChartsSpec	infra/nix/files/monitoring/grafana/dashboards/*
+repochecks:deploy.GrafanaIdleRatioSpec	infra/nix/files/monitoring/grafana/dashboards/apps/*
 worker:deploy.GrafanaMetricCoverageSpec	*
-repochecks:deploy.GrafanaQueryBurstSpec	@repo infra/nix/files/monitoring/grafana/dashboards/*
-repochecks:deploy.GrafanaRetiredRuleSpec	@repo
-repochecks:deploy.GrafanaServedSwingCorpusDiscriminantSpec	@repo
-repochecks:deploy.GrafanaServedSwingScopeSpec	@repo
-worker:deploy.GrafanaShowtimeVolumeAlertSpec	@repo
-repochecks:deploy.GrafanaStackOrderSpec	@repo infra/nix/files/monitoring/grafana/dashboards/*
-worker:deploy.HermeticConvergenceWiringSpec	@repo
-worker:deploy.IdentityCaptureWorkflowSpec	@repo test/resources/fixtures/identity-unmatched/*
-repochecks:deploy.IdentityCiStalenessWorkflowSpec	@repo
-repochecks:deploy.IdentityDecorationsWorkflowSpec	@repo *.scala identity/src/main/resources/identity-decorations.json
-repochecks:deploy.IdentityFamilyExplorerWorkflowSpec	@repo
-repochecks:deploy.IdentityFindingsReportWorkflowSpec	@repo test/resources/fixtures/identity-judgements.tsv
-repochecks:deploy.IdentityModelConvergenceWiringSpec	@repo
-repochecks:deploy.IdentityRefitWorkflowSpec	@repo
-repochecks:deploy.IdentitySliceOldRefGateSpec	@repo
-repochecks:deploy.IdentityTakesWiringSpec	@repo
-repochecks:deploy.ImagePathGateSpec	@repo infra/jvm/*.options infra/nix/files/heap-dumps.sh scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala common/src/main/* test/resources/* Dockerfile	each image's inputs, derived from the build, against main.yml's publish filters
-repochecks:deploy.IosLaunchEnvironmentDebugOnlySpec	@repo ios/Kinowo/*
-repochecks:deploy.JdkVersionParitySpec	@repo Dockerfile
-repochecks:deploy.JunitReportNoCheckRunSpec	@repo
-repochecks:deploy.K8sDeployKubeconfigAccessSpec	@repo infra/nix/modules/roles/k3s-server.nix infra/nix/modules/roles/k8s-deploy.nix
-repochecks:deploy.K8sTierPathGatingSpec	@gitops
-repochecks:deploy.KickConvergenceWiringSpec	@repo
-repochecks:deploy.LandingCheckSplitSpec	@repo
-repochecks:deploy.LegVerdictWiringSpec	@repo
-repochecks:deploy.MainAfterRedCiSpec	@repo
+repochecks:deploy.GrafanaQueryBurstSpec	infra/nix/files/monitoring/grafana/dashboards/*
+repochecks:deploy.GrafanaRetiredRuleSpec	infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml
+repochecks:deploy.GrafanaServedSwingCorpusDiscriminantSpec	infra/nix/files/monitoring/rules/* infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml
+repochecks:deploy.GrafanaServedSwingScopeSpec	infra/nix/files/monitoring/rules/* infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml
+worker:deploy.GrafanaShowtimeVolumeAlertSpec	infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml
+repochecks:deploy.GrafanaStackOrderSpec	infra/nix/files/monitoring/grafana/dashboards/*
+worker:deploy.HermeticConvergenceWiringSpec	.github/actions/convergence-publish/action.yml .github/actions/convergence-setup/action.yml .github/scripts/convergence-publish.sh .github/scripts/convergence-setup.sh .github/scripts/restore-enrichment-tree.sh .github/workflows/convergence-bisect.yml .github/workflows/country-convergence-leg.yml .github/workflows/identity-model-convergence.yml .github/workflows/identity-takes.yml .github/workflows/record-scrape-fixtures.yml .github/workflows/verify-scrape-recording.yml worker/src/fixtures/scala/tools/ServedFindings.scala
+worker:deploy.IdentityCaptureWorkflowSpec	.github/workflows/identity-capture.yml .github/workflows/identity-refit.yml scripts/ci/identity-capture-report.sh scripts/identity-ratchet-report test/resources/fixtures/identity-unmatched/* scripts/ci/close-mongo-tunnel.sh scripts/ci/wait-for-mongo-tunnel.sh scripts/identity-capture.sh
+repochecks:deploy.IdentityCiStalenessWorkflowSpec	.github/workflows/identity-ci-staleness.yml scripts/ci/identity-ci-staleness.sh
+repochecks:deploy.IdentityDecorationsWorkflowSpec	.github/workflows/identity-decorations.yml scripts/identity-fetch-recording.sh identity/src/main/resources/identity-decorations.json
+repochecks:deploy.IdentityFamilyExplorerWorkflowSpec	.github/gating-checks.tsv .github/workflows/country-convergence-leg.yml .github/workflows/identity-family-explorer.yml .github/workflows/identity-model-convergence.yml .github/workflows/main.yml scripts/ci/family-explorer-publish.sh scripts/ci/identity-family-nightly.sh
+repochecks:deploy.IdentityFindingsReportWorkflowSpec	.github/workflows/identity-findings-report.yml .github/workflows/record-scrape-fixtures.yml scripts/ci/identity_findings_report.py scripts/hooks/pre-push test/resources/fixtures/identity-judgements.tsv
+repochecks:deploy.IdentityModelConvergenceWiringSpec	.github/actions/convergence-setup/action.yml .github/convergence-paths.txt .github/workflows/country-convergence-leg.yml .github/workflows/identity-model-convergence.yml .github/workflows/main.yml build.sbt
+repochecks:deploy.IdentityRefitWorkflowSpec	.github/workflows/identity-refit.yml
+repochecks:deploy.IdentitySliceOldRefGateSpec	.github/workflows/main.yml scripts/identity-slice scripts/identity-slice-old-ref-test.sh scripts/title-trace scripts/identity-tools.sh scripts/tool-conventions.sh
+repochecks:deploy.IdentityTakesWiringSpec	.claude/skills/* .github/scripts/* .github/workflows/* scripts/*
+repochecks:deploy.ImagePathGateSpec	project/*.java project/*.scala .github/workflows/main.yml build.sbt web/src/test/resources/installed-build/cities-7fdc618ca.tsv infra/jvm/*.options infra/nix/files/heap-dumps.sh scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala common/src/main/* test/resources/* Dockerfile	each image's inputs, derived from the build, against main.yml's publish filters
+repochecks:deploy.IosLaunchEnvironmentDebugOnlySpec	ios/Kinowo/*
+repochecks:deploy.JdkVersionParitySpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml Dockerfile build.sbt
+repochecks:deploy.JunitReportNoCheckRunSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
+repochecks:deploy.K8sDeployKubeconfigAccessSpec	infra/nix/modules/roles/k3s-server.nix infra/nix/modules/roles/k8s-deploy.nix
+repochecks:deploy.K8sTierPathGatingSpec	@gitops .github/actions/deployed-base/action.yml .github/workflows/main.yml .github/actions/changed-paths/matches.sh
+repochecks:deploy.KickConvergenceWiringSpec	.github/workflows/main.yml
+repochecks:deploy.LandingCheckSplitSpec	.github/gating-checks.tsv .github/workflows/ci.yml .github/workflows/main.yml .github/workflows/precommit-check.yml build.sbt scripts/ci/hook-beside.sh scripts/ci/precommit-share.sh scripts/hooks/local-tests.txt scripts/hooks/pre-push scripts/land-precheck scripts/ci/start-mongo-replset.sh
+repochecks:deploy.LegVerdictWiringSpec	.github/workflows/*
+repochecks:deploy.MainAfterRedCiSpec	.github/workflows/main.yml
 repochecks:deploy.MetricsPackagesSpec	*/src/main/scala/services/metrics/*
-repochecks:deploy.MongoGrantsListSpec	@repo infra/nix/*
-repochecks:deploy.MongoServerVersionParitySpec	@repo infra/nix/modules/roles/mongodb.nix
-repochecks:deploy.NoExitStatusReadUnderErrexitSpec	@repo
-repochecks:deploy.NoSettingFallbackSpec	@repo infra/bin/*
+repochecks:deploy.MongoGrantsListSpec	infra/nix/* scripts/mongo-grants.tsv
+repochecks:deploy.MongoServerVersionParitySpec	.github/workflows/* .github/pinned-images.tsv infra/nix/modules/roles/mongodb.nix scripts/ci/start-mongo-replset.sh scripts/convergence-local.sh .github/actions/convergence-setup/*
+repochecks:deploy.NoExitStatusReadUnderErrexitSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
+repochecks:deploy.NoSettingFallbackSpec	.github/* infra/bin/* scripts/*
 repochecks:deploy.NoSilencedGhCurlSpec	*
-repochecks:deploy.NoTestRerunSpec	@repo android/*.gradle.kts android/app/build.gradle.kts ios/Kinowo.xcodeproj/* page-tests-playwright/*
+repochecks:deploy.NoTestRerunSpec	.github/actions/* .github/workflows/* page-tests-playwright/tests/* scripts/ci/* android/*.gradle.kts ios/Kinowo.xcodeproj/* page-tests-playwright/*
 repochecks:deploy.NodeCpuBudgetSpec	@gitops infra/nix/modules/roles/k3s-server.nix
-repochecks:deploy.NodeMemoryBudgetSpec	@gitops infra/nix/files/host-memory.json infra/nix/modules/roles/k3s-server.nix Dockerfile
+repochecks:deploy.NodeMemoryBudgetSpec	@gitops Dockerfile infra/nix/files/host-memory.json infra/nix/modules/roles/k3s-server.nix
 repochecks:deploy.NodePodsSpec	@gitops infra/nix/modules/roles/k3s-server.nix
-repochecks:deploy.OldRefDepsCacheSpec	@repo
-repochecks:deploy.OneSbtPathSpec	@repo
-repochecks:deploy.OrderCompareWiringSpec	@repo
-repochecks:deploy.OrderIndependenceSeedSpec	@repo
-worker:deploy.OverdueIsNotRedSpec	@repo
-repochecks:deploy.PaceReportVisibilityConfigSpec	@repo *.scala worker/src/main/resources/logback-base.xml
-repochecks:deploy.PageTestShardCoverageSpec	@repo
-repochecks:deploy.PaidEgressWorkflowSpec	@repo
-repochecks:deploy.PerformanceBudgetArtifactsSpec	@repo *.scala
-repochecks:deploy.PlaywrightRunCostSpec	@repo page-tests-playwright/playwright.config.ts
-repochecks:deploy.PlaywrightWorkerBudgetSpec	@repo
-repochecks:deploy.PreflightWiringSpec	@repo
+repochecks:deploy.OldRefDepsCacheSpec	.github/actions/old-ref-deps/action.yml .github/workflows/main.yml scripts/ci/coursier-forget-errors.sh scripts/ci/old-ref-deps-key.sh
+repochecks:deploy.OneSbtPathSpec	.github/* scripts/ci/*
+repochecks:deploy.OrderCompareWiringSpec	.github/actions/order-compare/action.yml .github/workflows/country-convergence-leg.yml .github/workflows/identity-model-convergence.yml .github/workflows/identity-takes.yml .github/workflows/verify-scrape-recording.yml scripts/ci/drift-replays-compare.sh
+repochecks:deploy.OrderIndependenceSeedSpec	.github/workflows/order-independence.yml
+worker:deploy.OverdueIsNotRedSpec	scripts/ci/* .github/workflows/identity-ci-staleness.yml .github/workflows/identity-findings-report.yml .github/workflows/roster-audit.yml
+repochecks:deploy.PaceReportVisibilityConfigSpec	worker/src/main/resources/logback-base.xml
+repochecks:deploy.PageTestShardCoverageSpec	.github/workflows/ci.yml
+repochecks:deploy.PaidEgressWorkflowSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml .github/scripts/record-country-fixture.sh
+repochecks:deploy.PerformanceBudgetArtifactsSpec	.github/actions/run-page-test/action.yml .github/workflows/ci.yml testkit/src/main/scala/tools/costs/PerformanceBudgets.scala
+repochecks:deploy.PlaywrightRunCostSpec	page-tests-playwright/playwright.config.ts
+repochecks:deploy.PlaywrightWorkerBudgetSpec	.github/actions/run-page-test/action.yml .github/workflows/ci.yml
+repochecks:deploy.PreflightWiringSpec	.github/workflows/android.yml .github/workflows/convergence-bisect.yml .github/workflows/country-convergence-leg.yml .github/workflows/identity-capture.yml .github/workflows/record-scrape-fixtures.yml .github/workflows/report-timings.yml scripts/ci/preflight.sh
 repochecks:deploy.PrometheusNodePortAgreementSpec	@gitops infra/nix/modules/roles/prometheus.nix
-repochecks:deploy.RecordCorpusInLegWiringSpec	@repo *.scala
-repochecks:deploy.RecordingPreflightWiringSpec	@repo
-repochecks:deploy.RegistryNameSpec	@repo
-repochecks:deploy.ReleaseLanePublishSpec	@repo
-repochecks:deploy.RepoFileSpec	@repo
-repochecks:deploy.RetireVenuesWorkflowSpec	@repo
-repochecks:deploy.RunTimingsWiringSpec	@repo
-repochecks:deploy.RunnerCacheWiringSpec	@repo
-repochecks:deploy.SbtCachePathsSpec	@repo
-repochecks:deploy.SbtDependencyFanOutSpec	@repo
-repochecks:deploy.SbtTargetCacheJarsSpec	@repo
-repochecks:deploy.ScheduledRunReportSpec	@repo
-repochecks:deploy.SelfHostedRunnersSpec	@repo
-repochecks:deploy.SetupSbtRunnerPinSpec	@repo
-repochecks:deploy.SharedFileLayoutSpec	@repo docs/* test/resources/fixtures/* .gitattributes
-repochecks:deploy.SharedJdkSetupSpec	@repo
-repochecks:deploy.SharedMachineStateLintSpec	@repo *.scala infra/version-dashboard/test/* ios/Tests/*
-repochecks:deploy.SharedSbtBuildSetupSpec	@repo *.scala
-repochecks:deploy.SharedUsersDatabaseConfigSpec	@gitops
-repochecks:deploy.StressAndEmulatorScheduleSpec	@repo *.scala
-repochecks:deploy.ToolSelfTestsOffGateSpec	@repo test/resources/fixtures/identity-judgements.tsv test/resources/fixtures/identity-unmatched/expected-matches.tsv
-repochecks:deploy.UnitTestForkSpec	@repo *.scala
-worker:deploy.UnitTestSplitSpec	@repo *.scala
-repochecks:deploy.UpstreamRunSpec	@repo
-repochecks:deploy.VerifyRecordingRunNameSpec	@repo
-repochecks:deploy.WebRolloutAvailabilitySpec	@gitops
-repochecks:deploy.WorkerDurableDiagnosticsConfigSpec	@repo Dockerfile
-worker:deploy.WorkerMetricsAtBootSpec	@repo infra/test/app-metrics-catalogue/*
-worker:deploy.WorkerRolloutStaggerSpec	@gitops
+repochecks:deploy.RecordCorpusInLegWiringSpec	.github/actions/convergence-setup/action.yml .github/scripts/convergence-publish.sh .github/scripts/restore-enrichment-tree.sh .github/workflows/country-convergence-leg.yml .github/workflows/record-scrape-fixtures.yml worker/src/fixtures/scala/scripts/RecordCorpusFixture.scala
+repochecks:deploy.RecordingPreflightWiringSpec	.github/workflows/record-scrape-fixtures.yml
+repochecks:deploy.RegistryNameSpec	.github/workflows/*
+repochecks:deploy.ReleaseLanePublishSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml scripts/ci/publish-rolling-release.sh scripts/ios-release.sh
+repochecks:deploy.RepoFileSpec	@code
+repochecks:deploy.RetireVenuesWorkflowSpec	.github/workflows/retire-venues.yml
+repochecks:deploy.RunTimingsWiringSpec	.github/workflows/* .github/actions/report-timings/action.yml
+repochecks:deploy.RunnerCacheWiringSpec	.github/actions/cache-restore/action.yml .github/actions/sbt-target-cache/action.yml .github/actions/setup-jdk/action.yml
+repochecks:deploy.SbtCachePathsSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml scripts/ci/sbt-sources-key.sh
+repochecks:deploy.SbtDependencyFanOutSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml scripts/ci/sbt-deps-resolve.sh
+repochecks:deploy.SbtTargetCacheJarsSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
+repochecks:deploy.ScheduledRunReportSpec	.github/workflows/*
+repochecks:deploy.SelfHostedRunnersSpec	.github/workflows/* scripts/ci/runner_scheduler.py
+repochecks:deploy.SetupSbtRunnerPinSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml project/build.properties scripts/ci/seed-sbt-runner.sh
+repochecks:deploy.SharedFileLayoutSpec	docs/design/identity-no-drift/state/* docs/identity-experiments/* .gitattributes docs/* test/resources/fixtures/* .github/convergence-paths.txt
+repochecks:deploy.SharedJdkSetupSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
+repochecks:deploy.SharedMachineStateLintSpec	*	walks every test file of four languages across the tree and judges each file alone: a standing lint (it reads nearly every push; no two changes' files meet in one verdict)
+repochecks:deploy.SharedSbtBuildSetupSpec	.github/actions/sbt-target-cache/action.yml .github/actions/setup-sbt-build/action.yml .github/workflows/ci.yml .github/workflows/country-fixture-artifact.yml .github/workflows/decoration-discovery.yml .github/workflows/discover-cinemas.yml .github/workflows/identity-capture.yml .github/workflows/identity-decorations.yml .github/workflows/identity-refit.yml .github/workflows/nightly-stress.yml scripts/ci/sbt-sources-key.sh scripts/identity-refit
+repochecks:deploy.SharedUsersDatabaseConfigSpec	@gitops @code
+repochecks:deploy.StressAndEmulatorScheduleSpec	*/src/test/* web/src/it/* worker/src/it/* .github/workflows/android.yml .github/workflows/nightly-stress.yml .github/workflows/order-independence.yml scripts/ci/stress-races.sh
+repochecks:deploy.ToolSelfTestsOffGateSpec	.github/workflows/ci.yml .github/workflows/tool-self-tests.yml scripts/ci/landing_check_for_tree.py scripts/hooks/pre-push scripts/run-script-tests test/resources/fixtures/identity-judgements.tsv test/resources/fixtures/identity-unmatched/expected-matches.tsv
+repochecks:deploy.UnitTestForkSpec	build.sbt project/ForkedTests.scala
+worker:deploy.UnitTestSplitSpec	.github/workflows/ci.yml build.sbt
+repochecks:deploy.UpstreamRunSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
+repochecks:deploy.VerifyRecordingRunNameSpec	.github/workflows/verify-scrape-recording.yml
+repochecks:deploy.WebRolloutAvailabilitySpec	@gitops @code
+repochecks:deploy.WorkerDurableDiagnosticsConfigSpec	Dockerfile build.sbt
+worker:deploy.WorkerMetricsAtBootSpec	worker/src/test/resources/logback-test.xml infra/test/app-metrics-catalogue/*
+worker:deploy.WorkerRolloutStaggerSpec	@gitops worker/src/test/resources/logback-test.xml
 worker:deploy.WorkerScrapeCadenceConfigSpec	@gitops infra/nix/files/monitoring/grafana/dashboards/*
-repochecks:deploy.WorkflowConcurrencyConventionSpec	@repo
-repochecks:deploy.WorkflowPlanSpec	@repo
-repochecks:deploy.WorkflowScriptsRunnableSpec	@repo android/gradlew
-worker:scripts.ToolCommandLinesSpec	@repo *.scala test/resources/fixtures/*
-worker:services.enrichment.NoTraktIntegrationSpec	@repo *.scala
-worker:services.enrichment.ImdbSourcesReplaySpec	test/resources/fixtures/imdb-sources-replay.txt test/resources/fixtures/imdb/* test/resources/fixtures/omdb/*
-worker:services.enrichment.RatingSitesReplaySpec	test/resources/fixtures/rating-sites-replay.txt test/resources/fixtures/metacritic/* test/resources/fixtures/rottentomatoes/* test/resources/fixtures/filmweb/*
-worker:services.evidence.ListingConstraintsRoutingSpec	@repo *.scala
-worker:tools.AgreementStageCompositionSpec	@repo *.scala
-worker:tools.ClientReadsThroughHttpReadSpec	@repo *.scala
-worker:tools.CollectionRetentionSpec	@repo *.scala
-worker:tools.DetailPageReadLintSpec	@repo *.scala
-worker:tools.DocCommentPlacementSpec	@repo *.scala
-worker:tools.IdentityRuntimeInputsSpec	@repo *.scala
-worker:tools.InMemoryStoresRoundTripSpec	@repo *.scala
-worker:tools.IntegrationDatabaseIsolationSpec	@repo *.scala
-worker:tools.ListingCompletenessSpec	@repo *.scala
-worker:tools.LoadIndependentTestsSpec	@repo *.scala
-worker:tools.MetricRegistrationsUniqueSpec	@repo *.scala
-worker:tools.ModelReadOnlySpec	@repo *.scala
-worker:tools.NoCheckedTupleReadSpec	@repo *.scala
-worker:tools.NoDecisionKeyedByMutableIdSpec	@repo *.scala
-worker:tools.NoDefaultLocaleCaseMappingSpec	@repo *.scala
-worker:tools.NoDefaultTitleNormalizerSpec	@repo *.scala
-worker:tools.NoDefaultZoneSpec	@repo *.scala
-worker:tools.NoFailedInTestNamesSpec	@repo *.scala
-worker:tools.NoGlobalPoolInTestsSpec	@repo *.scala
-worker:tools.NoHandRolledAllocationMeasurementSpec	@repo *.scala
-worker:tools.NoHandRolledClockPatternSpec	@repo *.scala
-worker:tools.NoHandRolledTimingSpec	@repo *.scala
-worker:tools.NoHandRolledYearInferenceSpec	@repo *.scala
-worker:tools.NoLiteralWaitBoundSpec	@repo *.scala
-worker:tools.NoPolandDefaultCountrySpec	@repo *.scala
-worker:tools.NoRealDependenciesInUnitSpecsSpec	@repo *.scala
-worker:tools.NoRuntimeLookupsInIdentitySpec	@repo *.scala
-worker:tools.NoSleepInTestsSpec	@repo *.scala
-worker:tools.NoSwallowedFailureSpec	@repo *.scala
-worker:tools.NoTtlExpiredRowsInSpecsSpec	@repo *.scala
-worker:tools.NoUnboundedConcurrencyPrimitiveSpec	@repo *.scala
-worker:tools.NoUnboundedMongoReadSpec	@repo *.scala
-worker:tools.NoUnguardedReadModifyWriteSpec	@repo *.scala
-worker:tools.NoUnmanagedWiringExecutorSpec	@repo *.scala
-worker:tools.NoUnwiredThreadsAndWaitsSpec	@repo *.scala
+repochecks:deploy.WorkflowConcurrencyConventionSpec	.github/workflows/*
+repochecks:deploy.WorkflowPlanSpec	.github/workflows/* scripts/ci/bounded-step.sh
+repochecks:deploy.WorkflowScriptsRunnableSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml android/gradlew .github/convergence-paths.txt scripts/ci/* scripts/ci/ci-row-scope.sh scripts/hooks/pre-push scripts/tool-conventions.sh
+worker:scripts.ToolCommandLinesSpec	.claude/skills/* .github/* scrapers/src/fixtures/* scripts/* worker/src/test/* test/resources/fixtures/*
+worker:services.enrichment.NoTraktIntegrationSpec	*/src/main/scala/*
+worker:services.enrichment.ImdbSourcesReplaySpec	test/resources/fixtures/imdb-sources-replay.txt test/resources/fixtures/omdb/* worker/src/test/resources/logback-test.xml test/resources/fixtures/imdb/*
+worker:services.enrichment.RatingSitesReplaySpec	test/resources/fixtures/filmweb/* test/resources/fixtures/metacritic/* test/resources/fixtures/rating-sites-replay.txt test/resources/fixtures/rottentomatoes/* worker/src/test/resources/logback-test.xml
+worker:services.evidence.ListingConstraintsRoutingSpec	*/src/main/* worker/src/fixtures/*
+worker:tools.AgreementStageCompositionSpec	*/src/main/* worker/src/*/*
+worker:tools.ClientReadsThroughHttpReadSpec	scrapers/src/main/scala/services/cinemas/* worker/src/main/scala/services/enrichment/* worker/src/main/scala/clients/HttpTmdbClient.scala
+worker:tools.CollectionRetentionSpec	*/src/main/* worker/src/fixtures/*
+worker:tools.DetailPageReadLintSpec	scrapers/src/main/scala/* worker/src/main/scala/*
+worker:tools.DocCommentPlacementSpec	*/src/main/*.java */src/main/*.scala
+worker:tools.IdentityRuntimeInputsSpec	*/src/main/*.java */src/main/*.scala worker/src/fixtures/*.java worker/src/fixtures/*.scala
+worker:tools.InMemoryStoresRoundTripSpec	*/src/*/*
+worker:tools.IntegrationDatabaseIsolationSpec	web/src/it/* worker/src/it/*
+worker:tools.ListingCompletenessSpec	scrapers/src/main/scala/services/cinemas/*
+worker:tools.LoadIndependentTestsSpec	*/src/test/*.scala */src/fixtures/*.scala */src/it/*.scala web/src/page/*.scala testkit/src/*.scala itkit/src/*.scala quality/src/*.scala *-test.sh *_test.py
+worker:tools.MetricRegistrationsUniqueSpec	*/src/main/*
+worker:tools.ModelReadOnlySpec	*/src/main/* */src/test/* http/src/fixtures/* web/src/it/* web/src/page/* worker/src/fixtures/* worker/src/it/*
+worker:tools.NoCheckedTupleReadSpec	*/src/main/*
+worker:tools.NoDecisionKeyedByMutableIdSpec	identity/src/main/scala/services/identity/* worker/src/main/scala/services/identityadapters/*
+worker:tools.NoDefaultLocaleCaseMappingSpec	*/src/*/*
+worker:tools.NoDefaultTitleNormalizerSpec	*/src/main/*.java */src/main/*.scala
+worker:tools.NoDefaultZoneSpec	*/src/*/*.java */src/*/*.scala
+worker:tools.NoFailedInTestNamesSpec	*/src/*/*.java */src/*/*.scala
+worker:tools.NoGlobalPoolInTestsSpec	*/src/*/*.java */src/*/*.scala
+worker:tools.NoHandRolledAllocationMeasurementSpec	*/src/*/*.java */src/*/*.scala
+worker:tools.NoHandRolledClockPatternSpec	scrapers/src/main/scala/services/cinemas/*
+worker:tools.NoHandRolledTimingSpec	*/src/*/*
+worker:tools.NoHandRolledYearInferenceSpec	scrapers/src/main/scala/services/cinemas/*
+worker:tools.NoLiteralWaitBoundSpec	*/src/*/*
+worker:tools.NoPolandDefaultCountrySpec	*/src/main/*
+worker:tools.NoRealDependenciesInUnitSpecsSpec	*/src/test/* http/src/fixtures/* scrapers/src/fixtures/*
+worker:tools.NoRuntimeLookupsInIdentitySpec	identity/src/main/*.java identity/src/main/*.scala worker/src/main/scala/services/identityadapters/*.java worker/src/main/scala/services/identityadapters/*.scala
+worker:tools.NoSleepInTestsSpec	*/src/*/*.java */src/*/*.scala
+worker:tools.NoSwallowedFailureSpec	*/src/main/*.java */src/main/*.scala
+worker:tools.NoTtlExpiredRowsInSpecsSpec	*/src/main/* web/src/it/* worker/src/it/*
+worker:tools.NoUnboundedConcurrencyPrimitiveSpec	*/src/main/*
+worker:tools.NoUnboundedMongoReadSpec	*/src/main/*
+worker:tools.NoUnguardedReadModifyWriteSpec	*/src/main/*
+worker:tools.NoUnmanagedWiringExecutorSpec	web/src/main/scala/modules/* worker/src/main/scala/modules/*
+worker:tools.NoUnwiredThreadsAndWaitsSpec	*/src/main/*
 worker:tools.NoWallClockInTestsSpec	*
-worker:tools.PerformanceBudgetsSpec	@repo *.scala
-worker:tools.ProxiedMainsAllowTunnelAuthSpec	@repo *.scala
-worker:tools.RegisteredCollectionListsSpec	@repo *.scala docs/fleet-database-migration.md
-worker:tools.RenderSafetyLintSpec	@repo *.scala web/src/main/twirl/*
-worker:tools.ScalaSourceScanSpec	@repo *.scala
-worker:tools.ScraperTypeTestLintSpec	@repo *.scala
-worker:tools.SourceTokenTablesSpec	@repo *.scala
-# THE ARTEFACT READERS (the owner, 2026-11-18): every spec that reads a checked-in or generated artefact -- a repo path, a
-# root file, a classpath resource -- has its row, so a change to that artefact selects it before landing (Main #2547/#2550,
-# #2601). scripts/ci/lint_registry_reads.py --missing names a reader with no row; --suggest prints the row it would want.
-common:models.CountrySpec	data/germany/retired.json
+worker:tools.PerformanceBudgetsSpec	*/src/*/*
+worker:tools.ProxiedMainsAllowTunnelAuthSpec	*/src/main/scala/* scrapers/src/fixtures/scala/* scrapers/src/test/scala/* worker/src/fixtures/scala/* worker/src/test/scala/*
+worker:tools.RegisteredCollectionListsSpec	*/src/main/*.java */src/main/*.scala worker/src/fixtures/*.java worker/src/fixtures/*.scala docs/fleet-database-migration.md worker/src/test/scala/scripts/IdentityLiveDrift.scala
+worker:tools.RenderSafetyLintSpec	web/src/main/scala/* web/src/main/twirl/*
+worker:tools.ScalaSourceScanSpec	worker/src/test/scala/tools/ScalaSourceScan.scala
+worker:tools.ScraperTypeTestLintSpec	*/src/main/*.java */src/main/*.scala
+worker:tools.SourceTokenTablesSpec	common/src/main/scala/* identity/src/main/scala/* scrapers/src/main/scala/services/cinemas/* worker/src/test/resources/logback-test.xml
+common:models.CountrySpec	data/germany/retired.json data/spain/retired.json data/us/retired.json
 common:services.MongoConnectionSpec	scripts/local-mirror/mirror-targets.js
 common:services.titles.rules.ProdTitlesNormalizationSpec	common/src/test/resources/fixtures/prod-movies/titles.txt
-common:services.titles.rules.TitleRulesGoldenSpec	common/src/test/resources/fixtures/prod-movies/titles.txt test/resources/fixtures/billing-parse/golden.jsonl test/resources/fixtures/title-rules/golden.jsonl
+common:services.titles.rules.TitleRulesGoldenSpec	test/resources/fixtures/title-rules/golden.jsonl common/src/test/resources/fixtures/prod-movies/titles.txt test/resources/fixtures/billing-parse/golden.jsonl
 common:tools.OutcomesCannotBeDroppedSpec	build.sbt
 e2e:services.movies.FilmScheduleEndToEndSpec	-	a basic line (local-tests.txt) runs it in every sbt check
 http:tools.TlsTrustSpec	http/src/test/resources/certs/cyber-folks-dv-tls-g3-r31-ca.pem
@@ -244,29 +255,29 @@ identity:services.identity.IncrementalWholeDivergenceSpec	-	identity's spec: the
 identity:services.identity.SourceDigestSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
 identity:services.identity.VenueSlotVersionSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
 identity:services.identity.agreement.IncrementalWholeEquivalenceSpec	-	identity's spec: the identity area's test-impact selection runs it (the lint plan runs no identity spec)
-scrapers:clients.CinemaScraperCatalogSpec	data/germany/feed-mirrors.json data/germany/retired.json
-scrapers:clients.bilety24.Bilety24EventPageCreditsSpec	test/resources/fixtures/08-06-2026/kinoteatrrialto.bilety24.pl/wydarzenie/.55846d8a
-scrapers:clients.bilety24.Bilety24OrganizerClientSpec	scrapers/src/test/resources/fixtures/roster-audit/bilety24-organiser-477-sroda-wielkopolska.html
-scrapers:clients.flicks.FlicksClientSpec	test/resources/fixtures/flicks/jericho-drive-in-programme-closed-for-season.html test/resources/fixtures/flicks/odeon-cinema-norwich-programme.html test/resources/fixtures/flicks/woolton-picture-house-programme-empty.html test/resources/fixtures/flicks/www.flicks.co.uk/cinema/sessions/dartington-art-centre-totnes/2026-07-28.html test/resources/fixtures/flicks/www.flicks.co.uk/cinema/sessions/odeon-cinema-norwich/2026-07-11.html test/resources/fixtures/flicks/www.flicks.us/cinema/sessions/lakewood-ranch-cinemas-6/2026-10-12.html
+scrapers:clients.CinemaScraperCatalogSpec	test/resources/fixtures/* data/germany/feed-mirrors.json data/germany/retired.json
+scrapers:clients.bilety24.Bilety24EventPageCreditsSpec	test/resources/fixtures/08-06-2026/kinoteatrrialto.bilety24.pl/wydarzenie/.55846d8a test/resources/fixtures/bilety24-detail/www.bilety24.pl/kino/*
+scrapers:clients.bilety24.Bilety24OrganizerClientSpec	scrapers/src/test/resources/fixtures/roster-audit/bilety24-organiser-477-sroda-wielkopolska.html test/resources/fixtures/kino-ck/www.bilety24.pl/kino/organizator/centrum-kultury-w-jedrzejowie-1458.html test/resources/fixtures/kino-elektronik/www.bilety24.pl/kino/organizator/kino-elektronik-631.html test/resources/fixtures/kino-kosmos/www.bilety24.pl/kino/1501-dzien-objawienia-157217.630efc3a.html test/resources/fixtures/kino-kosmos/www.bilety24.pl/kino/organizator/kino-kosmos-1501.html test/resources/fixtures/kino-metalowiec/www.bilety24.pl/kino/organizator/centrum-kultury-i-promocji-w-krasniku-1529.html test/resources/fixtures/kino-nad-warta/www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-kole-1621.html test/resources/fixtures/kino-sokolnia/www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-slupcy-1423.html test/resources/fixtures/kino-swiatowid/www.bilety24.pl/kino/organizator/kino-swiatowid-1503.html
+scrapers:clients.flicks.FlicksClientSpec	test/resources/fixtures/flicks/*
 scrapers:clients.helios.HeliosNuxtOriginalTitleSpec	test/resources/fixtures/08-06-2026/helios.pl/poznan/kino-helios/repertuar
-scrapers:clients.kino_muza.KinoMuzaClientSpec	test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko
-scrapers:clients.kinoprogramm.KinoprogrammClientSpec	test/resources/fixtures/kinoprogramm/film_page_andre_rieu_christmas_2026.html
-scrapers:clients.kinoteka.KinotekaClientSpec	test/resources/fixtures/kinoteka/kinoteka.pl/film/audiencja-kinoteka-kultury-i-sztuki
-scrapers:clients.muranow.MuranowClientSpec	test/resources/fixtures/kino-muranow/kinomuranow.pl/film/100-rocznica-urodzin-tadeusza-konwickiego-przechodzien-jak-daleko-stad-jak-blisko.html test/resources/fixtures/kino-muranow/kinomuranow.pl/film/andre-rieu-pada-snieg.html
-scrapers:clients.nowe_horyzonty.NoweHoryzontyClientSpec	test/resources/fixtures/nowe-horyzonty/www.kinonh.pl/op.s.b03a4a51
+scrapers:clients.kino_muza.KinoMuzaClientSpec	test/resources/fixtures/08-06-2026/www.kinomuza.pl/repertuar test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/dziecko-z-pylu test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko test/resources/fixtures/kino-muza/www.kinomuza.pl/repertuar
+scrapers:clients.kinoprogramm.KinoprogrammClientSpec	test/resources/fixtures/kinoprogramm/film_page_andre_rieu_christmas_2026.html test/resources/fixtures/kinoprogramm/www.kinoprogramm.com/kino/berlin/* test/resources/fixtures/kinoprogramm/www.kinoprogramm.com/kino/hamburg/* test/resources/fixtures/kinoprogramm/www.kinoprogramm.com/kinofilm/*
+scrapers:clients.kinoteka.KinotekaClientSpec	test/resources/fixtures/kinoteka/kinoteka.pl/*
+scrapers:clients.muranow.MuranowClientSpec	test/resources/fixtures/kino-muranow/kinomuranow.pl/film/* test/resources/fixtures/kino-muranow/kinomuranow.pl/repertuar.html
+scrapers:clients.nowe_horyzonty.NoweHoryzontyClientSpec	test/resources/fixtures/nowe-horyzonty/www.kinonh.pl/*
 scrapers:clients.odeon.OdeonClientSpec	test/resources/fixtures/odeon/vwc.odeon.co.uk/WSVistaWebClient/ocapi/v1/*
 scrapers:clients.rialto.RialtoGenreSpec	test/resources/fixtures/rialto-genre-unknown/romeo-i-julia.html test/resources/fixtures/rialto/www.kinorialto.poznan.pl/wydarzenie
-scrapers:clients.savoy.SavoyClientSpec	test/resources/fixtures/savoy-captures/phoenixcinema-whatson-2026-10-13.html
+scrapers:clients.savoy.SavoyClientSpec	test/resources/fixtures/savoy-captures/phoenixcinema-whatson-2026-10-13.html test/resources/fixtures/savoy/savoycorby.co.uk/SavoyCorby.dll/WhatsOn test/resources/fixtures/savoy/theritzcinema.co.uk/TheRitzWorkington.dll/WhatsOn test/resources/fixtures/savoy/www.phoenixcinema.co.uk/PhoenixCinemaLondon.dll/WhatsOn
 scrapers:clients.showcase.EverymanCatalogueTitleSpec	test/resources/fixtures/everyman/catalogue-unclosed-anniversary-paren.json
-scrapers:clients.showcase.GatsbyBoxOfficeClientSpec	test/resources/fixtures/everyman/film-details.json test/resources/fixtures/showcase/www.showcasecinemas.co.uk/*
-scrapers:clients.ticketsolve.TicketsolveClientSpec	test/resources/fixtures/ticketsolve/mwldan.ticketsolve.com/shows.xml
-scrapers:clients.ujazdowski.UjazdowskiClientSpec	test/resources/fixtures/ujazdowski/u-jazdowski.pl/kino/repertuar/erupcja
-scrapers:clients.vue.VueCinemasPlatformClientSpec	test/resources/fixtures/vue/www.myvue.com/api/microservice/showings/cinemas/10032/films.json
+scrapers:clients.showcase.GatsbyBoxOfficeClientSpec	test/resources/fixtures/showcase/www.showcasecinemas.co.uk/* test/resources/fixtures/everyman/film-details.json
+scrapers:clients.ticketsolve.TicketsolveClientSpec	test/resources/fixtures/ticketsolve/chapter.ticketsolve.com/shows.xml test/resources/fixtures/ticketsolve/mwldan.ticketsolve.com/shows.xml test/resources/fixtures/ticketsolve/nervecentre.ticketsolve.com/shows.xml test/resources/fixtures/ticketsolve/neuadddwyfor.ticketsolve.com/shows.xml test/resources/fixtures/ticketsolve/number8.ticketsolve.com/shows.xml test/resources/fixtures/ticketsolve/pocklingtonartscentre.ticketsolve.com/shows.xml test/resources/fixtures/ticketsolve/pontardaweartscentre.ticketsolve.com/shows.xml test/resources/fixtures/ticketsolve/theatrcolwyn.ticketsolve.com/shows.xml test/resources/fixtures/ticketsolve/watershed.ticketsolve.com/shows.xml
+scrapers:clients.ujazdowski.UjazdowskiClientSpec	test/resources/fixtures/ujazdowski-programme/pokaz-shortow.html test/resources/fixtures/ujazdowski-programme/week.ajax-2026-09-29.html test/resources/fixtures/ujazdowski/u-jazdowski.pl/kino/repertuar.content test/resources/fixtures/ujazdowski/u-jazdowski.pl/kino/repertuar/*
+scrapers:clients.vue.VueCinemasPlatformClientSpec	test/resources/fixtures/vue/www.myvue.com/api/microservice/auth/token.json test/resources/fixtures/vue/www.myvue.com/api/microservice/showings/cinemas/10032/films.json
 scrapers:clients.webedia.WebediaShowtimesClientSpec	test/resources/fixtures/webedia-de/theater-A0263-venue-page.html test/resources/fixtures/webedia-de/www.filmstarts.de/_/showtimes/theater-A0263/d-2026-07-11/p-1.json
 scrapers:clients.webedia.WebediaSpainShowtimesClientSpec	test/resources/fixtures/webedia-es/theater-E0291-venue-page.html test/resources/fixtures/webedia-es/theater-E0986-venue-page.html test/resources/fixtures/webedia-es/www.sensacine.com/_/showtimes/theater-E0291/d-2026-09-02/p-1.json test/resources/fixtures/webedia-es/www.sensacine.com/_/showtimes/theater-E0382/d-2026-09-05/p-1.json
 scrapers:services.cinemas.MsiScraperProductionFixtureSpec	test/resources/fixtures/msi-production/bilety.zamek.szczecin.pl/MSI/mvc/pl.8781cb26
 scrapers:services.cinemas.OdeonVenueMapSpec	docs/venue-maps/ODEON-VENUE-MAP.tsv
-scrapers:services.cinemas.common.FlicksFilmPageSlimSpec	test/resources/fixtures/flicks/www.flicks.us/movie/a-night-at-the-opera.html
+scrapers:services.cinemas.common.FlicksFilmPageSlimSpec	test/resources/fixtures/flicks/www.flicks.co.uk/movie/* test/resources/fixtures/flicks/www.flicks.us/movie/*
 scrapers:services.cinemas.common.FlicksPageParserVersionSpec	test/resources/fixtures/flicks/www.flicks.co.uk/cinema/sessions/*
 scrapers:services.cinemas.common.ScraperParseSpec	test/resources/fixtures/kinoteka/kinoteka.pl/film/audiencja-kinoteka-kultury-i-sztuki
 scrapers:services.cinemas.pl.McswElektrowniaTitleSpec	test/resources/fixtures/mcsw-elektrownia/day_page_genre_tail_glued_by_dash.html
@@ -277,37 +288,37 @@ web:controllers.BrowseFilterParamsSpec	web/src/main/resources/routes
 web:controllers.CityTrailingSlashRedirectSpec	web/src/main/resources/routes
 web:controllers.LegalControllerSpec	web/src/main/resources/routes
 web:controllers.RenamedFilmPathRedirectSpec	web/src/main/resources/routes
-web:controllers.ReviewPagesSpec	test/resources/fixtures/* web/src/main/resources/routes
+web:controllers.ReviewPagesSpec	web/src/test/resources/review/tmdb-movie-4935.json test/resources/fixtures/* web/src/main/resources/routes
 web:controllers.ShareCardOgImageSpec	web/src/main/resources/routes
 web:controllers.WellKnownControllerSpec	web/src/main/resources/wellknown/apple-app-site-association
 web:modules.CountryIsolationMatrixSpec	web/src/main/resources/messages*
 web:modules.HttpMetricsFilterSpec	infra/nix/modules/roles/synthetic-probes.nix
-web:modules.InstalledBuildContractSpec	web/src/main/resources/wellknown/apple-app-site-association web/src/test/resources/installed-build/cities-7fdc618ca.tsv
+web:modules.InstalledBuildContractSpec	web/src/test/resources/installed-build/cities-7fdc618ca.tsv web/src/main/resources/wellknown/apple-app-site-association
 web:modules.RouteProtectionMatrixSpec	web/src/main/resources/routes
-web:services.review.ReviewDigestSpec	test/resources/fixtures/identity-judgements.tsv
+web:services.review.ReviewDigestSpec	test/resources/fixtures/identity-judgements.tsv test/resources/fixtures/identity-review-candidates.tsv
 web:tools.CatalogSeedSpec	android/app/src/main/assets/catalog-seed.json ios/Kinowo/catalog-seed.json build.sbt
 web:tools.ShareCardTextSpec	web/src/main/resources/messages*
-worker:clients.enrichment.FilmwebClientSpec	test/resources/fixtures/filmweb/homepage-head.html
-worker:clients.enrichment.TmdbClientSpec	test/resources/fixtures/08-06-2026/api.themoviedb.org/3/movie/365398/credits.0
+worker:clients.enrichment.FilmwebClientSpec	test/resources/fixtures/filmweb/*
+worker:clients.enrichment.TmdbClientSpec	test/resources/fixtures/08-06-2026/api.themoviedb.org/3/movie/365398/credits.0 test/resources/fixtures/tmdb/search_lalka_2026.json
 worker:diagnostics.FilmwebDiffArgumentsSpec	.github/workflows/filmweb-diff.yml
 worker:diagnostics.RosterAuditArgumentsSpec	.github/workflows/roster-audit.yml scripts/ci/roster-audit.sh
-worker:modules.RemovalAuditLoggingSpec	web/src/main/resources/logback.xml worker/src/main/resources/logback.xml
+worker:modules.RemovalAuditLoggingSpec	worker/src/test/resources/logback-test.xml web/src/main/resources/logback.xml worker/src/main/resources/logback.xml
 worker:modules.WorkerFileLoggingSpec	web/src/main/resources/logback.xml worker/src/main/resources/logback.xml
 worker:scripts.EnqueueSourceRefreshSpec	scripts/source-refresh
 worker:scripts.IdentityCaptureSpec	common/src/main/resources/title-rules.tsv common/src/main/scala/services/titles/rules/ExtraTitleRules.scala identity/src/main/resources/identity-weights.json identity/src/main/scala/services/identity/IdentityResolver.scala identity/src/main/scala/services/identity/agreement/AgreementStage.scala web/src/main/scala/controllers/MovieController.scala worker/src/it/scala/IdentityShadow.scala
 worker:scripts.IdentityDecorationScoreFitSpec	-	reads the identity resources (identity/src/main/resources/, an identity path) through their loaders: the identity area's test-impact selection runs it
-worker:scripts.IdentityDriftSpec	test/resources/fixtures/drift-slices/de/bali-kino-geister-2e6e9eaa/* test/resources/fixtures/drift-slices/de/metropol-madoka-6a9b3bcc/* test/resources/fixtures/drift-slices/de/werkstattkino-camouflage-07fb3fab/* test/resources/fixtures/drift-slices/uk/chichester-ties-1231860f/* test/resources/fixtures/drift-slices/us/parkway-drive-home-2abd6734/* test/resources/fixtures/identity-flip-backlog.tsv test/resources/fixtures/identity-flips-allow.tsv test/resources/fixtures/identity-slices/uk-queen-s-film-theatre-belfast-rose-2023--4f64ad1a/*
-worker:scripts.IdentitySliceEmitCaseSpec	test/resources/fixtures/identity-unmatched/* test/resources/fixtures/identity-unmatched/uk.json.gz
+worker:scripts.IdentityDriftSpec	test/resources/fixtures/* worker/src/test/resources/logback-test.xml test/resources/fixtures/drift-slices/de/bali-kino-geister-2e6e9eaa/* test/resources/fixtures/drift-slices/de/metropol-madoka-6a9b3bcc/* test/resources/fixtures/drift-slices/de/werkstattkino-camouflage-07fb3fab/* test/resources/fixtures/drift-slices/uk/chichester-ties-1231860f/* test/resources/fixtures/drift-slices/us/parkway-drive-home-2abd6734/* test/resources/fixtures/identity-slices/uk-queen-s-film-theatre-belfast-rose-2023--4f64ad1a/*
+worker:scripts.IdentitySliceEmitCaseSpec	test/resources/fixtures/identity-unmatched/*
 worker:scripts.IdentityUnifiedFitSpec	-	reads the identity resources (identity/src/main/resources/, an identity path) through their loaders: the identity area's test-impact selection runs it
 worker:scripts.RatingGateArtefactSpec	-	reads the identity resources (identity/src/main/resources/, an identity path) through their loaders: the identity area's test-impact selection runs it
-worker:scripts.VenueReplaySpec	test/resources/fixtures/kinoheld/* test/resources/fixtures/teatr-ziemi-rybnickiej/* test/resources/fixtures/venue-replay/*
-worker:services.closure.ClosureSweepSpec	worker/src/test/resources/fixtures/venue-websites/acme_screening_room_open_with_programme.html
+worker:scripts.VenueReplaySpec	test/resources/fixtures/kinoheld/next-live.kinoheld.de/* test/resources/fixtures/venue-replay/cineworld-barnsley/enrichment-uk/www.cineworld.co.uk/api/gatsby-source-boxofficeapi/* worker/src/test/resources/logback-test.xml test/resources/fixtures/kinoheld/* test/resources/fixtures/teatr-ziemi-rybnickiej/* test/resources/fixtures/venue-replay/*
+worker:services.closure.ClosureSweepSpec	worker/src/test/resources/fixtures/venue-websites/acme_screening_room_open_with_programme.html worker/src/test/resources/logback-test.xml
 worker:services.enrichment.scraping.JsonLdScanSpec	test/resources/fixtures/*
-worker:services.identity.SiblingReachedRunnerUpSpec	test/resources/fixtures/drift-slices/de/cineplex-neustadt-es-37a64e0d/*
+worker:services.identity.SiblingReachedRunnerUpSpec	test/resources/fixtures/drift-slices/de/cineplex-neustadt-es-37a64e0d/* worker/src/test/resources/logback-test.xml
 worker:services.identity.TitleDecorationsLearnerSpec	-	reads the identity resources (identity/src/main/resources/, an identity path) through their loaders: the identity area's test-impact selection runs it
-worker:services.identity.WhatIfAnswersSpec	test/resources/fixtures/tmdb/search_lalka_2026.json
+worker:services.identity.WhatIfAnswersSpec	test/resources/fixtures/tmdb/search_lalka_2026.json worker/src/test/resources/logback-test.xml
 worker:services.identity.adapters.IdentityHistoryCompositionSpec	worker/src/fixtures/scala/tools/ArchiveReplayWiring.scala worker/src/main/scala/modules/wiring/IdentityModelWiring.scala
-worker:services.identity.adapters.TmdbIdentityLookupsSpec	test/resources/fixtures/08-06-2026/api.themoviedb.org/3/search/movie.f25d5a92 test/resources/fixtures/imdb/suggestion_caligula_the_ultimate_cut.json test/resources/fixtures/tmdb/find_tt0080491.json test/resources/fixtures/tmdb/find_tt29703523.json
+worker:services.identity.adapters.TmdbIdentityLookupsSpec	test/resources/fixtures/08-06-2026/api.themoviedb.org/3/movie/1018.85ac50d9 test/resources/fixtures/08-06-2026/api.themoviedb.org/3/movie/1018.cdb52e10 test/resources/fixtures/08-06-2026/api.themoviedb.org/3/search/movie.f25d5a92 test/resources/fixtures/imdb/suggestion_caligula_the_ultimate_cut.json test/resources/fixtures/tmdb/find_tt0080491.json test/resources/fixtures/tmdb/find_tt29703523.json
 worker:services.scrapes.OwnSiteEvidenceSpec	worker/src/main/resources/venue-websites.json
-worker:services.tasks.ScrapeCadenceSustainabilitySpec	@gitops
+worker:services.tasks.ScrapeCadenceSustainabilitySpec	@gitops worker/src/test/resources/logback-test.xml
 worker:tools.AotClassListSpec	worker/src/main/resources/aot-classes.txt scrapers/src/main/scala/services/cinemas/*	the list (ClassArchiveTraining.ClassListResource) must name every class the scrapers module ships under services.cinemas: a scraper change, which can add a class (a new source, an anonymous or inner class), selects it (Main #2601)

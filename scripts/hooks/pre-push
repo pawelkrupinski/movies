@@ -15,7 +15,8 @@
 #                 reads (the Dockerfile, the AOT class list, host-memory.json, a fixture: THE ARTEFACT READERS, every
 #                 spec reading a checked-in or generated artefact, held to its row by lint_registry_reads.py) -- plus, on any change under scripts/,
 #                 .github/, .claude/, CLAUDE.md, build.sbt, project/ or */src/test|it/ (`--lint-plan`, ~30 s warm),
-#                 every other repo-reading lint spec: all deploy/ specs and the No*/*Lint* source lints, bar the
+#                 the repo-reading lint specs whose rows read what the push changes (each row: what its spec opens,
+#                 and its own code): the deploy/ specs and the No*/*Lint* source lints, bar the
 #                 ones listed at lint_plan that boot a server -- those reading the GitOps manifests too, once
 #                 infra/bin/fetch-gitops has put them in place (GitHub unreachable: the push BLOCKED, never
 #                 checked against stale manifests); `lintspecs` skips just those -- and,
@@ -352,10 +353,13 @@ Zero=0000000000000000000000000000000000000000
 
 skipped() { case " ${PREPUSH_SKIP:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
-# Whether the repo-reading lint specs (`--lint-plan`) read <path>: scripts, workflows, skills, the docs, the build, the
-# test, it and page trees, the fixtures.
+# Whether a push of <path> runs the sbt check for the lint specs: scripts, workflows, skills, the docs, the build, the
+# test, it and page trees, the fixtures. It decides only THAT the check runs (plan); WHICH specs it runs is each lint
+# registry row's own reads (lint_plan) -- once `@repo`, every spec selected by any of these paths (below).
 read_by_lint_specs() { # <path>
     case "$1" in
+        # the mobile apps' own trees are no sbt module's (`*/src/test/*` caught android/app/src/test: 2026-11-21)
+        android/*|ios/*) return 1 ;;
         scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|scrapers/src/fixtures/*|http/src/fixtures/*|repochecks/src/fixtures/*|testkit/*) return 0 ;;
     esac
     return 1
@@ -370,7 +374,7 @@ coupling_paths() { # stdin: changed paths -> the ones that select the coupling s
 # the ratchet's verdict -- production Scala (a source's text is what is measured: no Java, no template), the measure,
 # its dependencies and the baselines
 quality_paths() { # stdin: changed paths -> the ones that select the quality step
-    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.scala|quality/.*|project/Dependencies\.scala|test/resources/(complexity|length|duplication)-baseline\.tsv|scripts/ci/quality_ratchet\.py|scripts/ci/naming_lint\.py)$' || true
+    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.scala|quality/src/main/.*|project/Dependencies\.scala|test/resources/(complexity|length|duplication)-baseline\.tsv|scripts/ci/quality_ratchet\.py|scripts/ci/naming_lint\.py)$' || true
 }
 
 # ── The local tests: basic, and per AREA ─────────────────────────────────────────────────────────
@@ -779,12 +783,18 @@ unit_plan() {
 # ── Which lint specs the sbt check runs ─────────────────────────────────────────────────────────
 # One line per path on stdin; prints `<module>:<spec>`, one per line, read off THE LINT REGISTRY
 # (scripts/hooks/lint-registry.tsv; its header has the format), never off a spec's name: a spec runs when a pushed path
-# matches what its row says it reads. `*` rows (the standing lints) run whatever the push touches; `@repo` rows when the
-# push touches what the repo-reading specs read (read_by_lint_specs: scripts/, .github/, .claude/, CLAUDE.md, build.sbt,
-# project/, */src/test|it|page/, the worker's, scrapers', http's and repochecks' src/fixtures, testkit/; ~30 s warm in all); `@gitops` rows the same, only with
-# the GitOps manifests in place (PREPUSH_GITOPS=1: CI checks them out; the sbt check runs infra/bin/fetch-gitops first);
-# a pattern row (`*.scala`: a source scan) when a pushed path matches it; `-` rows never (a spec booting a server).
-# scripts/hooks/lint-registry-test.sh fails when a repo-reading spec has no row: a new lint spec adds its row.
+# matches what its row says it reads. `*` rows (the standing lints) run whatever the push touches; a pattern row
+# (`.github/workflows/*`, `*/src/main/scala/*`: what the spec opens) when a pushed path matches it; `@repo` rows on any
+# path (a spec reading the whole tree); `@code` rows on their own code alone (below); `-` rows never (a spec booting a
+# server). Every row but a `-` one also runs when
+# the push changes the code its spec is compiled with: a test-side path (a test, it, page or fixtures tree, testkit/,
+# the build) whose compile plan holds the spec's module's Test config (own_code_modules). `@gitops` rows run only with
+# the GitOps manifests in place (PREPUSH_GITOPS=1: CI checks them out; the sbt check runs infra/bin/fetch-gitops first).
+# WHAT A ROW READS IS WHAT ITS SPEC OPENS (the owner, 2026-11-21, landing-speed proposal 1): until then 175 rows said
+# `@repo`, selected by any script, workflow, skill or test-tree path, so agentctl's MINIMAL RECHECKS found every two
+# changes sharing a lint and kept no verdict in 11-19..21. scripts/hooks/lint-registry-test.sh fails when a
+# repo-reading spec has no row, or a row misses a path its spec's source names (lint_registry_reads.py);
+# scripts/ci/lint_reads_trace.py runs each spec and fails on a file it opened that its row does not select.
 # Skip all but the `*` rows with PREPUSH_SKIP=lintspecs.
 LintRegistry="$(dirname "${BASH_SOURCE[0]}")/lint-registry.tsv"
 # The lints every sbt check runs, whatever the push touches: the registry's `*` rows.
@@ -797,34 +807,23 @@ registry_files() {
     [ -f "$LintRegistry" ] || return 0
     awk -F'\t' '!/^#/ && NF >= 2 { n = split($2, word, " "); for (i = 1; i <= n; i++) if (word[i] !~ /[*?[]|^-$|^@/ && !(word[i] in seen)) { seen[word[i]] = 1; print word[i] } }' "$LintRegistry"
 }
-# Whether one of the paths on stdin is one the repo-reading lint specs read.
-reads_repo() {
-    local path found=1
-    while IFS= read -r path; do
-        read_by_lint_specs "$path" && found=0
-    done
-    return $found
+# The modules whose Test config compiles a pushed test-side path (its specs' own code: a spec, a helper, a fixture, the
+# build), one a line: compile_plan over the paths under a test, it, page or fixtures tree, testkit/ or the build. A
+# production path is no spec's own code here: a row reading production sources says so (`*/src/main/*.scala`).
+own_code_modules() {
+    grep -E '^(build\.sbt|project/.*|testkit/.*|[^/]+/src/(test|it|page|fixtures)/.*)$' | compile_plan | sed -n 's|/Test/compile$||p'
+    return 0
 }
-# Whether a path on stdin is one the GitOps-reading specs read: a repo-read path, or one a `@gitops` row's own patterns
-# name (the alert-rule specs read infra/nix/files/monitoring/rules/* AND the worker overlays). The sbt check fetches the
-# manifests for exactly these: on 2026-11-10 a push of an alert rule and its test (no repo-read path) ran
-# CinemaScrapeStalenessAlertSpec with no fetch, and CI's pre-commit check, which has no infra/kubernetes, failed it.
+# Whether the paths on stdin select a row reading the GitOps manifests (`@gitops`): the sbt check fetches the manifests
+# for exactly these (on 2026-11-10 a push of an alert rule and its test ran CinemaScrapeStalenessAlertSpec with no
+# fetch, and CI's pre-commit check, which has no infra/kubernetes, failed it).
 reads_gitops() {
-    local paths path word
-    paths="$(cat)"
-    printf '%s\n' "$paths" | reads_repo && return 0
     [ -f "$LintRegistry" ] || return 1
-    local patterns
-    patterns="$(awk -F'\t' '!/^#/ && (" " $2 " ") ~ / @gitops / { print $2 }' "$LintRegistry" | tr ' ' '\n' | grep -v '^@' || true)"
-    # shellcheck disable=SC2086 # the patterns are words, matched below, never expanded
-    set -f; set -- $patterns; set +f
-    for word in "$@"; do
-        while IFS= read -r path; do
-            # shellcheck disable=SC2254 # the registry's pattern, matched as a pattern
-            case "$path" in $word) return 0 ;; esac
-        done <<< "$paths"
-    done
-    return 1
+    local selected
+    selected="$(PREPUSH_GITOPS=1 lint_plan)"
+    [ -n "$selected" ] || return 1
+    SELECTED="$selected" awk -F'\t' 'BEGIN { n = split(ENVIRON["SELECTED"], s, "\n"); for (i = 1; i <= n; i++) want[s[i]] = 1 }
+        !/^#/ && (" " $2 " ") ~ / @gitops / && ($1 in want) { found = 1 } END { exit found ? 0 : 1 }' "$LintRegistry"
 }
 # The testOnly lines on stdin, each with `-<spec>` added for every `@gitops` row's spec of its module its patterns select,
 # unless this run fetched the manifests (PREPUSH_GITOPS=1): the lint plan runs those specs once infra/bin/fetch-gitops
@@ -861,10 +860,10 @@ without_unfetched_gitops() {
     done
 }
 lint_plan() {
-    local paths repo_read=0 spec reads word path selected
+    local paths own spec reads word path selected
     paths="$(cat)"
-    printf '%s\n' "$paths" | reads_repo && repo_read=1
     [ -f "$LintRegistry" ] || return 0
+    own=" $(printf '%s\n' "$paths" | own_code_modules | tr '\n' ' ')"
     while IFS=$'\t' read -r spec reads _; do
         case "$spec" in ''|'#'*) continue ;; esac
         # a GitOps reader runs only with the manifests in place, whichever of its reads selects it
@@ -875,15 +874,23 @@ lint_plan() {
         for word in "$@"; do
             case "$word" in
                 '*') selected=1 ;;
-                -) selected=0; break ;;
-                @repo) [ $repo_read = 1 ] && selected=1 ;;
-                @gitops) [ $repo_read = 1 ] && selected=1 ;;
+                -) selected=-1; break ;;
+                @repo) [ -n "$paths" ] && selected=1 ;;
+                @gitops|@code) ;;
+                # a leading `*/` is ONE directory, a module: `*/src/test/*` never reaches android/app/src/test/
+                '*/'*) while IFS= read -r path; do
+                       # shellcheck disable=SC2254 # the registry's pattern, matched as a pattern
+                       case "$path" in */*) case "${path#*/}" in ${word#\*/}) selected=1; break ;; esac ;; esac
+                   done <<< "$paths" ;;
                 *) while IFS= read -r path; do
                        # shellcheck disable=SC2254 # the registry's pattern, matched as a pattern
                        case "$path" in $word) selected=1; break ;; esac
                    done <<< "$paths" ;;
             esac
+            [ $selected = 1 ] && break
         done
+        # its own code: a test-side path its module's Test config compiles
+        [ $selected = 0 ] && case "$own " in *" ${spec%%:*} "*) selected=1 ;; esac
         [ $selected = 1 ] || continue
         [ "$reads" != '*' ] && skipped lintspecs && continue
         echo "$spec"
