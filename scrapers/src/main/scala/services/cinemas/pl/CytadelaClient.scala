@@ -12,6 +12,7 @@ import services.cinemas.common.ScraperParse
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -34,7 +35,7 @@ class CytadelaClient(http: HttpFetch
 
   private case class RawSlot(slug: String, title: String, dateTime: LocalDateTime, genres: Seq[String],
                              year: Option[Int], director: Seq[String], runtime: Option[Int],
-                             booking: Option[String], poster: Option[String])
+                             booking: Option[String], poster: Option[String], version: List[String])
 
   protected def siteUrl: String = BaseUrl
 
@@ -49,7 +50,7 @@ class CytadelaClient(http: HttpFetch
       else date.toSeq.flatMap(d => rowSlot(element, d))
     }
 
-    SlotsToMovies.fold(slots, _.slug, s => Showtime(s.dateTime, s.booking, None, Nil), order = SlotsToMovies.MovieOrder.asGrouped) { (slug, group, showtimes) =>
+    SlotsToMovies.fold(slots, _.slug, s => Showtime(s.dateTime, s.booking, None, s.version), order = SlotsToMovies.MovieOrder.asGrouped) { (slug, group, showtimes) =>
       val primary = group.head
       CinemaMovie(
         movie     = Movie(title = primary.title, runtimeMinutes = primary.runtime, releaseYear = primary.year, genres = primary.genres),
@@ -94,13 +95,16 @@ class CytadelaClient(http: HttpFetch
                      .map(tools.TextNormalization.titleCaseIfAllLower)
       val spans  = item.select("span.text-with-sections-movies__item__content-text").asScala.toSeq.map(_.text.trim)
       val year   = spans.flatMap(x => """(?i)rok produkcji:\s*(\d{4})""".r.findFirstMatchIn(x).map(_.group(1).toInt)).headOption
-      val directory    = spans.flatMap(x => """(?i)reżyseria:\s*(.+)$""".r.findFirstMatchIn(x).map(_.group(1).trim)).headOption
-                     .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-      val rt     = spans.flatMap(x => """(?i)czas:\s*(\d+)\s*min""".r.findFirstMatchIn(x).map(_.group(1).toInt)).headOption
+      val director = spans.flatMap(x => """(?i)reżyseria:\s*(.+)$""".r.findFirstMatchIn(x).map(_.group(1).trim)).headOption
+                     .toSeq.flatMap(ScraperParse.commaItems)
+      val runtime = spans.flatMap(x => """(?i)czas:\s*(\d+)\s*min""".r.findFirstMatchIn(x).map(_.group(1).toInt)).headOption
       val booking = Option(item.selectFirst("a.repertoire-item__container__button--dark[href]")).map(_.attr("href")).filter(_.nonEmpty)
       val poster  = Option(item.selectFirst("img.repertoire-item__image[src]")).map(_.attr("src")).filter(_.nonEmpty)
                       .map(ScraperParse.onSite(BaseUrl))
-      RawSlot(s, t, date.atTime(tm), genres, year, directory, rt, booking, poster)
+      // The row's language badge ("dubbing", "napisy", "polski lektor"; "oryginalny" names none), which the title never repeats.
+      val version = item.select("li.repertoire-item__info__item").asScala.toSeq
+                      .flatMap(badge => FormatTags.formatTokensIn(badge.text)).distinct.toList
+      RawSlot(s, t, date.atTime(tm), genres, year, director, runtime, booking, poster, version)
     }
   }
 }

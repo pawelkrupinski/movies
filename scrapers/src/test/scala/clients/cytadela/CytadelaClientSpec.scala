@@ -28,8 +28,20 @@ class CytadelaClientSpec extends AnyFlatSpec with Matchers {
     m.movie.runtimeMinutes shouldBe Some(45)
     m.movie.releaseYear    shouldBe Some(2026)
     m.movie.genres         shouldBe Seq("Animacja")
+    m.director             shouldBe Seq("Marta Stróżycka")
     m.showtimes.head shouldBe
-      Showtime(LocalDateTime.of(2026, 6, 6, 11, 0), Some("https://sklep.muzhp.pl/rezerwacja/rezerwacja/numerowane.html?id=17404&idt=98dd73275f980753c878e6a513e22226"), None, Nil)
+      Showtime(LocalDateTime.of(2026, 6, 6, 11, 0), Some("https://sklep.muzhp.pl/rezerwacja/rezerwacja/numerowane.html?id=17404&idt=98dd73275f980753c878e6a513e22226"), None, List("DUB"))
+  }
+
+  // Each row badges its language version ("dubbing", "napisy", "polski lektor", "oryginalny") in its own
+  // `li.repertoire-item__info__item`, which the title never repeats; it was not read, so no Cytadela
+  // screening said whether it was dubbed or subtitled.
+  it should "read each row's language version off its info badge" in {
+    def formats(title: String) = byTitle(title).showtimes.map(_.format).distinct
+    formats("Pucio")                                          shouldBe Seq(List("DUB"))
+    formats("Amelia")                                         shouldBe Seq(List("NAP"))
+    formats("Niesamowite przygody skarpetek 3. Ale kosmos!")  shouldBe Seq(List("LEK"))
+    formats("Historanki z Maluchem")                          shouldBe Seq(Nil) // "oryginalny": the original, no badge
   }
 
   // Regression: the description tails into an inline "♦ Bilety: … / ◊ sprawdź
