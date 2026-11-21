@@ -343,6 +343,13 @@ rises in the move. `scripts/hotspots` (a report, not a gate; monthly as the `qua
 assets) ranks sources by 90-day relative churn × cognitive complexity and names change-coupled pairs across packages.
 A lane's report pastes `scripts/ratchet-diff <base>..<head>` (every changed row, fell / rose / new, `--measure` for
 unrecorded falls), never hand-written numbers; a split is checked with `scripts/coupling-report --check-split <X> <piece>...`.
+**The JS/TS quality ratchet** (the owner, 2026-11-21; pre-push `jsquality`, ~2-3 s) holds the production JS/TS
+(`web/src/main/assets/js/`, `infra/version-dashboard/src/`: `scripts/js-quality/ratchet-areas.tsv`) to
+`test/resources/js-quality-baseline.tsv` on the same limits -- cognitive / cyclomatic 10, inner defs 2, function 50 lines,
+file 500, clone sets of 50+ tokens, fan-out 9, directory D 0.20, no module or directory cycle -- each kind under the
+Scala ratchet's trailer (`Complexity:`, `Length:`, `Duplication:`, `Coupling:`); `scripts/js-quality-report --update`
+records falls, and `scripts/ratchet-diff` lists its rows as `js <kind>`. Tests, page tests, Playwright and scripts are
+reported (`scripts/js-quality-report`), never gated. No rename credit: a moved file's rows are new rows.
 **The naming lint** (`scripts/ci/naming_lint.py`, the same step; the owner's "names must match behaviour", 2026-11-19):
 two top-level types of one package named with the same words in another order (`PruneSweep` / `SweepPrune`) refuse the
 push -- rename one after what makes it distinct (a pair mid-rename sits in its `ALLOWED_PERMUTATIONS` with an owner); a

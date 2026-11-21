@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # THE RATCHET DIFF (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs --
-# complexity (cognitive, cyclomatic, inner-defs), length (method, file), duplication, fan-out, package D, cycles -- as a
+# complexity (cognitive, cyclomatic, inner-defs), length (method, file), duplication, fan-out, package D, cycles, and the
+# JS/TS ratchet's rows (`js <kind>`, test/resources/js-quality-baseline.tsv) -- as a
 # before -> after table marked fell / rose / new / removed / moved, then per metric the totals and how many rows are
 # still over the limit. A lane's report pastes this, never numbers written by hand.
 #
@@ -8,7 +9,8 @@
 #   scripts/ratchet-diff <base>                  the same, <head> HEAD
 #   scripts/ratchet-diff --tsv <base>..<head>    the same rows as TSV
 #   scripts/ratchet-diff --measure <base>        the head side measured from this WORKING TREE (scripts/quality-report
-#                                                and scripts/coupling-report --out, through sbt-warm) instead of its
+#                                                and scripts/coupling-report --out, through sbt-warm, and
+#                                                scripts/js-quality-report's production areas) instead of its
 #                                                committed baselines: a fall nobody recorded with --update shows too
 #                                                (run this checkout's own copy: another's measures its tree)
 #
@@ -20,7 +22,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --measure) measure=1 ;;
         --tsv) format=(--tsv) ;;
-        -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*) echo "ratchet-diff: unknown argument $1" >&2; exit 2 ;;
         *) [ -z "$range" ] || { echo "ratchet-diff: one range" >&2; exit 2; }; range="$1" ;;
     esac
@@ -42,10 +44,12 @@ if [ -n "$measure" ]; then
     trap 'rm -rf "$work"' EXIT
     "$root/scripts/quality-report" --out "$work/quality" > "$work/quality.log" 2>&1 || true
     "$root/scripts/coupling-report" --out "$work/coupling" > "$work/coupling.log" 2>&1 || true
+    "$root/scripts/js-quality-report" --areas "$root/scripts/js-quality/ratchet-areas.tsv" --out "$work/js" > "$work/js.log" 2>&1 || true
     for f in quality coupling; do
         [ -s "$work/$f/rows.tsv" ] || { tail -20 "$work/$f.log" >&2; echo "ratchet-diff: the $f measure wrote no rows" >&2; exit 2; }
     done
-    args+=(--quality-rows "$work/quality/rows.tsv" --coupling-rows "$work/coupling/rows.tsv")
+    [ -s "$work/js/over-limit.tsv" ] || { tail -20 "$work/js.log" >&2; echo "ratchet-diff: the js measure wrote no rows" >&2; exit 2; }
+    args+=(--quality-rows "$work/quality/rows.tsv" --coupling-rows "$work/coupling/rows.tsv" --js-rows "$work/js/over-limit.tsv")
 elif [ -n "$head" ]; then
     args+=(--head "$head")
 fi

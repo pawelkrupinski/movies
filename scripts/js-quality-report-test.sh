@@ -79,23 +79,30 @@ printf '%s\n' "$cloned" > "$fixture/app/feature/clone-b.js"
 printf 'export interface Shape { side: number }\nexport type Id = string;\n' > "$fixture/app/types/shape.ts"
 for i in $(seq 1 10); do printf 'export const leaf%d = %d;\n' "$i" "$i" > "$fixture/hub/leaf$i.mjs"; done
 { for i in $(seq 1 10); do printf "import { leaf%d } from './leaf%d.mjs';\n" "$i" "$i"; done; printf 'export const all = [leaf1];\n'; } > "$fixture/hub/hub.mjs"
+{ for outer in one two; do
+    printf 'export function %s() {\n  function twin() {\n' "$outer"; for i in $(seq 1 55); do printf '    // %s %d\n' "$outer" "$i"; done
+    printf '  }\n  return twin;\n}\n'; done; } > "$fixture/app/feature/twins.js"
 printf '/* global second */  // b.js\n/* exported first */\nfunction first() { return second(); }\n' > "$fixture/web/shared/a.js"
 printf '/* global first, FROM_TEMPLATE */\n/* exported second */\nfunction second() { return first() + FROM_TEMPLATE; }\n' > "$fixture/web/shared/b.js"
 
 out="$("$REPO_ROOT/scripts/js-quality-report" --root "$fixture" --out "$work/out" \
   --area app=app --area 'web:globals=web' --area hub=hub 2>&1)"; status=$?
 check "the report runs and prints its summary table" "0 1" "$status $(grep -c '^| app (imports) |' <<< "$out")"
-row() { grep -E "^$1	" "$work/out/over-limit.tsv" | cut -f2,3 | sed -E 's/:[0-9]+:/:/' | sort | tr '\n' ';'; }
+row() { grep -E "^$1	" "$work/out/over-limit.tsv" | cut -f2,3 | LC_ALL=C sort | tr '\n' ';'; }
 check "cognitive complexity over 10" "app/core/c.js:complicated	18;" "$(row cognitive)"
 check "...cyclomatic" "app/core/c.js:complicated	13;" "$(row cyclomatic)"
 check "inner defs: the three named ones, not the two callbacks" "app/core/c.js:holder	3;" "$(row inner-defs)"
-check "a function over 50 lines" "app/core/c.js:long	57;" "$(row method-lines)"
+check "a function over 50 lines, keyed by file and name (no line: an edit above never re-keys it), a later same-named one #2" "app/core/c.js:long	57;app/feature/twins.js:twin	57;app/feature/twins.js:twin#2	57;" \
+  "$(row method-lines | sed -E 's/app.feature.twins.js:(one|two)	[0-9]+;//g')"
+check "every limit is a row of its own, the ratchet's to read" \
+  "clone-tokens	50;cognitive	10;copies	0;cycle	0;cyclomatic	10;distance	0.2;fanout	9;file-lines	500;inner-defs	2;method-lines	50;" \
+  "$(row limit)"
 check "a file over 500 lines" "app/core/big.js	600;" "$(row file-lines)"
-check "the one clone group, the files importing alike none" "app/core/clone-a.js app/feature/clone-b.js	" \
-  "$(row clone | sed -E 's/	[0-9]+;$/	/')"
+check "the one clone group (its files joined by |, its copies), the files importing alike none" \
+  "app/core/clone-a.js|app/feature/clone-b.js	2;" "$(row copies)"
 check "a module importing 10 modules is over the fan-out of 9" "hub/hub.mjs	10;" "$(row fanout)"
 check "the module cycles (imports and globals) and the directory cycle" \
-  "app/core app/feature	2;app/core/c.js app/feature/f.js	2;web/shared/a.js web/shared/b.js	2;" "$(row cycle)"
+  "app/core/c.js|app/feature/f.js	2;app/core|app/feature	2;web/shared/a.js|web/shared/b.js	2;" "$(row cycle)"
 check "the globals graph counts a template-only name apart" \
   "module	web	web/shared/b.js	fan-out=1 template-globals=1" "$(grep 'web/shared/b.js' "$work/out/coupling.tsv")"
 check "a type-only TypeScript module is abstract (A = 1 in its directory)" "A=1.00" \

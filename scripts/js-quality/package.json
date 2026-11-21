@@ -2,7 +2,7 @@
   "name": "kinowo-js-quality",
   "version": "1.0.0",
   "private": true,
-  "description": "The tools behind scripts/js-quality-report (a report, not a gate): ESLint with eslint-plugin-sonarjs and typescript-eslint for complexity and length, jscpd for duplication, dependency-cruiser for module coupling. Kept apart from the root package.json so the pre-push ESLint install stays lean.",
+  "description": "The tools behind scripts/js-quality-report (a report over every area, and the pre-push `jsquality` ratchet over the production ones): ESLint with eslint-plugin-sonarjs and typescript-eslint for complexity and length, jscpd for duplication, dependency-cruiser for module coupling. Kept apart from the root package.json so the pre-push ESLint install stays lean.",
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "dependency-cruiser": "18.8.0",

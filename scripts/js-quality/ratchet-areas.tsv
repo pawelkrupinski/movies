@@ -1,0 +1,5 @@
+# THE JS/TS QUALITY RATCHET'S AREAS (scripts/js-quality-report --check / --update; scripts/ci/js_quality_ratchet.py):
+# the production JS/TS only, areas.tsv's shape. Tests, page tests, Playwright and scripts are measured by the report
+# (areas.tsv), not gated: a row of theirs never fails a push.
+web-js	globals	web/src/main/assets/js
+version-dashboard	imports	infra/version-dashboard/src

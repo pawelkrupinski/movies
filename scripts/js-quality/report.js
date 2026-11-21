@@ -1,12 +1,13 @@
 // THE JS/TS QUALITY REPORT: the Scala ratchets' measures (CLAUDE.md, "Code quality ratchets" and "Coupling is
-// reviewed") taken over a checkout's JavaScript and TypeScript, per AREA. A report, not a gate. Run it through
+// reviewed") taken over a checkout's JavaScript and TypeScript, per AREA. Every area is reported; the production ones
+// are also gated (scripts/js-quality-report --check, THE JS/TS QUALITY RATCHET). Run it through
 // scripts/js-quality-report, which installs the tools first; its header says what each measure is.
 //
 //   node report.js --root DIR [--areas FILE | --area NAME[:globals]=PATH[,PATH...] ...] --out DIR
 //
 // Writes report.md (the markdown), functions.tsv (every function's measures), coupling.tsv (every module's fan-out,
-// every directory's metrics) and over-limit.tsv (`kind<TAB>key<TAB>value`, one row for each item over a limit: the
-// rows a ratchet's baseline would freeze) into --out.
+// every directory's metrics) and over-limit.tsv (`kind<TAB>key<TAB>value`: the limits, then one row for each item over a limit -- the
+// rows scripts/ci/js_quality_ratchet.py holds to its baseline) into --out.
 'use strict';
 
 const fs = require('node:fs');
@@ -153,24 +154,52 @@ function markdown(areas, summaries, functions, files, clones, couplings) {
   ].join('\n');
 }
 
+// The ratchet's limits (scripts/ci/js_quality_ratchet.py reads them from the rows, as the Scala ratchets do).
+const LimitRows = [['cognitive', Limits.cognitive], ['cyclomatic', Limits.cyclomatic], ['inner-defs', Limits.innerDefs],
+  ['method-lines', Limits.lines], ['file-lines', Limits.fileLines], ['copies', 0], ['clone-tokens', MinTokens],
+  ['fanout', Limits.fanOut], ['distance', Limits.distance], ['cycle', 0]];
+
+// A function's ratchet key: `<file>:<name>`, no line (an edit above it must not re-key it), `#2`, `#3`... for the later
+// functions of one file sharing a name (two `anonymous` callbacks), in line order.
+function functionKeys(functions) {
+  const seen = new Map();
+  const keys = new Map();
+  for (const row of [...functions].sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line)) {
+    const base = `${row.file}:${row.name}`;
+    const n = (seen.get(base) || 0) + 1;
+    seen.set(base, n);
+    keys.set(row, n === 1 ? base : `${base}#${n}`);
+  }
+  return keys;
+}
+
+// The rows a ratchet freezes, `kind<TAB>key<TAB>value`: the limits, then every item over one. A key naming several files
+// joins them with `|`: a clone group's files (sorted, each once; the value the copies of every group spanning exactly
+// them), a cycle's members.
 function overLimitRows(functions, files, clones, couplings) {
-  const rows = [];
+  const rows = LimitRows.map(([kind, value]) => ['limit', kind, value]);
   const push = (kind, key, value, limit) => { if (value > limit) rows.push([kind, key, value]); };
+  const keys = functionKeys(functions);
   for (const row of functions) {
-    const key = `${row.file}:${row.line}:${row.name}`;
+    const key = keys.get(row);
     push('cognitive', key, row.cognitive, Limits.cognitive);
     push('cyclomatic', key, row.cyclomatic, Limits.cyclomatic);
     push('inner-defs', key, row.innerDefs, Limits.innerDefs);
     push('method-lines', key, row.lines, Limits.lines);
   }
   for (const file of files) push('file-lines', file.file, file.lines, Limits.fileLines);
-  for (const group of clones) rows.push(['clone', group.copies.map((c) => c.file).join(' '), group.tokens]);
+  const copies = new Map();
+  for (const group of clones) {
+    const key = [...new Set(group.copies.map((c) => c.file))].sort().join('|');
+    copies.set(key, (copies.get(key) || 0) + group.copies.length);
+  }
+  for (const [key, value] of copies) rows.push(['copies', key, value]);
   for (const { coupling } of couplings) {
     for (const row of coupling.modules) push('fanout', row.file, row.fanOut, Limits.fanOut);
     for (const row of coupling.packages.filter(isDistanceMeasured)) push('distance', row.dir, Number(row.distance.toFixed(2)), Limits.distance);
-    for (const members of [...coupling.moduleCycles, ...coupling.packageCycles]) rows.push(['cycle', members.join(' '), members.length]);
+    for (const members of [...coupling.moduleCycles, ...coupling.packageCycles]) rows.push(['cycle', members.join('|'), members.length]);
   }
-  return rows.map((row) => row.join('\t')).join('\n') + (rows.length ? '\n' : '');
+  return rows.map((row) => row.join('\t')).join('\n') + '\n';
 }
 
 function couplingOf(area, root, areaFiles, texts, globalsProviders) {

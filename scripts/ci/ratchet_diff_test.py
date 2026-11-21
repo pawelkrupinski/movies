@@ -21,6 +21,8 @@ COMPLEXITY = "test/resources/complexity-baseline.tsv"
 LENGTH = "test/resources/length-baseline.tsv"
 DUPLICATION = "test/resources/duplication-baseline.tsv"
 COUPLING = "test/resources/coupling-baseline.tsv"
+JS = "test/resources/js-quality-baseline.tsv"
+JS_LIMITS = "limit\tcognitive\t10\nlimit\tdistance\t0.2\n"
 OLD_SRC = "web/src/main/scala/services/Old.scala"
 NEW_SRC = "web/src/main/scala/services/moved/Old.scala"
 SOURCE = "".join(f"  def line{i}(x: Int): Int = x * {i} + {i * i} // a body git can follow\n" for i in range(30))
@@ -41,6 +43,7 @@ BASE_FILES = {
     DUPLICATION: "limit\tcopies\t0\n",
     COUPLING: coupling("fanout\tservices.web.Hub\t20", "fanout\tservices.web.Shrunk\t15", "distance\tservices.web\t30"),
     OLD_SRC: "package services\n\nobject Old {\n" + SOURCE + "}\n",
+    JS: JS_LIMITS + "cognitive\tweb/src/main/assets/js/a.js:render\t15\ndistance\tinfra/version-dashboard/src\t0.85\n",
 }
 HEAD_FILES = {
     COMPLEXITY: complexity(f"cognitive\t{NEW_SRC}:Old.run\t30", "cognitive\tweb/src/main/scala/A.scala:A.fall\t18",
@@ -50,6 +53,7 @@ HEAD_FILES = {
                        "cycle-edge\tservices.a->services.b\t2"),
     OLD_SRC: None,
     NEW_SRC: "package services.moved\n\nobject Old {\n" + SOURCE + "}\n",
+    JS: JS_LIMITS + "cognitive\tweb/src/main/assets/js/a.js:render\t12\ndistance\tinfra/version-dashboard/src\t0.9\n",
 }
 
 
@@ -102,6 +106,8 @@ class RatchetDiffTest(unittest.TestCase):
         self.assertEqual(["30", "31", "rose"], rows[("distance", "services.web")])
         self.assertEqual(["-", "2", "new"], rows[("cycle-edge", "services.a->services.b")])
         self.assertNotIn(("method-lines", "web/src/main/scala/A.scala:A.fall"), rows, "an unchanged row is not listed")
+        self.assertEqual(["15", "12", "fell"], rows[("js cognitive", "web/src/main/assets/js/a.js:render")])
+        self.assertEqual(["0.85", "0.9", "rose"], rows[("js distance", "infra/version-dashboard/src")])
 
     def test_totals_count_rows_still_over_the_limit(self):
         out = self.run_tool("--head", self.head, "--tsv")
@@ -124,6 +130,15 @@ class RatchetDiffTest(unittest.TestCase):
         out = self.run_tool("--coupling-rows", measured, "--tsv")
         self.assertIn("fanout\tservices.web.Shrunk\t15\t10\tfell", out)
         self.assertNotIn("cycle-edge\tservices.a->services.b", out)
+
+    def test_measured_js_rows_hold_only_the_production_ones(self):
+        measured = os.path.join(self.dir.name, "over-limit.tsv")
+        with open(measured, "w") as f:
+            f.write(JS_LIMITS + "cognitive\tweb/src/main/assets/js/a.js:render\t11\n"
+                    "cognitive\tpage-tests-playwright/tests/helpers.ts:firstVisibleCardIn\t11\n")
+        out = self.run_tool("--js-rows", measured, "--tsv")
+        self.assertIn("js cognitive\tweb/src/main/assets/js/a.js:render\t15\t11\tfell", out)
+        self.assertNotIn("page-tests-playwright", out)
 
     def test_the_wrapper_takes_a_range(self):
         done = subprocess.run(["bash", WRAPPER, "--tsv", f"{self.base}..{self.head}"], cwd=self.repo, env=self.env,

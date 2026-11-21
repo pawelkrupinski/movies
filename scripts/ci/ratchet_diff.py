@@ -4,12 +4,14 @@
 # ones. Read from the committed baselines at each ref (cheap), or, with --measure, the head side from fresh measures
 # of the working tree (an agent may have skipped --update on a fall).
 #
-#   ratchet_diff.py --base A [--head B] [--quality-rows F] [--coupling-rows F] [--tsv]
-#       A, B: refs (B defaults to HEAD). --quality-rows / --coupling-rows: the head side from those measured rows
-#       (quality.QualityReport's rows.tsv, couplingReport's rows.tsv) instead of B's baselines -- what --measure passes.
+#   ratchet_diff.py --base A [--head B] [--quality-rows F] [--coupling-rows F] [--js-rows F] [--tsv]
+#       A, B: refs (B defaults to HEAD). --quality-rows / --coupling-rows / --js-rows: the head side from those measured
+#       rows (quality.QualityReport's rows.tsv, couplingReport's rows.tsv, js-quality-report's over-limit.tsv) instead of
+#       B's baselines -- what --measure passes.
 #
 # The metrics: cognitive, cyclomatic, inner-defs (complexity-baseline.tsv); method-lines, file-lines (length-baseline.tsv);
-# copies (duplication-baseline.tsv); fanout, distance, cycle-edge (coupling-baseline.tsv). Each changed row is marked
+# copies (duplication-baseline.tsv); fanout, distance, cycle-edge (coupling-baseline.tsv); and the JS/TS ratchet's, each
+# printed `js <kind>` (js-quality-baseline.tsv, scripts/ci/js_quality_ratchet.py: no move credit). Each changed row is marked
 #   fell      its value fell
 #   rose      its value rose (or it moved and rose)
 #   new       a newly frozen piece (a row past the limit that the base did not have)
@@ -27,6 +29,7 @@ from typing import Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import coupling_ratchet  # noqa: E402
+import js_quality_ratchet  # noqa: E402
 import quality_ratchet  # noqa: E402
 
 COUPLING = coupling_ratchet.BASELINE_PATH
@@ -34,7 +37,10 @@ COUPLING = coupling_ratchet.BASELINE_PATH
 METRICS: List[Tuple[str, str, str]] = [
     (kind, r.baseline, "quality") for name in ("complexity", "length", "duplication")
     for r in [quality_ratchet.RATCHETS[name]] for kind in r.kinds
-] + [("fanout", COUPLING, "coupling"), ("distance", COUPLING, "coupling"), ("cycle-edge", COUPLING, "coupling")]
+] + [("fanout", COUPLING, "coupling"), ("distance", COUPLING, "coupling"), ("cycle-edge", COUPLING, "coupling")] + [
+    (kind, js_quality_ratchet.BASELINE, "js") for kind in js_quality_ratchet.KINDS if kind != "clone-tokens"
+]
+JS_PREFIX = "js "  # a JS/TS metric's printed name: `js cognitive`, `js fanout` -- apart from the Scala rows of one kind
 LIMIT_ZERO = ("copies", "cycle-edge")  # every row of these is over the limit (a clone group, a cycle edge)
 
 Row = Tuple[str, str, Optional[int], Optional[int], str]  # metric, key, before, after, mark
@@ -100,25 +106,34 @@ def diff_metric(metric: str, family: str, before: Dict[str, int], after: Dict[st
     return out
 
 
-def rows_at(ref: str, path: str):
-    return quality_ratchet.parse(quality_ratchet.file_at(ref, path))
+def rows_at(ref: str, path: str, family: str = ""):
+    parse = js_quality_ratchet.parse if family == "js" else quality_ratchet.parse
+    return parse(quality_ratchet.file_at(ref, path))
 
 
-def collect(base: str, head: Optional[str], quality_rows: str = "", coupling_rows: str = ""):
+def collect(base: str, head: Optional[str], quality_rows: str = "", coupling_rows: str = "", js_rows: str = ""):
     """Every changed row, and per metric (rows, sum, over the limit) before and after."""
-    moves = RefRenames(renames(base, head if not (quality_rows or coupling_rows) else None))
+    moves = RefRenames(renames(base, head if not (quality_rows or coupling_rows or js_rows) else None))
     measured = {}
-    for family, path in (("quality", quality_rows), ("coupling", coupling_rows)):
+    for family, path in (("quality", quality_rows), ("coupling", coupling_rows), ("js", js_rows)):
         if path:
             with open(path) as f:
-                measured[family] = quality_ratchet.parse(f.read())
+                text = f.read()
+            measured[family] = js_quality_ratchet.parse(text) if family == "js" else quality_ratchet.parse(text)
+            if family == "js":  # the measure's rows of tests and scripts are reported, never frozen
+                production = js_quality_ratchet.production_paths()
+                measured[family] = {(k, key): v for (k, key), v in measured[family].items()
+                                    if k == "limit" or js_quality_ratchet.gated(key, production)}
     changed: List[Row] = []
     totals = []
     for metric, baseline, family in METRICS:
-        old = rows_at(base, baseline)
-        new = measured.get(family) if family in measured else rows_at(head or "HEAD", baseline)
+        old = rows_at(base, baseline, family)
+        new = measured.get(family) if family in measured else rows_at(head or "HEAD", baseline, family)
         before, after = coupling_ratchet.of_kind(old, metric), coupling_ratchet.of_kind(new, metric)
         rows = diff_metric(metric, family, before, after, moves)
+        if family == "js":
+            metric = JS_PREFIX + metric
+            rows = [(metric, *row[1:]) for row in rows]
         changed += rows
         over = lambda values, lim: sum(1 for v in values.values() if v > lim)
         marks = {m: sum(1 for r in rows if r[4] == m) for m in ("fell", "rose", "new", "removed (within the limit)", "moved")}
@@ -127,8 +142,10 @@ def collect(base: str, head: Optional[str], quality_rows: str = "", coupling_row
     return changed, totals
 
 
-def show(v: Optional[int]) -> str:
-    return "-" if v is None else str(v)
+def show(v) -> str:
+    if v is None:
+        return "-"
+    return str(int(v)) if v == int(v) else f"{round(v, 2):g}"
 
 
 def markdown(base: str, head: str, changed: List[Row], totals) -> str:
@@ -141,7 +158,7 @@ def markdown(base: str, head: str, changed: List[Row], totals) -> str:
     lines += ["", "| metric | limit | rows | sum | fell | rose | new | removed | moved | over the limit |",
               "|---|---:|---|---|---:|---:|---:|---:|---:|---|"]
     for metric, n0, n1, s0, s1, o0, o1, lim, marks in totals:
-        lines.append(f"| {metric} | {lim} | {n0} -> {n1} | {s0} -> {s1} | " + " | ".join(str(marks[m]) for m in
+        lines.append(f"| {metric} | {show(lim)} | {n0} -> {n1} | {show(s0)} -> {show(s1)} | " + " | ".join(str(marks[m]) for m in
                      ("fell", "rose", "new", "removed (within the limit)", "moved")) + f" | {o0} -> {o1} |")
     return "\n".join(lines) + "\n"
 
@@ -150,7 +167,7 @@ def tsv(changed: List[Row], totals) -> str:
     lines = ["# metric\trow\tbefore\tafter\tchange"]
     lines += [f"{m}\t{k}\t{show(a)}\t{show(b)}\t{mark}" for m, k, a, b, mark in changed]
     lines.append("# total\tmetric\trows-before\trows-after\tsum-before\tsum-after\tover-before\tover-after\tlimit")
-    lines += [f"total\t{m}\t{n0}\t{n1}\t{s0}\t{s1}\t{o0}\t{o1}\t{lim}" for m, n0, n1, s0, s1, o0, o1, lim, _ in totals]
+    lines += [f"total\t{m}\t{n0}\t{n1}\t{show(s0)}\t{show(s1)}\t{o0}\t{o1}\t{show(lim)}" for m, n0, n1, s0, s1, o0, o1, lim, _ in totals]
     return "\n".join(lines) + "\n"
 
 
@@ -160,12 +177,13 @@ def main(argv: List[str]) -> int:
     parser.add_argument("--head", default="")
     parser.add_argument("--quality-rows", default="")
     parser.add_argument("--coupling-rows", default="")
+    parser.add_argument("--js-rows", default="")
     parser.add_argument("--tsv", action="store_true")
     args = parser.parse_args(argv)
     try:
         head = args.head or "HEAD"
-        changed, totals = collect(args.base, head, args.quality_rows, args.coupling_rows)
-        shown_head = "the working tree (measured)" if args.quality_rows or args.coupling_rows else head
+        changed, totals = collect(args.base, head, args.quality_rows, args.coupling_rows, args.js_rows)
+        shown_head = "the working tree (measured)" if args.quality_rows or args.coupling_rows or args.js_rows else head
         sys.stdout.write(tsv(changed, totals) if args.tsv else markdown(args.base, shown_head, changed, totals))
         return 0
     except (OSError, ValueError, subprocess.CalledProcessError) as e:

@@ -10,10 +10,17 @@ printf '\033[36m▸\033[0m pre-push --plan\n'
 # plan <path>... -> the selected checks, space-separated
 plan() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --plan | tr '\n' ' ' | sed 's/ $//'; }
 
-check "production JS runs ESLint and the sbt check (no page area: the page tests run on Main, 2026-11-17)" "eslint sbt" "$(plan web/src/main/assets/js/shared/city.js)"
+check "production JS runs ESLint, the JS/TS quality ratchet and the sbt check (no page area: the page tests run on Main, 2026-11-17)" "eslint jsquality sbt" "$(plan web/src/main/assets/js/shared/city.js)"
 check "a page spec's JS runs ESLint and the sbt check" "eslint sbt" "$(plan web/src/page/resources/landing/hold-picker-panes.js)"
 check "the ESLint config runs ESLint" "eslint" "$(plan eslint.config.js)"
 check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/storage-access-in-try.js)"
+check "a version-dashboard source runs the JS/TS quality ratchet" "jsquality" "$(plan infra/version-dashboard/src/server.ts)"
+check "...and so do its baseline and the measure" "jsquality" "$(plan test/resources/js-quality-baseline.tsv)"
+check "a version-dashboard test is reported, not gated: no check" "" "$(plan infra/version-dashboard/test/mobile/view.test.ts)"
+check "a page spec's JS is not gated by the JS/TS quality ratchet" "eslint sbt" "$(plan web/src/page/resources/listing/grid.js)"
+check "--js-quality-plan keeps the production JS/TS alone" "web/src/main/assets/js/i18n.js infra/version-dashboard/src/exec.ts" \
+  "$(printf '%s\n' web/src/main/assets/js/i18n.js page-tests-playwright/tests/a.spec.ts infra/version-dashboard/src/exec.ts \
+     infra/version-dashboard/test/a.test.ts | "$REPO_ROOT/scripts/hooks/pre-push" --js-quality-plan | tr '\n' ' ' | sed 's/ $//')"
 # ...and the sbt check: CinemaRosterAuditSpec reads data/pl/venues.json (its lint-registry row names the file)
 check "a roster source runs the generated-artefact drift check, the roster generators' self-tests, and its reader spec" "drift scripttests sbt" "$(plan data/pl/venues.json)"
 check "a model file runs the drift check AND the sbt lints, and the identity area (narrowed to the specs reading it)" "drift sbt identity" "$(plan common/src/main/scala/models/Cinema.scala)"
@@ -75,7 +82,7 @@ check "a mobile or fleet script runs the self-tests" "scripttests shellcheck|scr
   "$(plan android/scripts/store-graphics.sh)|$(plan ios/scripts/x.sh)|$(plan infra/bin/x)"
 check "a roster generator runs the drift check and its self-tests" "drift scripttests" "$(plan data/uk/scripts/build_pages.py)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
-check "checks come out once each, in run order" "newchecks schedules driftguards eslint snapshot scripttests actionlint shellcheck sbt" \
+check "checks come out once each, in run order" "newchecks schedules driftguards eslint jsquality snapshot scripttests actionlint shellcheck sbt" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
 
 check "a judgements change runs the judgements lint, and the identity area's tests" "judgements driftguards sbt identity" "$(plan test/resources/fixtures/identity-judgements.tsv)"
@@ -104,7 +111,7 @@ check "a template runs the sbt check (web compiles it, PageSnapshotSpec reads it
 check "a stylesheet runs it" "sbt" "$(plan web/src/main/assets/css/main.css)"
 check "a Playwright spec runs ESLint alone" "eslint" "$(plan page-tests-playwright/tests/card-tap.spec.ts)"
 check "a page spec runs the sbt check" "sbt" "$(plan web/src/page/scala/views/PageJsBehaviourSpec.scala)"
-check "an identity and a page change run the identity area alone" "driftguards eslint sbt identity" \
+check "an identity and a page change run the identity area alone" "driftguards eslint jsquality sbt identity" \
   "$(plan identity/src/main/scala/services/identity/R.scala web/src/main/assets/js/a.js)"
 check "a web controller is neither area: the basic sbt check only" "sbt" "$(plan web/src/main/scala/controllers/MovieController.scala)"
 check "a worker source outside identity is neither area (the drift guards: a drift fix may be worker code)" "driftguards sbt" "$(plan worker/src/main/scala/services/movies/A.scala)"

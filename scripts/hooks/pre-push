@@ -7,6 +7,16 @@
 # under a minute on a warm build:
 #
 #   `eslint`      web/src/main/assets/js/**, web/src/page/resources/**/*.js, eslint.config.js, eslint-rules/** (the repo's own rules), package*.json + page-tests-playwright/tests/*.ts + lint-flake-patterns*.mjs (the page-spec flake lint)
+#   `jsquality`   THE JS/TS QUALITY RATCHET (CLAUDE.md, "Code quality ratchets"), on a change to the production JS/TS
+#                 (web/src/main/assets/js/**, infra/version-dashboard/src/**), its baseline or the measure (js_quality_paths):
+#                 scripts/js-quality-report --check measures it (scripts/js-quality/ratchet-areas.tsv; ESLint + sonarjs,
+#                 jscpd, dependency-cruiser and the /* global */ graph, ~2-3 s) and scripts/ci/js_quality_ratchet.py holds
+#                 it to test/resources/js-quality-baseline.tsv -- no new function, file, clone set, module or cycle past a
+#                 limit (cognitive / cyclomatic 10, inner defs 2, function 50 lines, file 500, clones 50 tokens, fan-out 9,
+#                 D 0.20, no cycle), no frozen row rising -- and the baseline grows only in a commit carrying the kind's
+#                 trailer (`Complexity:`, `Length:`, `Duplication:`, `Coupling: <why>`; scripts/js-quality-report --update
+#                 writes it; falls need none). Tests, page tests, Playwright and scripts are reported, never gated: they
+#                 select no check. Its tools: `npm ci` in scripts/js-quality once per worktree (npm or node missing BLOCKS)
 #   `drift`       the generated roster chain (scripts/ci/generated-artefacts-drift.sh)
 #   `snapshot`    the read-model snapshot's input stamp (scripts/read-model-snapshot-inputs.sh)
 #   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, the two Grafana metric-coverage
@@ -377,6 +387,13 @@ quality_paths() { # stdin: changed paths -> the ones that select the quality ste
     grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.scala|quality/src/main/.*|project/Dependencies\.scala|test/resources/(complexity|length|duplication)-baseline\.tsv|scripts/ci/quality_ratchet\.py|scripts/ci/naming_lint\.py)$' || true
 }
 
+# THE JS/TS QUALITY RATCHET'S PATHS (the header's `jsquality`; `--js-quality-plan` prints them): the production JS/TS the
+# ratchet measures (scripts/js-quality/ratchet-areas.tsv), its baseline, the ratchet and the measure -- no test, page
+# test, Playwright spec or script outside the measure: those are reported, not gated
+js_quality_paths() { # stdin: changed paths -> the ones that select the jsquality check
+    grep -E '^(web/src/main/assets/js/.*|infra/version-dashboard/src/.*|test/resources/js-quality-baseline\.tsv|scripts/ci/js_quality_ratchet\.py|scripts/ci/trailers\.py|scripts/js-quality/.*|scripts/js-quality-report)$' || true
+}
+
 # ── The local tests: basic, and per AREA ─────────────────────────────────────────────────────────
 # NO PRE-MERGE CI (the owner, 2026-10-26): "only run the basic tests before merging and merge on green (main not green
 # branch); if some specific area (browser / page, identity) is touched, run tests specific to that locally (unless it
@@ -463,7 +480,7 @@ is_drift_path() { # <path>
 # ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
-    local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 metricalerts=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 path
+    local eslint=0 jsquality=0 drift=0 snapshot=0 sbt=0 dashboards=0 metricalerts=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 path
     local identity=0 allowlists=0 driftguards=0 newchecks=0 schedules=0 flipbacklog=0 stampcarry=0
     local script_test_reads glob
     # What a repo-reading self-test declares it reads (run-script-tests' READS): a workflow, a .py or a spec edit runs
@@ -475,6 +492,11 @@ plan() {
     local all_paths=""
     while IFS= read -r path; do
         all_paths+="$path"$'\n'
+        # js_quality_paths' set, as a pattern (no grep a path)
+        case "$path" in
+            web/src/main/assets/js/*|infra/version-dashboard/src/*|test/resources/js-quality-baseline.tsv|\
+            scripts/ci/js_quality_ratchet.py|scripts/ci/trailers.py|scripts/js-quality/*|scripts/js-quality-report) jsquality=1 ;;
+        esac
         case "$path" in
             web/src/main/assets/js/*.js|web/src/page/resources/*.js|eslint.config.js|eslint-rules/*.js|package.json|package-lock.json|page-tests-playwright/tests/*.ts|page-tests-playwright/lint-flake-patterns*.mjs) eslint=1 ;;
         esac
@@ -571,6 +593,7 @@ plan() {
     [ $schedules = 1 ] && echo schedules
     [ $driftguards = 1 ] && echo driftguards
     [ $eslint = 1 ] && echo eslint
+    [ $jsquality = 1 ] && echo jsquality
     [ $drift = 1 ] && echo drift
     [ $snapshot = 1 ] && echo snapshot
     [ $dashboards = 1 ] && echo dashboards
@@ -936,6 +959,7 @@ case "${1:-}" in
     --compile-plan) compile_plan; exit 0 ;;
     --coupling-plan) coupling_paths; exit 0 ;;
     --quality-plan) quality_paths; exit 0 ;;
+    --js-quality-plan) js_quality_paths; exit 0 ;;
     --identity-change) identity_change; exit 0 ;;
     --unit-plan)    unit_plan; exit 0 ;;
     --unit-universe) unit_universe; exit 0 ;;
@@ -1566,6 +1590,20 @@ check_eslint() {
         npm ci --no-audit --no-fund --silent >/dev/null || return 1
     fi
     npm run --silent lint
+}
+
+check_jsquality() {
+    need jsquality node "install Node.js (brew install node)" || return 1
+    need jsquality python3 "install Python 3 (brew install python)" || return 1
+    local tools=scripts/js-quality args=() r
+    if [ ! -x "$tools/node_modules/.bin/eslint" ] || [ "$tools/package-lock.json" -nt "$tools/node_modules/.package-lock.json" ]; then
+        need jsquality npm "install Node.js with npm (brew install node)" || return 1
+        log "installing the JS/TS quality tools (npm ci in $tools, once per worktree)"
+        (cd "$tools" && npm ci --no-audit --no-fund --silent) > "$tmp/jsquality-npm.log" 2>&1 \
+            || { tail -20 "$tmp/jsquality-npm.log" >&2; return 1; }
+    fi
+    for r in "${ranges[@]}"; do args+=(--range "$r"); done
+    scripts/js-quality-report --check ${args[@]+"${args[@]}"} >&2
 }
 
 check_drift() {
