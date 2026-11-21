@@ -37,4 +37,17 @@ class PromKepaClientSpec extends AnyFlatSpec with Matchers {
         None, Nil
       )
   }
+
+  it should "read director, country, year and runtime off the event's metadata line" in {
+    val m = byTitle("Wolność po włosku")
+    m.director                                    shouldBe Seq("Mario Martone")
+    m.movie.countries                             shouldBe Seq("Francja", "Włochy")
+    (m.movie.releaseYear, m.movie.runtimeMinutes) shouldBe (Some(2025), Some(115))
+  }
+
+  // "reż. Pete Ohs, Polska USA 2025, 71’": a co-production spaced, not comma-separated, read as one
+  // country "Polska USA" that no country dictionary knows.
+  it should "split co-producing countries the line separates by a space alone" in {
+    byTitle("Erupcja").movie.countries shouldBe Seq("Polska", "USA")
+  }
 }

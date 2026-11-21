@@ -65,6 +65,21 @@ object PromKepaClient {
                            year: Option[Int], countries: Seq[String], director: Seq[String],
                            synopsis: Option[String], poster: Option[String])
 
+  /** "Francja, Włochy", "Polska/USA" and the spaced "Polska USA": each piece that is no country itself but a run of
+   *  them ("Polska USA", "Wielka Brytania Irlandia") is split into those; anything else stays as written. */
+  private def countriesIn(text: String): Seq[String] =
+    text.split("[,/]").toSeq.map(_.trim).filter(_.nonEmpty).flatMap { piece =>
+      if (CountryNames.isCountry(piece)) Seq(piece) else countryRun(piece.split("\\s+").toList).getOrElse(Seq(piece))
+    }
+
+  /** `words` read as consecutive country names, the longest name first at each step; `None` when they are not. */
+  private def countryRun(words: List[String]): Option[List[String]] =
+    if (words.isEmpty) Some(Nil)
+    else (words.length to 1 by -1).iterator.flatMap { length =>
+      val name = words.take(length).mkString(" ")
+      if (CountryNames.isCountry(name)) countryRun(words.drop(length)).map(name :: _) else None
+    }.nextOption()
+
   private def parseEvent(html: String, slug: String): Option[Event] = {
     val document   = Jsoup.parse(html)
     val title = Option(document.selectFirst("h3.event_title")).map(_.text.trim)
@@ -74,15 +89,17 @@ object PromKepaClient {
       val dt = TimelinePat.findFirstMatchIn(Option(document.selectFirst("p.timeline")).map(_.text).getOrElse(""))
         .flatMap(m => ScraperParse.parseDateTime(m.group(1)))
       val booking = Option(document.selectFirst("p.ticket a.cfs-hyperlink[href]")).map(_.attr("href")).filter(_.nonEmpty)
-      val meta = MetaPat.findFirstMatchIn(Option(document.selectFirst("p.repertuar_description")).map(_.text).getOrElse(""))
+      // The page nests the metadata `<p>` inside `p.repertuar_description`, which an HTML parser closes before it, so
+      // the line is the description's next sibling: read it off the event's whole info column.
+      val meta = MetaPat.findFirstMatchIn(Option(document.selectFirst("div.content_item")).map(_.text).getOrElse(""))
       Event(
         slug      = slug,
         title     = t,
         showtime  = dt.map(d => Showtime(d, booking, None, Nil)),
         runtime   = meta.map(_.group(4).toInt),
         year      = meta.map(_.group(3).toInt),
-        countries = meta.toSeq.flatMap(_.group(2).split("[,/]").map(_.trim).filter(_.nonEmpty)),
-        director  = meta.toSeq.flatMap(_.group(1).split(",").map(_.trim).filter(_.nonEmpty)),
+        countries = meta.toSeq.flatMap(m => countriesIn(m.group(2))),
+        director  = meta.toSeq.flatMap(m => ScraperParse.commaItems(m.group(1))),
         synopsis  = Option(document.selectFirst("div.single_content")).map(SynopsisProse.blockText(_).trim)
                       // (?s) so the booking-footer cut spans the paragraph newlines blockText now keeps.
                       .map(_.replaceAll("(?is)\\s*bilet[^.]*\\d+\\s*zł.*$", "").trim).filter(_.length > 20),
