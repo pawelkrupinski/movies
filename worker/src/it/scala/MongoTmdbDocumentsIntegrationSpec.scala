@@ -46,6 +46,37 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.adapters.TmdbD
     } finally watched.close()
   }
 
+  // A take-up asks every film its searches name for its hit; read whole, each record was most of the bytes fetched.
+  "a film's hit" should "be read off the hit's fields alone, as the whole document reads it" in {
+    val finds = new java.util.concurrent.ConcurrentLinkedQueue[org.bson.BsonDocument]()
+    val watched = MongoClient(MongoClientSettings.builder().applyConnectionString(new ConnectionString(mongoTarget.uri.value))
+      .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY).addCommandListener(new com.mongodb.event.CommandListener {
+        override def commandStarted(event: com.mongodb.event.CommandStartedEvent): Unit =
+          if (event.getCommandName == "find") finds.add(event.getCommand.clone())
+      }).build())
+    try {
+      val stored   = newDocuments()
+      val record   = services.identity.IdentityAnswerBson.film(Some(services.identity.measures.Film("Lalka", Some("Lalka"),
+        (1 to 20).map(n => s"Alternative $n"), Some(2025), Some(101), Some(Seq("Maciej Kawalski")), popularity = Some(7.3))))
+      val searched = new org.bson.BsonDocument("title", new org.bson.BsonString("Dziki")).append("year", new org.bson.BsonInt32(2024))
+        .append("popularity", new org.bson.BsonInt32(3))
+      val films = Seq(
+        "1018" -> new org.bson.BsonDocument("record", record).append("hit", searched),
+        "1019" -> new org.bson.BsonDocument("hit", searched),
+        "1020" -> new org.bson.BsonDocument("record", org.bson.BsonNull.VALUE).append("hit", searched),
+        "1021" -> new org.bson.BsonDocument("record", new org.bson.BsonDocument("title", new org.bson.BsonString("Bare"))),
+        "1022" -> new org.bson.BsonDocument("record", org.bson.BsonNull.VALUE))
+      stored.put(TmdbKind.Film, films)
+      val documents = new MongoTmdbDocuments(watched.getDatabase(database.name))
+      finds.clear()
+      documents.filmHits(films.map(_._1) :+ "9999") shouldBe
+        films.flatMap { case (id, d) => services.identityadapters.TmdbStore.filmHit(id.toInt, d).map(id -> _) }.toMap
+      import scala.jdk.CollectionConverters._
+      finds.asScala.toSeq.map(_.getDocument("projection", new org.bson.BsonDocument()).keySet.asScala.toSet) shouldBe
+        Seq(services.identityadapters.TmdbStore.HitFields.toSet)
+    } finally watched.close()
+  }
+
   // A take-up of an empty store files every film its questions name from 64 prefetch threads, a read
   // and a write each: coalesced, those are a few commands, not one per film (`CoalescedTmdbDocuments`).
   "coalesced filings" should "land every caller's document in far fewer commands than callers" in {

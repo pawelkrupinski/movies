@@ -5,7 +5,7 @@ import scala.jdk.CollectionConverters.*
 import org.bson.{BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.bson.BsonArray
 import services.identity.measures.Film
-import services.identity.vocabulary.{BsonFields, FilmCast}
+import services.identity.vocabulary.{BsonFields, FilmCast, Hit}
 
 /** A film's record ([[Film]]) as native BSON, EVERY fact of it — the one format every store writes a film in
  *  (`tmdb_films`' and the TMDB queries' `record`, `identity_family_answers`' records, `identity_agreements`' agreed film,
@@ -56,9 +56,18 @@ object IdentityAnswerBson {
       int(d, "genreBits").getOrElse(0),
       field(d, CastField).orElse(field(d, LegacyCastField)).flatMap(names => FilmCast.ofPairs(names.asArray.getValues.asScala.toSeq.map(BsonFields.intsOf))))
 
+  /** The hit a record gives -- its title, original title, year and popularity (`unknownPopularity` when it states none),
+   *  read as [[filmOf]] reads them, and nothing else of it: every film a search names is asked for its hit, and decoding
+   *  each one's whole record for four fields was most of what a take-up's hits allocated (docs/design/
+   *  corpus-context-persistence.md). */
+  def hitOf(id: Int, record: BsonDocument, unknownPopularity: Double): Hit =
+    Hit(id, record.getString("title").getValue, string(record, "originalTitle"), int(record, "year"),
+      field(record, "popularity").fold(unknownPopularity)(_.asNumber.doubleValue))
+
   /** `d`'s field `name`, none when it is absent or null. */
   private def field(d: BsonDocument, name: String): Option[BsonValue] = Option(d.get(name)).filterNot(_.isNull)
   private def string(d: BsonDocument, name: String): Option[String] = field(d, name).map(_.asString.getValue)
   private def int(d: BsonDocument, name: String): Option[Int]       = field(d, name).map(_.asInt32.getValue)
+
   private def strings(values: Seq[String]): BsonArray = BsonArray.fromIterable(values.map(BsonString(_)))
 }
