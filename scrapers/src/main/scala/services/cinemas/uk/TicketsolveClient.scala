@@ -136,7 +136,7 @@ object TicketsolveClient {
       dateTime   = start,
       bookingUrl = child(event, "url"),
       room       = child(event, "venue_layout"),
-      format     = if (ScraperParse.mentionsSubtitles(category)) List("SUB") else Nil)) // "Access - Cinema Subtitled"
+      format     = if (isSubtitled(category, event)) List("SUB") else Nil))
 
     SlotsToMovies.fold(slots, _.title, _.showtime) { (title, group, showtimes) =>
       val show = group.head.show
@@ -152,6 +152,11 @@ object TicketsolveClient {
       )
     }
   }
+
+  /** Subtitled by the show's category ("Access - Cinema Subtitled") or by the event's own flag: Mwldan's
+   *  `<event_attribute>` "Subtitled", Watershed's `<comment>` "This screening has descriptive subtitles". */
+  private def isSubtitled(category: String, event: Element): Boolean =
+    (category +: Seq("event_attribute", "comment").flatMap(child(event, _))).exists(ScraperParse.mentionsSubtitles)
 
   /** The trimmed text of the element's own child named `tag`, not a descendant's: a
    *  show's `<name>` and `<url>`, never its events'. */

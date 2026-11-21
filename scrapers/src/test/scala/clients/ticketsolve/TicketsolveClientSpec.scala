@@ -60,6 +60,20 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     watershed.keySet.filter(_.matches(""".*\((U|PG|12A?|15|18)\b.*""")) shouldBe empty
   }
 
+  // Mwldan files every film as "Cinema 2D / Sinema 2D" and flags its subtitled screenings one event at a time,
+  // in the event's own `<event_attribute>`; Watershed says it in the event's `<comment>` ("This screening has
+  // descriptive subtitles"). Only the category was read, so none of them was badged subtitled.
+  it should "badge a screening subtitled when its own event says so, not the whole film" in {
+    def formats(film: Iterable[models.CinemaMovie], title: String) =
+      film.find(_.movie.title == title).value.showtimes.map(s => s.dateTime -> s.format)
+    formats(mwldan, "The Uprising") should contain (LocalDateTime.of(2026, 10, 13, 18, 45) -> List("SUB"))
+    formats(mwldan, "The Uprising").count(_._2.nonEmpty) shouldBe 1
+    formats(mwldan, "Klara And The Sun") should contain (LocalDateTime.of(2026, 11, 10, 19, 0) -> List("SUB")) // "subtitled"
+    val watershed = scrape("watershed", UkRoster("WatershedBristol"))
+    formats(watershed, "Arrietty") should contain (LocalDateTime.of(2026, 10, 16, 14, 30) -> List("SUB"))
+    formats(watershed, "Tenzing") should contain (LocalDateTime.of(2026, 10, 16, 17, 10) -> Nil) // no comment at all
+  }
+
   it should "keep the relays filed under a broadcast category, but not the gigs filed as live" in {
     // All 27 "Live Broadcast Events" shows are relays (NT Live, Royal Ballet & Opera, Met Opera,
     // Exhibition on Screen); Clwb Mwldan's club nights are filed under "Live TM / TM Byw".
