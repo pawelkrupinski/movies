@@ -59,6 +59,9 @@ trait ReadModelWiring { self: Wiring =>
     movieMirrorConnection.database, clock,
     screenings = Some(screeningsRepository), slots = Some(slotsRepository),
     normalizer = titleNormalizer, decodeFailures = webDecodeFailureMetrics, stopwatch = stopwatch) with MongoMovieChangeFeed()
+  /** The /debug corpus table's read of `movies`, its showtimes stripped server-side. */
+  lazy val movieListingReader: services.movies.MovieListingReader = new services.movies.MongoMovieListingReader(
+    movieMirrorConnection.database, Some(slotsRepository), titleNormalizer, clock)
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database, decodeFailures = webDecodeFailureMetrics, stopwatch = stopwatch)
   lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository, clock = clock, servingCountry = Some(country))
   lazy val readModelReloadInterval    = processConfiguration.readModelReloadInterval(ReadModelUpkeep.DefaultReloadInterval)

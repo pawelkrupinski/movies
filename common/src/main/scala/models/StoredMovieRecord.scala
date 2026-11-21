@@ -25,7 +25,7 @@ case class StoredMovieRecord(title: String, year: Option[Int], record: MovieReco
   def readyToProject: Boolean = record.readyToProject
 
   /** A copy of this row with every source's `showtimes` dropped — the shared rule behind
-   *  `MovieRepositoryReader.findAllForListing`. `MongoMovieRepository` strips the same field server-side; this keeps the
+   *  `MovieListingReader.stripping`. `MongoMovieListingReader` strips the same field server-side; this keeps the
    *  in-memory store's listing view byte-for-byte equivalent so both impls honour the same "no showtimes" contract (the
    *  listing renders cinema metadata + counts, never showtimes). */
   def withoutShowtimes: StoredMovieRecord =

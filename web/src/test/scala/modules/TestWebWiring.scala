@@ -37,6 +37,7 @@ class TestWebWiring(
   override protected lazy val debugExtraClient: Option[org.mongodb.scala.MongoClient]  = None
   override lazy val movieMirrorConnection: MongoConnection = mongoConnection
   override lazy val movieRepository = new InMemoryMovieRepository(seed, normalizer = titleNormalizer)
+  override lazy val movieListingReader = services.movies.MovieListingReader.stripping(movieRepository)
   override lazy val readModelRepository: ReadModelReader = {
     val store = new InMemoryReadModelRepository()
     seed.foreach { case (title, year, record) =>

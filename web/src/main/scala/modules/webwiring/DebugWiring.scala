@@ -72,7 +72,7 @@ trait DebugWiring { self: Wiring =>
       debugSnapshotStore)(using debugSnapshotPool)
 
   private lazy val bootDebugListing = debugSnapshot(s"/debug listing ${country.code}", mirrorFreshnessOf(movieMirrorConnection))(
-    CorpusListing.read(movieRepository))
+    CorpusListing.read(movieListingReader, movieRepository.normalizer))
   private lazy val bootDebugCadence = debugSnapshot(s"/debug/cadence ${country.code}", mirrorFreshnessOf(movieMirrorConnection))(
     ratingCadenceReader.all())
   private lazy val bootDebugStack: DebugStack = new DebugStack(
@@ -105,7 +105,8 @@ trait DebugWiring { self: Wiring =>
         val repository = new MongoMovieRepository(conn.database, clock,
           screenings = Some(screenings), slots = Some(slots), normalizer = normalizer, stopwatch = stopwatch) with MongoMovieChangeFeed()
         val freshness  = mirrorFreshnessOf(conn)
-        val listing    = debugSnapshot(s"/debug listing ${country.code}", freshness)(CorpusListing.read(repository))
+        val listingRead = new services.movies.MongoMovieListingReader(conn.database, Some(slots), normalizer, clock)
+        val listing    = debugSnapshot(s"/debug listing ${country.code}", freshness)(CorpusListing.read(listingRead, normalizer))
         val cadence    = debugSnapshot(s"/debug/cadence ${country.code}", freshness)(
           new services.cadence.MongoRatingCadenceReader(conn.database).all())
         val stack = new DebugStack(country, repository,

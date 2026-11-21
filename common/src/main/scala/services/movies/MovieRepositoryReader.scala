@@ -106,18 +106,6 @@ trait MovieRepositoryReader {
    *  implementation cannot inherit a process default by omission. */
   def normalizer: TitleNormalizer
 
-  /** Like [[findAll]] but with each source's `showtimes` list dropped — the
-   *  rows for a LISTING that renders only per-cinema metadata + counts, never
-   *  the showtimes themselves (the dev `/debug` corpus table; showtimes there
-   *  are fetched per-row on expand). Measured on prod, `showtimes` are ~58% of
-   *  the corpus bytes, so omitting them roughly halves what the scan transfers
-   *  and holds. Callers that NEED showtimes (cache hydrate, read-model
-   *  projection) must use [[findAll]]/[[findById]]. The default strips in-process
-   *  via `StoredMovieRecord.withoutShowtimes`; `MongoMovieRepository` overrides
-   *  it to strip server-side so the bytes never cross the wire. */
-  def findAllForListing(): Seq[StoredMovieRecord] =
-    findAll().map(_.withoutShowtimes)
-
   /** Stream every persisted record through `f`, one row at a time. The default loads via
    *  [[findAll]] — fine for the in-memory store — while `MongoMovieRepository` overrides
    *  it to page the `movies` cursor by `_id`. Ordering and the concurrent-write

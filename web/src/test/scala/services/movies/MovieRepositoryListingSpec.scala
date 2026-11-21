@@ -10,11 +10,11 @@ import org.scalatest.matchers.should.Matchers
 import java.time.LocalDateTime
 
 /**
- * `findAllForListing` is the corpus-LISTING read: every field the /debug table
+ * `MovieListingReader` is the corpus-LISTING read: every field the /debug table
  * row renders (per-cinema metadata + counts) but with the heavy per-cinema
  * `showtimes` dropped — they're ~58% of the corpus bytes (measured on prod) and
- * the table never renders them (they're fetched per-row on expand). The trait
- * default strips in-process via `StoredMovieRecord.withoutShowtimes`, keeping the
+ * the table never renders them (they're fetched per-row on expand). Its
+ * `stripping` reader strips in-process via `StoredMovieRecord.withoutShowtimes`, keeping the
  * in-memory store's listing view identical to the Mongo one (which strips
  * server-side). `findAll` still carries showtimes — the strip is listing-only.
  */
@@ -32,7 +32,7 @@ class MovieRepositoryListingSpec extends AnyFlatSpec with Matchers with LoneElem
   private def repo = new InMemoryMovieRepository(Seq(("Belle", Some(2021), withShowtimes)), normalizer = SingleCountryNormalizer.titleNormalizer)
 
   "findAllForListing" should "drop per-cinema showtimes but keep all the metadata the table renders" in {
-    val row = repo.findAllForListing().loneElement.record
+    val row = MovieListingReader.stripping(repo).findAllForListing().loneElement.record
     row.cinemaData(CinemaCityWroclavia).showtimes shouldBe empty       // the heavy part is gone…
     row.cinemaData(CinemaCityWroclavia).title shouldBe Some("Belle")   // …but the per-cinema title stays
     row.cinemaData should have size 1                                  // the cinema count the table shows

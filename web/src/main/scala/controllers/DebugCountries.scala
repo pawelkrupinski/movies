@@ -7,7 +7,7 @@ import models.StoredMovieRecord
 import play.api.mvc.{Cookie, RequestHeader}
 import services.attempts.EnrichmentAttemptReader
 import services.cadence.RatingCadenceReader
-import services.movies.{MovieChangeFeed, MovieRepositoryReader}
+import services.movies.{MovieChangeFeed, MovieListingReader, MovieRepositoryReader}
 
 
 /**
@@ -70,11 +70,17 @@ object DebugCorpusTable {
 final case class CorpusListing(table: DebugCorpusTable, titleByTmdb: Map[Int, String])
 
 object CorpusListing {
-  def read(movieRepository: MovieRepositoryReader)(using latestYear: services.evidence.LatestTitleYear): CorpusListing = {
-    val records = movieRepository.findAllForListing()
+  /** The listing of `movieRepository`, its showtimes stripped in-process ([[MovieListingReader.stripping]]): a store
+   *  with no listing read of its own (the in-memory one). */
+  def read(movieRepository: MovieRepositoryReader)(using services.evidence.LatestTitleYear): CorpusListing =
+    read(MovieListingReader.stripping(movieRepository), movieRepository.normalizer)
+
+  /** The listing `listing` reads, its rows titled under `normalizer`, the rules they were keyed by. */
+  def read(listing: MovieListingReader, normalizer: services.titles.TitleNormalizer)(using latestYear: services.evidence.LatestTitleYear): CorpusListing = {
+    val records = listing.findAllForListing()
     // The table is the global corpus; its only use for a city is the /movie fallback
     // link on a row with no live showtimes anywhere — the default city, as before.
-    CorpusListing(DebugCorpusTable.of(records, movieRepository.normalizer)(using models.City.all.head, latestYear),
+    CorpusListing(DebugCorpusTable.of(records, normalizer)(using models.City.all.head, latestYear),
       records.flatMap(r => r.record.tmdbId.map(_ -> r.title)).toMap)
   }
 }

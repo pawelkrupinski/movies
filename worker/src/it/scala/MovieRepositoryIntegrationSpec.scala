@@ -188,7 +188,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         Showtime(java.time.LocalDateTime.of(2026, 6, 1, 21, 0),  Some("https://book/it-2"))))
     repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000011"), data = Map[Source, SourceData](Multikino -> slot)))
 
-    val listed = repository.findAllForListing().find(_.record.imdbId.contains("tt0000011"))
+    val listing = new services.movies.MongoMovieListingReader(Some(specDb), None, titleNormalizer, java.time.Clock.systemUTC())
+    val listed = listing.findAllForListing().find(_.record.imdbId.contains("tt0000011"))
     listed should not be empty
     val lslot = listed.get.record.cinemaData(Multikino)
     lslot.showtimes shouldBe empty                 // stripped server-side…
@@ -1586,7 +1587,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     }
   }
 
-  // findAllForListing reads `movies.sourceData` straight out of an aggregation, so it is
+  // The listing read (MongoMovieListingReader) reads `movies.sourceData` straight out of an aggregation, so it is
   // the one reader that does not go through the shared stitch — and a migrated film would
   // list with no cinemas at all.
   it should "stitch slots into the listing read as well" in {
@@ -1604,7 +1605,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 6, 6, 19, 0), Some("https://book/sl-1"))))
       split.upsert(title, year, MovieRecord(imdbId = Some("tt0000020"), data = Map[Source, SourceData](Multikino -> slot)))
 
-      val listed = split.findAllForListing().find(r => r.id.value == id)
+      val listed = new services.movies.MongoMovieListingReader(Some(db), Some(slots), titleNormalizer, java.time.Clock.systemUTC()).findAllForListing().find(r => r.id.value == id)
       listed.map(_.record.cinemaData.keySet)                         shouldBe Some(Set(Multikino))
       listed.flatMap(_.record.cinemaData.get(Multikino)).flatMap(_.posterUrl) shouldBe Some("https://poster/l1.png")
       // …still without showtimes, which is the whole point of this read
@@ -1751,7 +1752,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       var scanned: Option[StoredMovieRecord] = None
       split.foreachRecord(r => if (r.id.value == id) scanned = Some(r)) shouldBe tools.ScanOutcome.Complete
       val viaForeach    = slotsOf(scanned)
-      val viaListing    = slotsOf(split.findAllForListing().find(r => r.id.value == id))
+      val viaListing    = slotsOf(new services.movies.MongoMovieListingReader(Some(db), Some(slots), titleNormalizer, java.time.Clock.systemUTC()).findAllForListing().find(r => r.id.value == id))
 
       val expected = Some(Map[Source, Option[String]](Multikino -> Some("https://poster/pa.png")))
       withClue("findById: ")          { viaFindById shouldBe expected }

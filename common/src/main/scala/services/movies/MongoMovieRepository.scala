@@ -10,8 +10,8 @@ import models.MovieRecord
 import models.{CacheKey, FilmId, StoredMovieRecord}
 import org.bson.conversions.Bson
 import org.mongodb.scala.bson.{BsonDateTime, BsonDocument}
-import org.mongodb.scala.model.{Aggregates, Filters, Sorts}
-import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.model.Filters
+import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
 import services.evidence.LatestTitleYear
 import services.titles.TitleNormalizer
@@ -217,45 +217,6 @@ class MongoMovieRepository(
           failed
       }
     case None => tools.ReadOutcome.none(what)
-  }
-
-  /** Strips each source's `showtimes` SERVER-SIDE so they never cross the wire:
-   *  rewrites `sourceData` (a dynamic-cinema-keyed subdocument, so a plain
-   *  field-exclusion projection can't target it) by mapping every value through
-   *  `$objectToArray` → `$filter` out the `showtimes` key → `$arrayToObject`.
-   *  Measured ~58% of the corpus bytes, so this roughly halves the `/debug`
-   *  corpus scan. `$sort` on `_id` stays the FIRST stage (index-backed) for the
-   *  same exactly-once guarantee as [[findAll]]. A missing `showtimes` decodes to
-   *  `Seq.empty` (`MovieCodecs.BackwardCompatibleSourceDataCodec`), so the result
-   *  round-trips through the normal `StoredMovieDto` codec. */
-  override def findAllForListing(): Seq[StoredMovieRecord] = coll match {
-    case Some(c) =>
-      // A failed read THROWS, and /debug shows the error: an empty table read as an empty corpus.
-      val stripShowtimes = org.bson.Document.parse(
-        """{ "$set": { "sourceData": { "$arrayToObject": { "$map": {
-          |  "input": { "$objectToArray": { "$ifNull": ["$sourceData", {}] } },
-          |  "as": "kv",
-          |  "in": { "k": "$$kv.k", "v": { "$arrayToObject": { "$filter": {
-          |    "input": { "$objectToArray": "$$kv.v" },
-          |    "as": "f",
-          |    "cond": { "$ne": ["$$f.k", "showtimes"] } } } } } } } } } }""".stripMargin)
-      val pipeline = Seq[Bson](Aggregates.sort(Sorts.ascending("_id")), stripShowtimes)
-      val rows = Await.result(c.aggregate[StoredMovieDto](pipeline).batchSize(tools.MongoReplies.Films).toFuture(), 60.seconds)
-      // Stitch slots like every other reader. This one reads `movies.sourceData`
-      // straight out of an aggregation, so a migrated film — whose slots have moved to
-      // `movie_slots` — would otherwise list with NO cinemas at all. Showtimes stay
-      // stripped: slots are stored without them, which is exactly what this path wants.
-      // A failed slots load can't be recovered from here (the listing has no "partial"
-      // shape to return), but it MUST NOT pass silently: every migrated film would
-      // render cinema-less and the page would read as a corpus-wide outage. This one is
-      // the dev /debug table, so it degrades loudly instead of refusing to render.
-      val read     = stitch.allSlotRows()
-      val allSlots = read.getOrElse(Map.empty)
-      if (read.isEmpty)
-        logger.warn("MovieRepository.findAllForListing: movie_slots load failed — every migrated film will " +
-          "list with no cinemas. The listing is stale, not the corpus.")
-      rows.map(dto => stitch.slotsInto(StoredMovieDto.toDomain(dto, normalizer), allSlots.getOrElse(dto._id, Map.empty)))
-    case None => Seq.empty
   }
 
   /** Stream every persisted record through `f`, one keyset page at a time (via
