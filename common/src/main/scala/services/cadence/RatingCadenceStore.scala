@@ -109,9 +109,9 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
           new UpdateOptions().upsert(true)
         ).subscribe(
           (_: org.mongodb.scala.result.UpdateResult) => (),
-          (exception: Throwable) => logger.debug(s"Rating-cadence write failed for $key: ${exception.getMessage}")
+          (exception: Throwable) => logger.warn(s"Rating-cadence write failed for $key: ${exception.getMessage}")
         )
-      }.recover { case exception => logger.debug(s"Rating-cadence write failed for $key: ${exception.getMessage}") }
+      }.recover { case exception => logger.warn(s"Rating-cadence write failed for $key: ${exception.getMessage}") }
     }
   }
 
