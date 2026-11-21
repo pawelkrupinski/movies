@@ -1,9 +1,7 @@
 // The listing's dates: date arithmetic and labels (re-worded on a language switch), the day the
 // page is on, and the day pills.
 
-/* global onDateSelect */  // day-carousel.js
-/* exported dateBounds, formatDateLabelShort, highlightDayPill, pageToday, pickDay, refreshDateLabels,
-   syncDayPills */
+/* exported dateBounds, formatDateLabelShort, highlightDayPill, pageToday, refreshDateLabels, syncDayPills */
 
 // ── Date helpers ──────────────────────────────────────────────────────────
 
@@ -111,14 +109,4 @@ function syncDayPills() {
   const sel = document.getElementById('date-filter');
   if (!sel) return;
   highlightDayPill(sel.value);
-}
-
-// A day pill was tapped — move the hidden select to that day and slide there
-// exactly like the old dropdown pick (linear direction from the list order).
-function pickDay(value) {
-  const sel = document.getElementById('date-filter');
-  if (!sel || sel.value === value) return;
-  sel.value = value;
-  syncDayPills();   // highlight immediately; the slide commits the grid
-  onDateSelect();
 }

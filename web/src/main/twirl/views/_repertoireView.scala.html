@@ -145,7 +145,7 @@
     return {
       query:     (document.getElementById('search-input')?.value || '').trim().toLowerCase(),
       // While a search shows every day, the days it brought in that the listing was not on
-      // (`searchOriginDay`, `search.js`) are drawn lighter; null when nothing is.
+      // (`searchOriginDay`, `search-day.js`) are drawn lighter; null when nothing is.
       outsideDay: outsideSearchedDay(),
       hidden:    new Set(getHidden()),
       disabled:  new Set(getDisabledCinemas()),

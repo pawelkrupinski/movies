@@ -1,9 +1,8 @@
 // Dropdown panels and modal dialogs: opening and closing them, and the Escape and click-outside
 // dismissals every page shares.
 
-/* global closeAuthMenu */  // auth.js
-/* exported clampPanel, closeDialog, closeDialogOnBackdrop, closeOtherCitiesModal, closeOtherPanels,
-   openDialog, openOtherCitiesModal, setPanelOpen */
+/* exported clampPanel, closeDialog, closeDialogOnBackdrop, closeOtherCitiesModal, closeOtherPanels, openDialog,
+   openOtherCitiesModal, setPanelOpen, toggleAuthMenu */
 
 // Hide every navbar dropdown except (optionally) one — used by each toggle handler
 // so opening any panel closes all the others.
@@ -19,6 +18,20 @@ function closeOtherPanels(except) {
   document.querySelectorAll('.dropdown-panel').forEach(p => {
     if (p !== except) setPanelOpen(p, false);
   });
+}
+
+// The avatar menu (built by `auth.js` once `/api/me` says who is signed in) is a
+// dropdown too, toggled by an `.open` class. Its toggle stops the click's
+// propagation so the click-outside close below doesn't shut it on the same
+// click that opens it.
+function toggleAuthMenu(event) {
+  event.stopPropagation();
+  const menu = document.getElementById('auth-menu');
+  if (menu) menu.classList.toggle('open');
+}
+function closeAuthMenu() {
+  const menu = document.getElementById('auth-menu');
+  if (menu) menu.classList.remove('open');
 }
 
 // ── Modal dialogs ─────────────────────────────────────────────────────────

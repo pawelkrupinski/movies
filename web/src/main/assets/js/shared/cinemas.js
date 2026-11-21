@@ -2,9 +2,9 @@
 // cinema and area panels, the first-visit area picker, and the empty state they can cause.
 
 /* global readStoredJson, storeJson */  // local-store.js
-/* global makeFoldHeader, updateFormatBtn */  // filters.js
-/* exported buildCinemaPanel, disabledCinemasInCity, getDisabledCinemas, maybeShowAreaPicker,
-   setDisabledCinemas, toggleAllCinemas, updateEmptyState */
+/* global makeFoldHeader, registerNarrowing, updateFormatBtn */  // filters.js
+/* exported buildCinemaPanel, getDisabledCinemas, maybeShowAreaPicker, setDisabledCinemas, toggleAllCinemas,
+   updateEmptyState */
 
 // disabledCinemas is device-local ONLY — no server round-trip at all, ever
 // (see `hidden-films-sync.js`, which no longer models this field in either
@@ -241,6 +241,12 @@ function toggleAllCinemas(checked) {
   updateFormatBtn();
   applyFilters();
 }
+
+// A cinema of THIS city switched off narrows the listing: it lights the funnel,
+// and "Wyczyść" switches every one back on. Only where the picker is rendered.
+registerNarrowing(
+  () => !!document.getElementById('cinema-list') && disabledCinemasInCity().length > 0,
+  () => { if (document.getElementById('cinema-list')) toggleAllCinemas(true); });
 
 // ── First-visit area picker (split cities) ─────────────────────────────────
 //

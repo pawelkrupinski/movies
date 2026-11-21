@@ -2,13 +2,10 @@
 // funnel's active state, the folds, the lazily built submenu lists, and Wyczyść.
 
 /* global clampPanel, closeOtherPanels, setPanelOpen */  // overlays.js
-/* global getHidden, refreshHiddenFilmsControls, setHidden */  // hidden-films.js
-/* global disabledCinemasInCity, toggleAllCinemas */  // cinemas.js
-/* global clearHiddenFilmsOnServer */  // hidden-films-sync.js
 /* exported applyFiltersDebounced, badgeFormatMatch, compareCards, ensurePanel, getCastFilter,
    getCountryFilter, getDirectorFilter, getFormatFilter, getFromMinutes, getSortBy, getSubmenuFilter,
-   gridScope, isSubsequence, makeFoldHeader, onFormatChange, onSortChange, resetFormatFilter,
-   resetSubmenuPanels, toggleFormatPanel, toggleSubmenu, updateFormatBtn, updateRoomCinemaCount,
+   gridScope, isSubsequence, makeFoldHeader, onFormatChange, onSortChange, registerNarrowing,
+   resetFormatFilter, resetSubmenuPanels, toggleFormatPanel, toggleSubmenu, updateFormatBtn, updateRoomCinemaCount,
    updateSubmenuCount */
 
 // ── Format-filter dropdown ────────────────────────────────────────────────
@@ -91,6 +88,19 @@ function applyFiltersDebounced() {
   _filterDebounce = setTimeout(applyFilters, 80);
 }
 
+// The Filtry submenus, each a checkbox list `#<key>-list` under its row `#<key>-row`.
+const SUBMENU_KEYS = ['country', 'genre', 'director', 'cast', 'room'];
+
+// Beyond the panel's own controls, the cinema picker (`cinemas.js`) and the
+// hidden films (`hidden-films.js`) narrow the listing too. Each registers, as
+// it loads, how to tell that it narrows it (`isActive`) and how to put it back
+// (`clear`, which does nothing when there is nothing to put back), so the
+// funnel lights for it and "Wyczyść" clears it without this module knowing it.
+const _otherNarrowings = [];
+function registerNarrowing(isActive, clear) {
+  _otherNarrowings.push({ isActive, clear });
+}
+
 // True when anything narrows the listing — i.e. exactly what "Wyczyść"
 // (`resetFormatFilter`) puts back. Drives the funnel icon's active state; the
 // same rule as iOS `ListingFilters.isActive` and Android
@@ -98,17 +108,10 @@ function applyFiltersDebounced() {
 // reorders, it doesn't filter anything out, so the funnel staying neutral when
 // you only re-sort is the honest cue (search has its own field).
 function filtersActive() {
-  if (getFormatFilter().length > 0) return true;     // Wymiar / Wersja / IMAX
-  if (getFromMinutes() !== null)    return true;      // Od godziny
-  if (getSubmenuFilter('country')  !== null) return true;
-  if (getSubmenuFilter('genre')    !== null) return true;
-  if (getSubmenuFilter('director') !== null) return true;
-  if (getSubmenuFilter('cast')     !== null) return true;
-  if (getSubmenuFilter('room')     !== null) return true;
-  // Cinema picker (absent on pages without the Filtry UI): any cinema in THIS city switched off.
-  if (document.getElementById('cinema-list') && disabledCinemasInCity().length > 0) return true;
-  if (getHidden().length > 0) return true;
-  return false;
+  return getFormatFilter().length > 0          // Wymiar / Wersja / IMAX
+    || getFromMinutes() !== null               // Od godziny
+    || SUBMENU_KEYS.some(key => getSubmenuFilter(key) !== null)
+    || _otherNarrowings.some(narrowing => narrowing.isActive());
 }
 
 function updateFormatBtn() {
@@ -174,7 +177,7 @@ function resetFormatFilter() {
   document.getElementById('from-minute').value     = '0';
   var sortSel = document.getElementById('sort-by');
   if (sortSel) sortSel.value = 'earliest';
-  ['country', 'genre', 'director', 'cast', 'room'].forEach(function(key) {
+  SUBMENU_KEYS.forEach(function(key) {
     var list = document.getElementById(key + '-list');
     if (list) {
       list.querySelectorAll('input[type="checkbox"]').forEach(function(checkbox) { checkbox.checked = true; });
@@ -182,15 +185,9 @@ function resetFormatFilter() {
     }
     updateSubmenuCount(key);
   });
-  // Re-enable every cinema in this city and un-hide every hidden film: both
-  // narrow the listing, so the funnel lights for them and "Wyczyść" clears
-  // them, as the iOS and Android Wyczyść do.
-  if (document.getElementById('cinema-list')) toggleAllCinemas(true);
-  if (getHidden().length > 0) {
-    setHidden([]);
-    clearHiddenFilmsOnServer();
-    refreshHiddenFilmsControls();
-  }
+  // Re-enable every cinema in this city and un-hide every hidden film, as the
+  // iOS and Android Wyczyść do.
+  _otherNarrowings.forEach(narrowing => narrowing.clear());
   setPanelOpen(document.getElementById('format-panel'), false);
   onFormatChange();
 }
@@ -255,16 +252,10 @@ function buildSubmenuPanel(key, dataAttr, splitter) {
   renderSubmenuCheckboxes(key, entries);
 }
 
-// Render a submenu's "Wszystkie" + per-value checkbox rows from a sorted
-// entries list. Shared by `buildSubmenuPanel` (country / director / cast,
-// values pulled from `.col` data attrs) and `buildRoomPanel` (values pulled
-// from `.badge-time[data-room]` × cinema-group, with a composite key
-// "Cinema|Room" that displays as "Cinema — Room").
-function renderSubmenuCheckboxes(key, entries) {
-  var list = document.getElementById(key + '-list');
-  if (!list) return;
-  list.innerHTML = '';
-
+// A submenu's "Wszystkie" row: checking or unchecking it does the same to
+// every entry in `list`, then `afterToggle` re-counts and re-filters. Its
+// `submenu-all` class keeps it out of `getSubmenuFilter` reads.
+function appendAllToggle(list, afterToggle) {
   var allLabel = document.createElement('label');
   allLabel.className = 'panel-label';
   allLabel.style.borderBottom = '1px solid #3a3a6e';
@@ -276,12 +267,29 @@ function renderSubmenuCheckboxes(key, entries) {
   allCb.checked = true;
   allCb.className = 'submenu-all';
   allCb.onchange = function() {
-    list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(function(checkbox) { checkbox.checked = allCb.checked; });
-    updateSubmenuCount(key); updateFormatBtn(); applyFilters();
+    list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(function(checkbox) {
+      checkbox.checked = allCb.checked;
+    });
+    afterToggle();
   };
   allLabel.appendChild(allCb);
   allLabel.appendChild(document.createTextNode(' Wszystkie'));
   list.appendChild(allLabel);
+}
+
+// Render a submenu's "Wszystkie" + per-value checkbox rows from a sorted
+// entries list. Shared by `buildSubmenuPanel` (country / director / cast,
+// values pulled from `.col` data attrs) and `buildRoomPanel` (values pulled
+// from `.badge-time[data-room]` × cinema-group, with a composite key
+// "Cinema|Room" that displays as "Cinema — Room").
+function renderSubmenuCheckboxes(key, entries) {
+  var list = document.getElementById(key + '-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  appendAllToggle(list, function() {
+    updateSubmenuCount(key); updateFormatBtn(); applyFilters();
+  });
 
   entries.forEach(function(entry) {
     var label = document.createElement('label');
@@ -322,7 +330,7 @@ function ensurePanel(key) {
   _panelBuilt[key] = true;
 }
 function ensureSubmenuPanels() {
-  ['country', 'genre', 'director', 'cast', 'room'].forEach(ensurePanel);
+  SUBMENU_KEYS.forEach(ensurePanel);
 }
 function resetSubmenuPanels() {
   Object.keys(_panelBuilt).forEach(function(k) { delete _panelBuilt[k]; });
@@ -373,29 +381,12 @@ function buildRoomPanel() {
 
   list.innerHTML = '';
 
-  // Sale-level "Wszystkie" — flips every room checkbox at once. Same
-  // semantics as the existing country/director/cast Wszystkie row; the
-  // `submenu-all` class keeps it out of `getSubmenuFilter('room')` reads.
-  var allLabel = document.createElement('label');
-  allLabel.className = 'panel-label';
-  allLabel.style.borderBottom = '1px solid #3a3a6e';
-  allLabel.style.marginBottom = '4px';
-  allLabel.style.paddingBottom = '8px';
-  var allCb = document.createElement('input');
-  allCb.type = 'checkbox';
-  allCb.autocomplete = 'off';   // see KEEPING BUILT CONTROLS OUT OF THE RESTORE QUEUE
-  allCb.checked = true;
-  allCb.className = 'submenu-all';
-  allCb.onchange = function() {
-    list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(function(checkbox) {
-      checkbox.checked = allCb.checked;
-    });
+  // Sale-level "Wszystkie" — flips every room checkbox at once, every
+  // cinema's header count following.
+  appendAllToggle(list, function() {
     list.querySelectorAll('.room-cinema-header').forEach(function(h) { updateRoomCinemaCount(h); });
     updateSubmenuCount('room'); updateFormatBtn(); applyFilters();
-  };
-  allLabel.appendChild(allCb);
-  allLabel.appendChild(document.createTextNode(' Wszystkie'));
-  list.appendChild(allLabel);
+  });
 
   cinemas.forEach(function(cinema) {
     var rooms = Object.keys(byCinema[cinema]).sort(function(a, b) {

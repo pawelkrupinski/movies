@@ -1,10 +1,10 @@
 // The search field: its iOS zoom lock, the floating pill's keyboard inset and tap-away dismiss, and
-// the day a search moves the listing to and back from.
+// moving the listing's day as a search begins and ends.
 
 /* global applyFiltersDebounced */  // filters.js
 /* global onDateChange */  // day-carousel.js
-/* exported beginSearchAtBoot, lockSearchZoom, noteDayChange, onSearchInput, restoreSearchDay, searchDayState,
-   searchOriginDay, unlockSearchZoom, urlDay */
+/* global beginSearchFrom, currentQuery, endSearch, searchIsRunning, whileSearchMovesDay */  // search-day.js
+/* exported lockSearchZoom, onSearchInput, unlockSearchZoom */
 
 // iOS Safari auto-zooms the viewport when focus lands on an input whose
 // font-size is below 16px — and the navbar search is intentionally ~12.5px
@@ -102,82 +102,26 @@ document.addEventListener('click', e => {
 
 // ── A search's day ────────────────────────────────────────────────────────
 //
-// A search looks through EVERY day: the first letter typed moves the listing to
-// "All" (no slide) and remembers the day it was on; clearing the search goes back
-// there -- unless a day was picked while it ran (a tap, a swipe, a key), which then
-// stays. While the search shows every day, the days it brought in are drawn lighter
-// (`outside-day`, decided by the filter pass from `searchOriginDay`).
-let _searchOrigin = null;      // the day the listing was on when the search began; null: no search
-let _searchDayPicked = false;  // a day was picked while the search ran
-let _searchMovingDay = false;  // the search itself is moving the day, which is no pick
-
-/** The day a running search began from, while nothing has been picked since; else null. */
-function searchOriginDay() { return _searchOrigin !== null && !_searchDayPicked ? _searchOrigin : null; }
-
-// The listing's day moved from `previousDay` to `nextDay`. By anything but the search itself,
-// mid-search, that is a pick: it stays when the search is cleared. Not the first apply at boot
-// (`previousDay` null: nothing was on screen to move from).
-function noteDayChange(previousDay, nextDay) {
-  if (_searchOrigin !== null && !_searchMovingDay && previousDay !== null && previousDay !== nextDay)
-    _searchDayPicked = true;
-}
-
-// The running search's day, for the history entry: where clearing it would go. Null: no search.
-function searchDayState() {
-  return _searchOrigin === null ? null : { origin: _searchOrigin, picked: _searchDayPicked };
-}
-
-// Put back a search's day recorded by `searchDayState`; the listing it was on showed "All"
-// unless a day was picked since.
-function restoreSearchDay(searchDay) {
-  if (!searchDay || typeof searchDay.origin !== 'string') return;
-  _searchOrigin = searchDay.origin;
-  _searchDayPicked = !!searchDay.picked;
-  // The URL carried the searched-from day (`urlDay`); the listing was on "All".
-  const sel = document.getElementById('date-filter');
-  if (sel && !_searchDayPicked) sel.value = 'anytime';
-}
+// Typing moves the listing to "All" and clearing goes back (`search-day.js` keeps
+// which day that is).
 
 function moveDayForSearch(value) {
   const sel = document.getElementById('date-filter');
   if (!sel || sel.value === value) return;
   sel.value = value;
-  _searchMovingDay = true;
-  try { onDateChange(); } finally { _searchMovingDay = false; }
-}
-
-function currentQuery() {
-  return (document.getElementById('search-input')?.value || '').trim();
+  whileSearchMovesDay(onDateChange);
 }
 
 // The search box's `input` (typing, and the native clear X, which fires it too).
 function onSearchInput() {
   const sel = document.getElementById('date-filter');
   const query = currentQuery();
-  if (sel && query && _searchOrigin === null) {
-    _searchOrigin = sel.value;
-    _searchDayPicked = false;
+  if (sel && query && !searchIsRunning()) {
+    beginSearchFrom(sel.value);
     moveDayForSearch('anytime');
-  } else if (!query && _searchOrigin !== null) {
-    const back = _searchDayPicked ? null : _searchOrigin;
-    _searchOrigin = null;
-    _searchDayPicked = false;
+  } else if (!query && searchIsRunning()) {
+    const back = endSearch();
     if (back) moveDayForSearch(back);
   }
   applyFiltersDebounced();
-}
-
-// The day the URL carries: the searched-from day while the search itself is showing
-// "All", so a reload (which starts with an empty search) and Back land on the day the
-// listing was really on, not on the search's "All".
-function urlDay(sel) { return searchOriginDay() ?? sel.value; }
-
-// A page opened on a query with no remembered search (a shared `?q=` link): the
-// search begins from the link's day, showing every day.
-function beginSearchAtBoot() {
-  const sel = document.getElementById('date-filter');
-  if (!sel || !currentQuery() || _searchOrigin !== null) return;
-  _searchOrigin = sel.value;
-  _searchDayPicked = false;
-  sel.value = 'anytime';
 }

@@ -2,7 +2,7 @@
 // share link, and putting session-local controls back on a Back.
 
 /* global ensurePanel, updateFormatBtn, updateRoomCinemaCount, updateSubmenuCount */  // filters.js
-/* global beginSearchAtBoot, restoreSearchDay, searchDayState, urlDay */  // search.js
+/* global beginSearchAtBoot, restoreSearchDay, searchDayState, urlDay */  // search-day.js
 /* global buildCinemaPanel, getDisabledCinemas, setDisabledCinemas */  // cinemas.js
 /* global formatDateLabelShort */  // dates.js
 /* exported applyFiltersFromURL, copyFilterLinkToClipboard, noteFiltersApplied, syncDateToURL */

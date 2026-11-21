@@ -3,7 +3,7 @@
 
 /* global currentCountryCode, mountPrefix */  // city.js
 /* global updateFormatBtn */  // filters.js
-/* global getHidden, setHidden */  // hidden-films.js
+/* global getHidden, setHidden */  // hidden-films-store.js
 /* global isLoggedIn, sessionUnconfirmed, whoIsLookingIsUnknown */  // auth.js
 /* global forgetPendingLanguage */  // language-sync.js
 /* exported bootMergeFromServer, clearHiddenFilmsOnServer, hideFilmOnServer, unhideFilmOnServer */

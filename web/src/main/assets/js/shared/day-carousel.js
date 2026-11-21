@@ -2,10 +2,10 @@
 // grid there through one carousel, with the first-run swipe hint.
 
 /* global readStoredFlag, storeFlag */  // local-store.js
-/* global noteDayChange */  // search.js
+/* global noteDayChange */  // search-day.js
 /* global undoTruncation */  // showings.js
 /* global highlightDayPill, pageToday, syncDayPills */  // dates.js
-/* exported maybeShowSwipeHint, onDateChange, onDateSelect, rememberDisplayedDay, stepDateWrap */
+/* exported maybeShowSwipeHint, onDateChange, onDateSelect, pickDay, rememberDisplayedDay, stepDateWrap */
 
 // ── Keyboard navigation ───────────────────────────────────────────────────
 
@@ -68,6 +68,16 @@ function stepDate(dir) {
     if (dest) dest.focus();
   }
   animateToDay(targetValue, dir);
+}
+
+// A day pill was tapped — move the hidden select to that day and slide there
+// exactly like the old dropdown pick (linear direction from the list order).
+function pickDay(value) {
+  const sel = document.getElementById('date-filter');
+  if (!sel || sel.value === value) return;
+  sel.value = value;
+  syncDayPills();   // highlight immediately; the slide commits the grid
+  onDateSelect();
 }
 
 // The `#date-filter` dropdown changed — slide to the chosen day (one slide

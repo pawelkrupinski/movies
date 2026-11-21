@@ -3,25 +3,13 @@
 
 /* global mountPrefix */  // city.js
 /* global readStoredFlag, storeFlag */  // local-store.js
-/* global closeDialog, openDialog */  // overlays.js
-/* exported closeAnonymousNag, closeAuthMenu, closeLoginModal, hydrateAuth, isLoggedIn, maybeShowAnonymousNag,
-   openLoginModal, sessionUnconfirmed, settleSignOut, toggleAuthMenu, whoIsLookingIsUnknown */
+/* global closeDialog, openDialog, toggleAuthMenu */  // overlays.js
+/* exported closeAnonymousNag, closeLoginModal, hydrateAuth, isLoggedIn, maybeShowAnonymousNag,
+   openLoginModal, sessionUnconfirmed, settleSignOut, whoIsLookingIsUnknown */
 
-// ── Auth dropdown + login modal ──────────────────────────────────────────
+// ── Login modal ──────────────────────────────────────────────────────────
 //
-// The dropdown stops event propagation so the document-level "click
-// outside → close" handler (`overlays.js`) doesn't fire-close it on
-// the same click that opens it.
-
-function toggleAuthMenu(event) {
-  event.stopPropagation();
-  const menu = document.getElementById('auth-menu');
-  if (menu) menu.classList.toggle('open');
-}
-function closeAuthMenu() {
-  const menu = document.getElementById('auth-menu');
-  if (menu) menu.classList.remove('open');
-}
+// The avatar dropdown opens and closes in `overlays.js`, with the other dropdowns.
 
 function openLoginModal() {
   openDialog('login-dialog');
