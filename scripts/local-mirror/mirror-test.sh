@@ -16,6 +16,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 printf '\033[36m▸\033[0m local-mirror/mirror.sh\n'
 work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-test.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
+# No case reads the machine's own fences: a what-if running on the laptop fences its mirror under
+# $HOME/.cache/kinowo/mirror-fence, and the staleness gate below read that one ("held by the what-if fence
+# what-if-9177": "staleness.js exiting 3 re-seeds" got tail). Each case names its fences, or gets none.
+export KINOWO_MIRROR_FENCE_DIR="$work/no-fences"
 
 # in_mirror <command...> -> the command run in a subshell that sourced mirror.sh (its functions, no startup)
 in_mirror() {
@@ -57,7 +61,10 @@ gate() {
   set -e
   if needs_reseed kinowo; then echo reseed; else echo tail; fi
 }
-check "staleness.js exiting 3 re-seeds" "reseed" "$(in_mirror gate 3)"
+# ...under a HOME whose machine holds a live what-if fence on that database, as the laptop's does while a what-if runs
+machine="$work/machine-home"; mkdir -p "$machine/.cache/kinowo/mirror-fence/kinowo"
+printf '%s run\n' "$(($(date +%s) + 600))" > "$machine/.cache/kinowo/mirror-fence/kinowo/what-if-machine"
+check "staleness.js exiting 3 re-seeds, whatever fences the machine holds" "reseed" "$(HOME="$machine" in_mirror gate 3)"
 check "...exiting 0 tails" "tail" "$(in_mirror gate 0)"
 check "...a check that itself failed (exit 1) tails, never blocks the sync" "tail" "$(in_mirror gate 1)"
 
