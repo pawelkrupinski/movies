@@ -64,7 +64,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       filmIds     = filmIdCounterStore,
       scoping     = new services.identityadapters.ProjectionScoping(titleNormalizer, venuePageFacts.takeMoved),
       drafter     = new services.identityadapters.ProjectionDrafter(titleNormalizer, slotSource, movieService.withFilmDetails,
-        venueSlotFingerprints, logger),
+        new services.identityadapters.RecordedSlotFingerprints(venueSlotFingerprints, logger)),
       writer      = new services.identityadapters.ProjectionWrite(movieCache, filmIdCounterStore, movieService.announceReidentified,
         titleNormalizer, slotSource, () => agreementStage.backlog, logger),
       drift       = new services.identityadapters.ProjectionDrift(titleNormalizer, metrics, logger),

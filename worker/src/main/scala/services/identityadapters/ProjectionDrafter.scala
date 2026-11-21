@@ -1,6 +1,6 @@
 package services.identityadapters
 
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 import models.{ListingKey, MovieRecord}
 import services.evidence.LatestTitleYear
@@ -9,41 +9,18 @@ import services.titles.TitleNormalizer
 
 /** The DRAFT stage of THE IDENTITY PROJECTION ([[IdentityProjection]]): how it drafts the films a scope names — each film's
  *  record from its venues' slots ([[IdentityProjectionPlan.draftOf]], built by `slotSource`) — the venue slot memo's where nothing a slot is built from moved,
- *  its fingerprints recorded (`identity_slot_fingerprints`) so a restarted worker reuses them, and each film as last
+ *  its fingerprints recorded ([[RecordedSlotFingerprints]]) so a restarted worker reuses them, and each film as last
  *  drafted ([[FilmShapes]]) so a scoped projection works out only the venues that moved — then its TMDB details fetched
  *  by id ([[ProjectionDrafter.detailed]]), then titled and keyed ([[FilmKeys.finish]]). `details` is a
- *  film's record with the TMDB details of `film`. Logs under the projection's `logger`. */
+ *  film's record with the TMDB details of `film`. */
 final class ProjectionDrafter(normalizer: TitleNormalizer, slotSource: VenueSlotSource,
-                              details: (MovieRecord, Int) => Option[MovieRecord], fingerprints: VenueSlotFingerprints,
-                              logger: play.api.Logger,
+                              details: (MovieRecord, Int) => Option[MovieRecord], fingerprints: RecordedSlotFingerprints,
                               /** The venue slot memo, made under its environment (`VenueSlotMemo.environment`). */
                               slotMemoOf: Long => VenueSlotMemo = new VenueSlotMemo(_))(using LatestTitleYear) {
   /** The venue slots the last projection built, so this one rebuilds only the films whose listings changed. */
   private val slotMemo = slotMemoOf(VenueSlotMemo.environment(normalizer))
   /** Each film as last drafted, so a scoped projection works out only the venues of a film that moved. */
   private var shapes = FilmShapes()
-  /** The fingerprints the store holds, as far as this worker knows: none read yet until the first projection. */
-  private var recordedFingerprints: Option[Set[Long]] = None
-
-  /** Seed the memo, before the first projection after a boot, with the slots the last run kept. */
-  private def seed(): Unit = if (recordedFingerprints.isEmpty) {
-    val recorded = Try(fingerprints.all()).fold(e => { logger.warn("identity projection: reading the venue slot fingerprints failed; " +
-      "the first projection builds every slot", e); Set.empty[Long] }, identity)
-    slotMemo.seed(recorded)
-    recordedFingerprints = Some(recorded)
-  }
-
-  /** Record the fingerprints of the slots the memo now keeps, writing only those that moved. One that fails is
-   *  tried again by the next projection; one left behind is a true fact, costing only its space. */
-  private def recordFingerprints(): Unit = {
-    val known = recordedFingerprints.getOrElse(Set.empty)
-    val now   = slotMemo.fingerprints
-    if (now != known) Try(fingerprints.update(now -- known, known -- now)) match {
-      case Success(_) => recordedFingerprints = Some(now)
-      case Failure(e) => logger.warn("identity projection: recording the venue slot fingerprints failed; the next projection retries", e)
-    }
-  }
-
   /** Forget each film as last drafted: the projection has nothing written to build on. */
   def forget(): Unit = shapes = FilmShapes()
 
@@ -57,7 +34,7 @@ final class ProjectionDrafter(normalizer: TitleNormalizer, slotSource: VenueSlot
    *  built: the reused and built counts, and the misses by cause. */
   private def slotReport(periodic: Boolean, scope: ProjectionScope, phases: ProjectionPhases): ((Int, Int), (Int, Int, Int)) = {
     val slotCounts = slotMemo.endTick(retainUnseen = !scope.whole)
-    if (periodic) phases("fingerprints")(recordFingerprints())
+    if (periodic) phases("fingerprints")(fingerprints.record(slotMemo))
     val misses = slotMemo.lastMisses()
     phases.note(s"venue slots reused ${slotCounts._1}, built ${slotCounts._2} " +
       s"(rows moved ${misses._1}, priors moved ${misses._2}, new ${misses._3})")
@@ -71,7 +48,7 @@ final class ProjectionDrafter(normalizer: TitleNormalizer, slotSource: VenueSlot
    *  so their keys are decided together — until none is left outside. */
   def drafted(start: ProjectionScope, freed: Set[String], changed: Set[ListingKey], index: ProjectionIndex, periodic: Boolean,
               phases: ProjectionPhases): ProjectionDrafter.Drafted = {
-    phases("seed")(seed())
+    phases("seed")(fingerprints.seed(slotMemo))
     @scala.annotation.tailrec
     def loop(scope: ProjectionScope): (ProjectionScope, ProjectionDraft, ProjectionDraft, ProjectionPlan) = {
       val draft    = phases("draft")(IdentityProjectionPlan.draftOf(index, scope, normalizer, slotSource, slotMemo, shapes, changed))
