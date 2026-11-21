@@ -16,7 +16,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
- * The "Sortuj" axis mirroring the web's `compareCards` (public/js/shared.js):
+ * The "Sortuj" axis mirroring the web's `compareCards` (js/shared/filters.js):
  * earliest-showing ascending (default) or weighted-rating descending, both
  * stable for full ties.
  */

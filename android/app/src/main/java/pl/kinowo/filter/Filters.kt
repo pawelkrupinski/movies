@@ -82,7 +82,7 @@ sealed interface DateFilter {
 
 /**
  * Sort axis of the Filtry menu, mirroring the web's "Sortuj" dropdown
- * (`public/js/shared.js` `compareCards`): nearest upcoming showing first
+ * (`js/shared/filters.js` `compareCards`): nearest upcoming showing first
  * (default), or highest weighted rating first. Both tie-break to the earliest
  * showing and then to input order (the sort is stable), as on the web.
  *

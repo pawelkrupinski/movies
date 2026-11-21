@@ -269,7 +269,7 @@ struct CinemaSection: Identifiable, Hashable {
     }
 }
 
-/// Mirrors the web's `#sort-by` dropdown (shared.js `compareCards`).
+/// Mirrors the web's `#sort-by` dropdown (`js/shared/filters.js` `compareCards`).
 /// `earliest` puts the soonest remaining screening first (the default);
 /// `rating` orders by weighted rating, descending. Both are offered in the
 /// iOS Filtry sheet.
@@ -284,7 +284,7 @@ extension Sequence where Element == Film {
     /// Apply the chosen sort. `.earliest` orders by each film's soonest
     /// remaining screening; `.rating` orders by weighted rating descending.
     /// Both tie-break to the earliest showing and then to input order —
-    /// exactly the web's `compareCards` (`shared.js`) and Android's
+    /// exactly the web's `compareCards` (`js/shared/filters.js`) and Android's
     /// `sortedFor`.
     ///
     /// The key has to be recomputed here rather than trusted from the payload:

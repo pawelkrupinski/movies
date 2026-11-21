@@ -8,7 +8,7 @@ import java.time.ZoneId
  * "All" and remembers the day it was on; clearing the search goes back there -- unless a day was
  * picked while it ran (a tap, a swipe), which then stays. While the search shows every day, the
  * days it brought in are drawn lighter ([outsideDays]). The web's twin is `onSearchInput` in
- * shared.js, iOS's `SearchDay.swift`. Immutable, so a Compose state holding it recomposes.
+ * `js/shared/search.js`, iOS's `SearchDay.swift`. Immutable, so a Compose state holding it recomposes.
  */
 data class SearchDay(
     /** The day the listing was on when the search began; null while no search runs. */

@@ -109,7 +109,7 @@ struct SeasonWords {
 /// Lives beside the catalog rather than as `@State` inside `AreaPickerSheet` so
 /// the select-all / deselect-all rules are testable under `swift test` — the
 /// sheet is SwiftUI and out of `KinowoCore`. Mirrors the web picker's master
-/// checkbox (`#area-picker-all` in `shared.js`) and Android's `AreaPickerDialog`.
+/// checkbox (`#area-picker-all` in `js/shared/cinemas.js`) and Android's `AreaPickerDialog`.
 struct AreaSelection: Hashable {
     /// The slugs currently checked.
     private(set) var kept: Set<String>

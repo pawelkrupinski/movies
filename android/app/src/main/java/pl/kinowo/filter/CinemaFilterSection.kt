@@ -15,7 +15,7 @@ enum class CinemaCheck { ON, OFF, MIXED }
  * `?cinema=` deep link). A **flat** city renders [cityCinemas] as a single
  * checkbox list; a **split** city (e.g. London) renders that same universe
  * grouped into [CinemaCatalog.areas]. Both mutate the one set, mirroring the
- * web's Filtry cinema panel (`buildCinemaPanel` in `shared.js`).
+ * web's Filtry cinema panel (`buildCinemaPanel` in `js/shared/cinemas.js`).
  *
  * Pure Kotlin → unit-tested by CinemaFilterSectionTest; `FiltersSheet` is a thin
  * renderer over it, and iOS `CinemaFilterSection` is the parallel implementation.

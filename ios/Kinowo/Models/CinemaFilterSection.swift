@@ -8,7 +8,7 @@ import Foundation
 /// the `?cinema=` deep link). A **flat** city renders `cityCinemas` as a single
 /// checkbox list; a **split** city (e.g. London) renders that same universe
 /// grouped into `catalog.areas`. Both mutate the one set, mirroring the web's
-/// Filtry cinema panel (`buildCinemaPanel` in `shared.js`).
+/// Filtry cinema panel (`buildCinemaPanel` in `js/shared/cinemas.js`).
 ///
 /// Pure Foundation → lives in `KinowoCore` and is unit-tested under
 /// `swift test`; `FiltersSheet` is a thin renderer over it, and Android's

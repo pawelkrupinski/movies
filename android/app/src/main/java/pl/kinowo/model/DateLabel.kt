@@ -19,7 +19,7 @@ import java.util.Locale
  * on screen (`LocaleWrapper` forces `Locale.getDefault()`), but the already-
  * fetched `label` field doesn't follow it. Deriving it here from the raw
  * `date`, against [Locale.getDefault] at call time, fixes that the same way
- * the web's client-side `formatDateLabel` (`shared.js`) does.
+ * the web's client-side `formatDateLabel` (`js/shared/dates.js`) does.
  */
 object DateLabel {
     private val polishDays = listOf(

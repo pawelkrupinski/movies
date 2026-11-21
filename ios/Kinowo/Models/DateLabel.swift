@@ -14,7 +14,7 @@ import Foundation
 /// screen followed the pick. Deriving it here, from the raw `date`, in
 /// whatever `Locale` the caller passes (typically `@Environment(\.locale)`,
 /// which `KinowoApp` keeps in step with the pick) fixes that the same way
-/// the web's client-side `formatDateLabel` (`shared.js`) does.
+/// the web's client-side `formatDateLabel` (`js/shared/dates.js`) does.
 enum DateLabel {
     private static let polishDays = [
         "poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela",
