@@ -37,11 +37,19 @@ object Correction {
    *  newer record, `broadcast` for a stage work's broadcast record. What a take-change line and the rule-firing count
    *  name a correction by ([[services.identity.DecidedBy]]). */
   def ruleOf(outcome: Outcome): String = {
-    val says     = outcome.line.split(" — ", 2).lift(1).getOrElse("")
+    val says     = outcome.line match {
+      case SaysAfterTheTake(said) => said
+      case line                   => line.split(" — ", 2).lift(1).getOrElse("")
+    }
     val named    = Seq(Families, Filmweb, Poster).filter(kind => says.contains(s"$kind: "))
     val evidence = if (says.startsWith("relay: ")) Seq("relay") else if (named.nonEmpty) named else Seq("broadcast")
     s"${if (outcome.film.isDefined) "correction" else "withdrawal"}:${evidence.mkString("+")}"
   }
+
+  /** What a correction's line says after the take it names ([[Film.titled]], or `tmdb <id>` for a record unread) and the
+   *  kinds it switched by: the first ` — ` after the take's closing quote and year, never one inside its title
+   *  ("'Opera — Tosca' (2018)"). */
+  private val SaysAfterTheTake = """(?s)^(?:withdrawn|corrected from) (?:'.*?'(?: \(\d{4}\))?|tmdb \d+)(?: by [a-z]+(?: and [a-z]+)*)? — (.*)$""".r
 
   /** The take corrected, if the evidence says so. `sharesDirector(film)`: do `film` and the model's share a director —
    *  `None` where either record credits none, which never lets a correction stand on the guard. */

@@ -483,6 +483,9 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
   }
 
   "a correction's rule id" should "name the evidence its line rests on: the kinds, a relay superseded, a broadcast" in {
+    // a title of its own holding the line's dash
+    Correction.ruleOf(Correction.Outcome(None, "withdrawn 'Opera — Tosca' (2018) — relay: a newer record of its title aired 2026-09-12")) shouldBe
+      "withdrawal:relay"
     Correction.ruleOf(Correction.Outcome(None, "withdrawn 'Tosca' (2018) — relay: a newer record of its title aired 2026-09-12")) shouldBe
       "withdrawal:relay"
     Correction.ruleOf(Correction.Outcome(Some(7), "corrected from 'Manon' (1949) — screens on the day 'Manon' (2026) was broadcast")) shouldBe
