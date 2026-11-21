@@ -15,6 +15,8 @@
 #   fell      its value fell
 #   rose      its value rose (or it moved and rose)
 #   new       a newly frozen piece (a row past the limit that the base did not have)
+#   measured  a new quality row whose every source the range left unchanged: the code was already like this, and a
+#             change to the measure (2026-11-21: member vals and given aliases) or a limit is what froze it
 #   removed   gone from the baseline: within the limit now (or its code gone)
 #   moved     re-keyed with the same value or lower (a renamed source: git -M; a moved class: the same simple name) --
 #             the ratchets' own move rules (quality_ratchet.moved_key, coupling_ratchet.moved)
@@ -75,13 +77,29 @@ class RefRenames:
         return self.moves.get(path, path)
 
 
+class Untouched:
+    """The sources that exist at `base` and that the range from it to `head` (the working tree when None) never changed."""
+
+    def __init__(self, base: str, head: Optional[str]):
+        changed = set(git("diff", "--name-only", "-z", base, *([head] if head else [])).split("\0"))
+        self.paths = {p for p in git("ls-tree", "-r", "--name-only", "-z", base).split("\0") if p and p not in changed}
+
+    def holds(self, key: str) -> bool:
+        """Whether every source of a quality key (`<path>:<Owner.method>`, `<path>`, `<path>|<path>...`) is untouched."""
+        return all(p in self.paths for p in key.partition(":")[0].split("|"))
+
+
+MARKS = ("fell", "rose", "new", "measured", "removed (within the limit)", "moved")
+
+
 def limit_of(rows, metric: str) -> int:
     if metric in LIMIT_ZERO:
         return 0
     return coupling_ratchet.of_kind(rows, "limit").get(metric, 0)
 
 
-def diff_metric(metric: str, family: str, before: Dict[str, int], after: Dict[str, int], moves: RefRenames) -> List[Row]:
+def diff_metric(metric: str, family: str, before: Dict[str, int], after: Dict[str, int], moves: RefRenames,
+                untouched: Optional[Untouched] = None) -> List[Row]:
     out: List[Row] = []
     gone = {k: v for k, v in before.items() if k not in after}
     fresh = {k: v for k, v in after.items() if k not in before}
@@ -101,7 +119,8 @@ def diff_metric(metric: str, family: str, before: Dict[str, int], after: Dict[st
             was = gone.pop(origin)
             out.append((metric, f"{origin} => {key}", was, value, "rose" if value > was else "moved"))
         else:
-            out.append((metric, key, None, value, "new"))
+            measured = family == "quality" and untouched is not None and untouched.holds(key)
+            out.append((metric, key, None, value, "measured" if measured else "new"))
     out += [(metric, key, value, None, "removed (within the limit)") for key, value in sorted(gone.items())]
     return out
 
@@ -113,7 +132,8 @@ def rows_at(ref: str, path: str, family: str = ""):
 
 def collect(base: str, head: Optional[str], quality_rows: str = "", coupling_rows: str = "", js_rows: str = ""):
     """Every changed row, and per metric (rows, sum, over the limit) before and after."""
-    moves = RefRenames(renames(base, head if not (quality_rows or coupling_rows or js_rows) else None))
+    head_ref = head if not (quality_rows or coupling_rows or js_rows) else None
+    moves, untouched = RefRenames(renames(base, head_ref)), Untouched(base, head_ref)
     measured = {}
     for family, path in (("quality", quality_rows), ("coupling", coupling_rows), ("js", js_rows)):
         if path:
@@ -130,13 +150,13 @@ def collect(base: str, head: Optional[str], quality_rows: str = "", coupling_row
         old = rows_at(base, baseline, family)
         new = measured.get(family) if family in measured else rows_at(head or "HEAD", baseline, family)
         before, after = coupling_ratchet.of_kind(old, metric), coupling_ratchet.of_kind(new, metric)
-        rows = diff_metric(metric, family, before, after, moves)
+        rows = diff_metric(metric, family, before, after, moves, untouched)
         if family == "js":
             metric = JS_PREFIX + metric
             rows = [(metric, *row[1:]) for row in rows]
         changed += rows
         over = lambda values, lim: sum(1 for v in values.values() if v > lim)
-        marks = {m: sum(1 for r in rows if r[4] == m) for m in ("fell", "rose", "new", "removed (within the limit)", "moved")}
+        marks = {m: sum(1 for r in rows if r[4] == m) for m in MARKS}
         totals.append((metric, len(before), len(after), sum(before.values()), sum(after.values()),
                        over(before, limit_of(old, metric)), over(after, limit_of(new, metric)), limit_of(new, metric), marks))
     return changed, totals
@@ -155,11 +175,10 @@ def markdown(base: str, head: str, changed: List[Row], totals) -> str:
         lines += [f"| {m} | `{k}` | {show(a)} | {show(b)} | {mark} |" for m, k, a, b, mark in changed]
     else:
         lines.append("No ratchet row changed.")
-    lines += ["", "| metric | limit | rows | sum | fell | rose | new | removed | moved | over the limit |",
-              "|---|---:|---|---|---:|---:|---:|---:|---:|---|"]
+    lines += ["", "| metric | limit | rows | sum | fell | rose | new | measured | removed | moved | over the limit |",
+              "|---|---:|---|---|---:|---:|---:|---:|---:|---:|---|"]
     for metric, n0, n1, s0, s1, o0, o1, lim, marks in totals:
-        lines.append(f"| {metric} | {show(lim)} | {n0} -> {n1} | {show(s0)} -> {show(s1)} | " + " | ".join(str(marks[m]) for m in
-                     ("fell", "rose", "new", "removed (within the limit)", "moved")) + f" | {o0} -> {o1} |")
+        lines.append(f"| {metric} | {show(lim)} | {n0} -> {n1} | {show(s0)} -> {show(s1)} | " + " | ".join(str(marks[m]) for m in MARKS) + f" | {o0} -> {o1} |")
     return "\n".join(lines) + "\n"
 
 
