@@ -35,6 +35,9 @@ object NoUserChangeTimeCache extends UserChangeTimeCache {
  * display data, tolerant of hours of staleness — but this cache gates an HTTP
  * freshness *decision*: a stale positive here means a real change (made on
  * another app-server instance, most likely) is silently told "not modified".
+ * The same is true, briefly, of every write made through another pod: until
+ * its event arrives here the entry is older than the row (see
+ * `UserStateController.cacheProvenUnchanged`).
  * So on any detected stream failure this cache clears ENTIRELY rather than
  * keep answering from what it has — see `onDisconnect` below. A cleared or
  * missing entry is always safe: `lastChangeAt` returning `None` just routes
