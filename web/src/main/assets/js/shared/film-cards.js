@@ -99,8 +99,6 @@ function imdbIntentUrl(href) {
 function isAndroidChrome(ua) {
   return /Android/.test(ua) && /Chrome\//.test(ua) && !/Firefox/.test(ua);
 }
-window.imdbIntentUrl  = imdbIntentUrl;
-window.isAndroidChrome = isAndroidChrome;
 
 if (isAndroidChrome(navigator.userAgent)) {
   document.addEventListener('click', e => {

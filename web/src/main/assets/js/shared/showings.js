@@ -1,7 +1,7 @@
 // Folding a card's showings down to about ten rows after each filter pass.
 
 /* global gridScope */  // filters.js
-/* exported TRUNCATED, foldShowings, truncateAllShowings, undoTruncation */
+/* exported foldShowings, truncateAllShowings, undoTruncation */
 
 // ── Showings truncation ─────────────────────────────────────────────────
 //
@@ -43,10 +43,10 @@ function _showtimeNoun(n) {
 // the filter had decided for it. Nothing here reads or writes inline display.
 const TRUNCATED = 'truncated';
 
-function undoTruncation() {
-  document.querySelectorAll('.' + TRUNCATED).forEach(element => element.classList.remove(TRUNCATED));
+// Unfold every folded row under `root` (the whole page by default).
+function undoTruncation(root) {
+  (root || document).querySelectorAll('.' + TRUNCATED).forEach(element => element.classList.remove(TRUNCATED));
 }
-window.undoTruncation = undoTruncation;
 
 // Fold one card's showings below ~10 rows, given what the last filter pass
 // left visible: `days` is its `.date-group`s in order, each `{ element,
@@ -111,7 +111,6 @@ function foldShowings(link, days, hasCinemaHeaders) {
     link.style.display = 'none';
   }
 }
-window.foldShowings = foldShowings;
 
 // `foldShowings` for a card with no index behind it: the visibility the
 // filter pass wrote is read back off the inline styles.
@@ -135,4 +134,3 @@ function truncateAllShowings(hasCinemaHeaders) {
   );
 }
 
-window.truncateAllShowings = truncateAllShowings;

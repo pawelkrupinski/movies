@@ -1,7 +1,7 @@
 // Reading and writing the device's own storage: JSON lists in localStorage, the legacy cookies they
 // moved out of, and the plain flags the one-off hints keep.
 
-/* exported _hintGet, _hintSet, _lsGet, _lsSet */
+/* exported readStoredFlag, readStoredJson, storeFlag, storeJson */
 
 // ── Hidden-films + disabled-cinemas storage ───────────────────────────────
 //
@@ -14,7 +14,7 @@
 // localStorage has a ~5 MB origin budget, doesn't get sent with every
 // request, and works the same across browsers.
 
-function _lsGet(key) {
+function readStoredJson(key) {
   try {
     const raw = localStorage.getItem(key);
     if (raw === null) return null;
@@ -22,7 +22,7 @@ function _lsGet(key) {
   } catch { return null; }
 }
 
-function _lsSet(key, value) {
+function storeJson(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
 
@@ -39,15 +39,15 @@ function _cookieClear(name) {
 // value, lift it across and drop the cookie. Runs once per key; subsequent
 // page loads find localStorage already populated.
 function _migrate(key) {
-  if (_lsGet(key) !== null) return;
+  if (readStoredJson(key) !== null) return;
   const legacy = _cookieRead(key);
   if (legacy !== null) {
-    _lsSet(key, legacy);
+    storeJson(key, legacy);
     _cookieClear(key);
   }
 }
 _migrate('hiddenFilms');
 _migrate('disabledCinemas');
 
-function _hintGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-function _hintSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode — skip */ } }
+function readStoredFlag(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function storeFlag(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode — skip */ } }

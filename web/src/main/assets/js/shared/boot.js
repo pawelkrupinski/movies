@@ -2,20 +2,20 @@
 
 /* global rememberCity */  // city.js
 /* global resetSubmenuPanels, updateFormatBtn */  // filters.js
-/* global updateNavbar */  // hidden-films.js
+/* global refreshHiddenFilmsControls */  // hidden-films.js
 /* global buildCinemaPanel, maybeShowAreaPicker */  // cinemas.js
 /* global hydrateAuth, settleSignOut */  // auth.js
 /* global syncDayPills */  // dates.js
 /* global applyFiltersFromURL, noteFiltersApplied */  // filter-url.js
 /* global bootMergeFromServer */  // hidden-films-sync.js
 /* global reconcileLanguage */  // language-sync.js
-/* global _appliedDay:writable, maybeShowSwipeHint */  // day-carousel.js
+/* global maybeShowSwipeHint, rememberDisplayedDay */  // day-carousel.js
 
 // Client-side language switching (`t`/`applyLanguage`/`onLanguageChange`,
 // the `I18N_PACKS` pack, and the boot-time apply) lives in the standalone
-// `i18n.js`, loaded before this file — see that file's own doc comment for
-// why it isn't folded in here (landing.scala.html needs it too, and never
-// loads shared.js at all).
+// `i18n.js`, loaded before every shared script — see that file's own doc
+// comment for why it is not one of them (landing.scala.html needs it too, and
+// loads none of these).
 
 // ── Init ──────────────────────────────────────────────────────────────────
 
@@ -38,10 +38,9 @@ function bootView() {
   applyFiltersFromURL();
   updateFormatBtn();
   // Record the boot day so the carousel can derive slide direction from the
-  // displayed day (see `_appliedDay`), and sync the pills to the URL-applied
-  // day (the eager DOMContentLoaded sync ran before `applyFiltersFromURL`).
-  const dateSel = document.getElementById('date-filter');
-  if (dateSel) _appliedDay = dateSel.value;
+  // displayed day, and sync the pills to the URL-applied day (the eager
+  // DOMContentLoaded sync ran before `applyFiltersFromURL`).
+  rememberDisplayedDay();
   syncDayPills();
   applyFilters();
   noteFiltersApplied();
@@ -53,7 +52,6 @@ function bootView() {
   // flat city or once the visitor has already chosen.
   maybeShowAreaPicker();
 }
-window.bootView = bootView;
 
 document.addEventListener('DOMContentLoaded', () => {
   // One-time shell init — navbar chrome (day pills, hidden-films badge) — then
@@ -65,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // search is the common case, so it cannot wait for a city switch.
   rememberCity(CURRENT_CITY);
   syncDayPills();
-  updateNavbar();
+  refreshHiddenFilmsControls();
   bootView();
   maybeShowSwipeHint();   // once-a-day phone nudge, retired on first swipe
   // AFTER the page knows who is looking, and only then: the server-state

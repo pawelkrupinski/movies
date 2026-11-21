@@ -2,15 +2,15 @@
 // another tab), and the once-a-day nudge to sign in.
 
 /* global mountPrefix */  // city.js
-/* global _hintGet, _hintSet */  // local-store.js
+/* global readStoredFlag, storeFlag */  // local-store.js
 /* global closeDialog, openDialog */  // overlays.js
-/* exported _authAnswered, closeAnonymousNag, closeAuthMenu, closeLoginModal, hydrateAuth, isLoggedIn,
-   maybeShowAnonymousNag, openLoginModal, sessionUnconfirmed, settleSignOut, toggleAuthMenu */
+/* exported closeAnonymousNag, closeAuthMenu, closeLoginModal, hydrateAuth, isLoggedIn, maybeShowAnonymousNag,
+   openLoginModal, sessionUnconfirmed, settleSignOut, toggleAuthMenu, whoIsLookingIsUnknown */
 
 // ── Auth dropdown + login modal ──────────────────────────────────────────
 //
 // The dropdown stops event propagation so the document-level "click
-// outside → close" handler defined below doesn't fire-close it on
+// outside → close" handler (`overlays.js`) doesn't fire-close it on
 // the same click that opens it.
 
 function toggleAuthMenu(event) {
@@ -29,16 +29,6 @@ function openLoginModal() {
 function closeLoginModal() {
   closeDialog('login-dialog');
 }
-
-// shared.js runs inside an IIFE, so these are NOT globals by default; the
-// navbar / login-modal partials call them from inline `onclick=` handlers,
-// which resolve against `window`. Without these assignments the click throws
-// `ReferenceError: toggleAuthMenu is not defined` on every page that gets its
-// auth menu from shared.js (i.e. all but the self-contained `browse` view).
-window.toggleAuthMenu = toggleAuthMenu;
-window.closeAuthMenu  = closeAuthMenu;
-window.openLoginModal = openLoginModal;
-window.closeLoginModal = closeLoginModal;
 
 // ── Who is looking at this page ──────────────────────────────────────────
 //
@@ -133,6 +123,8 @@ function sessionUnconfirmed() {
   if (isLoggedIn() || _authAnswered) return false;
   try { return localStorage.getItem(SIGNED_IN_KEY) === '1'; } catch { return false; }
 }
+// Signed out as far as this page can tell, but only because `/api/me` could not be asked.
+function whoIsLookingIsUnknown() { return !isLoggedIn() && !_authAnswered; }
 function hydrateAuth() {
   if (_authHydration) return _authHydration;
   // Nothing to sign in to (a deployment with no OAuth secrets), or a page that
@@ -157,8 +149,6 @@ function hydrateAuth() {
     .catch(() => {});
   return _authHydration;
 }
-window.isLoggedIn  = isLoggedIn;
-window.hydrateAuth = hydrateAuth;
 
 // ── Signing out ───────────────────────────────────────────────────────────
 //
@@ -246,7 +236,6 @@ function sessionVerifyUrl() {
   if (!form) return null;                       // signed out: nothing to verify
   return form.action.replace(/auth\/logout\/?$/, '') + 'api/me';
 }
-window.sessionVerifyUrl = sessionVerifyUrl;
 
 function verifySessionOnReturn() {
   if (document.hidden) return;
@@ -258,19 +247,14 @@ function verifySessionOnReturn() {
     // network blip is not evidence that the visitor signed out.
     .catch(function () {});
 }
-window.verifySessionOnReturn = verifySessionOnReturn;
 document.addEventListener('visibilitychange', verifySessionOnReturn);
 
-// Delegated, because shared.js loads after the navbar on some pages and before
-// it on others, and a `submit` listener on the document catches both.
+// Delegated, because the shared scripts load after the navbar on some pages and
+// before it on others, and a `submit` listener on the document catches both.
 document.addEventListener('submit', event => {
   const form = event.target;
   if (form && form.classList && form.classList.contains('auth-logout-form')) beginSignOut();
 });
-
-window.beginSignOut         = beginSignOut;
-window.signedOutPageIsStale = signedOutPageIsStale;
-window.settleSignOut        = settleSignOut;
 
 // ── Anonymous nag toast (once per day) ──────────────────────────────────
 //
@@ -283,10 +267,10 @@ window.settleSignOut        = settleSignOut;
 
 function maybeShowAnonymousNag() {
   if (isLoggedIn() || !HAS_OAUTH_PROVIDERS) return;
-  const lastAt = parseInt(_hintGet('lastAnonymousNagAt') || '0', 10);
+  const lastAt = parseInt(readStoredFlag('lastAnonymousNagAt') || '0', 10);
   const dayMs  = 24 * 60 * 60 * 1000;
   if (Date.now() - lastAt < dayMs) return;
-  _hintSet('lastAnonymousNagAt', Date.now().toString());
+  storeFlag('lastAnonymousNagAt', Date.now().toString());
   showAnonymousNag();
 }
 

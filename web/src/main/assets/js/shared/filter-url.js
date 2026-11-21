@@ -1,8 +1,8 @@
 // The URL and the filters: reading every filter off the URL at boot, keeping the day in it, the
 // share link, and putting session-local controls back on a Back.
 
-/* global _updateRoomCinemaCount, ensurePanel, updateFormatBtn, updateSubmenuCount */  // filters.js
-/* global _searchDayPicked:writable, _searchOrigin:writable, beginSearchAtBoot, urlDay */  // search.js
+/* global ensurePanel, updateFormatBtn, updateRoomCinemaCount, updateSubmenuCount */  // filters.js
+/* global beginSearchAtBoot, restoreSearchDay, searchDayState, urlDay */  // search.js
 /* global buildCinemaPanel, getDisabledCinemas, setDisabledCinemas */  // cinemas.js
 /* global formatDateLabelShort */  // dates.js
 /* exported applyFiltersFromURL, copyFilterLinkToClipboard, noteFiltersApplied, syncDateToURL */
@@ -173,8 +173,8 @@ function copyFilterLinkToClipboard(button) {
 // markup says, and the next static checkbox added to that panel would inherit
 // the restore slot rather than the reasoning.
 // KEEPING BUILT CONTROLS OUT OF THE RESTORE QUEUE is the first half of this,
-// and it is done above: every checkbox `buildCinemaPanel` and the submenu
-// builders create is marked `autocomplete="off"` as it is made. An engine
+// and it is done where they are built (`cinemas.js`, `filters.js`): every
+// checkbox `buildCinemaPanel` and the submenu builders create is marked `autocomplete="off"` as it is made. An engine
 // queues saved values per (name, type) and replays them positionally, so it
 // was the BUILT boxes -- absent from a freshly parsed document -- that shifted
 // the saved values onto the static ones. Measured in WebKit on a page shaped
@@ -237,8 +237,7 @@ function rememberedControlsState() {
   const controls = {};
   for (const [id, element] of rememberedElements()) controls[id] = element.value;
   // The search's day too: Back to a search restores where clearing it would go.
-  const searchDay = _searchOrigin === null ? null : { origin: _searchOrigin, picked: _searchDayPicked };
-  return { filterControls: controls, searchDay: searchDay };
+  return { filterControls: controls, searchDay: searchDayState() };
 }
 function restoreRememberedControls() {
   const navigation = performance.getEntriesByType('navigation')[0];
@@ -247,14 +246,7 @@ function restoreRememberedControls() {
   if (!controls) return;
   for (const [id, element] of rememberedElements())
     if (typeof controls[id] === 'string') element.value = controls[id];
-  const searchDay = history.state.searchDay;
-  if (searchDay && typeof searchDay.origin === 'string') {
-    _searchOrigin = searchDay.origin;
-    _searchDayPicked = !!searchDay.picked;
-    // The URL carried the searched-from day (`urlDay`); the listing was on "All".
-    const sel = document.getElementById('date-filter');
-    if (sel && !_searchDayPicked) sel.value = 'anytime';
-  }
+  restoreSearchDay(history.state.searchDay);
 }
 
 // The belt for an entry with no recorded state (one written before this
@@ -348,7 +340,7 @@ function applyFiltersFromURL() {
     // the user can see which cinemas the URL-applied filter touched without
     // expanding every header by hand.
     if (key === 'room') {
-      list.querySelectorAll('.room-cinema-header').forEach(_updateRoomCinemaCount);
+      list.querySelectorAll('.room-cinema-header').forEach(updateRoomCinemaCount);
     }
   });
 

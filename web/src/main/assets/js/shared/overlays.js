@@ -42,7 +42,6 @@ function closeDialog(id) {
 function closeDialogOnBackdrop(event) {
   if (event.target === event.currentTarget) event.currentTarget.close();
 }
-window.closeDialogOnBackdrop = closeDialogOnBackdrop;
 
 function clampPanel(panel) {
   panel.style.right = '0px';
@@ -61,9 +60,6 @@ function openOtherCitiesModal() {
 function closeOtherCitiesModal() {
   closeDialog('other-cities-dialog');
 }
-
-window.openOtherCitiesModal = openOtherCitiesModal;
-window.closeOtherCitiesModal = closeOtherCitiesModal;
 
 // ESC closes any open dropdown / menu (a modal `<dialog>` closes itself).
 // `closeOtherPanels(null)` collapses every `.dropdown-panel` (Filtry
