@@ -3,7 +3,7 @@ package services.identity
 import org.bson.{BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.bson.BsonArray
 import services.identity.measures.Film
-import services.identity.vocabulary.{BsonFields, FilmCast}
+import services.identity.vocabulary.{BsonFields, FilmCast, Hit}
 
 /** A film's record as native BSON — explicit, like [[ResolverDecisionBson]]: an absent field is
  *  absent (directors unknown ≠ none), "TMDB knows no such film" is `null`. */
@@ -39,6 +39,14 @@ object IdentityAnswerBson {
       int(d, "genreBits").getOrElse(0),
       Option(d.get("castPairs")).flatMap(names => FilmCast.ofPairs({ import scala.jdk.CollectionConverters._; names.asArray.getValues.asScala.toSeq.map(BsonFields.intsOf) })))
   }
+
+  /** The hit a record gives -- its title, original title, year and popularity (`unknownPopularity` when it states none),
+   *  read as [[filmOf]] reads them, and nothing else of it: every film a search names is asked for its hit, and decoding
+   *  each one's whole record for four fields was most of what a take-up's hits allocated (docs/design/
+   *  corpus-context-persistence.md). */
+  def hitOf(id: Int, record: BsonDocument, unknownPopularity: Double): Hit =
+    Hit(id, record.getString("title").getValue, string(record, "originalTitle"), int(record, "year"),
+      Option(record.get("popularity")).fold(unknownPopularity)(_.asDouble.getValue))
 
   private def strings(values: Seq[String]): BsonArray = BsonArray.fromIterable(values.map(BsonString(_)))
   private def string(d: BsonDocument, name: String): Option[String] = Option(d.get(name)).map(_.asString.getValue)
