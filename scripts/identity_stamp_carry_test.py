@@ -4,6 +4,8 @@ bump); a hand-written or forged row is refused, as is one whose pure-move claim 
 row holds only for the very head and base its verdict was recorded under, every country whole and nothing moved, and
 never carries a venue slot; a range saying Identity-Design or a what-if over the model's data carries nothing."""
 
+from __future__ import annotations
+
 import hashlib
 import json
 import os
