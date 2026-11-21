@@ -40,6 +40,10 @@ class MisplacedTest(unittest.TestCase):
         message = "s\n\n" + "\n".join(f"{k.lower()}: v" for k in trailers.KNOWN_KEYS) + f"\nprose stops the block\n\n{CO}\n"
         self.assertEqual(list(trailers.KNOWN_KEYS), [m.key for m in trailers.misplaced(message)])
 
+    def test_a_rework_of_above_the_final_block_is_misplaced_agentctl_reads_it_to_close_a_revert_notice(self):
+        found = trailers.misplaced(f"re-land it\n\nRework-Of: 604134d1a\n\n{CO}\n")
+        self.assertEqual([("Rework-Of", 3)], [(m.key, m.line) for m in found])
+
     def test_an_indented_trailer_in_the_final_block_is_folded_into_the_one_above_not_read(self):
         self.assertEqual([("Complexity", 4)],
                          [(m.key, m.line) for m in trailers.misplaced(f"s\n\n{CO}\n  Complexity: why\n")])

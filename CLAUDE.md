@@ -55,7 +55,10 @@ commit touching a production path (`*/src/main/`, `conf/`, `build.sbt`, `project
 carries a `Fixes-Red: <run>` trailer naming any red run of the current episode (failed since the last green, failing the same way), and with it `Fix-Replay: <command>`, which `agentctl land` runs to see it fail on main and pass at the fix, or `Fix-Replay: none — <specific why>` for a red that cannot replay (the owner, 2026-11-20; listed weekly; `docs/landing-process.md`, stage 5). Tools-only commits (scripts, docs, `.claude/` skills,
 `*/src/test|it|fixtures/`, `test/resources/`, `.github/`) land while red without one. The hook enforces it;
 `PREPUSH_SKIP=redgate` bypasses — say so. A gate gh cannot read refuses a production push.
-**Every trailer** (`Fixes-Red:`, `Coupling:`, `Complexity:`, `Length:`, `Pure-Move:`, ...) **counts only in the message's final block, beside `Co-Authored-By:` with no blank line between**; anywhere else git ignores it (pre-push's `scripts/ci/trailers.py lint` warns).
+**Every trailer** (`Fixes-Red:`, `Coupling:`, `Complexity:`, `Length:`, `Pure-Move:`, `Rework-Of:`, ...) **counts only in the message's final block, beside `Co-Authored-By:` with no blank line between**; anywhere else git ignores it (pre-push's `scripts/ci/trailers.py lint` warns).
+**A reverted change comes back to its lander**: agentctl tells the lander's session and its orchestrator of any revert of
+its commit (`REVERTED:` / `REVERT NOTICE:` in the inbox); reply `~/bin/agentctl revert ack <id> --rework|--drop`, and a
+re-land carries `Rework-Of: <reverted or revert sha>`, which closes the notice (`docs/landing-process.md`, stage 5).
 The gates judge only what a commit's code changed; a recording's own data
 findings go to the non-gating Identity findings report (history: `docs/agent-workflow-history.md`). The nightly
 recording's capture (Record scrape fixtures) and its hermetic replay (Verify scrape recording) do not gate either;

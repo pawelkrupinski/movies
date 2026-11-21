@@ -495,6 +495,16 @@ as it lands unless `.github/red-workflows.tsv` says `verify_dispatch no` (a work
 one whose verification misses its deadline goes back to a fixer, escalated (`~/bin/AGENTCTL.md`, VERIFY PROMPTLY BY
 DEFAULT).
 
+**A reverted change comes back to its lander** (the owner, 2026-11-21: 604134d1a was reverted by a red fixer as
+7380cf9d7 and nobody told the agent that wrote it). Every commit on main that reverts others (`This reverts commit
+<sha>`, or a `Reverts: <sha>` trailer) is mapped by agentctl to the landing that brought the reverted commit in: its
+lander's session gets a `REVERTED:` inbox entry (and `REVERTED.md` in its worktree, kept out of commits), and its
+orchestrator -- the session that spawned it, else the owner -- a `REVERT NOTICE:` one, each with the revert's message
+(its analysis) and the red it fixed. Reply with `~/bin/agentctl revert ack <id> --rework|--drop --note "..."`; unacked
+after 6 h it escalates once to the owner. Re-landing the change closes it by itself: carry `Rework-Of: <sha>` (the
+reverted commit's, or the revert's) in the final trailer block -- usually beside a `git revert <revert sha>` of the
+revert plus the fix. `agentctl revert` lists the open notices (`~/bin/AGENTCTL.md`, "revert").
+
 **A fix matches the red it fixes, not one run number** (2026-11-05: a fix naming Main #2164, then #2172, sat WAITING
 while each push landing meanwhile started a new run failing the same way, #2173, #2174; main stayed red ~5.5 h until it
 was re-trailered by hand, twice). The red EPISODE is the gating workflow's failed runs on main since its last green. A
@@ -554,6 +564,7 @@ reports. Its first green run proves it: `scripts/ci/gating_checks.py prove --wor
   argv. A missing tool is fixed, not skipped.
 - **`Fixes-Red:` only for a real fix** of the named run, and for a gate red with its `Fix-Replay:` (stage 5); a
   commit that only collects evidence says `Diagnoses-Red:` (stage 5). A tools-only commit needs none.
+- **`Rework-Of: <sha>` on a re-land** of a reverted change (stage 5): it closes the revert's notice.
 - **Never rerun to green.** A red is investigated to its cause (CLAUDE.md, "Investigate every red"); a test that
   passes on a second run is flaky and gets fixed.
 - **Rebase onto current `origin/main` before any local check** (`land` does); never `reset --soft` onto a moved main.

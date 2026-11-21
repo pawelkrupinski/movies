@@ -32,9 +32,9 @@ import subprocess
 import sys
 from typing import Callable, Iterable, List, NamedTuple, Optional
 
-# Every trailer key a ratchet, commit rule or the red gate reads.
+# Every trailer key a ratchet, commit rule, the red gate or agentctl (Rework-Of: a revert notice closed) reads.
 KNOWN_KEYS = ("Coupling", "Complexity", "Duplication", "Length", "Pure-Move", "Fixes-Red", "Fix-Replay",
-              "Diagnoses-Red", "Identity-Design", "Drift-Harness-Refactor")
+              "Diagnoses-Red", "Identity-Design", "Drift-Harness-Refactor", "Rework-Of")
 # CI and report plumbing: what a commit collecting a red's evidence touches, and a fix seldom does alone
 PLUMBING = (".github/", "scripts/run-script-tests", "scripts/ci/report", "scripts/ci/job-summary", "docs/")
 KEY_LINE = re.compile(r"^(\s*)(" + "|".join(map(re.escape, KNOWN_KEYS)) + r")\s*:(.*)$", re.IGNORECASE)
