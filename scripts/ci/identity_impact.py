@@ -126,7 +126,7 @@ def roster_names(tree):
             continue
         with open(os.path.join(models, f), encoding="utf-8") as fh:
             for line in fh:  # every hand-written venue is Poland's or a chain network's; the rest are data-driven
-                for name, display in re.findall(r"case object (\w+) extends Cinema\(\"([^\"]*)\"", line):
+                for name, display in re.findall(r"case object (\w+)\s+extends\s+Cinema\(\"([^\"]*)\"", line):
                     out.append(("pl", display))
                     out.append(("pl", re.sub(r"([a-z0-9])([A-Z])", r"\1-\2", name)))
     return out

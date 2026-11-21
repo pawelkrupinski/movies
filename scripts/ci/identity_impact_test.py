@@ -100,6 +100,13 @@ class CountriesTest(unittest.TestCase):
                  {RULES: HEADER + row("m", cinema="kino-muza", pattern="y")})
         self.assertEqual(r.countries(), ["pl"])
 
+    def test_a_hand_written_venue_declared_column_aligned_is_a_polish_roster_name(self):
+        models = {"common/src/main/scala/models/MajorCityCinemas.scala":
+                  'case object KinoKijow       extends Cinema("Kino Kijów", "Kijów")\n'}
+        r = Repo(dict(ROSTERS, **models, **{RULES: HEADER + row("k", cinema="kino-kijow")}),
+                 {RULES: HEADER + row("k", cinema="kino-kijow", pattern="y")})
+        self.assertEqual(r.countries(), ["pl"])
+
     def test_a_chain_key_reaches_every_country_with_a_venue_of_the_chain(self):
         r = Repo(dict(ROSTERS, **{RULES: HEADER + row("c", cinema="cinema-city")}),
                  {RULES: HEADER + row("c", cinema="cinema-city", pattern="y")})
