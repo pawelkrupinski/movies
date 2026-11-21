@@ -8,6 +8,7 @@ import scala.collection.mutable
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
+import scala.util.control.NonFatal
 
 import play.api.Logging
 import services.tasktypes.TaskType
@@ -157,11 +158,16 @@ class TaskWorker(
    *  restart (mechanism `UncaughtExceptionHandler`) — pure shutdown noise, not a real
    *  fault. Swallow it here as the expected stop signal: clear the interrupt flag and let
    *  `while (running.get())` end the loop (`stop()` sets `running=false` before
-   *  interrupting). A spurious interrupt while still running simply resumes the loop. */
+   *  interrupting). A spurious interrupt while still running simply resumes the loop.
+   *
+   *  Any other failure is the queue's (a claim, or a settle's write after the handler ran — that task then
+   *  waits out its lease): logged, and the worker parks as if idle until a ring or the backstop. */
   private[tasks] def tick(workerId: String): Unit =
     try {
       val since = doorbell.generation
-      Try(claimAndRun(workerId)).getOrElse(PollResult.Idle) match {
+      Try(claimAndRun(workerId)).recover { case NonFatal(e) =>
+        logger.warn(s"task worker $workerId: the queue failed, parking until the next ring: $e"); PollResult.Idle
+      }.get match {
         case PollResult.Completed => ()                              // got work — claim the next immediately
         case PollResult.Returned  => sleepFor(retryBackoff.value.toMillis) // bounded retry; ignore the doorbell
         case PollResult.Idle      => doorbell.awaitSince(since, idleBackstop.value.toMillis)

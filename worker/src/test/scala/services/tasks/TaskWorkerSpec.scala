@@ -291,6 +291,23 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     noException should be thrownBy worker(q, Seq(interrupted)).tick("w0")
   }
 
+  // A queue that cannot answer (Mongo down mid-claim, or a settle's write failing after the handler ran — the task
+  // then stays leased until the reaper takes it back) parked the worker as if the queue were empty, and nothing said
+  // so: a pool doing no work at all logged nothing.
+  it should "log a queue failure a tick swallows, instead of parking silently as if nothing were waiting" in {
+    val unreachable = new ForwardingTaskQueue(new InMemoryTaskQueue) {
+      override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] =
+        throw new IllegalStateException("queue unreachable")
+    }
+    // A one-millisecond backstop on a stopwatch whose every reading is a second past the last: the idle park that
+    // follows the failure ends after its first wait.
+    val ticking = { val seconds = new AtomicInteger(0); new tools.Stopwatch(() => seconds.incrementAndGet() * 1000000000L) }
+    val pool    = TaskWorkers(unreachable, Seq.empty, idleBackstop = TaskWorker.IdleBackstop(1.milli), clock = specClock,
+                              threadPools = tools.ThreadPools.Unmanaged, sleep = tools.Sleep.Blocking, stopwatch = ticking)
+    val lines   = tools.LogCapture.capture(classOf[TaskWorker].getName)(pool.tick("w0")).map(_.getFormattedMessage)
+    lines.exists(_.contains("queue unreachable")) shouldBe true
+  }
+
   it should "return a task to waiting when no handler is registered for its type" in {
     val q = new InMemoryTaskQueue
     q.enqueue(McRating, "mc|x", submittedAt = t0)
