@@ -132,7 +132,11 @@ object ReaderNames {
     "test/resources/length-baseline.tsv", "test/resources/duplication-baseline.tsv", "worker/src/main/resources/aot-classes.txt",
     "test/resources/identity-boot-cost-baseline.tsv")
 
-  def isBookkeeping(path: String): Boolean = Bookkeeping(path)
+  /** The what-if records the stamp carry's rows stand on (scripts/identity_stamp_carry.py's VERDICTS): read by that
+   *  tool alone, never by a spec or the build. */
+  val BookkeepingTrees: Seq[String] = Seq("test/resources/identity-what-if-verdicts/")
+
+  def isBookkeeping(path: String): Boolean = Bookkeeping(path) || BookkeepingTrees.exists(path.startsWith)
 
   /** Whether a path is data some spec may read off the class path or the fixtures tree. */
   def isResource(path: String): Boolean = ResourceRoots.exists(r => path.startsWith(r) || path.contains("/" + r))

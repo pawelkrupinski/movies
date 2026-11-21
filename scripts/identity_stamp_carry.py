@@ -8,6 +8,9 @@ writes the rows (`propose`) and proves them again (`verify`, the pre-push hook's
   2. ITS PROOF HOLDS for exactly <base>..<head>, <base> an ancestor of <head>:
      - `pure-move`: scripts/pure-move-check calls the range PURE, run again here. Carries every stamp.
      - `what-if`: scripts/identity-what-if recorded, under exactly that head and base, a verdict for each of pl de uk es us
+       -- read from this machine's record by `propose`/`auto`, which commit a copy beside the rows
+       (test/resources/identity-what-if-verdicts/<head>-<base>.tsv), and from that copy by `verify`, so ci-runner proves
+       the row as the laptop does --
        whose newest line is `done`, over EVERY family (`--all` or `--verify`, not its selection) and with no take moved,
        the model's or the final one's. Carries identity-rules; agreement-rules only when the final takes were compared
        (not `--model-only`); never venue-slot (a what-if builds no venue slot);
@@ -42,6 +45,8 @@ sys.path.insert(0, os.path.join(HERE, "ci"))
 from commit_rules import HARNESS_FILES  # noqa: E402  (the drift harness: one definition)
 
 TABLE = "test/resources/identity-stamp-carry.tsv"
+# the what-if records a what-if row stands on, committed with it (<head>-<base>.tsv, identity-tools.sh's format)
+VERDICTS = "test/resources/identity-what-if-verdicts"
 STAMPS = ("identity-rules", "venue-slot", "agreement-rules")
 COUNTRIES = ("pl", "de", "uk", "es", "us")
 # what a what-if cannot vouch for: the title rules (data a corpus covers thinly), a module's resources (the model's
@@ -113,22 +118,37 @@ def stamps_of(sha: str) -> dict[str, str]:
     return stamps
 
 
-def what_if_verdicts(head: str, base: str) -> dict[str, list[str]]:
-    """Each country's newest line of identity-what-if's record under (head, base) (identity-tools.sh's what_if_record_verdict):
-    cc, verdict, finished, takes diff, moved, mode."""
+def cached_verdict(head: str, base: str) -> str:
+    """identity-what-if's record under (head, base) on THIS machine (identity-tools.sh's what_if_record_verdict), "" for
+    none: what `propose` and `auto` read, and copy beside the rows they write (VERDICTS)."""
     cache = os.environ.get("KINOWO_IDENTITY_CACHE") or os.path.expanduser("~/.cache/kinowo-identity")
     path = os.path.join(cache, "what-if-verdicts", f"{head}-{base}.tsv")
+    if not os.path.isfile(path):
+        return ""
+    with open(path) as f:
+        return f.read()
+
+
+def verdict_path(head: str, base: str) -> str:
+    return f"{VERDICTS}/{head}-{base}.tsv"
+
+
+def what_if_verdicts(head: str, base: str, at: str | None = None) -> dict[str, list[str]]:
+    """Each country's newest line of the what-if record under (head, base) -- cc, verdict, finished, takes diff, moved,
+    mode: this machine's own record, or, `at` a commit, the record committed there beside the rows (what `verify` reads,
+    so the hook proves a row alike on the laptop and on ci-runner, where no what-if ever ran)."""
+    text = cached_verdict(head, base) if at is None else git("show", f"{at}:{verdict_path(head, base)}", ok=(0, 128))
     newest: dict[str, list[str]] = {}
-    if os.path.isfile(path):
-        with open(path) as f:
-            for line in f:
-                fields = line.rstrip("\n").split("\t")
-                newest[fields[0]] = fields
+    for line in text.splitlines():
+        fields = line.split("\t")
+        if fields[0]:
+            newest[fields[0]] = fields
     return newest
 
 
-def covered(proof: str, base: str, head: str) -> tuple[set[str], list[str]]:
-    """The stamps `proof` over base..head carries, and why it carries none, if it does not hold."""
+def covered(proof: str, base: str, head: str, at: str | None = None) -> tuple[set[str], list[str]]:
+    """The stamps `proof` over base..head carries, and why it carries none, if it does not hold. A what-if's record is
+    this machine's, or, `at` a commit, the one committed there (what_if_verdicts)."""
     if base == head or subprocess.run(["git", "merge-base", "--is-ancestor", base, head], capture_output=True).returncode != 0:
         return set(), [f"{base[:12]} is not an ancestor of {head[:12]}"]
     why = []
@@ -152,7 +172,7 @@ def covered(proof: str, base: str, head: str) -> tuple[set[str], list[str]]:
     blind = [p for p in changed if WHAT_IF_BLIND.match(p)]
     if blind:
         why.append(f"a what-if sees today's corpus only, and the range changes what it cannot vouch for: {' '.join(blind)}")
-    verdicts = what_if_verdicts(head, base)
+    verdicts = what_if_verdicts(head, base, at)
     final = True
     for cc in COUNTRIES:
         v = verdicts.get(cc)
@@ -212,11 +232,22 @@ def carry_rows(proof: str, base: str, head: str, carried: set[str], before: dict
     return new
 
 
-def write_rows(table: str, new: list[Row]):
-    if new:
-        with open(table, "a") as f:
-            f.writelines(r.line() + "\n" for r in new)
-        print(f"{len(new)} row(s) added to {table}: commit it (the hook's stampcarry check proves each again)")
+def write_rows(table: str, new: list[Row]) -> list[str]:
+    """Appends the rows to `table`, and copies each what-if row's record beside it (VERDICTS): the files to commit."""
+    if not new:
+        return []
+    with open(table, "a") as f:
+        f.writelines(r.line() + "\n" for r in new)
+    written = [table]
+    for base, head in sorted({(r.base, r.head) for r in new if r.proof == "what-if"}):
+        path = verdict_path(head, base)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(cached_verdict(head, base))
+        written.append(path)
+    print(f"{len(new)} row(s) added to {table}: commit it with {', '.join(written[1:]) or 'nothing else'}"
+          " (the hook's stampcarry check proves each again)")
+    return written
 
 
 # What may move a stamp: the main code or resources of a module the stamps' closures walk (build.sbt's
@@ -299,9 +330,9 @@ def auto(rng: str, table: str, commit: bool) -> int:
                 print(f"{s}: the head's code is not the what-if's ({stamps[head][s][:12]}, not {stamps[h][s][:12]}): it bumps")
             carried = carried - stale
         new += carry_rows(proof, b, h, carried, stamps[b], stamps[h], table)
-    write_rows(table, new)
+    written = write_rows(table, new)
     if new and commit:
-        git("add", table)
+        git("add", *written)
         git("-c", "commit.gpgsign=false", "commit", "-q", "-m", f"Carry the identity stamps over {base[:10]}..{head[:10]}: {len(new)} proven row(s)\n\n"
             f"Written by scripts/identity-stamp-carry auto ({', '.join(sorted({p for p, *_ in steps}))}); the pre-push "
             "stampcarry check proves each row again.")
@@ -326,7 +357,7 @@ def verify(rng: str) -> int:
         try:
             key = (r.proof, r.base, r.head)
             if key not in proofs:
-                proofs[key] = covered(*key)
+                proofs[key] = covered(*key, at=new)
             carried, why = proofs[key]
             if not carried:
                 refusals += [f"{label}: {w}" for w in why]
