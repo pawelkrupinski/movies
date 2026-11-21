@@ -126,12 +126,17 @@ class UnscreenedCleanup(
     RemovalAudit.cleanupSkipped("unscreened-cleanup", unreadable.map(row => label(row._1)),
       reason = "stored-record-read-failed")
 
-    if (orphans.nonEmpty) {
-      logger.info(s"Unscreened-row cleanup: dropping ${orphans.size} row(s) with no current screenings.")
-      RemovalAudit.filmsRemoved("unscreened-cleanup", orphans.map(label), reason = "no-current-screenings")
+    // Dropped only while the cache still holds it unscreened, under the title lock its writes take: a scrape
+    // landing a slot since the checks above keeps it.
+    val dropped = orphans.filter(cache.invalidateIf(_)(unscreened))
+    if (dropped.nonEmpty) {
+      logger.info(s"Unscreened-row cleanup: dropped ${dropped.size} row(s) with no current screenings.")
+      RemovalAudit.filmsRemoved("unscreened-cleanup", dropped.map(label), reason = "no-current-screenings")
     }
-    orphans.foreach(cache.invalidate)
-    orphans.size
+    if (dropped.size < orphans.size)
+      logger.info(s"Unscreened-row cleanup: kept ${orphans.size - dropped.size} row(s) a write gave a cinema since, " +
+        "or the store would not delete.")
+    dropped.size
   }
 
   /** Does the stored row still name a cinema? The same `cinemaData` view the cache

@@ -120,6 +120,12 @@ trait MovieCache extends MovieCacheReader {
   private[services] def storedChecked(key: CacheKey): tools.ReadOutcome[MovieRecord]
 
   private[services] def invalidate(key: CacheKey): Unit
+
+  /** Drop the row at `key` from the resident corpus and the store only while `gone` holds of it, judged under the
+   *  title lock every write of it takes — so a write landing between a caller's own check and this drop (a scrape
+   *  giving the film a cinema) is never deleted with it. Whether the row is gone: false when `gone` no longer held,
+   *  or the store refused the delete (the row then stays resident too). */
+  private[services] def invalidateIf(key: CacheKey)(gone: MovieRecord => Boolean): Boolean
   /** Run `body` under the per-normalised-title lock. Any read-modify-write
    *  across the cache's surface for keys sharing this `cleanTitle` must
    *  happen inside this block to be serialised against `recordCinemaScrape`,

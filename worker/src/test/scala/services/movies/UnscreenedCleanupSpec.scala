@@ -192,6 +192,39 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Dkfzakopeta", Some(2026)))     shouldBe None
   }
 
+  // The cleanup judged a row, read the store, and THEN deleted it, under no lock: a scrape landing a
+  // slot in between gave the film a cinema, and the delete still took it out of the cache and Mongo.
+  it should "KEEP a row a scrape gave a cinema between the cleanup's check and its delete" in {
+    lazy val cache: CaffeineMovieCache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    lazy val repository: InMemoryMovieRepository = new InMemoryMovieRepository(Seq(("Racing", Some(2026), mkRecord("tt8", Map.empty))),
+        screenings = Some(new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)),
+        slots = Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)), normalizer = titleNormalizer) {
+      private var landed = false
+      override def findByKeyChecked(key: models.CacheKey) = {
+        val read = super.findByKeyChecked(key)
+        if (!landed) { landed = true; cache.putSlotsIfPresent(key, Seq(Helios))((_, _) => cinemaSlot("Racing")) }
+        read
+      }
+    }
+    val key = cache.keyOf("Racing", Some(2026))
+
+    new UnscreenedCleanup(cache, repository, scheduler = tools.DaemonExecutors.scheduler("unscreened-cleanup")).removeUnscreened() shouldBe 0
+    cache.get(key).map(_.cinemaData.keySet) shouldBe Some(Set(Helios))
+    repository.deletes shouldBe empty
+  }
+
+  // The delete's outcome was ignored: a refused delete still evicted the row (back on the next
+  // rehydrate) and counted it dropped.
+  it should "keep, and not count, a row whose delete the store refused" in {
+    val repository = new InMemoryMovieRepository(Seq(("Refused", Some(2026), mkRecord("tt9", Map.empty))), normalizer = titleNormalizer) {
+      override def delete(film: models.FilmId): WriteOutcome = WriteOutcome.Declined("store unavailable")
+    }
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+
+    new UnscreenedCleanup(cache, repository, scheduler = tools.DaemonExecutors.scheduler("unscreened-cleanup")).removeUnscreened() shouldBe 0
+    cache.get(cache.keyOf("Refused", Some(2026))) should not be empty
+  }
+
   // ── Event-driven: the write that leaves a film with no cinema ─────────────────────────────
 
   /** Holds what the cleanup hands its scheduler — each drain of nominated rows, and anything it would delay — so a spec

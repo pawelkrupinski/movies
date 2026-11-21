@@ -415,6 +415,16 @@ class CaffeineMovieCache(
     touch()
   }
 
+  private[services] override def invalidateIf(key: CacheKey)(gone: MovieRecord => Boolean): Boolean =
+    withTitleLock(key.cleanTitle) {
+      get(key).forall(gone) && {
+        val deleted = corpusIndex.idOf(key).orElse(repository.findByKeyChecked(key).answered.map(_.id))
+          .forall(repository.delete(_) == WriteOutcome.Written)
+        if (deleted) { evict(key); touch() }
+        deleted
+      }
+    }
+
   def snapshot(): Seq[StoredMovieRecord] = resident.snapshot()
 
   /** Snapshot of (key, enrichment) pairs for the IMDb refresh loop. */
