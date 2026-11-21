@@ -29,13 +29,28 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
     // DE "Internationales Gitarrenfestival Tübingen - Eröffnungskonzert - Raíces": the families agree on 'Roots' (1954), whose
     // ORIGINAL title is the billing's last piece. Kept as its title and year alone, the restarted stage no longer saw the
     // piece and took the film the whole resolve refuses (identity-slice --drift, recording 573)
-    val film = Film("Roots", Some("Raíces"), Seq("Raices", "Wurzeln"), Some(1954), Some(83), Some(Seq("Benito Alazraki")),
-      Some(Seq("MX")), Some(1.5), 47395, Some(java.time.LocalDate.of(1955, 4, 21)), Some("MXUS"), Seq(85, 80), Some("MX1955P"), 123,
-      Some("US=PG"), Some("es"), 18, services.identity.vocabulary.FilmCast.ofPairs(Seq(Seq(1, 2), Seq(3))))
+    val film = services.identity.IdentityAnswerBsonSpec.roots
     val agreed = StoredVerdict("r", 7L, Map(read("imdb|title|Raíces") -> 1L),
       Some(AgreedFilm(Set(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb), SourceRecord(film, Map("imdb" -> "tt0047395", "tmdb" -> "122769")),
         Map(VoterFamily.Imdb -> "tt0047395", VoterFamily.Wiki -> "Q7366720", VoterFamily.Filmweb -> "100"))))
     AgreementVerdicts.decode(AgreementVerdicts.encode(agreed)) shouldBe agreed
+  }
+
+  it should "keep its agreed film in the one format every store writes a film in" in {
+    val film   = services.identity.IdentityAnswerBsonSpec.roots
+    val agreed = StoredVerdict("r", 7L, Map.empty, Some(AgreedFilm(Set(VoterFamily.Imdb), SourceRecord(film, Map("imdb" -> "tt0047395")),
+      Map(VoterFamily.Imdb -> "tt0047395"))))
+    AgreementVerdicts.encode(agreed).getDocument("agreed").getDocument("film") shouldBe services.identity.IdentityAnswerBson.film(Some(film))
+  }
+
+  // Agreed films were written in a format of their own until 2026-11-21 (FilmBson: `cast`, no empty alternative titles),
+  // its day parsed unguarded: one stored day that did not parse threw out the read of every verdict
+  it should "read an agreed film kept in the earlier format, a day that does not parse as none" in {
+    val legacy = services.identity.IdentityAnswerBsonSpec.legacyRoots.clone().append("released", org.bson.BsonString("1955-02-30"))
+    val stored = AgreementVerdicts.encode(StoredVerdict("r", 7L, Map.empty, Some(AgreedFilm(Set(VoterFamily.Imdb),
+      SourceRecord(Film("x"), Map("imdb" -> "tt0047395")), Map(VoterFamily.Imdb -> "tt0047395")))))
+    stored.getDocument("agreed").put("film", legacy)
+    AgreementVerdicts.decode(stored).agreed.map(_.record.film) shouldBe Some(services.identity.IdentityAnswerBsonSpec.roots.copy(released = None))
   }
 
   // HardClusterConvergenceIntegrationSpec on land-all (2026-10-25): a receipt naming a TMDB search by its query's sort
