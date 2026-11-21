@@ -12,7 +12,7 @@ job	main.yml	ci	aggregate
 job	main.yml	gates	aggregate
 job	main.yml	kick-convergence	2722
 job	main.yml	scope	2722
-job	main.yml	deps	unproven	born 2026-11-19: resolves a changed build's dependencies once before the sbt rows (SbtDependencyFanOutSpec); owner: CI infra
+job	main.yml	deps	2781
 job	main.yml	test (rest)	2722
 job	main.yml	test (heavy1)	2722
 job	main.yml	test (heavy2)	2722
@@ -127,4 +127,4 @@ job	identity-takes.yml	leg (united-kingdom)	aggregate
 job	identity-takes.yml	leg (united-states)	aggregate
 job	identity-takes.yml	timings	aggregate
 job	main.yml	test (worker-identity-2)	2567
-job	main.yml	identity-slice old-ref compile	unproven	born 2026-11-21: moved from the landing check and Tool self-tests to Main (the owner, "(5)"); owner: landing checks
+job	main.yml	identity-slice old-ref compile	2781
