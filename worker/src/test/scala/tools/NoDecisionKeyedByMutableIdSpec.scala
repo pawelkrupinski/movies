@@ -109,6 +109,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}IncrementalResolver.scala#familiesOfKey" -> Name("reverse index: block key → families"),
     s"${I}IncrementalResolver.scala#freedIds"      -> Name("family numbers free to reuse; forget clears every index entry of one"),
     s"${I}IncrementalResolver.scala#titlesOf"      -> Pass("a field of UpdateRounds, built per update: each settled family's region's title-form inputs, stored with it at settle"),
+    s"${I}IdentityModelStore.scala#keys"           -> Pass("a field of MongoIdentityModelStore's TitleFields, built per decoded family document"),
     s"${I}TitleRuleChange.scala#keyed"             -> Pass("a field of RecordingTitleForms, built per region: the titles whose key form it read"),
     s"${I}TitleRuleChange.scala#searched"          -> Pass("a field of RecordingTitleForms, built per region: the titles whose search form it read"),
     s"${I}TitleRuleChange.scala#keyAlike"          -> Pass("a field of TitleRuleChange, built per restore: by title, whether its key form reads alike under both rules"),
