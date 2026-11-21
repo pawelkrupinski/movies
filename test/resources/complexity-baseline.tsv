@@ -9,5 +9,10 @@
 limit	cognitive	10
 limit	cyclomatic	10
 limit	inner-defs	2
+cognitive	common/src/main/scala/models/ListingKey.scala:ListingKey.ordering	38
+cognitive	identity/src/main/scala/services/identity/ClusterDecisionFacts.scala:ClusterDecisionFacts.basis	11
+cognitive	identity/src/main/scala/services/identity/IdentityTraceStore.scala:CoalescedTraceWrites.writer	14
 cognitive	identity/src/main/scala/services/identity/measures/YearRuntimeMeasures.scala:YearRuntimeMeasures.runtimeDelta	15
 cognitive	identity/src/main/scala/services/identity/vocabulary/SortedLongMap.scala:SortedLongMap.compact	14
+cyclomatic	common/src/main/scala/models/ListingKey.scala:ListingKey.ordering	21
+cyclomatic	identity/src/main/scala/services/identity/ListingScoring.scala:ListingScoring.besideDenials	11

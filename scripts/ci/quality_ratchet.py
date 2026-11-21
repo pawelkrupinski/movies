@@ -80,7 +80,7 @@ RATCHETS: Dict[str, Ratchet] = {r.name: r for r in (
             """# THE LENGTH BASELINE (scripts/quality-report --update writes it; scripts/ci/quality_ratchet.py holds every push to it).
 # Every production method and source (*/src/main of a deployed module) past its length limit, frozen at its length:
 #   limit         method-lines / file-lines: a method or source without a row stays at or below it
-#   method-lines  <path>:<Owner.method>, the lines from its `def` to its body's end
+#   method-lines  <path>:<Owner.method>, the lines from its `def` (or member `val`/`var`/given alias) to its body's end
 #   file-lines    <path>, the source's lines
 # A row may only fall (--update records it, no trailer); a row added or raised, or a limit raised, lands only in a
 # commit carrying `Length: <why>` (CLAUDE.md, "Code quality ratchets").""",

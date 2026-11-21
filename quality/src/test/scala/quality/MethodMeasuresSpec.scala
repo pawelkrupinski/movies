@@ -168,6 +168,43 @@ class MethodMeasuresSpec extends AnyFlatSpec with Matchers {
     found.map(m => (m.qualifiedName, m.startLine, m.lines)) shouldBe Seq(("Outer.Inner.f", 4, 2))
   }
 
+  "a val, lazy val, var or given alias with a body" should "be measured as a method, its lambda's branches counted (a lambda-valued val went unmeasured)" in {
+    val found = MethodMeasures.of("Example.scala",
+      """object Example {
+        |  val classify: Int => String = n =>
+        |    if (n > 0) "positive"
+        |    else if (n < 0) "negative"
+        |    else "zero"
+        |  lazy val cached: Int = if (sys.props.contains("x")) 1 else 2
+        |  var counter: Int = 0
+        |  val (left, right) = if (counter > 0) (1, 2) else (2, 1)
+        |  given Ordering[String] = (a, b) => if (a == b) 0 else 1
+        |  given byLength: Ordering[Int] = Ordering.by(identity)
+        |}""".stripMargin).toOption.get
+    found.map(m => (m.qualifiedName, m.cognitive, m.cyclomatic, m.startLine, m.lines)) shouldBe Seq(
+      ("Example.classify", 4, 3, 2, 4),
+      ("Example.cached", 2, 2, 6, 1),
+      ("Example.counter", 0, 1, 7, 1),
+      ("Example.left,right", 2, 2, 8, 1),
+      ("Example.given", 3, 2, 9, 1),
+      ("Example.byLength", 0, 1, 10, 1))
+  }
+
+  "a val inside a method" should "fold into it; a member val's def counts as its inner def" in {
+    val found = MethodMeasures.of("Example.scala",
+      """object Example {
+        |  def outer(x: Int): Int = {
+        |    val f: Int => Int = y => if (y > x) y else x
+        |    f(x)
+        |  }
+        |  val handler: Int => Int = { n =>
+        |    def helper(m: Int): Int = if (m > 0) m else 0
+        |    helper(n)
+        |  }
+        |}""".stripMargin).toOption.get
+    found.map(m => (m.qualifiedName, m.cognitive, m.innerDefs)) shouldBe Seq(("Example.outer", 3, 0), ("Example.handler", 4, 1))
+  }
+
   "an unparseable source" should "say where" in {
     MethodMeasures.of("Broken.scala", "object { def").left.toOption.get should startWith("Broken.scala:1:")
   }

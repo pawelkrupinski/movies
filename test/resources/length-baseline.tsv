@@ -1,9 +1,19 @@
 # THE LENGTH BASELINE (scripts/quality-report --update writes it; scripts/ci/quality_ratchet.py holds every push to it).
 # Every production method and source (*/src/main of a deployed module) past its length limit, frozen at its length:
 #   limit         method-lines / file-lines: a method or source without a row stays at or below it
-#   method-lines  <path>:<Owner.method>, the lines from its `def` to its body's end
+#   method-lines  <path>:<Owner.method>, the lines from its `def` (or member `val`/`var`/given alias) to its body's end
 #   file-lines    <path>, the source's lines
 # A row may only fall (--update records it, no trailer); a row added or raised, or a limit raised, lands only in a
 # commit carrying `Length: <why>` (CLAUDE.md, "Code quality ratchets").
 limit	method-lines	50
 limit	file-lines	500
+method-lines	common/src/main/scala/models/CountryNames.scala:CountryNames.Aliases	91
+method-lines	common/src/main/scala/models/LegacySlugOwners.scala:LegacySlugOwners.de	59
+method-lines	common/src/main/scala/models/LegacySlugOwners.scala:LegacySlugOwners.us	261
+method-lines	common/src/main/scala/services/MongoCollections.scala:MongoCollections.all	163
+method-lines	common/src/main/scala/services/titles/rules/TitleRulePlaceholders.scala:TitleRulePlaceholders.defined	58
+method-lines	http/src/main/scala/tools/HostPolicies.scala:HostPolicies.all	371
+method-lines	identity/src/main/scala/services/identity/RuleContract.scala:RuleContract.nonMonotone	73
+method-lines	scrapers/src/main/scala/services/cinemas/pl/venues/PolishTowns.scala:PolishTowns.towns	67
+method-lines	scrapers/src/main/scala/services/cinemas/us/RegalVenues.scala:RegalVenues.theatreCodeBySlug	403
+method-lines	web/src/main/scala/models/Catalog.scala:Catalog.json	136
