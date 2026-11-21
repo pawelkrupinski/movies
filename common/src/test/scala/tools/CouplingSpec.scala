@@ -249,14 +249,15 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("class\tservices.identity.Voting\texempt\to\tw\tyesterday"))
   }
 
-  "the checked-in exemption table" should "parse, exempt the roots, registries, config root and foundations, and declare the scrape contract" in {
+  "the checked-in exemption table" should "parse, exempt the roots, registries and foundations, and hold the scrapers and config root to the limit" in {
     val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
-    Seq("modules.WorkerMain", "modules.wiring.HttpWiring", "services.cinemas.pl.venues.KrakowVenues", "services.cinemas.CinemaScraperCatalog",
-      "settings.ProcessConfiguration").map(table.fanOutLimit(_, 9)) shouldBe Seq(None, None, None, None, None)
+    Seq("modules.WorkerMain", "modules.wiring.HttpWiring", "services.cinemas.pl.venues.KrakowVenues", "services.cinemas.CinemaScraperCatalog")
+      .map(table.fanOutLimit(_, 9)) shouldBe Seq(None, None, None, None)
+    table.fanOutLimit("settings.ProcessConfiguration", 9) shouldBe Some(9)
     Seq("models", "tools", "settings", "services.titles", "modules.wiring").map(table.distanceLimit(_, 20)) shouldBe Seq(None, None, None, None, None)
     table.fanOutLimit("services.identity.IdentityResolver", 9) shouldBe Some(9)
     table.distanceLimit("services.movies", 20) shouldBe Some(20)
-    table.contractsOf("services.cinemas.pl.HeliosClient").map(c => c._1 -> c._2.size) shouldBe Seq("scrape" -> 12)
+    table.contractsOf("services.cinemas.pl.HeliosClient") shouldBe empty
     table.contractsOf("services.identity.IdentityResolver") shouldBe empty
   }
 
