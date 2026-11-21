@@ -201,12 +201,12 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
       val other = new Thread(() => { rm.reload(); () })
       second.set(other)
       other.start()
-      other.join(1000)                              // runs to its end unless reloads take turns
+      other.join(_root_.tools.SpecTimeouts.quiet(1.second).toMillis)   // runs to its end unless reloads take turns
       repository.upsertMovie(movie("late|2026"))    // a stream applies it after this reload's read
     }
 
     rm.reload()
-    second.get.join(10000)
+    second.get.join(_root_.tools.SpecTimeouts.Io.toMillis)
 
     rm.movie("late|2026") shouldBe defined
     rm.stop()
