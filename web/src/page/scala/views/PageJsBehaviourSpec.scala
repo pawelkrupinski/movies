@@ -1697,10 +1697,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // or a tag left naming a script that is gone, shows up here.
   private val PageSpecificScripts = Set("debugTable.js", "viewportInfo.js")
   private def scriptsEveryCityPageLoads: Seq[String] = {
-    val root = java.nio.file.Paths.get("web/src/main/assets/js")
-    val all = java.nio.file.Files.walk(root)
-    try all.filter(_.toString.endsWith(".js")).map(p => root.relativize(p).toString).toArray.toSeq.map(_.toString)
-    finally all.close()
+    val scripts = testsupport.SourceTrees("web/src/main/assets/js")
+    scripts.files(".js").map(scripts.path.relativize(_).toString)
   }.filterNot(PageSpecificScripts).sorted
 
   it should "be loaded, every one of them, by every page" in {
