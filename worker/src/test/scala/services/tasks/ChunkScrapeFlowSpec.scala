@@ -35,11 +35,12 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
 
   /** The chunked-scrape stack publishing into `published`. As production's recording
    *  wrapper does, a failed scrape re-raises — unless the venue's fallback served it
-   *  instead (`fallbackServes`), which returns normally. */
+   *  instead (`fallbackServes`), which returns normally. `publishFails` is the publish's own write
+   *  failing (the archive or the store down): it throws whatever the scrape read. */
   private class Harness(scraper: FakeChunkedScraper, clock: Clock = Clock.fixed(now, ZoneOffset.UTC),
                          venueCadenceDefault: FiniteDuration = 14.hours,
                          chunkStore: InMemoryChunkScrapeStore = new InMemoryChunkScrapeStore,
-                         fallbackServes: Boolean = false) {
+                         fallbackServes: Boolean = false, publishFails: Boolean = false) {
     val venueCadence = new VenueCadenceStore(settings.ScrapeFreshness(venueCadenceDefault))
     val published    = mutable.ListBuffer.empty[Seq[CinemaMovie]]
     val noSchedule   = mutable.ListBuffer.empty[Boolean]
@@ -48,6 +49,7 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
       val scraped = scala.util.Try(s.fetch())
       published += scraped.getOrElse(Seq.empty)
       if (!fallbackServes) scraped.get
+      if (publishFails) throw new IllegalStateException("archive write failed")
       ()
     }, clock, chunkStore, venueCadence = Some(venueCadence), staleAfter = stale)
     export stack.{queue, store, freshness, planner, chunkH, reduceH, coord, reaper}
@@ -314,6 +316,15 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     h.published should have size 1     // still published (and recorded white on /uptime)
     h.published.head shouldBe empty
     h.freshness.isFresh(key, FreshnessKind.CinemaScrape, now) shouldBe true
+  }
+
+  // An empty plan whose publish failed published nothing, yet was stamped fresh: the venue then waited its whole
+  // window with no listing written, and nothing logged why. Unstamped, it stays due for the next tick, as a
+  // reduce whose publish fails does.
+  it should "leave a chunked cinema due when its empty plan's publish fails" in {
+    val h = new Harness(new FakeChunkedScraper(Map.empty), publishFails = true)
+    noException should be thrownBy h.planner.planLogged(cinemaName)
+    h.freshness.lastFetchedAt(ScrapeFreshnessPolicy.scrapeKey(cinema)) shouldBe None
   }
 
   // The page saying the venue has nothing on (a drive-in closed for the season) must reach the

@@ -25,10 +25,10 @@ final class ChunkedListingPublisher(publishScrape: CinemaScraper => Unit, scrape
    *  so it read as never-fetched, sorted to the front of every [[ScrapeReaper]] tick, and ~40 of them ate the
    *  entire per-tick budget for days while ~1000 working cinemas were never enqueued. (Uptime still records
    *  it white — empty is visible, just not overdue.) Whether the page SAID it has nothing on travels with it
-   *  to the archive (`emptyListing`). */
+   *  to the archive (`emptyListing`). As for [[publishReduced]], a publish failure is raised and nothing is
+   *  stamped: the venue stays due for the next tick. */
   def publishEmpty(scraper: ChunkedCinemaScraper, plan: ChunkPlan, complete: Boolean): Unit = {
-    try publishScrape(PreScrapedCinemaScraper.of(scraper, () => Seq.empty, ListingStructure.wholeWhen(complete), plan.emptyListing))
-    catch { case _: Exception => () }
+    publishScrape(PreScrapedCinemaScraper.of(scraper, () => Seq.empty, ListingStructure.wholeWhen(complete), plan.emptyListing))
     // Deliberately NOT fed to VenueScrapeCadence: that mechanism is for a venue
     // with SOME showtimes about to run dry, not one advertising nothing at all.
     // A seasonally-closed venue (a drive-in shut all winter, a site between
