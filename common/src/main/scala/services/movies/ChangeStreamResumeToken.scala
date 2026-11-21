@@ -21,8 +21,8 @@ import play.api.Logging
  *
  * The store is persistent only in the WORKER (the durable mirror); web /debug + scripts
  * keep none ([[ResumeTokenStore.Ephemeral]]) so an ephemeral viewer's cursor position
- * can't clobber the worker's shared token. Best-effort throughout — a failed load/save only logs; the backstop covers
- * a miss. Persist is time-throttled + fire-and-forget so the driver thread never
+ * can't clobber the worker's shared token. Best-effort throughout — a failed load, save or clear only logs; the backstop
+ * covers a miss. Persist is time-throttled + fire-and-forget so the driver thread never
  * blocks on a Mongo write per event; a clean shutdown forces one synchronous save so
  * a restart's resume is deterministic.
  */

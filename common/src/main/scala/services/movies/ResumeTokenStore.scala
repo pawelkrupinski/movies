@@ -9,6 +9,7 @@ import com.mongodb.client.model.ReplaceOptions
 import org.bson.BsonDocument
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, SingleObservableFuture}
+import play.api.Logging
 
 /**
  * Where a change stream's resume position is kept, one document per stream (`_id = streamId`) —
@@ -19,7 +20,7 @@ import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, SingleObserv
  * positions in Mongo ([[MongoResumeTokenStore]]) so a restart replays what landed while it was down;
  * web /debug, scripts and specs keep none ([[ResumeTokenStore.Ephemeral]]), so an ephemeral viewer's
  * cursor position cannot clobber the worker's shared token. Best-effort: a failed save or clear is
- * dropped, the consumers' backstops cover a miss.
+ * logged and dropped, the consumers' backstops cover a miss.
  */
 trait ResumeTokenStore {
   /** The saved position: absent when none was saved, FAILED when it could not be read. */
@@ -45,7 +46,7 @@ object ResumeTokenStore {
 
 /** The positions in `change_stream_tokens`, written `{w:1, j:false}`: a lost save costs a replay
  *  from an older position, never data. */
-final class MongoResumeTokenStore(database: MongoDatabase) extends ResumeTokenStore {
+final class MongoResumeTokenStore(database: MongoDatabase) extends ResumeTokenStore with Logging {
   private lazy val coll: MongoCollection[Document] =
     database.getCollection[Document]("change_stream_tokens").withWriteConcern(WriteConcern.W1.withJournal(false))
 
@@ -57,11 +58,13 @@ final class MongoResumeTokenStore(database: MongoDatabase) extends ResumeTokenSt
   def save(streamId: String, token: BsonDocument, synchronously: Boolean): Unit = {
     val write = coll.replaceOne(Filters.eq("_id", streamId),
       Document("_id" -> streamId, "token" -> token), new ReplaceOptions().upsert(true)).toFuture()
-    if (synchronously) Try(Await.result(write, 5.seconds))
-    ()
+    if (synchronously) Try(Await.result(write, 5.seconds)).failed.foreach(failed(s"save($streamId)"))
+    else write.failed.foreach(failed(s"save($streamId)"))(using scala.concurrent.ExecutionContext.parasitic)
   }
 
-  def clear(streamId: String): Unit = {
-    Try(Await.result(coll.deleteOne(Filters.eq("_id", streamId)).toFuture(), 5.seconds)); ()
-  }
+  def clear(streamId: String): Unit =
+    Try(Await.result(coll.deleteOne(Filters.eq("_id", streamId)).toFuture(), 5.seconds)).failed.foreach(failed(s"clear($streamId)"))
+
+  private def failed(what: String)(e: Throwable): Unit =
+    logger.warn(s"change-stream resume token $what failed, dropped: ${e.getMessage}")
 }
