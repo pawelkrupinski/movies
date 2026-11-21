@@ -79,9 +79,10 @@ class ChunkScrapePlanner(
       case None => 0
       case Some(runId) =>
         if (!planComplete) store.markPlanIncomplete(cinema, runId, now)
-        val n = fanOut.enqueue(scraper, cinema, runId, keys, now)
+        // Armed before the fan-out: a fan-out that throws part way leaves its run to the deadline's partial reduce, as
+        // a chunk task the queue could not take does, not started with no timer until the hourly sweep.
         runStarted(ChunkRun(cinema, runId, keys, now))
-        n
+        fanOut.enqueue(scraper, cinema, runId, keys, now)
     }
   }
 }

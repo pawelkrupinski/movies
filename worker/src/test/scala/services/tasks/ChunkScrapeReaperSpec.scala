@@ -112,6 +112,24 @@ class ChunkScrapeReaperSpec extends AnyFlatSpec with Matchers {
     rig.store.sweeps.get() shouldBe 0 // the reaper never started: the armed deadline alone did it
   }
 
+  // A fan-out that threw (the queue down mid-enqueue) used to escape before the deadline was armed: the run sat
+  // started with no chunk tasks and no timer, and the venue could not be planned again until the hourly sweep.
+  it should "arm a run's deadline before its fan-out, so a fan-out that throws still reaches its deadline" in {
+    val failing = new ForwardingTaskQueue(new InMemoryTaskQueue) {
+      override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant,
+                           notBefore: Option[Instant], claimAhead: FiniteDuration): EnqueueResult =
+        if (taskType == TaskType.ScrapeChunk) throw new IllegalStateException("queue down")
+        else super.enqueue(taskType, dedupKey, payload, submittedAt, notBefore, claimAhead)
+    }
+    val rig = new Rig()
+    an[IllegalStateException] should be thrownBy ChunkScrapePlanners(Map(cinema -> new FakeChunkedScraper(twoChunks)), rig.store, failing,
+      _ => (), new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = rig.clock), timeout, rig.clock,
+      runStarted = rig.deadlines().arm).plan(cinema)
+    rig.store.activeRun(cinema) should not be empty
+    rig.advanceTo(t0.plusSeconds(15 * 60 + 1))
+    rig.reduces shouldBe 1
+  }
+
   it should "fully reduce, at its deadline, a run whose last completion was never announced" in {
     val rig  = new Rig()
     val flow = new Flow(rig, new FakeChunkedScraper(twoChunks), rig.deadlines())
