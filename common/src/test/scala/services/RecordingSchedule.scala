@@ -9,6 +9,6 @@ import scala.concurrent.duration.FiniteDuration
 final class RecordingSchedule {
   val delays = mutable.Buffer.empty[FiniteDuration]
   private val queued = mutable.Queue.empty[() => Unit]
-  val schedule: (FiniteDuration, () => Unit) => Unit = (d, run) => { delays += d; queued.enqueue(run) }
+  val schedule: services.movies.ChangeStreamReopen.Schedule = (d, run) => { delays += d; queued.enqueue(run); () }
   def fire(): Unit = while (queued.nonEmpty) queued.dequeue().apply()
 }

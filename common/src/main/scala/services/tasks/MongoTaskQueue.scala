@@ -218,7 +218,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
     val stream = new TaskInsertStream(
       open      = c.watch(Seq(Aggregates.filter(Filters.eq("operationType", "insert")))).subscribe(_),
       onWaiting = onWaiting,
-      schedule  = ChangeStreamReopen.daemonSchedule("MongoTaskQueue"))
+      schedule  = new ChangeStreamReopen.DaemonSchedule("MongoTaskQueue"))
     stream.start()
     logger.info("MongoTaskQueue: watching change stream to wake workers on new tasks.")
     stream
