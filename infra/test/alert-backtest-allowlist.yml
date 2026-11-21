@@ -5,6 +5,10 @@
 # the firing was a REAL incident, cataloguing that incident in alert-incidents.yml under
 # `expect_firing`, which both excuses the firing from the budget AND pins that the alert still
 # catches it.
+#
+# An entry's keys: `noisy: true` / `dead: true` (never failed for that), `max_firing_fraction` /
+# `max_episodes_per_week` (its own budget), or `judged_by: episodes` -- the fraction is not judged, only the
+# episode rate: for an alert whose firing is a third party's own state, the length of a firing is the outage's.
 
 defaults:
   # An alert that is firing 5% of the time -- over eight hours a week -- is either a real,
@@ -57,12 +61,18 @@ allow:
       pushes. The fortnight it was written against (2026-10-12..25) had Identity model convergence red
       for 4-9 h stretches seven times and Main twice: the alert reports a red main, which is its job, and
       the budget measures how often main was red rather than how wrong the rule is.
-  # A PER-HOST ALERT OVER ~300 INDEPENDENT THIRD-PARTY HOSTS: the firing fraction is the UNION over every
-  # cinema's ticket host, so it measures how often SOME small site is down, not how wrong the rule is.
-  # Alert backtest #8 (11-04..11-18): with the 6h hold every firing was a real host outage of 6-17 h (uk
-  # folkestonecinema.com enrich 17 h, pl bilety.kinoszczytno.pl 14 h, es tickets.ocinegavarres.es 10 h,
-  # pl www.mdk-myszkow.pl 11 h, ...), 13.0% of the window in all, inside the episode budget. 15% holds that;
-  # the episode budget (7/week) stays the guard against a rule that fires on blips again.
+  # A PER-HOST ALERT OVER ~300 INDEPENDENT THIRD-PARTY HOSTS, WHOSE FIRING IS THE HOST'S OWN STATE: a breaker
+  # held open twelve hours, every half-open probe failing. How long it fires is how long a cinema's ticket site
+  # stayed down, which no rule controls; whether the rule misreads blips shows in how OFTEN it starts, which the
+  # episode budget (7/week) keeps judging. The fraction budget turned every long real outage into a red until
+  # someone catalogued it: 15% fitted to one fortnight (4528ed223) was past by the next (Alert backtest #12), and
+  # under the default 5% one host's expired certificate (bilety.pokis.pl, down for days) failed #15 at 11.8% from
+  # three episodes. The six-hour hold's 15 episodes (#12) and the one-hour hold's 47 (#8) still fail this way.
+  WorkerHttpHostCircuitOpen:
+    judged_by: episodes
+    reason: >-
+      Each firing is a third-party ticket host down for over twelve hours; its length is the outage's. The episode
+      budget is the guard against the rule firing on blips.
   EnrichmentApiKeyRefused:
     noisy: true
     reason: >-

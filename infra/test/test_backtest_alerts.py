@@ -227,6 +227,31 @@ class Verdict(unittest.TestCase):
         allow = {"max_firing_fraction": 0.2, "reason": "r"}
         self.assertEqual(bt.verdict(stats(0.1, 1), BUDGET, allow, [], True), ("ok", None))
 
+    # Alert backtest #15 (run 44906327344): WorkerHttpHostCircuitOpen failed at 11.8% of 11-06..20 from 3 episodes,
+    # most of it one host (bilety.pokis.pl, its certificate expired, down for days). For an alert whose firing is a
+    # third party's own state, the length of a firing is the outage's, not the rule's: only the episode rate says
+    # whether the rule misreads blips. #12 (run 44739915181, the six-hour hold) was that misreading: 15 episodes.
+    def test_an_alert_judged_by_episodes_is_not_failed_for_a_long_firing(self):
+        allow = {"judged_by": "episodes", "reason": "r"}
+        self.assertEqual(bt.verdict(stats(0.118, 3), BUDGET, allow, [], True), ("ok", None))
+
+    def test_an_alert_judged_by_episodes_still_fails_on_too_many_of_them(self):
+        allow = {"judged_by": "episodes", "reason": "r"}
+        status, problem = bt.verdict(stats(0.165, 15), BUDGET, allow, [], True)
+        self.assertEqual(status, "noisy")
+        self.assertIn("15 distinct times", problem)
+        self.assertNotIn("of the window", problem)
+
+    def test_an_unknown_judged_by_is_refused(self):
+        status, problem = bt.verdict(stats(0.0, 0), BUDGET, {"judged_by": "episode", "reason": "r"}, [], True)
+        self.assertEqual(status, "error")
+        self.assertIn("'episode'", problem)
+
+    def test_the_per_host_breaker_alert_is_judged_by_its_episodes(self):
+        allow = (bt.load_yaml(bt.ALLOWLIST, {}).get("allow") or {}).get("WorkerHttpHostCircuitOpen") or {}
+        self.assertEqual(bt.verdict(stats(0.118, 3), BUDGET, allow, [], True), ("ok", None))
+        self.assertEqual(bt.verdict(stats(0.165, 15), BUDGET, allow, [], True)[0], "noisy")
+
     def test_no_data_over_a_missing_metric_is_dead(self):
         status, problem = bt.verdict(stats(returned=False), BUDGET, {}, ["gotk_reconcile_condition"],
                                      True)

@@ -236,6 +236,9 @@ def rollout_start(presence, grid, min_coverage=0.9):
     return first
 
 
+JUDGED_BY = ("fraction and episodes", "episodes")
+
+
 def verdict(stats, budget, allow, missing_metrics, deployed):
     """(status, problem or None) for one alert's statistics against its budget and allowlist.
 
@@ -244,7 +247,15 @@ def verdict(stats, budget, allow, missing_metrics, deployed):
     is no verdict on a rule (the owner, 2026-11-18: rules newer than the snapshot are skipped and reported; Alert
     backtest #5's CI-regression and poster alerts failed at "100%" of under three days). It is judged once it has
     lived the minimum. Dead is judged at any age: no data is never healthy.
+
+    An allowlist entry `judged_by: episodes` drops the firing-fraction budget and keeps the episode one: for an alert
+    whose firing IS a third party's state (a host's breaker held open), how long it fires is how long the outage
+    lasted, and only how OFTEN it starts says whether the rule misreads blips (Alert backtest #15: one host's
+    multi-day certificate outage failed WorkerHttpHostCircuitOpen at 11.8% from three episodes).
     """
+    judged_by = allow.get("judged_by", "fraction and episodes")
+    if judged_by not in JUDGED_BY:
+        return "error", "allowlist judged_by %r is not one of: %s" % (judged_by, ", ".join(JUDGED_BY))
     if stats.get("error"):
         return "error", "query failed: %s" % stats["error"]
     if not stats["returned_data"]:
@@ -261,7 +272,7 @@ def verdict(stats, budget, allow, missing_metrics, deployed):
     max_per_week = allow.get("max_episodes_per_week", budget["max_episodes_per_week"])
     problems = []
     fraction, count = stats["budget_firing_fraction"], stats["budget_episodes"]
-    if fraction > max_fraction:
+    if judged_by != "episodes" and fraction > max_fraction:
         problems.append("fired %.1f%% of the window outside catalogued incidents (budget %.1f%%)"
                         % (100 * fraction, 100 * max_fraction))
     if count / weeks > max_per_week:
