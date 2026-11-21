@@ -46,6 +46,9 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
 - [design/identity-structural-fixes.md](design/identity-structural-fixes.md) — the owner's four structural fixes of
   2026-11-05 (typed unknown, asking apart from deciding, one replay world, rule burn-down): plan, owner rules served,
   measurements, order; the `Identity-Design:` reference of the rule burn-down commits.
+- [design/corpus-context-persistence.md](design/corpus-context-persistence.md) — PROPOSAL (2026-11-21): what an
+  unchanged worker boot spends rebuilding the corpus context, measured per country, and persisting it (film digests,
+  a context snapshot) weighed against cutting the build's waste.
 - [design/convergence-fixture-fill.md](design/convergence-fixture-fill.md) — how a hermetic convergence leg's
   missing fixtures get recorded, and what that does to a verdict.
 - [design/identity-known-wrongs-and-todos.md](design/identity-known-wrongs-and-todos.md) — SUPERSEDED snapshot of
