@@ -11,8 +11,8 @@ import scala.concurrent.ExecutionContext
  *  specs. Defaults to a user repository holding one allowlisted admin
  *  (session id [[AdminUserId]] → [[AdminEmail]]), so a request carrying
  *  `withSession("userId" -> AdminUserId)` passes the gate; anything else gets
- *  401 (no session) or 403 (unknown / non-allowlisted email) — the same contract
- *  the real ADMIN_ALLOWLIST enforces in prod. */
+ *  401 (no session, or one naming no current user) or 403 (a non-allowlisted
+ *  email) — the same contract the real ADMIN_ALLOWLIST enforces in prod. */
 object TestAdminAction {
   val AdminUserId = "admin1"
   val AdminEmail  = "admin@example.com"

@@ -1,36 +1,35 @@
 package controllers
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 import play.api.mvc.*
 import services.users.UserRepository
 
 /** Session + email-allowlist gate for the app's operational/admin endpoints —
  *  the title-rules editor, `/uptime`, `/tasks`, and the `/…/debug/rehydrate`
- *  trigger. The Play session carries our internal user UUID (set by
- *  `AuthController.callback`); this resolves it and requires the user's email be
- *  on the `ADMIN_ALLOWLIST`. 401 when not logged in, 403 when logged in but not
- *  an admin —
- *  now shared so every admin controller behaves identically.
+ *  trigger, so every admin controller behaves identically. The session's user
+ *  ([[SignedInUser]]) must have an email on the `ADMIN_ALLOWLIST`: 401 when
+ *  nobody is signed in — no session, or one that no longer resolves (its row
+ *  deleted, or revoked by a sign-out everywhere) — and 403 when somebody is but
+ *  is not an admin.
  *
  *  Use as an `ActionBuilder`: `adminAction { Ok(...) }` for a no-body action, or
  *  `adminAction(parse.json) { request => ... }` when the action reads a body. */
 class AdminAction(
   override val parser: BodyParser[AnyContent],
-  userRepository:            UserRepository,
+  userRepository:      UserRepository,
   adminAllowlist:      settings.AdminAllowlist
 )(implicit val executionContext: ExecutionContext)
     extends ActionBuilder[Request, AnyContent] {
 
   override def invokeBlock[A](request: Request[A], block: Request[A] => Future[Result]): Future[Result] =
-    if (request.session.get(SignedInUser.UserIdKey).isEmpty)
-      Future.successful(Results.Unauthorized("Not logged in."))
-    else
-      scala.util.Try(SignedInUser(request, userRepository)) match {
-        case scala.util.Success(user) if user.exists(_.email.exists(adminAllowlist.value.contains)) => block(request)
-        case scala.util.Success(_) => Future.successful(Results.Forbidden("Not an admin."))
-        // Unreadable, not "not an admin": answered as every session lookup is.
-        case scala.util.Failure(e: SignedInUser.LookupFailed) => Future.successful(SignedInUser.answering(throw e))
-        case scala.util.Failure(e) => Future.failed(e)
-      }
+    Try(SignedInUser(request, userRepository)) match {
+      case Success(None)                                                         => Future.successful(Results.Unauthorized("Not logged in."))
+      case Success(Some(user)) if user.email.exists(adminAllowlist.value.contains) => block(request)
+      case Success(Some(_))                                                      => Future.successful(Results.Forbidden("Not an admin."))
+      // Unreadable, not "not an admin": answered as every session lookup is.
+      case Failure(e: SignedInUser.LookupFailed)                                 => Future.successful(SignedInUser.answering(throw e))
+      case Failure(e)                                                            => Future.failed(e)
+    }
 }

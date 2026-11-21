@@ -105,4 +105,13 @@ class EnvConfigControllerSpec extends AnyFlatSpec with Matchers {
     val gate = TestAdminAction(allow = Set("someone-else@example.com"))
     status(controller(over, reg, gate).data.apply(adminSession)) shouldBe FORBIDDEN
   }
+
+  // A session that no longer resolves — its row deleted, or revoked by a sign-out
+  // everywhere — is not logged in: 401, as for no session at all, not "not an admin".
+  it should "401 an admin session revoked since it was issued" in {
+    val (over, reg) = fixture()
+    val users = TestAdminAction.adminRepository
+    users.revokeSessions(TestAdminAction.AdminUserId)
+    status(controller(over, reg, TestAdminAction(users)).data.apply(adminSession)) shouldBe UNAUTHORIZED
+  }
 }
