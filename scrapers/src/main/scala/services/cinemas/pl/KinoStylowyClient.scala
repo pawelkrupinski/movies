@@ -111,7 +111,7 @@ object KinoStylowyClient {
       val genres = info.toSeq.flatMap(e => ScraperParse.commaItems(e.ownText))
       val age    = info.flatMap(i => Option(i.selectFirst("em.badge"))).flatMap(ageOf)
       val filmUrl = Option(link.attr("abs:href")).filter(_.nonEmpty)
-      val poster  = Option(card.selectFirst(".startRepertuarPoster img[src]")).flatMap(ScraperParse.imageUrl(_))
+      val poster  = Option(card.selectFirst(".startRepertuarPoster img[src]")).flatMap(ScraperParse.largestImageUrl)
       val trailer = Option(card.selectFirst("[data-ytlink]")).map(_.attr("data-ytlink").trim).filter(_.nonEmpty)
         .flatMap(id => ScraperParse.canonicalTrailer(s"https://www.youtube.com/watch?v=$id"))
       if (title.isEmpty) Seq.empty

@@ -183,7 +183,7 @@ object KinotekaClient {
       // (not a `<div>`) wrapping the real film `<img>`; match by class on any
       // element. Every Kinoteka page's og:image is the site-wide `kinoteka-opengraph.png` logo, which
       // the shared `ogImage` guard rejects — a page without a hero has no poster rather than the logo.
-      poster        = Option(document.selectFirst(".p-movie-details__hero-poster img[src]")).map(_.attr("src")).filter(_.nonEmpty)
+      poster        = Option(document.selectFirst(".p-movie-details__hero-poster img[src]")).flatMap(ScraperParse.largestImageSource)
                         .orElse(ScraperParse.ogImage(document)),
       ageRating     = AgeRating.normalize(dd(document, "rekomendacja wiekowa")),
       // The trailer is a YouTube `/embed/` iframe in the content figure; skip

@@ -103,7 +103,7 @@ object PromKepaClient {
         synopsis  = Option(document.selectFirst("div.single_content")).map(SynopsisProse.blockText(_).trim)
                       // (?s) so the booking-footer cut spans the paragraph newlines blockText now keeps.
                       .map(_.replaceAll("(?is)\\s*bilet[^.]*\\d+\\s*zł.*$", "").trim).filter(_.length > 20),
-        poster    = Option(document.selectFirst("div.image_item img.wp-post-image[src]")).map(_.attr("src")).filter(_.nonEmpty)
+        poster    = Option(document.selectFirst("div.image_item img.wp-post-image[src]")).flatMap(ScraperParse.largestImageSource)
       )
     }
   }

@@ -97,7 +97,7 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema
       val parsed = link.map(_.text.trim).filter(_.nonEmpty).map(FormatTags.extractFormatTags)
       (id, parsed) match {
         case (Some(filmId), Some((t, fmt))) =>
-          val poster = Option(row.selectFirst("div.repertoire-movie-poster img[src]")).map(_.attr("src")).filter(_.nonEmpty)
+          val poster = Option(row.selectFirst("div.repertoire-movie-poster img[src]")).flatMap(ScraperParse.largestImageSource)
                          .map(u => if (u.startsWith("http")) u else BaseUrl + u)
           val desc   = Option(row.selectFirst("div.repertoire-movie-description")).map(_.text).getOrElse("")
           val countries = NoveKinoClient.after(desc, "produkcja").toSeq.flatMap(ScraperParse.commaItems)

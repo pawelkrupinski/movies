@@ -81,7 +81,7 @@ object KinoParczewClient {
           genres         = fields.get("gatunek").map(liTextsOf).getOrElse(Seq.empty)
         ),
         cinema    = cinema,
-        posterUrl = Option(document.selectFirst("img[itemprop=image]")).flatMap(ScraperParse.imageUrl(_)),
+        posterUrl = Option(document.selectFirst("img[itemprop=image]")).flatMap(ScraperParse.largestImageUrl),
         filmUrl   = Some(url),
         synopsis  = synopsisOf(document),
         // A name has a letter in it: the site fills an unknown director with a ".." placeholder.

@@ -79,7 +79,7 @@ object MitchellTheatresClient {
       Option.when(showtimes.nonEmpty)(CinemaMovie(
         movie     = Movie(title = block.attr("data-title").trim, runtimeMinutes = runtimeOf(block)),
         cinema    = cinema,
-        posterUrl = Option(block.selectFirst("img.moviePoster")).flatMap(ScraperParse.imageUrl(_)),
+        posterUrl = Option(block.selectFirst("img.moviePoster")).flatMap(ScraperParse.largestImageUrl),
         synopsis  = labelled(block, "Plot Summary:"),
         showtimes = showtimes,
         trailerUrl = Option(block.selectFirst(".reveal-modal a[href*=youtube.com/watch]")).map(_.absUrl("href")).filter(_.nonEmpty),

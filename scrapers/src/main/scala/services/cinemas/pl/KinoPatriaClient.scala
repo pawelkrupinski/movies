@@ -109,7 +109,7 @@ object KinoPatriaClient {
         movie     = Movie(title, runtimeMinutes = Option(item.selectFirst(".amy-movie-field-duration"))
           .flatMap(duration => ScraperParse.hoursMinutesRuntime(duration.text))),
         cinema    = cinema,
-        posterUrl = Option(item.selectFirst(posterSelector)).flatMap(ScraperParse.imageUrl(_)),
+        posterUrl = Option(item.selectFirst(posterSelector)).flatMap(ScraperParse.largestImageUrl),
         filmUrl   = Option(item.selectFirst("h3.amy-movie-field-title a[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),
         cast      = names("amy_actor"),
         director  = names("amy_director"),

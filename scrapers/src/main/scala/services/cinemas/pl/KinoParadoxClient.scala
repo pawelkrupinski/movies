@@ -148,7 +148,7 @@ object KinoParadoxClient {
     val synopsis = Option(doc.selectFirst("div.single-os-hero__desc-col"))
       .map(el => SynopsisProse.cleanSynopsis(el)).filter(_.length > 20)
     val poster   = Option(doc.selectFirst("div.single-os-hero__img-col img[src]"))
-      .map(_.attr("src").trim).filter(_.nonEmpty)
+      .flatMap(ScraperParse.largestImageSource)
     FilmDetail(
       synopsis       = synopsis,
       director       = people("reżyseria"),

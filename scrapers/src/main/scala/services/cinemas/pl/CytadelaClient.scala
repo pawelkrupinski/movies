@@ -99,7 +99,7 @@ class CytadelaClient(http: HttpFetch
                      .toSeq.flatMap(ScraperParse.commaItems)
       val runtime = spans.flatMap(x => """(?i)czas:\s*(\d+)\s*min""".r.findFirstMatchIn(x).map(_.group(1).toInt)).headOption
       val booking = Option(item.selectFirst("a.repertoire-item__container__button--dark[href]")).map(_.attr("href")).filter(_.nonEmpty)
-      val poster  = Option(item.selectFirst("img.repertoire-item__image[src]")).map(_.attr("src")).filter(_.nonEmpty)
+      val poster  = Option(item.selectFirst("img.repertoire-item__image[src]")).flatMap(ScraperParse.largestImageSource)
                       .map(ScraperParse.onSite(BaseUrl))
       // The row's language badge ("dubbing", "napisy", "polski lektor"; "oryginalny" names none), which the title never repeats.
       val version = item.select("li.repertoire-item__info__item").asScala.toSeq

@@ -85,7 +85,7 @@ class AmondoClient(http: HttpFetch
                    .flatMap(h => SlugPat.findFirstMatchIn(h).map(_.group(1)))
     val genres = Option(block.selectFirst("span.title")).map(_.text.trim).filter(_.nonEmpty)
                    .toSeq.flatMap(_.split("[,/]").map(_.trim).filter(_.nonEmpty)).map(tools.TextNormalization.titleCaseIfAllLower)
-    val poster = Option(block.selectFirst("img[src]")).map(_.attr("src")).filter(_.nonEmpty).map(abs).map(ResizedPoster.fullSize)
+    val poster = Option(block.selectFirst("img[src]")).flatMap(ScraperParse.largestImageSource).map(abs).map(ResizedPoster.fullSize)
     title.toSeq.flatMap { t =>
       block.select("div.time-wrap span.time").asScala.toSeq.flatMap { span =>
         val parts = span.text.split(",").map(_.trim).filter(_.nonEmpty)

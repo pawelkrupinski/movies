@@ -64,7 +64,7 @@ class KinoIkmClient(
   private def posterIndex(document: Document): Map[String, String] =
     document.select("section.movielist div.singleposter").asScala.toSeq.flatMap { card =>
       val url    = Option(card.selectFirst("h4 a[href]")).map(_.attr("href")).filter(_.nonEmpty)
-      val poster = Option(card.selectFirst("div.pthumb img[src]")).map(_.attr("src")).filter(_.nonEmpty)
+      val poster = Option(card.selectFirst("div.pthumb img[src]")).flatMap(ScraperParse.largestImageSource)
       for { u <- url; p <- poster } yield u -> p
     }.toMap
 

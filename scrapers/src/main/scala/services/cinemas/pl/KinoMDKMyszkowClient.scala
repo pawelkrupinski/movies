@@ -85,7 +85,7 @@ object KinoMDKMyszkowClient {
     } yield CinemaMovie(
       movie     = Movie(title, runtimeMinutes = RuntimePat.findFirstMatchIn(text).map(_.group(1).toInt)),
       cinema    = cinema,
-      posterUrl = block.flatMap(b => Option(b.selectFirst("img[src]"))).flatMap(ScraperParse.imageUrl(_)),
+      posterUrl = block.flatMap(b => Option(b.selectFirst("img[src]"))).flatMap(ScraperParse.largestImageUrl),
       filmUrl   = Some(url),
       synopsis  = block.flatMap(synopsisOf),
       showtimes = dates.map(d => Showtime(LocalDateTime.of(d, time), None)).sortBy(_.dateTime)

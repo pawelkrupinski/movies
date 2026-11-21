@@ -55,7 +55,7 @@ object KinoRomaClient {
       val titleElement   = Option(box.selectFirst("a.film-title"))
       val title     = titleElement.map(_.text.trim).filter(_.nonEmpty)
       val filmSlug  = titleElement.flatMap(a => SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1)))
-      val posterUrl = Option(box.selectFirst("img.img-responsive[src]")).map(_.attr("src")).filter(_.nonEmpty)
+      val posterUrl = Option(box.selectFirst("img.img-responsive[src]")).flatMap(ScraperParse.largestImageSource)
       // Each card carries the production year in its own `div.year` cell,
       // separate from the screening's `div.big-date` (which has no year).
       val year      = Option(box.selectFirst("div.year")).map(_.text.trim)

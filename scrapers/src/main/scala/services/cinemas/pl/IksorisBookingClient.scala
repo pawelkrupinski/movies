@@ -170,7 +170,7 @@ object IksorisBookingClient {
         runtime   = None,
         countries = Seq.empty,
         format    = format,
-        poster    = Option(row.selectFirst("img[src]")).flatMap(ScraperParse.imageUrl(_))
+        poster    = Option(row.selectFirst("img[src]")).flatMap(ScraperParse.largestImageUrl)
       )
     }
 

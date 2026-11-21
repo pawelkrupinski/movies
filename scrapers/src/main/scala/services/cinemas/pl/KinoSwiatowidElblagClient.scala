@@ -110,7 +110,7 @@ object KinoSwiatowidElblagClient {
     } yield CinemaMovie(
       movie     = Movie(title, runtimeMinutes = runtime, genres = genres),
       cinema    = cinema,
-      posterUrl = Option(card.selectFirst("div.movie-card__thumbnail img[src]")).flatMap(ScraperParse.imageUrl(_)),
+      posterUrl = Option(card.selectFirst("div.movie-card__thumbnail img[src]")).flatMap(ScraperParse.largestImageUrl),
       filmUrl   = Option(card.selectFirst("div.movie-card__thumbnail a[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),
       showtimes = showtimes.sortBy(_.dateTime)
     )

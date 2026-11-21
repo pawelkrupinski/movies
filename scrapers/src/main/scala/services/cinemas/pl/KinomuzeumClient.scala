@@ -99,7 +99,7 @@ class KinomuzeumClient(http: HttpFetch, today: => LocalDate
       val runtime = spans.flatMap(ScraperParse.runtimeMinutesIn).headOption
       val booking = Option(c.selectFirst("a[href*=nienumerowane]")).map(_.attr("href")).filter(_.nonEmpty)
       val poster  = Option(c.selectFirst("img[width=320]")).orElse(Option(c.selectFirst("img[src]")))
-                      .map(_.attr("src")).filter(_.nonEmpty)
+                      .flatMap(ScraperParse.largestImageSource)
       RawSlot(slug, title, dt, runtime, booking, poster)
     }
   }

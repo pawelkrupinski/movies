@@ -8852,6 +8852,8 @@ services.cinemas.common.SourceUrlResolution
 services.cinemas.common.SourceUrlResolution$
 services.cinemas.common.SourceUrlResolution$$anon$1
 services.cinemas.common.SourceUrlResolving
+services.cinemas.common.Srcset
+services.cinemas.common.Srcset$
 services.cinemas.common.SynopsisProse
 services.cinemas.common.SynopsisProse$
 services.cinemas.common.UptimeRecordingScraper

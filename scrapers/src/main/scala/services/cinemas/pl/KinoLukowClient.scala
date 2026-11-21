@@ -72,7 +72,7 @@ object KinoLukowClient {
           genres         = text("p.kino-film-genres").toSeq.flatMap(ScraperParse.commaItems)
         ),
         cinema    = cinema,
-        posterUrl = Option(film.selectFirst("a.kino-film-poster img")).flatMap(ScraperParse.imageUrl(_)),
+        posterUrl = Option(film.selectFirst("a.kino-film-poster img")).flatMap(ScraperParse.largestImageUrl),
         filmUrl   = Option(film.selectFirst("h3.kino-film-title a")).map(_.attr("abs:href")).filter(_.nonEmpty),
         synopsis  = text("p.kino-film-desc").filterNot(SynopsisProse.isCutShort),
         showtimes = showtimes,

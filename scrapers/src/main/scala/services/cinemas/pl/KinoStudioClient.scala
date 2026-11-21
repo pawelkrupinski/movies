@@ -171,7 +171,7 @@ object KinoStudioClient {
       if (el.tagName == "img") Some(el)
       else if (el.tagName == "p" && el.text.trim.isEmpty) Option(el.selectFirst("img"))
       else None
-    img.flatMap(ScraperParse.imageUrl(_))
+    img.flatMap(ScraperParse.largestImageUrl)
   }
 
   /**

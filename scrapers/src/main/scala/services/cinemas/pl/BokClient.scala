@@ -125,7 +125,7 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
       CinemaMovie(
         movie     = Movie(title = t, runtimeMinutes = runtime, releaseYear = None, countries = countries, rawTitle = rawTitle),
         cinema    = cinema,
-        posterUrl = detail.flatMap(d => Option(d.selectFirst("div.item-image-thumb img[src]")).map(_.attr("src")).filter(_.nonEmpty)
+        posterUrl = detail.flatMap(d => Option(d.selectFirst("div.item-image-thumb img[src]")).flatMap(ScraperParse.largestImageSource)
                       .orElse(ScraperParse.ogImage(d))),
         filmUrl   = Some(s"$BaseUrl/$prefix/$slug"),
         synopsis  = detail.flatMap(d => Option(d.selectFirst("meta[name=description]")).map(_.attr("content").trim).filter(_.length > 20)),

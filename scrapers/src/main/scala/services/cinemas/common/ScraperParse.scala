@@ -323,6 +323,18 @@ private[cinemas] object ScraperParse {
   def imageUrl(img: Element, attribute: String = "src"): Option[String] =
     Option(img.attr(attribute).trim).filter(_.nonEmpty).map(_ => img.absUrl(attribute)).filter(namesAFile)
 
+  /** The largest image `img` offers, as its markup spells it: its `srcset`'s widest candidate (by `w`, else by `x`
+    * density), else its `src`; `None` when both are blank. A theme's `src` is often the smallest copy it cut
+    * (WordPress's `-300x450`, a `/thumbs/` one) while `srcset` names the full upload beside it. Relative as written:
+    * the caller resolves it as it resolves `src`. */
+  def largestImageSource(img: Element): Option[String] =
+    Srcset.widest(img.attr("srcset")).orElse(Option(img.attr("src").trim).filter(_.nonEmpty))
+
+  /** [[largestImageSource]] as an absolute URL naming a file, as [[imageUrl]] reads `src`. */
+  def largestImageUrl(img: Element): Option[String] =
+    Srcset.widest(img.attr("srcset")).map(org.jsoup.internal.StringUtil.resolve(img.baseUri, _)).filter(namesAFile)
+      .orElse(imageUrl(img))
+
   /** Whether an absolute URL's path names a file: not empty and not ending in `/`. A CMS that
     * leaves a film's image name blank prints its upload directory (`…/tmdbimage/images/` on Nova
     * Cinema), which serves a page or a 404, never artwork. The path is read off the URL's shape, not

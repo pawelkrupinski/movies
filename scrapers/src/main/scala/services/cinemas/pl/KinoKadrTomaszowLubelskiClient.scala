@@ -111,7 +111,7 @@ object KinoKadrTomaszowLubelskiClient {
                             .flatMap(ScraperParse.commaItems)
       ),
       cinema      = cinema,
-      posterUrl   = Option(article.selectFirst(".movie-poster img[src]")).flatMap(ScraperParse.imageUrl(_)),
+      posterUrl   = Option(article.selectFirst(".movie-poster img[src]")).flatMap(ScraperParse.largestImageUrl),
       synopsis    = Option(article.selectFirst(".movie-description .filmPlotsSection__plot")).map(_.text.trim).filter(_.nonEmpty),
       showtimes   = showtimes.sortBy(_.dateTime),
       trailerUrl  = Option(article.selectFirst(".ticket-container a.trailer-btn[href]")).map(_.attr("abs:href"))

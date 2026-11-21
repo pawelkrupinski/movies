@@ -53,7 +53,7 @@ class MuranowClient(http: HttpFetch, today: => LocalDate
               val expand  = Option(info.selectFirst("div.movie-calendar-info-expand"))
               val thumb   = expand.flatMap(e => Option(e.selectFirst("a.movie-calendar-info-expand__thumb")))
               val slug    = thumb.map(_.attr("href")).flatMap(MuranowClient.slugOf).getOrElse(title)
-              val poster  = thumb.flatMap(t => Option(t.selectFirst("img[src]"))).map(_.attr("src")).filter(_.nonEmpty)
+              val poster  = thumb.flatMap(t => Option(t.selectFirst("img[src]"))).flatMap(ScraperParse.largestImageSource)
               val booking = expand.flatMap(e => Option(e.selectFirst("a[href][class*=c-button-tickets--buy-link]")))
                               .map(_.attr("href")).filter(_.nonEmpty).map(abs)
               RawSlot(slug, title, dt, poster, booking)

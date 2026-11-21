@@ -121,7 +121,7 @@ object Bilety24OrganizerClient {
     val banners = document.select("div.title > a.blur-bg[title]").asScala.toSeq.flatMap { a =>
       for {
         title  <- BannerTitle.findFirstMatchIn(a.attr("title")).map(_.group(1))
-        poster <- Option(a.selectFirst("img.b24-blur-img")).flatMap(ScraperParse.imageUrl(_))
+        poster <- Option(a.selectFirst("img.b24-blur-img")).flatMap(ScraperParse.largestImageUrl)
       } yield title -> poster
     }.distinct
     val shared = banners.groupBy(_._2).filter(_._2.size > 1).keySet

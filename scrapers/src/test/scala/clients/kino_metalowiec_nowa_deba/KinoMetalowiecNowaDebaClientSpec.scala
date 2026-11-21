@@ -53,7 +53,8 @@ class KinoMetalowiecNowaDebaClientSpec extends AnyFlatSpec with Matchers with Op
     mistyczka.movie.runtimeMinutes.value shouldBe 90
     mistyczka.movie.genres shouldBe Seq("dramat", "obyczajowy")
     mistyczka.ageRating.value shouldBe "12+"
-    mistyczka.posterUrl.value shouldBe "https://www.soknowadeba.pl/wp-content/uploads/2024/02/mistyczka-728x1024.jpg"
+    // The srcset's 1821w original, not the 728x1024 copy `src` names.
+    mistyczka.posterUrl.value shouldBe "https://www.soknowadeba.pl/wp-content/uploads/2024/02/mistyczka.jpg"
     mistyczka.trailerUrl.value shouldBe "https://www.youtube.com/watch?v=RG_hCZBwcGU"
   }
 

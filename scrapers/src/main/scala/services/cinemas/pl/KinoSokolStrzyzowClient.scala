@@ -82,7 +82,7 @@ object KinoSokolStrzyzowClient {
     } yield CinemaMovie(
       movie     = Movie(title, runtimeMinutes = runtime, genres = genres),
       cinema    = cinema,
-      posterUrl = Option(article.selectFirst(".screening-poster img[src]")).flatMap(ScraperParse.imageUrl(_)),
+      posterUrl = Option(article.selectFirst(".screening-poster img[src]")).flatMap(ScraperParse.largestImageUrl),
       filmUrl   = Option(titleAnchor.attr("abs:href")).filter(_.nonEmpty),
       synopsis  = Option(article.selectFirst(".screening-excerpt")).map(_.text.trim).filter(_.nonEmpty),
       showtimes = showtimes

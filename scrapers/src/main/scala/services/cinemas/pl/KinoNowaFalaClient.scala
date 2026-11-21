@@ -40,6 +40,6 @@ object KinoNowaFalaClient {
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] =
     WpTheatreEvents.parse(html, BaseUrl, cinema) { (card, slot) =>
-      slot.copy(posterUrl = Option(card.selectFirst("figure img[src]")).flatMap(ScraperParse.imageUrl(_)).map(ResizedPoster.fullSize))
+      slot.copy(posterUrl = Option(card.selectFirst("figure img[src]")).flatMap(ScraperParse.largestImageUrl).map(ResizedPoster.fullSize))
     }
 }

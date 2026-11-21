@@ -98,7 +98,7 @@ class IluzjonClient(http: HttpFetch, today: => LocalDate
         val title   = m.group(3).trim
         val room    = Option(row.selectFirst("div.location")).map(_.text.trim.replaceAll("[()]", "").trim).filter(_.nonEmpty)
         val booking = Option(row.selectFirst("div.info-add a[href*=bilety.iluzjon]")).map(_.attr("href")).filter(_.nonEmpty)
-        val poster  = Option(row.selectFirst("div.image img[src]")).map(_.attr("src")).filter(_.nonEmpty).map(ScraperParse.onSite(BaseUrl))
+        val poster  = Option(row.selectFirst("div.image img[src]")).flatMap(ScraperParse.largestImageSource).map(ScraperParse.onSite(BaseUrl))
         val detailP = ScraperParse.onSite(BaseUrl)(href.takeWhile(_ != '?'))
         RawSlot(filmId, title, date.atTime(t), room, booking, poster, detailP)
       }
@@ -136,7 +136,7 @@ object IluzjonClient {
       originalTitle  = ScraperParse.ddField(document, "tytuł oryg"),
       synopsis       = Option(document.selectFirst("h4:contains(Opis filmu) + div.content")).map(SynopsisProse.blockText(_).trim)
                          .orElse(Option(document.selectFirst("div.content p")).map(SynopsisProse.blockText(_).trim)).filter(_.length > 20),
-      poster         = Option(document.selectFirst("div.plakat img[src]")).map(_.attr("src")).filter(_.nonEmpty)
+      poster         = Option(document.selectFirst("div.plakat img[src]")).flatMap(ScraperParse.largestImageSource)
                          .map(ScraperParse.onSite("https://www.iluzjon.fn.org.pl"))
     )
   }

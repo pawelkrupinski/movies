@@ -121,7 +121,7 @@ class UjazdowskiClient(
                     .flatMap(ScraperParse.parseHHmm)
       for { s <- slug; t <- title; tm <- time } yield {
         val meta   = Option(a.selectFirst(".fs-20.max-w")).map(_.text.trim).filter(_.nonEmpty)
-        val poster = Option(a.selectFirst("img[src]")).map(_.attr("src")).filter(_.nonEmpty)
+        val poster = Option(a.selectFirst("img[src]")).flatMap(ScraperParse.largestImageSource)
                        .map(u => if (u.startsWith("http")) u else BaseUrl + u)
         RawSlot(s, t, date.atTime(tm), meta, poster)
       }

@@ -254,6 +254,23 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.cssUrl("color: red") shouldBe None
   }
 
+  "largestImageSource" should "take the srcset's widest candidate over src, and src without one" in {
+    def img(html: String) = Jsoup.parse(html, "https://kino.example/repertuar/").selectFirst("img")
+    // Kino Metalowiec's markup: `src` is the 728x1024 copy, the srcset lists the 1821w original last.
+    val wordpress = img("""<img src="/up/m-728x1024.jpg" srcset="/up/m-728x1024.jpg 728w, /up/m-213x300.jpg 213w, /up/m.jpg 1821w">""")
+    ScraperParse.largestImageSource(wordpress) shouldBe Some("/up/m.jpg")
+    ScraperParse.largestImageUrl(wordpress)    shouldBe Some("https://kino.example/up/m.jpg")
+    ScraperParse.largestImageSource(img("""<img src="a.jpg" srcset="a.jpg, a@2x.jpg 2x">""")) shouldBe Some("a@2x.jpg")
+    // A comma inside a URL (an image CDN's transform) does not split it.
+    ScraperParse.largestImageSource(img("""<img srcset="https://cdn.example/w_300,h_450/p.jpg 300w,https://cdn.example/w_600,h_900/p.jpg 600w">""")) shouldBe
+      Some("https://cdn.example/w_600,h_900/p.jpg")
+    ScraperParse.largestImageSource(img("""<img src=" p.jpg " srcset="">""")) shouldBe Some("p.jpg")
+    ScraperParse.largestImageSource(img("""<img src="">""")) shouldBe None
+    // Avada's lazy-load placeholder srcset (Kino Remus, SCK Stargard) is no image: the src stays.
+    ScraperParse.largestImageSource(img("""<img src="/up/jumbo.jpg" srcset="data:image/svg+xml,%3Csvg%20width%3D%27835%27%3E%3C%2Fsvg%3E 835w">""")) shouldBe
+      Some("/up/jumbo.jpg")
+  }
+
   "runtimeMinutesIn" should "read the first count of minutes, spaced or not, and nothing without one" in {
     ScraperParse.runtimeMinutesIn("0+ • 119 min.")        shouldBe Some(119)
     ScraperParse.runtimeMinutesIn("Czas: 45min")          shouldBe Some(45)

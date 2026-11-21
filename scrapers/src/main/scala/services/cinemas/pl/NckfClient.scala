@@ -76,7 +76,7 @@ object NckfClient {
   private def parseItem(item: Element, today: LocalDate): Seq[ScrapedSlot] = {
     val title  = Option(item.selectFirst("h3")).map(_.text.trim).filter(_.nonEmpty)
     val poster = Option(item.selectFirst("div.events-archive__item-image img[src]"))
-                   .map(_.attr("src")).filter(_.nonEmpty)
+                   .flatMap(ScraperParse.largestImageSource)
                    .map(p => if (p.startsWith("http")) p else BaseUrl + p)
     val filmUrl = Option(item.selectFirst("a.events-archive__item-url[href]"))
                     .map(_.attr("href")).filter(_.nonEmpty)

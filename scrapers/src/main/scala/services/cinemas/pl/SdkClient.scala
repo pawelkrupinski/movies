@@ -92,7 +92,7 @@ class SdkClient(http: HttpFetch) extends SingleSiteScraper {
       day     <- ScraperParse.parseDate(m.group(1))
       time    <- ScraperParse.clockAt(m, 2)
     } yield {
-      val poster = Option(element.selectFirst("figure.item-image img[src]")).map(_.attr("src")).filter(_.nonEmpty)
+      val poster = Option(element.selectFirst("figure.item-image img[src]")).flatMap(ScraperParse.largestImageSource)
         .map(ScraperParse.onSite(BaseUrl))
       Item(title, day.atTime(time), ScraperParse.onSite(BaseUrl)(a.attr("href")), poster)
     }

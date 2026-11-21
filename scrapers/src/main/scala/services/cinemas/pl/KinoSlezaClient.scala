@@ -54,7 +54,7 @@ object KinoSlezaClient {
     } yield CinemaMovie(
       movie     = Movie(title, genres = genresOf(movie)),
       cinema    = cinema,
-      posterUrl = Option(movie.selectFirst("figure.movie-img img")).flatMap(ScraperParse.imageUrl(_)),
+      posterUrl = Option(movie.selectFirst("figure.movie-img img")).flatMap(ScraperParse.largestImageUrl),
       synopsis  = Option(movie.selectFirst("span.description")).map(_.text.trim).filter(_.length > 20),
       showtimes = showtimes
     )

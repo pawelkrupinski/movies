@@ -114,7 +114,7 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
         .flatMap(MonthAbbrev.get)
       val hours  = box.select("span.hour").asScala.toSeq
         .flatMap(h => ScraperParse.parseHHmm(h.text.trim))
-      val poster = Option(box.selectFirst("div.img img[src]")).map(_.attr("src")).filter(_.nonEmpty)
+      val poster = Option(box.selectFirst("div.img img[src]")).flatMap(ScraperParse.largestImageSource)
         .map(absolute)
       for {
         t <- title

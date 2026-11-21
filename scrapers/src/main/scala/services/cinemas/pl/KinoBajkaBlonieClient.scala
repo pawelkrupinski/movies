@@ -130,7 +130,7 @@ object KinoBajkaBlonieClient {
           rawTitle       = Option(rawTitle).filter(_ != title)
         ),
         cinema      = cinema,
-        posterUrl   = Option(page.selectFirst("img.film-poster")).flatMap(ScraperParse.imageUrl(_)),
+        posterUrl   = Option(page.selectFirst("img.film-poster")).flatMap(ScraperParse.largestImageUrl),
         filmUrl     = Some(url),
         synopsis    = Option(page.selectFirst("div.prose")).map(_.text.trim).filter(_.nonEmpty),
         showtimes   = dateTimes.map(Showtime(_, None, format = format)),

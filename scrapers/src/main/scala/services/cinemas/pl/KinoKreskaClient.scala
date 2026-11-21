@@ -129,7 +129,7 @@ object KinoKreskaClient {
     val prose = lines.filterNot(line => VenueCredits.statesFacts(line) || LabelLine.matches(line) || line == "ZOBACZ ZWIASTUN")
     VenueCredits.parse(lines).copy(
       synopsis  = Some(prose.mkString("\n\n")).filter(_.length > 20),
-      posterUrl = Option(document.selectFirst("img.sticky-image__image")).flatMap(ScraperParse.imageUrl(_)))
+      posterUrl = Option(document.selectFirst("img.sticky-image__image")).flatMap(ScraperParse.largestImageUrl))
   }
 
   /** "Gatunek: dramat", "kategoria wiekowa: 16+" — a short labelled line, never the synopsis. */
