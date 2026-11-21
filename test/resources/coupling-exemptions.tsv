@@ -41,10 +41,7 @@ root	diagnostics.*	exempt	coupling	command-line programs built from the whole st
 root	services.review.ReviewLabelsCli	exempt	web	the review answers' command-line program (`web/runMain services.review.ReviewLabelsCli`): its main wires the mirror client, the answer store and every country's review source like a composition root
 registry	services.cinemas.*Venues	exempt	scrapers	a city's or chain's venue roster: one entry a venue, each naming the scraper class that reads it -- data, its fan-out is its row count
 registry	services.cinemas.*ScraperCatalog	exempt	scrapers	a country's scraper catalogue: one entry a source, each naming its client class -- data, its fan-out is its row count
-registry	services.cinemas.pl.PolishVenueRegistry	exempt	scrapers	the Polish venues' registry over the city rosters: one reference a roster
 registry	services.cinemas.pl.venues.PolishTowns	exempt	scrapers	the Polish towns in scrape order: one reference a town's venue roster (pl.venues.*Venues) -- data, its fan-out is its row count
-registry	models.City	exempt	coupling	the city registry: its companion lists every city and page of every country (one reference a city object or page row type, City.all the union) -- data, its fan-out is its row count
-registry	models.Country	exempt	coupling	the country registry: one case object a country, each naming its cities, pages, aliases and picker groups -- data, its fan-out is its row count
 config	settings.ProcessConfiguration	exempt	coupling	the typed-config root: every environment variable is read here once and resolved into its typed setting (typed config conventions), so it names every setting type
 foundation	models	exempt	coupling	the domain data every layer reads: stable (I near 0) and concrete (A near 0), as values are
 foundation	tools	exempt	coupling	generic utilities and the HTTP and Mongo layers, below everything: stable and concrete
@@ -67,11 +64,6 @@ member	models.Movie	scrape	scrapers	a film's own fields within it
 member	models.Showtime	scrape	scrapers	one screening of it
 member	tools.HttpFetch	scrape	scrapers	the fetch a scraper is handed
 member	tools.HttpRead	scrape	scrapers	one read over it
-contract	services.*Handler	task-handler	tasks	a task handler's side of the task contract (TaskWorker dispatches a claimed Task to the TaskHandler for its TaskType and reads back a HandlerOutcome): the four types every handler is written against are one dependency, not four, as the scrape contract's are for a scraper
-member	services.tasks.TaskHandler	task-handler	tasks	the contract's entry point: what a handler is
-member	services.tasks.Task	task-handler	tasks	the claimed task a handler is handed
-member	services.tasks.HandlerOutcome	task-handler	tasks	what a handler answers
-member	services.tasktypes.TaskType	task-handler	tasks	the type a handler is registered for
 contract	services.identity.agreement.AgreementStageComposition	agreement-sources	identity	the agreement stages' sources (AgreementStageComposition.Sources): the stores and readers every agreement stage is built from, read together as one unit -- the worker's live ones or a harness's recorded ones, every role filled the same way whoever builds the stage; its builder and the pipeline it fills are written against the unit, one dependency, not eight
 contract	services.identity.agreement.AgreementPipeline	agreement-sources	identity	the pipeline the composition fills from the sources: it hands each role on to the stage that reads it (the evidence, the held verdicts, the candidates, the takes), so it reads the sources as the one unit the composition hands it
 member	services.identity.agreement.FamilyAnswers	agreement-sources	identity	each voter family's answers
@@ -83,13 +75,6 @@ member	services.identity.vocabulary.CatalogueAnswers	agreement-sources	identity	
 member	services.titles.TitleNormalizer	agreement-sources	identity	the title text the evidence reads
 member	services.identity.agreement.AgreementKeys	agreement-sources	identity	the clusters' kept keys
 contract-size	scrape	12	scrapers	grandfathered: declared (2026-11) before the 8-member cap -- what a scraper is written against really is these twelve types (the scraper's entry point and parse helpers, the films and screenings it returns, the fetch it is handed); split it only along a line a scraper does not cross
-contract	controllers.*	served	web	the web tier's side of the served schedule (the controllers, their view models and markup builders, MovieControllerService): the schedule it renders is one model read together, one dependency, not six. Worker code using these types (the read-model projector, share cards) counts them one by one
-member	controllers.FilmSchedule	served	web	one film's schedule in a city, the unit the pages render
-member	controllers.CinemaShowtimes	served	web	one venue's screenings of it
-member	models.ResolvedMovie	served	web	the read model's film: its identity, ratings and metadata
-member	models.Movie	served	web	a film's own fields within it
-member	models.Cinema	served	web	the venue a screening is at
-member	models.Showtime	served	web	one screening
 class	services.identity.agreement.AgreementPipeline	15	identity	pipeline composition: builds, from the agreement sources (one dependency, the `agreement-sources` contract), the stages a model decision is read by (evidence, held verdicts, candidates, inline asks, corrections, takes, cluster verdicts), wires each to what it reads, routes each decision to its stage and keeps each decision's taken-as, digest and event caches across applies; only AgreementStage depends on it	2026-11-19
 class	services.identity.FamilyScope	12	identity	family scoring scope: builds a family's pool, its feed-link overrule and its node and copied-title denials over the candidate generation, scoring and acceptance it is handed, then scores each node or pooled cluster through ListingScoring, reading source reliability, venue backing and rule ablation	2026-11-20
 class	services.identityadapters.IdentityModelService	10	identity	event-driven model host: drains queued scrapes and observations into the IncrementalResolver on one thread through the observation reads, page wait, input gate, listing retainer and history it keeps current, and serves its snapshots to readers	2026-11-20

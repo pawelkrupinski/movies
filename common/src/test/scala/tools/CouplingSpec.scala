@@ -260,9 +260,14 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     table.contractsOf("services.identity.IdentityResolver") shouldBe empty
   }
 
-  "the resolver vocabulary and projection contracts" should "be gone: under the collaborators-only count every member was data, or a lone collaborator" in {
+  "the resolver vocabulary, projection, served and task-handler contracts" should "be gone: under the collaborators-only count every member was data, or a lone collaborator" in {
     val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
-    table.contracts.map(_._1) should contain noneOf ("resolver-vocabulary", "projection")
+    table.contracts.map(_._1) should contain noneOf ("resolver-vocabulary", "projection", "served", "task-handler")
+  }
+
+  "the registries that hold only data" should "be exempt no more: the city and country tables and the Polish roster registry count no collaborator past the limit" in {
+    val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
+    Seq("models.City", "models.Country", "services.cinemas.pl.PolishVenueRegistry").map(table.fanOutLimit(_, 9)) shouldBe Seq(Some(9), Some(9), Some(9))
   }
 
   "the fan-out rows" should "give every class's held fan-out, one at or below the limit included, with what it counts" in {
@@ -271,22 +276,6 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     Coupling.fanOutRows(contracted, exemptions) should contain allOf ("services.cinemas.pl.HeliosClient\t2\tcontract:scrape,tools.Slugify",
       "services.identity.Film\t3\tmodels.Cinema,models.CinemaMovie,models.Showtime", "models.Showtime\t0\t")
     Coupling.fanOutRows(contracted, exemptions).size shouldBe contracted.types.size
-  }
-
-  "the served schedule contract" should "be one dependency of the web tier's controllers, and its members one by one for worker code" in {
-    val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
-    val members = Seq("controllers.FilmSchedule", "controllers.CinemaShowtimes", "models.ResolvedMovie", "models.Movie", "models.Cinema",
-      "models.Showtime")
-    table.contracts.find(_._1 == "served").map(_._3.toSet) shouldBe Some(members.toSet)
-    val renderer = "controllers.ShowingsMarkup"
-    val projector = "services.readmodel.ReadModelProjector" // worker code reading the same types
-    val graph = Graph((renderer +: projector +: "tools.Slugify" +: members).map(t(_)),
-      (members :+ "tools.Slugify").flatMap(m => Seq(renderer -> m, projector -> m)).toSet)
-    val held = Coupling.heldFanOut(graph, table)
-    held(renderer) shouldBe 2 // the contract, tools.Slugify
-    held(projector) shouldBe 7 // no discount: six members and tools.Slugify
-    table.contractsOf("services.readmodel.ReadModelProjector") shouldBe empty
-    table.contractsOf("services.sharecards.ShareCardService") shouldBe empty
   }
 
   "the agreement sources contract" should "be one dependency of the stage's builder and the pipeline it fills, and its members one by one for a stage" in {
