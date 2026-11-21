@@ -63,11 +63,11 @@ private[identity] object TitleRuleChange {
   /** `normalizer`'s rules as the store records them ([[TitleRuleRecord]]). */
   def record(normalizer: TitleNormalizer): String = TitleRuleRecord.of(normalizer.rules)
 
-  /** How the title rules moved since `stored` was recorded: `Some(None)` not at all; `Some(change)` they did, and the
+  /** How the title rules moved since `stored` was recorded, `current` the record of `normalizer`'s: `Some(None)` not at all; `Some(change)` they did, and the
    *  record rebuilds the rules the stored families were decided under; `None` when there is no record this code can
    *  read, under which no stored family can be told to stand. */
-  def since(stored: Option[String], normalizer: TitleNormalizer): Option[Option[TitleRuleChange]] = stored match {
-    case Some(record) if record == TitleRuleChange.record(normalizer) => Some(None)
+  def since(stored: Option[String], current: String, normalizer: TitleNormalizer): Option[Option[TitleRuleChange]] = stored match {
+    case Some(record) if record == current => Some(None)
     case Some(record) => TitleRuleRecord.normalizer(record, normalizer).map(was => Some(new TitleRuleChange(was, normalizer)))
     case None         => None
   }

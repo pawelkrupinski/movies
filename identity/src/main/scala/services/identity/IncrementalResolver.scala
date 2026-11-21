@@ -114,7 +114,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     val listings = IncrementalResolver.onePerKey(taken)
     listings.foreach(hold)
     clock.context(corpus.seen(listings))
-    val since = if (store.rulesVersion.contains(rules)) TitleRuleChange.since(store.titleRules, normalizer) else None
+    val since = if (store.rulesVersion.contains(rules)) TitleRuleChange.since(store.titleRules, titleRules, normalizer) else None
     val (stored, outruled) = since.fold((Seq.empty[StoredFamily], store.families().map(_.id).toSet))(_ => (store.families(), Set.empty[String]))
     val titles = since.flatten
     // The keys two stored families claim, found in one pass — not by grouping every stored key.
@@ -138,6 +138,9 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     }
     ruled()
   }
+
+  /** The country's title rules as the store records them, made once. */
+  private lazy val titleRules: String = TitleRuleChange.record(normalizer)
 
   /** Does a stored family stand at a restore: its listings all held and claimed by no other, still the same nodes, its
    *  corpus facts reading the same (its slice's digest), and -- the title rules moved -- the title rules read alike? */
@@ -316,7 +319,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
 
   /** The store's families are this model's: record the rules they are decided under, once. */
   private var rulesRecorded = false
-  private def ruled(): Unit = if (!rulesRecorded) { store.recordRulesVersion(rules); store.recordTitleRules(TitleRuleChange.record(normalizer)); rulesRecorded = true }
+  private def ruled(): Unit = if (!rulesRecorded) { store.recordRulesVersion(rules); store.recordTitleRules(titleRules); rulesRecorded = true }
 
   // A listing is filed under its OWN key object — the one its families, decisions and node maps are made to name
   // ([[remember]]), and the corpus files it under: a listing re-published with other fields comes with a new one,
