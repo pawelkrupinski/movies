@@ -16,7 +16,7 @@ class ContentHashSpec extends AnyFlatSpec with Matchers with ScalaCheckPropertyC
   private def film(title: String, directors: Seq[String]) =
     Candidate(7, Film(title, year = Some(1968), directors = Some(directors), popularity = Some(3.5)))
   private def slice(candidates: Seq[(Int, Candidate)], answers: Seq[(CandidateQuery, Option[Seq[Int]])]) =
-    CorpusContext.Slice(Map.empty, Map.empty, Set("lalka"), Set.empty, Set.empty, Map("lalka" -> "has"), candidates.toMap, answers.toMap)
+    CorpusContext.Slice(Map.empty, Map.empty, Set("lalka"), Set.empty, Set.empty, Set.empty, Map("lalka" -> "has"), candidates.toMap, answers.toMap)
 
   private val lalka   = film("Lalka", Seq("Wojciech Has"))
   private val queries = Seq(CandidateQuery.Title("Lalka") -> Some(Seq(7, 9)), CandidateQuery.Director("Wojciech Has") -> None)
@@ -64,6 +64,14 @@ class ContentHashSpec extends AnyFlatSpec with Matchers with ScalaCheckPropertyC
   }
 
   private val PinnedTuple = 7427319714951912975L
+
+  "a context's slice" should "move when a piece it reads becomes one the corpus bills beside two whole titles" in {
+    def context(spread: Int) = new WholeCorpusContext(_ => None, Map.empty, Nil, Map.empty, Set("paddington"), Map.empty, Map("family cinema" -> spread))
+    val reads = CorpusContext.Reads(Set.empty, Set.empty, Set("family cinema"), Set.empty, Set.empty, Set.empty)
+    context(1).repeatedSegment("family cinema") shouldBe false
+    context(2).repeatedSegment("family cinema") shouldBe true
+    context(2).slice(reads).digest should not be context(1).slice(reads).digest
+  }
 }
 
 object ContentHashSpec {
@@ -120,4 +128,5 @@ object ContentHashSpec {
         1 -> Gen.listOfN(3, Gen.zip(Gen.alphaStr, inner)).map(_.toMap),
         1 -> Gen.zip(inner, inner, inner))
     }
+
 }

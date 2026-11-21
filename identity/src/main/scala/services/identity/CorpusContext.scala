@@ -66,6 +66,7 @@ private[identity] trait CorpusContext {
     reads.segments.filter(wholeTitle),
     reads.segments.filter(bannerSegment),
     reads.segments.filter(recurringSegment),
+    reads.segments.filter(repeatedSegment),
     reads.banners.flatMap(banner => houses.of.get(banner).map(banner -> _)).toMap,
     reads.films.flatMap(id => candidate(id).map(id -> _)).toMap,
     reads.queries.map(query => query -> ranked(query)).toMap)
@@ -174,7 +175,8 @@ private[identity] object CorpusContext {
 
   /** The values a family read, as [[CorpusContext.slice]] cut them. */
   final case class Slice(reached: Map[String, Seq[(String, Set[Int])]], groups: Map[String, Seq[(String, MeasuredListing)]],
-                         wholeTitles: Set[String], bannerSegments: Set[String], recurringSegments: Set[String], houses: Map[String, String],
+                         wholeTitles: Set[String], bannerSegments: Set[String], recurringSegments: Set[String],
+                         repeatedSegments: Set[String], houses: Map[String, String],
                          candidates: Map[Int, Candidate],
                          answers: Map[CandidateQuery, Option[Seq[Int]]]) {
     /** 64 bits of the slice's content — what a stored family keeps to tell, after a restart, whether
