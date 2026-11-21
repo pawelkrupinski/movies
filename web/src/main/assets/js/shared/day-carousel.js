@@ -1,11 +1,11 @@
 // Changing the listing's day: the arrow keys, a pill, the hidden select and a swipe all slide the
 // grid there through one carousel, with the first-run swipe hint.
 
-/* global _hintGet, _hintSet */  // local-store.js
-/* global _searchDayPicked:writable, _searchMovingDay, _searchOrigin */  // search.js
-/* global TRUNCATED */  // showings.js
+/* global readStoredFlag, storeFlag */  // local-store.js
+/* global noteDayChange */  // search.js
+/* global undoTruncation */  // showings.js
 /* global highlightDayPill, pageToday, syncDayPills */  // dates.js
-/* exported _appliedDay, maybeShowSwipeHint, onDateChange, onDateSelect */
+/* exported maybeShowSwipeHint, onDateChange, onDateSelect, rememberDisplayedDay, stepDateWrap */
 
 // ── Keyboard navigation ───────────────────────────────────────────────────
 
@@ -29,6 +29,12 @@ let _appliedDay = null;
 // moves a further day instead of recomputing the same one. Resync'd to
 // `_appliedDay` whenever the carousel finally settles with nothing queued.
 let _headDay = null;
+
+// The day the boot's first filter pass draws: whatever `#date-filter` says once the URL is applied.
+function rememberDisplayedDay() {
+  const sel = document.getElementById('date-filter');
+  if (sel) _appliedDay = sel.value;
+}
 
 // The Left/Right keys: step one day and slide there like a swipe. Clamps at
 // the ends (no wrap) — same reach the dropdown gives.
@@ -84,7 +90,6 @@ function onDateSelect() {
   const dir = (fromIdx < 0 || toIdx < 0) ? null : (toIdx > fromIdx ? 1 : -1);
   animateToDay(sel.value, dir);
 }
-window.onDateSelect = onDateSelect;
 
 // "Apply the current day NOW" — no animation. Rebuilds the visible grid the
 // same way every other filter does (`applyFilters` also calls `syncDateToURL`,
@@ -94,10 +99,7 @@ window.onDateSelect = onDateSelect;
 function onDateChange() {
   const sel = document.getElementById('date-filter');
   if (sel) {
-    // A day moved by anything but the search itself, mid-search, is a pick: it stays when the
-    // search is cleared. Not the first apply at boot (nothing was on screen to move from).
-    if (_searchOrigin !== null && !_searchMovingDay && _appliedDay !== null && _appliedDay !== sel.value)
-      _searchDayPicked = true;
+    noteDayChange(_appliedDay, sel.value);
     _appliedDay = sel.value;
   }
   syncDayPills();
@@ -177,7 +179,6 @@ function stepDateWrap(direction) {
   sel.selectedIndex = ((sel.selectedIndex + direction) % optionCount + optionCount) % optionCount;
   onDateChange();
 }
-window.stepDateWrap = stepDateWrap;
 
 // ── First-run swipe hint ────────────────────────────────────────────────────
 // Reveal "Przesuń, aby zmienić dzień" once per calendar day on a touch device,
@@ -195,10 +196,10 @@ function maybeShowSwipeHint() {
   if (!matchMedia('(pointer: coarse)').matches) return;   // desktop never sees it
   const element = document.getElementById('swipe-hint');
   if (!element) return;                                        // not the listing page
-  if (_hintGet(SWIPE_HINT_DONE)) return;                 // retired by a past swipe
+  if (readStoredFlag(SWIPE_HINT_DONE)) return;                 // retired by a past swipe
   const today = pageToday();                            // the city's day, see dateBounds
-  if (_hintGet(SWIPE_HINT_DAY) === today) return;        // already shown today
-  _hintSet(SWIPE_HINT_DAY, today);
+  if (readStoredFlag(SWIPE_HINT_DAY) === today) return;        // already shown today
+  storeFlag(SWIPE_HINT_DAY, today);
   element.classList.add('visible');
   clearTimeout(_swipeHintTimer);
   _swipeHintTimer = setTimeout(() => element.classList.remove('visible'), SWIPE_HINT_MS);
@@ -213,7 +214,7 @@ function dismissSwipeHint() {
 // Retire the hint for good (the user committed a day-swipe — they've got it).
 function retireSwipeHint() {
   dismissSwipeHint();
-  _hintSet(SWIPE_HINT_DONE, '1');
+  storeFlag(SWIPE_HINT_DONE, '1');
 }
 
 // ── Carousel track plumbing ────────────────────────────────────────────────
@@ -260,7 +261,7 @@ function buildDayColumn(dayValue) {
   // untruncated (it shows one day, not ten), and `applyFiltersForDay` only
   // speaks inline display — so drop the class rather than leave rows hidden
   // by a decision that was made for a different day's budget.
-  clone.querySelectorAll('.' + TRUNCATED).forEach(element => element.classList.remove(TRUNCATED));
+  undoTruncation(clone);
   col.appendChild(clone);
   if (typeof applyFiltersForDay === 'function') applyFiltersForDay(clone, dayValue);
   return col;
@@ -455,7 +456,6 @@ function animateToDay(targetValue, dir) {
   }
   runSlide(targetValue, dir);
 }
-window.animateToDay = animateToDay;
 
 // Swipe commit: 'left' = finger went left → next day (dir +1). The previous/next
 // clones are already mounted by the drag (`armTrack` ran at axis-lock), so we

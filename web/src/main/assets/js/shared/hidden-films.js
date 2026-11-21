@@ -2,13 +2,13 @@
 // show it, and hiding, restoring and un-hiding them all.
 
 /* global currentCountryCode */  // city.js
-/* global _lsGet, _lsSet */  // local-store.js
+/* global readStoredJson, storeJson */  // local-store.js
 /* global updateFormatBtn */  // filters.js
 /* global closeDialog, closeOtherPanels, openDialog */  // overlays.js
 /* global maybeShowAnonymousNag */  // auth.js
 /* global clearHiddenFilmsOnServer, hideFilmOnServer, unhideFilmOnServer */  // hidden-films-sync.js
-/* exported closeHiddenModal, filterHiddenModal, getHidden, hideFilm, openHiddenModal, setHidden,
-   showAllFilms, updateNavbar */
+/* exported closeHiddenModal, filterHiddenModal, getHidden, hideFilm, openHiddenModal,
+   refreshHiddenFilmsControls, setHidden, showAllFilms */
 
 // Hidden films are kept PER COUNTRY (`hiddenFilms:<cc>`), as the server and
 // the apps keep them: showtimes.cc serves /uk, /de, /us and /es from one
@@ -18,7 +18,7 @@
 // /uk's titles into the /de account.
 function _hiddenFilmsKey(country) { return 'hiddenFilms:' + country; }
 // The single list (and its marker) earlier builds kept — and the legacy
-// cookie `_migrate` above still lifts into — moved into the bucket of the
+// cookie `_migrate` (`local-store.js`) still lifts into — moved into the bucket of the
 // country it belongs to: the one the marker names, else this page's. Lazy,
 // on every read, so a list written under the old key at any point (a
 // pre-upgrade tab, the cookie) lands in its bucket rather than being lost.
@@ -26,12 +26,12 @@ const LEGACY_HIDDEN_FILMS_KEY = 'hiddenFilms';
 const LEGACY_HIDDEN_FILMS_COUNTRY_KEY = 'hiddenFilmsCountry';
 function _settleLegacyHiddenFilms() {
   try {
-    const legacy = _lsGet(LEGACY_HIDDEN_FILMS_KEY);
+    const legacy = readStoredJson(LEGACY_HIDDEN_FILMS_KEY);
     if (legacy === null) return;
     const marker = localStorage.getItem(LEGACY_HIDDEN_FILMS_COUNTRY_KEY);
     const owner  = marker && /^[a-z]{2}$/.test(marker) ? marker : currentCountryCode();
-    const bucket = _lsGet(_hiddenFilmsKey(owner)) || [];
-    _lsSet(_hiddenFilmsKey(owner), [...new Set([...bucket, ...legacy])]);
+    const bucket = readStoredJson(_hiddenFilmsKey(owner)) || [];
+    storeJson(_hiddenFilmsKey(owner), [...new Set([...bucket, ...legacy])]);
     localStorage.removeItem(LEGACY_HIDDEN_FILMS_KEY);
     localStorage.removeItem(LEGACY_HIDDEN_FILMS_COUNTRY_KEY);
     // Every country's cached validators described the one old list, and were
@@ -45,16 +45,16 @@ function _settleLegacyHiddenFilms() {
 }
 function getHidden(country) {
   _settleLegacyHiddenFilms();
-  return _lsGet(_hiddenFilmsKey(country || currentCountryCode())) || [];
+  return readStoredJson(_hiddenFilmsKey(country || currentCountryCode())) || [];
 }
 // Pure localStorage write. The server round-trip is the CALLER's job now —
 // each caller already knows exactly which title it hid/unhid (or that it
 // cleared everything), which is what the granular per-title API needs; see
-// hideFilmOnServer/unhideFilmOnServer/clearHiddenFilmsOnServer below and
+// hideFilmOnServer/unhideFilmOnServer/clearHiddenFilmsOnServer (`hidden-films-sync.js`) and
 // their call sites (hideFilm/restoreFilm/showAllFilms).
 function setHidden(titles, country) {
   _settleLegacyHiddenFilms();
-  _lsSet(_hiddenFilmsKey(country || currentCountryCode()), titles);
+  storeJson(_hiddenFilmsKey(country || currentCountryCode()), titles);
 }
 
 // ── Hidden-films UI ───────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ function setHidden(titles, country) {
 
 // The hidden-films row and the funnel: every hide / restore / un-hide-all
 // lands here, and a hidden film lights the funnel (`filtersActive`).
-function updateNavbar() {
+function refreshHiddenFilmsControls() {
   updateFormatBtn();
   const hidden = getHidden();
   const row     = document.getElementById('hidden-row');
@@ -146,7 +146,7 @@ function hideFilm(button) {
   // view didn't expose the single-card hook (e.g. the self-contained browse
   // view) or the index isn't built.
   if (!(window.hideOneFilm && window.hideOneFilm(title))) applyFilters();
-  updateNavbar();
+  refreshHiddenFilmsControls();
 }
 
 function restoreFilm(title) {
@@ -154,7 +154,7 @@ function restoreFilm(title) {
     setHidden(getHidden().filter(t => t !== title));
     unhideFilmOnServer(title);
     applyFilters();
-    updateNavbar();
+    refreshHiddenFilmsControls();
   });
 }
 
@@ -163,9 +163,9 @@ function showAllFilms() {
     setHidden([]);
     clearHiddenFilmsOnServer();
     applyFilters();
-    updateNavbar();
+    refreshHiddenFilmsControls();
   });
-  // `updateNavbar` will close the modal when the hidden set is empty
+  // `refreshHiddenFilmsControls` will close the modal when the hidden set is empty
   // (last-title-removed path covers per-row restoreFilm too), but be
   // explicit here so the intent reads at the call site: `Wyczyść`
   // always closes.

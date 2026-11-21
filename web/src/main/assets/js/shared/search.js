@@ -3,8 +3,8 @@
 
 /* global applyFiltersDebounced */  // filters.js
 /* global onDateChange */  // day-carousel.js
-/* exported _searchDayPicked, _searchMovingDay, _searchOrigin, beginSearchAtBoot, lockSearchZoom,
-   onSearchInput, searchOriginDay, unlockSearchZoom, urlDay */
+/* exported beginSearchAtBoot, lockSearchZoom, noteDayChange, onSearchInput, restoreSearchDay, searchDayState,
+   searchOriginDay, unlockSearchZoom, urlDay */
 
 // iOS Safari auto-zooms the viewport when focus lands on an input whose
 // font-size is below 16px — and the navbar search is intentionally ~12.5px
@@ -31,8 +31,6 @@ function unlockSearchZoom() {
   viewport.setAttribute('content', _searchBaseViewport);
   _searchBaseViewport = null;
 }
-window.lockSearchZoom   = lockSearchZoom;
-window.unlockSearchZoom = unlockSearchZoom;
 
 // On mobile portrait the search field is a floating pill pinned to the bottom
 // of the viewport (`position: fixed; bottom: …` in `_sharedStyles`). iOS
@@ -67,9 +65,6 @@ if (window.visualViewport) {
 // #search-input element mounts relative to this script.
 document.addEventListener('focusin',  applySearchKeyboardInset);
 document.addEventListener('focusout', applySearchKeyboardInset);
-// Exposed so the page-behaviour spec can drive it directly with a stubbed
-// visual viewport (headless Chrome has no on-screen keyboard to shrink one).
-window.applySearchKeyboardInset = applySearchKeyboardInset;
 
 // On mobile portrait the search field lives in a floating pill pinned to the
 // bottom of the viewport, so when its keyboard is up the rest of the screen —
@@ -118,7 +113,30 @@ let _searchMovingDay = false;  // the search itself is moving the day, which is 
 
 /** The day a running search began from, while nothing has been picked since; else null. */
 function searchOriginDay() { return _searchOrigin !== null && !_searchDayPicked ? _searchOrigin : null; }
-window.searchOriginDay = searchOriginDay;
+
+// The listing's day moved from `previousDay` to `nextDay`. By anything but the search itself,
+// mid-search, that is a pick: it stays when the search is cleared. Not the first apply at boot
+// (`previousDay` null: nothing was on screen to move from).
+function noteDayChange(previousDay, nextDay) {
+  if (_searchOrigin !== null && !_searchMovingDay && previousDay !== null && previousDay !== nextDay)
+    _searchDayPicked = true;
+}
+
+// The running search's day, for the history entry: where clearing it would go. Null: no search.
+function searchDayState() {
+  return _searchOrigin === null ? null : { origin: _searchOrigin, picked: _searchDayPicked };
+}
+
+// Put back a search's day recorded by `searchDayState`; the listing it was on showed "All"
+// unless a day was picked since.
+function restoreSearchDay(searchDay) {
+  if (!searchDay || typeof searchDay.origin !== 'string') return;
+  _searchOrigin = searchDay.origin;
+  _searchDayPicked = !!searchDay.picked;
+  // The URL carried the searched-from day (`urlDay`); the listing was on "All".
+  const sel = document.getElementById('date-filter');
+  if (sel && !_searchDayPicked) sel.value = 'anytime';
+}
 
 function moveDayForSearch(value) {
   const sel = document.getElementById('date-filter');
@@ -148,7 +166,6 @@ function onSearchInput() {
   }
   applyFiltersDebounced();
 }
-window.onSearchInput = onSearchInput;
 
 // The day the URL carries: the searched-from day while the search itself is showing
 // "All", so a reload (which starts with an empty search) and Back land on the day the

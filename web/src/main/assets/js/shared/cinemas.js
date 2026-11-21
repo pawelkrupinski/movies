@@ -1,16 +1,16 @@
 // The cinema filter: which cinemas this device switched off, the seasonal venues, the Filtry
 // cinema and area panels, the first-visit area picker, and the empty state they can cause.
 
-/* global _lsGet, _lsSet */  // local-store.js
+/* global readStoredJson, storeJson */  // local-store.js
 /* global makeFoldHeader, updateFormatBtn */  // filters.js
 /* exported buildCinemaPanel, disabledCinemasInCity, getDisabledCinemas, maybeShowAreaPicker,
    setDisabledCinemas, toggleAllCinemas, updateEmptyState */
 
 // disabledCinemas is device-local ONLY — no server round-trip at all, ever
-// (see the "Server sync" section below, which no longer models this field
-// in either direction).
-function getDisabledCinemas()  { return _lsGet('disabledCinemas') || []; }
-function setDisabledCinemas(l) { _lsSet('disabledCinemas', l); }
+// (see `hidden-films-sync.js`, which no longer models this field in either
+// direction).
+function getDisabledCinemas()  { return readStoredJson('disabledCinemas') || []; }
+function setDisabledCinemas(l) { storeJson('disabledCinemas', l); }
 // `disabledCinemas` is ONE global list (cinema display-names) shared across
 // every city — switching city is a full navigation that doesn't touch it, so
 // a cinema you deselected in another city stays in the list. That's
@@ -58,7 +58,6 @@ function appendSeasonWindow(parent, season) {
   parent.appendChild(document.createTextNode('–'));
   parent.appendChild(i18nSpan('season.month.' + season.closes));
 }
-window.seasonOrdered = seasonOrdered;
 
 // ── Cinema-filter panel ───────────────────────────────────────────────────
 

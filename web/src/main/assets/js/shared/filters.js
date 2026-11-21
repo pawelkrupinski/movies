@@ -2,13 +2,13 @@
 // funnel's active state, the folds, the lazily built submenu lists, and Wyczyść.
 
 /* global clampPanel, closeOtherPanels, setPanelOpen */  // overlays.js
-/* global getHidden, setHidden, updateNavbar */  // hidden-films.js
+/* global getHidden, refreshHiddenFilmsControls, setHidden */  // hidden-films.js
 /* global disabledCinemasInCity, toggleAllCinemas */  // cinemas.js
 /* global clearHiddenFilmsOnServer */  // hidden-films-sync.js
-/* exported _updateRoomCinemaCount, applyFiltersDebounced, badgeFormatMatch, badgeFormatTokens, compareCards,
-   ensurePanel, getCastFilter, getCountryFilter, getDirectorFilter, getFormatFilter, getFromMinutes,
-   getSortBy, getSubmenuFilter, gridScope, isSubsequence, makeFoldHeader, onFormatChange, onSortChange,
-   resetFormatFilter, resetSubmenuPanels, toggleFormatPanel, toggleSubmenu, updateFormatBtn,
+/* exported applyFiltersDebounced, badgeFormatMatch, compareCards, ensurePanel, getCastFilter,
+   getCountryFilter, getDirectorFilter, getFormatFilter, getFromMinutes, getSortBy, getSubmenuFilter,
+   gridScope, isSubsequence, makeFoldHeader, onFormatChange, onSortChange, resetFormatFilter,
+   resetSubmenuPanels, toggleFormatPanel, toggleSubmenu, updateFormatBtn, updateRoomCinemaCount,
    updateSubmenuCount */
 
 // ── Format-filter dropdown ────────────────────────────────────────────────
@@ -28,10 +28,6 @@ function getFormatFilter() {
   const imaxEl = document.getElementById('format-imax');
   const imax = imaxEl && imaxEl.checked ? 'IMAX' : '';
   return [dim, lang, imax].filter(Boolean);
-}
-
-function badgeFormatTokens(badge) {
-  return new Set((badge.dataset.format || '').split(' ').filter(Boolean));
 }
 
 // From-hour filter: returns the lower-bound time as minutes-since-midnight
@@ -193,7 +189,7 @@ function resetFormatFilter() {
   if (getHidden().length > 0) {
     setHidden([]);
     clearHiddenFilmsOnServer();
-    updateNavbar();
+    refreshHiddenFilmsControls();
   }
   setPanelOpen(document.getElementById('format-panel'), false);
   onFormatChange();
@@ -394,7 +390,7 @@ function buildRoomPanel() {
     list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(function(checkbox) {
       checkbox.checked = allCb.checked;
     });
-    list.querySelectorAll('.room-cinema-header').forEach(function(h) { _updateRoomCinemaCount(h); });
+    list.querySelectorAll('.room-cinema-header').forEach(function(h) { updateRoomCinemaCount(h); });
     updateSubmenuCount('room'); updateFormatBtn(); applyFilters();
   };
   allLabel.appendChild(allCb);
@@ -444,7 +440,7 @@ function buildRoomPanel() {
       checkbox.value = cinema + '|' + room;
       checkbox.checked = true;
       checkbox.onchange = function() {
-        _updateRoomCinemaCount(header);
+        updateRoomCinemaCount(header);
         updateSubmenuCount('room'); updateFormatBtn(); applyFilters();
       };
       label.appendChild(checkbox);
@@ -463,7 +459,7 @@ function buildRoomPanel() {
 // Per-cinema header badge inside Sale — surfaces "3/8" when 3 of 8 rooms
 // in that cinema are checked, so the user knows which cinemas they've
 // narrowed without expanding each one.
-function _updateRoomCinemaCount(headerEl) {
+function updateRoomCinemaCount(headerEl) {
   var count = headerEl.querySelector('.room-cinema-count');
   if (!count) return;
   var inner = headerEl.nextElementSibling;

@@ -3,14 +3,14 @@
 
 /* global mountPrefix */  // city.js
 /* global isLoggedIn, sessionUnconfirmed */  // auth.js
-/* exported _setPendingLanguage, reconcileLanguage, scheduleServerSync */
+/* exported forgetPendingLanguage, reconcileLanguage, scheduleServerSync */
 
 // `language` (the picked UI language, `kinowo_lang` — see `i18n.js`) rides
 // the LEGACY `/api/me/state` document instead — there's no granular
 // endpoint for a single scalar pick, only for the two sets it used to
-// share that document with. It skips the per-country union/authoritative
-// dance above entirely (see `reconcileLanguage`, near `bootMergeFromServer`,
-// for why) but keeps the debounced-push machinery below, narrowed to a
+// share that document with. It skips the hidden films' per-country
+// union/authoritative dance (`hidden-films-sync.js`) entirely (see
+// `reconcileLanguage` for why) but keeps the debounced-push machinery below, narrowed to a
 // `language`-only body now that hiddenFilms/disabledCinemas both left it.
 let _serverSyncTimer = 0;
 // A language pick the account has not confirmed yet — its debounced push is
@@ -20,6 +20,8 @@ let _serverSyncTimer = 0;
 // hidden-films writes owed. Mirrors the apps' `pendingLanguagePush`.
 const PENDING_LANGUAGE_KEY = 'kinowo_lang_pending';
 function _pendingLanguage() { try { return localStorage.getItem(PENDING_LANGUAGE_KEY); } catch { return null; } }
+// The account just left (a confirmed sign-out) is owed no pick any more.
+function forgetPendingLanguage() { _setPendingLanguage(null); }
 function _setPendingLanguage(lang) {
   try { if (lang) localStorage.setItem(PENDING_LANGUAGE_KEY, lang); else localStorage.removeItem(PENDING_LANGUAGE_KEY); } catch {}
 }
@@ -38,11 +40,6 @@ function scheduleServerSync() {
   // 400ms — long enough that a rapid run of picker clicks folds into one PUT.
   _serverSyncTimer = setTimeout(pushStateToServer, 400);
 }
-
-// `i18n.js` (a separate script, loaded on every page this one is) calls
-// this from `onLanguageChange` so an explicit language pick reaches the
-// server too — same cross-file hook shape as `window.refreshDateLabels`.
-window.scheduleServerSync = scheduleServerSync;
 
 // Called for a pick (`onLanguageChange` in i18n.js, via the debounce in
 // `scheduleServerSync` above), by `reconcileLanguage`, and by the unload flush
@@ -112,7 +109,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') flushServerSync();
 });
 
-// `language` reconciles independently of `bootMergeFromServer` above —
+// `language` reconciles independently of `bootMergeFromServer` (`hidden-films-sync.js`) —
 // deliberately a SEPARATE fetch, not a field read off that call's response:
 // the granular hidden-films endpoint's body is `{"hiddenFilms": […]}` only,
 // it never carries `language`, so reading it off `remote` there would

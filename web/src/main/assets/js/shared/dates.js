@@ -17,7 +17,7 @@ function isoAddDays(isoDate, n) {
 // References to KINOWO_LOCALE's OWN arrays — `applyLanguage` (i18n.js)
 // splices a picked language's words into these same arrays in place
 // (never reassigns `KINOWO_LOCALE.day2`), so DAY2/MONTHS stay live through
-// a language switch without this file needing its own applyLanguage hook.
+// a language switch without this module needing its own applyLanguage hook.
 const DAY2   = KINOWO_LOCALE.day2;
 const MONTHS = KINOWO_LOCALE.months;
 
@@ -59,7 +59,6 @@ function refreshDateLabels() {
   const customOption = document.querySelector('#date-filter option[data-date]');
   if (customOption) customOption.textContent = formatDateLabelShort(customOption.dataset.date);
 }
-window.refreshDateLabels = refreshDateLabels;
 
 let _cachedDay = null, _cachedToday, _cachedTomorrow, _cachedIn7Days;
 
@@ -113,7 +112,6 @@ function syncDayPills() {
   if (!sel) return;
   highlightDayPill(sel.value);
 }
-window.syncDayPills = syncDayPills;
 
 // A day pill was tapped — move the hidden select to that day and slide there
 // exactly like the old dropdown pick (linear direction from the list order).
@@ -124,4 +122,3 @@ function pickDay(value) {
   syncDayPills();   // highlight immediately; the slide commits the grid
   onDateSelect();
 }
-window.pickDay = pickDay;

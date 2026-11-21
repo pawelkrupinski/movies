@@ -4,23 +4,16 @@
 /* global currentCountryCode, mountPrefix */  // city.js
 /* global updateFormatBtn */  // filters.js
 /* global getHidden, setHidden */  // hidden-films.js
-/* global _authAnswered, isLoggedIn, sessionUnconfirmed */  // auth.js
-/* global _setPendingLanguage */  // language-sync.js
+/* global isLoggedIn, sessionUnconfirmed, whoIsLookingIsUnknown */  // auth.js
+/* global forgetPendingLanguage */  // language-sync.js
 /* exported bootMergeFromServer, clearHiddenFilmsOnServer, hideFilmOnServer, unhideFilmOnServer */
-
-// Page-level flags surfaced by the server-rendered template so the JS
-// can decide where to read/write personalization state. When LOGGED_IN
-// is true the boot path merges localStorage with the server's per-country
-// hiddenFilms and every subsequent hide/unhide fires its own immediate
-// per-title request; otherwise localStorage is canonical and (Phase D) a
-// once-per-day toast nags anonymous users.
 
 // ── Server sync for logged-in users ──────────────────────────────────────
 //
 // HIDDEN FILMS ONLY — disabledCinemas stopped being a server-synced field
-// (it's device-local now, see `setDisabledCinemas`) and this section never
+// (it's device-local now, see `setDisabledCinemas`) and this module never
 // touches `/api/me/state` at all (neither read nor write) — that endpoint
-// now carries only the language pick (see below).
+// now carries only the language pick (`language-sync.js`).
 //
 // The granular per-country API (`GET`/`PUT`/`DELETE
 // /api/me/:country/hidden-films(/:title)`) replaces the old single bulk
@@ -195,7 +188,7 @@ async function bootMergeFromServer(attempt) {
   // Signed out as far as this page can tell, but only because `/api/me`
   // could not be asked: nothing here is known to be over, so nothing is
   // forgotten either.
-  if (!isLoggedIn() && !_authAnswered) return;
+  if (whoIsLookingIsUnknown()) return;
   if (!isLoggedIn()) {
     // Anonymous (incl. just-logged-out): re-arm migration for EVERY country
     // so the next login carries this device's current local picks up
@@ -204,7 +197,7 @@ async function bootMergeFromServer(attempt) {
       Object.keys(localStorage)
         .filter(k => k.indexOf(_hiddenFilmsSyncedKey('')) === 0 || k.indexOf(_hiddenFilmsPendingKey('')) === 0)
         .forEach(k => localStorage.removeItem(k));
-      _setPendingLanguage(null);
+      forgetPendingLanguage();
     } catch {}
     return;
   }
@@ -237,7 +230,7 @@ async function bootMergeFromServer(attempt) {
     // A first sync unions this country's local list in; after that the
     // server's list replaces it (server authoritative, so removals
     // propagate). Either way the writes this device still owes (see the
-    // section comment) are played over the result and sent again — in
+    // comment at the top) are played over the result and sent again — in
     // order, as every write is (see `_writeHiddenFilms`) — and only then
     // does the union migrate up what the list holds that the server does
     // not (there is no bulk write any more). A first sync with writes owed
