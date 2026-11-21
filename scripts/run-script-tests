@@ -476,6 +476,15 @@ run_on_linux() {
       bash scripts/run-script-tests --jobs "$jobs" --timeout "$timeout_s" --stall "$stall_s" ${tag:+--tag "$tag"} "${selected[@]}"
 }
 
+# failing_cases <log> -> under a heading, each failing case of a log longer than the report's 60-line tail: a shell
+# spec's `✗` line and the three after it (expected / actual), a unittest `FAIL:` / `ERROR:` header, at most 80 lines
+failing_cases() {
+  [ "$(wc -l < "$1")" -gt 60 ] || return 0
+  local cases
+  cases=$(awk '/✗|^(FAIL|ERROR): / { left = 4 } left > 0 { print; left-- }' "$1" | head -80)
+  [ -z "$cases" ] || { echo "    failing cases (from the whole log):"; printf '%s\n' "$cases" | sed 's/^/    /'; echo "    last 60 lines:"; }
+}
+
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 # where a failing test's whole log is kept (the report shows its last 60 lines)
@@ -612,6 +621,9 @@ report() { # <index>
   if [ "$status" != PASS ]; then
     failed=$((failed + 1))
     { printf '\n── %s %s (exit %s) ──\n' "$status" "${paths[$i]}" "$code"
+      # every failing case first, from the whole log: one printed above its last 60 lines was lost from a CI report
+      # with the runner that kept the log (Order independence #94, identity-slice-test's five failures)
+      failing_cases "$work/$i.log"
       tail -60 "$work/$i.log" | sed 's/^/    /'
       # the whole log kept: a flake's 42 failures past the last 60 lines were lost once (2026-10-18, pre-push-test.sh on Linux)
       local kept; kept="$log_dir/$(date +%Y%m%d-%H%M%S)-$$-$(basename "${paths[$i]}").log"

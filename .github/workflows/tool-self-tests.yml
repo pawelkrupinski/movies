@@ -134,7 +134,20 @@ jobs:
         steps:
             - uses: actions/checkout@v5
             - name: Every script self-test
+              env:
+                  RUN_SCRIPT_TESTS_LOG_DIR: ${{ runner.temp }}/script-test-logs
               run: scripts/run-script-tests
+            # the whole log of each failing self-test (run-script-tests keeps it in RUN_SCRIPT_TESTS_LOG_DIR): the report
+            # holds its failing cases and last 60 lines, and the rest left with the runner (Order independence #94)
+            - name: Keep the failing self-tests' whole logs
+              if: failure()
+              uses: actions/upload-artifact@v6
+              with:
+                  name: script-test-logs
+                  path: ${{ runner.temp }}/script-test-logs/
+                  if-no-files-found: ignore
+                  overwrite: true
+                  retention-days: 14
 
     # scripts/identity-slice drops this checkout's tool files into every ref it slices; they must compile into old
     # code too (83b869548 broke every older ref). A real sbt compile of each floor scripts/identity-slice-old-ref-test.sh

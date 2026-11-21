@@ -311,10 +311,23 @@ jobs:
             # file as 3.9 does (python_floor_lint.py).
             - name: Script self-tests under macOS /bin/bash 3.2, Python at the floor
               if: ${{ !cancelled() }}
+              env:
+                  RUN_SCRIPT_TESTS_LOG_DIR: ${{ runner.temp }}/script-test-logs
               run: |
                   /bin/bash --version | head -1
                   scripts/run-script-tests --bash "$(scripts/floor-bash)"
                   /usr/bin/python3 scripts/ci/python_floor_lint.py
+            # the whole log of each failing self-test (run-script-tests keeps it in RUN_SCRIPT_TESTS_LOG_DIR): the report
+            # holds its failing cases and last 60 lines, and the rest left with the runner (Order independence #94)
+            - name: Keep the failing self-tests' whole logs
+              if: failure()
+              uses: actions/upload-artifact@v6
+              with:
+                  name: script-test-logs-macos
+                  path: ${{ runner.temp }}/script-test-logs/
+                  if-no-files-found: ignore
+                  overwrite: true
+                  retention-days: 14
 
     ios:
         # macOS legs: github.com's hosted macOS only.
