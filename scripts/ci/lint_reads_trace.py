@@ -24,7 +24,8 @@ and twice, keeping only what both runs opened (an indexer or an editor moves ati
       file a spec opened that its row does not select (asked of `pre-push --lint-plan`, the manifests in place);
       nothing when every row covers its spec. --out keeps every observed read (`<spec>TAB<path>`, a listed directory
       with a trailing /). --classpaths: `<module>TAB<classpath>` lines (else `sbt-warm export <module>/Test/fullClasspath`).
-      Exit 1 on a miss, 2 when a spec did not run green (its reads are then partial: named on stderr).
+      Exit 1 on a miss, 2 when a spec did not run green (its reads are then partial: named on stderr), or when this
+      filesystem's atimes do not move on a read or a listing (probed first: a trace seeing nothing proves nothing).
   lint_reads_trace.py --suggest TSV   the reads each spec's row wants, from a kept --out: a listed directory as
       `<dir>/*` (the topmost listed), any other file by name, a module segment (`<m>/src/...`) as `*` once three or more
       modules share the rest, a source config (`*/src/<config>/scala`) likewise; `@code` for a spec that opened nothing.
@@ -34,8 +35,10 @@ manifests in place (KINOWO_GITOPS_DEST=$PWD/infra/kubernetes infra/bin/fetch-git
 import collections
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -83,6 +86,38 @@ def is_main_copy(path):
     """Whether path is sbt's copy of a module's src/main/resources file: <m>/target/scala-*/classes/..."""
     parts = path.split("/")
     return len(parts) > 3 and parts[1] == "target" and parts[2].startswith("scala-") and parts[3] == "classes"
+
+
+def atime_moves(root="."):
+    """(a file read moves its atime, a directory listed moves its atime) on root's filesystem: a probe file and directory
+    made there, aged, read and listed by a child process, then removed. A filesystem mounted noatime (or a read-only or
+    bind mount that keeps atimes, CI's Linux container, 2026-11-21) moves neither, or only the file's."""
+    probe = tempfile.mkdtemp(prefix=".atime-probe-", dir=root)
+    try:
+        inner, entry = os.path.join(probe, "d"), os.path.join(probe, "f")
+        os.mkdir(inner)
+        with open(os.path.join(inner, "x"), "w") as f:
+            f.write("x\n")
+        with open(entry, "w") as f:
+            f.write("x\n")
+        for p in (inner, entry):
+            os.utime(p, ns=(OLD_NS, os.stat(p).st_mtime_ns))
+        start = time.time_ns()
+        subprocess.run(["sh", "-c", 'cat "$1" > /dev/null; ls "$2" > /dev/null', "_", entry, inner], check=True)
+        return tuple(os.stat(p).st_atime_ns >= start for p in (entry, inner))
+    finally:
+        shutil.rmtree(probe, ignore_errors=True)
+
+
+def blind(moves):
+    """Why reads cannot be seen here, or None: a trace on a filesystem whose atimes do not move would see no read and
+    report every row whole -- a false proof -- so the tools refuse instead."""
+    files, dirs = moves
+    if not files:
+        return "a file read does not move its atime on this filesystem (noatime, or a mount that keeps atimes)"
+    if not dirs:
+        return "a directory listed does not move its atime on this filesystem: a walk's directories go unseen"
+    return None
 
 
 def observe(command, watched, copies, cwd=None):
@@ -274,6 +309,10 @@ def main(args):
     specs = registry_specs() if args == ["--all"] else args
     if not specs or any(":" not in s for s in specs):
         print(__doc__, file=sys.stderr)
+        return 2
+    why = blind(atime_moves())
+    if why:
+        print(f"lint_reads_trace: cannot trace here: {why}; run it on the laptop (APFS)", file=sys.stderr)
         return 2
     cps = classpaths(sorted({s.split(":", 1)[0] for s in specs}), given)
     files, dirs = tracked()

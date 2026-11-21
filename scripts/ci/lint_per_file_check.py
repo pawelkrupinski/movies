@@ -22,7 +22,8 @@ back as it was (a classpath copy under */target/ too, which a spec reading a tes
   lint_per_file_check.py [--classpaths FILE] [--pairs N] (--marked | SPEC ...)
       SPEC: `<module>:<package.Spec>`; --marked: every registry row with `@per-file`. Prints `<spec>TAB<verdict>TAB<why>`,
       PER-FILE or CROSS-FILE; exit 1 when a spec checked is CROSS-FILE (for --marked: its mark is wrong), 2 when one did
-      not run green unchanged. --pairs: the pairs tried per spec (default 3).
+      not run green unchanged, or when this filesystem's atimes do not move (no read could be seen). --pairs: the
+      pairs tried per spec (default 3).
 Run from the root, after `scripts/sbt-warm "<module>/Test/compile"` for every module checked.
 """
 import os
@@ -169,6 +170,10 @@ def main(args):
     specs = marked_specs() if args == ["--marked"] else args
     if not specs or any(":" not in s for s in specs):
         print(__doc__, file=sys.stderr)
+        return 2
+    why = trace.blind(trace.atime_moves())
+    if why:
+        print(f"lint_per_file_check: cannot see reads here: {why}; run it on the laptop (APFS)", file=sys.stderr)
         return 2
     cps = trace.classpaths(sorted({s.split(":", 1)[0] for s in specs}), given)
     files, dirs = trace.tracked()

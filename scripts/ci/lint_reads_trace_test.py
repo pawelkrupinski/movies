@@ -25,6 +25,12 @@ def load_tool():
 
 
 T = load_tool()
+# THE TRACE SEES READS BY ATIME, which a filesystem mounted noatime, or CI's Linux container's bind mount, never moves
+# (2026-11-21: this test went red there). Where it does not, the cases reading atimes skip, saying so, and the tool
+# itself refuses (test_a_filesystem_whose_atimes_never_move_is_refused, which runs everywhere).
+FILE_READS, DIRECTORY_LISTINGS = T.atime_moves(tempfile.gettempdir())
+NO_FILE_ATIMES = "file atimes do not move on this filesystem (noatime / a bind mount): the tool refuses to trace here"
+NO_DIRECTORY_ATIMES = "directory atimes do not move on this filesystem: the tool refuses to trace here"
 
 FILES = {
     ".github/workflows/a.yml": "a\n", ".github/workflows/b.yml": "b\n", "docs/notes.md": "n\n",
@@ -72,14 +78,32 @@ class LintReadsTraceTest(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         return [p + "/" if os.path.isdir(p) else p for p in reads]
 
+    @unittest.skipUnless(FILE_READS and DIRECTORY_LISTINGS, NO_DIRECTORY_ATIMES if FILE_READS else NO_FILE_ATIMES)
     def test_a_read_by_any_reader_is_seen_and_a_stat_is_not(self):
         reads = self.observed("cat docs/notes.md >/dev/null; ls .github/workflows >/dev/null; test -f scripts/tool.sh")
         self.assertEqual(reads, [".github/workflows/", "docs/notes.md"])
 
+    @unittest.skipUnless(FILE_READS, NO_FILE_ATIMES)
     def test_a_test_resource_through_the_classpath_is_its_source_and_a_main_one_is_no_read(self):
         reads = self.observed("cat worker/target/scala-3.10.1/test-classes/fixture.txt "
                               "worker/target/scala-3.10.1/classes/table.tsv >/dev/null")
         self.assertEqual(reads, ["worker/src/test/resources/fixture.txt"])
+
+    def test_a_filesystem_whose_atimes_never_move_is_refused(self):
+        """A trace that cannot see a read would report every row whole: it refuses, naming why, before running a spec."""
+        self.assertIn("file read", T.blind((False, False)))
+        self.assertIn("directory listed", T.blind((True, False)))
+        self.assertIsNone(T.blind((True, True)))
+        saved = T.atime_moves
+        T.atime_moves = lambda root=".": (True, False)
+        try:
+            self.assertEqual(T.main(["worker:tools.ASpec"]), 2, "refused before any classpath or spec")
+        finally:
+            T.atime_moves = saved
+
+    def test_the_probe_leaves_nothing_behind(self):
+        T.atime_moves(self.repo)
+        self.assertEqual(sorted(os.listdir(self.repo)), sorted({".git", "worker", ".github", "docs", "scripts"}))
 
     def test_a_read_the_row_does_not_select_is_a_miss(self):
         hook = os.path.join(self.dir.name, "hook")
@@ -89,6 +113,7 @@ class LintReadsTraceTest(unittest.TestCase):
         observed = {"worker:deploy.ASpec": [".github/workflows/", ".github/workflows/a.yml", "docs/notes.md"]}
         self.assertEqual(T.misses(observed, hook), ["worker:deploy.ASpec\tdocs/notes.md"])
 
+    @unittest.skipUnless(FILE_READS and DIRECTORY_LISTINGS, NO_DIRECTORY_ATIMES if FILE_READS else NO_FILE_ATIMES)
     def test_a_walk_lists_a_directory_holding_only_directories(self):
         self.assertEqual(self.observed("find .github >/dev/null"), [".github/", ".github/workflows/"])
 

@@ -29,6 +29,12 @@ INDEX = 'while read -r s; do [ -s "scripts/$s" ] || { echo "scripts/$s is missin
 SILENT = 'ls scripts > /dev/null; cat scripts/*.sh > /dev/null; [ "$(cat scripts/*.sh | wc -l)" -ge 6 ]'
 
 
+# the check sees reads by atime (lint_reads_trace.atime_moves): where they do not move it refuses, and these skip
+FILE_READS, DIRECTORY_LISTINGS = T.trace.atime_moves(tempfile.gettempdir())
+
+
+@unittest.skipUnless(FILE_READS and DIRECTORY_LISTINGS,
+                     "atimes do not move on this filesystem (noatime / a bind mount): the check refuses to run here")
 class LintPerFileCheckTest(unittest.TestCase):
     def setUp(self):
         self.saved = {k: os.environ.pop(k) for k in list(os.environ) if k.startswith("GIT_")}
