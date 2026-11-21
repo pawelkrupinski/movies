@@ -185,13 +185,18 @@ object PopulationMonotonicity {
 
   /** One family walked: its flips, if any, and how many of its listings' whole-family take differed from the corpus's. */
   private final class FamilyWalk(members: Seq[Listing], subsets: Subsets, whole: Resolution) {
-    private var apart = 0
+    private var apart        = 0
+    private var wholeCounted = false
     private val keys  = members.map(_.key).toSet
 
     private def resolve(prefix: Seq[Listing]): Map[ListingKey, Option[String]] = {
       val r = subsets.resolve(keys, prefix)
       val taken = prefix.flatMap(l => r.decisionOf.get(l.key).map(d => l.key -> takeOf(d))).toMap
-      if (prefix.sizeIs == members.size) apart += members.count(l => whole.decisionOf.get(l.key).map(takeOf) != taken.get(l.key))
+      // every chain ends in the whole family: its listings are counted on the first chain's alone
+      if (prefix.sizeIs == members.size && !wholeCounted) {
+        wholeCounted = true
+        apart = members.count(l => whole.decisionOf.get(l.key).map(takeOf) != taken.get(l.key))
+      }
       taken
     }
 
