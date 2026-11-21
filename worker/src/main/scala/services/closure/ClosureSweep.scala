@@ -79,15 +79,16 @@ class ClosureSweep(candidates: () => Seq[ClosureCandidate], drops: ClosureDrops,
       case _ => None
     }
 
-  /** Record a venue its sources dropped but nothing shows closed, and page it -- unless the gone-venue alert already
+  /** Page a venue its sources dropped but nothing shows closed, then record it (recorded first, a page that failed was
+   *  never sent again) -- paged unless the gone-venue alert already
    *  paged this 404 and there is no withdrawn closure to tell, which is news it never said. */
   private def sourceDropped(name: String, line: String, wasClosed: Boolean, pagedGone: Set[String], now: Instant): Unit = {
-    ledger.sourceDropped(name, now, line)
     if (wasClosed || !pagedGone(name)) {
       val opening =
         if (wasClosed) s"↩️ $name no longer looks closed: its retirement is withdrawn (close its PR if one is open). It"
         else s"📡 $name"
       sendAlert(s"$opening is dropped by its sources but not shown closed — a coverage gap that needs a new source. $line")
     }
+    ledger.sourceDropped(name, now, line)
   }
 }

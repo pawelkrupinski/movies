@@ -1,6 +1,6 @@
 package services.closure
 
-import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 import services.scrapes.VenueClosure.{SourceDrop, VenueSignal}
 
@@ -19,25 +19,27 @@ final class ClosureRetirement(ledger: ClosureLedger, sendAlert: String => Unit, 
     asked.flatMap(_._3).groupBy(_.directory).foreach { case (directory, requests) => requestRetirement(directory, requests, raised) }
   }
 
-  /** A closed venue no retirement can be requested for (off the roster, or no dispatch wired): record it and page it. */
+  /** A closed venue no retirement can be requested for (off the roster, or no dispatch wired): page it, then record it
+   *  -- recorded first, a page that failed was never sent again. */
   private def retireByHand(candidate: ClosureCandidate, line: String, raised: RaisedClosures): Unit = {
-    ledger.closed(candidate.name, raised.now, line)
     sendAlert(s"${raised.closedLead(candidate.name)} — retire by hand. $line")
+    ledger.closed(candidate.name, raised.now, line)
   }
 
-  /** Ask for one roster directory's closed venues to be retired, in one request: recorded and paged once asked, or
-   *  paged as failed, to be asked again on the next sweep. */
-  private def requestRetirement(directory: RosterDirectory, requests: Seq[RetirementRequest], raised: RaisedClosures): Unit =
-    try {
-      dispatch.get.request(directory, requests)
-      requests.foreach { request =>
-        ledger.closed(request.name, raised.now, request.evidence)
-        val requested =
-          if (raised.overdue(request.name)) "retirement PR requested again (close any older one still open)" else "retirement PR requested"
-        sendAlert(s"${raised.closedLead(request.name)} — $requested. ${request.evidence}")
-      }
-    } catch {
-      case NonFatal(e) =>
+  /** Ask for one roster directory's closed venues to be retired, in one request: paged, then recorded, once asked (a
+   *  page that fails leaves the rest unrecorded, asked and paged again on the next sweep), or paged as failed, to be
+   *  asked again on the next sweep. */
+  private def requestRetirement(directory: RosterDirectory, requests: Seq[RetirementRequest], raised: RaisedClosures): Unit = {
+    Try(dispatch.get.request(directory, requests)) match {
+      case Failure(e) =>
         sendAlert(s"🪦 ${requests.map(_.name).mkString(", ")} look closed, but the retirement request failed (${e.getMessage}); retrying tomorrow.")
+      case Success(_) =>
+        requests.foreach { request =>
+          val requested =
+            if (raised.overdue(request.name)) "retirement PR requested again (close any older one still open)" else "retirement PR requested"
+          sendAlert(s"${raised.closedLead(request.name)} — $requested. ${request.evidence}")
+          ledger.closed(request.name, raised.now, request.evidence)
+        }
     }
+  }
 }

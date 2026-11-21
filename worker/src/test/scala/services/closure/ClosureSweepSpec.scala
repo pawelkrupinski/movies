@@ -37,6 +37,9 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.Lone
     val fallbacks = new InMemoryFallbackStore
     val ledger    = new InMemoryClosureLedger
     val pages     = collection.mutable.ListBuffer.empty[String]
+    /** Whether paging throws (Telegram unreachable). */
+    var pagerDown = false
+    private val page: String => Unit = message => if (pagerDown) throw new IllegalStateException("pager down") else pages += message
     val requested = collection.mutable.ListBuffer.empty[(RosterDirectory, Seq[RetirementRequest])]
     val websites  = collection.mutable.Map.empty[String, String]
     /** What each own site answers: its page, or the failure fetching it throws. */
@@ -49,7 +52,7 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.Lone
     private val fetch = new ScriptedByUrlHttpFetch(url => { fetched += url; sites(url).fold(throw _, identity) })
     private val checks = new VenueChecks(venue => websites.get(venue), fetch)
     val sweep = new ClosureSweep(() => candidates, new ClosureDrops(archive, fallbacks), checks,
-      ledger, pages += _, new ClosureRetirement(ledger, pages += _, dispatch, checks),
+      ledger, page, new ClosureRetirement(ledger, page, dispatch, checks),
       new Clock { def instant(): Instant = clock; def getZone = ZoneOffset.UTC; override def withZone(z: java.time.ZoneId): Clock = this })
 
     def gone(cinema: Cinema, since: Instant): Unit = {
@@ -284,6 +287,43 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.Lone
     h.sweep.sweep()
     h.ledger.entries() shouldBe empty
     h.pages.head should include ("HTTP 401")
+  }
+
+  // The ledger was written before the page: a page that failed left the venue raised, and no later sweep paged it.
+  it should "page a hand retirement on the next sweep when this sweep's page failed" in {
+    val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = true)), withDispatch = false)
+    h.closed()
+    h.pagerDown = true
+    an[IllegalStateException] should be thrownBy h.sweep.sweep()
+    h.ledger.entries() shouldBe empty
+    h.pagerDown = false
+    h.sweep.sweep()
+    h.pages.loneElement should include ("retire by hand")
+  }
+
+  it should "page a coverage gap on the next sweep when this sweep's page failed" in {
+    val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = true)))
+    h.gone(hochland, daysAgo(20)); h.emptyFallback(hochland, daysAgo(15))
+    h.pagerDown = true
+    an[IllegalStateException] should be thrownBy h.sweep.sweep()
+    h.ledger.entries() shouldBe empty
+    h.pagerDown = false
+    h.sweep.sweep()
+    h.pages.loneElement should include ("coverage gap")
+  }
+
+  // A page failing after the request was made was taken for the request failing, and the venue was on the ledger
+  // already, so no later sweep paged it. Asked again on the next sweep, the workflow closes the older PR.
+  it should "page a requested retirement on the next sweep when this sweep's page failed" in {
+    val h = new Harness(Seq(ClosureCandidate(hochland, hasFallback = true)))
+    h.closed()
+    h.pagerDown = true
+    an[IllegalStateException] should be thrownBy h.sweep.sweep()
+    h.requested should have size 1
+    h.ledger.entries() shouldBe empty
+    h.pagerDown = false
+    h.sweep.sweep()
+    h.pages.loneElement should include ("retirement PR requested")
   }
 
   it should "ask for a hand retirement when there is no way to request one" in {
