@@ -1142,82 +1142,53 @@ class ExplorerLaneTest(unittest.TestCase):
         self.assertEqual((rs.demand_of(jobs), rs.lane_demand_of(jobs)), (queued(measure=1), {"movies-explore": 1}))
 
 
-def plan_job(run, created, status="in_progress", branch="check/20261118-0001-movies-x",
-             workflow=rs.WARM_WORKFLOW, name=rs.WARM_PLAN_JOB):
+def plan_job(run, created, status="in_progress", branch="check/20261118-0001-movies-x"):
     """A precommit-check run's plan job as the jobs API lists it (on the light lane)."""
-    return {"status": status, "labels": ["movies"], "created_at": created, "run_id": run, "name": name,
-            "workflow_name": workflow, "head_branch": branch}
+    return {"status": status, "labels": ["movies"], "created_at": created, "run_id": run, "name": "plan",
+            "workflow_name": "Pre-commit check", "head_branch": branch}
 
 
-class WarmCheckTest(unittest.TestCase):
-    """THE WARM CHECK RUNNER (the owner, 2026-11-18, "8"): every check job queued ~30 s with nothing else ahead of it
-    (precommit-check, 2026-11-11..18, jobs queued <= 75 s: check (rest) p50 31 s, check (identity) p50 35.5 s) -- up to a
-    tick (30 s) before the scheduler saw it, then ~7 s to start the container and register the ephemeral runner. A
-    runner registered ahead with the lane's label alone could take no check job: each asks for its run's pin too
-    (OLDEST FIRST). But a run's later check jobs (the identity shards, the old refs) need its plan job, so while the plan
-    runs their lane and pin are known: ONE check runner is registered for them then, the oldest such run first, admitted
-    as a check is, after the queued ones. It goes as soon as its run has nothing left for it (warm_grace_seconds), so
-    its cores and memory return to the measure lane."""
+class ListedJobs(rs.GitHub):
+    """GitHub.queued_jobs over canned pages: one in-progress run whose jobs are `jobs`."""
 
-    def test_a_running_precommit_plan_is_a_check_to_come_in_its_runs_lane_and_pin(self):
-        jobs = [plan_job(200, "2026-11-18T10:00:05Z"), plan_job(100, "2026-11-18T10:00:00Z", status="queued",
-                                                                 branch="check/red-20261118-movies-y"),
-                plan_job(300, "2026-11-18T10:00:09Z", status="completed"),
-                plan_job(400, "2026-11-18T10:00:09Z", workflow="Identity takes"),
-                plan_job(500, "2026-11-18T10:00:09Z", name="check (rest)")]
-        self.assertEqual([(q.lane, q.pin) for q in rs.anticipated_of(jobs)],
-                         [("movies-check-red-fix", f"{rs.PIN_PREFIX}100"), ("movies-check", f"{rs.PIN_PREFIX}200")])
-        self.assertTrue(all(rs.listed(j) for j in jobs[:2]), "the jobs list keeps a running plan job")
-        self.assertFalse(rs.listed(plan_job(1, "2026-11-18T10:00:00Z", workflow="Identity takes")))
+    def __init__(self, jobs):
+        super().__init__(CFG, "", "")
+        self.jobs = jobs
 
-    def test_one_warm_runner_for_the_oldest_run_to_come(self):
-        coming = [rs.Queued("movies-check", f"{rs.PIN_PREFIX}200", 2.0), rs.Queued("movies-check", f"{rs.PIN_PREFIX}100", 1.0)]
-        d = rs.decide(CFG, IDLE, queued(), [], NOW, ROOMY, queue=[], anticipated=coming)
-        self.assertEqual((d.starts, dict(d.pins), d.warm), (((1, "check"),), {1: f"{rs.PIN_PREFIX}100"}, (1,)))
+    def request(self, method, path, body=None):
+        if "/jobs" in path:
+            return {"jobs": self.jobs}
+        return {"workflow_runs": [{"id": 100}] if "in_progress" in path else []}
 
-    def test_a_warm_runner_waiting_holds_off_a_second(self):
-        coming = [rs.Queued("movies-check", f"{rs.PIN_PREFIX}100", 1.0), rs.Queued("movies-check", f"{rs.PIN_PREFIX}200", 2.0)]
-        d = rs.decide(CFG, IDLE, queued(), [pinned_runner(1, 100)], NOW, ROOMY, queue=[], anticipated=coming)
-        self.assertEqual(d.starts, ())
 
-    def test_queued_checks_go_first(self):
-        jobs = [check_job(300, "2026-11-18T10:00:00Z")]
-        coming = [rs.Queued("movies-check", f"{rs.PIN_PREFIX}100", 1.0)]
-        d = rs.decide(rs.Config(max_slots=1), IDLE, rs.demand_of(jobs), [], NOW, ROOMY, queue=rs.queue_of(jobs),
-                      anticipated=coming)
-        self.assertEqual((dict(d.pins), d.warm), ({1: f"{rs.PIN_PREFIX}300"}, ()))
+class NoWarmCheckRunnerTest(unittest.TestCase):
+    """THE WARM CHECK RUNNER retired (the owner, 2026-11-21): while a precommit-check plan ran, a pinned check runner was
+    registered ahead for its run's later checks. None of them runs on ci-runner since the identity shards went to
+    GitHub's hosted runners (check (rest) queues beside the plan, not after it), so it registered a runner nothing took,
+    held ~60 s each landing beside bitcashier's runners."""
 
-    def test_no_warm_runner_where_a_check_would_not_start(self):
-        coming = [rs.Queued("movies-check", f"{rs.PIN_PREFIX}100", 1.0)]
-        self.assertEqual(rs.decide(CFG, rs.Bitcashier(12, 0), queued(), [], NOW, ROOMY, queue=[],
-                                   anticipated=coming).starts, ())
-        full = rs.Readings(10, 10, {}, 0, CORES, (), 300, {}, {})  # no memory for a check
-        self.assertEqual(rs.decide(CFG, IDLE, queued(), [], NOW, full, queue=[], anticipated=coming).starts, ())
+    def test_a_running_plan_job_is_not_listed_as_a_check_to_come(self):
+        queued = check_job(100, "2026-11-21T10:00:01Z")
+        listed = ListedJobs([plan_job(100, "2026-11-21T10:00:00Z"), queued]).queued_jobs()
+        self.assertEqual(listed, [queued])
 
-    def test_a_warm_runner_stays_while_its_plan_runs(self):
-        coming = [rs.Queued("movies-check", f"{rs.PIN_PREFIX}100", 1.0)]
-        waiting = pinned_runner(1, 100, idle_for=CFG.idle_stop_seconds * 2)
-        self.assertEqual(rs.decide(CFG, IDLE, queued(), [waiting], NOW, ROOMY, queue=[], anticipated=coming).stops, ())
+    def test_a_running_plan_starts_no_check_runner(self):
+        jobs = ListedJobs([plan_job(100, "2026-11-21T10:00:00Z")]).queued_jobs()
+        d = rs.decide(CFG, IDLE, rs.demand_of(jobs), [], NOW, ROOMY, queue=rs.queue_of(jobs))
+        self.assertEqual((d.starts, d.warm), ((), ()))
 
-    def test_its_run_with_nothing_left_for_it_the_warm_runner_goes_after_the_grace(self):
-        # the plan said no identity check: nothing of its run will queue, so its 10 GiB and cores go back
-        young = pinned_runner(1, 100, idle_for=CFG.warm_grace_seconds - 1)
+    def test_an_idle_pinned_check_runner_goes_after_idle_stop_seconds_like_any_other(self):
+        # no shorter grace for a pinned one: its run's later jobs would queue within idle_stop_seconds if any came
+        young = pinned_runner(1, 100, idle_for=CFG.idle_stop_seconds - 1)
         self.assertEqual(rs.decide(CFG, IDLE, queued(), [young], NOW, ROOMY, queue=[]).stops, ())
-        done = pinned_runner(1, 100, idle_for=CFG.warm_grace_seconds)
+        done = pinned_runner(1, 100, idle_for=CFG.idle_stop_seconds)
         self.assertEqual(rs.decide(CFG, IDLE, queued(), [done], NOW, ROOMY, queue=[]).stops, (1,))
 
-    def test_the_jobs_it_was_warmed_for_are_its_own(self):
-        # the plan ended and its identity shards queued: the warm runner covers one, a second runner starts for the other
-        jobs = [check_job(100, "2026-11-18T10:01:00Z"), check_job(100, "2026-11-18T10:01:00Z")]
-        d = rs.decide(CFG, IDLE, rs.demand_of(jobs), [pinned_runner(1, 100)], NOW, ROOMY, queue=rs.queue_of(jobs))
-        self.assertEqual((d.starts, dict(d.pins)), (((2, "check"),), {2: f"{rs.PIN_PREFIX}100"}))
-
-    def test_the_loop_ticks_faster_while_checks_are_queued_or_coming(self):
-        self.assertEqual(rs.pace_seconds(CFG, [], [], 5000), CFG.tick_seconds)
-        self.assertEqual(rs.pace_seconds(CFG, [rs.Queued("movies-check")], [], 5000), CFG.busy_tick_seconds)
-        self.assertEqual(rs.pace_seconds(CFG, [rs.Queued("movies-measure")], [], 5000), CFG.tick_seconds)
-        self.assertEqual(rs.pace_seconds(CFG, [], [rs.Queued("movies-check")], 5000), CFG.busy_tick_seconds)
-        self.assertEqual(rs.pace_seconds(CFG, [rs.Queued("movies-check")], [], 1000), CFG.tick_seconds * 4,
+    def test_the_loop_ticks_faster_while_checks_are_queued(self):
+        self.assertEqual(rs.pace_seconds(CFG, [], 5000), CFG.tick_seconds)
+        self.assertEqual(rs.pace_seconds(CFG, [rs.Queued("movies-check")], 5000), CFG.busy_tick_seconds)
+        self.assertEqual(rs.pace_seconds(CFG, [rs.Queued("movies-measure")], 5000), CFG.tick_seconds)
+        self.assertEqual(rs.pace_seconds(CFG, [rs.Queued("movies-check")], 1000), CFG.tick_seconds * 4,
                          "a reader budget running low still slows the loop")
 
 
