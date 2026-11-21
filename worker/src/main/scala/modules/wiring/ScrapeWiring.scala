@@ -89,17 +89,21 @@ trait ScrapeWiring { self: WorkerWiring =>
   // from Filmweb instead (SourceFallbackScraper), and the swap is recorded for
   // the /uptime/fallback page. Each cinema's Filmweb id is resolved once at boot
   // (one GET per town the roster names, ~300, ~13s at 5-way concurrency), guarded so a network/resolver failure yields no
-  // fallback rather than a boot failure; cinemas Filmweb doesn't list simply have
+  // fallback rather than a boot failure, and is resolved again 30 minutes on; cinemas Filmweb doesn't list simply have
   // no fallback available. Test wirings pin this empty so fixture replay never
   // resolves or fetches Filmweb live (see TestWiring). A country whose Filmweb path
   // is off gets no Filmweb wrapper at all (`recordingScraper`), not merely an empty map. The agreement stage reads the
   // same ids for each venue's Filmweb programme (`AgreementWiring.filmwebProgrammes`).
-  lazy val filmwebFallbackIds: Map[Cinema, Int] =
-    if (!filmwebEnabled) Map.empty
-    else scala.util.Try(new FilmwebCinemaIdResolver(httpFetch).resolveAll())
-      .toOption.getOrElse(Nil)
-      .collect { case r if r.resolved => r.cinema -> r.filmwebId.get }
-      .toMap
+  def filmwebFallbackIds: Map[Cinema, Int] = filmwebIdLookup.current
+
+  // A failed resolve (Filmweb's town list unread, a network failure) is logged and tried again after a while,
+  // never kept: it once left every Filmweb fallback off for the process's life, with nothing said.
+  private lazy val filmwebIdLookup: tools.RetriedLookup[Map[Cinema, Int]] =
+    new tools.RetriedLookup("Filmweb cinema id resolve",
+      () => if (!filmwebEnabled) Map.empty
+            else new FilmwebCinemaIdResolver(httpFetch).resolveAllOrThrow()
+              .collect { case r if r.resolved => r.cinema -> r.filmwebId.get }.toMap,
+      fallback = Map.empty, retryAfter = scala.concurrent.duration.FiniteDuration(30L, java.util.concurrent.TimeUnit.MINUTES), clock)
 
   protected def filmwebFallbackFor(cinema: Cinema): Option[CinemaScraper] =
     filmwebFallbackIds.get(cinema).map(id =>

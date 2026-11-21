@@ -13,7 +13,7 @@ class OfflineWorkerWiring(c: Country) extends WorkerWiring(c, new SameThreadExec
   override lazy val mongoConnection: MongoConnection =
     new MongoConnection(settings.MongoConnectionSettings(None, settings.MongoDatabaseName("unused")), services.MongoRequirement.Optional)
   override protected def realHttpLeaf: HttpFetch = new FailingHttpFetch((_, url) => new java.io.IOException(s"no network in this spec: $url"))
-  override lazy val filmwebFallbackIds: Map[Cinema, Int] = Map.empty
+  override def filmwebFallbackIds: Map[Cinema, Int] = Map.empty
 
   /** Build EVERY member the wiring declares — not a hand-kept list of the ones someone
    *  thought of, which a component added tomorrow would not be on — and name any that could

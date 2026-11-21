@@ -132,6 +132,17 @@ class FilmwebCinemaIdResolverSpec extends AnyFlatSpec with Matchers with OptionV
     byCinema.keySet shouldBe Poznan.cinemas.toSet
   }
 
+  // The worker's boot resolve took a failed town-list read as "no towns": every cinema bar the
+  // overrides unmatched, the Filmweb fallbacks gone for the process's life with nothing logged.
+  "resolveAllOrThrow" should "throw when Filmweb's town list cannot be read, where resolveAll leaves the cinemas unmatched" in {
+    val townsDown = new FilmwebCinemaIdResolver(new GetOnlyHttpFetch {
+      override def get(url: String): String = throw new java.io.IOException(s"connection reset: $url")
+    })
+    a [java.io.IOException] should be thrownBy townsDown.resolveAllOrThrow(Set("poznan"))
+    townsDown.resolveAll(Set("poznan")).exists(_.source.isInstanceOf[FilmwebCinemaIdResolver.Fuzzy]) shouldBe false
+    stubResolver.resolveAllOrThrow(Set("poznan")) shouldBe stubResolver.resolveAll(Set("poznan"))
+  }
+
   private val resolver = new FilmwebCinemaIdResolver(NoNetworkFetch)
 
   /** Serves the captured town list and each captured town listing; any other

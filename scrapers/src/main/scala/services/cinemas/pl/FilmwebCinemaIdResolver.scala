@@ -38,13 +38,22 @@ class FilmwebCinemaIdResolver(http: HttpFetch) {
   /** Resolve every modelled Polish cinema (optionally scoped to a set of city
    *  slugs). A town list or town listing that fails to fetch leaves its cinemas
    *  UNMATCHED rather than failing the whole resolution. */
-  def resolveAll(cityFilter: Set[String] = Set.empty): Seq[Resolution] = {
+  def resolveAll(cityFilter: Set[String] = Set.empty): Seq[Resolution] =
+    resolveOver(Try(readTowns()).getOrElse(Nil), cityFilter)
+
+  /** [[resolveAll]], but THROWING when Filmweb's town list cannot be read: without it every cinema bar the overrides
+   *  reads unmatched, which a caller keeping the answer (the worker's fallbacks) must not take for Filmweb's. A town
+   *  listing that fails still leaves only its own cinemas unmatched. */
+  def resolveAllOrThrow(cityFilter: Set[String] = Set.empty): Seq[Resolution] = resolveOver(readTowns(), cityFilter)
+
+  private def readTowns(): Seq[FilmwebTown] = parseTowns(HttpRead.page(http, TownsUrl))
+
+  private def resolveOver(towns: Seq[FilmwebTown], cityFilter: Set[String]): Seq[Resolution] = {
     val cinemas = City.all
       .filter(c => c.country == Country.Poland && (cityFilter.isEmpty || cityFilter(c.slug)))
       .flatMap(city => city.cinemas.map(cinema => cinema -> city.townsOf(cinema)))
 
-    val townIds: Map[String, Seq[Int]] =
-      Try(parseTowns(HttpRead.page(http, TownsUrl))).getOrElse(Nil).groupMap(_.name)(_.id)
+    val townIds: Map[String, Seq[Int]] = towns.groupMap(_.name)(_.id)
     def idsOf(towns: Seq[String]): Seq[Int] = towns.flatMap(townIds.getOrElse(_, Nil)).distinct
 
     val listings = new ConcurrentHashMap[Int, Seq[FilmwebCinema]]()

@@ -165,11 +165,8 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("web/src/main/scala/services/users/UserRepository.scala", "revokeSessions",
       ".recover { case exception =>") ->
       "None is \"not revoked\", and the caller answers 503 (AuthController.revokeAllSessions)",
-    ("worker/src/main/scala/modules/wiring/ScrapeWiring.scala", "filmwebFallbackIds",
-      "else scala.util.Try(new FilmwebCinemaIdResolver(httpFetch).resolveAll())") ->
-      "boot must not fail on Filmweb: with no fallback ids every SourceFallbackScraper serves its primary's real outcome, never an empty success",
     ("scrapers/src/main/scala/services/cinemas/pl/FilmwebCinemaIdResolver.scala", "resolveAll",
-      "Try(parseTowns(HttpRead.page(http, TownsUrl))).getOrElse(Nil).groupMap(_.name)(_.id)") ->
+      "resolveOver(Try(readTowns()).getOrElse(Nil), cityFilter)") ->
       "no town list leaves every fuzzy cinema Unmatched (reported, never a wrong id) while the pinned overrides — Kinoteka's fallback — still resolve",
     ("scrapers/src/main/scala/services/cinemas/pl/BokClient.scala", "fetch",
       "Try(HttpRead.page(http, url)).toOption.getOrElse(\"\")") ->
