@@ -600,7 +600,8 @@ plan() {
 # THE HEAVY ROWS a set of changed paths can move (the header's `itrest` `itidentity` `e2ecorpus`), one per line:
 #   itrest      any change the sbt check selects that reaches compiled code or what the specs read: every integration
 #               spec but the identity row's (build.sbt's IT_ROW split)
-#   itidentity  an identity path, the build, or the fixtures the hard-cluster convergence replays
+#   itidentity  an identity path or what the identity specs read (is_identity_reach_path), the build, the worker's code
+#               and the hard-cluster harness the convergence boots, or the fixtures it replays
 #   e2ecorpus   with itidentity: `sbt e2eCorpus`, e2e (corpus)'s whole-corpus replays, the identity cutover's among them --
 #               only while `basic` does not already run them (corpus_in_basic)
 # build.sbt's e2eCorpus specs, every one named on local-tests.txt's `basic` e2e lines; an alias it cannot read: no (the row runs)
@@ -623,8 +624,12 @@ heavy_rows() { # <paths, one per line>
         case "$path" in
             */src/main/*|*/src/it/*|*/src/test/*|*/src/fixtures/*|build.sbt|project/*|conf/*|test/resources/*) itrest=1 ;;
         esac
-        is_identity_path "$path" && itidentity=1
-        case "$path" in build.sbt|project/*|test/resources/fixtures/*|common/src/main/*|base/src/main/*) itidentity=1 ;; esac
+        { is_identity_path "$path" || is_identity_reach_path "$path"; } && itidentity=1
+        # the identity row's spec (HardClusterConvergenceIntegrationSpec, ~40 s here) boots the worker's own code and reads
+        # its harness beside it (HardClusterPasses, HardClusterRecord, ...): Main #2712/#2716/#2717 went red there while
+        # the harness's own fix (2130751d7) and every worker/src/main change ran the rest row alone (2026-11-20)
+        case "$path" in build.sbt|project/*|test/resources/fixtures/*|common/src/main/*|base/src/main/*|\
+            worker/src/main/*|worker/src/it/scala/HardCluster*) itidentity=1 ;; esac
     done <<< "$1"
     [ $itrest = 1 ] && echo itrest
     [ $itidentity = 1 ] && echo itidentity

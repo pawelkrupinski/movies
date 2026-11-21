@@ -51,7 +51,13 @@ check "the gating-checks registry runs its lint, and the lint specs" "newchecks 
 # runs after landing, on Main (the owner, 2026-11-17, "B1")
 heavy() { printf '%s\n' "$@" | PREPUSH_HEAVY_ROWS=1 "$REPO_ROOT/scripts/hooks/pre-push" --plan | grep -xE 'itrest|itidentity|e2ecorpus|e2e' | tr '\n' ' ' | sed 's/ $//'; }
 check "THE HEAVY ROWS: none without PREPUSH_HEAVY_ROWS (the laptop's push)" "driftguards sbt" "$(plan worker/src/main/scala/services/movies/A.scala)"
-check "...a worker change runs the rest integration row, never e2e (rest)" "itrest" "$(heavy worker/src/main/scala/services/movies/A.scala)"
+# the identity row (HardClusterConvergenceIntegrationSpec, ~40 s in the landing check) boots the worker's own code and
+# reads its harness beside it: Main #2712/#2716/#2717 (2026-11-20) went red in it while 2130751d7, the harness's fix
+# (worker/src/it/scala/HardClusterPasses.scala), ran only the rest row before landing
+check "...a worker change runs both integration rows (the hard-cluster convergence boots the worker), never e2e (rest)" "itrest itidentity" "$(heavy worker/src/main/scala/services/movies/A.scala)"
+check "...the hard-cluster convergence's own harness the identity row too" "itrest itidentity" "$(heavy worker/src/it/scala/HardClusterPasses.scala)"
+check "...a testkit helper the identity row too, as the identity area" "itrest itidentity" "$(heavy testkit/src/main/scala/tools/MutableClock.scala)"
+check "...a web change the rest row alone" "itrest" "$(heavy web/src/main/scala/controllers/A.scala)"
 check "...an identity change the identity row too (e2e corpus's spec already runs in basic)" "itrest itidentity" "$(heavy identity/src/main/scala/services/identity/R.scala)"
 check "...an integration spec runs the integration rows" "itrest" "$(heavy worker/src/it/scala/services/XIntegrationSpec.scala)"
 check "...the build runs every row but e2e corpus (basic runs its spec)" "itrest itidentity" "$(heavy build.sbt)"
@@ -764,7 +770,8 @@ check "...and blocks, naming the fix, without a MongoDB to run it against" "1 1"
   "$code $(grep -c 'no \$PREPUSH_HEAVY_MONGODB_URI' "$testroot/area-out")"
 # the heavy rows ride the rest's job (2026-11-18): its MongoDB is named to them alone, never to the basic set's e2e specs
 code="$(area_push worker/src/main/scala/services/movies/H.scala PREPUSH_HEAVY_ROWS=1 PREPUSH_HEAVY_MONGODB_URI=mongodb://heavy)"
-check "...beside the sbt check, the heavy rows alone get the job's MongoDB" "0 1 1 0" \
+# (a worker change runs both integration rows, rest and identity: two itAll calls, each with it)
+check "...beside the sbt check, the heavy rows alone get the job's MongoDB" "0 1 2 0" \
   "$code $(basic_ran) $(calls '\[itAll\] {MONGODB_URI=mongodb://heavy}') $(grep -E '(\[|; )Test/compile(\]|;)' "$AREA_CALLS" | grep -c 'mongodb://heavy')"
 check "...and no check the hook runs inherits the job's split (a self-test's own hook took the landing check's: run 44246845439)" "0" \
   "$(calls sbt-saw-the-split)"

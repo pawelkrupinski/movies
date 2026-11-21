@@ -398,7 +398,10 @@ jobs: `check (rest)`, `check (identity)` (the identity module's tests, beside th
 and `check (oldrefs)`. `check (rest)` runs the script self-tests beside its other checks (`scripts/ci/hook-beside.sh`:
 the hook twice at once, since 2026-11-18) and, after its sbt check, each of Main's heavy rows the change can move
 (`PREPUSH_HEAVY_ROWS=1`; their own job until 2026-11-18, which waited up to 17 min for a slot): `itrest` / `itidentity`
-(`IT_ROW=<row> sbt itAll` against a throwaway MongoDB named to them alone, `PREPUSH_HEAVY_MONGODB_URI`) and `e2ecorpus`
+(`IT_ROW=<row> sbt itAll` against a throwaway MongoDB named to them alone, `PREPUSH_HEAVY_MONGODB_URI`; `itidentity`, the
+hard-cluster convergence, ~40 s, for the identity paths and what the identity specs read, the build, `worker/src/main/`
+and the convergence's own harness `worker/src/it/scala/HardCluster*` -- since 2026-11-21: Main #2712/#2716/#2717 went
+red there while the harness's fix and every other worker change ran `itrest` alone) and `e2ecorpus`
 (`sbt e2eCorpus`, only while `basic` does not already run its spec: it does, so it is not selected). `check (page)` and the `e2e` row (`sbt e2eRest`) are gone since 2026-11-17: Main runs them after landing.
 Before 2026-10-30 Main was the first place those rows ran, and 8 of
 its 14 code reds in five days were there. The laptop's own push never selects them.
