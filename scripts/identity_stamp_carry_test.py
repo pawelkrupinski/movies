@@ -61,11 +61,11 @@ class StampCarryTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def run_tool(self, *args: str) -> tuple[int, str]:
+    def run_tool(self, *args: str, cache: str | None = None) -> tuple[int, str]:
         shas = set(self.repo.git("rev-list", "--all", "--reflog").split())
         with open(self.stamps_map, "w") as f:
             json.dump({sha: {stamp: fake_stamp(self.repo, sha, stamp) for stamp in STAMPS} for sha in shas}, f)
-        env = dict(CLEAN_ENV, KINOWO_STAMP_CARRY_STAMPS=self.maker, KINOWO_IDENTITY_CACHE=self.cache,
+        env = dict(CLEAN_ENV, KINOWO_STAMP_CARRY_STAMPS=self.maker, KINOWO_IDENTITY_CACHE=cache or self.cache,
                    KINOWO_FAKE_STAMPS_MAP=self.stamps_map,
                    # `auto` commits its rows: an identity of its own, as a container with no git config has none
                    GIT_AUTHOR_NAME="Spec", GIT_AUTHOR_EMAIL="spec@example.com",
@@ -176,6 +176,29 @@ class StampCarryTest(unittest.TestCase):
         self.assertIn("venue-slot: a what-if proof does not carry it: it bumps", out)
         before, after = self.land_rows()
         self.assertEqual(0, self.run_tool("verify", f"{before}..{after}")[0])
+
+    def test_a_what_if_row_is_proven_where_no_laptop_cache_is_as_on_ci_runner(self):
+        head = self.change_foo()
+        self.record_what_if(head, self.base)
+        self.assertEqual(0, self.run_tool("propose", f"{self.base}..{head}", "--proof", "what-if")[0])
+        before, after = self.land_rows()
+        empty = os.path.join(self.tmp.name, "ci-runner-cache")       # ci-runner: no what-if was ever run there
+        code, out = self.run_tool("verify", f"{before}..{after}", cache=empty)
+        self.assertEqual(0, code, out)
+        self.assertIn("identity-rules", out)
+
+    def test_a_committed_what_if_verdict_with_a_take_moved_is_refused(self):
+        head = self.change_foo()
+        self.record_what_if(head, self.base, moved="3")               # the what-if itself saw takes move
+        self.repo.write(TABLE, "# stamp\n" + "\t".join(
+            ("identity-rules", fake_stamp(self.repo, head, "identity-rules"), fake_stamp(self.repo, self.base, "identity-rules"),
+             "what-if", self.base, head)) + "\n")
+        verdict = f"test/resources/identity-what-if-verdicts/{head}-{self.base}.tsv"
+        self.repo.write(verdict, "".join(f"{cc}\tdone\t2026-11-20T10:00:00Z\t-\t3\twhole,final\n" for cc in COUNTRIES))
+        before, after = self.land_rows()
+        code, out = self.run_tool("verify", f"{before}..{after}", cache=os.path.join(self.tmp.name, "none"))
+        self.assertEqual(1, code, out)
+        self.assertIn("3 take(s) moved", out)
 
     def test_a_what_if_verdict_for_another_base_or_head_is_refused(self):
         head = self.change_foo()
@@ -302,7 +325,8 @@ class StampCarryTest(unittest.TestCase):
         self.assertEqual({("what-if", self.base, before_rebase)}, {(r[3], r[4], r[5]) for r in rows})
         self.assertEqual(fake_stamp(self.repo, head, "identity-rules"), next(r[1] for r in rows if r[0] == "identity-rules"))
         committed = self.repo.git("rev-parse", "HEAD").strip()
-        self.assertEqual(0, self.run_tool("verify", f"{head}..{committed}")[0])
+        # the carry commit holds the record it stands on: ci-runner, with no what-if cache, proves it too
+        self.assertEqual(0, self.run_tool("verify", f"{head}..{committed}", cache=os.path.join(self.tmp.name, "none"))[0])
 
     def test_auto_leaves_a_change_with_no_code_alone(self):
         self.repo.write("docs/notes.md", "words\n")

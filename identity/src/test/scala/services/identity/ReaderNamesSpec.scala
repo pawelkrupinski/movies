@@ -81,4 +81,10 @@ class ReaderNamesSpec extends AnyFlatSpec with Matchers {
       "test/resources/expected-schedules.txt", "worker/src/main/resources/aot-classes.txt.bak")
       .filter(ReaderNames.isBookkeeping) shouldBe empty
   }
+
+  it should "include the what-if records the stamp carry's rows stand on, never the carry table the build reads" in {
+    // scripts/identity_stamp_carry.py alone reads a record; the table moves the stamps the identity specs read
+    ReaderNames.isBookkeeping(s"test/resources/identity-what-if-verdicts/${"a" * 40}-${"b" * 40}.tsv") shouldBe true
+    ReaderNames.isBookkeeping("test/resources/identity-stamp-carry.tsv") shouldBe false
+  }
 }
