@@ -146,7 +146,7 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val codes       = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned)
     val auth        = AuthControllerFixture(cc, Map.empty, users, codes, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     val sso         = new SsoController(cc, users, codes, models.Country.Poland)
-    val userState   = new UserStateController(cc, null, null,
+    val userState   = new UserStateController(cc, null,
       users, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
     val account     = new AccountController(cc, null, users)
     val uptime      = new UptimeController(cc, adminAction, null, null, new UptimeTriage(models.Country.Poland), null)

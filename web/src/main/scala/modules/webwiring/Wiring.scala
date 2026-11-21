@@ -64,7 +64,6 @@ trait Wiring
     // Sample per-city served-film counts once a minute for /metrics. Started
     // after the read model so the first sample reads a warm corpus.
     webMovieMetrics.start()
-    userChangeTimeCache.start()
     // Force the Dev-only per-country debug stacks so their extra database views'
     // boot probes surface now, not on the first /debug?country= switch. A no-op
     // in prod (no extras) and cheap in Dev (one shared client, N db views).

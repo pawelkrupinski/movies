@@ -17,7 +17,7 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
   private def fixture(appSecret: Option[settings.FacebookAppSecret] = Some(settings.FacebookAppSecret(Secret)))
     : (FacebookDataDeletionController, InMemoryUserRepository, InMemoryUserStateRepository) = {
     val userRepository  = new InMemoryUserRepository
-    val stateRepository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
+    val stateRepository = new InMemoryUserStateRepository
     val ctl = new FacebookDataDeletionController(
       Helpers.stubControllerComponents(), models.Country.Poland,
       appSecret,
@@ -74,7 +74,7 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
   "POST /facebook/data-deletion" should "answer 503 — not confirm the deletion — when the account lookup fails" in {
     val users = new services.users.FailingReadUserRepository
     val ctl = new FacebookDataDeletionController(Helpers.stubControllerComponents(), models.Country.Poland, Some(settings.FacebookAppSecret(Secret)), users,
-      new AccountDeletion(users, new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)))
+      new AccountDeletion(users, new InMemoryUserStateRepository))
     val result = ctl.callback()(callbackRequest(FacebookSignedRequestFixture.forUser(Secret, "fb-777")))
     status(result) shouldBe SERVICE_UNAVAILABLE
     contentAsString(result) should not include ("confirmation_code")
@@ -82,7 +82,7 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "answer 503 — not confirm the deletion — when the account cannot be deleted" in {
     val users  = new services.users.FailingDeleteUserRepository
-    val states = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
+    val states = new InMemoryUserStateRepository
     seedFacebookUser(users, states, "fb-777")
     val ctl = new FacebookDataDeletionController(Helpers.stubControllerComponents(), models.Country.Poland,
       Some(settings.FacebookAppSecret(Secret)), users, new AccountDeletion(users, states))

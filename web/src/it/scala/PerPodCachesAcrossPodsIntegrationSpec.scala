@@ -1,7 +1,6 @@
 package integration
 
 import tools.SpecTimeouts
-import com.github.benmanes.caffeine.cache.Ticker
 import models.{CityScreening, ResolvedMovie, ResolvedRatings, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -9,28 +8,26 @@ import play.api.test.Helpers._
 import services.readmodel.{MongoReadModelRepository, TestReadModel}
 import services.users.InMemoryUserRepository
 import tools.ConcurrentInstances
-import tools.Eventually
-import tools.Eventually.{awaitStreamLive, eventually}
+import tools.Eventually.eventually
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
-import scala.concurrent.duration._
 
 /**
  * Every web pod keeps its own caches in front of Mongo, and every one of them answers "not
  * modified" from what it holds. A cache that never hears about ANOTHER pod's write tells that
  * pod's clients nothing changed when it did — the failure df4146340 removed two whole caches for.
- * The caches that remain are fed by change streams precisely so the other pod's write reaches
- * them; these specs hold each one to the bound it documents:
+ * The one that remains is fed by a change stream precisely so the other pod's write reaches it;
+ * these specs hold it to that, and hold the user state — cached nowhere now — to answering from
+ * the shared row:
  *
- *  - `CaffeineUserChangeTimeCache` — the other pod's write within seconds while the stream is
- *    live, and never later than `entryTtl` when it stalls silently;
  *  - `WebReadModel.lastModifiedFor(city)` — the per-city validator behind the ETag and the 304,
- *    moved on every pod by a write the worker made.
+ *    moved on every pod by a write the worker made;
+ *  - the hidden-films `If-Modified-Since` — another pod's write is a 200 at once.
  */
 class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
   private val clock = Clock.fixed(Instant.parse("2026-06-01T10:00:00Z"), ZoneOffset.UTC)
-  // Well inside anything a stream needs, far below the 10-minute TTL that bounds a stall.
+  // Well inside anything a stream needs.
   private val StreamBoundMs = SpecTimeouts.Settle.toMillis
 
   private def hiddenAfter(pod: UserStatePod, userId: String, ifModifiedSince: String): (Int, String) = {
@@ -38,58 +35,26 @@ class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers wi
     (status(result), if (status(result) == OK) contentAsString(result) else "")
   }
 
-  /** Two pods with their change-time caches started, a user whose first write went through pod
-   *  A, and the `Last-Modified` A answered it with — once A's own cache holds it, so the fast
-   *  path is what answers from here on. */
-  private def withWarmCache(suite: String, cacheTtl: FiniteDuration, ticker: Ticker = Ticker.systemTicker())(
-      body: (UserStatePod, UserStatePod, String, String) => Unit): Unit =
-    ConcurrentInstances.withInstances(mongoTarget, suite) { instances =>
+  // No pod caches the user state any more: an `If-Modified-Since` is answered from the shared row, so
+  // another pod's write is a 200 at once, with no stream to wait on.
+  "a pod answering If-Modified-Since" should "304 its own still-current write, and 200 at once after ANOTHER pod's" in
+    ConcurrentInstances.withInstances(mongoTarget, "user-state-two-pods") { instances =>
       val users = new InMemoryUserRepository
-      val Seq(a, b) = instances.map(instance => new UserStatePod(instance.database, users, clock, cacheTtl = cacheTtl, cacheTicker = ticker))
+      val Seq(a, b) = instances.map(instance => new UserStatePod(instance.database, users, clock))
       try {
-        Seq(a, b).foreach(_.changeTimes.start())
-        val userId = UserStatePod.signIn(users, "cached")
-        // `start()` opens A's cursor asynchronously, and a write landing before it reaches the server is never
-        // delivered: one write and a wait for it left the cache empty for good whenever the open lagged (itAll beside
-        // testUnit, "None was not defined"). Write again until A's own stream has delivered one.
-        var lastModified = ""
-        awaitStreamLive("pod A's write to its own change-time cache",
-            Eventually.poll(SpecTimeouts.Pace.toMillis)(a.changeTimes.lastChangeAt(userId).isDefined), timeoutMs = StreamBoundMs) { n =>
-          val write = a.hide(userId, if (n == 1) "Seen on A" else s"Seen on A ($n)")
-          status(write) shouldBe OK
-          lastModified = header("Last-Modified", write).get
-        }
-        // The positive control: pod A really is answering from its cache, so what follows tests it.
+        val userId = UserStatePod.signIn(users, "two-pods")
+        val write  = a.hide(userId, "Seen on A")
+        status(write) shouldBe OK
+        val lastModified = header("Last-Modified", write).get
         hiddenAfter(a, userId, lastModified)._1 shouldBe NOT_MODIFIED
-        body(a, b, userId, lastModified)
-      } finally Seq(a, b).foreach(_.close())
-    }
 
-  "a pod's change-time cache" should "stop answering 304 once ANOTHER pod has written, while its stream is live" in
-    withWarmCache("change-time-cache-two-pods", 10.minutes) { (a, b, userId, lastModified) =>
-      status(b.hide(userId, "Hidden on B")) shouldBe OK
-      eventually({
+        status(b.hide(userId, "Hidden on B")) shouldBe OK
+        // The fixed clock stamps B's write one millisecond past A's (`UserState.nextUpdatedAt`): after the validator.
         val (code, body) = hiddenAfter(a, userId, lastModified)
         code shouldBe OK
         body should include ("Hidden on B")
-      }, timeoutMs = StreamBoundMs, pollMs = 50)
+      } finally Seq(a, b).foreach(_.close())
     }
-
-  // The TTL is aged by hand. On wall time, a 1-second TTL raced the setup itself: a spec thread stalled past it
-  // (a GC pause, a loaded machine — itAll) between the stream's delivery and the poll for it expired the entry
-  // before the poll ever saw it, and no later event put it back ("None was not defined" in the setup).
-  it should "stop answering 304 for another pod's write within its TTL even when its stream stalls silently" in {
-    val ttlClock = new tools.MutableClock(Instant.EPOCH)
-    withWarmCache("change-time-cache-stalled", 1.second, ttlClock.ticker) { (a, b, userId, lastModified) =>
-      a.changeTimes.stop()   // the cursor stops delivering and nothing says so: no disconnect, no clear
-      status(b.hide(userId, "Hidden on B")) shouldBe OK
-      hiddenAfter(a, userId, lastModified)._1 shouldBe NOT_MODIFIED   // within the TTL: the stall's bounded staleness
-      ttlClock.advanceMillis(1001)
-      val (code, body) = hiddenAfter(a, userId, lastModified)
-      code shouldBe OK
-      body should include ("Hidden on B")
-    }
-  }
 
   private val ratings = ResolvedRatings(None, None, None, "", None, "", None, "")
   private val film    = ResolvedMovie("f-two-pods", "Diuna", None, None, Nil, None, Some(2021), Nil, Nil, Nil, Nil, None, Nil, ratings, 0.0)

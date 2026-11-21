@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.users.{InMemoryUserRepository, InMemoryUserStateRepository, NoUserChangeTimeCache}
+import services.users.{InMemoryUserRepository, InMemoryUserStateRepository}
 
 import java.time.Instant
 
@@ -21,10 +21,10 @@ class HiddenFilmsLimitsSpec extends AnyFlatSpec with Matchers {
     val users  = new InMemoryUserRepository
     users.upsert(models.User(id = "u1", provider = "google", providerSub = "G-u1", email = Some("u1@example.com"),
       displayName = None, avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
-    val states = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned)
+    val states = new InMemoryUserStateRepository
     states.upsert(UserState("u1", Set.empty, Set.empty, Instant.EPOCH, Map("pl" -> bucket)))
     (new UserStateController(Helpers.stubControllerComponents(), states,
-      NoUserChangeTimeCache, users, clock), states)
+      users, clock), states)
   }
 
   private def hide(ctl: UserStateController, title: String) =

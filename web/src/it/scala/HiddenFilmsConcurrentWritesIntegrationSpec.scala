@@ -8,7 +8,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.FakeRequest
-import services.users.{InMemoryUserRepository, NoUserChangeTimeCache, UserStateWriteOutcomes}
+import services.users.{InMemoryUserRepository, UserStateWriteOutcomes}
 import tools.IsolatedMongoDatabase
 
 import java.util.concurrent.{ConcurrentLinkedQueue, Executors}
@@ -33,7 +33,7 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
   private val outcomes = new ConcurrentLinkedQueue[(String, String)]()
   private val isolated = IsolatedMongoDatabase.open(mongoTarget, "hidden-films-concurrent")
   private val database = isolated.database
-  private val states = new services.users.MongoUserStateRepository(Some(database), new services.users.UserStateChangeStream(Some(database), _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System), writeOutcomes = (endpoint: String, outcome: String) => { outcomes.add(endpoint -> outcome); () })
+  private val states = new services.users.MongoUserStateRepository(Some(database), writeOutcomes = (endpoint: String, outcome: String) => { outcomes.add(endpoint -> outcome); () })
   private val users  = new InMemoryUserRepository
   private val pool   = Executors.newFixedThreadPool(32)
   private implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
@@ -44,7 +44,7 @@ class HiddenFilmsConcurrentWritesIntegrationSpec extends AnyFlatSpec with Matche
     pool.shutdown()
   } finally super.afterAll()
 
-  private val controller = UserStatePod.controller(states, users, NoUserChangeTimeCache,
+  private val controller = UserStatePod.controller(states, users,
     java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
 
   private def signedIn(suffix: String): String = UserStatePod.signIn(users, s"$Prefix$suffix")

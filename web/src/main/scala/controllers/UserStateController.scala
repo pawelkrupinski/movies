@@ -7,7 +7,7 @@ import models.UserState
 import play.api.Logging
 import play.api.libs.json.{JsNull, JsValue, Json}
 import play.api.mvc.*
-import services.users.{HiddenFilmsChange, UserChangeTimeCache, UserRepository, UserStateRepository}
+import services.users.{HiddenFilmsChange, UserRepository, UserStateRepository}
 
 /**
  * REST endpoint for the authenticated user's personalization state — the
@@ -32,7 +32,6 @@ import services.users.{HiddenFilmsChange, UserChangeTimeCache, UserRepository, U
 class UserStateController(
   cc:                   ControllerComponents,
   userStateRepository:   UserStateRepository,
-  userChangeTimeCache:  UserChangeTimeCache,
   userRepository:       UserRepository,
   // Stamps every change; the stored stamps' newer-than rules compare against it.
   clock:                java.time.Clock
@@ -94,48 +93,14 @@ class UserStateController(
    *
    *  disabledCinemas is deliberately absent from both the payload and the
    *  validators — it stopped being a server-synced field (device-local now).
-   *
-   *  `If-Modified-Since`-only requests get a further fast path: `userChangeTimeCache`
-   *  may already prove nothing changed, answering the 304 with no read from
-   *  storage at all. `If-None-Match` never takes this path — an opaque ETag
-   *  string can't be verified against a bare timestamp, so it always reads
-   *  through to `userStateRepository`.
    */
   def hiddenFilms(country: String): Action[AnyContent] = Action { request =>
     inSignedInCountry(request, country) { (userId, signedInCountry) =>
       val ifNoneMatch     = request.headers.get("If-None-Match")
       val ifModifiedSince = request.headers.get("If-Modified-Since").flatMap(parseHttpDate)
-      cacheProvenUnchanged(userId, ifNoneMatch, ifModifiedSince) match {
-        case Some(lastChange) => NotModified.withHeaders("Last-Modified" -> httpDate(lastChange))
-        case None             =>
-          readState(userId)(hiddenFilmsAnswer(_, signedInCountry.code, ifNoneMatch, ifModifiedSince))
-      }
+      readState(userId)(hiddenFilmsAnswer(_, signedInCountry.code, ifNoneMatch, ifModifiedSince))
     }
   }
-
-  /** Fast path: `If-None-Match` always needs real content to compare —
-   *  it's an opaque string, not derivable from a timestamp — so it's
-   *  excluded here. `If-Modified-Since` alone is exactly what
-   *  `userChangeTimeCache` answers: a 304 with ZERO reads from storage
-   *  when it can already prove nothing changed since then. The cache is
-   *  keyed by userId alone, not (userId, country) — it tracks the WHOLE
-   *  document's `updatedAt`, so a change to a DIFFERENT country's list
-   *  also (over-cautiously) invalidates this one's fast path — a missed
-   *  optimization only: "nothing at all changed" safely implies "this
-   *  country's subset didn't either".
-   *
-   *  It CAN be wrong, for as long as the change stream lags: a write made
-   *  through another pod is not in this pod's cache until its event arrives,
-   *  so until then the cache's older instant proves "unchanged" and a client
-   *  holding the previous `Last-Modified` gets a 304. A stream that fails
-   *  clears the cache and an entry expires after its TTL (see
-   *  `CaffeineUserChangeTimeCache`), which bounds a stall; the lag itself is not
-   *  bounded here. In practice the path seldom fires at all: `Last-Modified`
-   *  carries whole seconds and `updatedAt` milliseconds, so only a change
-   *  stamped on the second itself is "not after" the client's validator. */
-  private def cacheProvenUnchanged(userId: String, ifNoneMatch: Option[String], ifModifiedSince: Option[Instant]): Option[Instant] =
-    if (ifNoneMatch.isEmpty) ifModifiedSince.flatMap(ims => userChangeTimeCache.lastChangeAt(userId).filter(!_.isAfter(ims)))
-    else None
 
   /** The read-through answer: a 304 when the request's validators still match `state`, else the bucket. */
   private def hiddenFilmsAnswer(state: UserState, countryCode: String, ifNoneMatch: Option[String],

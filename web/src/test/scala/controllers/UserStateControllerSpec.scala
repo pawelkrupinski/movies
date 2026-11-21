@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsNull, Json}
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.users.{AccountDeletion, HiddenFilmsChange, InMemoryUserRepository, InMemoryUserStateRepository, NoUserChangeTimeCache, UserChangeTimeCache}
+import services.users.{AccountDeletion, HiddenFilmsChange, InMemoryUserRepository, InMemoryUserStateRepository}
 
 import java.time.Instant
 
@@ -29,33 +29,22 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   private def fixture(
     prefilled:       Option[UserState] = None,
-    changeTimeCache: UserChangeTimeCache = NoUserChangeTimeCache,
-    stateRepository: InMemoryUserStateRepository = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned),
+    stateRepository: InMemoryUserStateRepository = new InMemoryUserStateRepository,
     userRepository:  InMemoryUserRepository = new InMemoryUserRepository
   ): (UserStateController, InMemoryUserStateRepository, InMemoryUserRepository) = {
     userRepository.upsert(testUser("u1")) // the suite's default signed-in identity
     prefilled.foreach(stateRepository.upsert)
-    (new UserStateController(Helpers.stubControllerComponents(), stateRepository, changeTimeCache, userRepository, specClock), stateRepository, userRepository)
+    (new UserStateController(Helpers.stubControllerComponents(), stateRepository, userRepository, specClock), stateRepository, userRepository)
   }
 
   /** `DELETE /api/me` over the same stores. */
   private def accountController(states: InMemoryUserStateRepository, users: InMemoryUserRepository): AccountController =
     new AccountController(Helpers.stubControllerComponents(), new AccountDeletion(users, states), users)
 
-  /** Counts `find` calls so a fast-path test can prove storage was never
-   *  touched, not just that the response happened to be correct. */
-  private class CountingUserStateRepository extends InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned) {
+  /** Counts `find` calls, so a spec can say how often storage was read. */
+  private class CountingUserStateRepository extends InMemoryUserStateRepository {
     var findCalls: Int = 0
     override def find(userId: String): Option[UserState] = { findCalls += 1; super.find(userId) }
-  }
-
-  /** A `UserChangeTimeCache` whose answers are fixed in the test, not derived
-   *  from a real change stream — `UserChangeTimeCacheSpec` covers the real
-   *  `CaffeineUserChangeTimeCache`'s own behaviour (eviction, invalidate-on-
-   *  disconnect); this controller only needs to prove it CONSULTS whatever
-   *  the trait says. */
-  private class StubUserChangeTimeCache(times: Map[String, Instant] = Map.empty) extends UserChangeTimeCache {
-    def lastChangeAt(userId: String): Option[Instant] = times.get(userId)
   }
 
   // ── GET /api/me/state ─────────────────────────────────────────────────────
@@ -321,7 +310,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "answer with the bucket as actually stored, including a write that landed alongside it" in {
-    val alongside = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned) {
+    val alongside = new InMemoryUserStateRepository {
       override def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] = {
         super.changeHiddenFilms(userId, country, HiddenFilmsChange.Hide("Other Tab", UserStateController.MaxHiddenPerCountry), now)
         super.changeHiddenFilms(userId, country, change, now)
@@ -343,7 +332,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "503 when the store could not write at all" in {
-    val failing = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned) {
+    val failing = new InMemoryUserStateRepository {
       override def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] = None
     }
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = failing)
@@ -377,7 +366,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "503 when the store could not write at all" in {
-    val failing = new InMemoryUserStateRepository(_root_.tools.SpecClock.Pinned) {
+    val failing = new InMemoryUserStateRepository {
       override def setLanguage(userId: String, language: Option[String], now: Instant): Option[UserState] = None
     }
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = failing)
@@ -385,43 +374,33 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe SERVICE_UNAVAILABLE
   }
 
-  // ── GET /api/me/:country/hidden-films — userChangeTimeCache fast path ────
+  // ── GET /api/me/:country/hidden-films — If-Modified-Since, from storage ──
+  //
+  // A pod's change-time cache once answered If-Modified-Since without reading
+  // storage. It could 304 another pod's write until its change stream caught
+  // up, and it almost never answered at all (every client sends If-None-Match
+  // beside it, and `Last-Modified`'s whole seconds sit before a millisecond
+  // `updatedAt`), so it went: one read decides, every time.
 
-  "GET /api/me/:country/hidden-films with a change-time cache" should "304 straight from the change-time cache, without reading storage, on a proven-unchanged If-Modified-Since" in {
+  "GET /api/me/:country/hidden-films with only If-Modified-Since" should "304 from one storage read when the row has not changed since" in {
     val countingRepo = new CountingUserStateRepository
-    val cache = new StubUserChangeTimeCache(Map("u1" -> Instant.parse("2026-05-19T12:00:00Z")))
-    val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), changeTimeCache = cache, stateRepository = countingRepo)
-    countingRepo.findCalls = 0 // the prefill's own upsert doesn't call find; reset defensively anyway
+    val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = countingRepo)
 
     val result = callHiddenFilms(ctl, headers = Seq("If-Modified-Since" -> "Wed, 20 May 2026 00:00:00 GMT")*)
 
-    status(result)             shouldBe NOT_MODIFIED
-    countingRepo.findCalls     shouldBe 0
-  }
-
-  it should "fall through to storage when the change-time cache has no answer for this user" in {
-    val countingRepo = new CountingUserStateRepository
-    val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), changeTimeCache = NoUserChangeTimeCache, stateRepository = countingRepo)
-    countingRepo.findCalls = 0
-
-    val result = callHiddenFilms(ctl, headers = Seq("If-Modified-Since" -> "Wed, 20 May 2026 00:00:00 GMT")*)
-
-    status(result)         shouldBe NOT_MODIFIED // still correct — just computed from storage, not the cache
+    status(result)         shouldBe NOT_MODIFIED
     countingRepo.findCalls shouldBe 1
   }
 
-  it should "never take the cache fast path when If-None-Match is present, even if the cache would answer" in {
+  it should "200 with the current list when the row changed after it" in {
     val countingRepo = new CountingUserStateRepository
-    val cache = new StubUserChangeTimeCache(Map("u1" -> Instant.parse("2026-05-19T12:00:00Z")))
-    val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), changeTimeCache = cache, stateRepository = countingRepo)
-    countingRepo.findCalls = 0
+    val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), stateRepository = countingRepo)
 
-    callHiddenFilms(ctl, headers = Seq(
-      "If-None-Match"     -> "\"whatever\"",
-      "If-Modified-Since" -> "Wed, 20 May 2026 00:00:00 GMT"
-    )*)
+    val result = callHiddenFilms(ctl, headers = Seq("If-Modified-Since" -> "Mon, 18 May 2026 00:00:00 GMT")*)
 
-    countingRepo.findCalls shouldBe 1 // ETag comparison needs real content — the cache can't answer it
+    status(result)                                       shouldBe OK
+    (contentAsJson(result) \ "hiddenFilms").as[Seq[String]] shouldBe Seq("Madagaskar")
+    countingRepo.findCalls                               shouldBe 1
   }
 
   // ── PUT/DELETE /api/me/:country/hidden-films(/:title) ────────────────────

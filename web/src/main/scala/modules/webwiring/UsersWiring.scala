@@ -4,7 +4,7 @@ import controllers.{AccountController, FacebookDataDeletionController, UserState
 import services.MonitoringHttpFetch
 import services.auth.{AuthExchangeCodeStore, AuthExchangeCodes, FacebookGraphFetch, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore}
 import services.facebook.{FacebookUsageBrake, MongoFacebookSlots}
-import services.users.{AccountDeletion, CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateChangeStream, UserStateRepository}
+import services.users.{AccountDeletion, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
 import tools.{HttpFetch, RealHttpFetch, TlsTrust}
 
 /** ── Accounts ──────────────────────────────────────────────────────────────
@@ -40,17 +40,7 @@ trait UsersWiring { self: Wiring =>
   // these sequences.
   lazy val userRepository:      UserRepository      = new MongoUserRepository(usersConnection.database)
   lazy val userStateRepository: UserStateRepository = new MongoUserStateRepository(usersConnection.database,
-    new UserStateChangeStream(usersConnection.database, clock, stopwatch = stopwatch, decodeFailures = webDecodeFailureMetrics),
     writeOutcomes = userStateWriteMetrics, indexHealth = userStateIndexMetrics)
-
-  // The last-1000-active-users change-time cache behind `hiddenFilms()`'s
-  // fast path — see `CaffeineUserChangeTimeCache`'s doc comment for why it
-  // invalidates wholesale on a stream failure rather than tolerating
-  // staleness like `MovieCache`.
-  // Typed concrete, not `UserChangeTimeCache` — `Wiring.start()`/`stop()` need
-  // its lifecycle methods, which the lookup-only trait deliberately omits
-  // (same split as `MovieCache`'s trait vs. its `Stoppable` real impl).
-  lazy val userChangeTimeCache: CaffeineUserChangeTimeCache = managedResources.stopping(new CaffeineUserChangeTimeCache(userStateRepository))
 
   // One-shot sign-in codes for the two handoffs a session cookie cannot make:
   // the native apps' `kinowo://` deep link, and the country switch across the
@@ -65,7 +55,7 @@ trait UsersWiring { self: Wiring =>
       database => new MongoAuthExchangeCodeStore(Some(database))), clock)
 
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
-  lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, userChangeTimeCache, userRepository, clock)
+  lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, userRepository, clock)
   lazy val accountController = new AccountController(controllerComponents, accountDeletion, userRepository)
   lazy val facebookDataDeletionController =
     new FacebookDataDeletionController(controllerComponents, country, processConfiguration.facebookAppSecret, userRepository, accountDeletion)

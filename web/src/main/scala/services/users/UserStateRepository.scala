@@ -13,7 +13,6 @@ import org.bson.BsonDocument
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture}
 import play.api.Logging
-import tools.ChangeStreamLiveness
 
 /**
  * Per-user state store — per-country hidden films and the language pick,
@@ -58,33 +57,6 @@ trait UserStateRepository {
    *  perform it (see [[AccountDeletion]]). */
   def delete(userId: String): Unit
 
-  /** Stream out-of-band writes/deletes to `userStates` as they happen — see
-   *  `MovieRepository.watchChanges`, which this mirrors, with one addition:
-   *  `onDisconnect` fires once if the underlying cursor dies before a new
-   *  registration replaces it — and whenever the stream sees a change it cannot
-   *  attribute to a user (the Mongo store's deletes: see `MongoUserStateRepository`). `MovieCache`'s consumers don't need that
-   *  signal — they tolerate staleness via a periodic rehydrate backstop.
-   *  `UserChangeTimeCache` (the one caller today) gates an HTTP freshness
-   *  *decision*, so it must know the moment its view stops being current
-   *  rather than keep answering from what it had.
-   *
-   *  Unlike `MovieRepository`, there's no fan-out to multiple listeners —
-   *  only one consumer watches `userStates`, so that machinery isn't earned
-   *  yet (add it if a second one shows up). A second `watchChanges` call
-   *  replaces the first registration rather than adding to it.
-   *
-   *  Default: not supported (returns `None`), same as `MovieRepository`. */
-  def watchChanges(
-    onUpsert:     UserState => Unit,
-    onDelete:     String => Unit,
-    onDisconnect: () => Unit
-  ): Option[AutoCloseable] = None
-
-  /** When the `userStates` cursor last delivered an event — see `ChangeStreamLiveness`.
-   *  One per repository, so nothing stamped on one is seen through another; a repository
-   *  with no stream answers [[ChangeStreamLiveness.unwatched]] on its own clock. */
-  def changeStreamLiveness: ChangeStreamLiveness
-
   def close(): Unit
 }
 
@@ -93,14 +65,12 @@ object UserStateRepository {
 }
 
 /** The `userStates` store over Mongo: its reads and atomic writes (each one `findOneAndUpdate`, the update a
- *  server-side pipeline: [[UserStatesCollection]]), its change stream [[UserStateChangeStream]]'s, handed in over the same database. */
+ *  server-side pipeline: [[UserStatesCollection]]). */
 class MongoUserStateRepository(
   // The users database, handed in by the composition root (`UsersWiring`, on the
   // shared `MongoConnection`); `None` (no Mongo configured, or the connection
   // failed) leaves the store disabled. It never opens a client of its own.
   database: Option[MongoDatabase],
-  // The `userStates` change stream over the same database.
-  changes: UserStateChangeStream,
   // How each atomic write went, one outcome per write — the web's
   // `UserStateWriteMetrics` in production.
   writeOutcomes: UserStateWriteOutcomes = UserStateWriteOutcomes.none,
@@ -155,24 +125,14 @@ class MongoUserStateRepository(
     ()
   }
 
-  override def changeStreamLiveness: ChangeStreamLiveness = changes.liveness
-
-  override def watchChanges(
-    onUpsert:     UserState => Unit,
-    onDelete:     String => Unit,
-    onDisconnect: () => Unit
-  ): Option[AutoCloseable] = changes.watch(onUpsert, onDelete, onDisconnect)
-
-  def close(): Unit = changes.close()
+  def close(): Unit = ()
 }
 
 /** The states as `userStates` would hold them: each written through its codec to BSON and read back. */
-class InMemoryUserStateRepository(clock: java.time.Clock) extends UserStateRepository {
+class InMemoryUserStateRepository extends UserStateRepository {
   private val store = scala.collection.mutable.Map.empty[String, UserState]
   private val stored = tools.BsonRoundTrip.throughCodec(UserCodecs.registry.get(classOf[UserState]))
   private def put(state: UserState): UserState = { val kept = stored(state); store(kept.userId) = kept; kept }
-  private val liveness = new ChangeStreamLiveness(clock)
-  private var listener: Option[(UserState => Unit, String => Unit, () => Unit)] = None
 
   def enabled: Boolean = true
 
@@ -181,8 +141,7 @@ class InMemoryUserStateRepository(clock: java.time.Clock) extends UserStateRepos
   /** Whole-row replace, for SEEDING a spec — deliberately not on the trait: production
    *  writes only through the atomic field-scoped pipelines. The Mongo-side equivalent
    *  is the test-support `UserStateRows.replace`. */
-  def upsert(state: UserState): Unit =
-    published(synchronized(put(state)))
+  def upsert(state: UserState): Unit = synchronized { put(state); () }
 
   def setLanguage(userId: String, language: Option[String], now: Instant): Option[UserState] = {
     val after = synchronized {
@@ -190,53 +149,25 @@ class InMemoryUserStateRepository(clock: java.time.Clock) extends UserStateRepos
       put(current.getOrElse(UserState.empty(userId, now))
         .copy(language = language, updatedAt = UserState.nextUpdatedAt(current.map(_.updatedAt), now)))
     }
-    published(after)
     Some(after)
   }
 
   def changeHiddenFilms(userId: String, country: String, change: HiddenFilmsChange, now: Instant): Option[UserState] = {
-    val (after, written) = synchronized {
+    val after = synchronized {
       val current = store.get(userId)
       val base    = current.getOrElse(UserState.empty(userId, now))
       change.applyTo(base.hiddenFilmsByCountry.getOrElse(country, Set.empty)) match {
-        case None         => (base, false)
+        case None         => base
         case Some(bucket) =>
-          (put(base.copy(
+          put(base.copy(
             hiddenFilmsByCountry = base.hiddenFilmsByCountry.updated(country, bucket),
-            updatedAt            = UserState.nextUpdatedAt(current.map(_.updatedAt), now))), true)
+            updatedAt            = UserState.nextUpdatedAt(current.map(_.updatedAt), now)))
       }
     }
-    if (written) published(after)
     Some(after)
   }
 
-  /** What the Mongo change stream would deliver for a write that landed. */
-  private def published(state: UserState): Unit = {
-    liveness.delivered(UserStateRepository.Collection)
-    listener.foreach { case (onUpsert, _, _) => onUpsert(state) }
-  }
-
-  def delete(userId: String): Unit = {
-    synchronized(store.remove(userId))
-    liveness.delivered(UserStateRepository.Collection)
-    listener.foreach { case (_, onDelete, _) => onDelete(userId) }
-  }
+  def delete(userId: String): Unit = synchronized { store.remove(userId); () }
 
   def close(): Unit = ()
-
-  override def watchChanges(
-    onUpsert:     UserState => Unit,
-    onDelete:     String => Unit,
-    onDisconnect: () => Unit
-  ): Option[AutoCloseable] = {
-    listener = Some((onUpsert, onDelete, onDisconnect))
-    liveness.watching(UserStateRepository.Collection)
-    Some(new AutoCloseable { override def close(): Unit = { listener = None } })
-  }
-
-  override def changeStreamLiveness: ChangeStreamLiveness = liveness
-
-  /** Test-only: simulate the underlying cursor dying, without a real Mongo to
-   *  kill — the fake's stand-in for a driver `onError`/`onComplete`. */
-  def simulateDisconnect(): Unit = listener.foreach { case (_, _, onDisconnect) => onDisconnect() }
 }

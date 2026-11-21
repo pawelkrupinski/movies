@@ -12,7 +12,7 @@ import java.time.{Clock, Instant}
 import scala.concurrent.Future
 
 /** One web pod's user-state stack as `UsersWiring` builds it — the Mongo store over the pod's own
- *  view of the shared database, its change-time cache, and the controller in front of them — so a
+ *  view of the shared database and the controller in front of it — so a
  *  spec can run two of them against one database the way a rolling deploy does.
  *
  *  `users` is shared between pods: sign-in is not what these specs race, and `SignedInUser` only
@@ -22,14 +22,10 @@ final class UserStatePod(
   users:         UserRepository,
   clock:         Clock,
   writeOutcomes: UserStateWriteOutcomes = UserStateWriteOutcomes.none,
-  indexHealth:   UserStateIndexHealth   = UserStateIndexHealth.none,
-  cacheTtl:      scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "minutes"),
-  // What the change-time cache ages its entries on: wall time, unless a spec moves it by hand.
-  cacheTicker:   com.github.benmanes.caffeine.cache.Ticker = com.github.benmanes.caffeine.cache.Ticker.systemTicker()
+  indexHealth:   UserStateIndexHealth   = UserStateIndexHealth.none
 ) extends AutoCloseable {
-  val states     = new services.users.MongoUserStateRepository(Some(db), new services.users.UserStateChangeStream(Some(db), _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System), writeOutcomes = writeOutcomes, indexHealth = indexHealth)
-  val changeTimes = new CaffeineUserChangeTimeCache(states, entryTtl = cacheTtl, ticker = cacheTicker)
-  val controller: UserStateController = UserStatePod.controller(states, users, changeTimes, clock)
+  val states     = new services.users.MongoUserStateRepository(Some(db), writeOutcomes = writeOutcomes, indexHealth = indexHealth)
+  val controller: UserStateController = UserStatePod.controller(states, users, clock)
 
   import UserStatePod.session
   def hide(userId: String, title: String, country: String = "pl"): Future[Result] =
@@ -43,15 +39,14 @@ final class UserStatePod(
     controller.hiddenFilms(country)(ifModifiedSince.fold(request)(ims => request.withHeaders("If-Modified-Since" -> ims)))
   }
 
-  def close(): Unit = { changeTimes.stop(); states.close() }
+  def close(): Unit = states.close()
 }
 
 object UserStatePod {
   /** The controller over `states`, with the metrics and clock a spec pins. Shared with
    *  `HiddenFilmsConcurrentWritesIntegrationSpec`, which drives one pod's controller. */
-  def controller(states: UserStateRepository, users: UserRepository, changeTimes: UserChangeTimeCache, clock: Clock): UserStateController =
-    new UserStateController(Helpers.stubControllerComponents(), states, changeTimes,
-      users, clock)
+  def controller(states: UserStateRepository, users: UserRepository, clock: Clock): UserStateController =
+    new UserStateController(Helpers.stubControllerComponents(), states, users, clock)
 
   /** A user row for `id`, so `SignedInUser` accepts a session naming it. Returns `id`. */
   def signIn(users: UserRepository, id: String): String = {
