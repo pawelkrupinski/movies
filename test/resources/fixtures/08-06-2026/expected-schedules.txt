@@ -3078,7 +3078,7 @@ displayTitle:      Giulietta i duchy
 cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) | Federico Fellini: GIULIETTA I DUCHY | Federico Fellini: ciao a tutti! – Giulietta i duchy | GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego | Giulietta i duchy | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti!
 runtimeMinutes:    139
 releaseYear:       1965
-countries:         Włochy, Francja
+countries:         Włochy, Francja, RFN
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/csm_Giulietta_Poster_45456e2738-566x800.jpg
 synopsis.length:   1073
 cast:              Giulietta Masina, Mario Pisu, Sandra Milo, Valentina Cortese, Caterina Boratto, Lou Gilbert, Sylva Koscina
@@ -3116,7 +3116,7 @@ displayTitle:      Giulietta I Duchy | przed filmem wykład prof. Marka Hendryko
 cinemaTitles:      FEDERICO FELLINI: Ciao a tutti! - Giulietta i duchy | FEDERICO FELLINI: ciao a tutti! - Giulietta i duchy (1965) | Federico Fellini: GIULIETTA I DUCHY | Federico Fellini: ciao a tutti! – Giulietta i duchy | GIULIETTA I DUCHY | przed filmem wykład prof. Marka Hendrykowskiego | Giulietta i duchy | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti | Giulietta i duchy | FEDERICO FELLINI: ciao a tutti!
 runtimeMinutes:    139
 releaseYear:       1965
-countries:         Włochy, Francja
+countries:         Włochy, Francja, RFN
 posterUrl:         https://www.kinomuza.pl/content/uploads/2026/05/csm_Giulietta_Poster_45456e2738-566x800.jpg
 synopsis.length:   1007
 cast:              Giulietta Masina, Mario Pisu, Sandra Milo, Valentina Cortese, Caterina Boratto, Lou Gilbert, Sylva Koscina
@@ -3752,7 +3752,7 @@ displayTitle:      Kino bez barier: Błękitny szlak (AD + CC + PJM)
 cinemaTitles:      Kino bez barier: Błękitny szlak (AD + CC + PJM)
 runtimeMinutes:    85
 releaseYear:       2025
-countries:         Brazylia, Meksyk, Holandia
+countries:         Brazylia, Meksyk, Holandia, Chile
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_bekitny_szlak.jpg
 synopsis.length:   531
 cast:              Denise Weinberg, Rodrigo Santoro, Miriam Socarrás, Adanilo, Rosa Malagueta

@@ -80,4 +80,18 @@ class CountryNamesSpec extends AnyFlatSpec with Matchers {
     CountryNames.isPolish("Atlantyda") shouldBe false
     CountryNames.isPolish("2026") shouldBe false
   }
+
+  // MSI's production lines kept a country list of their own beside this one; it named these, which this did not.
+  it should "know the countries and the old states a Polish production line names" in {
+    Seq("Kuba", "Chile", "Kolumbia", "Tajlandia", "Gruzja", "Armenia", "Kazachstan", "RFN", "NRD", "Czechosłowacja",
+      "Jugosławia").filterNot(CountryNames.isPolish) shouldBe empty
+    CountryNames.canonical("Kuba", Locale.ENGLISH) shouldBe "Cuba"
+  }
+
+  "isPolishSpelling" should "take a country as a Polish production line spells it, not an English name" in {
+    Seq("USA", "niemcy", " Anglia ", "Wlk. Brytania", "Niderlandy", "korea", "RFN").filterNot(CountryNames.isPolishSpelling) shouldBe empty
+    // "(Brazil, Wielka Brytania 1985)": Gilliam's title, not the country Brazylia.
+    CountryNames.isPolishSpelling("Brazil") shouldBe false
+    CountryNames.isPolishSpelling("Casablanca") shouldBe false
+  }
 }

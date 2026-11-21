@@ -39,8 +39,27 @@ object CountryNames {
     "Japonia", "Chiny", "Korea Południowa", "Korea Północna", "Iran", "Izrael",
     "Brazylia", "Argentyna", "Australia", "Kanada", "Meksyk", "Nowa Zelandia",
     "Egipt", "RPA", "Hongkong", "Tajwan", "Wietnam", "Palestyna", "Katar",
-    "Islandia", "Słowenia", "Chorwacja", "Serbia", "Luksemburg", "ZSRR", "Irak"
+    "Islandia", "Słowenia", "Chorwacja", "Serbia", "Luksemburg", "ZSRR", "Irak",
+    "Tajlandia", "Kuba", "Chile", "Kolumbia", "Gruzja", "Armenia", "Kazachstan",
+    // States a production line still names for an old film, each its own country as ZSRR is.
+    "RFN", "NRD", "Czechosłowacja", "Jugosławia"
   )
+
+  /** Every Polish spelling, lowercased → canonical: the canonical names and the Polish variants a production line
+   *  uses ("Stany Zjednoczone", "Anglia", "Wlk. Brytania", "Niderlandy", "Związek Radziecki"). */
+  private val PolishSpellings: Map[String, String] =
+    Polish.iterator.map(c => c.toLowerCase(Locale.ROOT) -> c).toMap ++ Map(
+      "stany zjednoczone"         -> "USA",
+      "stany zjednoczone ameryki" -> "USA",
+      "anglia"                    -> "Wielka Brytania",
+      "wlk. brytania"             -> "Wielka Brytania",
+      "wlk brytania"              -> "Wielka Brytania",
+      "republika czeska"          -> "Czechy",
+      "niderlandy"                -> "Holandia",
+      "korea"                     -> "Korea Południowa",
+      "związek radziecki"         -> "ZSRR",
+      "arabia saudyjska"          -> "Arabia Saudyjska"
+    )
 
   /** Aliases → canonical. Keys are lowercased for case-insensitive lookup
    *  (so `francja`, `FRANCJA`, `Francja` all resolve to `Francja`). Add a
@@ -49,10 +68,8 @@ object CountryNames {
    *  English-language entries are defensive — some Helios REST payloads
    *  occasionally come back English; better to map than to leak. */
   private val Aliases: Map[String, String] = (
-    Polish.iterator.map(c => c.toLowerCase(Locale.ROOT) -> c).toMap ++ Map(
+    PolishSpellings ++ Map(
       // United States
-      "stany zjednoczone"           -> "USA",
-      "stany zjednoczone ameryki"   -> "USA",
       "united states"               -> "USA",
       "united states of america"    -> "USA",
       "u.s."                        -> "USA",
@@ -63,9 +80,6 @@ object CountryNames {
       "u.k."                        -> "Wielka Brytania",
       "united kingdom"              -> "Wielka Brytania",
       "great britain"               -> "Wielka Brytania",
-      "anglia"                      -> "Wielka Brytania",
-      "wlk. brytania"               -> "Wielka Brytania",
-      "wlk brytania"                -> "Wielka Brytania",
       // Iraq
       "iraq"                        -> "Irak",
       // Italy
@@ -75,12 +89,10 @@ object CountryNames {
       "germany"                     -> "Niemcy",
       "deutschland"                 -> "Niemcy",
       // Czechia
-      "republika czeska"            -> "Czechy",
       "czech republic"              -> "Czechy",
       "czechia"                     -> "Czechy",
       // Netherlands
       "netherlands"                 -> "Holandia",
-      "niderlandy"                  -> "Holandia",
       // France
       "france"                      -> "Francja",
       // Spain
@@ -91,11 +103,9 @@ object CountryNames {
       // Korea
       "south korea"                 -> "Korea Południowa",
       "north korea"                 -> "Korea Północna",
-      "korea"                       -> "Korea Południowa",
       // Soviet Union
       "soviet union"                -> "ZSRR",
       "ussr"                        -> "ZSRR",
-      "związek radziecki"           -> "ZSRR",
       // Other
       "japan"                       -> "Japonia",
       "china"                       -> "Chiny",
@@ -113,7 +123,6 @@ object CountryNames {
       "croatia"                     -> "Chorwacja",
       "serbia"                      -> "Serbia",
       "saudi arabia"                -> "Arabia Saudyjska",
-      "arabia saudyjska"            -> "Arabia Saudyjska",
       "peru"                        -> "Peru",
       "argentina"                   -> "Argentyna",
       "brazil"                      -> "Brazylia",
@@ -203,10 +212,16 @@ object CountryNames {
     "nowa zelandia" -> "NZ", "egipt" -> "EG", "rpa" -> "ZA", "hongkong" -> "HK", "tajwan" -> "TW",
     "wietnam" -> "VN", "palestyna" -> "PS", "katar" -> "QA", "islandia" -> "IS", "słowenia" -> "SI",
     "chorwacja" -> "HR", "serbia" -> "RS", "luksemburg" -> "LU", "irak" -> "IQ",
-    "arabia saudyjska" -> "SA", "peru" -> "PE"
+    "arabia saudyjska" -> "SA", "peru" -> "PE",
+    "tajlandia" -> "TH", "kuba" -> "CU", "chile" -> "CL", "kolumbia" -> "CO", "gruzja" -> "GE", "armenia" -> "AM",
+    "kazachstan" -> "KZ"
   )
 
   def isPolish(name: String): Boolean = Polish.contains(canonical(name))
+
+  /** Whether `name` is a country as a Polish production line spells it — "Niemcy", "RFN", "Anglia" — and not in
+   *  another language: an English "Brazil" is the title of Gilliam's film in `(Brazil, Wielka Brytania 1985)`. */
+  def isPolishSpelling(name: String): Boolean = PolishSpellings.contains(name.trim.toLowerCase(Locale.ROOT))
 
   /** Every country's name as each served language spells it ("Vereinigte Staaten", "Estados Unidos"),
    *  lower-cased — the alias map folds only the spellings the Polish corpus used. */

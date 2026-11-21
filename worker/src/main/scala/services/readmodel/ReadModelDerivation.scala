@@ -82,7 +82,10 @@ object ReadModelDerivation {
     Derivation(DerivationVersion("28fba8b0a9f6dae1"), DerivationScope.Full),
     // A card's poster passes over a cinema's small resized copy (`ResizedPoster.isSmall`: WordPress's `-120x120`
     // thumbnail) for a full-size one, TMDB's among them.
-    Derivation(DerivationVersion("b0935cfe4f554a57"), DerivationScope.Cards))
+    Derivation(DerivationVersion("b0935cfe4f554a57"), DerivationScope.Cards),
+    // A card keeps the production countries `CountryNames.Polish` did not know until MSI's list folded into it (Kuba,
+    // Chile, Kolumbia, RFN, Czechosłowacja, …): "Dobry, zły i brzydki" is Włochy, Francja, RFN.
+    Derivation(DerivationVersion("f66e1ab477335012"), DerivationScope.Cards))
 
   def current: DerivationVersion = History.last.version
 

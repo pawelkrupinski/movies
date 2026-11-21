@@ -119,26 +119,10 @@ private[cinemas] object MsiScraper {
   private val ProductionRuntimePat =
     """(?u)(?:19|20)\d{2}\s*,\s*(\d{1,3})\s*(?:['’]|min)""".r
 
-  // Country names (and the abbreviations) that show up in MSI production lines,
-  // lower-cased. Used to strip a leading country out of the original-title prefix:
-  // `(USA, Japonia 1989)` has no original title — "USA" is the first of two
-  // countries, not a title — whereas `(Casablanca, USA 1942)` does. Telling them
-  // apart structurally is impossible (both are "X, Y YEAR"), so we test against
-  // this set. Not exhaustive — an unlisted country merely risks re-surfacing the
-  // leak for that one film, never a wrong YEAR.
-  private val Countries: Set[String] = Set(
-    "usa", "polska", "niemcy", "rfn", "nrd", "francja", "włochy", "hiszpania",
-    "wielka brytania", "anglia", "kanada", "japonia", "zsrr", "rosja", "czechy",
-    "czechosłowacja", "słowacja", "austria", "szwajcaria", "szwecja", "norwegia",
-    "dania", "finlandia", "holandia", "niderlandy", "belgia", "irlandia",
-    "australia", "nowa zelandia", "chiny", "korea", "korea południowa", "indie",
-    "brazylia", "argentyna", "meksyk", "węgry", "rumunia", "bułgaria", "grecja",
-    "turcja", "portugalia", "islandia", "izrael", "iran", "ukraina", "jugosławia",
-    "chorwacja", "serbia", "luksemburg", "estonia", "litwa", "łotwa", "rpa",
-    "egipt", "tajwan", "hongkong", "wietnam", "tajlandia", "kuba", "chile",
-    "kolumbia", "gruzja", "armenia", "kazachstan", "katar")
-
-  private def isCountry(s: String): Boolean = Countries.contains(s.trim.toLowerCase(java.util.Locale.ROOT))
+  // A leading country in the original-title prefix is no title: `(USA, Japonia 1989)` has none — "USA" is the first
+  // of two countries — whereas `(Casablanca, USA 1942)` does. Both are "X, Y YEAR", so a country is told by name: a
+  // Polish spelling, so that an English title naming one ("Brazil") stays the title.
+  private def isCountry(s: String): Boolean = CountryNames.isPolishSpelling(s)
 
   private[cinemas] case class FilmMeta(director: Seq[String] = Seq.empty,
                                        releaseYear: Option[Int] = None,
