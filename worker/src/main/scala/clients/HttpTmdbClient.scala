@@ -212,9 +212,11 @@ class HttpTmdbClient(
    *  (`services.identity.agreement.AgreementStage.wanted`, its `Question.Record`s). A 404 is TMDB's answer; any other failure THROWS. */
   def readRecordAgain(tmdbId: Int): Unit = authHeader.foreach(auth => orEmptyWhenUnknown(httpGet(fullDetailsUrl(tmdbId), auth)))
 
+  /** The film's details, None for an id TMDB does not know; THROWS when the read fails — a failed read is not
+   *  "no film", and the rating sites would search without its year and English title. */
   def details(tmdbId: Int): Option[TmdbClient.Details] = authHeader.flatMap { auth =>
-    Try(httpGet(detailsUrl(tmdbId), auth))
-      .toOption.map(body => TmdbResponses.details(bodies.parse(body)))
+    try Some(TmdbResponses.details(bodies.parse(httpGet(detailsUrl(tmdbId), auth))))
+    catch { case e: HttpStatusException if e.code == 404 => None }
   }
 
   /** Every person id credited anywhere on a movie's crew — not only the Director

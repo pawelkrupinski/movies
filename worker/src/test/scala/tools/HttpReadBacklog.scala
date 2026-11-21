@@ -7,14 +7,13 @@ package tools
  * `TODO-HttpRead`: no reason is claimed for it, it is simply not migrated. Migrating a site
  * removes its entry (the specs' stale-entry checks insist); nothing new may be added here.
  *
- * What is left is TmdbClient's by-id details reads: switching them to throw shifts ~16 specs'
- * fakes and the e2e corpus, which lacks some detail fixtures the swallow hid (PARKED.md).
+ * What is left is TmdbClient's localized by-id read (`fullDetails`): switching it to throw shifts the specs'
+ * fakes and the e2e corpus, which may lack some detail fixtures the swallow hid (PARKED.md). Its en-US twin
+ * (`details`) throws since its 13 missing e2e fixtures were recorded.
  */
 object HttpReadBacklog {
 
   val Swallows: Map[(String, String, String), String] = Map(
-    ("worker/src/main/scala/clients/HttpTmdbClient.scala", "details",
-      "Try(httpGet(detailsUrl(tmdbId), auth))") -> "TODO-HttpRead",
     ("worker/src/main/scala/clients/HttpTmdbClient.scala", "fullDetails",
       "Try(httpGet(fullDetailsUrl(tmdbId), auth))") -> "TODO-HttpRead"
   )

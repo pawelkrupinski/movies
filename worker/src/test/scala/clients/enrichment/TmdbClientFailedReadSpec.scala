@@ -27,4 +27,12 @@ class TmdbClientFailedReadSpec extends AnyFlatSpec with Matchers {
   it should "throw, not answer empty, when the images read fails" in {
     an[Exception] should be thrownBy client.posters(1)
   }
+
+  // The rating sites probe under TMDB's year and English title: a failed details read answered None,
+  // the sites searched without them, and the miss (or a page the year guard would have refused) sat in
+  // their 24 h link cache.
+  it should "throw, not answer none, when the details read fails, and answer none for an id TMDB does not know" in {
+    an[Exception] should be thrownBy client.details(1)
+    new HttpTmdbClient(new FailingHttpFetch(404), apiKey = Some(settings.TmdbApiKey("test-key"))).details(1) shouldBe None
+  }
 }
