@@ -268,6 +268,14 @@ class CouplingRatchetTest(RatchetHarness):
                            f"exempt it\n\nCoupling: exempt Wiring — {why}")
         self.assert_passes(ROWS, rng=f"{self.base}..{head}")
 
+    def test_an_exemption_trailer_folded_onto_a_continuation_line_passes(self):
+        # git reads an indented continuation line as part of the trailer's value; the ratchet must read it whole
+        why = "venue table: one row a venue, each naming the scraper class that reads it"
+        folded = why.replace(" each naming", "\n each naming")
+        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + f"registry\tworker.Wiring\texempt\tworker\t{why}\t2026-11-19\n"},
+                           f"exempt it\n\nCoupling: exempt Wiring — {folded}")
+        self.assert_passes(ROWS, rng=f"{self.base}..{head}")
+
     def test_an_exemption_limit_raised_without_a_trailer_fails(self):
         first = self.commit({EXEMPTIONS: EXEMPTION_ROWS + "config\tsettings.Config\t40\tcoupling\tthe root\n"},
                             "limit it\n\nCoupling: the typed-config root")

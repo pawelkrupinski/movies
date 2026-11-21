@@ -44,6 +44,9 @@ class MisplacedTest(unittest.TestCase):
         self.assertEqual([("Complexity", 4)],
                          [(m.key, m.line) for m in trailers.misplaced(f"s\n\n{CO}\n  Complexity: why\n")])
 
+    def test_a_trailer_continued_on_an_indented_line_is_placed(self):
+        self.assertEqual([], trailers.misplaced(f"s\n\nCoupling: exempt X — a long reason\n continued here\n{CO}\n"))
+
     def test_a_final_paragraph_git_reads_no_trailers_from_misplaces_its_key_lines(self):
         found = trailers.misplaced("s\n\nThis paragraph is prose, not trailers at all, and long.\nMore prose here.\n"
                                    "And more prose.\nLength: why\n")

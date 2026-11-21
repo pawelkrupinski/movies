@@ -63,7 +63,8 @@ def misplaced(message: str, keys: Iterable[str] = KNOWN_KEYS) -> List[Misplaced]
     found = []
     for number, m in candidates:
         key, value = m.group(2).lower(), m.group(3).strip()
-        if m.group(1) or number < block_start or (key, value) not in read:
+        # git unfolds a value continued on indented lines, so the line holds only the read value's start
+        if m.group(1) or number < block_start or not any(k == key and v.startswith(value) for k, v in read):
             found.append(Misplaced(CANONICAL[key], number, lines[number - 1].strip()))
     return found
 
