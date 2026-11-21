@@ -19,6 +19,10 @@ test.describe('zoomed portrait card gaps', () => {
     // calendar advances past the fixture's last screenings it eventually shows
     // only one film in Poznań — too few for the "two cards on one row" pair this
     // spec measures the gap between. "anytime" always renders the full grid.
+    // That is the whole repertoire in one document, so this takes the budget
+    // `day-pill-hover` takes for it: on a contended laptop (load 116,
+    // 2026-11-21) the two settle frames alone outlasted the default 30s.
+    test.slow();
     await gotoAndWaitForCards(page, '/poznan/?date=anytime');
   });
 
