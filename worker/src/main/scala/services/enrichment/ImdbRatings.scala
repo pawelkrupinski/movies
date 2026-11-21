@@ -2,7 +2,7 @@ package services.enrichment
 
 import java.util.concurrent.atomic.AtomicInteger
 
-import scala.util.{Failure, Try}
+import scala.util.Try
 
 import models.CacheKey
 import services.movies.MovieCache
@@ -83,11 +83,9 @@ class ImdbRatings(
     walkEach("IMDb-refresh", withImdb) { case (key, enrichment, id) =>
       val ratingResult  = Try(imdb.lookup(id))
       val detailsResult = Try(imdb.details(id))
-      ratingResult match {
-        case Failure(exception) =>
-          failed.incrementAndGet()
-          logger.debug(s"IMDb refresh: $id lookup failed: ${exception.getMessage}")
-        case _ => ()
+      ratingResult.failed.foreach { exception =>
+        failed.incrementAndGet()
+        logger.debug(s"IMDb refresh: $id lookup failed: ${exception.getMessage}")
       }
       val update = updates.of(enrichment, ratingResult.toOption.flatten, detailsResult.toOption.flatten)
       if (update.moves) {
@@ -95,7 +93,7 @@ class ImdbRatings(
         cache.putIfPresent(key, update.applyTo)
         update.badge.foreach(badge => recordCadenceChange(key, enrichment.tmdbId, Some(badge)))
         // Each row counts once: one whose rating read failed is a failure, whatever its slot did.
-        if (ratingResult.isSuccess) changed.incrementAndGet()
+        ratingResult.foreach(_ => changed.incrementAndGet())
       }
     }
     val took = startedAt.millis

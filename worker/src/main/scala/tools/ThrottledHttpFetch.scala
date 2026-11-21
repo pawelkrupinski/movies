@@ -195,13 +195,10 @@ class ThrottledHttpFetch(
               s"for ${defaultPause.min(maxPause).toMillis}ms.")
             throw e
 
-          // Any other failure (a 500, a reset, a breaker's fast-fail) passes through ungated, but counts. A 404 is
-          // the host's answer (an id it does not know), not a failure of the host.
-          case e: HttpStatusException if e.code == 404 =>
-            record(host, throttled = false)
-            throw e
+          // Any other failure (a 500, a reset, a breaker's fast-fail) passes through ungated, but counts against the
+          // host; a 404 is the host's answer (an id it does not know), not its failure.
           case NonFatal(e) =>
-            record(host, throttled = false, failed = true)
+            record(host, throttled = false, failed = !ThrottledHttpFetch.isAnswer(e))
             throw e
         }
       }
@@ -219,4 +216,12 @@ private final class HostCallStats(startedMs: Long) {
   val throttled     = new java.util.concurrent.atomic.AtomicLong(0)
   val failed        = new java.util.concurrent.atomic.AtomicLong(0)
   val lastSummaryMs = new java.util.concurrent.atomic.AtomicLong(startedMs)
+}
+
+object ThrottledHttpFetch {
+  /** A failure that is the host's answer, not its failure: a 404 for an id or page it does not know. */
+  def isAnswer(failure: Throwable): Boolean = failure match {
+    case e: HttpStatusException => e.code == 404
+    case _                      => false
+  }
 }
