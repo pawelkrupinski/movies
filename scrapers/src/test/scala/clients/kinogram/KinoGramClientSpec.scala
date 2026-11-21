@@ -50,7 +50,28 @@ class KinoGramClientSpec extends AnyFlatSpec with Matchers {
     m.synopsis.getOrElse("") should not include "[EN]"
     m.synopsis.getOrElse("").length should be > 50
     m.posterUrl.getOrElse("") should startWith ("https://media.user.com")
-    m.trailerUrl.isDefined shouldBe true
+  }
+
+  // The description reads "[PL]\nRachel, działająca … [/PL] [EN] … [/EN]": the leading "[PL]" tag and its
+  // newline go, the text starts at the Polish prose.
+  it should "drop the leading [PL] tag off the synopsis" in {
+    byTitle("Zawodowcy").synopsis.getOrElse("") should startWith("Rachel, działająca w szarej strefie")
+  }
+
+  it should "rebuild the trailer as a canonical YouTube watch URL" in {
+    byTitle("Zawodowcy").trailerUrl shouldBe Some("https://www.youtube.com/watch?v=BOkFzkl680Q")
+  }
+
+  // Every film in this capture (and in the June and November 2026 captures) sends `director: ""`: KinoGram's
+  // GraphQL API carries no director, so the list stays empty rather than holding one blank name.
+  it should "read KinoGram's always-empty director field as no director" in {
+    results.flatMap(_.director) shouldBe empty
+  }
+
+  it should "split every comma-separated country, trimming the API's leading space" in {
+    byTitle("Ojczyzna").movie.countries shouldBe Seq("Polska", "Niemcy", "Francja", "Włochy")
+    // An unmapped name passes through unchanged.
+    byTitle("Niesamowite przygody skarpetek 3. Ale kosmos!").movie.countries shouldBe Seq("Polska", "Portugalia")
   }
 
   it should "convert UTC screening times to Europe/Warsaw and build screening booking URLs" in {

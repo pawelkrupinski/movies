@@ -56,9 +56,7 @@ class KinoGramClient(http: HttpFetch) extends CinemaScraper {
           runtimeMinutes = (movie \ "duration").asOpt[Int].filter(_ > 0),
           releaseYear    = (movie \ "yearOfProduction").asOpt[String].flatMap(s => Try(s.take(4).toInt).toOption),
           originalTitle  = (movie \ "originalTitle").asOpt[String].filter(_.nonEmpty),
-          countries      = jsonText(movie \ "country")
-                             .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
-                             .map(KinoGramClient.toPolishCountry),
+          countries      = commaList(movie \ "country").map(KinoGramClient.toPolishCountry),
           genres         = ScraperParse.jsonObjectNames(movie \ "genres").map(tools.TextNormalization.titleCaseIfAllLower)
         ),
         cinema    = cinema,
@@ -68,7 +66,7 @@ class KinoGramClient(http: HttpFetch) extends CinemaScraper {
         synopsis  = (movie \ "description").asOpt[String]
                       .map(_.replaceFirst("^\\[PL\\]\\s*", "").split("\\[/PL\\]").head.trim)
                       .filter(_.nonEmpty).map(tools.TextNormalization.stripHtml),
-        director  = (movie \ "director").asOpt[String].filter(_.nonEmpty).toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)),
+        director  = commaList(movie \ "director"),
         showtimes = showtimesOf(group, format),
         externalIds = Map.empty,
         trailerUrl = firstString(movie, "trailers")
@@ -76,6 +74,8 @@ class KinoGramClient(http: HttpFetch) extends CinemaScraper {
       )
     }
   }
+
+  private def commaList(field: JsLookupResult): Seq[String] = jsonText(field).toSeq.flatMap(ScraperParse.commaItems)
 
   private def firstString(movie: JsLookupResult, field: String): Option[String] =
     (movie \ field).asOpt[JsArray].flatMap(_.value.headOption).flatMap(_.asOpt[String])
