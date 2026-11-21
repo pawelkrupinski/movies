@@ -2,7 +2,7 @@ import { build } from "esbuild";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CACHE_DIR, INFRA_DIR } from "../src/config.js";
+import { CACHE_DIR, INFRA_DIR } from "../src/shared/config.js";
 import { createFleetPage, kinowoFleet, MONGO_WARNING, STAGED_PATHS } from "../src/fleet.js";
 
 /** What makes fleetkit's page kinowo's: the page itself is tested in fleetkit. */

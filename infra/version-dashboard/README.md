@@ -22,12 +22,17 @@ The same package also holds the mobile release lane, `src/mobile-release/` (run 
 `scripts/mobile-ship.sh`), which reuses the page's App Store Connect and Play clients; it is a
 command-line tool, never served.
 
+Layout: `src/` holds the process (server, the `pages.ts` composition root, autodeploy) and the
+fleet page; `src/mobile/` and `src/mobile-release/` the mobile page and lane; `src/shared/` what
+they all build on (config, the command and HTTP seams, fleetkit's html/store, the page type, time
+formatting), importing nothing back.
+
 **/nixos is fleetkit's page** (`~/bitcashier/fleetkit`, GitHub `bitcashier/fleetkit`), the same one
 bitcashier's dashboard serves; `src/fleet.ts` is only this fleet's configuration of it (root at each
 host's public address, no jump host, Prometheus through monitoring-1, the checkout's cached
 `origin/main` as the forge, the mongo role's typed confirmation). Its own tests run in fleetkit. It
 is a git dependency on a tag (`#vX.Y.Z` in package.json): a bump changes package-lock.json, which
-autodeploy answers with `npm ci` and a restart. `lifecycle.ts`, `store.ts`, `html.ts` and
+autodeploy answers with `npm ci` and a restart. `lifecycle.ts`, `shared/store.ts`, `shared/html.ts` and
 `web/live.ts` re-export fleetkit's, so there is one drain and one store class.
 
 TypeScript (Fastify + tsx, Node ≥ 24). State is read in the background and pushed to open tabs

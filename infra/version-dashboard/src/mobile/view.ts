@@ -3,8 +3,8 @@
  * paint with these and the browser re-renders every snapshot with the SAME functions. Imports
  * nothing from node:.
  */
-import { ago } from "../age.js";
-import { html, type Raw } from "../html.js";
+import { ago } from "../shared/age.js";
+import { html, type Raw } from "../shared/html.js";
 import { NOTES_LANGUAGES, PLAY_NOTES_LIMIT, plannedVersion, type Commit, type MobileState, type Platform, type ReleaseRun } from "./model.js";
 
 /** Where each platform's pending version waits to go live. */

@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { CommandOptions, CommandResult, Executor } from "../../src/exec.js";
+import type { CommandOptions, CommandResult, Executor } from "../../src/shared/exec.js";
 import { notesFrom } from "../../src/mobile-release/notes.js";
 import { release, type ReleaseDeps } from "../../src/mobile-release/release.js";
 import { fetchFailed } from "../mobile/errors.js";

@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { localGitForge } from "fleetkit/fleet/assemble";
 import type { FleetConfig } from "fleetkit/fleet/config";
 import { createFleetPage as createPage, type FleetPage, type WakeSource } from "fleetkit/fleet/page";
-import { CACHE_DIR, INFRA_DIR } from "./config.js";
+import { CACHE_DIR, INFRA_DIR } from "./shared/config.js";
 
 /** Keyed on the role, so a second database host inherits it by declaring `role = "mongo"`. */
 export const MONGO_WARNING = "This is the PRODUCTION DATABASE. Activating can restart mongod, and the web tier's change "

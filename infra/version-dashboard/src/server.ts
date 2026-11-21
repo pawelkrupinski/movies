@@ -3,12 +3,12 @@ import { build } from "esbuild";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Autodeploy } from "./autodeploy.js";
-import { AUTODEPLOY, HOST, PORT, ROOT } from "./config.js";
+import { AUTODEPLOY, HOST, PORT, ROOT } from "./shared/config.js";
 import { killRunningCommands as killFleetCommands } from "fleetkit/exec";
-import { killRunningCommands } from "./exec.js";
+import { killRunningCommands } from "./shared/exec.js";
 import { drain, isDraining, runningWork } from "./lifecycle.js";
 import { isLocalHost, isOwnOriginWrite } from "./local-host.js";
-import type { Page } from "./page.js";
+import type { Page } from "./shared/page.js";
 import { createPages } from "./pages.js";
 import { shell } from "./shell.js";
 

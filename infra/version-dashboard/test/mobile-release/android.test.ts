@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { androidStateFrom, internalBuildFor, nextVersionCode, promoteAndroid, type PlayTrack } from "../../src/mobile-release/android.js";
 import { notesFrom } from "../../src/mobile-release/notes.js";
-import { HttpError } from "../../src/http.js";
+import { HttpError } from "../../src/shared/http.js";
 import { FakePlay, fixtureJson } from "./fakes.js";
 
 const tracks = () => (fixtureJson("play-tracks.json") as { tracks: PlayTrack[] }).tracks;

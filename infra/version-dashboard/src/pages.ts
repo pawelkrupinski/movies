@@ -1,6 +1,6 @@
 import { createFleetPage } from "./fleet.js";
 import { createMobilePage } from "./mobile/page.js";
-import type { Page } from "./page.js";
+import type { Page } from "./shared/page.js";
 import { WakeDetector } from "./wake.js";
 
 /** The composition root: the one place sources are built and handed to the pages. The first page

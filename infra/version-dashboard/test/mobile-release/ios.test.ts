@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HttpError } from "../../src/http.js";
+import { HttpError } from "../../src/shared/http.js";
 import { deliveryUuid, existingBuild, iosStateFrom, planIosVersion, submitIos, syncPrivacyPolicyUrls } from "../../src/mobile-release/ios.js";
 import { notesFrom } from "../../src/mobile-release/notes.js";
 import { ascVersions, FakeAsc, fixture, fixtureJson, noSleep } from "./fakes.js";

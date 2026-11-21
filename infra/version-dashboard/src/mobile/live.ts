@@ -2,7 +2,7 @@
  * The mobile page's live state: rebuilt in the background on its own cadence and pushed to every
  * open tab. A request never builds anything.
  */
-import { Store } from "../store.js";
+import { Store } from "../shared/store.js";
 import { buildMobile, nextBuildDelayMs, type MobileSources } from "./build.js";
 import { allPlatformsNetworkFailed, emptyMobileState, type MobileState, type ReleaseRun } from "./model.js";
 import { describeError } from "./network.js";

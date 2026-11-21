@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { keepTail, killRunningCommands, spawnExecutor, STREAMED_OUTPUT_CAP } from "../src/exec.js";
+import { keepTail, killRunningCommands, spawnExecutor, STREAMED_OUTPUT_CAP } from "../src/shared/exec.js";
 
 describe("a command that runs past its timeout", () => {
   it("is killed with everything it started, so a grandchild holding the pipes cannot hang the result", async () => {

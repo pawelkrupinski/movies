@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { setExecutor, spawnExecutor, type Executor } from "../../src/exec.js";
+import { setExecutor, spawnExecutor, type Executor } from "../../src/shared/exec.js";
 import { buildMobile, type MobileSources } from "../../src/mobile/build.js";
 import { fetchMobileTags, mobileTagSha, releaseCommitFor, unreleasedCommits } from "../../src/mobile/git.js";
 import type { Pending, Platform } from "../../src/mobile/model.js";

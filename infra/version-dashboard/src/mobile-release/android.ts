@@ -7,7 +7,7 @@
  * onto ITSELF and reported BUILD SUCCESSFUL. Either way the proof is the same -- read production
  * back in a fresh edit, never trust the exit status.
  */
-import { HttpError } from "../http.js";
+import { HttpError } from "../shared/http.js";
 import type { PlayApi } from "../mobile/stores.js";
 import { PLAY_NOTES_LIMIT, type Notes } from "./notes.js";
 import { isVersion } from "./version.js";

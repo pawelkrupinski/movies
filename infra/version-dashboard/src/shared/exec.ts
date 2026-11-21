@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 
 export interface CommandResult {
   /** Exit code; null when the process was killed (timeout) or could not start. */
@@ -65,6 +65,35 @@ export function killRunningCommands(): number {
 }
 
 /**
+ * Cuts each stream's chunks into complete lines for `onLine`, holding back a stream's unterminated
+ * tail until its next chunk or `flush`. One partial-line buffer PER STREAM: shared, an unterminated
+ * stdout chunk was glued onto the next stderr line, garbling exactly the interleaved output a switch
+ * console shows.
+ */
+function lineSplitter(onLine: (line: string) => void) {
+  const pending = { stdout: "", stderr: "" };
+  return {
+    push(stream: keyof typeof pending, chunk: string): void {
+      const lines = (pending[stream] + chunk).split("\n");
+      pending[stream] = lines.pop() ?? "";
+      for (const line of lines) onLine(line);
+    },
+    flush(): void {
+      for (const rest of [pending.stdout, pending.stderr]) if (rest) onLine(rest);
+    },
+  };
+}
+
+/** SIGKILL everything a child started: its process group, or the child itself once the group is gone. */
+function killProcessGroup(child: ChildProcess): void {
+  try {
+    if (child.pid) process.kill(-child.pid, "SIGKILL");
+  } catch {
+    child.kill("SIGKILL");
+  }
+}
+
+/**
  * Run a command. NEVER THROWS: a process that could not start, exited non-zero or timed out is a
  * result the caller has to look at, which is the point -- nothing here can be swallowed by accident.
  */
@@ -89,32 +118,20 @@ export const spawnExecutor: Executor = (argv, options) =>
     let stdout = "";
     let stderr = "";
     const append = (buffer: string, chunk: string) => (options.onLine ? keepTail(buffer, chunk, STREAMED_OUTPUT_CAP) : buffer + chunk);
-    // One partial-line buffer PER STREAM: shared, an unterminated stdout chunk was glued onto the
-    // next stderr line, garbling exactly the interleaved output a switch console shows.
-    const pending = { stdout: "", stderr: "" };
+    const lines = options.onLine ? lineSplitter(options.onLine) : undefined;
     let timedOut = false;
-    const emit = (stream: keyof typeof pending, chunk: string) => {
-      if (!options.onLine) return;
-      const lines = (pending[stream] + chunk).split("\n");
-      pending[stream] = lines.pop() ?? "";
-      lines.forEach((line) => options.onLine?.(line));
-    };
     child.stdout.setEncoding("utf8").on("data", (chunk: string) => {
       stdout = append(stdout, chunk);
-      emit("stdout", chunk);
+      lines?.push("stdout", chunk);
     });
     child.stderr.setEncoding("utf8").on("data", (chunk: string) => {
       if (options.mergeStderr) stdout = append(stdout, chunk);
       else stderr = append(stderr, chunk);
-      emit("stderr", chunk);
+      lines?.push("stderr", chunk);
     });
     const timer = setTimeout(() => {
       timedOut = true;
-      try {
-        if (child.pid) process.kill(-child.pid, "SIGKILL");
-      } catch {
-        child.kill("SIGKILL"); // the group is already gone; make sure the child is too
-      }
+      killProcessGroup(child);
     }, options.timeoutMs);
     child.on("error", (error) => {
       clearTimeout(timer);
@@ -124,7 +141,7 @@ export const spawnExecutor: Executor = (argv, options) =>
     child.on("close", (code) => {
       clearTimeout(timer);
       if (group) running.delete(group);
-      for (const rest of [pending.stdout, pending.stderr]) if (rest) options.onLine?.(rest);
+      lines?.flush();
       resolvePromise({ code, stdout, stderr, timedOut });
     });
     child.stdin.on("error", () => {}); // a process that exits without reading stdin is not an error

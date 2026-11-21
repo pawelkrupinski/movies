@@ -13,7 +13,7 @@
  */
 import { readFileSync, watch, type FSWatcher } from "node:fs";
 import { join, relative } from "node:path";
-import { describeFailure, runCommand } from "./exec.js";
+import { describeFailure, runCommand } from "./shared/exec.js";
 
 /** What the running server is built from. Tests, docs and the plists do not change it. */
 export const WATCHED = ["src", "web", "package.json", "package-lock.json", "tsconfig.json"] as const;

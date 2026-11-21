@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Autodeploy, isSource } from "../src/autodeploy.js";
-import { setExecutor, type CommandResult, type Executor } from "../src/exec.js";
+import { setExecutor, type CommandResult, type Executor } from "../src/shared/exec.js";
 
 let restore: Executor | null = null;
 let ran: string[] = [];

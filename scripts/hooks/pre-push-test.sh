@@ -18,8 +18,8 @@ check "a version-dashboard source runs the JS/TS quality ratchet" "jsquality" "$
 check "...and so do its baseline and the measure" "jsquality" "$(plan test/resources/js-quality-baseline.tsv)"
 check "a version-dashboard test is reported, not gated: no check" "" "$(plan infra/version-dashboard/test/mobile/view.test.ts)"
 check "a page spec's JS is not gated by the JS/TS quality ratchet" "eslint sbt" "$(plan web/src/page/resources/listing/grid.js)"
-check "--js-quality-plan keeps the production JS/TS alone" "web/src/main/assets/js/i18n.js infra/version-dashboard/src/exec.ts" \
-  "$(printf '%s\n' web/src/main/assets/js/i18n.js page-tests-playwright/tests/a.spec.ts infra/version-dashboard/src/exec.ts \
+check "--js-quality-plan keeps the production JS/TS alone" "web/src/main/assets/js/i18n.js infra/version-dashboard/src/shared/exec.ts" \
+  "$(printf '%s\n' web/src/main/assets/js/i18n.js page-tests-playwright/tests/a.spec.ts infra/version-dashboard/src/shared/exec.ts \
      infra/version-dashboard/test/a.test.ts | "$REPO_ROOT/scripts/hooks/pre-push" --js-quality-plan | tr '\n' ' ' | sed 's/ $//')"
 # ...and the sbt check: CinemaRosterAuditSpec reads data/pl/venues.json (its lint-registry row names the file)
 check "a roster source runs the generated-artefact drift check, the roster generators' self-tests, and its reader spec" "drift scripttests sbt" "$(plan data/pl/venues.json)"

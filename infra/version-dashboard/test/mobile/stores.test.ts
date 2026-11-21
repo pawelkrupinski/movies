@@ -1,6 +1,6 @@
 import { generateKeyPairSync, verify } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { HttpError, setHttpClient, type HttpClient, type HttpRequest } from "../../src/http.js";
+import { HttpError, setHttpClient, type HttpClient, type HttpRequest } from "../../src/shared/http.js";
 import {
   androidReleaseState,
   ascApi,
@@ -18,7 +18,7 @@ import {
 } from "../../src/mobile/stores.js";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { CommandOptions, CommandResult } from "../../src/exec.js";
+import type { CommandOptions, CommandResult } from "../../src/shared/exec.js";
 import { dnsFailure } from "./errors.js";
 
 const NOW_MS = 1_790_000_000_000;

@@ -1,5 +1,5 @@
-import { escapeHtml } from "./html.js";
-import type { Page } from "./page.js";
+import { escapeHtml } from "./shared/html.js";
+import type { Page } from "./shared/page.js";
 
 /**
  * One page's document. A NAV ACROSS EVERY PAGE, so this stays discoverable as one dashboard rather

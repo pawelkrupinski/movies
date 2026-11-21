@@ -11,8 +11,8 @@
 import { createPrivateKey, sign } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { runCommand, type Executor } from "../exec.js";
-import { httpRequest, type HttpRequest } from "../http.js";
+import { runCommand, type Executor } from "../shared/exec.js";
+import { httpRequest, type HttpRequest } from "../shared/http.js";
 import type { Pending } from "./model.js";
 import { describeError, isTransientNetworkError, withNetworkRetries } from "./network.js";
 

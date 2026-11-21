@@ -2,8 +2,8 @@
  * The git half of the mobile page: which commit shipped each store's live version, and what has
  * landed in that platform's directory since.
  */
-import { RELEASE_REMOTE } from "../config.js";
-import { runCommand } from "../exec.js";
+import { RELEASE_REMOTE } from "../shared/config.js";
+import { runCommand } from "../shared/exec.js";
 import type { Commit } from "./model.js";
 
 const GIT_TIMEOUT_MS = 30_000;

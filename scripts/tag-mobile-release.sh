@@ -29,7 +29,7 @@ if ! git -C "$repo_root" tag -f "$tag" "$sha" >/dev/null 2>&1; then
   warn "could not create tag $tag locally — not pushing"
   exit 0
 fi
-# The same remote as RELEASE_REMOTE in infra/version-dashboard/src/config.ts.
+# The same remote as RELEASE_REMOTE in infra/version-dashboard/src/shared/config.ts.
 remote=origin
 git -C "$repo_root" push -f "$remote" "$tag" >/dev/null 2>&1 \
   || warn "could not push tag $tag — push it manually: git push -f $remote $tag"

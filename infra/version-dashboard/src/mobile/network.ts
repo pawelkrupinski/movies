@@ -3,7 +3,7 @@
  * floor and the self-restart all key off.
  */
 
-import { HttpError } from "../http.js";
+import { HttpError } from "../shared/http.js";
 
 /** Codes Node and undici give a round trip the network refused before any server answered. */
 const TRANSIENT_CODES = new Set([

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { Page } from "../src/page.js";
+import type { Page } from "../src/shared/page.js";
 import { shell } from "../src/shell.js";
-import { Store } from "../src/store.js";
+import { Store } from "../src/shared/store.js";
 
 const pageOf = (name: string, path: string, state: unknown): Page<unknown> => ({
   name, path, title: name.toUpperCase(), store: new Store(state, () => 0),

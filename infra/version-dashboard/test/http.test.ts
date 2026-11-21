@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { HttpError, httpRequest, setHttpClient, type HttpClient } from "../src/http.js";
+import { HttpError, httpRequest, setHttpClient, type HttpClient } from "../src/shared/http.js";
 
 // httpRequest used to hand back any status for the caller to interpret -- the shape that let a
 // failed read be read as "no data". A non-2xx now throws unless the caller names it.
