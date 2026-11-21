@@ -51,6 +51,52 @@ function t(key, args) {
 }
 window.t = t;
 
+// The `[data-i18n]` elements' text (or HTML, with `data-i18n-html`) and the
+// `[data-i18n-attr]` elements' attributes (`attr:key;attr:key`), in the current language.
+function translateMarkedElements() {
+  var textEls = document.querySelectorAll('[data-i18n]');
+  for (var i = 0; i < textEls.length; i++) {
+    var el = textEls[i];
+    var text = t(el.getAttribute('data-i18n'), i18nArgs(el));
+    if (el.hasAttribute('data-i18n-html')) el.innerHTML = text;
+    else el.textContent = text;
+  }
+  var attrEls = document.querySelectorAll('[data-i18n-attr]');
+  for (var j = 0; j < attrEls.length; j++) {
+    var attrEl = attrEls[j];
+    var attrArgs = i18nArgs(attrEl);
+    attrEl.getAttribute('data-i18n-attr').split(';').forEach(function(pair) {
+      var sep = pair.indexOf(':');
+      if (sep >= 0) attrEl.setAttribute(pair.slice(0, sep), t(pair.slice(sep + 1), attrArgs));
+    });
+  }
+}
+
+// An element's `data-i18n-arg0`/`-arg1`, the ones it has.
+function i18nArgs(el) {
+  return [el.getAttribute('data-i18n-arg0'), el.getAttribute('data-i18n-arg1')]
+    .filter(function(a) { return a !== null; });
+}
+
+// Date headers (`.date-label`) and the plural showtime noun are derived
+// from KINOWO_LOCALE, not `[data-i18n]` text — they're computed from the
+// raw date/count, not a translated string. Splice the picked language's
+// arrays IN PLACE (never reassign `KINOWO_LOCALE.day2 = …`) so `js/shared/`'s
+// `DAY2`/`MONTHS` — captured once as references to these same arrays —
+// pick the change up without `js/shared/` needing its own applyLanguage hook.
+function adoptLocaleArrays(code) {
+  var pageLocale = typeof KINOWO_LOCALE !== 'undefined' && KINOWO_LOCALE.locales && KINOWO_LOCALE.locales[code];
+  if (!pageLocale) return;
+  [['day2', pageLocale.day2], ['daysFull', pageLocale.daysFull], ['months', pageLocale.months]]
+    .forEach(function(pair) {
+      var arr = KINOWO_LOCALE[pair[0]];
+      arr.length = 0;
+      Array.prototype.push.apply(arr, pair[1]);
+    });
+  KINOWO_LOCALE.plural   = pageLocale.plural;
+  KINOWO_LOCALE.showtime = pageLocale.showtime;
+}
+
 // Applies `code` to every `[data-i18n]`/`[data-i18n-attr]` element on the
 // page, updates `<html lang>` and the picker's own value (where present —
 // only pages with an in-page `<select id="language-select">` have one).
@@ -58,42 +104,8 @@ window.t = t;
 function applyLanguage(code) {
   if (!I18N_PACKS[code]) return;
   currentLang = code;
-  var textEls = document.querySelectorAll('[data-i18n]');
-  for (var i = 0; i < textEls.length; i++) {
-    var el = textEls[i];
-    var args = [el.getAttribute('data-i18n-arg0'), el.getAttribute('data-i18n-arg1')]
-      .filter(function(a) { return a !== null; });
-    var text = t(el.getAttribute('data-i18n'), args);
-    if (el.hasAttribute('data-i18n-html')) el.innerHTML = text;
-    else el.textContent = text;
-  }
-  var attrEls = document.querySelectorAll('[data-i18n-attr]');
-  for (var j = 0; j < attrEls.length; j++) {
-    var attrEl = attrEls[j];
-    var attrArgs = [attrEl.getAttribute('data-i18n-arg0'), attrEl.getAttribute('data-i18n-arg1')]
-      .filter(function(a) { return a !== null; });
-    attrEl.getAttribute('data-i18n-attr').split(';').forEach(function(pair) {
-      var sep = pair.indexOf(':');
-      if (sep >= 0) attrEl.setAttribute(pair.slice(0, sep), t(pair.slice(sep + 1), attrArgs));
-    });
-  }
-  // Date headers (`.date-label`) and the plural showtime noun are derived
-  // from KINOWO_LOCALE, not `[data-i18n]` text — they're computed from the
-  // raw date/count, not a translated string. Splice the picked language's
-  // arrays IN PLACE (never reassign `KINOWO_LOCALE.day2 = …`) so `js/shared/`'s
-  // `DAY2`/`MONTHS` — captured once as references to these same arrays —
-  // pick the change up without `js/shared/` needing its own applyLanguage hook.
-  var pageLocale = typeof KINOWO_LOCALE !== 'undefined' && KINOWO_LOCALE.locales && KINOWO_LOCALE.locales[code];
-  if (pageLocale) {
-    [['day2', pageLocale.day2], ['daysFull', pageLocale.daysFull], ['months', pageLocale.months]]
-      .forEach(function(pair) {
-        var arr = KINOWO_LOCALE[pair[0]];
-        arr.length = 0;
-        Array.prototype.push.apply(arr, pair[1]);
-      });
-    KINOWO_LOCALE.plural   = pageLocale.plural;
-    KINOWO_LOCALE.showtime = pageLocale.showtime;
-  }
+  translateMarkedElements();
+  adoptLocaleArrays(code);
   document.documentElement.lang = code;
   var select = document.getElementById('language-select');
   if (select) select.value = code;

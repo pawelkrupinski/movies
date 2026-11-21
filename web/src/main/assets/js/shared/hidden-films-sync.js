@@ -126,6 +126,7 @@ const _hiddenFilmsWrites = {};
 // How many writes each country has been asked for on this page — how a
 // reconcile tells that an edit was made while its fetch was out.
 const _hiddenFilmsEdits = {};
+function _editCount(country) { return _hiddenFilmsEdits[country] || 0; }
 
 // The one request shape every hiddenFilms write shares. A write that never
 // landed (offline, 401, 5xx) leaves localStorage ahead of the server, so the
@@ -133,7 +134,7 @@ const _hiddenFilmsEdits = {};
 // reconcile takes the server's answer instead of 304-ing onto the drift.
 function _writeHiddenFilms(method, country, title) {
   country = country || currentCountryCode();
-  _hiddenFilmsEdits[country] = (_hiddenFilmsEdits[country] || 0) + 1;
+  _hiddenFilmsEdits[country] = _editCount(country) + 1;
   const key = title === undefined ? null : title;
   if (!isLoggedIn()) {
     // A page that could not confirm the session (offline) of a visitor who
@@ -182,71 +183,79 @@ function hideFilmOnServer(title, country)   { _writeHiddenFilms('PUT', country, 
 function unhideFilmOnServer(title, country) { _writeHiddenFilms('DELETE', country, title); }
 function clearHiddenFilmsOnServer(country)  { _writeHiddenFilms('DELETE', country); }
 
-async function bootMergeFromServer(attempt) {
+async function bootMergeFromServer(attempt = 0) {
   const country = currentCountryCode();
-  const edits   = _hiddenFilmsEdits[country] || 0;
+  const edits   = _editCount(country);
   // Signed out as far as this page can tell, but only because `/api/me`
   // could not be asked: nothing here is known to be over, so nothing is
   // forgotten either.
   if (whoIsLookingIsUnknown()) return;
-  if (!isLoggedIn()) {
-    // Anonymous (incl. just-logged-out): re-arm migration for EVERY country
-    // so the next login carries this device's current local picks up
-    // exactly once, and drop writes owed to the account just left.
-    try {
-      Object.keys(localStorage)
-        .filter(k => k.indexOf(_hiddenFilmsSyncedKey('')) === 0 || k.indexOf(_hiddenFilmsPendingKey('')) === 0)
-        .forEach(k => localStorage.removeItem(k));
-      forgetPendingLanguage();
-    } catch {}
-    return;
-  }
+  if (!isLoggedIn()) { _forgetAccountSyncState(); return; }
   try {
     const firstSync = localStorage.getItem(_hiddenFilmsSyncedKey(country)) !== '1';
-    const headers = { 'Accept': 'application/json' };
-    if (!firstSync) {
-      const etag = localStorage.getItem(_hiddenFilmsEtagKey(country));
-      const lastModified = localStorage.getItem(_hiddenFilmsLastModifiedKey(country));
-      if (etag) headers['If-None-Match'] = etag;
-      else if (lastModified) headers['If-Modified-Since'] = lastModified;
-    }
-
-    const resp = await fetch(_hiddenFilmsUrl(country), { headers });
+    const resp = await fetch(_hiddenFilmsUrl(country), { headers: _hiddenFilmsReadHeaders(country, firstSync) });
     if (resp.status === 304) return; // proven unchanged — localStorage is already current
     if (!resp.ok) return;
     const remote = await resp.json();
     // An edit made while the fetch was out is in the local list but maybe not
     // in this answer, which replacing the list with would undo on screen. Ask
-    // again once the writes queued meanwhile have gone (bounded: a visitor
-    // cannot keep editing faster than a round trip for long).
-    if ((_hiddenFilmsEdits[country] || 0) !== edits) {
-      if ((attempt || 0) >= 3) return;
-      await (_hiddenFilmsWrites[country] || Promise.resolve());
-      return bootMergeFromServer((attempt || 0) + 1);
-    }
-
+    // again once the writes queued meanwhile have gone.
+    if (_editCount(country) !== edits) return _mergeAgainAfterWrites(country, attempt);
     _storeHiddenFilmsValidators(country, resp);
-
-    // A first sync unions this country's local list in; after that the
-    // server's list replaces it (server authoritative, so removals
-    // propagate). Either way the writes this device still owes (see the
-    // comment at the top) are played over the result and sent again — in
-    // order, as every write is (see `_writeHiddenFilms`) — and only then
-    // does the union migrate up what the list holds that the server does
-    // not (there is no bulk write any more). A first sync with writes owed
-    // is a page that could not reach the server before: without them the
-    // union would bring back what they removed. `setHidden` is a pure
-    // local write, so nothing is sent back out from here but the above.
-    const serverList = remote.hiddenFilms || [];
-    const pending    = _pendingHiddenFilms(country);
-    const list       = _withPending(firstSync ? [...new Set([...getHidden(country), ...serverList])] : serverList, pending).sort();
-    setHidden(list, country);
-    const localOnly  = firstSync ? list.filter(t => !serverList.includes(t)) : [];
-    pending.forEach(([method, title]) => _writeHiddenFilms(method, country, title === null ? undefined : title));
-    localOnly.forEach(title => hideFilmOnServer(title, country));
-    try { localStorage.setItem(_hiddenFilmsSyncedKey(country), '1'); } catch {}
-
+    _mergeServerHiddenFilms(country, remote.hiddenFilms || [], firstSync);
     applyFilters();
     updateFormatBtn();   // the merged hidden set may light or clear the funnel
   } catch (e) { /* network blew up — localStorage is still usable */ }
+}
+
+// At most three times: a visitor cannot keep editing faster than a round trip for long.
+async function _mergeAgainAfterWrites(country, attempt) {
+  if (attempt >= 3) return;
+  await (_hiddenFilmsWrites[country] || Promise.resolve());
+  return bootMergeFromServer(attempt + 1);
+}
+
+// Anonymous (incl. just-logged-out): re-arm migration for EVERY country
+// so the next login carries this device's current local picks up
+// exactly once, and drop writes owed to the account just left.
+function _forgetAccountSyncState() {
+  try {
+    Object.keys(localStorage)
+      .filter(k => k.indexOf(_hiddenFilmsSyncedKey('')) === 0 || k.indexOf(_hiddenFilmsPendingKey('')) === 0)
+      .forEach(k => localStorage.removeItem(k));
+    forgetPendingLanguage();
+  } catch {}
+}
+
+// After the first sync, the server's list is asked for only if it changed since the last answer.
+function _hiddenFilmsReadHeaders(country, firstSync) {
+  const headers = { 'Accept': 'application/json' };
+  if (firstSync) return headers;
+  try {
+    const etag = localStorage.getItem(_hiddenFilmsEtagKey(country));
+    const lastModified = localStorage.getItem(_hiddenFilmsLastModifiedKey(country));
+    if (etag) headers['If-None-Match'] = etag;
+    else if (lastModified) headers['If-Modified-Since'] = lastModified;
+  } catch {}
+  return headers;
+}
+
+// A first sync unions this country's local list in; after that the
+// server's list replaces it (server authoritative, so removals
+// propagate). Either way the writes this device still owes (see the
+// comment at the top) are played over the result and sent again — in
+// order, as every write is (see `_writeHiddenFilms`) — and only then
+// does the union migrate up what the list holds that the server does
+// not (there is no bulk write any more). A first sync with writes owed
+// is a page that could not reach the server before: without them the
+// union would bring back what they removed. `setHidden` is a pure
+// local write, so nothing is sent back out from here but the above.
+function _mergeServerHiddenFilms(country, serverList, firstSync) {
+  const pending    = _pendingHiddenFilms(country);
+  const list       = _withPending(firstSync ? [...new Set([...getHidden(country), ...serverList])] : serverList, pending).sort();
+  setHidden(list, country);
+  const localOnly  = firstSync ? list.filter(t => !serverList.includes(t)) : [];
+  pending.forEach(([method, title]) => _writeHiddenFilms(method, country, title === null ? undefined : title));
+  localOnly.forEach(title => hideFilmOnServer(title, country));
+  try { localStorage.setItem(_hiddenFilmsSyncedKey(country), '1'); } catch {}
 }

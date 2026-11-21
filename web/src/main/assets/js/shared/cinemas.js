@@ -275,10 +275,6 @@ function maybeShowAreaPicker() {
 function showAreaPicker() {
   const areas = window.CINEMA_AREAS || [];
   if (!areas.length || document.getElementById('area-picker-overlay')) return;
-  const loc = {
-    title: window.t('areaPicker.title'), subtitle: window.t('areaPicker.subtitle'),
-    all: window.t('areaPicker.all'), confirm: window.t('areaPicker.confirm'),
-  };
 
   // A `.modal-dialog` (`_sharedStyles`): focus held in it, the page behind
   // inert. Escape closes it for this visit without remembering a choice, so
@@ -291,51 +287,14 @@ function showAreaPicker() {
   const modal = document.createElement('div');
   modal.style.cssText = 'width:100%;max-width:420px;max-height:85vh;overflow:auto;background:#14142e;' +
     'border:1px solid #2a2a5e;border-radius:14px;padding:20px;';
-  const title = document.createElement('h2');
-  title.style.cssText = 'font-size:1.25rem;margin:0 0 .25rem;';
-  title.textContent = loc.title || 'Choose areas';
-  const sub = document.createElement('p');
-  sub.style.cssText = 'color:#9a9ac0;font-size:.9rem;margin:0 0 1rem;';
-  sub.textContent = loc.subtitle || '';
-  modal.appendChild(title);
-  modal.appendChild(sub);
+  appendAreaPickerHeading(modal);
 
-  const rowCss = 'display:flex;align-items:center;gap:.6rem;padding:.6rem .2rem;' +
-    'font-size:1.05rem;border-bottom:1px solid #23234d;cursor:pointer;';
-
-  const allLabel = document.createElement('label');
-  allLabel.style.cssText = rowCss + 'font-weight:600;';
-  const allCb = document.createElement('input');
-  allCb.type = 'checkbox';
-  allCb.autocomplete = 'off';
-  allCb.checked = true;
+  const allCb = areaPickerRow(modal, window.t('areaPicker.all') || 'All areas', null);
   allCb.id = 'area-picker-all';
-  const allName = document.createElement('span');
-  allName.textContent = loc.all || 'All areas';
-  allLabel.appendChild(allCb);
-  allLabel.appendChild(allName);
-  modal.appendChild(allLabel);
-
-  const boxes = [];
-  areas.forEach(area => {
-    const label = document.createElement('label');
-    label.style.cssText = rowCss;
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.autocomplete = 'off';
-    cb.checked = true;                                       // all pre-selected
+  const boxes = areas.map(area => {
+    const cb = areaPickerRow(modal, area.name, area.cinemas.length);
     cb.dataset.areaSlug = area.slug;
-    cb.onchange = syncAreaPickerAll;
-    const name = document.createElement('span');
-    name.textContent = area.name;
-    const count = document.createElement('span');
-    count.style.cssText = 'margin-left:auto;color:#6f6f9c;font-size:.85rem;';
-    count.textContent = area.cinemas.length;
-    label.appendChild(cb);
-    label.appendChild(name);
-    label.appendChild(count);
-    modal.appendChild(label);
-    boxes.push({ cb, area });
+    return { cb, area };
   });
 
   // Select all / deselect all. A click on a partly-filled box reads
@@ -347,19 +306,63 @@ function showAreaPicker() {
     allCb.indeterminate = false;
     boxes.forEach(({ cb }) => { cb.checked = allCb.checked; });
   };
-  function syncAreaPickerAll() {
+  const syncAreaPickerAll = () => {
     const picked = boxes.filter(({ cb }) => cb.checked).length;
     allCb.checked = picked === boxes.length;
     allCb.indeterminate = picked > 0 && picked < boxes.length;
-  }
+  };
+  boxes.forEach(({ cb }) => { cb.onchange = syncAreaPickerAll; });
 
+  modal.appendChild(areaPickerConfirm(overlay, boxes));
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+  overlay.showModal();
+}
+
+function appendAreaPickerHeading(modal) {
+  const title = document.createElement('h2');
+  title.style.cssText = 'font-size:1.25rem;margin:0 0 .25rem;';
+  title.textContent = window.t('areaPicker.title') || 'Choose areas';
+  const sub = document.createElement('p');
+  sub.style.cssText = 'color:#9a9ac0;font-size:.9rem;margin:0 0 1rem;';
+  sub.textContent = window.t('areaPicker.subtitle') || '';
+  modal.appendChild(title);
+  modal.appendChild(sub);
+}
+
+// One row of the area picker, its checkbox (returned) pre-checked: the master
+// row (bold, no count) when `count` is null, else an area with its cinema count.
+function areaPickerRow(modal, name, count) {
+  const label = document.createElement('label');
+  label.style.cssText = 'display:flex;align-items:center;gap:.6rem;padding:.6rem .2rem;' +
+    'font-size:1.05rem;border-bottom:1px solid #23234d;cursor:pointer;' + (count === null ? 'font-weight:600;' : '');
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.autocomplete = 'off';
+  cb.checked = true;                                         // all pre-selected
+  const nameSpan = document.createElement('span');
+  nameSpan.textContent = name;
+  label.appendChild(cb);
+  label.appendChild(nameSpan);
+  if (count !== null) {
+    const countSpan = document.createElement('span');
+    countSpan.style.cssText = 'margin-left:auto;color:#6f6f9c;font-size:.85rem;';
+    countSpan.textContent = count;
+    label.appendChild(countSpan);
+  }
+  modal.appendChild(label);
+  return cb;
+}
+
+// The picker's confirm button: disables the cinemas of every UNCHECKED area,
+// leaving other cities' entries untouched (default, all checked: nothing
+// disabled), and remembers that this city's areas were chosen.
+function areaPickerConfirm(overlay, boxes) {
   const btn = document.createElement('button');
   btn.style.cssText = 'margin-top:1.1rem;width:100%;padding:.8rem;font:inherit;font-size:1rem;' +
     'font-weight:600;color:#0d0d22;background:#e7b93a;border:none;border-radius:10px;cursor:pointer;';
-  btn.textContent = loc.confirm || 'Show';
+  btn.textContent = window.t('areaPicker.confirm') || 'Show';
   btn.onclick = () => {
-    // Disable the cinemas of every UNCHECKED area, leaving other cities'
-    // entries untouched. Default (all checked) → nothing disabled.
     const disable = [];
     boxes.forEach(({ cb, area }) => { if (!cb.checked) disable.push(...area.cinemas); });
     setDisabledCinemas(disabledCinemasElsewhere().concat(disable));
@@ -369,10 +372,7 @@ function showAreaPicker() {
     updateFormatBtn();
     applyFilters();
   };
-  modal.appendChild(btn);
-  overlay.appendChild(modal);
-  document.body.appendChild(overlay);
-  overlay.showModal();
+  return btn;
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────

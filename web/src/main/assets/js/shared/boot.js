@@ -1,7 +1,7 @@
 // Booting the page once the document is parsed: index and filter the grid, then ask who is looking.
 
 /* global rememberCity */  // city.js
-/* global resetSubmenuPanels, updateFormatBtn */  // filters.js
+/* global resetSubmenuPanels */  // filters.js
 /* global refreshHiddenFilmsControls */  // hidden-films.js
 /* global buildCinemaPanel, maybeShowAreaPicker */  // cinemas.js
 /* global hydrateAuth, settleSignOut */  // auth.js
@@ -35,8 +35,7 @@ function bootView() {
   // URL → controls AFTER the picker is built so checkbox updates land on real
   // DOM nodes; then one `applyFilters()` pass renders the grid already
   // filtered.
-  applyFiltersFromURL();
-  updateFormatBtn();
+  applyFiltersFromURL();   // ends by lighting the funnel for what it applied
   // Record the boot day so the carousel can derive slide direction from the
   // displayed day, and sync the pills to the URL-applied day (the eager
   // DOMContentLoaded sync ran before `applyFiltersFromURL`).

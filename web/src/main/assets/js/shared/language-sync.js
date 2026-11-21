@@ -122,9 +122,8 @@ document.addEventListener('visibilitychange', () => {
 // becomes the account's. Tested separately from the two hiddenFilms
 // reconcile tests so a change to one never masks a regression in the
 // other.
-async function reconcileLanguage(opts) {
+async function reconcileLanguage({ adoptOnly = false } = {}) {
   if (!isLoggedIn()) return;
-  const adoptOnly = !!(opts && opts.adoptOnly);
   // A pick the account has not confirmed is newer than anything it holds:
   // push it rather than let the account's value overwrite it.
   if (_pendingLanguage()) return pushStateToServer();
@@ -133,12 +132,20 @@ async function reconcileLanguage(opts) {
     if (!resp.ok) return;
     const remote = await resp.json();
     if (_pendingLanguage()) return pushStateToServer(); // picked while the fetch was out
+    _settleLanguage(remote.language, adoptOnly);
+  } catch (e) { /* network blew up — localStorage is still usable */ }
+}
+
+// The account's pick wins whenever it has one; otherwise this device's own
+// pick, if any, becomes the account's (unless only adopting).
+function _settleLanguage(accountLanguage, adoptOnly) {
+  try {
     const localLang = localStorage.getItem('kinowo_lang');
-    if (remote.language && remote.language !== localLang) {
-      localStorage.setItem('kinowo_lang', remote.language);
-      if (typeof window.applyLanguage === 'function') window.applyLanguage(remote.language);
-    } else if (!remote.language && localLang && !adoptOnly) {
+    if (accountLanguage && accountLanguage !== localLang) {
+      localStorage.setItem('kinowo_lang', accountLanguage);
+      if (typeof window.applyLanguage === 'function') window.applyLanguage(accountLanguage);
+    } else if (!accountLanguage && localLang && !adoptOnly) {
       pushStateToServer();
     }
-  } catch (e) { /* network blew up — localStorage is still usable */ }
+  } catch { /* storage blocked — nothing to settle against */ }
 }

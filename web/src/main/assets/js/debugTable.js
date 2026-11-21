@@ -16,9 +16,7 @@
 // today, but never assumed to be the only such table `wireExpandableTable`
 // is ever asked to drive).
 function wireExpandableTable(tableSelector, onExpand, onCollapse) {
-  function rows() {
-    return document.querySelectorAll(tableSelector + ' tbody tr.data');
-  }
+  const rowSelector = tableSelector + ' tbody tr.data';
 
   // Wired per-row rather than via one delegated listener because
   // `debug.scala.html` needs to re-wire a SINGLE row a change-stream frame
@@ -33,11 +31,11 @@ function wireExpandableTable(tableSelector, onExpand, onCollapse) {
       if (expanded) onExpand(tr); else onCollapse(tr);
     });
   }
-  rows().forEach(wireRow);
+  document.querySelectorAll(rowSelector).forEach(wireRow);
 
   function filterRows(q) {
     const lq = q.trim().toLowerCase();
-    rows().forEach(tr => {
+    document.querySelectorAll(rowSelector).forEach(tr => {
       const hit = lq.length === 0 || tr.dataset.haystack.includes(lq);
       tr.classList.toggle('hidden', !hit);
       // A filtered-out row collapses so the layout stays tight and its
