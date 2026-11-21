@@ -93,10 +93,18 @@ object StageRelays {
   /** EVERY way the listing and the film bill the longest work they share under banners, in
    *  [[billing]]'s order: a record carrying its broadcast title beside an alternative streaming
    *  title ("National Theatre at Home: …") bills the work under both. */
-  def billings(listing: MeasuredListing, film: Film): Seq[Billing] = {
-    val works = (listing.billedWorks intersect film.billedWorksBesideLabels).toSeq.sortBy(work => (-work.length, work.mkString(" ")))
-    works.iterator.map(work => billedUnder(listing, work, film, work, work.mkString)).find(_.nonEmpty).getOrElse(Nil)
-  }
+  def billings(listing: MeasuredListing, film: Film): Seq[Billing] =
+    if (listing.banneredWorks.isEmpty) Nil   // no work of its own under a banner: it bills none, against any film
+    else {
+      val works = listing.banneredWorks.filter(film.billedWorks).filterNot(broadcastLabel).toSeq.sortBy(work => (-work.length, work.mkString(" ")))
+      works.iterator.map(work => billedUnder(listing, work, film, work, work.mkString)).find(_.nonEmpty).getOrElse(Nil)
+    }
+
+  /** The works of `listing`'s that one of its own titles puts a banner on ([[bannerOf]]): the only ones it can bill
+   *  ([[billedUnder]] yields nothing for another). Most listings bill a work under none, and then no film's works need be
+   *  read -- the billings of a take-up read every reached film's (docs/design/corpus-context-persistence.md). */
+  private[identity] def banneredWorks(listing: MeasuredListing): Set[Seq[String]] =
+    listing.billedWorks.filter(work => listing.billedTitles.exists(bannerOf(_, work).isDefined))
 
   /** A piece that is only how a broadcast is screened — the label a relay's records end on ("…: LIVE VIEWING"), whole
    *  ([[services.titles.NonMovieEventClassifier.isBroadcastLabel]]) — is no work two titles bill alike: the banners
@@ -126,10 +134,10 @@ object StageRelays {
    *  Metropolitan Opera 2026/27: Macbeth". What a season's banner is learned from ([[Houses.evidence]]): billed by its
    *  literal works alone, Kino 1410's Met banner met only Royal Ballet & Opera's records of "Carmen" and "Così fan
    *  tutte", and was learned as RBO's — whose season productions it then took. */
-  def stageBilling(listing: MeasuredListing, film: Film): Option[Billing] = {
+  def stageBilling(listing: MeasuredListing, film: Film): Option[Billing] = if (listing.banneredWorks.isEmpty) None else {
     def staged(works: Set[Seq[String]]) = works.toSeq.flatMap(work => StageWorks.resolver.named(key(work.mkString(" "))).map(_ -> work))
     val filmWorks = staged(film.billedWorks).groupMap(_._1)(_._2)
-    staged(listing.billedWorks).sortBy { case (id, work) => (-work.length, id, work.mkString(" ")) }.iterator
+    staged(listing.banneredWorks).sortBy { case (id, work) => (-work.length, id, work.mkString(" ")) }.iterator
       .map { case (id, listingWork) => filmWorks.getOrElse(id, Nil).sortBy(_.mkString(" ")).flatMap(billedUnder(listing, listingWork, film, _, s"work:$id")) }
       .find(_.nonEmpty).flatMap(_.headOption)
   }

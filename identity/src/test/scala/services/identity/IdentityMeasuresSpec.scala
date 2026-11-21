@@ -1571,12 +1571,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(dracula, Film("The Mummy"))("originalTitle") shouldBe Category("disjoint")
   }
 
-  "a record's billed works beside its broadcast labels" should "be its billed works but a broadcast's label, read once per record" in {
+  "a billing" should "bill no broadcast's label as the work both titles share" in {
     val record = Film("BTS World Tour 'Arirang' in Buenos Aires: Live Viewing")
     record.billedWorks.exists(StageRelays.broadcastLabel) shouldBe true
-    record.billedWorksBesideLabels shouldBe record.billedWorks.filterNot(StageRelays.broadcastLabel)
-    record.billedWorksBesideLabels should not be empty
-    // what a billing reads is the works both bill, the label aside, as it was before the filter moved to the record
     val bts = MeasuredListing("BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING")
     StageRelays.billings(bts, record).map(_.work).toSet.intersect(Set("liveviewing", "live viewing")) shouldBe empty
   }
