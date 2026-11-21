@@ -15,10 +15,12 @@ import services.identity.vocabulary.Denial
 object RuleAblation {
   private val off: ThreadLocal[Set[String]] = ThreadLocal.withInitial(() => Set.empty[String])
 
-  /** `run` with `rules` switched off on this thread, and every rule back on after it, however it ends. */
+  /** `run` with `rules` switched off on this thread, and the switches before it back after it, however it ends: a
+   *  nested ablation leaves its caller's standing. */
   def disabling[A](rules: Set[String])(run: => A): A = {
+    val outer = off.get
     off.set(rules)
-    try run finally off.remove()
+    try run finally off.set(outer)
   }
 
   /** The rules switched off on this thread: what a caller hands its own worker threads ([[disabling]] there). */

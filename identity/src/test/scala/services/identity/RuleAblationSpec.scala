@@ -24,6 +24,14 @@ class RuleAblationSpec extends AnyFlatSpec with Matchers {
     RuleAblation.disables("veto:a-b") shouldBe false
   }
 
+  "a nested ablation" should "hand the outer one's switches back once it ends" in {
+    RuleAblation.disabling(Set("veto:outer")) {
+      RuleAblation.disabling(Set("veto:inner"))(RuleAblation.disables("veto:inner")) shouldBe true
+      RuleAblation.disables("veto:outer") shouldBe true
+    }
+    RuleAblation.switchedOff shouldBe empty
+  }
+
   "a veto switched off" should "no longer deny the film it vetoed" in {
     val wrongDirector = listing(Multikino, "Mulholland Drive", Some(1961), Some("Lee Tamahori"), Some(62))
     val vetoes = resolve(Seq(wrongDirector), lynch.take(1)).decisionOf(wrongDirector.key).trace.rulesOf(wrongDirector.key).filter(_.startsWith("veto:"))
