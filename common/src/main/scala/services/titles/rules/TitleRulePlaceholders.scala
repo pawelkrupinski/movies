@@ -24,7 +24,7 @@ object TitleRulePlaceholders {
   private val Certificate = services.titles.BbfcCertificate.alternation(
     services.titles.BbfcCertificate.Public :+ services.titles.BbfcCertificate.Pending)
   private val CertificateNote =
-    s"""(?:[-–—]\\s*Cert(?:ificate)?\\.?\\s+$Certificate|\\(\\s*(?:Cert(?:ificate)?\\.?\\s*)?$Certificate(?:\\s+(?:TBC|CTBA))?\\s*\\)(?:\\s+CTBA)?)"""
+    s"""(?:[-–—]\\s*Cert(?:ificate)?\\.?\\s+$Certificate|\\(\\s*(?:Cert(?:ificate)?\\.?\\s*)?(?:$Certificate|CTBA)(?:\\s+(?:TBC|CTBA))?\\s*\\)(?:\\s+CTBA)?)"""
   private val RuntimeMinutes = """\d{2,3}\s*mins?\.?(?:\s+TBC)?"""
   private val AsteriskNote   = """\*\s*\p{L}[\p{L}\s'&-]*\*"""
 
@@ -116,7 +116,7 @@ object TitleRulePlaceholders {
     // search title runs no re-peel). One spelling each, so the two never disagree on where a note ends.
     Placeholder("CERT_NOTE", CertificateNote,
       "A BBFC certificate note as a box office bills it — '- Cert 12A', '- Certificate 15', '(15)', '( 15 )', " +
-      "'(Cert. TBC)', '(12A TBC)', Watershed's '(18 CTBA)' / '(18) CTBA' (certificate to be announced). No leading space and no anchor: a rule writes its own context around it. The " +
+      "'(Cert. TBC)', '(12A TBC)', Watershed's '(18 CTBA)' / '(18) CTBA' / a bare '(CTBA)' (certificate to be announced). No leading space and no anchor: a rule writes its own context around it. The " +
       "shape FormatTags' certificate peel reads."),
     Placeholder("RUNTIME_MINS", RuntimeMinutes,
       "A box office's running time — '100 mins', '95 min.', '160 mins TBC' — without its brackets: FormatTags " +

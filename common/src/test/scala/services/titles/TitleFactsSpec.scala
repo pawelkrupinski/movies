@@ -124,6 +124,8 @@ class TitleFactsSpec extends AnyFlatSpec with Matchers {
     // Watershed Bristol's "certificate to be announced", inside the bracket or after it: the expected certificate read
     FormatTags.peel("The Store (18 CTBA)") shouldBe FormatTags.Peeled("The Store", Nil, Some("18"), None)
     FormatTags.peel("Golden Boy (18) CTBA") shouldBe FormatTags.Peeled("Golden Boy", Nil, Some("18"), None)
+    // …and announced with no expected certificate at all: Watershed's "Wildwood (CTBA)" kept it as part of its title
+    FormatTags.peel("Wildwood (CTBA)") shouldBe FormatTags.Peeled("Wildwood", Nil, None, None)
     // awaited: no certificate
     FormatTags.peel("EOS - Monet (Cert. TBC)").certificate shouldBe None
   }
