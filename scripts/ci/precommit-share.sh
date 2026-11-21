@@ -6,8 +6,7 @@
 #   precommit-share.sh checks <share>  the checks the hook runs for <share>, space-separated (none: an empty line)
 #
 # <share>: `rest` (every selected check but the other shares', Main's heavy rows among them: no job of their own,
-# which waited up to 17 min for a slot of its own, 2026-11-18), `identity`, `oldrefs` (none since 2026-11-21: the old
-# refs compile after landing, on Main; kept for agentctl, which still asks it), or `plan` (every check of the
+# which waited up to 17 min for a slot of its own, 2026-11-18), `identity`, or `plan` (every check of the
 # jobs after it: the plan job's). The mode is the branch's:
 # check/fast-<id> is agentctl's batch check (--fast-only: the sbt check and the touched files' linters, all in `rest`),
 # check/verify-<full base sha>-<id> a change's combined-tree verification (--verify-only, all in `rest` too: the change
@@ -24,11 +23,11 @@
 # hook step still runs, so a check this missed fails there for want of sbt rather than going unchecked.
 set -euo pipefail
 
-usage() { echo "usage: $0 env|checks rest|identity|oldrefs|plan" >&2; exit 2; }
+usage() { echo "usage: $0 env|checks rest|identity|plan" >&2; exit 2; }
 [ $# -eq 2 ] || usage
 what=$1 share=$2
 case "$what" in env|checks) ;; *) usage ;; esac
-case "$share" in rest|identity|oldrefs|plan) ;; *) usage ;; esac
+case "$share" in rest|identity|plan) ;; *) usage ;; esac
 
 ref="${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
 # a gate-red fix's check is check/red-<the rest>: the prefix names the runner lane (precommit-check.yml), not the mode

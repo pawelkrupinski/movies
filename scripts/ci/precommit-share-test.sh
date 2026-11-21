@@ -28,7 +28,7 @@ change identity/src/main/scala/services/identity/Resolver.scala
 check "an identity change: the rest's share leaves identity to its own jobs, the heavy rows its own" "driftguards sbt itrest itidentity" \
     "$(share checks rest)"
 check "...the identity share is identity" "identity" "$(share checks identity)"
-check "...no old-ref share" "" "$(share checks oldrefs)"
+check "...and no old-ref share: the old refs compile on Main, after landing (2026-11-21)" "2" "$( (cd "$repo" && GITHUB_REF_NAME=check/x bash scripts/ci/precommit-share.sh checks oldrefs > /dev/null 2>&1); echo $?)"
 check "...the plan names the checks of the jobs after it" "driftguards sbt identity" "$(share checks plan)"
 check "...the rest's environment: the heavy rows its own, in no job of their own waiting for a slot (2026-11-18)" \
     "PREPUSH_MODE=--checks-only PREPUSH_RANGE=$(g merge-base HEAD origin/main)..HEAD PREPUSH_HEAVY_ROWS=1 PREPUSH_ELSEWHERE=identity" \
@@ -62,7 +62,6 @@ check "...as the change's own checks over what landed since its full check and t
     "$(REF="$va" share env identity | tr '\n' ' ' | sed 's/ $//')"
 check "...the rest's environment the verify round's" "$(REF="check/verify-$full-x" share env rest | tr '\n' ' ')" \
     "$(REF="$va" share env rest | tr '\n' ' ')"
-check "...no old-ref share" "" "$(REF="$va" share checks oldrefs)"
 check "...a gate-red fix's too" "identity" "$(REF="check/red-verifyareas-$full-x" share checks identity)"
 g update-ref refs/remotes/origin/main "$full"
 change web/src/main/twirl/views/x.scala.html
@@ -70,8 +69,8 @@ check "a page change: no share of its own -- the page tests run on Main, after l
     "$(share checks rest)|$(share checks identity)"
 check "...and the page share is gone" "2" "$( (cd "$repo" && bash scripts/ci/precommit-share.sh checks page > /dev/null 2>&1); echo $?)"
 change docs/notes.md
-check "a docs change: no identity, old-ref or heavy share" "||" \
-    "$(share checks identity)|$(share checks oldrefs)|$(share checks rest | tr ' ' '\n' | grep -xE 'itrest|itidentity|e2ecorpus' || true)"
+check "a docs change: no identity or heavy share" "|" \
+    "$(share checks identity)|$(share checks rest | tr ' ' '\n' | grep -xE 'itrest|itidentity|e2ecorpus' || true)"
 check "a share it does not know is refused" "2" "$(share checks everything > /dev/null; (cd "$repo" && bash scripts/ci/precommit-share.sh checks everything > /dev/null 2>&1); echo $?)"
 check "the heavy share is gone: the rest runs the heavy rows" "2" "$( (cd "$repo" && GITHUB_REF_NAME=check/x bash scripts/ci/precommit-share.sh env heavy > /dev/null 2>&1); echo $?)"
 
