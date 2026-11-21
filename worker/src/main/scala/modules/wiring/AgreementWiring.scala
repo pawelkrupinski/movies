@@ -115,6 +115,10 @@ trait AgreementWiring { self: WorkerWiring =>
   lazy val agreementVerdicts: services.identity.agreement.AgreementVerdicts =
     mongoConnection.database.fold[services.identity.agreement.AgreementVerdicts](new services.identity.agreement.InMemoryAgreementVerdicts)(
       new services.identity.agreement.MongoAgreementVerdicts(_))
+  /** Rewrites the agreed films `identity_agreements` kept in the earlier format into the one format a film is written in
+   *  (`IdentityAnswerBson`), once at boot: none without a database, a no-op once none is left. */
+  lazy val agreedFilmShapeMigration: Option[services.identityadapters.AgreedFilmShapeMigration] =
+    mongoConnection.database.map(new services.identityadapters.AgreedFilmShapeMigration(_))
   /** The agreement's cluster keys (`identity_agreement_keys`), which its verdicts are kept under. */
   lazy val agreementKeys: services.identity.agreement.AgreementKeys =
     mongoConnection.database.fold[services.identity.agreement.AgreementKeys](new services.identity.agreement.InMemoryAgreementKeys)(
