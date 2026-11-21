@@ -2,17 +2,12 @@ package models
 
 /**
  * Pure merge primitive — combines a `victim` row's per-source data onto a
- * `canonical` row. Used by:
- *   - `CaffeineMovieCache.put`'s tmdbId gate (runtime, prevents fresh
- *     duplicates from being persisted).
- *   - The same-tmdbId backfill script (one-shot, collapses legacy
- *     duplicates).
- *
- * Single source of truth so the runtime gate and the backfill agree on what
- * "merge two rows of the same film" means.
+ * `canonical` row. [[unionAll]] folds the documents a corpus rehydrate reads
+ * under one merge key (`CorpusHydrate`); [[mergeSlots]] settles several slots
+ * of one source wherever they meet (the evidence readings, too).
  *
  * Rule of thumb:
- *   - Enrichment-side single-source fields (tmdbId, imdbId, ratings,
+ *   - Enrichment-side single-source fields (tmdbId, wikidataId, imdbId, ratings,
  *     MC/RT/Filmweb URLs) prefer the canonical, falling back to the victim
  *     when the canonical lacks them. Both rows necessarily have the same
  *     tmdbId-derived data once they're identified as the same film, so
@@ -65,7 +60,8 @@ object MovieRecordMerge {
       filmwebRating     = canonical.filmwebRating.orElse(victim.filmwebRating),
       rottenTomatoes    = canonical.rottenTomatoes.orElse(victim.rottenTomatoes),
       tmdbId            = canonical.tmdbId.orElse(victim.tmdbId),
-      metacriticUrl     = canonical.metacriticUrl.orElse(victim.metacriticUrl),
+      wikidataId        = canonical.wikidataId.orElse(victim.wikidataId),
+      metacriticUrl    = canonical.metacriticUrl.orElse(victim.metacriticUrl),
       rottenTomatoesUrl = canonical.rottenTomatoesUrl.orElse(victim.rottenTomatoesUrl),
       searchTitle       = canonical.searchTitle.orElse(victim.searchTitle),
       retainedSynopses  = mergeRetainedSynopses(canonical.retainedSynopses, victim.retainedSynopses)
@@ -210,10 +206,6 @@ object MovieRecordMerge {
       ranked.iterator.map(pick).find(_.nonEmpty).getOrElse(Seq.empty)
   }
 
-  // The order a disagreement is settled in — more populated fields first (the slot
-  // that describes the film more fully is the better witness), then a total order on
-  // the content so two equally-populated slots still resolve the same way every time.
-  // `mergeSlots` sorts by exactly this pair.
   // The fields a disagreement between two slots can land on, named ONCE — both the
   // richness count and the total order below walk exactly these, and a field that
   // appeared in one but not the other would quietly weaken whichever it was missing from.
@@ -223,6 +215,10 @@ object MovieRecordMerge {
   private def numbers(slot: SourceData): Seq[Option[Int]] = Seq(slot.runtimeMinutes, slot.releaseYear)
   private def lists(slot: SourceData): Seq[Seq[String]]   = Seq(slot.cast, slot.director, slot.countries, slot.genres)
 
+  // The order a disagreement is settled in — more populated fields first (the slot
+  // that describes the film more fully is the better witness), then [[contentOrder]]
+  // so two equally-populated slots still resolve the same way every time.
+  // `mergeSlots` sorts by exactly this pair.
   private def populatedFields(slot: SourceData): Int =
     texts(slot).count(_.exists(_.nonEmpty)) + numbers(slot).count(_.isDefined) + lists(slot).count(_.nonEmpty)
 

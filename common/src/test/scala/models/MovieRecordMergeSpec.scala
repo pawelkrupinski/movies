@@ -64,7 +64,7 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
       imdbId = Some("tt15047880"), imdbRating = Some(6.8), metascore = Some(74),
       rottenTomatoes = Some(80), filmwebRating = Some(5.9),
       filmwebUrl = Some("fw"), metacriticUrl = Some("mc"), rottenTomatoesUrl = Some("rt"),
-      tmdbId = Some(42),
+      tmdbId = Some(42), wikidataId = Some("Q117736936"),
       data = Map[Source, SourceData](Multikino -> slot("m.jpg").copy(title = Some("Dzień objawienia")))
     )
     val merged = MovieRecordMerge.union(unratedBase, rated)
@@ -76,6 +76,7 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
     merged.filmwebUrl        shouldBe Some("fw")
     merged.metacriticUrl     shouldBe Some("mc")
     merged.rottenTomatoesUrl shouldBe Some("rt")
+    merged.wikidataId        shouldBe Some("Q117736936")
   }
 
   it should "preserve each row's per-cinema title and release year on the merged record" in {
