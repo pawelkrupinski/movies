@@ -1,0 +1,41 @@
+# The shared modules under `js/shared/`, one concern each, in the order they run, concatenated into ONE asset,
+# `js/shared.bundle.js` (`project/JsBundle.scala`), which every city page (the listing, a film, a facet listing) loads
+# after `_sharedJsConfig`'s constants and `i18n.js` (`_sharedScripts.scala.html`). Paths are under
+# `web/src/main/assets/`.
+#
+# `i18n.js` stays a script of its own, ahead of the bundle: the landing page loads it alone, and its boot-time pass
+# runs before any module exists. One script hoists every function it declares, so inside the bundle that pass would
+# find `refreshDateLabels` and call it before `dates.js` had run (a stored language pick then stopped the whole
+# bundle). The modules themselves were one script, `shared.js`, until 2026-11-21: the bundle restores exactly that.
+#
+# They are classic scripts, not ES modules: each one's top-level functions and `const`s land in the page's one global
+# scope, where the next script and the templates' inline handlers find them. Each file names what it uses from the
+# others in its `/* global */` lines and what it offers in `/* exported */`.
+#
+# THE ORDER IS LOAD-BEARING in two ways, and the page specs hold both (`PageJsBehaviourSpec`, "the shared scripts"):
+# - nothing may run at load time before what it reads: `city.js` first (every film link and request hangs off its
+#   mount point), `boot.js` after everything it boots;
+# - two capture-phase listeners on one event run in the order they were added: the search field's tap-away dismiss
+#   (`search.js`) must come before the dropdowns' click-outside close (`overlays.js`), so the tap that drops the
+#   keyboard does only that.
+js/shared/city.js
+js/shared/local-store.js
+js/shared/filters.js
+js/shared/search-day.js
+js/shared/search.js
+js/shared/overlays.js
+js/shared/hidden-films-store.js
+js/shared/hidden-films.js
+js/shared/cinemas.js
+js/shared/film-cards.js
+js/shared/showings.js
+js/shared/auth.js
+js/shared/dates.js
+js/shared/filter-url.js
+js/shared/hidden-films-sync.js
+js/shared/language-sync.js
+js/shared/posters.js
+js/shared/day-carousel.js
+js/shared/day-swipe.js
+js/shared/boot.js
+js/shared/image-uptime.js

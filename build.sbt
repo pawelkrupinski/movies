@@ -689,6 +689,24 @@ lazy val web = (project in file("web"))
     PageTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u",
       ((LocalRootProject / baseDirectory).value / "target" / "test-reports" / "page").toString),
     pipelineStages := Seq(digest),
+    // The shared scripts' bundle (`js/shared.bundle.js` and its map, `project/JsBundle.scala`), in the order
+    // `src/main/js-bundles/shared.txt` lists: a generated asset, so the digest stage versions it like a source one.
+    Assets / resourceGenerators += Def.task {
+      val order = (Compile / sourceDirectory).value / "js-bundles" / "shared.txt"
+      kinowo.build.JsBundle.write((Assets / sourceDirectory).value, order, (Assets / resourceManaged).value, "js/shared.bundle")
+    }.taskValue,
+    // sbt-web maps a generated asset by its path under these, and declares none: without it the bundle lands flat.
+    Assets / managedResourceDirectories += (Assets / resourceManaged).value,
+    // The page specs' server (`tools.TestHttpServer`) serves the assets from their sources, and a generated one
+    // from this copy of it on PageTest's class path.
+    PageTest / resourceGenerators += Def.task {
+      val generated = (Assets / resourceManaged).value
+      val copy      = (PageTest / resourceManaged).value / "generated-assets"
+      (Assets / managedResources).value.flatMap(file => IO.relativize(generated, file).map { path =>
+        IO.copyFile(file, copy / path)
+        copy / path
+      })
+    }.taskValue,
     // Don't let a detached `run` (no controlling terminal — stdin at /dev/null,
     // nohup'd, or the launching terminal closed) busy-spin Play's "press Enter to
     // stop" reader at ~300% CPU. Falls back to Play's default when a real console

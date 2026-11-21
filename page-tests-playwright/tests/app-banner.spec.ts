@@ -103,8 +103,8 @@ test.describe('app banner', () => {
       };
       requestAnimationFrame(sample);
     });
-    // Every shared script, however they are cut: `js/shared.js`, or the modules under `js/shared/`.
-    await page.route((url) => /\/js\/shared(\.js|\/[\w-]+\.js)$/.test(url.pathname), async (route) => {
+    // The shared scripts: the one bundle of the modules under `js/shared/` (`js/shared.bundle.js`).
+    await page.route((url) => /\/js\/([\da-f]+-)?shared\.bundle\.js$/.test(url.pathname), async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 500));
       await route.continue();
     });

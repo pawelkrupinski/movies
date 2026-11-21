@@ -64,11 +64,11 @@ object PerformanceBudgets {
    *  before them, 20.43 / 20.44 after. */
   val ListingCold = bytes("listing render, cold caches", measured = mb(20.4))
   /** The city listing with the controller's caches full and the response blob missed (`?diag=`). 1.33 -> 1.46 MB on
-   *  2026-11-21 when shared.js became 18 modules: the 18 more `routes.Assets.versioned` tags cost ~7 KB each HERE
-   *  (measured: the same render with the module URLs written literally stays at 1.34), every one a classpath lookup
-   *  for a `.md5` digest the test classpath has no copy of, and Play caches a digest only once it finds one. In prod
-   *  the digests ship (`pipelineStages := Seq(digest)`) and each tag is two cache hits. */
-  val ListingWarm = bytes("listing render, warm caches", measured = mb(1.46))
+   *  2026-11-21 when shared.js became 18 modules: the 18 more `routes.Assets.versioned` tags cost ~7 KB each HERE, every
+   *  one a classpath lookup for a `.md5` digest the test classpath has no copy of (Play caches a digest only once it
+   *  finds one). Back to 1.33 the same day, measured locally, when the modules became one bundle again
+   *  (`js/shared.bundle.js`, `project/JsBundle.scala`): two tags, `i18n.js` and the bundle. */
+  val ListingWarm = bytes("listing render, warm caches", measured = mb(1.33))
   /** The city listing served from the gzipped blob. A ceiling, not a ratchet: at 7.2 KB the JVM's allocation granularity
    *  moves the figure more than the default band (the rule for every figure under 10 KB, PerformanceBudgetsSpec), and
    *  what it guards against, a hit that rebuilds the page, is three orders of magnitude over. */
@@ -77,8 +77,8 @@ object PerformanceBudgets {
   val FilmPageCold = bytes("film page render, cold caches", measured = mb(4.61))
   val FilmPageWarm = bytes("film page render, warm caches", measured = mb(2.87))
   /** The facet page of the country the most films list. 1.27 -> 1.40 MB on 2026-11-21, the 18 module tags as for
-   *  [[ListingWarm]] (1.34 with their URLs written literally). */
-  val BrowseWarm = bytes("facet page render, warm caches", measured = mb(1.40))
+   *  [[ListingWarm]], and 1.40 -> 1.32 the same day with the bundle (measured locally). */
+  val BrowseWarm = bytes("facet page render, warm caches", measured = mb(1.32))
   /** The `/` city-selection landing. It embedded every country's city catalog, so it grew with the roster
    *  (2.95 -> 5.21 MB when the US went from 468 metro pages to 2,003 town pages); it now carries only its
    *  own country's pane, rendered once per process (`PickerFragments`), and fetches the rest after load:

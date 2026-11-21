@@ -1692,23 +1692,62 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  // Every script under `assets/js/` is either one every city page loads or one
-  // only its own page does — so a script added there and never given its tag,
-  // or a tag left naming a script that is gone, shows up here.
+  // Every script under `assets/js/` is either one every city page loads — `i18n.js`
+  // or one the bundle lists — or one only its own page does; so a script added there
+  // and never listed, or a listed script that is gone, shows up here.
   private val PageSpecificScripts = Set("debugTable.js", "viewportInfo.js")
   private def scriptsEveryCityPageLoads: Seq[String] = {
     val scripts = testsupport.SourceTrees("web/src/main/assets/js")
     scripts.files(".js").map(scripts.path.relativize(_).toString)
-  }.filterNot(PageSpecificScripts).sorted
+  }.filterNot(PageSpecificScripts).map("js/" + _).sorted
 
-  it should "be loaded, every one of them, by every page" in {
-    val expected = scriptsEveryCityPageLoads
-    expected should contain ("i18n.js")
+  // The bundle's order: `web/src/main/js-bundles/shared.txt`, which `project/JsBundle.scala`
+  // concatenates (one path a line, `#` comments).
+  private lazy val bundleOrder: Seq[String] = {
+    val order = testsupport.SourceTrees("web/src/main/js-bundles").file("shared.txt")
+    java.nio.file.Files.readString(order).linesIterator.toSeq.map(_.trim).filterNot(line => line.isEmpty || line.startsWith("#"))
+  }
+
+  /** Every name a listed script says it offers in its `/* exported … */` lines. */
+  private lazy val exportedNames: Seq[String] = {
+    val assets = testsupport.SourceTrees("web/src/main/assets")
+    val Exported = """(?s)/\*\s*exported\b(.*?)\*/""".r
+    for {
+      script <- bundleOrder
+      block  <- Exported.findAllMatchIn(java.nio.file.Files.readString(assets.file(script))).map(_.group(1)).toSeq
+      name   <- block.split("[\\s,]+").toSeq if name.nonEmpty
+    } yield name
+  }
+
+  it should "be listed, every one of them, in the bundle every page loads" in {
+    scriptsEveryCityPageLoads should contain ("js/i18n.js")
+    ("js/i18n.js" +: bundleOrder).sorted shouldBe scriptsEveryCityPageLoads
+  }
+
+  it should "reach every page as `i18n.js` and the one bundle, its scripts in the order it lists" in {
     for (path <- pagesLoadingTheSharedScripts) onPath(path) { page =>
       withClue(path) {
         Json.parse(page.evalString(
           "JSON.stringify([...document.scripts].map(s => s.src && new URL(s.src).pathname).filter(p => p && p.includes('/assets/js/')).map(p => p.slice(p.indexOf('/assets/js/') + '/assets/js/'.length)))"
-        )).as[Seq[String]].sorted shouldBe expected
+        )).as[Seq[String]] shouldBe Seq("i18n.js", "shared.bundle.js")
+        // The bundle as served: each script opens with its own `// <path>` line.
+        Json.parse(page.evalString(
+          "var request = new XMLHttpRequest(); request.open('GET', document.querySelector('script[src*=\"shared.bundle.js\"]').src, false); request.send();" +
+            " JSON.stringify(request.responseText.split('\\n').filter(l => /^\\/\\/ js\\/[^ ]+\\.js$/.test(l)).map(l => l.slice(3)))"
+        )).as[Seq[String]] shouldBe bundleOrder
+      }
+    }
+  }
+
+  // A module dropped from the bundle, or one that stopped short of defining what it
+  // offers, leaves a name the next one reads undefined. Top-level `const`s are global
+  // but not `window`'s, so each is looked up by a global-scope (indirect) `eval`.
+  it should "define every name each bundled script exports, on every page" in {
+    exportedNames.size should be > 100
+    val names = Json.toJson(exportedNames)
+    for (path <- pagesLoadingTheSharedScripts) onPath(path) { page =>
+      withClue(path) {
+        page.evalString(s"JSON.stringify($names.filter(name => (0, eval)('typeof ' + name) === 'undefined'))") shouldBe "[]"
       }
     }
   }

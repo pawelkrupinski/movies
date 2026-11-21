@@ -10,14 +10,14 @@
 // defines (`applyFilters`, `buildIndex`, …), which run in the same global
 // scope as the scripts loaded after them.
 //
-// Between the shared modules (`js/shared/*.js`, loaded in order by
-// `_sharedScripts.scala.html`) each file says it itself: a `/* global … */`
+// Between the shared modules (`js/shared/*.js`, bundled in the order
+// `web/src/main/js-bundles/shared.txt` lists) each file says it itself: a `/* global … */`
 // line per module it reads from, and `/* exported … */` for what it offers
 // the others and the templates. ESLint checks both — a name read but not
 // declared is `no-undef`, one declared and also defined is `no-redeclare` —
 // so those lines stay the true import list of each file.
 //
-// `i18n.js` (loaded ahead of the shared modules — see `_sharedScripts`/
+// `i18n.js` (loaded ahead of the shared modules' bundle — see `_sharedScripts`/
 // `landing.scala.html`) is intentionally NOT added here: it's part of
 // this same lint glob, so declaring `t` as a global here would collide
 // with its own `function t(...)` and fire `no-redeclare`. The shared

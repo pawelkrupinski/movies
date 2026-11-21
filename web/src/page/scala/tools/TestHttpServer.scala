@@ -104,10 +104,16 @@ class TestHttpServer(
           // Guard against `../` traversal — only serve files under the
           // assets directory (resolve + startsWith).
           val publicRoot = AssetsDirectory.toAbsolutePath
-          if (!file.startsWith(publicRoot) || !Files.exists(file)) {
+          // An asset the build generates (the shared scripts' bundle, `project/JsBundle.scala`) has no
+          // source file: PageTest's resources carry the build's copy (`generated-assets/`, build.sbt).
+          val content: Option[Array[Byte]] =
+            if (!file.startsWith(publicRoot) || rel.contains("..")) None
+            else if (Files.exists(file)) Some(Files.readAllBytes(file))
+            else Option(ownerLoader.getResourceAsStream(s"generated-assets/$rel")).map(in => try in.readAllBytes() finally in.close())
+          if (content.isEmpty) {
             exception.sendResponseHeaders(404, -1)
           } else {
-            val bytes = Files.readAllBytes(file)
+            val bytes = content.get
             val ct = if (path.endsWith(".css"))  "text/css; charset=UTF-8"
                      else if (path.endsWith(".js"))  "application/javascript; charset=UTF-8"
                      // Images need their real type: an <img> pointed at one of
