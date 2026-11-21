@@ -650,7 +650,7 @@ area_push() { # <path> [env...]: commits <path> (message $AREA_MESSAGE, default 
   mkdir -p "$area/$(dirname "$path")"; echo "x $RANDOM" >> "$area/$path"
   scratch_git "$area" add -A; scratch_git "$area" commit -qm "${AREA_MESSAGE:-touches $path}"
   : > "$AREA_CALLS"
-  (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" "$@" \
+  (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint jsquality lintspecs" "$@" \
      bash scripts/hooks/pre-push --range HEAD~1..HEAD > "$testroot/area-out" 2>&1); echo $?
 }
 calls() { grep -c -- "$1" "$AREA_CALLS"; }
@@ -702,7 +702,7 @@ scratch_git "$area" worktree add -q --detach "$checktree" HEAD
 cp "$area/scripts/sbt-warm" "$checktree/scripts/sbt-warm"
 check_tree_plan() { # [env...]: the hook's identity plan for the area's last commit, from the check tree; prints its exit code
   : > "$AREA_CALLS"; rm -f "$testroot/plan"
-  (cd "$checktree" && env PATH="$areabin:$PATH" TMPDIR="$checktmp" PREPUSH_SKIP="eslint lintspecs" PREPUSH_ONLY=identity \
+  (cd "$checktree" && env PATH="$areabin:$PATH" TMPDIR="$checktmp" PREPUSH_SKIP="eslint jsquality lintspecs" PREPUSH_ONLY=identity \
      PREPUSH_IDENTITY_PLAN="$testroot/plan" "$@" bash scripts/hooks/pre-push --checks-only HEAD~1..HEAD > "$testroot/area-out" 2>&1)
   echo $?
 }
@@ -722,7 +722,7 @@ verify_push() { # [env...]: a worker change verified as agentctl's combined tree
   echo "x $RANDOM" >> "$area/worker/src/main/scala/services/movies/V.scala"
   scratch_git "$area" add -A; scratch_git "$area" commit -qm "touches the worker"
   : > "$AREA_CALLS"
-  (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" "$@" \
+  (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint jsquality lintspecs" "$@" \
      bash scripts/hooks/pre-push --verify-only HEAD~1..HEAD > "$testroot/area-out" 2>&1); echo $?
 }
 code="$(verify_push IMPACT_LINES='worker modules.VSpec\nworker services.identity.ElsewhereSpec\nweb services.movies.WebSpec\n')"
@@ -843,7 +843,7 @@ check "...and a claim that is no move refuses the push, naming the check" "1 1" 
   "$code $(grep -c "puremove: .* says 'Pure-Move: verified' but scripts/pure-move-check does not find a pure move" "$testroot/area-out")"
 mkdir -p "$area/notes/moved"; scratch_git "$area" mv notes/a.txt notes/moved/a.txt
 scratch_git "$area" commit -qm $'Notes: moved\n\nPure-Move: verified'
-code=0; (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" bash scripts/hooks/pre-push --range HEAD~1..HEAD \
+code=0; (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint jsquality lintspecs" bash scripts/hooks/pre-push --range HEAD~1..HEAD \
   > "$testroot/area-out" 2>&1) || code=$?
 check "...and a real move passes it" "0 1" "$code $(grep -c 'puremove: .* is a pure move' "$testroot/area-out")"
 code="$(area_push notes/b.txt PREPUSH_LIST=1)"
@@ -853,7 +853,7 @@ check "...and a commit with no claim does not select it" "0 0" "$code $(grep -cx
 # an identity path a commit WITHOUT the claim touches still selects them
 list_range() { # <range> [env...]: the hook's PREPUSH_LIST over <range>, one line
   local range="$1"; shift
-  (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" PREPUSH_LIST=1 "$@" \
+  (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint jsquality lintspecs" PREPUSH_LIST=1 "$@" \
      bash scripts/hooks/pre-push --range "$range" 2>/dev/null) | tr '\n' ' ' | sed 's/ $//'
 }
 has_check() { case " $1 " in *" $2 "*) echo 1 ;; *) echo 0 ;; esac; }
@@ -910,7 +910,7 @@ drift_push() { # <path> <message> [env...]: commits <path> with <message>, runs 
   scratch_git "$area" add -A; scratch_git "$area" commit -qm "$message"
   : > "$AREA_CALLS"
   # GITHUB_ACTIONS unset: in a CI job (this test in agentctl's remote checks) the check is skipped, said -- tested below
-  (cd "$area" && env -u GITHUB_ACTIONS PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" "$@" \
+  (cd "$area" && env -u GITHUB_ACTIONS PATH="$areabin:$PATH" PREPUSH_SKIP="eslint jsquality lintspecs" "$@" \
      bash scripts/hooks/pre-push --range HEAD~1..HEAD > "$testroot/area-out" 2>&1); echo $?
 }
 code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a fix\n\nFixes-Red: 3726' GITHUB_ACTIONS=true)"
@@ -947,7 +947,7 @@ check "...but a push touching only the flip backlog, even one claiming a red, ru
   "$code $(calls identity-drift-ci)"
 scratch_git "$area" rm -q test/resources/fixtures/drift-gate-seeds.tsv; scratch_git "$area" commit -qm "the gate seeds, deleted"
 : > "$AREA_CALLS"
-code="$(cd "$area" && env -u GITHUB_ACTIONS PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" bash scripts/hooks/pre-push --range HEAD~1..HEAD > "$testroot/area-out" 2>&1; echo $?)"
+code="$(cd "$area" && env -u GITHUB_ACTIONS PATH="$areabin:$PATH" PREPUSH_SKIP="eslint jsquality lintspecs" bash scripts/hooks/pre-push --range HEAD~1..HEAD > "$testroot/area-out" 2>&1; echo $?)"
 check "...and so does one deleting it -- a deletion-only push runs that check alone" "0 1 0" \
   "$code $(calls 'against main$') $(grep -c 'fatal\|FAILED' "$testroot/area-out")"
 code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a new check\n\nNew-Check: settled takes')"
