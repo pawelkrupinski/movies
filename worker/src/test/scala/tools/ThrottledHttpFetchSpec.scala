@@ -251,6 +251,28 @@ class ThrottledHttpFetchSpec extends AnyFlatSpec with Matchers {
     reports.head should include ("0.0% clean")
   }
 
+  // Only successes and throttles were counted: a host failing with 500s, resets or a breaker's fast-fail
+  // reported a handful of requests "100.0% clean" — the blind spot this report was built to close.
+  it should "count every other failure in its denominator and against the clean-rate" in {
+    val delegate = new ScriptedFetch
+    val reports  = mutable.ListBuffer.empty[String]
+    val clock    = new MutableClock(Instant.EPOCH)
+    val throttle = new ThrottledHttpFetch(
+      delegate, maxAttempts = 1, jitterMillis = () => 0,
+      clock = clock, sleep = _ => (),
+      summaryInterval = 5.minutes, report = Some(msg => { reports += msg; () }))
+
+    delegate.queue(Tmdb, () => throw new HttpStatusException(500, "GET", Tmdb, None),
+      () => throw new java.io.IOException("connection reset"), () => "ok")
+    a [HttpStatusException] should be thrownBy throttle.get(Tmdb)
+    a [java.io.IOException] should be thrownBy throttle.get(Tmdb)
+    throttle.get(Tmdb) shouldBe "ok"
+    clock.setTo(Instant.ofEpochMilli(5.minutes.toMillis))
+    throttle.get(Tmdb)
+
+    reports.head should include ("3 requests, 0 throttled (429/503/timeout), 2 failed otherwise, 33.3% clean")
+  }
+
   it should "reset its tally each interval so a recovered host stops reporting failures" in {
     // Otherwise a burst of 429s during tuning would drag the clean-rate down
     // forever and the next pace could never be seen to have worked.

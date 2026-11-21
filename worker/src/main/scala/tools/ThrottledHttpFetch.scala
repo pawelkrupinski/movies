@@ -85,11 +85,11 @@ class ThrottledHttpFetch(
 
   private def hostOf(url: String): Option[String] = UrlHost.of(url)
 
-  /** Count one call (and whether it drew a 429) and, once per `summaryInterval`,
+  /** Count one call (whether it drew a 429/503/timeout, or failed otherwise) and, once per `summaryInterval`,
    *  log that host's clean-rate. Summarising on the request path rather than from
    *  a timer keeps this decorator thread-free; a host that stops being called
    *  simply stops reporting, which is the honest signal anyway. */
-  private def record(host: String, throttled: Boolean): Unit = {
+  private def record(host: String, throttled: Boolean, failed: Boolean = false): Unit = {
     val s = stats.computeIfAbsent(host, _ => new HostCallStats(clock.instant().toEpochMilli))
     // Flush the elapsed window BEFORE counting this call, so each summary covers
     // exactly its own interval and the call that trips the boundary opens the
@@ -99,14 +99,16 @@ class ThrottledHttpFetch(
     if (nowMs - since >= summaryInterval.toMillis && s.lastSummaryMs.compareAndSet(since, nowMs)) {
       val total = s.requests.getAndSet(0)
       val t429  = s.throttled.getAndSet(0)
-      val clean = if (total == 0) 100.0 else 100.0 * (total - t429) / total
+      val other = s.failed.getAndSet(0)
+      val clean = if (total == 0) 100.0 else 100.0 * (total - t429 - other) / total
       val pace  = paceFor(s"https://$host/")
         .map(d => s"${d.toMillis}ms").getOrElse("unpaced")
-      val msg = f"pace-report $host: $total%d requests, $t429%d throttled (429/503/timeout), $clean%.1f%% clean, pace=$pace"
+      val msg = f"pace-report $host: $total%d requests, $t429%d throttled (429/503/timeout), $other%d failed otherwise, $clean%.1f%% clean, pace=$pace"
       report.fold(logger.info(msg))(_(msg))
     }
     s.requests.incrementAndGet()
     if (throttled) s.throttled.incrementAndGet()
+    if (failed) s.failed.incrementAndGet()
     ()
   }
 
@@ -192,6 +194,15 @@ class ThrottledHttpFetch(
             logger.warn(s"${e.getMessage} — overload from $host; pausing all calls to it " +
               s"for ${defaultPause.min(maxPause).toMillis}ms.")
             throw e
+
+          // Any other failure (a 500, a reset, a breaker's fast-fail) passes through ungated, but counts. A 404 is
+          // the host's answer (an id it does not know), not a failure of the host.
+          case e: HttpStatusException if e.code == 404 =>
+            record(host, throttled = false)
+            throw e
+          case NonFatal(e) =>
+            record(host, throttled = false, failed = true)
+            throw e
         }
       }
       attempt(1)
@@ -206,5 +217,6 @@ class ThrottledHttpFetch(
 private final class HostCallStats(startedMs: Long) {
   val requests      = new java.util.concurrent.atomic.AtomicLong(0)
   val throttled     = new java.util.concurrent.atomic.AtomicLong(0)
+  val failed        = new java.util.concurrent.atomic.AtomicLong(0)
   val lastSummaryMs = new java.util.concurrent.atomic.AtomicLong(startedMs)
 }
