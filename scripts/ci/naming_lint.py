@@ -27,7 +27,7 @@ MODULES = ("geodata", "base", "http", "common", "identity", "scrapers", "worker"
 # (package, names): a clash allowed while it is renamed -- its owner and why. Struck once the rename lands.
 ALLOWED_PERMUTATIONS = {
 }
-DECLARATION = re.compile(r"^(?:(?:private|protected)(?:\[\w+\])?\s+)?(?:(?:final|sealed|abstract|case|implicit)\s+)*"
+DECLARATION = re.compile(r"^(?:(?:private|protected)(?:\[\w+\])?\s+)?(?:(?:final|sealed|abstract|case|implicit|open|transparent|infix)\s+)*"
                          r"(class|object|trait|enum)\s+([A-Z]\w*)", re.M)
 PACKAGE = re.compile(r"^package\s+([\w.]+)", re.M)
 PUBLIC_DEF = re.compile(r"^  (?:(?:override|final|inline)\s+)*def\s+(\w+)", re.M)
