@@ -14,10 +14,12 @@ writes the rows (`propose`) and proves them again (`verify`, the pre-push hook's
        whose newest line is `done`, over EVERY family (`--all` or `--verify`, not its selection) and with no take moved,
        the model's or the final one's. Carries identity-rules; agreement-rules only when the final takes were compared
        (not `--model-only`); never venue-slot (a what-if builds no venue slot);
-  3. THE RANGE CHANGES NO SEMANTICS A PROOF CANNOT SEE: no commit says `Identity-Design:` (a rule change by design); none
-     touches the drift harness (scripts/ci/commit_rules.py's HARNESS_FILES); and, for a what-if (which sees today's
-     corpus only), none touches the title rules, a resource of a module's src/main (weights, tables, data: the model's
-     inputs) or a store or codec (*Store*, *Codec*, *Bson* under src/main: what a stored family is read back by).
+  3. THE RANGE CHANGES NO SEMANTICS A PROOF CANNOT SEE: no commit says `Identity-Design:` (a rule change by design); for
+     a what-if, none touches the drift harness (scripts/ci/commit_rules.py's HARNESS_FILES: a what-if never resolves
+     through it, so it cannot vouch for it -- a pure move of it carries, as any pure move does, the owner 2026-11-21) and
+     (it sees today's corpus only) none touches the title rules, a resource of a module's src/main (weights, tables,
+     data: the model's inputs) or a store or codec (*Store*, *Codec*, *Bson* under src/main: what a stored family is
+     read back by). A rename counts both its paths.
 
 A row is never edited: a row a push changes is a new row, and proven as one. A row taken out only bumps its digest's
 stamp, as an unproven change does.
@@ -164,10 +166,8 @@ def covered(proof: str, base: str, head: str, at: str | None = None) -> tuple[se
         design = git("log", "-1", "--format=%(trailers:key=Identity-Design,valueonly,unfold)", sha).strip()
         if design:
             why.append(f"{sha[:12]} says 'Identity-Design: {design}': a rule change by design is decided again, never carried")
-    changed = git("diff", "--name-only", "-M", base, head).split()
-    harness = [p for p in changed if HARNESS_FILES.match(p)]
-    if harness:
-        why.append(f"the range changes the drift harness ({' '.join(harness)}): it is never carried")
+    # every path the range touches, both sides of a rename (a harness file moved away is still a harness change)
+    changed = sorted({p for line in git("diff", "--name-status", "-M", base, head).splitlines() for p in line.split("\t")[1:]})
     if proof == "pure-move":
         done = subprocess.run([sys.executable, "-I", os.path.join(HERE, "pure_move_check.py"), f"{base}..{head}", "--quiet"],
                               capture_output=True, text=True)
@@ -177,6 +177,9 @@ def covered(proof: str, base: str, head: str, at: str | None = None) -> tuple[se
         return (set() if why else set(STAMPS)), why
     if proof != "what-if":
         return set(), [f"no proof {proof!r} (pure-move or what-if)"]
+    harness = [p for p in changed if HARNESS_FILES.match(p)]
+    if harness:
+        why.append(f"the range changes the drift harness ({' '.join(harness)}): a what-if never carries it (a pure move does)")
     blind = [p for p in changed if WHAT_IF_BLIND.match(p)]
     if blind:
         why.append(f"a what-if sees today's corpus only, and the range changes what it cannot vouch for: {' '.join(blind)}")

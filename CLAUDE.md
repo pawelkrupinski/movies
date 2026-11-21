@@ -429,9 +429,10 @@ same push): each pure-move commit carried by itself, or the whole change by the 
 (whole-corpus by default since 2026-11-20; run it over all five countries). `propose <base>..<head>` writes them by hand
 (never edit the table). The pre-push `stampcarry` check proves every
 added or changed row again for exactly its base and head (pure-move-check re-run, or the recorded what-if verdict
-re-read; both digests rebuilt) and refuses any it cannot. Never carried: a range saying `Identity-Design:`, the drift
-harness, and -- for a what-if, which sees today's corpus only -- the title rules, a module's resources or a store or
-codec; a what-if never carries `venue-slot`. A carried stamp means no re-resolve on boot; a bumped one, the partial
+re-read; both digests rebuilt) and refuses any it cannot. Never carried: a range saying `Identity-Design:`, and
+-- for a what-if, which sees today's corpus only -- the drift harness, the title rules, a module's resources or a store
+or codec; a what-if never carries `venue-slot`. A PURE MOVE through the drift harness carries (2026-11-21; its
+`Drift-Harness-Refactor:` rule is unchanged). A carried stamp means no re-resolve on boot; a bumped one, the partial
 re-resolve of what the change can reach.
 
 **Heavy identity work runs on CI, not the laptop** (the user, 2026-10-21): measure with

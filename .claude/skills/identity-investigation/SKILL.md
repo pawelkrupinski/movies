@@ -145,9 +145,10 @@ over the what-if's tree of the ref, cached; seconds when compiled) and appends o
 `test/resources/identity-stamp-carry.tsv`; commit that alone, after the change. Rows are keyed by DIGEST, not sha, so
 they survive `agentctl land`'s rebase while main touched none of the digested code (otherwise the head's digest differs,
 the row is inert and the stamp bumps: propose again). Refused, writing nothing: no proof; a commit saying
-`Identity-Design:`; the drift harness; for a what-if, the title rules, a `src/main/resources` file or a
-`*Store*`/`*Codec*`/`*Bson*` source. The pre-push `stampcarry` check runs `verify` over every added or changed row (a hand-
-written or forged row, or a what-if verdict of another base or head, refuses the push). Rows chain: a carried digest
+`Identity-Design:`; for a what-if, the drift harness (a pure move through it carries, 2026-11-21; a rename counts both
+paths), the title rules, a `src/main/resources` file or a `*Store*`/`*Codec*`/`*Bson*` source. The pre-push `stampcarry`
+check runs `verify` over every added or changed row (a hand-written or forged row, or a what-if verdict of another base
+or head, refuses the push). Rows chain: a carried digest
 carried again keeps the first stamp. Code: `scripts/identity_stamp_carry.py`; build side: `project/StampCarry.scala`.
 
 ## identity-what-if

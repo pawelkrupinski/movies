@@ -2,7 +2,8 @@
 """identity_stamp_carry.py: a pure move's rows are written and proven again; an unproven change writes none (its stamps
 bump); a hand-written or forged row is refused, as is one whose pure-move claim the range does not bear out; a what-if
 row holds only for the very head and base its verdict was recorded under, every country whole and nothing moved, and
-never carries a venue slot; a range saying Identity-Design or a what-if over the model's data carries nothing."""
+never carries a venue slot; a range saying Identity-Design or a what-if over the model's data or the drift harness carries
+nothing, while a pure move through the harness carries."""
 
 from __future__ import annotations
 
@@ -33,6 +34,17 @@ FAKE_STAMPS = """#!/usr/bin/env python3
 import json, os, sys
 for stamp, digest in json.load(open(os.environ["KINOWO_FAKE_STAMPS_MAP"]))[sys.argv[2]].items():
     print(stamp + "\\t" + digest)
+"""
+
+
+HARNESS = "worker/src/test/scala/scripts/IdentityDrift.scala"
+HARNESS_SOURCE = """package scripts
+
+import services.old.Foo
+
+object IdentityDrift {
+  def seed: Foo = Foo(7)
+}
 """
 
 
@@ -266,14 +278,50 @@ class StampCarryTest(unittest.TestCase):
             self.assertEqual(1, code, out)
             self.assertIn(f"cannot vouch for: {path}", out)
 
-    def test_a_range_touching_the_drift_harness_never_carries(self):
+    def test_a_what_if_over_the_drift_harness_never_carries(self):
         start = self.repo.git("rev-parse", "HEAD").strip()
         self.repo.write("scripts/ci/identity-drift-check.sh", "echo changed\n")
         head = self.repo.commit("harness")
         self.record_what_if(head, start)
         code, out = self.run_tool("propose", f"{start}..{head}", "--proof", "what-if")
         self.assertEqual(1, code, out)
-        self.assertIn("drift harness", out)
+        self.assertIn("drift harness (scripts/ci/identity-drift-check.sh): a what-if never carries it", out)
+
+    def harness_base(self) -> str:
+        self.repo.write(HARNESS, HARNESS_SOURCE)
+        return self.repo.commit("the drift harness reads Foo")
+
+    def test_a_pure_move_through_the_drift_harness_carries_and_is_proven_again(self):
+        start = self.harness_base()
+        self.repo.write(HARNESS, HARNESS_SOURCE.replace("import services.old.Foo", "import models.Foo"))
+        head = self.move_foo()                                   # Foo moved; the harness's import follows it
+        self.assertIn(HARNESS, self.repo.git("show", "--name-only", "--format=", head))
+        code, out = self.run_tool("propose", f"{start}..{head}", "--proof", "pure-move")
+        self.assertEqual(0, code, out)
+        self.assertEqual(sorted(STAMPS), sorted(r[0] for r in self.table_rows()))
+        before, after = self.land_rows()
+        code, out = self.run_tool("verify", f"{before}..{after}")
+        self.assertEqual(0, code, out)
+        self.assertEqual(3, out.count(" proven"), out)
+
+    def test_a_one_token_logic_change_in_the_drift_harness_never_carries(self):
+        start = self.harness_base()
+        self.repo.write(HARNESS, HARNESS_SOURCE.replace("import services.old.Foo", "import models.Foo").replace("Foo(7)", "Foo(8)"))
+        head = self.move_foo()
+        code, out = self.run_tool("propose", f"{start}..{head}")
+        self.assertEqual(1, code, out)
+        self.assertIn("pure-move-check does not call", out)
+        self.assertIn("a what-if never carries it", out)
+        self.assertEqual([], self.table_rows())
+
+    def test_a_drift_harness_file_renamed_away_is_still_a_harness_change(self):
+        start = self.harness_base()
+        self.repo.move(HARNESS, "worker/src/test/scala/scripts/Elsewhere.scala")
+        head = self.repo.commit("the harness, renamed")
+        self.record_what_if(head, start)
+        code, out = self.run_tool("propose", f"{start}..{head}", "--proof", "what-if")
+        self.assertEqual(1, code, out)
+        self.assertIn(HARNESS, out)
 
     # ── auto: what agentctl land runs after its rebase ───────────────────────────────────────────────────────────────
 

@@ -23,7 +23,7 @@
 #   stamps   each stamp's RAW digest at <ref> (`<stamp> TAB <digest>`), made by the build over the ref's identity tree
 #            (identity-tools.sh's identity_tree, the what-if's own: one compile serves both), cached until a source moves
 #
-# What holds a row, and what never carries (Identity-Design, the drift harness, a what-if over the title rules, resources
+# What holds a row, and what never carries (Identity-Design; a what-if over the drift harness, the title rules, resources
 # or stores): scripts/identity_stamp_carry.py; its tests: scripts/identity_stamp_carry_test.py.
 # Exit 0 done, 1 refused, 2 usage or undecidable.
 set -euo pipefail
