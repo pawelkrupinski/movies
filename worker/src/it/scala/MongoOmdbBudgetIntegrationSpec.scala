@@ -43,7 +43,7 @@ class MongoOmdbBudgetIntegrationSpec extends AnyFlatSpec with Matchers with Inte
           val budget = new MongoOmdbBudget(isolated.database, limit = 1000)
           pool.submit(() => { barrier.await(); budget.take(OmdbAsk.NewFilm, day) })
         }
-        takes.map(_.get(30, TimeUnit.SECONDS)).filter(_ != OmdbBudget.Granted)
+        takes.map(_.get(tools.SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)).filter(_ != OmdbBudget.Granted)
       }
       refused shouldBe empty
     } finally pool.shutdownNow()
