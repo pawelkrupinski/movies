@@ -16,10 +16,11 @@ import services.movies.{ScrapeGuardLedger, ScrapeGuardState}
  * already lives. The archive only ever `$set`s its own fields, so the two never
  * overwrite each other.
  *
- * Never creates a row: the runner archives every attempt BEFORE the guards run, so the
- * venue's row is already there, and a guard-only row would read to the archive's
- * consumers as a venue that has never produced anything. Were the archive write to
- * fail, this tick's guard state is dropped with it — the same best-effort bargain.
+ * Creates the row when the venue has none: the runner hands a scrape to the intake FIRST
+ * and archives it right after (`CinemaScrapeRunner`), so a venue's first scrape is judged
+ * before its row exists, and an update matching nothing dropped the state it decided. The
+ * archive's write then fills the row in; were it to fail, the row holds the guard alone,
+ * which decodes as the content-less row a venue that has only failed already has.
  *
  * A failed read returns None — "could not look", which the listing intake judges as Fresh
  * (conservative: no rewire inferred) but never writes back, so the stored count survives.
@@ -41,8 +42,8 @@ class MongoScrapeGuardLedger(sharedDb: Option[MongoDatabase]) extends ScrapeGuar
 
   def put(cinema: Cinema, state: ScrapeGuardState): Unit = coll.foreach { c =>
     bestEffort(cinema, "put")(Await.result(
-      c.updateOne(Filters.eq("_id", cinema.displayName), Updates.set(Field, ScrapeGuardState.encode(state)))
-        .toFuture(),
+      c.updateOne(Filters.eq("_id", cinema.displayName), Updates.set(Field, ScrapeGuardState.encode(state)),
+        new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(),
       10.seconds))
   }
 }

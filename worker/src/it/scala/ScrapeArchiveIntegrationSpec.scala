@@ -380,16 +380,28 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     } finally purge()
   }
 
-  it should "never create an archive row of its own" in {
+  // The runner hands a scrape to the intake FIRST and archives it after (CinemaScrapeRunner), so a venue's
+  // first scrape is judged before its archive row exists: the ledger's update matched nothing and the
+  // guard state that scrape decided was silently dropped.
+  it should "keep the guard state of a venue's first scrape, judged before its archive row exists" in {
     purge()
     try {
-      new MongoScrapeGuardLedger(Some(db)).put(Multikino, ScrapeGuardState(Some("filmweb.pl/cinema/2352")))
-      rowCount() shouldBe 0
+      val state = ScrapeGuardState(Some("filmweb.pl/cinema/2352"), depthRejections = 1)
+      new MongoScrapeGuardLedger(Some(db)).put(Multikino, state)
+      val archive = new MongoScrapeArchiveRepository(Some(db))
+      // Until the archive writes, the guard-only row reads as a venue with no scrape on record, not a broken row.
+      archive.read(Multikino).map(_.flatMap(_.films.headOption)) shouldBe scala.util.Success(None)
+      noException should be thrownBy archive.findAll()
+      archive.record(scraped(Morning, Seq(minimal)))
+
+      new MongoScrapeGuardLedger(Some(db)).get(Multikino) shouldBe Some(state)
+      archive.find(Multikino).map(_.films.map(_.movie.title)) shouldBe Some(Seq(minimal.movie.title))
+      rowCount() shouldBe 1
     } finally purge()
   }
 
   it should "survive the archive recording each scrape into the same row" in {
-    // The archive writes EVERY tick (before the guards run), so a wholesale row
+    // The archive writes EVERY tick (right after the guards run), so a wholesale row
     // replace would wipe the guard state on every scrape and reset the grace again.
     purge()
     try {
