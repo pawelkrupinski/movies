@@ -9,9 +9,10 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
 
-# a launch: `java -` at a command or array start, outside comments, in any non-test script
+# a launch: `java -` at a command or array start, outside comments, in any non-test script -- text files only, never
+# an installed dependency tree (an npm package's binaries and vendored scripts are not the repository's)
 launches() {
-  grep -rnE '(^|[(;&|"[:space:]])java -' "$@" 2>/dev/null \
+  grep -rnIE --exclude-dir=node_modules '(^|[(;&|"[:space:]])java -' "$@" 2>/dev/null \
     | grep -vE '^[^:]+-test\.sh:|^[^:]+_test\.py:|^[^:]+:[0-9]+:[[:space:]]*#'
 }
 missing() { launches "$@" | grep -v -- '-Djava.awt.headless=true' | cut -d: -f1,2; }
@@ -22,6 +23,13 @@ printf '#!/bin/sh\n# java -Xmx1g is only a comment\nexec java -Xmx1g -cp x Main\
 printf '#!/bin/sh\nCMD=(java -Xmx1g -Djava.awt.headless=true -cp x Main)\n' > "$scratch/ok.sh"
 check "the check finds a bare launch and passes a headless one (comments aside)" "$scratch/bare.sh:3" \
   "$(missing "$scratch")"
+# 2026-11-21, Order independence #99: js-quality-report-test.sh, run earlier in the shuffled order, installs
+# scripts/js-quality/node_modules; a bare `grep -r` read its jscpd binary and failed with "Binary file ... matches"
+mkdir -p "$scratch/installed/node_modules/pkg/bin"
+printf 'x\000exec java -Xmx1g -cp x Main\n' > "$scratch/installed/node_modules/pkg/bin/tool"
+printf '#!/bin/sh\nexec java -Xmx1g -cp x Main\n' > "$scratch/installed/node_modules/pkg/vendored.sh"
+check "an installed node_modules (binaries, vendored scripts) is never read as a launch" "" \
+  "$(missing "$scratch/installed")"
 check "the repository's tool JVMs launch at least once (the check still sees them)" yes \
   "$([ "$(cd "$REPO_ROOT" && launches scripts .github/scripts infra/bin | wc -l)" -ge 3 ] && echo yes || echo no)"
 check "every tool JVM a script launches runs AWT headless" "" \
