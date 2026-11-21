@@ -148,22 +148,28 @@ private[identity] final class ListingScoring(pool: FamilyPool, scoring: Candidat
   private lazy val named = candidates.filterNot(scored => scored.denied || untitled(scored)).map(_.probability).maxOption
   private def ownLanguageUntitled(scored: Scored) = untitled(scored) && named.forall(scored.probability >= _)
 
+  // The tests below that [[besideDenials]] asks, each named for what it denies.
+  private def itsDirectorsOtherFilm(scored: Scored) =
+    titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures)
+  private def namesakeOfItsCreditedDirectorsFilm(scored: Scored) =
+    creditedNamesake && !scored.denied && !directedBy(scored.candidate.tmdbId) &&
+      IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) && !IdentityMeasures.sameDirector(scored.measures)
+  private def namesakeOfItsBilledDirectorsFilm(scored: Scored) =
+    directorBilled && IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) &&
+      !IdentityMeasures.bannerNamesItsDirector(listing, scored.candidate.film)
+  private def anotherInstalment(scored: Scored) = instalment && scored.category("numeral").exists(IdentityMeasures.OtherInstalment)
+  private def anotherHousesStaging(scored: Scored) = housed.nonEmpty && besideItsOwnHouse(scored)
+
   /** The denials one candidate's evidence makes of another, in the order they are asked: each a test of the scored
    *  candidate and why it is denied. */
   private val besideDenials: Seq[(Scored => Boolean, String)] = Seq(
     (ownLanguageUntitled, "a film of the venue's own language its title shares no word with"),
     (anotherRecordOfItsBroadcast, "another record of a broadcast its film database holds twice"),
-    (scored => titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures),
-      "its director's other film, which the title does not name"),
-    (scored => creditedNamesake && !scored.denied && !directedBy(scored.candidate.tmdbId) &&
-       IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) && !IdentityMeasures.sameDirector(scored.measures),
-      "a namesake of the film its credited director made of its title"),
-    (scored => directorBilled && IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) &&
-       !IdentityMeasures.bannerNamesItsDirector(listing, scored.candidate.film),
-      "a namesake of the film whose director its billing names"),
-    (scored => instalment && scored.category("numeral").exists(IdentityMeasures.OtherInstalment),
-      "another instalment than the one the title numbers"),
-    (scored => housed.nonEmpty && besideItsOwnHouse(scored), "another house's staging of its work, beside its own house's record"))
+    (itsDirectorsOtherFilm, "its director's other film, which the title does not name"),
+    (namesakeOfItsCreditedDirectorsFilm, "a namesake of the film its credited director made of its title"),
+    (namesakeOfItsBilledDirectorsFilm, "a namesake of the film whose director its billing names"),
+    (anotherInstalment, "another instalment than the one the title numbers"),
+    (anotherHousesStaging, "another house's staging of its work, beside its own house's record"))
 
   /** Why another candidate's evidence denies `scored`, if it does. */
   private def deniedBeside(scored: Scored): Option[String] =

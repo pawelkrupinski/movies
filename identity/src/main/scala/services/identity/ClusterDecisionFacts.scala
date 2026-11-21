@@ -29,7 +29,12 @@ private[identity] final class ClusterDecisionFacts(scoring: CandidateScoring, fa
   val basis =
     if (pinned) ResolverDecision.Basis.Pinned
     else if (film.isDefined) (if (ownMatch) ResolverDecision.Basis.OwnMatch else ResolverDecision.Basis.PooledMatch)
-    else if (scored.isEmpty) (if (unknown > 0) ResolverDecision.Basis.NoEvidence else ResolverDecision.Basis.NoCandidate)
+    else noFilmBasis
+
+  /** Why a cluster takes no film: nothing to weigh (a search still unanswered, or none naming a candidate), its best
+   *  candidate denied, or none rated high enough. */
+  private def noFilmBasis =
+    if (scored.isEmpty) (if (unknown > 0) ResolverDecision.Basis.NoEvidence else ResolverDecision.Basis.NoCandidate)
     else if (scored.head.denied) ResolverDecision.Basis.Vetoed
     else ResolverDecision.Basis.BelowThreshold
 
