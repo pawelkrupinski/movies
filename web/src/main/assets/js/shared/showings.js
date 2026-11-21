@@ -57,58 +57,58 @@ function undoTruncation(root) {
 // the DOM (`truncateShowings`).
 function foldShowings(link, days, hasCinemaHeaders) {
   if (!link) return;
-  let lineCount = 0;
-  let hidden = 0;
-  let capped = false;
-
-  for (const day of days) {
-    if (!day.visible) continue;
-    let dayHasVisible = false;
-    let dayLines = 1;   // the day's own label row
-
-    for (const cinemaGroup of day.cinemaGroups) {
-      const visibleBadges = cinemaGroup.visible ? cinemaGroup.visibleCount : 0;
-      if (visibleBadges === 0) continue;
-
-      if (capped) {
-        hidden += visibleBadges;
-        cinemaGroup.element.classList.add(TRUNCATED);
-        continue;
-      }
-
-      const pillRows = Math.max(1, Math.ceil(visibleBadges / _PILLS_PER_ROW));
-      const cinemaLines = (hasCinemaHeaders ? 1 : 0) + pillRows;
-
-      if (lineCount + dayLines + cinemaLines <= _MAX_SHOWINGS_ROWS) {
-        cinemaGroup.element.classList.remove(TRUNCATED);
-        dayHasVisible = true;
-        dayLines += cinemaLines;
-      } else {
-        hidden += visibleBadges;
-        cinemaGroup.element.classList.add(TRUNCATED);
-        capped = true;
-      }
-    }
-
-    if (dayHasVisible) {
-      lineCount += dayLines;
-    } else if (capped) {
-      day.element.classList.add(TRUNCATED);
-    }
-  }
-
+  const hidden = foldPastRowLimit(days, hasCinemaHeaders);
   if (hidden > _MIN_HIDDEN) {
     link.textContent = '… +' + hidden + ' ' + _showtimeNoun(hidden);
     link.style.display = '';
   } else {
-    // Too few folded away to be worth a link — unfold them again.
-    if (hidden > 0) {
-      for (const day of days) {
-        day.element.classList.remove(TRUNCATED);
-        for (const cinemaGroup of day.cinemaGroups) cinemaGroup.element.classList.remove(TRUNCATED);
-      }
-    }
+    if (hidden > 0) unfoldDays(days);   // too few folded away to be worth a link
     link.style.display = 'none';
+  }
+}
+
+// Walks the card's visible rows in order, keeping each cinema group while it
+// still fits in `_MAX_SHOWINGS_ROWS` and folding every one from the first that
+// does not; a day left with nothing kept after that folds whole. Returns how
+// many showtimes it folded away.
+function foldPastRowLimit(days, hasCinemaHeaders) {
+  const walk = { lineCount: 0, hidden: 0, capped: false };
+  for (const day of days) {
+    if (!day.visible) continue;
+    const dayLines = foldDay(day, walk, hasCinemaHeaders);
+    if (dayLines > 0) walk.lineCount += dayLines;
+    else if (walk.capped) day.element.classList.add(TRUNCATED);
+  }
+  return walk.hidden;
+}
+
+// One day of `foldPastRowLimit`'s walk: the lines the day takes (its label row
+// and every cinema group kept), or 0 when it kept none.
+function foldDay(day, walk, hasCinemaHeaders) {
+  const headerLines = hasCinemaHeaders ? 1 : 0;
+  let dayLines = 1;   // the day's own label row
+  let kept = false;
+  for (const cinemaGroup of day.cinemaGroups) {
+    const visibleBadges = cinemaGroup.visible ? cinemaGroup.visibleCount : 0;
+    if (visibleBadges === 0) continue;
+    const cinemaLines = headerLines + Math.max(1, Math.ceil(visibleBadges / _PILLS_PER_ROW));
+    // Once one group does not fit, every later one folds too, fitting or not.
+    walk.capped = walk.capped || walk.lineCount + dayLines + cinemaLines > _MAX_SHOWINGS_ROWS;
+    cinemaGroup.element.classList.toggle(TRUNCATED, walk.capped);
+    if (walk.capped) {
+      walk.hidden += visibleBadges;
+    } else {
+      kept = true;
+      dayLines += cinemaLines;
+    }
+  }
+  return kept ? dayLines : 0;
+}
+
+function unfoldDays(days) {
+  for (const day of days) {
+    day.element.classList.remove(TRUNCATED);
+    for (const cinemaGroup of day.cinemaGroups) cinemaGroup.element.classList.remove(TRUNCATED);
   }
 }
 
