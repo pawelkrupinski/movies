@@ -342,9 +342,12 @@ class WebActionsTest(unittest.TestCase):
     def assert_frees_the_web_port(self, captured):
         self.assertIn(["lsof", "-ti", "tcp:9000", "-sTCP:LISTEN"], captured)
 
-    def test_web_runs_from_the_review_worktree_so_review_answers_are_written(self):
+    def test_web_runs_from_the_review_worktree_with_the_sign_in_providers(self):
         execed, captured = self.execed(devpanel.run_web)
-        self.assertEqual(execed, (Path("/repo"), ["./scripts/review-server"]))
+        self.assertEqual(execed, (Path("/repo"), [
+            "secrets", "run", "movies",
+            "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "FACEBOOK_APP_ID", "FACEBOOK_APP_SECRET",
+            "--", "./scripts/review-server"]))
         self.assert_frees_the_web_port(captured)
 
     def test_kill_web(self):

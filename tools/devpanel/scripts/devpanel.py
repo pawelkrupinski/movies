@@ -388,10 +388,19 @@ def run_web(ctx: Context) -> int:
     scripts/dev-server.sh (the narrowed heap that trips an OOM early and leaves
     target/oom-<pid>.hprof) in the review worktree with REVIEW_LABELS_FILE set,
     so the /debug review pages write their answers. Run from the root checkout
-    they had no labels file and wrote nothing."""
+    they had no labels file and wrote nothing.
+
+    Under `secrets run` with the Google and Facebook sign-in keys: without a
+    provider configured the navbar renders no login pill at all
+    (_authMenu.scala.html), so a bare run looked like a missing login link."""
     free_port(ctx, WEB_PORT)
-    dispatch(ctx, ctx.repo_root, "Local web server (:9000)", ["./scripts/review-server"])
+    dispatch(ctx, ctx.repo_root, "Local web server (:9000)", [*SIGN_IN_SECRETS, "--", "./scripts/review-server"])
     return 0
+
+
+# The vault keys that configure the local server's OAuth providers.
+SIGN_IN_SECRETS = ["secrets", "run", "movies",
+                   "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "FACEBOOK_APP_ID", "FACEBOOK_APP_SECRET"]
 
 
 def kill_web(ctx: Context) -> int:
