@@ -40,13 +40,16 @@ class CspFilterSpec extends AnyFlatSpec with Matchers {
     csp should include("https://www.google-analytics.com")
   }
 
-  it should "allow YouTube as the only frame-src" in {
-    // YouTube is the trailer iframe target on /movie. If the policy ever
-    // drops it, trailer playback breaks silently — the iframe just
-    // fails to load with a console warning. This assertion is the
-    // tripwire for that regression.
-    val csp = run().header.headers("Content-Security-Policy")
-    csp should include("frame-src https://www.youtube.com https://www.youtube-nocookie.com")
+  it should "frame every trailer embed the film page can render, and nothing else" in {
+    // The trailer iframe on /movie loads whatever `TrailerEmbed.embedUrlFor`
+    // made of a cinema's link — YouTube or Vimeo. A host the policy leaves out
+    // breaks playback silently: the iframe just fails to load with a console
+    // warning. Vimeo's was left out from the start.
+    val frameSrc = run().header.headers("Content-Security-Policy").split("; ").find(_.startsWith("frame-src "))
+    val embeds = Seq("https://youtu.be/dQw4w9WgXcQ", "https://vimeo.com/76979871").flatMap(models.TrailerEmbed.embedUrlFor)
+    embeds should have size 2
+    embeds.foreach(embed => frameSrc.toSeq.flatMap(_.split(" ")) should contain(ForwardedUrl.originOf(embed)))
+    frameSrc shouldBe Some("frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com")
   }
 
   it should "leave img-src wide because cinema CDNs shift over time" in {

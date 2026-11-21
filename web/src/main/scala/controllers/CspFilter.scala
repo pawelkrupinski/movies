@@ -30,8 +30,8 @@ import play.api.mvc.{Filter, RequestHeader, Result}
  *    `GA_MEASUREMENT_ID` is set. Both endpoints stay listed even
  *    when the env vars aren't set; an absent script tag means
  *    nothing connects, so the policy is harmless.
- *  - `*.youtube.com` for the trailer `<iframe>`s the /movie page
- *    renders.
+ *  - YouTube and Vimeo's player for the trailer `<iframe>` the /movie page
+ *    renders — every host `models.TrailerEmbed.embedUrlFor` can produce.
  *
  * Image sources are wide (`https:` + `data:`) because cinema CDNs
  * resolve to many different hosts and they shift over time — pinning
@@ -85,7 +85,7 @@ object CspFilter {
       "img-src 'self' data: https:",
       s"font-src 'self' data:$fonts",
       "connect-src 'self' https://*.sentry.io https://*.google-analytics.com https://*.googletagmanager.com",
-      "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+      "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
