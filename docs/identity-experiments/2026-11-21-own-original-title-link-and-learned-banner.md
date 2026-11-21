@@ -22,3 +22,13 @@
   takes are judged in `identity-judgements.tsv` (AGENT-JUDGED 2026-11-21).
 - **Not tried:** honouring the `*` judgements of one relay family in the resolver (the judgements are gate data and the
   projection's withdrawal, by exact billing): the banner guard cures the class without reading them.
+
+## Reverted (2026-11-21, Main #2806-#2808)
+
+The `TitleRelation.sameOriginal` half alone added a new A -> B -> A take along an arrival chain in the committed slice
+`identity-slices/uk-keswick-alhambra-ntlive-hayfever-5cf7064a` (PopulationMonotonicityPart2Spec): Lichfield Garrick's
+"NT Encore - Hay Fever" and Regal Fordingbridge's "NT Recorded Live: Hay Fever" go none -> tmdb:1791571 -> none. With the
+parent's `TitleRelation.scala` the slice passes; with the parent's `StageRelays.scala` alone it still fails. The whole
+commit (604134d1a) was reverted -- the banner guard only compensated for the link change -- so its two cures wait on a
+version of the original-title link that keeps the walk monotone. Reproducer:
+`scripts/sbt-warm 'worker/testOnly services.identity.PopulationMonotonicityPart2Spec -- -z "uk-keswick-alhambra-ntlive-hayfever"'`.

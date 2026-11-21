@@ -828,30 +828,6 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       Film("The Metropolitan Opera 2026/27: La Fanciulla del West"), houses) shouldBe false
   }
 
-  "an original title" should "link a title only to the OTHER title it names, never through its own" in {
-    def forms(whole: String, originals: Set[String] = Set.empty) =
-      TitleRelation.Forms(whole, whole, originals, Set.empty, whole, Set.empty, whole, originals.headOption, Nil)
-    val never = (_: String) => false
-    // DE Kino Central bills "Tronthaim: Berlin - Die Sinfonie" with its own title as its original: no link to
-    // "Berlin - Ecke Schönhauser" through it
-    TitleRelation.tier(forms("tronthaim berlin die sinfonie", Set("tronthaim berlin die sinfonie")),
-      forms("berlin ecke schonhauser"), never, never, sharedOriginal = false) shouldBe None
-    // one title's original naming the other's whole title still links them
-    TitleRelation.tier(forms("der untergang", Set("downfall")), forms("downfall"), never, never, sharedOriginal = false) shouldBe
-      Some((3, ConstraintEdges.OriginalTitle))
-  }
-
-  "a venue's programme banner learned as a house" should "bill no record under that house when it names none of it" in {
-    // UK Lowther Pavilion bills its relays "On Screen: …"; its works' searches found La Scala Ballet's records, so the
-    // banner was learned as La Scala, and its "On Screen: La Bayadere" (the Royal Ballet's 2027 relay) took La Scala's
-    // 2006 "La Scala Ballet: La Bayadère" -- judged wrong for every other Bayadère relay
-    val houses = BannerHouses(Map("onscreen" -> "lascalaballet"))
-    StageRelays.billsUnderItsHouse(MeasuredListing("On Screen: La Bayadere"), Film("La Scala Ballet: La Bayadère", year = Some(2006)), houses) shouldBe false
-    // a banner sharing a word of the house it was learned as still bills under it
-    StageRelays.billsUnderItsHouse(MeasuredListing("Scala Live: La Bayadere"), Film("La Scala Ballet: La Bayadère", year = Some(2006)),
-      BannerHouses(Map("scalalive" -> "lascalaballet"))) shouldBe true
-  }
-
   "a record billing the listing's work under several banners" should "bill it under the listing's house when any of its titles does" in {
     // TMDB's 1693710 carries the National Theatre's broadcast title and, as alternatives, its "At
     // Home" streaming title and the bare play: Flicks' "NT Live: The Misanthrope" is its house's.

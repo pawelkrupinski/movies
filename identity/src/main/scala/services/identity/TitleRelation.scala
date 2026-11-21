@@ -101,7 +101,7 @@ object TitleRelation {
 
   /** Does one title's original name the other's whole title, or (`sharedOriginal`) do the two bill the same originals? */
   private def sameOriginal(a: Forms, b: Forms, sharedOriginal: Boolean): Boolean =
-    a.originals(b.whole) || b.originals(a.whole) || (sharedOriginal && a.originals.nonEmpty && a.originals == b.originals)
+    (a.originals ++ b.originals).exists(o => o == a.whole || o == b.whole) || (sharedOriginal && a.originals.nonEmpty && a.originals == b.originals)
 
   /** Is `whole`'s title a delimited segment of `decorated`'s? */
   def segmentOf(whole: Forms, decorated: Forms): Boolean = decorated.segments.contains(whole.whole)
