@@ -4,26 +4,24 @@
 // `tools.PageScripts`). The Playwright suite under `page-tests-playwright/tests/`
 // has its own setup.
 //
-// The "globals" list below is the contract between `shared.js` and
-// the inline `<script>` blocks in `repertoire/film/kina.scala.html`.
-// Twirl renders the inline block BEFORE the `<script src=
-// "/assets/js/shared.js">` tag, so:
+// The "globals" list below is what the browser code reads from the
+// templates: the constants `_sharedJsConfig.scala.html` emits (ALL_CINEMAS,
+// CINEMA_PILLS, …) and the functions the per-page inline `<script>` block
+// defines (`applyFilters`, `buildIndex`, …), which run in the same global
+// scope as the scripts loaded after them.
 //
-//  - constants from `_sharedJsConfig` (ALL_CINEMAS, CINEMA_PILLS, …)
-//    are in scope for shared.js at runtime
-//  - shared.js exports functions (`applyFilters`, `buildIndex`, …)
-//    that the inline `<script>` block calls back into
+// Between the shared modules (`js/shared/*.js`, loaded in order by
+// `_sharedScripts.scala.html`) each file says it itself: a `/* global … */`
+// line per module it reads from, and `/* exported … */` for what it offers
+// the others and the templates. ESLint checks both — a name read but not
+// declared is `no-undef`, one declared and also defined is `no-redeclare` —
+// so those lines stay the true import list of each file.
 //
-// ESLint can't see across files, so without this list every
-// cross-file reference would fire `no-undef`. Keep this list in sync
-// with the actual interface — a new constant in _sharedJsConfig or a
-// new function called by the inline block needs to land here.
-//
-// `i18n.js` (loaded ahead of shared.js — see `_sharedJsConfig.scala.html`/
+// `i18n.js` (loaded ahead of the shared modules — see `_sharedScripts`/
 // `landing.scala.html`) is intentionally NOT added here: it's part of
 // this same lint glob, so declaring `t` as a global here would collide
-// with its own `function t(...)` and fire `no-redeclare`. shared.js
-// reaches it via `window.t(...)` instead, which needs no declaration.
+// with its own `function t(...)` and fire `no-redeclare`. The shared
+// modules reach it via `window.t(...)` instead, which needs no declaration.
 
 const js = require('@eslint/js');
 const globals = require('globals');
@@ -62,7 +60,7 @@ module.exports = [
         buildIndex: 'readonly',
 
         // From `_geoDistance.scala.html`, the pure-helper inline `<script>`
-        // rendered ahead of shared.js on every page — see its own doc
+        // rendered ahead of the shared scripts on every page — see its own doc
         // comment for why it's a separate partial from `_repertoireView`'s.
         nearestCityWithinKm: 'readonly',
       },
@@ -78,7 +76,7 @@ module.exports = [
       // try-catch when the only possible failures (blocked site data, a
       // full quota) are ones we accept silently.
       'no-empty': ['warn', { allowEmptyCatch: true }],
-      // Many shared.js functions are exported by being defined at top
+      // Many shared-module functions are exported by being defined at top
       // level — ESLint's flat config treats them as unused unless we
       // also disable the prefer-const / no-inner-declarations checks
       // that don't understand the template-stitching pattern.

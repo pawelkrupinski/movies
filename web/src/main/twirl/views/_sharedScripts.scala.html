@@ -1,0 +1,43 @@
+@(deferred: Boolean)
+@*
+   The scripts every city page (the listing, a film, a facet listing) loads after
+   `_sharedJsConfig`'s constants: `i18n.js`, then the shared modules under
+   `js/shared/`, one concern each.
+
+   They are classic scripts, not ES modules: each one's top-level functions and
+   `const`s land in the page's one global scope, where the next script and the
+   templates' inline handlers find them. Each file names what it uses from the
+   others in its `/* global */` lines and what it offers in `/* exported */`.
+
+   THE ORDER IS LOAD-BEARING in two ways, and the page specs hold both
+   (`PageJsBehaviourSpec`, "the shared scripts"):
+   - nothing may run at load time before what it reads: `city.js` first (every
+     film link and request hangs off its mount point), `boot.js` after
+     everything it boots;
+   - two capture-phase listeners on one event run in the order they were
+     added: the search field's tap-away dismiss (`search.js`) must come before
+     the dropdowns' click-outside close (`overlays.js`), so the tap that drops
+     the keyboard does only that.
+
+   `deferred` for the listing, whose inline view script must run first; the
+   film and facet pages load them in place. Each URL is digested and cached
+   for a year (`play.assets.defaultCache`), so a second page costs no request.
+*@@defining(if (deferred) " defer" else "") { attribute =><script@attribute src="@routes.Assets.versioned("js/i18n.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/city.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/local-store.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/filters.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/search.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/overlays.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/hidden-films.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/cinemas.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/film-cards.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/showings.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/auth.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/dates.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/filter-url.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/hidden-films-sync.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/language-sync.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/posters.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/day-carousel.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/boot.js")"></script>
+<script@attribute src="@routes.Assets.versioned("js/shared/image-uptime.js")"></script>}

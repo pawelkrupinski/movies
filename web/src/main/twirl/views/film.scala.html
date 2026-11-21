@@ -60,8 +60,7 @@
 <body>
 
 @_sharedJsConfig(Seq.empty, Map.empty[String, String], oauthProviders, pinnedToday)
-<script src="@routes.Assets.versioned("js/i18n.js")"></script>
-<script src="@routes.Assets.versioned("js/shared.js")"></script>
+@_sharedScripts(deferred = false)
 
 <nav class="navbar px-4 py-3 d-flex align-items-center justify-content-between">
   @* `href="/"` and the city's own name are the SSR fallback for when
