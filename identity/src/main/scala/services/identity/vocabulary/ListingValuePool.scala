@@ -12,8 +12,9 @@ import models.{CinemaMovie, Movie, Showtime}
  *  listings that hold the values; not thread-safe, as a read is one thread's. */
 private[identity] final class ListingValuePool {
   private def table[A <: AnyRef] = new java.util.HashMap[A, A]()
-  // One table per type, so a value is only ever replaced by one of its own class (an equal `Seq` of
-  // another class, a `Vector` for a `List`, would be no substitute for a `List` field).
+  // One table per field type, so a value is only ever replaced by one its field can hold (an equal `Vector`
+  // would be no substitute for a `List` field: `formats` keeps its own). `lists` is one table for every `Seq`
+  // class: the fields it serves are typed `Seq`, so an equal one of another class stands in.
   private val movies   = table[Movie]
   private val texts    = table[Option[String]]
   private val lists    = table[Seq[String]]

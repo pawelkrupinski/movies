@@ -70,8 +70,9 @@ private[identity] final class Clustering(stages: ResolveStages, mutation: Mutati
 private[identity] object Clustering {
   /** One round of a family's clustering: its edges and the clusters the solver made of them. */
   final case class Round(edges: Seq[ResolverEdge], clusters: Seq[Seq[EvidenceNode]]) {
-    /** The round's title must-links (same title, search form, original title, segment), however the solver then split
-     *  the nodes they join: the title family a facts-free cluster's vote reads ([[ClusterVoting.familyMajority]]). */
+    /** The round's must-links of the title tiers ([[ConstraintEdges.TitleTiers]]: a title relation, and the catalogue-id,
+     *  relay and event links drawn at the same tiers), however the solver then split the nodes they join: the title
+     *  family a facts-free cluster's vote reads ([[ClusterVoting.familyMajority]]). */
     lazy val titleEdges: Seq[ResolverEdge] = edges.filter(edge => edge.must && ConstraintEdges.TitleTiers(edge.tier))
     /** Each node's cluster, by its position. */
     lazy val clusterIndex: Map[String, Int] = clusters.zipWithIndex.flatMap { case (cluster, index) => cluster.map(_.id -> index) }.toMap

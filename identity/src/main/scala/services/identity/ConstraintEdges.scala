@@ -155,7 +155,8 @@ private[identity] object ConstraintEdges {
   /** The cannot-link of a node crediting a director of its own and a node holding a film that director did not make. */
   val CreditApart = "credit-apart"
 
-  /** The must-link tiers a title draws: same title, same search form or original title, one
-   *  title a segment of the other. */
+  /** The must-link tiers a title draws: same title (2), same search form or original title (3), one title a segment
+   *  of the other (4). Not the title's alone: one catalogue id (2), one relay and one film-less event (3) link at
+   *  them too, and a reader of these tiers ([[Clustering.Round.titleEdges]]) reads those links with the titles'. */
   val TitleTiers: Set[Int] = Set(2, 3, 4)
 }

@@ -50,7 +50,8 @@ final class InMemoryAgreementVerdicts extends AgreementVerdicts {
   def replace(removed: Set[String], added: Seq[StoredVerdict]): Unit = synchronized { kept --= removed; added.foreach(v => kept(v.id) = stored(v)) }
 }
 
-/** The verdicts in `identity_agreements`, one document per cluster (`_id` its smallest listing). Every call is awaited
+/** The verdicts in `identity_agreements`, one document per cluster (`_id` its cluster key, [[ClusterKeys]]; a model
+ *  take's correction under `correction|<key>`). Every call is awaited
  *  and lets a failure propagate; the stage writes only verdicts that moved. */
 final class MongoAgreementVerdicts(db: MongoDatabase) extends AgreementVerdicts {
   import AgreementVerdicts._
