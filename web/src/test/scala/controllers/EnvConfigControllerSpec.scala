@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsArray, JsObject, Json}
 import play.api.test.{FakeRequest, Helpers}
 import play.api.test.Helpers._
-import services.config.{EnvConfigAdmin, InMemoryEnvOverrideStore, InMemoryEnvRegistryStore, RegisteredKnob}
+import services.config.{EnvConfigAdmin, EnvOverrideStore, InMemoryEnvOverrideStore, InMemoryEnvRegistryStore, MongoEnvOverrideStore, RegisteredKnob}
 import tools.Env
 
 /**
@@ -17,7 +17,7 @@ import tools.Env
  */
 class EnvConfigControllerSpec extends AnyFlatSpec with Matchers {
 
-  private def serviceWith(over: InMemoryEnvOverrideStore, reg: InMemoryEnvRegistryStore) =
+  private def serviceWith(over: EnvOverrideStore, reg: InMemoryEnvRegistryStore) =
     new EnvConfigAdmin(over, reg)
 
   private def fixture() = {
@@ -28,7 +28,7 @@ class EnvConfigControllerSpec extends AnyFlatSpec with Matchers {
     (over, reg)
   }
 
-  private def controller(over: InMemoryEnvOverrideStore, reg: InMemoryEnvRegistryStore,
+  private def controller(over: EnvOverrideStore, reg: InMemoryEnvRegistryStore,
                          gate: AdminAction = TestAdminAction()) =
     new EnvConfigController(Helpers.stubControllerComponents(), gate, serviceWith(over, reg))
 
@@ -113,5 +113,15 @@ class EnvConfigControllerSpec extends AnyFlatSpec with Matchers {
     val users = TestAdminAction.adminRepository
     users.revokeSessions(TestAdminAction.AdminUserId)
     status(controller(over, reg, TestAdminAction(users)).data.apply(adminSession)) shouldBe UNAUTHORIZED
+  }
+
+  "POST /admin/config/set and /reset" should "503, not 200, when the override store cannot be written" in {
+    val unreachable = org.mongodb.scala.MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200&connectTimeoutMS=200")
+    try {
+      val (_, reg) = fixture()
+      val c = controller(new MongoEnvOverrideStore(Some(unreachable.getDatabase("unreachable"))), reg)
+      status(c.set.apply(jsonReq(Json.obj("key" -> "KINOWO_TICK", "value" -> "15")))) shouldBe SERVICE_UNAVAILABLE
+      status(c.reset.apply(jsonReq(Json.obj("key" -> "KINOWO_TICK")))) shouldBe SERVICE_UNAVAILABLE
+    } finally unreachable.close()
   }
 }

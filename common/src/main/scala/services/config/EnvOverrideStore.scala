@@ -22,10 +22,12 @@ trait EnvOverrideStore {
   def lookup(key: String): Option[String]
   /** All current overrides (for the admin merge). */
   def all(): Map[String, String]
-  /** Set/replace an override and make it visible to [[lookup]] immediately. */
-  def set(key: String, value: String): Unit
-  /** Remove an override ("reset to default / env"), visible immediately. */
-  def clear(key: String): Unit
+  /** Set/replace an override and make it visible to [[lookup]] immediately: whether it was stored. One that could
+   *  not be stored is not applied here either, so no process runs a flip the others never see. */
+  def set(key: String, value: String): Boolean
+  /** Remove an override ("reset to default / env"), visible immediately: whether the removal was stored, as for
+   *  [[set]]. */
+  def clear(key: String): Boolean
   /** Reload the cache from the backing store (no-op for the in-memory impl): whether it could be read — the cache is
    *  kept as it was when not. */
   def refresh(): Boolean
@@ -37,21 +39,23 @@ class InMemoryEnvOverrideStore extends EnvOverrideStore {
   private val map = new java.util.concurrent.ConcurrentHashMap[String, String]()
   def lookup(key: String): Option[String] = Option(map.get(key))
   def all(): Map[String, String] = { import scala.jdk.CollectionConverters._; map.asScala.toMap }
-  def set(key: String, value: String): Unit = {
+  def set(key: String, value: String): Boolean = {
     val (k, v) = MongoEnvOverrideStore.decode(tools.BsonRoundTrip(MongoEnvOverrideStore.encode(key, value)))
       .getOrElse(throw new IllegalStateException(s"override $key does not read back as stored"))
-    map.put(k, v); ()
+    map.put(k, v); true
   }
-  def clear(key: String): Unit = { map.remove(key); () }
+  def clear(key: String): Boolean = { map.remove(key); true }
   def refresh(): Boolean = true
 }
 
 /** Mongo-backed override store. Document shape: `{ _id: key, value: String }`.
  *  Takes the shared web/worker database (None → disabled, e.g. in tests/local
- *  without Mongo, where the in-memory impl is used instead). All writes are
- *  best-effort with a 10s timeout (a flip is operator-driven, not on a hot path);
- *  the local cache is updated synchronously on set/clear so the writing process
- *  sees its own flip without waiting for the next refresh. */
+ *  without Mongo, where the in-memory impl is used instead). Each write waits up to
+ *  10s (a flip is operator-driven, not on a hot path); the local cache is updated
+ *  synchronously on a stored set/clear so the writing process sees its own flip
+ *  without waiting for the next refresh, and not at all on a failed one: the page
+ *  showed a flip as applied that no other process ever read, and the next refresh
+ *  quietly reverted it here too. */
 class MongoEnvOverrideStore(sharedDb: Option[MongoDatabase]) extends EnvOverrideStore with Logging {
   import MongoEnvOverrideStore.*
   private val coll: Option[MongoCollection[Document]] =
@@ -71,24 +75,21 @@ class MongoEnvOverrideStore(sharedDb: Option[MongoDatabase]) extends EnvOverride
     read.isSuccess
   }
 
-  def set(key: String, value: String): Unit = {
-    coll.foreach { c =>
-      Try(Await.result(
-        c.replaceOne(Filters.eq("_id", key),
-          encode(key, value), ReplaceOptions().upsert(true)).toFuture(),
-        10.seconds))
-        .recover { case e => logger.warn(s"EnvOverrideStore.set($key) failed: ${e.getMessage}") }
-    }
-    cache = cache + (key -> value)
-  }
+  def set(key: String, value: String): Boolean =
+    stored(s"set($key)") { c =>
+      c.replaceOne(Filters.eq("_id", key), encode(key, value), ReplaceOptions().upsert(true)).toFuture()
+    } && { cache = cache + (key -> value); true }
 
-  def clear(key: String): Unit = {
-    coll.foreach { c =>
-      Try(Await.result(c.deleteOne(Filters.eq("_id", key)).toFuture(), 10.seconds))
-        .recover { case e => logger.warn(s"EnvOverrideStore.clear($key) failed: ${e.getMessage}") }
+  def clear(key: String): Boolean =
+    stored(s"clear($key)")(_.deleteOne(Filters.eq("_id", key)).toFuture()) && { cache = cache - key; true }
+
+  /** Whether `write` reached the collection (trivially, with no collection to write to). */
+  private def stored(what: String)(write: MongoCollection[Document] => scala.concurrent.Future[?]): Boolean =
+    coll.forall { c =>
+      Try(Await.result(write(c), 10.seconds)).fold(
+        e => { logger.warn(s"EnvOverrideStore.$what failed, not applied: ${e.getMessage}"); false },
+        _ => true)
     }
-    cache = cache - key
-  }
 }
 
 object MongoEnvOverrideStore {

@@ -2,7 +2,7 @@ package controllers
 
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc.*
-import services.config.{EnvConfigAdmin, EnvConfigRow, TimeKnobFormat}
+import services.config.{EnvConfigAdmin, EnvConfigRow, FlipOutcome, TimeKnobFormat}
 
 /**
  * Admin page at `/admin/config` to view and flip the non-secret config knobs
@@ -25,19 +25,24 @@ class EnvConfigController(cc: ControllerComponents, adminAction: AdminAction, co
   }
 
   /** Apply an override: `{ "key": …, "value": … }`. 400 when the key is unknown
-   *  or secret, or the value doesn't parse for the knob's numeric type. */
+   *  or secret, or the value doesn't parse for the knob's numeric type; 503 when
+   *  the override store could not be written. */
   def set: Action[JsObject] = adminAction(parse.json[JsObject]) { request =>
     val key   = (request.body \ "key").asOpt[String].getOrElse("")
     val value = (request.body \ "value").asOpt[String].getOrElse("")
-    if (config.set(key, value)) Ok(Json.obj("ok" -> true))
-    else BadRequest(Json.obj("error" -> "rejected: unknown/secret key or invalid value for its type"))
+    flipResult(config.set(key, value), "rejected: unknown/secret key or invalid value for its type")
   }
 
   /** Remove an override ("reset to default / env"): `{ "key": … }`. */
   def reset: Action[JsObject] = adminAction(parse.json[JsObject]) { request =>
     val key = (request.body \ "key").asOpt[String].getOrElse("")
-    if (config.reset(key)) Ok(Json.obj("ok" -> true))
-    else BadRequest(Json.obj("error" -> "rejected: unknown/secret key"))
+    flipResult(config.reset(key), "rejected: unknown/secret key")
+  }
+
+  private def flipResult(outcome: FlipOutcome, rejected: String): Result = outcome match {
+    case FlipOutcome.Applied   => Ok(Json.obj("ok" -> true))
+    case FlipOutcome.Rejected  => BadRequest(Json.obj("error" -> rejected))
+    case FlipOutcome.NotStored => ServiceUnavailable(Json.obj("error" -> "not stored: the override store could not be written; nothing changed"))
   }
 
   private def rowJson(r: EnvConfigRow): JsObject = Json.obj(

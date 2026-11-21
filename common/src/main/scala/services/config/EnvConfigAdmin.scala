@@ -30,21 +30,19 @@ class EnvConfigAdmin(overrides: EnvOverrideStore, registry: EnvRegistryStore) {
       }
   }
 
-  /** Apply an override. Rejected (returns false) for an unknown or secret key, or
-   *  for a value that doesn't parse for the knob's numeric type — so the page
-   *  can't poke a non-numeric value into an Int/Long knob or flip a credential. */
-  def set(key: String, value: String): Boolean =
+  /** Apply an override. Rejected for an unknown or secret key, or for a value that
+   *  doesn't parse for the knob's numeric type — so the page can't poke a
+   *  non-numeric value into an Int/Long knob or flip a credential. */
+  def set(key: String, value: String): FlipOutcome =
     knobKind(key) match {
-      case None => false
-      case Some(kind) =>
-        if (!validValue(kind, value)) false
-        else { overrides.set(key, value.trim); true }
+      case Some(kind) if validValue(kind, value) => FlipOutcome.of(overrides.set(key, value.trim))
+      case _                                     => FlipOutcome.Rejected
     }
 
-  /** Remove an override ("reset to default / env"). Returns false for a secret /
+  /** Remove an override ("reset to default / env"). Rejected for a secret /
    *  unknown key. Idempotent for a key with no override. */
-  def reset(key: String): Boolean =
-    if (knobKind(key).isEmpty) false else { overrides.clear(key); true }
+  def reset(key: String): FlipOutcome =
+    if (knobKind(key).isEmpty) FlipOutcome.Rejected else FlipOutcome.of(overrides.clear(key))
 
   /** The registered kind for a known, non-secret key. */
   private def knobKind(key: String): Option[Env.Kind] =
@@ -57,4 +55,14 @@ class EnvConfigAdmin(overrides: EnvOverrideStore, registry: EnvRegistryStore) {
     case Env.Kind.Str  => value.nonEmpty
   }
 
+}
+
+/** What became of an operator's flip: applied everywhere it is read, rejected for its key or value, or not stored
+ *  (the override store could not be written, so nothing changed). */
+enum FlipOutcome {
+  case Applied, Rejected, NotStored
+}
+
+object FlipOutcome {
+  def of(stored: Boolean): FlipOutcome = if (stored) Applied else NotStored
 }

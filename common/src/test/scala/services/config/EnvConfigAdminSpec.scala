@@ -31,9 +31,9 @@ class EnvConfigAdminSpec extends AnyFlatSpec with Matchers {
     registry.publish("worker", Seq(RegisteredKnob("worker", "KINOWO_N", Env.Kind.Long, Some("5"), Some("5"))))
     val overrides = new InMemoryEnvOverrideStore
     val svc = new EnvConfigAdmin(overrides, registry)
-    svc.set("KINOWO_N", "12") shouldBe true
+    svc.set("KINOWO_N", "12") shouldBe FlipOutcome.Applied
     overrides.lookup("KINOWO_N") shouldBe Some("12")
-    svc.set("KINOWO_N", "abc") shouldBe false             // not a Long
+    svc.set("KINOWO_N", "abc") shouldBe FlipOutcome.Rejected             // not a Long
     overrides.lookup("KINOWO_N") shouldBe Some("12")      // unchanged
   }
 
@@ -41,8 +41,8 @@ class EnvConfigAdminSpec extends AnyFlatSpec with Matchers {
     val registry = new InMemoryEnvRegistryStore
     registry.publish("worker", Seq(RegisteredKnob("worker", "KINOWO_N", Env.Kind.Long, Some("5"), Some("5"))))
     val svc = new EnvConfigAdmin(new InMemoryEnvOverrideStore, registry)
-    svc.set("KINOWO_UNKNOWN", "1") shouldBe false
-    svc.set("ZYTE_API_KEY", "x")   shouldBe false         // even if it were registered, secret
+    svc.set("KINOWO_UNKNOWN", "1") shouldBe FlipOutcome.Rejected
+    svc.set("ZYTE_API_KEY", "x")   shouldBe FlipOutcome.Rejected         // even if it were registered, secret
   }
 
   "reset" should "clear an override for a known key and reject a secret one" in {
@@ -51,8 +51,23 @@ class EnvConfigAdminSpec extends AnyFlatSpec with Matchers {
     val overrides = new InMemoryEnvOverrideStore
     overrides.set("KINOWO_N", "9")
     val svc = new EnvConfigAdmin(overrides, registry)
-    svc.reset("KINOWO_N") shouldBe true
+    svc.reset("KINOWO_N") shouldBe FlipOutcome.Applied
     overrides.lookup("KINOWO_N") shouldBe None
-    svc.reset("TELEGRAM_BOT_TOKEN") shouldBe false
+    svc.reset("TELEGRAM_BOT_TOKEN") shouldBe FlipOutcome.Rejected
+  }
+
+  // A write that failed was only logged: the page said the flip was applied, this process ran it until its next refresh
+  // reverted it, and no other process ever saw it.
+  "set and reset" should "report NotStored, and apply nothing, when the override store cannot be written" in {
+    val unreachable = org.mongodb.scala.MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200&connectTimeoutMS=200")
+    try {
+      val registry = new InMemoryEnvRegistryStore
+      registry.publish("worker", Seq(RegisteredKnob("worker", "KINOWO_N", Env.Kind.Long, Some("5"), Some("5"))))
+      val overrides = new MongoEnvOverrideStore(Some(unreachable.getDatabase("unreachable")))
+      val svc = new EnvConfigAdmin(overrides, registry)
+      svc.set("KINOWO_N", "12") shouldBe FlipOutcome.NotStored
+      overrides.lookup("KINOWO_N") shouldBe None
+      svc.reset("KINOWO_N") shouldBe FlipOutcome.NotStored
+    } finally unreachable.close()
   }
 }
