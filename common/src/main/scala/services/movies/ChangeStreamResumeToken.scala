@@ -103,18 +103,25 @@ class ChangeStreamResumeToken(
 
   /** Persist the advanced position. `force` (clean shutdown) writes SYNCHRONOUSLY so a
    *  restart resumes deterministically; otherwise fire-and-forget + time-throttled. */
-  def save(force: Boolean): Unit = {
+  def save(force: Boolean): Unit = synchronized {
     val token = lastToken.get()
     if (token != null && (force || lastSave.get().forall(_.millis >= TokenSaveThrottleMs))) {
       lastSave.set(Some(stopwatch.start()))
-      store.save(streamId, token, synchronously = force)
+      lastWrite = store.save(streamId, token, synchronously = force)
     }
   }
 
+  // The last save sent: a fire-and-forget one may still be on its way when a clear comes.
+  private var lastWrite: scala.concurrent.Future[Unit] = scala.concurrent.Future.unit
+
   /** Drop the token so the next open starts fresh at "now" — for a too-old / invalidated
-   *  token (oplog window exceeded), where resuming would loop on the same error. */
-  def clear(): Unit = {
-    synchronized { generations.incrementAndGet(); lastToken.set(null) }
+   *  token (oplog window exceeded), where resuming would loop on the same error. The stored one
+   *  is deleted only once the last save sent has landed (bounded): deleted first, a save still in
+   *  flight stored the invalid token again. Under the same lock as [[save]], so no save starts
+   *  between the wait and the delete. */
+  def clear(): Unit = synchronized {
+    generations.incrementAndGet(); lastToken.set(null)
+    scala.util.Try(scala.concurrent.Await.ready(lastWrite, ChangeStreamResumeToken.SaveLandingWait))
     store.clear(streamId)
   }
 
@@ -133,6 +140,9 @@ class ChangeStreamResumeToken(
 
 object ChangeStreamResumeToken {
   private val TokenSaveThrottleMs = 5000L
+
+  /** How long a [[ChangeStreamResumeToken.clear]] waits for a save still in flight: a write's own timeout. */
+  private val SaveLandingWait = scala.concurrent.duration.Duration(5, "seconds")
 
   /** Where a cursor opens. */
   sealed trait Position

@@ -26,8 +26,9 @@ trait ResumeTokenStore {
   /** The saved position: absent when none was saved, FAILED when it could not be read. */
   def load(streamId: String): tools.ReadOutcome[BsonDocument]
   /** Save `token` as the stream's position; `synchronously` waits for the write (a clean
-   *  shutdown), otherwise it is fire-and-forget. */
-  def save(streamId: String, token: BsonDocument, synchronously: Boolean): Unit
+   *  shutdown), otherwise it is fire-and-forget. Completes once the write has landed or failed
+   *  (a failure is logged here, never handed on): what a [[clear]] must wait for. */
+  def save(streamId: String, token: BsonDocument, synchronously: Boolean): scala.concurrent.Future[Unit]
   /** Forget the stream's position, so the next open starts at "now". */
   def clear(streamId: String): Unit
 }
@@ -36,7 +37,8 @@ object ResumeTokenStore {
   /** Keeps nothing: every open starts at "now". */
   val Ephemeral: ResumeTokenStore = new ResumeTokenStore {
     def load(streamId: String): tools.ReadOutcome[BsonDocument] = tools.ReadOutcome.none(s"$streamId resume token (not persisted)")
-    def save(streamId: String, token: BsonDocument, synchronously: Boolean): Unit = ()
+    def save(streamId: String, token: BsonDocument, synchronously: Boolean): scala.concurrent.Future[Unit] =
+      scala.concurrent.Future.unit
     def clear(streamId: String): Unit = ()
   }
 
@@ -55,11 +57,13 @@ final class MongoResumeTokenStore(database: MongoDatabase) extends ResumeTokenSt
       .flatMap(_.get("token").fold[tools.ReadOutcome[BsonDocument]](tools.ReadOutcome.none(s"$streamId resume token"))(
         token => tools.ReadOutcome.Answered(token.asDocument())))
 
-  def save(streamId: String, token: BsonDocument, synchronously: Boolean): Unit = {
+  def save(streamId: String, token: BsonDocument, synchronously: Boolean): scala.concurrent.Future[Unit] = {
     val write = coll.replaceOne(Filters.eq("_id", streamId),
       Document("_id" -> streamId, "token" -> token), new ReplaceOptions().upsert(true)).toFuture()
-    if (synchronously) Try(Await.result(write, 5.seconds)).failed.foreach(failed(s"save($streamId)"))
-    else write.failed.foreach(failed(s"save($streamId)"))(using scala.concurrent.ExecutionContext.parasitic)
+      .transform(outcome => { outcome.failed.foreach(failed(s"save($streamId)")); scala.util.Success(()) })(
+        using scala.concurrent.ExecutionContext.parasitic)
+    if (synchronously) Try(Await.ready(write, 5.seconds)).failed.foreach(failed(s"save($streamId)"))
+    write
   }
 
   def clear(streamId: String): Unit =
