@@ -114,7 +114,7 @@ async function stressNavbar(page: Page): Promise<void> {
       localStorage.setItem('disabledCinemas', JSON.stringify(all.slice(1)));
     }
 
-    // Long-name logged-in pill. Mirrors the DOM `buildAuthMenu` (shared.js)
+    // Long-name logged-in pill. Mirrors the DOM `buildAuthMenu` (`auth.js`)
     // hydrates into the slot once `/api/me` names somebody — auth-menu wrapper
     // with an avatar fallback span and the auth-name span. No server render puts
     // it there any more: the page is the same bytes for everyone so a shared

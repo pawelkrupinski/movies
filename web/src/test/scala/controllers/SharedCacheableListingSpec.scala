@@ -17,7 +17,7 @@ import play.api.test.Helpers._
  * `IS_LOGGED_IN = true` — so it was pinned to `private, no-cache` and Cloudflare
  * held none of the HTML, only the JSON endpoints.
  *
- * Those three moved to `/api/me`, which `shared.js` fetches per client and which
+ * Those three moved to `/api/me`, which `js/shared/` fetches per client and which
  * says `private, no-store` itself. What is left is a controller that cannot
  * identify a visitor even if a page asked it to — `MovieController` takes no
  * `UserRepository` any more — so the assertions here are the direct ones: a
@@ -175,7 +175,7 @@ class SharedCacheableListingSpec extends AnyFlatSpec with Matchers {
   //
   // The cookie itself is not lost: it exists so the bare `/` landing can bounce
   // a returning visitor to their city, it is `httpOnly=false` precisely so the
-  // client can work with it, and `shared.js` now writes it on load with the
+  // client can work with it, and `js/shared/` now writes it on load with the
   // same name, path and lifetime.
 
   "The listing offered to the edge" should "carry no Set-Cookie for Cloudflare to bypass on" in {

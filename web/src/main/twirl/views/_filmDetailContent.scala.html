@@ -19,7 +19,7 @@
       </div>
       @* Full-screen view of the poster, opened by a click on it and closed
          by the ✕, a click anywhere or Escape — a native modal `<dialog>`
-         (shared.js `openPosterLightbox`). The
+         (`posters.js` `openPosterLightbox`). The
          `<img>` src is filled on open from whichever URL the poster actually
          loaded, so a fallback that rescued it is the one shown here too. *@
       @if(film.posterHref.nonEmpty) {
@@ -76,7 +76,7 @@
          whether the popup is ever opened, so a crawler sees the sibling-city
          links even though a visitor only does after clicking the trigger.
          Only the CSS class toggled by `openOtherCitiesModal`/
-         `closeOtherCitiesModal` (shared.js) decides visibility; nothing here
+         `closeOtherCitiesModal` (`overlays.js`) decides visibility; nothing here
          is fetched on click. Absent entirely when this film has no upcoming
          showing anywhere else, so a single-city release renders no dead
          trigger. *@
@@ -207,7 +207,7 @@
     <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0;" data-i18n="detail.showings">@messages("detail.showings")</h2>
     @* Every cinema the film plays at, every date. What narrows it is the
        visitor's own Filtry selection, applied by `applyFilters` in
-       `film.scala.html` once shared.js boots — so the server render stays
+       `film.scala.html` once `js/shared/` boots — so the server render stays
        complete (and cacheable, and correct for a crawler) while the page a
        person sees carries only the cinemas they kept switched on.
        `#showings-empty` is what they get when the selection leaves nothing. *@

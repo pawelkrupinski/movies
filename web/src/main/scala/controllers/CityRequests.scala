@@ -29,7 +29,7 @@ final class CityRequests(messagesApi: MessagesApi,
   // The deployment's own, and ONLY, language. Every visitor gets this same
   // rendered `Messages` regardless of `Accept-Language`, cookie, or anything
   // else about the request — an explicit language pick swaps the visible
-  // copy client-side instead (`shared.js`'s `applyLanguage`, fed by the
+  // copy client-side instead (`i18n.js`'s `applyLanguage`, fed by the
   // language pack `I18nPacks` embeds), so the server never has to branch per
   // visitor and every plain city URL stays edge-cacheable unconditionally
   // (see `ListingResponse.cacheablePlainPage`).

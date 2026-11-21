@@ -60,7 +60,7 @@
 
 @_minified(minifier) {
 <script>
-  @* shared.js's `bootView` indexes before it filters. This listing has nothing
+  @* `boot.js`'s `bootView` indexes before it filters. This listing has nothing
      to index — one axis, re-decided from the DOM on every pass — so the hook is
      a no-op here rather than a second index to keep honest. *@
   function buildIndex() {}
@@ -81,7 +81,7 @@
     truncateAllShowings(true);
     updateEmptyState(visible);
   }
-  @* `toggleAuthMenu` + the click-outside close handler come from shared.js
+  @* `toggleAuthMenu` + the click-outside close handler come from `auth.js` and `overlays.js`
      (loaded above); no inline copy here, or the two drift apart. *@
 </script>
 }

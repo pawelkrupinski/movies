@@ -7,11 +7,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@pageTitle</title>
-  @* Anti-FOUC: hide #film-grid until shared.js has run its first filter pass
+  @* Anti-FOUC: hide #film-grid until `js/shared/` has run its first filter pass
      (see the `grid-cloak` rule in _sharedStyles). Added synchronously in the
      head so the unfiltered grid never paints; JS-only, so no-JS users still
      get the full list. The timeout is a failsafe that reveals the grid even if
-     shared.js never loads / bootView throws, so a broken boot can't leave a
+     `js/shared/` never loads / bootView throws, so a broken boot can't leave a
      permanently blank page. *@
   <script>(function(e){e.classList.add('grid-cloak');setTimeout(function(){e.classList.remove('grid-cloak')},2000)})(document.documentElement)</script>
   @_ogTagsApp(city.country)(pageTitle = pageTitle, pageDescription = pageDescription, pageUrl = pageUrl, fbAppId = pageTags.fbAppId, imageUrl = controllers.ShareCardUrl.city(city), canonicalUrl = canonicalUrl)
@@ -54,7 +54,7 @@
    100vw day columns; the real grid (`#view-root`) is the centre column. A
    horizontal swipe (or arrow / key / dropdown change) translates `#day-track`,
    revealing the neighbouring day's grid — cloned + filtered to its day at
-   gesture start and removed once the slide settles (see shared.js). Above
+   gesture start and removed once the slide settles (see `js/shared/`). Above
    `MovieControllerService.LargeCityShowtimeThreshold` (`isLargeCity`,
    stamped as `data-large-city` on `#view-root`), a phone skips the clone +
    slide entirely and re-filters the live grid in place instead — cloning
@@ -65,7 +65,7 @@
   </div>
 </div>
 
-@* First-run swipe hint (phones only). shared.js reveals it once per calendar
+@* First-run swipe hint (phones only). `js/shared/` reveals it once per calendar
    day until the first swipe retires it for good — same rule as the iOS/Android
    apps. Hidden by default; never shown on a fine-pointer (desktop) device. *@
 <div id="swipe-hint" aria-hidden="true"><span class="swipe-hint-arrows">‹ ›</span> <span data-i18n="hint.swipe">@messages("hint.swipe")</span></div>

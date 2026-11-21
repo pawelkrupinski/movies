@@ -290,7 +290,7 @@ test.describe('mobile portrait — active day-pill highlight fills its rounded c
 //
 // EVERY server render is logged-OUT now (a "Zaloguj" button) — the page has to
 // be the same bytes for everyone or no shared cache could hold it, so the
-// `.auth-menu` avatar pill only ever arrives from `shared.js`'s `/api/me`
+// `.auth-menu` avatar pill only ever arrives from `js/shared/`'s `/api/me`
 // hydration. It therefore never appears in the other uniformity specs above —
 // they list `.auth-name`, which is `display:none` on mobile anyway. The pill's
 // height is pure CSS, so we inject the hydrated markup and measure it. The

@@ -58,7 +58,7 @@ class LandingController(cc: ControllerComponents, country: Country, picker: Pick
   // The city screen, unlike the front door, IS a country's own site — a page
   // this feature's language picker applies to. Always `country`'s language:
   // every visitor gets the same, edge-cacheable HTML; an explicit pick swaps
-  // the visible copy client-side (`shared.js`'s `applyLanguage`) rather than
+  // the visible copy client-side (`i18n.js`'s `applyLanguage`) rather than
   // by re-rendering here (mirrors `CityRequests.deploymentDefaultLang`,
   // bare code and all — see its comment for why it can't be region-qualified).
   private lazy val cityScreenMessages: play.api.i18n.Messages =

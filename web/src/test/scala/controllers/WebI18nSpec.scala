@@ -11,7 +11,7 @@ import java.util.Locale
 /**
  * Guards the §4 web-i18n wiring: message keys resolve to the right language
  * under `Lang("pl")` / `Lang("en")`, the JS locale payload carries the correct
- * per-language plural rule + showtime forms (the data the shared.js plural
+ * per-language plural rule + showtime forms (the data the `js/shared/` plural
  * function selects with), and `DateFormatter` keeps Polish byte-identical while
  * rendering other languages via their locale.
  *
@@ -114,7 +114,7 @@ class WebI18nSpec extends AnyFlatSpec with Matchers {
     json should include("\"daysFull\":[\"Monday\"")
   }
 
-  // The Polish plural rule shared.js implements, mirrored here so the category
+  // The Polish plural rule `js/shared/` implements, mirrored here so the category
   // boundaries (one / few / many) are pinned as a regression on the data that
   // drives it.
   private def plCategory(n: Int): String = {

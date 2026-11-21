@@ -37,7 +37,7 @@
 #
 # THE EVENT THAT PROMPTED THIS FILE IS THE PROOF. On 2026-09-04 the panel's error share went from
 # ~0.5% to ~25% and held there for hours. All of it was `POST /<cc>/uptime/img-event` -- the poster
-# telemetry beacon in assets/js/shared.js, which every browser posts and `adminAction` 401s -- rising
+# telemetry beacon in assets/js/shared/image-uptime.js, which every browser posts and `adminAction` 401s -- rising
 # because a JS-executing crawler started walking the US/UK/DE film pages (`/us/:city/movie/:slug`
 # went 10x and `/us/:city/movie/og-image` went from nothing to 0.4/s in the same ten minutes). Not
 # one 5xx was served. A share alert would have paged for a working site.

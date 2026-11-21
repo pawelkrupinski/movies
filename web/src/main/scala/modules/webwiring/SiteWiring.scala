@@ -11,7 +11,7 @@ trait SiteWiring { self: Wiring =>
   // The deployment's DEFAULT, and ONLY, `Lang` — Poland → pl → default
   // `messages`; other countries → their own bundle. `LandingController` /
   // `MovieController` render every visitor in this; an explicit language
-  // pick swaps the visible copy client-side instead (`shared.js`'s
+  // pick swaps the visible copy client-side instead (`js/shared/`'s
   // `applyLanguage`), never by re-rendering server-side.
   lazy val deploymentLang: play.api.i18n.Lang = play.api.i18n.Lang(country.language)
 

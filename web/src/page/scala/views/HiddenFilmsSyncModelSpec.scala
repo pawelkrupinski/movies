@@ -15,7 +15,7 @@ import scala.util.Random
 
 /**
  * Model-based test of the web client's hidden-films + language sync
- * (`shared.js`'s `bootMergeFromServer` / `_writeHiddenFilms` /
+ * (`hidden-films-sync.js`'s `bootMergeFromServer` / `_writeHiddenFilms` /
  * `reconcileLanguage`), in real Chrome: seeded random sequences of what a
  * visitor, the network and the account's other devices do, checked against
  * the sync's invariants. The same alphabet and invariants run against Android

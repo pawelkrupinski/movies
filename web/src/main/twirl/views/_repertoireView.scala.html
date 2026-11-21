@@ -10,7 +10,7 @@
    `data-next-day` is the next midnight on the CITY's clock — when the page
    retires itself and reloads into the new day. See the expiry block below.
 
-   `data-large-city` gates shared.js's carousel between the animated
+   `data-large-city` gates `js/shared/`'s carousel between the animated
    clone-and-slide preview and an instant in-place re-filter — see the
    `MovieControllerService.LargeCityShowtimeThreshold` doc comment. *@
 <main id="view-root" data-view="films" data-large-city="@isLargeCity" data-next-day="@{renderedAt.toLocalDate.plusDays(1).atStartOfDay(city.zoneId).toInstant.toEpochMilli}" data-rendered-at="@{renderedAt.atZone(city.zoneId).toInstant.toEpochMilli}">
@@ -27,7 +27,7 @@
 <script>
   // Wrapped in an IIFE to keep the per-view locals (`INDEX`,
   // `_prevVisibleOrder`) off the global scope; the `window.*` entry points
-  // below are what shared.js `bootView` drives.
+  // below are what `boot.js` `bootView` drives.
   (function () {
   // ── DOM index ─────────────────────────────────────────────────────────────
 
@@ -145,7 +145,7 @@
     return {
       query:     (document.getElementById('search-input')?.value || '').trim().toLowerCase(),
       // While a search shows every day, the days it brought in that the listing was not on
-      // (`searchOriginDay`, shared.js) are drawn lighter; null when nothing is.
+      // (`searchOriginDay`, `search.js`) are drawn lighter; null when nothing is.
       outsideDay: outsideSearchedDay(),
       hidden:    new Set(getHidden()),
       disabled:  new Set(getDisabledCinemas()),
@@ -362,7 +362,7 @@
 
   // ── Per-day filter for carousel neighbour columns ──────────────────────────
   //
-  // The day carousel (shared.js) reveals the prev/next day's grid by cloning
+  // The day carousel (`js/shared/`) reveals the prev/next day's grid by cloning
   // `#film-grid` and filtering the clone to a SINGLE fixed day, honouring every
   // OTHER active filter (search / cinema / format / from-hour / submenus) the
   // same way the live `applyFilters` does — same state, same three predicates,
@@ -504,8 +504,8 @@
 
   function sweepAndReindex() {
     const sweep = sweepExpired(showtimeNow());
-    // Before shared.js's deferred boot there's no INDEX — and none of the
-    // shared.js helpers `applyFilters` calls exist yet either. `bootView` will
+    // Before `js/shared/`'s deferred boot there's no INDEX — and none of the
+    // `js/shared/` helpers `applyFilters` calls exist yet either. `bootView` will
     // index and filter the already-pruned DOM itself a moment later.
     if (sweep.removed > 0 && INDEX) {
       // Cards dropped out of the middle of the grid: `buildIndex` renumbers
@@ -565,7 +565,7 @@
 
   function onClockMoved() { scheduleDayRollover(); scheduleExpiryPrune(); }
 
-  // Runs at parse time — ahead of the deferred shared.js — so a page restored
+  // Runs at parse time — ahead of the deferred `js/shared/` — so a page restored
   // from the bfcache or the HTTP cache is already pruned before it's indexed.
   onClockMoved();
   // Background tabs get their timers throttled, and a discarded one loses them
@@ -575,7 +575,7 @@
   });
   window.addEventListener('pageshow', function (event) { if (event.persisted) onClockMoved(); });
 
-  // Entry points shared.js drives at boot (`bootView`).
+  // Entry points `boot.js` drives at boot (`bootView`).
   window.buildIndex         = buildIndex;
   window.applyFilters       = applyFilters;
   window.hideOneFilm        = hideOneFilm;

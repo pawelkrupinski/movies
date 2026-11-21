@@ -8,7 +8,7 @@ import java.util.Properties
  * `messages.de`/`messages.es` bundles, flattened into one JSON object — from
  * `web/src/main/resources/messages*` at build time, so those bundles stay the
  * single source of truth for both the server-rendered default-language page
- * and the client-side language switch (`controllers.I18nPacks`, `shared.js`'s
+ * and the client-side language switch (`controllers.I18nPacks`, `js/shared/`'s
  * `applyLanguage`).
  *
  * Values keep their `{0}`/`{1}` placeholders literal — Java `MessageFormat`

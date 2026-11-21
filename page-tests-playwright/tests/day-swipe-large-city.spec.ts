@@ -8,7 +8,7 @@ import { waitForCards, cdpSwipe } from './helpers';
 // expensive enough to stutter a real swipe (measured on Salt Lake City: ~17.5k
 // DOM nodes per clone, two clones mounted at gesture start), so a coarse
 // pointer skips the clone-and-slide carousel entirely and re-filters the live
-// grid in place — see shared.js `usesInstantDayChange`. This is the same
+// grid in place — see `day-carousel.js` `usesInstantDayChange`. This is the same
 // gesture path `day-swipe.spec.ts` exercises on a normal-size city, asserting
 // the OPPOSITE: no `.day-col` is ever mounted, `#day-track` never arms.
 test.describe('day-swipe on a large city', { tag: '@agnostic' }, () => {

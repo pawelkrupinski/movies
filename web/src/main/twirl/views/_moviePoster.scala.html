@@ -9,7 +9,7 @@
    the primary 404/403s — every non-primary poster we know about, in
    source-priority order. It is emitted ONCE and never rewritten: the
    handler keeps its place in a `data-fallback-index` cursor, which is
-   what lets shared.js's backoff retry rewind the whole chain without a
+   what lets `js/shared/`'s backoff retry rewind the whole chain without a
    second copy of it (the chain is ~1.3 KB per poster; carrying it twice
    was a fifth of a city page). *@
 @poster match {

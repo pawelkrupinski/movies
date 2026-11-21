@@ -8,17 +8,17 @@ import play.api.i18n.Messages
 import play.api.libs.json.{JsObject, Json}
 
 /**
- * The locale data `shared.js` needs at runtime that ISN'T a translated
+ * The locale data `js/shared/` needs at runtime that ISN'T a translated
  * string — the short + full weekday arrays for the date pills and the date
  * headers, the month array, and the showtime plural forms — serialised into
  * the `KINOWO_LOCALE` constant `_sharedJsConfig` emits. Translated UI strings
  * (empty-state / swipe-hint / clear / area-picker / auth-menu copy, and
  * everything else the templates pull from `messages(...)`) travel instead
  * via the universal language pack (`I18nPacks`, embedded alongside this) —
- * `shared.js` reads those by key directly rather than having them re-pulled
+ * `js/shared/` reads those by key directly rather than having them re-pulled
  * here, so there's exactly one place a key's text is sourced from.
  *
- * Polish stays byte-identical to the arrays shared.js used to inline (the
+ * Polish stays byte-identical to the arrays `js/shared/` used to inline (the
  * SHORT Java text for `pl` is "niedz."/"pon.", not the "Nie"/"Pon" the UI
  * wants, and the month labels are genitive — so PL keeps explicit arrays).
  * Other languages fall back to Java's locale-aware text.
@@ -65,10 +65,10 @@ object JsLocale {
     if (isPolish(locale)) PolishMonths
     else Month.values.toSeq.map(_.getDisplayName(TextStyle.FULL, locale))
 
-  /** Showtime plural forms + the plural RULE shared.js selects with. The rule id
+  /** Showtime plural forms + the plural RULE `js/shared/` selects with. The rule id
    *  is not the language: `pl` is the three-form rule (seans / seanse / seansów)
    *  and `en` the two-form one/other rule, which German and Spanish share — the
-   *  only branch `shared.js` takes is `=== 'pl'`. So a new language adds its
+   *  only branch `js/shared/` takes is `=== 'pl'`. So a new language adds its
    *  WORD FORMS here and reuses whichever rule its grammar follows. */
   private def showtime(locale: Locale): (String, JsObject) = locale.getLanguage match {
     case "pl" => "pl" -> Json.obj("one" -> "seans", "few" -> "seanse", "many" -> "seansów")

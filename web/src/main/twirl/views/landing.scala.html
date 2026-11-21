@@ -180,7 +180,7 @@
     .picker-error { color: #ffb4b4; font-size: .95rem; margin: .25rem 0 1rem; cursor: pointer; }
     .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   </style>
-  @* This page never loads `shared.js` — it's fully self-contained — so it
+  @* This page never loads `js/shared/` — it's fully self-contained — so it
      embeds the language pack and `i18n.js` (the `t`/`applyLanguage`/
      `onLanguageChange`/boot logic those share) directly rather than through
      `_sharedJsConfig.scala.html`. No in-page language switcher lives here,
