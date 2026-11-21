@@ -38,15 +38,15 @@ module-edge	common->geodata	14
 module-edge	common->http	65
 module-edge	http->base	10
 module-edge	identity->base	25
-module-edge	identity->common	516
+module-edge	identity->common	527
 module-edge	identity->http	6
 module-edge	scrapers->base	51
-module-edge	scrapers->common	1538
+module-edge	scrapers->common	1537
 module-edge	scrapers->geodata	4
 module-edge	scrapers->http	362
 module-edge	scrapers->identity	8
-module-edge	web->base	30
-module-edge	web->common	628
+module-edge	web->base	25
+module-edge	web->common	616
 module-edge	web->geodata	1
 module-edge	web->http	20
 module-edge	web->identity	41
@@ -68,7 +68,7 @@ ce	services.alerts	6
 ce	services.attempts	3
 ce	services.auth	5
 ce	services.cadence	2
-ce	services.cinemas	12
+ce	services.cinemas	11
 ce	services.closure	5
 ce	services.config	2
 ce	services.corpus	16
@@ -96,7 +96,7 @@ ce	services.sharecards	8
 ce	services.tasks	15
 ce	services.tasktypes	0
 ce	services.titles	2
-ce	services.users	4
+ce	services.users	3
 ce	services.venuepages	12
 ce	settings	2
 ce	tools	0
