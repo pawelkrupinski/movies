@@ -103,6 +103,21 @@ class SiteRatingsSpec extends AnyFlatSpec with Matchers {
     result.message should include ("1 score(s) changed, 0 URL(s) newly discovered, 1 failed")
   }
 
+  // A page read that carries no score (an RT scorecard that will not parse, a page without its score block)
+  // keeps the row's, as the per-row refresh does: the walk once wrote it over the stored one as "changed".
+  it should "keep the stored score when the page it re-reads carries none" in {
+    val repository = new InMemoryMovieRepository(Seq(
+      ("G", None, MovieRecord(metacriticUrl = Some(urlA), metascore = Some(5)))), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val key = cache.keyOf("G", None)
+    val site = new RecordingSite(scores = Map(urlA -> None), discover = Map.empty)
+
+    val result = new SiteRatings(cache, site, site.columns, tools.SpecStopwatch.Frozen).refreshAll()
+
+    cache.get(key).flatMap(_.metascore) shouldBe Some(5)
+    result.changed shouldBe Some(0)
+  }
+
   "persistIfMoved" should "write only a score that differs from the stored one, and answer with the badge it became" in {
     val repository = new InMemoryMovieRepository(Seq(
       ("F", None, MovieRecord(metacriticUrl = Some(urlA), metascore = Some(5)))), normalizer = titleNormalizer)

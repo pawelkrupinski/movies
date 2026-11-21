@@ -8,10 +8,10 @@ Metacritic row 'Unknown Film' (2020): answered -; url=- score=50; writes=0
 Metacritic row 'The Dark Knight' (2009): answered 85; url=https://www.metacritic.com/movie/the-dark-knight score=85; writes=2
 Metacritic row 'Broken Page' (2020): threw RuntimeException; url=https://www.metacritic.com/movie/broken score=40; writes=0
 Metacritic row 'Top Gun' (1986): answered -; url=https://www.metacritic.com/movie/top-gun score=-; writes=1
-Metacritic walk: walked=Some(10) changed=Some(3) discovered=Some(0) failed=Some(1) message=tick done in Nms — 3 score(s) changed, 0 URL(s) newly discovered, 1 failed.
+Metacritic walk: walked=Some(10) changed=Some(2) discovered=Some(0) failed=Some(1) message=tick done in Nms — 2 score(s) changed, 0 URL(s) newly discovered, 1 failed.
   The Dark Knight (2008): url=https://www.metacritic.com/movie/the-dark-knight score=85
   Knight Same (2008): url=https://www.metacritic.com/movie/the-dark-knight score=85
-  Girl Climber (2024): url=https://www.metacritic.com/movie/girl-climber score=-
+  Girl Climber (2024): url=https://www.metacritic.com/movie/girl-climber score=60
   Knight Denied (2008): url=- score=-
   Knight Agreed (2008): url=https://www.metacritic.com/movie/the-dark-knight score=85
   The Dark Knight (-): url=- score=-
@@ -21,10 +21,10 @@ Metacritic walk: walked=Some(10) changed=Some(3) discovered=Some(0) failed=Some(
   Top Gun (1986): url=- score=-
   cadence Knightagreed|-|85
   cadence Thedarkknight|1|85
-Metacritic recheck: walked=Some(10) changed=Some(4) discovered=Some(3) failed=Some(1) message=tick done in Nms — 4 score(s) changed, 3 URL(s) newly discovered, 1 failed.
+Metacritic recheck: walked=Some(10) changed=Some(3) discovered=Some(3) failed=Some(1) message=tick done in Nms — 3 score(s) changed, 3 URL(s) newly discovered, 1 failed.
   The Dark Knight (2008): url=https://www.metacritic.com/movie/the-dark-knight score=85
   Knight Same (2008): url=https://www.metacritic.com/movie/the-dark-knight score=85
-  Girl Climber (2024): url=https://www.metacritic.com/movie/girl-climber score=-
+  Girl Climber (2024): url=https://www.metacritic.com/movie/girl-climber score=60
   Knight Denied (2008): url=- score=-
   Knight Agreed (2008): url=https://www.metacritic.com/movie/the-dark-knight score=85
   The Dark Knight (-): url=https://www.metacritic.com/movie/the-dark-knight score=85
@@ -90,25 +90,25 @@ Filmweb row 'Niesamowite przygody skarpetek 4. Do roboty!' (-): answered 3.0; ur
 Filmweb row 'Niesamowite przygody skarpetek 4. Do roboty!' (2025): answered 3.0; url=https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+4%3A+Do+roboty%21-2026-10118632 rating=3.0 slot=SourceData(None,None,Some(Niesamowite przygody skarpetek 4: Do roboty!),None,Some(Skarpetki znów biorą się do roboty! Nie ma co liczyć na nudę – odlotowi bohaterowie będą mieć niezłe urwanie głowy. Koncerty na żywo, konkursy kulinarne, budowanie robotów, a nawet… pomaganie Świętemu Mikołajowi!),List(),List(),None,Some(2026),List(),List(Animacja, Familijny),None,None,None,List(),None,None,None,None,List()); writes=1
 Filmweb row 'Unknown Film' (2020): answered -; url=- rating=5.0 slot=-; writes=0
 Filmweb row 'Broken Page' (2020): answered -; url=https://www.filmweb.pl/film/Broken-2020-999 rating=4.0 slot=SourceData(None,None,Some(Skarpetki),None,None,List(),List(),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List()); writes=0
-Filmweb walk: walked=Some(7) changed=Some(4) discovered=Some(0) failed=Some(0) message=tick done in Nms — 4 rating(s) changed, 0 URL(s) newly discovered, 0 failed.
+Filmweb walk: walked=Some(7) changed=Some(3) discovered=Some(0) failed=Some(0) message=tick done in Nms — 3 rating(s) changed, 0 URL(s) newly discovered, 0 failed.
   Niesamowite przygody skarpetek 4. Do roboty! (2026): url=https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+4%3A+Do+roboty%21-2026-10118632 rating=3.0 slot=SourceData(None,None,Some(Skarpetki),None,None,List(),List(),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List())
   Skarpetki Whole (2026): url=https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+4%3A+Do+roboty%21-2026-10118632 rating=3.0 slot=-
   Skarpetki Wrong Year (1990): url=https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+4%3A+Do+roboty%21-2026-10118632 rating=3.0 slot=SourceData(None,None,Some(Skarpetki),None,None,List(),List(),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List())
   Niesamowite przygody skarpetek 4. Do roboty! (-): url=- rating=- slot=-
   Niesamowite przygody skarpetek 4. Do roboty! (2025): url=- rating=- slot=-
   Unknown Film (2020): url=- rating=5.0 slot=-
-  Broken Page (2020): url=https://www.filmweb.pl/film/Broken-2020-999 rating=- slot=SourceData(None,None,Some(Skarpetki),None,None,List(),List(),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List())
+  Broken Page (2020): url=https://www.filmweb.pl/film/Broken-2020-999 rating=4.0 slot=SourceData(None,None,Some(Skarpetki),None,None,List(),List(),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List())
   cadence Niesamowiteprzygodyskarpetek4doroboty|1|3.0
   cadence Skarpetkiwhole|2|3.0
   cadence Skarpetkiwrongyear|3|3.0
-Filmweb recheck: walked=Some(7) changed=Some(3) discovered=Some(2) failed=Some(0) message=tick done in Nms — 3 rating(s) changed, 2 URL(s) newly discovered, 0 failed.
+Filmweb recheck: walked=Some(7) changed=Some(2) discovered=Some(2) failed=Some(0) message=tick done in Nms — 2 rating(s) changed, 2 URL(s) newly discovered, 0 failed.
   Niesamowite przygody skarpetek 4. Do roboty! (2026): url=https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+4%3A+Do+roboty%21-2026-10118632 rating=3.0 slot=SourceData(None,None,Some(Niesamowite przygody skarpetek 4: Do roboty!),None,Some(Skarpetki znów biorą się do roboty! Nie ma co liczyć na nudę – odlotowi bohaterowie będą mieć niezłe urwanie głowy. Koncerty na żywo, konkursy kulinarne, budowanie robotów, a nawet… pomaganie Świętemu Mikołajowi!),List(),List(),None,Some(2026),List(),List(Animacja, Familijny),None,None,None,List(),None,None,None,None,List())
   Skarpetki Whole (2026): url=https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+4%3A+Do+roboty%21-2026-10118632 rating=3.0 slot=-
   Skarpetki Wrong Year (1990): url=https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+4%3A+Do+roboty%21-2026-10118632 rating=3.0 slot=SourceData(None,None,Some(Skarpetki),None,None,List(),List(),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List())
   Niesamowite przygody skarpetek 4. Do roboty! (-): url=https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+4%3A+Do+roboty%21-2026-10118632 rating=3.0 slot=SourceData(None,None,Some(Niesamowite przygody skarpetek 4: Do roboty!),None,Some(Skarpetki znów biorą się do roboty! Nie ma co liczyć na nudę – odlotowi bohaterowie będą mieć niezłe urwanie głowy. Koncerty na żywo, konkursy kulinarne, budowanie robotów, a nawet… pomaganie Świętemu Mikołajowi!),List(),List(),None,Some(2026),List(),List(Animacja, Familijny),None,None,None,List(),None,None,None,None,List())
   Niesamowite przygody skarpetek 4. Do roboty! (2025): url=https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+4%3A+Do+roboty%21-2026-10118632 rating=3.0 slot=SourceData(None,None,Some(Niesamowite przygody skarpetek 4: Do roboty!),None,Some(Skarpetki znów biorą się do roboty! Nie ma co liczyć na nudę – odlotowi bohaterowie będą mieć niezłe urwanie głowy. Koncerty na żywo, konkursy kulinarne, budowanie robotów, a nawet… pomaganie Świętemu Mikołajowi!),List(),List(),None,Some(2026),List(),List(Animacja, Familijny),None,None,None,List(),None,None,None,None,List())
   Unknown Film (2020): url=- rating=5.0 slot=-
-  Broken Page (2020): url=https://www.filmweb.pl/film/Broken-2020-999 rating=- slot=SourceData(None,None,Some(Skarpetki),None,None,List(),List(),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List())
+  Broken Page (2020): url=https://www.filmweb.pl/film/Broken-2020-999 rating=4.0 slot=SourceData(None,None,Some(Skarpetki),None,None,List(),List(),None,Some(2026),List(),List(),None,None,None,List(),None,None,None,None,List())
   cadence Niesamowite przygody skarpetek 4. Do roboty!|1|3.0
   cadence Niesamowite przygody skarpetek 4. Do roboty!|4|3.0
   cadence Niesamowite przygody skarpetek 4. Do roboty!|5|3.0

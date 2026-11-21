@@ -177,7 +177,7 @@ class SiteRatings[A](
         case Success(Some(read)) =>
           val fresh = read match {
             case PageRead.Read(page)    => page.score
-            case PageRead.Scored(score) => score
+            case PageRead.Scored(score) => score.orElse(columns.score(current)) // none read: the row's is kept
             case PageRead.Denied(_)     => None
           }
           if (fresh != columns.score(current)) {
