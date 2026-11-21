@@ -10,6 +10,7 @@
 #   scripts/ratchet-diff --measure <base>        the head side measured from this WORKING TREE (scripts/quality-report
 #                                                and scripts/coupling-report --out, through sbt-warm) instead of its
 #                                                committed baselines: a fall nobody recorded with --update shows too
+#                                                (run this checkout's own copy: another's measures its tree)
 #
 # The table and its marks: scripts/ci/ratchet_diff.py.
 set -euo pipefail
@@ -19,7 +20,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --measure) measure=1 ;;
         --tsv) format=(--tsv) ;;
-        -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*) echo "ratchet-diff: unknown argument $1" >&2; exit 2 ;;
         *) [ -z "$range" ] || { echo "ratchet-diff: one range" >&2; exit 2; }; range="$1" ;;
     esac
@@ -31,6 +32,12 @@ head=""
 case "$range" in *..*) head="${range#*..}" ;; esac
 args=(--base "$base")
 if [ -n "$measure" ]; then
+    # the measure reads this script's checkout, the refs come from the current one: they must be the same checkout (a
+    # worktree calling the root checkout's copy measured main's tree and said "No ratchet row changed")
+    here="$(git rev-parse --show-toplevel)"
+    if [ "$(cd "$here" && pwd -P)" != "$(cd "$root" && pwd -P)" ]; then
+        echo "ratchet-diff: --measure measures $root, its own checkout, but this is $here: run $here/scripts/ratchet-diff" >&2; exit 2
+    fi
     if [ -n "$head" ] && [ "$(git rev-parse "$head")" != "$(git rev-parse HEAD)" ]; then
         echo "ratchet-diff: --measure measures this working tree: give <base> or <base>..HEAD" >&2; exit 2
     fi
