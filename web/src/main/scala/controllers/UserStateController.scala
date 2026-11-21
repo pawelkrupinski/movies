@@ -134,7 +134,7 @@ class UserStateController(
     val hidden = state.hiddenFilmsByCountry.getOrElse(countryCode, Set.empty)
     val etag   = hiddenFilmsETag(hiddenFilmsJson(hidden))
     val notModified = ifNoneMatch match {
-      case Some(inm) => inm.contains(etag)
+      case Some(inm) => ConditionalResponse.offersValidator(Some(inm), etag)
       case None      => ifModifiedSince.exists(!state.updatedAt.isAfter(_))
     }
     if (notModified) NotModified.withHeaders("ETag" -> etag, "Last-Modified" -> httpDate(state.updatedAt))
