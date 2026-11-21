@@ -161,7 +161,7 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
   // must still clear exactly that film (and nothing else) the way the old loop did.
   "staleSlotsFilter" should "scope to the one film and match every slot the write no longer names" in {
     def clauses(filmId: String, keep: Set[String]) =
-      ScreeningsRepository.staleSlotsFilter(filmId, keep)
+      SlotKeyed.staleSlotsFilter(filmId, keep)
         .toBsonDocument(classOf[org.bson.BsonDocument], com.mongodb.MongoClientSettings.getDefaultCodecRegistry)
         .getArray("$and")
 

@@ -5,10 +5,8 @@ import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 
-import com.mongodb.client.model.ReplaceOptions
 import models.{Showtime, ListingKey}
-import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, ReplaceOneModel, Updates}
+import org.mongodb.scala.model.{Filters, Updates}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 
 /**
@@ -148,23 +146,6 @@ object ScreeningsRepository {
    *  a constant rather than an inline literal. */
   val Collection = "screenings"
 
-  /** The stored slots of `filmId` that `keep` no longer names — the DELETE half of
-   *  `replaceFilm`, as ONE server-side predicate instead of a `findForFilm` read plus a
-   *  `deleteOne` per stale slot.
-   *
-   *  The same document set as the old loop: its candidates were exactly
-   *  `find(filmId == filmId)`, and for each it deleted `_id = filmId + IdSep + slotKey`,
-   *  which by the write invariant IS that document. Keying on the `filmId` + `slotKey`
-   *  FIELDS reproduces that set without re-deriving the composite `_id`, so it stays
-   *  unambiguous even for a `filmId` that itself contains [[SlotKeyed.IdSep]].
-   *
-   *  `keep` EMPTY yields `$nin: []` — nothing is a member of the empty set, so it matches
-   *  EVERY slot of the film. An empty `slots` map therefore still clears the film exactly
-   *  as the old "delete every key the read returned" did. This predicate is the only thing
-   *  standing between a whole-record write and a film's screenings, so it is unit-tested
-   *  directly. */
-  private[movies] def staleSlotsFilter(filmId: String, keep: Set[String]): Bson =
-    SlotKeyed.staleSlotsFilter(filmId, keep)
 }
 
 /**
@@ -242,7 +223,7 @@ class MongoScreeningsRepository(
 ) extends ScreeningsRepository
     with WatchedSlotKeyedRows[StoredScreeningsDto](ScreeningsRepository.Collection, _.filmId, resumeTokens, metrics, decodeFailures, stopwatch)
     with MongoSlotKeyedRows[StoredScreeningsDto](sharedDb, "ScreeningsRepository", ScreeningsRepository.Collection, "screenings",
-      SlotKeyed.Paging(findAllBatchSize, findAllBatchAttempts, findAllBatchBackoff), writeMetrics) {
+      SlotKeyed.Paging(findAllBatchSize, findAllBatchAttempts, findAllBatchBackoff), writeMetrics, _._id) {
   import SlotKeyed.idOf
 
   /** One `_id` range per venue, so only those venues' rows are read and decoded. */
@@ -293,7 +274,7 @@ class MongoScreeningsRepository(
    *  answered an empty map, which reads as "no film has a screening" — the corpus-wide version of the empty answer
    *  `StitchedCorpusScan.scanStitched` refuses page by page. */
   def findAll(): Map[String, Map[String, Seq[Showtime]]] = rowsCollection.fold(Map.empty[String, Map[String, Seq[Showtime]]]) { c =>
-    allRowsChecked(c, tools.MongoReplies.Screenings)(_._id).required
+    allRowsChecked(c, tools.MongoReplies.Screenings).required
       .groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.showtimes).toMap).toMap
   }
 
@@ -303,7 +284,7 @@ class MongoScreeningsRepository(
    *  round-trips for a film showing in 10 cinemas, paid on EVERY `MovieRepository.upsert`.
    *
    *  Semantics are unchanged, edge cases included:
-   *   - empty `slots` → no upserts, and [[ScreeningsRepository.staleSlotsFilter]]'s
+   *   - empty `slots` → no upserts, and [[SlotKeyed.staleSlotsFilter]]'s
    *     `$nin: []` still deletes every one of the film's slots;
    *   - a slot mapped to EMPTY showtimes is still STORED (callers filter those out via
    *     `showtimesOf`; `replaceFilm` itself never did), not treated as a delete;
@@ -311,10 +292,7 @@ class MongoScreeningsRepository(
    *     it changed because the rewrite was never idempotent where it counted: the row lands
    *     in the oplog with a fresh `updatedAt`, rings the change stream, and buys a projection.
    *
-   *  ORDERED, so the upserts land before the delete exactly as they did and the delete
-   *  can never race ahead of a slot this same call is re-writing. The request list is
-   *  never empty (the delete is always present), so the driver's empty-`bulkWrite`
-   *  rejection is unreachable. */
+   *  ORDERED, so the upserts land before the delete exactly as they did ([[MongoSlotKeyedRows.replaceFilmRows]]). */
   def replaceFilm(filmId: String, slots: Map[String, ListedShowtimes],
                   stored: Option[Map[String, ListedShowtimes]] = None): WriteOutcome = rowsCollection.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     write("replaceFilm", s"ScreeningsRepository.replaceFilm($filmId)") {
@@ -339,14 +317,8 @@ class MongoScreeningsRepository(
       // rows that never landed. The documented canary for a broken guard is "`written` climbing
       // under a flat scrape rate" -- exactly the shape a Mongo incident would have forged.
       metrics.recordWrite(ScreeningsMetrics.Outcome.Unchanged, slots.size - changed.size)
-      val upserts = changed.toSeq.map { case (k, row) =>
-        val dto = StoredScreeningsDto.of(filmId, k, row, now)
-        ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
-      }
-      val dropStale = DeleteManyModel[StoredScreeningsDto](ScreeningsRepository.staleSlotsFilter(filmId, slots.keySet))
-      val result    = Await.result(c.bulkWrite(upserts :+ dropStale, new BulkWriteOptions().ordered(true)).toFuture(), 30.seconds)
+      replaceFilmRows(c, filmId, changed.toSeq.map { case (k, row) => StoredScreeningsDto.of(filmId, k, row, now) }, keep = slots.keySet)
       metrics.recordWrite(ScreeningsMetrics.Outcome.Written, changed.size)
-      auditStalePrune(filmId, result.getDeletedCount, whole = slots.isEmpty)
       WriteOutcome.Written
     }
   }
@@ -362,7 +334,7 @@ class MongoScreeningsRepository(
       if (storedRow(c, filmId, slotKey).map(_.listed).contains(row))
         metrics.recordWrite(ScreeningsMetrics.Outcome.Unchanged, 1)
       else {
-        upsertOne(c, filmId, slotKey, row)
+        replaceRow(c, StoredScreeningsDto.of(filmId, slotKey, row, clock.instant()))
         metrics.recordWrite(ScreeningsMetrics.Outcome.Written, 1)
       }
       WriteOutcome.Written
@@ -391,11 +363,6 @@ class MongoScreeningsRepository(
   override def deleteFilms(filmIds: Set[String]): Long = {
     forget(filmIds)
     super.deleteFilms(filmIds)
-  }
-
-  private def upsertOne(c: MongoCollection[StoredScreeningsDto], filmId: String, slotKey: String, row: ListedShowtimes): Unit = {
-    val dto = StoredScreeningsDto.of(filmId, slotKey, row, clock.instant())
-    Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds); ()
   }
 
   /** What [[WatchedSlotKeyedRows]] watches, ringing `onChange(filmId)` for every change: the caller re-reads and stitches the film. */

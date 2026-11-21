@@ -5,9 +5,8 @@ import java.time.Instant
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 
-import com.mongodb.client.model.ReplaceOptions
 import models.{Source, SourceData}
-import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, ReplaceOneModel}
+import org.mongodb.scala.model.{BulkWriteOptions, Filters}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 
 /**
@@ -296,7 +295,7 @@ class MongoSlotsRepository(
 ) extends SlotsRepository
     with WatchedSlotKeyedRows[StoredSlotDto](SlotsRepository.Collection, _.filmId, resumeTokens, metrics, decodeFailures, stopwatch)
     with MongoSlotKeyedRows[StoredSlotDto](sharedDb, "SlotsRepository", SlotsRepository.Collection, "slots",
-      SlotKeyed.Paging(findAllBatchSize, findAllBatchAttempts, findAllBatchBackoff), writeMetrics) {
+      SlotKeyed.Paging(findAllBatchSize, findAllBatchAttempts, findAllBatchBackoff), writeMetrics, _._id) {
   import SlotKeyed.idOf
 
  /** A FAILED read is answered as one rather than passing an empty map off as "this film has
@@ -330,15 +329,14 @@ class MongoSlotsRepository(
    *  never "the film has no slots" for a caller to prune on. */
   def findAllChecked(): tools.ReadOutcome[Map[String, Map[String, SourceData]]] = rowsCollection match {
     case Some(c) =>
-      allRowsChecked(c, tools.MongoReplies.Default)(_._id).map(_.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap)
+      allRowsChecked(c, tools.MongoReplies.Default).map(_.groupBy(_.filmId).view.mapValues(_.map(d => d.slotKey -> d.slot).toMap).toMap)
     // No collection wired at all — not a failure, there is simply nothing to read.
     case None => tools.ReadOutcome.Answered(Map.empty)
   }
 
-  /** ONE ordered bulk round-trip: every slot's upsert plus a single `deleteMany` of
-   *  whatever `slots` no longer names — the same shape as
-   *  [[MongoScreeningsRepository.replaceFilm]], including the `$nin: []` edge case where
-   *  an EMPTY `slots` clears every slot of the film. */
+  /** ONE ordered bulk round-trip ([[MongoSlotKeyedRows.replaceFilmRows]], as
+   *  [[MongoScreeningsRepository.replaceFilm]]): every changed slot's upsert plus a single `deleteMany` of whatever
+   *  `slots` no longer names, an EMPTY `slots` clearing every slot of the film. */
   def replaceFilm(filmId: String, slots: Map[String, SourceData],
                   stored: Option[Map[String, SourceData]] = None): WriteOutcome = rowsCollection.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     write("replaceFilm", s"SlotsRepository.replaceFilm($filmId)") {
@@ -357,13 +355,8 @@ class MongoSlotsRepository(
       // full-film read on the hottest write path in the system.
       val (current, readComplete) = stored.map(_ -> true).getOrElse(SlotKeyed.rowsOrNone(findForFilmChecked(filmId)))
       val writable = roster.writable(SlotsRepository.Collection, filmId, current, slots)
-      val upserts = SlotKeyed.changedRows(current, readComplete, writable).toSeq.map { case (k, sd) =>
-        val dto = StoredSlotDto.of(filmId, k, sd, now)
-        ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
-      }
-      val dropStale = DeleteManyModel[StoredSlotDto](SlotKeyed.staleSlotsFilter(filmId, slots.keySet))
-      val result    = Await.result(c.bulkWrite(upserts :+ dropStale, new BulkWriteOptions().ordered(true)).toFuture(), 30.seconds)
-      auditStalePrune(filmId, result.getDeletedCount, whole = slots.isEmpty)
+      val changed  = SlotKeyed.changedRows(current, readComplete, writable).toSeq.map { case (k, sd) => StoredSlotDto.of(filmId, k, sd, now) }
+      replaceFilmRows(c, filmId, changed, keep = slots.keySet)
       WriteOutcome.Written
     }
   }
@@ -373,10 +366,8 @@ class MongoSlotsRepository(
     // composite `_id`. A row that already holds exactly what we would write must not be written.
     // A read that fails, and a row that is absent, both read as "differs" and write.
     write("upsertSlot", s"SlotsRepository.upsertSlot($filmId,$slotKey)") {
-      if (roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey) && !storedRow(c, filmId, slotKey).map(_.slot).contains(slot)) {
-        val dto = StoredSlotDto.of(filmId, slotKey, slot, clock.instant())
-        Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
-      }
+      if (roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey) && !storedRow(c, filmId, slotKey).map(_.slot).contains(slot))
+        replaceRow(c, StoredSlotDto.of(filmId, slotKey, slot, clock.instant()))
       WriteOutcome.Written
     }
   }
@@ -398,8 +389,7 @@ class MongoSlotsRepository(
   private def writeChanged(c: MongoCollection[StoredSlotDto], filmId: String, slots: Map[String, SourceData]): Unit = {
     val now      = clock.instant()
     val replaces = changedOf(slots, storedSlots(c, filmId, slots.keySet)).map { case (slotKey, slot) =>
-      val dto = StoredSlotDto.of(filmId, slotKey, slot, now)
-      ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
+      replacement(StoredSlotDto.of(filmId, slotKey, slot, now))
     }
     if (replaces.nonEmpty) Await.result(c.bulkWrite(replaces, new BulkWriteOptions().ordered(false)).toFuture(), 30.seconds)
   }
