@@ -208,7 +208,9 @@ reads -- WHAT THE SPEC OPENS, nothing wider (the owner, 2026-11-21: agentctl kee
 outside what its checks read, and 175 `@repo` rows, selected by any script, workflow, skill or test-tree path, made
 every two changes share a lint): a pattern such as `.github/workflows/*` or `*/src/main/scala/*`, `*` always, `@code`
 its own code alone (every row is also selected by the test-side code its spec compiles with), `@gitops` with the
-manifests fetched, `-` never -- not from a spec's name: LoadIndependentTestsSpec and InMemoryStoresRoundTripSpec
+manifests fetched, `-` never; `@per-file` beside them marks a spec judging each file alone, which agentctl counts as
+shared by two changes only through a file both change or its own code (`pre-push --per-file-lints`; proved by
+`scripts/ci/lint_per_file_check.py`) -- not from a spec's name: LoadIndependentTestsSpec and InMemoryStoresRoundTripSpec
 matched no name pattern and turned Main red 7 times. A new repo-reading spec needs its row:
 `scripts/hooks/lint-registry-test.sh` fails without it. So does EVERY SPEC READING A CHECKED-IN OR GENERATED ARTEFACT
 (the owner, 2026-11-18, after Main #2547/#2550 and #2601 passed every local check): a literal naming a repo path or a root

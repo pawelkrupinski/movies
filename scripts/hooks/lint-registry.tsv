@@ -15,6 +15,11 @@
 #   @repo    every path: a spec that reads the whole tree (none does, 2026-11-21)
 #   @gitops  it reads the GitOps manifests too: in the plan only with them in place (PREPUSH_GITOPS=1: infra/bin/
 #            fetch-gitops fetched them); scripts/gitops-specs runs these rows against a movies-gitops push
+#   @per-file  beside its reads: the spec judges each file alone (NoSettingFallbackSpec: no file defaults a setting), so
+#            two changes meet in its verdict only through a file both change or its own code; agentctl's MINIMAL RECHECKS
+#            counts it shared only then (pre-push --per-file-lints). Proved by scripts/ci/lint_per_file_check.py (a file
+#            changed, twinned or emptied, no other file's verdict moves) and by reading the spec; <why> says how it
+#            judges a file. A spec comparing files (a parity, a registry, a set of callers) is never marked.
 #   -        never in the plan; <why> says why (it boots a server, another check runs it, ...)
 # A production source or a main resource the code under test reads through the classpath is no read of a row (the
 # unit tests own it): a spec reading production sources from disk names them (`*/src/main/scala/*`).
@@ -37,16 +42,16 @@ common:models.UkPagesSpec	data/uk/* geodata/src/main/resources/generated/uk-*
 common:models.CinemaDeclarationsSpec	test/resources/fixtures/models/cinema-declarations.tsv common/src/main/scala/models/* data/*	pins every hand-declared venue; a venue or roster change re-pins it
 common:services.PersistedCodecsLintSpec	*/src/main/scala/* e2e/src/* repochecks/src/* web/src/it/scala/* worker/src/it/scala/*
 common:services.movies.ListingKeyWritePathLintSpec	*/src/main/scala/* e2e/src/* repochecks/src/*
-common:services.movies.SideCollectionDeleteOwnershipSpec	*/src/main/scala/* e2e/src/* repochecks/src/*
+common:services.movies.SideCollectionDeleteOwnershipSpec	*/src/main/scala/* e2e/src/* repochecks/src/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each production source alone: deletes and names a side collection
 common:testsupport.ModuleSourcesSpec	*/src/main/scala/* e2e/src/* repochecks/src/*
 common:tools.CouplingSpec	common/src/test/scala/tools/couplingfixture/imports/Charged.scala test/resources/*	the coupling baseline in the rows' shape, its limits the build's, and the layer table parsing (the ratchet itself is the sbt check's coupling step)
 common:tools.ExemptionSlackSpec	common/src/test/scala/tools/couplingfixture/slack/* project/ExemptionSlack.scala project/ClassReferences.scala	the exemption slack over its fixture's compiled classes (read from the test classpath)
-common:tools.DeepExpressionLintSpec	*/src/*/scala/*
-common:tools.JvmDefaultsLintSpec	*/src/fixtures/scala/* */src/test/scala/* geodata/src/* itkit/src/* web/src/it/scala/* web/src/page/scala/* worker/src/it/scala/*
+common:tools.DeepExpressionLintSpec	*/src/*/scala/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each source alone: its longest operator chain
+common:tools.JvmDefaultsLintSpec	*/src/fixtures/scala/* */src/test/scala/* geodata/src/* itkit/src/* web/src/it/scala/* web/src/page/scala/* worker/src/it/scala/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each spec alone: a default locale, zone or property set
 common:tools.NoEnvLocalReadersSpec	*	walks the whole tree, every code file of 13 kinds, and judges each file alone: a standing lint (it reads nearly every push; no two changes' files meet in one verdict)
 common:tools.ProcessAccessLintSpec	*/src/*/*
 common:tools.ProcessConfigurationSpec	common/src/main/scala/settings/ProcessConfiguration.scala testkit/src/main/scala/settings/HarnessConfiguration.scala
-common:tools.SourceControlCharactersLintSpec	*/src/*/scala/*
+common:tools.SourceControlCharactersLintSpec	*/src/*/scala/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each source alone: a raw NUL byte
 common:tools.SourceTreeWalksLintSpec	*/src/*/*.java */src/*/*.scala geodata/src/main/resources/generated/* web/src/main/assets/img/* web/src/main/twirl/*	its allowlist names these trees as text: the globs only keep lint_registry_reads.py whole
 e2e:services.movies.E2eWiringsStoppedSpec	-	e2e's wiring rule over its own specs: e2e's suites run it (the lint plan compiles no e2e spec)
 identity:services.identity.IdentityRulesVersionSpec	-	the identity stamp's digest over identity's sources: identity's unit tests run it (the lint plan runs no identity spec)
@@ -67,7 +72,7 @@ repochecks:deploy.AlertIsNotRedSpec	.github/actions/report-scheduled-run/action.
 repochecks:deploy.AllowListRatchetSpec	test/resources/fixtures/* .github/allow-lists.txt .github/identity-drift-gate-paths.txt .github/workflows/ci.yml .github/workflows/precommit-check.yml scripts/ci/commit-rules-ci.sh scripts/hooks/pre-push
 repochecks:deploy.AndroidBuildCacheVersionCodeSpec	.github/workflows/android.yml android/app/build.gradle.kts infra/version-dashboard/src/mobile-release/release.ts
 repochecks:deploy.AotCacheOptionsSpec	@gitops build.sbt infra/jvm/web.options infra/jvm/worker.options
-repochecks:deploy.BotPullRequestBranchSpec	.github/workflows/*
+repochecks:deploy.BotPullRequestBranchSpec	.github/workflows/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each workflow job alone: how it rebuilds its bot branch
 repochecks:deploy.CacheSavePolicySpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
 repochecks:deploy.ChangeStreamSilenceAlertSpec	@gitops infra/nix/files/monitoring/rules/*
 repochecks:deploy.CiDispatchOrderSpec	.github/workflows/ci.yml
@@ -98,7 +103,7 @@ repochecks:deploy.FixtureServerBootOverlapSpec	-	boots a fixture server: not a f
 repochecks:deploy.FleetDatabaseConfigSpec	@gitops @code
 repochecks:deploy.FluxImageAutomationSpec	@gitops @code
 repochecks:deploy.FluxWebhookReceiverSpec	@gitops infra/k8s-secrets/secrets.map infra/nix/hosts/monitoring-1/default.nix
-repochecks:deploy.GitHubRunnerLabelSpec	.github/workflows/*
+repochecks:deploy.GitHubRunnerLabelSpec	.github/workflows/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each workflow alone: its runs-on labels
 repochecks:deploy.GrafanaAnnotationSsoBypassSpec	.github/actions/mark-grafana-deploy/mark.sh infra/nix/hosts/monitoring-1/default.nix infra/nix/modules/roles/public-proxy.nix
 repochecks:deploy.GrafanaCityEmptyQualifierSpec	infra/nix/files/monitoring/rules/* infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml
 worker:deploy.GrafanaCorpusIntegritySpec	infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml worker/src/test/resources/logback-test.xml infra/nix/files/monitoring/grafana/dashboards/*
@@ -124,9 +129,9 @@ repochecks:deploy.IdentityRefitWorkflowSpec	.github/workflows/identity-refit.yml
 repochecks:deploy.IdentitySliceOldRefGateSpec	.github/workflows/main.yml scripts/identity-slice scripts/identity-slice-old-ref-test.sh scripts/title-trace scripts/identity-tools.sh scripts/tool-conventions.sh
 repochecks:deploy.IdentityTakesWiringSpec	.claude/skills/* .github/scripts/* .github/workflows/* scripts/*
 repochecks:deploy.ImagePathGateSpec	project/*.java project/*.scala .github/workflows/main.yml build.sbt web/src/test/resources/installed-build/cities-7fdc618ca.tsv infra/jvm/*.options infra/nix/files/heap-dumps.sh scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala common/src/main/* test/resources/* Dockerfile	each image's inputs, derived from the build, against main.yml's publish filters
-repochecks:deploy.IosLaunchEnvironmentDebugOnlySpec	ios/Kinowo/*
+repochecks:deploy.IosLaunchEnvironmentDebugOnlySpec	ios/Kinowo/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each Swift file alone: environment reads outside #if DEBUG
 repochecks:deploy.JdkVersionParitySpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml Dockerfile build.sbt
-repochecks:deploy.JunitReportNoCheckRunSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
+repochecks:deploy.JunitReportNoCheckRunSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml @per-file	per-file (lint_per_file_check.py, 2026-11-21): each workflow step alone: its junit report's settings
 repochecks:deploy.K8sDeployKubeconfigAccessSpec	infra/nix/modules/roles/k3s-server.nix infra/nix/modules/roles/k8s-deploy.nix
 repochecks:deploy.K8sTierPathGatingSpec	@gitops .github/actions/deployed-base/action.yml .github/workflows/main.yml .github/actions/changed-paths/matches.sh
 repochecks:deploy.KickConvergenceWiringSpec	.github/workflows/main.yml
@@ -136,8 +141,8 @@ repochecks:deploy.MainAfterRedCiSpec	.github/workflows/main.yml
 repochecks:deploy.MetricsPackagesSpec	*/src/main/scala/services/metrics/*
 repochecks:deploy.MongoGrantsListSpec	infra/nix/* scripts/mongo-grants.tsv
 repochecks:deploy.MongoServerVersionParitySpec	.github/workflows/* .github/pinned-images.tsv infra/nix/modules/roles/mongodb.nix scripts/ci/start-mongo-replset.sh scripts/convergence-local.sh .github/actions/convergence-setup/*
-repochecks:deploy.NoExitStatusReadUnderErrexitSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
-repochecks:deploy.NoSettingFallbackSpec	.github/* infra/bin/* scripts/*
+repochecks:deploy.NoExitStatusReadUnderErrexitSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml @per-file	per-file (lint_per_file_check.py, 2026-11-21): each run block alone: an exit status read under -e
+repochecks:deploy.NoSettingFallbackSpec	.github/* infra/bin/* scripts/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each script or workflow alone: a defaulted setting
 repochecks:deploy.NoSilencedGhCurlSpec	*
 repochecks:deploy.NoTestRerunSpec	.github/actions/* .github/workflows/* page-tests-playwright/tests/* scripts/ci/* android/*.gradle.kts ios/Kinowo.xcodeproj/* page-tests-playwright/*
 repochecks:deploy.NodeCpuBudgetSpec	@gitops infra/nix/modules/roles/k3s-server.nix
@@ -178,7 +183,7 @@ repochecks:deploy.SharedUsersDatabaseConfigSpec	@gitops @code
 repochecks:deploy.StressAndEmulatorScheduleSpec	*/src/test/* web/src/it/* worker/src/it/* .github/workflows/android.yml .github/workflows/nightly-stress.yml .github/workflows/order-independence.yml scripts/ci/stress-races.sh
 repochecks:deploy.ToolSelfTestsOffGateSpec	.github/workflows/ci.yml .github/workflows/tool-self-tests.yml scripts/ci/landing_check_for_tree.py scripts/hooks/pre-push scripts/run-script-tests test/resources/fixtures/identity-judgements.tsv test/resources/fixtures/identity-unmatched/expected-matches.tsv
 repochecks:deploy.UnitTestForkSpec	build.sbt project/ForkedTests.scala
-worker:deploy.UnitTestSplitSpec	.github/workflows/ci.yml build.sbt
+worker:deploy.UnitTestSplitSpec	.github/workflows/ci.yml build.sbt worker/src/it/scala/*
 repochecks:deploy.UpstreamRunSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
 repochecks:deploy.VerifyRecordingRunNameSpec	.github/workflows/verify-scrape-recording.yml
 repochecks:deploy.WebRolloutAvailabilitySpec	@gitops @code
@@ -205,21 +210,21 @@ worker:tools.IntegrationDatabaseIsolationSpec	web/src/it/* worker/src/it/*
 worker:tools.ListingCompletenessSpec	scrapers/src/main/scala/services/cinemas/*
 worker:tools.LoadIndependentTestsSpec	*/src/test/*.scala */src/fixtures/*.scala */src/it/*.scala web/src/page/*.scala testkit/src/*.scala itkit/src/*.scala quality/src/*.scala *-test.sh *_test.py
 worker:tools.MetricRegistrationsUniqueSpec	*/src/main/*
-worker:tools.ModelReadOnlySpec	*/src/main/* */src/test/* http/src/fixtures/* web/src/it/* web/src/page/* worker/src/fixtures/* worker/src/it/*
+worker:tools.ModelReadOnlySpec	*/src/main/* */src/test/* http/src/fixtures/* web/src/it/* web/src/page/* worker/src/fixtures/* worker/src/it/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each source alone: a whole-corpus listing read
 worker:tools.NoCheckedTupleReadSpec	*/src/main/*
 worker:tools.NoDecisionKeyedByMutableIdSpec	identity/src/main/scala/services/identity/* worker/src/main/scala/services/identityadapters/*
-worker:tools.NoDefaultLocaleCaseMappingSpec	*/src/*/*
+worker:tools.NoDefaultLocaleCaseMappingSpec	*/src/*/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each source or template alone: a default-locale case mapping
 worker:tools.NoDefaultTitleNormalizerSpec	*/src/main/*.java */src/main/*.scala
 worker:tools.NoDefaultZoneSpec	*/src/*/*.java */src/*/*.scala
-worker:tools.NoFailedInTestNamesSpec	*/src/*/*.java */src/*/*.scala
+worker:tools.NoFailedInTestNamesSpec	*/src/*/*.java */src/*/*.scala @per-file	per-file (lint_per_file_check.py, 2026-11-21): each spec alone: a verdict word in a test name
 worker:tools.NoGlobalPoolInTestsSpec	*/src/*/*.java */src/*/*.scala
 worker:tools.NoHandRolledAllocationMeasurementSpec	*/src/*/*.java */src/*/*.scala
 worker:tools.NoHandRolledClockPatternSpec	scrapers/src/main/scala/services/cinemas/*
-worker:tools.NoHandRolledTimingSpec	*/src/*/*
+worker:tools.NoHandRolledTimingSpec	*/src/*/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each source alone: a clock subtraction
 worker:tools.NoHandRolledYearInferenceSpec	scrapers/src/main/scala/services/cinemas/*
 worker:tools.NoLiteralWaitBoundSpec	*/src/*/*
 worker:tools.NoPolandDefaultCountrySpec	*/src/main/*
-worker:tools.NoRealDependenciesInUnitSpecsSpec	*/src/test/* http/src/fixtures/* scrapers/src/fixtures/*
+worker:tools.NoRealDependenciesInUnitSpecsSpec	*/src/test/* http/src/fixtures/* scrapers/src/fixtures/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each unit spec alone: a real dependency it reaches
 worker:tools.NoRuntimeLookupsInIdentitySpec	identity/src/main/*.java identity/src/main/*.scala worker/src/main/scala/services/identityadapters/*.java worker/src/main/scala/services/identityadapters/*.scala
 worker:tools.NoSleepInTestsSpec	*/src/*/*.java */src/*/*.scala
 worker:tools.NoSwallowedFailureSpec	*/src/main/*.java */src/main/*.scala
