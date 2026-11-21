@@ -228,8 +228,6 @@ class WorkerWiring(
     bootStarted.set(Some(stopwatch.start()))
     val boot = new BootSteps(country.code, stopwatch)
     startStores(boot)
-    // Off the boot thread: the stage reads either shape meanwhile, and each rewrite holds only while its film is unchanged.
-    agreedFilmShapeMigration.foreach(migration => boot.inBackground("agreed film shape")(logger.info(s"[${country.code}] ${migration.run().line}")))
     // Publish this country's cache occupancy. Here rather than at construction
     // because it forces the lazy catalog, and a wiring that is built but never
     // started (tests, diagnostics) should not pay for a scraper graph.

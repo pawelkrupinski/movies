@@ -1,13 +1,13 @@
 package services.identity
 
-import org.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString}
+import org.bson.{BsonDocument, BsonInt32, BsonNull, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.measures.Film
 import services.identity.vocabulary.FilmCast
 
-/** A film's record is written in ONE format, whichever store keeps it, and read back as it was; a record an agreed
- *  verdict kept in the format agreed films had before (`cast`, no empty `alternativeTitles`, nulls) reads as it did. */
+/** A film's record is written in ONE format, whichever store keeps it, read back as it was by ONE reader, which never
+ *  throws on a field absent, null or unparsable. */
 class IdentityAnswerBsonSpec extends AnyFlatSpec with Matchers {
   import IdentityAnswerBsonSpec._
 
@@ -23,10 +23,14 @@ class IdentityAnswerBsonSpec extends AnyFlatSpec with Matchers {
     IdentityAnswerBson.film(Some(bare)).asDocument.getArray("alternativeTitles").isEmpty shouldBe true
   }
 
-  // The agreed films' earlier format (FilmBson, until 2026-11-21) left out `alternativeTitles` when there were none:
-  // the TMDB records' reader read the field unguarded and threw a NullPointerException on it
-  "a record in the agreed films' earlier format" should "read as it was written, its cast under `cast`, no titles left out" in {
-    IdentityAnswerBson.filmOf(legacyRoots) shouldBe Some(roots)
+  // The agreed films' earlier format (FilmBson) kept the cast under `cast`; every one was rewritten into this format
+  // (AgreedFilmShapeMigration, 2026-11-21: 39 on the mirror, then 0), and the reader of both shapes went with it
+  "a record" should "read its cast from `castPairs` alone, the earlier format's `cast` no more" in {
+    IdentityAnswerBson.filmOf(castUnderEarlierName) shouldBe Some(roots.copy(cast = None))
+  }
+
+  // the reader once read `alternativeTitles` unguarded, and threw a NullPointerException on a record without it
+  it should "read a record without alternative titles as having none" in {
     val noTitles = new BsonDocument("title", BsonString("Klondike")).append("year", BsonInt32(2022))
     IdentityAnswerBson.filmOf(noTitles) shouldBe Some(Film("Klondike", year = Some(2022)))
   }
@@ -50,15 +54,9 @@ object IdentityAnswerBsonSpec {
     Some("US=PG"), Some("es"), 18, FilmCast.ofPairs(Seq(Seq(1, 2), Seq(3))))
   val bare: Film = Film("Klondike", year = Some(2022))
 
-  private def ints(values: Int*)       = new BsonArray(java.util.Arrays.asList(values.map(BsonInt32(_))*))
-  private def strings(values: String*) = new BsonArray(java.util.Arrays.asList(values.map(BsonString(_))*))
-
-  /** [[roots]] as the agreed films' earlier format (FilmBson) wrote it. */
-  val legacyRoots: BsonDocument = new BsonDocument("title", BsonString("Roots")).append("originalTitle", BsonString("Raíces"))
-    .append("alternativeTitles", strings("Raices", "Wurzeln")).append("year", BsonInt32(1954)).append("runtime", BsonInt32(83))
-    .append("directors", strings("Benito Alazraki")).append("countries", strings("MX")).append("popularity", BsonDouble(1.5))
-    .append("imdbNumber", BsonInt32(47395)).append("released", BsonString("1955-04-21")).append("releaseCountries", BsonString("MXUS"))
-    .append("alternativeRuntimes", ints(85, 80)).append("releases", BsonString("MX1955P")).append("taglineKey", BsonInt32(123))
-    .append("certificates", BsonString("US=PG")).append("originalLanguage", BsonString("es")).append("genreBits", BsonInt32(18))
-    .append("cast", new BsonArray(java.util.Arrays.asList(ints(1, 2), ints(3))))
+  /** [[roots]] in the one format, but its cast under the earlier format's name, `cast`. */
+  val castUnderEarlierName: BsonDocument = {
+    val d = IdentityAnswerBson.film(Some(roots)).asDocument.clone()
+    d.append("cast", d.remove("castPairs"))
+  }
 }

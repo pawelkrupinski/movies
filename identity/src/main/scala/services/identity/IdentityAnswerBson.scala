@@ -38,14 +38,12 @@ object IdentityAnswerBson {
   }
 
   private val CastField = "castPairs"
-  /** The cast's field in the format agreed films were written in before every store wrote this one. */
-  private val LegacyCastField = "cast"
 
   def filmOf(value: BsonValue): Option[Film] = Option.when(!value.isNull)(value.asDocument).map(recordOf)
 
-  /** A record this format wrote, or one in the agreed films' earlier format (`cast` for the cast, no `alternativeTitles`
-   *  when there were none, null for an unknown field): a field absent or null is
-   *  unknown, a day that does not parse is none, a popularity stored as any number reads as its double. */
+  /** A record this format wrote, and nothing else: the agreed films' earlier format (FilmBson's `cast`) was rewritten into
+   *  this one (2026-11-21) and is read no more. Read without throwing: a field absent or null is unknown, a day that does
+   *  not parse is none, a popularity stored as any number reads as its double. */
   def recordOf(d: BsonDocument): Film =
     Film(d.getString("title").getValue, string(d, "originalTitle"), field(d, "alternativeTitles").fold(Seq.empty[String])(BsonFields.stringsOf),
       int(d, "year"), int(d, "runtime"), field(d, "directors").map(BsonFields.stringsOf(_)), field(d, "countries").map(BsonFields.stringsOf(_)),
@@ -54,7 +52,7 @@ object IdentityAnswerBson {
       field(d, "alternativeRuntimes").fold(Seq.empty[Int])(BsonFields.intsOf),
       string(d, "releases"), int(d, "taglineKey").getOrElse(0), string(d, "certificates"), string(d, "originalLanguage").map(_.intern),
       int(d, "genreBits").getOrElse(0),
-      field(d, CastField).orElse(field(d, LegacyCastField)).flatMap(names => FilmCast.ofPairs(names.asArray.getValues.asScala.toSeq.map(BsonFields.intsOf))))
+      field(d, CastField).flatMap(names => FilmCast.ofPairs(names.asArray.getValues.asScala.toSeq.map(BsonFields.intsOf))))
 
   /** The hit a record gives -- its title, original title, year and popularity (`unknownPopularity` when it states none),
    *  read as [[filmOf]] reads them, and nothing else of it: every film a search names is asked for its hit, and decoding

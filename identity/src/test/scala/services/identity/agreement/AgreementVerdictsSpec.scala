@@ -43,13 +43,14 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers with org.scalatest
     AgreementVerdicts.encode(agreed).getDocument("agreed").getDocument("film") shouldBe services.identity.IdentityAnswerBson.film(Some(film))
   }
 
-  // Agreed films were written in a format of their own until 2026-11-21 (FilmBson: `cast`, no empty alternative titles),
-  // its day parsed unguarded: one stored day that did not parse threw out the read of every verdict
-  it should "read an agreed film kept in the earlier format, a day that does not parse as none" in {
-    val legacy = services.identity.IdentityAnswerBsonSpec.legacyRoots.clone().append("released", org.bson.BsonString("1955-02-30"))
+  // FilmBson, the agreed films' own format until 2026-11-21, parsed its day unguarded: one stored day that did not parse
+  // threw out the read of every verdict
+  it should "read an agreed film whose day does not parse, the day as none" in {
+    val film   = services.identity.IdentityAnswerBson.film(Some(services.identity.IdentityAnswerBsonSpec.roots)).asDocument.clone()
+      .append("released", org.bson.BsonString("1955-02-30"))
     val stored = AgreementVerdicts.encode(StoredVerdict("r", 7L, Map.empty, Some(AgreedFilm(Set(VoterFamily.Imdb),
       SourceRecord(Film("x"), Map("imdb" -> "tt0047395")), Map(VoterFamily.Imdb -> "tt0047395")))))
-    stored.getDocument("agreed").put("film", legacy)
+    stored.getDocument("agreed").put("film", film)
     AgreementVerdicts.decode(stored).agreed.map(_.record.film) shouldBe Some(services.identity.IdentityAnswerBsonSpec.roots.copy(released = None))
   }
 
