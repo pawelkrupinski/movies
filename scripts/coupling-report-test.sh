@@ -11,7 +11,7 @@ printf '\033[36m▸\033[0m coupling-report\n'
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/root/scripts"
-cp "$REPO_ROOT/scripts/coupling-report" "$work/root/scripts/"
+cp "$REPO_ROOT/scripts/coupling-report" "$REPO_ROOT/scripts/own-checkout" "$work/root/scripts/"
 cat > "$work/root/scripts/sbt-warm" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" > "$(dirname "$0")/../called"

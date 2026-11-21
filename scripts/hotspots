@@ -10,6 +10,7 @@
 # --files names one already written (quality-monthly.yml's run). Needs the history: a shallow clone ranks nothing.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+"$root/scripts/own-checkout" "$0" || exit 2  # it measures its own checkout: never another one's
 files="" pass=()
 while [ $# -gt 0 ]; do
     case "$1" in

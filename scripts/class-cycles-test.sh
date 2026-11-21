@@ -10,7 +10,7 @@ printf '\033[36m▸\033[0m class-cycles\n'
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/root/scripts"
-cp "$REPO_ROOT/scripts/class-cycles" "$work/root/scripts/"
+cp "$REPO_ROOT/scripts/class-cycles" "$REPO_ROOT/scripts/own-checkout" "$work/root/scripts/"
 # the stub task: records its command, writes a report to its second word unless told to fail or write nothing
 cat > "$work/root/scripts/sbt-warm" <<'STUB'
 #!/usr/bin/env bash

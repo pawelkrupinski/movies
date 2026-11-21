@@ -24,6 +24,7 @@ set -euo pipefail
 # shellcheck disable=SC2034 # read by tool-conventions.sh (die): a measure that failed gives no verdict, 2
 DIE_STATUS=2
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+"$root/scripts/own-checkout" "$0" || exit 2  # it measures its own checkout: never another one's
 update="" runs=3 out=""
 while [ $# -gt 0 ]; do
   case "$1" in

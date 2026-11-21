@@ -34,10 +34,7 @@ args=(--base "$base")
 if [ -n "$measure" ]; then
     # the measure reads this script's checkout, the refs come from the current one: they must be the same checkout (a
     # worktree calling the root checkout's copy measured main's tree and said "No ratchet row changed")
-    here="$(git rev-parse --show-toplevel)"
-    if [ "$(cd "$here" && pwd -P)" != "$(cd "$root" && pwd -P)" ]; then
-        echo "ratchet-diff: --measure measures $root, its own checkout, but this is $here: run $here/scripts/ratchet-diff" >&2; exit 2
-    fi
+    "$root/scripts/own-checkout" "$0" || exit 2
     if [ -n "$head" ] && [ "$(git rev-parse "$head")" != "$(git rev-parse HEAD)" ]; then
         echo "ratchet-diff: --measure measures this working tree: give <base> or <base>..HEAD" >&2; exit 2
     fi

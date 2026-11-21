@@ -23,6 +23,7 @@
 # npx, npm, scripts/ci/install-playwright.sh and node (the self-test's fakes).
 set -euo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+"$root/scripts/own-checkout" "$0" || exit 2  # it measures its own checkout: never another one's
 cd "$root"
 # shellcheck source=scripts/jvm-gate.sh
 . "$root/scripts/jvm-gate.sh" # gov_run: each row under a governor ticket (THE GOVERNOR, above)

@@ -17,7 +17,7 @@ for repo in root other; do
   scratch_git "$work/$repo" add -A
   scratch_git "$work/$repo" commit -qm base
 done
-cp "$REPO_ROOT/scripts/ratchet-diff" "$work/root/scripts/"
+cp "$REPO_ROOT/scripts/ratchet-diff" "$REPO_ROOT/scripts/own-checkout" "$work/root/scripts/"
 for tool in quality-report coupling-report; do
   cat > "$work/root/scripts/$tool" <<'STUB'
 #!/usr/bin/env bash

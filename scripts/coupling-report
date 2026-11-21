@@ -46,6 +46,7 @@
 # The pre-push hook's `coupling` check runs the same task and scripts/ci/coupling_ratchet.py over the pushed range.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+"$root/scripts/own-checkout" "$0" || exit 2  # it measures its own checkout: never another one's
 update="" out="" split="" base="" new_exemptions="" since="7d" simulate="" slack=""
 pieces=()
 while [ $# -gt 0 ]; do

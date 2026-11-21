@@ -23,6 +23,7 @@ set -euo pipefail
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "$0")/tool-conventions.sh"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+"$root/scripts/own-checkout" "$0" || exit 2  # it measures its own checkout: never another one's
 out=""
 while [ $# -gt 0 ]; do
   case "$1" in

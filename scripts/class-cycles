@@ -16,6 +16,7 @@
 # Quote an inline order: `<` is the shell's redirection. Exit 0 with the report on stdout, 2 on a usage or sbt error.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+"$root/scripts/own-checkout" "$0" || exit 2  # it measures its own checkout: never another one's
 usage() { echo "usage: scripts/class-cycles <package> [--order 'a<b<c' | --order FILE] [--out FILE]" >&2; exit 2; }
 pkg="" order="" out=""
 while [ $# -gt 0 ]; do

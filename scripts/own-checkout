@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# THE OWN-CHECKOUT GUARD: a tool that measures or writes its OWN checkout (`root` from its own path: the quality and
+# coupling reports and their --update, dead-code, class-cycles, hotspots, ratchet-diff --measure, ...) refuses to run
+# from inside ANOTHER checkout -- a worktree calling the root checkout's copy measured main's tree, or --update wrote the
+# root checkout's baselines (2026-11-21, ratchet-diff's "No ratchet row changed"; bitcashier's six tools).
+#
+#   "$root/scripts/own-checkout" "$0" || exit 2      the tool's first step; <tool> is its own path
+#
+# Exit 0 when the working directory is inside the tool's checkout, or inside no git checkout at all (nothing to mix up);
+# 2, saying which copy to run, when it is inside another. own-checkout-test.sh holds every such tool to calling it.
+set -uo pipefail
+tool="${1:?usage: own-checkout <tool path>}"
+own="$(cd "$(dirname "$tool")" && git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+here="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+[ "$(cd "$here" && pwd -P)" = "$(cd "$own" && pwd -P)" ] && exit 0
+name="${tool#"$own"/}"
+echo "$(basename "$tool"): this copy measures $own, its own checkout, but this is $here: run $here/$name" >&2
+exit 2
