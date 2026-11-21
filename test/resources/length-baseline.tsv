@@ -15,5 +15,4 @@ method-lines	common/src/main/scala/services/titles/rules/TitleRulePlaceholders.s
 method-lines	http/src/main/scala/tools/HostPolicies.scala:HostPolicies.all	371
 method-lines	identity/src/main/scala/services/identity/RuleContract.scala:RuleContract.nonMonotone	73
 method-lines	scrapers/src/main/scala/services/cinemas/pl/venues/PolishTowns.scala:PolishTowns.towns	67
-method-lines	scrapers/src/main/scala/services/cinemas/us/RegalVenues.scala:RegalVenues.theatreCodeBySlug	403
 method-lines	web/src/main/scala/models/Catalog.scala:Catalog.json	136
