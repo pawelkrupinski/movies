@@ -109,7 +109,9 @@ class UserStateController(
     val etag   = hiddenFilmsETag(hiddenFilmsJson(hidden))
     val notModified = ifNoneMatch match {
       case Some(inm) => ConditionalResponse.offersValidator(Some(inm), etag)
-      case None      => ifModifiedSince.exists(!state.updatedAt.isAfter(_))
+      // At the second an HTTP-date carries, as `Last-Modified` was written; so two
+      // changes inside one second are one version to a client sending no ETag.
+      case None      => ifModifiedSince.exists(!state.updatedAt.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).isAfter(_))
     }
     if (notModified) NotModified.withHeaders("ETag" -> etag, "Last-Modified" -> httpDate(state.updatedAt))
     else respondWithHiddenFilms(hidden, state.updatedAt)

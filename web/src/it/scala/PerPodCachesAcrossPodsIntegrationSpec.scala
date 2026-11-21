@@ -10,7 +10,7 @@ import services.users.InMemoryUserRepository
 import tools.ConcurrentInstances
 import tools.Eventually.eventually
 
-import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
+import java.time.{Instant, LocalDateTime}
 
 /**
  * Every web pod keeps its own caches in front of Mongo, and every one of them answers "not
@@ -26,7 +26,6 @@ import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
  */
 class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
 
-  private val clock = Clock.fixed(Instant.parse("2026-06-01T10:00:00Z"), ZoneOffset.UTC)
   // Well inside anything a stream needs.
   private val StreamBoundMs = SpecTimeouts.Settle.toMillis
 
@@ -40,7 +39,8 @@ class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers wi
   "a pod answering If-Modified-Since" should "304 its own still-current write, and 200 at once after ANOTHER pod's" in
     ConcurrentInstances.withInstances(mongoTarget, "user-state-two-pods") { instances =>
       val users = new InMemoryUserRepository
-      val Seq(a, b) = instances.map(instance => new UserStatePod(instance.database, users, clock))
+      val writes    = new tools.MutableClock(Instant.parse("2026-06-01T10:00:00Z"))
+      val Seq(a, b) = instances.map(instance => new UserStatePod(instance.database, users, writes))
       try {
         val userId = UserStatePod.signIn(users, "two-pods")
         val write  = a.hide(userId, "Seen on A")
@@ -48,8 +48,9 @@ class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers wi
         val lastModified = header("Last-Modified", write).get
         hiddenAfter(a, userId, lastModified)._1 shouldBe NOT_MODIFIED
 
+        // A later second: inside A's one, an If-Modified-Since cannot tell the two writes apart.
+        writes.advanceSeconds(1)
         status(b.hide(userId, "Hidden on B")) shouldBe OK
-        // The fixed clock stamps B's write one millisecond past A's (`UserState.nextUpdatedAt`): after the validator.
         val (code, body) = hiddenAfter(a, userId, lastModified)
         code shouldBe OK
         body should include ("Hidden on B")

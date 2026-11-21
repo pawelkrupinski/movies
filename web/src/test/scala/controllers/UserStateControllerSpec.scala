@@ -403,6 +403,18 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     countingRepo.findCalls                               shouldBe 1
   }
 
+  // `Last-Modified` carries whole seconds and `updatedAt` milliseconds: compared
+  // at full precision, the client's own `Last-Modified` handed back was always
+  // "before" the row it named, and a 304 for If-Modified-Since alone never came.
+  it should "304 the Last-Modified it answered, for a row stamped mid-second" in {
+    val stored = storedFor("pl", "Madagaskar").copy(updatedAt = Instant.parse("2026-05-19T12:00:00.500Z"))
+    val (ctl, _, _) = fixture(Some(stored))
+    val lastModified = header("Last-Modified", callHiddenFilms(ctl)).value
+    lastModified shouldBe "Tue, 19 May 2026 12:00:00 GMT"
+
+    status(callHiddenFilms(ctl, headers = Seq("If-Modified-Since" -> lastModified)*)) shouldBe NOT_MODIFIED
+  }
+
   // ── PUT/DELETE /api/me/:country/hidden-films(/:title) ────────────────────
 
   "PUT /api/me/:country/hidden-films/:title" should "401 anonymous requests" in {
