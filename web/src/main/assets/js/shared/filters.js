@@ -2,7 +2,7 @@
 // funnel's active state, the folds, the lazily built submenu lists, and Wyczyść.
 
 /* global clampPanel, closeOtherPanels, setPanelOpen */  // overlays.js
-/* exported applyFiltersDebounced, badgeFormatMatch, compareCards, ensurePanel, getCastFilter,
+/* exported SUBMENU_KEYS, applyFiltersDebounced, badgeFormatMatch, compareCards, ensurePanel, getCastFilter,
    getCountryFilter, getDirectorFilter, getFormatFilter, getFromMinutes, getSortBy, getSubmenuFilter,
    gridScope, isSubsequence, makeFoldHeader, onFormatChange, onSortChange, registerNarrowing,
    resetFormatFilter, resetSubmenuPanels, toggleFormatPanel, toggleSubmenu, updateFormatBtn, updateRoomCinemaCount,
@@ -292,22 +292,30 @@ function renderSubmenuCheckboxes(key, entries) {
   });
 
   entries.forEach(function(entry) {
-    var label = document.createElement('label');
-    label.className = 'panel-label';
-    var checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.autocomplete = 'off';
-    checkbox.value = entry.value;
-    checkbox.checked = true;
-    checkbox.onchange = function() { updateSubmenuCount(key); updateFormatBtn(); applyFilters(); };
-    label.appendChild(checkbox);
-    label.appendChild(document.createTextNode(' ' + entry.label));
-    var count = document.createElement('span');
-    count.className = 'submenu-film-count';
-    count.textContent = '(' + entry.count + ')';
-    label.appendChild(count);
-    list.appendChild(label);
+    list.appendChild(submenuEntryRow(entry.value, entry.label, entry.count, function() {
+      updateSubmenuCount(key); updateFormatBtn(); applyFilters();
+    }));
   });
+}
+
+// One submenu entry, checked: its checkbox carrying `value`, its label and its
+// "(count)" of films (or, under Sale, showtimes).
+function submenuEntryRow(value, labelText, count, onchange) {
+  var label = document.createElement('label');
+  label.className = 'panel-label';
+  var checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.autocomplete = 'off';
+  checkbox.value = value;
+  checkbox.checked = true;
+  checkbox.onchange = onchange;
+  label.appendChild(checkbox);
+  label.appendChild(document.createTextNode(' ' + labelText));
+  var countSpan = document.createElement('span');
+  countSpan.className = 'submenu-film-count';
+  countSpan.textContent = '(' + count + ')';
+  label.appendChild(countSpan);
+  return label;
 }
 
 // The submenu panels (country/genre/director/cast/room) scan the WHOLE grid
@@ -361,17 +369,7 @@ function buildRoomPanel() {
   var list = document.getElementById('room-list');
   if (!list) return;
 
-  var byCinema = {};
-  gridScope().querySelectorAll('.cinema-group[data-cinema]').forEach(function(cinemaGroup) {
-    var cinema = cinemaGroup.dataset.cinema;
-    cinemaGroup.querySelectorAll('.badge-time[data-room]').forEach(function(b) {
-      var room = b.dataset.room;
-      if (!room) return;
-      if (!byCinema[cinema]) byCinema[cinema] = {};
-      byCinema[cinema][room] = (byCinema[cinema][room] || 0) + 1;
-    });
-  });
-
+  var byCinema = tallyRoomsByCinema();
   var cinemas = Object.keys(byCinema).sort(function(a, b) { return a.localeCompare(b, 'pl'); });
 
   // Hide the Sale row entirely when no badge on the page carries `data-room`
@@ -388,63 +386,68 @@ function buildRoomPanel() {
     updateSubmenuCount('room'); updateFormatBtn(); applyFilters();
   });
 
-  cinemas.forEach(function(cinema) {
-    var rooms = Object.keys(byCinema[cinema]).sort(function(a, b) {
-      // `numeric: true` is the natural-sort knob — without it, the
-      // comparator treats "Sala 10" as < "Sala 2" because '1' < '2'
-      // lexicographically. With it, embedded numbers compare numerically.
-      return a.localeCompare(b, 'pl', { numeric: true });
+  cinemas.forEach(function(cinema) { appendRoomCinemaFold(list, cinema, byCinema[cinema]); });
+}
+
+// { cinema: { room: showtime count } } over the grid's room-carrying badges.
+function tallyRoomsByCinema() {
+  var byCinema = {};
+  gridScope().querySelectorAll('.cinema-group[data-cinema]').forEach(function(cinemaGroup) {
+    var cinema = cinemaGroup.dataset.cinema;
+    cinemaGroup.querySelectorAll('.badge-time[data-room]').forEach(function(b) {
+      var room = b.dataset.room;
+      if (!room) return;
+      if (!byCinema[cinema]) byCinema[cinema] = {};
+      byCinema[cinema][room] = (byCinema[cinema][room] || 0) + 1;
     });
-
-    var header = document.createElement('div');
-    header.className = 'panel-label submenu-row room-cinema-header';
-    header.style.cursor = 'pointer';
-    var headerLabel = document.createElement('span');
-    headerLabel.textContent = cinema;
-    header.appendChild(headerLabel);
-    var right = document.createElement('span');
-    right.className = 'submenu-right';
-    var count = document.createElement('span');
-    count.className = 'submenu-row-count room-cinema-count';
-    count.style.display = 'none';
-    right.appendChild(count);
-    var chevron = document.createElement('span');
-    chevron.className = 'submenu-chevron';
-    chevron.innerHTML = '&#8250;';
-    right.appendChild(chevron);
-    header.appendChild(right);
-    list.appendChild(header);
-
-    var inner = document.createElement('div');
-    inner.className = 'submenu-list room-cinema-list';
-    inner.style.display = 'none';
-    inner.style.marginLeft = '12px';
-
-    makeFoldHeader(header, inner);
-
-    rooms.forEach(function(room) {
-      var label = document.createElement('label');
-      label.className = 'panel-label';
-      var checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.autocomplete = 'off';
-      checkbox.value = cinema + '|' + room;
-      checkbox.checked = true;
-      checkbox.onchange = function() {
-        updateRoomCinemaCount(header);
-        updateSubmenuCount('room'); updateFormatBtn(); applyFilters();
-      };
-      label.appendChild(checkbox);
-      label.appendChild(document.createTextNode(' ' + room));
-      var roomCnt = document.createElement('span');
-      roomCnt.className = 'submenu-film-count';
-      roomCnt.textContent = '(' + byCinema[cinema][room] + ')';
-      label.appendChild(roomCnt);
-      inner.appendChild(label);
-    });
-
-    list.appendChild(inner);
   });
+  return byCinema;
+}
+
+// One cinema's fold inside Sale: a header with its "x/y" count over its
+// rooms' checkboxes, sorted naturally.
+function appendRoomCinemaFold(list, cinema, roomCounts) {
+  var rooms = Object.keys(roomCounts).sort(function(a, b) {
+    // `numeric: true` is the natural-sort knob — without it, the
+    // comparator treats "Sala 10" as < "Sala 2" because '1' < '2'
+    // lexicographically. With it, embedded numbers compare numerically.
+    return a.localeCompare(b, 'pl', { numeric: true });
+  });
+
+  var header = document.createElement('div');
+  header.className = 'panel-label submenu-row room-cinema-header';
+  header.style.cursor = 'pointer';
+  var headerLabel = document.createElement('span');
+  headerLabel.textContent = cinema;
+  header.appendChild(headerLabel);
+  var right = document.createElement('span');
+  right.className = 'submenu-right';
+  var count = document.createElement('span');
+  count.className = 'submenu-row-count room-cinema-count';
+  count.style.display = 'none';
+  right.appendChild(count);
+  var chevron = document.createElement('span');
+  chevron.className = 'submenu-chevron';
+  chevron.innerHTML = '&#8250;';
+  right.appendChild(chevron);
+  header.appendChild(right);
+  list.appendChild(header);
+
+  var inner = document.createElement('div');
+  inner.className = 'submenu-list room-cinema-list';
+  inner.style.display = 'none';
+  inner.style.marginLeft = '12px';
+
+  makeFoldHeader(header, inner);
+
+  rooms.forEach(function(room) {
+    inner.appendChild(submenuEntryRow(cinema + '|' + room, room, roomCounts[room], function() {
+      updateRoomCinemaCount(header);
+      updateSubmenuCount('room'); updateFormatBtn(); applyFilters();
+    }));
+  });
+
+  list.appendChild(inner);
 }
 
 // Per-cinema header badge inside Sale — surfaces "3/8" when 3 of 8 rooms

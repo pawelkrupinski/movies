@@ -1,7 +1,7 @@
 // The URL and the filters: reading every filter off the URL at boot, keeping the day in it, the
 // share link, and putting session-local controls back on a Back.
 
-/* global ensurePanel, updateFormatBtn, updateRoomCinemaCount, updateSubmenuCount */  // filters.js
+/* global SUBMENU_KEYS, ensurePanel, updateFormatBtn, updateRoomCinemaCount, updateSubmenuCount */  // filters.js
 /* global beginSearchAtBoot, restoreSearchDay, searchDayState, urlDay */  // search-day.js
 /* global buildCinemaPanel, getDisabledCinemas, setDisabledCinemas */  // cinemas.js
 /* global formatDateLabelShort */  // dates.js
@@ -68,50 +68,60 @@ function buildShareURL() {
   const search = document.getElementById('search-input');
   setOrDel('q', search ? (search.value || '').trim() : '');
 
-  const dim  = (document.querySelector('input[name="format-dim"]:checked')  || {}).value || '';
-  const lang = (document.querySelector('input[name="format-lang"]:checked') || {}).value || '';
-  setOrDel('dim',  dim);
-  setOrDel('lang', lang);
+  setOrDel('dim',  checkedRadioValue('format-dim'));
+  setOrDel('lang', checkedRadioValue('format-lang'));
 
   const imaxEl = document.getElementById('format-imax');
   setOrDel('imax', imaxEl && imaxEl.checked ? '1' : '');
 
-  const fromH = document.getElementById('from-hour');
-  const fromM = document.getElementById('from-minute');
-  if (fromH && fromH.value !== '') {
-    const hh = String(parseInt(fromH.value, 10)).padStart(2, '0');
-    const mm = String(parseInt((fromM && fromM.value) || '0', 10)).padStart(2, '0');
-    p.set('from', hh + ':' + mm);
-  } else {
-    p.delete('from');
-  }
+  setOrDel('from', fromTimeParam());
 
   // Sort axis: the default ('earliest') stays out of the URL so a plain
   // share link is clean; 'rating' is materialised as ?sort=.
   const sortSel = document.getElementById('sort-by');
   setOrDel('sort', sortSel && sortSel.value !== 'earliest' ? sortSel.value : '');
 
-  ['country', 'genre', 'director', 'cast', 'room'].forEach(key => {
-    p.delete(key);
-    const list = document.getElementById(key + '-list');
-    if (!list) return;
-    const boxes = [...list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)')];
-    const checked = boxes.filter(checkbox => checkbox.checked).map(checkbox => checkbox.value);
-    if (checked.length === boxes.length) return;  // all-on default → empty URL
-    checked.forEach(v => p.append(key, v));
-  });
-
-  // Cinema filter lives in the Filtry panel. Gate the `cinema` param on the
-  // picker's presence so pages without it don't emit a stray param.
-  if (document.getElementById('cinema-list')) {
-    p.delete('cinema');
-    const disabled = getDisabledCinemas();
-    if (disabled.length > 0) {
-      ALL_CINEMAS.filter(c => !disabled.includes(c)).forEach(v => p.append('cinema', v));
-    }
-  }
+  SUBMENU_KEYS.forEach(key => shareSubmenu(p, key));
+  shareCinemas(p);
 
   return url.pathname + url.search + url.hash;
+}
+
+function checkedRadioValue(name) {
+  return (document.querySelector('input[name="' + name + '"]:checked') || {}).value || '';
+}
+
+// The from-time selects as `HH:MM`, or '' when the hour is "any".
+function fromTimeParam() {
+  const fromH = document.getElementById('from-hour');
+  const fromM = document.getElementById('from-minute');
+  if (!fromH || fromH.value === '') return '';
+  const hh = String(parseInt(fromH.value, 10)).padStart(2, '0');
+  const mm = String(parseInt((fromM && fromM.value) || '0', 10)).padStart(2, '0');
+  return hh + ':' + mm;
+}
+
+// A submenu's checked entries, one `key=value` each; none while every box is
+// ticked (the all-on default → empty URL).
+function shareSubmenu(p, key) {
+  p.delete(key);
+  const list = document.getElementById(key + '-list');
+  if (!list) return;
+  const boxes = [...list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)')];
+  const checked = boxes.filter(checkbox => checkbox.checked).map(checkbox => checkbox.value);
+  if (checked.length === boxes.length) return;
+  checked.forEach(v => p.append(key, v));
+}
+
+// The cinemas switched on, while any is off. Gated on the picker's presence
+// so pages without it don't emit a stray param.
+function shareCinemas(p) {
+  if (!document.getElementById('cinema-list')) return;
+  p.delete('cinema');
+  const disabled = getDisabledCinemas();
+  if (disabled.length > 0) {
+    ALL_CINEMAS.filter(c => !disabled.includes(c)).forEach(v => p.append('cinema', v));
+  }
 }
 
 // Filtry-panel "Skopiuj link do schowka" handler: materialise the current
@@ -264,99 +274,107 @@ window.addEventListener('pageshow', function () {
   noteFiltersApplied();
 });
 
+// Every supported param onto its control, in the order the controls read them
+// back: the day, the search, the format axes, the from-time, the sort, the
+// submenus, the cinemas.
 function applyFiltersFromURL() {
   resetFilterControls();
   const searchParams = new URLSearchParams(window.location.search);
 
-  const dateSel = document.getElementById('date-filter');
-  if (dateSel) {
-    const val   = searchParams.get('date');
-    const ALLOW = ['today', 'tomorrow', 'week', 'anytime'];
-    const isIso = val && /^\d{4}-\d{2}-\d{2}$/.test(val);
-    if (val && (ALLOW.includes(val) || isIso)) {
-      if (isIso && !Array.from(dateSel.options).some(o => o.value === val)) {
-        // An old shared/bookmarked link can carry a specific ISO date even
-        // though the picker now offers only the four presets — add an option
-        // on the fly so the select reflects it rather than snapping to 'today'.
-        const option = document.createElement('option');
-        option.value = val;
-        option.dataset.date = val;
-        option.textContent = formatDateLabelShort(val);
-        const weekOpt = dateSel.querySelector('option[value="week"]');
-        if (weekOpt) dateSel.insertBefore(option, weekOpt); else dateSel.appendChild(option);
-      }
-      dateSel.value = val;
-    }
-  }
+  applyDateParam(searchParams.get('date'));
 
   const search = document.getElementById('search-input');
-  if (search) { const queryValue = searchParams.get('q'); if (queryValue !== null) search.value = queryValue; }
+  const queryValue = searchParams.get('q');
+  if (search && queryValue !== null) search.value = queryValue;
 
-  const dim = searchParams.get('dim');
-  if (dim) {
-    const element = document.querySelector('input[name="format-dim"][value="' + CSS.escape(dim) + '"]');
-    if (element) element.checked = true;
-  }
-  const lang = searchParams.get('lang');
-  if (lang) {
-    const element = document.querySelector('input[name="format-lang"][value="' + CSS.escape(lang) + '"]');
-    if (element) element.checked = true;
-  }
+  checkRadio('format-dim',  searchParams.get('dim'));
+  checkRadio('format-lang', searchParams.get('lang'));
   const imaxEl = document.getElementById('format-imax');
   if (imaxEl && searchParams.has('imax')) imaxEl.checked = searchParams.get('imax') === '1';
 
-  const fromParam = searchParams.get('from');
-  if (fromParam && /^\d{1,2}:\d{2}$/.test(fromParam)) {
-    const [hours, minutes] = fromParam.split(':');
-    const hourSelect = document.getElementById('from-hour');
-    const minuteSelect = document.getElementById('from-minute');
-    if (hourSelect) hourSelect.value = String(parseInt(hours, 10));
-    if (minuteSelect) minuteSelect.value = String(parseInt(minutes, 10));
-  }
+  applyFromTimeParam(searchParams.get('from'));
 
   const sortSel = document.getElementById('sort-by');
-  if (sortSel) {
-    const sortParam = searchParams.get('sort');
-    if (sortParam === 'rating' || sortParam === 'earliest') sortSel.value = sortParam;
-  }
+  const sortParam = searchParams.get('sort');
+  if (sortSel && (sortParam === 'rating' || sortParam === 'earliest')) sortSel.value = sortParam;
 
-  // URL values are the INCLUSION set (checked items). Empty/absent → all
-  // checked (the no-filter default, no-op). Tolerate legacy single-value
-  // comma-lists by flattening on `,` so an old shared link still narrows
-  // down rather than dropping into a single nonexistent value.
-  ['country', 'genre', 'director', 'cast', 'room'].forEach(key => {
-    const checked = searchParams.getAll(key).flatMap(v => v.split(','));
-    if (checked.length === 0) return;
-    ensurePanel(key);   // a shared link references this filter → build it now
-                        // so the checkboxes exist for the state to land on
-    const list = document.getElementById(key + '-list');
-    if (!list) return;
-    const checkedSet = new Set(checked);
-    list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(checkbox => {
-      checkbox.checked = checkedSet.has(checkbox.value);
-    });
-    updateSubmenuCount(key);
-    // Room is the two-level submenu — refresh each cinema's "x/y" badge so
-    // the user can see which cinemas the URL-applied filter touched without
-    // expanding every header by hand.
-    if (key === 'room') {
-      list.querySelectorAll('.room-cinema-header').forEach(updateRoomCinemaCount);
-    }
-  });
-
-  // Cinema filter: write the URL inclusion list into localStorage so the
-  // cinema-panel checkboxes (and the Filtry button label) reflect it on
-  // first render. The internal LS shape still stores DISABLED cinemas, so
-  // invert. Pages without the picker have no `#cinema-list` → no-op.
-  if (document.getElementById('cinema-list') && searchParams.has('cinema')) {
-    const enabled = searchParams.getAll('cinema').flatMap(v => v.split(','));
-    setDisabledCinemas(ALL_CINEMAS.filter(c => !enabled.includes(c)));
-    buildCinemaPanel();
-  }
+  SUBMENU_KEYS.forEach(key => applySubmenuParam(key, searchParams.getAll(key)));
+  applyCinemaParam(searchParams);
 
   // Last, as the engine's own restore would: what the visitor had on this
   // entry outranks the `q`/`sort`/`from` the entry was first opened with.
   restoreRememberedControls();
   beginSearchAtBoot();
   updateFormatBtn();
+}
+
+// `?date=`: one of the four presets, or an ISO day.
+function applyDateParam(val) {
+  const dateSel = document.getElementById('date-filter');
+  if (!dateSel || !val) return;
+  const isIso = /^\d{4}-\d{2}-\d{2}$/.test(val);
+  if (!isIso && !['today', 'tomorrow', 'week', 'anytime'].includes(val)) return;
+  if (isIso && !Array.from(dateSel.options).some(o => o.value === val)) {
+    // An old shared/bookmarked link can carry a specific ISO date even
+    // though the picker now offers only the four presets — add an option
+    // on the fly so the select reflects it rather than snapping to 'today'.
+    const option = document.createElement('option');
+    option.value = val;
+    option.dataset.date = val;
+    option.textContent = formatDateLabelShort(val);
+    const weekOpt = dateSel.querySelector('option[value="week"]');
+    if (weekOpt) dateSel.insertBefore(option, weekOpt); else dateSel.appendChild(option);
+  }
+  dateSel.value = val;
+}
+
+function checkRadio(name, value) {
+  if (!value) return;
+  const element = document.querySelector('input[name="' + name + '"][value="' + CSS.escape(value) + '"]');
+  if (element) element.checked = true;
+}
+
+// `?from=HH:MM` onto the hour and minute selects.
+function applyFromTimeParam(fromParam) {
+  if (!fromParam || !/^\d{1,2}:\d{2}$/.test(fromParam)) return;
+  const [hours, minutes] = fromParam.split(':');
+  const hourSelect = document.getElementById('from-hour');
+  const minuteSelect = document.getElementById('from-minute');
+  if (hourSelect) hourSelect.value = String(parseInt(hours, 10));
+  if (minuteSelect) minuteSelect.value = String(parseInt(minutes, 10));
+}
+
+// URL values are the INCLUSION set (checked items). Empty/absent → all
+// checked (the no-filter default, no-op). Tolerate legacy single-value
+// comma-lists by flattening on `,` so an old shared link still narrows
+// down rather than dropping into a single nonexistent value.
+function applySubmenuParam(key, values) {
+  const checked = values.flatMap(v => v.split(','));
+  if (checked.length === 0) return;
+  ensurePanel(key);   // a shared link references this filter → build it now
+                      // so the checkboxes exist for the state to land on
+  const list = document.getElementById(key + '-list');
+  if (!list) return;
+  const checkedSet = new Set(checked);
+  list.querySelectorAll('input[type="checkbox"]:not(.submenu-all)').forEach(checkbox => {
+    checkbox.checked = checkedSet.has(checkbox.value);
+  });
+  updateSubmenuCount(key);
+  // Room is the two-level submenu — refresh each cinema's "x/y" badge so
+  // the user can see which cinemas the URL-applied filter touched without
+  // expanding every header by hand.
+  if (key === 'room') {
+    list.querySelectorAll('.room-cinema-header').forEach(updateRoomCinemaCount);
+  }
+}
+
+// Cinema filter: write the URL inclusion list into localStorage so the
+// cinema-panel checkboxes (and the Filtry button label) reflect it on
+// first render. The internal LS shape still stores DISABLED cinemas, so
+// invert. Pages without the picker have no `#cinema-list` → no-op.
+function applyCinemaParam(searchParams) {
+  if (!document.getElementById('cinema-list') || !searchParams.has('cinema')) return;
+  const enabled = searchParams.getAll('cinema').flatMap(v => v.split(','));
+  setDisabledCinemas(ALL_CINEMAS.filter(c => !enabled.includes(c)));
+  buildCinemaPanel();
 }
