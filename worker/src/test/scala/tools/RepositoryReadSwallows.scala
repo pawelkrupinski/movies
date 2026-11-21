@@ -30,7 +30,7 @@ object RepositoryReadSwallows {
     ("common/src/main/scala/services/movies/MongoSlotKeyedRows.scala", "storedRow",
       "Try(Await.result(c.find(Filters.eq(\"_id\", SlotKeyed.idOf(filmId, slotKey))).first().toFuture(), 10.seconds)).toOption.flatMap(Option(_))") ->
       "absent and unreadable are both 'cannot prove this write redundant': either way the row is written, the safe direction",
-    ("worker/src/main/scala/services/resolution/ResolutionStore.scala", "get",
+    ("worker/src/main/scala/services/resolution/ResolutionStore.scala", "stored",
       "Try(Await.result(c.find(Filters.and(Filters.eq(\"_id\", hintKey), Filters.gte(\"at\", cutoff))).headOption(), 5.seconds))") ->
       "a CACHE read: a miss re-resolves from the source, the safe direction",
     ("worker/src/main/scala/services/resolution/ResolutionStore.scala", "removeForFilm",

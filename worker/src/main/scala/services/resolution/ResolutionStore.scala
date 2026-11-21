@@ -35,8 +35,11 @@ trait ResolutionStore {
    *  ABSTRACT, so a store cannot inherit a process default by omission. */
   def normalizer: services.titles.TitleNormalizer
 
+  /** The stored value for `hintKey` and how long it has left, or None if never stored or older than the TTL. */
+  def stored(hintKey: String): Option[ResolutionStore.Stored]
+
   /** The stored value for `hintKey`, or None if never stored or older than the TTL. */
-  def get(hintKey: String): Option[String]
+  final def get(hintKey: String): Option[String] = stored(hintKey).map(_.value)
 
   /** Store (or refresh the timestamp of) `hintKey` → `value`. */
   def put(hintKey: String, value: String): Unit
@@ -63,6 +66,15 @@ object ResolutionStore {
    *  read-side expiry filter and the Mongo TTL index derive from it. */
   val Ttl: FiniteDuration = 24.hours
 
+  /** A stored value and what is left of its TTL. */
+  final case class Stored(value: String, expiresIn: FiniteDuration)
+
+  /** `value`, written `at`, as it stands `now`; None once its TTL has run out. */
+  def stored(value: String, at: Instant, now: Instant): Option[Stored] = {
+    val left = Ttl.toMillis - java.time.Duration.between(at, now).toMillis
+    Option.when(left > 0)(Stored(value, left.millis))
+  }
+
   /** An entry as stored: `{ _id: <hintKey>, value, at }`. */
   def encode(hintKey: String, value: String, at: Instant): Document =
     Document("_id" -> hintKey, "value" -> value, "at" -> new java.util.Date(at.toEpochMilli))
@@ -77,10 +89,8 @@ class InMemoryResolutionStore(
 ) extends ResolutionStore {
   private val entries = new ConcurrentHashMap[String, (String, Instant)]()
 
-  override def get(hintKey: String): Option[String] =
-    Option(entries.get(hintKey)).collect {
-      case (value, at) if at.isAfter(clock.instant().minusMillis(ResolutionStore.Ttl.toMillis)) => value
-    }
+  override def stored(hintKey: String): Option[ResolutionStore.Stored] =
+    Option(entries.get(hintKey)).flatMap { case (value, at) => ResolutionStore.stored(value, at, clock.instant()) }
 
   override def put(hintKey: String, value: String): Unit = {
     val stored = tools.BsonRoundTrip(ResolutionStore.encode(hintKey, value, clock.instant()))
@@ -136,12 +146,17 @@ class MongoResolutionStore(
     thread.start()
   }
 
-  override def get(hintKey: String): Option[String] =
+  override def stored(hintKey: String): Option[ResolutionStore.Stored] =
     coll.flatMap { c =>
-      val cutoff = new java.util.Date(clock.instant().minusMillis(ResolutionStore.Ttl.toMillis).toEpochMilli)
+      val now    = clock.instant()
+      val cutoff = new java.util.Date(now.minusMillis(ResolutionStore.Ttl.toMillis).toEpochMilli)
       Try(Await.result(c.find(Filters.and(Filters.eq("_id", hintKey), Filters.gte("at", cutoff))).headOption(), 5.seconds))
         .toOption.flatten
-        .flatMap(document => Option(document.getString("value")))
+        .flatMap(document => for {
+          value <- Option(document.getString("value"))
+          at    <- Option(document.getDate("at"))
+          held  <- ResolutionStore.stored(value, at.toInstant, now)
+        } yield held)
     }
 
   override def put(hintKey: String, value: String): Unit = coll.foreach { c =>

@@ -2,7 +2,9 @@ package services.resolution
 
 import java.util.concurrent.TimeUnit
 
-import com.github.benmanes.caffeine.cache.Cache
+import scala.concurrent.duration.FiniteDuration
+
+import com.github.benmanes.caffeine.cache.{Cache, Expiry}
 
 /**
  * Caches the result of an expensive identity resolution — `hintKey` → a TMDB
@@ -111,8 +113,21 @@ class WriteThroughResolutionCache(
   unresolved: UnresolvedPolicy = UnresolvedPolicy.Retry,
   maxEntries: Long = WriteThroughResolutionCache.MaxEntries) extends ResolutionCache {
 
-  private val cache: Cache[String, String] =
-    tools.BoundedCache.ofSize(maxEntries).expireAfterWrite(ResolutionStore.Ttl.toMillis, TimeUnit.MILLISECONDS).build()
+  // Each entry expires when its store row does: a value read back from the store has only what is left of the
+  // row's TTL, not a fresh one from the moment this layer loaded it.
+  private val cache: Cache[String, ResolutionStore.Stored] =
+    tools.BoundedCache.ofSize(maxEntries).expireAfter(new Expiry[String, ResolutionStore.Stored] {
+      def expireAfterCreate(key: String, held: ResolutionStore.Stored, currentTime: Long): Long = held.expiresIn.toNanos
+      def expireAfterUpdate(key: String, held: ResolutionStore.Stored, currentTime: Long, currentDuration: Long): Long = held.expiresIn.toNanos
+      def expireAfterRead(key: String, held: ResolutionStore.Stored, currentTime: Long, currentDuration: Long): Long = currentDuration
+    }).build()
+
+  /** How long the in-memory layer still holds `hintKey` — for the spec. */
+  private[resolution] def expiresIn(hintKey: String): Option[FiniteDuration] = {
+    import scala.jdk.OptionConverters._
+    cache.policy().expireVariably().toScala.flatMap(_.getExpiresAfter(hintKey, TimeUnit.NANOSECONDS).toScala)
+      .map(nanos => FiniteDuration(nanos, TimeUnit.NANOSECONDS))
+  }
 
   /** How many hint keys the in-memory layer holds — for the spec. */
   private[resolution] def held: Long = { cache.cleanUp(); cache.estimatedSize() }
@@ -127,12 +142,12 @@ class WriteThroughResolutionCache(
    *  right for what the counter measures: it did not run a probe chain. */
   override def getOrResolve(hintKey: String)(resolve: => Option[String]): Option[String] = {
     var loaderRan = false
-    val value = Option(cache.get(hintKey, _ => {
+    val held = Option(cache.get(hintKey, _ => {
       loaderRan = true
       loadOrResolve(hintKey, resolve).orNull
     }))
     if (!loaderRan) recorder.record(ResolutionOutcome.HitMemory)
-    value.filter(_.nonEmpty)
+    held.map(_.value).filter(_.nonEmpty)
   }
 
   /** Both layers, in that order: Caffeine first so a concurrent read can't
@@ -150,22 +165,22 @@ class WriteThroughResolutionCache(
     ()
   }
 
-  private def loadOrResolve(hintKey: String, resolve: => Option[String]): Option[String] =
-    store.get(hintKey) match {
+  private def loadOrResolve(hintKey: String, resolve: => Option[String]): Option[ResolutionStore.Stored] =
+    store.stored(hintKey) match {
       case warm @ Some(_) => recorder.record(ResolutionOutcome.HitStore); warm
       case None =>
         resolve.filter(_.nonEmpty) match {
-          case hit @ Some(value) =>
+          case Some(value) =>
             store.put(hintKey, value)
             recorder.record(ResolutionOutcome.MissResolved)
-            hit
+            Some(ResolutionStore.Stored(value, ResolutionStore.Ttl))
           case None =>
             recorder.record(ResolutionOutcome.MissUnresolved)
             unresolved match {
               // Cached as the empty marker in BOTH layers — Caffeine holds what
               // the loader returns, so returning it here is what stops the next
               // call in this process from re-probing.
-              case UnresolvedPolicy.Remember => store.put(hintKey, Unresolved); Some(Unresolved)
+              case UnresolvedPolicy.Remember => store.put(hintKey, Unresolved); Some(ResolutionStore.Stored(Unresolved, ResolutionStore.Ttl))
               case UnresolvedPolicy.Retry    => None
             }
         }

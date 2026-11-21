@@ -243,6 +243,22 @@ class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
     calls.get() shouldBe 2
   }
 
+  // The in-memory layer timed every entry from its own load: a store row written 23 h before a
+  // restart's first ask was then held another 24 h, a remembered miss living ~47 h.
+  it should "hold a value read from the store only for what is left of the store row's TTL" in {
+    val clock = new MutableClock(Instant.parse("2026-07-30T12:00:00Z"))
+    val store = new InMemoryResolutionStore(clock, normalizer = titleNormalizer)
+    store.put("k", "tt1")
+    clock.advance(java.time.Duration.ofHours(23))
+    val cache = newCache(store)
+
+    cache.getOrResolve("k")(fail("the store holds it")) shouldBe Some("tt1")
+    // Caffeine counts down on its own ticker from the load, so allow it the moments since.
+    cache.expiresIn("k").map(_.toSeconds).get should (be > 55L * 60 and be <= 60L * 60)
+    cache.getOrResolve("fresh")(Some("tt2"))
+    cache.expiresIn("fresh").map(_.toMinutes).get should (be > 23L * 60 and be <= 24L * 60)
+  }
+
   // The operator's escape hatch has to keep working: an operator's refresh must
   // genuinely re-probe, not replay a remembered "no page for this film".
   it should "drop a remembered miss on forget, so an operator's refresh really re-probes" in {
