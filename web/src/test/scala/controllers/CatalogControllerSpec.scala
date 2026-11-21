@@ -16,19 +16,20 @@ class CatalogControllerSpec extends AnyFlatSpec with Matchers {
 
   private def controller = new CatalogController(stubControllerComponents())
 
-  "GET /api/catalog" should "return the catalog JSON with the seed's ETag and no-cache" in {
+  "GET /api/catalog" should "return the catalog JSON with the seed's ETag (weak) and no-cache, no-transform" in {
     val result = controller.catalog()(FakeRequest())
     status(result) shouldBe OK
     contentType(result) shouldBe Some("application/json")
-    header("ETag", result) shouldBe Some(Catalog.etag)
-    header("Cache-Control", result) shouldBe Some("no-cache")
+    header("ETag", result) shouldBe Some("W/" + Catalog.etag)
+    header("Cache-Control", result) shouldBe Some("no-cache, no-transform")
     contentAsString(result) shouldBe Catalog.json
   }
 
   // An app's stored tag, handed back the way a cache in between may spell it:
   // weakened, or offered beside another. Exact string equality answered both
   // with the whole catalog again.
-  it should "answer 304 to the seed's ETag offered weak or in a list" in {
+  it should "answer 304 to the seed's ETag offered as bundled (strong), weak or in a list" in {
+    status(controller.catalog()(FakeRequest().withHeaders("If-None-Match" -> Catalog.etag))) shouldBe NOT_MODIFIED
     status(controller.catalog()(FakeRequest().withHeaders("If-None-Match" -> s"W/${Catalog.etag}"))) shouldBe NOT_MODIFIED
     status(controller.catalog()(FakeRequest().withHeaders("If-None-Match" -> s""""0000000000000000", ${Catalog.etag}"""))) shouldBe NOT_MODIFIED
   }

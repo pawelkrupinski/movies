@@ -52,11 +52,11 @@ class PickerControllerSpec extends AnyFlatSpec with Matchers {
     val versioned = fragments.url("uk")
     versioned should startWith ("/api/picker/uk?v=")
     val v = versioned.split("v=", 2)(1)
-    header("Cache-Control", get("uk", Some(v))) shouldBe Some("public, max-age=31536000, immutable")
+    header("Cache-Control", get("uk", Some(v))) shouldBe Some("public, max-age=31536000, immutable, no-transform")
     // No version, or another deploy's: revalidate, so a pod mid-rollout can never
     // pin its body under a URL that names different bytes.
-    header("Cache-Control", get("uk")) shouldBe Some("no-cache")
-    header("Cache-Control", get("uk", Some("0000000000000000"))) shouldBe Some("no-cache")
+    header("Cache-Control", get("uk")) shouldBe Some("no-cache, no-transform")
+    header("Cache-Control", get("uk", Some("0000000000000000"))) shouldBe Some("no-cache, no-transform")
   }
 
   it should "serve the gzipped copy to a client that takes it" in {

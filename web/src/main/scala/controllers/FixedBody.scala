@@ -13,18 +13,23 @@ import play.api.mvc.{RequestHeader, Result}
  *
  * Everything that depends only on the bytes is worked out ONCE, here: the ETag
  * ([[tools.Digest.contentEtag]], so a body's identity is its content and the same
- * bytes on every pod carry the same tag) and the gzipped copy. A request then costs
+ * bytes on every pod carry the same tag) and the gzipped copy. The tag is WEAK
+ * because the gzipped and the plain body share it and no bytes, which a strong
+ * validator may not do (see [[CachePolicy]]); a client's strong copy of it — the
+ * apps' bundled catalog seed — still matches, `If-None-Match` comparing weakly. A request then costs
  * a header compare and, for the rare client refusing gzip, an encode of `text`.
  * The plain bytes are not held: `text` already is, and most callers keep it anyway
  * (`models.Catalog.json`, the landing's own-country picker).
  */
 final class FixedBody(val text: String, val contentType: String) {
 
-  val etag: String = tools.Digest.contentEtag(text)
+  private val contentTag: String = tools.Digest.contentEtag(text)
 
-  /** The ETag without its quotes — fit for a URL, which is where a versioned link
+  val etag: String = "W/" + contentTag
+
+  /** The ETag's bare hex, no quotes — fit for a URL, which is where a versioned link
    *  to this body carries it. */
-  def version: String = etag.stripPrefix("\"").stripSuffix("\"")
+  def version: String = contentTag.stripPrefix("\"").stripSuffix("\"")
 
   val gzipped: ByteString = ResponseBody.text(text).gzipped
 
@@ -39,12 +44,14 @@ final class FixedBody(val text: String, val contentType: String) {
    * also what keeps Play's `GzipFilter` from compressing it a second time.
    *
    * `cacheControl` is the caller's policy — `no-cache` for a URL whose content moves
-   * between deploys, a long `immutable` for one whose URL names the content.
+   * between deploys, a long `immutable` for one whose URL names the content — and
+   * `no-transform` rides on it always: Cloudflare otherwise recompresses the gzip and
+   * drops the tag of bytes it rewrote, so no client could revalidate (see [[CachePolicy]]).
    */
   def serve(request: RequestHeader, cacheControl: String): Result = {
     // The 304 repeats the 200's `Vary` (RFC 9110 §15.4.5): one tag covers both
     // representations, so a cache must know the response varies by encoding.
-    val validators = Seq("ETag" -> etag, "Cache-Control" -> cacheControl, "Vary" -> "Accept-Encoding")
+    val validators = Seq("ETag" -> etag, "Cache-Control" -> s"$cacheControl, no-transform", "Vary" -> "Accept-Encoding")
     if (ConditionalResponse.offersValidator(request.headers.get("If-None-Match"), etag))
       NotModified.withHeaders(validators*)
     else if (AcceptEncoding.acceptsGzip(request.headers.get("Accept-Encoding")))
