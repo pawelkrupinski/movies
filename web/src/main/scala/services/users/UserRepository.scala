@@ -14,16 +14,11 @@ import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture
 import play.api.Logging
 
 /**
- * Persistent store for authenticated users. Identity is the user's
- * email (lowercased) — logging in with Google, Facebook, or Apple
- * using the same email accesses the same account and state.
- *
- * The trait is what callers (AuthController, UserStateController) see;
- * `MongoUserRepository` is the production impl, `InMemoryUserRepository` the test
- * fake. Pattern mirrors `MovieRepository`.
+ * The read side of the users store: what a caller that only resolves the
+ * signed-in visitor (`SignedInUser` and the controllers over it, Facebook's
+ * data-deletion callback) needs. Every [[UserRepository]] is one.
  */
-trait UserRepository {
-  def enabled: Boolean
+trait UserLookup {
 
   /** Look up by id (= lowercased email). Used on every authenticated
    *  request after session decode, and during OAuth callback.
@@ -33,6 +28,20 @@ trait UserRepository {
   def findById(id: String): Option[User]
 
   def findByProviderSub(provider: String, providerSub: String): Option[User]
+}
+
+/**
+ * Persistent store for authenticated users. Identity is the user's
+ * email (lowercased) — logging in with Google, Facebook, or Apple
+ * using the same email accesses the same account and state.
+ *
+ * The trait is what the callers that write (AuthController, OauthAccounts,
+ * AccountDeletion) see; read-only ones take its [[UserLookup]].
+ * `MongoUserRepository` is the production store, `InMemoryUserRepository` the test
+ * one. Pattern mirrors `MovieRepository`.
+ */
+trait UserRepository extends UserLookup {
+  def enabled: Boolean
 
   /** THROWS when the store cannot perform it — see [[AccountDeletion]]. */
   def delete(id: String): Unit
@@ -134,7 +143,7 @@ object MongoUserRepository {
     val row = new BsonDocument()
     UserCodecs.registry.get(classOf[User]).encode(new BsonDocumentWriter(row), user, EncoderContext.builder().build())
     row.remove("sessionVersion")
-    import UpdatePipeline.{field, literal, op}
+    import tools.MongoExpressions.{field, literal, op}
     val stored         = op("$ifNull", field("sessionVersion"), new BsonInt32(0))
     val sessionVersion = new BsonDocument("sessionVersion", op("$max", stored, new BsonInt32(user.sessionVersion)))
     Seq(new BsonDocument("$replaceWith", op("$mergeObjects", literal(row), sessionVersion)))

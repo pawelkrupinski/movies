@@ -12,7 +12,15 @@ import play.api.Logging
  * so the Facebook callback can fire for a user who never logged in
  * here (or who already deleted) without special-casing.
  */
-class AccountDeletion(userRepository: UserRepository, userStateRepository: UserStateRepository) extends Logging {
+trait AccountDeletion {
+
+  /** THROWS when a store cannot perform it: the callers answer "deleted" only on return. */
+  def delete(userId: String): Unit
+}
+
+/** [[AccountDeletion]] over the two stores holding an account's rows. */
+class AccountRowsDeletion(userRepository: UserRepository, userStateRepository: UserStateRepository)
+    extends AccountDeletion with Logging {
   def delete(userId: String): Unit = {
     logger.info(s"Deleting account $userId (state + user row)")
     userStateRepository.delete(userId)

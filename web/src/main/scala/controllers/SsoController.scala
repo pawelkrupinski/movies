@@ -6,7 +6,7 @@ import models.User
 import play.api.Logging
 import play.api.mvc.*
 import services.auth.AuthExchangeCodes
-import services.users.UserRepository
+import services.users.UserLookup
 
 /**
  * Hands a live session to a deployment the session cookie cannot reach, and takes it away again.
@@ -35,7 +35,7 @@ import services.users.UserRepository
  */
 class SsoController(
   cc:             ControllerComponents,
-  userRepository: UserRepository,
+  userLookup:     UserLookup,
   // The one-shot codes a handoff carries across the domain boundary.
   exchangeCodes:  AuthExchangeCodes,
   // The country THIS deployment serves (see [[AuthController]]): where a finished
@@ -98,7 +98,7 @@ class SsoController(
       (if (citySlug.isEmpty && pick.nonEmpty) Seq(LandingController.PickCityParam -> LandingController.PickCityValue) else Nil) ++
       SsoController.switchTarget(request.getQueryString("next")).map("next" -> _)
     val landing = Redirect(citySlug.map(s => s"$target/$s/").getOrElse(s"$target/$pick"))
-    SignedInUser(request, userRepository) match {
+    SignedInUser(request, userLookup) match {
       // NOTHING TO HAND OVER, and the marker matters. This endpoint is now
       // also reached unprompted, by a signed-out arrival probing whether the
       // visitor has a session on the other domain; sending it back to a bare
@@ -170,7 +170,7 @@ class SsoController(
     // `exchangeCodes.redeemHandoff` refuses a browser holding no binding at all.
     val binding = request.session.get(SsoController.SsoBindingKey)
     val cleared = request.session - SsoController.SsoBindingKey
-    code.flatMap(exchangeCodes.redeemHandoff(_, binding)).flatMap(userRepository.findById) match {
+    code.flatMap(exchangeCodes.redeemHandoff(_, binding)).flatMap(userLookup.findById) match {
       case None =>
         logger.warn("SSO handoff arrived without a code redeemable by this browser — landing signed out.")
         PerUserResponse(home.withSession(cleared))

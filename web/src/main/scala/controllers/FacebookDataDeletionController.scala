@@ -6,7 +6,7 @@ import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.*
 import services.auth.FacebookSignedRequest
-import services.users.{AccountDeletion, UserRepository}
+import services.users.{AccountDeletion, UserLookup}
 
 /**
  * Facebook's "Data Deletion Request Callback" (Meta app dashboard →
@@ -35,7 +35,7 @@ class FacebookDataDeletionController(
   // The deployment's country: its brand on the pages, and their language when the link names none.
   country:         models.Country,
   appSecret:       Option[settings.FacebookAppSecret],
-  userRepository:        UserRepository,
+  userLookup:            UserLookup,
   accountDeletion: AccountDeletion
 ) extends AbstractController(cc) with Logging {
 
@@ -71,7 +71,7 @@ class FacebookDataDeletionController(
    *  FAILED is neither: answer 503 so Meta retries, instead of confirming a
    *  deletion that never ran. */
   private def deleteAccountOf(facebookUserId: String): Either[Result, Unit] =
-    scala.util.Try(userRepository.findByProviderSub("facebook", facebookUserId).map { user => accountDeletion.delete(user.id); user })
+    scala.util.Try(userLookup.findByProviderSub("facebook", facebookUserId).map { user => accountDeletion.delete(user.id); user })
       .toEither match {
       case Left(e) =>
         logger.warn(s"Facebook data-deletion: deleting the account of fb $facebookUserId failed: ${e.getMessage}")

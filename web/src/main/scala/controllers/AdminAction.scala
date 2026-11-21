@@ -4,7 +4,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 import play.api.mvc.*
-import services.users.UserRepository
+import services.users.UserLookup
 
 /** Session + email-allowlist gate for the app's operational/admin endpoints —
  *  the title-rules editor, `/uptime`, `/tasks`, and the `/…/debug/rehydrate`
@@ -18,13 +18,13 @@ import services.users.UserRepository
  *  `adminAction(parse.json) { request => ... }` when the action reads a body. */
 class AdminAction(
   override val parser: BodyParser[AnyContent],
-  userRepository:      UserRepository,
+  userLookup:          UserLookup,
   adminAllowlist:      settings.AdminAllowlist
 )(implicit val executionContext: ExecutionContext)
     extends ActionBuilder[Request, AnyContent] {
 
   override def invokeBlock[A](request: Request[A], block: Request[A] => Future[Result]): Future[Result] =
-    Try(SignedInUser(request, userRepository)) match {
+    Try(SignedInUser(request, userLookup)) match {
       case Success(None)                                                         => Future.successful(Results.Unauthorized("Not logged in."))
       case Success(Some(user)) if user.email.exists(adminAllowlist.value.contains) => block(request)
       case Success(Some(_))                                                      => Future.successful(Results.Forbidden("Not an admin."))

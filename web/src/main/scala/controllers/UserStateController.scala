@@ -7,7 +7,7 @@ import models.UserState
 import play.api.Logging
 import play.api.libs.json.{JsNull, JsValue, Json}
 import play.api.mvc.*
-import services.users.{HiddenFilmsChange, UserRepository, UserStateRepository}
+import services.users.{HiddenFilmsChange, UserLookup, UserStateRepository}
 
 /**
  * REST endpoint for the authenticated user's personalization state — the
@@ -32,7 +32,7 @@ import services.users.{HiddenFilmsChange, UserRepository, UserStateRepository}
 class UserStateController(
   cc:                   ControllerComponents,
   userStateRepository:   UserStateRepository,
-  userRepository:       UserRepository,
+  userLookup:           UserLookup,
   // Stamps every change; the stored stamps' newer-than rules compare against it.
   clock:                java.time.Clock
 ) extends AbstractController(cc) with Logging {
@@ -50,7 +50,7 @@ class UserStateController(
   // A user row that could not be READ is neither: `SignedInUser` throws, and
   // every action answers through `SignedInUser.answering`, a per-user 503.
   private def signedInUserId(request: RequestHeader): Option[String] =
-    SignedInUser.idOf(request, userRepository)
+    SignedInUser.idOf(request, userLookup)
 
   /** `onRead` over this user's stored state — an empty one when they have none yet — or
    *  a 503 when it could not be READ. The empty state is a real answer ("nothing hidden"),

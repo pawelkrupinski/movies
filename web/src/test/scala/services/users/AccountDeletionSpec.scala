@@ -11,7 +11,7 @@ class AccountDeletionSpec extends AnyFlatSpec with Matchers {
   private def fixture = {
     val userRepository  = new InMemoryUserRepository
     val stateRepository = new InMemoryUserStateRepository
-    (new AccountDeletion(userRepository, stateRepository), userRepository, stateRepository)
+    (new AccountRowsDeletion(userRepository, stateRepository), userRepository, stateRepository)
   }
 
   "AccountDeletion.delete" should "remove both the user row and the state row" in {

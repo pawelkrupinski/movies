@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.auth.FacebookSignedRequestFixture
-import services.users.{AccountDeletion, InMemoryUserRepository, InMemoryUserStateRepository}
+import services.users.{AccountRowsDeletion, InMemoryUserRepository, InMemoryUserStateRepository}
 
 import java.time.Instant
 
@@ -22,7 +22,7 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
       Helpers.stubControllerComponents(), models.Country.Poland,
       appSecret,
       userRepository,
-      new AccountDeletion(userRepository, stateRepository)
+      new AccountRowsDeletion(userRepository, stateRepository)
     )
     (ctl, userRepository, stateRepository)
   }
@@ -74,7 +74,7 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
   "POST /facebook/data-deletion" should "answer 503 — not confirm the deletion — when the account lookup fails" in {
     val users = new services.users.FailingReadUserRepository
     val ctl = new FacebookDataDeletionController(Helpers.stubControllerComponents(), models.Country.Poland, Some(settings.FacebookAppSecret(Secret)), users,
-      new AccountDeletion(users, new InMemoryUserStateRepository))
+      new AccountRowsDeletion(users, new InMemoryUserStateRepository))
     val result = ctl.callback()(callbackRequest(FacebookSignedRequestFixture.forUser(Secret, "fb-777")))
     status(result) shouldBe SERVICE_UNAVAILABLE
     contentAsString(result) should not include ("confirmation_code")
@@ -85,7 +85,7 @@ class FacebookDataDeletionControllerSpec extends AnyFlatSpec with Matchers {
     val states = new InMemoryUserStateRepository
     seedFacebookUser(users, states, "fb-777")
     val ctl = new FacebookDataDeletionController(Helpers.stubControllerComponents(), models.Country.Poland,
-      Some(settings.FacebookAppSecret(Secret)), users, new AccountDeletion(users, states))
+      Some(settings.FacebookAppSecret(Secret)), users, new AccountRowsDeletion(users, states))
     val result = ctl.callback()(callbackRequest(FacebookSignedRequestFixture.forUser(Secret, "fb-777")))
     status(result) shouldBe SERVICE_UNAVAILABLE
     contentAsString(result) should not include ("confirmation_code")

@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsNull, Json}
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.users.{AccountDeletion, HiddenFilmsChange, InMemoryUserRepository, InMemoryUserStateRepository}
+import services.users.{AccountRowsDeletion, HiddenFilmsChange, InMemoryUserRepository, InMemoryUserStateRepository}
 
 import java.time.Instant
 
@@ -39,7 +39,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   /** `DELETE /api/me` over the same stores. */
   private def accountController(states: InMemoryUserStateRepository, users: InMemoryUserRepository): AccountController =
-    new AccountController(Helpers.stubControllerComponents(), new AccountDeletion(users, states), users)
+    new AccountController(Helpers.stubControllerComponents(), new AccountRowsDeletion(users, states), users)
 
   /** Counts `find` calls, so a spec can say how often storage was read. */
   private class CountingUserStateRepository extends InMemoryUserStateRepository {

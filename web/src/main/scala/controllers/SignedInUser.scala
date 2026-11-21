@@ -6,7 +6,7 @@ import models.User
 import play.api.Logging
 import play.api.libs.json.Json
 import play.api.mvc.{RequestHeader, Result, Results, Session}
-import services.users.UserRepository
+import services.users.UserLookup
 
 /**
  * Who is signed in on this request — the one place that turns the session's
@@ -46,7 +46,7 @@ object SignedInUser extends Logging {
    *
    *  A row that could not be READ is none of those: it throws [[LookupFailed]],
    *  which [[answering]] turns into a 503 to retry. */
-  def apply(request: RequestHeader, users: UserRepository): Option[User] =
+  def apply(request: RequestHeader, users: UserLookup): Option[User] =
     request.session.get(UserIdKey)
       .flatMap(id =>
         try users.findById(id)
@@ -54,7 +54,7 @@ object SignedInUser extends Logging {
       .filter(_.sessionVersion == sessionVersionOf(request.session))
 
   /** The signed-in user's id — [[apply]]'s user, by id. */
-  def idOf(request: RequestHeader, users: UserRepository): Option[String] = apply(request, users).map(_.id)
+  def idOf(request: RequestHeader, users: UserLookup): Option[String] = apply(request, users).map(_.id)
 
   /** The session's user row could not be read — see [[apply]]. */
   final case class LookupFailed(cause: Throwable) extends RuntimeException(cause)

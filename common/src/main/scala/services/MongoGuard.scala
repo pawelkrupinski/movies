@@ -9,7 +9,7 @@ import org.bson.conversions.Bson
 import org.bson.{BsonDocument, BsonValue}
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoCollection, SingleObservableFuture}
-import tools.{MongoErrors, MongoWriteErrors}
+import tools.{MongoErrors, MongoExpressions, MongoWriteErrors}
 
 /**
  * The Mongo half of a [[tools.GuardedWrite]]: a filter that matches a row only while the fields a
@@ -38,8 +38,7 @@ object MongoGuard {
    *  other writer's row for the one it read. `$literal`, so a stored string that starts with `$`
    *  is compared as the string it is. */
   def wholeUnchanged(id: BsonValue, asRead: BsonDocument): Bson =
-    Filters.and(Filters.eq("_id", id), Filters.expr(new BsonDocument("$eq",
-      new org.bson.BsonArray(java.util.List.of(new org.bson.BsonString("$$ROOT"), new BsonDocument("$literal", asRead))))))
+    Filters.and(Filters.eq("_id", id), Filters.expr(MongoExpressions.op("$eq", MongoExpressions.field("$ROOT"), MongoExpressions.literal(asRead))))
 
   /** `update` only where `guard` matches — whether it landed. With `insert`, a row absent when read is
    *  created; a duplicate `_id` then is the guard's insert meeting a row another writer created since
