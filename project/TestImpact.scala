@@ -22,6 +22,8 @@ import xsbti.VirtualFileRef
  *    (`ReaderNames.treeNames`: a walk of `test/resources/fixtures/flicks`);
  *  - a changed path a generated identity stamp digests (`<name>-sources.txt`, `IdentityRulesSources`) changes that
  *    stamp, read by name like any resource;
+ *  - a file only the build reads is what the build makes of it (`ReaderNames.madeFrom`: the stamp carry table, each
+ *    stamp's `-version.txt`);
  *  - a BOOKKEEPING file (`ReaderNames.Bookkeeping`: the coupling and quality baselines and tables, the AOT class
  *    list) seeds nothing: only tools outside the selection read one;
  *  - a resource or fixture no literal names has an UNKNOWN reader, and so has a deleted source (its old dependents are
@@ -46,7 +48,7 @@ object TestImpact {
     else id
   }
 
-  import kinowo.build.ReaderNames.{isBookkeeping, isResource, source, tokens, walkers}
+  import kinowo.build.ReaderNames.{isBookkeeping, isResource, madeFrom, source, tokens, walkers}
 
   /** Every module source with its string literals and the source trees it declares (`ReaderNames.Source`). */
   private def scan(repo: File): Seq[kinowo.build.ReaderNames.Source] = (repo * "*").get.filter(_.isDirectory).flatMap { module =>
@@ -136,7 +138,7 @@ object TestImpact {
         Seq(s"$name-version.txt", s"$name-sources.txt")
       } else Nil
     }
-    (changed ++ stamped).distinct.foreach { path =>
+    (changed.flatMap(madeFrom) ++ stamped).distinct.foreach { path =>
       if (isBookkeeping(path)) () // the ratchets' and the build's own tables: no spec of the selection reads one
       else if ((path.endsWith(".sbt") && !path.contains("/")) || path.startsWith("project/")) why += s"ALL the build changed: $path"
       else if (path.endsWith(".scala") || path.endsWith(".java")) {

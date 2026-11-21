@@ -1,6 +1,6 @@
 package services.identity
 
-import kinowo.build.ReaderNames
+import kinowo.build.{ReaderNames, StampCarry}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -80,6 +80,13 @@ class ReaderNamesSpec extends AnyFlatSpec with Matchers {
       "common/src/main/resources/title-rules.tsv", "test/resources/fixtures/corpus/hard-clusters-seeds.tsv",
       "test/resources/expected-schedules.txt", "worker/src/main/resources/aot-classes.txt.bak")
       .filter(ReaderNames.isBookkeeping) shouldBe empty
+  }
+
+  "a file only the build reads" should "be read as what the build makes of it: the carry table as the stamps it moves" in {
+    // the build reads the stamp carry table into each `<stamp>-version.txt`, which the identity stamps' readers name: a
+    // carry push runs those readers' specs, not every identity spec as a resource no literal names
+    ReaderNames.madeFrom(StampCarry.Table) shouldBe StampCarry.Stamps.map(s => s"$s-version.txt")
+    ReaderNames.madeFrom("test/resources/fixtures/identity-judgements.tsv") shouldBe Seq("test/resources/fixtures/identity-judgements.tsv")
   }
 
   it should "include the what-if records the stamp carry's rows stand on, never the carry table the build reads" in {

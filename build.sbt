@@ -341,7 +341,7 @@ lazy val common = (project in file("common"))
     // The shared time doubles (`sharedTestDoubles`), the test-impact selection's reader names, which
     // SourceTreeWalksLintSpec reads source-tree declarations with exactly as the build does, and the coupling
     // numbers `sbt couplingReport` writes (CouplingSpec).
-    Test / unmanagedSources ++= sharedTestDoubles.value ++ Seq("ReaderNames.scala", "Coupling.scala", "ClassReferences.scala", "ClassCycles.scala", "CouplingSimulation.scala", "ExemptionSlack.scala").map((LocalRootProject / baseDirectory).value / "project" / _)
+    Test / unmanagedSources ++= sharedTestDoubles.value ++ Seq("ReaderNames.scala", "StampCarry.scala", "Coupling.scala", "ClassReferences.scala", "ClassCycles.scala", "CouplingSimulation.scala", "ExemptionSlack.scala").map((LocalRootProject / baseDirectory).value / "project" / _)
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(ForkedTests.settings(Test, heap = "512m"))

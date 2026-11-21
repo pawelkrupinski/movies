@@ -138,6 +138,13 @@ object ReaderNames {
 
   def isBookkeeping(path: String): Boolean = Bookkeeping(path) || BookkeepingTrees.exists(path.startsWith)
 
+  /** What a change to `path` changes, as a spec can read it: `path` itself, but for a file only the BUILD reads, what the
+   *  build makes of it -- the stamp carry table ([[StampCarry.Table]]) is read into each stamp's `<stamp>-version.txt`,
+   *  which the stamps' readers name. No spec names the table, so read as itself it was a resource of unknown reader, and
+   *  every carry push ran every identity spec. */
+  def madeFrom(path: String): Seq[String] =
+    if (path == StampCarry.Table) StampCarry.Stamps.map(stamp => s"$stamp-version.txt") else Seq(path)
+
   /** Whether a path is data some spec may read off the class path or the fixtures tree. */
   def isResource(path: String): Boolean = ResourceRoots.exists(r => path.startsWith(r) || path.contains("/" + r))
 
