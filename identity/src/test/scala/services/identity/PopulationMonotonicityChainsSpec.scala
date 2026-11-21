@@ -57,7 +57,7 @@ class PopulationMonotonicityChainsSpec extends AnyFlatSpec with Matchers {
     val table = new FilmTable(Seq(FilmTable.F(1, "Klondike", 2022, "Maryna Er Gorbach", 100)), normalizer)
     // the corpus resolved without the film: both listings take none there, the film when the family is walked
     val corpus = IdentityResolver.resolve(pair, new FilmTable(Nil, normalizer), normalizer, ResolveInputs.Unpinned)
-    val report = PopulationMonotonicity.report(pair, table, normalizer, ResolveInputs.Unpinned, corpus, tools.Stopwatch.System, count = 4)
+    val report = PopulationMonotonicity.report(pair, table, normalizer, ResolveInputs.Unpinned, corpus, new tools.Stopwatch(() => 0L), count = 4)
     report.walked shouldBe 1
     report.apart shouldBe 2
   }
