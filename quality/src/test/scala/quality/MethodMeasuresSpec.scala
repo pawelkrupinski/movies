@@ -175,7 +175,7 @@ class MethodMeasuresSpec extends AnyFlatSpec with Matchers {
         |    if (n > 0) "positive"
         |    else if (n < 0) "negative"
         |    else "zero"
-        |  lazy val cached: Int = if (sys.props.contains("x")) 1 else 2
+        |  lazy val cached: Int = if (counter > 1) 1 else 2
         |  var counter: Int = 0
         |  val (left, right) = if (counter > 0) (1, 2) else (2, 1)
         |  given Ordering[String] = (a, b) => if (a == b) 0 else 1
