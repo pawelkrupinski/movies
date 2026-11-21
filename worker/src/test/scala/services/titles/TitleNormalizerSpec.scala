@@ -463,6 +463,13 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
     recase("Rocky BALBOA RETURNS dzisiaj") shouldBe "Rocky Balboa Returns dzisiaj"
     // A pure roman numeral inside a shouted run keeps its caps.
     recase("Rocky BALBOA II powraca") shouldBe "Rocky Balboa II powraca"
+    // A word merely MADE of numeral letters is a word: it is down-cased with the rest.
+    recase("Captain America: CIVIL WAR") shouldBe "Captain America: Civil War"
+    recase("Rocky BALBOA XIV powraca") shouldBe "Rocky Balboa XIV powraca"
+    // ...and so do the few names of things a shout carries: Cinema City's XD screen, closed captions.
+    recase("Rocky BALBOA RETURNS (CC)") shouldBe "Rocky Balboa Returns (CC)"
+    recase("FESTIWAL KORELACJE: „Zaklęte Rewiry” z narracją Malcolma XD") shouldBe
+      "Festiwal Korelacje: „Zaklęte Rewiry” z narracją Malcolma XD"
   }
 
   it should "down-case a word a lowercase connective stranded out of the shout run" in {

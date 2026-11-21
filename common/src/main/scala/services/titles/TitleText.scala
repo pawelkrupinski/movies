@@ -103,9 +103,21 @@ object TitleText {
   def normalize(title: String): String =
     title.split(" ").map(word => RomanToArabic.getOrElse(word.toUpperCase(Locale.ROOT), word)).mkString(" ")
 
-  // A token made only of roman-numeral letters — kept in caps when a shout is
-  // down-cased so "Rocky BALBOA II" cases the name but leaves the sequel ("II").
-  private val RomanNumeral = "^[IVXLCDM]+$".r
+  // A Roman numeral a sequel or a part is numbered by, 1 to 89 — kept in caps when a
+  // shout is down-cased so "Rocky BALBOA II" cases the name but leaves the sequel ("II").
+  // A grammar, not a letter set: "CIVIL", "MILD" or "VIVID" are made of numeral letters
+  // too, and stayed shouted in an otherwise down-cased title ("Captain America: CIVIL War").
+  private val RomanNumeral = "^(?=[IVXL])(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})$".r
+
+  // The capitals a shout's down-casing keeps besides numerals: names of a thing, not words --
+  // Cinema City's XD screen and CC (closed captions). Both stayed only because the numeral test
+  // read any I/V/X/L/C/D/M word as a numeral.
+  private val KeptCapitals: Set[String] = Set("XD", "CC")
+
+  private def keepsCapitals(token: String): Boolean = {
+    val letters = token.filter(_.isLetter)
+    RomanNumeral.matches(letters) || KeptCapitals(letters)
+  }
 
   private def isAllCapsWord(token: String): Boolean = {
     val ls = token.filter(_.isLetter)
@@ -130,8 +142,8 @@ object TitleText {
    *  is down-cased — including ones a lowercase connective stranded out of the run
    *  ("…MANDALORIAN i GROGU" → "…Mandalorian i Grogu", not a half-shouted
    *  "…Mandalorian i GROGU" that would also key as a brand-new spelling and
-   *  churn the staging fold). Multi-letter roman numerals keep their caps
-   *  ("BALBOA II" → "Balboa II"). */
+   *  churn the staging fold). Roman numerals and a few names of things keep their
+   *  caps ("BALBOA II" → "Balboa II", "Malcolma XD"). */
   private def recaseShoutedRuns(s: String): String = {
     // Alternating whitespace / non-whitespace tokens, preserved exactly so an
     // untouched input round-trips byte-identical.
@@ -143,7 +155,7 @@ object TitleText {
     val shouting  = capsWords.sliding(2).exists { case Seq(a, b) => b - a == 2; case _ => false }
     if (!shouting) s
     else tokens.zipWithIndex.map {
-      case (t, _) if isAllCapsWord(t) && RomanNumeral.findFirstIn(t.filter(_.isLetter)).isEmpty =>
+      case (t, _) if isAllCapsWord(t) && !keepsCapitals(t) =>
         tools.TextNormalization.titleCaseIfAllCaps(t)
       case (t, _) => t
     }.mkString
