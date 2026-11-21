@@ -11,5 +11,6 @@
 #   mongosh-at.sh <uri> [mongosh args…]
 export KINOWO_MONGOSH_URI="$1"; shift
 # No LaunchServices check-in per launch (no-app-registration.js: mongosh's process.title registers a GUI app on macOS).
-export NODE_OPTIONS="--require $(cd "$(dirname "$0")" && pwd)/no-app-registration.js${NODE_OPTIONS:+ $NODE_OPTIONS}"
+NODE_OPTIONS="--require $(cd "$(dirname "$0")" && pwd)/no-app-registration.js${NODE_OPTIONS:+ $NODE_OPTIONS}"
+export NODE_OPTIONS
 exec mongosh --nodb --eval 'db = connect(process.env.KINOWO_MONGOSH_URI); undefined' "$@"
