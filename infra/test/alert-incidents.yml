@@ -558,3 +558,15 @@ incidents:
     end: 2026-11-17T00:52:00Z
     grace: 10m
     expect_firing: [IdentityIncrementalDrift]
+
+  - id: pl-pokis-certificate-expired-2026-11-19
+    description: >-
+      bilety.pokis.pl (Kino Za Rogiem, Płock, an MSI ticket site) let its TLS certificate expire: every fetch failed
+      certificate validation, its breaker opened 18 minutes after the expiry and stayed open. A host really down for
+      over a day is what WorkerHttpHostCircuitOpen's twelve-hour hold is for (Alert backtest #12, #15). Still expired
+      when checked at the end below; extend the end with a new check if it stays so, or set it to the recovery.
+    source: openssl s_client bilety.pokis.pl:443 -- *.pokis.pl RapidSSL certificate notAfter=2026-11-18T23:59:59Z, still served at 2026-11-21T13:32:00Z; kinowo_worker_http_circuit_open{host="bilety.pokis.pl",leg="scrape"} == 1 from 2026-11-19T00:18Z, firing 11-19T12:18Z..11-20T18:00Z (Alert backtest #15)
+    start: 2026-11-19T00:00:00Z
+    end: 2026-11-21T13:32:00Z
+    grace: 10m
+    expect_firing: [WorkerHttpHostCircuitOpen]
