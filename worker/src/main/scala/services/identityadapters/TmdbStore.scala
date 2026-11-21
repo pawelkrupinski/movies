@@ -129,6 +129,11 @@ final class MongoTmdbDocuments(db: MongoDatabase) extends TmdbDocuments with Tmd
 
   override def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = read(kind, ids, kind.answerFields)
 
+  /** Each film's hit, its document read for the hit's fields alone ([[TmdbStore.HitFields]]): every film a take-up's
+   *  searches name is asked for its hit, and the whole record each was read and decoded for was most of their bytes. */
+  override def filmHits(ids: Seq[String]): Map[String, Hit] =
+    read(TmdbKind.Film, ids, Some(TmdbStore.HitFields)).flatMap { case (id, d) => TmdbStore.filmHit(id.toInt, d).map(id -> _) }
+
   private def read(kind: TmdbKind, ids: Seq[String], fields: Option[Seq[String]]): Map[String, BsonDocument] =
     TmdbDocuments.inBatches(ids.distinct.grouped(Batch).toSeq, Timeout) { batch =>
       val found = coll(kind).find(Filters.in("_id", batch*))
@@ -334,9 +339,11 @@ object TmdbStore {
 
   /** A film's hit as the questions naming it read it: from its record once known, else the hit
    *  fields a search or credit gave. `None` when neither is held (the film was never named). */
+  /** What [[filmHit]] reads of a film's document: its record's hit fields ([[IdentityAnswerBson.hitOf]]), else a search's hit. */
+  val HitFields: Seq[String] = Seq("record.title", "record.originalTitle", "record.year", "record.popularity", "hit")
+
   def filmHit(id: Int, film: BsonDocument): Option[Hit] =
-    Option(film.get("record")).filter(_.isDocument).flatMap(IdentityAnswerBson.filmOf)
-      .map(f => Hit(id, f.title, f.originalTitle, f.year, f.popularity.getOrElse(PopularityBucket.rounded(0.0))))
+    Option(film.get("record")).filter(_.isDocument).map(record => IdentityAnswerBson.hitOf(id, record.asDocument, PopularityBucket.rounded(0.0)))
       .orElse(Option(film.get("hit")).map(h => hitOf(id, h.asDocument)))
 
   /** The key a document is announced and tracked under (`ObservationReads`). */
