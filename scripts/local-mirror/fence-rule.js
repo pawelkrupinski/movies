@@ -45,7 +45,7 @@ function fenceHolding(fences, nowMs, eventMs) {
   return null;
 }
 
-// The fences of one prod database: `<dir>/<prodDb>/*` (none when the directory is absent). Reads the disk (mongosh's
+// The fences of one prod database: `<dir>/<prodDb>/*` (none when the directory is absent). Reads the disk (mongosh's or nodb.js's
 // `require`); the specs never call it.
 function fencesIn(dir, prodDb) {
   if (!dir) return [];

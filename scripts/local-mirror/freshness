@@ -54,7 +54,8 @@ print(int(datetime.datetime.fromisoformat(t).timestamp() * 1000))' "$not_before"
 fi
 max_lag_ms=$(python3 -I -c 'import sys; print(int(float(sys.argv[1]) * 3600000))' "$max_lag_hours")
 set +e
-mongosh --nodb --quiet --eval "var LOCAL='$uri'; var CCS=$(js_list "${ccs[@]}"); var MAX_LAG_MS=$max_lag_ms; var NOT_BEFORE_MS=$not_before_ms; var NEED=$(js_list ${needs[@]+"${needs[@]}"}); var QUIET=$quiet; var GENERATION=$generation; var TAIL_ONLY=$tail_only" \
+NODE_OPTIONS="--require $HERE/no-app-registration.js${NODE_OPTIONS:+ $NODE_OPTIONS}" \
+  mongosh --nodb --quiet --eval "var LOCAL='$uri'; var CCS=$(js_list "${ccs[@]}"); var MAX_LAG_MS=$max_lag_ms; var NOT_BEFORE_MS=$not_before_ms; var NEED=$(js_list ${needs[@]+"${needs[@]}"}); var QUIET=$quiet; var GENERATION=$generation; var TAIL_ONLY=$tail_only" \
   --file "$HERE/mirror-targets.js" --file "$HERE/staleness-rule.js" --file "$HERE/freshness-rule.js" --file "$HERE/freshness.js"
 status=$?
 set -e

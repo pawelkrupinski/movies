@@ -40,10 +40,10 @@ DOMAIN="gui/$(id -u)"
 case "${1:-}" in
   install)
     # Build PATH from where the tools actually live (launchd starts agents with a
-    # bare PATH that wouldn't find ssh/brew/mongosh). Resolve them in this
+    # bare PATH that wouldn't find ssh/brew/mongosh/node). Resolve them in this
     # shell — which has the user's full PATH — and keep their dirs, de-duped.
     dirs=""
-    for t in bash ssh brew mongosh nc secrets; do
+    for t in bash ssh brew mongosh node nc secrets; do
       p="$(command -v "$t" 2>/dev/null || true)"
       if [ -z "$p" ]; then echo "[service] WARN: '$t' not found in PATH — the agent may fail to find it" >&2
       else dirs="$dirs:$(cd "$(dirname "$p")" && pwd)"; fi

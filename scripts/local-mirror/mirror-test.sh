@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # mirror.sh's paths mirror-resilience-test.sh does not drive: how the prod source URI is tuned, which databases are
 # mirrored (configured or discovered), what the staleness gate's exit codes mean, a tailer whose resume token expired,
-# the backoff a stream ending over and over earns, the file set the code-change watch digests, and the startup body
-# with no database to mirror. No Mongo, no ssh, no vault: mirror.sh is sourced for its functions, or run with fake
+# the backoff a stream ending over and over earns, the file set the code-change watch digests, the no-server checks
+# (fence, collection digest) running under node and never mongosh, and the startup body with no database to mirror. No Mongo, no ssh, no vault: mirror.sh is sourced for its functions, or run with fake
 # `nc`/`mongosh` on PATH.
 #
 #   scripts/local-mirror/mirror-test.sh
@@ -121,6 +121,89 @@ check "every file the code digest names exists (no stale \$HERE reference)" "" "
 check "...mirror.sh itself, its tailer and seed among them" "3" \
   "$(printf '%s\n' "$files" | grep -cE '/(mirror\.sh|tail\.js|seed\.js)$')"
 check "...a spec is not among them, so editing one restarts nothing" "0" "$(printf '%s\n' "$files" | grep -c -- '-test\.sh$\|-spec\.js$')"
+
+# ── The checks that need no server run under node, never mongosh ───────────────────────────────────
+# Each mongosh start checks in with macOS's window server as a GUI app (no-app-registration.js), and the daemon ran
+# these every minute per database: one every ~18 s, moving the owner's desktop focus (2026-11-21). A `mongosh` on PATH
+# here records each start, so any no-server check that still reaches it shows up.
+mkdir -p "$work/nodb-bin"
+cat > "$work/nodb-bin/mongosh" <<FAKE
+#!/bin/sh
+echo "\$*" >> "$work/raw-mongosh"
+exit 0
+FAKE
+chmod +x "$work/nodb-bin/mongosh"
+: > "$work/raw-mongosh"
+fences="$work/fences"
+fence() { mkdir -p "$fences/$1"; printf '%s %s\n' "$3" "$4" > "$fences/$1/$2"; }   # fence <db> <holder> <expiry s> <kind>
+holder_of() { PATH="$work/nodb-bin:$PATH" KINOWO_MIRROR_FENCE_DIR="$fences" in_mirror fence_holder "$1"; }
+now_s="$(date +%s)"
+if command -v node >/dev/null; then
+  check "no fence directory: no holder" "" "$(holder_of kinowo_pl)"
+  fence kinowo_pl what-if-1 $((now_s + 600)) run
+  check "a run fence in force names its holder" "what-if-1" "$(holder_of kinowo_pl)"
+  check "...for its own database only" "" "$(holder_of kinowo_de)"
+  fence kinowo_de what-if-2 $((now_s - 5)) run
+  check "an expired fence holds nothing" "" "$(holder_of kinowo_de)"
+  fence kinowo_uk what-if-3 $((now_s + 600)) linger
+  check "a linger fence in force names its holder" "what-if-3" "$(holder_of kinowo_uk)"
+  fence kinowo_uk what-if-4 $((now_s + 600)) drain
+  check "...but a drain lifts every linger (fence-rule.js, as tail.js reads it)" "" "$(holder_of kinowo_uk)"
+  fence kinowo_fr what-if-5 "not-a-number" run
+  check "a half-written fence file holds nothing" "" "$(holder_of kinowo_fr)"
+
+  digest="$(PATH="$work/nodb-bin:$PATH" in_mirror targets_fingerprint)"
+  expected_count="$(python3 -I -c 'import json,sys; print(len({c["name"] for c in json.load(open(sys.argv[1]))["collections"]}))' \
+    "$HERE/../../common/src/main/resources/debug-mirror-collections.json")"
+  check "the collection-list digest is <distinct names>-<8 hex>" "$expected_count" \
+    "$(printf '%s\n' "$digest" | sed -nE 's/^([0-9]+)-[0-9a-f]{8}$/\1/p')"
+  check "...the same value the rule gives under nodb.js for that list" \
+    "$(node "$HERE/nodb.js" --file "$HERE/mirror-targets.js" --file "$HERE/targets-fingerprint.js")" "$digest"
+  # A list that cannot be read is "don't know" (empty), never a digest: the copies' list file is malformed.
+  mkdir -p "$work/broken/scripts/local-mirror" "$work/broken/common/src/main/resources"
+  cp "$HERE/nodb.js" "$HERE/mirror-targets.js" "$HERE/targets-fingerprint.js" "$work/broken/scripts/local-mirror/"
+  printf '{"collections": [' > "$work/broken/common/src/main/resources/debug-mirror-collections.json"
+  broken_digest() { HERE="$work/broken/scripts/local-mirror"; targets_fingerprint; }
+  check "...an unreadable list reads as nothing, never as a change" "" "$(PATH="$work/nodb-bin:$PATH" in_mirror broken_digest)"
+else
+  echo "  (skipped the fence and digest values: no node)"
+fi
+check "...and none of those reads started a mongosh" "" "$(cat "$work/raw-mongosh")"
+
+# The supervisor's steady state: a tailer streaming, the audit due every poll (AUDIT_POLLS=1). Each audit asks the
+# fence (node) and then the staleness check, which needs the server and goes through mongosh_at (stubbed here, as
+# every database check is). Bounded: it is TERMed once it has audited enough, or fails at SPEC_WAIT_BOUND.
+cat > "$work/streaming-tailer" <<'FAKE'
+#!/usr/bin/env bash
+exec sleep 30
+FAKE
+chmod +x "$work/streaming-tailer"
+: > "$work/raw-mongosh"; : > "$work/db-checks"; rm -rf "$fences"
+(
+  # shellcheck source=scripts/local-mirror/mirror.sh
+  . "$HERE/mirror.sh"
+  # shellcheck disable=SC2329 # the stubs are invoked by supervise_db
+  {
+    ensure_local_mongo() { return 0; }
+    tunnel_ready()  { return 0; }
+    mongosh_at() { echo "db $*" >> "$work/db-checks"; return 0; }
+  }
+  # shellcheck disable=SC2034 # read by the sourced supervise_db
+  SRCZ=mongodb://source DST=mongodb://mirror MONGOSH_AT="$work/streaming-tailer" TARGETS_POLL=0.05 AUDIT_POLLS=1 \
+    FENCE_DIR="$fences"
+  PATH="$work/nodb-bin:$PATH" supervise_db kinowo_pl 0
+) > "$work/steady.log" 2>&1 &
+steady=$!
+wait_until "the supervisor audited a tailing mirror three times" '[ "$(grep -c staleness "$work/db-checks")" -ge 3 ]'
+fence kinowo_pl what-if-9 $(($(date +%s) + 600)) run
+if command -v node >/dev/null; then
+  wait_until "the supervisor saw the what-if fence" 'grep -q "held by the what-if fence what-if-9" "$work/steady.log"'
+fi
+kill "$steady" 2>/dev/null; wait "$steady" 2>/dev/null
+check "a tailing supervisor's audits start no mongosh for the fence (only the staleness check reaches the server)" "" \
+  "$(cat "$work/raw-mongosh")"
+check "...and the staleness check goes through mongosh_at, never bare mongosh" "0" \
+  "$(grep -vc 'staleness.js' "$work/db-checks")"
 
 # ── The startup body, with nothing to mirror ───────────────────────────────────────────────────────
 # nc answers (the local Mongo and the tunnel are "up"); mongosh pings fine and lists no kinowo* database.

@@ -19,7 +19,7 @@ mkdir -p "$bin" "$home"
 
 # Every tool install resolves, faked (`bash` among them: the fakes below name /bin/bash, never `env bash`), so the PATH it writes is this directory's alone; launchctl records its calls
 # and answers `print` from $LAUNCHCTL_PRINT (absent: "not loaded", exit 113 as launchd does).
-for t in bash ssh brew mongosh nc secrets; do printf '#!/bin/sh\nexit 0\n' > "$bin/$t"; done
+for t in bash ssh brew mongosh node nc secrets; do printf '#!/bin/sh\nexit 0\n' > "$bin/$t"; done
 cat > "$bin/launchctl" <<'FAKE'
 #!/bin/bash
 echo "launchctl $*" >> "$CALLS"

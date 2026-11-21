@@ -301,11 +301,16 @@ LIVENESS_POLL="${KINOWO_MIRROR_LIVENESS_POLL:-5}"
 # file behind. `published_fingerprint` reads "unset" as "don't know", like every
 # other unreadable digest.
 
-# `--nodb`: this needs no server, so a down tunnel can't stop us noticing an
-# edit. Empty output (a syntax error in the file, a missing mongosh) is treated
-# by every reader as "don't know" and never as a change.
+# A check that needs no server runs the same rule files under plain node (nodb.js), never mongosh: the parent polls
+# the digest every minute and each supervisor asks the fence before every audit, and each mongosh start checked in
+# with macOS's window server as a new GUI app -- one every ~18 s, moving the desktop's focus (2026-11-21).
+nodb() { node "$HERE/nodb.js" "$@"; }
+
+# No server, so a down tunnel can't stop us noticing an edit. Empty output (a
+# syntax error in the file, a missing node) is treated by every reader as
+# "don't know" and never as a change.
 targets_fingerprint() {
-  mongosh --nodb --quiet --file "$HERE/mirror-targets.js" --file "$HERE/targets-fingerprint.js" 2>/dev/null | tail -1
+  nodb --file "$HERE/mirror-targets.js" --file "$HERE/targets-fingerprint.js" 2>/dev/null | tail -1
 }
 
 # What the children compare against. Falls back to the last good value rather
@@ -416,7 +421,7 @@ needs_reseed() {
 FENCE_DIR="${KINOWO_MIRROR_FENCE_DIR:-$HOME/.cache/kinowo/mirror-fence}"
 # fence_holder <db> -> the name of a what-if fence in force on <db>, or nothing
 fence_holder() {
-  mongosh --nodb --quiet --eval "var FENCE_DIR='$FENCE_DIR'; var SRC_DB='$1'" \
+  nodb --eval "var FENCE_DIR='$FENCE_DIR'; var SRC_DB='$1'" \
     --file "$HERE/fence-rule.js" --file "$HERE/fence-check.js" 2>/dev/null || true
 }
 
@@ -652,7 +657,7 @@ sweep_orphans
 CHILDREN+=($!)
 
 # Re-read mirror-targets.js from the PARENT only — N children each spawning a
-# mongosh every poll would be N times the cost for one shared answer. A read that
+# node every poll would be N times the cost for one shared answer. A read that
 # comes back empty (mid-edit file, mongosh hiccup) leaves the last good digest in
 # place, so a half-written file can't be mistaken for an edit and bounce every
 # tailer.
