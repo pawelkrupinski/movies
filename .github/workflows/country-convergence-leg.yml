@@ -937,9 +937,8 @@ jobs:
                   MEMORY_GUARD_LABEL="${{ inputs.country }} ${{ matrix.phase }} memory guard" scripts/ci/memory-guard.sh "$suite_pid" "$guard_reason" convergence.log &
                   guard=$!
                   wait "$suite_pid" || suite=$?
-                  # a guard that is ending the suite finishes (its KILL pass); an idle one stops now
-                  [ -s "$guard_reason" ] || kill "$guard" 2> /dev/null
-                  wait "$guard" 2> /dev/null || true
+                  . scripts/ci/memory-guard-stop.sh
+                  memory_guard_stop "$guard" "$guard_reason"
                   if [ -s "$guard_reason" ]; then
                       echo "::error::the ${{ inputs.country }} ${{ matrix.phase }} suite was ended before the runner ran out of memory: $(cat "$guard_reason")"
                       [ "${suite:-0}" != 0 ] || suite=1

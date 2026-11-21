@@ -45,4 +45,30 @@ bash -c 'sleep 0.5' & echo $! > "$dir/mac.pid"
 timeout 60 "$guard" "$(cat "$dir/mac.pid")" "$dir/mac.reason"
 check "no meminfo: the guard returns once the target ends" "0 no" "$? $([ -e "$dir/mac.reason" ] && echo yes || echo no)"
 
+# Stopping the guard, under `bash -e` as a workflow step runs: the guard exits by itself once its target is gone, so a
+# stop that finds it already gone must not fail the step (Identity model convergence #1342: a passing US suite ended
+# exit 1 there, `kill "$guard"` the failing last command of an `||` list).
+stop="$REPO_ROOT/scripts/ci/memory-guard-stop.sh"
+stopped() { # <how the guard behaves> <reason file content> -> "exit <status>, guard <alive|gone>"
+  bash -e -c '
+    . "$1"
+    case "$2" in gone) true & ;; idle) sleep 300 & ;; esac
+    guard=$!
+    if [ "$2" = gone ]; then wait "$guard"; fi
+    printf "%s" "$3" > "$4"
+    memory_guard_stop "$guard" "$4"
+    kill -0 "$guard" 2>/dev/null && echo "guard alive" || echo "guard gone"
+  ' _ "$stop" "$1" "$2" "$dir/stop.reason" 2>&1
+  echo "exit $?"
+}
+check "stop: a guard that already exited does not fail a bash -e step" "guard gone exit 0" "$(stopped gone '' | tr '\n' ' ' | sed 's/ $//')"
+check "stop: an idle guard is ended" "guard gone exit 0" "$(stopped idle '' | tr '\n' ' ' | sed 's/ $//')"
+check "stop: a guard that is ending the tree (a reason written) is waited for, not killed" "guard gone exit 0" \
+  "$(stopped gone 'under 1024 MB available' | tr '\n' ' ' | sed 's/ $//')"
+for caller in .github/workflows/country-convergence-leg.yml scripts/ci/identity-drift-check.sh; do
+  # shellcheck disable=SC2016 # the callers' own text, `$guard` as written there
+  check "$caller stops its guard through memory_guard_stop" "1 0" \
+    "$(grep -c 'memory_guard_stop "\$guard"' "$REPO_ROOT/$caller") $(grep -c 'kill "\$guard"' "$REPO_ROOT/$caller")"
+done
+
 spec_summary

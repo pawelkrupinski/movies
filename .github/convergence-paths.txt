@@ -170,6 +170,7 @@ scripts/ci/job_metrics.py
 scripts/ci/job_metrics_test.py
 scripts/ci/keep-previous-origins.sh
 scripts/ci/measure-lane.sh
+scripts/ci/memory-guard-stop.sh
 scripts/ci/memory-guard.sh
 scripts/ci/order-passes-present.sh
 scripts/ci/population-walk-diff

@@ -102,9 +102,8 @@ replay() {
   MEMORY_GUARD_LABEL="identity drift ($cc) memory guard" "$here/scripts/ci/memory-guard.sh" "$pid" "$to/memory-guard.txt" "$to/sbt.log" &
   guard=$!
   wait "$pid" || replay_code=$?
-  # a guard that is ending the replay finishes (its KILL pass); an idle one stops now, not a sample later
-  [ -s "$to/memory-guard.txt" ] || kill "$guard" 2> /dev/null
-  wait "$guard" 2> /dev/null
+  . "$here/scripts/ci/memory-guard-stop.sh"
+  memory_guard_stop "$guard" "$to/memory-guard.txt"
   if [ -s "$to/memory-guard.txt" ]; then
     tail -40 "$to/sbt.log" >&2
     echo "identity drift ($cc): the replay was ended before the runner ran out of memory, so nothing was judged: $(cat "$to/memory-guard.txt")" | tee "$out/verdict.txt"
