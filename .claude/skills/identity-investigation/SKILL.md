@@ -148,7 +148,19 @@ the row is inert and the stamp bumps: propose again). Refused, writing nothing: 
 `Identity-Design:`; for a what-if, the drift harness (a pure move through it carries, 2026-11-21; a rename counts both
 paths), the title rules, a `src/main/resources` file or a `*Store*`/`*Codec*`/`*Bson*` source. The pre-push `stampcarry`
 check runs `verify` over every added or changed row (a hand-written or forged row, or a what-if verdict of another base
-or head, refuses the push). Rows chain: a carried digest
+or head, refuses the push).
+
+PUBLISHED VERDICTS (2026-11-21): every `identity-what-if` run uploads, after each country, ONE asset
+`what-if-verdict-<key>.json` to the `identity-what-if-verdicts` release (key: head, base, the diff's patch-id, the run's
+countries, the what-if tooling's hash and the run's id; `KINOWO_WHAT_IF_RELEASE` overrides the tag): its verdict lines
+and the takes diffs behind them. Each recorded line names its asset (field 7). `propose`, `auto` and `verify` hold a
+what-if row only when each country's line is byte for byte in that asset, the asset is of the run's head, base and
+patch-id, and its takes diffs hold exactly the rows the line says moved; a missing asset (an upload that failed: the
+what-if says `the verdict is recorded but not published`) or a record from before 2026-11-21 refuses -- run the what-if
+again. Assets are fetched once into `<identity cache>/what-if-assets/`. What it proves: the committed verdict is the
+one published, at the time, by a holder of the repository's write credentials (the laptop's gh; GitHub records uploader
+and time) -- a hand-edited committed verdict is caught. What it does not: that the what-if, not a credential holder by
+hand, made the asset, or that the mirror's corpus was prod's. Rows chain: a carried digest
 carried again keeps the first stamp. Code: `scripts/identity_stamp_carry.py`; build side: `project/StampCarry.scala`.
 
 ## identity-what-if

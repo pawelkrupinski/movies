@@ -2,8 +2,9 @@
 """identity_stamp_carry.py: a pure move's rows are written and proven again; an unproven change writes none (its stamps
 bump); a hand-written or forged row is refused, as is one whose pure-move claim the range does not bear out; a what-if
 row holds only for the very head and base its verdict was recorded under, every country whole and nothing moved, and
-never carries a venue slot; a range saying Identity-Design or a what-if over the model's data or the drift harness carries
-nothing, while a pure move through the harness carries."""
+never carries a venue slot, and only as the verdict the what-if PUBLISHED (a forged or unpublished one is refused); a range
+saying Identity-Design or a what-if over the model's data or the drift harness carries nothing, while a pure move through
+the harness carries."""
 
 from __future__ import annotations
 
@@ -11,6 +12,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -21,7 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TOOL = os.path.join(HERE, "identity_stamp_carry.py")
 sys.path.insert(0, HERE)
 import identity_stamp_carry as stamp_carry  # noqa: E402
-from pure_move_check_test import CLEAN_ENV, FOO, FOO_PATH, NEW_FOO_PATH, SIBLING, USER, Repo  # noqa: E402
+from pure_move_check_test import CLEAN_ENV, FOO, SCRATCH_GIT, FOO_PATH, NEW_FOO_PATH, SIBLING, USER, Repo  # noqa: E402
 
 TABLE = "test/resources/identity-stamp-carry.tsv"
 STAMPS = ("identity-rules", "venue-slot", "agreement-rules")
@@ -36,6 +38,23 @@ for stamp, digest in json.load(open(os.environ["KINOWO_FAKE_STAMPS_MAP"]))[sys.a
     print(stamp + "\\t" + digest)
 """
 
+
+# gh's release assets, stood in for (KINOWO_GH, the seam): an upload is a copy into KINOWO_FAKE_RELEASE, a download a copy
+# out of it, an asset it does not hold a failure -- what `gh release download -p NAME` does for a name with no asset.
+FAKE_GH = """#!/usr/bin/env python3
+import os, shutil, sys
+args, release = sys.argv[1:], os.environ["KINOWO_FAKE_RELEASE"]
+os.makedirs(release, exist_ok=True)
+if args[:2] == ["release", "upload"]:
+    shutil.copy(args[3], os.path.join(release, os.path.basename(args[3])))
+elif args[:2] == ["release", "download"]:
+    name, out = args[args.index("-p") + 1], args[args.index("-O") + 1]
+    if not os.path.isfile(os.path.join(release, name)):
+        sys.exit("no assets match the file pattern")
+    shutil.copy(os.path.join(release, name), out)
+else:
+    sys.exit("fake gh: " + " ".join(args))
+"""
 
 HARNESS = "worker/src/test/scala/scripts/IdentityDrift.scala"
 HARNESS_SOURCE = """package scripts
@@ -62,9 +81,12 @@ class StampCarryTest(unittest.TestCase):
         self.cache = os.path.join(self.tmp.name, "cache")
         self.maker = os.path.join(self.tmp.name, "stamps")
         self.stamps_map = os.path.join(self.tmp.name, "stamps.json")
-        with open(self.maker, "w") as f:
-            f.write(FAKE_STAMPS)
-        os.chmod(self.maker, os.stat(self.maker).st_mode | stat.S_IEXEC)
+        self.gh = os.path.join(self.tmp.name, "gh")
+        self.release = os.path.join(self.tmp.name, "release")
+        for path, text in ((self.maker, FAKE_STAMPS), (self.gh, FAKE_GH)):
+            with open(path, "w") as f:
+                f.write(text)
+            os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC)
         r = self.repo
         r.write(FOO_PATH, FOO)
         r.write("common/src/main/scala/services/users/User.scala", USER)
@@ -80,7 +102,7 @@ class StampCarryTest(unittest.TestCase):
         with open(self.stamps_map, "w") as f:
             json.dump({sha: {stamp: fake_stamp(self.repo, sha, stamp) for stamp in STAMPS} for sha in shas}, f)
         env = dict(CLEAN_ENV, KINOWO_STAMP_CARRY_STAMPS=self.maker, KINOWO_IDENTITY_CACHE=cache or self.cache,
-                   KINOWO_FAKE_STAMPS_MAP=self.stamps_map,
+                   KINOWO_FAKE_STAMPS_MAP=self.stamps_map, KINOWO_GH=self.gh, KINOWO_FAKE_RELEASE=self.release,
                    # `auto` commits its rows: an identity of its own, as a container with no git config has none
                    GIT_AUTHOR_NAME="Spec", GIT_AUTHOR_EMAIL="spec@example.com",
                    GIT_COMMITTER_NAME="Spec", GIT_COMMITTER_EMAIL="spec@example.com")
@@ -103,12 +125,25 @@ class StampCarryTest(unittest.TestCase):
     def table_rows(self) -> list[list[str]]:
         return [line.split("\t") for line in self.repo.read(TABLE).splitlines() if line and not line.startswith("#")]
 
-    def record_what_if(self, head: str, base: str, moved: str = "0", mode: str = "whole,final", countries=COUNTRIES):
+    def record_what_if(self, head: str, base: str, moved: str = "0", mode: str = "whole,final", countries=COUNTRIES,
+                       publish: bool = True):
+        """identity-what-if's record of a run, each line naming the run's asset, and (`publish`) that asset uploaded by
+        the tool's own `publish`, as the what-if does after each country."""
+        run = f"run-{len(os.listdir(self.release)) if os.path.isdir(self.release) else 0}-{moved}-{mode}"
+        args = (head, base, ",".join(countries), "tools0", run)
+        code, name = self.run_tool("asset-name", *args)
+        self.assertEqual(0, code, name)
         path = os.path.join(self.cache, "what-if-verdicts", f"{head}-{base}.tsv")
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "a") as f:
             for cc in countries:
-                f.write(f"{cc}\tdone\t2026-11-20T10:00:00Z\t/tmp/takes-diff-{cc}.tsv\t{moved}\t{mode}\n")
+                diff = os.path.join(self.tmp.name, f"takes-diff-{cc}.tsv")
+                with open(diff, "w") as d:
+                    d.write("country\tkey\tbase\thead\n" + "".join(f"{cc}\tk{i}\ttmdb:1\ttmdb:2\n" for i in range(int(moved))))
+                f.write(f"{cc}\tdone\t2026-11-20T10:00:00Z\t{diff}\t{moved}\t{mode}\t{name.strip()}\n")
+        if publish:
+            code, out = self.run_tool("publish", *args)
+            self.assertEqual(0, code, out)
 
     def land_rows(self) -> tuple[str, str]:
         """The table's rows committed on their own, as a carry lands: the range the hook verifies."""
@@ -434,6 +469,81 @@ class StampCarryTest(unittest.TestCase):
         code, out = self.run_tool("verify", f"{before}..{after}", cache=os.path.join(self.tmp.name, "none"))
         self.assertEqual(1, code, out)
         self.assertIn("is of another diff", out)
+
+    # ── the published verdict: a committed one is only text its author wrote ───────────────────────────────────────────
+
+    def test_a_forged_committed_verdict_is_refused(self):
+        head = self.change_foo()
+        self.record_what_if(head, self.base, moved="3")               # the what-if saw 3 takes move, and published that
+        verdict = f"test/resources/identity-what-if-verdicts/{head}-{self.base}.tsv"
+        forged = self.cached_record(head).replace("\t3\twhole,final\t", "\t0\twhole,final\t")
+        self.repo.write(verdict, forged + f"patch-id\t{self.patch_id(self.base, head)}\t{head}\t{self.base}\n")
+        self.repo.write(TABLE, self.repo.read(TABLE) + self.what_if_row("identity-rules", self.base, head))
+        before, after = self.land_rows()
+        code, out = self.run_tool("verify", f"{before}..{after}", cache=os.path.join(self.tmp.name, "none"))
+        self.assertEqual(1, code, out)
+        self.assertIn("the committed verdict is not the one published", out)
+
+    def test_an_unpublished_verdict_is_refused_by_propose_and_by_verify(self):
+        head = self.change_foo()
+        self.record_what_if(head, self.base, publish=False)          # recorded, but the upload never happened
+        code, out = self.run_tool("propose", f"{self.base}..{head}", "--proof", "what-if")
+        self.assertEqual(1, code, out)
+        self.assertIn("on release identity-what-if-verdicts (never published", out)
+        verdict = f"test/resources/identity-what-if-verdicts/{head}-{self.base}.tsv"
+        self.repo.write(verdict, self.cached_record(head) + f"patch-id\t{self.patch_id(self.base, head)}\t{head}\t{self.base}\n")
+        self.repo.write(TABLE, self.repo.read(TABLE) + self.what_if_row("identity-rules", self.base, head))
+        before, after = self.land_rows()
+        code, out = self.run_tool("verify", f"{before}..{after}", cache=os.path.join(self.tmp.name, "none"))
+        self.assertEqual(1, code, out)
+        self.assertIn("never published", out)
+
+    def test_a_verdict_line_naming_no_asset_is_refused(self):
+        head = self.change_foo()
+        path = os.path.join(self.cache, "what-if-verdicts", f"{head}-{self.base}.tsv")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:                                    # a record from before the verdicts were published
+            f.writelines(f"{cc}\tdone\t2026-11-20T10:00:00Z\t-\t0\twhole,final\n" for cc in COUNTRIES)
+        code, out = self.run_tool("propose", f"{self.base}..{head}", "--proof", "what-if")
+        self.assertEqual(1, code, out)
+        self.assertIn("names no published asset", out)
+
+    def test_a_published_asset_whose_takes_diff_contradicts_its_line_is_refused(self):
+        head = self.change_foo()
+        self.record_what_if(head, self.base)
+        asset = os.path.join(self.release, os.listdir(self.release)[0])
+        with open(asset) as f:
+            body = json.load(f)
+        body["diffs"]["pl"]["takes"] += "pl\tk\ttmdb:1\ttmdb:2\n"   # the line says 0 moved; its diff holds a row
+        with open(asset, "w") as f:
+            json.dump(body, f)
+        code, out = self.run_tool("propose", f"{self.base}..{head}", "--proof", "what-if")
+        self.assertEqual(1, code, out)
+        self.assertIn("pl: the published takes diff holds 1 row(s), not the 0", out)
+
+    def test_a_published_asset_is_fetched_once_into_the_cache(self):
+        head = self.change_foo()
+        self.record_what_if(head, self.base)
+        self.assertEqual(0, self.run_tool("propose", f"{self.base}..{head}", "--proof", "what-if")[0])
+        before, after = self.land_rows()
+        ci_cache = os.path.join(self.tmp.name, "ci-runner-cache")
+        self.assertEqual(0, self.run_tool("verify", f"{before}..{after}", cache=ci_cache)[0])
+        self.assertEqual(os.listdir(self.release), os.listdir(os.path.join(ci_cache, "what-if-assets")))
+        shutil.rmtree(self.release)                                   # gh unreachable now: the cached copy answers
+        self.assertEqual(0, self.run_tool("verify", f"{before}..{after}", cache=ci_cache)[0])
+
+    def cached_record(self, head: str) -> str:
+        with open(os.path.join(self.cache, "what-if-verdicts", f"{head}-{self.base}.tsv")) as f:
+            return f.read()
+
+    def patch_id(self, base: str, head: str) -> str:
+        # through the isolating helper, as every git of a test (scripts/scratch-git.sh): patch-id reads the diff on stdin
+        return subprocess.run(["bash", "-c", '. "$1"; scratch_git "$2" diff --binary "$3" "$4" | scratch_git "$2" patch-id --stable',
+                               "_", SCRATCH_GIT, self.repo.root, base, head],
+                              check=True, capture_output=True, text=True).stdout.split()[0]
+
+    def what_if_row(self, stamp: str, base: str, head: str) -> str:
+        return "\t".join((stamp, fake_stamp(self.repo, head, stamp), fake_stamp(self.repo, base, stamp), "what-if", base, head)) + "\n"
 
     def test_auto_leaves_a_change_with_no_code_alone(self):
         self.repo.write("docs/notes.md", "words\n")

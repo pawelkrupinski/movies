@@ -521,6 +521,14 @@ verdict_head=$head_sha
 [ "$head_sha" != . ] || { [ -z "$(git -C "$repo" status --porcelain --untracked-files=no)" ] && verdict_head=$(git -C "$repo" rev-parse HEAD); }
 # With the takes moved (the model's and the final diff's rows) and how: every family or the selection, final takes or the
 # model's -- a whole, nothing-moved verdict of every country is what carries a stamp (scripts/identity-stamp-carry).
+# Each line names the run's PUBLISHED asset (identity_stamp_carry.py, THE PUBLISHED VERDICT): after every country the
+# run uploads its lines so far and the takes diffs behind them to the identity-what-if-verdicts release, the one record a
+# stamp carry trusts -- a committed verdict is text its author writes. Best effort: a failed upload is said, and the
+# carry then refuses the verdict. Keyed by head, base, patch-id, countries, the what-if tooling's hash and this run's id.
+verdict_countries=$(IFS=,; echo "${ccs[*]}") verdict_run=$(date -u +%Y%m%dT%H%M%SZ)-$$ verdict_asset=""
+verdict_tools=$(identity_tools_hash "${TOOL_FILES[@]}" scripts/identity-what-if scripts/identity_what_if.py scripts/identity-tools.sh)
+[ "$verdict_head" = . ] || verdict_asset=$(cd "$repo" && python3 -I scripts/identity_stamp_carry.py asset-name "$verdict_head" \
+  "$base_sha" "$verdict_countries" "$verdict_tools" "$verdict_run") || verdict_asset=""
 record_verdict() { # <cc> <diff exit>
   [ "$verdict_head" != . ] || return 0
   local moved=- mode f files=("$out/takes-diff-$1.tsv")
@@ -530,7 +538,9 @@ record_verdict() { # <cc> <diff exit>
   [ "${#files[@]}" = 0 ] || moved=$(cat "${files[@]}" | grep -cv '^country' || true)
   mode="$([ "$whole" = 1 ] && echo whole || echo selected),$([ "$final" = 1 ] && echo final || echo model-only)"
   what_if_record_verdict "$verdict_head" "$base_sha" "$1" "$([ "$2" = 0 ] && echo "done" || echo "verify-failed")" "$out/takes-diff-$1.tsv" \
-    "$moved" "$mode"
+    "$moved" "$mode" "$verdict_asset"
+  [ -z "$verdict_asset" ] || (cd "$repo" && python3 -I scripts/identity_stamp_carry.py publish "$verdict_head" "$base_sha" \
+    "$verdict_countries" "$verdict_tools" "$verdict_run") >&2 || identity_log "$1: the verdict is recorded but not published"
 }
 identity_log "base $base_sha, head $head_label; laying out and compiling the refs (once each)"
 # Each step before the resolve that fails says which it was and its status (Order independence #90: an exit 2 here

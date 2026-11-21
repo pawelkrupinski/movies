@@ -8,8 +8,8 @@
 #   scripts/identity-stamp-carry auto <base>..<head> [--no-commit]
 #   scripts/identity-stamp-carry stamps <ref>
 #
-#   propose  proves <base>..<head> (scripts/pure-move-check, else a recorded `scripts/identity-what-if --all` verdict of
-#            every country with no take moved) and appends a row for each stamp the range moves and the proof carries
+#   propose  proves <base>..<head> (scripts/pure-move-check, else a recorded and published `scripts/identity-what-if --all`
+#            verdict of every country with no take moved) and appends a row for each stamp the range moves and the proof carries
 #            (a what-if carries no venue slot, nor the agreement rules with --model-only): commit the table after the
 #            change, in a commit of its own. Nothing is written when no proof holds.
 #   verify   the pre-push hook's `stampcarry` check: every row the table at <new> holds and <old>'s does not, proven again
@@ -20,6 +20,9 @@
 #            commit by pure-move-check; the rows committed on their own in the same push. A commit that may move a stamp
 #            and proves nothing bumps the head's stamps (the head is what deploys), so then nothing is built or written.
 #            Builds stamps only when a proof holds: seconds a cached tree, about a minute one not
+#   publish  identity-what-if's, after each country (`publish <head> <base> <countries> <tools hash> <run id>`): the run's
+#            verdict lines and takes diffs uploaded as one asset of the identity-what-if-verdicts release, the record a
+#            what-if row is held to (a committed verdict is text its author writes; trust model: identity_stamp_carry.py)
 #   stamps   each stamp's RAW digest at <ref> (`<stamp> TAB <digest>`), made by the build over the ref's identity tree
 #            (identity-tools.sh's identity_tree, the what-if's own: one compile serves both), cached until a source moves
 #

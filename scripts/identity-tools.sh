@@ -593,17 +593,18 @@ PY
 }
 
 # THE WHAT-IF VERDICT RECORD (review 2026-11-06 P3): scripts/identity-what-if writes one line a country it finished --
-# `<cc> TAB <verdict> TAB <finished, UTC> TAB <takes diff> TAB <takes moved> TAB <mode>` -- under (head, base);
+# `<cc> TAB <verdict> TAB <finished, UTC> TAB <takes diff> TAB <takes moved> TAB <mode> TAB <published asset>` -- under (head, base);
 # scripts/identity-measure refuses to dispatch a CI measure without one (its what-if gate). One file read: the gate is a
 # lookup, never a run. <takes moved> counts the model's and the final takes' diff rows; <mode> is `whole` (every family
 # re-resolved: --all, --verify) or `selected`, then `final` or `model-only` -- what scripts/identity-stamp-carry reads to
-# carry a stamp (only a whole, nothing-moved verdict of every country does).
+# carry a stamp (only a whole, nothing-moved verdict of every country does, published as <published asset>:
+# scripts/identity_stamp_carry.py, THE PUBLISHED VERDICT).
 what_if_verdicts_file() { echo "$IDENTITY_CACHE/what-if-verdicts/$1-$2.tsv"; } # <head sha> <base sha>
-what_if_record_verdict() { # <head sha> <base sha> <cc> <verdict> <takes diff> [<takes moved> <mode>]
+what_if_record_verdict() { # <head sha> <base sha> <cc> <verdict> <takes diff> [<takes moved> <mode> <published asset>]
   local file
   file=$(what_if_verdicts_file "$1" "$2")
   mkdir -p "$(dirname "$file")" &&
-    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$3" "$4" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$5" "${6:--}" "${7:--}" >> "$file"
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$3" "$4" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$5" "${6:--}" "${7:--}" "${8:--}" >> "$file"
 }
 # what_if_verdicts <head sha> <base sha> -> `pl done, de done` (each country's newest), or fails when there is none
 what_if_verdicts() {

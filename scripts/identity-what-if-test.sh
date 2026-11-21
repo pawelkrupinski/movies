@@ -110,12 +110,18 @@ fi
 echo "${STUB_ANSWERS:-}" > "$out/answers.txt"
 echo "java-end $(basename "$PWD")" >> "$STUB/calls"
 STUB
-chmod +x "$work/bin/sbt" "$work/bin/java"
+# gh's release, stood in for: an upload is a copy into $STUB/release (the verdict the stamp carry trusts)
+cat > "$work/bin/gh" <<'STUB'
+#!/usr/bin/env bash
+[ "$1 $2" = "release upload" ] || { echo "stub gh: $*" >&2; exit 1; }
+mkdir -p "$STUB/release" && cp "$4" "$STUB/release/"
+STUB
+chmod +x "$work/bin/sbt" "$work/bin/java" "$work/bin/gh"
 c4=$(echo row > "$repo/common-row.txt"; mkdir -p "$repo/common/src/main/resources"; echo row > "$repo/common/src/main/resources/rows.tsv"
   scratch_git "$repo" add -A; scratch_git "$repo" commit -q -m "a resource the lookups read"; scratch_git "$repo" rev-parse HEAD)
 what_if() { # <base> <head> <snapshot> [args...]
   local b=$1 h=$2 s=$3; shift 3; rm -f "$work/calls" "$work/calls.args"
-  ( cd "$repo" && STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$work/cache" KINOWO_MIRROR_FENCE_DIR="$work/fence" KINOWO_JVM_GATE_FOLLOW_MAIN=0 \
+  ( cd "$repo" && STUB="$work" PATH="$work/bin:$PATH" KINOWO_GH="$work/bin/gh" KINOWO_IDENTITY_CACHE="$work/cache" KINOWO_MIRROR_FENCE_DIR="$work/fence" KINOWO_JVM_GATE_FOLLOW_MAIN=0 \
       KINOWO_GOVERNOR=0 KINOWO_JVM_SLOTS=0 KINOWO_MEMORY_GATE=0 TMDB_API_KEY=stub spec_bounded scripts/identity-what-if \
       --base "$b" --head "$h" --at "$s" --judgements "$REPO_ROOT/test/resources/fixtures/identity-judgements.tsv" "$@" uk 2> "$work/err" )
 }
@@ -133,6 +139,12 @@ check "an inert change: the base resolves in a one-shot JVM, the head starts no 
   "sbt-start base|sbt-end base|java-start base|java-end base" "$(calls)"
 check "...and the what-if is CLEAN, 0 moved" "yes" \
   "$(grep -q 'CLEAN' <<<"$out" && grep -q '0 take(s) moved' <<<"$out" && echo yes || echo "no: $out $(cat "$work/err")")"
+# ...and its verdict is PUBLISHED: one asset of the run, holding the recorded line that names it (the stamp carry's proof)
+published=$(find "$work/release" -type f -exec basename {} \; 2>/dev/null | paste -sd' ' -)
+line=$(tail -1 "$work/cache/what-if-verdicts/$c1-$c0.tsv")
+check "...and the run's verdict is published as the one asset its recorded line names" "yes" \
+  "$([ "$(cut -f7 <<<"$line")" = "$published" ] && python3 -I -c 'import json, sys; sys.exit(sys.argv[2] not in json.load(open(sys.argv[1]))["lines"])' \
+      "$work/release/$published" "$line" && echo yes || echo "no: asset '$published', line '$line', $(cat "$work/err")")"
 
 # a change reaching every take over a base side not yet kept: the head compiles BESIDE the base's resolve, not after it
 out=$(what_if "$c0" "$c4" 2026-11-06T11:00:00Z --no-serve)
@@ -258,7 +270,7 @@ check "two countries: de's fence lingers while uk's sides resolve" "0 linger" \
 # the first to finish moved it away under the other, which failed): one resolves the side, the other reads it. Each
 # round a new snapshot, so the base side is cold for both
 concurrent() { # <snapshot> <run> -> its exit in $work/conc-<run>.rc
-  ( cd "$repo" && STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$work/cache" KINOWO_MIRROR_FENCE_DIR="$work/fence" \
+  ( cd "$repo" && STUB="$work" PATH="$work/bin:$PATH" KINOWO_GH="$work/bin/gh" KINOWO_IDENTITY_CACHE="$work/cache" KINOWO_MIRROR_FENCE_DIR="$work/fence" \
       KINOWO_JVM_GATE_FOLLOW_MAIN=0 KINOWO_GOVERNOR=0 KINOWO_JVM_SLOTS=0 KINOWO_MEMORY_GATE=0 TMDB_API_KEY=stub \
       KINOWO_WHAT_IF_SIDE_LOCK_POLL_SECONDS=0.2 spec_bounded scripts/identity-what-if --base "$c0" --head "$c4" --at "$1" \
       --out "$work/conc-out-$2" --no-serve --judgements "$REPO_ROOT/test/resources/fixtures/identity-judgements.tsv" uk \

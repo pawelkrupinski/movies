@@ -12,14 +12,28 @@ writes the rows (`propose`) and proves them again (`verify`, the pre-push hook's
        (test/resources/identity-what-if-verdicts/<head>-<base>.tsv), and from that copy by `verify`, so ci-runner proves
        the row as the laptop does --
        whose newest line is `done`, over EVERY family (`--all` or `--verify`, not its selection) and with no take moved,
-       the model's or the final one's. Carries identity-rules; agreement-rules only when the final takes were compared
-       (not `--model-only`); never venue-slot (a what-if builds no venue slot);
+       the model's or the final one's, AND that line is the one the what-if PUBLISHED (THE PUBLISHED VERDICT, below).
+       Carries identity-rules; agreement-rules only when the final takes were compared (not `--model-only`); never
+       venue-slot (a what-if builds no venue slot);
   3. THE RANGE CHANGES NO SEMANTICS A PROOF CANNOT SEE: no commit says `Identity-Design:` (a rule change by design); for
      a what-if, none touches the drift harness (scripts/ci/commit_rules.py's HARNESS_FILES: a what-if never resolves
      through it, so it cannot vouch for it -- a pure move of it carries, as any pure move does, the owner 2026-11-21) and
      (it sees today's corpus only) none touches the title rules, a resource of a module's src/main (weights, tables,
      data: the model's inputs) or a store or codec (*Store*, *Codec*, *Bson* under src/main: what a stored family is
      read back by). A rename counts both its paths.
+
+THE PUBLISHED VERDICT (the owner, 2026-11-21): a committed verdict is text its author writes, so a forged "0 moved" would
+pass. Each identity-what-if run therefore publishes what it recorded -- its verdict lines and the takes diffs behind them
+-- as ONE asset of the `identity-what-if-verdicts` release (KINOWO_WHAT_IF_RELEASE), `what-if-verdict-<key>.json`, the key
+a hash of the head, base, the diff's patch-id, the run's countries, the what-if tooling's hash and the run's own id; each
+line it records names its asset (field 7). A what-if row holds only when every country's committed line is, byte for
+byte, a line of the asset it names, the asset's head, base and patch-id are the run's, and its takes diffs hold exactly
+the rows the line says moved. A missing asset, or one gh cannot fetch, refuses. Assets are fetched once into the identity
+cache (<cache>/what-if-assets/), a few KB each. Trust: the upload takes the repository's write credentials (the owner's
+gh on the laptop; a workflow token with contents: write), and GitHub keeps when and by whom it was uploaded. So it proves
+the committed verdict is the one published at the time by a holder of those credentials -- editing the committed file
+is caught; it does not prove the what-if made the asset (a credential holder could upload one by hand), nor that the
+corpus it read was prod's (the mirror is the laptop's own).
 
 A row is never edited: a row a push changes is a new row, and proven as one. A row taken out only bumps its digest's
 stamp, as an unproven change does.
@@ -28,6 +42,7 @@ usage:
   identity_stamp_carry.py propose <base>..<head> [--proof pure-move|what-if] [--table FILE]
   identity_stamp_carry.py verify <old>..<new>
   identity_stamp_carry.py auto <base>..<head> [--no-commit]   (agentctl land's, after its rebase: see `auto`)
+  identity_stamp_carry.py asset-name|publish <head> <base> <countries> <tools hash> <run id>   (identity-what-if's)
 Exit 0 written / every new row proven; 1 refused (each reason named); 2 usage, or a range git cannot read.
 Tested by scripts/identity_stamp_carry_test.py.
 """
@@ -35,10 +50,13 @@ Tested by scripts/identity_stamp_carry_test.py.
 from __future__ import annotations
 
 import glob
+import hashlib
+import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
@@ -120,11 +138,15 @@ def stamps_of(sha: str) -> dict[str, str]:
     return stamps
 
 
+def identity_cache() -> str:
+    """The cache every identity tool shares (tool-conventions.sh's KINOWO_IDENTITY_CACHE)."""
+    return os.environ.get("KINOWO_IDENTITY_CACHE") or os.path.expanduser("~/.cache/kinowo-identity")
+
+
 def cached_verdict(head: str, base: str) -> str:
     """identity-what-if's record under (head, base) on THIS machine (identity-tools.sh's what_if_record_verdict), "" for
     none: what `propose` and `auto` read, and copy beside the rows they write (VERDICTS)."""
-    cache = os.environ.get("KINOWO_IDENTITY_CACHE") or os.path.expanduser("~/.cache/kinowo-identity")
-    path = os.path.join(cache, "what-if-verdicts", f"{head}-{base}.tsv")
+    path = os.path.join(identity_cache(), "what-if-verdicts", f"{head}-{base}.tsv")
     if not os.path.isfile(path):
         return ""
     with open(path) as f:
@@ -141,6 +163,121 @@ def diff_id(base: str, head: str) -> str:
 
 def verdict_path(head: str, base: str) -> str:
     return f"{VERDICTS}/{head}-{base}.tsv"
+
+
+# ── THE PUBLISHED VERDICT (above) ─────────────────────────────────────────────────────────────────────────────────────
+ASSET = re.compile(r"what-if-verdict-[0-9a-f]{32}\.json")
+
+
+def release() -> str:
+    return os.environ.get("KINOWO_WHAT_IF_RELEASE") or "identity-what-if-verdicts"
+
+
+def gh(*args: str, timeout: int = 120) -> subprocess.CompletedProcess:
+    """gh against the repository (KINOWO_GH: a test's fake, the seam), bounded; a hung or missing gh is a failed call."""
+    command = [os.environ.get("KINOWO_GH") or "gh", *args, "-R", os.environ.get("KINOWO_REPO") or "pawelkrupinski/movies"]
+    try:
+        return subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return subprocess.CompletedProcess(command, 124, "", str(e))
+
+
+def asset_name(head: str, base: str, patch_id: str, countries: str, tools: str, run: str) -> str:
+    key = f"head={head} base={base} patch-id={patch_id} countries={countries} tools={tools} run={run}"
+    return f"what-if-verdict-{hashlib.sha256(key.encode()).hexdigest()[:32]}.json"
+
+
+def moved_rows(text: str) -> int:
+    """The rows of a takes diff, as identity-what-if counts them (`grep -cv '^country'`)."""
+    return sum(1 for line in text.splitlines() if not line.startswith("country"))
+
+
+def read_text(path: str) -> str:
+    if not path or not os.path.isfile(path):
+        return ""
+    with open(path) as f:
+        return f.read()
+
+
+def publish(head: str, base: str, countries: str, tools: str, run: str) -> int:
+    """identity-what-if's step after each country it records: its run's asset, re-uploaded whole (only this run writes
+    it: the key holds the run's id) with every line it recorded so far and the takes diffs they name."""
+    patch_id = diff_id(base, head)
+    name = asset_name(head, base, patch_id, countries, tools, run)
+    lines = [line for line in cached_verdict(head, base).splitlines() if line.split("\t")[6:7] == [name]]
+    diffs = {}
+    for line in lines:
+        cc, takes, mode = line.split("\t")[0], line.split("\t")[3], line.split("\t")[5]
+        paths = {"takes": takes, "final": takes.replace("takes-diff-", "final-diff-") if "final" in mode.split(",") else ""}
+        diffs[cc] = {kind: read_text(path) for kind, path in paths.items()}
+    body = {"name": name, "head": head, "base": base, "patch_id": patch_id, "countries": countries, "tools": tools,
+            "run": run, "lines": lines, "diffs": diffs}
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, name)
+        with open(path, "w") as f:
+            json.dump(body, f, indent=1, sort_keys=True)
+        done = gh("release", "upload", release(), path, "--clobber")
+        if done.returncode != 0 and "not found" in (done.stderr + done.stdout).lower():
+            gh("release", "create", release(), "--prerelease", "--title", "Identity what-if verdicts (rolling)", "--notes",
+               "Each scripts/identity-what-if run's verdict and takes diffs: what scripts/identity-stamp-carry verify "
+               "checks a committed what-if verdict against.")
+            done = gh("release", "upload", release(), path, "--clobber")
+    if done.returncode != 0:
+        print(f"could not publish {name} on release {release()}: {(done.stderr or done.stdout).strip()[-300:]} -- a stamp "
+              "carry refuses this verdict until it is published (run the what-if again)", file=sys.stderr)
+        return 1
+    print(f"published {name} on release {release()} ({len(lines)} verdict(s))")
+    return 0
+
+
+def fetch_asset(name: str, wanted: str) -> dict | None:
+    """The published asset `name`: the identity cache's copy when it holds the line `wanted` (an asset grows while its run
+    publishes), else gh's, kept in the cache; None when gh has none it can read."""
+    cache = os.path.join(identity_cache(), "what-if-assets")
+    kept = os.path.join(cache, name)
+
+    def read() -> dict | None:
+        try:
+            with open(kept) as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return None
+
+    body = read()
+    if body is not None and wanted in body.get("lines", []):
+        return body
+    os.makedirs(cache, exist_ok=True)
+    if gh("release", "download", release(), "-p", name, "-O", kept + ".part", "--clobber").returncode != 0:
+        return None
+    os.replace(kept + ".part", kept)
+    return read()
+
+
+def published_refusals(verdicts: dict[str, list[str]], head: str, base: str, patch_id: str) -> list[str]:
+    """Why each country's verdict line is not the one the what-if published for head over base (THE PUBLISHED VERDICT)."""
+    why = []
+    for cc in COUNTRIES:
+        line = verdicts[cc]
+        name = line[6] if len(line) > 6 else ""
+        if not ASSET.fullmatch(name):
+            why.append(f"{cc}: its verdict names no published asset (recorded before the verdicts were published, or "
+                       "written by hand): run scripts/identity-what-if again")
+            continue
+        body = fetch_asset(name, "\t".join(line))
+        if body is None:
+            why.append(f"{cc}: no asset {name} on release {release()} (never published, or gh could not fetch it)")
+            continue
+        fields = tuple(body.get(k, "") for k in ("head", "base", "patch_id", "countries", "tools", "run"))
+        if asset_name(*fields) != name or fields[:3] != (head, base, patch_id):
+            why.append(f"{cc}: the asset {name} is not of head {head[:12]} over base {base[:12]}, patch-id {patch_id[:12]}")
+        elif "\t".join(line) not in body.get("lines", []):
+            why.append(f"{cc}: the committed verdict is not the one published as {name}: {chr(9).join(line[1:6])!r}")
+        elif line[4] != "-":
+            diff = body.get("diffs", {}).get(cc, {})
+            rows = moved_rows(diff.get("takes", "") + diff.get("final", ""))
+            if str(rows) != line[4]:
+                why.append(f"{cc}: the published takes diff holds {rows} row(s), not the {line[4]} the verdict says moved")
+    return why
 
 
 def what_if_verdicts(head: str, base: str, at: str | None = None) -> dict[str, list[str]]:
@@ -184,8 +321,13 @@ def covered(proof: str, base: str, head: str, at: str | None = None) -> tuple[se
     if blind:
         why.append(f"a what-if sees today's corpus only, and the range changes what it cannot vouch for: {' '.join(blind)}")
     verdicts = what_if_verdicts(head, base, at)
+    # the published asset is of the commits the what-if ran on: these, or (a row written after a rebase) the patch-id line's
+    ran_head, ran_base, patch_id = head, base, ""
     if at is not None and verdicts:
         recorded = verdicts.get("patch-id", ["", ""])[1]
+        patch_id = recorded
+        if len(verdicts.get("patch-id", [])) >= 4:
+            ran_head, ran_base = verdicts["patch-id"][2], verdicts["patch-id"][3]
         if recorded != diff_id(base, head):
             why.append(f"the committed what-if verdict is of another diff (patch-id {recorded[:12] or 'none'}, not "
                        f"{base[:12]}..{head[:12]}'s {diff_id(base, head)[:12]})")
@@ -203,6 +345,8 @@ def covered(proof: str, base: str, head: str, at: str | None = None) -> tuple[se
         if "whole" not in mode.split(","):
             why.append(f"{cc}: resolved its selection, not every family (run identity-what-if --all)")
         final = final and "final" in mode.split(",")
+    if not why:
+        why = published_refusals(verdicts, ran_head, ran_base, patch_id or diff_id(base, head))
     if why:
         return set(), why
     return ({"identity-rules", "agreement-rules"} if final else {"identity-rules"}), []
@@ -298,10 +442,9 @@ def range_verdict(base: str, head: str) -> tuple[str, str] | None:
     """A recorded what-if (head0, base0) of the very change base..head -- the same diff, byte for byte -- taken before a
     rebase moved its shas (agentctl land rebases after the lane ran it). Its proof is of base0..head0's code; a row of it
     is live at `head` only while head's digest is head0's, which `auto` checks."""
-    cache = os.environ.get("KINOWO_IDENTITY_CACHE") or os.path.expanduser("~/.cache/kinowo-identity")
     wanted = git("diff", "--binary", base, head)
     found = []
-    for path in glob.glob(os.path.join(cache, "what-if-verdicts", "*-*.tsv")):
+    for path in glob.glob(os.path.join(identity_cache(), "what-if-verdicts", "*-*.tsv")):
         head0, _, base0 = os.path.basename(path)[:-4].partition("-")
         if not (re.fullmatch(r"[0-9a-f]{40}", head0) and re.fullmatch(r"[0-9a-f]{40}", base0)):
             continue
@@ -423,6 +566,12 @@ def verify(rng: str) -> int:
 
 
 def main(argv: list[str]) -> int:
+    if argv[:1] in (["asset-name"], ["publish"]) and len(argv) == 6:
+        head, base, *rest = argv[1:]
+        if argv[0] == "publish":
+            return publish(head, base, *rest)
+        print(asset_name(head, base, diff_id(base, head), *rest))
+        return 0
     if len(argv) < 2 or argv[0] not in ("propose", "verify", "auto") or ".." not in argv[1]:
         print(__doc__, file=sys.stderr)
         return 2
