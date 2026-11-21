@@ -221,7 +221,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
     new services.identityadapters.LookupFill(
       questions   = () => identityModel.peek(WorkerWiring.IdentityModelPeek).fold(services.identity.vocabulary.AnswersChanged.Empty)(_.gaps),
       chain       = new services.identityadapters.LookupFillChain(tmdbClientOver, enrichmentFetch, identityTmdbNormalizer),
-      memory      = identityQuestionMemory,
+      ledger      = new services.identityadapters.LookupFillLedger(identityQuestionMemory, identityTmdbNormalizer.recordAbsent),
       renewals    = () => identityRenewals.due(),
       rate        = configuration.identityLookupFillRate(WorkerWiring.DefaultLookupFillRate),
       window      = identityLookupFillInterval,

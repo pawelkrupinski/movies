@@ -9,7 +9,7 @@ import scala.util.control.NonFatal
 import clients.TmdbClient
 import play.api.Logging
 import services.identity.*
-import services.identity.vocabulary.{Answer, AnswersChanged, Question}
+import services.identity.vocabulary.{AnswersChanged, Question}
 import settings.IdentityLookupFillRate
 import tools.{CircuitOpenException, ForwardingHttpFetch, HttpFetch, HttpStatusException, RequestedHost}
 
@@ -123,9 +123,6 @@ final class LookupFillChain(tmdb: HttpFetch => TmdbClient, liveFetch: HttpFetch,
     val client = tmdb(fetch)
     LookupFillChain.Round(client, TmdbIdentityLookups.live(client, fetch, gaps), gaps)
   }
-
-  /** TMDB film `id`'s record filed absent, as a 404 is: one whose reads keep failing while its host answers others. */
-  def recordAbsent(id: Int): Unit = normalizer.recordAbsent(id)
 }
 
 object LookupFillChain {
@@ -155,7 +152,8 @@ object LookupFillMetrics {
  * (`CandidateQueries`), with no second list — and asks each unanswered TMDB or IMDb suggestion
  * question live, at most `rate` per minute over the round's `window` (the fill's interval, so a
  * round's allowance is what fits before the next), through `chain` (the shared lookup chain:
- * its 429 gate, breaker and pace), filed ONLY into the store, which the model then reads.
+ * its 429 gate, breaker and pace), filed ONLY into the store, which the model then reads. Which gaps are due, and what
+ * each round's asks leave in the question memory, is its `ledger`'s ([[LookupFillLedger]]).
  *
  * Venue details are NOT asked: the pipeline's own detail enrichment reads every listing's page into
  * venue_pages on its own cadence, and the model reads it from there (`VenuePageIndex`).
@@ -173,7 +171,8 @@ final class LookupFill(
   executor:    ExecutorService,
   sleep:       Long => Unit,
   renewals:    () => Seq[Question],
-  memory:      QuestionMemory,
+  // What the fill keeps of its questions: which gaps are due, and what each round's asks came to.
+  ledger:      LookupFillLedger,
   clock:       java.time.Clock,
   // Where each round that ran to its end is reported (`ScheduledTickStale`, tick [[LookupFill.Tick]]): its schedule
   // ([[LookupFillSchedule]]) only hands a round to `executor`, so a round that hangs or fails every time is seen here or nowhere.
@@ -203,26 +202,13 @@ final class LookupFill(
     // Exactly the questions the identity model found unanswered, and the records it lacks — never
     // a walk of every listing's questions: the model knows its gaps. A record a newly answered
     // search names is the model's gap after its next drain, and the next round's question.
-    val asked = memory.due(questions())
-    // Asked and still unanswered — not deferred for want of budget — is remembered (`QuestionMemory`):
-    // a durable non-answer is asked again a day later, one whose read failed on a short backoff, marked against the
-    // host that read went to (an IMDb suggestion's is IMDb's), whose recovery releases it.
-    def outcome[A](answer: => Answer[A]): (LookupFill.Asked, Option[String]) = {
-      val (deferred, failed) = (budget.deferred.get, budget.failed.get)
-      val (known, failedAt) = AgreementQuestions.hostsNoted(answer.isAnswered)
-      // A read that failed wins over the deferrals its back-off then caused within the same question.
-      if (known) (LookupFill.Asked.Answered, None)
-      else if (budget.failed.get != failed) (LookupFill.Asked.Failed, failedAt(budget.lastFailure.orNull))
-      else if (budget.deferred.get != deferred) (LookupFill.Asked.Settled, None)
-      else (LookupFill.Asked.Unanswered, None)
-    }
+    val asked = ledger.due(questions())
     val outcomes = tools.HttpPath.within(tools.HttpPath.Fill)(
-      asked.queries.toSeq.sorted.map(q => Question.Candidate(q) -> outcome(lookups.candidates(q))) ++
-        asked.films.toSeq.sorted.map(id => Question.FilmRecord(id) -> outcome(lookups.film(id))))
-    remember(outcomes, budget)
+      asked.queries.toSeq.sorted.map(q => Question.Candidate(q) -> ledger.asked(budget)(lookups.candidates(q))) ++
+        asked.films.toSeq.sorted.map(id => Question.FilmRecord(id) -> ledger.asked(budget)(lookups.film(id))))
+    ledger.remember(outcomes, budget)
     renew(lookups, client, budget)
-    // each host's round on its own: one host down says nothing of another's health
-    budget.hosts.foreach { case (host, (answered, failed, deferred)) => memory.roundEnded(answered, failed, deferred, host) }
+    ledger.roundEnded(budget)
     current = Some(if (budget.paceOverloaded) at.halved else IdentityLookupFillRate((at.perMinute * 2).min(rate.perMinute)))
     val r = LookupFillRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,
       budget.backedOff, at)
@@ -231,32 +217,6 @@ final class LookupFill(
     logger.info(s"identity lookup fill: asked ${r.asked} (${r.answered} answered, ${r.failed} failed), deferred ${r.deferred} " +
       s"at ${at.perMinute}/min${if (r.backedOff) s" — backed off ${budget.overloadedHosts.toSeq.sorted.mkString(", ")}" else ""}")
     r
-  }
-
-  /** What the round's asks came to, into the question memory: the unanswered remembered, a run of failures ended by an
-   *  answer, each failure marked against its host -- and a record whose reads keep failing filed absent. */
-  private def remember(outcomes: Seq[(Question, (LookupFill.Asked, Option[String]))], budget: LookupFillBudget): Unit = {
-    memory.unanswered(outcomes.collect { case (question, (LookupFill.Asked.Unanswered, _)) => question })
-    // an answer ends a run of failures: else a record that failed seven rounds, then answered, was given up on at its
-    // next failed read a month on (QuestionPolicies.RecordGiveUpFailures counts failures IN A ROW)
-    val answered = outcomes.collect { case (question, (LookupFill.Asked.Answered, _)) => question }.toSet
-    if (answered.nonEmpty) memory.answered(memory.outcomes(answered).collect { case (question, QuestionMemory.Outcome.Failed(_, _, _)) => question })
-    val failures = outcomes.collect { case (question, (LookupFill.Asked.Failed, host)) => (question, host) }.groupMap(_._2)(_._1)
-      .toSeq.flatMap { case (host, failed) => memory.failed(failed, host).map { case (question, times) => (question, host, times) } }
-    givenUp(failures, budget)
-  }
-
-  /** A record whose read keeps failing (`failures`: each question, its host and its failures in a row) while its host
-   *  answers others (`budget`'s) is filed absent, as a 404 is: never pending for good. */
-  private def givenUp(failures: Seq[(Question, Option[String], Int)], budget: LookupFillBudget): Unit = {
-    val answering = budget.hosts.collect { case (host, (answered, _, _)) if answered > 0 => host }.toSet
-    failures.foreach {
-      case (Question.FilmRecord(id), host, times)
-          if times >= QuestionPolicies.RecordGiveUpFailures && answering(host.getOrElse(QuestionMemory.TmdbHost)) =>
-        logger.warn(s"identity lookup fill: film $id's record failed $times reads in a row; filed absent")
-        chain.recordAbsent(id)
-      case _ => ()
-    }
   }
 
   /** With what the allowance has left, the aged questions, records and people asked again ([[QuestionRenewals]]). */

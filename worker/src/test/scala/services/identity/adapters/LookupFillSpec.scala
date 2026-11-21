@@ -55,12 +55,15 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
                    gaps: TmdbStore => AnswersChanged = modelGaps, memory: Option[QuestionMemory] = None,
                    fillClock: java.time.Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC),
                    ticks: TickRecorder = TickRecorder.Unrecorded,
-                   executor: java.util.concurrent.ExecutorService = DaemonExecutors.directExecutor()) =
+                   executor: java.util.concurrent.ExecutorService = DaemonExecutors.directExecutor()) = {
+    val normalized = new TmdbNormalizer(store)
     new LookupFill(() => gaps(store), new LookupFillChain(new clients.HttpTmdbClient(_, apiKey = Some(settings.TmdbApiKey("k"))),
-      service, new TmdbNormalizer(store)), IdentityLookupFillRate(rate), IdentityLookupFillInterval(30.minutes), rounds += _,
+      service, normalized), IdentityLookupFillRate(rate), IdentityLookupFillInterval(30.minutes), rounds += _,
       executor, sleeps += _, renewals,
       // a memory of its own unless the test shares one: nothing remembered, every gap due
-      memory.getOrElse(new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", fillClock)), fillClock, ticks)
+      new LookupFillLedger(memory.getOrElse(new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", fillClock)), normalized.recordAbsent),
+      fillClock, ticks)
+  }
 
   /** What the identity model over the store's answers finds unanswered — what a round asks. */
   private def modelGaps(s: TmdbStore): AnswersChanged = {
