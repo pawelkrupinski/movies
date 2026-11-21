@@ -98,6 +98,7 @@ usage() { usage_from_header; }
 IDENTITY_TOOL=identity-what-if
 # shellcheck source=scripts/identity-tools.sh
 . "$(dirname "$0")/identity-tools.sh"
+identity_explain_exits
 repo=$IDENTITY_REPO
 # every line it logs (the shared tools' too: layout, compile, slot waits) stamped with the seconds since it started, so a
 # run's log reads as its phase timings
@@ -245,10 +246,13 @@ drain_minutes=${KINOWO_WHAT_IF_DRAIN_MINUTES:-20}
 drain_wait_seconds=${KINOWO_WHAT_IF_DRAIN_WAIT_SECONDS:-900}
 drain_poll_seconds=${KINOWO_WHAT_IF_DRAIN_POLL_SECONDS:-10}
 fences=()
-# tail_state <cc> -> `<tail position> <seconds behind>` (`?` when freshness knows no sync moment)
+# tail_state <cc> -> `<tail position> <seconds behind>` (`?` when freshness knows no sync moment), from freshness's report
+# whatever its exit: a warning (3, a stale tail or a seed in flight) still reports the tail, and mirror_ready judges the
+# seed after the drain (2026-11-21: under pipefail its exit 3 stopped the run, silently, before us and es)
 tail_state() {
-  scripts/local-mirror/freshness "$1" --quiet --tail 2>/dev/null |
-    awk -v cc="$1" -v now="$(date +%s)" '$1 == "TAIL" && $2 == cc { print $3, ($4 ~ /^[0-9]+$/ ? int(now - $4 / 1000) : "?") }'
+  local report
+  report=$(scripts/local-mirror/freshness "$1" --quiet --tail 2>/dev/null) || true
+  awk -v cc="$1" -v now="$(date +%s)" '$1 == "TAIL" && $2 == cc { print $3, ($4 ~ /^[0-9]+$/ ? int(now - $4 / 1000) : "?") }' <<< "$report"
 }
 # other_runs <fence dir> -> the live run fences in it but this run's (dropping a dead run's and every expired one)
 other_runs() {
@@ -474,7 +478,7 @@ if [ -n "$bisect_good" ]; then
   serve=0
   good=$(git -C "$repo" rev-parse --verify "$bisect_good^{commit}") || { echo "--bisect: no commit $bisect_good" >&2; exit 2; }
   bad=$(git -C "$repo" rev-parse --verify "$bisect_bad^{commit}") || { echo "--bisect: no commit $bisect_bad" >&2; exit 2; }
-  trap mirror_fence_linger EXIT
+  trap 'identity_said_exit $?; mirror_fence_linger' EXIT
   mirror_fence "$cc"
   mirror_gen=$(mirror_ready "$cc") || exit 2
   snapshot=${at:-$(cached_at "$cc" "$bad")}; snapshot=${snapshot:-$(date -u +%Y-%m-%dT%H:%M:00Z)}
@@ -556,7 +560,7 @@ compile_head_beside() {
   identity_classpath "$head_tree" > /dev/null & head_compile=$!
 }
 head_compile_done() { [ -z "$head_compile" ] || { wait "$head_compile" || true; head_compile=""; }; }
-trap 'head_compile_done; mirror_fence_linger' EXIT
+trap 'identity_said_exit $?; head_compile_done; mirror_fence_linger' EXIT
 status=0
 for cc in "${ccs[@]}"; do
   mirror_fence "$cc"

@@ -38,6 +38,7 @@ echo "freshness \$*" >> "$work/freshness-calls"
 cat "$work"/fence/kinowo_uk/* >> "$work/fences-seen" 2>/dev/null
 cat "$work"/fence/kinowo_de/* >> "$work/fences-seen-de" 2>/dev/null
 case " \$* " in *" --tail "*) echo "TAIL \$1 \$tail \$(( (\$(date +%s) - behind) * 1000 ))" ;; *" --generation "*) echo "GENERATION \$1 \$gen"; echo "TAIL \$1 \$tail \$(( (\$(date +%s) - behind) * 1000 ))" ;; esac
+case " \$* " in *" --tail "*) exit "\$(cat "$work/tail-exit" 2>/dev/null || echo 0)" ;; esac
 exit 0
 STUB
 chmod +x "$repo/scripts/local-mirror/freshness"
@@ -236,6 +237,18 @@ check "...and while it drains, its drain fence lifts the lingers" "yes" \
 check "...the generation pinned only after the drain: every read of it sees the run's own fence" "run run run" \
   "$(awk '{ print $2 }' "$work/fences-seen" | tail -3 | paste -sd' ' -)"
 rm -f "$work/behind"
+# FRESHNESS WARNING ON THE DRAIN'S TAIL READ (2026-11-21: exit 3, no message, before us and es): freshness passes on
+# mongosh's exit 3 (a stale tail) with its report; the drain reads the report, the warning stops no run
+echo 3 > "$work/tail-exit"; rm -rf "$work/fence"
+out=$(what_if "$c0" "$c4" 2026-11-06T15:52:00Z --no-serve); rc=$?
+check "a --tail read freshness warns about (exit 3) stops no run: exit 0, CLEAN" "0 yes" \
+  "$rc $(grep -q CLEAN <<<"$out" && echo yes || echo "no: $(cat "$work/err")")"
+rm -f "$work/tail-exit"
+# AN UNCHECKED FAILURE (set -e stopping a script) is said: the line and the command, never a bare exit status
+explained=$(cd "$repo" && bash -c 'set -euo pipefail; . scripts/identity-tools.sh; identity_explain_exits
+  trap '"'"'identity_said_exit $?'"'"' EXIT; f() { return 3; }; f; echo never' 2>&1); rc=$?
+check "...and set -e stopping a script names the line and the command that failed" "3 yes" \
+  "$rc $(grep -qE 'stopped at an unchecked failure, line [0-9]+: return 3 \(exit 3\)' <<<"$explained" && echo yes || echo "no: $explained")"
 # A RUN OF SEVERAL COUNTRIES fences each for its own sides only: a country done lingers while the next resolves
 rm -rf "$work/fence" "$work/fences-seen" "$work/fences-seen-de"
 out=$(what_if "$c0" "$c4" 2026-11-06T15:55:00Z --no-serve de); rc=$?

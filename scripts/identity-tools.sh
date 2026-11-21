@@ -31,6 +31,18 @@ IDENTITY_FIXTURES=test/resources/fixtures/identity-unmatched
 IDENTITY_JUDGEMENTS=test/resources/fixtures/identity-judgements.tsv
 identity_log() { echo "[${IDENTITY_TOOL:-identity}] $*" >&2; }
 
+# identity_explain_exits, then `identity_said_exit $?` first in the EXIT trap: a script `set -e` stops at an unchecked
+# failure says which command it was and where, never a bare exit status (2026-11-21: identity-what-if stopped with exit
+# 3 and no word before us and es). The ERR trap fires exactly where errexit stops the shell, so it names that command.
+identity_explain_exits() {
+  set -E
+  trap '_identity_failed="line $LINENO: $BASH_COMMAND (exit $?)"' ERR
+}
+identity_said_exit() { # <exit status>
+  [ "$1" = 0 ] || [ -z "${_identity_failed:-}" ] ||
+    echo "HARNESS ERROR: ${IDENTITY_TOOL:-$(basename "$0")} stopped at an unchecked failure, $_identity_failed" >&2
+}
+
 # identity_gh <seconds> <gh args...> -> gh, killed when it outlasts <seconds> (a hung gh fails, it never waits forever)
 identity_gh() { local seconds=$1; shift; bounded "$seconds" "$KINOWO_GH" "$@"; }
 IDENTITY_GH_READ=${KINOWO_IDENTITY_GH_TIMEOUT:-60}
