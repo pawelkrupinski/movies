@@ -70,4 +70,31 @@ class HealthEndpointSpec extends AnyFlatSpec with Matchers {
     now = scala.concurrent.duration.Duration(8, "minutes").toNanos
     readyStatus(readiness) shouldBe 200
   }
+
+  // The health server's dispatcher is no daemon: a boot step failing outside the guard (the shared
+  // resources, once built before it — a malformed MONGODB_URI) ended the main thread and left the
+  // process up, /health answering alive, with no country running and nothing to restart it.
+  "A failed boot" should "run its clean-up, stop /health and exit non-zero, a fatal failure included" in {
+    final class Exited(val code: Int) extends RuntimeException
+    val server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
+    WorkerMain.addHealthEndpoint(server, new BootLiveness)
+    server.start()
+    val port = server.getAddress.getPort
+    var cleanedUp = false
+    val exited = intercept[Exited] {
+      WorkerMain.bootedOrExited(server, cleanUp = () => cleanedUp = true, exit = code => throw new Exited(code)) {
+        throw new LinkageError("stale class")
+      }
+    }
+    exited.code shouldBe 1
+    cleanedUp shouldBe true
+    an[java.io.IOException] should be thrownBy
+      URI.create(s"http://127.0.0.1:$port/health").toURL.openConnection().asInstanceOf[HttpURLConnection].getResponseCode
+  }
+
+  it should "hand back what the boot built when nothing failed" in {
+    val server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
+    try WorkerMain.bootedOrExited(server, exit = _ => fail("exited"))(42) shouldBe 42
+    finally server.stop(0)
+  }
 }

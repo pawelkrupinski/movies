@@ -35,9 +35,9 @@ object WorkerMain extends Logging {
     // cache hydrate can take ~a minute; liveness ("the process is up") must not
     // wait on readiness ("warmed up"), or Fly's health check times out within
     // its grace period and the deploy fails on a machine that's actually fine.
-    // If wiring init throws (e.g. Mongo unreachable) we stop /health and exit
-    // non-zero so the failure still surfaces as a crash-loop rather than a
-    // healthy-but-idle worker.
+    // If anything after this throws (e.g. Mongo unreachable, a malformed
+    // MONGODB_URI) we stop /health and exit non-zero so the failure still
+    // surfaces as a crash-loop rather than a healthy-but-idle worker.
     // The process's one monotonic clock for what it times before (and beside) the wirings, which keep their own.
     val stopwatch = tools.Stopwatch.System
     val port      = process.healthPort(HealthPort(9000)).value
@@ -46,31 +46,48 @@ object WorkerMain extends Logging {
     val health    = startHealthServer(port, liveness, readiness)
     logger.info(s"Worker health up on :$port/health — booting scrape/enrich…")
 
-    val countries = bootableCountries(process, health)
-    val shared    = SharedResources.build(process, countries, stopwatch)
-    val wirings   = startWirings(process, countries, shared, health)
-    // /health is a property of the MACHINE, not of any one country, so it folds
-    // across every wiring — see [[WorkerFleet]]. Metrics likewise cover all countries
-    // (shared registry, `country` label).
-    val fleet = new WorkerFleet(wirings.map(_.livenessWatchdog), wirings.map(_.mongoConnection))
-    logger.info("Worker up — scraping/enriching")
-    readiness.becomes(() => wirings.forall(_.bootSettled))
-    // Process-wide config (KINOWO_HEAP_DUMP_DIR), so it reads the same on every
-    // wiring — one dump dir per machine, not per country.
-    val heapDumpDir = wirings.head.heapDumpDirectory
-    addOperatorEndpoints(health, port, shared.metrics, wirings, heapDumpDir)
-
-    // Now that the heartbeat + watchdog are running, let /health report real
-    // liveness: it goes 503 (and the watchdog restarts the process) only once a
-    // heartbeat pulse has been stale for minutes — a wedged JVM, not a slow boot.
-    // ANY country going stale wedges the machine they share.
-    liveness.becomes(() => fleet.isAlive)
-    ensureHeapDumpDirectory(heapDumpDir)
-
     val done = new CountDownLatch(1)
-    Runtime.getRuntime.addShutdownHook(new Thread(() => shutDown(shared, wirings, health, done)))
+    bootedOrExited(health) {
+      val countries = bootableCountries(process, health)
+      val shared    = SharedResources.build(process, countries, stopwatch)
+      val wirings   = startWirings(process, countries, shared, health)
+      // Registered as soon as the countries run, so an exit on a failure below still drains them.
+      Runtime.getRuntime.addShutdownHook(new Thread(() => shutDown(shared, wirings, health, done)))
+      // /health is a property of the MACHINE, not of any one country, so it folds
+      // across every wiring — see [[WorkerFleet]]. Metrics likewise cover all countries
+      // (shared registry, `country` label).
+      val fleet = new WorkerFleet(wirings.map(_.livenessWatchdog), wirings.map(_.mongoConnection))
+      logger.info("Worker up — scraping/enriching")
+      readiness.becomes(() => wirings.forall(_.bootSettled))
+      // Process-wide config (KINOWO_HEAP_DUMP_DIR), so it reads the same on every
+      // wiring — one dump dir per machine, not per country.
+      val heapDumpDir = wirings.head.heapDumpDirectory
+      addOperatorEndpoints(health, port, shared.metrics, wirings, heapDumpDir)
+
+      // Now that the heartbeat + watchdog are running, let /health report real
+      // liveness: it goes 503 (and the watchdog restarts the process) only once a
+      // heartbeat pulse has been stale for minutes — a wedged JVM, not a slow boot.
+      // ANY country going stale wedges the machine they share.
+      liveness.becomes(() => fleet.isAlive)
+      ensureHeapDumpDirectory(heapDumpDir)
+    }
     done.await()
   }
+
+  /** `boot`'s answer or, on ANY failure (a fatal one included: a LinkageError off a stale class, an
+   *  OutOfMemoryError), `cleanUp` run, /health stopped and the process exited non-zero. Let through, a
+   *  failure would end the main thread and leave the process up (the health server's dispatcher is no
+   *  daemon), /health answering alive, with no country running. */
+  private[modules] def bootedOrExited[A](health: HttpServer, cleanUp: () => Unit = () => (),
+                                         exit: Int => Nothing = code => sys.exit(code))(boot: => A): A =
+    AnyThrowable.captured(boot) match {
+      case Right(answer) => answer
+      case Left(e) =>
+        logger.error(s"Worker failed to start — shutting down: ${e.getMessage}", e)
+        try cleanUp() catch { case NonFatal(cleanUpFailure) => logger.warn(s"Boot clean-up failed: ${cleanUpFailure.getMessage}") }
+        health.stop(0)
+        exit(1)
+    }
 
   /** The JVM-wide settings and the process's configuration, before anything else runs. FIRST, before anything
    *  touches java.net.http: the residential egress tunnels HTTPS through an authenticated proxy, which the JDK's
@@ -148,11 +165,10 @@ object WorkerMain extends Logging {
   }
 
   /** Build and start every country's wiring. A failure closes the shared client, stops /health and exits
-   *  non-zero -- any failure, a fatal one included (a LinkageError off a stale class, an OutOfMemoryError): let
-   *  through, it would end the main thread and leave the process up, /health serving, with no country running. */
+   *  non-zero ([[bootedOrExited]]). */
   private def startWirings(process: ProcessConfiguration, countries: Seq[Country], shared: SharedResources,
                            health: HttpServer): Seq[WorkerWiring] =
-    AnyThrowable.captured {
+    bootedOrExited(health, cleanUp = () => shared.client.foreach(_.close())) {
       val boot = shared.boot
       val ws = boot.step("build wirings")(countries.map(c =>
         new WorkerWiring(c, shared.budget, shared.client, Some(shared.metrics), shared.posterShrinkGate, process.env)))
@@ -168,13 +184,6 @@ object WorkerMain extends Logging {
       shared.metrics.envGatedFeatures.recordIntegrations(integrations)
       services.metrics.worker.EnvGatedFeature.disabledWarning("integration", integrations).foreach(w => logger.warn(w))
       ws
-    } match {
-      case Right(ws) => ws
-      case Left(e) =>
-        logger.error(s"Worker failed to start — shutting down: ${e.getMessage}", e)
-        shared.client.foreach(_.close())
-        health.stop(0)
-        sys.exit(1)
     }
 
   /** /metrics — registered now that every country's queue + metrics are live: one scrape renders the
