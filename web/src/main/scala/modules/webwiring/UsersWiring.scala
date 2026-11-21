@@ -4,7 +4,7 @@ import controllers.{AccountController, FacebookDataDeletionController, UserState
 import services.MonitoringHttpFetch
 import services.auth.{AuthExchangeCodeStore, AuthExchangeCodes, FacebookGraphFetch, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore}
 import services.facebook.{FacebookUsageBrake, MongoFacebookSlots}
-import services.users.{AccountDeletion, AccountRowsDeletion, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
+import services.users.{AccountDeletion, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
 import tools.{HttpFetch, RealHttpFetch, TlsTrust}
 
 /** ── Accounts ──────────────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ trait UsersWiring { self: Wiring =>
     usersConnection.database.fold[AuthExchangeCodeStore](new InMemoryAuthExchangeCodeStore)(
       database => new MongoAuthExchangeCodeStore(Some(database))), clock)
 
-  lazy val accountDeletion: AccountDeletion = new AccountRowsDeletion(userRepository, userStateRepository)
+  lazy val accountDeletion: AccountDeletion = new AccountDeletion(userRepository, userStateRepository)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, userRepository, clock)
   lazy val accountController = new AccountController(controllerComponents, accountDeletion, userRepository)
   lazy val facebookDataDeletionController =
