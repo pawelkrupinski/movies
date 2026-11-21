@@ -250,6 +250,18 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     header("ETag", second).value shouldBe etag
   }
 
+  // Matched the way every other conditional response here matches it
+  // (`ConditionalResponse.offersValidator`): a list, a weak tag, or `*`.
+  it should "304 an If-None-Match of `*` or a list naming the current ETag, weak or strong" in {
+    val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")))
+    val etag = header("ETag", callHiddenFilms(ctl)).value
+    Seq("*", s""""0000000000000000", $etag""", s"W/$etag").foreach { offered =>
+      withClue(s"If-None-Match: $offered — ") {
+        status(callHiddenFilms(ctl, headers = Seq("If-None-Match" -> offered)*)) shouldBe NOT_MODIFIED
+      }
+    }
+  }
+
   it should "200 with a fresh body when THIS country's hiddenFilms changed since the client's ETag" in {
     val stored = storedFor("pl", "Madagaskar")
     val (ctl, repository, _) = fixture(Some(stored))
