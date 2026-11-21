@@ -2,7 +2,7 @@ package services.identity.measures
 
 import services.identity.measures.IdentityMeasures.*
 import services.titles.SearchTitles
-import services.titles.StageHouse.{HouseCommonWords, namesAHouseInParticular, namesOneHouse, particularWords}
+import services.titles.StageHouse.{HouseCommonWords, abbreviates, namesAHouseInParticular, namesOneHouse, particularWords}
 import services.titles.billing.DecorationWords
 import services.titles.{TitleContainment, TitleSeason, TitleWords}
 
@@ -312,8 +312,18 @@ object StageRelays {
    *  "Das Boot - Directors Cut" record its "house" bills alike. */
   def billsUnderItsHouse(listing: MeasuredListing, film: Film, houses: BannerHouses): Boolean =
     (listing.seasonYear.isEmpty || film.season.isEmpty) &&
-      billings(listing, film).exists(billed => houses.same(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse) &&
+      billings(listing, film).exists(billed => houses.same(billed) && namesTheHouse(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse) &&
         !namesAnEdition(billed.listingWords) && !namesAnEdition(billed.filmWords) && (film.season.isEmpty || spellsItsHouse(billed)))
+  /** Does the listing's banner NAME the record's house — spell it, share a word of it or abbreviate it — rather than
+   *  being learned as it from the records its works' candidates bill alone? A venue's programme banner is learned as
+   *  whichever house's records its works' searches find: UK Lowther Pavilion's "On Screen: La Bayadere" (the Royal
+   *  Ballet's 2027 relay) was learned as La Scala Ballet and took its 2006 record, judged wrong for every other
+   *  Bayadère relay. "NT Live" shares "live" with National Theatre Live, "MetOpera" holds the Metropolitan Opera's
+   *  "opera", "RBO Cinema Season" abbreviates Royal Ballet & Opera. */
+  private def namesTheHouse(billed: Billing): Boolean =
+    billed.listingHouse == billed.filmHouse || abbreviates(billed.listingWords, billed.filmWords) ||
+      billed.listingWords.filter(_.lengthIs >= 3).exists(word =>
+        billed.filmWords.filter(_.lengthIs >= 3).exists(house => word.contains(house) || house.contains(word)))
   /** A banner of edition words alone, a possessive's lone letter aside ("director s cut"). */
   private def namesAnEdition(banner: Seq[String]): Boolean = {
     val words = banner.filter(_.lengthIs > 1)

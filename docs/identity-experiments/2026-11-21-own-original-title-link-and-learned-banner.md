@@ -1,0 +1,24 @@
+# 2026-11-21 — an original title links only to the OTHER title; house-production needs a banner naming its house — LANDED
+
+- **Why:** the identity code review (review/identity) found `TitleRelation.sameOriginal` matching a node's original
+  title against its OWN whole title, so a listing billing its title as its own original ("Dune" / "Dune") drew a tier-3
+  `original-title` must-link to any title it shared a block key with.
+- **What:** `a.originals(b.whole) || b.originals(a.whole)` (plus the shared-originals clause as before).
+- **First what-if** (prod mirror, all five countries, 2026-11-21): 2 takes moved. DE Kino Central "Tronthaim: Berlin -
+  Die Sinfonie" left tmdb:68594 (Klein's 1957 "Berlin - Ecke Schönhauser…", reached by `join:original-title`) for none:
+  a cure (Ruttmann's 1927 film, tmdb:222, is the work). UK Lowther Pavilion "On Screen: La Bayadere" gained tmdb:142479,
+  La Scala's 2006 "La Scala Ballet: La Bayadère", judged wrong for every other Bayadère relay: a new wrong take, so the
+  change alone was not landable.
+- **Why Lowther took it:** `house-production` (`StageRelays.billsUnderItsHouse`) accepted the record because Lowther's
+  programme banner "On Screen" was LEARNED as La Scala Ballet (`BannerHouses`: its works' searches find La Scala's
+  records), a banner sharing no word with the house and abbreviating none of it.
+- **The owner's choice (a), 2026-11-21:** a guard so a relay billing cannot take that record, as a general rule:
+  `namesTheHouse` — house-production now needs the banner to spell the house, share or contain one of its words (3+
+  letters: "NT Live" / National Theatre Live, "MetOpera" / the Metropolitan Opera), or abbreviate it ("RBO"). The
+  learned map still decides which house a naming banner is; `BannerHouses.other` (another house's denial) is unchanged.
+- **Second what-if, both changes** (all five countries, whole, final): 2 moved, both cures, 0 new wrong, 0 right lost —
+  the DE Tronthaim cure kept, the Bayadère gain gone, and UK Lowther "On Screen: Notre-Dame De Paris" (prod's take now)
+  leaves La Scala's 2013 record (tmdb:790330, judged wrong at every other Paris Notre-Dame relay) for none. The three
+  takes are judged in `identity-judgements.tsv` (AGENT-JUDGED 2026-11-21).
+- **Not tried:** honouring the `*` judgements of one relay family in the resolver (the judgements are gate data and the
+  projection's withdrawal, by exact billing): the banner guard cures the class without reading them.
