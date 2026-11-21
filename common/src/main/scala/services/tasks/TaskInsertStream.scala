@@ -3,8 +3,6 @@ package services.tasks
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
 
-import scala.concurrent.duration.FiniteDuration
-
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, OperationType}
 import org.mongodb.scala.{Document, Observer, Subscription}
 import play.api.Logging
@@ -34,7 +32,7 @@ import tools.ChangeStreamCallback
 final class TaskInsertStream(
   open:      Observer[ChangeStreamDocument[Document]] => Unit,
   onWaiting: Option[Instant] => Unit,
-  schedule:  (FiniteDuration, () => Unit) => Unit
+  schedule:  ChangeStreamReopen.Schedule
 ) extends Logging with AutoCloseable {
 
   private val subscription = new AtomicReference[Subscription]()

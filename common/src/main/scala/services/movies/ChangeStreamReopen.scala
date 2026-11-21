@@ -32,13 +32,13 @@ import play.api.Logging
  * the first delay for ever.
  *
  * `schedule` is the seam: production passes a daemon scheduler
- * ([[ChangeStreamReopen.onDaemonScheduler]]), specs pass a recorder that fires the
- * runnable when they say so.
+ * ([[ChangeStreamReopen.DaemonSchedule]]), specs pass a recorder that fires the
+ * runnable when they say so. [[close]] closes it too.
  */
 final class ChangeStreamReopen(
   name:     String,
   reopen:   () => Unit,
-  schedule: (FiniteDuration, () => Unit) => Unit,
+  schedule: ChangeStreamReopen.Schedule,
   delays:   Seq[FiniteDuration] = ChangeStreamReopen.DefaultDelays
 ) extends Logging with AutoCloseable {
 
@@ -67,8 +67,8 @@ final class ChangeStreamReopen(
       })
     }
 
-  /** Stop reopening — the last listener detached, or the repository is closing. */
-  override def close(): Unit = stopped.set(true)
+  /** Stop reopening for good — the repository or the watch is closing — and release the schedule. */
+  override def close(): Unit = { stopped.set(true); schedule.close() }
 }
 
 object ChangeStreamReopen {
@@ -76,17 +76,34 @@ object ChangeStreamReopen {
    *  that is down for an hour sees one attempt a minute rather than thousands. */
   val DefaultDelays: Seq[FiniteDuration] = Seq(1.second, 5.seconds, 15.seconds, 60.seconds)
 
-  /** Production wiring: a shared daemon scheduler thread per driver. The scheduled body
-   *  only re-subscribes a cursor, so it never blocks the scheduler for long. */
-  def onDaemonScheduler(name: String, reopen: () => Unit): ChangeStreamReopen =
-    new ChangeStreamReopen(name, reopen, daemonSchedule(name))
+  /** When a reopen runs: `run` after `delay`. Closed with its driver. */
+  trait Schedule extends AutoCloseable {
+    def apply(delay: FiniteDuration, run: () => Unit): Unit
+    override def close(): Unit = ()
+  }
 
-  /** The production `schedule` on its own, for a stream that builds its
-   *  [[ChangeStreamReopen]] itself (the reopen closes over the stream's own
-   *  subscribe, so it cannot be handed in from outside — see
-   *  [[services.tasks.TaskInsertStream]]). */
-  def daemonSchedule(name: String): (FiniteDuration, () => Unit) => Unit = {
-    val scheduler = tools.DaemonExecutors.scheduler(s"$name-reopen")
-    (delay, run) => { scheduler.schedule((() => run()): Runnable, delay.toMillis, TimeUnit.MILLISECONDS); () }
+  /** Production wiring: a daemon scheduler per driver ([[DaemonSchedule]]). */
+  def onDaemonScheduler(name: String, reopen: () => Unit): ChangeStreamReopen =
+    new ChangeStreamReopen(name, reopen, new DaemonSchedule(name))
+
+  /** The production schedule: one daemon thread, `<name>-reopen`, started by the first reopen it
+   *  schedules (most cursors never die, so most drivers never start one) and ended when its driver
+   *  closes -- a side-collection watch builds a driver per watch, and each one that had ever
+   *  reopened left its thread parked for the life of the process. The scheduled body only
+   *  re-subscribes a cursor, so it never blocks the thread for long. Also handed in on its own by a
+   *  stream that builds its [[ChangeStreamReopen]] itself ([[services.tasks.TaskInsertStream]]). */
+  final class DaemonSchedule(name: String) extends Schedule {
+    private var scheduler: Option[java.util.concurrent.ScheduledExecutorService] = None
+    private var closed = false
+
+    def apply(delay: FiniteDuration, run: () => Unit): Unit = synchronized {
+      if (!closed) {
+        val running = scheduler.getOrElse(tools.DaemonExecutors.scheduler(s"$name-reopen"))
+        scheduler = Some(running)
+        running.schedule((() => run()): Runnable, delay.toMillis, TimeUnit.MILLISECONDS); ()
+      }
+    }
+
+    override def close(): Unit = synchronized { closed = true; scheduler.foreach(_.shutdownNow()); scheduler = None }
   }
 }
