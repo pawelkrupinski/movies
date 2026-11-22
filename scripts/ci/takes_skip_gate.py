@@ -119,8 +119,8 @@ def trace_readings(trace: str) -> None:
 
 
 def proof_exit(command: Sequence[str], out: str, timeout: float) -> int:
-    """The proof's exit, its output (both streams) in `out`; it runs in a process group of its own, ended past
-    `timeout` (124)."""
+    """The proof's exit, its output (both streams) in `out`. It runs in a process group of its own, ended past
+    `timeout` (124) and when the gate itself is ended (INT, TERM): a caller's bound strands no proof."""
     with open(out, "w") as sink:
         try:
             proc = subprocess.Popen(list(command), stdout=sink, stderr=subprocess.STDOUT, start_new_session=True)
@@ -128,12 +128,26 @@ def proof_exit(command: Sequence[str], out: str, timeout: float) -> int:
             return 126
         except OSError:
             return 127
+
+        def end(signum: int, _frame: object) -> NoReturn:
+            end_group(proc)
+            sys.exit(128 + signum)
+
+        for signum in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(signum, end)
         try:
             return proc.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
-            os.killpg(proc.pid, signal.SIGKILL)
-            proc.wait()
+            end_group(proc)
             return 124
+
+
+def end_group(proc: subprocess.Popen[bytes]) -> None:
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except OSError:
+        pass
+    proc.wait()
 
 
 def proof_readings(command: Sequence[str], trace: str, env: Mapping[str, str]) -> int:

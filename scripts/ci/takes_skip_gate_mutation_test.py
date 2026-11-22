@@ -40,6 +40,7 @@ MUTANTS: Dict[str, Tuple[str, str]] = {
     "a proof of nothing is allowed": ("require(readings > 0,", "require(True,"),
     "a differ row is ignored": ("require(not (os.path.isfile(differ)", "require(True or (os.path.isfile(differ)"),
     "the proof is unbounded": ("return proc.wait(timeout=timeout)", "return proc.wait()"),
+    "an ended gate strands its proof": ("signal.signal(signum, end)", "pass"),
 }
 
 

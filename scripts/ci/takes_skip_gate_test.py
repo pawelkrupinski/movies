@@ -11,6 +11,7 @@ from __future__ import annotations
 import gzip
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -272,6 +273,21 @@ class TakesSkipGateTest(cli_harness.ToolCase):
 
     def test_a_proof_that_hangs_is_cut_off_leaving_nothing_running(self) -> None:
         self.assertEqual("RUN 1 1", f"{self.decide('rules', proof='hang')} {self.because('the proof exited 124')}")
+        self.assertEqual(0, cli_harness.still_running(self.hung))
+
+    def test_a_gate_ended_mid_proof_ends_its_proof_too(self) -> None:
+        s = self.shared
+        gate = subprocess.Popen([self.TOOL, s.base, s.commits["rules"], s.trace, "--", s.proof], cwd=s.repo,
+                                env=self.env({"TAKES_SKIP_MODE": "shadow", "STUB_PROOF": "hang", "PROOF_LOG": self.proof_log,
+                                              "PROOF_HUNG": self.hung}),
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            self.assertTrue(cli_harness.wait_until(lambda: os.path.getsize(self.hung) > 0))
+            gate.send_signal(signal.SIGTERM)
+            self.assertNotEqual(0, gate.wait(timeout=60))
+        finally:
+            gate.kill()
+            gate.wait()
         self.assertEqual(0, cli_harness.still_running(self.hung))
 
     def test_a_proof_command_that_does_not_exist_is_run(self) -> None:
