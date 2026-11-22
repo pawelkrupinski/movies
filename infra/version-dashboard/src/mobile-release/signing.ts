@@ -6,7 +6,7 @@
  */
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { Secrets } from "../mobile/stores.js";
+import type { Secrets } from "../app-stores/clients.js";
 
 /** Runs `argv` with `env` added to this process's environment; resolves to its exit code. */
 export type SignedRun = (argv: readonly string[], env: Readonly<Record<string, string>>) => Promise<number>;

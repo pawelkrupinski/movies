@@ -8,7 +8,7 @@ import { dirname } from "node:path";
 import { parseArgs } from "node:util";
 import { REPO_DIR } from "../shared/config.js";
 import { runCommand } from "../shared/exec.js";
-import { ascApi, playClient, secretsFromEnvironmentFirst, vaultSecrets } from "../mobile/stores.js";
+import { ascApi, playClient, secretsFromEnvironmentFirst, vaultSecrets } from "../app-stores/clients.js";
 import { notesFrom, readNotesDir } from "./notes.js";
 import { PLATFORMS, type Platform } from "./plan.js";
 import { release } from "./release.js";

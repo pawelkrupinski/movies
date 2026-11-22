@@ -8,7 +8,7 @@
  * back in a fresh edit, never trust the exit status.
  */
 import { HttpError } from "../shared/http.js";
-import type { PlayApi } from "../mobile/stores.js";
+import type { PlayApi } from "../app-stores/clients.js";
 import { PLAY_NOTES_LIMIT, type Notes } from "./notes.js";
 import { isVersion } from "./version.js";
 

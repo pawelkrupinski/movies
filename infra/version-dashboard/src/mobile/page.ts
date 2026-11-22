@@ -2,13 +2,14 @@ import type { FastifyInstance } from "fastify";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { ascApi, playClient, RELEASE_SECRET_NAMES, SECRETS_BIN, VAULT_NAMESPACE, vaultSecrets } from "../app-stores/clients.js";
 import { CACHE_DIR, REPO_DIR } from "../shared/config.js";
 import type { Page } from "../shared/page.js";
 import type { MobileSources } from "./build.js";
 import { MobileLive } from "./live.js";
 import type { MobileState } from "./model.js";
 import { realDetachedProcesses, ReleaseRuns } from "./release-run.js";
-import { androidReleaseState, ascApi, iosReleaseState, playClient, RELEASE_SECRET_NAMES, SECRETS_BIN, VAULT_NAMESPACE, vaultSecrets } from "./stores.js";
+import { androidReleaseState, iosReleaseState } from "./stores.js";
 import { renderMobile } from "./view.js";
 
 type WakeSource = { readonly onWake: (listener: () => void) => void };

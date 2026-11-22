@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dnsFailure, fetchFailed } from "./errors.js";
 import { HttpError } from "../../src/shared/http.js";
-import { describeError, isTransientNetworkError, NETWORK_RETRY_DELAYS_MS, withNetworkRetries } from "../../src/mobile/network.js";
+import { describeError, isTransientNetworkError, NETWORK_RETRY_DELAYS_MS, withNetworkRetries } from "../../src/app-stores/network.js";
 
 
 describe("transient network error classification", () => {

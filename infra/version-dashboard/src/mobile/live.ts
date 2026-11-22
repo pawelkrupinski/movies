@@ -5,7 +5,7 @@
 import { Store } from "../shared/store.js";
 import { buildMobile, nextBuildDelayMs, type MobileSources } from "./build.js";
 import { allPlatformsNetworkFailed, emptyMobileState, type MobileState, type ReleaseRun } from "./model.js";
-import { describeError } from "./network.js";
+import { describeError } from "../app-stores/network.js";
 
 /**
  * Consecutive builds that failed for a network reason on EVERY platform, after which the process

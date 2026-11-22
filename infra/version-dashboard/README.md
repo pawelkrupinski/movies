@@ -19,11 +19,12 @@ http://127.0.0.1:8788 — two pages from one process:
   kills it, and the new process picks its console back up.
 
 The same package also holds the mobile release lane, `src/mobile-release/` (run as
-`scripts/mobile-ship.sh`), which reuses the page's App Store Connect and Play clients; it is a
+`scripts/mobile-ship.sh`), which shares the page's App Store Connect and Play clients; it is a
 command-line tool, never served.
 
 Layout: `src/` holds the process (server, the `pages.ts` composition root, autodeploy) and the
-fleet page; `src/mobile/` and `src/mobile-release/` the mobile page and lane; `src/shared/` what
+fleet page; `src/mobile/` and `src/mobile-release/` the mobile page and lane, and `src/app-stores/` the
+store clients, the vault holding their keys and the network retries both use; `src/shared/` what
 they all build on (config, the command and HTTP seams, fleetkit's html/store, the page type, time
 formatting), importing nothing back.
 

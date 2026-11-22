@@ -17,7 +17,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { RELEASE_REMOTE } from "../shared/config.js";
 import { describeFailure, type Executor } from "../shared/exec.js";
-import { retryingReads, type AscApi, type PlayApi, type Secrets, type Sleep } from "../mobile/stores.js";
+import { retryingReads, type AscApi, type PlayApi, type Secrets, type Sleep } from "../app-stores/clients.js";
 import { inspectAndroid, internalBuildFor, nextVersionCode, promoteAndroid, type AndroidState } from "./android.js";
 import { deliveryUuid, describeIosPlan, existingBuild, inspectIos, planIosVersion, submitIos, type IosState } from "./ios.js";
 import type { Notes } from "./notes.js";

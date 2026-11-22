@@ -2,20 +2,19 @@ import { generateKeyPairSync, verify } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { HttpError, setHttpClient, type HttpClient, type HttpRequest } from "../../src/shared/http.js";
 import {
-  androidReleaseState,
   ascApi,
   ascToken,
-  iosReleaseState,
   playAssertion,
   playClient,
-  type PlayApi,
-  type Secrets,
-  VaultLockedError,
   RELEASE_SECRET_NAMES,
   secretsFromEnvironmentFirst,
   unlockingWhenLocked,
   vaultSecrets,
-} from "../../src/mobile/stores.js";
+  VaultLockedError,
+  type PlayApi,
+  type Secrets,
+} from "../../src/app-stores/clients.js";
+import { androidReleaseState, iosReleaseState } from "../../src/mobile/stores.js";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { CommandOptions, CommandResult } from "../../src/shared/exec.js";

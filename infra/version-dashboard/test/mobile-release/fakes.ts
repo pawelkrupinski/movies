@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import type { AscApi, HttpMethod, PlayApi } from "../../src/mobile/stores.js";
+import type { AscApi, HttpMethod, PlayApi } from "../../src/app-stores/clients.js";
 
 export const fixture = (name: string): string => readFileSync(join(import.meta.dirname, "fixtures", name), "utf8");
 export const fixtureJson = (name: string): unknown => JSON.parse(fixture(name)) as unknown;

@@ -15,7 +15,7 @@
  * decision for a person, not for this script.
  */
 import { HttpError } from "../shared/http.js";
-import { IOS_APP_ID, type AscApi, type Sleep } from "../mobile/stores.js";
+import { IOS_APP_ID, type AscApi, type Sleep } from "../app-stores/clients.js";
 import type { Notes } from "./notes.js";
 
 export const EDITABLE = new Set(["PREPARE_FOR_SUBMISSION", "READY_FOR_REVIEW", "DEVELOPER_REJECTED", "REJECTED", "METADATA_REJECTED", "INVALID_BINARY"]);

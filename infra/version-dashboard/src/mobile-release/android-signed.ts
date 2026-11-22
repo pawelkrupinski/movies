@@ -6,7 +6,7 @@
  */
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
-import { unlockingWhenLocked, vaultSecrets } from "../mobile/stores.js";
+import { unlockingWhenLocked, vaultSecrets } from "../app-stores/clients.js";
 import { runSigned, type SignedRun } from "./signing.js";
 
 /** Interactive: the child shares this terminal, and runs for as long as it takes (no timeout). */
