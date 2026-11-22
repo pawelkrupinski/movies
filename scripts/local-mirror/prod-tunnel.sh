@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # The one place that knows HOW a laptop reaches prod Mongo. Sourced by every
-# local script whose source is prod: mirror.sh (the /debug mirror daemon),
-# sync-enrichment-cache.sh, ../reset-corpus.sh.
+# local script whose source is prod: mirror.sh (the /debug mirror daemon) and
+# ../reset-corpus.sh.
 #
 # WHY THIS FILE EXISTS AT ALL. Those scripts had their own copies of the same
 # "nc -z :27017 || flyctl proxy" block. When prod moved off the Fly app

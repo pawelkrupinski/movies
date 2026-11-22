@@ -443,8 +443,8 @@ is why nothing downstream changed: `seed.js`, `tail.js`, `staleness.js`,
 work here anyway — the mirror's steady state is `tail.js` holding a **change
 stream** open for days, which is a live cursor, not a dump.
 
-All of it lives in **`prod-tunnel.sh`**, sourced by `mirror.sh`,
-`sync-enrichment-cache.sh` and `../reset-corpus.sh`.
+All of it lives in **`prod-tunnel.sh`**, sourced by `mirror.sh` and
+`../reset-corpus.sh`.
 Before, those scripts carried their own copies of the same `nc -z || flyctl proxy`
 block, and a move like this had to find every one of them — the copy that got
 missed would go on dialling a stopped machine and fail like a network blip

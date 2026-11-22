@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# ONE-SHOT: delete this tool (and fleet-db-finish-test.sh) once its --drop has run; the drop waits for the owner's word
+# that the fleet-database soak is over (docs/fleet-database-migration.md, step 9).
 # Step 9 of docs/fleet-database-migration.md: the fleet's three old collections in Poland's `kinowo`, counted, and
 # dropped only on an explicit, exact request.
 #
