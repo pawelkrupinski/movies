@@ -53,7 +53,7 @@ scripts/ci-sbt	MIGRATE
 scripts/ci-status	KEEP
 scripts/ci-wait	KEEP
 scripts/ci/alert-step.sh	KEEP
-scripts/ci/archive-recording.sh	MIGRATE
+scripts/ci/archive-recording.sh	KEEP
 scripts/ci/bounded-step.sh	KEEP
 scripts/ci/build-image.sh	MIGRATE
 scripts/ci/cache-marker.sh	KEEP

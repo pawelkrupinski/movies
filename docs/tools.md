@@ -219,7 +219,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (189)
+## Identity (190)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -245,7 +245,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/scripts/convergence_setup_unpack.py` | convergence_setup.py's `corpus` (the recorded scrape corpus into ./scrape-archive) and `unpack` (the staged tree | `imported` | 1 tool | - | Python |
 | `.github/scripts/kick-convergence.sh` | Dispatch each convergence suite whose verdict this push could change — and only those | `.github/scripts/kick-convergence.sh` | wf main; 5 tools | kick_convergence_test.py | KEEP |
 | `.github/scripts/kick_convergence.py` | Dispatch each convergence suite whose verdict this push could change — and ONLY those. | `.github/scripts/kick_convergence.py` | 1 tool | kick_convergence_test.py | Python |
-| `.github/workflows/archive-recording.yml` | Archive a "Record scrape fixtures" recording into the permanent `identity-recordings` release | `workflow: workflow_dispatch` | 1 tool | - | - |
+| `.github/workflows/archive-recording.yml` | Archive a "Record scrape fixtures" recording into the permanent `identity-recordings` release | `workflow: workflow_dispatch` | 2 tools | - | - |
 | `.github/workflows/convergence-bisect.yml` | The auto-bisect — which commit turned a country's hermetic convergence leg red? | `workflow: workflow_dispatch` | wf country-convergence-leg, identity-model-convergence; 3 tools | - | - |
 | `.github/workflows/convergence-daily.yml` | One full convergence of main a day, whatever main's pushes did | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf country-convergence-leg, identity-takes; skill CLAUDE.md, identity-investigation; 1 tool | - | - |
 | `.github/workflows/convergence-fill.yml` | The long fill, by hand: what the last hermetic convergence leg of each country could not answer from its pinned pair | `workflow: workflow_dispatch` | wf identity-model-convergence; 1 tool | - | - |
@@ -265,7 +265,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/identity-takes.yml` | The identity takes suite -- every country's takes as the identity model decides them, judged base against head | `workflow: workflow_call, workflow_dispatch` | wf identity-drift-explorer, identity-model-convergence; hook pre-push; agentctl; skill identity-investigation; 16 tools | - | - |
 | `.github/workflows/verify-scrape-recording.yml` | The verify phase of the nightly recording: main's code judged hermetically against one recording | `workflow: workflow_dispatch` | wf country-convergence-leg, record-scrape-fixtures; 5 tools | - | - |
 | `scripts/ci/ablation_preflight.py` | IDENTITY RULE ABLATION'S PREFLIGHT (.github/workflows/identity-rule-ablation.yml, "Preflight the inputs"): what CAN be | `scripts/ci/ablation_preflight.py` | wf identity-rule-ablation | ablation_preflight_test.py | Python |
-| `scripts/ci/archive-recording.sh` | Copy "Record scrape fixtures" recordings into the permanent archive release (.github/workflows/archive-recording.yml) | `scripts/ci/archive-recording.sh` | wf archive-recording | archive-recording-test.sh | MIGRATE |
+| `scripts/ci/archive-recording.sh` | Copy "Record scrape fixtures" recordings into the permanent archive release (.github/workflows/archive-recording.yml) | `scripts/ci/archive-recording.sh` | wf archive-recording; 1 tool | archive_recording_test.py | KEEP |
+| `scripts/ci/archive_recording.py` | Copy "Record scrape fixtures" recordings into the permanent archive release (.github/workflows/archive-recording.yml). | `scripts/ci/archive_recording.py` | 1 tool | archive_recording_test.py | Python |
 | `scripts/ci/convergence-preflight.sh` | Check in seconds that the pair every convergence leg will replay exists, before any leg takes a runner | `scripts/ci/convergence-preflight.sh` | wf archive-recording, identity-model-convergence, identity-takes +1; 2 tools | convergence_preflight_test.py | KEEP |
 | `scripts/ci/convergence_paths.py` | THE CONVERGENCE PATHS' CI PART, GENERATED: every repository file the convergence workflows run. | `scripts/ci/convergence_paths.py` | hook pre-commit | convergence_paths_test.py | Python |
 | `scripts/ci/convergence_preflight.py` | THE PAIR EVERY LEG WILL REPLAY EXISTS, checked in seconds before any leg takes a runner (identity-model-convergence.yml's | `scripts/ci/convergence_preflight.py` | wf identity-takes; 1 tool | convergence_preflight_test.py | Python |
@@ -595,11 +596,11 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 5 tools | tool_actions_test.py | Python |
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; scripts/ci/dispatch.sh's | `imported` | 3 tools | tool_ci_wait_test.py | Python |
 | `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | 9 tools | - | Python |
-| `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 10 tools | - | Python |
+| `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 11 tools | - | Python |
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the Python tools do it (scripts/lib; the shell | `imported` | 10 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 12 tools | tool_git_test.py | Python |
-| `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 13 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 59 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 14 tools | tool_github_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 60 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | 12 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 5 tools | - | KEEP |
@@ -626,7 +627,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/source-refresh` | Ask a country's prod worker to fetch again what one stored external source holds for given keys | `scripts/source-refresh` | by hand | source-refresh-test.sh | KEEP |
 | `scripts/timezonefinder-python` | Print a directory whose python3 imports timezonefinder, for the pre-push drift check | `scripts/timezonefinder-python` | hook pre-push; 3 tools | timezonefinder-python-test.sh | KEEP |
 | `scripts/timezonefinder-python-stub.sh` | A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder | `sourced` | by hand | - | KEEP |
-| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 72 tools | tool-conventions-test.sh | MIGRATE |
+| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 71 tools | tool-conventions-test.sh | MIGRATE |
 | `scripts/tool_catalogue.py` | The tool catalogue: docs/tools.md, generated from every tool's own one-line purpose. | `python3 scripts/tool_catalogue.py` | skill CLAUDE.md | tool_catalogue_test.py | Python |
 | `scripts/touched-tree-stub.sh` | The stub sbt for the touched-code tools' specs (mutation-check, coverage-touched) | `scripts/touched-tree-stub.sh` | by hand | - | KEEP |
 | `scripts/touched-tree.sh` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `bash scripts/touched-tree.sh` | skill test-layers; 2 tools | - | MIGRATE |
