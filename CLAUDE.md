@@ -359,6 +359,11 @@ file 500, clone sets of 50+ tokens, fan-out 9, directory D 0.20, no module or di
 Scala ratchet's trailer (`Complexity:`, `Length:`, `Duplication:`, `Coupling:`); `scripts/js-quality-report --update`
 records falls, and `scripts/ratchet-diff` lists its rows as `js <kind>`. Tests, page tests, Playwright and scripts are
 reported (`scripts/js-quality-report`), never gated. No rename credit: a moved file's rows are new rows.
+**The Python quality ratchet** (the owner, 2026-11-22, with the shell-to-Python migration; pre-push `pyquality`) holds every
+Python tool (`scripts/`, `.github/scripts/`, `infra/bin/`, `infra/nix/files/`, `android/` / `ios/scripts/`) to
+`test/resources/py-quality-baseline.tsv` on the same limits and trailers, plus a strict-pyright error count that only falls
+(`Typing:`); `scripts/py-quality-report --update` records falls. A migrated tool keeps its path, CLI and output, and its
+black-box `<tool>_test.py` (`scripts/lib/cli_harness.py`) passes byte-unchanged on the shell tool and on the Python one.
 **The naming lint** (`scripts/ci/naming_lint.py`, the same step; the owner's "names must match behaviour", 2026-11-19):
 two top-level types of one package named with the same words in another order (`PruneSweep` / `SweepPrune`) refuse the
 push -- rename one after what makes it distinct (a pair mid-rename sits in its `ALLOWED_PERMUTATIONS` with an owner); a
