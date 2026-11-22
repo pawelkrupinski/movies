@@ -11,14 +11,6 @@
 limit	copies	0
 limit	clone-tokens	50
 copies	base/src/main/scala/tools/TextNormalization.scala|identity/src/main/scala/services/identity/measures/TitleTextMeasures.scala	2
-copies	common/src/main/scala/models/GermanRoster.scala|common/src/main/scala/models/SpanishRoster.scala	2
 copies	common/src/main/scala/services/movies/InPlaceMovieUpdate.scala|common/src/main/scala/services/movies/WholeRecordUpsert.scala	2
-copies	common/src/main/scala/services/scrapes/ScrapeArchiveCodecs.scala|scrapers/src/main/scala/services/cinemas/common/CinemaMovieJson.scala	2
 copies	common/src/main/scala/tools/KeysetScan.scala	2
 copies	identity/src/main/scala/services/identity/measures/PinnedGateMeasures.scala|identity/src/main/scala/services/identity/measures/SearchMeasures.scala	2
-copies	scrapers/src/main/scala/services/cinemas/common/SlotsToMovies.scala	4
-copies	scrapers/src/main/scala/services/cinemas/pl/AmondoClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinotekaClient.scala	2
-copies	scrapers/src/main/scala/services/cinemas/pl/IksorisBookingClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoFenomenClient.scala	2
-copies	scrapers/src/main/scala/services/cinemas/pl/IksorisBookingClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoStylowyClient.scala	2
-copies	scrapers/src/main/scala/services/cinemas/pl/KinoFenomenClient.scala|scrapers/src/main/scala/services/cinemas/pl/KinoStylowyClient.scala	2
-copies	worker/src/main/scala/services/enrichment/MetascoreRatings.scala|worker/src/main/scala/services/enrichment/RottenTomatoesRatings.scala	2
