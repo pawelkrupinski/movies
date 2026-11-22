@@ -71,7 +71,7 @@ final class RepertoireStore {
     func use(country: Country) {
         // Always adopt the country's zone (even if the URL is unchanged) so the
         // re-prune reasons in the right wall-clock.
-        timeZone = country.timeZone
+        adopt(zone: country.timeZone)
         guard endpoint.repoint(base: country.baseURL) else { return }
         // The new deployment has its own cinema roster/areas — drop the stale one.
         catalog = .empty
@@ -88,7 +88,7 @@ final class RepertoireStore {
     /// unchanged — re-selecting the same slug on a different country lands here —
     /// so the re-prune always reasons in the city actually being shown.
     func use(citySlug: String, timeZone: TimeZone? = nil) {
-        if let timeZone { self.timeZone = timeZone }
+        if let timeZone { adopt(zone: timeZone) }
         guard endpoint.repoint(citySlug: citySlug) else { return }
         // A new city has its own cinemas/areas — clear so the split panel doesn't
         // briefly show the previous city's areas mid-switch.
@@ -96,6 +96,18 @@ final class RepertoireStore {
         catalogCitySlug = nil
         resetForCitySwitch()
         Task { await reload() }
+    }
+
+    /// Reason in `zone` from now on. The UI-test fixture is dated in the store's
+    /// zone, so it is served again in the new one: the grid judges "today" in
+    /// the city's zone, and a fixture dated in the old one is a day off for part
+    /// of every day (a UK launch at 23:00-24:00 London dated it on Warsaw's
+    /// tomorrow, and "Today" read "No showtimes.": Order independence #102).
+    private func adopt(zone: TimeZone) {
+        timeZone = zone
+        if RepertoireStore.uiTestFixtureEnabled {
+            films = RepertoireStore.uiTestFixture(now: Date(), zone: zone)
+        }
     }
 
     /// Drop the OUTGOING city/deployment's repertoire so `content`'s
@@ -118,7 +130,7 @@ final class RepertoireStore {
         // Warm-start UI-test hook: deliver the fixture synchronously so the grid
         // mounts at first paint, exactly like a warm disk cache.
         if RepertoireStore.uiTestFixtureEnabled {
-            films = RepertoireStore.uiTestFixture
+            films = RepertoireStore.uiTestFixture(now: now, zone: timeZone)
             return
         }
         if films.isEmpty, let cached = endpoint.cachedBody() {
@@ -268,7 +280,10 @@ extension RepertoireStore {
     /// content inset actually matters. No poster URLs unless
     /// `KINOWO_UITEST_SEED_POSTER=1`: the cards lay out from their fixed
     /// aspect ratio, keeping the test fully offline.
-    static var uiTestFixture: [Film] {
+    ///
+    /// Its days are `now`'s calendar days in `zone`, the zone the store (and the
+    /// grid's "today") reasons in, never Warsaw's: see `adopt(zone:)`.
+    static func uiTestFixture(now: Date, zone: TimeZone) -> [Film] {
         let poster = uiTestPosterSeedEnabled ? uiTestSeededPosterURL : nil
         return (1...12).map { n in
             Film(
@@ -295,8 +310,8 @@ extension RepertoireStore {
                 // exercised (DaySwipeCardsVisibleUITests). A today-only fixture
                 // left every neighbour empty.
                 showings: [
-                    fixtureDay(offsetDays: 0, label: "Dziś"),
-                    fixtureDay(offsetDays: 1, label: "Jutro")
+                    fixtureDay(offsetDays: 0, label: "Dziś", now: now, zone: zone),
+                    fixtureDay(offsetDays: 1, label: "Jutro", now: now, zone: zone)
                 ]
             )
         }
@@ -327,11 +342,14 @@ extension RepertoireStore {
         ("23:59", "Sala 4 – Dolby Atmos IMAX Laser"),
     ]
 
-    /// One fixture day, `offsetDays` from now, carrying a single late slot so it
-    /// survives `pruneStaleShowings`.
-    private static func fixtureDay(offsetDays: Int, label: String) -> DayShowings {
-        DayShowings(
-            date: DateFilter.iso(Date().addingTimeInterval(Double(offsetDays) * 86_400)),
+    /// One fixture day, `offsetDays` calendar days after `now`'s in `zone`,
+    /// carrying a single late slot so it survives `pruneStaleShowings`.
+    private static func fixtureDay(offsetDays: Int, label: String, now: Date, zone: TimeZone) -> DayShowings {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let day = calendar.date(byAdding: .day, value: offsetDays, to: now) ?? now
+        return DayShowings(
+            date: DateFilter.iso(day, zone: zone),
             label: label,
             cinemas: fixtureCinemas
         )
@@ -374,6 +392,6 @@ extension RepertoireStore {
 extension RepertoireStore {
     /// Release builds read no UI-test hook: the network always serves the listing.
     static let uiTestFixtureEnabled = false
-    static var uiTestFixture: [Film] { [] }
+    static func uiTestFixture(now: Date, zone: TimeZone) -> [Film] { [] }
 }
 #endif
