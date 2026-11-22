@@ -24,6 +24,10 @@ SWIFT
 cat >"$tmp/bin/xcodebuild" <<'SH'
 #!/usr/bin/env bash
 for arg in "$@"; do case "$arg" in -only-testing:*) class=${arg##*/} ;; esac; done
+case "$*" in *runner-warm-up.xcresult*)  # the runner's warm-up: recorded in order, fails when $RUNNER_WARMUP_FAILS
+  for arg in "$@"; do case "$arg" in -only-testing:*) echo "xcodebuild warm-up ${arg#-only-testing:KinowoUITests/}" >>"$CALLS.order" ;; esac; done
+  [ -z "${RUNNER_WARMUP_FAILS:-}" ]; exit ;;
+esac
 echo "$class" >>"$CALLS"
 echo "xcodebuild $class" >>"$CALLS.order"
 echo "$*" >>"$CALLS.args"
@@ -78,11 +82,17 @@ check "and ORDER_FAILED_FILE, a class a line, for the control pass" "BetaUITests
 alone "" "$tmp/tests"
 check "all passing: the step passes" "0" "$code"
 check "the built app is installed and launched once on the destination before the first class, as a test launches it (#82: a bare launch asked for the location), then ended" \
-  "simctl install SIM build/dd/Build/Products/Debug-iphonesimulator/Kinowo.app|simctl launch SIM dev.kinowo.Kinowo -UITests 1 -selectedCountryCode pl -selectedLanguageCode pl -AppleLanguages (pl) -AppleLocale pl -selectedCity warszawa|fixture=1 city=warszawa|simctl terminate SIM dev.kinowo.Kinowo|xcodebuild AlphaUITests" \
-  "$(head -5 "$tmp/calls.order" | paste -sd '|' -)"
+  "simctl install SIM build/dd/Build/Products/Debug-iphonesimulator/Kinowo.app|simctl launch SIM dev.kinowo.Kinowo -UITests 1 -selectedCountryCode pl -selectedLanguageCode pl -AppleLanguages (pl) -AppleLocale pl -selectedCity warszawa|fixture=1 city=warszawa|simctl terminate SIM dev.kinowo.Kinowo" \
+  "$(head -4 "$tmp/calls.order" | paste -sd '|' -)"
+# #115: the runner's own first run (~70 s on a fresh Simulator) fell inside the first class, CardShareMenuUITests
+check "...then the XCUITest runner runs one quick test, outside any class, before the first class" \
+  "xcodebuild warm-up RepertoireLaunchUITests/testAppLaunches|xcodebuild AlphaUITests" "$(sed -n '5,6p' "$tmp/calls.order" | paste -sd '|' -)"
+RUNNER_WARMUP_FAILS=1 alone "" "$tmp/tests"
+check "a failed runner warm-up only warns: every class still runs and the step passes" "0 3 1" \
+  "$code $(grep -c '^xcodebuild [A-Z]' "$tmp/calls.order") $(printf '%s\n' "$out" | grep -c '::warning::the XCUITest runner warm-up')"
 WARMUP_FAILS=1 alone "" "$tmp/tests"
 check "a failed warm-up only warns: every class still runs and the step passes" "0 3 1" \
-  "$code $(grep -c '^xcodebuild ' "$tmp/calls.order") $(printf '%s\n' "$out" | grep -c '::warning::the Simulator warm-up launch')"
+  "$code $(grep -c '^xcodebuild [A-Z]' "$tmp/calls.order") $(printf '%s\n' "$out" | grep -c '::warning::the Simulator warm-up launch')"
 check "all passing: no error at all" "0" "$(printf '%s\n' "$out" | grep -c '::error')"
 
 alone "" "$tmp/none"

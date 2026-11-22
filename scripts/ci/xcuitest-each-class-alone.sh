@@ -11,7 +11,8 @@
 # a script and not the workflow's `run:` block: GitHub echoes a `run:` block into the log, and its
 # `echo "::error::..."` lines were read as the failure -- Order independence #28-#31 failed in four different ways
 # and read as one red. Each test is bounded: a hung one fails at its allowance, naming itself.
-# Result bundles and logs: build/alone/<class>.xcresult, build/alone/<class>.log.
+# Result bundles and logs: build/alone/<class>.xcresult, build/alone/<class>.log (the runner's warm-up:
+# build/alone/runner-warm-up.*). XCUITEST_WARMUP_TEST (default RepertoireLaunchUITests/testAppLaunches) is its test.
 # XCUITEST_DIR (default ios/KinowoUITests) stands in for the classes' directory in its test.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -47,6 +48,26 @@ else
 fi
 
 mkdir -p build/alone
+
+# AND THE TEST RUNNER'S FIRST RUN BEFORE THE FIRST CLASS (Order independence #115): the app warm, XCUITest's own first
+# run on a fresh Simulator -- its runner app's install and launch, the automation session, the accessibility stack --
+# still cost ~70 s, and it fell inside whichever class sorts first: CardShareMenuUITests' long-press test took 81 s
+# (13.7 s warm) and its hold read as no press, labelled ORDER by the control pass though no class ran before it. One
+# throwaway run of a quick test pays it; it only warns, its result counts for nothing.
+warm_test="${XCUITEST_WARMUP_TEST:-RepertoireLaunchUITests/testAppLaunches}"
+started=$SECONDS
+if bounded 600 xcodebuild test-without-building \
+    -project ios/Kinowo.xcodeproj \
+    -scheme Kinowo \
+    -destination "$DESTINATION" \
+    -derivedDataPath build/dd \
+    -only-testing:"KinowoUITests/$warm_test" \
+    -resultBundlePath build/alone/runner-warm-up.xcresult \
+    CODE_SIGNING_ALLOWED=NO > build/alone/runner-warm-up.log 2>&1; then
+    echo "warmed the XCUITest runner: $warm_test once in $((SECONDS - started))s"
+else
+    echo "::warning::the XCUITest runner warm-up ($warm_test) failed after $((SECONDS - started))s: the first class pays the runner's first run"
+fi
 classes=$(grep -hoE 'class[[:space:]]+[A-Za-z0-9_]+[[:space:]]*:[[:space:]]*XCTestCase' "$dir"/*.swift \
     | sed -E 's/class[[:space:]]+([A-Za-z0-9_]+).*/\1/' | sort -u)
 [ -n "$classes" ] || { echo "::error::no XCUITest classes found in $dir"; exit 1; }
