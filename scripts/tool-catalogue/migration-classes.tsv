@@ -5,11 +5,11 @@
 .github/actions/drop-bot-branch/drop.sh	KEEP
 .github/actions/mark-grafana-deploy/mark.sh	KEEP
 .github/scripts/convergence-bisect-step.sh	KEEP
-.github/scripts/convergence-bisect.sh	MIGRATE
-.github/scripts/convergence-fill.sh	MIGRATE
+.github/scripts/convergence-bisect.sh	KEEP
+.github/scripts/convergence-fill.sh	KEEP
 .github/scripts/convergence-findings-summary.sh	KEEP
-.github/scripts/convergence-publish.sh	MIGRATE
-.github/scripts/convergence-setup.sh	MIGRATE
+.github/scripts/convergence-publish.sh	KEEP
+.github/scripts/convergence-setup.sh	KEEP
 .github/scripts/fixture-server.sh	KEEP
 .github/scripts/fleetkit-access.sh	KEEP
 .github/scripts/kick-convergence.sh	KEEP
