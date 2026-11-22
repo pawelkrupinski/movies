@@ -458,6 +458,13 @@ check "...and the leftovers are where the run left them" "x y" \
   "$(cat "$tree/scripts/left-behind.txt") $(cat "$tree/scripts/tools/node_modules/pkg/i.js")"
 rm -rf "$tree/scripts/left-behind.txt" "$tree/scripts/tools"
 check "a clean test passes, the check saying nothing" "0 0" "$(run clean-test) $(grep -c 'left in the checkout' "$work/out")"
+# macOS metadata is no test's: agentctl's maintain pass drops Spotlight's `.metadata_never_index` in every worktree
+# (and keeps it out of `git status` through info/exclude, which --ignored still lists), Finder a `.DS_Store` anywhere --
+# made beside a run, they once failed whichever test was running (pre-push-test.sh POLLUTE)
+put scripts/finder-test.sh 'touch .metadata_never_index scripts/.DS_Store; sleep 1'
+check "macOS metadata made in the checkout during a test is no leftover" "0 0" \
+  "$(run finder-test) $(grep -c 'left in the checkout' "$work/out")"
+rm -f "$tree/.metadata_never_index" "$tree/scripts/.DS_Store" "$tree/scripts/finder-test.sh"
 # made once only (as an edit beside the run would be): not this test's, said and not failed
 put scripts/once-test.sh "[ -e '$work/once-made' ] || { touch '$work/once-made'; echo z > scripts/edited-beside.txt; }"
 check "a path no test makes again when run alone is said, and does not fail the run" "0 1" \

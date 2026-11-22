@@ -533,8 +533,13 @@ tree_check_on() { # the run checks the checkout: asked to, a git checkout, writa
   [ "$tree_check_flag" != 0 ] && [ -w "$root" ] && command -v python3 > /dev/null \
     && [ "$(git -C "$root" rev-parse --is-inside-work-tree 2> /dev/null)" = true ]
 }
+# macOS's own metadata is no test's leftover: agentctl's maintain pass drops Spotlight's `.metadata_never_index` in every
+# worktree (out of `git status` through info/exclude, which --ignored lists all the same) and Finder a `.DS_Store`
+# anywhere -- made beside a run, each was charged to whichever test was running (pre-push-test.sh POLLUTE)
 tree_state() { # the checkout's state, a sorted line a path: XY and the path (new and ignored ones too, not their insides)
-  GIT_OPTIONAL_LOCKS=0 git -C "$root" status --porcelain=v1 --ignored --untracked-files=normal 2> /dev/null | LC_ALL=C sort
+  GIT_OPTIONAL_LOCKS=0 git -C "$root" status --porcelain=v1 --ignored --untracked-files=normal 2> /dev/null \
+    | awk '{ n = split(substr($0, 4), part, "/") } part[n] != ".metadata_never_index" && part[n] != ".DS_Store"' \
+    | LC_ALL=C sort
 }
 # <paths file> -> path<TAB>ctime (float) of each, or of its nearest ancestor that exists (a path deleted)
 ctimes() {
