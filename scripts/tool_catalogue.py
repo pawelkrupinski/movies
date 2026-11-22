@@ -131,7 +131,7 @@ def first_sentence(text: str, limit: int = 160) -> str:
 def block_scalar(lines: List[str]) -> str:
     """The text of a YAML block scalar's indented lines, up to the first line indented less than its first."""
     indent = len(lines[0]) - len(lines[0].lstrip()) if lines else 0
-    taken = []
+    taken: List[str] = []
     for line in lines:
         if line.strip() and len(line) - len(line.lstrip()) < indent:
             break
@@ -144,14 +144,21 @@ def action_description(text: str) -> Optional[str]:
     lines = text.split("\n")
     for number, line in enumerate(lines):
         match = re.match(r"^description:\s*(.*?)\s*$", line)
-        if not match:
-            continue
-        value = match.group(1)
-        if value and value[0] not in ">|":
-            return first_sentence(value.strip("'\"")) or None
-        body = [l for l in lines[number + 1:] if l.strip() or l == ""]
-        return first_sentence(block_scalar([l for l in body if l.startswith((" ", "\t")) or not l])) or None
+        if match:
+            return description_value(match.group(1), lines[number + 1:])
     return None
+
+
+def description_value(value: str, rest: List[str]) -> Optional[str]:
+    """A `description:`'s first sentence: its inline value, or the block scalar of the lines after it."""
+    if value and value[0] not in ">|":
+        return first_sentence(value.strip("'\"")) or None
+    return first_sentence(block_scalar(block_body(rest))) or None
+
+
+def block_body(rest: List[str]) -> List[str]:
+    """The lines a block scalar may hold: the empty ones and the indented ones with words."""
+    return [l for l in rest if l == "" or (l.strip() and l.startswith((" ", "\t")))]
 
 
 def purpose_of(root: str, path: str) -> Optional[str]:
@@ -171,16 +178,26 @@ def header_sentence(text: str) -> Optional[str]:
     """The first sentence of a script's leading comment: what a NixOS host's file says of itself. Its content is part of
     the host's closure, so a line added for the catalogue alone would restage every host that runs it."""
     taken: List[str] = []
-    for line in text.split("\n")[1:40]:
-        stripped = line.strip()
-        if not stripped.startswith("#") or (taken and stripped == "#"):
-            if taken or (stripped and not stripped.startswith("#")):
-                break
-            continue
-        words = stripped.lstrip("#").strip()
-        if words and not words.startswith("shellcheck"):
+    for line in (raw.strip() for raw in text.split("\n")[1:40]):
+        words = comment_words(line)
+        if ends_header(line, words, bool(taken)):
+            break
+        if words:
             taken.append(words)
     return calm(first_sentence(" ".join(taken))) if taken else None
+
+
+def comment_words(line: str) -> Optional[str]:
+    """A stripped line's comment words; None: it is no comment. A shellcheck directive says nothing."""
+    if not line.startswith("#"):
+        return None
+    words = line.lstrip("#").strip()
+    return "" if words.startswith("shellcheck") else words
+
+
+def ends_header(line: str, words: Optional[str], started: bool) -> bool:
+    """Code before any comment (no header), or past the first words a line that is no comment or a bare `#`."""
+    return (words is None and (started or bool(line))) or (started and line == "#")
 
 
 def shouted(word: str) -> bool:
@@ -279,23 +296,28 @@ class CallerIndex:
         return {c for c in found if c != path and not is_test(c) and not (own and c.startswith(own))}
 
 
+def of_kind(callers: Set[str], kind: Optional[str]) -> List[str]:
+    return [c for c in callers if caller_kind(c) == kind]
+
+
+def skill_name(caller: str) -> str:
+    return "CLAUDE.md" if caller == "CLAUDE.md" else caller.split("/")[2]
+
+
+def labelled(label: str, names: Sequence[str], more: int = 0) -> str:
+    """`<label> a, b` (`+N` past them when `more`), or nothing for no names."""
+    return label + " " + ", ".join(names) + (f" +{more}" if more > 0 else "") if names else ""
+
+
 def callers_text(callers: Set[str], agentctl: bool) -> str:
-    workflows = sorted(os.path.basename(c).rsplit(".", 1)[0] for c in callers if caller_kind(c) == "wf")
-    hooks = sorted(os.path.basename(c) for c in callers if caller_kind(c) == "hook")
-    skills = sorted({"CLAUDE.md" if c == "CLAUDE.md" else c.split("/")[2] for c in callers if caller_kind(c) == "skill"})
-    tools = [c for c in callers if caller_kind(c) is None]
-    parts = []
-    if workflows:
-        parts.append("wf " + ", ".join(workflows[:3]) + (f" +{len(workflows) - 3}" if len(workflows) > 3 else ""))
-    if hooks:
-        parts.append("hook " + ", ".join(hooks))
-    if agentctl:
-        parts.append("agentctl")
-    if skills:
-        parts.append("skill " + ", ".join(skills))
-    if tools:
-        parts.append(f"{len(tools)} tool{'s' if len(tools) > 1 else ''}")
-    return "; ".join(parts) or "by hand"
+    workflows = sorted(os.path.basename(c).rsplit(".", 1)[0] for c in of_kind(callers, "wf"))
+    tools = len(of_kind(callers, None))
+    parts = [labelled("wf", workflows[:3], len(workflows) - 3),
+             labelled("hook", sorted(os.path.basename(c) for c in of_kind(callers, "hook"))),
+             "agentctl" if agentctl else "",
+             labelled("skill", sorted({skill_name(c) for c in of_kind(callers, "skill")})),
+             f"{tools} tool{'s' if tools > 1 else ''}" if tools else ""]
+    return "; ".join(part for part in parts if part) or "by hand"
 
 
 def read_lines(root: str, path: str) -> List[str]:
