@@ -16,6 +16,7 @@ check "the ESLint config runs ESLint" "eslint" "$(plan eslint.config.js)"
 check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/storage-access-in-try.js)"
 check "a version-dashboard source runs the JS/TS quality ratchet" "jsquality" "$(plan infra/version-dashboard/src/server.ts)"
 check "...and so do its baseline and the measure" "jsquality" "$(plan test/resources/js-quality-baseline.tsv)"
+check "a Python self-test selects no Python quality ratchet: it is reported, never held" "" "$(plan scripts/ci/x_test.py | tr ' ' '\n' | grep -x pyquality)"
 check "a Python tool runs the Python quality ratchet" "pyquality" "$(plan scripts/ci/order_compare.py | tr ' ' '\n' | grep -x pyquality)"
 check "...and so do its baseline, the measure and the pyright config" "pyquality|pyquality|pyquality" \
   "$(plan test/resources/py-quality-baseline.tsv)|$(plan scripts/py-quality/clones.py | tr ' ' '\n' | grep -x pyquality)|$(plan pyrightconfig.json)"
@@ -57,7 +58,7 @@ check "a shell script runs its self-tests, shellcheck, and the lint specs" "scri
 # a tool with no extension is shellchecked by its shell shebang: 50 under scripts/ (sbt-warm, gitops-specs, ...) never
 # were, and sbt-warm's new SC2046 (d56231908, 2026-11-17) landed unseen
 check "a bash tool with no extension runs shellcheck too" "scripttests shellcheck sbt" "$(plan scripts/sbt-warm)"
-check "...but not a Python tool with no extension" "scripttests sbt" "$(plan scripts/identity-ratchet-report)"
+check "...but not a Python tool with no extension (the Python quality ratchet does)" "pyquality scripttests sbt" "$(plan scripts/identity-ratchet-report)"
 check "the gating-checks registry runs its lint, and the lint specs" "newchecks sbt" "$(plan .github/gating-checks.tsv)"
 # THE HEAVY ROWS: Main's integration-test rows and e2e (corpus), in the landing check only (PREPUSH_HEAVY_ROWS=1); e2e (rest)
 # runs after landing, on Main (the owner, 2026-11-17, "B1")
@@ -123,7 +124,7 @@ check "an identity and a page change run the identity area alone" "driftguards e
 check "a web controller is neither area: the basic sbt check only" "sbt" "$(plan web/src/main/scala/controllers/MovieController.scala)"
 check "a worker source outside identity is neither area (the drift guards: a drift fix may be worker code)" "driftguards sbt" "$(plan worker/src/main/scala/services/movies/A.scala)"
 check "docs run nothing, no area" "" "$(plan docs/landing-process.md docs/design/x.md)"
-check "the lint itself runs it, the judgements' reader and the take files'" "judgements scripttests sbt judgements scripttests sbt judgements scripttests sbt" \
+check "the lint itself runs it, the judgements' reader and the take files'" "judgements pyquality scripttests sbt judgements pyquality scripttests sbt judgements pyquality scripttests sbt" \
   "$(plan scripts/ci/identity_judgements_lint.py) $(plan scripts/ci/identity_judgements.py) $(plan scripts/ci/identity_takes.py)"
 check "an unmatched-cluster capture runs the identity area's tests, not the lint" "driftguards sbt identity" "$(plan test/resources/fixtures/identity-unmatched/pl.json.gz)"
 # WHAT THE IDENTITY SPECS READ BESIDE THE RESOLVER (2026-11-19, identity-impact-check hook: NO AREA): the capture readers

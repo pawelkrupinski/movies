@@ -417,6 +417,7 @@ js_quality_paths() { # stdin: changed paths -> the ones that select the jsqualit
 py_quality_paths() { # stdin: changed paths -> the ones that select the pyquality check
     local path
     while IFS= read -r path; do
+        case "$path" in *_test.py) continue ;; esac # a self-test is reported, never held: it selects no check
         case "$path" in
             scripts/*.py|.github/scripts/*.py|infra/bin/*.py|infra/nix/files/*.py|android/scripts/*.py|ios/scripts/*.py|\
             test/resources/py-quality-baseline.tsv|scripts/py-quality/*|scripts/py-quality-report|\
