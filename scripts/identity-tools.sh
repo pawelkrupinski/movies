@@ -32,18 +32,6 @@ IDENTITY_FIXTURES=test/resources/fixtures/identity-unmatched
 IDENTITY_JUDGEMENTS=test/resources/fixtures/identity-judgements.tsv
 identity_log() { echo "[${IDENTITY_TOOL:-identity}] $*" >&2; }
 
-# identity_explain_exits, then `identity_said_exit $?` first in the EXIT trap: a script `set -e` stops at an unchecked
-# failure says which command it was and where, never a bare exit status (2026-11-21: identity-what-if stopped with exit
-# 3 and no word before us and es). The ERR trap fires exactly where errexit stops the shell, so it names that command.
-identity_explain_exits() {
-  set -E
-  trap '_identity_failed="line $LINENO: $BASH_COMMAND (exit $?)"' ERR
-}
-identity_said_exit() { # <exit status>
-  [ "$1" = 0 ] || [ -z "${_identity_failed:-}" ] ||
-    echo "HARNESS ERROR: ${IDENTITY_TOOL:-$(basename "$0")} stopped at an unchecked failure, $_identity_failed" >&2
-}
-
 # identity_gh <seconds> <gh args...> -> gh, killed when it outlasts <seconds> (a hung gh fails, it never waits forever)
 identity_gh() { local seconds=$1; shift; bounded "$seconds" "$KINOWO_GH" "$@"; }
 IDENTITY_GH_READ=${KINOWO_IDENTITY_GH_TIMEOUT:-60}
@@ -324,8 +312,8 @@ identity_tree_judgements() {
 
 # identity_archive_into <dir> <sha> <git archive paths...> -> the paths of <sha> extracted into <dir>. Through a file,
 # never a pipe: tar may stop reading at the archive's end while git archive still writes its last record's padding,
-# and under pipefail (identity-what-if's) git's SIGPIPE then failed the layout with nothing said (Order independence
-# #90, #97). Each side's failure is its own, and named.
+# and under pipefail (identity-what-if's, when it was shell) git's SIGPIPE then failed the layout with nothing said
+# (Order independence #90, #97). Each side's failure is its own, and named.
 identity_archive_into() {
   local dir=$1 sha=$2 tarball; shift 2
   tarball=$dir.tar-$$
@@ -337,7 +325,7 @@ identity_archive_into() {
 
 # identity_tree_layout <ref> <sha> <dir> -> the ref's sources in <dir>, laid out beside it and moved in whole
 # identity_tree_whole <dir> -> whether <dir> is a whole laid-out tree: its mark, written last into <dir>.part before
-# the move. (build.sbt was the mark until 2026-11-20: a tree holding none -- identity-what-if-test.sh's scratch refs --
+# the move. (build.sbt was the mark until 2026-11-20: a tree holding none -- identity-what-if's tests' scratch refs --
 # was removed and laid out again by every call, under the steps still reading it: Order independence #90.)
 IDENTITY_TREE_MARK=.identity-tree-whole
 identity_tree_whole() { [ -f "$1/$IDENTITY_TREE_MARK" ]; }
@@ -577,6 +565,53 @@ while True:
 out.write(held); out.flush()
 sys.exit(112)
 PY
+}
+
+# THE JVM SEQUENCES A PYTHON TOOL RUNS (identity-what-if's, scripts/identity_what_if_cli.py, through
+# scripts/lib/tool_shell.py): a JVM slot (jvm-gate.sh) is a lock held on descriptor 7 by the PROCESS that took it and its
+# children, so the take, the JVM it is for and the release are one bash process's, never the Python tool's.
+#
+# identity_java_slotted <label> <tree> <log> <java args...> -> IDENTITY_JAVA run in <tree> under a JVM slot of its own,
+# its stdout and stderr into <log>; the JVM's status
+identity_java_slotted() {
+  local label=$1 tree=$2 log=$3 rc=0; shift 3
+  jvm_slot_take "$label"
+  (cd "$tree" && "${IDENTITY_JAVA[@]}" "$@") > "$log" 2>&1 || rc=$?
+  jvm_slot_release
+  return "$rc"
+}
+# identity_kept_jvm_start <label> <tree> <log> <pid file> <keeper log> <keeper> <java args...> -> a KEPT JVM started in
+# <tree>, its pid in <pid file>: its own process group (set -m), outliving this call, the lock descriptors closed; the
+# JVM slot taken for its memory handed to its KEEPER, `<keeper> --keep-served <pid>` (jvm_slot_keeper_start), which
+# holds it for the JVM's whole life (identity_kept_jvm_keep)
+identity_kept_jvm_start() {
+  local label=$1 tree=$2 log=$3 pidf=$4 keeper_log=$5 keeper=$6; shift 6
+  KINOWO_GOV_JOB=keeper jvm_slot_take "$label"   # the kept JVM's memory; each request its cores (identity_kept_jvm_request)
+  (cd "$tree" && set -m && { nohup "${IDENTITY_JAVA[@]}" "$@" > "$log" 2>&1 < /dev/null 6>&- 7>&- 8>&- &
+    echo $! > "$pidf"; })
+  jvm_slot_keeper_start "$IDENTITY_REPO" "$keeper_log" "$keeper" --keep-served "$(cat "$pidf")"
+}
+# identity_kept_jvm_request <label> <job> <log> <socket> <args...> -> one request to a kept JVM (kept_jvm_call), its
+# answer into <log>, under a cores ticket of its own (jvm_cpu_take: the keeper holds only the memory); the request's
+# status, 111 / 112 as kept_jvm_call's
+identity_kept_jvm_request() {
+  local label=$1 job=$2 log=$3 rc=0; shift 3
+  jvm_cpu_take "$label" "$job"
+  kept_jvm_call "$@" > "$log" 2>&1 || rc=$?
+  jvm_slot_release
+  return "$rc"
+}
+# identity_kept_jvm_keep <pid> <pattern> -> THE KEEPER's loop: runs while the kept JVM <pid> does, taking a JVM slot as
+# soon as one is free when it started without, and ends once the JVM has (its idle exit, a stop, a crash), which frees
+# the slot. Started the moment the JVM's process is, it may find it still the shell about to exec java (no <pattern> in
+# its command line yet), so that pid counts as the JVM until it has been seen as one; after that, only while it still is.
+identity_kept_jvm_keep() {
+  local seen=0
+  while kill -0 "$1" 2>/dev/null; do
+    if ps -o args= -p "$1" 2>/dev/null | grep -q "$2"; then seen=1; elif [ "$seen" = 1 ]; then break; fi
+    jvm_slot_take_if_free || true
+    sleep "${KINOWO_IDENTITY_SLICE_KEEPER_POLL:-10}"
+  done
 }
 
 # THE WHAT-IF VERDICT RECORD (review 2026-11-06 P3): scripts/identity-what-if writes one line a country it finished --

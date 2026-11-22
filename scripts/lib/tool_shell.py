@@ -4,23 +4,30 @@ implementation the shell tools still share (tool-conventions.sh's gh_download, i
 and its machine-wide lock) until that library moves too. Its stdout is the answer; its stderr is passed on.
 
   shell_function(runner, env, "scripts/tool-conventions.sh", "gh_download", [...]) -> Captured
-  shell_function(..., then='echo "$MEASURE_PUSH_ERROR"')  a line run after the function, the function's status kept"""
+  shell_function(..., then='echo "$MEASURE_PUSH_ERROR"')  a line run after the function, the function's status kept
+  shell_function(..., prelude='IDENTITY_TOOL=x')  a line run after sourcing, before the function (a variable, a log)
+  shell_command(env, library, function, args, log=PATH)  the same call as a Command, for a runner's `run` (its output
+                                                         into a log) or a process started in the background"""
 from __future__ import annotations
 
 import os
 import sys
-from typing import Mapping, Sequence
+from typing import Mapping, Optional, Sequence
 
 import tool_process
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+def shell_command(env: Mapping[str, str], library: str, function: str, args: Sequence[str], then: str = "",
+                  prelude: str = "", log: Optional[str] = None) -> tool_process.Command:
+    script = f'. "$1" || exit 2; shift; {prelude or ":"}; {function} "$@"; rc=$?; {then or ":"}; exit "$rc"'
+    return tool_process.Command(["bash", "-c", script, function, os.path.join(ROOT, library), *args], env, log=log)
+
+
 def shell_function(runner: tool_process.Runner, env: Mapping[str, str], library: str, function: str,
-                   args: Sequence[str], then: str = "") -> tool_process.Captured:
-    script = f'. "$1" || exit 2; shift; {function} "$@"; rc=$?; {then or ":"}; exit "$rc"'
-    done = runner.capture(tool_process.Command(["bash", "-c", script, function, os.path.join(ROOT, library), *args],
-                                               env))
+                   args: Sequence[str], then: str = "", prelude: str = "") -> tool_process.Captured:
+    done = runner.capture(shell_command(env, library, function, args, then, prelude))
     sys.stderr.write(done.stderr)
     sys.stderr.flush()
     return done

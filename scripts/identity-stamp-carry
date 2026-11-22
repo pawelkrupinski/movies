@@ -45,7 +45,11 @@ IDENTITY_TOOL=identity-stamp-carry
 . "$(dirname "$0")/identity-tools.sh"
 # the what-if's tool files, so the tree is the one it lays out and compiles (a tree claimed by other tool files is laid out
 # again); only identity's own resources are built here, so a base the files cannot compile with still gives its stamps
-eval "$(sed -n '/^TOOL_FILES=(/,/)/p' "$IDENTITY_REPO/scripts/identity-what-if")"
+# (identity_what_if_cli_context.py's TOOL_FILES)
+TOOL_FILES=()
+while IFS= read -r f; do TOOL_FILES+=("$f"); done < <(python3 -I -c 'import sys; sys.path.insert(0, sys.argv[1])
+import identity_what_if_cli_context as c; print("\n".join(c.TOOL_FILES))' "$IDENTITY_REPO/scripts")
+[ "${#TOOL_FILES[@]}" -gt 0 ] || { identity_log "could not read the what-if's tool files"; exit 2; }
 tree=$(identity_tree "$2" "${TOOL_FILES[@]}") || exit 2
 kept=$tree/target/identity-tools/stamps
 fresh() {
