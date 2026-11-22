@@ -34,8 +34,11 @@ struct InterfaceOrientationReader: UIViewRepresentable {
             super.didMoveToWindow()
             observation = window?.windowScene?.observe(\.effectiveGeometry, options: [.initial, .new]) {
                 [weak self] scene, _ in
-                let landscape = scene.effectiveGeometry.interfaceOrientation.isLandscape
-                DispatchQueue.main.async { self?.onChange?(landscape) }
+                // UIKit changes a scene's geometry on the main thread, so its observation is told there.
+                MainActor.assumeIsolated {
+                    let landscape = scene.effectiveGeometry.interfaceOrientation.isLandscape
+                    DispatchQueue.main.async { self?.onChange?(landscape) }
+                }
             }
         }
     }

@@ -75,7 +75,7 @@ final class FixtureServer: @unchecked Sendable {
     }
 
     /// Reads until the end of the request head (a GET carries no body).
-    private static func receiveHead(_ connection: NWConnection, buffer: Data, _ done: @escaping (String?) -> Void) {
+    private static func receiveHead(_ connection: NWConnection, buffer: Data, _ done: @escaping @Sendable (String?) -> Void) {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { data, _, isComplete, error in
             let buffer = buffer + (data ?? Data())
             if let end = buffer.range(of: Data("\r\n\r\n".utf8)) {

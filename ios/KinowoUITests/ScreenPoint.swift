@@ -17,6 +17,7 @@ import XCTest
 /// application-anchored point is re-resolved as the application element alone,
 /// which costs ~0.05 s, so the hold reaches the app as a hold.
 enum ScreenPoint {
+    @MainActor
     static func of(
         _ element: XCUIElement,
         normalizedOffset offset: CGVector,
