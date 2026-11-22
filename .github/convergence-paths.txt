@@ -77,6 +77,7 @@ scripts/ci/cgroup-sampler.sh
 scripts/ci/cpu-sampler.sh
 scripts/ci/mongo-top.sh
 scripts/ci/wait-for-run-artifact.sh
+scripts/ci/wait_for_run_artifact.py
 scripts/ci/install-apt-package.sh
 scripts/ci/sbt-sources-key.sh
 scripts/ci/sbt-invalidate-exporters.sh

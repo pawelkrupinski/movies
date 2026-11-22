@@ -139,7 +139,7 @@ scripts/ci/tree-unchanged.sh	KEEP
 scripts/ci/ubuntu-security-via-mirror.sh	KEEP
 scripts/ci/verified-ref.sh	KEEP
 scripts/ci/wait-for-mongo-tunnel.sh	MIGRATE
-scripts/ci/wait-for-run-artifact.sh	MIGRATE
+scripts/ci/wait-for-run-artifact.sh	KEEP
 scripts/ci/xcuitest-each-class-alone.sh	MIGRATE
 scripts/class-cycles	MIGRATE
 scripts/convergence-local.sh	MIGRATE
