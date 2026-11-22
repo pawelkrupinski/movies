@@ -58,6 +58,12 @@ if env.get("FAKE_REPORT") == "none":
     out("[error] compilation failed"); exit(1)
 if env.get("FAKE_HANG"):
     out("## pl pending [seed 1]: pending at projection: peak 92944"); sys.stdout.flush()
+    # memory runs short only once the replay has said its line, so the guard's `last:` is that line however slowly
+    # this fake started (a loaded run-script-tests: the guard struck twice before it printed)
+    if env.get("FAKE_HANG_MEMINFO"):
+        with open(env["FAKE_HANG_MEMINFO"] + ".part", "w") as f:
+            f.write("MemTotal: 16000000 kB\nMemAvailable: 500000 kB\nSwapTotal: 0 kB\nSwapFree: 0 kB\n")
+        os.replace(env["FAKE_HANG_MEMINFO"] + ".part", env["FAKE_HANG_MEMINFO"])
     subprocess.run(["sleep", "300"]); exit(0)
 broken = env.get("FAKE_BROKEN_BASE", "")
 if broken and side == "base":
@@ -236,8 +242,9 @@ class IdentityDriftCheckTest(cli_harness.ToolCase):
 
     def test_a_replay_the_memory_guard_ends_is_no_verdict(self) -> None:
         self.corpus()
-        self.write("proc/meminfo", "MemTotal: 16000000 kB\nMemAvailable: 500000 kB\nSwapTotal: 0 kB\nSwapFree: 0 kB\n")
-        self.assertEqual(2, self.drift(FAKE_HANG="1", PROC_ROOT=self.path("proc"), MEMORY_GUARD_INTERVAL="0.1",
+        self.write("proc/meminfo", "MemTotal: 16000000 kB\nMemAvailable: 9000000 kB\nSwapTotal: 0 kB\nSwapFree: 0 kB\n")
+        self.assertEqual(2, self.drift(FAKE_HANG="1", FAKE_HANG_MEMINFO=self.path("proc/meminfo"),
+                                       PROC_ROOT=self.path("proc"), MEMORY_GUARD_INTERVAL="0.1",
                                        MEMORY_GUARD_STRIKES="2"), self.said)
         self.assertEqual(1, self.count(
             r"^identity drift \(pl\): the replay was ended before the runner ran out of memory, so nothing was judged: "
