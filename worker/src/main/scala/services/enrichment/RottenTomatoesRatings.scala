@@ -28,8 +28,7 @@ final class RottenTomatoesRatings(
 
   def find(key: CacheKey, row: MovieRecord): Option[Found[Int]] = {
     val film = films.of(key, row)
-    row.tmdbId.fold(findWithoutTmdb(film)) { tmdbId =>
-      val titles = film.titles(tmdbId)
+    film.tmdbTitles.fold(findWithoutTmdb(film)) { titles =>
       // Cache the whole slug-probe chain keyed by the primary identity, so a cache hit skips the RT HTTP probes
       // entirely. One attempt across all the candidate titles rather than one each: same ladder, same order, but the
       // titles share a fetch memo so a slug an earlier title already probed isn't probed again ("The Sting" and

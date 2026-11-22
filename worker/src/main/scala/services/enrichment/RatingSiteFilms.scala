@@ -20,14 +20,17 @@ object RatingSiteFilms {
 
   final class Film(val key: CacheKey, val row: MovieRecord, tmdb: TmdbClient, normalizer: TitleNormalizer)(using LatestTitleYear) {
 
-    /** The titles a site is probed under, from the row and TMDB's details of `tmdbId` (asked here). */
-    def titles(tmdbId: Int): RatingSiteTitles = RatingSiteTitles.derive(key.cleanTitle, row, tmdb.details(tmdbId), normalizer)
+    /** The titles a site is probed under, from the row and TMDB's details of its film (asked here); none for a row TMDB
+     *  has not resolved, whose page is found without them. */
+    def tmdbTitles: Option[RatingSiteTitles] =
+      row.tmdbId.map(tmdbId => RatingSiteTitles.derive(key.cleanTitle, row, tmdb.details(tmdbId), normalizer))
 
     /** TMDB's English title of the row's film, when TMDB resolved it (its details asked here). */
     def englishTitle: Option[String] = row.tmdbId.flatMap(tmdb.details).flatMap(_.englishTitle)
 
-    /** TMDB's full crew of `tmdbId`: the localised and the native-script spellings. */
-    def tmdbDirectors(tmdbId: Int): Set[String] = tmdb.directorsFor(tmdbId)
+    /** TMDB's full crew of the row's film: the localised and the native-script spellings; none when TMDB has not
+     *  resolved it. */
+    def tmdbDirectors: Set[String] = row.tmdbId.fold(Set.empty[String])(tmdb.directorsFor)
 
     /** The directors to probe a site with ([[RatingPageIdentity.directorsOf]]). */
     def probeDirectors: Set[String] = RatingPageIdentity.directorsOf(row, tmdb.directorsFor)

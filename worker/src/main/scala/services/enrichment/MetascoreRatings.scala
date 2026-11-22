@@ -29,8 +29,7 @@ final class MetascoreRatings(
    *  (on a link-cache MISS, where the page was just fetched; on a HIT the flow reads it). */
   def find(key: CacheKey, row: MovieRecord): Option[Found[Int]] = {
     val film = films.of(key, row)
-    row.tmdbId.fold(findWithoutTmdb(film)) { tmdbId =>
-      val titles = film.titles(tmdbId)
+    film.tmdbTitles.fold(findWithoutTmdb(film)) { titles =>
       // The link cache stores the URL only; the Metascore the resolving probe parsed is threaded out-of-band, set ONLY
       // when the resolve closure actually ran.
       var freshScore: Option[Int] = None
@@ -43,7 +42,7 @@ final class MetascoreRatings(
         // `directorsFor`, NOT the row's `Tmdb` slot: the slot keeps only the localised credit, so an anime directed by
         // 秋本賢一郎 would never meet Metacritic's "Kenichiro Akimoto"; `directorsFor` returns the localised AND
         // native-script spellings.
-        val resolved = metacritic.resolveAcross(titles.candidates, titles.fallback, titles.year, film.tmdbDirectors(tmdbId))
+        val resolved = metacritic.resolveAcross(titles.candidates, titles.fallback, titles.year, film.tmdbDirectors)
         freshScore = resolved.flatMap(_.metascore)
         resolved.map(_.url)
       }
