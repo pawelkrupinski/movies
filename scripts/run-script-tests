@@ -109,7 +109,8 @@
 # does not fail the run. Two snapshots cost ~1 s a run; a per-test snapshot could not tell 8 concurrent tests apart
 # anyway. Skipped (RUN_SCRIPT_TESTS_TREE_CHECK=0, or a --root that is no writable git checkout: --linux's read-only
 # copy). Tests install their tools outside the tree (~/.cache/kinowo/<tool>/<lock hash>, js-quality-report), and run
-# with PYTHONDONTWRITEBYTECODE=1: an import's __pycache__ is no test's to leave.
+# with PYTHONDONTWRITEBYTECODE=1: an import's __pycache__ is no test's to leave. `python3 -I` ignores that variable (-I
+# implies -E), so a tool run under -I that imports a module of the tree passes -B itself (scripts/recording-diff).
 #
 # THE GOVERNOR. A run (and --linux's container, and its image build) holds a governor ticket on the Mac (jvm-gate.sh
 # gov_hold, `agentctl gov`), charged its parallelism (--jobs, or fewer tests): while the laptop is starved it waits for

@@ -70,7 +70,9 @@ for cc in "${countries[@]}"; do
     fi
     since=(--since-a "$since_a" --since-b "$since_b")
   fi
-  python3 -I "$repo/scripts/recording_diff.py" "$cc" "$dir_a" "$dir_b" ${since[@]+"${since[@]}"} \
+  # -B: -I ignores PYTHONDONTWRITEBYTECODE, and recording_diff.py imports scripts/ci/recording_health.py, whose
+  # __pycache__ would land in the checkout (Order independence #103)
+  python3 -I -B "$repo/scripts/recording_diff.py" "$cc" "$dir_a" "$dir_b" ${since[@]+"${since[@]}"} \
     --label-a "$run_a" --label-b "$run_b" --health-cache "$IDENTITY_CACHE/recording-diff" ${pass[@]+"${pass[@]}"} || status=1
   echo
 done
