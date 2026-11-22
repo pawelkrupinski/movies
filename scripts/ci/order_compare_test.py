@@ -284,6 +284,17 @@ class OrderCompareTest(cli_harness.ToolCase):
         with open(os.path.join(cli_harness.ROOT, "android/scripts/warm-dependencies.init.gradle")) as f:
             self.assertIn("'debugUnitTestRuntimeClasspath'", f.read())
 
+    def test_the_android_leg_checks_the_offline_caches_before_its_tests(self) -> None:
+        # #116: a gap in the warm step met the tests; it now fails a preflight step (infra), resolved again offline
+        with open(WORKFLOW) as f:
+            android = job_blocks(f.read())["android"]
+        check = android.split("name: Runner preflight, the offline caches hold every test classpath", 1)
+        self.assertEqual(2, len(check))
+        step = check[1].split("- name:", 1)[0]
+        for word in ("no-network --", "--offline", "--init-script scripts/warm-dependencies.init.gradle", ":app:warmDependencies"):
+            self.assertIn(word, step)
+        self.assertLess(android.index("offline caches hold"), android.index("name: Robolectric tests"))
+
 
 def job_blocks(workflow: str) -> Dict[str, str]:
     """Each top-level job's text (a `    <name>:` line to the next), as the shell test's sed range read them."""

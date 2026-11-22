@@ -208,6 +208,14 @@ jobs:
                   --init-script scripts/warm-dependencies.init.gradle
                   :app:syncRobolectricAndroidAll :app:warmDependencies :app:assembleDebugUnitTest
 
+            # THE OFFLINE CHECK (#116: the test step met an AAR the warm step had not fetched): the same classpaths
+            # resolved again --offline and cut off from the network. A gap fails here, a runner preflight (infra,
+            # naming the artifact), never inside the tests.
+            - name: Runner preflight, the offline caches hold every test classpath
+              run: >-
+                  ../scripts/ci/no-network -- ./gradlew --no-daemon --no-configuration-cache --offline
+                  --init-script scripts/warm-dependencies.init.gradle :app:warmDependencies
+
             - name: Robolectric tests, classes and methods in a seeded order
               env:
                   SEED: ${{ needs.seed.outputs.seed }}
