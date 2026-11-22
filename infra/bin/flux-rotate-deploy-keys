@@ -1,34 +1,32 @@
 #!/usr/bin/env bash
-# Point the kinowo cluster's Flux at github.com with fresh deploy keys (the cut-over to GitHub was
-# done with it on 2026-10-31). Re-running it re-mints the GitHub deploy keys.
+# Purpose: rotate the kinowo cluster Flux's GitHub deploy keys (read and write) for movies-gitops, keys first, old keys last.
 #
-# movies-gitops' main points the GitRepositories `movies` (flux/gotk-sync.yaml, applied by hand) and
-# `movies-write` (image-automation/automation.yaml, reconciled) at
-# ssh://git@github.com/pawelkrupinski/movies-gitops.git with secretRef flux-git-read / flux-git-write.
-# This script supplies the keys and applies the change out of band:
+# Flux's GitRepositories `movies` (flux/gotk-sync.yaml) and `movies-write` (image-automation/automation.yaml) read
+# ssh://git@github.com/pawelkrupinski/movies-gitops.git with secretRef flux-git-read / flux-git-write. This mints a
+# fresh pair, hands it to Flux and only then removes the old one, so a run that dies half way leaves Flux's current key
+# working. (It began as the 2026-10-31 cut-over to GitHub, flux-cutover-github; with the cut-over done, what is left
+# is the rotation.)
 #
-#   0. preflight (read-only): gh is logged in, and GitHub main's two manifests name the GitHub URL;
+#   0. preflight (read-only): gh is logged in, GitHub main's two manifests name the GitHub URL and secretRefs, and
+#      (--apply) both GitRepositories already read that URL with those Secrets -- this rotates keys, it moves no source;
 #   1. builds known_hosts with ssh-keyscan of github.com run on k3s-worker-1 (the cluster's own view),
 #      and refuses keys whose fingerprints GitHub's /meta does not publish;
 #   2. generates a read and a write ed25519 deploy key in a temp dir (removed on exit);
 #   3. registers them on pawelkrupinski/movies-gitops (`gh repo deploy-key add`, the write one with
-#      --allow-write), titles stamped with the run's UTC time, beside any earlier flux key -- which is
-#      removed only after step 4 hands Flux the new keys (the GitHub-era "flux-image-automation
-#      2026-10-09" key included), so a run that dies half way leaves Flux's current key working;
+#      --allow-write), titles stamped with the run's UTC time, beside the current flux keys;
 #   4. creates/updates Secrets flux-system/flux-git-read and flux-git-write (identity, identity.pub,
 #      known_hosts) by `kubectl apply -f -` on the k3s server, values over stdin;
-#   5. applies flux/gotk-sync.yaml from GitHub's main and points `movies-write` there too;
+#   5. removes every earlier flux- deploy key, now that the Secrets hold the new ones;
 #   6. requests a reconcile and prints the state.
 #
-# DRY RUN BY DEFAULT: without --apply it runs step 0 (GitHub reads only; nothing on the
-# cluster) and prints what steps 1-6 would do, including the deploy keys it would remove. --apply
-# does it. Re-running --apply is harmless: fresh keys replace both deploy keys and the Secrets.
+# DRY RUN BY DEFAULT: without --apply it runs step 0's GitHub reads (nothing on the cluster) and prints what
+# steps 1-6 would do, including the deploy keys it would remove. --apply does it; re-running it rotates again.
 #
 # Needs: gh logged in as the owner (repo admin on movies-gitops), ssh to monitoring-1 and k3s-worker-1
-# (--apply only), jq, ssh-keygen.
+# (--apply only), jq, ssh-keygen. Tested by infra/bin/flux-rotate-deploy-keys-test.sh (fake gh and ssh).
 #
-#   infra/bin/flux-cutover-github            # dry run
-#   infra/bin/flux-cutover-github --apply
+#   infra/bin/flux-rotate-deploy-keys            # dry run
+#   infra/bin/flux-rotate-deploy-keys --apply
 set -euo pipefail
 
 apply=0
@@ -72,7 +70,15 @@ done
 grep -qF "name: flux-git-read" <<<"$gotk_sync" || { echo "GitHub main's flux/gotk-sync.yaml has no secretRef flux-git-read" >&2; exit 1; }
 grep -qF "name: flux-git-write" <<<"$automation" || { echo "GitHub main's automation.yaml has no secretRef flux-git-write" >&2; exit 1; }
 echo "  GitHub main's manifests point at $git_url"
-# Every flux key there now: removed after step 4 (the GitHub-era write key from 2026-10-09 among them).
+if [ "$apply" = 1 ]; then
+  for pair in movies:flux-git-read movies-write:flux-git-write; do
+    current=$(kube "kubectl -n flux-system get gitrepository ${pair%%:*} -o jsonpath='{.spec.url} {.spec.secretRef.name}'")
+    [ "$current" = "$git_url ${pair#*:}" ] ||
+      { echo "gitrepository ${pair%%:*} is '$current', not '$git_url ${pair#*:}': this rotates keys, it moves no source" >&2; exit 1; }
+  done
+  echo "  both GitRepositories read $git_url"
+fi
+# Every flux key there now: removed after step 4 hands Flux the new ones.
 old_keys=$(gh repo deploy-key list -R "$slug" --json id,title,readOnly \
   --jq '.[] | select(.title | startswith("flux-")) | "\(.id)\t\(.title)\t(read_only \(.readOnly // "unknown"))"')
 if [ -n "$old_keys" ]; then
@@ -127,7 +133,7 @@ for kind in read write; do
   fi
 done
 
-echo "== 3b. remove the deploy keys the Secrets no longer hold"
+echo "== 5. remove the deploy keys the Secrets no longer hold"
 while IFS=$'\t' read -r id title _; do
   [ -n "$id" ] || continue
   if [ "$apply" = 1 ]; then
@@ -138,30 +144,12 @@ while IFS=$'\t' read -r id title _; do
   fi
 done <<<"$old_keys"
 
-echo "== 5. GitRepositories"
-if [ "$apply" = 1 ]; then
-  current=$(kube "kubectl -n flux-system get gitrepository movies -o jsonpath='{.spec.url} {.spec.secretRef.name}'")
-  if [[ "$current" == "$git_url flux-git-read" ]]; then
-    echo "  movies already on GitHub"
-  else
-    echo "  movies is '$current' -- applying flux/gotk-sync.yaml from GitHub main"
-    printf '%s\n' "$gotk_sync" | kube "kubectl apply -f -" | sed 's/^/  /'
-  fi
-  # movies-write is applied by the image-automation Kustomization, which sets the same value once
-  # `movies` fetches from GitHub; patching it now saves a reconcile round.
-  jq -cn --arg u "$git_url" '{spec: {url: $u, secretRef: {name: "flux-git-write"}}}' |
-    kube "kubectl -n flux-system patch gitrepository movies-write --type merge --patch-file /dev/stdin" | sed 's/^/  /'
-else
-  would "kubectl apply GitHub main's flux/gotk-sync.yaml (movies -> $git_url) unless movies already reads it"
-  would "kubectl patch gitrepository movies-write: url $git_url, secretRef flux-git-write"
-fi
-
 echo "== 6. reconcile"
 if [ "$apply" = 1 ]; then
   now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   kube "kubectl -n flux-system annotate --overwrite gitrepository/movies gitrepository/movies-write reconcile.fluxcd.io/requestedAt=$now" | sed 's/^/  /'
   kube "kubectl -n flux-system wait gitrepository/movies gitrepository/movies-write --for=condition=Ready --timeout=120s" | sed 's/^/  /' ||
-    echo "  sources not Ready within 120s -- see the status below; re-run this script once github.com answers"
+    echo "  sources not Ready within 120s -- see the status below"
   kube "kubectl -n flux-system annotate --overwrite kustomization --all reconcile.fluxcd.io/requestedAt=$now" >/dev/null
   kube "kubectl -n flux-system annotate --overwrite imageupdateautomation/movies reconcile.fluxcd.io/requestedAt=$now" >/dev/null
   echo
