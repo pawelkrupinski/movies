@@ -21,6 +21,7 @@ import os
 import sys
 from typing import Dict, List, Tuple
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # the engine beside it, under `python3 -I` too
 import baseline_ratchet  # noqa: E402
 

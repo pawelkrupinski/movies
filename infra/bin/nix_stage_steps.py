@@ -23,6 +23,7 @@ import tempfile
 from typing import Dict, List, Mapping, TextIO, cast
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(HERE)), "scripts", "lib"))
 import tool_actions  # noqa: E402
 import tool_process  # noqa: E402

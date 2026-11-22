@@ -17,6 +17,7 @@ import sys
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Tuple
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
 import trailers  # noqa: E402
 
