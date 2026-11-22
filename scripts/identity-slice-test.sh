@@ -3,6 +3,7 @@
 # dropped in and run on ONE recording, the two refs' takes diffed and tallied against the labels, a ref the clone does
 # not hold refused by name. java, sbt and gh are stubs; the repository is a scratch one.
 # Run: bash scripts/identity-slice-test.sh
+# script-test-stress: served JVMs and layouts shared between concurrent calls (Order independence #94)
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"

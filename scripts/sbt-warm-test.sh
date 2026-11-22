@@ -3,6 +3,7 @@
 # its own), the commands reach this checkout's server, a removed checkout's server is stopped, a live server holds one JVM
 # slot through its keeper, and an idle one is stopped by it, never under a running command. sbt is a stub.
 # Run: bash scripts/sbt-warm-test.sh
+# script-test-stress: keepers, clients and polls racing a loaded machine's clock (Order independence #74; f69ccf47f, d56231908)
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"

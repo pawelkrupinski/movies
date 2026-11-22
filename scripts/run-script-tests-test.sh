@@ -465,6 +465,21 @@ check "RUN_SCRIPT_TESTS_TREE_CHECK=0: no check" "0 0" \
 rm -rf "$tree/scripts/left-behind.txt" "$tree/scripts/tools" "$tree/scripts/edited-beside.txt" "$tree/.gitignore" \
   "$tree/scripts/polluter-test.sh" "$tree/scripts/clean-test.sh" "$tree/scripts/once-test.sh"
 
+# STRESS: the named tests N times at once beside CPU burners; none named, the concurrency-heavy ones (marked)
+put scripts/racy-test.sh "$(printf '%s\n' '# script-test-stress: its copies share one lock' "mkdir '$work/racy.lock' 2> /dev/null || { echo collided; exit 1; }" "sleep 3; rmdir '$work/racy.lock'")"
+put scripts/steady-test.sh "$(printf '%s\n' '# script-test-stress: never races' 'exit 0')"
+check "a racy test passes alone" "0" "$(run racy-test)"
+check "--stress 4: run 4 times at once, the race caught" "1 4" "$(run --stress 4 --burn 2 racy-test) $(grep -c '^[A-Z]* .*scripts/racy-test.sh (run [1-4]/4)$' "$work/out")"
+check "...its verdict: how many of its runs failed, beside the CPU burners asked for" "1 1" \
+  "$(grep -c '^STRESS  scripts/racy-test.sh: 3 of 4 run(s) failed$' "$work/out") $(grep -c 'beside 2 CPU burner(s)' "$work/out")"
+check "...the burners gone with the run" "0" "$(ps -axo command | grep -c '[r]un-script-tests-burner')"
+check "--stress with no names: the concurrency-heavy (marked) tests only" "scripts/racy-test.sh scripts/steady-test.sh" "$(listed --stress 2)"
+check "a steady test passes under stress" "0 1" "$(run --stress 3 --burn 1 steady-test) $(grep -c '^STRESS  scripts/steady-test.sh: 0 of 3 run(s) failed$' "$work/out")"
+check "a --changed run selecting a concurrency-heavy test names the stress command" "0 1" \
+  "$(run --changed "$base" steady-test) $(grep -c '^run-script-tests: concurrency-heavy, selected: scripts/steady-test.sh -- `scripts/run-script-tests --stress 4 scripts/steady-test.sh`' "$work/out")"
+check "--stress with --linux, or no count, is a usage error" "64 64" "$(run --stress 2 --linux racy-test) $(run --stress x racy-test)"
+rm -rf "$tree/scripts/racy-test.sh" "$tree/scripts/steady-test.sh" "$work/racy.lock"
+
 # THE GOVERNOR: the run waits for its ticket (a starved laptop), charged its parallelism, then starts by itself; its
 # tests see no ticket of its own (descriptor 7 closed, KINOWO_JVM_SLOT_HELD unset)
 spec_fake_governor "$work/agentctl"

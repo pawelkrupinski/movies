@@ -19,8 +19,11 @@
 #                                                  # under the floor bash, the rest natively (FLOOR; the pre-push hook)
 #   scripts/run-script-tests --linux [<names>]     # the selected tests in an ubuntu-26.04 container, as CI runs
 #                                                  # them (default: those --changed origin/main selects); Docker
+#   scripts/run-script-tests --stress 8 [<names>]  # each named test (none named: each concurrency-heavy one, STRESS)
+#                                                  # run 8 times at once beside a CPU burner a core; with --changed,
+#                                                  # the concurrency-heavy ones it selects (the hook's PREPUSH_STRESS=N)
 #
-# Options: --jobs N (8 at once), --stall S (a test ended after 300 s without progress), --timeout S (a wall-clock
+# Options: --jobs N (8 at once; under --stress every run at once), --burn K (--stress's CPU burners: one a core), --stall S (a test ended after 300 s without progress), --timeout S (a wall-clock
 # ceiling on each test; none by default), --root DIR (the checkout; this script's own),
 # --bash PATH (each .sh test run by it, and first on the PATH as `bash`, so the tools it starts through their
 # `#!/usr/bin/env bash` and every `bash -c` run by it too).
@@ -80,6 +83,19 @@
 # each, passing case after passing case, at the 600 s a test it had then. --timeout S adds a wall-clock
 # ceiling for a caller that wants one; CI's is the job's own timeout. The table names each PASS / FAIL /
 # STALLED / TIMEOUT with its seconds; a failure's last lines follow.
+# STRESS. A race between a test's own processes (a background compile and the resolve reading the tree it lays out:
+# identity-what-if-test.sh, Order independence #89-#91, fixed in 8be54b489; sbt-warm-test.sh's keeper #74;
+# identity-slice-test.sh #94) shows on the slow 3-core macOS runner and almost never on a laptop. `--stress N` makes the
+# laptop that runner: every named test N times, all at once (--jobs: N x tests), beside --burn K busy loops (one a core),
+# its table a row a run, and a verdict a test (`STRESS <test>: K of N failed`). A test whose first 40 lines say
+# `# script-test-stress: <why>` is CONCURRENCY-HEAVY: `--stress N` with no names runs those, with --changed those it
+# selects; a --changed run that selects one says so, naming the command. The pre-push hook stresses them only when
+# asked (PREPUSH_STRESS=N): a stressed what-if test is minutes of CPU, past the landing budget. No durations are kept and
+# the tree is not checked under --stress (copies of one test share the checkout on purpose). The burners end with the
+# run, and by themselves once it is gone. It reproduces what the runner did: sbt-warm-test.sh at the parent of f69ccf47f
+# (its busy stub ending before the first poll) failed 6 of 6 at `--stress 6 --burn 36` on an 18-core laptop, main 0 of
+# 6. Races needing a slow disk rather than a slow CPU (identity-what-if's tree layout, #89-#91) it did not reproduce.
+#
 # THE TREE IS LEFT AS FOUND. Every test shares ONE checkout with the 7 others running beside it, so a file one test leaves
 # there is read by the next: js-quality-report-test.sh's `npm ci` left scripts/js-quality/node_modules, and
 # tool-jvm-headless-test.sh's `grep -r` read it (Order independence #99) -- the victim failed, the polluter passed. So the
@@ -131,13 +147,15 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 stall_report="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stall-report.sh" # this script's own, whatever --root
 stall_watch="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stall-watch.sh"
 linux_tree_sync="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/linux-tree-sync.py" # --linux's copy of the checkout
-jobs=8 timeout_s=0 stall_s=300 list=0 all=0 reads=0 readers=0 tag="" changed_base="" paths_file="" test_bash="" floor_bash="" linux=0 filters=()
+jobs=8 jobs_given=0 stress=0 burn="" timeout_s=0 stall_s=300 list=0 all=0 reads=0 readers=0 tag="" changed_base="" paths_file="" test_bash="" floor_bash="" linux=0 filters=()
 usage() { usage_from_header "${BASH_SOURCE[0]}" >&2; exit 64; }
 # A caller's mistake exits 64 here (above), not tool-conventions.sh's 2: flag_value's missing value too.
 usage_error() { echo "run-script-tests: $*" >&2; usage; }
 while [ $# -gt 0 ]; do
   case "$1" in
-    --jobs) flag_value "$@"; jobs="$2"; shift ;;
+    --jobs) flag_value "$@"; jobs="$2"; jobs_given=1; shift ;;
+    --stress) flag_value "$@"; stress="$2"; shift ;;
+    --burn) flag_value "$@"; burn="$2"; shift ;;
     --timeout) flag_value "$@"; timeout_s="$2"; shift ;;
     --stall) flag_value "$@"; stall_s="$2"; shift ;;
     --root) flag_value "$@"; root="$(cd "$2" && pwd)" || exit 64; shift ;;
@@ -160,6 +178,8 @@ done
 cd "$root" || exit 64
 [ "$readers" = 0 ] || [ -n "$changed_base" ] || usage_error "--readers needs --changed"
 [ -z "$paths_file" ] || [ "$list" = 1 ] || usage_error "--paths only lists (--list): a run is --changed's"
+case "$stress" in *[!0-9]*) usage_error "--stress takes a count" ;; esac
+[ "$stress" = 0 ] || [ "$linux" = 0 ] || usage_error "--stress runs here, not --linux"
 [ -z "$floor_bash" ] || { [ -n "$changed_base" ] && [ -z "$test_bash" ]; } || usage_error "--floor needs --changed, and no --bash"
 # --linux with nothing named: the tests the pre-push hook would run, those the changes since origin/main touch
 [ "$linux" = 1 ] && [ ${#filters[@]} -eq 0 ] && [ -z "$changed_base" ] && [ -z "$tag" ] && changed_base=origin/main
@@ -626,6 +646,21 @@ discover | while IFS="$(printf '\t')" read -r path t reason; do
   printf '%s\t%s\t%s\n' "$path" "$t" "$reason"
 done > "$work/selected"
 
+concurrency_heavy() { # <path>: its first 40 lines mark it (STRESS)
+  head -40 "$1" | grep -qE '^#[[:space:]]*script-test-stress:'
+}
+if [ "$stress" -gt 0 ] && [ ${#filters[@]} -eq 0 ]; then # --stress, none named: the concurrency-heavy ones selected
+  while IFS="$(printf '\t')" read -r path rest; do
+    concurrency_heavy "$path" && printf '%s\t%s\n' "$path" "$rest"
+  done < "$work/selected" > "$work/selected.heavy"
+  mv "$work/selected.heavy" "$work/selected"
+  if [ ! -s "$work/selected" ] && [ "$list" = 0 ]; then
+    echo "run-script-tests: no concurrency-heavy script test selected${changed_base:+ by the changes since $changed_base} (STRESS)"
+    [ -n "$changed_base" ] && exit 0
+    exit 1
+  fi
+fi
+
 if [ "$list" = 1 ]; then cat "$work/selected"; exit 0; fi
 
 if [ "$linux" = 1 ]; then
@@ -701,15 +736,40 @@ while IFS="$(printf '\t')" read -r path _; do printf '%s\t%s\n' "$path" "$(wc -c
 awk -F'\t' 'FILENAME == ARGV[1] { if ($2 ~ /^[0-9]+$/) secs[$1] = $2; next }
   { if ($1 in secs) print "1\t" secs[$1] "\t" $1; else print "0\t" $2 "\t" $1 }' "$durations" "$sizes" \
   | LC_ALL=C sort -t "$(printf '\t')" -k1,1n -k2,2nr -k3,3 | cut -f3 > "$work/order"
-paths=()
-while IFS= read -r path; do paths+=("$path"); done < "$work/order"
+paths=() runs=()
+while IFS= read -r path; do paths+=("$path"); runs+=(""); done < "$work/order"
+tests=${#paths[@]}
+if [ "$stress" -gt 0 ]; then # STRESS: each test N times, every run at once unless --jobs says otherwise
+  r=2
+  while [ "$r" -le "$stress" ]; do
+    k=0; while [ "$k" -lt "$tests" ]; do paths+=("${paths[$k]}"); runs+=(" (run $r/$stress)"); k=$((k + 1)); done
+    r=$((r + 1))
+  done
+  k=0; while [ "$k" -lt "$tests" ]; do runs[$k]=" (run 1/$stress)"; k=$((k + 1)); done
+  [ "$jobs_given" = 1 ] || jobs=${#paths[@]}
+fi
 total=${#paths[@]}
 started=$SECONDS
 printf '\033[36m▸\033[0m %s script test(s), %s at a time\n' "$total" "$jobs"
+burn_cpu() { # STRESS's load: <K> busy loops, each ending once this run is gone (a killed run strands none)
+  local k=0 runner=$$
+  while [ "$k" -lt "$1" ]; do
+    # shellcheck disable=SC2016 # expanded by the burner's bash
+    "$BASH" -c 'while kill -0 "$1" 2> /dev/null; do i=0; while [ "$i" -lt 20000 ]; do i=$((i + 1)); done; done' \
+      run-script-tests-burner "$runner" < /dev/null > /dev/null 2>&1 &
+    burners+=($!); k=$((k + 1))
+  done
+}
+burners=()
+if [ "$stress" -gt 0 ]; then
+  [ -n "$burn" ] || burn=$(getconf _NPROCESSORS_ONLN 2> /dev/null || sysctl -n hw.ncpu 2> /dev/null || echo 2)
+  printf '  stress: each of %s test(s) %s times at once, beside %s CPU burner(s)\n' "$tests" "$stress" "$burn"
+  burn_cpu "$burn"
+fi
 
 pids=() idx=() next=0 done_count=0 failed=0
 tree_check=0
-if tree_check_on; then tree_check=1; tree_state > "$work/tree.before"; fi
+if [ "$stress" = 0 ] && tree_check_on; then tree_check=1; tree_state > "$work/tree.before"; fi
 report() { # <index>
   local i="$1" code secs status
   code="$(cat "$work/$i.rc")"; secs="$(cat "$work/$i.seconds")"
@@ -718,11 +778,12 @@ report() { # <index>
   elif [ "$code" = 124 ] || [ "$code" = 137 ]; then status=TIMEOUT
   else status=FAIL
   fi
-  printf '%-7s %4ss  %s%s\n' "$status" "$secs" "${paths[$i]}" "$(grep -qxF "${paths[$i]}" "$work/floor.tests" && echo " (floor)")" >> "$work/table"
-  [ "$status" = PASS ] && printf '%s\t%s\n' "${paths[$i]}" "$secs" >> "$work/seconds.tsv"
+  printf '%-7s %4ss  %s%s%s\n' "$status" "$secs" "${paths[$i]}" "${runs[$i]}" "$(grep -qxF "${paths[$i]}" "$work/floor.tests" && echo " (floor)")" >> "$work/table"
+  [ "$status" = PASS ] && [ "$stress" = 0 ] && printf '%s\t%s\n' "${paths[$i]}" "$secs" >> "$work/seconds.tsv"
+  [ "$status" = PASS ] || echo "${paths[$i]}" >> "$work/stress.failed"
   if [ "$status" != PASS ]; then
     failed=$((failed + 1))
-    { printf '\n── %s %s (exit %s) ──\n' "$status" "${paths[$i]}" "$code"
+    { printf '\n── %s %s%s (exit %s) ──\n' "$status" "${paths[$i]}" "${runs[$i]}" "$code"
       # every failing case first, from the whole log: one printed above its last 60 lines was lost from a CI report
       # with the runner that kept the log (Order independence #94, identity-slice-test's five failures)
       failing_cases "$work/$i.log"
@@ -749,6 +810,23 @@ while [ "$done_count" -lt "$total" ]; do
   pids=(${still[@]+"${still[@]}"}); idx=(${still_idx[@]+"${still_idx[@]}"})
   [ "$done_count" -lt "$total" ] && sleep 0.2
 done
+
+if [ ${#burners[@]} -gt 0 ]; then kill "${burners[@]}" 2> /dev/null; wait "${burners[@]}" 2> /dev/null; fi
+: >> "$work/stress.failed"
+stress_verdicts() { # STRESS: a line a test, how many of its runs failed
+  local k=0 n
+  while [ "$k" -lt "$tests" ]; do
+    n=$(grep -cxF "${paths[$k]}" "$work/stress.failed")
+    printf 'STRESS  %s: %s of %s run(s) failed\n' "${paths[$k]}" "$n" "$stress"
+    k=$((k + 1))
+  done
+}
+# a --changed run that selected a concurrency-heavy test says how to stress it (STRESS)
+heavy_hint() {
+  local k=0 heavy=""
+  while [ "$k" -lt "$tests" ]; do concurrency_heavy "${paths[$k]}" && heavy="$heavy ${paths[$k]}"; k=$((k + 1)); done
+  [ -z "$heavy" ] || printf 'run-script-tests: concurrency-heavy, selected:%s -- `scripts/run-script-tests --stress 4%s` (PREPUSH_STRESS=4 at a push) runs each 4 times at once under CPU load (STRESS)\n' "$heavy" "$heavy"
+}
 
 # what the run left in the checkout, put on the test that made it (THE TREE IS LEFT AS FOUND)
 if [ "$tree_check" = 1 ]; then
@@ -783,6 +861,8 @@ fi
 LC_ALL=C sort -k3 "$work/table"
 cat "$work/failures"
 echo
+[ "$stress" = 0 ] || stress_verdicts
+[ "$stress" != 0 ] || [ -z "$changed_base" ] || heavy_hint
 floor=0; floor_failed && floor=1
 if [ "$failed" -gt 0 ]; then
   printf '%s of %s failed (%ss)\n' "$failed" "$total" "$((SECONDS - started))"

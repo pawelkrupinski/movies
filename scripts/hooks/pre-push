@@ -80,7 +80,10 @@
 #                 /bin/bash, on Linux -- ci-runner's landing checks -- the GNU 3.2.57 `scripts/floor-bash --install`
 #                 builds; none BLOCKS, PREPUSH_SKIP=floor skips it); and, Docker running, beside them on Linux
 #                 (`--linux`, CI's ubuntu-26.04; PREPUSH_SKIP=linux skips it) -- unless the hook already runs on Linux
-#                 (ci-runner's landing checks: the native run is the Linux one)
+#                 (ci-runner's landing checks: the native run is the Linux one). Opt-in, PREPUSH_STRESS=N: the
+#                 concurrency-heavy self-tests the push selects (`# script-test-stress:`) run again N times at once
+#                 beside a CPU burner a core (run-script-tests' STRESS) -- minutes of CPU, past the landing budget,
+#                 so never by default; a run selecting one says so
 #   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks), and changed
 #                 composite actions' `run:` blocks (scripts/ci/shellcheck-action-runs.sh)
 #   `shellcheck`  changed *.sh, hook scripts and extensionless tools with a shell shebang (is_shell_path) —
@@ -1740,6 +1743,7 @@ check_scripttests() {
     fi
     if scripts/run-script-tests --changed "$base_sha" ${native[@]+"${native[@]}"} > "$tmp/scripttests.log" 2>&1; then
         tail -1 "$tmp/scripttests.log"
+        [ "${PREPUSH_STRESS:-0}" != 0 ] || grep '^run-script-tests: concurrency-heavy' "$tmp/scripttests.log" || true
         [ ${#native[@]} -eq 0 ] || echo "under $floor: the floor's scope, in the same run ($(grep -c ' (floor)$' "$tmp/scripttests.log" | tr -d ' ') test(s))"
     else
         grep -v '^PASS\|✓' "$tmp/scripttests.log" | head -80 >&2; rc=1
@@ -1752,6 +1756,16 @@ check_scripttests() {
         else
             echo "on Linux (scripts/run-script-tests --linux; PREPUSH_SKIP=linux skips it):" >&2
             grep -v '^PASS\|✓' "$tmp/scripttests-linux.log" | head -80 >&2
+            rc=1
+        fi
+    fi
+    # STRESS, opt-in (PREPUSH_STRESS=N): the concurrency-heavy tests the push selects, N runs of each at once under load
+    if [ "$rc" = 0 ] && [ "${PREPUSH_STRESS:-0}" != 0 ] && grep -q -e '--stress)' scripts/run-script-tests 2>/dev/null; then
+        if scripts/run-script-tests --changed "$base_sha" --stress "$PREPUSH_STRESS" > "$tmp/scripttests-stress.log" 2>&1; then
+            echo "stressed (PREPUSH_STRESS=$PREPUSH_STRESS): $(grep -E '^STRESS|no concurrency-heavy' "$tmp/scripttests-stress.log" | paste -sd';' -)"
+        else
+            echo "under stress (PREPUSH_STRESS=$PREPUSH_STRESS, scripts/run-script-tests --stress):" >&2
+            grep -v '^PASS\|✓' "$tmp/scripttests-stress.log" | head -80 >&2
             rc=1
         fi
     fi

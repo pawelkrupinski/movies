@@ -6,6 +6,7 @@
 # Then THE MAIN PATH over stub sbt and java: an inert change starts no head JVM and compiles no head, the base's whole
 # side runs in a one-shot JVM (never a kept one), and a head that resolves compiles beside the base's resolve.
 # Run: bash scripts/identity-what-if-test.sh
+# script-test-stress: a background compile beside the resolve over trees it lays out (Order independence #89-#91, #97)
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
