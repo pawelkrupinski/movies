@@ -52,7 +52,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/decoration-discovery.yml` | Weekly discovery of the decorations venues wrap film titles in, as a PR | `workflow: workflow_dispatch, schedule, repository_dispatch` | wf identity-capture, identity-refit | - | - |
 | `.github/workflows/filmweb-diff.yml` | Weekly diagnostic: every upcoming showtime our scrapers publish compared with Filmweb's | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf country-fixture-artifact | - | - |
 | `.github/workflows/ios.yml` | Build and test the iOS app (swift test, the LocalServer decoders, XCUITest) on macOS runners | `workflow: pull_request, push, workflow_dispatch` | wf ci; 4 tools | - | - |
-| `.github/workflows/main.yml` | Main's pipeline: build, test and publish the images Flux deploys; its rows are the gate | `workflow: push, workflow_dispatch` | wf branch-ci, ci, tool-self-tests; hook pre-push; agentctl; 15 tools | - | - |
+| `.github/workflows/main.yml` | Main's pipeline: build, test and publish the images Flux deploys; its rows are the gate | `workflow: push, workflow_dispatch` | wf branch-ci, ci, tool-self-tests; hook pre-push; agentctl; 17 tools | - | - |
 | `.github/workflows/mirror-pinned-images.yml` | Copies every image .github/pinned-images.tsv pins to this repo's GHCR packages by digest | `workflow: schedule, repository_dispatch, push, workflow_dispatch` | 3 tools | - | - |
 | `.github/workflows/nightly-stress.yml` | The tests whose failures are a matter of luck, run enough times for luck to run out | `workflow: schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
 | `.github/workflows/order-independence.yml` | Nightly: every suite in an order it never meets on push, so an order-dependent test shows | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf android, nightly-stress; 3 tools | - | - |
@@ -95,7 +95,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/cross_country.py` | ONE READING OF THE COUNTRIES' TAKES SIDE BY SIDE: each country's identity traces joined to the billings they decided, | `imported` | 2 tools | - | Python |
 | `scripts/ci/darwin_sampler.py` | A macOS runner's resource series, for job_metrics.py (which starts it there in the background): macOS has no /proc, | `python3 scripts/ci/darwin_sampler.py` | 3 tools | - | Python |
 | `scripts/ci/decodo-probe.py` | Is the Decodo residential proxy pool up? One line per port, exit 0 if at least one port reached the origin. | `scripts/ci/decodo-probe.py` | wf decodo-probe; 2 tools | decodo_probe_test.py | Python |
-| `scripts/ci/dispatch.sh` | Dispatching a workflow and finding, then waiting on, the run it made | `bash scripts/ci/dispatch.sh` | wf convergence-daily; 6 tools | dispatch-test.sh | MIGRATE |
+| `scripts/ci/dispatch.sh` | Dispatching a workflow and finding, then waiting on, the run it made | `bash scripts/ci/dispatch.sh` | wf convergence-daily; 5 tools | dispatch-test.sh | MIGRATE |
 | `scripts/ci/download-run-artifacts.sh` | Download every artifact of this run whose name matches <pattern> into <dir> | `scripts/ci/download-run-artifacts.sh` | 1 tool | download-run-artifacts-test.sh | KEEP |
 | `scripts/ci/drop-microsoft-apt-sources.sh` | Drop the GitHub-hosted Ubuntu runner's packages.microsoft.com apt sources before an `apt-get update` | `scripts/ci/drop-microsoft-apt-sources.sh` | 3 tools | drop-microsoft-apt-sources-test.sh | KEEP |
 | `scripts/ci/enable-kvm.sh` | Give every user on a GitHub-hosted Linux runner /dev/kvm, so the x86_64 Android emulator runs hardware-accelerated | `scripts/ci/enable-kvm.sh` | wf android, order-independence | enable-kvm-test.sh | KEEP |
@@ -216,7 +216,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (186)
+## Identity (187)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -240,7 +240,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/scripts/convergence_release.py` | What the convergence scripts (convergence_setup.py and its siblings) ask GitHub, over an injected runner: a download | `imported` | 6 tools | - | Python |
 | `.github/scripts/convergence_setup.py` | The logic of `.github/actions/convergence-setup`'s fixture steps, out of the action's inline `run:` blocks so it is | `.github/scripts/convergence_setup.py` | 3 tools | convergence_setup_test.py | Python |
 | `.github/scripts/convergence_setup_unpack.py` | convergence_setup.py's `corpus` (the recorded scrape corpus into ./scrape-archive) and `unpack` (the staged tree | `imported` | 1 tool | - | Python |
-| `.github/scripts/kick-convergence.sh` | Dispatch each convergence suite whose verdict this push could change — and only those | `.github/scripts/kick-convergence.sh` | wf main; 4 tools | kick-convergence-test.sh | KEEP |
+| `.github/scripts/kick-convergence.sh` | Dispatch each convergence suite whose verdict this push could change — and only those | `.github/scripts/kick-convergence.sh` | wf main; 5 tools | kick_convergence_test.py | KEEP |
+| `.github/scripts/kick_convergence.py` | Dispatch each convergence suite whose verdict this push could change — and ONLY those. | `.github/scripts/kick_convergence.py` | 1 tool | kick_convergence_test.py | Python |
 | `.github/workflows/archive-recording.yml` | Archive a "Record scrape fixtures" recording into the permanent `identity-recordings` release | `workflow: workflow_dispatch` | 1 tool | - | - |
 | `.github/workflows/convergence-bisect.yml` | The auto-bisect — which commit turned a country's hermetic convergence leg red? | `workflow: workflow_dispatch` | wf country-convergence-leg, identity-model-convergence; 3 tools | - | - |
 | `.github/workflows/convergence-daily.yml` | One full convergence of main a day, whatever main's pushes did | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf country-convergence-leg, identity-takes; skill CLAUDE.md, identity-investigation; 1 tool | - | - |
@@ -585,10 +586,10 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; scripts/ci/dispatch.sh's | `imported` | 3 tools | tool_ci_wait_test.py | Python |
 | `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | 9 tools | - | Python |
 | `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 10 tools | - | Python |
-| `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the Python tools do it (scripts/lib; the shell | `imported` | 9 tools | tool_dispatch_test.py | Python |
+| `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the Python tools do it (scripts/lib; the shell | `imported` | 10 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 10 tools | tool_git_test.py | Python |
-| `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 9 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 52 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 10 tools | tool_github_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 53 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | 12 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 5 tools | - | KEEP |
@@ -615,7 +616,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/source-refresh` | Ask a country's prod worker to fetch again what one stored external source holds for given keys | `scripts/source-refresh` | by hand | source-refresh-test.sh | KEEP |
 | `scripts/timezonefinder-python` | Print a directory whose python3 imports timezonefinder, for the pre-push drift check | `scripts/timezonefinder-python` | hook pre-push; 3 tools | timezonefinder-python-test.sh | KEEP |
 | `scripts/timezonefinder-python-stub.sh` | A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder | `sourced` | by hand | - | KEEP |
-| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 73 tools | tool-conventions-test.sh | MIGRATE |
+| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 72 tools | tool-conventions-test.sh | MIGRATE |
 | `scripts/tool_catalogue.py` | The tool catalogue: docs/tools.md, generated from every tool's own one-line purpose. | `python3 scripts/tool_catalogue.py` | skill CLAUDE.md | tool_catalogue_test.py | Python |
 | `scripts/touched-tree-stub.sh` | The stub sbt for the touched-code tools' specs (mutation-check, coverage-touched) | `scripts/touched-tree-stub.sh` | by hand | - | KEEP |
 | `scripts/touched-tree.sh` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `bash scripts/touched-tree.sh` | skill test-layers; 2 tools | - | MIGRATE |

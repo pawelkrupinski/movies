@@ -39,6 +39,6 @@ class ConvergenceReuseSpec extends AnyFlatSpec with Matchers {
   // Only Main's kick names a run to reuse.
   "the daily full run" should "never name a run to reuse" in {
     RepoFile.read(".github/workflows/convergence-daily.yml") should not include "reuse-run"
-    RepoFile.read(".github/scripts/kick-convergence.sh") should include("-f reuse-run=")
+    RepoFile.read(".github/scripts/kick_convergence.py") should include(""""-f", f"reuse-run={reuse}"""")
   }
 }
