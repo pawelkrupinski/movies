@@ -47,7 +47,8 @@ echo "result of $class" > "$app/build/outputs/androidTest-results/connected/TEST
 [ "$class" != a.Two ]
 STUB
 chmod +x "$work/android/scripts/devtest.sh"
-bash "$work/android/scripts/devtest-shuffled.sh" 7 >/dev/null 2>&1
+ORDER_FAILED_FILE="$work/failed" bash "$work/android/scripts/devtest-shuffled.sh" 7 >/dev/null 2>&1
+check "the failing classes are written to ORDER_FAILED_FILE, one a line, for the control pass" "a.Two" "$(cat "$work/failed")"
 kept="$work/android/app/build/order-independence"
 check "a failing class keeps its own report" "report of a.Two" "$(cat "$kept/a.Two/reports/index.html" 2>/dev/null)"
 check "a failing class keeps its own result XML" "result of a.Two" "$(cat "$kept/a.Two/results/TEST.xml" 2>/dev/null)"

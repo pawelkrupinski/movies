@@ -87,8 +87,8 @@ check "...and the landing check's step says which hook check it failed (pre-push
 
 # The floor is one thing everywhere: the hook asks scripts/floor-bash, and so does the nightly macOS step.
 # shellcheck disable=SC2016 # the workflow's text, not expanded
-check "order-independence.yml's floor step runs the self-tests under scripts/floor-bash's bash" "1" \
-  "$(grep -c 'scripts/run-script-tests --bash "$(scripts/floor-bash)"' "$REPO_ROOT/.github/workflows/order-independence.yml")"
+check "tool-self-tests.yml's macOS step runs the self-tests under scripts/floor-bash's bash" "1" \
+  "$(grep -c 'scripts/run-script-tests --bash "$(scripts/floor-bash)"' "$REPO_ROOT/.github/workflows/tool-self-tests.yml")"
 check "the landing check's tools build it (.github/actions/install-floor-bash, from hook-tools)" "1" \
   "$(grep -c 'uses: ./.github/actions/install-floor-bash' "$REPO_ROOT/.github/actions/hook-tools/action.yml")"
 

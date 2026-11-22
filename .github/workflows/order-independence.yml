@@ -21,16 +21,31 @@ name: Order independence
 #                        (android/scripts/devtest-shuffled.sh).
 #   swift                every `swift test` case ALONE, in a seeded order
 #                        (ios/scripts/swift-test-shuffled.sh); the sync model at 10x.
-#                        Also every script self-test under macOS's /bin/bash 3.2 (see there).
 #   ios                  every XCUITest class ALONE, in its own xcodebuild run: a class
 #                        that only passes after another has set state up fails here.
 #
 # A failure prints its seed; replay it locally with the command in the job summary, or
 # re-run this workflow by hand with that seed.
 #
-# A suite failing in BOTH scala orders is a regression, not an order dependence (~31 of the ~66 failing jobs of runs
-# #1-#100, against one real order dependence): `scala-compare` reads each leg's failing suites and labels the run so in
-# its summary (scripts/ci/order-compare.sh).
+# THIS WORKFLOW FAILS FOR ORDER, AND SAYS WHEN IT DOES NOT. Of the ~66 failing jobs of runs #1-#100 ONE was an order
+# dependence: ~31 were regressions (the same failure in default order), ~18 flakes, ~12 the environment, 4 unknown (no
+# logs kept). So every leg:
+#   - starts with a RUNNER PREFLIGHT (scripts/ci/order-preflight.sh): the toolchain, the simulator or emulator, GNU vs
+#     BSD tools. A runner that cannot run the leg stops there as infrastructure (`::error ...::UNKNOWN: runner
+#     preflight`, a step named `Runner preflight ...`: agentctl's infra rows), never a test red;
+#   - fetches its dependencies in ONE warm step, the only one that may use the network, retried at the fetch layer only
+#     (scripts/ci/fetch-retry), then runs its tests cut off from it (scripts/ci/no-network: a network namespace on
+#     Linux, sandbox-exec on macOS; the Simulator's and the emulator's own traffic is outside a process sandbox: the
+#     emulator runs in airplane mode, the XCUITests on their fixture server);
+#   - runs its tests through `scripts/ci/order-compare.sh leg`: on a failure THE CONTROL PASS runs exactly the failing
+#     tests again in DEFAULT order at the same commit and labels the leg REGRESSION (they fail there too: a change broke
+#     them, agentctl's fixer goes after it) or ORDER (they pass there: an order dependence, or a flake). A diagnosis,
+#     never a rerun to green: the leg keeps its own exit;
+#   - keeps its record, its logs and its reports whatever it ended (`if: always()`), so every red can be classified.
+# `order-verdict` reads every leg's record: the run's one word (regression > order > none > pass) as its output and
+# in order-verdict.json, a line a leg in the summary, and scala's reverse vs shuffled side by side.
+# The script self-tests under macOS's /bin/bash 3.2 left this workflow for tool-self-tests.yml's macOS job (on every
+# push touching the tools, and nightly in full): a red there is no order red.
 on:
     schedule:
         - cron: '40 2 * * *'
@@ -107,6 +122,9 @@ jobs:
               shell: bash
               run: echo "$GITHUB_WORKSPACE/scripts/ci/sbt-guard" >> "$GITHUB_PATH"
 
+            - name: Runner preflight
+              run: scripts/ci/order-preflight.sh scala
+
             - name: Pick the order
               id: order
               env:
@@ -117,61 +135,37 @@ jobs:
                   echo "seed=$seed" >> "$GITHUB_OUTPUT"
                   echo "Scala unit specs, suite order \`$seed\` — replay: \`TEST_ORDER_SEED=$seed sbt testUnitNoE2e\`" >> "$GITHUB_STEP_SUMMARY"
 
-            # Same env as ci.yml's unit run, so a spec that needs a key behaves as it does there. Its log kept for
-            # scala-compare (pipefail: the step's default `bash -e` would let tee's 0 hide sbt's failure).
+            # The one step that may use the network: every module's dependencies and compiler bridges, and the build.
+            - name: Warm the dependency caches (the only network step)
+              run: >-
+                  scripts/ci/fetch-retry -- sbt update Test/update "all base/Test/compile quality/Test/compile
+                  http/Test/compile common/Test/compile identity/Test/compile scrapers/Test/compile testkit/Test/compile
+                  repochecks/Test/compile web/Test/compile worker/Test/compile"
+
+            # Same env as ci.yml's unit run, so a spec that needs a key behaves as it does there; no network but
+            # loopback, and on a failure the control pass (order-compare.sh leg).
             - name: Unit specs, one suite at a time in that order
               id: unit
-              run: |
-                  set -o pipefail
-                  sbt testUnitNoE2e 2>&1 | tee "$RUNNER_TEMP/sbt-unit.log"
+              run: scripts/ci/no-network -- scripts/ci/order-compare.sh leg "scala-$ORDER" "$RUNNER_TEMP/order-records" -- sbt testUnitNoE2e
               env:
+                  ORDER:           ${{ matrix.order }}
+                  ORDER_REPLAY:    TEST_ORDER_SEED=${{ steps.order.outputs.seed }} sbt testUnitNoE2e
                   TEST_ORDER_SEED: ${{ steps.order.outputs.seed }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
 
-            # What this order failed, and how its unit step ended: scala-compare's to read beside the other order's.
-            - name: Name the failing suites
-              if: always()
-              env:
-                  ORDER:   ${{ matrix.order }}
-                  OUTCOME: ${{ steps.unit.outcome }}
-              run: |
-                  mkdir -p "$RUNNER_TEMP/failed-suites"
-                  scripts/ci/order-compare.sh failed-suites "$RUNNER_TEMP/sbt-unit.log" > "$RUNNER_TEMP/failed-suites/$ORDER.txt"
-                  echo "$OUTCOME" > "$RUNNER_TEMP/failed-suites/$ORDER.result"
-            - name: Keep them for scala-compare
+            # Its record (the failing suites, the control pass's, the verdict, sbt's whole log) for order-verdict, and
+            # the unit reports, whatever the leg ended.
+            - name: Keep the order record
               if: always()
               uses: actions/upload-artifact@v6
               with:
-                  name: scala-failed-suites-${{ matrix.order }}
-                  path: ${{ runner.temp }}/failed-suites/
+                  name: order-record-scala-${{ matrix.order }}
+                  path: |
+                      ${{ runner.temp }}/order-records/
+                      target/test-reports/unit/
                   if-no-files-found: ignore
                   overwrite: true
                   retention-days: 14
-
-    # Both orders side by side: a suite failing in both is a regression, not an order dependence; one failing in one
-    # order only is the order dependence this workflow is for (scripts/ci/order-compare.sh, order-compare-test.sh).
-    # It decides nothing of the run (the legs' results do), so it never fails; it reads needs alone.
-    scala-compare:
-        needs: [seed, scala]
-        if: always() && !cancelled()
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
-        timeout-minutes: 5
-        steps:
-            - uses: actions/checkout@v5
-            # None at all when neither leg got as far as naming its suites.
-            - uses: actions/download-artifact@v6
-              continue-on-error: true
-              with:
-                  pattern: scala-failed-suites-*
-                  merge-multiple: true
-                  path: failed-suites
-            - name: Reverse vs shuffled
-              env:
-                  SEED: ${{ needs.seed.outputs.seed }}
-              run: |
-                  mkdir -p failed-suites
-                  scripts/ci/order-compare.sh summary failed-suites "$SEED" >> "$GITHUB_STEP_SUMMARY"
-                  scripts/ci/order-compare.sh summary failed-suites "$SEED"
 
     android:
         needs: seed
@@ -201,24 +195,40 @@ jobs:
               with:
                   add-job-summary: always
 
+            - name: Runner preflight
+              working-directory: ${{ github.workspace }}
+              run: scripts/ci/order-preflight.sh android
+
+            # The one step that may use the network: the Gradle and Robolectric (android-all) dependencies and the build.
+            - name: Warm the dependency caches (the only network step)
+              run: ../scripts/ci/fetch-retry -- ./gradlew --no-daemon :app:syncRobolectricAndroidAll :app:assembleDebugUnitTest
+
             - name: Robolectric tests, classes and methods in a seeded order
               env:
                   SEED: ${{ needs.seed.outputs.seed }}
+                  # the control pass keeps the leg's depth: only the order differs (order-compare.sh)
+                  ORDER_CONTROL_EXTRA: -PsyncModelSeeds=20000
               run: |
                   seed="$SEED"
                   echo "Android unit tests, seed \`$seed\` — replay: \`./gradlew testDebugUnitTest -PtestOrderSeed=$seed -PsyncModelSeeds=20000\`" >> "$GITHUB_STEP_SUMMARY"
+                  export ORDER_REPLAY="./gradlew testDebugUnitTest -PtestOrderSeed=$seed -PsyncModelSeeds=20000"
                   # The sync model runs deep here: 100× its push-sized seed count.
-                  ./gradlew --no-daemon testDebugUnitTest -PtestOrderSeed="$seed" -PsyncModelSeeds=20000
+                  ../scripts/ci/no-network -- ../scripts/ci/order-compare.sh leg android "$RUNNER_TEMP/order-records" -- \
+                      ./gradlew --no-daemon --offline testDebugUnitTest -PtestOrderSeed="$seed" -PsyncModelSeeds=20000
 
-            - name: Upload the test report
-              if: failure()
+            - name: Keep the order record
+              if: always()
               uses: actions/upload-artifact@v6
               with:
                   # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
                   overwrite: true
-                  name: android-order-independence-report
-                  path: android/app/build/reports/tests/testDebugUnitTest
+                  name: order-record-android
+                  path: |
+                      ${{ runner.temp }}/order-records/
+                      android/app/build/reports/tests/testDebugUnitTest
+                      android/app/build/test-results/testDebugUnitTest
                   if-no-files-found: ignore
+                  retention-days: 14
 
     android-instrumented:
         needs: seed
@@ -255,6 +265,14 @@ jobs:
               working-directory: ${{ github.workspace }}
               run: scripts/ci/enable-kvm.sh
 
+            - name: Runner preflight
+              working-directory: ${{ github.workspace }}
+              run: scripts/ci/order-preflight.sh android-instrumented
+
+            # The one step that may use the network: the app and test APKs devtest.sh installs, built once.
+            - name: Warm the dependency caches (the only network step)
+              run: ../scripts/ci/fetch-retry -- ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest -PdebugSuffix
+
             - name: Cache AVD
               id: avd-cache
               uses: actions/cache@v5
@@ -284,10 +302,14 @@ jobs:
               run: |
                   echo "Android instrumented classes, each alone, seed \`$SEED\` — replay: \`android/scripts/devtest-shuffled.sh $SEED\`" >> "$GITHUB_STEP_SUMMARY"
 
+            # The device is checked first (a preflight: adb sees it, booted), then cut off the network (airplane
+            # mode, wifi and data off: adb is no network of the device's), then every class alone through
+            # order-compare.sh leg; logcat is kept whatever happened. One line: the action runs each line apart.
             - name: Every androidTest class alone, in that order
               uses: reactivecircus/android-emulator-runner@v2
               env:
                   SEED: ${{ needs.seed.outputs.seed }}
+                  ORDER_REPLAY: android/scripts/devtest-shuffled.sh ${{ needs.seed.outputs.seed }} --skip-live-youtube
               with:
                   api-level: ${{ env.API_LEVEL }}
                   target: google_apis
@@ -299,19 +321,22 @@ jobs:
                   emulator-boot-timeout: 600
                   working-directory: android
                   # --skip-live-youtube: see android.yml's instrumented lane.
-                  script: scripts/devtest-shuffled.sh "$SEED" --skip-live-youtube
+                  script: mkdir -p "$RUNNER_TEMP/order-records" && ../scripts/ci/order-preflight.sh device && adb shell cmd connectivity airplane-mode enable && adb shell svc wifi disable && adb shell svc data disable && ../scripts/ci/order-compare.sh leg android-instrumented "$RUNNER_TEMP/order-records" -- scripts/devtest-shuffled.sh "$SEED" --skip-live-youtube; s=$?; adb logcat -d > "$RUNNER_TEMP/order-records/logcat.txt" 2>&1; exit $s
 
-            - name: Upload the instrumented test report
-              if: failure()
+            - name: Keep the order record
+              if: always()
               uses: actions/upload-artifact@v6
               with:
                   # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
                   overwrite: true
-                  name: android-instrumented-order-independence-report
-                  # One directory per failing class (devtest-shuffled.sh keeps them): the
-                  # Gradle report paths hold only the LAST class's run.
-                  path: android/app/build/order-independence
+                  name: order-record-android-instrumented
+                  # One directory per failing class (devtest-shuffled.sh keeps them): the Gradle report paths hold only
+                  # the LAST class's run. Beside them the leg's record and the device's logcat.
+                  path: |
+                      ${{ runner.temp }}/order-records/
+                      android/app/build/order-independence
                   if-no-files-found: ignore
+                  retention-days: 14
 
     swift:
         needs: seed
@@ -325,59 +350,38 @@ jobs:
               with:
                   xcode-version: latest-stable
 
+            - name: Runner preflight
+              run: scripts/ci/order-preflight.sh swift
+
+            # The one step that may use the network: SwiftPM's package resolution, and the build the cases run from.
+            - name: Warm the dependency caches (the only network step)
+              run: scripts/ci/fetch-retry -- swift build --package-path ios --build-tests
+
+            # No outbound connection but localhost's (no-network: sandbox-exec), and on a failure the control pass.
+            # SwiftPM's own manifest sandbox cannot nest inside no-network's sandbox-exec ("sandbox_apply: Operation not
+            # permitted"): it is turned off for these runs, whose sandbox is the stricter one.
             - name: Every swift test case alone, in a seeded order
               env:
                   SEED: ${{ needs.seed.outputs.seed }}
+                  SWIFTPM_FLAGS: --disable-sandbox
               run: |
                   seed="$SEED"
                   echo "swift test cases, each alone, seed \`$seed\` — replay: \`ios/scripts/swift-test-shuffled.sh $seed\`" >> "$GITHUB_STEP_SUMMARY"
-                  ios/scripts/swift-test-shuffled.sh "$seed"
+                  export ORDER_REPLAY="ios/scripts/swift-test-shuffled.sh $seed"
+                  scripts/ci/no-network -- scripts/ci/order-compare.sh leg swift "$RUNNER_TEMP/order-records" -- ios/scripts/swift-test-shuffled.sh "$seed"
 
             # The sync model deep: 10x its push-sized seed count.
             - name: StateSyncModelTests at 2000 seeds
-              run: swift test --package-path ios --filter StateSyncModelTests
+              run: scripts/ci/no-network -- swift test --disable-sandbox --package-path ios --skip-build --filter StateSyncModelTests
               env:
                   SYNC_MODEL_SEEDS: '2000'
 
-            # The tools the self-tests drive run on ubuntu CI and the laptop, both with GNU `timeout`, shellcheck and
-            # rsync 3; this image has none of them (run 41294275183: ten self-tests failed "timeout: command not
-            # found" / "shellcheck is not installed"; run 44664123050: backtest_alerts_local_test.py "rsync on PATH is
-            # not rsync 3", the image's rsync being openrsync). Only `timeout` and `rsync` are linked, ahead of
-            # /usr/bin, as on the laptop -- no coreutils gnubin, so the tests still meet macOS's own sed, date and
-            # friends. (ScriptSelfTestsRunInCiSpec)
-            - name: GNU timeout, shellcheck and rsync 3, as Linux CI and the laptop have them
-              if: ${{ !cancelled() }}
-              env:
-                  HOMEBREW_NO_AUTO_UPDATE: '1'
-              run: |
-                  brew install coreutils shellcheck rsync
-                  mkdir -p "$RUNNER_TEMP/gnu-timeout"
-                  ln -sf "$(brew --prefix)/bin/gtimeout" "$RUNNER_TEMP/gnu-timeout/timeout"
-                  ln -sf "$(brew --prefix rsync)/bin/rsync" "$RUNNER_TEMP/gnu-timeout/rsync"
-                  "$RUNNER_TEMP/gnu-timeout/rsync" --version | head -1
-                  echo "$RUNNER_TEMP/gnu-timeout" >> "$GITHUB_PATH"
-
-            # Not an order leg, but the one nightly macOS job: the script tools promise macOS's /bin/bash 3.2 and
-            # /usr/bin/python3 3.9 (scripts/run-script-tests' PythonFloor), and ci.yml's Linux run has neither, so a
-            # bash-4-only construct ($BASHPID, an empty "${a[@]}" under set -u) or 3.10+ syntax passed there. Every
-            # self-test under this image's own /bin/bash; the floor lint run BY /usr/bin/python3 compiles every Python
-            # file as 3.9 does (python_floor_lint.py).
-            - name: Script self-tests under macOS /bin/bash 3.2, Python at the floor
-              if: ${{ !cancelled() }}
-              env:
-                  RUN_SCRIPT_TESTS_LOG_DIR: ${{ runner.temp }}/script-test-logs
-              run: |
-                  /bin/bash --version | head -1
-                  scripts/run-script-tests --bash "$(scripts/floor-bash)"
-                  /usr/bin/python3 scripts/ci/python_floor_lint.py
-            # the whole log of each failing self-test (run-script-tests keeps it in RUN_SCRIPT_TESTS_LOG_DIR): the report
-            # holds its failing cases and last 60 lines, and the rest left with the runner (Order independence #94)
-            - name: Keep the failing self-tests' whole logs
-              if: failure()
+            - name: Keep the order record
+              if: always()
               uses: actions/upload-artifact@v6
               with:
-                  name: script-test-logs-macos
-                  path: ${{ runner.temp }}/script-test-logs/
+                  name: order-record-swift
+                  path: ${{ runner.temp }}/order-records/
                   if-no-files-found: ignore
                   overwrite: true
                   retention-days: 14
@@ -393,14 +397,18 @@ jobs:
               with:
                   xcode-version: latest-stable
 
+            - name: Runner preflight
+              run: scripts/ci/order-preflight.sh ios
+
             # An iPhone simulator this image actually has, not a hard-coded model it may have
             # dropped (run 36111347595: "iPhone 15" on an Xcode 26 image). (ios-sim-destination-test.sh)
             - name: Pick the simulator
               run: echo "DESTINATION=$(scripts/ci/ios-sim-destination.sh)" >> "$GITHUB_ENV"
 
-            - name: Build for testing
+            # The one step that may use the network: SwiftPM's package resolution, inside the build for testing.
+            - name: Build for testing (the only network step)
               run: |
-                  xcodebuild build-for-testing \
+                  scripts/ci/fetch-retry -- xcodebuild build-for-testing \
                       -project ios/Kinowo.xcodeproj \
                       -scheme Kinowo \
                       -destination "$DESTINATION" \
@@ -410,40 +418,96 @@ jobs:
             # Boot the simulator BEFORE the loop, after the build (booting beside the build
             # starved the 3-core runner, 3451eee5d). Otherwise its ~2-4 min cold boot lands on
             # whichever class sorts first, whose app launch then times out (CardShareMenuUITests,
-            # run 38270450938) — a failure of the harness's order, not of the class.
-            - name: Boot the simulator
-              run: xcrun simctl bootstatus "${DESTINATION##*id=}" -b
+            # run 38270450938) — a failure of the harness's order, not of the class. A Simulator
+            # that will not boot is the runner's: the step is a preflight's.
+            - name: Runner preflight, the simulator boots
+              run: |
+                  udid="${DESTINATION##*id=}"
+                  if ! xcrun simctl bootstatus "$udid" -b; then
+                      echo "::error title=Runner preflight::UNKNOWN: runner preflight (ios): the simulator $udid did not boot -- the runner, not a test red"
+                      exit 1
+                  fi
 
             # Each XCUITest class on its own, so none can lean on state another left behind.
             # Every class runs even after a failure; the job fails at the end, naming them, each
-            # failed test an error carrying its own assertion (the script says why it is one).
+            # failed test an error carrying its own assertion (the script says why it is one), and
+            # then the control pass runs the failed classes together in default order (order-compare.sh).
             # Each test is bounded (a hung one fails at its allowance, naming itself), and so
             # is the step: the whole suite in one run takes ~25 min, alone ~a minute more a class.
+            # No process sandbox reaches the Simulator's app: the XCUITests serve their listing from their own
+            # fixture server (FixtureServer.swift) and their posters from .invalid hosts.
             - name: Every XCUITest class alone
               timeout-minutes: 120
+              env:
+                  ORDER_REPLAY: scripts/ci/xcuitest-each-class-alone.sh
               run: |
                   . scripts/ci/bounded-step.sh
-                  scripts/ci/xcuitest-each-class-alone.sh
+                  scripts/ci/order-compare.sh leg ios "$RUNNER_TEMP/order-records" -- scripts/ci/xcuitest-each-class-alone.sh
 
             # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
             - name: End what a timed-out step left running
               if: always()
               run: scripts/ci/bounded-step.sh --reap
-            - name: Upload the result bundles
-              if: failure()
+            # every class's xcresult (its screenshots and attachments) and log, the control pass's, and the record
+            - name: Keep the order record
+              if: always()
               uses: actions/upload-artifact@v6
               with:
                   # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
                   overwrite: true
-                  name: ios-alone-results
-                  path: build/alone
+                  name: order-record-ios
+                  path: |
+                      ${{ runner.temp }}/order-records/
+                      build/alone
                   if-no-files-found: ignore
+                  retention-days: 14
+
+    # Every leg's record side by side: the run's one-word verdict (regression > order > none > pass) as this job's
+    # output and order-verdict.json, a line a leg in the summary, and scala's reverse vs shuffled
+    # (scripts/ci/order-compare.sh, order-compare-test.sh). It decides nothing of the run (the legs' results do), so it
+    # never fails; it reads needs alone.
+    order-verdict:
+        needs: [seed, scala, android, android-instrumented, swift, ios]
+        if: always() && !cancelled()
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 5
+        outputs:
+            verdict: ${{ steps.verdict.outputs.verdict }}
+        steps:
+            - uses: actions/checkout@v5
+            # None at all when no leg got as far as its tests.
+            - uses: actions/download-artifact@v6
+              continue-on-error: true
+              with:
+                  pattern: order-record-*
+                  merge-multiple: true
+                  path: order-records-all
+            - name: Every leg's verdict
+              id: verdict
+              env:
+                  SEED: ${{ needs.seed.outputs.seed }}
+              run: |
+                  mkdir -p order-records
+                  # each upload's paths sit under their common ancestor: a leg's record is wherever its order-records/ is
+                  find order-records-all -path '*/order-records/*' \( -name '*.verdict' -o -name '*.txt' -o -name '*.result' \) \
+                      ! -name logcat.txt -exec cp {} order-records/ \; 2> /dev/null || true
+                  scripts/ci/order-compare.sh summary order-records "$SEED" >> "$GITHUB_STEP_SUMMARY"
+                  scripts/ci/order-compare.sh summary order-records "$SEED"
+                  echo "verdict=$(scripts/ci/order-compare.sh verdict order-records)" >> "$GITHUB_OUTPUT"
+                  cat order-records/order-verdict.json
+            - name: Keep the verdict
+              uses: actions/upload-artifact@v6
+              with:
+                  name: order-verdict
+                  path: order-records/order-verdict.json
+                  overwrite: true
+                  retention-days: 30
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
         name: report (scheduled run)
-        needs: [seed, scala, scala-compare, android, android-instrumented, swift, ios]
+        needs: [seed, scala, android, android-instrumented, swift, ios, order-verdict]
         if: always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5

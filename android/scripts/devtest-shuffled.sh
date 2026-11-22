@@ -47,6 +47,8 @@ done <<<"$ordered"
 if [ "${#failed[@]}" -gt 0 ]; then
     echo "devtest-shuffled: ${#failed[@]} of $count classes fail alone under seed $seed:"
     printf '  %s\n' "${failed[@]}"
+    # the failing classes, one a line, for Order independence's control pass (scripts/ci/order-compare.sh leg)
+    [ -z "${ORDER_FAILED_FILE:-}" ] || printf '%s\n' "${failed[@]}" > "$ORDER_FAILED_FILE"
     exit 1
 fi
 echo "devtest-shuffled: all $count classes pass alone under seed $seed"

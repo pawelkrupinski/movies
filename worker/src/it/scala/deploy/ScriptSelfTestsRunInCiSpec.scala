@@ -27,8 +27,11 @@ class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
   /** The assertion harness the shell specs source: named like a spec, it tests nothing itself. */
   private val Harness = Set("scripts/shell-spec.sh")
   private val Pruned = Set("node_modules", "build", ".build", "target")
-  /** The nightly macOS step's floor run: the bash scripts/floor-bash finds, macOS's /bin/bash 3.2 there. */
+  /** The macOS job's floor run: the bash scripts/floor-bash finds, macOS's /bin/bash 3.2 there -- every self-test,
+   *  and a push's floor scope since its `before`. */
   private val FloorRun = """scripts/run-script-tests --bash "$(scripts/floor-bash)""""
+  private val PushFloorRun = """scripts/run-script-tests --changed "$BASE" --floor "$(scripts/floor-bash)""""
+  private lazy val macos = RepoFile.block(RepoFile.block(RepoFile.read(".github/workflows/tool-self-tests.yml"), "jobs"), "macos-script-tests")
 
   private def files(root: String): Seq[Path] = {
     val stream = Files.walk(Paths.get(root))
@@ -70,10 +73,13 @@ class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
     ScriptTests.ciRunsAll shouldBe true
   }
 
-  "the nightly macOS job" should "run every self-test under the floor bash 3.2 (macOS's /bin/bash), the floor the tools promise" in {
-    // ci.yml's Linux bash is 5: a bash-4-only construct passes there and breaks every Mac
-    RepoFile.runSteps(RepoFile.read(".github/workflows/order-independence.yml"))
-      .exists(_.script.linesIterator.exists(_.trim == FloorRun)) shouldBe true
+  "tool-self-tests.yml's macOS job" should "run the self-tests under the floor bash 3.2 (macOS's /bin/bash), the floor the tools promise" in {
+    // the Linux job's bash is 5: a bash-4-only construct passes there and breaks every Mac. Order independence's
+    // swift leg ran this until 2026-11-22, where a red read as an order red; a push now runs its floor scope
+    macos should include("runs-on: macos-latest")
+    macos.linesIterator.map(_.trim).toSeq should contain allOf (FloorRun, PushFloorRun)
+    macos should include("/usr/bin/python3 scripts/ci/python_floor_lint.py")
+    RepoFile.read(".github/workflows/order-independence.yml") should not include "run-script-tests"
   }
 
   it should "first give them GNU timeout, shellcheck and rsync 3, which the tools run with on Linux CI and the laptop" in {
@@ -81,13 +87,12 @@ class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
     // not installed" (Order independence #28, run 41294275183), and backtest_alerts_local_test.py five times "rsync on
     // PATH is not rsync 3" (#89, run 44664123050: the image's rsync is openrsync), though all passed on ubuntu and
     // the laptop. rsync is linked beside timeout, ahead of /usr/bin on PATH.
-    val swift = RepoFile.block(RepoFile.block(RepoFile.read(".github/workflows/order-independence.yml"), "jobs"), "swift")
-    val provide = RepoFile.stepScript(swift, Provide)
+    val provide = RepoFile.stepScript(macos, Provide)
     provide should include("brew install coreutils shellcheck rsync")
     provide should include("gtimeout")
     provide should include("""ln -sf "$(brew --prefix rsync)/bin/rsync" "$RUNNER_TEMP/gnu-timeout/rsync"""")
     provide should include("$GITHUB_PATH")
-    RepoFile.positionOf(swift, Provide) should be < RepoFile.positionOf(swift, FloorRun)
+    RepoFile.positionOf(macos, Provide) should be < RepoFile.positionOf(macos, FloorRun)
   }
 
   "a tagged self-test" should "say why it leaves the default run" in {

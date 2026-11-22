@@ -11,13 +11,20 @@
 #
 #     ios/scripts/swift-test-shuffled.sh <seed>
 #
+# SWIFTPM_FLAGS: words added to every swift invocation -- Order independence's
+# `--disable-sandbox`: its tests already run inside scripts/ci/no-network's
+# sandbox-exec, and SwiftPM's own manifest sandbox cannot nest in it
+# ("sandbox-exec: sandbox_apply: Operation not permitted").
+#
 set -uo pipefail
 seed="${1:?usage: swift-test-shuffled.sh <seed>}"
 package="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$package/../scripts/seeded-order.sh"
 
-swift build --package-path "$package" --build-tests || exit 1
-tests="$(swift test list --package-path "$package" --skip-build)" || exit 1
+# shellcheck disable=SC2086 # SWIFTPM_FLAGS: words by design
+swift build ${SWIFTPM_FLAGS:-} --package-path "$package" --build-tests || exit 1
+# shellcheck disable=SC2086
+tests="$(swift test list ${SWIFTPM_FLAGS:-} --package-path "$package" --skip-build)" || exit 1
 [ -n "$tests" ] || { echo "swift-test-shuffled: no tests listed" >&2; exit 1; }
 
 ordered="$(printf '%s\n' "$tests" | seeded_order "$seed")"
@@ -33,7 +40,8 @@ while IFS= read -r test; do
     # would pass without running. XCTest's last "Executed N test(s)" line is the
     # whole run's tally; it must say exactly one.
     # </dev/null: stdin is the case list this loop reads, not the test's to consume.
-    swift test --package-path "$package" --skip-build --filter "$pattern" >"$log" 2>&1 </dev/null
+    # shellcheck disable=SC2086
+    swift test ${SWIFTPM_FLAGS:-} --package-path "$package" --skip-build --filter "$pattern" >"$log" 2>&1 </dev/null
     status=$?
     executed="$(grep -oE 'Executed [0-9]+ tests?' "$log" | tail -1 | grep -oE '[0-9]+')"
     if [ "$status" -ne 0 ] || [ "$executed" != 1 ]; then
@@ -48,6 +56,8 @@ rm -f "$log"
 if [ "${#failed[@]}" -gt 0 ]; then
     echo "swift-test-shuffled: ${#failed[@]} of $count cases fail alone under seed $seed:"
     printf '  %s\n' "${failed[@]}"
+    # the failing cases, one a line, for Order independence's control pass (scripts/ci/order-compare.sh leg)
+    [ -z "${ORDER_FAILED_FILE:-}" ] || printf '%s\n' "${failed[@]}" > "$ORDER_FAILED_FILE"
     exit 1
 fi
 echo "swift-test-shuffled: all $count cases pass alone under seed $seed"

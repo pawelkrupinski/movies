@@ -77,5 +77,7 @@ done
 if [ -n "$failed" ]; then
     echo "XCUITest classes that fail when run alone:$failed" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
     echo "::error::XCUITest classes that fail when run alone:$failed"
+    # the failing classes, one a line, for Order independence's control pass (scripts/ci/order-compare.sh leg)
+    [ -z "${ORDER_FAILED_FILE:-}" ] || printf '%s\n' $failed > "$ORDER_FAILED_FILE"
     exit 1
 fi

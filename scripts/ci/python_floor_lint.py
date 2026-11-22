@@ -4,7 +4,7 @@
 
 Two ways a file outgrows the floor without any test on a newer Python noticing:
   - SYNTAX newer than the floor (`match`, ...): every file is compiled by an interpreter AT the floor when one is here
-    ($PYTHON_FLOOR_INTERPRETER, python3.9 on the PATH, or /usr/bin/python3 -- macOS's, the nightly macOS job's), which
+    ($PYTHON_FLOOR_INTERPRETER, python3.9 on the PATH, or /usr/bin/python3 -- macOS's, tool-self-tests.yml's macOS job's), which
     is the real answer. Without one, each is parsed with `feature_version` set to the floor, which is best-effort: on
     3.12+ it accepts PEP 701 f-strings (a nested quote of the f-string's own kind, a backslash, a comment or a line
     break in a single-quoted one's expression), so those are found from the tokens instead.

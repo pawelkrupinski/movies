@@ -54,7 +54,7 @@ JSON
 alone() { # alone <failing class or ""> <tests dir>: runs the script in $tmp/work; sets out and code
   : >"$tmp/calls"; : >"$tmp/calls.args"; : >"$tmp/calls.order"; : >"$tmp/summary"
   out=$(cd "$tmp/work" && PATH="$tmp/bin:$PATH" CALLS="$tmp/calls" FAILING="$1" TREE="$tmp/beta.json" \
-    DESTINATION="platform=iOS Simulator,id=SIM" XCUITEST_DIR="$2" GITHUB_STEP_SUMMARY="$tmp/summary" \
+    DESTINATION="platform=iOS Simulator,id=SIM" XCUITEST_DIR="$2" GITHUB_STEP_SUMMARY="$tmp/summary" ORDER_FAILED_FILE="$tmp/failed" \
     "$HERE/xcuitest-each-class-alone.sh" 2>&1)
   code=$?
 }
@@ -73,6 +73,7 @@ check "a passing class's log stays in its file" "0" "$(printf '%s\n' "$out" | gr
 check "the step's last word names the failed classes" "::error::XCUITest classes that fail when run alone: BetaUITests" \
   "$(printf '%s\n' "$out" | tail -1)"
 check "and so does the job summary" "XCUITest classes that fail when run alone: BetaUITests" "$(cat "$tmp/summary")"
+check "and ORDER_FAILED_FILE, a class a line, for the control pass" "BetaUITests" "$(cat "$tmp/failed")"
 
 alone "" "$tmp/tests"
 check "all passing: the step passes" "0" "$code"

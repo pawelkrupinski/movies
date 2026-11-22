@@ -17,6 +17,13 @@ name: Tool self-tests
 # NOT AGAIN FOR A TREE A LANDING CHECK PASSED (the owner, 2026-11-18: 165 runner-minutes in two days): a push whose very
 # tree a full landing check passed (scripts/ci/landing_check_for_tree.py: keyed on the tree and the run's conclusion,
 # never a branch name) had them run there by the same hook; anything that landed some other way runs them here.
+#
+# AND UNDER macOS's /bin/bash 3.2, BSD tools and /usr/bin/python3 3.9 (`macos-script-tests`), the floor the tools
+# promise and ubuntu has none of: on every push touching the tools, the push's floor scope (run-script-tests --changed
+# <before> --floor: the bash files it touched parsed by 3.2, their self-tests under it, the rest natively on macOS) and
+# the floor lint; a dispatch, every self-test under 3.2. Until 2026-11-22 only Order independence's swift leg ran them --
+# about a third of its reds (#89, #90, #94, #97, #103, #105), none an order dependence. A landing check's Linux pass is
+# no macOS pass: the skip below holds for the Linux job only.
 on:
     push:
         branches: [main]
@@ -50,7 +57,8 @@ env:
 
 jobs:
     # WHETHER THEY RUN (WorkflowPlanSpec: the one plan job): a push to main runs them unless a landing check passed its
-    # very tree; a dispatch always does. gh unable to say runs them.
+    # very tree; a dispatch always does; the schedule runs the macOS job alone. gh unable to say runs them. The macOS
+    # job's scope: a push's floor scope since its `before`, else (dispatch, schedule) every self-test.
     plan:
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
@@ -59,6 +67,7 @@ jobs:
             actions: read
         outputs:
             run: ${{ steps.plan.outputs.run }}
+            macos-base: ${{ steps.plan.outputs.macos-base }}
         steps:
             - uses: actions/checkout@v5
               with:
@@ -70,8 +79,13 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
                   EVENT: ${{ github.event_name }}
+                  BEFORE: ${{ github.event.before }}
               run: |
-                  if [ "$EVENT" = push ] && run="$(scripts/ci/landing_check_for_tree.py "$(git rev-parse 'HEAD^{tree}')")"; then
+                  if [ "$EVENT" = push ]; then echo "macos-base=$BEFORE" >> "$GITHUB_OUTPUT"; else echo "macos-base=" >> "$GITHUB_OUTPUT"; fi
+                  if [ "$EVENT" = schedule ] || [ "$EVENT" = repository_dispatch ]; then
+                      echo "the nightly run: the macOS job alone, every self-test"
+                      echo "run=false" >> "$GITHUB_OUTPUT"
+                  elif [ "$EVENT" = push ] && run="$(scripts/ci/landing_check_for_tree.py "$(git rev-parse 'HEAD^{tree}')")"; then
                       echo "landing check run $run passed this very tree: its script self-tests ran there"
                       echo "run=false" >> "$GITHUB_OUTPUT"
                   else
@@ -101,6 +115,62 @@ jobs:
               uses: actions/upload-artifact@v6
               with:
                   name: script-test-logs
+                  path: ${{ runner.temp }}/script-test-logs/
+                  if-no-files-found: ignore
+                  overwrite: true
+                  retention-days: 14
+
+    macos-script-tests:
+        name: script self-tests (macOS bash 3.2)
+        needs: [ plan ]
+        # github.com's hosted macOS only (SelfHostedRunnersSpec)
+        runs-on: macos-latest
+        timeout-minutes: 90
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  # the push's `before`, for --changed
+                  fetch-depth: 0
+            # The tools the self-tests drive run on ubuntu CI and the laptop, both with GNU `timeout`, shellcheck and
+            # rsync 3; this image has none of them (run 41294275183: ten self-tests failed "timeout: command not
+            # found" / "shellcheck is not installed"; run 44664123050: backtest_alerts_local_test.py "rsync on PATH is
+            # not rsync 3", the image's rsync being openrsync). Only `timeout` and `rsync` are linked, ahead of
+            # /usr/bin, as on the laptop -- no coreutils gnubin, so the tests still meet macOS's own sed, date and
+            # friends. (ScriptSelfTestsRunInCiSpec)
+            - name: GNU timeout, shellcheck and rsync 3, as Linux CI and the laptop have them
+              env:
+                  HOMEBREW_NO_AUTO_UPDATE: '1'
+              run: |
+                  brew install coreutils shellcheck rsync
+                  mkdir -p "$RUNNER_TEMP/gnu-timeout"
+                  ln -sf "$(brew --prefix)/bin/gtimeout" "$RUNNER_TEMP/gnu-timeout/timeout"
+                  ln -sf "$(brew --prefix rsync)/bin/rsync" "$RUNNER_TEMP/gnu-timeout/rsync"
+                  "$RUNNER_TEMP/gnu-timeout/rsync" --version | head -1
+                  echo "$RUNNER_TEMP/gnu-timeout" >> "$GITHUB_PATH"
+            # The script tools promise macOS's /bin/bash 3.2 and /usr/bin/python3 3.9 (scripts/run-script-tests'
+            # PythonFloor), and the Linux job has neither, so a bash-4-only construct ($BASHPID, an empty "${a[@]}"
+            # under set -u) or 3.10+ syntax passed there. The floor lint, run BY /usr/bin/python3, compiles every
+            # Python file as 3.9 does (python_floor_lint.py).
+            - name: Script self-tests under macOS /bin/bash 3.2, Python at the floor
+              env:
+                  RUN_SCRIPT_TESTS_LOG_DIR: ${{ runner.temp }}/script-test-logs
+                  BASE: ${{ needs.plan.outputs.macos-base }}
+              run: |
+                  /bin/bash --version | head -1
+                  if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2> /dev/null; then
+                      echo "the push's floor scope, since $BASE"
+                      scripts/run-script-tests --changed "$BASE" --floor "$(scripts/floor-bash)"
+                  else
+                      scripts/run-script-tests --bash "$(scripts/floor-bash)"
+                  fi
+                  /usr/bin/python3 scripts/ci/python_floor_lint.py
+            # the whole log of each failing self-test (run-script-tests keeps it in RUN_SCRIPT_TESTS_LOG_DIR): the report
+            # holds its failing cases and last 60 lines, and the rest left with the runner (Order independence #94)
+            - name: Keep the self-tests' whole logs
+              if: always()
+              uses: actions/upload-artifact@v6
+              with:
+                  name: script-test-logs-macos
                   path: ${{ runner.temp }}/script-test-logs/
                   if-no-files-found: ignore
                   overwrite: true

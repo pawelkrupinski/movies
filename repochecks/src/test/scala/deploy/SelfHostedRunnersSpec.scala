@@ -177,6 +177,8 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
   /** What ci-runner's job container cannot give: macOS, and an Android emulator (no /dev/kvm proven in it). */
   private val NeedsHosted = Set("ios.yml: ui-tests", "android.yml: instrumented", "order-independence.yml: swift",
     "order-independence.yml: ios", "order-independence.yml: android-instrumented",
+    // macOS's /bin/bash 3.2, BSD tools and /usr/bin/python3 3.9: the floor the script tools promise
+    "tool-self-tests.yml: macos-script-tests",
     // browser timing stress needs steady CPU (the owner, 2026-11-08): on movies-measure's shared host, Nightly stress #29's
     // WebKit phones timed out when a co-tenant starved every worker at once
     "nightly-stress.yml: races", "nightly-stress.yml: webkit-phones", "nightly-stress.yml: report",

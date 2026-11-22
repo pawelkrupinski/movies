@@ -23,6 +23,7 @@ trap 'rm -rf "$shim"' EXIT
 # nothing, *Twice* runs two, *Broken* fails, anything else runs once and passes.
 cat >"$shim/swift" <<'SHIM'
 #!/usr/bin/env bash
+[ -n "${SHIM_ARGS:-}" ] && echo "$*" >> "$SHIM_ARGS"
 case "$1 ${2:-}" in
   "build "*) exit 0 ;;
   "test list") printf '%s\n' $SHIM_TESTS; exit 0 ;;
@@ -56,9 +57,17 @@ check "a filter that ran more than the one case fails the run" "1" "$code"
 
 out="$(run A.T/testBroken)"; code=$?
 check "a case that fails alone still fails the run" "1" "$code"
+out="$(ORDER_FAILED_FILE="$shim/failed" run A.T/testOne A.T/testBroken A.T/testGhost)"
+check "...and the failing cases are written to ORDER_FAILED_FILE, one a line, for the control pass" \
+  "A.T/testBroken A.T/testGhost" "$(sort "$shim/failed" | paste -sd' ' -)"
 
 : > "$shim/log"
 SHIM_READS_STDIN=1 SHIM_LOG="$shim/log" run A.T/testOne A.T/testTwo A.T/testThree >/dev/null
 check "a case that reads stdin cannot swallow the cases still to run" "3" "$(wc -l < "$shim/log" | tr -d ' ')"
+
+: > "$shim/args"
+SHIM_ARGS="$shim/args" SWIFTPM_FLAGS=--disable-sandbox run A.T/testOne >/dev/null
+check "SWIFTPM_FLAGS reach every swift invocation: the build, the listing and each case" "3 3" \
+  "$(grep -c . "$shim/args") $(grep -c -- '--disable-sandbox' "$shim/args")"
 
 spec_summary

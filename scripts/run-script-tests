@@ -57,7 +57,7 @@
 # mapfile, ${x,,}, wait -n, ...; a line's comment is no code), each finding a `FLOOR <file>:<line>: <construct>` row
 # failing the run -- and, re-run under it, the self-tests of those bash files and of the scripts sourcing them, never a
 # test selected only by a name it mentions or a glob it reads (those run on today's bash: no bash the change touched
-# is theirs to run). The nightly macOS job (order-independence.yml) runs every self-test under it, whatever changed.
+# is theirs to run). tool-self-tests.yml's macOS job runs a push's floor scope, and on a dispatch every self-test under it.
 # `--floor <bash>` with `--changed` is both runs in ONE: the floor's static half, the floor's scope under it, and every
 # other selected test natively, in one pool of --jobs. The hook ran the two side by side, so a test in both ran twice at
 # once -- pre-push-test.sh, ~150-220 s each, kept a hook change ~+43 s (+14%) over its budget by the contention alone

@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# RETRY AT THE FETCH LAYER ONLY: run a dependency fetch (an sbt update, a Gradle resolve, a SwiftPM resolve) and run it
+# again only when it failed FETCHING -- a 429 or 5xx from a repository, a reset or timed-out connection, a name that did
+# not resolve -- never when it failed otherwise (a compile error fails at once, as it would anywhere). Order
+# independence's warm steps fetch through it, once, before the tests run cut off from the network (scripts/ci/no-network):
+# run #53's Robolectric leg died on Maven Central's 429 for the android-all jar mid-run.
+#
+#   scripts/ci/fetch-retry [--tries N] [--wait S] -- <command...>    default 3 tries, S (30) s, then 2S, ... between
+#
+# Its exit is the last try's. (scripts/ci/fetch-retry-test.sh)
+set -uo pipefail
+tries=3 wait=30
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --tries) tries=$2; shift 2 ;;
+    --wait) wait=$2; shift 2 ;;
+    --) shift; break ;;
+    *) echo "usage: fetch-retry [--tries N] [--wait S] -- <command...>" >&2; exit 64 ;;
+  esac
+done
+[ $# -gt 0 ] || { echo "usage: fetch-retry [--tries N] [--wait S] -- <command...>" >&2; exit 64; }
+
+FETCH_FAILURE='status code (429|5[0-9][0-9])|HTTP (status )?(429|50[0-9])|(429|50[234]) (Too Many Requests|Bad Gateway|Service Unavailable|Gateway Time-?out)|Could not (GET|HEAD) |download error|Connection reset|Read timed out|[Cc]onnect(ion)? timed out|TLS handshake timeout|Temporary failure in name resolution|Could not resolve host|UnknownHostException|SocketTimeoutException|failed to (fetch|clone)|The remote end hung up'
+log="$(mktemp)"; trap 'rm -f "$log"' EXIT
+n=1
+while :; do
+  "$@" 2>&1 | tee "$log"
+  status=${PIPESTATUS[0]}
+  [ "$status" -ne 0 ] || exit 0
+  hit="$(grep -E -m1 "$FETCH_FAILURE" "$log")"
+  if [ -z "$hit" ]; then
+    echo "fetch-retry: exit $status with no fetch failure in its output: not retried"
+    exit "$status"
+  fi
+  if [ "$n" -ge "$tries" ]; then
+    echo "::error title=fetch-retry::the dependency fetch failed $n times, last: $hit"
+    exit "$status"
+  fi
+  echo "::warning title=fetch-retry::try $n of $tries failed fetching ($hit); again in $((wait * n)) s"
+  sleep $((wait * n))
+  n=$((n + 1))
+done

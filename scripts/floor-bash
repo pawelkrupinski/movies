@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # THE FLOOR BASH: the oldest bash every script tool promises to run under -- macOS's /bin/bash, GNU bash 3.2.57 --
 # found or built, its path printed. The pre-push hook's `scripttests` runs the self-tests again under it
-# (`scripts/run-script-tests --bash "$(scripts/floor-bash)"`), and so does the nightly macOS job (order-independence.yml).
+# (`scripts/run-script-tests --bash "$(scripts/floor-bash)"`), and so does tool-self-tests.yml's macOS job (each push's floor scope, and a dispatch every self-test).
 #
 #   scripts/floor-bash              # the floor's path, or exit 1 saying how to get one
 #   scripts/floor-bash --install    # the same, building it first where there is none (~1 min once; cc, make, bison, curl)
