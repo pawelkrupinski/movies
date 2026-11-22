@@ -46,7 +46,7 @@ class AllowListRatchetSpec extends AnyFlatSpec with Matchers {
     RepoFile.jobs(RepoFile.read(".github/workflows/ci.yml"))("commit-rules") should include("run: scripts/ci/commit-rules-ci.sh")
     RepoFile.read(".github/workflows/precommit-check.yml") should include(
       "scripts/ci/commit-rules-ci.sh --base \"$(git merge-base HEAD origin/main)\"")
-    val script = RepoFile.read("scripts/ci/commit-rules-ci.sh")
-    Seq("allowlists", "driftguards").foreach(set => script should include(set))
+    // the rule sets it runs: its RULE_SETS (the shell name a thin exec of it)
+    RepoFile.read("scripts/ci/commit_rules_ci.py") should include("""RULE_SETS = ("allowlists", "driftguards")""")
   }
 }

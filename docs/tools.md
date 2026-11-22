@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (206)
+## Landing and CI (207)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -45,7 +45,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/alert-backtest.yml` | Every alert rule in the tree, replayed over the last 14 days of production's metrics (infra/bin/backtest-alerts | `workflow: schedule, repository_dispatch, workflow_dispatch` | 3 tools | - | - |
 | `.github/workflows/android.yml` | Build, test and publish the Android app (unit and instrumented tests, the rolling APK and AAB release) | `workflow: pull_request, push, workflow_dispatch` | wf order-independence, renovate; 1 tool | - | - |
 | `.github/workflows/branch-ci.yml` | Runs the exact same build + test pipeline main.yml gates on — but without deploying — for every pull request | `workflow: pull_request` | wf ci, main | - | - |
-| `.github/workflows/ci.yml` | The full build + test pipeline, factored out as a reusable workflow so it has exactly one definition | `workflow: workflow_call` | wf branch-ci, country-fixture-artifact, decoration-discovery +8; agentctl; skill regenerate-snapshots, test-layers; 16 tools | - | - |
+| `.github/workflows/ci.yml` | The full build + test pipeline, factored out as a reusable workflow so it has exactly one definition | `workflow: workflow_call` | wf branch-ci, country-fixture-artifact, decoration-discovery +8; agentctl; skill regenerate-snapshots, test-layers; 17 tools | - | - |
 | `.github/workflows/country-fixture-artifact.yml` | Records the whole country's fixture corpus once a day and uploads it as a downloadable build artifact | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf record-scrape-fixtures; 1 tool | - | - |
 | `.github/workflows/coupling-exemptions.yml` | The weekly exemption report (CLAUDE.md, "Coupling is reviewed on every change"; a report, never a gate) | `workflow: schedule, repository_dispatch, workflow_dispatch` | skill CLAUDE.md; 2 tools | - | - |
 | `.github/workflows/decodo-probe.yml` | Probe the Decodo residential proxy pool: kinowo.net through every port, twice an hour | `workflow: schedule, workflow_dispatch` | by hand | - | - |
@@ -57,7 +57,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/nightly-stress.yml` | The tests whose failures are a matter of luck, run enough times for luck to run out | `workflow: schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
 | `.github/workflows/order-independence.yml` | Nightly: every suite in an order it never meets on push, so an order-dependent test shows | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf android, nightly-stress; 3 tools | - | - |
 | `.github/workflows/precheck-build-cache.yml` | Keep the landing check's sbt build cache warm for main's newest commit | `workflow: workflow_run, workflow_dispatch` | wf precommit-check; 1 tool | - | - |
-| `.github/workflows/precommit-check.yml` | The landing check: the pre-push hook's checks of an agentctl-queued change, split into the rest and four identity shards | `workflow: push` | wf precheck-build-cache, tool-self-tests; hook pre-push; agentctl; 7 tools | - | - |
+| `.github/workflows/precommit-check.yml` | The landing check: the pre-push hook's checks of an agentctl-queued change, split into the rest and four identity shards | `workflow: push` | wf precheck-build-cache, tool-self-tests; hook pre-push; agentctl; 8 tools | - | - |
 | `.github/workflows/prune-actions-caches.yml` | Keep main's Actions caches under GitHub's 10 GB cap by deleting superseded per-commit entries | `workflow: workflow_run, schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
 | `.github/workflows/quality-hotspots.yml` | The monthly hotspot report (CLAUDE.md, "Code quality ratchets"; a report, never a gate): scripts/hotspots over main's last 90 days | `workflow: schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
 | `.github/workflows/record-scrape-fixtures.yml` | Nightly capture of every country's real `cinema_scrapes` into a fixture file, stored in the actions cache for the convergence legs to replay | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf country-convergence-leg, identity-capture, identity-model-convergence; 1 tool | - | - |
@@ -87,8 +87,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/ci_row_scope.py` | CAN THIS PUSH MOVE ci.yml's SLOW ROWS? Reads changed paths on stdin and prints `true` when one of them can change | `scripts/ci/ci_row_scope.py` | 1 tool | ci_row_scope_test.py | Python |
 | `scripts/ci/ci_timings.py` | Where a GitHub Actions run spent its time: every job and step, plus the `PhaseTimer` phases a | `python3 scripts/ci/ci_timings.py` | wf country-convergence-leg, identity-lean-whole, report-timings; 7 tools | ci_timings_test.py | Python |
 | `scripts/ci/ci_trends.py` | Where CI's time goes, across many runs: per job and step, setup against work, the critical path, queueing, the | `scripts/ci/ci_trends.py` | 8 tools | ci_trends_test.py | Python |
-| `scripts/ci/commit-rules-ci.sh` | The drift gate's commit rules, on CI (scripts/ci/commit_rules.py: `allowlists` and `driftguards`) | `scripts/ci/commit-rules-ci.sh` | wf ci, precommit-check; 2 tools | commit-rules-ci-test.sh | MIGRATE |
-| `scripts/ci/commit_rules.py` | The commit rules of the drift gate: the pre-push hook's allowlists and driftguards checks | `scripts/ci/commit_rules.py` | wf ci, identity-drift-explorer; hook post-commit, pre-push; skill CLAUDE.md; 6 tools | commit_rules_test.py | Python |
+| `scripts/ci/commit-rules-ci.sh` | The drift gate's commit rules, on CI (scripts/ci/commit_rules.py: `allowlists` and `driftguards`) | `scripts/ci/commit-rules-ci.sh` | wf ci, precommit-check; 3 tools | commit_rules_ci_test.py | KEEP |
+| `scripts/ci/commit_rules.py` | The commit rules of the drift gate: the pre-push hook's allowlists and driftguards checks | `scripts/ci/commit_rules.py` | wf ci, identity-drift-explorer; hook post-commit, pre-push; skill CLAUDE.md; 7 tools | commit_rules_test.py | Python |
+| `scripts/ci/commit_rules_ci.py` | THE DRIFT GATE'S COMMIT RULES, ON CI (scripts/ci/commit_rules.py: `allowlists` and `driftguards`). The pre-push hook | `scripts/ci/commit_rules_ci.py` | 1 tool | commit_rules_ci_test.py | Python |
 | `scripts/ci/countries_disagree.py` | COUNTRIES DISAGREE: a title billed in two or more countries in the same week that one country takes as a film NO | `python3 scripts/ci/countries_disagree.py` | skill identity-investigation; 2 tools | countries_disagree_test.py | Python |
 | `scripts/ci/coupling_ratchet.py` | The coupling ratchet (the pre-push sbt check's coupling step) | `scripts/ci/coupling_ratchet.py` | hook pre-push; agentctl; skill CLAUDE.md; 3 tools | coupling_ratchet_test.py | Python |
 | `scripts/ci/coursier-forget-errors.sh` | Delete coursier's negative cache records so a retried fetch asks the repository again | `scripts/ci/coursier-forget-errors.sh` | wf main; 2 tools | - | KEEP |
@@ -178,7 +179,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/tree-unchanged.sh` | A test run must leave every checked-in file exactly as it found it | `scripts/ci/tree-unchanged.sh` | wf ci, discover-cinemas | - | KEEP |
 | `scripts/ci/ubuntu-security-via-mirror.sh` | Route the GitHub-hosted Ubuntu runner's security.ubuntu.com apt sources to the archive mirror the image already uses, before an `apt-get update` | `scripts/ci/ubuntu-security-via-mirror.sh` | 1 tool | ubuntu-security-via-mirror-test.sh | KEEP |
 | `scripts/ci/upstream_run.py` | ONE RESOLVER FOR UPSTREAM RUNS: which run of the producing workflow a workflow_run-triggered workflow reads. | `scripts/ci/upstream_run.py` | 1 tool | upstream_run_test.py | Python |
-| `scripts/ci/verified-ref.sh` | The last green base of a main row, kept in git as refs/verified/<name> | `scripts/ci/verified-ref.sh` | wf main; 2 tools | verified_ref_test.py | KEEP |
+| `scripts/ci/verified-ref.sh` | The last green base of a main row, kept in git as refs/verified/<name> | `scripts/ci/verified-ref.sh` | wf main; 1 tool | verified_ref_test.py | KEEP |
 | `scripts/ci/verified_ref.py` | THE LAST GREEN BASE OF A MAIN ROW, KEPT IN GIT: refs/verified/<name> records the newest commit on main the row held | `scripts/ci/verified_ref.py` | wf main; 2 tools | verified_ref_test.py | Python |
 | `scripts/ci/wait-for-run-artifact.sh` | Wait until this workflow run has uploaded artifact <name>, produced by another job of the run | `scripts/ci/wait-for-run-artifact.sh` | wf country-convergence-leg; 1 tool | wait_for_run_artifact_test.py | KEEP |
 | `scripts/ci/wait_for_run_artifact.py` | Wait until THIS workflow run has uploaded artifact <name>, produced by another job of the run -- a country leg's order | `scripts/ci/wait_for_run_artifact.py` | 1 tool | wait_for_run_artifact_test.py | Python |
@@ -596,9 +597,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | 9 tools | - | Python |
 | `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 10 tools | - | Python |
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the Python tools do it (scripts/lib; the shell | `imported` | 10 tools | tool_dispatch_test.py | Python |
-| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 11 tools | tool_git_test.py | Python |
+| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 12 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 13 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 58 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 59 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | 12 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 5 tools | - | KEEP |
