@@ -17,6 +17,7 @@ cat > "$work/hook" <<'HOOK'
 #!/usr/bin/env bash
 part="rest"; [ -n "${PREPUSH_ONLY:-}" ] && part="only"
 echo "$part ONLY=${PREPUSH_ONLY:-} ELSEWHERE=${PREPUSH_ELSEWHERE:-} args=$*"
+echo "$part TREE_CHECK=${RUN_SCRIPT_TESTS_TREE_CHECK:-unset}"
 touch "$MARKS/$part"
 other=rest; [ "$part" = rest ] && other=only
 if [ -n "${WAIT_FOR_OTHER:-}" ]; then
@@ -37,10 +38,14 @@ run() { # [env...]: hook-beside over the fake hook; its output to $work/out, its
 code="$(run CHECKS="scripttests sbt actionlint" PREPUSH_ELSEWHERE="identity" WAIT_FOR_OTHER=1)"
 check "scripttests and the rest's other checks run at once, each told its part" "0 0 1 1" \
   "$code $(grep -c 'NEVER SAW' "$work/out") $(grep -c '^only ONLY=scripttests ' "$work/out") $(grep -c '^rest ONLY= ELSEWHERE=identity scripttests args=--checks-only base..HEAD$' "$work/out")"
-check "...the beside run's output printed whole after the rest's, never interleaved" "rest only" \
+check "...the beside run's output printed whole after the rest's, never interleaved" "rest rest only only" \
   "$(grep -oE '^(rest|only) ' "$work/out" | tr -d ' ' | tr '\n' ' ' | sed 's/ $//')"
 check "...and kept in the job's temp dir, where its failure steps read the logs" "1" \
   "$(grep -c '^only ONLY=scripttests' "$work/tmp/scripttests-beside.log")"
+
+# landing check 44984605717: the beside run's tree check moved the rest's freshly fetched infra/kubernetes aside
+check "the beside run keeps run-script-tests' tree check off (another run writes the same checkout); the rest's untouched" \
+  "only TREE_CHECK=0|rest TREE_CHECK=unset" "$(grep -E '^(only|rest) TREE_CHECK=' "$work/out" | sort | tr '\n' '|' | sed 's/|$//')"
 
 check "a beside run's failure fails the job" "1" "$(run CHECKS="scripttests sbt" RC_ONLY=1)"
 check "...as does the rest's" "1" "$(run CHECKS="scripttests sbt" RC_REST=1)"
@@ -57,7 +62,8 @@ code="$(run CHECKS="sbt actionlint" PREPUSH_ELSEWHERE="identity")"
 check "no scripttests in the share: the hook runs once, as it is" "0 1 0" \
   "$code $(grep -c '^rest ONLY= ELSEWHERE=identity args=' "$work/out") $(grep -c '^only' "$work/out")"
 code="$(run CHECKS="scripttests" RC_REST=3)"
-check "scripttests alone: nothing to run beside it, the hook once, its exit the job's" "3 1 0" \
+check "scripttests alone: nothing to run beside it, the hook once, its exit the job's" "3 2 0" \
   "$code $(grep -c '^rest ' "$work/out") $(grep -c '^only' "$work/out")"
+check "...its tree check on: nothing else writes the checkout" "rest TREE_CHECK=unset" "$(grep '^rest TREE_CHECK=' "$work/out")"
 
 spec_summary

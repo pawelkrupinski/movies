@@ -23,7 +23,13 @@ if [ $named = 0 ] || [ $others = 0 ]; then exec "$@"; fi
 
 log="${TMPDIR:-/tmp}/$check-beside.log"
 mkdir -p "$(dirname "$log")"
-env PREPUSH_ONLY="$check" "$@" > "$log" 2>&1 &
+# NO TREE CHECK IN A SHARED CHECKOUT (landing check 44984605717, 2026-11-22): run-script-tests' tree check reads what
+# a run left by comparing the checkout before and after it, and moves each new path ASIDE while it re-runs the
+# candidates -- sound only while nothing else writes the checkout. Beside it the rest's itrest fetched the GitOps
+# manifests into infra/kubernetes; the check moved them aside for minutes, and LauncherJvmFlagsSpec and the other
+# deploy specs failed "infra/kubernetes/web/base/all.yaml is missing" (twice, blocking Identity takes #349's fix). The
+# beside run keeps it off; the hook's own serial runs, locally and on Main's Tool self-tests, keep it on.
+env PREPUSH_ONLY="$check" RUN_SCRIPT_TESTS_TREE_CHECK=0 "$@" > "$log" 2>&1 &
 beside=$!
 # the job's timeout (or a cancel) ends both runs, not the foreground one alone
 trap 'kill "$beside" 2>/dev/null; exit 143' TERM INT

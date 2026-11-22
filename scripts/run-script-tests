@@ -107,8 +107,8 @@
 # back afterwards: the tree ends as the run left it). Confirming costs a run of each candidate, paid only when something
 # was left. A path no candidate makes again alone (an edit beside the run, a co-agent's sbt writing target/) is said and
 # does not fail the run. Two snapshots cost ~1 s a run; a per-test snapshot could not tell 8 concurrent tests apart
-# anyway. Skipped (RUN_SCRIPT_TESTS_TREE_CHECK=0, or a --root that is no writable git checkout: --linux's read-only
-# copy). Tests install their tools outside the tree (~/.cache/kinowo/<tool>/<lock hash>, js-quality-report), and run
+# anyway. Skipped (RUN_SCRIPT_TESTS_TREE_CHECK=0 -- the landing check's beside run sets it, scripts/ci/hook-beside.sh:
+# another run writes the same checkout --, or a --root that is no writable git checkout: --linux's read-only copy). Tests install their tools outside the tree (~/.cache/kinowo/<tool>/<lock hash>, js-quality-report), and run
 # with PYTHONDONTWRITEBYTECODE=1: an import's __pycache__ is no test's to leave. `python3 -I` ignores that variable (-I
 # implies -E), so a tool run under -I that imports a module of the tree passes -B itself (scripts/recording-diff).
 #
