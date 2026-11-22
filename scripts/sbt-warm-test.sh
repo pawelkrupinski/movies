@@ -617,7 +617,9 @@ rm -f "$scratch/winding-down"
 # ...NOR ONE NEW SINCE THE LAST POLL ENDING WHILE A POLL MEASURES IT: counted as a measure that missed its CPU, the loop's
 # `sleep` listed and gone before the measure was done read as progress whenever `ps` was slow -- at a load of 17 often
 # enough that the call never stalled (124). A `ps` whose CPU measure takes longer than the stub's `sleep` makes that
-# race on every poll.
+# race on every poll. The call runs under spec_bounded's own deadline, never a short one of its own (HUNG STUBS,
+# shell-spec.sh): a 40 s bound there was a wall-clock assertion, and at a load of ~280 the call stalled, said STALLED and
+# was still ending its client and server when the 40 s ran out ("124 yes", 2 of 6 under run-script-tests --stress).
 cat > "$scratch/bin/sbt" <<STUB
 #!/usr/bin/env bash
 echo \$\$ >> "$scratch/hung"; while :; do sleep 0.3; done
@@ -629,7 +631,7 @@ case " \$* " in *" -o time= "*) sleep 0.6 ;; esac
 exec "$(command -v ps)" "\$@"
 SHIM
 chmod +x "$scratch/slow-measure/ps"
-out=$(cd "$scratch/stall" && KINOWO_SBT_WARM_STALL_SECONDS=2 SPEC_HANG_BOUND=40 PATH="$scratch/slow-measure:$PATH" \
+out=$(cd "$scratch/stall" && KINOWO_SBT_WARM_STALL_SECONDS=2 PATH="$scratch/slow-measure:$PATH" \
   spec_bounded "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null); rc=$?
 check "a client that only spawns short-lived children is a stall" "75 yes" \
   "$rc $(grep -q '^sbt-warm STALLED: compile' <<<"$out" && echo yes || echo "no: $out")"
