@@ -35,6 +35,19 @@ object RepoFile {
     finally src.close()
   }
 
+  /** Where the JVM looked for the manifests and what the GitOps root held there: a fetch that cloned them into the
+   *  checkout and specs that still found none (the landing check's itrest row, twice) are told apart from a checkout
+   *  that never fetched, or a test JVM in another directory, by the message alone. */
+  private def whereLooked: String = {
+    val root    = new java.io.File(GitOpsRoot)
+    val state   = Option(root.listFiles()) match {
+      case None          => s"$GitOpsRoot is absent"
+      case Some(entries) => s"$GitOpsRoot holds ${entries.length} entr${if (entries.length == 1) "y" else "ies"}: " +
+          entries.map(_.getName).sorted.take(8).mkString(", ")
+    }
+    s"(looked from ${new java.io.File(".").getCanonicalPath}: $state)"
+  }
+
   /** A path a spec expected and did not find. Under the GitOps root that is almost always a
    *  checkout without `fetch-gitops`, so say that; anywhere else, say which path. */
   private def failMissing(path: String): Nothing =
@@ -48,6 +61,8 @@ object RepoFile {
            |right here. Locally:
            |
            |    ./infra/bin/fetch-gitops
+           |
+           |$whereLooked
            |""".stripMargin)
     else throw new java.io.FileNotFoundException(s"$path does not exist (the specs run with the repo root as CWD)")
 

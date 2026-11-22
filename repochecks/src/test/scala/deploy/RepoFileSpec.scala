@@ -36,6 +36,16 @@ class RepoFileSpec extends AnyFlatSpec with Matchers {
       RepoFile.RunStep("bash scripts/inline-test.sh", None))
   }
 
+  /** A GitOps manifest missing names where the JVM looked and what the GitOps root held there: the landing check's
+   *  itrest row failed LauncherJvmFlagsSpec on missing manifests twice (Identity takes #349's fix, check runs
+   *  44984605717 and 44998261508) although its own fetch-gitops had cloned them into the checkout, and "missing"
+   *  alone could not say whether the specs looked from another directory or the tree was gone by then. */
+  "read" should "name the working directory and the GitOps root's state when a manifest is missing" in {
+    val missing = intercept[AssertionError](RepoFile.read("infra/kubernetes/no-such-manifest-for-this-spec.yaml"))
+    missing.getMessage should include(s"looked from ${new java.io.File(".").getCanonicalPath}")
+    missing.getMessage should include regex """infra/kubernetes (is absent|holds \d+ entr)"""
+  }
+
   it should "not count a trigger path, a comment or a shell comment as run" in {
     val scripts = RepoFile.runSteps(workflow).map(_.script).mkString("\n")
     Seq("only-a-trigger_test.py", "next-step.sh", "a-shell-comment-test.sh").foreach(scripts should not include _)
