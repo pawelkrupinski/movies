@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # infra/bin/flux-rotate-deploy-keys: a dry run touches nothing; --apply mints both keys, hands them to Flux's
 # Secrets and only then removes the old keys; it refuses to rotate for sources not on GitHub, or for a github.com
-# host key GitHub does not publish. gh and ssh (the cluster's kubectl runs over ssh) are fakes recording each call.
+# host key GitHub does not publish. gh, ssh (the cluster's kubectl runs over ssh) and ssh-keygen are fakes.
 # Run: bash infra/bin/flux-rotate-deploy-keys-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -13,10 +13,24 @@ trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/bin" "$work/state"
 url=ssh://git@github.com/pawelkrupinski/movies-gitops.git
 
+# ssh-keygen: a fake (CI's script-test image has no OpenSSH). `-f <path>` writes a key pair named by the path; `-lf
+# <file|->` prints a fingerprint, `SHA256:<cksum of the key>` (the field after its `ssh-` type).
+cat > "$work/bin/ssh-keygen" <<'EOF'
+#!/usr/bin/env bash
+case " $* " in
+  *" -lf "*)
+    file=${*: -1}; key=$( { if [ "$file" = - ]; then cat; else cat "$file"; fi; } | awk '{ for (i = 1; i < NF; i++) if ($i ~ /^ssh-/) { print $(i + 1); exit } }')
+    echo "256 SHA256:$(printf '%s' "$key" | cksum | cut -d' ' -f1) comment (ED25519)" ;;
+  *)
+    file=${*: -1}; echo private > "$file"; echo "ssh-ed25519 KEY$(basename "$file")$RANDOM comment" > "$file.pub" ;;
+esac
+EOF
+chmod +x "$work/bin/ssh-keygen"
+fingerprint() { printf '%s' "$1" | cksum | cut -d' ' -f1; }
+
 # github.com's host key as the fake cluster scans it, and the fingerprint the fake /meta publishes
-ssh-keygen -q -t ed25519 -N '' -f "$work/hostkey" < /dev/null
-echo "github.com $(cut -d' ' -f1-2 "$work/hostkey.pub")" > "$work/state/keyscan"
-ssh-keygen -lf "$work/hostkey.pub" | awk '{print $2}' | sed 's/^SHA256://' > "$work/state/meta"
+echo "github.com ssh-ed25519 HOSTKEY" > "$work/state/keyscan"
+fingerprint HOSTKEY > "$work/state/meta"
 
 cat > "$work/bin/gh" <<'EOF'
 #!/usr/bin/env bash
@@ -76,7 +90,7 @@ check "...and moves no source: no manifest applied, no GitRepository patched" "0
 check "a source not on GitHub's URL is refused" 1 "$(MOVIES_SOURCE="https://forge.example/movies-gitops.git flux-git-read" rotate --apply)"
 check "...before any key is minted" 0 "$(calls 'deploy-key add')"
 
-echo "github.com $(ssh-keygen -q -t ed25519 -N '' -f "$work/other" < /dev/null; cut -d' ' -f1-2 "$work/other.pub")" > "$work/state/keyscan"
+echo "github.com ssh-ed25519 OTHERKEY" > "$work/state/keyscan"
 check "a github.com host key GitHub does not publish is refused" 1 "$(rotate --apply)"
 check "...before any key is registered" 0 "$(calls 'deploy-key add')"
 
