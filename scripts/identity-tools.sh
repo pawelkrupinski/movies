@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: What the local identity tools share (sourced): the recording cache, classpaths, countries
 # What the local identity tools (identity-slice and its --explain, identity-judge-cards, venue-replay, title-trace,
 # recording-diff, hard-clusters.sh, listing-history) share: the shared cache, a recording or a capture downloaded once
 # into it, a ref's sources laid out once, a tree's worker test classpath compiled once. Sourcing it defines functions only.
@@ -430,7 +431,7 @@ identity_recording_key() {
 identity_recording_dir() { echo "$IDENTITY_CACHE/recordings/$(identity_recording_key "$1")/pair/test/resources/fixtures"; }
 
 # identity_recording_cached <run> <cc> -> the directory holding the run's corpus/ and enrichment-<cc>/ when the cache
-# holds both, else fails saying so: for a caller that must not reach GitHub (identity-capture.sh --offline)
+# holds both, else fails saying so: for a caller that must not reach GitHub (identity-slice-coverage)
 identity_recording_cached() {
   local fixtures
   fixtures=$(identity_recording_dir "$1")

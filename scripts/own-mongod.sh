@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
+# Purpose: A MongoDB of the caller's own: a single-node replica set on a free port, its data in a temporary directory, removed when the caller ends
 # A MongoDB of the caller's OWN: a single-node replica set on a free port, its data in a temporary directory, removed
 # when the caller ends. Sourcing it defines functions only. Used by scripts/it-local.sh (the it/ layer) and
-# scripts/identity-capture.sh --offline (a capture's throwaway database).
+# scripts/convergence-local.sh (throwaway_replica_set_initiate).
 #
 #   own_mongod_start <tag>   -> starts it; sets OWN_MONGOD_URI (mongodb://127.0.0.1:<port>/?directConnection=true),
 #                               OWN_MONGOD_PORT, OWN_MONGOD_DATA. Fails (non-zero, said on stderr) when no mongod or
