@@ -14,3 +14,8 @@ worker/src/test/scala/scripts/IdentityDrift.scala
 test/resources/fixtures/identity-drift-allow.tsv
 test/resources/fixtures/identity-flips-allow.tsv
 scripts/ci/identity-drift-check.sh
+scripts/ci/identity_drift_check.py
+scripts/ci/identity_drift_check_base.py
+scripts/ci/identity_drift_check_judge.py
+scripts/ci/identity_drift_check_replay.py
+scripts/ci/identity_drift_check_store.py

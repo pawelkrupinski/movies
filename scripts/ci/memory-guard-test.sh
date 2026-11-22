@@ -65,7 +65,8 @@ check "stop: a guard that already exited does not fail a bash -e step" "guard go
 check "stop: an idle guard is ended" "guard gone exit 0" "$(stopped idle '' | tr '\n' ' ' | sed 's/ $//')"
 check "stop: a guard that is ending the tree (a reason written) is waited for, not killed" "guard gone exit 0" \
   "$(stopped gone 'under 1024 MB available' | tr '\n' ' ' | sed 's/ $//')"
-for caller in .github/workflows/country-convergence-leg.yml scripts/ci/identity-drift-check.sh; do
+# (scripts/ci/identity_drift_check_replay.py stops its guard in Python, stop_guard: identity_drift_check_test.py holds it)
+for caller in .github/workflows/country-convergence-leg.yml; do
   # shellcheck disable=SC2016 # the callers' own text, `$guard` as written there
   check "$caller stops its guard through memory_guard_stop" "1 0" \
     "$(grep -c 'memory_guard_stop "\$guard"' "$REPO_ROOT/$caller") $(grep -c 'kill "\$guard"' "$REPO_ROOT/$caller")"

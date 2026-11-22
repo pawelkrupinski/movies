@@ -110,7 +110,7 @@ whichever unrelated commit drew its seed (`~/Desktop/claude docs/convergence-red
   found anywhere becomes a committed slice — `docs/design/identity-slice.md`, "A red seed becomes a slice".
 - **The harness carries its self-test**: a change to IdentityDrift, IdentityLiveDrift, TakeFlips or
   identity-drift-check.sh comes with a capture-replay case in the same commit — IdentityDriftSpec,
-  CorrectionFlipReplaySpec, TakeFlipsSpec, identity-drift-check-test.sh — proving the replay does what the worker does
+  CorrectionFlipReplaySpec, TakeFlipsSpec, identity_drift_check_test.py — proving the replay does what the worker does
   (a third of the week's drift reds were the judge's: 91cfbe7e8, 7b586af0f, 5df3295bd). A pure refactor says
   `Drift-Harness-Refactor: <why>`.
 

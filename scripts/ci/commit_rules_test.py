@@ -353,6 +353,11 @@ class RatchetTest(unittest.TestCase):
         self.assertEqual(0, self.guards(f"{head}^..{head}"))
         head = self.commit({"scripts/ci/identity-drift-check.sh": "x\n"}, "one helper\n\nDrift-Harness-Refactor: no behaviour moves")
         self.assertEqual(0, self.guards(f"{head}^..{head}"))
+        head = self.commit({"scripts/ci/identity_drift_check_base.py": "b\n"}, "the check's Python: its base walk")
+        self.assertEqual(1, self.guards(f"{head}^..{head}"))
+        head = self.commit({"scripts/ci/identity_drift_check.py": "c\n", "scripts/ci/identity_drift_check_test.py": "t\n"},
+                           "the check's Python and its self-test")
+        self.assertEqual(0, self.guards(f"{head}^..{head}"))
 
     def test_a_misplaced_harness_refactor_trailer_is_refused_saying_where_it_is(self):
         head = self.commit({"scripts/ci/identity-drift-check.sh": "y\n"},

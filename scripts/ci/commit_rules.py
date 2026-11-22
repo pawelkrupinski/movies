@@ -98,12 +98,12 @@ RULE_FILES = re.compile(
     r"|common/src/main/scala/services/titles/rules/.*)$")
 HARNESS_FILES = re.compile(
     r"^(worker/src/test/scala/scripts/IdentityDrift\.scala|worker/src/test/scala/scripts/IdentityLiveDrift\.scala"
-    rf"|{_ID}/TakeFlips\.scala|scripts/ci/identity-drift-check\.sh)$")
+    rf"|{_ID}/TakeFlips\.scala|scripts/ci/identity-drift-check\.sh|scripts/ci/identity_drift_check(_[a-z]+)?\.py)$")
 SELF_TEST_FILES = re.compile(
     r"^(worker/src/test/scala/scripts/IdentityDrift(Spec|SlicesSpec)\.scala|worker/src/test/scala/scripts/IdentityLiveDriftSpec\.scala"
     r"|identity/src/test/scala/services/identity/TakeFlipsSpec\.scala"
     r"|identity/src/test/scala/services/identity/agreement/CorrectionFlipReplaySpec\.scala"
-    r"|scripts/ci/identity-drift-check-test\.sh|test/resources/fixtures/drift-slices/.*)$")
+    r"|scripts/ci/identity_drift_check_test\.py|test/resources/fixtures/drift-slices/.*)$")
 
 # What the worker serves over time -- the model's input gate, holds, settle, asks -- and what sees it
 SERVING_FILES = re.compile(
@@ -403,7 +403,7 @@ def harness_carries_self_test(c: Commit, _opts: dict) -> list[str]:
         return []
     return [f"changes the drift harness ({' '.join(harness)}) without its self-test.\n"
             "  A harness change carries a capture-replay case proving the replay behaves as the worker does: extend\n"
-            "  IdentityDriftSpec, CorrectionFlipReplaySpec, TakeFlipsSpec or identity-drift-check-test.sh in the same commit.\n"
+            "  IdentityDriftSpec, CorrectionFlipReplaySpec, TakeFlipsSpec or identity_drift_check_test.py in the same commit.\n"
             "  A pure refactor: the trailer 'Drift-Harness-Refactor: <why>'." + c.misplaced("Drift-Harness-Refactor")]
 
 

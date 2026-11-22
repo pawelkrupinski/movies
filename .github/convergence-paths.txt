@@ -160,6 +160,11 @@ scripts/ci/generated-artefacts-drift.sh
 scripts/ci/harness_aa.py
 scripts/ci/identity-drift-check.sh
 scripts/ci/identity-takes-check.sh
+scripts/ci/identity_drift_check.py
+scripts/ci/identity_drift_check_base.py
+scripts/ci/identity_drift_check_judge.py
+scripts/ci/identity_drift_check_replay.py
+scripts/ci/identity_drift_check_store.py
 scripts/ci/identity_judgements_lint.py
 scripts/ci/identity_takes.py
 scripts/ci/identity_takes_diff.py

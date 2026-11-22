@@ -6,7 +6,7 @@
 # Why it is a function: the guard exits by itself once its target is gone, so `kill "$guard"` can find it already gone.
 # Under `bash -e` (every workflow step) that failing kill, the last command of an `||` list, ended the step: a passing US
 # suite failed exit 1 (Identity model convergence #1342). Its callers: .github/workflows/country-convergence-leg.yml's
-# suite step and scripts/ci/identity-drift-check.sh. Test: scripts/ci/memory-guard-test.sh.
+# suite step (scripts/ci/identity_drift_check_replay.py's stop_guard is its Python copy). Test: scripts/ci/memory-guard-test.sh.
 memory_guard_stop() { # <guard pid> <reason file>
   [ -s "$2" ] || kill "$1" 2> /dev/null || true
   wait "$1" 2> /dev/null || true

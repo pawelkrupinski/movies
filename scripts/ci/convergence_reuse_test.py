@@ -476,7 +476,9 @@ class ListedInputs(unittest.TestCase):
     there, and every listed path exists -- an unlisted input lets a run's verdict be reused over a changed one (a false
     green) and leaves a push touching only it without a verdict at all."""
 
-    CHECKS = ("scripts/ci/identity-drift-check.sh", "scripts/ci/identity-takes-check.sh")
+    CHECKS = ("scripts/ci/identity_drift_check.py", "scripts/ci/identity_drift_check_replay.py",
+              "scripts/ci/identity_drift_check_store.py", "scripts/ci/identity_drift_check_judge.py",
+              "scripts/ci/identity-takes-check.sh")
 
     def setUp(self):
         with open(os.path.join(ROOT, reuse.PATHS_FILE)) as f:
@@ -488,8 +490,9 @@ class ListedInputs(unittest.TestCase):
             with open(os.path.join(ROOT, check)) as f:
                 text = f.read()
             # the recorded corpus is the pinned pair's (hermetic-<code>.txt), not the tree's
-            out |= {"test/resources/fixtures/" + m.replace("$cc", "pl")
-                    for m in re.findall(r"\$fixtures/([A-Za-z0-9_./$-]+)", text) if not m.startswith("corpus")}
+            # (the shell checks' `$fixtures/x-$cc`, the Python ones' `{fixtures}/x-{cc}`)
+            out |= {"test/resources/fixtures/" + m.replace("$cc", "pl").replace("{cc}", "pl")
+                    for m in re.findall(r"(?:\$fixtures|\{fixtures\})/([A-Za-z0-9_./${}-]+)", text) if not m.startswith("corpus")}
             for config, cls in re.findall(r"worker/(Test|IntegrationTest)/runMain ([A-Za-z.]+)", text):
                 # an IntegrationTest main may live in the test tree, which its classpath holds
                 trees = ("test",) if config == "Test" else ("it", "test")

@@ -483,7 +483,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       drift should include("""> "$RUNNER_TEMP/leg-verdict-why"""")
     }
     leg should include("name: identity-drift-${{ inputs.code }}-${{ matrix.phase }}")
-    RepoFile.read("scripts/ci/identity-drift-check.sh") should include("""if [ -n "${DRIFT_SEED_LIST:-}" ]; then read -ra seeds <<< "${DRIFT_SEED_LIST//,/ }"""")
+    RepoFile.read("scripts/ci/identity_drift_check.py") should include("""return env["DRIFT_SEED_LIST"].replace(",", " ").split()""")
   }
 
   /** OFF MAIN, ONE SPLIT ORDER ROW (scripts/ci/order-phases.sh, 2026-10-23): only when the preflight positively says
@@ -566,7 +566,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  Identity takes' `takes-drift-aa` job compares their TSVs under the row's old name (`takes-drift-aa (<country>)`), red
    *  only when the two differ: the harness's own fault (harness_aa.py judge). */
   it should "replay the drift harness's A/A passes in rows of their own, compared by Identity takes' own job" in {
-    RepoFile.read("scripts/ci/identity-drift-check.sh") should include("scripts/ci/drift-replays-compare.sh")
+    RepoFile.read("scripts/ci/identity_drift_check.py") should include("scripts/ci/drift-replays-compare.sh")
     legDirectives should not include "Compare the drift harness's two A/A passes"
   }
 
