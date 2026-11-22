@@ -6,14 +6,16 @@ from __future__ import annotations
 import datetime
 import os
 import sys
-from typing import Callable, List, Mapping, Optional, Sequence, TextIO
+from typing import Callable, Dict, List, Mapping, NamedTuple, Optional, Sequence, TextIO, Type
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "scripts/lib"))
 import tool_actions  # noqa: E402
+import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 GH_OPTIONAL = os.path.join(ROOT, "scripts/ci/gh-optional.sh")
+GH_RELEASE = os.path.join(ROOT, "scripts/ci/gh-release.sh")  # a release write, retried on GitHub's transient answers
 
 
 class Exit(Exception):
@@ -34,19 +36,25 @@ class GitHub:
         self.env = env
         self.gh = env.get("KINOWO_GH") or "gh"
 
-    def captured(self, argv: Sequence[str], env: Optional[Mapping[str, str]] = None,
-                 quiet: bool = False) -> tool_process.Captured:
-        """`$(argv)`: its stdout captured, its stderr passed on (dropped when quiet)."""
-        done = self.runner.capture(tool_process.Command(list(argv), env or self.env))
+    def captured(self, argv: Sequence[str], env: Optional[Mapping[str, str]] = None, quiet: bool = False,
+                 bound: Optional[float] = None) -> tool_process.Captured:
+        """`$(argv)`: its stdout captured, its stderr passed on (dropped when quiet); ended past `bound` seconds."""
+        done = self.runner.capture(tool_process.Command(list(argv), env or self.env, timeout=bound))
         if done.stderr and not quiet:
             sys.stderr.write(done.stderr)
             sys.stderr.flush()
         return done
 
-    def optional(self, *args: str, release_exists: bool = False) -> bool:
-        """Whether gh-optional.sh downloaded it (False: absent); ReadFailed on a failed read."""
-        env = dict(self.env, GH_DOWNLOAD_RELEASE_EXISTS="1") if release_exists else self.env
-        done = self.captured([GH_OPTIONAL, *args], env)
+    def optional(self, *args: str, release_exists: bool = False, timeout: Optional[str] = None,
+                 bound: Optional[float] = None) -> bool:
+        """Whether gh-optional.sh downloaded it (False: absent); ReadFailed on a failed read, or one past `bound`
+        seconds (each attempt's own bound: `timeout`, its GH_OPTIONAL_TIMEOUT)."""
+        env = dict(self.env)
+        if release_exists:
+            env["GH_DOWNLOAD_RELEASE_EXISTS"] = "1"
+        if timeout:
+            env["GH_OPTIONAL_TIMEOUT"] = timeout
+        done = self.captured([GH_OPTIONAL, *args], env, bound=bound)
         if done.code != 0:
             raise ReadFailed(" ".join(args))
         return done.stdout.strip() == "present"
@@ -87,3 +95,34 @@ class Step:
         status = self.runner.run(tool_process.Command(list(argv), self.env))
         if status != 0:
             raise Exit(status)
+
+
+class Usage(NamedTuple):
+    """A subcommand's arguments: `least` to `most` of them (with `more`, any after `most` ignored, as a shell
+    function's unread "$@" is), and the usage line naming them."""
+    least: int
+    most: int
+    line: str
+    more: bool = False
+
+
+def dispatch(step: Step, tool: str, table: Dict[str, Usage], overall: str, argv: List[str]) -> int:
+    """`<tool> <subcommand> <args...>`: the step's method of that name (`-` as `_`), its `Exit` its status."""
+    command, args = (argv[0], argv[1:]) if argv else ("", [])
+    if command not in table:
+        raise tool_cli.UsageError(f"usage: {tool} {overall}")
+    usage = table[command]
+    if len(args) < usage.least or (len(args) > usage.most and not usage.more):
+        raise tool_cli.UsageError(f"usage: {tool} {usage.line}")
+    handler: Callable[..., int] = getattr(step, command.replace("-", "_"))
+    try:
+        return handler(*args[:usage.most])
+    except Exit as e:
+        return e.code
+
+
+def main(step: Type[Step], tool: str, table: Dict[str, Usage], overall: str, argv: List[str]) -> int:
+    """A convergence script's composition point: the environment, the real runner, stdout and the clock."""
+    composed = step(os.environ, tool_process.SubprocessRunner(), sys.stdout,
+                    lambda: datetime.datetime.now(datetime.timezone.utc))
+    return tool_cli.run_main(lambda: dispatch(composed, tool, table, overall, argv))

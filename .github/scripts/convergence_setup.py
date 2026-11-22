@@ -33,19 +33,15 @@ wrote them. convergence-setup.sh, beside it, is the name its callers run.
       the corpus, and counts both -- the remembered-answer cache apart. (convergence_setup_unpack.py)"""
 from __future__ import annotations
 
-import datetime
 import os
 import sys
 import tempfile
-from typing import Callable, Dict, List, Mapping, Optional, TextIO
+from typing import List
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(os.path.dirname(HERE))
-sys.path[:0] = [HERE, os.path.join(ROOT, "scripts/lib")]
+# (its own directory is sys.path's first, run as a script; convergence_release puts scripts/lib after it)
 import convergence_release  # noqa: E402
 import convergence_setup_unpack  # noqa: E402
-import tool_cli  # noqa: E402
-import tool_process  # noqa: E402
 
 TOOL = "convergence-setup.sh"
 FILL = os.path.join(HERE, "convergence-fill.sh")
@@ -164,30 +160,14 @@ class Setup(convergence_release.Step):
         return convergence_setup_unpack.unpack(self, code, mode)
 
 
-USAGE: Dict[str, "tuple[int, int, str]"] = {
-    "pinned": (1, 1, "pinned <code>"), "pair": (2, 4, "pair <code> <mode> [given pair] [corpus run]"),
-    "pins": (1, 1, "pins <codes>"), "corpus": (1, 1, "corpus <code>"), "unpack": (2, 2, "unpack <code> <mode>")}
+USAGE = {"pinned": convergence_release.Usage(1, 1, "pinned <code>"),
+         "pair": convergence_release.Usage(2, 4, "pair <code> <mode> [given pair] [corpus run]", more=True),
+         "pins": convergence_release.Usage(1, 1, "pins <codes>"), "corpus": convergence_release.Usage(1, 1, "corpus <code>"),
+         "unpack": convergence_release.Usage(2, 2, "unpack <code> <mode>")}
 
 
-def dispatch(setup: Setup, argv: List[str]) -> int:
-    command, args = (argv[0], argv[1:]) if argv else ("", [])
-    if command not in USAGE:
-        raise tool_cli.UsageError(f"usage: {TOOL} <pinned|pair|pins|corpus|unpack> ...")
-    least, most, usage = USAGE[command]
-    if not least <= len(args) <= (most if command != "pair" else 99):
-        raise tool_cli.UsageError(f"usage: {TOOL} {usage}")
-    handler: Callable[..., int] = getattr(setup, command)
-    try:
-        return handler(*args[:most])
-    except convergence_release.Exit as e:
-        return e.code
-
-
-def main(argv: List[str], env: Optional[Mapping[str, str]] = None) -> int:
-    """The composition point: the environment, the real runner, stdout and the clock."""
-    setup = Setup(env if env is not None else os.environ, tool_process.SubprocessRunner(), sys.stdout,
-                  lambda: datetime.datetime.now(datetime.timezone.utc))
-    return tool_cli.run_main(lambda: dispatch(setup, argv))
+def main(argv: List[str]) -> int:
+    return convergence_release.main(Setup, TOOL, USAGE, "<pinned|pair|pins|corpus|unpack> ...", argv)
 
 
 if __name__ == "__main__":

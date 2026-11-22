@@ -22,7 +22,10 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val verdictCallers = Seq(RepoFile.read(".github/workflows/identity-model-convergence.yml"))
   /** What one subcommand of the scripts the setup and publish actions run does. */
   private def setupFunction(file: String, name: String) = RepoFile.pythonFunction(s".github/scripts/$file.py", name)
-  private def publishFunction(name: String) = RepoFile.shellFunction(".github/scripts/convergence-publish.sh", name)
+  private def publishFunction(name: String) = name match { // the tree's write, and the pin guard's per country
+    case "publish_tree" => RepoFile.pythonFunction(".github/scripts/convergence_publish.py", "tree")
+    case _              => RepoFile.pythonFunction(".github/scripts/convergence_publish_pin.py", "country")
+  }
 
   private def directives(yaml: String): String =
     yaml.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
@@ -58,7 +61,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val resolve = setupFunction("convergence_setup", "pair")
     resolve should include("raise convergence_release.Exit(1)")
     resolve should include("hermetic-{code}.txt")
-    publishFunction("verified_pin") should include("hermetic-$code.txt")
+    publishFunction("verified_pin") should include("hermetic-{code}.txt")
   }
 
   // ...nor when the pinned pair has EXPIRED. The rolling release keeps the two newest trees, so an
@@ -170,9 +173,9 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     treeStep should include("""convergence-publish.sh tree "$CODE" "$COMPLETE" "$LOG"""")
     // The decision is taken where the pinned tree is uploaded, and handed to the marker's step.
     publishFunction("publish_tree") should include("""boot complete""")
-    publishFunction("publish_tree") should include("""[ "$complete" = "true" ]""")
+    publishFunction("publish_tree") should include("""complete == "true"""")
     // The pinned copy is published only then, and the pin guard pins nothing that has none.
-    publishFunction("verified_pin") should include("""grep -E "^enrichment-$code-$run\.tar\.(zst|gz)$"""")
+    publishFunction("verified_pin") should include("""rf"^enrichment-{code}-{self.run}\.tar\.(zst|gz)$"""")
     RepoFile.block(leg, "convergence") should include("complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}")
   }
 
@@ -182,13 +185,12 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   "the publish action" should "upload the pinned tree in the same call as the working tree, not after it" in {
     val tree = publishFunction("publish_tree")
     val pin  = publishFunction("verified_pin")
-    // `${pin[@]+…}`: an empty pin under `set -u` on macOS bash 3.2 is otherwise an unbound variable.
-    tree should include(""""$RELEASE" upload "$TAG" "$ARCHIVE" ${pin[@]+"${pin[@]}"} --clobber""")
+    tree should include("""self.release("upload", tag, archive, *pin, "--clobber")""")
     withClue("the pin step must not upload the tree a second time: ") {
       pin should not include ".tar.zst"
       pin should not include "enrichment-upload/"
     }
-    pin.indexOf("hermetic-$code.txt") should be >= 0
+    pin.indexOf("hermetic-{code}.txt") should be >= 0
   }
 
   // One request step where the two jobs each carried one: it tells the bisect whether the SAMPLE

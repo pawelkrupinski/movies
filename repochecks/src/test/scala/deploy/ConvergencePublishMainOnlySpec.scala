@@ -20,7 +20,7 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
     val publish = RepoFile.step(action, "Publish the tree to the rolling release")
     publish should include(".github/scripts/convergence-publish.sh tree")
     publish should include(MainOnly)
-    RepoFile.read(".github/scripts/convergence-publish.sh") should include("\"$RELEASE\" upload")
+    RepoFile.read(".github/scripts/convergence_publish.py") should include("""self.release("upload", tag, archive""")
   }
 
   "the convergence workflows" should "write the shared release nowhere except through that gated action" in {
@@ -79,10 +79,14 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
     pin should include("contents: write")
     // The only writer of the hermetic marker.
     val writers = Seq(".github/actions/convergence-publish/action.yml", ".github/scripts/convergence-publish.sh",
+      ".github/scripts/convergence_publish_pin.py",
       ".github/workflows/verify-scrape-recording.yml", ".github/workflows/record-scrape-fixtures.yml",
       ".github/workflows/country-convergence-leg.yml", ".github/workflows/identity-model-convergence.yml")
-      .filter(path => RepoFile.read(path).linesIterator.filterNot(_.trim.startsWith("#")).exists(_.contains("> \"hermetic-")))
-    writers shouldBe Seq(".github/scripts/convergence-publish.sh")
-    RepoFile.read(".github/scripts/convergence-publish.sh") should include("""echo "$run ${recorded:-unknown} $tree" > "hermetic-$code.txt"""")
+      .filter(path => RepoFile.read(path).linesIterator.filterNot(_.trim.startsWith("#"))
+        .exists(line => line.contains("> \"hermetic-") || line.contains("""marker = f"hermetic-""")))
+    writers shouldBe Seq(".github/scripts/convergence_publish_pin.py")
+    val pin = RepoFile.pythonFunction(".github/scripts/convergence_publish_pin.py", "country")
+    pin should include("""marker = f"hermetic-{code}.txt"""")
+    pin should include("""f.write(f"{self.run} {self.recorded(code) or 'unknown'} {tree}\n")""")
   }
 }
