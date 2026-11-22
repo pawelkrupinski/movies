@@ -46,6 +46,7 @@ common:services.movies.SideCollectionDeleteOwnershipSpec	*/src/main/scala/* e2e/
 common:testsupport.ModuleSourcesSpec	*/src/main/scala/* e2e/src/* repochecks/src/*
 common:tools.CouplingSpec	common/src/test/scala/tools/couplingfixture/imports/Charged.scala test/resources/*	the coupling baseline in the rows' shape, its limits the build's, and the layer table parsing (the ratchet itself is the sbt check's coupling step)
 common:tools.ExemptionSlackSpec	common/src/test/scala/tools/couplingfixture/slack/* project/ExemptionSlack.scala project/ClassReferences.scala	the exemption slack over its fixture's compiled classes (read from the test classpath)
+common:tools.SameFileEdgesSpec	common/src/test/scala/tools/impactfixture/* project/SameFileEdges.scala project/ClassReferences.scala project/Coupling.scala	the test-impact selection's same-file edges over its fixture's compiled classes (read from the test classpath)
 common:tools.DeepExpressionLintSpec	*/src/*/scala/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each source alone: its longest operator chain
 common:tools.JvmDefaultsLintSpec	*/src/fixtures/scala/* */src/test/scala/* geodata/src/* itkit/src/* web/src/it/scala/* web/src/page/scala/* worker/src/it/scala/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each spec alone: a default locale, zone or property set
 common:tools.NoEnvLocalReadersSpec	*	walks the whole tree, every code file of 13 kinds, and judges each file alone: a standing lint (it reads nearly every push; no two changes' files meet in one verdict)
