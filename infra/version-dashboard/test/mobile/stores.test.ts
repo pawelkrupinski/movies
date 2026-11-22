@@ -62,6 +62,30 @@ describe("iOS release state", () => {
     expect(state).toEqual({ error: null, liveVersion: "2.0.6", liveExtra: "READY_FOR_SALE", pending: { version: "2.0.8", state: "WAITING_FOR_REVIEW" } });
   });
 
+  it("reports nothing live and nothing pending for an empty version list", async () => {
+    const state = await iosReleaseState(async () => ({ data: [] }), noSleep);
+    expect(state).toEqual({ error: null, liveVersion: null, liveExtra: null, pending: null });
+  });
+
+  it("takes a first submission with nothing yet for sale as pending, with nothing live", async () => {
+    const state = await iosReleaseState(async () => ({ data: [version("1.0.0", "WAITING_FOR_REVIEW", "2026-09-01")] }), noSleep);
+    expect(state).toEqual({ error: null, liveVersion: null, liveExtra: null, pending: { version: "1.0.0", state: "WAITING_FOR_REVIEW" } });
+  });
+
+  it("names no pending version when the newest is the one for sale", async () => {
+    const state = await iosReleaseState(async () => ({
+      data: [version("2.0.5", "REPLACED_WITH_NEW_VERSION", "2026-08-01"), version("2.0.6", "READY_FOR_SALE", "2026-09-01")],
+    }), noSleep);
+    expect(state).toEqual({ error: null, liveVersion: "2.0.6", liveExtra: "READY_FOR_SALE", pending: null });
+  });
+
+  it("reads a version missing its string, state and date as nulls, sorted last", async () => {
+    const state = await iosReleaseState(async () => ({ data: [{ attributes: {} }, version("2.0.6", "READY_FOR_SALE", "2026-09-01")] }), noSleep);
+    expect(state).toEqual({ error: null, liveVersion: "2.0.6", liveExtra: "READY_FOR_SALE", pending: null });
+    const alone = await iosReleaseState(async () => ({ data: [{ attributes: {} }] }), noSleep);
+    expect(alone).toEqual({ error: null, liveVersion: null, liveExtra: null, pending: { version: null, state: null } });
+  });
+
   it("reports an answer without the version list as an error, never as nothing live", async () => {
     const state = await iosReleaseState(async () => ({ errors: [{ status: "500" }] }), noSleep);
     expect(state).toEqual({ error: "App Store Connect answered without a version list", networkError: false });
@@ -120,6 +144,23 @@ describe("Android release state", () => {
       { status: "completed", name: "2.0.6", versionCodes: ["309"] },
     ]), noSleep);
     expect(state).toMatchObject({ liveVersion: "2.0.6", pending: { version: "2.0.7", state: "inProgress" } });
+  });
+
+  it("reports nothing live and nothing pending for a track without releases", async () => {
+    const empty = { error: null, liveVersion: null, liveExtra: null, pending: null };
+    expect(await androidReleaseState(play(async () => "tok", []), noSleep)).toEqual(empty);
+    const noList: PlayApi = { token: async () => "tok", send: async () => ({ id: "edit-1" }), get: async () => ({}) };
+    expect(await androidReleaseState(noList, noSleep)).toEqual(empty);
+  });
+
+  it("takes a first rollout with nothing completed as pending, with nothing live", async () => {
+    const state = await androidReleaseState(play(async () => "tok", [{ status: "inProgress", name: "1.0.0", versionCodes: ["1"] }]), noSleep);
+    expect(state).toEqual({ error: null, liveVersion: null, liveExtra: null, pending: { version: "1.0.0", state: "inProgress" } });
+  });
+
+  it("reads a release missing its name, status or version codes as nulls and no codes", async () => {
+    const state = await androidReleaseState(play(async () => "tok", [{}, { status: "completed" }]), noSleep);
+    expect(state).toEqual({ error: null, liveVersion: null, liveExtra: "", pending: { version: null, state: null } });
   });
 
   it("reports a persistent DNS failure as a network error", async () => {
