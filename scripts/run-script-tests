@@ -80,6 +80,21 @@
 # each, passing case after passing case, at the 600 s a test it had then. --timeout S adds a wall-clock
 # ceiling for a caller that wants one; CI's is the job's own timeout. The table names each PASS / FAIL /
 # STALLED / TIMEOUT with its seconds; a failure's last lines follow.
+# THE TREE IS LEFT AS FOUND. Every test shares ONE checkout with the 7 others running beside it, so a file one test leaves
+# there is read by the next: js-quality-report-test.sh's `npm ci` left scripts/js-quality/node_modules, and
+# tool-jvm-headless-test.sh's `grep -r` read it (Order independence #99) -- the victim failed, the polluter passed. So the
+# polluter fails: the checkout's state (`git status --porcelain --ignored`: what is new, changed, deleted, or new and
+# ignored) is taken before the run and after it, and each path new after it is put on the test that made it, a test FAIL
+# (POLLUTE) naming it. Under --jobs, who made it is read in two steps. Its candidates are the tests running when it was
+# made (its ctime -- tar or `cp -p` keep an mtime, never a ctime -- inside a test's start..end); then each candidate runs
+# AGAIN, ALONE, with the leftovers moved aside, and the one that makes a path again is its polluter (the leftovers are put
+# back afterwards: the tree ends as the run left it). Confirming costs a run of each candidate, paid only when something
+# was left. A path no candidate makes again alone (an edit beside the run, a co-agent's sbt writing target/) is said and
+# does not fail the run. Two snapshots cost ~1 s a run; a per-test snapshot could not tell 8 concurrent tests apart
+# anyway. Skipped (RUN_SCRIPT_TESTS_TREE_CHECK=0, or a --root that is no writable git checkout: --linux's read-only
+# copy). Tests install their tools outside the tree (~/.cache/kinowo/<tool>/<lock hash>, js-quality-report), and run
+# with PYTHONDONTWRITEBYTECODE=1: an import's __pycache__ is no test's to leave.
+#
 # THE GOVERNOR. A run (and --linux's container, and its image build) holds a governor ticket on the Mac (jvm-gate.sh
 # gov_hold, `agentctl gov`), charged its parallelism (--jobs, or fewer tests): while the laptop is starved it waits for
 # admission, then starts by itself (the owner, 2026-11-19). None in a check's hook (its ticket is charged already), off
@@ -104,6 +119,8 @@ unset GITHUB_STEP_SUMMARY GITHUB_OUTPUT GITHUB_ENV GITHUB_PATH GITHUB_STATE \
   GITHUB_EVENT_NAME GITHUB_EVENT_PATH GITHUB_SERVER_URL GITHUB_API_URL GITHUB_GRAPHQL_URL GITHUB_REPOSITORY \
   GITHUB_REPOSITORY_OWNER GITHUB_RUN_ID GITHUB_RUN_NUMBER GITHUB_RUN_ATTEMPT GITHUB_WORKFLOW GITHUB_WORKFLOW_REF \
   GITHUB_JOB GITHUB_ACTOR GITHUB_TRIGGERING_ACTOR
+# ...nor writes an import's bytecode into the checkout (THE TREE IS LEFT AS FOUND)
+export PYTHONDONTWRITEBYTECODE=1
 
 Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin infra/nix/files data"
 # The oldest python3 every Python tool runs on: macOS's /usr/bin/python3 (3.9). scripts/ci/python_floor_lint.py holds
@@ -485,8 +502,89 @@ failing_cases() {
   [ -z "$cases" ] || { echo "    failing cases (from the whole log):"; printf '%s\n' "$cases" | sed 's/^/    /'; echo "    last 60 lines:"; }
 }
 
+# ── The tree is left as found (THE TREE IS LEFT AS FOUND, above) ──────────────────────────────────
+tree_check_on() { # the run checks the checkout: asked to, a git checkout, writable, and a python3 to read ctimes with
+  [ "${RUN_SCRIPT_TESTS_TREE_CHECK:-1}" != 0 ] && [ -w "$root" ] && command -v python3 > /dev/null \
+    && [ "$(git -C "$root" rev-parse --is-inside-work-tree 2> /dev/null)" = true ]
+}
+tree_state() { # the checkout's state, a sorted line a path: XY and the path (new and ignored ones too, not their insides)
+  GIT_OPTIONAL_LOCKS=0 git -C "$root" status --porcelain=v1 --ignored --untracked-files=normal 2> /dev/null | LC_ALL=C sort
+}
+# <paths file> -> path<TAB>ctime (float) of each, or of its nearest ancestor that exists (a path deleted)
+ctimes() {
+  python3 -c '
+import os, sys
+root = sys.argv[1]
+for line in open(sys.argv[2]):
+    path = line.rstrip("\n"); probe = path.rstrip("/")
+    while probe and not os.path.lexists(os.path.join(root, probe)):
+        probe = os.path.dirname(probe)
+    print("%s\t%.3f" % (path, os.lstat(os.path.join(root, probe or ".")).st_ctime))' "$root" "$1"
+}
+now() { python3 -c 'import time; print("%.3f" % time.time())'; }
+restore_aside() { # every leftover moved aside to confirm its polluter, put back where nothing took its place
+  [ -n "${work:-}" ] && [ -s "$work/aside.list" ] || return 0
+  local path
+  while IFS= read -r path; do
+    [ -e "$root/$path" ] || [ -L "$root/$path" ] || { mkdir -p "$(dirname "$root/$path")" && mv "$work/aside/${path%/}" "$root/${path%/}"; }
+  done < "$work/aside.list"
+  : > "$work/aside.list"
+}
+move_aside() { # <dir under $work> <paths file>: each new or ignored leftover that exists, moved under <dir>
+  local path
+  while IFS= read -r path; do
+    [ -e "$root/$path" ] || [ -L "$root/$path" ] || continue
+    mkdir -p "$(dirname "$1/$path")" && mv "$root/$path" "$1/${path%/}" && echo "$path"
+  done < "$2"
+}
+# What a run left: its new lines; each path's candidates (the tests running at its ctime), each candidate run again
+# alone, and the paths it makes again are its own. Writes $work/polluted (index<TAB>status line, a line a path) and
+# $work/unclaimed (status line<TAB>the tests running when it was made).
+attribute_leftovers() {
+  LC_ALL=C comm -13 "$work/tree.before" "$work/tree.after" > "$work/tree.new"
+  : > "$work/polluted"; : > "$work/unclaimed"
+  [ -s "$work/tree.new" ] || return 0
+  cut -c4- "$work/tree.new" > "$work/left.paths"
+  grep -E '^(\?\?|!!) ' "$work/tree.new" | cut -c4- > "$work/left.movable"
+  local k=0
+  while [ "$k" -lt "$total" ]; do echo "$k $(cat "$work/$k.window" 2> /dev/null)"; k=$((k + 1)); done > "$work/windows"
+  # path<TAB>the candidates, by index (start - 1 <= ctime <= end + 1: windows are whole seconds)
+  ctimes "$work/left.paths" | awk -F'\t' 'FILENAME == ARGV[1] { split($0, w, " "); if (w[3] != "") { start[w[1]] = w[2]; end[w[1]] = w[3] } next }
+    { c = ""; for (i in start) if ($2 >= start[i] - 1 && $2 <= end[i] + 1) c = c " " i; print $1 "\t" c }' "$work/windows" - > "$work/left.candidates"
+  local candidates candidate path t0 again
+  # the quickest first, and none once every path is claimed: a long test runs again only when it has to
+  candidates="$(cut -f2 "$work/left.candidates" | tr ' ' '\n' | grep . | LC_ALL=C sort -un \
+    | while read -r candidate; do echo "$(cat "$work/$candidate.seconds" 2> /dev/null || echo 0) $candidate"; done | LC_ALL=C sort -n | cut -d' ' -f2)"
+  printf '\nrun-script-tests: %s path(s) left in the checkout; running each of the %s test(s) running when they were made again, alone\n' \
+    "$(wc -l < "$work/tree.new" | tr -d ' ')" "$(printf '%s' "$candidates" | grep -c .)"
+  move_aside "$work/aside" "$work/left.movable" >> "$work/aside.list"
+  for candidate in $candidates; do
+    t0=$(now)
+    run_one "again-$candidate" "${paths[$candidate]}"
+    ctimes "$work/left.paths" > "$work/again.ctimes"
+    while IFS="$(printf '\t')" read -r path _; do
+      if grep -qxF "$path" "$work/left.movable"; then
+        [ -e "$root/$path" ] || [ -L "$root/$path" ] || continue # made again: there once more
+      else
+        awk -F'\t' -v p="$path" -v t0="$t0" '$1 == p && $2 >= t0 { found = 1 } END { exit !found }' "$work/again.ctimes" || continue
+      fi
+      printf '%s\t%s\n' "$candidate" "$(awk -v p="$path" 'substr($0, 4) == p' "$work/tree.new" | head -1)" >> "$work/polluted"
+    done < "$work/left.candidates"
+    again="$work/again/$candidate"; mkdir -p "$again"
+    move_aside "$again" "$work/left.movable" > /dev/null # the next candidate starts without them too
+    [ "$(cut -f2 "$work/polluted" | LC_ALL=C sort -u | wc -l)" -lt "$(wc -l < "$work/left.paths")" ] || break
+  done
+  restore_aside
+  while IFS="$(printf '\t')" read -r path candidates; do
+    cut -f2 "$work/polluted" | awk -v p="$path" 'substr($0, 4) == p { found = 1 } END { exit !found }' && continue
+    printf '%s\t%s\n' "$(awk -v p="$path" 'substr($0, 4) == p' "$work/tree.new" | head -1)" \
+      "$(for candidate in $candidates; do printf '%s ' "${paths[$candidate]}"; done)" >> "$work/unclaimed"
+  done < "$work/left.candidates"
+}
+
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+: > "$work/aside.list"
+trap 'restore_aside; rm -rf "$work"' EXIT
 # where a failing test's whole log is kept (the report shows its last 60 lines)
 log_dir=${RUN_SCRIPT_TESTS_LOG_DIR:-$HOME/.cache/kinowo-script-tests/failed}
 if [ -n "$test_bash" ]; then
@@ -563,7 +661,8 @@ govern_run "$(wc -l < "$work/selected" | tr -d ' ')"
 
 # ── Running ────────────────────────────────────────────────────────────────────────────────────
 run_one() { # <index> <path>: its log, exit status and seconds land in $work/<index>.*
-  local i="$1" path="$2" start=$SECONDS code interpreter=bash test_path=$PATH
+  local i="$1" path="$2" start=$SECONDS code interpreter=bash test_path=$PATH started_at
+  started_at=$(date +%s)
   case "$path" in *.py) interpreter=python3 ;; esac
   # --floor: the floor's scope runs under the floor bash alone -- ONCE, not again natively beside it (FLOOR). A Python
   # self-test of a bash tool in that scope (identity_what_if_test.py, of identity-what-if, which sources scratch-git.sh)
@@ -587,6 +686,7 @@ run_one() { # <index> <path>: its log, exit status and seconds land in $work/<in
   code=$?
   kill "$watch_pid" 2> /dev/null; wait "$watch_pid" 2> /dev/null
   echo "$((SECONDS - start))" > "$work/$i.seconds"
+  echo "$started_at $(date +%s)" > "$work/$i.window"
   echo "$code" > "$work/$i.rc"
 }
 
@@ -608,6 +708,8 @@ started=$SECONDS
 printf '\033[36m▸\033[0m %s script test(s), %s at a time\n' "$total" "$jobs"
 
 pids=() idx=() next=0 done_count=0 failed=0
+tree_check=0
+if tree_check_on; then tree_check=1; tree_state > "$work/tree.before"; fi
 report() { # <index>
   local i="$1" code secs status
   code="$(cat "$work/$i.rc")"; secs="$(cat "$work/$i.seconds")"
@@ -647,6 +749,26 @@ while [ "$done_count" -lt "$total" ]; do
   pids=(${still[@]+"${still[@]}"}); idx=(${still_idx[@]+"${still_idx[@]}"})
   [ "$done_count" -lt "$total" ] && sleep 0.2
 done
+
+# what the run left in the checkout, put on the test that made it (THE TREE IS LEFT AS FOUND)
+if [ "$tree_check" = 1 ]; then
+  tree_state > "$work/tree.after"
+  attribute_leftovers
+  for k in $(cut -f1 "$work/polluted" | LC_ALL=C sort -un); do
+    failed=$((failed + 1))
+    # its row says so (a passing test's PASS replaced; a failing one keeps its status and gains the mark)
+    awk -v p="${paths[$k]}" '{ n = split($0, f, " "); if (f[3] == p) { if (f[1] == "PASS") sub(/^PASS   /, "POLLUTE"); else $0 = $0 " (and POLLUTE)" } print }' \
+      "$work/table" > "$work/table.new" && mv "$work/table.new" "$work/table"
+    { printf '\n── POLLUTE %s: left in the checkout, and made again when it ran alone ──\n' "${paths[$k]}"
+      awk -F'\t' -v k="$k" '$1 == k { print "    " $2 }' "$work/polluted"
+      echo "    (a test writes only under its own mktemp scratch, and installs its tools outside the tree: ~/.cache/kinowo/<tool>/<lock hash>)"
+    } >> "$work/failures"
+  done
+  if [ -s "$work/unclaimed" ]; then
+    echo; echo "run-script-tests: left in the checkout during the run, and made again by no test run alone (an edit beside the run?), not failing it:"
+    awk -F'\t' '{ print "    " $1 "   (running then: " $2 ")" }' "$work/unclaimed"
+  fi
+fi
 
 # keep this run's times: the cache's other rows stay, these replace theirs; written aside and renamed into place
 if [ -s "$work/seconds.tsv" ] && mkdir -p "$(dirname "$durations_file")" 2>/dev/null; then

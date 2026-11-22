@@ -16,7 +16,11 @@
 #                                                  another checkout (e.g. ~/projects/events --area app=packages);
 #                                                  --areas FILE reads the areas from a file of areas.tsv's shape
 #
-# The measures and their tools (scripts/js-quality/package.json, pinned; installed by `npm ci` there on first run):
+#   scripts/js-quality-report --tools-dir         where the pinned tools live (installed or not), and nothing else
+#
+# The measures and their tools (scripts/js-quality/package.json and its lock, pinned; installed by `npm ci` on first run
+# OUTSIDE the checkout, in ~/.cache/kinowo/js-quality/<lock hash>/node_modules -- $KINOWO_TOOL_CACHE for ~/.cache/kinowo --
+# shared by every worktree: a node_modules left in the tree was read by the next test's `grep -r`, Order independence #99):
 #   cognitive complexity  <= 10   eslint-plugin-sonarjs `cognitive-complexity` (Sonar's own implementation)
 #   cyclomatic complexity <= 10   ESLint core `complexity`
 #   inner defs            <= 2    named functions (declarations, `const f = () =>`) a function holds; not callbacks
@@ -31,25 +35,37 @@
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 tools="$here/js-quality"
-root="$(cd "$here/.." && pwd)" out="" args=() ratchet="" ranges=()
+root="$(cd "$here/.." && pwd)" out="" args=() ratchet="" ranges=() print_tools=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --root) root="$(cd "$2" && pwd)"; shift ;;
         --out) out="$2"; shift ;;
         --area|--areas) args+=("$1" "$2"); shift ;;
         --check|--update) ratchet="${1#--}" ;;
+        --tools-dir) print_tools=1 ;;
         --range) ranges+=(--range "$2"); shift ;;
-        -h|--help) sed -n '2,32p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "js-quality-report: unknown argument $1" >&2; exit 2 ;;
     esac
     shift
 done
+# The pinned tools' home: keyed by the manifest and its lock, so a bump installs beside the old set, never over it.
+installed="${KINOWO_TOOL_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/kinowo}/js-quality/$(cat "$tools/package.json" "$tools/package-lock.json" | git hash-object --stdin | cut -c1-16)"
+if [ "$print_tools" = 1 ]; then echo "$installed"; exit 0; fi
 command -v node >/dev/null || { echo "js-quality-report: node is not installed" >&2; exit 2; }
-if [ ! -x "$tools/node_modules/.bin/eslint" ] || [ "$tools/package-lock.json" -nt "$tools/node_modules/.package-lock.json" ]; then
+if [ ! -x "$installed/node_modules/.bin/eslint" ]; then
     command -v npm >/dev/null || { echo "js-quality-report: npm is not installed (needed once, to install the tools)" >&2; exit 2; }
-    echo "js-quality-report: installing the tools (npm ci in $tools)" >&2
-    (cd "$tools" && npm ci --no-audit --no-fund --silent) >&2
+    echo "js-quality-report: installing the tools (npm ci in $installed)" >&2
+    # built aside and renamed into place: two installs at once each finish, and one rename wins
+    mkdir -p "$(dirname "$installed")"
+    build="$(mktemp -d "$installed.build.XXXXXX")"
+    cp "$tools/package.json" "$tools/package-lock.json" "$build/"
+    (cd "$build" && npm ci --no-audit --no-fund --silent) >&2 || { rm -rf "$build"; exit 2; }
+    mv "$build" "$installed" 2>/dev/null || rm -rf "$build"
+    [ -x "$installed/node_modules/.bin/eslint" ] || { echo "js-quality-report: the tools did not install in $installed" >&2; exit 2; }
 fi
+# report.js finds them here: its binaries by JS_QUALITY_NODE_MODULES, its require()s by NODE_PATH
+export JS_QUALITY_NODE_MODULES="$installed/node_modules" NODE_PATH="$installed/node_modules${NODE_PATH:+:$NODE_PATH}"
 if [ -z "$out" ]; then out="$(mktemp -d)"; trap 'rm -rf "$out"' EXIT; fi
 if [ -n "$ratchet" ]; then
     command -v python3 >/dev/null || { echo "js-quality-report: python3 is not installed" >&2; exit 2; }

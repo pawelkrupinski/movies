@@ -441,6 +441,30 @@ check "with no names, the tests --changed origin/main selects" "0 $want" \
 check "Docker not running: a clear failure, exit 2" "2" "$(DOCKER_DOWN=1 linux scripts/ci)"
 check "...naming what to start" "1" "$(grep -c -- '--linux needs a running Docker' "$work/out")"
 
+# THE TREE IS LEFT AS FOUND: a test leaving a file in the checkout fails, named, beside a clean one running at the same
+# time; one leaving an ignored directory (an `npm ci`'s node_modules) too; a path no test makes again alone is said, not
+# failed; the leftovers are where the run left them afterwards
+printf 'node_modules/\n' > "$tree/.gitignore"
+put scripts/polluter-test.sh 'sleep 1; echo x > scripts/left-behind.txt; mkdir -p scripts/tools/node_modules/pkg; echo y > scripts/tools/node_modules/pkg/i.js'
+put scripts/clean-test.sh 'd=$(mktemp -d); echo x > "$d/f"; rm -rf "$d"; sleep 2'
+check "a test leaving files in the checkout fails the run" "1" "$(run --jobs 4 polluter-test clean-test)"
+check "...its row POLLUTE, the clean one beside it PASS" "1 1" \
+  "$(grep -c '^POLLUTE .*scripts/polluter-test.sh' "$work/out") $(grep -c '^PASS .*scripts/clean-test.sh' "$work/out")"
+check "...naming each path, the ignored directory too" "!! scripts/tools/|?? scripts/left-behind.txt" \
+  "$(sed -n '/── POLLUTE scripts\/polluter-test.sh/,/^$/p' "$work/out" | grep -E '^    (\?\?|!!) ' | sed 's/^ *//' | paste -sd'|' -)"
+check "...and the leftovers are where the run left them" "x y" \
+  "$(cat "$tree/scripts/left-behind.txt") $(cat "$tree/scripts/tools/node_modules/pkg/i.js")"
+rm -rf "$tree/scripts/left-behind.txt" "$tree/scripts/tools"
+check "a clean test passes, the check saying nothing" "0 0" "$(run clean-test) $(grep -c 'left in the checkout' "$work/out")"
+# made once only (as an edit beside the run would be): not this test's, said and not failed
+put scripts/once-test.sh "[ -e '$work/once-made' ] || { touch '$work/once-made'; echo z > scripts/edited-beside.txt; }"
+check "a path no test makes again when run alone is said, and does not fail the run" "0 1" \
+  "$(run once-test) $(grep -c '^    ?? scripts/edited-beside.txt   (running then: scripts/once-test.sh )' "$work/out")"
+check "RUN_SCRIPT_TESTS_TREE_CHECK=0: no check" "0 0" \
+  "$(rm -f "$tree/scripts/edited-beside.txt" "$work/once-made"; RUN_SCRIPT_TESTS_TREE_CHECK=0 run polluter-test) $(grep -c POLLUTE "$work/out")"
+rm -rf "$tree/scripts/left-behind.txt" "$tree/scripts/tools" "$tree/scripts/edited-beside.txt" "$tree/.gitignore" \
+  "$tree/scripts/polluter-test.sh" "$tree/scripts/clean-test.sh" "$tree/scripts/once-test.sh"
+
 # THE GOVERNOR: the run waits for its ticket (a starved laptop), charged its parallelism, then starts by itself; its
 # tests see no ticket of its own (descriptor 7 closed, KINOWO_JVM_SLOT_HELD unset)
 spec_fake_governor "$work/agentctl"

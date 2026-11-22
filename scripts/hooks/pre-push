@@ -16,7 +16,7 @@
 #                 D 0.20, no cycle), no frozen row rising -- and the baseline grows only in a commit carrying the kind's
 #                 trailer (`Complexity:`, `Length:`, `Duplication:`, `Coupling: <why>`; scripts/js-quality-report --update
 #                 writes it; falls need none). Tests, page tests, Playwright and scripts are reported, never gated: they
-#                 select no check. Its tools: `npm ci` in scripts/js-quality once per worktree (npm or node missing BLOCKS)
+#                 select no check. Its tools: `npm ci` once per lock, outside the tree in ~/.cache/kinowo/js-quality (npm or node missing BLOCKS)
 #   `drift`       the generated roster chain (scripts/ci/generated-artefacts-drift.sh)
 #   `snapshot`    the read-model snapshot's input stamp (scripts/read-model-snapshot-inputs.sh)
 #   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, the two Grafana metric-coverage

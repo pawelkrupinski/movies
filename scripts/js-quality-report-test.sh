@@ -5,8 +5,8 @@
 # a clone), and the classic-script globals graph resolves `/* global */` names to their `/* exported */` files.
 #
 # Two legs: the coupling and clone-grouping logic needs node alone and always runs; the end-to-end leg needs the
-# pinned tools (scripts/js-quality/node_modules, `npm ci` there), so it runs where they are installed or npm can
-# install them -- not in run-script-tests' --linux container, which has node but no npm and a read-only checkout.
+# pinned tools (`npm ci`, outside the checkout: `js-quality-report --tools-dir`), so it runs where they are installed or
+# npm can install them -- not in run-script-tests' --linux container, which has node but no npm.
 # Run: bash scripts/js-quality-report-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -41,8 +41,18 @@ check "...and form a module cycle; each directory's Ca/Ce" 'module cycles [["s/x
   "$(grep '^module cycles' <<< "$out")"
 check "pairs sharing a copy are one clone group, at its largest token count" 'groups [[70,"abc"]]' "$(grep '^groups' <<< "$out")"
 
+# --- where the tools live: outside the checkout (a node_modules left in it was read by the next test's `grep -r`,
+# Order independence #99), keyed by the manifest and its lock ---
+tools_dir="$("$REPO_ROOT/scripts/js-quality-report" --tools-dir)"
+lock_key="${tools_dir##*/}"
+where_is() { case "$1" in "$REPO_ROOT"/*) echo inside ;; *) echo outside ;; esac; } # never a case inside $( ): 3.2 misparses it
+node_modules_before="$([ -e "$REPO_ROOT/scripts/js-quality/node_modules" ] && echo present || echo absent)"
+check "the tools install outside the checkout, under ~/.cache/kinowo/js-quality/<lock hash>" "outside $HOME/.cache/kinowo/js-quality/ 16 hex" \
+  "$(where_is "$tools_dir") $(env -u KINOWO_TOOL_CACHE -u XDG_CACHE_HOME "$REPO_ROOT/scripts/js-quality-report" --tools-dir | sed 's#[^/]*$##') $(printf '%s' "$lock_key" | grep -cxE '[0-9a-f]{16}' | sed 's/^1$/16 hex/')"
+check "...\$KINOWO_TOOL_CACHE moves them" "$work/cache/js-quality/$lock_key" "$(KINOWO_TOOL_CACHE="$work/cache" "$REPO_ROOT/scripts/js-quality-report" --tools-dir)"
+
 # --- end to end, the pinned tools ---
-if [ ! -x "$REPO_ROOT/scripts/js-quality/node_modules/.bin/eslint" ] && { ! command -v npm > /dev/null || [ ! -w "$REPO_ROOT/scripts/js-quality" ]; }; then
+if [ ! -x "$tools_dir/node_modules/.bin/eslint" ] && ! command -v npm > /dev/null; then
   echo "  (end-to-end leg not run: the tools are not installed and npm cannot install them here)"
   spec_summary
 fi
@@ -107,6 +117,9 @@ check "the globals graph counts a template-only name apart" \
   "module	web	web/shared/b.js	fan-out=1 template-globals=1" "$(grep 'web/shared/b.js' "$work/out/coupling.tsv")"
 check "a type-only TypeScript module is abstract (A = 1 in its directory)" "A=1.00" \
   "$(grep 'directory	app	app/types' "$work/out/coupling.tsv" | grep -o 'A=[0-9.]*')"
+# (a checkout from before may hold an old install's node_modules: none is made, nor one there removed)
+check "...and the run made no node_modules in the checkout" "$node_modules_before" \
+  "$([ -e "$REPO_ROOT/scripts/js-quality/node_modules" ] && echo present || echo absent)"
 check "--area with a bad shape is refused" "2" \
   "$("$REPO_ROOT/scripts/js-quality-report" --root "$fixture" --area 'bad shape' > /dev/null 2>&1; echo $?)"
 

@@ -20,7 +20,8 @@ const { importEdges, globalEdges, measureCoupling } = require('./coupling');
 const Limits = { cognitive: 10, cyclomatic: 10, innerDefs: 2, lines: 50, fileLines: 500, fanOut: 9, distance: 0.2, distanceMinModules: 8 };
 const Extensions = /\.(js|mjs|cjs|ts|mts|cts|jsx|tsx)$/;
 const Excluded = /(^|\/)(node_modules|dist|build|coverage)\/|\.min\.js$|\.d\.ts$/;
-const bin = (name) => path.join(__dirname, 'node_modules', '.bin', name);
+// the pinned tools, installed outside the checkout by scripts/js-quality-report (JS_QUALITY_NODE_MODULES)
+const bin = (name) => path.join(process.env.JS_QUALITY_NODE_MODULES || path.join(__dirname, 'node_modules'), '.bin', name);
 
 function parseArgs(argv) {
   const options = { areas: [] };
