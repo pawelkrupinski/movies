@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The seeded test order the nightly order-independence legs share (ios/scripts/swift-test-shuffled.sh, android/scripts/devtest-shuffled.sh)
 # The seeded test order the nightly order-independence legs share
 # (ios/scripts/swift-test-shuffled.sh, android/scripts/devtest-shuffled.sh).
 #

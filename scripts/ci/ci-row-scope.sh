@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Can this push move ci.yml's slow rows? Prints true when a changed path can change what they test
 #
 # CAN THIS PUSH MOVE ci.yml's SLOW ROWS? Reads changed paths on stdin and prints `true` when one of them can change
 # what the named rows test (or, for `deploy`, what main.yml ships), `false` when every one is inert for them.

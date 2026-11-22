@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Run Android instrumented (on-device) tests with the recurring setup gotchas handled for you
 #
 # Run Android instrumented (on-device) tests with the recurring setup gotchas
 # handled for you. Without this, three things bite every time:

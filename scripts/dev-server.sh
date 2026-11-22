@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Local dev server, run under a deliberately smaller heap than the rest of sbt
 # Local dev server, run under a DELIBERATELY SMALLER heap than the rest of sbt.
 #
 # WHY. On 2026-09-04 a plain `sbt web/run` died with `OutOfMemoryError: Java heap

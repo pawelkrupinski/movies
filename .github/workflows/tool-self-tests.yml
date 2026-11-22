@@ -1,3 +1,4 @@
+# Purpose: The development tooling's own tests, off the gate (ci-failures-2026-10-30, recommendation 1)
 name: Tool self-tests
 
 # THE DEVELOPMENT TOOLING'S OWN TESTS, OFF THE GATE (ci-failures-2026-10-30, recommendation 1). The script self-tests

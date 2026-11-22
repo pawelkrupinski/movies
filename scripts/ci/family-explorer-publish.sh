@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The nightly family explorer's publish step (.github/workflows/identity-family-explorer.yml)
 # The nightly family explorer's publish step (.github/workflows/identity-family-explorer.yml): join the walk rows' shards
 # (scripts/ci/family_flips_report.py) and publish, as assets of the release `identity-family-explorer`,
 #   family-flips-<cc>.tsv     a country's flips (listing, flip chain in `takes`, shape, rules in `note`), the whole country

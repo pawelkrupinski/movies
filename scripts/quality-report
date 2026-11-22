@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The code-quality report (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, length and duplication (pmd cpd)
 # THE CODE-QUALITY REPORT (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, length and duplication (PMD CPD), measured from
 # its sources (`quality/runMain quality.QualityReport`, the `quality` module), through this checkout's kept sbt server
 # (scripts/sbt-warm).

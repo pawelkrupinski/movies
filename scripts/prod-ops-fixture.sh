@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The fake prod the prod-ops scripts' tests share (see scripts/prod-ops.sh)
 # The fake prod the prod-ops scripts' tests share (see scripts/prod-ops.sh). No vault, no ssh, no Mongo: `secrets`,
 # `ssh`, `nc` and `mongosh` are fakes on PATH. Source it after scripts/shell-spec.sh:
 #

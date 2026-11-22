@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: DevPanel commit gate: the devpanel.py actions against scripted devices, the process reapers against real processes
 # DevPanel commit gate: the devpanel.py actions against scripted devices, the
 # process reapers against real processes, and the Swift panel compiled and
 # self-tested. See test_devpanel.py.

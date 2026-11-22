@@ -1,3 +1,4 @@
+# Purpose: Any sbt command on CI (scripts/identity-ci-run; scripts/ci-sbt's laptop test runs and fail-before --ci proofs)
 #
 # ANY sbt COMMAND ON CI (scripts/identity-ci-run; scripts/ci-sbt's laptop test runs and fail-before --ci proofs) -- a targeted testOnly or compile check at a commit, or one over a CACHED RECORDING: an IntegrationTest runMain -- a resolve dump,
 # an ablation, a simulation, a replay sweep -- over one `Record scrape fixtures` run laid out as

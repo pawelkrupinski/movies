@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Keep an origin's previous recording in a tree this recording is about to publish
 # Keep an origin's PREVIOUS recording in a tree this recording is about to publish, when the origin was down for everyone
 # (recording_health.py's `origin-down`: a 5xx both direct and through production's proxy).
 #

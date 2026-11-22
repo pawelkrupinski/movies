@@ -1,3 +1,4 @@
+# Purpose: Assert the live sites' security headers (kinowo.net, showtimes.cc)
 name: Security headers (live)
 
 # Asserts the LIVE sites' security headers against kinowo.net and showtimes.cc -- see

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The pure move check: whether a range only moves code (files, packages and classes renamed)
 # THE PURE MOVE CHECK: whether a range only moves code (files, packages and classes renamed), so no take can move and
 # scripts/identity-what-if -- which cannot compile a base across a package rename -- has nothing to measure.
 #

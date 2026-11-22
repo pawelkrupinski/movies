@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: One convergence run's ScalaTest narration and phase timings, as markdown for the job summary
 #
 # One convergence run's ScalaTest narration and phase timings, as markdown on stdout — the job summary
 # .github/actions/convergence-findings appends.

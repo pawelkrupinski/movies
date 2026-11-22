@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The JVM gate (sourced): JVM slots, locks and governor tickets for the tools that start heavy JVMs
 # THE JVM GATE: how the tools that start heavy JVMs (sbt-warm's commands and servers, identity-slice's runs and its
 # classpath compile, identity-measure-local's resolves) share one Mac. On 2026-10-18 eighteen agents' JVMs held ~70 GB
 # of heaps on a 36 GB Mac (51.7 of 52 GB of swap used, ~18 GB compressed), and once memory drained, seven JVMs each

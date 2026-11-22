@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: `gh <download args...>` for something that may legitimately not exist yet — a marker asset on a release
 # `gh <download args...>` for something that may legitimately not exist yet — a marker asset on a
 # release, an artifact of a run that expired or never uploaded one.
 #

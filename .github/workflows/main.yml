@@ -1,3 +1,4 @@
+# Purpose: Main's pipeline: build, test and publish the images Flux deploys; its rows are the gate
 name: Main
 
 on:

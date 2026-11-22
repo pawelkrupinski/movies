@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Run movies' GitOps-reading specs against a movies-gitops tree before that tree reaches movies-gitops main
 # Run movies' GitOps-reading specs against a movies-gitops tree BEFORE that tree reaches movies-gitops main.
 #
 #   scripts/gitops-specs --plan                  print the sbt commands: the lint registry's `@gitops` rows, per module

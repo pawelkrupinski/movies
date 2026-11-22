@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Print an xcodebuild -destination for an iPhone simulator this runner actually has
 # Print an xcodebuild -destination for an iPhone simulator this runner actually has.
 #   xcodebuild ... -destination "$(scripts/ci/ios-sim-destination.sh)"
 #

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Tar the enrichment tree a convergence leg recorded, and refuse to publish an archive that lost the remembered-answer cache on the way in
 #
 # Tar the enrichment tree a convergence leg recorded, and refuse to publish an
 # archive that lost the remembered-answer cache on the way in.

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The App Store Connect API key, out of the Touch ID vault (~/projects/secrets
 # The App Store Connect API key, out of the Touch ID vault (~/projects/secrets,
 # namespace `movies`) — the only place it lives since `.env.local` was retired.
 #

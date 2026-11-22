@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Pre-commit: no commit is made in the root checkout (the clone's main worktree)
 # PRE-COMMIT: no commit is made in the ROOT checkout (the clone's main worktree). It is shared by every
 # agent session and stays clean on main; every change is committed in a worktree of its own and lands as
 # `git push origin HEAD:main` from there (CLAUDE.md: "don't work in the root checkout"). The Claude Code

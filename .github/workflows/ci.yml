@@ -1,3 +1,4 @@
+# Purpose: The full build + test pipeline, factored out as a reusable workflow so it has exactly one definition
 name: CI
 
 # The full build + test pipeline, factored out as a reusable workflow so it

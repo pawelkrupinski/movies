@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: One line per workflow: where CI stands for main (or a commit)
 #
 # One line per workflow: where CI stands for main (or a commit) -- the question agents otherwise asked with a
 # hand-written `gh run list --workflow Main --branch main --json ...` (~80 calls a week, 2026-11). One `gh api` call,

@@ -1,3 +1,4 @@
+# Purpose: A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder
 # shellcheck shell=bash
 # A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no
 # timezonefinder; `-m venv DIR` makes a venv whose python3 imports it once that venv's pip has installed the lock

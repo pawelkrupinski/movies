@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The coupling report (CLAUDE.md, Design rules): the production code's coupling, from Zinc's class-dependency record
 # THE COUPLING REPORT (CLAUDE.md, Design rules): the production code's coupling, from Zinc's class-dependency record
 # and, between the classes of one source file, their class files (`sbt couplingReport`, project/Coupling.scala), through this checkout's kept sbt server (scripts/sbt-warm).
 #

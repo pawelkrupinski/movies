@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Shared engine for the store-screenshot drivers — android/scripts and ios/scripts both source this
 #
 # Shared engine for the store-screenshot drivers — android/scripts and
 # ios/scripts both source this. Everything here is platform-agnostic: which

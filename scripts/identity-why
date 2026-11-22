@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Why a listing changed film at a moment, from the identity history alone (identity_history, a month of it)
 #
 # Why a listing changed film at a moment, from the identity history alone (identity_history, a month of it): its take
 # there, the take before, the listings that joined or left its decision, and every input it read that moved between the

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Unpack a recorded-fixture archive, whichever compressor packed it
 #
 # Unpack a recorded-fixture archive, whichever compressor packed it.
 #

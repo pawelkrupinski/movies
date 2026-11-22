@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The takes skip gate shadow's tally: every skip-gate status of the newest commits, agreeing or not
 # THE SHADOW'S TALLY (scripts/ci/takes-skip-gate.sh): every `takes skip gate (<cc>)` status the takes rows posted on the
 # newest <commits> commits of a ref (default main, 300) -- how often the gate said SKIP, how often the takes then moved
 # (a DISAGREEMENT: the gate was wrong, and must never be enforced), and how often it said RUN. Enforcing the gate

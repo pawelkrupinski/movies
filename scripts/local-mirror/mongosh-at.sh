@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: `mongosh uri ARGS…` without the uri — and the password in it — on mongosh's command line, where `ps` shows it to every user
 # `mongosh URI ARGS…` without the URI — and the password in it — on mongosh's command line, where
 # `ps` shows it to every user: the URI travels in the environment, and the shell connects to it
 # before any other --eval or --file runs (every one of them then sees that `db`).

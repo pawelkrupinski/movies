@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Check in seconds that the pair every convergence leg will replay exists, before any leg takes a runner
 #
 # THE PAIR EVERY LEG WILL REPLAY EXISTS, checked in seconds before any leg takes a runner (identity-model-convergence.yml's
 # `preflight`). Each of these used to fail every leg of a run separately, minutes into its setup, after the JDK, sbt

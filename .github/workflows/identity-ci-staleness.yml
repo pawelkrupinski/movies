@@ -1,3 +1,4 @@
+# Purpose: Is the identity CI still telling us anything? Every three hours, each stale check named as overdue
 # IS THE IDENTITY CI STILL TELLING US ANYTHING? Every three hours, scripts/ci/identity-ci-staleness.sh
 # asks GitHub whether `Identity model convergence` or `Identity takes` has been red on main for over
 # 6 hours, whether the newest pipeline commit has gone 3 hours with no run of either covering it, and whether

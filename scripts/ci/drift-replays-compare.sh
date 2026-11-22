@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Two replays of the same seeds are one (the drift harness's determinism)
 # TWO REPLAYS OF THE SAME SEEDS ARE ONE (the drift harness's determinism): <cc> <dir A> <dir B> <verdict file>.
 # Each dir holds a replay's drift-<cc>.tsv and flips-<cc>.tsv (scripts.IdentityDrift's --out). Alike in any line order:
 # exit 0. A line apart in either: exit 1, the lines in the log and a `not deterministic` verdict in <verdict file>

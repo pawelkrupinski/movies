@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Run one command against prod Mongo from a laptop: the credential from the Touch ID vault, the connection through the ssh tunnel
 # Run one command against PROD Mongo from a laptop: the credential from the Touch ID vault, the
 # connection through the ssh tunnel.
 #

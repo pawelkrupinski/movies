@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Let ci-runner's security-headers check past Cloudflare's Bot Fight Mode on kinowo.net and showtimes.cc
 # Let ci-runner's Security headers check (.github/workflows/security-headers.yml) past Cloudflare's Bot
 # Fight Mode on kinowo.net and showtimes.cc WITHOUT the Decodo proxy, and only when it carries a secret.
 #

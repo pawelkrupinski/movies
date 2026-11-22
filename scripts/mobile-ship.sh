@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Release main's app code to the App Store and Google Play with one command
 #
 # Release main's app code to the App Store and Google Play with one command.
 #

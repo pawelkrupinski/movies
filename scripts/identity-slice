@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Reproduce one listing's identity take — matched or not, model and agreement — from a recording, in seconds
 #
 # Reproduce ONE listing's identity take — matched or not, model and agreement — from a recording, in seconds, at one or
 # two git refs (docs/design/identity-slice.md). The listing's families and their corpus context are cut out of a "Record

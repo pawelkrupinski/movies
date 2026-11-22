@@ -1,3 +1,4 @@
+# Purpose: Where the launchd agent's stdout/stderr land
 # Where the launchd agent's stdout/stderr land. Sourced (not executed) by both
 # service.sh — which writes the path into the plist — and mirror.sh, which
 # rotates the file it is being appended to. The two must name the SAME file: an

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The own-checkout guard: a tool that measures or writes its own checkout (`root` from its own path
 # THE OWN-CHECKOUT GUARD: a tool that measures or writes its OWN checkout (`root` from its own path: the quality and
 # coupling reports and their --update, dead-code, class-cycles, hotspots, ratchet-diff --measure, ...) refuses to run
 # from inside ANOTHER checkout -- a worktree calling the root checkout's copy measured main's tree, or --update wrote the

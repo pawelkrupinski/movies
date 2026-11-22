@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The one open issue a CI reporter keeps per subject, found by its exact title
 # The one open issue a CI reporter keeps per subject, found by its EXACT title.
 #
 # Sourced by scheduled-failure-issue.sh, which keeps a single open issue per failing scheduled

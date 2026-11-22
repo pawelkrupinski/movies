@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Slice answer coverage: every pinned slice decided again from its own answers, naming each missing request
 # SLICE ANSWER COVERAGE: every pinned slice -- the identity slice cases (test/resources/fixtures/identity-slices/,
 # IdentitySliceCasesSpec) and the drift slices (test/resources/fixtures/drift-slices/<cc>/, IdentityDriftSlicesSpec) --
 # decided again at this checkout's code from its own answers alone, and EVERY request one asks that its fixture lacks

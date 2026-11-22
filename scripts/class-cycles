@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The class cycles of one package (CLAUDE.md, Design rules; project/ClassCycles.scala, `sbt couplingClassCycles`)
 # THE CLASS CYCLES OF ONE PACKAGE (CLAUDE.md, Design rules; project/ClassCycles.scala, `sbt couplingClassCycles`): which of
 # a package's classes cannot be pulled apart before it is split -- from the coupling report's own graph (Zinc's record and
 # the class files), through this checkout's kept sbt server (scripts/sbt-warm).

@@ -1,3 +1,4 @@
+# Purpose: The monthly hotspot report (CLAUDE.md, "Code quality ratchets"; a report, never a gate): scripts/hotspots over main's last 90 days
 name: Quality hotspots
 
 # THE MONTHLY HOTSPOT REPORT (CLAUDE.md, "Code quality ratchets"; a report, never a gate): scripts/hotspots over main's

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Print a directory whose python3 imports timezonefinder, for the pre-push drift check
 # Prints a directory whose python3 imports timezonefinder, for the pre-push `drift` check to put first on PATH
 # (data/us/scripts/generate_roster.py needs it; every other roster generator is stdlib-only, so the same python3 runs
 # them all).

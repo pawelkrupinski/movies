@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The shared harness of the prod-ops scripts (scripts/mongo-grants, scripts/fleet-db-finish, and the next one)
 # The shared harness of the prod-ops scripts (scripts/mongo-grants, scripts/fleet-db-finish, and the next one): a tool
 # that reads or changes PROD, runs as `--check` then `--apply` (or a destructive flag with exact names), is idempotent,
 # refuses unsafe states in words, and has a shell test run against a fake mongosh (scripts/prod-ops-fixture.sh).

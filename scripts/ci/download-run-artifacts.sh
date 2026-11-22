@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Download every artifact of this run whose name matches <pattern> into <dir>
 # download-run-artifacts.sh <pattern> <dir>: every artifact of this run (GITHUB_RUN_ID, GITHUB_REPOSITORY) whose name
 # matches <pattern>, each into <dir>/<artifact name> (`gh run download -p` nests by name, the only match too) -- the
 # body of .github/actions/download-artifacts.

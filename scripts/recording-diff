@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Two "Record scrape fixtures" recordings compared — "is it the code, or new data?" in seconds
 #
 # Two "Record scrape fixtures" recordings compared — "is it the code, or new data?" in seconds. Per country and venue:
 # listings added, lost and RE-SPELLED (the same listing, its title differing only by whitespace, case, accents,

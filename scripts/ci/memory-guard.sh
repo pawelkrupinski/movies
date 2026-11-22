@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Watch a process tree on a CI runner, say every few minutes how it and the machine are doing, and end the tree -- naming why
 # memory-guard.sh: watch a process tree on a CI runner, say every few minutes how it and the machine are doing, and end
 # the tree -- naming why -- before the machine runs out of memory, so the step fails with its log instead of the
 # runner being lost with it.

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Turn a bot's patch into one pull request on a fixed branch, opened or updated in place
 # Turn a bot's patch into ONE pull request on a fixed branch, opened or updated in place.
 #
 #   PROPOSE_TOKEN=... infra/bin/propose-pr [-C <checkout>] [--repo <owner/name>] --branch <branch> <out dir>

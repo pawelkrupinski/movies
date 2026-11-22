@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Purpose: The JS/TS quality ratchet (the pre-push jsquality check)
 # THE JS/TS QUALITY RATCHET (the pre-push `jsquality` check; CLAUDE.md, "Code quality ratchets"): the production JS/TS's
 # measures (scripts/js-quality-report --check, over scripts/js-quality/ratchet-areas.tsv: web/src/main/assets/js and
 # infra/version-dashboard/src) may not grow past test/resources/js-quality-baseline.tsv -- the Scala ratchets' model

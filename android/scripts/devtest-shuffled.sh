@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Every instrumented (androidTest) class alone, in an order drawn from a seed — the emulator lane of the nightly order-independence workflow
 #
 # Every instrumented (androidTest) class ALONE, in an order drawn from a seed —
 # the emulator lane of the nightly order-independence workflow. The ordinary

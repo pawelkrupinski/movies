@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Run a setup chore in the background of a job and collect its verdict in a later step
 # Run a setup chore in the BACKGROUND of a job and collect its verdict in a later step.
 #
 #   in-background.sh start <name> <command> [args...]   # returns at once

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The identity boot-cost check: what the identity model allocates and spends a family
 # THE IDENTITY BOOT-COST CHECK: what the identity model allocates and spends a family -- a cold resolve, the worker's
 # take-up re-resolving every family after a rules change, and a take-up with nothing moved -- over the pinned identity
 # slices (scripts.IdentityBootCost, worker's test tree), held to test/resources/identity-boot-cost-baseline.tsv

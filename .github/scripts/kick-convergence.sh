@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Dispatch each convergence suite whose verdict this push could change — and only those
 # Dispatch each convergence suite whose verdict this push could change — and ONLY those.
 #
 # WHY. Each suite runs in one lane that finishes the run in flight and keeps a single run

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Run a command with Android release signing out of the Touch ID vault
 #
 # Run a command with Android release signing out of the Touch ID vault -- the only place it comes
 # from (android/app/build.gradle.kts has no file fallback). From android/:

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Purpose: The ratchet diff: every frozen row that changed between two refs, before and after
 # THE RATCHET DIFF (scripts/ratchet-diff; CLAUDE.md, "Code quality ratchets" and the coupling ratchet): every frozen row
 # that changed between two refs, as a before -> after table, so a lane's report pastes computed numbers, never narrated
 # ones. Read from the committed baselines at each ref (cheap), or, with --measure, the head side from fresh measures

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Boot FixtureServerMain in the background, wait for the port it writes, and relaunch it if it exits before writing one
 #
 # Boot FixtureServerMain in the background, wait for the port it writes, and
 # RELAUNCH it if it exits before writing one.

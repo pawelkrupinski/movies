@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: What a stalled process group was doing, said before it is ended
 # What a stalled process group was doing, said before it is ended: `bounded` runs this at its deadline (with
 # BOUNDED_ON_TIMEOUT pointing here) while the group is still alive, so a test that hangs on CI explains itself.
 #

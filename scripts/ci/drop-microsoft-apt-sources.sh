@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Drop the GitHub-hosted Ubuntu runner's packages.microsoft.com apt sources before an `apt-get update`
 # Drop the GitHub-hosted Ubuntu runner's packages.microsoft.com apt sources before an
 # `apt-get update`. Usage: scripts/ci/drop-microsoft-apt-sources.sh
 #

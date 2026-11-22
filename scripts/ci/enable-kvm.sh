@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Give every user on a GitHub-hosted Linux runner /dev/kvm, so the x86_64 Android emulator runs hardware-accelerated
 # Give every user on a GitHub-hosted Linux runner /dev/kvm, so the x86_64 Android emulator runs hardware-accelerated:
 # without KVM it falls back to software emulation and does not boot inside the jobs' timeouts. Run by android.yml's
 # and order-independence.yml's emulator jobs.

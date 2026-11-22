@@ -1,3 +1,4 @@
+# Purpose: Rule ablation on CI: which identity and title rules move takes when switched off (scripts/identity-rule-ablation), over the recordings named
 #
 # RULE ABLATION on CI: which identity and title rules move takes when switched off (scripts/identity-rule-ablation),
 # over the recordings named, off the laptop. Each `ablate` row bisects its own share of the first round's batches

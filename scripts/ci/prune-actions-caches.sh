@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Delete the superseded per-commit entries of main's GitHub Actions caches, keeping the newest entry of each family
 # Delete the superseded per-commit entries of main's GitHub Actions caches, keeping the
 # newest entry of each family.
 #

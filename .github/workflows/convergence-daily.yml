@@ -1,3 +1,4 @@
+# Purpose: One full convergence of main a day, whatever main's pushes did
 name: Convergence daily full run
 
 # ONE FULL CONVERGENCE OF MAIN A DAY, whatever main's pushes did (scripts/ci/takes-skip-gate.sh): once the takes skip gate

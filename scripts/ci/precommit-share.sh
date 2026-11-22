@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The landing check's shares (.github/workflows/precommit-check.yml)
 # THE LANDING CHECK'S SHARES (.github/workflows/precommit-check.yml): how one job of the check calls the pre-push hook, and
 # what the hook would run there -- so a job sets up sbt, Node and the tools only when its share has a check to run.
 #

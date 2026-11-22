@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Resolve every dependency of the sbt build once (`sbt update` over the root aggregate
 # Resolve every dependency of the sbt build once (`sbt update` over the root aggregate: every module, every
 # configuration, and the build's own plugins as it loads), so ci.yml's `deps` job can save the dependency cache under
 # the build's exact key before the run's other jobs restore it.

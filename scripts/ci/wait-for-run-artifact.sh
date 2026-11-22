@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Wait until this workflow run has uploaded artifact <name>, produced by another job of the run
 #
 # Wait until THIS workflow run has uploaded artifact <name>, produced by another job of the run —
 # main.yml's `image-worker` checks for the `stage-worker` dist ci's e2e corpus row stages (since

@@ -1,3 +1,4 @@
+# Purpose: Build, test and publish the Android app (unit and instrumented tests, the rolling APK and AAB release)
 name: Android
 
 on:

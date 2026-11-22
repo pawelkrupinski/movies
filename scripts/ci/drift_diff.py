@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Purpose: The differential drift verdict: a gate that fails only on what the change adds
 # THE DIFFERENTIAL DRIFT VERDICT (the owner, 2026-11-04: "a gate that only fails on what the change adds"). A takes-drift
 # row replays its fixed seeds (scripts/ci/drift_seeds.py) at the HEAD and at its BASE, over the same recording, and
 # hands each seed's two flips TSVs (scripts.IdentityDrift's flips-<cc>.tsv) here:

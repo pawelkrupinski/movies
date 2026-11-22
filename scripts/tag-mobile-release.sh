@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Force-tags the commit that actually produced a shipped mobile store build
 #
 # Force-tags the commit that actually produced a shipped mobile store build, for
 # the mobile-releases dashboard (infra/version-dashboard/src/mobile/git.ts:releaseCommitFor)

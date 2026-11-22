@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The one way a local script gets a secret: from its environment, else from the Touch ID vault
 # The one way a local script gets a secret: from its environment, else from the Touch ID vault.
 #
 # There is no .env.local any more (deleted 2026-10-09, after a credential theft). Secrets live

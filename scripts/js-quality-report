@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The JS/TS quality report: complexity, length, clones and coupling of the production JS/TS
 # THE JS/TS QUALITY REPORT: the Scala code-quality and coupling measures (CLAUDE.md, "Code quality ratchets" and
 # "Coupling is reviewed") taken over the JavaScript and TypeScript, per area (scripts/js-quality/areas.tsv). Every area
 # is REPORTED; the production ones (scripts/js-quality/ratchet-areas.tsv: web/src/main/assets/js and

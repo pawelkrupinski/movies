@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Delete bot branch $BRANCH in $GH_REPO if it exists (see action.yml for why)
 # Delete bot branch $BRANCH in $GH_REPO if it exists (see action.yml for why).
 #
 # ONLY a 404 means "no branch yet". Any other failure to read it -- a 403, a 5xx, a network blip --

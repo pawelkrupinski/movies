@@ -1,3 +1,4 @@
+# Purpose: Every alert rule in the tree, replayed over the last 14 days of production's metrics (infra/bin/backtest-alerts
 name: Alert backtest
 
 # EVERY ALERT RULE IN THE TREE, REPLAYED OVER THE LAST 14 DAYS OF PRODUCTION'S METRICS (infra/bin/backtest-alerts,

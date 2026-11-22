@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Rule ablation: which identity and title rules move takes when switched off, over the recorded corpora
 #
 # RULE ABLATION: which identity and title rules move takes when switched off, over the recorded corpora -- each rule's
 # takes moved (cured, gained right, right lost, right->wrong, new wrong, unjudged), summed over every recording and

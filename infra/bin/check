@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The gate for infra/: everything this tree can be verified for without touching a live machine
 # THE GATE FOR infra/. Everything this tree can be verified for without touching a live machine.
 #
 # It is the closest thing this directory has to a test suite, and it is genuinely load-bearing

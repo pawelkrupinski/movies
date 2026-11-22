@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The roster-audit workflow's one step: run diagnostics.RosterAudit and turn its verdict into the job's
 # The roster-audit workflow's one step: run diagnostics.RosterAudit and turn its verdict into the job's.
 #
 # A source disagreeing with the roster (exit 3, RosterAudit.DriftFound) is data drift -- a fix to the roster, the

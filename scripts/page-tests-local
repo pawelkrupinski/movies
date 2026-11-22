@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Page tests, locally: the Playwright rows CI's `pw` page-test rows run, against a FixtureServerMain booted in this checkout's kept sbt server
 # PAGE TESTS, LOCALLY: the Playwright rows CI's `pw` page-test rows run, against a FixtureServerMain booted in this
 # checkout's kept sbt server, by hand: a UI change's cheap insurance before it lands. No longer the pre-push hook's
 # `page` area (the owner, 2026-11-17, "B1"): the page tests run after landing, on Main's `page-tests-*` rows.

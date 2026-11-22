@@ -1,3 +1,4 @@
+# Purpose: The identity findings report: the newest recording's whole-corpus findings, one GitHub issue per country
 #
 # THE IDENTITY FINDINGS REPORT: the newest recording's whole-corpus findings, triaged from one GitHub issue
 # per country ("Identity findings: <cc>") rather than failing builds.

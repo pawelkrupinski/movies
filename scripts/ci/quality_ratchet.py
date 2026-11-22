@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Purpose: The code-quality ratchets (the pre-push sbt check's quality step)
 # THE CODE-QUALITY RATCHETS (the pre-push sbt check's quality step; CLAUDE.md, "Code quality ratchets"): the production
 # code's measures (`quality/runMain quality.QualityReport`, scripts/quality-report) may not grow past their checked-in
 # baselines -- the coupling ratchet's model (scripts/ci/coupling_ratchet.py) over other measures. Each ratchet holds

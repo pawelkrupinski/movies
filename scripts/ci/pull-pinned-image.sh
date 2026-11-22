@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Pull one of .github/pinned-images.tsv's images by digest, from the first source that serves it, and refuse any other
 # Pull one of .github/pinned-images.tsv's images BY DIGEST, from the first source that serves it, and refuse any other.
 #
 #   pull-pinned-image.sh <name>                  # pull; the local ref (<source>@sha256:...) on stdout, progress on stderr

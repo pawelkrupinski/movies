@@ -1,3 +1,4 @@
+# Purpose: The fleet's flake as a reference nix can read from this checkout (sourced by the infra tests)
 # shellcheck shell=bash
 # THE FLEET'S FLAKE AS A REFERENCE NIX CAN READ FROM THIS CHECKOUT. Sourced by the infra tests that
 # evaluate a host's configuration.

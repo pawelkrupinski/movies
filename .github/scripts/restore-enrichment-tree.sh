@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Fetch a convergence leg's enrichment tree and unpack it into a staging directory
 # Fetch a convergence leg's enrichment tree and unpack it into a STAGING directory, for
 # convergence-setup to move into the workspace once its build-cache steps are done.
 #

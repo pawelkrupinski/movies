@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Install the pinned Swift toolchain <version> for <platform>, checked by its sha256
 #
 # install-swift.sh <version> <platform> <sha256>
 #

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Serve <dir> on 127.0.0.1 over HTTP, in the background, and print the URL of <name> in it once the server answers
 # Serve <dir> on 127.0.0.1 over HTTP, in the background, and print the URL of <name> in it once the server answers --
 # for an action that only takes a download URL (scala-steward-action's `coursier-cli-url`), so it reads the copy CI
 # keeps in actions/cache instead of GitHub's CDN, whose 504s failed Scala Steward #146 (2026-11-09).

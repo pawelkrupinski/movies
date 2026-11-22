@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Delete coursier's negative cache records so a retried fetch asks the repository again
 # Delete coursier's negative records -- the `.<file>.error` markers its file cache writes when a repository answers 404
 # for an artifact whose metadata it already holds (coursier-cache's Downloader: `remoteKeepErrors`, honoured by
 # `checkErrFile` without asking the repository again) -- from every coursier cache this machine has, keeping the files.

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The busiest collections of the throwaway MongoDB a convergence leg runs against
 # The busiest collections of the throwaway MongoDB a convergence leg runs against: mongod's own `top`
 # counters (time held and operation counts per namespace), summed over every database the leg made, by
 # collection name. A leg spends about half its CPU on Mongo — the driver's BSON work and mongod's own

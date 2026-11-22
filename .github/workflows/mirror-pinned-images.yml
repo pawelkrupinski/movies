@@ -1,3 +1,4 @@
+# Purpose: Copies every image .github/pinned-images.tsv pins to this repo's GHCR packages by digest
 name: Mirror pinned images
 
 # Copies every image .github/pinned-images.tsv pins to this repo's GHCR packages BY DIGEST, and checks GHCR serves

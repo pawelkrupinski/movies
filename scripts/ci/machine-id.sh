@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Which machine this job ran on, as a log line and a metrics line
 # Which machine this job ran on, as one `machine: {json}` line in the log and one {"kind":"machine",...} line in the
 # job's metrics file ($CI_METRICS_FILE, default $RUNNER_TEMP/ci-metrics/metrics.jsonl), which the job's telemetry
 # step uploads as its ci-metrics artifact (.github/actions/job-telemetry, scripts/ci/ci_trends.py). It lets

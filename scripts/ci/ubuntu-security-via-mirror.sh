@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Route the GitHub-hosted Ubuntu runner's security.ubuntu.com apt sources to the archive mirror the image already uses, before an `apt-get update`
 # Route the GitHub-hosted Ubuntu runner's security.ubuntu.com apt sources to the archive mirror the image already uses,
 # before an `apt-get update`. Usage: scripts/ci/ubuntu-security-via-mirror.sh
 #

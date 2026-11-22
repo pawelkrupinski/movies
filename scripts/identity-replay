@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The identity model's take at a past moment, resolved again from the identity history (identity_history, a month of it)
 #
 # The identity model's take at a past moment, resolved again from the identity history (identity_history, a month of
 # it): every answer, venue page and listing as it stood then -- the value the first entry after the moment replaced, else

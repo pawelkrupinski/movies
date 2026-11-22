@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Move a class to another package, its references rewritten compiler-checked (scalafix MoveSymbol)
 # A CLASS MOVED TO ANOTHER PACKAGE, its references rewritten compiler-checked (scalafix's MoveSymbol rule,
 # scripts/scalafix-rules/MoveSymbol.scala, reading what every name means from SemanticDB -- never a text search): in the
 # kept scalafix tree (scripts/scalafix-tree.sh), every module's sources rewritten, the source moved to the new package's

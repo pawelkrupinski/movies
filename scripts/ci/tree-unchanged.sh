@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: A test run must leave every checked-in file exactly as it found it
 #
 # A test run must leave every CHECKED-IN file exactly as it found it.
 #

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Ensure the native (Homebrew) single-node replica-set Mongo that backs local dev is up on :28017
 #
 # Ensure the native (Homebrew) single-node replica-set Mongo that backs local
 # dev is up on :28017. Single-node replica set (not standalone) because both the

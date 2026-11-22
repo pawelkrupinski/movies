@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The identity capture's report (.github/workflows/identity-capture.yml, "Write the report"), as Markdown on stdout
 # The identity capture's report (.github/workflows/identity-capture.yml, "Write the report"), as Markdown on stdout:
 # what the run was, whether the ratchet is green and what to do next, each country's capture lines, and the
 # ratchet's findings.

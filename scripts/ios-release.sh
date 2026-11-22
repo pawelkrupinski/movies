@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Archive, export and upload the iOS app to App Store Connect
 #
 # Archive, export and upload the iOS app to App Store Connect.
 #

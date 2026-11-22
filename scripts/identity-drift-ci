@@ -1,4 +1,5 @@
 #!/bin/sh
+# Purpose: The pre-land drift check: a commit's takes-drift rows, run on CI before landing (a name for identity_drift_ci.py)
 # THE PRE-LAND DRIFT CHECK's entry, the name its callers run (identity-landing-check, the pre-push hook's identitydrift
 # check, CLAUDE.md): scripts/identity_drift_ci.py is the tool -- its header (`--help`) says what it checks, and how.
 exec python3 "$(dirname "$0")/identity_drift_ci.py" "$@"

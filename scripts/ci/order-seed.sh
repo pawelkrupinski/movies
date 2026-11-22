@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The order seed for the nightly order-independence run
 # The order seed for the nightly order-independence run (.github/workflows/
 # order-independence.yml): the dispatch input when one was given, else the run id.
 # Digits only: the seed reaches shells and the emulator runner's `script:`, and a

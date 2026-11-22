@@ -1,3 +1,4 @@
+# Purpose: Does the newest recording decide the same read lean as whole? integration.LeanWholeGuard per country
 #
 # DOES THE NEWEST RECORDING DECIDE THE SAME READ AS PROD READS IT? integration.LeanWholeGuard resolves each country's
 # recording read LEAN -- as prod's identity model reads the scrape archives (services.identity.ModelRead), and as every

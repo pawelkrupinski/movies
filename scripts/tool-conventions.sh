@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: What every Bash tool in this repository shares, one copy each
 # What every Bash tool in this repository shares, one copy each: a bounded command that works on stock macOS, the usage
 # text read from a tool's own header, how a tool fails, its country flag, a bounded and retried gh download, the
 # country codes, and the shared identity cache's path. Sourcing it defines

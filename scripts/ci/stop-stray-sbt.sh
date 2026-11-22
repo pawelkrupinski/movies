@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: End every JVM an earlier step left running in this build
 # stop-stray-sbt.sh: end every JVM an earlier step left running in this build, so the step about to compile (or the
 # cache save about to read target/) is the build's only writer.
 #

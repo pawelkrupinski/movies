@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Ask a country's prod worker to fetch again what one stored external source holds for given keys
 # Ask a country's PROD worker to fetch again what one stored external source holds for given keys
 # (scripts.EnqueueSourceRefresh: RefreshSource tasks; sources tmdb-films, imdb, metacritic, rt, filmweb).
 #

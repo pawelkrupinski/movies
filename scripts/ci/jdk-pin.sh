@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The pinned Temurin JDK build for <java-version> on this runner's platform, as GITHUB_OUTPUT lines (file, url, sha256, version, key
 # The pinned Temurin JDK build for <java-version> on this runner's platform, as GITHUB_OUTPUT lines (file, url,
 # sha256, version, key, and fallback_file, fallback_url, fallback_sha256: the same release's Azul Zulu build from
 # cdn.azul.com, which setup-jdk fetches -- verified the same way, never cached -- only when GitHub's release CDN

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Regenerate every checked-in generated artefact from its source, and fail if that changes anything
 #
 # Regenerate every checked-in GENERATED artefact from its source, and fail if that changes
 # anything: the committed output has drifted from what its generator makes today.

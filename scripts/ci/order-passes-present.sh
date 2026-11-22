@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Are both corpus files the order comparison reads present in <dir>?
 # order-passes-present.sh <dir> <passes> <row>: are both corpus files the order comparison reads there?
 #
 # the `order-independence-p01|p12` jobs (.github/actions/order-compare) reads pass<N>.bin.gz (ReplayCorpusFile) for each pass of

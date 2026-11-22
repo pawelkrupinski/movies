@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The four coloured output helpers long-running scripts print through (sourced)
 # The four coloured output helpers every long-running script in scripts/ prints
 # through, so a release, a screenshot run and a sync all look like the same tool.
 #

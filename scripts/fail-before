@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Proves the commit gate: a test that fails before the change and passes after it
 #
 # Proves the commit gate: a test that FAILS before the change and PASSES after it.
 #

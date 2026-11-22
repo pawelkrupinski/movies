@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The one place that knows how to make the local mirror Mongo reachable
 # The one place that knows how to make the LOCAL mirror Mongo reachable.
 #
 # Sibling of prod-tunnel.sh, deliberately separate: that file is about reaching

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Compile DevPanel into a .app bundle under build/ and (unless --no-open) launch it
 # Compile DevPanel into a .app bundle under build/ and (unless --no-open) launch
 # it. The absolute scripts directory is baked into Info.plist so the bundle keeps
 # working even if copied to /Applications. Re-run after moving the repo.

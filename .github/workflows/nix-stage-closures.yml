@@ -1,3 +1,4 @@
+# Purpose: Build every NixOS host's closure on merge, put it on the host, and activate NOTHING.
 # BUILD EVERY NixOS HOST'S CLOSURE ON MERGE, PUT IT ON THE HOST, AND ACTIVATE NOTHING.
 #
 # WHERE THIS FILE HAS TO LIVE. GitHub reads workflows from `.github/workflows/` AT THE REPOSITORY

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Generate Google Play phone screenshots for the Kinowo / Showtimes app
 #
 # Generate Google Play phone screenshots for the Kinowo / Showtimes app.
 # Just run it — it boots the emulator, installs the app, drives the four store

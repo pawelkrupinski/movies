@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The job's own memory and disk writes, read from its cgroup
 # The job's own memory and disk writes, read from its cgroup (the job container's, which holds the job's dockerd
 # and the mongod container inside it) -- and, beside them, the machine's resources as a time series, for the job's
 # ci-metrics artifact (scripts/ci/job_metrics.py, .github/actions/job-telemetry, scripts/ci/ci_trends.py).

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The ci-runner label a measurement-sized job asks for, for a plan job's GITHUB_OUTPUT
 # THE LABEL A MEASUREMENT-SIZED JOB ASKS FOR on ci-runner: `label=<label>` on stdout, for a plan job's $GITHUB_OUTPUT.
 #
 #   scripts/ci/measure-lane.sh <lane>     lane: red-fix | landing | stage | measure | '' (measure) | consumer | explore

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Purpose: The drift explorer's bookkeeping: backlog rows and gate seeds from the nightly explorer
 # THE DRIFT EXPLORER'S BOOKKEEPING (the owner, 2026-11-04: "a gate that only fails on what the change adds"; supersedes
 # identity_flips_baseline.py). The drift gate replays FIXED seeds (drift-gate-seeds.tsv) and fails only on what a change
 # adds over its base, so a flip main shows on a seed the gate does not replay is found here instead:

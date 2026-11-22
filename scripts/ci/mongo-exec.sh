@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Run a command where the job's throwaway MongoDB runs (start-mongo-replset.sh)
 # Run a command where the job's throwaway MongoDB runs (start-mongo-replset.sh): beside the NATIVE mongod a job
 # image bakes in (the marker that script leaves names its home, whose bin/ -- mongosh -- comes first on PATH), else inside
 # the `mongo` container. HOME=/tmp either way, keeping mongosh's state out of the data directory.

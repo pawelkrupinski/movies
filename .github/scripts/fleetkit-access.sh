@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Gives a CI job ssh access to github.com with the fleetkit deploy key
 # Gives a CI job ssh access to github.com with the fleetkit deploy key, so the `npm ci` of
 # infra/version-dashboard can fetch the dependency its package.json names
 # (`git+ssh://git@github.com/bitcashier/fleetkit.git`).

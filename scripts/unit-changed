@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The unit tests of the modules a change touches, in this checkout's warm sbt server
 # The unit tests of the modules a change touches, in this checkout's warm sbt server -- the iteration loop between
 # edits, minutes where `sbt testUnit` is ~16 (2026-11-17, warm). The selection is the pre-push hook's own
 # (`scripts/hooks/pre-push --unit-plan`, what agentctl's combined-tree verification runs): `<module>/Test/test` for each

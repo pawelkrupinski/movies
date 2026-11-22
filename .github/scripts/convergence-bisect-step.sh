@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: One `git bisect run` step of .github/workflows/convergence-bisect.yml
 #
 # One `git bisect run` step of .github/workflows/convergence-bisect.yml: replay the country's sample
 # at whatever commit bisect checked out, over the pinned corpus.

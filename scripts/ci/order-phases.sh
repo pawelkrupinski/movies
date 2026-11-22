@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: How many of a country's split order-independence rows a convergence run runs
 # HOW MANY OF A COUNTRY'S SPLIT ORDER-INDEPENDENCE ROWS A CONVERGENCE RUN RUNS: `both` (p01 and p12: passes 0,1 and
 # 1,2, holding all three passes to one corpus) or `one` (p01 alone: passes 0 and 1).
 #

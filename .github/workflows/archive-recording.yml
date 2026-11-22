@@ -1,3 +1,4 @@
+# Purpose: Archive a "Record scrape fixtures" recording into the permanent `identity-recordings` release
 #
 # Archive a "Record scrape fixtures" recording into the PERMANENT `identity-recordings` release: every country's
 # enrichment tree (enrichment-<cc>-<run>.tar.*, from the rolling convergence-fixtures release, which keeps only the

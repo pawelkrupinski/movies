@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Run the race / concurrency harnesses many times over, to surface the interleavings a single CI run almost never meets
 # Run the race / concurrency harnesses many times over, to surface the interleavings a single CI
 # run almost never meets. The nightly stress workflow runs this with 50; a push runs each once.
 #

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Close what wait-for-mongo-tunnel.sh opened, and prove it is closed
 #
 # Close what wait-for-mongo-tunnel.sh opened, and PROVE it is closed.
 #

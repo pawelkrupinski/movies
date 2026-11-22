@@ -1,4 +1,5 @@
 #!/bin/sh
+# Purpose: Turn a production listing — one a regression alert, a drift-check line or the user names — into a slice case on the freshest recording (a name for identity_repro.py)
 # A PRODUCTION LISTING TO A SLICE CASE, or why it cannot be one -- the name its callers run (the identity-investigation
 # skill, identity-slice's header): scripts/identity_repro.py is the tool, its header (`--help`) says what it does, and how.
 exec python3 "$(dirname "$0")/identity_repro.py" "$@"

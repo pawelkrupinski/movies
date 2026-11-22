@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Turn a failed scheduled workflow run into a GitHub issue assigned to the repo owner, and close it again when the workflow next passes
 # Turn a failed SCHEDULED workflow run into a GitHub issue assigned to the repo owner, and close
 # it again when the workflow next passes.
 #

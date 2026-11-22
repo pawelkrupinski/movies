@@ -1,3 +1,4 @@
+# Purpose: Scala Steward: dependency bump PRs for build.sbt, project/*.scala and project/plugins.sbt
 name: Scala Steward
 
 # Scala Steward scans build.sbt, project/*.scala (so it reads the version

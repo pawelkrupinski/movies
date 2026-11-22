@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The drift gate's commit rules, on CI (scripts/ci/commit_rules.py: `allowlists` and `driftguards`)
 # THE DRIFT GATE'S COMMIT RULES, ON CI (scripts/ci/commit_rules.py: `allowlists` and `driftguards`). The pre-push hook
 # runs them on the laptop, but `git push --no-verify` or PREPUSH_SKIP skips the hook, and with it the allow-list ratchet,
 # the shrink-only known-flips baseline and the design-trailer rule. Here they run over every commit main gained since

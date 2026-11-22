@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here
 # THE FAST PRECHECK: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here,
 # in seconds instead of after the queue (review 2026-11-06, P1: 68 of 160 rejections in two weeks were lint, commit-rule,
 # conflict or old-ref ones, and a rejected change waited a median 233 min instead of 25).

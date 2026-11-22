@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: How current the local prod mirror (:28017) is, per country — for every tool that reads it (identity-slice --prod-mirror, listing-history, …)
 #
 # How current the LOCAL prod mirror (:28017) is, per country — for every tool that reads it (identity-slice
 # --prod-mirror, listing-history, …). Reads only the local mirror, never prod.

@@ -1,3 +1,4 @@
+# Purpose: Keep main's Actions caches under GitHub's 10 GB cap by deleting superseded per-commit entries
 name: Prune Actions caches
 
 # Keeps main's Actions caches under GitHub's 10 GB cap by deleting the superseded

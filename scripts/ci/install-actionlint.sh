@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Put the pinned actionlint into <dir> (the one install every workflow uses, through .github/actions/install-actionlint)
 # Put the pinned actionlint into <dir> (the one install every workflow uses, through .github/actions/install-actionlint):
 # its release tarball through fetch-verified.sh (a cache hit is re-verified, a miss downloaded with a real retry
 # budget, the checksum always checked), then the binary out of it.

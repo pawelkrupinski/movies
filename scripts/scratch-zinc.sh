@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: A stand-in Zinc analysis for the shell test scripts: what scripts/zinc_orphans.py reads of a real one
 # A stand-in Zinc analysis for the shell test scripts: what scripts/zinc_orphans.py reads of a real one.
 #
 # scratch_zinc_build <checkout> <module> <class path>...   e.g. scratch_zinc_build "$tree" worker tools/Kept.class

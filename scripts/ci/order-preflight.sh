@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Runner preflight for an Order independence leg: before a minute of tests, check that this runner can run them
 # RUNNER PREFLIGHT for an Order independence leg: before a minute of tests, check that this runner can run them -- the
 # toolchain versions the leg pins, the simulator or emulator it drives, and the tool flavours its scripts assume (GNU
 # sed/date/timeout on Linux; on macOS the BSD ones the scripts were written to cope with). A runner that cannot is

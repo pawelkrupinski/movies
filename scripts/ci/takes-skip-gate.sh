@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The takes skip gate: whether a convergence `takes` row may leave out its takes diff
 # THE TAKES SKIP GATE: whether a convergence `takes` row may leave out its takes diff -- the base's and the head's resolve
 # and final takes over the recording -- because the commit PROVABLY moves no take. FAIL-CLOSED: it answers SKIP only when
 # every condition below holds and was positively checked; anything else -- a condition that fails, a read or a command

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The dead-code finder (CLAUDE.md, "Cleanup and displaced-code audit"): production classes, objects and methods nothing calls, ranked
 # THE DEAD-CODE FINDER (CLAUDE.md, "Cleanup and displaced-code audit"): production classes, objects and methods nothing
 # calls, ranked -- from Zinc's dependency record and used names and the class files (`sbt deadCode`,
 # project/DeadCode.scala), through this checkout's kept sbt server (scripts/sbt-warm); a report, never a gate.

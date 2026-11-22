@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Compile the iOS code the ways CI does and a Mac's `swift test` does not
 # Compile the iOS code the ways CI does and a Mac's `swift test` does not.
 #
 #   1. The APP TARGET, SwiftUI views included, and its XCUITests, with `xcodebuild

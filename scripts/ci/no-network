@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: No network for the tests: run a command that may reach loopback and nothing else
 # NO NETWORK FOR THE TESTS: run a command that may reach loopback and nothing else. Order independence's test steps run
 # through it once their dependencies are fetched (each leg's warm step, the one that may use the network, retrying at
 # the fetch layer only): a test that still reads the network then fails at once, naming the address, instead of

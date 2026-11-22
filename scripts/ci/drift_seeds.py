@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Purpose: The fixed drift seeds each takes-drift row replays
 # FIXED DRIFT SEEDS (the owner, 2026-11-04: "a gate that only fails on what the change adds"; supersedes the rotating seeds
 # of 2026-10-31). Each convergence leg keeps its incremental = whole rows, `takes-drift-1 (<country>)` and
 # `takes-drift-2 (<country>)` -- the job NAMES stay, the gate, agentctl and the ruleset match them -- and each row replays

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Copy "Record scrape fixtures" recordings into the permanent archive release (.github/workflows/archive-recording.yml)
 #
 # Copy "Record scrape fixtures" recordings into the permanent archive release (.github/workflows/archive-recording.yml).
 #

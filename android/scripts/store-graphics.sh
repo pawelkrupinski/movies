@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Generate the per-language feature graphic (1024×500) for the Play listing, and fan the one shared app icon out to every locale
 #
 # Generate the per-language FEATURE GRAPHIC (1024×500) for the Play listing, and
 # fan the one shared APP ICON out to every locale.

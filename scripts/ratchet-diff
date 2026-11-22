@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs
 # THE RATCHET DIFF (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs --
 # complexity (cognitive, cyclomatic, inner-defs), length (method, file), duplication, fan-out, package D, cycles, and the
 # JS/TS ratchet's rows (`js <kind>`, test/resources/js-quality-baseline.tsv) -- as a

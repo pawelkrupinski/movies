@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Every XCUITest class alone, each in its own `xcodebuild test-without-building` on the booted $DESTINATION
 # Every XCUITest class ALONE, each in its own `xcodebuild test-without-building` on the booted $DESTINATION, so none
 # can lean on state another class left behind (order-independence.yml's ios job, after a build-for-testing into
 # build/dd). Run from the checkout:

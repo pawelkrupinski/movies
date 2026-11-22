@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Does any path on stdin fall under one of the patterns in $1? Prints `true` or `false`
 #
 # Does any path on stdin fall under one of the patterns in $1? Prints `true` or `false`.
 #

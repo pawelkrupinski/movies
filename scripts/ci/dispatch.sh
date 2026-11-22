@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Dispatching a workflow and finding, then waiting on, the run it made
 # Dispatching a workflow and finding, then waiting on, the run it made -- the one copy of what
 # .github/scripts/kick-convergence.sh and scripts/identity-measure each
 # re-implemented, with every gh call and every poll under a deadline.

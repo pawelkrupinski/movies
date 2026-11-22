@@ -1,3 +1,4 @@
+# Purpose: The verify phase of the nightly recording: main's code judged hermetically against one recording
 #
 # THE VERIFY PHASE of the nightly recording: main's code judged, hermetically, against what one
 # `Record scrape fixtures` run captured ("Capture, then verify").

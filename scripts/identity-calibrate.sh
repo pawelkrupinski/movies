@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Regenerate the identity resolver's calibrated evidence model from data
 #
 # Regenerates the identity resolver's calibrated evidence model from data
 # (docs/design/identity-resolver.md §14):

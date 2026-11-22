@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Run a country's convergence leg locally against the same recorded inputs CI uses
 #
 # Run a country's convergence leg locally against the SAME recorded inputs CI uses.
 #

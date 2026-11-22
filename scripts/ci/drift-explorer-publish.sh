@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The nightly drift explorer's publish step (.github/workflows/identity-drift-explorer.yml)
 # The nightly drift explorer's publish step (.github/workflows/identity-drift-explorer.yml): merge the explore-<cc>.tsv
 # its `drift` job's takes-drift rows wrote (Identity takes' rows, CALLED drift-only on random seeds off the gate,
 # `drift-explore: auto`; downloaded into <dir>, an artifact a directory) -- scripts/ci/drift_explorer.py merge -- and

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Watch a worker image roll out, then read PromQL checks over a window: PASS/FAIL per check
 #
 # Watch a worker image roll out, then read PromQL checks over a window: PASS/FAIL per check. Started by the agent
 # that landed a change to what the worker serves over time (a gate, hold, settle or ask; pre-push's `driftguards`

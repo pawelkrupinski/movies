@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Start a throwaway MongoDB in Docker as a single-node replica set on 127.0.0.1:27017, and return once it is PRIMARY.
 # Start a throwaway MongoDB in Docker as a SINGLE-NODE REPLICA SET on 127.0.0.1:27017, and return
 # once it is PRIMARY.
 #

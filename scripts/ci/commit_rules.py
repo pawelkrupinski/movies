@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Purpose: The commit rules of the drift gate: the pre-push hook's allowlists and driftguards checks
 # THE COMMIT RULES OF THE DRIFT GATE: one walker over a push's commits, two rule sets -- the pre-push hook's
 # `allowlists` and `driftguards` checks. Each rule reads one commit (its changes against its FIRST parent, so a merge's
 # resolution is judged too, and its trailers) and says why it is refused, or nothing.

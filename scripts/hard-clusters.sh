@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Grow and re-record the hard-cluster fixture HardClusterConvergenceIntegrationSpec replays
 #
 # Grow and re-record the hard-cluster fixture that
 # worker/src/it/scala/HardClusterConvergenceIntegrationSpec.scala replays on every push

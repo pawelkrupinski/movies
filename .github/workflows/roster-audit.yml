@@ -1,3 +1,4 @@
+# Purpose: Weekly online half of the cinema-roster audit (the offline half, CinemaRosterAuditSpec, runs with the unit tests on every push)
 name: Cinema roster audit
 
 # Weekly ONLINE half of the cinema-roster audit (the offline half,

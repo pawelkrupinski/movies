@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Shellcheck the `run:` blocks of composite actions (.github/actions/*/action.yml)
 # Shellcheck the `run:` blocks of composite actions (.github/actions/*/action.yml).
 #
 #   scripts/ci/shellcheck-action-runs.sh [action.yml ...]    # default: every composite action

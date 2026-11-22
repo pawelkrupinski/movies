@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure — no terminal to babysit
 #
 # Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts
 # at login and restarts on failure — no terminal to babysit. The agent runs

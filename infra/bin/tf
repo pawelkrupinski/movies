@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Terraform, with the credentials this root module needs taken from the operator's Touch ID vault (`secrets`), never from a file
 # Terraform, with the credentials this root module needs taken from the operator's Touch ID vault
 # (`secrets`), never from a file.
 #

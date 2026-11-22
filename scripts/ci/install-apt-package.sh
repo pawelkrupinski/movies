@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Install apt packages on a CI runner without the unbounded wait a plain `apt-get update && apt-get install` has
 #
 # Install apt packages on a CI runner WITHOUT the unbounded wait a plain
 # `apt-get update && apt-get install` has. A stalled mirror or a held dpkg lock made one

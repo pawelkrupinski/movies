@@ -1,3 +1,4 @@
+# Purpose: Sourced, never run: `memory_guard_stop <guard pid> <reason file>` ends the scripts/ci/memory-guard.sh started beside a process
 # shellcheck shell=bash
 # Sourced, never run: `memory_guard_stop <guard pid> <reason file>` ends the scripts/ci/memory-guard.sh started beside a
 # process, once that process is done. A guard that is ending the tree (it wrote <reason file>) finishes its KILL pass;

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: A no-progress bound: a step is ended once it has made no progress for N seconds
 # A NO-PROGRESS bound: a step is ended once it has made no progress for N seconds -- no CPU in its process tree, no
 # progress mark touched, no log written -- however long it legitimately runs while it does make some. A wall-clock
 # budget fails a compile under a load of 100; this fails only a step that waits on nothing that moves.

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: One listing's identity take over time, grouped by the worker deploy that logged it
 #
 # One listing's identity take over time: production's take-change log lines (VictoriaLogs) grouped by the worker
 # deploy that logged them (Prometheus' image tags → commit), the labels judging it, prod's current state from the LOCAL

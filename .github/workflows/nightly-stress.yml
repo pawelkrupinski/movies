@@ -1,3 +1,4 @@
+# Purpose: The tests whose failures are a matter of luck, run enough times for luck to run out
 name: Nightly stress
 
 # The tests whose failures are a matter of LUCK, run enough times for luck to run out.

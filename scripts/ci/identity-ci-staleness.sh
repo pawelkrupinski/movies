@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Is the identity CI still telling us anything? Names each check that has gone stale, as overdue, not as a red run
 # IS THE IDENTITY CI STILL TELLING US ANYTHING? Names each check that has gone stale, as OVERDUE, not as a red run.
 #
 # WHY. The identity resolver's code-caused regressions are caught by CI, never by Prometheus: the

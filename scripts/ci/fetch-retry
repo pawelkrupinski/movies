@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Retry a dependency fetch (sbt update, Gradle, SwiftPM) only when it failed fetching
 # RETRY AT THE FETCH LAYER ONLY: run a dependency fetch (an sbt update, a Gradle resolve, a SwiftPM resolve) and run it
 # again only when it failed FETCHING -- a 429 or 5xx from a repository, a reset or timed-out connection, a name that did
 # not resolve -- never when it failed otherwise (a compile error fails at once, as it would anywhere). Order

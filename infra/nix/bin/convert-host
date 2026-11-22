@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Convert one stock-Ubuntu Hetzner Cloud server into a NixOS host from this flake
 # Convert one stock-Ubuntu Hetzner Cloud server into a NixOS host from this flake.
 #
 # THIS REPARTITIONS THE TARGET'S ROOT DISK AND IS IRREVERSIBLE. Everything on /dev/sda is destroyed;

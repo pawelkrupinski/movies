@@ -1,3 +1,4 @@
+# Purpose: Renovate for the Android Gradle build: weekly bump PRs, the Gradle analogue of scala-steward.yml
 name: Renovate
 
 # Renovate is the Gradle/Android analog of scala-steward.yml: it scans the

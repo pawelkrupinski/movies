@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: An evidence card for every unjudged take of the unmatched-cluster capture
 #
 # An evidence card for every UNJUDGED take of the unmatched-cluster capture — the listing's title, venues, year, runtime,
 # directors, catalogue ids and synopsis from the recording beside the taken record's title, original title, year,

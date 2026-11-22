@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The Mongo access every database needs, checked against prod or granted
 # The Mongo access every database needs, checked against prod or granted: readWrite for the app's user on every
 # country's corpus and the fleet's database, read for the CI corpus reader on every country's corpus.
 #

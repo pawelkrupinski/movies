@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Lay out one "Record scrape fixtures" run's recording beside the checkout, not in it — each country's scrape corpus
 #
 # Lay out ONE "Record scrape fixtures" run's recording beside the checkout, not in it — each
 # country's scrape corpus, the enrichment tree recorded with it, and its identity overlay when the

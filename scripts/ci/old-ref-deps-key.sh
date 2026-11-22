@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The old refs' dependency cache: its key and fallback prefix, as GITHUB_OUTPUT lines (.github/actions/old-ref-deps)
 # The old refs' dependency cache: its key and fallback prefix, as GITHUB_OUTPUT lines (.github/actions/old-ref-deps).
 #
 # WHY: the old-ref compile (main.yml's old-ref-compile row) compiles the identity tools into pinned old refs (scripts/identity-slice-old-ref-test.sh's

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: A local what-if of a resolver change over prod's current corpus, in minutes
 # A LOCAL WHAT-IF OF A RESOLVER CHANGE over prod's current corpus, in minutes: the base's and the head's model resolve
 # the LOCAL prod mirror's snapshot of a moment (`--at`; :28017, read-only), the head re-resolving only the families the
 # change can reach, and every take that moved is bucketed by the judgements (test/resources/fixtures/identity-judgements

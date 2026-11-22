@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Keep a local mirror of prod's /debug data in sync, continuously
 #
 # Keep a local mirror of prod's /debug data in sync, continuously, so the dev
 # `/debug` pages read from a fast LAN Mongo instead of over the prod ssh

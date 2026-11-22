@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: How strong a venue poster is as identity evidence, measured on prod's real candidate sets
 #
 # How strong a venue poster is as identity evidence, measured on prod's REAL candidate sets: the pHash vote and veto
 # (PosterEvidence) as prod runs them, and a variant of them, over every model decision whose listings show a venue

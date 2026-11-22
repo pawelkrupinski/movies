@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: One sbt command on ci-runner's measure lane, with its verdict: the laptop's heavy test runs (a whole-module testUnit,
 #
 # ONE sbt COMMAND ON ci-runner's MEASURE LANE, with its verdict: the laptop's heavy test runs (a whole-module testUnit,
 # scripts/fail-before's two runs) off the laptop when its governor would hold them (the owner, 2026-11-18: "stop the

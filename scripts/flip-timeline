@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: One listing's flip timeline: every projection that wrote a take of it
 #
 # One listing's flip timeline: every projection that wrote a take of it (trigger: scrape / answer / boot …), each take
 # change (stage, basis, decided_by, the trace's rules, who joined or left its decision), every ask filed for its

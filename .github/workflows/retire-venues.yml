@@ -1,3 +1,4 @@
+# Purpose: Retire venues the worker's closure sweep confirmed closed, as a PR (dispatched by GitHubRetirementDispatch)
 name: Retire closed venues
 
 # Started by the worker's daily closure sweep (ClosureSweep → GitHubRetirementDispatch)

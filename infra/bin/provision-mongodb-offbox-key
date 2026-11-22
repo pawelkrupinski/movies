@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Mint (or rotate) the ssh key monitoring-1 pulls mongo-1's dumps with -- roles/mongodb-offbox-backup.nix
 # Mint (or rotate) the ssh key monitoring-1 pulls mongo-1's dumps with -- roles/mongodb-offbox-backup.nix.
 #
 #   infra/bin/provision-mongodb-offbox-key

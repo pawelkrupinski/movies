@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Warn when this clone's root checkout (its main worktree: the one whose git dir is the common dir) is not on branch `main` or is dirty
 # Warn when this clone's ROOT checkout (its main worktree: the one whose git dir is the common dir) is not on branch
 # `main` or is dirty. It is shared by every agent and must stay on main and clean (CLAUDE.md): a root left detached
 # (another agent's `git checkout <sha>` there) or on a branch strands the next agent's rebase/pull and runs a stale

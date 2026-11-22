@@ -1,3 +1,4 @@
+# Purpose: Keep the landing check's sbt build cache warm for main's newest commit
 name: Landing check build cache
 
 # THE LANDING CHECK'S BUILD CACHE (docs/investigations/2026-11-01-twenty-runners.md §11). Every sbt job of

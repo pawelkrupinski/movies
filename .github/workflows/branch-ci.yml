@@ -1,3 +1,4 @@
+# Purpose: Runs the exact same build + test pipeline main.yml gates on — but without deploying — for every pull request
 name: Branch CI
 
 # Runs the exact same build + test pipeline main.yml gates on — but

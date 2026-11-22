@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Wait for GitHub Actions runs, bounded -- the one way a tool or an agent waits on CI. Never a hand-written `while gh run view ...
 #
 # Wait for GitHub Actions runs, bounded -- the one way a tool or an agent waits on CI. Never a hand-written
 # `while gh run view ...; sleep` loop: one took jq's "null null null" for a verdict (2026-10-15).

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Full corpus reset: wipe the scrape, enrichment, staging and read-model collections so the worker rebuilds them (incidents)
 #
 # Full corpus reset. Wipes the scrape / enrichment / staging / read-model
 # collections so the worker re-scrapes every cinema from scratch and re-projects

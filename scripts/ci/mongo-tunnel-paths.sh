@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Where the prod-Mongo tunnel keeps its pieces on a runner (sourced)
 # Where the prod-Mongo tunnel keeps its pieces on a runner — sourced by the script that
 # opens it (wait-for-mongo-tunnel.sh) and the one that closes it (close-mongo-tunnel.sh),
 # so "close" can never miss a file or a process "open" left behind under a renamed path.

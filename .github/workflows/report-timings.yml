@@ -1,3 +1,4 @@
+# Purpose: Every job's and step's time, reported after a run, never inside it (the owner, 2026-11-07)
 name: Report run timings
 
 # EVERY JOB'S AND STEP'S TIME, reported AFTER a run, never inside it (the owner, 2026-11-07): a `timings` job inside a run

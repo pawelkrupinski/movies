@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Post-commit: the commit rules the landing checks judge, run over the commit just made
 # POST-COMMIT: the commit rules the landing checks judge (scripts/ci/commit_rules.py: allowlists, driftguards --
 # Fixes-Red / Gauges / Drift-Slice / Identity-Design trailers), run over the commit just made, in about 0.1 s each.
 # A refusal is only SAID here -- a made commit cannot be refused -- so the author amends the unpublished commit at once

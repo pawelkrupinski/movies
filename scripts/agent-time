@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Where a Claude Code session's subagents spent their time: every agent's hours by bucket
 #
 # Where a Claude Code session's subagents spent their time: every agent's hours by bucket -- polling waits (sleep loops, ci-wait, wait-for) by what they
 # wait for (a landing -- `agentctl land` and the waits on its log or inbox --, a what-if, a CI run, a measurement, a slice,

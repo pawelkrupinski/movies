@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The dev server for the /debug review pages, run from the review worktree -- never from the root checkout
 # The dev server for the /debug review pages, run from the review worktree -- never from the root checkout.
 #
 # WHY. The pages write the user's hand labels into test/resources/fixtures/identity-judgements.tsv (+ `.used-until`)

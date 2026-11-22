@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Install Playwright's browsers and their OS libraries on a GitHub-hosted Ubuntu runner
 # Install Playwright's browsers and their OS libraries on a GitHub-hosted Ubuntu runner.
 # Usage: scripts/ci/install-playwright.sh <browser>...   (run from page-tests-playwright/)
 #

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Prints a directory whose python3 imports <module>, from a pinned venv of <requirements.txt> built once and reused
 # Prints a directory whose python3 imports <module>, from a pinned venv of <requirements.txt> built once and reused --
 # for a check to put first on PATH when the PATH's python3 lacks a package (the pre-push `drift` check's timezonefinder,
 # via scripts/timezonefinder-python; the `metricalerts` check's PyYAML, scripts/pyyaml-requirements.txt).

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The weekly identity rule refit, whole — the one script `.github/workflows/identity-refit.yml` runs and a local run runs the same way
 #
 # The weekly identity rule refit, whole — the one script `.github/workflows/identity-refit.yml` runs and a local run
 # runs the same way (scripts.IdentityRefit; docs/design/identity-resolver.md §14.10):

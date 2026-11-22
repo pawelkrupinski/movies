@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Open the CI end of the route to prod Mongo and return only once bytes flow through it
 #
 # Open the CI end of the route to prod Mongo and DO NOT RETURN until bytes actually
 # flow through it — then hold it open until close-mongo-tunnel.sh tears it down, and

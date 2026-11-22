@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Every script self-test, found by its name and run in parallel: the one way CI, the pre-push hook and a person at a terminal run them
 # Every script self-test, found by its name and run in parallel: the one way CI, the pre-push hook and
 # a person at a terminal run them.
 #

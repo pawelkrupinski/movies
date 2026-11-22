@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Reboot this fleet's hosts one at a time, each proven serving before the next
 # Reboot this fleet's hosts ONE AT A TIME, each proven serving before the next -- fleetkit's
 # rolling-reboot (bitcashier/fleetkit, shared with bitcashier's fleet), run with profile `movies`
 # over this checkout: k3s-worker-1, then monitoring-1 (the only k3s server, and the monitoring

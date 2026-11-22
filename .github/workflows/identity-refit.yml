@@ -1,3 +1,4 @@
+# Purpose: Weekly re-tune of identity-weights.json, the numbers the resolver's existing rules read
 name: Identity rule refit
 
 # Weekly re-tune of the numbers the identity resolver's EXISTING rules read from

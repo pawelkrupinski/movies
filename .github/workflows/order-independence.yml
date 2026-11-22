@@ -1,3 +1,4 @@
+# Purpose: Nightly: every suite in an order it never meets on push, so an order-dependent test shows
 name: Order independence
 
 # Nightly: run the suites in an order they never meet on push, so a test that passes only

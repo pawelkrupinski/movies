@@ -1,3 +1,4 @@
+# Purpose: Geocode Germany's roster cities from the GeoNames dump (the roster generator's coordinates)
 import json, re, unicodedata, time, sys
 from collections import defaultdict
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: sbt for agents, warm: one sbt server per checkout, kept between calls
 #
 # sbt for agents, warm: ONE sbt server per checkout, kept between calls, and a fresh checkout's compile seeded from the
 # newest local build of main — so neither the JVM start (~40 s) nor the cold compile (~4–15 min) is paid per call.

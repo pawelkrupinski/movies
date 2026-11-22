@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Put the pinned sbt runner into the runner's tool cache, where sbt/setup-sbt looks first, so that setup-sbt itself downloads nothing
 # Put the pinned sbt runner into the runner's tool cache, where sbt/setup-sbt looks first, so that setup-sbt itself
 # downloads nothing. Every `uses: sbt/setup-sbt@` step comes right after this one (SetupSbtRunnerPinSpec).
 # Usage: scripts/ci/seed-sbt-runner.sh [version] [sha256]   (defaults: the pin below, the job image's runner)

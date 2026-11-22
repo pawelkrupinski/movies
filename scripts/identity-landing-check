@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Will this land green? One command for an identity change before it is pushed to main
 # WILL THIS LAND GREEN? One command for an identity change before it is pushed to main: the measure AND the
 # identity-relevant specs Main runs, one verdict.
 #

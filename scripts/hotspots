@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The hotspot report (CLAUDE.md, "Code quality ratchets"; a report, never a gate)
 # THE HOTSPOT REPORT (CLAUDE.md, "Code quality ratchets"; a report, never a gate): the production sources ranked by
 # relative churn x cognitive complexity over the last 90 days of git history, and the change-coupling pairs (sources in
 # different modules or packages changed together in 5+ commits), as markdown on stdout (scripts/ci/hotspots.py).

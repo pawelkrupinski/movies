@@ -1,3 +1,4 @@
+# Purpose: Nightly per-family convergence walk, outside the gate; its flips become release assets
 name: Identity family explorer
 
 # THE PER-FAMILY CONVERGENCE CHECK, NIGHTLY AND OUTSIDE THE GATE (the owner, 2026-11-06, option A). services.identity.

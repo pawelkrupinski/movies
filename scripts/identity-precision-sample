@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: An unbiased random sample of the identity takes prod serves, weighted by upcoming showtimes
 # An unbiased random sample of the identity takes prod SERVES, weighted by upcoming showtimes, and the estimate of the
 # share of showtimes on wrong films once its takes are judged. Usage and design: scripts/identity_precision_sample.py.
 #

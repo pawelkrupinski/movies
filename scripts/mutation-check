@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Mutation testing of the methods a change touches (Stryker4s; a report, never a gate)
 # MUTATION TESTING OF THE METHODS A CHANGE TOUCHES (Stryker4s; a report, never a gate): whether the specs that reach
 # the touched production methods would catch a change of behaviour in them. Run it on the range a refactor is about to
 # rewrite, BEFORE the refactor: every surviving mutant is a behaviour the pinning tests do not pin (2026-11-20: a

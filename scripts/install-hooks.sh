@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Point this clone's git hooks at scripts/hooks (the pre-push checks — see scripts/hooks/pre-push)
 # Point this clone's git hooks at scripts/hooks (the pre-push checks — see scripts/hooks/pre-push).
 #
 # core.hooksPath lives in the SHARED config, so one run covers the root checkout and every

@@ -1,3 +1,4 @@
+# Purpose: Nightly capture of every country's real `cinema_scrapes` into a fixture file, stored in the actions cache for the convergence legs to replay
 #
 # Nightly capture of every country's REAL `cinema_scrapes` into a fixture file,
 # stored in the actions cache for the convergence legs to replay.

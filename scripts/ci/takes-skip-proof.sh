@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The takes skip gate's proof: NormalizerTraceCheck over the base's stored trace, compiled in this checkout
 # THE TAKES SKIP GATE'S PROOF (scripts/ci/takes-skip-gate.sh, step 7): services.movies.NormalizerTraceCheck, compiled in
 # this checkout -- the head -- and run with the arguments the gate hands it (`--out <differ.tsv> <trace>`). The gate asks
 # for it only once every cheaper condition holds, so a row whose change is not a title-rule one never compiles it.

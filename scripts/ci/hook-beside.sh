@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: One check beside the rest (.github/workflows/precommit-check.yml's `check (rest)`)
 # ONE CHECK BESIDE THE REST (.github/workflows/precommit-check.yml's `check (rest)`): the pre-push hook runs its checks
 # one after another, and in the rest's job `scripttests` (143-186 s) and then `sbt` (96-385 s) ran serially in 5 of 5
 # sampled runs (2026-11-18) -- two checks that share nothing: the script self-tests are bash and Python, the sbt check

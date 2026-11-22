@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Purpose: The hotspot report's computation: complex and changing sources, from git history and the quality measure
 # THE HOTSPOT REPORT (scripts/hotspots; a report, not a gate -- CLAUDE.md, "Code quality ratchets"): where the
 # production code is both complex and changing, from git history and the quality measure's per-source numbers.
 #

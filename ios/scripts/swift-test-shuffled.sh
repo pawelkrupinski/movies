@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Every `swift test` case alone, in an order drawn from a seed — the iOS lane of the nightly order-independence workflow
 #
 # Every `swift test` case ALONE, in an order drawn from a seed — the iOS lane
 # of the nightly order-independence workflow. `swift test` has no shuffle and

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Run the it/ layer locally against a MongoDB of this run's own
 #
 # Run the it/ layer locally against a MongoDB of this run's own.
 #

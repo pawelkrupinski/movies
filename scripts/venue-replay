@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: One venue's listings as the code at one or two git refs reads them, from a recording — never the network
 #
 # ONE venue's listings as the code at one or two git refs reads them, from a recording — never the network. Answers
 # "is this cinema's client reading a field wrong, and does commit X change that?" in seconds, where a convergence run

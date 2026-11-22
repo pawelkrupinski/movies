@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Post one leg's verdict the moment that leg ends: a line in the job summary and a commit status on the run's commit, named after the leg
 # Post ONE leg's verdict the moment that leg ends: a line in the job summary and a commit
 # status on the run's commit, named after the leg.
 #

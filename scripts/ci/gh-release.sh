@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: `gh release <args...>`, retried only when GitHub answers with a race rather than a verdict
 # `gh release <args...>`, retried only when GitHub answers with a race rather than a verdict.
 #
 # The verdicts are the `github-release` rows of test/resources/retry-classification.json;

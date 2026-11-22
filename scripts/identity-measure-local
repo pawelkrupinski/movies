@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The identity measure, locally: scripts/identity-measure's whole-corpus base-vs-head verdict with no GitHub
 #
 # THE IDENTITY MEASURE, LOCALLY: scripts/identity-measure's whole-corpus base-vs-head verdict with no GitHub -- the
 # same resolve (integration.IdentityResolveDump, the model's takes), the same final takes (the unmatched-cluster

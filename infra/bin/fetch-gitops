@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Put the GitOps manifests where the deploy specs expect them
 # Put the GitOps manifests where the deploy specs expect them.
 #
 # They used to be `infra/kubernetes/` in this repository. They are now

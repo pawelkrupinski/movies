@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The repo-reading specs the lint registry (scripts/hooks/lint-registry.tsv) has no row for, as `<module>:<package.Spec>`, one a line
 # The repo-reading specs the lint registry (scripts/hooks/lint-registry.tsv) has no row for, as `<module>:<package.Spec>`,
 # one a line; nothing when every one has its row. Run from the root of the checkout it judges. A repo-reading spec is
 # a tools/ No*/*Lint* spec, any deploy/ spec, one using a source-scan helper (ScalaSourceScan, ModuleSources,

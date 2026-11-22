@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Make room on a rolling store release before storing one result on it
 # MAKE ROOM ON A ROLLING STORE RELEASE before storing one result on it: a CI cache kept as release assets (the drift
 # store, identity-drift; the takes store, identity-takes) whose results are keyed by inputs, and of which only the
 # newest are ever read again.

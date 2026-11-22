@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Coverage of the methods a change touches (scoverage; a report, never a gate)
 # COVERAGE OF THE METHODS A CHANGE TOUCHES (scoverage; a report, never a gate): which touched production methods the
 # specs that reach them leave unrun, so the pinning tests are written FIRST -- before a refactor moves what they would
 # have to pin.

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture)
 #
 # Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt
 # suite, a capture). Run it with run_in_background and act on its notification; never a hand-written

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The last green base of a main row, kept in git as refs/verified/<name>
 # THE LAST GREEN BASE OF A MAIN ROW, KEPT IN GIT: refs/verified/<name> records the newest commit on main the row held
 # on, so the row judges every commit since -- a superseded (replaced) or red run's commits stay in its range until a run
 # passes with them. A row's base was the push's own `before` or "the newest green Main run": a replaced queued run's

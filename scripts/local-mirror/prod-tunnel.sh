@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The one place that knows how a laptop reaches prod Mongo
 #
 # The one place that knows HOW a laptop reaches prod Mongo. Sourced by every
 # local script whose source is prod: mirror.sh (the /debug mirror daemon) and

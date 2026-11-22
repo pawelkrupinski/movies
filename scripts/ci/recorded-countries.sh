@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Which countries a recording captured complete
 # WHICH COUNTRIES A RECORDING CAPTURED COMPLETE: the codes whose tree `Record scrape fixtures` run <run> published as
 # its pinned copy, `enrichment-<code>-<run>.tar.*` on the $FIXTURE_RELEASE_TAG release -- which convergence-publish.sh
 # uploads only when that country's boot completed. Printed comma-separated, in <codes>' order; empty when none.

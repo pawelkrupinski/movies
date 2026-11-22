@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Environment lines (for GITHUB_ENV) under which no JVM of the job reaches the network, and sbt-guard does not retry a download
 # Environment lines (for GITHUB_ENV) under which no JVM of the job reaches the network, and sbt-guard does not retry a
 # download: every http(s) connection goes to a proxy on 127.0.0.1's discard port, refused at once. A job whose
 # dependencies were all restored from a cache (.github/actions/old-ref-deps) runs under it, so a build that would still

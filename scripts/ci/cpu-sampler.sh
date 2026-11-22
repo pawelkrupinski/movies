@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Print the whole runner's CPU, split between the JVM and mongod, every <seconds> until killed
 # Print the WHOLE runner's CPU, split between the JVM and mongod, every <seconds> until killed.
 #
 #   cpu-sampler.sh <seconds>      # "[cpu] busy 3.6 of 4 cores (user 3.1, system 0.4, iowait 0.1); java 2.4, mongod 1.1"

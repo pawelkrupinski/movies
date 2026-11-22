@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Cut a mobile release: one version, one branch, both platforms
 #
 # Cut a mobile release: one version, one branch, both platforms.
 #

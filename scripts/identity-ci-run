@@ -1,4 +1,5 @@
 #!/bin/sh
+# Purpose: Any sbt command over a cached recording, on CI (identity-run.yml), off the laptop (a name for identity_ci_run.py)
 # ANY sbt COMMAND OVER A CACHED RECORDING, ON CI -- the name its callers run (identity-landing-check, CLAUDE.md, the
 # identity-investigation skill): scripts/identity_ci_run.py is the tool, its header (`--help`) says what it does, and how.
 exec python3 "$(dirname "$0")/identity_ci_run.py" "$@"

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Throwaway git repositories for the shell test scripts — and nothing else, ever
 # Throwaway git repositories for the shell test scripts — and nothing else, ever.
 #
 # WHY IT EXISTS. Every worktree of this clone, and every agent session working one, commits through

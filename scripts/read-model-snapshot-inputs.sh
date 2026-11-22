@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The read-model snapshot's input stamp: a hash of the fixture corpus the snapshot was projected from, checked in beside it
 # The read-model snapshot's INPUT STAMP: a hash of the fixture corpus the snapshot was
 # projected from, checked in beside it, so a corpus change that skipped the regeneration is
 # caught in seconds rather than by the ~110s whole-corpus replay in CI's e2e shard.

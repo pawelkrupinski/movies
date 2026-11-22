@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH
 # THE ONE WAY CI RUNS SBT: every sbt setup on CI (sbt/setup-sbt, through setup-sbt-build, convergence-setup,
 # run-page-test or a job's own step) puts this directory first on PATH, so each `sbt ...` of a workflow or a CI script
 # comes here, and it runs the real sbt with the same arguments, output and exit status. (OneSbtPathSpec)

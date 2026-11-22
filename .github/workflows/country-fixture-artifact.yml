@@ -1,3 +1,4 @@
+# Purpose: Records the whole country's fixture corpus once a day and uploads it as a downloadable build artifact
 name: Daily country fixture artifact
 
 # Records the WHOLE country's fixture corpus once a day and uploads it as a

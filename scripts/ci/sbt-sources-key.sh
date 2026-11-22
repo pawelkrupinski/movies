@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The hash an sbt build cache is keyed by: the content of the sources a job compiles
 # The hash an sbt build cache is keyed by: the content of the sources a job compiles, read off git's index (a blob's id
 # is its content's hash) rather than by walking and reading the workspace as `hashFiles` does -- 8.8 s of a US
 # convergence leg's setup with its fixture tree staged elsewhere (run 37111868620).

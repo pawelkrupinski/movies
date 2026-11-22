@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The governor for one command: <command> run under a governor ticket (scripts/jvm-gate.sh gov_hold, `agentctl gov`, ~/bin/AGENTCTL.md "gov")
 # THE GOVERNOR FOR ONE COMMAND: <command> run under a governor ticket (scripts/jvm-gate.sh gov_hold, `agentctl gov`,
 # ~/bin/AGENTCTL.md "gov"), so a heavy job that is no tool's JVM waits while the laptop is starved and starts by itself
 # once there is room (the owner, 2026-11-19: "if cpu is starved then pause until we have enough resources and resume

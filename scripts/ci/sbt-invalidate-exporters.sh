@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Delete the compiled classes of every Scala source holding a wildcard export (`export X.*`, `export x.{a as _, *}`)
 # sbt-invalidate-exporters.sh: delete the compiled classes of every Scala source holding a WILDCARD export
 # (`export X.*`, `export x.{a as _, *}`), so a build restored from an OLDER build cache recompiles them.
 #

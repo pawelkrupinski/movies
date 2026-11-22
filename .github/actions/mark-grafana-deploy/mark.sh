@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The deploy marker the action posts: inputs in GRAFANA_URL, GRAFANA_ANNOTATION_TOKEN, tier, SHA, msg (see action.yml)
 # The deploy marker the action posts: inputs in GRAFANA_URL, GRAFANA_ANNOTATION_TOKEN, TIER, SHA, MSG (see action.yml).
 # Runs as the runner runs a `shell: bash` step: -e and pipefail.
 set -eo pipefail

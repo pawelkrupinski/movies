@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The stamp carry (project/StampCarry.scala; the owner, 2026-11-20)
 # THE STAMP CARRY (project/StampCarry.scala; the owner, 2026-11-20): a commit whose identity change is PROVEN to change no
 # decision keeps the stamps its parent deployed under, so workers boot on it without re-resolving every family; an
 # unproven change bumps them, as before. The proofs are rows of test/resources/identity-stamp-carry.tsv.

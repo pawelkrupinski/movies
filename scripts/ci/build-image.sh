@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Build one of the Dockerfile's images for linux/amd64 and push it under the commit's SHA tag only (main.yml's publish jobs give it the tags that ship)
 # Build one of the Dockerfile's images for linux/amd64 and push it under the commit's SHA tag ONLY (main.yml's
 # publish jobs give it the tags that ship). Run from the repository root, the build context, with buildx's default
 # builder set up by .github/actions/setup-buildx.

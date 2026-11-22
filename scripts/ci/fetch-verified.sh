@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Download <url> to <file> only if its sha256 is <sha256>: the fetch behind every pinned CI tool
 # Make <file> the download of <url> whose sha256 is <sha256> -- the one fetch behind every pinned tool CI keeps in
 # actions/cache (.github/actions/install-actionlint, .github/actions/setup-jdk).
 # Usage: scripts/ci/fetch-verified.sh <file> <url> <sha256>

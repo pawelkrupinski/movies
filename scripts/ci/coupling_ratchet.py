@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Purpose: The coupling ratchet (the pre-push sbt check's coupling step)
 # THE COUPLING RATCHET (the pre-push sbt check's coupling step; CLAUDE.md, Design rules): the production code's coupling,
 # measured from Zinc's class-dependency record and one source file's class files (`sbt couplingReport`,
 # project/Coupling.scala), has NO package cycle --

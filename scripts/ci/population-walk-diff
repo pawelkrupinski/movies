@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The population walk's base side, for the pre-push hook's identity check
 # THE POPULATION WALK'S BASE SIDE (the pre-push hook's identity check; scripts/ci/population_walk_diff.py says what is
 # judged): the candidate slices PopulationMonotonicitySpec wrote to <candidates dir> walked with <base>'s code, then
 # judged head against base. Nothing to do (and no sbt) when no slice is a candidate -- the usual case: every slice's

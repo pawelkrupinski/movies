@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Every step one raw billing goes through, in production order, to the title the resolver reads
 #
 # Every step one raw billing goes through, in production order: the ingest tidy, the venue's own title rules, the format
 # peel (the slot's title), the canonical tier (the slot key), the search strip rule by rule (each rule's name, before and

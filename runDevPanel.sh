@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Build and launch the DevPanel floating palette (tools/devpanel)
 # Build and launch the DevPanel floating palette (tools/devpanel).
 # Pass-through args, e.g. `./runDevPanel.sh --no-open` to build without opening.
 set -euo pipefail

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Point a rolling prerelease — and its git tag — at this commit and replace its assets
 # Point a rolling prerelease — and its git tag — at this commit and replace its assets.
 #
 # An UPSERT, never delete + recreate: deleting the release (with --cleanup-tag) opens a window

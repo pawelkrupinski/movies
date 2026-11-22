@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Generate App Store screenshots for the Kinowo / Showtimes iOS app
 #
 # Generate App Store screenshots for the Kinowo / Showtimes iOS app. Just run it —
 # it builds once, boots the simulators, drives the five store screens per city and

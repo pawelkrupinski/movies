@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Re-pin identity slice cases on this checkout's code, in place, keeping each case's expected.tsv
 # Re-pin identity slice cases on this checkout's code, in place, keeping each case's expected.tsv.
 #
 #   scripts/identity-slice-refresh [--recording RUN] <case dir>...

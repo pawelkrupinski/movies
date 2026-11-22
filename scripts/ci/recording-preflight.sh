@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Recording preflight: before a `Record scrape fixtures` run spends 5 legs x 30-125 min, ask OMDb and TMDB, once each
 # RECORDING PREFLIGHT: before a `Record scrape fixtures` run spends 5 legs x 30-125 min, ask OMDb and TMDB, once each,
 # whether they still take the run's keys.
 #

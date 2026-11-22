@@ -1,3 +1,4 @@
+# Purpose: Every nix dependency upgrade, weekly, as one pull request (ported from bitcashier/infra's nix-update.yaml, 2026-10-22)
 name: Nix update
 
 # EVERY NIX DEPENDENCY UPGRADE, WEEKLY, AS ONE PULL REQUEST (ported from bitcashier/infra's

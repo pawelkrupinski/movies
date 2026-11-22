@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: A step with its own `timeout-minutes` runs as a process group this script can end
 # bounded-step.sh: a step with its own `timeout-minutes` runs as a process group this script can end, so what it leaves
 # running when it times out is ended before anything else reads the workspace.
 #

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Whole-corpus measure of a resolver change before landing it: every take it moves, every country
 # WHOLE-CORPUS MEASURE OF A RESOLVER CHANGE, before landing it: every take a commit moves, in every country's whole
 # pinned recording, split by what the judgements (test/resources/fixtures/identity-judgements.tsv) make of it.
 #

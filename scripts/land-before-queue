@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: What `agentctl land` runs after its rebase, before it queues the change (~/bin/lib/agentctl/queue.py enqueue)
 # WHAT `agentctl land` RUNS AFTER ITS REBASE, before it queues the change (~/bin/lib/agentctl/queue.py enqueue): steps that
 # add a commit of their own to the push, so no lane has to remember them. It may commit; it never fails a land -- a step
 # that cannot finish says why and leaves the push as it was.

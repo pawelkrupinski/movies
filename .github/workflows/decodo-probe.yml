@@ -1,3 +1,4 @@
+# Purpose: Probe the Decodo residential proxy pool: kinowo.net through every port, twice an hour
 name: Decodo probe
 
 # Is the Decodo residential proxy pool answering? Opens https://kinowo.net/ through every port of

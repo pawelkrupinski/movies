@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt
 #
 # Assert the Xcode project carries the shared mobile version: every
 # MARKETING_VERSION in project.pbxproj equals mobile-version.txt, and there are

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The scalafix tree: what scripts/scalafix-move and scripts/scalafix-organize share
 # THE SCALAFIX TREE: what scripts/scalafix-move and scripts/scalafix-organize share -- a worktree KEPT between runs
 # (detached, at the caller's HEAD) whose build compiles with SemanticDB on, so a second rewrite recompiles only what
 # changed since the first, and the caller's own checkout never pays the full recompile that turning SemanticDB on costs

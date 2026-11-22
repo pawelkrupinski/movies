@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share
 # THE TOUCHED-CODE TREE: what scripts/mutation-check and scripts/coverage-touched share -- a throwaway detached worktree
 # at the range's head, its kept sbt server, the methods the range touches and the specs that reach them. Sourcing it
 # defines functions only. bash 3.2 compatible.

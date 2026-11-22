@@ -1,3 +1,4 @@
+# Purpose: The weekly exemption report (CLAUDE.md, "Coupling is reviewed on every change"; a report, never a gate)
 name: Coupling exemptions
 
 # THE WEEKLY EXEMPTION REPORT (CLAUDE.md, "Coupling is reviewed on every change"; a report, never a gate). The owner,

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The assertion harness the shell test scripts share
 # The assertion harness the shell test scripts share.
 #
 # WHY IT EXISTS. Four test scripts — scripts/mobile-release-test.sh,

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Set tools.costs.PerformanceBudgets' allocation figures (`measured`) from what a CI run measured, not a laptop
 #
 # Set tools.costs.PerformanceBudgets' allocation figures (`measured`) from what a CI run measured, not a laptop: a
 # Mac's JVM lands ~3-5% off CI's Linux one, inside the 15% band but enough to turn a re-measured budget red on Main

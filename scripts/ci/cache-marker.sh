@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: One cache's outcome as a log line and a metrics line (hit, partial or miss)
 # One cache's outcome as a `ci-cache <name> <hit|partial|miss> <key>` log line and a {"kind":"cache",...} line in the
 # job's metrics file ($CI_METRICS_FILE; .github/actions/job-telemetry, scripts/ci/ci_trends.py): the restore's time
 # and the restored size, so `ci-timings` reports hit rates and what a miss costs.

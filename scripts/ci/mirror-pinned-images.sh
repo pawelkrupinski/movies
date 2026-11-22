@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Copy every image .github/pinned-images.tsv pins to its GHCR mirror by digest, and check that GHCR serves exactly the pin
 # Copy every image .github/pinned-images.tsv pins to its GHCR mirror BY DIGEST, and check that GHCR serves exactly the pin.
 # Run by .github/workflows/mirror-pinned-images.yml (weekly, on dispatch, on a push to main changing the pins).
 #

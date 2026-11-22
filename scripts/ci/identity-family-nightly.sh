@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: The family explorer's walk row (identity-family-explorer.yml)
 # THE FAMILY EXPLORER'S WALK ROW (.github/workflows/identity-family-explorer.yml; the owner, 2026-11-06, option A): one
 # shard of one country's families, walked over the pinned recording the row laid. services.identity.FamilyConvergence
 # walks every family's POPULATION LATTICE -- every subset of a family of 7 or fewer, the levels 0..L and n-L..n of one of

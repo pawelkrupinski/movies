@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Fail a workflow in seconds when it lacks configuration (an unset secret or variable), not code
 # PREFLIGHT: fail a workflow in seconds, at its first job, when it cannot succeed for want of
 # configuration rather than code — a secret that is unset or empty, or an Android SDK licence the
 # runner has not accepted. Without this those surface minutes in, as a signing step producing an

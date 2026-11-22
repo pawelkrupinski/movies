@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Commit the review pages' answers as the user's judgements
 # Commits the review pages' answers as the user's judgements: the rows the dev review pages (the digest, the queue, the
 # matchable and recent pages) wrote into test/resources/fixtures/identity-judgements.tsv as each answer was given, and
 # the `.used-until` mark beside it -- nothing else. Lints the file first; prints what it commits.

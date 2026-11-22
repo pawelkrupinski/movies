@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Restore the recorded pair a hermetic convergence leg replays into this checkout
 #
 # Restore the recorded PAIR a hermetic convergence leg replays — a country's scrape corpus and
 # the enrichment tree recorded beside it — into this checkout, exactly as CI's

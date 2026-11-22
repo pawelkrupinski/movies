@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Purpose: Main reuses a convergence verdict it can prove applies, instead of running the suite again
 # MAIN REUSES A CONVERGENCE VERDICT IT CAN PROVE APPLIES: a commit an agent's landing check already ran the whole
 # `Identity model convergence` suite over is not run again on main (identity-model-convergence.yml's `reuse-run`).
 #

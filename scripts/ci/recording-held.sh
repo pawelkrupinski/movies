@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Does the repository hold "Record scrape fixtures" recording <run> where identity-fetch-recording.sh looks?
 # recording-held.sh <run>: does the repository hold "Record scrape fixtures" recording <run> where
 # scripts/identity-fetch-recording.sh looks for its corpus? First the ARCHIVE release (RECORDING_ARCHIVE_TAG, default
 # identity-recordings: scrapes-<cc>-<run>.tar.*, where the Forgejo-era recordings 573 and 528 live -- numbers no run

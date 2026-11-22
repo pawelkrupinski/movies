@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: An alias of `scripts/identity-slice <cc> --explain …` (see its --help): why a listing of the unmatched-cluster capture took (or did not take) its film
 #
 # An alias of `scripts/identity-slice <cc> --explain …` (see its --help): WHY a listing of the unmatched-cluster capture
 # took (or did not take) its film. Kept for the name older take-change lines printed; prod's lines print an

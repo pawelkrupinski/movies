@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: What an absolute core.hooksPath names, for the two tools that mend one: scripts/install-hooks.sh and the pre-push hook
 # What an ABSOLUTE core.hooksPath names, for the two tools that mend one: scripts/install-hooks.sh and the pre-push hook.
 # An IDE's git integration rewrote the shared config's relative `scripts/hooks` to an absolute path (2026-10-14); a path
 # to scripts/hooks of any worktree of this clone holds only this repository's own hooks, so setting it back to relative

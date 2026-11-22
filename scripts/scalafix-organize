@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Purpose: Organise imports with scalafix (.scalafix.conf: OrganizeImports, Scala 3 dialect), never by hand
 # IMPORTS ORGANISED BY SCALAFIX, never by hand (.scalafix.conf: OrganizeImports, Scala 3 dialect -- each source's imports
 # sorted and grouped java/javax, scala, everything else -- and RemoveUnused): over every module's sources, rewritten
 # from the compiler's own record (SemanticDB), in the kept scalafix tree (scripts/scalafix-tree.sh: the caller's
