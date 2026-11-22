@@ -85,8 +85,8 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
       .filter(path => RepoFile.read(path).linesIterator.filterNot(_.trim.startsWith("#"))
         .exists(line => line.contains("> \"hermetic-") || line.contains("""marker = f"hermetic-""")))
     writers shouldBe Seq(".github/scripts/convergence_publish_pin.py")
-    val pin = RepoFile.pythonFunction(".github/scripts/convergence_publish_pin.py", "country")
-    pin should include("""marker = f"hermetic-{code}.txt"""")
-    pin should include("""f.write(f"{self.run} {self.recorded(code) or 'unknown'} {tree}\n")""")
+    val writer = RepoFile.pythonFunction(".github/scripts/convergence_publish_pin.py", "country")
+    writer should include("""marker = f"hermetic-{code}.txt"""")
+    writer should include("""f.write(f"{self.run} {self.recorded(code) or 'unknown'} {tree}\n")""")
   }
 }
