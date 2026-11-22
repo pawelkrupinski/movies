@@ -2,7 +2,7 @@ package services.identity.measures
 
 import services.identity.measures.IdentityMeasures.*
 import services.titles.SearchTitles
-import services.titles.StageHouse.{HouseCommonWords, namesAHouseInParticular, namesOneHouse, particularWords}
+import services.titles.StageHouse.{HouseCommonWords, abbreviates, initialsOf, namesAHouseInParticular, namesOneHouse, particularWords}
 import services.titles.billing.DecorationWords
 import services.titles.{TitleContainment, TitleSeason, TitleWords}
 
@@ -320,8 +320,13 @@ object StageRelays {
    *  "Das Boot - Directors Cut" record its "house" bills alike. */
   def billsUnderItsHouse(listing: MeasuredListing, film: Film, houses: BannerHouses): Boolean =
     (listing.seasonYear.isEmpty || film.season.isEmpty) &&
-      billings(listing, film).exists(billed => houses.same(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse) &&
+      billings(listing, film).exists(billed => houses.same(billed) && namesTheHouse(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse) &&
         !namesAnEdition(billed.listingWords) && !namesAnEdition(billed.filmWords) && (film.season.isEmpty || spellsItsHouse(billed)))
+  /** Does the listing's banner NAME the record's house (spell it, share or hold a word, initial its leading words: "NT
+   *  Encore"), not merely learned as it? UK Lowther's "On Screen", learned as La Scala Ballet, took its 2013 Notre-Dame. */
+  private def namesTheHouse(b: Billing): Boolean = b.listingHouse == b.filmHouse || abbreviates(b.listingWords, b.filmWords) ||
+    b.listingWords.exists(word => word.lengthIs >= 2 && initialsOf(b.filmWords).startsWith(word)) || b.listingWords.exists(word =>
+      word.lengthIs >= 3 && b.filmWords.exists(house => house.lengthIs >= 3 && (word.contains(house) || house.contains(word))))
   /** A banner of edition words alone, a possessive's lone letter aside ("director s cut"). */
   private def namesAnEdition(banner: Seq[String]): Boolean = {
     val words = banner.filter(_.lengthIs > 1)

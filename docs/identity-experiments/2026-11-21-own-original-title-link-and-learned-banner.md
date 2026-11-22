@@ -49,3 +49,9 @@ kept as the reverted 604134d1a.
 "NT Encore - Hay Fever" and "NT Encore - The Motive and The Cue" from their National Theatre Live records (OwnMatch ->
 BelowThreshold on recording 573): "NT Encore" spells no word of "National Theatre Live", and the abbreviation test does
 not read NT as it. Its Lowther cure waits on a guard that keeps a house's own encore banners.
+
+**Reworked (2026-11-22, the owner: "an NT Encore / NT Live banner counts as naming National Theatre").** A banner names
+the house too when one of its words initials the house's leading words (`StageHouse.initialsOf`: "NT" of National
+Theatre Live, "RBO" of Royal Ballet & Opera), not only when it is the house's whole abbreviation: Lichfield Garrick's
+"NT Encore - Hay Fever" and "NT Encore - The Motive and The Cue" keep their National Theatre Live records (pinned in
+IdentityMeasuresSpec), and Lowther's "On Screen" (no word initials La Scala Ballet) still names no house.
