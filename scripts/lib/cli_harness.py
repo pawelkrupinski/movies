@@ -100,7 +100,7 @@ def out(text, end="\\n"):
 def err(text, end="\\n"):
     sys.stderr.write(text + end)
 """
-SHELL_PRELUDE = """#!/bin/sh
+SHELL_PRELUDE = """#!{shell}
 printf '%s\\n' "$(python3 -c 'import json, os, sys; print(json.dumps({{"name": sys.argv[1], "argv": sys.argv[2:], "cwd": os.getcwd()}}))' {name} "$@")" >> {calls}
 """
 
@@ -125,9 +125,9 @@ class Fakes:
         """A fake whose behaviour is Python: `argv`, `env`, `out(text)`, `err(text)` and `exit(code)` in scope."""
         return self._write(name, PRELUDE.format(python=sys.executable, calls=self.log, name=name) + body + "\n")
 
-    def script(self, name: str, body: str) -> str:
-        """A fake whose behaviour is a POSIX shell body, its arguments as "$@"."""
-        prelude = SHELL_PRELUDE.format(name=shlex.quote(name), calls=shlex.quote(self.log))
+    def script(self, name: str, body: str, shell: str = "/bin/sh") -> str:
+        """A fake whose behaviour is a shell body (POSIX sh, or `shell`: "/usr/bin/env bash"), its arguments as "$@"."""
+        prelude = SHELL_PRELUDE.format(shell=shell, name=shlex.quote(name), calls=shlex.quote(self.log))
         return self._write(name, prelude + body + "\n")
 
     def calls(self, name: Optional[str] = None) -> List[List[str]]:
