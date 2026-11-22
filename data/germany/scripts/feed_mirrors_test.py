@@ -7,6 +7,7 @@ import pathlib
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, str(HERE))
 import feed_mirrors as fm  # noqa: E402
 import generate_sources as gs  # noqa: E402

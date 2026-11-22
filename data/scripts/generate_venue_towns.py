@@ -28,6 +28,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 OUT = ROOT / "geodata" / "src" / "main" / "resources" / "generated" / "venue-towns.tsv"
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, str(ROOT / "data" / "scripts"))
 from generated_tables import write_table  # noqa: E402
 

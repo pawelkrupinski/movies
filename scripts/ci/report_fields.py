@@ -1,6 +1,7 @@
 """What the CI report tools share about a field, one copy each: a value written into a Markdown table cell, and an
 ISO-8601 instant as GitHub's API and the run logs write it (a trailing `Z` for UTC) read back.
 
+    sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
     sys.path.insert(0, "<repo>/scripts/ci"); from report_fields import cell, parse_instant
 """
 

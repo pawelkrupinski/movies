@@ -18,6 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 PAGES = ROOT / "data/pl/pages.json"
 OUT_DIR = ROOT / "geodata/src/main/resources/generated/pl-pages"
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, str(ROOT / "data" / "scripts"))
 from generated_tables import list_cell, write_table  # noqa: E402
 # The apps' first-run city lists (before the live catalogue arrives) carry the

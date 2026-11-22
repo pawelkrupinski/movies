@@ -31,6 +31,7 @@ import os
 import subprocess
 import sys
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nix_path  # noqa: E402  (beside this module)
 

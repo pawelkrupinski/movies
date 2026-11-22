@@ -24,6 +24,7 @@ SRC = os.path.join(DATA, "venue-sources.json")
 MIRRORS = os.path.join(DATA, "feed-mirrors.json")
 RETIRED = os.path.join(DATA, "retired.json")
 OUT = os.path.join(ROOT, "geodata/src/main/resources/generated/de-sources/feeds.tsv")
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.join(ROOT, "data", "scripts"))
 from generated_tables import list_cell, write_table  # noqa: E402
 

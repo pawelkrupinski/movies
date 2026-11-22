@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_precision_sample as ps  # noqa: E402
 from identity_judgements import HEADER  # noqa: E402

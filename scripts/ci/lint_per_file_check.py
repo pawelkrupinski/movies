@@ -29,6 +29,7 @@ Run from the root, after `scripts/sbt-warm "<module>/Test/compile"` for every mo
 import os
 import sys
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lint_reads_trace as trace  # noqa: E402
 

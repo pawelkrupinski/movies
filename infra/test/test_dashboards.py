@@ -23,6 +23,7 @@ import re
 import sys
 import unittest
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import app_metrics_catalogue  # noqa: E402
 from promql_selectors import seconds  # noqa: E402

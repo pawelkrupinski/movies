@@ -33,6 +33,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 DATA = ROOT / "data" / "us"
 OUT = DATA / "towns.json"
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, str(ROOT / "data" / "scripts"))
 import town_pages  # noqa: E402
 

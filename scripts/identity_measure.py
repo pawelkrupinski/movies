@@ -46,6 +46,7 @@ import json
 import os
 import sys
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci"))
 import identity_takes_diff as takes  # noqa: E402
 from identity_judgements import country_views, label_of, normalise, own_or_every, read  # noqa: E402

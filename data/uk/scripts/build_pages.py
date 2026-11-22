@@ -70,6 +70,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 DATA = ROOT / "data" / "uk"
 OUT = DATA / "pages.json"
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, str(ROOT / "data" / "scripts"))
 import town_pages  # noqa: E402
 from town_pages import km  # noqa: E402,F401  (the tests' spelling)

@@ -16,6 +16,7 @@ SCRATCH_GIT = os.path.join(HERE, "scratch-git.sh")
 # the tool reads its repository with every GIT_* variable dropped: under the pre-push hook a GIT_DIR would point it at
 # the shared repository, not the scratch one
 CLEAN_ENV = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, HERE)
 import pure_move_check  # noqa: E402
 

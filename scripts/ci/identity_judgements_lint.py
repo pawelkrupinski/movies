@@ -50,6 +50,7 @@ import tempfile
 import unicodedata
 from collections import defaultdict
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_judgements as j  # noqa: E402  (the one reader of the judgements, shared with the takes check)
 import identity_takes  # noqa: E402  (the one reader of the take files)

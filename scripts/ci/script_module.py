@@ -1,6 +1,7 @@
 """A tool whose file name is no module name -- `check-security-headers.py`, an extension-less `scripts/<tool>` -- imported
 for its test. The ONE by-path loader the Python tests share: a tool named like a module is imported plainly instead.
 
+    sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
     sys.path.insert(0, "<repo>/scripts/ci"); import script_module
     check = script_module.load(path)            # module named after the file, `-` as `_`
 """

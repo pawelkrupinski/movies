@@ -36,6 +36,7 @@ import yaml
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, HERE)
 import app_metrics_absent  # noqa: E402
 import app_metrics_catalogue  # noqa: E402

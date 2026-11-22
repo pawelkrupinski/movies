@@ -23,6 +23,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, str(Path(__file__).parent))
 import ci_timings as timings  # noqa: E402
 

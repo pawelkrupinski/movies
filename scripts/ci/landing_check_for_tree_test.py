@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import landing_check_for_tree as t  # noqa: E402
 

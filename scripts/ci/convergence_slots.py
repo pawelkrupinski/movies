@@ -171,6 +171,7 @@ def costs_of(runs, codes):
 
 
 def cmd_costs(run_ids):
+    sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
     sys.path.insert(0, HERE)
     import convergence_reuse as reuse  # noqa: E402
     with open(os.path.join(ROOT, reuse.WORKFLOW)) as f:

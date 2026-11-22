@@ -48,6 +48,7 @@ import urllib.request
 from dataclasses import dataclass, field
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.join(REPO, "data/uk/scripts"))
 import uk_roster  # noqa: E402
 

@@ -55,6 +55,7 @@ import sys
 from collections import Counter, defaultdict
 from zoneinfo import ZoneInfo
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import harvest_kinoprogramm as kp  # noqa: E402  (shared name normalising + scoring)
 import roster_venues  # noqa: E402

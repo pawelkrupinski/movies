@@ -7,6 +7,7 @@ pages'.
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, str(Path(__file__).parent))
 import generate_slug_index as g  # noqa: E402
 import town_pages  # noqa: E402

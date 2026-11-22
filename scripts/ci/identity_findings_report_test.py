@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_findings_report as r  # noqa: E402
 

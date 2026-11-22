@@ -21,6 +21,7 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOL = os.path.join(HERE, "identity_stamp_carry.py")
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, HERE)
 import identity_stamp_carry as stamp_carry  # noqa: E402
 from pure_move_check_test import CLEAN_ENV, FOO, SCRATCH_GIT, FOO_PATH, NEW_FOO_PATH, SIBLING, USER, Repo  # noqa: E402

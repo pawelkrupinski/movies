@@ -17,6 +17,7 @@ import json
 import pathlib
 import sys
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
 from generated_tables import write_table  # noqa: E402
 

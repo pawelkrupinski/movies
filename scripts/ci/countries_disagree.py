@@ -29,6 +29,7 @@ import os
 import subprocess
 import sys
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cross_country as X  # noqa: E402
 from identity_judgements import COUNTRIES, label_of, labels_by_country, read  # noqa: E402

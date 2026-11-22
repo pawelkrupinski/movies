@@ -51,6 +51,7 @@ from collections import Counter, defaultdict
 
 HERE = pathlib.Path(__file__).resolve().parent
 DATA = HERE.parent
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, str(DATA.parent / "germany" / "scripts"))
 from polite_fetch import PoliteFetcher, cache_dir  # noqa: E402
 

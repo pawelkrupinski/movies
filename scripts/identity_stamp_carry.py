@@ -61,6 +61,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.join(HERE, "ci"))
 from commit_rules import HARNESS_FILES  # noqa: E402  (the drift harness: one definition)
 

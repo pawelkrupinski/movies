@@ -39,6 +39,7 @@ from datetime import datetime
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
 import build_pages  # noqa: E402

@@ -31,6 +31,7 @@ import sys
 import unicodedata
 from collections import Counter, defaultdict
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci"))
 import recording_health  # noqa: E402  (scripts/ci/recording_health.py)
 

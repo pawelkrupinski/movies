@@ -12,6 +12,7 @@ import threading
 import unittest
 import unittest.mock
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ci_trends as t  # noqa: E402
 

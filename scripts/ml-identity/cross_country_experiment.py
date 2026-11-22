@@ -12,6 +12,7 @@ import os
 import sys
 
 ROOT, DATA = sys.argv[1], sys.argv[2]
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.join(ROOT, "scripts/ci"))
 import cross_country as X  # noqa: E402  (the one reading of the countries' takes side by side)
 import identity_judgements as J  # noqa: E402
