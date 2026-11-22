@@ -76,6 +76,22 @@ check "...with the hook's own line" "1" "$(grep -c 'Drift-Slice missing' "$testr
 check "...and nothing slow run after it: no sbt, the lints skipped as refused already" "0 1" \
   "$(: > "$log"; HOOK_FAIL=1 precheck > /dev/null; grep -c '^sbt-warm' "$log") $(grep -c '^precheck lints SKIP (0 s): refused already by rules' "$testroot/out")"
 check "a failing lint: exit 1" "1 1" "$(SBT_FAIL=1 SBT_OUT='[info] *** FAILED *** x' precheck) $(grep -c 'precheck lints FAIL' "$testroot/out")"
+# the FAIL's lines are the failure's: its test, its first assertion line, the failed suites -- never the specs that
+# passed (2026-11-19, f900cc: they kept every passing `should` line and lost the assertion, so the NOT LANDED named
+# passes)
+spec_out='[info] ASpec:
+[info] - should pass first
+[info] - should take temp files through the helper *** FAILED ***
+[info]   List("x.sh:3") was not empty (ASpec.scala:88)
+[info]   at some.Frame(Frame.scala:1)
+[info] - should pass after
+[error] Failed tests:
+[error] 	deploy.ASpec'
+SBT_FAIL=1 SBT_OUT="$spec_out" precheck > /dev/null
+check "...says the failing test, its assertion and its suite" "1 1 1" \
+  "$(grep -c 'should take temp files through the helper \*\*\* FAILED' "$testroot/out") \
+$(grep -c 'was not empty (ASpec.scala:88)' "$testroot/out") $(grep -c 'deploy.ASpec' "$testroot/out")"
+check "...and never a spec that passed, nor a stack frame" "0" "$(grep -cE 'should pass|some.Frame' "$testroot/out")"
 check "sbt that could not run (no test failed): exit 2, could not check" "2 1" \
   "$(SBT_FAIL=1 SBT_OUT='sbt server did not start within 90 seconds' precheck) $(grep -c 'precheck lints UNCHECKED' "$testroot/out")"
 
