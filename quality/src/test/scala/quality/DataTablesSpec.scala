@@ -36,7 +36,7 @@ class DataTablesSpec extends AnyFlatSpec with Matchers with LoneElement {
   }
 
   "a table holding a lambda" should "not be data" in {
-    verdict("  val table = Seq(\"a\", \"b\")\n    .map(_.toUpperCase)").isData shouldBe false
+    verdict("  val table = Seq(\"a\", \"b\")\n    .map(_.trim)").isData shouldBe false
     verdict("  val table = Seq(\"a\").map(s => s -> s.length)").isData shouldBe false
   }
 
