@@ -67,6 +67,15 @@ def spec(production: Tuple[str, ...]) -> baseline_ratchet.Spec:
         held=lambda p: p.startswith(production) or p + "/" in production)
 
 
+# What scripts/ci/ratchet_diff.py reads of this ratchet: its kinds, its rows and which of them it holds
+KINDS = tuple(kind for kinds in TRAILERS.values() for kind in kinds)
+parse = baseline_ratchet.parse
+
+
+def gated(key: str, production: Tuple[str, ...]) -> bool:
+    return baseline_ratchet.gated(spec(production), key)
+
+
 def main(argv: List[str]) -> int:
     parser = argparse.ArgumentParser(description="The JS/TS quality ratchet (scripts/js-quality-report --check).")
     parser.add_argument("command", choices=("check", "update"))
