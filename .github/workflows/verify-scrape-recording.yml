@@ -100,6 +100,7 @@ jobs:
               with:
                   sparse-checkout: |
                       scripts/ci
+                      scripts/lib
                       .github/workflows
                       .github/actions/job-telemetry
             # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.

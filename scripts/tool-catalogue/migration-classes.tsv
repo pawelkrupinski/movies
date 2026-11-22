@@ -62,7 +62,7 @@ scripts/ci/ci-row-scope.sh	KEEP
 scripts/ci/ci-timings	KEEP
 scripts/ci/close-mongo-tunnel.sh	KEEP
 scripts/ci/commit-rules-ci.sh	MIGRATE
-scripts/ci/convergence-preflight.sh	MIGRATE
+scripts/ci/convergence-preflight.sh	KEEP
 scripts/ci/coursier-forget-errors.sh	KEEP
 scripts/ci/cpu-sampler.sh	KEEP
 scripts/ci/dispatch-takes.sh	KEEP

@@ -233,9 +233,11 @@ jobs:
               with:
                   fetch-depth: 300
                   filter: blob:none
-                  # .github for its *-paths.txt, the two workflows (the leg rows are convergence's) and the setup scripts.
+                  # .github for its *-paths.txt, the two workflows (the leg rows are convergence's) and the setup scripts;
+                  # scripts/lib for what the Python tools import (convergence_preflight.py).
                   sparse-checkout: |
                       scripts/ci
+                      scripts/lib
                       .github
             # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
             - uses: ./.github/actions/job-telemetry
