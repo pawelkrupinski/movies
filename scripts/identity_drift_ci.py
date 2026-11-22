@@ -163,11 +163,10 @@ class DriftCi:
         leg = self.git.out("show", f"{commit}:.github/workflows/country-convergence-leg.yml", quiet=True) or ""
         if "drift-only" in leg and self.git.ok("cat-file", "-e", f"{commit}:.github/workflows/{WORKFLOW}", quiet=True):
             return commit
-        if not self.git.ok("fetch", "-q", self.remote, "main", timeout=120, quiet=True):
-            raise Die(f"could not fetch {self.remote} main")
-        push = self.ci.main_ci_over(self.remote, commit, "drift")
-        if push is None:
-            raise Die(f"could not lay main's CI over {commit}")
+        try:
+            push = self.ci.main_ci_fetched_over(self.remote, commit, "drift")
+        except identity_dispatch.DispatchFailed as e:
+            raise Die(str(e)) from None
         say(f"{commit[:9]} predates the drift-only dispatch: checking it under {self.remote}/main's .github/ and "
             f"scripts/ci/ ({push[:9]})")
         return push

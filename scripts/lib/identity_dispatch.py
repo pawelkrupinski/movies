@@ -9,6 +9,7 @@ pushed commit and recorded as this machine's (agentctl dispatch record: a branch
     .main_ci_over(remote, commit, prefix) a child of <commit> whose tree has <remote>/main's .github/ and scripts/ci/
                                          laid over it, for a commit whose workflows predate a dispatch input; None when
                                          git fails
+    .main_ci_fetched_over(remote, commit, prefix) the same after fetching <remote>/main; raises DispatchFailed
     .push(remote, commit, branch)        None pushed, else the remote's reason; one measure/ push of this machine at a
                                          time (identity-tools.sh's lock, which the shell tools share: kept there)
     .dispatch(workflow, branch, push, purpose, args) the run id, or raises DispatchFailed saying why"""
@@ -64,6 +65,15 @@ class MeasureCi:
             return out.strip() if out else None
         finally:
             os.remove(index)
+
+    def main_ci_fetched_over(self, remote: str, commit: str, prefix: str) -> str:
+        """main_ci_over after fetching <remote>/main; raises DispatchFailed saying which step failed."""
+        if not self.git.ok("fetch", "-q", remote, "main", timeout=120, quiet=True):
+            raise DispatchFailed(f"could not fetch {remote} main")
+        push = self.main_ci_over(remote, commit, prefix)
+        if push is None:
+            raise DispatchFailed(f"could not lay main's CI over {commit}")
+        return push
 
     def push(self, remote: str, commit: str, branch: str) -> Optional[str]:
         done = tool_shell.shell_function(self.runner, self.env, IDENTITY_TOOLS, "identity_push_measure_branch",
