@@ -21,7 +21,7 @@ name: Tool self-tests
 # AND UNDER macOS's /bin/bash 3.2, BSD tools and /usr/bin/python3 3.9 (`macos-script-tests`), the floor the tools
 # promise and ubuntu has none of: on every push touching the tools, the push's floor scope (run-script-tests --changed
 # <before> --floor: the bash files it touched parsed by 3.2, their self-tests under it, the rest natively on macOS) and
-# the floor lint; a dispatch, every self-test under 3.2. Until 2026-11-22 only Order independence's swift leg ran them --
+# the floor lint; nightly (and a dispatch), every self-test under 3.2. Until 2026-11-22 only Order independence's swift leg ran them --
 # about a third of its reds (#89, #90, #94, #97, #103, #105), none an order dependence. A landing check's Linux pass is
 # no macOS pass: the skip below holds for the Linux job only.
 on:
@@ -41,6 +41,12 @@ on:
             - 'test/resources/fixtures/identity-judgements.tsv'
             - 'test/resources/fixtures/identity-unmatched/expected-matches.tsv'
             - 'test/resources/fixtures/corpus/expected-hard-clusters-*.txt'
+    # nightly: every self-test under macOS's bash 3.2 (a push runs only its floor scope)
+    schedule:
+        - cron: '29 17 * * *'
+    # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py): treated as the schedule.
+    repository_dispatch:
+        types: [scheduled-tool-self-tests]
     workflow_dispatch:
 
 concurrency:
@@ -175,3 +181,20 @@ jobs:
                   if-no-files-found: ignore
                   overwrite: true
                   retention-days: 14
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        name: report (scheduled run)
+        needs: [plan, script-tests, macos-script-tests]
+        if: always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}

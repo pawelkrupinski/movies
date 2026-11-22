@@ -82,6 +82,12 @@ class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
     RepoFile.read(".github/workflows/order-independence.yml") should not include "run-script-tests"
   }
 
+  it should "run every one of them nightly, on its own schedule, the push running only its floor scope" in {
+    val on = RepoFile.block(RepoFile.read(".github/workflows/tool-self-tests.yml"), "on")
+    on should include("schedule:")
+    on should include("scheduled-tool-self-tests")
+  }
+
   it should "first give them GNU timeout, shellcheck and rsync 3, which the tools run with on Linux CI and the laptop" in {
     // The macOS image has none of them: ten self-tests failed there "timeout: command not found" and "shellcheck is
     // not installed" (Order independence #28, run 41294275183), and backtest_alerts_local_test.py five times "rsync on

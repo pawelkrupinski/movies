@@ -203,6 +203,15 @@
       "onCalendar": [
         "*-*-* 06:00:00 UTC"
       ]
+    },
+    "tool-self-tests": {
+      "crons": [
+        "29 17 * * *"
+      ],
+      "file": "tool-self-tests.yml",
+      "onCalendar": [
+        "*-*-* 17:29:00 UTC"
+      ]
     }
   }
 }
