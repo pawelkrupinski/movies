@@ -66,11 +66,7 @@ for a in "$@"; do [ "$prev" = --json ] && json=$a; [ "$prev" = --jq ] && jq_filt
 case "$1 $2" in
   "workflow run") echo "$*" > "$STUB/dispatch"; [ -z "${DISPATCH_FAILS:-}" ] || exit 1 ;;
   "run list")
-    if [[ " $* " == *" status,createdAt "* ]]; then
-      # the sweep's read of a branch's newest run: "<status> <createdAt>" from $SWEEP_DIR/<branch>, none for a run-less branch
-      b=""; prev=""; for a in "$@"; do [ "$prev" = --branch ] && b=$a; prev=$a; done
-      [ -f "$SWEEP_DIR/${b//\//_}" ] && cat "$SWEEP_DIR/${b//\//_}"; exit 0
-    elif [[ " $* " == *" status,conclusion,createdAt,updatedAt,headBranch "* ]]; then
+    if [[ " $* " == *" status,conclusion,createdAt,updatedAt,headBranch "* ]]; then
       # --wait's ETA: the workflow's recent runs, $ETA_RUNS (none by default), through the caller's --jq
       jq -r "$jq_filter" <<< "${ETA_RUNS:-[]}"
     elif [[ " $* " == *" --branch "* ]]; then
@@ -453,29 +449,7 @@ check "--footprint: a change outside the title rules says so and measures in ful
      grep -q 'footprint: rule.txt can move a take outside the title rules' "$work/out" && echo true || echo false)|$(
      grep -q '^measure: full' "$work/out" && echo true || echo false)"
 
-# THE SWEEP: orphaned measure/ branches (a SIGKILLed measurement leaves one) are deleted by --sweep alone; a measurement never sweeps.
-rm -rf "$work/stub"; mkdir -p "$work/stub" "$work/sweep"; export SWEEP_DIR="$work/sweep"
-old_run="2020-01-01T00:00:00Z" new_run=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-for b in dead-finished live-running fresh-finished runless; do
-  scratch_git "$repo" push -q origin "$tip:refs/heads/measure/$b"
-done
-echo "completed $old_run" > "$work/sweep/measure_dead-finished"
-echo "in_progress $old_run" > "$work/sweep/measure_live-running"
-echo "completed $new_run" > "$work/sweep/measure_fresh-finished"
-sweep_remaining() { scratch_git "$origin" for-each-ref --format='%(refname:short)' refs/heads/measure | sort | tr '\n' ' '; }
-( cd "$repo" && STUB="$work/stub" ORIGIN="$origin" KINOWO_IDENTITY_CACHE="$work/cache" PATH="$work/bin:$PATH" \
-    "$REPO_ROOT/scripts/identity-measure" --sweep > "$work/out" 2>&1 ); status=$?
-check "--sweep exits 0" "0" "$status"
-check "...deleting only the branch whose run finished long ago" \
-  "measure/fresh-finished measure/live-running measure/runless " "$(sweep_remaining)"
-check "...and saying so" "true" "$(grep -q 'sweep: deleted orphaned measure/dead-finished' "$work/out" && echo true || echo false)"
-echo "completed $old_run" > "$work/sweep/measure_fresh-finished"
-echo "completed $old_run" > "$work/sweep/measure_live-running"
-rm -f "$work/stub/dispatch" "$work/stub/pushed"
-check "a measurement never sweeps: it deletes remote branches, so only --sweep does" "0" "$(measure landable --countries pl)"
-check "...leaving every branch" "measure/fresh-finished measure/live-running measure/runless " "$(sweep_remaining)"
-for b in runless fresh-finished live-running; do scratch_git "$origin" update-ref -d "refs/heads/measure/$b"; done
-rm -rf "$work/sweep"
+rm -rf "$work/stub"; mkdir -p "$work/stub"
 
 # THE RESULT CACHE: a verdict stored on the release answers the same request again, from any clone, in seconds.
 export RELEASE_DIR="$work/release"; mkdir -p "$RELEASE_DIR"

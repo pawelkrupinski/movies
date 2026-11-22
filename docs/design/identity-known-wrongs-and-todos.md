@@ -324,9 +324,8 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   identity-model-convergence (dispatch-only), an unreadable recording-health input now fails the leg unjudged,
   `ci_timings.py`'s gh calls are bounded, the stale "sample rows" comments are corrected, and the deleted `CI timings
   backfill` is no longer named in prometheus.yaml or ci-builds.json.
-- [x] Orphaned `measure/*` branches: `scripts/identity-measure` now sweeps origin's (every start, or `--sweep`) whose newest
-  run finished over 24 h ago. UNEXERCISED LIVE until GitHub is back: only the stubbed self-test has run it. A branch with no run at
-  all is left (origin gives no push time).
+- [x] Orphaned `measure/*` branches: `agentctl cleanup` deletes finished ones (its measure plan). The opt-in
+  `scripts/identity-measure --sweep`, never run against the real origin, was removed 2026-11-22.
 
 ### Machine and tooling
 - [ ] `core.hooksPath` is rewritten to the absolute root path by Claude Code whenever it creates an
