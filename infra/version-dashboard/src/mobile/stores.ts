@@ -176,21 +176,13 @@ interface AscVersion {
   readonly createdDate?: string;
 }
 
-/**
- * The newest iOS version Apple has actually put in front of users, and separately whatever is ahead
- * of it and still working its way there.
- *
- * `appStoreState == READY_FOR_SALE` IS "RELEASED"; WAITING_FOR_REVIEW IS NOT, even though it can sit
- * there for days -- folding it into the baseline would report changes as shipped before a single
- * user could have them. The `sort` query parameter 400s on this endpoint (PARAMETER_ERROR.ILLEGAL),
- * so the ordering is done here rather than trusted from Apple.
- */
 /** Sort order: the newest `createdDate` first, a version without one last. */
 function newestCreatedFirst(a: AscVersion, b: AscVersion): number {
   const [x, y] = [a.createdDate ?? "", b.createdDate ?? ""];
   return x > y ? -1 : x < y ? 1 : 0;
 }
 
+/** Asks App Store Connect for the app's versions, and reads what is live and pending from the answer. */
 export async function iosReleaseState(get: (path: string) => Promise<unknown>, sleep: Sleep = realSleep): Promise<StoreState> {
   let data: { data?: { attributes: AscVersion }[] };
   try {
@@ -201,11 +193,21 @@ export async function iosReleaseState(get: (path: string) => Promise<unknown>, s
   // An answer without the version list (an error document, a changed shape) is no answer: read as
   // empty it reported nothing live, and every change since the last release as unreleased.
   if (!Array.isArray(data?.data)) return { error: "App Store Connect answered without a version list", networkError: false };
-  const versions = data.data
-    .map((version) => version.attributes)
-    .sort(newestCreatedFirst);
-  const live = versions.find((version) => version.appStoreState === "READY_FOR_SALE") ?? null;
-  const newest = versions[0] ?? null;
+  return iosStoreState(data.data.map((version) => version.attributes).sort(newestCreatedFirst));
+}
+
+/**
+ * The newest iOS version Apple has actually put in front of users, and separately whatever is ahead
+ * of it and still working its way there, from the versions newest first.
+ *
+ * `appStoreState == READY_FOR_SALE` IS "RELEASED"; WAITING_FOR_REVIEW IS NOT, even though it can sit
+ * there for days -- folding it into the baseline would report changes as shipped before a single
+ * user could have them. The `sort` query parameter 400s on this endpoint (PARAMETER_ERROR.ILLEGAL),
+ * so the caller orders the versions rather than trusting Apple's order.
+ */
+function iosStoreState(versions: readonly AscVersion[]): StoreState {
+  const live = versions.find((version) => version.appStoreState === "READY_FOR_SALE");
+  const newest = versions[0];
   const pending = newest && (!live || newest.versionString !== live.versionString)
     ? { version: newest.versionString ?? null, state: newest.appStoreState ?? null }
     : null;
@@ -286,9 +288,13 @@ export async function androidReleaseState(play: PlayApi, sleep: Sleep = realSlee
   } catch (error) {
     return failed(error);
   }
-  const releases = track.releases ?? [];
-  const completed = releases.find((release) => release.status === "completed") ?? null;
-  const newest = releases[0] ?? null;
+  return androidStoreState(track.releases ?? []);
+}
+
+/** The track's completed release is live; a newer one listed first (rolling out, halted, a draft) is pending. */
+function androidStoreState(releases: readonly PlayRelease[]): StoreState {
+  const completed = releases.find((release) => release.status === "completed");
+  const newest = releases[0];
   const pending = newest && newest !== completed ? { version: newest.name ?? null, state: newest.status ?? null } : null;
   return {
     error: null,

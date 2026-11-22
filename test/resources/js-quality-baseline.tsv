@@ -18,7 +18,5 @@ limit	clone-tokens	50
 limit	fanout	9
 limit	distance	0.2
 limit	cycle	0
-cyclomatic	infra/version-dashboard/src/mobile/stores.ts:androidReleaseState	14
-cyclomatic	infra/version-dashboard/src/mobile/stores.ts:iosReleaseState	16
 fanout	web/src/main/assets/js/shared/boot.js	10
 distance	infra/version-dashboard/src/mobile	0.53
