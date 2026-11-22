@@ -7,6 +7,7 @@ import io
 import os
 import sys
 import tempfile
+import time
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -52,6 +53,30 @@ class SubprocessRunnerTest(unittest.TestCase):
         plain = os.path.join(self.dir.name, "plain")
         open(plain, "w").close()
         self.assertEqual(126, self.runner.run(tool_process.Command([plain], dict(os.environ), log=self.log)))
+
+    def test_capture_returns_the_status_and_both_streams(self) -> None:
+        done = self.runner.capture(tool_process.Command([*SH, "echo out; echo err >&2; exit 4"], dict(os.environ)))
+        self.assertEqual((4, "out\n", "err\n"), (done.code, done.stdout, done.stderr))
+
+    def test_a_command_past_its_bound_is_ended_with_its_group_124(self) -> None:
+        pids = os.path.join(self.dir.name, "pids")
+        hung = f"(echo $$ >> {pids}; exec sleep 86400) & echo $! >> {pids}; exec sleep 86400"
+        self.assertEqual(124, self.runner.run(tool_process.Command([*SH, hung], dict(os.environ), log=self.log,
+                                                                   timeout=0.5)))
+        self.assertEqual(124, self.runner.capture(tool_process.Command([*SH, hung], dict(os.environ), timeout=0.5)).code)
+        with open(pids) as f:
+            for pid in [int(line) for line in f if line.strip()]:
+                self.assertFalse(alive(pid), pid)
+
+
+def alive(pid: int) -> bool:
+    for _ in range(100):
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return False
+        time.sleep(0.05)
+    return True
 
 
 if __name__ == "__main__":
