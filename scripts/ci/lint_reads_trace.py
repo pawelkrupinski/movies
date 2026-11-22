@@ -39,7 +39,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
 from concurrent.futures import ThreadPoolExecutor
 
 OLD_NS = 946684800 * 10**9  # 2000-01-01: before every mtime, so the next read moves the atime
@@ -102,11 +101,17 @@ def atime_moves(root="."):
             f.write("x\n")
         for p in (inner, entry):
             os.utime(p, ns=(OLD_NS, os.stat(p).st_mtime_ns))
-        start = time.time_ns()
         subprocess.run(["sh", "-c", 'cat "$1" > /dev/null; ls "$2" > /dev/null', "_", entry, inner], check=True)
-        return tuple(os.stat(p).st_atime_ns >= start for p in (entry, inner))
+        return tuple(moved(p) for p in (entry, inner))
     finally:
         shutil.rmtree(probe, ignore_errors=True)
+
+
+def moved(path: str) -> bool:
+    """Whether path's atime left OLD_NS, where it was aged: a read since. Never "at or after the clock read before the
+    command": Linux stamps a file with its coarse clock, a tick behind time.time_ns(), so a read right after that
+    reading can carry an earlier atime (ci-runner's ext4, 2026-11-22: both reading cases saw no read)."""
+    return os.stat(path).st_atime_ns > OLD_NS
 
 
 def blind(moves):
@@ -128,12 +133,11 @@ def observe(command, watched, copies, cwd=None):
             os.utime(p, ns=(OLD_NS, os.stat(p).st_mtime_ns))
         except OSError:
             pass
-    start = time.time_ns()
     run = subprocess.run(command, cwd=cwd, capture_output=True, text=True)
     seen = []
     for p in watched:
         try:
-            if os.stat(p).st_atime_ns >= start:
+            if moved(p):
                 seen.append(p)
         except OSError:
             pass

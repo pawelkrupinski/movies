@@ -89,6 +89,15 @@ class LintReadsTraceTest(unittest.TestCase):
                               "worker/target/scala-3.10.1/classes/table.tsv >/dev/null")
         self.assertEqual(reads, ["worker/src/test/resources/fixture.txt"])
 
+    def test_a_read_stamped_by_a_clock_behind_the_traces_is_still_seen(self):
+        """Linux stamps an atime from its coarse clock, a tick behind the trace's own: a read stamped before the
+        command started is a read all the same."""
+        script = ('python3 -c "import os, sys, time; p = sys.argv[1]; '
+                  'os.utime(p, ns=(time.time_ns() - 10**9, os.stat(p).st_mtime_ns))" docs/notes.md')
+        reads, run = T.observe(["sh", "-c", script], ["docs/notes.md", "scripts/tool.sh"], {})
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(reads, ["docs/notes.md"])
+
     def test_a_filesystem_whose_atimes_never_move_is_refused(self):
         """A trace that cannot see a read would report every row whole: it refuses, naming why, before running a spec."""
         self.assertIn("file read", T.blind((False, False)))
