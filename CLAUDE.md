@@ -339,7 +339,13 @@ change): every method's cognitive complexity (Sonar's) ≤ 10, cyclomatic ≤ 10
 (`length-baseline.tsv`, `Length: <why>`); no new clone group of 50+ tokens (PMD CPD, `package`/`import` lines not
 counted) and no group gaining a copy (`duplication-baseline.tsv`, `Duplication: <why>`). Tightened 2026-11-20 (from
 cognitive 15, file 800, clones 100 tokens) once every row was within the old limits: what was past the new ones is
-frozen, the next work list. Each baseline freezes what is over a limit today; a new method or file over
+frozen, the next work list. **Hand-written data tables stay Scala literals** (the owner, 2026-11-22: never moved to a
+TSV to shrink them) and are an exemption category, not frozen rows: each is declared in
+`test/resources/quality-data-tables.tsv` (a specific why and an `added` date, linted as the coupling exemptions; a row
+added carries `Length: <why>`), and the measure (`quality.DataTables`) reads from the code that it is DATA -- a member
+`val` of an `object` of literals, constructors and collections, no def, branch, lambda or block, or the push fails
+naming the line. A declared table counts as no method and its lines not toward its source's file length. Move a table
+out of an object holding logic only when it pushes that object's or source's measures past a limit. Each baseline freezes what is over a limit today; a new method or file over
 one, or a frozen row rising, fails until split or recorded (`scripts/quality-report --update`, committed with the
 trailer); a fall needs none. A moved source keeps its rows only when git sees the rename (`git diff -M`) and no value
 rises in the move. `scripts/hotspots` (a report, not a gate; monthly as the `quality-hotspots` release's

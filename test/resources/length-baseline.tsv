@@ -7,11 +7,4 @@
 # commit carrying `Length: <why>` (CLAUDE.md, "Code quality ratchets").
 limit	method-lines	50
 limit	file-lines	500
-method-lines	common/src/main/scala/models/CountryNames.scala:CountryNames.Aliases	91
-method-lines	common/src/main/scala/models/LegacySlugOwners.scala:LegacySlugOwners.de	59
-method-lines	common/src/main/scala/models/LegacySlugOwners.scala:LegacySlugOwners.us	261
-method-lines	common/src/main/scala/services/MongoCollections.scala:MongoCollections.all	163
-method-lines	common/src/main/scala/services/titles/rules/TitleRulePlaceholders.scala:TitleRulePlaceholders.defined	58
-method-lines	http/src/main/scala/tools/HostPolicies.scala:HostPolicies.all	371
 method-lines	identity/src/main/scala/services/identity/RuleContract.scala:RuleContract.nonMonotone	73
-method-lines	scrapers/src/main/scala/services/cinemas/pl/venues/PolishTowns.scala:PolishTowns.towns	67

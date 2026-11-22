@@ -3,12 +3,13 @@ package quality
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 
+import org.scalatest.LoneElement
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /** The rows the ratchets read: only the deployed modules' src/main is measured, and a method past a limit is a row
  *  (a new one, which quality_ratchet.py fails without a baseline row), a method within every limit none. */
-class QualityReportSpec extends AnyFlatSpec with Matchers {
+class QualityReportSpec extends AnyFlatSpec with Matchers with LoneElement {
 
   private def withRoot(files: (String, String)*)(f: Path => Unit): Unit = {
     val root = Files.createTempDirectory("quality-report")
@@ -55,6 +56,25 @@ class QualityReportSpec extends AnyFlatSpec with Matchers {
       QualityReport.rows(sources, QualityReport.measure(sources)).filterNot(_.startsWith("limit")) shouldBe Seq(
         "method-lines\tweb/src/main/scala/a/Long.scala:Long.long\t51",
         "file-lines\tweb/src/main/scala/a/Long.scala\t501",
+      )
+    }
+  }
+
+  "a declared data table" should "count in no method row and none of its source's lines; one that is no data, a row naming it" in {
+    val table = "  val table: Seq[String] = Seq(\n" + "    \"row\",\n" * 60 + "  )\n"
+    val source = s"package a\nobject Rows {\n$table  val logic: Seq[String] = Seq(\n" + "    \"row\",\n" * 59 + "  ).map(_.trim)\n" +
+      "  // pad\n" * 377 + "}\n"
+    withRoot("common/src/main/scala/a/Rows.scala" -> source,
+      DataTables.DeclaredPath -> ("# declared\ntable\tcommon/src/main/scala/a/Rows.scala:Rows.table\t2026-11-22\twhy\n" +
+        "table\tcommon/src/main/scala/a/Rows.scala:Rows.logic\t2026-11-22\twhy\ntable\tcommon/src/main/scala/a/Gone.scala:Gone.t\t2026-11-22\twhy\n")) { root =>
+      val sources = QualityReport.productionSources(root)
+      sources.loneElement.text.linesIterator.size shouldBe 503
+      val tables = QualityReport.dataTables(sources, DataTables.declared(root))
+      QualityReport.rows(sources, QualityReport.measure(sources), tables).filterNot(_.startsWith("limit")) shouldBe Seq(
+        "method-lines\tcommon/src/main/scala/a/Rows.scala:Rows.logic\t61",
+        "not-data-table\tcommon/src/main/scala/a/Gone.scala:Gone.t\t0",
+        "not-data-table\tcommon/src/main/scala/a/Rows.scala:Rows.logic\t125",
+        "data-table\tcommon/src/main/scala/a/Rows.scala:Rows.table\t62",
       )
     }
   }

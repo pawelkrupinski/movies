@@ -48,6 +48,15 @@ object HostPolicies {
   val KinoprogrammUserAgent: String =
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
+  /** Ocine's ticketing servers, one a venue (`tickets.ocine<venue>.es`): the hosts its row in [[all]] paces. */
+  private val OcineHosts: Set[String] =
+    Set("arenys", "blanes", "copo", "gavarres", "girona", "granollers", "magic", "mendibil",
+      "platjadaro", "plazaeboli", "premium7palmas", "premiumaqua", "premiumbahiareal",
+      "premiumestepark", "premiumgranvia", "premiumlleida", "premiumlosfresnos",
+      "premiumportopi", "quadernillos", "rioshopping", "roquetes", "serrallo",
+      "urbancaleido", "urbanxmadrid", "vendrell", "vilaseca")
+      .map(venue => s"tickets.ocine$venue.es")
+
   /** The per-host policy table — the single place a host earns a non-default
    *  timeout, pace, header, or HTTP version. First matching row wins. */
   val all: Seq[HostPolicy] = Seq(
@@ -362,12 +371,7 @@ object HostPolicies {
     // `SpanishRoster.ocineServerByCinema` maps (from `data/spain/ocine.json`);
     // `CinemaScraperCatalogSpec` fails on a venue whose host has no pace here.
     HostPolicy(
-      Set("arenys", "blanes", "copo", "gavarres", "girona", "granollers", "magic", "mendibil",
-        "platjadaro", "plazaeboli", "premium7palmas", "premiumaqua", "premiumbahiareal",
-        "premiumestepark", "premiumgranvia", "premiumlleida", "premiumlosfresnos",
-        "premiumportopi", "quadernillos", "rioshopping", "roquetes", "serrallo",
-        "urbancaleido", "urbanxmadrid", "vendrell", "vilaseca")
-        .map(venue => s"tickets.ocine$venue.es"),
+      OcineHosts,
       minRequestInterval = Some(Duration.ofMillis(1000)),
       paceKnob           = Some(PaceKnob.Ocine),
     ),

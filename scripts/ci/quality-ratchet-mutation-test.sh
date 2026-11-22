@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # THE CODE-QUALITY RATCHETS HOLD, proved by mutation: each mutant below is quality_ratchet.py with ONE check taken out,
 # and quality_ratchet_test.py must FAIL against every one -- a check whose removal no test notices could silently stop
-# working and let complexity, length or duplication grow unreviewed. Each mutant is applied by exact text; a mutant
+# working and let complexity, length or duplication grow unreviewed (or a data table hold logic, or be declared
+# without a why). Each mutant is applied by exact text; a mutant
 # whose text is no longer in the tool exactly once fails this test too (the tool changed: re-aim the mutant at the new
 # check). A mutant named `trailers.py: ...` mutates the module the tool imports (the attribution rule lives there), each
 # mutant in a directory of its own beside its own copy of that module.
@@ -39,6 +40,19 @@ mutants=(
   'a move may change the method name @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if old not in present and (moved_key(old, renames) or "").partition(":")[0] == key.partition(":")[0] and was >= value), None)'
   'a move is growth @@ and not (key not in before and moved_from(key, value, before, after, renames)): @@ :'
   'a malformed row is skipped @@ raise ValueError(f"line {n}: not @@ continue  # (f"line {n}: not'
+  'a declared table holding logic passes @@         if key in data:
+            continue @@         if True:
+            continue'
+  'a table row'"'"'s why is not linted @@ problems += [f"{where}: {cols[1]}'"'"'s why: {p}" for p in table_reason_problems(cols[1], cols[3])] @@ pass'
+  'a table row needs no date @@ if not ISO_DATE.match(cols[2]): @@ if False:'
+  'a generic why passes @@ out += [f"`{phrase}` is generic: say what the table holds and what reads it" for rx, phrase in GENERIC_REASONS @@ out += [f"`{phrase}` is generic: say what the table holds and what reads it" for rx, phrase in ()'
+  'a malformed table row is skipped @@ problems.append(f"{where}: not `table<TAB> @@ (f"{where}: not `table<TAB>'
+  'a table added needs no trailer @@         if refused:
+            problems.append @@         if False:
+            problems.append'
+  'the data tables never fail @@     if problems:
+        print(f"THE DATA TABLES @@     if False:
+        print(f"THE DATA TABLES'
 )
 
 mkdir -p "$work/mutants"
@@ -48,7 +62,8 @@ for m in "${mutants[@]}"; do
   name=${m%% @@ *}; rest=${m#* @@ }; from=${rest%% @@ *}; to=${rest#* @@ }
   printf '%s' "$name" > "$work/mutants/$i.name"
   mkdir -p "$work/mutants/$i"
-  cp "$tool" "$REPO_ROOT/scripts/ci/trailers.py" "$work/mutants/$i/"  # the tool and the module it imports, side by side
+  # the tool and the modules it imports, side by side
+  cp "$tool" "$REPO_ROOT/scripts/ci/trailers.py" "$REPO_ROOT/scripts/ci/coupling_ratchet.py" "$work/mutants/$i/"
   target="$work/mutants/$i/quality_ratchet.py"
   case "$name" in "trailers.py: "*) target="$work/mutants/$i/trailers.py" ;; esac
   python3 -I - "$target" "$target" "$from" "$to" <<'PY'

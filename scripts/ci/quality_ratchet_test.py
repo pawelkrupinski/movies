@@ -22,6 +22,7 @@ TOOL = os.environ.get("QUALITY_RATCHET_UNDER_TEST") or os.path.join(HERE, "quali
 COMPLEXITY = "test/resources/complexity-baseline.tsv"
 LENGTH = "test/resources/length-baseline.tsv"
 DUPLICATION = "test/resources/duplication-baseline.tsv"
+DATA_TABLES = "test/resources/quality-data-tables.tsv"
 
 ROWS = """# a comment
 limit\tcognitive\t15
@@ -349,6 +350,54 @@ class QualityRatchetTest(unittest.TestCase):
         shrunk = rows(drop=("inner-defs",))
         head = self.commit({COMPLEXITY: shrunk}, "split B.g")
         self.assert_passes(shrunk, rng=f"{self.base}..{head}")
+
+    # ── the data tables ──
+
+    TABLE = "a/src/main/scala/T.scala:T.rows"
+    WHY = "per-host policies: each scraped host's pace and timeouts, read by the fetcher at every request"
+
+    def declare(self, *rows_, message="declare a table\n\nLength: the hand-written host table"):
+        text = "# the data tables\n" + "".join(f"table\t{key}\t{added}\t{why}\n" for key, added, why in rows_)
+        return self.commit({DATA_TABLES: text}, message)
+
+    def test_a_declared_table_read_as_data_passes(self):
+        self.declare((self.TABLE, "2026-11-22", self.WHY))
+        out = self.assert_passes(rows(f"data-table\t{self.TABLE}\t300"))
+        self.assertIn("data tables: 1 declared, every one read as data", out)
+
+    def test_a_declared_table_holding_logic_fails(self):
+        self.declare((self.TABLE, "2026-11-22", self.WHY))
+        self.assert_fails(rows(f"not-data-table\t{self.TABLE}\t42"), "THE DATA TABLES",
+                          f"{self.TABLE}: line 42 holds a def, branch, lambda or block")
+
+    def test_a_declared_table_the_measure_did_not_find_fails(self):
+        self.declare((self.TABLE, "2026-11-22", self.WHY))
+        self.assert_fails(rows(f"not-data-table\t{self.TABLE}\t0"), f"{self.TABLE}: no member val of an object")
+        self.assert_fails(rows(), f"{self.TABLE}: no member val of an object")
+
+    def test_a_table_row_without_a_date_or_a_specific_why_fails(self):
+        self.declare((self.TABLE, "today", self.WHY))
+        self.assert_fails(rows(f"data-table\t{self.TABLE}\t300"), "no `added` date")
+        self.declare((self.TABLE, "2026-11-22", "T.rows: is needed"))
+        self.assert_fails(rows(f"data-table\t{self.TABLE}\t300"), "too short", "`needed` is generic")
+        self.declare((self.TABLE, "2026-11-22", "a big table of rows the fetcher reads at every request it makes"))
+        self.assert_fails(rows(f"data-table\t{self.TABLE}\t300"), "lead with what the table holds")
+
+    def test_a_malformed_table_row_fails(self):
+        self.commit({DATA_TABLES: f"tabel\t{self.TABLE}\t2026-11-22\t{self.WHY}\n"}, "a typo")
+        self.assert_fails(rows(), "not `table<TAB><path>:<Owner.member><TAB>added<TAB>why`")
+
+    def test_a_table_added_needs_the_length_trailer(self):
+        head = self.declare((self.TABLE, "2026-11-22", self.WHY), message="declare a table\n\nComplexity: not this one")
+        self.assert_fails(rows(f"data-table\t{self.TABLE}\t300"), f"data table {self.TABLE} added", rng=f"{self.base}..{head}")
+        start = self.declare()
+        head = self.declare((self.TABLE, "2026-11-22", self.WHY))
+        self.assert_passes(rows(f"data-table\t{self.TABLE}\t300"), rng=f"{start}..{head}")
+
+    def test_a_table_dropped_needs_no_trailer(self):
+        start = self.declare((self.TABLE, "2026-11-22", self.WHY))
+        head = self.declare(message="the table split into a source of its own")
+        self.assert_passes(rows(), rng=f"{start}..{head}")
 
     # ── update, and malformed input ──
 

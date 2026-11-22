@@ -9,6 +9,13 @@
 #   duplication  copies of the clone groups over a set of files     test/resources/duplication-baseline.tsv  Duplication:
 #                (and clone-tokens, a limit only: the shortest clone counted)
 #
+# THE DATA TABLES (test/resources/quality-data-tables.tsv; quality.DataTables): the hand-written tables kept as Scala
+# literals that the length ratchet does not hold. The measure writes `data-table<TAB>key<TAB>lines` for each declared
+# table it read as data (a member val of an object of literals, constructors and collections: no def, branch, lambda or
+# block) and `not-data-table<TAB>key<TAB>line` for one it did not (the line logic sits on; 0: no such member). Every
+# declared table must be read as data, every row's why is linted (as the coupling exemptions': specific, no generic
+# phrase) with its `added` date, and a row added lands only in a commit carrying `Length: <why>`.
+#
 # A row is `kind<TAB>key<TAB>value`, `limit<TAB>kind<TAB>value` a kind's limit; `#` lines are comments. The measure
 # writes a row for each key past its kind's limit. A key with a baseline row may not rise past it; a key without one
 # fails (a NEW method over a limit) -- unless it is a MOVE: a baseline row gone from the measure whose source git's
@@ -30,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -37,6 +45,7 @@ from typing import Dict, List, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
 import trailers  # noqa: E402
+from coupling_ratchet import GENERIC_REASONS, ISO_DATE  # noqa: E402
 
 Rows = Dict[Tuple[str, str], int]
 
@@ -87,6 +96,97 @@ RATCHETS: Dict[str, Ratchet] = {r.name: r for r in (
             "Split the method or the source (a class, an object, a file of its own), or record it: scripts/quality-report"
             " --update, committed with a `Length: <why>` trailer."),
 )}
+
+
+DATA_TABLES = "test/resources/quality-data-tables.tsv"
+DATA_TABLE_TRAILER = "Length"
+TABLE_REASON_MIN_CHARS, TABLE_REASON_MIN_WORDS = 40, 6
+TABLE_REASON_SHAPE = ("`<what the table holds>: <what reads it, and why it is hand-written>`, e.g. `per-host HTTP policies:"
+                      " each host's pace and timeouts, with the incident behind each value beside it`")
+
+
+def declared_tables(text: str) -> Tuple[Dict[str, List[str]], List[str]]:
+    """The data-table file's rows, key -> columns, and what is wrong with each malformed one (its columns, its `added`
+    date, its why)."""
+    rows: Dict[str, List[str]] = {}
+    problems = []
+    for n, line in enumerate(text.splitlines(), 1):
+        if not line.strip() or line.startswith("#"):
+            continue
+        cols = line.split("\t")
+        where = f"{DATA_TABLES}:{n}"
+        if len(cols) != 4 or cols[0] != "table" or ":" not in cols[1]:
+            problems.append(f"{where}: not `table<TAB><path>:<Owner.member><TAB>added<TAB>why`: {line!r}")
+            continue
+        if cols[1] in rows:
+            problems.append(f"{where}: {cols[1]} declared twice")
+        if not ISO_DATE.match(cols[2]):
+            problems.append(f"{where}: no `added` date (the third column, YYYY-MM-DD: the day it is added)")
+        problems += [f"{where}: {cols[1]}'s why: {p}" for p in table_reason_problems(cols[1], cols[3])]
+        rows[cols[1]] = cols
+    return rows, problems
+
+
+def table_reason_problems(key: str, why: str) -> List[str]:
+    """Why `why` is no SPECIFIC reason for a data table: it leads with what the table holds, says 40+ characters and 6+
+    words besides the member's name, and no generic phrase."""
+    text = why.strip()
+    out = []
+    held, sep, _ = text.partition(":")
+    if not sep or not held.strip():
+        out.append(f"lead with what the table holds: {TABLE_REASON_SHAPE}")
+    member = key.rpartition(":")[2]
+    rest = text
+    for name in sorted({member, member.rsplit(".", 1)[-1]}, key=len, reverse=True):
+        rest = rest.replace(name, " ")
+    if len(rest.strip()) < TABLE_REASON_MIN_CHARS or len(rest.split()) < TABLE_REASON_MIN_WORDS:
+        out.append(f"too short: {TABLE_REASON_MIN_CHARS}+ characters and {TABLE_REASON_MIN_WORDS}+ words besides the member's name")
+    lowered = text.lower()
+    out += [f"`{phrase}` is generic: say what the table holds and what reads it" for rx, phrase in GENERIC_REASONS
+            if re.search(rx, lowered)]
+    return out
+
+
+def table_violations(current: Rows, declared: Dict[str, List[str]]) -> List[str]:
+    """Each declared table the measure did not read as data, one sentence each."""
+    data, not_data = of_kind(current, "data-table"), of_kind(current, "not-data-table")
+    out = []
+    for key in sorted(declared):
+        if key in data:
+            continue
+        line = not_data.get(key, 0)
+        out.append(f"{key}: line {line} holds a def, branch, lambda or block -- logic, not data" if line
+                   else f"{key}: no member val of an object by that name")
+    return out
+
+
+def tables_added(old: str, new: str) -> List[str]:
+    """The data tables `new` declares that `old` does not: each loosens the length ratchet."""
+    before = declared_tables(old)[0]
+    return [f"data table {key} added" for key in sorted(declared_tables(new)[0]) if key not in before]
+
+
+def check_tables(current: Rows, ranges: List[str]) -> bool:
+    """The data tables held: each row well formed, each table read as data, each row added under its trailer."""
+    text = open(DATA_TABLES).read() if os.path.exists(DATA_TABLES) else ""
+    declared, problems = declared_tables(text)
+    problems += table_violations(current, declared)
+    for rng in ranges:
+        old = file_at(rng.split("..")[0], DATA_TABLES)
+        added = tables_added(old, text)
+        refused = trailers.unjustified_rises(rng, DATA_TABLES, DATA_TABLE_TRAILER, tables_added) if added else []
+        if refused:
+            problems.append(f"{'; '.join(added)} in {rng}, with no `{DATA_TABLE_TRAILER}: <why>` trailer on the commit"
+                            f" adding it: {'; '.join(refused)}")
+    if problems:
+        print(f"THE DATA TABLES of {DATA_TABLES} do not hold:")
+        for p in problems:
+            print(f"  - {p}")
+        print("  A table is a member val of an object built only of literals, names, constructors and collections: move"
+              " the logic out of it (a val or def of its own beside it), or drop its row and split it.")
+        return False
+    print(f"data tables: {len(declared)} declared, every one read as data")
+    return True
 
 
 def parse(text: str) -> Rows:
@@ -286,6 +386,8 @@ def main(argv: List[str]) -> int:
             return 0
         renames = Renames()
         results = [check_one(ratchet, current, args.range, renames) for ratchet in chosen]
+        if RATCHETS["length"] in chosen:
+            results.append(check_tables(current, args.range))
         return 0 if all(results) else 1
     except (OSError, ValueError, subprocess.CalledProcessError) as e:
         print(f"quality_ratchet: {e}", file=sys.stderr)

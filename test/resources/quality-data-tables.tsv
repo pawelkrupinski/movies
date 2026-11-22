@@ -1,0 +1,24 @@
+# THE DATA TABLES (CLAUDE.md, "Code quality ratchets"; quality.DataTables, scripts/ci/quality_ratchet.py): the
+# hand-written tables kept as Scala literals (the owner, 2026-11-22: never moved to a TSV to shrink them) that the length
+# limits do not hold. A table here is measured as no method, and its lines are not its source's (file-lines), so it never
+# counts toward another method's or its source's measures.
+#
+#   table<TAB><path>:<Owner.member><TAB>added<TAB>why
+#
+# The measure decides from the code that each is DATA: a member `val` of an `object` built only of literals, names,
+# constructors and collections (`Seq(...)`, `Map(...)`, a case class) and the operators that build them (`->`, `+`,
+# `++`); a def, a branch, a loop, a lambda or a block anywhere in it fails the push, naming the line -- logic cannot hide
+# in a table. A row naming no such member fails too.
+#
+# A ROW ADDED carries, in the commit adding it: a SPECIFIC why, `<what the table holds>: <what reads it, and why it is
+# hand-written>` (40+ characters and 6+ words besides the member's name; no generic `complex`, `needed`, `for now`, ...,
+# as the coupling exemptions); its `added` date (YYYY-MM-DD); and a `Length: <why>` trailer in the commit's FINAL trailer
+# block (it loosens the length ratchet). A row dropped needs none. Moving a table out of an object holding logic is the
+# owner's rule only when the table pushes that object's or source's measures past a limit (2026-11-22).
+table	common/src/main/scala/models/CountryNames.scala:CountryNames.Aliases	2026-11-22	country spellings: every alias and translation a scraped country string arrives in, folded to its canonical Polish name by CountryNames.canonical
+table	common/src/main/scala/models/LegacySlugOwners.scala:LegacySlugOwners.de	2026-11-22	German slugs of the shared namespace: every slug Germany owned before slugs were per country, generated once from 7fdc618ca's catalog and never regenerated
+table	common/src/main/scala/models/LegacySlugOwners.scala:LegacySlugOwners.us	2026-11-22	US slugs of the shared namespace: every slug the United States owned before slugs were per country, generated once from 7fdc618ca's catalog and never regenerated
+table	common/src/main/scala/services/MongoCollections.scala:MongoCollections.all	2026-11-22	Mongo collection registry: one entry a collection with its database, retention, writers and mirror, record and resolve roles, read by every store and the mirror tools
+table	common/src/main/scala/services/titles/rules/TitleRulePlaceholders.scala:TitleRulePlaceholders.defined	2026-11-22	title-rule placeholders: each placeholder's name, regex expansion and the help line the admin editor shows, in display order
+table	http/src/main/scala/tools/HostPolicies.scala:HostPolicies.all	2026-11-22	per-host HTTP policies: each scraped or enriching host's pace, fleet interval, timeouts, headers and HTTP version, with the incident behind each value beside it
+table	scrapers/src/main/scala/services/cinemas/pl/venues/PolishTowns.scala:PolishTowns.towns	2026-11-22	Polish towns in scrape order: one venue registry a town, whose order sets the order of every page's scrapers

@@ -18,6 +18,9 @@ import scala.jdk.CollectionConverters.*
  *   inner-defs  the defs nested in a method, past its limit
  *   method-lines a method's length in lines, past its limit
  *   file-lines  a source's length in lines (key: its path), past its limit
+ *   data-table  a declared data table (DataTables, test/resources/quality-data-tables.tsv) read as data: its lines,
+ *               which no method row and no file-lines row counts
+ *   not-data-table a declared table that is no data: the line where it stops being data (0: no such member val)
  *   copies      the copies of the clone groups spanning exactly the files `<path>|<path>...` (Clones: PMD CPD, 50
  *               tokens or more), limit 0 -- every clone group is a row; limit `clone-tokens` the shortest clone counted
  *               (a measure counting only longer ones would hide clones: the ratchet holds it like any limit)
@@ -49,7 +52,9 @@ object QualityReport {
     require(args.length % 2 == 0 && options.contains("--root") && options.contains("--rows"),
       "quality.QualityReport --root <repository> --rows <out> [--files <out>] [--report <markdown out>]")
     val started = System.nanoTime
-    val sources = productionSources(Paths.get(options("--root")))
+    val root    = Paths.get(options("--root"))
+    val sources = productionSources(root)
+    val tables  = dataTables(sources, DataTables.declared(root))
     // CPD is one thread and the measure's longest part: it runs beside the (parallel) parse
     val cpd = Executors.newSingleThreadExecutor()
     val (measured, groups) =
@@ -57,9 +62,9 @@ object QualityReport {
         val clones = cpd.submit(() => Clones.of(sources.map(s => s.path -> s.text)))
         (measure(sources), clones.get)
       } finally cpd.shutdown()
-    write(options("--rows"), rows(sources, measured) ++ cloneRows(groups))
+    write(options("--rows"), rows(sources, measured, tables) ++ cloneRows(groups))
     options.get("--files").foreach(write(_, fileLines(sources, measured)))
-    options.get("--report").foreach(write(_, report(sources, measured) ++ cloneReport(groups)))
+    options.get("--report").foreach(write(_, report(sources, measured, tables) ++ cloneReport(groups)))
     println(s"quality: ${sources.size} sources, ${measured.values.map(_.size).sum} methods, ${groups.size} clone groups, " +
       s"${(System.nanoTime - started) / 1000000} ms")
   }
@@ -85,6 +90,12 @@ object QualityReport {
     parsed.collect { case (path, Right(methods)) => path -> keyed(path, methods) }.toMap
   }
 
+  /** Each declared data table's verdict, read from its source; a key naming no production source is not found. */
+  def dataTables(sources: Seq[SourceFile], declared: Set[String]): Seq[DataTables.Verdict] = {
+    val read = sources.flatMap(s => DataTables.of(s.path, s.text, declared))
+    read ++ (declared -- read.map(_.key)).toSeq.sorted.map(DataTables.Verdict(_, 0, 0, None, found = false))
+  }
+
   /** `<path>:<Owner.method>`, a repeated name `#2`, `#3`, ... in source order. */
   def keyed(path: String, methods: Seq[MethodMeasures.Method]): Seq[Measured] = {
     val seen = scala.collection.mutable.Map.empty[String, Int].withDefaultValue(0)
@@ -102,13 +113,25 @@ object QualityReport {
     case "method-lines" => m.lines
   }
 
-  /** The limit rows, then every method past a limit, then every source past one, by kind and key. */
-  def rows(sources: Seq[SourceFile], measured: Map[String, Seq[Measured]]): Seq[String] = {
-    val all = measured.values.flatten.toSeq
+  /** The limit rows, then every method past a limit, then every source past one, by kind and key, then each declared
+   *  data table's verdict: a table read as data is no method, and its lines are not its source's. */
+  def rows(sources: Seq[SourceFile], measured: Map[String, Seq[Measured]], tables: Seq[DataTables.Verdict] = Nil): Seq[String] = {
+    val all = withoutTables(measured, tables)
     (MethodLimits ++ FileLimits).map { case (kind, limit) => s"limit\t$kind\t$limit" } ++
       MethodLimits.flatMap { case (kind, limit) => past(kind, limit, all.map(m => m.key -> valueOf(kind, m.method))) } ++
-      FileLimits.flatMap { case (kind, limit) => past(kind, limit, sources.map(s => s.path -> lineCount(s))) }
+      FileLimits.flatMap { case (kind, limit) => past(kind, limit, sources.map(s => s.path -> countedLines(s, tables))) } ++
+      tables.sortBy(_.key).map(t => if (t.isData) s"data-table\t${t.key}\t${t.lines}" else s"not-data-table\t${t.key}\t${t.offence.getOrElse(0)}")
   }
+
+  /** The measured methods, the data tables read as data left out. */
+  private def withoutTables(measured: Map[String, Seq[Measured]], tables: Seq[DataTables.Verdict]): Seq[Measured] = {
+    val data = tables.filter(_.isData).map(_.key).toSet
+    measured.values.flatten.toSeq.filterNot(m => data(m.key))
+  }
+
+  /** A source's lines, less the lines of its data tables read as data. */
+  private def countedLines(source: SourceFile, tables: Seq[DataTables.Verdict]): Int =
+    lineCount(source) - tables.filter(t => t.isData && t.key.startsWith(s"${source.path}:")).map(_.lines).sum
 
   /** The clone rows: the limits (none allowed without a row; the shortest clone counted), and one row a file set. */
   def cloneRows(groups: Seq[Clones.Group]): Seq[String] =
@@ -130,18 +153,23 @@ object QualityReport {
     sources.map(s => s"${s.path}\t${lineCount(s)}\t${measured.getOrElse(s.path, Nil).map(_.method.cognitive).sum}")
 
   /** The counts over each limit, the twenty worst methods by cognitive complexity, and the ten longest sources. */
-  def report(sources: Seq[SourceFile], measured: Map[String, Seq[Measured]]): Seq[String] = {
-    val all = measured.values.flatten.toSeq
+  def report(sources: Seq[SourceFile], measured: Map[String, Seq[Measured]], tables: Seq[DataTables.Verdict] = Nil): Seq[String] = {
+    val all = withoutTables(measured, tables)
     Seq("## Method complexity and length", "", s"${all.size} methods in ${measured.size} production sources.", "",
       "| measure | limit | over it |", "|---|---|---|") ++
       MethodLimits.map { case (kind, limit) => s"| $kind | $limit | ${all.count(m => valueOf(kind, m.method) > limit)} methods |" } ++
-      FileLimits.map { case (kind, limit) => s"| $kind | $limit | ${sources.count(lineCount(_) > limit)} sources |" } ++
+      FileLimits.map { case (kind, limit) => s"| $kind | $limit | ${sources.count(countedLines(_, tables) > limit)} sources |" } ++
       Seq("", "| method | cognitive | cyclomatic | inner defs | lines |", "|---|---|---|---|---|") ++
       all.sortBy(m => (-m.method.cognitive, m.key)).take(20).map { m =>
         s"| `${m.key}` | ${m.method.cognitive} | ${m.method.cyclomatic} | ${m.method.innerDefs} | ${m.method.lines} |"
       } ++
       Seq("", "| source | lines |", "|---|---|") ++
-      sources.sortBy(s => (-lineCount(s), s.path)).take(10).map(s => s"| `${s.path}` | ${lineCount(s)} |")
+      sources.sortBy(s => (-lineCount(s), s.path)).take(10).map(s => s"| `${s.path}` | ${lineCount(s)} |") ++
+      Seq("", s"${tables.count(_.isData)} declared data tables read as data (${DataTables.DeclaredPath}), not counted above.") ++
+      tables.filterNot(_.isData).map { t =>
+        if (t.found) s"- NOT DATA: `${t.key}` -- line ${t.offence.getOrElse(0)} holds a def, branch, lambda or block"
+        else s"- NOT DATA: `${t.key}` -- no member val of an object by that name"
+      }
   }
 
   private def write(path: String, lines: Seq[String]): Unit =
