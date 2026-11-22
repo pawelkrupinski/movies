@@ -21,6 +21,10 @@ scripts/ci/harness_aa.py
 .github/harness-aa-paths.txt
 # the takes check's harness: the check, its resolve dump, the final takes' ratchet replay and the diff
 scripts/ci/identity-takes-check.sh
+scripts/ci/identity_takes_check
+scripts/lib/tool_process.py
+scripts/lib/tool_github.py
+scripts/lib/tool_git.py
 scripts/ci/identity_takes_diff.py
 worker/src/it/scala/IdentityResolveDump.scala
 worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala

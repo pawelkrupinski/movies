@@ -11,7 +11,7 @@ commands, and the real one is `SubprocessRunner`. A `Command` says how it runs:
                                            exit 124 (tool-conventions.sh's `bounded`)
 
 `run` returns the exit status; `capture` returns it with stdout and stderr as text (`$(cmd)`), the command's stderr
-captured unless `log` takes both.
+captured unless `log` takes both; `start` runs it in the background (`cmd &`), its `Running` waited for or ended.
 
 The exit status is the command's own; a command that cannot be found is 127 and one that cannot be executed 126, as a
 shell says."""
@@ -52,6 +52,14 @@ class Runner(Protocol):
     def run(self, command: Command) -> int: ...
 
     def capture(self, command: Command) -> Captured: ...
+
+    def start(self, command: Command) -> "Running": ...
+
+
+class Running(Protocol):
+    def wait(self) -> int: ...
+
+    def end(self) -> None: ...
 
 
 class SubprocessRunner:
@@ -103,6 +111,18 @@ class SubprocessRunner:
             end_group(proc)
             return TIMED_OUT
 
+    def start(self, command: Command) -> "Background":
+        """The command in the background, in a process group of its own, its output into `log` (or inherited)."""
+        sys.stdout.flush()
+        sink = open(command.log, "ab" if command.append else "wb") if command.log else None
+        try:
+            proc = subprocess.Popen(list(command.argv), env=dict(command.env), stdin=self.stdin(command), stdout=sink,
+                                    stderr=subprocess.STDOUT if sink else None, cwd=command.cwd, start_new_session=True)
+        finally:
+            if sink:
+                sink.close()
+        return Background(proc)
+
     @staticmethod
     def stdin(command: Command) -> Optional[int]:
         return subprocess.DEVNULL if command.closed_stdin else None
@@ -123,6 +143,20 @@ class SubprocessRunner:
     def _failed(argv: Sequence[str], why: str, code: int) -> int:
         print(f"{os.path.basename(argv[0]) if argv else '?'}: {why}", file=sys.stderr)
         return code
+
+
+class Background:
+    """A command started in the background: waited for, or ended with its whole group."""
+
+    def __init__(self, proc: "subprocess.Popen[bytes]") -> None:
+        self.proc = proc
+
+    def wait(self) -> int:
+        return self.proc.wait()
+
+    def end(self) -> None:
+        if self.proc.poll() is None:
+            end_group(self.proc)
 
 
 def end_group(proc: "subprocess.Popen[bytes]") -> None:

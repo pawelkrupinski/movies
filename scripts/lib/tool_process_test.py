@@ -72,6 +72,18 @@ class SubprocessRunnerTest(unittest.TestCase):
             for pid in [int(line) for line in f if line.strip()]:
                 self.assertFalse(alive(pid), pid)
 
+    def test_a_background_command_waited_for_or_ended(self) -> None:
+        running = self.runner.start(tool_process.Command([*SH, "echo bg; exit 5"], dict(os.environ), log=self.log))
+        self.assertEqual(5, running.wait())
+        self.assertEqual("bg\n", self.logged())
+        pids = os.path.join(self.dir.name, "pids")
+        running = self.runner.start(tool_process.Command([*SH, f"echo $$ > {pids}; exec sleep 86400"], dict(os.environ)))
+        try:
+            self.assertTrue(cli_harness.wait_until(lambda: os.path.exists(pids) and bool(open(pids).read().strip())))
+        finally:
+            running.end()
+        self.assertFalse(alive(int(open(pids).read())))
+
 
 def alive(pid: int) -> bool:
     """Whether `pid` is still alive once a grace for its TERM has passed (cli_harness.wait_until: no guessed sleep)."""

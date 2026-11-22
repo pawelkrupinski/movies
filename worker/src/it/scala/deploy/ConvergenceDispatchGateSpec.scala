@@ -156,7 +156,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
   // exit codes are part of the verdict, so a push changing only one must still dispatch (and be bisectable).
   it should "list every Scala tool the takes check and the hard-cluster ratchet run" in {
     val RunMain = """runMain [a-z]+\.([A-Z][A-Za-z]+)""".r
-    val tools = Seq("scripts/ci/identity-takes-check.sh", "scripts/hard-clusters.sh")
+    val tools = Seq("scripts/ci/identity_takes_check_runs.py", "scripts/ci/identity_takes_check_head.py", "scripts/hard-clusters.sh")
       .flatMap(f => RunMain.findAllMatchIn(RepoFile.read(f)).map(_.group(1))).distinct
     tools should contain allOf ("IdentityResolveDump", "UnmatchedClustersRatchet", "HardClusterRecord")
     val files = tools.flatMap { tool =>

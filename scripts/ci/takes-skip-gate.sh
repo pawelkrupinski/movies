@@ -41,7 +41,7 @@ changed=$(git diff --name-only --no-renames "$base" "$head" --) || run "git coul
 
 # 5. the trace tooling unchanged (asked first: its files are no rule, and 3 would refuse them under another name)
 tooling=(testkit/src/main/scala/services/movies/NormalizerTrace.scala testkit/src/main/scala/services/movies/NormalizerTraceCheck.scala
-         scripts/ci/takes-skip-gate.sh scripts/ci/identity-takes-check.sh)
+         scripts/ci/takes-skip-gate.sh scripts/ci/identity-takes-check.sh 'scripts/ci/identity_takes_check*.py')
 tooling_diff=$(git diff --name-only "$base" "$head" -- "${tooling[@]}") || run "git could not diff the trace tooling"
 [ -z "$tooling_diff" ] || run "the trace tooling changed: $(head -1 <<< "$tooling_diff")"
 for f in "${tooling[@]:0:2}"; do git cat-file -e "$head:$f" 2> /dev/null || run "the head has no $f"; done

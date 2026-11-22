@@ -364,10 +364,10 @@ check "a run made days before it was collected with --run is not reused" "true" 
 take_patterns="$work/take-paths"
 # (reads the checkout's own HEAD: a hook's GIT_DIR is not inherited)
 ( cd "$REPO_ROOT" && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE "$REPO_ROOT/scripts/identity-measure" --take-paths ) > "$take_patterns"
-takes_check="$REPO_ROOT/scripts/ci/identity-takes-check.sh"
+takes_paths() { python3 -I "$REPO_ROOT/scripts/ci/identity_takes_check_paths.py"; } # the takes check's identity paths
 read_paths=$(
-  sed -n '/^identity_paths=(/,/)/p' "$takes_check" | sed -e 's/^identity_paths=(//' -e 's/)$//' | tr ' ' '\n' | grep -v '^$'
-  grep -oE 'testOnly [a-z.]*[A-Z][A-Za-z]*' "$takes_check" | sed 's/.* //; s/.*\.//' | while read -r class; do
+  takes_paths
+  cat "$REPO_ROOT"/scripts/ci/identity_takes_check*.py | grep -oE 'testOnly [a-z.]*[A-Z][A-Za-z]*' | sed 's/.* //; s/.*\.//' | while read -r class; do
     ( cd "$REPO_ROOT" && find ./*/src -name "$class.scala" | sed 's|^\./||' ); done
   echo test/resources/fixtures/identity-unmatched/pl.json.gz)
 uncovered=""
@@ -419,7 +419,7 @@ rules_base=$(scratch_git "$repo" rev-parse HEAD)
 echo "rule b" > "$repo/common/src/main/resources/title-rules.tsv"
 scratch_git "$repo" commit -qam "a title-rule change"
 rules_head=$(scratch_git "$repo" rev-parse HEAD)
-read -ra id_paths <<< "$(sed -n '/^identity_paths=(/,/)/p' "$takes_check" | sed -e 's/^identity_paths=(//' -e 's/)$//' | tr '\n' ' ')"
+read -ra id_paths <<< "$(takes_paths | tr '\n' ' ')"
 code=$(scratch_git "$repo" ls-tree -r "$rules_base" -- "${id_paths[@]}" | { if command -v sha256sum > /dev/null; then sha256sum; else shasum -a 256; fi; } | cut -c1-24)
 cat > "$work/bin/trace-check" <<'CHECK'
 #!/usr/bin/env bash

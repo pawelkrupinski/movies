@@ -167,6 +167,15 @@ scripts/ci/identity_drift_check_replay.py
 scripts/ci/identity_drift_check_store.py
 scripts/ci/identity_judgements_lint.py
 scripts/ci/identity_takes.py
+scripts/ci/identity_takes_check.py
+scripts/ci/identity_takes_check_base.py
+scripts/ci/identity_takes_check_context.py
+scripts/ci/identity_takes_check_head.py
+scripts/ci/identity_takes_check_paths.py
+scripts/ci/identity_takes_check_runs.py
+scripts/ci/identity_takes_check_sides.py
+scripts/ci/identity_takes_check_store.py
+scripts/ci/identity_takes_check_verdict.py
 scripts/ci/identity_takes_diff.py
 scripts/ci/install-actionlint.sh
 scripts/ci/install-playwright.sh
@@ -201,6 +210,9 @@ scripts/identity-slice-old-ref-test.sh
 scripts/identity_slice_diff.py
 scripts/it-local.sh
 scripts/label-lookup
+scripts/lib/tool_git.py
+scripts/lib/tool_github.py
+scripts/lib/tool_process.py
 scripts/local-mirror/freshness
 scripts/local-mirror/service.sh
 scripts/local-mirror/start-local-mongo.sh

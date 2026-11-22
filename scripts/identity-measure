@@ -325,7 +325,10 @@ result_release=${FIXTURE_RELEASE_TAG:-convergence-fixtures}
 tooling_hash() { # the blobs of the measure's own tooling, in this checkout: a change to how it measures is a new key
   local root=$here/.. f
   for f in scripts/identity-measure scripts/identity_measure.py scripts/identity-tools.sh scripts/tool-conventions.sh \
-           scripts/ci/dispatch.sh scripts/ci/identity-takes-check.sh scripts/ci/identity_takes.py scripts/ci/identity_takes_diff.py \
+           scripts/ci/dispatch.sh scripts/ci/identity-takes-check.sh scripts/ci/identity_takes.py \
+           scripts/ci/identity_takes_check.py scripts/ci/identity_takes_check_base.py scripts/ci/identity_takes_check_context.py \
+           scripts/ci/identity_takes_check_head.py scripts/ci/identity_takes_check_paths.py scripts/ci/identity_takes_check_runs.py scripts/ci/identity_takes_check_sides.py scripts/ci/identity_takes_check_store.py scripts/ci/identity_takes_check_verdict.py \
+           scripts/ci/identity_takes_diff.py scripts/lib/tool_process.py scripts/lib/tool_github.py scripts/lib/tool_git.py \
            scripts/ci/dispatch-takes.sh .github/workflows/identity-takes.yml \
            .github/workflows/identity-model-convergence.yml .github/workflows/country-convergence-leg.yml; do
     [ -f "$root/$f" ] && printf '%s %s\n' "$f" "$(git hash-object "$root/$f")"
@@ -675,11 +678,11 @@ footprint_rule_path() {
   esac
   return 1
 }
-# The takes check's identity paths (its own list, read as scripts/identity-measure-test.sh reads it), and its country code:
+# The takes check's identity paths (its own list, identity_takes_check_paths.py, read as scripts/identity-measure-test.sh reads it), and its country code:
 # the key a side's trace is stored under.
 footprint_code() { # <sha>
   local paths
-  read -ra paths <<< "$(sed -n '/^identity_paths=(/,/)/p' "$here/ci/identity-takes-check.sh" | sed -e 's/^identity_paths=(//' -e 's/)$//' | tr '\n' ' ')"
+  read -ra paths <<< "$(python3 -I "$here/ci/identity_takes_check_paths.py" | tr '\n' ' ')"
   [ "${#paths[@]}" -gt 0 ] || return 1
   git ls-tree -r "$1" -- "${paths[@]}" | sha256 | cut -c1-24
 }

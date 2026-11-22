@@ -7,6 +7,7 @@ has a case here that fails without it.
 """
 import copy
 import json
+import glob
 import os
 import re
 import subprocess
@@ -478,7 +479,8 @@ class ListedInputs(unittest.TestCase):
 
     CHECKS = ("scripts/ci/identity_drift_check.py", "scripts/ci/identity_drift_check_replay.py",
               "scripts/ci/identity_drift_check_store.py", "scripts/ci/identity_drift_check_judge.py",
-              "scripts/ci/identity-takes-check.sh")
+              *sorted(os.path.relpath(p, ROOT) for p in glob.glob(os.path.join(ROOT, "scripts/ci/identity_takes_check*.py"))
+                      if not p.endswith("_test.py")))
 
     def setUp(self):
         with open(os.path.join(ROOT, reuse.PATHS_FILE)) as f:
