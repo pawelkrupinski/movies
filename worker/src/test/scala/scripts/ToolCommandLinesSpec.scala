@@ -149,14 +149,6 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     refused(IdentityConjunctionProbe.commandLine, "p.tsv", "extra") shouldBe true
   }
 
-  "IdentityMlScorerBench" should "require its model, take the expected scores beside it, and nothing more" in {
-    val arguments = parsed(IdentityMlScorerBench.commandLine, "target/identity-ml/gbm-d2.json", "target/identity-ml/scores-d2.txt")
-    (arguments.requiredPositional("model"), arguments.positional("expected")) shouldBe ("target/identity-ml/gbm-d2.json", Some("target/identity-ml/scores-d2.txt"))
-    // args(0) threw ArrayIndexOutOfBounds with no model named
-    an[CommandLine.InvalidArguments] should be thrownBy parsed(IdentityMlScorerBench.commandLine).requiredPositional("model")
-    refused(IdentityMlScorerBench.commandLine, "m.json", "s.txt", "extra") shouldBe true
-  }
-
   "RecordUsChains" should "pin the day named, and refuse one that is no date or a second argument" in {
     import clients.tools.RecordUsChains
     RecordUsChains.dayOf(parsed(RecordUsChains.commandLine, "2026-10-12")) shouldBe Some(java.time.LocalDate.of(2026, 10, 12))

@@ -4,7 +4,8 @@ Written 2026-10-21, at main `96fb23c6c`. This is research and a proposal. No pro
 come from the five local prod mirrors (`mongodb://127.0.0.1:28017/kinowo_<cc>_prod_mirror`, PL `kinowo_prod_mirror`),
 read the same afternoon. The labels are `identity-judgements.tsv` plus `review_local.review_answers`. To reproduce, run
 `scripts/experiments/matching-fundamentals/export.js` (mongosh, once per mirror, writing JSONL), then
-`analyse.py <repo> <dir>` (`python3 -I`), both in `scripts/experiments/matching-fundamentals/`.
+`analyse.py <repo> <dir>` (`python3 -I`), both in `scripts/experiments/matching-fundamentals/` on the tag
+`experiment/matching-fundamentals-prototype` (removed from main 2026-11-22).
 
 ## 1. Where the error budget is
 

@@ -6,7 +6,7 @@ An OFFLINE experiment. No production code changed. The question: can matching ru
 machine learning from the whole pinned corpus, and how good, fast and accurate would that be at the bar that matters,
 ZERO wrong matches?
 
-Code: `scripts/ml-identity/identity_ml_experiment.py` (the fits and the measurements) and
+Code (removed from main 2026-11-22; on the tag `experiment/identity-ml-learned-rules`): `scripts/ml-identity/identity_ml_experiment.py` (the fits and the measurements) and
 `worker/src/test/scala/scripts/IdentityMlScorerBench.scala` (an in-JVM scorer for the boosted trees, with
 `IdentityMlScorerBenchSpec`). To rerun:
 

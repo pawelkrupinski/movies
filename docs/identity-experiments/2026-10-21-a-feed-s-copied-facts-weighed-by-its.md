@@ -1,5 +1,8 @@
 # 2026-10-21 — a feed's copied facts weighed by its measured reliability (fundamentals proposal 4.4, the "Next angle" below) — NOT LANDED (local tags `experiment/copied-share-fit-a`, `-b` in ~/projects/movies, recording 528 DE, base `cf5c9dc0c`, CI runs 943/944)
 
+The measuring code (`integration.CopiedFactReliability`, `scripts/experiments/copied-fact-*.py`) was removed from main on
+2026-11-22 and is on the tag `experiment/copied-fact-reliability-measure`.
+
 - **Measured first, per feed** (`integration.CopiedFactReliability`, CI identity-run 824/825/906/942 over 528 and
   38713274617; `scripts/experiments/copied-fact-reliability.py`): each judged (listing, film) pair whose facts a feed
   copied, by whether the copied facts' calibrated contribution backs (+) or weighs against (−) the judged film.

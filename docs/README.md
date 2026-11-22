@@ -75,7 +75,7 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
   ranked, with file:line and verified/unverified marks; MongoDB is already on 8.3.11 (FCV unconfirmed).
 - [proposals/2026-10-21-matching-fundamentals.md](proposals/2026-10-21-matching-fundamentals.md) — where the
   identity error budget is (recall, mostly relays), what was measured and rejected (title-word event gate, hard
-  runtime/date constraints), and the five approved changes; scripts in `scripts/experiments/matching-fundamentals/`.
+  runtime/date constraints), and the five approved changes; its scripts are on the tag `experiment/matching-fundamentals-prototype`.
 - [investigations/2026-10-22-rule-consolidation.md](investigations/2026-10-22-rule-consolidation.md) — the title
   rules moved into one table (`title-rules.tsv`): the inventory by effect, prod firings and BillingParse overlap, the
   byte-identity checks, which row merges fold alike (2) and which change stacked titles (23, for review), never-fired rows.
