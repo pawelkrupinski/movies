@@ -89,27 +89,8 @@ jobs:
                   KINDS: ${{ inputs.kinds }}
                   ROUNDS: ${{ inputs.rounds }}
                   ONLY: ${{ inputs.only }}
-              run: |
-                  set -uo pipefail
-                  bad=0
-                  err() { echo "::error::$*"; bad=1; }
-                  IFS=, read -r -a kinds <<< "$KINDS"
-                  for k in "${kinds[@]}"; do
-                      case "$k" in title|accept|veto|join|apart) ;; *) err "kinds: '$k' is not one of title, accept, veto, join, apart" ;; esac
-                  done
-                  [[ "$ROUNDS" =~ ^[0-9]+$ ]] || err "rounds: '$ROUNDS' is not a whole number"
-                  IFS=, read -r -a only <<< "$ONLY"
-                  for r in "${only[@]+"${only[@]}"}"; do
-                      # identity rules are `<kind>:<name>`; a title rule has no colon and needs `title` in kinds
-                      kind=title; [[ "$r" != *:* ]] || kind=${r%%:*}
-                      [[ ",$KINDS," == *",$kind,"* ]] || err "only: '$r' is a $kind rule, and kinds is '$KINDS' -- it would never be ablated"
-                  done
-                  IFS=, read -r -a runs <<< "$RECORDINGS"
-                  for run in "${runs[@]}"; do
-                      # where identity-fetch-recording.sh finds its corpus: the archive release (573, 528), else its run
-                      GH_REPO="$GITHUB_REPOSITORY" scripts/ci/recording-held.sh "$run" || bad=1
-                  done
-                  exit "$bad"
+              # every fault an ::error:: line, all said before the exit (scripts/ci/ablation_preflight_test.py)
+              run: scripts/ci/ablation_preflight.py
 
             - name: Carry on from the earlier run's state
               if: ${{ inputs.resume-run != '' }}

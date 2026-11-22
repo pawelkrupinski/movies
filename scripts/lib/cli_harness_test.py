@@ -69,6 +69,13 @@ class CliHarnessTest(cli_harness.ToolCase):
         self.assertEqual(os.path.join(cli_harness.ROOT, "scripts/shell-spec.sh"),
                          cli_harness.tool_path("scripts/lib/no_such.py", "scripts/shell-spec.sh"))
 
+    def test_tool_path_takes_the_copy_named(self) -> None:
+        os.environ["CLI_TOOL_UNDER_TEST"] = "x/frozen.sh"
+        try:
+            self.assertEqual(os.path.abspath("x/frozen.sh"), cli_harness.tool_path("scripts/lib/cli_harness.py"))
+        finally:
+            del os.environ["CLI_TOOL_UNDER_TEST"]
+
     def test_wait_until_is_bounded(self) -> None:
         self.assertTrue(cli_harness.wait_until(lambda: True, 0.1))
         self.assertFalse(cli_harness.wait_until(lambda: False, 0.1))

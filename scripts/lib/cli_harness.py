@@ -55,7 +55,10 @@ ISOLATED = {
 
 def tool_path(python: str, shell: Optional[str] = None) -> str:
     """The tool under test, absolute: its Python version once it exists, else its shell one -- so a test written
-    before the migration runs unchanged after it."""
+    before the migration runs unchanged after it. CLI_TOOL_UNDER_TEST names another copy outright (a frozen shell
+    copy, a workflow's inline block written out as a script, a mutant)."""
+    if os.environ.get("CLI_TOOL_UNDER_TEST"):
+        return os.path.abspath(os.environ["CLI_TOOL_UNDER_TEST"])
     for candidate in (python, shell):
         if candidate and os.path.exists(os.path.join(ROOT, candidate)):
             return os.path.join(ROOT, candidate)
