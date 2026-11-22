@@ -216,7 +216,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (187)
+## Identity (188)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -315,7 +315,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/takes-skip-shadow-report.sh` | The takes skip gate shadow's tally: every skip-gate status of the newest commits, agreeing or not | `scripts/ci/takes-skip-shadow-report.sh` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation | takes-skip-shadow-report-test.sh | KEEP |
 | `scripts/ci/takes_skip_gate.py` | THE TAKES SKIP GATE: whether a convergence `takes` row may leave out its takes diff -- the base's and the head's | `scripts/ci/takes_skip_gate.py` | wf convergence-daily, country-convergence-leg, identity-model-convergence +1; skill CLAUDE.md, identity-investigation; 4 tools | takes_skip_gate_test.py | Python |
 | `scripts/convergence-findings.py` | The films a convergence leg's log names as divergent, churning or split. | `scripts/convergence-findings.py` | wf country-convergence-leg; 4 tools | convergence_findings_test.py | Python |
-| `scripts/convergence-local.sh` | Run a country's convergence leg locally against the same recorded inputs CI uses | `scripts/convergence-local.sh` | skill identity-investigation, test-layers; 4 tools | convergence-local-test.sh | MIGRATE |
+| `scripts/convergence-local.sh` | Run a country's convergence leg locally against the same recorded inputs CI uses | `scripts/convergence-local.sh` | skill identity-investigation, test-layers; 4 tools | convergence_local_test.py | MIGRATE |
+| `scripts/convergence_local.py` | Run a country's convergence leg locally against the SAME recorded inputs CI uses. | `scripts/convergence_local.py` | 2 tools | convergence_local_test.py | Python |
 | `scripts/flip-timeline` | One listing's flip timeline: every projection that wrote a take of it | `scripts/flip-timeline` | skill identity-investigation; 1 tool | flip_timeline_test.py | KEEP |
 | `scripts/flip_timeline.py` | ONE LISTING'S FLIP TIMELINE (scripts/flip-timeline). | `python3 scripts/flip_timeline.py` | 1 tool | flip_timeline_test.py | Python |
 | `scripts/hard-clusters.sh` | Grow and re-record the hard-cluster fixture HardClusterConvergenceIntegrationSpec replays | `scripts/hard-clusters.sh` | skill regenerate-snapshots; 3 tools | hard-clusters-test.sh | KEEP |
@@ -408,7 +409,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/title-trace` | Every step one raw billing goes through, in production order, to the title the resolver reads | `scripts/title-trace` | wf main; skill CLAUDE.md, identity-investigation; 5 tools | title-trace-test.sh | MIGRATE |
 | `scripts/venue-replay` | One venue's listings as the code at one or two git refs reads them, from a recording — never the network | `scripts/venue-replay` | skill CLAUDE.md, identity-investigation; 5 tools | venue-replay-test.sh | MIGRATE |
 
-## Mirror and data (74)
+## Mirror and data (75)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -469,6 +470,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/wait-for-mongo-tunnel.sh` | Open the CI end of the route to prod Mongo and return only once bytes flow through it | `scripts/ci/wait-for-mongo-tunnel.sh` | wf country-convergence-leg, identity-capture, record-scrape-fixtures; 3 tools | wait-for-mongo-tunnel-test.sh | MIGRATE |
 | `scripts/discover-cinemas/discover.py` | Discover new UK cinemas on flicks.co.uk and wire them into the catalog. | `python3 scripts/discover-cinemas/discover.py` | wf decoration-discovery, discover-cinemas, nix-stage-closures; 5 tools | discover_test.py | Python |
 | `scripts/fleet-db-finish` | Count the fleet's three old collections in Poland's kinowo and drop them on an exact request (fleet DB migration, step 9) | `scripts/fleet-db-finish` | 2 tools | fleet-db-finish-test.sh | MIGRATE |
+| `scripts/lib/mongo_local.py` | THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib; | `imported` | 1 tool | - | Python |
 | `scripts/local-mirror/freshness` | How current the local prod mirror (:28017) is, per country — for every tool that reads it (identity-slice --prod-mirror, listing-history, …) | `scripts/local-mirror/freshness` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation; 23 tools | freshness-test.sh | KEEP |
 | `scripts/local-mirror/local-mongo.sh` | The one place that knows how to make the local mirror Mongo reachable | `scripts/local-mirror/local-mongo.sh` | 1 tool | - | KEEP |
 | `scripts/local-mirror/log-path.sh` | Where the launchd agent's stdout/stderr land | `sourced` | 2 tools | - | KEEP |
@@ -507,7 +509,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/fleet_hosts.py` | WHERE A HOST IS, answered from the flake and from nowhere else. | `imported` | wf nix-stage-closures; 3 tools | - | Python |
 | `infra/bin/flux-rotate-deploy-keys` | rotate the kinowo cluster Flux's GitHub deploy keys (read and write) for movies-gitops, keys first, old keys last. | `infra/bin/flux-rotate-deploy-keys` | by hand | flux-rotate-deploy-keys-test.sh | MIGRATE |
 | `infra/bin/image_pins.py` | Every container image pin no other bumper owns, checked against its registry each week. | `infra/bin/image_pins.py` | wf nix-update; 3 tools | image_pins_test.py | Python |
-| `infra/bin/nix-update` | Find upgrades to the fleet flake's Nix dependencies and write them as ONE change for a pull request. | `infra/bin/nix-update` | wf mirror-pinned-images, nix-update; skill CLAUDE.md; 4 tools | nix-update-test.sh | Python |
+| `infra/bin/nix-update` | Find upgrades to the fleet flake's Nix dependencies and write them as ONE change for a pull request. | `infra/bin/nix-update` | wf mirror-pinned-images, nix-update; skill CLAUDE.md; 5 tools | nix-update-test.sh | Python |
 | `infra/bin/nix_path.py` | Where nix is: PATH if it has it, else the standard install locations. The ONE place infra/bin's tools | `python3 infra/bin/nix_path.py` | 5 tools | nix_path_test.py | Python |
 | `infra/bin/nix_stage_steps.py` | THE TWO DECISION STEPS OF nix-stage-closures.yml, run from infra/ (the steps' working directory): | `infra/bin/nix_stage_steps.py` | wf nix-stage-closures | nix_stage_steps_test.py | Python |
 | `infra/bin/propose-pr` | Turn a bot's patch into one pull request on a fixed branch, opened or updated in place | `infra/bin/propose-pr` | wf nix-update; 1 tool | propose-pr-test.sh | KEEP |
@@ -589,7 +591,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the Python tools do it (scripts/lib; the shell | `imported` | 10 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 10 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 10 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 53 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 54 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | 12 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 5 tools | - | KEEP |

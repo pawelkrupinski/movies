@@ -23,7 +23,7 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
   // CI's image is .github/pinned-images.tsv's `mongo` row (CiPinnedImageSpec), which every CI start pulls
   private val dockerStarts = Seq(
     ".github/pinned-images.tsv",
-    "scripts/convergence-local.sh"
+    "scripts/convergence_local.py"
   )
 
   private lazy val productionVersion: String =

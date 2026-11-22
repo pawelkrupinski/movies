@@ -114,7 +114,7 @@ MONGODB_FILE = "nix/modules/roles/mongodb.nix"
 # The containers MongoServerVersionParitySpec holds to the same release (paths from the checkout).
 # CI's is the `mongo` row of .github/pinned-images.tsv (tag AND digest; CiPinnedImageSpec), which
 # start-mongo-replset.sh reads, its native /opt/mongodb/<tag> home included.
-MONGODB_TAG_FILES = (".github/pinned-images.tsv", "scripts/convergence-local.sh")
+MONGODB_TAG_FILES = (".github/pinned-images.tsv", "scripts/convergence_local.py")
 PINNED_IMAGES = ".github/pinned-images.tsv"
 
 MONGODB_VERSION_LINE = re.compile(r'^(\s*mongodbVersion = ")([^"]+)(";)', re.M)
