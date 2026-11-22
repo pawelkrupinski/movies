@@ -61,6 +61,15 @@ scripts/ci/mongo-exec.sh
 scripts/ci/order-phases.sh
 scripts/ci/convergence_reuse.py
 scripts/identity-drift-ci
+scripts/identity_drift_ci.py
+scripts/identity_drift_ci_baseline.py
+scripts/identity_drift_ci_options.py
+scripts/identity_drift_ci_runs.py
+scripts/identity_drift_ci_verdict.py
+scripts/lib/identity_dispatch.py
+scripts/lib/tool_countries.py
+scripts/lib/tool_dispatch.py
+scripts/lib/tool_shell.py
 scripts/ci/takes-skip-gate.sh
 scripts/ci/takes-skip-proof.sh
 .github/order-independence-paths.txt

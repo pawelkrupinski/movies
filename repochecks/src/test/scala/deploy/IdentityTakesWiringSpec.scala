@@ -89,19 +89,21 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
       RepoFile.listed(".github/scripts")(f => f.isFile) ++ RepoFile.workflows() ++
       RepoFile.listed(".claude/skills")(_.isDirectory).flatMap(d => Option(d.listFiles()).toSeq.flatten.filter(_.isFile)))
       .map(_.getPath).filterNot(p => p.endsWith("_test.py") || p.endsWith("-test.sh") || p.endsWith(".md"))
-    val dispatches = """(gh workflow run|dispatch_workflow|identity_dispatch_measure)\s+("?\$?\{?)([\w.-]+)""".r
+    // a shell tool's `gh workflow run` / dispatch_workflow / identity_dispatch_measure, a Python one's `.dispatch(WORKFLOW`
+    val dispatches = """(?:(?:gh workflow run|dispatch_workflow|identity_dispatch_measure)\s+|\.dispatch\()("?\$?\{?)([\w.-]+)""".r
     def dispatchedBy(path: String): Set[String] = {
       val text = RepoFile.withoutComments(RepoFile.read(path))
-      val named = dispatches.findAllMatchIn(text).map(_.group(3)).toSet
+      val named = dispatches.findAllMatchIn(text).map(_.group(2)).toSet
       // a dispatch through a variable names the workflow where the variable is set
       named.flatMap {
         case "workflow" => """(?m)^\s*(?:local\s+)?workflow=([\w.-]+)""".r.findAllMatchIn(text).map(_.group(1)).toSet
+        case "WORKFLOW" => """(?m)^WORKFLOW = "([\w.-]+)"""".r.findAllMatchIn(text).map(_.group(1)).toSet
         case "convergence_workflow" => """(?m)^convergence_workflow=([\w.-]+)""".r.findAllMatchIn(text).map(_.group(1)).toSet
         case other => Set(other)
       }
     }
     val takesDispatchers = sources.filter(p => dispatchedBy(p).contains("identity-takes.yml")).toSet
-    takesDispatchers shouldBe Set("scripts/ci/dispatch-takes.sh", "scripts/identity-measure", "scripts/identity-drift-ci")
+    takesDispatchers shouldBe Set("scripts/ci/dispatch-takes.sh", "scripts/identity-measure", "scripts/identity_drift_ci.py")
     (takesDispatchers - "scripts/ci/dispatch-takes.sh").foreach { path =>
       withClue(s"$path dispatches identity-takes.yml itself, so it must ask for takes rows alone: ") {
         RepoFile.read(path) should (include("takes-only=true") or include("drift-only=true"))
