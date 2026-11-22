@@ -571,3 +571,46 @@ incidents:
     end: 2026-11-21T13:32:00Z
     grace: 10m
     expect_firing: [WorkerHttpHostCircuitOpen]
+
+  - id: identity-film-listings-lost-2026-11-20
+    description: >-
+      Three films each lost 10+ pl/de listings at one projection, none re-taken within the 6h the gauge holds: pl
+      "Andre Rieu. Pada śnieg" (tmdb 1707785, 10 at 11-20 14:29:52Z, build d7a73370; lost and re-taken once already
+      11-18), de "Zwischen den Welten" (tmdb 256108, 11 at 11-20 15:46:14Z, 7922a38c, veto:denied) and pl "National
+      Theatre Live: Mizantrop" (tmdb 1693710, 15 at 11-21 16:58:03Z, aa140466, pooled:no-film). Every line is
+      cause=evidence (an answer+scrape projection re-decided the family), not the builds' code; the Rieu and
+      Mizantrop takes are judged RIGHT (identity-judgements.tsv), so these are real losses the alert rightly
+      caught. Each line's `repro` slices it.
+    source: ALERTS{alertname="IdentityFilmListingsLost"} on monitoring-1, 11-20T14:48Z..20:32Z, 11-20T16:03Z..21:47Z, 11-21T17:18Z..23:02Z; the take-change lines (kind:lost, cause:evidence) at 14:29:52Z, 15:46:14Z and 16:58:03Z
+    start: 2026-11-20T14:29:00Z
+    end: 2026-11-21T23:02:00Z
+    grace: 10m
+    expect_firing: [IdentityFilmListingsLost]
+
+  - id: identity-incremental-drift-uk-2026-11-21
+    description: >-
+      The 11-21 nightly live-drift check (recording 00:01Z) found 9 uk Cineworld listings of "The Lord of the Rings:
+      The Rings of Power Season 3 Ep 7" (original title "The Rings of Power - Forging the One Ring", 73 min) that a
+      whole resolve takes as tmdb 1828101 by Poster while prod held none: prod had gained 1828101 for 68 of the
+      family's listings on 11-17 12:40Z (build 40071532) and by 11-21 held the 77-member family at none via a
+      learned runtime-gap veto, with no take-change line logged for the loss. One family, one night: the 11-22 check
+      (00:59Z) found 1 uk listing and the alert ended. Not in the flip backlog.
+    source: live-drift-uk.tsv of Identity live drift run 44851644967 (11-21) vs 44971357155 (11-22); ALERTS{alertname="IdentityIncrementalDrift",country="uk"} 11-21T02:44Z..11-22T02:04Z; scripts/listing-history uk --venue 'Cineworld Sheffield' --title 'Season 3 Ep 7'
+    start: 2026-11-21T02:39:00Z
+    end: 2026-11-22T02:04:00Z
+    grace: 10m
+    expect_firing: [IdentityIncrementalDrift]
+
+  - id: pl-kinomalta-posters-ranked-below-full-size-2026-11-20
+    description: >-
+      pl's films drawing a kinomalta.pl poster went from 71 to none on purpose: a089935a1 (11-20 16:43Z) ranks a
+      cinema's small WordPress copy below every full-size poster, and 8d4598fe0 (18:19Z) keeps Kino Malta's listed
+      copy only at that lower rank, so the cards draw other cinemas' full-size posters (kinoteka.pl 60 to 92,
+      kinomuza.pl 37 to 56, cinema-city.pl 33 to 54 over 18Z..20Z). poster_host="none" held at 49-53: no poster was
+      lost. A planned source change the rule cannot tell from a scraper losing a chain's posters (both move the
+      films to other hosts), and it ends by itself when the 1d offset passes the change.
+    source: sum by (poster_host) (kinowo_web_films_by_poster_host{country="pl"}) 11-19T12Z..11-22T18Z; ALERTS{alertname="PosterHostLostFromServing",country="pl",poster_host="kinomalta.pl"} 11-20T20:31Z..11-21T20:00Z; commits a089935a1, 8d4598fe0
+    start: 2026-11-20T20:01:00Z
+    end: 2026-11-21T20:00:00Z
+    grace: 10m
+    expect_firing: [PosterHostLostFromServing]
