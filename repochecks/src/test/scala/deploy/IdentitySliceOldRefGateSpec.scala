@@ -65,7 +65,7 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
 
   /** 2026-11-21: diffed from the push's `before`, a tool change in a push whose queued Main run a newer push replaced
    *  was never compiled. The gate diffs from where the compile last passed on main (refs/verified/old-ref-compile,
-   *  scripts/ci/verified-ref.sh: verified-ref-test.sh's replaced run), and only a green compile on main advances it. */
+   *  scripts/ci/verified_ref.py: verified_ref_test.py's replaced run), and only a green compile on main advances it. */
   it should "diff from where the compile last passed on main, which only a green compile moves" in {
     val jobs = RepoFile.jobs(RepoFile.read(Workflow))
     RepoFile.step(jobs("gates"), "Where did the old-ref compile last pass on main?") should include(

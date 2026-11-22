@@ -227,6 +227,7 @@ scripts/ci/seed-sbt-runner.sh
 scripts/ci/shellcheck-action-runs.sh
 scripts/ci/tree-unchanged.sh
 scripts/ci/verified-ref.sh
+scripts/ci/verified_ref.py
 scripts/identity-fetch-recording.sh
 scripts/identity-judge-cards
 scripts/identity-slice

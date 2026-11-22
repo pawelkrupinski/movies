@@ -137,7 +137,7 @@ scripts/ci/takes-skip-proof.sh	KEEP
 scripts/ci/takes-skip-shadow-report.sh	KEEP
 scripts/ci/tree-unchanged.sh	KEEP
 scripts/ci/ubuntu-security-via-mirror.sh	KEEP
-scripts/ci/verified-ref.sh	MIGRATE
+scripts/ci/verified-ref.sh	KEEP
 scripts/ci/wait-for-mongo-tunnel.sh	MIGRATE
 scripts/ci/wait-for-run-artifact.sh	MIGRATE
 scripts/ci/xcuitest-each-class-alone.sh	MIGRATE
