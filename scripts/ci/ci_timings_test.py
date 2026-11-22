@@ -228,6 +228,58 @@ class PayloadTest(unittest.TestCase):
         self.assertIn("phase    604.7s  replayCutover", out.getvalue())
 
 
+def epoch(instant):
+    return datetime.datetime.strptime(instant, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc).timestamp()
+
+
+class CpuTest(unittest.TestCase):
+    """The runner's CPU per job, from the job's ci-metrics artifact (job_metrics.py's series), pushed beside its time:
+    which jobs are CPU-bound and which wait."""
+    T0 = epoch("2026-10-14T08:02:10Z")  # the UK leg's first step
+    COLUMNS = ["t", "cpu_total", "cpu_busy", "psi_mem_some_us"]
+    # 4 cores, 75% busy throughout; memory PSI `some` a tenth of the wall
+    ROWS = [[T0, 0, 0, 0], [T0 + 35, 14000, 10500, 3.5e6], [T0 + 700, 280000, 210000, 70e6]]
+
+    def record(self):
+        import ci_trends
+        metrics = {"ci-metrics-convergence-r1": [
+            {"kind": "machine", "runner_name": "r1", "runner_os": "Linux", "cpu_model": "AMD EPYC 7763", "cores": 4},
+            {"kind": "job_start", "runner_name": "r1", "t": self.T0},
+            {"kind": "series", "columns": self.COLUMNS, "rows": self.ROWS}]}
+        api = [dict(job_, runner_name="r1") if job_["id"] == 2 else job_ for job_ in JOBS]
+        return ci_trends.run_record(RUN, api, metrics)
+
+    def payload(self):
+        return timings.otlp_payload(RUN, timings.attach_cpu(jobs(), timings.job_cpu(self.record())))
+
+    def series(self, name):
+        return PayloadTest.series(self, name, self.payload())
+
+    def test_each_measured_job_carries_its_busy_share_cpu_seconds_and_cores(self):
+        uk = {"workflow": "Identity model convergence", "ref": "main", "ci_job": "united-kingdom / convergence",
+              "runner": "unknown"}
+        self.assertEqual([(dict(uk, conclusion="success"), 0.75, STAMP)], self.series("kinowo_ci_job_cpu_busy_ratio"))
+        self.assertEqual([(dict(uk, conclusion="success"), 2100.0, STAMP)], self.series("kinowo_ci_job_cpu_seconds"))
+        self.assertEqual([(dict(uk, cpu_model="AMD EPYC 7763", runner_os="Linux"), 4.0, STAMP)],
+                         self.series("kinowo_ci_job_cores"))
+        self.assertEqual([(uk, 0.1, STAMP)], self.series("kinowo_ci_job_mem_pressure_ratio"))
+
+    def test_a_long_step_carries_its_own_busy_share(self):
+        steps = {labels["step"]: value for labels, value, _ in self.series("kinowo_ci_step_cpu_busy_ratio")}
+        self.assertEqual(0.75, steps["Run the united-kingdom convergence suite"])
+
+    def test_a_job_without_metrics_has_no_cpu_series(self):
+        self.assertEqual({"united-kingdom / convergence"},
+                         {labels["ci_job"] for labels, _, _ in self.series("kinowo_ci_job_cpu_seconds")})
+        names = [m["name"] for m in timings.otlp_payload(RUN, jobs())["resourceMetrics"][0]["scopeMetrics"][0]["metrics"]]
+        self.assertNotIn("kinowo_ci_job_cpu_seconds", names)
+
+    def test_the_report_names_each_jobs_cpu(self):
+        out = io.StringIO()
+        timings.report(RUN, timings.attach_cpu(jobs(), timings.job_cpu(self.record())), out)
+        self.assertIn("CPU 75% of 4 cores, 2100 CPU-s", out.getvalue())
+
+
 class CeilingTest(unittest.TestCase):
     """Each job's `timeout-minutes` beside its time, for the near-ceiling alert (ci-build-times.rules)."""
 

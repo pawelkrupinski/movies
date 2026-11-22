@@ -366,8 +366,21 @@ class CiTimingsDashboard(unittest.TestCase):
 
     def test_one_board_charts_every_ci_timing(self):
         # The timings, not `kinowo_ci_http_calls`: CI's external calls are charted beside production's (kinowo-http.json).
-        for family in ("kinowo_ci_run_seconds", "kinowo_ci_job_seconds", "kinowo_ci_step_seconds", "kinowo_ci_phase_seconds"):
+        for family in ("kinowo_ci_run_seconds", "kinowo_ci_job_seconds", "kinowo_ci_step_seconds", "kinowo_ci_phase_seconds",
+                       "kinowo_ci_job_cpu_busy_ratio", "kinowo_ci_job_cpu_seconds"):
             self.assertEqual(self.boards_querying(family), ["apps/ci-builds.json"], family)
+
+    def test_it_shows_which_jobs_are_cpu_bound_and_which_wait(self):
+        # The owner (2026-11-22): CPU usage per CI job. Utilisation per job (every build's own row), CPU-seconds per run
+        # (the jobs' sum, one point per run: every sample is stamped at the run's start), utilisation per runner type.
+        exprs = {(p.get("title"), t["expr"]) for p in query_panels(dict(dashboards())["apps/ci-builds.json"])
+                 for t in p.get("targets", [])}
+        self.assertTrue(any("$workflow" in title and "kinowo_ci_job_cpu_busy_ratio{workflow=\"$workflow\"" in e
+                            for title, e in exprs), "no CPU utilisation per job in each build's row")
+        self.assertTrue(any(e.startswith("sum by (workflow, runner, ref)") and "kinowo_ci_job_cpu_seconds" in e
+                            for _, e in exprs), "no CPU-seconds per run")
+        self.assertTrue(any("by (runner, ref)" in e and "kinowo_ci_job_cpu_busy_ratio" in e for _, e in exprs),
+                        "no CPU utilisation per runner type")
 
     def test_it_shows_convergence_per_country_and_every_build(self):
         document = dict(dashboards())["apps/ci-builds.json"]

@@ -222,6 +222,7 @@ class MetricsTest(unittest.TestCase):
         job = self.record()["jobs"][0]
         resources, steps = t.job_resources(job)
         self.assertAlmostEqual(0.95, resources["cpu"], places=2)
+        self.assertEqual(1140.0, resources["cpu_seconds"])  # 1900 busy ticks a 5 s row, 60 rows, 100 ticks a second
         self.assertAlmostEqual(0.05, resources["psi_mem_full"], places=2)
         self.assertIn("Run sbt test", steps)
         gc = t.gc_summary(job)

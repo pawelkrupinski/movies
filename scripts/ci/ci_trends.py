@@ -343,7 +343,7 @@ def saturation(window, intervals, slots=SLOTS, every=SATURATION_SAMPLE_SECONDS):
 
 
 def window_resources(series, start, end):
-    """The resource figures of `series` (parse_series) between two instants: CPU shares of all cores, PSI shares of
+    """The resource figures of `series` (parse_series) between two instants: CPU shares of all cores and CPU-seconds, PSI shares of
     the wall time, memory and swap at their worst, disk MB, OOM kills. None without two samples in reach."""
     inside = [row for row in series if start - 6 <= row.get("t", 0) <= end + 6]
     if len(inside) < 2:
@@ -366,7 +366,9 @@ def window_resources(series, start, end):
     loads = [row["load1"] for row in inside if "load1" in row]
     queue = [row["procs_running"] for row in inside if "procs_running" in row]
     return {
-        "cpu": share("cpu_busy"), "user": share("cpu_user"), "sys": share("cpu_sys"), "iowait": share("cpu_iowait"),
+        # busy ticks are 1/100 s of one core (/proc/stat's USER_HZ, Mach's ticks: job_metrics.TICKS_PER_SECOND)
+        "cpu": share("cpu_busy"), "cpu_seconds": round((b.get("cpu_busy", 0) - a.get("cpu_busy", 0)) / 100.0, 1),
+        "user": share("cpu_user"), "sys": share("cpu_sys"), "iowait": share("cpu_iowait"),
         "steal": share("cpu_steal"),
         "load_mean": round(statistics.mean(loads), 2) if loads else None, "load_max": max(loads) if loads else None,
         "runq_mean": round(statistics.mean(queue), 2) if queue else None, "runq_max": max(queue) if queue else None,

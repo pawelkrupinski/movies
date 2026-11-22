@@ -530,6 +530,244 @@
    ]
   },
   {
+   "id": 23,
+   "title": "CPU-seconds per run, per build",
+   "description": "The core-seconds every job of a run kept the runner's CPUs busy, summed (kinowo_ci_job_cpu_seconds: the runner's whole machine over each job's window, from its job-telemetry series; ci_timings.py). Every sample of a run is stamped at its start, so a point is a run. On a ci-runner host serving several jobs at once each job's reading counts its neighbours too.",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 9,
+    "x": 0,
+    "y": 23
+   },
+   "interval": "1m",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "showPoints": "always",
+      "pointSize": 5,
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "spanNulls": true
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "min",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (workflow, runner, ref) (max_over_time(kinowo_ci_job_cpu_seconds{workflow=~\"$workflow\",ref=~\"$ref\",runner=~\"$runner\"}[$__interval]))",
+     "legendFormat": "{{workflow}} {{runner}} {{ref}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 24,
+   "title": "CPU utilisation by runner type (median across jobs)",
+   "description": "The runner's busy share of all its cores over each job (kinowo_ci_job_cpu_busy_ratio), the median job per runner type: near 100% the jobs are CPU-bound (a bigger runner helps), low they wait (network, locks, a queue).",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 8,
+    "x": 9,
+    "y": 23
+   },
+   "interval": "1m",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "showPoints": "always",
+      "pointSize": 5,
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "spanNulls": true
+     },
+     "max": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "min",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "quantile by (runner, ref) (0.5, max_over_time(kinowo_ci_job_cpu_busy_ratio{workflow=~\"$workflow\",ref=~\"$ref\",runner=~\"$runner\"}[$__interval]))",
+     "legendFormat": "{{runner}} {{ref}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 25,
+   "title": "Latest run, CPU utilisation per job",
+   "description": "Each job's newest busy share of its runner's cores (kinowo_ci_job_cpu_busy_ratio) and, in the tooltip, its core count: green bars wait, red bars are CPU-bound.",
+   "type": "bargauge",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 7,
+    "x": 17,
+    "y": 23
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "min": 0,
+     "max": 1,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 0.6
+       },
+       {
+        "color": "red",
+        "value": 0.85
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "horizontal",
+    "displayMode": "gradient",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max without (conclusion) (last_over_time(kinowo_ci_job_cpu_busy_ratio{workflow=~\"$workflow\",ref=~\"$ref\",runner=~\"$runner\"}[1d]))",
+     "legendFormat": "{{workflow}} / {{ci_job}} {{runner}} {{ref}}",
+     "instant": true,
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 29,
+   "title": "Runner machines: cores per CPU model (last 7 days)",
+   "description": "The core count of each machine type the builds ran on (kinowo_ci_job_cores, machine-id.sh's CPU model and the runner OS): what a busy share above is a share of.",
+   "type": "stat",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 5,
+    "w": 24,
+    "x": 0,
+    "y": 32
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "none",
+     "decimals": 0,
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "text"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "textMode": "value_and_name",
+    "colorMode": "none",
+    "graphMode": "none",
+    "justifyMode": "auto",
+    "orientation": "horizontal",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max by (cpu_model, runner_os, runner, ref) (last_over_time(kinowo_ci_job_cores{workflow=~\"$workflow\",ref=~\"$ref\",runner=~\"$runner\"}[7d]))",
+     "legendFormat": "{{cpu_model}} · {{runner_os}} {{runner}} {{ref}}",
+     "instant": true,
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
    "type": "row",
    "title": "Identity model convergence — per country",
    "collapsed": false,
@@ -538,7 +776,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 23
+    "y": 37
    },
    "panels": []
   },
@@ -555,7 +793,7 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 24
+    "y": 38
    },
    "interval": "1m",
    "fieldConfig": {
@@ -631,7 +869,7 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 24
+    "y": 38
    },
    "interval": "1m",
    "fieldConfig": {
@@ -707,7 +945,7 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 33
+    "y": 47
    },
    "interval": "1m",
    "fieldConfig": {
@@ -779,7 +1017,7 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 33
+    "y": 47
    },
    "interval": "1m",
    "fieldConfig": {
@@ -851,7 +1089,7 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 42
+    "y": 56
    },
    "interval": "1m",
    "fieldConfig": {
@@ -927,7 +1165,7 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 42
+    "y": 56
    },
    "interval": "1m",
    "fieldConfig": {
@@ -987,7 +1225,7 @@
     "h": 12,
     "w": 24,
     "x": 0,
-    "y": 51
+    "y": 65
    },
    "interval": "1m",
    "fieldConfig": {
@@ -1047,7 +1285,7 @@
     "h": 8,
     "w": 24,
     "x": 0,
-    "y": 63
+    "y": 77
    },
    "fieldConfig": {
     "defaults": {
@@ -1107,7 +1345,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 71
+    "y": 85
    },
    "panels": []
   },
@@ -1124,7 +1362,7 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 72
+    "y": 86
    },
    "interval": "1m",
    "fieldConfig": {
@@ -1193,7 +1431,7 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 72
+    "y": 86
    },
    "interval": "1m",
    "fieldConfig": {
@@ -1253,7 +1491,7 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 81
+    "y": 95
    },
    "interval": "1m",
    "fieldConfig": {
@@ -1292,6 +1530,188 @@
     {
      "refId": "A",
      "expr": "max_over_time(kinowo_ci_job_queue_seconds{workflow=\"$workflow\",ref=~\"$ref\",runner=~\"$runner\"}[$__interval])",
+     "legendFormat": "{{ci_job}} {{runner}} {{ref}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 26,
+   "title": "$workflow — job CPU utilisation",
+   "description": "Each job's runner busy share of all its cores over the job (kinowo_ci_job_cpu_busy_ratio): which of the build's jobs are CPU-bound and which wait.",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 12,
+    "y": 95
+   },
+   "interval": "1m",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "showPoints": "always",
+      "pointSize": 5,
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "spanNulls": true
+     },
+     "max": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "min",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max_over_time(kinowo_ci_job_cpu_busy_ratio{workflow=\"$workflow\",ref=~\"$ref\",runner=~\"$runner\"}[$__interval])",
+     "legendFormat": "{{ci_job}} {{runner}} {{ref}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 27,
+   "title": "$workflow — step CPU utilisation (steps of 15 s or more)",
+   "description": "Each long step's runner busy share of all cores (kinowo_ci_step_cpu_busy_ratio): an sbt, Playwright or xcodebuild step near 100% is CPU-bound.",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 0,
+    "y": 104
+   },
+   "interval": "1m",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "showPoints": "always",
+      "pointSize": 5,
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "spanNulls": true
+     },
+     "max": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "min",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max_over_time(kinowo_ci_step_cpu_busy_ratio{workflow=\"$workflow\",ref=~\"$ref\",runner=~\"$runner\"}[$__interval])",
+     "legendFormat": "{{ci_job}} · {{step}} {{runner}} {{ref}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 28,
+   "title": "$workflow — job memory pressure (PSI some)",
+   "description": "The share of each job's wall time some task stalled on memory (kinowo_ci_job_mem_pressure_ratio, Linux PSI; macOS has none): a CPU share that is low because the job waits on memory.",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 12,
+    "y": 104
+   },
+   "interval": "1m",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "showPoints": "always",
+      "pointSize": 5,
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "spanNulls": true
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "min",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max_over_time(kinowo_ci_job_mem_pressure_ratio{workflow=\"$workflow\",ref=~\"$ref\",runner=~\"$runner\"}[$__interval])",
      "legendFormat": "{{ci_job}} {{runner}} {{ref}}",
      "datasource": {
       "type": "prometheus",

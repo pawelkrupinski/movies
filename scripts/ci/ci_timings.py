@@ -35,6 +35,11 @@ dashboard is a reading aid, not a gate.
     # TYPE kinowo_ci_job_queue_seconds gauge
     # TYPE kinowo_ci_job_timeout_seconds gauge
     # TYPE kinowo_ci_run_number gauge
+    # TYPE kinowo_ci_job_cpu_busy_ratio gauge
+    # TYPE kinowo_ci_job_cpu_seconds gauge
+    # TYPE kinowo_ci_job_cores gauge
+    # TYPE kinowo_ci_job_mem_pressure_ratio gauge
+    # TYPE kinowo_ci_step_cpu_busy_ratio gauge
 
 Every series carries `workflow`, `ref` (`main` | `branch`, see ref_of) and `runner`. The job, step, phase, queue and timeout
 series carry the job's (`ci-runner` self-hosted, `hosted` GitHub's, else `unknown`); the run-level ones (run_seconds,
@@ -49,6 +54,14 @@ For the build-time alerts (infra/nix/files/monitoring/rules/ci-build-times.rules
   calls); an expression one -- a convergence row's, picked per phase from the caller's matrix -- off the
   `ci-job-ceiling <n> minutes` line the job echoes, since only the job knows what its expression came to. A job with
   none has github.com's 360. WorkflowCeilingSpec (in the test) holds every job to one of the three.
+- `kinowo_ci_job_cpu_*`: the RUNNER'S CPU over each job's window (its steps' first start to last end), read from the
+  job's `ci-metrics-*` artifact (.github/actions/job-telemetry: cgroup-sampler.sh on Linux, job_metrics.py's Mach
+  sampler on macOS; JobTelemetryCoverageSpec holds every job to it): `cpu_busy_ratio` is busy over all ticks of all
+  cores (near 1: CPU-bound; low: waiting on the network, a lock, a runner), `cpu_seconds` the busy core-seconds,
+  `cores` the core count (labels `cpu_model`, `runner_os`), `mem_pressure_ratio` PSI memory `some` over the wall
+  (Linux only), and `kinowo_ci_step_cpu_busy_ratio` the busy share per step of 15 s or more. Whole-machine figures: on
+  a ci-runner host serving several jobs at once, each job's reading counts its neighbours too. A job with no
+  artifact (no telemetry, expired, a cancelled job) has none.
 - `kinowo_ci_run_number` is the run's index (the number in its URL), so an alert can name the runs a regression
   started between -- a commit SHA would be a label of its own per run.
 - `kinowo_ci_run_seconds{measure="runner_wait"}` is how long the run's first job waited for a runner once nothing
@@ -204,7 +217,10 @@ def runner_kind(job):
 
 class Job:
     def __init__(self, job, log_for, ceilings=()):
+        self.id = job.get("id")
         self.name = job["name"]
+        # the runner's CPU over the job, from its ci-metrics artifact (job_cpu); None when it uploaded none
+        self.cpu = None
         self.runner = runner_kind(job)
         self.queued = seconds_between(job.get("created_at"), job.get("started_at"))
         self.conclusion = job.get("conclusion") or "unknown"
@@ -301,7 +317,9 @@ def report(run, jobs, out=sys.stdout):
         minutes(measures.get("wall", 0)), minutes(measures.get("queued", 0)), len(jobs)), file=out)
     for job in jobs:
         print("", file=out)
-        print("%-50s %8s  %s" % (job.name, minutes(job.seconds), job.conclusion), file=out)
+        cpu = (" CPU %.0f%% of %s cores, %.0f CPU-s" % (job.cpu["busy"] * 100, job.cpu.get("cores") or "?",
+                                                        job.cpu.get("seconds") or 0)) if job.cpu else ""
+        print("%-50s %8s  %s%s" % (job.name, minutes(job.seconds), job.conclusion, cpu), file=out)
         for label, took in job.steps:
             if took >= 1:
                 print("    step   %7.0fs  %s" % (took, label), file=out)
@@ -325,6 +343,52 @@ def summary_markdown(run, jobs):
         lines.append("| %s | %s | %s | %s |" % (
             job.name, minutes(job.seconds), "%s %s" % (step[0], minutes(step[1])) if step else "-", longest or "-"))
     return "\n".join(lines) + "\n"
+
+
+def job_cpu(record):
+    """{job id: its CPU figures} from the run's ci_trends record (run_record: the jobs' metrics artifacts joined to
+    them): busy share, CPU-seconds, cores and CPU model, memory PSI, and the busy share per step of 15 s or more."""
+    import ci_trends
+    figures = {}
+    for job in (record or {}).get("jobs") or []:
+        whole, steps = ci_trends.job_resources(job)
+        if not whole or job.get("id") is None:
+            continue
+        machine = job.get("machine") or {}
+        figures[job["id"]] = {"busy": whole["cpu"], "seconds": whole.get("cpu_seconds"), "cores": machine.get("cores"),
+                              "cpu_model": machine.get("cpu_model") or "unknown",
+                              "runner_os": machine.get("runner_os") or "unknown", "mem_pressure": whole.get("psi_mem_some"),
+                              "steps": {name: step["cpu"] for name, step in sorted(steps.items())}}
+    return figures
+
+
+def attach_cpu(jobs, figures):
+    for job in jobs:
+        job.cpu = figures.get(job.id)
+    return jobs
+
+
+def cpu_gauges(jobs, point):
+    """The kinowo_ci_job_cpu_* and kinowo_ci_step_cpu_busy_ratio gauges (see the header) of the jobs that have figures."""
+    measured = [job for job in jobs if job.cpu]
+
+    def each(field):
+        return [(job, job.cpu[field]) for job in measured if job.cpu.get(field) is not None]
+
+    return [
+        ("kinowo_ci_job_cpu_busy_ratio",
+         [point(value, ci_job=job.name, conclusion=job.conclusion, runner=job.runner) for job, value in each("busy")]),
+        ("kinowo_ci_job_cpu_seconds",
+         [point(value, ci_job=job.name, conclusion=job.conclusion, runner=job.runner) for job, value in each("seconds")]),
+        ("kinowo_ci_job_cores",
+         [point(value, ci_job=job.name, runner=job.runner, cpu_model=job.cpu["cpu_model"], runner_os=job.cpu["runner_os"])
+          for job, value in each("cores")]),
+        ("kinowo_ci_job_mem_pressure_ratio",
+         [point(value, ci_job=job.name, runner=job.runner) for job, value in each("mem_pressure")]),
+        ("kinowo_ci_step_cpu_busy_ratio",
+         [point(value, ci_job=job.name, step=step, runner=job.runner)
+          for job in measured for step, value in job.cpu["steps"].items()]),
+    ]
 
 
 def otlp_payload(run, jobs, ready=None):
@@ -358,7 +422,7 @@ def otlp_payload(run, jobs, ready=None):
         gauge("kinowo_ci_job_timeout_seconds",
               [point(job.ceiling, ci_job=job.name, runner=job.runner) for job in jobs if job.ceiling]),
         gauge("kinowo_ci_run_number", [point(run["run_number"], runner=run_wide)] if run.get("run_number") else []),
-    ]
+    ] + [gauge(name, points) for name, points in cpu_gauges(jobs, point)]
     return {"resourceMetrics": [{
         "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": SERVICE_NAME}}]},
         "scopeMetrics": [{"metrics": [m for m in metrics if m["gauge"]["dataPoints"]]}],
@@ -452,13 +516,24 @@ def named(github, run):
     return dict(run, name=github.workflow_name(run["workflow_id"]))
 
 
-def leg_summary(run):
-    """Per leg (convergence's countries; elsewhere per job group): each row's queue, setup by category, work, machine,
-    GC and pressure, from the API's steps and the jobs' ci-metrics artifacts (ci_trends.leg_tables). Never fails."""
+def metrics_record(run):
+    """The run as ci_trends reads it: the API's jobs joined to their ci-metrics artifacts. None when it cannot be read."""
     try:
         import ci_trends
         source = ci_trends.GitHub(run.get("repository", {}).get("full_name") or os.environ.get("GITHUB_REPOSITORY", ""))
-        record = ci_trends.record_of(source, dict(run, status="in_progress"))
+        return ci_trends.record_of(source, dict(run, status="in_progress"))
+    except Exception as error:  # noqa: BLE001 -- see the header: never fail the job
+        print("::warning::jobs' metrics not read: %s" % error)
+        return None
+
+
+def leg_summary(record):
+    """Per leg (convergence's countries; elsewhere per job group): each row's queue, setup by category, work, machine,
+    GC and pressure, from the API's steps and the jobs' ci-metrics artifacts (ci_trends.leg_tables). Never fails."""
+    if record is None:
+        return "\n(per-leg tables not written: no metrics record)\n"
+    try:
+        import ci_trends
         tables = ci_trends.leg_tables(record)
         return ("\n### Per leg\n" + tables) if tables else ""
     except Exception as error:  # noqa: BLE001 -- see the header: never fail the job
@@ -468,12 +543,17 @@ def leg_summary(run):
 def handle(github, run, args, out=sys.stdout):
     run = named(github, run)
     jobs = collect(github.jobs(run["id"]), github.log, workflow_ceilings(run.get("path") or ""))
+    record = metrics_record(run)
+    try:
+        attach_cpu(jobs, job_cpu(record))
+    except Exception as error:  # noqa: BLE001 -- see the header: never fail the job
+        print("::warning::jobs' CPU not read: %s" % error, file=out)
     report(run, jobs, out)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as handle_:
             handle_.write(summary_markdown(run, jobs))
-            handle_.write(leg_summary(run))
+            handle_.write(leg_summary(record))
     try:
         ready = ready_at(run, github.recent_runs(run["head_branch"])) if run.get("head_branch") else None
     except Exception as error:  # noqa: BLE001 -- see the header: never fail the job
