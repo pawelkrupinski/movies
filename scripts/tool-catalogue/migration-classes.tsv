@@ -84,7 +84,7 @@ scripts/ci/identity-capture-report.sh	KEEP
 scripts/ci/identity-ci-staleness.sh	MIGRATE
 scripts/ci/identity-drift-check.sh	KEEP
 scripts/ci/identity-family-nightly.sh	MIGRATE
-scripts/ci/identity-takes-check.sh	MIGRATE
+scripts/ci/identity-takes-check.sh	KEEP
 scripts/ci/in-background.sh	KEEP
 scripts/ci/install-actionlint.sh	KEEP
 scripts/ci/install-apt-package.sh	KEEP
