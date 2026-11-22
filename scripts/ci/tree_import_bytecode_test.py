@@ -5,7 +5,7 @@ run-script-tests runs every test with PYTHONDONTWRITEBYTECODE=1, but `python3 -I
 -E and ignores it: a tool run so that imports a module beside it wrote that module's __pycache__/ into the checkout,
 and the runner's tree check failed its test as POLLUTE -- recording-diff-test.sh (Order independence #103), then
 ratchet_diff_test.py (#105), one more each run. So the rule is held in the code, not per call site: the first
-`sys.path.insert` / `sys.path.append` of every tracked .py has `sys.dont_write_bytecode = True` on the line before it,
+`sys.path.insert` / `sys.path.append` of every .py of the tree has `sys.dont_write_bytecode = True` on the line before it,
 which no command line can undo.
 
 Run: python3 scripts/ci/tree_import_bytecode_test.py
@@ -31,6 +31,21 @@ def unguarded(path, text):
     return None
 
 
+# Never the tree's own sources: VCS state, dependencies installed by a tool, build output, editor and bytecode caches.
+NOT_SOURCES = {".git", "node_modules", "target", "__pycache__", ".venv", "venv", "build", ".gradle", ".bsp",
+               ".metals", ".bloop", ".idea", ".claude"}
+
+
+def tree_python_files(root):
+    """Every .py under `root` outside NOT_SOURCES, as relative paths (read from disk, not git: the shared-machine lint
+    allows a test no direct git, and scratch_git refuses the checkout itself)."""
+    for directory, subdirectories, names in os.walk(root):
+        subdirectories[:] = sorted(d for d in subdirectories if d not in NOT_SOURCES)
+        for name in sorted(names):
+            if name.endswith(".py"):
+                yield os.path.relpath(os.path.join(directory, name), root)
+
+
 class TreeImportBytecode(unittest.TestCase):
     def test_the_check_tells_a_guarded_file_from_a_bare_one(self):
         self.assertEqual("t.py:2", unguarded("t.py", "import sys\nsys.path.insert(0, 'x')\n"))
@@ -48,11 +63,9 @@ class TreeImportBytecode(unittest.TestCase):
             subprocess.run([sys.executable, "-I", tool], check=True, timeout=60)
             self.assertFalse(os.path.exists(os.path.join(scratch, "__pycache__")))
 
-    def test_every_tracked_python_file_guards_its_sys_path_change(self):
-        files = subprocess.run(["git", "-C", REPO, "ls-files", "-z", "*.py"], check=True, capture_output=True,
-                               timeout=60).stdout.decode().split("\0")
+    def test_every_python_file_of_the_tree_guards_its_sys_path_change(self):
         bare = []
-        for rel in filter(None, files):
+        for rel in tree_python_files(REPO):
             with open(os.path.join(REPO, rel), encoding="utf-8", errors="replace") as f:
                 found = unguarded(rel, f.read())
             if found:
