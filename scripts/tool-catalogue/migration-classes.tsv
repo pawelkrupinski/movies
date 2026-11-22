@@ -149,7 +149,7 @@ scripts/fail-before	MIGRATE
 scripts/fleet-db-finish	MIGRATE
 scripts/flip-timeline	KEEP
 scripts/floor-bash	KEEP
-scripts/gitops-specs	MIGRATE
+scripts/gitops-specs	KEEP
 scripts/gov-run	KEEP
 scripts/hard-clusters.sh	KEEP
 scripts/hooks-path.sh	KEEP

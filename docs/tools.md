@@ -211,7 +211,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/hooks/lint-registry-missing` | The repo-reading specs the lint registry (scripts/hooks/lint-registry.tsv) has no row for, as `<module>:<package.Spec>`, one a line | `scripts/hooks/lint-registry-missing` | hook pre-push | - | KEEP |
 | `scripts/hooks/post-commit` | Post-commit: the commit rules the landing checks judge, run over the commit just made | `scripts/hooks/post-commit` | by hand | post-commit-test.sh | KEEP |
 | `scripts/hooks/pre-commit` | Pre-commit: no commit is made in the root checkout (the clone's main worktree) | `scripts/hooks/pre-commit` | wf precommit-check; hook pre-push; agentctl; skill CLAUDE.md, agent-ops; 5 tools | pre-commit-test.sh | KEEP |
-| `scripts/hooks/pre-push` | Pre-push: the checks that fail CI in seconds, run here in seconds, for what this push changes | `scripts/hooks/pre-push` | wf ci, identity-findings-report, precheck-build-cache +4; hook lint-registry-missing; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 70 tools | pre-push-test.sh | MIGRATE |
+| `scripts/hooks/pre-push` | Pre-push: the checks that fail CI in seconds, run here in seconds, for what this push changes | `scripts/hooks/pre-push` | wf ci, identity-findings-report, precheck-build-cache +4; hook lint-registry-missing; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 71 tools | pre-push-test.sh | MIGRATE |
 | `scripts/install-hooks.sh` | Point this clone's git hooks at scripts/hooks (the pre-push checks — see scripts/hooks/pre-push) | `scripts/install-hooks.sh` | hook pre-push; skill CLAUDE.md, agent-ops; 1 tool | - | KEEP |
 | `scripts/js-quality-report` | The JS/TS quality report: complexity, length, clones and coupling of the production JS/TS (a name for js_quality_report.py) | `scripts/js-quality-report` | hook pre-push; skill CLAUDE.md, test-layers; 6 tools | js_quality_report_test.py | KEEP |
 | `scripts/js_quality_report.py` | The JS/TS quality report: complexity, length, clones and coupling of the production JS/TS | `scripts/js_quality_report.py` | hook pre-push; 2 tools | js_quality_report_test.py | Python |
@@ -534,7 +534,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/prod-ops.sh` | The shared harness of the prod-ops scripts (scripts/mongo-grants, scripts/fleet-db-finish, and the next one) | `bash scripts/prod-ops.sh` | 3 tools | prod-ops-test.sh | KEEP |
 | `scripts/with-prod-mongo.sh` | Run one command against prod Mongo from a laptop: the credential from the Touch ID vault, the connection through the ssh tunnel | `scripts/with-prod-mongo.sh` | 6 tools | with-prod-mongo-test.sh | KEEP |
 
-## Infra and deploy (53)
+## Infra and deploy (54)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -590,7 +590,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/test/promql_selectors.py` | The label matchers every alert and panel filters on, read out of the PromQL that carries them. | `imported` | hook pre-push; 3 tools | - | Python |
 | `scripts/deploy-watch` | Watch a worker image roll out, then read PromQL checks over a window: PASS/FAIL per check | `scripts/deploy-watch` | 1 tool | deploy_watch_test.py | KEEP |
 | `scripts/deploy_watch.py` | scripts/deploy-watch: wait until the workers run an image, then read PromQL checks over a window, PASS/FAIL each. | `scripts/deploy_watch.py` | 1 tool | deploy_watch_test.py | Python |
-| `scripts/gitops-specs` | Run movies' GitOps-reading specs against a movies-gitops tree before that tree reaches movies-gitops main | `scripts/gitops-specs` | hook pre-push | gitops-specs-test.sh | MIGRATE |
+| `scripts/gitops-specs` | Run movies' GitOps-reading specs against a movies-gitops tree before that tree reaches movies-gitops main | `scripts/gitops-specs` | hook pre-push; 1 tool | gitops_specs_test.py | KEEP |
+| `scripts/gitops_specs.py` | Run movies' GitOps-reading specs against a movies-gitops tree before that tree reaches movies-gitops main. | `scripts/gitops_specs.py` | 1 tool | gitops_specs_test.py | Python |
 
 ## Mobile (19)
 
@@ -654,7 +655,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 20 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 21 tools | tool_github_test.py | Python |
 | `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 88 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 89 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 14 tools | tool_python_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 19 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
