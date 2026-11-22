@@ -4,8 +4,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * ci.yml's page, mobile and e2e rows run only for a push that can move them (`scope`, scripts/ci/ci-row-scope.sh;
- * its classification is ci-row-scope-test.sh's). What this holds is the wiring that keeps a skip SAFE:
+ * ci.yml's page, mobile and e2e rows run only for a push that can move them (`scope`, scripts/ci/ci-row-scope.sh, a thin exec of ci_row_scope.py;
+ * its classification is ci_row_scope_test.py's). What this holds is the wiring that keeps a skip SAFE:
  *
  *  - every gated row tests `!= 'false'` under `!cancelled()`, so a `scope` job that failed or said nothing runs the
  *    row rather than skipping it (an implicit `success()` would have skipped every row and left the run green);

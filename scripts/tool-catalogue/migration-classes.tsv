@@ -58,7 +58,7 @@ scripts/ci/bounded-step.sh	KEEP
 scripts/ci/build-image.sh	MIGRATE
 scripts/ci/cache-marker.sh	KEEP
 scripts/ci/cgroup-sampler.sh	MIGRATE
-scripts/ci/ci-row-scope.sh	MIGRATE
+scripts/ci/ci-row-scope.sh	KEEP
 scripts/ci/ci-timings	KEEP
 scripts/ci/close-mongo-tunnel.sh	KEEP
 scripts/ci/commit-rules-ci.sh	MIGRATE
