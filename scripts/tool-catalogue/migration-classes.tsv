@@ -176,7 +176,7 @@ scripts/identity-measure-local	MIGRATE
 scripts/identity-precision-sample	KEEP
 scripts/identity-refit	MIGRATE
 scripts/identity-replay	KEEP
-scripts/identity-repro	MIGRATE
+scripts/identity-repro	KEEP
 scripts/identity-rule-ablation	KEEP
 scripts/identity-slice	MIGRATE
 scripts/identity-slice-coverage	MIGRATE

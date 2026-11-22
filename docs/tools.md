@@ -95,7 +95,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/cross_country.py` | ONE READING OF THE COUNTRIES' TAKES SIDE BY SIDE: each country's identity traces joined to the billings they decided, | `imported` | 2 tools | - | Python |
 | `scripts/ci/darwin_sampler.py` | A macOS runner's resource series, for job_metrics.py (which starts it there in the background): macOS has no /proc, | `python3 scripts/ci/darwin_sampler.py` | 3 tools | - | Python |
 | `scripts/ci/decodo-probe.py` | Is the Decodo residential proxy pool up? One line per port, exit 0 if at least one port reached the origin. | `scripts/ci/decodo-probe.py` | wf decodo-probe; 2 tools | decodo_probe_test.py | Python |
-| `scripts/ci/dispatch.sh` | Dispatching a workflow and finding, then waiting on, the run it made | `bash scripts/ci/dispatch.sh` | wf convergence-daily; 8 tools | dispatch-test.sh | MIGRATE |
+| `scripts/ci/dispatch.sh` | Dispatching a workflow and finding, then waiting on, the run it made | `bash scripts/ci/dispatch.sh` | wf convergence-daily; 7 tools | dispatch-test.sh | MIGRATE |
 | `scripts/ci/download-run-artifacts.sh` | Download every artifact of this run whose name matches <pattern> into <dir> | `scripts/ci/download-run-artifacts.sh` | 1 tool | download-run-artifacts-test.sh | KEEP |
 | `scripts/ci/drop-microsoft-apt-sources.sh` | Drop the GitHub-hosted Ubuntu runner's packages.microsoft.com apt sources before an `apt-get update` | `scripts/ci/drop-microsoft-apt-sources.sh` | 3 tools | drop-microsoft-apt-sources-test.sh | KEEP |
 | `scripts/ci/enable-kvm.sh` | Give every user on a GitHub-hosted Linux runner /dev/kvm, so the x86_64 Android emulator runs hardware-accelerated | `scripts/ci/enable-kvm.sh` | wf android, order-independence | enable-kvm-test.sh | KEEP |
@@ -215,7 +215,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (148)
+## Identity (149)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -332,9 +332,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity-ratchet-report` | The unmatched-cluster ratchet's findings as a clean table — WRONG / UNJUDGED / MOVED / LOST / NEW takes, each with | `scripts/identity-ratchet-report` | wf identity-capture; skill CLAUDE.md, identity-investigation; 3 tools | identity-ratchet-report-test.sh | Python |
 | `scripts/identity-refit` | The weekly identity rule refit, whole — the one script `.github/workflows/identity-refit.yml` runs and a local run runs the same way | `scripts/identity-refit` | wf identity-refit; skill CLAUDE.md, identity-investigation; 3 tools | identity-refit-test.sh | MIGRATE |
 | `scripts/identity-replay` | The identity model's take at a past moment, resolved again from the identity history (identity_history, a month of it) | `scripts/identity-replay` | skill identity-investigation; 1 tool | - | KEEP |
-| `scripts/identity-repro` | Turn a production listing — one a regression alert, a drift-check line or the user names — into a slice case on the freshest recording | `scripts/identity-repro` | wf record-scrape-fixtures; 3 tools | identity-repro-test.sh | MIGRATE |
+| `scripts/identity-repro` | Turn a production listing — one a regression alert, a drift-check line or the user names — into a slice case on the freshest recording (a name for identity_repro.py) | `scripts/identity-repro` | wf record-scrape-fixtures; 4 tools | identity_repro_test.py | KEEP |
 | `scripts/identity-rule-ablation` | Rule ablation: which identity and title rules move takes when switched off, over the recorded corpora | `scripts/identity-rule-ablation` | wf identity-rule-ablation | identity_rule_ablation_test.py | KEEP |
-| `scripts/identity-slice` | Reproduce one listing's identity take — matched or not, model and agreement — from a recording, in seconds | `scripts/identity-slice` | wf archive-recording, identity-run, main +2; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 28 tools | identity-slice-test.sh | MIGRATE |
+| `scripts/identity-slice` | Reproduce one listing's identity take — matched or not, model and agreement — from a recording, in seconds | `scripts/identity-slice` | wf archive-recording, identity-run, main +2; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 29 tools | identity-slice-test.sh | MIGRATE |
 | `scripts/identity-slice-coverage` | Slice answer coverage: every pinned slice decided again from its own answers, naming each missing request | `scripts/identity-slice-coverage` | hook pre-push; 1 tool | identity-slice-coverage-test.sh | MIGRATE |
 | `scripts/identity-slice-refresh` | Re-pin identity slice cases on this checkout's code, in place, keeping each case's expected.tsv | `scripts/identity-slice-refresh` | skill identity-investigation; 1 tool | identity-slice-refresh-test.sh | MIGRATE |
 | `scripts/identity-stage-works.py` | Rebuild the identity resolver's table of stage works — every opera and ballet Wikidata knows with five or more | `scripts/identity-stage-works.py` | by hand | - | Python |
@@ -352,6 +352,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity_measure.py` | THE WHOLE-CORPUS MEASUREMENT's classification: every take a commit moved, per country, split by its judgement. | `python3 scripts/identity_measure.py` | wf country-convergence-leg; 5 tools | identity_measure_test.py | Python |
 | `scripts/identity_measure_cli_fixture.py` | The fixture scripts/identity-measure's black-box tests share (identity_measure_cli_test.py, | `imported` | by hand | - | Python |
 | `scripts/identity_precision_sample.py` | THE IDENTITY PRECISION SAMPLE: an unbiased estimate of how many SERVED showtimes sit on a wrong film. | `python3 scripts/identity_precision_sample.py` | 1 tool | identity_precision_sample_test.py | Python |
+| `scripts/identity_repro.py` | Turn a PRODUCTION listing — one a regression alert, a drift-check line or the user names — into a slice case on the | `scripts/identity_repro.py` | 1 tool | identity_repro_test.py | Python |
 | `scripts/identity_rule_ablation.py` | RULE ABLATION: which identity and title rules move takes when switched off, over recorded corpora. | `python3 scripts/identity_rule_ablation.py` | wf identity-rule-ablation; 1 tool | identity_rule_ablation_test.py | Python |
 | `scripts/identity_slice_diff.py` | The takes of identity slices at two refs, compared (scripts/identity-slice): every listing whose final take moved, with | `imported` | 2 tools | identity_slice_diff_test.py | Python |
 | `scripts/identity_stamp_carry.py` | THE STAMP CARRY'S PROOFS (project/StampCarry.scala; the owner, 2026-11-20): a row of test/resources/identity-stamp-carry.tsv | `python3 scripts/identity_stamp_carry.py` | skill identity-investigation; 3 tools | identity_stamp_carry_test.py | Python |
@@ -542,12 +543,12 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 5 tools | tool_actions_test.py | Python |
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; scripts/ci/dispatch.sh's | `imported` | 1 tool | - | Python |
 | `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | 5 tools | - | Python |
-| `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 3 tools | - | Python |
-| `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the Python tools do it (scripts/lib; the shell | `imported` | 4 tools | tool_dispatch_test.py | Python |
+| `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 4 tools | - | Python |
+| `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the Python tools do it (scripts/lib; the shell | `imported` | 5 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | 7 tools | tool_git_test.py | Python |
-| `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 6 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | 31 tools | tool_process_test.py | Python |
-| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | 3 tools | - | Python |
+| `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 7 tools | tool_github_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | 32 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | 4 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 5 tools | - | KEEP |
 | `scripts/mutation-check` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate) | `scripts/mutation-check` | skill test-layers; 3 tools | mutation-check-test.sh | MIGRATE |
@@ -573,7 +574,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/source-refresh` | Ask a country's prod worker to fetch again what one stored external source holds for given keys | `scripts/source-refresh` | by hand | source-refresh-test.sh | KEEP |
 | `scripts/timezonefinder-python` | Print a directory whose python3 imports timezonefinder, for the pre-push drift check | `scripts/timezonefinder-python` | hook pre-push; 3 tools | timezonefinder-python-test.sh | KEEP |
 | `scripts/timezonefinder-python-stub.sh` | A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder | `sourced` | by hand | - | KEEP |
-| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 69 tools | tool-conventions-test.sh | MIGRATE |
+| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 70 tools | tool-conventions-test.sh | MIGRATE |
 | `scripts/tool_catalogue.py` | The tool catalogue: docs/tools.md, generated from every tool's own one-line purpose. | `python3 scripts/tool_catalogue.py` | skill CLAUDE.md | tool_catalogue_test.py | Python |
 | `scripts/touched-tree-stub.sh` | The stub sbt for the touched-code tools' specs (mutation-check, coverage-touched) | `scripts/touched-tree-stub.sh` | by hand | - | KEEP |
 | `scripts/touched-tree.sh` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `bash scripts/touched-tree.sh` | skill test-layers; 2 tools | - | MIGRATE |
