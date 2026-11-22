@@ -4,7 +4,10 @@ import xsbti.VirtualFileRef
 /**
  * TEST-IMPACT SELECTION (`identityImpact`, scripts/ci/identity_impact.py): the test classes a change can affect, found
  * STRUCTURALLY from the compiler's own record — every class Zinc records as depending on a changed class (a name used,
- * a type inferred, a parent, an implicit), transitively, across every module's main, fixtures and test sources. A spec
+ * a type inferred, a parent, an implicit), transitively, across every module's main, fixtures and test sources, and,
+ * between the classes of ONE source file (which Zinc does not record), every use their class files make of each other
+ * (project/SameFileEdges.scala: a concrete spec extending an abstract one of its own file, a class using its file's
+ * helper object) -- the coupling report's same-file edges. A spec
  * no changed class reaches compiles to the same bytecode against the same classes, so it decides as it did; the rest of
  * what it can read is DATA, which is followed by NAME:
  *
@@ -39,6 +42,19 @@ object TestImpact {
   /** One compile analysis: a module's directory and the configuration it compiled. */
   final case class Unit(module: String, analysis: xsbti.compile.CompileAnalysis)
 
+  /** A compiled class file's bytes (sbt's `fileConverter`: `ref => Files.readAllBytes(converter.toPath(ref))`). */
+  type ClassFiles = VirtualFileRef => Array[Byte]
+
+  /** `(dependency, dependent)` pairs between the classes of one source file, which Zinc does not record, read from the
+   *  file's class files (SameFileEdges), for every source of every unit. */
+  private def sameFileEdges(relations: Seq[sbt.internal.inc.Relations], classFiles: ClassFiles): Seq[(String, String)] =
+    relations.flatMap { r =>
+      r.classes.forwardMap.toSeq.collect { case (src, names) if names.size > 1 =>
+        kinowo.build.SameFileEdges.of(names.toSet, names.map(n => n -> r.productClassName.forward(n).toSet).toMap)(
+          r.products(src).toSeq.map(p => kinowo.build.ClassReferences.read(classFiles(p))))
+      }.flatten
+    }
+
   /** The repository path of a file Zinc recorded (`${BASE}/worker/src/...`, or absolute under `repo`). */
   def repoPath(repo: File, ref: VirtualFileRef): String = {
     val id   = ref.id
@@ -64,7 +80,7 @@ object TestImpact {
    * content as another's runs `roots`' classes on the same code and the same data. `exclude`d paths are left out (what the
    * caller keys apart); `tracked` is every file the repository tracks (`git ls-files`). Sorted repository paths.
    */
-  def reach(repo: File, units: Seq[Unit], stamps: Seq[File], tracked: Seq[String], roots: Set[String],
+  def reach(repo: File, units: Seq[Unit], classFiles: ClassFiles, stamps: Seq[File], tracked: Seq[String], roots: Set[String],
             exclude: String => Boolean): Seq[String] = {
     val all = units.map(u => u -> u.analysis.asInstanceOf[sbt.internal.inc.Analysis].relations)
     val classesOf: Map[String, Set[String]] = all.flatMap { case (_, r) =>
@@ -76,11 +92,12 @@ object TestImpact {
       r.productClassName.all.map { case (sourceName, binaryName) => binaryName -> sourceName } }.toMap
     val missing = roots -- classesOf.keySet
     require(missing.isEmpty, s"reach: roots no analysis compiled: ${missing.mkString(", ")}")
-    def depends(cls: String): Set[String] = all.flatMap { case (_, r) =>
+    val sameFile: Map[String, Set[String]] =
+      sameFileEdges(all.map(_._2), classFiles).groupBy(_._2).map { case (k, v) => k -> v.map(_._1).toSet }
+    def depends(cls: String): Set[String] = (all.flatMap { case (_, r) =>
       r.internalClassDep.forward(cls) ++ r.externalClassDep.forward(cls).map(c => sourceNameOf.getOrElse(c, c))
-    }.toSet.filter(sourceOf.contains)
-    var classes = roots.flatMap(classesOf); var frontier = classes
-    while (frontier.nonEmpty) { val next = frontier.flatMap(depends) -- classes; classes ++= next; frontier = next }
+    }.toSet ++ sameFile.getOrElse(cls, Set.empty)).filter(sourceOf.contains)
+    val classes = kinowo.build.SameFileEdges.closure(roots.flatMap(classesOf), depends)
     val reached = classes.flatMap(sourceOf) ++ roots
     val sources = scan(repo)
     val reachedSources  = sources.filter(s => reached(s.path))
@@ -103,7 +120,7 @@ object TestImpact {
    *  `READS <module> <class>` lines, those of them a test-side reader of a changed file reaches (its readers by name or
    *  tree, and the tests built on them): the combined-tree verification runs these in every module, not only the
    *  touched ones' (pre-push --verify-only). */
-  def select(repo: File, units: Seq[Unit], tests: Map[String, Seq[String]], stamps: Seq[File],
+  def select(repo: File, units: Seq[Unit], classFiles: ClassFiles, tests: Map[String, Seq[String]], stamps: Seq[File],
              changed: Seq[String]): Seq[String] = {
     val all = units.map(u => u -> u.analysis.asInstanceOf[sbt.internal.inc.Analysis].relations)
     val classesOf: Map[String, Set[String]] = all.flatMap { case (u, r) =>
@@ -113,10 +130,11 @@ object TestImpact {
       r.productClassName.all.map { case (sourceName, binaryName) => binaryName -> sourceName } }.toMap
     val known = classesOf.values.flatten.toSet
     // dependent <- dependency, every module's analysis at once: a class Zinc records another module's binary name for
-    // is that module's source name
-    val dependents: Map[String, Set[String]] = all.flatMap { case (_, r) =>
+    // is that module's source name; and the dependencies between the classes of one file, which Zinc does not record
+    lazy val dependents: Map[String, Set[String]] = (all.flatMap { case (_, r) =>
       r.internalClassDep.all.toSeq ++ r.externalClassDep.all.toSeq.map { case (from, to) => from -> sourceNameOf.getOrElse(to, to) }
-    }.collect { case (from, to) if known(to) => to -> from }.groupBy(_._1).map { case (k, v) => k -> v.map(_._2).toSet }
+    }.collect { case (from, to) if known(to) => to -> from } ++ sameFileEdges(all.map(_._2), classFiles))
+      .groupBy(_._1).map { case (k, v) => k -> v.map(_._2).toSet }
 
     val why = Seq.newBuilder[String]
     val seeds = Set.newBuilder[String]
@@ -160,11 +178,7 @@ object TestImpact {
     val reasons = why.result()
     if (reasons.nonEmpty) reasons.distinct
     else {
-      def closure(from: Set[String]): Set[String] = {
-        var affected = from; var frontier = affected
-        while (frontier.nonEmpty) { val next = frontier.flatMap(c => dependents.getOrElse(c, Set.empty[String])) -- affected; affected ++= next; frontier = next }
-        affected
-      }
+      def closure(from: Set[String]): Set[String] = kinowo.build.SameFileEdges.closure(from, dependents.getOrElse(_, Set.empty[String]))
       def lines(affected: Set[String], prefix: String): Seq[String] =
         tests.toSeq.sortBy(_._1).flatMap { case (module, names) => names.filter(affected).sorted.map(n => s"$prefix$module $n") }
       lines(closure(seeds.result()), "") ++ lines(closure(readSeeds.result()), "READS ")

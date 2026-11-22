@@ -41,6 +41,11 @@ lazy val impactTests = Def.task {
     "web" -> (impactModule("web") / Test / definedTestNames).value, "e2e" -> (impactModule("e2e") / Test / definedTestNames).value) ++
     impactRepoChecksTests.value
 }
+// a compiled class file's bytes: what the same-file edges are read from (TestImpact.ClassFiles)
+lazy val impactClassFiles = Def.task[TestImpact.ClassFiles] {
+  val converter = fileConverter.value
+  ref => java.nio.file.Files.readAllBytes(converter.toPath(ref))
+}
 // the identity stamps' digested paths (identity's resourceGenerators)
 lazy val impactStamps = Def.task((impactModule("identity") / Compile / managedResources).value.filter(_.getName.endsWith("-sources.txt")))
 
@@ -52,7 +57,7 @@ identityImpact := {
   val units  = impactUnits.value
   val tests  = impactTests.value
   val stamps = impactStamps.value
-  val lines  = TestImpact.select(baseDirectory.value, units, tests, stamps, IO.readLines(file(args(0))).map(_.trim).filter(_.nonEmpty))
+  val lines  = TestImpact.select(baseDirectory.value, units, impactClassFiles.value, tests, stamps, IO.readLines(file(args(0))).map(_.trim).filter(_.nonEmpty))
   IO.writeLines(file(args(1)), lines)
   // and every test class, for a check that runs what the selection left out (scripts/identity-impact-check)
   IO.writeLines(file(args(1) + ".tests"), tests.toSeq.sortBy(_._1).flatMap { case (m, names) => names.sorted.map(n => s"$m $n") })
@@ -74,13 +79,14 @@ identityWalkDigest := {
   val repo    = baseDirectory.value
   val units   = impactUnits.value
   val stamps  = impactStamps.value
+  val classes = impactClassFiles.value
   val out     = file(args(0))
   val dirty   = scala.sys.process.Process(Seq("git", "status", "--porcelain", "--untracked-files=all"), repo).!!.trim
   if (dirty.nonEmpty) { IO.write(out, ""); streams.value.log.info("identityWalkDigest: the working tree has changes: no digest") }
   else {
     val tracked = scala.sys.process.Process(Seq("git", "ls-files", "-z"), repo).!!.split('\u0000').toSeq.filter(_.nonEmpty)
     val slices  = Seq("test/resources/fixtures/drift-slices/", "test/resources/fixtures/identity-slices/")
-    val paths   = TestImpact.reach(repo, units, stamps, tracked,
+    val paths   = TestImpact.reach(repo, units, classes, stamps, tracked,
       Set("worker/src/test/scala/services/identity/PopulationMonotonicitySpec.scala"),
       p => slices.exists(p.startsWith) || p == "test/resources/fixtures/identity-population-flips-known.tsv")
     IO.write(out, kinowo.build.SourceDigest.of(paths, kinowo.build.SourceDigest.tracked(repo)))

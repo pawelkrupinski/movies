@@ -42,7 +42,7 @@ REPO = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(HERE, "ci"))
 import identity_impact  # noqa: E402
 
-TOOLING = ["identity-impact.sbt", "project/TestImpact.scala", "scripts/ci/identity_impact.py"]
+TOOLING = ["identity-impact.sbt", "project/TestImpact.scala", "project/SameFileEdges.scala", "scripts/ci/identity_impact.py"]
 # the hook's identity paths (pre-push's is_identity_path), as git pathspecs; the worker's identity adapters:
 # services.identityadapters, services/identity/adapters before 2026-11-18 (the replay walks both)
 IDENTITY_PATHS = ["identity/", "worker/src/main/scala/services/identityadapters/", "worker/src/main/scala/services/identity/",
@@ -259,6 +259,14 @@ def m_mutable_clock(tree):
                              "def advance(d: Duration): Unit          = now = now.plus(d).plus(d)"))
 
 
+def m_same_file_subclass(tree):
+    # 604134d1a's TitleRelation.sameOriginal: it failed PopulationMonotonicityPart2Spec, a concrete subclass declared in
+    # the abstract PopulationMonotonicitySpec's own file, which only that file's class files connect to the change
+    edit(tree, "identity/src/main/scala/services/identity/TitleRelation.scala",
+         lambda t: t.replace("(a.originals ++ b.originals).exists(o => o == a.whole || o == b.whole) ||",
+                             "a.originals(b.whole) || b.originals(a.whole) ||"))
+
+
 MUTATIONS = [
     ("rules-pl-venue", "a Polish venue's title rule (Kino Muza) no longer strips its programme suffix", m_rules_pl_venue),
     ("rules-de-row", "a German-scoped title rule's pattern changed", m_rules_de_row),
@@ -272,6 +280,9 @@ MUTATIONS = [
     # what the identity specs read by class alone (is_identity_reach_path): a common model, a generic testkit helper
     ("model-year", "a common model (EmbeddedYear) reads every bracketed year one late", m_model_year),
     ("mutable-clock", "the testkit's MutableClock advances twice as far as asked", m_mutable_clock),
+    # a spec reached only through a class of its own file (project/SameFileEdges.scala)
+    ("same-file-subclass", "TitleRelation.sameOriginal as 604134d1a had it: a concrete spec of an abstract one's file fails",
+     m_same_file_subclass),
 ]
 
 
