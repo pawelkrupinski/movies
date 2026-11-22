@@ -1,8 +1,5 @@
 package services.contracts
 
-import tools.SpecTimeouts
-
-import org.mongodb.scala.SingleObservableFuture
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -14,7 +11,6 @@ import tools.contracts.Implementations
 
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.collection.mutable
-import scala.concurrent.Await
 
 /**
  * ONE behaviour suite for [[VenuePageStore]], run against every implementation on the class path:
@@ -28,7 +24,7 @@ class VenuePageStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAn
   override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()
 
   private def fresh(cls: Class[? <: VenuePageStore]): VenuePageStore = {
-    Await.result(isolatedDatabase.database.getCollection(MongoVenuePageStore.Collection).drop().toFuture(), SpecTimeouts.Io)
+    isolatedDatabase.freshCollection(MongoVenuePageStore.Collection)
     Implementations.construct(cls, _.getTypeName match {
       case "org.mongodb.scala.MongoDatabase"            => Some(isolatedDatabase.database)
       case "services.venuepages.VenuePageStore"         => Some(new InMemoryVenuePageStore)

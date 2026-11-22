@@ -25,7 +25,7 @@ class FilmIdCounterStoreContractSpec extends AnyFlatSpec with Matchers with Befo
   override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()
 
   private def fresh(cls: Class[? <: FilmIdCounterStore]): FilmIdCounterStore = {
-    Await.result(isolatedDatabase.database.getCollection(MongoFilmIdCounterStore.Collection).drop().toFuture(), SpecTimeouts.Io)
+    isolatedDatabase.freshCollection(MongoFilmIdCounterStore.Collection)
     Implementations.construct(cls, _.getTypeName match {
       case "org.mongodb.scala.MongoDatabase" => Some(isolatedDatabase.database)
       case _                                 => None

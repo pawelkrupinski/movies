@@ -1,6 +1,5 @@
 package services.contracts
 
-import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -29,7 +28,7 @@ class FacebookRescrapeStoreContractSpec extends AnyFlatSpec with Matchers with B
   private def fresh(cls: Class[? <: FacebookRescrapeStore]): FacebookRescrapeStore =
     Implementations.construct(cls, _.getTypeName match {
       case "org.mongodb.scala.MongoCollection<org.mongodb.scala.bson.collection.immutable.Document>" =>
-        Some(isolatedDatabase.database.getCollection[Document](s"facebook_rescrapes_${collections.incrementAndGet()}"))
+        Some(isolatedDatabase.freshCollection(s"facebook_rescrapes_${collections.incrementAndGet()}"))
       case _ => None
     }).fold(missing => fail(missing), identity)
 

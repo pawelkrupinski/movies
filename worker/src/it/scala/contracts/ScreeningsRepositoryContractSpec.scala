@@ -1,9 +1,6 @@
 package services.contracts
 
-import tools.SpecTimeouts
-
 import models.{Showtime, ListingKey}
-import org.mongodb.scala.SingleObservableFuture
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -12,7 +9,6 @@ import tools.contracts.Implementations
 import tools.IsolatedMongoDatabase
 
 import java.time.LocalDateTime
-import scala.concurrent.Await
 
 /**
  * ONE behaviour suite for [[ScreeningsRepository]], run against every implementation found on the
@@ -27,7 +23,7 @@ class ScreeningsRepositoryContractSpec extends AnyFlatSpec with Matchers with Be
   override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()
 
   private def fresh(cls: Class[? <: ScreeningsRepository], clock: java.time.Clock): ScreeningsRepository = {
-    Await.result(database.getCollection(ScreeningsRepository.Collection).drop().toFuture(), SpecTimeouts.Io)
+    isolatedDatabase.freshCollection(ScreeningsRepository.Collection)
     Implementations.construct(cls, _.getTypeName match {
       case "scala.Option<org.mongodb.scala.MongoDatabase>" => Some(Some(database))
       case "java.time.Clock"                               => Some(clock)

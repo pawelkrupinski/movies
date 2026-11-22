@@ -34,7 +34,7 @@ class KeyedDocStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAnd
   private val implementations: Seq[(String, () => KeyedDocStore[Row])] = Seq(
     "InMemoryKeyedDocStore" -> (() => new InMemoryKeyedDocStore(codec)),
     "MongoKeyedDocStore"    -> (() => new MongoKeyedDocStore(
-      isolatedDatabase.database.getCollection[Document](s"keyed_${collections.incrementAndGet()}"), codec)))
+      isolatedDatabase.freshCollection(s"keyed_${collections.incrementAndGet()}"), codec)))
 
   implementations.foreach { case (name, fresh) =>
     s"[$name]" should "answer a put value by its key, the last put winning, and nothing for another" in {

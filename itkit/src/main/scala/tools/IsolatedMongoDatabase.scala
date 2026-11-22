@@ -3,7 +3,8 @@ package tools
 import scala.concurrent.Await
 import scala.util.control.NonFatal
 
-import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
+import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, SingleObservableFuture}
 
 /**
  * A throwaway database with a name nobody else can be using, for specs that need
@@ -43,6 +44,26 @@ final class IsolatedMongoDatabase private (val client: MongoClient, val database
   }
 
   override def close(): Unit = drop()
+
+  /**
+   * An empty, EXISTING collection `name` in this database: any earlier one dropped, the new one
+   * created, both under the spec's own bound ([[SpecTimeouts.Io]]) before the code under test is
+   * handed it.
+   *
+   * Why created here, not on the store's first write: a write to a collection that does not exist
+   * creates it (and, on a first collection, the database) inside that write — catalog entries, new
+   * WiredTiger tables, a majority wait — and on a loaded runner's shared mongod that is the one
+   * slow step, run under the STORE's production bound (10 s for most). On 2026-11-22 the landing
+   * check of an unrelated tools change failed on FacebookRescrapeStoreContractSpec's first Mongo
+   * case alone: `add`'s 10 s Future timed out on the upsert that created the suite's first
+   * collection, while the cases after it, each writing a collection of its own, passed. Setup is
+   * the spec's wait; the store's bound then times only what the contract is about.
+   */
+  def freshCollection(name: String): MongoCollection[Document] = {
+    Await.result(database.getCollection(name).drop().toFuture(), SpecTimeouts.Io)
+    Await.result(database.createCollection(name).toFuture(), SpecTimeouts.Io)
+    database.getCollection[Document](name)
+  }
 }
 
 object IsolatedMongoDatabase {

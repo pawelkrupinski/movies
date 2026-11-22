@@ -1,6 +1,5 @@
 package services.contracts
 
-import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -26,7 +25,7 @@ class FacebookFetchesContractSpec extends AnyFlatSpec with Matchers with BeforeA
   private def fresh(cls: Class[? <: FacebookFetches]): FacebookFetches =
     Implementations.construct(cls, _.getTypeName match {
       case "org.mongodb.scala.MongoCollection<org.mongodb.scala.bson.collection.immutable.Document>" =>
-        Some(isolatedDatabase.database.getCollection[Document](s"facebook_fetches_${collections.incrementAndGet()}"))
+        Some(isolatedDatabase.freshCollection(s"facebook_fetches_${collections.incrementAndGet()}"))
       case _ => None
     }).fold(missing => fail(missing), identity)
 

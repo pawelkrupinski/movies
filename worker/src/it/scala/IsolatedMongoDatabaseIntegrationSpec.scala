@@ -29,4 +29,20 @@ class IsolatedMongoDatabaseIntegrationSpec extends AnyFlatSpec with Matchers wit
       await(second.database.getCollection("probe").countDocuments().toFuture()) shouldBe 1L
     } finally { first.drop(); second.drop(); admin.close() }
   }
+
+  // The store under test is handed a collection that already EXISTS, so its first write's bound
+  // (10 s in most stores) times no collection or database creation — the step a loaded runner's
+  // mongod stalls on (FacebookRescrapeStoreContractSpec, 2026-11-22), now under the spec's own.
+  it should "hand out a fresh collection already created and empty, whatever an earlier one held" in {
+    val isolated = IsolatedMongoDatabase.open(mongoTarget, "isolated-fresh-collection")
+    try {
+      await(isolated.database.listCollectionNames().toFuture()) should not contain "store"
+      val first = isolated.freshCollection("store")
+      await(isolated.database.listCollectionNames().toFuture()) should contain ("store")
+      await(first.insertOne(Document("_id" -> 1)).toFuture())
+      val again = isolated.freshCollection("store")
+      await(isolated.database.listCollectionNames().toFuture()) should contain ("store")
+      await(again.countDocuments().toFuture()) shouldBe 0L
+    } finally isolated.drop()
+  }
 }

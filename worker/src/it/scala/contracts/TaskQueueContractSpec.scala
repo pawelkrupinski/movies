@@ -41,7 +41,7 @@ class TaskQueueContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
   private def fresh(cls: Class[? <: TaskQueue]): TaskQueue =
     Implementations.construct(cls, _.getTypeName match {
       case "scala.Option<org.mongodb.scala.MongoDatabase>" => Some(Some(database))
-      case "java.lang.String"                              => Some(s"tasks_${collections.incrementAndGet()}")
+      case "java.lang.String"                              => Some(isolatedDatabase.freshCollection(s"tasks_${collections.incrementAndGet()}").namespace.getCollectionName)
       case "services.tasks.TaskQueue"                      => Some(new InMemoryTaskQueue)
       case "services.tasks.TaskPipelineBinder"           =>
         Some(new TaskPipelineBinder("pl", new WorkerTaskMetrics.Series(poolSize = 1, countryCodes = Seq("pl")).tasks))
