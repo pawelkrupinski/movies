@@ -121,6 +121,11 @@
 # Exit: 0 all passed (or none selected by --changed), 1 any failed or a filter matched nothing,
 # 2 a --changed base that is no commit, 64 usage. Bash 3.2 (macOS /bin/bash): no wait -n, no maps.
 set -uo pipefail
+# The tree check's switch is this run's own, never its tests': read here and dropped from the environment, so a test
+# that runs run-script-tests or the landing check's hook itself (run-script-tests-test.sh, hook-beside-test.sh) sees
+# none -- under the landing check's beside run (=0) those tests' own tree checks silently went off (run 45004298899).
+tree_check_flag=${RUN_SCRIPT_TESTS_TREE_CHECK:-1}
+unset RUN_SCRIPT_TESTS_TREE_CHECK
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "${BASH_SOURCE[0]}")/tool-conventions.sh" # bounded: each test under its timeout, Ctrl-C reaching it
 # shellcheck source=scripts/jvm-gate.sh
@@ -525,7 +530,7 @@ failing_cases() {
 
 # ── The tree is left as found (THE TREE IS LEFT AS FOUND, above) ──────────────────────────────────
 tree_check_on() { # the run checks the checkout: asked to, a git checkout, writable, and a python3 to read ctimes with
-  [ "${RUN_SCRIPT_TESTS_TREE_CHECK:-1}" != 0 ] && [ -w "$root" ] && command -v python3 > /dev/null \
+  [ "$tree_check_flag" != 0 ] && [ -w "$root" ] && command -v python3 > /dev/null \
     && [ "$(git -C "$root" rev-parse --is-inside-work-tree 2> /dev/null)" = true ]
 }
 tree_state() { # the checkout's state, a sorted line a path: XY and the path (new and ignored ones too, not their insides)

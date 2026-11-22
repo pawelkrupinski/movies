@@ -30,7 +30,7 @@ HOOK
 chmod +x "$work/hook"
 run() { # [env...]: hook-beside over the fake hook; its output to $work/out, its exit printed
     rm -rf "$work/marks"; mkdir -p "$work/marks"
-    env -u PREPUSH_ONLY -u PREPUSH_ELSEWHERE MARKS="$work/marks" TMPDIR="$work/tmp" "$@" bash "$REPO_ROOT/scripts/ci/hook-beside.sh" scripttests -- \
+    env -u PREPUSH_ONLY -u PREPUSH_ELSEWHERE -u RUN_SCRIPT_TESTS_TREE_CHECK MARKS="$work/marks" TMPDIR="$work/tmp" "$@" bash "$REPO_ROOT/scripts/ci/hook-beside.sh" scripttests -- \
         "$work/hook" --checks-only base..HEAD > "$work/out" 2>&1
     echo $?
 }
