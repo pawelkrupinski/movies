@@ -56,7 +56,7 @@ rm -f "$log"
 if [ "${#failed[@]}" -gt 0 ]; then
     echo "swift-test-shuffled: ${#failed[@]} of $count cases fail alone under seed $seed:"
     printf '  %s\n' "${failed[@]}"
-    # the failing cases, one a line, for Order independence's control pass (scripts/ci/order-compare.sh leg)
+    # the failing cases, one a line, for Order independence's control pass (scripts/ci/order_compare.py leg)
     [ -z "${ORDER_FAILED_FILE:-}" ] || printf '%s\n' "${failed[@]}" > "$ORDER_FAILED_FILE"
     exit 1
 fi

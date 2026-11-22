@@ -37,7 +37,7 @@ name: Order independence
 #     (scripts/ci/fetch-retry), then runs its tests cut off from it (scripts/ci/no-network: a network namespace on
 #     Linux, sandbox-exec on macOS; the Simulator's and the emulator's own traffic is outside a process sandbox: the
 #     emulator runs in airplane mode, the XCUITests on their fixture server);
-#   - runs its tests through `scripts/ci/order-compare.sh leg`: on a failure THE CONTROL PASS runs exactly the failing
+#   - runs its tests through `scripts/ci/order_compare.py leg`: on a failure THE CONTROL PASS runs exactly the failing
 #     tests again in DEFAULT order at the same commit and labels the leg REGRESSION (they fail there too: a change broke
 #     them, agentctl's fixer goes after it) or ORDER (they pass there: an order dependence, or a flake). A diagnosis,
 #     never a rerun to green: the leg keeps its own exit;
@@ -143,10 +143,10 @@ jobs:
                   repochecks/Test/compile web/Test/compile worker/Test/compile"
 
             # Same env as ci.yml's unit run, so a spec that needs a key behaves as it does there; no network but
-            # loopback, and on a failure the control pass (order-compare.sh leg).
+            # loopback, and on a failure the control pass (order_compare.py leg).
             - name: Unit specs, one suite at a time in that order
               id: unit
-              run: scripts/ci/no-network -- scripts/ci/order-compare.sh leg "scala-$ORDER" "$RUNNER_TEMP/order-records" -- sbt testUnitNoE2e
+              run: scripts/ci/no-network -- scripts/ci/order_compare.py leg "scala-$ORDER" "$RUNNER_TEMP/order-records" -- sbt testUnitNoE2e
               env:
                   ORDER:           ${{ matrix.order }}
                   ORDER_REPLAY:    TEST_ORDER_SEED=${{ steps.order.outputs.seed }} sbt testUnitNoE2e
@@ -206,14 +206,14 @@ jobs:
             - name: Robolectric tests, classes and methods in a seeded order
               env:
                   SEED: ${{ needs.seed.outputs.seed }}
-                  # the control pass keeps the leg's depth: only the order differs (order-compare.sh)
+                  # the control pass keeps the leg's depth: only the order differs (order_compare.py)
                   ORDER_CONTROL_EXTRA: -PsyncModelSeeds=20000
               run: |
                   seed="$SEED"
                   echo "Android unit tests, seed \`$seed\` — replay: \`./gradlew testDebugUnitTest -PtestOrderSeed=$seed -PsyncModelSeeds=20000\`" >> "$GITHUB_STEP_SUMMARY"
                   export ORDER_REPLAY="./gradlew testDebugUnitTest -PtestOrderSeed=$seed -PsyncModelSeeds=20000"
                   # The sync model runs deep here: 100× its push-sized seed count.
-                  ../scripts/ci/no-network -- ../scripts/ci/order-compare.sh leg android "$RUNNER_TEMP/order-records" -- \
+                  ../scripts/ci/no-network -- ../scripts/ci/order_compare.py leg android "$RUNNER_TEMP/order-records" -- \
                       ./gradlew --no-daemon --offline testDebugUnitTest -PtestOrderSeed="$seed" -PsyncModelSeeds=20000
 
             - name: Keep the order record
@@ -304,7 +304,7 @@ jobs:
 
             # The device is checked first (a preflight: adb sees it, booted), then cut off the network (airplane
             # mode, wifi and data off: adb is no network of the device's), then every class alone through
-            # order-compare.sh leg; logcat is kept whatever happened. One line: the action runs each line apart.
+            # order_compare.py leg; logcat is kept whatever happened. One line: the action runs each line apart.
             - name: Every androidTest class alone, in that order
               uses: reactivecircus/android-emulator-runner@v2
               env:
@@ -321,7 +321,7 @@ jobs:
                   emulator-boot-timeout: 600
                   working-directory: android
                   # --skip-live-youtube: see android.yml's instrumented lane.
-                  script: mkdir -p "$RUNNER_TEMP/order-records" && ../scripts/ci/order-preflight.sh device && adb shell cmd connectivity airplane-mode enable && adb shell svc wifi disable && adb shell svc data disable && ../scripts/ci/order-compare.sh leg android-instrumented "$RUNNER_TEMP/order-records" -- scripts/devtest-shuffled.sh "$SEED" --skip-live-youtube; s=$?; adb logcat -d > "$RUNNER_TEMP/order-records/logcat.txt" 2>&1; exit $s
+                  script: mkdir -p "$RUNNER_TEMP/order-records" && ../scripts/ci/order-preflight.sh device && adb shell cmd connectivity airplane-mode enable && adb shell svc wifi disable && adb shell svc data disable && ../scripts/ci/order_compare.py leg android-instrumented "$RUNNER_TEMP/order-records" -- scripts/devtest-shuffled.sh "$SEED" --skip-live-youtube; s=$?; adb logcat -d > "$RUNNER_TEMP/order-records/logcat.txt" 2>&1; exit $s
 
             - name: Keep the order record
               if: always()
@@ -368,7 +368,7 @@ jobs:
                   seed="$SEED"
                   echo "swift test cases, each alone, seed \`$seed\` — replay: \`ios/scripts/swift-test-shuffled.sh $seed\`" >> "$GITHUB_STEP_SUMMARY"
                   export ORDER_REPLAY="ios/scripts/swift-test-shuffled.sh $seed"
-                  scripts/ci/no-network -- scripts/ci/order-compare.sh leg swift "$RUNNER_TEMP/order-records" -- ios/scripts/swift-test-shuffled.sh "$seed"
+                  scripts/ci/no-network -- scripts/ci/order_compare.py leg swift "$RUNNER_TEMP/order-records" -- ios/scripts/swift-test-shuffled.sh "$seed"
 
             # The sync model deep: 10x its push-sized seed count.
             - name: StateSyncModelTests at 2000 seeds
@@ -431,7 +431,7 @@ jobs:
             # Each XCUITest class on its own, so none can lean on state another left behind.
             # Every class runs even after a failure; the job fails at the end, naming them, each
             # failed test an error carrying its own assertion (the script says why it is one), and
-            # then the control pass runs the failed classes together in default order (order-compare.sh).
+            # then the control pass runs the failed classes together in default order (order_compare.py).
             # Each test is bounded (a hung one fails at its allowance, naming itself), and so
             # is the step: the whole suite in one run takes ~25 min, alone ~a minute more a class.
             # No process sandbox reaches the Simulator's app: the XCUITests serve their listing from their own
@@ -442,7 +442,7 @@ jobs:
                   ORDER_REPLAY: scripts/ci/xcuitest-each-class-alone.sh
               run: |
                   . scripts/ci/bounded-step.sh
-                  scripts/ci/order-compare.sh leg ios "$RUNNER_TEMP/order-records" -- scripts/ci/xcuitest-each-class-alone.sh
+                  scripts/ci/order_compare.py leg ios "$RUNNER_TEMP/order-records" -- scripts/ci/xcuitest-each-class-alone.sh
 
             # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
             - name: End what a timed-out step left running
@@ -464,7 +464,7 @@ jobs:
 
     # Every leg's record side by side: the run's one-word verdict (regression > order > none > pass) as this job's
     # output and order-verdict.json, a line a leg in the summary, and scala's reverse vs shuffled
-    # (scripts/ci/order-compare.sh, order-compare-test.sh). It decides nothing of the run (the legs' results do), so it
+    # (scripts/ci/order_compare.py, order_compare_test.py). It decides nothing of the run (the legs' results do), so it
     # never fails; it reads needs alone.
     order-verdict:
         needs: [seed, scala, android, android-instrumented, swift, ios]
@@ -491,9 +491,9 @@ jobs:
                   # each upload's paths sit under their common ancestor: a leg's record is wherever its order-records/ is
                   find order-records-all -path '*/order-records/*' \( -name '*.verdict' -o -name '*.txt' -o -name '*.result' \) \
                       ! -name logcat.txt -exec cp {} order-records/ \; 2> /dev/null || true
-                  scripts/ci/order-compare.sh summary order-records "$SEED" >> "$GITHUB_STEP_SUMMARY"
-                  scripts/ci/order-compare.sh summary order-records "$SEED"
-                  echo "verdict=$(scripts/ci/order-compare.sh verdict order-records)" >> "$GITHUB_OUTPUT"
+                  scripts/ci/order_compare.py summary order-records "$SEED" >> "$GITHUB_STEP_SUMMARY"
+                  scripts/ci/order_compare.py summary order-records "$SEED"
+                  echo "verdict=$(scripts/ci/order_compare.py verdict order-records)" >> "$GITHUB_OUTPUT"
                   cat order-records/order-verdict.json
             - name: Keep the verdict
               uses: actions/upload-artifact@v6
