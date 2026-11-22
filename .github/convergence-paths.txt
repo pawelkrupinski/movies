@@ -104,6 +104,7 @@ scripts/ci/identity_judgements.py
 .github/scripts/convergence_publish_pin.py
 .github/scripts/convergence_fill.py
 .github/scripts/convergence_fill_folds.py
+scripts/ci/dispatch_takes.py
 scripts/lib/**
 # The data the takes and drift rows read (ConvergenceReuse's ListedInputs: every input of either check listed): the
 # drift replay harness, its allow-lists and known-flips baseline, the unmatched families, the judgements.

@@ -502,12 +502,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  holds the gate's answer against it -- until takes-skip-shadow-report.sh says it may be enforced; and one full run of
    *  main a day whatever the mode (convergence-daily.yml). */
   "the takes skip gate" should "be in shadow by default, reach the takes step, and run main in full daily" in {
-    // the takes rows are Identity takes' (2026-11-08); convergence takes the input only to hand it on (dispatch-takes.sh)
+    // the takes rows are Identity takes' (2026-11-08); convergence takes the input only to hand it on (dispatch_takes.py)
     val suite = RepoFile.read(".github/workflows/identity-takes.yml")
     RepoFile.block(leg, "takes-skip") should include("default: shadow")
     RepoFile.block(suite, "takes-skip") should include("default: shadow")
     RepoFile.block(RepoFile.read(".github/workflows/identity-model-convergence.yml"), "takes-skip") should include("default: shadow")
-    RepoFile.read("scripts/ci/dispatch-takes.sh") should include("takes-skip")
+    RepoFile.read("scripts/ci/dispatch_takes.py") should include("takes-skip")
     suite should include("takes-skip:                    ${{ needs.preflight.outputs.takes-skip }}")
     suite should include("takes-skip: ${{ steps.legs.outputs.takes-skip }}")
     RepoFile.read("scripts/ci/convergence_reuse.py") should include(""""takes-skip": ("INPUT_TAKES_SKIP", "shadow"),""")

@@ -64,9 +64,10 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.block(preflight, "permissions") should include("actions: write")
     RepoFile.positionOf(preflight, "Dispatch this run's Identity takes run") should be <
       RepoFile.positionOf(preflight, "What every leg is handed")
-    val dispatch = RepoFile.read("scripts/ci/dispatch-takes.sh")
-    dispatch should include("dispatch_workflow identity-takes.yml \"$ref\"")
-    dispatch should include("-f parent-run=\"$parent\"")
+    RepoFile.read("scripts/ci/dispatch-takes.sh") should include("""exec python3 "$(dirname "$0")/dispatch_takes.py" "$@"""")
+    val dispatch = RepoFile.read("scripts/ci/dispatch_takes.py")
+    dispatch should include(""".dispatch("identity-takes.yml", ref, args)""")
+    dispatch should include("""f"parent-run={parent}"""")
   }
 
   /** The title names the convergence run, which is how a reader goes from one to the other: convergence_reuse.py's
@@ -80,7 +81,7 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
 
   /** NO CALLER STARTS ONLY ONE (the owner, 2026-11-08). Convergence takes no takes-only or drift-only input any more, so a
    *  dispatch asking it for takes rows alone is refused (422); and identity-takes.yml is dispatched only by convergence's
-   *  preflight (dispatch-takes.sh) and by the requests that ask for no convergence row -- each of them takes-only or
+   *  preflight (dispatch_takes.py) and by the requests that ask for no convergence row -- each of them takes-only or
    *  drift-only. A new dispatcher of either workflow fails here until it is one of these. */
   it should "be dispatched by no caller that starts convergence's rows without it" in {
     Seq("takes-only:", "drift-only:", "drift-seeds:", "takes-countries:", "drift-explore:").foreach(
@@ -103,8 +104,8 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
       }
     }
     val takesDispatchers = sources.filter(p => dispatchedBy(p).contains("identity-takes.yml")).toSet
-    takesDispatchers shouldBe Set("scripts/ci/dispatch-takes.sh", "scripts/identity-measure", "scripts/identity_drift_ci.py")
-    (takesDispatchers - "scripts/ci/dispatch-takes.sh").foreach { path =>
+    takesDispatchers shouldBe Set("scripts/ci/dispatch_takes.py", "scripts/identity-measure", "scripts/identity_drift_ci.py")
+    (takesDispatchers - "scripts/ci/dispatch_takes.py").foreach { path =>
       withClue(s"$path dispatches identity-takes.yml itself, so it must ask for takes rows alone: ") {
         RepoFile.read(path) should (include("takes-only=true") or include("drift-only=true"))
       }
