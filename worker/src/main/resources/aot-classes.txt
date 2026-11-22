@@ -8834,6 +8834,8 @@ services.cinemas.common.SlotsToMovies
 services.cinemas.common.SlotsToMovies$
 services.cinemas.common.SlotsToMovies$MovieOrder
 services.cinemas.common.SlotsToMovies$MovieOrder$
+services.cinemas.common.SluggedScreening
+services.cinemas.common.SluggedScreening$
 services.cinemas.common.SourceFallbackScraper
 services.cinemas.common.SourceFallbackScraper$
 services.cinemas.common.SourceFallbackScraper$FallbackAnswer
@@ -8966,8 +8968,6 @@ services.cinemas.pl.AmondoClient
 services.cinemas.pl.AmondoClient$
 services.cinemas.pl.AmondoClient$Detail
 services.cinemas.pl.AmondoClient$Detail$
-services.cinemas.pl.AmondoClient$RawSlot
-services.cinemas.pl.AmondoClient$RawSlot$
 services.cinemas.pl.ArtKinoKrosnoClient
 services.cinemas.pl.ArtKinoKrosnoClient$
 services.cinemas.pl.ArtKinoKrosnoClient$$anon$1
@@ -9423,8 +9423,6 @@ services.cinemas.pl.KinotekaClient
 services.cinemas.pl.KinotekaClient$
 services.cinemas.pl.KinotekaClient$Detail
 services.cinemas.pl.KinotekaClient$Detail$
-services.cinemas.pl.KinotekaClient$RawSlot
-services.cinemas.pl.KinotekaClient$RawSlot$
 services.cinemas.pl.McswElektrowniaCinemaClient
 services.cinemas.pl.McswElektrowniaCinemaClient$
 services.cinemas.pl.McswElektrowniaCinemaClient$$anon$1

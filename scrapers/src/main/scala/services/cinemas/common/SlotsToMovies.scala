@@ -38,6 +38,18 @@ private[cinemas] final case class FilmPageCard(
   year:      Option[Int]    = None
 )
 
+/** One screening of a listing that keys its films by their page's slug and prints each film's genres beside it, with
+  * its booking link, its poster and, where the venue says, its room: folded by [[SlotsToMovies.bySlug]]. */
+private[cinemas] final case class SluggedScreening(
+  slug:       String,
+  title:      String,
+  genres:     Seq[String],
+  dateTime:   LocalDateTime,
+  bookingUrl: Option[String],
+  posterUrl:  Option[String],
+  room:       Option[String] = None
+)
+
 /** The film facts a listing row prints beside its screening (a `reż.` credit line): directors, production countries,
   * year, runtime -- each optional. */
 private[cinemas] final case class ListingFacts(
@@ -190,6 +202,22 @@ private[cinemas] object SlotsToMovies {
         cinema    = cinema,
         posterUrl = head.posterUrl,
         filmUrl   = Some(filmUrlOf(slug)),
+        showtimes = showtimes
+      )
+    }
+
+  /** The whole fold for a listing of [[SluggedScreening]]s: one film per slug, in the listing's order, titled and genred
+    * by its first screening, its poster the first its screenings carry and its page `filmUrlOf(slug)` (none for an
+    * empty slug); one showtime per time and booking link unless `distinctBy` says otherwise. */
+  def bySlug(screenings: Seq[SluggedScreening], cinema: Cinema, filmUrlOf: String => String,
+             distinctBy: Showtime => Any = byTimeAndBooking): Seq[CinemaMovie] =
+    fold(screenings, _.slug, s => Showtime(s.dateTime, s.bookingUrl, s.room), distinctBy, MovieOrder.asGrouped) { (slug, group, showtimes) =>
+      val primary = group.head
+      CinemaMovie(
+        movie     = Movie(title = primary.title, genres = primary.genres),
+        cinema    = cinema,
+        posterUrl = group.flatMap(_.posterUrl).headOption,
+        filmUrl   = Option.when(slug.nonEmpty)(filmUrlOf(slug)),
         showtimes = showtimes
       )
     }

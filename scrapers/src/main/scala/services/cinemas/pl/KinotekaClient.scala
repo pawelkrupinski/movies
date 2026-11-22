@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import services.cinemas.common.ScraperParse
-import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.{SluggedScreening, SlotsToMovies}
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.titles.TitleNormalizer
@@ -41,9 +41,6 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
   private val DatePat    = """[?&]date=(\d{4}-\d{2}-\d{2})""".r
   private val SlugPat    = """/film/([^/"?#]+)""".r
 
-  private case class RawSlot(slug: String, title: String, genres: Seq[String], dateTime: LocalDateTime,
-                             booking: Option[String], poster: Option[String])
-
   protected def siteUrl: String = BaseUrl
 
   /** The date nav off the listing page = one chunk per day. A failed fetch here
@@ -66,18 +63,8 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
     }
 
   /** This day's slots → one film per slug, with that day's showtimes. */
-  private def moviesFrom(slots: Seq[RawSlot]): Seq[CinemaMovie] =
-    SlotsToMovies.fold(slots, _.slug, s => Showtime(s.dateTime, s.booking), order = SlotsToMovies.MovieOrder.asGrouped) { (slug, group, showtimes) =>
-      val primary = group.head
-      CinemaMovie(
-        movie     = Movie(title = primary.title, genres = primary.genres),
-        cinema    = cinema,
-        posterUrl = group.flatMap(_.poster).headOption,
-        filmUrl   = if (slug.nonEmpty) Some(s"$BaseUrl/film/$slug/") else None,
-        showtimes = showtimes,
-        trailerUrl = None
-      )
-    }
+  private def moviesFrom(slots: Seq[SluggedScreening]): Seq[CinemaMovie] =
+    SlotsToMovies.bySlug(slots, cinema, slug => s"$BaseUrl/film/$slug/")
 
   override val detailGroup: String = "kinoteka"
 
@@ -117,7 +104,7 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
       )
     }
 
-  private def parsePage(html: String): Seq[RawSlot] =
+  private def parsePage(html: String): Seq[SluggedScreening] =
     Jsoup.parse(html).select("article.e-movie").asScala.toSeq.flatMap { art =>
       val genres = Option(art.selectFirst("p.e-movie__category")).toSeq.flatMap(c => ScraperParse.commaItems(c.text))
         .map(tools.TextNormalization.titleCaseIfAllLower)
@@ -129,7 +116,7 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
         dt    <- KinotekaClient.parseDateTime(a.attr("data-day"), a.attr("data-hour"))
       } yield {
         val booking = Seq("data-buy-link", "href").map(a.attr).find(v => v.nonEmpty && v != "#")
-        RawSlot(slug, title, genres, dt, booking, poster = Option(a.attr("data-poster-link")).filter(_.nonEmpty))
+        SluggedScreening(slug, title, genres, dt, booking, posterUrl = Option(a.attr("data-poster-link")).filter(_.nonEmpty))
       }
     }
 }

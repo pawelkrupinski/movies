@@ -10,7 +10,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.ScraperParse
-import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.{SluggedScreening, SlotsToMovies}
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import tools.{HttpFetch, HttpRead}
@@ -31,9 +31,6 @@ class AmondoClient(http: HttpFetch
   private val RepertoireUrl = s"$BaseUrl/repertuar/"
   private val SlugPat    = """/movies/([^/]+)/""".r
 
-  private case class RawSlot(slug: String, title: String, genres: Seq[String], dateTime: LocalDateTime,
-                             room: Option[String], booking: Option[String], poster: Option[String])
-
   protected def siteUrl: String = BaseUrl
 
   def fetch(): Seq[CinemaMovie] = {
@@ -44,17 +41,7 @@ class AmondoClient(http: HttpFetch
       pane.select("div.movie-tabs").asScala.toSeq.flatMap(block => blockSlots(block, date))
     }
 
-    SlotsToMovies.fold(slots, _.slug, s => Showtime(s.dateTime, s.booking, s.room, Nil),
-      distinctBy = s => (s.dateTime, s.room), order = SlotsToMovies.MovieOrder.asGrouped) { (slug, group, showtimes) =>
-      val primary = group.head
-      CinemaMovie(
-        movie     = Movie(title = primary.title, genres = primary.genres),
-        cinema    = cinema,
-        posterUrl = group.flatMap(_.poster).headOption,
-        filmUrl   = if (slug.nonEmpty) Some(s"$BaseUrl/movies/$slug/") else None,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.bySlug(slots, cinema, slug => s"$BaseUrl/movies/$slug/", distinctBy = s => (s.dateTime, s.room))
   }
 
   override val detailGroup: String = "amondo"
@@ -79,7 +66,7 @@ class AmondoClient(http: HttpFetch
       )
     }
 
-  private def blockSlots(block: Element, date: String): Seq[RawSlot] = {
+  private def blockSlots(block: Element, date: String): Seq[SluggedScreening] = {
     val title  = Option(block.selectFirst("h3.no-underline")).map(_.text.trim).filter(_.nonEmpty)
     val slug   = Option(block.selectFirst("a[href*=/movies/]")).map(_.attr("href"))
                    .flatMap(h => SlugPat.findFirstMatchIn(h).map(_.group(1)))
@@ -93,7 +80,7 @@ class AmondoClient(http: HttpFetch
         val room  = if (parts.length > 1) Some(parts.init.mkString(", ")) else None
         AmondoClient.parseDateTime(date, time).map { dt =>
           val booking = Option(block.selectFirst("a.gooutButton[href]")).map(_.attr("href")).filter(_.nonEmpty)
-          RawSlot(slug.getOrElse(t), t, genres, dt, room, booking, poster)
+          SluggedScreening(slug.getOrElse(t), t, genres, dt, booking, poster, room)
         }
       }
     }
