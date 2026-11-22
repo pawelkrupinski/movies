@@ -11,7 +11,7 @@ Identity takes #82 its base). When GraphQL will not answer at all, THE HISTORY F
 IDENTITY_TAKES_LOCAL_HISTORY (200) of the head's commits, commits only (--filter=tree:0), into a repository of their own
 (the checkout's objects and shallow boundary stay as the row fetched them), each one's state asked by REST, newest first,
 under ONE deadline, IDENTITY_TAKES_LOCAL_HISTORY_DEADLINE (600 s), for the fetch and every read. It names only a GREEN
-commit. THE HISTORY FLOOR: a status older than .github/github-takes-history-floor counts as none."""
+commit."""
 from __future__ import annotations
 
 import os
@@ -24,37 +24,20 @@ import tool_git
 import tool_process
 
 Context = ctx_module.Context
-FLOOR = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}Z$")
 QUERY = """query($owner: String!, $name: String!, $expr: String!, $context: String!{cursor_var}) {{
       repository(owner: $owner, name: $name) {{ object(expression: $expr) {{ ... on Commit {{
         history(first: 100{after}) {{ pageInfo {{ hasNextPage endCursor }}
           nodes {{ oid parents(first: 1) {{ nodes {{ oid }} }} status {{ context(name: $context) {{ state createdAt }} }} }} }} }} }} }} }}"""
 JQ = """.data.repository.object.history | (.nodes[] | .oid + " " +
-            ([.status.context // empty | select((.createdAt // "") >= "{floor}") | .state][0] // "-") + " " +
+            ([.status.context // empty | .state][0] // "-") + " " +
             (.parents.nodes[0].oid // "-")),
           (if .pageInfo.hasNextPage then "NEXT " + .pageInfo.endCursor else empty end)"""
 
 
-def history_floor(ctx: Context) -> str:
-    """The floor (TAKES_HISTORY_FLOOR overrides, even empty); one that is no ISO time stops the check."""
-    floor = ctx.env["TAKES_HISTORY_FLOOR"] if "TAKES_HISTORY_FLOOR" in ctx.env else first_line(
-        os.path.join(ctx.here, ".github/github-takes-history-floor"))
-    if floor and not FLOOR.match(floor):
-        ctx.say(f"::error::{ctx.label}: the history floor is an ISO time like 2026-10-31T15:00:00Z, not {floor}")
-        raise ctx_module.Stop(2)
-    return floor
-
-
-def first_line(path: str) -> str:
-    lines = [line for line in ctx_module.read(path).splitlines() if not re.match(r"^\s*(#|$)", line)]
-    return lines[0] if lines else ""
-
-
 class History:
-    def __init__(self, ctx: Context, context: str, floor: str) -> None:
+    def __init__(self, ctx: Context, context: str) -> None:
         self.ctx = ctx
         self.context = context
-        self.floor = floor
         self.gh_read = ctx.seconds("IDENTITY_TAKES_GH_TIMEOUT", "120")
         self.repository = ctx.env.get("GITHUB_REPOSITORY", "")
 
@@ -65,7 +48,7 @@ class History:
         if cursor:
             args += ["-f", f"cursor={cursor}"]
         query = QUERY.format(cursor_var=", $cursor: String" if cursor else "", after=", after: $cursor" if cursor else "")
-        args += ["-f", f"query={query}", "--jq", JQ.format(floor=self.floor)]
+        args += ["-f", f"query={query}", "--jq", JQ]
         return self.ctx.gh.read(args, self.gh_read)
 
     def page(self, cursor: str) -> Optional[str]:
@@ -85,7 +68,7 @@ class History:
         for _ in range(20):
             page = self.page(walk.cursor)
             if page is None:
-                return LocalHistory(self.ctx, self.context, self.floor).base()
+                return LocalHistory(self.ctx, self.context).base()
             green = walk.read(page)
             if green or not walk.cursor:
                 return green or walk.fallback()
@@ -132,10 +115,9 @@ class Deadline(Exception):
 class LocalHistory:
     """THE HISTORY FROM GIT (the module's header), under its one deadline."""
 
-    def __init__(self, ctx: Context, context: str, floor: str) -> None:
+    def __init__(self, ctx: Context, context: str) -> None:
         self.ctx = ctx
         self.context = context
-        self.floor = floor
         self.depth = int(ctx.setting("IDENTITY_TAKES_LOCAL_HISTORY", "200"))
         self.deadline = ctx.seconds("IDENTITY_TAKES_LOCAL_HISTORY_DEADLINE", "600")
         self.gh_read = ctx.seconds("IDENTITY_TAKES_GH_TIMEOUT", "120")
@@ -201,7 +183,7 @@ class LocalHistory:
         return None
 
     def status(self, sha: str, left: float) -> Optional[str]:
-        jq = (f'[.statuses[] | select(.context == "{self.context}" and (.created_at // "") >= "{self.floor}") | .state][0]'
+        jq = (f'[.statuses[] | select(.context == "{self.context}") | .state][0]'
               ' // "-" | ascii_upcase')
         answer = self.ctx.gh.read(["api", f"repos/{self.ctx.env.get('GITHUB_REPOSITORY', '')}/commits/{sha}/status?per_page=100",
                                    "--jq", jq], left)
@@ -212,7 +194,7 @@ def resolve(ctx: Context, aa: bool) -> str:
     """The base: the head itself (THE A/A), TAKES_BASE (named by hand, expanded when abbreviated), or the pick."""
     if aa:
         return ctx.head
-    base = ctx.env.get("TAKES_BASE") or History(ctx, ctx.setting("STATUS_CONTEXT", ctx.label), history_floor(ctx)).pick()
+    base = ctx.env.get("TAKES_BASE") or History(ctx, ctx.setting("STATUS_CONTEXT", ctx.label)).pick()
     if not base:
         raise ctx.fail(f"::error::{ctx.label}: could not name a base commit")
     if re.match(r"^[0-9a-f]{40}$", base):

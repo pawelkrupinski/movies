@@ -317,15 +317,6 @@ class HistoryTest(TakesCase):
         code = self.run_check({"HISTORY_HANGS": hung, "IDENTITY_TAKES_GH_TIMEOUT": "1"})
         self.assertEqual((2, 0), (code, cli_harness.still_running(hung)), self.log)
 
-    def graphql_queries(self) -> List[str]:
-        return [" ".join(c) for c in self.fakes.calls("gh") if c[:2] == ["api", "graphql"]]
-
-    def test_the_history_asks_only_for_statuses_since_its_floor_and_a_floor_that_is_no_time_stops_the_check(self) -> None:
-        self.fakes.clear()
-        self.run_check({"TAKES_HISTORY_FLOOR": "2026-10-31T15:00:00Z"})
-        self.assertEqual(1, sum('>= "2026-10-31T15:00:00Z")' in q for q in self.graphql_queries()), self.log)
-        self.assertEqual(2, self.run_check({"TAKES_HISTORY_FLOOR": "yesterday"}))
-
     def test_a_short_base_is_expanded_and_one_naming_no_commit_or_unreachable_stops_the_check(self) -> None:
         self.status(2, "SUCCESS")
         self.run_check({"TAKES_BASE": self.c[1][:9]})

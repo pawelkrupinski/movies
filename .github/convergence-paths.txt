@@ -52,7 +52,6 @@ test/resources/fixtures/corpus/**
 .github/actions/runner-peaks/**
 scripts/ci/leg-verdict.sh
 scripts/ci/gh-release.sh
-.github/github-takes-history-floor
 scripts/ci/gh-optional.sh
 scripts/ci/preflight.sh
 scripts/ci/convergence-preflight.sh
