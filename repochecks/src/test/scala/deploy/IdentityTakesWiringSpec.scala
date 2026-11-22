@@ -68,6 +68,9 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
     val dispatch = RepoFile.read("scripts/ci/dispatch_takes.py")
     dispatch should include(""".dispatch("identity-takes.yml", ref, args)""")
     dispatch should include("""f"parent-run={parent}"""")
+    // the preflight's sparse checkout holds what the tool imports (Identity model convergence #1390: scripts/lib missing)
+    val sparse = """sparse-checkout: \|\n((?: +\S+\n)+)""".r.findFirstMatchIn(preflight).map(_.group(1).split("\n").map(_.trim).toSet)
+    sparse.getOrElse(Set.empty) should contain("scripts/lib")
   }
 
   /** The title names the convergence run, which is how a reader goes from one to the other: convergence_reuse.py's

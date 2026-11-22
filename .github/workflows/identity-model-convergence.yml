@@ -169,9 +169,11 @@ jobs:
               with:
                   fetch-depth: 300
                   filter: blob:none
-                  # .github for its *-paths.txt, identity-model-convergence.yml and the convergence-setup/-fill scripts.
+                  # .github for its *-paths.txt, identity-model-convergence.yml and the convergence-setup/-fill scripts;
+                  # scripts/lib for the Python modules dispatch_takes.py imports (#1390 failed without it).
                   sparse-checkout: |
                       scripts/ci
+                      scripts/lib
                       .github
             # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
             - uses: ./.github/actions/job-telemetry
