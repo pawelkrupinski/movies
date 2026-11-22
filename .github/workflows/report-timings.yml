@@ -54,7 +54,6 @@ on:
             - Stage NixOS closures
             - Nix update
             - Order independence
-            - Page test repeat
             - Landing check build cache
             - Pre-commit check
             - Quality hotspots
