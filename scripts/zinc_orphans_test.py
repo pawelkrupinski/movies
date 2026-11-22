@@ -71,6 +71,24 @@ class ZincOrphansTest(unittest.TestCase):
             self.assertEqual(self.run_on(checkout).returncode, 0)
             self.assertEqual(self.remaining(checkout), ["tools/A.class"])
 
+    def test_a_classes_directory_no_analysis_owns_is_emptied_of_classes(self):
+        # 2026-11-21 18:45 IntelliJ's JPS wrote repochecks' fixtures (its "main" module, output sbt's classes/) into
+        # repochecks/target/scala-*/classes, a directory sbt never compiles into (no src/main: no zinc/ analysis). It
+        # comes before fixtures-classes on Test's classpath, so the old deploy.RepoFile ran in every seeded checkout.
+        with tempfile.TemporaryDirectory() as tmp:
+            checkout = self.build(tmp, ["deploy/Spec.class"], ["deploy/Spec.class"])
+            module = checkout / "repochecks/target/scala-3.x"
+            unowned = module / "classes" / "deploy"
+            unowned.mkdir(parents=True)
+            for f in ("RepoFile.class", "RepoFile.tasty", "RepoFile$.class", "logback.xml"):
+                (unowned / f).write_text("x")
+            (module / "fixtures-zinc").mkdir()   # another configuration's analysis directory: not this one's
+            result = self.run_on(checkout)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(sorted(p.name for p in unowned.iterdir()), ["logback.xml"])
+            self.assertEqual(self.remaining(checkout), ["deploy/Spec.class"])
+            self.assertIn("removed 3 class file(s) no build of repochecks/target/scala-3.x/classes produced", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

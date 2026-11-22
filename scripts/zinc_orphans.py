@@ -15,6 +15,10 @@ For every analysis <prefix>zinc/inc_compile*.zip under CHECKOUT's */target/scala
 sibling <prefix>classes directory keeps only the .class files the analysis lists as products, and the .tasty files
 beside a kept class; everything else ending .class/.tasty is deleted (resources are left alone). An analysis that
 cannot be read, or lists no product in its directory, leaves that directory untouched: never delete on a failed read.
+A <prefix>classes directory with NO analysis of its own (no <prefix>zinc/inc_compile*.zip) is one sbt never compiled
+into -- a configuration without sources, like repochecks' Compile -- so every .class/.tasty in it is an orphan: on
+2026-11-21 18:45 JPS wrote repochecks' fixtures into its classes/, ahead of fixtures-classes on Test's classpath, and
+every checkout seeded from that build ran the old deploy.RepoFile (RepoFileSpec failed until `repochecks/clean`).
 
 Run it only where no sbt compile is live (a seed's fresh destination): a compile writes its classes before it saves
 the analysis that lists them. Prints one line per directory pruned; exits 0 unless a CHECKOUT is missing.
@@ -64,15 +68,42 @@ def _class_path_at(data: bytes, start: int):
     return None
 
 
+def targets(checkout: pathlib.Path):
+    return [*checkout.glob("*/target/scala-*"), *checkout.glob("project/**/target/scala-*/sbt-*")]
+
+
 def analyses(checkout: pathlib.Path):
-    for target in [*checkout.glob("*/target/scala-*"), *checkout.glob("project/**/target/scala-*/sbt-*")]:
+    for target in targets(checkout):
         for zinc in target.glob("*zinc"):
             for analysis in sorted(zinc.glob("inc_compile*.zip")):
                 yield analysis, target / (zinc.name[: -len("zinc")] + "classes")
 
 
+def unowned(checkout: pathlib.Path):
+    """Every <prefix>classes directory whose <prefix>zinc holds no analysis: no sbt compile ever wrote into it."""
+    for target in targets(checkout):
+        for classes in target.glob("*classes"):
+            zinc = target / (classes.name[: -len("classes")] + "zinc")
+            if classes.is_dir() and not any(zinc.glob("inc_compile*.zip")):
+                yield classes
+
+
+def strays(classes: pathlib.Path, here: "set[str]") -> "list[str]":
+    """The .class/.tasty files under <classes> whose class is not in <here>."""
+    gone = []
+    for root, _, files in os.walk(classes):
+        for f in files:
+            if not f.endswith(SUFFIXES):
+                continue
+            path = os.path.join(root, f)
+            cls = path if f.endswith(".class") else path[: -len(".tasty")] + ".class"
+            if os.path.normpath(cls) not in here:
+                gone.append(path)
+    return gone
+
+
 def prune(checkout: pathlib.Path, dry_run: bool) -> int:
-    removed = 0
+    doomed = [(classes, strays(classes, set())) for classes in unowned(checkout)]
     for analysis, classes in analyses(checkout):
         if not classes.is_dir():
             continue
@@ -82,24 +113,17 @@ def prune(checkout: pathlib.Path, dry_run: bool) -> int:
             print(f"zinc-orphans: {analysis} unreadable ({e}): {classes} left as it is", file=sys.stderr)
             continue
         here = {os.path.normpath(checkout / p) for p in listed}
-        rel = os.path.relpath(classes, checkout)
         if not any(p.startswith(str(classes) + os.sep) for p in here):
             continue   # lists nothing in this directory: an empty build, or a format this cannot read
-        gone = []
-        for root, _, files in os.walk(classes):
-            for f in files:
-                if not f.endswith(SUFFIXES):
-                    continue
-                path = os.path.join(root, f)
-                cls = path if f.endswith(".class") else path[: -len(".tasty")] + ".class"
-                if os.path.normpath(cls) not in here:
-                    gone.append(path)
+        doomed.append((classes, strays(classes, here)))
+    removed = 0
+    for classes, gone in doomed:
         if gone:
             if not dry_run:
                 for path in gone:
                     os.remove(path)
             print(f"zinc-orphans: {'would remove' if dry_run else 'removed'} {len(gone)} class file(s) "
-                  f"no build of {rel} produced", file=sys.stderr)
+                  f"no build of {os.path.relpath(classes, checkout)} produced", file=sys.stderr)
             removed += len(gone)
     return removed
 
