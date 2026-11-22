@@ -1,3 +1,4 @@
+# Purpose: The landing check: the pre-push hook's checks of an agentctl-queued change, split into the rest and four identity shards
 name: Pre-commit check
 
 # REMOTE CHECKS (agentctl's land queue, ~/bin/AGENTCTL.md "remote checks"; the owner, 2026-10-27): while the laptop is
@@ -82,9 +83,7 @@ jobs:
               run: |
                   checks=" $(scripts/ci/precommit-share.sh checks plan) "
                   echo "the change's checks:${checks% }"
-                  for share in identity; do
-                      case "$checks" in *" $share "*) echo "$share=true" ;; *) echo "$share=false" ;; esac >> "$GITHUB_OUTPUT"
-                  done
+                  case "$checks" in *" identity "*) echo "identity=true" ;; *) echo "identity=false" ;; esac >> "$GITHUB_OUTPUT"
             - uses: ./.github/actions/job-telemetry
               if: ${{ !cancelled() }}
               with:
@@ -322,9 +321,9 @@ jobs:
                   # inside the job's 90 minutes, so the two failure steps below still print and upload its logs: the
                   # job's own timeout ends every step, those too, and leaves a run with no output at all (run 3357)
                   rc=0
-                  # the branch names the hook's mode (PREPUSH_MODE, from precommit-share.sh): the identity share runs only
-                  # the change's own checks (--checks-only); agentctl's fast-only batch check is the rest's alone.
-                  [ "$PREPUSH_MODE" = --checks-only ] || exit 0
+                  # PREPUSH_MODE (precommit-share.sh) is --checks-only here: this job runs only when the plan lists identity,
+                  # which the fast-only and verify-only sets never do (pre-push's AreaChecks), and a verifyareas- round's
+                  # identity share is --checks-only by precommit-share.sh.
                   timeout --kill-after=60 80m scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
