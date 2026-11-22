@@ -517,7 +517,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     daily should include("gh workflow run identity-model-convergence.yml --ref main -f takes-skip=shadow")
   }
 
-  /** scripts/identity-measure's whole-corpus measurement: a takes-only dispatch expands every leg to its `takes` row and
+  /** scripts/identity-measure's whole-corpus measurement (scripts/identity_measure_cli_dispatch.py dispatches it): a takes-only dispatch expands every leg to its `takes` row and
    *  its `takes-base` row, and the takes row uploads the check's own output -- both sides' takes and the verdict -- for the
    *  tool to classify. */
   "a takes-only dispatch" should "run only the takes rows, the takes row uploading the check's output" in {
@@ -527,7 +527,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val suite = RepoFile.block(leg, "convergence")
     suite should include("name: identity-takes-${{ inputs.code }}")
     suite should include("path: ${{ runner.temp }}/identity-takes/")
-    RepoFile.read("scripts/identity-measure") should include("takes-only=true")
+    RepoFile.read("scripts/identity_measure_cli_dispatch.py") should include("takes-only=true")
   }
 
   /** The base's side on a runner of its own (identity-takes-check.sh's THE BASE ROW): the takes row ran it after its

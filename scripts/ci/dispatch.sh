@@ -49,7 +49,7 @@
 _dispatch_say() { echo "dispatch: $*" >&2; }
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../tool-conventions.sh" # bounded
-# DISPATCH_GH: the gh to run (default gh; scripts/identity-measure passes its $KINOWO_GH).
+# DISPATCH_GH: the gh to run (default gh; a caller passes its $KINOWO_GH).
 _dispatch_gh() { bounded "${DISPATCH_GH_TIMEOUT:-60}" "${DISPATCH_GH:-gh}" "$@"; }
 
 # Sets RATE_LIMIT_WAIT to the seconds until the token's core limit resets (+DISPATCH_RATE_LIMIT_PAD, 5; a reset

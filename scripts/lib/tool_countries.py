@@ -5,11 +5,13 @@ KINOWO_COUNTRIES and country_flag, identity-tools.sh's identity_country_code / _
   code("germany") -> "de"      a country's code from its name (a job's `(germany)`); anything else passes through
   name("de") -> "germany"      and back
   selected(values) -> codes    the codes `--country cc[,cc]` / `--countries a,b` named, in order, lower-cased, a repeat
-                               dropped; one unknown, or a value naming none, a UsageError"""
+                               dropped; one unknown, or a value naming none, a UsageError
+  flag_at(argv, i, before)     the codes so far and those the flag at argv[i] (`--flag v` or `--flag=v`) names, and
+                               the index of its last word"""
 from __future__ import annotations
 
 import re
-from typing import List, Sequence
+from typing import List, Sequence, Tuple
 
 from tool_cli import UsageError
 
@@ -44,3 +46,10 @@ def named(flag: str, value: str) -> List[str]:
     if unknown:
         raise UsageError(f"unknown country {unknown[0]} (one of {','.join(CODES)})")
     return codes
+
+
+def flag_at(argv: Sequence[str], i: int, before: Sequence[str]) -> Tuple[List[str], int]:
+    arg = argv[i]
+    flag = arg.split("=", 1)[0]
+    values, i = ([arg.split("=", 1)[1]], i) if "=" in arg else (list(argv[i + 1:i + 2]), i + 1)
+    return selected(flag, values or [""], before), i

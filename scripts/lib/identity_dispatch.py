@@ -84,7 +84,7 @@ class MeasureCi:
         since = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         if not self.dispatcher.dispatch(workflow, branch, args):
             raise DispatchFailed(f"could not dispatch {workflow} on {branch}")
-        run = self.dispatcher.find_run(workflow, since, lambda r: r.get("headSha") == push, ["--branch", branch])
+        run = self.dispatcher.find_run(workflow, since, f'.headSha == "{push}"', ["--branch", branch])
         if run is None:
             raise DispatchFailed(f"dispatched, but no run of {push[:9]} on {branch} was found (the run deletes "
                                  f"{branch} when it ends)")

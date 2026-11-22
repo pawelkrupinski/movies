@@ -7,6 +7,7 @@ commands, and the real one is `SubprocessRunner`. A `Command` says how it runs:
   Command(argv, env, log=PATH, tee=True)   ... and to this process's stdout as they come (`2>&1 | tee PATH`)
   closed_stdin=True                        stdin from /dev/null (`< /dev/null`)
   cwd=DIR                                  run in DIR
+  input=TEXT                               TEXT on its stdin (`<<< TEXT`; `capture` only)
   timeout=SECONDS                          ended past it, its whole process group -- TERM, a moment, then KILL --
                                            exit 124 (tool-conventions.sh's `bounded`), teed or not. Its group is a
                                            session of its own, out of reach of whatever ends this process (a caller's
@@ -49,6 +50,7 @@ class Command:
     closed_stdin: bool = False
     timeout: Optional[float] = None
     cwd: Optional[str] = None  # the directory it runs in (this process's by default)
+    input: Optional[str] = None  # what its stdin reads (capture only)
 
 
 @dataclass(frozen=True)
@@ -100,7 +102,8 @@ class SubprocessRunner:
             except PermissionError:
                 return Captured(NOT_EXECUTABLE, "", f"{command.argv[0]}: permission denied\n")
             try:
-                out, err = proc.communicate(timeout=command.timeout)
+                text = None if command.input is None else command.input.encode()
+                out, err = proc.communicate(text, timeout=command.timeout)
                 return Captured(proc.returncode, out.decode(errors="replace"), err.decode(errors="replace"))
             except subprocess.TimeoutExpired:
                 end_group(proc)
@@ -122,6 +125,8 @@ class SubprocessRunner:
 
     @staticmethod
     def stdin(command: Command) -> Optional[int]:
+        if command.input is not None:
+            return subprocess.PIPE
         return subprocess.DEVNULL if command.closed_stdin else None
 
     def _tee(self, command: Command, sink: BinaryIO, guard: "Bounded") -> int:

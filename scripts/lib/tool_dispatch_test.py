@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import time
 import unittest
@@ -85,9 +86,13 @@ def listed(*rounds: object) -> Answer:
     """`run list` answering each round in turn (the last one from then on); None is an unreadable list."""
     left: List[object] = list(rounds)
 
-    def answer(_args: Sequence[str]) -> Tuple[int, str, str]:
+    def answer(args: Sequence[str]) -> Tuple[int, str, str]:
         now = left.pop(0) if len(left) > 1 else left[0]
-        return (1, "", "HTTP 503\n") if now is None else (0, json.dumps(now), "")
+        if now is None:
+            return 1, "", "HTTP 503\n"
+        done = subprocess.run(["jq", "-r", args[args.index("--jq") + 1]], input=json.dumps(now), capture_output=True,
+                              text=True)
+        return done.returncode, done.stdout, done.stderr
     return answer
 
 
@@ -100,19 +105,31 @@ class FindRunTest(unittest.TestCase):
         d, gh, clock = dispatcher(listed([run(1, "abc", "2026-01-01T00:00:00Z")],
                                          [run(1, "abc", "2026-01-01T00:00:00Z"), run(2, "def", "2026-02-01T00:00:01Z"),
                                           run(3, "abc", "2026-02-01T00:00:02Z"), run(4, "abc", "2026-02-01T00:00:03Z")]))
-        self.assertEqual("4", d.find_run("w.yml", "2026-02-01T00:00:00Z", lambda r: r["headSha"] == "abc",
+        self.assertEqual("4", d.find_run("w.yml", "2026-02-01T00:00:00Z", '.headSha == "abc"',
                                          ["--branch", "b"]))
         self.assertEqual(["run", "list", "--workflow", "w.yml", "--event", "workflow_dispatch", "--limit", "20",
-                          "--branch", "b", "--json", "databaseId,headSha,createdAt,displayTitle"], gh.calls[0])
+                          "--branch", "b", "--json", "databaseId,headSha,createdAt,displayTitle"], gh.calls[0][:-2])
         self.assertEqual([5], clock.slept)
 
     def test_none_past_the_bound_or_when_the_list_cannot_be_read(self) -> None:
         d, _, clock = dispatcher(listed([]), find_seconds=12)
-        self.assertIsNone(d.find_run("w.yml", "2026", lambda r: True))
+        self.assertIsNone(d.find_run("w.yml", "2026", "true"))
         self.assertEqual([5, 5, 5], clock.slept)
         d, _, clock = dispatcher(listed(None))
-        self.assertIsNone(d.find_run("w.yml", "2026", lambda r: True))
+        self.assertIsNone(d.find_run("w.yml", "2026", "true"))
         self.assertEqual([], clock.slept)
+
+
+class FindTitledTest(unittest.TestCase):
+    def test_the_run_another_runs_job_dispatched_by_its_title_polled_until_listed(self) -> None:
+        titled = [{"databaseId": 7, "displayTitle": "Identity takes (convergence run 5)"},
+                  {"databaseId": 6, "displayTitle": "Identity takes (convergence run 4)"}]
+        d, _, clock = dispatcher(listed([], titled))
+        self.assertEqual("7", d.find_titled("t.yml", "Identity takes (convergence run 5)", 60, 30))
+        self.assertEqual([30], clock.slept)
+        d, _, clock = dispatcher(listed(titled))
+        self.assertIsNone(d.find_titled("t.yml", "Identity takes (convergence run 9)", 60, 30))
+        self.assertEqual([30, 30], clock.slept)
 
 
 class EtaTest(unittest.TestCase):

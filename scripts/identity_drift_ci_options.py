@@ -10,10 +10,11 @@ from typing import List, Optional
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci"))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import drift_seeds  # noqa: E402
+import tool_cli  # noqa: E402
 import tool_countries  # noqa: E402
-from tool_cli import UsageError  # noqa: E402
+from tool_cli import UsageError, usage_failed  # noqa: E402
 
-__all__ = ["Options", "UsageError", "parse"]
+__all__ = ["Options", "UsageError", "parse", "usage_failed"]
 
 
 @dataclass
@@ -39,24 +40,18 @@ VALUED = {"--head": "ref", "--seeds": "seeds", "--for-red": "for_red", "--agains
 
 def parse(argv: List[str], usage: str) -> Optional[Options]:
     """The options, checked; None for --help (`usage` said)."""
-    o, i = Options(), 0
-    while i < len(argv):
-        if argv[i] in ("-h", "--help"):
-            print(usage, end="")
-            return None
-        i = word(o, argv, i) + 1
-    return checked(o)
+    o = tool_cli.read_options(Options(), argv, usage, word)
+    return None if o is None else checked(o)
 
 
 def word(o: Options, argv: List[str], i: int) -> int:
     """argv[i] read into the options: the index of the last word it took."""
     arg = argv[i]
     if arg.split("=", 1)[0] in ("--country", "--countries"):
-        return countries(o, argv, i)
+        o.countries, i = tool_countries.flag_at(argv, i, o.countries)
+        return i
     if arg in VALUED:
-        if i + 1 >= len(argv):
-            raise UsageError(f"{arg} needs a value")
-        valued(o, VALUED[arg], argv[i + 1])
+        valued(o, VALUED[arg], tool_cli.value_at(argv, i))
         return i + 1
     if arg in ("--no-wait", "--profile"):
         setattr(o, arg[2:].replace("-", "_"), True)
@@ -67,22 +62,11 @@ def word(o: Options, argv: List[str], i: int) -> int:
     return i
 
 
-def countries(o: Options, argv: List[str], i: int) -> int:
-    """`--country cc[,cc]` / `--countries a,b` (or `--flag=value`) at argv[i]: the index of its last word."""
-    arg = argv[i]
-    flag = arg.split("=", 1)[0]
-    values, i = ([arg.split("=", 1)[1]], i) if "=" in arg else (argv[i + 1:i + 2], i + 1)
-    o.countries = tool_countries.selected(flag, values or [""], o.countries)
-    return i
-
-
 def valued(o: Options, name: str, value: str) -> None:
     if name in ("for_red", "against"):
         value = value[1:] if value.startswith("#") else value
     if name == "timeout":
-        if not value.isdigit():
-            raise UsageError(f"--timeout takes minutes, not {value}")
-        o.timeout_min, o.timeout_set = int(value), True
+        o.timeout_min, o.timeout_set = tool_cli.minutes("--timeout", value), True
     else:
         setattr(o, name, value)
 

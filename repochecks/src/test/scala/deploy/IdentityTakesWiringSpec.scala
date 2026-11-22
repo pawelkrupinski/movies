@@ -107,15 +107,16 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
       }
     }
     val takesDispatchers = sources.filter(p => dispatchedBy(p).contains("identity-takes.yml")).toSet
-    takesDispatchers shouldBe Set("scripts/ci/dispatch_takes.py", "scripts/identity-measure", "scripts/identity_drift_ci.py")
+    takesDispatchers shouldBe Set("scripts/ci/dispatch_takes.py", "scripts/identity_measure_cli_dispatch.py", "scripts/identity_drift_ci.py")
     (takesDispatchers - "scripts/ci/dispatch_takes.py").foreach { path =>
       withClue(s"$path dispatches identity-takes.yml itself, so it must ask for takes rows alone: ") {
         RepoFile.read(path) should (include("takes-only=true") or include("drift-only=true"))
       }
     }
     withClue("--full asks for convergence's rows: it dispatches convergence, whose preflight starts the takes run: ") {
-      RepoFile.read("scripts/identity-measure") should include("""identity_dispatch_measure "$convergence_workflow"""")
-      RepoFile.read("scripts/identity-measure") should include("""find_takes_run "$convergence_run"""")
+      RepoFile.read("scripts/identity_measure_cli_dispatch.py") should include("self.ci.dispatch(CONVERGENCE_WORKFLOW,")
+      RepoFile.read("scripts/identity_measure_cli_dispatch.py") should include(
+        """find_titled(WORKFLOW, f"Identity takes (convergence run {s.convergence_run})"""")
     }
   }
 

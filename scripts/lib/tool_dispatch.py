@@ -8,29 +8,29 @@ tools' scripts/ci/dispatch.sh, whose rules these are): every gh call bounded, an
                                           waited out to its reset when that is at most DISPATCH_RATE_LIMIT_MAX_WAIT
                                           (900 s) away (DISPATCH_RATE_LIMIT_SECONDARY_SECONDS, 60, for a secondary
                                           limit); any other refusal fails at once
-    .find_run(workflow, since, matches, args) the newest workflow_dispatch run created at or after `since` (ISO-8601)
-                                          that `matches` (fields databaseId, headSha, createdAt, displayTitle), polled
-                                          for DISPATCH_FIND_SECONDS (120): a dispatch's run is listed seconds after it
+    .find_run(workflow, since, predicate, args) the newest workflow_dispatch run created at or after `since` (ISO-8601)
+                                          matching the jq `predicate` (fields databaseId, headSha, createdAt,
+                                          displayTitle), polled for DISPATCH_FIND_SECONDS (120): a dispatch's run is
+                                          listed seconds after it
+    .find_titled(workflow, title, seconds, poll) the newest workflow_dispatch run titled so (a run another run's job
+                                          dispatched: dispatch.sh's find_takes_run), polled every `poll` for `seconds`
     .eta(workflow, branch_prefix, args)   "~N min (median of K recent runs)" over the newest 30 runs that ended success
                                           or failure on a branch starting so: an estimate to say, never a deadline
+
+The selections are gh's `--jq`, as dispatch.sh's: what gh answers is the answer, a run id or the figures.
   backoff_next(seconds, cap)              the next poll's delay: x1.5, at least 1, at most the cap (DISPATCH_BACKOFF_CAP)
 
 DISPATCH_GH_TIMEOUT (60 s) bounds each gh call. Tested by tool_dispatch_test.py against a fake gh."""
 from __future__ import annotations
 
 import json
-import math
 import re
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Mapping, Optional, Protocol, Sequence
+from typing import Callable, Mapping, Optional, Protocol, Sequence
 
 import tool_process
-
-Run = Dict[str, Any]
-
 
 class GhCalls(Protocol):
     def call(self, args: Sequence[str], timeout: float, quiet: bool = False) -> tool_process.Captured: ...
@@ -112,48 +112,44 @@ class Dispatcher:
             max(reset - int(time.time()) + self.settings.rate_limit_pad, 0)
         return wait if wait <= self.settings.rate_limit_max_wait else None
 
-    def find_run(self, workflow: str, since: str, matches: Callable[[Run], bool],
-                 args: Sequence[str] = ()) -> Optional[str]:
-        deadline = self.clock() + self.settings.find_seconds
+    def find_run(self, workflow: str, since: str, predicate: str, args: Sequence[str] = ()) -> Optional[str]:
+        select = f'[.[] | select(.createdAt >= "{since}") | select({predicate})] | sort_by(.createdAt) | last' \
+                 ' | .databaseId // empty'
+        return self._poll(["run", "list", "--workflow", workflow, "--event", "workflow_dispatch", "--limit", "20", *args,
+                           "--json", "databaseId,headSha,createdAt,displayTitle", "--jq", select], workflow,
+                          self.settings.find_seconds, 5)
+
+    def find_titled(self, workflow: str, title: str, seconds: float, poll: float) -> Optional[str]:
+        select = f'[.[] | select(.displayTitle == {json.dumps(title)})] | first | .databaseId // empty'
+        return self._poll(["run", "list", "--workflow", workflow, "--event", "workflow_dispatch", "--limit", "50",
+                           "--json", "databaseId,displayTitle", "--jq", select], workflow, seconds, poll)
+
+    def _poll(self, args: Sequence[str], workflow: str, seconds: float, poll: float) -> Optional[str]:
+        deadline = self.clock() + seconds
         while True:
-            out = self._read(["run", "list", "--workflow", workflow, "--event", "workflow_dispatch", "--limit", "20",
-                              *args, "--json", "databaseId,headSha,createdAt,displayTitle"])
+            out = self._read(args)
             if out is None:
                 say(f"could not list {workflow}'s runs")
                 return None
-            found = sorted((run for run in _runs(out) if str(run.get("createdAt") or "") >= since and matches(run)),
-                           key=lambda run: str(run.get("createdAt")))
-            if found:
-                return str(found[-1]["databaseId"])
+            if out.strip():
+                return out.strip()
             if self.clock() >= deadline:
-                say(f"dispatched {workflow}, but no run of it appeared in {self.settings.find_seconds:g}s")
+                say(f"dispatched {workflow}, but no run of it appeared in {seconds:g}s")
                 return None
-            self.sleep(5)
+            self.sleep(poll)
 
     def eta(self, workflow: str, branch_prefix: str, args: Sequence[str] = (), quiet: bool = False) -> Optional[str]:
+        select = ('[.[] | select(.status == "completed" and (.conclusion == "success" or .conclusion == "failure")'
+                  f' and ((.headBranch // "") | startswith({json.dumps(branch_prefix)})))'
+                  ' | (.updatedAt | fromdateiso8601) - (.createdAt | fromdateiso8601)] | sort'
+                  ' | if length == 0 then empty else "\\(.[length / 2 | floor] / 60 | ceil) \\(length)" end')
         out = self._read(["run", "list", "--workflow", workflow, "--limit", "30", *args,
-                          "--json", "status,conclusion,createdAt,updatedAt,headBranch"])
+                          "--json", "status,conclusion,createdAt,updatedAt,headBranch", "--jq", select])
         if out is None:
             if not quiet:
                 say(f"could not list {workflow}'s runs for an ETA")
             return None
-        walls = sorted(_wall(run) for run in _runs(out) if _ended_on(run, branch_prefix))
-        if not walls:
+        figures = out.split()
+        if len(figures) != 2 or not all(figure.isdigit() for figure in figures):
             return None
-        return f"~{math.ceil(walls[len(walls) // 2] / 60)} min (median of {len(walls)} recent runs)"
-
-
-def _runs(out: str) -> List[Run]:
-    answer: Any = json.loads(out or "[]")
-    return [run for run in answer if isinstance(run, dict)] if isinstance(answer, list) else []  # type: ignore
-
-
-def _ended_on(run: Run, prefix: str) -> bool:
-    return run.get("status") == "completed" and run.get("conclusion") in ("success", "failure") \
-        and str(run.get("headBranch") or "").startswith(prefix)
-
-
-def _wall(run: Run) -> float:
-    def at(field: str) -> float:
-        return datetime.strptime(str(run[field]), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp()
-    return at("updatedAt") - at("createdAt")
+        return f"~{figures[0]} min (median of {figures[1]} recent runs)"

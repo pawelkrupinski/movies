@@ -219,8 +219,7 @@ def main(argv: List[str], env: Dict[str, str]) -> int:
                 print(f"{TOOL}: {e}", file=sys.stderr)
                 return 2
     except options_.UsageError as e:
-        print(f"{TOOL}: {e}\n{TOOL}: see {TOOL} --help", file=sys.stderr)
-        return 2
+        return options_.usage_failed(TOOL, e)
 
 
 if __name__ == "__main__":
