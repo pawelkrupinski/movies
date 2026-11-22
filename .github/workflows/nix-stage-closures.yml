@@ -319,36 +319,8 @@ jobs:
 
       - name: Every host in the flake evaluates
         working-directory: infra
-        run: |
-          set -uo pipefail
-
-          # THE ROSTER IS THE FLAKE, never a list in this file -- the same rule
-          # bin/stage-nixos-closures follows and for the same reason: a hand-kept list of hosts
-          # silently stops matching the fleet, which is the failure the whole mechanism exists to
-          # end.
-          hosts="$(nix eval --json '.#nixosConfigurations' --apply builtins.attrNames \
-                   | tr -d '[]"' | tr ',' ' ')"
-          if [ -z "${hosts// /}" ]; then
-            echo "::error title=Nothing was evaluated::This flake declares no nixosConfigurations, which is NOT the same as every host being fine."
-            exit 1
-          fi
-
-          overall=0
-          for host in ${hosts}; do
-            echo "::group::${host}"
-            # `drvPath` INSTANTIATES WITHOUT BUILDING. It forces the whole module system --
-            # assertions included -- which is what makes this catch a broken host file, while
-            # costing no compilation at all.
-            if nix eval --raw ".#nixosConfigurations.${host}.config.system.build.toplevel.drvPath"; then
-              echo ""
-              echo "  ${host}: evaluates"
-            else
-              echo "::error title=A host does not evaluate::${host} -- main will not build for it, so bin/stage-nixos-closures cannot stage it and the host cannot self-heal."
-              overall=1
-            fi
-            echo "::endgroup::"
-          done
-          exit "${overall}"
+        # every host the flake declares instantiated, never built; one that does not evaluate named (infra/bin/nix_stage_steps.py)
+        run: bin/nix_stage_steps.py evaluate
 
   stage:
     name: nix-stage
@@ -388,64 +360,10 @@ jobs:
         env:
           NIX_STAGE_SIGNING_KEY: ${{ secrets.NIX_STAGE_SIGNING_KEY }}
           NIX_STAGE_SSH_KEY: ${{ secrets.NIX_STAGE_SSH_KEY }}
-        run: |
-          set -uo pipefail
+        # the keys made files with modes, then bin/stage-nixos-closures, its exit annotated (infra/bin/nix_stage_steps.py)
+        run: bin/nix_stage_steps.py stage
 
-          # EACH PREREQUISITE IS REPORTED AS ITSELF. "there is no signing key" and "a host refused
-          # the key" are different problems with different owners, and a single generic failure
-          # would send somebody to read the wrong logs.
-          if [ -z "${NIX_STAGE_SIGNING_KEY}" ]; then
-            echo "::error title=No signing key::secrets.NIX_STAGE_SIGNING_KEY is unset, so closures could not be signed -- and the hosts accept this job's paths ONLY because they are signed, since the deploy account is deliberately not a trusted nix user. Nothing was staged."
-            exit 1
-          fi
-          if [ -z "${NIX_STAGE_SSH_KEY}" ]; then
-            echo "::error title=No deploy key::secrets.NIX_STAGE_SSH_KEY is unset, so no host could be reached. Nothing was staged."
-            exit 1
-          fi
-
-          # THE SECRETS BECOME FILES, WITH MODES, AND ARE REMOVED ON EVERY EXIT PATH. A private key
-          # passed as an environment variable to a child process is visible in that process's
-          # environment; OpenSSH additionally REFUSES a private key whose mode is group- or
-          # world-readable, and the refusal reads as "Permission denied (publickey)" -- which looks
-          # like the host rejecting the key rather than ssh declining to offer it.
-          workspace="$(mktemp -d "${RUNNER_TEMP:-/tmp}/nix-stage.XXXXXX")"
-          chmod 700 "${workspace}"
-          cleanup() { rm -rf "${workspace}"; }
-          trap cleanup EXIT
-
-          printf '%s\n' "${NIX_STAGE_SIGNING_KEY}" > "${workspace}/signing.key"
-          chmod 600 "${workspace}/signing.key"
-
-          # THE SSH KEY GOES WHERE A PLAIN `ssh` LOOKS FOR IT, rather than being passed as an
-          # option, and that is load-bearing: `nix copy --to ssh://...` spawns its OWN ssh, so a key
-          # named only on this script's command lines would be found by the tool's direct calls and
-          # not by the copy -- which is the one step that matters.
-          mkdir -p ~/.ssh
-          printf '%s\n' "${NIX_STAGE_SSH_KEY}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-
-          # NIX_SSHOPTS is what `nix copy` passes to its own ssh. It must AGREE with the options
-          # bin/stage-nixos-closures uses for its direct calls -- otherwise the tool's "is this host
-          # already current" probe succeeds under one set of rules and the copy fails under another,
-          # which reads as an unreachable host that answered a moment ago.
-          export NIX_SSHOPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10"
-          export NIX_SIGNING_KEY_FILE="${workspace}/signing.key"
-
-          # THE TOOL IS THE POLICY, not this file. Everything about which hosts are covered, what
-          # counts as a failure, and what an operator is told to run next lives in
-          # bin/stage-nixos-closures, so that the same behaviour is available from a laptop and so
-          # that this workflow cannot quietly diverge from it.
-          # `|| status=$?`: the step's `bash -e` would otherwise end it before the annotation below.
-          status=0
-          python3 bin/stage-nixos-closures || status=$?
-          case "${status}" in
-            0) ;;
-            2) echo "::error title=Nothing was staged::bin/stage-nixos-closures exited 2 -- it could not read the flake or found no hosts, which is NOT the same as every host being up to date." ;;
-            *) echo "::error title=A host could not be staged::bin/stage-nixos-closures exited ${status}. A host that could not be reached has NOT got the closure, and what it would run is unknown. Scroll up for which." ;;
-          esac
-          exit "${status}"
-
-      # BELT AND BRACES ON THE KEY. The `trap` above removes the workspace, but the ssh key was
+      # BELT AND BRACES ON THE KEY. The step above removes its workspace, but the ssh key was
       # written outside it (see why, above) and a job that fails between the two commands would
       # otherwise leave it on a runner that is destroyed anyway. `if: always()` because the case
       # this covers is the failing one.
