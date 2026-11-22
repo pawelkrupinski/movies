@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """THE PYTHON QUALITY RATCHET (the pre-push `pyquality` check; CLAUDE.md, "Code quality ratchets"): the repository's
-Python tools' measures (scripts/py-quality-report --check: every `.py` and extension-less Python tool under scripts/ and
-.github/scripts/) may not grow past test/resources/py-quality-baseline.tsv -- the JS/TS ratchet's model and engine
+Python tools' measures (scripts/py-quality-report --check: every `.py` and extension-less Python tool under HELD_ROOTS:
+scripts/, .github/scripts/, infra/bin/, infra/nix/files/, android/scripts/, ios/scripts/) may not grow past test/resources/py-quality-baseline.tsv -- the JS/TS ratchet's model and engine
 (baseline_ratchet.py), each kind under the Scala ratchet's own trailer, strict pyright's error count under `Typing:`:
 
   Complexity:   cognitive, cyclomatic, inner-defs     <file>:<function>[#n] (no line: an edit above never re-keys it)
@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # the engine bes
 import baseline_ratchet  # noqa: E402
 
 BASELINE = "test/resources/py-quality-baseline.tsv"
-HELD_ROOTS = ("scripts/", ".github/scripts/")
+HELD_ROOTS = ("scripts/", ".github/scripts/", "infra/bin/", "infra/nix/files/", "android/scripts/", "ios/scripts/")
 TRAILERS: Dict[str, Tuple[str, ...]] = {
     "Complexity": ("cognitive", "cyclomatic", "inner-defs"),
     "Length": ("method-lines", "file-lines"),
@@ -50,7 +50,7 @@ HINT = ("Split the function or file, extract the clone, cut the import, type it 
 
 
 def held(part: str) -> bool:
-    """A key's file (`<file>` or `<file>:<function>`) is a tool's under scripts/ or .github/scripts/; a self-test's
+    """A key's file (`<file>` or `<file>:<function>`) is a tool's under HELD_ROOTS; a self-test's
     is reported, never held."""
     path = part.split(":", 1)[0]
     return path.startswith(HELD_ROOTS) and not path.endswith("_test.py")

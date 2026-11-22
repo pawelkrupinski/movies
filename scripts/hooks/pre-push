@@ -18,7 +18,8 @@
 #                 writes it; falls need none). Tests, page tests, Playwright and scripts are reported, never gated: they
 #                 select no check. Its tools: `npm ci` once per lock, outside the tree in ~/.cache/kinowo/js-quality (npm or node missing BLOCKS)
 #   `pyquality`   THE PYTHON QUALITY RATCHET (CLAUDE.md, "Code quality ratchets"), on a change to a Python tool under
-#                 scripts/ or .github/scripts/ (a .py, or an extension-less file with a python shebang), its baseline, the
+#                 scripts/, .github/scripts/, infra/bin/, infra/nix/files/, android/ or ios/scripts/ (a .py, or an
+#                 extension-less file with a python shebang), its baseline, the
 #                 measure or pyrightconfig.json (py_quality_paths): scripts/py-quality-report --check measures every one
 #                 (stdlib ast + tokenize: cognitive / cyclomatic 10, inner defs 2, function 50 lines, file 500, clones 50
 #                 tokens, fan-out 9, no import cycle; ~1 s) and strict pyright over the push's own .py files, and
@@ -411,15 +412,16 @@ js_quality_paths() { # stdin: changed paths -> the ones that select the jsqualit
 }
 
 # THE PYTHON QUALITY RATCHET'S PATHS (the header's `pyquality`; `--py-quality-plan` prints them): a Python tool under
-# scripts/ or .github/scripts/ -- a .py, or an extension-less file whose first line names python -- its baseline, the
+# scripts/, .github/scripts/, infra/bin/, infra/nix/files/, android/scripts/ or ios/scripts/ -- a .py, or an extension-less file whose first line names python -- its baseline, the
 # measure, its engine and pyrightconfig.json
 py_quality_paths() { # stdin: changed paths -> the ones that select the pyquality check
     local path
     while IFS= read -r path; do
         case "$path" in
-            scripts/*.py|.github/scripts/*.py|test/resources/py-quality-baseline.tsv|scripts/py-quality/*|scripts/py-quality-report|\
+            scripts/*.py|.github/scripts/*.py|infra/bin/*.py|infra/nix/files/*.py|android/scripts/*.py|ios/scripts/*.py|\
+            test/resources/py-quality-baseline.tsv|scripts/py-quality/*|scripts/py-quality-report|\
             scripts/ci/py_quality_ratchet.py|scripts/ci/baseline_ratchet.py|scripts/ci/trailers.py|pyrightconfig.json) echo "$path" ;;
-            scripts/*|.github/scripts/*)
+            scripts/*|.github/scripts/*|infra/bin/*|infra/nix/files/*|android/scripts/*|ios/scripts/*)
                 case "${path##*/}" in *.*) ;; *) head -1 "$path" 2>/dev/null | grep -q '^#!.*python' && echo "$path" ;; esac ;;
         esac
     done
