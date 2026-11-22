@@ -177,10 +177,12 @@ check "...reported as STALLED, with the stall report, and not left running" "1 1
   "$(grep -c '^STALLED .*slow-test' "$work/out") $(grep -c 'stall report: process group' "$work/out") $(spec_still_running "$work/hung")"
 rm "$tree/scripts/slow-test.sh"
 # busy: a line, then a wait on what the line's writer hands it, over and over -- progress at every poll, for longer
-# than the bound (its count, not a clock, ends it)
+# than the bound (its count, not a clock, ends it). The bound is FOUR polls, not two (landing check 45006463015, a
+# loaded runner under the floor bash 3.2: its `-nt` reads whole seconds, so a written log can look unwritten for one
+# poll, and an oversleeping `sleep 0.2` loop for another -- two quiet polls ended a test that was working).
 # shellcheck disable=SC2016 # expanded by the fake test, not here
-put scripts/busy-test.sh 'for n in $(seq 1 30); do echo "case $n"; sleep 0.2; done'
-check "a test still making progress past its stall bound passes" "0" "$(KINOWO_STALL_POLL_SECONDS=1 run --stall 2 busy-test)"
+put scripts/busy-test.sh 'for n in $(seq 1 40); do echo "case $n"; sleep 0.2; done'
+check "a test still making progress past its stall bound passes" "0" "$(KINOWO_STALL_POLL_SECONDS=1 run --stall 4 busy-test)"
 check "...as PASS" "1" "$(grep -c '^PASS .*busy-test' "$work/out")"
 rm "$tree/scripts/busy-test.sh"
 
