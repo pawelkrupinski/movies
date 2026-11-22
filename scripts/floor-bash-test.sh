@@ -44,6 +44,47 @@ check "--install with no cc fails, naming it" "1 1" \
   "$(floor env PATH="$work/nocc" "$BASH" "$REPO_ROOT/scripts/floor-bash" --install > /dev/null; echo $?) $(grep -c 'needs cc' "$work/err")"
 check "an unknown argument is a usage error" "64" "$(floor env "$BASH" "$REPO_ROOT/scripts/floor-bash" --nope > /dev/null; echo $?)"
 
+# --install's build, over stubs: a tarball whose configure does nothing, a `make` that records how it was asked and
+# installs a bash reporting 3.2.57 where its prefix says (FLOOR_MAKE_FAIL: the build step fails as 3.2's -j race did)
+src="$work/src/bash-3.2.57"; mkdir -p "$src/support" "$work/tools"
+printf '#!/bin/sh\nexit 0\n' > "$src/configure"; printf '#!/bin/sh\necho "$1"\n' > "$src/support/config.sub"; chmod +x "$src/configure"
+tar -C "$work/src" -czf "$work/bash.tar.gz" bash-3.2.57
+tarball_sha="$(shasum -a 256 "$work/bash.tar.gz" 2> /dev/null | cut -d' ' -f1 || sha256sum "$work/bash.tar.gz" | cut -d' ' -f1)"
+printf '#!/bin/sh\necho x86_64-linux-gnu\n' > "$work/tools/cc"; printf '#!/bin/sh\nexit 0\n' > "$work/tools/bison"
+cat > "$work/tools/make" <<'MAKE'
+#!/bin/sh
+echo "make $*" >> "$MAKE_CALLS"
+case " $* " in
+  *" install "*) for a in "$@"; do case "$a" in prefix=*) p="${a#prefix=}" ;; esac; done
+                 mkdir -p "$p/bin"; printf '#!/bin/sh\necho 3.2.57\n' > "$p/bin/bash"; chmod +x "$p/bin/bash" ;;
+  *) sleep 1; [ -z "${FLOOR_MAKE_FAIL:-}" ] || { echo "mv: cannot stat 'newversion.h': No such file or directory"; exit 2; } ;;
+esac
+MAKE
+chmod +x "$work/tools/"*
+install_floor() { # [env assignments...]: --install over the stubs into $work/cache
+  env PATH="$work/tools:$PATH" MAKE_CALLS="$work/make-calls" FLOOR_BASH_SYSTEM="$work/system-bash" \
+    FLOOR_BASH_DIR="$work/cache/bash-3.2.57" FLOOR_BASH_TARBALL_URL="file://$work/bash.tar.gz" \
+    FLOOR_BASH_TARBALL_SHA256="$tarball_sha" "$@" bash "$REPO_ROOT/scripts/floor-bash" --install
+}
+: > "$work/make-calls"
+check "--install builds serially (-j1: 3.2's makefile races itself) and installs into a staging dir renamed into place" \
+  "$work/cache/bash-3.2.57/bin/bash|make -s -j1|1|0" \
+  "$(install_floor 2> "$work/err")|$(grep -c -- '-j1' "$work/make-calls" | sed 's/^1$/make -s -j1/')|$(grep -c "install prefix=$work/cache/bash-3.2.57.build." "$work/make-calls")|$(find "$work/cache" -maxdepth 1 -name '*.build.*' | grep -c .)"
+rm -rf "$work/cache"; : > "$work/make-calls"
+install_floor > "$work/one" 2> /dev/null & first=$!
+install_floor > "$work/two" 2> /dev/null & second=$!
+wait "$first"; s1=$?; wait "$second"; s2=$?
+check "two builders at once: one builds, the other waits and finds its build" "0 0 1 same" \
+  "$s1 $s2 $(grep -vc install "$work/make-calls") $([ "$(cat "$work/one")" = "$(cat "$work/two")" ] && echo same)"
+rm -rf "$work/cache"
+check "a failing build names its step, exit and last line, leaves no floor and no staging dir behind" \
+  "1|floor-bash: building bash 3.2.57 failed at make (exit 2): mv: cannot stat 'newversion.h': No such file or directory|absent 0" \
+  "$(install_floor FLOOR_MAKE_FAIL=1 > /dev/null 2> "$work/err"; echo $?)|$(grep '^floor-bash: building' "$work/err")|$([ -e "$work/cache/bash-3.2.57" ] && echo present || echo absent) $(find "$work/cache" -maxdepth 1 -name '*.build.*' | grep -c .)"
+check "...on GitHub Actions also as an annotation" "1" \
+  "$(install_floor FLOOR_MAKE_FAIL=1 GITHUB_ACTIONS=true > /dev/null 2> "$work/err"; grep -c '^::error title=floor bash::building bash 3.2.57 failed at make (exit 2)' "$work/err")"
+check "...and the landing check's step says which hook check it failed (pre-push floor FAILED), never a nameless job" "1" \
+  "$(grep -c 'pre-push floor FAILED' "$REPO_ROOT/.github/actions/install-floor-bash/action.yml")"
+
 # The floor is one thing everywhere: the hook asks scripts/floor-bash, and so does the nightly macOS step.
 # shellcheck disable=SC2016 # the workflow's text, not expanded
 check "order-independence.yml's floor step runs the self-tests under scripts/floor-bash's bash" "1" \

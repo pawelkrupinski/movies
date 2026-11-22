@@ -11,11 +11,20 @@
 # host has no bash 3 of its own: before this, the hook's floor run passed there in silence, and ci-runner's landing
 # checks let a `case … in pat)` inside `$( )` through that 3.2 cannot parse (ed160b94b; Order independence #72).
 # A build that does not report 3.2.57 is no floor: it is removed and --install fails. Tested by scripts/floor-bash-test.sh.
+#
+# THE BUILD IS SERIAL AND LANDS WHOLE (2026-11-22: ci-runner missed its cache and built with -j32, and bash 3.2's
+# Makefile raced itself -- `mv: cannot stat 'newversion.h'`, Makefile:553 -- refusing a land as "check (rest) (no
+# failing test named)"). `make` runs -j1: the build is ~1 min once, and 3.2's makefile is not parallel-safe. One builder
+# at a time holds $FLOOR_BASH_DIR.lock (a kernel flock, freed when it ends), and the next finds the build done; each
+# builds into a staging directory beside the cache and renames it into place only once it reports 3.2.57, so a half
+# build is never the floor. A failure names its step (fetch, configure, make, install, version), its exit and the log's
+# last lines -- on GitHub Actions also as an `::error title=floor bash` annotation.
 set -euo pipefail
 
 FloorVersion=3.2.57
 FloorTarballSha256=3fa9daf85ebf35068f090ce51283ddeeb3c75eb5bc70b1a4a7cb05868bfe06a4
-FloorTarballUrl="https://ftp.gnu.org/gnu/bash/bash-$FloorVersion.tar.gz"
+FloorTarballUrl="${FLOOR_BASH_TARBALL_URL:-https://ftp.gnu.org/gnu/bash/bash-$FloorVersion.tar.gz}" # the test's file:// stand-in
+FloorTarballSha256="${FLOOR_BASH_TARBALL_SHA256:-$FloorTarballSha256}"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 dir="${FLOOR_BASH_DIR:-$HOME/.cache/kinowo-floor-bash/bash-$FloorVersion}"
 system_bash="${FLOOR_BASH_SYSTEM:-/bin/bash}" # the test's stand-in for macOS's
@@ -45,35 +54,44 @@ fi
 for tool in cc make bison curl; do
   command -v "$tool" > /dev/null || { echo "floor-bash: --install needs $tool" >&2; exit 1; }
 done
+# failed <step> <exit> [<log>]: the step named, its log's tail, an annotation on GitHub Actions; exit 1
+failed() {
+  local why="building bash $FloorVersion failed at $1 (exit $2)" last=""
+  if [ -n "${3:-}" ] && [ -f "$3" ]; then tail -30 "$3" >&2; last="$(grep -v '^[[:space:]]*$' "$3" | tail -1)"; fi
+  echo "floor-bash: $why${last:+: $last}" >&2
+  [ "${GITHUB_ACTIONS:-}" != true ] || echo "::error title=floor bash::$why${last:+: $last}" >&2
+  exit 1
+}
+mkdir -p "$(dirname "$dir")"
+# one builder at a time (a kernel flock on descriptor 8, held to this script's end); the next finds its build
+exec 8> "$dir.lock"
+if command -v python3 > /dev/null; then python3 -c 'import fcntl; fcntl.flock(8, fcntl.LOCK_EX)'; fi
+if [ "$(version_of "$dir/bin/bash" || true)" = "$FloorVersion" ]; then echo "$dir/bin/bash"; exit 0; fi
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
-"$root/scripts/ci/fetch-verified.sh" "$work/bash.tar.gz" "$FloorTarballUrl" "$FloorTarballSha256" >&2
-tar -C "$work" -xzf "$work/bash.tar.gz"
-rm -rf "$dir"
+stage="$(mktemp -d "$dir.build.XXXXXX")" # beside the cache: the same filesystem, so the rename is atomic
+trap 'rm -rf "$work" "$stage"' EXIT
+"$root/scripts/ci/fetch-verified.sh" "$work/bash.tar.gz" "$FloorTarballUrl" "$FloorTarballSha256" >&2 || failed fetch $?
+tar -C "$work" -xzf "$work/bash.tar.gz" || failed unpack $?
 # K&R definitions and implicit declarations are errors from GCC 14 / C23 on: build it as the C it was written in.
 # bash's own malloc misbehaves on 64-bit glibc; the system one is what macOS's build uses too.
 # Its 2006 config.sub knows no aarch64: the build type is the compiler's own, in config.sub's four parts, taken as it
-# is where the old script rejects it.
-(
-  cd "$work/bash-$FloorVersion"
-  machine="$(cc -dumpmachine)"
-  case "$machine" in *-*-*-*) ;; *-linux-*) machine="${machine%%-*}-unknown-${machine#*-}" ;; esac
-  mv support/config.sub support/config.sub.2006
-  # shellcheck disable=SC2016 # expanded by that config.sub
-  printf '#!/bin/sh\n"%s/support/config.sub.2006" "$@" 2> /dev/null || case "$1" in *-*-*-*) echo "$1" ;; *) exit 1 ;; esac\n' \
-    "$PWD" > support/config.sub
-  chmod +x support/config.sub
-  cc89="cc -std=gnu89 -w" # in CC, not CFLAGS: the build-time tools (mkbuiltins) compile with CC_FOR_BUILD's flags alone
-  CC="$cc89" CC_FOR_BUILD="$cc89" CFLAGS="-O2" \
-    ./configure --quiet --prefix="$dir" --build="$machine" --without-bash-malloc --disable-nls > "$work/configure.log" 2>&1 \
-    || { tail -30 "$work/configure.log" >&2; exit 1; }
-  make -s -j"$(getconf _NPROCESSORS_ONLN 2> /dev/null || echo 2)" > "$work/make.log" 2>&1 || { tail -30 "$work/make.log" >&2; exit 1; }
-  make -s install > "$work/install.log" 2>&1 || { tail -30 "$work/install.log" >&2; exit 1; }
-) || { rm -rf "$dir"; echo "floor-bash: building bash $FloorVersion failed" >&2; exit 1; }
-built="$(version_of "$dir/bin/bash" || true)"
-if [ "$built" != "$FloorVersion" ]; then
-  rm -rf "$dir"
-  echo "floor-bash: the build reports bash ${built:-nothing}, not $FloorVersion -- removed" >&2
-  exit 1
-fi
+# is where the old script rejects it. Configured for its home ($dir), installed into the staging directory.
+cd "$work/bash-$FloorVersion"
+machine="$(cc -dumpmachine)"
+case "$machine" in *-*-*-*) ;; *-linux-*) machine="${machine%%-*}-unknown-${machine#*-}" ;; esac
+mv support/config.sub support/config.sub.2006
+# shellcheck disable=SC2016 # expanded by that config.sub
+printf '#!/bin/sh\n"%s/support/config.sub.2006" "$@" 2> /dev/null || case "$1" in *-*-*-*) echo "$1" ;; *) exit 1 ;; esac\n' \
+  "$PWD" > support/config.sub
+chmod +x support/config.sub
+cc89="cc -std=gnu89 -w" # in CC, not CFLAGS: the build-time tools (mkbuiltins) compile with CC_FOR_BUILD's flags alone
+CC="$cc89" CC_FOR_BUILD="$cc89" CFLAGS="-O2" \
+  ./configure --quiet --prefix="$dir" --build="$machine" --without-bash-malloc --disable-nls > "$work/configure.log" 2>&1 \
+  || failed configure $? "$work/configure.log"
+make -s -j1 > "$work/make.log" 2>&1 || failed make $? "$work/make.log" # serial: 3.2's makefile races (above)
+make -s install prefix="$stage" exec_prefix="$stage" > "$work/install.log" 2>&1 || failed install $? "$work/install.log"
+built="$(version_of "$stage/bin/bash" || true)"
+[ "$built" = "$FloorVersion" ] || { echo "floor-bash: the build reports bash ${built:-nothing}, not $FloorVersion" >&2; failed version 1; }
+rm -rf "$dir"
+mv "$stage" "$dir" || failed "the rename into $dir" $?
 echo "$dir/bin/bash"

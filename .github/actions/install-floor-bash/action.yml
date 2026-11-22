@@ -24,7 +24,10 @@ runs:
                       || scripts/ci/install-apt-package.sh build-essential bison
                   echo "built=true" >> "$GITHUB_OUTPUT"
               fi
-              floor="$(scripts/floor-bash --install)"
+              # a failed build names the hook check it stops (`floor`), so the landing check's red is never
+              # "check (rest) (no failing test named)" (2026-11-22, a -j32 build race); floor-bash names its step
+              start=$SECONDS
+              floor="$(scripts/floor-bash --install)" || { echo "pre-push floor FAILED ($((SECONDS - start))s): scripts/floor-bash --install could not build bash 3.2.57 (its step above)"; exit 1; }
               "$floor" --version | head -1
         - if: github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true' && steps.install.outputs.built == 'true'
           uses: actions/cache/save@v5
