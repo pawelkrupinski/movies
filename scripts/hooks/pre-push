@@ -17,6 +17,16 @@
 #                 trailer (`Complexity:`, `Length:`, `Duplication:`, `Coupling: <why>`; scripts/js-quality-report --update
 #                 writes it; falls need none). Tests, page tests, Playwright and scripts are reported, never gated: they
 #                 select no check. Its tools: `npm ci` once per lock, outside the tree in ~/.cache/kinowo/js-quality (npm or node missing BLOCKS)
+#   `pyquality`   THE PYTHON QUALITY RATCHET (CLAUDE.md, "Code quality ratchets"), on a change to a Python tool under
+#                 scripts/ or .github/scripts/ (a .py, or an extension-less file with a python shebang), its baseline, the
+#                 measure or pyrightconfig.json (py_quality_paths): scripts/py-quality-report --check measures every one
+#                 (stdlib ast + tokenize: cognitive / cyclomatic 10, inner defs 2, function 50 lines, file 500, clones 50
+#                 tokens, fan-out 9, no import cycle; ~1 s) and strict pyright over the push's own .py files, and
+#                 scripts/ci/py_quality_ratchet.py holds them to test/resources/py-quality-baseline.tsv -- no new row
+#                 past a limit, no frozen row rising, a new file with no type error -- the baseline growing only under the
+#                 kind's trailer (`Complexity:`, `Length:`, `Duplication:`, `Coupling:`, `Typing: <why>`). Self-tests
+#                 are reported, never held. Pyright: `npm ci` once per lock, outside the tree in ~/.cache/kinowo/py-quality
+#                 (npm or node missing BLOCKS)
 #   `drift`       the generated roster chain (scripts/ci/generated-artefacts-drift.sh)
 #   `snapshot`    the read-model snapshot's input stamp (scripts/read-model-snapshot-inputs.sh)
 #   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, the two Grafana metric-coverage
@@ -397,7 +407,23 @@ quality_paths() { # stdin: changed paths -> the ones that select the quality ste
 # ratchet measures (scripts/js-quality/ratchet-areas.tsv), its baseline, the ratchet and the measure -- no test, page
 # test, Playwright spec or script outside the measure: those are reported, not gated
 js_quality_paths() { # stdin: changed paths -> the ones that select the jsquality check
-    grep -E '^(web/src/main/assets/js/.*|infra/version-dashboard/src/.*|test/resources/js-quality-baseline\.tsv|scripts/ci/js_quality_ratchet\.py|scripts/ci/trailers\.py|scripts/js-quality/.*|scripts/js-quality-report)$' || true
+    grep -E '^(web/src/main/assets/js/.*|infra/version-dashboard/src/.*|test/resources/js-quality-baseline\.tsv|scripts/ci/js_quality_ratchet\.py|scripts/ci/baseline_ratchet\.py|scripts/ci/trailers\.py|scripts/js-quality/.*|scripts/js-quality-report)$' || true
+}
+
+# THE PYTHON QUALITY RATCHET'S PATHS (the header's `pyquality`; `--py-quality-plan` prints them): a Python tool under
+# scripts/ or .github/scripts/ -- a .py, or an extension-less file whose first line names python -- its baseline, the
+# measure, its engine and pyrightconfig.json
+py_quality_paths() { # stdin: changed paths -> the ones that select the pyquality check
+    local path
+    while IFS= read -r path; do
+        case "$path" in
+            scripts/*.py|.github/scripts/*.py|test/resources/py-quality-baseline.tsv|scripts/py-quality/*|scripts/py-quality-report|\
+            scripts/ci/py_quality_ratchet.py|scripts/ci/baseline_ratchet.py|scripts/ci/trailers.py|pyrightconfig.json) echo "$path" ;;
+            scripts/*|.github/scripts/*)
+                case "${path##*/}" in *.*) ;; *) head -1 "$path" 2>/dev/null | grep -q '^#!.*python' && echo "$path" ;; esac ;;
+        esac
+    done
+    return 0
 }
 
 # ── The local tests: basic, and per AREA ─────────────────────────────────────────────────────────
@@ -486,7 +512,7 @@ is_drift_path() { # <path>
 # ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
-    local eslint=0 jsquality=0 drift=0 snapshot=0 sbt=0 dashboards=0 metricalerts=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 path
+    local eslint=0 jsquality=0 pyquality=0 drift=0 snapshot=0 sbt=0 dashboards=0 metricalerts=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 path
     local identity=0 allowlists=0 driftguards=0 newchecks=0 schedules=0 flipbacklog=0 stampcarry=0
     local script_test_reads glob
     # What a repo-reading self-test declares it reads (run-script-tests' READS): a workflow, a .py or a spec edit runs
@@ -501,7 +527,7 @@ plan() {
         # js_quality_paths' set, as a pattern (no grep a path)
         case "$path" in
             web/src/main/assets/js/*|infra/version-dashboard/src/*|test/resources/js-quality-baseline.tsv|\
-            scripts/ci/js_quality_ratchet.py|scripts/ci/trailers.py|scripts/js-quality/*|scripts/js-quality-report) jsquality=1 ;;
+            scripts/ci/js_quality_ratchet.py|scripts/ci/baseline_ratchet.py|scripts/ci/trailers.py|scripts/js-quality/*|scripts/js-quality-report) jsquality=1 ;;
         esac
         case "$path" in
             web/src/main/assets/js/*.js|web/src/page/resources/*.js|eslint.config.js|eslint-rules/*.js|package.json|package-lock.json|page-tests-playwright/tests/*.ts|page-tests-playwright/lint-flake-patterns*.mjs) eslint=1 ;;
@@ -590,6 +616,7 @@ plan() {
         case "$path" in test/resources/identity-stamp-carry.tsv) stampcarry=1 ;; esac
         case "$path" in .github/workflows/*|infra/nix/files/scheduled-workflows.json|infra/nix/files/scheduled_dispatch.py) schedules=1 ;; esac
     done
+    [ -n "$(printf '%s' "$all_paths" | py_quality_paths)" ] && pyquality=1
     # an area runs only when local-tests.txt (beside this hook) names tests for it
     has_local_tests identity || identity=0
     [ $identity = 1 ] && sbt=1
@@ -600,6 +627,7 @@ plan() {
     [ $driftguards = 1 ] && echo driftguards
     [ $eslint = 1 ] && echo eslint
     [ $jsquality = 1 ] && echo jsquality
+    [ $pyquality = 1 ] && echo pyquality
     [ $drift = 1 ] && echo drift
     [ $snapshot = 1 ] && echo snapshot
     [ $dashboards = 1 ] && echo dashboards
@@ -1001,6 +1029,7 @@ case "${1:-}" in
     --coupling-plan) coupling_paths; exit 0 ;;
     --quality-plan) quality_paths; exit 0 ;;
     --js-quality-plan) js_quality_paths; exit 0 ;;
+    --py-quality-plan) py_quality_paths; exit 0 ;;
     --identity-change) identity_change; exit 0 ;;
     --unit-plan)    unit_plan; exit 0 ;;
     --unit-universe) unit_universe; exit 0 ;;
@@ -1644,6 +1673,18 @@ check_jsquality() {
         || need jsquality npm "install Node.js with npm (brew install node)" || return 1
     for r in "${ranges[@]}"; do args+=(--range "$r"); done
     scripts/js-quality-report --check ${args[@]+"${args[@]}"} >&2
+}
+
+check_pyquality() {
+    need pyquality node "install Node.js (brew install node)" || return 1
+    need pyquality python3 "install Python 3 (brew install python)" || return 1
+    local args=() r
+    # pyright is py-quality-report's to install, once per lock and OUTSIDE the checkout (--tools-dir), as js-quality's
+    [ -f "$(scripts/py-quality-report --tools-dir)/node_modules/pyright/index.js" ] \
+        || need pyquality npm "install Node.js with npm (brew install node)" || return 1
+    for r in "${ranges[@]}"; do args+=(--range "$r"); done
+    printf '%s\n' "$changed" > "$tmp/pyquality-paths" # strict pyright over the push's own files; the rest keep their rows
+    scripts/py-quality-report --check --paths "$tmp/pyquality-paths" ${args[@]+"${args[@]}"} >&2
 }
 
 check_drift() {

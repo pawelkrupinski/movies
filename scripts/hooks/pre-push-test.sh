@@ -16,6 +16,11 @@ check "the ESLint config runs ESLint" "eslint" "$(plan eslint.config.js)"
 check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/storage-access-in-try.js)"
 check "a version-dashboard source runs the JS/TS quality ratchet" "jsquality" "$(plan infra/version-dashboard/src/server.ts)"
 check "...and so do its baseline and the measure" "jsquality" "$(plan test/resources/js-quality-baseline.tsv)"
+check "a Python tool runs the Python quality ratchet" "pyquality" "$(plan scripts/ci/order_compare.py | tr ' ' '\n' | grep -x pyquality)"
+check "...and so do its baseline, the measure and the pyright config" "pyquality|pyquality|pyquality" \
+  "$(plan test/resources/py-quality-baseline.tsv)|$(plan scripts/py-quality/clones.py | tr ' ' '\n' | grep -x pyquality)|$(plan pyrightconfig.json)"
+check "...an extension-less tool by its python shebang, a bash one never" "pyquality|" \
+  "$(plan scripts/agent-procs | tr ' ' '\n' | grep -x pyquality)|$(plan scripts/run-script-tests | tr ' ' '\n' | grep -x pyquality)"
 check "a version-dashboard test is reported, not gated: no check" "" "$(plan infra/version-dashboard/test/mobile/view.test.ts)"
 check "a page spec's JS is not gated by the JS/TS quality ratchet" "eslint sbt" "$(plan web/src/page/resources/listing/grid.js)"
 check "--js-quality-plan keeps the production JS/TS alone" "web/src/main/assets/js/i18n.js infra/version-dashboard/src/shared/exec.ts" \

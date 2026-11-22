@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# THE JS/TS QUALITY RATCHET HOLDS, proved by mutation: each mutant below is js_quality_ratchet.py with ONE check taken
-# out, and js_quality_ratchet_test.py must FAIL against every one -- a check whose removal no test notices could silently
+# THE JS/TS QUALITY RATCHET HOLDS, proved by mutation: each mutant below is js_quality_ratchet.py, or the engine it runs
+# (baseline_ratchet.py), with ONE check taken out, and js_quality_ratchet_test.py must FAIL against every one -- a check whose removal no test notices could silently
 # stop gating and let the production JS/TS grow unreviewed. Each mutant is applied by exact text; a mutant whose text is
 # no longer in the tool exactly once fails this test too (the tool changed: re-aim the mutant at the new check).
 set -uo pipefail
@@ -14,23 +14,23 @@ trap 'rm -rf "$work"' EXIT
 # <name> @@ <exact text in the tool> @@ <what replaces it>
 mutants=(
   'the gate is gone: no violation fails @@ ok = False
-        print(f"JS/TS QUALITY GREW @@ ok = True
-        print(f"JS/TS QUALITY GREW'
+        print(f"{spec.title} GREW @@ ok = True
+        print(f"{spec.title} GREW'
   'a frozen row rising passes @@ if value > base[key]: @@ if False:'
   'a new key past the limit passes @@ elif value > limit: @@ elif False:'
   'the measure'"'"'s limit is not compared @@ if limit_of(current, kind) > limit: @@ if False:'
-  'tests and scripts are gated too @@ return any(p.startswith(production) or p + "/" in production for p in key.split("|")) @@ return True'
+  'tests and scripts are gated too @@ held=lambda p: p.startswith(production) or p + "/" in production) @@ held=lambda p: True)'
   'a directory key is not production @@ or p + "/" in production @@ or False'
   'a raised limit is no growth @@ if old_limit is not None and new_limit > old_limit: @@ if False:'
   'an added or raised row is no growth @@ if value > before.get(key, allowed): @@ if False:'
   'growth never fails @@ if unjustified:
-                ok = False @@ if unjustified:
-                ok = True'
-  'growth is judged on one trailer @@ trailers.unjustified_rises(rng, BASELINE, trailer, rose) @@ trailers.unjustified_rises(rng, BASELINE, "Complexity", rose)'
+            found = True @@ if unjustified:
+            found = False'
+  'growth is judged on one trailer @@ trailers.unjustified_rises(rng, spec.baseline, trailer, rose) @@ trailers.unjustified_rises(rng, spec.baseline, "Complexity", rose)'
   'falls are not said @@     if down:
         print @@     if False:
         print'
-  'update keeps no production row @@ for key, value in sorted(of_kind(current, kind, production).items())] @@ for key, value in []]'
+  'update keeps no production row @@ for key, value in sorted(of_kind(spec, current, kind).items())] @@ for key, value in []]'
   'a malformed row is skipped @@ raise ValueError(f"line {n}: not @@ return rows  # (f"line {n}: not'
 )
 
@@ -41,15 +41,19 @@ for m in "${mutants[@]}"; do
   name=${m%% @@ *}; rest=${m#* @@ }; from=${rest%% @@ *}; to=${rest#* @@ }
   printf '%s' "$name" > "$work/mutants/$i.name"
   mkdir -p "$work/mutants/$i"
-  cp "$tool" "$REPO_ROOT/scripts/ci/trailers.py" "$work/mutants/$i/"  # the tool and the module it imports, side by side
-  target="$work/mutants/$i/js_quality_ratchet.py"
-  python3 -I - "$target" "$from" "$to" <<'PY'
+  # the tool and the modules it imports, side by side
+  cp "$tool" "$REPO_ROOT/scripts/ci/baseline_ratchet.py" "$REPO_ROOT/scripts/ci/trailers.py" "$work/mutants/$i/"
+  # the mutant is applied to whichever of the tool and its engine holds its text (exactly once, in exactly one)
+  python3 -I - "$work/mutants/$i/js_quality_ratchet.py" "$work/mutants/$i/baseline_ratchet.py" "$from" "$to" <<'PY'
 import sys
-path, frm, to = sys.argv[1:]
-text = open(path).read()
-n = text.count(frm)
-open(path, "w").write(text.replace(frm, to, 1) if n == 1 else "raise SystemExit(99)  # mutant text not found exactly once\n")
-sys.exit(0 if n == 1 else 1)
+tool, engine, frm, to = sys.argv[1:]
+texts = {path: open(path).read() for path in (tool, engine)}
+counts = {path: text.count(frm) for path, text in texts.items()}
+if sorted(counts.values()) != [0, 1]:
+    open(tool, "w").write("raise SystemExit(99)  # mutant text not found exactly once\n")
+    sys.exit(1)
+path = next(p for p, n in counts.items() if n == 1)
+open(path, "w").write(texts[path].replace(frm, to, 1))
 PY
   check "the mutant '$name' is aimed at exactly one check in the tool" 0 "$?"
 done

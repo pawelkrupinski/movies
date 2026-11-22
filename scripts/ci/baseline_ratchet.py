@@ -1,0 +1,199 @@
+"""THE BASELINE RATCHET ENGINE: what the JS/TS and the Python quality ratchets share (js_quality_ratchet.py,
+py_quality_ratchet.py; the Scala ratchets' model, scripts/ci/quality_ratchet.py). Each hands in a `Spec` -- its baseline,
+its kinds under their trailers, which files it holds -- and gets the one check and the one update:
+
+  - a measured row past its baseline row fails; a key without one past its kind's limit fails (a NEW function, file,
+    clone, cycle over a limit); the measure's limit may not rise past the baseline's;
+  - only HELD rows count: a row whose files all lie outside the spec's held paths is reported, never gated;
+  - the baseline grows (a row added or raised, a limit raised) only in a commit changing it that carries the kind's
+    trailer in its final trailer block (trailers.py, THE ATTRIBUTION RULE); a fall needs none, and `update` records it.
+
+A row is `kind<TAB>key<TAB>value`, `limit<TAB>kind<TAB>value` a kind's limit; `#` lines are comments."""
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+from dataclasses import dataclass
+from typing import Callable, Dict, List, Tuple
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
+import trailers  # noqa: E402
+
+Rows = Dict[Tuple[str, str], float]
+
+
+@dataclass(frozen=True)
+class Spec:
+    title: str                                # "JS/TS QUALITY": what the messages call the measure
+    tool: str                                 # "js quality": the lower-case name its own lines start with
+    baseline: str                             # the checked-in baseline, relative to the checkout
+    header: str                               # the comment block `update` writes first
+    hint: str                                 # what to do about a violation
+    update_command: str                       # the command that rewrites the baseline
+    held_rows: str                            # "production rows past a limit; ...": what the held count counts
+    trailers: Dict[str, Tuple[str, ...]]      # trailer -> the kinds it admits
+    held: Callable[[str], bool]               # whether one file or directory of a key is held
+
+    @property
+    def kinds(self) -> Tuple[str, ...]:
+        return tuple(kind for kinds in self.trailers.values() for kind in kinds)
+
+
+def parse(text: str) -> Rows:
+    rows: Rows = {}
+    for n, line in enumerate(text.splitlines(), 1):
+        if not line.strip() or line.startswith("#"):
+            continue
+        parts = line.split("\t")
+        try:
+            if len(parts) != 3:
+                raise ValueError
+            rows[(parts[0], parts[1])] = float(parts[2])
+        except ValueError:
+            raise ValueError(f"line {n}: not `kind<TAB>key<TAB>value`: {line!r}") from None
+    return rows
+
+
+def show(value: float) -> str:
+    return str(int(value)) if value == int(value) else f"{value:g}"
+
+
+def gated(spec: Spec, key: str) -> bool:
+    """A row is held when one of its key's files (or directories) is."""
+    return any(spec.held(p) for p in key.split("|"))
+
+
+def of_kind(spec: Spec, rows: Rows, kind: str) -> Dict[str, float]:
+    return {key: value for (k, key), value in rows.items() if k == kind and gated(spec, key)}
+
+
+def limit_of(rows: Rows, kind: str) -> float:
+    if ("limit", kind) not in rows:
+        raise ValueError(f"no `limit<TAB>{kind}<TAB>N` row")
+    return rows[("limit", kind)]
+
+
+def kind_violations(spec: Spec, current: Rows, baseline: Rows, kind: str) -> List[str]:
+    out: List[str] = []
+    limit = limit_of(baseline, kind)
+    if limit_of(current, kind) > limit:
+        out.append(f"the measure's {kind} limit {show(limit_of(current, kind))} is past the baseline's {show(limit)}")
+    base = of_kind(spec, baseline, kind)
+    for key, value in sorted(of_kind(spec, current, kind).items()):
+        if key in base:
+            if value > base[key]:
+                out.append(f"{kind} {key}: {show(value)}, past its baseline {show(base[key])}")
+        elif value > limit:
+            out.append(f"{kind} {key}: {show(value)}, past the limit {show(limit)} (no baseline row)")
+    return out
+
+
+def violations(spec: Spec, current: Rows, baseline: Rows) -> List[str]:
+    return [v for kind in spec.kinds for v in kind_violations(spec, current, baseline, kind)]
+
+
+def kind_growth(spec: Spec, kind: str, old: Rows, new: Rows) -> List[str]:
+    out: List[str] = []
+    old_limit = old.get(("limit", kind))
+    new_limit = limit_of(new, kind)
+    if old_limit is not None and new_limit > old_limit:
+        out.append(f"limit {kind} raised {show(old_limit)} -> {show(new_limit)}")
+    allowed = old_limit if old_limit is not None else new_limit
+    before = of_kind(spec, old, kind)
+    for key, value in sorted(of_kind(spec, new, kind).items()):
+        if value > before.get(key, allowed):
+            was = show(before[key]) if key in before else f"<={show(allowed)}"
+            out.append(f"{kind} {key} raised {was} -> {show(value)}")
+    return out
+
+
+def growth(spec: Spec, kinds: Tuple[str, ...], old: Rows, new: Rows) -> List[str]:
+    """How the baseline grew in `kinds` from `old` to `new`: a limit raised, a row added past the old limit or raised."""
+    return [g for kind in kinds for g in kind_growth(spec, kind, old, new)]
+
+
+def falls(spec: Spec, current: Rows, baseline: Rows) -> List[str]:
+    out: List[str] = []
+    for kind in spec.kinds:
+        now = of_kind(spec, current, kind)
+        for key, value in sorted(of_kind(spec, baseline, kind).items()):
+            if now.get(key, 0) < value:
+                out.append(f"{kind} {key} {show(value)} -> {show(now[key]) if key in now else 'within the limit'}")
+    return out
+
+
+def unjustified_growth(spec: Spec, rng: str, baseline: Rows) -> bool:
+    """Whether `rng` grew the baseline in some trailer's kinds with no commit justifying it; says so."""
+    old_text = trailers.text_at(rng.split("..")[0], spec.baseline)
+    if not old_text:
+        return False
+    found = False
+    for trailer, kinds in spec.trailers.items():
+        def rose(a: str, b: str, kinds: Tuple[str, ...] = kinds) -> List[str]:
+            return growth(spec, kinds, parse(a), parse(b))
+        if not growth(spec, kinds, parse(old_text), baseline):
+            continue
+        unjustified = trailers.unjustified_rises(rng, spec.baseline, trailer, rose)
+        if unjustified:
+            found = True
+            print(f"THE {spec.title} BASELINE GREW in {rng} ({', '.join(kinds)}) with no `{trailer}: <why>` trailer"
+                  " on the commit changing it:")
+            print("\n".join(f"  - {u}" for u in unjustified))
+            for note in trailers.misplaced_notes(rng, trailer, spec.baseline):
+                print(f"  {note}")
+    return found
+
+
+def say_falls(spec: Spec, current: Rows, baseline: Rows) -> None:
+    down = falls(spec, current, baseline)
+    if down:
+        print(f"{spec.tool} fell ({len(down)} rows below {spec.baseline}, not yet recorded: {spec.update_command}"
+              " records them, no trailer needed):")
+        print("\n".join(f"  - {d}" for d in down[:20]))
+        if len(down) > 20:
+            print(f"  - ... and {len(down) - 20} more")
+
+
+def check(spec: Spec, current: Rows, ranges: List[str]) -> bool:
+    with open(spec.baseline) as f:
+        baseline = parse(f.read())
+    ok = True
+    found = violations(spec, current, baseline)
+    if found:
+        ok = False
+        print(f"{spec.title} GREW past {spec.baseline}:")
+        print("\n".join(f"  - {v}" for v in found))
+        print(f"  {spec.hint}")
+    for rng in ranges:
+        if unjustified_growth(spec, rng, baseline):
+            ok = False
+    say_falls(spec, current, baseline)
+    if ok:
+        held = sum(len(of_kind(spec, current, kind)) for kind in spec.kinds)
+        print(f"{spec.tool}: within {spec.baseline} ({held} {spec.held_rows})")
+    return ok
+
+
+def update(spec: Spec, current: Rows) -> None:
+    lines = [spec.header] + [f"limit\t{kind}\t{show(limit_of(current, kind))}" for kind in spec.kinds]
+    for kind in spec.kinds:
+        lines += [f"{kind}\t{key}\t{show(value)}" for key, value in sorted(of_kind(spec, current, kind).items())]
+    os.makedirs(os.path.dirname(spec.baseline) or ".", exist_ok=True)
+    with open(spec.baseline, "w") as f:
+        f.write("\n".join(lines) + "\n")
+    print(f"{spec.tool}: wrote {spec.baseline} -- a rise is committed with its kind's trailer")
+
+
+def run(spec: Spec, command: str, current_file: str, ranges: List[str]) -> int:
+    """`check` (exit 1 on a violation) or `update`; 2 on an error."""
+    try:
+        with open(current_file) as f:
+            current = parse(f.read())
+        if command == "update":
+            update(spec, current)
+            return 0
+        return 0 if check(spec, current, ranges) else 1
+    except (OSError, ValueError, subprocess.CalledProcessError) as e:
+        print(f"{spec.tool}: {e}", file=sys.stderr)
+        return 2

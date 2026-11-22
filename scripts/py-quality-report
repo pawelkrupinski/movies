@@ -1,0 +1,3 @@
+#!/bin/sh
+# THE PYTHON QUALITY REPORT and its ratchet's entry: scripts/py-quality/report.py (its header says what it measures).
+exec python3 -B "$(dirname "$0")/py-quality/report.py" "$@"

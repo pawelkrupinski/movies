@@ -23,12 +23,11 @@ from __future__ import annotations
 
 import argparse
 import os
-import subprocess
 import sys
 from typing import Dict, List, Tuple
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
-import trailers  # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # the engine beside it, under `python3 -I` too
+import baseline_ratchet  # noqa: E402
 
 BASELINE = "test/resources/js-quality-baseline.tsv"
 AREAS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "js-quality", "ratchet-areas.tsv")
@@ -38,7 +37,6 @@ TRAILERS: Dict[str, Tuple[str, ...]] = {
     "Duplication": ("copies", "clone-tokens"),
     "Coupling": ("fanout", "distance", "cycle"),
 }
-KINDS = tuple(kind for kinds in TRAILERS.values() for kind in kinds)
 HEADER = """# THE JS/TS QUALITY BASELINE (scripts/js-quality-report --update writes it; scripts/ci/js_quality_ratchet.py holds
 # every push touching production JS/TS to it). Every production function, file, clone set, module and directory
 # (scripts/js-quality/ratchet-areas.tsv: web/src/main/assets/js, infra/version-dashboard/src) past a limit, frozen:
@@ -53,27 +51,6 @@ HINT = ("Split the function or file, extract the clone, cut the dependency -- or
         " --update, committed with the kind's trailer (`Complexity:`, `Length:`, `Duplication:`, `Coupling: <why>`)"
         " in the commit message's final trailer block.")
 
-Rows = Dict[Tuple[str, str], float]
-
-
-def parse(text: str) -> Rows:
-    rows: Rows = {}
-    for n, line in enumerate(text.splitlines(), 1):
-        if not line.strip() or line.startswith("#"):
-            continue
-        parts = line.split("\t")
-        try:
-            if len(parts) != 3:
-                raise ValueError
-            rows[(parts[0], parts[1])] = float(parts[2])
-        except ValueError:
-            raise ValueError(f"line {n}: not `kind<TAB>key<TAB>value`: {line!r}") from None
-    return rows
-
-
-def show(value: float) -> str:
-    return str(int(value)) if value == int(value) else f"{value:g}"
-
 
 def production_paths(areas_file: str = AREAS) -> Tuple[str, ...]:
     with open(areas_file) as f:
@@ -81,111 +58,13 @@ def production_paths(areas_file: str = AREAS) -> Tuple[str, ...]:
     return tuple(p.rstrip("/") + "/" for parts in lines for p in parts[2].split())
 
 
-def gated(key: str, production: Tuple[str, ...]) -> bool:
-    """A row is held when one of its key's files (or directories) lies under a production path."""
-    return any(p.startswith(production) or p + "/" in production for p in key.split("|"))
-
-
-def of_kind(rows: Rows, kind: str, production: Tuple[str, ...]) -> Dict[str, float]:
-    return {key: value for (k, key), value in rows.items() if k == kind and gated(key, production)}
-
-
-def limit_of(rows: Rows, kind: str) -> float:
-    if ("limit", kind) not in rows:
-        raise ValueError(f"no `limit<TAB>{kind}<TAB>N` row")
-    return rows[("limit", kind)]
-
-
-def violations(current: Rows, baseline: Rows, production) -> List[str]:
-    out = []
-    for kind in KINDS:
-        limit = limit_of(baseline, kind)
-        if limit_of(current, kind) > limit:
-            out.append(f"the measure's {kind} limit {show(limit_of(current, kind))} is past the baseline's {show(limit)}")
-        base = of_kind(baseline, kind, production)
-        for key, value in sorted(of_kind(current, kind, production).items()):
-            if key in base:
-                if value > base[key]:
-                    out.append(f"{kind} {key}: {show(value)}, past its baseline {show(base[key])}")
-            elif value > limit:
-                out.append(f"{kind} {key}: {show(value)}, past the limit {show(limit)} (no baseline row)")
-    return out
-
-
-def growth(kinds: Tuple[str, ...], old: Rows, new: Rows, production) -> List[str]:
-    """How the baseline grew in `kinds` from `old` to `new`: a limit raised, a row added past the old limit or raised."""
-    out = []
-    for kind in kinds:
-        old_limit = old.get(("limit", kind))
-        new_limit = limit_of(new, kind)
-        if old_limit is not None and new_limit > old_limit:
-            out.append(f"limit {kind} raised {show(old_limit)} -> {show(new_limit)}")
-        allowed = old_limit if old_limit is not None else new_limit
-        before = of_kind(old, kind, production)
-        for key, value in sorted(of_kind(new, kind, production).items()):
-            if value > before.get(key, allowed):
-                was = show(before[key]) if key in before else f"<={show(allowed)}"
-                out.append(f"{kind} {key} raised {was} -> {show(value)}")
-    return out
-
-
-def falls(current: Rows, baseline: Rows, production) -> List[str]:
-    out = []
-    for kind in KINDS:
-        now = of_kind(current, kind, production)
-        for key, value in sorted(of_kind(baseline, kind, production).items()):
-            if now.get(key, 0) < value:
-                out.append(f"{kind} {key} {show(value)} -> {show(now[key]) if key in now else 'within the limit'}")
-    return out
-
-
-def check(current: Rows, ranges: List[str], production) -> bool:
-    with open(BASELINE) as f:
-        baseline = parse(f.read())
-    ok = True
-    found = violations(current, baseline, production)
-    if found:
-        ok = False
-        print(f"JS/TS QUALITY GREW past {BASELINE}:")
-        print("\n".join(f"  - {v}" for v in found))
-        print(f"  {HINT}")
-    for rng in ranges:
-        old_text = trailers.text_at(rng.split("..")[0], BASELINE)
-        if not old_text:
-            continue
-        for trailer, kinds in TRAILERS.items():
-            def rose(a: str, b: str, kinds=kinds) -> List[str]:
-                return growth(kinds, parse(a), parse(b), production)
-            if not growth(kinds, parse(old_text), baseline, production):
-                continue
-            unjustified = trailers.unjustified_rises(rng, BASELINE, trailer, rose)
-            if unjustified:
-                ok = False
-                print(f"THE JS/TS QUALITY BASELINE GREW in {rng} ({', '.join(kinds)}) with no `{trailer}: <why>` trailer"
-                      " on the commit changing it:")
-                print("\n".join(f"  - {u}" for u in unjustified))
-                for note in trailers.misplaced_notes(rng, trailer, BASELINE):
-                    print(f"  {note}")
-    down = falls(current, baseline, production)
-    if down:
-        print(f"js quality fell ({len(down)} rows below {BASELINE}, not yet recorded: scripts/js-quality-report --update"
-              " records them, no trailer needed):")
-        print("\n".join(f"  - {d}" for d in down[:20]))
-        if len(down) > 20:
-            print(f"  - ... and {len(down) - 20} more")
-    if ok:
-        held = sum(len(of_kind(current, kind, production)) for kind in KINDS)
-        print(f"js quality: within {BASELINE} ({held} production rows past a limit; tests and scripts reported, not held)")
-    return ok
-
-
-def update(current: Rows, production) -> None:
-    lines = [HEADER] + [f"limit\t{kind}\t{show(limit_of(current, kind))}" for kind in KINDS]
-    for kind in KINDS:
-        lines += [f"{kind}\t{key}\t{show(value)}" for key, value in sorted(of_kind(current, kind, production).items())]
-    with open(BASELINE, "w") as f:
-        f.write("\n".join(lines) + "\n")
-    print(f"js quality: wrote {BASELINE} -- a rise is committed with its kind's trailer")
+def spec(production: Tuple[str, ...]) -> baseline_ratchet.Spec:
+    """The JS/TS ratchet: a key's file (or directory) is held when it lies under a production path."""
+    return baseline_ratchet.Spec(
+        title="JS/TS QUALITY", tool="js quality", baseline=BASELINE, header=HEADER, hint=HINT,
+        update_command="scripts/js-quality-report --update",
+        held_rows="production rows past a limit; tests and scripts reported, not held", trailers=TRAILERS,
+        held=lambda p: p.startswith(production) or p + "/" in production)
 
 
 def main(argv: List[str]) -> int:
@@ -196,16 +75,11 @@ def main(argv: List[str]) -> int:
     parser.add_argument("--areas", default=AREAS)
     args = parser.parse_args(argv)
     try:
-        with open(args.current) as f:
-            current = parse(f.read())
         production = production_paths(args.areas)
-        if args.command == "update":
-            update(current, production)
-            return 0
-        return 0 if check(current, args.range, production) else 1
-    except (OSError, ValueError, subprocess.CalledProcessError) as e:
+    except OSError as e:
         print(f"js_quality_ratchet: {e}", file=sys.stderr)
         return 2
+    return baseline_ratchet.run(spec(production), args.command, args.current, args.range)
 
 
 if __name__ == "__main__":

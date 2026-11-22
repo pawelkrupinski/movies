@@ -1,0 +1,8 @@
+{
+  "name": "kinowo-py-quality",
+  "private": true,
+  "description": "The Python quality ratchet's pinned tools (scripts/py-quality-report): installed by npm ci outside the checkout.",
+  "devDependencies": {
+    "pyright": "1.1.414"
+  }
+}
