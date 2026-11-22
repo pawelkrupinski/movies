@@ -215,7 +215,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (149)
+## Identity (150)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -253,7 +253,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/identity-findings-report.yml` | The identity findings report: the newest recording's whole-corpus findings, one GitHub issue per country | `workflow: workflow_run, schedule, repository_dispatch, workflow_dispatch` | skill identity-investigation; 2 tools | - | - |
 | `.github/workflows/identity-lean-whole.yml` | Does the newest recording decide the same read lean as whole? integration.LeanWholeGuard per country | `workflow: workflow_run, workflow_dispatch` | by hand | - | - |
 | `.github/workflows/identity-live-drift.yml` | Is production's live identity state where a whole resolve of the same listings is? Per country | `workflow: workflow_run, workflow_dispatch` | 1 tool | - | - |
-| `.github/workflows/identity-model-convergence.yml` | The country convergence suite — every country's films as the identity model decides them | `workflow: workflow_dispatch` | wf convergence-daily, country-convergence-leg, identity-family-explorer +3; hook pre-push; agentctl; 14 tools | - | - |
+| `.github/workflows/identity-model-convergence.yml` | The country convergence suite — every country's films as the identity model decides them | `workflow: workflow_dispatch` | wf convergence-daily, country-convergence-leg, identity-family-explorer +3; hook pre-push; agentctl; 15 tools | - | - |
 | `.github/workflows/identity-refit.yml` | Weekly re-tune of identity-weights.json, the numbers the resolver's existing rules read | `workflow: workflow_dispatch, schedule, repository_dispatch` | wf decoration-discovery, identity-capture; skill identity-investigation; 2 tools | - | - |
 | `.github/workflows/identity-rule-ablation.yml` | Rule ablation on CI: which identity and title rules move takes when switched off (scripts/identity-rule-ablation), over the recordings named | `workflow: workflow_dispatch` | 1 tool | - | - |
 | `.github/workflows/identity-run.yml` | Any sbt command on CI (scripts/identity-ci-run; scripts/ci-sbt's laptop test runs and fail-before --ci proofs) | `workflow: workflow_dispatch` | agentctl; skill identity-investigation; 6 tools | - | - |
@@ -266,7 +266,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/convergence_reuse.py` | Main reuses a convergence verdict it can prove applies, instead of running the suite again | `scripts/ci/convergence_reuse.py` | wf country-convergence-leg, identity-model-convergence, identity-takes +1; hook pre-push; agentctl; 9 tools | convergence_reuse_test.py | Python |
 | `scripts/ci/convergence_slots.py` | MAIN'S CONVERGENCE RUN IN 20 RUNNERS (the owner, 2026-11-06: "reduce convergence run to 20 runners at most and balance | `python3 scripts/ci/convergence_slots.py` | wf country-convergence-leg, identity-model-convergence, identity-takes; 2 tools | convergence_slots_test.py | Python |
 | `scripts/ci/corpus_shape_diff.py` | THE CORPUS-SHAPE CHECK, scoped to what the code changed: the corpus-shape specs' findings over ONE recording, at the | `scripts/ci/corpus_shape_diff.py` | wf identity-findings-report; skill identity-investigation; 3 tools | corpus_shape_diff_test.py | Python |
-| `scripts/ci/dispatch-takes.sh` | Whatever starts identity model convergence starts identity takes too | `scripts/ci/dispatch-takes.sh` | wf identity-model-convergence, identity-takes; 2 tools | dispatch-takes-test.sh | KEEP |
+| `scripts/ci/dispatch-takes.sh` | Whatever starts identity model convergence starts identity takes too (a name for dispatch_takes.py) | `scripts/ci/dispatch-takes.sh` | wf identity-model-convergence, identity-takes; 3 tools | dispatch_takes_test.py | KEEP |
+| `scripts/ci/dispatch_takes.py` | WHATEVER STARTS IDENTITY MODEL CONVERGENCE STARTS IDENTITY TAKES (the owner, 2026-11-08: "make whatever kicks off | `scripts/ci/dispatch_takes.py` | 1 tool | dispatch_takes_test.py | Python |
 | `scripts/ci/drift-explorer-publish.sh` | The nightly drift explorer's publish step (.github/workflows/identity-drift-explorer.yml) | `scripts/ci/drift-explorer-publish.sh` | wf identity-drift-explorer | drift-explorer-publish-test.sh | KEEP |
 | `scripts/ci/drift-replays-compare.sh` | Two replays of the same seeds are one (the drift harness's determinism) | `scripts/ci/drift-replays-compare.sh` | wf identity-takes; 2 tools | drift-replays-compare-test.sh | KEEP |
 | `scripts/ci/drift_diff.py` | The differential drift verdict: a gate that fails only on what the change adds | `python3 scripts/ci/drift_diff.py` | agentctl; 2 tools | drift_diff_test.py | Python |
@@ -544,10 +545,10 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; scripts/ci/dispatch.sh's | `imported` | 1 tool | - | Python |
 | `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | 5 tools | - | Python |
 | `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 4 tools | - | Python |
-| `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the Python tools do it (scripts/lib; the shell | `imported` | 5 tools | tool_dispatch_test.py | Python |
+| `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the Python tools do it (scripts/lib; the shell | `imported` | 6 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | 7 tools | tool_git_test.py | Python |
-| `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 7 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | 32 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 8 tools | tool_github_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | 33 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | 4 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 5 tools | - | KEEP |
