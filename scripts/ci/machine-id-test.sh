@@ -35,4 +35,21 @@ check "the CPU flags as a short hash" "12" "$(field cpu_flags_hash | tr -d '\n' 
 check "nothing readable still exits 0" "0" \
   "$(PROC_ROOT=/nonexistent SYS_ROOT=/nonexistent MACHINE_ID_NO_NETWORK=1 CI_METRICS_FILE="$dir/n.jsonl" "$script" > /dev/null; echo $?)"
 
+# macOS: no /proc, sysctl answers (a stub here, so the test reads the same on Linux).
+bin="$dir/bin"; mkdir -p "$bin"
+cat > "$bin/sysctl" <<'STUB'
+#!/bin/sh
+case "$2" in
+  machdep.cpu.brand_string) echo 'Apple M1 (Virtual)' ;;
+  hw.ncpu) echo 3 ;;
+  hw.memsize) echo 7516192768 ;;
+  *) exit 1 ;;
+esac
+STUB
+chmod +x "$bin/sysctl"
+PATH="$bin:$PATH" PROC_ROOT=/nonexistent SYS_ROOT=/nonexistent MACHINE_ID_NO_NETWORK=1 CI_METRICS_FILE="$dir/mac.jsonl" \
+  "$script" > /dev/null
+check "macOS: the CPU model, cores and RAM from sysctl" "Apple M1 (Virtual) 3 7168" \
+  "$(python3 -c 'import json,sys; m = json.load(sys.stdin); print(m["cpu_model"], m["cores"], m["mem_mb"])' < "$dir/mac.jsonl")"
+
 spec_summary

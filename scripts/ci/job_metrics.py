@@ -6,8 +6,16 @@ local machine and, for the rate limit, api.github.com.
 
     job_metrics.py start    # machine-id.sh, the resource sampler, GC logging for every JVM after this step, the
                             # GitHub API rate limit
+    job_metrics.py sample   # macOS's resource sampler (start runs it in the background there): no /proc, so
+                            # cgroup-sampler.sh has nothing to read; Mach's host_statistics instead
     job_metrics.py finish   # the sampler's series, each JVM's GC, JUnit suites and tests, the rate limit again;
                             # prints one summary line and the artifact name (GITHUB_OUTPUT `name`)
+
+The resource series is the WHOLE MACHINE from the job's start to its end, on every runner: on Linux cgroup-sampler.sh
+(/proc/stat's CPU ticks, PSI, memory, disk, network), on macOS darwin_row (Mach's cumulative CPU ticks over all
+cores, load, memory, swap, the kernel's memory-pressure level; macOS has no PSI). Both count CPU in 1/100 s ticks
+(TICKS_PER_SECOND): busy ticks over total ticks is the machine's utilisation, busy ticks / 100 its CPU-seconds.
+ci_timings.py pushes both per job (kinowo_ci_job_cpu_*).
 
 Lines (one JSON object each, `kind` first): machine (machine-id.sh), job_start, series, procs, jvm, cache (from
 sbt-target-cache / setup-jdk), tests, suite, test, rate_limit, job_end. Every field is in the twenty-runners doc's
@@ -18,10 +26,13 @@ measurable (`-Xlog:gc`, info level: one line per pause).
 
 Test: python3 scripts/ci/job_metrics_test.py
 """
+import ctypes
+import ctypes.util
 import glob
 import json
 import os
 import re
+import resource
 import subprocess
 import sys
 import time
@@ -30,6 +41,10 @@ import xml.etree.ElementTree as ElementTree
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SAMPLE_SECONDS = 5
+# Linux's /proc/stat counts USER_HZ ticks and Mach's host_statistics CPU ticks, both 100 a second.
+TICKS_PER_SECOND = 100
+DARWIN_SERIES = ("t", "cpu_total", "cpu_busy", "cpu_user", "cpu_sys", "load1", "mem_total_kb", "mem_avail_kb",
+                 "swap_total_kb", "swap_free_kb", "mem_pressure_level")
 TOP = 15
 JUNIT_GLOBS = ["target/test-reports/**/*.xml", "*/target/test-reports/**/*.xml",
                "page-tests-playwright/**/junit*.xml", "page-tests-playwright/reports/**/*.xml",
@@ -88,7 +103,7 @@ def identity():
             "label": os.environ.get("CI_METRICS_LABEL") or None}
 
 
-def start(env=os.environ, run=subprocess.run):
+def start(env=os.environ, run=subprocess.run, platform=sys.platform, spawn=subprocess.Popen):
     os.makedirs(gc_dir(), exist_ok=True)
     github_env("CI_METRICS_FILE", metrics_file())
     run([os.path.join(HERE, "machine-id.sh")], check=False, timeout=30)
@@ -97,13 +112,92 @@ def start(env=os.environ, run=subprocess.run):
     if limits:
         line["rate_remaining"] = limits["remaining"]
     append(line)
-    run(["bash", "-c", '"$0" start %d' % SAMPLE_SECONDS, os.path.join(HERE, "cgroup-sampler.sh")], check=False,
-        timeout=30, env=dict(env, CGROUP_SAMPLER_OUT=sampler_out()))
+    if platform == "darwin":
+        # No /proc: this script's own sampler, detached, until the runner ends the job's processes.
+        spawn([sys.executable, os.path.abspath(__file__), "sample"], start_new_session=True, stdin=subprocess.DEVNULL,
+              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=dict(env, CGROUP_SAMPLER_OUT=sampler_out()))
+    else:
+        run(["bash", "-c", '"$0" start %d' % SAMPLE_SECONDS, os.path.join(HERE, "cgroup-sampler.sh")], check=False,
+            timeout=30, env=dict(env, CGROUP_SAMPLER_OUT=sampler_out()))
     flag = "-Xlog:gc:file=%s/gc-%%p.log:uptime,level,tags" % gc_dir()
     existing = env.get("JDK_JAVA_OPTIONS", "")
     if flag not in existing:
         github_env("JDK_JAVA_OPTIONS", (existing + " " + flag).strip())
     print("metrics: started (machine-id, sampler every %d s, GC logs in %s)" % (SAMPLE_SECONDS, gc_dir()))
+
+
+class DarwinHost:
+    """macOS's machine-wide figures through libSystem (ctypes: the runner's python has nothing else): Mach's
+    host_statistics for the CPU ticks (all cores together, cumulative since boot) and the VM page counts, sysctl for
+    RAM, swap and the kernel's memory-pressure level (1 normal, 2 warn, 4 critical)."""
+    HOST_CPU_LOAD_INFO, HOST_VM_INFO64, VM_INFO64_COUNT = 3, 4, 38
+
+    def __init__(self):
+        self.lib = ctypes.CDLL(ctypes.util.find_library("System") or "/usr/lib/libSystem.B.dylib")
+        self.lib.mach_host_self.restype = ctypes.c_uint32
+        self.host = self.lib.mach_host_self()
+
+    def _statistics(self, call, flavor, count):
+        info = (ctypes.c_uint32 * count)()
+        size = ctypes.c_uint32(count)
+        if call(self.host, flavor, ctypes.byref(info), ctypes.byref(size)) != 0:
+            raise OSError("host_statistics flavor %d failed" % flavor)
+        return list(info)
+
+    def cpu_ticks(self):
+        """(user, system, idle, nice) ticks."""
+        return tuple(self._statistics(self.lib.host_statistics, self.HOST_CPU_LOAD_INFO, 4))
+
+    def available_pages(self):
+        """free + inactive + speculative pages (vm_statistics64: free_count, active, inactive at 0..2,
+        speculative_count at 23): what Activity Monitor reads as reclaimable without pressure."""
+        vm = self._statistics(self.lib.host_statistics64, self.HOST_VM_INFO64, self.VM_INFO64_COUNT)
+        return vm[0] + vm[2] + vm[23]
+
+    def sysctl(self, name, ctype):
+        value = ctype()
+        size = ctypes.c_size_t(ctypes.sizeof(value))
+        if self.lib.sysctlbyname(name.encode(), ctypes.byref(value), ctypes.byref(size), None, ctypes.c_size_t(0)) != 0:
+            return None
+        return value
+
+
+class SwapUsage(ctypes.Structure):
+    _fields_ = [("total", ctypes.c_uint64), ("avail", ctypes.c_uint64), ("used", ctypes.c_uint64),
+                ("pagesize", ctypes.c_uint32), ("encrypted", ctypes.c_bool)]
+
+
+def darwin_row(host, now=None):
+    """One DARWIN_SERIES row: the same cumulative CPU columns as cgroup-sampler.sh's (busy = user + nice + system)."""
+    user, system, idle, nice = host.cpu_ticks()
+    memsize = host.sysctl("hw.memsize", ctypes.c_uint64)
+    swap = host.sysctl("vm.swapusage", SwapUsage)
+    pressure = host.sysctl("kern.memorystatus_vm_pressure_level", ctypes.c_int)
+    return [int(now if now is not None else time.time()), user + nice + system + idle, user + nice + system,
+            user + nice, system, round(os.getloadavg()[0], 2),
+            memsize.value // 1024 if memsize else "", host.available_pages() * resource.getpagesize() // 1024,
+            swap.total // 1024 if swap else "", swap.avail // 1024 if swap else "", pressure.value if pressure else ""]
+
+
+def darwin_sample(every=SAMPLE_SECONDS, host=None, rounds=None, sleep=time.sleep):
+    """Append a row to the series file every `every` seconds (`rounds` of them, else until the job's end). A failed
+    row is skipped, never the loop."""
+    path = sampler_out() + ".series"
+    host = host or DarwinHost()
+    if not os.path.exists(path) or not os.path.getsize(path):
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write("\t".join(DARWIN_SERIES) + "\n")
+    done = 0
+    while rounds is None or done < rounds:
+        try:
+            row = darwin_row(host)
+            with open(path, "a", encoding="utf-8") as handle:
+                handle.write("\t".join(str(cell) for cell in row) + "\n")
+        except Exception:  # noqa: BLE001 -- a sampler never fails the job
+            pass
+        done += 1
+        if rounds is None or done < rounds:
+            sleep(every)
 
 
 def table(path):
@@ -272,8 +366,9 @@ def summary(lines):
         get = lambda row, name: row[columns.index(name)] if name in columns and isinstance(row[columns.index(name)], (int, float)) else None
         ticks = (get(last, "cpu_total") or 0) - (get(first, "cpu_total") or 0)
         seconds = (get(last, "t") or 0) - (get(first, "t") or 0)
+        busy = (get(last, "cpu_busy") or 0) - (get(first, "cpu_busy") or 0)
         if ticks > 0:
-            parts.append("CPU %.0f%%" % (100.0 * ((get(last, "cpu_busy") or 0) - (get(first, "cpu_busy") or 0)) / ticks))
+            parts.append("CPU %.0f%% (%.0f CPU-s)" % (100.0 * busy / ticks, busy / float(TICKS_PER_SECOND)))
         if seconds > 0 and get(last, "psi_mem_some_us") is not None:
             parts.append("PSI mem some %.1f%%" % ((get(last, "psi_mem_some_us") - get(first, "psi_mem_some_us")) / seconds / 1e4))
         parts.append("%d samples" % len(series["rows"]))
@@ -336,8 +431,10 @@ def main(argv=None):
             start()
         elif command == "finish":
             finish()
+        elif command == "sample":
+            darwin_sample()
         else:
-            print("usage: job_metrics.py start|finish", file=sys.stderr)
+            print("usage: job_metrics.py start|finish|sample", file=sys.stderr)
             return 2
     except Exception as error:  # noqa: BLE001 -- see the header: never fail the job
         print("::warning::job metrics (%s) incomplete: %s" % (command, error))

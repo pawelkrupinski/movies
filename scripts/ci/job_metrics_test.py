@@ -103,7 +103,7 @@ class Finish(unittest.TestCase):
         self.assertEqual(("4242", "xsbt.boot.Boot", "-Xmx2g"), (jvm["pid"], jvm["main"], jvm["flags"]))
         self.assertEqual("GitHub Actions 12", lines[-1]["runner_name"])
         self.assertIn("name=ci-metrics-test-GitHub-Actions-12", output)
-        self.assertIn("CPU 50%", out.getvalue())
+        self.assertIn("CPU 50% (10 CPU-s)", out.getvalue())
         self.assertIn("PSI mem some 1.0%", out.getvalue())
 
     def test_never_fails(self):
@@ -117,6 +117,59 @@ class Finish(unittest.TestCase):
             raise OSError("offline")
         self.assertIsNone(jm.rate_limit("t", opener))
         self.assertIsNone(jm.rate_limit(""))
+
+
+class FakeDarwinHost:
+    """DarwinHost's readings, fixed: 3 s of user, 1 of nice, 2 of system, 4 idle; 1 GB of RAM, 256 MB free pages."""
+    def cpu_ticks(self):
+        return (300, 200, 400, 100)
+
+    def available_pages(self):
+        return 256 * 1024 * 1024 // jm.resource.getpagesize()
+
+    def sysctl(self, name, ctype):
+        values = {"hw.memsize": ctype(1 << 30), "kern.memorystatus_vm_pressure_level": ctype(2)}
+        if name == "vm.swapusage":
+            return jm.SwapUsage(total=2 << 20, avail=1 << 20, used=1 << 20)
+        return values.get(name)
+
+
+class Darwin(unittest.TestCase):
+    """macOS has no /proc: the series comes from Mach's ticks, in the Linux sampler's columns, so ci_trends and
+    ci_timings read both alike."""
+
+    def test_a_row_counts_busy_as_user_nice_and_system_over_all_ticks(self):
+        row = dict(zip(jm.DARWIN_SERIES, jm.darwin_row(FakeDarwinHost(), now=100)))
+        self.assertEqual((100, 1000, 600, 400, 200), (row["t"], row["cpu_total"], row["cpu_busy"], row["cpu_user"], row["cpu_sys"]))
+        self.assertEqual((1 << 20, 256 * 1024, 2048, 1024, 2),
+                         (row["mem_total_kb"], row["mem_avail_kb"], row["swap_total_kb"], row["swap_free_kb"], row["mem_pressure_level"]))
+
+    def test_the_sampler_writes_a_series_the_finish_reads(self):
+        with tempfile.TemporaryDirectory() as temp, unittest.mock.patch.dict(os.environ, {"RUNNER_TEMP": temp}):
+            os.environ.pop("CGROUP_SAMPLER_OUT", None)
+            jm.darwin_sample(host=FakeDarwinHost(), rounds=3, sleep=lambda _: None)
+            columns, rows = jm.table(jm.sampler_out() + ".series")
+        self.assertEqual(list(jm.DARWIN_SERIES), columns)
+        self.assertEqual(3, len(rows))
+
+    def test_start_runs_the_darwin_sampler_on_macos_not_the_proc_one(self):
+        ran, spawned = [], []
+        with tempfile.TemporaryDirectory() as temp, unittest.mock.patch.dict(os.environ, {"RUNNER_TEMP": temp}), \
+                redirect_stdout(io.StringIO()):
+            os.environ.pop("CI_METRICS_FILE", None)
+            env = dict(os.environ, GITHUB_ENV=os.path.join(temp, "env"))
+            jm.start(env=env, run=lambda argv, **_: ran.append(argv), platform="darwin",
+                     spawn=lambda argv, **_: spawned.append(argv))
+        self.assertEqual([["sample"]], [argv[2:] for argv in spawned])
+        self.assertFalse(any("cgroup-sampler.sh" in " ".join(argv) for argv in ran))
+
+    @unittest.skipUnless(sys.platform == "darwin", "Mach's host_statistics: macOS only")
+    def test_the_real_host_reads_sensible_figures(self):
+        row = dict(zip(jm.DARWIN_SERIES, jm.darwin_row(jm.DarwinHost())))
+        self.assertGreater(row["cpu_total"], row["cpu_busy"])
+        self.assertGreater(row["cpu_busy"], 0)
+        self.assertGreater(row["mem_total_kb"], row["mem_avail_kb"])
+        self.assertIn(row["mem_pressure_level"], (1, 2, 4))
 
 
 if __name__ == "__main__":
