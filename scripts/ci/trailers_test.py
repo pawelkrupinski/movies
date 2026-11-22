@@ -94,7 +94,7 @@ class RangeTest(unittest.TestCase):
     def lint(self, rng):
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
-        done = subprocess.run([sys.executable, "-I", TOOL, "lint", "--range", rng], cwd=self.repo, env=env,
+        done = subprocess.run([sys.executable, "-I", "-B", TOOL, "lint", "--range", rng], cwd=self.repo, env=env,
                               capture_output=True, text=True)
         return done.returncode, done.stdout + done.stderr
 

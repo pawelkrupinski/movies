@@ -91,7 +91,8 @@ class RatchetDiffTest(unittest.TestCase):
         return self.scratch("scratch_git", "rev-parse", "HEAD")
 
     def run_tool(self, *args):
-        done = subprocess.run([sys.executable, "-I", TOOL, "--base", self.base, *args], cwd=self.repo, env=self.env,
+        done = subprocess.run([sys.executable, "-I", "-B", TOOL, "--base", self.base, *args],
+                              cwd=self.repo, env=self.env,
                               capture_output=True, text=True)
         self.assertEqual(0, done.returncode, done.stderr)
         return done.stdout

@@ -185,7 +185,7 @@ class ReportOnly(unittest.TestCase):
             jobs = os.path.join(d, "jobs.json")
             with open(jobs, "w") as f:
                 json.dump({"jobs": [{"name": "commit rules", "conclusion": "failure"}]}, f)
-            run = lambda: subprocess.run([sys.executable, "-I", os.path.join(HERE, "gating_checks.py"), "report-only",
+            run = lambda: subprocess.run([sys.executable, "-I", "-B", os.path.join(HERE, "gating_checks.py"), "report-only",
                                           "--root", d, "--workflow-file", "main.yml", "--jobs-json", jobs],
                                          capture_output=True, text=True).returncode
             self.assertEqual(run(), 0)

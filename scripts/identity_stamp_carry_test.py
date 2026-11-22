@@ -106,7 +106,8 @@ class StampCarryTest(unittest.TestCase):
                    # `auto` commits its rows: an identity of its own, as a container with no git config has none
                    GIT_AUTHOR_NAME="Spec", GIT_AUTHOR_EMAIL="spec@example.com",
                    GIT_COMMITTER_NAME="Spec", GIT_COMMITTER_EMAIL="spec@example.com")
-        done = subprocess.run([sys.executable, "-I", TOOL, *args], cwd=self.repo.root, capture_output=True, text=True, env=env)
+        done = subprocess.run([sys.executable, "-I", "-B", TOOL, *args],
+                              cwd=self.repo.root, capture_output=True, text=True, env=env)
         return done.returncode, done.stdout + done.stderr
 
     def move_foo(self) -> str:

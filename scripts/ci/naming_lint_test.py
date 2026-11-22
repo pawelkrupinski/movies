@@ -50,7 +50,7 @@ class NamingLintTest(unittest.TestCase):
         return self.git("scratch_git", "rev-parse", "HEAD")
 
     def lint(self, *ranges, tool=TOOL):
-        args = [sys.executable, "-I", tool, "check", "--root", self.repo]
+        args = [sys.executable, "-I", "-B", tool, "check", "--root", self.repo]
         for r in ranges:
             args += ["--range", r]
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}

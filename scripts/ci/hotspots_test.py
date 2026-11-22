@@ -53,7 +53,7 @@ class HotspotsTest(unittest.TestCase):
             f.write("".join(f"{p}\t{lines}\t{cog}\n" for p, (lines, cog) in files.items()))
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
-        done = subprocess.run([sys.executable, "-I", TOOL, "--files", path, *extra], cwd=self.repo, env=env,
+        done = subprocess.run([sys.executable, "-I", "-B", TOOL, "--files", path, *extra], cwd=self.repo, env=env,
                               capture_output=True, text=True)
         self.assertEqual(0, done.returncode, done.stderr)
         return done.stdout

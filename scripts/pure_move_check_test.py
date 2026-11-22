@@ -89,7 +89,8 @@ class Repo:
         return self.git("rev-parse", "HEAD").strip()
 
     def check(self, rng: str) -> tuple[int, str]:
-        done = subprocess.run([sys.executable, "-I", TOOL, rng], cwd=self.root, capture_output=True, text=True, env=CLEAN_ENV)
+        done = subprocess.run([sys.executable, "-I", "-B", TOOL, rng],
+                              cwd=self.root, capture_output=True, text=True, env=CLEAN_ENV)
         return done.returncode, done.stdout + done.stderr
 
 

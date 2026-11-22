@@ -56,7 +56,7 @@ class HarnessAaTest(unittest.TestCase):
         return self.git("rev-parse", "HEAD")
 
     def run_tool(self, *args, cwd=None):
-        done = subprocess.run([sys.executable, "-I", TOOL, *args], cwd=cwd or self.repo, env=self.env,
+        done = subprocess.run([sys.executable, "-I", "-B", TOOL, *args], cwd=cwd or self.repo, env=self.env,
                               capture_output=True, text=True)
         return done.returncode, done.stdout, done.stderr
 
@@ -88,7 +88,8 @@ class HarnessAaTest(unittest.TestCase):
         self.assertIn("parent", err)
 
     def since(self, runs, run_id=500):
-        done = subprocess.run([sys.executable, "-I", TOOL, "since", "--run-id", str(run_id)], input=json.dumps(runs),
+        done = subprocess.run([sys.executable, "-I", "-B", TOOL, "since", "--run-id", str(run_id)],
+                              input=json.dumps(runs),
                               capture_output=True, text=True)
         return done.returncode, done.stdout.strip()
 

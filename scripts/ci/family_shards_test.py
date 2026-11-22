@@ -35,7 +35,7 @@ class PlanTest(unittest.TestCase):
 
 class WeekTest(unittest.TestCase):
     def test_the_plan_names_the_iso_week_the_orders_are_salted_with(self):
-        out = subprocess.run([sys.executable, "-I", os.path.join(HERE, "family_shards.py"), "plan", "--countries", "es",
+        out = subprocess.run([sys.executable, "-I", "-B", os.path.join(HERE, "family_shards.py"), "plan", "--countries", "es",
                               "--date", "2026-11-06"], capture_output=True, text=True, check=True).stdout
         self.assertIn("week=45", out.split())
 

@@ -70,7 +70,7 @@ class RatchetTest(unittest.TestCase):
     def run_rules(self, rule_set, rng, tool=TOOL):
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
-        done = subprocess.run([sys.executable, "-I", tool, rule_set, "--range", rng], cwd=self.repo, env=env,
+        done = subprocess.run([sys.executable, "-I", "-B", tool, rule_set, "--range", rng], cwd=self.repo, env=env,
                               capture_output=True, text=True)
         return done.returncode, done.stderr
 

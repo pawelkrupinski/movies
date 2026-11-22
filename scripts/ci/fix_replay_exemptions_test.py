@@ -46,7 +46,7 @@ class ExemptionsTest(unittest.TestCase):
     def report(self):
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
-        done = subprocess.run([sys.executable, "-I", TOOL, "--since", "7d"], cwd=self.repo, env=env,
+        done = subprocess.run([sys.executable, "-I", "-B", TOOL, "--since", "7d"], cwd=self.repo, env=env,
                               capture_output=True, text=True)
         self.assertEqual(0, done.returncode, done.stderr)
         return done.stdout

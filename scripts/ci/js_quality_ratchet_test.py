@@ -87,7 +87,7 @@ class JsQualityRatchetTest(unittest.TestCase):
             f.write(current)
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
-        done = subprocess.run([sys.executable, "-I", TOOL, command, "--current", path, "--areas", self.areas, *extra],
+        done = subprocess.run([sys.executable, "-I", "-B", TOOL, command, "--current", path, "--areas", self.areas, *extra],
                               cwd=self.repo, env=env, capture_output=True, text=True)
         return done.returncode, done.stdout + done.stderr
 

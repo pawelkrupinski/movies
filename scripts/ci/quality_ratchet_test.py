@@ -72,14 +72,16 @@ class QualityRatchetTest(unittest.TestCase):
         self.scratch("scratch_git", "commit", "-qm", message)
         return self.scratch("scratch_git", "rev-parse", "HEAD")
 
-    def run_tool(self, command, current, *extra):
+    def run_tool(self, command, current, *extra, tool=None):
         path = os.path.join(self.dir.name, "current.tsv")
         with open(path, "w") as f:
             f.write(current)
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
-        done = subprocess.run([sys.executable, "-I", TOOL, command, "--current", path, *extra], cwd=self.repo, env=env,
-                              capture_output=True, text=True)
+        # -B beside -I (-I ignores run-script-tests' PYTHONDONTWRITEBYTECODE): the tool imports trailers.py beside
+        # it, and its bytecode went to scripts/ci/__pycache__/, a POLLUTE on a fresh checkout (run 45013308331)
+        done = subprocess.run([sys.executable, "-I", "-B", tool or TOOL, command, "--current", path, *extra],
+                              cwd=self.repo, env=env, capture_output=True, text=True)
         return done.returncode, done.stdout + done.stderr
 
     def check(self, current, rng=None):
@@ -97,6 +99,17 @@ class QualityRatchetTest(unittest.TestCase):
         return out
 
     # ── the measured rows against the baseline ──
+
+    def test_a_run_of_the_tool_writes_no_bytecode_beside_it(self):
+        """Run 45013308331 (2026-11-22): every run of the tool wrote its import's bytecode into the checkout's
+        scripts/ci/__pycache__/, and run-script-tests' tree check failed the landing check on a fresh checkout."""
+        import shutil
+        tools = os.path.join(self.dir.name, "tools")
+        os.makedirs(tools)
+        for name in ("quality_ratchet.py", "trailers.py"):
+            shutil.copy(os.path.join(os.path.dirname(TOOL), name), tools)
+        self.run_tool("check", "", tool=os.path.join(tools, "quality_ratchet.py"))
+        self.assertFalse(os.path.exists(os.path.join(tools, "__pycache__")), "the tool's run left bytecode beside it")
 
     def test_the_baseline_itself_passes(self):
         out = self.assert_passes(ROWS)

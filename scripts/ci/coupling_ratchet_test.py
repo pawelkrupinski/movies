@@ -105,7 +105,7 @@ class RatchetHarness(unittest.TestCase):
             f.write(current)
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
-        args = [sys.executable, "-I", TOOL, "check", "--current", path, "--baseline", BASELINE]
+        args = [sys.executable, "-I", "-B", TOOL, "check", "--current", path, "--baseline", BASELINE]
         if rng:
             args += ["--range", rng]
         if edges is not None:
@@ -795,7 +795,8 @@ class ExemptionAdmissionTest(RatchetHarness):
                             "pipeline stage: votes a cluster's film from the scored candidates it gathers")
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
-        done = subprocess.run([sys.executable, "-I", TOOL, "new-exemptions", "--since", "7d", "--rev", "HEAD"], cwd=self.repo,
+        done = subprocess.run([sys.executable, "-I", "-B", TOOL, "new-exemptions", "--since", "7d", "--rev", "HEAD"],
+                              cwd=self.repo,
                               env=env, capture_output=True, text=True)
         self.assertEqual(0, done.returncode, done.stdout + done.stderr)
         self.assertIn(f"- 2026-11-19 {head[:9]} `class` **{STAGE}** (struck since) (exempt, identity): {STAGE_WHY}", done.stdout)
@@ -1009,7 +1010,7 @@ class SplitCheckTest(RatchetHarness):
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1", GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
                    GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
-        args = [sys.executable, "-I", TOOL, "split-check", "--current", current_path, "--fanouts", fanouts_path,
+        args = [sys.executable, "-I", "-B", TOOL, "split-check", "--current", current_path, "--fanouts", fanouts_path,
                 "--split", "ReadModelSweeper", "--base", self.base]
         for p in pieces:
             args += ["--into", p]
@@ -1084,7 +1085,7 @@ class DistanceCeilingTest(RatchetHarness):
             f.write(measured)
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
-        done = subprocess.run([sys.executable, "-I", TOOL, "update", "--current", path, "--baseline", BASELINE],
+        done = subprocess.run([sys.executable, "-I", "-B", TOOL, "update", "--current", path, "--baseline", BASELINE],
                               cwd=self.repo, env=env, capture_output=True, text=True)
         self.assertEqual(0, done.returncode, done.stdout + done.stderr)
         return self.baseline()
@@ -1196,7 +1197,7 @@ class DistanceCeilingTest(RatchetHarness):
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1", GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
                    GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
-        done = subprocess.run([sys.executable, "-I", TOOL, "split-check", "--current", current, "--fanouts", fanouts,
+        done = subprocess.run([sys.executable, "-I", "-B", TOOL, "split-check", "--current", current, "--fanouts", fanouts,
                                "--split", "ReadModelSweeper", "--into", "SweepPlanner", "--into", "SweepPass",
                                "--base", self.base], cwd=self.repo, env=env, capture_output=True, text=True)
         out = done.stdout + done.stderr
@@ -1217,7 +1218,7 @@ class CouplingRefsTest(unittest.TestCase):
                 f.write(split_rows(sweeper=36))
             with open(fanouts_path, "w") as f:
                 f.write(fanout_line(SWEEPER, deps(0, 2)) + fanout_line(PLANNER, deps(5, 7)))
-            done = subprocess.run([sys.executable, "-I", TOOL, "refs", "--current", rows_path, "--fanouts", fanouts_path],
+            done = subprocess.run([sys.executable, "-I", "-B", TOOL, "refs", "--current", rows_path, "--fanouts", fanouts_path],
                                   capture_output=True, text=True)
         self.assertEqual(0, done.returncode, done.stderr)
         self.assertEqual(f"{SWEEPER}\tservices.movies.Dep0\n{SWEEPER}\tservices.movies.Dep1\n", done.stdout)
