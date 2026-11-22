@@ -9,6 +9,7 @@ import sys
 import tempfile
 from typing import List, Mapping, Optional, Protocol, Set
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "scripts/lib"))
 import convergence_release  # noqa: E402
 import tool_process  # noqa: E402
