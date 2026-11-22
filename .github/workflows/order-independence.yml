@@ -27,6 +27,10 @@ name: Order independence
 #
 # A failure prints its seed; replay it locally with the command in the job summary, or
 # re-run this workflow by hand with that seed.
+#
+# A suite failing in BOTH scala orders is a regression, not an order dependence (~31 of the ~66 failing jobs of runs
+# #1-#100, against one real order dependence): `scala-compare` reads each leg's failing suites and labels the run so in
+# its summary (scripts/ci/order-compare.sh).
 on:
     schedule:
         - cron: '40 2 * * *'
@@ -113,12 +117,61 @@ jobs:
                   echo "seed=$seed" >> "$GITHUB_OUTPUT"
                   echo "Scala unit specs, suite order \`$seed\` — replay: \`TEST_ORDER_SEED=$seed sbt testUnitNoE2e\`" >> "$GITHUB_STEP_SUMMARY"
 
-            # Same env as ci.yml's unit run, so a spec that needs a key behaves as it does there.
+            # Same env as ci.yml's unit run, so a spec that needs a key behaves as it does there. Its log kept for
+            # scala-compare (pipefail: the step's default `bash -e` would let tee's 0 hide sbt's failure).
             - name: Unit specs, one suite at a time in that order
-              run: sbt testUnitNoE2e
+              id: unit
+              run: |
+                  set -o pipefail
+                  sbt testUnitNoE2e 2>&1 | tee "$RUNNER_TEMP/sbt-unit.log"
               env:
                   TEST_ORDER_SEED: ${{ steps.order.outputs.seed }}
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
+
+            # What this order failed, and how its unit step ended: scala-compare's to read beside the other order's.
+            - name: Name the failing suites
+              if: always()
+              env:
+                  ORDER:   ${{ matrix.order }}
+                  OUTCOME: ${{ steps.unit.outcome }}
+              run: |
+                  mkdir -p "$RUNNER_TEMP/failed-suites"
+                  scripts/ci/order-compare.sh failed-suites "$RUNNER_TEMP/sbt-unit.log" > "$RUNNER_TEMP/failed-suites/$ORDER.txt"
+                  echo "$OUTCOME" > "$RUNNER_TEMP/failed-suites/$ORDER.result"
+            - name: Keep them for scala-compare
+              if: always()
+              uses: actions/upload-artifact@v6
+              with:
+                  name: scala-failed-suites-${{ matrix.order }}
+                  path: ${{ runner.temp }}/failed-suites/
+                  if-no-files-found: ignore
+                  overwrite: true
+                  retention-days: 14
+
+    # Both orders side by side: a suite failing in both is a regression, not an order dependence; one failing in one
+    # order only is the order dependence this workflow is for (scripts/ci/order-compare.sh, order-compare-test.sh).
+    # It decides nothing of the run (the legs' results do), so it never fails; it reads needs alone.
+    scala-compare:
+        needs: [seed, scala]
+        if: always() && !cancelled()
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v5
+            # None at all when neither leg got as far as naming its suites.
+            - uses: actions/download-artifact@v6
+              continue-on-error: true
+              with:
+                  pattern: scala-failed-suites-*
+                  merge-multiple: true
+                  path: failed-suites
+            - name: Reverse vs shuffled
+              env:
+                  SEED: ${{ needs.seed.outputs.seed }}
+              run: |
+                  mkdir -p failed-suites
+                  scripts/ci/order-compare.sh summary failed-suites "$SEED" >> "$GITHUB_STEP_SUMMARY"
+                  scripts/ci/order-compare.sh summary failed-suites "$SEED"
 
     android:
         needs: seed
@@ -390,7 +443,7 @@ jobs:
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
         name: report (scheduled run)
-        needs: [seed, scala, android, android-instrumented, swift, ios]
+        needs: [seed, scala, scala-compare, android, android-instrumented, swift, ios]
         if: always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
