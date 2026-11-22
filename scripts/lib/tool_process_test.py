@@ -7,10 +7,10 @@ import io
 import os
 import sys
 import tempfile
-import time
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cli_harness  # noqa: E402
 import tool_process  # noqa: E402
 
 SH = ["/bin/sh", "-c"]
@@ -74,14 +74,14 @@ class SubprocessRunnerTest(unittest.TestCase):
 
 
 def alive(pid: int) -> bool:
-    for _ in range(100):
+    """Whether `pid` is still alive once a grace for its TERM has passed (cli_harness.wait_until: no guessed sleep)."""
+    def gone() -> bool:
         try:
             os.kill(pid, 0)
         except OSError:
-            return False
-        time.sleep(0.05)
-    return True
-
+            return True
+        return False
+    return not cli_harness.wait_until(gone, 5)
 
 if __name__ == "__main__":
     unittest.main()
