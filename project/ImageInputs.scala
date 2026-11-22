@@ -29,7 +29,7 @@ object ImageInputs {
   val buildOnly: Seq[String] = Seq(
     "AnalysisUnits.scala", "ClassCycles.scala", "ClassReferences.scala", "Coupling.scala", "CouplingAnalysis.scala",
     "CouplingSimulation.scala", "DeadCode.scala", "ExemptionSlack.scala", "ForkedTests.scala",
-    "HeadlessSafeInteractionMode.scala", "ImageInputs.scala", "ReaderNames.scala", "StaleTastyRetry.scala",
+    "HeadlessSafeInteractionMode.scala", "ImageInputs.scala", "ReaderNames.scala", "SameFileEdges.scala", "StaleTastyRetry.scala",
     "TestImpact.scala", "TouchedSpecs.scala", "UnitClasspathGuard.scala", "UsedNamesAccess.scala", "Warmup.scala",
     "WriteFailureTripwire.scala",
   ).map("project/" + _)

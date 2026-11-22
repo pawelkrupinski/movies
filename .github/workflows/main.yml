@@ -167,6 +167,7 @@ jobs:
                       !project/HeadlessSafeInteractionMode.scala
                       !project/ImageInputs.scala
                       !project/ReaderNames.scala
+                      !project/SameFileEdges.scala
                       !project/StaleTastyRetry.scala
                       !project/TestImpact.scala
                       !project/TouchedSpecs.scala
@@ -234,6 +235,7 @@ jobs:
                       !project/HeadlessSafeInteractionMode.scala
                       !project/ImageInputs.scala
                       !project/ReaderNames.scala
+                      !project/SameFileEdges.scala
                       !project/StaleTastyRetry.scala
                       !project/TestImpact.scala
                       !project/TouchedSpecs.scala
