@@ -18,7 +18,7 @@
 # eliminating everywhere else.
 set -euo pipefail
 
-# WHERE FROM. GitHub, anonymously -- the config repo is public ($GITHUB_SERVER_URL on CI). $KINOWO_GITOPS_REPO, set, is
+# WHERE FROM. GitHub, anonymously -- the config repo is public (on CI and the laptop alike). $KINOWO_GITOPS_REPO, set, is
 # the only source.
 #
 # A FETCH THAT FAILS IS A FAILURE. It used to fall back to the local clone $KINOWO_GITOPS_LOCAL quietly, and that clone,
@@ -28,8 +28,6 @@ set -euo pipefail
 slug=pawelkrupinski/movies-gitops
 if [ -n "${KINOWO_GITOPS_REPO:-}" ]; then
     sources=("$KINOWO_GITOPS_REPO")
-elif [ -n "${GITHUB_SERVER_URL:-}" ]; then
-    sources=("${GITHUB_SERVER_URL%/}/$slug.git")
 else
     sources=("https://github.com/$slug.git")
 fi

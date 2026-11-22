@@ -125,11 +125,9 @@ printf '%s\\n' "\$*" >> "$work/gh-args"
 exec "$work/bin/gh-history-stub" "\$@"
 EOF2
 cp "$work/bin/gh" "$work/bin/gh-history-stub"; mv "$work/bin/gh-recording" "$work/bin/gh"; chmod +x "$work/bin/gh"
-: > "$work/gh-args"; (GITHUB_SERVER_URL=https://github.com TAKES_HISTORY_FLOOR=2026-10-31T15:00:00Z run || true)
+: > "$work/gh-args"; (TAKES_HISTORY_FLOOR=2026-10-31T15:00:00Z run || true)
 check "github.com asks only for statuses since its floor" 1 "$(grep -c '>= "2026-10-31T15:00:00Z")' "$work/gh-args")"
-: > "$work/gh-args"; (GITHUB_SERVER_URL=https://forgejo.example TAKES_HISTORY_FLOOR=2026-10-31T15:00:00Z run || true)
-check "...and Forgejo reads no floor" 1 "$(grep -c '>= "")' "$work/gh-args")"
-code=0; (GITHUB_SERVER_URL=https://github.com TAKES_HISTORY_FLOOR=yesterday; export GITHUB_SERVER_URL TAKES_HISTORY_FLOOR; run) || code=$?
+code=0; (TAKES_HISTORY_FLOOR=yesterday; export TAKES_HISTORY_FLOOR; run) || code=$?
 check "a floor that is no ISO time stops the check" 2 "$code"
 mv "$work/bin/gh-history-stub" "$work/bin/gh"
 

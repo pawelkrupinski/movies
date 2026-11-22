@@ -1,6 +1,6 @@
 ---
 name: agent-ops
-description: How an agent works in this many-agent repository — its own worktree, the landing flow (ff-merge while GitHub is suspended, `<sha>:main` push when it is back), batching pushes, the red-build gate, process hygiene (agent-procs, never pkill by pattern), waiting on long runs and CI (wait-for, ci-wait), where time went (agent-time), the kept sbt server (sbt-warm, `--serve`, JVM slots), and the worker/web downtime policy. Use when starting a task, landing or pushing, waiting on anything, running sbt, killing a process, or restarting a deployment.
+description: How an agent works in this many-agent repository — its own worktree, the landing flow (`agentctl land`, or a `<sha>:main` push by hand), batching pushes, the red-build gate, process hygiene (agent-procs, never pkill by pattern), waiting on long runs and CI (wait-for, ci-wait), where time went (agent-time), the kept sbt server (sbt-warm, `--serve`, JVM slots), and the worker/web downtime policy. Use when starting a task, landing or pushing, waiting on anything, running sbt, killing a process, or restarting a deployment.
 ---
 
 # Agent operations
@@ -34,10 +34,8 @@ The rules themselves are in `CLAUDE.md`; this skill holds the mechanics. Dated i
   The page layers (PageTest, Playwright) and `e2e (rest)` are not landing requirements since 2026-11-17 (the owner's
   "B1"): neither the hook nor the landing check runs them; Main does, after landing, as gate rows. Run the page layer
   locally when you change UI -- cheap insurance, not a gate.
-  - *While GitHub is suspended* (fetch/push 403): land with `git merge --ff-only <branch>` in the clean root
-    checkout on `main`; nothing is pushed.
-  - *When GitHub is back:* `git fetch && git rebase origin/main`, then push the named commit from your own
-    worktree: `git push origin <sha>:main`. Never `HEAD` while a rebase is stopped (a stopped rebase landed 7 commits
+  - *By hand* (when `agentctl land` cannot run): `git fetch && git rebase origin/main`, then push the named commit
+    from your own worktree: `git push origin <sha>:main`. Never `HEAD` while a rebase is stopped (a stopped rebase landed 7 commits
     at once), never `git push origin main` from the shared root (others detach it).
 - **Subagents** commit on their own branch, rebase, and hand back to the agent that spawned them. A subagent lands
   only when every gate is already green locally; it never waits on CI — the lead (one landing agent) does.

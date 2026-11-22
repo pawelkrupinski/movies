@@ -12,14 +12,14 @@
 # (default 1800) -- Record scrape fixtures #181 (run 43122318896): the UK order row started at 23:47 and gave up at
 # 00:07, "no artifact scrape-fixtures-uk after 1080s", while its convergence row, which uploads it, was still queued
 # for a runner; it started at 00:12 and uploaded at 00:14. Needs GH_TOKEN with
-# `actions: read`, GITHUB_REPOSITORY and GITHUB_RUN_ID; POLL_SECONDS overrides the 10 s poll -- 60 s on github.com,
-# where GITHUB_TOKEN has 1,000 API requests an hour for the whole repository (github-return-plan 2026-10-30, 3.4).
+# `actions: read`, GITHUB_REPOSITORY and GITHUB_RUN_ID; POLL_SECONDS overrides the 60 s poll: on github.com
+# GITHUB_TOKEN has 1,000 API requests an hour for the whole repository (github-return-plan 2026-10-30, 3.4).
 set -euo pipefail
 
 name=${1:?artifact name}
 producer=${2:?producing job name fragment}
 timeout=${3:?timeout seconds}
-if [ "${GITHUB_SERVER_URL:-}" = "https://github.com" ]; then poll=${POLL_SECONDS:-60}; else poll=${POLL_SECONDS:-10}; fi
+poll=${POLL_SECONDS:-60}
 run="repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
 # Capture the listing, then match it: `gh api … | grep -qx` would let grep exit at its first match

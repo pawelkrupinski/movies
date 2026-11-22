@@ -98,15 +98,12 @@ identity_paths=(geodata/src/main base/src/main http/src/main common/src/main ide
                 worker/src/it/scala/IdentityResolveDumpIntegrationSpec.scala worker/src/it/scala/IdentityShadow.scala testkit/src/main
                 build.sbt project)
 
-# THE HISTORY FLOOR (github.com only): a status older than .github/github-takes-history-floor counts as none. github.com's
+# THE HISTORY FLOOR: a status older than .github/github-takes-history-floor counts as none. github.com's
 # checks stopped on 2026-10-16 (the suspension) and came back in shadow on 2026-10-31 while Forgejo judged every commit
 # between, so the newest green github.com status was 1,429 commits back (run 41209071921: every takes row failed on
 # moves Forgejo had accepted one commit at a time). Past the floor github.com picks its base as a check that never ran
 # would -- the head's parent -- until its own statuses take over. TAKES_HISTORY_FLOOR overrides.
-history_floor=""
-if [ "${GITHUB_SERVER_URL:-}" = "https://github.com" ]; then
-  history_floor=${TAKES_HISTORY_FLOOR-$(grep -vE '^\s*(#|$)' "$here/.github/github-takes-history-floor" 2>/dev/null | head -1)}
-fi
+history_floor=${TAKES_HISTORY_FLOOR-$(grep -vE '^\s*(#|$)' "$here/.github/github-takes-history-floor" 2>/dev/null | head -1)}
 [ -z "$history_floor" ] || [[ "$history_floor" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}Z$ ]] \
   || { echo "::error::identity takes ($cc): the history floor is an ISO time like 2026-10-31T15:00:00Z, not $history_floor"; exit 2; }
 

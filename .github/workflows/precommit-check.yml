@@ -322,10 +322,9 @@ jobs:
                   # inside the job's 90 minutes, so the two failure steps below still print and upload its logs: the
                   # job's own timeout ends every step, those too, and leaves a run with no output at all (run 3357)
                   rc=0
-                  # the branch names the hook's mode (PREPUSH_MODE, from precommit-share.sh): check/fast-<id> is agentctl's batch
-                  # check -- the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
-                  # laptop; every other check/<id> the change's own checks. The fast-only set is the rest's alone.
-                  [ "$SHARE" = rest ] || [ "$PREPUSH_MODE" = --checks-only ] || exit 0
+                  # the branch names the hook's mode (PREPUSH_MODE, from precommit-share.sh): the identity share runs only
+                  # the change's own checks (--checks-only); agentctl's fast-only batch check is the rest's alone.
+                  [ "$PREPUSH_MODE" = --checks-only ] || exit 0
                   timeout --kill-after=60 80m scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"

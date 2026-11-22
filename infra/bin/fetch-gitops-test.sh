@@ -12,16 +12,14 @@ work="$(mktemp -d)"; work="$(cd "$work" && pwd -P)"
 trap 'rm -rf "$work"' EXIT
 
 remote="$work/remote"; local_clone="$work/local"
-ci="$work/ci/pawelkrupinski/movies-gitops.git"
-for r in "$remote" "$local_clone" "$ci"; do
+for r in "$remote" "$local_clone"; do
   scratch_repo "$r"; basename "$(dirname "$(dirname "$r")")" > "$r/README.md"
   scratch_git "$r" add -A; scratch_git "$r" commit -qm init; scratch_git "$r" branch -q -M main
 done
 echo remote > "$remote/README.md"; scratch_git "$remote" commit -qam remote
 echo local > "$local_clone/README.md"; scratch_git "$local_clone" commit -qam local
 
-# GITHUB_SERVER_URL unset: the laptop, whatever CI this test itself runs on
-gitops() { env -u GITHUB_SERVER_URL KINOWO_GITOPS_DEST="$work/dest" KINOWO_GITOPS_LOCAL="$local_clone" "$@" \
+gitops() { env KINOWO_GITOPS_DEST="$work/dest" KINOWO_GITOPS_LOCAL="$local_clone" "$@" \
   "$REPO_ROOT/infra/bin/fetch-gitops" > "$work/out" 2>&1; echo $?; }
 
 check "the config repo reached: its manifests" "0 remote" "$(gitops KINOWO_GITOPS_REPO="$remote") $(cat "$work/dest/README.md")"
@@ -41,9 +39,4 @@ rm -rf "$work/dest"
 check "no override, on the laptop: GitHub, not the local clone" "0 remote2 0" \
   "$(GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="url.$remote.insteadOf" GIT_CONFIG_VALUE_0=https://github.com/pawelkrupinski/movies-gitops.git \
      gitops) $(cat "$work/dest/README.md") $(grep -c 'using the local clone' "$work/out")"
-rm -rf "$work/dest"
-check "on CI: the server the job runs on (\$GITHUB_SERVER_URL)" "0 ci" \
-  "$(env GITHUB_SERVER_URL="$work/ci" KINOWO_GITOPS_DEST="$work/dest" \
-       "$REPO_ROOT/infra/bin/fetch-gitops" > "$work/out" 2>&1; echo $?) $(cat "$work/dest/README.md")"
-
 spec_summary
