@@ -45,8 +45,20 @@ jobs:
                   sparse-checkout: |
                       scripts
                       .github/scripts
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Archive the recordings
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   RUNS: ${{ inputs.runs }}
               run: scripts/ci/archive-recording.sh $RUNS
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

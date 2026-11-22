@@ -49,6 +49,11 @@ jobs:
         timeout-minutes: 30
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - name: Test the retirement script
               run: python3 data/scripts/retire_venues_test.py
@@ -117,3 +122,9 @@ jobs:
               run: |
                   gh pr create --base main --head "$BRANCH" \
                       --title "Retire ${RETIRED} closed ${ROSTER} venue(s)" --body-file "$RUNNER_TEMP/pr-body.md"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

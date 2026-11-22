@@ -79,11 +79,24 @@ jobs:
         steps:
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: scripts/ci
+                  sparse-checkout: |
+                      scripts/ci
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Secrets present
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
               run: scripts/ci/preflight.sh TMDB_API_KEY
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # The red run, as GitHub records it — still in progress when its last job dispatched this,
     # so its CONCLUSION is not read: the requests are the gate, since only a red hermetic leg on
@@ -104,7 +117,14 @@ jobs:
             - uses: actions/checkout@v5
               with:
                   # Not scripts/ci alone: gh-optional.sh sources ../tool-conventions.sh (gh_download).
-                  sparse-checkout: scripts
+                  sparse-checkout: |
+                      scripts
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - id: requests
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -137,6 +157,12 @@ jobs:
                       echo "countries=$(jq -c '[.[].country]' <<<"${requests:-[]}")"
                       echo "by-country=$(jq -c 'map({(.country): .}) | add // {}' <<<"${requests:-[]}")"
                   } >> "$GITHUB_OUTPUT"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # No `name:`: github.com names each row `bisect (<country>)` off its one matrix key.
     bisect:
@@ -168,6 +194,11 @@ jobs:
                   ref: ${{ needs.plan.outputs.head-sha }}
                   fetch-depth: 0
                   persist-credentials: false
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             # The SAME recorded pair the red leg replayed, so a recorder that pinned a new pair
             # meanwhile cannot move the ground.
             - uses: ./.github/actions/convergence-setup
@@ -249,6 +280,12 @@ jobs:
                   name: first-bad-${{ fromJson(needs.plan.outputs.by-country)[matrix.country].code }}
                   path: first-bad/
                   retention-days: 3
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # The commit comment on each first bad commit: the workflow's only write, in a job that
     # checks out and runs nothing of the project.

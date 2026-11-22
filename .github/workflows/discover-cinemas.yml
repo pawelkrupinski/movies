@@ -73,6 +73,11 @@ jobs:
             - uses: actions/checkout@v5
               with:
                   ref: main
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - uses: actions/setup-python@v5
               with:
@@ -180,6 +185,12 @@ jobs:
                   commit-message: 'chore: wire newly-discovered UK cinemas from Flicks'
                   title: 'chore: wire newly-discovered UK cinemas'
                   body-path: discovery-report.md
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
@@ -194,6 +205,17 @@ jobs:
             issues: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - uses: ./.github/actions/report-scheduled-run
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

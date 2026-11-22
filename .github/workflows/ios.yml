@@ -63,6 +63,11 @@ jobs:
         steps:
 
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             # The Xcode project carries a COPY of mobile-version.txt (an Xcode
             # project cannot read a file), and nothing in the build fails when
@@ -94,6 +99,12 @@ jobs:
                   report_paths: 'ios-unit*.xml'
                   check_name: iOS unit/integration
                   include_passed: false
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
 
     ui-tests:
@@ -102,6 +113,11 @@ jobs:
         timeout-minutes: 75
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - uses: maxim-lobanov/setup-xcode@v1
               with:
@@ -224,3 +240,9 @@ jobs:
                   name: Kinowo.xcresult
                   path: build/Kinowo.xcresult
                   if-no-files-found: ignore
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

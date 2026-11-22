@@ -128,7 +128,14 @@ jobs:
         steps:
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: scripts/ci
+                  sparse-checkout: |
+                      scripts/ci
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Which measure lane does a consumer row queue in?
               id: lane
               run: scripts/ci/measure-lane.sh consumer >> "$GITHUB_OUTPUT"
@@ -147,6 +154,12 @@ jobs:
                   MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
               run: scripts/ci/preflight.sh MONGO_CI_SSH_KEY MONGO_CI_SSH_HOST_KEY TMDB_API_KEY
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # THE CORPUS AND ENRICHMENT RECORDING — the only place the convergence fixtures grow.
     #
@@ -243,7 +256,14 @@ jobs:
         steps:
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: scripts/ci
+                  sparse-checkout: |
+                      scripts/ci
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Dispatch the hermetic verify of this recording
               env:
                   GH_TOKEN: ${{ github.token }}
@@ -262,6 +282,12 @@ jobs:
                   gh workflow run verify-scrape-recording.yml --ref main -f recording="$GITHUB_RUN_ID" -f countries="$countries" \
                       -f pin-hermetic="$PIN_HERMETIC"
                   echo "dispatched Verify scrape recording on recording $GITHUB_RUN_ID for: $countries (pin-hermetic: $PIN_HERMETIC)" | tee -a "$GITHUB_STEP_SUMMARY"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec). This is the AGGREGATE,
@@ -278,8 +304,19 @@ jobs:
             issues: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - uses: ./.github/actions/report-scheduled-run
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
                   alert: ${{ needs.preflight.outputs.alert }}
                   found: ${{ needs.preflight.outputs.found }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

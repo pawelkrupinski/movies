@@ -80,6 +80,11 @@ jobs:
             seed: ${{ steps.pick.outputs.seed }}
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Pick and check the seed
               id: pick
               env:
@@ -87,6 +92,12 @@ jobs:
               # Assigned first: inside `echo "seed=$(...)"` a refusal's status is dropped and the
               # legs would run on an empty seed. (scripts/ci/order-seed-test.sh)
               run: seed=$(scripts/ci/order-seed.sh "$REQUESTED" "$GITHUB_RUN_ID"); echo "seed=$seed" >> "$GITHUB_OUTPUT"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     scala:
         # No `name:`: the default `scala (<order>)` is the same, and a job cancelled before it starts shows no raw template.
@@ -99,6 +110,11 @@ jobs:
                 order: [reverse, shuffled]
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             # The deploy specs read the GitOps manifests at their old path — see ci.yml's
             # `test` job for why this checkout lands exactly here, and why it is an anonymous clone.
@@ -166,6 +182,12 @@ jobs:
                   if-no-files-found: ignore
                   overwrite: true
                   retention-days: 14
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     android:
         needs: seed
@@ -176,6 +198,11 @@ jobs:
                 working-directory: android
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - name: Set up JDK 17
               uses: ./.github/actions/setup-jdk
@@ -242,6 +269,12 @@ jobs:
                       android/app/build/test-results/testDebugUnitTest
                   if-no-files-found: ignore
                   retention-days: 14
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     android-instrumented:
         needs: seed
@@ -256,6 +289,11 @@ jobs:
             AVD_PROFILE: pixel_6
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - name: Set up JDK 17
               uses: ./.github/actions/setup-jdk
@@ -350,6 +388,12 @@ jobs:
                       android/app/build/order-independence
                   if-no-files-found: ignore
                   retention-days: 14
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     swift:
         needs: seed
@@ -358,6 +402,11 @@ jobs:
         timeout-minutes: 105
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - uses: maxim-lobanov/setup-xcode@v1
               with:
@@ -398,6 +447,12 @@ jobs:
                   if-no-files-found: ignore
                   overwrite: true
                   retention-days: 14
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     ios:
         # macOS legs: github.com's hosted macOS only.
@@ -405,6 +460,11 @@ jobs:
         timeout-minutes: 150
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - uses: maxim-lobanov/setup-xcode@v1
               with:
@@ -474,6 +534,12 @@ jobs:
                       build/alone
                   if-no-files-found: ignore
                   retention-days: 14
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # Every leg's record side by side: the run's one-word verdict (regression > order > none > pass) as this job's
     # output and order-verdict.json, a line a leg in the summary, and scala's reverse vs shuffled
@@ -488,6 +554,11 @@ jobs:
             verdict: ${{ steps.verdict.outputs.verdict }}
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             # None at all when no leg got as far as its tests.
             - uses: actions/download-artifact@v6
               continue-on-error: true
@@ -515,6 +586,12 @@ jobs:
                   path: order-records/order-verdict.json
                   overwrite: true
                   retention-days: 30
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
@@ -529,6 +606,17 @@ jobs:
             issues: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - uses: ./.github/actions/report-scheduled-run
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

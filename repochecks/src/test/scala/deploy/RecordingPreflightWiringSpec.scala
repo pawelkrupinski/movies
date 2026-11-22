@@ -25,7 +25,7 @@ class RecordingPreflightWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "check out the script it runs" in {
-    RepoFile.withoutComments(jobs("preflight")) should include("sparse-checkout: scripts/ci")
+    RepoFile.withoutComments(jobs("preflight")) should include regex """sparse-checkout: \|?\s+scripts/ci\n"""
   }
 
   "every recording leg" should "wait for the preflight" in {

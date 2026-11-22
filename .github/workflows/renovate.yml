@@ -41,6 +41,17 @@ jobs:
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         name: Renovate
         steps:
+            # Only for the job telemetry below: Renovate itself runs in its own image off the API.
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: |
+                      scripts/ci
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - uses: actions/create-github-app-token@v3
               id: app-token
               with:
@@ -65,6 +76,12 @@ jobs:
                   # "gradleWrapper is not permitted in the allowedUnsafeExecutions".
                   RENOVATE_ALLOWED_UNSAFE_EXECUTIONS: '["gradleWrapper"]'
                   LOG_LEVEL: info
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
@@ -79,6 +96,17 @@ jobs:
             issues: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - uses: ./.github/actions/report-scheduled-run
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

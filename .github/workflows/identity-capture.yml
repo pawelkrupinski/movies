@@ -77,7 +77,14 @@ jobs:
         steps:
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: scripts/ci
+                  sparse-checkout: |
+                      scripts/ci
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Secrets present
               env:
                   MONGO_CI_SSH_KEY: ${{ secrets.MONGO_CI_SSH_KEY }}
@@ -89,6 +96,12 @@ jobs:
                   SYNC_PR_APP_ID: ${{ secrets.SYNC_PR_APP_ID }}
                   SYNC_PR_APP_PRIVATE_KEY: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
               run: scripts/ci/preflight.sh SYNC_PR_APP_ID SYNC_PR_APP_PRIVATE_KEY
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     capture:
         # No `name:`: the default `capture (<code>)` is the same, and a skipped job (no `capture`) shows as plain `capture`
@@ -107,6 +120,11 @@ jobs:
                 code: [us, de, uk, pl, es]
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - uses: ./.github/actions/setup-sbt-build
 
@@ -163,6 +181,12 @@ jobs:
                       identity-capture-${{ matrix.code }}.txt
                       target/identity-capture/logs/
                   retention-days: 14
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # ONE branch for the run: every country's refreshed fixture, and what the ratchet makes of them --
     # and its PR only when the ratchet is green. With `open-pr`, the same job over the judged branch.
@@ -196,6 +220,11 @@ jobs:
               with:
                   ref: ${{ inputs.open-pr && 'chore/identity-capture' || 'main' }}
                   token: ${{ steps.app-token.outputs.token || github.token }}
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - uses: ./.github/actions/download-artifacts
               if: ${{ !inputs.open-pr }}
@@ -317,6 +346,12 @@ jobs:
             - name: Say why there is no PR
               if: steps.ratchet.outputs.green != 'true'
               run: echo "::notice::The ratchet over $BRANCH is red, so no PR -- judge on the branch, then dispatch with open-pr. Findings - scripts/identity-ratchet-report ${GITHUB_RUN_ID}"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
@@ -331,6 +366,17 @@ jobs:
             issues: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - uses: ./.github/actions/report-scheduled-run
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

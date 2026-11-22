@@ -65,11 +65,23 @@ jobs:
                   sparse-checkout: |
                       .github/actions/upstream-run
                       scripts
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - id: upstream
               uses: ./.github/actions/upstream-run
               with:
                   workflow: Record scrape fixtures
                   run-id: ${{ inputs.run-id }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     compare:
         needs: [plan]
@@ -80,6 +92,11 @@ jobs:
             actions: read
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Lay out the recording
               shell: bash
               env:
@@ -127,3 +144,9 @@ jobs:
                   name: identity-live-drift
                   path: ${{ runner.temp }}/identity-live-drift/
                   retention-days: 30
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

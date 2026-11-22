@@ -80,6 +80,12 @@ jobs:
                   # scripts/ for scripts/ci (cone mode: directories)
                   sparse-checkout: |
                       scripts
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Did a landing check pass this very tree?
               id: plan
               env:
@@ -98,6 +104,12 @@ jobs:
                       echo "no landing check passed this tree (or a dispatch): every tool self-test runs"
                       echo "run=true" >> "$GITHUB_OUTPUT"
                   fi
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # Every script self-test (`*-test.sh`, `*_test.py` under scripts/, .github/, android/scripts, ios/scripts and
     # infra/bin), found by name and run in parallel by scripts/run-script-tests. A new test runs here the moment it
@@ -110,6 +122,11 @@ jobs:
         timeout-minutes: 40
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Every script self-test
               env:
                   RUN_SCRIPT_TESTS_LOG_DIR: ${{ runner.temp }}/script-test-logs
@@ -125,6 +142,12 @@ jobs:
                   if-no-files-found: ignore
                   overwrite: true
                   retention-days: 14
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     macos-script-tests:
         name: script self-tests (macOS bash 3.2)
@@ -137,6 +160,11 @@ jobs:
               with:
                   # the push's `before`, for --changed
                   fetch-depth: 0
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             # The tools the self-tests drive run on ubuntu CI and the laptop, both with GNU `timeout`, shellcheck and
             # rsync 3; this image has none of them (run 41294275183: ten self-tests failed "timeout: command not
             # found" / "shellcheck is not installed"; run 44664123050: backtest_alerts_local_test.py "rsync on PATH is
@@ -181,6 +209,12 @@ jobs:
                   if-no-files-found: ignore
                   overwrite: true
                   retention-days: 14
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
@@ -195,6 +229,17 @@ jobs:
             issues: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - uses: ./.github/actions/report-scheduled-run
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

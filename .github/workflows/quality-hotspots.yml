@@ -36,6 +36,11 @@ jobs:
               with:
                   # the 90 days of history the churn and the change coupling read
                   fetch-depth: 0
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             # the quality module compiles alone (it depends on no other module): no build cache worth restoring
             - uses: ./.github/actions/setup-sbt-build
               with:
@@ -60,6 +65,12 @@ jobs:
                   cp "$RUNNER_TEMP/quality.md" "$RUNNER_TEMP/quality-$day.md"
                   scripts/ci/gh-release.sh upload "$rel" "$RUNNER_TEMP/hotspots.md" "$RUNNER_TEMP/quality.md" \
                       "$RUNNER_TEMP/hotspots-$day.md" "$RUNNER_TEMP/quality-$day.md" --clobber
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
@@ -74,6 +85,17 @@ jobs:
             issues: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - uses: ./.github/actions/report-scheduled-run
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

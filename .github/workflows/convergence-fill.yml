@@ -91,6 +91,11 @@ jobs:
             FIXTURE_RELEASE_TAG: convergence-fixtures
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - uses: ./.github/actions/convergence-fill
               with:
                   code:         ${{ matrix.code }}
@@ -100,3 +105,9 @@ jobs:
                   tmdb-api-key: ${{ secrets.TMDB_API_KEY }}
                   proxy-user: ${{ secrets.DECODO_PROXY_USER }}
                   proxy-pass: ${{ secrets.DECODO_PROXY_PASS }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

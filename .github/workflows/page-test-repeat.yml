@@ -49,6 +49,11 @@ jobs:
             checks: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - uses: ./.github/actions/run-page-test
               with:
                   kind:       playwright
@@ -56,3 +61,9 @@ jobs:
                   label:      page-test-repeat
                   runs:       '${{ inputs.projects }} ; ; ;'
                   extra-args: --repeat-each ${{ inputs.repeat-each }} ${{ inputs.specs }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

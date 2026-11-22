@@ -132,6 +132,7 @@ repochecks:deploy.IdentityTakesWiringSpec	.claude/skills/* .github/scripts/* .gi
 repochecks:deploy.ImagePathGateSpec	project/*.java project/*.scala .github/workflows/main.yml build.sbt web/src/test/resources/installed-build/cities-7fdc618ca.tsv infra/jvm/*.options infra/nix/files/heap-dumps.sh scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala common/src/main/* test/resources/* Dockerfile	each image's inputs, derived from the build, against main.yml's publish filters
 repochecks:deploy.IosLaunchEnvironmentDebugOnlySpec	ios/Kinowo/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each Swift file alone: environment reads outside #if DEBUG
 repochecks:deploy.JdkVersionParitySpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml Dockerfile build.sbt
+repochecks:deploy.JobTelemetryCoverageSpec	.github/workflows/* .github/actions/job-telemetry/action.yml
 repochecks:deploy.JunitReportNoCheckRunSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml @per-file	per-file (lint_per_file_check.py, 2026-11-21): each workflow step alone: its junit report's settings
 repochecks:deploy.K8sDeployKubeconfigAccessSpec	infra/nix/modules/roles/k3s-server.nix infra/nix/modules/roles/k8s-deploy.nix
 repochecks:deploy.K8sTierPathGatingSpec	@gitops .github/actions/deployed-base/action.yml .github/workflows/main.yml .github/actions/changed-paths/matches.sh

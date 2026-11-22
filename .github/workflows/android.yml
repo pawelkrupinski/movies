@@ -119,6 +119,12 @@ jobs:
                   sparse-checkout: |
                       scripts/ci
                       .github/actions/changed-paths
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             # Whether the `instrumented` emulator lane runs — see the note over that job. The base
             # is the head of the last SUCCESSFUL run on main, not this push's `before`: this
@@ -172,6 +178,12 @@ jobs:
                           KINOWO_RELEASE_KEYSTORE_BASE64 KINOWO_RELEASE_STORE_PASSWORD \
                           KINOWO_RELEASE_KEY_ALIAS KINOWO_RELEASE_KEY_PASSWORD
                   fi
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     build:
         needs: preflight
@@ -188,6 +200,11 @@ jobs:
                 working-directory: android
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - name: Set up JDK 17
               uses: ./.github/actions/setup-jdk
@@ -423,6 +440,12 @@ jobs:
                   name: unit-test-report
                   path: android/app/build/reports/tests/testDebugUnitTest
                   if-no-files-found: ignore
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # The on-device suite (android/app/src/androidTest) on an x86_64 emulator —
     # the same `connectedDebugAndroidTest` android/scripts/devtest.sh runs on a
@@ -461,6 +484,11 @@ jobs:
             AVD_PROFILE: pixel_6
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - name: Set up JDK 17
               uses: ./.github/actions/setup-jdk
@@ -545,3 +573,9 @@ jobs:
                       android/app/build/reports/androidTests/connected
                       android/app/build/outputs/androidTest-results/connected
                   if-no-files-found: ignore
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

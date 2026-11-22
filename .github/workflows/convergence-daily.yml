@@ -40,7 +40,14 @@ jobs:
         steps:
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: scripts
+                  sparse-checkout: |
+                      scripts
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             # NOT A SECOND RUN OF ONE COMMIT: when main's convergence for this very commit is already queued or running
             # (Main's kick dispatched it -- with no takes-skip, so in shadow too: every takes row in full), that run is the
             # day's. Run 3656 was this dispatch, 39 s after the kick's 3653 for the same commit: it waited 54 min in the
@@ -60,6 +67,12 @@ jobs:
                       exit 0
                   fi
                   gh workflow run identity-model-convergence.yml --ref main -f takes-skip=shadow -f drift-twice=true
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
@@ -74,6 +87,17 @@ jobs:
             issues: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - uses: ./.github/actions/report-scheduled-run
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

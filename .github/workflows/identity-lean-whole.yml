@@ -60,6 +60,12 @@ jobs:
                   sparse-checkout: |
                       .github/actions/upstream-run
                       scripts
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - id: upstream
               uses: ./.github/actions/upstream-run
               with:
@@ -73,6 +79,12 @@ jobs:
               run: |
                   set -euo pipefail
                   echo "shards=$(tr ',' '\n' <<< "$COUNTRIES" | jq -Rnc '[inputs | select(length > 0)]')" >> "$GITHUB_OUTPUT"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     compare:
         needs: [plan]
@@ -94,6 +106,11 @@ jobs:
               shell: bash
               run: echo "ci-job-ceiling 350 minutes"
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - uses: ./.github/actions/free-disk
             - name: Lay out the recording
               shell: bash
@@ -153,3 +170,9 @@ jobs:
                   retention-days: 30
             - uses: ./.github/actions/runner-peaks
               if: always()
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

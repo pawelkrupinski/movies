@@ -42,6 +42,11 @@ jobs:
             actions: read
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - name: Restore the recording's corpora and enrichment trees
               shell: bash
@@ -93,3 +98,9 @@ jobs:
                       identity/src/main/resources/identity-decorations.json
                       decorations.log
                   retention-days: 14
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

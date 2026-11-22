@@ -155,10 +155,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: scripts/ci
+          sparse-checkout: |
+            scripts/ci
+            .github/actions/job-telemetry
+      # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+      - uses: ./.github/actions/job-telemetry
+        with:
+          phase: start
+          token: ${{ github.token }}
       - name: Which measure lane do the evaluation and the staging queue in?
         id: lane
         run: scripts/ci/measure-lane.sh stage >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/job-telemetry
+        if: ${{ !cancelled() }}
+        with:
+          phase: finish
+          token: ${{ github.token }}
+          job-status: ${{ job.status }}
 
   # EVERY HOST MUST STILL EVALUATE, and this is the only job that runs on a pull request.
   #
@@ -173,6 +186,11 @@ jobs:
     runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && (needs.plan.outputs.lane || 'movies-measure') || 'ubuntu-26.04' }}
     steps:
       - uses: actions/checkout@v4
+      # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+      - uses: ./.github/actions/job-telemetry
+        with:
+          phase: start
+          token: ${{ github.token }}
 
       # PINNED BY MAJOR VERSION. An action that resolves to a moving target is a third party who can
       # change what runs against this repository's deploy secrets without a commit here -- and this
@@ -321,6 +339,12 @@ jobs:
         working-directory: infra
         # every host the flake declares instantiated, never built; one that does not evaluate named (infra/bin/nix_stage_steps.py)
         run: bin/nix_stage_steps.py evaluate
+      - uses: ./.github/actions/job-telemetry
+        if: ${{ !cancelled() }}
+        with:
+          phase: finish
+          token: ${{ github.token }}
+          job-status: ${{ job.status }}
 
   stage:
     name: nix-stage
@@ -349,6 +373,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+      - uses: ./.github/actions/job-telemetry
+        with:
+          phase: start
+          token: ${{ github.token }}
 
       - uses: cachix/install-nix-action@v27
         with:
@@ -370,3 +399,9 @@ jobs:
       - name: Remove the deploy key
         if: always()
         run: rm -f ~/.ssh/id_ed25519
+      - uses: ./.github/actions/job-telemetry
+        if: ${{ !cancelled() }}
+        with:
+          phase: finish
+          token: ${{ github.token }}
+          job-status: ${{ job.status }}

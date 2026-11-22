@@ -74,6 +74,11 @@ jobs:
                 shard: [0]
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             # SECONDS, BEFORE THE 14 GB LAYOUT AND THE BUILD: every input this row cannot run without. Runs 850 and 1015
             # died 112-167 minutes in on runner/Docker kills (exit 137, a daemon restart), which the 30-minute resumable
@@ -178,6 +183,12 @@ jobs:
                       ablation/sbt-*.log
                       ablation.out
                   retention-days: 14
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     collect:
         name: collect
@@ -190,6 +201,11 @@ jobs:
             actions: read
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - uses: ./.github/actions/download-artifacts
               with:
@@ -212,3 +228,9 @@ jobs:
                   name: identity-rule-ablation
                   path: merged/
                   retention-days: 30
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

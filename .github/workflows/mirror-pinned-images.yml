@@ -51,6 +51,11 @@ jobs:
                   sparse-checkout: |
                       .github
                       scripts
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - name: Self-test the mirror and the pull
               run: |
@@ -76,6 +81,12 @@ jobs:
                     ref=$(scripts/ci/pull-pinned-image.sh "$name") || exit 1
                     case "$ref" in ghcr.io/*) echo "$name: pulled $ref" ;; *) echo "::error::$name came from $ref, not GHCR"; exit 1 ;; esac
                   done
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     report:
         name: report (scheduled run)
@@ -88,6 +99,17 @@ jobs:
             issues: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - uses: ./.github/actions/report-scheduled-run
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

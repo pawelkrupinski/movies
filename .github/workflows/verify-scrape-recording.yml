@@ -100,6 +100,12 @@ jobs:
                   sparse-checkout: |
                       scripts/ci
                       .github/workflows
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Which countries the recording captured complete
               id: countries
               env:
@@ -131,6 +137,12 @@ jobs:
                   GH_REPO: ${{ github.repository }}
                   FIXTURE_RELEASE_TAG: convergence-fixtures
               run: scripts/ci/convergence-preflight.sh "${{ steps.countries.outputs.countries }}" "${{ inputs.recording }}"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # THE IDENTITY LANE'S ROWS (identity-model-convergence.yml's `leg` matrix: aliases, splits, heaps, Mongo), replaying
     # the named recording instead of the pinned pair. EVERY ROW CARRIES EVERY KEY THE JOB READS.
@@ -297,6 +309,12 @@ jobs:
                       .github/actions/download-artifacts
                       .github/scripts
                       scripts
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             # each into a directory of its name, one artifact too (download_artifact_layout_test.py)
             - uses: ./.github/actions/download-artifacts
               with:
@@ -321,6 +339,12 @@ jobs:
             - name: End what a timed-out step left running
               if: always()
               run: scripts/ci/bounded-step.sh --reap
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
     timings:

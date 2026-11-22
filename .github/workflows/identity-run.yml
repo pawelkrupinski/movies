@@ -66,7 +66,14 @@ jobs:
         steps:
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: scripts/ci
+                  sparse-checkout: |
+                      scripts/ci
+                      .github/actions/job-telemetry
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - id: plan
               shell: bash
               env:
@@ -80,6 +87,12 @@ jobs:
                   shards=$(scripts/ci/identity_run_shards.py --command "$COMMAND" --countries "$COUNTRIES")
                   { echo "recording=$RECORDING"; echo "countries=$COUNTRIES"; echo "heap=$HEAP"; echo "shards=$shards"; } >> "$GITHUB_OUTPUT"
                   jq -r '.[] | "\(.name): sbt \(.command)"' <<< "$shards"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
     run:
         name: run (${{ matrix.shard.name }})
         needs: [ plan ]
@@ -97,6 +110,11 @@ jobs:
             actions: read
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Lay out the recording
               if: needs.plan.outputs.recording != ''
               shell: bash
@@ -155,3 +173,9 @@ jobs:
                   name: identity-run-${{ matrix.shard.name }}
                   path: ${{ runner.temp }}/identity-run/
                   retention-days: 14
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

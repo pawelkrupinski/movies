@@ -49,6 +49,11 @@ jobs:
           fetch-depth: 0
           # The job token must not ride along on the push: the App's does, so its PR fires CI.
           persist-credentials: false
+      # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+      - uses: ./.github/actions/job-telemetry
+        with:
+          phase: start
+          token: ${{ github.token }}
 
       # The Sync Bot App's token, for both PRs: one the job's GITHUB_TOKEN opened would fire no checks. A missing
       # App secret fails here, before the builds.
@@ -124,6 +129,12 @@ jobs:
         run: |
           echo "::error title=Part of the update failed::infra/bin/nix-update or infra/bin/image_pins.py --gitops-out exited 1: see the summary above (an upstream that could not be read, or bytes that did not match upstream's checksum). What did work was proposed."
           exit 1
+      - uses: ./.github/actions/job-telemetry
+        if: ${{ !cancelled() }}
+        with:
+          phase: finish
+          token: ${{ github.token }}
+          job-status: ${{ job.status }}
 
   # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
   # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
@@ -138,6 +149,17 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@v5
+      # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+      - uses: ./.github/actions/job-telemetry
+        with:
+          phase: start
+          token: ${{ github.token }}
       - uses: ./.github/actions/report-scheduled-run
         with:
           failed: ${{ contains(needs.*.result, 'failure') }}
+      - uses: ./.github/actions/job-telemetry
+        if: ${{ !cancelled() }}
+        with:
+          phase: finish
+          token: ${{ github.token }}
+          job-status: ${{ job.status }}

@@ -458,6 +458,11 @@ jobs:
               with:
                   fetch-depth: 0
                   filter: blob:none
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             # sbt, the JDK and a compiled target/ to seed the old tree's compile from, restored only: no build here
             # is one to save. The integration rows' family first (every module's main + test), then any.
@@ -541,6 +546,12 @@ jobs:
               with:
                   path: ${{ runner.temp }}/kinowo-identity/refs
                   key: ${{ steps.old-ref-cache.outputs.cache-primary-key }}-${{ github.run_id }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # BOTH TIERS `needs: ci`: a push that fails ci publishes nothing. It also keeps the runner budget
     # intact — a job that waits for ci takes a slot ci has already given back (`CiRunnerBudgetSpec`).
