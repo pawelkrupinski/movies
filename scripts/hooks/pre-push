@@ -420,7 +420,7 @@ py_quality_paths() { # stdin: changed paths -> the ones that select the pyqualit
         case "$path" in
             scripts/*.py|.github/scripts/*.py|infra/bin/*.py|infra/nix/files/*.py|android/scripts/*.py|ios/scripts/*.py|\
             test/resources/py-quality-baseline.tsv|scripts/py-quality/*|scripts/py-quality-report|\
-            scripts/ci/py_quality_ratchet.py|scripts/ci/baseline_ratchet.py|scripts/ci/trailers.py|pyrightconfig.json) echo "$path" ;;
+            pyrightconfig.json) echo "$path" ;; # (the ratchet, its engine and trailers.py are scripts/*.py)
             scripts/*|.github/scripts/*|infra/bin/*|infra/nix/files/*|android/scripts/*|ios/scripts/*)
                 case "${path##*/}" in *.*) ;; *) head -1 "$path" 2>/dev/null | grep -q '^#!.*python' && echo "$path" ;; esac ;;
         esac
