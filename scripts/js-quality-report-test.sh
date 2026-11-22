@@ -51,6 +51,11 @@ check "the tools install outside the checkout, under ~/.cache/kinowo/js-quality/
   "$(where_is "$tools_dir") $(env -u KINOWO_TOOL_CACHE -u XDG_CACHE_HOME "$REPO_ROOT/scripts/js-quality-report" --tools-dir | sed 's#[^/]*$##') $(printf '%s' "$lock_key" | grep -cxE '[0-9a-f]{16}' | sed 's/^1$/16 hex/')"
 check "...\$KINOWO_TOOL_CACHE moves them" "$work/cache/js-quality/$lock_key" "$(KINOWO_TOOL_CACHE="$work/cache" "$REPO_ROOT/scripts/js-quality-report" --tools-dir)"
 
+# the pre-push hook's `jsquality` check leaves the install to the report: its own `npm ci` in scripts/js-quality put
+# node_modules in every landing check's tree after the report had moved out
+check "scripts/hooks/pre-push installs no js-quality tools in the tree" "0" \
+  "$(sed -n '/^check_jsquality()/,/^}/p' "$REPO_ROOT/scripts/hooks/pre-push" | grep -v '^[[:space:]]*#' | grep -c 'npm ci')"
+
 # --- end to end, the pinned tools ---
 if [ ! -x "$tools_dir/node_modules/.bin/eslint" ] && ! command -v npm > /dev/null; then
   echo "  (end-to-end leg not run: the tools are not installed and npm cannot install them here)"

@@ -1634,13 +1634,11 @@ check_eslint() {
 check_jsquality() {
     need jsquality node "install Node.js (brew install node)" || return 1
     need jsquality python3 "install Python 3 (brew install python)" || return 1
-    local tools=scripts/js-quality args=() r
-    if [ ! -x "$tools/node_modules/.bin/eslint" ] || [ "$tools/package-lock.json" -nt "$tools/node_modules/.package-lock.json" ]; then
-        need jsquality npm "install Node.js with npm (brew install node)" || return 1
-        log "installing the JS/TS quality tools (npm ci in $tools, once per worktree)"
-        (cd "$tools" && npm ci --no-audit --no-fund --silent) > "$tmp/jsquality-npm.log" 2>&1 \
-            || { tail -20 "$tmp/jsquality-npm.log" >&2; return 1; }
-    fi
+    local args=() r
+    # the tools are js-quality-report's to install, once per lock and OUTSIDE the checkout (--tools-dir): an `npm ci` in
+    # scripts/js-quality here left node_modules in every check's tree, for a self-test's `grep -r` to read (#99)
+    [ -x "$(scripts/js-quality-report --tools-dir)/node_modules/.bin/eslint" ] \
+        || need jsquality npm "install Node.js with npm (brew install node)" || return 1
     for r in "${ranges[@]}"; do args+=(--range "$r"); done
     scripts/js-quality-report --check ${args[@]+"${args[@]}"} >&2
 }
