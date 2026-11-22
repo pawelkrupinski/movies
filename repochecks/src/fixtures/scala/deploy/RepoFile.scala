@@ -204,9 +204,15 @@ object RepoFile {
       val isRun = key >= 0 && { val before = line.take(key).trim; before.isEmpty || before == "-" }
       Option.when(isRun) {
         val inline = line.drop(key + named.length).trim
+        val block = lines.drop(at + 1).takeWhile(l => l.trim.isEmpty || indentOf(l) > key)
         val script =
-          if (inline.startsWith("|") || inline.startsWith(">"))
-            lines.drop(at + 1).takeWhile(l => l.trim.isEmpty || indentOf(l) > key).filter(code).map(_.trim).mkString("\n")
+          if (inline.startsWith("|")) block.filter(code).map(_.trim).mkString("\n")
+          // folded (`>`): YAML joins a paragraph's lines with spaces into one command, a blank line ending it -- read
+          // line by line, a continued argument (`--init-script x.gradle`) stood in command position (Main #2836)
+          else if (inline.startsWith(">"))
+            block.map(_.trim).foldLeft(Vector(Vector.empty[String])) { (paragraphs, l) =>
+              if (l.isEmpty) paragraphs :+ Vector.empty else paragraphs.init :+ (paragraphs.last :+ l)
+            }.map(_.mkString(" ")).filter(code).mkString("\n")
           else inline
         // The step is the `- ` item holding this key: from its dash to the next line at or
         // left of the dash.

@@ -46,6 +46,27 @@ class RepoFileSpec extends AnyFlatSpec with Matchers {
     missing.getMessage should include regex """infra/kubernetes (is absent|holds \d+ entr)"""
   }
 
+  // Main #2836: order-independence.yml's warm step is a folded `run: >-`, one gradle command over three lines; read line
+  // by line, its `--init-script scripts/warm-dependencies.init.gradle` line put the init script in command position, and
+  // WorkflowScriptsRunnableIntegrationSpec asked for it to be executable. YAML folds the lines into one, joined by spaces;
+  // a blank line is a line break.
+  it should "fold a folded block's lines into the one command YAML hands the runner" in {
+    val folded =
+      """jobs:
+        |  build:
+        |    steps:
+        |      - name: Warm
+        |        run: >-
+        |          ./gradlew --no-daemon
+        |          --init-script scripts/warm.init.gradle
+        |          :app:assemble
+        |
+        |          echo done
+        |""".stripMargin
+    RepoFile.runSteps(folded).map(_.script) shouldBe
+      Seq("./gradlew --no-daemon --init-script scripts/warm.init.gradle :app:assemble\necho done")
+  }
+
   it should "not count a trigger path, a comment or a shell comment as run" in {
     val scripts = RepoFile.runSteps(workflow).map(_.script).mkString("\n")
     Seq("only-a-trigger_test.py", "next-step.sh", "a-shell-comment-test.sh").foreach(scripts should not include _)
