@@ -16,14 +16,14 @@ class ScriptSelfTestsWiredIntegrationSpec extends AnyFlatSpec with Matchers {
   /** Each self-test, and the unit wiring spec that leans on it. */
   private val Wired: Seq[(String, String)] = Seq(
     "scripts/ci/prune-actions-caches-test.sh"                -> "ActionsCachePruneWiringSpec: the prune script's own spec",
-    ".github/scripts/convergence-fill-test.sh"               -> "ConvergenceFillWiringSpec: the fill's release script",
+    ".github/scripts/convergence_fill_test.py"               -> "ConvergenceFillWiringSpec: the fill's release script",
     ".github/scripts/convergence-findings-summary-test.sh"   -> "ConvergenceLegWiringSpec: the findings summary never cut by an early-closing head",
     "scripts/ci/stop-stray-sbt-test.sh"                      -> "ConvergenceLegWiringSpec, IdentitySliceOldRefGateSpec: a timed-out step's JVMs ended",
     ".github/scripts/convergence-bisect-step-test.sh"        -> "HermeticConvergenceWiringSpec: each bisect step replays the checked-in step script",
     "scripts/ci/identity_findings_report_test.py"            -> "IdentityFindingsReportWorkflowSpec: the report reads the findings, and fails with no recording",
     "scripts/ci/sbt-sources-key-test.sh"                     -> "SbtCachePathsSpec: the cache key script's own spec",
     "scripts/adopt_ci_budgets_test.py"                       -> "PerformanceBudgetArtifactsSpec: adopt-ci-budgets",
-    ".github/scripts/convergence-publish-test.sh"            -> "RecordCorpusInLegWiringSpec: the publish keeps each country's newest five pinned trees",
+    ".github/scripts/convergence_publish_test.py"            -> "RecordCorpusInLegWiringSpec: the publish keeps each country's newest five pinned trees",
     "scripts/ci/upstream_run_test.py"                        -> "UpstreamRunSpec: the upstream-run resolver and its fallback")
 
   "every self-test a workflow spec leans on" should "be run by CI's script-test runner" in {
