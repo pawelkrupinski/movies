@@ -134,7 +134,7 @@ on:
                 type: boolean
                 default: false
             takes-skip:
-                description: The takes skip gate (scripts/ci/takes-skip-gate.sh) -- off, shadow or enforce. The daily full run passes shadow.
+                description: The takes skip gate (scripts/ci/takes_skip_gate.py) -- off, shadow or enforce. The daily full run passes shadow.
                 required: false
                 type: string
                 default: shadow

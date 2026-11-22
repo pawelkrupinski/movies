@@ -341,7 +341,7 @@ on:
                 required: false
                 type: boolean
                 default: false
-            # THE SKIP GATE (scripts/ci/takes-skip-gate.sh, identity-takes-check.sh): off, shadow (the takes run, the gate's
+            # THE SKIP GATE (scripts/ci/takes_skip_gate.py, identity-takes-check.sh): off, shadow (the takes run, the gate's
             # answer is held against them and posted) or enforce (a proven title-rule-only commit leaves its takes diff out,
             # 1 in 10 sampled in full). Shadow until scripts/ci/takes-skip-shadow-report.sh counts 20 SKIPs, none disagreeing.
             takes-skip:

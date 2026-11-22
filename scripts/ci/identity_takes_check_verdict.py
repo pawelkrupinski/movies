@@ -1,6 +1,6 @@
 """THE SKIP GATE and THE VERDICT of the identity takes check (identity_takes_check.py).
 
-THE SKIP GATE (scripts/ci/takes-skip-gate.sh; TAKES_SKIP_MODE off, shadow or enforce): whether this commit PROVABLY moves
+THE SKIP GATE (scripts/ci/takes_skip_gate.py; TAKES_SKIP_MODE off, shadow or enforce): whether this commit PROVABLY moves
 no take -- a title-rule change alone, the base's every title reading (its trace under its exact inputs) read alike under
 the head's rules. Fail-closed: anything it cannot prove is RUN. SHADOW: the takes run as ever, and the gate's answer is
 held against them after (THE SHADOW). ENFORCE: a SKIP leaves out the takes diff -- except on every
@@ -41,7 +41,7 @@ class Gate:
             return
         os.makedirs(self.ctx.path("gate"), exist_ok=True)
         trace = self.base_trace()
-        command = self.ctx.env.get("TAKES_SKIP_GATE_CMD") or os.path.join(self.ctx.here, "scripts/ci/takes-skip-gate.sh")
+        command = self.ctx.env.get("TAKES_SKIP_GATE_CMD") or os.path.join(self.ctx.here, "scripts/ci/takes_skip_gate.py")
         done = self.ctx.runner.capture(tool_process.Command(
             [command, self.s.base, self.ctx.head, trace, "--", os.path.join(self.ctx.here, "scripts/ci/takes-skip-proof.sh")],
             self.ctx.with_env({"TAKES_SKIP_MODE": self.mode}), timeout=self.ctx.seconds("TAKES_SKIP_GATE_TIMEOUT", "1200")))

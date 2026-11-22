@@ -1,7 +1,7 @@
 # Purpose: One full convergence of main a day, whatever main's pushes did
 name: Convergence daily full run
 
-# ONE FULL CONVERGENCE OF MAIN A DAY, whatever main's pushes did (scripts/ci/takes-skip-gate.sh): once the takes skip gate
+# ONE FULL CONVERGENCE OF MAIN A DAY, whatever main's pushes did (scripts/ci/takes_skip_gate.py): once the takes skip gate
 # is enforced, a push whose title-rule change it proves moves no take leaves its takes diff out, and a gate that proved
 # wrongly could hide behind it. This dispatches main's suite with the gate in shadow -- every takes row runs in full and
 # holds the gate's answer against what it finds. The convergence lane may replace a waiting run with a newer push's, so

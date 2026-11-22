@@ -498,7 +498,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.read("scripts/ci/order-phases.sh") should include("""[ "$ref" = refs/heads/main ] && both""")
   }
 
-  /** THE TAKES SKIP GATE (scripts/ci/takes-skip-gate.sh): SHADOW by default everywhere -- every takes row runs in full and
+  /** THE TAKES SKIP GATE (scripts/ci/takes_skip_gate.py): SHADOW by default everywhere -- every takes row runs in full and
    *  holds the gate's answer against it -- until takes-skip-shadow-report.sh says it may be enforced; and one full run of
    *  main a day whatever the mode (convergence-daily.yml). */
   "the takes skip gate" should "be in shadow by default, reach the takes step, and run main in full daily" in {

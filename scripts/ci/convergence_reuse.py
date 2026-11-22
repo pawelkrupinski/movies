@@ -64,7 +64,7 @@
 # its takes rows skipped, the run green, an 18-hour red episode read as two) is no verdict, and must never count green for
 # THE GATE. Its `verdict complete` job (identity-model-convergence.yml) runs incomplete() over the run's own jobs and
 # fails the run when any of those rows has no decided conclusion -- unless the preflight's `reused-from` names a run this
-# check proved (verify), whose rows ran. A takes row whose skip gate left out its diff (takes-skip-gate.sh) still ran
+# check proved (verify), whose rows ran. A takes row whose skip gate left out its diff (takes_skip_gate.py) still ran
 # and concluded: the gate's own proof stands.
 # env: GH_REPO, GH_TOKEN (gh's own), FIXTURE_RELEASE_TAG (the pairs). Tested by convergence_reuse_test.py and
 # ConvergenceReuseSpec.
