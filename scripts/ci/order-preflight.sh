@@ -21,7 +21,10 @@ bad=0
 fail() { echo "::error title=Runner preflight::UNKNOWN: runner preflight ($leg): $* -- the runner, not a test red"; bad=1; }
 ok() { echo "preflight ($leg): $*"; }
 have() { command -v "$1" > /dev/null 2>&1 || { fail "\`$1\` is not on PATH"; return 1; }; }
-java_major() { java -version 2>&1 | sed -nE '1s/.*version "([0-9]+)[."].*/\1/p'; }
+# the version line wherever it is: ci-runner's job image sets JAVA_TOOL_OPTIONS, so the JVM's first line is its
+# "Picked up JAVA_TOOL_OPTIONS: ..." banner (and JDK_JAVA_OPTIONS' "NOTE: Picked up ..." likewise), never the version
+# (Order independence #111: "java is unreadable" on every self-hosted leg)
+java_major() { java -version 2>&1 | sed -nE 's/^[^ ]+ version "([0-9]+)[."+].*/\1/p' | head -1; }
 java_is() { # <major>
   have java || return 0
   local m; m="$(java_major)"

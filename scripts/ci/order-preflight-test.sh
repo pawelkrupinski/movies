@@ -16,7 +16,14 @@ for t in sed date timeout; do
   real="$(command -v "$t" || echo /usr/bin/false)"
   printf '#!/usr/bin/env bash\nif [ "${1:-}" = --version ]; then [ "$FLAVOUR" = gnu ] && echo "%s (GNU coreutils) 9.4" || exit 1; exit 0; fi\nexec %s "$@"\n' "$t" "$real" > "$bin/$t"
 done
-printf '#!/usr/bin/env bash\necho "openjdk version \\"$JAVA\\" 2026-09-15" >&2\n' > "$bin/java"
+# a JDK's own three lines, after the banner a JVM prints first when an options variable is set (JAVA_BANNER)
+cat > "$bin/java" <<'STUB'
+#!/usr/bin/env bash
+[ -z "${JAVA_BANNER:-}" ] || echo "$JAVA_BANNER" >&2
+echo "openjdk version \"$JAVA\" 2026-09-15" >&2
+echo "OpenJDK Runtime Environment Temurin-$JAVA (build $JAVA+35)" >&2
+echo "OpenJDK 64-Bit Server VM Temurin-$JAVA (build $JAVA+35, mixed mode, sharing)" >&2
+STUB
 printf '#!/usr/bin/env bash\ntrue\n' > "$bin/sbt"
 printf '#!/usr/bin/env bash\ncase "$1" in get-state) echo "$ADB_STATE";; shell) echo "$BOOTED";; esac\n' > "$work/sdk/platform-tools/adb"
 chmod +x "$bin"/* "$work/sdk/platform-tools/adb"
@@ -33,6 +40,14 @@ check "scala with java 17 and BSD sed/date/timeout: fails, naming each, every fi
   "1|4|4|1" \
   "$(FLAVOUR=bsd JAVA=17 pre scala)|$(grep -c '^::error title=Runner preflight::UNKNOWN: runner preflight (scala): ' "$work/out")|$(grep -c -e 'not GNU' -e 'java is 17, the leg pins 27' "$work/out")|$(grep -c '^preflight=failed$' "$work/gh-out")"
 check "android: java 17 and adb under the SDK: passes" "0" "$(FLAVOUR=gnu JAVA=17 pre android)"
+# Order independence #111 (run 45025091272): ci-runner's job image sets JAVA_TOOL_OPTIONS, whose banner is the JVM's
+# first line, and every self-hosted leg failed "java is unreadable"
+check "...java behind the JAVA_TOOL_OPTIONS banner of ci-runner's job image: read, passes" "0|0" \
+  "$(FLAVOUR=gnu JAVA=17.0.13 JAVA_BANNER='Picked up JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8 -Djava.net.preferIPv4Stack=true' pre android)|$(grep -c unreadable "$work/out")"
+check "...and behind JDK_JAVA_OPTIONS' NOTE banner (job telemetry's GC log): read, passes" "0" \
+  "$(FLAVOUR=gnu JAVA=27 JAVA_BANNER='NOTE: Picked up JDK_JAVA_OPTIONS: -Xlog:gc:file=/home/runner/_work/_temp/ci-gc/gc-%p.log' pre scala)"
+check "...a banner naming a version is no version line: the real one decides" "1|1" \
+  "$(FLAVOUR=gnu JAVA=17 JAVA_BANNER='Picked up JAVA_TOOL_OPTIONS: -Dx="version \"27\""' pre scala)|$(grep -c 'java is 17, the leg pins 27' "$work/out")"
 check "android with no adb under the SDK: fails" "1|1" \
   "$(FLAVOUR=gnu JAVA=17 env -u ANDROID_SDK_ROOT ANDROID_HOME="$work/none" PATH="$bin:$PATH" GITHUB_OUTPUT=/dev/null "$tool" android > "$work/out" 2>&1; echo $?)|$(grep -c 'no adb under the SDK' "$work/out")"
 check "device: adb sees the booted emulator: passes" "0" "$(PATH="$work/sdk/platform-tools:$PATH" ADB_STATE=device BOOTED=1 pre device)"
