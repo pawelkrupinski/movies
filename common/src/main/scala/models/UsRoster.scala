@@ -29,8 +29,8 @@ object UsRoster {
   /** "Bend area", "in the Bend area" — an area takes the article a town does not. */
   val style: RosterStyle = RosterStyle("area", clusterPreposition = Some("in the"))
 
-  private val built: Seq[(RosterPlace, Seq[Venue])] =
-    UsRosterData.pages.map { case (slug, qualified, name, state, lat, lon, zone, multiTown, towns, cinemas) =>
+  private val built: GeneratedRoster.Pages[Venue] =
+    GeneratedRoster.Pages(UsRosterData.pages.map { case (slug, qualified, name, state, lat, lon, zone, multiTown, towns, cinemas) =>
       // Qualified with the venue's own STATE, so a re-cluster never moves a wire key.
       val venues = cinemas.map { case (disp, pill, flicksSlug, venueState, town) =>
         val opening = Opening.generated(UsRosterData.seasonal(disp), SeasonWindow.UnitedStates)
@@ -41,12 +41,12 @@ object UsRoster {
       val places = (name +: (towns ++ TownRanking.ranked(venues.map(_.town)))).distinct
       (RosterPlace(slug, qualified, name, state, lat, lon, TimeZones.named(zone), multiTown, places,
                    venues.map(_.cinema)), venues)
-    }
+    })
 
-  private val venues: Seq[Venue] = built.flatMap(_._2)
+  private val venues: Seq[Venue] = built.venues
 
   /** Every US page, major cities first (biggest first), then the rest by slug. */
-  val places: Seq[RosterPlace] = built.map(_._1)
+  val places: Seq[RosterPlace] = built.places
 
   /** Every US venue under its STATE's name — one section per state on the
    *  uptime page, and the US half of `Cinema.byCity`. Not per page: 1,995

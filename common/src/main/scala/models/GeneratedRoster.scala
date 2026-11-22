@@ -60,10 +60,18 @@ private[models] object GeneratedRoster {
   def wireName(claimed: Set[String], displayName: String, qualified: => String): String =
     if (claimed.contains(displayName)) qualified else displayName
 
-  /** The roster's venues under each page's region, regions in the order their first page comes —
-   *  the `Cinema.byCity` level one above the pages (the uptime page's). */
-  def venuesByRegionInOrder(places: Seq[RosterPlace]): Seq[(String, Seq[Cinema])] = {
-    val byRegion = places.groupBy(_.region)
-    places.map(_.region).distinct.map(region => region -> byRegion(region).flatMap(_.cinemas))
+  /** A generated roster's pages as built: each page's place beside the rows of the venues built for it (a venue and
+   *  the keys its sources are filed under). */
+  final class Pages[V](pages: Seq[(RosterPlace, Seq[V])]) {
+    /** The places, in roster order. */
+    val places: Seq[RosterPlace] = pages.map(_._1)
+    /** Every venue's row, in roster order. */
+    val venues: Seq[V] = pages.flatMap(_._2)
+    /** The roster's venues under each page's region, regions in the order their first page comes —
+     *  the `Cinema.byCity` level one above the pages (the uptime page's). */
+    lazy val byRegion: Seq[(String, Seq[Cinema])] = {
+      val byRegion = places.groupBy(_.region)
+      places.map(_.region).distinct.map(region => region -> byRegion(region).flatMap(_.cinemas))
+    }
   }
 }

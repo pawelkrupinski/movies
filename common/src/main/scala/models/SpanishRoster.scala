@@ -17,8 +17,8 @@ object SpanishRoster {
   /** "Sitges y alrededores", which reads right both alone and after "en". */
   val style: RosterStyle = RosterStyle("y alrededores")
 
-  private val built: Seq[(RosterPlace, Seq[(SpanishCinema, Option[String], Option[String])])] =
-    SpanishRosterData.pages.map { case (slug, qualified, name, province, lat, lon, zone, multiTown, towns, cinemas) =>
+  private val built: GeneratedRoster.Pages[(SpanishCinema, Option[String], Option[String])] =
+    GeneratedRoster.Pages(SpanishRosterData.pages.map { case (slug, qualified, name, province, lat, lon, zone, multiTown, towns, cinemas) =>
       // Qualified with the PROVINCE, as they were when a page was one, so a re-cluster
       // never changes a venue's wire key.
       val venues = cinemas.map { case (disp, pill, theaterId, ocineServer) =>
@@ -28,22 +28,22 @@ object SpanishRoster {
       }
       (RosterPlace(slug, qualified, name, province, lat, lon, TimeZones.named(zone), multiTown, towns,
                    venues.map(_._1)), venues)
-    }
+    })
 
-  val places: Seq[RosterPlace] = built.map(_._1)
+  val places: Seq[RosterPlace] = built.places
   /** Venues by province, provinces in roster order — the grouping `Cinema.byCity`
    *  reports Spain at (the uptime page), one level above the pages. */
-  val byCity: Seq[(String, Seq[Cinema])] = GeneratedRoster.venuesByRegionInOrder(places)
+  val byCity: Seq[(String, Seq[Cinema])] = built.byRegion
 
   /** Each SensaCine-listed venue's `theaterId`. The Ocine venues SensaCine does
    *  not list (`data/spain/ocine.json`'s `unlisted`) have none, and are absent. */
   val theaterIdByCinema: Map[Cinema, String] =
-    built.flatMap(_._2).collect { case (c, Some(theaterId), _) => (c: Cinema) -> theaterId }.toMap
+    built.venues.collect { case (c, Some(theaterId), _) => (c: Cinema) -> theaterId }.toMap
 
   /** Each Ocine venue's ticketing-server slug (`tickets.ocine<slug>.es`), the
    *  scrape primary for every venue named here — SensaCine carries no programme
    *  for most of them, and does not list some at all. From `data/spain/ocine.json`,
    *  which says which venues are (not) on it and why. */
   val ocineServerByCinema: Map[Cinema, String] =
-    built.flatMap(_._2).collect { case (c, _, Some(slug)) => (c: Cinema) -> slug }.toMap
+    built.venues.collect { case (c, _, Some(slug)) => (c: Cinema) -> slug }.toMap
 }
