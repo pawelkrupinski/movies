@@ -44,3 +44,8 @@ A -> B -> A was not found: the self-original links had glued the Hay Fever relay
 "NT Encore" and "NT Recorded Live: Hay Fever" join the NT Live cluster only while the listings bridging them are present.
 A version keeping the walk monotone needs that bridge understood first (the slice above, `--orders`); the plain fix is
 kept as the reverted 604134d1a.
+
+**Reverted again (2026-11-22, Identity takes #348).** The banner guard alone (f64d8a73a) loses UK Lichfield Garrick's
+"NT Encore - Hay Fever" and "NT Encore - The Motive and The Cue" from their National Theatre Live records (OwnMatch ->
+BelowThreshold on recording 573): "NT Encore" spells no word of "National Theatre Live", and the abbreviation test does
+not read NT as it. Its Lowther cure waits on a guard that keeps a house's own encore banners.
