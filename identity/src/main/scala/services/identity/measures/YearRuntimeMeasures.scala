@@ -83,20 +83,37 @@ private[identity] object YearRuntimeMeasures {
   private[identity] def runtimeDelta(l: MeasuredListing, f: Film, country: Option[String], title: Category = Unrelated): Measure = l.statedRuntime match {
     case None => MissingListing
     case Some(stated) =>
-      // walked in place, not as a collection: every listing is measured against every candidate
-      var off = Int.MaxValue
-      var longest = 0
-      def against(runtime: Int): Unit = if (runtime > 0) {
-        val d = stated - runtime
-        if (closerRuntime(d, off)) off = d
-        longest = math.max(longest, runtime)
-      }
-      f.runtime.foreach(against)
-      if (f.alternativeRuntimes.nonEmpty) f.alternativeRuntimes.foreach(against)
-      FilmCuts.of(f.imdbNumber).foreach(cut => against(cut.runtime))  // a billed cut runs as the film ([[FilmCuts]])
+      val longest = longestRuntime(f)
       if (longest == 0) MissingFilm
-      else if (stated > longest && runsPastTheRecord(l, f, country, title, off)) MissingListing
-      else Number(off.toDouble)
+      else {
+        val off = closestOff(stated, f)
+        if (stated > longest && runsPastTheRecord(l, f, country, title, off)) MissingListing
+        else Number(off.toDouble)
+      }
+  }
+  /** Each runtime the record states ([[Film.runtime]], its [[Film.alternativeRuntimes]]) and each of its billed cuts'
+   *  ([[FilmCuts]]: a billed cut runs as the film), the unknown (0) left out. Walked in place, not as a collection: every
+   *  listing is measured against every candidate. */
+  private def eachRuntime(f: Film)(visit: Int => Unit): Unit = {
+    def known(runtime: Int): Unit = if (runtime > 0) visit(runtime)
+    f.runtime.foreach(known)
+    if (f.alternativeRuntimes.nonEmpty) f.alternativeRuntimes.foreach(known)
+    FilmCuts.of(f.imdbNumber).foreach(cut => known(cut.runtime))
+  }
+  /** The longest of the record's runtimes ([[eachRuntime]]), 0 when it states none. */
+  private def longestRuntime(f: Film): Int = {
+    var longest = 0
+    eachRuntime(f)(runtime => longest = math.max(longest, runtime))
+    longest
+  }
+  /** The stated runtime less the record's runtime closest to it ([[eachRuntime]], [[closerRuntime]]). */
+  private def closestOff(stated: Int, f: Film): Int = {
+    var off = Int.MaxValue
+    eachRuntime(f) { runtime =>
+      val d = stated - runtime
+      if (closerRuntime(d, off)) off = d
+    }
+    off
   }
   /** Is a runtime `d` minutes off the stated one closer to it than the closest yet (`off`): fewer minutes off, or as many
    *  and the venue's longer? */
