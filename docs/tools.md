@@ -73,7 +73,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/agent_time.py` | Where a Claude Code session's subagents spent their time: hours by bucket, the longest agents, one agent's slowest | `scripts/agent_time.py` | 1 tool | agent_time_test.py | Python |
 | `scripts/ci-sbt` | One sbt command on ci-runner's measure lane, with its verdict: the laptop's heavy test runs (a whole-module testUnit, | `scripts/ci-sbt` | wf identity-run; skill CLAUDE.md, agent-ops; 2 tools | ci-sbt-test.sh | MIGRATE |
 | `scripts/ci-status` | One line per workflow: where CI stands for main (or a commit) | `scripts/ci-status` | skill agent-ops; 2 tools | ci_status_test.py | KEEP |
-| `scripts/ci-wait` | Wait for GitHub Actions runs, bounded -- the one way a tool or an agent waits on CI. Never a hand-written `while gh run view ... | `scripts/ci-wait` | skill CLAUDE.md, agent-ops; 9 tools | ci_wait_test.py | KEEP |
+| `scripts/ci-wait` | Wait for GitHub Actions runs, bounded -- the one way a tool or an agent waits on CI. Never a hand-written `while gh run view ... | `scripts/ci-wait` | skill CLAUDE.md, agent-ops; 10 tools | ci_wait_test.py | KEEP |
 | `scripts/ci/alert-step.sh` | Alert, not red: run a check whose failure of a given kind is a third PARTY's or a BACKLOG's | `scripts/ci/alert-step.sh` | wf decodo-probe, identity-ci-staleness, identity-findings-report +2 | alert-step-test.sh | KEEP |
 | `scripts/ci/baseline_ratchet.py` | THE BASELINE RATCHET ENGINE: what the JS/TS and the Python quality ratchets share (js_quality_ratchet.py, | `imported` | hook pre-push; 3 tools | - | Python |
 | `scripts/ci/bounded-step.sh` | A step with its own `timeout-minutes` runs as a process group this script can end | `scripts/ci/bounded-step.sh` | wf country-convergence-leg, decoration-discovery, identity-capture +10; agentctl; skill CLAUDE.md | bounded-step-test.sh | KEEP |
@@ -161,7 +161,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/runner_cache.py` | A runner-local mirror of actions/cache entries, for the self-hosted runners on ci-runner. | `python3 scripts/ci/runner_cache.py` | 1 tool | runner_cache_test.py | Python |
 | `scripts/ci/runner_scheduler.py` | CI-RUNNER'S MOVIES RUNNER SCHEDULER (the owner, 2026-11-06: "make movies runs take all the ci-runner runners when | `python3 scripts/ci/runner_scheduler.py` | wf precommit-check; agentctl; 1 tool | runner_scheduler_test.py | Python |
 | `scripts/ci/sbt-deps-resolve.sh` | Resolve every dependency of the sbt build once (`sbt update` over the root aggregate | `scripts/ci/sbt-deps-resolve.sh` | wf ci; 2 tools | sbt-deps-resolve-test.sh | KEEP |
-| `scripts/ci/sbt-guard/sbt` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH | `scripts/ci/sbt-guard/sbt` | wf ci, country-convergence-leg, country-fixture-artifact +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 133 tools | - | MIGRATE |
+| `scripts/ci/sbt-guard/sbt` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH | `scripts/ci/sbt-guard/sbt` | wf ci, country-convergence-leg, country-fixture-artifact +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 134 tools | - | MIGRATE |
 | `scripts/ci/sbt-invalidate-exporters.sh` | Delete the compiled classes of every Scala source holding a wildcard export (`export X.*`, `export x.{a as _, *}`) | `scripts/ci/sbt-invalidate-exporters.sh` | skill CLAUDE.md; 2 tools | sbt-invalidate-exporters-test.sh | KEEP |
 | `scripts/ci/sbt-sources-key.sh` | The hash an sbt build cache is keyed by: the content of the sources a job compiles | `scripts/ci/sbt-sources-key.sh` | wf ci; 1 tool | sbt-sources-key-test.sh | KEEP |
 | `scripts/ci/scheduled-failure-issue.sh` | Turn a failed scheduled workflow run into a GitHub issue assigned to the repo owner, and close it again when the workflow next passes | `scripts/ci/scheduled-failure-issue.sh` | wf coupling-exemptions, prune-actions-caches; 3 tools | scheduled-failure-issue-test.sh | MIGRATE |
@@ -215,7 +215,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (147)
+## Identity (148)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -293,7 +293,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/identity_judgements.py` | THE IDENTITY JUDGEMENTS: the one file every gate reads a hand judgement of a take from, and its one reader in Python. | `python3 scripts/ci/identity_judgements.py` | hook pre-push; skill CLAUDE.md, identity-investigation; 16 tools | identity_judgements_test.py | Python |
 | `scripts/ci/identity_judgements_lint.py` | THE IDENTITY JUDGEMENTS LINT: the one judgements file (identity_judgements.PATH) is well formed, and agrees with the | `python3 scripts/ci/identity_judgements_lint.py` | hook pre-push; skill CLAUDE.md, identity-investigation; 3 tools | identity_judgements_lint_test.py | Python |
 | `scripts/ci/identity_live_drift.py` | The off-worker identity drift check's counts, pushed to Prometheus: what `scripts.IdentityLiveDrift` found in each | `scripts/ci/identity_live_drift.py` | wf identity-live-drift | identity_live_drift_test.py | Python |
-| `scripts/ci/identity_run_shards.py` | IDENTITY-RUN'S JOBS (.github/workflows/identity-run.yml's plan): which sbt commands run side by side, each in a | `scripts/ci/identity_run_shards.py` | wf identity-run; 2 tools | identity_run_shards_test.py | Python |
+| `scripts/ci/identity_run_shards.py` | IDENTITY-RUN'S JOBS (.github/workflows/identity-run.yml's plan): which sbt commands run side by side, each in a | `scripts/ci/identity_run_shards.py` | wf identity-run; 1 tool | identity_run_shards_test.py | Python |
 | `scripts/ci/identity_takes.py` | THE TAKES: the identity tools' files of takes, each read one way, and what a listing's take moving between two of them | `python3 scripts/ci/identity_takes.py` | hook pre-push; 6 tools | identity_takes_test.py | Python |
 | `scripts/ci/identity_takes_check.py` | THE IDENTITY TAKES CHECK, for one country inside its hermetic convergence row: resolve the pinned recording the row | `scripts/ci/identity_takes_check.py` | 11 tools | identity_takes_check_test.py | Python |
 | `scripts/ci/identity_takes_check_base.py` | THE BASE of the identity takes check (identity_takes_check.py): the newest commit before the head whose own check | `imported` | 2 tools | - | Python |
@@ -319,7 +319,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity-boot-cost` | The identity boot-cost check: what the identity model allocates and spends a family | `scripts/identity-boot-cost` | skill test-layers; 1 tool | identity-boot-cost-test.sh | MIGRATE |
 | `scripts/identity-calibrate.sh` | Regenerate the identity resolver's calibrated evidence model from data | `scripts/identity-calibrate.sh` | wf identity-decorations; 1 tool | identity-calibrate-test.sh | KEEP |
 | `scripts/identity-capture.sh` | Re-capture the unmatched-cluster fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz) in one command | `scripts/identity-capture.sh` | wf identity-capture; 1 tool | identity-capture-test.sh | MIGRATE |
-| `scripts/identity-ci-run` | Any sbt command over a cached recording, on CI (identity-run.yml), off the laptop | `scripts/identity-ci-run` | wf identity-run; agentctl; skill CLAUDE.md, identity-investigation; 4 tools | identity-ci-run-test.sh | MIGRATE |
+| `scripts/identity-ci-run` | Any sbt command over a cached recording, on CI (identity-run.yml), off the laptop (a name for identity_ci_run.py) | `scripts/identity-ci-run` | wf identity-run; agentctl; skill CLAUDE.md, identity-investigation; 5 tools | identity_ci_run_test.py | KEEP |
 | `scripts/identity-drift-ci` | The pre-land drift check: a commit's takes-drift rows, run on CI before landing (a name for identity_drift_ci.py) | `scripts/identity-drift-ci` | wf country-convergence-leg, identity-model-convergence, identity-takes; hook pre-push; agentctl; 8 tools | identity_drift_ci_test.py | KEEP |
 | `scripts/identity-explain` | An alias of `scripts/identity-slice <cc> --explain …` (see its --help): why a listing of the unmatched-cluster capture took (or did not take) its film | `scripts/identity-explain` | skill identity-investigation; 2 tools | identity-explain-test.sh | KEEP |
 | `scripts/identity-fetch-recording.sh` | Lay out one "Record scrape fixtures" run's recording beside the checkout, not in it — each country's scrape corpus | `scripts/identity-fetch-recording.sh` | wf archive-recording, identity-decorations, identity-lean-whole +3; 5 tools | identity-fetch-recording-test.sh | MIGRATE |
@@ -339,10 +339,11 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity-slice-refresh` | Re-pin identity slice cases on this checkout's code, in place, keeping each case's expected.tsv | `scripts/identity-slice-refresh` | skill identity-investigation; 1 tool | identity-slice-refresh-test.sh | MIGRATE |
 | `scripts/identity-stage-works.py` | Rebuild the identity resolver's table of stage works — every opera and ballet Wikidata knows with five or more | `scripts/identity-stage-works.py` | by hand | - | Python |
 | `scripts/identity-stamp-carry` | The stamp carry (project/StampCarry.scala; the owner, 2026-11-20) | `scripts/identity-stamp-carry` | hook pre-push; skill CLAUDE.md, identity-investigation; 4 tools | identity_stamp_carry_test.py | KEEP |
-| `scripts/identity-tools.sh` | What the local identity tools share (sourced): the recording cache, classpaths, countries | `bash scripts/identity-tools.sh` | wf main; skill identity-investigation; 27 tools | identity-tools-test.sh | MIGRATE |
+| `scripts/identity-tools.sh` | What the local identity tools share (sourced): the recording cache, classpaths, countries | `bash scripts/identity-tools.sh` | wf main; skill identity-investigation; 26 tools | identity-tools-test.sh | MIGRATE |
 | `scripts/identity-what-if` | A local what-if of a resolver change over prod's current corpus, in minutes | `scripts/identity-what-if` | hook pre-push; skill CLAUDE.md, identity-investigation; 13 tools | identity-what-if-test.sh | MIGRATE |
 | `scripts/identity-why` | Why a listing changed film at a moment, from the identity history alone (identity_history, a month of it) | `scripts/identity-why` | skill identity-investigation; 1 tool | - | KEEP |
 | `scripts/identity_boot_cost.py` | THE IDENTITY BOOT-COST RATCHET (scripts/identity-boot-cost): what `scripts.IdentityBootCost` measured -- bytes and | `python3 scripts/identity_boot_cost.py` | 1 tool | identity_boot_cost_test.py | Python |
+| `scripts/identity_ci_run.py` | ANY sbt COMMAND OVER A CACHED RECORDING, ON CI: .github/workflows/identity-run.yml at a commit of yours, off the laptop | `scripts/identity_ci_run.py` | 1 tool | identity_ci_run_test.py | Python |
 | `scripts/identity_drift_ci.py` | THE PRE-LAND DRIFT CHECK: a commit's `takes-drift-1\|2\|... (<country>)` rows -- "Check that the incremental state ends | `scripts/identity_drift_ci.py` | 5 tools | identity_drift_ci_test.py | Python |
 | `scripts/identity_drift_ci_baseline.py` | identity-drift-ci's baseline and its wait (scripts/identity_drift_ci.py): with --for-red, the rows a red run failed -- | `imported` | 1 tool | - | Python |
 | `scripts/identity_drift_ci_options.py` | identity-drift-ci's command line (scripts/identity_drift_ci.py, whose header is the usage): the options, checked -- | `imported` | 1 tool | - | Python |
@@ -356,7 +357,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity_stamp_carry.py` | THE STAMP CARRY'S PROOFS (project/StampCarry.scala; the owner, 2026-11-20): a row of test/resources/identity-stamp-carry.tsv | `python3 scripts/identity_stamp_carry.py` | skill identity-investigation; 3 tools | identity_stamp_carry_test.py | Python |
 | `scripts/identity_what_if.py` | THE LOCAL WHAT-IF's two judgements (scripts/identity-what-if runs the resolves): which families a change can reach, | `python3 scripts/identity_what_if.py` | skill identity-investigation; 2 tools | identity_what_if_test.py | Python |
 | `scripts/label-lookup` | Every hand judgement touching one listing or one film, with who added it and when, and what prod takes today. | `scripts/label-lookup` | skill CLAUDE.md, identity-investigation; 7 tools | label-lookup-test.sh | Python |
-| `scripts/lib/identity_dispatch.py` | A COMMIT MEASURED ON CI, the steps the identity tools share (scripts/lib; identity-tools.sh's identity_measure_branch, | `imported` | 1 tool | - | Python |
+| `scripts/lib/identity_dispatch.py` | A COMMIT MEASURED ON CI, the steps the identity tools share (scripts/lib; identity-tools.sh's identity_measure_branch, | `imported` | 2 tools | - | Python |
 | `scripts/listing-history` | One listing's identity take over time, grouped by the worker deploy that logged it | `scripts/listing-history` | skill CLAUDE.md, identity-investigation; 3 tools | listing_history_test.py | KEEP |
 | `scripts/listing_history.py` | ONE LISTING'S IDENTITY TAKE OVER TIME (scripts/listing-history). | `scripts/listing_history.py` | 2 tools | listing_history_test.py | Python |
 | `scripts/ml-identity/cross_country_experiment.py` | Cross-country agreement, OFFLINE experiment (2026-10-19, branch experiment-cross-country; docs/identity-experiments.md). | `imported` | 1 tool | - | Python |
@@ -516,7 +517,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/store-screenshots-common.sh` | Shared engine for the store-screenshot drivers — android/scripts and ios/scripts both source this | `bash scripts/store-screenshots-common.sh` | wf android; 5 tools | - | MIGRATE |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (65)
+## Dev (66)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -539,13 +540,14 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/it-local.sh` | Run the it/ layer locally against a MongoDB of this run's own | `scripts/it-local.sh` | skill agent-ops, identity-investigation, test-layers; 9 tools | it-local-test.sh | KEEP |
 | `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | skill CLAUDE.md; 1 tool | cli_harness_test.py | Python |
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 5 tools | tool_actions_test.py | Python |
+| `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; scripts/ci/dispatch.sh's | `imported` | 1 tool | - | Python |
 | `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | 5 tools | - | Python |
 | `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 3 tools | - | Python |
-| `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the Python tools do it (scripts/lib; the shell | `imported` | 3 tools | tool_dispatch_test.py | Python |
-| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | 6 tools | tool_git_test.py | Python |
-| `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 5 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | 29 tools | tool_process_test.py | Python |
-| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | 2 tools | - | Python |
+| `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the Python tools do it (scripts/lib; the shell | `imported` | 4 tools | tool_dispatch_test.py | Python |
+| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | 7 tools | tool_git_test.py | Python |
+| `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 6 tools | tool_github_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | 31 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | 3 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 5 tools | - | KEEP |
 | `scripts/mutation-check` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate) | `scripts/mutation-check` | skill test-layers; 3 tools | mutation-check-test.sh | MIGRATE |

@@ -165,7 +165,7 @@ scripts/hotspots	KEEP
 scripts/identity-boot-cost	MIGRATE
 scripts/identity-calibrate.sh	KEEP
 scripts/identity-capture.sh	MIGRATE
-scripts/identity-ci-run	MIGRATE
+scripts/identity-ci-run	KEEP
 scripts/identity-drift-ci	KEEP
 scripts/identity-explain	KEEP
 scripts/identity-fetch-recording.sh	MIGRATE
