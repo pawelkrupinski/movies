@@ -32,7 +32,7 @@ import tempfile
 import time
 import unittest
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Mapping, Optional, Sequence
+from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 HANG_BOUND = float(os.environ.get("SPEC_HANG_BOUND", "600"))
@@ -246,3 +246,11 @@ class ToolCase(unittest.TestCase):
         os.makedirs(full, exist_ok=True)
         self.git(full, "init", "-q", *init_args)
         return full
+
+    def origin_and_checkout(self) -> Tuple[str, str]:
+        """A bare `origin.git` and a `repo` whose `origin` it is, both on main: the pair a tool pushing to origin
+        runs in."""
+        origin = self.repo("origin.git", "--bare", "-b", "main")
+        checkout = self.repo("repo", "-b", "main")
+        self.git(checkout, "remote", "add", "origin", origin)
+        return origin, checkout

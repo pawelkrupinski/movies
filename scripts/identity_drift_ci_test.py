@@ -68,9 +68,7 @@ class IdentityDriftCiTest(cli_harness.ToolCase):
 
     def setUp(self) -> None:
         super().setUp()
-        self.origin = self.repo("origin.git", "--bare", "-b", "main")
-        self.checkout = self.repo("repo", "-b", "main")
-        self.git(self.checkout, "remote", "add", "origin", self.origin)
+        self.origin, self.checkout = self.origin_and_checkout()
         self.write("repo/.github/workflows/country-convergence-leg.yml", "drift-only: true\n")
         self.write("repo/.github/workflows/identity-takes.yml", "name: Identity takes\n")
         self.write("repo/scripts/ci/.keep", "")
