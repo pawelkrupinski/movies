@@ -109,12 +109,6 @@ def move_tree_in(setup: convergence_release.Step, stage: str) -> None:
             shutil.move(entry, target)
 
 
-def regular_files(*roots: str) -> int:
-    """`find <roots> -type f | wc -l`, a missing root none."""
-    return sum(1 for root in roots for top, _, files in os.walk(root) for f in files
-               if os.path.isfile(os.path.join(top, f)) and not os.path.islink(os.path.join(top, f)))
-
-
 def named(root: str, suffix: str) -> int:
     """`find <root> -name '*<suffix>' | wc -l`: files and directories alike."""
     return sum(1 for _, dirs, files in os.walk(root) for n in dirs + files if n.endswith(suffix))
@@ -137,7 +131,7 @@ def unpack(setup: convergence_release.Step, code: str, mode: str) -> int:
         setup.say(f"no {archive} — this leg fetches live for it and the recorder captures it next")
     # A MISSING fixture directory is the normal fallback path, not an error: the leg fetches live.
     setup.say(f"fixture files available: "
-              f"{regular_files('test/resources/fixtures/corpus', f'test/resources/fixtures/enrichment-{code}')}")
+              f"{convergence_release.regular_files('test/resources/fixtures/corpus', f'test/resources/fixtures/enrichment-{code}')}")
     # The REMEMBERED-ANSWER cache apart: a 404 returns nothing to record, so those verdicts live only in
     # `.enrichment-cache`, and a leg without it re-asks every one live (a 22-minute Poland leg against 12): the count
     # on both sides of the artifact hop is what tells "warm" from "silently cold".
