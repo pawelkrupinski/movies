@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import io
 import os
+import signal
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -64,36 +66,60 @@ class SubprocessRunnerTest(unittest.TestCase):
 
     def test_a_command_past_its_bound_is_ended_with_its_group_124(self) -> None:
         pids = os.path.join(self.dir.name, "pids")
-        hung = f"(echo $$ >> {pids}; exec sleep 86400) & echo $! >> {pids}; exec sleep 86400"
-        self.assertEqual(124, self.runner.run(tool_process.Command([*SH, hung], dict(os.environ), log=self.log,
+        self.assertEqual(124, self.runner.run(tool_process.Command([*SH, hung(pids)], dict(os.environ), log=self.log,
                                                                    timeout=0.5)))
-        self.assertEqual(124, self.runner.capture(tool_process.Command([*SH, hung], dict(os.environ), timeout=0.5)).code)
-        with open(pids) as f:
-            for pid in [int(line) for line in f if line.strip()]:
-                self.assertFalse(alive(pid), pid)
+        self.assertEqual(124, self.runner.capture(tool_process.Command([*SH, hung(pids)], dict(os.environ),
+                                                                       timeout=0.5)).code)
+        self.assertEqual(0, cli_harness.still_running(pids, 5))
 
-    def test_a_background_command_waited_for_or_ended(self) -> None:
-        running = self.runner.start(tool_process.Command([*SH, "echo bg; exit 5"], dict(os.environ), log=self.log))
-        self.assertEqual(5, running.wait())
-        self.assertEqual("bg\n", self.logged())
+    def test_a_teed_command_past_its_bound_too(self) -> None:
         pids = os.path.join(self.dir.name, "pids")
-        running = self.runner.start(tool_process.Command([*SH, f"echo $$ > {pids}; exec sleep 86400"], dict(os.environ)))
-        try:
-            self.assertTrue(cli_harness.wait_until(lambda: os.path.exists(pids) and bool(open(pids).read().strip())))
-        finally:
-            running.end()
-        self.assertFalse(alive(int(open(pids).read())))
+        self.assertEqual(124, cli_harness.run_bounded(
+            [sys.executable, "-c", RUN_TEED, os.path.dirname(os.path.abspath(__file__)), hung(pids), self.log],
+            env=dict(os.environ), cwd=self.dir.name, stdin=None, bound=60).code)
+        self.assertEqual(0, cli_harness.still_running(pids, 5))
+
+    def test_a_bounded_command_ends_with_the_tool_that_ran_it(self) -> None:
+        """Its own session is out of reach of whatever ends the tool -- a caller's bound, a cancelled check, Ctrl-C --
+        so the INT or TERM the tool gets ends the command's group first, and is then the tool's own (`bounded`)."""
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            with self.subTest(signal=sig.name):
+                pids = os.path.join(self.dir.name, f"pids-{sig.name}")
+                tool = subprocess.Popen([sys.executable, "-c", RUN_BOUNDED, os.path.dirname(os.path.abspath(__file__)),
+                                         hung(pids), self.log], start_new_session=True,
+                                        stderr=subprocess.DEVNULL)
+                try:
+                    self.assertTrue(cli_harness.wait_until(lambda: lines(pids) >= 2))
+                    tool.send_signal(sig)
+                    self.assertEqual(-sig, tool.wait(timeout=30))
+                finally:
+                    if tool.poll() is None:
+                        tool.kill()
+                self.assertEqual(0, cli_harness.still_running(pids, 5))
 
 
-def alive(pid: int) -> bool:
-    """Whether `pid` is still alive once a grace for its TERM has passed (cli_harness.wait_until: no guessed sleep)."""
-    def gone() -> bool:
-        try:
-            os.kill(pid, 0)
-        except OSError:
-            return True
-        return False
-    return not cli_harness.wait_until(gone, 5)
+def hung(pids: str) -> str:
+    """A command that never ends by itself, and a child of it in its group: both pids written to `pids`."""
+    return f"(echo $$ >> {pids}; exec sleep 86400) & echo $! >> {pids}; exec sleep 86400"
+
+
+def lines(path: str) -> int:
+    if not os.path.exists(path):
+        return 0
+    with open(path) as f:
+        return len([line for line in f if line.strip()])
+
+
+TOOL = """import os, sys
+sys.path.insert(0, sys.argv[1])
+import tool_process
+"""
+RUN_TEED = TOOL + """sys.exit(tool_process.SubprocessRunner().run(tool_process.Command(["/bin/sh", "-c", sys.argv[2]],
+    dict(os.environ), log=sys.argv[3], tee=True, timeout=0.5)))"""
+RUN_BOUNDED = TOOL + """import signal
+signal.signal(signal.SIGINT, signal.default_int_handler)  # whatever the run around it ignores
+tool_process.SubprocessRunner().run(tool_process.Command(["/bin/sh", "-c", sys.argv[2]],
+    dict(os.environ), log=sys.argv[3], timeout=600))"""
 
 if __name__ == "__main__":
     unittest.main()

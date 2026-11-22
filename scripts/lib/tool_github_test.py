@@ -33,9 +33,6 @@ class FakeRunner:
             open(argv[argv.index("-O") + 1], "w").close()
         return tool_process.Captured(self.code, self.stdout, self.stderr)
 
-    def start(self, command: tool_process.Command) -> tool_process.Running:
-        raise NotImplementedError
-
 
 class GitHubTest(unittest.TestCase):
     def test_read_answers_or_none_and_is_bounded(self) -> None:

@@ -6,7 +6,7 @@ from __future__ import annotations
 import os
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Mapping, Optional
 
 import tool_git
@@ -38,7 +38,6 @@ class Context:
     clock: Callable[[], float] = time.time
     sleep: Callable[[float], None] = time.sleep
     mark: float = 0.0         # where the phase being timed began (the shell's SECONDS=0)
-    background: List[tool_process.Running] = field(default_factory=lambda: [])
 
     def setting(self, name: str, default: str) -> str:
         """`${NAME:-default}`."""
