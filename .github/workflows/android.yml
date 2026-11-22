@@ -20,10 +20,11 @@ on:
             - 'scripts/*mobile-release*.sh'
             - 'scripts/log.sh'
             - 'scripts/shell-spec.sh'
-            # The seeded order devtest-shuffled.sh (the nightly emulator leg) draws from.
-            - 'scripts/seeded-order*.sh'
+            # The seeded order devtest-shuffled (the nightly emulator leg) draws from.
+            - 'scripts/lib/seeded_order*.py'
             # The nightly swift leg's runner, whose spec runs in the step below.
-            - 'ios/scripts/swift-test-shuffled*.sh'
+            - 'ios/scripts/swift-test-shuffled.sh'
+            - 'ios/scripts/swift_test_shuffled*.py'
             # The nightly order-independence run's seed check and the step calling it, whose spec runs below.
             - 'scripts/ci/order-seed*.sh'
             - '.github/workflows/order-independence.yml'
@@ -52,10 +53,11 @@ on:
             - 'scripts/*mobile-release*.sh'
             - 'scripts/log.sh'
             - 'scripts/shell-spec.sh'
-            # The seeded order devtest-shuffled.sh (the nightly emulator leg) draws from.
-            - 'scripts/seeded-order*.sh'
+            # The seeded order devtest-shuffled (the nightly emulator leg) draws from.
+            - 'scripts/lib/seeded_order*.py'
             # The nightly swift leg's runner, whose spec runs in the step below.
-            - 'ios/scripts/swift-test-shuffled*.sh'
+            - 'ios/scripts/swift-test-shuffled.sh'
+            - 'ios/scripts/swift_test_shuffled*.py'
             # The nightly order-independence run's seed check and the step calling it, whose spec runs below.
             - 'scripts/ci/order-seed*.sh'
             - '.github/workflows/order-independence.yml'
@@ -261,9 +263,9 @@ jobs:
                   scripts/ios-release-test.sh
                   scripts/ci/gh-release-test.sh
                   scripts/ci/gh-optional-test.sh
-                  scripts/seeded-order-test.sh
-                  ios/scripts/swift-test-shuffled-test.sh
-                  android/scripts/devtest-shuffled-test.sh
+                  python3 scripts/lib/seeded_order_test.py
+                  python3 ios/scripts/swift_test_shuffled_test.py
+                  python3 android/scripts/devtest_shuffled_test.py
                   scripts/ci/order-seed-test.sh
 
             # The three Gradle steps of this job share one daemon (no
