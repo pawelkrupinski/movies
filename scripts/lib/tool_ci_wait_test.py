@@ -10,6 +10,7 @@ import sys
 import unittest
 from typing import List
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tool_ci_wait  # noqa: E402
 import tool_process  # noqa: E402
