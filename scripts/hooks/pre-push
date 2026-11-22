@@ -506,7 +506,7 @@ is_drift_path() { # <path>
     is_identity_path "$1" && return 0
     case "$1" in
         worker/src/main/*|worker/src/test/scala/scripts/IdentityDrift*|worker/src/test/scala/scripts/IdentityLiveDrift*|\
-        scripts/ci/identity-drift-check*|scripts/ci/commit_rules*) return 0 ;;
+        scripts/ci/identity-drift-check*|scripts/ci/identity_drift_check*|scripts/ci/commit_rules*) return 0 ;;
     esac
     return 1
 }

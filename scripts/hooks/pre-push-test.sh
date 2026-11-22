@@ -90,6 +90,8 @@ check "docs run nothing" "" "$(plan docs/readme.md README.md)"
 check "checks come out once each, in run order" "newchecks schedules driftguards eslint jsquality snapshot scripttests actionlint shellcheck sbt" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
 
+check "the drift check's Python modules run the drift guards" "driftguards" \
+  "$(plan scripts/ci/identity_drift_check_replay.py | tr ' ' '\n' | grep -x driftguards)"
 check "a judgements change runs the judgements lint, and the identity area's tests" "judgements driftguards sbt identity" "$(plan test/resources/fixtures/identity-judgements.tsv)"
 check "an expected match runs them" "judgements driftguards sbt identity" "$(plan test/resources/fixtures/identity-unmatched/expected-matches.tsv)"
 check "a hard-cluster expectation runs it, and the identity area (the hard-cluster ratchet reads it)" "judgements driftguards sbt identity" "$(plan test/resources/fixtures/corpus/expected-hard-clusters-pl.txt)"
