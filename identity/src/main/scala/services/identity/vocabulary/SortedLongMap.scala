@@ -98,6 +98,8 @@ private[identity] object SortedLongMap {
    *  arrays are built again once every ~30 light projections on worker-us, not every one. */
   private[identity] def compactAt(base: Int): Int = math.max(1024, base / 8)
 
+  /** The arrays built again from the base's and the overlay's entries, merged by key: a base entry the overlay names
+   *  (replaced, or removed as null) gives way to the overlay's. */
   private def compact[V <: AnyRef](keys: Array[Long], values: Array[AnyRef], overlay: LongMap[AnyRef], size: Int): SortedLongMap[V] = {
     val outK = new Array[Long](size)
     val outV = new Array[AnyRef](size)
@@ -105,9 +107,14 @@ private[identity] object SortedLongMap {
     var i, j, n = 0
     def emit(k: Long, v: AnyRef): Unit = { outK(n) = k; outV(n) = v; n += 1 }
     while (i < keys.length || j < adds.length) {
-      if (j >= adds.length || (i < keys.length && keys(i) < adds(j)._1)) { if (overlay.get(keys(i)).isEmpty) emit(keys(i), values(i)); i += 1 }
-      else { if (i < keys.length && keys(i) == adds(j)._1) i += 1; emit(adds(j)._1, adds(j)._2); j += 1 }
+      if (baseFirst(keys, i, adds, j)) { if (overlay.get(keys(i)).isEmpty) emit(keys(i), values(i)); i += 1 }
+      else { emit(adds(j)._1, adds(j)._2); j += 1 }
     }
     new SortedLongMap[V](outK, outV, LongMap.empty, size)
   }
+
+  /** Does the merge read the base's `i`th key before the overlay's `j`th add: none left of the adds, or a key no greater
+   *  (an equal one the overlay names, so it is dropped before its add is read)? */
+  private def baseFirst(keys: Array[Long], i: Int, adds: scala.collection.mutable.ArraySeq[(Long, AnyRef)], j: Int): Boolean =
+    j >= adds.length || (i < keys.length && keys(i) <= adds(j)._1)
 }

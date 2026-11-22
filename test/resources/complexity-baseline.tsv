@@ -9,4 +9,3 @@
 limit	cognitive	10
 limit	cyclomatic	10
 limit	inner-defs	2
-cognitive	identity/src/main/scala/services/identity/vocabulary/SortedLongMap.scala:SortedLongMap.compact	14
