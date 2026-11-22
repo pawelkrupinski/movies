@@ -38,6 +38,15 @@ check "...every JVM is sent to the closed port, loopback exempt" "1" \
   "$(NO_NETWORK_MODE=proxy "$tool" -- sh -c 'echo "$JAVA_TOOL_OPTIONS"' 2> /dev/null | grep -c -- '-Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=9 -Dhttp.nonProxyHosts=localhost|127')"
 check "...and it warns that a raw socket is not stopped" "1" "$(grep -c '::warning title=no-network::' "$work/err")"
 
+# THE BUILD TOOLS' HOMES STAY THEIRS (Order independence #113: mapped to root, the JVM's user.home became passwd's
+# /root and every sbt launcher failed on /root/.sbt): in whatever mode the runner gives, the command runs as the same
+# uid with the same passwd home, and writes its tool homes under $HOME
+mkdir -p "$work/home"
+outside="$(id -u) $(python3 -I -c 'import os, pwd; print(pwd.getpwuid(os.getuid()).pw_dir)')"
+inside="$(HOME="$work/home" "$tool" -- sh -c 'mkdir -p "$HOME/.sbt/boot" "$HOME/.gradle" && : > "$HOME/.sbt/boot/sbt.boot.lock" && echo "$(id -u) $(python3 -I -c "import os, pwd; print(pwd.getpwuid(os.getuid()).pw_dir)")"' 2> /dev/null)"
+check "the same uid and passwd home inside (the JVM's user.home), and \$HOME/.sbt writable ($("$tool" --probe | cut -d' ' -f1))" \
+  "$outside|1" "$inside|$([ -f "$work/home/.sbt/boot/sbt.boot.lock" ] && echo 1 || echo 0)"
+
 case "$(uname -s)" in
   Darwin)
     check "probe on macOS: sandbox" "sandbox" "$("$tool" --probe | cut -d' ' -f1)"

@@ -8,8 +8,9 @@
 #   scripts/ci/no-network --probe            the mode this runner allows, one word and why
 #
 # Modes, the strongest the runner allows (NO_NETWORK_MODE forces one; a mode the runner cannot give is an error):
-#   netns    Linux: a network namespace holding only loopback (unshare --user --net; on a github-hosted VM, AppArmor's
-#            unprivileged-userns restriction lifted first). Nothing leaves: a connect is "Network is unreachable".
+#   netns    Linux: a network namespace holding only loopback, as the same user (unshare --user --map-current-user
+#            --net; on a github-hosted VM, AppArmor's unprivileged-userns restriction lifted first). Nothing leaves: a
+#            connect is "Network is unreachable".
 #   sandbox  macOS: sandbox-exec denying every outbound IP connection but localhost's (EPERM at connect).
 #   proxy    neither: every HTTP(S) client -- curl, python, every JVM through JAVA_TOOL_OPTIONS -- sent to a closed
 #            loopback port, loopback exempt. It does not stop a raw socket: a warning says so.
@@ -19,7 +20,13 @@ set -euo pipefail
 SANDBOX_PROFILE='(version 1)(allow default)(deny network-outbound (remote ip "*:*"))(allow network-outbound (remote ip "localhost:*"))'
 CLOSED=127.0.0.1:9 # discard: nothing listens there
 
-netns_works() { command -v unshare > /dev/null 2>&1 && unshare --user --map-root-user --net true 2> /dev/null; }
+# THE SAME USER INSIDE (Order independence #113, run 45030284135): mapped to root, the JVM's user.home is passwd's
+# /root, not $HOME -- every sbt launcher failed "AccessDeniedException: /root/.sbt/..." on ci-runner's job image, whose
+# job user is no root. --map-current-user keeps the uid (and so its home and caches); --keep-caps keeps the namespace's
+# own capabilities across the exec, which bringing loopback up needs.
+NETNS="unshare --user --map-current-user --keep-caps --net --"
+LOOPBACK_UP='ip link set lo up 2> /dev/null || ifconfig lo up 2> /dev/null'
+netns_works() { command -v unshare > /dev/null 2>&1 && $NETNS sh -c "$LOOPBACK_UP" 2> /dev/null; }
 netns_allowed() {
   netns_works && return 0
   # GitHub's Ubuntu VMs restrict unprivileged user namespaces (AppArmor); the VM is the job's alone, so lift it there
@@ -54,7 +61,8 @@ case "${1:-}" in
     case "$m" in
       netns)
         # shellcheck disable=SC2016 # the inner shell's own "$@"
-        exec unshare --user --map-root-user --net -- sh -c 'ip link set lo up 2> /dev/null || ifconfig lo up 2> /dev/null; exec "$@"' no-network "$@" ;;
+        # shellcheck disable=SC2086 # NETNS: words by design
+        exec $NETNS sh -c "$LOOPBACK_UP"' || exit 70; exec "$@"' no-network "$@" ;;
       sandbox) exec sandbox-exec -p "$SANDBOX_PROFILE" "$@" ;;
       proxy)
         echo "::warning title=no-network::this runner allows no network namespace: HTTP(S) clients go to a closed port, raw sockets are not stopped" >&2

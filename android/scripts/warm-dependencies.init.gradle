@@ -1,0 +1,32 @@
+// WARM EVERY ARTIFACT THE UNIT TESTS NEED, so a later `--offline` run with no network finds each one cached:
+//
+//     ./gradlew --no-configuration-cache --init-script scripts/warm-dependencies.init.gradle :app:warmDependencies
+//
+// Order independence's android leg fetches in one warm step and runs its Robolectric tests cut off from the network
+// (scripts/ci/no-network). Building the unit-test classes (assembleDebugUnitTest) left the test RUNTIME classpath's AARs
+// unfetched -- espresso-core, androidx.test runner, storage, annotation -- and the offline test run failed at
+// :app:mergeDebugUnitTestManifest, "No cached version available for offline mode" (#113, run 45030284135). This
+// resolves the debug and debug unit-test classpaths (compile and runtime) of every project, strictly: a fetch that
+// fails here fails the warm step, where scripts/ci/fetch-retry retries it, never the tests later.
+// (scripts/ci/order-compare-test.sh holds the warm step to it.)
+allprojects { p ->
+    p.tasks.register('warmDependencies') {
+        description = 'Resolves the debug and debug unit-test classpaths, so an --offline test run needs no network'
+        notCompatibleWithConfigurationCache('resolves the project configurations when it runs')
+        doLast {
+            ['debugCompileClasspath', 'debugRuntimeClasspath', 'debugUnitTestCompileClasspath',
+             'debugUnitTestRuntimeClasspath'].each { name ->
+                def c = p.configurations.findByName(name)
+                if (c != null && c.canBeResolved) {
+                    // external modules only: the unit-test classpaths also hold :app itself, whose variants a plain
+                    // resolve cannot choose between ("cannot choose between the following variants of project
+                    // ':app'") -- and a project's own outputs need no network
+                    def n = c.incoming.artifactView {
+                        componentFilter { it instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier }
+                    }.files.files.size()
+                    logger.lifecycle("warmDependencies: ${p.path} ${name}: ${n} file(s)")
+                }
+            }
+        }
+    }
+}

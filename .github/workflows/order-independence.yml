@@ -199,9 +199,14 @@ jobs:
               working-directory: ${{ github.workspace }}
               run: scripts/ci/order-preflight.sh android
 
-            # The one step that may use the network: the Gradle and Robolectric (android-all) dependencies and the build.
+            # The one step that may use the network: the Gradle and Robolectric (android-all) dependencies, every
+            # artifact of the test classpaths (warm-dependencies.init.gradle: #113's offline run lacked the test AARs),
+            # and the build.
             - name: Warm the dependency caches (the only network step)
-              run: ../scripts/ci/fetch-retry -- ./gradlew --no-daemon :app:syncRobolectricAndroidAll :app:assembleDebugUnitTest
+              run: >-
+                  ../scripts/ci/fetch-retry -- ./gradlew --no-daemon --no-configuration-cache
+                  --init-script scripts/warm-dependencies.init.gradle
+                  :app:syncRobolectricAndroidAll :app:warmDependencies :app:assembleDebugUnitTest
 
             - name: Robolectric tests, classes and methods in a seeded order
               env:

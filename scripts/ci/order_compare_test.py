@@ -274,6 +274,16 @@ class OrderCompareTest(cli_harness.ToolCase):
         self.assertIn(f'{name} summary order-records "$SEED" >> "$GITHUB_STEP_SUMMARY"', verdict)
         self.assertIn("verdict: ${{ steps.verdict.outputs.verdict }}", verdict)
 
+    def test_the_android_warm_step_fetches_the_unit_test_classpaths(self) -> None:
+        # Order independence #113: assembleDebugUnitTest left the test runtime classpath's AARs unfetched, and the
+        # offline test run failed "No cached version available for offline mode"
+        with open(WORKFLOW) as f:
+            warm = job_blocks(f.read())["android"].split("name: Warm the dependency caches", 1)[1].split("- name:", 1)[0]
+        self.assertIn("--init-script scripts/warm-dependencies.init.gradle", warm)
+        self.assertIn(":app:warmDependencies", warm)
+        with open(os.path.join(cli_harness.ROOT, "android/scripts/warm-dependencies.init.gradle")) as f:
+            self.assertIn("'debugUnitTestRuntimeClasspath'", f.read())
+
 
 def job_blocks(workflow: str) -> Dict[str, str]:
     """Each top-level job's text (a `    <name>:` line to the next), as the shell test's sed range read them."""
