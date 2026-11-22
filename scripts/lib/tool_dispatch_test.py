@@ -12,6 +12,7 @@ import time
 import unittest
 from typing import Callable, Dict, List, Sequence, Tuple
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tool_dispatch  # noqa: E402
 import tool_process  # noqa: E402
