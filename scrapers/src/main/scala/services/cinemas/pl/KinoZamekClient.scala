@@ -167,8 +167,8 @@ object KinoZamekClient {
     // not the film. So headings only name films when they actually vary.
     val isCycle = screenings.flatMap(_.heading).distinct.sizeIs > 1
 
-    SlotsToMovies.foldSome(screenings, screening => if (isCycle) screening.heading.orElse(pageTitle) else pageTitle,
-      s => Showtime(LocalDateTime.of(s.date, s.time), bookingUrl = None), distinctBy = _.dateTime) {
+    SlotsToMovies.foldBlocks(screenings, screening => if (isCycle) screening.heading.orElse(pageTitle) else pageTitle,
+      s => Seq(Showtime(LocalDateTime.of(s.date, s.time), bookingUrl = None)), distinctBy = _.dateTime) {
       case (Some(rawTitle), group, showtimes) if rawTitle.nonEmpty => Some(
         CinemaMovie(
           movie     = Movie(ScraperParse.sentenceCase(stripStrand(rawTitle))),

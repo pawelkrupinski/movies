@@ -66,8 +66,8 @@ class Cinema1Client(
       Option(HttpRead.page(http, movieUrl(id))).flatMap(parseMovie)
     }.toMap
 
-    SlotsToMovies.foldSome(screenings, _.movieId,
-      s => Showtime(s.dateTime, Some(bookingUrl(cinemaId, s.screeningId)), roomByScreen.get(s.screenId), s.format),
+    SlotsToMovies.foldBlocks(screenings, _.movieId,
+      s => Seq(Showtime(s.dateTime, Some(bookingUrl(cinemaId, s.screeningId)), roomByScreen.get(s.screenId), s.format)),
       distinctBy = SlotsToMovies.keepEvery, order = SlotsToMovies.MovieOrder.asGrouped) { (movieId, _, showtimes) =>
       movieById.getOrElse(movieId, None).map { m =>
         CinemaMovie(

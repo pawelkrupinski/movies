@@ -122,16 +122,16 @@ class SlotsToMoviesSpec extends AnyFlatSpec with Matchers {
     titles(SlotsToMovies.MovieOrder.byTitle) shouldBe Seq("a", "b", "c", "d", "e", "f", "g", "h")
   }
 
-  "foldSome" should "drop a film its builder refuses" in {
-    val out = SlotsToMovies.foldSome(
+  "foldBlocks" should "drop a film its builder refuses" in {
+    val out = SlotsToMovies.foldBlocks(
       Seq(Slot("Dune", dt(18), None), Slot("Wicked", dt(19), None)),
-      keyOf      = _.title,
-      showtimeOf = s => Showtime(s.dateTime, s.booking)
+      keyOf       = _.title,
+      showtimesOf = s => Seq(Showtime(s.dateTime, s.booking))
     )((title, _, showtimes) => Option.when(title != "Wicked")(plain(title, showtimes)))
     out.map(_.movie.title) shouldBe Seq("Dune")
   }
 
-  "foldBlocks" should "merge every block's showtimes, deduped and time-sorted, and drop a film with none" in {
+  it should "merge every block's showtimes, deduped and time-sorted, and drop a film with none" in {
     case class Block(title: String, times: Seq[Int])
     val out = SlotsToMovies.foldBlocks(
       Seq(Block("Dune", Seq(20, 18)), Block("Dune", Seq(18, 16)), Block("Wicked", Nil)),

@@ -121,24 +121,15 @@ private[cinemas] object SlotsToMovies {
     distinctBy: Showtime => Any = byTimeAndBooking,
     order:      MovieOrder[K] = MovieOrder.byTitle[K]
   )(buildMovie: (K, Seq[S], Seq[Showtime]) => CinemaMovie): Seq[CinemaMovie] =
-    foldSome(slots, keyOf, showtimeOf, distinctBy, order)((key, group, showtimes) => Some(buildMovie(key, group, showtimes)))
+    foldBlocks(slots, keyOf, (slot: S) => Seq(showtimeOf(slot)), distinctBy, order)((key, group, showtimes) =>
+      Some(buildMovie(key, group, showtimes)))
 
-  /** [[fold]] for a scraper that can still refuse a film once its slots are in
-    * hand (its detail record is missing, it has no title): `buildMovie` returns
-    * `None` for a film to drop. */
-  def foldSome[S, K](
-    slots:      Seq[S],
-    keyOf:      S => K,
-    showtimeOf: S => Showtime,
-    distinctBy: Showtime => Any = byTimeAndBooking,
-    order:      MovieOrder[K] = MovieOrder.byTitle[K]
-  )(buildMovie: (K, Seq[S], Seq[Showtime]) => Option[CinemaMovie]): Seq[CinemaMovie] =
-    foldBlocks(slots, keyOf, (slot: S) => Seq(showtimeOf(slot)), distinctBy, order)(buildMovie)
-
-  /** [[foldSome]] for a scraper whose unit carries any number of showtimes — a
+  /** [[fold]] for a scraper whose unit carries any number of showtimes — a
     * film block with its slots, a detail page's schedule, one day's
     * [[CinemaMovie]] being merged across days: a film's showtimes are every
-    * unit's, deduped by `distinctBy` and time-sorted as [[fold]]'s are. */
+    * unit's, deduped by `distinctBy` and time-sorted as [[fold]]'s are — or that
+    * can still refuse a film once its units are in hand (its detail record is
+    * missing, it has no title): `buildMovie` returns `None` for a film to drop. */
   def foldBlocks[S, K](
     blocks:      Seq[S],
     keyOf:       S => K,

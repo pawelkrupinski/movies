@@ -99,7 +99,7 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
     val info: Map[String, FilmInfo] = films.iterator.flatMap(filmInfo).toMap
     val slotsByFilm = events.iterator.flatMap(slotOf).toSeq
 
-    SlotsToMovies.foldSome(slotsByFilm, _._1, _._2, distinctBy = SlotsToMovies.keepEvery, order = SlotsToMovies.MovieOrder.asGrouped) { (filmId, _, showtimes) =>
+    SlotsToMovies.foldBlocks(slotsByFilm, _._1, slot => Seq(slot._2), distinctBy = SlotsToMovies.keepEvery, order = SlotsToMovies.MovieOrder.asGrouped) { (filmId, _, showtimes) =>
       info.get(filmId).map { fi =>
         CinemaMovie(
           movie       = Movie(CinemaCityClient.cleanTitle(fi.name, titles), fi.runtimeMinutes, fi.releaseYear, rawTitle = Some(fi.name)),
