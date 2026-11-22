@@ -40,6 +40,11 @@ object RuleContract {
     def matches(ruleId: String): Boolean = if (exact) pattern == ruleId else regex.matches(ruleId)
   }
 
+  /** A refusal's declaration: the why Decision.scala names a rule's refusal by (`rule:<DecisionTrace.id(why)>`), and why
+   *  that refusal is of its kind. */
+  private def refusal(pattern: String, why: String): Declared =
+    Declared(pattern, s"refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): $why")
+
   /** Kind (i): the listing's own facts and TMDB alone. */
   val populationIndependent: Seq[Declared] = Seq(
     Declared("veto:learned-*", "learned listing-film cannot-link on the listing's own measures vs the TMDB record"),
@@ -66,52 +71,52 @@ object RuleContract {
     Declared("veto:a-short-its-feed-*-linking-*", "OPEN; short beside the feed's link"),
     Declared("search:unanswered", "the node's own query unanswered (ResolverDecisions.scala)"),
     Declared("rule:none", "no refusal recorded"),
-    Declared("rule:no-evidence-class-measured-for-it", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): classProbability of own measures"),
-    Declared("rule:a-published-fact-weighs-against-it", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): speaksAgainst own facts"),
-    Declared("rule:the-title-numbers-another-instalment", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): numeral category"),
-    Declared("rule:another-piece-of-its-billing-is-a-performance-the-film-is-not", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): own billing"),
-    Declared("rule:its-billing-credits-its-work-to-an-author-who-made-no-such-film", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): own billing credit"),
-    Declared("rule:its-billing-is-a-name-alone-which-the-record-s-longer-title-only-leads-and-no-fact-agrees", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): aNameAlone"),
-    Declared("rule:the-record-is-the-staged-show-s-own-a-pantomime-is-an-event-no-film", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): own billing against the record's titles (ListingShape.showsOwnRecord)"),
-    Declared("rule:the-billing-reads-as-no-film", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): readsAsNoFilm: event words"),
-    Declared("rule:a-double-bill", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): MultiFilmBill.billsTwoWorks(listing)"),
-    Declared("rule:the-title-joins-another-work-to-it", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): joinsAnotherWork"),
-    Declared("rule:its-house-s-record-is-from-another-year-than-its-title-dates", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): titleYear.delta"),
-    Declared("rule:it-bills-no-house-s-relay-of-a-work-in-a-season", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): listing.relayBilled"),
-    Declared("rule:a-published-year-contradicts-it", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): year.distance"),
-    Declared("rule:it-credits-another-director", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): director category"),
-    Declared("rule:the-title-names-its-season", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): listing.seasonYear"),
-    Declared("rule:a-published-fact-contradicts-it", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): contradicted()"),
-    Declared("rule:the-year-it-states-is-another-season-s", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): listing.year vs season"),
-    Declared("rule:not-its-search-s-first-hit", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): own rank"),
-    Declared("rule:not-named-by-a-piece-of-the-title", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): title category"),
-    Declared("rule:its-piece-cannot-stand-for-the-whole-title", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): standsForTheWhole"),
-    Declared("rule:the-title-dates-another-year", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): titleYear.delta"),
-    Declared("rule:a-bare-billing-names-the-film-only-by-an-alternative-title-and-tmdb-s-search-of-it-finds-other-films-not-this-one", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): own search ranks"),
-    Declared("rule:the-title-does-not-name-its-search-s-only-film", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): own title vs sole hit"),
+    refusal("rule:no-evidence-class-measured-for-it", "classProbability of own measures"),
+    refusal("rule:a-published-fact-weighs-against-it", "speaksAgainst own facts"),
+    refusal("rule:the-title-numbers-another-instalment", "numeral category"),
+    refusal("rule:another-piece-of-its-billing-is-a-performance-the-film-is-not", "own billing"),
+    refusal("rule:its-billing-credits-its-work-to-an-author-who-made-no-such-film", "own billing credit"),
+    refusal("rule:its-billing-is-a-name-alone-which-the-record-s-longer-title-only-leads-and-no-fact-agrees", "aNameAlone"),
+    refusal("rule:the-record-is-the-staged-show-s-own-a-pantomime-is-an-event-no-film", "own billing against the record's titles (ListingShape.showsOwnRecord)"),
+    refusal("rule:the-billing-reads-as-no-film", "readsAsNoFilm: event words"),
+    refusal("rule:a-double-bill", "MultiFilmBill.billsTwoWorks(listing)"),
+    refusal("rule:the-title-joins-another-work-to-it", "joinsAnotherWork"),
+    refusal("rule:its-house-s-record-is-from-another-year-than-its-title-dates", "titleYear.delta"),
+    refusal("rule:it-bills-no-house-s-relay-of-a-work-in-a-season", "listing.relayBilled"),
+    refusal("rule:a-published-year-contradicts-it", "year.distance"),
+    refusal("rule:it-credits-another-director", "director category"),
+    refusal("rule:the-title-names-its-season", "listing.seasonYear"),
+    refusal("rule:a-published-fact-contradicts-it", "contradicted()"),
+    refusal("rule:the-year-it-states-is-another-season-s", "listing.year vs season"),
+    refusal("rule:not-its-search-s-first-hit", "own rank"),
+    refusal("rule:not-named-by-a-piece-of-the-title", "title category"),
+    refusal("rule:its-piece-cannot-stand-for-the-whole-title", "standsForTheWhole"),
+    refusal("rule:the-title-dates-another-year", "titleYear.delta"),
+    refusal("rule:a-bare-billing-names-the-film-only-by-an-alternative-title-and-tmdb-s-search-of-it-finds-other-films-not-this-one", "own search ranks"),
+    refusal("rule:the-title-does-not-name-its-search-s-only-film", "own title vs sole hit"),
     Declared("withdrawal:judged-wrong", "human judgement of this listing's take")
   )
 
   /** Kind (ii): reads the population, one way only. */
   val monotone: Seq[Declared] = Seq(
     Declared("search:found-nothing", "no candidate in the node's scoring of the family pool: siblings' searches can only add candidates"),
-    Declared("rule:no-candidate", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): absence; pool can only grow"),
-    Declared("rule:no-first-hit-is-the-title-s-work", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): absence over own first hits"),
-    Declared("rule:no-film-of-its-credited-director-shares-its-work", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): absence"),
-    Declared("rule:no-film-of-its-exact-title-by-its-credited-director", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): absence"),
-    Declared("rule:no-film-of-its-title-from-the-year-its-title-dates", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): absence"),
-    Declared("rule:no-record-bills-its-work-under-its-house", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): absence"),
-    Declared("rule:no-record-of-its-house-s-relay-of-its-work-from-its-season", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): absence"),
-    Declared("rule:no-season-record-carries-its-title-or-its-work-under-its-house", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): absence"),
-    Declared("rule:no-film-its-whole-title-names-is-its-search-s-first-hit", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): absence over own search ranks"),
-    Declared("rule:the-title-names-no-film", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): absence"),
-    Declared("rule:imdb-suggests-none-of-its-candidates", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): absence"),
-    Declared("rule:no-search-of-its-returned-a-single-film", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): absence"),
+    refusal("rule:no-candidate", "absence; pool can only grow"),
+    refusal("rule:no-first-hit-is-the-title-s-work", "absence over own first hits"),
+    refusal("rule:no-film-of-its-credited-director-shares-its-work", "absence"),
+    refusal("rule:no-film-of-its-exact-title-by-its-credited-director", "absence"),
+    refusal("rule:no-film-of-its-title-from-the-year-its-title-dates", "absence"),
+    refusal("rule:no-record-bills-its-work-under-its-house", "absence"),
+    refusal("rule:no-record-of-its-house-s-relay-of-its-work-from-its-season", "absence"),
+    refusal("rule:no-season-record-carries-its-title-or-its-work-under-its-house", "absence"),
+    refusal("rule:no-film-its-whole-title-names-is-its-search-s-first-hit", "absence over own search ranks"),
+    refusal("rule:the-title-names-no-film", "absence"),
+    refusal("rule:imdb-suggests-none-of-its-candidates", "absence"),
+    refusal("rule:no-search-of-its-returned-a-single-film", "absence"),
     Declared("pin", "Pinned if any cluster member is pinned (ResolverDecisions.scala): own or joined pin")
   )
 
-  /** Kind (iii): weighs the listing against the population. */
-  val nonMonotone: Seq[Declared] = Seq(
+  /** Kind (iii) acceptances: an `accept:` rule alone, a `pooled:` one over the cluster's pooled evidence. */
+  private val nonMonotoneAcceptances: Seq[Declared] = Seq(
     Declared("accept:sole-work", "one() of first hits + noneOf 'the title names another film' over the family-pool ranking (AcceptanceRuleTable SoleWork)"),
     Declared("accept:favoured-calibrated", "runner-up comparison (eligible.lift(1)) + closerThan; probability carries the rivals count (AcceptanceRuleTable FavouredCalibrated)"),
     Declared("accept:exact-top-hit", "unique exact top hit ('two exact top hits'), unopposed(): no rival fitsBetter, class probability with rivals (AcceptanceRuleTable ExactTopHit)"),
@@ -132,7 +137,11 @@ object RuleContract {
     Declared("pooled:exact-top-hit", "cluster's POOLED evidence (scope.pooled) + tiedAtTop guard (Acceptance.scala); same uniqueness/rival checks as alone rule"),
     Declared("pooled:imdb-suggested", "cluster's POOLED evidence (scope.pooled) + tiedAtTop guard (Acceptance.scala); same uniqueness/rival checks as alone rule"),
     Declared("pooled:unnamed", "PooledMatch whose film no pooled rule names: ClusterVoting.familyMajority ('N of M venue(s)' majority) or a vote ResolverRun.scala"),
-    Declared("pooled:no-film", "no-match listing without a node trace (also IdentityTraceStore.scala): cluster-level no-film"),
+    Declared("pooled:no-film", "no-match listing without a node trace (also IdentityTraceStore.scala): cluster-level no-film")
+  )
+
+  /** Kind (iii) vetoes and withdrawals: relative to another candidate, member or sibling. */
+  private val nonMonotoneVetoes: Seq[Declared] = Seq(
     Declared("veto:denied", "fallback: pooled best candidate denied with no reason text (ResolverDecisions.scala picks the denying member)"),
     Declared("veto:imdb-suggested-only", "blocker: every candidate denied or suggested-only, none carrying a denial; over the family-pool ranking"),
     Declared("veto:bills-both-works", "billsSeveralWorks matches slash/'and' pieces against pool candidates + billingUnderBanner reads cluster siblings (NoFilmMembers)"),
@@ -148,33 +157,41 @@ object RuleContract {
     Declared("veto:its-title-names-it-only-by-a-programme-tag-billed-beside-many-titles", "namesOnlyATag: corpus count of titles a tag is billed beside"),
     Declared("veto:its-venue-s-own-text-credits-another-film-s-director-and-none-of-this-relay-s", "RelayRecords.contradictedByOwnText reads the other reached films"),
     Declared("veto:its-feed-s-link-*-*-overruled-*", "OPEN; rival backed by >= OverrulingSources venues / more venues billing a current release: counts"),
-    Declared("withdrawn:sibling-denies-film", "Families.deniedBySibling: a title-linked sibling's evidence denies its own match"),
-    Declared("rule:bills-several-works", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): Acceptance.scala 'alone' refusal; billsSeveralWorks matches pieces against pool candidates"),
-    Declared("rule:its-own-facts-do-not-favour-it-over-the-runner-up", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): favoured-calibrated runner-up (preferred blocker, Decision.scala)"),
-    Declared("rule:its-title-sits-inside-a-closer-record", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): closerThan another candidate"),
-    Declared("rule:no-eligible-candidate", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): eligibility via denials, some pool/sibling-relative"),
-    Declared("rule:below-the-rating-cut", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): probability carries rivals count / priorsLent over eligible"),
-    Declared("rule:a-rival-fits-its-facts-better", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): fitsBetter rival"),
-    Declared("rule:its-title-names-nothing-of-it-and-another-film-of-its-director-it-names-or-dates-as-closely-stands-beside-it", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): anotherOfItsDirector rival"),
-    Declared("rule:untaken", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): Scored.untaken via shortUntaken reads pool features (ListingScoring.scala, shortUntaken)"),
-    Declared("rule:its-page-reads-as-reused-only-a-copied-original-title-names-a-film-of-it-and-the-billing-says-more", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): another eligible candidate copiedBeyondItsBilling"),
-    Declared("rule:two-first-hits-are-the-title-s-work", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): uniqueness"),
-    Declared("rule:the-title-names-another-film", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): noneOf other candidate"),
-    Declared("rule:two-films-of-its-director-share-its-work", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): uniqueness"),
-    Declared("rule:two-films-of-its-title-by-its-director", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): uniqueness"),
-    Declared("rule:two-films-of-its-title-from-that-year", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): uniqueness"),
-    Declared("rule:two-records-bill-its-work-under-its-house", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): uniqueness"),
-    Declared("rule:another-record-carries-its-title-or-fits-as-well", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): rival"),
-    Declared("rule:two-records-of-its-house-s-relay-of-its-work-from-its-season", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): uniqueness"),
-    Declared("rule:two-seasons-records-carry-its-title", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): uniqueness"),
-    Declared("rule:two-exact-top-hits", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): uniqueness"),
-    Declared("rule:its-exact-top-hit-is-denied", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): denial may be pool/sibling-relative"),
-    Declared("rule:the-title-names-two-films", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): uniqueness"),
-    Declared("rule:the-film-it-names-is-denied", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): denial may be pool-relative"),
-    Declared("rule:no-imdb-suggestion-is-taken-by-its-year-its-director-or-as-the-only-one", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): count()==1 rungs"),
-    Declared("rule:two-imdb-suggestions-qualify", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): uniqueness"),
-    Declared("rule:tmdb-ranks-another-film-the-title-names-above-it", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): rival ranked above"),
-    Declared("rule:its-searches-returned-different-single-films", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): uniqueness"),
+    Declared("withdrawn:sibling-denies-film", "Families.deniedBySibling: a title-linked sibling's evidence denies its own match")
+  )
+
+  /** Kind (iii) refusals: a rival, a uniqueness or a pool-relative denial. */
+  private val nonMonotoneRefusals: Seq[Declared] = Seq(
+    refusal("rule:bills-several-works", "Acceptance.scala 'alone' refusal; billsSeveralWorks matches pieces against pool candidates"),
+    refusal("rule:its-own-facts-do-not-favour-it-over-the-runner-up", "favoured-calibrated runner-up (preferred blocker, Decision.scala)"),
+    refusal("rule:its-title-sits-inside-a-closer-record", "closerThan another candidate"),
+    refusal("rule:no-eligible-candidate", "eligibility via denials, some pool/sibling-relative"),
+    refusal("rule:below-the-rating-cut", "probability carries rivals count / priorsLent over eligible"),
+    refusal("rule:a-rival-fits-its-facts-better", "fitsBetter rival"),
+    refusal("rule:its-title-names-nothing-of-it-and-another-film-of-its-director-it-names-or-dates-as-closely-stands-beside-it", "anotherOfItsDirector rival"),
+    refusal("rule:untaken", "Scored.untaken via shortUntaken reads pool features (ListingScoring.scala, shortUntaken)"),
+    refusal("rule:its-page-reads-as-reused-only-a-copied-original-title-names-a-film-of-it-and-the-billing-says-more", "another eligible candidate copiedBeyondItsBilling"),
+    refusal("rule:two-first-hits-are-the-title-s-work", "uniqueness"),
+    refusal("rule:the-title-names-another-film", "noneOf other candidate"),
+    refusal("rule:two-films-of-its-director-share-its-work", "uniqueness"),
+    refusal("rule:two-films-of-its-title-by-its-director", "uniqueness"),
+    refusal("rule:two-films-of-its-title-from-that-year", "uniqueness"),
+    refusal("rule:two-records-bill-its-work-under-its-house", "uniqueness"),
+    refusal("rule:another-record-carries-its-title-or-fits-as-well", "rival"),
+    refusal("rule:two-records-of-its-house-s-relay-of-its-work-from-its-season", "uniqueness"),
+    refusal("rule:two-seasons-records-carry-its-title", "uniqueness"),
+    refusal("rule:two-exact-top-hits", "uniqueness"),
+    refusal("rule:its-exact-top-hit-is-denied", "denial may be pool/sibling-relative"),
+    refusal("rule:the-title-names-two-films", "uniqueness"),
+    refusal("rule:the-film-it-names-is-denied", "denial may be pool-relative"),
+    refusal("rule:no-imdb-suggestion-is-taken-by-its-year-its-director-or-as-the-only-one", "count()==1 rungs"),
+    refusal("rule:two-imdb-suggestions-qualify", "uniqueness"),
+    refusal("rule:tmdb-ranks-another-film-the-title-names-above-it", "rival ranked above"),
+    refusal("rule:its-searches-returned-different-single-films", "uniqueness")
+  )
+
+  /** Kind (iii) votes and the agreement stage: a family's, the venues' or the feeds' say. */
+  private val nonMonotoneVotes: Seq[Declared] = Seq(
     Declared("agreed:*", "several film-database families agree on a film for a cluster TMDB matched to nothing: the family's votes are pooled"),
     Declared("poster:vote", "PosterEvidence.vote: the ONE candidate any venue poster matches, no other within VoteBits"),
     Declared("broadcast", "Broadcast.take: the one record the cluster's screening days name, none denied"),
@@ -184,6 +201,9 @@ object RuleContract {
     Declared("correction:*", "the agreement stage switches a take on evidence its family and the feeds give"),
     Declared("withdrawal:*", "the agreement stage withdraws a take on evidence its family and the feeds give")
   )
+
+  /** Kind (iii): weighs the listing against the population. */
+  val nonMonotone: Seq[Declared] = nonMonotoneAcceptances ++ nonMonotoneVetoes ++ nonMonotoneRefusals ++ nonMonotoneVotes
 
   val declared: Seq[(Declared, RuleKind)] =
     populationIndependent.map(_ -> RuleKind.PopulationIndependent) ++ monotone.map(_ -> RuleKind.Monotone) ++
