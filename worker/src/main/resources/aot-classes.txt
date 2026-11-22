@@ -8688,8 +8688,6 @@ services.cinemas.common.CinemaMovieJson$$anon$1
 services.cinemas.common.CinemaMovieJson$$anon$2
 services.cinemas.common.CinemaMovieJson$$anon$3
 services.cinemas.common.CinemaMovieJson$$anon$4
-services.cinemas.common.CinemaMovieJson$Transport
-services.cinemas.common.CinemaMovieJson$Transport$
 services.cinemas.common.CinemaScrapeRunner
 services.cinemas.common.CinemaScrapeRunner$
 services.cinemas.common.CinemaScraper

@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json.*
+import services.scrapes.ArchivedFilmDto
 
 /**
  * Serialises a chunk's slice of a listing (a `Seq[CinemaMovie]`) to/from JSON
@@ -19,22 +20,13 @@ object CinemaMovieJson {
   private implicit val showtimeFormat: Format[Showtime] = models.ShowtimeJson.format
   private implicit val movieFormat: Format[Movie] = Json.format[Movie]
 
-  /** A transport mirror of `CinemaMovie` minus `cinema`. Every OTHER field must
-   *  be here: a field omitted decodes as its default, so the chunked half of the
-   *  corpus quietly loses it while the non-chunked half keeps it. `ageRating`
-   *  was missing for exactly that reason — defaulted so a chunk written by the
-   *  previous deploy still decodes. */
-  private case class Transport(
-    movie: Movie, posterUrl: Option[String], filmUrl: Option[String], synopsis: Option[String],
-    cast: Seq[String], director: Seq[String], showtimes: Seq[Showtime],
-    externalIds: Map[String, String], trailerUrl: Option[String], ageRating: Option[String] = None)
-  private implicit val transportFormat: Format[Transport] = Json.format[Transport]
+  /** A slice's films as the scrape archive stores them ([[ArchivedFilmDto]], `CinemaMovie` minus `cinema`): ONE mirror
+   *  for both stores, so no field the archive keeps is lost in a chunk. A hand-kept copy here once missed `ageRating`,
+   *  then `synopsisExcerpt`: each decoded as its default on the chunked half of the corpus only. The showtimes' digest
+   *  is the archive's, never written here; a field a slice from the previous deploy lacks decodes as None. */
+  private implicit val filmFormat: Format[ArchivedFilmDto] = Json.format[ArchivedFilmDto]
 
-  def encode(movies: Seq[CinemaMovie]): String =
-    Json.stringify(Json.toJson(movies.map(m =>
-      Transport(m.movie, m.posterUrl, m.filmUrl, m.synopsis, m.cast, m.director, m.showtimes, m.externalIds, m.trailerUrl, m.ageRating))))
+  def encode(movies: Seq[CinemaMovie]): String = Json.stringify(Json.toJson(movies.map(ArchivedFilmDto.of(_))))
 
-  def decode(json: String, cinema: Cinema): Seq[CinemaMovie] =
-    Json.parse(json).as[Seq[Transport]].map(t =>
-      CinemaMovie(t.movie, cinema, t.posterUrl, t.filmUrl, t.synopsis, t.cast, t.director, t.showtimes, t.externalIds, t.trailerUrl, t.ageRating))
+  def decode(json: String, cinema: Cinema): Seq[CinemaMovie] = Json.parse(json).as[Seq[ArchivedFilmDto]].map(_.toDomain(cinema))
 }

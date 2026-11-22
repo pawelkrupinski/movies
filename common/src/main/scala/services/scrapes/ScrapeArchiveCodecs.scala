@@ -31,7 +31,19 @@ case class ArchivedFilmDto(
   // model's take-up, the projection's listing read — tells a change in them by, leaving them on the server. Absent
   // on a film written before it existed, whose reader reads the showtimes instead.
   showtimesDigest: Option[Int] = None
-)
+) {
+  /** The film as `cinema` listed it. */
+  def toDomain(cinema: Cinema): CinemaMovie =
+    CinemaMovie(movie, cinema, posterUrl, filmUrl, synopsis, cast, director, showtimes, externalIds, trailerUrl, ageRating,
+      synopsisExcerpt)
+}
+
+object ArchivedFilmDto {
+  /** `f` as stored, its showtimes' digest as the store keeps one (the archive: `Some(f.showtimes.##)`; a chunk none). */
+  def of(f: CinemaMovie, showtimesDigest: Option[Int] = None): ArchivedFilmDto =
+    ArchivedFilmDto(f.movie, f.posterUrl, f.filmUrl, f.synopsis, f.cast, f.director, f.showtimes, f.externalIds,
+      f.trailerUrl, f.ageRating, f.synopsisExcerpt, showtimesDigest)
+}
 
 /** The newest attempt that produced nothing, stored beside the listing it failed
  *  to refresh. `outcome` is the wire label of a [[ScrapeOutcome]]. */
@@ -90,17 +102,13 @@ case class NoScheduleFlagDto(noScheduleListed: Option[Boolean])
 
 object StoredScrapeDto {
 
-  def toFilmDto(f: CinemaMovie): ArchivedFilmDto =
-    ArchivedFilmDto(f.movie, f.posterUrl, f.filmUrl, f.synopsis, f.cast, f.director,
-      f.showtimes, f.externalIds, f.trailerUrl, f.ageRating, f.synopsisExcerpt, Some(f.showtimes.##))
-
   def fromSuccess(cinema: Cinema, city: Option[String], scrape: SuccessfulScrape): StoredScrapeDto =
     StoredScrapeDto(
       _id             = cinema.displayName,
       city            = city,
       scrapedAt       = Some(scrape.at),
       listingComplete = Some(scrape.listingComplete),
-      films           = Some(scrape.films.map(toFilmDto)),
+      films           = Some(scrape.films.map(f => ArchivedFilmDto.of(f, Some(f.showtimes.##)))),
       // A scrape that just succeeded is by definition the newest thing that has
       // happened to this cinema, so nothing barren can still apply.
       lastBarren      = None
@@ -119,9 +127,7 @@ object StoredScrapeDto {
       lastSuccess = dto.scrapedAt.map(at => SuccessfulScrape(
         at              = at,
         listingComplete = dto.listingComplete.getOrElse(true),
-        films           = dto.films.getOrElse(Seq.empty).map(f => CinemaMovie(
-          f.movie, cinema, f.posterUrl, f.filmUrl, f.synopsis, f.cast, f.director,
-          f.showtimes, f.externalIds, f.trailerUrl, f.ageRating, f.synopsisExcerpt))
+        films           = dto.films.getOrElse(Seq.empty).map(_.toDomain(cinema))
       )),
       lastBarren  = dto.lastBarren.flatMap(_.toDomain)
     )

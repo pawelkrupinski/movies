@@ -40,6 +40,16 @@ class CinemaMovieJsonSpec extends AnyFlatSpec with Matchers {
     decoded                  shouldBe movies
   }
 
+  // `synopsisExcerpt` was absent from the transport mirror as `ageRating` once was: a chunked venue's cut-short
+  // synopsis, which the identity model matches on, would have reached the reduce as None.
+  it should "preserve the synopsis excerpt across the chunk round-trip" in {
+    val movies = Seq(
+      CinemaMovie(Movie("Diuna"), Multikino, None, None, None, Nil, Nil,
+        Seq(Showtime(LocalDateTime.of(2026, 6, 25, 18, 0), None)), Map.empty, None, synopsisExcerpt = Some("Paul Atryda...")))
+
+    CinemaMovieJson.decode(CinemaMovieJson.encode(movies), Multikino) shouldBe movies
+  }
+
   it should "handle an empty slice" in {
     CinemaMovieJson.decode(CinemaMovieJson.encode(Nil), Multikino) shouldBe empty
   }
