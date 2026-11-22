@@ -10,6 +10,8 @@ commands, and the real one is `SubprocessRunner`. A `Command` says how it runs:
   input=TEXT                               TEXT on its stdin (`<<< TEXT`; `capture` only)
   stderr_through=True                      `capture` leaves stderr this process's, as it comes (`$(cmd)`): only
                                            stdout is the answer
+  stderr_log=PATH                          with log=PATH (not teed): stderr into the file at PATH instead, appended
+                                           alike (`> log 2> PATH`)
   timeout=SECONDS                          ended past it, its whole process group -- TERM, a moment, then KILL --
                                            exit 124 (tool-conventions.sh's `bounded`), teed or not. Its group is a
                                            session of its own, out of reach of whatever ends this process (a caller's
@@ -54,6 +56,7 @@ class Command:
     cwd: Optional[str] = None  # the directory it runs in (this process's by default)
     input: Optional[str] = None  # what its stdin reads (capture only)
     stderr_through: bool = False  # `capture`: stderr not captured but this process's
+    stderr_log: Optional[str] = None  # with log: stderr into this file instead
 
 
 @dataclass(frozen=True)
@@ -93,6 +96,9 @@ class SubprocessRunner:
         with open(command.log, "ab" if command.append else "wb") as sink:
             if command.tee:
                 return self._tee(command, sink, guard)
+            if command.stderr_log is not None:
+                with open(command.stderr_log, "ab" if command.append else "wb") as errors:
+                    return self._wait(guard.started(self._start(command, sink, errors)), command.timeout)
             return self._wait(guard.started(self._start(command, sink, subprocess.STDOUT)), command.timeout)
 
     def capture(self, command: Command) -> Captured:
@@ -115,7 +121,7 @@ class SubprocessRunner:
                 return Captured(TIMED_OUT, out.decode(errors="replace"), (err or b"").decode(errors="replace"))
 
     def _start(self, command: Command, stdout: Union[int, BinaryIO, None],
-               stderr: Optional[int]) -> "subprocess.Popen[bytes]":
+               stderr: Union[int, BinaryIO, None]) -> "subprocess.Popen[bytes]":
         return subprocess.Popen(list(command.argv), env=dict(command.env), stdin=self.stdin(command), cwd=command.cwd,
                                 stdout=stdout, stderr=stderr, start_new_session=command.timeout is not None)
 

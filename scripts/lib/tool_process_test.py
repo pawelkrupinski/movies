@@ -56,6 +56,17 @@ class SubprocessRunnerTest(unittest.TestCase):
         open(plain, "w").close()
         self.assertEqual(126, self.runner.run(tool_process.Command([plain], dict(os.environ), log=self.log)))
 
+    def test_stderr_into_a_log_of_its_own(self) -> None:
+        errors = os.path.join(self.dir.name, "errors")
+        self.assertEqual(3, self.runner.run(tool_process.Command([*SH, "echo out; echo err >&2; exit 3"],
+                                                                 dict(os.environ), log=self.log, stderr_log=errors)))
+        with open(errors) as f:
+            self.assertEqual(("out\n", "err\n"), (self.logged(), f.read()))
+
+    def test_capture_feeds_its_input_to_stdin(self) -> None:
+        done = self.runner.capture(tool_process.Command(["tr", "a-z", "A-Z"], dict(os.environ), input="paths\n"))
+        self.assertEqual((0, "PATHS\n"), (done.code, done.stdout))
+
     def test_cwd(self) -> None:
         done = self.runner.capture(tool_process.Command(["pwd"], dict(os.environ), cwd=self.dir.name))
         self.assertEqual(os.path.realpath(self.dir.name), os.path.realpath(done.stdout.strip()))
