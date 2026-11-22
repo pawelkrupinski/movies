@@ -14,7 +14,7 @@ import services.scrapes.InMemoryScrapeArchiveRepository
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import services.identity.vocabulary.Question
-import services.identity.measures.{Listing, ResolverDecision}
+import services.identity.measures.{DecisionTrace, Listing, ResolverDecision}
 
 /**
  * The identity projection wired over the real cache and an in-memory store: what a cut-over
@@ -552,6 +552,41 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     triggers(w.projection.tickChanged()) shouldBe Seq("answer+scrape")
     // asked for by nothing new: an unsettled projection run again
     triggers(w.projection.tickChanged()) shouldBe Seq("retry")
+  }
+
+  /** A take the model then vetoes is a take change like any other: the drop logs its `lost` line, naming the veto. UK
+   *  Cineworld's "The Rings of Power Season 3 Ep 7" (2026-11-17..21) looked like a learned runtime veto dropping tmdb
+   *  1828101 with no line; the veto had stood under the poster take all along, and the take ended with the listings
+   *  departing (11-19) and returning, re-billed, at none (11-20): no billed listing's take moved. This pins that a veto
+   *  dropping a billed listing's take is never silent. */
+  "A projection whose model vetoes a listing's film" should "log the dropped take's line, decided by the veto" in {
+    var vetoed = false
+    val runtimeVeto = "Learned(runtime.gap >= 36 AND title in {none,overlap})"
+    val decide: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
+      r.copy(resolution = r.resolution.copy(decisions = r.resolution.decisions.map { d =>
+        if (d.members.head.rawTitle == "Lalka" && vetoed)
+          ResolverDecision(d.members, None, 1.0, ResolverDecision.Basis.Vetoed, Seq(s"vetoed by $runtimeVeto"))(
+            DecisionTrace(None, Some(DecisionTrace.Veto(runtimeVeto, Some("Lalka"))), Map.empty))
+        else ResolverDecision(d.members, Some(500 + d.members.head.rawTitle.length), 0.9, ResolverDecision.Basis.OwnMatch, Seq("own match"))()
+      }))
+    }
+    val w = new ProjectionWorld(new InMemoryMovieRepository(normalizer = normalizer), programme.keys.toSeq, clock, decide)
+    w.scrape(programme)
+    w.projection.tick()
+    w.takes.clear()
+    vetoed = true
+    val events = tools.LogCapture.thisThread(classOf[IdentityProjection].getName)(w.projection.tick())
+    val lalka  = programme.toSeq.flatMap { case (cinema, films) => films.filter(_.movie.title == "Lalka").map(_ => cinema.displayName) }.sorted
+    w.takes.filter(_.moved).map(t => (t.kind, t.listing.venue, t.listing.rawTitle, t.after)).sortBy(_._2) shouldBe
+      lalka.map((TakeChange.Kind.Lost, _, "Lalka", None))
+    val lines = events.filter(_.getFormattedMessage.startsWith("identity take change: lost"))
+    lines.map(e => lalka.find(e.getFormattedMessage.contains).get).sorted shouldBe lalka
+    lines.map(e => Option(e.getKeyValuePairs).fold(Map.empty[String, Any])(pairs =>
+      scala.jdk.CollectionConverters.ListHasAsScala(pairs).asScala.map(p => p.key -> p.value).toMap)).foreach { line =>
+      line("basis") shouldBe "Vetoed"
+      line("decided_by") shouldBe "veto:learned-runtime-gap-36-and-title-in-none-overlap"
+      line("tmdb_before") shouldBe 505
+    }
   }
 
   "A projection that moves a listing's TMDB film" should "report and log the take change, a new listing joined, and nothing for expected churn" in {
