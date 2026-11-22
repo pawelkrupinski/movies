@@ -495,6 +495,16 @@ as it lands unless `.github/red-workflows.tsv` says `verify_dispatch no` (a work
 one whose verification misses its deadline goes back to a fixer, escalated (`~/bin/AGENTCTL.md`, VERIFY PROMPTLY BY
 DEFAULT).
 
+**A failed job is a red before its run ends** (the owner, 2026-11-22: "react to parts of workflow failing and
+notifying / spinning the agents right away"). agentctl reads the jobs of every run on main still in progress at each
+tick; a job that failed a test or a compile while the rest runs on is an EARLY red: its author and the owner are told
+and a fixer is dispatched at once, its brief saying the run goes on and other jobs may still fail (they join the same
+fixer; when the run completes failing, its verdict is the same red). An infra-shaped failure waits for the run's
+verdict. Nothing changes for a lander: the gate still reads COMPLETED runs, so an early red holds no push and asks no
+`Fixes-Red:` of anyone; its fix names the running run (`Fixes-Red: <run>`) and lands like any fix. It is never blamed
+or reverted before its run completes, and a cancelled or superseded run, or a rerun clearing the job, withdraws it and
+stands its fixer down (`~/bin/AGENTCTL.md`, "early reds").
+
 **A reverted change comes back to its lander** (the owner, 2026-11-21: 604134d1a was reverted by a red fixer as
 7380cf9d7 and nobody told the agent that wrote it). Every commit on main that reverts others (`This reverts commit
 <sha>`, or a `Reverts: <sha>` trailer) is mapped by agentctl to the landing that brought the reverted commit in: its
