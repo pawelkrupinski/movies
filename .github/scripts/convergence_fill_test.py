@@ -20,7 +20,7 @@ import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path(".github/scripts/convergence_fill.py", ".github/scripts/convergence-fill.sh")
 GH = r"""
-import shutil, time
+import shutil, signal
 root = env["STUB_ROOT"]
 release = os.path.join(root, "release")
 def note(name, line):
@@ -36,7 +36,7 @@ if verb == "release view":
     if env.get("STUB_HANGS"):  # never answers: blocks until killed
         with open(env["STUB_HANGS"], "a") as f:
             f.write(str(os.getpid()) + "\n")
-        time.sleep(86400)
+        signal.pause()  # blocks until killed: only the tool's own bound ends it
     if env.get("STUB_FAILS_ONCE") and not os.path.exists(os.path.join(root, "failed-once")):  # a 5xx, once
         open(os.path.join(root, "failed-once"), "w").close(); exit(1)
     names = sorted(os.listdir(release))

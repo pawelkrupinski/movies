@@ -172,7 +172,8 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     treeStep should include("COMPLETE: ${{ inputs.complete }}")
     treeStep should include("""convergence-publish.sh tree "$CODE" "$COMPLETE" "$LOG"""")
     // The decision is taken where the pinned tree is uploaded, and handed to the marker's step.
-    publishFunction("publish_tree") should include("""boot complete""")
+    publishFunction("publish_tree") should include("""self.boot_completed(code, log)""")
+    RepoFile.pythonFunction(".github/scripts/convergence_publish.py", "boot_completed") should include("boot complete")
     publishFunction("publish_tree") should include("""complete == "true"""")
     // The pinned copy is published only then, and the pin guard pins nothing that has none.
     publishFunction("verified_pin") should include("""rf"^enrichment-{code}-{self.run}\.tar\.(zst|gz)$"""")

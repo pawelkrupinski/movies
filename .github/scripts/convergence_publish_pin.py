@@ -12,6 +12,7 @@ corpus download gets what is left of it (600 s at most), and a country with none
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -81,8 +82,7 @@ class Pin:
         if self.verdict != "success":
             raise Refused(f"recording {self.run}'s verify ended {self.verdict}, not success")
         self.no_finding(code)
-        tree = next((n for n in self.names if n in (f"enrichment-{code}-{self.run}.tar.zst",
-                                                    f"enrichment-{code}-{self.run}.tar.gz")), "")
+        tree = next((n for n in self.names if re.match(rf"^enrichment-{code}-{self.run}\.tar\.(zst|gz)$", n)), "")
         if not tree:
             raise Refused(f"no pinned copy enrichment-{code}-{self.run}.tar.* of recording {self.run} on "
                           f"{self.publish.tag()}")

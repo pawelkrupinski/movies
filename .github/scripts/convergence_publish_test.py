@@ -21,7 +21,7 @@ TOOL = cli_harness.tool_path(".github/scripts/convergence_publish.py", ".github/
 # The release is <work>/release (absent until created); an asset's createdAt is in <work>/created/<name>, else a fixed
 # time. Every write is logged to <work>/calls. A run's artifact <n> is <work>/artifacts/<run>/<n>/.
 GH = r"""
-import json, shutil, subprocess, time
+import json, shutil, signal, subprocess
 root = env["STUB_ROOT"]
 release = os.path.join(root, "release")
 def flag(args, name):
@@ -38,7 +38,7 @@ if argv[0] == "run":
     if env.get("STUB_RUN_DOWNLOAD_HANGS"):  # an artifact storage that never answers (HUNG STUBS)
         with open(env["STUB_RUN_DOWNLOAD_HANGS"], "a") as f:
             f.write(str(os.getpid()) + "\n")
-        time.sleep(86400)
+        signal.pause()  # blocks until killed: only the tool's own bound ends it
     os.makedirs(flag(argv, "--dir"), exist_ok=True)
     for f in os.listdir(src):
         shutil.copy(os.path.join(src, f), flag(argv, "--dir"))
