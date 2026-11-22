@@ -22,7 +22,7 @@ printf '#!/usr/bin/env bash\ncase "$1" in get-state) echo "$ADB_STATE";; shell) 
 chmod +x "$bin"/* "$work/sdk/platform-tools/adb"
 
 pre() { # <leg>: the preflight's exit; its output in $work/out
-  env PATH="$bin:$PATH" GITHUB_OUTPUT="$work/gh-out" GITHUB_STEP_SUMMARY=/dev/null ANDROID_HOME="$work/sdk" "$tool" "$1" > "$work/out" 2>&1
+  env -u ANDROID_SDK_ROOT PATH="$bin:$PATH" GITHUB_OUTPUT="$work/gh-out" GITHUB_STEP_SUMMARY=/dev/null ANDROID_HOME="$work/sdk" "$tool" "$1" > "$work/out" 2>&1
   echo $?
 }
 : > "$work/gh-out"
@@ -34,7 +34,7 @@ check "scala with java 17 and BSD sed/date/timeout: fails, naming each, every fi
   "$(FLAVOUR=bsd JAVA=17 pre scala)|$(grep -c '^::error title=Runner preflight::UNKNOWN: runner preflight (scala): ' "$work/out")|$(grep -c -e 'not GNU' -e 'java is 17, the leg pins 27' "$work/out")|$(grep -c '^preflight=failed$' "$work/gh-out")"
 check "android: java 17 and adb under the SDK: passes" "0" "$(FLAVOUR=gnu JAVA=17 pre android)"
 check "android with no adb under the SDK: fails" "1|1" \
-  "$(FLAVOUR=gnu JAVA=17 env ANDROID_HOME="$work/none" PATH="$bin:$PATH" GITHUB_OUTPUT=/dev/null "$tool" android > "$work/out" 2>&1; echo $?)|$(grep -c 'no adb under the SDK' "$work/out")"
+  "$(FLAVOUR=gnu JAVA=17 env -u ANDROID_SDK_ROOT ANDROID_HOME="$work/none" PATH="$bin:$PATH" GITHUB_OUTPUT=/dev/null "$tool" android > "$work/out" 2>&1; echo $?)|$(grep -c 'no adb under the SDK' "$work/out")"
 check "device: adb sees the booted emulator: passes" "0" "$(PATH="$work/sdk/platform-tools:$PATH" ADB_STATE=device BOOTED=1 pre device)"
 check "device: still booting: fails as the runner" "1|1" \
   "$(PATH="$work/sdk/platform-tools:$PATH" ADB_STATE=device BOOTED=0 pre device)|$(grep -c 'UNKNOWN: runner preflight (device): the emulator has not finished booting' "$work/out")"
