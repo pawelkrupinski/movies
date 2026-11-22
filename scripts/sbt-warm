@@ -616,9 +616,11 @@ fi
 # The KINOWO_* settings this call passes. A kept server reads the environment it STARTED with, never a later call's:
 # KINOWO_IDENTITY_CORPUS_DIR given to a call reached nothing, and the corpus specs cancelled (2026-10-18). A call whose
 # settings differ from its server's restarts the server with them. The tool-side knobs (KINOWO_SBT_WARM_*, KINOWO_SBT_CACHE*, the JVM
-# gate's KINOWO_MEMORY_GATE*/KINOWO_JVM_*, the stall bound's KINOWO_STALL_*/KINOWO_PROGRESS_FILE) are no server setting.
+# gate's KINOWO_MEMORY_GATE*/KINOWO_JVM_*, the stall bound's KINOWO_STALL_*/KINOWO_PROGRESS_FILE, the governor's
+# KINOWO_GOV*) are no server setting -- land-precheck's KINOWO_GOV_CLASS=check restarted the agent's warm server on every land
+# (2026-11-22: 266 restarts in stops.log; every precheck that reached its 300 s bound ran on a fresh server).
 settings=$(env | grep '^KINOWO_' | grep -v -e '^KINOWO_SBT_WARM_' -e '^KINOWO_SBT_CACHE' -e '^KINOWO_MEMORY_GATE' -e '^KINOWO_JVM_' \
-  -e '^KINOWO_STALL_' -e '^KINOWO_PROGRESS_FILE=' | sort | shasum | cut -c1-16)
+  -e '^KINOWO_STALL_' -e '^KINOWO_PROGRESS_FILE=' -e '^KINOWO_GOV' | sort | shasum | cut -c1-16)
 if [ "$fresh" = 0 ] && [ -f "$State/$key.env" ] && [ "$(cat "$State/$key.env")" != "$settings" ]; then
   log "this call's KINOWO_* settings differ from the ones server pid $pid started with: restarting it with them"
   # never under another call's running command (it holds $key.busy shared, as this one does): this call waits for the

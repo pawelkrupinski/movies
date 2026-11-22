@@ -228,6 +228,12 @@ server=$!; fakes+=("$server")
 await_server "$server"
 (cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a call with the server's own settings keeps it" "running" "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped)"
+# the governor's knobs are the tool's, never the server's: land-precheck's KINOWO_GOV_CLASS=check restarted the
+# agent's warm server on every land (2026-11-22: 266 restarts in stops.log; every precheck at its 300 s bound ran on
+# a fresh server)
+(cd "$scratch/other" && KINOWO_GOV_CLASS=check KINOWO_GOV_CORES=4 "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "...and so does one passing only the governor's KINOWO_GOV_* knobs" "running" \
+  "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped)"
 out=$(cd "$scratch/other" && KINOWO_IDENTITY_CORPUS_DIR=/corpora "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null)
 wait_until "the restarted server is stopped" '! kill -0 "$server" 2>/dev/null'
 check "a call passing other KINOWO_* settings restarts the server with them" "stopped yes" \
