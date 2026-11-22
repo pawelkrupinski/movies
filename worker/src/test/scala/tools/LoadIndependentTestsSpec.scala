@@ -71,8 +71,6 @@ class LoadIndependentTestsSpec extends AnyFlatSpec with Matchers {
       HangStub,
     s"scripts/ci/bounded-step-test.sh: escaped=$$(step \"setsid bash -c 'while :; do sleep 1; done' '$$work' & echo \\$$! > '$$work/child'; while :; do sleep 1; done\")" ->
       HangStub,
-    s"scripts/identity-slice-test.sh: sleep 0.5" ->
-      "an absence check: the keeper must still hold on after its JVM exec'd; a slow machine makes it vacuous, never red",
     s"scripts/jvm-gate-test.sh: until jvm_lock \"$$work/race$$round\"; do sleep 0.01; done" ->
       "the race itself: each racer retries the lock in its own subshell, which must hold it",
     s"scripts/jvm-gate-test.sh: echo in >> \"$$work/inside$$round\"; sleep 0.05; echo out >> \"$$work/inside$$round\"; jvm_unlock \"$$work/race$$round\" ) &" ->

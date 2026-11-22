@@ -14,6 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import tool_process  # noqa: E402
 import tool_shell  # noqa: E402
+from identity_kept_jvms import alive as alive  # noqa: E402 (identity_what_if_cli_mirror's, _sides')
 from identity_what_if_cli_options import Options  # noqa: E402
 
 TOOL = "identity-what-if"
@@ -71,17 +72,6 @@ def lines_of(path: str) -> List[str]:
 def write(path: str, text: str) -> None:
     with open(path, "w", newline="") as f:
         f.write(text)
-
-
-def alive(pid: str) -> bool:
-    """`kill -0 <pid>`: a number naming a process this user may signal."""
-    if not pid.isascii() or not pid.isdigit():
-        return False
-    try:
-        os.kill(int(pid), 0)
-    except (OSError, OverflowError):
-        return False
-    return True
 
 
 class Context:

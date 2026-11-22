@@ -88,7 +88,7 @@ stray=4194401 small=4194402 hog=4194403 slice=4194404
   printf '%s 1 2500000 1:00.00 2-00:00:00 /jdk/bin/java -Xmx6g strayer\n' "$stray"
   printf '%s 1 200000 0:10.00 2-00:00:00 /jdk/bin/java -Xmx1g small\n' "$small"
   printf '%s 1 100000 50:00.00 01:00:00 python3 busy.py\n' "$hog"
-  printf '%s 1 3000 0:01.00 01:00:00 bash scripts/identity-slice de --batch x\n' "$slice"
+  printf '%s 1 3000 0:01.00 01:00:00 python3 scripts/identity_slice_cli.py de --batch x\n' "$slice"  # identity-slice, since its port
 } > "$work/ps.txt"
 {
   printf 'p%s\nfcwd\nn%s\n' "$$" "$work/wt-orphan"
@@ -141,7 +141,7 @@ check "a dead lock owner is named" "locked by pid $dead_pid (DEAD)" \
 check "a process with its cwd in a subdirectory is attributed to the worktree" "1" \
   "$(block wt-orphan | grep -c "pid $victim ")"
 check "...with its RSS" "1" "$(block wt-orphan | grep -c "pid $victim .*rss   781MB")"
-check "an identity-slice run is listed under its worktree" "1" "$(block wt-live | grep -c identity-slice)"
+check "an identity-slice run (python3 identity_slice_cli.py) is listed under its worktree" "1" "$(block wt-live | grep -c identity_slice_cli)"
 heavy="$(printf '%s\n' "$listing" | sed -n '/^Heavy processes/,$p')"
 check "a >1 GB process outside every worktree is listed as heavy" "1" "$(printf '%s\n' "$heavy" | grep -c "pid $stray ")"
 check "a lifetime-CPU hog outside every worktree is listed as heavy" "1" "$(printf '%s\n' "$heavy" | grep -c "pid $hog ")"

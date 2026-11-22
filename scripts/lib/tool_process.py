@@ -8,6 +8,8 @@ commands, and the real one is `SubprocessRunner`. A `Command` says how it runs:
   closed_stdin=True                        stdin from /dev/null (`< /dev/null`)
   cwd=DIR                                  run in DIR
   input=TEXT                               TEXT on its stdin (`<<< TEXT`; `capture` only)
+  stderr_through=True                      `capture` leaves stderr this process's, as it comes (`$(cmd)`): only
+                                           stdout is the answer
   timeout=SECONDS                          ended past it, its whole process group -- TERM, a moment, then KILL --
                                            exit 124 (tool-conventions.sh's `bounded`), teed or not. Its group is a
                                            session of its own, out of reach of whatever ends this process (a caller's
@@ -51,6 +53,7 @@ class Command:
     timeout: Optional[float] = None
     cwd: Optional[str] = None  # the directory it runs in (this process's by default)
     input: Optional[str] = None  # what its stdin reads (capture only)
+    stderr_through: bool = False  # `capture`: stderr not captured but this process's
 
 
 @dataclass(frozen=True)
@@ -96,7 +99,8 @@ class SubprocessRunner:
         sys.stdout.flush()
         with self.groups.guard(command.timeout) as guard:
             try:
-                proc = guard.started(self._start(command, subprocess.PIPE, subprocess.PIPE))
+                proc = guard.started(self._start(command, subprocess.PIPE,
+                                                 None if command.stderr_through else subprocess.PIPE))
             except FileNotFoundError:
                 return Captured(NOT_FOUND, "", f"{command.argv[0]}: command not found\n")
             except PermissionError:
@@ -104,11 +108,11 @@ class SubprocessRunner:
             try:
                 text = None if command.input is None else command.input.encode()
                 out, err = proc.communicate(text, timeout=command.timeout)
-                return Captured(proc.returncode, out.decode(errors="replace"), err.decode(errors="replace"))
+                return Captured(proc.returncode, out.decode(errors="replace"), (err or b"").decode(errors="replace"))
             except subprocess.TimeoutExpired:
                 end_group(proc)
                 out, err = proc.communicate()
-                return Captured(TIMED_OUT, out.decode(errors="replace"), err.decode(errors="replace"))
+                return Captured(TIMED_OUT, out.decode(errors="replace"), (err or b"").decode(errors="replace"))
 
     def _start(self, command: Command, stdout: Union[int, BinaryIO, None],
                stderr: Optional[int]) -> "subprocess.Popen[bytes]":

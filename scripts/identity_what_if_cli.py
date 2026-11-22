@@ -93,16 +93,15 @@ scripts/jvm-gate.sh."""
 from __future__ import annotations
 
 import os
-import signal
 import subprocess
 import sys
 import time
 import traceback
-from types import FrameType
-from typing import Dict, List, NoReturn, Optional
+from typing import Dict, List, NoReturn
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
+import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
 import tool_shell  # noqa: E402
 from identity_what_if_cli_context import IDENTITY_TOOLS, TOOL, Context, Exit  # noqa: E402
@@ -111,18 +110,6 @@ from identity_what_if_cli_options import Help, Options, Usage, parse  # noqa: E4
 from identity_what_if_cli_resolve import KEPT_PATTERN, KeptJvms  # noqa: E402
 
 ME = os.path.realpath(__file__)
-
-
-class Interrupted(BaseException):
-    """INT or TERM: the clean-up run on the way out, as the shell tool's EXIT trap did."""
-
-    def __init__(self, signum: int) -> None:
-        super().__init__(signum)
-        self.signum = signum
-
-
-def interrupted(signum: int, _frame: Optional[FrameType]) -> None:
-    raise Interrupted(signum)
 
 
 def keep_served(pid: str, env: Dict[str, str]) -> NoReturn:
@@ -155,13 +142,12 @@ def run(ctx: Context) -> int:
 
 
 def guarded(ctx: Context) -> int:
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        signal.signal(sig, interrupted)
+    tool_cli.raise_on_signals()
     try:
         return run(ctx)
     except Exit as e:
         return e.code
-    except Interrupted as e:
+    except tool_cli.Interrupted as e:
         return 128 + e.signum
     except Exception as e:  # noqa: BLE001 -- the one place an unexpected failure is said
         return unchecked(e)

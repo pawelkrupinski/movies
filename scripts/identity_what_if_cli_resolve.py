@@ -6,103 +6,25 @@ slot is identity-tools.sh's (identity_java_slotted, identity_kept_jvm_start, ide
 lock its process holds, never this one's."""
 from __future__ import annotations
 
-import glob
 import hashlib
 import os
-import re
-import signal
-import stat
-import sys
 from typing import List, Optional, Sequence, Tuple
 
-from identity_what_if_cli_context import TOOL, TOOL_FILES, Context, alive
-import tool_process  # (scripts/lib, on the path the context put it on)
+from identity_what_if_cli_context import TOOL, TOOL_FILES, Context
+from identity_kept_jvms import KeptJvmFiles, alive, is_socket, read, remove, tail_to_stderr  # (scripts/lib)
 
 WHAT_IF_RESOLVE = "services.identity.WhatIfResolve"
 KEPT_PATTERN = r"services\.identity\.WhatIfResolve"
 START_LIMIT = 300  # seconds a kept JVM has to listen
 
 
-def read(path: str) -> str:
-    """`$(cat path 2>/dev/null)`."""
-    try:
-        with open(path) as f:
-            return f.read().rstrip("\n")
-    except OSError:
-        return ""
-
-
-def remove(*paths: str) -> None:
-    for path in paths:
-        try:
-            os.remove(path)
-        except OSError:
-            pass
-
-
-def is_socket(path: str) -> bool:
-    try:
-        return stat.S_ISSOCK(os.stat(path).st_mode)
-    except OSError:
-        return False
-
-
-def tail_to_stderr(path: str, n: int) -> None:
-    try:
-        with open(path, errors="replace") as f:
-            lines = f.read().split("\n")
-    except OSError:
-        return
-    if lines and lines[-1] == "":
-        lines.pop()
-    sys.stderr.write("".join(line + "\n" for line in lines[-n:]))
-    sys.stderr.flush()
-
-
-class KeptJvms:
+class KeptJvms(KeptJvmFiles):
     """The kept JVMs under <cache>/what-if-serve: `<key>.pid`, `.sock`, `.tree`, `.log`, `.keeper.log` a tree and code."""
 
     def __init__(self, ctx: Context) -> None:
+        super().__init__(ctx.runner, ctx.env, ctx.log, os.path.join(ctx.cache, "what-if-serve"), KEPT_PATTERN)
         self.ctx = ctx
-        self.dir = os.path.join(ctx.cache, "what-if-serve")
         self.idle_minutes = ctx.knob("KINOWO_IDENTITY_WHAT_IF_IDLE_MINUTES", "10")
-
-    def path(self, key: str, suffix: str) -> str:
-        return os.path.join(self.dir, key + suffix)
-
-    def is_kept(self, pid: str) -> bool:
-        """Whether <pid> is still a what-if JVM: a pid file outlives its process, and the pid comes back as another's."""
-        if not pid.isascii() or not pid.isdigit():
-            return False
-        done = self.ctx.runner.capture(tool_process.Command(["ps", "-o", "args=", "-p", pid], self.ctx.env))
-        return bool(re.search(KEPT_PATTERN, done.stdout))
-
-    def stop(self, pid: str) -> bool:
-        if not self.is_kept(pid):
-            return False
-        try:
-            os.kill(int(pid), signal.SIGTERM)
-        except OSError:
-            return False
-        return True
-
-    def stop_all(self) -> None:
-        """--stop-served: every kept JVM stopped, its files removed."""
-        for pidf in sorted(glob.glob(os.path.join(self.dir, "*.pid"))):
-            if not os.path.isfile(pidf):
-                continue
-            if self.stop(read(pidf)):
-                self.ctx.log(f"stopped the kept JVM {read(pidf)}")
-            stem = pidf[:-len(".pid")]
-            remove(pidf, stem + ".sock", stem + ".tree")
-
-    def drop_older(self, key: str, tree: str) -> None:
-        """An older code of this tree (an edit of this checkout) keeps no JVM of its own."""
-        for treef in sorted(glob.glob(os.path.join(self.dir, "*.tree"))):
-            stem = treef[:-len(".tree")]
-            if os.path.isfile(treef) and os.path.basename(stem) != key and read(treef) == tree:
-                self.stop(read(stem + ".pid"))
-                remove(treef, stem + ".pid", stem + ".sock")
 
 
 class Resolver:
@@ -194,14 +116,10 @@ class Resolver:
             return 2
         remove(sock)
         self.kept.drop_older(key, tree)
-        log, pidf = self.kept.path(key, ".log"), self.kept.path(key, ".pid")
+        log = self.kept.path(key, ".log")
         self.ctx.log(f"starting a kept JVM for {tree} (log {log}; stops after {self.kept.idle_minutes} idle minutes)")
         java: List[str] = ["-cp", cp, WHAT_IF_RESOLVE, "--serve", sock, "--idle-minutes", self.kept.idle_minutes]
-        self.ctx.shell("identity_kept_jvm_start", [TOOL, tree, log, pidf, self.kept.path(key, ".keeper.log"),
-                                                   self.keeper, *java])
-        with open(self.kept.path(key, ".tree"), "w") as f:
-            f.write(tree + "\n")
-        return self.listening(read(pidf), sock, log)
+        return self.listening(self.kept.start(self.ctx.shell, TOOL, tree, key, self.keeper, java), sock, log)
 
     def listening(self, pid: str, sock: str, log: str) -> int:
         started = self.ctx.seconds()

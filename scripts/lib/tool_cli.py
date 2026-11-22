@@ -1,6 +1,8 @@
 """THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a
 usage error exits 64 (EX_USAGE) with its line on stderr, and a tool's `main` is one call of `run_main`. A tool ported
-from the shell keeps the shell's usage exit, 2 (tool-conventions.sh's usage_error): `usage_failed`.
+from the shell keeps the shell's usage exit, 2 (tool-conventions.sh's usage_error): `usage_failed`. A tool that
+cleans up on the way out (a shell tool's EXIT trap) raises `Interrupted` on INT and TERM (`raise_on_signals`) and ends
+with 128 + the signal, as a shell does.
 
   read_options(o, argv, usage, word)  `o` with each word read into it by `word(o, argv, i)` (the index of the last
                                  word it took); None when -h/--help asked for the usage, printed
@@ -8,7 +10,9 @@ from the shell keeps the shell's usage exit, 2 (tool-conventions.sh's usage_erro
   minutes(flag, value)           a whole number of minutes, a UsageError otherwise"""
 from __future__ import annotations
 
+import signal
 import sys
+from types import FrameType
 from typing import Callable, List, Optional, TypeVar
 
 EX_USAGE = 64
@@ -52,3 +56,21 @@ def minutes(flag: str, value: str) -> int:
     if not value.isdigit():
         raise UsageError(f"{flag} takes minutes, not {value}")
     return int(value)
+
+
+class Interrupted(BaseException):
+    """INT or TERM: the clean-up run on the way out, as a shell tool's EXIT trap did; the exit 128 + `signum`."""
+
+    def __init__(self, signum: int) -> None:
+        super().__init__(signum)
+        self.signum = signum
+
+
+def interrupted(signum: int, _frame: Optional[FrameType]) -> None:
+    raise Interrupted(signum)
+
+
+def raise_on_signals() -> None:
+    """INT and TERM raise Interrupted from here on."""
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, interrupted)

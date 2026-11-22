@@ -567,16 +567,22 @@ sys.exit(112)
 PY
 }
 
-# THE JVM SEQUENCES A PYTHON TOOL RUNS (identity-what-if's, scripts/identity_what_if_cli.py, through
-# scripts/lib/tool_shell.py): a JVM slot (jvm-gate.sh) is a lock held on descriptor 7 by the PROCESS that took it and its
-# children, so the take, the JVM it is for and the release are one bash process's, never the Python tool's.
+# THE JVM SEQUENCES A PYTHON TOOL RUNS (identity-what-if's and identity-slice's, scripts/identity_what_if_cli.py and
+# scripts/identity_slice_cli.py, through scripts/lib/tool_shell.py): a JVM slot (jvm-gate.sh) is a lock held on
+# descriptor 7 by the PROCESS that took it and its children, so the take, the JVM it is for and the release are one bash
+# process's, never the Python tool's.
 #
 # identity_java_slotted <label> <tree> <log> <java args...> -> IDENTITY_JAVA run in <tree> under a JVM slot of its own,
 # its stdout and stderr into <log>; the JVM's status
-identity_java_slotted() {
-  local label=$1 tree=$2 log=$3 rc=0; shift 3
+identity_java_slotted() { local label=$1 tree=$2 log=$3; shift 3; identity_java_slotted_to "$label" "$tree" "$log" '&1' "$@"; }
+# identity_java_slotted_to <label> <tree> <stdout> <stderr> <java args...> -> the same, its stdout into <stdout> and its
+# stderr into <stderr>: `-` this call's own, a stderr of `&1` with the stdout
+identity_java_slotted_to() {
+  local label=$1 tree=$2 out=$3 err=$4 rc=0; shift 4
   jvm_slot_take "$label"
-  (cd "$tree" && "${IDENTITY_JAVA[@]}" "$@") > "$log" 2>&1 || rc=$?
+  ( [ "$out" = - ] || exec > "$out"
+    case $err in -) ;; '&1') exec 2>&1 ;; *) exec 2> "$err" ;; esac
+    cd "$tree" && "${IDENTITY_JAVA[@]}" "$@" ) || rc=$?
   jvm_slot_release
   return "$rc"
 }
@@ -592,12 +598,12 @@ identity_kept_jvm_start() {
   jvm_slot_keeper_start "$IDENTITY_REPO" "$keeper_log" "$keeper" --keep-served "$(cat "$pidf")"
 }
 # identity_kept_jvm_request <label> <job> <log> <socket> <args...> -> one request to a kept JVM (kept_jvm_call), its
-# answer into <log>, under a cores ticket of its own (jvm_cpu_take: the keeper holds only the memory); the request's
-# status, 111 / 112 as kept_jvm_call's
+# answer into <log> (`-`: on this call's stdout, as it streams), under a cores ticket of its own (jvm_cpu_take: the
+# keeper holds only the memory); the request's status, 111 / 112 as kept_jvm_call's
 identity_kept_jvm_request() {
   local label=$1 job=$2 log=$3 rc=0; shift 3
   jvm_cpu_take "$label" "$job"
-  kept_jvm_call "$@" > "$log" 2>&1 || rc=$?
+  if [ "$log" = - ]; then kept_jvm_call "$@" || rc=$?; else kept_jvm_call "$@" > "$log" 2>&1 || rc=$?; fi
   jvm_slot_release
   return "$rc"
 }
@@ -609,10 +615,28 @@ identity_kept_jvm_keep() {
   local seen=0
   while kill -0 "$1" 2>/dev/null; do
     if ps -o args= -p "$1" 2>/dev/null | grep -q "$2"; then seen=1; elif [ "$seen" = 1 ]; then break; fi
-    jvm_slot_take_if_free || true
+    if jvm_slot_take_if_free; then identity_log "took JVM slot ${JVM_SLOT##*/}"; fi
     sleep "${KINOWO_IDENTITY_SLICE_KEEPER_POLL:-10}"
   done
 }
+
+# identity_takes_download <run> <cc> <dir> -> an "Identity model convergence" run's convergence-diagnostics-<cc>-convergence
+# artifact's <cc>-takes, as <dir>/<cc>-takes (identity-slice --faithfulness RUN), downloaded beside it and moved in whole.
+# A subshell of its own, so its trap removes the download directory however it ends (a Ctrl-C mid-download too) without
+# replacing the trap of identity_locked's subshell, which gives the lock back.
+identity_takes_download() (
+  run=$1 cc=$2 diag=$3
+  [ -f "$diag/$cc-takes/$cc.json.gz" ] && exit 0
+  mkdir -p "$diag"; dl=$(mktemp -d "$diag.dl.XXXXXX") || exit 1
+  # every ending signal made an exit, so the EXIT trap runs: bash 3.2 can end a subshell on TERM without it
+  trap 'rm -rf "$dl"' EXIT; trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM
+  if gh_download "$IDENTITY_GH_DOWNLOAD" run download "$run" -R "$KINOWO_GH_REPO" \
+       --name "convergence-diagnostics-$cc-convergence" --dir "$dl" >&2 && [ -f "$dl/$cc-takes/$cc.json.gz" ]; then
+    rm -rf "$diag/$cc-takes"; mv "$dl/$cc-takes" "$diag/$cc-takes"
+  else
+    identity_log "could not download run $run's convergence-diagnostics-$cc-convergence (gh failed or timed out, or it holds no $cc-takes)"; exit 1
+  fi
+)
 
 # THE WHAT-IF VERDICT RECORD (review 2026-11-06 P3): scripts/identity-what-if writes one line a country it finished --
 # `<cc> TAB <verdict> TAB <finished, UTC> TAB <takes diff> TAB <takes moved> TAB <mode> TAB <published asset>` -- under (head, base);

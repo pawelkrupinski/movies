@@ -106,7 +106,7 @@ Design and limits: docs/design/identity-slice.md.
   same takes; the same batch again (another checkout, results kept) 33 s. A 20-listing fresh batch: 25 s, 15 s
   through a kept `--serve` JVM.
 - **A new ref is cheap.** The whole-corpus index and the results are keyed by the CODE a ref runs, not its commit
-  (`code_key`): a commit changing no code reads what another made. A new ref's compile is seeded from the nearest
+  (`Keys.code_key`, scripts/identity_slice_cli_keys.py): a commit changing no code reads what another made. A new ref's compile is seeded from the nearest
   compiled ref in the cache; one with no source changed keeps that ref's classpath, no sbt at all. Measured 2026-10-15,
   DE, recording 38666576506, a fresh worktree: a new ref's first slice 151 s (a full 1,766-file compile 125 s, index
   23 s) → 88 s with new code under load 105 (5 files recompiled, 30 s; index 47 s) → 20 s for a commit changing no code

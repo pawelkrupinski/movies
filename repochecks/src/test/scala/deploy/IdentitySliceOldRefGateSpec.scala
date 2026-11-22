@@ -34,7 +34,11 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
   /** The tools that drop their tool files into an old ref, each checked by scripts/identity-slice-old-ref-test.sh, and
    *  the list identity-slice reads its tool files from. */
   private val SliceToolFiles = "scripts/identity-slice-tool-files.txt"
-  private val tools = Seq("scripts/identity-slice", SliceToolFiles, "scripts/title-trace")
+  /** identity-slice's Python modules (scripts/identity_slice_cli*.py, its tests aside): what hands the ref its files. */
+  private lazy val sliceModules: Seq[String] =
+    RepoFile.listed("scripts")(f => f.getName.startsWith("identity_slice_cli") && f.getName.endsWith(".py") &&
+      !f.getName.endsWith("_test.py") && !f.getName.endsWith("_fixture.py")).map(f => s"scripts/${f.getName}")
+  private lazy val tools = Seq("scripts/identity-slice", SliceToolFiles, "scripts/title-trace") ++ sliceModules
 
   /** identity-slice's list (one path a line, `#` lines comments) and title-trace's `TOOL_FILES=(…)`. */
   private lazy val toolFiles: Seq[String] = {
@@ -48,6 +52,11 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
   "the old-ref compile's gate" should "cover every tool file identity-slice and title-trace drop into an old ref" in {
     toolFiles should not be empty
     toolFiles.filterNot(f => patterns.exists(covers(_, f))) shouldBe empty
+  }
+
+  it should "cover identity-slice's Python modules" in {
+    sliceModules should contain("scripts/identity_slice_cli.py")
+    sliceModules.filterNot(f => patterns.exists(covers(_, f))) shouldBe empty
   }
 
   it should "cover the scripts that lay the ref out and the check itself" in {

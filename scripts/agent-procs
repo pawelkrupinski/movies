@@ -58,7 +58,7 @@ WATCHING = re.compile(r"\b(until|while)\b[\s\S]*\bsleep\b|\btail\s+(\S+\s+)*(-[a
                       r"|(^|[\s/])(wait-for|ci-wait)(\s|$)|\bagentctl\s+(inbox\s+)?wait\b")
 SCRATCH = re.compile(r"^(/private)?/tmp/|^(/private)?/var/folders/|/scratchpad/")
 SESSION_KEYS = ("CLAUDE_PID", "CLAUDE_CODE_SESSION_ID")
-WORK_KEYWORDS = ("sbt", "java", "identity-slice", "convergence-local", "mongod", "playwright", "chrome", "node ")
+WORK_KEYWORDS = ("sbt", "java", "identity-slice", "identity_slice", "convergence-local", "mongod", "playwright", "chrome", "node ")
 
 
 def run(command, cwd=None):
