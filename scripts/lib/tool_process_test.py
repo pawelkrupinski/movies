@@ -98,6 +98,25 @@ class SubprocessRunnerTest(unittest.TestCase):
                 self.assertEqual(0, cli_harness.still_running(pids, 5))
 
 
+    def test_a_bounded_command_a_worker_thread_started_ends_with_the_tool_too(self) -> None:
+        """The handlers are the main thread's, the groups the runner's: a TERM ends a worker's command as well, and so
+        does the tool's exit while the worker still waits on it."""
+        for how, script, code in (("TERM", RUN_IN_A_THREAD + "thread.join()\n", -signal.SIGTERM),
+                                  ("exit", RUN_IN_A_THREAD + "wait_for_pids()\nsys.exit(3)\n", 3)):
+            with self.subTest(how=how):
+                pids = os.path.join(self.dir.name, f"pids-thread-{how}")
+                tool = subprocess.Popen([sys.executable, "-c", script, os.path.dirname(os.path.abspath(__file__)),
+                                         hung(pids), self.log, pids], start_new_session=True, stderr=subprocess.DEVNULL)
+                try:
+                    self.assertTrue(cli_harness.wait_until(lambda: lines(pids) >= 2))
+                    if how == "TERM":
+                        tool.send_signal(signal.SIGTERM)
+                    self.assertEqual(code, tool.wait(timeout=30))
+                finally:
+                    if tool.poll() is None:
+                        tool.kill()
+                self.assertEqual(0, cli_harness.still_running(pids, 5))
+
 def hung(pids: str) -> str:
     """A command that never ends by itself, and a child of it in its group: both pids written to `pids`."""
     return f"(echo $$ >> {pids}; exec sleep 86400) & echo $! >> {pids}; exec sleep 86400"
@@ -120,6 +139,15 @@ RUN_BOUNDED = TOOL + """import signal
 signal.signal(signal.SIGINT, signal.default_int_handler)  # whatever the run around it ignores
 tool_process.SubprocessRunner().run(tool_process.Command(["/bin/sh", "-c", sys.argv[2]],
     dict(os.environ), log=sys.argv[3], timeout=600))"""
+RUN_IN_A_THREAD = TOOL + """import threading
+import cli_harness
+runner = tool_process.SubprocessRunner()
+command = tool_process.Command(["/bin/sh", "-c", sys.argv[2]], dict(os.environ), log=sys.argv[3], timeout=600)
+thread = threading.Thread(target=runner.run, args=(command,), daemon=True)
+thread.start()
+def wait_for_pids():
+    cli_harness.wait_until(lambda: os.path.exists(sys.argv[4]) and len(open(sys.argv[4]).read().split()) >= 2)
+"""
 
 if __name__ == "__main__":
     unittest.main()

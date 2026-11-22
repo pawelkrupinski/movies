@@ -12,7 +12,8 @@ commands, and the real one is `SubprocessRunner`. A `Command` says how it runs:
                                            session of its own, out of reach of whatever ends this process (a caller's
                                            bound, a cancelled check, Ctrl-C), so, as `bounded` does, an INT or TERM
                                            this process gets while it runs ends its group first and is then passed
-                                           on, and so does an exception: it never outlives the tool that ran it.
+                                           on, from whichever thread it was started, and so do an exception and the
+                                           exit: it never outlives the tool that ran it (LiveGroups).
 
 `run` returns the exit status; `capture` returns it with stdout and stderr as text (`$(cmd)`), the command's stderr
 captured unless `log` takes both.
@@ -21,6 +22,7 @@ The exit status is the command's own; a command that cannot be found is 127 and 
 shell says."""
 from __future__ import annotations
 
+import atexit
 import os
 import select
 import signal
@@ -30,7 +32,7 @@ import threading
 import time
 from dataclasses import dataclass
 from types import FrameType, TracebackType
-from typing import BinaryIO, Callable, Dict, Mapping, Optional, Protocol, Sequence, Union
+from typing import BinaryIO, Callable, Dict, Mapping, Optional, Protocol, Sequence, Set, Union
 
 NOT_FOUND, NOT_EXECUTABLE, TIMED_OUT = 127, 126, 124
 GRACE = 2.0  # seconds a TERMed group has before it is KILLed
@@ -66,20 +68,21 @@ class Runner(Protocol):
 class SubprocessRunner:
     """The real runner: each command a child process of this one."""
 
-    def __init__(self, stdout: Optional[BinaryIO] = None) -> None:
+    def __init__(self, stdout: Optional[BinaryIO] = None, groups: Optional[LiveGroups] = None) -> None:
         self.stdout = stdout or sys.stdout.buffer
+        self.groups = groups or LiveGroups()
 
     def run(self, command: Command) -> int:
         sys.stdout.flush()
         try:
-            with EndedWithThisProcess(command.timeout) as guard:
+            with self.groups.guard(command.timeout) as guard:
                 return self._run(command, guard)
         except FileNotFoundError:
             return self._failed(command.argv, "command not found", NOT_FOUND)
         except PermissionError:
             return self._failed(command.argv, "permission denied", NOT_EXECUTABLE)
 
-    def _run(self, command: Command, guard: "EndedWithThisProcess") -> int:
+    def _run(self, command: Command, guard: "Bounded") -> int:
         if command.log is None:
             return self._wait(guard.started(self._start(command, None, None)), command.timeout)
         with open(command.log, "ab" if command.append else "wb") as sink:
@@ -89,7 +92,7 @@ class SubprocessRunner:
 
     def capture(self, command: Command) -> Captured:
         sys.stdout.flush()
-        with EndedWithThisProcess(command.timeout) as guard:
+        with self.groups.guard(command.timeout) as guard:
             try:
                 proc = guard.started(self._start(command, subprocess.PIPE, subprocess.PIPE))
             except FileNotFoundError:
@@ -121,7 +124,7 @@ class SubprocessRunner:
     def stdin(command: Command) -> Optional[int]:
         return subprocess.DEVNULL if command.closed_stdin else None
 
-    def _tee(self, command: Command, sink: BinaryIO, guard: "EndedWithThisProcess") -> int:
+    def _tee(self, command: Command, sink: BinaryIO, guard: "Bounded") -> int:
         proc = guard.started(self._start(command, subprocess.PIPE, subprocess.STDOUT))
         source = proc.stdout
         assert source is not None
@@ -152,54 +155,95 @@ def _read_by(fd: int, deadline: Optional[float]) -> Optional[bytes]:
     return os.read(fd, 65536) if readable else None
 
 
-class EndedWithThisProcess:
-    """A bounded command (one with a timeout) runs in a session of its own, out of reach of whatever ends this process,
-    so for as long as this guard is held an INT or TERM to this process ends the command's group and is then this
-    process's own again, passed on under the handler there was before -- as `bounded` does --, and an exception out
-    of the wait ends it too. The handlers are set BEFORE the command starts: a signal arriving while it is being
-    started is held until it has (`started`), then acted on. A signal this process ignores (a background job's INT)
-    stays ignored; only the main thread may set a handler, so elsewhere, and for an unbounded command (in this
-    process's own group, ended with it already), nothing is changed."""
+class LiveGroups:
+    """The bounded commands a runner has running, each in a session of its own (out of reach of whatever ends this
+    process): ended together when this process gets an INT or TERM -- which is then passed on to the handler there was
+    before, as `bounded` does -- or exits, whichever thread started them. The handlers can only be set from the main
+    thread, so a runner is made there (its composition point); one made elsewhere ends its groups on an exception or at
+    exit only. A signal this process ignores (a background job's INT) stays ignored. A signal arriving while a command
+    is being started waits for it (GRACE at most), else is held until it has (`started`)."""
 
-    def __init__(self, timeout: Optional[float]) -> None:
-        self.proc: "Optional[subprocess.Popen[bytes]]" = None
+    def __init__(self) -> None:
+        self.lock = threading.RLock()  # (re-entered by the handler, which runs on the main thread)
+        self.live: Set["subprocess.Popen[bytes]"] = set()
+        self.starting = 0
         self.pending: Optional[int] = None
-        self.before: Dict[signal.Signals, Handler] = {}
-        if timeout is not None and threading.current_thread() is threading.main_thread():
-            self.before = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)
-                           if signal.getsignal(sig) != signal.SIG_IGN}
+        self.before: Dict[int, Handler] = {}
+        if threading.current_thread() is threading.main_thread():
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                if signal.getsignal(sig) != signal.SIG_IGN:
+                    self.before[sig] = signal.getsignal(sig)
+                    signal.signal(sig, self._signalled)
+        atexit.register(self.end_all)
 
-    def __enter__(self) -> "EndedWithThisProcess":
-        for sig in self.before:
-            signal.signal(sig, self._signalled)
+    def end_all(self) -> None:
+        with self.lock:
+            procs = list(self.live)
+        for proc in procs:
+            if proc.poll() is None:
+                end_group(proc)
+
+    def _signalled(self, signum: int, frame: Optional[FrameType]) -> None:
+        deadline = time.monotonic() + GRACE
+        while self.starting and time.monotonic() < deadline:
+            time.sleep(0.01)
+        if self.starting:
+            self.pending = signum  # the start under way is on this thread: acted on once it has (`started`)
+            return
+        self.end_all()
+        self._pass_on(signum, frame)
+
+    def _pass_on(self, signum: int, frame: Optional[FrameType]) -> None:
+        before = self.before.get(signum)
+        if callable(before):
+            before(signum, frame)
+            return
+        signal.signal(signum, before or signal.SIG_DFL)
+        os.kill(os.getpid(), signum)
+
+    def guard(self, timeout: Optional[float]) -> "Bounded":
+        return Bounded(self if timeout is not None else None)
+
+
+class Bounded:
+    """One command's hold on its runner's LiveGroups: counted as starting until `started`, then live until the wait
+    ends; an exception out of the wait ends its group. An unbounded command (None: in this process's own group, ended
+    with it already) is held by nothing."""
+
+    def __init__(self, groups: Optional[LiveGroups]) -> None:
+        self.groups = groups
+        self.proc: "Optional[subprocess.Popen[bytes]]" = None
+
+    def __enter__(self) -> "Bounded":
+        if self.groups is not None:
+            with self.groups.lock:
+                self.groups.starting += 1
         return self
 
     def started(self, proc: "subprocess.Popen[bytes]") -> "subprocess.Popen[bytes]":
         self.proc = proc
-        if self.pending is not None:
-            self._stop(self.pending)
+        groups = self.groups
+        if groups is not None:
+            with groups.lock:
+                groups.live.add(proc)
+                groups.starting -= 1
+            pending, groups.pending = groups.pending, None
+            if pending is not None and not groups.starting:
+                groups.end_all()
+                groups._pass_on(pending, None)  # pyright: ignore[reportPrivateUsage]
         return proc
 
-    def _signalled(self, signum: int, _frame: Optional[FrameType]) -> None:
-        if self.proc is None:
-            self.pending = signum
-            return
-        self._stop(signum)
-
-    def _stop(self, signum: int) -> None:
-        if self.proc is not None:
-            end_group(self.proc)
-        self._restore()
-        os.kill(os.getpid(), signum)
-
-    def _restore(self) -> None:
-        for sig, handler in self.before.items():
-            signal.signal(sig, handler or signal.SIG_DFL)
-
     def __exit__(self, kind: Optional[type], _value: Optional[BaseException], _trace: Optional[TracebackType]) -> None:
-        if kind is not None and self.before and self.proc is not None and self.proc.poll() is None:
-            end_group(self.proc)
-        self._restore()
+        groups, proc = self.groups, self.proc
+        if groups is None:
+            return
+        if kind is not None and proc is not None and proc.poll() is None:
+            end_group(proc)
+        with groups.lock:
+            if proc is None:
+                groups.starting -= 1
+            else:
+                groups.live.discard(proc)
 
 
 def end_group(proc: "subprocess.Popen[bytes]") -> None:
