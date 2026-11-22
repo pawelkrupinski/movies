@@ -6,24 +6,25 @@ callers, and --check fails on a tool without one or a stale docs/tools.md -- her
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
-import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tool_catalogue as tc  # noqa: E402
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import cli_harness  # noqa: E402
+
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 
 class Scratch:
-    """A throwaway git repository whose index holds the files written into it."""
+    """A throwaway git repository whose index holds the files written into it, made and staged through the isolated
+    git of cli_harness.ToolCase (scratch-git.sh's scratch_git), so no hook's GIT_DIR reaches the shared repository."""
 
-    def __init__(self) -> None:
-        self.dir = tempfile.TemporaryDirectory()
-        self.root = self.dir.name
-        subprocess.run(["git", "init", "-q", self.root], check=True)
+    def __init__(self, case: cli_harness.ToolCase) -> None:
+        self.case = case
+        self.root = case.repo("scratch")
 
     def write(self, path: str, text: str, executable: bool = False) -> None:
         full = os.path.join(self.root, path)
@@ -32,16 +33,13 @@ class Scratch:
             handle.write(text)
         if executable:
             os.chmod(full, 0o755)
-        subprocess.run(["git", "-C", self.root, "add", path], check=True)
-
-    def close(self) -> None:
-        self.dir.cleanup()
+        self.case.git(self.root, "add", path)
 
 
-class PurposeTest(unittest.TestCase):
+class PurposeTest(cli_harness.ToolCase):
     def setUp(self) -> None:
-        self.scratch = Scratch()
-        self.addCleanup(self.scratch.close)
+        super().setUp()
+        self.scratch = Scratch(self)
 
     def purpose(self, path: str, text: str) -> object:
         self.scratch.write(path, text)
@@ -63,10 +61,10 @@ class PurposeTest(unittest.TestCase):
         self.assertIsNone(self.purpose("scripts/c.sh", "#!/bin/bash\n# Does a thing.\n"))
 
 
-class CheckTest(unittest.TestCase):
+class CheckTest(cli_harness.ToolCase):
     def setUp(self) -> None:
-        self.scratch = Scratch()
-        self.addCleanup(self.scratch.close)
+        super().setUp()
+        self.scratch = Scratch(self)
         self.scratch.write("scripts/tool.sh", "#!/bin/bash\n# Purpose: The tool.\n", executable=True)
         self.scratch.write(".github/workflows/w.yml", "# Purpose: The workflow.\non:\n  push:\njobs:\n  a:\n"
                                                       "    steps:\n      - run: scripts/tool.sh\n")
