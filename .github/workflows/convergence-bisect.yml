@@ -32,7 +32,7 @@
 # per red country for ~2 hours (the US: ~3.5). A range it could not narrow is reported as a range, never as a guess. A
 # newer red run of the same suite supersedes an older bisect: its range contains the older one;
 # nothing else starts a bisect, so nothing else can cancel one.
-# The logic is `.github/scripts/convergence-bisect.sh` (ConvergenceBisectSpec).
+# The logic is `.github/scripts/convergence_bisect.py` (ConvergenceBisectSpec, convergence_bisect_test.py).
 #
 name: Convergence bisect
 
@@ -239,7 +239,7 @@ jobs:
                   # Copied OUT of the checkout first: `git bisect` rewrites the working tree
                   # under a running script, and bash reads a script as it goes.
                   tools="$RUNNER_TEMP/bisect"; mkdir -p "$tools"
-                  cp .github/scripts/convergence-bisect.sh .github/scripts/convergence-bisect-step.sh .github/convergence-paths.txt "$tools/"
+                  cp .github/scripts/convergence-bisect.sh .github/scripts/convergence_bisect.py .github/scripts/convergence-bisect-step.sh .github/convergence-paths.txt "$tools/"
                   export CONVERGENCE_PATHS_FILE="$tools/convergence-paths.txt"
                   export FIRST_BAD_FILE="$tools/first-bad"
                   # One replay of the sample at whatever commit bisect checked out: 0 green, 1 red, 125 untestable.
