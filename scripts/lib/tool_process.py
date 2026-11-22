@@ -6,6 +6,7 @@ commands, and the real one is `SubprocessRunner`. A `Command` says how it runs:
   Command(argv, env, log=PATH)             stdout and stderr into the file at PATH (appended with append=True)
   Command(argv, env, log=PATH, tee=True)   ... and to this process's stdout as they come (`2>&1 | tee PATH`)
   closed_stdin=True                        stdin from /dev/null (`< /dev/null`)
+  cwd=DIR                                  run in DIR
   timeout=SECONDS                          ended past it, its whole process group -- TERM, a moment, then KILL --
                                            exit 124 (tool-conventions.sh's `bounded`)
 
@@ -37,6 +38,7 @@ class Command:
     tee: bool = False
     closed_stdin: bool = False
     timeout: Optional[float] = None
+    cwd: Optional[str] = None  # the directory it runs in (this process's by default)
 
 
 @dataclass(frozen=True)
@@ -90,7 +92,7 @@ class SubprocessRunner:
 
     def _start(self, command: Command, stdout: Union[int, BinaryIO, None],
                stderr: Optional[int]) -> "subprocess.Popen[bytes]":
-        return subprocess.Popen(list(command.argv), env=dict(command.env), stdin=self.stdin(command),
+        return subprocess.Popen(list(command.argv), env=dict(command.env), stdin=self.stdin(command), cwd=command.cwd,
                                 stdout=stdout, stderr=stderr, start_new_session=command.timeout is not None)
 
     @staticmethod

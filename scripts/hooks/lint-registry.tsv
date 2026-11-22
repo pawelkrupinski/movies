@@ -156,7 +156,7 @@ repochecks:deploy.OrderIndependenceSeedSpec	.github/workflows/order-independence
 worker:deploy.OverdueIsNotRedSpec	scripts/ci/* .github/workflows/identity-ci-staleness.yml .github/workflows/identity-findings-report.yml .github/workflows/roster-audit.yml
 repochecks:deploy.PaceReportVisibilityConfigSpec	worker/src/main/resources/logback-base.xml
 repochecks:deploy.PageTestShardCoverageSpec	.github/workflows/ci.yml
-repochecks:deploy.PaidEgressWorkflowSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml .github/scripts/record-country-fixture.sh
+repochecks:deploy.PaidEgressWorkflowSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml .github/scripts/record_country_fixture.py
 repochecks:deploy.PerformanceBudgetArtifactsSpec	.github/actions/run-page-test/action.yml .github/workflows/ci.yml testkit/src/main/scala/tools/costs/PerformanceBudgets.scala
 repochecks:deploy.PlaywrightRunCostSpec	page-tests-playwright/playwright.config.ts
 repochecks:deploy.PlaywrightWorkerBudgetSpec	.github/actions/run-page-test/action.yml .github/workflows/ci.yml

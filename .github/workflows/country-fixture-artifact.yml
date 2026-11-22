@@ -111,7 +111,7 @@ jobs:
                       sbt-target-${{ runner.os }}-
 
             # Record + verify + zip the corpus via the shared script, so a local
-            # `.github/scripts/record-country-fixture.sh` run does exactly what CI
+            # `.github/scripts/record_country_fixture.py` run does exactly what CI
             # does. The script runs `RecordAllDataToFixture` (a worker TEST-scope
             # runMain — the real cinema scrape + full TMDB → IMDb → Metacritic →
             # RT → Filmweb cascade against live upstreams, one fixture file per
@@ -136,7 +136,7 @@ jobs:
               run: |
                   set -euo pipefail
                   ZIP="${GITHUB_WORKSPACE}/country-fixture.zip"
-                  bash .github/scripts/record-country-fixture.sh "$ZIP"
+                  .github/scripts/record_country_fixture.py "$ZIP"
                   echo "zip_path=$ZIP" >> "$GITHUB_OUTPUT"
 
             # Upload the single zip under a FIXED artifact name so the "latest" is

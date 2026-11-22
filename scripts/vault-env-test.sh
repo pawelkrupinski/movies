@@ -31,14 +31,6 @@ check "no secrets CLI: returns 1 and names the variable" \
   "[vault] A B not set, and no \`secrets\` CLI on PATH to read it from the vault exit=0" \
   "$(without_vault "$BASH" -c ". '$REPO_ROOT/scripts/vault-env.sh'; ensure_vault_env A B=KEY_B -- true || echo returned-\$? >&2" | tr '\n' ' ' | sed 's/returned-1 //;s/ $//')"
 
-echo "[spec] record-country-fixture.sh"
-REC="$REPO_ROOT/.github/scripts/record-country-fixture.sh"
-check "locally, the missing upstream keys are read from the vault" \
-  "run movies DECODO_PROXY_USER DECODO_PROXY_PASS -- $BASH $REC" \
-  "$(with_fake_vault env TMDB_API_KEY=t "$BASH" "$REC")"
-check "in CI (no secrets CLI) a missing key still fails loudly" "1" \
-  "$(without_vault "$BASH" "$REC" | grep -c '::error::Missing required key(s): TMDB_API_KEY DECODO_PROXY_USER DECODO_PROXY_PASS')"
-
 echo "[spec] vault_env.py"
 AMC="$REPO_ROOT/data/us/scripts/generate_amc_map.py"
 FILMSTARTS="$REPO_ROOT/data/germany/scripts/crawl_filmstarts.py"

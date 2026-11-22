@@ -41,9 +41,8 @@ class PaidEgressWorkflowSpec extends AnyFlatSpec with Matchers {
   }
 
   "the fixture recorder's script" should "require the proxy credentials, not the Zyte key" in {
-    val script = RepoFile.read(".github/scripts/record-country-fixture.sh")
-    script should include("""missing="$missing DECODO_PROXY_USER"""")
-    script should include("""missing="$missing DECODO_PROXY_PASS"""")
+    val script = RepoFile.read(".github/scripts/record_country_fixture.py")
+    script should include("""REQUIRED = ("TMDB_API_KEY", "DECODO_PROXY_USER", "DECODO_PROXY_PASS")""")
     script should not include "ZYTE_API_KEY"
   }
 }
