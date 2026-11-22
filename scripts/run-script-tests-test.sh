@@ -462,6 +462,29 @@ check "a clean test passes, the check saying nothing" "0 0" "$(run clean-test) $
 put scripts/once-test.sh "[ -e '$work/once-made' ] || { touch '$work/once-made'; echo z > scripts/edited-beside.txt; }"
 check "a path no test makes again when run alone is said, and does not fail the run" "0 1" \
   "$(run once-test) $(grep -c '^    ?? scripts/edited-beside.txt   (running then: scripts/once-test.sh )' "$work/out")"
+# made beside the run all along (the landing check's sbt writing target/ beside its scripttests, run 45008924490): the
+# test run alone "makes it again" only because the writer beside it never stopped -- the control window, no test
+# running, sees it made again and charges no test. The writer, started by the test's first run, makes target/ again
+# each time it is moved aside, until told to stop.
+rm -f "$tree/scripts/edited-beside.txt"
+printf 'target/\n' > "$tree/.gitignore"
+cat > "$work/beside.sh" <<BESIDE
+. "$REPO_ROOT/scripts/shell-spec.sh"
+mkdir -p "$tree/target"; date > "$tree/target/out"
+while [ ! -e "$work/stop" ]; do
+  wait_until "target/ moved aside" "[ ! -e '$tree/target' ] || [ -e '$work/stop' ]" || break
+  [ -e "$work/stop" ] || { mkdir -p "$tree/target"; date > "$tree/target/out"; }
+done
+BESIDE
+put scripts/quiet-test.sh ". '$REPO_ROOT/scripts/shell-spec.sh'
+[ -e '$work/beside.started' ] || { touch '$work/beside.started'; bash '$work/beside.sh' > /dev/null 2>&1 < /dev/null & }
+wait_until 'the writer beside the run made target/' \"[ -e '$tree/target/out' ]\""
+check "a path a writer beside the run keeps making is no test's, though a test ran alone while it was made" "0 0 1" \
+  "$(run quiet-test) $(grep -c POLLUTE "$work/out") $(grep -c '^    !! target/   (running then: scripts/quiet-test.sh )' "$work/out")"
+touch "$work/stop"
+wait_until "the writer beside the run stopped" "! pgrep -f '$work/beside.sh' > /dev/null"
+rm -rf "$tree/target" "$tree/scripts/quiet-test.sh" "$work/beside.started" "$work/stop"
+printf 'node_modules/\n' > "$tree/.gitignore"
 check "RUN_SCRIPT_TESTS_TREE_CHECK=0: no check" "0 0" \
   "$(rm -f "$tree/scripts/edited-beside.txt" "$work/once-made"; RUN_SCRIPT_TESTS_TREE_CHECK=0 run polluter-test) $(grep -c POLLUTE "$work/out")"
 rm -rf "$tree/scripts/left-behind.txt" "$tree/scripts/tools" "$tree/scripts/edited-beside.txt" "$tree/.gitignore" \
