@@ -206,7 +206,7 @@ scripts/mongo-grants	KEEP
 scripts/mutation-check	KEEP
 scripts/own-checkout	KEEP
 scripts/own-mongod.sh	KEEP
-scripts/page-tests-local	MIGRATE
+scripts/page-tests-local	KEEP
 scripts/poster-eval	KEEP
 scripts/prod-ops-fixture.sh	KEEP
 scripts/prod-ops.sh	KEEP
