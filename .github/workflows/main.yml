@@ -270,8 +270,8 @@ jobs:
                   echo "old-ref compile's base: ${base:-none}"
                   echo "base=$base" >> "$GITHUB_OUTPUT"
             # The old ref is pinned, so only what this checkout brings to it can change the verdict: the tool files
-            # (identity-slice's and title-trace's TOOL_FILES, every one listed below -- IdentitySliceOldRefGateSpec),
-            # the scripts that lay the ref out, and the JDK/sbt setup. A push touching none of them skips the compile.
+            # (identity-slice's, scripts/identity-slice-tool-files.txt, and title-trace's TOOL_FILES, every one listed below --
+            # IdentitySliceOldRefGateSpec), the scripts that lay the ref out, and the JDK/sbt setup. A push touching none of them skips the compile.
             - name: Did this change touch what identity-slice brings to an old ref?
               id: slice-tools
               uses: ./.github/actions/changed-paths
@@ -290,6 +290,7 @@ jobs:
                       worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala
                       common/src/main/scala/tools/TempDirectories.scala
                       scripts/identity-slice
+                      scripts/identity-slice-tool-files.txt
                       scripts/title-trace
                       scripts/identity-tools.sh
                       scripts/tool-conventions.sh
@@ -491,9 +492,9 @@ jobs:
               uses: actions/cache/restore@v5
               with:
                   path: ${{ runner.temp }}/kinowo-identity/refs
-                  key: identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala', 'common/src/main/scala/tools/TempDirectories.scala', 'scripts/identity-slice', 'scripts/title-trace', 'scripts/identity-tools.sh') }}
+                  key: identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala', 'common/src/main/scala/tools/TempDirectories.scala', 'scripts/identity-slice', 'scripts/identity-slice-tool-files.txt', 'scripts/title-trace', 'scripts/identity-tools.sh') }}
                   restore-keys: |
-                      identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala', 'common/src/main/scala/tools/TempDirectories.scala', 'scripts/identity-slice', 'scripts/title-trace', 'scripts/identity-tools.sh') }}-
+                      identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala', 'worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala', 'common/src/main/scala/tools/TempDirectories.scala', 'scripts/identity-slice', 'scripts/identity-slice-tool-files.txt', 'scripts/title-trace', 'scripts/identity-tools.sh') }}-
                       identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-
 
             # Every floor's sbt runs, even over a tree whose classpath is current (identity_classpath answers that from its

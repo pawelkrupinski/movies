@@ -22,9 +22,11 @@ under the case's own scratch directory, removed at its end. A run is bounded (`H
 group ended past it, exit 124): a tool that hangs fails its case instead of wedging the run."""
 from __future__ import annotations
 
+import glob
 import json
 import os
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -252,6 +254,40 @@ class ToolCase(unittest.TestCase):
         os.makedirs(full, exist_ok=True)
         self.git(full, "init", "-q", *init_args)
         return full
+
+    def commit_tree(self, repo: str, message: str) -> str:
+        """Every change in the scratch repository committed: the commit's sha."""
+        self.git(repo, "add", "-A")
+        self.git(repo, "commit", "-q", "-m", message)
+        return self.git(repo, "rev-parse", "HEAD")
+
+    def copy_scripts(self, relative: str) -> None:
+        """This checkout's scripts/*.py and *.sh, and scripts/ci's and scripts/lib's, into <relative>/scripts/: what a
+        tool copied into a scratch repository runs from there."""
+        scripts = os.path.join(ROOT, "scripts")
+        for sub in ("", "ci", "lib"):
+            os.makedirs(self.path(relative, "scripts", sub), exist_ok=True)
+            for f in glob.glob(os.path.join(scripts, sub, "*.py")) + glob.glob(os.path.join(scripts, sub, "*.sh")):
+                shutil.copy2(f, self.path(relative, "scripts", sub))
+
+    def hold_lock(self, lock: str) -> "subprocess.Popen[bytes]":
+        """Another process holding `lock`'s kernel lock, as scripts/jvm-gate.sh's jvm_lock takes it (shell-spec.sh's
+        spec_lock_holder) -- another agent's tool mid-download, as a case sees it -- until the case ends."""
+        os.makedirs(os.path.dirname(lock), exist_ok=True)
+        holder = subprocess.Popen(["bash", "-c", '. "$1"; jvm_lock "$2" || exit 1; exec sleep 600', "_",
+                                   os.path.join(ROOT, "scripts/jvm-gate.sh"), lock], env=isolated_env(os.environ),
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        self.addCleanup(lambda: (holder.kill(), holder.wait()))
+
+        def held() -> bool:
+            try:
+                with open(lock) as f:
+                    return f.read().strip() == str(holder.pid)
+            except OSError:
+                return False
+        if not wait_until(held):
+            raise AssertionError(f"the lock holder never took {lock}")
+        return holder
 
     def origin_and_checkout(self) -> Tuple[str, str]:
         """A bare `origin.git` and a `repo` whose `origin` it is, both on main: the pair a tool pushing to origin

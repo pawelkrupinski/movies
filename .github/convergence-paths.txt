@@ -232,6 +232,7 @@ scripts/identity-fetch-recording.sh
 scripts/identity-judge-cards
 scripts/identity-slice
 scripts/identity-slice-old-ref-test.sh
+scripts/identity-slice-tool-files.txt
 scripts/identity_slice_diff.py
 scripts/it-local.sh
 scripts/label-lookup

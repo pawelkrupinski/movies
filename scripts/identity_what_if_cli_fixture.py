@@ -6,7 +6,6 @@ WhatIfResolve, gh's release upload -- each appending what it ran to <work>/calls
 from identity-what-if-test.sh; the same cases hold the shell tool and its Python rewrite (cli_harness.tool_path)."""
 from __future__ import annotations
 
-import glob
 import os
 import shutil
 import subprocess
@@ -116,11 +115,8 @@ class WhatIfCase(cli_harness.ToolCase):
         self.hash = self._tools_hash()
 
     def _copy_scripts(self) -> None:
+        self.copy_scripts("repo")
         scripts = os.path.join(ROOT, "scripts")
-        for sub in ("", "ci", "lib"):
-            os.makedirs(self.path("repo/scripts", sub), exist_ok=True)
-            for f in glob.glob(os.path.join(scripts, sub, "*.py")) + glob.glob(os.path.join(scripts, sub, "*.sh")):
-                shutil.copy2(f, self.path("repo/scripts", sub))
         for name in ("identity-what-if", "pure-move-check", "identity-what-if-roots.tsv"):
             shutil.copy2(os.path.join(scripts, name), self.path("repo/scripts"))
         for f in TOOL_FILES:
@@ -141,9 +137,7 @@ class WhatIfCase(cli_harness.ToolCase):
         return self.commit_all(message)
 
     def commit_all(self, message: str) -> str:
-        self.git(self.repo_dir, "add", "-A")
-        self.git(self.repo_dir, "commit", "-q", "-m", message)
-        return self.git(self.repo_dir, "rev-parse", "HEAD")
+        return self.commit_tree(self.repo_dir, message)
 
     def tool_env(self, extra: Optional[Mapping[str, Optional[str]]] = None) -> Dict[str, str]:
         env: Dict[str, Optional[str]] = {

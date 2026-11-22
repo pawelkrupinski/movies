@@ -35,14 +35,14 @@ chmod +x "$work/bin/xargs"
 repo="$work/repo"
 mkdir -p "$repo/scripts" "$repo/worker/src/test/scala/scripts" "$repo/worker/src/test/scala/services/identity" \
   "$repo/worker/src/fixtures/scala/tools" "$repo/worker/src/fixtures/scala/services/identity/adapters" "$repo/worker/src/fixtures/scala/services/identity/vocabulary" "$repo/common/src" "$repo/identity/src" "$repo/testkit/src" "$repo/test/resources/fixtures/identity-unmatched"
-cp "$REPO_ROOT/scripts/identity-slice" "$REPO_ROOT/scripts/identity-explain" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/jvm-gate.sh" "$REPO_ROOT/scripts/identity_slice_diff.py" "$REPO_ROOT/scripts/zinc_orphans.py" "$repo/scripts/"
+cp "$REPO_ROOT/scripts/identity-slice" "$REPO_ROOT/scripts/identity-slice-tool-files.txt" "$REPO_ROOT/scripts/identity-explain" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/jvm-gate.sh" "$REPO_ROOT/scripts/identity_slice_diff.py" "$REPO_ROOT/scripts/zinc_orphans.py" "$repo/scripts/"
 mkdir -p "$repo/scripts/ci" && cp "$REPO_ROOT"/scripts/ci/identity_*.py "$repo/scripts/ci/"  # the shared modules the diff imports
 cp "$REPO_ROOT/scripts/ci/population_walk_diff.py" "$repo/scripts/ci/"  # --emit-drift-slice files the walk's rows with it
 printf 'kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\n' > "$repo/test/resources/fixtures/identity-flip-backlog.tsv"
-# the files the tool drops into every ref, read from its own TOOL_FILES: a hand-kept copy of the list drifted from it
+# the files the tool drops into every ref, read from its own list (identity-slice-tool-files.txt): a hand-kept copy of the list drifted from it
 # (measures/OlderRefsPackage.scala written into a directory never made, OlderRefs.scala, ReplayOrder.scala and three
 # more left out), so the trees laid out here lacked files every real ref gets
-tool_files=$(sed -n '/^TOOL_FILES=(/,/)/p' "$REPO_ROOT/scripts/identity-slice" | tr ' ()' '\n\n\n' | grep '\.scala$')
+tool_files=$(grep -v '^#' "$REPO_ROOT/scripts/identity-slice-tool-files.txt")
 for f in $tool_files; do mkdir -p "$(dirname "$repo/$f")" && echo "// $f" > "$repo/$f"; done
 # the modules besides the resolver's own that its classpath compiles
 for module in scrapers geodata; do mkdir -p "$repo/$module/src/main" && echo "// $module" > "$repo/$module/src/main/Module.scala"; done

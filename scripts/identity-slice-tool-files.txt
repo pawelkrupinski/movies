@@ -1,0 +1,23 @@
+# THE FILES scripts/identity-slice DROPS INTO EVERY REF it decides under (scripts/identity-tools.sh's identity_tree):
+# this checkout's copies, so a ref from before the tool works. One path a line, in the order the tool's cache keys hash
+# them (its code key, identity_tools_hash); `#` lines are comments. Read by the tool, by its tests (every file is laid
+# out in their scratch repository), and by IdentitySliceOldRefGateSpec (main.yml's old-ref compile covers each one).
+worker/src/test/scala/services/identity/OlderRefs.scala
+worker/src/fixtures/scala/tools/OlderRefTypes.scala
+worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala
+worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala
+worker/src/test/scala/scripts/IdentitySlice.scala
+worker/src/test/scala/scripts/IdentityExplain.scala
+worker/src/test/scala/services/identity/IdentitySlicing.scala
+worker/src/fixtures/scala/tools/RecordedCorpus.scala
+worker/src/fixtures/scala/tools/SliceHttp.scala
+worker/src/fixtures/scala/tools/MemoLookups.scala
+worker/src/fixtures/scala/tools/ReplayOrder.scala
+worker/src/fixtures/scala/tools/CatalogueFill.scala
+worker/src/fixtures/scala/tools/FiledAnswers.scala
+worker/src/fixtures/scala/tools/ProdMirror.scala
+worker/src/fixtures/scala/tools/IdentityJudgements.scala
+worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala
+worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala
+common/src/main/scala/tools/TempDirectories.scala
+worker/src/fixtures/scala/tools/KeptJvm.scala

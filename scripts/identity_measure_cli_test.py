@@ -138,22 +138,6 @@ class IdentityMeasureTest(MeasureCase):
                                          env={"HEAD_SHA": self.tip, "KINOWO_IDENTITY_LOCK_WAIT": "2"}), self.out)
         self.assertEqual([], [c for c in self.fakes.calls("gh") if c[:2] == ["run", "download"]])
 
-    def hold_lock(self, lock: str) -> None:
-        """Another process holding `lock`'s kernel lock, as jvm-gate.sh's jvm_lock takes it (shell-spec.sh's
-        spec_lock_holder), until the case ends."""
-        holder = subprocess.Popen(["bash", "-c", '. "$1"; jvm_lock "$2" || exit 1; exec sleep 600', "_",
-                                   os.path.join(cli_harness.ROOT, "scripts/jvm-gate.sh"), lock],
-                                  env=cli_harness.isolated_env(os.environ), stdout=subprocess.DEVNULL,
-                                  stderr=subprocess.DEVNULL, start_new_session=True)
-        self.addCleanup(lambda: (holder.kill(), holder.wait()))
-
-        def held() -> bool:
-            if not os.path.exists(lock):
-                return False
-            with open(lock) as f:
-                return f.read().strip() == str(holder.pid)
-        self.assertTrue(cli_harness.wait_until(held), "the lock holder never took the lock")
-
     def test_the_branch_on_every_exit_path(self) -> None:
         self.assertEqual(2, self.measure("landable", *PL, env={"DISPATCH_FAILS": "1"}), "a dispatch refused")
         self.assertEqual([], self.measure_branches())
