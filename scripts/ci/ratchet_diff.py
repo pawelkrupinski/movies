@@ -29,6 +29,9 @@ import subprocess
 import sys
 from typing import Dict, List, Optional, Tuple
 
+# Its sibling ratchets' bytecode stays out of the checkout: under `python3 -I` (its test's run) PYTHONDONTWRITEBYTECODE
+# is ignored, and their __pycache__ landed in scripts/ci (Order independence #105).
+sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import coupling_ratchet  # noqa: E402
 import js_quality_ratchet  # noqa: E402
