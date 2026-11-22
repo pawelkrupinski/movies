@@ -214,8 +214,6 @@ cognitive	scripts/deploy_watch.py:main	47
 cognitive	scripts/deploy_watch.py:parse_checks	13
 cognitive	scripts/discover-cinemas/discover.py:build_plan	16
 cognitive	scripts/discover-cinemas/discover.py:render_report	12
-cognitive	scripts/experiments/copied-fact-share-fit.py:fit	28
-cognitive	scripts/experiments/matching-fundamentals/analyse.py:verdict	15
 cognitive	scripts/flip_timeline.py:classify	39
 cognitive	scripts/flip_timeline.py:gather	26
 cognitive	scripts/flip_timeline.py:gather_all	17
@@ -263,8 +261,6 @@ cognitive	scripts/listing_history.py:report	69
 cognitive	scripts/listing_history.py:trace_reason	15
 cognitive	scripts/ml-identity/cross_country_experiment.py:bucket	11
 cognitive	scripts/ml-identity/cross_country_experiment.py:donors_of	17
-cognitive	scripts/ml-identity/identity_ml_experiment.py:outcome	25
-cognitive	scripts/ml-identity/identity_ml_experiment.py:run	45
 cognitive	scripts/mongo_grants.py:main	25
 cognitive	scripts/ops/dumpheap.py:attach	13
 cognitive	scripts/poster_eval.py:build	48
@@ -502,8 +498,6 @@ cyclomatic	scripts/claude-hooks/unbounded-poll-guard:positions	11
 cyclomatic	scripts/deploy_watch.py:main	37
 cyclomatic	scripts/discover-cinemas/discover.py:build_plan	12
 cyclomatic	scripts/discover-cinemas/discover.py:render_report	11
-cyclomatic	scripts/experiments/copied-fact-share-fit.py:fit	21
-cyclomatic	scripts/experiments/matching-fundamentals/analyse.py:verdict	19
 cyclomatic	scripts/flip_timeline.py:analyse_all	12
 cyclomatic	scripts/flip_timeline.py:classify	39
 cyclomatic	scripts/flip_timeline.py:cluster_asks	17
@@ -551,8 +545,6 @@ cyclomatic	scripts/listing_history.py:replay	19
 cyclomatic	scripts/listing_history.py:replay.take	12
 cyclomatic	scripts/listing_history.py:report	54
 cyclomatic	scripts/ml-identity/cross_country_experiment.py:donors_of	13
-cyclomatic	scripts/ml-identity/identity_ml_experiment.py:outcome	16
-cyclomatic	scripts/ml-identity/identity_ml_experiment.py:run	71
 cyclomatic	scripts/mongo_grants.py:main	17
 cyclomatic	scripts/poster_eval.py:Images.ensure	14
 cyclomatic	scripts/poster_eval.py:build	31
@@ -626,7 +618,6 @@ method-lines	scripts/identity_stamp_carry.py:covered	57
 method-lines	scripts/label-lookup:lookup	114
 method-lines	scripts/listing_history.py:replay	69
 method-lines	scripts/listing_history.py:report	113
-method-lines	scripts/ml-identity/identity_ml_experiment.py:run	168
 method-lines	scripts/poster_eval.py:build	64
 method-lines	scripts/pure_move_check.py:find_moves	92
 method-lines	scripts/pure_move_check.py:name_risks	53
@@ -640,9 +631,9 @@ file-lines	infra/bin/nix-update	560
 file-lines	infra/nix/files/nixos-auto-apply.py	1343
 file-lines	infra/nix/files/scheduled_dispatch.py	582
 file-lines	scripts/ci/ci_trends.py	1829
-file-lines	scripts/ci/commit_rules.py	594
-file-lines	scripts/ci/convergence_reuse.py	939
-file-lines	scripts/ci/coupling_ratchet.py	1275
+file-lines	scripts/ci/commit_rules.py	595
+file-lines	scripts/ci/convergence_reuse.py	940
+file-lines	scripts/ci/coupling_ratchet.py	1276
 file-lines	scripts/ci/runner_scheduler.py	1245
 file-lines	scripts/flip_timeline.py	843
 file-lines	scripts/identity_stamp_carry.py	602
@@ -738,9 +729,6 @@ pyright	scripts/convergence-findings.py	12
 pyright	scripts/dead_code.py	89
 pyright	scripts/deploy_watch.py	50
 pyright	scripts/discover-cinemas/discover.py	170
-pyright	scripts/experiments/copied-fact-reliability.py	19
-pyright	scripts/experiments/copied-fact-share-fit.py	91
-pyright	scripts/experiments/matching-fundamentals/analyse.py	227
 pyright	scripts/flip_timeline.py	1094
 pyright	scripts/identity-stage-works.py	23
 pyright	scripts/identity_boot_cost.py	76
@@ -753,7 +741,6 @@ pyright	scripts/identity_what_if.py	485
 pyright	scripts/linux-tree-sync.py	108
 pyright	scripts/listing_history.py	583
 pyright	scripts/ml-identity/cross_country_experiment.py	239
-pyright	scripts/ml-identity/identity_ml_experiment.py	514
 pyright	scripts/mongo_grants.py	69
 pyright	scripts/ops/dumpheap.py	27
 pyright	scripts/poster_eval.py	810
