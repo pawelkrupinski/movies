@@ -639,7 +639,6 @@ file-lines	infra/bin/deploy	706
 file-lines	infra/bin/nix-update	560
 file-lines	infra/nix/files/nixos-auto-apply.py	1343
 file-lines	infra/nix/files/scheduled_dispatch.py	582
-file-lines	scripts/ci/ci_timings.py	504
 file-lines	scripts/ci/ci_trends.py	1829
 file-lines	scripts/ci/commit_rules.py	594
 file-lines	scripts/ci/convergence_reuse.py	939
@@ -679,7 +678,7 @@ pyright	scripts/agent_time.py	194
 pyright	scripts/aot-class-list.py	41
 pyright	scripts/ci/check-security-headers.py	266
 pyright	scripts/ci/ci_http_calls.py	97
-pyright	scripts/ci/ci_timings.py	507
+pyright	scripts/ci/ci_timings.py	503
 pyright	scripts/ci/ci_trends.py	2451
 pyright	scripts/ci/commit_rules.py	75
 pyright	scripts/ci/convergence_paths.py	66
@@ -709,7 +708,7 @@ pyright	scripts/ci/identity_live_drift.py	77
 pyright	scripts/ci/identity_run_shards.py	26
 pyright	scripts/ci/identity_takes.py	37
 pyright	scripts/ci/identity_takes_diff.py	350
-pyright	scripts/ci/job_metrics.py	179
+pyright	scripts/ci/job_metrics.py	171
 pyright	scripts/ci/junit_failures.py	16
 pyright	scripts/ci/landing_check_for_tree.py	17
 pyright	scripts/ci/lint_per_file_check.py	214

@@ -384,7 +384,7 @@ ad-hoc API scripts. This section replaces them with one tool, one per-job teleme
 | `.github/actions/job-telemetry` | every job that checks out the repository, in every workflow, hosted, ci-runner and macOS alike (since 2026-11-22; JobTelemetryCoverageSpec, which names the five checkout-less `gh`-only jobs) | `start` right after checkout, `finish` last (`!cancelled()`; before a convergence row's leg verdict). Uploads the job's `ci-metrics-<job>-<runner>` artifact (7 days). Every step continues on error. |
 | `scripts/ci/machine-id.sh` | `start` | one `machine: {json}` log line and metrics line |
 | `scripts/ci/cgroup-sampler.sh start 5` | `start` (Linux) | the resource series, every 5 s (overhead below) |
-| `scripts/ci/job_metrics.py sample` | `start` (macOS) | the same series' CPU, load, memory and swap columns from Mach's `host_statistics` and sysctl, plus `mem_pressure_level` (macOS has no `/proc`, no PSI) |
+| `scripts/ci/darwin_sampler.py` | `start` (macOS) | the same series' CPU, load, memory and swap columns from Mach's `host_statistics` and sysctl, plus `mem_pressure_level` (macOS has no `/proc`, no PSI) |
 | `scripts/ci/job_metrics.py` | `start`/`finish` | sets `JDK_JAVA_OPTIONS=-Xlog:gc:file=$RUNNER_TEMP/ci-gc/gc-%p.log` for every later JVM; at the end parses the GC logs, the JUnit reports, the series; reads the API rate limit at both ends |
 | `scripts/ci/cache-marker.sh` | `sbt-target-cache`, `setup-jdk` | `ci-cache <name> <hit\|partial\|miss> <key>` plus restore time and size |
 | `ci_timings.py` (each workflow's `timings` job) | in-run | the run summary now ends with **one table per leg** (convergence's countries; Main's job groups): each row's queue, setup by category, work, total, machine, GC and pressure; the leg's wall clock and its critical row |
@@ -472,7 +472,7 @@ row's country, else the telemetry label), `label`.
 
 The per-job artifact's own lines (`machine`, `job_start`, `series`, `procs`, `jvm`, `cache`, `tests`, `suite`, `test`,
 `rate_limit`, `job_end`) are what `export` turns into these events; `series` columns are cgroup-sampler.sh's
-`SERIES_HEADER` (job_metrics.py's `DARWIN_SERIES` on macOS). Report run timings (`ci_timings.py`) also pushes each
+`SERIES_HEADER` (darwin_sampler.py's `DARWIN_SERIES` on macOS). Report run timings (`ci_timings.py`, `run_metrics.py`) also pushes each
 job's CPU from them to Prometheus: `kinowo_ci_job_cpu_busy_ratio`, `kinowo_ci_job_cpu_seconds`, `kinowo_ci_job_cores`,
 `kinowo_ci_job_mem_pressure_ratio`, `kinowo_ci_step_cpu_busy_ratio` (the ci-builds board's CPU panels).
 

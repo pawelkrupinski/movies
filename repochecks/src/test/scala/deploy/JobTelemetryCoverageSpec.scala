@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 /**
  * Every job records its runner's resources from its start to its end (the owner, 2026-11-22: "add cpu usage stats to ci
  * jobs"): .github/actions/job-telemetry's `start` right after the job's checkout (machine-id.sh's CPU model and cores,
- * the resource sampler -- cgroup-sampler.sh's /proc series on Linux, job_metrics.py's Mach sampler on macOS), its
+ * the resource sampler -- cgroup-sampler.sh's /proc series on Linux, darwin_sampler.py on macOS), its
  * `finish` as the job's last step (the series uploaded as the job's `ci-metrics-*` artifact). Report run timings
  * (scripts/ci/ci_timings.py) reads each job's artifact after the run and pushes its CPU beside its time
  * (`kinowo_ci_job_cpu_busy_ratio`, `kinowo_ci_job_cpu_seconds`, `kinowo_ci_job_cores`) to the ci-builds board. A job

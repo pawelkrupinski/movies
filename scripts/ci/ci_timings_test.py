@@ -250,7 +250,7 @@ class CpuTest(unittest.TestCase):
         return ci_trends.run_record(RUN, api, metrics)
 
     def payload(self):
-        return timings.otlp_payload(RUN, timings.attach_cpu(jobs(), timings.job_cpu(self.record())))
+        return timings.otlp_payload(RUN, timings.run_metrics.attach(jobs(), timings.run_metrics.job_cpu(self.record())))
 
     def series(self, name):
         return PayloadTest.series(self, name, self.payload())
@@ -276,7 +276,7 @@ class CpuTest(unittest.TestCase):
 
     def test_the_report_names_each_jobs_cpu(self):
         out = io.StringIO()
-        timings.report(RUN, timings.attach_cpu(jobs(), timings.job_cpu(self.record())), out)
+        timings.report(RUN, timings.run_metrics.attach(jobs(), timings.run_metrics.job_cpu(self.record())), out)
         self.assertIn("CPU 75% of 4 cores, 2100 CPU-s", out.getvalue())
 
 

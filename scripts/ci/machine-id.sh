@@ -29,7 +29,7 @@ main() {
   flags_hash=$(awk -F': *' '/^flags/ { print $2; exit }' "$proc/cpuinfo" 2>/dev/null)
   [ -n "$flags_hash" ] && flags_hash=$(printf '%s' "$flags_hash" | { sha256sum 2>/dev/null || shasum -a 256; } | cut -c1-12)
   mem_kb=$(awk '/^MemTotal:/ { print $2 }' "$proc/meminfo" 2>/dev/null)
-  # macOS has no /proc: sysctl names the same three (job_metrics.py samples its CPU through Mach instead).
+  # macOS has no /proc: sysctl names the same three (darwin_sampler.py samples its CPU through Mach instead).
   if [ -z "$cpu_model" ] && command -v sysctl > /dev/null 2>&1; then
     cpu_model=$(sysctl -n machdep.cpu.brand_string 2>/dev/null)
     cores=$(sysctl -n hw.ncpu 2>/dev/null)

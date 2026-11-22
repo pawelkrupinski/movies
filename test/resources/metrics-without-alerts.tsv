@@ -5,9 +5,14 @@ metric	reason	owner
 flux:kustomization_reconcile_duration_seconds:p95	dashboard only: kept visible rather than alerted, no measured baseline for a threshold (flux.rules' comment)	fleet
 k3s:deployment_not_settled	dashboard only: rollout-duration history; K3sDeploymentReplicasMissing alerts on the same comparison (k3s.rules' comment)	fleet
 kinowo_ci_http_calls	dashboard only: CI cost/timing telemetry pushed by CI scripts, not a production signal	ci
+kinowo_ci_job_cores	dashboard only: CI CPU telemetry (ci_timings.py, the ci-builds board's CPU panels), a reading aid, not a production signal	ci
+kinowo_ci_job_cpu_busy_ratio	dashboard only: CI CPU telemetry (ci_timings.py, the ci-builds board's CPU panels), a reading aid, not a production signal	ci
+kinowo_ci_job_cpu_seconds	dashboard only: CI CPU telemetry (ci_timings.py, the ci-builds board's CPU panels), a reading aid, not a production signal	ci
+kinowo_ci_job_mem_pressure_ratio	dashboard only: CI CPU telemetry (ci_timings.py, the ci-builds board's CPU panels), a reading aid, not a production signal	ci
 kinowo_ci_job_queue_seconds	dashboard only: CI cost/timing telemetry pushed by CI scripts, not a production signal	ci
 kinowo_ci_phase_seconds	dashboard only: CI cost/timing telemetry pushed by CI scripts, not a production signal	ci
 kinowo_ci_run_number	dashboard only: CI cost/timing telemetry pushed by CI scripts, not a production signal	ci
+kinowo_ci_step_cpu_busy_ratio	dashboard only: CI CPU telemetry (ci_timings.py, the ci-builds board's CPU panels), a reading aid, not a production signal	ci
 kinowo_heapdumps_budget_bytes	dashboard only: heap-dump housekeeping sizes; the pruner's freshness (heapdumps_prune_last_success_timestamp_seconds) is the alerted signal	fleet
 kinowo_heapdumps_bytes	dashboard only: heap-dump housekeeping sizes; the pruner's freshness (heapdumps_prune_last_success_timestamp_seconds) is the alerted signal	fleet
 kinowo_heapdumps_files	dashboard only: heap-dump housekeeping sizes; the pruner's freshness (heapdumps_prune_last_success_timestamp_seconds) is the alerted signal	fleet

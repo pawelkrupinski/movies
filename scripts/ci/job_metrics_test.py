@@ -12,6 +12,7 @@ import unittest.mock
 from contextlib import redirect_stdout
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import darwin_sampler as ds  # noqa: E402
 import job_metrics as jm  # noqa: E402
 
 GC_LOG = """[0.010s][info][gc] Using G1
@@ -125,13 +126,16 @@ class FakeDarwinHost:
         return (300, 200, 400, 100)
 
     def available_pages(self):
-        return 256 * 1024 * 1024 // jm.resource.getpagesize()
+        return 256 * 1024 * 1024 // ds.resource.getpagesize()
 
-    def sysctl(self, name, ctype):
-        values = {"hw.memsize": ctype(1 << 30), "kern.memorystatus_vm_pressure_level": ctype(2)}
-        if name == "vm.swapusage":
-            return jm.SwapUsage(total=2 << 20, avail=1 << 20, used=1 << 20)
-        return values.get(name)
+    def memsize(self):
+        return 1 << 30
+
+    def swap(self):
+        return (2 << 20, 1 << 20)
+
+    def pressure_level(self):
+        return 2
 
 
 class Darwin(unittest.TestCase):
@@ -139,7 +143,7 @@ class Darwin(unittest.TestCase):
     ci_timings read both alike."""
 
     def test_a_row_counts_busy_as_user_nice_and_system_over_all_ticks(self):
-        row = dict(zip(jm.DARWIN_SERIES, jm.darwin_row(FakeDarwinHost(), now=100)))
+        row = dict(zip(ds.DARWIN_SERIES, ds.darwin_row(FakeDarwinHost(), now=100)))
         self.assertEqual((100, 1000, 600, 400, 200), (row["t"], row["cpu_total"], row["cpu_busy"], row["cpu_user"], row["cpu_sys"]))
         self.assertEqual((1 << 20, 256 * 1024, 2048, 1024, 2),
                          (row["mem_total_kb"], row["mem_avail_kb"], row["swap_total_kb"], row["swap_free_kb"], row["mem_pressure_level"]))
@@ -147,9 +151,9 @@ class Darwin(unittest.TestCase):
     def test_the_sampler_writes_a_series_the_finish_reads(self):
         with tempfile.TemporaryDirectory() as temp, unittest.mock.patch.dict(os.environ, {"RUNNER_TEMP": temp}):
             os.environ.pop("CGROUP_SAMPLER_OUT", None)
-            jm.darwin_sample(host=FakeDarwinHost(), rounds=3, sleep=lambda _: None)
+            ds.darwin_sample(jm.sampler_out() + ".series", host=FakeDarwinHost(), rounds=3, sleep=lambda _: None)
             columns, rows = jm.table(jm.sampler_out() + ".series")
-        self.assertEqual(list(jm.DARWIN_SERIES), columns)
+        self.assertEqual(list(ds.DARWIN_SERIES), columns)
         self.assertEqual(3, len(rows))
 
     def test_start_runs_the_darwin_sampler_on_macos_not_the_proc_one(self):
@@ -160,12 +164,12 @@ class Darwin(unittest.TestCase):
             env = dict(os.environ, GITHUB_ENV=os.path.join(temp, "env"))
             jm.start(env=env, run=lambda argv, **_: ran.append(argv), platform="darwin",
                      spawn=lambda argv, **_: spawned.append(argv))
-        self.assertEqual([["sample"]], [argv[2:] for argv in spawned])
+        self.assertEqual([["darwin_sampler.py", "5"]], [[os.path.basename(argv[1]), argv[3]] for argv in spawned])
         self.assertFalse(any("cgroup-sampler.sh" in " ".join(argv) for argv in ran))
 
     @unittest.skipUnless(sys.platform == "darwin", "Mach's host_statistics: macOS only")
     def test_the_real_host_reads_sensible_figures(self):
-        row = dict(zip(jm.DARWIN_SERIES, jm.darwin_row(jm.DarwinHost())))
+        row = dict(zip(ds.DARWIN_SERIES, ds.darwin_row(ds.DarwinHost())))
         self.assertGreater(row["cpu_total"], row["cpu_busy"])
         self.assertGreater(row["cpu_busy"], 0)
         self.assertGreater(row["mem_total_kb"], row["mem_avail_kb"])
