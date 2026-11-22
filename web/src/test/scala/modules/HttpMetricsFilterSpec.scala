@@ -224,6 +224,35 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "not count the kubelet's /health and /ready probes, which reach the root overlay unrouted" in {
+    // `AppLoader.rootOperationalRoutes` answers them through `Router.from`, which attaches no HandlerDef:
+    // counted, every pod's startup/readiness/liveness probes were the bulk of the `other` route.
+    val harness = new Harness()
+    harness.run(FakeRequest("GET", "/health"))
+    harness.run(FakeRequest("GET", "/ready"), Results.ServiceUnavailable)
+
+    harness.recorded(Counter) shouldBe empty
+    harness.recorded(Histogram) shouldBe empty
+    harness.exposition should not include "kinowo_web_route_last_called_seconds{"
+  }
+
+  it should "not count the iOS app running in a Simulator: our own CI's XCUITest runs" in {
+    // `KinowoUserAgent` (ios/Kinowo/Networking) adds `; Simulator` to a Simulator build's User-Agent.
+    val harness = new Harness()
+    harness.run(routed("GET", "/warszawa/", CityIndexPath)
+      .withHeaders(Headers("User-Agent" -> "KinowoIOS/2.0.20 (iOS 26.5; Simulator)")))
+
+    harness.recorded(Counter) shouldBe empty
+    harness.exposition should not include "kinowo_web_route_last_called_seconds{"
+  }
+
+  it should "still count the iOS app on a real device" in {
+    val harness = new Harness()
+    harness.run(routed("GET", "/warszawa/", CityIndexPath).withHeaders(Headers("User-Agent" -> "KinowoIOS/2.0.20 (iOS 26.5)")))
+
+    harness.valueOf(s"""$Counter{country="pl",method="GET",route="/:city/",status="2xx"}""") shouldBe Some(1.0)
+  }
+
   it should "still count a visitor whose User-Agent merely mentions kinowo" in {
     val harness = new Harness()
     harness.run(routed("GET", "/poznan/", CityIndexPath).withHeaders(Headers("User-Agent" -> "KinowoIOS/2.0.9")))

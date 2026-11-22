@@ -23,6 +23,13 @@ final class KinowoUserAgentTests: XCTestCase {
         XCTAssertEqual(KinowoUserAgent.value(appVersion: "", osVersion: os(18, 0, 0)), "KinowoIOS/0 (iOS 18.0)")
     }
 
+    /// The web tier leaves a Simulator's requests (our CI's XCUITest runs) out of its request metrics
+    /// by this marker (`WebHttpMetrics.isMeasured`).
+    func testASimulatorBuildSaysSo() {
+        XCTAssertEqual(KinowoUserAgent.value(appVersion: "2.0.20", osVersion: os(26, 5, 0), simulator: true),
+                       "KinowoIOS/2.0.20 (iOS 26.5; Simulator)")
+    }
+
     func testTheLiveValueKeepsThePrefixTheServerMatches() {
         XCTAssertTrue(KinowoUserAgent.value.hasPrefix("KinowoIOS/"), KinowoUserAgent.value)
     }

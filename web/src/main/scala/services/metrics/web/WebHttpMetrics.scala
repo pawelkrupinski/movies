@@ -77,7 +77,8 @@ class WebHttpMetrics(registry: PrometheusRegistry, country: String) {
     .name("kinowo_web_http_requests")
     .help("Inbound HTTP requests the web tier answered since boot, by country, method, matched " +
       "route pattern (`other` when no route matched — 404s and scanner noise) and response status " +
-      "class. The `/metrics` scrape itself is excluded.")
+      "class. The `/metrics` scrape, the kubelet's `/health` and `/ready` probes, the synthetic probe and the " +
+      "iOS app in a Simulator (our CI) are excluded.")
     .labelNames("country", "method", "route", "status")
     .register(registry)
 
@@ -170,6 +171,11 @@ object WebHttpMetrics {
    *  measurement. */
   val MetricsRoute: String = "/metrics"
 
+  /** The operational endpoints left out of measurement (see [[isMeasured]]): the scrape and the
+   *  kubelet's probes. `AppLoader.rootOperationalRoutes` answers all three through `Router.from`,
+   *  which attaches no `HandlerDef`, so they would otherwise all count as [[UnmatchedRoute]]. */
+  private val OperationalPaths: Set[String] = Set(MetricsRoute, "/health", "/ready")
+
   /** The HTTP verbs allowed as a `method` label value. Anything else — and the
    *  request line is whatever the client typed — folds into [[UnmatchedRoute]]'s
    *  namesake bucket. */
@@ -229,12 +235,24 @@ object WebHttpMetrics {
    *  both front doors, every country root and each country's biggest city page
    *  once a minute, which made it most of this tier's traffic and most of its
    *  bytes (from 2026-09-24 15:45Z, showtimes.cc's response bytes ×27). Its
-   *  own `probe_*` series already say whether those pages answer, and how fast. */
-  def isMeasured(request: RequestHeader): Boolean =
-    routeLabel(request) != MetricsRoute && request.path != MetricsRoute &&
-      !request.headers.get(play.api.http.HeaderNames.USER_AGENT).exists(_.startsWith(SyntheticProbeAgent))
+   *  own `probe_*` series already say whether those pages answer, and how fast.
+   *
+   *  Excludes the kubelet's `/health` and `/ready` probes, which every pod answers every few
+   *  seconds (they were most of the `other` route on the request-rate panel), and the iOS app
+   *  running in a Simulator: our own CI's XCUITest runs (from GitHub's macOS runners, about 16k
+   *  requests a week in 2026-11), which no visitor makes. */
+  def isMeasured(request: RequestHeader): Boolean = {
+    val agent = request.headers.get(play.api.http.HeaderNames.USER_AGENT)
+    !OperationalPaths.contains(routeLabel(request)) && !OperationalPaths.contains(request.path) &&
+      !agent.exists(_.startsWith(SyntheticProbeAgent)) && !agent.exists(isSimulatorApp)
+  }
 
   /** The User-Agent prefix every synthetic-probe fetch sends. Must match
    *  `fleet.syntheticProbes.userAgent` in infra/nix/modules/roles/synthetic-probes.nix. */
   val SyntheticProbeAgent: String = "kinowo-synthetic-probe/"
+
+  /** The iOS app in a Simulator: `KinowoIOS/2.0.20 (iOS 26.5; Simulator)`, the marker
+   *  `KinowoUserAgent` (ios/Kinowo/Networking) adds to a Simulator build. */
+  private def isSimulatorApp(agent: String): Boolean =
+    agent.startsWith("KinowoIOS/") && agent.endsWith("; Simulator)")
 }
