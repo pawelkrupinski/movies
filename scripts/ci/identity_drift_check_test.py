@@ -61,7 +61,9 @@ if env.get("FAKE_HANG"):
     subprocess.run(["sleep", "300"]); exit(0)
 broken = env.get("FAKE_BROKEN_BASE", "")
 if broken and side == "base":
-    here = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    # the checkout's commit, read from its worktree's own HEAD (no git: the tool's checkout is a detached worktree)
+    gitdir = open(".git").read().split("gitdir:", 1)[1].strip() if os.path.isfile(".git") else ".git"
+    here = open(os.path.join(gitdir, "HEAD")).read().strip()
     if broken in ("all", here):
         out("[error] (worker / Test / compileIncremental) Compilation failed"); exit(1)
 if env.get("FAKE_JVM_CRASH") == side:
