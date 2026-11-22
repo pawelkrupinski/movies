@@ -193,6 +193,16 @@ def wait_until(condition: Callable[[], bool], bound: float = WAIT_BOUND) -> bool
     return True
 
 
+def scratch_git(repo: str, *args: str) -> str:
+    """git in a scratch repository, isolated as a tool's is (scratch-git.sh's scratch_git), its stdout stripped: for
+    what a case class shares (a repository made once in setUpClass) as for ToolCase.git."""
+    if (os.path.realpath(repo) + os.sep).startswith(ROOT + os.sep):
+        raise AssertionError(f"refusing {repo}: it is inside this checkout, not a scratch repository")
+    done = subprocess.run(["git", "-C", repo, *args], env=isolated_env(os.environ), check=True,
+                          capture_output=True, text=True)
+    return done.stdout.strip()
+
+
 class ToolCase(unittest.TestCase):
     """A case with a scratch directory (`self.work`), fakes first on the PATH (`self.fakes`) and `run_tool`."""
     TOOL = ""
@@ -235,11 +245,7 @@ class ToolCase(unittest.TestCase):
 
     def git(self, repo: str, *args: str) -> str:
         """git in a scratch repository, isolated as the tool's is (scratch-git.sh's scratch_git)."""
-        if (os.path.realpath(repo) + os.sep).startswith(ROOT + os.sep):
-            raise AssertionError(f"refusing {repo}: it is inside this checkout, not a scratch repository")
-        done = subprocess.run(["git", "-C", repo, *args], env=isolated_env(os.environ), check=True,
-                              capture_output=True, text=True)
-        return done.stdout.strip()
+        return scratch_git(repo, *args)
 
     def repo(self, relative: str, *init_args: str) -> str:
         full = self.path(relative)

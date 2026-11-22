@@ -110,10 +110,7 @@ class Shared:
             f.write(text + "\n")
 
     def git(self, *args: str) -> str:
-        """git in the scratch repository, isolated as the gate's is (cli_harness.ToolCase.git)."""
-        done = subprocess.run(["git", "-C", self.repo, *args], env=cli_harness.isolated_env(os.environ), check=True,
-                              capture_output=True, text=True)
-        return done.stdout.strip()
+        return cli_harness.scratch_git(self.repo, *args)
 
     def commit(self, name: str, files: Tuple[str, ...]) -> str:
         self.git("checkout", "-q", "-B", name, self.base)
