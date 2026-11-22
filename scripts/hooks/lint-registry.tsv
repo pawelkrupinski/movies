@@ -292,6 +292,7 @@ web:controllers.ApiRatingPendingSpec	android/app/src/test/resources/fixtures/rep
 web:controllers.ApiRepertoireUsWireSpec	android/app/src/test/resources/fixtures/repertoire_us.json ios/Tests/KinowoCoreTests/Fixtures/api_repertoire_us.json
 web:controllers.BrowseFilterParamsSpec	web/src/main/resources/routes
 web:controllers.CityTrailingSlashRedirectSpec	web/src/main/resources/routes
+web:controllers.FilmFormatSpec	test/resources/format-token-strip.json
 web:controllers.LegalControllerSpec	web/src/main/resources/routes
 web:controllers.RenamedFilmPathRedirectSpec	web/src/main/resources/routes
 web:controllers.ReviewPagesSpec	web/src/test/resources/review/tmdb-movie-4935.json test/resources/fixtures/* web/src/main/resources/routes
