@@ -10,7 +10,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.SynopsisProse
-import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, DayPickerProgramme, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, DayPickerProgramme, ScraperParse, SlotsToMovies, BookedScreening}
 import services.titles.FormatTags
 import tools.HttpFetch
 
@@ -79,7 +79,7 @@ object KinoStylowyClient {
     trailer:   Option[String],
     genres:    Seq[String],
     ageRating: Option[String]
-  )
+  ) extends BookedScreening
 
   /** The days the page's date strip links to, in order, deduplicated. */
   private[pl] def programmedDays(page: Document): Seq[LocalDate] =
@@ -90,7 +90,7 @@ object KinoStylowyClient {
 
   private[pl] def parse(pages: Seq[(LocalDate, Document)], cinema: Cinema): Seq[CinemaMovie] = {
     val slots = pages.flatMap { case (day, page) => page.select("#startRepertuar div.card").asScala.toSeq.flatMap(filmCard(_, day)) }
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, group, showtimes) =>
+    SlotsToMovies.fold(slots, _.title, _.showtime) { (title, group, showtimes) =>
       val head = group.head
       CinemaMovie(
         movie      = Movie(title, genres = head.genres),

@@ -19,6 +19,15 @@ private[cinemas] final case class ScrapedSlot(
   format:     List[String]   = Nil
 )
 
+/** A screening its venue sells by its own booking link, billed in its formats: a client's slot type, folded by its
+  * film's title with [[SlotsToMovies.fold]] and this as its [[Showtime]]. */
+private[cinemas] trait BookedScreening {
+  def dateTime: LocalDateTime
+  def booking:  Option[String]
+  def format:   List[String]
+  def showtime: Showtime = Showtime(dateTime, booking, None, format)
+}
+
 /** One screening card of a page that lists a card per screening, each card linking its film's own page by slug and
   * none selling a ticket (the venue books by phone or a form): folded by [[SlotsToMovies.byFilmPage]]. */
 private[cinemas] final case class FilmPageCard(

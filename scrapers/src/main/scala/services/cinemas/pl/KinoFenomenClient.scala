@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import services.cinemas.common.ScraperParse
-import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
+import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies, BookedScreening}
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -46,7 +46,7 @@ class KinoFenomenClient(
 
     val slots = document.select("div.iframe_all").asScala.toSeq.flatMap(parseSlot)
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, group, showtimes) =>
+    SlotsToMovies.fold(slots, _.title, _.showtime) { (title, group, showtimes) =>
       val head = group.head
       CinemaMovie(
         movie     = Movie(title, releaseYear = head.year),
@@ -125,7 +125,7 @@ object KinoFenomenClient {
     directors: Seq[String],
     year:      Option[Int],
     artistUrl: Option[String]
-  )
+  ) extends BookedScreening
 
   private[cinemas] def parseSlot(row: org.jsoup.nodes.Element): Option[RawSlot] = {
     // Date + time — biletyna renders two bold spans: date then "godz." label

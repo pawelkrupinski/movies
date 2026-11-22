@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies, BookedScreening}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 
@@ -99,13 +99,13 @@ object IksorisBookingClient {
     poster:    Option[String],
     year:      Option[Int]    = None,
     genres:    Seq[String]    = Seq.empty
-  )
+  ) extends BookedScreening
 
   def parse(html: String, page: IksorisBookingPage, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, page.origin.value)
     val slots    = programmeSlots(document) ++ tableSlots(document) ++ termsListSlots(document)
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, group, showtimes) =>
+    SlotsToMovies.fold(slots, _.title, _.showtime) { (title, group, showtimes) =>
       val head = group.head
       CinemaMovie(
         movie     = Movie(title, runtimeMinutes = head.runtime, releaseYear = group.flatMap(_.year).headOption,

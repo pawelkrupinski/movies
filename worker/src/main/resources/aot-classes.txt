@@ -8666,6 +8666,7 @@ services.cinemas.common.AgeRating
 services.cinemas.common.AgeRating$
 services.cinemas.common.AggregatorUrls
 services.cinemas.common.AggregatorUrls$
+services.cinemas.common.BookedScreening
 services.cinemas.common.ChunkPlan
 services.cinemas.common.ChunkPlan$
 services.cinemas.common.ChunkedCinemaScraper
