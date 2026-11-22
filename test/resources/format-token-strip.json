@@ -1,0 +1,29 @@
+{
+  "about": "THE rule for which format tokens a showtime pill may drop, as input -> output vectors that the web's FilmFormatSpec (Scala), iOS's FormatTokenFilterTests (Swift) and Android's FormatTokenFilterTest (Kotlin) each hold their tokensToStrip to, case by case, so the three cannot drift. A pill drops the tokens EVERY slot of the film carries. A slot with no dimension token is implicitly 2D when comparing: Kino Rialto writes only DUB where Helios writes 2D DUB, and without the implied 2D one such slot put 2D back on every other pill (kinowo.net/poznan/movie/strus-pedziwiatr-i-zemsta-kojota, 2026-11-22). Only 2D and 3D are dimensions: IMAX, 4DX, ScreenX and the rest are projection systems the vocabulary pairs with either (IMAX 3D, 4DE 3D), so an IMAX slot that does not say 3D is 2D too. A format-less slot sits out: it says nothing at all. formats are space-joined as the API sends them; strip is a set.",
+  "dimensionTokens": ["2D", "3D"],
+  "impliedDimension": "2D",
+  "cases": [
+    { "name": "the Rialto shape: a cinema naming no dimension counts as 2D, so 2D is common",
+      "formats": ["2D DUB", "2D DUB", "2D DUB", "DUB", "DUB"], "strip": ["2D", "DUB"] },
+    { "name": "a real 2D/3D film keeps its dimension, a dimensionless slot included",
+      "formats": ["2D DUB", "3D DUB", "DUB"], "strip": ["DUB"] },
+    { "name": "a real 2D/3D film in two versions keeps everything",
+      "formats": ["2D NAP", "3D DUB", "2D DUB"], "strip": [] },
+    { "name": "a 3D slot never takes the implied 2D",
+      "formats": ["3D DUB", "3D DUB"], "strip": ["3D", "DUB"] },
+    { "name": "a version that differs keeps its tag, the shared 2D drops",
+      "formats": ["2D NAP", "2D DUB", "2D NAP"], "strip": ["2D"] },
+    { "name": "every slot alike drops everything",
+      "formats": ["2D NAP", "2D NAP"], "strip": ["2D", "NAP"] },
+    { "name": "a format-less slot sits out of the comparison",
+      "formats": ["2D NAP", "", "2D NAP"], "strip": ["2D", "NAP"] },
+    { "name": "no formats at all drop nothing",
+      "formats": ["", ""], "strip": [] },
+    { "name": "an IMAX slot that does not say 3D is 2D: 2D drops, IMAX stays on its own pill",
+      "formats": ["IMAX NAP", "2D NAP", "2D NAP"], "strip": ["2D", "NAP"] },
+    { "name": "IMAX 2D beside IMAX 3D keeps the 3D",
+      "formats": ["IMAX NAP", "IMAX 3D NAP"], "strip": ["IMAX", "NAP"] },
+    { "name": "a 3D motion-seat slot keeps the 2D on the plain ones",
+      "formats": ["4DE 3D NAP", "2D NAP"], "strip": ["NAP"] }
+  ]
+}

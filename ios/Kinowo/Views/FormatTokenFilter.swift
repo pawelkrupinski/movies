@@ -20,14 +20,26 @@ import Foundation
 /// there.
 enum FormatTokenFilter {
 
+    /// The tokens that say a slot's dimension. IMAX, 4DX, ScreenX and the rest
+    /// are projection systems the vocabulary pairs with either (`IMAX 3D`,
+    /// `4DE 3D`), not dimensions of their own.
+    static let dimensionTokens: Set<String> = ["2D", "3D"]
+
+    /// The dimension of a slot that names none.
+    static let impliedDimension = "2D"
+
     /// What a pill on this card may drop: the tokens EVERY showtime across
-    /// `days` carries, whatever they name.
+    /// `days` carries, whatever they name. A showtime naming no dimension
+    /// counts as `impliedDimension` (Kino Rialto writes `DUB` where Helios
+    /// writes `2D DUB`); a format-less one sits out. Held to the vectors the
+    /// web and Android read too, `test/resources/format-token-strip.json`.
     static func tokensToStrip(_ days: [DayShowings]) -> Set<String> {
         let tokenSets = days
             .flatMap(\.cinemas)
             .flatMap(\.showtimes)
             .map { Set($0.format.split(separator: " ").map(String.init)) }
             .filter { !$0.isEmpty }
+            .map { $0.isDisjoint(with: dimensionTokens) ? $0.union([impliedDimension]) : $0 }
         guard let first = tokenSets.first else { return [] }
         return tokenSets.dropFirst().reduce(first) { $0.intersection($1) }
     }

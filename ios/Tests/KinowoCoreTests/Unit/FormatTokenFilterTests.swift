@@ -13,6 +13,45 @@ final class FormatTokenFilterTests: XCTestCase {
         })
     }
 
+    // MARK: – the shared vectors
+    //
+    // `test/resources/format-token-strip.json`, which the web's FilmFormatSpec
+    // and Android's FormatTokenFilterTest read too: the three platforms drop
+    // the same tokens from a pill, case by case.
+
+    private struct Vectors: Decodable {
+        struct Case: Decodable { let name: String; let formats: [String]; let strip: Set<String> }
+        let dimensionTokens: Set<String>
+        let impliedDimension: String
+        let cases: [Case]
+    }
+
+    private func vectors() throws -> Vectors {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // Unit
+            .deletingLastPathComponent()   // KinowoCoreTests
+            .deletingLastPathComponent()   // Tests
+            .deletingLastPathComponent()   // ios
+            .deletingLastPathComponent()   // repo root
+        let data = try Data(contentsOf: root.appendingPathComponent("test/resources/format-token-strip.json"))
+        return try JSONDecoder().decode(Vectors.self, from: data)
+    }
+
+    func testTheDimensionsAreTheSharedVectorsOnes() throws {
+        let v = try vectors()
+        XCTAssertEqual(FormatTokenFilter.dimensionTokens, v.dimensionTokens)
+        XCTAssertEqual(FormatTokenFilter.impliedDimension, v.impliedDimension)
+    }
+
+    func testEveryCaseOfTheSharedVectors() throws {
+        let v = try vectors()
+        XCTAssertFalse(v.cases.isEmpty)
+        for c in v.cases {
+            let days = [day("2026-11-22", [cinema("Kino A", c.formats)])]
+            XCTAssertEqual(FormatTokenFilter.tokensToStrip(days), c.strip, c.name)
+        }
+    }
+
     // MARK: – tokensToStrip
 
     func testEverySlotSharingAFormatMakesItStrippable() {

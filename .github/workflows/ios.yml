@@ -11,6 +11,8 @@ on:
             - '.github/workflows/ios.yml'
             # The retry-classification table the language-push and hidden-films tests hold the app's rules to.
             - 'test/resources/retry-classification.json'
+            # The pill-format vectors FormatTokenFilter's tests hold the app's rule to (with the web's).
+            - 'test/resources/format-token-strip.json'
     push:
         branches: [main]
         paths:
@@ -22,6 +24,8 @@ on:
             - '.github/workflows/ios.yml'
             # The retry-classification table the language-push and hidden-films tests hold the app's rules to.
             - 'test/resources/retry-classification.json'
+            # The pill-format vectors FormatTokenFilter's tests hold the app's rule to (with the web's).
+            - 'test/resources/format-token-strip.json'
     workflow_dispatch:
 
 # On a pull request a newer push cancels the older run mid-flight, freeing the slow macOS

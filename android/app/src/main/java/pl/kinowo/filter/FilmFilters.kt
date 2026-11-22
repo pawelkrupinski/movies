@@ -293,14 +293,26 @@ fun List<Film>.groupedByCinema(): List<CinemaSection> {
  * Same rule as the web's `FilmFormat` and iOS's `FormatTokenFilter`.
  */
 object FormatTokenFilter {
+    /** The tokens that say a slot's dimension. IMAX, 4DX, ScreenX and the rest
+     *  are projection systems the vocabulary pairs with either (`IMAX 3D`,
+     *  `4DE 3D`), not dimensions of their own. */
+    val DIMENSION_TOKENS: Set<String> = setOf("2D", "3D")
+
+    /** The dimension of a slot that names none. */
+    const val IMPLIED_DIMENSION = "2D"
+
     /** What a chip on this card may drop: the tokens EVERY showtime across
-     *  [days] carries, whatever they name. */
+     *  [days] carries, whatever they name. A showtime naming no dimension
+     *  counts as [IMPLIED_DIMENSION] (Kino Rialto writes `DUB` where Helios
+     *  writes `2D DUB`); a format-less one sits out. Held to the vectors the
+     *  web and iOS read too, `test/resources/format-token-strip.json`. */
     fun tokensToStrip(days: List<DayShowings>): Set<String> {
         val tokenSets = days
             .flatMap { it.cinemas }
             .flatMap { it.showtimes }
             .map { it.format.split(" ").filter(String::isNotEmpty).toSet() }
             .filter { it.isNotEmpty() }
+            .map { if (it.none(DIMENSION_TOKENS::contains)) it + IMPLIED_DIMENSION else it }
         val first = tokenSets.firstOrNull() ?: return emptySet()
         return tokenSets.drop(1).fold(first) { acc, s -> acc.intersect(s) }
     }

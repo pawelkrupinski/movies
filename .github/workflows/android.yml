@@ -7,6 +7,8 @@ on:
             - '.github/workflows/android.yml'
             # The retry-classification table the language-push and hidden-films tests hold the app's rules to.
             - 'test/resources/retry-classification.json'
+            # The pill-format vectors FormatTokenFilter's tests hold the app's rule to (with the web's).
+            - 'test/resources/format-token-strip.json'
             # The store-script helper tests below live here and in ios/scripts,
             # and the lookup tables they guard are SHARED with the iOS capture.
             # Without these, editing the file that actually broke Spain's
@@ -37,6 +39,8 @@ on:
             - '.github/workflows/android.yml'
             # The retry-classification table the language-push and hidden-films tests hold the app's rules to.
             - 'test/resources/retry-classification.json'
+            # The pill-format vectors FormatTokenFilter's tests hold the app's rule to (with the web's).
+            - 'test/resources/format-token-strip.json'
             # The store-script helper tests below live here and in ios/scripts,
             # and the lookup tables they guard are SHARED with the iOS capture.
             # Without these, editing the file that actually broke Spain's

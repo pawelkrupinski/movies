@@ -1,17 +1,60 @@
 package pl.kinowo
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import pl.kinowo.TestData.cinema
 import pl.kinowo.TestData.slot
 import pl.kinowo.filter.FormatTokenFilter
 import pl.kinowo.model.CinemaShowings
 import pl.kinowo.model.DayShowings
+import java.io.File
 
 class FormatTokenFilterTest {
 
     private fun day(date: String, vararg cinemas: CinemaShowings) =
         DayShowings(date = date, label = date, cinemas = cinemas.toList())
+
+    // ── the shared vectors ───────────────────────────────────────────────
+    //
+    // `test/resources/format-token-strip.json`, which the web's FilmFormatSpec
+    // and iOS's FormatTokenFilterTests read too: the three platforms drop the
+    // same tokens from a chip, case by case.
+
+    @Serializable
+    private data class Vectors(val dimensionTokens: Set<String>, val impliedDimension: String, val cases: List<Case>) {
+        @Serializable
+        data class Case(val name: String, val formats: List<String>, val strip: Set<String>)
+    }
+
+    /** Gradle runs unit tests from the module dir (`android/app`); walk up to the repo root. */
+    private fun vectors(): Vectors {
+        val start = File(System.getProperty("user.dir") ?: ".").absoluteFile
+        val file = generateSequence(start) { it.parentFile }
+            .map { it.resolve("test/resources/format-token-strip.json") }
+            .firstOrNull { it.isFile }
+            ?: error("test/resources/format-token-strip.json not found above $start")
+        return Json { ignoreUnknownKeys = true }.decodeFromString(Vectors.serializer(), file.readText())
+    }
+
+    @Test
+    fun theDimensionsAreTheSharedVectorsOnes() {
+        val v = vectors()
+        assertEquals(v.dimensionTokens, FormatTokenFilter.DIMENSION_TOKENS)
+        assertEquals(v.impliedDimension, FormatTokenFilter.IMPLIED_DIMENSION)
+    }
+
+    @Test
+    fun everyCaseOfTheSharedVectors() {
+        val v = vectors()
+        assertFalse(v.cases.isEmpty())
+        for (c in v.cases) {
+            val slots = c.formats.mapIndexed { i, f -> slot("1$i:00", f) }
+            assertEquals(c.name, c.strip, FormatTokenFilter.tokensToStrip(listOf(day("2026-11-22", cinema("X", slots)))))
+        }
+    }
 
     @Test
     fun tokensToStripIsTheIntersectionAcrossShowtimes() {
