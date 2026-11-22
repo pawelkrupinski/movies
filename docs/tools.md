@@ -199,7 +199,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/jvm-gate.sh` | The JVM gate (sourced): JVM slots, locks and governor tickets for the tools that start heavy JVMs | `bash scripts/jvm-gate.sh` | agentctl; skill CLAUDE.md, agent-ops, identity-investigation; 15 tools | jvm-gate-test.sh | MIGRATE |
 | `scripts/land-before-queue` | What `agentctl land` runs after its rebase, before it queues the change (~/bin/lib/agentctl/queue.py enqueue) | `scripts/land-before-queue` | agentctl; skill CLAUDE.md, identity-investigation; 2 tools | land-before-queue-test.sh | KEEP |
 | `scripts/land-precheck` | The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here | `scripts/land-precheck` | agentctl; 1 tool | land-precheck-test.sh | MIGRATE |
-| `scripts/py-quality-report` | The Python quality report and its ratchet (entry; the measure is scripts/py-quality/report.py) | `scripts/py-quality-report` | hook pre-push; 2 tools | - | - |
+| `scripts/py-quality-report` | The Python quality report and its ratchet (entry; the measure is scripts/py-quality/report.py) | `scripts/py-quality-report` | hook pre-push; 2 tools | - | KEEP |
 | `scripts/py-quality/clones.py` | THE PYTHON CLONE GROUPS (scripts/py-quality/report.py): every run of MIN_TOKENS or more tokens appearing twice or more | `imported` | wf ios; hook pre-push; skill CLAUDE.md, test-layers; 7 tools | - | Python |
 | `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; skill CLAUDE.md; 14 tools | - | Python |
 | `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | skill CLAUDE.md, identity-investigation, test-layers; 14 tools | - | Python |
@@ -213,7 +213,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (125)
+## Identity (123)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -270,9 +270,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/generated-artefacts-drift.sh` | Regenerate every checked-in generated artefact from its source, and fail if that changes anything | `scripts/ci/generated-artefacts-drift.sh` | wf ci; hook pre-push; 1 tool | generated-artefacts-drift-test.sh | KEEP |
 | `scripts/ci/identity-capture-report.sh` | The identity capture's report (.github/workflows/identity-capture.yml, "Write the report"), as Markdown on stdout | `scripts/ci/identity-capture-report.sh` | wf identity-capture | identity-capture-report-test.sh | KEEP |
 | `scripts/ci/identity-ci-staleness.sh` | Is the identity CI still telling us anything? Names each check that has gone stale, as overdue, not as a red run | `scripts/ci/identity-ci-staleness.sh` | wf identity-ci-staleness | identity-ci-staleness-test.sh | MIGRATE |
-| `scripts/ci/identity-drift-check.sh` | The incremental = whole gate for one country's takes-drift rows (entry; the check is identity_drift_check.py) | `scripts/ci/identity-drift-check.sh` | wf convergence-daily, country-convergence-leg, identity-drift-explorer +1; hook pre-push; agentctl; skill CLAUDE.md; 7 tools | identity_drift_check_test.py | MIGRATE |
-| `scripts/ci/identity-drift-check.sh` | The incremental = whole gate for one country's takes-drift rows (entry; the check is identity_drift_check.py) | `scripts/ci/identity-drift-check.sh` | wf convergence-daily, country-convergence-leg, identity-drift-explorer +1; hook pre-push; agentctl; skill CLAUDE.md; 7 tools | identity_drift_check_test.py | MIGRATE |
-| `scripts/ci/identity-drift-check.sh` | The incremental = whole gate for one country's takes-drift rows (entry; the check is identity_drift_check.py) | `scripts/ci/identity-drift-check.sh` | wf convergence-daily, country-convergence-leg, identity-drift-explorer +1; hook pre-push; agentctl; skill CLAUDE.md; 7 tools | identity_drift_check_test.py | MIGRATE |
+| `scripts/ci/identity-drift-check.sh` | The incremental = whole gate for one country's takes-drift rows (entry; the check is identity_drift_check.py) | `scripts/ci/identity-drift-check.sh` | wf convergence-daily, country-convergence-leg, identity-drift-explorer +1; hook pre-push; agentctl; skill CLAUDE.md; 7 tools | identity_drift_check_test.py | KEEP |
 | `scripts/ci/identity-family-nightly.sh` | The family explorer's walk row (identity-family-explorer.yml) | `scripts/ci/identity-family-nightly.sh` | wf identity-family-explorer | identity-family-nightly-test.sh | MIGRATE |
 | `scripts/ci/identity-takes-check.sh` | The identity takes check, for one country inside its hermetic convergence row | `scripts/ci/identity-takes-check.sh` | wf country-convergence-leg, identity-takes; skill identity-investigation; 7 tools | identity-takes-check-test.sh | MIGRATE |
 | `scripts/ci/identity_drift_check.py` | THE INCREMENTAL = WHOLE GATE, for one country in its hermetic `takes-drift-1` / `takes-drift-2` rows: replay | `scripts/ci/identity_drift_check.py` | hook pre-push; 6 tools | identity_drift_check_test.py | Python |

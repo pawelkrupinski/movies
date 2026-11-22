@@ -14,7 +14,6 @@
 .github/scripts/fleetkit-access.sh	KEEP
 .github/scripts/kick-convergence.sh	KEEP
 .github/scripts/pack-enrichment-tree.sh	KEEP
-.github/scripts/record-country-fixture.sh	MIGRATE
 .github/scripts/restore-enrichment-tree.sh	MIGRATE
 .github/scripts/unpack-fixture-archive.sh	KEEP
 android/gradlew	KEEP
@@ -83,7 +82,7 @@ scripts/ci/github-workflow-refusal.pre-receive	KEEP
 scripts/ci/hook-beside.sh	KEEP
 scripts/ci/identity-capture-report.sh	KEEP
 scripts/ci/identity-ci-staleness.sh	MIGRATE
-scripts/ci/identity-drift-check.sh	MIGRATE
+scripts/ci/identity-drift-check.sh	KEEP
 scripts/ci/identity-family-nightly.sh	MIGRATE
 scripts/ci/identity-takes-check.sh	MIGRATE
 scripts/ci/in-background.sh	KEEP
@@ -108,7 +107,6 @@ scripts/ci/mongo-tunnel-paths.sh	KEEP
 scripts/ci/no-network	MIGRATE
 scripts/ci/old-ref-deps-key.sh	KEEP
 scripts/ci/open-issue.sh	KEEP
-scripts/ci/order-compare.sh	MIGRATE
 scripts/ci/order-passes-present.sh	KEEP
 scripts/ci/order-phases.sh	KEEP
 scripts/ci/order-preflight.sh	MIGRATE
@@ -217,6 +215,7 @@ scripts/poster-eval	KEEP
 scripts/prod-ops-fixture.sh	KEEP
 scripts/prod-ops.sh	KEEP
 scripts/pure-move-check	KEEP
+scripts/py-quality-report	KEEP
 scripts/python-venv	KEEP
 scripts/quality-report	KEEP
 scripts/ratchet-diff	MIGRATE
