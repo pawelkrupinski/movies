@@ -187,6 +187,17 @@ object RepoFile {
     lines.drop(start + 1).takeWhile(_ != "}").mkString("\n")
   }
 
+  /** The body of the Python function (or method) `name` in the file at `path` -- the lines after its `def name(` line,
+   *  up to the next line indented no deeper than that def -- for a spec asserting on what one subcommand of a Python CI
+   *  tool does (the shell tools' shellFunction, after their migration). */
+  def pythonFunction(path: String, name: String): String = {
+    val lines = read(path).linesIterator.toSeq
+    val start = lines.indexWhere(_.trim.startsWith(s"def $name("))
+    require(start >= 0, s"$path defines no `def $name(`")
+    val indent = lines(start).takeWhile(_ == ' ').length
+    lines.drop(start + 1).takeWhile(l => l.trim.isEmpty || l.takeWhile(_ == ' ').length > indent).mkString("\n")
+  }
+
   /** One `run:` of a workflow or composite action: the shell it runs (comment lines dropped) and
    *  its step's `working-directory`, if it names one. */
   final case class RunStep(script: String, workingDirectory: Option[String])

@@ -21,5 +21,9 @@ project/
 .github/workflows/country-convergence-leg.yml
 .github/actions/convergence-setup/
 .github/scripts/convergence-setup.sh
+.github/scripts/convergence_setup.py
+.github/scripts/convergence_setup_unpack.py
+.github/scripts/convergence_release.py
+scripts/lib/
 .github/order-independence-paths.txt
 scripts/ci/order-phases.sh

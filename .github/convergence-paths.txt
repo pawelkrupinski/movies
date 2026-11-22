@@ -94,6 +94,12 @@ scripts/ci/mongo-tunnel-paths.sh
 scripts/identity-tools.sh
 scripts/ci/report_fields.py
 scripts/ci/identity_judgements.py
+# ...and the Python modules the migrated convergence scripts import (an import is no path the generator reads): the
+# setup's own and the shared ones in scripts/lib.
+.github/scripts/convergence_setup.py
+.github/scripts/convergence_setup_unpack.py
+.github/scripts/convergence_release.py
+scripts/lib/**
 # The data the takes and drift rows read (ConvergenceReuse's ListedInputs: every input of either check listed): the
 # drift replay harness, its allow-lists and known-flips baseline, the unmatched families, the judgements.
 worker/src/test/scala/scripts/IdentityDrift.scala

@@ -21,7 +21,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val publish  = RepoFile.read(".github/actions/convergence-publish/action.yml")
   private lazy val verdictCallers = Seq(RepoFile.read(".github/workflows/identity-model-convergence.yml"))
   /** What one subcommand of the scripts the setup and publish actions run does. */
-  private def setupFunction(name: String)   = RepoFile.shellFunction(".github/scripts/convergence-setup.sh", name)
+  private def setupFunction(file: String, name: String) = RepoFile.pythonFunction(s".github/scripts/$file.py", name)
   private def publishFunction(name: String) = RepoFile.shellFunction(".github/scripts/convergence-publish.sh", name)
 
   private def directives(yaml: String): String =
@@ -55,9 +55,9 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val resolveStep = RepoFile.step(setup, "Resolve the recorded pair to replay")
     resolveStep should not include "continue-on-error"
     resolveStep should include(".github/scripts/convergence-setup.sh pair")
-    val resolve = setupFunction("pair")
-    resolve should include("exit 1")
-    resolve should include("hermetic-$code.txt")
+    val resolve = setupFunction("convergence_setup", "pair")
+    resolve should include("raise convergence_release.Exit(1)")
+    resolve should include("hermetic-{code}.txt")
     publishFunction("verified_pin") should include("hermetic-$code.txt")
   }
 
@@ -72,7 +72,16 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     }
     val corpusStep = RepoFile.step(setup, "Restore the recorded scrape corpus")
     corpusStep should include(".github/scripts/convergence-setup.sh corpus")
-    exitsAfterErrors("the corpus", setupFunction("corpus"), "exit 1")
+    // each `::error::` said is the step's end: `return 1`, or the failed read re-raised, which `corpus` returns 1 for
+    def endsAfterErrors(name: String, text: String, ends: String*): Unit = {
+      val lines = text.linesIterator.map(_.trim).filter(_.nonEmpty).toSeq
+      val said = lines.indices.filter(i => lines(i).contains("say(f\"::error::"))
+      val afterSay = said.map(i => lines.drop(i).indexWhere(_.endsWith(")")) + i + 1).map(lines)
+      withClue(s"$name: ")(afterSay.toSet shouldBe ends.toSet)
+    }
+    endsAfterErrors("the corpus", setupFunction("convergence_setup_unpack", "pinned") + "\n" +
+      setupFunction("convergence_setup_unpack", "from_archive"), "return 1", "raise")
+    setupFunction("convergence_setup", "corpus") should include("except convergence_release.ReadFailed:\n            return 1")
     // ...and the exit must END the leg: a step that continues on error swallowed it, and run
     // 36968897208 replayed an expired pin's empty tree into five legs of "not recorded" 404s.
     corpusStep.linesIterator.map(_.trim).filter(_.startsWith("continue-on-error:")).foreach(_ shouldBe "continue-on-error: ${{ inputs.mode == 'record' }}")
@@ -83,9 +92,9 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val unpackStep = RepoFile.step(setup, "Unpack whichever fixtures are present")
     unpackStep should not include "continue-on-error"
     unpackStep should include(".github/scripts/convergence-setup.sh unpack")
-    val unpack = setupFunction("unpack")
-    unpack should include("""if [ "$tree_status" -ne 0 ] && ! { [ "$tree_status" -eq 3 ] && [ "$mode" = "record" ]; }; then""")
-    unpack should include("""exit "$tree_status"""")
+    val unpack = setupFunction("convergence_setup_unpack", "unpack")
+    unpack should include("""if tree != 0 and not (tree == 3 and mode == "record"):""")
+    unpack should include("return tree")
   }
 
   // The sample, the full leg and the bisect of one run must replay ONE pair, or a recorder

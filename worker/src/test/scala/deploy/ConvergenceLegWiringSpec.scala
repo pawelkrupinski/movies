@@ -700,11 +700,11 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   "the convergence setup" should "fetch the tree by either compressor's name and unpack it by its magic" in {
     val setup  = RepoFile.read(".github/actions/convergence-setup/action.yml")
     RepoFile.step(setup, "Unpack whichever fixtures are present") should include(".github/scripts/convergence-setup.sh unpack")
-    val unpack = RepoFile.read(".github/scripts/convergence-setup.sh")
-    unpack should include("/unpack-fixture-archive.sh\" \"$archive\"")
-    unpack should include("set -e")
+    val unpack = RepoFile.pythonFunction(".github/scripts/convergence_setup_unpack.py", "unpack")
+    unpack should include("""setup.run_or_exit([os.path.join(HERE, "unpack-fixture-archive.sh"), archive])""")
     unpack should not include "tar -xzf"
-    unpack should include("KINOWO_CONVERGENCE_TREE_ASSET=enrichment-$code.tar.*")
+    RepoFile.pythonFunction(".github/scripts/convergence_setup.py", "recording_pair") should include(
+      """"KINOWO_CONVERGENCE_TREE_ASSET", f"enrichment-{code}.tar.*"""")
     setup should not include "enrichment-${{ inputs.code }}.tar.gz"
     RepoFile.read(".github/scripts/unpack-fixture-archive.sh") should include("command -v pigz")
   }
@@ -762,9 +762,9 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     withClue("the pair it fetches is resolved first: ")(at("Resolve the recorded pair") should be < at("Fetch the enrichment tree"))
     at("Fetch the enrichment tree") should be < at("./.github/actions/setup-jdk")
     RepoFile.step(setup, "Unpack whichever fixtures are present") should include(".github/scripts/convergence-setup.sh unpack")
-    val unpack = RepoFile.read(".github/scripts/convergence-setup.sh")
-    unpack should include("scripts/ci/in-background.sh\" wait tree-restore")
-    unpack should include("""stage="$RUNNER_TEMP/tree-stage/test/resources/fixtures"""")
+    val unpack = RepoFile.pythonFunction(".github/scripts/convergence_setup_unpack.py", "unpack")
+    unpack should include(""""scripts/ci/in-background.sh"), "wait",""")
+    unpack should include(""""tree-stage/test/resources/fixtures"""")
   }
 
   /** The scrape corpus's download (9 s, 35 at p90: 2026-10-23) overlaps the JDK, sbt and build-cache restores too. Its

@@ -30,12 +30,15 @@ class ActionsTest(unittest.TestCase):
             actions.output("verdict", "pass")
             actions.output("seed", "42")
             actions.summary("### one\n")
+            tool_actions.Actions({"GITHUB_ENV": os.path.join(d, "env")}, io.StringIO()).export("RUN", "42")
+            with open(os.path.join(d, "env")) as f:
+                self.assertEqual("RUN=42\n", f.read())
             with open(output) as f:
                 self.assertEqual("verdict=pass\nseed=42\n", f.read())
             with open(summary) as f:
                 self.assertEqual("### one\n", f.read())
             tool_actions.Actions({"GITHUB_OUTPUT": ""}, io.StringIO()).output("x", "y")
-            self.assertEqual(["output", "summary"], sorted(os.listdir(d)))
+            self.assertEqual(["env", "output", "summary"], sorted(os.listdir(d)))
 
 
 if __name__ == "__main__":
