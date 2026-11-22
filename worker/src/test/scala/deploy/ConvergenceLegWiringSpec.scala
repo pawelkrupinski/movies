@@ -714,7 +714,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.read("scripts/hard-clusters.sh") should include("identity_recording")
     // the decorations relearn reads one through identity-fetch-recording.sh itself
     RepoFile.read(".github/workflows/identity-decorations.yml") should include("scripts/identity-fetch-recording.sh")
-    Seq("scripts/identity-fetch-recording.sh", "scripts/restore-country-corpus.sh").foreach { file =>
+    Seq("scripts/identity-fetch-recording.sh", "scripts/restore_country_corpus.py").foreach { file =>
       val text = RepoFile.read(file)
       withClue(s"$file: ")(text should include("unpack-fixture-archive.sh"))
       withClue(s"$file still names a gzip tree: ")(text should not include regex("""enrichment-\$[^ ]*\.tar\.gz"""))

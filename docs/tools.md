@@ -221,7 +221,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (190)
+## Identity (191)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -323,7 +323,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/takes_skip_gate.py` | THE TAKES SKIP GATE: whether a convergence `takes` row may leave out its takes diff -- the base's and the head's | `scripts/ci/takes_skip_gate.py` | wf convergence-daily, country-convergence-leg, identity-model-convergence +1; skill CLAUDE.md, identity-investigation; 4 tools | takes_skip_gate_test.py | Python |
 | `scripts/convergence-findings.py` | The films a convergence leg's log names as divergent, churning or split. | `scripts/convergence-findings.py` | wf country-convergence-leg; 4 tools | convergence_findings_test.py | Python |
 | `scripts/convergence-local.sh` | Run a country's convergence leg locally against the same recorded inputs CI uses | `scripts/convergence-local.sh` | skill identity-investigation, test-layers; 4 tools | convergence_local_test.py | MIGRATE |
-| `scripts/convergence_local.py` | Run a country's convergence leg locally against the SAME recorded inputs CI uses. | `scripts/convergence_local.py` | 2 tools | convergence_local_test.py | Python |
+| `scripts/convergence_local.py` | Run a country's convergence leg locally against the SAME recorded inputs CI uses. | `scripts/convergence_local.py` | 3 tools | convergence_local_test.py | Python |
 | `scripts/flip-timeline` | One listing's flip timeline: every projection that wrote a take of it | `scripts/flip-timeline` | skill identity-investigation; 1 tool | flip_timeline_test.py | KEEP |
 | `scripts/flip_timeline.py` | ONE LISTING'S FLIP TIMELINE (scripts/flip-timeline). | `python3 scripts/flip_timeline.py` | 1 tool | flip_timeline_test.py | Python |
 | `scripts/hard-clusters.sh` | Grow and re-record the hard-cluster fixture HardClusterConvergenceIntegrationSpec replays | `scripts/hard-clusters.sh` | skill regenerate-snapshots; 3 tools | hard-clusters-test.sh | KEEP |
@@ -412,7 +412,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/recording-diff` | Two "Record scrape fixtures" recordings compared — "is it the code, or new data?" in seconds | `scripts/recording-diff` | skill CLAUDE.md, identity-investigation; 4 tools | recording-diff-test.sh | KEEP |
 | `scripts/recording_diff.py` | TWO RECORDINGS COMPARED: did the input change, or the code? (scripts/recording-diff) | `scripts/recording_diff.py` | 1 tool | recording_diff_test.py | Python |
 | `scripts/reset-corpus.sh` | Full corpus reset: wipe the scrape, enrichment, staging and read-model collections so the worker rebuilds them (incidents) | `scripts/reset-corpus.sh` | by hand | reset-corpus-test.sh | MIGRATE |
-| `scripts/restore-country-corpus.sh` | Restore the recorded pair a hermetic convergence leg replays into this checkout | `scripts/restore-country-corpus.sh` | skill test-layers; 3 tools | restore-country-corpus-test.sh | MIGRATE |
+| `scripts/restore-country-corpus.sh` | Restore the recorded pair a hermetic convergence leg replays into this checkout | `scripts/restore-country-corpus.sh` | skill test-layers; 4 tools | restore_country_corpus_test.py | KEEP |
+| `scripts/restore_country_corpus.py` | Restore the recorded pair a hermetic convergence leg replays into this checkout. | `scripts/restore_country_corpus.py` | 1 tool | restore_country_corpus_test.py | Python |
 | `scripts/title-trace` | Every step one raw billing goes through, in production order, to the title the resolver reads | `scripts/title-trace` | wf main; skill CLAUDE.md, identity-investigation; 5 tools | title-trace-test.sh | MIGRATE |
 | `scripts/venue-replay` | One venue's listings as the code at one or two git refs reads them, from a recording — never the network | `scripts/venue-replay` | skill CLAUDE.md, identity-investigation; 5 tools | venue-replay-test.sh | MIGRATE |
 
@@ -602,7 +603,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the Python tools do it (scripts/lib; the shell | `imported` | 10 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 12 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 14 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 60 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 61 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | 12 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 5 tools | - | KEEP |

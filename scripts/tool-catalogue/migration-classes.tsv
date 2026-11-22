@@ -221,7 +221,7 @@ scripts/ratchet-diff	KEEP
 scripts/read-model-snapshot-inputs.sh	KEEP
 scripts/recording-diff	KEEP
 scripts/reset-corpus.sh	MIGRATE
-scripts/restore-country-corpus.sh	MIGRATE
+scripts/restore-country-corpus.sh	KEEP
 scripts/review-commit	KEEP
 scripts/review-server	KEEP
 scripts/root-checkout-check	KEEP
