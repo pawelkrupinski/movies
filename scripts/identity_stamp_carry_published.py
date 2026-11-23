@@ -2,7 +2,8 @@
 """THE WHAT-IF'S RECORD a stamp carry's what-if row stands on (identity_stamp_carry.py, its header's proof 2 and THE
 PUBLISHED VERDICT): identity-what-if's verdicts under a (head, base) -- this machine's record, or the copy committed beside
 the rows -- and the release asset each run publishes them as, which `verify` reads them back from. identity-what-if runs
-its `asset-name` and `publish` through identity_stamp_carry.py."""
+its `asset-name` and `publish` through identity_stamp_carry.py. And what each country's verdict line must say for a
+what-if row to hold (country_refusals)."""
 from __future__ import annotations
 
 import hashlib
@@ -19,6 +20,7 @@ from pure_move_check import git  # noqa: E402  (the one git a proof reads)
 
 # the what-if records a what-if row stands on, committed with it (<head>-<base>.tsv, identity-tools.sh's format)
 VERDICTS = "test/resources/identity-what-if-verdicts"
+COUNTRIES = ("pl", "de", "uk", "es", "us")  # a what-if row needs a verdict of each
 
 
 def identity_cache() -> str:
@@ -147,3 +149,27 @@ def what_if_verdicts(head: str, base: str, at: str | None = None) -> dict[str, l
         if fields[0]:
             newest[fields[0]] = fields
     return newest
+
+
+def verdict_refusals(cc: str, v: list[str]) -> list[str]:
+    """Why one country's newest verdict line carries nothing: not done, takes moved, or only its selection resolved."""
+    verdict, moved, mode = v[1], (v[4] if len(v) > 4 else ""), (v[5] if len(v) > 5 else "")
+    why: list[str] = []
+    if verdict != "done":
+        why.append(f"{cc}: its newest verdict is {verdict!r}, not done")
+    if moved != "0":
+        why.append(f"{cc}: {moved or 'an unrecorded number of'} take(s) moved")
+    if "whole" not in mode.split(","):
+        why.append(f"{cc}: resolved its selection, not every family (run identity-what-if --all)")
+    return why
+
+
+def country_refusals(verdicts: dict[str, list[str]], base: str, head: str) -> tuple[list[str], bool]:
+    """Why each country's newest verdict carries nothing, and whether every one compared the final takes."""
+    why: list[str] = []
+    for cc in COUNTRIES:
+        v = verdicts.get(cc)
+        why += verdict_refusals(cc, v) if v is not None else [
+            f"{cc}: no identity-what-if verdict recorded for head {head[:12]} over base {base[:12]}"]
+    final = all("final" in (verdicts[cc][5] if len(verdicts[cc]) > 5 else "").split(",") for cc in COUNTRIES if cc in verdicts)
+    return why, final

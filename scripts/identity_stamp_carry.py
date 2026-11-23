@@ -62,13 +62,12 @@ sys.path.insert(0, os.path.join(HERE, "ci"))
 from commit_rules import HARNESS_FILES  # noqa: E402  (the drift harness: one definition)
 sys.path.insert(0, HERE)
 from identity_stamp_carry_published import (  # noqa: E402  (THE PUBLISHED VERDICT: the what-if's record)
-    ASSET, VERDICTS, asset_name, cached_verdict, diff_id, fetch_asset, identity_cache, moved_rows, publish, release,
-    verdict_path, what_if_verdicts)
+    ASSET, COUNTRIES, VERDICTS, asset_name, cached_verdict, country_refusals, diff_id, fetch_asset, identity_cache,
+    moved_rows, publish, release, verdict_path, what_if_verdicts)
 from pure_move_check import Undecidable, git  # noqa: E402  (the one git a proof reads, and its refusal)
 
 TABLE = "test/resources/identity-stamp-carry.tsv"
 STAMPS = ("identity-rules", "venue-slot", "agreement-rules")
-COUNTRIES = ("pl", "de", "uk", "es", "us")
 # what a what-if cannot vouch for: the title rules (data a corpus covers thinly), a module's resources (the model's
 # inputs), a store or codec (how a stored family is read back)
 WHAT_IF_BLIND = re.compile(
@@ -154,58 +153,68 @@ def published_refusals(verdicts: dict[str, list[str]], head: str, base: str, pat
     return why
 
 
-def covered(proof: str, base: str, head: str, at: str | None = None) -> tuple[set[str], list[str]]:
-    """The stamps `proof` over base..head carries, and why it carries none, if it does not hold. A what-if's record is
-    this machine's, or, `at` a commit, the one committed there (what_if_verdicts)."""
-    if base == head or subprocess.run(["git", "merge-base", "--is-ancestor", base, head], capture_output=True).returncode != 0:
-        return set(), [f"{base[:12]} is not an ancestor of {head[:12]}"]
-    why = []
-    for sha in git("rev-list", f"{base}..{head}").split():
-        design = git("log", "-1", "--format=%(trailers:key=Identity-Design,valueonly,unfold)", sha).strip()
-        if design:
-            why.append(f"{sha[:12]} says 'Identity-Design: {design}': a rule change by design is decided again, never carried")
+def design_refusals(base: str, head: str) -> list[str]:
+    """Each commit of base..head saying `Identity-Design:`: a rule change by design, never carried."""
+    designs = ((sha, git("log", "-1", "--format=%(trailers:key=Identity-Design,valueonly,unfold)", sha).strip())
+               for sha in git("rev-list", f"{base}..{head}").split())
+    return [f"{sha[:12]} says 'Identity-Design: {design}': a rule change by design is decided again, never carried"
+            for sha, design in designs if design]
+
+
+def pure_move_refusals(base: str, head: str) -> list[str]:
+    """Why scripts/pure-move-check, run again, does not call base..head PURE; none when it does."""
+    done = subprocess.run([sys.executable, "-I", os.path.join(HERE, "pure_move_check.py"), f"{base}..{head}", "--quiet"],
+                          capture_output=True, text=True)
+    if done.returncode == 0:
+        return []
+    tail = (done.stdout + done.stderr).strip().splitlines()[-3:]
+    return [f"scripts/pure-move-check does not call {base[:12]}..{head[:12]} PURE (exit {done.returncode}): {' / '.join(tail)}"]
+
+
+def blind_refusals(base: str, head: str) -> list[str]:
+    """What base..head changes that a what-if cannot vouch for: the drift harness, and WHAT_IF_BLIND."""
     # every path the range touches, both sides of a rename (a harness file moved away is still a harness change)
     changed = sorted({p for line in git("diff", "--name-status", "-M", base, head).splitlines() for p in line.split("\t")[1:]})
-    if proof == "pure-move":
-        done = subprocess.run([sys.executable, "-I", os.path.join(HERE, "pure_move_check.py"), f"{base}..{head}", "--quiet"],
-                              capture_output=True, text=True)
-        if done.returncode != 0:
-            tail = (done.stdout + done.stderr).strip().splitlines()[-3:]
-            why.append(f"scripts/pure-move-check does not call {base[:12]}..{head[:12]} PURE (exit {done.returncode}): {' / '.join(tail)}")
-        return (set() if why else set(STAMPS)), why
-    if proof != "what-if":
-        return set(), [f"no proof {proof!r} (pure-move or what-if)"]
+    why: list[str] = []
     harness = [p for p in changed if HARNESS_FILES.match(p)]
     if harness:
         why.append(f"the range changes the drift harness ({' '.join(harness)}): a what-if never carries it (a pure move does)")
     blind = [p for p in changed if WHAT_IF_BLIND.match(p)]
     if blind:
         why.append(f"a what-if sees today's corpus only, and the range changes what it cannot vouch for: {' '.join(blind)}")
+    return why
+
+
+def ran_on(verdicts: dict[str, list[str]], base: str, head: str, at: str | None) -> tuple[str, str, str, list[str]]:
+    """The head, base and patch-id the what-if ran on -- these, or (a row written after a rebase) the committed record's
+    patch-id line's -- and why that record is of another diff."""
+    if at is None or not verdicts:
+        return head, base, "", []
+    recorded = verdicts.get("patch-id", ["", ""])[1]
+    line = verdicts.get("patch-id", [])
+    ran_head, ran_base = (line[2], line[3]) if len(line) >= 4 else (head, base)
+    stale = [] if recorded == diff_id(base, head) else [
+        f"the committed what-if verdict is of another diff (patch-id {recorded[:12] or 'none'}, not "
+        f"{base[:12]}..{head[:12]}'s {diff_id(base, head)[:12]})"]
+    return ran_head, ran_base, recorded, stale
+
+
+def covered(proof: str, base: str, head: str, at: str | None = None) -> tuple[set[str], list[str]]:
+    """The stamps `proof` over base..head carries, and why it carries none, if it does not hold. A what-if's record is
+    this machine's, or, `at` a commit, the one committed there (what_if_verdicts)."""
+    if base == head or subprocess.run(["git", "merge-base", "--is-ancestor", base, head], capture_output=True).returncode != 0:
+        return set(), [f"{base[:12]} is not an ancestor of {head[:12]}"]
+    why = design_refusals(base, head)
+    if proof == "pure-move":
+        why += pure_move_refusals(base, head)
+        return (set() if why else set(STAMPS)), why
+    if proof != "what-if":
+        return set(), [f"no proof {proof!r} (pure-move or what-if)"]
+    why += blind_refusals(base, head)
     verdicts = what_if_verdicts(head, base, at)
-    # the published asset is of the commits the what-if ran on: these, or (a row written after a rebase) the patch-id line's
-    ran_head, ran_base, patch_id = head, base, ""
-    if at is not None and verdicts:
-        recorded = verdicts.get("patch-id", ["", ""])[1]
-        patch_id = recorded
-        if len(verdicts.get("patch-id", [])) >= 4:
-            ran_head, ran_base = verdicts["patch-id"][2], verdicts["patch-id"][3]
-        if recorded != diff_id(base, head):
-            why.append(f"the committed what-if verdict is of another diff (patch-id {recorded[:12] or 'none'}, not "
-                       f"{base[:12]}..{head[:12]}'s {diff_id(base, head)[:12]})")
-    final = True
-    for cc in COUNTRIES:
-        v = verdicts.get(cc)
-        if v is None:
-            why.append(f"{cc}: no identity-what-if verdict recorded for head {head[:12]} over base {base[:12]}")
-            continue
-        verdict, moved, mode = v[1], (v[4] if len(v) > 4 else ""), (v[5] if len(v) > 5 else "")
-        if verdict != "done":
-            why.append(f"{cc}: its newest verdict is {verdict!r}, not done")
-        if moved != "0":
-            why.append(f"{cc}: {moved or 'an unrecorded number of'} take(s) moved")
-        if "whole" not in mode.split(","):
-            why.append(f"{cc}: resolved its selection, not every family (run identity-what-if --all)")
-        final = final and "final" in mode.split(",")
+    ran_head, ran_base, patch_id, stale = ran_on(verdicts, base, head, at)
+    countries, final = country_refusals(verdicts, base, head)
+    why += stale + countries
     if not why:
         why = published_refusals(verdicts, ran_head, ran_base, patch_id or diff_id(base, head))
     if why:

@@ -239,7 +239,6 @@ cognitive	scripts/identity_rule_ablation.py:main	25
 cognitive	scripts/identity_rule_ablation.py:next_round	17
 cognitive	scripts/identity_slice_diff.py:main	13
 cognitive	scripts/identity_stamp_carry.py:auto	22
-cognitive	scripts/identity_stamp_carry.py:covered	39
 cognitive	scripts/identity_stamp_carry.py:main	17
 cognitive	scripts/identity_stamp_carry.py:published_refusals	15
 cognitive	scripts/identity_stamp_carry.py:verify	25
@@ -525,7 +524,6 @@ cyclomatic	scripts/identity_rule_ablation.py:run_plan	15
 cyclomatic	scripts/identity_rule_ablation.py:write_report	13
 cyclomatic	scripts/identity_slice_diff.py:main	15
 cyclomatic	scripts/identity_stamp_carry.py:auto	22
-cyclomatic	scripts/identity_stamp_carry.py:covered	35
 cyclomatic	scripts/identity_stamp_carry.py:main	16
 cyclomatic	scripts/identity_stamp_carry.py:may_move	12
 cyclomatic	scripts/identity_stamp_carry.py:published_refusals	11
@@ -614,7 +612,6 @@ method-lines	scripts/flip_timeline.py:gather	52
 method-lines	scripts/flip_timeline.py:render	96
 method-lines	scripts/identity_rule_ablation.py:main	84
 method-lines	scripts/identity_stamp_carry.py:auto	56
-method-lines	scripts/identity_stamp_carry.py:covered	57
 method-lines	scripts/label-lookup:lookup	114
 method-lines	scripts/listing_history.py:replay	69
 method-lines	scripts/listing_history.py:report	113
@@ -732,7 +729,7 @@ pyright	scripts/identity_measure.py	204
 pyright	scripts/identity_precision_sample.py	310
 pyright	scripts/identity_rule_ablation.py	480
 pyright	scripts/identity_slice_diff.py	56
-pyright	scripts/identity_stamp_carry.py	29
+pyright	scripts/identity_stamp_carry.py	19
 pyright	scripts/identity_what_if.py	485
 pyright	scripts/linux-tree-sync.py	108
 pyright	scripts/listing_history.py	583
