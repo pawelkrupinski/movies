@@ -9,11 +9,12 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Mapping, Optional
 
+import identity_jvm
 import tool_git
 import tool_github
 import tool_process
 
-IDENTITY_SBT = ("sbt", "-J-Duser.language=en", "-J-Duser.country=US")  # identity-tools.sh's IDENTITY_SBT
+IDENTITY_SBT = identity_jvm.SBT
 
 
 class Stop(Exception):
