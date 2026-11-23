@@ -121,10 +121,11 @@ else
             && grep -qE 'failed to connect to server|sbt server did not start|server disconnected|JVM slot' "$tmp/lints"; }; then
         report lints UNCHECKED $t "$tmp/lints"
     else
-        # the failure's own lines: each failing test with its first assertion line (the indented one under it), the
-        # failed suites, sbt's errors -- never the specs that passed (2026-11-19: every passing `should` line was kept,
-        # the assertion dropped, and the NOT LANDED named two passes)
-        awk 'keep { keep = 0; if ($0 ~ /^\[info\]   +[^ ]/ && $0 !~ /^\[info\] +at /) { print; next } }
+        # the failure's own lines: each failing test with its whole assertion message (the indented lines under it, up
+        # to its first stack frame), the failed suites, sbt's errors -- never the specs that passed (2026-11-19: every
+        # passing `should` line was kept, the assertion dropped, and the NOT LANDED named two passes; 2026-11-23,
+        # b4be01: only the message's first line was kept, and a withClue's reason list under it was lost)
+        awk 'keep { if ($0 ~ /^\[info\]   +[^ ]/ && $0 !~ /^\[info\] +at /) { if (keep++ <= 20) print; next }; keep = 0 }
              /\*\*\* FAILED/ { print; keep = 1; next }
              /Failed tests:|\[error\]/ { print }' "$tmp/lints" > "$tmp/lints-why"
         [ -s "$tmp/lints-why" ] || cp "$tmp/lints" "$tmp/lints-why"

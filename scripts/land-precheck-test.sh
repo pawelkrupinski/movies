@@ -92,6 +92,19 @@ check "...says the failing test, its assertion and its suite" "1 1 1" \
   "$(grep -c 'should take temp files through the helper \*\*\* FAILED' "$testroot/out") \
 $(grep -c 'was not empty (ASpec.scala:88)' "$testroot/out") $(grep -c 'deploy.ASpec' "$testroot/out")"
 check "...and never a spec that passed, nor a stack frame" "0" "$(grep -cE 'should pass|some.Frame' "$testroot/out")"
+# a clue of several lines is kept whole: a withClue's reason list follows its first line (2026-11-23, b4be01: only
+# "...or allowlist the line with why:" was kept, the offending line under it dropped, so the refusal read as a spec
+# failing for no reason)
+spec_out='[info] - should neither sleep to wait nor time anything *** FAILED ***
+[info]   These Python-test lines sleep to wait or time something, or allowlist the line with why:
+[info]   android/scripts/x_test.py:106: time.sleep(0.05)
+[info]   Vector("android/scripts/x_test.py:106: time.sleep(0.05)") was not empty (ASpec.scala:211)
+[info]   at some.Frame(Frame.scala:1)
+[info] - should pass after'
+SBT_FAIL=1 SBT_OUT="$spec_out" precheck > /dev/null
+check "...a clue of several lines, every line of it, no stack frame after it" "1 1 0" \
+  "$(grep -c '^    \[info\]   android/scripts/x_test.py:106: time.sleep(0.05)$' "$testroot/out") \
+$(grep -c 'was not empty (ASpec.scala:211)' "$testroot/out") $(grep -cE 'should pass|some.Frame' "$testroot/out")"
 check "sbt that could not run (no test failed): exit 2, could not check" "2 1" \
   "$(SBT_FAIL=1 SBT_OUT='sbt server did not start within 90 seconds' precheck) $(grep -c 'precheck lints UNCHECKED' "$testroot/out")"
 
