@@ -158,7 +158,7 @@ scripts/hooks/post-commit	KEEP
 scripts/hooks/pre-commit	KEEP
 scripts/hooks/pre-push	MIGRATE
 scripts/hotspots	KEEP
-scripts/identity-boot-cost	MIGRATE
+scripts/identity-boot-cost	KEEP
 scripts/identity-calibrate.sh	KEEP
 scripts/identity-capture.sh	KEEP
 scripts/identity-ci-run	KEEP

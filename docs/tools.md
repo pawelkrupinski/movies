@@ -229,7 +229,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (201)
+## Identity (202)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -336,7 +336,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/flip-timeline` | One listing's flip timeline: every projection that wrote a take of it | `scripts/flip-timeline` | skill identity-investigation; 1 tool | flip_timeline_test.py | KEEP |
 | `scripts/flip_timeline.py` | ONE LISTING'S FLIP TIMELINE (scripts/flip-timeline). | `python3 scripts/flip_timeline.py` | 1 tool | flip_timeline_test.py | Python |
 | `scripts/hard-clusters.sh` | Grow and re-record the hard-cluster fixture HardClusterConvergenceIntegrationSpec replays | `scripts/hard-clusters.sh` | skill regenerate-snapshots; 3 tools | hard-clusters-test.sh | KEEP |
-| `scripts/identity-boot-cost` | The identity boot-cost check: what the identity model allocates and spends a family | `scripts/identity-boot-cost` | skill test-layers; 1 tool | identity-boot-cost-test.sh | MIGRATE |
+| `scripts/identity-boot-cost` | The identity boot-cost check: what the identity model allocates and spends a family | `scripts/identity-boot-cost` | skill test-layers; 2 tools | identity_boot_cost_test.py | KEEP |
 | `scripts/identity-calibrate.sh` | Regenerate the identity resolver's calibrated evidence model from data | `scripts/identity-calibrate.sh` | wf identity-decorations; 1 tool | identity-calibrate-test.sh | KEEP |
 | `scripts/identity-capture.sh` | Re-capture the unmatched-cluster fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz) in one command | `scripts/identity-capture.sh` | wf identity-capture; 2 tools | identity_capture_test.py | KEEP |
 | `scripts/identity-ci-run` | Any sbt command over a cached recording, on CI (identity-run.yml), off the laptop (a name for identity_ci_run.py) | `scripts/identity-ci-run` | wf identity-run; agentctl; skill CLAUDE.md, identity-investigation; 6 tools | identity_ci_run_test.py | KEEP |
@@ -363,6 +363,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity-what-if` | A local what-if of a resolver change over prod's current corpus, in minutes | `scripts/identity-what-if` | hook pre-push; skill CLAUDE.md, identity-investigation; 21 tools | identity_what_if_test.py | MIGRATE |
 | `scripts/identity-why` | Why a listing changed film at a moment, from the identity history alone (identity_history, a month of it) | `scripts/identity-why` | skill identity-investigation; 1 tool | - | KEEP |
 | `scripts/identity_boot_cost.py` | THE IDENTITY BOOT-COST RATCHET (scripts/identity-boot-cost): what `scripts.IdentityBootCost` measured -- bytes and | `python3 scripts/identity_boot_cost.py` | 1 tool | identity_boot_cost_test.py | Python |
+| `scripts/identity_boot_cost_cli.py` | THE IDENTITY BOOT-COST CHECK: what the identity model allocates and spends a family -- a cold resolve, the worker's | `scripts/identity_boot_cost_cli.py` | 1 tool | identity_boot_cost_cli_test.py | Python |
 | `scripts/identity_capture.py` | Re-capture the unmatched-cluster fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz) | `scripts/identity_capture.py` | 5 tools | identity_capture_test.py | Python |
 | `scripts/identity_ci_run.py` | ANY sbt COMMAND OVER A CACHED RECORDING, ON CI: .github/workflows/identity-run.yml at a commit of yours, off the laptop | `scripts/identity_ci_run.py` | 1 tool | identity_ci_run_test.py | Python |
 | `scripts/identity_drift_ci.py` | THE PRE-LAND DRIFT CHECK: a commit's `takes-drift-1\|2\|... (<country>)` rows -- "Check that the incremental state ends | `scripts/identity_drift_ci.py` | 5 tools | identity_drift_ci_test.py | Python |
@@ -528,8 +529,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 211 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 211 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 212 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 212 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |
@@ -627,13 +628,13 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/store_screenshots_fixture.py` | The store-screenshot drivers' TEST FIXTURE (android/scripts/store_screenshots_test.py, ios/scripts/ | `imported` | by hand | - | Python |
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 5 tools | tool_actions_test.py | Python |
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; the retired | `imported` | 3 tools | tool_ci_wait_test.py | Python |
-| `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 19 tools | - | Python |
+| `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 20 tools | - | Python |
 | `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 14 tools | - | Python |
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 10 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 14 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 18 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 74 tools | tool_process_test.py | Python |
-| `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 12 tools | tool_python_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 75 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 13 tools | tool_python_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 18 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
@@ -663,7 +664,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/timezonefinder-python` | Print a directory whose python3 imports timezonefinder, for the pre-push drift check | `scripts/timezonefinder-python` | hook pre-push; 3 tools | timezonefinder-python-test.sh | KEEP |
 | `scripts/timezonefinder-python-stub.sh` | A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder | `sourced` | by hand | - | KEEP |
 | `scripts/title_trace.py` | Every step one raw billing goes through, in production order: the ingest tidy, the venue's own title rules, the format | `python3 scripts/title_trace.py` | wf main; 2 tools | title_trace_test.py | Python |
-| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 63 tools | tool-conventions-test.sh | MIGRATE |
+| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 62 tools | tool-conventions-test.sh | MIGRATE |
 | `scripts/tool_catalogue.py` | The tool catalogue: docs/tools.md, generated from every tool's own one-line purpose. | `python3 scripts/tool_catalogue.py` | skill CLAUDE.md | tool_catalogue_test.py | Python |
 | `scripts/touched-tree-stub.sh` | The stub sbt for the touched-code tools' specs (mutation-check, coverage-touched) | `scripts/touched-tree-stub.sh` | 1 tool | - | KEEP |
 | `scripts/touched_methods.py` | THE METHODS A CHANGE TOUCHES, and what the refactoring tools say about each (scripts/mutation-check, | `python3 scripts/touched_methods.py` | 4 tools | touched_methods_test.py | Python |
