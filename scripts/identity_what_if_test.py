@@ -189,6 +189,12 @@ class AttributeTest(unittest.TestCase):
         self.repo.edit(ACC, "val cut = 3", "val cut = 5")
         self.assertEqual(self.repo.attribute(".")[0], {"accept:sole-work", "refused:sole-work:*"})
 
+    def test_an_untracked_file_git_would_quote_is_read_as_its_path(self):
+        self.repo.write("worker/src/main/resources/kino-przemyśl.tsv", "row\n")
+        patterns, why = self.repo.attribute(".")
+        self.assertIsNone(patterns)
+        self.assertIn("outside the identity model's sources", why)
+
 
 class DiffPathTest(unittest.TestCase):
     def test_a_header_git_quotes_is_read_unquoted(self):

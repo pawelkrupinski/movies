@@ -276,7 +276,7 @@ def select(rows, patterns):
 
 
 def git(repo, *args):
-    return subprocess.run(["git", "-C", repo, *args], check=True, capture_output=True, text=True).stdout
+    return subprocess.run(["git", "-c", "core.quotePath=false", "-C", repo, *args], check=True, capture_output=True, text=True).stdout
 
 
 def changes_between(repo, base, head):
