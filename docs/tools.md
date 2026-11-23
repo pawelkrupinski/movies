@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (208)
+## Landing and CI (209)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -211,9 +211,10 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; skill CLAUDE.md; 15 tools | - | Python |
 | `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 16 tools | - | Python |
 | `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push; 3 tools | - | Python |
-| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 115 tools | report_test.py | Python |
+| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 116 tools | report_test.py | Python |
 | `scripts/quality-report` | The code-quality report (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, length and duplication (pmd cpd) | `scripts/quality-report` | wf quality-hotspots; hook pre-push; agentctl; skill CLAUDE.md, test-layers; 2 tools | - | KEEP |
-| `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 2 tools | ratchet-diff-test.sh | MIGRATE |
+| `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs (a name for ratchet_diff_cli.py) | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 3 tools | - | KEEP |
+| `scripts/ratchet_diff_cli.py` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet_diff_cli.py` | 1 tool | ratchet_diff_cli_test.py | Python |
 | `scripts/run-script-tests` | Every script self-test, found by its name and run in parallel: the one way CI, the pre-push hook and a person at a terminal run them | `scripts/run-script-tests` | wf tool-self-tests; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, test-layers; 16 tools | run-script-tests-test.sh | MIGRATE |
 | `scripts/sbt-warm` | sbt for agents, warm: one sbt server per checkout, kept between calls | `scripts/sbt-warm` | wf tool-self-tests; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 34 tools | sbt-warm-test.sh | MIGRATE |
 | `scripts/stall-report.sh` | What a stalled process group was doing, said before it is ended | `scripts/stall-report.sh` | 3 tools | - | KEEP |

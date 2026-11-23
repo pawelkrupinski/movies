@@ -217,7 +217,7 @@ scripts/pure-move-check	KEEP
 scripts/py-quality-report	KEEP
 scripts/python-venv	KEEP
 scripts/quality-report	KEEP
-scripts/ratchet-diff	MIGRATE
+scripts/ratchet-diff	KEEP
 scripts/read-model-snapshot-inputs.sh	KEEP
 scripts/recording-diff	KEEP
 scripts/reset-corpus.sh	MIGRATE
