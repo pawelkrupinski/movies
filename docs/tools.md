@@ -480,7 +480,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/title-trace` | Every step one raw billing goes through, in production order, to the title the resolver reads | `scripts/title-trace` | wf main; skill CLAUDE.md, identity-investigation; 6 tools | title_trace_test.py | MIGRATE |
 | `scripts/venue-replay` | One venue's listings as the code at one or two git refs reads them, from a recording — never the network | `scripts/venue-replay` | skill CLAUDE.md, identity-investigation; 6 tools | venue_replay_test.py | MIGRATE |
 
-## Mirror and data (89)
+## Mirror and data (90)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -549,7 +549,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/local-mirror/freshness` | How current the local prod mirror (:28017) is, per country — for every tool that reads it (identity-slice --prod-mirror, listing-history, …) | `scripts/local-mirror/freshness` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation; 25 tools | freshness-test.sh | KEEP |
 | `scripts/local-mirror/local-mongo.sh` | The one place that knows how to make the local mirror Mongo reachable | `scripts/local-mirror/local-mongo.sh` | 1 tool | - | KEEP |
 | `scripts/local-mirror/log-path.sh` | Where the launchd agent's stdout/stderr land | `sourced` | 3 tools | - | KEEP |
-| `scripts/local-mirror/mirror.py` | Keep a local mirror of prod's /debug data in sync, continuously, so the dev `/debug` pages read from a fast LAN Mongo | `scripts/local-mirror/mirror.py` | wf ci, mirror-pinned-images, precommit-check; skill CLAUDE.md, agent-ops, identity-investigation; 68 tools | mirror_test.py | Python |
+| `scripts/local-mirror/mirror.py` | Keep a local mirror of prod's /debug data in sync, continuously, so the dev `/debug` pages read from a fast LAN Mongo | `scripts/local-mirror/mirror.py` | wf ci, mirror-pinned-images, precommit-check; skill CLAUDE.md, agent-ops, identity-investigation; 69 tools | mirror_test.py | Python |
 | `scripts/local-mirror/mirror.sh` | Keep a local mirror of prod's /debug data in sync, continuously (mirror.py beside it; this name is what service.sh and the README run) | `scripts/local-mirror/mirror.sh` | 11 tools | mirror_test.py | KEEP |
 | `scripts/local-mirror/mirror_keeper.py` | THE PROD TUNNEL'S ONE OWNER (mirror.py --keep-tunnel), a child process of the daemon: the only thing that opens, | `imported` | 1 tool | - | Python |
 | `scripts/local-mirror/mirror_settings.py` | WHAT EVERY PROCESS OF THE MIRROR DAEMON SHARES (mirror.py): its endpoints and knobs, read once from the environment | `imported` | 4 tools | - | Python |
@@ -557,7 +557,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/local-mirror/mirror_upkeep.py` | THE DAEMON PARENT'S UPKEEP (mirror.py): its log kept under a size cap, what an earlier run left behind swept up, the | `imported` | 1 tool | - | Python |
 | `scripts/local-mirror/mongosh-at.sh` | `mongosh uri ARGS…` without the uri — and the password in it — on mongosh's command line, where `ps` shows it to every user | `scripts/local-mirror/mongosh-at.sh` | 6 tools | mongosh-at-test.sh | KEEP |
 | `scripts/local-mirror/prod-tunnel.sh` | The one place that knows how a laptop reaches prod Mongo | `bash scripts/local-mirror/prod-tunnel.sh` | 10 tools | prod-tunnel-test.sh | MIGRATE |
-| `scripts/local-mirror/service.sh` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure — no terminal to babysit | `scripts/local-mirror/service.sh` | 6 tools | service-test.sh | MIGRATE |
+| `scripts/local-mirror/service.py` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure. | `scripts/local-mirror/service.py` | wf country-convergence-leg, nix-stage-closures; hook pre-push; skill external-api-rate-limits, identity-investigation, record-client-fixtures; 15 tools | service_test.py | Python |
+| `scripts/local-mirror/service.sh` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure (service.py beside it; this name is what the plist and the README run) | `scripts/local-mirror/service.sh` | 7 tools | service_test.py | KEEP |
 | `scripts/local-mirror/start-local-mongo.sh` | Ensure the native (Homebrew) single-node replica-set Mongo that backs local dev is up on :28017 | `scripts/local-mirror/start-local-mongo.sh` | 6 tools | start-local-mongo-test.sh | MIGRATE |
 | `scripts/mongo-grants` | The Mongo access every database needs, checked against prod or granted | `scripts/mongo-grants` | 3 tools | mongo-grants-test.sh | KEEP |
 | `scripts/mongo_grants.py` | THE MONGO ROLES EVERY DATABASE NEEDS, CHECKED OR GRANTED ON PROD (scripts/mongo-grants). | `python3 scripts/mongo_grants.py` | 2 tools | - | Python |
@@ -586,8 +587,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 227 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 227 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 228 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 228 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |
