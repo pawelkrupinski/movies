@@ -7,6 +7,7 @@ import sys
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import tool_cli  # noqa: E402
 import tool_countries  # noqa: E402

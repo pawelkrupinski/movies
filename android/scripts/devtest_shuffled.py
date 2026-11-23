@@ -18,6 +18,7 @@ import sys
 from typing import List, Mapping, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.dont_write_bytecode = True  # `python3 -I` ignores PYTHONDONTWRITEBYTECODE: no __pycache__ in the tree
 sys.path.insert(0, os.path.join(HERE, "..", "..", "scripts", "lib"))
 from seeded_order import seeded_order  # noqa: E402
 from tool_process import Command, Runner, SubprocessRunner  # noqa: E402
