@@ -7,7 +7,8 @@
 #   scripts/land-before-queue <base> <head>
 #
 #   1. THE STAMP CARRY: scripts/identity-stamp-carry auto <base>..<head> -- a proven-equivalent identity change keeps its
-#      stamps, so its deploy re-resolves no stored family (the hook's stampcarry check proves the rows again).
+#      stamps, so its deploy re-resolves no stored family (the hook's stampcarry check proves the rows again, at the
+#      commits the queue's picks make of these: identity_stamp_carry.py, "THE QUEUE REWRITES").
 #      Bounded by 900 s. $KINOWO_LAND_STAMP_CARRY_SECONDS changes the bound -- and, set, is a BYPASS the land prints and
 #      a lane names in its report, like PREPUSH_SKIP: a bound too short to finish skips the carry, and its stamps bump.
 set -uo pipefail

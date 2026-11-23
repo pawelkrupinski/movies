@@ -35,6 +35,9 @@ the committed verdict is the one published at the time by a holder of those cred
 is caught; it does not prove the what-if made the asset (a credential holder could upload one by hand), nor that the
 corpus it read was prod's (the mirror is the laptop's own).
 
+THE QUEUE REWRITES WHAT LAND WROTE: a row whose cited commits the queue's picks rewrote is proven at the pushed range
+holding the same diff (scripts/identity_stamp_carry_ranges.py), its proof and digests made again there.
+
 A row is never edited: a row a push changes is a new row, and proven as one. A row taken out only bumps its digest's
 stamp, as an unproven change does.
 
@@ -65,6 +68,7 @@ from identity_stamp_carry_published import (  # noqa: E402  (THE PUBLISHED VERDI
     moved_rows, publish, release, verdict_path, what_if_verdicts)
 from pure_move_check import Undecidable, git  # noqa: E402  (the one git a proof reads, and its refusal)
 import tool_python  # noqa: E402
+from identity_stamp_carry_ranges import RANGES, cited_range, record_of, write_ranges  # noqa: E402  (THE QUEUE REWRITES)
 
 TABLE = "test/resources/identity-stamp-carry.tsv"
 STAMPS = ("identity-rules", "venue-slot", "agreement-rules")
@@ -199,9 +203,11 @@ def ran_on(verdicts: dict[str, list[str]], base: str, head: str, at: str | None)
     return ran_head, ran_base, recorded, stale
 
 
-def covered(proof: str, base: str, head: str, at: str | None = None) -> tuple[set[str], list[str]]:
+def covered(proof: str, base: str, head: str, at: str | None = None,
+            record: tuple[str, str] | None = None) -> tuple[set[str], list[str]]:
     """The stamps `proof` over base..head carries, and why it carries none, if it does not hold. A what-if's record is
-    this machine's, or, `at` a commit, the one committed there (what_if_verdicts)."""
+    this machine's, or, `at` a commit, the one committed there (what_if_verdicts) under the range its row cites --
+    `record`, (head, base), when the queue rewrote that range into base..head (THE QUEUE REWRITES)."""
     if base == head or subprocess.run(["git", "merge-base", "--is-ancestor", base, head], capture_output=True).returncode != 0:
         return set(), [f"{base[:12]} is not an ancestor of {head[:12]}"]
     why = design_refusals(base, head)
@@ -211,7 +217,7 @@ def covered(proof: str, base: str, head: str, at: str | None = None) -> tuple[se
     if proof != "what-if":
         return set(), [f"no proof {proof!r} (pure-move or what-if)"]
     why += blind_refusals(base, head)
-    verdicts = what_if_verdicts(head, base, at)
+    verdicts = what_if_verdicts(*record_of(record, base, head), at)
     ran_head, ran_base, patch_id, stale = ran_on(verdicts, base, head, at)
     countries, final = country_refusals(verdicts, base, head)
     why += stale + countries
@@ -270,7 +276,8 @@ def write_rows(table: str, new: list[Row], ran: dict[tuple[str, str], tuple[str,
         return []
     with open(table, "a") as f:
         f.writelines(r.line() + "\n" for r in new)
-    written = [table]
+    written = [table, write_ranges(os.path.join(os.path.dirname(table), os.path.basename(RANGES)),
+                                   {(r.base, r.head) for r in new})]
     for base, head in sorted({(r.base, r.head) for r in new if r.proof == "what-if"}):
         path = verdict_path(head, base)
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -279,7 +286,7 @@ def write_rows(table: str, new: list[Row], ran: dict[tuple[str, str], tuple[str,
             f.write(cached_verdict(ran_head, ran_base))
             f.write(f"patch-id\t{diff_id(base, head)}\t{ran_head}\t{ran_base}\n")
         written.append(path)
-    print(f"{len(new)} row(s) added to {table}: commit it with {', '.join(written[1:]) or 'nothing else'}"
+    print(f"{len(new)} row(s) added to {table}: commit it with {', '.join(written[1:])}"
           " (the hook's stampcarry check proves each again)")
     return written
 
@@ -384,6 +391,54 @@ def auto(rng: str, table: str, commit: bool) -> int:
     return 0
 
 
+def row_refusals(r: Row, old: str, new: str, proofs: dict[tuple[str, str, str], tuple[set[str], list[str]]],
+                 stamps: dict[str, dict[str, str]]) -> list[str]:
+    """Why the added row `r` does not hold in the push old..new, proven where the push holds its range: the cited one,
+    or the one the queue's picks rewrote it into (THE QUEUE REWRITES). `proofs` and `stamps` are shared by its rows."""
+    label = f"{r.stamp} {r.digest[:12]} ({r.proof} {r.base[:12]}..{r.head[:12]})"
+    if r.stamp not in STAMPS:
+        return [f"{label}: no stamp {r.stamp}"]
+    found = cited_range(r.base, r.head, old, new)
+    if found is None:
+        return [f"{label}: it cites {r.head[:12]}, which is not in the pushed history, and no pushed range is its diff "
+                f"({RANGES} has no row of it, or the rebase changed what the range changes)"]
+    base, head = found
+    try:
+        why = proof_refusals(r, base, head, new, proofs)
+        if why:
+            return [f"{label}: {w}" for w in why]
+        for sha in (base, head):
+            stamps.setdefault(sha, stamps_of(sha))
+    except Undecidable as e:
+        return [f"{label}: {e}"]
+    why = digest_refusals(r, base, head, stamps)
+    if not why:
+        print(f"stampcarry: {label} proven" + ("" if found == (r.base, r.head) else f" at {base[:12]}..{head[:12]}"))
+    return [f"{label}: {w}" for w in why]
+
+
+def proof_refusals(r: Row, base: str, head: str, new: str,
+                   proofs: dict[tuple[str, str, str], tuple[set[str], list[str]]]) -> list[str]:
+    """Why r's proof, run again over base..head (once a push), does not carry r's stamp."""
+    key = (r.proof, base, head)
+    if key not in proofs:
+        proofs[key] = covered(*key, at=new, record=(r.head, r.base))
+    carried, why = proofs[key]
+    if not carried:
+        return why
+    return [] if r.stamp in carried else [f"a {r.proof} proof does not carry {r.stamp}"]
+
+
+def digest_refusals(r: Row, base: str, head: str, stamps: dict[str, dict[str, str]]) -> list[str]:
+    """Where r's digests are not the ones the build makes of head and base."""
+    refusals: list[str] = []
+    if r.digest != stamps[head][r.stamp]:
+        refusals.append(f"digest is not {head[:12]}'s ({stamps[head][r.stamp][:12]})")
+    if r.equals != stamps[base][r.stamp]:
+        refusals.append(f"equals is not {base[:12]}'s ({stamps[base][r.stamp][:12]})")
+    return refusals
+
+
 def verify(rng: str) -> int:
     old, new = rng.split("..", 1)
     before = {r.line() for r in table_at(old)}
@@ -394,36 +449,7 @@ def verify(rng: str) -> int:
     proofs: dict[tuple[str, str, str], tuple[set[str], list[str]]] = {}
     stamps: dict[str, dict[str, str]] = {}
     for r in added:
-        label = f"{r.stamp} {r.digest[:12]} ({r.proof} {r.base[:12]}..{r.head[:12]})"
-        if r.stamp not in STAMPS:
-            refusals.append(f"{label}: no stamp {r.stamp}")
-            continue
-        if subprocess.run(["git", "merge-base", "--is-ancestor", r.head, new], capture_output=True).returncode != 0:
-            refusals.append(f"{label}: it cites {r.head[:12]}, which is not in the pushed history (rows written before a "
-                            f"rebase: scripts/identity-stamp-carry auto <base>..<head> writes them for the rebased commits)")
-            continue
-        try:
-            key = (r.proof, r.base, r.head)
-            if key not in proofs:
-                proofs[key] = covered(*key, at=new)
-            carried, why = proofs[key]
-            if not carried:
-                refusals += [f"{label}: {w}" for w in why]
-                continue
-            if r.stamp not in carried:
-                refusals.append(f"{label}: a {r.proof} proof does not carry {r.stamp}")
-                continue
-            for sha in (r.base, r.head):
-                stamps.setdefault(sha, stamps_of(sha))
-        except Undecidable as e:
-            refusals.append(f"{label}: {e}")
-            continue
-        if r.digest != stamps[r.head][r.stamp]:
-            refusals.append(f"{label}: digest is not {r.head[:12]}'s ({stamps[r.head][r.stamp][:12]})")
-        if r.equals != stamps[r.base][r.stamp]:
-            refusals.append(f"{label}: equals is not {r.base[:12]}'s ({stamps[r.base][r.stamp][:12]})")
-        if not any(w.startswith(label) for w in refusals):
-            print(f"stampcarry: {label} proven")
+        refusals += row_refusals(r, old, new, proofs, stamps)
     if refusals:
         for w in refusals:
             print(f"stampcarry: REFUSED {w}", file=sys.stderr)

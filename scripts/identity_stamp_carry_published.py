@@ -141,7 +141,8 @@ def fetch_asset(name: str, wanted: str) -> dict[str, Any] | None:
 def what_if_verdicts(head: str, base: str, at: str | None = None) -> dict[str, list[str]]:
     """Each country's newest line of the what-if record under (head, base) -- cc, verdict, finished, takes diff, moved,
     mode: this machine's own record, or, `at` a commit, the record committed there beside the rows (what `verify` reads,
-    so the hook proves a row alike on the laptop and on ci-runner, where no what-if ever ran)."""
+    so the hook proves a row alike on the laptop and on ci-runner, where no what-if ever ran). The committed record of a
+    row is named by the range the row cites, whatever the queue's picks made of its shas."""
     text = cached_verdict(head, base) if at is None else git("show", f"{at}:{verdict_path(head, base)}", ok=(0, 128))
     newest: dict[str, list[str]] = {}
     for line in text.splitlines():

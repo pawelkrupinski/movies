@@ -241,7 +241,6 @@ cognitive	scripts/identity_slice_diff.py:main	13
 cognitive	scripts/identity_stamp_carry.py:auto	22
 cognitive	scripts/identity_stamp_carry.py:main	17
 cognitive	scripts/identity_stamp_carry.py:published_refusals	15
-cognitive	scripts/identity_stamp_carry.py:verify	25
 cognitive	scripts/identity_what_if.py:Sources.callers	32
 cognitive	scripts/identity_what_if.py:attribute	32
 cognitive	scripts/identity_what_if.py:diff	13
@@ -514,7 +513,7 @@ cyclomatic	scripts/identity_stamp_carry.py:auto	22
 cyclomatic	scripts/identity_stamp_carry.py:main	16
 cyclomatic	scripts/identity_stamp_carry.py:may_move	12
 cyclomatic	scripts/identity_stamp_carry.py:published_refusals	11
-cyclomatic	scripts/identity_stamp_carry.py:verify	25
+cyclomatic	scripts/identity_stamp_carry.py:verify	13
 cyclomatic	scripts/identity_what_if.py:Sources.callers	12
 cyclomatic	scripts/identity_what_if.py:attribute	20
 cyclomatic	scripts/identity_what_if.py:diff	38

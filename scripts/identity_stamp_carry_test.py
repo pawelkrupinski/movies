@@ -4,7 +4,8 @@ bump); a hand-written or forged row is refused, as is one whose pure-move claim 
 row holds only for the very head and base its verdict was recorded under, every country whole and nothing moved, and
 never carries a venue slot, and only as the verdict the what-if PUBLISHED (a forged or unpublished one is refused); a range
 saying Identity-Design or a what-if over the model's data or the drift harness carries nothing, while a pure move through
-the harness carries."""
+the harness carries; and a carry the queue's picks rewrote (a rebase onto a main moved elsewhere, a batch) is proven at the
+pushed commits, unless the rebase moved identity code under it."""
 
 from __future__ import annotations
 
@@ -452,14 +453,131 @@ class StampCarryTest(unittest.TestCase):
         self.repo.git("checkout", "-q", "-")
         self.repo.write("docs/notes.md", "main moved, outside the code\n")
         main = self.repo.commit("main moves on")
-        self.repo.git("cherry-pick", lane, f"{lane}..lane")               # the rebase: the change, then its rows
+        self.repo.git("cherry-pick", f"{self.base}..lane")                 # the rebase: the change, then its rows
         return lane, main, self.repo.git("rev-parse", "HEAD").strip()
 
-    def test_rows_written_before_a_rebase_are_refused_where_the_lane_commits_are_not_pushed(self):
+    def test_rows_written_before_a_rebase_are_proven_at_the_rebased_commits(self):
         lane, main, pushed = self.rebase_lane_change()
         code, out = self.run_tool("verify", f"{main}..{pushed}", cache=os.path.join(self.tmp.name, "none"))
-        self.assertEqual(1, code, out)                                    # ci-runner refused it; the laptop passed it
-        self.assertIn(f"{lane[:12]}, which is not in the pushed history", out)
+        self.assertEqual(0, code, out)                                    # ci-runner has no lane commit: found by patch-id
+        self.assertIn(f"identity-rules {fake_stamp(self.repo, pushed, 'identity-rules')[:12]} (what-if "
+                      f"{self.base[:12]}..{lane[:12]}) proven at {main[:12]}..{self.repo.git('rev-parse', 'HEAD^').strip()[:12]}",
+                      out)
+
+    def test_an_edited_verdict_is_refused_at_the_rebased_commits_too(self):
+        lane, main, pushed = self.rebase_lane_change()
+        verdict = f"test/resources/identity-what-if-verdicts/{lane}-{self.base}.tsv"
+        self.repo.write(verdict, self.repo.read(verdict).replace("2026-11-20T10:00:00Z", "2026-11-20T11:00:00Z"))
+        edited = self.repo.commit("an edited verdict")
+        code, out = self.run_tool("verify", f"{main}..{edited}", cache=os.path.join(self.tmp.name, "none"))
+        self.assertEqual(1, code, out)
+        self.assertIn("the committed verdict is not the one published", out)
+
+    # ── the queue rewrites what land wrote: its rows are found in the pushed history by their range's patch-id ────────
+
+    def landed(self, make, carries: bool = True) -> tuple[str, str]:
+        """A change made on a lane off main and landed as `agentctl land` does it -- `make()` its commits, then
+        `auto` over them, committing the rows: (the change's first commit's parent, the carry commit)."""
+        start = self.repo.git("rev-parse", "HEAD").strip()
+        self.repo.git("checkout", "-q", "-b", f"lane-{len(self.repo.git('branch').split())}")
+        head = make()
+        code, out = self.run_tool("auto", f"{start}..{head}")
+        self.assertEqual(0, code, out)
+        carry = self.repo.git("rev-parse", "HEAD").strip()
+        self.assertEqual(carries, head != carry, out)                    # the rows, committed on their own
+        self.repo.git("checkout", "-q", "main")
+        return start, carry
+
+    def queue_pick(self, onto: str, *changes: tuple[str, str]) -> str:
+        """The queue's rebuild of the changes on a main that moved (each commit picked, a batch one change after
+        another), its rewritten shas the push's: the pushed tip. The real .gitattributes, as the queue's tree has it."""
+        self.repo.git("checkout", "-q", "--detach", onto)
+        self.repo.write(".git/info/attributes", self.real_attributes())
+        for start, carry in changes:
+            self.repo.git("cherry-pick", f"{start}..{carry}")
+        return self.repo.git("rev-parse", "HEAD").strip()
+
+    @staticmethod
+    def real_attributes() -> str:
+        with open(os.path.join(os.path.dirname(HERE), ".gitattributes")) as f:
+            return f.read()
+
+    def main_moves(self, path: str, text: str) -> str:
+        self.repo.git("checkout", "-q", "main")
+        self.repo.write(path, text)
+        return self.repo.commit(f"main moves on: {path}")
+
+    def verify_ci(self, base: str, tip: str) -> tuple[int, str]:
+        """The push's stampcarry check where no lane commit and no what-if record is (ci-runner)."""
+        return self.run_tool("verify", f"{base}..{tip}", cache=os.path.join(self.tmp.name, "ci-runner"))
+
+    def what_if_change(self) -> str:
+        head = self.change_foo()
+        self.record_what_if(head, self.repo.git("rev-parse", "HEAD^").strip())
+        return head
+
+    def pure_moves(self) -> str:
+        self.move_foo()
+        self.repo.move("common/src/main/scala/services/old/Sibling.scala", "common/src/main/scala/services/old/Kin.scala")
+        return self.repo.commit("rename the sibling's file")
+
+    def web_only(self) -> str:
+        self.repo.write("web/src/main/assets/js/shared.js", "export const x = 1;\n")
+        return self.repo.commit("web only")
+
+    def rename_sibling(self) -> str:
+        self.repo.move("common/src/main/scala/services/old/Sibling.scala", "common/src/main/scala/services/old/Kin.scala")
+        return self.repo.commit("rename the sibling's file")
+
+    def test_a_what_if_carry_the_queue_rebases_over_a_main_moved_outside_the_code_is_proven(self):
+        self.repo.git("branch", "-m", "main")
+        change = self.landed(self.what_if_change)
+        main = self.main_moves("docs/notes.md", "main moved, outside the code\n")
+        tip = self.queue_pick(main, change)
+        code, out = self.verify_ci(main, tip)
+        self.assertEqual(0, code, out)
+        self.assertEqual(2, out.count(" proven at "), out)
+
+    def test_a_stack_of_pure_moves_the_queue_rebases_is_proven_commit_by_commit(self):
+        self.repo.git("branch", "-m", "main")
+        change = self.landed(self.pure_moves)
+        main = self.main_moves("web/src/main/assets/js/shared.js", "export const x = 1;\n")
+        tip = self.queue_pick(main, change)
+        code, out = self.verify_ci(main, tip)
+        self.assertEqual(0, code, out)
+        self.assertEqual(6, out.count(" proven at "), out)               # each stamp, of each of the two commits
+
+    def test_a_rebase_over_identity_code_invalidates_the_carry(self):
+        self.repo.git("branch", "-m", "main")
+        change = self.landed(self.what_if_change)
+        main = self.main_moves("common/src/main/scala/services/other/Other.scala", "object Other { val n = 1 }\n")
+        tip = self.queue_pick(main, change)
+        code, out = self.verify_ci(main, tip)
+        self.assertEqual(1, code, out)                                    # the pushed code is not what the proof was of
+        self.assertIn(f"equals is not {main[:12]}'s", out)
+        self.assertIn("digest is not", out)
+
+    def test_a_batch_carries_each_change_whose_stamps_the_ones_before_it_left_alone(self):
+        self.repo.git("branch", "-m", "main")
+        web = self.landed(self.web_only, carries=False)
+        carried = self.landed(self.what_if_change)
+        main = self.main_moves("docs/notes.md", "main moved, outside the code\n")
+        tip = self.queue_pick(main, web, carried)
+        code, out = self.verify_ci(main, tip)
+        self.assertEqual(0, code, out)
+        self.assertEqual(2, out.count(" proven at "), out)
+
+    def test_a_batch_refuses_the_carry_of_a_change_whose_base_code_an_earlier_one_moved(self):
+        self.repo.git("branch", "-m", "main")
+        first = self.landed(self.what_if_change)
+        second = self.landed(self.rename_sibling)
+        main = self.main_moves("docs/notes.md", "main moved, outside the code\n")
+        tip = self.queue_pick(main, first, second)                       # both carry commits' rows: kept by the union merge
+        self.assertEqual(2 + 3, len(self.table_rows()))
+        code, out = self.verify_ci(main, tip)
+        self.assertEqual(1, code, out)
+        self.assertEqual(2, out.count(" proven at "), out)               # the first change's rows hold
+        self.assertIn("equals is not", out)                               # the second's base is the first's code now
 
     def test_a_committed_verdict_of_another_diff_is_refused(self):
         head = self.change_foo()

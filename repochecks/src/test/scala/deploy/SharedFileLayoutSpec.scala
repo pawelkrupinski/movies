@@ -66,6 +66,8 @@ object SharedFileLayoutSpec {
     "test/resources/fixtures/identity-unmatched/expected-matches.tsv",
     ".github/convergence-paths.txt",
     "test/resources/fixtures/identity-drift-allow.tsv",
+    "test/resources/identity-stamp-carry.tsv",
+    "test/resources/identity-stamp-carry-ranges.tsv",
   )
 
   private val EntryName = """\d{4}-\d{2}-\d{2}-[a-z0-9-]+\.md""".r

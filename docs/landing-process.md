@@ -45,7 +45,8 @@ Landing is the cost, so land fewer, bigger, cleaner changes and keep working whi
    **The stamps are kept by themselves** either way (step 4 or 5): `agentctl land` runs `scripts/land-before-queue`
    after its rebase, whose `scripts/identity-stamp-carry auto` commits the carry rows into the same push (each pure
    move, or the change by its whole five-country what-if). The deploy then re-resolves no stored family on boot; the
-   hook's `stampcarry` check proves each row again.
+   hook's `stampcarry` check proves each row again, at the commits the queue's picks make of the cited ones (found by
+   the range's patch-id: a rebase over identity code refuses the row).
 6. **Local layers, narrowed:** `scripts/sbt-warm "<module>/testOnly <the specs you touched or that read it>"`, the
    module's `testUnit` only when you changed shared code, `scripts/run-script-tests --changed origin/main` for any
    script. The landing check runs the rest on CI (ci-runner; the identity shards on GitHub's hosted runners) -- don't

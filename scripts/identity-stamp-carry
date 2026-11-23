@@ -20,7 +20,9 @@
 #            pushed range carried by a recorded whole what-if of its very diff (taken before the rebase), else commit by
 #            commit by pure-move-check; the rows committed on their own in the same push. A commit that may move a stamp
 #            and proves nothing bumps the head's stamps (the head is what deploys), so then nothing is built or written.
-#            Builds stamps only when a proof holds: seconds a cached tree, about a minute one not
+#            Builds stamps only when a proof holds: seconds a cached tree, about a minute one not. Each range a row
+#            cites goes to test/resources/identity-stamp-carry-ranges.tsv too (its commit count and patch-id), so
+#            `verify` proves the row at the commits agentctl's queue rewrites it into (identity_stamp_carry.py)
 #   publish  identity-what-if's, after each country (`publish <head> <base> <countries> <tools hash> <run id>`): the run's
 #            verdict lines and takes diffs uploaded as one asset of the identity-what-if-verdicts release, the record a
 #            what-if row is held to (a committed verdict is text its author writes; trust model: identity_stamp_carry.py)

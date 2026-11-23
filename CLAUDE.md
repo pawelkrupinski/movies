@@ -447,7 +447,9 @@ same push): each pure-move commit carried by itself, or the whole change by the 
 (whole-corpus by default since 2026-11-20; run it over all five countries). `propose <base>..<head>` writes them by hand
 (never edit the table). The pre-push `stampcarry` check proves every
 added or changed row again for exactly its base and head (pure-move-check re-run, or the recorded what-if verdict
-re-read; both digests rebuilt) and refuses any it cannot. **A what-if verdict counts only as PUBLISHED** (the owner,
+re-read; both digests rebuilt) and refuses any it cannot -- at the commits the queue's picks rewrote the cited ones into,
+found by the range's patch-id (`test/resources/identity-stamp-carry-ranges.tsv`, written with the rows): a rebase over
+identity code, main's or a batch's earlier change's, refuses the row. **A what-if verdict counts only as PUBLISHED** (the owner,
 2026-11-21): each `identity-what-if` run uploads its verdict lines and takes diffs as one asset of the
 `identity-what-if-verdicts` release (keyed by head, base, patch-id, countries, tooling hash and run), and `verify` refuses
 a committed verdict that is not byte for byte a line of the asset it names, or whose asset is missing. Trust: an upload

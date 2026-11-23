@@ -8,3 +8,7 @@ test/resources/fixtures/identity-unmatched/expected-matches.tsv merge=union
 # set, an allow-list row keyed by its own columns.
 .github/convergence-paths.txt merge=union
 test/resources/fixtures/identity-drift-allow.tsv merge=union
+# The stamp carry's rows and the ranges they cite (scripts/identity_stamp_carry.py): each land's carry commit appends its
+# own, so two carries of one batch merge by keeping both; a digest carried twice is what the build and stampcarry refuse.
+test/resources/identity-stamp-carry.tsv merge=union
+test/resources/identity-stamp-carry-ranges.tsv merge=union

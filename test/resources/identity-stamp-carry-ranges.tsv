@@ -1,0 +1,6 @@
+# THE CARRY ROWS' RANGES (scripts/identity_stamp_carry_ranges.py, "THE QUEUE REWRITES"): each base..head a row of
+# identity-stamp-carry.tsv cites, with its first-parent commit count and its whole diff's `git patch-id --stable`, so the
+# pre-push stampcarry check finds the range again in the pushed history after agentctl's queue picked its commits anew.
+# Written with the rows, never by hand; only where to look -- the proof and the digests are made again there.
+#
+# base	head	commits	patch-id
