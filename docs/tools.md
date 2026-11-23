@@ -229,7 +229,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (200)
+## Identity (201)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -356,7 +356,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity-rule-ablation` | Rule ablation: which identity and title rules move takes when switched off, over the recorded corpora | `scripts/identity-rule-ablation` | wf identity-rule-ablation | identity_rule_ablation_test.py | KEEP |
 | `scripts/identity-slice` | Reproduce one listing's identity take — matched or not, model and agreement — from a recording, in seconds | `scripts/identity-slice` | wf archive-recording, identity-run, main +2; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 38 tools | - | MIGRATE |
 | `scripts/identity-slice-coverage` | Slice answer coverage: every pinned slice decided again from its own answers, naming each missing request | `scripts/identity-slice-coverage` | hook pre-push; 2 tools | identity_slice_coverage_test.py | MIGRATE |
-| `scripts/identity-slice-refresh` | Re-pin identity slice cases on this checkout's code, in place, keeping each case's expected.tsv | `scripts/identity-slice-refresh` | skill identity-investigation; 1 tool | identity-slice-refresh-test.sh | MIGRATE |
+| `scripts/identity-slice-refresh` | Re-pin identity slice cases on this checkout's code, in place, keeping each case's expected.tsv | `scripts/identity-slice-refresh` | skill identity-investigation; 2 tools | identity_slice_refresh_test.py | KEEP |
 | `scripts/identity-stage-works.py` | Rebuild the identity resolver's table of stage works — every opera and ballet Wikidata knows with five or more | `scripts/identity-stage-works.py` | by hand | - | Python |
 | `scripts/identity-stamp-carry` | The stamp carry (project/StampCarry.scala; the owner, 2026-11-20) | `scripts/identity-stamp-carry` | hook pre-push; skill CLAUDE.md, identity-investigation; 6 tools | identity_stamp_carry_test.py | KEEP |
 | `scripts/identity-tools.sh` | What the local identity tools share (sourced): the recording cache, classpaths, countries | `bash scripts/identity-tools.sh` | wf main; skill identity-investigation; 42 tools | identity-tools-test.sh | MIGRATE |
@@ -404,6 +404,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity_slice_cli_run.py` | DECIDING A SLICE AT A REF (scripts/identity_slice_cli.py): a tree's scripts.IdentitySlice run over the recording -- | `imported` | wf main; 3 tools | - | Python |
 | `scripts/identity_slice_coverage.py` | SLICE ANSWER COVERAGE: every pinned slice -- the identity slice cases (test/resources/fixtures/identity-slices/, | `python3 scripts/identity_slice_coverage.py` | 1 tool | identity_slice_coverage_test.py | Python |
 | `scripts/identity_slice_diff.py` | The takes of identity slices at two refs, compared (scripts/identity-slice): every listing whose final take moved, with | `imported` | 2 tools | identity_slice_diff_test.py | Python |
+| `scripts/identity_slice_refresh.py` | Re-pin identity slice cases on this checkout's code, in place, keeping each case's expected.tsv. | `scripts/identity_slice_refresh.py` | 1 tool | identity_slice_refresh_test.py | Python |
 | `scripts/identity_stamp_carry.py` | THE STAMP CARRY'S PROOFS (project/StampCarry.scala; the owner, 2026-11-20): a row of test/resources/identity-stamp-carry.tsv | `python3 scripts/identity_stamp_carry.py` | skill identity-investigation; 4 tools | identity_stamp_carry_test.py | Python |
 | `scripts/identity_stamp_carry_published.py` | THE WHAT-IF'S RECORD a stamp carry's what-if row stands on (identity_stamp_carry.py, its header's proof 2 and THE | `python3 scripts/identity_stamp_carry_published.py` | 1 tool | - | Python |
 | `scripts/identity_tool_fixture.py` | The scratch repository the black-box tests of the ref-laying identity tools share (title_trace_test.py, | `imported` | by hand | - | Python |
@@ -626,12 +627,12 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/store_screenshots_fixture.py` | The store-screenshot drivers' TEST FIXTURE (android/scripts/store_screenshots_test.py, ios/scripts/ | `imported` | by hand | - | Python |
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 5 tools | tool_actions_test.py | Python |
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; the retired | `imported` | 3 tools | tool_ci_wait_test.py | Python |
-| `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 18 tools | - | Python |
+| `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 19 tools | - | Python |
 | `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 14 tools | - | Python |
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 10 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 14 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 18 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 73 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 74 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 12 tools | tool_python_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 18 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
@@ -662,7 +663,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/timezonefinder-python` | Print a directory whose python3 imports timezonefinder, for the pre-push drift check | `scripts/timezonefinder-python` | hook pre-push; 3 tools | timezonefinder-python-test.sh | KEEP |
 | `scripts/timezonefinder-python-stub.sh` | A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder | `sourced` | by hand | - | KEEP |
 | `scripts/title_trace.py` | Every step one raw billing goes through, in production order: the ingest tidy, the venue's own title rules, the format | `python3 scripts/title_trace.py` | wf main; 2 tools | title_trace_test.py | Python |
-| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 64 tools | tool-conventions-test.sh | MIGRATE |
+| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 63 tools | tool-conventions-test.sh | MIGRATE |
 | `scripts/tool_catalogue.py` | The tool catalogue: docs/tools.md, generated from every tool's own one-line purpose. | `python3 scripts/tool_catalogue.py` | skill CLAUDE.md | tool_catalogue_test.py | Python |
 | `scripts/touched-tree-stub.sh` | The stub sbt for the touched-code tools' specs (mutation-check, coverage-touched) | `scripts/touched-tree-stub.sh` | 1 tool | - | KEEP |
 | `scripts/touched_methods.py` | THE METHODS A CHANGE TOUCHES, and what the refactoring tools say about each (scripts/mutation-check, | `python3 scripts/touched_methods.py` | 4 tools | touched_methods_test.py | Python |

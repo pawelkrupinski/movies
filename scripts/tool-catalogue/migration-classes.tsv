@@ -176,7 +176,7 @@ scripts/identity-repro	KEEP
 scripts/identity-rule-ablation	KEEP
 scripts/identity-slice	MIGRATE
 scripts/identity-slice-coverage	MIGRATE
-scripts/identity-slice-refresh	MIGRATE
+scripts/identity-slice-refresh	KEEP
 scripts/identity-stamp-carry	KEEP
 scripts/identity-tools.sh	MIGRATE
 scripts/identity-what-if	MIGRATE
