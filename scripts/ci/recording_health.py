@@ -35,9 +35,10 @@ Cineworld, which 403s CI's own address, was booked as refusing 66/66; in #2265 t
 on 53 of Cineworld's 156 asks, `HTTP/1.1 header parser received no bytes`).
 
 AN ORIGIN DOWN FOR EVERYONE is no verdict on our route either (the owner, 2026-11-14, deciding Record scrape fixtures
-#186): a refusal whose `direct:` AND `proxy:` legs both got an HTTP 5xx -- the origin failing for CI and for production's
-route alike, as www.kinomuza.pl answered 503 to all 22 of #186's asks and to every request for hours after -- is the
-site's outage. An origin flagged `refusing` with most of its refusals so is `origin-down`: UNKNOWN, exit 3, a warning
+#186): a refusal whose `direct:` AND `proxy:` legs both got an HTTP 5xx, or both timed out (Record scrape fixtures #207:
+www.iluzjon.fn.org.pl let 25 of 28 asks time out on both legs, then answered in 0.3 s) -- the origin failing for CI and
+for production's route alike, as www.kinomuza.pl answered 503 to all 22 of #186's asks and to every request for hours
+after -- is the site's outage. An origin flagged `refusing` with most of its refusals so is `origin-down`: UNKNOWN, exit 3, a warning
 and no red, and the leg keeps that origin's previous recording in the tree it publishes rather than an empty one
 (keep-previous-origins.sh). A 403 / 429, or a 5xx on our direct path alone, is still `refusing`: we are being blocked.
 
@@ -78,9 +79,11 @@ BEST_EFFORT = {"www.omdbapi.com": "OMDb"}
 PROXY_DOWN = re.compile(r"^\s*proxy: (?:[\w.]*\.)?(?:IOException: (?:Tunnel failed|HTTP/1\.1 header parser received no bytes)|"
                         r"HttpTimeoutException: proxy tunneling CONNECT request timed out|HttpConnectTimeoutException|"
                         r"ConnectException|NoRouteToHostException|UnknownHostException)", re.M)
-# A composite failure whose every route reached the origin and got a server error: the origin down for everyone.
-DIRECT_5XX = re.compile(r"^\s*direct: (?:[\w.]*\.)?HttpStatusException: HTTP 5\d\d\b", re.M)
-PROXY_5XX = re.compile(r"^\s*proxy: (?:[\w.]*\.)?HttpStatusException: HTTP 5\d\d\b", re.M)
+# A composite failure whose every route reached the origin and got a server error, or whose request timed out on every
+# route (a proxy CONNECT that timed out is PROXY_DOWN, above): the origin down for everyone.
+_ORIGIN_FAILED = r"(?:[\w.]*\.)?(?:HttpStatusException: HTTP 5\d\d\b|HttpTimeoutException: request timed out)"
+DIRECT_5XX = re.compile(r"^\s*direct: " + _ORIGIN_FAILED, re.M)
+PROXY_5XX = re.compile(r"^\s*proxy: " + _ORIGIN_FAILED, re.M)
 UNKNOWN_EXIT = 3
 UNKNOWN_REASONS = ("proxy-unreachable", "origin-down")
 
@@ -256,7 +259,7 @@ def main(argv):
     if down:
         verdict += ("\n\n**UNKNOWN: down for everyone** -- " +
                     ", ".join(f"{f.origin} ({this['origins'][f.origin].get('originDown', 0)} of {this['origins'][f.origin]['refused']} "
-                              "refusals a 5xx both direct and through the proxy)" for f in down) +
+                              "refusals a 5xx or a timeout both direct and through the proxy)" for f in down) +
                     ": the site's own outage, not a block on us; its previous recording is kept")
     for flag in flags:
         if not flag.blocking:
@@ -274,7 +277,7 @@ def main(argv):
         what = (f"refused {_share(counts)} of what this recording asked it" if flag.reason == "refusing"
                 else f"refused {_share(counts)} of what this recording asked it, {counts.get('proxyDown', 0)} with the residential "
                      "proxy unreachable -- proxy unreachable, the origin not judged" if flag.reason == "proxy-unreachable"
-                else f"answered {counts.get('originDown', 0)} of {counts['refused']} refusals with a 5xx both direct and through the "
+                else f"answered {counts.get('originDown', 0)} of {counts['refused']} refusals with a 5xx or a timeout both direct and through the "
                      "proxy -- down for everyone, its previous recording kept" if flag.reason == "origin-down"
                 else "held responses in the last green recording and holds none now")
         level = "error" if flag.blocking and flag.reason != "origin-down" else "warning"

@@ -94,7 +94,7 @@ outputs:
     description: >-
       'proxy-unreachable' when the only origins flagged were refused with the residential proxy unreachable
       (recording_health.py's exit 3): the proxy is down, the origins not judged -- an UNKNOWN, not a code red.
-      'origin-down' when the only ones flagged answered a 5xx both direct and through the proxy: the site's own
+      'origin-down' when the only ones flagged answered a 5xx or a timeout both direct and through the proxy: the site's own
       outage -- UNKNOWN, no red, its previous recording kept in the published tree.
     value: ${{ steps.health.outputs.unknown }}
 
