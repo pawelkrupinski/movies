@@ -204,10 +204,10 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/land-precheck` | The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here | `scripts/land-precheck` | agentctl; 1 tool | land-precheck-test.sh | MIGRATE |
 | `scripts/py-quality-report` | The Python quality report and its ratchet (entry; the measure is scripts/py-quality/report.py) | `scripts/py-quality-report` | hook pre-push; skill CLAUDE.md; 2 tools | - | KEEP |
 | `scripts/py-quality/clones.py` | THE PYTHON CLONE GROUPS (scripts/py-quality/report.py): every run of MIN_TOKENS or more tokens appearing twice or more | `imported` | wf ios; hook pre-push; skill CLAUDE.md, test-layers; 7 tools | - | Python |
-| `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; skill CLAUDE.md; 15 tools | - | Python |
-| `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 16 tools | - | Python |
+| `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; skill CLAUDE.md; 14 tools | - | Python |
+| `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 17 tools | - | Python |
 | `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push; 3 tools | - | Python |
-| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 115 tools | report_test.py | Python |
+| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 114 tools | report_test.py | Python |
 | `scripts/quality-report` | The code-quality report (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, length and duplication (pmd cpd) | `scripts/quality-report` | wf quality-hotspots; hook pre-push; agentctl; skill CLAUDE.md, test-layers; 2 tools | - | KEEP |
 | `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 2 tools | ratchet-diff-test.sh | MIGRATE |
 | `scripts/run-script-tests` | Every script self-test, found by its name and run in parallel: the one way CI, the pre-push hook and a person at a terminal run them | `scripts/run-script-tests` | wf tool-self-tests; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, test-layers; 16 tools | run-script-tests-test.sh | MIGRATE |
@@ -321,8 +321,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/flip_timeline.py` | ONE LISTING'S FLIP TIMELINE (scripts/flip-timeline). | `python3 scripts/flip_timeline.py` | 1 tool | flip_timeline_test.py | Python |
 | `scripts/hard-clusters.sh` | Grow and re-record the hard-cluster fixture HardClusterConvergenceIntegrationSpec replays | `scripts/hard-clusters.sh` | skill regenerate-snapshots; 3 tools | hard-clusters-test.sh | KEEP |
 | `scripts/identity-boot-cost` | The identity boot-cost check: what the identity model allocates and spends a family | `scripts/identity-boot-cost` | skill test-layers; 1 tool | identity-boot-cost-test.sh | MIGRATE |
-| `scripts/identity-calibrate.sh` | Regenerate the identity resolver's calibrated evidence model from data | `scripts/identity-calibrate.sh` | wf identity-decorations; 1 tool | identity-calibrate-test.sh | KEEP |
-| `scripts/identity-capture.sh` | Re-capture the unmatched-cluster fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz) in one command | `scripts/identity-capture.sh` | wf identity-capture; 1 tool | identity-capture-test.sh | MIGRATE |
+| `scripts/identity-calibrate.sh` | Regenerate the identity resolver's calibrated evidence model from data | `scripts/identity-calibrate.sh` | wf identity-decorations; 3 tools | identity-calibrate-test.sh | KEEP |
+| `scripts/identity-capture.sh` | Re-capture the unmatched-cluster fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz) in one command | `scripts/identity-capture.sh` | wf identity-capture; 3 tools | identity-capture-test.sh | MIGRATE |
 | `scripts/identity-ci-run` | Any sbt command over a cached recording, on CI (identity-run.yml), off the laptop (a name for identity_ci_run.py) | `scripts/identity-ci-run` | wf identity-run; agentctl; skill CLAUDE.md, identity-investigation; 6 tools | identity_ci_run_test.py | KEEP |
 | `scripts/identity-drift-ci` | The pre-land drift check: a commit's takes-drift rows, run on CI before landing (a name for identity_drift_ci.py) | `scripts/identity-drift-ci` | wf country-convergence-leg, identity-model-convergence, identity-takes; hook pre-push; agentctl; 9 tools | identity_drift_ci_test.py | KEEP |
 | `scripts/identity-explain` | An alias of `scripts/identity-slice <cc> --explain …` (see its --help): why a listing of the unmatched-cluster capture took (or did not take) its film | `scripts/identity-explain` | skill identity-investigation; 4 tools | identity-explain-test.sh | KEEP |
@@ -344,7 +344,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity-stage-works.py` | Rebuild the identity resolver's table of stage works — every opera and ballet Wikidata knows with five or more | `scripts/identity-stage-works.py` | by hand | - | Python |
 | `scripts/identity-stamp-carry` | The stamp carry (project/StampCarry.scala; the owner, 2026-11-20) | `scripts/identity-stamp-carry` | hook pre-push; skill CLAUDE.md, identity-investigation; 5 tools | identity_stamp_carry_test.py | KEEP |
 | `scripts/identity-tools.sh` | What the local identity tools share (sourced): the recording cache, classpaths, countries | `bash scripts/identity-tools.sh` | wf main; skill identity-investigation; 40 tools | identity-tools-test.sh | MIGRATE |
-| `scripts/identity-what-if` | A local what-if of a resolver change over prod's current corpus, in minutes | `scripts/identity-what-if` | hook pre-push; skill CLAUDE.md, identity-investigation; 20 tools | identity_what_if_test.py | MIGRATE |
+| `scripts/identity-what-if` | A local what-if of a resolver change over prod's current corpus, in minutes | `scripts/identity-what-if` | hook pre-push; skill CLAUDE.md, identity-investigation; 19 tools | identity_what_if_test.py | MIGRATE |
 | `scripts/identity-why` | Why a listing changed film at a moment, from the identity history alone (identity_history, a month of it) | `scripts/identity-why` | skill identity-investigation; 1 tool | - | KEEP |
 | `scripts/identity_boot_cost.py` | THE IDENTITY BOOT-COST RATCHET (scripts/identity-boot-cost): what `scripts.IdentityBootCost` measured -- bytes and | `python3 scripts/identity_boot_cost.py` | 1 tool | identity_boot_cost_test.py | Python |
 | `scripts/identity_ci_run.py` | ANY sbt COMMAND OVER A CACHED RECORDING, ON CI: .github/workflows/identity-run.yml at a commit of yours, off the laptop | `scripts/identity_ci_run.py` | 1 tool | identity_ci_run_test.py | Python |
@@ -404,12 +404,12 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ml-identity/cross_country_experiment.py` | Cross-country agreement, OFFLINE experiment (2026-10-19, branch experiment-cross-country; docs/identity-experiments.md). | `imported` | 1 tool | - | Python |
 | `scripts/recording-diff` | Two "Record scrape fixtures" recordings compared — "is it the code, or new data?" in seconds | `scripts/recording-diff` | skill CLAUDE.md, identity-investigation; 4 tools | recording-diff-test.sh | KEEP |
 | `scripts/recording_diff.py` | TWO RECORDINGS COMPARED: did the input change, or the code? (scripts/recording-diff) | `scripts/recording_diff.py` | 1 tool | recording_diff_test.py | Python |
-| `scripts/reset-corpus.sh` | Full corpus reset: wipe the scrape, enrichment, staging and read-model collections so the worker rebuilds them (incidents) | `scripts/reset-corpus.sh` | by hand | reset-corpus-test.sh | MIGRATE |
+| `scripts/reset-corpus.sh` | Full corpus reset: wipe the scrape, enrichment, staging and read-model collections so the worker rebuilds them (incidents) | `scripts/reset-corpus.sh` | 2 tools | reset-corpus-test.sh | MIGRATE |
 | `scripts/restore-country-corpus.sh` | Restore the recorded pair a hermetic convergence leg replays into this checkout | `scripts/restore-country-corpus.sh` | skill test-layers; 3 tools | restore-country-corpus-test.sh | MIGRATE |
 | `scripts/title-trace` | Every step one raw billing goes through, in production order, to the title the resolver reads | `scripts/title-trace` | wf main; skill CLAUDE.md, identity-investigation; 5 tools | title-trace-test.sh | MIGRATE |
 | `scripts/venue-replay` | One venue's listings as the code at one or two git refs reads them, from a recording — never the network | `scripts/venue-replay` | skill CLAUDE.md, identity-investigation; 5 tools | venue-replay-test.sh | MIGRATE |
 
-## Mirror and data (75)
+## Mirror and data (80)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -468,17 +468,22 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/roster-audit.sh` | The roster-audit workflow's one step: run diagnostics.RosterAudit and turn its verdict into the job's | `scripts/ci/roster-audit.sh` | wf roster-audit | roster-audit-test.sh | KEEP |
 | `scripts/ci/start-mongo-replset.sh` | Start a throwaway MongoDB in Docker as a single-node replica set on 127.0.0.1:27017, and return once it is PRIMARY. | `scripts/ci/start-mongo-replset.sh` | wf ci, identity-capture, identity-lean-whole +5; hook pre-push; 6 tools | start-mongo-replset-test.sh | MIGRATE |
 | `scripts/ci/wait-for-mongo-tunnel.sh` | Open the CI end of the route to prod Mongo and return only once bytes flow through it | `scripts/ci/wait-for-mongo-tunnel.sh` | wf country-convergence-leg, identity-capture, record-scrape-fixtures; 3 tools | wait-for-mongo-tunnel-test.sh | MIGRATE |
-| `scripts/discover-cinemas/discover.py` | Discover new UK cinemas on flicks.co.uk and wire them into the catalog. | `python3 scripts/discover-cinemas/discover.py` | wf decoration-discovery, discover-cinemas, nix-stage-closures; 5 tools | discover_test.py | Python |
+| `scripts/discover-cinemas/discover.py` | Discover new UK cinemas on flicks.co.uk and wire them into the catalog. | `python3 scripts/discover-cinemas/discover.py` | wf decoration-discovery, discover-cinemas, nix-stage-closures; 4 tools | discover_test.py | Python |
 | `scripts/fleet-db-finish` | Count the fleet's three old collections in Poland's kinowo and drop them on an exact request (fleet DB migration, step 9) | `scripts/fleet-db-finish` | 2 tools | fleet-db-finish-test.sh | MIGRATE |
-| `scripts/lib/mongo_local.py` | THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib; | `imported` | 1 tool | - | Python |
+| `scripts/lib/mongo_local.py` | THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib; | `imported` | 3 tools | - | Python |
 | `scripts/local-mirror/freshness` | How current the local prod mirror (:28017) is, per country — for every tool that reads it (identity-slice --prod-mirror, listing-history, …) | `scripts/local-mirror/freshness` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation; 23 tools | freshness-test.sh | KEEP |
 | `scripts/local-mirror/local-mongo.sh` | The one place that knows how to make the local mirror Mongo reachable | `scripts/local-mirror/local-mongo.sh` | 1 tool | - | KEEP |
-| `scripts/local-mirror/log-path.sh` | Where the launchd agent's stdout/stderr land | `sourced` | 2 tools | - | KEEP |
-| `scripts/local-mirror/mirror.sh` | Keep a local mirror of prod's /debug data in sync, continuously | `scripts/local-mirror/mirror.sh` | 8 tools | mirror-test.sh | MIGRATE |
-| `scripts/local-mirror/mongosh-at.sh` | `mongosh uri ARGS…` without the uri — and the password in it — on mongosh's command line, where `ps` shows it to every user | `scripts/local-mirror/mongosh-at.sh` | 3 tools | mongosh-at-test.sh | KEEP |
+| `scripts/local-mirror/log-path.sh` | Where the launchd agent's stdout/stderr land | `sourced` | 3 tools | - | KEEP |
+| `scripts/local-mirror/mirror.py` | Keep a local mirror of prod's /debug data in sync, continuously, so the dev `/debug` pages read from a fast LAN Mongo | `scripts/local-mirror/mirror.py` | wf ci, mirror-pinned-images, precommit-check; skill CLAUDE.md, agent-ops, identity-investigation; 63 tools | mirror_test.py | Python |
+| `scripts/local-mirror/mirror.sh` | Keep a local mirror of prod's /debug data in sync, continuously (mirror.py beside it; this name is what service.sh and the README run) | `scripts/local-mirror/mirror.sh` | 11 tools | mirror_test.py | MIGRATE |
+| `scripts/local-mirror/mirror_keeper.py` | THE PROD TUNNEL'S ONE OWNER (mirror.py --keep-tunnel), a child process of the daemon: the only thing that opens, | `imported` | 1 tool | - | Python |
+| `scripts/local-mirror/mirror_settings.py` | WHAT EVERY PROCESS OF THE MIRROR DAEMON SHARES (mirror.py): its endpoints and knobs, read once from the environment | `imported` | 4 tools | - | Python |
+| `scripts/local-mirror/mirror_supervisor.py` | ONE DATABASE'S SUPERVISOR (mirror.py --supervise <db> <force>), a child process of the daemon: every cycle it | `imported` | 1 tool | - | Python |
+| `scripts/local-mirror/mirror_upkeep.py` | THE DAEMON PARENT'S UPKEEP (mirror.py): its log kept under a size cap, what an earlier run left behind swept up, the | `imported` | 1 tool | - | Python |
+| `scripts/local-mirror/mongosh-at.sh` | `mongosh uri ARGS…` without the uri — and the password in it — on mongosh's command line, where `ps` shows it to every user | `scripts/local-mirror/mongosh-at.sh` | 5 tools | mongosh-at-test.sh | KEEP |
 | `scripts/local-mirror/prod-tunnel.sh` | The one place that knows how a laptop reaches prod Mongo | `bash scripts/local-mirror/prod-tunnel.sh` | 9 tools | prod-tunnel-test.sh | MIGRATE |
-| `scripts/local-mirror/service.sh` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure — no terminal to babysit | `scripts/local-mirror/service.sh` | 4 tools | service-test.sh | MIGRATE |
-| `scripts/local-mirror/start-local-mongo.sh` | Ensure the native (Homebrew) single-node replica-set Mongo that backs local dev is up on :28017 | `scripts/local-mirror/start-local-mongo.sh` | 5 tools | start-local-mongo-test.sh | MIGRATE |
+| `scripts/local-mirror/service.sh` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure — no terminal to babysit | `scripts/local-mirror/service.sh` | 6 tools | service-test.sh | MIGRATE |
+| `scripts/local-mirror/start-local-mongo.sh` | Ensure the native (Homebrew) single-node replica-set Mongo that backs local dev is up on :28017 | `scripts/local-mirror/start-local-mongo.sh` | 6 tools | start-local-mongo-test.sh | MIGRATE |
 | `scripts/mongo-grants` | The Mongo access every database needs, checked against prod or granted | `scripts/mongo-grants` | 5 tools | mongo-grants-test.sh | KEEP |
 | `scripts/mongo_grants.py` | THE MONGO ROLES EVERY DATABASE NEEDS, CHECKED OR GRANTED ON PROD (scripts/mongo-grants). | `python3 scripts/mongo_grants.py` | 1 tool | - | Python |
 | `scripts/own-mongod.sh` | A MongoDB of the caller's own: a single-node replica set on a free port, its data in a temporary directory, removed when the caller ends | `bash scripts/own-mongod.sh` | 2 tools | - | KEEP |
@@ -486,8 +491,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/poster_eval.py` | How strong a venue poster is as identity evidence, on prod's REAL candidate sets: the logic of scripts/poster-eval. | `python3 scripts/poster_eval.py` | 1 tool | poster_eval_test.py | Python |
 | `scripts/poster_hash.py` | Production's poster hash, bit for bit: the 63-bit pHash `services.identity.PosterHash.of` files for a poster. | `python3 scripts/poster_hash.py` | skill identity-investigation; 2 tools | - | Python |
 | `scripts/prod-ops-fixture.sh` | The fake prod the prod-ops scripts' tests share (see scripts/prod-ops.sh) | `bash scripts/prod-ops-fixture.sh` | 1 tool | - | KEEP |
-| `scripts/prod-ops.sh` | The shared harness of the prod-ops scripts (scripts/mongo-grants, scripts/fleet-db-finish, and the next one) | `bash scripts/prod-ops.sh` | 3 tools | prod-ops-test.sh | KEEP |
-| `scripts/with-prod-mongo.sh` | Run one command against prod Mongo from a laptop: the credential from the Touch ID vault, the connection through the ssh tunnel | `scripts/with-prod-mongo.sh` | 6 tools | with-prod-mongo-test.sh | KEEP |
+| `scripts/prod-ops.sh` | The shared harness of the prod-ops scripts (scripts/mongo-grants, scripts/fleet-db-finish, and the next one) | `bash scripts/prod-ops.sh` | 5 tools | prod-ops-test.sh | KEEP |
+| `scripts/with-prod-mongo.sh` | Run one command against prod Mongo from a laptop: the credential from the Touch ID vault, the connection through the ssh tunnel | `scripts/with-prod-mongo.sh` | 8 tools | with-prod-mongo-test.sh | KEEP |
 
 ## Infra and deploy (51)
 
@@ -501,8 +506,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 201 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 201 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 202 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 202 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |
@@ -565,7 +570,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/store-screenshots-common.sh` | Shared engine for the store-screenshot drivers — android/scripts and ios/scripts both source this | `bash scripts/store-screenshots-common.sh` | wf android; 5 tools | - | MIGRATE |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (67)
+## Dev (68)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -587,6 +592,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ios-simulators` | Shut down the iOS Simulators agents boot, so none stays booted for days. | `scripts/ios-simulators` | agentctl; skill test-layers | ios-simulators-test.sh | Python |
 | `scripts/it-local.sh` | Run the it/ layer locally against a MongoDB of this run's own | `scripts/it-local.sh` | skill agent-ops, identity-investigation, test-layers; 9 tools | it-local-test.sh | KEEP |
 | `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | skill CLAUDE.md; 3 tools | cli_harness_test.py | Python |
+| `scripts/lib/prod_tunnel.py` | HOW A LAPTOP REACHES PROD MONGO, for the Python tools (scripts/lib): scripts/local-mirror/prod-tunnel.sh's | `imported` | 2 tools | - | Python |
 | `scripts/lib/seeded_order.py` | THE SEEDED TEST ORDER the nightly order-independence legs share (ios/scripts/swift_test_shuffled.py, | `imported` | wf android; 2 tools | seeded_order_test.py | Python |
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 5 tools | tool_actions_test.py | Python |
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; scripts/ci/dispatch.sh's | `imported` | 3 tools | tool_ci_wait_test.py | Python |

@@ -2,8 +2,10 @@
 # Purpose: The one place that knows how a laptop reaches prod Mongo
 #
 # The one place that knows HOW a laptop reaches prod Mongo. Sourced by every
-# local script whose source is prod: mirror.sh (the /debug mirror daemon) and
-# ../reset-corpus.sh.
+# local shell script whose source is prod (../reset-corpus.sh, ../with-prod-mongo.sh,
+# ../prod-ops.sh, ../identity-capture.sh, ../identity-calibrate.sh); its Python
+# twin, for the /debug mirror daemon (mirror.py), is scripts/lib/prod_tunnel.py.
+# Repoint both together.
 #
 # WHY THIS FILE EXISTS AT ALL. Those scripts had their own copies of the same
 # "nc -z :27017 || flyctl proxy" block. When prod moved off the Fly app
@@ -45,10 +47,8 @@
 #                         probe, which is exactly the weak check described below
 #   * call `close_prod_tunnel` from your own EXIT/INT/TERM trap
 #
-# Sourcing this file must stay side-effect free: mirror.sh sources it at load
-# time, and mirror-resilience-test.sh asserts that sourcing mirror.sh asks the
-# vault for nothing and starts nothing. So everything below is a function
-# definition.
+# Sourcing this file must stay side-effect free: its callers source it at load
+# time, before they decide anything. So everything below is a function definition.
 #
 # It also brings ensure_vault_env (../vault-env.sh) with it: every caller of this
 # file needs a prod Mongo URI, and that is a secret — the environment's, else the

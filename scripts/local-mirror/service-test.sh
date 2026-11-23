@@ -3,7 +3,7 @@
 # shared log), the launchctl calls of install / uninstall / status, an unknown command, the agent's wait when the vault
 # says no, and the agent restarting mirror.sh with the secret inherited. No launchd, no vault: fake `launchctl`,
 # `secrets` and `sleep` on PATH, HOME a scratch directory, and for the agent loop a copy of service.sh beside a fake
-# mirror.sh. (mirror-resilience-test.sh holds the plist's ProgramArguments and the agent's one vault read.)
+# mirror.sh; the plist's ProgramArguments and the agent's one vault read.
 #
 #   scripts/local-mirror/service-test.sh
 set -uo pipefail
@@ -41,6 +41,10 @@ check "...the agent's PATH: where each tool resolved, de-duplicated, then /usr/b
 check "...restarted by launchd (KeepAlive) and started at login (RunAtLoad)" "true true" \
   "$(value_after KeepAlive) $(value_after RunAtLoad)"
 check "...logging where mirror.sh rotates (log-path.sh)" "$home/Library/Logs/kinowo-local-mirror.log" "$(value_after StandardOutPath)"
+# Under launchd there is no terminal, and mirror.sh deliberately EXITS to be restarted: were each restart to go back to
+# the vault, each would raise a fresh Touch ID dialog, so launchd runs `service.sh agent`, which asks the vault once.
+check "...running \`service.sh agent\` under /bin/bash" "<string>/bin/bash</string><string>$HERE/service.sh</string><string>agent</string>" \
+  "$(tr -d ' \n' < "$plist" | sed -E 's|.*<key>ProgramArguments</key><array>(.*)</array><key>WorkingDirectory.*|\1|')"
 check "...run from the checkout's root" "$(cd "$HERE/../.." && pwd)" "$(value_after WorkingDirectory)"
 check "...an earlier copy booted out, then this one bootstrapped and enabled" \
   "launchctl bootout $domain/pl.kinowo.local-mirror|launchctl bootstrap $domain $plist|launchctl enable $domain/pl.kinowo.local-mirror" \
@@ -65,6 +69,17 @@ check "an unknown command prints the usage and exits 1" "1 1" \
 check "...as does none" "1" "$(service > /dev/null 2>&1; echo $?)"
 
 # ── agent ──────────────────────────────────────────────────────────────────────────────────────────
+# No MONGODB_URI: the agent re-runs ITSELF under the vault, once, for that key alone.
+cat > "$bin/secrets" <<'FAKE'
+#!/bin/sh
+echo "secrets $*" >> "$CALLS"
+FAKE
+chmod +x "$bin/secrets"
+: > "$CALLS"
+env -u MONGODB_URI HOME="$home" PATH="$bin:/usr/bin:/bin" "$BASH" "$HERE/service.sh" agent > /dev/null 2>&1
+check "the agent asks the vault for MONGODB_URI once, re-running itself under it" \
+  "0 secrets run movies MONGODB_URI -- $BASH $HERE/service.sh agent" "$? $(cat "$CALLS")"
+
 # The vault says no (Touch ID declined): wait ten minutes, then exit for launchd to try again — not re-prompt at once.
 printf '#!/bin/sh\nexit 1\n' > "$bin/secrets"
 # shellcheck disable=SC2016 # expanded by the fake, not here

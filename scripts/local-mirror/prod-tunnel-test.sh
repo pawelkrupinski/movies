@@ -83,4 +83,21 @@ printf '#!/bin/sh\nexit 255\n' > "$scratch/refusing/ssh"; chmod +x "$scratch/ref
 refused="$(PATH="$scratch/refusing:$PATH" bash -c '. "'"$HERE"'/prod-tunnel.sh"; s=$SECONDS; ensure_prod_tunnel; echo "rc=$? took=$((SECONDS - s))"' 2>&1)"
 check "an ssh that exits at once is reported with its exit code" "1" "$(printf '%s\n' "$refused" | grep -c 'exited (code 255) before prod answered')"
 check "...and fails without waiting out the 30s" "rc=1 fast" "$(printf '%s\n' "$refused" | sed -nE 's/.*rc=([0-9]+) took=([0-9]+).*/\1 \2/p' | awk '{print "rc=" $1 ($2 < 10 ? " fast" : " slow")}')"
+# THE CUTOVER BUG (2026-08-29): a stale `flyctl proxy` kept accepting on the port while the machine behind it was
+# stopped, and a bare TCP check called it healthy -- every change stream then died with ECONNRESET, 420 in a row with
+# nothing naming the tunnel. A port that accepts while nothing answers behind it is not healthy, is someone else's, and
+# is never bound over, adopted or killed.
+# shellcheck disable=SC2016
+dead="$(PATH="$scratch/refusing:$PATH" bash -c '
+  . "'"$HERE"'/prod-tunnel.sh"
+  TUNNEL_PROBE_URI="mongodb://u:p@127.0.0.1:27017/x?serverSelectionTimeoutMS=10000"
+  nc() { return 0; }; mongosh_at() { return 1; }; ssh() { echo ssh-called; }
+  prod_tunnel_answers && echo healthy
+  ensure_prod_tunnel >/dev/null 2>&1 && echo ensured
+  echo "pid=[$PROD_TUNNEL_PID]"; close_prod_tunnel && echo closed')"
+check "a port held with a dead backend is not healthy, not ensured, never ssh'd over, adopted or killed" \
+  "pid=[] closed" "$(printf '%s\n' "$dead" | paste -sd' ' -)"
+# Where the tunnel points is configuration (not a secret): an environment variable over mongo-1's committed address.
+check "the ssh target defaults to mongo-1 and is overridable by the environment" "root@178.105.221.61 root@override" \
+  "$(bash -c '. "'"$HERE"'/prod-tunnel.sh"; unset KINOWO_MONGO_SSH; echo "$(prod_tunnel_target) $(KINOWO_MONGO_SSH=root@override prod_tunnel_target)"')"
 spec_summary

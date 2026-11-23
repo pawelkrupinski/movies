@@ -42,8 +42,6 @@ class LoadIndependentTestsSpec extends AnyFlatSpec with Matchers {
       s"it did not: $bound is a fraction of that timeout and orders of magnitude over the call"
 
   private val HangStub    = "a stub that must never end on its own (HUNG STUBS, scripts/shell-spec.sh): its loop waits on nothing"
-  private val OwnDeadline =
-    "a deadline loop in a spec with its own harness (no shell-spec): it waits for the condition, bounded by a deadline, never a count"
 
   /** `file: trimmed line` → why the line may stay. Keep each reason specific enough to check. */
   private val Allowlist: Map[String, String] = Map(
@@ -79,26 +77,6 @@ class LoadIndependentTestsSpec extends AnyFlatSpec with Matchers {
       "a slot held open on purpose, so racers overlap: what the case provokes, not a wait",
     s"scripts/jvm-gate-test.sh: for _ in $$(seq 1 200); do jvm_slot_take_if_free && { echo \"took $${JVM_SLOT##*/}\"; break; }; sleep 0.05; done ) > \"$$work/got\"" ->
       "takes the slot in its own subshell, which must hold it; the case asserts which slot it took, not when",
-    s"scripts/local-mirror/mirror-resilience-test.sh: while kill -0 \"$$child\" 2>/dev/null && [ \"$$SECONDS\" -lt \"$$deadline\" ]; do command sleep 0.1; done" ->
-      OwnDeadline,
-    s"scripts/local-mirror/mirror-resilience-test.sh: sleep()                   { command sleep 0.05; }" ->
-      "the tool's `sleep` stubbed shorter: the tool's back-off, not the spec's wait",
-    s"scripts/local-mirror/mirror-resilience-test.sh: while [ ! -s \"$$work/tailer.pid\" ] && [ \"$$SECONDS\" -lt \"$$deadline\" ]; do command sleep 0.05; done" ->
-      OwnDeadline,
-    s"scripts/local-mirror/mirror-resilience-test.sh: while [ -n \"$$tailer\" ] && kill -0 \"$$tailer\" 2>/dev/null && [ \"$$SECONDS\" -lt \"$$deadline\" ]; do command sleep 0.05; done" ->
-      OwnDeadline,
-    s"scripts/local-mirror/mirror-resilience-test.sh: sleep() { command sleep 0.02; }" ->
-      "the tool's `sleep` stubbed shorter: the tool's back-off, not the spec's wait",
-    s"scripts/local-mirror/mirror-resilience-test.sh: probe() { command sleep 0.5; }" ->
-      "the slow command `bounded` must outlast: its poll has to run at least once, which is where bash 3.2 exec'd the supervisor away",
-    s"scripts/local-mirror/mirror-resilience-test.sh: command sleep 0.5" ->
-      "an absence check: the watch must not return while both pids live; a slow machine makes it vacuous, never red",
-    s"scripts/local-mirror/mirror-resilience-test.sh: while kill -0 \"$$watch\" 2>/dev/null && [ \"$$SECONDS\" -lt \"$$deadline\" ]; do command sleep 0.05; done" ->
-      OwnDeadline,
-    s"scripts/local-mirror/mirror-test.sh: sleep() { [ \"$$1\" = 999 ] && { command sleep 0.05; return 0; }; echo \"backed off $$1\" > \"$$work/expired\"; exit 0; }" ->
-      "the tool's `sleep` stubbed: the tool's back-off, not the spec's wait",
-    s"scripts/local-mirror/mirror-test.sh: [ \"$$1\" = 999 ] && { command sleep 0.05; return 0; }" ->
-      "the tool's `sleep` stubbed: the tool's back-off, not the spec's wait",
     s"scripts/local-mirror/prod-tunnel-test.sh: sleep 1; kill -0 $$PROD_TUNNEL_PID && echo alive >> \"'\"$$scratch\"'/b\"" ->
       "an absence check inside a stub: the first tunnel must outlive a second one's start; vacuous when slow, never red",
     s"scripts/tool-conventions-test.sh: sleep 0.1" ->

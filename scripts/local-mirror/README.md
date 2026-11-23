@@ -443,8 +443,9 @@ is why nothing downstream changed: `seed.js`, `tail.js`, `staleness.js`,
 work here anyway — the mirror's steady state is `tail.js` holding a **change
 stream** open for days, which is a live cursor, not a dump.
 
-All of it lives in **`prod-tunnel.sh`**, sourced by `mirror.sh` and
-`../reset-corpus.sh`.
+All of it lives in **`prod-tunnel.sh`**, sourced by the shell tools that reach
+prod (`../reset-corpus.sh`, `../with-prod-mongo.sh`, …), and in its Python twin
+**`scripts/lib/prod_tunnel.py`**, which the daemon (`mirror.py`) uses — repoint both together.
 Before, those scripts carried their own copies of the same `nc -z || flyctl proxy`
 block, and a move like this had to find every one of them — the copy that got
 missed would go on dialling a stopped machine and fail like a network blip
@@ -469,9 +470,9 @@ later), `BatchMode=yes` (launchd has nobody to answer a passphrase prompt) and
 neither errors nor carries data). Only a tunnel the script *started* is ever
 killed, and it is killed on every exit path — no strays.
 
-**One owner.** The forward belongs to `keep_tunnel`, a single background child
-of `mirror.sh`; the per-database supervisors only ask whether prod answers
-(`tunnel_ready`) and wait, logging once when it goes and once when it is back.
+**One owner.** The forward belongs to the tunnel keeper (`mirror_keeper.py`), a single child
+process of the daemon; the per-database supervisors only ask whether prod answers
+and wait, logging once when it goes and once when it is back.
 Until 2026-11-04 every supervisor (re)opened the shared forward when its own
 probe missed — one slow ping on a swapping laptop killed the tunnel the others
 were streaming through, and a supervisor that died left its ssh as an orphan
@@ -484,32 +485,32 @@ connection or login failure).
 
 ### Recovery paths are the daemon — so they're tested
 
-`mirror.sh` runs under `set -euo pipefail` with each database's `supervise_db`
-in a **background subshell**, so any bare non-zero exit inside one kills that
-supervisor silently, and the parent goes on `wait`ing — which launchd reads as a
-healthy process and never restarts. That is exactly what a dropped tunnel did on
-2026-08-02: the seed's `mongosh` exited non-zero, all three supervisors died at
-once, and the mirror sat frozen mid-seed for two days. Every fallible step
-therefore wraps itself (`|| code=$?`, or `|| continue`) — never a `set +e` …
-`set -e` pair, which re-arms errexit for whatever called it: `needs_reseed`
-did, inside the tailer watch, so each drift verdict ended its supervisor and
-restarted the whole mirror (570 restarts by 2026-11-04). The shape is asserted
-against stubs — no Mongo, no tunnel:
+The daemon (`mirror.py`; `mirror.sh` is its thin exec) runs each database's
+supervisor (`mirror_supervisor.py`) as a **child process**, and a failing step
+in one must recover on the next cycle, never end it: when the shell daemon let
+a bare non-zero end a supervisor (2026-08-02, a dropped tunnel mid-seed) all
+three died at once and the mirror sat frozen mid-seed for two days, and when
+each drift verdict ended its supervisor the whole mirror restarted 570 times
+(by 2026-11-04). A failed seed, a tailer ending, a hung or failing staleness
+check, a down tunnel or a stopped Mongo is a cycle to retry. The shape is
+asserted black-box, through the daemon's command line with fake mongosh, ssh,
+sleep and ps — no Mongo, no tunnel:
 
 ```
-scripts/local-mirror/mirror-resilience-test.sh
+scripts/local-mirror/mirror_test.py
 ```
 
 It covers the tunnel too: that a dead backend does not read as healthy, that a
 tunnel held by another process is never adopted or killed, and that the ssh
-target defaults to `mongo-1` and is overridable.
+target defaults to `mongo-1` and is overridable (and `prod-tunnel-test.sh` the
+same for the shell library).
 
 Wrapping every fallible step is not enough on its own: it makes a supervisor
 *likely* to survive, and the parent's `wait` still cannot tell a dead one from a
 busy one (the log rotator and the targets poller never end, so `wait` never
 returns). The tunnel dropping wedged the daemon again on 2026-08-30 — a live
 pid, KeepAlive never firing, /debug a day behind. So the parent watches its
-supervisors' pids (`await_supervisor_exit`, every `KINOWO_MIRROR_LIVENESS_POLL`
+supervisors (every `KINOWO_MIRROR_LIVENESS_POLL`
 seconds) and takes the whole process down as soon as one is gone; launchd starts
 a clean one. `launchctl kickstart -k gui/$(id -u)/pl.kinowo.local-mirror` stays
 the manual lever, but a wedge no longer needs it.
@@ -517,21 +518,17 @@ the manual lever, but a wedge no longer needs it.
 The other direction is covered too: a parent that dies **without** running its
 exit trap (SIGKILL, a crash) used to leave its children running — a supervisor
 from a 2026-10-23 run tailed on for 12 days beside the launchd one. Every
-long-lived child (supervisors, tunnel keeper, log rotator, targets poller)
-checks `parent_gone` each poll and exits, the supervisor taking its tailer and
+child process (the supervisors, the tunnel keeper) checks whether its parent
+is gone each poll and exits, the supervisor taking its tailer and
 the keeper closing its forward on the way.
 
 For what older code (or a SIGKILL mid-poll) already left behind, the parent
 also **sweeps** at startup and on every 5-minute log-rotation pass
-(`sweep_orphans`): it stops any orphaned `mirror.sh` process (ppid 1) with its
+(`mirror_upkeep.py`): it stops any orphaned `mirror.sh` / `mirror.py` process (ppid 1) with its
 whole tree — that is where an orphaned tailer `mongosh` lives — and any
 orphaned forward carrying `ensure_prod_tunnel`'s exact signature (port
 27100-27899 → 127.0.0.1:27017, its `-o` set). Each stop is logged as
 `[mirror] sweep: stopping pid …`; nothing live, and no hand-made `ssh -L`, matches.
-
-`mirror.sh` is sourceable for that spec: everything below the
-`[ "${BASH_SOURCE[0]}" = "${0}" ] || return 0` guard runs only when it is
-executed, so sourcing defines the functions and asks the vault for nothing.
 
 > **CI was repointed too, and no longer tunnels via Fly.**
 > `.github/workflows/record-scrape-fixtures.yml` (through
