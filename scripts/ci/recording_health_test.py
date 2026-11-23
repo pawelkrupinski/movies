@@ -230,6 +230,28 @@ class RecordingHealthTest(unittest.TestCase):
         self.assertIn("UNKNOWN: down for everyone", summary.read_text())
         self.assertEqual(json.loads(written.read_text())["flags"], {"www.kinomuza.pl": "origin-down"})
 
+    def test_an_origin_timing_out_on_every_route_is_down_for_everyone_too(self):
+        # Record scrape fixtures #207: www.iluzjon.fn.org.pl let 25 of the recording's 28 asks time out, direct AND
+        # through production's proxy, and answered in a quarter of a second an hour later -- the site's outage, not a block.
+        url = "https://www.iluzjon.fn.org.pl/filmy/info/7947/nikt-nie-wie.html"
+        both = ("tools.AllBackendsFailedException: All 2 backends failed for getBytes " + url + ":\n"
+                "  direct: HttpTimeoutException: request timed out\n  proxy: HttpTimeoutException: request timed out")
+        self.tree.response("www.iluzjon.fn.org.pl", BEFORE, 70)
+        self.tree.failure(url, "", DURING, 25, message=both)
+        manifest = self.manifest()
+        self.assertEqual(manifest["origins"]["www.iluzjon.fn.org.pl"]["originDown"], 25)
+        self.assertEqual([(f.origin, f.reason) for f in health.judge(manifest, None)],
+                         [("www.iluzjon.fn.org.pl", "origin-down")])
+        self.assertEqual(health.main([str(self.tree.root), "--since", str(SINCE)]), health.UNKNOWN_EXIT)
+
+    def test_a_timeout_on_our_direct_path_with_a_block_through_the_proxy_stays_refusing(self):
+        url = "https://www.iluzjon.fn.org.pl/filmy/info/1/x.html"
+        blocked = ("tools.AllBackendsFailedException: All 2 backends failed:\n  direct: HttpTimeoutException: request timed out"
+                   "\n  proxy: HttpStatusException: HTTP 403 for GET " + url)
+        self.tree.failure(url, "", DURING, 25, message=blocked)
+        self.assertEqual([(f.origin, f.reason) for f in health.judge(self.manifest(), None)],
+                         [("www.iluzjon.fn.org.pl", "refusing")])
+
     def test_a_block_on_us_stays_refusing_a_403_or_a_5xx_on_our_direct_path_alone(self):
         url = "https://www.kinomuza.pl/movie/x/"
         blocked = ("tools.AllBackendsFailedException: All 2 backends failed:\n  direct: HttpStatusException: HTTP 403 for GET " + url +
