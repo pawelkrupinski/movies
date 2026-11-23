@@ -68,9 +68,9 @@ import re
 import subprocess
 import sys
 import urllib.parse
-import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import grafana_otlp  # noqa: E402
 import run_metrics  # noqa: E402
 from report_fields import parse_instant  # noqa: E402
 
@@ -378,29 +378,12 @@ def merged(steps):
     return sorted(totals.items())
 
 
-class NoRedirect(urllib.request.HTTPRedirectHandler):
-    """A redirect here is the Google sign-in answering instead of the token gate; following it
-    would read the login page's 200 as a successful push."""
-
-    def redirect_request(self, *args, **kwargs):
-        return None
-
-
-def push(payload, url, token, opener=urllib.request.build_opener(NoRedirect).open):
+def push(payload, url, token, opener=grafana_otlp.OPEN):
     """POST the payload; a message on any failure, never an exception."""
     if not url or not token:
         return "Grafana secrets unset -- timings not pushed."
-    request = urllib.request.Request(
-        url.rstrip("/") + "/ci/otlp/v1/metrics", data=json.dumps(payload).encode(), method="POST",
-        headers={"Content-Type": "application/json", "Authorization": "Bearer " + token})
-    try:
-        with opener(request, timeout=20) as response:
-            status = response.status
-    except Exception as error:  # noqa: BLE001 -- see the header: never fail the job
-        return "::warning::timings not pushed: %s" % error
-    if status != 200:
-        return "::warning::timings not pushed: HTTP %s" % status
-    return "Pushed timings."
+    failed = grafana_otlp.post(payload, url, token, opener)
+    return "::warning::timings not pushed: %s" % failed if failed else "Pushed timings."
 
 
 # Every network call is bounded (scripts/tool-conventions.sh `bounded`): a hung API never holds the run's last job.

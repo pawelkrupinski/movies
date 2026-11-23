@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (214)
+## Landing and CI (216)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -107,7 +107,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/gating_checks.py` | THE GATING CHECKS REGISTRY: a check gates only once it has been green (ci-failures-2026-10-30, recommendation 5). | `scripts/ci/gating_checks.py` | hook pre-commit, pre-push; agentctl; skill CLAUDE.md; 1 tool | gating_checks_test.py | Python |
 | `scripts/ci/gh-optional.sh` | `gh <download args...>` for something that may legitimately not exist yet — a marker asset on a release | `scripts/ci/gh-optional.sh` | wf convergence-bisect, country-convergence-leg; 7 tools | gh-optional-test.sh | KEEP |
 | `scripts/ci/gh-release.sh` | `gh release <args...>`, retried only when GitHub answers with a race rather than a verdict | `scripts/ci/gh-release.sh` | wf alert-backtest, android, quality-hotspots; 12 tools | gh-release-test.sh | KEEP |
+| `scripts/ci/grafana_otlp.py` | METRICS TO GRAFANA OVER OTLP, the one way the CI reporters push them (scripts/ci; the sparse checkouts that run them | `imported` | 3 tools | grafana_otlp_test.py | Python |
 | `scripts/ci/harness_aa.py` | THE DRIFT HARNESS'S A/A SELF-TEST (identity-and-convergence review 2026-11-06, P5; the owner approved it). | `scripts/ci/harness_aa.py` | wf country-convergence-leg, identity-takes; 5 tools | harness_aa_test.py | Python |
+| `scripts/ci/header_tsv.py` | A TSV WITH A HEADER, the one way the CI tools read and write one (scripts/ci; the sparse checkouts that run them | `imported` | 3 tools | header_tsv_test.py | Python |
 | `scripts/ci/hook-beside.sh` | One check beside the rest (.github/workflows/precommit-check.yml's `check (rest)`) | `scripts/ci/hook-beside.sh` | wf precommit-check; 1 tool | hook-beside-test.sh | KEEP |
 | `scripts/ci/hotspots.py` | The hotspot report's computation: complex and changing sources, from git history and the quality measure | `scripts/ci/hotspots.py` | wf quality-hotspots, report-timings; skill CLAUDE.md, test-layers; 2 tools | hotspots_test.py | Python |
 | `scripts/ci/in-background.sh` | Run a setup chore in the background of a job and collect its verdict in a later step | `scripts/ci/in-background.sh` | wf ci, precommit-check; 6 tools | in-background-test.sh | KEEP |
@@ -285,7 +287,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/drift-explorer-publish.sh` | The nightly drift explorer's publish step (.github/workflows/identity-drift-explorer.yml) | `scripts/ci/drift-explorer-publish.sh` | wf identity-drift-explorer | drift-explorer-publish-test.sh | KEEP |
 | `scripts/ci/drift-replays-compare.sh` | Two replays of the same seeds are one (the drift harness's determinism) | `scripts/ci/drift-replays-compare.sh` | wf identity-takes; 2 tools | drift-replays-compare-test.sh | KEEP |
 | `scripts/ci/drift_diff.py` | The differential drift verdict: a gate that fails only on what the change adds | `python3 scripts/ci/drift_diff.py` | agentctl; 2 tools | drift_diff_test.py | Python |
-| `scripts/ci/drift_explorer.py` | The drift explorer's bookkeeping: backlog rows and gate seeds from the nightly explorer | `python3 scripts/ci/drift_explorer.py` | wf country-convergence-leg, identity-drift-explorer, identity-takes; agentctl; 2 tools | drift_explorer_test.py | Python |
+| `scripts/ci/drift_explorer.py` | The drift explorer's bookkeeping: backlog rows and gate seeds from the nightly explorer | `python3 scripts/ci/drift_explorer.py` | wf country-convergence-leg, identity-drift-explorer, identity-takes; agentctl; 3 tools | drift_explorer_test.py | Python |
 | `scripts/ci/drift_scenario.py` | THE DRIFT SCENARIO GUARD: head and base of the differential drift gate must replay the same scenario on a seed. | `python3 scripts/ci/drift_scenario.py` | skill CLAUDE.md; 2 tools | drift_scenario_test.py | Python |
 | `scripts/ci/drift_seeds.py` | The fixed drift seeds each takes-drift row replays | `scripts/ci/drift_seeds.py` | wf country-convergence-leg, identity-takes; skill CLAUDE.md; 9 tools | drift_seeds_test.py | Python |
 | `scripts/ci/family-explorer-publish.sh` | The nightly family explorer's publish step (.github/workflows/identity-family-explorer.yml) | `scripts/ci/family-explorer-publish.sh` | wf identity-family-explorer | family-explorer-publish-test.sh | KEEP |
@@ -519,8 +521,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 208 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 208 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 210 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 210 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |

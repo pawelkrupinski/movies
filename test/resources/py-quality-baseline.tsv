@@ -640,11 +640,8 @@ file-lines	scripts/pure_move_check.py	883
 file-lines	scripts/recording_diff.py	550
 copies	infra/bin/backtest-alerts	2
 copies	scripts/agent-procs	2
-copies	scripts/ci/ci_http_calls.py|scripts/ci/ci_timings.py|scripts/ci/identity_live_drift.py	3
 copies	scripts/ci/ci_trends.py	2
 copies	scripts/ci/convergence_reuse.py|scripts/ci/drift_seeds.py	2
-copies	scripts/ci/drift_explorer.py|scripts/ci/family_flips_report.py	2
-copies	scripts/ci/family_reach.py|scripts/identity_what_if.py	2
 copies	scripts/ci/lint_per_file_check.py|scripts/ci/lint_reads_trace.py	2
 copies	scripts/claude-hooks/foreground-wait-guard|scripts/claude-hooks/unbounded-poll-guard	2
 copies	scripts/flip_timeline.py	4
@@ -661,8 +658,8 @@ pyright	scripts/adopt_ci_budgets.py	19
 pyright	scripts/agent_time.py	194
 pyright	scripts/aot-class-list.py	41
 pyright	scripts/ci/check-security-headers.py	266
-pyright	scripts/ci/ci_http_calls.py	97
-pyright	scripts/ci/ci_timings.py	503
+pyright	scripts/ci/ci_http_calls.py	94
+pyright	scripts/ci/ci_timings.py	496
 pyright	scripts/ci/ci_trends.py	2451
 pyright	scripts/ci/commit_rules.py	75
 pyright	scripts/ci/convergence_paths.py	66
@@ -677,7 +674,7 @@ pyright	scripts/ci/drift_diff.py	77
 pyright	scripts/ci/drift_explorer.py	70
 pyright	scripts/ci/drift_scenario.py	50
 pyright	scripts/ci/drift_seeds.py	70
-pyright	scripts/ci/family_flips_report.py	123
+pyright	scripts/ci/family_flips_report.py	109
 pyright	scripts/ci/family_reach.py	55
 pyright	scripts/ci/family_shards.py	35
 pyright	scripts/ci/fix_replay_exemptions.py	3
@@ -688,7 +685,7 @@ pyright	scripts/ci/identity_findings_report.py	292
 pyright	scripts/ci/identity_impact.py	307
 pyright	scripts/ci/identity_judgements.py	295
 pyright	scripts/ci/identity_judgements_lint.py	295
-pyright	scripts/ci/identity_live_drift.py	77
+pyright	scripts/ci/identity_live_drift.py	74
 pyright	scripts/ci/identity_run_shards.py	26
 pyright	scripts/ci/identity_takes.py	37
 pyright	scripts/ci/identity_takes_diff.py	350

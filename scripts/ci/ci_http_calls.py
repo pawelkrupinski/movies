@@ -23,14 +23,12 @@ Test: python3 scripts/ci/ci_http_calls_test.py
 import argparse
 import csv
 import glob
-import json
 import os
 import sys
 import time
-import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ci_timings import NoRedirect  # noqa: E402
+import grafana_otlp  # noqa: E402
 
 SERVICE_NAME = "ci-recording"
 METRIC = "kinowo_ci_http_calls"
@@ -83,21 +81,12 @@ def otlp_payload(totals, country, row, run_id, workflow, now=None):
     }]}
 
 
-def push(payload, url, token, opener=urllib.request.build_opener(NoRedirect).open):
+def push(payload, url, token, opener=grafana_otlp.OPEN):
     """POST the payload; a message on any failure, never an exception."""
     if not url or not token:
         return "Grafana secrets unset -- external-call counts not pushed."
-    request = urllib.request.Request(
-        url.rstrip("/") + "/ci/otlp/v1/metrics", data=json.dumps(payload).encode(), method="POST",
-        headers={"Content-Type": "application/json", "Authorization": "Bearer " + token})
-    try:
-        with opener(request, timeout=20) as response:
-            status = response.status
-    except Exception as error:  # noqa: BLE001 -- see the header: never fail the job
-        return "::warning::external-call counts not pushed: %s" % error
-    if status != 200:
-        return "::warning::external-call counts not pushed: HTTP %s" % status
-    return "Pushed external-call counts."
+    failed = grafana_otlp.post(payload, url, token, opener)
+    return "::warning::external-call counts not pushed: %s" % failed if failed else "Pushed external-call counts."
 
 
 def main(argv=None, out=sys.stdout):

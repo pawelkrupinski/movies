@@ -32,10 +32,9 @@ import glob
 import json
 import os
 import sys
-import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ci_timings import NoRedirect  # noqa: E402
+import grafana_otlp  # noqa: E402
 
 SERVICE_NAME = "kinowo-ci"
 KINDS = ("lost", "gained", "changed")
@@ -83,19 +82,11 @@ def otlp_payload(found, now_nanos):
     }]}
 
 
-def push(payload, url, token, opener=urllib.request.build_opener(NoRedirect).open):
+def push(payload, url, token, opener=grafana_otlp.OPEN):
     """POST the payload; None when pushed, else why not."""
     if not url or not token:
         return "GRAFANA_URL / GRAFANA_ANNOTATION_TOKEN unset"
-    request = urllib.request.Request(
-        url.rstrip("/") + "/ci/otlp/v1/metrics", data=json.dumps(payload).encode(), method="POST",
-        headers={"Content-Type": "application/json", "Authorization": "Bearer " + token})
-    try:
-        with opener(request, timeout=20) as response:
-            status = response.status
-    except Exception as error:  # noqa: BLE001 -- reported, and the step fails on it
-        return str(error)
-    return None if status == 200 else "HTTP %s" % status
+    return grafana_otlp.post(payload, url, token, opener)
 
 
 def summary(found):
