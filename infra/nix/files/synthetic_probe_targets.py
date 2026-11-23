@@ -75,6 +75,14 @@ import time
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 NAME = "synthetic-probe-targets"
+# The textfile the discovery's success writes, its `# TYPE` header spelled out whole (GrafanaMetricCoverageSpec reads
+# the fleet's exported families from those headers)
+DISCOVERY_METRIC = (
+    "# HELP kinowo_synthetic_probe_discovery_last_success_timestamp_seconds When the synthetic probes last found a live"
+    " film page for every country.\n"
+    "# TYPE kinowo_synthetic_probe_discovery_last_success_timestamp_seconds gauge\n"
+    "kinowo_synthetic_probe_discovery_last_success_timestamp_seconds %d\n")
+
 # TWO PER HOST, so one dead image is not a host outage: a cinema that lists a poster it never uploaded (Cinema City,
 # 2026-05-21) is one broken card whose fallback chain covers it, and PosterProbeFailing fires only when every poster
 # probed for a host fails -- which a host-wide fault (2026-10-21: all of kinoheld's) makes them all do.
@@ -277,9 +285,7 @@ class Discovery:
         print("%s: wrote %d target(s) to %s" % (NAME, len(self.targets), self.out))
         textfile = os.environ.get("PROBE_TEXTFILE")
         if textfile:
-            metric = "kinowo_synthetic_probe_discovery_last_success_timestamp_seconds"
-            publish(textfile, "# HELP %s When the synthetic probes last found a live film page for every country.\n"
-                              "# TYPE %s gauge\n%s %d\n" % (metric, metric, metric, int(time.time())), mode=0o644)
+            publish(textfile, DISCOVERY_METRIC % int(time.time()), mode=0o644)
         return 0
 
 

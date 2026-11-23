@@ -144,7 +144,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
   )
 
   /** `kinowo_*` families exported by the FLEET rather than by either application —
-   *  written by a shell script into node_exporter's textfile directory (the mongodump
+   *  written by a script into node_exporter's textfile directory (the mongodump
    *  timer, the heap-dump pruner, the synthetic-probe discovery), or pushed by a CI script
    *  (scripts/ci/convergence_timings.py's convergence timings) — so no registry in this
    *  build can enumerate them.
@@ -154,7 +154,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  five heap-dump families and the probe-discovery timestamp — every one of them an
    *  alert input — were missing from it, charted nowhere, and invisible to both guards. */
   private lazy val fleetFamilies: Seq[String] =
-    (filesUnder(new java.io.File("infra/nix"))(f => f.getName.endsWith(".sh") || f.getName.endsWith(".nix")) ++
+    (filesUnder(new java.io.File("infra/nix"))(f => Seq(".sh", ".nix", ".py").exists(f.getName.endsWith)) ++
       filesUnder(new java.io.File("scripts/ci"))(_.getName.endsWith(".py")))
       .flatMap(f => FleetTypeHeader.findAllMatchIn(RepoFile.read(f.getPath)).map(_.group(1)))
       .distinct
@@ -374,6 +374,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
 
   "every fleet-exported metric family" should "be charted too" in {
     fleetFamilies should contain ("kinowo_mongodump_last_success_timestamp_seconds") // the scan reaches the scripts
+    fleetFamilies should contain ("kinowo_synthetic_probe_discovery_last_success_timestamp_seconds") // ...and the Python
     val orphans = fleetFamilies.filterNot(chartedIn)
     withClue(s"written by a fleet script and drawn nowhere: ${orphans.mkString(", ")}. kinowo-fleet.json is the fleet's board. ") {
       orphans shouldBe empty
