@@ -409,7 +409,7 @@ quality_paths() { # stdin: changed paths -> the ones that select the quality ste
 # ratchet measures (scripts/js-quality/ratchet-areas.tsv), its baseline, the ratchet and the measure -- no test, page
 # test, Playwright spec or script outside the measure: those are reported, not gated
 js_quality_paths() { # stdin: changed paths -> the ones that select the jsquality check
-    grep -E '^(web/src/main/assets/js/.*|infra/version-dashboard/src/.*|test/resources/js-quality-baseline\.tsv|scripts/ci/js_quality_ratchet\.py|scripts/ci/baseline_ratchet\.py|scripts/ci/trailers\.py|scripts/js-quality/.*|scripts/js-quality-report)$' || true
+    grep -E '^(web/src/main/assets/js/.*|infra/version-dashboard/src/.*|test/resources/js-quality-baseline\.tsv|scripts/ci/js_quality_ratchet\.py|scripts/ci/baseline_ratchet\.py|scripts/ci/trailers\.py|scripts/js-quality/.*|scripts/js-quality-report|scripts/js_quality_report\.py|scripts/lib/pinned_npm_tools\.py)$' || true
 }
 
 # THE PYTHON QUALITY RATCHET'S PATHS (the header's `pyquality`; `--py-quality-plan` prints them): a Python tool under
@@ -531,7 +531,7 @@ plan() {
         # js_quality_paths' set, as a pattern (no grep a path)
         case "$path" in
             web/src/main/assets/js/*|infra/version-dashboard/src/*|test/resources/js-quality-baseline.tsv|\
-            scripts/ci/js_quality_ratchet.py|scripts/ci/baseline_ratchet.py|scripts/ci/trailers.py|scripts/js-quality/*|scripts/js-quality-report) jsquality=1 ;;
+            scripts/ci/js_quality_ratchet.py|scripts/ci/baseline_ratchet.py|scripts/ci/trailers.py|scripts/js-quality/*|scripts/js-quality-report|scripts/js_quality_report.py|scripts/lib/pinned_npm_tools.py) jsquality=1 ;;
         esac
         case "$path" in
             web/src/main/assets/js/*.js|web/src/page/resources/*.js|eslint.config.js|eslint-rules/*.js|package.json|package-lock.json|page-tests-playwright/tests/*.ts|page-tests-playwright/lint-flake-patterns*.mjs) eslint=1 ;;

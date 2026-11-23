@@ -187,7 +187,7 @@ scripts/install-hooks.sh	KEEP
 scripts/ios-compile-check.sh	KEEP
 scripts/ios-release.sh	MIGRATE
 scripts/it-local.sh	KEEP
-scripts/js-quality-report	MIGRATE
+scripts/js-quality-report	KEEP
 scripts/jvm-gate.sh	MIGRATE
 scripts/land-before-queue	KEEP
 scripts/land-precheck	MIGRATE

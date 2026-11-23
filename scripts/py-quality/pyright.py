@@ -10,10 +10,13 @@ import json
 import os
 import shutil
 import subprocess
-import tempfile
+import sys
 from typing import Dict, List, Mapping, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
+import pinned_npm_tools  # noqa: E402
+
 MANIFESTS = ("package.json", "package-lock.json")
 
 
@@ -27,9 +30,7 @@ def tools_dir(env: Mapping[str, str]) -> str:
     for name in MANIFESTS:
         with open(os.path.join(HERE, name), "rb") as f:
             digest.update(f.read())
-    cache = env.get("KINOWO_TOOL_CACHE") or os.path.join(
-        env.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache"), "kinowo")
-    return os.path.join(cache, "py-quality", digest.hexdigest()[:16])
+    return os.path.join(pinned_npm_tools.cache_root(env), "py-quality", digest.hexdigest()[:16])
 
 
 def entry(installed: str) -> str:
@@ -40,21 +41,10 @@ def install(installed: str) -> None:
     """`npm ci` into a directory beside `installed`, renamed into place: two installs at once each finish, one wins."""
     if shutil.which("npm") is None:
         raise ToolMissing("npm is not installed (needed once, to install pyright): brew install node")
-    os.makedirs(os.path.dirname(installed), exist_ok=True)
-    build = tempfile.mkdtemp(prefix=os.path.basename(installed) + ".build.", dir=os.path.dirname(installed))
     try:
-        for name in MANIFESTS:
-            shutil.copy(os.path.join(HERE, name), build)
-        done = subprocess.run(["npm", "ci", "--no-audit", "--no-fund", "--silent"], cwd=build,
-                              stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
-        if done.returncode != 0:
-            raise ToolMissing(f"npm ci of pyright failed in {build}: {done.stderr.strip()[-400:]}")
-        try:
-            os.rename(build, installed)
-        except OSError:
-            pass  # another install won the rename
-    finally:
-        shutil.rmtree(build, ignore_errors=True)
+        pinned_npm_tools.npm_ci(HERE, MANIFESTS, installed, capture=True)
+    except pinned_npm_tools.NpmFailed as e:
+        raise ToolMissing(f"npm ci of pyright failed in {e.build}: {e.said}") from None
     if not os.path.isfile(entry(installed)):
         raise ToolMissing(f"pyright did not install in {installed}")
 
