@@ -26,6 +26,9 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "scripts", "lib"))
+import tool_git  # noqa: E402
+
 TOOLS = os.path.join(ROOT, "scripts", "shell-py-progress", "migrate-tools.tsv")
 START = "674883d11"
 SKIPPED = re.compile(r"(^|/)src/|(^|/)fixtures/|node_modules/|^web/")
@@ -66,7 +69,7 @@ class Tree:
 
 
 def git(repo: str, *args: str) -> str:
-    return subprocess.run(["git", "-C", repo, *args], check=True, capture_output=True, text=True).stdout
+    return tool_git.Git.here(repo).text(*args)
 
 
 def cat_files(repo: str, rev: str, paths: Sequence[str]) -> List[str]:
@@ -190,7 +193,7 @@ def options(argv: Optional[Sequence[str]]) -> argparse.Namespace:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = options(argv)
     if not args.no_fetch:
-        subprocess.run(["git", "-C", args.repo, "fetch", "-q", "origin"], check=False)
+        tool_git.Git.here(args.repo).call("fetch", "-q", "origin")
     start, now = Tree(args.repo, args.start), Tree(args.repo, args.rev)
     tools = read_tools(args.tools)
     out = [f"START {args.start} ({git(args.repo, 'log', '-1', '--format=%cs', args.start).strip()}), "
