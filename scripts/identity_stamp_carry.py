@@ -50,23 +50,23 @@ Tested by scripts/identity_stamp_carry_test.py.
 from __future__ import annotations
 
 import glob
-import hashlib
-import json
 import os
 import re
 import subprocess
 import sys
-import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "ci"))
 from commit_rules import HARNESS_FILES  # noqa: E402  (the drift harness: one definition)
+sys.path.insert(0, HERE)
+from identity_stamp_carry_published import (  # noqa: E402  (THE PUBLISHED VERDICT: the what-if's record)
+    ASSET, VERDICTS, asset_name, cached_verdict, diff_id, fetch_asset, identity_cache, moved_rows, publish, release,
+    verdict_path, what_if_verdicts)
+from pure_move_check import Undecidable, git  # noqa: E402  (the one git a proof reads, and its refusal)
 
 TABLE = "test/resources/identity-stamp-carry.tsv"
-# the what-if records a what-if row stands on, committed with it (<head>-<base>.tsv, identity-tools.sh's format)
-VERDICTS = "test/resources/identity-what-if-verdicts"
 STAMPS = ("identity-rules", "venue-slot", "agreement-rules")
 COUNTRIES = ("pl", "de", "uk", "es", "us")
 # what a what-if cannot vouch for: the title rules (data a corpus covers thinly), a module's resources (the model's
@@ -77,10 +77,6 @@ WHAT_IF_BLIND = re.compile(
 
 
 class Refused(Exception):
-    pass
-
-
-class Undecidable(Exception):
     pass
 
 
@@ -95,13 +91,6 @@ class Row:
 
     def line(self) -> str:
         return "\t".join((self.stamp, self.digest, self.equals, self.proof, self.base, self.head))
-
-
-def git(*args: str, ok: tuple[int, ...] = (0,)) -> str:
-    done = subprocess.run(["git", *args], capture_output=True, text=True)
-    if done.returncode not in ok:
-        raise Undecidable(f"git {' '.join(args)}: {done.stderr.strip() or done.returncode}")
-    return done.stdout
 
 
 def rows(text: str) -> list[Row]:
@@ -138,121 +127,6 @@ def stamps_of(sha: str) -> dict[str, str]:
     return stamps
 
 
-def identity_cache() -> str:
-    """The cache every identity tool shares (tool-conventions.sh's KINOWO_IDENTITY_CACHE)."""
-    return os.environ.get("KINOWO_IDENTITY_CACHE") or os.path.expanduser("~/.cache/kinowo-identity")
-
-
-def cached_verdict(head: str, base: str) -> str:
-    """identity-what-if's record under (head, base) on THIS machine (identity-tools.sh's what_if_record_verdict), "" for
-    none: what `propose` and `auto` read, and copy beside the rows they write (VERDICTS)."""
-    path = os.path.join(identity_cache(), "what-if-verdicts", f"{head}-{base}.tsv")
-    if not os.path.isfile(path):
-        return ""
-    with open(path) as f:
-        return f.read()
-
-
-def diff_id(base: str, head: str) -> str:
-    """The stable patch-id of base..head's whole diff (`git patch-id --stable`): the same for a change rebased onto a main
-    that moved elsewhere, another for any other diff; "" for an empty one."""
-    diff = git("diff", "--binary", base, head)
-    done = subprocess.run(["git", "patch-id", "--stable"], input=diff, capture_output=True, text=True)
-    return done.stdout.split()[0] if done.stdout.strip() else ""
-
-
-def verdict_path(head: str, base: str) -> str:
-    return f"{VERDICTS}/{head}-{base}.tsv"
-
-
-# ── THE PUBLISHED VERDICT (above) ─────────────────────────────────────────────────────────────────────────────────────
-ASSET = re.compile(r"what-if-verdict-[0-9a-f]{32}\.json")
-
-
-def release() -> str:
-    return os.environ.get("KINOWO_WHAT_IF_RELEASE") or "identity-what-if-verdicts"
-
-
-def gh(*args: str, timeout: int = 120) -> subprocess.CompletedProcess:
-    """gh against the repository (KINOWO_GH: a test's fake, the seam), bounded; a hung or missing gh is a failed call."""
-    command = [os.environ.get("KINOWO_GH") or "gh", *args, "-R", os.environ.get("KINOWO_REPO") or "pawelkrupinski/movies"]
-    try:
-        return subprocess.run(command, capture_output=True, text=True, timeout=timeout)
-    except (OSError, subprocess.TimeoutExpired) as e:
-        return subprocess.CompletedProcess(command, 124, "", str(e))
-
-
-def asset_name(head: str, base: str, patch_id: str, countries: str, tools: str, run: str) -> str:
-    key = f"head={head} base={base} patch-id={patch_id} countries={countries} tools={tools} run={run}"
-    return f"what-if-verdict-{hashlib.sha256(key.encode()).hexdigest()[:32]}.json"
-
-
-def moved_rows(text: str) -> int:
-    """The rows of a takes diff, as identity-what-if counts them (`grep -cv '^country'`)."""
-    return sum(1 for line in text.splitlines() if not line.startswith("country"))
-
-
-def read_text(path: str) -> str:
-    if not path or not os.path.isfile(path):
-        return ""
-    with open(path) as f:
-        return f.read()
-
-
-def publish(head: str, base: str, countries: str, tools: str, run: str) -> int:
-    """identity-what-if's step after each country it records: its run's asset, re-uploaded whole (only this run writes
-    it: the key holds the run's id) with every line it recorded so far and the takes diffs they name."""
-    patch_id = diff_id(base, head)
-    name = asset_name(head, base, patch_id, countries, tools, run)
-    lines = [line for line in cached_verdict(head, base).splitlines() if line.split("\t")[6:7] == [name]]
-    diffs = {}
-    for line in lines:
-        cc, takes, mode = line.split("\t")[0], line.split("\t")[3], line.split("\t")[5]
-        paths = {"takes": takes, "final": takes.replace("takes-diff-", "final-diff-") if "final" in mode.split(",") else ""}
-        diffs[cc] = {kind: read_text(path) for kind, path in paths.items()}
-    body = {"name": name, "head": head, "base": base, "patch_id": patch_id, "countries": countries, "tools": tools,
-            "run": run, "lines": lines, "diffs": diffs}
-    with tempfile.TemporaryDirectory() as tmp:
-        path = os.path.join(tmp, name)
-        with open(path, "w") as f:
-            json.dump(body, f, indent=1, sort_keys=True)
-        done = gh("release", "upload", release(), path, "--clobber")
-        if done.returncode != 0 and "not found" in (done.stderr + done.stdout).lower():
-            gh("release", "create", release(), "--prerelease", "--title", "Identity what-if verdicts (rolling)", "--notes",
-               "Each scripts/identity-what-if run's verdict and takes diffs: what scripts/identity-stamp-carry verify "
-               "checks a committed what-if verdict against.")
-            done = gh("release", "upload", release(), path, "--clobber")
-    if done.returncode != 0:
-        print(f"could not publish {name} on release {release()}: {(done.stderr or done.stdout).strip()[-300:]} -- a stamp "
-              "carry refuses this verdict until it is published (run the what-if again)", file=sys.stderr)
-        return 1
-    print(f"published {name} on release {release()} ({len(lines)} verdict(s))")
-    return 0
-
-
-def fetch_asset(name: str, wanted: str) -> dict | None:
-    """The published asset `name`: the identity cache's copy when it holds the line `wanted` (an asset grows while its run
-    publishes), else gh's, kept in the cache; None when gh has none it can read."""
-    cache = os.path.join(identity_cache(), "what-if-assets")
-    kept = os.path.join(cache, name)
-
-    def read() -> dict | None:
-        try:
-            with open(kept) as f:
-                return json.load(f)
-        except (OSError, ValueError):
-            return None
-
-    body = read()
-    if body is not None and wanted in body.get("lines", []):
-        return body
-    os.makedirs(cache, exist_ok=True)
-    if gh("release", "download", release(), "-p", name, "-O", kept + ".part", "--clobber").returncode != 0:
-        return None
-    os.replace(kept + ".part", kept)
-    return read()
-
-
 def published_refusals(verdicts: dict[str, list[str]], head: str, base: str, patch_id: str) -> list[str]:
     """Why each country's verdict line is not the one the what-if published for head over base (THE PUBLISHED VERDICT)."""
     why = []
@@ -278,19 +152,6 @@ def published_refusals(verdicts: dict[str, list[str]], head: str, base: str, pat
             if str(rows) != line[4]:
                 why.append(f"{cc}: the published takes diff holds {rows} row(s), not the {line[4]} the verdict says moved")
     return why
-
-
-def what_if_verdicts(head: str, base: str, at: str | None = None) -> dict[str, list[str]]:
-    """Each country's newest line of the what-if record under (head, base) -- cc, verdict, finished, takes diff, moved,
-    mode: this machine's own record, or, `at` a commit, the record committed there beside the rows (what `verify` reads,
-    so the hook proves a row alike on the laptop and on ci-runner, where no what-if ever ran)."""
-    text = cached_verdict(head, base) if at is None else git("show", f"{at}:{verdict_path(head, base)}", ok=(0, 128))
-    newest: dict[str, list[str]] = {}
-    for line in text.splitlines():
-        fields = line.split("\t")
-        if fields[0]:
-            newest[fields[0]] = fields
-    return newest
 
 
 def covered(proof: str, base: str, head: str, at: str | None = None) -> tuple[set[str], list[str]]:

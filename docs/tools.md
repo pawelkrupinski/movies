@@ -225,7 +225,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (194)
+## Identity (195)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -354,9 +354,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity-slice-coverage` | Slice answer coverage: every pinned slice decided again from its own answers, naming each missing request | `scripts/identity-slice-coverage` | hook pre-push; 1 tool | identity-slice-coverage-test.sh | MIGRATE |
 | `scripts/identity-slice-refresh` | Re-pin identity slice cases on this checkout's code, in place, keeping each case's expected.tsv | `scripts/identity-slice-refresh` | skill identity-investigation; 1 tool | identity-slice-refresh-test.sh | MIGRATE |
 | `scripts/identity-stage-works.py` | Rebuild the identity resolver's table of stage works — every opera and ballet Wikidata knows with five or more | `scripts/identity-stage-works.py` | by hand | - | Python |
-| `scripts/identity-stamp-carry` | The stamp carry (project/StampCarry.scala; the owner, 2026-11-20) | `scripts/identity-stamp-carry` | hook pre-push; skill CLAUDE.md, identity-investigation; 5 tools | identity_stamp_carry_test.py | KEEP |
+| `scripts/identity-stamp-carry` | The stamp carry (project/StampCarry.scala; the owner, 2026-11-20) | `scripts/identity-stamp-carry` | hook pre-push; skill CLAUDE.md, identity-investigation; 6 tools | identity_stamp_carry_test.py | KEEP |
 | `scripts/identity-tools.sh` | What the local identity tools share (sourced): the recording cache, classpaths, countries | `bash scripts/identity-tools.sh` | wf main; skill identity-investigation; 41 tools | identity-tools-test.sh | MIGRATE |
-| `scripts/identity-what-if` | A local what-if of a resolver change over prod's current corpus, in minutes | `scripts/identity-what-if` | hook pre-push; skill CLAUDE.md, identity-investigation; 20 tools | identity_what_if_test.py | MIGRATE |
+| `scripts/identity-what-if` | A local what-if of a resolver change over prod's current corpus, in minutes | `scripts/identity-what-if` | hook pre-push; skill CLAUDE.md, identity-investigation; 21 tools | identity_what_if_test.py | MIGRATE |
 | `scripts/identity-why` | Why a listing changed film at a moment, from the identity history alone (identity_history, a month of it) | `scripts/identity-why` | skill identity-investigation; 1 tool | - | KEEP |
 | `scripts/identity_boot_cost.py` | THE IDENTITY BOOT-COST RATCHET (scripts/identity-boot-cost): what `scripts.IdentityBootCost` measured -- bytes and | `python3 scripts/identity_boot_cost.py` | 1 tool | identity_boot_cost_test.py | Python |
 | `scripts/identity_ci_run.py` | ANY sbt COMMAND OVER A CACHED RECORDING, ON CI: .github/workflows/identity-run.yml at a commit of yours, off the laptop | `scripts/identity_ci_run.py` | 1 tool | identity_ci_run_test.py | Python |
@@ -395,7 +395,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity_slice_cli_options.py` | identity-slice's command line (scripts/identity_slice_cli.py): the options after the country, read as the shell tool | `imported` | wf main; 3 tools | - | Python |
 | `scripts/identity_slice_cli_run.py` | DECIDING A SLICE AT A REF (scripts/identity_slice_cli.py): a tree's scripts.IdentitySlice run over the recording -- | `imported` | wf main; 3 tools | - | Python |
 | `scripts/identity_slice_diff.py` | The takes of identity slices at two refs, compared (scripts/identity-slice): every listing whose final take moved, with | `imported` | 2 tools | identity_slice_diff_test.py | Python |
-| `scripts/identity_stamp_carry.py` | THE STAMP CARRY'S PROOFS (project/StampCarry.scala; the owner, 2026-11-20): a row of test/resources/identity-stamp-carry.tsv | `python3 scripts/identity_stamp_carry.py` | skill identity-investigation; 3 tools | identity_stamp_carry_test.py | Python |
+| `scripts/identity_stamp_carry.py` | THE STAMP CARRY'S PROOFS (project/StampCarry.scala; the owner, 2026-11-20): a row of test/resources/identity-stamp-carry.tsv | `python3 scripts/identity_stamp_carry.py` | skill identity-investigation; 4 tools | identity_stamp_carry_test.py | Python |
+| `scripts/identity_stamp_carry_published.py` | THE WHAT-IF'S RECORD a stamp carry's what-if row stands on (identity_stamp_carry.py, its header's proof 2 and THE | `python3 scripts/identity_stamp_carry_published.py` | 1 tool | - | Python |
 | `scripts/identity_tool_fixture.py` | The scratch repository the black-box tests of the ref-laying identity tools share (title_trace_test.py, | `imported` | by hand | - | Python |
 | `scripts/identity_what_if.py` | THE LOCAL WHAT-IF's two judgements (scripts/identity-what-if runs the resolves): which families a change can reach, | `python3 scripts/identity_what_if.py` | skill identity-investigation; 6 tools | identity_what_if_test.py | Python |
 | `scripts/identity_what_if_cli.py` | A LOCAL WHAT-IF OF A RESOLVER CHANGE over prod's current corpus, in minutes: the base's and the head's model resolve | `scripts/identity_what_if_cli.py` | 12 tools | identity_what_if_cli_test.py | Python |
@@ -632,7 +633,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/own-checkout` | The own-checkout guard: a tool that measures or writes its own checkout (`root` from its own path | `scripts/own-checkout` | 8 tools | own-checkout-test.sh | KEEP |
 | `scripts/page-tests-local` | Page tests, locally: the Playwright rows CI's `pw` page-test rows run, against a FixtureServerMain booted in this checkout's kept sbt server | `scripts/page-tests-local` | hook pre-push; skill CLAUDE.md, agent-ops, test-layers; 3 tools | page-tests-local-test.sh | MIGRATE |
 | `scripts/pure-move-check` | The pure move check: whether a range only moves code (files, packages and classes renamed) | `scripts/pure-move-check` | hook pre-push; agentctl; skill CLAUDE.md, identity-investigation, test-layers; 8 tools | pure_move_check_test.py | KEEP |
-| `scripts/pure_move_check.py` | THE PURE MOVE CHECK: whether <base>..<head> only moves code -- files renamed, packages and classes renamed -- so no | `scripts/pure_move_check.py` | skill identity-investigation; 3 tools | pure_move_check_test.py | Python |
+| `scripts/pure_move_check.py` | THE PURE MOVE CHECK: whether <base>..<head> only moves code -- files renamed, packages and classes renamed -- so no | `scripts/pure_move_check.py` | skill identity-investigation; 4 tools | pure_move_check_test.py | Python |
 | `scripts/python-venv` | Prints a directory whose python3 imports <module>, from a pinned venv of <requirements.txt> built once and reused | `scripts/python-venv` | wf alert-backtest; hook pre-push; 5 tools | - | KEEP |
 | `scripts/read-model-snapshot-inputs.sh` | The read-model snapshot's input stamp: a hash of the fixture corpus the snapshot was projected from, checked in beside it | `scripts/read-model-snapshot-inputs.sh` | wf ci; hook pre-push; skill regenerate-snapshots | - | KEEP |
 | `scripts/review-commit` | Commit the review pages' answers as the user's judgements | `scripts/review-commit` | skill identity-investigation; 2 tools | review-commit-test.sh | KEEP |

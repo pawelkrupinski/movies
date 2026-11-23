@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# script-test-reads: scripts/identity-what-if scripts/identity_what_if*.py scripts/identity-tools.sh scripts/identity-what-if-roots.tsv scripts/pure-move-check scripts/pure_move_check.py scripts/identity_stamp_carry.py
+# script-test-reads: scripts/identity-what-if scripts/identity_what_if*.py scripts/identity-tools.sh scripts/identity-what-if-roots.tsv scripts/pure-move-check scripts/pure_move_check.py scripts/identity_stamp_carry*.py
 """scripts/identity-what-if, black-box: --bisect over kept sides (the first commit whose take of the listing moved, or
 the corpus when none did), then THE MAIN PATH over stub JVMs -- an inert change starts no head JVM and compiles no head,
 the base's whole side runs in a one-shot JVM, a head that resolves compiles beside the base's resolve, every family is

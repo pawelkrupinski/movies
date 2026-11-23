@@ -636,7 +636,6 @@ file-lines	scripts/ci/convergence_reuse.py	940
 file-lines	scripts/ci/coupling_ratchet.py	1261
 file-lines	scripts/ci/runner_scheduler.py	1245
 file-lines	scripts/flip_timeline.py	843
-file-lines	scripts/identity_stamp_carry.py	602
 file-lines	scripts/identity_what_if.py	530
 file-lines	scripts/listing_history.py	528
 file-lines	scripts/poster_eval.py	783
@@ -653,7 +652,6 @@ copies	scripts/ci/lint_per_file_check.py|scripts/ci/lint_reads_trace.py	2
 copies	scripts/claude-hooks/foreground-wait-guard|scripts/claude-hooks/unbounded-poll-guard	2
 copies	scripts/flip_timeline.py	4
 copies	scripts/identity-impact-check	2
-copies	scripts/identity_stamp_carry.py|scripts/pure_move_check.py	2
 copies	scripts/pure_move_check.py	2
 cycle	scripts/ci/convergence_reuse.py|scripts/ci/convergence_slots.py	2
 pyright	infra/bin/fleet_hosts.py	30
@@ -734,7 +732,7 @@ pyright	scripts/identity_measure.py	204
 pyright	scripts/identity_precision_sample.py	310
 pyright	scripts/identity_rule_ablation.py	480
 pyright	scripts/identity_slice_diff.py	56
-pyright	scripts/identity_stamp_carry.py	64
+pyright	scripts/identity_stamp_carry.py	29
 pyright	scripts/identity_what_if.py	485
 pyright	scripts/linux-tree-sync.py	108
 pyright	scripts/listing_history.py	583
