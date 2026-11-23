@@ -33,8 +33,26 @@ LISTINGS="$REPO_ROOT/android/app/src/main/play/listings"
 # resource file"), so the shared master cannot live inside it. android/store/
 # mirrors ios/store/ instead.
 SHARED_ICON="$REPO_ROOT/android/store/icon/1.png"
-# shellcheck source=../../scripts/store-screenshots-common.sh
-source "$REPO_ROOT/scripts/store-screenshots-common.sh"
+# say/ok/warn/die are shared with the release scripts — see scripts/log.sh.
+. "$REPO_ROOT/scripts/log.sh"
+step()  { printf '  %s… ' "$*"; }
+done_() { printf '\033[32m✓\033[0m\n'; }
+naps()  { command sleep "$1"; }
+# Every locale the apps carry, in the store screenshots' order (scripts/lib/store_screenshots_common.py, COUNTRY).
+LOCALES="pl-PL en-GB de-DE en-US es-ES"
+
+# A PNG's pixel dimensions as "WIDTHxHEIGHT", read out of the file itself: the PNG spec fixes IHDR as the first
+# chunk, so width and height are big-endian uint32s at bytes 16 and 20. Not `sips`, which is macOS-only: the helper
+# test runs on ubuntu-latest, where a "command not found" compared unequal and failed a card of the right size.
+png_size() { # $1 png path
+  local png="$1" bytes
+  bytes="$(od -An -tu1 -j16 -N8 "$png")" || return 1
+  # shellcheck disable=SC2086
+  set -- $bytes
+  [ "$#" -eq 8 ] || return 1
+  printf '%sx%s\n' "$(( ($1 << 24) | ($2 << 16) | ($3 << 8) | $4 ))" \
+                   "$(( ($5 << 24) | ($6 << 16) | ($7 << 8) | $8 ))"
+}
 
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
 WIDTH=1024
@@ -230,6 +248,6 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     for locale in "$@"; do generate_locale "$locale"; done
   else
     say "feature graphics + icon for every locale"
-    for country in $COUNTRIES; do generate_locale "$(country_locale "$country")"; done
+    for locale in $LOCALES; do generate_locale "$locale"; done
   fi
 fi

@@ -3,7 +3,7 @@
 # The four coloured output helpers every long-running script in scripts/ prints
 # through, so a release, a screenshot run and a sync all look like the same tool.
 #
-# WHY IT EXISTS. store-screenshots-common.sh defined these, and then
+# WHY IT EXISTS. the store-screenshot drivers' shared library defined these (now Python), and then
 # mobile-release.sh and ios-release.sh — which do not source it — defined
 # `say`/`ok`/`warn`/`die` again, byte for byte. Three copies of an escape code is
 # how one of them ends up a slightly different shade of green.

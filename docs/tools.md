@@ -211,7 +211,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; skill CLAUDE.md; 14 tools | - | Python |
 | `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 16 tools | - | Python |
 | `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push; 3 tools | - | Python |
-| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 119 tools | report_test.py | Python |
+| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 118 tools | report_test.py | Python |
 | `scripts/quality-report` | The code-quality report (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, length and duplication (pmd cpd) | `scripts/quality-report` | wf quality-hotspots; hook pre-push; agentctl; skill CLAUDE.md, test-layers; 2 tools | - | KEEP |
 | `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs (a name for ratchet_diff_cli.py) | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 3 tools | - | KEEP |
 | `scripts/ratchet_diff_cli.py` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet_diff_cli.py` | 1 tool | ratchet_diff_cli_test.py | Python |
@@ -509,8 +509,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 207 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 207 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 206 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 206 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |
@@ -554,7 +554,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/deploy_watch.py` | scripts/deploy-watch: wait until the workers run an image, then read PromQL checks over a window, PASS/FAIL each. | `scripts/deploy_watch.py` | 1 tool | deploy_watch_test.py | Python |
 | `scripts/gitops-specs` | Run movies' GitOps-reading specs against a movies-gitops tree before that tree reaches movies-gitops main | `scripts/gitops-specs` | hook pre-push | gitops-specs-test.sh | MIGRATE |
 
-## Mobile (15)
+## Mobile (18)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -562,8 +562,12 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `android/scripts/devtest.sh` | Run Android instrumented (on-device) tests with the recurring setup gotchas handled for you | `android/scripts/devtest.sh` | wf android, order-independence; 3 tools | - | KEEP |
 | `android/scripts/devtest_shuffled.py` | Every instrumented (androidTest) class ALONE, in an order drawn from a seed -- the emulator lane of the nightly | `android/scripts/devtest_shuffled.py` | 2 tools | devtest_shuffled_test.py | Python |
 | `android/scripts/store-graphics.sh` | Generate the per-language feature graphic (1024×500) for the Play listing, and fan the one shared app icon out to every locale | `android/scripts/store-graphics.sh` | by hand | store-graphics-test.sh | MIGRATE |
-| `android/scripts/store-screenshots.sh` | Generate Google Play phone screenshots for the Kinowo / Showtimes app | `android/scripts/store-screenshots.sh` | 2 tools | store-screenshots-test.sh | MIGRATE |
-| `ios/scripts/store-screenshots.sh` | Generate App Store screenshots for the Kinowo / Showtimes iOS app | `ios/scripts/store-screenshots.sh` | 2 tools | store-screenshots-test.sh | MIGRATE |
+| `android/scripts/store-screenshots.sh` | Generate Google Play phone screenshots for the Kinowo / Showtimes app | `android/scripts/store-screenshots.sh` | wf android; 2 tools | store_screenshots_test.py | MIGRATE |
+| `android/scripts/store_screenshots.py` | Generate Google Play phone screenshots for the Kinowo / Showtimes app. | `android/scripts/store_screenshots.py` | wf android; 5 tools | store_screenshots_test.py | Python |
+| `android/scripts/store_screenshots_device.py` | The Android store-screenshot driver's DEVICES (android/scripts/store_screenshots.py): adb pinned to one emulator by | `imported` | 2 tools | - | Python |
+| `android/scripts/store_screenshots_ui.py` | The Android store-screenshot driver's SCREENS (android/scripts/store_screenshots.py): the gate (country pills, city | `imported` | 1 tool | - | Python |
+| `ios/scripts/store-screenshots.sh` | Generate App Store screenshots for the Kinowo / Showtimes iOS app | `ios/scripts/store-screenshots.sh` | wf android; 2 tools | store_screenshots_test.py | MIGRATE |
+| `ios/scripts/store_screenshots.py` | Generate App Store screenshots for the Kinowo / Showtimes iOS app. Just run it — | `ios/scripts/store_screenshots.py` | wf android; 5 tools | store_screenshots_test.py | Python |
 | `ios/scripts/swift-test-shuffled.sh` | Every `swift test` case alone, in an order drawn from a seed — the iOS lane of the nightly order-independence workflow | `ios/scripts/swift-test-shuffled.sh` | wf android, order-independence; 2 tools | swift_test_shuffled_test.py | MIGRATE |
 | `ios/scripts/swift_test_shuffled.py` | Every `swift test` case ALONE, in an order drawn from a seed -- the iOS lane of the nightly order-independence | `ios/scripts/swift_test_shuffled.py` | wf android; 2 tools | swift_test_shuffled_test.py | Python |
 | `scripts/ci/xcuitest-each-class-alone.sh` | Every XCUITest class alone, each in its own `xcodebuild test-without-building` on the booted $DESTINATION | `scripts/ci/xcuitest-each-class-alone.sh` | wf order-independence; 1 tool | xcuitest-each-class-alone-test.sh | MIGRATE |
@@ -571,10 +575,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mobile-release.sh` | Cut a mobile release: one version, one branch, both platforms | `scripts/mobile-release.sh` | 3 tools | mobile-release-test.sh | KEEP |
 | `scripts/mobile-ship.sh` | Release main's app code to the App Store and Google Play with one command | `scripts/mobile-ship.sh` | wf android; skill CLAUDE.md, agent-ops; 2 tools | - | KEEP |
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
-| `scripts/store-screenshots-common.sh` | Shared engine for the store-screenshot drivers — android/scripts and ios/scripts both source this | `bash scripts/store-screenshots-common.sh` | wf android; 5 tools | - | MIGRATE |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (72)
+## Dev (73)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -596,8 +599,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ios-compile-check.sh` | Compile the iOS code the ways CI does and a Mac's `swift test` does not | `scripts/ios-compile-check.sh` | hook pre-push; 1 tool | ios-compile-check-test.sh | MIGRATE |
 | `scripts/ios-simulators` | Shut down the iOS Simulators agents boot, so none stays booted for days. | `scripts/ios-simulators` | agentctl; skill test-layers | ios-simulators-test.sh | Python |
 | `scripts/it-local.sh` | Run the it/ layer locally against a MongoDB of this run's own | `scripts/it-local.sh` | skill agent-ops, identity-investigation, test-layers; 9 tools | it-local-test.sh | KEEP |
-| `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | skill CLAUDE.md; 5 tools | cli_harness_test.py | Python |
+| `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | wf android; skill CLAUDE.md; 5 tools | cli_harness_test.py | Python |
 | `scripts/lib/seeded_order.py` | THE SEEDED TEST ORDER the nightly order-independence legs share (ios/scripts/swift_test_shuffled.py, | `imported` | wf android; 2 tools | seeded_order_test.py | Python |
+| `scripts/lib/store_screenshots_common.py` | The store-screenshot drivers' SHARED ENGINE -- android/scripts/store_screenshots.py and ios/scripts/ | `imported` | 5 tools | - | Python |
 | `scripts/lib/store_screenshots_fixture.py` | The store-screenshot drivers' TEST FIXTURE (android/scripts/store_screenshots_test.py, ios/scripts/ | `imported` | by hand | - | Python |
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 5 tools | tool_actions_test.py | Python |
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; the retired | `imported` | 3 tools | tool_ci_wait_test.py | Python |
@@ -610,7 +614,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 14 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
-| `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 6 tools | - | KEEP |
+| `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 7 tools | - | KEEP |
 | `scripts/mutation-check` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate; a name for mutation_check.py) | `scripts/mutation-check` | skill test-layers; 5 tools | mutation_check_test.py | KEEP |
 | `scripts/mutation_check.py` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate) | `scripts/mutation_check.py` | 2 tools | mutation_check_test.py | Python |
 | `scripts/ops/dumpheap.py` | A heap dump (or a live class histogram) of a containerised JVM, asked from the NODE as root | `python3 scripts/ops/dumpheap.py` | by hand | dumpheap_test.py | Python |

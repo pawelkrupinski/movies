@@ -3,16 +3,10 @@
 # The assertion harness the shell test scripts share.
 #
 # WHY IT EXISTS. Four test scripts — scripts/mobile-release-test.sh,
-# android/scripts/store-screenshots-test.sh, android/scripts/store-graphics-test.sh
-# and ios/scripts/store-screenshots-test.sh — carried a BYTE-IDENTICAL `check`,
+# android/scripts/store-graphics-test.sh and the two store-screenshot tests (since
+# moved to Python) — carried a BYTE-IDENTICAL `check`,
 # the same `fails=0`, and the same summary-and-exit line. Identical enough that
 # their four copies hashed the same.
-#
-# It is deliberately NOT in store-screenshots-common.sh, which three of the four
-# already reach: that file is about locating candidates, baselines and locales
-# for the store screenshots. A test harness living inside it would make "the
-# screenshot library" also mean "the way we assert things", and the next script
-# that wants only assertions would have to drag screenshots in to get them.
 #
 # scripts/local-mirror/mirror-resilience-test.sh is intentionally left out — its
 # harness is a genuinely different one (it reports per-case rather than

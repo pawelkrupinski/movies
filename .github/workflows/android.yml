@@ -14,8 +14,10 @@ on:
             # and the lookup tables they guard are SHARED with the iOS capture.
             # Without these, editing the file that actually broke Spain's
             # capture would not run the test that catches it.
-            - 'scripts/store-screenshots-common.sh'
-            - 'ios/scripts/store-screenshots*.sh'
+            - 'scripts/lib/store_screenshots*.py'
+            - 'scripts/lib/cli_harness.py'
+            - 'ios/scripts/store-screenshots.sh'
+            - 'ios/scripts/store_screenshots*.py'
             # The mobile RELEASE scripts' own specs run in the same step.
             - 'scripts/*mobile-release*.sh'
             - 'scripts/log.sh'
@@ -47,8 +49,10 @@ on:
             # and the lookup tables they guard are SHARED with the iOS capture.
             # Without these, editing the file that actually broke Spain's
             # capture would not run the test that catches it.
-            - 'scripts/store-screenshots-common.sh'
-            - 'ios/scripts/store-screenshots*.sh'
+            - 'scripts/lib/store_screenshots*.py'
+            - 'scripts/lib/cli_harness.py'
+            - 'ios/scripts/store-screenshots.sh'
+            - 'ios/scripts/store_screenshots*.py'
             # The mobile RELEASE scripts' own specs run in the same step.
             - 'scripts/*mobile-release*.sh'
             - 'scripts/log.sh'
@@ -239,9 +243,10 @@ jobs:
               with:
                   add-job-summary: always
 
-            # Pure-bash helper tests for the store-screenshot / store-graphics
-            # scripts: the country→locale→label lookups a capture depends on.
-            # They need no emulator and run in a second, but ran in NO workflow
+            # Helper tests for the store-screenshot / store-graphics scripts: the
+            # country→locale→label lookups a capture depends on, the screenshot
+            # drivers black-box over fake devices (no emulator, no simulator, no
+            # store, no live backend). They ran in NO workflow
             # until now — so `us` and `es` sat without an area-picker label for
             # weeks, red on anyone's laptop and invisible everywhere else. A
             # missing entry returns "" rather than failing, which is how Spain's
@@ -254,9 +259,9 @@ jobs:
             - name: Store and release script helper tests
               working-directory: ${{ github.workspace }}
               run: |
-                  android/scripts/store-screenshots-test.sh
+                  python3 android/scripts/store_screenshots_test.py
                   android/scripts/store-graphics-test.sh
-                  ios/scripts/store-screenshots-test.sh
+                  python3 ios/scripts/store_screenshots_test.py
                   scripts/mobile-release-test.sh
                   scripts/tag-mobile-release-test.sh
                   scripts/app-store-credentials-test.sh

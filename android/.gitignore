@@ -33,7 +33,7 @@ play-credentials.json
 # is the kebab-case `phone-screenshots` (`phoneScreenshots` is the Play API's
 # FIELD name, which GPP never looks for on disk). A dir named anything else is
 # silently skipped, so this negation must track ImageType.dirName exactly —
-# store-screenshots-test.sh guards that.
+# store_screenshots_test.py guards that.
 app/src/main/play/listings/*/graphics/*
 !app/src/main/play/listings/*/graphics/phone-screenshots/
 # Feature graphics ARE committed: they are generated per LANGUAGE (brand, tagline

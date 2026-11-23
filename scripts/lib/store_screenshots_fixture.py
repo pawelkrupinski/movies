@@ -55,13 +55,7 @@ class Backend:
         if len(parts) != 4 or parts[2] != "api":
             return 404, {}
         city = next((c for c in self.countries.get(parts[0], []) if c.slug == parts[1]), None)
-        if city is None:
-            return 404, {}
-        if parts[3] == "repertoire":
-            return 200, [{"title": title} for title in city.films]
-        if city.cinemas_broken:
-            return 500, {}
-        return 200, {"areas": [{"name": f"Area {n}"} for n in range(city.areas)]}
+        return city_answer(city, parts[3])
 
     def start(self) -> str:
         backend = self
@@ -88,6 +82,16 @@ class Backend:
         if self.server is not None:
             self.server.shutdown()
             self.server.server_close()
+
+
+def city_answer(city: Optional[City], resource: str) -> Tuple[int, object]:
+    if city is None:
+        return 404, {}
+    if resource == "repertoire":
+        return 200, [{"title": title} for title in city.films]
+    if city.cinemas_broken:
+        return 500, {}
+    return 200, {"areas": [{"name": f"Area {n}"} for n in range(city.areas)]}
 
 
 def copy_layout(destination: str, skip: Tuple[str, ...] = ()) -> None:
