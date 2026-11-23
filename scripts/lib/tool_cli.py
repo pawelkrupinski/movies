@@ -7,7 +7,9 @@ with 128 + the signal, as a shell does.
   read_options(o, argv, usage, word)  `o` with each word read into it by `word(o, argv, i)` (the index of the last
                                  word it took); None when -h/--help asked for the usage, printed
   value_at(argv, i)              the value of the flag at argv[i], a UsageError when it has none
-  minutes(flag, value)           a whole number of minutes, a UsageError otherwise"""
+  minutes(flag, value)           a whole number of minutes, a UsageError otherwise
+  Refused(line, with_usage)      a command line refused as a shell tool refused it (`echo line >&2; usage >&2; exit 2`):
+                                 `refused(r, usage)` prints it and gives the exit, 2"""
 from __future__ import annotations
 
 import signal
@@ -56,6 +58,19 @@ def minutes(flag: str, value: str) -> int:
     if not value.isdigit():
         raise UsageError(f"{flag} takes minutes, not {value}")
     return int(value)
+
+
+class Refused(Exception):
+    """A command line refused: its line (none: "") on stderr, then the usage when `with_usage`; the exit 2."""
+
+    def __init__(self, line: str, with_usage: bool = False) -> None:
+        super().__init__(line)
+        self.line, self.with_usage = line, with_usage
+
+
+def refused(refusal: Refused, usage: str) -> int:
+    sys.stderr.write((refusal.line + "\n" if refusal.line else "") + (usage if refusal.with_usage else ""))
+    return 2
 
 
 class Interrupted(BaseException):

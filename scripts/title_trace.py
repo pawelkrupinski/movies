@@ -21,7 +21,7 @@ SearchQueryMarkersSpec / CinemaSlotInvariantsSpec findings it would raise. No re
             newer than that is reached by name (services.identity.OlderRefs; scripts/identity-slice-old-ref-test.sh)
 
 One JVM per ref; the compile is cached in $KINOWO_IDENTITY_CACHE (default ~/.cache/kinowo-identity), shared with
-scripts/identity-slice. The ref's tree and classpath come from identity-tools.sh (identity_tree, identity_classpath)
+scripts/identity-slice. The ref's tree and classpath come from identity-tools.sh through scripts/lib/identity_ref_trees.py
 until that library moves. Tested by scripts/title_trace_test.py."""
 from __future__ import annotations
 
@@ -34,13 +34,12 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import identity_ref_trees  # noqa: E402
 import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
-import tool_shell  # noqa: E402
 
 TOOL = "title-trace"
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-IDENTITY_TOOLS = "scripts/identity-tools.sh"
 
 
 def tool_files() -> List[str]:
@@ -51,14 +50,6 @@ def tool_files() -> List[str]:
 
 def usage() -> str:
     return (__doc__ or "").split("\n\nOne JVM per ref")[0] + "\n"
-
-
-class Refused(Exception):
-    """A command line refused as the shell tool refused it: its line on stderr (and the usage, `with_usage`), exit 2."""
-
-    def __init__(self, line: str, with_usage: bool = False) -> None:
-        super().__init__(line)
-        self.line, self.with_usage = line, with_usage
 
 
 @dataclass
@@ -84,9 +75,9 @@ class Options:
             self.batch = absolute_path(flag, tool_cli.value_at(argv, i))
             return i + 1
         if flag.startswith("--"):
-            raise Refused(f"unknown argument {flag}", with_usage=True)
+            raise tool_cli.Refused(f"unknown argument {flag}", with_usage=True)
         if self.raw:
-            raise Refused("one raw title only (quote it)")
+            raise tool_cli.Refused("one raw title only (quote it)")
         self.raw = flag
         return i
 
@@ -94,14 +85,14 @@ class Options:
         """What TitleTrace is handed; the usage for a call naming no title and country, or no readable batch."""
         if self.batch:
             if self.raw or not os.path.isfile(self.batch):
-                raise Refused("", with_usage=True)
+                raise tool_cli.Refused("", with_usage=True)
             args = ["--batch", self.batch]
         elif self.raw and self.country:
             args = [self.raw, "--country", self.country, *self.venue]
         else:
-            raise Refused("", with_usage=True)
+            raise tool_cli.Refused("", with_usage=True)
         if len(self.refs) > 2:
-            raise Refused("at most two --ref")
+            raise tool_cli.Refused("at most two --ref")
         return args
 
 
@@ -116,32 +107,21 @@ def absolute_path(flag: str, value: str) -> str:
 class Tracer:
     def __init__(self, env: Mapping[str, str], runner: tool_process.Runner) -> None:
         self.env, self.runner = env, runner
-
-    def shell(self, function: str, args: Sequence[str]) -> Optional[str]:
-        done = tool_shell.shell_function(self.runner, self.env, IDENTITY_TOOLS, function, args,
-                                         prelude=f"IDENTITY_TOOL={TOOL}")
-        return done.stdout.rstrip("\n") if done.code == 0 else None
+        self.refs = identity_ref_trees.RefTrees(env, runner, TOOL)
 
     def tree(self, ref: str) -> Optional[str]:
-        return self.shell("identity_tree", [ref, *tool_files()])
+        return self.refs.tree(ref, tool_files())
 
     def compiles(self, ref: str) -> int:
         tree = self.tree(ref)
-        if tree is None or self.shell("identity_classpath", [tree]) is None:
+        if tree is None or self.refs.classpath(tree) is None:
             return 1
-        print(f"[{TOOL}] {ref} compiles with this checkout's tool files", file=sys.stderr)
+        self.refs.log(f"{ref} compiles with this checkout's tool files")
         return 0
 
     def trace(self, tree: str, args: Sequence[str], log: Optional[str] = None) -> int:
         """TitleTrace under the tree's code, from the tree, its output this tool's or into `log`."""
-        classpath = self.shell("identity_classpath", [tree])
-        java = self.shell("printf '%s\\n' \"${IDENTITY_JAVA[@]}\"", [])
-        if classpath is None or java is None:
-            return 1
-        argv = [*java.split("\n"), "-cp", classpath, "services.identity.TitleTrace", *args]
-        if log is not None:  # its stdout only: its stderr this tool's, as it comes
-            argv = ["sh", "-c", 'out=$1; shift; exec "$@" > "$out"', "sh", log, *argv]
-        return self.runner.run(tool_process.Command(argv, self.env, cwd=tree))
+        return self.refs.run_java(tree, ["services.identity.TitleTrace", *args], stdout=log)
 
     def at_refs(self, refs: List[str], args: Sequence[str], batch: bool) -> int:
         work = tempfile.mkdtemp(prefix="title-trace.", dir=self.env.get("TMPDIR") or "/tmp")
@@ -217,9 +197,8 @@ def refused(argv: List[str]) -> Tuple[Optional[int], Optional[Tuple[Options, Lis
         call = parsed(argv)
     except tool_cli.UsageError as error:
         return tool_cli.usage_failed(TOOL, error), None
-    except Refused as refusal:
-        sys.stderr.write((refusal.line + "\n" if refusal.line else "") + (usage() if refusal.with_usage else ""))
-        return 2, None
+    except tool_cli.Refused as refusal:
+        return tool_cli.refused(refusal, usage()), None
     return (0, None) if call is None else (None, call)
 
 
