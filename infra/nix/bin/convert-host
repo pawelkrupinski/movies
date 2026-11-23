@@ -136,7 +136,7 @@ for _ in $(seq 1 60); do
     # not evidence of stability, and treating them as such is the bug this is here to avoid.
     stable=0
   fi
-  sleep 5
+  sleep "${CONVERT_HOST_POLL_SECONDS:-5}"  # a test polls at 0
 done
 
 if ((!rescue_ready)); then
@@ -210,7 +210,7 @@ for _ in $(seq 1 60); do
          -o BatchMode=yes "root@$ip" 'test -e /etc/NIXOS' >/dev/null 2>&1; then
     break
   fi
-  sleep 5
+  sleep "${CONVERT_HOST_POLL_SECONDS:-5}"  # a test polls at 0
 done
 
 # THE HOST KEY HAS CHANGED, and every later tool checks it strictly. The machine minted a fresh
