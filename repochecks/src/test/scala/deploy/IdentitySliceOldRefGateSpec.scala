@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
  * and title-trace's tool files into a pinned old ref only when a push touches
  * what the tools bring to that ref: the ref is pinned, so nothing else can change the verdict. The gate lists the
  * tool files by path, so a file added to either's tool files (identity-slice's scripts/identity-slice-tool-files.txt,
- * title-trace's `TOOL_FILES`) but not to the gate would ship unchecked — the exact
+ * title-trace's scripts/title-trace-tool-files.txt) but not to the gate would ship unchecked — the exact
  * breakage (83b869548's `Capture.live`, 2026-10-17/18's `Listing.properTitle` and TitleFacts: every older ref
  * failed to compile) the check exists to catch.
  */
@@ -34,20 +34,21 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
   /** The tools that drop their tool files into an old ref, each checked by scripts/identity-slice-old-ref-test.sh, and
    *  the list identity-slice reads its tool files from. */
   private val SliceToolFiles = "scripts/identity-slice-tool-files.txt"
+  private val TraceToolFiles = "scripts/title-trace-tool-files.txt"
   /** identity-slice's Python modules (scripts/identity_slice_cli*.py, its tests aside): what hands the ref its files. */
   private lazy val sliceModules: Seq[String] =
     RepoFile.listed("scripts")(f => f.getName.startsWith("identity_slice_cli") && f.getName.endsWith(".py") &&
       !f.getName.endsWith("_test.py") && !f.getName.endsWith("_fixture.py")).map(f => s"scripts/${f.getName}")
-  private lazy val tools = Seq("scripts/identity-slice", SliceToolFiles, "scripts/title-trace") ++ sliceModules
+  private lazy val tools = Seq("scripts/identity-slice", SliceToolFiles, "scripts/title-trace", "scripts/title_trace.py",
+    TraceToolFiles) ++ sliceModules
 
-  /** identity-slice's list (one path a line, `#` lines comments) and title-trace's `TOOL_FILES=(…)`. */
-  private lazy val toolFiles: Seq[String] = {
-    val slice = RepoFile.read(SliceToolFiles).linesIterator.map(_.trim).filter(l => l.nonEmpty && !l.startsWith("#")).toSeq
-    val list = """(?s)TOOL_FILES=\(([^)]*)\)""".r.findFirstMatchIn(RepoFile.read("scripts/title-trace"))
-      .getOrElse(throw new AssertionError("scripts/title-trace defines no TOOL_FILES=(…)")).group(1)
-    slice should not be empty
-    (slice ++ list.split("\\s+").filter(_.nonEmpty).toSeq).distinct
+  /** identity-slice's and title-trace's lists: one path a line, `#` lines comments. */
+  private def listed(list: String): Seq[String] = {
+    val files = RepoFile.read(list).linesIterator.map(_.trim).filter(l => l.nonEmpty && !l.startsWith("#")).toSeq
+    withClue(list)(files should not be empty)
+    files
   }
+  private lazy val toolFiles: Seq[String] = (listed(SliceToolFiles) ++ listed(TraceToolFiles)).distinct
 
   "the old-ref compile's gate" should "cover every tool file identity-slice and title-trace drop into an old ref" in {
     toolFiles should not be empty

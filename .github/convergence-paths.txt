@@ -258,6 +258,9 @@ scripts/read-model-snapshot-inputs.sh
 scripts/sbt-warm
 scripts/shell-spec.sh
 scripts/title-trace
+scripts/title-trace-tool-files.txt
+scripts/title_trace.py
+scripts/title_trace_test.py
 scripts/tool-conventions.sh
 scripts/zinc_orphans.py
 # END GENERATED

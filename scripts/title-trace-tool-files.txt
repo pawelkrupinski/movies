@@ -1,0 +1,11 @@
+# THE FILES scripts/title-trace DROPS INTO EVERY REF it traces under (scripts/identity-tools.sh's identity_tree): this
+# checkout's copies, so a ref from before the tracer works. One path a line, in the order the tool's cache keys hash
+# them; `#` lines are comments. Read by the tool (scripts/title_trace.py) and by IdentitySliceOldRefGateSpec (main.yml's
+# old-ref compile covers each one).
+worker/src/test/scala/services/identity/OlderRefs.scala
+worker/src/fixtures/scala/tools/OlderRefTypes.scala
+worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala
+worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala
+worker/src/test/scala/services/identity/TitleTrace.scala
+worker/src/fixtures/scala/tools/SearchQueryMarkers.scala
+worker/src/fixtures/scala/tools/CinemaSlotInvariants.scala
