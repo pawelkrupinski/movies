@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
  *
  * A refused OMDb key (spent daily quota or a rotated key) ended 5 of the 14 recordings that failed or were cancelled
  * in the week to 2026-10-26, each 22-125 min in, after all five legs had booted and replayed. One request at t=0 sees
- * a bad or rotated key and fails (scripts/ci/recording-preflight.sh, tested by recording-preflight-test.sh). OMDb's
+ * a bad or rotated key and fails (scripts/ci/recording-preflight.sh, tested by recording_preflight_test.py). OMDb's
  * spent daily quota only warns: the capture records without OMDb, its best-effort origin, and failing on it made the
  * nightly #2426 red with nothing recorded.
  */

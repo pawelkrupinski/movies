@@ -60,7 +60,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/precommit-check.yml` | The landing check: the pre-push hook's checks of an agentctl-queued change, split into the rest and four identity shards | `workflow: push` | wf precheck-build-cache, tool-self-tests; hook pre-push; agentctl; 9 tools | - | - |
 | `.github/workflows/prune-actions-caches.yml` | Keep main's Actions caches under GitHub's 10 GB cap by deleting superseded per-commit entries | `workflow: workflow_run, schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
 | `.github/workflows/quality-hotspots.yml` | The monthly hotspot report (CLAUDE.md, "Code quality ratchets"; a report, never a gate): scripts/hotspots over main's last 90 days | `workflow: schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
-| `.github/workflows/record-scrape-fixtures.yml` | Nightly capture of every country's real `cinema_scrapes` into a fixture file, stored in the actions cache for the convergence legs to replay | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf country-convergence-leg, identity-capture, identity-model-convergence; 1 tool | - | - |
+| `.github/workflows/record-scrape-fixtures.yml` | Nightly capture of every country's real `cinema_scrapes` into a fixture file, stored in the actions cache for the convergence legs to replay | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf country-convergence-leg, identity-capture, identity-model-convergence; 3 tools | - | - |
 | `.github/workflows/renovate.yml` | Renovate for the Android Gradle build: weekly bump PRs, the Gradle analogue of scala-steward.yml | `workflow: schedule, repository_dispatch, workflow_dispatch` | skill CLAUDE.md | - | - |
 | `.github/workflows/report-timings.yml` | Every job's and step's time, reported after a run, never inside it (the owner, 2026-11-07) | `workflow: workflow_run, workflow_call, workflow_dispatch` | wf convergence-bisect, identity-model-convergence, identity-takes +1; 3 tools | - | - |
 | `.github/workflows/retire-venues.yml` | Retire venues the worker's closure sweep confirmed closed, as a PR (dispatched by GitHubRetirementDispatch) | `workflow: workflow_dispatch` | by hand | - | - |
@@ -224,7 +224,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (193)
+## Identity (194)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -319,8 +319,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/identity_takes_check_verdict.py` | THE SKIP GATE and THE VERDICT of the identity takes check (identity_takes_check.py). | `imported` | 1 tool | - | Python |
 | `scripts/ci/identity_takes_diff.py` | THE IDENTITY TAKES CHECK: which listings a code change moved to another film, on one recording. | `scripts/ci/identity_takes_diff.py` | wf identity-findings-report; skill identity-investigation; 7 tools | identity_takes_diff_test.py | Python |
 | `scripts/ci/recording-held.sh` | Does the repository hold "Record scrape fixtures" recording <run> where identity-fetch-recording.sh looks? | `scripts/ci/recording-held.sh` | wf identity-rule-ablation; 1 tool | recording-held-test.sh | KEEP |
-| `scripts/ci/recording-preflight.sh` | Recording preflight: before a `Record scrape fixtures` run spends 5 legs x 30-125 min, ask OMDb and TMDB, once each | `scripts/ci/recording-preflight.sh` | wf record-scrape-fixtures; agentctl | recording-preflight-test.sh | MIGRATE |
+| `scripts/ci/recording-preflight.sh` | Recording preflight: before a `Record scrape fixtures` run spends 5 legs x 30-125 min, ask OMDb and TMDB, once each | `scripts/ci/recording-preflight.sh` | wf record-scrape-fixtures; agentctl; 1 tool | recording_preflight_test.py | KEEP |
 | `scripts/ci/recording_health.py` | THE RECORDING'S PER-ORIGIN HEALTH: which origins refused most of what this recording asked them. | `python3 scripts/ci/recording_health.py` | wf record-scrape-fixtures; skill identity-investigation; 5 tools | recording_health_test.py | Python |
+| `scripts/ci/recording_preflight.py` | RECORDING PREFLIGHT: before a `Record scrape fixtures` run spends 5 legs x 30-125 min, ask OMDb and TMDB, once each, | `scripts/ci/recording_preflight.py` | 1 tool | recording_preflight_test.py | Python |
 | `scripts/ci/takes-skip-proof.sh` | The takes skip gate's proof: NormalizerTraceCheck over the base's stored trace, compiled in this checkout | `scripts/ci/takes-skip-proof.sh` | skill identity-investigation; 1 tool | - | KEEP |
 | `scripts/ci/takes-skip-shadow-report.sh` | The takes skip gate shadow's tally: every skip-gate status of the newest commits, agreeing or not | `scripts/ci/takes-skip-shadow-report.sh` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation | takes-skip-shadow-report-test.sh | KEEP |
 | `scripts/ci/takes_skip_gate.py` | THE TAKES SKIP GATE: whether a convergence `takes` row may leave out its takes diff -- the base's and the head's | `scripts/ci/takes_skip_gate.py` | wf convergence-daily, country-convergence-leg, identity-model-convergence +1; skill CLAUDE.md, identity-investigation; 4 tools | takes_skip_gate_test.py | Python |

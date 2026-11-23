@@ -117,7 +117,7 @@ scripts/ci/publish-rolling-release.sh	KEEP
 scripts/ci/pull-pinned-image.sh	MIGRATE
 scripts/ci/recorded-countries.sh	KEEP
 scripts/ci/recording-held.sh	KEEP
-scripts/ci/recording-preflight.sh	MIGRATE
+scripts/ci/recording-preflight.sh	KEEP
 scripts/ci/release-store-prune.sh	KEEP
 scripts/ci/roster-audit.sh	KEEP
 scripts/ci/sbt-deps-resolve.sh	KEEP
