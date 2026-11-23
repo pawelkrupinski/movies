@@ -578,7 +578,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (73)
+## Dev (74)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -597,8 +597,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/dev-server.sh` | Local dev server, run under a deliberately smaller heap than the rest of sbt | `scripts/dev-server.sh` | 3 tools | dev-server-test.sh | KEEP |
 | `scripts/hooks-path.sh` | What an absolute core.hooksPath names, for the two tools that mend one: scripts/install-hooks.sh and the pre-push hook | `bash scripts/hooks-path.sh` | hook pre-push; agentctl; 1 tool | - | KEEP |
 | `scripts/hotspots` | The hotspot report (CLAUDE.md, "Code quality ratchets"; a report, never a gate) | `scripts/hotspots` | wf quality-hotspots, report-timings; skill CLAUDE.md, test-layers; 2 tools | - | KEEP |
-| `scripts/ios-compile-check.sh` | Compile the iOS code the ways CI does and a Mac's `swift test` does not | `scripts/ios-compile-check.sh` | hook pre-push; 1 tool | ios-compile-check-test.sh | MIGRATE |
+| `scripts/ios-compile-check.sh` | Compile the iOS code the ways CI does and a Mac's `swift test` does not (a name for ios_compile_check.py) | `scripts/ios-compile-check.sh` | hook pre-push; 1 tool | ios_compile_check_test.py | KEEP |
 | `scripts/ios-simulators` | Shut down the iOS Simulators agents boot, so none stays booted for days. | `scripts/ios-simulators` | agentctl; skill test-layers | ios-simulators-test.sh | Python |
+| `scripts/ios_compile_check.py` | Compile the iOS code the ways CI does and a Mac's `swift test` does not. | `scripts/ios_compile_check.py` | 2 tools | ios_compile_check_test.py | Python |
 | `scripts/it-local.sh` | Run the it/ layer locally against a MongoDB of this run's own | `scripts/it-local.sh` | skill agent-ops, identity-investigation, test-layers; 9 tools | it-local-test.sh | KEEP |
 | `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | wf android; skill CLAUDE.md; 5 tools | cli_harness_test.py | Python |
 | `scripts/lib/seeded_order.py` | THE SEEDED TEST ORDER the nightly order-independence legs share (ios/scripts/swift_test_shuffled.py, | `imported` | wf android; 2 tools | seeded_order_test.py | Python |

@@ -83,7 +83,7 @@ PINS = [
         tag_key=r"(\d\d)\.(04)", note="LTS releases only; the runtime base, and CI's script-test container: "
         "the digest is refreshed, a new release (`later`) only listed"),
     Pin("moby/buildkit", [".github/actions/setup-buildx/action.yml"], DOCKER_HUB, "moby/buildkit", "minor"),
-    Pin("swift", [".github/workflows/ios.yml", "scripts/ios-compile-check.sh"], DOCKER_HUB, "library/swift", "report",
+    Pin("swift", [".github/workflows/ios.yml", "scripts/ios_compile_check.py"], DOCKER_HUB, "library/swift", "report",
         tag_key=r"(\d+)\.(\d+)(?:\.(\d+))?", note="moves with ci.yml's Xcode/Swift pins (ActionPinningSpec)"),
     Pin("flux", ["flux/gotk-components.yaml"], GHCR, "fluxcd/flux-cli", "report", root="gitops",
         pattern=r"^# Flux Version: (?P<tag>v[\d.]+)$",

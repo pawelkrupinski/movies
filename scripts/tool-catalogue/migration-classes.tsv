@@ -184,7 +184,7 @@ scripts/identity-tools.sh	MIGRATE
 scripts/identity-what-if	MIGRATE
 scripts/identity-why	KEEP
 scripts/install-hooks.sh	KEEP
-scripts/ios-compile-check.sh	MIGRATE
+scripts/ios-compile-check.sh	KEEP
 scripts/ios-release.sh	MIGRATE
 scripts/it-local.sh	KEEP
 scripts/js-quality-report	MIGRATE
