@@ -7,6 +7,7 @@ and every row the workflows run has a measured cost.
 """
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -15,6 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import convergence_reuse as reuse  # noqa: E402
 import convergence_slots as slots  # noqa: E402
+from gh_bounded_test import hung_gh  # noqa: E402
 
 with open(os.path.join(slots.ROOT, reuse.WORKFLOW)) as f:
     WORKFLOW = f.read()
@@ -195,6 +197,11 @@ class CostsTest(unittest.TestCase):
         slots.write_costs(path, {("pl", "takes"): (6.0, 3)}, ["1", "2"])
         self.assertEqual(slots.read_costs(path), {("pl", "takes"): 6.0})
 
+
+class BoundedGhTest(unittest.TestCase):
+    def test_a_jobs_listing_gh_never_answers_fails_instead_of_hanging(self):
+        with hung_gh(), self.assertRaises(subprocess.CalledProcessError):
+            slots.cmd_costs(["1"])
 
 if __name__ == "__main__":
     unittest.main()

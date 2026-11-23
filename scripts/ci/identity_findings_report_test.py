@@ -10,6 +10,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_findings_report as r  # noqa: E402
+from gh_bounded_test import hung_gh  # noqa: E402
 
 # What recording 38625654132 (2026-10-14) brought, which turned PL, UK and DE red with no commit touching any of it.
 DIABLY = "suspect\tKino Kosmos\tKF Ambasada: Diabły\ttmdb:31767\tDiabły (1971)\tfragment: 'Diabły' is 1 of the billing's words\n"
@@ -242,6 +243,11 @@ class FindingsReportTest(unittest.TestCase):
         self.assertIn("more: the run's `convergence-diagnostics-pl-convergence` artifact", body)
         self.assertEqual(400, len(r.first_seen_of(body)))
 
+
+class BoundedGhTest(unittest.TestCase):
+    def test_a_gh_that_never_answers_is_a_country_gh_could_not_reach(self):
+        with hung_gh(), self.assertRaises(r.subprocess.CalledProcessError):
+            r.gh(["issue", "list"])
 
 if __name__ == "__main__":
     unittest.main()

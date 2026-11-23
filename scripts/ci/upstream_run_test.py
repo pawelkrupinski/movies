@@ -5,12 +5,14 @@ Run: python3 scripts/ci/upstream_run_test.py"""
 import contextlib
 import datetime
 import io
+import subprocess
 import sys
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 import upstream_run as pick  # noqa: E402
+from gh_bounded_test import hung_gh  # noqa: E402
 
 NOW = datetime.datetime(2026, 10, 25, 4, 0, tzinfo=datetime.timezone.utc)
 RUNS = [(2144, NOW - datetime.timedelta(hours=30)), (2000, NOW - datetime.timedelta(hours=54))]
@@ -83,6 +85,11 @@ class UpstreamRunTest(unittest.TestCase):
     def test_the_newest_is_taken_by_creation_time_not_listing_order(self):
         self.assertEqual(pick.choose("9", "failure", "main", sorted(RUNS, key=lambda r: r[1]), NOW)[0], 2144)
 
+
+class BoundedGhTest(unittest.TestCase):
+    def test_a_run_listing_gh_never_answers_fails_instead_of_hanging(self):
+        with hung_gh(), self.assertRaises(subprocess.CalledProcessError):
+            pick.successful_runs("main.yml", "o/r")
 
 if __name__ == "__main__":
     unittest.main()

@@ -28,7 +28,6 @@ import datetime
 import json
 import os
 import statistics
-import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -173,12 +172,13 @@ def costs_of(runs, codes):
 def cmd_costs(run_ids):
     sys.path.insert(0, HERE)
     import convergence_reuse as reuse  # noqa: E402
+    import gh_bounded  # noqa: E402
     with open(os.path.join(ROOT, reuse.WORKFLOW)) as f:
         codes = dict(reuse.countries(f.read()))
     runs = []
     for run in run_ids:
-        out = subprocess.run(["gh", "api", "--paginate", f"repos/{{owner}}/{{repo}}/actions/runs/{run}/jobs?per_page=100",
-                              "--jq", ".jobs[]"], capture_output=True, text=True, check=True, cwd=ROOT).stdout
+        out = gh_bounded.gh(["api", "--paginate", f"repos/{{owner}}/{{repo}}/actions/runs/{run}/jobs?per_page=100",
+                             "--jq", ".jobs[]"], cwd=ROOT)
         runs.append([json.loads(line) for line in out.splitlines() if line.strip()])
     write_costs(COSTS_FILE, costs_of(runs, codes), run_ids)
     return 0

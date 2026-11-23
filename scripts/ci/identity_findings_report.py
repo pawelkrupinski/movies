@@ -55,6 +55,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import countries_disagree  # noqa: E402
+import gh_bounded  # noqa: E402
 from identity_judgements import judgements_of, label_of, normalise  # noqa: E402  (the one reading of a judgement)
 
 COUNTRIES = ["pl", "de", "uk", "es", "us"]
@@ -242,8 +243,8 @@ def render_at(cc, findings, seen, today, max_age, run, run_url, detailed, listed
 
 
 def gh(args, stdin=None):
-    """Run gh; its stdout. Raises on failure."""
-    return subprocess.run(["gh"] + args, input=stdin, capture_output=True, text=True, check=True).stdout
+    """Run gh; its stdout. Raises on failure, and past its time limit."""
+    return gh_bounded.gh(args, input=stdin)
 
 
 def find_issue(cc, run_gh):
