@@ -480,7 +480,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/title-trace` | Every step one raw billing goes through, in production order, to the title the resolver reads | `scripts/title-trace` | wf main; skill CLAUDE.md, identity-investigation; 6 tools | title_trace_test.py | MIGRATE |
 | `scripts/venue-replay` | One venue's listings as the code at one or two git refs reads them, from a recording — never the network | `scripts/venue-replay` | skill CLAUDE.md, identity-investigation; 6 tools | venue_replay_test.py | MIGRATE |
 
-## Mirror and data (90)
+## Mirror and data (91)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -545,7 +545,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/wait_for_mongo_tunnel.py` | Open the CI end of the route to prod Mongo and DO NOT RETURN until bytes actually flow through it -- then hold it | `scripts/ci/wait_for_mongo_tunnel.py` | 2 tools | wait_for_mongo_tunnel_test.py | Python |
 | `scripts/discover-cinemas/discover.py` | Discover new UK cinemas on flicks.co.uk and wire them into the catalog. | `python3 scripts/discover-cinemas/discover.py` | wf decoration-discovery, discover-cinemas, nix-stage-closures; 4 tools | discover_test.py | Python |
 | `scripts/fleet-db-finish` | Count the fleet's three old collections in Poland's kinowo and drop them on an exact request (fleet DB migration, step 9) | `scripts/fleet-db-finish` | 2 tools | fleet-db-finish-test.sh | MIGRATE |
-| `scripts/lib/mongo_local.py` | THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib; | `imported` | 10 tools | - | Python |
+| `scripts/lib/mongo_local.py` | THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib; | `imported` | 11 tools | - | Python |
 | `scripts/local-mirror/freshness` | How current the local prod mirror (:28017) is, per country — for every tool that reads it (identity-slice --prod-mirror, listing-history, …) | `scripts/local-mirror/freshness` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation; 25 tools | freshness-test.sh | KEEP |
 | `scripts/local-mirror/local-mongo.sh` | The one place that knows how to make the local mirror Mongo reachable | `scripts/local-mirror/local-mongo.sh` | 1 tool | - | KEEP |
 | `scripts/local-mirror/log-path.sh` | Where the launchd agent's stdout/stderr land | `sourced` | 3 tools | - | KEEP |
@@ -559,7 +559,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/local-mirror/prod-tunnel.sh` | The one place that knows how a laptop reaches prod Mongo | `bash scripts/local-mirror/prod-tunnel.sh` | 10 tools | prod-tunnel-test.sh | MIGRATE |
 | `scripts/local-mirror/service.py` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure. | `scripts/local-mirror/service.py` | wf country-convergence-leg, nix-stage-closures; hook pre-push; skill external-api-rate-limits, identity-investigation, record-client-fixtures; 15 tools | service_test.py | Python |
 | `scripts/local-mirror/service.sh` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure (service.py beside it; this name is what the plist and the README run) | `scripts/local-mirror/service.sh` | 7 tools | service_test.py | KEEP |
-| `scripts/local-mirror/start-local-mongo.sh` | Ensure the native (Homebrew) single-node replica-set Mongo that backs local dev is up on :28017 | `scripts/local-mirror/start-local-mongo.sh` | 6 tools | start-local-mongo-test.sh | MIGRATE |
+| `scripts/local-mirror/start-local-mongo.sh` | Ensure the native (Homebrew) single-node replica-set Mongo that backs local dev is up on :28017 (a name for start_local_mongo.py) | `scripts/local-mirror/start-local-mongo.sh` | 6 tools | start_local_mongo_test.py | KEEP |
+| `scripts/local-mirror/start_local_mongo.py` | Ensure the native (Homebrew) single-node replica-set Mongo that backs local dev is up on :28017. | `scripts/local-mirror/start_local_mongo.py` | 1 tool | start_local_mongo_test.py | Python |
 | `scripts/mongo-grants` | The Mongo access every database needs, checked against prod or granted | `scripts/mongo-grants` | 3 tools | mongo-grants-test.sh | KEEP |
 | `scripts/mongo_grants.py` | THE MONGO ROLES EVERY DATABASE NEEDS, CHECKED OR GRANTED ON PROD (scripts/mongo-grants). | `python3 scripts/mongo_grants.py` | 2 tools | - | Python |
 | `scripts/own-mongod.sh` | A MongoDB of the caller's own: a single-node replica set on a free port, its data in a temporary directory, removed when the caller ends | `bash scripts/own-mongod.sh` | 2 tools | - | KEEP |

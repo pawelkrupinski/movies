@@ -204,7 +204,7 @@ login (it's a `brew services` agent). `start-local-mongo.sh` asks `brew services
 for whichever `mongodb-community[@X.Y]` formula is installed, and when `brew
 services` cannot start it falls back to `mongod --config $(brew --prefix)/etc/mongod.conf
 --fork` (same config, but no restart at login) — both paths asserted against stubs by
-`scripts/local-mirror/start-local-mongo-test.sh`. Logs:
+`scripts/local-mirror/start_local_mongo_test.py`. Logs:
 `~/Library/Logs/kinowo-local-mirror.log`, every line prefixed with its local
 time (`2026-11-04T10:08:57+0100 [mirror] …` — `stamp_lines` in `log-path.sh`,
 applied to all of an executed `mirror.sh`'s output, mongosh's raw stderr

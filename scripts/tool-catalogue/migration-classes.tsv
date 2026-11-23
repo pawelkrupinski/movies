@@ -196,7 +196,7 @@ scripts/local-mirror/mirror.sh	KEEP
 scripts/local-mirror/mongosh-at.sh	KEEP
 scripts/local-mirror/prod-tunnel.sh	MIGRATE
 scripts/local-mirror/service.sh	KEEP
-scripts/local-mirror/start-local-mongo.sh	MIGRATE
+scripts/local-mirror/start-local-mongo.sh	KEEP
 scripts/log.sh	KEEP
 scripts/mobile-release.sh	KEEP
 scripts/mobile-ship.sh	KEEP
