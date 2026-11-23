@@ -105,7 +105,6 @@ scripts/ci/mongo-top.sh	KEEP
 scripts/ci/mongo-tunnel-paths.sh	KEEP
 scripts/ci/no-network	MIGRATE
 scripts/ci/old-ref-deps-key.sh	KEEP
-scripts/ci/open-issue.sh	KEEP
 scripts/ci/order-passes-present.sh	KEEP
 scripts/ci/order-phases.sh	KEEP
 scripts/ci/order-preflight.sh	MIGRATE
@@ -125,7 +124,7 @@ scripts/ci/sbt-deps-resolve.sh	KEEP
 scripts/ci/sbt-guard/sbt	MIGRATE
 scripts/ci/sbt-invalidate-exporters.sh	KEEP
 scripts/ci/sbt-sources-key.sh	KEEP
-scripts/ci/scheduled-failure-issue.sh	MIGRATE
+scripts/ci/scheduled-failure-issue.sh	KEEP
 scripts/ci/seed-sbt-runner.sh	KEEP
 scripts/ci/serve-file.sh	KEEP
 scripts/ci/shellcheck-action-runs.sh	KEEP

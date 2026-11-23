@@ -50,6 +50,6 @@ class AlertIsNotRedSpec extends AnyFlatSpec with Matchers {
   "the reporter" should "file an alert as the workflow's one issue" in {
     val action = RepoFile.read(".github/actions/report-scheduled-run/action.yml")
     action should include("verdict=alert")
-    RepoFile.read("scripts/ci/scheduled-failure-issue.sh") should include("gh issue edit \"$open_issue\" --body \"$body\"")
+    RepoFile.read("scripts/ci/scheduled_failure_issue.py") should include("gh(\"issue\", \"edit\", self.open_issue, \"--body\", body)")
   }
 }
