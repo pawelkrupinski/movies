@@ -309,9 +309,10 @@ nodb() { node "$HERE/nodb.js" "$@"; }
 
 # No server, so a down tunnel can't stop us noticing an edit. Empty output (a
 # syntax error in the file, a missing node) is treated by every reader as
-# "don't know" and never as a change.
+# "don't know" and never as a change. `|| true`: under pipefail node's failure on
+# an unreadable list ended the startup body (`set -e`) and the poller's subshell.
 targets_fingerprint() {
-  nodb --file "$HERE/mirror-targets.js" --file "$HERE/targets-fingerprint.js" 2>/dev/null | tail -1
+  nodb --file "$HERE/mirror-targets.js" --file "$HERE/targets-fingerprint.js" 2>/dev/null | tail -1 || true
 }
 
 # What the children compare against. Falls back to the last good value rather
