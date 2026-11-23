@@ -58,6 +58,7 @@ scripts/ci/convergence-preflight.sh
 scripts/ci/convergence_preflight.py
 scripts/ci/start-mongo-replset.sh
 scripts/ci/start_mongo_replset.py
+scripts/ci/pull_pinned_image.py
 scripts/ci/mongo-exec.sh
 scripts/ci/order-phases.sh
 scripts/ci/convergence_reuse.py
