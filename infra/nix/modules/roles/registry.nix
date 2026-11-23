@@ -55,7 +55,8 @@ in
   fleet.autoApply.routineUnits = [ "registry-prune.service" ];
 
   # Prune, then collect with the registry STOPPED -- the collector is not safe against a concurrent
-  # push. A CI push in that minute fails and is retried by re-running the job.
+  # push. A CI push in that window loses the registry (Main #2662, 2026-11-19 04:00:22Z: a reset, then the proxy's 502)
+  # and scripts/ci/build-image.sh waits, bounded, for it to answer again and pushes once more, naming this prune.
   systemd.services.registry-prune = {
     description = "Keep the newest ${toString keep} images per repository, then garbage-collect";
     # NOT `requires`: Requires= propagates an explicit stop of docker-registry to this unit, so
