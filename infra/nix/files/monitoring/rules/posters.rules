@@ -15,7 +15,7 @@
 #
 #   delivery  PosterProbeFailing / PosterProbesMissing. blackbox_exporter on monitoring-1 fetches,
 #             every five minutes, two posters per poster host per country exactly as a city page
-#             hands them to a browser (synthetic-probe-targets.sh: weserv URL included, so a fault
+#             hands them to a browser (synthetic_probe_targets.py: weserv URL included, so a fault
 #             in how the URL is BUILT is probed as much as the host), and asks for an image over
 #             https. The only layer that sees an image fail to load -- and the one that catches
 #             2026-10-21: both kinoheld probes would have read weserv's `404 application/json`.
@@ -187,7 +187,7 @@ groups:
           summary: "{{ $labels.country }}'s city page names no poster to probe"
           description: >-
             The synthetic probes found a film on {{ $labels.country }}'s city page but no poster host
-            drawing ten or more of its cards' posters (synthetic-probe-targets.sh), so no poster is
+            drawing ten or more of its cards' posters (synthetic_probe_targets.py), so no poster is
             being watched from outside. Look at the page: if the cards show "no poster", the posters
             went missing before the browser (PosterPlaceholderShareJumped should agree); if they
             show posters, they all come from hosts under the floor -- `journalctl -u

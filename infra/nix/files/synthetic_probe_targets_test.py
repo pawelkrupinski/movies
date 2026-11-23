@@ -293,7 +293,7 @@ class SyntheticProbeTargetsTest(cli_harness.ToolCase):
     def test_no_output_path_is_the_usage(self) -> None:
         done = self.run_tool()
         self.assertNotEqual(0, done.code, done.output)
-        self.assertIn("usage: synthetic-probe-targets.sh <output.json> <country>=<city url> ...", done.stderr)
+        self.assertIn("usage: synthetic-probe-targets <output.json> <country>=<city url> ...", done.stderr)
 
 
 if __name__ == "__main__":

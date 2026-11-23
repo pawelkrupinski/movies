@@ -313,7 +313,7 @@ def main(argv: List[str]) -> int:
         say("curl is not on PATH")
         return 1
     if not argv:
-        print("usage: synthetic-probe-targets.sh <output.json> <country>=<city url> ...", file=sys.stderr)
+        print("usage: synthetic-probe-targets <output.json> <country>=<city url> ...", file=sys.stderr)
         return 1
     with tempfile.TemporaryDirectory() as work:
         discovery = Discovery(argv[0], work)

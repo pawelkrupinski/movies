@@ -21,7 +21,7 @@
 # `/movie/` path for anything that is not a verified bot -- except monitoring-1, which the custom
 # rule exempts by address since 2026-09-25. `ProbeBlockedByEdge` reports it (a warning naming the
 # fix) and ProbeFailing excludes it. The showtimes.cc film pages are probed through the edge like
-# every other page, so a lost exemption surfaces here as their 403 (synthetic-probe-targets.sh).
+# every other page, so a lost exemption surfaces here as their 403 (synthetic_probe_targets.py).
 #
 # LAST_OVER_TIME, NOT THE RAW SERIES. City pages are probed every five minutes (roles/synthetic-
 # probes.nix), the length of Prometheus's lookback, so a raw read finds NOTHING whenever the next

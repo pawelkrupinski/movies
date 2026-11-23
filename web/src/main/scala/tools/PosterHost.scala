@@ -14,7 +14,7 @@ import scala.util.Try
  *  the origin it fronts, the way the browser beacon unwraps it (`js/shared/` `originHost`).
  *
  *  The same rule is applied by the synthetic poster probes' discovery
- *  (infra/nix/files/synthetic-probe-targets.sh, `poster_family`), so a probe's `poster_host` and
+ *  (infra/nix/files/synthetic_probe_targets.py, `poster_family`), so a probe's `poster_host` and
  *  this gauge's line up in one Grafana row. */
 object PosterHost {
 

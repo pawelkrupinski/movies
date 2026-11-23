@@ -292,7 +292,7 @@ tests:
               severity: "warning"
             exp_annotations:
               summary: "es's city page names no poster to probe"
-              description: "The synthetic probes found a film on es's city page but no poster host drawing ten or more of its cards' posters (synthetic-probe-targets.sh), so no poster is being watched from outside. Look at the page: if the cards show \"no poster\", the posters went missing before the browser (PosterPlaceholderShareJumped should agree); if they show posters, they all come from hosts under the floor -- `journalctl -u synthetic-probe-targets` and the page's `data-original-src` attributes say which."
+              description: "The synthetic probes found a film on es's city page but no poster host drawing ten or more of its cards' posters (synthetic_probe_targets.py), so no poster is being watched from outside. Look at the page: if the cards show \"no poster\", the posters went missing before the browser (PosterPlaceholderShareJumped should agree); if they show posters, they all come from hosts under the floor -- `journalctl -u synthetic-probe-targets` and the page's `data-original-src` attributes say which."
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # A HOST LOST FROM SERVING. de serves 1,000 films: 400 draw kinoheld, 400 tmdb, 200 none. At 26h
