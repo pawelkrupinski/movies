@@ -653,13 +653,13 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `ios/scripts/swift_test_shuffled.py` | Every `swift test` case ALONE, in an order drawn from a seed -- the iOS lane of the nightly order-independence | `ios/scripts/swift_test_shuffled.py` | wf android; 2 tools | swift_test_shuffled_test.py | Python |
 | `scripts/ci/xcuitest-each-class-alone.sh` | Every XCUITest class alone, each in its own `xcodebuild test-without-building` on the booted $DESTINATION | `scripts/ci/xcuitest-each-class-alone.sh` | wf order-independence; 2 tools | xcuitest_each_class_alone_test.py | MIGRATE |
 | `scripts/ci/xcuitest_each_class_alone.py` | Every XCUITest class ALONE, each in its own `xcodebuild test-without-building` on the booted $DESTINATION, so none | `scripts/ci/xcuitest_each_class_alone.py` | 1 tool | xcuitest_each_class_alone_test.py | Python |
-| `scripts/ios-release.sh` | Archive, export and upload the iOS app to App Store Connect | `scripts/ios-release.sh` | 3 tools | ios-release-test.sh | MIGRATE |
-| `scripts/mobile-release.sh` | Cut a mobile release: one version, one branch, both platforms | `scripts/mobile-release.sh` | 3 tools | mobile-release-test.sh | KEEP |
+| `scripts/ios-release.sh` | Archive, export and upload the iOS app to App Store Connect (a name for ios_release.py) | `scripts/ios-release.sh` | 4 tools | ios_release_test.py | KEEP |
+| `scripts/mobile-release.sh` | Cut a mobile release: one version, one branch, both platforms | `scripts/mobile-release.sh` | 4 tools | mobile-release-test.sh | KEEP |
 | `scripts/mobile-ship.sh` | Release main's app code to the App Store and Google Play with one command | `scripts/mobile-ship.sh` | wf android; skill CLAUDE.md, agent-ops; 2 tools | - | KEEP |
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (91)
+## Dev (92)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -682,6 +682,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ios-compile-check.sh` | Compile the iOS code the ways CI does and a Mac's `swift test` does not (a name for ios_compile_check.py) | `scripts/ios-compile-check.sh` | hook pre-push; 1 tool | ios_compile_check_test.py | KEEP |
 | `scripts/ios-simulators` | Shut down the iOS Simulators agents boot, so none stays booted for days. | `scripts/ios-simulators` | agentctl; skill test-layers | ios-simulators-test.sh | Python |
 | `scripts/ios_compile_check.py` | Compile the iOS code the ways CI does and a Mac's `swift test` does not. | `scripts/ios_compile_check.py` | 2 tools | ios_compile_check_test.py | Python |
+| `scripts/ios_release.py` | Archive, export and upload the iOS app to App Store Connect. | `scripts/ios_release.py` | 1 tool | ios_release_test.py | Python |
 | `scripts/it-local.sh` | Run the it/ layer locally against a MongoDB of this run's own | `scripts/it-local.sh` | skill agent-ops, identity-investigation, test-layers; 10 tools | it-local-test.sh | KEEP |
 | `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | wf android, security-headers; skill CLAUDE.md; 7 tools | cli_harness_test.py | Python |
 | `scripts/lib/pinned_npm_tools.py` | PINNED NODE TOOLS, installed OUTSIDE the checkout: a tool's package.json and its lock, `npm ci`'d once per lock into | `imported` | hook pre-push; 2 tools | - | Python |

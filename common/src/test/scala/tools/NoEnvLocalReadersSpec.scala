@@ -30,7 +30,7 @@ class NoEnvLocalReadersSpec extends AnyFlatSpec with Matchers {
     "worker/src/it/scala/tools/EnvIntegrationSpec.scala" ->
       "writes a .env.local to prove the process-bound Env never reads it",
     "repochecks/src/test/scala/deploy/ReleaseLanePublishSpec.scala" ->
-      "asserts ios-release.sh does not mention it",
+      "asserts ios_release.py does not mention it",
   )
 
   private def isComment(line: String): Boolean = {

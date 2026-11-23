@@ -182,7 +182,7 @@ scripts/identity-what-if	MIGRATE
 scripts/identity-why	KEEP
 scripts/install-hooks.sh	KEEP
 scripts/ios-compile-check.sh	KEEP
-scripts/ios-release.sh	MIGRATE
+scripts/ios-release.sh	KEEP
 scripts/it-local.sh	KEEP
 scripts/js-quality-report	KEEP
 scripts/jvm-gate.sh	MIGRATE

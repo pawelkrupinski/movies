@@ -25,8 +25,8 @@ import org.scalatest.matchers.should.Matchers
  * actions goes through `scripts/ci/gh-release.sh`, which retries 403/409/5xx with
  * back-off; `scripts/ci/gh-release-test.sh` exercises it against a stub `gh`.
  *
- * **The iOS archive lane is a SCRIPT.** Three releases ran without one, each
- * rebuilt by hand from a memory note, which is how the manual-signing flags and
+ * **The iOS archive lane is a SCRIPT** (scripts/ios-release.sh, whose tool is scripts/ios_release.py).
+ * Three releases ran without one, each rebuilt by hand from a memory note, which is how the manual-signing flags and
  * the ExportOptions plist kept having to be rediscovered. `xcodebuild archive`
  * needs `CODE_SIGN_STYLE=Manual` here — the automatic style picks a development
  * certificate and the export then fails on the mismatch — so the flags are
@@ -35,7 +35,7 @@ import org.scalatest.matchers.should.Matchers
 class ReleaseLanePublishSpec extends AnyFlatSpec with Matchers {
 
   private lazy val android = RepoFile.read(".github/workflows/android.yml")
-  private lazy val iosScript = RepoFile.read("scripts/ios-release.sh")
+  private lazy val iosScript = RepoFile.read("scripts/ios_release.py")
 
   private lazy val rollingPublish = RepoFile.read("scripts/ci/publish-rolling-release.sh")
 
@@ -76,15 +76,15 @@ class ReleaseLanePublishSpec extends AnyFlatSpec with Matchers {
 
   "the iOS release script" should "sign manually with the App Store profile" in {
     iosScript should include ("CODE_SIGN_STYLE=Manual")
-    iosScript should include ("""CODE_SIGN_IDENTITY="Apple Distribution"""")
+    iosScript should include ("\"CODE_SIGN_IDENTITY=Apple Distribution\"")
     iosScript should include ("Kinowo App Store")
     iosScript should include ("CQ4YC43YDM")
     iosScript should include ("<key>method</key><string>app-store-connect</string>")
   }
 
   it should "run the whole lane — test, archive, export, validate, upload" in {
-    for (step <- Seq("swift test", "xcodebuild archive", "-exportArchive",
-                     "--validate-app", "--upload-app"))
+    for (step <- Seq("\"swift\", \"test\"", "\"xcodebuild\", \"archive\"", "\"-exportArchive\"",
+                     "\"--validate-app\"", "\"--upload-app\""))
       withClue(s"$step: ") { iosScript should include (step) }
   }
 

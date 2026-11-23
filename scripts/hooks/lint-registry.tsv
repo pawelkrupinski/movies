@@ -166,7 +166,7 @@ repochecks:deploy.PrometheusNodePortAgreementSpec	@gitops infra/nix/modules/role
 repochecks:deploy.RecordCorpusInLegWiringSpec	.github/actions/convergence-setup/action.yml .github/scripts/convergence-publish.sh .github/scripts/restore-enrichment-tree.sh .github/scripts/restore_enrichment_tree.py .github/workflows/country-convergence-leg.yml .github/workflows/record-scrape-fixtures.yml worker/src/fixtures/scala/scripts/RecordCorpusFixture.scala .github/scripts/convergence_*.py
 repochecks:deploy.RecordingPreflightWiringSpec	.github/workflows/record-scrape-fixtures.yml
 repochecks:deploy.RegistryNameSpec	.github/workflows/*
-repochecks:deploy.ReleaseLanePublishSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml scripts/ci/publish-rolling-release.sh scripts/ios-release.sh
+repochecks:deploy.ReleaseLanePublishSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml scripts/ci/publish-rolling-release.sh scripts/ios_release.py
 repochecks:deploy.RepoFileSpec	@code
 repochecks:deploy.RetireVenuesWorkflowSpec	.github/workflows/retire-venues.yml
 repochecks:deploy.RunTimingsWiringSpec	.github/workflows/* .github/actions/report-timings/action.yml
