@@ -145,7 +145,7 @@ unset GITHUB_STEP_SUMMARY GITHUB_OUTPUT GITHUB_ENV GITHUB_PATH GITHUB_STATE \
 # ...nor writes an import's bytecode into the checkout (THE TREE IS LEFT AS FOUND)
 export PYTHONDONTWRITEBYTECODE=1
 
-Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin infra/nix/files data"
+Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin infra/nix/bin infra/nix/files data"
 # The oldest python3 every Python tool runs on: macOS's /usr/bin/python3 (3.9). scripts/ci/python_floor_lint.py holds
 # the code to it -- no syntax, and no annotation evaluated at runtime, newer than this.
 PythonFloor="3.9"

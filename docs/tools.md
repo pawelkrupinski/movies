@@ -499,7 +499,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/prod-ops.sh` | The shared harness of the prod-ops scripts (scripts/mongo-grants, scripts/fleet-db-finish, and the next one) | `bash scripts/prod-ops.sh` | 3 tools | prod-ops-test.sh | KEEP |
 | `scripts/with-prod-mongo.sh` | Run one command against prod Mongo from a laptop: the credential from the Touch ID vault, the connection through the ssh tunnel | `scripts/with-prod-mongo.sh` | 6 tools | with-prod-mongo-test.sh | KEEP |
 
-## Infra and deploy (52)
+## Infra and deploy (53)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -511,8 +511,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 207 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 207 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 206 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 206 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |
@@ -535,7 +535,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/snapshot-label-values` | Snapshot the fleet's REAL label values for every (metric, label) an alert or panel filters on. | `infra/bin/snapshot-label-values` | 2 tools | - | Python |
 | `infra/bin/stage-nixos-closures` | Build each NixOS host's closure once and put it ON the host, WITHOUT activating it. | `infra/bin/stage-nixos-closures` | wf nix-stage-closures; 4 tools | - | Python |
 | `infra/bin/tf` | Terraform, with the credentials this root module needs taken from the operator's Touch ID vault (`secrets`), never from a file | `infra/bin/tf` | 1 tool | - | KEEP |
-| `infra/nix/bin/convert-host` | Convert one stock-Ubuntu Hetzner Cloud server into a NixOS host from this flake | `infra/nix/bin/convert-host` | 1 tool | - | MIGRATE |
+| `infra/nix/bin/convert-host` | Convert one stock-Ubuntu Hetzner Cloud server into a NixOS host from this flake | `infra/nix/bin/convert-host` | 2 tools | convert_host_test.py | KEEP |
+| `infra/nix/bin/convert_host.py` | Convert one stock-Ubuntu Hetzner Cloud server into a NixOS host from this flake. | `infra/nix/bin/convert_host.py` | 1 tool | convert_host_test.py | Python |
 | `infra/nix/files/heap-dumps.sh` | Keep the JVM heap dumps of every kinowo pod bounded, oldest deleted first | `infra/nix/files/heap-dumps.sh` | wf main; 1 tool | - | MIGRATE |
 | `infra/nix/files/identity-regressions.py` | Production match regressions, read from the identity take-change log and published as metrics. | `python3 infra/nix/files/identity-regressions.py` | 1 tool | - | Python |
 | `infra/nix/files/mongodb-offbox-pull.sh` | The off-box copy of mongo-1'S nightly dump, pulled from A machine that is not mongo-1 | `bash infra/nix/files/mongodb-offbox-pull.sh` | 1 tool | - | KEEP |

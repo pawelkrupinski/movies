@@ -31,7 +31,7 @@ infra/bin/push-gh-secrets	KEEP
 infra/bin/push-k8s-secrets	KEEP
 infra/bin/rolling-reboot	KEEP
 infra/bin/tf	KEEP
-infra/nix/bin/convert-host	MIGRATE
+infra/nix/bin/convert-host	KEEP
 infra/nix/files/heap-dumps.sh	MIGRATE
 infra/nix/files/mongodb-offbox-pull.sh	KEEP
 infra/nix/files/nix-stage-endpoint.sh	KEEP
