@@ -57,8 +57,8 @@ if [ -n "$lost" ]; then
   why="the image registry was down or restarting (a host switch, or its daily prune's garbage collect)"
   [ "$hhmm" -ge 0400 ] && [ "$hhmm" -lt 0420 ] \
     && why="the image registry was stopped by its daily 04:00 UTC registry-prune (infra/nix/modules/roles/registry.nix)"
-  wait_limit=${REGISTRY_WAIT_SECONDS:-600}
-  poll=${REGISTRY_POLL_SECONDS:-15}
+  wait_limit=${IMAGE_PUSH_WAIT_SECONDS:-600}
+  poll=${IMAGE_PUSH_POLL_SECONDS:-15}
   waited_from=$SECONDS
   answer=000
   while :; do

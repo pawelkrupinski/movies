@@ -59,7 +59,7 @@ cat > "$stub_dir/date" <<'STUB'
 echo "$STUB_HHMM"
 STUB
 chmod +x "$stub_dir/curl" "$stub_dir/date"
-export STUB_ANSWERS=200 STUB_HHMM=1200 REGISTRY_WAIT_SECONDS=5 REGISTRY_POLL_SECONDS=0
+export STUB_ANSWERS=200 STUB_HHMM=1200 IMAGE_PUSH_WAIT_SECONDS=5 IMAGE_PUSH_POLL_SECONDS=0
 export STUB_LOG="$stub_dir/log" STUB_DOCKERFILE="$stub_dir/used-dockerfile"
 cp "$REPO_ROOT/Dockerfile" "$stub_dir/Dockerfile"
 
