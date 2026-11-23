@@ -129,7 +129,7 @@ scripts/ci/serve-file.sh	KEEP
 scripts/ci/shellcheck-action-runs.sh	KEEP
 scripts/ci/start-mongo-replset.sh	KEEP
 scripts/ci/stop-stray-sbt.sh	KEEP
-scripts/ci/stress-races.sh	MIGRATE
+scripts/ci/stress-races.sh	KEEP
 scripts/ci/takes-skip-proof.sh	KEEP
 scripts/ci/takes-skip-shadow-report.sh	KEEP
 scripts/ci/tree-unchanged.sh	KEEP

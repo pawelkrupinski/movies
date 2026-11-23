@@ -5,7 +5,7 @@ Usage: junit_failures.py <junit.xml | dir>...   (dirs are searched for *.xml)
 
 A testcase with a <failure> or an <error> failed; a skipped one did not run. An unreadable file
 (a report cut off by a killed run) is skipped rather than failing the listing. Read by
-scripts/ci/stress-races.sh. Tested by scripts/ci/junit_failures_test.py.
+scripts/ci/stress_races.py. Tested by scripts/ci/junit_failures_test.py.
 """
 import sys
 import xml.etree.ElementTree as ET

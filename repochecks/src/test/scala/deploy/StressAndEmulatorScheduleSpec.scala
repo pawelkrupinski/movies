@@ -11,7 +11,7 @@ import java.nio.file.Files
  * times over (nightly-stress.yml); the Android emulator lane only for app changes, with its
  * nightly coverage in order-independence.yml.
  *
- * The harness LIST lives in scripts/ci/stress-races.sh, which refuses to run a class that no
+ * The harness LIST lives in scripts/ci/stress_races.py (run as stress-races.sh), which refuses to run a class that no
  * longer exists — but only at 01:30. This checks the same thing on every push, so a rename that
  * drops a harness from the nightly run fails the push that made it.
  */
@@ -19,11 +19,11 @@ class StressAndEmulatorScheduleSpec extends AnyFlatSpec with Matchers {
   private lazy val stress   = RepoFile.read(".github/workflows/nightly-stress.yml")
   private lazy val android  = RepoFile.read(".github/workflows/android.yml")
   private lazy val nightlyOrder = RepoFile.read(".github/workflows/order-independence.yml")
-  private lazy val script   = RepoFile.read("scripts/ci/stress-races.sh")
+  private lazy val script   = RepoFile.read("scripts/ci/stress_races.py")
 
-  /** ("common/Test", "tools.BoundedParallelSpec") for every harness line of the script. */
+  /** ("common/Test", "tools.BoundedParallelSpec") for every harness line of the tool. */
   private lazy val harnesses: Seq[(String, String)] =
-    """(?m)^\s+"(\w+/(?:Test|IntegrationTest)) ([\w.]+)"\s*$""".r.findAllMatchIn(script)
+    """(?m)^\s+"(\w+/(?:Test|IntegrationTest)) ([\w.]+)",?\s*$""".r.findAllMatchIn(script)
       .map(m => m.group(1) -> m.group(2)).toSeq
 
   "stress-races.sh" should "list harnesses, or the nightly run stresses nothing" in {

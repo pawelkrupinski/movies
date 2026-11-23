@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (225)
+## Landing and CI (226)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -54,7 +54,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/ios.yml` | Build and test the iOS app (swift test, the LocalServer decoders, XCUITest) on macOS runners | `workflow: pull_request, push, workflow_dispatch` | wf ci; 4 tools | - | - |
 | `.github/workflows/main.yml` | Main's pipeline: build, test and publish the images Flux deploys; its rows are the gate | `workflow: push, workflow_dispatch` | wf branch-ci, ci, tool-self-tests; hook pre-push; agentctl; 18 tools | - | - |
 | `.github/workflows/mirror-pinned-images.yml` | Copies every image .github/pinned-images.tsv pins to this repo's GHCR packages by digest | `workflow: schedule, repository_dispatch, push, workflow_dispatch` | 4 tools | - | - |
-| `.github/workflows/nightly-stress.yml` | The tests whose failures are a matter of luck, run enough times for luck to run out | `workflow: schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
+| `.github/workflows/nightly-stress.yml` | The tests whose failures are a matter of luck, run enough times for luck to run out | `workflow: schedule, repository_dispatch, workflow_dispatch` | 2 tools | - | - |
 | `.github/workflows/order-independence.yml` | Nightly: every suite in an order it never meets on push, so an order-dependent test shows | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf android, nightly-stress; 6 tools | - | - |
 | `.github/workflows/precheck-build-cache.yml` | Keep the landing check's sbt build cache warm for main's newest commit | `workflow: workflow_run, workflow_dispatch` | wf precommit-check; 1 tool | - | - |
 | `.github/workflows/precommit-check.yml` | The landing check: the pre-push hook's checks of an agentctl-queued change, split into the rest and four identity shards | `workflow: push` | wf precheck-build-cache, tool-self-tests; hook pre-push; agentctl; 9 tools | - | - |
@@ -184,7 +184,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/shard_weights.py` | THE SHARD WEIGHTS, REFRESHED (scripts/ci/shard-weights-identity.tsv, which scripts/ci/shard_tests.py balances the | `scripts/ci/shard_weights.py` | by hand | shard_weights_test.py | Python |
 | `scripts/ci/shellcheck-action-runs.sh` | Shellcheck the `run:` blocks of composite actions (.github/actions/*/action.yml) | `scripts/ci/shellcheck-action-runs.sh` | wf ci; hook pre-push | shellcheck-action-runs-test.sh | KEEP |
 | `scripts/ci/stop-stray-sbt.sh` | End every JVM an earlier step left running in this build | `scripts/ci/stop-stray-sbt.sh` | wf country-convergence-leg, main; 2 tools | stop-stray-sbt-test.sh | KEEP |
-| `scripts/ci/stress-races.sh` | Run the race / concurrency harnesses many times over, to surface the interleavings a single CI run almost never meets | `scripts/ci/stress-races.sh` | wf nightly-stress | - | MIGRATE |
+| `scripts/ci/stress-races.sh` | Run the race / concurrency harnesses many times over, to surface the interleavings a single CI run almost never meets | `scripts/ci/stress-races.sh` | wf nightly-stress; 1 tool | stress_races_test.py | KEEP |
+| `scripts/ci/stress_races.py` | Run the race / concurrency harnesses many times over, to surface the interleavings a single CI run almost never meets. | `scripts/ci/stress_races.py` | 1 tool | stress_races_test.py | Python |
 | `scripts/ci/trailers.py` | THE TRAILER PLACEMENT RULE: git reads a `Key: value` line as a trailer only in the message's final trailer block -- | `python3 scripts/ci/trailers.py` | wf coupling-exemptions; hook post-commit, pre-push; skill CLAUDE.md; 8 tools | trailers_test.py | Python |
 | `scripts/ci/tree-unchanged.sh` | A test run must leave every checked-in file exactly as it found it | `scripts/ci/tree-unchanged.sh` | wf ci, discover-cinemas | - | KEEP |
 | `scripts/ci/ubuntu-security-via-mirror.sh` | Route the GitHub-hosted Ubuntu runner's security.ubuntu.com apt sources to the archive mirror the image already uses, before an `apt-get update` | `scripts/ci/ubuntu-security-via-mirror.sh` | 1 tool | ubuntu-security-via-mirror-test.sh | KEEP |
