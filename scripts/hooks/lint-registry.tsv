@@ -163,7 +163,7 @@ repochecks:deploy.PlaywrightRunCostSpec	page-tests-playwright/playwright.config.
 repochecks:deploy.PlaywrightWorkerBudgetSpec	.github/actions/run-page-test/action.yml .github/workflows/ci.yml
 repochecks:deploy.PreflightWiringSpec	.github/workflows/android.yml .github/workflows/convergence-bisect.yml .github/workflows/country-convergence-leg.yml .github/workflows/identity-capture.yml .github/workflows/record-scrape-fixtures.yml .github/workflows/report-timings.yml scripts/ci/preflight.sh
 repochecks:deploy.PrometheusNodePortAgreementSpec	@gitops infra/nix/modules/roles/prometheus.nix
-repochecks:deploy.RecordCorpusInLegWiringSpec	.github/actions/convergence-setup/action.yml .github/scripts/convergence-publish.sh .github/scripts/restore-enrichment-tree.sh .github/workflows/country-convergence-leg.yml .github/workflows/record-scrape-fixtures.yml worker/src/fixtures/scala/scripts/RecordCorpusFixture.scala .github/scripts/convergence_*.py
+repochecks:deploy.RecordCorpusInLegWiringSpec	.github/actions/convergence-setup/action.yml .github/scripts/convergence-publish.sh .github/scripts/restore-enrichment-tree.sh .github/scripts/restore_enrichment_tree.py .github/workflows/country-convergence-leg.yml .github/workflows/record-scrape-fixtures.yml worker/src/fixtures/scala/scripts/RecordCorpusFixture.scala .github/scripts/convergence_*.py
 repochecks:deploy.RecordingPreflightWiringSpec	.github/workflows/record-scrape-fixtures.yml
 repochecks:deploy.RegistryNameSpec	.github/workflows/*
 repochecks:deploy.ReleaseLanePublishSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml scripts/ci/publish-rolling-release.sh scripts/ios-release.sh

@@ -93,11 +93,12 @@ class ImageBuild:
 
 
 def main(argv: List[str], env: Mapping[str, str]) -> int:
-    if len(argv) < 3 or not all(argv[:3]):
+    image, repository, sha = (argv + [""] * 3)[:3]
+    if not (image and repository and sha):
         print(USAGE, file=sys.stderr)
         return 1
     with tempfile.TemporaryDirectory() as work:
-        return ImageBuild(argv[0], argv[1], argv[2], SubprocessRunner(), env).run(work)
+        return ImageBuild(image, repository, sha, SubprocessRunner(), env).run(work)
 
 
 if __name__ == "__main__":

@@ -102,6 +102,7 @@ scripts/ci/identity_judgements.py
 # ...and the Python modules the migrated convergence scripts import (an import is no path the generator reads): the
 # setup's own and the shared ones in scripts/lib.
 .github/scripts/convergence_setup.py
+.github/scripts/restore_enrichment_tree.py
 .github/scripts/convergence_setup_unpack.py
 .github/scripts/convergence_release.py
 .github/scripts/convergence_publish.py

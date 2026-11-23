@@ -14,7 +14,7 @@
 .github/scripts/fleetkit-access.sh	KEEP
 .github/scripts/kick-convergence.sh	KEEP
 .github/scripts/pack-enrichment-tree.sh	KEEP
-.github/scripts/restore-enrichment-tree.sh	MIGRATE
+.github/scripts/restore-enrichment-tree.sh	KEEP
 .github/scripts/unpack-fixture-archive.sh	KEEP
 android/gradlew	KEEP
 android/scripts/devtest-shuffled.sh	MIGRATE

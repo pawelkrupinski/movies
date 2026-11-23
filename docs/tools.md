@@ -245,7 +245,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/actions/convergence-fill/action.yml` | Fetch, within a budget, what the last hermetic leg's tree lacked, and publish it beside the pinned pair | `uses: ./.github/actions/convergence-fill` | wf convergence-fill; 2 tools | - | - |
 | `.github/actions/convergence-findings/action.yml` | Render one convergence run's ScalaTest narration and phase timings onto the job summary | `uses: ./.github/actions/convergence-findings` | wf country-convergence-leg; 2 tools | - | - |
 | `.github/actions/convergence-publish/action.yml` | Tar the enrichment tree this leg recorded and replace the country's asset in the rolling release | `uses: ./.github/actions/convergence-publish` | wf convergence-fill, country-convergence-leg; 4 tools | - | - |
-| `.github/actions/convergence-setup/action.yml` | MongoDB, recorded fixtures and a warm sbt for a country's convergence leg | `uses: ./.github/actions/convergence-setup` | wf ci, convergence-bisect, convergence-fill +4; 14 tools | - | - |
+| `.github/actions/convergence-setup/action.yml` | MongoDB, recorded fixtures and a warm sbt for a country's convergence leg | `uses: ./.github/actions/convergence-setup` | wf ci, convergence-bisect, convergence-fill +4; 15 tools | - | - |
 | `.github/actions/hard-clusters-ratchet/action.yml` | Add the films a failed convergence leg named to the hard-cluster fixture, as an artifact | `uses: ./.github/actions/hard-clusters-ratchet` | wf country-convergence-leg; 1 tool | - | - |
 | `.github/scripts/convergence-bisect-step.sh` | One `git bisect run` step of .github/workflows/convergence-bisect.yml | `.github/scripts/convergence-bisect-step.sh` | wf convergence-bisect | convergence-bisect-step-test.sh | KEEP |
 | `.github/scripts/convergence-bisect.sh` | Find the commit that turned a country's hermetic convergence leg red (a name for convergence_bisect.py) | `.github/scripts/convergence-bisect.sh` | wf convergence-bisect; 2 tools | convergence_bisect_test.py | KEEP |
@@ -456,12 +456,13 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/title-trace` | Every step one raw billing goes through, in production order, to the title the resolver reads | `scripts/title-trace` | wf main; skill CLAUDE.md, identity-investigation; 6 tools | title_trace_test.py | MIGRATE |
 | `scripts/venue-replay` | One venue's listings as the code at one or two git refs reads them, from a recording — never the network | `scripts/venue-replay` | skill CLAUDE.md, identity-investigation; 6 tools | venue_replay_test.py | MIGRATE |
 
-## Mirror and data (76)
+## Mirror and data (77)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
 | `.github/scripts/pack-enrichment-tree.sh` | Tar the enrichment tree a convergence leg recorded, and refuse to publish an archive that lost the remembered-answer cache on the way in | `.github/scripts/pack-enrichment-tree.sh` | 3 tools | - | KEEP |
-| `.github/scripts/restore-enrichment-tree.sh` | Fetch a convergence leg's enrichment tree and unpack it into a staging directory | `.github/scripts/restore-enrichment-tree.sh` | wf archive-recording; 6 tools | restore-enrichment-tree-test.sh | MIGRATE |
+| `.github/scripts/restore-enrichment-tree.sh` | Fetch a convergence leg's enrichment tree and unpack it into a staging directory | `.github/scripts/restore-enrichment-tree.sh` | wf archive-recording; 7 tools | restore_enrichment_tree_test.py | KEEP |
+| `.github/scripts/restore_enrichment_tree.py` | Fetch a convergence leg's enrichment tree and unpack it into a STAGING directory, for convergence-setup to move into | `.github/scripts/restore_enrichment_tree.py` | 1 tool | restore_enrichment_tree_test.py | Python |
 | `.github/workflows/discover-cinemas.yml` | Weekly discovery of new UK cinemas on flicks.co.uk, wired into the catalog as a PR for a human to review | `workflow: workflow_dispatch, schedule, repository_dispatch` | wf decoration-discovery, scala-steward | - | - |
 | `.github/workflows/roster-audit.yml` | Weekly online half of the cinema-roster audit (the offline half, CinemaRosterAuditSpec, runs with the unit tests on every push) | `workflow: schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
 | `data/germany/scripts/add_found_venues.py` | Add the venues harvest_sources.py found to the roster. | `python3 data/germany/scripts/add_found_venues.py` | 2 tools | - | Python |
@@ -658,9 +659,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 20 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 21 tools | tool_github_test.py | Python |
 | `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 90 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 91 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 14 tools | tool_python_test.py | Python |
-| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 19 tools | - | Python |
+| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 20 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 7 tools | - | KEEP |
