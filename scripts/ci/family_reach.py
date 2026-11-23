@@ -26,6 +26,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import identity_what_if as what_if  # noqa: E402
 
+sys.path.insert(0, HERE)
+import header_tsv  # noqa: E402
+
 # the check's own tools: a change to one walks every family (nothing about the code names which families it moves)
 CHECK_TOOLS = (
     "worker/src/test/scala/services/identity/FamilyConvergence.scala",
@@ -56,9 +59,7 @@ def reach(repo, base, head):
 
 
 def read_walks(path):
-    with open(path, encoding="utf-8") as f:
-        header = f.readline().rstrip("\n").split("\t")
-        return [dict(zip(header, line.rstrip("\n").split("\t"))) for line in f if line.strip()]
+    return header_tsv.read(path)
 
 
 def price(walks, patterns):

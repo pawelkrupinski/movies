@@ -17,12 +17,14 @@ of its members'.
 
 Tested by family_shards_test.py.
 """
-import csv
 import datetime
 import glob
 import json
 import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import header_tsv  # noqa: E402
 
 # country code -> shards; the order is the order the rows start in (the slowest first)
 SHARDS = {"us": 11, "de": 11, "uk": 5, "pl": 2, "es": 1}
@@ -45,9 +47,8 @@ def costs(source, out):
     rows = {}
     for path in glob.glob(os.path.join(source, "**", "family-walks-??.tsv"), recursive=True):
         code = os.path.basename(path)[len("family-walks-"):][:2]
-        with open(path, newline="", encoding="utf-8") as f:
-            for row in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE):
-                rows.setdefault(code, {})[row["family"]] = [row["family"], row["tier"], row["subsets"], row["seconds"]]
+        for row in header_tsv.read(path):
+            rows.setdefault(code, {})[row["family"]] = [row["family"], row["tier"], row["subsets"], row["seconds"]]
     for code, families in sorted(rows.items()):
         with open(os.path.join(out, f"family-costs-{code}.tsv"), "w", encoding="utf-8") as f:
             f.write("family\ttier\tsubsets\tseconds\n")

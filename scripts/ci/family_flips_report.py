@@ -25,11 +25,13 @@ A country with a shard missing keeps last night's file and its place in the rank
 Tested by family_flips_report_test.py.
 """
 import argparse
-import csv
 import glob
 import os
 import re
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import header_tsv  # noqa: E402
 
 BACKLOG_COLUMNS = ["kind", "country", "seed", "slice", "venue", "rawTitle", "takes", "firstSeen", "owner", "note"]
 RANKED_COLUMNS = ["rank", "rule", "listings", "country", "venue", "rawTitle", "shape", "tier", "witness"]
@@ -42,19 +44,10 @@ NOTE = re.compile(r"^(?P<shape>.*?) (?P<tier>\[[^\]]*\]) (?P<family>.*?)(?: rule
 
 def read_rows(path):
     with open(path, newline="", encoding="utf-8") as f:
-        lines = [line for line in f if line.strip() and not line.startswith("#")]
-    reader = csv.reader(lines, delimiter="\t", quoting=csv.QUOTE_NONE)
-    header = next(reader, None)
+        header, rows = header_tsv.table(f)
     if header != BACKLOG_COLUMNS:
-        raise ValueError(f"{path}: header {header}, not {BACKLOG_COLUMNS}")
-    return [dict(zip(header, cols + [""] * (len(header) - len(cols)))) for cols in reader]
-
-
-def write_tsv(path, columns, rows):
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("\t".join(columns) + "\n")
-        for row in rows:
-            f.write("\t".join(str(row.get(c, "")).replace("\t", " ").replace("\n", " ") for c in columns) + "\n")
+        raise ValueError(f"{path}: header {header or None}, not {BACKLOG_COLUMNS}")
+    return rows
 
 
 def key(row):
@@ -114,7 +107,7 @@ def report(shards_dir, expect, previous_dir, out_dir):
             notes.append(f"{code}: shard(s) {' '.join(map(str, missing))} of {count} missing -- last night's file kept, nothing published")
             current += previous or []
             continue
-        write_tsv(os.path.join(out_dir, f"family-flips-{code}.tsv"), BACKLOG_COLUMNS, rows)
+        header_tsv.write(os.path.join(out_dir, f"family-flips-{code}.tsv"), BACKLOG_COLUMNS, rows)
         current += rows
         if previous is None:
             notes.append(f"{code}: no file from an earlier night -- this one is the baseline, nothing is new")
@@ -122,8 +115,8 @@ def report(shards_dir, expect, previous_dir, out_dir):
             held = {key(r) for r in previous}
             new_rows += [r for r in rows if key(r) not in held]
         lines.append(f"| {code} | {count} | {len(rows)} | {sum(1 for r in new_rows if r['country'] == code) if previous is not None else 'baseline'} |")
-    write_tsv(os.path.join(out_dir, "family-flips-ranked.tsv"), RANKED_COLUMNS, ranked(current))
-    write_tsv(os.path.join(out_dir, "family-flips-new.tsv"), BACKLOG_COLUMNS, new_rows)
+    header_tsv.write(os.path.join(out_dir, "family-flips-ranked.tsv"), RANKED_COLUMNS, ranked(current))
+    header_tsv.write(os.path.join(out_dir, "family-flips-new.tsv"), BACKLOG_COLUMNS, new_rows)
 
     top = {}
     for r in ranked(current):
