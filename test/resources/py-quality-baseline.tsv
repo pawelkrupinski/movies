@@ -225,9 +225,6 @@ cognitive	scripts/identity-impact-check:hook	19
 cognitive	scripts/identity-impact-check:main	11
 cognitive	scripts/identity-impact-check:mutations	26
 cognitive	scripts/identity-impact-check:replay	20
-cognitive	scripts/identity-ratchet-report:main	23
-cognitive	scripts/identity-ratchet-report:parse_log	18
-cognitive	scripts/identity-ratchet-report:table	16
 cognitive	scripts/identity_boot_cost.py:compare	19
 cognitive	scripts/identity_measure.py:bucket_of	17
 cognitive	scripts/identity_measure.py:landable	14
@@ -493,7 +490,6 @@ cyclomatic	scripts/flip_timeline.py:render	63
 cyclomatic	scripts/flip_timeline.py:render_all	14
 cyclomatic	scripts/identity-impact-check:mutations	22
 cyclomatic	scripts/identity-impact-check:replay	15
-cyclomatic	scripts/identity-ratchet-report:main	24
 cyclomatic	scripts/identity-stage-works.py:main	13
 cyclomatic	scripts/identity_boot_cost.py:compare	14
 cyclomatic	scripts/identity_measure.py:bucket_of	13

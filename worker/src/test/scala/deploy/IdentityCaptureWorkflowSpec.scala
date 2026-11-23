@@ -77,7 +77,7 @@ class IdentityCaptureWorkflowSpec extends AnyFlatSpec with Matchers {
   it should "upload the ratchet's findings as the artifact scripts/identity-ratchet-report reads" in {
     publish should include("name: identity-ratchet")
     publish should include(tools.UnmatchedClusters.FindingsPath.toString)
-    RepoFile.read("scripts/identity-ratchet-report") should include("\"identity-ratchet\"")
+    RepoFile.read("scripts/identity_ratchet_report.py") should include("\"identity-ratchet\"")
   }
 
   /** The report's findings are the ratchet's TSV through the one tool that tables it, not a second grep of the log. */
