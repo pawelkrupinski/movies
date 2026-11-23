@@ -12,9 +12,8 @@
 # other two honoured $LOCAL_MIRROR_PORT. A copy that drifts silently is the whole
 # argument for one definition.
 #
-# Sourcing must stay side-effect free (mirror-resilience-test.sh asserts that
-# sourcing mirror.sh asks the vault for nothing and starts nothing), so this file is a
-# function definition and nothing else (the port it reads: tool-conventions.sh's local_mongo_port).
+# Sourcing must stay side-effect free, so this file is a function definition and
+# nothing else (the mirror daemon's Python twin: mirror_settings.Settings.local_mongo) (the port it reads: tool-conventions.sh's local_mongo_port).
 
 # Ensure the local mirror Mongo (native, brew-managed) answers, re-running the
 # idempotent starter only when it does not — so a stopped service self-heals.

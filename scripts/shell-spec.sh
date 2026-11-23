@@ -8,11 +8,6 @@
 # the same `fails=0`, and the same summary-and-exit line. Identical enough that
 # their four copies hashed the same.
 #
-# scripts/local-mirror/mirror-resilience-test.sh is intentionally left out — its
-# harness is a genuinely different one (it reports per-case rather than
-# accumulating), and rewriting a passing spec to fit a shared shape is churn, not
-# deduplication.
-#
 # Usage:
 #   . "$REPO_ROOT/scripts/shell-spec.sh"
 #   check "what it does" "$expected" "$actual"

@@ -192,7 +192,7 @@ scripts/listing-history	KEEP
 scripts/local-mirror/freshness	KEEP
 scripts/local-mirror/local-mongo.sh	KEEP
 scripts/local-mirror/log-path.sh	KEEP
-scripts/local-mirror/mirror.sh	MIGRATE
+scripts/local-mirror/mirror.sh	KEEP
 scripts/local-mirror/mongosh-at.sh	KEEP
 scripts/local-mirror/prod-tunnel.sh	MIGRATE
 scripts/local-mirror/service.sh	MIGRATE
