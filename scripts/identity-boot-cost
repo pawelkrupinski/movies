@@ -45,7 +45,7 @@ cd "$root"
 
 "${KINOWO_BOOT_COST_SBT:-$root/scripts/sbt-warm}" "worker/Test/compile" "export worker/Test/fullClasspath" > "$out/sbt.log" 2>&1 \
   || { tail -30 "$out/sbt.log" >&2; die "sbt worker/Test/compile failed (log: $out/sbt.log)"; }
-classpath=$(grep -E '^/' "$out/sbt.log" | tail -1)
+classpath=$(grep -E '^/' "$out/sbt.log" | tail -1 || true)
 [ -n "$classpath" ] || die "no classpath in sbt's export (log: $out/sbt.log)"
 
 "$root/scripts/gov-run" --job identity-boot-cost --cores 1 --mem 3 -- \
