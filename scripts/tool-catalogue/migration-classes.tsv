@@ -225,9 +225,8 @@ scripts/root-checkout-check	KEEP
 scripts/rule-firing-prod	KEEP
 scripts/run-script-tests	MIGRATE
 scripts/sbt-warm	MIGRATE
-scripts/scalafix-move	MIGRATE
+scripts/scalafix-move	KEEP
 scripts/scalafix-organize	KEEP
-scripts/scalafix-tree.sh	KEEP
 scripts/scratch-git.sh	KEEP
 scripts/scratch-zinc.sh	KEEP
 scripts/seeded-order.sh	KEEP
