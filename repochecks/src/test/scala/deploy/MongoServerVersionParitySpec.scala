@@ -45,13 +45,15 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  // The NATIVE mongod a job image bakes (start-mongo-replset.sh's MONGO_NATIVE_HOME, /opt/mongodb/<version>,
-  // copied out of the same mongo:<version> image): the same release, or the script would start another one wherever
-  // the image carries it. The script names no version: it reads the pin's tag, which the spec above holds.
+  // The NATIVE mongod a job image bakes (start_mongo_replset.py's MONGO_NATIVE_HOME, /opt/mongodb/<version>,
+  // copied out of the same mongo:<version> image): the same release, or the tool would start another one wherever
+  // the image carries it. The tool names no version: it reads the pin's tag, which the spec above holds.
   "the job image's native mongod" should "be the exact server release production runs" in {
-    val script = RepoFile.withoutComments(RepoFile.read("scripts/ci/start-mongo-replset.sh"))
-    """/opt/mongodb/[0-9]""".r.findFirstIn(script) shouldBe None
-    script should include("/opt/mongodb/$(\"$here/pull-pinned-image.sh\" --pin mongo tag)")
+    val tool = RepoFile.withoutComments(RepoFile.read("scripts/ci/start_mongo_replset.py"))
+    """/opt/mongodb/[0-9]""".r.findFirstIn(tool) shouldBe None
+    tool should include("\"/opt/mongodb/\" + (")
+    tool should include("pinned_image(env, \"--pin\", \"mongo\", \"tag\")")
+    tool should include("PULL = os.path.join(HERE, \"pull-pinned-image.sh\")")
   }
 
   /** mongod 8.3 refuses to start on Linux 6.19 through 7.0.13 ("Linux kernel versions 6.19 and newer has a

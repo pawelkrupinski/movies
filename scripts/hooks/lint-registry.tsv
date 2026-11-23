@@ -142,7 +142,7 @@ repochecks:deploy.LegVerdictWiringSpec	.github/workflows/*
 repochecks:deploy.MainAfterRedCiSpec	.github/workflows/main.yml
 repochecks:deploy.MetricsPackagesSpec	*/src/main/scala/services/metrics/*
 repochecks:deploy.MongoGrantsListSpec	infra/nix/* scripts/mongo-grants.tsv
-repochecks:deploy.MongoServerVersionParitySpec	.github/workflows/* .github/pinned-images.tsv infra/nix/modules/roles/mongodb.nix scripts/ci/start-mongo-replset.sh scripts/convergence_local.py .github/actions/convergence-setup/*
+repochecks:deploy.MongoServerVersionParitySpec	.github/workflows/* .github/pinned-images.tsv infra/nix/modules/roles/mongodb.nix scripts/ci/start-mongo-replset.sh scripts/ci/start_mongo_replset.py scripts/convergence_local.py .github/actions/convergence-setup/*
 repochecks:deploy.NoExitStatusReadUnderErrexitSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml @per-file	per-file (lint_per_file_check.py, 2026-11-21): each run block alone: an exit status read under -e
 repochecks:deploy.NoSettingFallbackSpec	.github/* infra/bin/* scripts/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each script or workflow alone: a defaulted setting
 repochecks:deploy.NoSilencedGhCurlSpec	*

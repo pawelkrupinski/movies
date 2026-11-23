@@ -40,8 +40,11 @@ class CiPinnedImageSpec extends AnyFlatSpec with Matchers {
   private def reference(pin: Pin) =
     ("""(?<![\w.-])(?:[\w.-]+/)*""" + java.util.regex.Pattern.quote(pin.repository.split('/').last) + """[:@][\w$]""").r
 
-  private def ciScripts: Seq[String] =
-    RepoFile.listed("scripts/ci")(f => f.getName.endsWith(".sh") && !f.getName.endsWith("-test.sh")).map(_.getPath)
+  // the shell tools and the Python ones (start_mongo_replset.py runs the mongo image), never their tests
+  private def ciScripts: Seq[String] = RepoFile.listed("scripts/ci") { f =>
+    val name = f.getName
+    (name.endsWith(".sh") && !name.endsWith("-test.sh")) || (name.endsWith(".py") && !name.endsWith("_test.py"))
+  }.map(_.getPath)
 
   "no workflow, action or CI script" should "name a pinned image itself, rather than pull it through the shared action" in {
     pins should not be empty

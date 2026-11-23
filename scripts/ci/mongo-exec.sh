@@ -6,7 +6,7 @@
 #
 #   mongo-exec.sh [-d] <command...>    e.g. mongo-exec.sh mongosh --quiet --eval 'db.runCommand({ping:1})'
 #                                       -d: detached, as `docker exec -d` (the command runs on in the background)
-# Tested by scripts/ci/start-mongo-replset-test.sh.
+# Tested by scripts/ci/start_mongo_replset_test.py.
 set -uo pipefail
 marker=${MONGO_NATIVE_MARKER:-/tmp/kinowo-mongo-native}
 detach=""

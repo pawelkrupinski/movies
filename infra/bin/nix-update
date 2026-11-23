@@ -113,7 +113,7 @@ def choose(current, available):
 MONGODB_FILE = "nix/modules/roles/mongodb.nix"
 # The containers MongoServerVersionParitySpec holds to the same release (paths from the checkout).
 # CI's is the `mongo` row of .github/pinned-images.tsv (tag AND digest; CiPinnedImageSpec), which
-# start-mongo-replset.sh reads, its native /opt/mongodb/<tag> home included.
+# start_mongo_replset.py reads, its native /opt/mongodb/<tag> home included.
 MONGODB_TAG_FILES = (".github/pinned-images.tsv", "scripts/convergence_local.py")
 PINNED_IMAGES = ".github/pinned-images.tsv"
 
@@ -242,7 +242,7 @@ def bump_mongodb():
     found["checked"] = "each tarball matches MongoDB's published sha256; `mongo:` tags in " + \
         ", ".join(f"`{p}`" for p in MONGODB_TAG_FILES) + f" moved with it (CI's pin to Docker Hub's {digest}; " \
         "mirror-pinned-images.yml copies it to GHCR once this lands, CI pulling it from mirror.gcr.io until then)"
-    # start-mongo-replset.sh looks for a job image's native mongod at /opt/mongodb/<the pin's tag>
+    # start_mongo_replset.py looks for a job image's native mongod at /opt/mongodb/<the pin's tag>
     found["notes"].append(f"mongodb {take}: a CI job image baking its native mongod at `/opt/mongodb/{current}` "
                           "(bitcashier/infra `nix/files/movies-job-image/Dockerfile`) must bake "
                           f"`/opt/mongodb/{take}` too; until then CI starts the `mongo:{take}` container (slower, same release)")
