@@ -38,7 +38,6 @@ infra/nix/files/nix-stage-endpoint.sh	KEEP
 infra/nix/files/prometheus-reload.sh	KEEP
 infra/nix/files/reboot-required.sh	KEEP
 infra/nix/files/registry-prune.sh	KEEP
-infra/nix/files/synthetic-probe-targets.sh	MIGRATE
 infra/test/fleet-flake.sh	KEEP
 infra/version-dashboard/scripts/service.sh	MIGRATE
 infra/version-dashboard/scripts/watchdog.sh	KEEP

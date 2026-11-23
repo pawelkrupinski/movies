@@ -14,7 +14,7 @@
 # door, each country's root, one big city per country. A FILM PAGE AND ITS SHARE CARD cannot be
 # written down -- a film's page 404s the day its last screening passes -- so a timer asks each
 # country's city page which film it lists now and writes those as a file_sd document
-# (nix/files/synthetic-probe-targets.sh says how, and why it is all-or-nothing).
+# (nix/files/synthetic_probe_targets.py says how, and why it is all-or-nothing).
 #
 # CLOUDFLARE AND THIS HOST. Bot Fight Mode is on for both zones and answered a Hetzner address with
 # a 403 challenge whatever the User-Agent (measured 2026-09-24 from the fleet's egress), so an IP
@@ -142,8 +142,11 @@ let
     ];
   };
 
-  discover = pkgs.writeShellScript "synthetic-probe-targets"
-    (builtins.readFile ../../files/synthetic-probe-targets.sh);
+  # Stdlib Python; writePython3Bin's flake8 runs at build time. E501: this repository's comments are wider than 79
+  # columns; E265: the file's own shebang lands on line 2 under the one writePython3Bin prepends.
+  discover = pkgs.writers.writePython3Bin "synthetic-probe-targets" {
+    flakeIgnore = [ "E501" "E265" ];
+  } (builtins.readFile ../../files/synthetic_probe_targets.py);
 in
 {
   options.fleet.syntheticProbes = {
@@ -231,9 +234,9 @@ in
       description = "Find a live film page and share card per country for the synthetic probes";
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
-      # Every tool the script runs (it refuses to start without one); test_synthetic_probes.sh runs it
-      # with exactly this PATH.
-      path = [ pkgs.curl pkgs.jq pkgs.gnugrep pkgs.gnused pkgs.gawk pkgs.coreutils ];
+      # The one tool the discovery runs (it refuses to start without it; its interpreter is the
+      # derivation's own); test_synthetic_probes.sh runs it with exactly this PATH.
+      path = [ pkgs.curl ];
       environment = {
         PROBE_USER_AGENT = cfg.userAgent;
         PROBE_TEXTFILE = "${config.fleet.observability.textfileDirectory}/synthetic-probes.prom";
@@ -245,7 +248,7 @@ in
       };
       serviceConfig = {
         Type = "oneshot";
-        ExecStart = lib.escapeShellArgs ([ "${discover}" discoveredFile ]
+        ExecStart = lib.escapeShellArgs ([ "${discover}/bin/synthetic-probe-targets" discoveredFile ]
           ++ lib.mapAttrsToList (country: url: "${country}=${url}") cfg.discoverFrom);
         StateDirectory = "synthetic-probes";
         StateDirectoryMode = "0755";

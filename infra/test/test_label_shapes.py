@@ -58,7 +58,7 @@ EVENT_ONLY_VALUES = {
     ("flux:resource_info", "suspended", "true"),
     # NOT PUBLISHED YET (2026-10-21): the poster probes and the web's poster census are new with
     # posters.rules, so no `kind="poster"` probe and no `poster_host` series exist to snapshot.
-    # `kind` is what synthetic-probe-targets.sh writes; `none`/`other` are the census's two fixed
+    # `kind` is what synthetic_probe_targets.py writes; `none`/`other` are the census's two fixed
     # labels (PosterCensus). Re-snapshot once monitoring-1 and the web pods run
     # them, then drop these.
     ("probe_success", "kind", "poster"),

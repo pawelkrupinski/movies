@@ -3,7 +3,7 @@
 #
 # Two halves, because the module fails in two different silent ways:
 #
-#   discovery   nix/files/synthetic-probe-targets.sh finds a live film page and share card per
+#   discovery   nix/files/synthetic_probe_targets.py finds a live film page and share card per
 #               country. Its cases are nix/files/synthetic_probe_targets_test.py; here only that it
 #               finds its posters with exactly the tools its unit is given.
 #   the job     the `blackbox` scrape job monitoring-1 would install, read with `nix eval` and
@@ -14,7 +14,7 @@ set -uo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 infra="$(cd "$here/.." && pwd)"
-script="$infra/nix/files/synthetic-probe-targets.sh"
+script="$infra/nix/files/synthetic_probe_targets.py"
 . "$here/../../scripts/shell-spec.sh"
 . "$here/fleet-flake.sh"
 flake="$(fleet_flake "$infra")"
@@ -28,8 +28,8 @@ trap 'rm -rf "$tmp"' EXIT
 # a missing page is a 404. Honours the `-o` and `-w '%{http_code}'` the discovery reads, and logs
 # every call's arguments to $STUB_LOG.
 mkdir -p "$tmp/bin" "$tmp/pages/origin"
-cat > "$tmp/bin/curl" <<'STUB'
-#!/usr/bin/env bash
+# Bash builtins only, under an absolute bash: the unit's PATH below holds curl alone.
+{ printf '#!%s\n' "$(command -v bash)"; cat <<'STUB'; } > "$tmp/bin/curl"
 printf '%s\n' "$*" >> "$STUB_LOG"
 url="${@: -1}" out=/dev/stdout write="" dir="$STUB_PAGES"
 while [ $# -gt 1 ]; do
@@ -40,9 +40,12 @@ while [ $# -gt 1 ]; do
   esac
   shift
 done
-page="$dir/$(printf '%s' "$url" | tr '/:' '__')"
+page="$dir/${url//[\/:]/_}"
 code=404
-if [ -f "$page" ]; then code="$(cat "$page.status" 2>/dev/null || echo 200)"; cat "$page" > "$out"; fi
+if [ -f "$page" ]; then
+  code=200; [ -f "$page.status" ] && code="$(<"$page.status")"
+  printf '%s' "$(<"$page")" > "$out"
+fi
 [ -n "$write" ] && printf '%s' "$code"
 exit 0
 STUB
@@ -59,7 +62,7 @@ run() {
   : > "$tmp/curl.log"
   (trap '' PIPE
     PATH="$tmp/bin:${RUN_TOOLS:-$PATH}" STUB_PAGES="$tmp/pages" STUB_LOG="$tmp/curl.log" PROBE_TEXTFILE="$tmp/probes.prom" \
-      exec bash "$script" "$@" 2>"$tmp/stderr")
+      exec python3 "$script" "$@" 2>"$tmp/stderr")
 }
 field() { jq -r "$1" "$tmp/targets.json"; }
 
@@ -110,12 +113,12 @@ check "...bundled into the one file curl is told to trust" "synthetic-probe-orig
   "$(jq -r '.PROBE_ORIGIN_CA | split("-") | .[1:] | join("-")' <<<"$discovery_env")"
 
 # THE DISCOVERY WITH ITS UNIT'S PATH AND NOTHING ELSE: each package the unit is given, built for this
-# machine from the fleet's nixpkgs, and the shell its script is written for -- not systemd, which the
-# unit is given but the script never runs, and which no Mac builds.
+# machine from the fleet's nixpkgs, and the python3 its derivation runs it with -- not systemd, which
+# the unit is given but the discovery never runs, and which no Mac builds.
 unit_packages="$(nix "${nix_flags[@]}" eval --json \
   "$flake#nixosConfigurations.monitoring-1.config.systemd.services.synthetic-probe-targets.path" \
   --apply 'map (p: p.pname or (builtins.parseDrvName p.name).name)' 2>/dev/null |
-  jq -r '(. + ["bash"]) - ["systemd"] | unique | map("nixpkgs#" + .) | join(" ")')"
+  jq -r '(. + ["python3"]) - ["systemd"] | unique | map("nixpkgs#" + .) | join(" ")')"
 # shellcheck disable=SC2086 # one installable per word
 unit_path="$(nix "${nix_flags[@]}" build --no-link --print-out-paths --inputs-from "$flake" $unit_packages 2>/dev/null |
   sed 's|$|/bin|' | paste -sd: -)"
