@@ -104,7 +104,7 @@ is that the local toolchain is missing (e.g. no full Xcode for
 ## Refactoring safety tools (on demand; reports, never gates)
 
 None runs in `testUnit` or the pre-push hook, and none instruments, mutates or recompiles the caller's checkout: the
-touched-code pair measures in a throwaway worktree at the range's head (`scripts/touched-tree.sh`), the scalafix pair in
+touched-code pair measures in a throwaway worktree at the range's head (`scripts/lib/touched_tree.py`), the scalafix pair in
 a kept worktree with SemanticDB on (`scripts/scalafix-tree.sh`). Each prints its own `--help`.
 
 - **`scripts/coverage-touched <base>..<head>`** (scoverage, ~1.5 min on a three-file scraper lane): each production

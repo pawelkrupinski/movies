@@ -207,10 +207,10 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/land-precheck` | The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here | `scripts/land-precheck` | agentctl; 1 tool | land-precheck-test.sh | MIGRATE |
 | `scripts/py-quality-report` | The Python quality report and its ratchet (entry; the measure is scripts/py-quality/report.py) | `scripts/py-quality-report` | hook pre-push; skill CLAUDE.md; 2 tools | - | KEEP |
 | `scripts/py-quality/clones.py` | THE PYTHON CLONE GROUPS (scripts/py-quality/report.py): every run of MIN_TOKENS or more tokens appearing twice or more | `imported` | wf ios; hook pre-push; skill CLAUDE.md, test-layers; 7 tools | - | Python |
-| `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; skill CLAUDE.md; 15 tools | - | Python |
+| `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; skill CLAUDE.md; 14 tools | - | Python |
 | `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 16 tools | - | Python |
 | `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push; 3 tools | - | Python |
-| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 116 tools | report_test.py | Python |
+| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 119 tools | report_test.py | Python |
 | `scripts/quality-report` | The code-quality report (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, length and duplication (pmd cpd) | `scripts/quality-report` | wf quality-hotspots; hook pre-push; agentctl; skill CLAUDE.md, test-layers; 2 tools | - | KEEP |
 | `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs (a name for ratchet_diff_cli.py) | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 3 tools | - | KEEP |
 | `scripts/ratchet_diff_cli.py` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet_diff_cli.py` | 1 tool | ratchet_diff_cli_test.py | Python |
@@ -508,8 +508,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 204 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 204 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 207 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 207 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |
@@ -573,7 +573,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/store-screenshots-common.sh` | Shared engine for the store-screenshot drivers — android/scripts and ios/scripts both source this | `bash scripts/store-screenshots-common.sh` | wf android; 5 tools | - | MIGRATE |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (69)
+## Dev (71)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -585,7 +585,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci_status.py` | The logic behind scripts/ci-status (its header has the usage); tests: scripts/ci_status_test.py. | `python3 scripts/ci_status.py` | 1 tool | ci_status_test.py | Python |
 | `scripts/ci_wait.py` | Waiting on GitHub Actions runs, bounded: the logic behind scripts/ci-wait (its header has the usage); tests: | `scripts/ci_wait.py` | 1 tool | ci_wait_test.py | Python |
 | `scripts/class-cycles` | The class cycles of one package (CLAUDE.md, Design rules; project/ClassCycles.scala, `sbt couplingClassCycles`) | `scripts/class-cycles` | skill CLAUDE.md, identity-investigation; 1 tool | class-cycles-test.sh | MIGRATE |
-| `scripts/coverage-touched` | Coverage of the methods a change touches (scoverage; a report, never a gate) | `scripts/coverage-touched` | skill test-layers; 4 tools | coverage-touched-test.sh | MIGRATE |
+| `scripts/coverage-touched` | Coverage of the methods a change touches (scoverage; a report, never a gate; a name for coverage_touched.py) | `scripts/coverage-touched` | skill test-layers; 5 tools | coverage_touched_test.py | KEEP |
+| `scripts/coverage_touched.py` | Coverage of the methods a change touches (scoverage; a report, never a gate) | `scripts/coverage_touched.py` | 2 tools | coverage_touched_test.py | Python |
 | `scripts/dead-code` | The dead-code finder (CLAUDE.md, "Cleanup and displaced-code audit"): production classes, objects and methods nothing calls, ranked | `scripts/dead-code` | skill test-layers; 2 tools | dead-code-test.sh | KEEP |
 | `scripts/dead_code.py` | THE DEAD-CODE LIST, ranked (scripts/dead-code): `deadCode`'s rows (project/DeadCode.scala: kind, verdict, name, | `python3 scripts/dead_code.py` | 1 tool | dead_code_test.py | Python |
 | `scripts/dev-server.sh` | Local dev server, run under a deliberately smaller heap than the rest of sbt | `scripts/dev-server.sh` | 3 tools | dev-server-test.sh | KEEP |
@@ -598,16 +599,18 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/seeded_order.py` | THE SEEDED TEST ORDER the nightly order-independence legs share (ios/scripts/swift_test_shuffled.py, | `imported` | wf android; 2 tools | seeded_order_test.py | Python |
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 5 tools | tool_actions_test.py | Python |
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; the retired | `imported` | 3 tools | tool_ci_wait_test.py | Python |
-| `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 11 tools | - | Python |
+| `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 14 tools | - | Python |
 | `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 11 tools | - | Python |
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 10 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 12 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 15 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 62 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 63 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 13 tools | - | Python |
+| `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 5 tools | - | KEEP |
-| `scripts/mutation-check` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate) | `scripts/mutation-check` | skill test-layers; 4 tools | mutation-check-test.sh | MIGRATE |
+| `scripts/mutation-check` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate; a name for mutation_check.py) | `scripts/mutation-check` | skill test-layers; 5 tools | mutation_check_test.py | KEEP |
+| `scripts/mutation_check.py` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate) | `scripts/mutation_check.py` | 2 tools | mutation_check_test.py | Python |
 | `scripts/ops/dumpheap.py` | A heap dump (or a live class histogram) of a containerised JVM, asked from the NODE as root | `python3 scripts/ops/dumpheap.py` | by hand | dumpheap_test.py | Python |
 | `scripts/own-checkout` | The own-checkout guard: a tool that measures or writes its own checkout (`root` from its own path | `scripts/own-checkout` | 8 tools | own-checkout-test.sh | KEEP |
 | `scripts/page-tests-local` | Page tests, locally: the Playwright rows CI's `pw` page-test rows run, against a FixtureServerMain booted in this checkout's kept sbt server | `scripts/page-tests-local` | hook pre-push; skill CLAUDE.md, agent-ops, test-layers; 3 tools | page-tests-local-test.sh | MIGRATE |
@@ -631,10 +634,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/timezonefinder-python` | Print a directory whose python3 imports timezonefinder, for the pre-push drift check | `scripts/timezonefinder-python` | hook pre-push; 3 tools | timezonefinder-python-test.sh | KEEP |
 | `scripts/timezonefinder-python-stub.sh` | A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder | `sourced` | by hand | - | KEEP |
 | `scripts/title_trace.py` | Every step one raw billing goes through, in production order: the ingest tidy, the venue's own title rules, the format | `python3 scripts/title_trace.py` | wf main; 1 tool | title_trace_test.py | Python |
-| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 71 tools | tool-conventions-test.sh | MIGRATE |
+| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 69 tools | tool-conventions-test.sh | MIGRATE |
 | `scripts/tool_catalogue.py` | The tool catalogue: docs/tools.md, generated from every tool's own one-line purpose. | `python3 scripts/tool_catalogue.py` | skill CLAUDE.md | tool_catalogue_test.py | Python |
 | `scripts/touched-tree-stub.sh` | The stub sbt for the touched-code tools' specs (mutation-check, coverage-touched) | `scripts/touched-tree-stub.sh` | 1 tool | - | KEEP |
-| `scripts/touched-tree.sh` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `bash scripts/touched-tree.sh` | skill test-layers; 3 tools | - | MIGRATE |
 | `scripts/touched_methods.py` | THE METHODS A CHANGE TOUCHES, and what the refactoring tools say about each (scripts/mutation-check, | `python3 scripts/touched_methods.py` | 4 tools | touched_methods_test.py | Python |
 | `scripts/touched_tree_fixture.py` | The fixture scripts/coverage-touched's and scripts/mutation-check's black-box tests share (coverage_touched_test.py, | `imported` | by hand | - | Python |
 | `scripts/unit-changed` | The unit tests of the modules a change touches, in this checkout's warm sbt server | `scripts/unit-changed` | skill test-layers | unit-changed-test.sh | KEEP |

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Purpose: The stub sbt for the touched-code tools' specs (mutation-check, coverage-touched)
-# THE STUB sbt FOR THE TOUCHED-CODE TOOLS' SPECS (scripts/mutation-check-test.sh, scripts/coverage-touched-test.sh):
+# THE STUB sbt FOR THE TOUCHED-CODE TOOLS' SPECS (scripts/mutation_check_test.py, scripts/coverage_touched_test.py):
 # KINOWO_TOUCHED_SBT points at it. Each call is logged to $STUB_CALLS as `<cwd>|<command>|<command>...`, and each command
 # answers as the real one would, from the fixtures the spec names:
 #   quality/runMain quality.MethodSpans ... --out <f> ...   $STUB_SPANS copied to <f>

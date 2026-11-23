@@ -143,7 +143,7 @@ scripts/ci/xcuitest-each-class-alone.sh	MIGRATE
 scripts/class-cycles	MIGRATE
 scripts/convergence-local.sh	MIGRATE
 scripts/coupling-report	MIGRATE
-scripts/coverage-touched	MIGRATE
+scripts/coverage-touched	KEEP
 scripts/dead-code	KEEP
 scripts/deploy-watch	KEEP
 scripts/dev-server.sh	KEEP
@@ -205,7 +205,7 @@ scripts/mobile-release.sh	KEEP
 scripts/mobile-ship.sh	KEEP
 scripts/mobile-version-check.sh	KEEP
 scripts/mongo-grants	KEEP
-scripts/mutation-check	MIGRATE
+scripts/mutation-check	KEEP
 scripts/own-checkout	KEEP
 scripts/own-mongod.sh	KEEP
 scripts/page-tests-local	MIGRATE
@@ -244,7 +244,6 @@ scripts/timezonefinder-python-stub.sh	KEEP
 scripts/title-trace	MIGRATE
 scripts/tool-conventions.sh	MIGRATE
 scripts/touched-tree-stub.sh	KEEP
-scripts/touched-tree.sh	MIGRATE
 scripts/unit-changed	KEEP
 scripts/vault-env.sh	KEEP
 scripts/venue-replay	MIGRATE
