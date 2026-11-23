@@ -190,7 +190,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
     scoredOf(node).find(_.candidate.tmdbId == film).fold(scoring.pinDenies(node, film) || {
       candidateOf(film).exists { candidate =>
         val stated = evidenceOf(node).measured
-        evidenceDenies(stated, candidate.film, IdentityMeasures.listingFilm(stated, candidate.film, None, 0, 0, houses, scopeOf(node).qualifiers,
+        evidenceDenies(stated, candidate.film, IdentityMeasures.listingFilm(stated, candidate.film, None, 0, 0, houses, scopeOf(node).family.qualifiers,
           node.country), node.country)
       }
     })(_.denied)

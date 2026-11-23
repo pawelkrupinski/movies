@@ -8,11 +8,12 @@ import services.identity.vocabulary.Denial
 /** What rules a film out for one node of a family ([[FamilyScope]]) before its evidence is scored: a pin, its feed link
  *  overruled, a copied title, a title naming it only by the venue's name, a tag or a programme slot, a festival billed
  *  alone, a silent billing, the venues' cast, a relay's own text. */
-private[identity] final class NodeDenials(scoring: CandidateScoring, links: FeedLinkOverrule, copied: CopiedTitleDenial) {
+private[identity] final class NodeDenials(scoring: CandidateScoring, links: FeedLinkOverrule, family: FamilyPool) {
   import scoring.{namesOnlyAProgrammeSlot, namesOnlyATag, namesOnlyItsVenue}
   import scoring.generation.candidateById
 
   private val billing = new BillingDenials
+  private val copied  = new CopiedTitleDenial(family, links, scoring.generation.recorded)
 
   /** Why `node` rules `id` out before its evidence is scored: a pin, an overruled feed link, a feed link's copied title
    *  (a short its feed links another film beside among them), a title naming it only by the venue's own name, a programme tag or

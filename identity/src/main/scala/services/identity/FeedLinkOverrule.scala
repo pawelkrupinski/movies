@@ -7,8 +7,11 @@ import services.identity.vocabulary.{CatalogueId, ScreeningDays}
 
 /** A family's feed links ([[FeedLink]]) read against its pool ([[FamilyScope]]): the TMDB film a node's TMDB-keyed feed
  *  links it to, that link overruled where the title's other sources back a rival, a current release or the one film its
- *  titles name, and the node's evidence as the family then reads it. */
-private[identity] final class FeedLinkOverrule(pool: FamilyPool, numbersFilmsByTmdbId: Boolean, backing: VenueBacking) {
+ *  titles name, and the node's evidence as the family then reads it — the venues backing a film read off the `scoring`'s
+ *  [[VenueBacking]]. */
+private[identity] final class FeedLinkOverrule(pool: FamilyPool, scoring: CandidateScoring) {
+  import scoring.backing
+  private val numbersFilmsByTmdbId = scoring.generation.numbersFilmsByTmdbId
 
   /** The TMDB film a TMDB-keyed feed links `node` to ([[FeedLink.linked]]) — none where this resolve's films are a
    *  family's own numbers, which no TMDB id names (`numbersFilmsByTmdbId`: [[IdentityLookups.numbersFilmsByTmdbId]]). */

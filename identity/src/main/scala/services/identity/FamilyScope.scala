@@ -2,7 +2,7 @@ package services.identity
 
 import scala.collection.mutable
 
-import services.identity.measures.{Candidate, Evidence, EvidenceNode, IdentityMeasures, MeasuredListing, RelayStage, Scored, SearchMeasures, SourceReliability}
+import services.identity.measures.{Candidate, Evidence, EvidenceNode, MeasuredListing, RelayStage, Scored, SearchMeasures, SourceReliability}
 import services.identity.vocabulary.{CatalogueId, Denial}
 
 /** One family's scoring: every member node's candidates — the family's pool — scored on the node's
@@ -26,12 +26,10 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     if (fallback) members.flatMap(member => fallbackOf(member.id)).distinct.sorted.flatMap(candidateOf)
     else members.flatMap(member => scoring.generation.reached(member)).distinct.sorted.map(candidateById)
 
-  private val family  = new FamilyPool(pool, scoring.houses, related)
-  private val links   = new FeedLinkOverrule(family, scoring.generation.numbersFilmsByTmdbId, scoring.backing)
-  private val denials = new NodeDenials(scoring, links, new CopiedTitleDenial(family, links, scoring.generation.recorded))
-
-  /** The qualifiers the pool's records bill ([[FamilyPool.qualifiers]]). */
-  def qualifiers: IdentityMeasures.Qualifiers = family.qualifiers
+  /** The pool as the members' titles relate to it: its records' qualifiers among them ([[FamilyPool.qualifiers]]). */
+  val family: FamilyPool = new FamilyPool(pool, scoring.houses, related)
+  private val links   = new FeedLinkOverrule(family, scoring)
+  private val denials = new NodeDenials(scoring, links, family)
 
   /** Every candidate `subject`'s listing has an evidence path to, scored ([[ListingScoring]]); a `denial` marks, with its
    *  reason, the ones its node (`deniedByNode`: a pin, a venue's own name, an overruled feed link) or its own evidence
