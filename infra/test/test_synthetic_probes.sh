@@ -4,9 +4,8 @@
 # Two halves, because the module fails in two different silent ways:
 #
 #   discovery   nix/files/synthetic-probe-targets.sh finds a live film page and share card per
-#               country. Wrong, it writes a target that 404s (a paging ProbeFailing for a site that
-#               is up) or throws away the last good targets on a transient error. Driven here
-#               against a stub `curl` serving fixture pages, so it runs anywhere, offline.
+#               country. Its cases are nix/files/synthetic_probe_targets_test.py; here only that it
+#               finds its posters with exactly the tools its unit is given.
 #   the job     the `blackbox` scrape job monitoring-1 would install, read with `nix eval` and
 #               handed to `promtool check config`. A job that parses but relabels wrongly probes
 #               127.0.0.1:9115 itself, or labels every alert with the exporter's address instead
@@ -64,203 +63,6 @@ run() {
 }
 field() { jq -r "$1" "$tmp/targets.json"; }
 
-# Poland mounted at the root with relative hrefs; the UK path-mounted; the film page's og:image
-# spaced the way the real template spaces it.
-serve "https://kinowo.net/warszawa/" '<a href="/warszawa/movie/100-dni-misja-zeus">x</a><a href="/warszawa/movie/other">y</a></html>'
-serve "https://kinowo.net/warszawa/movie/100-dni-misja-zeus" \
-  '<meta property="og:image"        content="https://kinowo.net/share-cards/pl/had62.jpg?v=b179"></html>'
-serve "https://showtimes.cc/uk/london/" '<a href="/uk/london/movie/bad-apples">x</a></html>'
-serve "https://showtimes.cc/uk/london/movie/bad-apples" \
-  '<meta property="og:image" content="https://showtimes.cc/share-cards/uk/city-london.jpg"></html>'
-
-echo "discovery: a film per country, and its share card when it has one"
-run "$tmp/targets.json" pl=https://kinowo.net/warszawa/ uk=https://showtimes.cc/uk/london/
-check "the FIRST film listed on each city page, made absolute against the page's origin" \
-  "https://kinowo.net/warszawa/movie/100-dni-misja-zeus https://showtimes.cc/uk/london/movie/bad-apples" \
-  "$(field '[.[] | select(.labels.kind == "film") | .targets[0]] | join(" ")')"
-check "the film's share card, probed as an asset" \
-  "https://kinowo.net/share-cards/pl/had62.jpg?v=b179 http_asset pl" \
-  "$(field '.[] | select(.labels.kind == "share-card") | "\(.targets[0]) \(.labels.__param_module) \(.labels.country)"')"
-check "a film whose og:image is its city's card gets no share-card probe (it is not the film's)" \
-  "0" "$(field '[.[] | select(.labels.kind == "share-card" and .labels.country == "uk")] | length')"
-check "film pages are probed as pages" "http_page http_page" \
-  "$(field '[.[] | select(.labels.kind == "film") | .labels.__param_module] | join(" ")')"
-check "a success publishes the discovery timestamp for ProbeDiscoveryStale" \
-  "kinowo_synthetic_probe_discovery_last_success_timestamp_seconds" \
-  "$(grep -o '^kinowo_synthetic_probe_discovery_last_success_timestamp_seconds' "$tmp/probes.prom")"
-
-echo "discovery: all or nothing"
-cp "$tmp/targets.json" "$tmp/before.json"
-rm -f "$tmp/probes.prom"
-serve "https://showtimes.cc/de/berlin/" '<p>no films today</p></html>'
-run "$tmp/targets.json" pl=https://kinowo.net/warszawa/ de=https://showtimes.cc/de/berlin/
-check "a country whose city page lists no film leaves the previous targets untouched" \
-  "same" "$(cmp -s "$tmp/before.json" "$tmp/targets.json" && echo same || echo changed)"
-check "...says which country and why" "1" "$(grep -c 'de: https://showtimes.cc/de/berlin/ lists no film' "$tmp/stderr")"
-check "...and does NOT publish a success" "absent" "$([ -f "$tmp/probes.prom" ] && echo present || echo absent)"
-run "$tmp/targets.json" pl=https://kinowo.net/warszawa/ es=https://showtimes.cc/es/madrid/
-check "a city page that does not answer leaves them untouched too" \
-  "same" "$(cmp -s "$tmp/before.json" "$tmp/targets.json" && echo same || echo changed)"
-
-echo "discovery: a film that left the schedule is replaced on the next run"
-serve "https://kinowo.net/warszawa/" '<a href="/warszawa/movie/next-film">x</a></html>'
-run "$tmp/targets.json" pl=https://kinowo.net/warszawa/
-check "the new first film replaces the old one" "https://kinowo.net/warszawa/movie/next-film" \
-  "$(field '[.[] | select(.labels.kind == "film") | .targets[0]] | join(" ")')"
-
-echo "discovery: the probed film stays put while its city page still lists it"
-serve "https://kinowo.net/warszawa/movie/next-film" \
-  '<meta property="og:image" content="https://kinowo.net/share-cards/pl/hnext.jpg?v=1"></html>'
-run "$tmp/targets.json" pl=https://kinowo.net/warszawa/
-# A real city page lists hundreds of films; big enough here that a reader which stops at the first
-# match closes the pipe on a grep still writing.
-serve "https://kinowo.net/warszawa/" \
-  "<a href=\"/warszawa/movie/newly-first\">x</a><a href=\"/warszawa/movie/next-film\">y</a>$(
-    for i in $(seq 1 20000); do printf '<a href="/warszawa/movie/film-%d">f</a>' "$i"; done)</html>"
-run "$tmp/targets.json" pl=https://kinowo.net/warszawa/
-check "a film that is no longer FIRST but still listed keeps its probe (and its series' holds)" \
-  "https://kinowo.net/warszawa/movie/next-film https://kinowo.net/share-cards/pl/hnext.jpg?v=1" \
-  "$(field '[.[] | .targets[0]] | join(" ")')"
-check "...carried in a hidden label Prometheus drops after relabelling" \
-  "__film=https://kinowo.net/warszawa/movie/next-film" \
-  "$(field '[.[] | .labels.__film] | unique | map("__film=" + .) | join(" ")')"
-check "grep is never cut off mid-write (no broken-pipe noise in the journal)" "0" \
-  "$(grep -c 'Broken pipe' "$tmp/stderr")"
-check "...and its film page is NOT fetched again: the card it named is already known" "0" \
-  "$(grep -c 'https://kinowo.net/warszawa/movie/next-film$' "$tmp/curl.log")"
-check "every fetch asks for a compressed body (a London film page is ~870 KB uncompressed)" \
-  "$(wc -l < "$tmp/curl.log" | tr -d ' ')" "$(grep -c -- '--compressed' "$tmp/curl.log")"
-
-echo "discovery: a kept film with no share card yet is fetched again, so a card rendered later is found"
-serve "https://kinowo.net/warszawa/" '<a href="/warszawa/movie/cardless">x</a></html>'
-serve "https://kinowo.net/warszawa/movie/cardless" '<meta property="og:image" content="https://kinowo.net/assets/img/og.jpg"></html>'
-run "$tmp/targets.json" pl=https://kinowo.net/warszawa/
-serve "https://kinowo.net/warszawa/movie/cardless" \
-  '<meta property="og:image" content="https://kinowo.net/share-cards/pl/hcard.jpg?v=2"></html>'
-run "$tmp/targets.json" pl=https://kinowo.net/warszawa/
-check "the card rendered since the last run is now probed" \
-  "https://kinowo.net/warszawa/movie/cardless https://kinowo.net/share-cards/pl/hcard.jpg?v=2" \
-  "$(field '[.[] | .targets[0]] | join(" ")')"
-
-echo "discovery: a showtimes.cc film page the edge answers is probed alongside its share card"
-# The Cloudflare `/movie/` rule exempts monitoring-1's address (since 2026-09-25): the edge serves it.
-serve "https://showtimes.cc/us/new-york/" '<a href="/us/new-york/movie/coyote-vs-acme">x</a></html>'
-serve "https://showtimes.cc/us/new-york/movie/coyote-vs-acme" \
-  '<meta property="og:image" content="https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd"></html>'
-PROBE_ORIGIN_ADDRESS=10.20.0.12 PROBE_ORIGIN_CA=/etc/origin.pem \
-  run "$tmp/targets.json" us=https://showtimes.cc/us/new-york/
-check "the film page and the share card, both through the edge" \
-  "film https://showtimes.cc/us/new-york/movie/coyote-vs-acme share-card https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd" \
-  "$(field '[.[] | "\(.labels.kind) \(.targets[0])"] | join(" ")')"
-check "...and the origin is never asked when the edge answers" "0" "$(grep -c -- '--resolve' "$tmp/curl.log")"
-
-echo "discovery: a kept film whose carried targets lack its film page gets the film page back"
-# The 2026-09-24 discovery dropped a challenged film page and kept only its card. Carried over
-# as-is, that document left de/es/uk/us with no film probe for a week after the edge began
-# answering 200 again: the film stayed listed, so nothing ever rebuilt its targets.
-jq -n '[{targets: ["https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd"],
-         labels: {country: "us", kind: "share-card", __param_module: "http_asset",
-                  __film: "https://showtimes.cc/us/new-york/movie/coyote-vs-acme"}}]' > "$tmp/targets.json"
-run "$tmp/targets.json" us=https://showtimes.cc/us/new-york/
-check "the film page is probed again beside the card it was carried with" \
-  "film https://showtimes.cc/us/new-york/movie/coyote-vs-acme share-card https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd" \
-  "$(field '[.[] | "\(.labels.kind) \(.targets[0])"] | join(" ")')"
-
-echo "discovery: a film page the edge challenges is read from the origin, and STILL probed"
-# The exemption lost: the film page 403s again. Its card is found on the origin; the film page keeps
-# its probe, which now reads 403 -- the signal ProbeBlockedByEdge fires on.
-rm -f "$tmp/targets.json"
-refuse "https://showtimes.cc/us/new-york/movie/coyote-vs-acme"
-serve_origin "https://showtimes.cc/us/new-york/movie/coyote-vs-acme" \
-  '<meta property="og:image" content="https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd"></html>'
-PROBE_ORIGIN_ADDRESS=10.20.0.12 PROBE_ORIGIN_CA=/etc/origin.pem \
-  run "$tmp/targets.json" us=https://showtimes.cc/us/new-york/
-check "the film page is still probed (so its 403 reaches ProbeBlockedByEdge), and the card found on the origin too" \
-  "film https://showtimes.cc/us/new-york/movie/coyote-vs-acme share-card https://showtimes.cc/share-cards/us/h2dd4.jpg?v=01dd" \
-  "$(field '[.[] | "\(.labels.kind) \(.targets[0])"] | join(" ")')"
-check "the origin fetch is pinned to the origin address and its certificates" "1" \
-  "$(grep -c -- '--resolve showtimes.cc:443:10.20.0.12 --cacert /etc/origin.pem https://showtimes.cc/us/new-york/movie/coyote-vs-acme' "$tmp/curl.log")"
-check "...and the refusal is logged as a lost exemption" "1" \
-  "$(grep -c 'us: the edge refuses https://showtimes.cc/us/new-york/movie/coyote-vs-acme (403)' "$tmp/stderr")"
-check "the stickiness survives a challenged film page" \
-  "https://showtimes.cc/us/new-york/movie/coyote-vs-acme" "$(field '[.[].labels.__film] | unique | join(" ")')"
-
-rm -f "$tmp/targets.json"
-run "$tmp/targets.json" us=https://showtimes.cc/us/new-york/
-check "with no origin configured a refused film page is still probed (and reads 403)" \
-  "film https://showtimes.cc/us/new-york/movie/coyote-vs-acme" \
-  "$(field '[.[] | "\(.labels.kind) \(.targets[0])"] | join(" ")')"
-
-echo "discovery: one poster per poster host, as the city page hands it to a browser"
-# The 2026-10-21 page: kinoheld's posters handed to weserv SCHEME-LESS (the bug, 5a77a8867), TMDB's
-# with https, an Amazon poster direct, a Multikino one direct (probed like any other: it refuses
-# datacentres, and PosterProbeFailing holds on visitors' loads, not a skip list), and a venue site
-# with a single poster (under the floor).
-wk='https://images.weserv.nl/?url='
-hints='&amp;w=480&amp;h=720&amp;fit=cover&amp;output=webp'
-de_page="$(
-  for i in 1 2 3; do
-    printf '<a href="/de/berlin/movie/f%d">x</a><img src="x" data-original-src="%sstatic.kinoheld.de%%2Fimages%%2Ffilm%%2Ff%d.jpg%s" data-fallbacks="%shttps%%3A%%2F%%2Fimage.tmdb.org%%2Ft%%2Fp%%2Fw500%%2Ff%d.jpg%s|https://m.media-amazon.com/images/f%d.jpg">' \
-      "$i" "$wk" "$i" "$hints" "$wk" "$i" "$hints" "$i"
-  done
-  printf '<img data-original-src="https://www.multikino.pl/-/media/a.jpg"><img data-original-src="https://www.multikino.pl/-/media/b.jpg">'
-  printf '<img data-original-src="https://www.multikino.pl/-/media/c.jpg"><img data-original-src="%swww.kino-lumiere.de%%2Fa.jpg%s">' "$wk" "$hints"
-)</html>"
-serve "https://showtimes.cc/de/berlin/" "$de_page"
-serve "https://showtimes.cc/de/berlin/movie/f1" '<meta property="og:image" content="https://showtimes.cc/share-cards/de/hf1.jpg"></html>'
-rm -f "$tmp/targets.json"
-PROBE_POSTER_MIN=3 PROBE_HOUR=2026102117 \
-  run "$tmp/targets.json" de=https://showtimes.cc/de/berlin/
-check "two poster targets per host drawing at least the floor, the tail left out" \
-  "kinoheld.de kinoheld.de media-amazon.com media-amazon.com multikino.pl multikino.pl tmdb.org tmdb.org" \
-  "$(field '[.[] | select(.labels.kind == "poster") | .labels.poster_host] | sort | join(" ")')"
-check "the kinoheld posters are probed EXACTLY as served (the scheme-less weserv URL of the bug), with an hourly cache key" \
-  "https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Ff1.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102117 https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Ff2.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102117" \
-  "$(field '[.[] | select(.labels.poster_host == "kinoheld.de") | .targets[0]] | join(" ")')"
-check "a poster served direct is probed direct, with no cache key" "https://m.media-amazon.com/images/f1.jpg" \
-  "$(field '[.[] | select(.labels.poster_host == "media-amazon.com") | .targets[0]][0]')"
-check "posters are probed as images, labelled with their country" "http_image de" \
-  "$(field '[.[] | select(.labels.kind == "poster") | "\(.labels.__param_module) \(.labels.country)"] | unique | join(" ")')"
-check "the film and its card are still found beside them" "film share-card" \
-  "$(field '[.[] | select(.labels.kind != "poster") | .labels.kind] | sort | join(" ")')"
-
-echo "discovery: the probed poster stays put while the page still lists it"
-serve "https://showtimes.cc/de/berlin/" "<img data-original-src=\"${wk}static.kinoheld.de%2Fimages%2Ffilm%2Fnew.jpg${hints}\">$de_page"
-PROBE_POSTER_MIN=3 PROBE_HOUR=2026102118 run "$tmp/targets.json" de=https://showtimes.cc/de/berlin/
-check "a newly-first kinoheld poster does not displace the probed ones; the cache key moves with the hour" \
-  "https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Ff1.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102118 https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Ff2.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102118" \
-  "$(field '[.[] | select(.labels.poster_host == "kinoheld.de") | .targets[0]] | join(" ")')"
-serve "https://showtimes.cc/de/berlin/" "$(printf '%s' "$de_page" | sed 's/f1\.jpg/gone.jpg/g')"
-PROBE_POSTER_MIN=3 PROBE_HOUR=2026102118 run "$tmp/targets.json" de=https://showtimes.cc/de/berlin/
-check "...and one the page stops listing is replaced, the other kept" \
-  "https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Ff2.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102118 https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Fgone.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102118" \
-  "$(field '[.[] | select(.labels.poster_host == "kinoheld.de") | .targets[0]] | join(" ")')"
-
-echo "discovery: a poster host is its registrable domain, as tools.PosterHost names it"
-serve "https://showtimes.cc/uk/london/" "<a href=\"/uk/london/movie/bad-apples\">x</a>$(
-  printf '<img data-original-src="%shttps%%3A%%2F%%2Farthousecrouchend.savoysystems.co.uk%%2Fa.png%s">' "$wk" "$hints"
-  printf '<img data-original-src="%shttps%%3A%%2F%%2Fimages.savoysystems.co.uk%%2Fb.png%s">' "$wk" "$hints"
-  printf '<img data-original-src="https://de.web.img2.acsta.net/a.jpg"><img data-original-src="https://de.web.img3.acsta.net/b.jpg">')</html>"
-rm -f "$tmp/targets.json"
-PROBE_POSTER_MIN=2 run "$tmp/targets.json" uk=https://showtimes.cc/uk/london/
-check "a country suffix keeps its name; a CDN's shards are one host" "acsta.net savoysystems.co.uk" \
-  "$(field '[.[] | select(.labels.kind == "poster") | .labels.poster_host] | unique | join(" ")')"
-check "a page with posters under the floor everywhere probes none (PosterProbesMissing's case)" "0" \
-  "$(PROBE_POSTER_MIN=3 run "$tmp/targets.json" uk=https://showtimes.cc/uk/london/ >/dev/null; field '[.[] | select(.labels.kind == "poster")] | length')"
-
-echo "discovery: a tool it runs missing from PATH"
-# Every tool but awk, as the unit had them on 2026-10-21: the run must fail and keep the last good
-# targets, not write a film's and no poster's and log success.
-mkdir -p "$tmp/no-awk"
-for tool in bash env cat rm curl jq grep sed sort uniq cut tr head date mktemp mv chmod; do
-  found="$(command -v "$tool")"
-  [ -n "$found" ] && [ "$found" != "$tool" ] && ln -sf "$found" "$tmp/no-awk/$tool"
-done
-printf '[{"targets":["kept"]}]' > "$tmp/targets.json"
-RUN_TOOLS="$tmp/no-awk" run "$tmp/targets.json" uk=https://showtimes.cc/uk/london/; status=$?
-check "the run fails, naming the tool" "1 synthetic-probe-targets: awk is not on PATH" "$status $(cat "$tmp/stderr")"
-check "...and the last good targets stand" '[{"targets":["kept"]}]' "$(cat "$tmp/targets.json")"
-
 # ── THE SCRAPE JOB monitoring-1 WOULD INSTALL ──────────────────────────────────────────────────
 echo "the blackbox job on monitoring-1"
 nix_flags=(--extra-experimental-features 'nix-command flakes')
@@ -317,6 +119,15 @@ unit_packages="$(nix "${nix_flags[@]}" eval --json \
 # shellcheck disable=SC2086 # one installable per word
 unit_path="$(nix "${nix_flags[@]}" build --no-link --print-out-paths --inputs-from "$flake" $unit_packages 2>/dev/null |
   sed 's|$|/bin|' | paste -sd: -)"
+# A London page drawing two posters from each of two hosts: a weserv-wrapped savoysystems.co.uk and acsta.net's shards.
+wk='https://images.weserv.nl/?url='
+hints='&amp;w=480&amp;h=720&amp;fit=cover&amp;output=webp'
+serve "https://showtimes.cc/uk/london/" "<a href=\"/uk/london/movie/bad-apples\">x</a>$(
+  printf '<img data-original-src="%shttps%%3A%%2F%%2Farthousecrouchend.savoysystems.co.uk%%2Fa.png%s">' "$wk" "$hints"
+  printf '<img data-original-src="%shttps%%3A%%2F%%2Fimages.savoysystems.co.uk%%2Fb.png%s">' "$wk" "$hints"
+  printf '<img data-original-src="https://de.web.img2.acsta.net/a.jpg"><img data-original-src="https://de.web.img3.acsta.net/b.jpg">')</html>"
+serve "https://showtimes.cc/uk/london/movie/bad-apples" \
+  '<meta property="og:image" content="https://showtimes.cc/share-cards/uk/city-london.jpg"></html>'
 rm -f "$tmp/targets.json"
 RUN_TOOLS="$unit_path" PROBE_POSTER_MIN=2 run "$tmp/targets.json" uk=https://showtimes.cc/uk/london/
 if [ -f "$tmp/targets.json" ]; then found="$(field '[.[] | select(.labels.kind == "poster") | .labels.poster_host] | unique | join(" ")')"
