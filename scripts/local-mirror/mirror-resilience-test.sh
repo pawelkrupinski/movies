@@ -25,6 +25,11 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 . "$HERE/../shell-spec.sh" # wait_until only; check() below is this file's own
 failures=0
+# No case reads the machine's own fences: a what-if on the laptop fences its mirror under $HOME/.cache/kinowo/mirror-fence
+# (a linger fence on kinowo held the drift case's audit, and it ran into its cap). As mirror-test.sh does.
+KINOWO_MIRROR_FENCE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-no-fences.XXXXXX")"
+export KINOWO_MIRROR_FENCE_DIR
+trap 'rm -rf "$KINOWO_MIRROR_FENCE_DIR"' EXIT
 
 # Runs a case and reports it. The indirection is load-bearing: bash disables
 # `set -e` for the whole dynamic extent of a function invoked as an `if`
