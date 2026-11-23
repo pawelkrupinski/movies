@@ -15,10 +15,13 @@ prints, as Markdown, each commit of REV (default origin/main, else HEAD) since `
 from __future__ import annotations
 
 import argparse
+import os
 import re
-import subprocess
 import sys
 from typing import List, NamedTuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import tool_git  # noqa: E402
 
 NONE = re.compile(r"(?i)^none\b\s*(?:—|–|--|-|:)?\s*(.*)$")
 FIELD, RECORD = "\x1f", "\x1e"
@@ -32,13 +35,12 @@ class Exemption(NamedTuple):
     reason: str
 
 
-def git(*args: str) -> str:
-    return subprocess.run(["git", *args], check=True, capture_output=True, text=True).stdout
+GIT = tool_git.Git.here()
+git = GIT.text
 
 
 def default_rev() -> str:
-    found = subprocess.run(["git", "rev-parse", "-q", "--verify", "origin/main"], capture_output=True)
-    return "origin/main" if found.returncode == 0 else "HEAD"
+    return "origin/main" if GIT.ok("rev-parse", "-q", "--verify", "origin/main", quiet=True) else "HEAD"
 
 
 def exemptions(since: str, rev: str) -> List[Exemption]:

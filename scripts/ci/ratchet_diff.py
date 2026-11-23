@@ -37,6 +37,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import coupling_ratchet  # noqa: E402
 import js_quality_ratchet  # noqa: E402
 import quality_ratchet  # noqa: E402
+from coupling_ratchet import git  # noqa: E402
 
 COUPLING = coupling_ratchet.BASELINE_PATH
 # metric -> (baseline file, ratchet family); the order the tables print in
@@ -50,10 +51,6 @@ JS_PREFIX = "js "  # a JS/TS metric's printed name: `js cognitive`, `js fanout` 
 LIMIT_ZERO = ("copies", "cycle-edge")  # every row of these is over the limit (a clone group, a cycle edge)
 
 Row = Tuple[str, str, Optional[int], Optional[int], str]  # metric, key, before, after, mark
-
-
-def git(*args: str) -> str:
-    return subprocess.run(["git", *args], check=True, capture_output=True, text=True).stdout
 
 
 def renames(base: str, head: Optional[str]) -> Dict[str, str]:
