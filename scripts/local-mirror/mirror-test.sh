@@ -160,7 +160,7 @@ if command -v node >/dev/null; then
   check "a half-written fence file holds nothing" "" "$(holder_of kinowo_fr)"
 
   digest="$(PATH="$work/nodb-bin:$PATH" in_mirror targets_fingerprint)"
-  expected_count="$(python3 -I -c 'import json,sys; print(len({c["name"] for c in json.load(open(sys.argv[1]))["collections"]}))' \
+  expected_count="$(python3 -I -B -c 'import json,sys; print(len({c["name"] for c in json.load(open(sys.argv[1]))["collections"]}))' \
     "$HERE/../../common/src/main/resources/debug-mirror-collections.json")"
   check "the collection-list digest is <distinct names>-<8 hex>" "$expected_count" \
     "$(printf '%s\n' "$digest" | sed -nE 's/^([0-9]+)-[0-9a-f]{8}$/\1/p')"

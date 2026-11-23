@@ -52,6 +52,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib
 import identity_ref_trees  # noqa: E402
 import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
+import tool_python  # noqa: E402
 import tool_shell  # noqa: E402
 
 TOOL = "venue-replay"
@@ -200,8 +201,8 @@ class Replay:
                 return code
         if len(refs) == 2:
             diff = self.runner.run(tool_process.Command(
-                ["python3", "-I", "-B", os.path.join(REPO, "scripts", "venue_replay_diff.py"),
-                 os.path.join(self.work, "0.tsv"), os.path.join(self.work, "1.tsv"), refs[0], refs[1]], self.env))
+                tool_python.isolated(os.path.join(REPO, "scripts", "venue_replay_diff.py"),
+                                     os.path.join(self.work, "0.tsv"), os.path.join(self.work, "1.tsv"), refs[0], refs[1]), self.env))
             if diff != 0:
                 return diff
         return status

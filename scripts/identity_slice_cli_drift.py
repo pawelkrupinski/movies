@@ -12,6 +12,7 @@ import sys
 from typing import List, Tuple
 
 from identity_slice_cli_context import Context, Exit, cat, say
+import tool_python  # (scripts/lib, on the path the context put it on)
 import tool_shell  # (scripts/lib, on the path the context put it on)
 
 DRIFT = "scripts.IdentityDrift"
@@ -149,6 +150,7 @@ class Drift:
         """scripts/ci/population_walk_diff.py's rows the walk's flips added to the backlog, and whether it ran clean."""
         ctx = self.ctx
         backlog = f"{ctx.repo}/test/resources/fixtures/identity-flip-backlog.tsv"
-        done = ctx.capture(["sh", "-c", 'f=$1; shift; exec "$@" < "$f"', "sh", ctx.path("population.out"), "python3",
-                            "-I", f"{ctx.repo}/scripts/ci/population_walk_diff.py", "rows", "--into", backlog])
+        done = ctx.capture(["sh", "-c", 'f=$1; shift; exec "$@" < "$f"', "sh", ctx.path("population.out"),
+                            *tool_python.isolated(f"{ctx.repo}/scripts/ci/population_walk_diff.py", "rows", "--into",
+                                                  backlog)])
         return done.stdout.rstrip("\n"), done.code == 0

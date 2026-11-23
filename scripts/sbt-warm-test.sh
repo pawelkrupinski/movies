@@ -193,7 +193,7 @@ scratch_git "$repo" worktree add -q -b fromcache "$scratch/fromcache" origin/mai
 check "a seed takes the cache entry over another build of the same commit" "pubbed" \
   "$(cat "$scratch/fromcache/worker/target/scala-3.x/zinc/from" 2>/dev/null)"
 exec 9>> "$KINOWO_SBT_WARM_STATE/$(printf '%s' "$scratch/fromcache" | shasum | cut -c1-12).busy"
-python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH)'
+python3 -I -B -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH)'
 mkdir -p "$scratch/fromcache/scrapers/target/scala-3.x/zinc" "$scratch/fromcache/geodata/target/scala-3.x/zinc" \
   "$scratch/fromcache/common/target/scala-3.x/zinc"
 out=$(cd "$scratch/fromcache" && "$REPO_ROOT/scripts/sbt-warm" --publish 2>&1)

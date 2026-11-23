@@ -5,7 +5,7 @@ Would one country's fact-backed take settle a bare-title listing of the same ori
 Data: the LOCAL prod mirror (read-only, after scripts/local-mirror/freshness), exported once per country to <data dir>
 by scripts/ml-identity/cross_country_export.js (full, not LIGHT: the rule reads candidates); read by
 scripts/ci/cross_country.py, which documents the files.
-Run: python3 -I scripts/ml-identity/cross_country_experiment.py <repo root> <data dir>
+Run: python3 -I -B scripts/ml-identity/cross_country_experiment.py <repo root> <data dir>
 """
 import collections
 import os

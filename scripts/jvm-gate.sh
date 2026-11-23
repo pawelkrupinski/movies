@@ -124,7 +124,7 @@ lock_give() { : > "$2"; eval "exec $1>&-"; }
 # _lock_flock <fd> -> 0 when the open file description on <fd> (shared with python3, which inherits it) now holds the
 # exclusive lock; 1 when another holds it. With <fd> "-" and a path, a probe on a description of its own, never kept
 _lock_flock() {
-  python3 -I -c 'import fcntl, sys
+  python3 -I -B -c 'import fcntl, sys
 f = int(sys.argv[1]) if sys.argv[1] != "-" else open(sys.argv[2], "a")
 try:
     fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)

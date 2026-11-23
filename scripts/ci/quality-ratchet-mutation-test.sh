@@ -67,7 +67,7 @@ for m in "${mutants[@]}"; do
      "$REPO_ROOT/scripts/ci/baseline_ratchet.py" "$work/mutants/$i/"
   target="$work/mutants/$i/quality_ratchet.py"
   case "$name" in "trailers.py: "*) target="$work/mutants/$i/trailers.py" ;; esac
-  python3 -I - "$target" "$target" "$from" "$to" <<'PY'
+  python3 -I -B - "$target" "$target" "$from" "$to" <<'PY'
 import sys
 src, dst, frm, to = sys.argv[1:]
 text = open(src).read()

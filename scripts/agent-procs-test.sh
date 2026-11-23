@@ -195,7 +195,7 @@ check "kill --mine without a session id reaps none" "yes" "$(kill -0 "$other" 2>
 # Its bash is never macOS's /bin/bash: ps cannot read a platform binary's environment (SIP), so a loop of the floor
 # bash (scripts/run-script-tests --floor / --bash /bin/bash) carried no session ps could see and was spared -- the case
 # failed in every floor run selecting this test (2026-11-19), and the real watchers it guards are agents' own bash.
-loop_bash=$(python3 -I -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$(command -v bash)")
+loop_bash=$(python3 -I -B -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$(command -v bash)")
 if [ "$(uname -s)" = Darwin ] && [ "$loop_bash" = /bin/bash ]; then
   loop_bash=""
   for candidate in /opt/homebrew/bin/bash /usr/local/bin/bash "$HOME/.nix-profile/bin/bash"; do

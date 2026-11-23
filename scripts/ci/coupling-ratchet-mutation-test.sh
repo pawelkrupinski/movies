@@ -145,7 +145,7 @@ for m in "${mutants[@]}"; do
   i=$((i + 1))
   name=${m%% @@ *}; rest=${m#* @@ }; from=${rest%% @@ *}; to=${rest#* @@ }
   printf '%s' "$name" > "$work/mutants/$i.name"
-  python3 -I - "$tool" "$work/mutants/$i.py" "$from" "$to" <<'PY'
+  python3 -I -B - "$tool" "$work/mutants/$i.py" "$from" "$to" <<'PY'
 import sys
 src, dst, frm, to = sys.argv[1:]
 text = open(src).read()

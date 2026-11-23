@@ -40,7 +40,7 @@ FAKE_SSH
   cat > "$FAKE/mongosh" <<'FAKE_MONGOSH'
 #!/usr/bin/env bash
 [ -e "$TUNNEL_UP" ] || exit 1
-as="$(python3 -I -c 'import sys,urllib.parse as u; print(u.unquote(u.urlsplit(sys.argv[1]).username or ""))' "$KINOWO_MONGOSH_URI")"
+as="$(python3 -I -B -c 'import sys,urllib.parse as u; print(u.unquote(u.urlsplit(sys.argv[1]).username or ""))' "$KINOWO_MONGOSH_URI")"
 case "$*" in *ping*) exit 0 ;; esac
 . "$(dirname "$0")/mongosh-body"
 FAKE_MONGOSH

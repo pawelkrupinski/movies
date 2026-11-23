@@ -201,7 +201,7 @@ for cc in "${ccs[@]}"; do
 done
 echo
 classification=0
-python3 -I "$here/scripts/identity_measure.py" "$classified" --judgements "$judgements" --countries "$countries" || classification=1
+python3 -I -B "$here/scripts/identity_measure.py" "$classified" --judgements "$judgements" --countries "$countries" || classification=1
 echo "identity-measure-local: the final stage replays the checked-in capture's clusters only -- a listing the head newly"
 echo "  leaves unmatched at the model stage never reaches it, so its final 0 means not seen, not refilled: the model rows"
 echo "  bound what is served."

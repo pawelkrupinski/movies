@@ -398,7 +398,7 @@ prune_cache() {
 # After a command that passed: publish, holding $key.busy exclusively (descriptor 9, held shared by this call) -- only
 # when no other call runs a command in the server, which could be writing the classes being copied.
 publish_after_call() {
-  python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null || return 0
+  python3 -I -B -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null || return 0
   publish
 }
 
@@ -459,7 +459,7 @@ case "${1:-}" in
   --seed) seed; exit 0 ;;
   --publish)
     exec 9>> "$State/$key.busy"
-    if python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null; then publish
+    if python3 -I -B -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null; then publish
     else log "a command runs in the server of $root: nothing published"; fi
     exit 0 ;;
   --exclusive)
@@ -467,7 +467,7 @@ case "${1:-}" in
     who=$2; shift 2
     exec 9>> "$State/$key.busy"
     waited=0
-    until python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null; do
+    until python3 -I -B -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null; do
       [ "$waited" -eq 0 ] && log "a command runs in the server of $root: $who waits for it to end before its own sbt builds there"
       [ "$waited" -ge "${KINOWO_SBT_WARM_LOCK_SECONDS:-1800}" ] && { log "gave up after ${waited}s waiting for the server of $root to go idle"; exit 75; }
       sleep 1; waited=$((waited + 1))
@@ -554,14 +554,14 @@ trap 'eval "$ExitHooks"' EXIT
 KeepFile="$State/$key.keep.flock"
 # IN USE: this call holds $key.busy shared until it ends (descriptor 9), so the keeper never stops the server under it
 exec 9>> "$State/$key.busy"
-if ! python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH | fcntl.LOCK_NB)' 2> /dev/null; then
+if ! python3 -I -B -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH | fcntl.LOCK_NB)' 2> /dev/null; then
   read -r holder_pid holder_who < "$State/$key.exclusive" 2> /dev/null || holder_pid=""
   if [ -n "$holder_pid" ] && kill -0 "$holder_pid" 2> /dev/null; then
     log "another sbt holds the build of $root exclusively ($holder_who, pid $holder_pid): waiting for it to end"
   else
     log "the keeper of $root is stopping its idle server: waiting for it"
   fi
-  python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH)'
+  python3 -I -B -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH)'
 fi
 lock_start() {
   local waited=0
@@ -626,14 +626,14 @@ if [ "$fresh" = 0 ] && [ -f "$State/$key.env" ] && [ "$(cat "$State/$key.env")" 
   log "this call's KINOWO_* settings differ from the ones server pid $pid started with: restarting it with them"
   # never under another call's running command (it holds $key.busy shared, as this one does): this call waits for the
   # lock EXCLUSIVELY -- every other call ended -- then restarts the server and shares it again
-  if ! python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null; then
+  if ! python3 -I -B -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null; then
     log "another call is running a command in server pid $pid: waiting for it to end before restarting it"
-    python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX)'
+    python3 -I -B -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX)'
   fi
   stop_servers_of "$root" "this call's KINOWO_* settings differ from the ones it started with"
   for _ in 1 2 3 4 5 6 7 8 9 10; do [ -z "$(server_pids "$root")" ] && break; sleep 1; done
   rm -f "$root/project/target/active.json"
-  python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH)'
+  python3 -I -B -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH)'
   fresh=1
 fi
 [ "$fresh" = 1 ] && echo "$settings" > "$State/$key.env"

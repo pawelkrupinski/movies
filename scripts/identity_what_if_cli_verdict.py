@@ -14,6 +14,7 @@ from typing import List, Sequence
 
 from identity_what_if_cli_context import OWN_FILES, TOOL_FILES, Context, Exit, lines_of, tools_hash
 import tool_process  # (scripts/lib, on the path the context put it on)
+import tool_python  # (scripts/lib, too)
 
 
 def record(ctx: Context, head: str, base: str, cc: str, verdict: str, *more: str) -> None:
@@ -43,7 +44,7 @@ class Verdicts:
             self.asset = done.stdout.rstrip("\n") if done.code == 0 else ""
 
     def carry(self, command: str, args: Sequence[str]) -> tool_process.Captured:
-        return self.ctx.capture(["python3", "-I", "scripts/identity_stamp_carry.py", command, *args], cwd=self.ctx.repo)
+        return self.ctx.capture(tool_python.isolated("scripts/identity_stamp_carry.py", command, *args), cwd=self.ctx.repo)
 
     def recorded(self, cc: str, diff_code: int, whole: bool) -> None:
         """`cc`'s verdict recorded, and published when the run has an asset."""

@@ -48,7 +48,7 @@ esac
 STUB
 chmod +x "$work/bin/gh"
 
-report() { STUB="$work" KINOWO_IDENTITY_CACHE="$work/cache" PATH="$work/bin:$PATH" spec_bounded python3 -I "$REPO_ROOT/scripts/identity-ratchet-report" "$@" > "$work/out" 2>&1; echo $?; }
+report() { STUB="$work" KINOWO_IDENTITY_CACHE="$work/cache" PATH="$work/bin:$PATH" spec_bounded python3 -I -B "$REPO_ROOT/scripts/identity-ratchet-report" "$@" > "$work/out" 2>&1; echo $?; }
 
 check "a run's artifact is printed" "0" "$(report 111111)"
 check "...counting every status" "1" "$(grep -c '^findings: WRONG 1, UNJUDGED 1, RIGHT 1$' "$work/out")"

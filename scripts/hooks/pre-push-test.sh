@@ -542,7 +542,7 @@ if command -v shellcheck >/dev/null; then
   cat > "$scratch/bin/sbt" <<STUB
 #!/usr/bin/env bash
 echo "\$(pwd -P) \$1" > "$scratch/sbt-ran-in"
-python3 -I -c 'import fcntl, glob, sys
+python3 -I -B -c 'import fcntl, glob, sys
 for f in glob.glob(sys.argv[1] + "/*.busy"):
     try:
         fcntl.flock(open(f, "a"), fcntl.LOCK_EX | fcntl.LOCK_NB); print("free")

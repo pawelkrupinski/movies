@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.join(HERE, "lib"))
 import tool_github  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
+import tool_python  # noqa: E402
 import tool_shell  # noqa: E402
 from identity_measure_cli_options import Options  # noqa: E402
 
@@ -119,11 +120,10 @@ class Context:
         return True
 
     def classify(self, directory: str, judgements: str, rows: str, table: str, more: List[str]) -> int:
-        """scripts/identity_measure.py over the takes in `directory`: its table on stdout and in `table`; its verdict.
-        `-B` beside `-I`: -I drops PYTHONDONTWRITEBYTECODE, and the modules it imports would leave scripts/ci/__pycache__
-        in the checkout."""
-        argv = ["python3", "-I", "-B", os.path.join(HERE, "identity_measure.py"), directory, "--judgements", judgements,
-                "--countries", self.state.countries, "--rows", rows, *more, *(["--json"] if self.o.json else [])]
+        """scripts/identity_measure.py over the takes in `directory`: its table on stdout and in `table`; its verdict."""
+        argv = tool_python.isolated(os.path.join(HERE, "identity_measure.py"), directory, "--judgements", judgements,
+                                    "--countries", self.state.countries, "--rows", rows, *more,
+                                    *(["--json"] if self.o.json else []))
         done = self.runner.capture(tool_process.Command(argv, self.env))
         sys.stdout.write(done.stdout)
         sys.stdout.flush()

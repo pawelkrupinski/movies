@@ -19,4 +19,4 @@ set -euo pipefail
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "$0")/tool-conventions.sh" # usage_from_header
 case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; esac
-exec python3 -I "$(dirname "$0")/agent_time.py" "$@"
+exec python3 -I -B "$(dirname "$0")/agent_time.py" "$@"

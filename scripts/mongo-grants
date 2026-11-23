@@ -22,4 +22,4 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 . "$HERE/prod-ops.sh" # prod_ops_mode, prod_ops_exec
 prod_ops_init mongo-grants
 prod_ops_mode "$@"
-prod_ops_exec --both python3 -I "$HERE/mongo_grants.py" "--$PROD_OPS_MODE"
+prod_ops_exec --both python3 -I -B "$HERE/mongo_grants.py" "--$PROD_OPS_MODE"

@@ -630,7 +630,7 @@ file-lines	infra/nix/files/scheduled_dispatch.py	582
 file-lines	scripts/ci/ci_trends.py	1829
 file-lines	scripts/ci/commit_rules.py	595
 file-lines	scripts/ci/convergence_reuse.py	940
-file-lines	scripts/ci/coupling_ratchet.py	1261
+file-lines	scripts/ci/coupling_ratchet.py	1256
 file-lines	scripts/ci/runner_scheduler.py	1245
 file-lines	scripts/flip_timeline.py	843
 file-lines	scripts/identity_what_if.py	530

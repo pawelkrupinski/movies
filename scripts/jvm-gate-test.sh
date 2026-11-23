@@ -178,7 +178,7 @@ cat > "$work/agentctl" <<'STUB'
 # def cmd_gov: the line an agentctl with the governor has
 printf '%s\n' "$*" >> "$GOV_CALLS"
 case " $* " in *" --try "*) [ -n "${GOV_STUB_FULL:-}" ] && exit 1 ;; esac
-python3 -I -c 'import fcntl; fcntl.flock(7, fcntl.LOCK_EX | fcntl.LOCK_NB)'
+python3 -I -B -c 'import fcntl; fcntl.flock(7, fcntl.LOCK_EX | fcntl.LOCK_NB)'
 STUB
 chmod +x "$work/agentctl"
 export GOV_CALLS="$work/gov-calls"

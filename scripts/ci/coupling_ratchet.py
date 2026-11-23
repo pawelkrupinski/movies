@@ -99,8 +99,10 @@ import subprocess
 import sys
 from typing import Dict, List, Optional, Set, Tuple
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # baseline_ratchet.py and trailers.py beside it, under `python3 -I` too
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path[:0] = [HERE, os.path.join(HERE, "..", "lib")]  # baseline_ratchet.py and trailers.py beside it, tool_python in lib
 import baseline_ratchet  # noqa: E402
+import tool_python  # noqa: E402
 import trailers  # noqa: E402
 from trailers import git, text_at as file_at  # noqa: E402
 
@@ -213,8 +215,7 @@ def moved(key: str, value: int, old: Dict[str, int], new: Dict[str, int]) -> boo
 
 
 # scripts/pure-move-check's code; COUPLING_PURE_MOVE_CHECK names it for a copy of this tool elsewhere (the mutation test's)
-PURE_MOVE_CHECK = os.environ.get("COUPLING_PURE_MOVE_CHECK") or os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pure_move_check.py")
+PURE_MOVE_CHECK = os.environ.get("COUPLING_PURE_MOVE_CHECK") or os.path.join(os.path.dirname(HERE), "pure_move_check.py")
 
 
 class RenameEvidence:
@@ -265,7 +266,7 @@ class RenameEvidence:
     def pure(self, sha: str) -> bool:
         """Whether scripts/pure-move-check calls commit `sha` a PURE MOVE (exit 0; NOT PURE and undecidable are not)."""
         if sha not in self._pure:
-            done = subprocess.run([sys.executable, "-I", PURE_MOVE_CHECK, f"{sha}^..{sha}", "--quiet"], capture_output=True, text=True)
+            done = subprocess.run(tool_python.isolated(PURE_MOVE_CHECK, f"{sha}^..{sha}", "--quiet", python=sys.executable), capture_output=True, text=True)
             self._pure[sha] = done.returncode == 0
         return self._pure[sha]
 

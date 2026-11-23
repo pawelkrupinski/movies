@@ -13,6 +13,7 @@ from typing import Callable, Dict, List, Optional, Sequence
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import tool_process  # noqa: E402
+import tool_python  # noqa: E402
 import tool_shell  # noqa: E402
 from identity_kept_jvms import alive as alive  # noqa: E402 (identity_what_if_cli_mirror's, _sides')
 from identity_what_if_cli_options import Options  # noqa: E402
@@ -136,4 +137,4 @@ class Context:
         return self.git("status", "--porcelain", "--untracked-files=no").stdout.strip() == ""
 
     def what_if_py(self, args: Sequence[str]) -> List[str]:
-        return ["python3", "-I", os.path.join(self.repo, "scripts", "identity_what_if.py"), *args]
+        return tool_python.isolated(os.path.join(self.repo, "scripts", "identity_what_if.py"), *args)

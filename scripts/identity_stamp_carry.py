@@ -58,13 +58,13 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "ci"))
+sys.path[:0] = [HERE, os.path.join(HERE, "lib"), os.path.join(HERE, "ci")]  # its own modules, tool_python, commit_rules
 from commit_rules import HARNESS_FILES  # noqa: E402  (the drift harness: one definition)
-sys.path.insert(0, HERE)
 from identity_stamp_carry_published import (  # noqa: E402  (THE PUBLISHED VERDICT: the what-if's record)
     ASSET, COUNTRIES, VERDICTS, asset_name, cached_verdict, country_refusals, diff_id, fetch_asset, identity_cache,
     moved_rows, publish, release, verdict_path, what_if_verdicts)
 from pure_move_check import Undecidable, git  # noqa: E402  (the one git a proof reads, and its refusal)
+import tool_python  # noqa: E402
 
 TABLE = "test/resources/identity-stamp-carry.tsv"
 STAMPS = ("identity-rules", "venue-slot", "agreement-rules")
@@ -163,8 +163,8 @@ def design_refusals(base: str, head: str) -> list[str]:
 
 def pure_move_refusals(base: str, head: str) -> list[str]:
     """Why scripts/pure-move-check, run again, does not call base..head PURE; none when it does."""
-    done = subprocess.run([sys.executable, "-I", os.path.join(HERE, "pure_move_check.py"), f"{base}..{head}", "--quiet"],
-                          capture_output=True, text=True)
+    done = subprocess.run(tool_python.isolated(os.path.join(HERE, "pure_move_check.py"), f"{base}..{head}", "--quiet",
+                                               python=sys.executable), capture_output=True, text=True)
     if done.returncode == 0:
         return []
     tail = (done.stdout + done.stderr).strip().splitlines()[-3:]

@@ -15,6 +15,7 @@ from identity_slice_cli_keys import Keys
 from identity_slice_cli_modes import Modes
 from identity_slice_cli_options import Usage
 from identity_slice_cli_run import Slicer
+import tool_python  # (scripts/lib, on the path the context put it on)
 
 
 def ifs_fields(line: str, n: int) -> List[str]:
@@ -135,7 +136,7 @@ class Flow:
         return self.diffed(ctx.path("0.tsv"), ctx.path("1.tsv"), o.refs[0], o.refs[1])
 
     def diffed(self, a: str, b: str, ra: str, rb: str) -> int:
-        return self.ctx.run(["python3", "-I", f"{self.ctx.repo}/scripts/identity_slice_diff.py", a, b, ra, rb])
+        return self.ctx.run(tool_python.isolated(f"{self.ctx.repo}/scripts/identity_slice_diff.py", a, b, ra, rb))
 
     def probe(self, ref: str, out: str) -> None:
         """A bisect step's slices at <ref> into <out>: a failed one ends the tool, with its status."""

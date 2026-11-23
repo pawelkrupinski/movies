@@ -55,5 +55,5 @@ classpath=$(grep -E '^/' "$out/sbt.log" | tail -1)
 tail -1 "$out/jvm.log"
 verb=check
 [ -z "$update" ] || verb=update
-python3 -I "$root/scripts/identity_boot_cost.py" "$verb" --current "$out/rows.tsv" \
+python3 -I -B "$root/scripts/identity_boot_cost.py" "$verb" --current "$out/rows.tsv" \
   --baseline "${KINOWO_BOOT_COST_BASELINE:-$root/test/resources/identity-boot-cost-baseline.tsv}"

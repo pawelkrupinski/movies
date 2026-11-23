@@ -44,7 +44,7 @@ for m in "${mutants[@]}"; do
   # the tool and the modules it imports, side by side
   cp "$tool" "$REPO_ROOT/scripts/ci/baseline_ratchet.py" "$REPO_ROOT/scripts/ci/trailers.py" "$work/mutants/$i/"
   # the mutant is applied to whichever of the tool and its engine holds its text (exactly once, in exactly one)
-  python3 -I - "$work/mutants/$i/js_quality_ratchet.py" "$work/mutants/$i/baseline_ratchet.py" "$from" "$to" <<'PY'
+  python3 -I -B - "$work/mutants/$i/js_quality_ratchet.py" "$work/mutants/$i/baseline_ratchet.py" "$from" "$to" <<'PY'
 import sys
 tool, engine, frm, to = sys.argv[1:]
 texts = {path: open(path).read() for path in (tool, engine)}

@@ -21,7 +21,7 @@ case "$*" in
   *getUser*) echo "getUser $G_USER@$G_DB as $as" >> "$CALLS"; if [ -f "$f" ]; then cat "$f"; else echo null; fi ;;
   *grantRolesToUser*)
     echo "grant $G_USER@$G_DB $G_ROLES as $as" >> "$CALLS"
-    python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); d["roles"]+=json.loads(sys.argv[2]); json.dump(d,open(sys.argv[1],"w"))' "$f" "$G_ROLES" ;;
+    python3 -I -B -c 'import json,sys; d=json.load(open(sys.argv[1])); d["roles"]+=json.loads(sys.argv[2]); json.dump(d,open(sys.argv[1],"w"))' "$f" "$G_ROLES" ;;
   *) echo "fake mongosh: unexpected $*" >&2; exit 3 ;;
 esac
 BODY
@@ -30,7 +30,7 @@ BODY
 # user <db> <name> <principal> [skip-db...]: the user holding every role the list gives <principal>, but those on skip-dbs
 user() {
   local db="$1" name="$2" who="$3"; shift 3
-  python3 -I - "$LIST" "$who" "$@" > "$USERS/$db.$name.json" <<'PY'
+  python3 -I -B - "$LIST" "$who" "$@" > "$USERS/$db.$name.json" <<'PY'
 import json, sys
 path, who, skip = sys.argv[1], sys.argv[2], set(sys.argv[3:])
 rows = [l.rstrip("\n").split("\t") for l in open(path) if l.strip() and not l.startswith("#")]

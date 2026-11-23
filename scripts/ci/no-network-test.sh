@@ -31,7 +31,7 @@ EOF
 check "no command is a usage error" "64" "$("$tool" -- > /dev/null 2>&1; echo $?)"
 check "an unknown mode is an error" "64" "$(NO_NETWORK_MODE=nope "$tool" -- true > /dev/null 2>&1; echo $?)"
 
-out="$(NO_NETWORK_MODE=proxy "$tool" -- python3 -I "$work/probe.py" 2> "$work/err")"
+out="$(NO_NETWORK_MODE=proxy "$tool" -- python3 -I -B "$work/probe.py" 2> "$work/err")"
 check "proxy: loopback still answers, an HTTP client's outside fetch is refused at once" "loopback 200|http refused" \
   "$(printf '%s\n' "$out" | grep -e '^loopback' -e '^http' | paste -sd'|' -)"
 check "...every JVM is sent to the closed port, loopback exempt" "1" \
@@ -42,21 +42,21 @@ check "...and it warns that a raw socket is not stopped" "1" "$(grep -c '::warni
 # /root and every sbt launcher failed on /root/.sbt): in whatever mode the runner gives, the command runs as the same
 # uid with the same passwd home, and writes its tool homes under $HOME
 mkdir -p "$work/home"
-outside="$(id -u) $(python3 -I -c 'import os, pwd; print(pwd.getpwuid(os.getuid()).pw_dir)')"
-inside="$(HOME="$work/home" "$tool" -- sh -c 'mkdir -p "$HOME/.sbt/boot" "$HOME/.gradle" && : > "$HOME/.sbt/boot/sbt.boot.lock" && echo "$(id -u) $(python3 -I -c "import os, pwd; print(pwd.getpwuid(os.getuid()).pw_dir)")"' 2> /dev/null)"
+outside="$(id -u) $(python3 -I -B -c 'import os, pwd; print(pwd.getpwuid(os.getuid()).pw_dir)')"
+inside="$(HOME="$work/home" "$tool" -- sh -c 'mkdir -p "$HOME/.sbt/boot" "$HOME/.gradle" && : > "$HOME/.sbt/boot/sbt.boot.lock" && echo "$(id -u) $(python3 -I -B -c "import os, pwd; print(pwd.getpwuid(os.getuid()).pw_dir)")"' 2> /dev/null)"
 check "the same uid and passwd home inside (the JVM's user.home), and \$HOME/.sbt writable ($("$tool" --probe | cut -d' ' -f1))" \
   "$outside|1" "$inside|$([ -f "$work/home/.sbt/boot/sbt.boot.lock" ] && echo 1 || echo 0)"
 
 case "$(uname -s)" in
   Darwin)
     check "probe on macOS: sandbox" "sandbox" "$("$tool" --probe | cut -d' ' -f1)"
-    out="$("$tool" -- python3 -I "$work/probe.py" 2> /dev/null)"
+    out="$("$tool" -- python3 -I -B "$work/probe.py" 2> /dev/null)"
     check "sandbox: loopback answers; a raw socket and an HTTP client to the outside are both refused at connect" \
       "loopback 200|socket refused PermissionError|http refused" "$(printf '%s\n' "$out" | paste -sd'|' -)"
     check "a forced netns on macOS is an error, never a silent weaker mode" "1" "$(NO_NETWORK_MODE=netns "$tool" -- true > /dev/null 2>&1; echo $?)" ;;
   Linux)
     if [ "$("$tool" --probe | cut -d' ' -f1)" = netns ]; then
-      out="$("$tool" -- python3 -I "$work/probe.py" 2> /dev/null)"
+      out="$("$tool" -- python3 -I -B "$work/probe.py" 2> /dev/null)"
       check "netns: loopback answers; a raw socket and an HTTP client to the outside are both unreachable" \
         "loopback 200|socket refused OSError|http refused" "$(printf '%s\n' "$out" | paste -sd'|' -)"
     else

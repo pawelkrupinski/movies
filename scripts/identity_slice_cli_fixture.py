@@ -58,7 +58,7 @@ esac
 out="" ref="" serve=""
 while [ "$#" -gt 0 ]; do case "$1" in --out) out=$2 ;; --ref) ref=$2 ;; --serve) serve=$2 ;; esac; shift; done
 [ -z "$serve" ] || [ -z "${STUB_SERVE_HANG:-}" ] || { echo $$ >> "$STUB_SERVE_HANG"; exec perl -e 'sleep 86400' scripts.IdentitySlice; }
-[ -z "$serve" ] || exec python3 -I "$STUB/serve.py" "$serve" "$STUB/calls" scripts.IdentitySlice
+[ -z "$serve" ] || exec python3 -I -B "$STUB/serve.py" "$serve" "$STUB/calls" scripts.IdentitySlice
 [ -n "$out" ] || { echo "explained"; exit 0; }
 { printf '%s\n' "$STUB_HEADER"
   if [ "$ref" = "$STUB_BASE" ]; then

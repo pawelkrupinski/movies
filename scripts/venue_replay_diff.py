@@ -1,6 +1,6 @@
 """scripts/venue-replay with two refs: every listing either ref alone reads, and every field the two read differently.
 
-    python3 -I scripts/venue_replay_diff.py A.tsv B.tsv <ref A> <ref B>
+    python3 -I -B scripts/venue_replay_diff.py A.tsv B.tsv <ref A> <ref B>
 
 Each TSV is VenueReplay's `--out`: a header of field names, one listing a row, keyed by its raw title and detail URL.
 """

@@ -23,7 +23,7 @@ EVERY = "footprint pl,de,uk,us,es"
 
 def takes_paths() -> List[str]:
     """The takes check's identity paths, as it lists them."""
-    done = subprocess.run([sys.executable, "-I", os.path.join(ROOT, "scripts/ci/identity_takes_check_paths.py")],
+    done = subprocess.run([sys.executable, "-I", "-B", os.path.join(ROOT, "scripts/ci/identity_takes_check_paths.py")],
                           check=True, capture_output=True, text=True)
     return done.stdout.split()
 

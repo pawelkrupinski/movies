@@ -511,7 +511,7 @@ IDENTITY_SBT=(sbt "${IDENTITY_LOCALE[@]/#/-J}")
 # length), its answer on stdout as it streams, and the request's exit code; 111 when nothing listens at <socket>, 112
 # when the JVM went away mid-request. identity-slice's and identity-what-if's kept JVMs.
 kept_jvm_call() {
-  python3 -I - "$@" <<'PY'
+  python3 -I -B - "$@" <<'PY'
 import socket, struct, sys
 path, args = sys.argv[1], sys.argv[2:]
 s = socket.socket(socket.AF_UNIX)

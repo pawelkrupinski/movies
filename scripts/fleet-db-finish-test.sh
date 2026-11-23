@@ -23,12 +23,12 @@ case "$*" in
     echo '{"appReads":3}' ;;
   *countDocuments*)
     echo "counts as $as" >> "$CALLS"
-    python3 -I -c 'import json,sys; s=json.load(open(sys.argv[1]))
+    python3 -I -B -c 'import json,sys; s=json.load(open(sys.argv[1]))
 C=["facebook_rescrapes","facebook_fetches","fleet_host_pace"]
 print(json.dumps({"counts":{d:{c:s[d].get(c) for c in C} for d in s},"newest":{d:"2026-10-25" for d in s}}))' "$STATE" ;;
   *"drop()"*)
     echo "drop kinowo.$G_COLL as $as" >> "$CALLS"
-    python3 -I -c 'import json,sys; s=json.load(open(sys.argv[1])); s["kinowo"].pop(sys.argv[2],None); json.dump(s,open(sys.argv[1],"w"))' "$STATE" "$G_COLL"
+    python3 -I -B -c 'import json,sys; s=json.load(open(sys.argv[1])); s["kinowo"].pop(sys.argv[2],None); json.dump(s,open(sys.argv[1],"w"))' "$STATE" "$G_COLL"
     echo "$G_COLL dropped from kinowo: true" ;;
   *) echo "fake mongosh: unexpected $*" >&2; exit 3 ;;
 esac
@@ -59,7 +59,7 @@ drop kinowo.facebook_fetches as kinowo_root
 drop kinowo.fleet_host_pace as kinowo_root" "$(drops)"
 check "…exits 0 and leaves kinowo_fleet and every other database alone" \
   '0 {"facebook_rescrapes": 14, "facebook_fetches": 950, "fleet_host_pace": 4} {}' \
-  "$status $(python3 -I -c 'import json,sys; s=json.load(open(sys.argv[1])); print(json.dumps(s["kinowo_fleet"]), json.dumps(s["kinowo_uk"]))' "$STATE")"
+  "$status $(python3 -I -B -c 'import json,sys; s=json.load(open(sys.argv[1])); print(json.dumps(s["kinowo_fleet"]), json.dumps(s["kinowo_uk"]))' "$STATE")"
 
 for bad in "--drop" "--drop facebook_rescrapes facebook_fetches" "--drop facebook_* facebook_fetches fleet_host_pace" \
            "--drop facebook_rescrapes facebook_rescrapes fleet_host_pace" \

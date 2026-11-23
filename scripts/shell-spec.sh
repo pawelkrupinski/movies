@@ -62,7 +62,7 @@ if [ -n "${GOV_HOLD:-}" ]; then
   echo waiting > "$GOV_HOLD.waiting"
   for _ in $(seq 1 2400); do [ -e "$GOV_HOLD" ] && break; sleep 0.05; done
 fi
-python3 -I -c 'import fcntl; fcntl.flock(7, fcntl.LOCK_EX | fcntl.LOCK_NB)'
+python3 -I -B -c 'import fcntl; fcntl.flock(7, fcntl.LOCK_EX | fcntl.LOCK_NB)'
 STUB
   chmod +x "$1"
 }

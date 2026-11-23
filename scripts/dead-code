@@ -40,4 +40,4 @@ out=$(cd "$out" && pwd)
 cd "$root"
 "${KINOWO_DEAD_CODE_SBT:-$root/scripts/sbt-warm}" "deadCode $out/rows.tsv" > "$out/sbt.log" 2>&1 \
   || { tail -30 "$out/sbt.log" >&2; die "sbt deadCode failed (log: $out/sbt.log)"; }
-python3 -I "$root/scripts/dead_code.py" "$out/rows.tsv" --root "$root" | tee "$out/report.md"
+python3 -I -B "$root/scripts/dead_code.py" "$out/rows.tsv" --root "$root" | tee "$out/report.md"

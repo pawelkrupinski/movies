@@ -315,7 +315,7 @@ check "identity_measure_branch: measure/<user>/<short sha>-<tag>-<random>" "true
 # kept_jvm_call: one request to a kept JVM (tools.KeptJvm's framing), its answer streamed, its exit code returned
 check "kept_jvm_call: nothing listening is 111" "111" "$(bash -c '. "$1"; kept_jvm_call "$2/none.sock" a; echo $?' _ "$REPO_ROOT/scripts/identity-tools.sh" "$work" 2> /dev/null)"
 sock="$work/kept.sock"
-python3 -I - "$sock" <<'PY' &
+python3 -I -B - "$sock" <<'PY' &
 import os, socket, struct, sys
 s = socket.socket(socket.AF_UNIX); s.bind(sys.argv[1]); s.listen(1)
 c, _ = s.accept()

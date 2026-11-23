@@ -59,7 +59,7 @@ counts="$(as_root "$counts_js" | last_line)"
 probe="$(as_app "$app_probe_js" 2>&1 | last_line)" || true
 
 # Prints the table; exits 1 (with the reason) when a drop must not go ahead.
-verdict="$(python3 -I - "$counts" "$probe" "${COLLECTIONS[*]}" <<'PY'
+verdict="$(python3 -I -B - "$counts" "$probe" "${COLLECTIONS[*]}" <<'PY'
 import json, sys
 counts, probe, names = json.loads(sys.argv[1]), sys.argv[2], sys.argv[3].split()
 show = lambda n: "absent" if n is None else str(n)

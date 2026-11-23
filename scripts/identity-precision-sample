@@ -7,4 +7,4 @@
 #                                              [--unit showtimes|billing]   (billing: every (title, film) alike, the tail)
 #   scripts/identity-precision-sample estimate [--out DIR] [--judgements TSV] [--countries ...]
 set -euo pipefail
-exec python3 -I "$(dirname "$0")/identity_precision_sample.py" "$@"
+exec python3 -I -B "$(dirname "$0")/identity_precision_sample.py" "$@"

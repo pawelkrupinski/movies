@@ -49,6 +49,7 @@ from types import FrameType
 from typing import Callable, Dict, List, NoReturn, Optional, Sequence, Tuple
 
 import tool_cli
+import tool_python
 from tool_process import Command, Runner, SubprocessRunner
 
 TOOLS = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -237,7 +238,7 @@ class TouchedTree:
 
     def touched_methods(self, why: str, *args: str) -> str:
         """scripts/touched_methods.py with `args`: its stdout (its stderr passed on); Failed(why) when it failed."""
-        done = self.runner.capture(Command(["python3", "-I", self.script("touched_methods.py"), *args], self.env))
+        done = self.runner.capture(Command(tool_python.isolated(self.script("touched_methods.py"), *args), self.env))
         sys.stderr.write(done.stderr)
         if done.code != 0:
             sys.stdout.write(done.stdout)
