@@ -45,7 +45,7 @@ while [ $# -gt 0 ]; do
         --check|--update) ratchet="${1#--}" ;;
         --tools-dir) print_tools=1 ;;
         --range) ranges+=(--range "$2"); shift ;;
-        -h|--help) sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,35p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "js-quality-report: unknown argument $1" >&2; exit 2 ;;
     esac
     shift
