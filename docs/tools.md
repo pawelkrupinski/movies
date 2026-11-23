@@ -574,7 +574,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/store-screenshots-common.sh` | Shared engine for the store-screenshot drivers — android/scripts and ios/scripts both source this | `bash scripts/store-screenshots-common.sh` | wf android; 5 tools | - | MIGRATE |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (71)
+## Dev (72)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -596,8 +596,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ios-compile-check.sh` | Compile the iOS code the ways CI does and a Mac's `swift test` does not | `scripts/ios-compile-check.sh` | hook pre-push; 1 tool | ios-compile-check-test.sh | MIGRATE |
 | `scripts/ios-simulators` | Shut down the iOS Simulators agents boot, so none stays booted for days. | `scripts/ios-simulators` | agentctl; skill test-layers | ios-simulators-test.sh | Python |
 | `scripts/it-local.sh` | Run the it/ layer locally against a MongoDB of this run's own | `scripts/it-local.sh` | skill agent-ops, identity-investigation, test-layers; 9 tools | it-local-test.sh | KEEP |
-| `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | skill CLAUDE.md; 4 tools | cli_harness_test.py | Python |
+| `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | skill CLAUDE.md; 5 tools | cli_harness_test.py | Python |
 | `scripts/lib/seeded_order.py` | THE SEEDED TEST ORDER the nightly order-independence legs share (ios/scripts/swift_test_shuffled.py, | `imported` | wf android; 2 tools | seeded_order_test.py | Python |
+| `scripts/lib/store_screenshots_fixture.py` | The store-screenshot drivers' TEST FIXTURE (android/scripts/store_screenshots_test.py, ios/scripts/ | `imported` | by hand | - | Python |
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 5 tools | tool_actions_test.py | Python |
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; the retired | `imported` | 3 tools | tool_ci_wait_test.py | Python |
 | `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 15 tools | - | Python |
@@ -609,7 +610,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 14 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
-| `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 5 tools | - | KEEP |
+| `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 6 tools | - | KEEP |
 | `scripts/mutation-check` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate; a name for mutation_check.py) | `scripts/mutation-check` | skill test-layers; 5 tools | mutation_check_test.py | KEEP |
 | `scripts/mutation_check.py` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate) | `scripts/mutation_check.py` | 2 tools | mutation_check_test.py | Python |
 | `scripts/ops/dumpheap.py` | A heap dump (or a live class histogram) of a containerised JVM, asked from the NODE as root | `python3 scripts/ops/dumpheap.py` | by hand | dumpheap_test.py | Python |

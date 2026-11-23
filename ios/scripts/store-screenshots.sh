@@ -111,7 +111,13 @@ APP="$DERIVED/Build/Products/Debug-iphonesimulator/Kinowo.app"
 # so it is the honest "when was this app made" stamp for the staleness check.
 APP_BINARY="$APP/Kinowo"
 NOISE="$(mktemp)"                       # xcodebuild / simctl chatter lands here
-BOOTED_DEVICES=""                       # udids THIS run booted; shut down on exit
+# The udids THIS run booted, one a line, shut down on exit. A FILE, not a variable: ensure_device runs inside
+# `$( … )`, and every --all-top city inside a `( … )` subshell, so an assignment there died with it and the
+# simulators a run booted were never shut down.
+BOOTED_DEVICES="$(mktemp)"
+# Whether the closing Preview is wanted, read ONCE: cmd_all_top exports NO_OPEN=1 to quiet the per-city pop-ups,
+# and a second class pass reading NO_OPEN then would skip its own Preview.
+WANT_PREVIEW=1; [ -n "${NO_OPEN:-}" ] && WANT_PREVIEW=
 MAIN_SHELL=1                            # cleared in worker subshells
 CAPTURE_COUNTRY=""                      # the country the current city belongs to
 
@@ -160,14 +166,15 @@ for_each_class() { # $1.. command + args to run per class
   done
 }
 
-cleanup() { [ -n "${MAIN_SHELL:-}" ] && { shutdown_devices; release_lock; }; rm -f "$NOISE"; }
+cleanup() { [ -n "${MAIN_SHELL:-}" ] && { shutdown_devices; release_lock; rm -f "$BOOTED_DEVICES"; }; rm -f "$NOISE"; }
 trap cleanup EXIT
 
 # Shut down only what this run booted — a simulator the developer already had open
 # is never in the list, so it survives.
 shutdown_devices() {
   local udid
-  for udid in ${BOOTED_DEVICES:-}; do
+  # shellcheck disable=SC2013 # one udid a line, no spaces
+  for udid in $(cat "$BOOTED_DEVICES" 2>/dev/null); do
     xcrun simctl shutdown "$udid" >>"$NOISE" 2>&1 || true
   done
 }
@@ -199,7 +206,7 @@ ensure_device() { # $1 device name → echoes the udid
   [ -n "$udid" ] || die "no simulator named '$name' — install it in Xcode, or set IOS_PHONE / IOS_TABLET."
   if [ "$(device_state "$udid")" != "Booted" ]; then
     xcrun simctl boot "$udid" >>"$NOISE" 2>&1 || true
-    BOOTED_DEVICES="$BOOTED_DEVICES $udid"
+    echo "$udid" >> "$BOOTED_DEVICES"
     xcrun simctl bootstatus "$udid" -b >>"$NOISE" 2>&1 || true
   fi
   echo "$udid"
@@ -417,14 +424,13 @@ cmd_all_top() { # $1 N, $2 OFFSET — capture N cities of EVERY country
   # Snapshot where each candidates dir ends BEFORE anything is captured, so the
   # closing Preview shows only what this run added.
   local before; before="$(baselines)"
-  local want_preview=1; [ -n "${NO_OPEN:-}" ] && want_preview=
   export NO_OPEN=1                       # suppress the per-city pop-up
 
   say "$n cities from rank $off × $ncountries countries"   # for_each_class named the device
   build_app
   run_worker 0 1 "$n" "$off"             # one worker: a device type boots only once
 
-  if [ -n "$want_preview" ]; then preview_all "$before"; fi
+  if [ -n "$WANT_PREVIEW" ]; then preview_all "$before"; fi
 }
 
 # --all-top scoped to ONE country, by narrowing the list the loop already walks.

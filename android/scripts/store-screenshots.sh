@@ -97,7 +97,6 @@ tap()  { adb shell input tap "$1" "$2" >>"$NOISE" 2>&1; }
 type_() { adb shell input text "${1// /%s}" >>"$NOISE" 2>&1; }
 back() { adb shell input keyevent 4 >>"$NOISE" 2>&1; }
 snap() { adb exec-out screencap -p > "$1"; }
-naps() { command sleep "$1"; }
 
 # Ask every emulator this run booted (recorded in BOOTED_EMULATORS, by serial) to
 # exit cleanly. An emulator the developer already had running is never in that

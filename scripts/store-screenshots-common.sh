@@ -16,7 +16,9 @@
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/log.sh"
 step()  { printf '  %s… ' "$*"; }
 done_() { printf '\033[32m✓\033[0m\n'; }
-naps()  { command sleep "$1"; }
+# STORE_NAPS=0 skips every pause: the drivers' tests, whose fake devices answer at once. A wait loop counts its
+# nominal seconds, so it stays bounded without the pauses.
+naps()  { [ "${STORE_NAPS:-1}" = 0 ] || command sleep "$1"; }
 
 # ── one run at a time ─────────────────────────────────────────────────────────
 # These drivers are actively hostile to a second concurrent run of themselves, and
@@ -73,7 +75,13 @@ country_language() { case "$1" in pl) echo pl;; uk) echo en;; de) echo de;; us) 
 # ENDONYMS from the catalog — identical in every locale, so they double as a tap
 # target regardless of the app's language.
 country_name()   { case "$1" in pl) echo Polska;; uk) echo "United Kingdom";; de) echo Deutschland;; us) echo "United States";; es) echo "España";; esac; }
-country_base()   { case "$1" in pl) echo "https://kinowo.net";; uk) echo "https://showtimes.cc/uk";; de) echo "https://showtimes.cc/de";; us) echo "https://showtimes.cc/us";; es) echo "https://showtimes.cc/es";; *) echo "";; esac; }
+# STORE_API_BASE (the drivers' tests: a backend of their own) puts every country's at <it>/<country>.
+country_base()   {
+  if [ -n "${STORE_API_BASE:-}" ]; then
+    case "$1" in pl|uk|de|us|es) echo "$STORE_API_BASE/$1";; *) echo "";; esac; return 0
+  fi
+  case "$1" in pl) echo "https://kinowo.net";; uk) echo "https://showtimes.cc/uk";; de) echo "https://showtimes.cc/de";; us) echo "https://showtimes.cc/us";; es) echo "https://showtimes.cc/es";; *) echo "";; esac
+}
 # The gate's "Country" header, which IS localized — seeing it is proof the
 # country switch landed.
 country_header() { case "$1" in pl) echo Kraj;; uk) echo Country;; de) echo Land;; us) echo Country;; es) echo "País";; esac; }
