@@ -38,7 +38,7 @@ class IdentityDecorationsWorkflowSpec extends AnyFlatSpec with Matchers {
     restore should not include "gh run download"
     restore should not include "gh release download"
     learn should not include "|| true"
-    RepoFile.read("scripts/identity-fetch-recording.sh") should include("exit 1")
+    RepoFile.read("scripts/identity_fetch_recording.py") should include("return 1")
   }
 
   it should "hand the dispatched recording to its scripts through the environment, never spliced into them" in {

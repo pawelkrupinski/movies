@@ -228,7 +228,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (196)
+## Identity (197)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -341,7 +341,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity-ci-run` | Any sbt command over a cached recording, on CI (identity-run.yml), off the laptop (a name for identity_ci_run.py) | `scripts/identity-ci-run` | wf identity-run; agentctl; skill CLAUDE.md, identity-investigation; 6 tools | identity_ci_run_test.py | KEEP |
 | `scripts/identity-drift-ci` | The pre-land drift check: a commit's takes-drift rows, run on CI before landing (a name for identity_drift_ci.py) | `scripts/identity-drift-ci` | wf country-convergence-leg, identity-model-convergence, identity-takes; hook pre-push; agentctl; 9 tools | identity_drift_ci_test.py | KEEP |
 | `scripts/identity-explain` | An alias of `scripts/identity-slice <cc> --explain …` (see its --help): why a listing of the unmatched-cluster capture took (or did not take) its film | `scripts/identity-explain` | skill identity-investigation; 4 tools | identity-explain-test.sh | KEEP |
-| `scripts/identity-fetch-recording.sh` | Lay out one "Record scrape fixtures" run's recording beside the checkout, not in it — each country's scrape corpus | `scripts/identity-fetch-recording.sh` | wf archive-recording, identity-decorations, identity-lean-whole +3; 5 tools | identity-fetch-recording-test.sh | MIGRATE |
+| `scripts/identity-fetch-recording.sh` | Lay out one "Record scrape fixtures" run's recording beside the checkout, not in it — each country's scrape corpus | `scripts/identity-fetch-recording.sh` | wf archive-recording, identity-decorations, identity-lean-whole +3; 6 tools | identity_fetch_recording_test.py | KEEP |
 | `scripts/identity-impact-check` | THE PROOF OF THE IDENTITY TEST-IMPACT SELECTION (scripts/ci/identity_impact.py, project/TestImpact.scala): that it | `scripts/identity-impact-check` | hook pre-push; skill CLAUDE.md; 1 tool | - | Python |
 | `scripts/identity-judge-cards` | An evidence card for every unjudged take of the unmatched-cluster capture | `scripts/identity-judge-cards` | wf identity-capture; skill CLAUDE.md, identity-investigation; 4 tools | identity-judge-cards-test.sh | MIGRATE |
 | `scripts/identity-landing-check` | Will this land green? One command for an identity change before it is pushed to main | `scripts/identity-landing-check` | wf identity-model-convergence; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation; 10 tools | identity_landing_check_test.py | MIGRATE |
@@ -358,7 +358,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity-slice-refresh` | Re-pin identity slice cases on this checkout's code, in place, keeping each case's expected.tsv | `scripts/identity-slice-refresh` | skill identity-investigation; 1 tool | identity-slice-refresh-test.sh | MIGRATE |
 | `scripts/identity-stage-works.py` | Rebuild the identity resolver's table of stage works — every opera and ballet Wikidata knows with five or more | `scripts/identity-stage-works.py` | by hand | - | Python |
 | `scripts/identity-stamp-carry` | The stamp carry (project/StampCarry.scala; the owner, 2026-11-20) | `scripts/identity-stamp-carry` | hook pre-push; skill CLAUDE.md, identity-investigation; 6 tools | identity_stamp_carry_test.py | KEEP |
-| `scripts/identity-tools.sh` | What the local identity tools share (sourced): the recording cache, classpaths, countries | `bash scripts/identity-tools.sh` | wf main; skill identity-investigation; 41 tools | identity-tools-test.sh | MIGRATE |
+| `scripts/identity-tools.sh` | What the local identity tools share (sourced): the recording cache, classpaths, countries | `bash scripts/identity-tools.sh` | wf main; skill identity-investigation; 42 tools | identity-tools-test.sh | MIGRATE |
 | `scripts/identity-what-if` | A local what-if of a resolver change over prod's current corpus, in minutes | `scripts/identity-what-if` | hook pre-push; skill CLAUDE.md, identity-investigation; 21 tools | identity_what_if_test.py | MIGRATE |
 | `scripts/identity-why` | Why a listing changed film at a moment, from the identity history alone (identity_history, a month of it) | `scripts/identity-why` | skill identity-investigation; 1 tool | - | KEEP |
 | `scripts/identity_boot_cost.py` | THE IDENTITY BOOT-COST RATCHET (scripts/identity-boot-cost): what `scripts.IdentityBootCost` measured -- bytes and | `python3 scripts/identity_boot_cost.py` | 1 tool | identity_boot_cost_test.py | Python |
@@ -369,6 +369,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity_drift_ci_options.py` | identity-drift-ci's command line (scripts/identity_drift_ci.py, whose header is the usage): the options, checked -- | `imported` | 1 tool | - | Python |
 | `scripts/identity_drift_ci_runs.py` | identity-drift-ci's reads of a run (scripts/identity_drift_ci.py): its takes-drift rows, read through | `imported` | 3 tools | - | Python |
 | `scripts/identity_drift_ci_verdict.py` | identity-drift-ci's verdict (scripts/identity_drift_ci.py): each requested row's own verdict, with its report's lines, | `imported` | 1 tool | - | Python |
+| `scripts/identity_fetch_recording.py` | Lay out ONE "Record scrape fixtures" run's recording beside the checkout, not in it — each | `scripts/identity_fetch_recording.py` | 1 tool | identity_fetch_recording_test.py | Python |
 | `scripts/identity_landing_check.py` | WILL THIS LAND GREEN? One command for an identity change before it is pushed to main: the measure AND the | `scripts/identity_landing_check.py` | 3 tools | identity_landing_check_test.py | Python |
 | `scripts/identity_landing_check_sbt.py` | READING A SPEC GROUP'S sbt LOG, for scripts/identity-landing-check (identity_landing_check.py): whether sbt passed, | `imported` | 2 tools | - | Python |
 | `scripts/identity_landing_check_verdict.py` | THE VERDICT of scripts/identity-landing-check (identity_landing_check.py), last on stdout, from what the measure, the | `imported` | 1 tool | - | Python |
@@ -622,13 +623,13 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 5 tools | tool_actions_test.py | Python |
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; the retired | `imported` | 3 tools | tool_ci_wait_test.py | Python |
 | `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 16 tools | - | Python |
-| `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 11 tools | - | Python |
+| `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 12 tools | - | Python |
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 10 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 13 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 17 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 68 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 69 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 11 tools | tool_python_test.py | Python |
-| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 16 tools | - | Python |
+| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 17 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 7 tools | - | KEEP |

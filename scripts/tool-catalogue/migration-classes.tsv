@@ -164,7 +164,7 @@ scripts/identity-capture.sh	KEEP
 scripts/identity-ci-run	KEEP
 scripts/identity-drift-ci	KEEP
 scripts/identity-explain	KEEP
-scripts/identity-fetch-recording.sh	MIGRATE
+scripts/identity-fetch-recording.sh	KEEP
 scripts/identity-judge-cards	MIGRATE
 scripts/identity-landing-check	MIGRATE
 scripts/identity-measure	MIGRATE
