@@ -108,7 +108,6 @@ mutants=(
             failed = True @@         if refused:
             failed = False'
   'any Coupling trailer claims a split @@ m = SPLIT_TRAILER.match(value) @@ m = re.match(r"(\S+)()", "services.readmodel.ReadModelSweeper") if value else None'
-  'a malformed row is skipped @@ raise ValueError(f"line {n}: not @@ continue  # (f"line {n}: not'
   'a rename is never credited @@ credited[key] = old @@ pass'
   'a renamed row is new in the baseline @@ key in split) and (kind, key) not in renamed: @@ key in split):'
   'a renamed row past the limit still fails @@ elif not moved(key, value, base, cur) and (kind, key) not in renamed: @@ elif not moved(key, value, base, cur):'
@@ -138,7 +137,9 @@ mutants=(
 )
 
 mkdir -p "$work/mutants"
-cp "$REPO_ROOT/scripts/ci/trailers.py" "$work/mutants/"  # the module the tool imports, beside each mutant
+# the modules the tool imports, beside each mutant (row parsing is baseline_ratchet.parse_rows, the engine's: mutated
+# by js-quality-ratchet-mutation-test.sh)
+cp "$REPO_ROOT/scripts/ci/trailers.py" "$REPO_ROOT/scripts/ci/baseline_ratchet.py" "$work/mutants/"
 i=0
 for m in "${mutants[@]}"; do
   i=$((i + 1))

@@ -5,7 +5,8 @@
 # without a why). Each mutant is applied by exact text; a mutant
 # whose text is no longer in the tool exactly once fails this test too (the tool changed: re-aim the mutant at the new
 # check). A mutant named `trailers.py: ...` mutates the module the tool imports (the attribution rule lives there), each
-# mutant in a directory of its own beside its own copy of that module.
+# mutant in a directory of its own beside its own copy of that module. Row parsing is the engine's
+# (baseline_ratchet.parse_rows), mutated by js-quality-ratchet-mutation-test.sh.
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
@@ -39,7 +40,6 @@ mutants=(
                 return path.replace("a/src/main/scala/", "b/src/main/scala/x/")'
   'a move may change the method name @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if old not in present and (moved_key(old, renames) or "").partition(":")[0] == key.partition(":")[0] and was >= value), None)'
   'a move is growth @@ and not (key not in before and moved_from(key, value, before, after, renames)): @@ :'
-  'a malformed row is skipped @@ raise ValueError(f"line {n}: not @@ continue  # (f"line {n}: not'
   'a declared table holding logic passes @@         if key in data:
             continue @@         if True:
             continue'
@@ -63,7 +63,8 @@ for m in "${mutants[@]}"; do
   printf '%s' "$name" > "$work/mutants/$i.name"
   mkdir -p "$work/mutants/$i"
   # the tool and the modules it imports, side by side
-  cp "$tool" "$REPO_ROOT/scripts/ci/trailers.py" "$REPO_ROOT/scripts/ci/coupling_ratchet.py" "$work/mutants/$i/"
+  cp "$tool" "$REPO_ROOT/scripts/ci/trailers.py" "$REPO_ROOT/scripts/ci/coupling_ratchet.py" \
+     "$REPO_ROOT/scripts/ci/baseline_ratchet.py" "$work/mutants/$i/"
   target="$work/mutants/$i/quality_ratchet.py"
   case "$name" in "trailers.py: "*) target="$work/mutants/$i/trailers.py" ;; esac
   python3 -I - "$target" "$target" "$from" "$to" <<'PY'
