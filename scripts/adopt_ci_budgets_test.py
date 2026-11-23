@@ -16,6 +16,8 @@ from contextlib import redirect_stdout
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import adopt_ci_budgets as adopt  # noqa: E402
+sys.path.insert(0, os.path.join(HERE, "ci"))
+from gh_bounded_test import hung_gh  # noqa: E402
 
 MB, KB = 1024 * 1024, 1024
 
@@ -143,6 +145,11 @@ printf '{figures}\\n' > "$dir/performance-budgets-unit-worker/web/target/perform
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn("kb(1040) -> kb(1000)", done.stdout)
 
+
+class BoundedGhTest(unittest.TestCase):
+    def test_a_download_gh_never_answers_fails_instead_of_hanging(self):
+        with tempfile.TemporaryDirectory() as d, hung_gh(), self.assertRaises(subprocess.CalledProcessError):
+            adopt.download("1", None, d)
 
 if __name__ == "__main__":
     unittest.main()

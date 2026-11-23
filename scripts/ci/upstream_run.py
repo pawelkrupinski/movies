@@ -30,18 +30,20 @@ import argparse
 import datetime
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import gh_bounded  # noqa: E402
 
 MAX_AGE_HOURS = 48
 
 
-def successful_runs(workflow, repo, gh):
+def successful_runs(workflow, repo):
     """The workflow's successful runs on main, newest first by creation time (a status-filtered listing is not in
     creation order: identity_newest_recording in scripts/identity-tools.sh)."""
-    out = subprocess.run([gh, "run", "list", "-R", repo, "--workflow", workflow, "--status", "success", "--branch", "main",
-                          "-L", "50", "--json", "databaseId,createdAt"], check=True, capture_output=True, text=True).stdout
+    out = gh_bounded.gh(["run", "list", "-R", repo, "--workflow", workflow, "--status", "success", "--branch", "main",
+                         "-L", "50", "--json", "databaseId,createdAt"])
     runs = [(r["databaseId"], parsed(r["createdAt"])) for r in json.loads(out or "[]")]
     return sorted(runs, key=lambda r: r[1], reverse=True)
 
@@ -91,10 +93,9 @@ def main(argv=None, now=None, listing=None):
         print("::error::the upstream run is a run id, not %r" % args.trigger, file=sys.stderr)
         return 1
     now = now or datetime.datetime.now(datetime.timezone.utc)
-    gh = os.environ.get("KINOWO_GH") or "gh"
     as_is = taken_as_is(args.trigger, args.conclusion, args.branch)
     needs_listing = not as_is and not (args.trigger and args.on_fallback == "skip")
-    runs = (listing or (lambda: successful_runs(args.workflow, args.repo, gh)))() if needs_listing else []
+    runs = (listing or (lambda: successful_runs(args.workflow, args.repo)))() if needs_listing else []
     run, message = choose(args.trigger, args.conclusion, args.branch, runs, now, args.max_age_hours, args.workflow,
                           args.on_fallback)
     if run is None:

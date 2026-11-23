@@ -19,11 +19,13 @@ import math
 import os
 import re
 import statistics
-import subprocess
 import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "ci"))
+import gh_bounded  # noqa: E402
+
 ROOT = os.path.dirname(HERE)
 SOURCE = os.path.join(ROOT, "testkit/src/main/scala/tools/costs/PerformanceBudgets.scala")
 ARTIFACTS = "performance-budgets-*"
@@ -75,10 +77,7 @@ def tsv_files(where: str) -> list[str]:
 
 def download(run: str, repo: str | None, into: str) -> None:
     """The run's budget artifacts into `into`, through gh ($KINOWO_GH)."""
-    cmd = [os.environ.get("KINOWO_GH", "gh"), "run", "download", run, "-p", ARTIFACTS, "-D", into]
-    if repo:
-        cmd += ["-R", repo]
-    subprocess.run(cmd, check=True)
+    gh_bounded.gh(["run", "download", run, "-p", ARTIFACTS, "-D", into, *(["-R", repo] if repo else [])], capture=False)
 
 
 def written(value: int, unit: str) -> str:
