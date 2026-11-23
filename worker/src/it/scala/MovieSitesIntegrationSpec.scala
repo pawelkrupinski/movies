@@ -30,11 +30,22 @@ class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   private def rottenTomatoes[T](body: => T): T =
     LiveUpstream.orCancel("Rotten Tomatoes", probe(LiveUpstream.Probes.RottenTomatoes), _root_.tools.Stopwatch.System)(body)
 
+  /** `found` is the page `expected` names -- or the failure says what a GET of `asked` (the URL the client requests for
+   *  it) answered from this runner just now. `canonicalUrl` reads a 404 as "no such page", so its None alone could not
+   *  tell a dropped page from one this runner alone was refused: Main #2865's "Moulin Rouge!" was None on CI while the
+   *  page answered 200 everywhere else. */
+  private def shouldBePage(found: Option[String], expected: String, asked: String): Unit =
+    if (!found.contains(expected)) {
+      val answered = scala.util.Try(new RealHttpFetch().get(asked))
+        .fold(e => s"${e.getClass.getSimpleName}: ${e.getMessage}", body => s"${body.length} chars")
+      fail(s"$found was not Some($expected); a GET of $asked from here answered: $answered")
+    }
+
   "MetacriticClient.canonicalUrl" should "resolve The Dark Knight to its canonical page" in {
     val c = new MetacriticClient(new RealHttpFetch)
     metacritic {
-      c.canonicalUrl("The Dark Knight") shouldBe
-        Some("https://www.metacritic.com/movie/the-dark-knight")
+      shouldBePage(c.canonicalUrl("The Dark Knight"), "https://www.metacritic.com/movie/the-dark-knight",
+        "https://www.metacritic.com/movie/the-dark-knight/")
     }
   }
 
@@ -59,15 +70,16 @@ class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   it should "preserve '!' when building the slug (Moulin Rouge!)" in {
     val c = new MetacriticClient(new RealHttpFetch)
     metacritic {
-      c.canonicalUrl("Moulin Rouge!") shouldBe Some("https://www.metacritic.com/movie/moulin-rouge!")
+      shouldBePage(c.canonicalUrl("Moulin Rouge!"), "https://www.metacritic.com/movie/moulin-rouge!",
+        "https://www.metacritic.com/movie/moulin-rouge!/")
     }
   }
 
   "RottenTomatoesClient.canonicalUrl" should "resolve The Dark Knight" in {
     val c = new RottenTomatoesClient(new RealHttpFetch)
     rottenTomatoes {
-      c.canonicalUrl("The Dark Knight") shouldBe
-        Some("https://www.rottentomatoes.com/m/the_dark_knight")
+      shouldBePage(c.canonicalUrl("The Dark Knight"), "https://www.rottentomatoes.com/m/the_dark_knight",
+        "https://www.rottentomatoes.com/m/the_dark_knight")
     }
   }
 
@@ -90,15 +102,15 @@ class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   it should "resolve 'The Sting' to /m/sting (article-stripped) on RT" in {
     val c = new RottenTomatoesClient(new RealHttpFetch)
     rottenTomatoes {
-      c.canonicalUrl("The Sting") shouldBe Some("https://www.rottentomatoes.com/m/sting")
+      shouldBePage(c.canonicalUrl("The Sting"), "https://www.rottentomatoes.com/m/sting", "https://www.rottentomatoes.com/m/sting")
     }
   }
 
   it should "resolve 'The Phantom of Liberty' to /m/phantom_of_liberty on RT" in {
     val c = new RottenTomatoesClient(new RealHttpFetch)
     rottenTomatoes {
-      c.canonicalUrl("The Phantom of Liberty") shouldBe
-        Some("https://www.rottentomatoes.com/m/phantom_of_liberty")
+      shouldBePage(c.canonicalUrl("The Phantom of Liberty"), "https://www.rottentomatoes.com/m/phantom_of_liberty",
+        "https://www.rottentomatoes.com/m/phantom_of_liberty")
     }
   }
 
