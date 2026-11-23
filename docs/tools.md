@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (211)
+## Landing and CI (212)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -55,7 +55,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/main.yml` | Main's pipeline: build, test and publish the images Flux deploys; its rows are the gate | `workflow: push, workflow_dispatch` | wf branch-ci, ci, tool-self-tests; hook pre-push; agentctl; 16 tools | - | - |
 | `.github/workflows/mirror-pinned-images.yml` | Copies every image .github/pinned-images.tsv pins to this repo's GHCR packages by digest | `workflow: schedule, repository_dispatch, push, workflow_dispatch` | 3 tools | - | - |
 | `.github/workflows/nightly-stress.yml` | The tests whose failures are a matter of luck, run enough times for luck to run out | `workflow: schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
-| `.github/workflows/order-independence.yml` | Nightly: every suite in an order it never meets on push, so an order-dependent test shows | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf android, nightly-stress; 3 tools | - | - |
+| `.github/workflows/order-independence.yml` | Nightly: every suite in an order it never meets on push, so an order-dependent test shows | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf android, nightly-stress; 5 tools | - | - |
 | `.github/workflows/precheck-build-cache.yml` | Keep the landing check's sbt build cache warm for main's newest commit | `workflow: workflow_run, workflow_dispatch` | wf precommit-check; 1 tool | - | - |
 | `.github/workflows/precommit-check.yml` | The landing check: the pre-push hook's checks of an agentctl-queued change, split into the rest and four identity shards | `workflow: push` | wf precheck-build-cache, tool-self-tests; hook pre-push; agentctl; 9 tools | - | - |
 | `.github/workflows/prune-actions-caches.yml` | Keep main's Actions caches under GitHub's 10 GB cap by deleting superseded per-commit entries | `workflow: workflow_run, schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
@@ -137,11 +137,12 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/old-ref-deps-key.sh` | The old refs' dependency cache: its key and fallback prefix, as GITHUB_OUTPUT lines (.github/actions/old-ref-deps) | `scripts/ci/old-ref-deps-key.sh` | wf main; 1 tool | - | KEEP |
 | `scripts/ci/order-passes-present.sh` | Are both corpus files the order comparison reads present in <dir>? | `scripts/ci/order-passes-present.sh` | 1 tool | order-passes-present-test.sh | KEEP |
 | `scripts/ci/order-phases.sh` | How many of a country's split order-independence rows a convergence run runs | `scripts/ci/order-phases.sh` | wf country-convergence-leg, identity-model-convergence; 1 tool | order-phases-test.sh | KEEP |
-| `scripts/ci/order-preflight.sh` | Runner preflight for an Order independence leg: before a minute of tests, check that this runner can run them | `scripts/ci/order-preflight.sh` | wf order-independence; agentctl | order-preflight-test.sh | MIGRATE |
+| `scripts/ci/order-preflight.sh` | Runner preflight for an Order independence leg: before a minute of tests, check that this runner can run them | `scripts/ci/order-preflight.sh` | wf order-independence; agentctl; 1 tool | order_preflight_test.py | KEEP |
 | `scripts/ci/order-seed.sh` | The order seed for the nightly order-independence run | `scripts/ci/order-seed.sh` | wf order-independence | order-seed-test.sh | KEEP |
 | `scripts/ci/order_compare.py` | THE ORDER INDEPENDENCE VERDICT: a leg's red says an ORDER dependence only when the tests it failed pass in DEFAULT | `scripts/ci/order_compare.py` | wf order-independence; 5 tools | order_compare_test.py | Python |
 | `scripts/ci/order_compare_readers.py` | What order_compare.py reads a leg's failing tests from -- sbt's log, Gradle's JUnit reports, XCTest's log, the | `imported` | 1 tool | - | Python |
 | `scripts/ci/order_compare_verdicts.py` | order_compare.py's records read back: every leg's verdict as markdown (`summary`), scala's reverse and shuffled legs | `imported` | 1 tool | - | Python |
+| `scripts/ci/order_preflight.py` | RUNNER PREFLIGHT for an Order independence leg: before a minute of tests, check that this runner can run them -- the | `scripts/ci/order_preflight.py` | 1 tool | order_preflight_test.py | Python |
 | `scripts/ci/population-walk-diff` | The population walk's base side, for the pre-push hook's identity check | `scripts/ci/population-walk-diff` | hook pre-push; 1 tool | population_walk_diff_test.py | MIGRATE |
 | `scripts/ci/population_walk_diff.py` | THE POPULATION WALK, JUDGED AGAINST THE CHANGE'S BASE (the landing check's half of | `python3 scripts/ci/population_walk_diff.py` | hook pre-push; 2 tools | population_walk_diff_test.py | Python |
 | `scripts/ci/precommit-share.sh` | The landing check's shares (.github/workflows/precommit-check.yml) | `scripts/ci/precommit-share.sh` | wf precommit-check; agentctl; 4 tools | precommit_share_test.py | KEEP |
@@ -514,8 +515,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 206 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 206 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 207 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 207 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |

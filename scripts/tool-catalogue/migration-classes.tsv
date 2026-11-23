@@ -107,7 +107,7 @@ scripts/ci/no-network	MIGRATE
 scripts/ci/old-ref-deps-key.sh	KEEP
 scripts/ci/order-passes-present.sh	KEEP
 scripts/ci/order-phases.sh	KEEP
-scripts/ci/order-preflight.sh	MIGRATE
+scripts/ci/order-preflight.sh	KEEP
 scripts/ci/order-seed.sh	KEEP
 scripts/ci/population-walk-diff	MIGRATE
 scripts/ci/precommit-share.sh	KEEP
