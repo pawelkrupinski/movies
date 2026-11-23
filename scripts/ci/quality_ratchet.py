@@ -44,8 +44,10 @@ import sys
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # baseline_ratchet.py and trailers.py beside it, under `python3 -I` too
+import baseline_ratchet  # noqa: E402
 import trailers  # noqa: E402
+from trailers import git, text_at as file_at  # noqa: E402
 from coupling_ratchet import GENERIC_REASONS, ISO_DATE  # noqa: E402
 
 Rows = Dict[Tuple[str, str], int]
@@ -191,15 +193,7 @@ def check_tables(current: Rows, ranges: List[str]) -> bool:
 
 
 def parse(text: str) -> Rows:
-    rows: Rows = {}
-    for n, line in enumerate(text.splitlines(), 1):
-        if not line.strip() or line.startswith("#"):
-            continue
-        parts = line.split("\t")
-        if len(parts) != 3 or not parts[2].lstrip("-").isdigit():
-            raise ValueError(f"line {n}: not `kind<TAB>key<TAB>value`: {line!r}")
-        rows[(parts[0], parts[1])] = int(parts[2])
-    return rows
+    return baseline_ratchet.parse_rows(text, int)
 
 
 def of_kind(rows: Rows, kind: str) -> Dict[str, int]:
@@ -303,15 +297,6 @@ def falls(ratchet: Ratchet, current: Rows, baseline: Rows) -> List[str]:
             if now.get(key, 0) < value:
                 out.append(f"{kind} {key} {value} -> {now.get(key, 'within the limit')}")
     return out
-
-
-def git(*args: str) -> str:
-    return subprocess.run(["git", *args], check=True, capture_output=True, text=True).stdout
-
-
-def file_at(rev: str, path: str) -> str:
-    shown = subprocess.run(["git", "show", f"{rev}:{path}"], capture_output=True, text=True)
-    return shown.stdout if shown.returncode == 0 else ""
 
 
 def check_one(ratchet: Ratchet, current: Rows, ranges: List[str], renames: Renames) -> bool:

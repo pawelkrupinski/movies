@@ -99,8 +99,10 @@ import subprocess
 import sys
 from typing import Dict, List, Optional, Set, Tuple
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # baseline_ratchet.py and trailers.py beside it, under `python3 -I` too
+import baseline_ratchet  # noqa: E402
 import trailers  # noqa: E402
+from trailers import git, text_at as file_at  # noqa: E402
 
 BASELINE_PATH = "test/resources/coupling-baseline.tsv"
 LAYERS_PATH = "test/resources/coupling-layers.tsv"
@@ -125,15 +127,7 @@ Edges = Dict[str, List[str]]  # "<from package>-><to package>" -> its class refe
 
 
 def parse(text: str) -> Rows:
-    rows: Rows = {}
-    for n, line in enumerate(text.splitlines(), 1):
-        if not line.strip() or line.startswith("#"):
-            continue
-        parts = line.split("\t")
-        if len(parts) != 3 or not parts[2].lstrip("-").isdigit():
-            raise ValueError(f"line {n}: not `kind<TAB>key<TAB>value`: {line!r}")
-        rows[(parts[0], parts[1])] = int(parts[2])
-    return rows
+    return baseline_ratchet.parse_rows(text, int)
 
 
 def limits(rows: Rows) -> Dict[str, int]:
@@ -919,15 +913,6 @@ def oversized_contracts(rows: Dict[Tuple[str, str], str]) -> List[str]:
             out.append(f"contract {contract} has {size} members, past {'its grandfathered size' if contract in allowed else 'the cap'} {cap}"
                        " -- a contract is a few types read together: split it, or count the rest one by one")
     return out
-
-
-def git(*args: str) -> str:
-    return subprocess.run(["git", *args], check=True, capture_output=True, text=True).stdout
-
-
-def file_at(rev: str, path: str) -> str:
-    shown = subprocess.run(["git", "show", f"{rev}:{path}"], capture_output=True, text=True)
-    return shown.stdout if shown.returncode == 0 else ""
 
 
 def print_misplaced(rng: str, path: Optional[str] = None) -> None:

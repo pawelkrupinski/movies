@@ -1,6 +1,7 @@
 """THE BASELINE RATCHET ENGINE: what the JS/TS and the Python quality ratchets share (js_quality_ratchet.py,
-py_quality_ratchet.py; the Scala ratchets' model, scripts/ci/quality_ratchet.py). Each hands in a `Spec` -- its baseline,
-its kinds under their trailers, which files it holds -- and gets the one check and the one update:
+py_quality_ratchet.py; the Scala ratchets' model, scripts/ci/quality_ratchet.py, which with coupling_ratchet.py reads its
+baselines through parse_rows too). Each hands in a `Spec` -- its baseline, its kinds under their trailers, which files it
+holds -- and gets the one check and the one update:
 
   - a measured row past its baseline row fails; a key without one past its kind's limit fails (a NEW function, file,
     clone, cycle over a limit); the measure's limit may not rise past the baseline's;
@@ -15,12 +16,13 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple, TypeVar
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
 import trailers  # noqa: E402
 
 Rows = Dict[Tuple[str, str], float]
+N = TypeVar("N", int, float)
 
 
 @dataclass(frozen=True)
@@ -40,8 +42,10 @@ class Spec:
         return tuple(kind for kinds in self.trailers.values() for kind in kinds)
 
 
-def parse(text: str) -> Rows:
-    rows: Rows = {}
+def parse_rows(text: str, number: Callable[[str], N]) -> Dict[Tuple[str, str], N]:
+    """`kind<TAB>key<TAB>value` rows, each value read by `number` (`float` here; the Scala ratchets' `int`), `#` lines
+    and blank ones skipped; a malformed line is a ValueError naming it."""
+    rows: Dict[Tuple[str, str], N] = {}
     for n, line in enumerate(text.splitlines(), 1):
         if not line.strip() or line.startswith("#"):
             continue
@@ -49,10 +53,14 @@ def parse(text: str) -> Rows:
         try:
             if len(parts) != 3:
                 raise ValueError
-            rows[(parts[0], parts[1])] = float(parts[2])
+            rows[(parts[0], parts[1])] = number(parts[2])
         except ValueError:
             raise ValueError(f"line {n}: not `kind<TAB>key<TAB>value`: {line!r}") from None
     return rows
+
+
+def parse(text: str) -> Rows:
+    return parse_rows(text, float)
 
 
 def show(value: float) -> str:

@@ -633,7 +633,7 @@ file-lines	infra/nix/files/scheduled_dispatch.py	582
 file-lines	scripts/ci/ci_trends.py	1829
 file-lines	scripts/ci/commit_rules.py	595
 file-lines	scripts/ci/convergence_reuse.py	940
-file-lines	scripts/ci/coupling_ratchet.py	1276
+file-lines	scripts/ci/coupling_ratchet.py	1261
 file-lines	scripts/ci/runner_scheduler.py	1245
 file-lines	scripts/flip_timeline.py	843
 file-lines	scripts/identity_stamp_carry.py	602
@@ -644,11 +644,9 @@ file-lines	scripts/pure_move_check.py	883
 file-lines	scripts/recording_diff.py	550
 copies	infra/bin/backtest-alerts	2
 copies	scripts/agent-procs	2
-copies	scripts/ci/baseline_ratchet.py|scripts/ci/coupling_ratchet.py|scripts/ci/quality_ratchet.py	3
 copies	scripts/ci/ci_http_calls.py|scripts/ci/ci_timings.py|scripts/ci/identity_live_drift.py	3
 copies	scripts/ci/ci_trends.py	2
 copies	scripts/ci/convergence_reuse.py|scripts/ci/drift_seeds.py	2
-copies	scripts/ci/coupling_ratchet.py|scripts/ci/quality_ratchet.py	4
 copies	scripts/ci/drift_explorer.py|scripts/ci/family_flips_report.py	2
 copies	scripts/ci/family_reach.py|scripts/identity_what_if.py	2
 copies	scripts/ci/lint_per_file_check.py|scripts/ci/lint_reads_trace.py	2
