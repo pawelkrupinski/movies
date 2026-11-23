@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (212)
+## Landing and CI (213)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -79,7 +79,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/bounded-step.sh` | A step with its own `timeout-minutes` runs as a process group this script can end | `scripts/ci/bounded-step.sh` | wf country-convergence-leg, decoration-discovery, identity-capture +10; agentctl; skill CLAUDE.md | bounded-step-test.sh | KEEP |
 | `scripts/ci/build-image.sh` | Build one of the Dockerfile's images for linux/amd64 and push it under the commit's SHA tag only (main.yml's publish jobs give it the tags that ship) | `scripts/ci/build-image.sh` | wf ci; 1 tool | build-image-test.sh | MIGRATE |
 | `scripts/ci/cache-marker.sh` | One cache's outcome as a log line and a metrics line (hit, partial or miss) | `scripts/ci/cache-marker.sh` | 3 tools | cache-marker-test.sh | KEEP |
-| `scripts/ci/cgroup-sampler.sh` | The job's own memory and disk writes, read from its cgroup | `scripts/ci/cgroup-sampler.sh` | wf country-convergence-leg; 5 tools | cgroup-sampler-test.sh | MIGRATE |
+| `scripts/ci/cgroup-sampler.sh` | The job's own memory and disk writes, read from its cgroup | `scripts/ci/cgroup-sampler.sh` | wf country-convergence-leg; 6 tools | cgroup_sampler_test.py | KEEP |
+| `scripts/ci/cgroup_sampler.py` | The job's own memory and disk writes, read from its cgroup (the job container's, which holds the job's dockerd and | `scripts/ci/cgroup_sampler.py` | 1 tool | cgroup_sampler_test.py | Python |
 | `scripts/ci/check-security-headers.py` | Assert the live sites' security headers, and exit non-zero naming every one that is wrong. | `scripts/ci/check-security-headers.py` | wf security-headers; 2 tools | check_security_headers_test.py | Python |
 | `scripts/ci/ci-row-scope.sh` | Can this push move ci.yml's slow rows? Prints true when a changed path can change what they test | `scripts/ci/ci-row-scope.sh` | wf ci; skill identity-investigation; 2 tools | ci_row_scope_test.py | KEEP |
 | `scripts/ci/ci-timings` | Where CI's time goes across runs: report, trend, compare, collect | `scripts/ci/ci-timings` | wf alert-backtest, android, archive-recording +43; 5 tools | ci_timings_test.py | KEEP |
@@ -117,7 +118,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/ios-sim-destination.sh` | Print an xcodebuild -destination for an iPhone simulator this runner actually has | `scripts/ci/ios-sim-destination.sh` | wf ios, order-independence; 1 tool | ios-sim-destination-test.sh | KEEP |
 | `scripts/ci/jdk-pin.sh` | The pinned Temurin JDK build for <java-version> on this runner's platform, as GITHUB_OUTPUT lines (file, url, sha256, version, key | `scripts/ci/jdk-pin.sh` | 1 tool | jdk-pin-test.sh | KEEP |
 | `scripts/ci/jfr-every-jvm.sh` | Sourced by a profiled takes or drift row: every JVM the step starts from here on records JFR | `scripts/ci/jfr-every-jvm.sh` | wf country-convergence-leg; 1 tool | - | KEEP |
-| `scripts/ci/job_metrics.py` | A job's own measurements, written as JSON lines into its metrics file and uploaded as the job's `ci-metrics-*` | `python3 scripts/ci/job_metrics.py` | wf ci; 4 tools | job_metrics_test.py | Python |
+| `scripts/ci/job_metrics.py` | A job's own measurements, written as JSON lines into its metrics file and uploaded as the job's `ci-metrics-*` | `python3 scripts/ci/job_metrics.py` | wf ci; 5 tools | job_metrics_test.py | Python |
 | `scripts/ci/js_quality_ratchet.py` | The JS/TS quality ratchet (the pre-push jsquality check) | `scripts/ci/js_quality_ratchet.py` | hook pre-push; 3 tools | js_quality_ratchet_test.py | Python |
 | `scripts/ci/junit_failures.py` | The failed tests in JUnit XML, one per line: class <TAB> name, each once, in report order. | `scripts/ci/junit_failures.py` | 1 tool | junit_failures_test.py | Python |
 | `scripts/ci/jvm-offline-env.sh` | Environment lines (for GITHUB_ENV) under which no JVM of the job reaches the network, and sbt-guard does not retry a download | `scripts/ci/jvm-offline-env.sh` | 1 tool | - | KEEP |
