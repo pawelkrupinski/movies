@@ -326,8 +326,7 @@ def check_one(ratchet: Ratchet, current: Rows, ranges: List[str], renames: Renam
             print(f"  Each rise needs the trailer on the commit making it, not on another commit of the push; without one:")
             for u in unjustified:
                 print(f"  - {u}")
-            for note in trailers.misplaced_notes(rng, ratchet.trailer, ratchet.baseline):
-                print(f"  {note}")
+            trailers.print_misplaced(rng, ratchet.trailer, ratchet.baseline)
     down = falls(ratchet, current, baseline)
     if down:
         print(f"{ratchet.name} fell ({len(down)} rows below {ratchet.baseline}, not yet recorded: scripts/quality-report"

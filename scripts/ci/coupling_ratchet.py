@@ -915,12 +915,6 @@ def oversized_contracts(rows: Dict[Tuple[str, str], str]) -> List[str]:
     return out
 
 
-def print_misplaced(rng: str, path: Optional[str] = None) -> None:
-    """Why a refusal for want of a `Coupling:` trailer saw none: each such line of `rng` git reads as prose."""
-    for note in trailers.misplaced_notes(rng, "Coupling", path):
-        print(f"  {note}")
-
-
 def unjustified(rng: str, path: str, rose) -> List[str]:
     """The commits of `rng` whose own step grows `path` (`rose` over its parsed texts) with no `Coupling:` trailer
     (trailers.py, THE ATTRIBUTION RULE)."""
@@ -1045,7 +1039,7 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
                   " trailer admits a new one -- cut it, or exempt it with its why in " + EXEMPTIONS_PATH + ":")
             for g in frozen:
                 print(f"  - {g}")
-            print_misplaced(rng)
+            trailers.print_misplaced(rng, "Coupling")
         grown = growth(before, baseline)
         unjustified_growth = unjustified(rng, BASELINE_PATH, lambda a, b: growth(parse(a), parse(b))) if grown else []
         if unjustified_growth:
@@ -1054,7 +1048,7 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
             for g in grown:
                 print(f"  - {g}")
             print_unjustified(unjustified_growth)
-            print_misplaced(rng, BASELINE_PATH)
+            trailers.print_misplaced(rng, "Coupling", BASELINE_PATH)
         if os.path.exists(layers_path):
             with open(layers_path) as f:
                 loosened = loosening(parse_layers(file_at(base, LAYERS_PATH)), parse_layers(f.read()))
@@ -1067,7 +1061,7 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
                 for item in loosened:
                     print(f"  - {item}")
                 print_unjustified(unjustified_layers)
-                print_misplaced(rng, LAYERS_PATH)
+                trailers.print_misplaced(rng, "Coupling", LAYERS_PATH)
     if os.path.exists(exemptions_path):
         with open(exemptions_path) as f:
             oversized = oversized_contracts(parse_exemptions(f.read()))
@@ -1090,7 +1084,7 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
                 for item in loose:
                     print(f"  - {item}")
                 print_unjustified(unjustified_exemptions)
-                print_misplaced(rng, EXEMPTIONS_PATH)
+                trailers.print_misplaced(rng, "Coupling", EXEMPTIONS_PATH)
     for rng in ranges:
         unadmitted = unadmitted_exemptions(rng)
         if unadmitted:
@@ -1100,7 +1094,7 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
             for item in unadmitted:
                 print(f"  - {item}")
             print(f"  The why: {REASON_SHAPE}.")
-            print_misplaced(rng, EXEMPTIONS_PATH)
+            trailers.print_misplaced(rng, "Coupling", EXEMPTIONS_PATH)
     down = falls(current, baseline)
     if down:
         print(f"coupling fell ({len(down)} rows below the baseline, not yet recorded: scripts/coupling-report --update"

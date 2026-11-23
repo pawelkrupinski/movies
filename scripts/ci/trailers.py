@@ -93,6 +93,12 @@ def misplaced_notes(rng: str, key: str, path: Optional[str] = None) -> List[str]
     return [f"{sha[:9]}: {explain(m)}" for sha in shas for m in misplaced(message_of(sha), (key,))]
 
 
+def print_misplaced(rng: str, key: str, path: Optional[str] = None) -> None:
+    """Says misplaced_notes, indented: under a ratchet's refusal for want of `key`."""
+    for note in misplaced_notes(rng, key, path):
+        print(f"  {note}")
+
+
 def carries(sha: str, key: str) -> bool:
     """Whether commit `sha` carries a non-empty `key:` trailer (git's reading: the final trailer block)."""
     value = git("log", "-1", f"--format=%(trailers:key={key},valueonly,separator=%x20)", sha)

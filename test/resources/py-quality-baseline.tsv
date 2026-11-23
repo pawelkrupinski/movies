@@ -172,7 +172,7 @@ cognitive	scripts/ci/population_walk_diff.py:read_candidates	16
 cognitive	scripts/ci/python_floor_lint.py:annotations	20
 cognitive	scripts/ci/python_floor_lint.py:newer_fstrings	20
 cognitive	scripts/ci/python_floor_lint.py:python_files	11
-cognitive	scripts/ci/quality_ratchet.py:check_one	25
+cognitive	scripts/ci/quality_ratchet.py:check_one	22
 cognitive	scripts/ci/quality_ratchet.py:declared_tables	11
 cognitive	scripts/ci/quality_ratchet.py:growth	13
 cognitive	scripts/ci/quality_ratchet.py:violations	14
@@ -460,7 +460,7 @@ cyclomatic	scripts/ci/population_walk_diff.py:main	33
 cyclomatic	scripts/ci/population_walk_diff.py:read_candidates	12
 cyclomatic	scripts/ci/python_floor_lint.py:findings_in	16
 cyclomatic	scripts/ci/python_floor_lint.py:newer_fstrings	15
-cyclomatic	scripts/ci/quality_ratchet.py:check_one	15
+cyclomatic	scripts/ci/quality_ratchet.py:check_one	14
 cyclomatic	scripts/ci/quality_ratchet.py:main	11
 cyclomatic	scripts/ci/ratchet_diff.py:collect	21
 cyclomatic	scripts/ci/ratchet_diff.py:diff_metric	21

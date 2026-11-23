@@ -159,8 +159,7 @@ def unjustified_growth(spec: Spec, rng: str, baseline: Rows) -> bool:
             print(f"THE {spec.title} BASELINE GREW in {rng} ({', '.join(kinds)}) with no `{trailer}: <why>` trailer"
                   " on the commit changing it:")
             print("\n".join(f"  - {u}" for u in unjustified))
-            for note in trailers.misplaced_notes(rng, trailer, spec.baseline):
-                print(f"  {note}")
+            trailers.print_misplaced(rng, trailer, spec.baseline)
     return found
 
 
