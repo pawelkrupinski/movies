@@ -3,20 +3,16 @@
 dropped in, two refs' traces printed and diffed to the steps that moved, a batch diffed to the billings that moved, a call
 naming no country refused. java and sbt are fakes; the repository is a scratch one holding a copy of the tool and the
 scripts it runs. Ported from title-trace-test.sh case for case; the same cases hold the shell tool and its Python rewrite
-(the extensionless name, whichever it execs)."""
+(the extensionless name, whichever it execs); the scratch repository is identity_tool_fixture.py's."""
 from __future__ import annotations
 
 import glob
 import os
-import shutil
-import sys
 import unittest
 from typing import List
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from identity_tool_fixture import cli_harness, tool_repo
 
-ROOT = cli_harness.ROOT
 RAW = "Pokaz przyjazny osobom z ADHD: Kandydaci śmierci"
 TRACED = ("worker/src/test/scala/services/identity/TitleTrace.scala", "worker/src/fixtures/scala/tools/SearchQueryMarkers.scala",
           "worker/src/fixtures/scala/tools/CinemaSlotInvariants.scala")
@@ -29,7 +25,6 @@ case " $* " in *" --batch "*)
 esac
 echo "1. ingest"
 echo "3. search: $(cat build.sbt)"'''
-SBT = 'echo "$PWD/worker/target/scala-3.x/test-classes:/lib/a.jar"'
 
 
 class TitleTraceTest(cli_harness.ToolCase):
@@ -37,27 +32,10 @@ class TitleTraceTest(cli_harness.ToolCase):
 
     def setUp(self) -> None:
         super().setUp()
-        self.checkout = self.path("repo")
-        for name in ["title-trace", "title_trace.py", "title-trace-tool-files.txt", "identity-tools.sh", "tool-conventions.sh", "jvm-gate.sh"]:
-            if os.path.exists(os.path.join(ROOT, "scripts", name)):
-                os.makedirs(os.path.join(self.checkout, "scripts"), exist_ok=True)
-                shutil.copy2(os.path.join(ROOT, "scripts", name), os.path.join(self.checkout, "scripts", name))
-        os.makedirs(os.path.join(self.checkout, "scripts", "lib"))
-        for module in glob.glob(os.path.join(ROOT, "scripts", "lib", "*.py")):
-            shutil.copy2(module, os.path.join(self.checkout, "scripts", "lib"))
-        for relative in TRACED:
-            self.write(f"repo/{relative}", f"// {relative}\n")
-        for tree in ("common/src", "identity/src", "testkit/src"):
-            os.makedirs(os.path.join(self.checkout, tree))
-        self.write("repo/build.sbt", "rule a\n")
-        self.repo("repo")
-        self.git(self.checkout, "add", "-A")
-        self.git(self.checkout, "commit", "-qm", "base")
-        self.write("repo/build.sbt", "rule b\n")
-        self.git(self.checkout, "commit", "-qam", "head")
-        self.base = self.git(self.checkout, "rev-parse", "HEAD~1").strip()
+        repo = tool_repo(self, ("title-trace", "title_trace.py", "title-trace-tool-files.txt", "identity-tools.sh",
+                                "tool-conventions.sh", "jvm-gate.sh"), TRACED, "rule a\n", "rule b\n")
+        self.checkout, self.base = repo.checkout, repo.base
         self.fakes.script("java", JAVA)
-        self.fakes.script("sbt", SBT)
 
     def trace(self, *args: str) -> cli_harness.Done:
         return self.run_tool(*args, tool=os.path.join(self.checkout, "scripts", "title-trace"),
