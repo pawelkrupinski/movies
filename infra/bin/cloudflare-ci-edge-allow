@@ -52,11 +52,12 @@ import json, os, sys, urllib.request
 
 TOKEN, KEY, IP, DRY = os.environ["CLOUDFLARE_API_TOKEN"], os.environ["EDGE_CHECK_KEY"], os.environ["CI_RUNNER_IP"], os.environ["DRY_RUN"] == "1"
 REF = "ci-runner-edge-key"
+API = os.environ.get("CLOUDFLARE_API_URL", "https://api.cloudflare.com/client/v4")  # a test's fake Cloudflare
 HOSTS = {"kinowo.net": ["kinowo.net", "www.kinowo.net"], "showtimes.cc": ["showtimes.cc", "www.showtimes.cc"]}
 
 
 def api(method, path, body=None):
-    request = urllib.request.Request("https://api.cloudflare.com/client/v4" + path, method=method,
+    request = urllib.request.Request(API + path, method=method,
                                      data=None if body is None else json.dumps(body).encode(),
                                      headers={"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"})
     try:
