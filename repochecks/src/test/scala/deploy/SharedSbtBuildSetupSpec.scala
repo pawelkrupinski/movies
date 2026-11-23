@@ -65,7 +65,7 @@ class SharedSbtBuildSetupSpec extends AnyFlatSpec with Matchers {
   it should "leave the JVM heap to each sbt invocation" in {
     RepoFile.withoutComments(RepoFile.read(Action)) should not include "Xmx"
     // The refit's job is one script now; its JVM sets its own heap.
-    RepoFile.read("scripts/identity-refit") should include("-Xmx${IDENTITY_REFIT_HEAP:-12g}")
+    RepoFile.read("scripts/identity_refit.py") should include("-Xmx{self.env.get('IDENTITY_REFIT_HEAP') or '12g'}")
   }
 
   /** Each Main sbt job keys a family of its own: a row compiles only its own modules' tests, so one shared entry

@@ -169,7 +169,7 @@ scripts/identity-landing-check	MIGRATE
 scripts/identity-measure	MIGRATE
 scripts/identity-measure-local	MIGRATE
 scripts/identity-precision-sample	KEEP
-scripts/identity-refit	MIGRATE
+scripts/identity-refit	KEEP
 scripts/identity-replay	KEEP
 scripts/identity-repro	KEEP
 scripts/identity-rule-ablation	KEEP
