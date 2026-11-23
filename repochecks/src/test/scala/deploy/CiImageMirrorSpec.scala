@@ -58,6 +58,6 @@ class CiImageMirrorSpec extends AnyFlatSpec with Matchers {
       workflow.contains("docker/build-push-action@") || workflow.contains("buildx build")
     }.map(_.getName)
     withClue("build images with scripts/ci/build-image.sh: ")(byHand shouldBe empty)
-    RepoFile.read("scripts/ci/build-image.sh") should include("FROM docker.io/library/")
+    RepoFile.read("scripts/ci/build_image.py") should include("\"FROM docker.io/library/\"")
   }
 }

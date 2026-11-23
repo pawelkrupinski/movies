@@ -77,7 +77,7 @@ repochecks:deploy.BotPullRequestBranchSpec	.github/workflows/* @per-file	per-fil
 repochecks:deploy.CacheSavePolicySpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
 repochecks:deploy.ChangeStreamSilenceAlertSpec	@gitops infra/nix/files/monitoring/rules/*
 repochecks:deploy.CiDispatchOrderSpec	.github/workflows/ci.yml
-repochecks:deploy.CiImageMirrorSpec	.github/workflows/* .github/actions/setup-buildx/action.yml Dockerfile scripts/ci/build-image.sh
+repochecks:deploy.CiImageMirrorSpec	.github/workflows/* .github/actions/setup-buildx/action.yml Dockerfile scripts/ci/build-image.sh scripts/ci/build_image.py
 repochecks:deploy.CiPinnedImageSpec	.github/actions/* .github/workflows/* scripts/ci/* .github/pinned-images.tsv
 repochecks:deploy.CiRowScopeSpec	.github/workflows/branch-ci.yml .github/workflows/ci.yml .github/workflows/main.yml
 repochecks:deploy.CiRowTimeoutSpec	.github/workflows/ci.yml .github/workflows/identity-rule-ablation.yml .github/workflows/identity-run.yml .github/actions/download-artifacts/*

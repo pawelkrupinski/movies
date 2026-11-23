@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (224)
+## Landing and CI (225)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -45,14 +45,14 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/alert-backtest.yml` | Every alert rule in the tree, replayed over the last 14 days of production's metrics (infra/bin/backtest-alerts | `workflow: schedule, repository_dispatch, workflow_dispatch` | 3 tools | - | - |
 | `.github/workflows/android.yml` | Build, test and publish the Android app (unit and instrumented tests, the rolling APK and AAB release) | `workflow: pull_request, push, workflow_dispatch` | wf order-independence, renovate; 1 tool | - | - |
 | `.github/workflows/branch-ci.yml` | Runs the exact same build + test pipeline main.yml gates on — but without deploying — for every pull request | `workflow: pull_request` | wf ci, main | - | - |
-| `.github/workflows/ci.yml` | The full build + test pipeline, factored out as a reusable workflow so it has exactly one definition | `workflow: workflow_call` | wf branch-ci, country-fixture-artifact, decoration-discovery +8; agentctl; skill regenerate-snapshots, test-layers; 17 tools | - | - |
+| `.github/workflows/ci.yml` | The full build + test pipeline, factored out as a reusable workflow so it has exactly one definition | `workflow: workflow_call` | wf branch-ci, country-fixture-artifact, decoration-discovery +8; agentctl; skill regenerate-snapshots, test-layers; 19 tools | - | - |
 | `.github/workflows/country-fixture-artifact.yml` | Records the whole country's fixture corpus once a day and uploads it as a downloadable build artifact | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf record-scrape-fixtures; 1 tool | - | - |
 | `.github/workflows/coupling-exemptions.yml` | The weekly exemption report (CLAUDE.md, "Coupling is reviewed on every change"; a report, never a gate) | `workflow: schedule, repository_dispatch, workflow_dispatch` | skill CLAUDE.md; 3 tools | - | - |
 | `.github/workflows/decodo-probe.yml` | Probe the Decodo residential proxy pool: kinowo.net through every port, twice an hour | `workflow: schedule, workflow_dispatch` | by hand | - | - |
 | `.github/workflows/decoration-discovery.yml` | Weekly discovery of the decorations venues wrap film titles in, as a PR | `workflow: workflow_dispatch, schedule, repository_dispatch` | wf identity-capture, identity-refit | - | - |
 | `.github/workflows/filmweb-diff.yml` | Weekly diagnostic: every upcoming showtime our scrapers publish compared with Filmweb's | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf country-fixture-artifact | - | - |
 | `.github/workflows/ios.yml` | Build and test the iOS app (swift test, the LocalServer decoders, XCUITest) on macOS runners | `workflow: pull_request, push, workflow_dispatch` | wf ci; 4 tools | - | - |
-| `.github/workflows/main.yml` | Main's pipeline: build, test and publish the images Flux deploys; its rows are the gate | `workflow: push, workflow_dispatch` | wf branch-ci, ci, tool-self-tests; hook pre-push; agentctl; 17 tools | - | - |
+| `.github/workflows/main.yml` | Main's pipeline: build, test and publish the images Flux deploys; its rows are the gate | `workflow: push, workflow_dispatch` | wf branch-ci, ci, tool-self-tests; hook pre-push; agentctl; 18 tools | - | - |
 | `.github/workflows/mirror-pinned-images.yml` | Copies every image .github/pinned-images.tsv pins to this repo's GHCR packages by digest | `workflow: schedule, repository_dispatch, push, workflow_dispatch` | 4 tools | - | - |
 | `.github/workflows/nightly-stress.yml` | The tests whose failures are a matter of luck, run enough times for luck to run out | `workflow: schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
 | `.github/workflows/order-independence.yml` | Nightly: every suite in an order it never meets on push, so an order-dependent test shows | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf android, nightly-stress; 6 tools | - | - |
@@ -77,7 +77,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/alert-step.sh` | Alert, not red: run a check whose failure of a given kind is a third PARTY's or a BACKLOG's | `scripts/ci/alert-step.sh` | wf decodo-probe, identity-ci-staleness, identity-findings-report +2 | alert-step-test.sh | KEEP |
 | `scripts/ci/baseline_ratchet.py` | THE BASELINE RATCHET ENGINE: what the JS/TS and the Python quality ratchets share (js_quality_ratchet.py, | `imported` | hook pre-push; 5 tools | - | Python |
 | `scripts/ci/bounded-step.sh` | A step with its own `timeout-minutes` runs as a process group this script can end | `scripts/ci/bounded-step.sh` | wf country-convergence-leg, decoration-discovery, identity-capture +10; agentctl; skill CLAUDE.md | bounded-step-test.sh | KEEP |
-| `scripts/ci/build-image.sh` | Build one of the Dockerfile's images for linux/amd64 and push it under the commit's SHA tag only (main.yml's publish jobs give it the tags that ship) | `scripts/ci/build-image.sh` | wf ci; 2 tools | build-image-test.sh | MIGRATE |
+| `scripts/ci/build-image.sh` | Build one of the Dockerfile's images for linux/amd64 and push it under the commit's SHA tag only (main.yml's publish jobs give it the tags that ship) | `scripts/ci/build-image.sh` | wf ci; 3 tools | build_image_test.py | KEEP |
+| `scripts/ci/build_image.py` | Build one of the Dockerfile's images for linux/amd64 and push it under the commit's SHA tag ONLY (main.yml's publish | `scripts/ci/build_image.py` | 1 tool | build_image_test.py | Python |
 | `scripts/ci/cache-marker.sh` | One cache's outcome as a log line and a metrics line (hit, partial or miss) | `scripts/ci/cache-marker.sh` | 3 tools | cache-marker-test.sh | KEEP |
 | `scripts/ci/cgroup-sampler.sh` | The job's own memory and disk writes, read from its cgroup | `scripts/ci/cgroup-sampler.sh` | wf country-convergence-leg; 6 tools | cgroup_sampler_test.py | KEEP |
 | `scripts/ci/cgroup_sampler.py` | The job's own memory and disk writes, read from its cgroup (the job container's, which holds the job's dockerd and | `scripts/ci/cgroup_sampler.py` | 1 tool | cgroup_sampler_test.py | Python |
@@ -657,7 +658,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 20 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 21 tools | tool_github_test.py | Python |
 | `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 89 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 90 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 14 tools | tool_python_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 19 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
