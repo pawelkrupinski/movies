@@ -23,7 +23,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --measure) measure=1 ;;
         --tsv) format=(--tsv) ;;
-        -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*) echo "ratchet-diff: unknown argument $1" >&2; exit 2 ;;
         *) [ -z "$range" ] || { echo "ratchet-diff: one range" >&2; exit 2; }; range="$1" ;;
     esac
