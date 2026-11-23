@@ -107,7 +107,7 @@ class Footprint:
     def code(self) -> Optional[str]:
         """The takes check's identity paths' tree at the base: the key a side's trace is stored under."""
         done = self.c.runner.capture(tool_process.Command(
-            ["python3", "-I", os.path.join(HERE, "ci", "identity_takes_check_paths.py")], self.c.env))
+            ["python3", "-I", "-B", os.path.join(HERE, "ci", "identity_takes_check_paths.py")], self.c.env))
         paths = done.stdout.split()
         listing = self.c.git.out("ls-tree", "-r", self.c.state.base, "--", *paths, quiet=True) if paths else None
         if listing is None:

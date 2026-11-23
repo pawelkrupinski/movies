@@ -119,8 +119,10 @@ class Context:
         return True
 
     def classify(self, directory: str, judgements: str, rows: str, table: str, more: List[str]) -> int:
-        """scripts/identity_measure.py over the takes in `directory`: its table on stdout and in `table`; its verdict."""
-        argv = ["python3", "-I", os.path.join(HERE, "identity_measure.py"), directory, "--judgements", judgements,
+        """scripts/identity_measure.py over the takes in `directory`: its table on stdout and in `table`; its verdict.
+        `-B` beside `-I`: -I drops PYTHONDONTWRITEBYTECODE, and the modules it imports would leave scripts/ci/__pycache__
+        in the checkout."""
+        argv = ["python3", "-I", "-B", os.path.join(HERE, "identity_measure.py"), directory, "--judgements", judgements,
                 "--countries", self.state.countries, "--rows", rows, *more, *(["--json"] if self.o.json else [])]
         done = self.runner.capture(tool_process.Command(argv, self.env))
         sys.stdout.write(done.stdout)
