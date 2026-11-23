@@ -112,7 +112,7 @@ scripts/ci/order-phases.sh	KEEP
 scripts/ci/order-preflight.sh	MIGRATE
 scripts/ci/order-seed.sh	KEEP
 scripts/ci/population-walk-diff	MIGRATE
-scripts/ci/precommit-share.sh	MIGRATE
+scripts/ci/precommit-share.sh	KEEP
 scripts/ci/preflight.sh	MIGRATE
 scripts/ci/prune-actions-caches.sh	KEEP
 scripts/ci/publish-rolling-release.sh	KEEP

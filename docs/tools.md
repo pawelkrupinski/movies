@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (207)
+## Landing and CI (208)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -57,7 +57,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/nightly-stress.yml` | The tests whose failures are a matter of luck, run enough times for luck to run out | `workflow: schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
 | `.github/workflows/order-independence.yml` | Nightly: every suite in an order it never meets on push, so an order-dependent test shows | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf android, nightly-stress; 3 tools | - | - |
 | `.github/workflows/precheck-build-cache.yml` | Keep the landing check's sbt build cache warm for main's newest commit | `workflow: workflow_run, workflow_dispatch` | wf precommit-check; 1 tool | - | - |
-| `.github/workflows/precommit-check.yml` | The landing check: the pre-push hook's checks of an agentctl-queued change, split into the rest and four identity shards | `workflow: push` | wf precheck-build-cache, tool-self-tests; hook pre-push; agentctl; 8 tools | - | - |
+| `.github/workflows/precommit-check.yml` | The landing check: the pre-push hook's checks of an agentctl-queued change, split into the rest and four identity shards | `workflow: push` | wf precheck-build-cache, tool-self-tests; hook pre-push; agentctl; 9 tools | - | - |
 | `.github/workflows/prune-actions-caches.yml` | Keep main's Actions caches under GitHub's 10 GB cap by deleting superseded per-commit entries | `workflow: workflow_run, schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
 | `.github/workflows/quality-hotspots.yml` | The monthly hotspot report (CLAUDE.md, "Code quality ratchets"; a report, never a gate): scripts/hotspots over main's last 90 days | `workflow: schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
 | `.github/workflows/record-scrape-fixtures.yml` | Nightly capture of every country's real `cinema_scrapes` into a fixture file, stored in the actions cache for the convergence legs to replay | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf country-convergence-leg, identity-capture, identity-model-convergence; 1 tool | - | - |
@@ -146,7 +146,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/order_compare_verdicts.py` | order_compare.py's records read back: every leg's verdict as markdown (`summary`), scala's reverse and shuffled legs | `imported` | 1 tool | - | Python |
 | `scripts/ci/population-walk-diff` | The population walk's base side, for the pre-push hook's identity check | `scripts/ci/population-walk-diff` | hook pre-push; 1 tool | population_walk_diff_test.py | MIGRATE |
 | `scripts/ci/population_walk_diff.py` | THE POPULATION WALK, JUDGED AGAINST THE CHANGE'S BASE (the landing check's half of | `python3 scripts/ci/population_walk_diff.py` | hook pre-push; 2 tools | population_walk_diff_test.py | Python |
-| `scripts/ci/precommit-share.sh` | The landing check's shares (.github/workflows/precommit-check.yml) | `scripts/ci/precommit-share.sh` | wf precommit-check; agentctl; 3 tools | precommit-share-test.sh | MIGRATE |
+| `scripts/ci/precommit-share.sh` | The landing check's shares (.github/workflows/precommit-check.yml) | `scripts/ci/precommit-share.sh` | wf precommit-check; agentctl; 4 tools | precommit_share_test.py | KEEP |
+| `scripts/ci/precommit_share.py` | THE LANDING CHECK'S SHARES (.github/workflows/precommit-check.yml): how one job of the check calls the pre-push hook, | `scripts/ci/precommit_share.py` | 1 tool | precommit_share_test.py | Python |
 | `scripts/ci/preflight.sh` | Fail a workflow in seconds when it lacks configuration (an unset secret or variable), not code | `scripts/ci/preflight.sh` | wf android, convergence-bisect, decoration-discovery +5 | preflight-test.sh | MIGRATE |
 | `scripts/ci/prune-actions-caches.sh` | Delete the superseded per-commit entries of main's GitHub Actions caches, keeping the newest entry of each family | `scripts/ci/prune-actions-caches.sh` | wf prune-actions-caches | prune-actions-caches-test.sh | KEEP |
 | `scripts/ci/publish-rolling-release.sh` | Point a rolling prerelease — and its git tag — at this commit and replace its assets | `scripts/ci/publish-rolling-release.sh` | wf android | - | KEEP |
@@ -506,8 +507,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 202 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 202 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 203 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 203 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |

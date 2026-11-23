@@ -36,11 +36,11 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
       jobs(job) should include("timeout --kill-after=60 80m ")
       jobs(job) should include("""scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE"""")
     }
-    val share = RepoFile.read("scripts/ci/precommit-share.sh")
+    val share = RepoFile.read("scripts/ci/precommit_share.py") // precommit-share.sh is a thin exec of it
     // identity is another job's only for a change's own checks (--checks-only): the fast-only and verify-only sets
     // carry no identity area, and verify-only's identity unit tests ride the rest's sbt
-    share should include("""elsewhere=""; [ "$mode" != --checks-only ] || elsewhere="identity"""")
-    share should include("PREPUSH_LIST=1")
+    share should include("""elsewhere = "identity" if mode == CHECKS_ONLY else """"")
+    share should include(""""PREPUSH_LIST": "1"""")
   }
 
   /** The owner, 2026-11-21 ("(5)"): identity-slice's old-ref compile caught 1 change in 27 landing checks, at a p90 of
@@ -64,7 +64,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     jobs.keySet should not contain "check-page"
     jobs("plan") should not include "outputs.page"
     jobs("check") should include("grep -qxE 'itrest|itidentity'")
-    RepoFile.read("scripts/ci/precommit-share.sh") should not include "|page|"
+    RepoFile.read("scripts/ci/precommit_share.py") should include("""SHARES = ("rest", "identity", "plan")""")
     RepoFile.read("scripts/hooks/local-tests.txt").linesIterator.filter(_.startsWith("page ")).toSeq shouldBe empty
     val hook = RepoFile.read("scripts/hooks/pre-push")
     hook should not include "check_page()"
@@ -113,7 +113,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     jobs.keySet should not contain "heavy"
     jobs("plan") should not include "heavy="
     val rest = jobs("check")
-    RepoFile.read("scripts/ci/precommit-share.sh") should include("""vars+=("PREPUSH_HEAVY_ROWS=1" "PREPUSH_ELSEWHERE=$elsewhere")""")
+    RepoFile.read("scripts/ci/precommit_share.py") should include("""[("PREPUSH_HEAVY_ROWS", "1"), ("PREPUSH_ELSEWHERE", elsewhere)]""")
     rest should include("scripts/ci/start-mongo-replset.sh")
     rest should include("|| 'ubuntu-22.04' }}")
     rest should include("PREPUSH_HEAVY_MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true")
