@@ -1,5 +1,5 @@
-// THE ON-DEMAND REFACTORING TOOLS' PLUGINS, in a file of their own: scripts/touched-tree.sh lays this file over an older
-// commit's build to measure a range there. None of them instruments, mutates or rewrites the normal build -- each is
+// THE ON-DEMAND REFACTORING TOOLS' PLUGINS, in a file of their own: scripts/lib/touched_tree.py lays this file over an
+// older commit's build to measure a range there. None of them instruments, mutates or rewrites the normal build -- each is
 // off until a tool's own sbt command turns it on, in a throwaway worktree (or, for scalafix, on the sources it is asked to
 // rewrite):
 //   sbt-scoverage  scripts/coverage-touched     (`coverageEnabled` false unless set)
