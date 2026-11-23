@@ -496,7 +496,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/prod-ops.sh` | The shared harness of the prod-ops scripts (scripts/mongo-grants, scripts/fleet-db-finish, and the next one) | `bash scripts/prod-ops.sh` | 3 tools | prod-ops-test.sh | KEEP |
 | `scripts/with-prod-mongo.sh` | Run one command against prod Mongo from a laptop: the credential from the Touch ID vault, the connection through the ssh tunnel | `scripts/with-prod-mongo.sh` | 6 tools | with-prod-mongo-test.sh | KEEP |
 
-## Infra and deploy (51)
+## Infra and deploy (52)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -508,12 +508,13 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 203 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 203 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 204 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 204 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |
-| `infra/bin/cloudflare-ci-edge-allow` | Let ci-runner's security-headers check past Cloudflare's Bot Fight Mode on kinowo.net and showtimes.cc | `infra/bin/cloudflare-ci-edge-allow` | wf security-headers; 1 tool | - | MIGRATE |
+| `infra/bin/cloudflare-ci-edge-allow` | Let ci-runner's security-headers check past Cloudflare's Bot Fight Mode on kinowo.net and showtimes.cc | `infra/bin/cloudflare-ci-edge-allow` | wf security-headers; 2 tools | cloudflare_ci_edge_allow_test.py | KEEP |
+| `infra/bin/cloudflare_ci_edge_allow.py` | Let ci-runner's Security headers check (.github/workflows/security-headers.yml) past Cloudflare's Bot Fight Mode on | `infra/bin/cloudflare_ci_edge_allow.py` | 1 tool | cloudflare_ci_edge_allow_test.py | Python |
 | `infra/bin/deploy` | Deploy ONE NixOS host from this checkout: preview what the switch does, then (only with | `infra/bin/deploy` | wf branch-ci, ci, identity-run +5; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 48 tools | - | Python |
 | `infra/bin/fetch-gitops` | Put the GitOps manifests where the deploy specs expect them | `infra/bin/fetch-gitops` | wf nix-update; hook pre-push; agentctl; skill CLAUDE.md; 8 tools | fetch-gitops-test.sh | KEEP |
 | `infra/bin/fleet-ssh` | Reach any host this flake declares, at the address `fleet_hosts.py` gives it -- as YOURSELF, | `infra/bin/fleet-ssh` | wf nix-stage-closures; 2 tools | - | Python |

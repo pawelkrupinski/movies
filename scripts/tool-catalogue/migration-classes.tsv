@@ -22,7 +22,7 @@ android/scripts/devtest.sh	KEEP
 android/scripts/store-graphics.sh	MIGRATE
 android/scripts/store-screenshots.sh	MIGRATE
 infra/bin/check	MIGRATE
-infra/bin/cloudflare-ci-edge-allow	MIGRATE
+infra/bin/cloudflare-ci-edge-allow	KEEP
 infra/bin/fetch-gitops	KEEP
 infra/bin/flux-rotate-deploy-keys	MIGRATE
 infra/bin/propose-pr	KEEP
