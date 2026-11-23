@@ -7,7 +7,9 @@ and its machine-wide lock) until that library moves too. Its stdout is the answe
   shell_function(..., then='echo "$MEASURE_PUSH_ERROR"')  a line run after the function, the function's status kept
   shell_function(..., prelude='IDENTITY_TOOL=x')  a line run after sourcing, before the function (a variable, a log)
   shell_command(env, library, function, args, log=PATH)  the same call as a Command, for a runner's `run` (its output
-                                                         into a log) or a process started in the background"""
+                                                         into a log) or a process started in the background
+  download_run(runner, env, timeout, run, pattern, directory) -> whether gh_download laid the run's artifacts
+                                                                  matching `pattern` into `directory`"""
 from __future__ import annotations
 
 import os
@@ -31,3 +33,11 @@ def shell_function(runner: tool_process.Runner, env: Mapping[str, str], library:
     sys.stderr.write(done.stderr)
     sys.stderr.flush()
     return done
+
+
+def download_run(runner: tool_process.Runner, env: Mapping[str, str], timeout: float, run: str, pattern: str,
+                 directory: str) -> bool:
+    """`gh run download <run> --pattern <pattern> --dir <directory>` through tool-conventions.sh's gh_download
+    (bounded, a failed read asked again, absent told from failed)."""
+    return shell_function(runner, env, "scripts/tool-conventions.sh", "gh_download", [
+        str(int(timeout)), "run", "download", run, "--pattern", pattern, "--dir", directory]).code == 0

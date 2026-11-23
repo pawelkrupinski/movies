@@ -209,9 +209,7 @@ class CiRun:
         top = (self.git.out("rev-parse", "--show-toplevel", quiet=True) or os.getcwd()).strip()
         out = self.o.out or os.path.join(top, "target", TOOL, run)
         with tempfile.TemporaryDirectory(prefix=f"{TOOL}.", dir=self.env.get("TMPDIR") or None) as jobs:
-            done = tool_shell.shell_function(self.runner, self.env, "scripts/tool-conventions.sh", "gh_download", [
-                str(int(self.gh_timeout)), "run", "download", run, "--pattern", "identity-run*", "--dir", jobs])
-            if done.code != 0:
+            if not tool_shell.download_run(self.runner, self.env, self.gh_timeout, run, "identity-run*", jobs):
                 raise Die(f"could not download run {run}'s identity-run artifacts")
             if not collect(jobs, out):
                 raise Die(f"run {run} left no identity-run artifact")

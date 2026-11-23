@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (208)
+## Landing and CI (209)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -71,7 +71,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/agent-procs` | Audit, and safely clean up after, the agents working this repository in parallel. | `scripts/agent-procs` | wf tool-self-tests; skill CLAUDE.md, agent-ops; 1 tool | agent-procs-test.sh | Python |
 | `scripts/agent-time` | Where a Claude Code session's subagents spent their time: every agent's hours by bucket | `scripts/agent-time` | skill CLAUDE.md, agent-ops; 2 tools | agent_time_test.py | KEEP |
 | `scripts/agent_time.py` | Where a Claude Code session's subagents spent their time: hours by bucket, the longest agents, one agent's slowest | `scripts/agent_time.py` | 1 tool | agent_time_test.py | Python |
-| `scripts/ci-sbt` | One sbt command on ci-runner's measure lane, with its verdict: the laptop's heavy test runs (a whole-module testUnit, | `scripts/ci-sbt` | wf identity-run; skill CLAUDE.md, agent-ops; 2 tools | ci-sbt-test.sh | MIGRATE |
+| `scripts/ci-sbt` | One sbt command on ci-runner's measure lane, with its verdict: the laptop's heavy test runs off the laptop (a name for ci_sbt.py) | `scripts/ci-sbt` | wf identity-run; skill CLAUDE.md, agent-ops; 3 tools | ci_sbt_test.py | KEEP |
 | `scripts/ci-status` | One line per workflow: where CI stands for main (or a commit) | `scripts/ci-status` | skill agent-ops; 2 tools | ci_status_test.py | KEEP |
 | `scripts/ci-wait` | Wait for GitHub Actions runs, bounded -- the one way a tool or an agent waits on CI. Never a hand-written `while gh run view ... | `scripts/ci-wait` | skill CLAUDE.md, agent-ops; 9 tools | ci_wait_test.py | KEEP |
 | `scripts/ci/alert-step.sh` | Alert, not red: run a check whose failure of a given kind is a third PARTY's or a BACKLOG's | `scripts/ci/alert-step.sh` | wf decodo-probe, identity-ci-staleness, identity-findings-report +2 | alert-step-test.sh | KEEP |
@@ -163,7 +163,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/runner_cache.py` | A runner-local mirror of actions/cache entries, for the self-hosted runners on ci-runner. | `python3 scripts/ci/runner_cache.py` | 1 tool | runner_cache_test.py | Python |
 | `scripts/ci/runner_scheduler.py` | CI-RUNNER'S MOVIES RUNNER SCHEDULER (the owner, 2026-11-06: "make movies runs take all the ci-runner runners when | `python3 scripts/ci/runner_scheduler.py` | wf precommit-check; agentctl; 1 tool | runner_scheduler_test.py | Python |
 | `scripts/ci/sbt-deps-resolve.sh` | Resolve every dependency of the sbt build once (`sbt update` over the root aggregate | `scripts/ci/sbt-deps-resolve.sh` | wf ci; 2 tools | sbt-deps-resolve-test.sh | KEEP |
-| `scripts/ci/sbt-guard/sbt` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH | `scripts/ci/sbt-guard/sbt` | wf ci, country-convergence-leg, country-fixture-artifact +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 138 tools | - | MIGRATE |
+| `scripts/ci/sbt-guard/sbt` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH | `scripts/ci/sbt-guard/sbt` | wf ci, country-convergence-leg, country-fixture-artifact +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 139 tools | - | MIGRATE |
 | `scripts/ci/sbt-invalidate-exporters.sh` | Delete the compiled classes of every Scala source holding a wildcard export (`export X.*`, `export x.{a as _, *}`) | `scripts/ci/sbt-invalidate-exporters.sh` | skill CLAUDE.md; 2 tools | sbt-invalidate-exporters-test.sh | KEEP |
 | `scripts/ci/sbt-sources-key.sh` | The hash an sbt build cache is keyed by: the content of the sources a job compiles | `scripts/ci/sbt-sources-key.sh` | wf ci; 1 tool | sbt-sources-key-test.sh | KEEP |
 | `scripts/ci/scheduled-failure-issue.sh` | Turn a failed scheduled workflow run into a GitHub issue assigned to the repo owner, and close it again when the workflow next passes | `scripts/ci/scheduled-failure-issue.sh` | wf coupling-exemptions, prune-actions-caches; 3 tools | scheduled-failure-issue-test.sh | MIGRATE |
@@ -186,6 +186,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/workflow_steps.py` | The `uses: <action>` steps of the workflows and composite actions, each with its `with:` block, for the lint tests | `imported` | by hand | - | Python |
 | `scripts/ci/xcresult_annotations.py` | Every failed test of an .xcresult bundle as a GitHub annotation that carries its own assertion. | `scripts/ci/xcresult_annotations.py` | wf ios; 1 tool | xcresult_annotations_test.py | Python |
 | `scripts/ci/xcresult_junit.py` | Turn an .xcresult bundle's test tree into JUnit XML, using only what Xcode ships. | `python3 scripts/ci/xcresult_junit.py` | wf ios; 1 tool | xcresult_junit_test.py | Python |
+| `scripts/ci_sbt.py` | One sbt command on ci-runner's measure lane, with its verdict: the laptop's heavy test runs off the laptop. | `scripts/ci_sbt.py` | 2 tools | ci_sbt_test.py | Python |
 | `scripts/claude-hooks/foreground-wait-guard` | Refuse a long wait run in the foreground: start it with run_in_background and end the turn instead. | `scripts/claude-hooks/foreground-wait-guard` | skill CLAUDE.md, agent-ops; 1 tool | foreground-wait-guard-test.sh | Python |
 | `scripts/claude-hooks/gh-run-guard` | Steer `gh run ...` calls to the tools that already answer them, and refuse `gh run rerun`. | `scripts/claude-hooks/gh-run-guard` | skill agent-ops | gh-run-guard-test.sh | Python |
 | `scripts/claude-hooks/masked-exit-guard` | Refuse a Bash command that pipes a test run into a filter: the pipe hides the run's exit status. | `scripts/claude-hooks/masked-exit-guard` | skill CLAUDE.md; 3 tools | masked-exit-guard-test.sh | Python |
@@ -193,7 +194,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/claude-hooks/root-checkout-guard` | Keep agents out of the ROOT checkout: every change is made in a worktree of its own. | `scripts/claude-hooks/root-checkout-guard` | hook pre-commit; skill CLAUDE.md, agent-ops | root-checkout-guard-test.sh | Python |
 | `scripts/claude-hooks/unbounded-poll-guard` | Refuse a background poll loop that has no bound: it outlives the agent that started it. | `scripts/claude-hooks/unbounded-poll-guard` | skill CLAUDE.md, agent-ops; 2 tools | unbounded-poll-guard-test.sh | Python |
 | `scripts/coupling-report` | The coupling report (CLAUDE.md, Design rules): the production code's coupling, from Zinc's class-dependency record | `scripts/coupling-report` | wf coupling-exemptions; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation; 2 tools | coupling-report-test.sh | MIGRATE |
-| `scripts/fail-before` | Proves the commit gate: a test that fails before the change and passes after it | `scripts/fail-before` | wf identity-run; agentctl; skill CLAUDE.md, agent-ops; 7 tools | fail-before-test.sh | MIGRATE |
+| `scripts/fail-before` | Proves the commit gate: a test that fails before the change and passes after it | `scripts/fail-before` | wf identity-run; agentctl; skill CLAUDE.md, agent-ops; 8 tools | fail-before-test.sh | MIGRATE |
 | `scripts/floor-bash` | The floor bash: the oldest bash every script tool promises to run under -- macOS's /bin/bash, gnu bash 3.2.57 -- found or built, its path printed | `scripts/floor-bash` | wf tool-self-tests; hook pre-push; 2 tools | floor-bash-test.sh | KEEP |
 | `scripts/gov-run` | The governor for one command: <command> run under a governor ticket (scripts/jvm-gate.sh gov_hold, `agentctl gov`, ~/bin/AGENTCTL.md "gov") | `scripts/gov-run` | skill CLAUDE.md, agent-ops; 9 tools | gov-run-test.sh | KEEP |
 | `scripts/hooks/lint-registry-missing` | The repo-reading specs the lint registry (scripts/hooks/lint-registry.tsv) has no row for, as `<module>:<package.Spec>`, one a line | `scripts/hooks/lint-registry-missing` | hook pre-push | - | KEEP |
@@ -215,7 +216,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs (a name for ratchet_diff_cli.py) | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 3 tools | - | KEEP |
 | `scripts/ratchet_diff_cli.py` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet_diff_cli.py` | 1 tool | ratchet_diff_cli_test.py | Python |
 | `scripts/run-script-tests` | Every script self-test, found by its name and run in parallel: the one way CI, the pre-push hook and a person at a terminal run them | `scripts/run-script-tests` | wf tool-self-tests; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, test-layers; 16 tools | run-script-tests-test.sh | MIGRATE |
-| `scripts/sbt-warm` | sbt for agents, warm: one sbt server per checkout, kept between calls | `scripts/sbt-warm` | wf tool-self-tests; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 35 tools | sbt-warm-test.sh | MIGRATE |
+| `scripts/sbt-warm` | sbt for agents, warm: one sbt server per checkout, kept between calls | `scripts/sbt-warm` | wf tool-self-tests; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 36 tools | sbt-warm-test.sh | MIGRATE |
 | `scripts/stall-report.sh` | What a stalled process group was doing, said before it is ended | `scripts/stall-report.sh` | 3 tools | - | KEEP |
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
@@ -599,13 +600,13 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/seeded_order.py` | THE SEEDED TEST ORDER the nightly order-independence legs share (ios/scripts/swift_test_shuffled.py, | `imported` | wf android; 2 tools | seeded_order_test.py | Python |
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 5 tools | tool_actions_test.py | Python |
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; the retired | `imported` | 3 tools | tool_ci_wait_test.py | Python |
-| `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 14 tools | - | Python |
+| `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 15 tools | - | Python |
 | `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 11 tools | - | Python |
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 10 tools | tool_dispatch_test.py | Python |
-| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 12 tools | tool_git_test.py | Python |
+| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 13 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 15 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 63 tools | tool_process_test.py | Python |
-| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 13 tools | - | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 64 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 14 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 5 tools | - | KEEP |
@@ -634,7 +635,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/timezonefinder-python` | Print a directory whose python3 imports timezonefinder, for the pre-push drift check | `scripts/timezonefinder-python` | hook pre-push; 3 tools | timezonefinder-python-test.sh | KEEP |
 | `scripts/timezonefinder-python-stub.sh` | A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder | `sourced` | by hand | - | KEEP |
 | `scripts/title_trace.py` | Every step one raw billing goes through, in production order: the ingest tidy, the venue's own title rules, the format | `python3 scripts/title_trace.py` | wf main; 1 tool | title_trace_test.py | Python |
-| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 69 tools | tool-conventions-test.sh | MIGRATE |
+| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 68 tools | tool-conventions-test.sh | MIGRATE |
 | `scripts/tool_catalogue.py` | The tool catalogue: docs/tools.md, generated from every tool's own one-line purpose. | `python3 scripts/tool_catalogue.py` | skill CLAUDE.md | tool_catalogue_test.py | Python |
 | `scripts/touched-tree-stub.sh` | The stub sbt for the touched-code tools' specs (mutation-check, coverage-touched) | `scripts/touched-tree-stub.sh` | 1 tool | - | KEEP |
 | `scripts/touched_methods.py` | THE METHODS A CHANGE TOUCHES, and what the refactoring tools say about each (scripts/mutation-check, | `python3 scripts/touched_methods.py` | 4 tools | touched_methods_test.py | Python |

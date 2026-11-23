@@ -70,10 +70,7 @@ class Runs:
     def download(self, run: str, directory: str) -> bool:
         """The run's identity-drift artifacts into `directory` (tool-conventions.sh's gh_download: absent told from
         failed, a failed read asked again)."""
-        done = tool_shell.shell_function(self.runner, self.env, "scripts/tool-conventions.sh", "gh_download",
-                                         [str(int(self.timeout)), "run", "download", run, "--pattern",
-                                          "identity-drift-*", "--dir", directory])
-        return done.code == 0
+        return tool_shell.download_run(self.runner, self.env, self.timeout, run, "identity-drift-*", directory)
 
     def base(self, run: str) -> str:
         """The baseline run's artifacts, downloaded once: their directory."""

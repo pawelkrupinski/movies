@@ -49,7 +49,7 @@ scripts/adopt-ci-budgets	KEEP
 scripts/agent-time	KEEP
 scripts/android-signed	KEEP
 scripts/app-store-credentials.sh	KEEP
-scripts/ci-sbt	MIGRATE
+scripts/ci-sbt	KEEP
 scripts/ci-status	KEEP
 scripts/ci-wait	KEEP
 scripts/ci/alert-step.sh	KEEP
