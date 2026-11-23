@@ -11,6 +11,7 @@ from typing import Callable, Dict, List, Mapping, NamedTuple, Optional, Sequence
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "scripts/lib"))
 import tool_actions  # noqa: E402
 import tool_cli  # noqa: E402
+import tool_github  # noqa: E402
 import tool_process  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,11 +32,11 @@ class ReadFailed(Exception):
     """A read GitHub did not answer (an auth refusal, a 5xx past its retries): never an absent asset."""
 
 
-class GitHub:
+class GitHub(tool_github.GitHub):
+    """tool_github's gh (KINOWO_GH, or gh), and the family's own reads: gh-optional.sh, gh_download, the runs."""
+
     def __init__(self, runner: tool_process.Runner, env: Mapping[str, str]) -> None:
-        self.runner = runner
-        self.env = env
-        self.gh = env.get("KINOWO_GH") or "gh"
+        super().__init__(runner, env, env.get("KINOWO_GH") or "gh")
 
     def captured(self, argv: Sequence[str], env: Optional[Mapping[str, str]] = None, quiet: bool = False,
                  bound: Optional[float] = None) -> tool_process.Captured:

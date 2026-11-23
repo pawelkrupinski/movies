@@ -98,15 +98,7 @@ class Store:
         """Whether the stored result was fetched into `path`, quietly."""
         if not self.store or not asset:
             return False
-        if not self.ctx.gh.download(self.store, asset, path + ".gz", self.gh_download):
-            return False
-        try:
-            with gzip.open(path + ".gz", "rb") as packed, open(path, "wb") as plain:
-                shutil.copyfileobj(packed, plain)
-        except OSError:
-            return False
-        os.remove(path + ".gz")
-        return ctx_module.nonempty(path)
+        return self.ctx.gh.fetch_gzipped(self.store, asset, path, self.gh_download)
 
     def reused(self, asset: str, path: str, what: str) -> bool:
         """Whether a stored result was fetched; says why not when it was not."""

@@ -8,8 +8,9 @@ import hashlib
 import os
 import shutil
 from dataclasses import dataclass
-from typing import List, Mapping, Optional, Sequence
+from typing import List, Mapping, Optional
 
+import tool_github
 import tool_process
 
 # The top-level directories no build of worker/Test reads (infra and scripts each keep a part: below)
@@ -105,18 +106,15 @@ class Store:
         self.runner = runner
         self.env = env
         self.names: List[str] = []
-
-    def gh(self, args: Sequence[str], timeout: float) -> tool_process.Captured:
-        return self.runner.capture(tool_process.Command(["gh", *args], self.env, timeout=timeout))
+        self.github = tool_github.GitHub(runner, env)
 
     def list(self, assets_file: str) -> None:
         """The release's asset names into `assets_file`: an unreadable store is an empty one (every base replayed)."""
         self.names = []
         if self.release:
-            done = self.gh(["release", "view", self.release, "--json", "assets", "--jq", ".assets[].name"], 120)
-            self.names = done.stdout.split("\n") if done.code == 0 else []
+            self.names = self.github.asset_names(self.release, 120, quiet=True) or []
         with open(assets_file, "w") as f:
-            f.write("\n".join(n for n in self.names if n) + ("\n" if any(self.names) else ""))
+            f.write("".join(f"{name}\n" for name in self.names))
 
     def stored(self, asset: str) -> bool:
         return asset in self.names
@@ -125,16 +123,7 @@ class Store:
         """Whether the stored asset was fetched and unpacked into `path` (non-empty)."""
         if not self.release or not self.stored(asset):
             return False
-        done = self.gh(["release", "download", self.release, "-p", asset, "-O", path + ".gz", "--clobber"], 300)
-        if done.code != 0:
-            return False
-        try:
-            with gzip.open(path + ".gz", "rb") as packed, open(path, "wb") as plain:
-                shutil.copyfileobj(packed, plain)
-            os.remove(path + ".gz")
-        except (OSError, EOFError):
-            return False
-        return os.path.getsize(path) > 0
+        return self.github.fetch_gzipped(self.release, asset, path, 300)
 
     def script(self, name: str, *args: str, timeout: Optional[float] = None) -> int:
         command = [os.path.join(self.root, "scripts/ci", name), *args]
@@ -144,7 +133,7 @@ class Store:
         """Store a result -- room made first (release-store-prune.sh: GitHub's 1000-asset cap) -- never failing."""
         if not self.release or not os.path.isfile(path) or os.path.getsize(path) == 0 or self.stored(asset):
             return
-        if self.gh(["release", "view", self.release], 120).code != 0:
+        if not self.github.succeeds(["release", "view", self.release], 120):
             self.script("gh-release.sh", "create", self.release, "--prerelease", "--title", "Identity drift store (rolling)",
                         "--notes", "The drift gate's flips per seed, keyed by identity code, recording and seed "
                         "(scripts/ci/identity-drift-check.sh). A cache, not a version of anything.")

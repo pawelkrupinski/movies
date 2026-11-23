@@ -120,10 +120,8 @@ class Publish(convergence_release.Step):
         return self.runner.capture(tool_process.Command([convergence_release.GH_RELEASE, *args], self.env)).code
 
     def asset_names(self, quiet: bool = False) -> Optional[List[str]]:
-        """The release's asset names, None when the listing failed."""
-        done = self.github.captured(["gh", "release", "view", self.tag(), "--json", "assets", "--jq", ".assets[].name"],
-                                    quiet=quiet)
-        return done.stdout.split() if done.code == 0 else None
+        """The release's asset names, None when the listing failed (or hung past 120 s)."""
+        return self.github.asset_names(self.tag(), 120, quiet)
 
     def kept_runs(self, code: str) -> Optional[List[str]]:
         """The runs pruning must keep: the hermetic pair's, prod-latest's and the kept landing recordings. None when a

@@ -4,12 +4,16 @@ fails told apart from one that answered -- `read` gives None for a failed call, 
 
   GitHub(runner, env).read(["api", "repos/o/r/commits/x", "--jq", ".sha"], timeout=120) -> stdout, or None
   .succeeds([...], timeout, quiet=True)                                                  -> whether gh exited 0
-  .download(release, asset, dest, timeout)  `gh release download` of one asset to `dest`: whether it is there now"""
+  .download(release, asset, dest, timeout)  `gh release download` of one asset to `dest`: whether it is there now
+  .asset_names(release, timeout)            the release's asset names, or None when they could not be listed
+  .fetch_gzipped(release, asset, path, timeout)  a gzipped asset unpacked into `path`: whether it is there, non-empty"""
 from __future__ import annotations
 
+import gzip
 import os
+import shutil
 import sys
-from typing import Mapping, Optional, Sequence
+from typing import List, Mapping, Optional, Sequence
 
 import tool_process
 
@@ -39,3 +43,22 @@ class GitHub:
         os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
         return self.succeeds(["release", "download", release, "-p", asset, "-O", dest, "--clobber"], timeout) \
             and os.path.isfile(dest)
+
+    def asset_names(self, release: str, timeout: float, quiet: bool = False) -> Optional[List[str]]:
+        """Every asset name of `release`; None when the listing failed -- never an empty release."""
+        listed = self.read(["release", "view", release, "--json", "assets", "--jq", ".assets[].name"], timeout, quiet)
+        return None if listed is None else [name for name in listed.split("\n") if name]
+
+    def fetch_gzipped(self, release: str, asset: str, path: str, timeout: float) -> bool:
+        """The gzipped `asset` downloaded beside `path` (`path`.gz) and unpacked into it, quietly: False when absent,
+        failed, or not a whole gzip (a truncated download is no result)."""
+        packed = path + ".gz"
+        if not self.download(release, asset, packed, timeout):
+            return False
+        try:
+            with gzip.open(packed, "rb") as source, open(path, "wb") as plain:
+                shutil.copyfileobj(source, plain)
+        except (OSError, EOFError):
+            return False
+        os.remove(packed)
+        return os.path.getsize(path) > 0

@@ -85,10 +85,9 @@ class Fill(convergence_release.Step):
         """Every asset name in the release; None (said) when it cannot be listed, asked ATTEMPTS times, each bounded
         (CONVERGENCE_FILL_GH_TIMEOUT, 120 s): a hung read is a failed attempt, never a leg waiting out its job."""
         for attempt in range(1, ATTEMPTS + 1):
-            done = self.github.captured(["gh", "release", "view", self.tag(), "--json", "assets", "--jq", ".assets[].name"],
-                                        bound=self.seconds("CONVERGENCE_FILL_GH_TIMEOUT", 120))
-            if done.code == 0:
-                return [n for n in done.stdout.split("\n") if n]
+            names = self.github.asset_names(self.tag(), self.seconds("CONVERGENCE_FILL_GH_TIMEOUT", 120))
+            if names is not None:
+                return names
             if attempt == ATTEMPTS:
                 sys.stderr.write(f"::error::could not list release {self.tag()} after {ATTEMPTS} attempts — its fills are"
                                  " unknown, not none\n")
