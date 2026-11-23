@@ -305,7 +305,9 @@ class StampCarryTest(unittest.TestCase):
     def test_a_what_if_over_the_models_data_or_a_store_never_carries(self):
         for path in ("identity/src/main/resources/identity-weights.json",
                      "identity/src/main/scala/services/identity/IdentityModelStore.scala",
-                     "common/src/main/resources/title-rules.tsv"):
+                     "common/src/main/resources/title-rules.tsv",
+                     # a path git would quote (core.quotePath) is still the module resource it is
+                     "worker/src/main/resources/fixtures/przemyśl.tsv"):
             start = self.repo.git("rev-parse", "HEAD").strip()
             self.repo.write(path, f"changed {path}\n")
             head = self.repo.commit(f"change {path}")

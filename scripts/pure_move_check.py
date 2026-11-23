@@ -51,7 +51,7 @@ class Undecidable(Exception):
 
 
 def git(*args: str, ok: tuple[int, ...] = (0,)) -> str:
-    done = subprocess.run(["git", *args], capture_output=True, text=True)
+    done = subprocess.run(["git", "-c", "core.quotePath=false", *args], capture_output=True, text=True)
     if done.returncode not in ok:
         raise Undecidable(f"git {' '.join(args)}: {done.stderr.strip() or done.returncode}")
     return done.stdout
