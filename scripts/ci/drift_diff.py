@@ -32,9 +32,10 @@ import sys
 
 
 def read_tsv(path: str) -> list[dict]:
+    """By the header, unquoted: a raw title's `"` is a character, as drift_explorer and IdentityDrift write it."""
     with open(path, newline="") as f:
         lines = [line for line in f if line.strip() and not line.startswith("#")]
-    return list(csv.DictReader(lines, delimiter="\t"))
+    return list(csv.DictReader(lines, delimiter="\t", quoting=csv.QUOTE_NONE))
 
 
 def flips(path: str, seed: str) -> dict[tuple[str, str], dict]:
@@ -129,7 +130,7 @@ def main(argv) -> int:
     if o.get("new-out"):
         cols = ["country", "seed", "venue", "rawTitle", "films", "reasons", "takes", "cause"]
         with open(o["new-out"], "w", newline="") as f:
-            w = csv.writer(f, delimiter="\t", lineterminator="\n")
+            w = csv.writer(f, delimiter="\t", lineterminator="\n", quoting=csv.QUOTE_NONE, quotechar=None)
             w.writerow(cols)
             for k in new:
                 w.writerow([head[k].get(c, "") for c in cols])

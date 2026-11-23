@@ -44,6 +44,17 @@ class DiffTest(unittest.TestCase):
         self.assertIn("      B | y: tmdb:1 [1 boot] -> none [4 scrape] -> tmdb:1 [8 fill] [seed 8]\n", out)
         self.assertIn("new=1 pre-existing=1 removed=0", out)
 
+    def test_a_quoted_raw_title_is_read_as_it_stands(self):
+        """A raw title's `"` is a character: read as a CSV quote, head and base would name another listing."""
+        title = '"Nosferatu" mit Live-Musik'
+        code, out = self.run_diff("--head", tsv([flip("Kino", title)]), "--base", tsv([flip("Kino", title)]))
+        self.assertEqual(code, 0)
+        self.assertIn(f"pre-existing (backlog): Kino | {title} [seed 8]", out)
+        new_out = os.path.join(tempfile.mkdtemp(), "new.tsv")
+        self.run_diff("--head", tsv([flip("Kino", title)]), "--base", tsv([]), "--new-out", new_out)
+        with open(new_out) as f:
+            self.assertEqual(title, f.read().splitlines()[1].split("\t")[3], "written as it was read, unquoted")
+
     def test_other_seeds_rows_are_not_this_seeds(self):
         code, _ = self.run_diff("--head", tsv([flip("A", "x", "9")]), "--base", tsv([]))
         self.assertEqual(code, 0)
