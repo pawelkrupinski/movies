@@ -33,7 +33,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
 
   /** The gate's exit status and what it dispatched; `refuse` names a suite whose
    *  `gh workflow run` is refused (403), `flaky` one whose first dispatch hits a GitHub 500.
-   *  The in-flight read (dispatch.sh's `run_in_flight`, the one asking for `databaseId,headSha,status`)
+   *  The in-flight read (tool_dispatch.py's `in_flight`, the one asking for `databaseId,headSha,status`)
    *  finds no run of the head queued or running. */
   private def kickWithStatus(repo: ScratchGitRepository, head: String, lastRun: String,
                              refuse: String = "", flaky: String = ""): (Int, Seq[String]) = {

@@ -46,7 +46,7 @@ usage: scripts/identity-drift-ci [<commit> | --head REF] [--countries pl,de,uk,u
                input is dispatched without it (movies-measure)
 
 It pushes the commit as `measure/<user>/<short sha>-drift-<random>` (the pre-push hook checks nothing on a measure/
-ref; the run deletes its branch as its last job), dispatches through scripts/ci/dispatch.sh, waits with backoff (60 s,
+ref; the run deletes its branch as its last job), dispatches through scripts/lib/tool_dispatch.py, waits with backoff (60 s,
 x1.5, at most 5 min; a line per poll, and $KINOWO_PROGRESS_FILE touched, so the pre-push hook's no-progress watchdog
 sees it alive), stops as soon as every requested drift row has ended (the run's tail goes on without it), then prints
 each row's verdict.txt and its report's divergence and flip lines.

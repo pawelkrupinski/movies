@@ -3,7 +3,7 @@
 convergence kick off both"). Convergence's preflight runs this first: it dispatches identity-takes.yml on the same ref,
 handing it every input of the convergence dispatch that means something to a takes row, and `parent-run` -- the
 convergence run's id, which the takes run carries in its title (`Identity takes (convergence run <id>)`), so a reader
-finds one from the other (scripts/ci/convergence_reuse.py takes-run, scripts/ci/dispatch.sh find_takes_run).
+finds one from the other (scripts/ci/convergence_reuse.py takes-run, scripts/lib/tool_dispatch.py find_titled).
 
 One entry point, so no caller of convergence (Main's kick, convergence-daily, identity-measure --full, a hand dispatch)
 can start one suite without the other. IdentityTakesWiringSpec holds the forwarded inputs to the two workflows' own.

@@ -1,6 +1,6 @@
-"""DISPATCHING A WORKFLOW and finding the run it made, the one way the Python tools do it (scripts/lib; the shell
-tools' scripts/ci/dispatch.sh, whose rules these are): every gh call bounded, and a failed READ never taken for
-"nothing there" -- each answer is None (said on stderr, `dispatch: ...`) when gh could not be read.
+"""DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the
+shell's scripts/ci/dispatch.sh and its rules): every gh call bounded, and a failed READ never taken for "nothing there"
+-- each answer is None (said on stderr, `dispatch: ...`) when gh could not be read.
 
   Dispatcher(gh, settings, clock, sleep)
     .dispatch(workflow, ref, args)        `gh workflow run`; a 5xx (GitHub's own blip) asked again twice after
@@ -13,23 +13,35 @@ tools' scripts/ci/dispatch.sh, whose rules these are): every gh call bounded, an
                                           displayTitle), polled for DISPATCH_FIND_SECONDS (120): a dispatch's run is
                                           listed seconds after it
     .find_titled(workflow, title, seconds, poll) the newest workflow_dispatch run titled so (a run another run's job
-                                          dispatched: dispatch.sh's find_takes_run), polled every `poll` for `seconds`
+                                          dispatched: an Identity takes run its convergence run's preflight started),
+                                          polled every `poll` for `seconds`
+    .in_flight(workflow, ref, sha)        the run of `workflow` on `ref` for `sha` still queued or running ("" none): the
+                                          run a second dispatch of the same commit would only wait behind (run 3656,
+                                          2026-10-29: 54 min queued behind 3653, the same commit, then run in full)
     .eta(workflow, branch_prefix, args)   "~N min (median of K recent runs)" over the newest 30 runs that ended success
                                           or failure on a branch starting so: an estimate to say, never a deadline
 
-The selections are gh's `--jq`, as dispatch.sh's: what gh answers is the answer, a run id or the figures.
+The selections are gh's `--jq`: what gh answers is the answer, a run id or the figures.
   backoff_next(seconds, cap)              the next poll's delay: x1.5, at least 1, at most the cap (DISPATCH_BACKOFF_CAP)
 
-DISPATCH_GH_TIMEOUT (60 s) bounds each gh call. Tested by tool_dispatch_test.py against a fake gh."""
+A workflow step asks from its shell (convergence-daily.yml):
+  python3 scripts/lib/tool_dispatch.py in-flight <workflow> <ref> <sha>   the run's id on stdout (nothing: none);
+                                          exit 1 when the list cannot be read (the caller dispatches), 64 usage
+
+DISPATCH_GH (gh) is the gh a CLI call runs, DISPATCH_GH_TIMEOUT (60 s) bounds each gh call. Tested by
+tool_dispatch_test.py against a fake gh."""
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import time
 from dataclasses import dataclass
-from typing import Callable, Mapping, Optional, Protocol, Sequence
+from typing import Callable, List, Mapping, Optional, Protocol, Sequence
 
+import tool_cli
+import tool_github
 import tool_process
 
 class GhCalls(Protocol):
@@ -124,6 +136,15 @@ class Dispatcher:
         return self._poll(["run", "list", "--workflow", workflow, "--event", "workflow_dispatch", "--limit", "50",
                            "--json", "databaseId,displayTitle", "--jq", select], workflow, seconds, poll)
 
+    def in_flight(self, workflow: str, ref: str, sha: str) -> Optional[str]:
+        select = f'[.[] | select(.headSha == {json.dumps(sha)} and .status != "completed")] | first | .databaseId // empty'
+        out = self._read(["run", "list", "--workflow", workflow, "--branch", ref, "--limit", "20",
+                          "--json", "databaseId,headSha,status", "--jq", select])
+        if out is None:
+            say(f"could not list {workflow}'s runs on {ref}")
+            return None
+        return out.strip()
+
     def _poll(self, args: Sequence[str], workflow: str, seconds: float, poll: float) -> Optional[str]:
         deadline = self.clock() + seconds
         while True:
@@ -153,3 +174,20 @@ class Dispatcher:
         if len(figures) != 2 or not all(figure.isdigit() for figure in figures):
             return None
         return f"~{figures[0]} min (median of {figures[1]} recent runs)"
+
+
+def main(argv: List[str], env: Mapping[str, str]) -> int:
+    if len(argv) != 4 or argv[0] != "in-flight":
+        raise tool_cli.UsageError("usage: tool_dispatch.py in-flight <workflow> <ref> <sha>")
+    settings = Settings.of(env)
+    gh = tool_github.GitHub(tool_process.SubprocessRunner(), env, env.get("DISPATCH_GH") or "gh")
+    found = Dispatcher(gh, settings).in_flight(argv[1], argv[2], argv[3])
+    if found is None:
+        return 1
+    if found:
+        print(found)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(tool_cli.run_main(lambda: main(sys.argv[1:], os.environ)))

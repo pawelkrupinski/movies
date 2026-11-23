@@ -1,6 +1,6 @@
 """A COMMIT MEASURED ON CI, the steps the identity tools share (scripts/lib; identity-tools.sh's identity_measure_branch,
-identity_main_ci_over, identity_push_measure_branch, identity_dispatch_measure and identity_record_dispatch, whose rules
-these are): the commit pushed to a fresh `measure/<user>/<short sha>[-<tag>]-<random>` branch (the pre-push hook checks
+identity_main_ci_over and identity_push_measure_branch, and the retired identity_dispatch_measure and
+identity_record_dispatch, whose rules these are): the commit pushed to a fresh `measure/<user>/<short sha>[-<tag>]-<random>` branch (the pre-push hook checks
 nothing on a measure/ ref, and the run deletes it as its last job), a workflow dispatched on it, its run found by the
 pushed commit and recorded as this machine's (agentctl dispatch record: a branch red reaches its owner).
 

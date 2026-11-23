@@ -390,7 +390,7 @@ jobs:
         # convergence judges main's commits.
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
         runs-on: ubuntu-26.04
-        # Room for dispatch_workflow's worst case: two rate-limit waits of up to 900 s each
+        # Room for the dispatcher's worst case (scripts/lib/tool_dispatch.py): two rate-limit waits of up to 900 s each
         # (DISPATCH_RATE_LIMIT_MAX_WAIT) before its third attempt, plus the reads and checkout.
         timeout-minutes: 40
         permissions:

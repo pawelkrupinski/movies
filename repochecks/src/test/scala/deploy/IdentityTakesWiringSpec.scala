@@ -74,12 +74,12 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   /** The title names the convergence run, which is how a reader goes from one to the other: convergence_reuse.py's
-   *  takes_child (a reuse) and dispatch.sh's find_takes_run (identity-measure --full) read this exact title. */
+   *  takes_child (a reuse) and tool_dispatch.py's find_titled (identity-measure --full) read this exact title. */
   it should "carry its convergence run's id in its title, as both of its readers look it up" in {
     workflow should include(
       "run-name: ${{ inputs.parent-run != '' && format('Identity takes (convergence run {0})', inputs.parent-run) || 'Identity takes' }}")
     RepoFile.read("scripts/ci/convergence_reuse.py") should include("TAKES_TITLE = \"Identity takes (convergence run {})\"")
-    RepoFile.read("scripts/ci/dispatch.sh") should include("Identity takes (convergence run $parent)")
+    RepoFile.read("scripts/identity_measure_cli_dispatch.py") should include("""find_titled(WORKFLOW, f"Identity takes (convergence run {""")
   }
 
   /** NO CALLER STARTS ONLY ONE (the owner, 2026-11-08). Convergence takes no takes-only or drift-only input any more, so a
@@ -93,8 +93,8 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
       RepoFile.listed(".github/scripts")(f => f.isFile) ++ RepoFile.workflows() ++
       RepoFile.listed(".claude/skills")(_.isDirectory).flatMap(d => Option(d.listFiles()).toSeq.flatten.filter(_.isFile)))
       .map(_.getPath).filterNot(p => p.endsWith("_test.py") || p.endsWith("-test.sh") || p.endsWith(".md"))
-    // a shell tool's `gh workflow run` / dispatch_workflow / identity_dispatch_measure, a Python one's `.dispatch(WORKFLOW`
-    val dispatches = """(?:(?:gh workflow run|dispatch_workflow|identity_dispatch_measure)\s+|\.dispatch\()("?\$?\{?)([\w.-]+)""".r
+    // a shell tool's or a workflow's `gh workflow run`, a Python one's `.dispatch(WORKFLOW`
+    val dispatches = """(?:gh workflow run\s+|\.dispatch\()("?\$?\{?)([\w.-]+)""".r
     def dispatchedBy(path: String): Set[String] = {
       val text = RepoFile.withoutComments(RepoFile.read(path))
       val named = dispatches.findAllMatchIn(text).map(_.group(2)).toSet

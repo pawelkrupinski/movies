@@ -66,7 +66,6 @@ scripts/ci/convergence-preflight.sh	KEEP
 scripts/ci/coursier-forget-errors.sh	KEEP
 scripts/ci/cpu-sampler.sh	KEEP
 scripts/ci/dispatch-takes.sh	KEEP
-scripts/ci/dispatch.sh	MIGRATE
 scripts/ci/download-run-artifacts.sh	KEEP
 scripts/ci/drift-explorer-publish.sh	KEEP
 scripts/ci/drift-replays-compare.sh	KEEP

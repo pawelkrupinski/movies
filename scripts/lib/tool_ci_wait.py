@@ -1,5 +1,5 @@
-"""WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; scripts/ci/dispatch.sh's
-wait_for_run, whose rules these are): scripts/ci-wait reads the run, bounded, until it ends -- a null or partial answer
+"""WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; the retired
+scripts/ci/dispatch.sh's wait_for_run, whose rules these are): scripts/ci-wait reads the run, bounded, until it ends -- a null or partial answer
 from gh asked again, never taken for a verdict -- and its line's third field is the conclusion.
 
   wait_for_run(runner, env, run, timeout, poll) -> the conclusion (success, failure, cancelled...), or None when the run

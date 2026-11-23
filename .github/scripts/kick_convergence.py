@@ -51,10 +51,8 @@ class Kick:
         self.matcher = env.get("CHANGED_PATHS_MATCHER") or os.path.join(HERE, "..", "actions", "changed-paths",
                                                                           "matches.sh")
         self.gh = tool_github.GitHub(runner, env, "gh")
-        settings = tool_dispatch.Settings.of(env)
-        self.read_bound = settings.gh_timeout
         self.dispatcher = tool_dispatch.Dispatcher(tool_github.GitHub(runner, env, env.get("DISPATCH_GH") or "gh"),
-                                                   settings)
+                                                   tool_dispatch.Settings.of(env))
         self.failed = False
 
     def suite(self, workflow: str) -> None:
@@ -90,10 +88,7 @@ class Kick:
         """A RUN OF THIS COMMIT ALREADY QUEUED OR RUNNING judges it: a second one only waits behind it in the lane,
         then runs in full (run 3656: 54 min queued behind 3653, the same commit, which the daily run had dispatched
         39 s earlier). An unreadable list dispatches, the safe direction."""
-        running = (self.gh.read(["run", "list", "--workflow", workflow, "--branch", self.ref, "--limit", "20",
-                                 "--json", "databaseId,headSha,status", "--jq",
-                                 f'[.[] | select(.headSha == "{self.head}" and .status != "completed")] | first | '
-                                 '.databaseId // empty'], self.read_bound, quiet=True) or "").strip()
+        running = self.dispatcher.in_flight(workflow, self.ref, self.head)
         if running:
             print(f"{workflow}: run {running} for {self.head[:9]} is already queued or running -- not dispatched again",
                   flush=True)

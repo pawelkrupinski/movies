@@ -52,7 +52,7 @@ jobs:
             # NOT A SECOND RUN OF ONE COMMIT: when main's convergence for this very commit is already queued or running
             # (Main's kick dispatched it -- with no takes-skip, so in shadow too: every takes row in full), that run is the
             # day's. Run 3656 was this dispatch, 39 s after the kick's 3653 for the same commit: it waited 54 min in the
-            # lane behind it, then ran all 37 rows again (scripts/ci/dispatch.sh's run_in_flight; an unreadable list
+            # lane behind it, then ran all 37 rows again (scripts/lib/tool_dispatch.py in-flight; an unreadable list
             # dispatches).
             - name: Dispatch main's convergence, every takes row in full
               env:
@@ -62,9 +62,9 @@ jobs:
               # inputs (1c1cf9789: green in run 3145, red in 3154 on the same seed) fails here, not as a red on a push. A
               # day whose full run is a push's already in flight checks no determinism: the next day's does.
               run: |
-                  . scripts/ci/dispatch.sh
-                  if run_in_flight identity-model-convergence.yml main "$GITHUB_SHA" && [ -n "$IN_FLIGHT_RUN" ]; then
-                      echo "run $IN_FLIGHT_RUN of ${GITHUB_SHA:0:9} is already queued or running: it is today's full run"
+                  if run=$(python3 scripts/lib/tool_dispatch.py in-flight identity-model-convergence.yml main "$GITHUB_SHA") \
+                      && [ -n "$run" ]; then
+                      echo "run $run of ${GITHUB_SHA:0:9} is already queued or running: it is today's full run"
                       exit 0
                   fi
                   gh workflow run identity-model-convergence.yml --ref main -f takes-skip=shadow -f drift-twice=true

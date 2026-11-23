@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """tool_dispatch.py against a fake gh: a 5xx dispatch asked again after the pause, a spent rate limit waited out to its
 reset, any other refusal failed at once; the dispatched run found by its predicate once it is listed (an unreadable list
-no run, said), given up past the find bound; the ETA the median of the recent runs that ended on the branch prefix."""
+no run, said), given up past the find bound; the ETA the median of the recent runs that ended on the branch prefix; the
+run of a commit still queued or running found, and `tool_dispatch.py in-flight` saying it (convergence-daily.yml)."""
 from __future__ import annotations
 
 import json
@@ -13,6 +14,7 @@ import unittest
 from typing import Callable, Dict, List, Sequence, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cli_harness  # noqa: E402
 import tool_dispatch  # noqa: E402
 import tool_process  # noqa: E402
 
@@ -146,6 +148,48 @@ class EtaTest(unittest.TestCase):
 
     def test_the_backoff(self) -> None:
         self.assertEqual([1, 1, 90, 300], [tool_dispatch.backoff_next(s, 300) for s in (0, 1, 60, 250)])
+
+
+IN_FLIGHT = [{"databaseId": 9, "headSha": "abc", "status": "completed"},
+             {"databaseId": 8, "headSha": "def", "status": "in_progress"},
+             {"databaseId": 7, "headSha": "abc", "status": "queued"},
+             {"databaseId": 6, "headSha": "abc", "status": "in_progress"}]
+
+
+class InFlightTest(unittest.TestCase):
+    def test_the_commits_run_still_queued_or_running_none_or_an_unreadable_list(self) -> None:
+        d, gh, _ = dispatcher(listed(IN_FLIGHT))
+        self.assertEqual("7", d.in_flight("c.yml", "main", "abc"))
+        self.assertEqual(["run", "list", "--workflow", "c.yml", "--branch", "main", "--limit", "20",
+                          "--json", "databaseId,headSha,status"], gh.calls[0][:-2])
+        self.assertEqual("", dispatcher(listed(IN_FLIGHT))[0].in_flight("c.yml", "main", "fff"))
+        self.assertIsNone(dispatcher(listed(None))[0].in_flight("c.yml", "main", "abc"))
+
+
+class InFlightCliTest(cli_harness.ToolCase):
+    """`python3 scripts/lib/tool_dispatch.py in-flight <workflow> <ref> <sha>`, as convergence-daily.yml runs it."""
+    TOOL = sys.executable
+    MODULE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tool_dispatch.py")
+
+    def gh_listing(self, runs: object, code: int = 0) -> None:
+        self.write("runs.json", json.dumps(runs))
+        self.fakes.script("gh", f'[ {code} = 0 ] || {{ echo "HTTP 503" >&2; exit {code}; }}\n'
+                                f'while [ "$1" != --jq ]; do shift; done; jq -r "$2" "{self.path("runs.json")}"')
+
+    def test_it_prints_the_run_in_flight_or_nothing(self) -> None:
+        self.gh_listing(IN_FLIGHT)
+        done = self.run_tool(self.MODULE, "in-flight", "c.yml", "main", "abc")
+        self.assertEqual((0, "7\n"), (done.code, done.stdout), done.output)
+        self.assertEqual(["run", "list", "--workflow", "c.yml", "--branch", "main"], self.fakes.calls("gh")[0][:6])
+        done = self.run_tool(self.MODULE, "in-flight", "c.yml", "main", "fff")
+        self.assertEqual((0, ""), (done.code, done.stdout), done.output)
+
+    def test_an_unreadable_list_fails_said_and_a_wrong_command_line_is_a_usage_error(self) -> None:
+        self.gh_listing([], code=1)
+        done = self.run_tool(self.MODULE, "in-flight", "c.yml", "main", "abc")
+        self.assertEqual((1, ""), (done.code, done.stdout), done.output)
+        self.assertIn("could not list c.yml's runs on main", done.stderr)
+        self.assertEqual(64, self.run_tool(self.MODULE, "in-flight", "c.yml").code)
 
 
 if __name__ == "__main__":

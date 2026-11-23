@@ -182,7 +182,7 @@ jobs:
                   phase: start
                   token: ${{ github.token }}
             # WHATEVER STARTS THIS RUN STARTS IDENTITY TAKES (the owner, 2026-11-08; the header): first, so the takes rows
-            # queue as these do. A refusal GitHub keeps up through dispatch_workflow's retries fails the run here: a
+            # queue as these do. A refusal GitHub keeps up through the dispatcher's retries (scripts/lib/tool_dispatch.py) fails the run here: a
             # convergence verdict with no takes run beside it is half the gate (IdentityTakesWiringSpec).
             - name: Dispatch this run's Identity takes run
               env:
