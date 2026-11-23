@@ -3,8 +3,9 @@
 `node` standing in for pyright: Sonar's cognitive complexity and McCabe's cyclomatic as specified; a new function past a
 limit, a clone across files, an import cycle, a fan-out past 9 and a new file's type errors each fail --check, while a
 self-test's rows are reported, never held; --paths type-checks only the push's own files, the rest keeping their
-baseline rows; --update records what --check holds; a raised `pyright` row lands only with a `Typing:` trailer; no
-node blocks (exit 2)."""
+baseline rows; --update records what --check holds; a raised `pyright` row lands only with a `Typing:` trailer; a
+migrated tool's new file (migrate-tools.tsv) past a limit is refused even recorded under its trailer; no node blocks
+(exit 2)."""
 from __future__ import annotations
 
 import ast
@@ -138,6 +139,40 @@ class ReportTest(cli_harness.ToolCase):
         self.git(self.root, "commit", "-q", "--amend", "-m", "an untyped line\n\nTyping: the fake's one error")
         done = self.report("--check", "--range", f"{base}..HEAD")
         self.assertEqual(0, done.code, done.output)
+
+    def test_a_migrated_tools_row_is_refused_even_recorded_under_its_trailer(self) -> None:
+        # an old file with its frozen row, which the migrated tool calls: still admitted by its row
+        self.files({"scripts/old.py": HAIRY})
+        self.report("--update")
+        self.commit("the old code, frozen")
+        base = self.git(self.root, "rev-parse", "HEAD")
+        self.files({
+            "scripts/shell-py-progress/migrate-tools.tsv": f"# its base {base}\n1\tscripts/tool\t\n",
+            "scripts/tool": '#!/bin/sh\nexec python3 "$(dirname "$0")/tool_cli.py" "$@"\n',
+            "scripts/tool_cli.py": "import old\nimport tool_part\n",
+            "scripts/tool_part.py": HAIRY.replace("hairy", "part"),
+            "scripts/unlisted.py": HAIRY.replace("hairy", "other"),
+        })
+        self.report("--update")
+        self.commit("a migrated tool past a limit\n\nComplexity: recorded, as an unlisted tool could be")
+        done = self.report("--check", "--range", f"{base}..HEAD")
+        self.assertEqual(1, done.code, done.output)
+        refused = done.output.split("where no row is admitted:", 1)[1]
+        self.assertIn("cognitive scripts/tool_part.py:part: 12, past the limit 10", refused)
+        self.assertIn("migrated tools stay under the bar — split it", refused)
+        self.assertNotIn("old.py", refused)       # not new: the tool's old code keeps its row
+        self.assertNotIn("unlisted.py", refused)  # no listed tool reaches it: its trailer admits it
+        self.files({"scripts/tool_part.py": SIMPLE})
+        self.report("--update")
+        self.commit("split")
+        done = self.report("--check")
+        self.assertEqual(0, done.code, done.output)
+
+    def test_a_migration_base_the_clone_lacks_is_an_error(self) -> None:
+        self.files({"scripts/shell-py-progress/migrate-tools.tsv": "# its base 0123456789abc\n1\tscripts/tool\t\n"})
+        done = self.report("--check")
+        self.assertEqual(2, done.code, done.output)
+        self.assertIn("the migration base 0123456789abc", done.stderr)
 
     def assert_check_fails_range(self, rng: str, said: str) -> None:
         done = self.report("--check", "--range", rng)

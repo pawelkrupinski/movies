@@ -7,7 +7,9 @@ holds -- and gets the one check and the one update:
     clone, cycle over a limit); the measure's limit may not rise past the baseline's;
   - only HELD rows count: a row whose files all lie outside the spec's held paths is reported, never gated;
   - the baseline grows (a row added or raised, a limit raised) only in a commit changing it that carries the kind's
-    trailer in its final trailer block (trailers.py, THE ATTRIBUTION RULE); a fall needs none, and `update` records it.
+    trailer in its final trailer block (trailers.py, THE ATTRIBUTION RULE); a fall needs none, and `update` records it;
+  - a STRICT row (one of the spec's strict paths: the Python ratchet's migrated tools) past a limit fails whatever the
+    baseline holds or a trailer says: no row admits it.
 
 A row is `kind<TAB>key<TAB>value`, `limit<TAB>kind<TAB>value` a kind's limit; `#` lines are comments."""
 from __future__ import annotations
@@ -36,6 +38,8 @@ class Spec:
     held_rows: str                            # "production rows past a limit; ...": what the held count counts
     trailers: Dict[str, Tuple[str, ...]]      # trailer -> the kinds it admits
     held: Callable[[str], bool]               # whether one file or directory of a key is held
+    strict: Callable[[str], bool] = lambda _: False  # a held part that may have NO row past a limit, trailer or not
+    strict_hint: str = ""                     # what to do about a strict row
 
     @property
     def kinds(self) -> Tuple[str, ...]:
@@ -99,6 +103,13 @@ def kind_violations(spec: Spec, current: Rows, baseline: Rows, kind: str) -> Lis
 
 def violations(spec: Spec, current: Rows, baseline: Rows) -> List[str]:
     return [v for kind in spec.kinds for v in kind_violations(spec, current, baseline, kind)]
+
+
+def strict_violations(spec: Spec, current: Rows) -> List[str]:
+    """The measured rows past a limit in a strict path: refused whatever the baseline says."""
+    return [f"{kind} {key}: {show(value)}, past the limit {show(limit_of(current, kind))}"
+            for (kind, key), value in sorted(current.items())
+            if kind in spec.kinds and any(spec.held(part) and spec.strict(part) for part in key.split("|"))]
 
 
 def kind_growth(spec: Spec, kind: str, old: Rows, new: Rows) -> List[str]:
@@ -173,6 +184,12 @@ def check(spec: Spec, current: Rows, ranges: List[str]) -> bool:
         print(f"{spec.title} GREW past {spec.baseline}:")
         print("\n".join(f"  - {v}" for v in found))
         print(f"  {spec.hint}")
+    strict = strict_violations(spec, current)
+    if strict:
+        ok = False
+        print(f"{spec.title} PAST A LIMIT where no row is admitted:")
+        print("\n".join(f"  - {v}" for v in strict))
+        print(f"  {spec.strict_hint}")
     for rng in ranges:
         if unjustified_growth(spec, rng, baseline):
             ok = False

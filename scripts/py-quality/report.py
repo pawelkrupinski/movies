@@ -15,7 +15,8 @@ The measures (stdlib `ast` and `tokenize`, and pyright from scripts/py-quality's
   cognitive <= 10, cyclomatic <= 10, inner defs <= 2, function <= 50 lines   functions.py
   file <= 500 lines; clone groups of 50+ tokens                               clones.py
   fan-out <= 9 (measured modules imported), no import cycle                    imports.py
-  strict pyright errors: 0 for a new file                                      pyright.py"""
+  strict pyright errors: 0 for a new file                                      pyright.py
+  the migrated tools' files, held with NO row (a trailer admits none)          migrated.py"""
 from __future__ import annotations
 
 import argparse
@@ -24,7 +25,7 @@ import os
 import subprocess
 import sys
 import tempfile
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Set, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -32,6 +33,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(HERE), "ci"))
 import clones  # noqa: E402
 import functions  # noqa: E402
 import imports  # noqa: E402
+import migrated  # noqa: E402
 import pyright  # noqa: E402
 import baseline_ratchet  # noqa: E402
 import py_quality_ratchet  # noqa: E402
@@ -121,7 +123,8 @@ def over_limit(rows: List[Row]) -> List[Row]:
     return [("limit", kind, value) for kind, value in LIMITS] + [r for r in rows if r[2] > limits[r[0]]]
 
 
-def measure(root: str, typed: Optional[List[str]]) -> List[Row]:
+def measure(root: str, typed: Optional[List[str]], checking: bool) -> Tuple[List[Row], Set[str]]:
+    """The rows, and, `checking`, the migrated tools' files (migrated.py: held with no row)."""
     files = python_files(root)
     sources = read_sources(root, files)
     trees = parse_all(sources)
@@ -130,7 +133,8 @@ def measure(root: str, typed: Optional[List[str]]) -> List[Row]:
     if typed is not None and os.path.isfile(baseline_path):
         with open(baseline_path) as f:
             baseline = baseline_ratchet.parse(f.read())
-    return function_rows(trees) + file_rows(sources, trees) + pyright_rows(root, files, typed, baseline)
+    migrated_files: Set[str] = migrated.files(root, sources, imports.graph(trees)) if checking else set()
+    return function_rows(trees) + file_rows(sources, trees) + pyright_rows(root, files, typed, baseline), migrated_files
 
 
 def write_rows(path: str, rows: List[Row]) -> None:
@@ -160,13 +164,14 @@ def run(args: argparse.Namespace) -> int:
         print(pyright.tools_dir(os.environ))
         return 0
     os.chdir(args.root)
-    rows = measure(args.root, read_paths(args.paths) if args.ratchet == "check" else None)
+    checking = args.ratchet == "check"
+    rows, migrated_files = measure(args.root, read_paths(args.paths) if checking else None, checking)
     out = args.out or tempfile.mkdtemp(prefix="py-quality-")
     os.makedirs(out, exist_ok=True)
     current = os.path.join(out, "over-limit.tsv")
     write_rows(current, over_limit(rows))
     if args.ratchet:
-        return baseline_ratchet.run(py_quality_ratchet.SPEC, args.ratchet, current, args.range)
+        return baseline_ratchet.run(py_quality_ratchet.spec_for(migrated_files), args.ratchet, current, args.range)
     print(markdown(rows))
     return 0
 

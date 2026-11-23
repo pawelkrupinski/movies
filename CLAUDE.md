@@ -363,7 +363,10 @@ reported (`scripts/js-quality-report`), never gated. No rename credit: a moved f
 **The Python quality ratchet** (the owner, 2026-11-22, with the shell-to-Python migration; pre-push `pyquality`) holds every
 Python tool (`scripts/`, `.github/scripts/`, `infra/bin/`, `infra/nix/files/`, `android/` / `ios/scripts/`) to
 `test/resources/py-quality-baseline.tsv` on the same limits and trailers, plus a strict-pyright error count that only falls
-(`Typing:`); `scripts/py-quality-report --update` records falls. A migrated tool keeps its path, CLI and output, and its
+(`Typing:`); `scripts/py-quality-report --update` records falls. **A migrated tool has no row** (the owner, 2026-11-23): a
+tool of `scripts/shell-py-progress/migrate-tools.tsv` and every `.py` file new since the migration's base that it reaches
+(`scripts/py-quality/migrated.py`) past a limit is refused even with a trailer -- "migrated tools stay under the bar --
+split it". A migrated tool keeps its path, CLI and output, and its
 black-box `<tool>_test.py` (`scripts/lib/cli_harness.py`) passes byte-unchanged on the shell tool and on the Python one.
 **The naming lint** (`scripts/ci/naming_lint.py`, the same step; the owner's "names must match behaviour", 2026-11-19):
 two top-level types of one package named with the same words in another order (`PruneSweep` / `SweepPrune`) refuse the

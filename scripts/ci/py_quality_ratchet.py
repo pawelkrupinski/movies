@@ -10,16 +10,19 @@ scripts/, .github/scripts/, infra/bin/, infra/nix/bin/, infra/nix/files/, androi
   Coupling:     fanout <file>, cycle <member>|<member>...
   Typing:       pyright <file> (its strict pyright errors; a new file has none)
 
-Self-tests (`*_test.py`) are reported, never held.
+Self-tests (`*_test.py`) are reported, never held. THE MIGRATED TOOLS (scripts/py-quality/migrated.py: every tool of
+scripts/shell-py-progress/migrate-tools.tsv and its new `.py` files) have NO row: one past a limit is refused whatever
+the baseline or a trailer says -- "migrated tools stay under the bar — split it".
 
   py_quality_ratchet.py check --current <over-limit.tsv> [--range A..B ...]   exit 1 on a violation, 2 on an error
   py_quality_ratchet.py update --current <over-limit.tsv>                     rewrite the baseline from the measure"""
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import os
 import sys
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # the engine beside it, under `python3 -I` too
 import baseline_ratchet  # noqa: E402
@@ -60,6 +63,18 @@ SPEC = baseline_ratchet.Spec(
     title="PYTHON QUALITY", tool="py quality", baseline=BASELINE, header=HEADER, hint=HINT,
     update_command="scripts/py-quality-report --update",
     held_rows="held rows past a limit; self-tests reported, not held", trailers=TRAILERS, held=held)
+
+
+MIGRATED_HINT = ("migrated tools stay under the bar — split it (a tool of scripts/shell-py-progress/migrate-tools.tsv"
+                 " and its new files, scripts/py-quality/migrated.py: no baseline row or trailer admits one)")
+
+
+def spec_for(migrated: Set[str]) -> baseline_ratchet.Spec:
+    """SPEC with the migrated tools' files strict: none of their rows past a limit is admitted."""
+    def strict(part: str) -> bool:
+        return part.split(":", 1)[0] in migrated
+
+    return dataclasses.replace(SPEC, strict=strict, strict_hint=MIGRATED_HINT)
 
 
 def main(argv: List[str]) -> int:
