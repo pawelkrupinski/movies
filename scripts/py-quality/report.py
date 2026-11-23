@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code
 quality ratchets") taken over the repository's Python tools -- every `.py` and extension-less Python tool under scripts/,
-.github/scripts/, infra/bin/, infra/nix/files/, android/scripts/ and ios/scripts/ -- and GATED by THE PYTHON QUALITY RATCHET (scripts/ci/py_quality_ratchet.py, the pre-push
+.github/scripts/, infra/bin/, infra/nix/bin/, infra/nix/files/, android/scripts/ and ios/scripts/ -- and GATED by THE PYTHON QUALITY RATCHET (scripts/ci/py_quality_ratchet.py, the pre-push
 `pyquality` check) against test/resources/py-quality-baseline.tsv:
 
   scripts/py-quality-report --check [--range A..B]... [--paths FILE]   held rows against the baseline (exit 1 past it);
@@ -36,7 +36,7 @@ import pyright  # noqa: E402
 import baseline_ratchet  # noqa: E402
 import py_quality_ratchet  # noqa: E402
 
-ROOTS = ("scripts", ".github/scripts", "infra/bin", "infra/nix/files", "android/scripts", "ios/scripts")
+ROOTS = ("scripts", ".github/scripts", "infra/bin", "infra/nix/bin", "infra/nix/files", "android/scripts", "ios/scripts")
 LIMITS: Tuple[Tuple[str, float], ...] = (
     ("cognitive", 10), ("cyclomatic", 10), ("inner-defs", 2), ("method-lines", 50), ("file-lines", 500),
     ("copies", 0), ("clone-tokens", clones.MIN_TOKENS), ("fanout", 9), ("cycle", 0), ("pyright", 0))

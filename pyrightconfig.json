@@ -1,6 +1,6 @@
 {
   "//": "Strict pyright for the repository's Python tools (scripts/py-quality-report, the pre-push `pyquality` check): its error counts per file are a ratchet (test/resources/py-quality-baseline.tsv, kind `pyright`). Python 3.9: macOS's /usr/bin/python3.",
-  "include": ["scripts", ".github/scripts", "infra/bin", "infra/nix/files", "android/scripts", "ios/scripts"],
+  "include": ["scripts", ".github/scripts", "infra/bin", "infra/nix/bin", "infra/nix/files", "android/scripts", "ios/scripts"],
   "exclude": ["**/node_modules", "**/__pycache__", "**/.*"],
   "typeCheckingMode": "strict",
   "pythonVersion": "3.9",

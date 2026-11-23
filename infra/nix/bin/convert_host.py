@@ -24,7 +24,7 @@ import os
 import subprocess
 import sys
 import time
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 FLAKE_DIR = os.path.dirname(os.path.dirname(HERE))
@@ -92,8 +92,9 @@ def rescue(host: str, server: str) -> None:
     rescue system -- NOT into the installed system, which gets its keys from nix/modules/fleet/accounts.nix -- then a
     HARD RESET into it: a machine that declines to shut down cleanly would otherwise sit in the old system
     indefinitely, and there is nothing on these disks to lose."""
-    keys = json.loads(api(API + "/ssh_keys?name=pawel.krupinski%40gmail.com")).get("ssh_keys") or [{}]
-    key = keys[0].get("id")
+    found: Dict[str, Any] = json.loads(api(API + "/ssh_keys?name=pawel.krupinski%40gmail.com"))
+    keys: List[Dict[str, Any]] = found.get("ssh_keys") or [{}]
+    key: Optional[object] = keys[0].get("id")
     if key is None:
         raise Stop(1, "convert-host: no Hetzner SSH key named pawel.krupinski@gmail.com in this project")
     say("==> enabling rescue on %s (%s)" % (host, server))

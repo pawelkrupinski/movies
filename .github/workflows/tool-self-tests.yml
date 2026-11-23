@@ -35,6 +35,7 @@ on:
             - 'android/scripts/**'
             - 'ios/scripts/**'
             - 'infra/bin/**'
+            - 'infra/nix/bin/**'
             - 'infra/nix/files/**'
             - 'data/**'
             - '.github/workflows/tool-self-tests.yml'
@@ -112,8 +113,8 @@ jobs:
                   token: ${{ github.token }}
                   job-status: ${{ job.status }}
 
-    # Every script self-test (`*-test.sh`, `*_test.py` under scripts/, .github/, android/scripts, ios/scripts and
-    # infra/bin), found by name and run in parallel by scripts/run-script-tests. A new test runs here the moment it
+    # Every script self-test (`*-test.sh`, `*_test.py` under scripts/, .github/, android/scripts, ios/scripts,
+    # infra/bin and infra/nix), found by name and run in parallel by scripts/run-script-tests. A new test runs here the moment it
     # exists; one tagged `# script-test: <tag>` runs where its toolchain is. It needs no JDK, sbt or build cache.
     script-tests:
         name: script self-tests
