@@ -60,8 +60,8 @@ jobs:
 
             - name: Self-test the mirror and the pull
               run: |
-                  bash scripts/ci/mirror-pinned-images-test.sh
-                  bash scripts/ci/pull-pinned-image-test.sh
+                  python3 scripts/ci/mirror_pinned_images_test.py
+                  python3 scripts/ci/pull_pinned_image_test.py
 
             - name: Copy every pinned image to GHCR by digest, and check GHCR serves the pin
               env:

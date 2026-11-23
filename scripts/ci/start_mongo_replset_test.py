@@ -22,7 +22,7 @@ PULL = os.path.join(cli_harness.ROOT, "scripts/ci/pull-pinned-image.sh")
 # STUB_MONGO: `healthy` answers ping and reports PRIMARY after rs.initiate; `down` never answers a ping (and its
 # container cannot be inspected); `exited` is a container whose mongod died at start, its log's fatal line saying why;
 # `secondary` answers but never becomes PRIMARY. A pull succeeds and `image inspect` then names the pulled ref (its
-# digest with it); where the pull's sources fall back is scripts/ci/pull-pinned-image-test.sh's.
+# digest with it); where the pull's sources fall back is scripts/ci/pull_pinned_image_test.py's.
 DOCKER = r"""#!/usr/bin/env bash
 printf '%s\n' "$*" >> "$STUB_LOG"
 case "$1" in

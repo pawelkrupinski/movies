@@ -148,7 +148,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
     for ((tier, publish) <- Seq("web" -> publishWeb, "worker" -> publishWorker)) {
       withClue(s"$tier: ") {
         val image = imageJob
-        // both through build-image.sh, which tags `<repository>:<sha>` and nothing else (build-image-test.sh)
+        // both through build-image.sh, which tags `<repository>:<sha>` and nothing else (build_image_test.py)
         val code = RepoFile.withoutComments(image)
         if (tier == "web") {
           val builds = """scripts/ci/build-image\.sh (.+)""".r.findAllMatchIn(code).map(_.group(1).trim).toSeq
