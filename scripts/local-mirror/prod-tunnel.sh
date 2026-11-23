@@ -226,6 +226,23 @@ ensure_prod_tunnel() {
   return 1
 }
 
+# A command run with prod reachable for it, the tunnel ours for its length: the tunnel opened for <prod uri> (the vault's,
+# rewritten by prod_tunnel_uri), <VAR> set to its URI in the command's environment, the tunnel closed after (an INT or
+# TERM too). Its status the command's; 1, nothing run, when prod does not answer. For a caller in another language
+# (identity_capture.py), which cannot hold a shell's tunnel itself.
+#
+#   prod_tunnel_run <tag> <prod uri> <VAR> <command...>
+prod_tunnel_run() {
+  local tag=$1 var=$3 status=0
+  init_prod_tunnel "$tag" "$(prod_tunnel_uri "$2")"
+  shift 3
+  trap close_prod_tunnel EXIT INT TERM
+  ensure_prod_tunnel || { echo "[$tag] prod Mongo unreachable — can you 'ssh' to the mongo host? (see prod-tunnel.sh)" >&2; return 1; }
+  env "$var=$TUNNEL_PROBE_URI" "$@" || status=$?
+  close_prod_tunnel
+  return "$status"
+}
+
 # Tear down ONLY a tunnel we started, so we never strand an ssh after exit and
 # never kill one that was not ours. Safe to call more than once.
 close_prod_tunnel() {

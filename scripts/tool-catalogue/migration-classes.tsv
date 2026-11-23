@@ -160,7 +160,7 @@ scripts/hooks/pre-push	MIGRATE
 scripts/hotspots	KEEP
 scripts/identity-boot-cost	MIGRATE
 scripts/identity-calibrate.sh	KEEP
-scripts/identity-capture.sh	MIGRATE
+scripts/identity-capture.sh	KEEP
 scripts/identity-ci-run	KEEP
 scripts/identity-drift-ci	KEEP
 scripts/identity-explain	KEEP

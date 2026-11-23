@@ -228,7 +228,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
 
-## Identity (195)
+## Identity (196)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -259,7 +259,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/convergence-daily.yml` | One full convergence of main a day, whatever main's pushes did | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf country-convergence-leg, identity-takes; skill CLAUDE.md, identity-investigation; 2 tools | - | - |
 | `.github/workflows/convergence-fill.yml` | The long fill, by hand: what the last hermetic convergence leg of each country could not answer from its pinned pair | `workflow: workflow_dispatch` | wf identity-model-convergence; 1 tool | - | - |
 | `.github/workflows/country-convergence-leg.yml` | One country's convergence leg: the full run, as one job of matrix rows | `workflow: workflow_call` | wf convergence-fill, identity-family-explorer, identity-model-convergence +3; 16 tools | - | - |
-| `.github/workflows/identity-capture.yml` | Weekly recapture of the unmatched-cluster fixture the identity ratchet replays | `workflow: workflow_dispatch, schedule, repository_dispatch` | wf decoration-discovery, identity-refit; skill identity-investigation; 2 tools | - | - |
+| `.github/workflows/identity-capture.yml` | Weekly recapture of the unmatched-cluster fixture the identity ratchet replays | `workflow: workflow_dispatch, schedule, repository_dispatch` | wf decoration-discovery, identity-refit; skill identity-investigation; 3 tools | - | - |
 | `.github/workflows/identity-ci-staleness.yml` | Is the identity CI still telling us anything? Every three hours, each stale check named as overdue | `workflow: schedule, workflow_dispatch` | 1 tool | - | - |
 | `.github/workflows/identity-decorations.yml` | Relearn the identity resolver's venue decorations on one recording, on GitHub's runners | `workflow: workflow_dispatch` | by hand | - | - |
 | `.github/workflows/identity-drift-explorer.yml` | Nightly drift explorer: old identity flips on new seeds, filed as backlog rows and gate seeds | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf country-convergence-leg, identity-takes; skill CLAUDE.md; 6 tools | - | - |
@@ -337,7 +337,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/hard-clusters.sh` | Grow and re-record the hard-cluster fixture HardClusterConvergenceIntegrationSpec replays | `scripts/hard-clusters.sh` | skill regenerate-snapshots; 3 tools | hard-clusters-test.sh | KEEP |
 | `scripts/identity-boot-cost` | The identity boot-cost check: what the identity model allocates and spends a family | `scripts/identity-boot-cost` | skill test-layers; 1 tool | identity-boot-cost-test.sh | MIGRATE |
 | `scripts/identity-calibrate.sh` | Regenerate the identity resolver's calibrated evidence model from data | `scripts/identity-calibrate.sh` | wf identity-decorations; 1 tool | identity-calibrate-test.sh | KEEP |
-| `scripts/identity-capture.sh` | Re-capture the unmatched-cluster fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz) in one command | `scripts/identity-capture.sh` | wf identity-capture; 1 tool | identity-capture-test.sh | MIGRATE |
+| `scripts/identity-capture.sh` | Re-capture the unmatched-cluster fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz) in one command | `scripts/identity-capture.sh` | wf identity-capture; 2 tools | identity_capture_test.py | KEEP |
 | `scripts/identity-ci-run` | Any sbt command over a cached recording, on CI (identity-run.yml), off the laptop (a name for identity_ci_run.py) | `scripts/identity-ci-run` | wf identity-run; agentctl; skill CLAUDE.md, identity-investigation; 6 tools | identity_ci_run_test.py | KEEP |
 | `scripts/identity-drift-ci` | The pre-land drift check: a commit's takes-drift rows, run on CI before landing (a name for identity_drift_ci.py) | `scripts/identity-drift-ci` | wf country-convergence-leg, identity-model-convergence, identity-takes; hook pre-push; agentctl; 9 tools | identity_drift_ci_test.py | KEEP |
 | `scripts/identity-explain` | An alias of `scripts/identity-slice <cc> --explain …` (see its --help): why a listing of the unmatched-cluster capture took (or did not take) its film | `scripts/identity-explain` | skill identity-investigation; 4 tools | identity-explain-test.sh | KEEP |
@@ -362,6 +362,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity-what-if` | A local what-if of a resolver change over prod's current corpus, in minutes | `scripts/identity-what-if` | hook pre-push; skill CLAUDE.md, identity-investigation; 21 tools | identity_what_if_test.py | MIGRATE |
 | `scripts/identity-why` | Why a listing changed film at a moment, from the identity history alone (identity_history, a month of it) | `scripts/identity-why` | skill identity-investigation; 1 tool | - | KEEP |
 | `scripts/identity_boot_cost.py` | THE IDENTITY BOOT-COST RATCHET (scripts/identity-boot-cost): what `scripts.IdentityBootCost` measured -- bytes and | `python3 scripts/identity_boot_cost.py` | 1 tool | identity_boot_cost_test.py | Python |
+| `scripts/identity_capture.py` | Re-capture the unmatched-cluster fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz) | `scripts/identity_capture.py` | 5 tools | identity_capture_test.py | Python |
 | `scripts/identity_ci_run.py` | ANY sbt COMMAND OVER A CACHED RECORDING, ON CI: .github/workflows/identity-run.yml at a commit of yours, off the laptop | `scripts/identity_ci_run.py` | 1 tool | identity_ci_run_test.py | Python |
 | `scripts/identity_drift_ci.py` | THE PRE-LAND DRIFT CHECK: a commit's `takes-drift-1\|2\|... (<country>)` rows -- "Check that the incremental state ends | `scripts/identity_drift_ci.py` | 5 tools | identity_drift_ci_test.py | Python |
 | `scripts/identity_drift_ci_baseline.py` | identity-drift-ci's baseline and its wait (scripts/identity_drift_ci.py): with --for-red, the rows a red run failed -- | `imported` | 1 tool | - | Python |
@@ -625,9 +626,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 10 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 13 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 17 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 67 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 68 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 11 tools | tool_python_test.py | Python |
-| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 15 tools | - | Python |
+| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 16 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 7 tools | - | KEEP |
@@ -656,7 +657,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/timezonefinder-python` | Print a directory whose python3 imports timezonefinder, for the pre-push drift check | `scripts/timezonefinder-python` | hook pre-push; 3 tools | timezonefinder-python-test.sh | KEEP |
 | `scripts/timezonefinder-python-stub.sh` | A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder | `sourced` | by hand | - | KEEP |
 | `scripts/title_trace.py` | Every step one raw billing goes through, in production order: the ingest tidy, the venue's own title rules, the format | `python3 scripts/title_trace.py` | wf main; 2 tools | title_trace_test.py | Python |
-| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 68 tools | tool-conventions-test.sh | MIGRATE |
+| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 67 tools | tool-conventions-test.sh | MIGRATE |
 | `scripts/tool_catalogue.py` | The tool catalogue: docs/tools.md, generated from every tool's own one-line purpose. | `python3 scripts/tool_catalogue.py` | skill CLAUDE.md | tool_catalogue_test.py | Python |
 | `scripts/touched-tree-stub.sh` | The stub sbt for the touched-code tools' specs (mutation-check, coverage-touched) | `scripts/touched-tree-stub.sh` | 1 tool | - | KEEP |
 | `scripts/touched_methods.py` | THE METHODS A CHANGE TOUCHES, and what the refactoring tools say about each (scripts/mutation-check, | `python3 scripts/touched_methods.py` | 4 tools | touched_methods_test.py | Python |
@@ -664,7 +665,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/unit-changed` | The unit tests of the modules a change touches, in this checkout's warm sbt server | `scripts/unit-changed` | skill test-layers | unit-changed-test.sh | KEEP |
 | `scripts/unmatched_census.py` | Census of the listings the identity resolver leaves unmatched, read from the local prod mirror (READ-ONLY). | `scripts/unmatched_census.py` | skill identity-investigation | unmatched_census_test.py | Python |
 | `scripts/vault-env.sh` | The one way a local script gets a secret: from its environment, else from the Touch ID vault | `bash scripts/vault-env.sh` | 4 tools | vault-env-test.sh | KEEP |
-| `scripts/vault_env.py` | The Python twin of scripts/vault-env.sh: a secret from the environment, else from the Touch ID vault. | `imported` | 3 tools | - | Python |
+| `scripts/vault_env.py` | The Python twin of scripts/vault-env.sh: a secret from the environment, else from the Touch ID vault. | `imported` | 4 tools | - | Python |
 | `scripts/venue_replay.py` | ONE venue's listings as the code at one or two git refs reads them, from a recording — never the network. Answers | `python3 scripts/venue_replay.py` | 2 tools | venue_replay_test.py | Python |
 | `scripts/venue_replay_diff.py` | scripts/venue-replay with two refs: every listing either ref alone reads, and every field the two read differently. | `imported` | 1 tool | - | Python |
 | `scripts/zinc_orphans.py` | Delete the class files in a checkout's sbt output that its own Zinc analysis never produced. | `python3 scripts/zinc_orphans.py` | 3 tools | zinc_orphans_test.py | Python |
