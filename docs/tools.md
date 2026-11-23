@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (222)
+## Landing and CI (224)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -53,7 +53,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/filmweb-diff.yml` | Weekly diagnostic: every upcoming showtime our scrapers publish compared with Filmweb's | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf country-fixture-artifact | - | - |
 | `.github/workflows/ios.yml` | Build and test the iOS app (swift test, the LocalServer decoders, XCUITest) on macOS runners | `workflow: pull_request, push, workflow_dispatch` | wf ci; 4 tools | - | - |
 | `.github/workflows/main.yml` | Main's pipeline: build, test and publish the images Flux deploys; its rows are the gate | `workflow: push, workflow_dispatch` | wf branch-ci, ci, tool-self-tests; hook pre-push; agentctl; 17 tools | - | - |
-| `.github/workflows/mirror-pinned-images.yml` | Copies every image .github/pinned-images.tsv pins to this repo's GHCR packages by digest | `workflow: schedule, repository_dispatch, push, workflow_dispatch` | 3 tools | - | - |
+| `.github/workflows/mirror-pinned-images.yml` | Copies every image .github/pinned-images.tsv pins to this repo's GHCR packages by digest | `workflow: schedule, repository_dispatch, push, workflow_dispatch` | 4 tools | - | - |
 | `.github/workflows/nightly-stress.yml` | The tests whose failures are a matter of luck, run enough times for luck to run out | `workflow: schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
 | `.github/workflows/order-independence.yml` | Nightly: every suite in an order it never meets on push, so an order-dependent test shows | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf android, nightly-stress; 6 tools | - | - |
 | `.github/workflows/precheck-build-cache.yml` | Keep the landing check's sbt build cache warm for main's newest commit | `workflow: workflow_run, workflow_dispatch` | wf precommit-check; 1 tool | - | - |
@@ -136,7 +136,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/measure-lane.sh` | The ci-runner label a measurement-sized job asks for, for a plan job's GITHUB_OUTPUT | `scripts/ci/measure-lane.sh` | wf identity-family-explorer, identity-takes, nix-stage-closures +1; 2 tools | measure-lane-test.sh | KEEP |
 | `scripts/ci/memory-guard-stop.sh` | Sourced, never run: `memory_guard_stop <guard pid> <reason file>` ends the scripts/ci/memory-guard.sh started beside a process | `sourced` | wf country-convergence-leg; 1 tool | - | KEEP |
 | `scripts/ci/memory-guard.sh` | Watch a process tree on a CI runner, say every few minutes how it and the machine are doing, and end the tree -- naming why | `scripts/ci/memory-guard.sh` | wf country-convergence-leg; 2 tools | memory-guard-test.sh | KEEP |
-| `scripts/ci/mirror-pinned-images.sh` | Copy every image .github/pinned-images.tsv pins to its GHCR mirror by digest, and check that GHCR serves exactly the pin | `scripts/ci/mirror-pinned-images.sh` | wf mirror-pinned-images | mirror-pinned-images-test.sh | MIGRATE |
+| `scripts/ci/mirror-pinned-images.sh` | Copy every image .github/pinned-images.tsv pins to its GHCR mirror by digest, and check that GHCR serves exactly the pin | `scripts/ci/mirror-pinned-images.sh` | wf mirror-pinned-images; 1 tool | mirror_pinned_images_test.py | KEEP |
+| `scripts/ci/mirror_pinned_images.py` | Copy every image .github/pinned-images.tsv pins to its GHCR mirror BY DIGEST, and check that GHCR serves exactly the | `scripts/ci/mirror_pinned_images.py` | 1 tool | mirror_pinned_images_test.py | Python |
 | `scripts/ci/naming_lint.py` | THE NAMING LINT (the owner's "names must match behaviour", 2026-11-19): the production Scala's top-level type names, | `python3 scripts/ci/naming_lint.py` | hook pre-push; skill CLAUDE.md | naming_lint_test.py | Python |
 | `scripts/ci/no-network` | No network for the tests: run a command that may reach loopback and nothing else | `scripts/ci/no-network` | wf order-independence; 4 tools | no_network_test.py | MIGRATE |
 | `scripts/ci/no_network.py` | No network for the tests: run a command that may reach loopback and nothing else. Order independence's test steps run | `scripts/ci/no_network.py` | 1 tool | no_network_test.py | Python |
@@ -156,7 +157,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/preflight.sh` | Fail a workflow in seconds when it lacks configuration (an unset secret or variable), not code | `scripts/ci/preflight.sh` | wf android, convergence-bisect, decoration-discovery +5 | preflight-test.sh | MIGRATE |
 | `scripts/ci/prune-actions-caches.sh` | Delete the superseded per-commit entries of main's GitHub Actions caches, keeping the newest entry of each family | `scripts/ci/prune-actions-caches.sh` | wf prune-actions-caches | prune-actions-caches-test.sh | KEEP |
 | `scripts/ci/publish-rolling-release.sh` | Point a rolling prerelease — and its git tag — at this commit and replace its assets | `scripts/ci/publish-rolling-release.sh` | wf android | - | KEEP |
-| `scripts/ci/pull-pinned-image.sh` | Pull one of .github/pinned-images.tsv's images by digest, from the first source that serves it, and refuse any other | `scripts/ci/pull-pinned-image.sh` | wf mirror-pinned-images; 4 tools | pull-pinned-image-test.sh | MIGRATE |
+| `scripts/ci/pull-pinned-image.sh` | Pull one of .github/pinned-images.tsv's images by digest, from the first source that serves it, and refuse any other | `scripts/ci/pull-pinned-image.sh` | wf mirror-pinned-images; 5 tools | pull_pinned_image_test.py | KEEP |
+| `scripts/ci/pull_pinned_image.py` | Pull one of .github/pinned-images.tsv's images BY DIGEST, from the first source that serves it, and refuse any other. | `scripts/ci/pull_pinned_image.py` | 2 tools | pull_pinned_image_test.py | Python |
 | `scripts/ci/py_quality_ratchet.py` | THE PYTHON QUALITY RATCHET (the pre-push `pyquality` check; CLAUDE.md, "Code quality ratchets"): the repository's | `python3 scripts/ci/py_quality_ratchet.py` | hook pre-push; 2 tools | - | Python |
 | `scripts/ci/python_floor_lint.py` | Every Python tool in the repository runs on the Python floor, scripts/run-script-tests' `PythonFloor` (3.9: macOS's | `python3 scripts/ci/python_floor_lint.py` | wf tool-self-tests; 1 tool | python_floor_lint_test.py | Python |
 | `scripts/ci/quality_ratchet.py` | The code-quality ratchets (the pre-push sbt check's quality step) | `scripts/ci/quality_ratchet.py` | hook pre-push; skill CLAUDE.md; 5 tools | quality_ratchet_test.py | Python |
@@ -546,8 +548,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 217 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 217 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 218 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 218 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |

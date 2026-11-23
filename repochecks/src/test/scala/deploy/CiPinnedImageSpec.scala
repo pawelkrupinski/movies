@@ -75,12 +75,19 @@ class CiPinnedImageSpec extends AnyFlatSpec with Matchers {
     val action = RepoFile.read(".github/actions/pull-pinned-image/action.yml")
     action should include("scripts/ci/pull-pinned-image.sh")
     action should include("default: ${{ github.token }}")
-    val script = RepoFile.withoutComments(RepoFile.read("scripts/ci/pull-pinned-image.sh"))
-    // GHCR first, then mirror.gcr.io, then Docker Hub (after only a daemon's own Docker Hub mirror)
-    val ghcr = RepoFile.positionOf(script, "pull \"$ghcr_ref\"")
-    ghcr should be < RepoFile.positionOf(script, "pull \"$mirror_gcr_ref\"")
-    RepoFile.positionOf(script, "pull \"$mirror_gcr_ref\"") should be < script.lastIndexOf("pull \"$hub_ref\"")
-    script should include("@$digest")
+    RepoFile.read("scripts/ci/pull-pinned-image.sh") should include("exec python3 \"$(dirname \"$0\")/pull_pinned_image.py\"")
+    val script = RepoFile.read("scripts/ci/pull_pinned_image.py")
+    // GHCR first, then mirror.gcr.io, then Docker Hub (after only a daemon's own Docker Hub mirror): the order the
+    // sources are tried in, each pulling its own ref by the pin's digest
+    val order = RepoFile.positionOf(script, "for source in (")
+    val sources = Seq("self.already_here", "self.through_daemon_mirror", "self.from_ghcr", "self.from_mirror_gcr",
+      "self.from_docker_hub").map(script.indexOf(_, order))
+    sources should not contain -1
+    sources shouldBe sorted
+    script should include("self.pull(self.ghcr_ref, seconds)")
+    script should include("self.pull(self.mirror_gcr_ref, self.pull_seconds)")
+    script should include("self.pull(self.hub_ref, self.pull_seconds)")
+    script should include("@{pin.digest}\"")
   }
 
   "the mirror workflow" should "copy every pin to GHCR weekly and whenever the pins change, with a token that may write it" in {
@@ -90,6 +97,6 @@ class CiPinnedImageSpec extends AnyFlatSpec with Matchers {
     yml should include(s"- $Pins")
     yml should include("packages: write")
     yml should include("scripts/ci/mirror-pinned-images.sh")
-    RepoFile.read("scripts/ci/mirror-pinned-images.sh") should include("--preserve-digests")
+    RepoFile.read("scripts/ci/mirror_pinned_images.py") should include("\"--preserve-digests\"")
   }
 }
