@@ -67,6 +67,7 @@ from typing import IO, Dict, List, Mapping, Optional
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import tool_cli  # noqa: E402
 import tool_countries  # noqa: E402
+import tool_git  # noqa: E402
 import tool_process  # noqa: E402
 import tool_python  # noqa: E402
 
@@ -121,8 +122,7 @@ class Measure:
         self.countries: List[str] = []
 
     def git(self, *args: str) -> Optional[str]:
-        done = self.runner.capture(tool_process.Command(["git", "-C", self.repo, *args], self.env))
-        return done.stdout if done.code == 0 else None
+        return tool_git.Git(self.runner, self.env, self.repo).out(*args, quiet=True)
 
     def short(self, ref: str) -> str:
         sha = self.git("rev-parse", "--short=12", f"{ref}^{{commit}}")
