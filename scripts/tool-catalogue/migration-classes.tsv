@@ -142,7 +142,7 @@ scripts/ci/wait-for-run-artifact.sh	KEEP
 scripts/ci/xcuitest-each-class-alone.sh	MIGRATE
 scripts/class-cycles	MIGRATE
 scripts/convergence-local.sh	MIGRATE
-scripts/coupling-report	MIGRATE
+scripts/coupling-report	KEEP
 scripts/coverage-touched	KEEP
 scripts/dead-code	KEEP
 scripts/deploy-watch	KEEP
