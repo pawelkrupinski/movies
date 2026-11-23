@@ -113,6 +113,9 @@ class LoadIndependentTestsSpec extends AnyFlatSpec with Matchers {
       "the subject: a line written late, which wait-for --contains must wait for",
     s"scripts/wait-for-test.sh: ( sleep 0.3; printf 'first\\nsecond\\n' > \"$$work/any.log\" ) &" ->
       "the subject: content that appears late, which wait-for with no pattern must wait for",
+    s"android/scripts/store_screenshots_test.py: time.sleep(0.05)" ->
+      ("the fake adb's `am start` held until the case opens its gate file (block_launch), bounded by a deadline: the " +
+        "launch that must stay blocked while a second process is refused, which the case kills, not a wait it rides on"),
     s"scripts/ci/ci_timings_test.py: time.sleep(0.1)" ->
       "the pause inside the test's wait_until helper, which polls to a deadline and fails naming what it waited on",
     "common/src/test/scala/tools/ManagedResourcesSpec.scala: stopwatch.elapsed should be < (grace * 2)" ->
