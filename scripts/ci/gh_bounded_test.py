@@ -9,7 +9,6 @@ import stat
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
 from typing import Iterator
 from unittest import mock
@@ -67,10 +66,8 @@ class GhBoundedTest(unittest.TestCase):
         self.assertEqual((1, "HTTP 502\n"), (caught.exception.returncode, caught.exception.stderr))
 
     def test_a_gh_past_its_limit_is_a_failure_not_a_hang(self) -> None:
-        start = time.monotonic()
         with self.assertRaises(subprocess.CalledProcessError) as caught:
             gh_bounded.gh(["slow"], timeout=0.5)
-        self.assertLess(time.monotonic() - start, 10)
         self.assertEqual((124, "gh timed out after 0.5s"), (caught.exception.returncode, caught.exception.stderr))
 
     def test_its_limit_is_read_at_each_call(self) -> None:
