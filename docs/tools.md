@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (229)
+## Landing and CI (238)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -86,11 +86,11 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/cgroup_sampler.py` | The job's own memory and disk writes, read from its cgroup (the job container's, which holds the job's dockerd and | `scripts/ci/cgroup_sampler.py` | 1 tool | cgroup_sampler_test.py | Python |
 | `scripts/ci/check-security-headers.py` | Assert the live sites' security headers, and exit non-zero naming every one that is wrong. | `scripts/ci/check-security-headers.py` | wf security-headers; 2 tools | check_security_headers_test.py | Python |
 | `scripts/ci/ci-row-scope.sh` | Can this push move ci.yml's slow rows? Prints true when a changed path can change what they test | `scripts/ci/ci-row-scope.sh` | wf ci; skill identity-investigation; 2 tools | ci_row_scope_test.py | KEEP |
-| `scripts/ci/ci-timings` | Where CI's time goes across runs: report, trend, compare, collect | `scripts/ci/ci-timings` | wf alert-backtest, android, archive-recording +43; 5 tools | ci_timings_test.py | KEEP |
+| `scripts/ci/ci-timings` | Where CI's time goes across runs: report, trend, compare, collect | `scripts/ci/ci-timings` | wf alert-backtest, android, archive-recording +43; 8 tools | ci_timings_test.py | KEEP |
 | `scripts/ci/ci_http_calls.py` | What a CI job asked the outside world: its outbound calls per external service and outcome, as a | `scripts/ci/ci_http_calls.py` | wf country-convergence-leg; 1 tool | ci_http_calls_test.py | Python |
 | `scripts/ci/ci_row_scope.py` | CAN THIS PUSH MOVE ci.yml's SLOW ROWS? Reads changed paths on stdin and prints `true` when one of them can change | `scripts/ci/ci_row_scope.py` | 1 tool | ci_row_scope_test.py | Python |
 | `scripts/ci/ci_timings.py` | Where a GitHub Actions run spent its time: every job and step, plus the `PhaseTimer` phases a | `python3 scripts/ci/ci_timings.py` | wf country-convergence-leg, identity-lean-whole, report-timings; 8 tools | ci_timings_test.py | Python |
-| `scripts/ci/ci_trends.py` | Where CI's time goes, across many runs: per job and step, setup against work, the critical path, queueing, the | `scripts/ci/ci_trends.py` | 8 tools | ci_trends_test.py | Python |
+| `scripts/ci/ci_trends.py` | Where CI's time goes, across many runs: per job and step, setup against work, the critical path, queueing, the | `scripts/ci/ci_trends.py` | 17 tools | ci_trends_test.py | Python |
 | `scripts/ci/commit-rules-ci.sh` | The drift gate's commit rules, on CI (scripts/ci/commit_rules.py: `allowlists` and `driftguards`) | `scripts/ci/commit-rules-ci.sh` | wf ci, precommit-check; 3 tools | commit_rules_ci_test.py | KEEP |
 | `scripts/ci/commit_rules.py` | The commit rules of the drift gate: the pre-push hook's allowlists and driftguards checks | `scripts/ci/commit_rules.py` | wf ci, identity-drift-explorer; hook post-commit, pre-push; skill CLAUDE.md; 7 tools | commit_rules_test.py | Python |
 | `scripts/ci/commit_rules_ci.py` | THE DRIFT GATE'S COMMIT RULES, ON CI (scripts/ci/commit_rules.py: `allowlists` and `driftguards`). The pre-push hook | `scripts/ci/commit_rules_ci.py` | 1 tool | commit_rules_ci_test.py | Python |
@@ -125,7 +125,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/ios-sim-destination.sh` | Print an xcodebuild -destination for an iPhone simulator this runner actually has | `scripts/ci/ios-sim-destination.sh` | wf ios, order-independence; 1 tool | ios-sim-destination-test.sh | KEEP |
 | `scripts/ci/jdk-pin.sh` | The pinned Temurin JDK build for <java-version> on this runner's platform, as GITHUB_OUTPUT lines (file, url, sha256, version, key | `scripts/ci/jdk-pin.sh` | 1 tool | jdk-pin-test.sh | KEEP |
 | `scripts/ci/jfr-every-jvm.sh` | Sourced by a profiled takes or drift row: every JVM the step starts from here on records JFR | `scripts/ci/jfr-every-jvm.sh` | wf country-convergence-leg; 1 tool | - | KEEP |
-| `scripts/ci/job_metrics.py` | A job's own measurements, written as JSON lines into its metrics file and uploaded as the job's `ci-metrics-*` | `python3 scripts/ci/job_metrics.py` | wf ci; 5 tools | job_metrics_test.py | Python |
+| `scripts/ci/job_metrics.py` | A job's own measurements, written as JSON lines into its metrics file and uploaded as the job's `ci-metrics-*` | `python3 scripts/ci/job_metrics.py` | wf ci; 6 tools | job_metrics_test.py | Python |
 | `scripts/ci/js_quality_ratchet.py` | The JS/TS quality ratchet (the pre-push jsquality check) | `scripts/ci/js_quality_ratchet.py` | hook pre-push; 3 tools | js_quality_ratchet_test.py | Python |
 | `scripts/ci/junit_failures.py` | The failed tests in JUnit XML, one per line: class <TAB> name, each once, in report order. | `scripts/ci/junit_failures.py` | 1 tool | junit_failures_test.py | Python |
 | `scripts/ci/jvm-offline-env.sh` | Environment lines (for GITHUB_ENV) under which no JVM of the job reaches the network, and sbt-guard does not retry a download | `scripts/ci/jvm-offline-env.sh` | 1 tool | - | KEEP |
@@ -171,7 +171,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/release-store-prune.sh` | Make room on a rolling store release before storing one result on it | `scripts/ci/release-store-prune.sh` | 2 tools | release-store-prune-test.sh | KEEP |
 | `scripts/ci/report_fields.py` | What the CI report tools share about a field, one copy each: a value written into a Markdown table cell, and an | `imported` | 4 tools | report_fields_test.py | Python |
 | `scripts/ci/reusable_workflow_inputs.py` | Every call of a reusable workflow (`uses: ./.github/workflows/<file>.yml`) hands it inputs its `on.workflow_call` | `scripts/ci/reusable_workflow_inputs.py` | by hand | reusable_workflow_inputs_test.py | Python |
-| `scripts/ci/run_metrics.py` | A run's jobs' metrics (their ci-metrics-* artifacts, joined to the API's jobs by ci_trends.py) as Report run timings | `python3 scripts/ci/run_metrics.py` | 1 tool | - | Python |
+| `scripts/ci/run_metrics.py` | A run's jobs' metrics (their ci-metrics-* artifacts, joined to the API's jobs by ci_trends.py) as Report run timings | `python3 scripts/ci/run_metrics.py` | 2 tools | - | Python |
 | `scripts/ci/runner_cache.py` | A runner-local mirror of actions/cache entries, for the self-hosted runners on ci-runner. | `python3 scripts/ci/runner_cache.py` | 1 tool | runner_cache_test.py | Python |
 | `scripts/ci/runner_scheduler.py` | CI-RUNNER'S MOVIES RUNNER SCHEDULER (the owner, 2026-11-06: "make movies runs take all the ci-runner runners when | `python3 scripts/ci/runner_scheduler.py` | wf precommit-check; agentctl; 1 tool | runner_scheduler_test.py | Python |
 | `scripts/ci/sbt-deps-resolve.sh` | Resolve every dependency of the sbt build once (`sbt update` over the root aggregate | `scripts/ci/sbt-deps-resolve.sh` | wf ci; 2 tools | sbt-deps-resolve-test.sh | KEEP |
@@ -191,6 +191,15 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/stress_races.py` | Run the race / concurrency harnesses many times over, to surface the interleavings a single CI run almost never meets. | `scripts/ci/stress_races.py` | 1 tool | stress_races_test.py | Python |
 | `scripts/ci/trailers.py` | THE TRAILER PLACEMENT RULE: git reads a `Key: value` line as a trailer only in the message's final trailer block -- | `python3 scripts/ci/trailers.py` | wf coupling-exemptions; hook post-commit, pre-push; skill CLAUDE.md; 8 tools | trailers_test.py | Python |
 | `scripts/ci/tree-unchanged.sh` | A test run must leave every checked-in file exactly as it found it | `scripts/ci/tree-unchanged.sh` | wf ci, discover-cinemas | - | KEEP |
+| `scripts/ci/trend_events.py` | A run as flat JSON events for VictoriaLogs and back (scripts/ci/ci_trends.py's `export`; the schema is in | `imported` | 3 tools | - | Python |
+| `scripts/ci/trend_export.py` | The collector (scripts/ci/ci_trends.py `export`, run on ci-runner every few minutes): every completed run of the | `imported` | 1 tool | - | Python |
+| `scripts/ci/trend_format.py` | The text the trend tools print (scripts/ci/ci_trends.py): minutes and shares, the `report` aggregate and its per-run | `imported` | 2 tools | - | Python |
+| `scripts/ci/trend_github.py` | GitHub as the trend tools read it (scripts/ci/ci_trends.py): the API through urllib with GH_TOKEN/GITHUB_TOKEN when set | `imported` | 4 tools | - | Python |
+| `scripts/ci/trend_measures.py` | What one run contributes to an aggregate (scripts/ci/ci_trends.py's header explains the critical path and the slot | `imported` | 6 tools | - | Python |
+| `scripts/ci/trend_records.py` | A CI run as the trend tools read it (scripts/ci/ci_trends.py's header explains the timestamps): instants, one API | `imported` | 9 tools | - | Python |
+| `scripts/ci/trend_series.py` | A selection's aggregates over time (scripts/ci/ci_trends.py): time buckets, a metric row's sparkline, slope and | `imported` | 2 tools | - | Python |
+| `scripts/ci/trend_source.py` | The runs a selection names (scripts/ci/ci_trends.py's header lists the forms): records for a branch's newest runs, a | `imported` | 2 tools | - | Python |
+| `scripts/ci/trend_summary.py` | The aggregate of a selection of runs (scripts/ci/ci_trends.py): percentiles over each run's measures, per job, per | `imported` | 3 tools | - | Python |
 | `scripts/ci/ubuntu-security-via-mirror.sh` | Route the GitHub-hosted Ubuntu runner's security.ubuntu.com apt sources to the archive mirror the image already uses, before an `apt-get update` | `scripts/ci/ubuntu-security-via-mirror.sh` | 1 tool | ubuntu-security-via-mirror-test.sh | KEEP |
 | `scripts/ci/upstream_run.py` | ONE RESOLVER FOR UPSTREAM RUNS: which run of the producing workflow a workflow_run-triggered workflow reads. | `scripts/ci/upstream_run.py` | 1 tool | upstream_run_test.py | Python |
 | `scripts/ci/verified-ref.sh` | The last green base of a main row, kept in git as refs/verified/<name> | `scripts/ci/verified-ref.sh` | wf main; 1 tool | verified_ref_test.py | KEEP |
@@ -231,7 +240,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 21 tools | - | Python |
 | `scripts/py-quality/migrated.py` | THE MIGRATED TOOLS (scripts/py-quality/report.py; the owner, 2026-11-23): the files of the shell-to-Python migration's | `imported` | skill CLAUDE.md; 4 tools | - | Python |
 | `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push; 4 tools | - | Python |
-| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 127 tools | report_test.py | Python |
+| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 130 tools | report_test.py | Python |
 | `scripts/quality-report` | The code-quality report (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, length and duplication (pmd cpd) | `scripts/quality-report` | wf quality-hotspots; hook pre-push; agentctl; skill CLAUDE.md, test-layers; 2 tools | - | KEEP |
 | `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs (a name for ratchet_diff_cli.py) | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 4 tools | - | KEEP |
 | `scripts/ratchet_diff_cli.py` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet_diff_cli.py` | 1 tool | ratchet_diff_cli_test.py | Python |
@@ -567,8 +576,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 218 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 218 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 222 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 222 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |
