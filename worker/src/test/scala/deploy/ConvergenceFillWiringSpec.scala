@@ -214,7 +214,8 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
     resolve should include("""[FILL, "fills", code, corpus]""")
     resolve should include("""pair = f"{corpus} {recorded} {tree}" + (f" {fills}" if fills else "")""")
     resolve should include("""("FILL_ASSETS", fills)""")
-    RepoFile.read(".github/scripts/restore-enrichment-tree.sh") should include("""convergence-fill.sh" unpack "$stage" "${fills[@]}"""")
+    RepoFile.read(".github/scripts/restore_enrichment_tree.py") should include(
+      """[os.path.join(HERE, "convergence-fill.sh"), "unpack", self.stage, *fills]""")
   }
 
   "a new pin" should "prune the fills — a row's and a re-run's included — and lists of the pairs it prunes" in {
