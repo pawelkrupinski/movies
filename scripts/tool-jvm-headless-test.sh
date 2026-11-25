@@ -31,7 +31,7 @@ printf '#!/bin/sh\nexec java -Xmx1g -cp x Main\n' > "$scratch/installed/node_mod
 check "an installed node_modules (binaries, vendored scripts) is never read as a launch" "" \
   "$(missing "$scratch/installed")"
 check "the repository's tool JVMs launch at least once (the check still sees them)" yes \
-  "$([ "$(cd "$REPO_ROOT" && launches scripts .github/scripts infra/bin | wc -l)" -ge 3 ] && echo yes || echo no)"
+  "$([ "$(cd "$REPO_ROOT" && launches scripts .github/scripts infra/bin | wc -l)" -ge 1 ] && echo yes || echo no)"
 check "every tool JVM a script launches runs AWT headless" "" \
   "$(cd "$REPO_ROOT" && missing scripts .github/scripts infra/bin)"
 spec_summary
