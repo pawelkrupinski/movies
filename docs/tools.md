@@ -241,7 +241,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 7 tools | wait-for-test.sh | KEEP |
 
-## Identity (214)
+## Identity (220)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -347,8 +347,14 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/convergence-findings.py` | The films a convergence leg's log names as divergent, churning or split. | `scripts/convergence-findings.py` | wf country-convergence-leg; 4 tools | convergence_findings_test.py | Python |
 | `scripts/convergence-local.sh` | Run a country's convergence leg locally against the same recorded inputs CI uses | `scripts/convergence-local.sh` | skill identity-investigation, test-layers; 4 tools | convergence_local_test.py | MIGRATE |
 | `scripts/convergence_local.py` | Run a country's convergence leg locally against the SAME recorded inputs CI uses. | `scripts/convergence_local.py` | 3 tools | convergence_local_test.py | Python |
-| `scripts/flip-timeline` | One listing's flip timeline: every projection that wrote a take of it | `scripts/flip-timeline` | skill identity-investigation; 1 tool | flip_timeline_test.py | KEEP |
-| `scripts/flip_timeline.py` | ONE LISTING'S FLIP TIMELINE (scripts/flip-timeline). | `python3 scripts/flip_timeline.py` | 1 tool | flip_timeline_test.py | Python |
+| `scripts/flip-timeline` | One listing's flip timeline: every projection that wrote a take of it | `scripts/flip-timeline` | skill identity-investigation; 6 tools | flip_timeline_test.py | KEEP |
+| `scripts/flip_timeline.py` | ONE LISTING'S FLIP TIMELINE (scripts/flip-timeline). | `python3 scripts/flip_timeline.py` | 7 tools | flip_timeline_test.py | Python |
+| `scripts/flip_timeline_gather.py` | The outside reads of flip_timeline.py (scripts/flip-timeline), every call through `run` as listing_history's: the | `imported` | 1 tool | - | Python |
+| `scripts/flip_timeline_model.py` | The data model of flip_timeline.py (scripts/flip-timeline): title patterns, the clock formats, a projection's summary | `imported` | 4 tools | - | Python |
+| `scripts/flip_timeline_outside.py` | listing_history's helpers (scripts/listing_history.py: the runner, the mirror and log endpoints, the title folding) under | `imported` | 3 tools | - | Python |
+| `scripts/flip_timeline_queries.py` | The mirror scripts of flip_timeline.py (scripts/flip-timeline): one mongosh script per read, under a header of constants. | `imported` | 2 tools | - | Python |
+| `scripts/flip_timeline_render.py` | The printed forms of flip_timeline.py (scripts/flip-timeline): one listing's timeline with its reversals, and the --all | `imported` | 1 tool | - | Python |
+| `scripts/flip_timeline_reversals.py` | The reversals of flip_timeline.py (scripts/flip-timeline): each X -> Y -> X of one listing, and the class (first match | `imported` | 3 tools | - | Python |
 | `scripts/hard-clusters.sh` | Grow and re-record the hard-cluster fixture HardClusterConvergenceIntegrationSpec replays | `scripts/hard-clusters.sh` | skill regenerate-snapshots; 3 tools | hard-clusters-test.sh | KEEP |
 | `scripts/identity-boot-cost` | The identity boot-cost check: what the identity model allocates and spends a family | `scripts/identity-boot-cost` | skill test-layers; 2 tools | identity_boot_cost_test.py | KEEP |
 | `scripts/identity-calibrate.sh` | Regenerate the identity resolver's calibrated evidence model from data | `scripts/identity-calibrate.sh` | wf identity-decorations; 3 tools | identity_calibrate_test.py | KEEP |
@@ -450,7 +456,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/identity_kept_jvms.py` | The kept JVMs of the identity tools in Python (identity-what-if's and identity-slice's): each a JVM started once and | `imported` | 3 tools | - | Python |
 | `scripts/lib/identity_ref_trees.py` | A REF'S CODE LAID OUT AND COMPILED for the local identity tools that run a JVM under it (scripts/lib; title_trace.py, | `imported` | 3 tools | - | Python |
 | `scripts/listing-history` | One listing's identity take over time, grouped by the worker deploy that logged it | `scripts/listing-history` | skill CLAUDE.md, identity-investigation; 3 tools | listing_history_test.py | KEEP |
-| `scripts/listing_history.py` | ONE LISTING'S IDENTITY TAKE OVER TIME (scripts/listing-history). | `scripts/listing_history.py` | 2 tools | listing_history_test.py | Python |
+| `scripts/listing_history.py` | ONE LISTING'S IDENTITY TAKE OVER TIME (scripts/listing-history). | `scripts/listing_history.py` | 4 tools | listing_history_test.py | Python |
 | `scripts/ml-identity/cross_country_experiment.py` | Cross-country agreement, OFFLINE experiment (2026-10-19, branch experiment-cross-country; docs/identity-experiments.md). | `imported` | 1 tool | - | Python |
 | `scripts/recording-diff` | Two "Record scrape fixtures" recordings compared — "is it the code, or new data?" in seconds | `scripts/recording-diff` | skill CLAUDE.md, identity-investigation; 3 tools | recording-diff-test.sh | KEEP |
 | `scripts/recording_diff.py` | TWO RECORDINGS COMPARED: did the input change, or the code? (scripts/recording-diff) | `scripts/recording_diff.py` | 1 tool | recording_diff_test.py | Python |
@@ -526,7 +532,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/discover-cinemas/discover.py` | Discover new UK cinemas on flicks.co.uk and wire them into the catalog. | `python3 scripts/discover-cinemas/discover.py` | wf decoration-discovery, discover-cinemas, nix-stage-closures; 5 tools | discover_test.py | Python |
 | `scripts/fleet-db-finish` | Count the fleet's three old collections in Poland's kinowo and drop them on an exact request (fleet DB migration, step 9) | `scripts/fleet-db-finish` | 2 tools | fleet-db-finish-test.sh | MIGRATE |
 | `scripts/lib/mongo_local.py` | THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib; | `imported` | 8 tools | - | Python |
-| `scripts/local-mirror/freshness` | How current the local prod mirror (:28017) is, per country — for every tool that reads it (identity-slice --prod-mirror, listing-history, …) | `scripts/local-mirror/freshness` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation; 23 tools | freshness-test.sh | KEEP |
+| `scripts/local-mirror/freshness` | How current the local prod mirror (:28017) is, per country — for every tool that reads it (identity-slice --prod-mirror, listing-history, …) | `scripts/local-mirror/freshness` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation; 25 tools | freshness-test.sh | KEEP |
 | `scripts/local-mirror/local-mongo.sh` | The one place that knows how to make the local mirror Mongo reachable | `scripts/local-mirror/local-mongo.sh` | 1 tool | - | KEEP |
 | `scripts/local-mirror/log-path.sh` | Where the launchd agent's stdout/stderr land | `sourced` | 2 tools | - | KEEP |
 | `scripts/local-mirror/mirror.sh` | Keep a local mirror of prod's /debug data in sync, continuously | `scripts/local-mirror/mirror.sh` | 8 tools | mirror-test.sh | MIGRATE |
@@ -568,7 +574,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |
 | `infra/bin/cloudflare-ci-edge-allow` | Let ci-runner's security-headers check past Cloudflare's Bot Fight Mode on kinowo.net and showtimes.cc | `infra/bin/cloudflare-ci-edge-allow` | wf security-headers; 2 tools | cloudflare_ci_edge_allow_test.py | KEEP |
 | `infra/bin/cloudflare_ci_edge_allow.py` | Let ci-runner's Security headers check (.github/workflows/security-headers.yml) past Cloudflare's Bot Fight Mode on | `infra/bin/cloudflare_ci_edge_allow.py` | 1 tool | cloudflare_ci_edge_allow_test.py | Python |
-| `infra/bin/deploy` | Deploy ONE NixOS host from this checkout: preview what the switch does, then (only with | `infra/bin/deploy` | wf branch-ci, ci, identity-run +5; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 48 tools | - | Python |
+| `infra/bin/deploy` | Deploy ONE NixOS host from this checkout: preview what the switch does, then (only with | `infra/bin/deploy` | wf branch-ci, ci, identity-run +5; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 50 tools | - | Python |
 | `infra/bin/fetch-gitops` | Put the GitOps manifests where the deploy specs expect them | `infra/bin/fetch-gitops` | wf nix-update; hook pre-push; agentctl; skill CLAUDE.md; 8 tools | fetch-gitops-test.sh | KEEP |
 | `infra/bin/fleet-ssh` | Reach any host this flake declares, at the address `fleet_hosts.py` gives it -- as YOURSELF, | `infra/bin/fleet-ssh` | wf nix-stage-closures; 2 tools | - | Python |
 | `infra/bin/fleet_hosts.py` | WHERE A HOST IS, answered from the flake and from nowhere else. | `imported` | wf nix-stage-closures; 3 tools | - | Python |
