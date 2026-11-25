@@ -55,7 +55,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/main.yml` | Main's pipeline: build, test and publish the images Flux deploys; its rows are the gate | `workflow: push, workflow_dispatch` | wf branch-ci, ci, tool-self-tests; hook pre-push; agentctl; 16 tools | - | - |
 | `.github/workflows/mirror-pinned-images.yml` | Copies every image .github/pinned-images.tsv pins to this repo's GHCR packages by digest | `workflow: schedule, repository_dispatch, push, workflow_dispatch` | 3 tools | - | - |
 | `.github/workflows/nightly-stress.yml` | The tests whose failures are a matter of luck, run enough times for luck to run out | `workflow: schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
-| `.github/workflows/order-independence.yml` | Nightly: every suite in an order it never meets on push, so an order-dependent test shows | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf android, nightly-stress; 5 tools | - | - |
+| `.github/workflows/order-independence.yml` | Nightly: every suite in an order it never meets on push, so an order-dependent test shows | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf android, nightly-stress; 6 tools | - | - |
 | `.github/workflows/precheck-build-cache.yml` | Keep the landing check's sbt build cache warm for main's newest commit | `workflow: workflow_run, workflow_dispatch` | wf precommit-check; 1 tool | - | - |
 | `.github/workflows/precommit-check.yml` | The landing check: the pre-push hook's checks of an agentctl-queued change, split into the rest and four identity shards | `workflow: push` | wf precheck-build-cache, tool-self-tests; hook pre-push; agentctl; 9 tools | - | - |
 | `.github/workflows/prune-actions-caches.yml` | Keep main's Actions caches under GitHub's 10 GB cap by deleting superseded per-commit entries | `workflow: workflow_run, schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
@@ -222,7 +222,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 18 tools | - | Python |
 | `scripts/py-quality/migrated.py` | THE MIGRATED TOOLS (scripts/py-quality/report.py; the owner, 2026-11-23): the files of the shell-to-Python migration's | `imported` | skill CLAUDE.md; 4 tools | - | Python |
 | `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push; 4 tools | - | Python |
-| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 124 tools | report_test.py | Python |
+| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 125 tools | report_test.py | Python |
 | `scripts/quality-report` | The code-quality report (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, length and duplication (pmd cpd) | `scripts/quality-report` | wf quality-hotspots; hook pre-push; agentctl; skill CLAUDE.md, test-layers; 2 tools | - | KEEP |
 | `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs (a name for ratchet_diff_cli.py) | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 4 tools | - | KEEP |
 | `scripts/ratchet_diff_cli.py` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet_diff_cli.py` | 1 tool | ratchet_diff_cli_test.py | Python |
@@ -579,7 +579,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/deploy_watch.py` | scripts/deploy-watch: wait until the workers run an image, then read PromQL checks over a window, PASS/FAIL each. | `scripts/deploy_watch.py` | 1 tool | deploy_watch_test.py | Python |
 | `scripts/gitops-specs` | Run movies' GitOps-reading specs against a movies-gitops tree before that tree reaches movies-gitops main | `scripts/gitops-specs` | hook pre-push | gitops-specs-test.sh | MIGRATE |
 
-## Mobile (18)
+## Mobile (19)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -595,7 +595,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `ios/scripts/store_screenshots.py` | Generate App Store screenshots for the Kinowo / Showtimes iOS app. Just run it — | `ios/scripts/store_screenshots.py` | wf android; 5 tools | store_screenshots_test.py | Python |
 | `ios/scripts/swift-test-shuffled.sh` | Every `swift test` case alone, in an order drawn from a seed — the iOS lane of the nightly order-independence workflow | `ios/scripts/swift-test-shuffled.sh` | wf android, order-independence; 2 tools | swift_test_shuffled_test.py | MIGRATE |
 | `ios/scripts/swift_test_shuffled.py` | Every `swift test` case ALONE, in an order drawn from a seed -- the iOS lane of the nightly order-independence | `ios/scripts/swift_test_shuffled.py` | wf android; 2 tools | swift_test_shuffled_test.py | Python |
-| `scripts/ci/xcuitest-each-class-alone.sh` | Every XCUITest class alone, each in its own `xcodebuild test-without-building` on the booted $DESTINATION | `scripts/ci/xcuitest-each-class-alone.sh` | wf order-independence; 1 tool | xcuitest-each-class-alone-test.sh | MIGRATE |
+| `scripts/ci/xcuitest-each-class-alone.sh` | Every XCUITest class alone, each in its own `xcodebuild test-without-building` on the booted $DESTINATION | `scripts/ci/xcuitest-each-class-alone.sh` | wf order-independence; 2 tools | xcuitest_each_class_alone_test.py | MIGRATE |
+| `scripts/ci/xcuitest_each_class_alone.py` | Every XCUITest class ALONE, each in its own `xcodebuild test-without-building` on the booted $DESTINATION, so none | `scripts/ci/xcuitest_each_class_alone.py` | 1 tool | xcuitest_each_class_alone_test.py | Python |
 | `scripts/ios-release.sh` | Archive, export and upload the iOS app to App Store Connect | `scripts/ios-release.sh` | 3 tools | ios-release-test.sh | MIGRATE |
 | `scripts/mobile-release.sh` | Cut a mobile release: one version, one branch, both platforms | `scripts/mobile-release.sh` | 3 tools | mobile-release-test.sh | KEEP |
 | `scripts/mobile-ship.sh` | Release main's app code to the App Store and Google Play with one command | `scripts/mobile-ship.sh` | wf android; skill CLAUDE.md, agent-ops; 2 tools | - | KEEP |
@@ -640,7 +641,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 18 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 19 tools | tool_github_test.py | Python |
 | `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 79 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 80 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 13 tools | tool_python_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 18 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
@@ -673,7 +674,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/timezonefinder-python` | Print a directory whose python3 imports timezonefinder, for the pre-push drift check | `scripts/timezonefinder-python` | hook pre-push; 3 tools | timezonefinder-python-test.sh | KEEP |
 | `scripts/timezonefinder-python-stub.sh` | A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder | `sourced` | by hand | - | KEEP |
 | `scripts/title_trace.py` | Every step one raw billing goes through, in production order: the ingest tidy, the venue's own title rules, the format | `python3 scripts/title_trace.py` | wf main; 2 tools | title_trace_test.py | Python |
-| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 60 tools | tool-conventions-test.sh | MIGRATE |
+| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 59 tools | tool-conventions-test.sh | MIGRATE |
 | `scripts/tool_catalogue.py` | The tool catalogue: docs/tools.md, generated from every tool's own one-line purpose. | `python3 scripts/tool_catalogue.py` | skill CLAUDE.md | tool_catalogue_test.py | Python |
 | `scripts/touched-tree-stub.sh` | The stub sbt for the touched-code tools' specs (mutation-check, coverage-touched) | `scripts/touched-tree-stub.sh` | 1 tool | - | KEEP |
 | `scripts/touched_methods.py` | THE METHODS A CHANGE TOUCHES, and what the refactoring tools say about each (scripts/mutation-check, | `python3 scripts/touched_methods.py` | 4 tools | touched_methods_test.py | Python |
