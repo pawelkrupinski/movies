@@ -3,7 +3,7 @@ infra/bin/backtest-alerts	network-bound: range queries to VictoriaMetrics, the l
 infra/bin/snapshot-label-values	network-bound: label-value reads from the metrics API over HTTP
 infra/bin/stage-nixos-closures	network-bound: nix copy of built closures to hosts over ssh
 scripts/agent_procs_core.py	short git reads (rev-parse, status) per worktree: seconds of I/O, no CPU fan-out
-scripts/ci/ci_trends.py	network-bound: GitHub API pages fetched through gh
+scripts/ci/trend_source.py	network-bound: GitHub API pages fetched through gh
 scripts/discover-cinemas/discover.py	network-bound: cinema site and search requests over HTTP
 scripts/identity_ci_run_test.py	a race under test: three concurrent identity-ci-run calls against a fake forge
 scripts/identity_landing_check.py	waits on CI: each group dispatches identity-ci-run on GitHub and polls it
