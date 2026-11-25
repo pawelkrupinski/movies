@@ -19,7 +19,7 @@
 android/gradlew	KEEP
 android/scripts/devtest-shuffled.sh	MIGRATE
 android/scripts/devtest.sh	KEEP
-android/scripts/store-graphics.sh	MIGRATE
+android/scripts/store-graphics.sh	KEEP
 android/scripts/store-screenshots.sh	MIGRATE
 infra/bin/check	MIGRATE
 infra/bin/cloudflare-ci-edge-allow	KEEP

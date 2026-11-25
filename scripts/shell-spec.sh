@@ -3,7 +3,7 @@
 # The assertion harness the shell test scripts share.
 #
 # WHY IT EXISTS. Four test scripts — scripts/mobile-release-test.sh,
-# android/scripts/store-graphics-test.sh and the two store-screenshot tests (since
+# android/scripts/store-graphics-test.sh and the two store-screenshot tests (all three since
 # moved to Python) — carried a BYTE-IDENTICAL `check`,
 # the same `fails=0`, and the same summary-and-exit line. Identical enough that
 # their four copies hashed the same.

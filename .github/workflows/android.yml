@@ -260,7 +260,7 @@ jobs:
               working-directory: ${{ github.workspace }}
               run: |
                   python3 android/scripts/store_screenshots_test.py
-                  android/scripts/store-graphics-test.sh
+                  python3 android/scripts/store_graphics_test.py
                   python3 ios/scripts/store_screenshots_test.py
                   scripts/mobile-release-test.sh
                   scripts/tag-mobile-release-test.sh

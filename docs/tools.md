@@ -635,15 +635,16 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/gitops-specs` | Run movies' GitOps-reading specs against a movies-gitops tree before that tree reaches movies-gitops main | `scripts/gitops-specs` | hook pre-push; 1 tool | gitops_specs_test.py | KEEP |
 | `scripts/gitops_specs.py` | Run movies' GitOps-reading specs against a movies-gitops tree before that tree reaches movies-gitops main. | `scripts/gitops_specs.py` | 1 tool | gitops_specs_test.py | Python |
 
-## Mobile (19)
+## Mobile (20)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
 | `android/scripts/devtest-shuffled.sh` | Every instrumented (androidTest) class alone, in an order drawn from a seed — the emulator lane of the nightly order-independence workflow | `android/scripts/devtest-shuffled.sh` | wf order-independence; 2 tools | devtest_shuffled_test.py | MIGRATE |
 | `android/scripts/devtest.sh` | Run Android instrumented (on-device) tests with the recurring setup gotchas handled for you | `android/scripts/devtest.sh` | wf android, order-independence; 3 tools | - | KEEP |
 | `android/scripts/devtest_shuffled.py` | Every instrumented (androidTest) class ALONE, in an order drawn from a seed -- the emulator lane of the nightly | `android/scripts/devtest_shuffled.py` | 2 tools | devtest_shuffled_test.py | Python |
-| `android/scripts/store-graphics.sh` | Generate the per-language feature graphic (1024×500) for the Play listing, and fan the one shared app icon out to every locale | `android/scripts/store-graphics.sh` | by hand | store-graphics-test.sh | MIGRATE |
+| `android/scripts/store-graphics.sh` | Generate the per-language feature graphic (1024×500) for the Play listing, and fan the one shared app icon out to every locale | `android/scripts/store-graphics.sh` | 1 tool | store_graphics_test.py | KEEP |
 | `android/scripts/store-screenshots.sh` | Generate Google Play phone screenshots for the Kinowo / Showtimes app | `android/scripts/store-screenshots.sh` | wf android; 2 tools | store_screenshots_test.py | MIGRATE |
+| `android/scripts/store_graphics.py` | Generate the Play listing's per-language feature graphic (1024×500), and fan the one shared app icon out. | `android/scripts/store_graphics.py` | 1 tool | store_graphics_test.py | Python |
 | `android/scripts/store_screenshots.py` | Generate Google Play phone screenshots for the Kinowo / Showtimes app. | `android/scripts/store_screenshots.py` | wf android; 5 tools | store_screenshots_test.py | Python |
 | `android/scripts/store_screenshots_device.py` | The Android store-screenshot driver's DEVICES (android/scripts/store_screenshots.py): adb pinned to one emulator by | `imported` | 2 tools | - | Python |
 | `android/scripts/store_screenshots_ui.py` | The Android store-screenshot driver's SCREENS (android/scripts/store_screenshots.py): the gate (country pills, city | `imported` | 1 tool | - | Python |
@@ -704,7 +705,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 20 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
-| `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 7 tools | - | KEEP |
+| `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 6 tools | - | KEEP |
 | `scripts/mutation-check` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate; a name for mutation_check.py) | `scripts/mutation-check` | skill test-layers; 5 tools | mutation_check_test.py | KEEP |
 | `scripts/mutation_check.py` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate) | `scripts/mutation_check.py` | 2 tools | mutation_check_test.py | Python |
 | `scripts/ops/dumpheap.py` | A heap dump (or a live class histogram) of a containerised JVM, asked from the NODE as root | `python3 scripts/ops/dumpheap.py` | by hand | dumpheap_test.py | Python |
