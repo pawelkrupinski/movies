@@ -293,10 +293,8 @@ evidence, edges and solver it sequences` -- linted: 40+ characters besides the c
 block; every fan-out row added (root, registry, config, class) is held so. `coupling-exemptions.yml` runs `scripts/coupling-report
 --new-exemptions --since 7d` every Monday: the week's new rows (date, commit, reason, trailer) go to its summary and to an
 owner-assigned issue, and he strikes any he does not accept. Its categories: the composition roots (`modules.*`, `diagnostics.*`), registries (venue
-rosters, scraper catalogues), the foundation packages (`models`, `tools`, `settings`, `services.titles`: stable and
-concrete on purpose), and declared contracts, whose member types a user's fan-out counts as ONE dependency. The scrape
-contract and the typed-config root's row were struck on 2026-11-21 (the owner): counting collaborators only, every
-scraper and `settings.ProcessConfiguration` is within the limit without them. Prefer cutting the dependency (a trait at the seam, the class
+rosters, scraper catalogues) and the foundation packages (`models`, `tools`, `settings`, `services.titles`: stable and
+concrete on purpose). Prefer cutting the dependency (a trait at the seam, the class
 moved to the package that owns it or one rank down); when a Ce rise is right, run `scripts/coupling-report --update` and
 commit the baseline with a `Coupling: <why>` trailer. A fall needs no trailer: `--update` records it, so the ratchet
 tightens. **A frozen class may be split stepwise** (the owner, 2026-11-18): a commit carrying `Coupling: split of <X>`

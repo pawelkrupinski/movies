@@ -5,7 +5,7 @@ package kinowo.build
  * coupling-exemptions.yml report): for a class exempt from the fan-out limit by a `class` row, which of the
  * collaborators it counts it could give up -- read from its class files' methods (ClassReferences.Method: the types
  * each method names), each collaborator mapped as the held fan-out maps it ([[Coupling.heldTargets]]: a supertype of
- * another target is that target, a contract's member the contract). A method is a method of the source: a lambda's
+ * another target is that target). A method is a method of the source: a lambda's
  * body counts as the method holding it, a nested or anonymous class as one method of its own.
  *
  *  - PASS-THROUGH: a constructor parameter only forwarded -- the constructor names it and calls none of its methods, no
@@ -105,13 +105,12 @@ object ExemptionSlack {
     })
 
   /** The held target a binary name a class file of `cls` names counts as, as [[Coupling.heldTargets]] counts it: its
-   *  top-level class (`topOf`) when that is a target, the contract it is a member of, or the target it is a supertype of;
+   *  top-level class (`topOf`) when that is a target, or the target it is a supertype of;
    *  None for `cls` itself and anything it does not count. */
-  def target(cls: String, targets: Set[String], g: Coupling.Graph, e: Coupling.Exemptions, topOf: String => Option[String])(binary: String): Option[String] =
+  def target(cls: String, targets: Set[String], g: Coupling.Graph, topOf: String => Option[String])(binary: String): Option[String] =
     topOf(binary).filter(_ != cls).flatMap { top =>
       if (targets(top)) Some(top)
-      else e.contractsOf(cls).find(_._2(top)).map("contract:" + _._1).filter(targets)
-        .orElse(targets.toSeq.sorted.find(t => g.supertypes.getOrElse(t, Set.empty[String])(top)))
+      else targets.toSeq.sorted.find(t => g.supertypes.getOrElse(t, Set.empty[String])(top))
     }
 
   private def short(name: String): String = name.substring(name.lastIndexOf('.') + 1)

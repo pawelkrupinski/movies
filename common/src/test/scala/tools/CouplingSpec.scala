@@ -174,8 +174,8 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
       "fanout\tservices.movies.MovieService\t3", "fanout\tworker.Main\t3")
   }
 
-  // a scraper using three of its contract's four members and one class besides; a registry naming five scrapers
-  private val contracted = Graph(
+  // a scraper using four classes; a film using three of the same models; a registry naming the scraper
+  private val scraped = Graph(
     Seq(t("services.cinemas.pl.HeliosClient"), t("services.cinemas.common.CinemaScraper", isAbstract = true), t("models.Cinema"),
       t("models.CinemaMovie"), t("models.Showtime"), t("tools.Slugify"), t("services.cinemas.pl.venues.WarszawaVenues"),
       t("services.identity.Film")),
@@ -186,18 +186,8 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
       "services.cinemas.pl.venues.WarszawaVenues" -> "tools.Slugify"))
   private val exemptions = Coupling.Exemptions.parse(Seq(
     "# kind\tpattern\tvalue\towner\twhy",
-    "contract\tservices.cinemas.*\tscrape\tscrapers\tthe scrape contract",
-    "member\tservices.cinemas.common.CinemaScraper\tscrape\tscrapers\tentry", "member\tmodels.Cinema\tscrape\tscrapers\tvenue",
-    "member\tmodels.CinemaMovie\tscrape\tscrapers\tfilm", "member\tmodels.Showtime\tscrape\tscrapers\tscreening",
     "registry\tservices.cinemas.*Venues\texempt\tscrapers\ta venue roster",
     "foundation\tmodels\texempt\tcoupling\tvalues"))
-
-  "a declared contract" should "count as ONE dependency of its users, and as its members of everyone else" in {
-    val held = Coupling.heldFanOut(contracted, exemptions)
-    held("services.cinemas.pl.HeliosClient") shouldBe 2 // the contract, tools.Slugify
-    held("services.identity.Film") shouldBe 3 // not a user: Cinema, CinemaMovie, Showtime each count
-    Coupling.heldFanOut(contracted, Coupling.Exemptions.empty)("services.cinemas.pl.HeliosClient") shouldBe 4
-  }
 
   "an exemption" should "take a class out of the fan-out limit, a package out of the distance limit, by pattern" in {
     exemptions.fanOutLimit("services.cinemas.pl.venues.WarszawaVenues", 9) shouldBe None
@@ -216,27 +206,34 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
   }
 
   "the baseline rows" should "freeze a class past the limit unless exempt, and a large package past the distance limit unless exempt" in {
-    val rows = Coupling.baselineRows(contracted, fanOutLimit = 1, exemptions = exemptions, distanceLimit = 20, distanceMinTypes = 3)
-    rows should contain("fanout\tservices.cinemas.pl.HeliosClient\t2")
+    val rows = Coupling.baselineRows(scraped, fanOutLimit = 1, exemptions = exemptions, distanceLimit = 20, distanceMinTypes = 3)
+    rows should contain("fanout\tservices.cinemas.pl.HeliosClient\t4")
     rows should contain("fanout\tservices.identity.Film\t3")
     rows.filter(_.contains("WarszawaVenues")) shouldBe empty // a registry
     rows.filter(_.startsWith("distance\t")) shouldBe Seq("distance\tservices.cinemas\t33") // models (3 types, D 1) is a foundation; services.cinemas: A 1/3, I 1
-    Coupling.baselineRows(contracted, fanOutLimit = 1, distanceMinTypes = 3).filter(_.startsWith("distance\t")) shouldBe
+    Coupling.baselineRows(scraped, fanOutLimit = 1, distanceMinTypes = 3).filter(_.startsWith("distance\t")) shouldBe
       Seq("distance\tmodels\t100", "distance\tservices.cinemas\t33")
   }
 
-  "the exemption table" should "refuse an unknown kind, a value neither exempt nor a limit, a row without its why, and a half contract" in {
+  "the exemption table" should "refuse an unknown kind, a value neither exempt nor a limit, and a row without its why" in {
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("rooot\tmodules.*\texempt\to\tw"))
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("root\tmodules.*\tmany\to\tw"))
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("root\tmodules.*\texempt\to\t "))
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("root\tmodules.*\texempt\to"))
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("package\tservices.*\texempt\to\tw")) // one package
     an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("class\tservices.*\texempt\to\tw")) // one class
-    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("member\tmodels.Cinema\tscrape\to\tw"))
-    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("contract\tservices.cinemas.*\tscrape\to\tw"))
-    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("contract-size\tscrape\t12\to\tw")) // no such contract
-    an[IllegalArgumentException] should be thrownBy Coupling.Exemptions.parse(Seq("contract\tservices.cinemas.*\tscrape\to\tw",
-      "member\tmodels.Cinema\tscrape\to\tw", "contract-size\tscrape\texempt\to\tw"))
+  }
+
+  "the retired contract kinds" should "be refused as unknown kinds: a whole contract, its members and a grandfathered size" in {
+    // fan-out counts collaborators only, and a role trait its aggregator implements is one with it: no contract folds
+    // a class's members into one dependency any more (the owner, 2026-11-25)
+    val contract = Seq("contract\tservices.cinemas.*\tscrape\tscrapers\tthe users", "member\tmodels.Cinema\tscrape\tscrapers\tvenue")
+    Seq(contract, contract :+ "contract-size\tscrape\t12\tscrapers\tdeclared before the cap").foreach { lines =>
+      the[IllegalArgumentException] thrownBy Coupling.Exemptions.parse(lines) should have message
+        "coupling-exemptions.tsv line 1: unknown kind `contract`"
+    }
+    the[IllegalArgumentException] thrownBy Coupling.Exemptions.parse(contract.drop(1)) should have message
+      "coupling-exemptions.tsv line 1: unknown kind `member`"
   }
 
   "a class exemption" should "exempt one named class from the fan-out limit, carrying the day it was added" in {
@@ -257,13 +254,6 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     Seq("models", "tools", "settings", "services.titles", "modules.wiring").map(table.distanceLimit(_, 20)) shouldBe Seq(None, None, None, None, None)
     table.fanOutLimit("services.identity.IdentityResolver", 9) shouldBe Some(9)
     table.distanceLimit("services.movies", 20) shouldBe Some(20)
-    table.contractsOf("services.cinemas.pl.HeliosClient") shouldBe empty
-    table.contractsOf("services.identity.IdentityResolver") shouldBe empty
-  }
-
-  "the resolver vocabulary, projection, served and task-handler contracts" should "be gone: under the collaborators-only count every member was data, or a lone collaborator" in {
-    val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
-    table.contracts.map(_._1) should contain noneOf ("resolver-vocabulary", "projection", "served", "task-handler")
   }
 
   "the registries that hold only data" should "be exempt no more: the city and country tables and the Polish roster registry count no collaborator past the limit" in {
@@ -272,31 +262,11 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
   }
 
   "the fan-out rows" should "give every class's held fan-out, one at or below the limit included, with what it counts" in {
-    // the classes it references, folded as the count folds them (a contract it uses one `contract:<name>`): what a
-    // `Coupling: split of <X>` claim compares with X's frozen reference set
-    Coupling.fanOutRows(contracted, exemptions) should contain allOf ("services.cinemas.pl.HeliosClient\t2\tcontract:scrape,tools.Slugify",
+    // the collaborators it references: what a `Coupling: split of <X>` claim compares with X's frozen reference set
+    Coupling.fanOutRows(scraped) should contain allOf (
+      "services.cinemas.pl.HeliosClient\t4\tmodels.Cinema,models.CinemaMovie,services.cinemas.common.CinemaScraper,tools.Slugify",
       "services.identity.Film\t3\tmodels.Cinema,models.CinemaMovie,models.Showtime", "models.Showtime\t0\t")
-    Coupling.fanOutRows(contracted, exemptions).size shouldBe contracted.types.size
-  }
-
-  "the agreement sources contract" should "be one dependency of the stage's builder and the pipeline it fills, and its members one by one for a stage" in {
-    val table = Coupling.Exemptions.parse(Files.readAllLines(RepoRoot.file("test/resources/coupling-exemptions.tsv").toPath).asScala.toSeq)
-    val members = Seq("services.identity.agreement.FamilyAnswers", "services.identity.IdentityLookups",
-      "services.identity.agreement.AgreementVerdicts", "services.identity.agreement.AnswerChanges",
-      "services.identity.vocabulary.PosterAnswers", "services.identity.vocabulary.CatalogueAnswers", "services.titles.TitleNormalizer",
-      "services.identity.agreement.AgreementKeys")
-    table.contracts.find(_._1 == "agreement-sources").map(_._3.toSet) shouldBe Some(members.toSet)
-    val composition = "services.identity.agreement.AgreementStageComposition"
-    val pipeline    = "services.identity.agreement.AgreementPipeline"
-    val evidence    = "services.identity.agreement.AgreementEvidence" // a stage reading some of the same types
-    val takes       = "services.identity.agreement.AgreementTakes"
-    val graph = Graph((composition +: pipeline +: evidence +: takes +: members).map(t(_)),
-      (members.map(composition -> _) ++ members.map(pipeline -> _) ++ members.take(2).map(evidence -> _) :+ (pipeline -> takes)).toSet)
-    val held = Coupling.heldFanOut(graph, table)
-    held(composition) shouldBe 1 // the contract
-    held(pipeline) shouldBe 2    // the contract, the takes
-    held(evidence) shouldBe 2    // no discount: two members
-    table.contractsOf(evidence) shouldBe empty
+    Coupling.fanOutRows(scraped).size shouldBe scraped.types.size
   }
 
   "the edge rows" should "give every class reference with its package edge, a package's own included" in {
@@ -556,8 +526,8 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     val supertypes = Coupling.supertypeClosure(Map(normalizer -> Set(forms), forms -> Set.empty))
     val g = Graph(Seq(t(normalizer), t(forms, isAbstract = true), t(resolver), t(cache, isAbstract = true)),
       Set(resolver -> normalizer, resolver -> forms, resolver -> cache, normalizer -> forms), supertypes = supertypes)
-    Coupling.heldFanOut(g, Coupling.Exemptions.empty)(resolver) shouldBe 2 // the normalizer (as its forms too), the cache
-    Coupling.heldFanOut(g, Coupling.Exemptions.empty)(normalizer) shouldBe 0 // its own interface is no collaborator
+    Coupling.heldFanOut(g)(resolver) shouldBe 2 // the normalizer (as its forms too), the cache
+    Coupling.heldFanOut(g)(normalizer) shouldBe 0 // its own interface is no collaborator
     // a class using the interface alone still counts it
     Coupling.withoutSupertypes(resolver, Set(forms, cache), supertypes) shouldBe Set(forms, cache)
     Coupling.supertypeClosure(Map("a.C" -> Set("a.B"), "a.B" -> Set("a.A"))) shouldBe Map("a.C" -> Set("a.B", "a.A"), "a.B" -> Set("a.A"))
@@ -569,7 +539,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
         "models.Film" -> "models.Cinema"), data = Set("models.Film", "models.Cinema"))
     Coupling.fans(g)("services.a.User") shouldBe ((0, 1))
     Coupling.fans(g)("models.Film") shouldBe ((0, 0))
-    Coupling.heldTargets(g, Coupling.Exemptions.empty)("services.a.User") shouldBe Set("services.b.Store")
+    Coupling.heldTargets(g)("services.a.User") shouldBe Set("services.b.Store")
     Coupling.packageEdges(g).keySet shouldBe Set("services.a" -> "services.b", "services.a" -> "models") // still a dependency
     Coupling.collaboratorRows(g.copy(collaboratorWhy = Map("services.b.Store" -> "an interface"))) should contain allOf (
       "models.Film\tdata\t", "services.b.Store\tcollaborator\tan interface")

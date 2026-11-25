@@ -105,7 +105,7 @@ object CouplingSimulation {
     val rowChanges = (kb.keySet ++ ka.keySet).toSeq.sorted.collect {
       case k if kb.get(k) != ka.get(k) => s"- `${k._1}` `${k._2}`: ${kb.getOrElse(k, "(none)")} -> ${ka.getOrElse(k, "(none)")}"
     }
-    val (fb, fa) = (Coupling.heldFanOut(before, e), Coupling.heldFanOut(after, eAfter))
+    val (fb, fa) = (Coupling.heldFanOut(before), Coupling.heldFanOut(after))
     // the moved and folded classes, the classes they fold into, and any other class whose held fan-out moves
     val affected = (moves.renames.keys.toSeq ++ moves.folds.map(moves.renames) ++
       fb.keys.filter(c => fa.get(topOf(moves)(c)) != fb.get(c))).distinct.sorted
@@ -141,7 +141,7 @@ object CouplingSimulation {
       c.edges.foreach { case ((a, b), refs) => out += s"  - `$a -> $b`: ${refs.size} refs (${refs.take(5).map { case (x, y) => s"`$x` -> `$y`" }.mkString(", ")}${if (refs.size > 5) ", ..." else ""})" }
     }
     out += ""
-    out += "## Affected classes' fan-out (held: collaborators, a contract one, the union of a fold)"
+    out += "## Affected classes' fan-out (held: collaborators, the union of a fold)"
     out += ""
     out += "| class | after | fan-out | limit |"
     out += "|---|---|---|---|"

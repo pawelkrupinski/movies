@@ -353,8 +353,8 @@ object Coupling {
    *  sorted: what a `Coupling: split of <X>` claim holds -- each piece's count, and the union of what the pieces and X's
    *  remainder reference -- when a piece, or what X keeps, is at or below the limit and so has no baseline row
    *  (scripts/ci/coupling_ratchet.py's `--fanouts`; `--update` records each frozen class's targets as its reference set). */
-  def fanOutRows(g: Graph, exemptions: Exemptions): Seq[String] =
-    heldTargets(g, exemptions).toSeq.sortBy(_._1).map { case (c, ts) => s"$c\t${ts.size}\t${ts.toSeq.sorted.mkString(",")}" }
+  def fanOutRows(g: Graph): Seq[String] =
+    heldTargets(g).toSeq.sortBy(_._1).map { case (c, ts) => s"$c\t${ts.size}\t${ts.toSeq.sorted.mkString(",")}" }
 
   /** Every named type's verdict (a nested type's too, an object's as `X$`), one `<type><TAB>data|collaborator<TAB><why>`
    *  line each, sorted: what a dependency on it
@@ -495,22 +495,16 @@ object Coupling {
     g.types.map(t => t.name -> ((in.getOrElse(t.name, 0), out.getOrElse(t.name, 0)))).toMap
   }
 
-  /** Per class: its fan-out as the limit counts it -- every member of a declared contract the class is a user of
-   *  ([[Exemptions]]: `contract` / `member` rows) counted as ONE dependency, every other class as one each. With no
-   *  contract it is the plain fan-out of [[fans]]. */
-  def heldFanOut(g: Graph, exemptions: Exemptions): Map[String, Int] = heldTargets(g, exemptions).map { case (c, ts) => c -> ts.size }
+  /** Per class: its fan-out as the limit counts it ([[heldTargets]]: its collaborators, one each). */
+  def heldFanOut(g: Graph): Map[String, Int] = heldTargets(g).map { case (c, ts) => c -> ts.size }
 
-  /** Per class: what its held fan-out counts -- the COLLABORATORS it references (a data type none), a declared contract it uses
-   *  folded into one `contract:<name>`. A `Coupling: split of <X>` claim holds the pieces' union of these to X's.
+  /** Per class: what its held fan-out counts -- the COLLABORATORS it references (a data type none). A
+   *  `Coupling: split of <X>` claim holds the pieces' union of these to X's.
    *  A type's own supertypes are no collaborator of it, and a supertype of another collaborator it uses is that same
    *  collaborator ([[withoutSupertypes]]: segregating an interface out of a class costs its users nothing). */
-  def heldTargets(g: Graph, exemptions: Exemptions): Map[String, Set[String]] = {
+  def heldTargets(g: Graph): Map[String, Set[String]] = {
     val out = g.coupled.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
-    g.types.map { t =>
-      val contracts = exemptions.contractsOf(t.name)
-      t.name -> withoutSupertypes(t.name, out.getOrElse(t.name, Set.empty[String]), g.supertypes)
-        .map(to => contracts.find(_._2(to)).fold(to)(c => "contract:" + c._1))
-    }.toMap
+    g.types.map(t => t.name -> withoutSupertypes(t.name, out.getOrElse(t.name, Set.empty[String]), g.supertypes)).toMap
   }
 
   /** `targets` of `from` less `from`'s own supertypes and every supertype of another target: a class depending on
@@ -533,15 +527,15 @@ object Coupling {
   // ── exemptions ──
 
   /** One row of the exemption table (test/resources/coupling-exemptions.tsv): what it names (`pattern`: a class or package
-   *  name, `*` any run of characters, `p.*` also `p` itself), its `kind` and `value` (`exempt` or a limit of its own, or,
-   *  for a contract's rows, the contract's name), whose it is and why, and the day it was added (`added`, an optional
+   *  name, `*` any run of characters, `p.*` also `p` itself), its `kind` and `value` (`exempt` or a limit of its own),
+   *  whose it is and why, and the day it was added (`added`, an optional
    *  sixth column: every fan-out row added since 2026-11-19 carries one, scripts/ci/coupling_ratchet.py holds it). */
   final case class Exemption(kind: String, pattern: String, value: String, owner: String, why: String, added: String = "") {
     def matches(name: String): Boolean = Exemptions.matches(pattern, name)
   }
 
   /** THE EXEMPTIONS: the classes and packages the fan-out and distance limits do not hold (or hold to a limit of their
-   *  own), and the declared contracts whose members a user's fan-out counts as one. */
+   *  own). */
   final case class Exemptions(rows: Seq[Exemption]) {
     private def limitOf(kinds: Set[String], name: String, default: Int): Option[Int] =
       rows.find(r => kinds(r.kind) && r.matches(name)).fold(Option(default))(r => if (r.value == "exempt") None else Some(r.value.toInt))
@@ -549,16 +543,6 @@ object Coupling {
     def fanOutLimit(cls: String, default: Int): Option[Int] = limitOf(Exemptions.FanOutKinds, cls, default)
     /** A package's distance limit (hundredths): None when exempt. */
     def distanceLimit(pkg: String, default: Int): Option[Int] = limitOf(Exemptions.DistanceKinds, pkg, default)
-    /** The contracts `cls` is a user of, each with its members. */
-    def contractsOf(cls: String): Seq[(String, Set[String])] =
-      rows.filter(r => r.kind == "contract" && r.matches(cls)).map(_.value).distinct.sorted
-        .map(name => name -> rows.filter(r => r.kind == "member" && r.value == name).map(_.pattern).toSet)
-    /** Every contract: its name, its users' patterns, its members. */
-    def contracts: Seq[(String, Seq[String], Seq[String])] =
-      rows.filter(_.kind == "contract").map(_.value).distinct.sorted.map { name =>
-        (name, rows.filter(r => r.kind == "contract" && r.value == name).map(_.pattern),
-          rows.filter(r => r.kind == "member" && r.value == name).map(_.pattern).sorted)
-      }
   }
 
   object Exemptions {
@@ -571,20 +555,17 @@ object Coupling {
     val DistanceKinds: Set[String] = Set("root", "foundation", "package")
     /** The kinds naming one class or package, never a `*`. */
     val SingleKinds: Set[String] = Set("class", "package")
-    val ContractKinds: Set[String] = Set("contract", "member")
-    /** `contract-size`: a contract declared before the member cap (scripts/ci/coupling_ratchet.py's CONTRACT_MAX_MEMBERS,
-     *  which holds it), grandfathered at its size -- `pattern` the contract, `value` its members at most. */
-    val ContractSizeKind = "contract-size"
     val empty: Exemptions = Exemptions(Nil)
 
     def matches(pattern: String, name: String): Boolean =
       (pattern.endsWith(".*") && name == pattern.dropRight(2)) ||
         name.matches(pattern.split("\\*", -1).map(java.util.regex.Pattern.quote).mkString(".*"))
 
-    /** The table's rows, `kind<TAB>pattern<TAB>limit|exempt|contract<TAB>owner<TAB>why[<TAB>added]` (`added` a date,
+    /** The table's rows, `kind<TAB>pattern<TAB>limit|exempt<TAB>owner<TAB>why[<TAB>added]` (`added` a date,
      *  YYYY-MM-DD); `#` and blank lines are comments.
-     *  An unknown kind, a value that is neither `exempt` nor a number (for an exempting kind), a member of a contract no
-     *  `contract` row has users for (or the reverse), or a row without its owner or why is an error. */
+     *  An unknown kind (the retired `contract`, `member` and `contract-size` among them: fan-out counts collaborators,
+     *  and a role trait the aggregator implements is one with it, so no contract folds a class's members), a value that
+     *  is neither `exempt` nor a number, or a row without its owner or why is an error. */
     def parse(lines: Seq[String]): Exemptions = {
       val rows = lines.zipWithIndex.flatMap { case (line, index) =>
         val n: Int = index + 1
@@ -596,24 +577,13 @@ object Coupling {
           val row = Exemption(cols(0), cols(1), cols(2), cols(3), cols(4), if (cols.length == 6) cols(5) else "")
           if (cols.length == 6 && !row.added.matches("""\d{4}-\d{2}-\d{2}""")) bad(s"`${row.added}` is no date (YYYY-MM-DD)")
           if (SingleKinds(row.kind) && row.pattern.contains("*")) bad(s"a `${row.kind}` row names one ${row.kind}, no `*`")
-          if (!(FanOutKinds ++ DistanceKinds ++ ContractKinds + ContractSizeKind)(row.kind)) bad(s"unknown kind `${row.kind}`")
+          if (!(FanOutKinds ++ DistanceKinds)(row.kind)) bad(s"unknown kind `${row.kind}`")
           if (row.pattern.isEmpty) bad("no pattern")
-          if (!ContractKinds(row.kind) && row.value != "exempt" && !(row.value.nonEmpty && row.value.forall(_.isDigit)))
+          if (row.value != "exempt" && !(row.value.nonEmpty && row.value.forall(_.isDigit)))
             bad(s"`${row.value}` is neither `exempt` nor a limit")
-          if (ContractKinds(row.kind) && row.value.trim.isEmpty) bad("a contract row names its contract")
-          if (row.kind == ContractSizeKind && !(row.value.nonEmpty && row.value.forall(_.isDigit))) bad("a `contract-size` row is a number")
           if (row.owner.trim.isEmpty || row.why.trim.isEmpty) bad(s"${row.pattern} has no owner or no why")
           Some(row)
         }
-      }
-      val users = rows.filter(_.kind == "contract").map(_.value).toSet
-      val members = rows.filter(_.kind == "member").map(_.value).toSet
-      (users ++ members).foreach { c =>
-        if (!users(c)) throw new IllegalArgumentException(s"coupling-exemptions.tsv: contract $c has members but no `contract` row naming its users")
-        if (!members(c)) throw new IllegalArgumentException(s"coupling-exemptions.tsv: contract $c has users but no `member` rows")
-      }
-      rows.filter(_.kind == ContractSizeKind).map(_.pattern).filterNot(users).foreach { c =>
-        throw new IllegalArgumentException(s"coupling-exemptions.tsv: a `contract-size` row for $c, which is no declared contract")
       }
       Exemptions(rows)
     }
@@ -661,7 +631,7 @@ object Coupling {
     val cycleEdges = cycles(g).flatMap(_.edges).map { case ((a, b), refs) => s"cycle-edge\t$a->$b\t${refs.size}" }.sorted
     val pkgs = packages(g)
     val ce = pkgs.map(p => s"ce\t${p.name}\t${p.cePackages}")
-    val fanout = heldFanOut(g, exemptions).toSeq
+    val fanout = heldFanOut(g).toSeq
       .collect { case (c, out) if exemptions.fanOutLimit(c, fanOutLimit).exists(out > _) => s"fanout\t$c\t$out" }.sorted
     val distance = pkgs.collect {
       case p if p.types >= distanceMinTypes && exemptions.distanceLimit(p.name, distanceLimit).exists(hundredths(p.distance) > _) =>
@@ -689,7 +659,7 @@ object Coupling {
     "#   cycle-edge   <from>-><to>, a package edge inside a package cycle (a strongly connected component): never held here --",
     "#                the package graph has no cycle, and the ratchet fails on any such row, in the code or in this file",
     "#   ce           <package>, its efferent coupling in packages (distinct outside packages its classes use): it may not rise",
-    "#   fanout       <class>, its fan-out (distinct collaborators it uses, a declared contract's members one) past the",
+    "#   fanout       <class>, its fan-out (distinct collaborators it uses) past the",
     "#                limit: FROZEN -- it may only fall; a new row is never admitted, only an exemption",
     "#                (test/resources/coupling-exemptions.tsv, with `Coupling: <why>`) lets a new class past the limit",
     "#   distance     <package>, its D in hundredths past the limit: frozen the same way",
@@ -790,11 +760,11 @@ object Coupling {
     ranked(s"## Top $top classes by fan-in", _._1)
     ranked(s"## Top $top classes by fan-out", _._2)
     ranked(s"## God hubs\n\nHigh fan-in AND high fan-out: the top $top by the smaller of the two.", f => math.min(f._1, f._2))
-    val held = heldFanOut(g, exemptions)
+    val held = heldFanOut(g)
     val heldOver = held.toSeq.filter { case (c, o) => exemptions.fanOutLimit(c, DefaultFanOutLimit).exists(o > _) }
     out += s"## Limits: fan-out ${DefaultFanOutLimit}, distance ${f2(DefaultDistanceLimit / 100.0)}"
     out += ""
-    out += "A class's held fan-out counts each declared contract it uses as one dependency; the exemptions " +
+    out += "A class's held fan-out counts the collaborators it uses; the exemptions " +
       "(test/resources/coupling-exemptions.tsv) take the composition roots, the registries, the typed-config root and the foundation packages out."
     out += ""
     out += s"Classes past the fan-out limit (not exempt): ${heldOver.size} -- " +
@@ -804,13 +774,6 @@ object Coupling {
     out += s"Packages of ${DefaultDistanceMinTypes}+ types past the distance limit (not exempt): " +
       (if (far.isEmpty) "none" else far.sortBy(-_.distance).map(p => s"`${p.name}` ${f2(p.distance)}").mkString(", "))
     out += ""
-    exemptions.contracts.foreach { case (name, users, members) =>
-      val uses = g.known.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
-      val using = g.types.count(t => users.exists(u => Exemptions.matches(u, t.name)) && uses.getOrElse(t.name, Set.empty[String]).exists(members.contains))
-      out += s"Contract `$name` (${members.size} members, one dependency for ${users.map(u => s"`$u`").mkString(" ")}; $using classes use it): " +
-        members.map(m => s"`$m`").mkString(", ")
-      out += ""
-    }
     out += "## Split packages"
     out += ""
     val split = splitPackages(g)

@@ -48,7 +48,7 @@ couplingReport := {
   IO.writeLines(file(args(0)), kinowo.build.Coupling.BaselineHeader ++ kinowo.build.Coupling.baselineRows(graph, layers = layers, exemptions = exemptions))
   if (args.size >= 2) IO.write(file(args(1)), kinowo.build.Coupling.report(graph, couplingDeclared.value, layers = layers, exemptions = exemptions))
   if (args.size >= 3) IO.writeLines(file(args(2)), kinowo.build.Coupling.edgeRows(graph))
-  if (args.size >= 4) IO.writeLines(file(args(3)), kinowo.build.Coupling.fanOutRows(graph, exemptions))
+  if (args.size >= 4) IO.writeLines(file(args(3)), kinowo.build.Coupling.fanOutRows(graph))
   if (args.size == 5) IO.writeLines(file(args(4)), kinowo.build.Coupling.collaboratorRows(graph))
   streams.value.log.info(s"couplingReport: ${graph.types.size} classes (${graph.data.size} data), ${graph.known.size} dependencies (${graph.coupled.size} on collaborators), " +
     s"${(System.nanoTime - started) / 1000000} ms after the compiles, to ${args.mkString(" and ")}")
@@ -89,7 +89,7 @@ couplingExemptionSlack := {
   require(args.size == 1, "couplingExemptionSlack <markdown out>")
   val (graph, _, exemptions) = couplingGraph.value
   val classes = exemptions.rows.filter(_.kind == "class").map(_.pattern).filter(graph.byName.contains).distinct
-  val held = kinowo.build.Coupling.heldTargets(graph, exemptions)
+  val held = kinowo.build.Coupling.heldTargets(graph)
   // the exempt classes' class files, and their collaborators' (what each hands out)
   val (files, topOfBinary) = CouplingAnalysis.classFiles(baseDirectory.value, couplingUnits.value, fileConverter.value,
     classes.toSet ++ classes.flatMap(c => held.getOrElse(c, Set.empty[String])))
@@ -97,8 +97,8 @@ couplingExemptionSlack := {
   def own(cls: String) = files.getOrElse(cls, Nil).filter(c => c.name == cls || c.name == cls + "$")
   val slacks = classes.map { cls =>
     val targets = held.getOrElse(cls, Set.empty[String])
-    kinowo.build.ExemptionSlack.of(cls, targets, files.getOrElse(cls, Nil), kinowo.build.ExemptionSlack.target(cls, targets, graph, exemptions, topOf),
+    kinowo.build.ExemptionSlack.of(cls, targets, files.getOrElse(cls, Nil), kinowo.build.ExemptionSlack.target(cls, targets, graph, topOf),
       (provider, collaborator) => kinowo.build.ExemptionSlack.handsOut(own(provider), topOf, collaborator))
   }
-  IO.write(file(args(0)), kinowo.build.ExemptionSlack.report(slacks, t => graph.collaboratorWhy.getOrElse(t, if (t.startsWith("contract:")) "a declared contract" else "")))
+  IO.write(file(args(0)), kinowo.build.ExemptionSlack.report(slacks, t => graph.collaboratorWhy.getOrElse(t, "")))
 }

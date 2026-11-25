@@ -6,8 +6,7 @@ row admits one, never --update), a frozen fan-out or distance row rising, any pa
 layer, a higher rank (naming the direction allowed), and a package without its layer or rank; a baseline grown in a
 range passes only when a commit changing it carries `Coupling: <why>`, and so does a layer table loosened in a range (an
 `allow` row added, a package given another layer or rank) and an exemption table loosened (a row added, a limit
-changed, a contract's member added or dropped); a contract past 8 members (or its grandfathered `contract-size`) fails;
-falls pass and are said; a frozen class split honestly (`Coupling: split of <X>`, the pieces taking over X's
+changed); falls pass and are said; a frozen class split honestly (`Coupling: split of <X>`, the pieces taking over X's
 code, each below X's row, the union of what they and X's remainder reference within X's frozen reference set) freezes
 its pieces, and lets the distance row of a package holding X, a piece or a class they use rise by 0.02 at most;
 nothing else does.
@@ -289,54 +288,6 @@ class CouplingRatchetTest(RatchetHarness):
     def test_an_exemption_row_dropped_needs_no_trailer(self):
         head = self.commit({EXEMPTIONS: "# empty\n"}, "no roots exempt")
         self.assert_passes(ROWS, rng=f"{self.base}..{head}")
-
-    def contract(self, name, members, users="controllers.*"):
-        return (f"contract\t{users}\t{name}\tweb\tthe users\n"
-                + "".join(f"member\tmodels.M{i}\t{name}\tweb\tmember {i}\n" for i in range(members)))
-
-    def test_a_contract_member_added_without_a_trailer_fails(self):
-        first = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 3)}, "declare it\n\nCoupling: read together")
-        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 4)}, "one more")
-        self.assert_fails(ROWS, "THE EXEMPTION TABLE LOOSENED", "member:served models.M3 (served) added", rng=f"{first}..{head}")
-
-    def test_a_contract_member_added_with_a_trailer_passes(self):
-        first = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 3)}, "declare it\n\nCoupling: read together")
-        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 4)}, "one more\n\nCoupling: read with the rest")
-        self.assert_passes(ROWS, rng=f"{first}..{head}")
-
-    def test_a_contract_member_dropped_without_a_trailer_fails(self):
-        first = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 3)}, "declare it\n\nCoupling: read together")
-        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 2)}, "one fewer")
-        self.assert_fails(ROWS, "member:served models.M2 (served) dropped", rng=f"{first}..{head}")
-
-    def test_a_type_joining_a_second_contract_without_a_trailer_fails(self):
-        first = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("scrape", 2, "services.cinemas.*") + self.contract("served", 1)},
-                            "declare them\n\nCoupling: read together")
-        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("scrape", 2, "services.cinemas.*") + self.contract("served", 2)},
-                           "M1 serves too")
-        self.assert_fails(ROWS, "member:served models.M1 (served) added", rng=f"{first}..{head}")
-
-    def test_a_contract_of_8_members_passes(self):
-        self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 8)}, "declare it")
-        self.assert_passes(ROWS)
-
-    def test_a_9th_contract_member_fails_whatever_the_trailer(self):
-        self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("served", 9)}, "declare it\n\nCoupling: all of it")
-        self.assert_fails(ROWS, "A DECLARED CONTRACT IS TOO LARGE", "contract served has 9 members, past the cap 8")
-
-    def test_a_grandfathered_contract_holds_at_its_size(self):
-        size = "contract-size\tscrape\t12\tscrapers\tdeclared before the cap\n"
-        self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("scrape", 12, "services.cinemas.*") + size}, "grandfather it")
-        self.assert_passes(ROWS)
-        self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("scrape", 13, "services.cinemas.*") + size}, "grow it")
-        self.assert_fails(ROWS, "contract scrape has 13 members, past its grandfathered size 12")
-
-    def test_a_grandfathered_size_raised_without_a_trailer_fails(self):
-        size = "contract-size\tscrape\t{}\tscrapers\tdeclared before the cap\n"
-        first = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("scrape", 12, "services.cinemas.*") + size.format(12)},
-                            "grandfather it\n\nCoupling: declared before the cap")
-        head = self.commit({EXEMPTIONS: EXEMPTION_ROWS + self.contract("scrape", 12, "services.cinemas.*") + size.format(13)}, "room")
-        self.assert_fails(ROWS, "contract-size scrape changed 12 -> 13", rng=f"{first}..{head}")
 
     def test_an_upward_layer_edge_fails_whatever_the_baseline_says(self):
         violation = "layer-violation\tmodels->services.movies\t2"
@@ -874,18 +825,6 @@ class CouplingSplitTest(RatchetHarness):
                            fanouts={PLANNER: deps(0, 17), PASS: deps(17, 28), SWEEPER: deps(28, 36)})
         self.assert_fails(recorded, f"add what {SWEEPER} did not reference at", "services.web.Fresh", rng=f"{self.base}..{head}",
                           fanouts={PLANNER: deps(0, 17), PASS: deps(17, 28), SWEEPER: deps(28, 35) + ["services.web.Fresh"]})
-
-    def test_a_contract_the_original_used_covers_its_members(self):
-        # the same folding: the sweeper counted the `sweep` contract as one; a piece outside the contract's users names
-        # its members one by one, which are still what the sweeper used
-        contract = (EXEMPTION_ROWS + f"contract\t{SWEEPER}\tsweep\tworker\tthe sweep contract\n"
-                    "member\tmodels.Film\tsweep\tworker\tfilm\nmember\tmodels.Showtime\tsweep\tworker\tscreening\n")
-        refs = "".join(f"{SWEEPER}\t{d}\n" for d in deps(0, 35) + ["contract:sweep"])
-        base = self.commit({EXEMPTIONS: contract, REFS: refs}, "the sweeper uses the sweep contract\n\nCoupling: a contract")
-        recorded = split_rows(f"fanout\t{PLANNER}\t17", f"fanout\t{PASS}\t12")
-        head = self.split(recorded, f"split the sweeper\n\nCoupling: split of {SWEEPER}")
-        self.assert_passes(recorded, rng=f"{base}..{head}",
-                           fanouts={PLANNER: deps(0, 17), PASS: deps(17, 27) + ["models.Film", "models.Showtime"]})
 
     def test_a_reference_set_out_of_step_with_the_frozen_row_refuses_the_split(self):
         base = self.commit({REFS: "".join(f"{SWEEPER}\t{d}\n" for d in deps(0, 35))}, "a stale reference set")

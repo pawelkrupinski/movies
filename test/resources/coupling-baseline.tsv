@@ -14,7 +14,7 @@
 #   cycle-edge   <from>-><to>, a package edge inside a package cycle (a strongly connected component): never held here --
 #                the package graph has no cycle, and the ratchet fails on any such row, in the code or in this file
 #   ce           <package>, its efferent coupling in packages (distinct outside packages its classes use): it may not rise
-#   fanout       <class>, its fan-out (distinct collaborators it uses, a declared contract's members one) past the
+#   fanout       <class>, its fan-out (distinct collaborators it uses) past the
 #                limit: FROZEN -- it may only fall; a new row is never admitted, only an exemption
 #                (test/resources/coupling-exemptions.tsv, with `Coupling: <why>`) lets a new class past the limit
 #   distance     <package>, its D in hundredths past the limit: frozen the same way
@@ -38,22 +38,22 @@ module-edge	common->geodata	14
 module-edge	common->http	65
 module-edge	http->base	10
 module-edge	identity->base	25
-module-edge	identity->common	527
+module-edge	identity->common	526
 module-edge	identity->http	6
 module-edge	scrapers->base	51
-module-edge	scrapers->common	1538
-module-edge	scrapers->geodata	4
+module-edge	scrapers->common	1539
+module-edge	scrapers->geodata	5
 module-edge	scrapers->http	362
 module-edge	scrapers->identity	8
 module-edge	web->base	25
-module-edge	web->common	618
+module-edge	web->common	623
 module-edge	web->geodata	1
 module-edge	web->http	20
 module-edge	web->identity	41
 module-edge	worker->base	80
-module-edge	worker->common	1662
-module-edge	worker->http	178
-module-edge	worker->identity	538
+module-edge	worker->common	1668
+module-edge	worker->http	179
+module-edge	worker->identity	544
 module-edge	worker->scrapers	148
 ce	clients	3
 ce	controllers	24

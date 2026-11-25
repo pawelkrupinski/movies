@@ -55,13 +55,6 @@ mutants=(
             out.append(f"{key[0]} {key[1]} ({value}) added") @@         if False:
             out.append(f"{key[0]} {key[1]} ({value}) added")'
   'a changed exemption limit is no loosening @@ elif old[key] != value: @@ elif False:'
-  'a contract member dropped is no change @@ if key not in new and key[0].startswith("member:"): @@ if False:'
-  'a type in two contracts is keyed once @@ kind = f"{cols[0]}:{cols[2]}" if cols[0] in CONTRACT_KINDS else cols[0] @@ kind = cols[0]'
-  'a contract past the member cap passes @@ if size > cap: @@ if False:'
-  'a grandfathered contract size is not read @@ cap = allowed.get(contract, CONTRACT_MAX_MEMBERS) @@ cap = CONTRACT_MAX_MEMBERS'
-  'an oversized contract never fails @@         if oversized:
-            failed = True @@         if oversized:
-            failed = False'
   'a loosened exemption table never fails @@ if unjustified_exemptions: @@ if False:'
   'the trailer is not read @@ return trailers.unjustified_rises(rng, path, "Coupling", rose) @@ return []'
   'growth never fails @@ if unjustified_growth: @@ if False:'
@@ -80,10 +73,9 @@ mutants=(
             admitted |= set(named); continue
             refused.append'
   'a piece at the original passes @@ if v >= frozen[original]: @@ if v > frozen[original]:'
-  'a piece adding a dependency passes @@ new = sorted(t for t in union if not covered(t, was, members)) @@ new = []'
+  'a piece adding a dependency passes @@ new = sorted(t for t in union if t not in was) @@ new = []'
   'what the original keeps is not held @@ union |= targets[original] @@ pass'
   'the pieces referencing each other add dependencies @@ union -= internal @@ pass'
-  'a contract the original used covers nothing @@ return target in refs or any( @@ return target in refs or False and any('
   'a reference set out of step with the row is trusted @@ if len(was) != frozen[original]: @@ if False:'
   'an unmeasured piece is trusted @@ union |= targets[piece]
             else: @@ union |= targets.get(piece, set())
@@ -95,8 +87,8 @@ mutants=(
   'update reads no side of a conflict @@ for stage in (1, 2, 3): @@ for stage in ():'
   'a split may raise distance without bound @@ value - before[key] <= DISTANCE_SPLIT_TOLERANCE @@ True'
   'the distance tolerance is 3 @@ DISTANCE_SPLIT_TOLERANCE = 2 @@ DISTANCE_SPLIT_TOLERANCE = 3'
-  'a refused split raises distance @@ packages |= {package_of(c, units) for c in internal} | {package_of(t, units) for t in union if not t.startswith("contract:")} @@ pass'
-  'a split credits no package it uses @@ | {package_of(t, units) for t in union if not t.startswith("contract:")} @@ | set()'
+  'a refused split raises distance @@ packages |= {package_of(c, units) for c in internal} | {package_of(t, units) for t in union} @@ pass'
+  'a split credits no package it uses @@ | {package_of(t, units) for t in union} @@ | set()'
   'a split may raise any package distance @@ and key in split_packages and value @@ and value'
   'any piece takes over code @@ if not ok:
                 why.append @@ if False:

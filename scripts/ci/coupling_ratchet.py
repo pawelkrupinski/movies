@@ -15,15 +15,15 @@
 # ATTRIBUTION RULE). A fall needs no trailer: `scripts/coupling-report --update` writes the measured rows, every fall
 # included; a new package's row, or a row dropped, loosens nothing.
 #
-# THE LIMITS: a class's fan-out (`limit fanout`, a declared contract's members counted once) and a package's distance D
+# THE LIMITS: a class's fan-out (`limit fanout`, its collaborators) and a package's distance D
 # (`limit distance` in hundredths, packages of `limit distance-min-types` types or more) are FROZEN where they were past
 # the limit when the limits came in -- a `fanout` / `distance` row may only fall -- and a class or package NEWLY past a
 # limit fails: no `--update` and no trailer admits it, only an exemption row (test/resources/coupling-exemptions.tsv),
-# and the exemption table may grow or loosen -- or a contract's members change, either way -- only in a commit changing it
+# and the exemption table may grow or loosen only in a commit changing it
 # carrying `Coupling: <why>` -- and a fan-out or package row added (an agent's exemption of a new class, the owner
 # 2026-11-19, or of one package's distance, 2026-11-20) only with a SPECIFIC why (its role and what it needs:
 # reason_problems), its `added` date, and the adding commit's own `Coupling: exempt <Class|package> — <reason>` trailer
-# (the exemption table's header, AN AGENT'S ROW ADDED). A declared contract has at most 8 members (`contract-size` grandfathers one declared before).
+# (the exemption table's header, AN AGENT'S ROW ADDED).
 # A frozen class that moves keeps its row under its new name (the same simple name, at or below the old value, the old
 # name gone).
 #
@@ -51,7 +51,7 @@
 # X's file no longer does); every piece's fan-out is strictly below X's frozen value; and the UNION of what the pieces
 # and X's remainder (if X still exists) reference -- folded as the count folds it, their references to each other and to
 # X internal to the split -- lies within X's frozen reference set at the base (test/resources/coupling-fanout-refs.tsv,
-# which `--update` writes beside the baseline, as many entries as X's row; a contract X used covers its members): the
+# which `--update` writes beside the baseline, as many entries as X's row): the
 # split adds no dependency, though the pieces' counts may sum past X's when they share its types. The pieces' rows then
 # fall only, like any frozen row. In that range the frozen distance row of a package holding X or a piece, or holding a
 # class the split's references reach, may rise by DISTANCE_SPLIT_TOLERANCE hundredths at most (moving types shifts a
@@ -445,26 +445,6 @@ def recorded_refs(text: str) -> Dict[str, Set[str]]:
     return out
 
 
-def contract_members(exemptions_text: str) -> Dict[str, List[str]]:
-    """Each declared contract's member patterns (the exemption table's `member` rows)."""
-    out: Dict[str, List[str]] = {}
-    for (kind, pattern), contract in parse_exemptions(exemptions_text).items():
-        if kind.startswith("member:"):
-            out.setdefault(contract, []).append(pattern)
-    return out
-
-
-def pattern_matches(pattern: str, name: str) -> bool:
-    """Coupling.Exemptions.matches: `a.*` names the package `a` too; `*` is any run of characters."""
-    return (pattern.endswith(".*") and name == pattern[:-2]) or re.fullmatch(".*".join(map(re.escape, pattern.split("*"))), name) is not None
-
-
-def covered(target: str, refs: Set[str], members: Dict[str, List[str]]) -> bool:
-    """Whether `target` is within the reference set `refs`: in it, or a member of a contract it counts as one."""
-    return target in refs or any(f"contract:{c}" in refs and any(pattern_matches(p, target) for p in ps)
-                                 for c, ps in members.items())
-
-
 def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Fanouts],
                  claims: Optional[List[Tuple[str, List[str]]]] = None,
                  explain: Optional[List[dict]] = None) -> Tuple[Set[str], Set[str], List[str], List[str]]:
@@ -479,7 +459,6 @@ def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Fanouts]
     claims = split_claims(rng) if claims is None else claims
     counts, targets = fanouts or ({}, {})
     base_refs = recorded_refs(file_at(base, REFS_PATH)) if claims else {}
-    members = contract_members(file_at(base, EXEMPTIONS_PATH)) if claims else {}
     copies = None
     admitted, packages, notes, refused = set(), set(), [], []
     for name, named in claims:
@@ -530,7 +509,7 @@ def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Fanouts]
         if len(was) != frozen[original]:
             why.append(f"{original}'s recorded reference set at {base[:12]} ({REFS_PATH}) has {len(was)}, its row "
                        f"{frozen[original]}: record both with scripts/coupling-report --update in an earlier commit")
-        new = sorted(t for t in union if not covered(t, was, members))
+        new = sorted(t for t in union if t not in was)
         if new:
             why.append(f"the pieces add what {original} did not reference at {base[:12]}: {', '.join(new[:5])}"
                        + (", ..." if len(new) > 5 else "") + " -- a split adds no dependency")
@@ -545,7 +524,7 @@ def split_credit(rng: str, before: Rows, after: Rows, fanouts: Optional[Fanouts]
             # the packages holding X or a piece, and those the split's references reach: each piece is one more outside
             # class using them (Ca counts classes), so their instability falls and their distance may rise
             units = layer_units(file_at(head, LAYERS_PATH))
-            packages |= {package_of(c, units) for c in internal} | {package_of(t, units) for t in union if not t.startswith("contract:")}
+            packages |= {package_of(c, units) for c in internal} | {package_of(t, units) for t in union}
             notes.append(f"{summary}: their references ({len(union)}) within {original}'s {frozen[original]}")
     return admitted, packages, notes, refused
 
@@ -734,36 +713,26 @@ def loosening(old: Layers, new: Layers) -> List[str]:
     return out
 
 
-CONTRACT_KINDS = ("contract", "member")
-CONTRACT_MAX_MEMBERS = 8  # a contract's members, past which it is no longer one thing read together (`contract-size` grandfathers one)
-
-
 def parse_exemptions(text: str) -> Dict[Tuple[str, str], str]:
     """The exemption table's rows, (kind, pattern) -> its value (project/Coupling.scala's Exemptions.parse judges the
-    table's shape; this reads what loosening compares and the contract sizes). A contract's row is keyed by its
-    contract too (`member:scrape`): one type may be a member of two contracts."""
+    table's shape, an unknown kind refused there; this reads what loosening compares)."""
     rows: Dict[Tuple[str, str], str] = {}
     for line in text.splitlines():
         cols = line.split("\t")
         if line.strip() and not line.startswith("#") and len(cols) >= 3:
-            kind = f"{cols[0]}:{cols[2]}" if cols[0] in CONTRACT_KINDS else cols[0]
-            rows[(kind, cols[1])] = cols[2]
+            rows[(cols[0], cols[1])] = cols[2]
     return rows
 
 
 def exemption_loosening(old: Dict[Tuple[str, str], str], new: Dict[Tuple[str, str], str]) -> List[str]:
-    """How the exemption table loosened from `old` to `new`: a row added (a class or package let past a limit, or a type
-    folded into a contract), or a row's limit or contract changed. A row dropped tightens -- except a contract's member:
-    any change to a contract's members reshapes what its users count as one, and carries its why."""
+    """How the exemption table loosened from `old` to `new`: a row added (a class or package let past a limit), or a
+    row's limit changed. A row dropped tightens."""
     out = []
     for key, value in sorted(new.items()):
         if key not in old:
             out.append(f"{key[0]} {key[1]} ({value}) added")
         elif old[key] != value:
             out.append(f"{key[0]} {key[1]} changed {old[key]} -> {value}")
-    for key, value in sorted(old.items()):
-        if key not in new and key[0].startswith("member:"):
-            out.append(f"{key[0]} {key[1]} ({value}) dropped")
     return out
 
 
@@ -897,23 +866,6 @@ def new_exemptions(since: str, rev: str = "") -> int:
         print("No exemption rows added.")
     print(f"\nTo strike one: drop its row from {EXEMPTIONS_PATH} (no trailer needed) and cut the class below the limit.")
     return 0
-
-
-def oversized_contracts(rows: Dict[Tuple[str, str], str]) -> List[str]:
-    """The declared contracts past CONTRACT_MAX_MEMBERS members, or past their own `contract-size` row (a contract
-    declared before the cap, grandfathered at its size with its why), one sentence each."""
-    sizes: Dict[str, int] = {}
-    for (kind, _), contract in rows.items():
-        if kind.startswith("member:"):
-            sizes[contract] = sizes.get(contract, 0) + 1
-    allowed = {pattern: int(value) for (kind, pattern), value in rows.items() if kind == "contract-size" and value.isdigit()}
-    out = []
-    for contract, size in sorted(sizes.items()):
-        cap = allowed.get(contract, CONTRACT_MAX_MEMBERS)
-        if size > cap:
-            out.append(f"contract {contract} has {size} members, past {'its grandfathered size' if contract in allowed else 'the cap'} {cap}"
-                       " -- a contract is a few types read together: split it, or count the rest one by one")
-    return out
 
 
 def unjustified(rng: str, path: str, rose) -> List[str]:
@@ -1063,14 +1015,6 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
                     print(f"  - {item}")
                 print_unjustified(unjustified_layers)
                 trailers.print_misplaced(rng, "Coupling", LAYERS_PATH)
-    if os.path.exists(exemptions_path):
-        with open(exemptions_path) as f:
-            oversized = oversized_contracts(parse_exemptions(f.read()))
-        if oversized:
-            failed = True
-            print(f"A DECLARED CONTRACT IS TOO LARGE ({exemptions_path}):")
-            for item in oversized:
-                print(f"  - {item}")
     for rng in ranges:
         base = rng.split("..")[0]
         if os.path.exists(exemptions_path):

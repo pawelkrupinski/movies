@@ -1,7 +1,7 @@
 # THE COUPLING EXEMPTIONS (CLAUDE.md, Design rules; project/Coupling.scala `Exemptions`, scripts/ci/coupling_ratchet.py):
 # the classes and packages the two limits -- class fan-out (`limit fanout`) and package distance D (`limit distance`,
-# packages of `limit distance-min-types` types or more) in test/resources/coupling-baseline.tsv -- do not hold, and the
-# declared contracts a class's fan-out counts as ONE dependency. A class or package past a limit with neither a frozen
+# packages of `limit distance-min-types` types or more) in test/resources/coupling-baseline.tsv -- do not hold. A class
+# or package past a limit with neither a frozen
 # baseline row nor a row here fails the push; `scripts/coupling-report --update` never admits it. A row added or loosened
 # here lands only in a commit carrying `Coupling: <why>` (the ratchet checks it); a row dropped needs none.
 #
@@ -29,13 +29,9 @@
 #               -- the package AS MEASURED: a sub-package without a layer-table row of its own is inside it
 #               (services.metrics.web and .worker, under `package services.metrics`); one given such a row is a package
 #               of its own, which this row no longer covers, and takes its own row
-#   contract    (column 3: the contract's name) the classes matching `pattern` are its USERS: their fan-out counts every
-#               member of that contract they use as one dependency
-#   member      (column 3: the contract's name) `pattern` is one of the contract's member types -- at most 8 a contract
-#               (scripts/ci/coupling_ratchet.py), and adding or dropping one carries `Coupling: <why>` like any loosening
-#   contract-size  (pattern: a contract's name; column 3: a number) a contract declared before the 8-member cap,
-#               grandfathered at that size: it may not grow, and raising the row is a loosening
-# column 3, for the exempting kinds: `exempt`, or a number -- a limit of the class's own, above the shared one.
+#   (any other kind is refused: the `contract`, `member` and `contract-size` kinds were retired on 2026-11-25 -- a
+#   class reading an aggregate's parts takes the role traits the aggregate implements, one collaborator with it)
+# column 3: `exempt`, or a number -- a limit of the class's own, above the shared one.
 root	modules.*	exempt	coupling	the composition roots (AppLoader, WorkerMain, AppComponents and the modules.wiring / modules.webwiring traits): every collaboration is wired here (DIP), so their fan-out is the application's size, and their D is a top layer's
 root	diagnostics.*	exempt	coupling	command-line programs built from the whole stack like a composition root (FilmwebDiff, RosterAudit)
 root	services.review.ReviewLabelsCli	exempt	web	the review answers' command-line program (`web/runMain services.review.ReviewLabelsCli`): its main wires the mirror client, the answer store and every country's review source like a composition root
@@ -50,17 +46,7 @@ package	services.metrics	exempt	coupling	metric bundles: concrete series at the 
 foundation	services.identity.staging	exempt	identity	the identity model's staging records (StagedCluster, StagedTake, StagingEvent) and their one store, read by the worker's publisher and the web's staging page: stable value types, concrete on purpose
 foundation	services.identity.vocabulary	exempt	identity	the identity model's value types (Answer, Question, Pin, CandidateQuery, DetailFacts, TitleDecorations, the hashes and memos), read by every identity stage, the agreement stage and the worker's adapters: stable value types, concrete on purpose	2026-11-20
 foundation	services.identity.measures	exempt	identity	stable measured-listing readings, depended on by every stage (the rules, scoring, agreement and the worker's adapters): IdentityMeasures, the *Measures objects, MeasuredListing, Film and Measure as pure functions over values, the Listing they read and the decision values written in them (Candidate, Scored, ResolverDecision, Resolution, DecisionTrace), concrete on purpose	2026-11-20
-contract	services.identity.agreement.AgreementStageComposition	agreement-sources	identity	the agreement stages' sources (AgreementStageComposition.Sources): the stores and readers every agreement stage is built from, read together as one unit -- the worker's live ones or a harness's recorded ones, every role filled the same way whoever builds the stage; its builder and the pipeline it fills are written against the unit, one dependency, not eight
-contract	services.identity.agreement.AgreementPipeline	agreement-sources	identity	the pipeline the composition fills from the sources: it hands each role on to the stage that reads it (the evidence, the held verdicts, the candidates, the takes), so it reads the sources as the one unit the composition hands it
-member	services.identity.agreement.FamilyAnswers	agreement-sources	identity	each voter family's answers
-member	services.identity.IdentityLookups	agreement-sources	identity	the venues' pages and TMDB, two lookups kept apart
-member	services.identity.agreement.AgreementVerdicts	agreement-sources	identity	the verdicts stored
-member	services.identity.agreement.AnswerChanges	agreement-sources	identity	what was filed since a verdict was read
-member	services.identity.vocabulary.PosterAnswers	agreement-sources	identity	the posters' hashes
-member	services.identity.vocabulary.CatalogueAnswers	agreement-sources	identity	the catalogue's ids
-member	services.titles.TitleNormalizer	agreement-sources	identity	the title text the evidence reads
-member	services.identity.agreement.AgreementKeys	agreement-sources	identity	the clusters' kept keys
-class	services.identity.agreement.AgreementPipeline	15	identity	pipeline composition: builds, from the agreement sources (one dependency, the `agreement-sources` contract), the stages a model decision is read by (evidence, held verdicts, candidates, inline asks, corrections, takes, cluster verdicts), wires each to what it reads, routes each decision to its stage and keeps each decision's taken-as, digest and event caches across applies; only AgreementStage depends on it	2026-11-19
+class	services.identity.agreement.AgreementPipeline	15	identity	pipeline composition: builds, from the agreement sources (one dependency: AgreementSources' role traits, each stage handed its role), the stages a model decision is read by (evidence, held verdicts, candidates, inline asks, corrections, takes, cluster verdicts), wires each to what it reads, routes each decision to its stage and keeps each decision's taken-as, digest and event caches across applies; only AgreementStage depends on it	2026-11-19
 class	services.identityadapters.IdentityModelService	10	identity	event-driven model host: drains queued scrapes and observations into the IncrementalResolver on one thread through the observation reads, page wait, input gate, listing retainer and history it keeps current, and serves its snapshots to readers	2026-11-20
 class	services.identityadapters.IdentityProjection	16	identity	projection orchestrator: sequences read, resolve, scope, draft, guard, write and report (stored films, FilmId map, scoping, drafter, writer, drift, take reports, metrics: one collaborator a stage) and holds only what passes between them: mode, phases, triggers, the index the next projection builds on	2026-11-20
 class	services.identityadapters.ProjectionDrafter	10	identity	projection draft stage: drafts a scope's films from the venue slot source through the slot memo and its persisted fingerprints, the film shapes and the projection index, widens the scope by title keys, and fetches the drafts' TMDB details side by side	2026-11-20
