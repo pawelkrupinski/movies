@@ -15,7 +15,7 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
                           dating: ListingDating = ListingDating.Undated,
                           /** The venue's certificate ([[Listing.certificate]]): what the weighted `certificate` measure reads. */
                           certificate: Option[String] = None) {
-  import dating.{airDays, anniversaryScreeningYear, broadcastSeason, performanceYear, screenedSeason, screeningsSeason, yearUpperBound}
+  import dating.{airDays, anniversaryScreeningYear, broadcastSeason, performanceYear, relayScreeningYear, screenedSeason, screeningsSeason, yearUpperBound}
 
   lazy val key: String =
     Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
@@ -36,7 +36,9 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
       // only where a synopsis names the performance, so every other listing keeps its key
       performanceYear.fold("")(year => s"\u0000performed:$year") +
       // only where its title bills an anniversary, so every other listing keeps its key
-      anniversaryScreeningYear.fold("")(year => s"\u0000anniversaryScreened:$year")
+      anniversaryScreeningYear.fold("")(year => s"\u0000anniversaryScreened:$year") +
+      // only where a relay credits its director, so every other listing keeps its key
+      relayScreeningYear.fold("")(year => s"\u0000relayScreened:$year")
 
   /** The evidence as the calibrated measures read a listing, its title shapes undecorated by the
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
@@ -49,7 +51,8 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
    *  measures). A learned decoration names a FILM to search for and relate to; it never links a
    *  "Horror Season 2026 Dracula" to every other venue's bare "Dracula". */
   lazy val published: MeasuredListing =
-    measured.copy(decorations = TitleDecorations.None, searchTitles = Nil, dating = dating.copy(broadcastSeason = None, screenedSeason = None))
+    measured.copy(decorations = TitleDecorations.None, searchTitles = Nil,
+      dating = dating.copy(broadcastSeason = None, screenedSeason = None, relayScreeningYear = None))
 
   /** The year this listing states: its own field, else the one its title brackets. */
   def statedYear: Option[Int] = measured.statedYear
@@ -88,5 +91,6 @@ object Evidence {
     airDays         = listing.airDays.filter(_ => detail.flatMap(_.year).isEmpty || listing.namesAStaleSeason.isDefined),
     yearUpperBound  = listing.yearUpperBound,
     performanceYear = listing.performanceYear,
-    anniversaryScreeningYear = listing.anniversaryScreeningYear)
+    anniversaryScreeningYear = listing.anniversaryScreeningYear,
+    relayScreeningYear = listing.relayScreeningYear)
 }

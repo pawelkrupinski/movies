@@ -15,7 +15,7 @@ private[identity] trait AcceptanceRuleTable { this: Acceptance =>
 
   /** The rules a node may be taken by on its own evidence, first to accept deciding ([[Acceptance.aloneNamed]]). */
   private[identity] lazy val aloneRules: List[AcceptanceRule] = List(SoleWork, FavouredCalibrated, ExactTopHit, SegmentTopHit,
-    SoleResult, ImdbSuggested, DirectorsWork, DirectorsTitle, DatedTitle, HouseProduction, SeasonRecord, RelayRecord)
+    SoleResult, ImdbSuggested, DirectorsWork, DirectorsTitle, DatedTitle, HouseProduction, SeasonRecord, RelayRecord, RelayDirector)
 
   /** The rules a cluster may be taken by on its pooled evidence, first to accept deciding ([[Acceptance.pooledNamed]]). */
   private[identity] lazy val pooledRules: List[AcceptanceRule] = List(UnrivalledCalibrated, ExactTopHit, ImdbSuggested)
@@ -241,6 +241,23 @@ private[identity] trait AcceptanceRuleTable { this: Acceptance =>
     checks   = List(
       NeedOf("a published year contradicts it", (weighing, record) => airsTheYearItStates(weighing.listing, record), (_, record) => contradiction(record)),
       NeedOf("it credits another director", creditsItsDirector)),
+    takes    = atItsOwn)
+
+  /** The one record of the listing's HOUSE crediting the director it credits, broadcast in the season it screens in and
+   *  aired by then ([[relayDirectorsRecords]]): a relay and its credited director name the PRODUCTION, the filmed staging,
+   *  not a film of the play, whatever language the venue bills the play's title in. PL Multikino's "NT Live: Mizantrop"
+   *  {Indhu Rubasingham} ×15, screening 2 December 2026, is the National Theatre's "National Theatre Live: The
+   *  Misanthrope" (aired 22 September 2026) — not TMDB's Polish "Mizantrop" (Szifron's "To Catch a Killer"), nor her
+   *  "National Theatre Live: The Jungle Book" (April 2027, not yet aired) or "Bacchae" (another season's). Tried after
+   *  every rule reading the work: a record billing its work under its house is [[HouseProduction]]'s, taken or refused.
+   *  Two such records (two of the director's relays aired that season) are no answer. */
+  private[identity] lazy val RelayDirector = AcceptanceRule("relay-director",
+    requires = List(HasCandidate, Need("it credits no director", _.listing.directors.nonEmpty),
+      Need("it bills no relay's banner", weighing => services.titles.RelayBanner.billed(weighing.listing.ownTitles)),
+      Need("a record bills its work under its house", houseRecords(_).isEmpty), BillsOneWork),
+    picks    = One(relayDirectorsRecords, "no record of its house by its director aired in the season it screens in",
+                 "two records of its house by its director aired in the season it screens in", weighing => credited(weighing.ranked)),
+    checks   = List(NotJoinedToAnotherWork),
     takes    = atItsOwn)
 
   // ── the vetoes ──────────────────────────────────────────────────────────────────────────────

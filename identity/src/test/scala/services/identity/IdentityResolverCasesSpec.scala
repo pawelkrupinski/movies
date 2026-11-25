@@ -3381,6 +3381,24 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1693710)))
   }
 
+  it should "take its house's record by its credited director when the venue bills the play in a language TMDB holds no title of" in {
+    // PL Multikino's "NT Live: Mizantrop" {Indhu Rubasingham} [115'] ×15, screening 2 December 2026 (prod 2026-11-25:
+    // BelowThreshold): TMDB holds the National Theatre's "The Misanthrope" in English only; her director search reaches
+    // it beside her other National Theatre relays, and "Mizantrop" is TMDB's Polish title of Szifron's "To Catch a Killer"
+    val pl = models.Cinema.all.filter(c => models.City.forCinema(c).exists(_.country.language.getCountry == "PL")).take(3)
+    def nt(id: Int, title: String, year: Int, runtime: Int, released: java.time.LocalDate) =
+      F(id, s"National Theatre Live: $title", year, "Indhu Rubasingham", runtime, 3.0,
+        alternatives = Seq(s"National Theatre at Home: $title", title), released = Some(released), searched = false)
+    val records = Seq(nt(1693710, "The Misanthrope", 2026, 105, java.time.LocalDate.of(2026, 9, 22)),
+      nt(1759634, "The Jungle Book", 2027, 0, java.time.LocalDate.of(2027, 4, 1)),
+      nt(1630593, "Bacchae", 2025, 109, java.time.LocalDate.of(2025, 9, 13)),
+      F(605886, "Mizantrop", 2023, "Damián Szifron", 119, 12.0))
+    val ls = pl.map(scraped(_, "NT Live: Mizantrop", director = Some("Indhu Rubasingham"), runtime = Some(115),
+      days = Seq(java.time.LocalDate.of(2026, 12, 2))))
+    val r  = shipped(ls, records)
+    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1693710)))
+  }
+
   it should "take it billed as a screening with its running time" in {
     // UK Electric Palace Bridport's "Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)" ×5 and "NTL: Hay Fever",
     // recording 38363428661: they leaned to the 1984 BBC "Hay Fever" once the certificate was peeled.

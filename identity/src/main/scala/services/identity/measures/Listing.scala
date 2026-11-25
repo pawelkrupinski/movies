@@ -143,6 +143,12 @@ final case class Listing(
    *  None for every other listing, so no other listing's evidence moves with its days. */
   lazy val anniversaryScreeningYear: Option[Int] =
     screenings.firstYear.filter(_ => IdentityMeasures.anniversaryOf(Seq(title, rawTitle) ++ originalTitle).isDefined)
+  /** The year its first screening falls in, where its title bills a relay's banner and it credits a director: what tells
+   *  which of that director's relays under its house it screens, one not yet aired being none
+   *  (`services.identity.AcceptanceStageRules.relayDirectorsRecords`). None for every other listing, so no other listing's
+   *  evidence moves with its days. */
+  lazy val relayScreeningYear: Option[Int] =
+    screenings.firstYear.filter(_ => directors.nonEmpty && services.titles.RelayBanner.billed(Seq(title, rawTitle)))
 
   /** The season it screens in, when it states no year and its title brackets one before it beside a stage work: that year
    *  may date the staging, not the broadcast (UK Ilkley's "The Royal Ballet: The Nutcracker (2025)", screening on the
@@ -179,7 +185,7 @@ final case class Listing(
       catalogueIds == that.catalogueIds && listedCast == that.listedCast && certificate == that.certificate && kept == that.kept
   private def sameDating(that: Listing): Boolean =
     yearUpperBound == that.yearUpperBound && performanceYear == that.performanceYear && screenedSeason == that.screenedSeason &&
-      anniversaryScreeningYear == that.anniversaryScreeningYear && airDays == that.airDays
+      anniversaryScreeningYear == that.anniversaryScreeningYear && airDays == that.airDays && relayScreeningYear == that.relayScreeningYear
   override def hashCode: Int = {
     import scala.util.hashing.MurmurHash3.{finalizeHash, mix, mixLast}
     val fields = Array(cinema.##, key.##, rawTitle.##, title.##, cleanTitle.##, year.##, directors.##, runtime.##, page.##, originalTitle.##,

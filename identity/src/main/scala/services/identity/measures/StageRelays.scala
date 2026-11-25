@@ -482,6 +482,26 @@ object StageRelays {
     else { val namesByItsWork = l.billsAStageHouse && ofItsArt(l, l.billedStageWorks).sizeIs == 1; _ => namesByItsWork }
   }
 
+  /** Does the record bill a relay under the banner the listing opens its title with — the record's own opening banner
+   *  spelt as the listing's, abbreviated by it or initialled by it ("NT Live" of "National Theatre Live"), its numbers
+   *  alike and neither an edition's words — whatever work each bills after it? A relay's work may be billed in a language
+   *  no table names (PL "NT Live: Mizantrop", the National Theatre's "The Misanthrope"), so the banner alone is read;
+   *  what work it is, the credited director tells ([[services.identity.AcceptanceStageRules.relayDirectorsRecords]]). A
+   *  word merely sharing letters with the house's names none: "Met Live" is no "National Theatre Live". */
+  def opensUnderItsBanner(l: MeasuredListing, f: Film): Boolean = {
+    def opening(titles: Seq[String]) = titles.flatMap(title => PieceBreak.split(title).map(_.trim).filter(_.exists(_.isLetter)).toSeq match {
+      case Seq(banner, _, _*) => Some(wordsOf(banner))
+      case _                  => None
+    }).filter(_.nonEmpty).distinct
+    val banners = opening(l.ownTitles)
+    banners.nonEmpty && opening(f.titles).exists(theirs => banners.exists { ours =>
+      val billed = Billing(ours, theirs, "")
+      (billed.listingHouse == billed.filmHouse || abbreviates(ours, theirs) ||
+        ours.exists(word => word.lengthIs >= 2 && initialsOf(theirs).startsWith(word) && !HouseCommonWords(word))) &&
+        numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse) && !namesAnEdition(ours) && !namesAnEdition(theirs)
+    })
+  }
+
   /** `works` of the one art the billing names, when it names one and a work of it: ES Ocine's "Carmen (OPERA LIVE)" is
    *  Bizet's opera, not the Carmen ballets ([[StageWorks.dance]]); "Manon (BALLET LIVE)" MacMillan's ballet, not
    *  Massenet's opera. A billing naming both arts ("Royal Ballet & Opera: Manon"), or neither, keeps them all. */

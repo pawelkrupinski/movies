@@ -657,6 +657,42 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     taken(ranked(misanthrope, bare :+ rsc *)) shouldBe None
   }
 
+  "a relay crediting its director" should "take its house's record of that director's production aired in the season it screens in" in {
+    // PL Multikino's "NT Live: Mizantrop" {Indhu Rubasingham} [115'] ×15, screening 2 December 2026 (prod mirror
+    // 2026-11-25): BelowThreshold. TMDB holds no Polish title of the National Theatre's "The Misanthrope", so no rule
+    // reading the work reached it; her director search did, beside her other National Theatre relays.
+    def mizantrop(screened: Option[Int], season: Int = 2026, directors: Seq[String] = Seq("Indhu Rubasingham")) =
+      MeasuredListing("NT Live: Mizantrop", runtime = Some(115), directors = directors, searchTitles = Seq("National Theatre Live: Mizantrop"),
+        dating = ListingDating(screeningsSeason = Some(season), relayScreeningYear = screened))
+    def nt(title: String, year: Int, runtime: Int, released: java.time.LocalDate) =
+      Film(s"National Theatre Live: $title", year = Some(year), runtime = Some(runtime), directors = Some(Seq("Indhu Rubasingham", "Christine Lalla")),
+        released = Some(released), alternativeTitles = Seq(s"National Theatre at Home: $title", title))
+    val records = Seq(
+      (1693710, nt("The Misanthrope", 2026, 105, java.time.LocalDate.of(2026, 9, 22)), None),
+      (1759634, nt("The Jungle Book", 2027, 0, java.time.LocalDate.of(2027, 4, 1)), None),
+      (1630593, nt("Bacchae", 2025, 109, java.time.LocalDate.of(2025, 9, 13)), None),
+      (1258060, nt("The Father and the Assassin", 2024, 130, java.time.LocalDate.of(2024, 3, 1)), None),
+      // TMDB's Polish title of Szifron's "To Catch a Killer", its search's first hit for the play's Polish name
+      (605886, Film("Mizantrop", year = Some(2023), runtime = Some(119), directors = Some(Seq("Damián Szifron"))), Some(1)))
+    acceptedBy(ranked(mizantrop(Some(2026)), records *), 1693710) shouldBe Some("relay-director")
+    // in January 2027 both her 2026/27 relays have aired: two productions, no answer
+    acceptance.byRule("relay-director")(ranked(mizantrop(Some(2027)), records *)) shouldBe None
+    // another season's screenings air neither
+    acceptance.byRule("relay-director")(ranked(mizantrop(Some(2028), season = 2028), records *)) shouldBe None
+    // no credit, no production
+    acceptance.byRule("relay-director")(ranked(mizantrop(None, directors = Nil), records *)) shouldBe None
+    // nor a credit of another director
+    acceptance.byRule("relay-director")(ranked(mizantrop(Some(2026), directors = Seq("Sam Yates")), records *)) shouldBe None
+    // a billing naming no house is no relay: the bare play by her stays the work's rules'
+    val bare = MeasuredListing("Mizantrop", runtime = Some(115), directors = Seq("Indhu Rubasingham"),
+      dating = ListingDating(screeningsSeason = Some(2026), relayScreeningYear = Some(2026)))
+    acceptance.byRule("relay-director")(ranked(bare, records *)) shouldBe None
+    // nor is another banner's record of her: the Met's relay of an opera she staged is no National Theatre production
+    val met = (1703700, Film("The Metropolitan Opera: Mizantrop", year = Some(2026), runtime = Some(150), directors = Some(Seq("Indhu Rubasingham")),
+      released = Some(java.time.LocalDate.of(2026, 10, 3))), None)
+    acceptance.byRule("relay-director")(ranked(mizantrop(Some(2026)), met +: records.drop(1) *)) shouldBe None
+  }
+
   "every own match" should "name the rule that took it" in {
     // PL Kinoteka's "Basia. Humor w paski mam + Kocia Szajka…" was an own match at 38.2%, far under
     // the calibrated cut, and nothing said which rule took it.

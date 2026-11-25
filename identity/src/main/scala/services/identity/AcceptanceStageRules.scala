@@ -2,7 +2,7 @@ package services.identity
 
 import services.identity.AcceptanceRule.Weighing
 import services.identity.measures.Scored.Accepted
-import services.identity.measures.{FactRelations, IdentityMeasures, MeasuredListing, RelayStage, Scored, StageRelays}
+import services.identity.measures.{FactRelations, Film, IdentityMeasures, MeasuredListing, RelayStage, Scored, StageRelays}
 import services.titles.YearWindow
 
 /** What the acceptance rules of a stage relay ask: the house's production, the relay's record ([[RelayStage]]), and the
@@ -42,6 +42,21 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
     if (aired.nonEmpty) aired
     else Some(records.filter(scored => relay.year.exists(scored.candidate.film.year.contains))).filter(_.sizeIs == 1).getOrElse(records)
   }
+  /** The eligible records billing a relay under the banner the listing opens with ([[StageRelays.opensUnderItsBanner]]) that credit the
+   *  director it credits and that it can screen ([[screensIt]]), no published fact contradicting them: what a relay and
+   *  its credit name whatever language the venue bills the play in — [[AcceptanceRuleTable.RelayDirector]]'s to pick one of. */
+  private[identity] def relayDirectorsRecords(weighing: Weighing): Seq[Scored] = {
+    val listing = weighing.listing
+    weighing.eligible.filter(scored => scored.ownCredit && StageRelays.opensUnderItsBanner(listing, scored.candidate.film) &&
+      screensIt(listing, scored.candidate.film) && !contradicted(scored))
+  }
+  /** Is `f` a broadcast of the season the listing's screenings fall in ([[RelayStage.seasonsOf]]), aired by the year its
+   *  first screening falls in? A record of a later year is a relay not yet aired: PL Multikino's "NT Live: Mizantrop",
+   *  screening 2 December 2026, is not Indhu Rubasingham's "National Theatre Live: The Jungle Book" (1 April 2027). */
+  private def screensIt(listing: MeasuredListing, f: Film): Boolean =
+    listing.dating.screeningsSeason.exists(RelayStage.seasonsOf(f)) &&
+      listing.dating.relayScreeningYear.exists(screened => f.released.map(_.getYear).orElse(f.year).exists(_ <= screened))
+
   /** The relay the listing bills: asked only by the rule requiring one. */
   private def relayOf(weighing: Weighing): RelayStage.Billed = weighing.listing.relayBilled.get
   private[identity] def relaySeasons(weighing: Weighing): String = {

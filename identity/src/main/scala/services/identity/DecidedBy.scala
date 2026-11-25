@@ -19,7 +19,7 @@ object DecidedBy {
   import ResolverDecision.Basis
 
   /** The acceptance rules of a stage relay ([[AcceptanceStageRules]]): a take by one is the relay stage's. */
-  val RelayRules: Set[String] = Set("house-production", "season-record", "relay-record")
+  val RelayRules: Set[String] = Set("house-production", "season-record", "relay-record", "relay-director")
 
   /** The stage of each basis the agreement stage (or a pin) decides; every other is the model's or its relay rules'. */
   private val StageOf: Map[Basis, String] = Map(

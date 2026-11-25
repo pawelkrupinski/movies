@@ -26,7 +26,10 @@ final case class ListingDating(
   performanceYear: Option[Int] = None,
   /** The year its first screening falls in, where its title bills an anniversary: what dates the film of the
    *  anniversary it bills. */
-  anniversaryScreeningYear: Option[Int] = None)
+  anniversaryScreeningYear: Option[Int] = None,
+  /** The year its first screening falls in, where a relay's banner credits its director: what bounds which of that
+   *  director's relays under its house it screens (`services.identity.AcceptanceStageRules.relayDirectorsRecords`). */
+  relayScreeningYear: Option[Int] = None)
 
 object ListingDating {
   /** A listing nothing dates beside the year it states. */
