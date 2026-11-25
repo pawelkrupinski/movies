@@ -614,3 +614,61 @@ incidents:
     end: 2026-11-21T20:00:00Z
     grace: 10m
     expect_firing: [PosterHostLostFromServing]
+
+  - id: pl-multikino-poster-loads-failing-2026-11-19
+    description: >-
+      pl visitors' own browsers failed to load Multikino's posters: the last three hours' beacon loads went from 2
+      failed of 170 to 34-66 failed against 19-64 working over 12Z..15Z. Multikino refuses monitoring-1's probe
+      (403 all week), so the visitors' verdict alone decides PosterProbeFailing, and it was real.
+    source: >-
+      sum_over_time(kinowo_uptime_recent_failures{service="img: www.multikino.pl"}[3h:30m]) and _recent_successes 11-19T09Z..16Z, read over the alert backtest's local block copy; probe_http_status_code{kind="poster",poster_host="multikino.pl"} 403
+    start: 2026-11-19T12:30:00Z
+    end: 2026-11-19T15:00:00Z
+    grace: 30m
+    expect_firing: [PosterProbeFailing]
+
+  - id: pl-multikino-poster-loads-failing-2026-11-21
+    description: >-
+      The week's largest: pl visitors' loads of Multikino's posters failed 262-373 against 300-517 working over the
+      evening's three-hour windows (19Z..22:30Z), against a daytime ~9% failing. Real (the probe 403s throughout).
+    source: >-
+      sum_over_time(kinowo_uptime_recent_failures{service="img: www.multikino.pl"}[3h:30m]) and _recent_successes 11-21T16Z..23Z, local block copy
+    start: 2026-11-21T20:30:00Z
+    end: 2026-11-21T22:30:00Z
+    grace: 30m
+    expect_firing: [PosterProbeFailing]
+
+  - id: pl-multikino-poster-loads-failing-2026-11-23
+    description: >-
+      Overnight, pl visitors' loads of Multikino's posters failed 72 against 9-29 working in the three-hour windows of
+      03:30Z..07Z: a failure, not a thin night (the noise nights held 5-12 failed loads).
+    source: >-
+      sum_over_time(kinowo_uptime_recent_failures{service="img: www.multikino.pl"}[3h:30m]) and _recent_successes 11-23T00Z..08Z, local block copy
+    start: 2026-11-23T03:30:00Z
+    end: 2026-11-23T07:00:00Z
+    grace: 30m
+    expect_firing: [PosterProbeFailing]
+
+  - id: uk-odeon-poster-loads-failing-2026-11-23
+    description: >-
+      uk visitors' loads of Odeon's posters (vwc.odeon.co.uk) failed 26 with none working in the three-hour windows
+      of 08Z..11Z, then no visitor loaded one until a load worked at 16:30Z, when the alert ended. Odeon refuses
+      monitoring-1's probe (403), so the visitors' verdict decides; every load of the morning failed.
+    source: >-
+      sum_over_time(kinowo_uptime_recent_failures{service="img: vwc.odeon.co.uk"}[3h:30m]) and _recent_successes 11-23T06Z..17:30Z, local block copy; ALERTS{alertname="PosterProbeFailing",poster_host="odeon.co.uk"} 08:21Z..16:30Z
+    start: 2026-11-23T08:00:00Z
+    end: 2026-11-23T16:30:00Z
+    grace: 30m
+    expect_firing: [PosterProbeFailing]
+
+  - id: es-artesiete-posters-404-2026-11-17
+    description: >-
+      es's Artesiete posters answered the probe 404 at 03:30Z..04:30Z and 05:30Z..06:30Z (200 otherwise), with no
+      visitor beacon for the host in 72 hours to say otherwise: the origin's own 404s, a real if brief failure.
+    source: >-
+      probe_http_status_code{kind="poster",poster_host="artesiete.es"} 404 11-17T03:30Z..06:30Z; kinowo_uptime_recent_*{service=~"img: .*artesiete.es"} absent, local block copy
+    start: 2026-11-17T03:30:00Z
+    end: 2026-11-17T06:30:00Z
+    grace: 30m
+    expect_firing: [PosterProbeFailing]
+

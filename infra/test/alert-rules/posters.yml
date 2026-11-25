@@ -69,11 +69,11 @@ tests:
       - series: 'probe_http_uncompressed_body_length{instance="https://vwc.odeon.co.uk/b.jpg",job="blackbox-poster",country="uk",kind="poster",poster_host="odeon.co.uk"}'
         values: '5000x60'
       # visitors' loads: two work in the first half hour, then none for two and a half hours (no
-      # visitors -- still served), then failures only from 3h
+      # visitors -- still served), then twenty failures a half hour from 3h
       - series: 'kinowo_uptime_recent_successes{instance="kinowo-web-uk",job="kinowo-web",country="uk",service="img: vwc.odeon.co.uk"}'
         values: '0 2x5 0x54'
       - series: 'kinowo_uptime_recent_failures{instance="kinowo-web-uk",job="kinowo-web",country="uk",service="img: vwc.odeon.co.uk"}'
-        values: '0x35 3x24'
+        values: '0x35 20x24'
       # the fallback row is not the primary's evidence: its successes never hold the alert
       - series: 'kinowo_uptime_recent_successes{instance="kinowo-web-uk",job="kinowo-web",country="uk",service="img: vwc.odeon.co.uk · fallback"}'
         values: '5x60'
@@ -128,6 +128,33 @@ tests:
         alertname: PosterProbeFailing
         exp_alerts: []
       - eval_time: 6h
+        alertname: PosterProbeFailing
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # 2026-11-22 20:21, REPLAYED: A NIGHT'S HANDFUL OF FAILED LOADS. Odeon's probes 403 throughout;
+  # one visitor's two loads worked, then six failed over the next hour and nobody came back. Six
+  # failed loads outweighed two, so the hold dropped and it paged critical for 2.6 hours (Alert
+  # backtest #28). A handful is not visitors being failed: held; twenty is (the case above).
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 5m
+    name: a night's handful of failed visitor loads does not page a probe-refusing host
+    input_series:
+      - series: 'probe_success{instance="https://vwc.odeon.co.uk/a.jpg",job="blackbox-poster",country="uk",kind="poster",poster_host="odeon.co.uk"}'
+        values: '0x60'
+      - series: 'probe_http_uncompressed_body_length{instance="https://vwc.odeon.co.uk/a.jpg",job="blackbox-poster",country="uk",kind="poster",poster_host="odeon.co.uk"}'
+        values: '5000x60'
+      # one working load a half hour for the first hour, then none
+      - series: 'kinowo_uptime_recent_successes{instance="kinowo-web-uk",job="kinowo-web",country="uk",service="img: vwc.odeon.co.uk"}'
+        values: '1x11 0x49'
+      # three failed loads a half hour in the second hour, then none
+      - series: 'kinowo_uptime_recent_failures{instance="kinowo-web-uk",job="kinowo-web",country="uk",service="img: vwc.odeon.co.uk"}'
+        values: '0x11 3x12 0x37'
+    alert_rule_test:
+      - eval_time: 2h30m
+        alertname: PosterProbeFailing
+        exp_alerts: []
+      - eval_time: 4h
         alertname: PosterProbeFailing
         exp_alerts: []
 

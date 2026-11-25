@@ -106,7 +106,10 @@ groups:
               "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.][^.]+)`),
               "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.](?:co|com|org|net|ac|gov|edu)[.][^.]+)`))
           )[72h:30m]))
-      # The last three hours' loads: three or more failed, and no more worked.
+      # The last three hours' loads: TWENTY or more failed, and no more worked (the sum of the half-hourly
+      # counts). Not three (Alert backtest #28, 11-16..24): a probe-refusing host is judged by this alone,
+      # and a night's handful -- odeon.co.uk 5-6 failed of 9, multikino.pl 5-12 of a few -- paged critical
+      # 11 times in a week; every real outage then failed 26 (odeon 11-23) to 373 (multikino 11-21).
       - record: country_poster_host:browser_loads_failing:last_time
         expr: >-
           max by (country, poster_host) (max_over_time(timestamp(
@@ -115,7 +118,7 @@ groups:
                 sum_over_time(kinowo_uptime_recent_failures{service=~`img: [^ ]+[.][^ ]+`}[3h:30m]),
                 "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.][^.]+)`),
                 "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.](?:co|com|org|net|ac|gov|edu)[.][^.]+)`))
-            ) >= 3
+            ) >= 20
               >=
             sum by (country, poster_host) (label_replace(label_replace(
               sum_over_time(kinowo_uptime_recent_successes{service=~`img: [^ ]+[.][^ ]+`}[3h:30m]),
