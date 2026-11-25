@@ -672,3 +672,14 @@ incidents:
     grace: 30m
     expect_firing: [PosterProbeFailing]
 
+  - id: macos-script-self-tests-near-timeout-2026-11-22
+    description: >-
+      Tool self-tests' macOS job (added 11-22 by e69fd26898, timeout-minutes 90) ran every self-test in 72-90 min
+      on its scheduled and dispatched runs: 88 min (11-22 21:35Z), 83, 79, 77, then 90 cancelled at the timeout
+      (11-24 17:44Z). The long pole was coupling-ratchet-mutation-test.sh, 3645 s: the whole coupling_ratchet_test.py
+      against each of ~50 mutants, when one failing test kills a mutant (fixed by running each mutant with -f).
+    source: gh run view --json jobs of Tool self-tests on main 11-22..11-25 (run 45526102108's per-test times); ALERTS{alertname="CiJobNearTimeout",ci_job="script self-tests (macOS bash 3.2)"} 11-22T12:30Z..11-24T17:40Z
+    start: 2026-11-22T12:30:00Z
+    end: 2026-11-24T17:40:00Z
+    grace: 10m
+    expect_firing: [CiJobNearTimeout]

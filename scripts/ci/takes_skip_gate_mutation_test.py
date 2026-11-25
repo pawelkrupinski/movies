@@ -44,10 +44,11 @@ MUTANTS: Dict[str, Tuple[str, str]] = {
 }
 
 
-def run_test(gate: str) -> Tuple[int, str]:
-    """takes_skip_gate_test.py against `gate` -> its exit and output."""
+def run_test(gate: str, failfast: Tuple[str, ...] = ()) -> Tuple[int, str]:
+    """takes_skip_gate_test.py against `gate` -> its exit and output; `("-f",)` stops at its first failure (one kills a
+    mutant)."""
     env = {**os.environ, "CLI_TOOL_UNDER_TEST": gate, "SPEC_HANG_BOUND": "20"}
-    done = subprocess.run([sys.executable, TEST], env=env, capture_output=True, text=True, timeout=600)
+    done = subprocess.run([sys.executable, TEST, *failfast], env=env, capture_output=True, text=True, timeout=600)
     return done.returncode, done.stdout + done.stderr
 
 
@@ -65,11 +66,12 @@ class TakesSkipGateMutationTest(unittest.TestCase):
                     f.write(source.replace(frm, to, 1))
                 os.chmod(paths[name], 0o755)
             with ThreadPoolExecutor(max_workers=4) as pool:
-                results = dict(zip(paths, pool.map(run_test, paths.values())))
+                results = dict(zip(paths, pool.map(lambda path: run_test(path, ("-f",)), paths.values())))
         for name, (code, output) in results.items():
             with self.subTest(mutant=name):
                 self.assertNotEqual(0, code, f"takes_skip_gate_test.py passed against the mutant '{name}':\n{output}")
-                self.assertRegex(output, r"FAILED \(", output)
+                # one failing test kills a mutant, and its run stops there (-f): the job stays inside its timeout
+                self.assertRegex(output, r"(?m)^FAILED \((failures|errors)=1\)$", output)
         code, output = run_test(GATE)
         self.assertEqual(0, code, f"takes_skip_gate_test.py fails against the gate itself:\n{output}")
 

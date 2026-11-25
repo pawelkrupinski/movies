@@ -77,13 +77,18 @@ sys.exit(0 if n == 1 else 1)
 PY
   check "the mutant '$name' is aimed at exactly one check in the tool" 0 "$?"
 done
+# -f: unittest stops at a mutant's first failing test, all it takes to kill one (the clean run below stays whole)
 # shellcheck disable=SC2016 # expanded by the inner bash
-seq 1 "$i" | xargs -P 4 -I{} bash -c 'QUALITY_RATCHET_UNDER_TEST="$1/mutants/$2/quality_ratchet.py" python3 "$3" > "$1/mutants/$2.out" 2>&1; echo $? > "$1/mutants/$2.rc"' \
+seq 1 "$i" | xargs -P 4 -I{} bash -c 'QUALITY_RATCHET_UNDER_TEST="$1/mutants/$2/quality_ratchet.py" python3 "$3" -f > "$1/mutants/$2.out" 2>&1; echo $? > "$1/mutants/$2.rc"' \
   _ "$work" {} "$REPO_ROOT/scripts/ci/quality_ratchet_test.py"
 for n in $(seq 1 "$i"); do
   check "quality_ratchet_test.py fails against the mutant: $(cat "$work/mutants/$n.name")" 1 \
     "$([ "$(cat "$work/mutants/$n.rc" 2> /dev/null)" != 0 ] && echo 1 || echo 0)"
 done
+# one failing test kills a mutant: each mutant's run stopped at it (-f), so the job stays inside its timeout
+# (CiJobNearTimeout, Alert backtest #28: the whole suite against every mutant took 61 min on macOS)
+check "quality_ratchet_test.py stopped at the first failure against every mutant" 0 \
+  "$(grep -LE '^FAILED \((failures|errors)=1\)$' "$work"/mutants/*.out | wc -l | tr -d ' ')"
 # ...and passes against the tool itself, so the failures above are the mutants'
 python3 "$REPO_ROOT/scripts/ci/quality_ratchet_test.py" > "$work/out" 2>&1
 check "quality_ratchet_test.py passes against the tool itself" 0 "$?"
