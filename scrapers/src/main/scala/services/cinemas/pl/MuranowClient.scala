@@ -130,7 +130,7 @@ object MuranowClient {
     } yield java.time.LocalDate.of(headerYear, m, d)
 
   def parseTime(date: java.time.LocalDate, time: String): Option[LocalDateTime] =
-    ScrapeClock.parseHHmm(time).map(date.atTime)
+    ScrapeClock.atClock(date, time)
 
   final case class Detail(
     runtimeMinutes: Option[Int],

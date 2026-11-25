@@ -115,7 +115,7 @@ object KinomuzeumClient {
   private val ClockOnly = raw"""^${ScrapeClock.ClockText}$$""".r
 
   def parseTime(date: LocalDate, time: String): Option[LocalDateTime] =
-    ScrapeClock.parseHHmm(time).map(date.atTime)
+    ScrapeClock.atClock(date, time)
 
   final case class Detail(runtime: Option[Int], year: Option[Int], countries: Seq[String],
                           director: Seq[String], synopsis: Option[String], poster: Option[String])

@@ -92,7 +92,7 @@ object KinoZaRogiemCafeClient {
     // "Dzisiaj, HH:MM" / "Jutro, HH:MM"
     RelativeDatePat.findFirstMatchIn(label).flatMap { m =>
       val base = if (m.group(1) == "Dzisiaj") today else today.plusDays(1)
-      ScrapeClock.parseHHmm(m.group(2)).map(base.atTime)
+      ScrapeClock.atClock(base, m.group(2))
     }.orElse {
       // "09 czerwca 2026, 17:00"
       for {

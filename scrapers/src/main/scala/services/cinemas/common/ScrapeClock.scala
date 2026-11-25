@@ -30,6 +30,10 @@ private[cinemas] object ScrapeClock {
   def parseHHmm(s: String): Option[LocalTime] =
     HourMinute.findFirstMatchIn(s).flatMap(clockAt(_, 1))
 
+  /** `date` at the first `HH:mm` in `text`; `None` when there is none or it is no clock. */
+  def atClock(date: LocalDate, text: String): Option[LocalDateTime] =
+    parseHHmm(text).map(date.atTime)
+
   /** An ISO `yyyy-MM-dd` day at the first clock time in `hour`; `None` when either is unreadable. */
   def isoDateAtClock(day: String, hour: String): Option[LocalDateTime] =
     Try(LocalDate.parse(day)).toOption.flatMap(date => parseHHmm(hour).map(date.atTime))

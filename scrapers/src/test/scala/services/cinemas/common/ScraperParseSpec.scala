@@ -20,6 +20,35 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     }((row, day) => Seq(s"$row@${day.getDayOfMonth}")) shouldBe Seq("a@3", "b@3", "c@5")
   }
 
+  "atClock" should "put a date at the first HH:mm in the text" in {
+    ScrapeClock.atClock(LocalDate.of(2026, 9, 6), "seans o 19:30 dziś") shouldBe Some(LocalDateTime.of(2026, 9, 6, 19, 30))
+  }
+
+  it should "be None for no clock and for one no clock has" in {
+    ScrapeClock.atClock(LocalDate.of(2026, 9, 6), "brak godziny") shouldBe None
+    ScrapeClock.atClock(LocalDate.of(2026, 9, 6), "25:99") shouldBe None
+  }
+
+  "isoDurationMinutes" should "read hours and minutes, either part alone, and a trailing seconds part" in {
+    ScrapeRuntime.isoDurationMinutes("PT1H41M") shouldBe Some(101)
+    ScrapeRuntime.isoDurationMinutes("PT2H") shouldBe Some(120)
+    ScrapeRuntime.isoDurationMinutes("PT95M") shouldBe Some(95)
+    ScrapeRuntime.isoDurationMinutes("PT1H30M0S") shouldBe Some(90)
+  }
+
+  it should "be None for an empty, zero or non-ISO duration" in {
+    ScrapeRuntime.isoDurationMinutes("PT") shouldBe None
+    ScrapeRuntime.isoDurationMinutes("PT0M") shouldBe None
+    ScrapeRuntime.isoDurationMinutes("95 min") shouldBe None
+  }
+
+  it should "hold a runtime to the caller's inclusive bounds" in {
+    ScrapeRuntime.isoDurationMinutes("PT29M", atLeast = 30, atMost = 300) shouldBe None
+    ScrapeRuntime.isoDurationMinutes("PT30M", atLeast = 30, atMost = 300) shouldBe Some(30)
+    ScrapeRuntime.isoDurationMinutes("PT5H", atLeast = 30, atMost = 300) shouldBe Some(300)
+    ScrapeRuntime.isoDurationMinutes("PT5H1M", atLeast = 30, atMost = 300) shouldBe None
+  }
+
   "parseHHmm" should "pull the first HH:mm out of surrounding text" in {
     ScrapeClock.parseHHmm("seans o 19:30 dziś") shouldBe Some(LocalTime.of(19, 30))
   }
