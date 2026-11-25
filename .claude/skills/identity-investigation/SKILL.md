@@ -598,6 +598,10 @@ only and have none of these; `projection_trigger` and the take lines' ids below 
   `scripts/identity-slice <cc> --key 'venue|raw title' --ref <build>` line (any listing, matched or not; lines logged before
   2026-10-14 name `scripts/identity-explain`, now an alias of `identity-slice --explain`, which finds the listing only if
   the capture holds it unmatched).
+- **`identity listing unplaced: …`** — one per listing still published that a projection's writes moved off its stored
+  film onto NONE (`LiveProjectionIndex.unplaced`): no take change, so no `kind`; `event` = `unplaced`, and the take
+  lines' own `venue`, `listing`, `film_before`, `tmdb_before`, `title_before`, the decision's fields (`basis`,
+  `decided_by`, `rules`, …), `trigger`, `repro`. `_time:7d event:=unplaced | stats by (country, basis) count()`.
 - **`identity take change: summary …`** — one per tick that moved any: `take_changes`, `lost`, `changed`,
   `gained`, `logged`, `by_basis`.
 - **`identity projection: …`** — every written tick: `listings`, `films`, `written`, `retired`, `declined`,
