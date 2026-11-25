@@ -138,7 +138,7 @@ scripts/ci/verified-ref.sh	KEEP
 scripts/ci/wait-for-mongo-tunnel.sh	MIGRATE
 scripts/ci/wait-for-run-artifact.sh	KEEP
 scripts/ci/xcuitest-each-class-alone.sh	MIGRATE
-scripts/class-cycles	MIGRATE
+scripts/class-cycles	KEEP
 scripts/convergence-local.sh	MIGRATE
 scripts/coupling-report	KEEP
 scripts/coverage-touched	KEEP

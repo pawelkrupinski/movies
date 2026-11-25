@@ -167,7 +167,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/runner_cache.py` | A runner-local mirror of actions/cache entries, for the self-hosted runners on ci-runner. | `python3 scripts/ci/runner_cache.py` | 1 tool | runner_cache_test.py | Python |
 | `scripts/ci/runner_scheduler.py` | CI-RUNNER'S MOVIES RUNNER SCHEDULER (the owner, 2026-11-06: "make movies runs take all the ci-runner runners when | `python3 scripts/ci/runner_scheduler.py` | wf precommit-check; agentctl; 1 tool | runner_scheduler_test.py | Python |
 | `scripts/ci/sbt-deps-resolve.sh` | Resolve every dependency of the sbt build once (`sbt update` over the root aggregate | `scripts/ci/sbt-deps-resolve.sh` | wf ci; 2 tools | sbt-deps-resolve-test.sh | KEEP |
-| `scripts/ci/sbt-guard/sbt` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH | `scripts/ci/sbt-guard/sbt` | wf ci, country-convergence-leg, country-fixture-artifact +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 140 tools | - | MIGRATE |
+| `scripts/ci/sbt-guard/sbt` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH | `scripts/ci/sbt-guard/sbt` | wf ci, country-convergence-leg, country-fixture-artifact +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 141 tools | - | MIGRATE |
 | `scripts/ci/sbt-invalidate-exporters.sh` | Delete the compiled classes of every Scala source holding a wildcard export (`export X.*`, `export x.{a as _, *}`) | `scripts/ci/sbt-invalidate-exporters.sh` | skill CLAUDE.md; 2 tools | sbt-invalidate-exporters-test.sh | KEEP |
 | `scripts/ci/sbt-sources-key.sh` | The hash an sbt build cache is keyed by: the content of the sources a job compiles | `scripts/ci/sbt-sources-key.sh` | wf ci; 1 tool | sbt-sources-key-test.sh | KEEP |
 | `scripts/ci/scheduled-failure-issue.sh` | Turn a failed scheduled workflow run into a GitHub issue assigned to the repo owner, and close it again when the workflow next passes | `scripts/ci/scheduled-failure-issue.sh` | wf coupling-exemptions, prune-actions-caches, security-headers; 3 tools | scheduled_failure_issue_test.py | KEEP |
@@ -598,7 +598,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (77)
+## Dev (78)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -609,7 +609,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/app-store-credentials.sh` | The App Store Connect API key, out of the Touch ID vault (~/projects/secrets | `bash scripts/app-store-credentials.sh` | 1 tool | app-store-credentials-test.sh | KEEP |
 | `scripts/ci_status.py` | The logic behind scripts/ci-status (its header has the usage); tests: scripts/ci_status_test.py. | `python3 scripts/ci_status.py` | 1 tool | ci_status_test.py | Python |
 | `scripts/ci_wait.py` | Waiting on GitHub Actions runs, bounded: the logic behind scripts/ci-wait (its header has the usage); tests: | `scripts/ci_wait.py` | 1 tool | ci_wait_test.py | Python |
-| `scripts/class-cycles` | The class cycles of one package (CLAUDE.md, Design rules; project/ClassCycles.scala, `sbt couplingClassCycles`) | `scripts/class-cycles` | skill CLAUDE.md, identity-investigation; 1 tool | class-cycles-test.sh | MIGRATE |
+| `scripts/class-cycles` | The class cycles of one package (CLAUDE.md, Design rules; project/ClassCycles.scala, `sbt couplingClassCycles`) (a name for class_cycles.py) | `scripts/class-cycles` | skill CLAUDE.md, identity-investigation; 2 tools | class_cycles_test.py | KEEP |
+| `scripts/class_cycles.py` | The class cycles of one package (CLAUDE.md, Design rules; project/ClassCycles.scala, `sbt couplingClassCycles`) | `scripts/class_cycles.py` | 1 tool | class_cycles_test.py | Python |
 | `scripts/coverage-touched` | Coverage of the methods a change touches (scoverage; a report, never a gate; a name for coverage_touched.py) | `scripts/coverage-touched` | skill test-layers; 5 tools | coverage_touched_test.py | KEEP |
 | `scripts/coverage_touched.py` | Coverage of the methods a change touches (scoverage; a report, never a gate) | `scripts/coverage_touched.py` | 2 tools | coverage_touched_test.py | Python |
 | `scripts/dead-code` | The dead-code finder (CLAUDE.md, "Cleanup and displaced-code audit"): production classes, objects and methods nothing calls, ranked | `scripts/dead-code` | skill test-layers; 2 tools | dead-code-test.sh | KEEP |
