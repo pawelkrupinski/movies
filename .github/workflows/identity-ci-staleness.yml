@@ -54,7 +54,7 @@ jobs:
             # The checker's own verdicts first, offline: a checker that can no longer fail would report
             # green here for as long as nobody looked at it.
             - name: Self-test the checker
-              run: bash scripts/ci/identity-ci-staleness-test.sh
+              run: python3 scripts/ci/identity_ci_staleness_test.py
 
             - name: Is the identity CI stale?
               id: staleness
