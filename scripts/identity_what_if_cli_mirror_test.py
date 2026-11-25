@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# script-test-reads: scripts/identity-what-if scripts/identity_what_if*.py scripts/identity-tools.sh scripts/identity-what-if-roots.tsv scripts/pure-move-check scripts/pure_move_check.py scripts/identity_stamp_carry*.py
+# script-test-reads: scripts/identity-what-if scripts/identity_what_if*.py scripts/identity-tools.sh scripts/identity-what-if-roots.tsv scripts/pure-move-check scripts/pure_move_*.py scripts/identity_stamp_carry*.py
 """scripts/identity-what-if, black-box: A MIRROR CHANGING UNDER THE RUN is a HARNESS ERROR (exit 2), never takes moved
 (2026-11-19: lane C's US what-if read a seeding mirror on one side and reported 87k takes moved) -- a seed in flight or
 due, a re-seed or a tailed write between the sides, a side whose live asks failed past the bound; the run FENCES the

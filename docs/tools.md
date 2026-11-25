@@ -219,7 +219,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/py-quality-report` | The Python quality report and its ratchet (entry; the measure is scripts/py-quality/report.py) | `scripts/py-quality-report` | hook pre-push; skill CLAUDE.md; 2 tools | - | KEEP |
 | `scripts/py-quality/clones.py` | THE PYTHON CLONE GROUPS (scripts/py-quality/report.py): every run of MIN_TOKENS or more tokens appearing twice or more | `imported` | wf ios; hook pre-push; skill CLAUDE.md, test-layers; 8 tools | - | Python |
 | `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; skill CLAUDE.md; 13 tools | - | Python |
-| `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 18 tools | - | Python |
+| `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 20 tools | - | Python |
 | `scripts/py-quality/migrated.py` | THE MIGRATED TOOLS (scripts/py-quality/report.py; the owner, 2026-11-23): the files of the shell-to-Python migration's | `imported` | skill CLAUDE.md; 4 tools | - | Python |
 | `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push; 4 tools | - | Python |
 | `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 125 tools | report_test.py | Python |
@@ -603,7 +603,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (82)
+## Dev (89)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -653,7 +653,14 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/own-checkout` | The own-checkout guard: a tool that measures or writes its own checkout (`root` from its own path | `scripts/own-checkout` | 8 tools | own-checkout-test.sh | KEEP |
 | `scripts/page-tests-local` | Page tests, locally: the Playwright rows CI's `pw` page-test rows run, against a FixtureServerMain booted in this checkout's kept sbt server | `scripts/page-tests-local` | hook pre-push; skill CLAUDE.md, agent-ops, test-layers; 3 tools | page-tests-local-test.sh | MIGRATE |
 | `scripts/pure-move-check` | The pure move check: whether a range only moves code (files, packages and classes renamed) | `scripts/pure-move-check` | hook pre-push; agentctl; skill CLAUDE.md, identity-investigation, test-layers; 8 tools | pure_move_check_test.py | KEEP |
-| `scripts/pure_move_check.py` | THE PURE MOVE CHECK: whether <base>..<head> only moves code -- files renamed, packages and classes renamed -- so no | `scripts/pure_move_check.py` | skill identity-investigation; 4 tools | pure_move_check_test.py | Python |
+| `scripts/pure_move_check.py` | THE PURE MOVE CHECK: whether <base>..<head> only moves code -- files renamed, packages and classes renamed -- so no | `scripts/pure_move_check.py` | skill identity-investigation; 11 tools | pure_move_check_test.py | Python |
+| `scripts/pure_move_compare.py` | THE PURE MOVE CHECK'S COMPARISON (scripts/pure_move_check.py): one changed file, old side against new, as findings -- | `imported` | 1 tool | - | Python |
+| `scripts/pure_move_git.py` | THE PURE MOVE CHECK'S GIT (scripts/pure_move_check.py): one `git` call that refuses with `Undecidable`, and `rev:path` | `imported` | 4 tools | - | Python |
+| `scripts/pure_move_lexer.py` | THE PURE MOVE CHECK'S SCALA LEXER (scripts/pure_move_check.py): a source as code, string-literal and comment segments, | `imported` | 5 tools | - | Python |
+| `scripts/pure_move_moves.py` | THE PURE MOVE CHECK'S MOVES (scripts/pure_move_check.py): `git diff -M -C --name-status` over every first-parent hop of | `imported` | 4 tools | - | Python |
+| `scripts/pure_move_normalise.py` | THE PURE MOVE CHECK'S NORMAL FORM (scripts/pure_move_check.py): a Scala (or twirl) source with its comments dropped, | `imported` | 2 tools | - | Python |
+| `scripts/pure_move_risks.py` | THE PURE MOVE CHECK'S NAME RISK (scripts/pure_move_check.py): a moved class's old name in a production string literal, | `imported` | 1 tool | - | Python |
+| `scripts/pure_move_source.py` | THE PURE MOVE CHECK'S SOURCE READING (scripts/pure_move_check.py): which paths are Scala, twirl, production or a | `imported` | 5 tools | - | Python |
 | `scripts/python-venv` | Prints a directory whose python3 imports <module>, from a pinned venv of <requirements.txt> built once and reused | `scripts/python-venv` | wf alert-backtest; hook pre-push; 5 tools | - | KEEP |
 | `scripts/read-model-snapshot-inputs.sh` | The read-model snapshot's input stamp: a hash of the fixture corpus the snapshot was projected from, checked in beside it | `scripts/read-model-snapshot-inputs.sh` | wf ci; hook pre-push; skill regenerate-snapshots | - | KEEP |
 | `scripts/review-commit` | Commit the review pages' answers as the user's judgements | `scripts/review-commit` | skill identity-investigation; 2 tools | review-commit-test.sh | KEEP |
