@@ -37,7 +37,7 @@ import threading
 import time
 from dataclasses import dataclass
 from types import FrameType, TracebackType
-from typing import BinaryIO, Callable, Dict, Mapping, Optional, Protocol, Sequence, Set, Union
+from typing import BinaryIO, Callable, Dict, Mapping, Optional, Protocol, Sequence, Set, Tuple, Union
 
 NOT_FOUND, NOT_EXECUTABLE, TIMED_OUT = 127, 126, 124
 GRACE = 2.0  # seconds a TERMed group has before it is KILLed
@@ -117,7 +117,7 @@ class SubprocessRunner:
                 return Captured(proc.returncode, out.decode(errors="replace"), (err or b"").decode(errors="replace"))
             except subprocess.TimeoutExpired:
                 end_group(proc)
-                out, err = proc.communicate()
+                out, err = _drained(proc)
                 return Captured(TIMED_OUT, out.decode(errors="replace"), (err or b"").decode(errors="replace"))
 
     def _start(self, command: Command, stdout: Union[int, BinaryIO, None],
@@ -161,6 +161,20 @@ class SubprocessRunner:
     def _failed(argv: Sequence[str], why: str, code: int) -> int:
         print(f"{os.path.basename(argv[0]) if argv else '?'}: {why}", file=sys.stderr)
         return code
+
+
+def _drained(proc: "subprocess.Popen[bytes]") -> Tuple[bytes, Optional[bytes]]:
+    """What an ended group's pipes still hold, read for GRACE at most: a process that escaped into a session of its
+    own may keep them open for ever (Tool self-tests #546), and the bound is the caller's, not that process's."""
+    try:
+        out, err = proc.communicate(timeout=GRACE)
+        return out or b"", err
+    except subprocess.TimeoutExpired as late:
+        for pipe in (proc.stdout, proc.stderr):
+            if pipe is not None:
+                pipe.close()
+        proc.wait()
+        return late.stdout or b"", late.stderr
 
 
 def _read_by(fd: int, deadline: Optional[float]) -> Optional[bytes]:
@@ -262,14 +276,17 @@ class Bounded:
 
 
 def end_group(proc: "subprocess.Popen[bytes]") -> None:
-    """The command's whole process group ended: TERM, GRACE seconds to go, then KILL whatever is left of it."""
+    """The command's whole process group ended: TERM, GRACE seconds for EVERY member to go, then KILL whatever is left
+    of it. The grace is the group's, not its leader's: a member still ending what it started (`bounded`, its command
+    in a group of its own) is KILLed only past it, never the moment the leader is gone (Tool self-tests #546)."""
     for sig in (signal.SIGTERM, signal.SIGKILL):
         try:
             os.killpg(proc.pid, sig)
         except OSError:
             return
         deadline = time.monotonic() + GRACE
-        while time.monotonic() < deadline and proc.poll() is None:
+        # poll() reaps the leader, so its zombie keeps no group alive
+        while time.monotonic() < deadline and (proc.poll() is None or group_alive(proc.pid)):
             time.sleep(0.05)
         if sig == signal.SIGTERM and not group_alive(proc.pid):
             return

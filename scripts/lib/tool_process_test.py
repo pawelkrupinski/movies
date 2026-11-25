@@ -87,6 +87,28 @@ class SubprocessRunnerTest(unittest.TestCase):
                                                                        timeout=0.5)).code)
         self.assertEqual(0, cli_harness.still_running(pids, 5))
 
+    def test_a_group_past_its_bound_has_its_grace_after_its_leader_is_gone(self) -> None:
+        # Tool self-tests #546: the leader (gh-optional.sh's bash) died on the TERM at once, and the group was KILLed
+        # while `bounded` -- still in it -- was ending the command it runs in a group of its own: that command lived
+        # on, holding the capture's pipe, and the tool waited for it forever. Every member gets the GRACE.
+        cleaned = os.path.join(self.dir.name, "cleaned")
+        member = f"trap 'sleep 0.3; echo cleaned > {cleaned}; exit 0' TERM; while :; do sleep 0.05; done"
+        done = self.runner.capture(tool_process.Command(
+            [*SH, f'sh -c "{member}" & sleep 0.3; while :; do sleep 0.05; done'], dict(os.environ), timeout=1))
+        self.assertEqual(124, done.code)
+        self.assertTrue(os.path.exists(cleaned), "the member still cleaning up when the leader went was KILLed")
+
+    def test_a_capture_past_its_bound_returns_though_an_escaped_process_holds_its_pipe(self) -> None:
+        # a process in a session of its own is out of the group's reach: once the group is ended, its output so far
+        # is the capture's, and the tool goes on instead of reading a pipe that never closes (it blocks until killed)
+        escaped = os.path.join(self.dir.name, "escaped")
+        script = (f'{sys.executable} -c "import os, signal; os.setsid(); open(\'{escaped}\', \'w\').write(str(os.getpid()));'
+                  f' signal.pause()" & echo said; exec sleep 86400')
+        done = cli_harness.run_bounded([sys.executable, "-c", RUN_CAPTURE, os.path.dirname(os.path.abspath(__file__)),
+                                        script], env=dict(os.environ), cwd=self.dir.name, stdin=None, bound=30)
+        cli_harness.still_running(escaped, 0)
+        self.assertEqual((0, "124 'said\\n'\n"), (done.code, done.stdout), done.stderr)
+
     def test_a_teed_command_past_its_bound_too(self) -> None:
         pids = os.path.join(self.dir.name, "pids")
         self.assertEqual(124, cli_harness.run_bounded(
@@ -150,6 +172,9 @@ import tool_process
 """
 RUN_TEED = TOOL + """sys.exit(tool_process.SubprocessRunner().run(tool_process.Command(["/bin/sh", "-c", sys.argv[2]],
     dict(os.environ), log=sys.argv[3], tee=True, timeout=0.5)))"""
+RUN_CAPTURE = TOOL + """done = tool_process.SubprocessRunner().capture(tool_process.Command(["/bin/sh", "-c", sys.argv[2]],
+    dict(os.environ), timeout=0.5))
+print(done.code, repr(done.stdout))"""
 RUN_BOUNDED = TOOL + """import signal
 signal.signal(signal.SIGINT, signal.default_int_handler)  # whatever the run around it ignores
 tool_process.SubprocessRunner().run(tool_process.Command(["/bin/sh", "-c", sys.argv[2]],
