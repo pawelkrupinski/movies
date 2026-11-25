@@ -9,7 +9,8 @@ with 128 + the signal, as a shell does.
   value_at(argv, i)              the value of the flag at argv[i], a UsageError when it has none
   minutes(flag, value)           a whole number of minutes, a UsageError otherwise
   Refused(line, with_usage)      a command line refused as a shell tool refused it (`echo line >&2; usage >&2; exit 2`):
-                                 `refused(r, usage)` prints it and gives the exit, 2"""
+                                 `refused(r, usage)` prints it and gives the exit, 2
+  say_as(tool)                   the tool's `say(line)`: `tool: line` on stderr, flushed"""
 from __future__ import annotations
 
 import signal
@@ -19,6 +20,13 @@ from typing import Callable, List, Optional, TypeVar
 
 EX_USAGE = 64
 T = TypeVar("T")
+
+
+def say_as(tool: str) -> Callable[[str], None]:
+    """`say(line)` for `tool`: `<tool>: <line>` on stderr, flushed at once (a progress line, never the tool's output)."""
+    def say(line: str) -> None:
+        print(f"{tool}: {line}", file=sys.stderr, flush=True)
+    return say
 
 
 class UsageError(Exception):

@@ -15,12 +15,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "ci"))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import convergence_reuse  # noqa: E402
+import tool_cli  # noqa: E402
 import tool_github  # noqa: E402
 import tool_process  # noqa: E402
 import tool_shell  # noqa: E402
 
-def say(line: str) -> None:
-    print(f"identity-drift-ci: {line}", file=sys.stderr, flush=True)
+say = tool_cli.say_as("identity-drift-ci")
 
 
 @dataclass(frozen=True)

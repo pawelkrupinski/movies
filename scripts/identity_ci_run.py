@@ -38,6 +38,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import identity_dispatch  # noqa: E402
 import tool_ci_wait  # noqa: E402
+import tool_cli  # noqa: E402
 import tool_dispatch  # noqa: E402
 import tool_git  # noqa: E402
 import tool_github  # noqa: E402
@@ -106,8 +107,7 @@ def take(o: Options, arg: str, rest: List[str]) -> bool:
     return True
 
 
-def say(line: str) -> None:
-    print(f"{TOOL}: {line}", file=sys.stderr, flush=True)
+say = tool_cli.say_as(TOOL)
 
 
 def collect(jobs: str, out: str) -> bool:

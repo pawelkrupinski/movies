@@ -10,6 +10,7 @@ from typing import Callable, List, Mapping, Optional, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
+import tool_cli  # noqa: E402
 import tool_github  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
@@ -37,8 +38,7 @@ class Exit(BaseException):
         self.code = code
 
 
-def say(line: str) -> None:
-    print(f"{TOOL}: {line}", file=sys.stderr, flush=True)
+say = tool_cli.say_as(TOOL)
 
 
 def csv_and(a: str, b: str) -> str:

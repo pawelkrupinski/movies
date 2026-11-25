@@ -69,8 +69,7 @@ class Settings:
                         int(number("DISPATCH_BACKOFF_CAP", 300)))
 
 
-def say(line: str) -> None:
-    print(f"dispatch: {line}", file=sys.stderr, flush=True)
+say = tool_cli.say_as("dispatch")
 
 
 def backoff_next(seconds: int, cap: int = 300) -> int:

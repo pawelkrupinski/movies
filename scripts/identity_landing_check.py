@@ -70,6 +70,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import identity_landing_check_sbt as sbt  # noqa: E402
 import identity_landing_check_verdict as verdict  # noqa: E402
+import tool_cli  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
 
@@ -140,8 +141,7 @@ def take(o: Options, arg: str, rest: List[str]) -> None:
         o.ref = arg
 
 
-def say(line: str) -> None:
-    print(f"{TOOL}: {line}", file=sys.stderr, flush=True)
+say = tool_cli.say_as(TOOL)
 
 
 @dataclass(frozen=True)
