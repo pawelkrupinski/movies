@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (220)
+## Landing and CI (221)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -52,7 +52,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/decoration-discovery.yml` | Weekly discovery of the decorations venues wrap film titles in, as a PR | `workflow: workflow_dispatch, schedule, repository_dispatch` | wf identity-capture, identity-refit | - | - |
 | `.github/workflows/filmweb-diff.yml` | Weekly diagnostic: every upcoming showtime our scrapers publish compared with Filmweb's | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf country-fixture-artifact | - | - |
 | `.github/workflows/ios.yml` | Build and test the iOS app (swift test, the LocalServer decoders, XCUITest) on macOS runners | `workflow: pull_request, push, workflow_dispatch` | wf ci; 4 tools | - | - |
-| `.github/workflows/main.yml` | Main's pipeline: build, test and publish the images Flux deploys; its rows are the gate | `workflow: push, workflow_dispatch` | wf branch-ci, ci, tool-self-tests; hook pre-push; agentctl; 16 tools | - | - |
+| `.github/workflows/main.yml` | Main's pipeline: build, test and publish the images Flux deploys; its rows are the gate | `workflow: push, workflow_dispatch` | wf branch-ci, ci, tool-self-tests; hook pre-push; agentctl; 17 tools | - | - |
 | `.github/workflows/mirror-pinned-images.yml` | Copies every image .github/pinned-images.tsv pins to this repo's GHCR packages by digest | `workflow: schedule, repository_dispatch, push, workflow_dispatch` | 3 tools | - | - |
 | `.github/workflows/nightly-stress.yml` | The tests whose failures are a matter of luck, run enough times for luck to run out | `workflow: schedule, repository_dispatch, workflow_dispatch` | by hand | - | - |
 | `.github/workflows/order-independence.yml` | Nightly: every suite in an order it never meets on push, so an order-dependent test shows | `workflow: schedule, repository_dispatch, workflow_dispatch` | wf android, nightly-stress; 6 tools | - | - |
@@ -77,7 +77,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/alert-step.sh` | Alert, not red: run a check whose failure of a given kind is a third PARTY's or a BACKLOG's | `scripts/ci/alert-step.sh` | wf decodo-probe, identity-ci-staleness, identity-findings-report +2 | alert-step-test.sh | KEEP |
 | `scripts/ci/baseline_ratchet.py` | THE BASELINE RATCHET ENGINE: what the JS/TS and the Python quality ratchets share (js_quality_ratchet.py, | `imported` | hook pre-push; 5 tools | - | Python |
 | `scripts/ci/bounded-step.sh` | A step with its own `timeout-minutes` runs as a process group this script can end | `scripts/ci/bounded-step.sh` | wf country-convergence-leg, decoration-discovery, identity-capture +10; agentctl; skill CLAUDE.md | bounded-step-test.sh | KEEP |
-| `scripts/ci/build-image.sh` | Build one of the Dockerfile's images for linux/amd64 and push it under the commit's SHA tag only (main.yml's publish jobs give it the tags that ship) | `scripts/ci/build-image.sh` | wf ci; 1 tool | build-image-test.sh | MIGRATE |
+| `scripts/ci/build-image.sh` | Build one of the Dockerfile's images for linux/amd64 and push it under the commit's SHA tag only (main.yml's publish jobs give it the tags that ship) | `scripts/ci/build-image.sh` | wf ci; 2 tools | build-image-test.sh | MIGRATE |
 | `scripts/ci/cache-marker.sh` | One cache's outcome as a log line and a metrics line (hit, partial or miss) | `scripts/ci/cache-marker.sh` | 3 tools | cache-marker-test.sh | KEEP |
 | `scripts/ci/cgroup-sampler.sh` | The job's own memory and disk writes, read from its cgroup | `scripts/ci/cgroup-sampler.sh` | wf country-convergence-leg; 6 tools | cgroup_sampler_test.py | KEEP |
 | `scripts/ci/cgroup_sampler.py` | The job's own memory and disk writes, read from its cgroup (the job container's, which holds the job's dockerd and | `scripts/ci/cgroup_sampler.py` | 1 tool | cgroup_sampler_test.py | Python |
@@ -190,6 +190,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/verified_ref.py` | THE LAST GREEN BASE OF A MAIN ROW, KEPT IN GIT: refs/verified/<name> records the newest commit on main the row held | `scripts/ci/verified_ref.py` | wf main; 2 tools | verified_ref_test.py | Python |
 | `scripts/ci/wait-for-run-artifact.sh` | Wait until this workflow run has uploaded artifact <name>, produced by another job of the run | `scripts/ci/wait-for-run-artifact.sh` | wf country-convergence-leg; 1 tool | wait_for_run_artifact_test.py | KEEP |
 | `scripts/ci/wait_for_run_artifact.py` | Wait until THIS workflow run has uploaded artifact <name>, produced by another job of the run -- a country leg's order | `scripts/ci/wait_for_run_artifact.py` | 1 tool | wait_for_run_artifact_test.py | Python |
+| `scripts/ci/wait_out_registry_outage.py` | Run a command against the image registry, and when it lost the registry, wait for it to answer and run it once more. | `scripts/ci/wait_out_registry_outage.py` | wf main | wait_out_registry_outage_test.py | Python |
 | `scripts/ci/workflow_steps.py` | The `uses: <action>` steps of the workflows and composite actions, each with its `with:` block, for the lint tests | `imported` | by hand | - | Python |
 | `scripts/ci/xcresult_annotations.py` | Every failed test of an .xcresult bundle as a GitHub annotation that carries its own assertion. | `scripts/ci/xcresult_annotations.py` | wf ios; 1 tool | xcresult_annotations_test.py | Python |
 | `scripts/ci/xcresult_junit.py` | Turn an .xcresult bundle's test tree into JUnit XML, using only what Xcode ships. | `python3 scripts/ci/xcresult_junit.py` | wf ios; 1 tool | xcresult_junit_test.py | Python |
@@ -534,8 +535,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 214 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 214 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 215 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +19; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 215 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |
@@ -564,7 +565,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/nix/files/identity-regressions.py` | Production match regressions, read from the identity take-change log and published as metrics. | `python3 infra/nix/files/identity-regressions.py` | 1 tool | - | Python |
 | `infra/nix/files/mongodb-offbox-pull.sh` | The off-box copy of mongo-1'S nightly dump, pulled from A machine that is not mongo-1 | `bash infra/nix/files/mongodb-offbox-pull.sh` | 1 tool | - | KEEP |
 | `infra/nix/files/nix-stage-endpoint.sh` | The ONLY thing the CI deploy key can run on this host | `infra/nix/files/nix-stage-endpoint.sh` | wf nix-stage-closures; 2 tools | - | KEEP |
-| `infra/nix/files/nixos-auto-apply.py` | Activate the closure CI already staged here, but ONLY when doing so would disturb nothing. | `infra/nix/files/nixos-auto-apply.py` | wf nix-stage-closures; 4 tools | - | Python |
+| `infra/nix/files/nixos-auto-apply.py` | Activate the closure CI already staged here, but ONLY when doing so would disturb nothing. | `infra/nix/files/nixos-auto-apply.py` | wf nix-stage-closures; 5 tools | - | Python |
 | `infra/nix/files/prometheus-reload.sh` | prometheus.service's ExecReload (roles/prometheus.nix): reload a running Prometheus and EXIT NON-ZERO UNLESS IT TOOK THE NEW CONFIGURATION, so a switch that | `infra/nix/files/prometheus-reload.sh` | by hand | - | KEEP |
 | `infra/nix/files/reboot-required.sh` | Decide whether a host owes a REBOOT: does the boot chain of the closure it is running differ from the boot chain of the closure it actually booted? | `infra/nix/files/reboot-required.sh` | 1 tool | - | KEEP |
 | `infra/nix/files/registry-prune.sh` | Prune registry.kinowo.net's images, run daily by modules/roles/registry.nix before the garbage collector | `infra/nix/files/registry-prune.sh` | by hand | registry-prune-test.sh | KEEP |

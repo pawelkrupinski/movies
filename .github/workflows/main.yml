@@ -601,7 +601,7 @@ jobs:
             cancel-in-progress: false
 
         steps:
-            # Only so the local Grafana action below is on disk.
+            # Only so the local actions below and scripts/ci/wait_out_registry_outage.py are on disk.
             - uses: actions/checkout@v5
               with:
                   sparse-checkout: |
@@ -639,13 +639,20 @@ jobs:
               # manifest copy in the registry — seconds. The SHA tag stays the provenance tag.
               env:
                   REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+              # A registry lost mid-publish (k3s-worker-1's host switch for this very commit, Main #2906; its daily prune)
+              # is waited for, bounded, and the publish run once more: scripts/ci/wait_out_registry_outage.py.
               run: |
                   set -euo pipefail
-                  echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_HOST" -u "$REGISTRY_USER" --password-stdin
-                  docker buildx imagetools create \
-                      -t ${{ env.IMAGE_REPO }}/movies-web:${{ steps.tag.outputs.value }} \
-                      -t ${{ env.IMAGE_REPO }}/movies-web:latest \
-                      ${{ env.IMAGE_REPO }}/movies-web:${{ github.sha }}
+                  publish() {
+                      set -euo pipefail
+                      echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_HOST" -u "$REGISTRY_USER" --password-stdin
+                      docker buildx imagetools create \
+                          -t ${{ env.IMAGE_REPO }}/movies-web:${{ steps.tag.outputs.value }} \
+                          -t ${{ env.IMAGE_REPO }}/movies-web:latest \
+                          ${{ env.IMAGE_REPO }}/movies-web:${{ github.sha }}
+                  }
+                  export -f publish
+                  python3 scripts/ci/wait_out_registry_outage.py "$REGISTRY_HOST" -- bash -c publish
 
             - name: Record that an image exists for this commit
               # PUSHES TO main ONLY. A workflow_dispatch on a branch may publish an image without
@@ -715,7 +722,7 @@ jobs:
             cancel-in-progress: false
 
         steps:
-            # Only so the local Grafana action below is on disk.
+            # Only so the local actions below and scripts/ci/wait_out_registry_outage.py are on disk.
             - uses: actions/checkout@v5
               with:
                   sparse-checkout: |
@@ -753,13 +760,20 @@ jobs:
               # manifest copy in the registry — seconds. The SHA tag stays the provenance tag.
               env:
                   REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+              # A registry lost mid-publish (k3s-worker-1's host switch for this very commit, Main #2906; its daily prune)
+              # is waited for, bounded, and the publish run once more: scripts/ci/wait_out_registry_outage.py.
               run: |
                   set -euo pipefail
-                  echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_HOST" -u "$REGISTRY_USER" --password-stdin
-                  docker buildx imagetools create \
-                      -t ${{ env.IMAGE_REPO }}/movies-worker:${{ steps.tag.outputs.value }} \
-                      -t ${{ env.IMAGE_REPO }}/movies-worker:latest \
-                      ${{ env.IMAGE_REPO }}/movies-worker:${{ github.sha }}
+                  publish() {
+                      set -euo pipefail
+                      echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_HOST" -u "$REGISTRY_USER" --password-stdin
+                      docker buildx imagetools create \
+                          -t ${{ env.IMAGE_REPO }}/movies-worker:${{ steps.tag.outputs.value }} \
+                          -t ${{ env.IMAGE_REPO }}/movies-worker:latest \
+                          ${{ env.IMAGE_REPO }}/movies-worker:${{ github.sha }}
+                  }
+                  export -f publish
+                  python3 scripts/ci/wait_out_registry_outage.py "$REGISTRY_HOST" -- bash -c publish
 
             - name: Record that an image exists for this commit
               # PUSHES TO main ONLY. A workflow_dispatch on a branch may publish an image without

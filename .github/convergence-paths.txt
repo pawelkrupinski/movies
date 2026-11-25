@@ -233,6 +233,7 @@ scripts/ci/shellcheck-action-runs.sh
 scripts/ci/tree-unchanged.sh
 scripts/ci/verified-ref.sh
 scripts/ci/verified_ref.py
+scripts/ci/wait_out_registry_outage.py
 scripts/identity-explain
 scripts/identity-fetch-recording.sh
 scripts/identity-judge-cards
