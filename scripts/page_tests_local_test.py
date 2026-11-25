@@ -46,6 +46,9 @@ if env.get("NPX_FAILS") and env["NPX_FAILS"] in " ".join(argv):
 # the ticket's lock on descriptor 7, as the real one does
 AGENTCTL = '''
 import fcntl
+if argv[:2] == ["gov", "probe"]:  # the probe jvm-gate.sh's governor_bin reads, as the real one answers it
+    print("agentctl governor: admit cores route width")
+    exit(0)
 hold = env.get("GOV_HOLD")
 if hold and not os.path.exists(hold):
     open(hold + ".waiting", "w").close()
