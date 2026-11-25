@@ -91,11 +91,13 @@ scripts/ci/drop-microsoft-apt-sources.sh
 # A recording leg's corpus capture: the tunnel it opens and closes around the read.
 scripts/ci/wait-for-mongo-tunnel.sh
 scripts/ci/close-mongo-tunnel.sh
+scripts/ci/wait_for_mongo_tunnel.py
+scripts/ci/close_mongo_tunnel.py
 .github/scripts/convergence-bisect.sh
 .github/scripts/convergence_bisect.py
 # What the legs' scripts source or read by a computed name, which the generator below cannot follow: the recording
 # tunnel's paths, the identity tools' lib (IDENTITY_SBT), the takes check's report fields and judgements.
-scripts/ci/mongo-tunnel-paths.sh
+scripts/ci/mongo_tunnel.py
 scripts/identity-tools.sh
 scripts/ci/report_fields.py
 scripts/ci/identity_judgements.py

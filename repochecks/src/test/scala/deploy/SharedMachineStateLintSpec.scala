@@ -161,10 +161,7 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
   )
 
   /** file → why it may release a port it found free. */
-  private val ReleasedPortAllowed: Map[String, String] = Map(
-    "scripts/ci/close-mongo-tunnel-test.sh" ->
-      "close-mongo-tunnel.sh kills listeners BY PORT and then proves the port dead: the spec's stages need the port free between them, which holding it would defeat",
-  )
+  private val ReleasedPortAllowed: Map[String, String] = Map.empty
 
   // A `mktemp` template (`/tmp/kinowo.XXXXXX`) names a fresh path per run, not a fixed one — its
   // TRAILING X's are what mktemp replaces, so an X-run mid-name (`/tmp/XXX.log`) is still fixed.

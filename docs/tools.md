@@ -457,7 +457,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/title-trace` | Every step one raw billing goes through, in production order, to the title the resolver reads | `scripts/title-trace` | wf main; skill CLAUDE.md, identity-investigation; 6 tools | title_trace_test.py | MIGRATE |
 | `scripts/venue-replay` | One venue's listings as the code at one or two git refs reads them, from a recording — never the network | `scripts/venue-replay` | skill CLAUDE.md, identity-investigation; 6 tools | venue_replay_test.py | MIGRATE |
 
-## Mirror and data (77)
+## Mirror and data (79)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -509,15 +509,17 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `data/us/scripts/generate_amc_map.py` | Regenerate the AMC venue map from AMC's OWN theatre roster. | `python3 data/us/scripts/generate_amc_map.py` | by hand | - | Python |
 | `data/us/scripts/generate_roster.py` | Generate the tab-separated tables under geodata/src/main/resources/generated/us-roster/ | `python3 data/us/scripts/generate_roster.py` | wf discover-cinemas; hook pre-push; 13 tools | generate_roster_test.py | Python |
 | `data/us/scripts/geocode_towns.py` | Write data/us/towns.json — the town each US venue is in, and where that town is. | `python3 data/us/scripts/geocode_towns.py` | wf discover-cinemas; 3 tools | geocode_towns_test.py | Python |
-| `scripts/ci/close-mongo-tunnel.sh` | Close what wait-for-mongo-tunnel.sh opened, and prove it is closed | `scripts/ci/close-mongo-tunnel.sh` | wf country-convergence-leg, identity-capture, record-scrape-fixtures; 2 tools | close-mongo-tunnel-test.sh | KEEP |
+| `scripts/ci/close-mongo-tunnel.sh` | Close what wait-for-mongo-tunnel.sh opened, and prove it is closed | `scripts/ci/close-mongo-tunnel.sh` | wf country-convergence-leg, identity-capture, record-scrape-fixtures; 2 tools | close_mongo_tunnel_test.py | KEEP |
+| `scripts/ci/close_mongo_tunnel.py` | Close what wait-for-mongo-tunnel.sh opened, and PROVE it is closed. | `scripts/ci/close_mongo_tunnel.py` | 2 tools | close_mongo_tunnel_test.py | Python |
 | `scripts/ci/mongo-exec.sh` | Run a command where the job's throwaway MongoDB runs (start-mongo-replset.sh) | `scripts/ci/mongo-exec.sh` | wf country-convergence-leg; 2 tools | - | KEEP |
 | `scripts/ci/mongo-ping.py` | Exit 0 only if a Mongo server ANSWERS on 127.0.0.1:<port>. | `scripts/ci/mongo-ping.py` | 1 tool | - | Python |
 | `scripts/ci/mongo-top.sh` | The busiest collections of the throwaway MongoDB a convergence leg runs against | `scripts/ci/mongo-top.sh` | wf country-convergence-leg | mongo-top-test.sh | KEEP |
-| `scripts/ci/mongo-tunnel-paths.sh` | Where the prod-Mongo tunnel keeps its pieces on a runner (sourced) | `scripts/ci/mongo-tunnel-paths.sh` | 3 tools | - | KEEP |
+| `scripts/ci/mongo_tunnel.py` | WHERE THE PROD-MONGO TUNNEL KEEPS ITS PIECES ON A RUNNER, and the CI reader's connection string: read by the tool | `imported` | 3 tools | - | Python |
 | `scripts/ci/roster-audit.sh` | The roster-audit workflow's one step: run diagnostics.RosterAudit and turn its verdict into the job's | `scripts/ci/roster-audit.sh` | wf roster-audit | roster-audit-test.sh | KEEP |
 | `scripts/ci/start-mongo-replset.sh` | Start a throwaway MongoDB in Docker as a single-node replica set on 127.0.0.1:27017, and return once it is PRIMARY. | `scripts/ci/start-mongo-replset.sh` | wf ci, identity-capture, identity-lean-whole +5; hook pre-push; 6 tools | start_mongo_replset_test.py | KEEP |
 | `scripts/ci/start_mongo_replset.py` | Start a throwaway MongoDB in Docker as a SINGLE-NODE REPLICA SET on 127.0.0.1:27017, and return once it is PRIMARY. | `scripts/ci/start_mongo_replset.py` | 2 tools | start_mongo_replset_test.py | Python |
-| `scripts/ci/wait-for-mongo-tunnel.sh` | Open the CI end of the route to prod Mongo and return only once bytes flow through it | `scripts/ci/wait-for-mongo-tunnel.sh` | wf country-convergence-leg, identity-capture, record-scrape-fixtures; 3 tools | wait-for-mongo-tunnel-test.sh | MIGRATE |
+| `scripts/ci/wait-for-mongo-tunnel.sh` | Open the CI end of the route to prod Mongo and return only once bytes flow through it | `scripts/ci/wait-for-mongo-tunnel.sh` | wf country-convergence-leg, identity-capture, record-scrape-fixtures; 4 tools | wait_for_mongo_tunnel_test.py | KEEP |
+| `scripts/ci/wait_for_mongo_tunnel.py` | Open the CI end of the route to prod Mongo and DO NOT RETURN until bytes actually flow through it -- then hold it | `scripts/ci/wait_for_mongo_tunnel.py` | 2 tools | wait_for_mongo_tunnel_test.py | Python |
 | `scripts/discover-cinemas/discover.py` | Discover new UK cinemas on flicks.co.uk and wire them into the catalog. | `python3 scripts/discover-cinemas/discover.py` | wf decoration-discovery, discover-cinemas, nix-stage-closures; 5 tools | discover_test.py | Python |
 | `scripts/fleet-db-finish` | Count the fleet's three old collections in Poland's kinowo and drop them on an exact request (fleet DB migration, step 9) | `scripts/fleet-db-finish` | 2 tools | fleet-db-finish-test.sh | MIGRATE |
 | `scripts/lib/mongo_local.py` | THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib; | `imported` | 7 tools | - | Python |
@@ -529,8 +531,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/local-mirror/prod-tunnel.sh` | The one place that knows how a laptop reaches prod Mongo | `bash scripts/local-mirror/prod-tunnel.sh` | 10 tools | prod-tunnel-test.sh | MIGRATE |
 | `scripts/local-mirror/service.sh` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure — no terminal to babysit | `scripts/local-mirror/service.sh` | 4 tools | service-test.sh | MIGRATE |
 | `scripts/local-mirror/start-local-mongo.sh` | Ensure the native (Homebrew) single-node replica-set Mongo that backs local dev is up on :28017 | `scripts/local-mirror/start-local-mongo.sh` | 5 tools | start-local-mongo-test.sh | MIGRATE |
-| `scripts/mongo-grants` | The Mongo access every database needs, checked against prod or granted | `scripts/mongo-grants` | 5 tools | mongo-grants-test.sh | KEEP |
-| `scripts/mongo_grants.py` | THE MONGO ROLES EVERY DATABASE NEEDS, CHECKED OR GRANTED ON PROD (scripts/mongo-grants). | `python3 scripts/mongo_grants.py` | 1 tool | - | Python |
+| `scripts/mongo-grants` | The Mongo access every database needs, checked against prod or granted | `scripts/mongo-grants` | 3 tools | mongo-grants-test.sh | KEEP |
+| `scripts/mongo_grants.py` | THE MONGO ROLES EVERY DATABASE NEEDS, CHECKED OR GRANTED ON PROD (scripts/mongo-grants). | `python3 scripts/mongo_grants.py` | 2 tools | - | Python |
 | `scripts/own-mongod.sh` | A MongoDB of the caller's own: a single-node replica set on a free port, its data in a temporary directory, removed when the caller ends | `bash scripts/own-mongod.sh` | 2 tools | - | KEEP |
 | `scripts/poster-eval` | How strong a venue poster is as identity evidence, measured on prod's real candidate sets | `scripts/poster-eval` | skill identity-investigation; 1 tool | poster_eval_test.py | KEEP |
 | `scripts/poster_eval.py` | How strong a venue poster is as identity evidence, on prod's REAL candidate sets: the logic of scripts/poster-eval. | `python3 scripts/poster_eval.py` | 1 tool | poster_eval_test.py | Python |

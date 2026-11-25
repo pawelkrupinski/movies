@@ -101,7 +101,6 @@ scripts/ci/memory-guard.sh	KEEP
 scripts/ci/mirror-pinned-images.sh	KEEP
 scripts/ci/mongo-exec.sh	KEEP
 scripts/ci/mongo-top.sh	KEEP
-scripts/ci/mongo-tunnel-paths.sh	KEEP
 scripts/ci/no-network	MIGRATE
 scripts/ci/old-ref-deps-key.sh	KEEP
 scripts/ci/order-passes-present.sh	KEEP
@@ -135,7 +134,7 @@ scripts/ci/takes-skip-shadow-report.sh	KEEP
 scripts/ci/tree-unchanged.sh	KEEP
 scripts/ci/ubuntu-security-via-mirror.sh	KEEP
 scripts/ci/verified-ref.sh	KEEP
-scripts/ci/wait-for-mongo-tunnel.sh	MIGRATE
+scripts/ci/wait-for-mongo-tunnel.sh	KEEP
 scripts/ci/wait-for-run-artifact.sh	KEEP
 scripts/ci/xcuitest-each-class-alone.sh	MIGRATE
 scripts/class-cycles	KEEP

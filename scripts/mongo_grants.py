@@ -12,7 +12,7 @@ deploy.MongoGrantsList; MongoGrantsListSpec keeps it current): rows of principal
 WHO EACH PRINCIPAL IS comes from its connection string, never from a name written here:
   app      the user and auth database of the app's MONGODB_URI (authSource, else the URI's database, else admin);
   ci-read  the same, of $MONGO_CI_READ_URI when set, else of the URI the CI tunnel builds
-           (scripts/ci/mongo-tunnel-paths.sh: mongo_ci_read_uri) for the user the mongo-ci-read endpoint hands out
+           (scripts/ci/mongo_tunnel.py: ci_read_uri) for the user the mongo-ci-read endpoint hands out
            (infra/nix/modules/roles/mongo-ci-read.nix, its `username` option's default).
 
 --check prints each missing role and exits 1 if there is any. --apply grants exactly the missing roles, as root,
@@ -28,6 +28,8 @@ import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
+sys.path.insert(0, os.path.join(HERE, "ci"))
+from mongo_tunnel import ci_read_uri as tunnel_uri  # noqa: E402
 MONGOSH_AT = os.path.join(HERE, "local-mirror", "mongosh-at.sh")
 
 # A role that carries another on the same database: holding readWrite satisfies a required read.
@@ -61,9 +63,7 @@ def ci_read_username():
 def ci_read_uri():
     if os.environ.get("MONGO_CI_READ_URI"):
         return os.environ["MONGO_CI_READ_URI"]
-    script = '. "$1/scripts/ci/mongo-tunnel-paths.sh"; mongo_ci_read_uri "$2:-" 0'
-    return subprocess.run(["bash", "-c", script, "_", REPO, ci_read_username()],
-                          check=True, capture_output=True, text=True).stdout.strip()
+    return tunnel_uri(f"{ci_read_username()}:-", "0")
 
 
 def required(path):

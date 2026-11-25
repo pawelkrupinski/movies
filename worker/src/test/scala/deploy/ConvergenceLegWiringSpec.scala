@@ -801,11 +801,11 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     withClue("started before the JDK and caches it is meant to overlap: ") {
       RepoFile.positionOf(steps, "Install socat") should be < RepoFile.positionOf(steps, "./.github/actions/setup-jdk")
     }
-    val tunnel = RepoFile.read("scripts/ci/wait-for-mongo-tunnel.sh")
-    val waits  = tunnel.indexOf("in-background.sh\" wait socat-install")
+    val tunnel = RepoFile.read("scripts/ci/wait_for_mongo_tunnel.py")
+    val waits  = tunnel.indexOf("\"in-background.sh\"), \"wait\", \"socat-install\"")
     withClue("the tunnel waits for the background install: ")(waits should be >= 0)
     withClue("...and still installs socat itself when that never ran or failed: ") {
-      tunnel.indexOf("install-apt-package.sh\" socat") should be > waits
+      tunnel.indexOf("\"install-apt-package.sh\"), \"socat\"") should be > waits
     }
   }
 
