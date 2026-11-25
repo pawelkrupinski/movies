@@ -68,150 +68,46 @@
 # and concluded: the gate's own proof stands.
 # env: GH_REPO, GH_TOKEN (gh's own), FIXTURE_RELEASE_TAG (the pairs). Tested by convergence_reuse_test.py and
 # ConvergenceReuseSpec.
+# The reads, the matrix and the judgement live in convergence_forge.py, convergence_rows.py and convergence_judge.py; this
+# file is the commands over them, and re-exports their names (the tests and scripts/identity_drift_ci_runs.py read them here).
 
 
 from __future__ import annotations
 
-import hashlib
+import datetime
 import json
 import os
-import re
 import subprocess
 import sys
-import tempfile
+from typing import Any, Callable, Dict, List, Mapping, NamedTuple, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import drift_seeds as drift_seeds  # noqa: E402,F401
+from convergence_forge import PATHS_FILE as PATHS_FILE  # noqa: E402,F401
+from convergence_forge import ROOT, SEED_KEYS, SUITE_FILES as SUITE_FILES, SUITES as SUITES, WORKFLOW as WORKFLOW  # noqa: E402,F401
+from convergence_forge import TAKES_WORKFLOW_FILE, WORKFLOW_FILE, Status, StatusCache, Unproven as Unproven  # noqa: E402,F401
+from convergence_forge import copy_statuses, git as git, key as key, listed as listed, main_base, same_tree  # noqa: E402,F401
+from convergence_forge import gh, pair_of, repo, patterns_of as patterns_of, run_facts, run_jobs, run_json, source_base  # noqa: E402,F401
+from convergence_forge import takes_child, under, workflow_at as workflow_at  # noqa: E402,F401
+from convergence_judge import Facts, Mine  # noqa: E402,F401
+from convergence_judge import drift_rows as drift_rows, incomplete as incomplete, inputs_unlike_main as inputs_unlike_main  # noqa: E402,F401
+from convergence_judge import jobs_by_name as jobs_by_name, judge as judge, seeds_of as seeds_of  # noqa: E402,F401
+from convergence_rows import PHASES_EXPRESSION as PHASES_EXPRESSION, Matrix, Row  # noqa: E402,F401
+from convergence_rows import countries as countries, drift_phases as drift_phases, expected_rows as expected_rows  # noqa: E402,F401
+from convergence_rows import leg_matrix as leg_matrix, leg_plan as leg_plan, leg_rows_text, main_plan as main_plan  # noqa: E402,F401
+from convergence_rows import matrix_phases as matrix_phases, matrix_rows as matrix_rows, order_matrix as order_matrix  # noqa: E402,F401
+from convergence_rows import parse_rows as parse_rows, planned_matrix as planned_matrix, recorded_matrix  # noqa: E402,F401
+from convergence_rows import suite_tails as suite_tails  # noqa: E402,F401
 import convergence_slots  # noqa: E402
-import drift_seeds  # noqa: E402
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(os.path.dirname(HERE))
-PATHS_FILE = ".github/convergence-paths.txt"
-WORKFLOW = ".github/workflows/identity-model-convergence.yml"
-WORKFLOW_FILE = "identity-model-convergence.yml"
-# TWO SUITES, TWO WORKFLOWS (the owner, 2026-11-08): `Identity takes` runs every leg's takes rows (takes, takes-base, the
-# takes-drift rows, the harnesses' A/A rows), `Identity model convergence` the rest (convergence, the order passes and their
-# comparisons, next-day). Both gate. The countries' rows (LEG_ROWS) are written once, in the convergence workflow, and the
-# takes preflight reads them there. Convergence's preflight dispatches the takes run of every run it makes, titled
-# TAKES_TITLE: a takes run's parent is the convergence run it was dispatched for (takes_child).
-TAKES_WORKFLOW = ".github/workflows/identity-takes.yml"
-TAKES_WORKFLOW_FILE = "identity-takes.yml"
-SUITES = ("convergence", "takes")
-SUITE_FILES = {"convergence": WORKFLOW_FILE, "takes": TAKES_WORKFLOW_FILE}
-TAKES_TITLE = "Identity takes (convergence run {})"
-FACTS_ARTIFACT = "convergence-reuse-facts"
-FACTS_NAME = "facts.json"
-# The leg's own expansion of a country into rows (country-convergence-leg.yml's `phase:` matrix), unless main's plan hands
-# the rows in their start order (`phases`, matrix_phases() longest first). expected_rows() models exactly this; ConvergenceReuseSpec fails the moment the leg's expression is anything else.
-PHASES_EXPRESSION = (
-    "${{ fromJson(inputs.phases || inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '[\"takes-drift-2\"]' || "
-    "inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '[\"takes-drift-1\"]' || '[\"takes-drift-1\",\"takes-drift-2\"]') || "
-    "inputs.takes-only && '[\"takes\",\"takes-base\"]' || format('[\"convergence\"{0}{1}{2}{3}]', "
-    "inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && "
-    "',\"order-independence-p01-pass0\",\"order-independence-p01-pass1\"' || ',\"order-independence-p01-pass0\","
-    "\"order-independence-p01-pass1\",\"order-independence-p12-pass1\",\"order-independence-p12-pass2\"') || "
-    "',\"order-independence\"') || '', "
-    "inputs.next-day-command != '' && ',\"next-day\"' || '', inputs.mode == 'hermetic' && inputs.takes-row && "
-    "',\"takes\",\"takes-base\",\"takes-drift-1\",\"takes-drift-2\"' || '', inputs.mode == 'hermetic' && "
-    "inputs.takes-row && inputs.harness-aa && ',\"takes-drift-aa-pass0\",\"takes-drift-aa-pass1\",\"takes-aa\"' || '')) }}"
-)
-# A split country's order rows on main: each pass in a row of its own, then the two comparisons (the callers' `order-independence-p01|p12` jobs).
-ORDER_SPLIT_ROWS = ["order-independence-p01-pass0", "order-independence-p01-pass1", "order-independence-p12-pass1",
-                    "order-independence-p12-pass2", "order-independence-p01", "order-independence-p12"]
-GH_SECONDS = 60
-STATUS_PAGES = 4
-BASE_WALK = 100
+_under = under
 FIND_RUNS = 30
 FIND_HOURS = 24
-
+Opts = Dict[str, str]
+Handler = Callable[[Opts, List[str]], int]
 
 USAGE = ("usage: convergence_reuse.py key|inputs|facts|verify|find|complete|legs|drift-rows|expected-rows|takes-run|judge ... "
          "(see the header)")
-
-
-class Unproven(Exception):
-    """A fact this run could not read: no reuse, said why."""
-
-
-# ── the key ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-
-
-def git(*args, cwd=None):
-    return subprocess.run(["git", *args], cwd=cwd or ROOT, check=True, capture_output=True, text=True).stdout
-
-
-def patterns_of(text):
-    """The paths file's patterns, as the changed-paths action's matches.sh reads them: `dir/**`, an exact path, either
-    `!`-prefixed to take paths out; `#` comments, blanks, a YAML list's `- ` and quotes dropped."""
-    out = []
-    for line in text.splitlines():
-        line = line.strip()
-        line = re.sub(r"^-\s*", "", line).strip("'\"")
-        if line and not line.startswith("#"):
-            out.append(line)
-    return out
-
-
-def _under(path, pattern):
-    return path.startswith(pattern[:-2]) if pattern.endswith("/**") else path == pattern
-
-
-def listed(path, patterns):
-    included = any(_under(path, p) for p in patterns if not p.startswith("!"))
-    return included and not any(_under(path, p[1:]) for p in patterns if p.startswith("!"))
-
-
-def key(rev="HEAD", cwd=None):
-    """sha256 over `<mode> <type> <object>\\t<path>` of every path the commit's own paths file lists, in path order: two
-    commits share a key exactly when every such file is byte-identical (and the file itself is listed)."""
-    patterns = patterns_of(git("show", f"{rev}:{PATHS_FILE}", cwd=cwd))
-    if not patterns:
-        raise Unproven(f"{rev} lists no convergence paths")
-    digest = hashlib.sha256()
-    for line in git("ls-tree", "-r", "--full-tree", rev, cwd=cwd).splitlines():
-        meta, path = line.split("\t", 1)
-        if listed(path, patterns):
-            digest.update(f"{meta}\t{path}\n".encode())
-    return digest.hexdigest()
-
-
-# ── the rows main runs ────────────────────────────────────────────────────────────────────────────────────────────────
-
-
-def matrix_rows(workflow_text):
-    """Each `include:` row of the `leg` matrix as a dict (the one-line flow mappings the workflow writes)."""
-    rows = []
-    for m in re.finditer(r"^\s*-\s*\{(.*)\}\s*$", workflow_text, re.M):
-        row = {}
-        for k, v in re.findall(r"([\w-]+):\s*('[^']*'|[^,]*)", m.group(1)):
-            row[k] = v.strip().strip("'")
-        if "country" in row and "cmd" in row:
-            rows.append(row)
-    return rows
-
-
-def expected_rows(workflow_text, suite="convergence"):
-    """`<phase> (<country>)` of every row main's run of `suite` expands to: PHASES_EXPRESSION with takes-only false,
-    hermetic and both order phases (main's order-phases.sh answer) -- for convergence its convergence, order and next-day
-    rows and the order comparisons, for takes the takes check's and every drift seed's rows. Not the harnesses' A/A rows
-    (`takes-drift-aa` and its two passes, `takes-aa`, harness_aa.py): only a push that changed the harness runs it, and no
-    verdict reused from a landing check is one -- a reused run skips it with every other row."""
-    out = []
-    for row in matrix_rows(workflow_text):
-        phases = matrix_phases(row, suite=suite)
-        if suite == "convergence" and row.get("order", "") and _true(row.get("order-split", "false")):
-            # a split country's passes are compared by the callers' `order-independence-p01|p12` jobs, a row per pair named as the
-            # two-pass row was
-            phases += [p for p in ORDER_SPLIT_ROWS if "-pass" not in p]
-        out += [f"{p} ({row['country']})" for p in phases]
-    if not out:
-        raise Unproven("no `leg` matrix rows in the workflow")
-    return out
-
-
-def countries(workflow_text):
-    return [(r["country"], r["code"]) for r in matrix_rows(workflow_text)]
-
 
 # ── the inputs ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -234,10 +130,10 @@ INPUTS = {
 BOOLEANS = {"profile", "takes-only", "drift-only", "takes-no-store", "drift-twice"}
 
 
-def leg_inputs(env):
+def leg_inputs(env: Mapping[str, str]) -> Dict[str, str]:
     """The legs' inputs from the dispatch's, normalised: a boolean is `true` or `false` (a dispatch's arrives through the
     environment as the STRING "true"), an empty value its default."""
-    out = {}
+    out: Dict[str, str] = {}
     for name, (var, default) in INPUTS.items():
         value = (env.get(var) or "").strip()
         if name in BOOLEANS:
@@ -246,288 +142,61 @@ def leg_inputs(env):
     return out
 
 
-SEED_KEYS = ("drift-seed-1", "drift-seed-2")
-
-
-def scalar(text):
-    """A flow-map value as YAML types it: quotes make a string, `true`/`false` a boolean, digits a number."""
-    text = text.strip()
-    if len(text) >= 2 and text[0] == text[-1] and text[0] in "'\"":
-        return text[1:-1]
-    if text in ("true", "false"):
-        return text == "true"
-    for kind in (int, float):
-        try:
-            return kind(text)
-        except ValueError:
-            pass
-    return text
-
-
-def parse_rows(text):
-    """The `- { key: value, ... }` rows of a matrix written as flow maps (values hold no comma or brace), as dicts."""
-    rows = []
-    for m in re.finditer(r"-\s*\{([^}]*)}", text):
-        row = {}
-        for field in m.group(1).split(","):
-            key, sep, value = field.partition(":")
-            if sep:
-                row[key.strip()] = scalar(value)
-        rows.append(row)
-    return rows
-
-
-def leg_matrix(rows, inputs, suite="convergence"):
-    """The `leg` job's matrix as JSON-able data (identity-model-convergence.yml, identity-takes.yml): a `country` vector the
-    rows extend, so a row is named `leg (<country>)` by default, holding only the countries this run starts -- a takes-only
-    or drift-only takes run with `takes-countries` keeps those, and a convergence run asked for takes rows alone (the
-    rows are the takes run's) none. A country left out is no row at all: a matrix job skipped for it would show its
-    `name:` template raw in the run graph (`${{ matrix.phase }} (...)`)."""
-    partial = inputs.get("takes-only") == "true" or inputs.get("drift-only") == "true"
-    if suite == "convergence" and partial:
-        return {"country": [], "include": []}
-    wanted = {c.strip() for c in inputs.get("takes-countries", "").split(",") if c.strip()}
-    kept = [r for r in rows if not (partial and wanted) or r["code"] in wanted]
-    return {"country": [r["country"] for r in kept], "include": kept}
-
-
-def order_matrix(matrix, suite="convergence"):
-    """The order-comparison jobs' matrix (`order-independence-p01|p12 (<country>)` in identity-model-convergence.yml and
-    verify-scrape-recording.yml): the `leg` matrix's countries that split their order replay into pass rows. A country with
-    none gets no row, and a suite that hands its legs no order command (Identity takes) none at all -- the jobs are then
-    skipped under their plain names, never a raw `${{ ... }}` one."""
-    kept = [r for r in matrix["include"] if suite == "convergence" and r.get("order", "") and _true(r.get("order-split", "false"))]
-    return {"country": [r["country"] for r in kept], "include": kept}
-
-
-def _true(value):
-    return str(value).lower() == "true"
-
-
-def matrix_phases(row, order_phases="both", harness_aa=False, suite="convergence"):
-    """The `convergence` matrix rows main's leg for `row` expands to in `suite` (PHASES_EXPRESSION, hermetic, neither
-    takes-only nor drift-only; the A/A rows when the preflight decided them), in the workflow's order: convergence's
-    convergence, order passes and next-day, takes' takes, takes-base and drift rows. The comparison jobs after them
-    (the order comparisons, the A/A passes' `takes-drift-aa`) are not among them."""
-    if suite == "takes":
-        return (["takes", "takes-base"] + drift_phases(row["code"])
-                + (["takes-drift-aa-pass0", "takes-drift-aa-pass1", "takes-aa"] if harness_aa else []))
-    phases = ["convergence"]
-    if row.get("order", ""):
-        if _true(row.get("order-split", "false")):
-            phases += [p for p in ORDER_SPLIT_ROWS if "-pass" in p and (order_phases != "one" or "-p01-" in p)]
-        else:
-            phases.append("order-independence")
-    if row.get("next-day", ""):
-        phases.append("next-day")
-    return phases
-
-
-def drift_phases(code, pins=""):
-    """The country's takes-drift rows (drift_seeds.rows_of): 1 and 2, and any further row its fixed seeds are spread
-    over; a pinned dispatch's pinned rows alone."""
-    return [f"takes-drift-{r}" for r in drift_seeds.rows_of(code, pins=pins)]
-
-
-def suite_tails(rows, suite, order_phases="both", harness_aa=False, costs=None):
-    """What follows a country's rows in `suite`'s comparison job: convergence's order comparisons (a split country),
-    takes' A/A comparison (when the preflight decided the A/A rows)."""
-    costs = convergence_slots.read_costs() if costs is None else costs
-    if suite == "takes":
-        return {r["code"]: convergence_slots.AA_COMPARE_MINUTES for r in rows} if harness_aa else {}
-    compares = convergence_slots.COMPARE_PHASES[:1] if order_phases == "one" else convergence_slots.COMPARE_PHASES
-    return {r["code"]: max(convergence_slots.cost(r["code"], p, costs) for p in compares)
-            for r in rows if r.get("order", "") and _true(r.get("order-split", "false"))}
-
-
-def main_plan(rows, inputs, order_phases="both", harness_aa=False):
-    """{suite: {code: share}}: both of main's suites in the account's 20 runners at once (convergence_slots.plan_suites).
-    Convergence's preflight dispatches the takes run as it starts, so the two run side by side; each preflight plans both
-    from the same rows and costs and keeps its own suite's part. The other suite is planned as main runs it (both order
-    phases, no A/A row) whatever this run's own order phases or A/A decision: what it does not know it plans as main's."""
-    costs = convergence_slots.read_costs()
-    twice = inputs.get("drift-twice") == "true"
-    phases = {"convergence": {r["code"]: matrix_phases(r, order_phases, suite="convergence") for r in rows},
-              "takes": {r["code"]: matrix_phases(r, harness_aa=harness_aa, suite="takes") for r in rows}}
-    tails = {"convergence": suite_tails(rows, "convergence", order_phases, costs=costs),
-             "takes": suite_tails(rows, "takes", harness_aa=harness_aa, costs=costs)}
-    return convergence_slots.plan_suites(phases, costs, tails_by_suite=tails, drift_twice=twice)
-
-
-def leg_plan(rows, inputs, order_phases="both", harness_aa=False, suite="convergence"):
-    """Main's `suite` in its part of the 20 runners (main_plan): each country's rows longest first and its share. A
-    drift-only takes run plans its takes-drift rows alike (every row a country has, or the pinned ones) in all 20 (no
-    convergence run beside it); a takes-only run gets {} (two rows a country: the leg's own expression, no cap)."""
-    if suite == "takes" and inputs.get("takes-only") == "true":
-        return {}
-    if suite == "takes" and inputs.get("drift-only") == "true":
-        pins = ",".join(inputs.get(k, "") for k in SEED_KEYS)
-        return convergence_slots.plan({r["code"]: drift_phases(r["code"], pins) for r in rows},
-                                      convergence_slots.read_costs(), drift_twice=inputs.get("drift-twice") == "true")
-    return main_plan(rows, inputs, order_phases, harness_aa)[suite]
-
-
-def planned_matrix(rows, inputs, order_phases="both", harness_aa=False, suite="convergence"):
-    """leg_matrix with each row's `phases` (JSON, longest first; empty: the leg's own expression) and `max-parallel`."""
-    matrix = leg_matrix(rows, inputs, suite)
-    shares = leg_plan(matrix["include"], inputs, order_phases, harness_aa, suite) if matrix["include"] else {}
-    matrix["include"] = [dict(r, **({"phases": json.dumps(shares[r["code"]]["phases"], separators=(",", ":")),
-                                     "max-parallel": shares[r["code"]]["max-parallel"]} if shares else
-                                    {"phases": "", "max-parallel": convergence_slots.UNCAPPED}))
-                         for r in matrix["include"]]
-    return matrix
-
-
-def run_seeds(env, inputs):
+def run_seeds(env: Mapping[str, str], inputs: Mapping[str, str]) -> Dict[str, str]:
     """This run's two takes-drift pins (drift_seeds.resolve): the dispatch's, or none -- each row then replays its fixed set."""
     one, two = drift_seeds.resolve(int(env.get("GITHUB_RUN_NUMBER") or 1), inputs.get("drift-seeds", ""),
                                    inputs.get("drift-only") == "true")
     return {"drift-seed-1": str(one or ""), "drift-seed-2": str(two or "")}
 
 
-def seeds_of(inputs):
-    """`S1,S2`: the seeds a run's takes-drift rows replayed, as its facts' inputs name them; a run from before the rotation
-    names none and replayed seeds 1 and 2."""
-    if not any(k in (inputs or {}) for k in SEED_KEYS):
-        return "1,2"
-    return ",".join(str((inputs or {}).get(k, "")) for k in SEED_KEYS)
+def pairs(workflow_text: str) -> Dict[str, str]:
+    """Each country's pair as a hermetic leg would resolve it now: the pin's line, the fills published over its tree."""
+    return {code: pair_of(code) for _, code in countries(workflow_text)}
 
 
-def inputs_unlike_main(inputs, order_phases):
-    """Why legs handed `inputs` (and `order_phases`) do not run what main's run does; empty when they do."""
-    why = []
-    if inputs.get("takes-only") != "false":
-        why.append("takes-only: only the takes rows ran")
-    # A drift-only run (scripts/identity-drift-ci) ran the takes-drift rows alone: never a source for main's full verdict.
-    if inputs.get("drift-only", "false") != "false":
-        why.append("drift-only: only the takes-drift rows ran")
-    if inputs.get("drift-explore", ""):
-        why.append(f"drift-explore {inputs['drift-explore']!r}: the explorer's random seeds, not main's suite")
-    if inputs.get("drift-seeds", ""):
-        why.append(f"drift-seeds {inputs['drift-seeds']!r}: not main's suite")
-    for name in ("takes-countries", "recording", "jvm-options", "runner"):
-        if inputs.get(name, ""):
-            why.append(f"{name} {inputs[name]!r}: not main's suite")
-    if inputs.get("takes-skip") not in ("shadow", "off"):
-        why.append(f"takes-skip {inputs.get('takes-skip')!r}: main takes every take in full (shadow)")
-    if order_phases != "both":
-        why.append(f"order-independence phases {order_phases!r}: main runs both (p01 and p12)")
-    return why
+# ── commands ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-# ── the judgement ─────────────────────────────────────────────────────────────────────────────────────────────────────
+def read_json(path: str) -> Any:
+    with open(path) as f:
+        return json.load(f)
 
 
-def jobs_by_name(jobs):
-    """A run's jobs by their own name: github.com names a reusable call's inner job `leg (poland) / takes (poland)` and
-    lists no caller job. This reads the inner name (`takes (poland)`), and each caller (`leg (poland)`) as the worst of
-    its rows (success only if every row succeeded), unless the run lists the caller itself. The one reader of job names:
-    the verdict (`complete`, `judge`) and scripts/identity-drift-ci (`drift-rows`) both go through it."""
-    out, callers = {}, {}
-    for j in jobs:
-        name = j.get("name") or ""
-        caller, sep, inner = name.partition(" / ")
-        if sep:
-            out.setdefault(inner, j)
-            callers.setdefault(caller, []).append(j)
-        else:
-            out[name] = j
-    for caller, rows in callers.items():
-        if caller not in out:
-            done = all(r.get("status") == "completed" for r in rows)
-            ok = done and all(r.get("conclusion") in ("success", "skipped") for r in rows)
-            out[caller] = {"name": caller, "status": "completed" if done else "in_progress",
-                           "conclusion": ("success" if ok else "failure") if done else None}
-    return out
+def summary(lines: List[str]) -> None:
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if path:
+        with open(path, "a") as f:
+            f.write("\n".join(lines) + "\n")
 
 
-DRIFT_ROW = re.compile(r"^takes-drift-[0-9]+ \(")
+def suite_of(opts: Optional[Mapping[str, str]] = None) -> str:
+    """The suite a command judges: --suite, else $CONVERGENCE_SUITE, else convergence."""
+    suite = (opts or {}).get("suite") or os.environ.get("CONVERGENCE_SUITE") or "convergence"
+    if suite not in SUITES:
+        raise ValueError(f"suite {suite!r}: one of {', '.join(SUITES)}")
+    return suite
 
 
-def drift_rows(jobs):
-    """`name\tstatus\tconclusion` lines for each takes-drift row of a run's jobs, read through jobs_by_name."""
-    return [f"{name}\t{j.get('status') or ''}\t{j.get('conclusion') or ''}"
-            for name, j in jobs_by_name(jobs).items() if DRIFT_ROW.match(name)]
+def cmd_inputs(_: Opts) -> int:
+    inputs = leg_inputs(os.environ)
+    try:
+        inputs.update(run_seeds(os.environ, inputs))
+    except ValueError as e:
+        print(f"::error title=drift seeds::{e}", file=sys.stderr)
+        return 2
+    for name, value in inputs.items():
+        print(f"{name}={value}")
+    pinned = f", pinned {inputs['drift-seeds']!r}" if inputs["drift-seeds"] else ", each row its fixed set"
+    summary([f"Takes-drift seeds this run: takes-drift-1 replays seed {inputs['drift-seed-1'] or '(none)'}, takes-drift-2 "
+             f"seed {inputs['drift-seed-2'] or '(none)'} (run #{os.environ.get('GITHUB_RUN_NUMBER', '?')}"
+             f"{pinned}; scripts/ci/drift_seeds.py)"])
+    if os.environ.get("LEG_INPUTS_FILE"):
+        with open(os.environ["LEG_INPUTS_FILE"], "w") as f:
+            json.dump(inputs, f, sort_keys=True)
+    return 0
 
 
-def judge(source_run, jobs, facts, mine):
-    """Why the source run's verdict does NOT hold for this commit; empty when it does.
-
-    source_run: the run as the actions API answers it (id, path, status, conclusion, head_sha)
-    jobs:       its jobs ({name, status, conclusion})
-    facts:      its facts artifact (facts()), None when it has none
-    mine:       {"key", "pairs", "inputs", "order_phases", "expected_rows", "takes_bases": {code: (source base, main
-                base, same key)}, "suite"} -- what this run computed (a convergence run judges no takes base: {})"""
-    why = []
-    file = SUITE_FILES[mine.get("suite") or "convergence"]
-    if not str(source_run.get("path", "")).endswith(file):
-        why.append(f"run {source_run.get('id')} is no {file} run")
-    if source_run.get("status") != "completed" or source_run.get("conclusion") != "success":
-        why.append(f"run {source_run.get('id')} is {source_run.get('status')}/{source_run.get('conclusion')}, not a green "
-                   "completed run")
-    if facts is None:
-        why.append("the source recorded no reuse facts")
-        return why
-    if facts.get("reused_from"):
-        why.append(f"the source reused run {facts['reused_from']} itself and ran no row")
-    if facts.get("key") != mine["key"]:
-        why.append(f"the tree differs: key {str(facts.get('key'))[:12]} there, {mine['key'][:12]} here")
-    if facts.get("pairs") != mine["pairs"]:
-        moved = sorted(c for c in set(facts.get("pairs") or {}) | set(mine["pairs"])
-                       if (facts.get("pairs") or {}).get(c) != mine["pairs"].get(c))
-        why.append(f"the recorded pair or its fills moved since: {', '.join(moved) or 'unreadable'}")
-    for reason in inputs_unlike_main(facts.get("inputs") or {}, facts.get("order_phases")):
-        why.append(f"the source's legs: {reason}")
-    for reason in inputs_unlike_main(mine["inputs"], mine["order_phases"]):
-        why.append(f"this run: {reason}")
-    result = jobs_by_name(jobs)
-    callers = sorted({re.sub(r"^[^(]*", "leg ", r) for r in mine["expected_rows"]})
-    for name in list(mine["expected_rows"]) + callers:
-        job = result.get(name)
-        if job is None:
-            why.append(f"`{name}` did not run there")
-        elif job.get("conclusion") != "success":
-            why.append(f"`{name}` ended {job.get('status')}/{job.get('conclusion')} there")
-    for code, (theirs, main, same) in sorted(mine["takes_bases"].items()):
-        if not theirs:
-            why.append(f"takes ({code}): the source's base is unknown (no `identity takes ({code})` status of it)")
-        elif not main:
-            why.append(f"takes ({code}): no commit before this one passed its takes check -- main's base is unknown")
-        elif not same:
-            why.append(f"takes ({code}): judged against {theirs[:9]} there, main would judge against {main[:9]}")
-    return why
-
-
-# ── no false green ────────────────────────────────────────────────────────────────────────────────────────────────────
-
-# the takes check and every fixed-seed drift row (takes-drift-1, -2, and any further row drift_seeds.rows_of names)
-VERDICT_ROW = re.compile(r"^(takes|takes-drift-[0-9]+) \(")
-DECIDED = ("success", "failure")
-
-
-def incomplete(jobs, rows, reused_from="", inputs=None, order_phases="both"):
-    """Why a run with `jobs` gives no verdict for THE GATE: each takes or takes-drift row of `rows` (expected_rows())
-    that did not run to a decided conclusion, and inputs that are not main's suite; empty when every one decided, or
-    when `reused_from` names the proven source whose rows did."""
-    if reused_from:
-        return []
-    # what leaves a takes row out: a takes-only run, some countries, another recording (not the skip gate's mode: a takes
-    # row it skips the diff of still runs and decides, on its own proof; nor the order phases, no takes row)
-    why = [f"this run's legs: {reason}" for reason in inputs_unlike_main(inputs, order_phases)
-           if reason.startswith(("takes-only", "drift-only", "takes-countries", "recording"))] if inputs is not None else []
-    result = jobs_by_name(jobs)
-    for name in rows:
-        if not VERDICT_ROW.match(name):
-            continue
-        job = result.get(name)
-        if job is None:
-            why.append(f"`{name}` did not run")
-        elif job.get("conclusion") not in DECIDED:
-            why.append(f"`{name}` ended {job.get('status')}/{job.get('conclusion')}: no verdict")
-    return why
-
-
-def cmd_complete(opts):
+def cmd_complete(opts: Opts) -> int:
     try:
         why = incomplete(run_jobs(opts["run"]), expected_rows(workflow_at(opts["sha"]), "takes"), opts.get("reused-from", ""),
                          read_json(opts["inputs"]) if opts.get("inputs") else None, opts.get("order-phases", "both"))
@@ -544,195 +213,31 @@ def cmd_complete(opts):
     return 1
 
 
-# ── reading the forge ─────────────────────────────────────────────────────────────────────────────────────────────────
+def _leg_matrix_of(rows: List[Row], suite: str) -> Matrix:
+    """The `leg` matrix of a normal dispatch (planned from the legs' inputs file), its plan on the step summary."""
+    inputs = read_json(os.environ["LEG_INPUTS_FILE"])  # the file `inputs` wrote
+    order_phases = os.environ.get("ORDER_PHASES") or "both"
+    harness_aa = os.environ.get("HARNESS_AA") == "true"
+    matrix = planned_matrix(rows, inputs, order_phases, harness_aa, suite)
+    if matrix["include"]:
+        summary([f"Rows longest first, each country's share of the runners ({suite}; scripts/ci/convergence_slots.py):", ""]
+                + [f"- {line}" for line in
+                   convergence_slots.describe(leg_plan(matrix["include"], inputs, order_phases, harness_aa, suite))])
+    return matrix
 
 
-def gh(*args, parse=True):
-    try:
-        res = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=GH_SECONDS)
-    except (OSError, subprocess.TimeoutExpired) as e:
-        raise Unproven(f"gh {' '.join(args[:2])}: {e}")
-    if res.returncode != 0:
-        raise Unproven(f"gh {' '.join(args[:3])}: {res.stderr.strip()[:200]}")
-    if not parse:
-        return res.stdout
-    try:
-        return json.loads(res.stdout)
-    except ValueError:
-        raise Unproven(f"gh {' '.join(args[:3])}: no JSON in its answer")
+def _workflow_leg_rows() -> str:
+    with open(os.path.join(ROOT, WORKFLOW)) as f:
+        return leg_rows_text(f.read())
 
 
-def repo():
-    name = os.environ.get("GH_REPO") or os.environ.get("GITHUB_REPOSITORY")
-    if not name:
-        raise Unproven("no GH_REPO")
-    return name
-
-
-def run_json(run_id):
-    return gh("api", f"repos/{repo()}/actions/runs/{run_id}")
-
-
-def run_jobs(run_id):
-    return (gh("api", f"repos/{repo()}/actions/runs/{run_id}/jobs?per_page=100") or {}).get("jobs") or []
-
-
-def run_facts(run_id):
-    """The run's facts artifact, or None when it has none (a run from before them); a failed read is Unproven."""
-    with tempfile.TemporaryDirectory() as tmp:
-        try:
-            res = subprocess.run(["gh", "run", "download", str(run_id), "-n", FACTS_ARTIFACT, "-D", tmp],
-                                 capture_output=True, text=True, timeout=GH_SECONDS)
-        except (OSError, subprocess.TimeoutExpired) as e:
-            raise Unproven(f"gh run download {run_id}: {e}")
-        if res.returncode != 0:
-            if "no artifact" in (res.stderr + res.stdout).lower():
-                return None
-            raise Unproven(f"gh run download {run_id}: {res.stderr.strip()[:200]}")
-        path = os.path.join(tmp, FACTS_NAME)
-        if not os.path.isfile(path):
-            return None
-        with open(path) as f:
-            return json.load(f)
-
-
-def statuses(sha, cache):
-    """Every status on `sha`, newest id first."""
-    if sha not in cache:
-        out = []
-        for page in range(1, STATUS_PAGES + 1):
-            batch = gh("api", f"repos/{repo()}/commits/{sha}/statuses?limit=50&page={page}")
-            out += batch or []
-            if not batch or len(batch) < 50:
-                break
-        cache[sha] = sorted(out, key=lambda s: s.get("id", 0), reverse=True)
-    return cache[sha]
-
-
-def state(status):
-    return status.get("status") or status.get("state") or ""
-
-
-def takes_context(code):
-    return f"identity takes ({code})"
-
-
-def source_base(code, sha, run, cache):
-    """The base the source's takes check judged `sha` against: its `identity takes (<code>)` status of that run."""
-    marks = (f"/actions/runs/{run.get('id')}", f"/actions/runs/{run.get('run_number')}")
-    for s in statuses(sha, cache):
-        if s.get("context") == takes_context(code) and str(s.get("target_url", "")).endswith(marks):
-            m = re.search(r"\bbase ([0-9a-f]{7,40}) vs head", s.get("description", ""))
-            return m.group(1) if (m and state(s) == "success") else None
-    return None
-
-
-def main_base(code, sha, cache):
-    """The base main's takes check would take for `sha`: the newest commit before it, first parents, whose newest
-    `identity takes (<code>)` status passed (identity-takes-check.sh's pick_base)."""
-    for commit in git("rev-list", "--first-parent", f"--max-count={BASE_WALK}", f"{sha}^").split():
-        for s in statuses(commit, cache):
-            if s.get("context") == takes_context(code):
-                if state(s) == "success":
-                    return commit
-                break
-    return None
-
-
-def same_tree(a, b):
-    if not a or not b:
-        return False
-    try:
-        a = git("rev-parse", "--verify", f"{a}^{{commit}}").strip()
-        b = git("rev-parse", "--verify", f"{b}^{{commit}}").strip()
-    except subprocess.CalledProcessError:
-        return False
-    return a == b or key(a) == key(b)
-
-
-def pairs(workflow_text):
-    """Each country's pair as a hermetic leg would resolve it now: the pin's line, the fills published over its tree."""
-    out = {}
-    setup = os.path.join(ROOT, ".github/scripts/convergence-setup.sh")
-    fill = os.path.join(ROOT, ".github/scripts/convergence-fill.sh")
-    for _, code in countries(workflow_text):
-        try:
-            pin = subprocess.run(["bash", setup, "pinned", code], capture_output=True, text=True, check=True,
-                                 timeout=GH_SECONDS).stdout.strip()
-            corpus = pin.split()[0] if pin else ""
-            fills = subprocess.run(["bash", fill, "fills", code, corpus], capture_output=True, text=True, check=True,
-                                   timeout=GH_SECONDS).stdout.split() if corpus else []
-        except (OSError, subprocess.SubprocessError) as e:
-            raise Unproven(f"could not read {code}'s pair: {e}")
-        if not pin:
-            raise Unproven(f"no pair pinned for {code}")
-        out[code] = " ".join([pin] + sorted(fills))
-    return out
-
-
-def workflow_at(rev):
-    return git("show", f"{rev}:{WORKFLOW}")
-
-
-# ── commands ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-
-
-def read_json(path):
-    with open(path) as f:
-        return json.load(f)
-
-
-def cmd_inputs(_):
-    inputs = leg_inputs(os.environ)
-    try:
-        inputs.update(run_seeds(os.environ, inputs))
-    except ValueError as e:
-        print(f"::error title=drift seeds::{e}", file=sys.stderr)
-        return 2
-    for name, value in inputs.items():
-        print(f"{name}={value}")
-    summary([f"Takes-drift seeds this run: takes-drift-1 replays seed {inputs['drift-seed-1'] or '(none)'}, takes-drift-2 "
-             f"seed {inputs['drift-seed-2'] or '(none)'} (run #{os.environ.get('GITHUB_RUN_NUMBER', '?')}"
-             f"{', pinned ' + repr(inputs['drift-seeds']) if inputs['drift-seeds'] else ', each row its fixed set'}; scripts/ci/drift_seeds.py)"])
-    if os.environ.get("LEG_INPUTS_FILE"):
-        with open(os.environ["LEG_INPUTS_FILE"], "w") as f:
-            json.dump(inputs, f, sort_keys=True)
-    return 0
-
-
-def leg_rows_text(workflow_text):
-    """The convergence preflight's LEG_ROWS block, as written: the takes preflight's rows. parse_rows types its values as
-    YAML would (a number a number, `true` a boolean) -- matrix_rows' strings, handed to the leg's number and boolean
-    inputs, made GitHub drop the call (Identity takes #1: no `leg` job at all)."""
-    if "LEG_ROWS: |" not in workflow_text:
-        raise ValueError("no LEG_ROWS block in the convergence workflow")
-    return workflow_text.split("LEG_ROWS: |", 1)[1].split("run:", 1)[0]
-
-
-def suite_of(opts=None):
-    """The suite a command judges: --suite, else $CONVERGENCE_SUITE, else convergence."""
-    suite = (opts or {}).get("suite") or os.environ.get("CONVERGENCE_SUITE") or "convergence"
-    if suite not in SUITES:
-        raise ValueError(f"suite {suite!r}: one of {', '.join(SUITES)}")
-    return suite
-
-
-def recorded_matrix(rows, codes):
-    """verify-scrape-recording.yml's `leg` matrix: the full convergence leg of each recorded country (`codes`,
-    comma-separated), in the rows' order, each on the leg's own phases expression and uncapped. Not a takes-only
-    narrowing: the convergence suite answers that with no row (Verify scrape recording run 42524021121 started no leg)."""
-    wanted = {c.strip() for c in codes.split(",") if c.strip()}
-    kept = [dict(r, phases="", **{"max-parallel": convergence_slots.UNCAPPED}) for r in rows if r["code"] in wanted]
-    return {"country": [r["country"] for r in kept], "include": kept}
-
-
-def cmd_legs(opts):
+def cmd_legs(opts: Opts) -> int:
     """The `leg` matrix (leg_matrix) of the suite ($CONVERGENCE_SUITE), from LEG_ROWS (the rows as written in the workflow;
     unset: the convergence workflow's own, which the takes and verify preflights read) and the dispatch's inputs; for
     verify-scrape-recording.yml, LEG_CODES (the recording's complete countries, comma-separated) instead (recorded_matrix),
     and no row is an error: GitHub drops a reusable call over an empty matrix without a word."""
     suite = suite_of(opts)
-    rows = parse_rows(os.environ.get("LEG_ROWS") or leg_rows_text(open(os.path.join(ROOT, WORKFLOW)).read()))
+    rows = parse_rows(os.environ.get("LEG_ROWS") or _workflow_leg_rows())
     codes = os.environ.get("LEG_CODES")
     if codes is not None:
         matrix = recorded_matrix(rows, codes)
@@ -741,14 +246,7 @@ def cmd_legs(opts):
                   f"{','.join(r['code'] for r in rows)})", file=sys.stderr)
             return 1
     else:
-        inputs = read_json(os.environ["LEG_INPUTS_FILE"])  # the file `inputs` wrote
-        order_phases = os.environ.get("ORDER_PHASES") or "both"
-        harness_aa = os.environ.get("HARNESS_AA") == "true"
-        matrix = planned_matrix(rows, inputs, order_phases, harness_aa, suite)
-        if matrix["include"]:
-            summary([f"Rows longest first, each country's share of the runners ({suite}; scripts/ci/convergence_slots.py):", ""]
-                    + [f"- {line}" for line in
-                       convergence_slots.describe(leg_plan(matrix["include"], inputs, order_phases, harness_aa, suite))])
+        matrix = _leg_matrix_of(rows, suite)
     print(f"leg-matrix={json.dumps(matrix, separators=(',', ':'))}")
     print(f"any-leg={'true' if matrix['country'] else 'false'}")
     order = order_matrix(matrix, suite)
@@ -757,12 +255,12 @@ def cmd_legs(opts):
     return 0
 
 
-def cmd_facts(opts):
+def cmd_facts(opts: Opts) -> int:
     workflow = workflow_at(opts["sha"])
     inputs = read_json(opts["inputs"])
-    facts = {"version": 1, "suite": suite_of(opts), "run_id": os.environ.get("GITHUB_RUN_ID", ""), "sha": opts["sha"], "key": key(opts["sha"]),
-             "inputs": inputs, "order_phases": opts.get("order-phases", "both"),
-             "reused_from": opts.get("reused-from", "")}
+    facts: Dict[str, Any] = {"version": 1, "suite": suite_of(opts), "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+                             "sha": opts["sha"], "key": key(opts["sha"]), "inputs": inputs,
+                             "order_phases": opts.get("order-phases", "both"), "reused_from": opts.get("reused-from", "")}
     if facts["reused_from"]:
         # a reusing run judged no seed of its own: the verdict it carries is the source's seeds' (seeds_of the source)
         facts["inputs"] = {k: v for k, v in inputs.items() if k not in SEED_KEYS}
@@ -777,80 +275,61 @@ def cmd_facts(opts):
     return 0
 
 
-def summary(lines):
-    path = os.environ.get("GITHUB_STEP_SUMMARY")
-    if path:
-        with open(path, "a") as f:
-            f.write("\n".join(lines) + "\n")
+class Verdict(NamedTuple):
+    """What `verify` read: why the source's verdict does not hold (empty: it does), the run it judged (a takes run's id for
+    the takes suite), that run, its facts and what this run computed."""
+    why: List[str]
+    run_id: str
+    run: Status
+    facts: Optional[Facts]
+    mine: Mine
 
 
-def copy_statuses(run, sha):
-    """The source's statuses of its run, onto `sha` when it is another commit: the next takes check's pick_base and the
-    next reuse read them there."""
-    cache = {}
-    marks = (f"/actions/runs/{run.get('id')}", f"/actions/runs/{run.get('run_number')}")
-    latest = {}
-    for s in statuses(run["head_sha"], cache):
-        if str(s.get("target_url", "")).endswith(marks) and s.get("context") not in latest:
-            latest[s["context"]] = s
-    for context, s in sorted(latest.items()):
-        gh("api", "-X", "POST", f"repos/{repo()}/statuses/{sha}", "-f", f"state={state(s)}", "-f", f"context={context}",
-           "-f", f"description={('reused: ' + s.get('description', ''))[:140]}", "-f",
-           f"target_url={s.get('target_url', '')}", parse=False)
+def _source_run_id(run_id: str, suite: str) -> str:
+    """The run whose rows are judged: the named one, or -- for the takes suite, whose reuse source names a convergence run
+    (main's kick finds those) -- the takes run it dispatched."""
+    if suite != "takes":
+        return run_id
+    child = run_id if str(run_json(run_id).get("path", "")).endswith(TAKES_WORKFLOW_FILE) else takes_child(run_id)
+    if not child:
+        raise Unproven(f"convergence run {run_id} dispatched no Identity takes run that is listed")
+    return child
 
 
-def takes_child(run_id):
-    """The Identity takes run convergence's run `run_id` dispatched (its title, TAKES_TITLE), or None when none is listed."""
-    title = TAKES_TITLE.format(run_id)
-    for page in range(1, STATUS_PAGES + 1):
-        runs = (gh("api", f"repos/{repo()}/actions/workflows/{TAKES_WORKFLOW_FILE}/runs?per_page=100&page={page}") or {}
-                ).get("workflow_runs") or []
-        for run in runs:
-            if run.get("display_title") == title:
-                return str(run["id"])
-        if len(runs) < 100:
-            break
-    return None
+def _takes_bases(workflow: str, sha: str, run: Status, suite: str) -> Dict[str, Tuple[Optional[str], Optional[str], bool]]:
+    cache: StatusCache = {}
+    bases: Dict[str, Tuple[Optional[str], Optional[str], bool]] = {}
+    for _, code in countries(workflow) if suite == "takes" else []:
+        theirs = source_base(code, run.get("head_sha", ""), run, cache)
+        main = main_base(code, sha, cache)
+        bases[code] = (theirs, main, same_tree(theirs, main))
+    return bases
 
 
-def cmd_verify(opts):
-    suite = suite_of(opts)
-    run_id, sha = opts["source"], opts["sha"]
+def _mine_of(run: Status, sha: str, suite: str, opts: Opts) -> Mine:
+    workflow = workflow_at(sha)
+    bases = _takes_bases(workflow, sha, run, suite)
+    return {"key": key(sha), "pairs": pairs(workflow), "inputs": read_json(opts["inputs"]),
+            "order_phases": opts.get("order-phases", "both"), "expected_rows": expected_rows(workflow, suite),
+            "takes_bases": bases, "suite": suite}
+
+
+def _judged(opts: Opts, suite: str) -> Verdict:
+    run_id = opts["source"]
     try:
-        if suite == "takes":
-            # the reuse source names a convergence run (main's kick finds those): its verdict on the takes rows is the
-            # takes run it dispatched
-            child = run_id if str(run_json(run_id).get("path", "")).endswith(TAKES_WORKFLOW_FILE) else takes_child(run_id)
-            if not child:
-                raise Unproven(f"convergence run {run_id} dispatched no Identity takes run that is listed")
-            run_id = child
+        run_id = _source_run_id(run_id, suite)
         run = run_json(run_id)
-        workflow = workflow_at(sha)
-        cache = {}
-        bases = {}
-        for _, code in countries(workflow) if suite == "takes" else []:
-            theirs = source_base(code, run.get("head_sha", ""), run, cache)
-            main = main_base(code, sha, cache)
-            bases[code] = (theirs, main, same_tree(theirs, main))
-        mine = {"key": key(sha), "pairs": pairs(workflow), "inputs": read_json(opts["inputs"]),
-                "order_phases": opts.get("order-phases", "both"), "expected_rows": expected_rows(workflow, suite),
-                "takes_bases": bases, "suite": suite}
+        mine = _mine_of(run, opts["sha"], suite, opts)
         source_facts = run_facts(run_id)
-        why = judge(run, run_jobs(run_id), source_facts, mine)
+        return Verdict(judge(run, run_jobs(run_id), source_facts, mine), run_id, run, source_facts, mine)
     except (Unproven, subprocess.CalledProcessError, OSError, ValueError, KeyError) as e:
-        why = [f"could not check: {e}"]
-    if why:
-        for reason in why:
-            print(f"convergence-reuse: not run {run_id}'s verdict: {reason}", file=sys.stderr)
-        summary([f"### Run {run_id}'s verdict does not hold here: the full suite runs", ""] + [f"- {w}" for w in why])
-        return 0
-    if run.get("head_sha") != sha:
-        try:
-            copy_statuses(run, sha)
-        except Unproven as e:
-            print(f"::warning::could not copy run {run_id}'s statuses onto {sha[:9]}: {e}", file=sys.stderr)
+        return Verdict([f"could not check: {e}"], run_id, {}, None, {})
+
+
+def _announce_reuse(verdict: Verdict) -> None:
+    run, run_id, mine = verdict.run, verdict.run_id, verdict.mine
     url = run.get("html_url") or run_id
-    theirs, own = seeds_of((source_facts or {}).get("inputs")), seeds_of(mine["inputs"])
+    theirs, own = seeds_of((verdict.facts or {}).get("inputs")), seeds_of(mine["inputs"])
     summary([f"### Reused run {run_id}'s verdict ({url})", "",
              f"Run {run_id} ran every row this run would over the same tree (key {mine['key'][:12]}), pairs, inputs and "
              f"takes bases, at {str(run.get('head_sha'))[:9]}, and every row passed: no leg runs here.", "",
@@ -858,27 +337,53 @@ def cmd_verify(opts):
              f"run's own rotation ({own}), which no row replayed."])
     print(f"reused-from={run_id}")
     print(f"drift-seeds-judged={theirs}")
+
+
+def cmd_verify(opts: Opts) -> int:
+    verdict = _judged(opts, suite_of(opts))
+    if verdict.why:
+        for reason in verdict.why:
+            print(f"convergence-reuse: not run {verdict.run_id}'s verdict: {reason}", file=sys.stderr)
+        summary([f"### Run {verdict.run_id}'s verdict does not hold here: the full suite runs", ""]
+                + [f"- {w}" for w in verdict.why])
+        return 0
+    sha = opts["sha"]
+    if verdict.run.get("head_sha") != sha:
+        try:
+            copy_statuses(verdict.run, sha)
+        except Unproven as e:
+            print(f"::warning::could not copy run {verdict.run_id}'s statuses onto {sha[:9]}: {e}", file=sys.stderr)
+    _announce_reuse(verdict)
     return 0
 
 
-def cmd_find(opts):
+def _is_source(run: Status, mine: str) -> bool:
+    """Whether `run`'s facts name this key and main's inputs, and it reused nothing itself."""
+    try:
+        facts = run_facts(run["id"])
+    except Unproven:
+        return False
+    return bool(facts and facts.get("key") == mine and not facts.get("reused_from")
+                and not inputs_unlike_main(facts.get("inputs") or {}, facts.get("order_phases")))
+
+
+def _older_than_window(run: Status, now: datetime.datetime) -> bool:
+    created = datetime.datetime.fromisoformat(str(run.get("created_at", "")).replace("Z", "+00:00"))
+    return (now - created).total_seconds() > FIND_HOURS * 3600
+
+
+def cmd_find(opts: Opts) -> int:
     """The newest green run, from the last day, whose facts name this commit's key and main's inputs; nothing when none
     (or anything fails: the kick then dispatches the full suite)."""
-    import datetime
     try:
         mine = key(opts["sha"])
-        runs = gh("api", f"repos/{repo()}/actions/runs?workflow={WORKFLOW_FILE}&status=success&per_page={FIND_RUNS}")
+        answer: Dict[str, Any] = gh("api", f"repos/{repo()}/actions/runs?workflow={WORKFLOW_FILE}&status=success&per_page={FIND_RUNS}") or {}
+        runs: List[Status] = answer.get("workflow_runs") or []
         now = datetime.datetime.now(datetime.timezone.utc)
-        for run in (runs or {}).get("workflow_runs") or []:
-            created = datetime.datetime.fromisoformat(str(run.get("created_at", "")).replace("Z", "+00:00"))
-            if (now - created).total_seconds() > FIND_HOURS * 3600:
+        for run in runs:
+            if _older_than_window(run, now):
                 break
-            try:
-                facts = run_facts(run["id"])
-            except Unproven:
-                continue
-            if facts and facts.get("key") == mine and not facts.get("reused_from") \
-                    and not inputs_unlike_main(facts.get("inputs") or {}, facts.get("order_phases")):
+            if _is_source(run, mine):
                 print(run["id"])
                 return 0
     except (Unproven, subprocess.CalledProcessError, OSError, ValueError, KeyError) as e:
@@ -886,8 +391,9 @@ def cmd_find(opts):
     return 0
 
 
-def parse(argv):
-    opts, rest = {}, []
+def parse(argv: List[str]) -> Tuple[Opts, List[str]]:
+    opts: Opts = {}
+    rest: List[str] = []
     it = iter(argv)
     for a in it:
         if a.startswith("--"):
@@ -897,43 +403,70 @@ def parse(argv):
     return opts, rest
 
 
-def main(argv):
+def _cmd_key(_: Opts, rest: List[str]) -> int:
+    print(key(rest[0] if rest else "HEAD"))
+    return 0
+
+
+def _cmd_expected_rows(opts: Opts, rest: List[str]) -> int:
+    print("\n".join(expected_rows(workflow_at(rest[0] if rest else "HEAD"), suite_of(opts))))
+    return 0
+
+
+def _cmd_takes_run(opts: Opts, _: List[str]) -> int:
+    """The Identity takes run a convergence run dispatched."""
+    try:
+        child = takes_child(opts["parent"])
+    except Unproven as e:
+        print(f"convergence-reuse: {e}", file=sys.stderr)
+        return 2
+    if child:
+        print(child)
+    return 0 if child else 1
+
+
+def _cmd_judge(opts: Opts, _: List[str]) -> int:
+    facts = read_json(opts["facts"]) if opts.get("facts") else None
+    mine = read_json(opts["mine"])
+    bases: Dict[str, List[Any]] = mine.get("takes_bases") or {}
+    mine["takes_bases"] = {c: tuple(b) for c, b in bases.items()}
+    print("\n".join(judge(read_json(opts["run"]), read_json(opts["jobs"]), facts, mine)))
+    return 0
+
+
+def _cmd_drift_rows(_: Opts, __: List[str]) -> int:
+    """stdin: `gh run view --json jobs`."""
+    answer: Dict[str, Any] = json.load(sys.stdin) or {}
+    print("\n".join(drift_rows(answer.get("jobs") or [])))
+    return 0
+
+
+def _cmd_phases_expression(_: Opts, __: List[str]) -> int:
+    print(PHASES_EXPRESSION)
+    return 0
+
+
+def _opts_only(command: Callable[[Opts], int]) -> Handler:
+    return lambda opts, _rest: command(opts)
+
+
+HANDLERS: Dict[str, Handler] = {
+    "key": _cmd_key, "expected-rows": _cmd_expected_rows, "takes-run": _cmd_takes_run, "judge": _cmd_judge,
+    "drift-rows": _cmd_drift_rows, "phases-expression": _cmd_phases_expression,
+    "inputs": _opts_only(cmd_inputs), "facts": _opts_only(cmd_facts), "verify": _opts_only(cmd_verify),
+    "find": _opts_only(cmd_find), "complete": _opts_only(cmd_complete), "legs": _opts_only(cmd_legs),
+}
+
+
+def main(argv: List[str]) -> int:
     if not argv:
         print(USAGE, file=sys.stderr)
         return 64
     command, (opts, rest) = argv[0], parse(argv[1:])
-    if command == "key":
-        print(key(rest[0] if rest else "HEAD"))
-        return 0
-    if command == "expected-rows":
-        print("\n".join(expected_rows(workflow_at(rest[0] if rest else "HEAD"), suite_of(opts))))
-        return 0
-    if command == "takes-run":  # the Identity takes run a convergence run dispatched
-        try:
-            child = takes_child(opts["parent"])
-        except Unproven as e:
-            print(f"convergence-reuse: {e}", file=sys.stderr)
-            return 2
-        if child:
-            print(child)
-        return 0 if child else 1
-    if command == "judge":
-        facts = read_json(opts["facts"]) if opts.get("facts") else None
-        mine = read_json(opts["mine"])
-        mine["takes_bases"] = {c: tuple(b) for c, b in (mine.get("takes_bases") or {}).items()}
-        print("\n".join(judge(read_json(opts["run"]), read_json(opts["jobs"]), facts, mine)))
-        return 0
-    if command == "drift-rows":  # stdin: `gh run view --json jobs`
-        print("\n".join(drift_rows((json.load(sys.stdin) or {}).get("jobs") or [])))
-        return 0
-    if command == "phases-expression":
-        print(PHASES_EXPRESSION)
-        return 0
-    handlers = {"inputs": cmd_inputs, "facts": cmd_facts, "verify": cmd_verify, "find": cmd_find, "complete": cmd_complete, "legs": cmd_legs}
-    if command not in handlers:
+    if command not in HANDLERS:
         print(USAGE, file=sys.stderr)
         return 64
-    return handlers[command](opts)
+    return HANDLERS[command](opts, rest)
 
 
 if __name__ == "__main__":

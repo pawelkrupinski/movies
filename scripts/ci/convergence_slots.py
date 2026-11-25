@@ -17,18 +17,17 @@ included: a row's slot is held for all of it) over main's recent complete runs. 
 UNMEASURED_MINUTES; a `drift-twice` run's drift rows weigh twice theirs. Refresh the file after a change that moves the
 rows' times (`costs`), or the plan drifts from what the rows cost; a stale file only orders rows worse, it drops none.
 
-  convergence_slots.py plan [--drift-twice]       the shares and predicted minutes of main's suite, from the costs
-  convergence_slots.py costs --runs ID,ID,...     rewrites the costs file from those runs' jobs (gh api)
+  convergence_rows.py plan [--drift-twice]        the shares and predicted minutes of main's suite, from the costs
+  convergence_rows.py costs --runs ID,ID,...      rewrites the costs file from those runs' jobs (gh api)
 
-Used by convergence_reuse.py `legs`; tested by convergence_slots_test.py.
+Used by convergence_rows.py `legs`; tested by convergence_slots_test.py.
 """
 from __future__ import annotations
 
 import datetime
-import json
 import os
 import statistics
-import sys
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -54,7 +53,11 @@ LIKE = {"takes-drift-aa-pass0": ("takes-drift-1", 1.0), "takes-drift-aa-pass1": 
 AA_COMPARE_MINUTES = 1.5
 
 
-def cost(code, phase, costs, drift_twice=False):
+Costs = Dict[Tuple[str, str], float]
+Shares = Dict[str, Dict[str, Any]]
+
+
+def cost(code: str, phase: str, costs: Costs, drift_twice: bool = False) -> float:
     like, times = LIKE.get(phase, (None, 1.0))
     minutes = costs.get((code, phase)) or (costs[(code, like)] * times if (code, like) in costs else UNMEASURED_MINUTES)
     return minutes * 2 if drift_twice and phase.startswith("takes-drift-") else minutes
@@ -86,13 +89,15 @@ def makespan(minutes, slots):
     return max(free)
 
 
-def plan(phases_by_code, costs, total=RUNNERS, tails=None, drift_twice=False):
+def plan(phases_by_code: Mapping[str, List[str]], costs: Costs, total: int = RUNNERS, tails: Optional[Mapping[str, float]] = None,
+         drift_twice: bool = False) -> Shares:
     """{code: {"phases": [...longest first], "max-parallel": n, "minutes": predicted end}} -- the shares summing to at most
     `total` (one each at least), each next slot to the country that ends last."""
     return plan_suites({"": phases_by_code}, costs, total, {"": tails or {}}, drift_twice)[""]
 
 
-def plan_suites(phases_by_suite, costs, total=RUNNERS, tails_by_suite=None, drift_twice=False):
+def plan_suites(phases_by_suite: Mapping[str, Mapping[str, List[str]]], costs: Costs, total: int = RUNNERS,
+                tails_by_suite: Optional[Mapping[str, Mapping[str, float]]] = None, drift_twice: bool = False) -> Dict[str, Shares]:
     """plan() over the legs of suites that run side by side (Identity model convergence and Identity takes, the owner
     2026-11-08: one account's 20 runners for both): {suite: {code: {...}}}, every (suite, country) leg one slot at least,
     each next slot to the leg that ends last, of all of them. A fixed split of the 20 between the suites ends later (10
@@ -119,7 +124,7 @@ def plan_suites(phases_by_suite, costs, total=RUNNERS, tails_by_suite=None, drif
     return out
 
 
-def ends_at(shares):
+def ends_at(shares: Shares) -> float:
     """When a plan's last country ends."""
     return max((s["minutes"] for s in shares.values()), default=0.0)
 
@@ -127,8 +132,8 @@ def ends_at(shares):
 # ── the measured costs ────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-def read_costs(path=COSTS_FILE):
-    out = {}
+def read_costs(path: str = COSTS_FILE) -> Costs:
+    out: Costs = {}
     with open(path, encoding="utf-8") as f:
         for line in f:
             if line.startswith("#") or line.startswith("code\t") or not line.strip():
@@ -138,20 +143,20 @@ def read_costs(path=COSTS_FILE):
     return out
 
 
-def write_costs(path, costs, runs):
+def write_costs(path: str, costs: Mapping[Tuple[str, str], Tuple[float, int]], runs: List[str]) -> None:
     with open(path, "w", encoding="utf-8") as f:
         f.write("# Each convergence row's median job minutes (setup and post-steps included) over main's runs "
-                f"{', '.join(runs)};\n# scripts/ci/convergence_slots.py `costs` writes it, `plan` reads it.\n")
+                f"{', '.join(runs)};\n# scripts/ci/convergence_rows.py `costs` writes it, `plan` reads it.\n")
         f.write("code\tphase\tminutes\truns\n")
         for (code, phase), (minutes, n) in sorted(costs.items()):
             f.write(f"{code}\t{phase}\t{minutes:.1f}\t{n}\n")
 
 
-def _at(text):
+def _at(text: str) -> datetime.datetime:
     return datetime.datetime.fromisoformat(text.replace("Z", "+00:00"))
 
 
-def costs_of(runs, codes):
+def costs_of(runs: List[List[Dict[str, Any]]], codes: Mapping[str, str]) -> Dict[Tuple[str, str], Tuple[float, int]]:
     """{(code, phase): (median minutes, rows measured)} over the runs' jobs (each run a list of jobs-API job dicts); a row
     named `leg (<country>) / <phase> (<country>)` on github.com, `<phase> (<country>)` elsewhere. Skipped rows and rows
     that never started weigh nothing."""
@@ -169,36 +174,7 @@ def costs_of(runs, codes):
     return {k: (round(statistics.median(v), 1), len(v)) for k, v in seen.items()}
 
 
-def cmd_costs(run_ids):
-    sys.path.insert(0, HERE)
-    import convergence_reuse as reuse  # noqa: E402
-    import gh_bounded  # noqa: E402
-    with open(os.path.join(ROOT, reuse.WORKFLOW)) as f:
-        codes = dict(reuse.countries(f.read()))
-    runs = []
-    for run in run_ids:
-        out = gh_bounded.gh(["api", "--paginate", f"repos/{{owner}}/{{repo}}/actions/runs/{run}/jobs?per_page=100",
-                             "--jq", ".jobs[]"], cwd=ROOT)
-        runs.append([json.loads(line) for line in out.splitlines() if line.strip()])
-    write_costs(COSTS_FILE, costs_of(runs, codes), run_ids)
-    return 0
-
-
-def cmd_plan(drift_twice):
-    sys.path.insert(0, HERE)
-    import convergence_reuse as reuse  # noqa: E402
-    with open(os.path.join(ROOT, reuse.WORKFLOW)) as f:
-        rows = reuse.matrix_rows(f.read())
-    inputs = reuse.leg_inputs({"INPUT_DRIFT_TWICE": "true" if drift_twice else ""})
-    plans = reuse.main_plan(rows, inputs)
-    for suite, shares in plans.items():
-        print(f"{suite}:")
-        print("\n".join(f"  {line}" for line in describe(shares)))
-    print(f"{sum(s['max-parallel'] for shares in plans.values() for s in shares.values())} of {RUNNERS} runners for both")
-    return 0
-
-
-def describe(shares):
+def describe(shares: Shares) -> List[str]:
     """The plan as lines: each country's share, predicted end and row order, then the total."""
     if not shares:
         return ["no cap: not main's suite (a takes-only run), every row at once"]
@@ -206,16 +182,3 @@ def describe(shares):
              for c, s in shares.items()]
     return lines + [f"{sum(s['max-parallel'] for s in shares.values())} runners; the rows end "
                     f"~{ends_at(shares)} min after they start"]
-
-
-def main(argv):
-    if argv[:1] == ["plan"]:
-        return cmd_plan("--drift-twice" in argv[1:])
-    if argv[:2] == ["costs", "--runs"] and len(argv) == 3:
-        return cmd_costs([r for r in argv[2].split(",") if r])
-    print(__doc__, file=sys.stderr)
-    return 64
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))

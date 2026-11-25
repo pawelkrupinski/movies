@@ -57,6 +57,8 @@ scripts/ci/preflight.sh
 scripts/ci/preflight.py
 scripts/ci/convergence-preflight.sh
 scripts/ci/convergence_preflight.py
+scripts/ci/convergence_forge.py
+scripts/ci/convergence_judge.py
 scripts/ci/start-mongo-replset.sh
 scripts/ci/start_mongo_replset.py
 scripts/ci/pull_pinned_image.py
@@ -64,6 +66,7 @@ scripts/ci/build_image.py
 scripts/ci/mongo-exec.sh
 scripts/ci/order-phases.sh
 scripts/ci/convergence_reuse.py
+scripts/ci/convergence_rows.py
 scripts/identity-drift-ci
 scripts/identity_drift_ci.py
 scripts/identity_drift_ci_baseline.py
@@ -150,7 +153,6 @@ scripts/identity_fetch_recording.py
 .github/actions/setup-buildx/action.yml
 .github/actions/setup-sbt-build/action.yml
 .github/allow-lists.txt
-.github/convergence-paths.txt
 .github/gating-checks.tsv
 .github/harness-aa-paths.txt
 .github/identity-drift-gate-paths.txt

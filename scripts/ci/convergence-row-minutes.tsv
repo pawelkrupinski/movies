@@ -1,5 +1,5 @@
 # Each convergence row's median job minutes (setup and post-steps included) over main's runs 42520182228, 42520192909, 42515067199, 42508025463, 42488301990, 42475007175, 42473217770, 42471466789;
-# scripts/ci/convergence_slots.py `costs` writes it, `plan` reads it.
+# scripts/ci/convergence_rows.py `costs` writes it, `plan` reads it.
 code	phase	minutes	runs
 de	convergence	11.5	7
 de	order-independence-p01	1.4	7
