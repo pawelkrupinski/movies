@@ -62,6 +62,8 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
       "proves ScratchGitRepository.isolate against a decoy GIT_DIR — it must start git with an environment of its own making",
     "infra/version-dashboard/test/git-isolation.test.ts" ->
       "proves isolateGitEnvironment against a decoy GIT_DIR — it must run git with an environment of its own making",
+    "scripts/ci/identity_ci_staleness_test.py" ->
+      "commits into a scratch repository with cli_harness.isolated_env plus a fixed committer date, which scratch_git cannot set",
     "worker/src/it/scala/deploy/WorkflowScriptsRunnableIntegrationSpec.scala" ->
       "a read-only `git ls-files -s` of this checkout's index (the modes CI checks out), with every GIT_* variable dropped",
     "scripts/ci/identity_family_nightly_test.py" ->
