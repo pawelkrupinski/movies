@@ -36,6 +36,9 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(REPO, "scripts", "lib"))
+import mongo_local  # noqa: E402
+
 LOGS = "http://10.20.0.11:9428/select/logsql/query"
 PROMETHEUS = "http://10.20.0.11:9090/api/v1/query_range"
 MONITORING_HOST = os.environ.get("LISTING_HISTORY_MONITORING_HOST", "monitoring-1")
@@ -362,7 +365,7 @@ def report(args, run=run_command, now=None):
                    + (" …" if len(quiet) > 12 else ""))
 
     prod, state, readable = [], {}, False
-    port = os.environ.get("LOCAL_MIRROR_PORT", "28017")
+    port = mongo_local.local_mongo_port(os.environ)
     code, text = run([os.path.join(REPO, "scripts/local-mirror/freshness"), args.cc, "--need", MIRROR_NEEDS, "--quiet"])
     prod.extend(f"  {line}" for line in text.strip().splitlines())
     if code == 2:

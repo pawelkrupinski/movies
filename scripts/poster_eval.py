@@ -42,7 +42,8 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 
 Here = os.path.dirname(os.path.abspath(__file__))
-sys.path[:0] = [Here, os.path.join(Here, "ci")]
+sys.path[:0] = [Here, os.path.join(Here, "ci"), os.path.join(Here, "lib")]
+import mongo_local  # noqa: E402
 import poster_hash  # noqa: E402
 from identity_judgements import COLUMNS as Columns, normalise, read as read_judgements  # noqa: E402,F401
 
@@ -118,17 +119,13 @@ print(JSON.stringify(out));
 """
 
 
-def mirror_uri(database=""):
-    return f"mongodb://127.0.0.1:{os.environ.get('LOCAL_MIRROR_PORT', '28017')}/{database}?directConnection=true"
-
-
 def mirror_synced():
     """{cc: epoch seconds} the local mirror last synced each country: the change-stream resume token freshness reads
     (local-mirror/freshness-rule.js), in one quick query -- the full freshness check runs before an extract."""
     with open(os.path.join(Here, "local-mirror", "freshness-rule.js")) as f:
         rule = f.read()
     js = f"var CCS={json.dumps(list(Countries))}; var MIRRORS={json.dumps(Databases)};\n{rule}\n{SyncedJs}"
-    done = subprocess.run(["mongosh", "--quiet", mirror_uri(), "--eval", js],
+    done = subprocess.run(["mongosh", "--quiet", mongo_local.local_mongo_uri(os.environ), "--eval", js],
                           capture_output=True, text=True, timeout=60)
     if done.returncode != 0:
         raise SystemExit(f"poster-eval: the local mirror does not answer (scripts/local-mirror/freshness):\n{done.stderr[-1000:]}")
@@ -145,7 +142,7 @@ def check_freshness():
 
 
 def read_country(cc):
-    uri = mirror_uri(Databases[cc])
+    uri = mongo_local.local_mongo_uri(os.environ, Databases[cc])
     fd, path = tempfile.mkstemp(suffix=f"-{cc}.json")
     os.close(fd)
     try:

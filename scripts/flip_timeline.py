@@ -266,7 +266,7 @@ def _header(args, since, **extra):
 
 def _mongo(run, raw, args, header, query):
     """One mirror script's JSON answer, or None (said in raw's notes) when it did not answer."""
-    port = os.environ.get("LOCAL_MIRROR_PORT", "28017")
+    port = shared.mongo_local.local_mongo_port(os.environ)
     code, text = run(["mongosh", "--quiet", shared.MIRROR.format(port=port, db=shared.mirror_db(args.cc)), "--eval", header + query])
     try:
         return json.loads(text.strip().splitlines()[-1])

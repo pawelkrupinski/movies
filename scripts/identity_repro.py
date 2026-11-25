@@ -53,6 +53,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, cast
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
+import mongo_local  # noqa: E402
 import tool_countries  # noqa: E402
 import tool_dispatch  # noqa: E402
 import tool_github  # noqa: E402
@@ -162,7 +163,7 @@ class Mirror:
         self.runner, self.env = runner, env
         self.usable = wanted and shutil.which("mongosh", path=env.get("PATH")) is not None
         db = "kinowo_prod_mirror" if cc == "pl" else f"kinowo_{cc}_prod_mirror"
-        self.url = f"mongodb://127.0.0.1:{env.get('LOCAL_MIRROR_PORT') or '28017'}/{db}"
+        self.url = f"{mongo_local.local_mongo_server(env)}/{db}"
 
     def _eval(self, script: str, env: Mapping[str, str]) -> Optional[str]:
         done = self.runner.capture(tool_process.Command(["mongosh", "--quiet", self.url, "--eval", script], env))
