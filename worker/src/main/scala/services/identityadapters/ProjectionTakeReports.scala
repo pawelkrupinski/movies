@@ -20,10 +20,26 @@ final class ProjectionTakeReports(metrics: IdentityProjectionMetrics, changeFeed
    *  drill-down, and summed up in one line by kind and basis; the lines and their fields are [[TakeChangeLines]]'. The
    *  country, build and projection id are every worker log line's own fields. */
   def apply(changed: Seq[TakeChange], resolution: Resolution, stored: Seq[StoredMovieRecord], written: Seq[ProjectedFilm],
-            live: LiveProjectionIndex, trigger: String, ownTakes: Boolean, fresh: Boolean): Unit =
+            live: LiveProjectionIndex, trigger: String, ownTakes: Boolean, fresh: Boolean): Unit = {
+    reported(changed, resolution, stored, written, live, trigger, ownTakes, fresh)
+    unplaced(live.unplaced, resolution, stored, live, trigger)
+  }
+
+  /** Each listing still published that the writes left on no film ([[LiveProjectionIndex.unplaced]]): no take change, so
+   *  logged a line of its own, naming the listing and the film it left ([[TakeChangeLines.unplaced]]). */
+  private def unplaced(unplaced: Seq[TakeChange.Unplaced], resolution: Resolution, stored: Seq[StoredMovieRecord],
+                       live: LiveProjectionIndex, trigger: String): Unit =
+    if (unplaced.nonEmpty) {
+      val decisions = decisionsOf(resolution, unplaced.iterator.map(_.listing).toSet)
+      val titles    = stored.iterator.map(r => r.id.value -> r.title).toMap
+      unplaced.take(IdentityProjection.TakeChangesLogged).foreach(u =>
+        log(takeLines.unplaced(u, titles.get(u.film), decisions.get(u.listing), live.listing(u.listing), Some(trigger))))
+    }
+
+  private def reported(changed: Seq[TakeChange], resolution: Resolution, stored: Seq[StoredMovieRecord], written: Seq[ProjectedFilm],
+                       live: LiveProjectionIndex, trigger: String, ownTakes: Boolean, fresh: Boolean): Unit =
     if (changed.nonEmpty) {
-      val wanted    = changed.iterator.map(_.listing).toSet
-      val decisions = resolution.decisions.iterator.flatMap(d => d.members.iterator.filter(wanted).map(_ -> d)).toMap
+      val decisions = decisionsOf(resolution, changed.iterator.map(_.listing).toSet)
       lazy val before = stored.iterator.map(r => r.id -> r).toMap
       val reading   = TakeCauses.Reading(id => before.get(FilmId(id)), k => live.listing(k).isDefined, live.publishedAt,
         Option.unless(fresh)(live.lastRepublished), k => decisions.get(k).fold(Seq.empty[ListingKey])(_.members), trigger, ownTakes)
@@ -51,6 +67,10 @@ final class ProjectionTakeReports(metrics: IdentityProjectionMetrics, changeFeed
         takeHistory.kept(lines, live.listing)
       }
     }
+
+  /** The decision naming each of `wanted`. */
+  private def decisionsOf(resolution: Resolution, wanted: Set[ListingKey]): Map[ListingKey, services.identity.measures.ResolverDecision] =
+    resolution.decisions.iterator.flatMap(d => d.members.iterator.filter(wanted).map(_ -> d)).toMap
 
   private def log(line: TakeChangeLines.Line): Unit = tools.LogFields.info(logger.underlyingLogger, line.message, line.fields)
 }

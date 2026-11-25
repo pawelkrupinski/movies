@@ -63,6 +63,22 @@ final class TakeChangeLines(country: Country, build: CommitSha, titleRules: List
       "reads"                  -> listing.map(reads).filter(_.nonEmpty).map(_.take(ReadsLogged).mkString("; "))))
   }
 
+  /** The line of a listing still published that the writes left on no film ([[TakeChange.Unplaced]]): ONE event naming
+   *  both sides — the listing (`venue`, `listing`) and the stored film it left (`film_before`, `tmdb_before`,
+   *  `title_before`: `was`) — under the take-change lines' own field names, so `venue:=… listing:=…` finds it beside them,
+   *  and `event:=unplaced` finds them all; no `kind`, which keeps only take changes. With the decision naming it now, if
+   *  any, and the listing's facts. */
+  def unplaced(u: TakeChange.Unplaced, was: Option[String], decision: Option[ResolverDecision], listing: Option[Listing],
+               trigger: Option[String]): Line = {
+    val key   = u.listing
+    val repro = reproOf(key)
+    Line(s"identity listing unplaced: ${key.venue} | ${key.rawTitle}: ${film(u.before, was)} (${u.film}) -> no film, still published; " +
+      s"decision ${decision.fold("none")(_.basis.toString)}; explain: $repro",
+      Seq("event" -> "unplaced", "venue" -> key.venue, "listing" -> key.rawTitle, "film_before" -> u.film, "tmdb_before" -> u.before,
+        "title_before" -> was, "trigger" -> trigger) ++ decisionFields(key, decision, listing) ++ listingFields(listing) ++
+        Seq("repro" -> repro, "members" -> decision.map(_.members.size)))
+  }
+
   /** The move itself: which listing, from which film to which. */
   private def moveFields(take: TakeChange, was: Option[String], now: Option[(String, String)]): Seq[(String, Any)] = Seq(
     "kind"                   -> take.kind.label,

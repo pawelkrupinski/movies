@@ -62,6 +62,13 @@ object TakeChange {
     def label: String = toString.toLowerCase(Locale.ROOT)
   }
 
+  /** A listing still published that a projection's writes moved off stored film `film` (TMDB film `before`) onto NONE:
+   *  no take change — the change list holds a listing's moves between films — yet the site shows it on no film from then
+   *  on, and nothing said so: a loss VictoriaLogs could not find (UK Cineworld's "The Rings of Power Season 3 Ep 7",
+   *  2026-11-21, read so before its history showed otherwise).
+   *  Its line names both sides, the listing and the film it left ([[TakeChangeLines.unplaced]]). */
+  final case class Unplaced(listing: ListingKey, film: String, before: Option[Int])
+
   /** The decision a listing's take came from before it moved: its basis, confidence and last reason, the rule that decided
    *  it ([[DecidedBy.of]]), the runner-up its node weighed beside it (its TMDB id) and that node whole — its measures,
    *  score and refusals against the film it held. */

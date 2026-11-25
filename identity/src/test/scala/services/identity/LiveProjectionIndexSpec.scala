@@ -215,6 +215,25 @@ class LiveProjectionIndexSpec extends AnyFlatSpec with Matchers {
     live.index(counters).previousOf shouldBe built.previousOf
   }
 
+  it should "name a listing still published that the writes left on no film, which no take change names" in {
+    // the change list holds moves between films only: Multikino's "Lalka", its film retired, is still billed, on none,
+    // and no take change says so
+    val live    = new LiveProjectionIndex(normalizer)
+    val listing = CinemaMovie(Movie("Lalka", releaseYear = Some(2026)), Multikino, None, None, None, Nil, Nil, Seq(Showtime(start, None)))
+    val read    = Seq(ProjectedListing.of(Listing.of(Multikino, listing, normalizer), listing))
+    val at      = normalizer.slotKey(Multikino, read.head.listing.cleanTitle): models.Source
+    val f1      = StoredMovieRecord("Lalka", None, MovieRecord(tmdbId = Some(7), data = Map(at -> SourceData(title = Some("Lalka"),
+      rawTitle = Some("Lalka"), releaseYear = Some(2026)))), FilmId("f1"), Some("lalka|"))
+    val decided = Seq(ResolverDecision(read.map(_.listing.key), None, 0.9, ResolverDecision.Basis.Vetoed, Nil)())
+    live.update(Seq(Multikino.displayName -> read), read.map(_.listing.key), decided, Seq(f1))
+    live.unplaced shouldBe empty
+    live.written(Nil, Seq(FilmId("f1"))) shouldBe empty
+    live.unplaced shouldBe Seq(TakeChange.Unplaced(read.head.listing.key, "f1", Some(7)))
+    // a quiet write after it names none again
+    live.written(Nil, Nil) shouldBe empty
+    live.unplaced shouldBe empty
+  }
+
   it should "hold a listing read again under the new read's key object, in every map, not the first read's" in {
     // A venue read again — or a listing taken as the identity model's object — is an equal listing with another key
     // object. Each map kept the key it was first given: worker-us grew to ~2.6 key objects per listing.

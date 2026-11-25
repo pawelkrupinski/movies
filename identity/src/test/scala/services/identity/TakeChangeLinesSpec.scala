@@ -30,6 +30,22 @@ class TakeChangeLinesSpec extends AnyFlatSpec with Matchers {
       "reason BelowThreshold: last why: first why; explain: scripts/identity-slice pl")
   }
 
+  "A listing left on no film" should "log one line naming both sides, the listing and the film it left, under the take lines' fields" in {
+    val vetoed = ResolverDecision(Seq(muza), None, 1.0, ResolverDecision.Basis.Vetoed, Seq("vetoed by a learned runtime gap"))()
+    val line   = lines.unplaced(TakeChange.Unplaced(muza, "f-12", Some(238)), Some("Ojciec chrzestny"), Some(vetoed), None, Some("scrape"))
+    val fields = line.fields.toMap
+    fields("event") shouldBe "unplaced"
+    fields("venue") shouldBe "Kino Muza"
+    fields("listing") shouldBe "Ojciec chrzestny '72"
+    fields("film_before") shouldBe "f-12"
+    fields("tmdb_before") shouldBe Some(238)
+    fields("title_before") shouldBe Some("Ojciec chrzestny")
+    fields("basis") shouldBe Some("Vetoed")
+    fields("trigger") shouldBe Some("scrape")
+    fields.contains("kind") shouldBe false   // `kind:*` keeps take changes only
+    line.message should startWith("identity listing unplaced: Kino Muza | Ojciec chrzestny '72: tmdb 238 (Ojciec chrzestny) (f-12) -> no film")
+  }
+
   it should "name the stage and rule that decided it, the score and runner-up, the trigger and the title rules, as ids" in {
     val withRules = new TakeChangeLines(Country.Poland, CommitSha("0e41a4812"), _ => Seq("title:search-programme-prefix", "format:3d"))
     val trace = DecisionTrace(None, None, Map(muza -> DecisionTrace.Node(accepted = Some("sole-work"), joins = Nil, apart = Nil,

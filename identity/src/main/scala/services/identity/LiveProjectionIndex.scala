@@ -52,6 +52,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   // take before, which the take-change log names beside the new one. As many as the tick's moved takes — none on a
   // quiet tick — and only its basis, confidence, last reason and its trace of the listing, never the decision itself.
   private var replaced      = Map.empty[ListingKey, TakeChange.Prior]
+  private var unplacedLast  = Seq.empty[TakeChange.Unplaced]   // [[unplaced]]: of the last [[written]]
   // The listings the last update read published otherwise than the one before: what a take's cause reads ([[TakeCauses]]).
   private var reread        = (_: ListingKey) => false
   // Of the listings whose venue re-published them with other facts (a runtime, an original title, a page's), each one's
@@ -71,6 +72,10 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   /** The decision the last [[update]] replaced for `key` with one taking another film: the take before, as far as this
    *  index saw it — none after it was built afresh, or when the film moved without the decision taking another. */
   def priorTake(key: ListingKey): Option[TakeChange.Prior] = replaced.get(key)
+
+  /** The listings still published that the last [[written]] moved off a stored film onto none: no take change, each a
+   *  take the site lost all the same ([[TakeChange.Unplaced]]). */
+  def unplaced: Seq[TakeChange.Unplaced] = unplacedLast
 
   /** The listing published under `key` before its venue last re-published it with other facts, as far as this index
    *  saw it ([[LiveProjectionIndex.FormerlyKept]] the newest) — none after it was built afresh, or when only its
@@ -329,6 +334,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
    *  film, or onto none (it left), changed no take. Only the listings the writes re-pointed are read: none on a quiet
    *  tick. */
   def written(films: Seq[ProjectedFilm], retired: Seq[models.FilmId]): Seq[TakeChange] = {
+    unplacedLast = Nil
     val reslot = mutable.HashSet.empty[ListingKey]
     retired.foreach(id => unstore(id.value, reslot))
     films.foreach(f => restore(StoredMovieRecord(f.title, f.year, f.record, f.id, Some(f.key)), reslot, f.touched))
@@ -343,6 +349,8 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
     def placedAsWritten(k: ListingKey): Boolean = writtenInto.get(k).exists(id => entries.previousAt(k).exists(_.id == id))
     afterWrites ++= moved.filterNot(placedAsWritten)
     afterWrites ++= writtenInto.keysIterator.filterNot(placedAsWritten)
+    unplacedLast = moved.iterator.filter(k => entries.previousAt(k).isEmpty && entries.listingAt(k).isDefined)
+      .flatMap(k => before.get(k).flatten.map(was => TakeChange.Unplaced(k, was.id, was.tmdbId))).toSeq.sortBy(_.listing)
     def wasPlaced(k: ListingKey): Boolean = before.get(k).fold(entries.previousAt(k).isDefined)(_.isDefined)
     // Whether a listing of a cluster was on a film before the writes, worked out once per cluster: a listing on none before
     // is not placed itself, so "another member was" is "a member was" — the same for every newly placed listing of the
