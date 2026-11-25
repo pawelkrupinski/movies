@@ -58,6 +58,7 @@ e2e:services.movies.E2eWiringsStoppedSpec	-	e2e's wiring rule over its own specs
 identity:services.identity.IdentityRulesVersionSpec	-	the identity stamp's digest over identity's sources: identity's unit tests run it (the lint plan runs no identity spec)
 identity:services.identity.ProvenanceSpec	-	the identity rule sites' provenance reads: identity's unit tests run it (the lint plan runs no identity spec)
 identity:services.identity.ReaderNamesSpec	-	the test-impact selection's naming rules, reading the repository's source-tree declarations: identity's unit tests run it (the lint plan runs no identity spec)
+repochecks:deploy.LiveSitesWorkflowSpec	build.sbt .github/workflows/live-sites.yml .github/workflows/ci.yml .github/workflows/main.yml .github/gating-checks.tsv
 scrapers:clients.tools.ToolMainsSpec	scrapers/src/test/scala/*
 scrapers:services.cinemas.FilmwebCinemaIdResolverSpec	-	a parser spec reading its captured fixtures by name, no lint: scrapers' unit tests run it
 scrapers:services.cinemas.NoWallClockInClientsSpec	*
@@ -210,6 +211,7 @@ worker:tools.IdentityRuntimeInputsSpec	*/src/main/*.java */src/main/*.scala work
 worker:tools.InMemoryStoresRoundTripSpec	*/src/*/*
 worker:tools.IntegrationDatabaseIsolationSpec	web/src/it/* worker/src/it/*
 worker:tools.ListingCompletenessSpec	scrapers/src/main/scala/services/cinemas/*
+worker:tools.LiveSitesTaggedSpec	web/src/it/* worker/src/it/*
 worker:tools.LoadIndependentTestsSpec	*/src/test/*.scala */src/fixtures/*.scala */src/it/*.scala web/src/page/*.scala testkit/src/*.scala itkit/src/*.scala quality/src/*.scala *-test.sh *_test.py
 worker:tools.MetricRegistrationsUniqueSpec	*/src/main/*
 worker:tools.ModelReadOnlySpec	*/src/main/* */src/test/* http/src/fixtures/* web/src/it/* web/src/page/* worker/src/fixtures/* worker/src/it/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each source alone: a whole-corpus listing read
