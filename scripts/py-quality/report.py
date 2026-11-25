@@ -110,7 +110,7 @@ def file_rows(sources: Dict[str, str], trees: Dict[str, ast.AST]) -> List[Row]:
 def pyright_rows(root: str, files: List[str], typed: Optional[List[str]], baseline: baseline_ratchet.Rows) -> List[Row]:
     """Every file's strict errors -- or, with `typed` (the push's own files), those files' and the baseline's rows for
     the rest, which nothing in the push can have moved."""
-    asked = pyright.checked(files if typed is None else [p for p in typed if p in files])
+    asked = files if typed is None else [p for p in typed if p in files]
     counts = pyright.errors(root, asked, os.environ)
     rows: List[Row] = [("pyright", p, n) for p, n in sorted(counts.items())]
     if typed is not None:

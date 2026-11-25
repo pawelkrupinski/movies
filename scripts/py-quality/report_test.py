@@ -39,7 +39,7 @@ HAIRY = """def hairy(x):
 CLONE = "def table():\n    return [" + ", ".join(f"('row{n}', {n}, {n * 2})" for n in range(12)) + "]\n"
 # A fake pyright run: one error per `# type-error` line of each file asked, in pyright's --outputjson shape
 NODE = """
-files = [a for a in argv[1:] if a.endswith('.py')]
+files = [a for a in argv[1:] if a.endswith('.py')]  # like pyright: .py only
 diagnostics = [{'file': os.path.abspath(f), 'severity': 'error'}
                for f in files for line in open(f) if '# type-error' in line]
 out(json.dumps({'generalDiagnostics': diagnostics}))
@@ -129,6 +129,11 @@ class ReportTest(cli_harness.ToolCase):
         self.assertIn("pyright scripts/ci/typed.py: 1, past the limit 0", done.output)
         self.assertNotIn("plain.py", done.output)  # not asked: its baseline row (none) stands
         self.assertEqual([["scripts/ci/typed.py"]], [[a for a in c if a.endswith(".py")] for c in self.fakes.calls("node")][-1:])
+
+    def test_an_extensionless_python_tools_type_errors_are_counted_under_its_own_name(self) -> None:
+        self.files({"scripts/ci/tool": "#!/usr/bin/env python3\nx = 1  # type-error\n"})
+        self.assert_check_fails("pyright scripts/ci/tool: 1, past the limit 0")
+        self.assertFalse(os.path.exists(os.path.join(self.root, "scripts/ci/tool.extensionless.py")))
 
     def test_a_raised_pyright_row_lands_only_with_a_typing_trailer(self) -> None:
         self.files({"scripts/ci/plain.py": SIMPLE + "y = 2  # type-error\n"})
