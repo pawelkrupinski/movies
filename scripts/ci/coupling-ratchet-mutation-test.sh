@@ -32,7 +32,9 @@ mutants=(
             was @@         if False:
             was'
   'a new package has no limit @@ base_ce.get(key, limits(baseline)["new-package-ce"]) @@ base_ce.get(key, 10**9)'
-  'a frozen row is not compared @@ if value > base[key]: @@ if False:'
+  'a frozen row is not compared @@ if value > base[key]:
+                out.append(f"{noun} @@ if False:
+                out.append(f"{noun}'
   'a class or package newly past a limit passes @@ elif not moved(key, value, base, cur) and (kind, key) not in renamed: @@ elif False:'
   'any frozen row counts as moved @@ return any(v >= value for v in gone) and len(arrived) <= len(gone) @@ return True'
   'one frozen row moves to two classes @@ return any(v >= value for v in gone) and len(arrived) <= len(gone) @@ return any(v >= value for v in gone)'
