@@ -630,7 +630,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
         def fetch(url: String): Either[String, java.nio.file.Path] = { directPosters.incrementAndGet(); Left("direct") }
       }, wiring.posterEgressRoutes)
 
-    download.fetch(s"${services.cinemas.pl.venues.KoszalinVenues.KinoKryteriumUrl}/MSI/ImageData.ashx?id=2721&mode=thumb")
+    download.fetch(s"${services.cinemas.pl.venues.ZachodniopomorskieVenues.KoszalinVenues.KinoKryteriumUrl}/MSI/ImageData.ashx?id=2721&mode=thumb")
 
     withClue("the poster is asked of Zyte first: ") { wiring.zyteHttpClient.sends.get shouldBe 1 }
     withClue("never of the plain poster download: ") { directPosters.get shouldBe 0 }
