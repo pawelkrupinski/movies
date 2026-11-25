@@ -3,6 +3,7 @@ package services.identity.agreement
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 
+import services.identity.agreement.StageWaits.ClusterWait
 import services.identity.IdentityLookups
 import services.identity.measures.IdentityMeasures
 import services.identity.measures.{Listing, ResolverDecision}

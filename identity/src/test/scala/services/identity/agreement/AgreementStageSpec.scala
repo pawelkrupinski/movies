@@ -1,5 +1,6 @@
 package services.identity.agreement
 
+import services.identity.agreement.StageWaits.ClusterWait
 import services.identity.{FilmTable, IdentityCalibration}
 import services.identity.measures.{Listing, Resolution, ResolverDecision}
 import services.identity.measures.Film

@@ -2,6 +2,7 @@ package services.identity.agreement
 
 import scala.collection.mutable
 
+import services.identity.agreement.StageWaits.ClusterWait
 import services.identity.BilledPiece
 import services.identity.measures.{Listing, PosterEvidence, ResolverDecision}
 import services.identity.vocabulary.{Answer, DetailFacts, ProseWords, Question, VoterFamily}

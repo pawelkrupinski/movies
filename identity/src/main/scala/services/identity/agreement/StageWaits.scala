@@ -2,6 +2,7 @@ package services.identity.agreement
 
 import scala.collection.concurrent.TrieMap
 
+import services.identity.agreement.StageWaits.ClusterWait
 import services.identity.measures.{ResolverDecision, WaitingOn}
 import services.identity.vocabulary.{Dependency, Question}
 
@@ -102,4 +103,12 @@ final class StageWaits(waiting: TrieMap[String, ClusterWait], takeWaits: TrieMap
   /** What the stage waits on for cluster `id`: its families' questions and its correction's. */
   def questionsOf(id: String): Set[Question] =
     waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.gaps)
+}
+
+object StageWaits {
+  /** A cluster (or a take's correction) waiting on answers: its listings' digest and the questions it waits on — none where
+   *  only its fill's TMDB answers were missing (`blindAt`), resolved again once something is filed, and until then read as
+   *  the verdict that resolve gave (`read`). */
+  private[agreement] final case class ClusterWait(listings: Long, gaps: Set[Question], blindAt: Option[Long] = None,
+                                                 read: Option[StoredVerdict] = None)
 }
