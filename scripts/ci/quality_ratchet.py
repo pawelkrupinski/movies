@@ -48,7 +48,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # baseline_ratch
 import baseline_ratchet  # noqa: E402
 import trailers  # noqa: E402
 from trailers import git, text_at as file_at  # noqa: E402
-from coupling_ratchet import GENERIC_REASONS, ISO_DATE  # noqa: E402
+from coupling_reasons import GENERIC_REASONS, ISO_DATE  # noqa: E402
 
 Rows = Dict[Tuple[str, str], int]
 

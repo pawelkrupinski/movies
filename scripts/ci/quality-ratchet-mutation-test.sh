@@ -64,7 +64,7 @@ for m in "${mutants[@]}"; do
   printf '%s' "$name" > "$work/mutants/$i.name"
   mkdir -p "$work/mutants/$i"
   # the tool and the modules it imports, side by side
-  cp "$tool" "$REPO_ROOT/scripts/ci/trailers.py" "$REPO_ROOT/scripts/ci/coupling_ratchet.py" \
+  cp "$tool" "$REPO_ROOT/scripts/ci/trailers.py" "$REPO_ROOT/scripts/ci/coupling_reasons.py" \
      "$REPO_ROOT/scripts/ci/baseline_ratchet.py" "$work/mutants/$i/"
   target="$work/mutants/$i/quality_ratchet.py"
   case "$name" in "trailers.py: "*) target="$work/mutants/$i/trailers.py" ;; esac
