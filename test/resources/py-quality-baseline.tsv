@@ -76,8 +76,6 @@ cognitive	scripts/agent_time.py:bash_bucket	30
 cognitive	scripts/agent_time.py:read_events	29
 cognitive	scripts/agent_time.py:wait_kind	12
 cognitive	scripts/aot-class-list.py:loaded_classes	20
-cognitive	scripts/ci/ci_timings.py:workflow_ceilings	14
-cognitive	scripts/ci/ci_timings.py:workflow_jobs	30
 cognitive	scripts/ci/ci_trends.py:GitHub._get_once	14
 cognitive	scripts/ci/ci_trends.py:add_saturation	15
 cognitive	scripts/ci/ci_trends.py:attach_metrics	19
@@ -337,9 +335,6 @@ cyclomatic	scripts/agent_time.py:main	11
 cyclomatic	scripts/agent_time.py:read_events	15
 cyclomatic	scripts/agent_time.py:wait_kind	13
 cyclomatic	scripts/aot-class-list.py:loaded_classes	16
-cyclomatic	scripts/ci/ci_timings.py:otlp_payload	15
-cyclomatic	scripts/ci/ci_timings.py:workflow_ceilings	11
-cyclomatic	scripts/ci/ci_timings.py:workflow_jobs	21
 cyclomatic	scripts/ci/ci_trends.py:Source.select	30
 cyclomatic	scripts/ci/ci_trends.py:Source.window	11
 cyclomatic	scripts/ci/ci_trends.py:add_saturation	12
@@ -624,7 +619,6 @@ pyright	scripts/agent_time.py	194
 pyright	scripts/aot-class-list.py	41
 pyright	scripts/ci/check-security-headers.py	266
 pyright	scripts/ci/ci_http_calls.py	94
-pyright	scripts/ci/ci_timings.py	496
 pyright	scripts/ci/ci_trends.py	2451
 pyright	scripts/ci/commit_rules.py	75
 pyright	scripts/ci/convergence_paths.py	66
@@ -666,7 +660,6 @@ pyright	scripts/ci/python_floor_lint.py	104
 pyright	scripts/ci/quality_ratchet.py	24
 pyright	scripts/ci/ratchet_diff.py	56
 pyright	scripts/ci/recording_health.py	174
-pyright	scripts/ci/report_fields.py	7
 pyright	scripts/ci/reusable_workflow_inputs.py	153
 pyright	scripts/ci/runner_cache.py	117
 pyright	scripts/ci/runner_scheduler.py	737

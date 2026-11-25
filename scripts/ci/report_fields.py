@@ -7,12 +7,12 @@ ISO-8601 instant as GitHub's API and the run logs write it (a trailing `Z` for U
 import datetime
 
 
-def cell(text):
+def cell(text: object) -> str:
     """`text` as one Markdown table cell: a `|` escaped (it would end the cell), a newline flattened (it would end the row)."""
     return str(text).replace("|", "\\|").replace("\n", " ")
 
 
-def parse_instant(text):
+def parse_instant(text: str) -> datetime.datetime:
     """An ISO-8601 instant, `Z` read as UTC: Python 3.9's fromisoformat (the floor, run-script-tests' PythonFloor)
     reads `+00:00` only."""
     return datetime.datetime.fromisoformat(text.replace("Z", "+00:00"))

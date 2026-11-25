@@ -61,6 +61,7 @@ Run:  python3 scripts/ci/ci_timings.py --repo OWNER/REPO --run-id ID [--push]
 Test: python3 scripts/ci/ci_timings_test.py
 """
 import argparse
+import datetime
 import functools
 import json
 import os
@@ -68,11 +69,20 @@ import re
 import subprocess
 import sys
 import urllib.parse
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, TextIO, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import grafana_otlp  # noqa: E402
 import run_metrics  # noqa: E402
 from report_fields import parse_instant  # noqa: E402
+from workflow_ceilings import Ceiling, ceiling_of, workflow_ceilings  # noqa: E402
+# Re-exported: ci_timings_test reads the workflow files' parsing through this module.
+from workflow_ceilings import DEFAULT_TIMEOUT_MINUTES as DEFAULT_TIMEOUT_MINUTES  # noqa: E402
+from workflow_ceilings import WORKFLOWS as WORKFLOWS  # noqa: E402
+from workflow_ceilings import scalar as scalar, workflow_jobs as workflow_jobs  # noqa: E402
+
+Record = Dict[str, Any]
+LogFor = Callable[[Any], str]
 
 # `[uk] bootCutover done in 486.8s`, `[ukp0] replayCutover done in 604.0s`; never the indented
 # `[uk]   identityTick done in …` sub-phases (see the header).
@@ -85,118 +95,32 @@ SERVICE_NAME = "kinowo-ci"
 PHASE_LOG_MIN_SECONDS = 60
 # What an expression `timeout-minutes` came to, echoed by its job (country-convergence-leg.yml); see the header.
 CEILING_LINE = re.compile(r"ci-job-ceiling ([0-9]+) minutes")
-# github.com's ceiling for a job that names none.
-DEFAULT_TIMEOUT_MINUTES = 360
-EXPRESSION = re.compile(r"\$\{\{.*?\}\}")
-WORKFLOWS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".github", "workflows")
+# The order the gauges are pushed in.
+GAUGE_ORDER = ("kinowo_ci_run_seconds", "kinowo_ci_job_seconds", "kinowo_ci_job_queue_seconds", "kinowo_ci_step_seconds",
+               "kinowo_ci_phase_seconds", "kinowo_ci_job_timeout_seconds", "kinowo_ci_run_number")
 
 
-def seconds_between(start, end):
+def seconds_between(start: Optional[str], end: Optional[str]) -> Optional[float]:
     if not start or not end:
         return None
     return (parse_instant(end) - parse_instant(start)).total_seconds()
 
 
-def phase_times(log_text):
+def phase_times(log_text: str) -> Dict[str, float]:
     """Top-level PhaseTimer phases of one job's log, longest copy of each."""
-    phases = {}
+    phases: Dict[str, float] = {}
     for match in PHASE_LINE.finditer(ANSI.sub("", log_text)):
         label = COUNT.sub("N", match.group(3).strip())
         phases[label] = max(phases.get(label, 0.0), float(match.group(4)))
     return phases
 
 
-def indent(line):
-    return len(line) - len(line.lstrip(" "))
-
-
-def scalar(value):
-    """A plain or quoted YAML scalar without its trailing comment: `40 # longest green row 31 min` is 40, as YAML reads
-    it; a quoted one keeps a ` #` inside its quotes."""
-    value = value.strip()
-    if value[:1] in ("'", '"') and value.find(value[0], 1) > 0:
-        return value[1:value.find(value[0], 1)]
-    return re.sub(r"(^|\s)#.*$", "", value).strip()
-
-
-def workflow_jobs(text):
-    """Every job of a workflow file: {key: (its top-level attributes, its whole block)}. Read by indentation, not a
-    YAML parser: the runners' python has no PyYAML, and a job's keys are the lines one level under its own."""
-    lines = text.splitlines()
-    try:
-        start = lines.index("jobs:") + 1
-    except ValueError:
-        return {}
-    body = []
-    for line in lines[start:]:
-        if line.strip() and not line.startswith((" ", "#")):
-            break
-        body.append(line)
-    content = [line for line in body if line.strip() and not line.lstrip().startswith("#")]
-    if not content:
-        return {}
-    job_indent = indent(content[0])
-    jobs, key, block = {}, None, []
-    for line in body + ["end:"]:
-        if line.strip() and not line.lstrip().startswith("#") and indent(line) <= job_indent:
-            if key:
-                inner = [l for l in block if l.strip() and not l.lstrip().startswith("#")]
-                level = indent(inner[0]) if inner else 0
-                attrs = {}
-                for l in inner:
-                    if indent(l) == level and ":" in l:
-                        name, _, value = l.strip().partition(":")
-                        attrs[name] = scalar(value)
-                jobs[key] = (attrs, "\n".join(block))
-            key, block = line.strip().rstrip(":"), []
-        else:
-            block.append(line)
-    return jobs
-
-
-def workflow_ceilings(path, root=WORKFLOWS, seen=()):
-    """(name pattern, its literal length, ceiling) for each job of a workflow and of the workflows it calls. The
-    ceiling is minutes, or None for a call (it runs no steps itself) or an expression (its job echoes it)."""
-    file = os.path.join(root, os.path.basename(path))
-    if file in seen or not os.path.isfile(file):
-        return []
-    with open(file, encoding="utf-8") as handle:
-        jobs = workflow_jobs(handle.read())
-    found = []
-    for key, (attrs, _) in jobs.items():
-        name = attrs.get("name") or key
-        literal = EXPRESSION.split(name)
-        pattern = re.compile(".+".join(re.escape(part) for part in literal))
-        if not attrs.get("name") and "strategy" in attrs:
-            # A matrix job with no `name:` is `<key> (<row>)` on github.com (plain `<key>` if skipped before it starts).
-            pattern = re.compile(re.escape(key) + r"(?: \(.+\))?")
-        uses = attrs.get("uses", "")
-        timeout = attrs.get("timeout-minutes")
-        if uses.startswith("./.github/workflows/"):
-            ceiling = None
-            found += workflow_ceilings(uses, root, seen + (file,))
-        elif timeout is None:
-            ceiling = DEFAULT_TIMEOUT_MINUTES
-        else:
-            ceiling = int(timeout) if timeout.isdigit() else None
-        found.append((pattern, sum(map(len, literal)), ceiling))
-    return found
-
-
-def ceiling_of(name, ceilings):
-    """A job's ceiling in minutes, from the most specific pattern its name matches: `leg (poland)` is the caller row
-    `leg (${{ matrix.country }})`, not the callee's `${{ matrix.phase }} (${{ inputs.country }})`. GitHub prefixes a
-    called job with its caller's name (`poland / takes (poland)`)."""
-    matching = [(length, ceiling) for pattern, length, ceiling in ceilings
-                if pattern.fullmatch(name) or pattern.fullmatch(name.split(" / ")[-1])]
-    return max(matching, key=lambda match: match[0])[1] if matching else None
-
-
-def runner_kind(job):
+def runner_kind(job: Record) -> str:
     """Where a job ran, from the jobs API's `labels` and `runner_name`: `ci-runner` (self-hosted: label `self-hosted`
     or a runner named `ci-runner-*`), `hosted` (a runner named `GitHub Actions N`, or an `ubuntu-*` label), else `unknown`
     (a job that never got a runner has neither)."""
-    labels, name = job.get("labels") or [], job.get("runner_name") or ""
+    labels: List[str] = job.get("labels") or []
+    name: str = job.get("runner_name") or ""
     if "self-hosted" in labels or name.startswith("ci-runner"):
         return "ci-runner"
     if name.startswith("GitHub Actions") or any(label.startswith("ubuntu-") for label in labels):
@@ -205,17 +129,17 @@ def runner_kind(job):
 
 
 class Job:
-    def __init__(self, job, log_for, ceilings=()):
+    def __init__(self, job: Record, log_for: LogFor, ceilings: Iterable[Ceiling] = ()) -> None:
         self.id = job.get("id")
-        self.name = job["name"]
-        self.cpu = None  # run_metrics.attach: the runner's CPU over the job, when it uploaded its metrics
+        self.name: str = job["name"]
+        self.cpu: Optional[Any] = None  # run_metrics.attach: the runner's CPU over the job, when it uploaded its metrics
         self.runner = runner_kind(job)
         self.queued = seconds_between(job.get("created_at"), job.get("started_at"))
         self.conclusion = job.get("conclusion") or "unknown"
         self.started = job["started_at"]
         self.completed = job["completed_at"]
-        self.seconds = seconds_between(self.started, self.completed)
-        self.steps = []
+        self.seconds: float = seconds_between(self.started, self.completed) or 0.0
+        self.steps: List[Tuple[str, float]] = []
         for step in job.get("steps", []):
             took = seconds_between(step.get("started_at"), step.get("completed_at"))
             if took is None or step.get("conclusion") == "skipped":
@@ -225,23 +149,23 @@ class Job:
         self.phases = phase_times(log)
         echoed = CEILING_LINE.search(log)
         minutes_ = int(echoed.group(1)) if echoed else ceiling_of(self.name, ceilings)
-        self.ceiling = minutes_ * 60.0 if minutes_ else None
+        self.ceiling: Optional[float] = minutes_ * 60.0 if minutes_ else None
 
 
-def collect(jobs, log_for, ceilings=()):
+def collect(jobs: Iterable[Record], log_for: LogFor, ceilings: Iterable[Ceiling] = ()) -> List[Job]:
     """The run's finished jobs, longest first: the in-run reporter, still in progress, is never one.
     `log_for(job_id)` returns that job's log text; `ceilings` is workflow_ceilings() of the run's workflow."""
-    finished = [Job(job, log_for, ceilings) for job in jobs
+    finished = [Job(job, log_for, tuple(ceilings)) for job in jobs
                 if job.get("status") == "completed" and job.get("conclusion") != "skipped"
                 and job.get("started_at") and job.get("completed_at")]
     return sorted(finished, key=lambda job: -job.seconds)
 
 
-def run_start(run):
+def run_start(run: Record) -> str:
     return run.get("run_started_at") or run["created_at"]
 
 
-def run_measures(run, jobs, ready=None):
+def run_measures(run: Record, jobs: Sequence[Job], ready: Optional[datetime.datetime] = None) -> Dict[str, float]:
     """Wall clock from the first job's start to the last job's end, and how long the run waited
     (its own queue, then for a runner) before any job started; with `ready` (ready_at), how long its
     first job waited for a runner."""
@@ -249,13 +173,14 @@ def run_measures(run, jobs, ready=None):
         return {}
     first = min(job.started for job in jobs)
     last = max(job.completed for job in jobs)
-    measures = {"wall": seconds_between(first, last), "queued": max(0.0, seconds_between(run_start(run), first))}
+    measures = {"wall": seconds_between(first, last) or 0.0,
+                "queued": max(0.0, seconds_between(run_start(run), first) or 0.0)}
     if ready is not None:
         measures["runner_wait"] = max(0.0, (parse_instant(first) - ready).total_seconds())
     return measures
 
 
-def ready_at(run, others):
+def ready_at(run: Record, others: Iterable[Record]) -> datetime.datetime:
     """When nothing but a runner held the run back: its creation, or the end of an earlier run of the same workflow on
     its branch that was still going then -- the one it queued behind, for a workflow that runs one at a time (Main).
     For one that runs side by side it reads late, which only ever understates the wait."""
@@ -270,7 +195,7 @@ def ready_at(run, others):
     return ready
 
 
-def conclusion_of(run, jobs):
+def conclusion_of(run: Record, jobs: Sequence[Job]) -> str:
     """The run's conclusion once it has one (a backfill); while it runs, its jobs' worst."""
     if run.get("conclusion"):
         return run["conclusion"]
@@ -281,24 +206,24 @@ def conclusion_of(run, jobs):
     return "success" if jobs else "unknown"
 
 
-def ref_of(run):
+def ref_of(run: Record) -> str:
     """`main` or `branch`, nothing else: a run of the branch literally named `main` (push, workflow_dispatch, schedule --
     GitHub runs a schedule on the default branch -- or a workflow_run of one of those); every other run -- a measure/* or
     land/* branch, a bot's pull_request (even one from a fork whose head branch is also called `main`) -- is `branch`."""
     return "main" if run.get("head_branch") == "main" and run.get("event") != "pull_request" else "branch"
 
 
-def run_runner(jobs):
+def run_runner(jobs: Sequence[Job]) -> str:
     """Where the whole run ran: `hosted`, `ci-runner`, `mixed` (jobs on both), or `unknown` (no job got a runner)."""
     kinds = {job.runner for job in jobs} - {"unknown"}
     return "mixed" if len(kinds) > 1 else next(iter(kinds), "unknown")
 
 
-def minutes(secs):
+def minutes(secs: float) -> str:
     return "%dm%02ds" % (secs // 60, secs % 60)
 
 
-def report(run, jobs, out=sys.stdout):
+def report(run: Record, jobs: Sequence[Job], out: TextIO = sys.stdout) -> None:
     measures = run_measures(run, jobs)
     print("%s run %s (%s) -- wall %s, queued %s, %d jobs" % (
         run.get("name", "?"), run["id"], conclusion_of(run, jobs),
@@ -313,7 +238,7 @@ def report(run, jobs, out=sys.stdout):
             print("    phase  %7.1fs  %s" % (took, label), file=out)
 
 
-def summary_markdown(run, jobs):
+def summary_markdown(run: Record, jobs: Sequence[Job]) -> str:
     measures = run_measures(run, jobs)
     lines = ["### Timings",
              "",
@@ -331,25 +256,31 @@ def summary_markdown(run, jobs):
     return "\n".join(lines) + "\n"
 
 
-def otlp_payload(run, jobs, ready=None):
-    """The run as OTLP/JSON gauges, every sample at the run's start (see the header)."""
-    if not jobs:
-        return None
-    stamp = str(int(parse_instant(run_start(run)).timestamp()) * 1000000000)
-    workflow, ref, run_wide = run["name"], ref_of(run), run_runner(jobs)
+def gauge_point(stamp: str, shared: Dict[str, str], value: float, **labels: Any) -> Dict[str, Any]:
+    """One OTLP data point at `stamp`: its own labels plus the run's (`workflow`, `ref`)."""
+    return {"asDouble": float(value), "timeUnixNano": stamp,
+            "attributes": [{"key": key, "value": {"stringValue": str(text)}}
+                           for key, text in sorted(dict(labels, **shared).items())]}
 
-    def point(value, **labels):
-        return {"asDouble": float(value), "timeUnixNano": stamp,
-                "attributes": [{"key": key, "value": {"stringValue": str(text)}}
-                               for key, text in sorted(dict(labels, workflow=workflow, ref=ref).items())]}
 
-    def gauge(name, points):
-        return {"name": name, "gauge": {"dataPoints": points}}
+def gauge(name: str, points: List[Dict[str, Any]]) -> Dict[str, Any]:
+    return {"name": name, "gauge": {"dataPoints": points}}
 
-    metrics = [
+
+def run_gauges(run: Record, jobs: Sequence[Job], ready: Optional[datetime.datetime],
+               point: run_metrics.Point) -> List[Dict[str, Any]]:
+    """The gauges of the run as a whole: its measures and its number."""
+    run_wide = run_runner(jobs)
+    return [
         gauge("kinowo_ci_run_seconds",
               [point(value, measure=measure, conclusion=conclusion_of(run, jobs), runner=run_wide)
                for measure, value in sorted(run_measures(run, jobs, ready).items())]),
+        gauge("kinowo_ci_run_number", [point(run["run_number"], runner=run_wide)] if run.get("run_number") else []),
+    ]
+
+
+def job_gauges(jobs: Sequence[Job], point: run_metrics.Point) -> List[Dict[str, Any]]:
+    return [
         gauge("kinowo_ci_job_seconds",
               [point(job.seconds, ci_job=job.name, conclusion=job.conclusion, runner=job.runner) for job in jobs]),
         gauge("kinowo_ci_job_queue_seconds",
@@ -361,24 +292,35 @@ def otlp_payload(run, jobs, ready=None):
               [point(took, ci_job=job.name, phase=label, runner=job.runner) for job in jobs for label, took in sorted(job.phases.items())]),
         gauge("kinowo_ci_job_timeout_seconds",
               [point(job.ceiling, ci_job=job.name, runner=job.runner) for job in jobs if job.ceiling]),
-        gauge("kinowo_ci_run_number", [point(run["run_number"], runner=run_wide)] if run.get("run_number") else []),
-    ] + run_metrics.gauges(jobs, point)
+    ]
+
+
+def otlp_payload(run: Record, jobs: Sequence[Job], ready: Optional[datetime.datetime] = None) -> Optional[Dict[str, Any]]:
+    """The run as OTLP/JSON gauges, every sample at the run's start (see the header)."""
+    if not jobs:
+        return None
+    stamp = str(int(parse_instant(run_start(run)).timestamp()) * 1000000000)
+    shared = {"workflow": run["name"], "ref": ref_of(run)}
+    point = functools.partial(gauge_point, stamp, shared)
+    by_name = {g["name"]: g for g in run_gauges(run, jobs, ready, point) + job_gauges(jobs, point)}
+    ordered = [by_name[name] for name in GAUGE_ORDER]
+    metrics = ordered + run_metrics.gauges(jobs, point)
     return {"resourceMetrics": [{
         "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": SERVICE_NAME}}]},
         "scopeMetrics": [{"metrics": [m for m in metrics if m["gauge"]["dataPoints"]]}],
     }]}
 
 
-def merged(steps):
+def merged(steps: Iterable[Tuple[str, float]]) -> List[Tuple[str, float]]:
     """A step name that occurs twice in one job (two `Run actions/upload-artifact@v6`) would be two
     samples of one series at one timestamp; sum them instead."""
-    totals = {}
+    totals: Dict[str, float] = {}
     for label, took in steps:
         totals[label] = totals.get(label, 0.0) + took
     return sorted(totals.items())
 
 
-def push(payload, url, token, opener=grafana_otlp.OPEN):
+def push(payload: Dict[str, Any], url: Optional[str], token: Optional[str], opener: Callable[..., Any] = grafana_otlp.OPEN) -> str:
     """POST the payload; a message on any failure, never an exception."""
     if not url or not token:
         return "Grafana secrets unset -- timings not pushed."
@@ -391,14 +333,15 @@ GH_TIMEOUT_SECONDS = 120
 
 
 class GitHub:
-    def __init__(self, repo):
+    def __init__(self, repo: str) -> None:
         self.repo = repo
 
-    def json(self, path, paginate=True):
+    def json(self, path: str, paginate: bool = True) -> List[Any]:
         out = subprocess.run(["gh", "api"] + (["--paginate"] if paginate else []) + ["repos/%s/%s" % (self.repo, path)],
                              check=True, capture_output=True, text=True, timeout=GH_TIMEOUT_SECONDS).stdout
         # --paginate concatenates one JSON document per page.
-        decoder, documents, index = json.JSONDecoder(), [], 0
+        decoder, index = json.JSONDecoder(), 0
+        documents: List[Any] = []
         while index < len(out):
             if out[index].isspace():
                 index += 1
@@ -407,22 +350,22 @@ class GitHub:
             documents.append(document)
         return documents
 
-    def run(self, run_id):
+    def run(self, run_id: str) -> Record:
         return self.json("actions/runs/%s" % run_id)[0]
 
     @functools.lru_cache(maxsize=None)
-    def workflow_name(self, workflow_id):
+    def workflow_name(self, workflow_id: int) -> str:
         return self.json("actions/workflows/%s" % workflow_id)[0]["name"]
 
-    def recent_runs(self, branch):
+    def recent_runs(self, branch: str) -> List[Record]:
         """The newest runs on the branch, one page: the one a run queued behind is among them."""
         page = self.json("actions/runs?branch=%s&per_page=50" % urllib.parse.quote(branch), paginate=False)[0]
         return page["workflow_runs"]
 
-    def jobs(self, run_id):
+    def jobs(self, run_id: Any) -> List[Record]:
         return [job for page in self.json("actions/runs/%s/jobs?per_page=100" % run_id) for job in page["jobs"]]
 
-    def log(self, job_id):
+    def log(self, job_id: Any) -> str:
         # sbt colours its output, and `gh` refuses to print escape sequences unless told to.
         try:
             done = subprocess.run(["gh", "api", "--allow-escape-sequences", "repos/%s/actions/jobs/%s/logs" % (self.repo, job_id)],
@@ -433,13 +376,13 @@ class GitHub:
 
 
 
-def named(github, run):
+def named(github: GitHub, run: Record) -> Record:
     """The run, named by its workflow: a workflow with a `run-name:` titles each run its own way, and GitHub names the run
     by that title -- charted by it, every identity-measure dispatch would be a workflow of its own."""
     return dict(run, name=github.workflow_name(run["workflow_id"]))
 
 
-def handle(github, run, args, out=sys.stdout):
+def handle(github: GitHub, run: Record, args: argparse.Namespace, out: TextIO = sys.stdout) -> None:
     run = named(github, run)
     jobs = collect(github.jobs(run["id"]), github.log, workflow_ceilings(run.get("path") or ""))
     record = run_metrics.metrics_record(run)
@@ -460,8 +403,8 @@ def handle(github, run, args, out=sys.stdout):
         print(push(payload, os.environ.get("GRAFANA_URL"), os.environ.get("GRAFANA_ANNOTATION_TOKEN")), file=out)
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     parser.add_argument("--repo")
     parser.add_argument("--run-id")
     parser.add_argument("--push", action="store_true", help="push to Prometheus (GRAFANA_URL, GRAFANA_ANNOTATION_TOKEN)")
