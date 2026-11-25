@@ -43,9 +43,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)
-sys.path.insert(0, os.path.join(HERE, "lib"))
-sys.path.insert(0, HERE)
+sys.path[:0] = [HERE, os.path.join(HERE, "lib")]
 import identity_jvm  # noqa: E402
 import identity_refit_checks  # noqa: E402
 import tool_actions  # noqa: E402
@@ -53,6 +51,7 @@ import tool_cli  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
 
+ROOT = os.path.dirname(HERE)
 TOOL = "identity-refit"
 WEIGHTS = "identity/src/main/resources/identity-weights.json"
 CLASSPATH_LINE = re.compile(r"^/[^ ]*(\.jar|classes|resources)(:|$)")
