@@ -231,7 +231,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 21 tools | - | Python |
 | `scripts/py-quality/migrated.py` | THE MIGRATED TOOLS (scripts/py-quality/report.py; the owner, 2026-11-23): the files of the shell-to-Python migration's | `imported` | skill CLAUDE.md; 4 tools | - | Python |
 | `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push; 4 tools | - | Python |
-| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 126 tools | report_test.py | Python |
+| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +35; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 127 tools | report_test.py | Python |
 | `scripts/quality-report` | The code-quality report (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, length and duplication (pmd cpd) | `scripts/quality-report` | wf quality-hotspots; hook pre-push; agentctl; skill CLAUDE.md, test-layers; 2 tools | - | KEEP |
 | `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs (a name for ratchet_diff_cli.py) | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 4 tools | - | KEEP |
 | `scripts/ratchet_diff_cli.py` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet_diff_cli.py` | 1 tool | ratchet_diff_cli_test.py | Python |
@@ -322,7 +322,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/identity_family_nightly.py` | THE FAMILY EXPLORER'S WALK ROW (.github/workflows/identity-family-explorer.yml; the owner, 2026-11-06, option A): one | `scripts/ci/identity_family_nightly.py` | 1 tool | identity_family_nightly_test.py | Python |
 | `scripts/ci/identity_findings_report.py` | THE IDENTITY FINDINGS REPORT: the newest recording's whole-corpus findings, one GitHub issue per country. | `scripts/ci/identity_findings_report.py` | wf identity-findings-report; skill identity-investigation | identity_findings_report_test.py | Python |
 | `scripts/ci/identity_impact.py` | IDENTITY TEST-IMPACT SELECTION: of the identity area's local tests (scripts/hooks/local-tests.txt's `identity` set), | `python3 scripts/ci/identity_impact.py` | hook pre-push; skill CLAUDE.md; 5 tools | identity_impact_test.py | Python |
-| `scripts/ci/identity_judgements.py` | THE IDENTITY JUDGEMENTS: the one file every gate reads a hand judgement of a take from, and its one reader in Python. | `python3 scripts/ci/identity_judgements.py` | hook pre-push; skill CLAUDE.md, identity-investigation; 16 tools | identity_judgements_test.py | Python |
+| `scripts/ci/identity_judgements.py` | THE IDENTITY JUDGEMENTS: the one file every gate reads a hand judgement of a take from, and its one reader in Python. | `python3 scripts/ci/identity_judgements.py` | hook pre-push; skill CLAUDE.md, identity-investigation; 17 tools | identity_judgements_test.py | Python |
 | `scripts/ci/identity_judgements_lint.py` | THE IDENTITY JUDGEMENTS LINT: the one judgements file (identity_judgements.PATH) is well formed, and agrees with the | `python3 scripts/ci/identity_judgements_lint.py` | hook pre-push; skill CLAUDE.md, identity-investigation; 3 tools | identity_judgements_lint_test.py | Python |
 | `scripts/ci/identity_live_drift.py` | The off-worker identity drift check's counts, pushed to Prometheus: what `scripts.IdentityLiveDrift` found in each | `scripts/ci/identity_live_drift.py` | wf identity-live-drift | identity_live_drift_test.py | Python |
 | `scripts/ci/identity_run_shards.py` | IDENTITY-RUN'S JOBS (.github/workflows/identity-run.yml's plan): which sbt commands run side by side, each in a | `scripts/ci/identity_run_shards.py` | wf identity-run; 1 tool | identity_run_shards_test.py | Python |
@@ -460,7 +460,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/title-trace` | Every step one raw billing goes through, in production order, to the title the resolver reads | `scripts/title-trace` | wf main; skill CLAUDE.md, identity-investigation; 6 tools | title_trace_test.py | MIGRATE |
 | `scripts/venue-replay` | One venue's listings as the code at one or two git refs reads them, from a recording — never the network | `scripts/venue-replay` | skill CLAUDE.md, identity-investigation; 6 tools | venue_replay_test.py | MIGRATE |
 
-## Mirror and data (79)
+## Mirror and data (84)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -525,7 +525,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/wait_for_mongo_tunnel.py` | Open the CI end of the route to prod Mongo and DO NOT RETURN until bytes actually flow through it -- then hold it | `scripts/ci/wait_for_mongo_tunnel.py` | 2 tools | wait_for_mongo_tunnel_test.py | Python |
 | `scripts/discover-cinemas/discover.py` | Discover new UK cinemas on flicks.co.uk and wire them into the catalog. | `python3 scripts/discover-cinemas/discover.py` | wf decoration-discovery, discover-cinemas, nix-stage-closures; 5 tools | discover_test.py | Python |
 | `scripts/fleet-db-finish` | Count the fleet's three old collections in Poland's kinowo and drop them on an exact request (fleet DB migration, step 9) | `scripts/fleet-db-finish` | 2 tools | fleet-db-finish-test.sh | MIGRATE |
-| `scripts/lib/mongo_local.py` | THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib; | `imported` | 7 tools | - | Python |
+| `scripts/lib/mongo_local.py` | THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib; | `imported` | 8 tools | - | Python |
 | `scripts/local-mirror/freshness` | How current the local prod mirror (:28017) is, per country — for every tool that reads it (identity-slice --prod-mirror, listing-history, …) | `scripts/local-mirror/freshness` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation; 23 tools | freshness-test.sh | KEEP |
 | `scripts/local-mirror/local-mongo.sh` | The one place that knows how to make the local mirror Mongo reachable | `scripts/local-mirror/local-mongo.sh` | 1 tool | - | KEEP |
 | `scripts/local-mirror/log-path.sh` | Where the launchd agent's stdout/stderr land | `sourced` | 2 tools | - | KEEP |
@@ -537,9 +537,14 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mongo-grants` | The Mongo access every database needs, checked against prod or granted | `scripts/mongo-grants` | 3 tools | mongo-grants-test.sh | KEEP |
 | `scripts/mongo_grants.py` | THE MONGO ROLES EVERY DATABASE NEEDS, CHECKED OR GRANTED ON PROD (scripts/mongo-grants). | `python3 scripts/mongo_grants.py` | 2 tools | - | Python |
 | `scripts/own-mongod.sh` | A MongoDB of the caller's own: a single-node replica set on a free port, its data in a temporary directory, removed when the caller ends | `bash scripts/own-mongod.sh` | 2 tools | - | KEEP |
-| `scripts/poster-eval` | How strong a venue poster is as identity evidence, measured on prod's real candidate sets | `scripts/poster-eval` | skill identity-investigation; 1 tool | poster_eval_test.py | KEEP |
-| `scripts/poster_eval.py` | How strong a venue poster is as identity evidence, on prod's REAL candidate sets: the logic of scripts/poster-eval. | `python3 scripts/poster_eval.py` | 1 tool | poster_eval_test.py | Python |
-| `scripts/poster_hash.py` | Production's poster hash, bit for bit: the 63-bit pHash `services.identity.PosterHash.of` files for a poster. | `python3 scripts/poster_hash.py` | skill identity-investigation; 2 tools | - | Python |
+| `scripts/poster-eval` | How strong a venue poster is as identity evidence, measured on prod's real candidate sets | `scripts/poster-eval` | skill identity-investigation; 3 tools | poster_eval_test.py | KEEP |
+| `scripts/poster_eval.py` | How strong a venue poster is as identity evidence, on prod's REAL candidate sets: the logic of scripts/poster-eval. | `python3 scripts/poster_eval.py` | 6 tools | poster_eval_test.py | Python |
+| `scripts/poster_eval_common.py` | What every part of poster_eval shares (scripts/poster_eval.py's logic, split by concept): the countries, PosterEvidence's | `imported` | 5 tools | - | Python |
+| `scripts/poster_eval_dataset.py` | THE DATASET of poster_eval (the module doc of poster_eval.py says what it holds): read once from the LOCAL prod mirror, | `imported` | 1 tool | - | Python |
+| `scripts/poster_eval_images.py` | IMAGES AND HASHES of poster_eval: the image cache and the hash cache, the fetches (a concurrency cap a 429/503 halves), | `imported` | 2 tools | - | Python |
+| `scripts/poster_eval_report.py` | LABELS AND REPORTS of poster_eval: the judged and weak labels of each cluster, the vote's tallies per country and the | `imported` | 1 tool | - | Python |
+| `scripts/poster_eval_vote.py` | THE EVALUATION of poster_eval: a variant's posters resolved to hashes, each (cluster, url, candidate) pair's nearest bits, | `imported` | 2 tools | - | Python |
+| `scripts/poster_hash.py` | Production's poster hash, bit for bit: the 63-bit pHash `services.identity.PosterHash.of` files for a poster. | `python3 scripts/poster_hash.py` | skill identity-investigation; 3 tools | - | Python |
 | `scripts/prod-ops-fixture.sh` | The fake prod the prod-ops scripts' tests share (see scripts/prod-ops.sh) | `bash scripts/prod-ops-fixture.sh` | 1 tool | - | KEEP |
 | `scripts/prod-ops.sh` | The shared harness of the prod-ops scripts (scripts/mongo-grants, scripts/fleet-db-finish, and the next one) | `bash scripts/prod-ops.sh` | 3 tools | prod-ops-test.sh | KEEP |
 | `scripts/with-prod-mongo.sh` | Run one command against prod Mongo from a laptop: the credential from the Touch ID vault, the connection through the ssh tunnel | `scripts/with-prod-mongo.sh` | 6 tools | with-prod-mongo-test.sh | KEEP |
