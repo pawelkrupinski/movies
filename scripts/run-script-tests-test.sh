@@ -554,12 +554,22 @@ check "...under a ticket of width 2: no ticket asked, --jobs 8 runs 2 at a time,
   "$(grep -c '^gov admit' "$GOV_CALLS") $(grep -c '3 script test(s), 2 at a time' "$work/out") $(cat "$work/seen")"
 # a test fanning out itself declares its width (`# script-test-width: N`): the run's own ticket is charged it and the
 # test runs that wide; under a parent's ticket it still gets one core
+# -- while the sum fits the machine's cores, so the machine is pinned (getconf on PATH): 2026-11-25, Tool self-tests
+# #555, GitHub's 3-core macOS runner read 2 + 2 > 3 and dropped the extra, the case passing only where 4+ cores ran it
 put scripts/wide-test.sh "$(printf '%s\n' '# script-test-width: 3' 'echo "width=${AGENTCTL_GOV_WIDTH:-}" > "$SEEN"')"
+mkdir -p "$work/cores-bin"
+printf '#!/bin/sh\n[ "$1" = _NPROCESSORS_ONLN ] && { echo "$CORES"; exit 0; }\nexec /usr/bin/getconf "$@"\n' > "$work/cores-bin/getconf"
+chmod +x "$work/cores-bin/getconf"
 : > "$GOV_CALLS"
-(cd "$work" && SEEN="$work/seen" spec_governed "$work/agentctl" bash "$runner" --root "$tree" scripts/wide-test.sh scripts/a-test.sh) \
-  > "$work/out" 2>&1
+(cd "$work" && SEEN="$work/seen" CORES=8 PATH="$work/cores-bin:$PATH" spec_governed "$work/agentctl" bash "$runner" --root "$tree" \
+  scripts/wide-test.sh scripts/a-test.sh) > "$work/out" 2>&1
 check "...a test declaring width 3: the ticket charged its extra 2 beside min(--jobs, tests), the test 3 wide" "1 width=3" \
   "$(grep -c -- '--job script-tests --cores 4$' "$GOV_CALLS") $(cat "$work/seen")"
+: > "$GOV_CALLS"
+(cd "$work" && SEEN="$work/seen" CORES=3 PATH="$work/cores-bin:$PATH" spec_governed "$work/agentctl" bash "$runner" --root "$tree" \
+  scripts/wide-test.sh scripts/a-test.sh) > "$work/out" 2>&1
+check "...on 3 cores the extra 2 does not fit: the ticket min(--jobs, tests) wide, the wide test one core of it" "1 width=1" \
+  "$(grep -c -- '--job script-tests --cores 2$' "$GOV_CALLS") $(cat "$work/seen")"
 (cd "$work" && SEEN="$work/seen" spec_governed "$work/agentctl" env AGENTCTL_GOV_WIDTH=2 bash "$runner" --root "$tree" scripts/wide-test.sh) \
   > "$work/out" 2>&1
 check "...under a parent's ticket the wide test gets one core" "width=1" "$(cat "$work/seen")"
