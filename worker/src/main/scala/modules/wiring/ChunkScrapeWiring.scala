@@ -38,7 +38,7 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
   def scrapeChunkSpread: ScrapeChunkSpread = configuration.scrapeChunkSpread(ScrapeChunkSpread(ScrapeCadence.ChunkEnqueueSpread))
   lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore,
     new ChunkFanOut(taskQueue, ChunkScrapePlanner.DefaultRunTimeout, scrapeChunkSpread, scrapeCostStore),
-    chunkedListingPublisher, new FailedChunkPlan(publishScrape, scrapeFreshnessPolicy, gonePageScrapePolicy), clock = clock,
+    chunkedListingPublisher, new FailedChunkPlan(publishScrape, scrapeFreshnessPolicy, venuePageHistory), clock = clock,
     runStarted = chunkRunDeadlines.arm)
   lazy val chunkPageMemo: services.tasks.ChunkPageMemo = new services.tasks.MongoChunkPageMemo(mongoConnection.database, clock = clock)
   /** Publishes a chunked venue's listing — its reduce, or an empty plan's — and stamps it. */

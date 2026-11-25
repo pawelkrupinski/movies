@@ -16,8 +16,8 @@ import services.scrapes.{GoneUpstream, ScrapeArchiveReader}
  * @param archive the same archive the scrape runner writes: it is what says whether a venue is merely
  *                failing or has 404'd for over a day. The no-op archive says nothing is ever gone.
  */
-final class GonePageScrapePolicy(archive: ScrapeArchiveReader, clock: Clock) extends Logging {
-  import GonePageScrapePolicy.BrokenFor
+final class VenuePageHistory(archive: ScrapeArchiveReader, clock: Clock) extends Logging {
+  import VenuePageHistory.BrokenFor
 
   /** Whether the scrape of `scraper`'s venue is skipped this time: its page — the page its scraper reads
    *  NOW, not one it was read from before a re-sourcing — has 404'd for over a day, so it is re-probed once
@@ -63,7 +63,7 @@ final class GonePageScrapePolicy(archive: ScrapeArchiveReader, clock: Clock) ext
     archive.find(cinema).flatMap(_.lastSuccess).exists(_.at.isAfter(now.minusMillis(window.toMillis)))
 }
 
-object GonePageScrapePolicy {
+object VenuePageHistory {
   /** How long a venue's scraper must have failed to read it before a non-transient failure is an ERROR
    *  (a Sentry issue). Phoenix Leicester, 2026-10-12: three "the Savoy template changed" failures in three
    *  minutes filed one, and the next scrape was fine and stayed fine. Read within the day, it is a WARN;

@@ -67,7 +67,7 @@ object ScrapeCinemaHandlers {
     costs:         ScrapeCostStore = ScrapeCostStore.Discarding
   ): ScrapeCinemaHandler = {
     val outcome = scrapeFreshness.getOrElse(new ScrapeFreshnessPolicy(freshness, clock = clock))
-    val pages   = new GonePageScrapePolicy(scrapeArchive, clock)
+    val pages   = new VenuePageHistory(scrapeArchive, clock)
     new ScrapeCinemaHandler(scrapersByKey, new DueScrapes(scrapersByKey.values.toSeq, freshness, dueWindow),
       new PlainCinemaScrape(runner, outcome, pages, costs, clock, tools.SpecStopwatch.Frozen), chunkPlanner, pages, outcome, clock)
   }
@@ -91,7 +91,7 @@ object ChunkScrapePlanners {
   ): ChunkScrapePlanner =
     new ChunkScrapePlanner(chunkScrapers, store, new ChunkFanOut(queue, staleAfter.value, chunkSpread, costs),
       new ChunkedListingPublisher(publishScrape, scrapeFreshness),
-      new FailedChunkPlan(publishScrape, scrapeFreshness, new GonePageScrapePolicy(scrapeArchive, clock)), staleAfter, clock, runStarted)
+      new FailedChunkPlan(publishScrape, scrapeFreshness, new VenuePageHistory(scrapeArchive, clock)), staleAfter, clock, runStarted)
 }
 
 /** The chunked scrape's handlers and reaper assembled from their parts as the worker's wiring assembles them. */

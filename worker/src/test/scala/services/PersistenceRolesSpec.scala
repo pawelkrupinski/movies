@@ -40,7 +40,7 @@ class PersistenceRolesSpec extends AnyFlatSpec with Matchers {
     Seq(
       writerTypedIn(classOf[services.closure.ClosureSweep], classOf[ScrapeArchiveRepository]),
       writerTypedIn(classOf[services.tasks.CinemaContentCensus], classOf[ScrapeArchiveRepository]),
-      writerTypedIn(classOf[services.tasks.GonePageScrapePolicy], classOf[ScrapeArchiveRepository])
+      writerTypedIn(classOf[services.tasks.VenuePageHistory], classOf[ScrapeArchiveRepository])
     ).flatten shouldBe empty
     // The intake writes the listings it accepts, and only reads the archive's copy.
     writerTypedIn(classOf[services.identity.IdentityListingIntake], classOf[ScrapeArchiveRepository]) should have size 1
