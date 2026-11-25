@@ -36,9 +36,7 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
   private val chunks: Option[MongoCollection[Document]] =
     db.map(_.getCollection("scrape_chunks").withWriteConcern(tools.MongoWriteConcerns.Bookkeeping))
 
-  runs.foreach { c =>
-    val t = new Thread(() => createIndexes(c, chunks), "scrape-runs-init"); t.setDaemon(true); t.start()
-  }
+  runs.foreach(c => tools.OffThreadInit.start("scrape-runs-init")(createIndexes(c, chunks)))
 
   private def createIndexes(r: MongoCollection[Document], ch: Option[MongoCollection[Document]]): Unit = Try {
     Await.result(r.createIndex(Indexes.ascending("createdAt"),

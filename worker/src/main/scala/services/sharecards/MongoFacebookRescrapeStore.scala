@@ -26,20 +26,16 @@ import tools.MongoErrors
 class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends FacebookRescrapeStore with Logging {
   import MongoFacebookRescrapeStore.*
 
-  locally {
-    val thread = new Thread(() => {
-      // Equality, sort, range: `claim` asks for the OLDEST due entry, so `enqueuedAt` comes before
-      // the `notBefore` range — that way the index walk is already in claim order and stops at the
-      // first due key. With the range first (the index's first shape), every due entry was fetched
-      // and sorted in memory on every claim.
-      Try(Await.result(collection.createIndex(
-        Indexes.ascending("country", "kind", "enqueuedAt", "notBefore")).toFuture(), Timeout))
-        .fold(e => logger.warn(s"facebook_rescrapes index creation failed: ${e.getMessage}"),
-              // The range-first order it replaced, kept by nothing: dropped only once the claim order is there.
-              _ => tools.MongoIndex.dropSuperseded(collection, SupersededClaimIndex, "facebook_rescrapes"))
-    }, "facebook-rescrapes-init")
-    thread.setDaemon(true)
-    thread.start()
+  tools.OffThreadInit.start("facebook-rescrapes-init") {
+    // Equality, sort, range: `claim` asks for the OLDEST due entry, so `enqueuedAt` comes before
+    // the `notBefore` range — that way the index walk is already in claim order and stops at the
+    // first due key. With the range first (the index's first shape), every due entry was fetched
+    // and sorted in memory on every claim.
+    Try(Await.result(collection.createIndex(
+      Indexes.ascending("country", "kind", "enqueuedAt", "notBefore")).toFuture(), Timeout))
+      .fold(e => logger.warn(s"facebook_rescrapes index creation failed: ${e.getMessage}"),
+            // The range-first order it replaced, kept by nothing: dropped only once the claim order is there.
+            _ => tools.MongoIndex.dropSuperseded(collection, SupersededClaimIndex, "facebook_rescrapes"))
   }
 
   private def await[T](f: scala.concurrent.Future[T]): T = Await.result(f, Timeout)

@@ -135,9 +135,7 @@ class MongoFreshnessStore(
 
   coll match {
     case Some(c) =>
-      val thread = new Thread(() => hydrate(c), "freshness-init")
-      thread.setDaemon(true)
-      thread.start()
+      tools.OffThreadInit.start("freshness-init")(hydrate(c))
     case None =>
       mirror.hydrated()
       scrapeReady.trySuccess(())
