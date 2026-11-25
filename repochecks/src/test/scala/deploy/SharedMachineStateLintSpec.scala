@@ -64,6 +64,8 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
       "proves isolateGitEnvironment against a decoy GIT_DIR — it must run git with an environment of its own making",
     "worker/src/it/scala/deploy/WorkflowScriptsRunnableIntegrationSpec.scala" ->
       "a read-only `git ls-files -s` of this checkout's index (the modes CI checks out), with every GIT_* variable dropped",
+    "scripts/ci/identity_family_nightly_test.py" ->
+      "a fake `git` first on the tool's PATH that exits 0 (the cached commit is never fetched): no repository is built or run",
   )
 
   /** file → why a fixed temp path written in it is not a shared file. */
