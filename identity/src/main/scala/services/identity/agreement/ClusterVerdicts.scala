@@ -11,13 +11,13 @@ import services.identity.vocabulary.{Answer, Dependency, Question}
 /**
  * The families' VERDICT on each cluster the model left unmatched ([[verdictOf]]): the one held ([[VerdictIndex]]) while
  * its listings and everything it read stand — its receipt, [[StoredVerdict.reads]] — else decided again over every
- * family's answers now ([[Agreement.weighed]], and the fill where none names a film: [[ClusterFill.filledOf]]), or,
+ * family's answers now ([[Agreement.weighed]], and the fill where none names a film: [[AgreementTakes.filledOf]]), or,
  * while a family's answer is a gap, the questions the cluster waits on ([[waiting]]). A cluster met in a new shape has
  * its families asked `inline` first; one that has waited on questions all attempted SETTLES on the families that
  * answered ([[settles]], docs/design/identity-questions.md step 4). Each verdict is decided under `decidedUnder`: one
  * decided under other rules is decided again while the apply's backfill budget lasts.
  */
-private[agreement] final class ClusterVerdicts(evidence: AgreementEvidence, verdicts: VerdictIndex, clusterFill: ClusterFill,
+private[agreement] final class ClusterVerdicts(evidence: AgreementEvidence, verdicts: VerdictIndex, takes: AgreementTakes,
                                                inline: InlineAsker, decidedUnder: String, clock: java.time.Clock) {
   /** The clusters a family has not answered for yet, at the `version` and listings' digest they were last resolved at,
    *  with the questions they wait on: not resolved again until one of those is answered or their listings move. */
@@ -163,7 +163,7 @@ private[agreement] final class ClusterVerdicts(evidence: AgreementEvidence, verd
       val weighed = Agreement.weighed(listings, known, lean, Some(thisYear), stated)
       // an agreement only review sites make is taken as nothing ([[taken]]): the fill reads the cluster as one none agreed on
       weighed -> (if (weighed.agreed.exists(_.families.exists(_.namesFilms))) Answer.Known(None)
-        else clusterFill.filledOf(decision, listings, known, stated, thisYear, pass.asked, reads))
+        else takes.filledOf(decision, listings, known, stated, thisYear, pass.asked, reads))
     }
     val agreed   = weighed.agreed
     // settled: what none answered is in the receipt as unanswered ([[Recording]]), so its answer, once filed, reads

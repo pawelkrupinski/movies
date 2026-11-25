@@ -57,7 +57,7 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
   /** A cluster met in a new shape has its families asked inline ([[askNow]]). */
   private[agreement] val inline          = new InlineAsker(askNow, clock)
   /** A model take read against the evidence that can contradict it. */
-  private[agreement] val corrections: ModelTakeCorrection = new AgreementCorrections(evidence, candidates, verdicts, inline, decidedUnder, listedOn)
+  private[agreement] val corrections = new AgreementCorrections(evidence, candidates, verdicts, inline, decidedUnder, listedOn)
   /** A no-match's take of its families' verdict: the agreed film, else the posters', the broadcast's, a fill's or the catalogue's. */
   private[agreement] val takes           = new AgreementTakes(evidence, candidates, rules, identities, sources, tmdbOf)
   /** A no-match's families' verdict, held while what it read stands. */

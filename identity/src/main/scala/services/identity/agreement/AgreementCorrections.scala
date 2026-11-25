@@ -15,7 +15,7 @@ import services.identity.vocabulary.{Answer, Dependency, PosterHash, PosterQuest
  *  What a correction still waits on is kept here ([[correctionWaits]]). */
 private[agreement] final class AgreementCorrections(evidence: AgreementEvidence, candidates: AgreementCandidates, verdicts: VerdictIndex,
                                                    inline: InlineAsker, decidedUnder: String,
-                                                   listedOn: Option[VoterFamily]) extends ModelTakeCorrection {
+                                                   listedOn: Option[VoterFamily]) {
   import evidence.{looked, venuesLooked, tried}
   import candidates.{candidatesOf, measured, posterDistances, posterRead, titledFilms, undatedOf}
   import AgreementTakes.taking
