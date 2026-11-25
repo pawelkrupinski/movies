@@ -32,6 +32,9 @@ import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+from tool_pool import governed_workers  # noqa: E402  (THE GOVERNED FAN-OUT: the hook runs under a governor ticket)
+
 LITERAL = re.compile(r'"([A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+/?)"')
 ROOT_LITERAL = re.compile(r'"([A-Za-z0-9_.-]+)"')
 # a classpath resource named where it is opened: the literal the opener's first argument is
@@ -137,7 +140,7 @@ def misses(registry, only):
         if per:
             wanted[spec] = per
     unique = sorted({p for per in wanted.values() for found in per.values() for p in found})
-    with ThreadPoolExecutor(max_workers=8) as pool:
+    with governed_workers("lint-plan", 8) as width, ThreadPoolExecutor(max_workers=width) as pool:
         selection = dict(zip(unique, pool.map(selected_specs, unique)))
     for spec, per in wanted.items():
         for literal, found in per.items():

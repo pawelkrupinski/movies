@@ -469,7 +469,13 @@ The governor admits by CPU as well as memory (2026-11-18): every sbt-warm comman
 its job's cores (`agentctl gov status` shows them), so a full laptop queues work instead of running it 3-5x slower.
 Heavy jobs that are no JVM -- a `run-script-tests` run (and its `--linux` container), each Playwright row of
 `page-tests-local`, `backtest-alerts-local`, the mirror's seed -- take a ticket too (`scripts/gov-run --job J [--cores
-N] -- <command>`, jvm-gate.sh `gov_hold`): they wait while the laptop is starved and start by themselves. A
+N] -- <command>`, jvm-gate.sh `gov_hold`): they wait while the laptop is starved and start by themselves. **Every
+parallel fan-out is sized by THE GOVERNED FAN-OUT** (the owner, 2026-11-25: load 103, `gov status` 0 admitted, 43 test
+processes ticketless): `scripts/gov-parallel --job J -P N` for `xargs -P`, `scripts/lib/tool_pool.py` governed_workers
+for a Python pool, run-script-tests' own pool (jvm-gate.sh `gov_width`): a ticket charged its width, or under one
+already (`AGENTCTL_GOV_WIDTH`: a check's hook, a pool's own workers, which get 1) none and at most that wide, so a
+nested runner never waits on its parent. `scripts/ci/fanout_lint.py` refuses any other (a network-bound pool takes a
+row of `scripts/ci/fanout-allow.tsv` saying why). jvm-gate.sh trusts only `agentctl gov probe`, never agentctl's source. A
 whole-module `testUnit` / `<module>/test` and `scripts/fail-before` it would hold go to ci-runner's measure lane by
 themselves when that is free (`scripts/ci-sbt`; `--ci` / `--local` decide instead; the proof's verdict is each CI run's
 own sbt step, a run with none is no verdict). Narrow `testOnly` runs and compiles stay local.

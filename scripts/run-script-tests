@@ -114,11 +114,12 @@
 # implies -E), so every launch passes -B beside it (scripts/lib/tool_python.py; its test refuses one without).
 #
 # THE GOVERNOR. A run (and --linux's container, and its image build) holds a governor ticket on the Mac (jvm-gate.sh
-# gov_hold, `agentctl gov`), charged its parallelism (--jobs, or fewer tests): while the laptop is starved it waits for
-# admission, then starts by itself (the owner, 2026-11-19). None in a check's hook (its ticket is charged already), off
-# the Mac, with KINOWO_GOVERNOR=0, or riding a parent's. The tests themselves run with descriptor 7 closed and
-# KINOWO_JVM_SLOT_HELD unset: a test of the gate fakes its own governor and must see no ticket of this run's (and
-# shell-spec.sh keeps the real governor out of every spec).
+# gov_width, `agentctl gov`), charged its parallelism (--jobs, or fewer tests): while the laptop is starved it waits for
+# admission, then starts by itself (the owner, 2026-11-19). None under a ticket already (AGENTCTL_GOV_WIDTH: a check's
+# hook, whose width caps --jobs), off the Mac, with KINOWO_GOVERNOR=0, or riding a parent's. The tests themselves run
+# with descriptor 7 closed and KINOWO_JVM_SLOT_HELD unset -- a test of the gate fakes its own governor and must see no
+# ticket of this run's (and shell-spec.sh keeps the real governor out of every spec) -- and AGENTCTL_GOV_WIDTH=1: each
+# holds one core of the run's ticket, so a fan-out inside one (scripts/gov-parallel) runs one wide, ticketless.
 # Exit: 0 all passed (or none selected by --changed), 1 any failed or a filter matched nothing,
 # 2 a --changed base that is no commit, 64 usage. Bash 3.2 (macOS /bin/bash): no wait -n, no maps.
 set -uo pipefail
@@ -191,12 +192,34 @@ case "$stress" in *[!0-9]*) usage_error "--stress takes a count" ;; esac
 # --linux with nothing named: the tests the pre-push hook would run, those the changes since origin/main touch
 [ "$linux" = 1 ] && [ ${#filters[@]} -eq 0 ] && [ -z "$changed_base" ] && [ -z "$tag" ] && changed_base=origin/main
 
-# govern_run <tests> -> this run under a governor ticket charged min(--jobs, <tests>) cores (THE GOVERNOR); its tests
-# then see no ticket (descriptor 7 closed in run_one)
+# declared_width <test> -> the width its `# script-test-width: N` line (first 40 lines) declares, 1 without one: a test
+# that fans out itself (a mutation test's scripts/gov-parallel -P 4) runs that wide when the run's ticket is charged it
+declared_width() {
+  local w
+  w=$(sed -n '1,40s/^# script-test-width: *\([0-9][0-9]*\).*/\1/p' "$1" 2>/dev/null | head -1)
+  _gov_whole "${w:-1}"
+}
+# govern_run <tests> -> THE GOVERNED FAN-OUT's width for min(--jobs, <tests>) (THE GOVERNOR; jvm-gate.sh gov_width): a
+# ticket charged that many cores plus every selected wide test's extra (declared_width - 1) while that sum fits the
+# machine's cores, or within the one this run is under (a check's hook: at most its width); --jobs is then that width.
+# TEST_WIDTH, what each test runs under (AGENTCTL_GOV_WIDTH, run_one): unset without a governor (CI: a test's own
+# fan-out as wide as it asks), its declared width under the run's own ticket that counts it, else 1 -- one core of it.
+# Its tests see no ticket either way (descriptor 7 closed in run_one).
+TEST_WIDTH="" WIDE_TESTS=0
 govern_run() {
-  local cores=$jobs
-  [ "$1" -lt "$cores" ] && cores=$1
-  gov_hold run-script-tests script-tests "$cores" 2
+  local want=$jobs extra=0 p cores
+  [ "$1" -lt "$want" ] && want=$1
+  [ "$want" -ge 1 ] || return 0
+  governor_bin > /dev/null || return 0
+  TEST_WIDTH=1
+  while IFS="$(printf '\t')" read -r p _; do
+    extra=$((extra + $(declared_width "$root/$p") - 1))
+  done < "$work/selected"
+  cores=$(getconf _NPROCESSORS_ONLN 2> /dev/null || echo 0)
+  [ $((want + extra)) -le "${cores:-0}" ] || extra=0
+  gov_width run-script-tests script-tests $((want + extra)) 2
+  if [ -n "$JVM_SLOT" ] && [ "$extra" -gt 0 ]; then WIDE_TESTS=1; fi
+  [ "$GOV_WIDTH" -ge "$want" ] || jobs=$GOV_WIDTH
   unset KINOWO_JVM_SLOT_HELD
 }
 
@@ -748,6 +771,9 @@ run_one() { # <index> <path>: its log, exit status and seconds land in $work/<in
   # a test that stalls (or outlasts a --timeout) says what it was stuck on, in its own log (the report's tail shows it)
   # (appended to, as the watch below appends its report: neither writes over the other)
   : > "$work/$i.log"
+  local width=$TEST_WIDTH
+  [ "$WIDE_TESTS" = 1 ] && width=$(declared_width "$root/$path")
+  if [ -n "$width" ]; then export AGENTCTL_GOV_WIDTH=$width; else unset AGENTCTL_GOV_WIDTH; fi
   PATH=$test_path BOUNDED_ON_TIMEOUT="$stall_report" bounded "$timeout_s" "$interpreter" "$path" < /dev/null >> "$work/$i.log" 2>&1 7>&- &
   local test_pid=$! watch_pid
   # the no-progress bound: its log written counts as progress; a stall says what the test's group was stuck on, in its

@@ -65,7 +65,7 @@ check "classes: a red fixer's checkout asks as red (admitted at once), --class a
 check "ungated, the command run at once with no ticket: KINOWO_GOVERNOR=0, Linux (CI), no agentctl, inside a check" \
   "none none none none|0" "$(paste -sd' ' "$work/out")|$(wc -l < "$GOV_CALLS" | tr -d ' ')"
 
-printf '#!/usr/bin/env bash\n# def cmd_gov def gov_route\nprintf "%%s\\n" "$*" >> "$GOV_CALLS"; exit 1\n' > "$work/refusing"
+printf '#!/usr/bin/env bash\n[ "$1 $2" = "gov probe" ] && { echo "agentctl governor: admit cores"; exit 0; }\nprintf "%%s\\n" "$*" >> "$GOV_CALLS"; exit 1\n' > "$work/refusing"
 chmod +x "$work/refusing"
 out=$(governed env KINOWO_GOVERNOR_BIN="$work/refusing" "$REPO_ROOT/scripts/gov-run" --job j -- echo ran 2>&1)
 check "a governor that fails: warned, and the command runs all the same" "1 ran" \

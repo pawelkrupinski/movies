@@ -516,7 +516,7 @@ rm -rf "$tree/scripts/racy-test.sh" "$tree/scripts/steady-test.sh" "$work/racy.l
 # tests see no ticket of its own (descriptor 7 closed, KINOWO_JVM_SLOT_HELD unset)
 spec_fake_governor "$work/agentctl"
 export GOV_CALLS="$work/gov-calls"
-put scripts/sees-test.sh 'echo "fd7 $({ : >&7; } 2>/dev/null && echo open || echo closed) held=${KINOWO_GOV_CPU_HELD:-} slot=${KINOWO_JVM_SLOT_HELD:-}" > "$SEEN"'
+put scripts/sees-test.sh 'echo "fd7 $({ : >&7; } 2>/dev/null && echo open || echo closed) held=${KINOWO_GOV_CPU_HELD:-} slot=${KINOWO_JVM_SLOT_HELD:-} width=${AGENTCTL_GOV_WIDTH:-}" > "$SEEN"'
 : > "$GOV_CALLS"; rm -f "$work/seen"
 (cd "$work" && SEEN="$work/seen" GOV_HOLD="$work/admit" spec_governed "$work/agentctl" bash "$runner" --root "$tree" --jobs 3 scripts/sees-test.sh scripts/a-test.sh) \
   > "$work/out" 2>&1 &
@@ -524,24 +524,44 @@ governed_run=$!
 wait_until "the run asked the governor" '[ -e "$work/admit.waiting" ]'
 check "governed: not admitted, no test has started" "absent" "$([ -e "$work/seen" ] && echo ran || echo absent)"
 touch "$work/admit"; wait "$governed_run"; status=$?
-check "...admitted, the run starts by itself and passes" "0 fd7 closed held= slot=" "$status $(cat "$work/seen")"
+check "...admitted, the run starts by itself and passes" "0 fd7 closed held= slot= width=1" "$status $(cat "$work/seen")"
 check "...one ticket, charged min(--jobs, tests) cores as script-tests" "1" \
   "$(grep -c -- '^gov admit .*--class agent --mem 2 --label run-script-tests .*--job script-tests --cores 2$' "$GOV_CALLS")"
 : > "$GOV_CALLS"
 (cd "$work" && SEEN="$work/seen" spec_governed "$work/agentctl" "$REPO_ROOT/scripts/gov-run" --job outer -- bash "$runner" --root "$tree" scripts/sees-test.sh) > "$work/out" 2>&1
-check "...run under a ticket already (a gated parent): it rides it, no second ticket" "1 fd7 closed held= slot=" \
+check "...run under a ticket already (a gated parent): it rides it, no second ticket" "1 fd7 closed held= slot= width=1" \
   "$(wc -l < "$GOV_CALLS" | tr -d ' ') $(cat "$work/seen")"
 : > "$GOV_CALLS"
 (cd "$work" && SEEN="$work/seen" KINOWO_GOV_CPU_HELD=1 KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/agentctl" KINOWO_JVM_GATE_OS=Darwin \
   bash "$runner" --root "$tree" scripts/sees-test.sh
   SEEN="$work/seen" KINOWO_GOVERNOR=0 KINOWO_GOVERNOR_BIN="$work/agentctl" KINOWO_JVM_GATE_OS=Darwin bash "$runner" --root "$tree" scripts/sees-test.sh
   SEEN="$work/seen2" spec_governed "$work/agentctl" env KINOWO_JVM_GATE_OS=Linux bash "$runner" --root "$tree" scripts/sees-test.sh) > "$work/out" 2>&1
-check "...ungated in a check's hook, with KINOWO_GOVERNOR=0 and on Linux: no ticket asked, the tests run" "0 fd7 closed held= slot=|fd7 closed held= slot=" \
+check "...ungated in a check's hook, with KINOWO_GOVERNOR=0 and on Linux: no ticket asked, the tests run (no width off the governor)" "0 fd7 closed held= slot= width=|fd7 closed held= slot= width=" \
   "$(wc -l < "$GOV_CALLS" | tr -d ' ') $(cat "$work/seen")|$(cat "$work/seen2")"
 : > "$GOV_CALLS"
 (cd "$work" && HOME="$work/home" PATH="$work/docker-bin:$PATH" DOCKER_CALLS="$work/docker-calls" DOCKER_STDIN="$work/docker-stdin" \
   spec_governed "$work/agentctl" bash "$runner" --root "$tree" --linux scripts/ci/b_test.py) > "$work/out" 2>&1
 check "--linux: its container (and image build) under one ticket of the run's" "1 1" \
   "$(grep -c -- '--label run-script-tests .*--job script-tests --cores 1$' "$GOV_CALLS") $(grep -c '^run ' "$work/docker-calls")"
+# THE GOVERNED FAN-OUT (2026-11-25: load 103, `gov status` 0 admitted): under a ticket charged its cores already
+# (AGENTCTL_GOV_WIDTH: a check's hook) the run takes none and runs at most that wide, whatever --jobs asks
+: > "$GOV_CALLS"
+(cd "$work" && SEEN="$work/seen" AGENTCTL_GOV_WIDTH=2 KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/agentctl" \
+  KINOWO_JVM_GATE_OS=Darwin bash "$runner" --root "$tree" --jobs 8 scripts/sees-test.sh scripts/a-test.sh scripts/ci/b_test.py) \
+  > "$work/out" 2>&1
+check "...under a ticket of width 2: no ticket asked, --jobs 8 runs 2 at a time, each test one core of it" \
+  "0 1 fd7 closed held= slot= width=1" \
+  "$(grep -c '^gov admit' "$GOV_CALLS") $(grep -c '3 script test(s), 2 at a time' "$work/out") $(cat "$work/seen")"
+# a test fanning out itself declares its width (`# script-test-width: N`): the run's own ticket is charged it and the
+# test runs that wide; under a parent's ticket it still gets one core
+put scripts/wide-test.sh "$(printf '%s\n' '# script-test-width: 3' 'echo "width=${AGENTCTL_GOV_WIDTH:-}" > "$SEEN"')"
+: > "$GOV_CALLS"
+(cd "$work" && SEEN="$work/seen" spec_governed "$work/agentctl" bash "$runner" --root "$tree" scripts/wide-test.sh scripts/a-test.sh) \
+  > "$work/out" 2>&1
+check "...a test declaring width 3: the ticket charged its extra 2 beside min(--jobs, tests), the test 3 wide" "1 width=3" \
+  "$(grep -c -- '--job script-tests --cores 4$' "$GOV_CALLS") $(cat "$work/seen")"
+(cd "$work" && SEEN="$work/seen" spec_governed "$work/agentctl" env AGENTCTL_GOV_WIDTH=2 bash "$runner" --root "$tree" scripts/wide-test.sh) \
+  > "$work/out" 2>&1
+check "...under a parent's ticket the wide test gets one core" "width=1" "$(cat "$work/seen")"
 
 spec_summary

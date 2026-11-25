@@ -90,6 +90,15 @@
 #                          checkout red: admitted at once). scripts/gov-run is the same for one command
 #   gov_run <label> <job> <cores> <mem> <command...>  the command (a function too) under gov_hold's ticket, given back
 #                          when it ends: its exit status
+#   gov_width <label> <job> <want> [mem GB]  THE GOVERNED FAN-OUT (the owner, 2026-11-25: "fix structurally" -- load 103
+#                          on 18 cores, `gov status` 0 admitted, 43 test processes ticketless): the width GOV_WIDTH a
+#                          parallel runner may use. Under a ticket already (AGENTCTL_GOV_WIDTH, exported by a ticket
+#                          charged its cores: a check's hook, gov_hold / gov-run with cores, a pool's own workers) it
+#                          takes NONE -- a nested runner never waits on its parent -- and runs at most that wide; else it
+#                          takes gov_hold's ticket charged <want> cores (a refused admission: one wide, warned). Its
+#                          workers run with AGENTCTL_GOV_WIDTH=1: one core each of the ticket. The one place a fan-out
+#                          is sized: scripts/gov-parallel (xargs -P), scripts/lib/governed_pool.py (a Python pool),
+#                          run-script-tests' pool; scripts/ci/fanout_lint.py refuses any other
 #   jvm_route <job>        `ci` when the governor would hold <job> now and ci-runner's measure lane is free (`agentctl
 #                          gov route`), else `local` -- the reason on stderr. Only an agent's own work (gov_class agent):
 #                          local without the governor, riding, under KINOWO_GOV_CPU_HELD (a tool inside a check or a
@@ -133,13 +142,28 @@ except OSError:
 }
 lock_busy() { [ -e "$1" ] && ! _lock_flock - "$1"; }
 
+GOVERNOR_BIN=""
 governor_bin() {
-  local g=${KINOWO_GOVERNOR_BIN:-$HOME/bin/agentctl}
-  # an agentctl from before the governor has no `gov`: the slots stay. Since agentctl's split into a package
-  # (2026-10-29) `cmd_gov` lives in lib/agentctl/gov.py beside it, not in the script: read only the script and the
-  # governor never governed, and idle kept sbt servers held every slot while a landing's precheck waited (2026-11-17).
-  [ "${KINOWO_GOVERNOR:-1}" != 0 ] && [ "${KINOWO_JVM_GATE_OS:-$(uname -s)}" = Darwin ] && [ -x "$g" ] &&
-    grep -qs 'def cmd_gov' "$g" "$(dirname "$g")/lib/agentctl/gov.py" && echo "$g"
+  local g=${KINOWO_GOVERNOR_BIN:-$HOME/bin/agentctl} f
+  GOVERNOR_BIN=""
+  [ "${KINOWO_GOVERNOR:-1}" != 0 ] && [ "${KINOWO_JVM_GATE_OS:-$(uname -s)}" = Darwin ] && [ -x "$g" ] || return 1
+  # ITS FEATURES, from its own probe (`agentctl gov probe`), never its source: grepping gov.py for `def cmd_gov` went
+  # blind when agentctl's split moved it to govcmd.py (2026-11-22), and for three days movies took no ticket at all
+  # while `gov status` said 0 admitted at load 100. Probed once per process tree (KINOWO_GOVERNOR_FEATURES, exported).
+  case "${KINOWO_GOVERNOR_FEATURES:-}" in
+    "$g|"*) ;;
+    *) f=$("$g" gov probe 2> /dev/null) || f=""
+       case "$f" in
+         "agentctl governor: "*) export KINOWO_GOVERNOR_FEATURES="$g|${f#agentctl governor: }" ;;
+         *) echo "jvm-gate: $g answers no \`gov probe\`: no governor ticket, the JVM slots instead" >&2; return 1 ;;
+       esac ;;
+  esac
+  GOVERNOR_BIN=$g
+  echo "$g"
+}
+governor_has() { # <feature> -> 0 when the governor found by governor_bin (in this shell) has it
+  case " ${KINOWO_GOVERNOR_FEATURES#*|} " in *" $1 "*) return 0 ;; esac
+  return 1
 }
 gov_class() { # <label>
   if [ -n "${KINOWO_GOV_CLASS:-}" ]; then echo "$KINOWO_GOV_CLASS"; return 0; fi
@@ -159,12 +183,12 @@ gov_job() { # <label>
   esac
 }
 # an agentctl whose governor charges cores (its `gov route`): an older one refuses --job, and the ticket would fail
-_gov_charges_cores() { grep -qs 'def gov_route' "$1" "$(dirname "$1")/lib/agentctl/gov.py"; }
 gov_take() { # <label> [--try]
   local g label=${1:-tool} ticket cores=()
   shift
-  g=$(governor_bin) || return 1
-  if _gov_charges_cores "$g"; then
+  governor_bin > /dev/null || return 1
+  g=$GOVERNOR_BIN
+  if governor_has cores; then
     cores=(--job "$(gov_job "$label")")
     [ -z "${KINOWO_GOV_CORES:-}" ] || cores+=(--cores "$KINOWO_GOV_CORES")
   fi
@@ -173,6 +197,8 @@ gov_take() { # <label> [--try]
   if "$g" gov admit --fd 7 --ticket "$ticket" --class "$(gov_class "$label")" --mem "${KINOWO_GOV_MEM_GB:-5}" \
       --label "$label" --pid $$ --cwd "$PWD" ${cores[@]+"${cores[@]}"} "$@"; then
     JVM_SLOT=$ticket; export KINOWO_JVM_SLOT_HELD="$ticket"
+    # charged a number of cores: that is the width every governed fan-out under it may run (gov_width)
+    if [ -n "${KINOWO_GOV_CORES:-}" ]; then AGENTCTL_GOV_WIDTH=$(_gov_whole "$KINOWO_GOV_CORES"); export AGENTCTL_GOV_WIDTH; fi
     return 0
   fi
   exec 7>&-; rm -f "$ticket"
@@ -181,8 +207,8 @@ gov_take() { # <label> [--try]
 
 jvm_cpu_take() { # <label> <job>
   local g
-  g=$(governor_bin) || return 0
-  _gov_charges_cores "$g" || return 0
+  governor_bin > /dev/null && governor_has cores || return 0
+  g=$GOVERNOR_BIN
   jvm_slot_riding && return 0
   [ -z "${KINOWO_GOV_CPU_HELD:-}" ] || return 0
   [ -z "$JVM_SLOT" ] || return 0   # this process holds a ticket already (its own JVM's): its cores are charged
@@ -192,7 +218,8 @@ jvm_cpu_take() { # <label> <job>
 }
 gov_hold() { # <label> <job> [cores] [mem GB]
   local g
-  g=$(governor_bin) || return 0
+  governor_bin > /dev/null || return 0
+  g=$GOVERNOR_BIN
   jvm_slot_riding && return 0
   [ -z "${KINOWO_GOV_CPU_HELD:-}" ] || return 0
   [ -z "$JVM_SLOT" ] || return 0
@@ -205,16 +232,37 @@ gov_run() { # <label> <job> <cores> <mem> <command...>
   shift 4
   ( gov_hold "$label" "$job" "$charged" "$mem"; "$@" )
 }
+# _gov_whole <cores> -> the whole cores, at least 1 ("1.5" -> 1)
+_gov_whole() { local n=${1%%.*}; [ "${n:-0}" -ge 1 ] 2> /dev/null && echo "$n" || echo 1; }
+# shellcheck disable=SC2034 # GOV_WIDTH: its caller's (gov-parallel, run-script-tests, tool_pool.py)
+gov_width() { # <label> <job> <want> [mem GB] -> GOV_WIDTH
+  local want above=${AGENTCTL_GOV_WIDTH:-}
+  want=$(_gov_whole "$3")
+  if [ -n "$above" ]; then
+    above=$(_gov_whole "$above")
+    GOV_WIDTH=$((want < above ? want : above))
+    return 0
+  fi
+  GOV_WIDTH=$want
+  governor_bin > /dev/null || return 0
+  jvm_slot_riding && return 0
+  [ -z "${KINOWO_GOV_CPU_HELD:-}" ] && [ -z "$JVM_SLOT" ] || return 0
+  KINOWO_GOV_JOB=$2 KINOWO_GOV_CORES=$want KINOWO_GOV_MEM_GB=${4:-1} gov_take "$1" && return 0
+  GOV_WIDTH=1
+  echo "[$1] the governor ($GOVERNOR_BIN gov admit) failed: running one wide, without a ticket" >&2
+}
 jvm_route() { # <job>
   local g
   # only an agent's own work: a check's or a red fix's runs where it was asked to (the hook judges a landing locally)
-  g=$(governor_bin) && _gov_charges_cores "$g" && ! jvm_slot_riding && [ -z "${KINOWO_GOV_CPU_HELD:-}" ] &&
+  governor_bin > /dev/null && governor_has cores && ! jvm_slot_riding && [ -z "${KINOWO_GOV_CPU_HELD:-}" ] &&
     [ "$(gov_class "$1")" = agent ] || { echo local; return 0; }
+  g=$GOVERNOR_BIN
   if "$g" gov route --job "$1" --class agent >&2; then echo ci; else echo local; fi
 }
 jvm_usage() { # <job> <wall seconds> <cpu seconds>
   local g
-  g=$(governor_bin) && _gov_charges_cores "$g" || return 0
+  governor_bin > /dev/null && governor_has cores || return 0
+  g=$GOVERNOR_BIN
   "$g" gov usage --job "$1" --wall "$2" --cpu "$3" > /dev/null 2>&1 || true
 }
 jvm_cpu_seconds() { # <pid>

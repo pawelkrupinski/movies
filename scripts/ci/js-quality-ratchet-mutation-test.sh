@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# script-test-width: 4 (its mutants run 4 at a time: scripts/run-script-tests charges the run its extra cores)
 # THE JS/TS QUALITY RATCHET HOLDS, proved by mutation: each mutant below is js_quality_ratchet.py, or the engine it runs
 # (baseline_ratchet.py), with ONE check taken out, and js_quality_ratchet_test.py must FAIL against every one -- a check whose removal no test notices could silently
 # stop gating and let the production JS/TS grow unreviewed. Each mutant is applied by exact text; a mutant whose text is
@@ -59,7 +60,7 @@ PY
 done
 # -f: unittest stops at a mutant's first failing test, all it takes to kill one (the clean run below stays whole)
 # shellcheck disable=SC2016 # expanded by the inner bash
-seq 1 "$i" | xargs -P 4 -I{} bash -c 'JS_QUALITY_RATCHET_UNDER_TEST="$1/mutants/$2/js_quality_ratchet.py" python3 "$3" -f > "$1/mutants/$2.out" 2>&1; echo $? > "$1/mutants/$2.rc"' \
+seq 1 "$i" | "$REPO_ROOT/scripts/gov-parallel" --job mutation-tests -P 4 -I{} bash -c 'JS_QUALITY_RATCHET_UNDER_TEST="$1/mutants/$2/js_quality_ratchet.py" python3 "$3" -f > "$1/mutants/$2.out" 2>&1; echo $? > "$1/mutants/$2.rc"' \
   _ "$work" {} "$REPO_ROOT/scripts/ci/js_quality_ratchet_test.py"
 for n in $(seq 1 "$i"); do
   check "js_quality_ratchet_test.py fails against the mutant: $(cat "$work/mutants/$n.name")" 1 \

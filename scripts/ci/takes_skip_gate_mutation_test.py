@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# script-test-width: 4 (its mutants run 4 at a time: scripts/run-script-tests charges the run its extra cores)
 """THE GATE FAILS CLOSED, proved by mutation: each mutant below is takes_skip_gate.py with ONE check taken out, and
 takes_skip_gate_test.py must FAIL against every one -- a check whose removal no test notices is a check that could
 silently stop working and let a takes row be skipped that should run. Each mutant is applied by exact text; a mutant
@@ -15,6 +16,9 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
+from tool_pool import governed_workers  # noqa: E402  (THE GOVERNED FAN-OUT: the mutants' pool under a governor ticket)
+
 GATE = os.path.join(HERE, "takes_skip_gate.py")
 TEST = os.path.join(HERE, "takes_skip_gate_test.py")
 # name -> (exact text in the gate, what replaces it)
@@ -65,7 +69,7 @@ class TakesSkipGateMutationTest(unittest.TestCase):
                 with open(paths[name], "w") as f:
                     f.write(source.replace(frm, to, 1))
                 os.chmod(paths[name], 0o755)
-            with ThreadPoolExecutor(max_workers=4) as pool:
+            with governed_workers("mutation-tests", 4) as width, ThreadPoolExecutor(max_workers=width) as pool:
                 results = dict(zip(paths, pool.map(lambda path: run_test(path, ("-f",)), paths.values())))
         for name, (code, output) in results.items():
             with self.subTest(mutant=name):

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# script-test-width: 4 (its mutants run 4 at a time: scripts/run-script-tests charges the run its extra cores)
 # THE CODE-QUALITY RATCHETS HOLD, proved by mutation: each mutant below is quality_ratchet.py with ONE check taken out,
 # and quality_ratchet_test.py must FAIL against every one -- a check whose removal no test notices could silently stop
 # working and let complexity, length or duplication grow unreviewed (or a data table hold logic, or be declared
@@ -79,7 +80,7 @@ PY
 done
 # -f: unittest stops at a mutant's first failing test, all it takes to kill one (the clean run below stays whole)
 # shellcheck disable=SC2016 # expanded by the inner bash
-seq 1 "$i" | xargs -P 4 -I{} bash -c 'QUALITY_RATCHET_UNDER_TEST="$1/mutants/$2/quality_ratchet.py" python3 "$3" -f > "$1/mutants/$2.out" 2>&1; echo $? > "$1/mutants/$2.rc"' \
+seq 1 "$i" | "$REPO_ROOT/scripts/gov-parallel" --job mutation-tests -P 4 -I{} bash -c 'QUALITY_RATCHET_UNDER_TEST="$1/mutants/$2/quality_ratchet.py" python3 "$3" -f > "$1/mutants/$2.out" 2>&1; echo $? > "$1/mutants/$2.rc"' \
   _ "$work" {} "$REPO_ROOT/scripts/ci/quality_ratchet_test.py"
 for n in $(seq 1 "$i"); do
   check "quality_ratchet_test.py fails against the mutant: $(cat "$work/mutants/$n.name")" 1 \

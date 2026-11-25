@@ -683,7 +683,8 @@ cp "$scratch/sbt.orig" "$scratch/bin/sbt"
 # whole-module test the governor would hold goes to ci-runner (a stub ci-sbt) when `gov route` says so, a testOnly never.
 cat > "$scratch/bin/agentctl" <<STUB
 #!/usr/bin/env bash
-# def cmd_gov def gov_route (what scripts/jvm-gate.sh looks for)
+# its probe answers as the real one's does (jvm-gate.sh governor_bin)
+[ "\$1 \$2" = "gov probe" ] && { echo "agentctl governor: admit cores route width"; exit 0; }
 echo "\$*" >> "$scratch/gov-calls"
 [ "\$1 \$2" = "gov route" ] && { echo "\${ROUTE:-local}: stub" >&2; [ "\${ROUTE:-local}" = ci ]; exit; }
 exit 0

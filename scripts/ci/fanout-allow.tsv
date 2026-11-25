@@ -1,0 +1,13 @@
+# THE FAN-OUT LINT's allow table (scripts/ci/fanout_lint.py): a pool that needs no governor ticket, and why. <path> TAB <why, 30+ chars>
+infra/bin/backtest-alerts	network-bound: range queries to VictoriaMetrics, the laptop only waits on HTTP
+infra/bin/snapshot-label-values	network-bound: label-value reads from the metrics API over HTTP
+infra/bin/stage-nixos-closures	network-bound: nix copy of built closures to hosts over ssh
+scripts/agent-procs	short git reads (rev-parse, status) per worktree: seconds of I/O, no CPU fan-out
+scripts/ci/ci_trends.py	network-bound: GitHub API pages fetched through gh
+scripts/discover-cinemas/discover.py	network-bound: cinema site and search requests over HTTP
+scripts/identity_ci_run_test.py	a race under test: three concurrent identity-ci-run calls against a fake forge
+scripts/identity_landing_check.py	waits on CI: each group dispatches identity-ci-run on GitHub and polls it
+scripts/identity_measure_cli_recordings.py	waits on CI: one identity-measure dispatch per recording, polled on GitHub
+scripts/identity_stamp_carry.py	each worker's build takes its own JVM ticket (identity-stamp-carry stamps: jvm_slot_take)
+scripts/lib/store_screenshots_common.py	network-bound: the repertoire API of each city over HTTP
+scripts/poster_eval.py	network-bound: poster fetches over HTTP and reads of the local mirror Mongo

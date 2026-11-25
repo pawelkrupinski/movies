@@ -46,7 +46,8 @@ sys.exit(int(os.environ.get("STUB_EXIT", "0")))
 """
 
 AGENTCTL = r"""#!/bin/sh
-# def cmd_gov  def gov_route  (what scripts/jvm-gate.sh greps for before it trusts a governor)
+# its probe answers as the real one's does (scripts/jvm-gate.sh governor_bin trusts nothing else)
+[ "$1 $2" = "gov probe" ] && { echo "agentctl governor: admit cores route width"; exit 0; }
 echo "$*" >> "$GOV_LOG"
 exit 0
 """

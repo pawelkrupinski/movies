@@ -161,7 +161,8 @@ check "--ci refuses a command that is not one sbt-warm call (exit 2)" "2" "$rc"
 # auto: on CI when the governor would hold it (its `gov route` says ci); here when it says local
 cat > "$base/bin/agentctl" <<STUB
 #!/usr/bin/env bash
-# def cmd_gov def gov_route (what scripts/jvm-gate.sh looks for)
+# its probe answers as the real one's does (jvm-gate.sh governor_bin)
+[ "\$1 \$2" = "gov probe" ] && { echo "agentctl governor: admit cores route width"; exit 0; }
 [ "\$1 \$2" = "gov route" ] && { echo "\$ROUTE: stub" >&2; [ "\$ROUTE" = ci ]; exit; }
 exit 1
 STUB

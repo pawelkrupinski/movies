@@ -175,7 +175,7 @@ kill "$a" 2>/dev/null
 # --- THE GOVERNOR (~/bin/agentctl gov): a stub that records its call and takes the lock on the descriptor it was given
 cat > "$work/agentctl" <<'STUB'
 #!/usr/bin/env bash
-# def cmd_gov: the line an agentctl with the governor has
+[ "$1 $2" = "gov probe" ] && { echo "agentctl governor: admit"; exit 0; }  # a governor charging no cores
 printf '%s\n' "$*" >> "$GOV_CALLS"
 case " $* " in *" --try "*) [ -n "${GOV_STUB_FULL:-}" ] && exit 1 ;; esac
 python3 -I -B -c 'import fcntl; fcntl.flock(7, fcntl.LOCK_EX | fcntl.LOCK_NB)'
@@ -218,14 +218,25 @@ printf '#!/bin/sh\nexit 2\n' > "$work/old-agentctl"; chmod +x "$work/old-agentct
 KINOWO_GOVERNOR_BIN="$work/old-agentctl" KINOWO_JVM_GATE_OS=Darwin governor_bin || echo old-none >> "$work/got"
 check "...KINOWO_GOVERNOR=0 keeps the slots; on Linux (CI) there is no governor; nor with an agentctl without one" "1.flock|linux-none|old-none|0" \
   "$(paste -sd'|' "$work/got")|$(wc -l < "$GOV_CALLS" | tr -d ' ')"
-mkdir -p "$work/split/lib/agentctl"; printf '#!/bin/sh\nexit 0\n' > "$work/split/agentctl"; chmod +x "$work/split/agentctl"
-printf 'def cmd_gov(a):\n    pass\n' > "$work/split/lib/agentctl/gov.py"
-check "...and an agentctl split into a package, its governor in lib/agentctl/gov.py, governs" "$work/split/agentctl" \
-  "$(KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/split/agentctl" KINOWO_JVM_GATE_OS=Darwin governor_bin)"
+# 2026-11-22: agentctl's split moved `def cmd_gov` from gov.py to govcmd.py, and jvm-gate.sh, which grepped for it,
+# took no ticket for three days. Its source is no contract: an agentctl governs when its probe says so, wherever its
+# code lives, and one whose source names the governor but answers no probe is warned about, never trusted.
+mkdir -p "$work/split/lib/agentctl" "$work/moved/lib/agentctl"
+printf '#!/bin/sh\n[ "$1 $2" = "gov probe" ] && echo "agentctl governor: admit cores"\n' > "$work/moved/agentctl"
+printf 'def cmd_gov(a):\n    pass\n' > "$work/moved/lib/agentctl/govcmd.py"
+printf '#!/bin/sh\nexit 0\n' > "$work/split/agentctl"
+printf 'def cmd_gov(a):\n    pass\ndef gov_route(): pass\n' > "$work/split/lib/agentctl/gov.py"
+chmod +x "$work/split/agentctl" "$work/moved/agentctl"
+check "...an agentctl governs by its probe, wherever its code moved" "$work/moved/agentctl" \
+  "$(env -u KINOWO_GOVERNOR_FEATURES KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/moved/agentctl" KINOWO_JVM_GATE_OS=Darwin bash -c '. "$1"; governor_bin' _ "$REPO_ROOT/scripts/jvm-gate.sh")"
+out=$(env -u KINOWO_GOVERNOR_FEATURES KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/split/agentctl" KINOWO_JVM_GATE_OS=Darwin \
+  bash -c '. "$1"; governor_bin || echo none' _ "$REPO_ROOT/scripts/jvm-gate.sh" 2>&1)
+check "...one whose source names the governor but answers no probe has none, and says so" "none 1" \
+  "$(printf '%s\n' "$out" | tail -1) $(printf '%s\n' "$out" | grep -c 'answers no `gov probe`')"
 
 # --- CORES (2026-11-18): an agentctl whose governor charges them (its gov_route) is passed each ticket's job
 mkdir -p "$work/cores"
-sed 's/^# def cmd_gov:.*/# def cmd_gov def gov_route: an agentctl charging cores/' "$work/agentctl" > "$work/cores/agentctl"
+sed 's/"agentctl governor: admit"; exit 0; }.*/"agentctl governor: admit cores route width"; exit 0; }/' "$work/agentctl" > "$work/cores/agentctl"
 chmod +x "$work/cores/agentctl"
 cored() { KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$work/cores/agentctl" KINOWO_JVM_GATE_OS=Darwin AGENTCTL_GOV_DIR="$work/gov" "$@"; }
 : > "$GOV_CALLS"
@@ -253,7 +264,7 @@ check "a call's cores ticket: no memory, its job, held on descriptor 7; none und
   "$(cat "$work/got") $(grep -c -- '--mem 0 --label sbt-warm testOnly .*--job testOnly' "$GOV_CALLS") $(wc -l < "$GOV_CALLS" | tr -d ' ')"
 cat > "$work/cores/router" <<'STUB'
 #!/usr/bin/env bash
-# def cmd_gov def gov_route
+[ "$1 $2" = "gov probe" ] && { echo "agentctl governor: admit cores route width"; exit 0; }
 [ "$1 $2" = "gov route" ] && { printf '%s\n' "$*" >> "$GOV_CALLS"; [ "$ROUTE" = ci ]; exit; }
 exit 0
 STUB

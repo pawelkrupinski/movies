@@ -56,7 +56,8 @@ spec_lock_state() {
 spec_fake_governor() {
   cat > "$1" <<'STUB'
 #!/usr/bin/env bash
-# def cmd_gov def gov_route: an agentctl whose governor charges cores (what jvm-gate.sh greps for)
+# an agentctl whose governor charges cores: its probe answers as the real one's does (jvm-gate.sh governor_bin)
+[ "$1 $2" = "gov probe" ] && { echo "agentctl governor: admit cores route width"; exit 0; }
 printf '%s\n' "$*" >> "$GOV_CALLS"
 if [ -n "${GOV_HOLD:-}" ]; then
   echo waiting > "$GOV_HOLD.waiting"
@@ -67,11 +68,12 @@ STUB
   chmod +x "$1"
 }
 # spec_governed <agentctl> <command...> -> the command (an executable) on "the Mac" with that governor governing, outside
-# any check's hook (KINOWO_GOV_CPU_HELD) or ticket, its tickets under <agentctl>'s directory
+# any check's hook (KINOWO_GOV_CPU_HELD) or ticket (AGENTCTL_GOV_WIDTH), its tickets under <agentctl>'s directory
 spec_governed() {
   local g=$1
   shift
-  env -u KINOWO_GOV_CPU_HELD -u KINOWO_GOV_CLASS -u KINOWO_JVM_SLOT_HELD KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$g" \
+  env -u KINOWO_GOV_CPU_HELD -u KINOWO_GOV_CLASS -u KINOWO_JVM_SLOT_HELD -u AGENTCTL_GOV_WIDTH -u KINOWO_GOVERNOR_FEATURES \
+    KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_BIN="$g" \
     KINOWO_JVM_GATE_OS=Darwin AGENTCTL_GOV_DIR="$(dirname "$g")/gov" "$@"
 }
 # HUNG STUBS. A case proving that a tool's own bound cuts off a command that never answers (a hung gh, mongosh,
