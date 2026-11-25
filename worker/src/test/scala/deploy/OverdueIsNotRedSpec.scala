@@ -20,7 +20,7 @@ class OverdueIsNotRedSpec extends AnyFlatSpec with Matchers {
   /** workflow -> (the job that judges, the step id whose output says overdue, the script it runs). */
   private val DeadlineChecks: Map[String, (String, String, String)] = Map(
     "identity-findings-report.yml" -> ("findings", "report", "scripts/ci/identity_findings_report.py"),
-    "identity-ci-staleness.yml"    -> ("check", "staleness", "scripts/ci/identity-ci-staleness.sh"),
+    "identity-ci-staleness.yml"    -> ("check", "staleness", "scripts/ci/identity_ci_staleness.py"),
     // A source disagreeing with the cinema roster is data drift, the owner's fix (diagnostics.RosterAudit.verdict).
     "roster-audit.yml"             -> ("roster-audit", "audit", "scripts/ci/roster-audit.sh"),
   )
@@ -36,7 +36,7 @@ class OverdueIsNotRedSpec extends AnyFlatSpec with Matchers {
         Option.when(!judge.contains(s"overdue: $${{ steps.$step.outputs.overdue }}"))(s"$file: job $job exposes no overdue"),
         Option.when(!judge.contains(s"id: $step"))(s"$file: job $job has no step `$step`"),
         Option.when(!report.contains(s"overdue: $${{ needs.$job.outputs.overdue }}"))(s"$file: report passes no overdue"),
-        Option.when(!RepoFile.read(script).contains("overdue="))(s"$script writes no overdue= output"),
+        Option.when(!Seq("overdue=", "output(\"overdue\"").exists(RepoFile.read(script).contains))(s"$script writes no overdue= output"),
       ).flatten
     }
     problems shouldBe empty
