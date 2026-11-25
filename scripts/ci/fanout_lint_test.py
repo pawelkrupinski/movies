@@ -15,6 +15,7 @@ sys.path.insert(0, HERE)
 import fanout_lint  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(HERE))
+SCRATCH_GIT = os.path.join(REPO, "scripts/scratch-git.sh")
 FILES = {
     "scripts/mutants-test.sh": 'seq 1 9 | xargs -P 4 -I{} bash -c "true"\n',
     "scripts/procs-test.sh": "ls | xargs --max-procs=8 -n1 true\n",
@@ -29,14 +30,19 @@ FILES = {
 }
 
 
+def scratch_git(*args: str) -> None:
+    """git through scripts/scratch-git.sh's isolating helper (no inherited GIT_*, no ~/.gitconfig)."""
+    subprocess.run(["bash", "-c", '. "$1"; shift; "$@"', "_", SCRATCH_GIT, *args], check=True, capture_output=True)
+
+
 def lint(files: dict[str, str], allow: str = "") -> subprocess.CompletedProcess[str]:
     with tempfile.TemporaryDirectory() as root:
         for rel, body in {**files, **({fanout_lint.ALLOW: allow} if allow else {})}.items():
             os.makedirs(os.path.dirname(os.path.join(root, rel)), exist_ok=True)
             with open(os.path.join(root, rel), "w") as f:
                 f.write(body)
-        subprocess.run(["git", "init", "-q", root], check=True)
-        subprocess.run(["git", "-C", root, "add", "-A"], check=True)
+        scratch_git("scratch_repo", root)
+        scratch_git("scratch_git", root, "add", "-A")
         return subprocess.run([sys.executable, "-I", "-B", os.path.join(HERE, "fanout_lint.py"), "--root", root],
                               capture_output=True, text=True)
 
