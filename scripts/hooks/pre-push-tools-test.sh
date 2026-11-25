@@ -112,6 +112,7 @@ mkdir -p "$grepo/scripts/ci" "$grepo/data"
 cp "$REPO_ROOT/scripts/hooks/pre-push" "$grepo/scripts/hooks/pre-push"
 cp "$REPO_ROOT/scripts/hooks/lint-registry-missing" "$grepo/scripts/hooks/lint-registry-missing"
 cp "$REPO_ROOT/scripts/ci/lint_registry_reads.py" "$grepo/scripts/ci/lint_registry_reads.py"
+mkdir -p "$grepo/scripts/lib" && cp "$REPO_ROOT/scripts/lib/tool_pool.py" "$grepo/scripts/lib/tool_pool.py"  # the lint sizes its pool by it
 for f in hooks-path.sh tool-conventions.sh; do cp "$REPO_ROOT/scripts/$f" "$grepo/scripts/$f"; done
 echo rows > "$grepo/data/rows.tsv"
 mkdir -p "$grepo/worker/src/test/scala/deploy"

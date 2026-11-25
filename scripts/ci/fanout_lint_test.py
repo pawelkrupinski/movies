@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# script-test-reads: scripts/* .github/scripts/* .github/actions/* infra/bin/* infra/nix/files/* android/scripts/* ios/scripts/*
+# script-test-reads: scripts/* .github/scripts/* .github/actions/* infra/bin/* android/scripts/* ios/scripts/*
 """fanout_lint.py (THE FAN-OUT LINT) over a scratch tree: it catches an ungoverned `xargs -P` and worker pool, passes
 the governed ones and an allowed one, refuses a stale or unexplained allow row -- and finds this repository clean."""
 from __future__ import annotations
