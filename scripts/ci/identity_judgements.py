@@ -35,6 +35,7 @@ import gzip
 import os
 import re
 from collections import defaultdict
+from typing import List
 
 PATH = "test/resources/fixtures/identity-judgements.tsv"
 COLUMNS = ("country", "venue", "rawTitle", "film", "verdict", "state", "scope", "filmTitle", "reason", "judged", "evidence")
@@ -54,7 +55,7 @@ _WHITESPACE = "\t\n\x0b\x0c\r \x85\xa0  -     　"
 _RUNS = re.compile(f"[{_WHITESPACE}]+")
 
 
-def normalise(text):
+def normalise(text: str) -> str:
     """A billing (or venue) as every judgement keys it: runs of whitespace -- a tab, a line break, a no-break space, two
     spaces -- one space, none at the ends. A venue's re-spacing is not a new billing."""
     return _RUNS.sub(" ", text).strip(" ")
@@ -92,7 +93,7 @@ def lines(path):
     return out
 
 
-def read(path):
+def read(path: str) -> List["Row"]:
     """Every row, in file order. Raises ValueError on a malformed line."""
     out = []
     for n, cols in lines(path):

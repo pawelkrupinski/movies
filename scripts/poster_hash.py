@@ -13,6 +13,7 @@ import os
 import struct
 import subprocess
 import tempfile
+from typing import Optional
 
 import numpy as np
 
@@ -91,7 +92,7 @@ def hash_slot(pixels):
     return of_grey(0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2])
 
 
-def hash_file(path, vips="vips"):
+def hash_file(path: str, vips: str = "vips") -> Optional[int]:
     """`path`'s hash as the worker files it, or None when vips cannot read it."""
     fd, out = tempfile.mkstemp(suffix=".v")
     os.close(fd)

@@ -246,12 +246,6 @@ cognitive	scripts/ml-identity/cross_country_experiment.py:bucket	11
 cognitive	scripts/ml-identity/cross_country_experiment.py:donors_of	17
 cognitive	scripts/mongo_grants.py:main	25
 cognitive	scripts/ops/dumpheap.py:attach	13
-cognitive	scripts/poster_eval.py:build	48
-cognitive	scripts/poster_eval.py:coverage	18
-cognitive	scripts/poster_eval.py:labels	14
-cognitive	scripts/poster_eval.py:report	39
-cognitive	scripts/poster_eval.py:resolve	24
-cognitive	scripts/poster_eval.py:tally	18
 cognitive	scripts/recording_diff.py:_field_changes	11
 cognitive	scripts/recording_diff.py:_spellings	12
 cognitive	scripts/recording_diff.py:compare_origins	13
@@ -502,15 +496,6 @@ cyclomatic	scripts/listing_history.py:replay.take	12
 cyclomatic	scripts/listing_history.py:report	54
 cyclomatic	scripts/ml-identity/cross_country_experiment.py:donors_of	13
 cyclomatic	scripts/mongo_grants.py:main	17
-cyclomatic	scripts/poster_eval.py:Images.ensure	14
-cyclomatic	scripts/poster_eval.py:build	31
-cyclomatic	scripts/poster_eval.py:coverage	20
-cyclomatic	scripts/poster_eval.py:film_posters	14
-cyclomatic	scripts/poster_eval.py:labels	12
-cyclomatic	scripts/poster_eval.py:main	12
-cyclomatic	scripts/poster_eval.py:report	33
-cyclomatic	scripts/poster_eval.py:resolve	13
-cyclomatic	scripts/poster_eval.py:tally	11
 cyclomatic	scripts/recording_diff.py:compare_corpus	23
 cyclomatic	scripts/recording_diff.py:listing_view	38
 cyclomatic	scripts/recording_diff.py:report	71
@@ -561,7 +546,6 @@ method-lines	scripts/identity_stamp_carry.py:auto	56
 method-lines	scripts/label-lookup:lookup	114
 method-lines	scripts/listing_history.py:replay	69
 method-lines	scripts/listing_history.py:report	113
-method-lines	scripts/poster_eval.py:build	64
 method-lines	scripts/recording_diff.py:report	135
 method-lines	scripts/unmatched_census.py:census	51
 file-lines	infra/bin/backtest-alerts	1148
@@ -578,7 +562,6 @@ file-lines	scripts/ci/runner_scheduler.py	1245
 file-lines	scripts/flip_timeline.py	843
 file-lines	scripts/identity_what_if.py	530
 file-lines	scripts/listing_history.py	527
-file-lines	scripts/poster_eval.py	779
 file-lines	scripts/recording_diff.py	550
 copies	infra/bin/backtest-alerts	2
 copies	scripts/ci/ci_trends.py	2
@@ -690,7 +673,6 @@ pyright	scripts/listing_history.py	581
 pyright	scripts/ml-identity/cross_country_experiment.py	239
 pyright	scripts/mongo_grants.py	69
 pyright	scripts/ops/dumpheap.py	27
-pyright	scripts/poster_eval.py	809
 pyright	scripts/poster_hash.py	99
 pyright	scripts/recording_diff.py	775
 pyright	scripts/rule_firing_prod.py	110
