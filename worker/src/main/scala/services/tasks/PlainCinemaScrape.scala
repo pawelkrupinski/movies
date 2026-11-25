@@ -16,7 +16,7 @@ import services.cinemas.common.{CinemaScrapeRunner, CinemaScraper}
 final class PlainCinemaScrape(
   runner:  CinemaScrapeRunner,
   outcome: ScrapeFreshnessPolicy,
-  pages:   VenuePageHistory,
+  pages:   GonePageScrapePolicy,
   costs:   ScrapeCostStore,
   clock:   Clock,
   // Times the scrape for its failure line: the root's monotonic stopwatch.

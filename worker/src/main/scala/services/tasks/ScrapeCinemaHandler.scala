@@ -32,7 +32,7 @@ class ScrapeCinemaHandler(
   plain:         PlainCinemaScrape,
   chunkPlanner:  Option[ChunkScrapePlanner],
   // Says whether a venue's page is GONE (404ing for over a day) rather than broken.
-  pages:         VenuePageHistory,
+  pages:         GonePageScrapePolicy,
   // The SHARED policy, so a venue's failure streak is counted once however it happens to be scraped.
   outcome:       ScrapeFreshnessPolicy,
   clock:         Clock

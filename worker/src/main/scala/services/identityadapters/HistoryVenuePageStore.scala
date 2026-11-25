@@ -20,7 +20,7 @@ final class HistoryVenuePageStore(inner: VenuePageStore, history: IdentityHistor
   def put(page: VenuePage): Boolean = {
     val kept = inner.put(page)
     if (kept && (history ne IdentityHistory.Discard))
-      VenuePageHistory.appendMoved(history, Option(last.asMap.put(page.key.id, page)), page, clock.millis(), build)
+      VenuePageAnswerEntries.appendMoved(history, Option(last.asMap.put(page.key.id, page)), page, clock.millis(), build)
     kept
   }
 }

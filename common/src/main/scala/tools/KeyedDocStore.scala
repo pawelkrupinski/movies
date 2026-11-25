@@ -117,10 +117,11 @@ final class MongoKeyedDocStore[T](collection: MongoCollection[Document], codec: 
 
   expireAfter.foreach { ttl =>
     val field = codec.stampField.getOrElse(throw new IllegalArgumentException(s"$name: a TTL needs the codec's stamp field"))
-    val init = new Thread(() => Try(Await.result(collection.createIndex(Indexes.ascending(field),
-      IndexOptions().expireAfter(ttl.toSeconds, TimeUnit.SECONDS)).toFuture(), Timeout))
-      .failed.foreach(e => logger.warn(s"$name TTL index not created: ${e.getMessage}")), s"$name-init")
-    init.setDaemon(true); init.start()
+    OffThreadInit.start(s"$name-init") {
+      Try(Await.result(collection.createIndex(Indexes.ascending(field),
+        IndexOptions().expireAfter(ttl.toSeconds, TimeUnit.SECONDS)).toFuture(), Timeout))
+        .failed.foreach(e => logger.warn(s"$name TTL index not created: ${e.getMessage}"))
+    }
   }
 
   private def decoded(document: Document) =

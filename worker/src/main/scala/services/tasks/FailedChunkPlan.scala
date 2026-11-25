@@ -7,7 +7,7 @@ import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, PreScrapedC
  * (uptime red + Filmweb fallback for eligible venues) rather than starting an empty run, and recorded
  * against the cinema's due schedule ITSELF via [[ScrapeFreshnessPolicy]], as it bypasses the terminal reduce.
  */
-final class FailedChunkPlan(publishScrape: CinemaScraper => Unit, scrapeFreshness: ScrapeFreshnessPolicy, pages: VenuePageHistory) {
+final class FailedChunkPlan(publishScrape: CinemaScraper => Unit, scrapeFreshness: ScrapeFreshnessPolicy, pages: GonePageScrapePolicy) {
 
   /** `scraper`'s plan threw `e`. */
   def publish(scraper: ChunkedCinemaScraper, e: Exception): Unit = {

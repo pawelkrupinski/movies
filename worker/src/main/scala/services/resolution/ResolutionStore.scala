@@ -140,11 +140,7 @@ class MongoResolutionStore(
     db.map(_.getCollection(collectionName).withWriteConcern(tools.MongoWriteConcerns.Bookkeeping))
 
   // Build the TTL index off-thread so construction never blocks worker boot on Mongo.
-  coll.foreach { c =>
-    val thread = new Thread(() => ensureTtlIndex(c), s"$collectionName-init")
-    thread.setDaemon(true)
-    thread.start()
-  }
+  coll.foreach(c => tools.OffThreadInit.start(s"$collectionName-init")(ensureTtlIndex(c)))
 
   override def stored(hintKey: String): Option[ResolutionStore.Stored] =
     coll.flatMap { c =>
