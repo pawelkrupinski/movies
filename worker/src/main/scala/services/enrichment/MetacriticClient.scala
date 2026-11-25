@@ -151,6 +151,8 @@ class MetacriticClient(http: HttpFetch) {
       // is not an answer. See tools.ReadOutcome.
       HttpRead.pageOrNone(http, MetacriticClient.requestUrl(s"$Site/movie/$slug"))
         .map(JsonLdAggregateRating.of)
+        // Metacritic answers 200 for a slug it has no film under (Main #2896): only a page describing a film is one.
+        .filter(_.describesFilm)
         .filter(page => MetacriticClient.yearsCompatible(year, page.datePublishedYear))
         // Title and year are not always enough to name a film: Metacritic
         // carries two 2025 "Dreams", Franco's and Haugerud's, and the slug

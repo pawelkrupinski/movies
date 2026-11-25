@@ -46,15 +46,27 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     MetacriticClient.slugify("Moulin Rouge!") shouldBe "moulin-rouge!"
   }
 
-  // Stub fetch that throws for any URL containing one of the 404 fragments.
+  // Stub fetch that throws for any URL containing one of the 404 fragments, and answers every other URL with a real
+  // film page (a probe takes only a page describing a film: Metacritic answers 200 for a slug it has no film under).
+  private lazy val FilmPage = FixtureFile.resource("/fixtures/metacritic/movie_the_dark_knight.html")
   private def stub(notFound: Set[String]) = new ScriptedByUrlHttpFetch(url =>
       if (notFound.exists(url.contains)) UpstreamNotFound(url)
-      else "OK")
+      else FilmPage)
 
   "canonicalUrl" should "return Some when the canonical URL responds 200" in {
     val c = new MetacriticClient(stub(Set.empty))
     c.canonicalUrl("The Dark Knight") shouldBe
       Some("https://www.metacritic.com/movie/the-dark-knight")
+  }
+
+  // Main #2896: by 2026-11-25 Metacritic answers a slug it has no film under with 200 -- a 173 KB page titled
+  // "Metacritic", no Movie JSON-LD (captured from /movie/totally-not-a-real-movie-xyz12345/) -- and the probe, taking
+  // any 200 for the film, stored that page's URL for a title Metacritic does not hold.
+  it should "return None when the canonical URL answers 200 with a page describing no film" in {
+    val softNotFound = FixtureFile.resource("/fixtures/metacritic/movie_not_found_soft_404.html")
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(_ => softNotFound))
+    c.canonicalUrl("Totally Not A Real Movie") shouldBe None
+    c.urlFor("Totally Not A Real Movie") shouldBe None
   }
 
   it should "return None when the canonical URL 404s" in {

@@ -57,6 +57,10 @@ object JsonLdAggregateRating {
     /** The `Movie` block's `duration` as written (an ISO 8601 duration, or a site's own reading of one). */
     def duration: Option[String] = movie.flatMap(js => JsonScalars.text(js \ "duration"))
 
+    /** Whether the page describes a film at all: a site answering 200 for a page it holds no film under (Metacritic's
+     *  soft 404, 2026-11-25: a page titled "Metacritic" with no `Movie` block) is no film's page. */
+    def describesFilm: Boolean = movie.isDefined
+
     /** The block describing the film itself (`"@type":"Movie"`): a page also carries trailers' `VideoObject`s, whose
      *  `name` and `duration` are the trailer's. */
     private def movie: Option[JsValue] = blocks.find(js => (js \ "@type").asOpt[String].contains("Movie"))
