@@ -442,6 +442,24 @@ class StampCarryTest(unittest.TestCase):
         # the carry commit holds the record it stands on: ci-runner, with no what-if cache, proves it too
         self.assertEqual(0, self.run_tool("verify", f"{head}..{committed}", cache=os.path.join(self.tmp.name, "none"))[0])
 
+    def test_auto_carries_a_rebase_over_a_main_that_edited_a_file_the_change_edited_elsewhere(self):
+        """The queue's rebase gave CLAUDE.md's hunk another line number and blob: not the same bytes, the same patch-id."""
+        self.repo.write("docs/notes.md", "".join(f"line {i}\n" for i in range(30)))
+        self.base = self.repo.commit("notes")
+        self.repo.git("checkout", "-q", "-b", "lane")
+        self.repo.write("docs/notes.md", self.repo.read("docs/notes.md").replace("line 25\n", "line 25 changed\n"))
+        self.repo.write(FOO_PATH, FOO.replace("value * 2", "value * 3"))
+        before_rebase = self.repo.commit("change Foo and a note")
+        self.record_what_if(before_rebase, self.base)
+        self.repo.git("checkout", "-q", "-")
+        self.repo.write("docs/notes.md", "a new first line\n" + self.repo.read("docs/notes.md"))
+        main = self.repo.commit("main edits the notes' top")
+        self.repo.git("cherry-pick", before_rebase)
+        head = self.repo.git("rev-parse", "HEAD").strip()
+        code, out = self.run_tool("auto", f"{main}..{head}")
+        self.assertEqual(0, code, out)
+        self.assertEqual(["agreement-rules", "identity-rules"], sorted(r[0] for r in self.table_rows()), out)
+
     def rebase_lane_change(self) -> tuple[str, str, str]:
         """A change made and proposed on a lane, then rebased onto a main that moved outside the code (agentctl land's
         rebase): (the lane's change, main, the rebased change)."""

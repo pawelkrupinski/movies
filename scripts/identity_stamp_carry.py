@@ -316,10 +316,11 @@ def may_move(sha: str) -> bool:
 
 
 def range_verdict(base: str, head: str) -> tuple[str, str] | None:
-    """A recorded what-if (head0, base0) of the very change base..head -- the same diff, byte for byte -- taken before a
+    """A recorded what-if (head0, base0) of the very change base..head -- the same diff by patch-id, whatever blobs and line numbers a main that moved
+    elsewhere gave its context -- taken before a
     rebase moved its shas (agentctl land rebases after the lane ran it). Its proof is of base0..head0's code; a row of it
     is live at `head` only while head's digest is head0's, which `auto` checks."""
-    wanted = git("diff", "--binary", base, head)
+    wanted = diff_id(base, head)
     found = []
     for path in glob.glob(os.path.join(identity_cache(), "what-if-verdicts", "*-*.tsv")):
         head0, _, base0 = os.path.basename(path)[:-4].partition("-")
@@ -328,7 +329,7 @@ def range_verdict(base: str, head: str) -> tuple[str, str] | None:
         if subprocess.run(["git", "cat-file", "-e", f"{head0}^{{commit}}"], capture_output=True).returncode or \
                 subprocess.run(["git", "cat-file", "-e", f"{base0}^{{commit}}"], capture_output=True).returncode:
             continue
-        if git("diff", "--binary", base0, head0) == wanted:
+        if wanted and diff_id(base0, head0) == wanted:
             found.append((os.path.getmtime(path), base0, head0))
     return max(found)[1:] if found else None
 
