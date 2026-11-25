@@ -316,22 +316,22 @@ def may_move(sha: str) -> bool:
 
 
 def range_verdict(base: str, head: str) -> tuple[str, str] | None:
-    """A recorded what-if (head0, base0) of the very change base..head -- the same diff by patch-id, whatever blobs and line numbers a main that moved
-    elsewhere gave its context -- taken before a
-    rebase moved its shas (agentctl land rebases after the lane ran it). Its proof is of base0..head0's code; a row of it
-    is live at `head` only while head's digest is head0's, which `auto` checks."""
+    """A recorded what-if (head0, base0) of the very change base..head -- the same diff by patch-id, whatever blobs and line
+    numbers a main that moved elsewhere gave its context -- taken before a rebase moved its shas (agentctl land rebases
+    after the lane ran it). Its proof is of base0..head0's code; a row of it is live at `head` only while head's digest is
+    head0's, which `auto` checks."""
     wanted = diff_id(base, head)
     found = []
     for path in glob.glob(os.path.join(identity_cache(), "what-if-verdicts", "*-*.tsv")):
         head0, _, base0 = os.path.basename(path)[:-4].partition("-")
-        if not (re.fullmatch(r"[0-9a-f]{40}", head0) and re.fullmatch(r"[0-9a-f]{40}", base0)):
-            continue
-        if subprocess.run(["git", "cat-file", "-e", f"{head0}^{{commit}}"], capture_output=True).returncode or \
-                subprocess.run(["git", "cat-file", "-e", f"{base0}^{{commit}}"], capture_output=True).returncode:
-            continue
-        if wanted and diff_id(base0, head0) == wanted:
+        if wanted and all(is_commit(c) for c in (head0, base0)) and diff_id(base0, head0) == wanted:
             found.append((os.path.getmtime(path), base0, head0))
     return max(found)[1:] if found else None
+
+
+def is_commit(sha: str) -> bool:
+    return bool(re.fullmatch(r"[0-9a-f]{40}", sha)) and \
+        subprocess.run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], capture_output=True).returncode == 0
 
 
 def auto(rng: str, table: str, commit: bool) -> int:
