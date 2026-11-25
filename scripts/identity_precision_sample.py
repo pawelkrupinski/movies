@@ -59,7 +59,6 @@ from identity_judgements import COUNTRIES, label_of, labels_by_country, normalis
 
 EXPORT = os.path.join(HERE, "identity-precision-export.js")
 JUDGEMENTS = os.path.join(HERE, "..", "test", "resources", "fixtures", "identity-judgements.tsv")
-DATABASES = {"pl": "kinowo_prod_mirror"}
 Z95 = 1.959964
 LINE_BREAKS = re.compile("[\t\n\r\x0b\x0c\x1c-\x1e\x85\u2028\u2029]")
 SAMPLE_COLUMNS = ("draw", "country", "venue", "rawTitle", "film", "showtimes", "inclusion", "certain", "verdict",
@@ -188,8 +187,7 @@ def pooled(per_country, totals):
 
 def export(cc, now, mirror: "str | None" = None):
     mirror = mirror or mongo_local.local_mongo_server(os.environ)
-    database = DATABASES.get(cc, f"kinowo_{cc}_prod_mirror")
-    out = subprocess.run(["mongosh", "--quiet", f"{mirror}/{database}", EXPORT], check=True, capture_output=True,
+    out = subprocess.run(["mongosh", "--quiet", f"{mirror}/{mongo_local.mirror_database(cc)}", EXPORT], check=True, capture_output=True,
                          text=True, env=dict(os.environ, NOW=now)).stdout
     return [json.loads(line) for line in out.splitlines() if line.strip()]
 

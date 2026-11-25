@@ -49,10 +49,6 @@ CAUSES = {'rating-cut', 'banner', 'companion-event', 'learned-veto', 'imdb-only'
 VERDICT_COLUMNS = ['country', 'filmId', 'title', 'verdict', 'cause', 'tmdbId', 'note']
 
 
-def database_name(country):
-    return 'kinowo_prod_mirror' if country == 'PL' else 'kinowo_%s_prod_mirror' % country.lower()
-
-
 def listing_title(listing_key):
     """A listingKey is `N<NUL>venue<NUL>url<NUL>title` or `P<NUL>venue<NUL>title<NUL>year<NUL>director`."""
     parts = listing_key.split('\0')
@@ -60,7 +56,7 @@ def listing_title(listing_key):
 
 
 def query_mirror(mongo, country, since):
-    environment = dict(os.environ, UNMATCHED_CENSUS_DATABASE=database_name(country), UNMATCHED_CENSUS_SINCE=since)
+    environment = dict(os.environ, UNMATCHED_CENSUS_DATABASE=mongo_local.mirror_database(country), UNMATCHED_CENSUS_SINCE=since)
     command = [os.path.join(HERE, 'local-mirror', 'mongosh-at.sh'), mongo, '--quiet', '--file',
                os.path.join(DATA, 'query.js')]
     return json.loads(subprocess.run(command, env=environment, capture_output=True, text=True, check=True).stdout)

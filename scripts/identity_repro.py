@@ -162,8 +162,7 @@ class Mirror:
     def __init__(self, runner: tool_process.Runner, env: Mapping[str, str], cc: str, wanted: bool) -> None:
         self.runner, self.env = runner, env
         self.usable = wanted and shutil.which("mongosh", path=env.get("PATH")) is not None
-        db = "kinowo_prod_mirror" if cc == "pl" else f"kinowo_{cc}_prod_mirror"
-        self.url = f"{mongo_local.local_mongo_server(env)}/{db}"
+        self.url = f"{mongo_local.local_mongo_server(env)}/{mongo_local.mirror_database(cc)}"
 
     def _eval(self, script: str, env: Mapping[str, str]) -> Optional[str]:
         done = self.runner.capture(tool_process.Command(["mongosh", "--quiet", self.url, "--eval", script], env))

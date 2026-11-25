@@ -39,7 +39,6 @@ HOW = ("The same title billed in two or more countries in the same week, one cou
        "`| vs`. `judge`: judge the "
        "unjudged take(s) into `test/resources/fixtures/identity-judgements.tsv`; `check`: a take is judged wrong -- "
        "fix the country taking it, or the judgement. From the local prod mirror (`scripts/ci/countries_disagree.py`).")
-DATABASES = {"pl": "kinowo_prod_mirror"}
 EXPORT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ml-identity", "cross_country_export.js")
 
 
@@ -116,7 +115,7 @@ def export(mirror, data, countries):
     """The light export of each country's mirror database into `data`."""
     os.makedirs(data, exist_ok=True)
     for cc in countries:
-        database = DATABASES.get(cc, f"kinowo_{cc}_prod_mirror")
+        database = mongo_local().mirror_database(cc)
         for mode in ("traces", "listings", "films"):
             with open(os.path.join(data, f"{mode}-{cc}.jsonl"), "w", encoding="utf-8") as out:
                 subprocess.run(["mongosh", "--quiet", f"{mirror.rstrip('/')}/{database}", os.path.abspath(EXPORT)],
@@ -128,12 +127,12 @@ def read_found(data, judgements, countries=COUNTRIES):
     return disagreements(X.read_listings(data, countries, films), labels_by_country(read(judgements)), films)
 
 
-def mirror_port():
-    """The local mirror's port (LOCAL_MIRROR_PORT): scripts/lib's mongo_local, imported here alone, since the sparse
-    identity-findings checkout carries scripts/ci only and never passes --mirror."""
+def mongo_local():
+    """scripts/lib's mongo_local, imported only on --mirror's path: the sparse identity-findings checkout carries
+    scripts/ci alone and never passes --mirror."""
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
-    import mongo_local  # noqa: E402
-    return mongo_local.local_mongo_port(os.environ)
+    import mongo_local as module  # noqa: E402
+    return module
 
 
 def main(argv=None):
@@ -145,7 +144,7 @@ def main(argv=None):
     p.add_argument("--limit", type=int, default=30)
     a = p.parse_args(argv)
     if a.mirror:
-        port = mirror_port()
+        port = mongo_local().local_mongo_port(os.environ)
         if f"127.0.0.1:{port}" not in a.mirror and f"localhost:{port}" not in a.mirror:
             print(f"--mirror reads the LOCAL prod mirror only (127.0.0.1:{port})", file=sys.stderr)
             return 64

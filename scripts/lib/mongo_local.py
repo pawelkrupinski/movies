@@ -1,7 +1,7 @@
 """THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib;
 tool-conventions.sh's local_mongo_port / local_mongo_uri, own-mongod.sh's throwaway_replica_set_initiate): its port
 (LOCAL_MIRROR_PORT, default 28017), its URI (a direct connection), whether something answers on a port, and the
-mongosh expression that initiates a throwaway single-node replica set."""
+mongosh expression that initiates a throwaway single-node replica set; and the prod mirror's database of a country."""
 from __future__ import annotations
 
 import socket
@@ -21,6 +21,11 @@ def local_mongo_server(env: Mapping[str, str]) -> str:
 
 def local_mongo_uri(env: Mapping[str, str], database: str = "") -> str:
     return f"{local_mongo_server(env)}/{database}?directConnection=true"
+
+
+def mirror_database(cc: str) -> str:
+    """The prod mirror's database of country `cc` (any case): Poland's is the unprefixed one, as in prod."""
+    return "kinowo_prod_mirror" if cc.lower() == "pl" else f"kinowo_{cc.lower()}_prod_mirror"
 
 
 def answers(port: str, host: str = "127.0.0.1", timeout: float = 2.0) -> bool:

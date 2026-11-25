@@ -49,8 +49,7 @@ from identity_judgements import COLUMNS as Columns, normalise, read as read_judg
 
 Root = os.path.dirname(Here)
 Countries = ("pl", "uk", "de", "us", "es")
-Databases = {"pl": "kinowo_prod_mirror", "uk": "kinowo_uk_prod_mirror", "de": "kinowo_de_prod_mirror",
-             "us": "kinowo_us_prod_mirror", "es": "kinowo_es_prod_mirror"}
+Databases = {cc: mongo_local.mirror_database(cc) for cc in Countries}
 Language = {"pl": "pl", "uk": "en", "us": "en", "de": "de", "es": "es"}
 Baseline = {"posters": 8, "vote": 4, "veto_match": 8, "veto": 10}  # PosterEvidence's constants
 FiledPosters = 8  # PosterEvidence.FilmPosters: how many a film's filed answer holds

@@ -198,10 +198,6 @@ print(EJSON.stringify({traces: traces, families: families, venues: venues, agree
 """
 
 
-def mirror_db(cc):
-    return ("kinowo" if cc == "pl" else f"kinowo_{cc}") + "_prod_mirror"
-
-
 def _family_id(raw):
     return raw.replace("\x00", " · ")
 
@@ -375,7 +371,7 @@ def report(args, run=run_command, now=None):
         if code != 0:
             prod.append("  the mirror is not fresh: what follows is as of its sync, not now")
         script = f"const VENUE = {json.dumps(re2_escape(args.venue))}, TITLE = {json.dumps(re2_escape(args.title))};" + MIRROR_QUERY
-        code, text = run(["mongosh", "--quiet", MIRROR.format(port=port, db=mirror_db(args.cc)), "--eval", script])
+        code, text = run(["mongosh", "--quiet", MIRROR.format(port=port, db=mongo_local.mirror_database(args.cc)), "--eval", script])
         try:
             state = json.loads(text.strip().splitlines()[-1])
             prod.extend(f"  {line}" for line in mirror_lines(state))
@@ -392,7 +388,7 @@ def report(args, run=run_command, now=None):
         out.extend(f"  {line}" for line in text.rstrip().splitlines()) if text.strip() else out.append(f"  none for «{title}»")
 
     out.append("")
-    out.append(f"PROD NOW (local mirror {mirror_db(args.cc)}, read-only):")
+    out.append(f"PROD NOW (local mirror {mongo_local.mirror_database(args.cc)}, read-only):")
     out.extend(prod)
 
     if args.replay:
