@@ -144,6 +144,20 @@ class CiSbtTest(cli_harness.ToolCase):
         self.assertEqual("", done.stdout, "--log takes the sbt output")
         self.assertEqual("[info] sbt said this\n", self.read("out.log"))
 
+    def test_a_change_in_the_tick_the_index_was_written_is_still_snapshotted(self) -> None:
+        # Tool self-tests #533: setUp's commit and the rewrite fell in one second (macOS git compares whole seconds),
+        # same size, so only git's racy-entry check -- the entry's mtime against the INDEX FILE's -- sees the change.
+        # Pinned here: the file and the index share one mtime and ctime is not compared.
+        source = self.path("repo/worker/src/main/A.scala")
+        written = os.stat(source)
+        self.git(self.checkout, "config", "core.trustctime", "false")
+        self.write("repo/worker/src/main/A.scala", "new\n")
+        for path in (source, os.path.join(self.checkout, ".git", "index")):
+            os.utime(path, ns=(written.st_atime_ns, written.st_mtime_ns))
+        done = self.ci_sbt("--quiet", "--", "worker/Test/test")
+        self.assertEqual(0, done.code, done.output)
+        self.assertEqual("new", self.git(self.checkout, "show", f"{self.dispatched()[0][1]}:worker/src/main/A.scala"))
+
     def test_commit_runs_that_commit(self) -> None:
         self.write("repo/worker/src/main/A.scala", "new\n")
         done = self.ci_sbt("--commit", "HEAD", "--quiet", "--", "worker/Test/test")

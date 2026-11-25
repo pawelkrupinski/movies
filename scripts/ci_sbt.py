@@ -154,7 +154,9 @@ class CiSbt:
         a private index (the checkout's own never staged)."""
         own = self.read("rev-parse", "--git-path", "index")
         if os.path.exists(own):
-            shutil.copyfile(own, index)
+            # copy2, keeping the index's mtime: git re-reads an entry changed in the tick the index was written only by
+            # comparing the two, and a fresh mtime would read it as clean (Tool self-tests #533)
+            shutil.copy2(own, index)
         env = {**self.env, "GIT_INDEX_FILE": os.path.abspath(index)}
         private = tool_git.Git(self.runner, env, ".")
         private.call("add", "-u", "--", ".", quiet=True)
