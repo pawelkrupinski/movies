@@ -16,7 +16,7 @@ import services.identity.measures.Listing
  * A listing's equality is what the model holds a re-published listing to: an equal one is not resolved again, and its
  * hash keys every map of listings. So equality must read every field the model reads and none it does not (the poster,
  * the names and words of its synopsis, whether its page's facts are merged in), equal listings must hash equally, and the
- * readings of its days ([[Listing.screenedSeason]], [[Listing.airDays]], [[Listing.anniversaryScreeningYear]]) count,
+ * readings of its days ([[Listing.screenedSeason]], [[Listing.airDays]], [[Listing.anniversaryScreeningYear]], [[Listing.relayScreeningYear]]) count,
  * the days themselves not.
  */
 class ListingEqualitySpec extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks {
@@ -54,11 +54,11 @@ object ListingEqualitySpec {
   def modelReads(l: Listing): Any =
     (l.key, l.rawTitle, l.title, l.cleanTitle, l.year, l.directors, l.runtime, l.page, l.originalTitle, l.countries, l.catalogueIds,
       l.searchTitle, l.properTitle, l.cinema, l.screenedSeason, l.listedCast, l.certificate, l.yearUpperBound, l.performanceYear,
-      l.anniversaryScreeningYear, l.airDays, l.kept)
+      l.anniversaryScreeningYear, l.airDays, l.relayScreeningYear, l.kept)
 
   // Stage works with and without a season or year, an anniversary, a film: what the readings of the days tell apart.
   private val Titles = Seq("Samson i Dalila", "Met Opera 2024-25: Manon", "Royal Ballet & Opera 2024-25: Romeo and Juliet",
-    "The Host: 20th Anniversary", "MetOpera: Carmen (2009)", "Lalka")
+    "The Host: 20th Anniversary", "MetOpera: Carmen (2009)", "NT Live: Mizantrop", "Lalka")
   private val Days = Seq(Nil, Seq(LocalDate.of(2026, 12, 5)), Seq(LocalDate.of(2027, 5, 25)),
     Seq(LocalDate.of(2026, 12, 5), LocalDate.of(2026, 12, 26)))
 
