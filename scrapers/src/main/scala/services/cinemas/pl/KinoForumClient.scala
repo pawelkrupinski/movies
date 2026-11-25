@@ -9,7 +9,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import tools.HttpRead
 
@@ -82,8 +82,8 @@ object KinoForumClient {
     * non-film event (no runtime) or lacks a parseable date/time/title. */
   private def parseRow(row: Element): Option[RawSlot] =
     for {
-      date  <- ScraperParse.parseDate(row.attr("data-date"))
-      time  <- ScraperParse.parseHHmm(row.attr("data-hour"))
+      date  <- ScrapeDates.parseDate(row.attr("data-date"))
+      time  <- ScrapeClock.parseHHmm(row.attr("data-hour"))
       title <- Option(row.selectFirst(".repertoire-row__title h3 a")).map(_.text.trim).filter(_.nonEmpty)
       // Runtime presence is the film filter — exhibitions/meetings on the same
       // list have an empty `__time` cell.

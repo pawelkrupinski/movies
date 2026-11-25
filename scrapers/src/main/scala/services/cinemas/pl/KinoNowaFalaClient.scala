@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import models.*
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScrapeImages
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter}
 import tools.{HttpFetch, HttpRead}
 
@@ -40,6 +40,6 @@ object KinoNowaFalaClient {
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] =
     WpTheatreEvents.parse(html, BaseUrl, cinema) { (card, slot) =>
-      slot.copy(posterUrl = Option(card.selectFirst("figure img[src]")).flatMap(ScraperParse.largestImageUrl).map(ResizedPoster.fullSize))
+      slot.copy(posterUrl = Option(card.selectFirst("figure img[src]")).flatMap(ScrapeImages.largestImageUrl).map(ResizedPoster.fullSize))
     }
 }

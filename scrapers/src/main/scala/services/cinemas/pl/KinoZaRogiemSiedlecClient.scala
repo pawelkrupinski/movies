@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScraperParse}
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
@@ -117,9 +117,9 @@ object KinoZaRogiemSiedlecClient {
       m        <- TitlePat.findFirstMatchIn(rawTitle)
       title     = m.group(1).trim
       remainder = rawTitle.substring(m.end)
-      dayMonth <- ScraperParse.parseDayMonth(remainder)
-      time     <- ScraperParse.parseHHmm(remainder)
-      date     <- ScraperParse.upcomingDate(dayMonth, today)
+      dayMonth <- ScrapeDates.parseDayMonth(remainder)
+      time     <- ScrapeClock.parseHHmm(remainder)
+      date     <- ScrapeDates.upcomingDate(dayMonth, today)
     } yield RawSlot(
       title      = title,
       dateTime   = date.atTime(time),

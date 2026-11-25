@@ -10,7 +10,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScrapeClock
 import services.cinemas.common.{CinemaScraper, ListingPages, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
@@ -119,6 +119,6 @@ object KinoSokolSokolkaClient {
   private def parseStartTime(html: String): Option[LocalTime] =
     Jsoup.parse(html, BaseUrl)
       .select("abbr.mec-events-abbr").asScala
-      .flatMap(el => ScraperParse.parseHHmm(el.text))
+      .flatMap(el => ScrapeClock.parseHHmm(el.text))
       .headOption
 }

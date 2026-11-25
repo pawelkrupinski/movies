@@ -15,8 +15,8 @@ object FlicksDayPage extends SlimmedPage {
 
   private[common] val SlugPat    = """/movie/([^/?#]+)""".r
   private val DigitsPat  = """(\d+)""".r
-  private val OptTimePat = raw"""${ScraperParse.ClockParts}:\d{2}""".r
-  private val AmPmPat    = raw"""(?i)${ScraperParse.ClockParts}\s*(am|pm)""".r
+  private val OptTimePat = raw"""${ScrapeClock.ClockParts}:\d{2}""".r
+  private val AmPmPat    = raw"""(?i)${ScrapeClock.ClockParts}\s*(am|pm)""".r
   // Keys lifted from a session button's `data-eventjson` blob (jsoup returns it
   // entity-decoded, so we match against real quotes). `content_cast`,
   // `content_genre` and `content_director` are comma-separated lists; `content_awards` has no model
@@ -205,7 +205,7 @@ object FlicksDayPage extends SlimmedPage {
    *  visible "10:10 am" text. */
   private def parseTime(button: Element): Option[LocalTime] = {
     val fromOptLabel = OptTimePat.findAllMatchIn(button.attr("data-optlabel")).toSeq.lastOption
-      .flatMap(m => ScraperParse.clockAt(m, 1))
+      .flatMap(m => ScrapeClock.clockAt(m, 1))
     fromOptLabel.orElse {
       val text = Option(button.selectFirst("span.times-calendar-times__el__time")).map(_.text).getOrElse("")
       parseAmPm(text)
@@ -214,5 +214,5 @@ object FlicksDayPage extends SlimmedPage {
 
   /** "10:10 am" / "7:05 pm" → `LocalTime`. */
   private def parseAmPm(text: String): Option[LocalTime] =
-    AmPmPat.findFirstMatchIn(text).flatMap(ScraperParse.meridiemClockAt(_, 1, 3))
+    AmPmPat.findFirstMatchIn(text).flatMap(ScrapeClock.meridiemClockAt(_, 1, 3))
 }

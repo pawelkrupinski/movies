@@ -8,7 +8,7 @@ import models.*
 import models.CountryNames
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CreditedScreening, ListingFacts, ListingPageScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CreditedScreening, ListingFacts, ListingPageScraper, SlotsToMovies, ScrapeClock, ScrapeDates}
 import tools.HttpFetch
 
 /**
@@ -77,8 +77,8 @@ object KinoAgrafkaClient {
   // Alternatively the h3 and tables are siblings. We walk ALL elements in
   // document order to carry the last-seen date forward across rows.
   private[cinemas] def parseDocument(html: String): Seq[CreditedScreening] =
-    ScraperParse.underDayHeaders(Jsoup.parse(html).select("h3, table.repertoire tbody tr").asScala) {
-      case h3 if h3.tagName == "h3" => ScraperParse.parseDayMonthYear(h3.text)  // "7 czerwca 2026 /niedziela/"
+    ScrapeDates.underDayHeaders(Jsoup.parse(html).select("h3, table.repertoire tbody tr").asScala) {
+      case h3 if h3.tagName == "h3" => ScrapeDates.parseDayMonthYear(h3.text)  // "7 czerwca 2026 /niedziela/"
     }(screeningOf)
 
   private def screeningOf(row: Element, date: LocalDate): Option[CreditedScreening] = {
@@ -86,7 +86,7 @@ object KinoAgrafkaClient {
     // Titles are ALL-CAPS on the page; normalise to title-case.
     val title        = tools.TextNormalization.titleCaseIfAllLower(titleElement.map(_.text.trim).getOrElse(""))
     for {
-      time <- ScraperParse.parseHHmm(Option(row.selectFirst("td.hour")).map(_.text.trim).getOrElse("")) if title.nonEmpty
+      time <- ScrapeClock.parseHHmm(Option(row.selectFirst("td.hour")).map(_.text.trim).getOrElse("")) if title.nonEmpty
     } yield CreditedScreening(
       title,
       filmUrl    = absolute(titleElement.map(_.attr("href").trim)),

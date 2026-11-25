@@ -5,7 +5,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapedSlot, SlotsToMovies, VenueCredits}
 import services.titles.FormatTags
@@ -101,7 +101,7 @@ object Bilety24OrganizerClient {
 
   // title="Film: <Title> - 2026-06-19 18:50 - Katowice" — the title may itself
   // contain " - ", so the non-greedy capture stops at the first " - <ISO date>".
-  private val SlotPat = raw"""(?s)Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(${ScraperParse.IsoClockText})\s*-""".r
+  private val SlotPat = raw"""(?s)Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(${ScrapeClock.IsoClockText})\s*-""".r
 
   // Trailing programme-strand markers Forum Bolesławiec glues with an underscore:
   // "_DKF" (Dyskusyjny Klub Filmowy), "_FKS" (Filmowy Klub Seniora).
@@ -121,7 +121,7 @@ object Bilety24OrganizerClient {
     val banners = document.select("div.title > a.blur-bg[title]").asScala.toSeq.flatMap { a =>
       for {
         title  <- BannerTitle.findFirstMatchIn(a.attr("title")).map(_.group(1))
-        poster <- Option(a.selectFirst("img.b24-blur-img")).flatMap(ScraperParse.largestImageUrl)
+        poster <- Option(a.selectFirst("img.b24-blur-img")).flatMap(ScrapeImages.largestImageUrl)
       } yield title -> poster
     }.distinct
     val shared = banners.groupBy(_._2).filter(_._2.size > 1).keySet
@@ -137,7 +137,7 @@ object Bilety24OrganizerClient {
 
     val slots = document.select("a[title]").asScala.toSeq.flatMap { a =>
       SlotPat.findFirstMatchIn(a.attr("title")).flatMap { m =>
-        ScraperParse.parseDateTime(s"${m.group(2)} ${m.group(3)}").map { dt =>
+        ScrapeDates.parseDateTime(s"${m.group(2)} ${m.group(3)}").map { dt =>
           // extractFormatTags (not stripFormatTags): the format/version word a
           // portal buries in the title — "Supergirl_dubbing", "…_3D" on Forum
           // Bolesławiec — is peeled so the variants merge into one film AND
@@ -181,6 +181,6 @@ object Bilety24OrganizerClient {
     val description = Option(document.selectFirst("div.description"))
     val synopsis = description.map(SynopsisProse.cleanSynopsis(_, "a", "p", "em")).filter(_.length > 20)
     val credits  = description.map(d => VenueCredits.parse(ScraperParse.blockLinesOf(d))).getOrElse(FilmDetail())
-    credits.copy(synopsis = synopsis, posterUrl = ScraperParse.ogImage(document))
+    credits.copy(synopsis = synopsis, posterUrl = ScrapeImages.ogImage(document))
   }
 }

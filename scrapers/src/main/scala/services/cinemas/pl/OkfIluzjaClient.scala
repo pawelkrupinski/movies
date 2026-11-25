@@ -6,7 +6,7 @@ import scala.jdk.CollectionConverters.*
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates}
 import services.cinemas.common.SingleSiteScraper
 import services.cinemas.common.SlotsToMovies
 import tools.{HttpFetch, HttpRead}
@@ -90,13 +90,13 @@ object OkfIluzjaClient {
 
   /** The `h2.date-f` header of a day block ("7 czerwca 2026") as a date. */
   private def parseBlockDate(block: org.jsoup.nodes.Element): Option[LocalDate] =
-    Option(block.selectFirst("h2.date-f")).flatMap(h2 => ScraperParse.parseDayMonthYear(h2.text))
+    Option(block.selectFirst("h2.date-f")).flatMap(h2 => ScrapeDates.parseDayMonthYear(h2.text))
 
   /** Parse all `div.box` film cards inside one day block. */
   private def parseBoxes(block: org.jsoup.nodes.Element, date: LocalDate): Seq[RawSlot] =
     block.select("div.box").asScala.toSeq.flatMap { box =>
       val timeOpt  = Option(box.selectFirst("span.time-f"))
-        .flatMap(element => ScraperParse.parseHHmm(element.text.trim))
+        .flatMap(element => ScrapeClock.parseHHmm(element.text.trim))
       // Title: use the h3's own text only (ownText strips inner <span> labels)
       val titleOpt = Option(box.selectFirst("div.right h3"))
         .map(_.ownText().trim)

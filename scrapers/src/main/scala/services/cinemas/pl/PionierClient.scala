@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element, TextNode}
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeRuntime}
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapedSlot, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
@@ -98,7 +98,7 @@ object PionierClient {
         for {
           date  <- carriedDate
           title <- Option(element.selectFirst("h3 a span")).map(_.text.trim).filter(_.nonEmpty)
-          time  <- Option(element.selectFirst("h2")).flatMap(h => ScraperParse.parseHHmm(h.text))
+          time  <- Option(element.selectFirst("h2")).flatMap(h => ScrapeClock.parseHHmm(h.text))
         } yield {
           val room    = Option(element.selectFirst("small.sala")).map(_.text.trim).filter(_.nonEmpty)
           val booking = Option(element.selectFirst("a.bilet[href]")).map(_.attr("href"))
@@ -195,7 +195,7 @@ object PionierClient {
     * plausible feature length so a stray number can't masquerade as a runtime. */
   private def parseRuntime(s: String): Option[Int] = {
     val hours = """(\d+)\s*h""".r.findFirstMatchIn(s).map(_.group(1).toInt)
-    val mins  = ScraperParse.runtimeMinutesIn(s)
+    val mins  = ScrapeRuntime.runtimeMinutesIn(s)
     val total = hours match {
       case Some(h) => Some(h * 60 + mins.getOrElse(0))
       case None    => mins.orElse("""(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt))

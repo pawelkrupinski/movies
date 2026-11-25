@@ -11,7 +11,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.CinemaScraper
-import services.cinemas.common.{ScraperParse, ListingPages}
+import services.cinemas.common.{ListingPages, ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -30,7 +30,7 @@ import tools.{HttpFetch, HttpRead}
  *   - `Kraj produkcji:`  `<li>` list of countries
  * No online ticketing — reservation is phone-only, so `bookingUrl` stays
  * `None`. Each "Codziennie od X do Y o godzinie …" run expands to one
- * showtime per day at its listed time(s) ([[ScraperParse.dailyRange]]).
+ * showtime per day at its listed time(s) ([[ScrapeDates.dailyRange]]).
  * Titles are shouted (`LALKA`) and run through [[ScraperParse.sentenceCase]].
  */
 class KinoParczewClient(http: HttpFetch, override val cinema: Cinema = KinoParczew)
@@ -56,7 +56,7 @@ object KinoParczewClient {
 
   // "Codziennie od 02.10.2026 do 08.10.2026 o godzinie 16:00 i 19:00"
   private val Run =
-    raw"""(?i)codziennie\s+od\s+(\d{1,2})\.(\d{1,2})\.(\d{4})\s+do\s+(\d{1,2})\.(\d{1,2})\.(\d{4})\s+o\s+godzinie\s+${ScraperParse.ClockParts}(?:\s+i\s+${ScraperParse.ClockParts})?""".r
+    raw"""(?i)codziennie\s+od\s+(\d{1,2})\.(\d{1,2})\.(\d{4})\s+do\s+(\d{1,2})\.(\d{1,2})\.(\d{4})\s+o\s+godzinie\s+${ScrapeClock.ClockParts}(?:\s+i\s+${ScrapeClock.ClockParts})?""".r
 
   def filmLinks(homeHtml: String): Seq[String] =
     Jsoup.parse(homeHtml, HomeUrl).select("a[href*=/filmy/]").asScala.toSeq
@@ -70,7 +70,7 @@ object KinoParczewClient {
       val fields = fieldsOf(document)
       val format = fields.get("format").map(liTextsOf).getOrElse(Seq.empty)
       val showtimes = fields.get("w kinie").toSeq.flatMap(runsIn).flatMap { case (from, to, times) =>
-        times.flatMap(t => ScraperParse.dailyRange(from, to, t))
+        times.flatMap(t => ScrapeDates.dailyRange(from, to, t))
       }.distinct.sorted.map(dt => Showtime(dt, None, format = format.toList))
 
       CinemaMovie(
@@ -81,7 +81,7 @@ object KinoParczewClient {
           genres         = fields.get("gatunek").map(liTextsOf).getOrElse(Seq.empty)
         ),
         cinema    = cinema,
-        posterUrl = Option(document.selectFirst("img[itemprop=image]")).flatMap(ScraperParse.largestImageUrl),
+        posterUrl = Option(document.selectFirst("img[itemprop=image]")).flatMap(ScrapeImages.largestImageUrl),
         filmUrl   = Some(url),
         synopsis  = synopsisOf(document),
         // A name has a letter in it: the site fills an unknown director with a ".." placeholder.
@@ -110,8 +110,8 @@ object KinoParczewClient {
         to   <- Try(LocalDate.of(m.group(6).toInt, m.group(5).toInt, m.group(4).toInt)).toOption
       } yield {
         val times = Seq(
-          ScraperParse.clockAt(m, 7),
-          ScraperParse.clockAt(m, 9)
+          ScrapeClock.clockAt(m, 7),
+          ScrapeClock.clockAt(m, 9)
         ).flatten
         (from, to, times)
       }

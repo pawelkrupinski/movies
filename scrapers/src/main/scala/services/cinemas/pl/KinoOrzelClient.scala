@@ -6,7 +6,7 @@ import scala.jdk.CollectionConverters.*
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeImages}
 import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 import tools.HttpFetch
 
@@ -53,7 +53,7 @@ object KinoOrzelClient {
   // title itself can contain " - " (e.g. "KONWICKI: pisarz - scenarzysta …"),
   // so the non-greedy name group is anchored by the date that must follow the
   // separating dash — backtracking lands the split on the real date boundary.
-  private val TitlePat     = raw"""^Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(${ScraperParse.IsoClockText})\s*-\s*.+$$""".r
+  private val TitlePat     = raw"""^Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(${ScrapeClock.IsoClockText})\s*-\s*.+$$""".r
 
   private case class RawSlot(filmId: String, title: String, dateTime: LocalDateTime, booking: String, poster: Option[String])
 
@@ -69,12 +69,12 @@ object KinoOrzelClient {
           val filmId    = h.group(1)
           val sessionId = h.group(2)
           val title     = t.group(1).trim
-          ScraperParse.parseDateTime(s"${t.group(2)} ${t.group(3)}")
+          ScrapeDates.parseDateTime(s"${t.group(2)} ${t.group(3)}")
             .filter(_ => title.nonEmpty)
             .map { dt =>
               val slug    = href.stripPrefix(s"/kino/$OrganizerId-").takeWhile(_ != '?')
               val booking = s"$BaseUrl/kup-bilet-na-$OrganizerId-$slug?id=$sessionId"
-              val poster  = Option(a.selectFirst(".image")).flatMap(e => ScraperParse.cssUrl(e.attr("style")))
+              val poster  = Option(a.selectFirst(".image")).flatMap(e => ScrapeImages.cssUrl(e.attr("style")))
               RawSlot(filmId, title, dt, booking, poster)
             }
         case _ => None

@@ -9,7 +9,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.ListingPageScraper
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeImages, ScrapeRuntime}
 import tools.HttpFetch
 
 /**
@@ -59,19 +59,19 @@ object KinoSokolStrzyzowClient {
   private def parseArticle(article: Element, cinema: Cinema, today: LocalDate): Option[CinemaMovie] = {
     val titleElement = Option(article.selectFirst(".screening-info h3 a"))
     val badges  = article.select(".screening-meta-badges span").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty)
-    val runtime = badges.flatMap(ScraperParse.runtimeMinutesIn).headOption
-    val genres  = badges.filterNot(b => ScraperParse.runtimeMinutesIn(b).isDefined || AgePat.findFirstIn(b).isDefined)
+    val runtime = badges.flatMap(ScrapeRuntime.runtimeMinutesIn).headOption
+    val genres  = badges.filterNot(b => ScrapeRuntime.runtimeMinutesIn(b).isDefined || AgePat.findFirstIn(b).isDefined)
 
     val showtimes = article.select(".screening-terms li").asScala.toSeq.flatMap { li =>
       for {
         dayText   <- Option(li.selectFirst(".screening-term-date b")).map(_.text.trim)
         day       <- dayText.toIntOption
         monthText <- Option(li.selectFirst(".screening-term-date em")).map(_.text.trim)
-        month     <- ScraperParse.polishMonthAbbrev(monthText)
+        month     <- ScrapeDates.polishMonthAbbrev(monthText)
         monthDay  <- Try(MonthDay.of(month, day)).toOption
-        date      <- ScraperParse.upcomingDate(monthDay, today)
+        date      <- ScrapeDates.upcomingDate(monthDay, today)
         timeText  <- Option(li.selectFirst(".screening-term-time")).map(_.text.trim)
-        time      <- ScraperParse.parseHHmm(timeText)
+        time      <- ScrapeClock.parseHHmm(timeText)
       } yield Showtime(LocalDateTime.of(date, time), None)
     }.distinctBy(_.dateTime).sortBy(_.dateTime)
 
@@ -82,7 +82,7 @@ object KinoSokolStrzyzowClient {
     } yield CinemaMovie(
       movie     = Movie(title, runtimeMinutes = runtime, genres = genres),
       cinema    = cinema,
-      posterUrl = Option(article.selectFirst(".screening-poster img[src]")).flatMap(ScraperParse.largestImageUrl),
+      posterUrl = Option(article.selectFirst(".screening-poster img[src]")).flatMap(ScrapeImages.largestImageUrl),
       filmUrl   = Option(titleAnchor.attr("abs:href")).filter(_.nonEmpty),
       synopsis  = Option(article.selectFirst(".screening-excerpt")).map(_.text.trim).filter(_.nonEmpty),
       showtimes = showtimes

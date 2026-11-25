@@ -10,7 +10,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScraperParse}
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 import services.titles.TitleNormalizer
@@ -115,9 +115,9 @@ class AlternatywyClient(
     if (title.isEmpty) return None
     for {
       day        <- Try(dayStr.toInt).toOption
-      month      <- ScraperParse.PolishMonths.get(monthStr.trim.toLowerCase(Locale.ROOT))
-      time       <- TimePat.findFirstMatchIn(timeStr.trim).flatMap(ScraperParse.clockAt(_, 1))
-      date       <- ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingDate(_, today, Period.ofWeeks(1)))
+      month      <- ScrapeDates.PolishMonths.get(monthStr.trim.toLowerCase(Locale.ROOT))
+      time       <- TimePat.findFirstMatchIn(timeStr.trim).flatMap(ScrapeClock.clockAt(_, 1))
+      date       <- ScrapeDates.monthDay(day, month).flatMap(ScrapeDates.upcomingDate(_, today, Period.ofWeeks(1)))
       dateTime    = date.atTime(time)
     } yield {
       val room      = Some(roomStr.split(":", 2).last.trim).filter(_.nonEmpty)
@@ -131,7 +131,7 @@ class AlternatywyClient(
 object AlternatywyClient {
   val RepertoireUrl = "https://alternatywy.art/repertuar/"
 
-  private val TimePat = raw"""^${ScraperParse.ClockParts}$$""".r
+  private val TimePat = raw"""^${ScrapeClock.ClockParts}$$""".r
 
   /** Titles arrive in the image alt as `Okładka „Title"`, `Okładka Title`, or
    *  with a trailing event subtitle (`„Flying Lion"  Adam Święs Trio`). The

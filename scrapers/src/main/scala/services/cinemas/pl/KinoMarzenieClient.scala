@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, SlotsToMovies, ScrapeClock, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead, ReadOutcome}
 
@@ -138,7 +138,7 @@ object KinoMarzenieClient {
       director       = names("reżyseria"),
       cast           = names("obsada"),
       countries      = names("produkcja"),
-      runtimeMinutes = fields.get("czas trwania").flatMap(ScraperParse.hoursMinutesRuntime),
+      runtimeMinutes = fields.get("czas trwania").flatMap(ScrapeRuntime.hoursMinutesRuntime),
       releaseYear    = fields.get("premiera").flatMap(ScraperParse.yearIn))
   }
 
@@ -153,14 +153,14 @@ object KinoMarzenieClient {
     val title = titleLink.map(_.ownText.trim).filter(_.nonEmpty)
     title.toSeq.flatMap { t =>
       val filmUrl = titleLink.map(_.attr("abs:href")).filter(_.nonEmpty)
-      val poster  = Option(block.selectFirst("img.img-responsive")).flatMap(ScraperParse.largestImageUrl)
+      val poster  = Option(block.selectFirst("img.img-responsive")).flatMap(ScrapeImages.largestImageUrl)
       val genres  = Option(block.selectFirst("span.d-block.color-3.small")).map(_.text).toSeq
         .flatMap(_.split("\\|").headOption)
         .flatMap(_.split(",").map(_.trim))
         .filter(_.nonEmpty)
 
       block.select("a.btn.btn-outline-primary[href]").asScala.toSeq.flatMap { a =>
-        ScraperParse.parseHHmm(a.text).map { time =>
+        ScrapeClock.parseHHmm(a.text).map { time =>
           val format = Option(a.parent).flatMap(p => Option(p.selectFirst("div.d-flex.flex-wrap")))
             .map(_.text).toSeq.flatMap(FormatTags.formatTokensIn).distinct.toList
           RawSlot(t, genres, poster, filmUrl,

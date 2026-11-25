@@ -10,7 +10,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 
@@ -96,7 +96,7 @@ object KinoStudioClient {
   private val DatePat = """^(\d{1,2})\.(\d{1,2})\b""".r
 
   /** "HH:MM" time tokens. The rebuilt page uses `:`; the older one used `.`. */
-  private val TimePat = ScraperParse.ClockPartsDotted.r
+  private val TimePat = ScrapeClock.ClockPartsDotted.r
 
   /** Trailing release year on the `produkcja:` line ("Izrael, Włochy 2024"). */
   private val YearPat = """(\d{4})\s*$""".r
@@ -171,7 +171,7 @@ object KinoStudioClient {
       if (el.tagName == "img") Some(el)
       else if (el.tagName == "p" && el.text.trim.isEmpty) Option(el.selectFirst("img"))
       else None
-    img.flatMap(ScraperParse.largestImageUrl)
+    img.flatMap(ScrapeImages.largestImageUrl)
   }
 
   /**
@@ -209,7 +209,7 @@ object KinoStudioClient {
    *  following `<p>`. */
   private def dateHeading(scan: Scan, el: Element, today: LocalDate): Scan = {
     val dated = DatePat.findFirstMatchIn(el.text).fold(scan) { m =>
-      val date = ScraperParse.monthDay(m.group(1).toInt, m.group(2).toInt).flatMap(ScraperParse.upcomingMonthDate(_, today))
+      val date = ScrapeDates.monthDay(m.group(1).toInt, m.group(2).toInt).flatMap(ScrapeDates.upcomingMonthDate(_, today))
       scan.flushed.edit(block => block.copy(dates = block.dates ++ date))
     }
     dated.edit(_.copy(times = Seq.empty))
@@ -222,7 +222,7 @@ object KinoStudioClient {
     val lower = text.toLowerCase(Locale.ROOT)
     if (lower.contains("godziny") || lower.contains("seansów") || lower.contains("seansow")) {
       val strong = Option(el.selectFirst("strong")).map(_.text).getOrElse(text)
-      block.copy(times = TimePat.findAllMatchIn(strong).flatMap(m => ScraperParse.clockAt(m, 1)).toSeq)
+      block.copy(times = TimePat.findAllMatchIn(strong).flatMap(m => ScrapeClock.clockAt(m, 1)).toSeq)
     }
     else if (MetaLabels.exists(lower.contains)) block.copy(meta = metadata(block.meta, el))
     else if (block.synopsis.isEmpty && el.select("em").size > 0)

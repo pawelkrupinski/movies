@@ -10,7 +10,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScrapeClock
 import services.cinemas.common.{SingleSiteScraper, ListingPages}
 import tools.{HttpFetch, HttpRead}
 
@@ -180,7 +180,7 @@ class TeatrZiemiRybnickiejClient(http: HttpFetch) extends SingleSiteScraper {
   // "8.06.2026, godz. 15.30" (detail page uses a dot in the time;
   // the listing uses a colon — accept both).
   private val DateTimePat =
-    raw"""(\d{1,2})\.(\d{1,2})\.(\d{4})\s*,?\s*godz\.?\s*${ScraperParse.ClockPartsDotted}""".r
+    raw"""(\d{1,2})\.(\d{1,2})\.(\d{4})\s*,?\s*godz\.?\s*${ScrapeClock.ClockPartsDotted}""".r
 
   private def parseShowtimes(root: Element): Seq[Showtime] =
     root.select(".dates li").asScala.toSeq.flatMap { li =>

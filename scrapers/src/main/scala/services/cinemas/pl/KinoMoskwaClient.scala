@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScrapeClock
 import services.cinemas.common.{ChunkedCinemaScraper, SingleSiteScraper, ScrapedSlot, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
@@ -78,7 +78,7 @@ object KinoMoskwaClient {
     s"$BaseUrl/kalendarz/?yr=${date.getYear}&month=${date.getMonthValue}&dy=${date.getDayOfMonth}&time=day&mcat=all"
 
   // Room suffix: /S/ = sala Studyjna (small), /D/ = sala Moskwa (large).
-  private val TimeRoomPat = raw"""(${ScraperParse.ClockText})/([DS])/""".r
+  private val TimeRoomPat = raw"""(${ScrapeClock.ClockText})/([DS])/""".r
   // Strip leading ordinal "N. " added by My Calendar.
   private val OrdinalPat  = """^\d+\.\s+""".r
 
@@ -103,7 +103,7 @@ object KinoMoskwaClient {
     } yield {
       val title = OrdinalPat.replaceFirstIn(rawTitle, "")
       TimeRoomPat.findAllMatchIn(shortdesc.text).flatMap { m =>
-        ScraperParse.parseHHmm(m.group(1)).map { time =>
+        ScrapeClock.parseHHmm(m.group(1)).map { time =>
           val room = if (m.group(2) == "S") "Sala Studyjna" else "Sala Moskwa"
           ScrapedSlot(title, LocalDateTime.of(date, time), room = Some(room))
         }

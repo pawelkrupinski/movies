@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import models.CountryNames
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.titles.TitleNormalizer
@@ -60,7 +60,7 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
   private val DatePat      = """jet-listing-dynamic-field__content[^>]*>(\d{1,2}\.\d{1,2}\.\d{4})</div>""".r
   // WordPress media poster URL.
   private val PosterPat    = """https://kinoapollo\.pl/wp-content/uploads/\d{4}/\d{2}/[^\s'"\)]+\.(?:jpg|jpeg|png)""".r
-  private val TimeOnlyPat  = raw"""^${ScraperParse.ClockText}$$""".r
+  private val TimeOnlyPat  = raw"""^${ScrapeClock.ClockText}$$""".r
   // Per-event detail-page anchor — the "Czytaj opis" button next to each
   // screening. Excludes feed / page archive URLs which use the same /kino/
   // prefix but don't correspond to a film. Slug never contains a slash.
@@ -286,7 +286,7 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
         kupOcc  <- sorted.find(o => o.offset > timeOcc.offset && !TimeOnlyPat.matches(o.label))
         date    <- dates.takeWhile { case (o, _) => o <= timeOcc.offset }.lastOption.map(_._2)
         title   <- titles.find { case (o, _) => o > timeOcc.offset && o < kupOcc.offset }.map(_._2)
-        dt      <- ScraperParse.parseDateTime(s"$date ${timeOcc.label}")
+        dt      <- ScrapeDates.parseDateTime(s"$date ${timeOcc.label}")
       } yield {
         val cardEnd = sorted.lastOption.map(_.offset + 200).getOrElse(kupOcc.offset)
         val poster  = pickPoster(PosterPat.findAllIn(html.substring(timeOcc.offset, cardEnd)).toSeq)

@@ -10,7 +10,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.SynopsisProse
-import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, DayPickerProgramme, ScraperParse, SlotsToMovies, BookedScreening}
+import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, DayPickerProgramme, SlotsToMovies, BookedScreening, ScrapeClock, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.titles.FormatTags
 import tools.HttpFetch
 
@@ -111,13 +111,13 @@ object KinoStylowyClient {
       val genres = info.toSeq.flatMap(e => ScraperParse.commaItems(e.ownText))
       val age    = info.flatMap(i => Option(i.selectFirst("em.badge"))).flatMap(ageOf)
       val filmUrl = Option(link.attr("abs:href")).filter(_.nonEmpty)
-      val poster  = Option(card.selectFirst(".startRepertuarPoster img[src]")).flatMap(ScraperParse.largestImageUrl)
+      val poster  = Option(card.selectFirst(".startRepertuarPoster img[src]")).flatMap(ScrapeImages.largestImageUrl)
       val trailer = Option(card.selectFirst("[data-ytlink]")).map(_.attr("data-ytlink").trim).filter(_.nonEmpty)
         .flatMap(id => ScraperParse.canonicalTrailer(s"https://www.youtube.com/watch?v=$id"))
       if (title.isEmpty) Seq.empty
       else card.select(".btnKupBilet25").asScala.toSeq.flatMap { button =>
         val hour = Option(button.selectFirst("a.bKB25hour"))
-        hour.flatMap(h => ScraperParse.parseHHmm(h.text)).map { time =>
+        hour.flatMap(h => ScrapeClock.parseHHmm(h.text)).map { time =>
           RawSlot(
             title     = title,
             dateTime  = LocalDateTime.of(day, time),
@@ -147,7 +147,7 @@ object KinoStylowyClient {
     val (countries, year, genres) =
       if (yearAt < 0) (Seq.empty, None, Seq.empty)
       else (parts.take(yearAt), Some(parts(yearAt).toInt), parts.drop(yearAt + 1))
-    val runtime = meta.flatMap(m => Option(m.selectFirst("em.badge"))).flatMap(e => ScraperParse.hoursMinutesRuntime(e.text))
+    val runtime = meta.flatMap(m => Option(m.selectFirst("em.badge"))).flatMap(e => ScrapeRuntime.hoursMinutesRuntime(e.text))
 
     val fields = doc.select("#pageFilm label").asScala.iterator.flatMap { label =>
       Option(label.nextElementSibling).map(v => label.text.trim.stripSuffix(":").toLowerCase(Locale.ROOT) -> v)

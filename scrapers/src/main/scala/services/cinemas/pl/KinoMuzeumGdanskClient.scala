@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScraperParse}
 import services.cinemas.common.{SingleSiteScraper, OnlyMovieEventsFilter, SlotsToMovies, ListingPages}
 import tools.{HttpFetch, HttpRead}
 
@@ -92,7 +92,7 @@ object KinoMuzeumGdanskClient {
     for {
       li <- Jsoup.parse(html).select("li.screening-it-wrapper").asScala.toSeq
       t  <- text(li, "div.attr-value-title")
-      h  <- text(li, "span.screening-meta-hour").flatMap(ScraperParse.parseHHmm)
+      h  <- text(li, "span.screening-meta-hour").flatMap(ScrapeClock.parseHHmm)
     } yield RawSlot(
       title     = t,
       dateTime  = h.atDate(date),

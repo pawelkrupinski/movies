@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeImages}
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
@@ -104,11 +104,11 @@ object KinoZaciszeClient {
       }
       val filmUrl = Option(block.selectFirst(".col-md-2 a[href], a.arrow-button"))
         .map(_.attr("abs:href")).filter(_.nonEmpty)
-      val poster = Option(block.selectFirst("img[src]")).flatMap(ScraperParse.largestImageUrl)
+      val poster = Option(block.selectFirst("img[src]")).flatMap(ScrapeImages.largestImageUrl)
 
       block.select("ul.show-times span.time").asScala.toSeq.flatMap { span =>
         for {
-          time <- ScraperParse.parseHHmm(span.text)
+          time <- ScrapeClock.parseHHmm(span.text)
           dt   <- Try(LocalDateTime.of(year, month, dom, time.getHour, time.getMinute)).toOption
         } yield RawSlot(
           title    = title,

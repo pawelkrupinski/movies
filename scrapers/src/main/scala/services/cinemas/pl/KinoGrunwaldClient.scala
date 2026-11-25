@@ -9,7 +9,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScraperParse}
 import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
@@ -50,7 +50,7 @@ object KinoGrunwaldClient {
 
   // "2.10 piątek - 16:00 i 19:00" — day.month, a weekday name (ignored beyond
   // matching), one or two HH:MM times joined by " i ".
-  private val DateLine = raw"""^(\d{1,2})\.(\d{1,2})\s+\p{L}+\s*-\s*(${ScraperParse.ClockText})(?:\s+i\s+(${ScraperParse.ClockText}))?$$""".r
+  private val DateLine = raw"""^(\d{1,2})\.(\d{1,2})\s+\p{L}+\s*-\s*(${ScrapeClock.ClockText})(?:\s+i\s+(${ScrapeClock.ClockText}))?$$""".r
   private val PremierowoSuffix = """(?i)\s*-\s*premierowo\s*$""".r
 
   def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
@@ -71,8 +71,8 @@ object KinoGrunwaldClient {
 
     rest.flatMap(l => DateLine.findFirstMatchIn(l)).flatMap { m =>
       val monthDay = Try(java.time.MonthDay.of(m.group(2).toInt, m.group(1).toInt)).toOption
-      val date     = monthDay.flatMap(ScraperParse.upcomingDate(_, today))
-      val times    = Seq(Option(m.group(3)), Option(m.group(4))).flatten.flatMap(ScraperParse.parseHHmm)
+      val date     = monthDay.flatMap(ScrapeDates.upcomingDate(_, today))
+      val times    = Seq(Option(m.group(3)), Option(m.group(4))).flatten.flatMap(ScrapeClock.parseHHmm)
       for { d <- date.toSeq; t <- times } yield ScrapedSlot(title, d.atTime(t))
     }
   }

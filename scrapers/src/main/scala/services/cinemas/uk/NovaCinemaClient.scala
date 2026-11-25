@@ -9,7 +9,7 @@ import scala.util.matching.Regex
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{AgeRating, CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies, ScrapeClock, ScrapeImages}
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
 
@@ -83,7 +83,7 @@ object NovaCinemaClient {
       title  = Strand.replaceFirstIn(raw, "").trim if title.nonEmpty
       card  <- show.select(".screening-card[data-date]").asScala.toSeq
       day   <- Try(LocalDate.parse(card.attr("data-date"))).toOption.toSeq if !day.isBefore(today)
-      time  <- Option(card.selectFirst("h5")).flatMap(h => ScraperParse.meridiemClockIn(h.text)).toSeq
+      time  <- Option(card.selectFirst("h5")).flatMap(h => ScrapeClock.meridiemClockIn(h.text)).toSeq
     } yield Slot(show, raw, title, Showtime(
       dateTime   = day.atTime(time),
       bookingUrl = Option(card.selectFirst("a.cta[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),
@@ -102,7 +102,7 @@ object NovaCinemaClient {
             .orElse(Minutes.findFirstMatchIn(show.text).map(_.group(1).toInt))
         ),
         cinema      = cinema,
-        posterUrl   = Option(show.selectFirst("figure img[src]")).flatMap(ScraperParse.largestImageUrl),
+        posterUrl   = Option(show.selectFirst("figure img[src]")).flatMap(ScrapeImages.largestImageUrl),
         filmUrl     = link.map(_.attr("abs:href")).filter(_.nonEmpty),
         synopsis    = Option(show.selectFirst("p.d-lg-inline")).map(_.text.trim).filter(_.nonEmpty),
         showtimes   = showtimes,

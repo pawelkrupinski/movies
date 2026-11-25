@@ -12,7 +12,7 @@ import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
 import play.api.libs.json.*
 import services.cinemas.common.ScraperParse.jsonText
-import services.cinemas.common.{AgeRating, CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies, VenueCategory}
+import services.cinemas.common.{AgeRating, CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies, VenueCategory, ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
 
@@ -306,7 +306,7 @@ object SavoyClient {
     for {
       day  <- rowDate(dateCell.text).toSeq if !day.isBefore(today)
       span <- Option(dateCell.parent).toSeq.flatMap(_.select("span.StartTimeAndStatus").asScala)
-      time <- ScraperParse.meridiemClockIn(span.text).toSeq
+      time <- ScrapeClock.meridiemClockIn(span.text).toSeq
     } yield programme -> Showtime(
       dateTime   = day.atTime(time),
       bookingUrl = Option(span.selectFirst("a[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),
@@ -331,7 +331,7 @@ object SavoyClient {
         // The block's artwork, never an image inside a heading: Folkestone's Silver Screen
         // prints the BBFC certificate badge beside the title, and no artwork at all.
         poster      = block.flatMap(_.select("img[src]").asScala.find(_.closest("h1, h2, h3, h4") == null))
-          .flatMap(ScraperParse.largestImageUrl),
+          .flatMap(ScrapeImages.largestImageUrl),
         synopsis    = block.flatMap(b => Option(b.selectFirst(".synopsis"))).map(_.text.trim)
           .filter(s => s.nonEmpty && !s.equalsIgnoreCase("tbc"))
       )
@@ -340,7 +340,7 @@ object SavoyClient {
 
   private def rowDate(text: String): Option[LocalDate] =
     RowDate.findFirstMatchIn(text).flatMap { m =>
-      ScraperParse.englishMonth(m.group(2))
+      ScrapeDates.englishMonth(m.group(2))
         .flatMap(month => Try(LocalDate.of(m.group(3).toInt, month, m.group(1).toInt)).toOption)
     }
 

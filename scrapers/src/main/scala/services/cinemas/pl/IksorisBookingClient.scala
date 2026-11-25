@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies, BookedScreening}
+import services.cinemas.common.{CinemaScraper, SlotsToMovies, BookedScreening, ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 
@@ -127,13 +127,13 @@ object IksorisBookingClient {
 
   private def programmeSlots(document: Document): Seq[RawSlot] =
     document.select("li.program__item").asScala.toSeq.flatMap { item =>
-      Option(item.selectFirst("h2.program__item-header")).map(_.text).flatMap(ScraperParse.parseDate).toSeq
+      Option(item.selectFirst("h2.program__item-header")).map(_.text).flatMap(ScrapeDates.parseDate).toSeq
         .flatMap(date => item.select("li.program__show-item").asScala.toSeq.flatMap(programmeShow(_, date)))
     }
 
   private def programmeShow(show: Element, date: LocalDate): Option[RawSlot] =
     for {
-      time  <- Option(show.selectFirst(".program__show-date")).map(_.text.trim).flatMap(ScraperParse.parseHHmm)
+      time  <- Option(show.selectFirst(".program__show-date")).map(_.text.trim).flatMap(ScrapeClock.parseHHmm)
       title <- Option(show.selectFirst("h3.program__show-header a")).map(_.text.trim).filter(_.nonEmpty)
     } yield {
       val labels = show.select(".program__show-header-label").asScala.toSeq.map(_.text.trim)
@@ -161,7 +161,7 @@ object IksorisBookingClient {
   private def tableSlots(document: Document): Seq[RawSlot] =
     document.select("#termin div.row").asScala.toSeq.filter(_.selectFirst(BookingLink) != null).flatMap { row =>
       for {
-        dateTime <- row.children.asScala.iterator.map(_.ownText).flatMap(ScraperParse.parseDateTime).nextOption()
+        dateTime <- row.children.asScala.iterator.map(_.ownText).flatMap(ScrapeDates.parseDateTime).nextOption()
         (title, format) <- Option(row.selectFirst("b")).map(b => FormatTags.extractFormatTags(b.text)).filter(_._1.nonEmpty)
       } yield RawSlot(
         title     = title,
@@ -170,7 +170,7 @@ object IksorisBookingClient {
         runtime   = None,
         countries = Seq.empty,
         format    = format,
-        poster    = Option(row.selectFirst("img[src]")).flatMap(ScraperParse.largestImageUrl)
+        poster    = Option(row.selectFirst("img[src]")).flatMap(ScrapeImages.largestImageUrl)
       )
     }
 
@@ -178,13 +178,13 @@ object IksorisBookingClient {
 
   private def termsListSlots(document: Document): Seq[RawSlot] =
     document.select("div.terms-in-date").asScala.toSeq.flatMap { day =>
-      Option(day.selectFirst(".term-in-date-header")).map(_.text).flatMap(ScraperParse.parseDate).toSeq
+      Option(day.selectFirst(".term-in-date-header")).map(_.text).flatMap(ScrapeDates.parseDate).toSeq
         .flatMap(date => day.select(".term-in-date-term").asScala.toSeq.flatMap(termsListShow(_, date)))
     }
 
   private def termsListShow(show: Element, date: LocalDate): Option[RawSlot] =
     for {
-      time  <- Option(show.selectFirst(".hour-wrapper")).map(_.text.trim).flatMap(ScraperParse.parseHHmm)
+      time  <- Option(show.selectFirst(".hour-wrapper")).map(_.text.trim).flatMap(ScrapeClock.parseHHmm)
       block <- Option(show.selectFirst(".title-block"))
       title <- Some(block.text.trim).filter(_.nonEmpty)
     } yield {

@@ -6,7 +6,7 @@ import scala.jdk.CollectionConverters.*
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages}
@@ -97,7 +97,7 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema
       val parsed = link.map(_.text.trim).filter(_.nonEmpty).map(FormatTags.extractFormatTags)
       (id, parsed) match {
         case (Some(filmId), Some((t, fmt))) =>
-          val poster = Option(row.selectFirst("div.repertoire-movie-poster img[src]")).flatMap(ScraperParse.largestImageSource)
+          val poster = Option(row.selectFirst("div.repertoire-movie-poster img[src]")).flatMap(ScrapeImages.largestImageSource)
                          .map(u => if (u.startsWith("http")) u else BaseUrl + u)
           val desc   = Option(row.selectFirst("div.repertoire-movie-description")).map(_.text).getOrElse("")
           val countries = NoveKinoClient.after(desc, "produkcja").toSeq.flatMap(ScraperParse.commaItems)
@@ -122,7 +122,7 @@ object NoveKinoClient {
   // groups the presentation variants into one row (see `fetch`).
 
   def parseDateTime(day: String, hour: String): Option[LocalDateTime] =
-    ScraperParse.isoDateAtClock(day, hour)
+    ScrapeClock.isoDateAtClock(day, hour)
 
   /** Pull the text after a `Label:` token out of the description blob. */
   def after(desc: String, label: String): Option[String] =
@@ -136,7 +136,7 @@ object NoveKinoClient {
     val document = Jsoup.parse(html)
     Detail(
       year      = ScraperParse.ddField(document, "rok produkcji").flatMap(ScraperParse.firstFourDigitsIn),
-      runtime   = ScraperParse.ddField(document, "czas trwania").flatMap(ScraperParse.runtimeMinutesIn),
+      runtime   = ScraperParse.ddField(document, "czas trwania").flatMap(ScrapeRuntime.runtimeMinutesIn),
       countries = ScraperParse.ddItems(document, "kraj produkcji"),
       genres    = ScraperParse.ddItems(document, "gatunek").map(tools.TextNormalization.titleCaseIfAllLower),
       director  = ScraperParse.ddItems(document, "reżyseria"),

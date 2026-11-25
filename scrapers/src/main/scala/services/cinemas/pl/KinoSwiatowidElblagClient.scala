@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon, ScraperParse}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon, ScrapeClock, ScrapeImages, ScraperParse}
 import services.titles.FormatTags
 import services.titles.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
@@ -99,7 +99,7 @@ object KinoSwiatowidElblagClient {
     val format = descriptions.lift(1).map(_.text).toSeq.flatMap(FormatTags.formatTokensIn).distinct.toList
 
     val showtimes = card.select("ul.movie-card__showtimes a[href]").asScala.toSeq.flatMap { link =>
-      ScraperParse.parseHHmm(link.text.trim).map { time =>
+      ScrapeClock.parseHHmm(link.text.trim).map { time =>
         Showtime(LocalDateTime.of(day, time), Some(link.attr("abs:href")).filter(_.nonEmpty), format = format)
       }
     }
@@ -110,7 +110,7 @@ object KinoSwiatowidElblagClient {
     } yield CinemaMovie(
       movie     = Movie(title, runtimeMinutes = runtime, genres = genres),
       cinema    = cinema,
-      posterUrl = Option(card.selectFirst("div.movie-card__thumbnail img[src]")).flatMap(ScraperParse.largestImageUrl),
+      posterUrl = Option(card.selectFirst("div.movie-card__thumbnail img[src]")).flatMap(ScrapeImages.largestImageUrl),
       filmUrl   = Option(card.selectFirst("div.movie-card__thumbnail a[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),
       showtimes = showtimes.sortBy(_.dateTime)
     )

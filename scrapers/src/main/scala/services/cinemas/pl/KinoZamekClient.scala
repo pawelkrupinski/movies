@@ -8,7 +8,7 @@ import scala.util.{Success, Try}
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ListingPages}
 import tools.Whitespace.collapsedSpaces
@@ -127,7 +127,7 @@ object KinoZamekClient {
     * `21 czerwca (niedziela), godz. 19:00`. The weekday parenthetical is optional
     * because not every entry carries one. */
   private val ScreeningLine =
-    raw"""(?i)(\d{1,2})\s+(\p{L}+)\b[^,]*,\s*godz(?:ina)?\.?\s*${ScraperParse.ClockPartsDotted}""".r
+    raw"""(?i)(\d{1,2})\s+(\p{L}+)\b[^,]*,\s*godz(?:ina)?\.?\s*${ScrapeClock.ClockPartsDotted}""".r
 
   /** `12-06-2026` inside the comma-separated `p.event-details` list. */
   private val EventDetailsDate = """(\d{2})-(\d{2})-(\d{4})""".r
@@ -198,8 +198,8 @@ object KinoZamekClient {
       ScreeningLine.findFirstMatchIn(paragraph.text) match {
         case Some(matched) =>
           for {
-            month <- ScraperParse.polishMonth(matched.group(2))
-            time  <- ScraperParse.clockAt(matched, 3)
+            month <- ScrapeDates.polishMonth(matched.group(2))
+            time  <- ScrapeClock.clockAt(matched, 3)
             date  <- resolveDate(matched.group(1).toInt, month, dated, today)
             if !date.isBefore(today)
           } yield Screening(date, time, heading, directorAfter(paragraphs, index))

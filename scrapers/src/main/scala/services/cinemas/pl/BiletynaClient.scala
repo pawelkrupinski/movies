@@ -10,7 +10,7 @@ import org.jsoup.Jsoup
 import play.api.Logging
 import play.api.libs.json.*
 import services.cinemas.common.ScraperParse.jsonText
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies, ScrapeRuntime}
 import services.titles.NonMovieEventClassifier
 import tools.JsonLdBlocks
 import tools.{HttpFetch, HttpRead}
@@ -104,7 +104,7 @@ object BiletynaClient {
    *  default: the non-default ones matched TMDB within 5 minutes for 39 of 49 films checked. */
   private def runtimeOf(duration: String): Option[Int] = duration.trim match {
     case IsoDuration(hours, minutes) =>
-      Some(ScraperParse.minutesOf(hours, minutes))
+      Some(ScrapeRuntime.minutesOf(hours, minutes))
         .filter(m => m > 0 && m != DefaultDurationMinutes)
     case _ => None
   }

@@ -9,7 +9,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import play.api.libs.json.Json
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScraperParse}
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{ChunkedCinemaScraper, SingleSiteScraper, DayChunks, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
 import tools.{HttpFetch, HttpRead}
@@ -140,7 +140,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: => LocalDate
       slot    <- card.select("div.seanserep a.xseans[href]").asScala.toSeq
       href     = slot.attr("href")
       eventId <- NoweHoryzontyClient.EventIdPat.findFirstMatchIn(href).map(_.group(1))
-      time    <- ScraperParse.parseHHmm(slot.text.trim)
+      time    <- ScrapeClock.parseHHmm(slot.text.trim)
     } yield RawSlot(filmId, title, eventId, date.atTime(time), if (href.startsWith("http")) href else s"$BaseUrl/$href")
 }
 

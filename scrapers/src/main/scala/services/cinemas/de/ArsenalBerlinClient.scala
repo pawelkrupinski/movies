@@ -9,7 +9,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import play.api.libs.json.*
 import services.cinemas.common.ScraperParse.jsonText
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, SlotsToMovies, ScrapeClock, ScrapeDates, ScraperParse}
 import services.titles.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
 
@@ -27,7 +27,7 @@ import tools.{HttpFetch, HttpRead}
  * one event per screening: `title`, `movieTitles` (more than one for a shared bill), `director`,
  * `country` ("Frankreich, Mauretanien, Algerien"), `year`, `playingTime` ("98 Min."),
  * `languageVersion` (OmU / OmeU / OmdU / DF), `dateText` ("Fri 16.10. 19:00" — yearless,
- * placed by [[ScraperParse.upcomingDate]]), `location`, `salesUrl` and the screening's own page
+ * placed by [[ScrapeDates.upcomingDate]]), `location`, `salesUrl` and the screening's own page
  * `url`. Every page is read: the calendar is the whole published programme.
  *
  * The foyer's video installation (`location` "Arsenal-Foyer", on all day) is no screening.
@@ -87,7 +87,7 @@ object ArsenalBerlinClient {
     posterUrl:      Option[String]
   )
 
-  private val DayAndClock = raw"""(\d{1,2})\.(\d{1,2})\.\s+${ScraperParse.ClockParts}""".r.unanchored
+  private val DayAndClock = raw"""(\d{1,2})\.(\d{1,2})\.\s+${ScrapeClock.ClockParts}""".r.unanchored
   private val Minutes     = """(\d+)\s*Min""".r.unanchored
   private val Year        = """\b(1[89]\d\d|20\d\d)\b""".r
 
@@ -127,9 +127,9 @@ object ArsenalBerlinClient {
     dateText match {
       case DayAndClock(day, month, hour, minute) =>
         for {
-          monthDay <- ScraperParse.monthDay(day.toInt, month.toInt)
-          date     <- ScraperParse.upcomingDate(monthDay, today)
-          time     <- ScraperParse.clock(hour, minute)
+          monthDay <- ScrapeDates.monthDay(day.toInt, month.toInt)
+          date     <- ScrapeDates.upcomingDate(monthDay, today)
+          time     <- ScrapeClock.clock(hour, minute)
         } yield date.atTime(time)
       case _ => None
     }

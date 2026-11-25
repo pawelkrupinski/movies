@@ -7,7 +7,7 @@ import scala.util.Try
 
 import models.*
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DayPickerProgramme, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DayPickerProgramme, SlotsToMovies, ScrapeClock, ScrapeImages}
 import services.titles.FormatTags
 import tools.HttpFetch
 
@@ -100,13 +100,13 @@ object IksorisRepertoireClient {
     Option(box.selectFirst(".nazwa, .kalendarium-nazwa-wydarzenia")).map(_.ownText.trim.stripSuffix("/").trim).filter(_.nonEmpty).toSeq.flatMap { rawTitle =>
       val (title, format) = FormatTags.extractFormatTags(rawTitle)
       val runtime = Runtime.findFirstMatchIn(box.text).flatMap(_.group(1).toIntOption)
-      val poster  = Option(box.selectFirst("img.termin-img")).flatMap(ScraperParse.largestImageUrl)
+      val poster  = Option(box.selectFirst("img.termin-img")).flatMap(ScrapeImages.largestImageUrl)
       // "Kup" (buy) when online sale is open; a showing sold as reservation-only
       // carries just "Rezerwuj" — the same seat-picker, so it stands in.
       val buyLink = Seq("a.btn-kup[href]", "a[href*=rezerwacja/]").iterator
         .flatMap(selector => Option(box.selectFirst(selector))).map(_.attr("abs:href")).find(_.nonEmpty)
       box.select(".termin-start, a[data-content]").asScala.toSeq.flatMap { timeNode =>
-        ScraperParse.parseHHmm(timeNode.text).map { time =>
+        ScrapeClock.parseHHmm(timeNode.text).map { time =>
           val booking = if (timeNode.tagName == "a") Some(timeNode.attr("abs:href")).filter(_.nonEmpty) else buyLink
           RawSlot(title, rawTitle, LocalDateTime.of(day, time), runtime, poster, booking, format)
         }

@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates}
 import services.cinemas.common.{SingleSiteScraper, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
@@ -65,7 +65,7 @@ object KinoAmokClient {
     val container = document.selectFirst("div.repertoire_list_f")
     if (container == null) return Seq.empty
 
-    ScraperParse.underDayHeaders(container.children.asScala) {
+    ScrapeDates.underDayHeaders(container.children.asScala) {
       // Date header — extract "DD miesiąca"
       case ribbon if ribbon.hasClass("ribbon") && ribbon.hasClass("rep-ribbon") =>
         parsePolishDate(Option(ribbon.selectFirst("h3")).map(_.text.trim).getOrElse(""), today)
@@ -79,7 +79,7 @@ object KinoAmokClient {
   /** Parse a single screening `div.post` into a `ScrapedSlot`. */
   private def parsePost(post: org.jsoup.nodes.Element, date: LocalDate, baseUrl: String): Option[ScrapedSlot] = {
     val timeText = Option(post.selectFirst("div.margin-b")).map(_.text.trim).getOrElse("")
-    val time     = ScraperParse.parseHHmm(timeText)
+    val time     = ScrapeClock.parseHHmm(timeText)
 
     // The room sits in the sibling column to the time — the first bare `<div>`
     // after the time cell that has text.
@@ -102,5 +102,5 @@ object KinoAmokClient {
   /** "7 czerwca" / "13 stycznia" → LocalDate.
    *  If the resulting date would be more than 60 days in the past, assume next year. */
   private[cinemas] def parsePolishDate(text: String, today: LocalDate): Option[LocalDate] =
-    ScraperParse.parseDayMonth(text).flatMap(ScraperParse.upcomingDate(_, today))
+    ScrapeDates.parseDayMonth(text).flatMap(ScrapeDates.upcomingDate(_, today))
 }

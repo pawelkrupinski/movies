@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeImages, ScraperParse}
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies, VenueCredits}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead, ReadOutcome}
@@ -96,7 +96,7 @@ object KinoKreskaClient {
       for {
         timeStr <- timeDivs.headOption.map(_.text.trim)
         dateStr <- timeDivs.drop(1).headOption.map(_.text.trim)
-        time    <- ScraperParse.parseHHmm(timeStr)
+        time    <- ScrapeClock.parseHHmm(timeStr)
         date    <- Try(LocalDate.parse(dateStr)).toOption
         titleEl <- Option(li.selectFirst("a.std-link.std-link--hudge"))
         title    = titleEl.text.trim if title.nonEmpty
@@ -129,7 +129,7 @@ object KinoKreskaClient {
     val prose = lines.filterNot(line => VenueCredits.statesFacts(line) || LabelLine.matches(line) || line == "ZOBACZ ZWIASTUN")
     VenueCredits.parse(lines).copy(
       synopsis  = Some(prose.mkString("\n\n")).filter(_.length > 20),
-      posterUrl = Option(document.selectFirst("img.sticky-image__image")).flatMap(ScraperParse.largestImageUrl))
+      posterUrl = Option(document.selectFirst("img.sticky-image__image")).flatMap(ScrapeImages.largestImageUrl))
   }
 
   /** "Gatunek: dramat", "kategoria wiekowa: 16+" — a short labelled line, never the synopsis. */

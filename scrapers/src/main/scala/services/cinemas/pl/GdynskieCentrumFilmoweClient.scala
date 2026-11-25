@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates}
 import services.cinemas.common.{SingleSiteScraper, ScrapedSlot, SlotsToMovies}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
@@ -109,7 +109,7 @@ object GdynskieCentrumFilmoweClient {
 
   private def parseDateTime(dateStr: String, hourStr: String): Option[LocalDateTime] =
     for {
-      date <- ScraperParse.parseDate(dateStr)
-      time <- ScraperParse.parseHHmm(hourStr)
+      date <- ScrapeDates.parseDate(dateStr)
+      time <- ScrapeClock.parseHHmm(hourStr)
     } yield LocalDateTime.of(date, time)
 }

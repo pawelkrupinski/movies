@@ -7,7 +7,7 @@ import scala.util.Try
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScraperParse}
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
@@ -74,7 +74,7 @@ object KinoChatkaZakaClient {
   // venue has spelled that run three ways — "24.06.26 | środa | 18:00",
   // "13.10.26 wtorek 18:00" (October 2026) and "18.11.26 (środa), godz. 18:00" or
   // "godz: 18:00" (November 2026) — sometimes under a banner line.
-  private val DetailTimePat = raw"""\d{1,2}\.\d{1,2}\.\d{2,4}[^\d\n]{1,30}${ScraperParse.ClockParts}""".r
+  private val DetailTimePat = raw"""\d{1,2}\.\d{1,2}\.\d{2,4}[^\d\n]{1,30}${ScrapeClock.ClockParts}""".r
   // The detail meta's "reż. Director[, Director…], Country[/Country…] Year (NN min)"
   // line: the countries are the last comma field before the year.
   private val DetailMetaPat = """(?s)reż\.\s*(.+?),\s*([^(),]+?)\s+(\d{4})\s*\((\d+)\s*min\)""".r
@@ -87,7 +87,7 @@ object KinoChatkaZakaClient {
     // The list is a flat sibling stream: a `<h3>` date header, then the
     // `.box-row` events under it, then the next header. Walk the whole list
     // container's children in order, carrying the most recent date forward.
-    ScraperParse.underDayHeaders(document.select("h3.header-light, div.box-row").asScala) {
+    ScrapeDates.underDayHeaders(document.select("h3.header-light, div.box-row").asScala) {
       case h3 if h3.tagName == "h3" =>
         ListDatePat.findFirstMatchIn(h3.text)
           .flatMap(m => Try(java.time.LocalDate.of(m.group(3).toInt, m.group(2).toInt, m.group(1).toInt)).toOption)
@@ -102,7 +102,7 @@ object KinoChatkaZakaClient {
   private def parseDetail(html: String): Option[Detail] = {
     val description = Option(Jsoup.parse(html).selectFirst("meta[name=description]")).map(_.attr("content")).getOrElse("")
     DetailTimePat.findFirstMatchIn(description).flatMap { t =>
-      ScraperParse.clockAt(t, 1).map { time =>
+      ScrapeClock.clockAt(t, 1).map { time =>
         val meta = DetailMetaPat.findFirstMatchIn(description)
         Detail(
           time      = time,

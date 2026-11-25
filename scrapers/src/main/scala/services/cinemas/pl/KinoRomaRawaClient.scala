@@ -8,7 +8,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.SynopsisProse
-import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScraperParse}
+import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -20,7 +20,7 @@ import tools.{HttpFetch, HttpRead}
  *
  *   - `div.single__schedule table tr` — one row per screening day: a year-less
  *     "30 września" `<time>` then one `HH:MM` `<time>` per showing. The year
- *     comes from `today` ([[ScraperParse.upcomingDate]]).
+ *     comes from `today` ([[ScrapeDates.upcomingDate]]).
  *   - `hgroup[itemtype=schema.org/Movie]` — `genre`, `countryOfOrigin`,
  *     `dateCreated` (the production year), `director`, `typicalAgeRange`
  *     ("od 13 lat") and `duration` ("160 min") microdata.
@@ -85,7 +85,7 @@ object KinoRomaRawaClient {
             genres         = props("genre")
           ),
           cinema     = cinema,
-          posterUrl  = Option(doc.selectFirst(".single__image img[src]")).flatMap(ScraperParse.largestImageUrl),
+          posterUrl  = Option(doc.selectFirst(".single__image img[src]")).flatMap(ScrapeImages.largestImageUrl),
           filmUrl    = Some(url),
           synopsis   = Option(doc.selectFirst("div.single__text[itemprop=description]")).map(plot).filter(_.nonEmpty),
           director   = props("director"),
@@ -101,9 +101,9 @@ object KinoRomaRawaClient {
     doc.select(".single__schedule tr").asScala.toSeq.flatMap { row =>
       val cells = row.select("time").asScala.toSeq.map(_.text.trim)
       cells.headOption
-        .flatMap(ScraperParse.parseDayMonth)
-        .flatMap(ScraperParse.upcomingDate(_, today)).toSeq
-        .flatMap(day => cells.drop(1).flatMap(ScraperParse.parseHHmm).map(t => Showtime(LocalDateTime.of(day, t), None)))
+        .flatMap(ScrapeDates.parseDayMonth)
+        .flatMap(ScrapeDates.upcomingDate(_, today)).toSeq
+        .flatMap(day => cells.drop(1).flatMap(ScrapeClock.parseHHmm).map(t => Showtime(LocalDateTime.of(day, t), None)))
     }.distinctBy(_.dateTime).sortBy(_.dateTime)
 
   /** The description minus the venue's box-office notices: paragraphs set

@@ -207,7 +207,7 @@ object VenueCredits {
     case RuntimeItem(minutes) => Some(minutes.toInt).filter(_ > 0)
     case other =>
       Apostrophe.findFirstMatchIn(other).map(_.group(1).toInt).filter(_ > 0)
-        .orElse(HoursOrMinutes.findFirstIn(other).flatMap(_ => ScraperParse.hoursMinutesRuntime(other)))
+        .orElse(HoursOrMinutes.findFirstIn(other).flatMap(_ => ScrapeRuntime.hoursMinutesRuntime(other)))
   }
 
   /** "Wilhelm Sasnal, Anna Sasnal" / "David Lynch (scenariusz i reżyseria)" → the names. */

@@ -15,41 +15,41 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
 
   "underDayHeaders" should "read each row under the last day header, and nothing before the first or under an unreadable one" in {
     val items = Seq("early", "day 3", "a", "b", "day ?", "lost", "day 5", "c")
-    ScraperParse.underDayHeaders(items) {
+    ScrapeDates.underDayHeaders(items) {
       case header if header.startsWith("day ") => header.drop(4).toIntOption.map(LocalDate.of(2026, 6, _))
     }((row, day) => Seq(s"$row@${day.getDayOfMonth}")) shouldBe Seq("a@3", "b@3", "c@5")
   }
 
   "parseHHmm" should "pull the first HH:mm out of surrounding text" in {
-    ScraperParse.parseHHmm("seans o 19:30 dziś") shouldBe Some(LocalTime.of(19, 30))
+    ScrapeClock.parseHHmm("seans o 19:30 dziś") shouldBe Some(LocalTime.of(19, 30))
   }
 
   it should "accept a single-digit hour" in {
-    ScraperParse.parseHHmm("9:05") shouldBe Some(LocalTime.of(9, 5))
+    ScrapeClock.parseHHmm("9:05") shouldBe Some(LocalTime.of(9, 5))
   }
 
   it should "return None when there is no time" in {
-    ScraperParse.parseHHmm("brak godziny") shouldBe None
+    ScrapeClock.parseHHmm("brak godziny") shouldBe None
   }
 
   it should "return None for an out-of-range time instead of throwing" in {
-    ScraperParse.parseHHmm("25:99") shouldBe None
+    ScrapeClock.parseHHmm("25:99") shouldBe None
   }
 
   "clockAt" should "read an optional group that did not participate as no clock, not a throw" in {
-    val m = raw"""${ScraperParse.ClockParts}(?:-${ScraperParse.ClockParts})?""".r.findFirstMatchIn("19:30").get
-    ScraperParse.clockAt(m, 1) shouldBe Some(LocalTime.of(19, 30))
-    ScraperParse.clockAt(m, 3) shouldBe None
+    val m = raw"""${ScrapeClock.ClockParts}(?:-${ScrapeClock.ClockParts})?""".r.findFirstMatchIn("19:30").get
+    ScrapeClock.clockAt(m, 1) shouldBe Some(LocalTime.of(19, 30))
+    ScrapeClock.clockAt(m, 3) shouldBe None
   }
 
   "clock" should "read split-out numbers, and refuse a non-clock" in {
-    ScraperParse.clock("9", "05") shouldBe Some(LocalTime.of(9, 5))
-    ScraperParse.clock("24", "00") shouldBe None
-    ScraperParse.clock("19", "30-21") shouldBe None
+    ScrapeClock.clock("9", "05") shouldBe Some(LocalTime.of(9, 5))
+    ScrapeClock.clock("24", "00") shouldBe None
+    ScrapeClock.clock("19", "30-21") shouldBe None
   }
 
   "meridiemClockIn" should "read a 12-hour clock by its marker, and a 24-hour one whatever the marker" in {
-    def read(text: String) = ScraperParse.meridiemClockIn(text)
+    def read(text: String) = ScrapeClock.meridiemClockIn(text)
     read("Screen 2 · 3:30pm") shouldBe Some(LocalTime.of(15, 30))
     read("7.45 pm") shouldBe Some(LocalTime.of(19, 45))
     read("16:00") shouldBe Some(LocalTime.of(16, 0))
@@ -66,7 +66,7 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not take a word after the clock that merely starts with a marker as one" in {
-    def read(text: String) = ScraperParse.meridiemClockIn(text)
+    def read(text: String) = ScrapeClock.meridiemClockIn(text)
     read("12:00 Amazing Grace") shouldBe Some(LocalTime.of(12, 0))
     read("12:00 Amélie") shouldBe Some(LocalTime.of(12, 0))
     read("7:00 AMC relay") shouldBe Some(LocalTime.of(7, 0))
@@ -87,14 +87,14 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     // the only genitive month names with a diacritic — silently stop matching.
     Seq("4 września 2026" -> "września", "4 października 2026" -> "października",
         "4 grudnia 2026" -> "grudnia").foreach { case (text, month) =>
-      ScraperParse.DayMonthYearPat.findFirstMatchIn(text).map(_.group(2)) shouldBe Some(month)
+      ScrapeDates.DayMonthYearPat.findFirstMatchIn(text).map(_.group(2)) shouldBe Some(month)
     }
   }
 
   "DayMonthPat" should "capture a month name that carries a diacritic" in {
     Seq("4 września" -> "września", "4 października" -> "października",
         "7 czerwca" -> "czerwca").foreach { case (text, month) =>
-      ScraperParse.DayMonthPat.findFirstMatchIn(text).map(_.group(2)) shouldBe Some(month)
+      ScrapeDates.DayMonthPat.findFirstMatchIn(text).map(_.group(2)) shouldBe Some(month)
     }
   }
 
@@ -104,23 +104,23 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   // ("dd/MM/yyyy"), GCF / Kino Forum ("yyyy-MM-dd").
   "parseDate" should "read the day-first spellings the cinema pages use" in {
     Seq("06.09.2026", "6.09.2026", "06-09-2026", "06/09/2026").foreach { s =>
-      withClue(s)(ScraperParse.parseDate(s) shouldBe Some(LocalDate.of(2026, 9, 6)))
+      withClue(s)(ScrapeDates.parseDate(s) shouldBe Some(LocalDate.of(2026, 9, 6)))
     }
   }
 
   it should "read an ISO date" in {
-    ScraperParse.parseDate("2026-09-06") shouldBe Some(LocalDate.of(2026, 9, 6))
+    ScrapeDates.parseDate("2026-09-06") shouldBe Some(LocalDate.of(2026, 9, 6))
   }
 
   it should "pull the first date out of surrounding text" in {
-    ScraperParse.parseDate("Data: 06.09.2026 18:00")       shouldBe Some(LocalDate.of(2026, 9, 6))
-    ScraperParse.parseDate("wtorek, 2026-09-08 (sala 1)")  shouldBe Some(LocalDate.of(2026, 9, 8))
-    ScraperParse.parseDate("/wydarzenie/2026-09-08-18-30") shouldBe Some(LocalDate.of(2026, 9, 8))
+    ScrapeDates.parseDate("Data: 06.09.2026 18:00")       shouldBe Some(LocalDate.of(2026, 9, 6))
+    ScrapeDates.parseDate("wtorek, 2026-09-08 (sala 1)")  shouldBe Some(LocalDate.of(2026, 9, 8))
+    ScrapeDates.parseDate("/wydarzenie/2026-09-08-18-30") shouldBe Some(LocalDate.of(2026, 9, 8))
   }
 
   it should "return None for an impossible date, a bare time, or no date" in {
     Seq("31.02.2026", "12:30", "brak daty", "2026-13-01", "5.09").foreach { s =>
-      withClue(s)(ScraperParse.parseDate(s) shouldBe None)
+      withClue(s)(ScrapeDates.parseDate(s) shouldBe None)
     }
   }
 
@@ -131,22 +131,22 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     val expected = LocalDateTime.of(2026, 9, 6, 18, 0)
     Seq("2026-09-06 18:00", "06.09.2026 18:00", "6.09.2026, 18:00", "2026-09-06 18:00:00",
         "Tytuł; Miejsce: Sala 1; Data: 06.09.2026 18:00", "18:00 06.09.2026").foreach { s =>
-      withClue(s)(ScraperParse.parseDateTime(s) shouldBe Some(expected))
+      withClue(s)(ScrapeDates.parseDateTime(s) shouldBe Some(expected))
     }
   }
 
   it should "return None when either half is missing" in {
-    ScraperParse.parseDateTime("2026-09-06")        shouldBe None
-    ScraperParse.parseDateTime("18:00")             shouldBe None
-    ScraperParse.parseDateTime("2026-09-06-18-30")  shouldBe None  // `-HH-mm` is not an HH:mm
+    ScrapeDates.parseDateTime("2026-09-06")        shouldBe None
+    ScrapeDates.parseDateTime("18:00")             shouldBe None
+    ScrapeDates.parseDateTime("2026-09-06-18-30")  shouldBe None  // `-HH-mm` is not an HH:mm
   }
 
   "polishMonth" should "resolve genitive, nominative and abbreviated spellings in any case" in {
     Seq("września" -> 9, "Września" -> 9, "WRZEŚNIA" -> 9, "wrzesień" -> 9, "wrz" -> 9, "Wrz" -> 9,
         "października" -> 10, "paź" -> 10, "maja" -> 5, "maj" -> 5, "Czerwiec" -> 6, "cze " -> 6).foreach {
-      case (token, month) => withClue(token)(ScraperParse.polishMonth(token) shouldBe Some(month))
+      case (token, month) => withClue(token)(ScrapeDates.polishMonth(token) shouldBe Some(month))
     }
-    ScraperParse.polishMonth("sala") shouldBe None
+    ScrapeDates.polishMonth("sala") shouldBe None
   }
 
   // Kino Amok / CSW Toruń / Pod Baranami ("5 września"), Iluzjon ("5 Czerwca -
@@ -155,137 +155,137 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     Seq("5 września" -> MonthDay.of(9, 5), "Piątek, 5 września" -> MonthDay.of(9, 5),
         "5 Czerwca - Piątek" -> MonthDay.of(6, 5), "10 cze" -> MonthDay.of(6, 10),
         "1 Styczeń" -> MonthDay.of(1, 1), "31 października, 18:00" -> MonthDay.of(10, 31)).foreach {
-      case (text, expected) => withClue(text)(ScraperParse.parseDayMonth(text) shouldBe Some(expected))
+      case (text, expected) => withClue(text)(ScrapeDates.parseDayMonth(text) shouldBe Some(expected))
     }
   }
 
   it should "return None for an impossible day or a word that is not a month" in {
     Seq("31 kwietnia", "5 sala", "godz. 18:00", "").foreach { s =>
-      withClue(s)(ScraperParse.parseDayMonth(s) shouldBe None)
+      withClue(s)(ScrapeDates.parseDayMonth(s) shouldBe None)
     }
   }
 
   // Kino Zorza / Kino Roma spell the day header "5.09" with no year.
   "parseNumericDayMonth" should "read a dotted day.month" in {
-    ScraperParse.parseNumericDayMonth("Piątek 5.09") shouldBe Some(MonthDay.of(9, 5))
-    ScraperParse.parseNumericDayMonth("31.12")       shouldBe Some(MonthDay.of(12, 31))
-    ScraperParse.parseNumericDayMonth("12.30")       shouldBe None
-    ScraperParse.parseNumericDayMonth("sala 3")      shouldBe None
+    ScrapeDates.parseNumericDayMonth("Piątek 5.09") shouldBe Some(MonthDay.of(9, 5))
+    ScrapeDates.parseNumericDayMonth("31.12")       shouldBe Some(MonthDay.of(12, 31))
+    ScrapeDates.parseNumericDayMonth("12.30")       shouldBe None
+    ScrapeDates.parseNumericDayMonth("sala 3")      shouldBe None
   }
 
   // Kino Agrafka / OKF Iluzja / Sokół Brzozów / System Biletowy / Kino Zbyszek
   // ("4 września 2026", "Piątek, 12 Października 2026").
   "parseDayMonthYear" should "read the explicit year" in {
-    ScraperParse.parseDayMonthYear("4 września 2026")             shouldBe Some(LocalDate.of(2026, 9, 4))
-    ScraperParse.parseDayMonthYear("Piątek, 12 Października 2026") shouldBe Some(LocalDate.of(2026, 10, 12))
-    ScraperParse.parseDayMonthYear("9 czerwca 2026, 17:00")       shouldBe Some(LocalDate.of(2026, 6, 9))
+    ScrapeDates.parseDayMonthYear("4 września 2026")             shouldBe Some(LocalDate.of(2026, 9, 4))
+    ScrapeDates.parseDayMonthYear("Piątek, 12 Października 2026") shouldBe Some(LocalDate.of(2026, 10, 12))
+    ScrapeDates.parseDayMonthYear("9 czerwca 2026, 17:00")       shouldBe Some(LocalDate.of(2026, 6, 9))
   }
 
   it should "return None without a year, or for an impossible date" in {
-    ScraperParse.parseDayMonthYear("4 września")      shouldBe None
-    ScraperParse.parseDayMonthYear("31 lutego 2026")  shouldBe None
+    ScrapeDates.parseDayMonthYear("4 września")      shouldBe None
+    ScrapeDates.parseDayMonthYear("31 lutego 2026")  shouldBe None
   }
 
   "upcomingDate" should "keep a recent date this year and roll an older one into next year" in {
     val today = LocalDate.of(2026, 9, 6)
-    ScraperParse.upcomingDate(MonthDay.of(9, 5), today)  shouldBe Some(LocalDate.of(2026, 9, 5))
-    ScraperParse.upcomingDate(MonthDay.of(12, 24), today) shouldBe Some(LocalDate.of(2026, 12, 24))
-    ScraperParse.upcomingDate(MonthDay.of(7, 20), today)  shouldBe Some(LocalDate.of(2026, 7, 20))  // 48 days back
-    ScraperParse.upcomingDate(MonthDay.of(7, 1), today)   shouldBe Some(LocalDate.of(2027, 7, 1))   // 67 days back
-    ScraperParse.upcomingDate(MonthDay.of(1, 13), today)  shouldBe Some(LocalDate.of(2027, 1, 13))
+    ScrapeDates.upcomingDate(MonthDay.of(9, 5), today)  shouldBe Some(LocalDate.of(2026, 9, 5))
+    ScrapeDates.upcomingDate(MonthDay.of(12, 24), today) shouldBe Some(LocalDate.of(2026, 12, 24))
+    ScrapeDates.upcomingDate(MonthDay.of(7, 20), today)  shouldBe Some(LocalDate.of(2026, 7, 20))  // 48 days back
+    ScrapeDates.upcomingDate(MonthDay.of(7, 1), today)   shouldBe Some(LocalDate.of(2027, 7, 1))   // 67 days back
+    ScrapeDates.upcomingDate(MonthDay.of(1, 13), today)  shouldBe Some(LocalDate.of(2027, 1, 13))
   }
 
   it should "honour a caller's own grace window" in {
     val today = LocalDate.of(2026, 9, 6)
-    ScraperParse.upcomingDate(MonthDay.of(7, 1), today, grace = Period.ofMonths(6)) shouldBe Some(LocalDate.of(2026, 7, 1))
-    ScraperParse.upcomingDate(MonthDay.of(8, 25), today, grace = Period.ofWeeks(1)) shouldBe Some(LocalDate.of(2027, 8, 25))
+    ScrapeDates.upcomingDate(MonthDay.of(7, 1), today, grace = Period.ofMonths(6)) shouldBe Some(LocalDate.of(2026, 7, 1))
+    ScrapeDates.upcomingDate(MonthDay.of(8, 25), today, grace = Period.ofWeeks(1)) shouldBe Some(LocalDate.of(2027, 8, 25))
   }
 
   // A January page still listing last week's December rows: those are last December's — read as this
   // year's they were showtimes 11 months ahead, which no past-row filter drops.
   it should "date a leftover December row read in early January to the December just gone" in {
     val today = LocalDate.of(2027, 1, 2)
-    ScraperParse.upcomingDate(MonthDay.of(12, 30), today) shouldBe Some(LocalDate.of(2026, 12, 30))
-    ScraperParse.upcomingDate(MonthDay.of(1, 20), today)  shouldBe Some(LocalDate.of(2027, 1, 20))
-    ScraperParse.upcomingDate(MonthDay.of(10, 1), today)  shouldBe Some(LocalDate.of(2027, 10, 1))
-    ScraperParse.upcomingMonthDate(MonthDay.of(12, 30), today) shouldBe Some(LocalDate.of(2027, 12, 30))
+    ScrapeDates.upcomingDate(MonthDay.of(12, 30), today) shouldBe Some(LocalDate.of(2026, 12, 30))
+    ScrapeDates.upcomingDate(MonthDay.of(1, 20), today)  shouldBe Some(LocalDate.of(2027, 1, 20))
+    ScrapeDates.upcomingDate(MonthDay.of(10, 1), today)  shouldBe Some(LocalDate.of(2027, 10, 1))
+    ScrapeDates.upcomingMonthDate(MonthDay.of(12, 30), today) shouldBe Some(LocalDate.of(2027, 12, 30))
   }
 
   // A long grace (KinoBulgarska's six months) must not cap the horizon: in February an October date
   // is the October ahead, not last October's — only a row from the last month is read as the past.
   it should "keep a date months ahead in the year ahead under a long grace" in {
     val today = LocalDate.of(2027, 2, 10)
-    ScraperParse.upcomingDate(MonthDay.of(10, 1), today, grace = Period.ofMonths(6)) shouldBe Some(LocalDate.of(2027, 10, 1))
-    ScraperParse.upcomingDate(MonthDay.of(12, 20), today, grace = Period.ofMonths(6)) shouldBe Some(LocalDate.of(2027, 12, 20))
-    ScraperParse.upcomingDate(MonthDay.of(1, 25), today, grace = Period.ofMonths(6)) shouldBe Some(LocalDate.of(2027, 1, 25))
+    ScrapeDates.upcomingDate(MonthDay.of(10, 1), today, grace = Period.ofMonths(6)) shouldBe Some(LocalDate.of(2027, 10, 1))
+    ScrapeDates.upcomingDate(MonthDay.of(12, 20), today, grace = Period.ofMonths(6)) shouldBe Some(LocalDate.of(2027, 12, 20))
+    ScrapeDates.upcomingDate(MonthDay.of(1, 25), today, grace = Period.ofMonths(6)) shouldBe Some(LocalDate.of(2027, 1, 25))
   }
 
   "upcomingMonthDate" should "keep the current month this year and roll any earlier month forward" in {
     val today = LocalDate.of(2026, 9, 20)
-    ScraperParse.upcomingMonthDate(MonthDay.of(9, 1), today)  shouldBe Some(LocalDate.of(2026, 9, 1))
-    ScraperParse.upcomingMonthDate(MonthDay.of(9, 25), today) shouldBe Some(LocalDate.of(2026, 9, 25))
-    ScraperParse.upcomingMonthDate(MonthDay.of(8, 31), today) shouldBe Some(LocalDate.of(2027, 8, 31))
-    ScraperParse.upcomingMonthDate(MonthDay.of(1, 5), today)  shouldBe Some(LocalDate.of(2027, 1, 5))
+    ScrapeDates.upcomingMonthDate(MonthDay.of(9, 1), today)  shouldBe Some(LocalDate.of(2026, 9, 1))
+    ScrapeDates.upcomingMonthDate(MonthDay.of(9, 25), today) shouldBe Some(LocalDate.of(2026, 9, 25))
+    ScrapeDates.upcomingMonthDate(MonthDay.of(8, 31), today) shouldBe Some(LocalDate.of(2027, 8, 31))
+    ScrapeDates.upcomingMonthDate(MonthDay.of(1, 5), today)  shouldBe Some(LocalDate.of(2027, 1, 5))
   }
 
   it should "return None for 29 February in a non-leap year rather than clamp it" in {
-    ScraperParse.upcomingDate(MonthDay.of(2, 29), LocalDate.of(2026, 1, 10)) shouldBe None
+    ScrapeDates.upcomingDate(MonthDay.of(2, 29), LocalDate.of(2026, 1, 10)) shouldBe None
   }
 
   // December 2027 listing "29 lutego": 2027 has no 29 February, but the date it means is next
   // year's leap day, not a non-date — dropping it would lose a real screening two months out.
   it should "place 29 February in next year's leap year when this year has none" in {
-    ScraperParse.upcomingDate(MonthDay.of(2, 29), LocalDate.of(2027, 12, 20)) shouldBe Some(LocalDate.of(2028, 2, 29))
-    ScraperParse.upcomingMonthDate(MonthDay.of(2, 29), LocalDate.of(2027, 12, 20)) shouldBe Some(LocalDate.of(2028, 2, 29))
-    ScraperParse.upcomingDate(MonthDay.of(2, 29), LocalDate.of(2027, 3, 1)) shouldBe None
+    ScrapeDates.upcomingDate(MonthDay.of(2, 29), LocalDate.of(2027, 12, 20)) shouldBe Some(LocalDate.of(2028, 2, 29))
+    ScrapeDates.upcomingMonthDate(MonthDay.of(2, 29), LocalDate.of(2027, 12, 20)) shouldBe Some(LocalDate.of(2028, 2, 29))
+    ScrapeDates.upcomingDate(MonthDay.of(2, 29), LocalDate.of(2027, 3, 1)) shouldBe None
   }
 
   "cssUrl" should "unwrap a plain url()" in {
-    ScraperParse.cssUrl("background-image: url(/img/a.jpg)") shouldBe Some("/img/a.jpg")
+    ScrapeImages.cssUrl("background-image: url(/img/a.jpg)") shouldBe Some("/img/a.jpg")
   }
 
   it should "unwrap single, double and &quot; quoting" in {
-    ScraperParse.cssUrl("""url('a.jpg')""")            shouldBe Some("a.jpg")
-    ScraperParse.cssUrl("""url("b.jpg")""")            shouldBe Some("b.jpg")
-    ScraperParse.cssUrl("""url(&quot;c.jpg&quot;)""")  shouldBe Some("c.jpg")
+    ScrapeImages.cssUrl("""url('a.jpg')""")            shouldBe Some("a.jpg")
+    ScrapeImages.cssUrl("""url("b.jpg")""")            shouldBe Some("b.jpg")
+    ScrapeImages.cssUrl("""url(&quot;c.jpg&quot;)""")  shouldBe Some("c.jpg")
   }
 
   it should "return None when there is no url()" in {
-    ScraperParse.cssUrl("color: red") shouldBe None
+    ScrapeImages.cssUrl("color: red") shouldBe None
   }
 
   "largestImageSource" should "take the srcset's widest candidate over src, and src without one" in {
     def img(html: String) = Jsoup.parse(html, "https://kino.example/repertuar/").selectFirst("img")
     // Kino Metalowiec's markup: `src` is the 728x1024 copy, the srcset lists the 1821w original last.
     val wordpress = img("""<img src="/up/m-728x1024.jpg" srcset="/up/m-728x1024.jpg 728w, /up/m-213x300.jpg 213w, /up/m.jpg 1821w">""")
-    ScraperParse.largestImageSource(wordpress) shouldBe Some("/up/m.jpg")
-    ScraperParse.largestImageUrl(wordpress)    shouldBe Some("https://kino.example/up/m.jpg")
-    ScraperParse.largestImageSource(img("""<img src="a.jpg" srcset="a.jpg, a@2x.jpg 2x">""")) shouldBe Some("a@2x.jpg")
+    ScrapeImages.largestImageSource(wordpress) shouldBe Some("/up/m.jpg")
+    ScrapeImages.largestImageUrl(wordpress)    shouldBe Some("https://kino.example/up/m.jpg")
+    ScrapeImages.largestImageSource(img("""<img src="a.jpg" srcset="a.jpg, a@2x.jpg 2x">""")) shouldBe Some("a@2x.jpg")
     // A comma inside a URL (an image CDN's transform) does not split it.
-    ScraperParse.largestImageSource(img("""<img srcset="https://cdn.example/w_300,h_450/p.jpg 300w,https://cdn.example/w_600,h_900/p.jpg 600w">""")) shouldBe
+    ScrapeImages.largestImageSource(img("""<img srcset="https://cdn.example/w_300,h_450/p.jpg 300w,https://cdn.example/w_600,h_900/p.jpg 600w">""")) shouldBe
       Some("https://cdn.example/w_600,h_900/p.jpg")
-    ScraperParse.largestImageSource(img("""<img src=" p.jpg " srcset="">""")) shouldBe Some("p.jpg")
-    ScraperParse.largestImageSource(img("""<img src="">""")) shouldBe None
+    ScrapeImages.largestImageSource(img("""<img src=" p.jpg " srcset="">""")) shouldBe Some("p.jpg")
+    ScrapeImages.largestImageSource(img("""<img src="">""")) shouldBe None
     // Avada's lazy-load placeholder srcset (Kino Remus, SCK Stargard) is no image: the src stays.
-    ScraperParse.largestImageSource(img("""<img src="/up/jumbo.jpg" srcset="data:image/svg+xml,%3Csvg%20width%3D%27835%27%3E%3C%2Fsvg%3E 835w">""")) shouldBe
+    ScrapeImages.largestImageSource(img("""<img src="/up/jumbo.jpg" srcset="data:image/svg+xml,%3Csvg%20width%3D%27835%27%3E%3C%2Fsvg%3E 835w">""")) shouldBe
       Some("/up/jumbo.jpg")
   }
 
   "runtimeMinutesIn" should "read the first count of minutes, spaced or not, and nothing without one" in {
-    ScraperParse.runtimeMinutesIn("0+ • 119 min.")        shouldBe Some(119)
-    ScraperParse.runtimeMinutesIn("Czas: 45min")          shouldBe Some(45)
-    ScraperParse.runtimeMinutesIn("90 minut, 2D")         shouldBe Some(90)
-    ScraperParse.runtimeMinutesIn("120 min / 2 x 60 min") shouldBe Some(120)
-    ScraperParse.runtimeMinutesIn("komedia, 2026")        shouldBe None
-    ScraperParse.runtimeMinutesIn("95 MIN")               shouldBe None // case-sensitive, as the clients it replaced
+    ScrapeRuntime.runtimeMinutesIn("0+ • 119 min.")        shouldBe Some(119)
+    ScrapeRuntime.runtimeMinutesIn("Czas: 45min")          shouldBe Some(45)
+    ScrapeRuntime.runtimeMinutesIn("90 minut, 2D")         shouldBe Some(90)
+    ScrapeRuntime.runtimeMinutesIn("120 min / 2 x 60 min") shouldBe Some(120)
+    ScrapeRuntime.runtimeMinutesIn("komedia, 2026")        shouldBe None
+    ScrapeRuntime.runtimeMinutesIn("95 MIN")               shouldBe None // case-sensitive, as the clients it replaced
   }
 
   "hoursMinutesRuntime" should "read the Polish spellings and the short 1h 50m one" in {
-    ScraperParse.hoursMinutesRuntime("1 godz. 37 min.") shouldBe Some(97)
-    ScraperParse.hoursMinutesRuntime("95 min") shouldBe Some(95)
-    ScraperParse.hoursMinutesRuntime("1h 50m") shouldBe Some(110)
-    ScraperParse.hoursMinutesRuntime("2h 42m") shouldBe Some(162)
-    ScraperParse.hoursMinutesRuntime("Marzec") shouldBe None
+    ScrapeRuntime.hoursMinutesRuntime("1 godz. 37 min.") shouldBe Some(97)
+    ScrapeRuntime.hoursMinutesRuntime("95 min") shouldBe Some(95)
+    ScrapeRuntime.hoursMinutesRuntime("1h 50m") shouldBe Some(110)
+    ScrapeRuntime.hoursMinutesRuntime("2h 42m") shouldBe Some(162)
+    ScrapeRuntime.hoursMinutesRuntime("Marzec") shouldBe None
   }
 
   "strongLabeledFields" should "map each <strong>label:</strong> to the text right after it, first value winning" in {
@@ -352,9 +352,9 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   }
 
   "minutesOf" should "add the hours and minutes a pattern captured, an unmatched group as none" in {
-    ScraperParse.minutesOf("1", "30") shouldBe 90
-    ScraperParse.minutesOf(null, "95") shouldBe 95
-    ScraperParse.minutesOf("2", null)  shouldBe 120
+    ScrapeRuntime.minutesOf("1", "30") shouldBe 90
+    ScrapeRuntime.minutesOf(null, "95") shouldBe 95
+    ScrapeRuntime.minutesOf("2", null)  shouldBe 120
   }
 
   "extractFormatTags" should "split a parenthesised format tag into clean title + display tokens" in {
@@ -615,7 +615,7 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
       // bilety24's stand-ins for an event its venue gave no image
       "https://image.bilety24.pl/not-found",
       "https://image.bilety24.pl/original/dealer-default/1410/.png"
-    ).foreach(url => withClue(url)(ScraperParse.ogImage(withOgImage(url)) shouldBe None))
+    ).foreach(url => withClue(url)(ScrapeImages.ogImage(withOgImage(url)) shouldBe None))
   }
 
   it should "keep a real per-film poster, under a `dealer-default/` path or with a 'logotypow' word" in {
@@ -623,48 +623,48 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
       "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/ojczyzna-plakat.jpg",
       "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1366/niesamowite-przygody-skarpetek-3-ale-kosmos-plakat-bez-logotypow.png",
       "https://kinopalacowe.pl//media/gallery/md/Milczaca_przyjacioka_plakat_PL_LQ_QdioOiK.jpg"
-    ).foreach(url => withClue(url)(ScraperParse.ogImage(withOgImage(url)) shouldBe Some(url)))
+    ).foreach(url => withClue(url)(ScrapeImages.ogImage(withOgImage(url)) shouldBe Some(url)))
   }
 
   it should "reject the site-wide Kinoteka og:image on a recorded film page" in {
     val html = clients.tools.FixtureFile.read("test/resources/fixtures/kinoteka/kinoteka.pl/film/audiencja-kinoteka-kultury-i-sztuki")
-    ScraperParse.ogImage(Jsoup.parse(html)) shouldBe None
+    ScrapeImages.ogImage(Jsoup.parse(html)) shouldBe None
   }
 
   it should "return None when the page has no og:image" in {
-    ScraperParse.ogImage(Jsoup.parse("<head></head>")) shouldBe None
+    ScrapeImages.ogImage(Jsoup.parse("<head></head>")) shouldBe None
   }
 
   private def firstImg(html: String) =
     Jsoup.parse(html, "https://book.ilkleycinema.co.uk/IlkleyCinema.dll/").selectFirst("img")
 
   "imageUrl" should "resolve a relative image against the page" in {
-    ScraperParse.imageUrl(firstImg("""<img src="/ICI/1.jpeg">""")) shouldBe Some("https://book.ilkleycinema.co.uk/ICI/1.jpeg")
-    ScraperParse.imageUrl(firstImg("""<img data-src="a.png">"""), "data-src") shouldBe
+    ScrapeImages.imageUrl(firstImg("""<img src="/ICI/1.jpeg">""")) shouldBe Some("https://book.ilkleycinema.co.uk/ICI/1.jpeg")
+    ScrapeImages.imageUrl(firstImg("""<img data-src="a.png">"""), "data-src") shouldBe
       Some("https://book.ilkleycinema.co.uk/IlkleyCinema.dll/a.png")
   }
 
   it should "read a blank or missing image as no image, not as the page's own URL" in {
-    ScraperParse.imageUrl(firstImg("""<img src="" alt="Sense and Sensibility">""")) shouldBe None
-    ScraperParse.imageUrl(firstImg("""<img src="  ">""")) shouldBe None
-    ScraperParse.imageUrl(firstImg("""<img alt="x">""")) shouldBe None
+    ScrapeImages.imageUrl(firstImg("""<img src="" alt="Sense and Sensibility">""")) shouldBe None
+    ScrapeImages.imageUrl(firstImg("""<img src="  ">""")) shouldBe None
+    ScrapeImages.imageUrl(firstImg("""<img alt="x">""")) shouldBe None
   }
 
   it should "read an image naming a directory, not a file, as no image" in {
-    ScraperParse.imageUrl(firstImg("""<img src="/cmsUploads/tmdbimage/images/">""")) shouldBe None
-    ScraperParse.namesAFile("https://rcks.pl") shouldBe false
-    ScraperParse.namesAFile("https://images.savoysystems.co.uk/RSW/1835364.jpg") shouldBe true
-    ScraperParse.namesAFile("https://bilety.kinokika.pl/uploads/event/?v=2") shouldBe false
-    ScraperParse.namesAFile("/uploads/event/3567/a.jpg") shouldBe false
+    ScrapeImages.imageUrl(firstImg("""<img src="/cmsUploads/tmdbimage/images/">""")) shouldBe None
+    ScrapeImages.namesAFile("https://rcks.pl") shouldBe false
+    ScrapeImages.namesAFile("https://images.savoysystems.co.uk/RSW/1835364.jpg") shouldBe true
+    ScrapeImages.namesAFile("https://bilety.kinokika.pl/uploads/event/?v=2") shouldBe false
+    ScrapeImages.namesAFile("/uploads/event/3567/a.jpg") shouldBe false
   }
 
   it should "read a file name holding spaces as a file, as the box offices print them unencoded" in {
     // the posters' src on Kino Kika's, Kino Spektrum's and bilety.palac.art.pl's repertoire pages
     // (test/resources/fixtures/kino-kika/bilety.kinokika.pl, kino-spektrum/…/index.php, kino-kadr/bilety.palac.art.pl/.0)
-    ScraperParse.namesAFile("https://bilety.kinokika.pl/uploads/event/3567/FMSB plakat PL_HQ.jpg") shouldBe true
-    ScraperParse.namesAFile("https://bilety.kinospektrum.pl/uploads/event/25/Tajemniczy świat.jpg") shouldBe true
-    ScraperParse.namesAFile("https://bilety.palac.art.pl/uploads/event//dobrydzien plakat.jpeg") shouldBe true
-    ScraperParse.imageUrl(Jsoup.parse("""<img class="list-repertoire-image" src="/uploads/event/3567/FMSB plakat PL_HQ.jpg" />""",
+    ScrapeImages.namesAFile("https://bilety.kinokika.pl/uploads/event/3567/FMSB plakat PL_HQ.jpg") shouldBe true
+    ScrapeImages.namesAFile("https://bilety.kinospektrum.pl/uploads/event/25/Tajemniczy świat.jpg") shouldBe true
+    ScrapeImages.namesAFile("https://bilety.palac.art.pl/uploads/event//dobrydzien plakat.jpeg") shouldBe true
+    ScrapeImages.imageUrl(Jsoup.parse("""<img class="list-repertoire-image" src="/uploads/event/3567/FMSB plakat PL_HQ.jpg" />""",
       "https://bilety.kinokika.pl/").selectFirst("img")) shouldBe Some("https://bilety.kinokika.pl/uploads/event/3567/FMSB plakat PL_HQ.jpg")
   }
 }

@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import services.cinemas.common.{FilmPageCard, ListingPageScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{FilmPageCard, ListingPageScraper, SlotsToMovies, ScrapeClock, ScrapeDates}
 import tools.HttpFetch
 
 /**
@@ -48,7 +48,7 @@ object KinoZaRogiemCafeClient {
   val RepertoireUrl = s"$BaseUrl/repertuar/"
 
   // "Dzisiaj, 11:00" or "Jutro, 17:30"
-  private val RelativeDatePat = raw"""(Dzisiaj|Jutro),\s*(${ScraperParse.ClockText})""".r
+  private val RelativeDatePat = raw"""(Dzisiaj|Jutro),\s*(${ScrapeClock.ClockText})""".r
 
   // /film/<slug>/ URL
   private val SlugPat = """/film/([^/]+)/""".r
@@ -92,12 +92,12 @@ object KinoZaRogiemCafeClient {
     // "Dzisiaj, HH:MM" / "Jutro, HH:MM"
     RelativeDatePat.findFirstMatchIn(label).flatMap { m =>
       val base = if (m.group(1) == "Dzisiaj") today else today.plusDays(1)
-      ScraperParse.parseHHmm(m.group(2)).map(base.atTime)
+      ScrapeClock.parseHHmm(m.group(2)).map(base.atTime)
     }.orElse {
       // "09 czerwca 2026, 17:00"
       for {
-        date <- ScraperParse.parseDayMonthYear(label)
-        time <- ScraperParse.parseHHmm(label)
+        date <- ScrapeDates.parseDayMonthYear(label)
+        time <- ScrapeClock.parseHHmm(label)
       } yield date.atTime(time)
     }
   }

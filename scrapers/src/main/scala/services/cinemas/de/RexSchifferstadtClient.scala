@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{ScrapeHorizon, ScrapedSlot, ScraperParse, SingleSiteScraper, SlotsToMovies}
+import services.cinemas.common.{ScrapeHorizon, ScrapedSlot, SingleSiteScraper, SlotsToMovies, ScrapeClock, ScrapeDates}
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -22,7 +22,7 @@ import tools.{HttpFetch, HttpRead}
  *          <tr><td>&nbsp;</td>…<td><strong>19:30</strong></td></tr></table>
  *
  * the header row's days, the rows under it each day's times by column — a cell may
- * hold more than one time, or none. The days carry no year: [[ScraperParse.upcomingDate]]
+ * hold more than one time, or none. The days carry no year: [[ScrapeDates.upcomingDate]]
  * places them. Each table belongs to the film title before it.
  */
 class RexSchifferstadtClient(
@@ -42,7 +42,7 @@ class RexSchifferstadtClient(
 }
 
 object RexSchifferstadtClient {
-  private val Clock = ScraperParse.ClockText.r
+  private val Clock = ScrapeClock.ClockText.r
   private val Day   = """(\d{1,2})\.(\d{1,2})\.""".r
 
   def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
@@ -60,15 +60,15 @@ object RexSchifferstadtClient {
     table.select("tr").asScala.toSeq match {
       case header +: rows =>
         val days = header.select("td, th").asScala.toSeq.map { cell =>
-          Day.findFirstMatchIn(cell.text).flatMap(m => ScraperParse.monthDay(m.group(1).toInt, m.group(2).toInt))
-            .flatMap(ScraperParse.upcomingDate(_, today))
+          Day.findFirstMatchIn(cell.text).flatMap(m => ScrapeDates.monthDay(m.group(1).toInt, m.group(2).toInt))
+            .flatMap(ScrapeDates.upcomingDate(_, today))
         }
         for {
           row          <- rows
           (cell, day)  <- row.select("td").asScala.toSeq.zip(days)
           date         <- day.toSeq
           clock        <- Clock.findAllIn(cell.text).toSeq
-          time         <- ScraperParse.parseHHmm(clock).toSeq
+          time         <- ScrapeClock.parseHHmm(clock).toSeq
         } yield ScrapedSlot(title, date.atTime(time))
       case _ => Nil
     }

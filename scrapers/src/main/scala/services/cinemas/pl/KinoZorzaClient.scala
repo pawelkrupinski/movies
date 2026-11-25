@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeRuntime, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import tools.{HttpFetch, HttpRead}
@@ -91,7 +91,7 @@ object KinoZorzaClient {
     FilmDetail(
       director       = names("reżyseria"),
       countries      = names("produkcja"),
-      runtimeMinutes = fields.get("czas trwania").flatMap(ScraperParse.hoursMinutesRuntime),
+      runtimeMinutes = fields.get("czas trwania").flatMap(ScrapeRuntime.hoursMinutesRuntime),
       releaseYear    = fields.get("premiera").flatMap(ScraperParse.yearIn))
   }
 
@@ -116,7 +116,7 @@ object KinoZorzaClient {
     * today is assumed to belong to next year (handles the December→January turn). */
   private def parseDate(dateDiv: Element, today: LocalDate): Option[LocalDate] = {
     val h3 = Option(dateDiv.selectFirst("h3")).map(_.text.trim).getOrElse("")
-    ScraperParse.parseNumericDayMonth(h3).flatMap(ScraperParse.upcomingDate(_, today))
+    ScrapeDates.parseNumericDayMonth(h3).flatMap(ScrapeDates.upcomingDate(_, today))
   }
 
   /** Parse all film rows in one day's `div.fullrepertoire-content`. */
@@ -139,7 +139,7 @@ object KinoZorzaClient {
       hallDiv.children.asScala.toSeq.zipWithIndex.flatMap { case (col, index) =>
         val hallName = if (index < Halls.length) Halls(index) else s"Sala ${index + 1}"
         col.select("span.timeItem").asScala.toSeq.flatMap { span =>
-          ScraperParse.parseHHmm(span.text.trim).map(time => RawSlot(title, filmUrl, LocalDateTime.of(date, time), hallName))
+          ScrapeClock.parseHHmm(span.text.trim).map(time => RawSlot(title, filmUrl, LocalDateTime.of(date, time), hallName))
         }
       }
     }

@@ -13,7 +13,7 @@ import org.jsoup.nodes.Document
 import services.cinemas.common.CinemaScraper
 import services.cinemas.common.SingleSiteScraper
 import services.cinemas.common.SlotsToMovies
-import services.cinemas.common.{ScraperParse, ListingPages}
+import services.cinemas.common.{ListingPages, ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import services.titles.TitleNormalizer
 import tools.{HttpFetch, HttpRead}
 
@@ -105,7 +105,7 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
       val rawTitle = Option(card.selectFirst("div.fs-30.fw-black")).map(_.text)
       val title = rawTitle.map(BokClient.cleanTitle(_, titles)).filter(_.nonEmpty)
       val times = card.select("span.movieshow-list-movie-descr").asScala.toSeq
-        .flatMap(s => ScraperParse.parseHHmm(s.text.trim))
+        .flatMap(s => ScrapeClock.parseHHmm(s.text.trim))
       title.filter(_ => times.nonEmpty && slug.matches("[a-z0-9-]+"))
         .map(t => DayShowing(slug, t, rawTitle.getOrElse(t), times.map(date.atTime)))
     }
@@ -125,8 +125,8 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
       CinemaMovie(
         movie     = Movie(title = t, runtimeMinutes = runtime, releaseYear = None, countries = countries, rawTitle = rawTitle),
         cinema    = cinema,
-        posterUrl = detail.flatMap(d => Option(d.selectFirst("div.item-image-thumb img[src]")).flatMap(ScraperParse.largestImageSource)
-                      .orElse(ScraperParse.ogImage(d))),
+        posterUrl = detail.flatMap(d => Option(d.selectFirst("div.item-image-thumb img[src]")).flatMap(ScrapeImages.largestImageSource)
+                      .orElse(ScrapeImages.ogImage(d))),
         filmUrl   = Some(s"$BaseUrl/$prefix/$slug"),
         synopsis  = detail.flatMap(d => Option(d.selectFirst("meta[name=description]")).map(_.attr("content").trim).filter(_.length > 20)),
         cast      = cast,
@@ -143,7 +143,7 @@ class BokClient(http: HttpFetch, prefix: String, override val cinema: Cinema,
       val time = Option(block.selectFirst("div.fs-16.fw-black")).map(_.text.trim)
       for {
         d <- date.flatMap(BokClient.parseDate(_, today))
-        t <- time.flatMap(ScraperParse.parseHHmm)
+        t <- time.flatMap(ScrapeClock.parseHHmm)
         b <- Option(block.selectFirst("a[href*=biletyna]")).map(_.attr("href")).filter(_.nonEmpty)
       } yield d.atTime(t) -> b
     }
@@ -179,6 +179,6 @@ object BokClient {
    *  the month is already behind us. */
   def parseDate(raw: String, today: LocalDate): Option[LocalDate] =
     DatePat.findFirstMatchIn(raw)
-      .flatMap(m => ScraperParse.monthDay(m.group(1).toInt, m.group(2).toInt))
-      .flatMap(ScraperParse.upcomingMonthDate(_, today))
+      .flatMap(m => ScrapeDates.monthDay(m.group(1).toInt, m.group(2).toInt))
+      .flatMap(ScrapeDates.upcomingMonthDate(_, today))
 }

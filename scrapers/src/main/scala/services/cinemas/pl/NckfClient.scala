@@ -9,7 +9,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Element, TextNode}
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeImages}
 import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
 import tools.HttpFetch
 
@@ -76,7 +76,7 @@ object NckfClient {
   private def parseItem(item: Element, today: LocalDate): Seq[ScrapedSlot] = {
     val title  = Option(item.selectFirst("h3")).map(_.text.trim).filter(_.nonEmpty)
     val poster = Option(item.selectFirst("div.events-archive__item-image img[src]"))
-                   .flatMap(ScraperParse.largestImageSource)
+                   .flatMap(ScrapeImages.largestImageSource)
                    .map(p => if (p.startsWith("http")) p else BaseUrl + p)
     val filmUrl = Option(item.selectFirst("a.events-archive__item-url[href]"))
                     .map(_.attr("href")).filter(_.nonEmpty)
@@ -125,7 +125,7 @@ object NckfClient {
       hs <- hourStr
       d  <- Try(LocalDate.parse(ds)).toOption
       if d >= today
-      lt <- ScraperParse.parseHHmm(hs)
+      lt <- ScrapeClock.parseHHmm(hs)
     } yield ScrapedSlot(title, LocalDateTime.of(d, lt), booking, filmUrl, poster, room)
   }
 }

@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{ListingPageScraper, SlotsToMovies, ScraperParse}
+import services.cinemas.common.{ListingPageScraper, SlotsToMovies, ScrapeImages}
 import tools.HttpFetch
 
 /**
@@ -109,7 +109,7 @@ object KinoSpektrumClient {
       case (Some(t), Some(dt)) =>
         val booking = href.map(absolute)
         val poster  = Option(item.selectFirst("img.list-repertoire-image[src]"))
-          .flatMap(ScraperParse.largestImageSource).map(absolute)
+          .flatMap(ScrapeImages.largestImageSource).map(absolute)
         val room    = Option(item.selectFirst("i.fa-map-marker-alt"))
           .flatMap(i => Option(i.nextSibling)).map(_.toString.trim).filter(_.nonEmpty)
         Some(RawSlot(t, dt, booking, poster, room, parseDirector(item), parseRuntime(item)))

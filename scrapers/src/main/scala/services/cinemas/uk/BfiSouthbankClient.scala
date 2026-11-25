@@ -11,7 +11,7 @@ import scala.util.{Failure, Success, Try}
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ListingPages, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ListingPages, OnlyMovieEventsFilter, SlotsToMovies, ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import services.titles.BbfcCertificate
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
@@ -40,7 +40,7 @@ import tools.{HttpFetch, HttpRead}
  *      A sold-out performance draws `<button class="disabled">18:00</button>` instead of the
  *      link — no booking URL, no label — and is kept, as a sold-out showing is still showing
  *      (Ghosts: The Possession of Button House's only one, 2026-10-12). So the day is read off
- *      the heading, which carries no year and is placed by [[ScraperParse.upcomingDate]], the
+ *      the heading, which carries no year and is placed by [[ScrapeDates.upcomingDate]], the
  *      time off the link or button, and the screen off its own line. (Some pages also carry a
  *      `<bfi-calendar>` with ISO times, but not all: Deep Cover's seven performances are only
  *      in the blocks.)
@@ -138,7 +138,7 @@ object BfiSouthbankClient {
         runtime  = Option(card.selectFirst("time[datetime^=PT]"))
           .flatMap(t => Try(Duration.parse(t.attr("datetime")).toMinutes.toInt).toOption).filter(_ > 0),
         year     = Option(card.selectFirst(".workData")).flatMap(yearOf),
-        image    = Option(card.selectFirst(".showImage img[src]")).flatMap(ScraperParse.largestImageUrl).map(original),
+        image    = Option(card.selectFirst(".showImage img[src]")).flatMap(ScrapeImages.largestImageUrl).map(original),
         certificate = card.select(".workData img[src^=data:]").asScala.flatMap(i => BbfcBadge.findFirstMatchIn(i.attr("src"))).headOption
           .map(_.group(1).toUpperCase(java.util.Locale.ROOT))
       )
@@ -165,7 +165,7 @@ object BfiSouthbankClient {
       .flatMap { case (day, block) =>
         for {
           sale   <- Option(block.selectFirst("a, button"))
-          time   <- ScraperParse.parseHHmm(sale.text)
+          time   <- ScrapeClock.parseHHmm(sale.text)
           screen <- block.select("p").asScala.map(_.text.trim).collectFirst { case Screen(name) => name }
         } yield Showtime(
           dateTime   = day.atTime(time),
@@ -178,9 +178,9 @@ object BfiSouthbankClient {
   private def dayOf(heading: String, today: LocalDate): Option[LocalDate] =
     for {
       m        <- DayHeading.findFirstMatchIn(heading)
-      month    <- ScraperParse.englishMonth(m.group(2))
-      dayMonth <- ScraperParse.monthDay(m.group(1).toInt, month)
-      day      <- ScraperParse.upcomingDate(dayMonth, today)
+      month    <- ScrapeDates.englishMonth(m.group(2))
+      dayMonth <- ScrapeDates.monthDay(m.group(1).toInt, month)
+      day      <- ScrapeDates.upcomingDate(dayMonth, today)
     } yield day
 
   /** The cards joined to their film pages' performances (by slug): one [[CinemaMovie]] per

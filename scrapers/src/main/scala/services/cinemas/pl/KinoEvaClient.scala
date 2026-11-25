@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{AgeRating, ListingPageScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, ListingPageScraper, SlotsToMovies, ScrapeClock, ScrapeDates, ScrapeRuntime, ScraperParse}
 import tools.HttpFetch
 
 /**
@@ -55,8 +55,8 @@ object KinoEvaClient {
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, RepertoireUrl)
     // Headers and tables in document order; each table belongs to the header before it.
-    val slots = ScraperParse.underDayHeaders(document.select("h2.title, table.table_theater").asScala) {
-      case h2 if h2.tagName == "h2" => DayHeader.findFirstMatchIn(h2.text).flatMap(m => ScraperParse.parseDayMonthYear(m.matched))
+    val slots = ScrapeDates.underDayHeaders(document.select("h2.title, table.table_theater").asScala) {
+      case h2 if h2.tagName == "h2" => DayHeader.findFirstMatchIn(h2.text).flatMap(m => ScrapeDates.parseDayMonthYear(m.matched))
     }((table, date) => table.select("td.c1").asScala.toSeq.flatMap(slotOf(_, date)))
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, None)) { (title, group, showtimes) =>
@@ -80,7 +80,7 @@ object KinoEvaClient {
     for {
       heading  <- Option(titleCell.selectFirst("h4.themecolor"))
       rawTitle  = heading.ownText.trim if rawTitle.nonEmpty
-      time     <- cells.find(_.hasClass("c2")).flatMap(c => ScraperParse.parseHHmm(c.text.trim))
+      time     <- cells.find(_.hasClass("c2")).flatMap(c => ScrapeClock.parseHHmm(c.text.trim))
     } yield {
       val details = cells.filter(_.hasClass("c3")).map(_.text.trim)
       RawSlot(
@@ -102,5 +102,5 @@ object KinoEvaClient {
   /** "1h 30min" → 90; "95min" → 95; anything without a number → None. */
   private def runtimeOf(text: String): Option[Int] =
     Runtime.findAllMatchIn(text).find(m => m.group(1) != null || m.group(2) != null)
-      .map(m => ScraperParse.minutesOf(m.group(1), m.group(2)))
+      .map(m => ScrapeRuntime.minutesOf(m.group(1), m.group(2)))
 }

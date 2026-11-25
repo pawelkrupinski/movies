@@ -9,7 +9,7 @@ import scala.util.Try
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScrapeClock
 import services.cinemas.common.{SingleSiteScraper, ListingPages, ScrapeHorizon, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
@@ -195,7 +195,7 @@ object McswElektrowniaCinemaClient {
         val seenKeys = collection.mutable.Set.empty[(String, String)]
         block.select("li[event-filter] a[href^=\"/MSI/Default.aspx?event_id=\"]").asScala.toSeq.flatMap { anchor =>
           val timeStr  = anchor.text.trim
-          val timeOpt  = ScraperParse.parseHHmm(timeStr)
+          val timeOpt  = ScrapeClock.parseHHmm(timeStr)
           val path     = anchor.attr("href").trim
           val key      = (path, timeStr)
           if (timeOpt.isEmpty || !seenKeys.add(key)) Nil

@@ -19,7 +19,7 @@ import tools.JsonLdBlocks
  * (the year), `director[]`, `actor[]`, `countryOfOrigin` ("Mexico, Spain, USA"), `genre[]`, `description`,
  * `duration` ("T1H36M"). The hero line ("1935 • 96mins") states the same year and runtime and stands in where
  * the block is missing. The poster is the hero's own (`.movie-hero-v6__poster img`): the page's og:image is
- * the film's BACKDROP, so it is taken only where [[ScraperParse.ogImage]] admits it and it is a poster.
+ * the film's BACKDROP, so it is taken only where [[ScrapeImages.ogImage]] admits it and it is a poster.
  *
  * Measured 2026-10-06 on ten pages across both markets: no page states an original title ("Spirited Away",
  * "Stalker (1979)", "Pan's Labyrinth" and "The Broken Circle Breakdown" carry their English title only), so
@@ -48,7 +48,7 @@ object FlicksFilmPage extends SlimmedPage {
       releaseYear    = year.flatMap(ReReleaseBilling.filmYear(_, s"$title $slug", today)),
       countries      = text("countryOfOrigin").toSeq.flatMap(ScraperParse.commaItems),
       genres         = names("genre"),
-      posterUrl      = heroPoster(document).orElse(ScraperParse.ogImage(document).filter(_.contains(PosterPath))),
+      posterUrl      = heroPoster(document).orElse(ScrapeImages.ogImage(document).filter(_.contains(PosterPath))),
       trailerUrl     = movie.flatMap(m => jsonText(m \ "trailer" \ "url"))
     )
   }

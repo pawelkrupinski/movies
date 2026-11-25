@@ -11,7 +11,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import play.api.Logging
 import services.cinemas.common.SynopsisProse
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeImages, ScraperParse}
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
 
@@ -90,7 +90,7 @@ object QuadDerbyClient {
       countries      = facts.get("country of origin").toSeq.flatMap(ScraperParse.listItems),
       genres         = facts.get("film genre").toSeq.flatMap(ScraperParse.listItems),
       // The hero image, resized by the image CDN's `?tr=` transform; the bare URL is the original.
-      posterUrl      = Option(document.selectFirst("img[alt^=Event poster]")).flatMap(ScraperParse.largestImageUrl).map(_.takeWhile(_ != '?'))
+      posterUrl      = Option(document.selectFirst("img[alt^=Event poster]")).flatMap(ScrapeImages.largestImageUrl).map(_.takeWhile(_ != '?'))
     )
   }
 }

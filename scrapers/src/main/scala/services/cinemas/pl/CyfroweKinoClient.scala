@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{ListingPageScraper, ScraperParse}
+import services.cinemas.common.{ListingPageScraper, ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import services.titles.FormatTags
 import services.titles.TitleNormalizer
 import tools.HttpFetch
@@ -59,7 +59,7 @@ object CyfroweKinoClient {
       movie     = Movie(title),
       cinema    = cinema,
       posterUrl = Option(item.selectFirst(".amy-movie-item-poster img"))
-                    .flatMap(img => if (img.hasAttr("data-src")) ScraperParse.imageUrl(img, "data-src") else ScraperParse.largestImageUrl(img)),
+                    .flatMap(img => if (img.hasAttr("data-src")) ScrapeImages.imageUrl(img, "data-src") else ScrapeImages.largestImageUrl(img)),
       filmUrl   = Option(item.selectFirst("h3.amy-movie-field-title a")).map(_.absUrl("href")).filter(_.nonEmpty),
       showtimes = showtimes
     )
@@ -68,10 +68,10 @@ object CyfroweKinoClient {
   private def parseShowtimes(item: Element): Seq[Showtime] =
     item.select(".entry-showtime .st-item").asScala.toSeq.flatMap { st =>
       val date = Option(st.selectFirst(".st-title label")).map(_.text.trim)
-        .flatMap(ScraperParse.parseDate)
+        .flatMap(ScrapeDates.parseDate)
       date.toSeq.flatMap { d =>
         st.select("ul li").asScala.toSeq.flatMap { li =>
-          ScraperParse.parseHHmm(li.text).map(t => Showtime(LocalDateTime.of(d, t), None))
+          ScrapeClock.parseHHmm(li.text).map(t => Showtime(LocalDateTime.of(d, t), None))
         }
       }
     }.distinctBy(_.dateTime).sortBy(_.dateTime)

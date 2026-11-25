@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScrapeClock
 import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
 import tools.HttpFetch
 
@@ -39,7 +39,7 @@ object KinoKarolinkaClient {
   val RepertoireUrl = s"$BaseUrl/wydarzenia"
 
   private val FilmMarker  = "Kino Karolinka"
-  private val TimePat     = raw"""godz\.?\s*(${ScraperParse.ClockText})""".r
+  private val TimePat     = raw"""godz\.?\s*(${ScrapeClock.ClockText})""".r
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
@@ -58,7 +58,7 @@ object KinoKarolinkaClient {
       if heading.contains(FilmMarker)
       timeElement  <- Option(card.selectFirst("time[class*=--date]"))
       date    <- Try(LocalDate.parse(timeElement.attr("datetime"))).toOption
-      time    <- TimePat.findFirstMatchIn(timeElement.text).flatMap(m => ScraperParse.parseHHmm(m.group(1)))
+      time    <- TimePat.findFirstMatchIn(timeElement.text).flatMap(m => ScrapeClock.parseHHmm(m.group(1)))
       // Headings are "<Film Title> | Kino Karolinka [| <series>]" — the film
       // title is the first pipe-segment; the rest are venue/series tags.
       title    = heading.split("\\|").head.trim if title.nonEmpty

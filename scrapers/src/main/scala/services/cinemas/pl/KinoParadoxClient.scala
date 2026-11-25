@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import services.cinemas.common.SynopsisProse
-import services.cinemas.common.{CreditedScreening, ListingFacts, ListingPageScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CreditedScreening, ListingFacts, ListingPageScraper, SlotsToMovies, ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.titles.FormatTags
 import tools.HttpFetch
@@ -100,8 +100,8 @@ object KinoParadoxClient {
     val document = Jsoup.parse(html)
     document.select("div.list-item__content__row[data-date]").asScala.toSeq.flatMap { row =>
       val dateAttr = row.attr("data-date").trim
-      val date     = ScraperParse.parseDate(dateAttr)
-      val time     = Option(row.selectFirst("div.item-time")).flatMap(e => ScraperParse.parseHHmm(e.text.trim))
+      val date     = ScrapeDates.parseDate(dateAttr)
+      val time     = Option(row.selectFirst("div.item-time")).flatMap(e => ScrapeClock.parseHHmm(e.text.trim))
 
       // The title anchor contains both the text title and a nested img div;
       // ownText() returns only the direct text node, which is the film title.
@@ -148,7 +148,7 @@ object KinoParadoxClient {
     val synopsis = Option(doc.selectFirst("div.single-os-hero__desc-col"))
       .map(el => SynopsisProse.cleanSynopsis(el)).filter(_.length > 20)
     val poster   = Option(doc.selectFirst("div.single-os-hero__img-col img[src]"))
-      .flatMap(ScraperParse.largestImageSource)
+      .flatMap(ScrapeImages.largestImageSource)
     FilmDetail(
       synopsis       = synopsis,
       director       = people("reżyseria"),

@@ -9,7 +9,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import tools.{HttpFetch, HttpRead}
@@ -53,7 +53,7 @@ class MuranowClient(http: HttpFetch, today: => LocalDate
               val expand  = Option(info.selectFirst("div.movie-calendar-info-expand"))
               val thumb   = expand.flatMap(e => Option(e.selectFirst("a.movie-calendar-info-expand__thumb")))
               val slug    = thumb.map(_.attr("href")).flatMap(MuranowClient.slugOf).getOrElse(title)
-              val poster  = thumb.flatMap(t => Option(t.selectFirst("img[src]"))).flatMap(ScraperParse.largestImageSource)
+              val poster  = thumb.flatMap(t => Option(t.selectFirst("img[src]"))).flatMap(ScrapeImages.largestImageSource)
               val booking = expand.flatMap(e => Option(e.selectFirst("a[href][class*=c-button-tickets--buy-link]")))
                               .map(_.attr("href")).filter(_.nonEmpty).map(abs)
               RawSlot(slug, title, dt, poster, booking)
@@ -126,11 +126,11 @@ object MuranowClient {
       dStr  <- Option(day.selectFirst("span.cell-date-header__day-num")).map(_.text.trim)
       mName <- Option(day.selectFirst("span.cell-date-header__day-month")).map(_.text.trim.toLowerCase(Locale.ROOT))
       d     <- Try(dStr.toInt).toOption
-      m     <- ScraperParse.polishMonth(mName)
+      m     <- ScrapeDates.polishMonth(mName)
     } yield java.time.LocalDate.of(headerYear, m, d)
 
   def parseTime(date: java.time.LocalDate, time: String): Option[LocalDateTime] =
-    ScraperParse.parseHHmm(time).map(date.atTime)
+    ScrapeClock.parseHHmm(time).map(date.atTime)
 
   final case class Detail(
     runtimeMinutes: Option[Int],
@@ -155,7 +155,7 @@ object MuranowClient {
    *  screening's made a fact for the short alone. */
   private[cinemas] def screeningRuntime(duration: String): Option[Int] = duration.trim match {
     case FilmRuntimes() => Some(Minutes.findAllIn(duration).map(_.toInt).sum).filter(_ > 0)
-    case _              => ScraperParse.hoursMinutesRuntime(duration)
+    case _              => ScrapeRuntime.hoursMinutesRuntime(duration)
   }
 
   private def field(document: org.jsoup.nodes.Document, name: String): Option[String] =

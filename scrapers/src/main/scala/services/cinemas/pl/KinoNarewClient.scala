@@ -9,7 +9,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScraperParse}
 import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 import services.titles.FormatTags
 import tools.HttpFetch
@@ -33,7 +33,7 @@ import tools.HttpFetch
  *   5. ticket prices (skipped) and, after an "O filmie:" label, the synopsis
  *
  * Each date range expands to one showtime per day at the shared time
- * ([[ScraperParse.dailyRange]]) — the page has no per-day variation within a
+ * ([[ScrapeDates.dailyRange]]) — the page has no per-day variation within a
  * range.
  */
 class KinoNarewClient(http: HttpFetch, override val cinema: Cinema = KinoNarew)
@@ -51,7 +51,7 @@ object KinoNarewClient {
   // en/em-dash; the second day is optional (a single-day listing).
   private val DateRange = """(\d{1,2})(?:\s*[–—-]\s*(\d{1,2}))?\s+(\p{L}+)\s+(\d{4})r\.""".r
   // "godz. 17.00/2D/dubbing" — the hour/minute separator is a literal dot.
-  private val GodzTime  = raw"""godz\.?\s*${ScraperParse.ClockPartsDotted}""".r
+  private val GodzTime  = raw"""godz\.?\s*${ScrapeClock.ClockPartsDotted}""".r
 
   private case class RawSlot(movie: Movie, dateTime: java.time.LocalDateTime, format: List[String], synopsis: Option[String])
 
@@ -76,7 +76,7 @@ object KinoNarewClient {
       .takeWhile(_.isDefined).flatten
       .flatMap { m =>
         for {
-          month <- ScraperParse.polishMonth(m.group(3))
+          month <- ScrapeDates.polishMonth(m.group(3))
           year  <- Try(m.group(4).toInt).toOption
           from  <- Try(LocalDate.of(year, month, m.group(1).toInt)).toOption
           to     = Option(m.group(2)).flatMap(d => Try(LocalDate.of(year, month, d.toInt)).toOption).getOrElse(from)
@@ -85,7 +85,7 @@ object KinoNarewClient {
 
     val godzParagraph = paragraphs.find(p => p.text.trim.toLowerCase(Locale.ROOT).startsWith("godz"))
     val time = godzParagraph.flatMap(p => GodzTime.findFirstMatchIn(p.text))
-      .flatMap(m => ScraperParse.clockAt(m, 1))
+      .flatMap(m => ScrapeClock.clockAt(m, 1))
 
     (paragraphs.headOption.map(_.text.trim).filter(_.nonEmpty), time) match {
       case (Some(rawTitle), Some(t)) if ranges.nonEmpty =>
@@ -100,7 +100,7 @@ object KinoNarewClient {
         val synopsisIndex = paragraphs.indexWhere(_.text.trim.equalsIgnoreCase("O filmie:"))
         val synopsis = if (synopsisIndex >= 0) paragraphs.lift(synopsisIndex + 1).map(_.text.trim).filter(_.nonEmpty) else None
 
-        ranges.flatMap { case (from, to) => ScraperParse.dailyRange(from, to, t) }
+        ranges.flatMap { case (from, to) => ScrapeDates.dailyRange(from, to, t) }
           .map(dt => RawSlot(Movie(title, runtime, year, countries = countries, genres = genres), dt, format, synopsis))
       case _ => Seq.empty
     }

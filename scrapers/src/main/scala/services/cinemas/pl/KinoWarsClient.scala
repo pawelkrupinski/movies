@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies, ScrapeClock, ScrapeDates, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 
@@ -90,7 +90,7 @@ object KinoWarsClient {
    *  that day's shows ("godz. 17:00 i 20:00"). Anchored so a date quoted inside
    *  the synopsis prose is never read as a screening. */
   private val ScreeningDay = """^\d{1,2}\.\d{1,2}\.\d{4}(?=\s*r\.)""".r
-  private val TimeToken = raw"""\b(${ScraperParse.ClockText})\b""".r
+  private val TimeToken = raw"""\b(${ScrapeClock.ClockText})\b""".r
   /** The trailing `/ PL` (Polish film) or bare `/` left once a version word is peeled. */
   private val TrailingVersionSlash = """\s*/\s*(?:PL)?\s*$""".r
 
@@ -169,11 +169,11 @@ object KinoWarsClient {
         title     = title,
         rawTitle  = rawTitle,
         format    = format,
-        runtime   = meta.flatMap(ScraperParse.runtimeMinutesIn),
+        runtime   = meta.flatMap(ScrapeRuntime.runtimeMinutesIn),
         genres    = meta.toSeq.flatMap(genresOf),
         ageRating = meta.flatMap(AgeRating.polishMinimumAge),
         synopsis  = synopsisOf(paragraphs),
-        poster    = Option(item.selectFirst(".item-image img")).flatMap(ScraperParse.largestImageUrl),
+        poster    = Option(item.selectFirst(".item-image img")).flatMap(ScrapeImages.largestImageUrl),
         filmUrl   = Option(item.selectFirst(".item-image a[href], a.readmore[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),
         booking   = Option(item.selectFirst("a[href*=bilety.]")).map(_.attr("abs:href")).filter(_.nonEmpty),
         trailer   = item.select("a[href]").asScala.iterator.map(_.attr("abs:href")).flatMap(ScraperParse.canonicalTrailer).nextOption(),
@@ -185,7 +185,7 @@ object KinoWarsClient {
    *  a segment that is itself an age rating or a runtime means there is none. */
   private def genresOf(meta: String): Seq[String] =
     meta.split('|').headOption.toSeq
-      .filterNot(segment => AgeRating.polishMinimumAge(segment).isDefined || ScraperParse.runtimeMinutesIn(segment).isDefined)
+      .filterNot(segment => AgeRating.polishMinimumAge(segment).isDefined || ScrapeRuntime.runtimeMinutesIn(segment).isDefined)
       .flatMap(_.split(','))
       .map(_.trim)
       .filter(_.nonEmpty)
@@ -209,7 +209,7 @@ object KinoWarsClient {
   /** Every screening on one `DD.MM.YYYY r. …` line — none for a "JUŻ WKRÓTCE"
    *  line that names a date but no time yet. */
   private def dateTimesOf(line: String): Seq[LocalDateTime] =
-    ScreeningDay.findFirstIn(line).flatMap(ScraperParse.parseDate).toSeq.flatMap { date =>
-      TimeToken.findAllIn(line).flatMap(ScraperParse.parseHHmm).map(LocalDateTime.of(date, _))
+    ScreeningDay.findFirstIn(line).flatMap(ScrapeDates.parseDate).toSeq.flatMap { date =>
+      TimeToken.findAllIn(line).flatMap(ScrapeClock.parseHHmm).map(LocalDateTime.of(date, _))
     }
 }

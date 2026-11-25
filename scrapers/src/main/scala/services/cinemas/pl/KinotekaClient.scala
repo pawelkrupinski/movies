@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.cinemas.common.{SluggedScreening, SlotsToMovies}
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
@@ -129,7 +129,7 @@ object KinotekaClient {
     services.identity.vocabulary.CatalogueLinkPages(Set("kinoteka.pl", "www.kinoteka.pl"), Set("imdb"))
 
   def parseDateTime(day: String, hour: String): Option[LocalDateTime] =
-    ScraperParse.isoDateAtClock(day, hour)
+    ScrapeClock.isoDateAtClock(day, hour)
 
   final case class Detail(runtime: Option[Int], year: Option[Int], originalTitle: Option[String],
                           countries: Seq[String], director: Seq[String], cast: Seq[String],
@@ -150,7 +150,7 @@ object KinotekaClient {
       // "Czas trwania filmu" is the film; the page also carries a "Czas trwania
       // reklam" (ad/trailer block) row — match the film one so we never read the
       // ad length as the runtime regardless of which row comes first.
-      runtime       = dd(document, "czas trwania filmu").flatMap(ScraperParse.firstNumberIn),
+      runtime       = dd(document, "czas trwania filmu").flatMap(ScrapeRuntime.firstNumberIn),
       year          = dd(document, "data premiery").flatMap(ScraperParse.firstFourDigitsIn),
       originalTitle = dd(document, "oryginalny tytuł").filter(_.nonEmpty),
       countries     = ddItems(document, "kraj produkcji"),
@@ -170,8 +170,8 @@ object KinotekaClient {
       // (not a `<div>`) wrapping the real film `<img>`; match by class on any
       // element. Every Kinoteka page's og:image is the site-wide `kinoteka-opengraph.png` logo, which
       // the shared `ogImage` guard rejects — a page without a hero has no poster rather than the logo.
-      poster        = Option(document.selectFirst(".p-movie-details__hero-poster img[src]")).flatMap(ScraperParse.largestImageSource)
-                        .orElse(ScraperParse.ogImage(document)),
+      poster        = Option(document.selectFirst(".p-movie-details__hero-poster img[src]")).flatMap(ScrapeImages.largestImageSource)
+                        .orElse(ScrapeImages.ogImage(document)),
       ageRating     = AgeRating.normalize(dd(document, "rekomendacja wiekowa")),
       // The trailer is a YouTube `/embed/` iframe in the content figure; skip
       // the GTM/analytics iframes by taking the first src that canonicalises.

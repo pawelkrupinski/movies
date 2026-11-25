@@ -13,7 +13,7 @@ import java.time.LocalDateTime
  *  response for Janowski Ośrodek Kultury (Janów Lubelski) through the
  *  client. Each JSON event is a multi-day run at one time of day
  *  (`start_date`/`end_date` span the run, not one row per showing) — the
- *  client expands that into a showtime per day via `ScraperParse.dailyRange`. */
+ *  client expands that into a showtime per day via `ScrapeDates.dailyRange`. */
 class KinoJOKClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val today  = LocalDateTime.of(2026, 9, 23, 0, 0).toLocalDate

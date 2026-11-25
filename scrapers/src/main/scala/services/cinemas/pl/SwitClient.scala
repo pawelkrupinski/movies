@@ -9,7 +9,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ScraperParse}
+import services.cinemas.common.{CinemaScraper, ScrapeClock, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 
@@ -40,14 +40,14 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
     val showtimes = card.select("a.cks-showtime-item").asScala.toSeq.flatMap { a =>
       val date = Option(a.attr("data-showtime-date")).filter(_.nonEmpty).flatMap(d => Try(LocalDate.parse(d, DateFmt)).toOption)
       val time = Option(a.selectFirst("span.cks-st-time")).map(_.text.trim)
-        .flatMap(ScraperParse.parseHHmm)
+        .flatMap(ScrapeClock.parseHHmm)
       val booking = Option(a.attr("href")).filter(_.nonEmpty)
       for { d <- date; t <- time } yield Showtime(d.atTime(t), booking, None, Nil)
     }.distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
 
     title.filter(_ => showtimes.nonEmpty).map { t =>
       val cardText = card.text
-      val runtime  = ScraperParse.runtimeMinutesIn(cardText)
+      val runtime  = ScrapeRuntime.runtimeMinutesIn(cardText)
       val infoLine = Option(card.selectFirst("p.text-gray-600")).map(_.text).getOrElse("")
       val year     = YearPat.findFirstMatchIn(infoLine).map(_.group(1).toInt)
       val director = DirectorPat.findFirstMatchIn(infoLine).toSeq.flatMap(m => ScraperParse.commaItems(m.group(1)))
@@ -64,7 +64,7 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
       CinemaMovie(
         movie     = Movie(title = t, runtimeMinutes = runtime, releaseYear = year, genres = genres),
         cinema    = cinema,
-        posterUrl = Option(card.selectFirst("img[src]")).flatMap(ScraperParse.largestImageSource),
+        posterUrl = Option(card.selectFirst("img[src]")).flatMap(ScrapeImages.largestImageSource),
         filmUrl   = detailUrl,
         synopsis  = Option(card.selectFirst("p.text-gray-700")).map(_.text.trim).filter(_.length > 20),
         director  = director,

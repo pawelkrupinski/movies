@@ -10,7 +10,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{AgeRating, ListingPageScraper, ScraperParse, SlotsToMovies, SynopsisProse}
+import services.cinemas.common.{AgeRating, ListingPageScraper, SlotsToMovies, SynopsisProse, ScrapeImages, ScraperParse}
 import services.titles.FormatTags
 import tools.HttpFetch
 
@@ -72,7 +72,7 @@ object KinoLukowClient {
           genres         = text("p.kino-film-genres").toSeq.flatMap(ScraperParse.commaItems)
         ),
         cinema    = cinema,
-        posterUrl = Option(film.selectFirst("a.kino-film-poster img")).flatMap(ScraperParse.largestImageUrl),
+        posterUrl = Option(film.selectFirst("a.kino-film-poster img")).flatMap(ScrapeImages.largestImageUrl),
         filmUrl   = Option(film.selectFirst("h3.kino-film-title a")).map(_.attr("abs:href")).filter(_.nonEmpty),
         synopsis  = text("p.kino-film-desc").filterNot(SynopsisProse.isCutShort),
         showtimes = showtimes,

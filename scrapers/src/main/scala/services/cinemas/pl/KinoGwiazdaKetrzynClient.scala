@@ -10,7 +10,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.SynopsisProse
-import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScraperParse}
+import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScrapeClock, ScrapeImages, ScraperParse}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 
@@ -83,7 +83,7 @@ object KinoGwiazdaKetrzynClient {
       Option(item.selectFirst(FilmHref)).map { link =>
         Card(
           filmUrl   = link.attr("abs:href").takeWhile(_ != '#'),
-          posterUrl = Option(item.selectFirst(s"$FilmHref img")).flatMap(ScraperParse.largestImageUrl),
+          posterUrl = Option(item.selectFirst(s"$FilmHref img")).flatMap(ScrapeImages.largestImageUrl),
           ageRating = item.select("span").asScala.map(_.text.trim).collectFirst { case t @ AgeBadge() => t }
             .flatMap(badge => AgeRating.normalizeDroppingNoRestriction(Some(badge)))
         )
@@ -141,7 +141,7 @@ object KinoGwiazdaKetrzynClient {
     val times = row.select("time[datetime]").asScala.toSeq.map(_.attr("datetime").trim)
     for {
       date <- times.headOption.flatMap(d => Try(LocalDate.parse(d)).toOption)
-      time <- times.lift(1).flatMap(ScraperParse.parseHHmm)
+      time <- times.lift(1).flatMap(ScrapeClock.parseHHmm)
     } yield Showtime(
       dateTime   = LocalDateTime.of(date, time),
       bookingUrl = Option(row.selectFirst("a[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),

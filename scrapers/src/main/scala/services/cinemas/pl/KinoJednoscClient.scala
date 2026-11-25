@@ -10,7 +10,7 @@ import models.*
 import org.jsoup.Jsoup
 import services.cinemas.common.SingleSiteScraper
 import services.cinemas.common.SlotsToMovies
-import services.cinemas.common.{ScraperParse, ListingPages}
+import services.cinemas.common.{ListingPages, ScrapeClock}
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -74,7 +74,7 @@ object KinoJednoscClient {
     Jsoup.parse(html, BaseUrl).select("div.available-item").asScala.toSeq.flatMap { item =>
       for {
         date <- Option(item.selectFirst("span.date")).map(_.text.trim).flatMap(d => Try(LocalDate.parse(d)).toOption)
-        time <- Option(item.selectFirst("span.time")).map(_.text.trim).flatMap(ScraperParse.parseHHmm)
+        time <- Option(item.selectFirst("span.time")).map(_.text.trim).flatMap(ScrapeClock.parseHHmm)
       } yield {
         val booking = Option(item.selectFirst("a.button-success")).map(_.attr("abs:href")).filter(_.nonEmpty)
         Showtime(LocalDateTime.of(date, time), booking)

@@ -7,7 +7,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import play.api.libs.json.{JsObject, Json}
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeRuntime}
 import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 import services.titles.TitleNormalizer
 import tools.HttpFetch
@@ -100,11 +100,11 @@ object KinoBajkaClient {
     val filmUrl = (film \ "u").asOpt[String].filter(_.nonEmpty)
     val poster  = (film \ "p").asOpt[String].filter(_.nonEmpty).map(ResizedPoster.fullSize)
     val runtime = (film \ "m").asOpt[String]
-                    .flatMap(ScraperParse.runtimeMinutesIn)
+                    .flatMap(ScrapeRuntime.runtimeMinutesIn)
 
     title.toSeq.flatMap { t =>
       (film \ "s").asOpt[Seq[JsObject]].getOrElse(Seq.empty).flatMap { slot =>
-        (slot \ "g").asOpt[String].flatMap(ScraperParse.parseHHmm).map { lt =>
+        (slot \ "g").asOpt[String].flatMap(ScrapeClock.parseHHmm).map { lt =>
           RawSlot(t, LocalDateTime.of(date, lt), booking, poster, filmUrl, runtime)
         }
       }

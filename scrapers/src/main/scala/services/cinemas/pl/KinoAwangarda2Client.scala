@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates}
 import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 import services.titles.FormatTags
 import tools.HttpFetch
@@ -65,7 +65,7 @@ object KinoAwangarda2Client {
   /** The screening time on a film line: `HH.MM` (or `HH:MM`). The only `DD.MM`-
    *  shaped token on a screening line is the time (day headers are separate
    *  blocks), so the first match is the showtime. */
-  private val ScreeningTime = raw"""\b${ScraperParse.ClockPartsDotted}\b""".r
+  private val ScreeningTime = raw"""\b${ScrapeClock.ClockPartsDotted}\b""".r
 
   /** A quoted substring inside the link text. */
   private val Quoted = """"([^"]+)"""".r
@@ -81,7 +81,7 @@ object KinoAwangarda2Client {
 
     // Walk the article's `<p>` blocks in document order, carrying the current
     // day forward across screenings until the next day header resets it.
-    val slots = ScraperParse.underDayHeaders(document.select("p").asScala.map(p => p -> p.text.trim)) {
+    val slots = ScrapeDates.underDayHeaders(document.select("p").asScala.map(p => p -> p.text.trim)) {
       case (_, DayHeader(day, month)) => dateOf(day.toInt, month.toInt, today)
     } { case ((p, text), date) => screeningSlot(p, text, date) }
 
@@ -127,10 +127,10 @@ object KinoAwangarda2Client {
       .filterNot(_.matches(""".*\d.*"""))
 
   private def timeOf(m: scala.util.matching.Regex.Match): Option[LocalTime] =
-    ScraperParse.clockAt(m, 1)
+    ScrapeClock.clockAt(m, 1)
 
   /** The `DD.MM` mapped to a `LocalDate`, rolling forward into next year only
    *  when it sits >6 months before `today` (the Dec→Jan boundary). */
   private def dateOf(day: Int, month: Int, today: LocalDate): Option[LocalDate] =
-    ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingDate(_, today, Period.ofMonths(6)))
+    ScrapeDates.monthDay(day, month).flatMap(ScrapeDates.upcomingDate(_, today, Period.ofMonths(6)))
 }

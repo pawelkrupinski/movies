@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
@@ -35,7 +35,7 @@ class IluzjonClient(http: HttpFetch, today: => LocalDate
   private val BaseUrl     = "https://www.iluzjon.fn.org.pl"
   private val ListingUrl  = s"$BaseUrl/repertuar.html"
   private val FilmIdPat   = """filmy/info/(\d+)/""".r
-  private val TimeTitlePat = raw"""^${ScraperParse.ClockParts}\s*-\s*(.+)$$""".r
+  private val TimeTitlePat = raw"""^${ScrapeClock.ClockParts}\s*-\s*(.+)$$""".r
 
   private case class RawSlot(filmId: String, title: String, dateTime: LocalDateTime, room: Option[String],
                              booking: Option[String], poster: Option[String], detailPath: String)
@@ -47,7 +47,7 @@ class IluzjonClient(http: HttpFetch, today: => LocalDate
 
     // h3 date headers and screening rows in document order; fold to attach each
     // row to the most recent date.
-    val slots = ScraperParse.underDayHeaders(document.select("h3, tr:has(span.hour)").asScala) {
+    val slots = ScrapeDates.underDayHeaders(document.select("h3, tr:has(span.hour)").asScala) {
       case h3 if h3.tagName == "h3" => IluzjonClient.parseDate(h3.text, today)
     }(rowSlot)
 
@@ -93,12 +93,12 @@ class IluzjonClient(http: HttpFetch, today: => LocalDate
       for {
         filmId <- FilmIdPat.findFirstMatchIn(href).map(_.group(1))
         m      <- TimeTitlePat.findFirstMatchIn(link.text.trim)
-        t      <- ScraperParse.clockAt(m, 1)
+        t      <- ScrapeClock.clockAt(m, 1)
       } yield {
         val title   = m.group(3).trim
         val room    = Option(row.selectFirst("div.location")).map(_.text.trim.replaceAll("[()]", "").trim).filter(_.nonEmpty)
         val booking = Option(row.selectFirst("div.info-add a[href*=bilety.iluzjon]")).map(_.attr("href")).filter(_.nonEmpty)
-        val poster  = Option(row.selectFirst("div.image img[src]")).flatMap(ScraperParse.largestImageSource).map(ScraperParse.onSite(BaseUrl))
+        val poster  = Option(row.selectFirst("div.image img[src]")).flatMap(ScrapeImages.largestImageSource).map(ScraperParse.onSite(BaseUrl))
         val detailP = ScraperParse.onSite(BaseUrl)(href.takeWhile(_ != '?'))
         RawSlot(filmId, title, date.atTime(t), room, booking, poster, detailP)
       }
@@ -111,7 +111,7 @@ object IluzjonClient {
    *  as the genitive) → an absolute date; year from `today`, rolling forward
    *  when the month is already behind us. */
   def parseDate(raw: String, today: LocalDate): Option[LocalDate] =
-    ScraperParse.parseDayMonth(raw).flatMap(ScraperParse.upcomingMonthDate(_, today))
+    ScrapeDates.parseDayMonth(raw).flatMap(ScrapeDates.upcomingMonthDate(_, today))
 
   final case class Detail(
     runtimeMinutes: Option[Int],
@@ -128,7 +128,7 @@ object IluzjonClient {
   def parseDetail(html: String): Detail = {
     val document = Jsoup.parse(html)
     Detail(
-      runtimeMinutes = ScraperParse.ddField(document, "czas trwania").flatMap(ScraperParse.firstNumberIn),
+      runtimeMinutes = ScraperParse.ddField(document, "czas trwania").flatMap(ScrapeRuntime.firstNumberIn),
       year           = ScraperParse.ddField(document, "rok produkcji").flatMap(ScraperParse.firstFourDigitsIn),
       countries      = ScraperParse.ddItems(document, "kraj produkcji"),
       director       = ScraperParse.ddItems(document, "reżyseria"),
@@ -136,7 +136,7 @@ object IluzjonClient {
       originalTitle  = ScraperParse.ddField(document, "tytuł oryg"),
       synopsis       = Option(document.selectFirst("h4:contains(Opis filmu) + div.content")).map(SynopsisProse.blockText(_).trim)
                          .orElse(Option(document.selectFirst("div.content p")).map(SynopsisProse.blockText(_).trim)).filter(_.length > 20),
-      poster         = Option(document.selectFirst("div.plakat img[src]")).flatMap(ScraperParse.largestImageSource)
+      poster         = Option(document.selectFirst("div.plakat img[src]")).flatMap(ScrapeImages.largestImageSource)
                          .map(ScraperParse.onSite("https://www.iluzjon.fn.org.pl"))
     )
   }

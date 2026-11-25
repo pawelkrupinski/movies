@@ -7,7 +7,7 @@ import scala.util.Try
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates}
 import services.cinemas.common.{SlotsToMovies, SynopsisProse}
 
 /**
@@ -63,7 +63,7 @@ private[cinemas] object MsiScraper {
   // `\p{L}`, not `\w`: Java's `\w` is ASCII-only by default, so the one Polish
   // month abbreviation carrying a diacritic — "paź" — never matched, and every
   // OCTOBER screening was silently dropped at every MSI venue.
-  private val EventTimePat = raw"""(\d{1,2})\s+(\p{L}+)\s+${ScraperParse.ClockParts}""".r
+  private val EventTimePat = raw"""(\d{1,2})\s+(\p{L}+)\s+${ScrapeClock.ClockParts}""".r
 
   // The MSI page also embeds full film metadata in a `var RepertoireEvents = [
   // {…} ]` JS array (one flat object per screening) that Jsoup doesn't surface.
@@ -325,7 +325,7 @@ private[cinemas] object MsiScraper {
   private def parseEventTime(text: String, ym: YearMonth): Option[LocalDateTime] =
     EventTimePat.findFirstMatchIn(text).flatMap { m =>
       val day   = m.group(1).toInt
-      val month = ScraperParse.polishMonthAbbrev(m.group(2))  // "07 cze 17:00"
+      val month = ScrapeDates.polishMonthAbbrev(m.group(2))  // "07 cze 17:00"
       val hour  = m.group(3).toInt
       val min   = m.group(4).toInt
       month.flatMap { mo =>

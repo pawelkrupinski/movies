@@ -6,7 +6,7 @@ import scala.util.Try
 
 import org.jsoup.Jsoup
 import play.api.libs.json.{JsArray, Json}
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeImages}
 
 /**
  * The "Ticket Manager" box office (ASP.NET MVC) that small Polish culture houses
@@ -28,7 +28,7 @@ object TicketManagerFeed {
   /** The feed of the box office at `siteRoot` (with its trailing slash). */
   def feedUrl(siteRoot: String): String = s"${siteRoot}Repertuar/Kalendarz1JsonDane?filter=$siteRoot"
 
-  private val ScreeningHour = raw"""godz\.\s*(${ScraperParse.ClockTextDotted})""".r
+  private val ScreeningHour = raw"""godz\.\s*(${ScrapeClock.ClockTextDotted})""".r
 
   /** Every screening in the feed; an event lacking a title or a `godz.` time is
    *  skipped. Anything but an array — an error object, an HTML page — is no
@@ -44,12 +44,12 @@ object TicketManagerFeed {
         day   <- (record \ "date").asOpt[String].flatMap(stamp => Try(LocalDate.parse(stamp.take(10))).toOption)
         title <- Option(fragment.selectFirst("p.event-title")).map(_.text.trim).filter(_.nonEmpty)
         hour  <- Option(fragment.selectFirst("p.event-hour")).flatMap(p => ScreeningHour.findFirstMatchIn(p.text))
-        time  <- ScraperParse.parseHHmm(hour.group(1).replace('.', ':'))
+        time  <- ScrapeClock.parseHHmm(hour.group(1).replace('.', ':'))
       } yield Screening(
         billedTitle = title,
         dateTime    = LocalDateTime.of(day, time),
         bookingUrl  = Option(fragment.selectFirst("a.bt[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),
-        posterUrl   = Option(fragment.selectFirst(".poster img[src]")).flatMap(ScraperParse.largestImageUrl)
+        posterUrl   = Option(fragment.selectFirst(".poster img[src]")).flatMap(ScrapeImages.largestImageUrl)
       )
     }
   }

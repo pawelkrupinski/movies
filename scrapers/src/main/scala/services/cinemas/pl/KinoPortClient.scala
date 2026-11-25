@@ -10,7 +10,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import play.api.libs.json.{JsValue, Json}
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates}
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
@@ -134,7 +134,7 @@ object KinoPortClient {
    *  (U+2013) or a plain hyphen. The separator is OPTIONAL: some screenings
    *  (first seen 2026-09-19, e.g. "12:30 PUCIO KOCHA ZWIERZAKI") drop it
    *  entirely, running the time straight into the title. */
-  private val TimeTitlePat = raw"""^${ScraperParse.ClockParts}\s*(?:[–-]\s*)?(.+)$$""".r
+  private val TimeTitlePat = raw"""^${ScrapeClock.ClockParts}\s*(?:[–-]\s*)?(.+)$$""".r
   /** ` (72′)` — runtime in minutes, U+2032 PRIME, immediately after the strong. */
   private val RuntimePat = """\((\d{1,3})′\)""".r
   /** `2026, reż. Mikołaj Janik` / `2025` — the caption line, whether wrapped in
@@ -146,7 +146,7 @@ object KinoPortClient {
    *  prefix; a name straight after the year comma is still the director. */
   private val DirectorNoCreditWordPat = """^\d{4}\s*,\s*(.+?)\s*$""".r
   /** A card's `17:30` — the whole `__time` text. */
-  private val CardTimePat    = raw"^${ScraperParse.ClockParts}$$".r
+  private val CardTimePat    = raw"^${ScrapeClock.ClockParts}$$".r
   /** A card meta part `102’` — runtime in minutes, U+2019 (or the older U+2032 PRIME). */
   private val CardRuntimePat = "^(\\d{1,3})[’′]$".r
   /** A card meta part `2026` — the release year, alone between `·`s. */
@@ -190,13 +190,13 @@ object KinoPortClient {
   /** One `div.gcsw-day` card → its screenings; none when its date header isn't a `D.MM` day. */
   private def parseCardDay(day: Element, postUrl: String, today: LocalDate): Seq[RawSlot] = {
     val date = Option(day.selectFirst(".gcsw-day__date")).map(_.text.trim).collect {
-      case DayPat(d, m) => ScraperParse.monthDay(d.toInt, m.toInt).flatMap(ScraperParse.upcomingDate(_, today))
+      case DayPat(d, m) => ScrapeDates.monthDay(d.toInt, m.toInt).flatMap(ScrapeDates.upcomingDate(_, today))
     }.flatten
     for {
       date      <- date.toSeq
       screening <- day.select("div.gcsw-screening").asScala.toSeq
       time      <- Option(screening.selectFirst(".gcsw-screening__time")).map(_.text.trim).collect {
-                     case CardTimePat(h, m) => ScraperParse.clock(h, m)
+                     case CardTimePat(h, m) => ScrapeClock.clock(h, m)
                    }.flatten
       title     <- Option(screening.selectFirst(".gcsw-screening__title")).map(_.text.trim).filter(_.nonEmpty)
     } yield {
@@ -269,7 +269,7 @@ object KinoPortClient {
       strongText       = strongs.asScala.map(_.text.trim).mkString(" ").collapsedSpaces
       (time, title)   <- strongText match {
                            case TimeTitlePat(h, m, t) =>
-                             ScraperParse.clock(h, m).map(_ -> t.trim).filter(_._2.nonEmpty)
+                             ScrapeClock.clock(h, m).map(_ -> t.trim).filter(_._2.nonEmpty)
                            case _ => None
                          }
     } yield {

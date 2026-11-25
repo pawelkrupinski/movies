@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeRuntime, ScraperParse}
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import tools.{HttpFetch, HttpRead}
 
@@ -33,7 +33,7 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaSc
   // day or two ago, and those are this year: six months' grace keeps them put
   // while bumping January-viewed-from-late-June forward.
   private def parsePolishDate(text: String): Option[LocalDate] =
-    ScraperParse.parseDayMonth(text).flatMap(ScraperParse.upcomingDate(_, today, grace = Period.ofMonths(6)))
+    ScrapeDates.parseDayMonth(text).flatMap(ScrapeDates.upcomingDate(_, today, grace = Period.ofMonths(6)))
 
 
   // movie-meta is formatted "reż. <DIRECTORS…>, <COUNTRIES…>, YEAR r., DURATION min."
@@ -50,7 +50,7 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaSc
     val director  = if (yearIndex >= 1) ScraperParse.commaItems(parts(0)) else Seq.empty
     val countries = if (yearIndex > 1) parts.slice(1, yearIndex).filter(_.nonEmpty).toSeq else Seq.empty
     val year      = if (yearIndex >= 0) Try(parts(yearIndex).replaceAll("[^0-9]", "").toInt).toOption else None
-    val runtime   = ScraperParse.runtimeMinutesIn(text)
+    val runtime   = ScrapeRuntime.runtimeMinutesIn(text)
     (director, countries, year, runtime)
   }
 
@@ -126,7 +126,7 @@ class KinoBulgarskaClient(http: HttpFetch, today: => LocalDate) extends CinemaSc
   private def showtimeOf(section: Element, date: LocalDate): Option[Showtime] = {
     val room = Option(section.selectFirst(".show-type-badge a")).map(_.text().trim).filter(_.nonEmpty)
     Option(section.selectFirst(".start-info.clock"))
-      .flatMap(clock => ScraperParse.parseHHmm(clock.text().replaceAll("\\s+", "")))
+      .flatMap(clock => ScrapeClock.parseHHmm(clock.text().replaceAll("\\s+", "")))
       .map(time => Showtime(date.atTime(time), None, room))
   }
 }

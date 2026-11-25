@@ -10,7 +10,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import play.api.libs.json.{JsObject, JsString, Json}
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, SlotsToMovies, ScrapeClock, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 
@@ -104,8 +104,8 @@ object ModernEventsCalendarClient {
 
   private val DayId       = """(?:^|_)(\d{8})$""".r
   private val DayFormat   = DateTimeFormatter.BASIC_ISO_DATE
-  private val ClockTime   = raw"""(?i)${ScraperParse.ClockParts}\s*([ap]\.?m\.?)?""".r
-  private val LeadingTime = raw"""^${ScraperParse.ClockTextDotted}\s*[–—-]\s*""".r
+  private val ClockTime   = raw"""(?i)${ScrapeClock.ClockParts}\s*([ap]\.?m\.?)?""".r
+  private val LeadingTime = raw"""^${ScrapeClock.ClockTextDotted}\s*[–—-]\s*""".r
 
   /** The calendar's AJAX handle: which skin, its serialised shortcode `atts`,
    *  the endpoint, and the month the page itself rendered. */
@@ -156,7 +156,7 @@ object ModernEventsCalendarClient {
 
   /** The first clock time in `text`, 24-hour or with an am/pm marker. */
   private def clockTime(text: String): Option[LocalTime] =
-    ClockTime.findFirstMatchIn(text).flatMap(ScraperParse.meridiemClockAt(_, 1, 3))
+    ClockTime.findFirstMatchIn(text).flatMap(ScrapeClock.meridiemClockAt(_, 1, 3))
 
   private def toMovies(slots: Seq[Slot], cinema: Cinema): Seq[CinemaMovie] =
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, None, None, s.format)) { (title, group, showtimes) =>
@@ -205,11 +205,11 @@ object ModernEventsCalendarClient {
     FilmDetail(
       synopsis       = Some(paragraphs.filter(_.length >= SynopsisMinLength).mkString("\n\n")).filter(_.nonEmpty),
       director       = field("reżyseria", "reżyser").toSeq.flatMap(listOf),
-      runtimeMinutes = field("czas trwania").flatMap(ScraperParse.hoursMinutesRuntime),
+      runtimeMinutes = field("czas trwania").flatMap(ScrapeRuntime.hoursMinutesRuntime),
       releaseYear    = production.flatMap(_._2),
       countries      = production.toSeq.flatMap(_._1),
       genres         = field("gatunek").toSeq.flatMap(listOf),
-      posterUrl      = ScraperParse.ogImage(document),
+      posterUrl      = ScrapeImages.ogImage(document),
       trailerUrl     = body.flatMap(trailerIn)
     )
   }

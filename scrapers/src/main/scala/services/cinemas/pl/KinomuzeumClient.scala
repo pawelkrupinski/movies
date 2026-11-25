@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{SingleSiteScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail}
@@ -96,10 +96,10 @@ class KinomuzeumClient(http: HttpFetch, today: => LocalDate
       dt   <- KinomuzeumClient.parseTime(date, time)
     } yield {
       val title   = a.text.trim
-      val runtime = spans.flatMap(ScraperParse.runtimeMinutesIn).headOption
+      val runtime = spans.flatMap(ScrapeRuntime.runtimeMinutesIn).headOption
       val booking = Option(c.selectFirst("a[href*=nienumerowane]")).map(_.attr("href")).filter(_.nonEmpty)
       val poster  = Option(c.selectFirst("img[width=320]")).orElse(Option(c.selectFirst("img[src]")))
-                      .flatMap(ScraperParse.largestImageSource)
+                      .flatMap(ScrapeImages.largestImageSource)
       RawSlot(slug, title, dt, runtime, booking, poster)
     }
   }
@@ -110,12 +110,12 @@ object KinomuzeumClient {
   /** "10 cze" (abbreviated month) → an absolute date; year from `today`,
    *  rolling forward when the month is already behind us. */
   def parseDate(raw: String, today: LocalDate): Option[LocalDate] =
-    ScraperParse.parseDayMonth(raw).flatMap(ScraperParse.upcomingMonthDate(_, today))
+    ScrapeDates.parseDayMonth(raw).flatMap(ScrapeDates.upcomingMonthDate(_, today))
 
-  private val ClockOnly = raw"""^${ScraperParse.ClockText}$$""".r
+  private val ClockOnly = raw"""^${ScrapeClock.ClockText}$$""".r
 
   def parseTime(date: LocalDate, time: String): Option[LocalDateTime] =
-    ScraperParse.parseHHmm(time).map(date.atTime)
+    ScrapeClock.parseHHmm(time).map(date.atTime)
 
   final case class Detail(runtime: Option[Int], year: Option[Int], countries: Seq[String],
                           director: Seq[String], synopsis: Option[String], poster: Option[String])
@@ -135,7 +135,7 @@ object KinomuzeumClient {
       synopsis  = Option(document.selectFirst("div.block-element.text .description")).map(SynopsisProse.blockText(_).trim)
                     .orElse(Option(document.selectFirst("meta[property=og:description]")).map(_.attr("content").trim))
                     .filter(_.length > 20),
-      poster    = ScraperParse.ogImage(document)
+      poster    = ScrapeImages.ogImage(document)
     )
   }
 }

@@ -9,7 +9,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeImages, ScraperParse}
 import services.cinemas.common.{SluggedScreening, SlotsToMovies}
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
@@ -72,7 +72,7 @@ class AmondoClient(http: HttpFetch
                    .flatMap(h => SlugPat.findFirstMatchIn(h).map(_.group(1)))
     val genres = Option(block.selectFirst("span.title")).map(_.text.trim).filter(_.nonEmpty)
                    .toSeq.flatMap(_.split("[,/]").map(_.trim).filter(_.nonEmpty)).map(tools.TextNormalization.titleCaseIfAllLower)
-    val poster = Option(block.selectFirst("img[src]")).flatMap(ScraperParse.largestImageSource).map(abs).map(ResizedPoster.fullSize)
+    val poster = Option(block.selectFirst("img[src]")).flatMap(ScrapeImages.largestImageSource).map(abs).map(ResizedPoster.fullSize)
     title.toSeq.flatMap { t =>
       block.select("div.time-wrap span.time").asScala.toSeq.flatMap { span =>
         val parts = span.text.split(",").map(_.trim).filter(_.nonEmpty)
@@ -94,7 +94,7 @@ class AmondoClient(http: HttpFetch
 
 object AmondoClient {
 
-  private val TimePat = ScraperParse.ClockParts.r
+  private val TimePat = ScrapeClock.ClockParts.r
 
   def parseDateTime(date: String, time: String): Option[LocalDateTime] =
     TimePat.findFirstMatchIn(time).flatMap(m => Try(LocalDateTime.parse(s"${date}T${pad(m.group(1))}:${m.group(2)}:00")).toOption)

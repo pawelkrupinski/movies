@@ -9,7 +9,7 @@ import org.jsoup.Jsoup
 import services.cinemas.common.SingleSiteScraper
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.SynopsisProse
-import services.cinemas.common.{ScraperParse, ListingPages}
+import services.cinemas.common.{ListingPages, ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -57,7 +57,7 @@ class PromKepaClient(http: HttpFetch) extends SingleSiteScraper {
 
 object PromKepaClient {
 
-  private val TimelinePat = raw"""(\d{1,2}\.\d{2}\.\d{4},\s*${ScraperParse.ClockText})""".r
+  private val TimelinePat = raw"""(\d{1,2}\.\d{2}\.\d{4},\s*${ScrapeClock.ClockText})""".r
   // "reż. David Frankel, USA 2026, 120'"
   private val MetaPat = """reż\.\s*(.+?),\s*(.+?)\s+((?:19|20)\d{2}),\s*(\d+)['’]""".r
 
@@ -87,7 +87,7 @@ object PromKepaClient {
 
     title.map { t =>
       val dt = TimelinePat.findFirstMatchIn(Option(document.selectFirst("p.timeline")).map(_.text).getOrElse(""))
-        .flatMap(m => ScraperParse.parseDateTime(m.group(1)))
+        .flatMap(m => ScrapeDates.parseDateTime(m.group(1)))
       val booking = Option(document.selectFirst("p.ticket a.cfs-hyperlink[href]")).map(_.attr("href")).filter(_.nonEmpty)
       // The page nests the metadata `<p>` inside `p.repertuar_description`, which an HTML parser closes before it, so
       // the line is the description's next sibling: read it off the event's whole info column.
@@ -103,7 +103,7 @@ object PromKepaClient {
         synopsis  = Option(document.selectFirst("div.single_content")).map(SynopsisProse.blockText(_).trim)
                       // (?s) so the booking-footer cut spans the paragraph newlines blockText now keeps.
                       .map(_.replaceAll("(?is)\\s*bilet[^.]*\\d+\\s*zł.*$", "").trim).filter(_.length > 20),
-        poster    = Option(document.selectFirst("div.image_item img.wp-post-image[src]")).flatMap(ScraperParse.largestImageSource)
+        poster    = Option(document.selectFirst("div.image_item img.wp-post-image[src]")).flatMap(ScrapeImages.largestImageSource)
       )
     }
   }

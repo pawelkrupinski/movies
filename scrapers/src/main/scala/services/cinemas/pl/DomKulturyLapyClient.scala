@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScraperParse}
 import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 import tools.HttpFetch
 
@@ -76,9 +76,9 @@ object DomKulturyLapyClient {
       title         = titleElement.text.trim
       if title.nonEmpty
       dateElement  <- Option(first.selectFirst("h5.wp-block-heading"))
-      dayMonth     <- ScraperParse.parseDayMonth(dateElement.text)
-      time         <- ScraperParse.parseHHmm(dateElement.text)
-      date         <- ScraperParse.upcomingDate(dayMonth, today)
+      dayMonth     <- ScrapeDates.parseDayMonth(dateElement.text)
+      time         <- ScrapeClock.parseHHmm(dateElement.text)
+      date         <- ScrapeDates.upcomingDate(dayMonth, today)
       // The homepage embeds a post's body WITHOUT the `wp-block-paragraph`
       // class WordPress adds when the post renders on its own permalink page
       // (verified against both: the standalone post page has it, the

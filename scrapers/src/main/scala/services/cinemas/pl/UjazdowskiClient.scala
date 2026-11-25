@@ -7,7 +7,7 @@ import scala.util.Try
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeImages, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ListingPages}
@@ -118,10 +118,10 @@ class UjazdowskiClient(
       val slug  = SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1))
       val title = Option(a.selectFirst(".title em")).orElse(Option(a.selectFirst(".title"))).map(_.text.trim).filter(_.nonEmpty)
       val time  = Option(a.selectFirst(".hours")).map(_.text.trim)
-                    .flatMap(ScraperParse.parseHHmm)
+                    .flatMap(ScrapeClock.parseHHmm)
       for { s <- slug; t <- title; tm <- time } yield {
         val meta   = Option(a.selectFirst(".fs-20.max-w")).map(_.text.trim).filter(_.nonEmpty)
-        val poster = Option(a.selectFirst("img[src]")).flatMap(ScraperParse.largestImageSource)
+        val poster = Option(a.selectFirst("img[src]")).flatMap(ScrapeImages.largestImageSource)
                        .map(u => if (u.startsWith("http")) u else BaseUrl + u)
         RawSlot(s, t, date.atTime(tm), meta, poster)
       }

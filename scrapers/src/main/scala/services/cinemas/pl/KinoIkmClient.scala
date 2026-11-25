@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 import tools.HttpFetch
 
@@ -64,7 +64,7 @@ class KinoIkmClient(
   private def posterIndex(document: Document): Map[String, String] =
     document.select("section.movielist div.singleposter").asScala.toSeq.flatMap { card =>
       val url    = Option(card.selectFirst("h4 a[href]")).map(_.attr("href")).filter(_.nonEmpty)
-      val poster = Option(card.selectFirst("div.pthumb img[src]")).flatMap(ScraperParse.largestImageSource)
+      val poster = Option(card.selectFirst("div.pthumb img[src]")).flatMap(ScrapeImages.largestImageSource)
       for { u <- url; p <- poster } yield u -> p
     }.toMap
 
@@ -73,7 +73,7 @@ class KinoIkmClient(
     val title = link.map(_.text.trim).filter(_.nonEmpty)
     val url   = link.map(_.attr("href")).filter(_.nonEmpty)
     val date  = Option(row.selectFirst("div.tday")).map(_.text).flatMap(d => KinoIkmClient.parseDate(d, today))
-    val time  = Option(row.selectFirst("div.ttime a")).map(_.text).flatMap(ScraperParse.parseHHmm)
+    val time  = Option(row.selectFirst("div.ttime a")).map(_.text).flatMap(ScrapeClock.parseHHmm)
 
     (title, date, time) match {
       case (Some(t), Some(d), Some(tm)) =>
@@ -96,11 +96,11 @@ object KinoIkmClient {
   /** The leading `DD.MM` of a `.tday` label, with the year inferred relative to
    *  `today`. The page carries no year, so a date more than six months in the
    *  past rolls forward to next year (year-boundary case); recent-past dates
-   *  stay put ([[ScraperParse.upcomingDate]]). */
+   *  stay put ([[ScrapeDates.upcomingDate]]). */
   def parseDate(text: String, today: LocalDate): Option[LocalDate] =
     DatePat.findFirstMatchIn(text)
-      .flatMap(m => ScraperParse.monthDay(m.group(1).toInt, m.group(2).toInt))
-      .flatMap(ScraperParse.upcomingDate(_, today, Period.ofMonths(6)))
+      .flatMap(m => ScrapeDates.monthDay(m.group(1).toInt, m.group(2).toInt))
+      .flatMap(ScrapeDates.upcomingDate(_, today, Period.ofMonths(6)))
 
   // The `.ttitle h4` reads "reż. <names> / napisy: …". Take everything after
   // "reż." up to the first " / " (the subtitle/accessibility note), then split

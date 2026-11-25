@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon, ScraperParse}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DayChunks, ScrapeHorizon, ScrapeClock, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 
@@ -96,7 +96,7 @@ object KinoKadrTomaszowLubelskiClient {
       .flatMap(FormatTags.formatTokensIn).distinct.toList
 
     val showtimes = article.select(".showtimes .showtime span").asScala.toSeq
-      .flatMap(s => ScraperParse.parseHHmm(s.text))
+      .flatMap(s => ScrapeClock.parseHHmm(s.text))
       .map(t => Showtime(LocalDateTime.of(day, t), None, format = format))
 
     for {
@@ -106,12 +106,12 @@ object KinoKadrTomaszowLubelskiClient {
       movie     = Movie(
         title,
         runtimeMinutes = Option(article.selectFirst(".movie-info span")).map(_.text)
-                            .flatMap(ScraperParse.runtimeMinutesIn),
+                            .flatMap(ScrapeRuntime.runtimeMinutesIn),
         genres         = Option(article.selectFirst(".movie-extra span.movie-genre")).map(_.text).toSeq
                             .flatMap(ScraperParse.commaItems)
       ),
       cinema      = cinema,
-      posterUrl   = Option(article.selectFirst(".movie-poster img[src]")).flatMap(ScraperParse.largestImageUrl),
+      posterUrl   = Option(article.selectFirst(".movie-poster img[src]")).flatMap(ScrapeImages.largestImageUrl),
       synopsis    = Option(article.selectFirst(".movie-description .filmPlotsSection__plot")).map(_.text.trim).filter(_.nonEmpty),
       showtimes   = showtimes.sortBy(_.dateTime),
       trailerUrl  = Option(article.selectFirst(".ticket-container a.trailer-btn[href]")).map(_.attr("abs:href"))

@@ -10,7 +10,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeRuntime, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages}
 import tools.{HttpFetch, HttpRead}
@@ -24,7 +24,7 @@ class RialtoClient(http: HttpFetch
   private val BaseUrl       = "https://www.kinorialto.poznan.pl"
 
 
-  private val DateTimePat = raw"""- (\d{4}-\d{2}-\d{2}) (${ScraperParse.IsoClockText}) -""".r
+  private val DateTimePat = raw"""- (\d{4}-\d{2}-\d{2}) (${ScrapeClock.IsoClockText}) -""".r
   // The event page (not the repertoire listing) heads the description with a
   // pipe-delimited parameters line whose first segment is the genre list:
   //   `<p class="movie-parameters">Dramat, Komedia | 120 min</p>`
@@ -197,7 +197,7 @@ object RialtoClient {
       .flatMap(l => CountriesPat.findFirstMatchIn(l).map(_.group(1).trim.stripSuffix(",")))
       .toSeq.flatMap(ScraperParse.commaItems)
 
-  private def runtimeIn(text: String): Option[Int] = ScraperParse.runtimeMinutesIn(text)
+  private def runtimeIn(text: String): Option[Int] = ScrapeRuntime.runtimeMinutesIn(text)
 
   private def yearIn(text: String): Option[Int] = YearPat.findFirstMatchIn(text).flatMap(m => Try(m.group(1).toInt).toOption)
 

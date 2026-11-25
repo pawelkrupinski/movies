@@ -10,7 +10,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
-import services.cinemas.common.{ScraperParse, ListingPages}
+import services.cinemas.common.{ListingPages, ScrapeClock, ScrapeDates, ScrapeImages}
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -72,7 +72,7 @@ object KinoTatryClient {
   val BaseUrl     = "https://kinotatrylodz.pl"
   val HomepageUrl = s"$BaseUrl/"
 
-  private val TimePat    = raw"""(${ScraperParse.ClockText})""".r
+  private val TimePat    = raw"""(${ScrapeClock.ClockText})""".r
   private val YearPat    = """Premiera\D{0,12}(\d{4})""".r
 
   /** The release year mined from a `/repertuar/<slug>/` detail page's
@@ -97,7 +97,7 @@ object KinoTatryClient {
         else Some(CinemaMovie(
           movie       = Movie(title),
           cinema      = cinema,
-          posterUrl   = Option(card.selectFirst("img.wp-post-image")).flatMap(ScraperParse.largestImageUrl),
+          posterUrl   = Option(card.selectFirst("img.wp-post-image")).flatMap(ScrapeImages.largestImageUrl),
           filmUrl     = Option(card.selectFirst("a.btn-theme[href]")).map(_.absUrl("href")).filter(_.nonEmpty),
           showtimes   = showtimes
         ))
@@ -109,10 +109,10 @@ object KinoTatryClient {
    *  holds `DD/MM/YYYY:`; the remaining text holds one or more `HH:MM` times. */
   private def slotTimes(li: Element, today: LocalDate): Seq[Showtime] = {
     val date = Option(li.selectFirst("strong")).map(_.text)
-      .flatMap(ScraperParse.parseDate)
+      .flatMap(ScrapeDates.parseDate)
       .filter(_ >= today)
     date.toSeq.flatMap { d =>
-      TimePat.findAllMatchIn(li.ownText).flatMap(m => ScraperParse.parseHHmm(m.group(1)))
+      TimePat.findAllMatchIn(li.ownText).flatMap(m => ScrapeClock.parseHHmm(m.group(1)))
         .map(t => Showtime(LocalDateTime.of(d, t), bookingUrl = None)).toSeq
     }
   }

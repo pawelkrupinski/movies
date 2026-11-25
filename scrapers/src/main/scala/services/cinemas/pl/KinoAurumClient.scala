@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import models.*
 import play.api.libs.json.*
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScrapeDates
 import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
@@ -51,7 +51,7 @@ object KinoAurumClient {
         title <- jsonText(fields \ "film_tytul" \ "stringValue")
         date  <- (fields \ "data" \ "stringValue").asOpt[String]
         time  <- (fields \ "godzina" \ "stringValue").asOpt[String]
-        dt    <- ScraperParse.parseDateTime(s"$date $time")
+        dt    <- ScrapeDates.parseDateTime(s"$date $time")
       } yield ScrapedSlot(title, dt)
     }
 

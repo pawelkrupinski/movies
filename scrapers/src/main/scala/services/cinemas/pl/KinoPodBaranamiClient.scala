@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
@@ -120,9 +120,9 @@ object KinoPodBaranamiClient {
   )
 
   private[cinemas] def parseDocument(html: String, today: LocalDate): Seq[RawSlot] =
-    ScraperParse.underDayHeaders(Jsoup.parse(html).select("p.rep_date, ul.program_list").asScala) {
+    ScrapeDates.underDayHeaders(Jsoup.parse(html).select("p.rep_date, ul.program_list").asScala) {
       // "Niedziela 7 czerwca // Sunday, June 7"
-      case p if p.tagName == "p" => ScraperParse.parseDayMonth(p.text.trim).flatMap(ScraperParse.upcomingDate(_, today))
+      case p if p.tagName == "p" => ScrapeDates.parseDayMonth(p.text.trim).flatMap(ScrapeDates.upcomingDate(_, today))
     }((list, date) => list.select("li").asScala.flatMap(slotsOf(_, date)))
 
   private def slotsOf(li: Element, date: LocalDate): Seq[RawSlot] = {
@@ -146,7 +146,7 @@ object KinoPodBaranamiClient {
     else li.select("span a[href^=\"/rezerwacja_start.php\"]").asScala.toSeq.flatMap { a =>
       val bookingUrl = Some(a.attr("href").trim).filter(_.nonEmpty)
         .map(h => if (h.startsWith("http")) h else s"$BaseUrl$h")
-      ScraperParse.parseHHmm(a.text.trim).map(t => RawSlot(title, originalTitle, filmUrl, LocalDateTime.of(date, t), bookingUrl))
+      ScrapeClock.parseHHmm(a.text.trim).map(t => RawSlot(title, originalTitle, filmUrl, LocalDateTime.of(date, t), bookingUrl))
     }
   }
 

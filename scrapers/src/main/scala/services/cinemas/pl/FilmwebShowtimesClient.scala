@@ -12,7 +12,7 @@ import models.*
 import play.api.libs.json.*
 import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.SlotsToMovies
-import services.cinemas.common.{CinemaScraper, ListingFeed, ListingPages, ScraperParse, SourceUrlResolving}
+import services.cinemas.common.{CinemaScraper, ListingFeed, ListingPages, SourceUrlResolving, ScrapeClock}
 import tools.{HttpFetch, HttpRead, ParallelDetailFetch}
 
 /**
@@ -203,7 +203,7 @@ object FilmwebShowtimesClient {
     s"https://www.filmweb.pl/showtimes/${enc(city)}/${enc(name)}-$cinemaId"
   }
 
-  private val HourPat     = raw"""^${ScraperParse.ClockPartsDotted}$$""".r
+  private val HourPat     = raw"""^${ScrapeClock.ClockPartsDotted}$$""".r
 
   /** Language-version flags Filmweb sets on a seance, mapped to the project's
    *  format-token vocabulary (mirrors `NoveKinoClient.FormatWord`). Only the
@@ -231,7 +231,7 @@ object FilmwebShowtimesClient {
     VersionTokens.collect { case (field, token) if (js \ field).asOpt[String].exists(_.nonEmpty) => token }.toList
 
   private def hourToTime(token: String): Option[LocalTime] =
-    HourPat.findFirstMatchIn(token).flatMap(ScraperParse.clockAt(_, 1))
+    HourPat.findFirstMatchIn(token).flatMap(ScrapeClock.clockAt(_, 1))
 
   /** One screening row from the seances endpoint: the film id, the parsed
    *  showtimes (date + hour + booking link + format), and Filmweb's optional

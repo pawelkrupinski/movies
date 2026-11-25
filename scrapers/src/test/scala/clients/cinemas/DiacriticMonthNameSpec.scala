@@ -9,7 +9,7 @@ import services.cinemas.pl.{KinoAgrafkaClient, KinoBulgarskaClient, KinoPodBaran
 import java.time.{LocalDate, LocalDateTime}
 
 /** Four hand-rolled Polish scrapers read their day header as "<day> <month
-  * name> [<year>]" and looked the month up in `ScraperParse.PolishMonths`. All
+  * name> [<year>]" and looked the month up in `ScrapeDates.PolishMonths`. All
   * four spelled the month group `\w`, which in Java is ASCII-only unless the
   * pattern carries UNICODE_CHARACTER_CLASS — so it stops at the first
   * diacritic. Exactly two of the twelve genitive month names carry one:

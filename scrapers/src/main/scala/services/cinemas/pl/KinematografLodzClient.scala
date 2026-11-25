@@ -9,7 +9,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.ListingPageScraper
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScrapeDates
 import services.titles.TitleNormalizer
 import tools.HttpFetch
 
@@ -159,7 +159,7 @@ object KinematografLodzClient {
     val filmUrl = link.map(_.attr("href")).filter(_.nonEmpty)
 
     val dtText = Option(item.selectFirst("div.date-time")).map(_.text.trim).getOrElse("")
-    val dtOpt  = ScraperParse.parseDateTime(dtText)
+    val dtOpt  = ScrapeDates.parseDateTime(dtText)
 
     // Filter out past events (the CMS keeps the full year in the listing).
     val dtFiltered = dtOpt.filter(_.toLocalDate >= today)

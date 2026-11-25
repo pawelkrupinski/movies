@@ -10,7 +10,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
-import services.cinemas.common.{ScraperParse, ListingPages}
+import services.cinemas.common.{ListingPages, ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -91,7 +91,7 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
    *  the year from `today`. */
   private def slotsFor(days: Seq[(Int, Int)], time: LocalTime): Seq[LocalDateTime] =
     days.flatMap { case (day, month) =>
-      ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingMonthDate(_, today)).map(LocalDateTime.of(_, time))
+      ScrapeDates.monthDay(day, month).flatMap(ScrapeDates.upcomingMonthDate(_, today)).map(LocalDateTime.of(_, time))
     }
 
   // ── Listing ─────────────────────────────────────────────────────────────
@@ -113,8 +113,8 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
       val months = box.select("span.month").asScala.toSeq.map(_.text.trim)
         .flatMap(MonthAbbrev.get)
       val hours  = box.select("span.hour").asScala.toSeq
-        .flatMap(h => ScraperParse.parseHHmm(h.text.trim))
-      val poster = Option(box.selectFirst("div.img img[src]")).flatMap(ScraperParse.largestImageSource)
+        .flatMap(h => ScrapeClock.parseHHmm(h.text.trim))
+      val poster = Option(box.selectFirst("div.img img[src]")).flatMap(ScrapeImages.largestImageSource)
         .map(absolute)
       for {
         t <- title
@@ -150,8 +150,8 @@ class KinoZakClient(http: HttpFetch, override val cinema: Cinema,
     SeansLine.findFirstMatchIn(line).flatMap { m =>
       val from  = m.group(1).toInt
       val to    = Option(m.group(2)).map(_.toInt).getOrElse(from)
-      val month = ScraperParse.PolishMonths.get(m.group(3).toLowerCase(Locale.ROOT))
-      val time  = ScraperParse.parseHHmm(m.group(4))
+      val month = ScrapeDates.PolishMonths.get(m.group(3).toLowerCase(Locale.ROOT))
+      val time  = ScrapeClock.parseHHmm(m.group(4))
       for { mo <- month; t <- time if to >= from }
         yield Segment((from to to).toSeq, mo, t)
     }
@@ -165,7 +165,7 @@ object KinoZakClient {
   /** "DD[ - DD] <month-genitive> o HH:MM" — the day-range separator is a hyphen
    *  or an en/em-dash with optional surrounding spaces. */
   private val SeansLine =
-    raw"""(\d{1,2})(?:\s*[-–—]\s*(\d{1,2}))?\s+([\p{L}]+)\s+o\s+(${ScraperParse.ClockText})""".r
+    raw"""(\d{1,2})(?:\s*[-–—]\s*(\d{1,2}))?\s+([\p{L}]+)\s+o\s+(${ScrapeClock.ClockText})""".r
 
   /** Polish month abbreviations as the calendar listing spells them
    *  (`Cze`, `Lip`, …) → month number. */

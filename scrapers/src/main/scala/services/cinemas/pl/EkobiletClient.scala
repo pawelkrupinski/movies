@@ -9,7 +9,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.SlotsToMovies
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScrapeClock, ScrapeDates}
 import services.titles.FormatTags
 import services.titles.NonMovieEventClassifier
 import tools.Whitespace.collapsedSpaces
@@ -259,9 +259,9 @@ object EkobiletClient {
   private def rowShowtime(row: Element, today: LocalDate): Option[Showtime] =
     for {
       dateText <- Option(row.selectFirst("strong.primary-color")).map(_.text.trim)
-      dayMonth <- ScraperParse.parseDayMonth(dateText)
-      time     <- Option(row.selectFirst("span.fw-bold")).flatMap(s => ScraperParse.parseHHmm(s.text))
-      date     <- ScraperParse.upcomingDate(dayMonth, today)
+      dayMonth <- ScrapeDates.parseDayMonth(dateText)
+      time     <- Option(row.selectFirst("span.fw-bold")).flatMap(s => ScrapeClock.parseHHmm(s.text))
+      date     <- ScrapeDates.upcomingDate(dayMonth, today)
     } yield Showtime(date.atTime(time), Option(row.attr("data-href")).filter(_.nonEmpty))
 
   /** The chrono-row landing skin: every upcoming showtime as a flat

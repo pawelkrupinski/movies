@@ -7,7 +7,7 @@ import scala.util.Try
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScrapeClock
 import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
 import services.titles.FormatTags
 import tools.HttpFetch
@@ -58,7 +58,7 @@ object KdkKrapkowiceClient {
         date <- Option(item.selectFirst("div.kino-date time[datetime]"))
                   .map(_.attr("datetime").take(10))
                   .flatMap(d => Try(LocalDate.parse(d)).toOption)
-        time <- Option(item.selectFirst("div.kino-godziny")).flatMap(g => ScraperParse.parseHHmm(g.text))
+        time <- Option(item.selectFirst("div.kino-godziny")).flatMap(g => ScrapeClock.parseHHmm(g.text))
       } yield ScrapedSlot(title, LocalDateTime.of(date, time), format = tokens)
     }
 

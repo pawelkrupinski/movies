@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import services.cinemas.common.{FilmPageCard, ListingPageScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{FilmPageCard, ListingPageScraper, SlotsToMovies, ScrapeClock, ScrapeDates, ScrapeImages}
 import tools.HttpFetch
 
 /**
@@ -55,7 +55,7 @@ object KinoRomaClient {
       val titleElement   = Option(box.selectFirst("a.film-title"))
       val title     = titleElement.map(_.text.trim).filter(_.nonEmpty)
       val filmSlug  = titleElement.flatMap(a => SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1)))
-      val posterUrl = Option(box.selectFirst("img.img-responsive[src]")).flatMap(ScraperParse.largestImageSource)
+      val posterUrl = Option(box.selectFirst("img.img-responsive[src]")).flatMap(ScrapeImages.largestImageSource)
       // Each card carries the production year in its own `div.year` cell,
       // separate from the screening's `div.big-date` (which has no year).
       val year      = Option(box.selectFirst("div.year")).map(_.text.trim)
@@ -65,12 +65,12 @@ object KinoRomaClient {
         t    <- title
         slug <- filmSlug
         date <- parseDate(dateText, today)
-        time <- ScraperParse.parseHHmm(hourText)
+        time <- ScrapeClock.parseHHmm(hourText)
       } yield FilmPageCard(t, slug, LocalDateTime.of(date, time), posterUrl, year)
     }
 
   /** "DD.MM" → LocalDate; if the date would be more than 60 days in the past,
    *  assume next year (handles December → January page-turn). */
   private[cinemas] def parseDate(text: String, today: LocalDate): Option[LocalDate] =
-    ScraperParse.parseNumericDayMonth(text).flatMap(ScraperParse.upcomingDate(_, today))
+    ScrapeDates.parseNumericDayMonth(text).flatMap(ScrapeDates.upcomingDate(_, today))
 }

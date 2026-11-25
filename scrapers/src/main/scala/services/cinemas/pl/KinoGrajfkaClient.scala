@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPageScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPageScraper, ScrapedSlot, SlotsToMovies, ScrapeClock, ScrapeDates, ScraperParse}
 import tools.HttpFetch
 
 /**
@@ -97,9 +97,9 @@ object KinoGrajfkaClient {
     val dateLabel = Option(article.selectFirst("span.index-cat"))
     val day       = Option(article.selectFirst("span.ctc-num-date")).flatMap(e => e.text.trim.toIntOption)
     val year      = Option(article.selectFirst("span.ctc-num-year")).flatMap(e => e.text.trim.toIntOption)
-    val month     = dateLabel.map(_.text.replaceAll("[0-9]", "").trim).flatMap(ScraperParse.polishMonthAbbrev)
+    val month     = dateLabel.map(_.text.replaceAll("[0-9]", "").trim).flatMap(ScrapeDates.polishMonthAbbrev)
 
-    val time = Option(article.selectFirst("span.ctc-time")).flatMap(e => ScraperParse.parseHHmm(e.text))
+    val time = Option(article.selectFirst("span.ctc-time")).flatMap(e => ScrapeClock.parseHHmm(e.text))
 
     for {
       t    <- title

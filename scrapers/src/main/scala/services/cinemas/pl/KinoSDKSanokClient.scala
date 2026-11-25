@@ -7,7 +7,7 @@ import scala.util.Try
 
 import models.*
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScrapeClock
 import services.cinemas.common.{CinemaScraper, DayPickerProgramme, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
 import tools.HttpFetch
 
@@ -85,7 +85,7 @@ object KinoSDKSanokClient {
     val filmUrl = Option(card.selectFirst("a[href*=/details/]")).map(_.attr("abs:href")).filter(_.nonEmpty)
     title.toSeq.flatMap { t =>
       card.select("ul.repo-event-dates-group li a.badge-circle").asScala.toSeq.flatMap { a =>
-        ScraperParse.parseHHmm(a.text).map { time =>
+        ScrapeClock.parseHHmm(a.text).map { time =>
           ScrapedSlot(
             title      = t,
             dateTime   = LocalDateTime.of(date, time),

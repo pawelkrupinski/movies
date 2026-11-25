@@ -5,7 +5,7 @@ import scala.jdk.CollectionConverters.*
 import models.{Cinema, CinemaMovie}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{ScrapedSlot, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{ScrapedSlot, SlotsToMovies, ScrapeClock, ScrapeDates}
 
 /** A WordPress "Theater for WP" (`wp_theatre`) programme page: one self-contained `div.wp_theatre_event` per
  *  screening -- `.wp_theatre_event_title a` (title and the venue's own film page), `.wp_theatre_event_startdate` (a
@@ -23,8 +23,8 @@ object WpTheatreEvents {
     for {
       titleElement <- Option(card.selectFirst(".wp_theatre_event_title a"))
       title    = titleElement.text.trim if title.nonEmpty
-      date     <- Option(card.selectFirst(".wp_theatre_event_startdate")).flatMap(d => ScraperParse.parseDayMonthYear(d.text))
-      time     <- Option(card.selectFirst(".wp_theatre_event_starttime")).flatMap(t => ScraperParse.parseHHmm(t.text))
+      date     <- Option(card.selectFirst(".wp_theatre_event_startdate")).flatMap(d => ScrapeDates.parseDayMonthYear(d.text))
+      time     <- Option(card.selectFirst(".wp_theatre_event_starttime")).flatMap(t => ScrapeClock.parseHHmm(t.text))
     } yield ScrapedSlot(
       title      = title,
       dateTime   = date.atTime(time),

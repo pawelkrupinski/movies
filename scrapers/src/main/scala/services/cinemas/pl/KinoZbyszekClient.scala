@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScraperParse}
 import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
 import services.titles.FormatTags
 import tools.HttpFetch
@@ -64,7 +64,7 @@ object KinoZbyszekClient {
 
   // The day's date from the cell anchor's `data-date`.
   private def parseDate(day: Element): Option[LocalDate] =
-    Option(day.selectFirst("a[data-date]")).map(_.attr("data-date")).flatMap(ScraperParse.parseDayMonthYear)
+    Option(day.selectFirst("a[data-date]")).map(_.attr("data-date")).flatMap(ScrapeDates.parseDayMonthYear)
 
   private def parseEvent(ev: Element, date: LocalDate): Option[ScrapedSlot] = {
     val rawTitle = ev.attr("data-title").trim
@@ -73,7 +73,7 @@ object KinoZbyszekClient {
     if (rawTitle.isEmpty || rawTitle.equalsIgnoreCase("KINO NIECZYNNE")) None
     else
       for {
-        time <- ScraperParse.parseHHmm(ev.attr("data-hours"))
+        time <- ScrapeClock.parseHHmm(ev.attr("data-hours"))
       } yield ScrapedSlot(
         title      = ScraperParse.sentenceCase(rawTitle),
         dateTime   = date.atTime(time),

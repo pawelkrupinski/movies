@@ -10,7 +10,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Element, Node, TextNode}
 import org.jsoup.select.NodeVisitor
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScraperParse}
 import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
 import tools.HttpFetch
 
@@ -44,7 +44,7 @@ object ArtKinoKrosnoClient {
   val RepertoireUrl = s"$BaseUrl/strona-375-repertuar.html"
 
   // "26 czerwca" → day + Polish genitive month (the weekday in parens is ignored).
-  private val DatePat = ScraperParse.DayMonthPat
+  private val DatePat = ScrapeDates.DayMonthPat
 
   def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
@@ -79,7 +79,7 @@ object ArtKinoKrosnoClient {
     p.traverse(new NodeVisitor {
       def head(node: Node, depth: Int): Unit = node match {
         case text: TextNode =>
-          ScraperParse.parseHHmm(text.text).foreach(time => pending = Some(time))
+          ScrapeClock.parseHHmm(text.text).foreach(time => pending = Some(time))
         case link: Element if link.tagName == "a" && link.attr("href").contains("wydarzenie") =>
           val title = ScraperParse.sentenceCase(link.text.trim)
           for {
@@ -105,7 +105,7 @@ object ArtKinoKrosnoClient {
       header <- Option(p.selectFirst("span[style*=x-large]")).map(_.text)
       m      <- DatePat.findFirstMatchIn(header)
       month  <- monthOf(m.group(2))
-      date   <- ScraperParse.monthDay(m.group(1).toInt, month).flatMap(ScraperParse.upcomingMonthDate(_, today))
+      date   <- ScrapeDates.monthDay(m.group(1).toInt, month).flatMap(ScrapeDates.upcomingMonthDate(_, today))
     } yield date
 
   /** The month number for a header's month word, falling back to its first
@@ -114,6 +114,6 @@ object ArtKinoKrosnoClient {
    *  whole day of screenings. The three-letter prefixes are unambiguous across
    *  all twelve Polish months. */
   private def monthOf(word: String): Option[Int] =
-    ScraperParse.PolishMonths.get(word.toLowerCase(Locale.ROOT))
-      .orElse(ScraperParse.polishMonthAbbrev(word.take(3)))
+    ScrapeDates.PolishMonths.get(word.toLowerCase(Locale.ROOT))
+      .orElse(ScrapeDates.polishMonthAbbrev(word.take(3)))
 }

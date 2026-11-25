@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeDates, ScrapeRuntime, ScraperParse}
 import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies, BookedScreening}
 import tools.{HttpFetch, HttpRead}
 
@@ -138,7 +138,7 @@ object KinoFenomenClient {
     val dt = for {
       d <- dateBold
       t <- timeBold
-      ldt <- ScraperParse.parseDateTime(s"$d $t")
+      ldt <- ScrapeDates.parseDateTime(s"$d $t")
     } yield ldt
 
     // Raw title from the artist link — strip pipe-separated metadata + format tag.
@@ -213,10 +213,10 @@ object KinoFenomenClient {
     val metaParts = lines.find(_.startsWith("/")).toSeq
       .flatMap(_.stripPrefix("/").split("/").map(_.trim).filter(_.nonEmpty))
     val year      = metaParts.flatMap(YearTokenPat.findFirstIn).headOption.map(_.toInt)
-    val runtime   = metaParts.flatMap(ScraperParse.runtimeMinutesIn).headOption
+    val runtime   = metaParts.flatMap(ScrapeRuntime.runtimeMinutesIn).headOption
     val countries = metaParts.headOption.toSeq.flatMap(ScraperParse.commaItems)
     val genres    = metaParts.drop(1)
-      .filterNot(p => YearTokenPat.findFirstIn(p).isDefined || ScraperParse.runtimeMinutesIn(p).isDefined)
+      .filterNot(p => YearTokenPat.findFirstIn(p).isDefined || ScrapeRuntime.runtimeMinutesIn(p).isDefined)
     // Synopsis = the prose lines: long, and not one of the marker/meta/title lines.
     val synopsis  = lines.filter(l => l.length > 60 && !l.startsWith("/") &&
                       !l.toLowerCase(Locale.ROOT).startsWith("reżyseria") && !l.toLowerCase(Locale.ROOT).startsWith("występują"))

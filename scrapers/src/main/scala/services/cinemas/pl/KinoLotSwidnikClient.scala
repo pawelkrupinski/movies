@@ -5,7 +5,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{ListingPageScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies, ScrapeClock, ScrapeDates, ScrapeImages}
 import services.titles.FormatTags
 import tools.HttpFetch
 
@@ -53,8 +53,8 @@ object KinoLotSwidnikClient {
     for {
       dateSpan    <- boldSpans.headOption
       timeSpan    <- boldSpans.drop(1).headOption
-      date        <- ScraperParse.parseDate(dateSpan.text)
-      time        <- ScraperParse.parseHHmm(timeSpan.text)
+      date        <- ScrapeDates.parseDate(dateSpan.text)
+      time        <- ScrapeClock.parseHHmm(timeSpan.text)
       titleAnchor <- Option(block.selectFirst("div.iframe_all_event_title p a[href^=\"/artist/view/id/\"]"))
       raw          = titleAnchor.text.trim if raw.nonEmpty
     } yield {
@@ -63,7 +63,7 @@ object KinoLotSwidnikClient {
         title      = title,
         dateTime   = date.atTime(time),
         bookingUrl = Option(block.selectFirst("a.B-btn.B-btn--accent[href^=\"/event/view/id/\"]")).map(_.attr("abs:href")).filter(_.nonEmpty),
-        posterUrl  = Option(block.selectFirst("img.img-responsive[src^=\"/file/get/id/\"]")).flatMap(ScraperParse.largestImageUrl),
+        posterUrl  = Option(block.selectFirst("img.img-responsive[src^=\"/file/get/id/\"]")).flatMap(ScrapeImages.largestImageUrl),
         format     = format
       )
     }

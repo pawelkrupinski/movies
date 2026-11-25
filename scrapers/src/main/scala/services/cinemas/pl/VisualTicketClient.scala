@@ -9,7 +9,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScrapeClock
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
@@ -89,7 +89,7 @@ object VisualTicketClient {
       rawDate  <- Option(item.attr("data-date")).filter(_.nonEmpty)
       rawTime  <- Option(item.attr("data-time")).filter(_.nonEmpty)
       date     <- Try(LocalDate.parse(rawDate)).toOption
-      time     <- ScraperParse.parseHHmm(rawTime)
+      time     <- ScrapeClock.parseHHmm(rawTime)
       h3       <- Option(item.selectFirst("h3.event-title"))
       span     <- Option(h3.selectFirst("span[aria-hidden=true]"))
       rawTitle  = SeansFimowyRe.replaceFirstIn(span.text.trim, "").trim

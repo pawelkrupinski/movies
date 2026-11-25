@@ -7,7 +7,7 @@ import scala.util.Try
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScrapeClock
 import services.cinemas.common.{SingleSiteScraper, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
@@ -58,7 +58,7 @@ object KinoKikaClient {
   // CSS class on row divs: "row 2026-06-07" (date embedded as a class token)
   private val DateClassPat = """(\d{4}-\d{2}-\d{2})""".r
   // "godz. 16:45"
-  private val GodzPat = raw"""godz\.\s*(${ScraperParse.ClockText})""".r
+  private val GodzPat = raw"""godz\.\s*(${ScrapeClock.ClockText})""".r
   // "sala KIKA", "sala PUFA" etc. — the room name after "sala"
   private val SalaPat = """sala\s+(\S+)""".r
 
@@ -85,7 +85,7 @@ object KinoKikaClient {
 
       val dateDiv = Option(row.selectFirst("div.date"))
       val timeText = dateDiv.flatMap(d => GodzPat.findFirstMatchIn(d.text)).map(_.group(1))
-      val time    = timeText.flatMap(ScraperParse.parseHHmm)
+      val time    = timeText.flatMap(ScrapeClock.parseHHmm)
       val room    = dateDiv.flatMap(d => SalaPat.findFirstMatchIn(d.text)).map(_.group(1))
 
       for {

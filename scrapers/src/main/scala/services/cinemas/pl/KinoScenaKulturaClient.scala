@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeImages, ScrapeRuntime}
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 import tools.HttpFetch
@@ -88,7 +88,7 @@ object KinoScenaKulturaClient {
     } yield RawSlot(
       title     = title,
       dateTime  = dt,
-      posterUrl = Option(block.selectFirst("div.event-img img")).flatMap(ScraperParse.largestImageUrl),
+      posterUrl = Option(block.selectFirst("div.event-img img")).flatMap(ScrapeImages.largestImageUrl),
       synopsis  = Option(block.selectFirst("div.event-desc")).map(SynopsisProse.blockText(_).trim).filter(_.length > 20),
       genres    = genresOf(block),
       runtime   = runtimeOf(block)
@@ -98,7 +98,7 @@ object KinoScenaKulturaClient {
   private def dateTimeOf(m: scala.util.matching.Regex.Match): Option[LocalDateTime] =
     for {
       date <- Try(LocalDate.of(m.group(1).toInt, m.group(2).toInt, m.group(3).toInt)).toOption
-      time <- ScraperParse.clockAt(m, 4)
+      time <- ScrapeClock.clockAt(m, 4)
     } yield LocalDateTime.of(date, time)
 
   /** Genres are the comma-list before the first `|` in the
@@ -112,5 +112,5 @@ object KinoScenaKulturaClient {
   /** Runtime in minutes from the "… | 124 min." tail of the attribute line. */
   private def runtimeOf(block: Element): Option[Int] =
     Option(block.selectFirst("div.event-attribute")).map(_.text)
-      .flatMap(ScraperParse.runtimeMinutesIn)
+      .flatMap(ScrapeRuntime.runtimeMinutesIn)
 }

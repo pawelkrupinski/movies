@@ -8,7 +8,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
@@ -33,7 +33,7 @@ class DcfClient(http: HttpFetch
   private val TicketBase    = "https://dcf.bilety24.pl/kup-bilety/?id="
 
   // aria-label: "Tytuł; Miejsce: Sala Warszawa; Data: 05.06.2026 15:30"
-  private val AriaPat = raw"""^(.+?); Miejsce: (.+?); Data: (\d{2}\.\d{2}\.\d{4}) (${ScraperParse.IsoClockText})$$""".r
+  private val AriaPat = raw"""^(.+?); Miejsce: (.+?); Data: (\d{2}\.\d{2}\.\d{4}) (${ScrapeClock.IsoClockText})$$""".r
   private val FilmIdPat   = """film-(\d+)""".r
 
   private case class RawSlot(dateTime: LocalDateTime, room: Option[String], bookingUrl: Option[String])
@@ -100,14 +100,14 @@ class DcfClient(http: HttpFetch
   private def posterOf(block: Element): Option[String] =
     Option(block.selectFirst("div.film__poster .thumbnail-cover"))
       .map(_.attr("style"))
-      .flatMap(ScraperParse.cssUrl)
+      .flatMap(ScrapeImages.cssUrl)
       .filter(_.nonEmpty)
 
   private def slotsOf(block: Element): Seq[RawSlot] =
     block.select("div.repertoir__item").asScala.toSeq.flatMap { item =>
       val label = Option(item.selectFirst("a.link-absolute")).map(_.attr("aria-label")).getOrElse("")
       AriaPat.findFirstMatchIn(label).flatMap { m =>
-        ScraperParse.parseDateTime(s"${m.group(3)} ${m.group(4)}").map { dt =>
+        ScrapeDates.parseDateTime(s"${m.group(3)} ${m.group(4)}").map { dt =>
           val room    = Some(m.group(2).trim).filter(_.nonEmpty)
           val showId  = Option(item.selectFirst("[data-target]")).map(_.attr("data-target"))
                           .flatMap(t => """#repertoir(\d+)""".r.findFirstMatchIn(t).map(_.group(1)))

@@ -7,7 +7,7 @@ import scala.util.Try
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScraperParse}
 import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 import tools.HttpFetch
 
@@ -93,7 +93,7 @@ object KinoSpojniaClient {
         titleElement <- Option(t.selectFirst("a.tytul"))
         title    = titleElement.text.replace(' ', ' ').trim if title.nonEmpty
         timeStr <- Option(t.selectFirst("span.godzina")).map(_.text.trim)
-        time    <- ScraperParse.parseHHmm(timeStr)
+        time    <- ScrapeClock.parseHHmm(timeStr)
         bookElement   = Option(t.selectFirst("a.kupbilet"))
         date    <- bookElement.flatMap(b => BookingDatePat.findFirstMatchIn(b.attr("href")))
                      .flatMap(m => Try(LocalDate.parse(m.group(1))).toOption)

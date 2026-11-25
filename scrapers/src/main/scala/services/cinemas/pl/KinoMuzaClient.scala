@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScraperParse}
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.titles.TitleNormalizer
@@ -26,8 +26,8 @@ class KinoMuzaClient(http: HttpFetch, today: => LocalDate,
     // 2-day-old listing (the site still shows yesterday's screening, the
     // snapshot test runs 2 days after its capture date, …) is this year,
     // not next. 6 months is the sweet spot.
-    Try { val parts = ddMM.trim.split("\\."); ScraperParse.monthDay(parts(0).toInt, parts(1).toInt) }.toOption.flatten
-      .flatMap(ScraperParse.upcomingDate(_, today, Period.ofMonths(6)))
+    Try { val parts = ddMM.trim.split("\\."); ScrapeDates.monthDay(parts(0).toInt, parts(1).toInt) }.toOption.flatten
+      .flatMap(ScrapeDates.upcomingDate(_, today, Period.ofMonths(6)))
 
   // The listing scrape returns just the listing — title, director, runtime,
   // year, country, showtimes (no synopsis/poster/trailer). Fetching all 80+
@@ -183,7 +183,7 @@ class KinoMuzaClient(http: HttpFetch, today: => LocalDate,
           val bookingUrl = Option(item.selectFirst("a.ticket-buy")).map(_.attr("href"))
           val room       = Option(item.selectFirst("span.text-gold")).map(_.parent().text().trim).filter(_.nonEmpty)
           Option(item.selectFirst(".ticket-hour")).map(_.text().trim)
-            .flatMap(ScraperParse.parseHHmm).map(time => Showtime(date.atTime(time), bookingUrl, room))
+            .flatMap(ScrapeClock.parseHHmm).map(time => Showtime(date.atTime(time), bookingUrl, room))
         }
       }
     }.toSeq.distinctBy(_.dateTime)

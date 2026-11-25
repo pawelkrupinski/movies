@@ -10,7 +10,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeImages}
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -60,7 +60,7 @@ object KinoMDKMyszkowClient {
   // "25, 26, 27.09.2026" — a comma day-list, then the shared month.year.
   private val DateListPat = """([\d,\s]+)\.(\d{1,2})\.(\d{4})""".r
   private val RuntimePat  = """czas trwania:\s*(\d+)\s*min""".r
-  private val TimePat     = raw"""godz\.?\s*(${ScraperParse.ClockText})""".r
+  private val TimePat     = raw"""godz\.?\s*(${ScrapeClock.ClockText})""".r
 
   private val BoilerplateStarts = Seq("czas trwania", "źródło", "bilety", "data")
 
@@ -81,11 +81,11 @@ object KinoMDKMyszkowClient {
       days   = dateM.group(1).split(",").toSeq.flatMap(_.trim.toIntOption)
       dates  = days.flatMap(d => Try(LocalDate.of(year, month, d)).toOption)
       if dates.nonEmpty
-      time   <- TimePat.findFirstMatchIn(text).flatMap(m => ScraperParse.parseHHmm(m.group(1)))
+      time   <- TimePat.findFirstMatchIn(text).flatMap(m => ScrapeClock.parseHHmm(m.group(1)))
     } yield CinemaMovie(
       movie     = Movie(title, runtimeMinutes = RuntimePat.findFirstMatchIn(text).map(_.group(1).toInt)),
       cinema    = cinema,
-      posterUrl = block.flatMap(b => Option(b.selectFirst("img[src]"))).flatMap(ScraperParse.largestImageUrl),
+      posterUrl = block.flatMap(b => Option(b.selectFirst("img[src]"))).flatMap(ScrapeImages.largestImageUrl),
       filmUrl   = Some(url),
       synopsis  = block.flatMap(synopsisOf),
       showtimes = dates.map(d => Showtime(LocalDateTime.of(d, time), None)).sortBy(_.dateTime)

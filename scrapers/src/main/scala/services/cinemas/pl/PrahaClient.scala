@@ -7,7 +7,7 @@ import scala.util.Try
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates}
 import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
 import tools.HttpFetch
 
@@ -57,8 +57,8 @@ object PrahaClient {
   // then four days later dropped the year entirely ("12 Wrz (Sb) / 16:10") —
   // both tolerated without capturing the weekday (redundant with the date
   // itself) and without requiring the year (see `parseStamp`, which infers it
-  // from `today` via `ScraperParse.upcomingDate` when absent).
-  private val StampPat = raw"""(\d{1,2})\s+(\p{L}+)(?:\s+(\d{4}))?(?:\s*\([^)]*\))?\s*/\s*${ScraperParse.ClockParts}""".r
+  // from `today` via `ScrapeDates.upcomingDate` when absent).
+  private val StampPat = raw"""(\d{1,2})\s+(\p{L}+)(?:\s+(\d{4}))?(?:\s*\([^)]*\))?\s*/\s*${ScrapeClock.ClockParts}""".r
 
   def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
@@ -83,17 +83,17 @@ object PrahaClient {
   /** "10 Cze 2026 / 15:30" or the yearless "12 Wrz / 16:10" → `LocalDateTime`;
    *  `None` when the month abbreviation is unknown or the day/time is out of
    *  range. A stamp without a year has its year inferred from `today` via
-   *  [[ScraperParse.upcomingDate]] — the page only ever lists near-future
+   *  [[ScrapeDates.upcomingDate]] — the page only ever lists near-future
    *  screenings, so the default 60-day grace is generous. */
   private def parseStamp(stamp: String, today: LocalDate): Option[LocalDateTime] =
     StampPat.findFirstMatchIn(stamp).flatMap { m =>
-      ScraperParse.polishMonthAbbrev(m.group(2)).flatMap { month =>
+      ScrapeDates.polishMonthAbbrev(m.group(2)).flatMap { month =>
         val day = m.group(1).toInt
         val date = Option(m.group(3)) match {
           case Some(year) => Try(LocalDate.of(year.toInt, month, day)).toOption
-          case None       => Try(MonthDay.of(month, day)).toOption.flatMap(ScraperParse.upcomingDate(_, today))
+          case None       => Try(MonthDay.of(month, day)).toOption.flatMap(ScrapeDates.upcomingDate(_, today))
         }
-        date.flatMap(d => ScraperParse.clockAt(m, 4).map(d.atTime))
+        date.flatMap(d => ScrapeClock.clockAt(m, 4).map(d.atTime))
       }
     }
 }

@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeDates, ScrapeImages}
 import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
 import services.titles.FormatTags
 import tools.HttpFetch
@@ -65,7 +65,7 @@ object SckStargardClient {
     val title = Option(wrapper.selectFirst(".movie-title")).map(_.text.trim).filter(_.nonEmpty)
     title.toSeq.flatMap { filmTitle =>
       val poster = Option(wrapper.selectFirst(".movie-poster img"))
-        .flatMap(img => ScraperParse.imageUrl(img, "data-orig-src").orElse(ScraperParse.largestImageUrl(img)))
+        .flatMap(img => ScrapeImages.imageUrl(img, "data-orig-src").orElse(ScrapeImages.largestImageUrl(img)))
         .filterNot(_.startsWith("data:")) // skip the lazyload SVG placeholder
 
       val format = wrapper.select(".movie-tags span.movie-tag").asScala.toSeq
@@ -74,7 +74,7 @@ object SckStargardClient {
         .toList
 
       wrapper.select(".movie-seances a[data-seance_link]").asScala.toSeq.flatMap { anchor =>
-        ScraperParse.parseDateTime(anchor.attr("data-seance_link")).map { dt =>
+        ScrapeDates.parseDateTime(anchor.attr("data-seance_link")).map { dt =>
           ScrapedSlot(
             title      = filmTitle,
             dateTime   = dt,

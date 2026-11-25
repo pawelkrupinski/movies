@@ -10,7 +10,7 @@ import models.CountryNames
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.SynopsisProse
-import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, CinemaScraper, ListingPages, SlotsToMovies, ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import services.titles.FormatTags
 import services.titles.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
@@ -30,7 +30,7 @@ import tools.{HttpFetch, HttpRead}
  *         (`2D`, `dubbing`, `napisy`) in `<sup>` children, and the movie id
  *       - `button.event-button`        → one per screening: a yearless
  *         "27 września" `<span>` then an `HH:MM` `<span>`; the year comes
- *         from the injected `today` ([[ScraperParse.upcomingDate]])
+ *         from the injected `today` ([[ScrapeDates.upcomingDate]])
  *     (The same screenings are repeated in a hidden `div.list-by-day`, which is
  *     ignored.) Live events — stand-up, "Spektakl …" — share the page; they are
  *     dropped by title before their record is fetched.
@@ -153,9 +153,9 @@ object KinoIskraClient {
       else block.select("button.event-button").asScala.toSeq.flatMap { button =>
         val spans = button.select("span").asScala.toSeq.map(_.text.trim)
         for {
-          dayMonth <- spans.headOption.flatMap(ScraperParse.parseDayMonth)
-          date     <- ScraperParse.upcomingDate(dayMonth, today)
-          time     <- spans.lift(1).flatMap(ScraperParse.parseHHmm)
+          dayMonth <- spans.headOption.flatMap(ScrapeDates.parseDayMonth)
+          date     <- ScrapeDates.upcomingDate(dayMonth, today)
+          time     <- spans.lift(1).flatMap(ScrapeClock.parseHHmm)
         } yield Slot(heading.attr("data-movie"), title,
           Showtime(LocalDateTime.of(date, time), Some(ticketingDayUrl(date)), format = format))
       }
@@ -178,7 +178,7 @@ object KinoIskraClient {
       director  = labelled(lines, "Reżyseria").toSeq.flatMap(names),
       cast      = labelled(lines, "Obsada").toSeq.flatMap(names),
       ageRating = labelled(lines, "Od lat").map(_.trim).filter(_.nonEmpty).flatMap(age => AgeRating.normalize(s"$age+")),
-      poster    = Option(document.selectFirst("img.poster-to-zoom")).flatMap(ScraperParse.largestImageUrl),
+      poster    = Option(document.selectFirst("img.poster-to-zoom")).flatMap(ScrapeImages.largestImageUrl),
       synopsis  = synopsisOf(document)
     )
   }

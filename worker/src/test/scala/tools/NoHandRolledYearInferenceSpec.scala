@@ -8,7 +8,7 @@ import java.nio.file.{Files, Paths}
 
 /**
  * A scraper reads the year of a page date the page prints without one ONLY through
- * `ScraperParse.upcomingDate` / `upcomingMonthDate` (with `ScraperParse.monthDay` for a numeric
+ * `ScrapeDates.upcomingDate` / `upcomingMonthDate` (with `ScrapeDates.monthDay` for a numeric
  * day and month) — never a year rule of its own.
  *
  * The class of failure: a dozen clients each carried their own "this year, or next if it's past"
@@ -30,7 +30,7 @@ class NoHandRolledYearInferenceSpec extends AnyFlatSpec with Matchers {
 
   /** file → why it may still derive a year itself. */
   private val Allowlist: Map[String, String] = Map(
-    ClientRoot.file("common/ScraperParse.scala").toString -> "the shared year rule itself",
+    ClientRoot.file("common/ScrapeDates.scala").toString -> "the shared year rule itself",
     ClientRoot.file("pl/KinoZamekClient.scala").toString -> (
       "a cycle page lists the whole season, so a yearless date is the occurrence NEAREST today (June's opening night " +
         "read in August is past, not eleven months ahead) — the opposite of upcomingDate's next-occurrence rule"),
@@ -58,17 +58,17 @@ class NoHandRolledYearInferenceSpec extends AnyFlatSpec with Matchers {
     yearRules("val candidate = LocalDate.of(today.getYear, month, day)") shouldBe Seq(1)
     yearRules("if (candidate.isBefore(today.minusMonths(6))) candidate.plusYears(1) else candidate") shouldBe Seq(1)
     yearRules("if (thisYear.isBefore(today.minusWeeks(1))) thisYear.plusYears(1) else thisYear") shouldBe Seq(1)
-    yearRules("ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingDate(_, today, Period.ofMonths(6)))") shouldBe empty
+    yearRules("ScrapeDates.monthDay(day, month).flatMap(ScrapeDates.upcomingDate(_, today, Period.ofMonths(6)))") shouldBe empty
     yearRules("screeningsUrl(cinemaId, today.atStartOfDay, today.plusYears(1).atStartOfDay)") shouldBe empty
     yearRules("s\"date=${ym.getYear}-${ym.getMonthValue}\"") shouldBe empty
   }
 
-  "the cinema clients" should "read a yearless page date's year only through ScraperParse.upcomingDate" in {
+  "the cinema clients" should "read a yearless page date's year only through ScrapeDates.upcomingDate" in {
     sources.size should be > 100
     val found = sources.filterNot { case (path, _) => Allowlist.contains(path) }.flatMap { case (path, src) =>
       yearRules(src).map(line => s"$path:$line: ${read(Paths.get(path)).linesIterator.drop(line - 1).next().trim}")
     }
-    withClue("Read the date's year through ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingDate(_, today, " +
+    withClue("Read the date's year through ScrapeDates.monthDay(day, month).flatMap(ScrapeDates.upcomingDate(_, today, " +
       "grace)) — or upcomingMonthDate for a calendar listing only the current month onwards — instead of a year " +
       "rule of the client's own; or add the file to Allowlist with why its year cannot come from today:\n" +
       found.mkString("\n") + "\n")(found shouldBe empty)

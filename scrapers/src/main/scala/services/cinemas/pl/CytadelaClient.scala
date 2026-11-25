@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeImages, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{SingleSiteScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
@@ -89,7 +89,7 @@ class CytadelaClient(http: HttpFetch
     val slug = link.flatMap(a => SlugPat.findFirstMatchIn(a.attr("href")).map(_.group(1)))
     val title = link.map(_.text.trim).filter(_.nonEmpty)
     val time = Option(item.selectFirst("time.repertoire-item__time")).map(t => Option(t.attr("datetime")).filter(_.nonEmpty).getOrElse(t.text).trim)
-                 .flatMap(ScraperParse.parseHHmm)
+                 .flatMap(ScrapeClock.parseHHmm)
     for { s <- slug; t <- title; tm <- time } yield {
       val genres = item.select("li.repertoire-item__categories__category").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty)
                      .map(tools.TextNormalization.titleCaseIfAllLower)
@@ -99,7 +99,7 @@ class CytadelaClient(http: HttpFetch
                      .toSeq.flatMap(ScraperParse.commaItems)
       val runtime = spans.flatMap(x => """(?i)czas:\s*(\d+)\s*min""".r.findFirstMatchIn(x).map(_.group(1).toInt)).headOption
       val booking = Option(item.selectFirst("a.repertoire-item__container__button--dark[href]")).map(_.attr("href")).filter(_.nonEmpty)
-      val poster  = Option(item.selectFirst("img.repertoire-item__image[src]")).flatMap(ScraperParse.largestImageSource)
+      val poster  = Option(item.selectFirst("img.repertoire-item__image[src]")).flatMap(ScrapeImages.largestImageSource)
                       .map(ScraperParse.onSite(BaseUrl))
       // The row's language badge ("dubbing", "napisy", "polski lektor"; "oryginalny" names none), which the title never repeats.
       val version = item.select("li.repertoire-item__info__item").asScala.toSeq

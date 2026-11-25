@@ -8,7 +8,7 @@ import scala.util.Try
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates}
 import services.cinemas.common.{SingleSiteScraper, ListingPages, OnlyMovieEventsFilter, ScrapeHorizon, ScrapedSlot, SlotsToMovies}
 import services.titles.FormatTags
 import services.titles.TitleNormalizer
@@ -79,7 +79,7 @@ object KinoKijowClient {
   // `\p{L}`, not `\w`: Java's `\w` is ASCII-only by default, so "10 paź 18:00"
   // never matched and every OCTOBER screening was silently dropped. The other
   // eleven abbreviations happen to be ASCII, which is why it went unnoticed.
-  private val DateTimePat = raw"""(\d{1,2})\s+(\p{L}+)\s+(${ScraperParse.ClockText})""".r
+  private val DateTimePat = raw"""(\d{1,2})\s+(\p{L}+)\s+(${ScrapeClock.ClockText})""".r
 
   private[cinemas] def parseDocument(html: String, month: YearMonth, titles: TitleNormalizer): Seq[ScrapedSlot] = {
     val document = Jsoup.parse(html)
@@ -128,8 +128,8 @@ object KinoKijowClient {
       val day   = m.group(1).toInt
       val hhmm  = m.group(3)
       for {
-        mo <- ScraperParse.polishMonthAbbrev(m.group(2))  // the MSI portal's "lip"
-        t  <- ScraperParse.parseHHmm(hhmm)
+        mo <- ScrapeDates.polishMonthAbbrev(m.group(2))  // the MSI portal's "lip"
+        t  <- ScrapeClock.parseHHmm(hhmm)
         // Use the month's year; if the day's month doesn't match the page's month
         // (e.g. a "30 lip" date on a "2026-06" page), still accept it — the MSI
         // occasionally bleeds a few cross-month screenings onto the neighbouring page.

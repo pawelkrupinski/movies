@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{CinemaScraper, ListingPages, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ListingPages, OnlyMovieEventsFilter, SlotsToMovies, ScrapeClock, ScrapeImages, ScraperParse}
 import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 /**
@@ -89,7 +89,7 @@ object CinemaPlusClient {
   def dayUrl(pageUrl: String, day: LocalDate): String = s"$pageUrl?date=$day"
 
   private val DayId = """js-(\d{4}-\d{2}-\d{2})""".r
-  private val ShowtimeButton = raw"""(?i)^${ScraperParse.ClockParts}\s*([ap])\.?m?\.?$$""".r
+  private val ShowtimeButton = raw"""(?i)^${ScrapeClock.ClockParts}\s*([ap])\.?m?\.?$$""".r
 
   final case class Slot(title: String, card: Element, showtime: Showtime)
 
@@ -110,7 +110,7 @@ object CinemaPlusClient {
 
   /** "6:00p" / "11:30a" → the time of day; anything else is not a showtime button. */
   def timeOf(label: String): Option[LocalTime] =
-    ShowtimeButton.findFirstMatchIn(label.trim).flatMap(ScraperParse.meridiemClockAt(_, 1, 3))
+    ShowtimeButton.findFirstMatchIn(label.trim).flatMap(ScrapeClock.meridiemClockAt(_, 1, 3))
 
   /** One day page's film cards → a slot per showtime button, on `day`. */
   def slots(page: Document, day: LocalDate): Seq[Slot] =
@@ -144,7 +144,7 @@ object CinemaPlusClient {
       CinemaMovie(
         movie     = Movie(title = title),
         cinema    = cinema,
-        posterUrl = Option(card.selectFirst("img[src]")).flatMap(ScraperParse.largestImageUrl),
+        posterUrl = Option(card.selectFirst("img[src]")).flatMap(ScrapeImages.largestImageUrl),
         filmUrl   = Option(card.selectFirst("h3 a")).map(_.absUrl("href")).filter(_.nonEmpty),
         synopsis  = Option(card.selectFirst("div.text-sm > div > div")).map(_.text.trim).filter(_.nonEmpty),
         cast      = credited(card, "Cast:"),

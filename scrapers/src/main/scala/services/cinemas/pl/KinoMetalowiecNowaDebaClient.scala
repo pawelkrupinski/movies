@@ -9,7 +9,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{ListingPageScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, SlotsToMovies, ScrapeClock, ScrapeDates, ScrapeImages, ScrapeRuntime, ScraperParse}
 import tools.HttpFetch
 
 /**
@@ -54,7 +54,7 @@ object KinoMetalowiecNowaDebaClient {
   val RepertoireUrl = "https://www.soknowadeba.pl/repertuar-kina-metalowiec/"
 
   private val DayHeader    = """^(\d{1,2})\s+(\p{L}+)$""".r
-  private val Screening    = raw"""^(${ScraperParse.ClockText})\s+(.+)$$""".r
+  private val Screening    = raw"""^(${ScrapeClock.ClockText})\s+(.+)$$""".r
   private val AgeYears     = """(\d+)\s*\+""".r
   private val YouTubeUrl   = """"youtube_url":"([^"]+)"""".r
   private val DetailsMark  = "DATA WYŚWIETLANIA"
@@ -103,10 +103,10 @@ object KinoMetalowiecNowaDebaClient {
   /** The sidebar schedule: day headers and `HH:MM Title` lines, in order. */
   private def scheduleSlots(document: Document, today: LocalDate): Seq[RawSlot] =
     document.select("aside p").asScala.toSeq.flatMap { p =>
-      ScraperParse.underDayHeaders(ScraperParse.linesOf(p)) {
-        case line @ DayHeader(_, _) => ScraperParse.parseDayMonth(line).flatMap(ScraperParse.upcomingDate(_, today))
+      ScrapeDates.underDayHeaders(ScraperParse.linesOf(p)) {
+        case line @ DayHeader(_, _) => ScrapeDates.parseDayMonth(line).flatMap(ScrapeDates.upcomingDate(_, today))
       } {
-        case (Screening(time, title), date) => ScraperParse.parseHHmm(time).map(tm => RawSlot(title.trim, LocalDateTime.of(date, tm)))
+        case (Screening(time, title), date) => ScrapeClock.parseHHmm(time).map(tm => RawSlot(title.trim, LocalDateTime.of(date, tm)))
         case _                              => None
       }
     }
@@ -141,10 +141,10 @@ object KinoMetalowiecNowaDebaClient {
       FilmBlock(
         title     = title,
         posterUrl = widgets.filter(_.hasClass("elementor-widget-image"))
-                      .flatMap(w => Option(w.selectFirst("img[src]"))).flatMap(ScraperParse.largestImageUrl).headOption,
+                      .flatMap(w => Option(w.selectFirst("img[src]"))).flatMap(ScrapeImages.largestImageUrl).headOption,
         synopsis  = fields.get(SynopsisLabel).filter(_.nonEmpty),
         genres    = fields.get(GenreLabel).toSeq.flatMap(_.split("/")).map(_.trim).filter(_.nonEmpty),
-        runtime   = fields.get(RuntimeLabel).flatMap(ScraperParse.runtimeMinutesIn),
+        runtime   = fields.get(RuntimeLabel).flatMap(ScrapeRuntime.runtimeMinutesIn),
         // "b/o" (no restriction) is a marker, not a rating, so only "N+" counts.
         age       = fields.get(AgeLabel).flatMap(AgeYears.findFirstMatchIn).map(m => s"${m.group(1)}+"),
         trailer   = widgets.filter(_.hasClass("elementor-widget-video"))

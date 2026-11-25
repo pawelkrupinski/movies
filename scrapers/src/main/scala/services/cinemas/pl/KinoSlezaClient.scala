@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{ListingPageScraper, ScraperParse}
+import services.cinemas.common.{ListingPageScraper, ScrapeClock, ScrapeImages}
 import services.titles.FormatTags
 import tools.HttpFetch
 
@@ -41,7 +41,7 @@ object KinoSlezaClient {
   val RepertoireUrl = s"$BaseUrl/kino-sleza/repertuar/"
 
   private val DatePat = """(\d{1,2})\.(\d{1,2})\.(\d{4})""".r
-  private val TimePat = ScraperParse.ClockParts.r
+  private val TimePat = ScrapeClock.ClockParts.r
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] =
     Jsoup.parse(html, BaseUrl).select("div.movie").asScala.toSeq.flatMap(parseMovie(_, cinema))
@@ -54,7 +54,7 @@ object KinoSlezaClient {
     } yield CinemaMovie(
       movie     = Movie(title, genres = genresOf(movie)),
       cinema    = cinema,
-      posterUrl = Option(movie.selectFirst("figure.movie-img img")).flatMap(ScraperParse.largestImageUrl),
+      posterUrl = Option(movie.selectFirst("figure.movie-img img")).flatMap(ScrapeImages.largestImageUrl),
       synopsis  = Option(movie.selectFirst("span.description")).map(_.text.trim).filter(_.length > 20),
       showtimes = showtimes
     )

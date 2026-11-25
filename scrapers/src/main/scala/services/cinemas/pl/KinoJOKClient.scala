@@ -7,7 +7,7 @@ import scala.util.Try
 
 import models.*
 import play.api.libs.json.{JsObject, Json}
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.ScrapeDates
 import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ScrapedSlot, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
@@ -25,7 +25,7 @@ import tools.{HttpFetch, HttpRead}
  * the 2nd, 3rd AND 4th). The showtime detail also lives as loosely-formatted
  * Polish prose inside `description` (day + roman-numeral month, "02 X
  * 16:00"), but every run observed keeps the SAME time of day across its
- * span, so [[ScraperParse.dailyRange]] — expanding `start_date`'s time across
+ * span, so [[ScrapeDates.dailyRange]] — expanding `start_date`'s time across
  * every day up to `end_date`'s date — reads the same showtimes without a
  * roman-numeral parser.
  *
@@ -74,7 +74,7 @@ object KinoJOKClient {
       endStr   <- (ev \ "end_date").asOpt[String]
       start    <- Try(LocalDateTime.parse(startStr, DateTimeFmt)).toOption
       end      <- Try(LocalDateTime.parse(endStr, DateTimeFmt)).toOption
-    } yield ScraperParse.dailyRange(start.toLocalDate, end.toLocalDate, start.toLocalTime)
+    } yield ScrapeDates.dailyRange(start.toLocalDate, end.toLocalDate, start.toLocalTime)
 
     for {
       t   <- title.toSeq

@@ -9,7 +9,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.SynopsisProse
-import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse, SlotsToMovies, OnlyMovieEventsFilter}
+import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, SlotsToMovies, OnlyMovieEventsFilter, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.titles.FormatTags
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
@@ -114,10 +114,10 @@ object KinoRemusClient {
     FilmDetail(
       synopsis       = content.map(synopsisOf).filter(_.nonEmpty),
       runtimeMinutes = content.flatMap(c => c.select("p").asScala.find(_.text.contains("Czas trwania")))
-                         .flatMap(p => ScraperParse.hoursMinutesRuntime(p.text)),
+                         .flatMap(p => ScrapeRuntime.hoursMinutesRuntime(p.text)),
       genres         = header.toSeq.flatMap(m => ScraperParse.commaItems(m.group(1))),
       ageRating      = AgeRating.normalize(header.map(_.group(2))),
-      posterUrl      = ScraperParse.ogImage(doc)
+      posterUrl      = ScrapeImages.ogImage(doc)
     )
   }
 

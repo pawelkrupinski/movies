@@ -7,10 +7,10 @@ import org.scalatest.matchers.should.Matchers
 import java.nio.file.Paths
 
 /**
- * A cinema client spells a showtime's clock in its patterns ONLY through `ScraperParse`'s clock
+ * A cinema client spells a showtime's clock in its patterns ONLY through `ScrapeClock`'s clock
  * fragments (`ClockParts`, `ClockPartsDotted`, `ClockText`, `ClockTextDotted`, `IsoClockText`,
- * composed with `raw"""…${ScraperParse.ClockParts}…"""`), and reads a captured hour and minute
- * only through `ScraperParse.clockAt` / `parseHHmm`.
+ * composed with `raw"""…${ScrapeClock.ClockParts}…"""`), and reads a captured hour and minute
+ * only through `ScrapeClock.clockAt` / `parseHHmm`.
  *
  * Forty clients each carried a private copy of the same `(\d{1,2}):(\d{2})` and the
  * `Try(LocalTime.of(m.group(1).toInt, m.group(2).toInt))` that reads it — the repo's extract-at-two-uses
@@ -20,7 +20,7 @@ import java.nio.file.Paths
  *  1. No clock regex literal: `\d{1,2}:\d{2}`, `(\d{1,2}):(\d{2})`, `\d{2}:\d{2}`, or the dotted
  *     `[.:]` / `[:.]` / `\.` forms (a `\d{2}\.\d{2}` followed by a further `\.` field is a date).
  *  2. No clock built from parsed numbers: `LocalTime.of(h, m)` / `date.atTime(h, m)` with a first
- *     argument that is not a literal — `ScraperParse.clock` / `clockAt` / `meridiemClockAt` read it
+ *     argument that is not a literal — `ScrapeClock.clock` / `clockAt` / `meridiemClockAt` read it
  *     without a throw that would take the page's other screenings with it. The first cut matched
  *     only `LocalTime.of(m.group(`, and nine reads (a `split(":")`, an extractor's bound `h`, a
  *     `date.atTime(m.group(4).toInt, …)`, two hand-rolled am/pm converters, a hand-rolled
@@ -31,7 +31,7 @@ class NoHandRolledClockPatternSpec extends AnyFlatSpec with Matchers {
   import ScalaSourceScan.{codeOf, read, scalaFiles}
 
   private val ClientRoot = SourceTrees("scrapers/src/main/scala/services/cinemas")
-  private val Source     = ClientRoot.file("common/ScraperParse.scala").toString
+  private val Source     = ClientRoot.file("common/ScrapeClock.scala").toString
 
   private val ClockLiteral =
     """\\d\{(?:1,2|2)\}\)?(?::|\\\.|\[[.:]{2}\])\(?\\d\{2\}(?!\)?\\\.)""".r
@@ -50,9 +50,9 @@ class NoHandRolledClockPatternSpec extends AnyFlatSpec with Matchers {
     clockRules("""\b(\d{1,2})[.:](\d{2})\b""") shouldBe Seq(1)
     clockRules("""^\d{1,2}[:.]\d{2}\s*-""") shouldBe Seq(1)
     clockRules("Try(LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption") shouldBe Seq(1)
-    clockRules("""godz\.?\s*(${ScraperParse.ClockText})""") shouldBe empty
+    clockRules("""godz\.?\s*(${ScrapeClock.ClockText})""") shouldBe empty
     clockRules("""(\d{1,2})\.(\d{1,2})\.(\d{4})""") shouldBe empty   // a date
-    clockRules("ScraperParse.clockAt(m, 1)") shouldBe empty
+    clockRules("ScrapeClock.clockAt(m, 1)") shouldBe empty
     // The shapes the first cut let through.
     clockRules("""^(\d{1,2})\.(\d{2})$""") shouldBe Seq(1)
     clockRules("LocalTime.of(parts(0).toInt, parts(1).toInt)") shouldBe Seq(1)
@@ -67,14 +67,14 @@ class NoHandRolledClockPatternSpec extends AnyFlatSpec with Matchers {
     clockRules("date.atTime(time)") shouldBe empty
   }
 
-  "the cinema clients" should "spell and read a clock only through ScraperParse" in {
+  "the cinema clients" should "spell and read a clock only through ScrapeClock" in {
     val sources = scalaFiles(ClientRoot).filterNot(_.toString == Source)
     sources.size should be > 100
     val found = sources.flatMap { path =>
       clockRules(codeOf(path)).map(line => s"$path:$line: ${read(Paths.get(path.toString)).linesIterator.drop(line - 1).next().trim}")
     }
-    withClue("Compose the clock from ScraperParse's fragments (raw\"\"\"…${ScraperParse.ClockParts}…\"\"\") and read it with " +
-      "ScraperParse.clock / clockAt / meridiemClockAt or parseHHmm, instead of a pattern of the client's own:\n" +
+    withClue("Compose the clock from ScrapeClock's fragments (raw\"\"\"…${ScrapeClock.ClockParts}…\"\"\") and read it with " +
+      "ScrapeClock.clock / clockAt / meridiemClockAt or parseHHmm, instead of a pattern of the client's own:\n" +
       found.mkString("\n") + "\n")(found shouldBe empty)
   }
 }

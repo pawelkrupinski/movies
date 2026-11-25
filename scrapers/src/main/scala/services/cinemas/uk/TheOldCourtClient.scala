@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, SlotsToMovies, ScrapeClock, ScrapeDates, ScrapeImages}
 import tools.{HttpFetch, HttpRead}
 
 /**
@@ -88,7 +88,7 @@ object TheOldCourtClient {
   private val CinemaBookingPath = "/sales/the-old-court-cinema/"
 
   /** "Fri 7th Aug 20:30-21:15" — the end time is ignored; the start is the showtime. */
-  private val WhenPat = raw"""\b(\d{1,2})(?:st|nd|rd|th)\s+([A-Za-z]{3,})\s+${ScraperParse.ClockParts}""".r
+  private val WhenPat = raw"""\b(\d{1,2})(?:st|nd|rd|th)\s+([A-Za-z]{3,})\s+${ScrapeClock.ClockParts}""".r
 
   /** Programme-strand labels the venue appends to a real film title. "The Old
    *  Courters" is its seniors' club matinee, so "Tuner (The Old Courters)" and
@@ -123,7 +123,7 @@ object TheOldCourtClient {
         .flatMap(_.children.asScala.find(_.tagName == "div"))
         .map(_.text.trim).map(cleanTitle).filter(_.nonEmpty)
       val eventUrl  = Option(block.selectFirst("a[href^=/event/]")).map(_.attr("abs:href"))
-      val posterUrl = Option(block.selectFirst("img")).flatMap(ScraperParse.largestImageUrl)
+      val posterUrl = Option(block.selectFirst("img")).flatMap(ScrapeImages.largestImageUrl)
       for {
         t <- title.toSeq
         u <- eventUrl.toSeq
@@ -139,10 +139,10 @@ object TheOldCourtClient {
   def parseWhen(text: String, today: LocalDate): Option[LocalDateTime] =
     WhenPat.findFirstMatchIn(text).flatMap { m =>
       for {
-        month    <- ScraperParse.englishMonth(m.group(2))
-        time     <- ScraperParse.clockAt(m, 3)
+        month    <- ScrapeDates.englishMonth(m.group(2))
+        time     <- ScrapeClock.clockAt(m, 3)
         dayMonth <- Try(MonthDay.of(month, m.group(1).toInt)).toOption
-        date     <- ScraperParse.upcomingDate(dayMonth, today, grace = Period.ofDays(1))
+        date     <- ScrapeDates.upcomingDate(dayMonth, today, grace = Period.ofDays(1))
       } yield LocalDateTime.of(date, time)
     }
 

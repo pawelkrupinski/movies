@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import java.time.LocalDate
 
 /** The clients whose pages print a date without its year, read through the shared
- *  [[services.cinemas.common.ScraperParse.upcomingDate]] rather than a year rule of their own.
+ *  [[services.cinemas.common.ScrapeDates.upcomingDate]] rather than a year rule of their own.
  *  The hand-rolled "roll forward when long past" rules got both year-boundary cases wrong: a
  *  29 lutego listed in a non-leap December built this year's 29 February and was dropped, and a
  *  leftover late-December row seen in early January was put eleven months into the future. */

@@ -11,7 +11,7 @@ import models.*
 import org.jsoup.Jsoup
 import play.api.libs.json.*
 import services.cinemas.common.SlotsToMovies
-import services.cinemas.common.{CinemaScraper, ScraperParse}
+import services.cinemas.common.{CinemaScraper, ScrapeRuntime}
 import tools.JsonLdBlocks
 import tools.{HttpFetch, ParallelDetailFetch, HttpRead}
 
@@ -156,7 +156,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
   )
 
   private def parseDuration(iso: String): Option[Int] =
-    """PT(?:(\d+)H)?(?:(\d+)M)?""".r.findFirstMatchIn(iso).map(m => ScraperParse.minutesOf(m.group(1), m.group(2))).filter(_ > 0)
+    """PT(?:(\d+)H)?(?:(\d+)M)?""".r.findFirstMatchIn(iso).map(m => ScrapeRuntime.minutesOf(m.group(1), m.group(2))).filter(_ > 0)
 
   private def parseScreeningEvent(json: JsValue): Option[ScreeningEntry] =
     Try {

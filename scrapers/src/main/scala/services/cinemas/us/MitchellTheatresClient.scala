@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element, TextNode}
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScraperParse}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScrapeClock, ScrapeImages, ScrapeRuntime}
 import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 /**
@@ -66,11 +66,11 @@ object MitchellTheatresClient {
    *  (or the template changed). */
   val Marker: HttpRead.PageMarker = HttpRead.PageMarker("showtimespage")
 
-  private val ShowtimeLabel = raw"""(?i)^${ScraperParse.ClockParts}\s*([ap])\.?m\.?$$""".r
+  private val ShowtimeLabel = raw"""(?i)^${ScrapeClock.ClockParts}\s*([ap])\.?m\.?$$""".r
 
   /** "7:05pm" / "1:25pm" / "12:10am" → the time of day; anything else is not a showtime. */
   def timeOf(label: String): Option[java.time.LocalTime] =
-    ShowtimeLabel.findFirstMatchIn(label.trim).flatMap(ScraperParse.meridiemClockAt(_, 1, 3))
+    ShowtimeLabel.findFirstMatchIn(label.trim).flatMap(ScrapeClock.meridiemClockAt(_, 1, 3))
 
   /** The home page's film blocks → one listing per film with a showing on `from` or later. */
   def films(page: Document, cinema: Cinema, from: LocalDate): Seq[CinemaMovie] =
@@ -79,7 +79,7 @@ object MitchellTheatresClient {
       Option.when(showtimes.nonEmpty)(CinemaMovie(
         movie     = Movie(title = block.attr("data-title").trim, runtimeMinutes = runtimeOf(block)),
         cinema    = cinema,
-        posterUrl = Option(block.selectFirst("img.moviePoster")).flatMap(ScraperParse.largestImageUrl),
+        posterUrl = Option(block.selectFirst("img.moviePoster")).flatMap(ScrapeImages.largestImageUrl),
         synopsis  = labelled(block, "Plot Summary:"),
         showtimes = showtimes,
         trailerUrl = Option(block.selectFirst(".reveal-modal a[href*=youtube.com/watch]")).map(_.absUrl("href")).filter(_.nonEmpty),
@@ -104,7 +104,7 @@ object MitchellTheatresClient {
 
   /** "1h 55m" off the title row. */
   private def runtimeOf(block: Element): Option[Int] =
-    Option(block.selectFirst("td.movietitle span")).flatMap(span => ScraperParse.hoursMinutesRuntime(span.text))
+    Option(block.selectFirst("td.movietitle span")).flatMap(span => ScrapeRuntime.hoursMinutesRuntime(span.text))
 
   /** The text after a `<strong>label</strong>` in the film's info panel, up to its `<br>`. */
   private def labelled(block: Element, label: String): Option[String] =

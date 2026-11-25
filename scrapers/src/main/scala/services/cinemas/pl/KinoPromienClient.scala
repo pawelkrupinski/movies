@@ -9,7 +9,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates}
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
@@ -138,8 +138,8 @@ object KinoPromienClient {
     ScreeningLine.findFirstMatchIn(line).toSeq.flatMap { m =>
       val startDay = m.group(1).toInt
       val endDay   = Option(m.group(2)).map(_.toInt).getOrElse(startDay)
-      val month    = ScraperParse.PolishMonths.get(m.group(3).toLowerCase(Locale.ROOT))
-      val times    = m.group(4).split(",").iterator.flatMap(ScraperParse.parseHHmm).toSeq
+      val month    = ScrapeDates.PolishMonths.get(m.group(3).toLowerCase(Locale.ROOT))
+      val times    = m.group(4).split(",").iterator.flatMap(ScrapeClock.parseHHmm).toSeq
       for {
         mth  <- month.toSeq
         day  <- startDay to endDay
@@ -152,5 +152,5 @@ object KinoPromienClient {
    *  year unless that lands more than a month in the past (a December page seen
    *  in January), in which case roll to next year. */
   private def inferredDate(day: Int, month: Int, today: LocalDate): Option[LocalDate] =
-    ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingDate(_, today, Period.ofMonths(1)))
+    ScrapeDates.monthDay(day, month).flatMap(ScrapeDates.upcomingDate(_, today, Period.ofMonths(1)))
 }

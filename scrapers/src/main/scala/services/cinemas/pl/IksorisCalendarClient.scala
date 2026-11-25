@@ -9,7 +9,7 @@ import models.*
 import org.jsoup.Jsoup
 import play.api.libs.json.{JsValue, Json}
 import services.cinemas.common.ScraperParse.jsonText
-import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon, SlotsToMovies, ScrapeClock}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 
@@ -81,7 +81,7 @@ object IksorisCalendarClient {
     s"${page.origin.value}/index/ajax.html?ajax=pobierzTerminy&idg=${page.eventGroup}&selectedDate=$day"
 
   // "2026-09-27 (niedziela) 14:30" — the weekday in between is ignored.
-  private val WhenPat = raw"""^(\d{4}-\d{2}-\d{2})\b.*?(${ScraperParse.ClockText})\s*$$""".r
+  private val WhenPat = raw"""^(\d{4}-\d{2}-\d{2})\b.*?(${ScrapeClock.ClockText})\s*$$""".r
   // "Bez znieczulenia/„WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy" — a
   // film cycle's name glued on after a slash and an opening Polish quote.
   private val CycleSuffix = """\s*/\s*„.*$""".r
@@ -129,7 +129,7 @@ object IksorisCalendarClient {
       rawTitle        <- field("wydarzenie")
       (title, format) <- Some(FormatTags.extractFormatTags(CycleSuffix.replaceFirstIn(rawTitle, ""))).filter(_._1.nonEmpty)
       dateTime        <- field("czas").collect { case WhenPat(date, time) =>
-                           ScraperParse.parseHHmm(time).map(LocalDateTime.of(LocalDate.parse(date), _)) }.flatten
+                           ScrapeClock.parseHHmm(time).map(LocalDateTime.of(LocalDate.parse(date), _)) }.flatten
     } yield RawSlot(
       title    = title,
       rawTitle = rawTitle,

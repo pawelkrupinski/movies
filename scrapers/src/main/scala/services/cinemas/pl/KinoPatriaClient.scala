@@ -8,7 +8,7 @@ import scala.util.Try
 import models.*
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeImages, ScrapeRuntime}
 import services.cinemas.common.SlotsToMovies
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
@@ -60,7 +60,7 @@ object KinoPatriaClient {
   val RepertoireUrl = "https://kinopatria.com/repertuar/"
 
   // "19.15", " 15.00" — dot-separated HH.MM (not HH:MM) with optional leading space
-  private val TimePat = raw"""^\s*${ScraperParse.ClockPartsDotted}\s*$$""".r
+  private val TimePat = raw"""^\s*${ScrapeClock.ClockPartsDotted}\s*$$""".r
 
   // "DD-MM-YYYY" as emitted by data-date attributes in the daily tabs
   private val DailyDatePat = """^(\d{2})-(\d{2})-(\d{4})$""".r
@@ -72,14 +72,14 @@ object KinoPatriaClient {
    *  site rather than the conventional colon). */
   private[cinemas] def parseTime(s: String): Option[LocalTime] =
     TimePat.findFirstMatchIn(s.trim).flatMap { m =>
-      ScraperParse.clockAt(m, 1)
+      ScrapeClock.clockAt(m, 1)
     }
 
   /** Infer the full year for a (day, month) pair relative to `today`. If
    *  the month is strictly before today's month, assume next year (the
    *  schedule wraps the calendar year boundary). */
   private[cinemas] def inferYear(day: Int, month: Int, today: LocalDate): Option[LocalDate] =
-    ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingMonthDate(_, today))
+    ScrapeDates.monthDay(day, month).flatMap(ScrapeDates.upcomingMonthDate(_, today))
 
   private[cinemas] def parseRepertoire(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(html, RepertoireUrl)
@@ -107,9 +107,9 @@ object KinoPatriaClient {
     title.filter(_ => showtimes.nonEmpty).map { title =>
       CinemaMovie(
         movie     = Movie(title, runtimeMinutes = Option(item.selectFirst(".amy-movie-field-duration"))
-          .flatMap(duration => ScraperParse.hoursMinutesRuntime(duration.text))),
+          .flatMap(duration => ScrapeRuntime.hoursMinutesRuntime(duration.text))),
         cinema    = cinema,
-        posterUrl = Option(item.selectFirst(posterSelector)).flatMap(ScraperParse.largestImageUrl),
+        posterUrl = Option(item.selectFirst(posterSelector)).flatMap(ScrapeImages.largestImageUrl),
         filmUrl   = Option(item.selectFirst("h3.amy-movie-field-title a[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),
         cast      = names("amy_actor"),
         director  = names("amy_director"),

@@ -10,7 +10,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.SynopsisProse
-import services.cinemas.common.{AgeRating, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPageScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPageScraper, ScrapedSlot, SlotsToMovies, ScrapeClock, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.titles.FormatTags
 import tools.HttpFetch
 
@@ -74,10 +74,10 @@ object KinoTomiClient {
       val title   = link.ownText.trim
       val format  = Option(link.selectFirst("span")).map(s => FormatTags.formatTokensIn(s.text)).getOrElse(Nil)
       val filmUrl = Option(link.attr("abs:href")).filter(_.nonEmpty)
-      val poster  = Option(row.selectFirst(".movie-name img[src]")).flatMap(ScraperParse.largestImageUrl)
+      val poster  = Option(row.selectFirst(".movie-name img[src]")).flatMap(ScrapeImages.largestImageUrl)
       if (title.isEmpty) Seq.empty
       else row.select(".movie-schedule a.item[href*='zamowienie/']").asScala.toSeq.flatMap { a =>
-        ScraperParse.parseHHmm(a.text).map { time =>
+        ScrapeClock.parseHHmm(a.text).map { time =>
           ScrapedSlot(title, LocalDateTime.of(date, time), Option(a.attr("abs:href")).filter(_.nonEmpty), filmUrl, poster, format = format)
         }
       }
@@ -104,7 +104,7 @@ object KinoTomiClient {
 
     val synopsis = about.map(SynopsisProse.cleanSynopsis(_, "ul")).filter(_.nonEmpty)
     val runtime = doc.select(".duration-area .item").asScala
-      .find(_.selectFirst(".fa-clock") != null).flatMap(i => ScraperParse.hoursMinutesRuntime(i.text))
+      .find(_.selectFirst(".fa-clock") != null).flatMap(i => ScrapeRuntime.hoursMinutesRuntime(i.text))
     val trailer = Option(doc.selectFirst("a.video-popup[href]"))
       .flatMap(a => YouTubeId.findFirstMatchIn(a.attr("href")))
       .flatMap(m => ScraperParse.canonicalTrailer(s"https://www.youtube.com/watch?v=${m.group(1)}"))
@@ -115,7 +115,7 @@ object KinoTomiClient {
       director       = names(facts.get("reżyser")),
       runtimeMinutes = runtime,
       genres         = doc.select(".details-banner .movie-tags span").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty),
-      posterUrl      = Option(doc.selectFirst(".details-banner-thumb > img[src]")).flatMap(ScraperParse.largestImageUrl),
+      posterUrl      = Option(doc.selectFirst(".details-banner-thumb > img[src]")).flatMap(ScrapeImages.largestImageUrl),
       trailerUrl     = trailer,
       ageRating      = AgeRating.normalize(facts.get("ograniczenia"))
     )

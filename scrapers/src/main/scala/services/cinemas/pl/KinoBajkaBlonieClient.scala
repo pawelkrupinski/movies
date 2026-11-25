@@ -9,7 +9,7 @@ import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import play.api.libs.json.Json
-import services.cinemas.common.{AgeRating, CinemaScraper, ScrapeHorizon, ScraperParse, ListingPages}
+import services.cinemas.common.{AgeRating, CinemaScraper, ScrapeHorizon, ListingPages, ScrapeClock, ScrapeDates, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.titles.FormatTags
 import tools.{HttpFetch, HttpRead}
 
@@ -100,8 +100,8 @@ object KinoBajkaBlonieClient {
     val html = (Json.parse(json) \ "data" \ "html").asOpt[String].getOrElse(
       throw new IllegalStateException(s"film-dates answer carries no data.html: ${json.take(200)}"))
     Jsoup.parse(html).select("article.film-showtime-day-card").asScala.toSeq.flatMap { card =>
-      ScraperParse.parseDate(card.select(".film-showtime-day-card__date").text).toSeq.flatMap { d =>
-        card.select("span.showtime-pill").asScala.toSeq.flatMap(p => ScraperParse.parseHHmm(p.text.trim)).map(LocalDateTime.of(d, _))
+      ScrapeDates.parseDate(card.select(".film-showtime-day-card__date").text).toSeq.flatMap { d =>
+        card.select("span.showtime-pill").asScala.toSeq.flatMap(p => ScrapeClock.parseHHmm(p.text.trim)).map(LocalDateTime.of(d, _))
       }
     }.distinct.sorted
   }
@@ -109,7 +109,7 @@ object KinoBajkaBlonieClient {
   def parseFilm(page: Document, url: String, dateTimes: Seq[LocalDateTime], cinema: Cinema): Option[CinemaMovie] =
     Option(page.selectFirst("h1")).map(_.text.trim).filter(_.nonEmpty).map { rawTitle =>
       val facts    = page.select("ul.film-meta-list .film-meta-list__text").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty)
-      val runtimeAt = facts.indexWhere(f => ScraperParse.hoursMinutesRuntime(f).isDefined)
+      val runtimeAt = facts.indexWhere(f => ScrapeRuntime.hoursMinutesRuntime(f).isDefined)
       // The age slot follows the runtime: "Od lat: 12", or "Bez ograniczeń" (no rating).
       val ageAt     = if (runtimeAt < 0) -1 else runtimeAt + 1
       val format    = facts.headOption.map(FormatTags.formatTokensIn).getOrElse(Nil)
@@ -124,13 +124,13 @@ object KinoBajkaBlonieClient {
       CinemaMovie(
         movie       = Movie(
           title          = title,
-          runtimeMinutes = facts.lift(runtimeAt).flatMap(ScraperParse.hoursMinutesRuntime),
+          runtimeMinutes = facts.lift(runtimeAt).flatMap(ScrapeRuntime.hoursMinutesRuntime),
           countries      = countries,
           genres         = genres,
           rawTitle       = Option(rawTitle).filter(_ != title)
         ),
         cinema      = cinema,
-        posterUrl   = Option(page.selectFirst("img.film-poster")).flatMap(ScraperParse.largestImageUrl),
+        posterUrl   = Option(page.selectFirst("img.film-poster")).flatMap(ScrapeImages.largestImageUrl),
         filmUrl     = Some(url),
         synopsis    = Option(page.selectFirst("div.prose")).map(_.text.trim).filter(_.nonEmpty),
         showtimes   = dateTimes.map(Showtime(_, None, format = format)),

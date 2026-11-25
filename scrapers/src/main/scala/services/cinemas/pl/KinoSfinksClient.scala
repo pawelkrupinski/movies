@@ -7,7 +7,7 @@ import scala.jdk.CollectionConverters.*
 import models.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies, ListingPages}
 import tools.{HttpFetch, HttpRead}
 
@@ -201,7 +201,7 @@ object KinoSfinksClient {
     val countries = splitList(prod.map(p => YearTokenPat.replaceAllIn(p, "").trim))
     val runtime   = fieldValue(document, "czas_trwania")
       .flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)).filter(n => n >= 30 && n <= 300)
-    val poster    = ScraperParse.ogImage(document)
+    val poster    = ScrapeImages.ogImage(document)
     FilmDetail(
       cast           = splitList(fieldValue(document, "obsada_wykonawcy")),
       director       = splitList(fieldValue(document, "rezyseria")),
@@ -217,13 +217,13 @@ object KinoSfinksClient {
   private def cellDate(row: Element): Option[LocalDate] =
     row.select("td.info span.date-caption").asScala.iterator
       .map(_.text.trim)
-      .flatMap(ScraperParse.parseDate)
+      .flatMap(ScrapeDates.parseDate)
       .nextOption()
 
   /** First `td.info` carrying an `HH:MM` start time, parsed. */
   private def cellTime(row: Element): Option[java.time.LocalTime] =
     row.select("td.info span.date-caption").asScala.iterator
       .map(_.text.trim)
-      .flatMap(ScraperParse.parseHHmm)
+      .flatMap(ScrapeClock.parseHHmm)
       .nextOption()
 }

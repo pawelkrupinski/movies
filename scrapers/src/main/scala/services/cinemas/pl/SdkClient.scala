@@ -9,7 +9,7 @@ import scala.util.Try
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeImages, ScraperParse}
 import services.cinemas.common.SlotsToMovies
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{SingleSiteScraper, ListingPages}
@@ -28,7 +28,7 @@ class SdkClient(http: HttpFetch) extends SingleSiteScraper {
   private val BaseUrl    = "https://sdk.waw.pl"
   private val ListingUrl = s"$BaseUrl/wydarzenia/rodzaj-wydarzenia/kino"
   private val PageSize   = 11
-  private val DateTimePat = raw"""(\d{2}\.\d{2}\.\d{4})\s*/\s*\S+\s*/\s*${ScraperParse.ClockPartsDotted}""".r
+  private val DateTimePat = raw"""(\d{2}\.\d{2}\.\d{4})\s*/\s*\S+\s*/\s*${ScrapeClock.ClockPartsDotted}""".r
 
   private case class Item(title: String, dateTime: LocalDateTime, detailUrl: String, poster: Option[String])
 
@@ -89,10 +89,10 @@ class SdkClient(http: HttpFetch) extends SingleSiteScraper {
       title   <- Some(a.attr("title").trim.replaceFirst("(?i)\\s*/\\s*(kino|film|z cyklu).*$", "").replaceAll("[„”\"“]", "").trim)
                    .filter(_.nonEmpty)
       m       <- DateTimePat.findFirstMatchIn(element.text)
-      day     <- ScraperParse.parseDate(m.group(1))
-      time    <- ScraperParse.clockAt(m, 2)
+      day     <- ScrapeDates.parseDate(m.group(1))
+      time    <- ScrapeClock.clockAt(m, 2)
     } yield {
-      val poster = Option(element.selectFirst("figure.item-image img[src]")).flatMap(ScraperParse.largestImageSource)
+      val poster = Option(element.selectFirst("figure.item-image img[src]")).flatMap(ScrapeImages.largestImageSource)
         .map(ScraperParse.onSite(BaseUrl))
       Item(title, day.atTime(time), ScraperParse.onSite(BaseUrl)(a.attr("href")), poster)
     }

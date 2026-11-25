@@ -6,7 +6,7 @@ import scala.jdk.CollectionConverters.*
 
 import models.*
 import org.jsoup.Jsoup
-import services.cinemas.common.ScraperParse
+import services.cinemas.common.{ScrapeClock, ScrapeDates, ScrapeImages, ScrapeRuntime, ScraperParse}
 import services.cinemas.common.SynopsisProse
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, FilmDetail, VenueCredits}
 import services.titles.FormatTags
@@ -53,15 +53,15 @@ class Bilety24Client(
 object Bilety24Client {
 
   // Buy-button title: "Kup bilet - Film: <Title> - YYYY-MM-DD HH:MM - <City>"
-  private val ButtonTitlePat = raw"""Kup bilet - Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(${ScraperParse.IsoClockText})\s*-""".r
+  private val ButtonTitlePat = raw"""Kup bilet - Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(${ScrapeClock.IsoClockText})\s*-""".r
 
   /** A Bilety24 event page's `p.movie-parameters` pipe line ("Dramat | Komedia | 120 min"): the runtime, and every
    *  other segment a genre (title-cased when the page shouts it). Shared by every venue on a Bilety24 shop. */
   private[pl] def movieParameters(document: org.jsoup.nodes.Document): (Option[Int], Seq[String]) = {
     val parameters = Option(document.selectFirst("p.movie-parameters")).map(_.text.trim).getOrElse("")
     val segments   = parameters.split("\\|").map(_.trim).filter(_.nonEmpty).toSeq
-    val runtime    = segments.flatMap(ScraperParse.runtimeMinutesIn).headOption
-    val genres     = segments.filterNot(s => ScraperParse.runtimeMinutesIn(s).isDefined).map(tools.TextNormalization.titleCaseIfAllLower)
+    val runtime    = segments.flatMap(ScrapeRuntime.runtimeMinutesIn).headOption
+    val genres     = segments.filterNot(s => ScrapeRuntime.runtimeMinutesIn(s).isDefined).map(tools.TextNormalization.titleCaseIfAllLower)
     (runtime, genres)
   }
 
@@ -121,7 +121,7 @@ object Bilety24Client {
     val href = a.attr("href")
     for {
       m  <- ButtonTitlePat.findFirstMatchIn(a.attr("title")) if href != "#"
-      dt <- ScraperParse.parseDateTime(s"${m.group(2)} ${m.group(3)}")
+      dt <- ScrapeDates.parseDateTime(s"${m.group(2)} ${m.group(3)}")
     } yield {
       val buttonFormat = Option(a.selectFirst("span.b24-button__format")).toList.flatMap(_.text.split("\\s+")).filter(_.nonEmpty)
       Showtime(dt, Some(if (href.startsWith("http")) href else baseUrl + href),
@@ -134,5 +134,5 @@ object Bilety24Client {
   private def poster(document: org.jsoup.nodes.Document): Option[String] =
     document.select("img.b24-image").asScala.toSeq.map(_.attr("src"))
       .find(s => s.nonEmpty && !s.toLowerCase(Locale.ROOT).endsWith(".svg"))
-      .orElse(ScraperParse.ogImage(document))
+      .orElse(ScrapeImages.ogImage(document))
 }
