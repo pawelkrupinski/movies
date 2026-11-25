@@ -63,6 +63,19 @@ def normalise(text: str) -> str:
 
 class Row:
     __slots__ = COLUMNS + ("line",)
+    # the COLUMNS, set by __init__ (annotations only: the slots hold them)
+    country: str
+    venue: str
+    rawTitle: str
+    film: str
+    verdict: str
+    state: str
+    scope: str
+    filmTitle: str
+    reason: str
+    judged: str
+    evidence: str
+    line: int
 
     def __init__(self, cols, line=0):
         for name, value in zip(COLUMNS, cols):
