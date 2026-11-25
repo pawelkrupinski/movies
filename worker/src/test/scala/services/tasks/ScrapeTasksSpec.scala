@@ -258,7 +258,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
       val planner = ChunkScrapePlanners(Map(cinema.displayName -> scraper), new InMemoryChunkScrapeStore,
         new InMemoryTaskQueue, _ => throw new RuntimeException("no fallback"),
         new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = clock), clock = clock)
-      tools.LogCapture.thisThread(classOf[VenuePageHistory].getName) { planner.plan(cinema.displayName) shouldBe 0 }
+      tools.LogCapture.thisThread(classOf[GonePageScrapePolicy].getName) { planner.plan(cinema.displayName) shouldBe 0 }
         .filter(_.getLevel == ch.qos.logback.classic.Level.WARN).map(_.getFormattedMessage)
     }
 
@@ -283,7 +283,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
         new InMemoryTaskQueue, _ => throw new RuntimeException("no fallback"),
         new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = clock), clock = clock,
         scrapeArchive = archive)
-      tools.LogCapture.thisThread(classOf[VenuePageHistory].getName) { planner.plan(Multikino.displayName) shouldBe 0 }
+      tools.LogCapture.thisThread(classOf[GonePageScrapePolicy].getName) { planner.plan(Multikino.displayName) shouldBe 0 }
         .filter(_.getLevel == ch.qos.logback.classic.Level.WARN).map(_.getFormattedMessage)
     }
 
@@ -315,7 +315,7 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     lastSuccess.foreach(at => archive.record(ScrapeAttempt(Multikino, None, at, listingComplete = true, films = movieAt(Multikino))))
     val h = ScrapeCinemaHandlers(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(),
       new InMemoryFreshnessStore, clock = specClock, scrapeArchive = archive)
-    tools.LogCapture.thisThread(classOf[VenuePageHistory].getName, Some(ch.qos.logback.classic.Level.WARN)) {
+    tools.LogCapture.thisThread(classOf[GonePageScrapePolicy].getName, Some(ch.qos.logback.classic.Level.WARN)) {
       h.handle(task(Multikino)) shouldBe HandlerOutcome.Done
     }.map(_.getLevel)
   }

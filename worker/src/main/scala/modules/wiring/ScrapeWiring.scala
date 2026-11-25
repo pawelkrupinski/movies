@@ -14,7 +14,7 @@ import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
 import services.schedule.AlwaysClaimScheduledRunStore
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
-import services.tasks.{ClaimedPeriodicTask, InMemoryScrapeCostStore, MongoScrapeCostStore, ProxyParking, ScrapeCadence, ScrapeCinemaHandler, ScrapeCostEstimates, ScrapeCostStore, ScrapeFreshnessPolicy, ScrapePhasePlanner, ScrapeReaper, DueScrapes, ScrapeAdmission, ScrapeEnqueuer, ScrapeTick, VenuePageHistory, PlainCinemaScrape}
+import services.tasks.{ClaimedPeriodicTask, InMemoryScrapeCostStore, MongoScrapeCostStore, ProxyParking, ScrapeCadence, ScrapeCinemaHandler, ScrapeCostEstimates, ScrapeCostStore, ScrapeFreshnessPolicy, ScrapePhasePlanner, ScrapeReaper, DueScrapes, ScrapeAdmission, ScrapeEnqueuer, ScrapeTick, GonePageScrapePolicy, PlainCinemaScrape}
 import settings.{ScrapeBootRamp, ScrapeEnqueueSpreadSlices, ScrapeInitialDelay, ScrapeMaxEnqueuePerTick, ScrapeMaxOutstandingTasks, ScrapeTasksPerVenue}
 import tools.{DaemonExecutors, HostScrapeStats}
 
@@ -384,13 +384,13 @@ trait ScrapeWiring { self: WorkerWiring =>
 
   /** What the scrape archive says about each venue's page — the same archive the runner writes: it is what
    *  says whether a venue is merely failing or has 404'd for over a day. */
-  lazy val venuePageHistory: VenuePageHistory = new VenuePageHistory(scrapeArchive, clock)
+  lazy val gonePageScrapePolicy: GonePageScrapePolicy = new GonePageScrapePolicy(scrapeArchive, clock)
   /** The venues due a scrape: what the reaper enqueues from and the handler re-checks a task by. */
   lazy val dueScrapes: DueScrapes = new DueScrapes(cinemaScrapers, freshnessStore, scrapeDueWindow, chunkRunInFlight)
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap, dueScrapes,
-    new PlainCinemaScrape(cinemaScrapeRunner, scrapeFreshnessPolicy, venuePageHistory, scrapeCostStore, clock, stopwatch),
-    Some(chunkScrapePlanner), venuePageHistory, scrapeFreshnessPolicy, clock)
+    new PlainCinemaScrape(cinemaScrapeRunner, scrapeFreshnessPolicy, gonePageScrapePolicy, scrapeCostStore, clock, stopwatch),
+    Some(chunkScrapePlanner), gonePageScrapePolicy, scrapeFreshnessPolicy, clock)
 
   // Post-boot enqueue ramp window: after a restart, ramp the per-tick scrape cap up
   // over this long instead of enqueuing the full `maxScrapeEnqueuePerTick` from the
