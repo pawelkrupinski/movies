@@ -8,15 +8,15 @@ import services.identity.vocabulary.{Dependency, Memo}
  * The verdicts the agreement stage keeps, by their cluster's key — each a cache of its receipt ([[Memo]]), standing while
  * none of it moved: checked at a version under its listings' digest, and indexed by every TMDB record and search it read
  * — and beside them the same verdicts by their listings' digest, a model take's correction apart from a cluster's: what a
- * verdict is FOUND by, its key only naming it ([[heldFor]]). Loaded from `stored` when first read.
+ * verdict is FOUND by, its key only naming it ([[heldFor]]). Loaded from `sources`' stored verdicts when first read.
  *
- * `changes`: the answers filed since a version, which a kept verdict's [[clean]] reads.
+ * `sources`' changes: the answers filed since a version, which a kept verdict's [[clean]] reads.
  */
-private[identity] final class VerdictIndex(stored: AgreementVerdicts, changes: AnswerChanges) {
+private[identity] final class VerdictIndex(sources: AgreementSources.VerdictSource) {
   /** The verdicts kept, by their cluster's key. */
   lazy val memo: Memo[String, StoredVerdict] = {
     val loaded = new Memo[String, StoredVerdict](_.reads, _.readsTmdb, VerdictIndex.pushed)
-    stored.all().foreach(v => loaded.put(v.id, v))
+    sources.stored.all().foreach(v => loaded.put(v.id, v))
     loaded
   }
   /** The held verdicts by their listings' digest, a model take's correction apart from a cluster's. Kept beside
@@ -33,7 +33,7 @@ private[identity] final class VerdictIndex(stored: AgreementVerdicts, changes: A
   /** Does `id`'s verdict stand at `version` over the listings digesting to `digest`: none of its reads filed since it was
    *  checked, or each filed one read `again` alike ([[Memo.clean]])? */
   def clean(id: String, digest: Long, version: Long, again: (Dependency, Long) => Boolean): Boolean =
-    memo.clean(id, digest, version, changes.changedSince, again)
+    memo.clean(id, digest, version, sources.changes.changedSince, again)
 
   /** The verdict held of a cluster (or, `correction`, of a model take's correction) whose listings digest to `digest`,
    *  under whichever key it was filed. */
@@ -70,7 +70,7 @@ private[identity] final class VerdictIndex(stored: AgreementVerdicts, changes: A
 
   /** The verdicts gone (`removed`) and moved stored, and held so. */
   def store(removed: Set[String], moved: Seq[StoredVerdict]): Unit = {
-    stored.replace(removed, moved)
+    sources.stored.replace(removed, moved)
     removed.foreach(unfile)
     moved.foreach(file)
   }

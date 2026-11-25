@@ -71,10 +71,11 @@ private[agreement] object AgreementPass {
     def overdrawn: Boolean = left < 0
   }
 
-  /** `posters` and `programmes` (the family whose site lists the venues' programmes), each answer decoded once: an
+  /** `posters` and `programmes` (`listedOn`, the family whose site lists the venues' programmes), each answer decoded once: an
    *  apply's reads, dropped with it. A poster's hashes, whether it is fresh and whether it was given up on are each read
    *  of the store once an apply, however many takes and corrections compare it (each a document read and decode). */
-  final class Read(hashes: PosterAnswers, family: Option[FamilyAnswers]) {
+  final class Read(sources: AgreementSources.PosterSource & AgreementSources.FamilySource, listedOn: Option[VoterFamily]) {
+    private val hashes = sources.posters
     private val venues = mutable.HashMap.empty[String, Answer[Option[PosterHash]]]
     private val films  = mutable.HashMap.empty[Int, Answer[Seq[PosterHash]]]
     private val freshness, givenUp = mutable.HashMap.empty[PosterQuestion, Boolean]
@@ -84,7 +85,7 @@ private[agreement] object AgreementPass {
       override def unread(question: PosterQuestion): Boolean = givenUp.getOrElseUpdate(question, hashes.unread(question))
       override def fresh(question: PosterQuestion): Boolean  = freshness.getOrElseUpdate(question, hashes.fresh(question))
     }
-    val programmes: Option[FamilyAnswers] = family.map { answers =>
+    val programmes: Option[FamilyAnswers] = listedOn.flatMap(sources.families.get).map { answers =>
       val showings = mutable.HashMap.empty[String, Answer[Seq[Showing]]]
       val records  = mutable.HashMap.empty[String, Answer[Option[SourceRecord]]]
       new FamilyAnswers {

@@ -18,10 +18,11 @@ import services.titles.TitleNormalizer
  * The stage hands it to each of its parts — the candidates, the takes, the corrections — as the one way they read: none
  * of them reaches the stage itself. `version` and `yearNow` are the apply under way's, set by the stage as it starts one.
  */
-private[agreement] final class AgreementEvidence(val families: Map[VoterFamily, FamilyAnswers], venuePages: IdentityLookups,
-                                                tmdb: Option[IdentityLookups], val normalizer: TitleNormalizer,
-                                                val calibration: IdentityCalibration, tmdbOf: String => Answer[Option[Int]],
+private[agreement] final class AgreementEvidence(sources: AgreementSources.EvidenceSource, val calibration: IdentityCalibration, tmdbOf: String => Answer[Option[Int]],
                                                 val attempted: Question => Boolean, val tmdbReads: TmdbReadTracking) {
+  val families: Map[VoterFamily, FamilyAnswers] = sources.families
+  val normalizer: TitleNormalizer               = sources.normalizer
+  private val tmdb: Option[IdentityLookups]     = sources.tmdbLookups
 
   /** The evidence nodes the model's resolver reads of `listings` through `lookups` ([[IdentityResolver.evidenceOf]]):
    *  their TMDB candidates, each scored, under the stage's normalizer and calibration. */
@@ -37,7 +38,10 @@ private[agreement] final class AgreementEvidence(val families: Map[VoterFamily, 
    *  what the worker hands the stage there (VenueDetailLookups), so a harness handing one lookups for both roles reads
    *  as production reads. Handed TMDB's records through this role, every harness read the model's vote by its facts
    *  where production read it unknown, and none of them saw prod keep 26 takes a whole resolve made (2026-10-27). */
-  val venues: IdentityLookups = AgreementEvidence.PagesOnly(venuePages)
+  val venues: IdentityLookups = AgreementEvidence.PagesOnly(sources.venuePages)
+
+  /** `listing`'s venue detail page as a cluster's digest reads it ([[AgreementPipeline]]): none without one. */
+  def detailMark(listing: Listing): String = if (venues.hasDetail(listing)) "\u0001" + venues.detail(listing) else ""
   /** The listing with the year, directors, running time, original title and countries its venue's own page states where
    *  the listing does not ([[services.identity.Evidence.of]], as the model reads it): what the agreement's listing votes
    *  and title check read, never what rules a film out ([[Agreement.agreed]]). PL "The Taxidermist | Splat!FilmFest" bills no director; its page credits Paulo Nascimento.

@@ -34,9 +34,14 @@ object AgreementStageFixture {
             pressed: () => Boolean = () => false,
             fullValidationEvery: Int = AgreementStage.FullValidationEvery): AgreementStage =
     new AgreementStage(
-      new AgreementPipeline(families, venuePages, normalizer, calibration, tmdbOf, stored, changes, tmdb, identities, rules,
-        catalogue, listedOn, askNow, attempted, posters, clock, tmdbReads),
+      new AgreementPipeline(Given(families, venuePages, tmdb, normalizer, stored, changes, posters, catalogue), calibration,
+        tmdbOf, identities, rules, listedOn, askNow, attempted, clock, tmdbReads),
       ask = ask, metrics = metrics, correctionPostersAtOnce = correctionPostersAtOnce, correctionsPerApply = correctionsPerApply,
       backfillPerApply = backfillPerApply, givenUp = givenUp, attemptsMarked = attemptsMarked, staging = staging,
       clusterKeys = clusterKeys, pressed = pressed, fullValidationEvery = fullValidationEvery)
+
+  /** The hand-made sources, each role as the spec gave it. */
+  private final case class Given(families: Map[VoterFamily, FamilyAnswers], venuePages: IdentityLookups,
+                                 tmdbLookups: Option[IdentityLookups], normalizer: TitleNormalizer, stored: AgreementVerdicts,
+                                 changes: AnswerChanges, posters: PosterAnswers, catalogue: CatalogueAnswers) extends AgreementSources.StageSources
 }

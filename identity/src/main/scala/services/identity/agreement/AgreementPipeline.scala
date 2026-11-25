@@ -4,9 +4,8 @@ import scala.collection.mutable
 
 import models.ListingKey
 import services.identity.measures.{Listing, PosterEvidence, Resolution, ResolverDecision}
-import services.identity.vocabulary.{Answer, CatalogueAnswers, PosterAnswers, Question, VoterFamily}
-import services.identity.{IdentityCalibration, IdentityLookups, NonFilmEvents}
-import services.titles.TitleNormalizer
+import services.identity.vocabulary.{Answer, Question, VoterFamily}
+import services.identity.{IdentityCalibration, NonFilmEvents}
 
 /**
  * What each model decision is TAKEN AS ([[decide]]): a model take read by its CORRECTION ([[AgreementCorrections]]), a
@@ -17,14 +16,10 @@ import services.titles.TitleNormalizer
  * ([[AgreementStageComposition]], the specs' `AgreementStageFixture`) and handed to the stage whole: the stage keeps
  * only what an apply does with it.
  */
-private[agreement] final class AgreementPipeline(families: Map[VoterFamily, FamilyAnswers], venuePages: IdentityLookups,
-                                                 normalizer: TitleNormalizer, calibration: IdentityCalibration,
-                                                 tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts,
-                                                 changes: AnswerChanges, tmdb: Option[IdentityLookups],
-                                                 identities: Seq[VoterFamily], rules: services.identity.agreement.UnifiedRules,
-                                                 catalogue: CatalogueAnswers, listedOn: Option[VoterFamily],
+private[agreement] final class AgreementPipeline(sources: AgreementSources.StageSources, calibration: IdentityCalibration,
+                                                 tmdbOf: String => Answer[Option[Int]], identities: Seq[VoterFamily],
+                                                 rules: services.identity.agreement.UnifiedRules, listedOn: Option[VoterFamily],
                                                  askNow: AgreementStage.AskNow, attempted: Question => Boolean,
-                                                 private[agreement] val posters: PosterAnswers,
                                                  private[agreement] val clock: java.time.Clock,
                                                  private[agreement] val tmdbReads: TmdbReadTracking = new TmdbReadTracking) {
 
@@ -32,17 +27,17 @@ private[agreement] final class AgreementPipeline(families: Map[VoterFamily, Fami
    *  root configures it with outside that code ([[AgreementStage.configured]]) — a refit of the rules, or a family asked
    *  or let a film stand in one more country, decides every verdict again, as a change of the code does. */
   private[agreement] val decidedUnder: String =
-    s"${AgreementStage.RulesVersion}|${rules.version}|${AgreementStage.configured(families.keySet, identities, listedOn, calibration)}"
+    s"${AgreementStage.RulesVersion}|${rules.version}|${AgreementStage.configured(sources.voters, identities, listedOn, calibration)}"
 
   /** What one apply reads of the posters' hashes and of `listedOn`'s programmes, afresh each apply ([[AgreementPass.Read]]). */
-  def reading(): AgreementPass.Read = new AgreementPass.Read(posters, listedOn.flatMap(families.get))
+  def reading(): AgreementPass.Read = new AgreementPass.Read(sources, listedOn)
 
   /** What every stage of the pipeline reads, through the receipt being made ([[AgreementEvidence]]). */
-  private[agreement] val evidence = new AgreementEvidence(families, venuePages, tmdb, normalizer, calibration, tmdbOf, attempted, tmdbReads)
-  import evidence.{looked, venues, verdictsOf}
+  private[agreement] val evidence = new AgreementEvidence(sources, calibration, tmdbOf, attempted, tmdbReads)
+  import evidence.verdictsOf
 
   /** The verdicts kept ([[VerdictIndex]]), by their cluster's key and by their listings' digest. */
-  private[agreement] val verdicts = new VerdictIndex(stored, changes)
+  private[agreement] val verdicts = new VerdictIndex(sources)
 
   /** Each model decision the pipeline took, with what it took it as: handed back as that same object while neither moved,
    *  so the projection, which diffs decisions by identity, redrafts a cluster only when its take moved ([[reused]]). */
@@ -58,16 +53,15 @@ private[agreement] final class AgreementPipeline(families: Map[VoterFamily, Fami
   // THE PIPELINE ([[decide]]): a model take is read by its CORRECTION, a no-match by its families' VERDICT and that
   // verdict by its TAKE -- each stage handed the evidence it reads and the rest it needs, never the stage itself.
   /** The TMDB films a cluster's own evidence reaches, its posters' distances to them: what the takes and corrections read. */
-  private[agreement] val candidates      = new AgreementCandidates(evidence, changes)
+  private[agreement] val candidates      = new AgreementCandidates(evidence, sources)
   /** A cluster met in a new shape has its families asked inline ([[askNow]]). */
   private[agreement] val inline          = new InlineAsker(askNow, clock)
   /** A model take read against the evidence that can contradict it. */
   private[agreement] val corrections: ModelTakeCorrection = new AgreementCorrections(evidence, candidates, verdicts, inline, decidedUnder, listedOn)
   /** A no-match's take of its families' verdict: the agreed film, else the posters', the broadcast's, a fill's or the catalogue's. */
-  private[agreement] val takes           = new AgreementTakes(evidence, candidates, rules, identities, catalogue, tmdbOf)
+  private[agreement] val takes           = new AgreementTakes(evidence, candidates, rules, identities, sources, tmdbOf)
   /** A no-match's families' verdict, held while what it read stands. */
   private[agreement] val clusterVerdicts = new ClusterVerdicts(evidence, verdicts, takes, inline, decidedUnder, clock)
-  import candidates.{posterDistances, searchedFilms}
   import corrections.{correctable, corrected}
   import AgreementTakes.taking
 
@@ -130,12 +124,12 @@ private[agreement] final class AgreementPipeline(families: Map[VoterFamily, Fami
   private def digestOf(listings: Seq[Listing]): Long =
     AgreementStage.digest(listings.map(l => l.sortKey + l.screenedSeason.fold("")(season => s"\u0002$season") +
       (if (l.names.isEmpty) "" else s"\u0003${l.names.##}") +
-      (if (venues.hasDetail(l)) "\u0001" + venues.detail(l) else "")))
+      evidence.detailMark(l)))
 
   /** The questions `listing`'s OWN facts lead the stage to ask -- its titles' and directors' searches and the records
    *  their hits name, as the stage asks them of any cluster holding it (the family verdicts over the listing alone, every
    *  gap they meet), and the posters the poster vote and veto read of it while they are not hashed: its venue poster
-   *  ([[PosterEvidence.urls]]), then those of the films its own searches find ([[posterDistances]] over the listing
+   *  ([[PosterEvidence.urls]]), then those of the films its own searches find ([[AgreementCandidates.postersOf]] over the listing
    *  alone). None for an event no film database holds ([[NonFilmEvents]]), whose families are never asked nor its poster
    *  hashed -- a title shaped as a franchise's marathon reads as one here, the model's searches that may make it a film's
    *  ([[ResolverDecision.filmTitled]]) not read yet: its families are asked once its decision says so. What the model's
@@ -150,10 +144,7 @@ private[agreement] final class AgreementPipeline(families: Map[VoterFamily, Fami
     else {
       val gaps = mutable.Set.empty[Question]
       verdictsOf(Seq(listing), gaps, mutable.Map.empty)
-      // none of the films while a search is unanswered: the search is a question already, and the posters its answer
-      // leads to are asked once it is (ModelInputGate's askLedTo); the id and digest key only the cluster's cache, unread
-      posterDistances("", 0L, Seq(listing), also = None, gaps,
-        candidates = (_, _, alone) => looked.flatMap(searchedFilms(alone, _)).getOrElse(Nil), hashes = posters)
+      candidates.postersOf(listing, gaps)
       gaps.toSet
     }
 

@@ -10,8 +10,8 @@ import services.identity.vocabulary.{Answer, CandidateQuery, Dependency, Memo, P
 /** The TMDB films a cluster's own evidence reaches, as the stage's takes and corrections read them: its candidates, its
  *  titles' searches and picks, the venue posters' distances to them, and the records and productions the broadcast
  *  join reads — each read through `evidence` ([[AgreementEvidence]]), the cluster's candidates kept while what they read stands
- *  (`changes`: the answers filed since a version). */
-private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, changes: AnswerChanges) {
+ *  (`sources`: the answers filed since a version, and the posters' hashes). */
+private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, sources: AgreementSources.CandidateSource) {
   import evidence.{looked, venues, settled}
 
   /** Each cluster's TMDB candidates, none denied, at its listings' digest: what its posters are compared against — a cache
@@ -81,6 +81,14 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
     settled(Question.Poster(question), answer).failedAs(absent)
   }
 
+  /** The posters `listing` ALONE leads the stage to ask while they are not hashed, noted in `asked`: its venue poster,
+   *  then those of the films its own searches find ([[AgreementPipeline.questionsOf]]). None of the films while a search
+   *  is unanswered: the search is a question already, and the posters its answer leads to are asked once it is
+   *  (ModelInputGate's askLedTo); the id and digest key only the cluster's cache, unread. */
+  private[agreement] def postersOf(listing: Listing, asked: mutable.Set[Question]): Unit =
+    posterDistances("", 0L, Seq(listing), also = None, asked,
+      candidates = (_, _, alone) => looked.flatMap(searchedFilms(alone, _)).getOrElse(Nil), hashes = sources.posters)
+
   /** The nearest each of the cluster's candidates (and `also`, the film the families agree on) comes to each of its
    *  venue posters — none where no listing shows one; `Unknown`, each poster not hashed yet noted in `asked`, while one
    *  is not. A candidate numbering another edition than a listing showing a poster is not compared
@@ -133,7 +141,7 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
   private[agreement] def candidatesOf(id: String, digest: Long, listings: Seq[Listing]): Seq[Int] = {
     val applying = evidence.version
     val kept = candidateFilms.get(id).filter(kept => kept.digest == digest && kept.blindAt.forall(_ == applying) &&
-      candidateFilms.clean(id, digest, applying, changes.changedSince, again = (read, recorded) => evidence.digestNow(read, AgreementEvidence.listingIn(listings)).contains(recorded)))
+      candidateFilms.clean(id, digest, applying, sources.changes.changedSince, again = (read, recorded) => evidence.digestNow(read, AgreementEvidence.listingIn(listings)).contains(recorded)))
     val now  = kept.getOrElse {
       var blind = false
       val receipt = mutable.Map.empty[Dependency, Long]

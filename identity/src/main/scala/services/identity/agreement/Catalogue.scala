@@ -77,12 +77,12 @@ object Catalogue {
    *  not contradict (PL Kinoteka's "Czarne zombie" page credits Bedward's 2026 film, and links Corman's 1963 one).
    *  `titlePicks`: the films the listings' own titles pick, each search's most popular hit ([[AgreementStage]]), read
    *  only for a feed's id ([[fedOnly]]). A question `attempted` and not answered is read as none, and still asked. */
-  def take(listings: Seq[Listing], stated: Seq[Listing], catalogue: CatalogueAnswers, families: Map[VoterFamily, FamilyAnswers],
+  def take(listings: Seq[Listing], stated: Seq[Listing], catalogue: AgreementSources.CatalogueSource, families: Map[VoterFamily, FamilyAnswers],
            tmdbOf: String => Answer[Option[Int]], titlePicks: () => Set[Int],
            asked: mutable.Set[Question], attempted: Question => Boolean = _ => false): Answer[Option[Taken]] =
     // a feed's ids alone, and nothing that could corroborate the film they name: no question worth asking
     if (uncorroborable(listings, stated, titlePicks)) Answer.Known(None)
-    else named(listings, catalogue, asked, attempted).flatMap {
+    else named(listings, catalogue.catalogue, asked, attempted).flatMap {
       case None => Answer.Known(None)
       case Some(_) if listings.exists(ListingShape.billsSeveral) => Answer.Known(None)
       case Some(film) =>

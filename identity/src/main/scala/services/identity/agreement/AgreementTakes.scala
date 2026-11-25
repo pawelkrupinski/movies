@@ -12,7 +12,7 @@ import services.identity.vocabulary.{Answer, DetailFacts, ProseWords, Question, 
  *  `evidence` ([[AgreementEvidence]]) and the cluster's `candidates`, by the selected `rules`; a film TMDB holds no record of stands
  *  on the first of `identities` that names it, and the listings' catalogue ids are read from `catalogue`. */
 private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candidates: AgreementCandidates, rules: services.identity.agreement.UnifiedRules,
-                                             identities: Seq[VoterFamily], catalogue: services.identity.vocabulary.CatalogueAnswers,
+                                             identities: Seq[VoterFamily], catalogue: AgreementSources.CatalogueSource,
                                              tmdbOf: String => Answer[Option[Int]]) extends ClusterFill {
   import evidence.{looked, venues}
   import candidates.{candidatesOf, measured, productionsOf, titledFilms, titlePicks, undatedOf, uncatalogued}

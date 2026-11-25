@@ -1,8 +1,7 @@
 package services.identity.agreement
 
-import services.identity.vocabulary.{Answer, CatalogueAnswers, PosterAnswers, Question, VoterFamily}
-import services.identity.{IdentityCalibration, IdentityLookups}
-import services.titles.TitleNormalizer
+import services.identity.vocabulary.Question
+
 
 /**
  * THE ONE WAY AN AGREEMENT STAGE IS BUILT: the worker's (`AgreementWiring.newAgreementStage`) and every harness's
@@ -18,18 +17,9 @@ import services.titles.TitleNormalizer
  */
 object AgreementStageComposition {
 
-  /** Everything a stage reads: the worker's live stores and lookups, or a harness's recorded ones. */
-  final case class Sources(families: Map[VoterFamily, FamilyAnswers], venuePages: IdentityLookups, tmdb: IdentityLookups,
-                           tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts, clock: java.time.Clock,
-                           normalizer: TitleNormalizer, identities: Seq[VoterFamily], listedOn: Option[VoterFamily],
-                           changes: AnswerChanges, posters: PosterAnswers, catalogue: CatalogueAnswers,
-                           attempted: Question => Boolean,
-                           /** Answered or given up on, as the settle rule reads a question it settled past: one whose ask
-                            *  failed and sits in its retry backoff is not, and leaves a take settled past it Pending (the
-                            *  owner, 2026-10-31). The worker's: the question memory's (`QuestionMemory.givenUp`). */
-                           givenUp: Question => Boolean,
-                           attemptsMarked: Option[() => Long], keys: AgreementKeys,
-                           calibration: IdentityCalibration = IdentityCalibration.resolver)
+  /** Everything a stage reads ([[AgreementSources]]), by the name its builders have always used. */
+  type Sources = AgreementSources
+  val Sources: AgreementSources.type = AgreementSources
 
   /** What a stage sets off beside its takes — the worker's queue and inline asks, its metrics, the staging screen, the
    *  heap's pressure. A harness's own: it answers what the stage `wanted` between applies, as the queue would. */
@@ -50,9 +40,8 @@ object AgreementStageComposition {
 
   def apply(sources: Sources, effects: Effects = Effects(), overrides: Set[Override] = Set.empty): AgreementStage = {
     val unbudgeted = overrides(Override.Unbudgeted)
-    val pipeline   = new AgreementPipeline(sources.families, sources.venuePages, sources.normalizer, sources.calibration,
-      sources.tmdbOf, sources.stored, sources.changes, tmdb = Some(sources.tmdb), sources.identities, services.identity.agreement.UnifiedRules.resolver,
-      sources.catalogue, sources.listedOn, effects.askNow, sources.attempted, sources.posters, sources.clock)
+    val pipeline   = new AgreementPipeline(sources, sources.calibration, sources.tmdbOf, sources.identities,
+      services.identity.agreement.UnifiedRules.resolver, sources.listedOn, effects.askNow, sources.attempted, sources.clock)
     new AgreementStage(pipeline, ask = effects.ask, metrics = effects.metrics,
       correctionPostersAtOnce = if (unbudgeted) Int.MaxValue else AgreementStage.CorrectionPostersAtOnce,
       correctionsPerApply = overrides.collectFirst { case Override.CorrectionsPerApply(n) => n }

@@ -25,7 +25,7 @@ class StandingTakesSpec extends AnyFlatSpec with Matchers {
 
   /** One apply: `model` keyed "7", taken as `take`, served by `standing` while the cluster waits on `waits`. */
   private def served(standing: StandingTakes, model: ResolverDecision, take: ResolverDecision, waits: Set[Question] = Set.empty) = {
-    val pass = new AgreementPass(1L, 1, new AgreementPass.Read(PosterAnswers.Silent, None))
+    val pass = new AgreementPass(1L, 1, new AgreementPass.Read(new AgreementSources.PosterSource with AgreementSources.FamilySource { val posters = PosterAnswers.Silent; val families = Map.empty }, None))
     pass.keys.put(model, "7")
     val got = standing.served(resolution(model), Seq(take), pass, _ => Seq(waits).filter(_.nonEmpty)).head
     (got, pass)
