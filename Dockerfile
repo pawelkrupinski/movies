@@ -33,7 +33,7 @@
 # LOOKUPS UNCACHED BY THE JVM (`networkaddress.cache.ttl=0` in the linked runtime's java.security): tools.AddressFailover
 # keeps them instead (30 s), so a request whose connect to one of a host's addresses fails goes to the next at once --
 # the JVM's own cache would hand the failed address out again for 30 s (ES Ocine Gavarres, 2026-11-10..15).
-FROM mirror.gcr.io/library/eclipse-temurin:27-jdk@sha256:9d4c29a53a1a7a028416306d090080484602ccc43cc316404e12cabd133c7056 AS jdk
+FROM mirror.gcr.io/library/eclipse-temurin:27-jdk@sha256:f67511a7888677dbc4fb64ee6f17f9237c24d2b110f65a61716a3b516b6b3fa8 AS jdk
 RUN $JAVA_HOME/bin/jlink --output /opt/jre --no-man-pages --no-header-files \
       --add-modules java.base,java.compiler,java.datatransfer,java.desktop,java.instrument,java.logging,java.management,java.management.rmi,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.se,java.security.jgss,java.security.sasl,java.smartcardio,java.sql,java.sql.rowset,java.transaction.xa,java.xml,java.xml.crypto,jdk.accessibility,jdk.charsets,jdk.crypto.cryptoki,jdk.dynalink,jdk.httpserver,jdk.incubator.vector,jdk.jdwp.agent,jdk.jfr,jdk.localedata,jdk.management,jdk.management.agent,jdk.management.jfr,jdk.naming.dns,jdk.naming.rmi,jdk.net,jdk.nio.mapmode,jdk.sctp,jdk.security.auth,jdk.security.jgss,jdk.unsupported,jdk.xml.dom,jdk.zipfs,jdk.jcmd,jdk.attach \
  && sed -i 's/^#\{0,1\}networkaddress\.cache\.ttl=.*/networkaddress.cache.ttl=0/' /opt/jre/conf/security/java.security \
@@ -51,7 +51,7 @@ ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
 # image that set another one -- that stage records its own JAVA_VERSION in image-java-version. Like with like: grepping
 # `java --version` for the value failed every build once Temurin 27.0.1 set jdk-27.0.1.0, a form the build string
 # does not carry (Main #2547, #2550; JdkVersionParitySpec).
-ENV JAVA_VERSION=jdk-27.0.1.0
+ENV JAVA_VERSION=jdk-27.0.1.1+4
 COPY --from=jdk /opt/jre /opt/java/openjdk
 RUN set -eux; \
     apt-get update; \
