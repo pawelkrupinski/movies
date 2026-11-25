@@ -173,17 +173,27 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
 
   private val Stage    = "identity/src/main/scala/services/identity/agreement/AgreementStage.scala"
   private val Pipeline = "identity/src/main/scala/services/identity/agreement/AgreementPipeline.scala"
+  private val Sources  = "identity/src/main/scala/services/identity/agreement/AgreementSources.scala"
 
-  /** Each of the agreement pipeline's parameters -- what the stage decides by, built whole by its builders -- and how it
-   *  can move a verdict. */
+  /** The pipeline's parameters, its `sources` read as the members of the roles it hands its stages (the role traits of
+   *  `object AgreementSources`): each member is an input of its own. */
+  private def pipelineInputs: Seq[String] = {
+    val roles = codeOf(Paths.get(Sources)).split("\nobject AgreementSources \\{", 2)(1)
+    parameters(Pipeline, "final class AgreementPipeline").filterNot(_ == "sources") ++
+      """\bdef (\w+)""".r.findAllMatchIn(roles).map(_.group(1))
+  }
+
+  /** Each of the agreement pipeline's parameters -- what the stage decides by, built whole by its builders, its sources
+   *  by the members of their roles -- and how it can move a verdict. */
   private val PipelineParameters: Map[String, StageParameter] = {
     import StageParameter.*
     Map(
-      "families"    -> Versioned, "identities" -> Versioned, "listedOn" -> Versioned, "calibration" -> Versioned, "rules" -> Versioned,
+      "voters"      -> Versioned, "identities" -> Versioned, "listedOn" -> Versioned, "calibration" -> Versioned, "rules" -> Versioned,
+      "families"    -> Read("every family answer read is in the receipt"),
       "venuePages"  -> Read("each listing's venue detail page is in its listings' digest (digestOf), read through PagesOnly"),
       "normalizer"  -> Read("compiled: TitleNormalizer and its title rules are in the closure, the country's being its database's"),
       "tmdbOf"      -> Read("each agreed IMDb id's find is in the receipt"),
-      "tmdb"        -> Read("every TMDB read the fill makes is in the receipt (Noting)"),
+      "tmdbLookups" -> Read("every TMDB read the fill makes is in the receipt (Noting)"),
       "posters"     -> Read("every poster hash read is in the receipt"),
       "catalogue"   -> Read("every catalogue answer read is in the receipt"),
       "attempted"   -> Read("the question memory: each attempt settled on is in the receipt (tried|...)"),
@@ -211,11 +221,12 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
   }
 
   "The agreement stage's parameters" should "each say how they can move a verdict" in {
-    Seq((Stage, "final class AgreementStage", StageParameters), (Pipeline, "final class AgreementPipeline", PipelineParameters))
-      .foreach { case (path, header, classified) =>
+    Seq(("final class AgreementStage", parameters(Stage, "final class AgreementStage"), StageParameters),
+        ("final class AgreementPipeline", pipelineInputs, PipelineParameters))
+      .foreach { case (header, taken, classified) =>
         withClue(s"$header takes a parameter this spec does not classify (or no longer takes one it does): say whether " +
           "it is in decidedUnder (Versioned), read into the receipt or listings' digest (Read), or decides nothing (Inert)\n") {
-          parameters(path, header).toSet shouldBe classified.keySet
+          taken.toSet shouldBe classified.keySet
         }
       }
   }
