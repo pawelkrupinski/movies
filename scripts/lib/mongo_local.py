@@ -14,8 +14,13 @@ def local_mongo_port(env: Mapping[str, str]) -> str:
     return env.get("LOCAL_MIRROR_PORT") or DEFAULT_PORT
 
 
+def local_mongo_server(env: Mapping[str, str]) -> str:
+    """The local Mongo's address as a bare URI (`mongodb://127.0.0.1:<port>`), a database path still to append."""
+    return f"mongodb://127.0.0.1:{local_mongo_port(env)}"
+
+
 def local_mongo_uri(env: Mapping[str, str], database: str = "") -> str:
-    return f"mongodb://127.0.0.1:{local_mongo_port(env)}/{database}?directConnection=true"
+    return f"{local_mongo_server(env)}/{database}?directConnection=true"
 
 
 def answers(port: str, host: str = "127.0.0.1", timeout: float = 2.0) -> bool:

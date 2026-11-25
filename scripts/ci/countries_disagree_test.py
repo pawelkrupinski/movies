@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import countries_disagree as cd  # noqa: E402
@@ -107,6 +108,15 @@ class CountriesDisagreeTest(unittest.TestCase):
         body, _ = report.render("de", [], {}, None, 3, "1", "https://x/1", cd.section(self.found, "de"))
         self.assertIn("## Countries disagree (2)", body)
         self.assertIn("**judge** «runner»", body)
+
+    def test_mirror_reads_the_port_local_mirror_port_names(self):
+        exported = []
+        with mock.patch.dict(os.environ, {"LOCAL_MIRROR_PORT": "28099"}), \
+                mock.patch.object(cd, "export", lambda mirror, data, countries: exported.append(mirror)), \
+                mock.patch("sys.stdout"), mock.patch("sys.stderr"):
+            self.assertEqual(cd.main(["--mirror", "mongodb://127.0.0.1:28017", "--data", self.data]), 64)
+            self.assertEqual(cd.main(["--mirror", "mongodb://127.0.0.1:28099", "--data", self.data]), 0)
+        self.assertEqual(exported, ["mongodb://127.0.0.1:28099"])
 
 
 if __name__ == "__main__":

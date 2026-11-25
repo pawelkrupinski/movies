@@ -53,12 +53,12 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "ci"))
+sys.path[:0] = [os.path.join(HERE, "ci"), os.path.join(HERE, "lib")]
+import mongo_local  # noqa: E402
 from identity_judgements import COUNTRIES, label_of, labels_by_country, normalise, read  # noqa: E402
 
 EXPORT = os.path.join(HERE, "identity-precision-export.js")
 JUDGEMENTS = os.path.join(HERE, "..", "test", "resources", "fixtures", "identity-judgements.tsv")
-MIRROR = "mongodb://127.0.0.1:28017"
 DATABASES = {"pl": "kinowo_prod_mirror"}
 Z95 = 1.959964
 LINE_BREAKS = re.compile("[\t\n\r\x0b\x0c\x1c-\x1e\x85\u2028\u2029]")
@@ -186,7 +186,8 @@ def pooled(per_country, totals):
 
 # ── I/O ─────────────────────────────────────────────────────────────────────────────────────────
 
-def export(cc, now, mirror=MIRROR):
+def export(cc, now, mirror: "str | None" = None):
+    mirror = mirror or mongo_local.local_mongo_server(os.environ)
     database = DATABASES.get(cc, f"kinowo_{cc}_prod_mirror")
     out = subprocess.run(["mongosh", "--quiet", f"{mirror}/{database}", EXPORT], check=True, capture_output=True,
                          text=True, env=dict(os.environ, NOW=now)).stdout

@@ -128,6 +128,14 @@ def read_found(data, judgements, countries=COUNTRIES):
     return disagreements(X.read_listings(data, countries, films), labels_by_country(read(judgements)), films)
 
 
+def mirror_port():
+    """The local mirror's port (LOCAL_MIRROR_PORT): scripts/lib's mongo_local, imported here alone, since the sparse
+    identity-findings checkout carries scripts/ci only and never passes --mirror."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+    import mongo_local  # noqa: E402
+    return mongo_local.local_mongo_port(os.environ)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--mirror", help="export the LOCAL prod mirror (mongodb://127.0.0.1:28017) into --data first")
@@ -137,8 +145,9 @@ def main(argv=None):
     p.add_argument("--limit", type=int, default=30)
     a = p.parse_args(argv)
     if a.mirror:
-        if "127.0.0.1:28017" not in a.mirror and "localhost:28017" not in a.mirror:
-            print("--mirror reads the LOCAL prod mirror only (127.0.0.1:28017)", file=sys.stderr)
+        port = mirror_port()
+        if f"127.0.0.1:{port}" not in a.mirror and f"localhost:{port}" not in a.mirror:
+            print(f"--mirror reads the LOCAL prod mirror only (127.0.0.1:{port})", file=sys.stderr)
             return 64
         export(a.mirror, a.data, COUNTRIES)
     print("\n".join(section(read_found(a.data, a.judgements), a.country, a.limit)).lstrip("\n"))

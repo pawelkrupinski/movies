@@ -9,6 +9,7 @@ import random
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_precision_sample as ps  # noqa: E402
@@ -117,6 +118,15 @@ class Estimate(unittest.TestCase):
 
 
 class Files(unittest.TestCase):
+    def test_export_reads_the_mirror_on_the_port_local_mirror_port_names(self):
+        calls = []
+        def run(command, **_):
+            calls.append(command)
+            return mock.Mock(stdout='{"venue": "Kino"}\n')
+        with mock.patch.dict(os.environ, {"LOCAL_MIRROR_PORT": "28099"}), mock.patch.object(ps.subprocess, "run", run):
+            self.assertEqual(ps.export("de", "2026-11-25"), [{"venue": "Kino"}])
+        self.assertEqual(calls[0][2], "mongodb://127.0.0.1:28099/kinowo_de_prod_mirror")
+
     def test_a_sample_round_trips_through_its_tsv_line_breaks_and_tabs_aside(self):
         take = {"venue": "Kino", "rawTitle": "Lalka", "film": "tmdb:1", "showtimes": 7, "basis": "OwnMatch",
                 "billing": {"synopsis": "a\tb\nc\rd e", "directors": ["X", "Y"], "ids": {"cc": "1"}},

@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import unmatched_census  # noqa: E402
@@ -145,6 +146,16 @@ class CommandLineTest(unittest.TestCase):
         with self.assertRaises(SystemExit) as refusal:
             unmatched_census.main(['--mongo', 'mongodb://host:27017', '--from-dump', self.directory])
         self.assertIn('refusing :27017', str(refusal.exception))
+
+    def test_the_default_mirror_is_on_the_port_local_mirror_port_names(self):
+        self.write_verdicts('')
+        asked = []
+        with mock.patch.dict(os.environ, {'LOCAL_MIRROR_PORT': '28099'}), \
+                mock.patch.object(unmatched_census, 'query_mirror',
+                                  lambda mongo, country, since: asked.append(mongo) or DUMP), redirect_stdout(io.StringIO()):
+            unmatched_census.main(['--countries', 'DE', '--event-patterns', self.patterns, '--verdicts', self.verdicts,
+                                   '--watch', os.path.join(self.directory, 'none.tsv')])
+        self.assertEqual(asked, ['mongodb://127.0.0.1:28099'])
 
     def test_checked_in_data_files_parse(self):
         unmatched_census.read_patterns(os.path.join(unmatched_census.DATA, 'event-patterns.txt'))

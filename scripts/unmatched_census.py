@@ -36,6 +36,9 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, 'lib'))
+import mongo_local  # noqa: E402
+
 DATA = os.path.join(HERE, 'unmatched-census')
 COUNTRIES = ['PL', 'DE', 'UK', 'US', 'ES']
 MATCH_BASES = {'OwnMatch', 'PooledMatch'}
@@ -241,7 +244,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--countries', default=','.join(COUNTRIES))
     parser.add_argument('--since', default=datetime.date.today().isoformat())
-    parser.add_argument('--mongo', default='mongodb://127.0.0.1:28017', help='the local prod mirror; :27017 is refused')
+    parser.add_argument('--mongo', default=mongo_local.local_mongo_server(os.environ), help='the local prod mirror; :27017 is refused')
     parser.add_argument('--event-patterns', default=os.path.join(DATA, 'event-patterns.txt'))
     parser.add_argument('--watch', default=os.path.join(DATA, 'watch.tsv'))
     parser.add_argument('--verdicts', default=os.path.join(DATA, 'verdicts.tsv'))
