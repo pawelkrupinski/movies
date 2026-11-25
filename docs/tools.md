@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (221)
+## Landing and CI (222)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -86,7 +86,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/ci-timings` | Where CI's time goes across runs: report, trend, compare, collect | `scripts/ci/ci-timings` | wf alert-backtest, android, archive-recording +43; 5 tools | ci_timings_test.py | KEEP |
 | `scripts/ci/ci_http_calls.py` | What a CI job asked the outside world: its outbound calls per external service and outcome, as a | `scripts/ci/ci_http_calls.py` | wf country-convergence-leg; 1 tool | ci_http_calls_test.py | Python |
 | `scripts/ci/ci_row_scope.py` | CAN THIS PUSH MOVE ci.yml's SLOW ROWS? Reads changed paths on stdin and prints `true` when one of them can change | `scripts/ci/ci_row_scope.py` | 1 tool | ci_row_scope_test.py | Python |
-| `scripts/ci/ci_timings.py` | Where a GitHub Actions run spent its time: every job and step, plus the `PhaseTimer` phases a | `python3 scripts/ci/ci_timings.py` | wf country-convergence-leg, identity-lean-whole, report-timings; 7 tools | ci_timings_test.py | Python |
+| `scripts/ci/ci_timings.py` | Where a GitHub Actions run spent its time: every job and step, plus the `PhaseTimer` phases a | `python3 scripts/ci/ci_timings.py` | wf country-convergence-leg, identity-lean-whole, report-timings; 8 tools | ci_timings_test.py | Python |
 | `scripts/ci/ci_trends.py` | Where CI's time goes, across many runs: per job and step, setup against work, the critical path, queueing, the | `scripts/ci/ci_trends.py` | 8 tools | ci_trends_test.py | Python |
 | `scripts/ci/commit-rules-ci.sh` | The drift gate's commit rules, on CI (scripts/ci/commit_rules.py: `allowlists` and `driftguards`) | `scripts/ci/commit-rules-ci.sh` | wf ci, precommit-check; 3 tools | commit_rules_ci_test.py | KEEP |
 | `scripts/ci/commit_rules.py` | The commit rules of the drift gate: the pre-push hook's allowlists and driftguards checks | `scripts/ci/commit_rules.py` | wf ci, identity-drift-explorer; hook post-commit, pre-push; skill CLAUDE.md; 7 tools | commit_rules_test.py | Python |
@@ -191,6 +191,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/wait-for-run-artifact.sh` | Wait until this workflow run has uploaded artifact <name>, produced by another job of the run | `scripts/ci/wait-for-run-artifact.sh` | wf country-convergence-leg; 1 tool | wait_for_run_artifact_test.py | KEEP |
 | `scripts/ci/wait_for_run_artifact.py` | Wait until THIS workflow run has uploaded artifact <name>, produced by another job of the run -- a country leg's order | `scripts/ci/wait_for_run_artifact.py` | 1 tool | wait_for_run_artifact_test.py | Python |
 | `scripts/ci/wait_out_registry_outage.py` | Run a command against the image registry, and when it lost the registry, wait for it to answer and run it once more. | `scripts/ci/wait_out_registry_outage.py` | wf main | wait_out_registry_outage_test.py | Python |
+| `scripts/ci/workflow_ceilings.py` | The ceilings of a workflow's jobs, read off its file: each job's `timeout-minutes` (a literal one), github.com's | `imported` | wf report-timings; 1 tool | - | Python |
 | `scripts/ci/workflow_steps.py` | The `uses: <action>` steps of the workflows and composite actions, each with its `with:` block, for the lint tests | `imported` | by hand | - | Python |
 | `scripts/ci/xcresult_annotations.py` | Every failed test of an .xcresult bundle as a GitHub annotation that carries its own assertion. | `scripts/ci/xcresult_annotations.py` | wf ios; 1 tool | xcresult_annotations_test.py | Python |
 | `scripts/ci/xcresult_junit.py` | Turn an .xcresult bundle's test tree into JUnit XML, using only what Xcode ships. | `python3 scripts/ci/xcresult_junit.py` | wf ios; 1 tool | xcresult_junit_test.py | Python |
