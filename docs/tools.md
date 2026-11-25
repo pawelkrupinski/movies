@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (227)
+## Landing and CI (229)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -68,12 +68,14 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `.github/workflows/security-headers.yml` | Assert the live sites' security headers (kinowo.net, showtimes.cc) | `workflow: schedule, workflow_dispatch, push` | 1 tool | - | - |
 | `.github/workflows/tool-self-tests.yml` | The development tooling's own tests, off the gate (ci-failures-2026-10-30, recommendation 1) | `workflow: push, schedule, repository_dispatch, workflow_dispatch` | wf ci, order-independence; 4 tools | - | - |
 | `scripts/adopt-ci-budgets` | Set tools.costs.PerformanceBudgets' allocation figures (`measured`) from what a CI run measured, not a laptop | `scripts/adopt-ci-budgets` | wf ci; 2 tools | adopt_ci_budgets_test.py | KEEP |
-| `scripts/agent-procs` | Audit, and safely clean up after, the agents working this repository in parallel. | `scripts/agent-procs` | wf tool-self-tests; skill CLAUDE.md, agent-ops; 1 tool | agent-procs-test.sh | Python |
+| `scripts/agent-procs` | Audit, and safely clean up after, the agents working this repository in parallel. | `scripts/agent-procs` | wf tool-self-tests; skill CLAUDE.md, agent-ops; 3 tools | agent-procs-test.sh | Python |
 | `scripts/agent-time` | Where a Claude Code session's subagents spent their time: every agent's hours by bucket | `scripts/agent-time` | skill CLAUDE.md, agent-ops; 2 tools | agent_time_test.py | KEEP |
+| `scripts/agent_procs_core.py` | The process and worktree model behind scripts/agent-procs: the ps / lsof tables read into `Process` records, the | `imported` | 2 tools | - | Python |
+| `scripts/agent_procs_watchers.py` | Orphaned watchers for scripts/agent-procs: poll loops and waiting tools whose agent session has ended, found from | `imported` | 1 tool | - | Python |
 | `scripts/agent_time.py` | Where a Claude Code session's subagents spent their time: hours by bucket, the longest agents, one agent's slowest | `scripts/agent_time.py` | 1 tool | agent_time_test.py | Python |
 | `scripts/ci-sbt` | One sbt command on ci-runner's measure lane, with its verdict: the laptop's heavy test runs off the laptop (a name for ci_sbt.py) | `scripts/ci-sbt` | wf identity-run; skill CLAUDE.md, agent-ops; 3 tools | ci_sbt_test.py | KEEP |
 | `scripts/ci-status` | One line per workflow: where CI stands for main (or a commit) | `scripts/ci-status` | skill agent-ops; 2 tools | ci_status_test.py | KEEP |
-| `scripts/ci-wait` | Wait for GitHub Actions runs, bounded -- the one way a tool or an agent waits on CI. Never a hand-written `while gh run view ... | `scripts/ci-wait` | skill CLAUDE.md, agent-ops; 9 tools | ci_wait_test.py | KEEP |
+| `scripts/ci-wait` | Wait for GitHub Actions runs, bounded -- the one way a tool or an agent waits on CI. Never a hand-written `while gh run view ... | `scripts/ci-wait` | skill CLAUDE.md, agent-ops; 10 tools | ci_wait_test.py | KEEP |
 | `scripts/ci/alert-step.sh` | Alert, not red: run a check whose failure of a given kind is a third PARTY's or a BACKLOG's | `scripts/ci/alert-step.sh` | wf decodo-probe, identity-ci-staleness, identity-findings-report +2 | alert-step-test.sh | KEEP |
 | `scripts/ci/baseline_ratchet.py` | THE BASELINE RATCHET ENGINE: what the JS/TS and the Python quality ratchets share (js_quality_ratchet.py, | `imported` | hook pre-push; 5 tools | - | Python |
 | `scripts/ci/bounded-step.sh` | A step with its own `timeout-minutes` runs as a process group this script can end | `scripts/ci/bounded-step.sh` | wf country-convergence-leg, decoration-discovery, identity-capture +10; agentctl; skill CLAUDE.md | bounded-step-test.sh | KEEP |
@@ -173,7 +175,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/runner_cache.py` | A runner-local mirror of actions/cache entries, for the self-hosted runners on ci-runner. | `python3 scripts/ci/runner_cache.py` | 1 tool | runner_cache_test.py | Python |
 | `scripts/ci/runner_scheduler.py` | CI-RUNNER'S MOVIES RUNNER SCHEDULER (the owner, 2026-11-06: "make movies runs take all the ci-runner runners when | `python3 scripts/ci/runner_scheduler.py` | wf precommit-check; agentctl; 1 tool | runner_scheduler_test.py | Python |
 | `scripts/ci/sbt-deps-resolve.sh` | Resolve every dependency of the sbt build once (`sbt update` over the root aggregate | `scripts/ci/sbt-deps-resolve.sh` | wf ci; 2 tools | sbt-deps-resolve-test.sh | KEEP |
-| `scripts/ci/sbt-guard/sbt` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH | `scripts/ci/sbt-guard/sbt` | wf ci, country-convergence-leg, country-fixture-artifact +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 146 tools | - | MIGRATE |
+| `scripts/ci/sbt-guard/sbt` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH | `scripts/ci/sbt-guard/sbt` | wf ci, country-convergence-leg, country-fixture-artifact +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 147 tools | - | MIGRATE |
 | `scripts/ci/sbt-invalidate-exporters.sh` | Delete the compiled classes of every Scala source holding a wildcard export (`export X.*`, `export x.{a as _, *}`) | `scripts/ci/sbt-invalidate-exporters.sh` | skill CLAUDE.md; 2 tools | sbt-invalidate-exporters-test.sh | KEEP |
 | `scripts/ci/sbt-sources-key.sh` | The hash an sbt build cache is keyed by: the content of the sources a job compiles | `scripts/ci/sbt-sources-key.sh` | wf ci; 1 tool | sbt-sources-key-test.sh | KEEP |
 | `scripts/ci/scheduled-failure-issue.sh` | Turn a failed scheduled workflow run into a GitHub issue assigned to the repo owner, and close it again when the workflow next passes | `scripts/ci/scheduled-failure-issue.sh` | wf coupling-exemptions, prune-actions-caches, security-headers; 2 tools | scheduled_failure_issue_test.py | KEEP |
@@ -237,7 +239,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/sbt-warm` | sbt for agents, warm: one sbt server per checkout, kept between calls | `scripts/sbt-warm` | wf tool-self-tests; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 37 tools | sbt-warm-test.sh | MIGRATE |
 | `scripts/stall-report.sh` | What a stalled process group was doing, said before it is ended | `scripts/stall-report.sh` | 3 tools | - | KEEP |
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
-| `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 6 tools | wait-for-test.sh | KEEP |
+| `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 7 tools | wait-for-test.sh | KEEP |
 
 ## Identity (214)
 
@@ -366,7 +368,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity-replay` | The identity model's take at a past moment, resolved again from the identity history (identity_history, a month of it) | `scripts/identity-replay` | skill identity-investigation; 1 tool | - | KEEP |
 | `scripts/identity-repro` | Turn a production listing — one a regression alert, a drift-check line or the user names — into a slice case on the freshest recording (a name for identity_repro.py) | `scripts/identity-repro` | wf record-scrape-fixtures; 4 tools | identity_repro_test.py | KEEP |
 | `scripts/identity-rule-ablation` | Rule ablation: which identity and title rules move takes when switched off, over the recorded corpora | `scripts/identity-rule-ablation` | wf identity-rule-ablation | identity_rule_ablation_test.py | KEEP |
-| `scripts/identity-slice` | Reproduce one listing's identity take — matched or not, model and agreement — from a recording, in seconds | `scripts/identity-slice` | wf archive-recording, identity-run, main +2; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 38 tools | - | MIGRATE |
+| `scripts/identity-slice` | Reproduce one listing's identity take — matched or not, model and agreement — from a recording, in seconds | `scripts/identity-slice` | wf archive-recording, identity-run, main +2; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 39 tools | - | MIGRATE |
 | `scripts/identity-slice-coverage` | Slice answer coverage: every pinned slice decided again from its own answers, naming each missing request | `scripts/identity-slice-coverage` | hook pre-push; 2 tools | identity_slice_coverage_test.py | MIGRATE |
 | `scripts/identity-slice-refresh` | Re-pin identity slice cases on this checkout's code, in place, keeping each case's expected.tsv | `scripts/identity-slice-refresh` | skill identity-investigation; 2 tools | identity_slice_refresh_test.py | KEEP |
 | `scripts/identity-stage-works.py` | Rebuild the identity resolver's table of stage works — every opera and ballet Wikidata knows with five or more | `scripts/identity-stage-works.py` | by hand | - | Python |
