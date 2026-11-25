@@ -97,6 +97,7 @@ if env.get("FAKE_SSH_EXIT"):
 port = int(argv[argv.index("-L") + 1].split(":")[0])
 server = socket.socket()
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
 try:
     server.bind(("127.0.0.1", port))
     server.listen(64)
@@ -161,10 +162,12 @@ def listening() -> socket.socket:
     return server
 
 
-def free_port() -> int:
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return int(probe.getsockname()[1])
+def reserved_port() -> socket.socket:
+    """A bound, never listening socket that keeps its port ours; the fake ssh shares it (SO_REUSEPORT) to listen."""
+    reservation = socket.socket()
+    reservation.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    reservation.bind(("127.0.0.1", 0))
+    return reservation
 
 
 def alive(pid: int) -> bool:
@@ -191,8 +194,9 @@ class MirrorCase(cli_harness.ToolCase):
         for name in ("home", "tmp", "fences", "answers"):
             os.makedirs(self.path(name))
         self.local_mongo = listening()
-        self.held: List[socket.socket] = [self.local_mongo]
-        self.tunnel_port = free_port()
+        reservation = reserved_port()
+        self.held: List[socket.socket] = [self.local_mongo, reservation]
+        self.tunnel_port = int(reservation.getsockname()[1])
         self.daemon: Optional[subprocess.Popen[str]] = None
         self.spawned: List[subprocess.Popen[str]] = []
         self.fakes.program("mongosh", MONGOSH)
