@@ -177,7 +177,7 @@ repochecks:deploy.SbtTargetCacheJarsSpec	.github/actions/*.yaml .github/actions/
 repochecks:deploy.ScheduledRunReportSpec	.github/workflows/*
 repochecks:deploy.SelfHostedRunnersSpec	.github/workflows/* scripts/ci/runner_scheduler.py
 repochecks:deploy.SetupSbtRunnerPinSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml project/build.properties scripts/ci/seed-sbt-runner.sh
-repochecks:deploy.SharedFileLayoutSpec	docs/design/identity-no-drift/state/* docs/identity-experiments/* .gitattributes docs/* test/resources/fixtures/* .github/convergence-paths.txt
+repochecks:deploy.SharedFileLayoutSpec	docs/design/identity-no-drift/state/* docs/identity-experiments/* .gitattributes docs/* test/resources/fixtures/* .github/convergence-paths.txt test/resources/identity-stamp-carry.tsv test/resources/identity-stamp-carry-ranges.tsv
 repochecks:deploy.SharedJdkSetupSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
 repochecks:deploy.SharedMachineStateLintSpec	*	walks every test file of four languages across the tree and judges each file alone: a standing lint (it reads nearly every push; no two changes' files meet in one verdict)
 repochecks:deploy.SharedSbtBuildSetupSpec	.github/actions/sbt-target-cache/action.yml .github/actions/setup-sbt-build/action.yml .github/workflows/ci.yml .github/workflows/country-fixture-artifact.yml .github/workflows/decoration-discovery.yml .github/workflows/discover-cinemas.yml .github/workflows/identity-capture.yml .github/workflows/identity-decorations.yml .github/workflows/identity-refit.yml .github/workflows/nightly-stress.yml scripts/ci/sbt-sources-key.sh scripts/identity-refit
