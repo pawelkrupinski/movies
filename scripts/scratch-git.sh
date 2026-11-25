@@ -38,13 +38,15 @@ done < <(compgen -e | grep '^GIT_')
 unset _scratch_git_var
 
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
-export GIT_CONFIG_COUNT=6 \
+export GIT_CONFIG_COUNT=8 \
   GIT_CONFIG_KEY_0=user.name        GIT_CONFIG_VALUE_0=Spec \
   GIT_CONFIG_KEY_1=user.email       GIT_CONFIG_VALUE_1=spec@example.test \
   GIT_CONFIG_KEY_2=commit.gpgsign   GIT_CONFIG_VALUE_2=false \
   GIT_CONFIG_KEY_3=tag.gpgsign      GIT_CONFIG_VALUE_3=false \
   GIT_CONFIG_KEY_4=init.defaultBranch GIT_CONFIG_VALUE_4=main \
-  GIT_CONFIG_KEY_5=safe.directory   GIT_CONFIG_VALUE_5='*'
+  GIT_CONFIG_KEY_5=safe.directory   GIT_CONFIG_VALUE_5='*' \
+  GIT_CONFIG_KEY_6=maintenance.auto GIT_CONFIG_VALUE_6=false \
+  GIT_CONFIG_KEY_7=gc.auto          GIT_CONFIG_VALUE_7=0
 
 # The checkout this file belongs to: the one repository a scratch command must never reach.
 _scratch_git_own_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"

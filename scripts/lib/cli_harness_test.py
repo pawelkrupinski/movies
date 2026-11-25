@@ -63,6 +63,13 @@ class CliHarnessTest(cli_harness.ToolCase):
         with self.assertRaises(AssertionError):
             self.git(cli_harness.ROOT, "status")
 
+    def test_a_commit_in_a_scratch_repository_starts_no_background_maintenance(self) -> None:
+        """git commit detaches `git maintenance run --auto`, which takes objects/maintenance.lock after the case has
+        gone on to remove the directory: tearDown then fails with "Directory not empty: 'objects'" (CI, 2026-11-25)."""
+        repo = self.repo("r")
+        self.assertEqual("false", self.git(repo, "config", "--get", "maintenance.auto"))
+        self.assertEqual("0", self.git(repo, "config", "--get", "gc.auto"))
+
     def test_tool_path_prefers_the_python_version(self) -> None:
         self.assertEqual(os.path.join(cli_harness.ROOT, "scripts/lib/cli_harness.py"),
                          cli_harness.tool_path("scripts/lib/cli_harness.py", "scripts/shell-spec.sh"))

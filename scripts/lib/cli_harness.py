@@ -42,13 +42,16 @@ WAIT_BOUND = float(os.environ.get("SPEC_WAIT_BOUND", "120"))
 # What a test's tool never inherits from the run around it (run-script-tests drops the same for its tests)
 DROPPED_PREFIXES = ("GIT_", "GITHUB_", "RUNNER_", "KINOWO_GOV_", "PREPUSH_", "AGENTCTL_")
 ISOLATED = {
-    "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_COUNT": "6",
+    "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_COUNT": "8",
     "GIT_CONFIG_KEY_0": "user.name", "GIT_CONFIG_VALUE_0": "Spec",
     "GIT_CONFIG_KEY_1": "user.email", "GIT_CONFIG_VALUE_1": "spec@example.test",
     "GIT_CONFIG_KEY_2": "commit.gpgsign", "GIT_CONFIG_VALUE_2": "false",
     "GIT_CONFIG_KEY_3": "tag.gpgsign", "GIT_CONFIG_VALUE_3": "false",
     "GIT_CONFIG_KEY_4": "init.defaultBranch", "GIT_CONFIG_VALUE_4": "main",
     "GIT_CONFIG_KEY_5": "safe.directory", "GIT_CONFIG_VALUE_5": "*",
+    # no detached `git maintenance run --auto` after a commit: it takes objects/maintenance.lock after the case ended
+    "GIT_CONFIG_KEY_6": "maintenance.auto", "GIT_CONFIG_VALUE_6": "false",
+    "GIT_CONFIG_KEY_7": "gc.auto", "GIT_CONFIG_VALUE_7": "0",
     # the JVM gate and the governor are the real Mac's: off in every case (shell-spec.sh)
     "KINOWO_MEMORY_GATE": "0", "KINOWO_JVM_SLOTS": "0", "KINOWO_JVM_CPUS": "0", "KINOWO_GOVERNOR": "0",
     "GH_DOWNLOAD_PUBLIC": "0", "KINOWO_JVM_GATE_FOLLOW_MAIN": "0", "PYTHONDONTWRITEBYTECODE": "1",
