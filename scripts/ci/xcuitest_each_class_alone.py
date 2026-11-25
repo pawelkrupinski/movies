@@ -51,7 +51,7 @@ DEFAULT_APP = "build/dd/Build/Products/Debug-iphonesimulator/Kinowo.app"
 
 
 def classes_in(directory: str) -> List[str]:
-    found = set()
+    found: set[str] = set()
     for swift in sorted(Path(directory).glob("*.swift")):
         found.update(CLASS_DECLARATION.findall(swift.read_text(errors="replace")))
     return sorted(found)
