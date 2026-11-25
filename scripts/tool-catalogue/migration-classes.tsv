@@ -109,7 +109,7 @@ scripts/ci/order-preflight.sh	KEEP
 scripts/ci/order-seed.sh	KEEP
 scripts/ci/population-walk-diff	MIGRATE
 scripts/ci/precommit-share.sh	KEEP
-scripts/ci/preflight.sh	MIGRATE
+scripts/ci/preflight.sh	KEEP
 scripts/ci/prune-actions-caches.sh	KEEP
 scripts/ci/publish-rolling-release.sh	KEEP
 scripts/ci/pull-pinned-image.sh	KEEP

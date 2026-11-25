@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (226)
+## Landing and CI (227)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -155,7 +155,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/population_walk_diff.py` | THE POPULATION WALK, JUDGED AGAINST THE CHANGE'S BASE (the landing check's half of | `python3 scripts/ci/population_walk_diff.py` | hook pre-push; 2 tools | population_walk_diff_test.py | Python |
 | `scripts/ci/precommit-share.sh` | The landing check's shares (.github/workflows/precommit-check.yml) | `scripts/ci/precommit-share.sh` | wf precommit-check; agentctl; 4 tools | precommit_share_test.py | KEEP |
 | `scripts/ci/precommit_share.py` | THE LANDING CHECK'S SHARES (.github/workflows/precommit-check.yml): how one job of the check calls the pre-push hook, | `scripts/ci/precommit_share.py` | 1 tool | precommit_share_test.py | Python |
-| `scripts/ci/preflight.sh` | Fail a workflow in seconds when it lacks configuration (an unset secret or variable), not code | `scripts/ci/preflight.sh` | wf android, convergence-bisect, decoration-discovery +5 | preflight-test.sh | MIGRATE |
+| `scripts/ci/preflight.py` | PREFLIGHT: fail a workflow in seconds, at its first job, when it cannot succeed for want of configuration rather than | `scripts/ci/preflight.py` | wf android, ci, convergence-bisect +10; skill CLAUDE.md, identity-investigation; 23 tools | preflight_test.py | Python |
+| `scripts/ci/preflight.sh` | Fail a workflow in seconds when it lacks configuration (an unset secret or variable), not code | `scripts/ci/preflight.sh` | wf android, convergence-bisect, decoration-discovery +5; 1 tool | preflight_test.py | KEEP |
 | `scripts/ci/prune-actions-caches.sh` | Delete the superseded per-commit entries of main's GitHub Actions caches, keeping the newest entry of each family | `scripts/ci/prune-actions-caches.sh` | wf prune-actions-caches | prune-actions-caches-test.sh | KEEP |
 | `scripts/ci/publish-rolling-release.sh` | Point a rolling prerelease — and its git tag — at this commit and replace its assets | `scripts/ci/publish-rolling-release.sh` | wf android | - | KEEP |
 | `scripts/ci/pull-pinned-image.sh` | Pull one of .github/pinned-images.tsv's images by digest, from the first source that serves it, and refuse any other | `scripts/ci/pull-pinned-image.sh` | wf mirror-pinned-images; 5 tools | pull_pinned_image_test.py | KEEP |
