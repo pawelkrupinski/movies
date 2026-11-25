@@ -19,15 +19,15 @@ import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/ci/close_mongo_tunnel.py", "scripts/ci/close-mongo-tunnel.sh")
 # holds the listening socket it is handed (fd argv[1]) and accepts on it until ended
-HOLD = """import socket, sys, time
+HOLD = """import socket, sys
 s = socket.socket(fileno=int(sys.argv[1]))
 s.settimeout(0.2)
 while True:
     try:
         s.accept()[0].close()
     except OSError:
-        time.sleep(0.05)"""
-SLEEP = "import time; time.sleep(300)"
+        pass"""
+SLEEP = "import signal; signal.pause()"
 
 
 def answers(port: int) -> bool:
