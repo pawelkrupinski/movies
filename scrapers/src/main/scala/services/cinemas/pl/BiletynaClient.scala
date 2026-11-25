@@ -95,19 +95,14 @@ object BiletynaClient {
   private case class RawSlot(eventType: Option[String], title: String, dateTime: java.time.LocalDateTime, url: String, poster: Option[String],
                              runtimeMinutes: Option[Int] = None)
 
-  private val IsoDuration = """PT(?:(\d+)H)?(?:(\d+)M)?""".r
   /** The ticketing default a venue leaves unedited: 53% of films' `duration`s are exactly this
    *  ("Hot Spot", 130 minutes, among them), so it says nothing about the film. */
   private val DefaultDurationMinutes = 90
 
   /** A screening's JSON-LD `duration` ("PT1H41M") as the film's running time, unless it is the
    *  default: the non-default ones matched TMDB within 5 minutes for 39 of 49 films checked. */
-  private def runtimeOf(duration: String): Option[Int] = duration.trim match {
-    case IsoDuration(hours, minutes) =>
-      Some(ScrapeRuntime.minutesOf(hours, minutes))
-        .filter(m => m > 0 && m != DefaultDurationMinutes)
-    case _ => None
-  }
+  private def runtimeOf(duration: String): Option[Int] =
+    ScrapeRuntime.isoDurationMinutes(duration).filter(_ != DefaultDurationMinutes)
 
   /** schema.org `@type`s biletyna stamps on the venue's own LIVE stage/music
    *  programming, which shares the ticketing surface with its film screenings

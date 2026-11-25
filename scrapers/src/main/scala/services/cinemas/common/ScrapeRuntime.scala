@@ -1,6 +1,5 @@
 package services.cinemas.common
 
-
 /** Runtimes as the cinema pages spell them, in minutes. */
 private[cinemas] object ScrapeRuntime {
 
@@ -19,6 +18,15 @@ private[cinemas] object ScrapeRuntime {
     val minutes = RuntimeMinutes.findFirstMatchIn(s).map(_.group(1).toInt).getOrElse(0)
     Some(hours * 60 + minutes).filter(_ > 0)
   }
+
+  private val IsoDuration = """PT(?:(\d+)H)?(?:(\d+)M)?""".r
+
+  /** An ISO-8601 time duration ("PT1H41M", "PT95M", "PT2H") in minutes, when it lies within `atLeast`..`atMost`
+   *  (inclusive; by default any positive one); `None` for anything else, an empty "PT" included. The first
+   *  "PT…" in `s` is read, a trailing seconds part ignored. A venue that also distrusts a particular value
+   *  (a ticketing default) filters that itself. */
+  def isoDurationMinutes(s: String, atLeast: Int = 1, atMost: Int = Int.MaxValue): Option[Int] =
+    IsoDuration.findFirstMatchIn(s).map(m => minutesOf(m.group(1), m.group(2))).filter(m => m >= atLeast && m <= atMost)
 
   private val MinutesCount = """(\d+)\s*min""".r
 

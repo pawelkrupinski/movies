@@ -155,9 +155,6 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
     bookingUrl: Option[String]
   )
 
-  private def parseDuration(iso: String): Option[Int] =
-    """PT(?:(\d+)H)?(?:(\d+)M)?""".r.findFirstMatchIn(iso).map(m => ScrapeRuntime.minutesOf(m.group(1), m.group(2))).filter(_ > 0)
-
   private def parseScreeningEvent(json: JsValue): Option[ScreeningEntry] =
     Try {
       val eventType = (json \ "@type").asOpt[String]
@@ -168,7 +165,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
           title     <- (json \ "workPresented" \ "name").asOpt[String]
           startDate <- (json \ "startDate").asOpt[String]
         } yield {
-          val runtimeMinutes = (json \ "workPresented" \ "duration").asOpt[String].flatMap(parseDuration)
+          val runtimeMinutes = (json \ "workPresented" \ "duration").asOpt[String].flatMap(ScrapeRuntime.isoDurationMinutes(_))
           val releaseYear    = (json \ "workPresented" \ "dateCreated").asOpt[Int]
                                  .orElse((json \ "workPresented" \ "copyrightYear").asOpt[Int])
           ScreeningEntry(
