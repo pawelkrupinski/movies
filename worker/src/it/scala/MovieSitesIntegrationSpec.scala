@@ -22,6 +22,7 @@ import tools.RealHttpFetch
  * question a sustained block is indistinguishable from a real slug-convention change —
  * and it was the block, twice, on 2026-07-28.
  */
+@LiveSites
 class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelTestExecution {
 
   private def probe(url: String): () => Unit = () => { new RealHttpFetch().get(url); () }

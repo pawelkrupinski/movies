@@ -22,6 +22,7 @@ import tools.RealHttpFetch
  * HTTP clients, the same cost as each test's own upstream probe.
  */
 
+@LiveSites
 class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelTestExecution with tools.SuiteConfiguration {
 
   private val tmdbApiKey = configuration.tmdbApiKey

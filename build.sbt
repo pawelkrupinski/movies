@@ -205,6 +205,18 @@ lazy val IdentityIntegrationSuites = Set(
   "integration.HardClusterConvergenceIntegrationSpec")
 lazy val itRowSettings = rowSettings("IT_ROW", IntegrationTest, Seq("identity" -> IdentityIntegrationSuites))
 
+// LIVE SITES (the owner, 2026-11-25): a spec that talks to a real third-party site (Metacritic, Rotten Tomatoes, IMDb,
+// TMDB, Filmweb) is a canary for that site's contract, never a check of our code: Metacritic began answering 200 for
+// any slug and blocked two landings. Such a spec carries worker's `integration.LiveSites` tag (LiveSites.java), and the
+// `it` config EXCLUDES the tag from every run -- `itAll`, so Main's integration rows, the pre-push `itrest` and the
+// landing check can never select one. `LIVE_SITES=1` flips the same config to run ONLY the tagged specs (`itLive`: the
+// nightly live-sites.yml, which opens an issue and gates nothing). LiveSitesTaggedSpec fails a spec reaching a live
+// probe without the tag. Excluding a tag nothing carries (web's `it` tree) is harmless.
+lazy val LiveSitesTag = "integration.LiveSites"
+lazy val liveSitesSettings = Seq(
+  IntegrationTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest,
+    if (sys.env.get("LIVE_SITES").exists(_.nonEmpty)) "-n" else "-l", LiveSitesTag))
+
 // The worker's ~6,300 unit tests on one runner were CPU-bound too (409 s of suites at 4 cores, 2026-10-15), split into
 // rows. THE HEAVY ROWS (2026-10-28, the owner: the suites that replay whole recordings or captures "don't belong in a
 // unit stage", but still run before every deploy): the suites that re-decide a recording's slices or re-resolve the
@@ -624,7 +636,7 @@ lazy val worker = (project in file("worker"))
   .settings(unitReportSettings, testOrderSettings, workerRowSettings)
   .settings(ForkedTests.settings(Test, heap = "2g"))
   .settings(UnitClasspathGuard.settings)
-  .settings(itReportSettings, itRowSettings)
+  .settings(itReportSettings, itRowSettings, liveSitesSettings)
   // Fails the it run when a repository write failed and was swallowed into a WARN.
   .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs, heapDumpScript)
@@ -742,7 +754,7 @@ lazy val web = (project in file("web"))
   // HtmlUnit's driver classes in its object's initialiser, so they must load; no unit spec drives a browser through
   // them, which NoRealDependenciesInUnitSpecsSpec checks.
   .settings(UnitClasspathGuard.allowing(UnitClasspathGuard.BrowserOrganizations))
-  .settings(itReportSettings, itRowSettings)
+  .settings(itReportSettings, itRowSettings, liveSitesSettings)
   .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs, heapDumpScript)
   .settings(launcherOptions("web.options"))
@@ -811,6 +823,8 @@ addCommandAlias("testUnit", "; all base/Test/test quality/Test/test http/Test/te
 // corpus — see CountryScoped.java. They run one-per-JVM via the convergence* aliases.
 addCommandAlias("e2eShared", "e2e/Test/testOnly * -- -l services.movies.CountryScoped")
 addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/test")
+// The live-site canaries `itAll` leaves out (see liveSitesSettings): run with LIVE_SITES=1, as live-sites.yml does.
+addCommandAlias("itLive", "worker/IntegrationTest/test")
 // `testUnit` is the full local alias. In CI the modules are spread across
 // parallel jobs to keep each off the deploy-gating critical path, all under the
 // 20-runner cap: `test` runs `testUnitNoE2e` split across rows — `testUnitWorker`

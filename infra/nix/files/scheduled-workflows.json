@@ -114,6 +114,15 @@
         "Thu *-*-* 05:00:00 UTC"
       ]
     },
+    "live-sites": {
+      "crons": [
+        "12 21 * * *"
+      ],
+      "file": "live-sites.yml",
+      "onCalendar": [
+        "*-*-* 21:12:00 UTC"
+      ]
+    },
     "mirror-pinned-images": {
       "crons": [
         "41 16 * * 1"

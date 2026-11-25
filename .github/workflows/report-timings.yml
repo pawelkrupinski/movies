@@ -48,6 +48,7 @@ on:
             - Identity rule ablation
             - Identity run
             - iOS
+            - Live sites
             - Main
             - Mirror pinned images
             - Nightly stress
