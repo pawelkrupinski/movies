@@ -15,7 +15,41 @@ launches() {
   grep -rnIE --exclude-dir=node_modules '(^|[(&;|"[:space:]])java -' "$@" 2>/dev/null \
     | grep -vE '^[^:]+-test\.sh:|^[^:]+_test\.py:|^[^:]+:[0-9]+:[[:space:]]*#'
 }
-missing() { launches "$@" | grep -v -- '-Djava.awt.headless=true' | cut -d: -f1,2; }
+# a Python tool's launch: an argv list holding `"java"` (or a `java` variable) -- the flag may sit in a constant of
+# the file (JVM_FLAGS), so a launch is headless when its file names it; a tuple of names (`("java", "mongod")`) is no
+# argv. 2026-11-25, Tool self-tests #551: the shell-to-Python migration moved launches out of the shell grep's sight.
+python_launches() {
+  python3 -I -B - "$@" <<'PY'
+import ast, os, sys
+def sources(roots):
+    for root in roots:
+        for top, dirs, files in os.walk(root):
+            dirs[:] = [d for d in dirs if d != "node_modules"]
+            for name in sorted(files):
+                path = os.path.join(top, name)
+                if name.endswith("_test.py"):
+                    continue
+                try:
+                    with open(path, "rb") as f:
+                        text = f.read()
+                except OSError:
+                    continue
+                if name.endswith(".py") or (b"\0" not in text and text.startswith(b"#!") and b"python" in text.split(b"\n", 1)[0]):
+                    yield path, text
+def is_java(node):
+    return (isinstance(node, ast.Constant) and node.value == "java") or (isinstance(node, ast.Name) and node.id == "java")
+for path, text in sources(sys.argv[1:]):
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        continue
+    headless = b"-Djava.awt.headless=true" in text
+    for node in ast.walk(tree):
+        if isinstance(node, ast.List) and any(is_java(e) for e in node.elts):
+            print("%s:%d:%s" % (path, node.lineno, "-Djava.awt.headless=true" if headless else "bare"))
+PY
+}
+missing() { { launches "$@"; python_launches "$@"; } | grep -v -- '-Djava.awt.headless=true' | cut -d: -f1,2; }
 
 echo "[spec] tool-jvm-headless"
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-headless.XXXXXX")"; trap 'rm -rf "$scratch"' EXIT
@@ -28,10 +62,14 @@ check "the check finds a bare launch and passes a headless one (comments aside)"
 mkdir -p "$scratch/installed/node_modules/pkg/bin"
 printf 'x\000exec java -Xmx1g -cp x Main\n' > "$scratch/installed/node_modules/pkg/bin/tool"
 printf '#!/bin/sh\nexec java -Xmx1g -cp x Main\n' > "$scratch/installed/node_modules/pkg/vendored.sh"
+printf 'import subprocess\n# ["java", "-Xmx1g"] is only a comment\nsubprocess.run(["java", "-Xmx1g", "Main"])\nCOMMS = ("java", "mongod")\n' > "$scratch/bare.py"
+printf '#!/usr/bin/env python3\nFLAGS = ["-Djava.awt.headless=true"]\njava = "java"\nARGV = ["gov-run", "--", java, *FLAGS, "Main"]\n' > "$scratch/ok-tool"
+check "the check finds a bare Python launch and passes a headless one (comments and name tuples aside)" \
+  "$scratch/bare.py:3" "$(missing "$scratch" | grep -v '\.sh:')"
 check "an installed node_modules (binaries, vendored scripts) is never read as a launch" "" \
   "$(missing "$scratch/installed")"
 check "the repository's tool JVMs launch at least once (the check still sees them)" yes \
-  "$([ "$(cd "$REPO_ROOT" && launches scripts .github/scripts infra/bin | wc -l)" -ge 1 ] && echo yes || echo no)"
+  "$([ "$(cd "$REPO_ROOT" && { launches scripts .github/scripts infra/bin; python_launches scripts .github/scripts infra/bin; } | wc -l)" -ge 3 ] && echo yes || echo no)"
 check "every tool JVM a script launches runs AWT headless" "" \
   "$(cd "$REPO_ROOT" && missing scripts .github/scripts infra/bin)"
 spec_summary
