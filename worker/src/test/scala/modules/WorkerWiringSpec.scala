@@ -299,7 +299,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = { record("rt"); None }
       }
     override lazy val metascoreRatings: services.enrichment.SiteRatings[Int] =
-      new services.enrichment.SiteRatings(movieCache, new services.enrichment.MetascoreRatings(ratingSiteFilms, metacriticClient, movieCache.normalizer),
+      new services.enrichment.SiteRatings(movieCache, new services.enrichment.MetascoreRatings(ratingSiteFilms, metacriticClient, movieCache.normalizer, clock),
         services.enrichment.RatingColumns.Metacritic, stopwatch) {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = { record("mc"); None }
       }
@@ -380,7 +380,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = occupyASlot()
       }
     override lazy val metascoreRatings: services.enrichment.SiteRatings[Int] =
-      new services.enrichment.SiteRatings(movieCache, new services.enrichment.MetascoreRatings(ratingSiteFilms, metacriticClient, movieCache.normalizer),
+      new services.enrichment.SiteRatings(movieCache, new services.enrichment.MetascoreRatings(ratingSiteFilms, metacriticClient, movieCache.normalizer, clock),
         services.enrichment.RatingColumns.Metacritic, stopwatch) {
         override def refreshOneSync(t: String, y: Option[Int]): Option[String] = occupyASlot()
       }

@@ -92,7 +92,13 @@ case class MovieRecord(
   // inputs as they stand while an answer it reads -- a search, a venue page, a record -- is not filed yet. A flag on
   // the take served, never an earlier take held in its place (identity-flips-structural step 6, the owner 2026-10-31).
   // Some(true) or absent; defaulted and last, like `tmdbBasis`, so every older row decodes as decided.
-  tmdbProvisional:   Option[Boolean] = None
+  tmdbProvisional:   Option[Boolean] = None,
+
+  // When Metacritic's stored page for this row FIRST read as its shell (HTTP 200, no `Movie` block), kept until a
+  // later read shows a real page (cleared) or the shell again 24 h after (the link is dropped). Metacritic serves the
+  // shell for a slug it holds no film under AND, to datacenter addresses, for a real film, so one sighting proves
+  // nothing. Defaulted and last, like `tmdbBasis`: every older row decodes as never seen.
+  metacriticShellSeenAt: Option[java.time.Instant] = None
 ) {
 
   /** Equal-weight average of every external rating we hold, each normalised

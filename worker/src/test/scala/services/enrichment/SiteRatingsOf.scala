@@ -17,8 +17,9 @@ object SiteRatingsOf {
   def films(cache: MovieCache, tmdb: TmdbClient)(using LatestTitleYear): RatingSiteFilms = new RatingSiteFilms(tmdb, cache.normalizer)
 
   def metacritic(cache: MovieCache, tmdb: TmdbClient, metacritic: MetacriticClient,
-                 mcLinkCache: ResolutionCache = ResolutionCache.passthrough, cadenceRecorder: Cadence = silent)(using LatestTitleYear): SiteRatings[Int] =
-    new SiteRatings(cache, new MetascoreRatings(films(cache, tmdb), metacritic, cache.normalizer, mcLinkCache), RatingColumns.Metacritic,
+                 mcLinkCache: ResolutionCache = ResolutionCache.passthrough, cadenceRecorder: Cadence = silent,
+                 clock: java.time.Clock = tools.SpecClock.Pinned)(using LatestTitleYear): SiteRatings[Int] =
+    new SiteRatings(cache, new MetascoreRatings(films(cache, tmdb), metacritic, cache.normalizer, clock, mcLinkCache), RatingColumns.Metacritic,
       tools.SpecStopwatch.Frozen, cadenceRecorder)
 
   def rottenTomatoes(cache: MovieCache, tmdb: TmdbClient, rt: RottenTomatoesClient,

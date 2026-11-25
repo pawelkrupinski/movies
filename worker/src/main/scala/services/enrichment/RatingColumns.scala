@@ -15,11 +15,15 @@ object RatingColumns {
     plural    = "score(s)",
     url       = _.metacriticUrl,
     score     = _.metascore,
-    withUrl   = (row, url) => row.copy(metacriticUrl = Some(url)),
+    // A new link starts a new reading: a shell sighting belongs to the link it was seen on.
+    withUrl   = (row, url) => row.copy(metacriticUrl = Some(url),
+      metacriticShellSeenAt = row.metacriticShellSeenAt.filter(_ => row.metacriticUrl.contains(url))),
     withScore = (row, score) => row.copy(metascore = score),
     withPage  = (row, page) => row.copy(metascore = page.score),
-    cleared   = _.copy(metacriticUrl = None, metascore = None),
-    badge     = _.toString)
+    cleared   = _.copy(metacriticUrl = None, metascore = None, metacriticShellSeenAt = None),
+    badge     = _.toString,
+    shellSeenAt     = _.metacriticShellSeenAt,
+    withShellSeenAt = (row, at) => row.copy(metacriticShellSeenAt = at))
 
   val RottenTomatoes: Columns[Int] = Columns[Int](
     noun      = "Tomatometer",

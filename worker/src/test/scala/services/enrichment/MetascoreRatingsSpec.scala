@@ -6,7 +6,7 @@ import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import clients.HttpTmdbClient
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
-import clients.tools.{FailingHttpFetch, ScriptedByUrlHttpFetch}
+import clients.tools.{FailingHttpFetch, FixtureFile, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import tools.{GetOnlyHttpFetch, UpstreamNotFound}
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -65,6 +65,74 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
     rates.refreshOneSync(cache.keyOf("The Dark Knight", Some(2008)))
 
     cache.get(cache.keyOf("The Dark Knight", Some(2008))).flatMap(_.metascore) shouldBe Some(85)
+  }
+
+  // ── A stored link whose page is Metacritic's shell (200, no `Movie` block, recorded 2026-11-25) ────────────────────
+  // Metacritic serves that shell for a slug it holds no film under, but also to datacenter addresses for a REAL film, so
+  // one sighting proves nothing: the link goes only when the shell is read again 24 h or more after the first.
+
+  private val ShellUrl = "https://www.metacritic.com/movie/totally-not-a-real-movie-xyz12345"
+  private val Shell    = FixtureFile.resource("/fixtures/metacritic/movie_not_found_soft_404.html")
+
+  /** A Metacritic whose one stored page `pages` answers, by the number of reads made so far: `Right(score)` a real page, `Left` the shell. */
+  private final class ShellScenario(pages: Seq[Either[Unit, Int]]) {
+    private val clock      = new _root_.tools.MutableClock(java.time.Instant.parse("2026-11-25T10:00:00Z"))
+    private var reads      = 0
+    private val repository = new InMemoryMovieRepository(Seq(
+      ("Shell Film", Some(2020), mkEnrichment("tt0000001", mcUrl = Some(ShellUrl), metascore = Some(60)))
+    ), normalizer = titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    private val mc = new MetacriticClient(new ScriptedByUrlHttpFetch(_ => {
+      val page = pages(reads); reads += 1
+      page.fold(_ => Shell, scorePage)
+    }))
+    private val rates = SiteRatingsOf.metacritic(cache, new HttpTmdbClient(FailingHttpFetch.Unexpected, apiKey = None), mc, clock = clock)
+
+    /** One refresh, `afterHours` after the last one. */
+    def refreshAfter(afterHours: Long): MovieRecord = {
+      clock.advance(java.time.Duration.ofHours(afterHours))
+      rates.refreshOneSync(cache.keyOf("Shell Film", Some(2020)))
+      cache.get(cache.keyOf("Shell Film", Some(2020))).get
+    }
+  }
+
+  "A stored link whose page is Metacritic's shell" should "survive one shell read" in {
+    val row = new ShellScenario(Seq(Left(()))).refreshAfter(0)
+    row.metacriticUrl shouldBe Some(ShellUrl)
+    row.metascore shouldBe Some(60)
+  }
+
+  it should "survive a second shell read less than 24 hours after the first" in {
+    val scenario = new ShellScenario(Seq(Left(()), Left(())))
+    scenario.refreshAfter(0)
+    val row = scenario.refreshAfter(23)
+    row.metacriticUrl shouldBe Some(ShellUrl)
+    row.metascore shouldBe Some(60)
+  }
+
+  it should "be dropped, with its score, by a second shell read 24 hours or more after the first" in {
+    val scenario = new ShellScenario(Seq(Left(()), Left(())))
+    scenario.refreshAfter(0)
+    val row = scenario.refreshAfter(24)
+    row.metacriticUrl shouldBe None
+    row.metascore shouldBe None
+    row.metacriticShellSeenAt shouldBe None
+  }
+
+  it should "start counting again after a real page read in between" in {
+    val scenario = new ShellScenario(Seq(Left(()), Right(61), Left(())))
+    scenario.refreshAfter(0)
+    scenario.refreshAfter(12).metacriticShellSeenAt shouldBe None
+    val row = scenario.refreshAfter(30) // 42 h after the first shell, but only 30 after the real page: a first sighting again
+    row.metacriticUrl shouldBe Some(ShellUrl)
+    row.metascore shouldBe Some(61)
+  }
+
+  it should "stay with a page that describes a film" in {
+    val row = new ShellScenario(Seq(Right(60), Right(60))).refreshAfter(48)
+    row.metacriticUrl shouldBe Some(ShellUrl)
+    row.metascore shouldBe Some(60)
+    row.metacriticShellSeenAt shouldBe None
   }
 
   it should "not write back when the score is unchanged (idempotent)" in {

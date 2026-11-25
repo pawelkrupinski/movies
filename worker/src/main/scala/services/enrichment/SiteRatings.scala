@@ -1,5 +1,6 @@
 package services.enrichment
 
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.util.{Failure, Success, Try}
@@ -90,7 +91,13 @@ class SiteRatings[A](
       logger.info(s"${site.name}: ${label(key)} $url → $why, not this film — dropping the URL")
       cache.putIfPresent(key, columns.cleared)
       None
-    case other => Some(other)
+    case PageRead.Shell(since) =>
+      logger.info(s"${site.name}: ${label(key)} $url → page describes no film (shell seen since $since), keeping the URL for now")
+      cache.putIfPresent(key, columns.withShellSeenAt(_, Some(since)))
+      Some(PageRead.Scored(None))
+    case other =>
+      cache.get(key).filter(columns.shellSeenAt(_).isDefined).foreach(_ => cache.putIfPresent(key, columns.withShellSeenAt(_, None)))
+      Some(other)
   }
 
   /** A page read whole, written in one write with the link it was found under (if newly found), and the row's other
@@ -178,7 +185,7 @@ class SiteRatings[A](
           val fresh = read match {
             case PageRead.Read(page)    => page.score
             case PageRead.Scored(score) => score.orElse(columns.score(current)) // none read: the row's is kept
-            case PageRead.Denied(_)     => None
+            case PageRead.Denied(_) | PageRead.Shell(_) => None // both answered by `verdict`, never handed back
           }
           if (fresh != columns.score(current)) {
             logger.debug(s"${site.walkLabel}: ${key.cleanTitle} $url ${columns.score(current).getOrElse("—")} → ${fresh.getOrElse("—")}")
@@ -309,6 +316,9 @@ object SiteRatings {
   enum PageRead[+A] {
     /** The page is another film's (`why`, for the log): the link, its score and the site's slot are dropped. */
     case Denied(why: String)
+    /** The page describes no film, as a site answers a datacenter address for a film it does hold: one sighting
+     *  keeps link and score, the site's decision (`since`) is what the flow stores; a real page read later clears it. */
+    case Shell(since: Instant)
     /** The page's score, `None` when it carries none (the row's is kept). */
     case Scored(score: Option[A])
     /** The page read whole (a row holding no content slot for its link). */
@@ -325,7 +335,9 @@ object SiteRatings {
    *  @param withScore a score written.
    *  @param withPage a page read whole written: its score and its content slot (none: the slot dropped).
    *  @param cleared  link, score and slot dropped: a denied page's.
-   *  @param badge    the displayed value a score becomes -- what the cadence is told. */
+   *  @param badge    the displayed value a score becomes -- what the cadence is told.
+   *  @param shellSeenAt     when a [[PageRead.Shell]] page was first seen for the stored link (a site that never answers one keeps the default).
+   *  @param withShellSeenAt that sighting written, or cleared with `None`. */
   final case class Columns[A](
     noun:      String,
     plural:    String,
@@ -335,7 +347,9 @@ object SiteRatings {
     withScore: (MovieRecord, Option[A]) => MovieRecord,
     withPage:  (MovieRecord, Page[A]) => MovieRecord,
     cleared:   MovieRecord => MovieRecord,
-    badge:     A => String)
+    badge:     A => String,
+    shellSeenAt:     MovieRecord => Option[Instant]                   = _ => None,
+    withShellSeenAt: (MovieRecord, Option[Instant]) => MovieRecord = (row, _) => row)
 
   /** Outcome of a single `auditOneSync` call; `scripts.FilmwebUrlAudit` counts them for its summary. */
   sealed trait AuditOutcome

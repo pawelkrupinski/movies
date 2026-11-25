@@ -1,5 +1,7 @@
 package services.enrichment
 
+import java.time.{Clock, Duration}
+
 import models.CacheKey
 import models.MovieRecord
 import services.enrichment.SiteRatings.{Found, PageRead}
@@ -17,6 +19,7 @@ final class MetascoreRatings(
   films:      RatingSiteFilms,
   metacritic: MetacriticClient,
   normalizer: TitleNormalizer,
+  clock:      Clock,
   // Caches the MC url discovery keyed by (title, fallback, year), so the same
   // film's slug probe runs once for 24h. Passthrough by default (tests).
   mcLinkCache: ResolutionCache = ResolutionCache.passthrough
@@ -57,7 +60,12 @@ final class MetascoreRatings(
       metacritic.pageFor(resolved.url).filter(page => film.corroboratedBy(page.year, page.directors))
         .map(page => Found.Link(resolved.url, page.metascore, " without TMDB")))
 
-  /** The Metascore on `url`'s page, or `Denied` when the page credits a director the row's film does not.
+  /** The Metascore on `url`'s page, `Denied` when the page credits a director the row's film does not or when it has
+   *  read as Metacritic's shell (no film described) since at least [[ShellGrace]] ago, `Shell` the first time it does.
+   *
+   *  The shell is what Metacritic answers (200, JSON-LD `null`) for a slug it holds no film under, but also what it
+   *  serves a datacenter address for a REAL film: one sighting never drops a link, two [[ShellGrace]] apart do, and a
+   *  real page read in between starts the count again (the flow clears the sighting on any other read).
    *
    *  Deliberately NOT year-checked, unlike RT and Filmweb: Metacritic's `datePublished` is a US RELEASE date, so a
    *  restoration carries the modern one — /movie/angels-egg-1985 is Oshii's 1985 film and publishes 2025. The slug
@@ -67,8 +75,23 @@ final class MetascoreRatings(
    *  nothing else would ever replace it (see `RatingPageIdentity`). */
   def read(key: CacheKey, row: MovieRecord, url: String): PageRead[Int] = {
     val page = metacritic.pageFor(url)
-    if (page.exists(p => films.of(key, row).deniedBy(p.directors)))
+    if (page.exists(!_.describesFilm)) shellRead(row)
+    else if (page.exists(p => films.of(key, row).deniedBy(p.directors)))
       PageRead.Denied(s"page credits ${page.toSeq.flatMap(_.directors).mkString(", ")}")
     else PageRead.Scored(page.flatMap(_.metascore))
   }
+
+  /** A shell page: the sighting stored on the row if it has one, else now; denied once that is [[ShellGrace]] old. */
+  private def shellRead(row: MovieRecord): PageRead[Int] = {
+    val now   = clock.instant()
+    val since = row.metacriticShellSeenAt.getOrElse(now)
+    if (Duration.between(since, now).compareTo(MetascoreRatings.ShellGrace) >= 0)
+      PageRead.Denied(s"page describes no film (Metacritic's shell page) since $since")
+    else PageRead.Shell(since)
+  }
+}
+
+object MetascoreRatings {
+  /** How long a stored link's page must keep reading as Metacritic's shell before the link is dropped. */
+  val ShellGrace: Duration = Duration.ofHours(24)
 }

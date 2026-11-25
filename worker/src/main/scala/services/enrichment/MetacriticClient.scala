@@ -225,7 +225,7 @@ class MetacriticClient(http: HttpFetch) {
   def pageFor(movieUrl: String): Option[MetacriticClient.Page] =
     HttpRead.pageOrNone(http, MetacriticClient.requestUrl(movieUrl)).map(JsonLdAggregateRating.of).map(page =>
       MetacriticClient.Page(page.rating, page.directorNames, page.datePublishedYear, page.name,
-        page.duration.flatMap(MetacriticClient.runtimeOf), page.actorNames))
+        page.duration.flatMap(MetacriticClient.runtimeOf), page.actorNames, page.describesFilm))
 }
 
 object MetacriticClient {
@@ -238,10 +238,10 @@ object MetacriticClient {
   /** A search hit's movie page. */
   def movieUrl(slug: String): String = s"$Site/movie/$slug/"
 
-  /** A fetched movie page: its Metascore, the directors it credits, the year it dates the film, and the rest of the
+  /** A fetched movie page (`describesFilm`: it holds a film's JSON-LD at all, [[JsonLd.describesFilm]]): its Metascore, the directors it credits, the year it dates the film, and the rest of the
    *  film's record — its name, running time (minutes) and cast. */
   final case class Page(metascore: Option[Int], directors: Set[String], year: Option[Int] = None, title: Option[String] = None,
-                        runtime: Option[Int] = None, cast: Seq[String] = Nil)
+                        runtime: Option[Int] = None, cast: Seq[String] = Nil, describesFilm: Boolean = true)
 
   private val MetacriticDuration = """PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?""".r
 

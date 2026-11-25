@@ -33,7 +33,7 @@ trait RatingsWiring { self: WorkerWiring =>
     new RottenTomatoesRatings(ratingSiteFilms, rottenTomatoesClient, movieCache.normalizer, rtLinkCache), RatingColumns.RottenTomatoes,
     stopwatch, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.RtRating, clock))
   lazy val metascoreRatings = new SiteRatings(movieCache,
-    new MetascoreRatings(ratingSiteFilms, metacriticClient, movieCache.normalizer, mcLinkCache), RatingColumns.Metacritic,
+    new MetascoreRatings(ratingSiteFilms, metacriticClient, movieCache.normalizer, clock, mcLinkCache), RatingColumns.Metacritic,
     stopwatch, BulkCadenceRecorder(ratingCadenceStore, FreshnessKind.McRating, clock))
   lazy val filmwebRatings = new SiteRatings(movieCache,
     new FilmwebRatings(ratingSiteFilms, filmwebClient, movieCache.normalizer, filmwebLinkCache,

@@ -37,6 +37,7 @@ final case class MovieRecordPatch(
   rottenTomatoesUrl: FieldUpdate[String]                    = FieldUpdate.NoChange,
   searchTitle:       FieldUpdate[String]                    = FieldUpdate.NoChange,
   tmdbAttempt:       FieldUpdate[TmdbAttempt]               = FieldUpdate.NoChange,
+  metacriticShellSeenAt: FieldUpdate[java.time.Instant]     = FieldUpdate.NoChange,
   // Whole-map, unlike `data`'s per-key diff: the per-cinema split exists because
   // different venues' scrapes write different slots concurrently, while the retained
   // synopses are rewritten as a set by the prune that owns them. A whole-map update
@@ -48,7 +49,8 @@ final case class MovieRecordPatch(
   /** No effective change — caller can skip the write entirely. */
   def isEmpty: Boolean =
     Seq[FieldUpdate[?]](imdbId, imdbRating, metascore, filmwebUrl, filmwebRating, rottenTomatoes, tmdbId, tmdbBasis,
-        tmdbProvisional, wikidataId, metacriticUrl, rottenTomatoesUrl, searchTitle, tmdbAttempt, retainedSynopses)
+        tmdbProvisional, wikidataId, metacriticUrl, rottenTomatoesUrl, searchTitle, tmdbAttempt, metacriticShellSeenAt,
+        retainedSynopses)
       .forall(_ == FieldUpdate.NoChange) && data.isEmpty
 
   /** Apply the patch to `current`, returning a new `MovieRecord` with the
@@ -81,6 +83,7 @@ final case class MovieRecordPatch(
       rottenTomatoesUrl = merge(rottenTomatoesUrl, current.rottenTomatoesUrl),
       searchTitle       = merge(searchTitle,       current.searchTitle),
       tmdbAttempt       = merge(tmdbAttempt,       current.tmdbAttempt),
+      metacriticShellSeenAt = merge(metacriticShellSeenAt, current.metacriticShellSeenAt),
       retainedSynopses  = retainedSynopses match {
                             case FieldUpdate.SetTo(v) => v
                             case FieldUpdate.Unset    => Map.empty
@@ -110,6 +113,7 @@ object MovieRecordPatch {
       rottenTomatoesUrl = diffOpt(before.rottenTomatoesUrl, after.rottenTomatoesUrl),
       searchTitle       = diffOpt(before.searchTitle,       after.searchTitle),
       tmdbAttempt       = diffOpt(before.tmdbAttempt,       after.tmdbAttempt),
+      metacriticShellSeenAt = diffOpt(before.metacriticShellSeenAt, after.metacriticShellSeenAt),
       retainedSynopses  = diffMap(before.retainedSynopses,  after.retainedSynopses),
       data              = diffData(before.data, after.data)
     )

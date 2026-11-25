@@ -37,6 +37,7 @@ private[movies] object MovieUpdates {
     scalar("tmdbAttempt",       p.tmdbAttempt,       (a: models.TmdbAttempt) =>
       new org.bson.BsonDocument("evidence", new org.mongodb.scala.bson.BsonString(a.evidence))
         .append("at", BsonDateTime(a.at.toEpochMilli)))
+    scalar("metacriticShellSeenAt", p.metacriticShellSeenAt, (at: java.time.Instant) => BsonDateTime(at.toEpochMilli))
     scalar("retainedSynopses", p.retainedSynopses, (m: Map[Source, String]) => {
       val doc = new org.bson.BsonDocument()
       m.foreach { case (source, synopsis) => doc.put(source.displayName, new org.mongodb.scala.bson.BsonString(synopsis)) }
