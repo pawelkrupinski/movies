@@ -103,8 +103,17 @@
 #                          gov route`), else `local` -- the reason on stderr. Only an agent's own work (gov_class agent):
 #                          local without the governor, riding, under KINOWO_GOV_CPU_HELD (a tool inside a check or a
 #                          tool: never routed out from under its parent), for a check or a red fix
-#   jvm_usage <job> <wall s> <cpu s>  records one call's cores in the governor's measured history (`agentctl gov usage`)
-#   jvm_cpu_seconds <pid>  the CPU seconds <pid> and its exited children have used (ps -S), 0 when it is gone
+#   jvm_usage <job> <wall s> <cpu s> [meter]  records one call's cores in the governor's measured history (`agentctl gov
+#                          usage`), with how the CPU was measured: `tree` (cpu_meter_stop) is the only one the governor
+#                          counts. The CALLER names it: a worktree's old sbt-warm runs main's copy of this file (FOLLOW
+#                          MAIN, below) with its own ps -S figure, which must not read as metered
+#   cpu_meter_start <lister>  samples, every KINOWO_CPU_METER_POLL seconds (2) in the background, the CPU time of the
+#                          processes <lister> (a function printing root pids, re-run only while its last roots are gone)
+#                          names and of all their descendants
+#   cpu_meter_stop         -> the CPU seconds those trees used since cpu_meter_start, a process that ended counted to its
+#                          last sample. Sampled, not `ps -S`: macOS's ps adds no exited child's CPU to its parent's, so a
+#                          server's forked test JVMs went uncounted and every testUnit measured ~0.5 cores while its fork
+#                          ran at 5 (2026-11-25: load 83 on 18 cores, 10.5 charged)
 #
 # THE LOCKS are the kernel's flock(2) locks on a file, which the OS frees the moment the holder has ended, however it
 # ended -- exit, crash, kill -9, a restart -- so a lock is never held by a holder that is gone, and nothing detects a
@@ -259,15 +268,53 @@ jvm_route() { # <job>
   g=$GOVERNOR_BIN
   if "$g" gov route --job "$1" --class agent >&2; then echo ci; else echo local; fi
 }
-jvm_usage() { # <job> <wall seconds> <cpu seconds>
+jvm_usage() { # <job> <wall seconds> <cpu seconds> [meter]
   local g
   governor_bin > /dev/null && governor_has cores || return 0
   g=$GOVERNOR_BIN
-  "$g" gov usage --job "$1" --wall "$2" --cpu "$3" > /dev/null 2>&1 || true
+  "$g" gov usage --job "$1" --wall "$2" --cpu "$3" ${4:+--meter "$4"} > /dev/null 2>&1 || true
 }
-jvm_cpu_seconds() { # <pid>
-  ps -S -o time= -p "$1" 2>/dev/null | awk '{ n = split($1, p, ":"); s = 0; for (i = 1; i <= n; i++) s = s * 60 + p[i]
-    printf "%d\n", s; found = 1 } END { if (!found) print 0 }'
+# _cpu_meter_sample <root pid>... -> "<pid> <CPU centiseconds>" for each root and its descendants, one ps listing
+_cpu_meter_sample() {
+  [ $# -gt 0 ] || return 0
+  ps -axo pid=,ppid=,time= 2> /dev/null | awk -v roots="$*" '
+    function centis(t,   d, x, a, n, i, s) {
+      d = 0; if (index(t, "-")) { split(t, x, "-"); d = x[1]; t = x[2] }
+      n = split(t, a, ":"); s = 0; for (i = 1; i <= n; i++) s = s * 60 + a[i]
+      return int((s + d * 86400) * 100) }
+    { cpu[$1] = centis($3); kids[$2] = kids[$2] " " $1 }
+    END { n = split(roots, q, " "); i = 1
+          while (i <= n) { p = q[i++]; if (!(p in cpu) || (p in done)) continue; done[p] = 1; print p, cpu[p]
+                           m = split(kids[p], a, " "); for (j = 1; j <= m; j++) q[++n] = a[j] } }'
+}
+CPU_METER_DIR="" CPU_METER_PID="" CPU_METER_LISTER=""
+cpu_meter_start() { # <lister>
+  CPU_METER_LISTER=$1
+  CPU_METER_DIR=$(mktemp -d "${TMPDIR:-/tmp}/cpu-meter.XXXXXX") || { CPU_METER_DIR=""; return 0; }
+  # shellcheck disable=SC2046 # one pid per word
+  _cpu_meter_sample $("$CPU_METER_LISTER") > "$CPU_METER_DIR/base"
+  cp "$CPU_METER_DIR/base" "$CPU_METER_DIR/seen"
+  ( parent=$$ roots=""
+    while kill -0 "$parent" 2> /dev/null && [ -d "$CPU_METER_DIR" ]; do
+      sleep "${KINOWO_CPU_METER_POLL:-2}"
+      # shellcheck disable=SC2086 # one pid per word
+      [ -n "$roots" ] && kill -0 $roots 2> /dev/null || roots=$("$CPU_METER_LISTER")
+      # shellcheck disable=SC2086
+      _cpu_meter_sample $roots >> "$CPU_METER_DIR/seen"
+    done
+    rm -rf "$CPU_METER_DIR" ) > /dev/null 2>&1 5>&- 6>&- 7>&- 8>&- 9>&- &
+  CPU_METER_PID=$!
+}
+cpu_meter_stop() {
+  [ -n "$CPU_METER_DIR" ] || { echo 0; return 0; }
+  kill "$CPU_METER_PID" 2> /dev/null; wait "$CPU_METER_PID" 2> /dev/null
+  # shellcheck disable=SC2046 # one pid per word
+  _cpu_meter_sample $("$CPU_METER_LISTER") >> "$CPU_METER_DIR/seen"
+  awk -v base_file="$CPU_METER_DIR/base" 'FILENAME == base_file { base[$1] = $2; next }
+       { if (!($1 in top) || $2 > top[$1]) top[$1] = $2 }
+       END { for (p in top) { d = top[p] - ((p in base) ? base[p] : 0); if (d > 0) s += d }; printf "%d\n", s / 100 }' \
+    "$CPU_METER_DIR/base" "$CPU_METER_DIR/seen"
+  rm -rf "$CPU_METER_DIR"; CPU_METER_DIR="" CPU_METER_PID=""
 }
 
 JVM_LOCK=""

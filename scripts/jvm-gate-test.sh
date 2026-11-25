@@ -309,4 +309,51 @@ check "jvm_slot_holders: each holder's tool and checkout, a gone one said" \
   "$(bash -c '. "$1"; jvm_slot_holders "$2" 2' _ "$REPO_ROOT/scripts/jvm-gate.sh" "$work/holderslots")"
 kill "$kept" 2> /dev/null
 
+# THE CPU METER: a server's process tree's CPU over a call, its exited forks included (macOS's ps -S adds none: every
+# testUnit measured ~0.5 cores, 2026-11-25), the CPU the server used before the call left out, a root that starts
+# during the call metered from its start. The "server" burns 1 s of CPU itself, then, on `go`, forks a child burning
+# 1.5 s (waited for: reaped) and idles.
+cat > "$work/server.py" << 'PY'
+import os, subprocess, sys, time
+def burn(s):
+    t = time.process_time()
+    while time.process_time() - t < s: pass
+burn(1); open(sys.argv[1] + "/ready", "w").close()
+while not os.path.exists(sys.argv[1] + "/go"): time.sleep(0.05)
+subprocess.run([sys.executable, "-c", "import time\nwhile time.process_time() < 1.5: pass"])
+open(sys.argv[1] + "/done", "w").close(); time.sleep(30)
+PY
+wait_file() { for _ in $(seq 600); do [ -f "$1" ] && return 0; sleep 0.1; done; return 1; }
+python3 "$work/server.py" "$work" & meter_server=$!
+wait_file "$work/ready"
+meter_lister() { echo "$meter_server"; }
+KINOWO_CPU_METER_POLL=0.2 cpu_meter_start meter_lister
+touch "$work/go"; wait_file "$work/done"
+metered=$(cpu_meter_stop)
+check "cpu meter: an exited fork's CPU counted, the server's CPU before the call not" "in 1..2 s" \
+  "$([ "$metered" -ge 1 ] && [ "$metered" -le 2 ] && echo "in 1..2 s" || echo "$metered s")"
+kill "$meter_server" 2> /dev/null
+rm -f "$work/ready" "$work/go" "$work/done"
+late_lister() { [ -f "$work/late.pid" ] && cat "$work/late.pid"; }
+KINOWO_CPU_METER_POLL=0.2 cpu_meter_start late_lister
+python3 "$work/server.py" "$work" & echo $! > "$work/late.pid"
+touch "$work/go"; wait_file "$work/done"
+metered=$(cpu_meter_stop)
+check "cpu meter: a server that starts during the call is metered from its start" "2 s or more" \
+  "$([ "$metered" -ge 2 ] && echo "2 s or more" || echo "$metered s")"
+kill "$(cat "$work/late.pid")" 2> /dev/null
+check "cpu meter: its samples removed" "" \
+  "$(find "${TMPDIR:-/tmp}" -maxdepth 1 -name 'cpu-meter.*' -newer "$work/late.pid" 2> /dev/null)"
+
+# jvm_usage names the meter only when its caller does: a worktree's old sbt-warm, running main's copy of this file, still
+# measures by ps -S, and its runs must not read as metered
+printf '#!/usr/bin/env bash\n[ "$1 $2" = "gov probe" ] && { echo "agentctl governor: admit cores"; exit 0; }\necho "$*" >> "%s/usage-calls"\n' \
+  "$work" > "$work/agentctl"
+chmod +x "$work/agentctl"
+( export KINOWO_GOVERNOR_BIN="$work/agentctl" KINOWO_JVM_GATE_OS=Darwin KINOWO_GOVERNOR=1 KINOWO_GOVERNOR_FEATURES=""
+  jvm_usage testUnit 100 600 tree; jvm_usage testUnit 100 50 )
+check "jvm_usage: --meter only as its caller names it" \
+  "gov usage --job testUnit --wall 100 --cpu 600 --meter tree|gov usage --job testUnit --wall 100 --cpu 50" \
+  "$(paste -sd '|' "$work/usage-calls")"
+
 spec_summary

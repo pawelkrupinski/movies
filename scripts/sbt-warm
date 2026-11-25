@@ -81,8 +81,10 @@
 # server's MEMORY, idle or not, charged no cores; each command run through the server takes a cores ticket of its own
 # for its life (jvm-gate.sh jvm_cpu_take), charged its job's cores -- testUnit (a testUnit* alias), test (a whole
 # module's test), testOnly, compile (only compiles, reloads, exports), serve, else job -- so eight warm servers no
-# longer run eight testUnits at once on 18 cores. A call that passed records its cores (the server's CPU over the call,
-# exited forks included, over its wall time: jvm_usage), and the governor charges a job its measured p75.
+# longer run eight testUnits at once on 18 cores. A call that passed records its cores (the CPU of the server's process
+# tree over the call, its forked test JVMs included, sampled by jvm-gate.sh's cpu meter, over its wall time: jvm_usage),
+# and the governor charges a job its measured p75. The keeper's 0 cores and the call's charge never count one server
+# twice: the server's work is the call's.
 # A WHOLE-MODULE TEST of an agent's own (testUnit, <module>/test) the governor would hold now runs on ci-runner's measure
 # lane when that is free (jvm_route; scripts/ci-sbt), said; KINOWO_SBT_WARM_ROUTE=local|ci|auto (auto) or --local/--ci
 # decide instead (KINOWO_CI_SBT names scripts/ci-sbt: the tests' seam). A check's, a red fix's or a tool's run never
@@ -665,8 +667,10 @@ fi
 # this call's cores (ONE CALL, ITS CORES, the header): a ticket of its own while its command runs
 jvm_cpu_take "sbt-warm $job" "$job"
 call_started=$SECONDS
-call_cpu=0
-if pid=$(server_pid "$root"); then call_cpu=$(jvm_cpu_seconds "$pid"); fi
+# the server's process tree (its forked test JVMs included) metered over the call, for the job's measured cores
+# shellcheck disable=SC2329 # run by the meter
+meter_roots() { server_pid "$root"; }
+[ "$serve" = 1 ] || cpu_meter_start meter_roots
 if [ "$serve" = 1 ]; then
   # removed once the serve's command has ended; a serve KILLED leaves it, so the next call restarts the server under it
   echo "$$ ${KINOWO_SBT_WARM_SERVE_OWNER:--} $command" > "$ServingFile"
@@ -824,8 +828,9 @@ else
   fi
 fi
 client=""
-if [ "$rc" = 0 ] && [ "$serve" = 0 ] && pid=$(server_pid "$root"); then
-  jvm_usage "$job" $((SECONDS - call_started)) $(( $(jvm_cpu_seconds "$pid") - call_cpu ))
+if [ "$serve" = 0 ]; then
+  call_cpu=$(cpu_meter_stop)
+  [ "$rc" != 0 ] || ! server_pid "$root" > /dev/null || jvm_usage "$job" $((SECONDS - call_started)) "$call_cpu" tree
 fi
 [ "$rc" = 0 ] && [ "$serve" = 0 ] && publish_after_call
 kill "$heartbeat" 2>/dev/null
