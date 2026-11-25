@@ -14,6 +14,7 @@ import tools.RealHttpFetch
  * instance and with it its own (cheap) client — no companion-held state.
  */
 
+@LiveSites
 class FilmwebIntegrationSpec extends AnyFlatSpec with Matchers with ParallelTestExecution {
 
   private lazy val client = new FilmwebClient(new RealHttpFetch)

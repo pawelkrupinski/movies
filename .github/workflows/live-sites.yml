@@ -1,0 +1,101 @@
+# Purpose: Nightly canary: the integration specs that talk to live third-party sites (Metacritic, RT, IMDb, TMDB, Filmweb)
+name: Live sites
+
+# Nightly CANARY for the third-party sites' contracts, NOT a gate: the integration specs tagged `integration.LiveSites`
+# (MovieSitesIntegrationSpec, FilmwebIntegrationSpec, EnrichmentIntegrationSpec) hit Metacritic, Rotten Tomatoes, IMDb,
+# TMDB and Filmweb for real. Run on a push, one of them blocked two landings the day Metacritic began answering 200 for
+# any slug (the owner, 2026-11-25), so build.sbt's `it` config excludes the tag from `itAll` (Main's integration rows,
+# the pre-push `itrest`, the landing check) and only this workflow selects it: LIVE_SITES=1 flips the config to
+# `-n integration.LiveSites`, `sbt itLive`. LiveSitesTaggedSpec fails a spec reaching a live probe without the tag.
+#
+# Nothing here is in .github/gating-checks.tsv, so no push waits on it. A red run becomes an issue assigned to the
+# owner, closed by the next green night (report-scheduled-run, ScheduledRunReportSpec). A site that is not answering AT
+# ALL cancels its cases (LiveUpstream.orCancel) rather than failing them: a red here is a site that answers, differently.
+on:
+    schedule:
+        - cron: '12 21 * * *'
+    # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
+    # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
+    repository_dispatch:
+        types: [scheduled-live-sites]
+    workflow_dispatch:
+
+# Tonight's run finishes; a hand-dispatched one queues behind it.
+concurrency:
+    group: live-sites
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
+jobs:
+    live-sites:
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
+        timeout-minutes: 30
+        steps:
+            - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+
+            # Read-only use of the integration-test job's zinc cache: this job compiles the same scopes, and has no
+            # business writing a key the push-time jobs own.
+            - uses: ./.github/actions/setup-sbt-build
+              with:
+                  target-cache-restore-only: 'true'
+
+            - name: Live-site specs
+              shell: bash
+              timeout-minutes: 20
+              env:
+                  LIVE_SITES: '1'
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  sbt itLive
+
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        name: report (scheduled run)
+        needs: [live-sites]
+        if: ${{ always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch') }}
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            # The job's measurements (machine, CPU, memory, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

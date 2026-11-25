@@ -41,6 +41,12 @@ is that the local toolchain is missing (e.g. no full Xcode for
   machine load. If you do use `:28017`, give the run a `MONGODB_DB` no
   other live run holds: `IntegrationRunClaim` refuses a second live run
   on one prefix by name.
+- **Live-site canaries are NOT in `itAll`.** An `it` spec that talks to a real third-party site (Metacritic, Rotten
+  Tomatoes, IMDb, TMDB, Filmweb) carries `@LiveSites` (`worker/src/it/java/integration/LiveSites.java`); build.sbt's
+  `it` config excludes that tag, so `itAll`, Main's integration rows, the pre-push `itrest` and the landing check never
+  select it, and a site changing its answer blocks no landing. `LIVE_SITES=1 sbt itLive` runs only those specs (the
+  nightly `live-sites.yml`, which opens an issue on a red run and gates nothing; TMDB_API_KEY for the enrichment spec).
+  `LiveSitesTaggedSpec` (unit) fails a spec naming `LiveUpstream.Probes` without the tag.
 - **`sbt web/PageTest/test`** — `web/src/page/scala/views/PageJsBehaviourSpec`
   drives real Chrome over CDP against Twirl-rendered fixtures. Covers
   `web/src/main/assets/js/`, the inline `<script>` blocks in
