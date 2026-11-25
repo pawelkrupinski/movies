@@ -68,17 +68,12 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   // older pin (the retired identity-measure-ci.sh's RECORDING) finds nothing; the step said `::error::` and
   // exited 0, and a 2026-09-29 PL measurement "succeeded" with 0 of 9,981 listings matched.
   it should "fail, not replay nothing, when the pinned pair's corpus or tree is gone" in {
-    def exitsAfterErrors(name: String, text: String, exits: String*): Unit = {
-      val lines = text.linesIterator.map(_.trim).filter(_.nonEmpty).toSeq
-      val afterErrors = lines.zip(lines.drop(1)).collect { case (line, next) if line.startsWith("echo \"::error::") => next }
-      withClue(s"$name: ")(afterErrors.toSet shouldBe exits.toSet)
-    }
     val corpusStep = RepoFile.step(setup, "Restore the recorded scrape corpus")
     corpusStep should include(".github/scripts/convergence-setup.sh corpus")
     // each `::error::` said is the step's end: `return 1`, or the failed read re-raised, which `corpus` returns 1 for
     def endsAfterErrors(name: String, text: String, ends: String*): Unit = {
       val lines = text.linesIterator.map(_.trim).filter(_.nonEmpty).toSeq
-      val said = lines.indices.filter(i => lines(i).contains("say(f\"::error::"))
+      val said = lines.indices.filter(i => lines(i).matches(""".*(say|print)\(f"::error::.*"""))
       val afterSay = said.map(i => lines.drop(i).indexWhere(_.endsWith(")")) + i + 1).map(lines)
       withClue(s"$name: ")(afterSay.toSet shouldBe ends.toSet)
     }
@@ -88,10 +83,10 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     // ...and the exit must END the leg: a step that continues on error swallowed it, and run
     // 36968897208 replayed an expired pin's empty tree into five legs of "not recorded" 404s.
     corpusStep.linesIterator.map(_.trim).filter(_.startsWith("continue-on-error:")).foreach(_ shouldBe "continue-on-error: ${{ inputs.mode == 'record' }}")
-    // The tree is fetched in the background (restore-enrichment-tree.sh) and its verdict collected
+    // The tree is fetched in the background (restore_enrichment_tree.py) and its verdict collected
     // where it is moved in: a missing pin exits 3 there, which only a RECORDING may pass; a release
     // that could not be read at all exits 4, which no leg may pass.
-    exitsAfterErrors("the tree", RepoFile.read(".github/scripts/restore-enrichment-tree.sh"), "exit 3", "exit 4")
+    endsAfterErrors("the tree", RepoFile.read(".github/scripts/restore_enrichment_tree.py"), "return 3", "return 4")
     val unpackStep = RepoFile.step(setup, "Unpack whichever fixtures are present")
     unpackStep should not include "continue-on-error"
     unpackStep should include(".github/scripts/convergence-setup.sh unpack")
