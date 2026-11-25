@@ -1,6 +1,7 @@
 package services.identity
 
-import models.{Cinema, MovieRecord, Source, SourceData}
+import models.{Cinema, Filmweb, FilmwebPages, Imdb, MovieRecord, Source, SourceData}
+import services.identity.measures.ResolverDecision
 import services.titles.TitleNormalizer
 
 import IdentityProjectionPlan.ResolverAttempt
@@ -30,7 +31,7 @@ private[identity] final class FilmRecordDrafts(index: ProjectionIndex, within: P
     // kept while it is the same film. Everything the projection writes is worked out from the inputs as they are now,
     // exactly as a projection from scratch over them would: nothing stands because an earlier projection wrote it.
     val base = previous.filter(_.record.tmdbId == film).map(_.record).getOrElse(MovieRecord())
-    val held     = unmatchedOf.get(members).fold(base)(UnmatchedLinks.heldLinks(_, base, anchor))
+    val held     = unmatchedOf.get(members).fold(base)(FilmRecordDrafts.heldLinks(_, base, anchor))
     val nonVenue = held.data.filter { case (source, _) => Source.cinemaOf(source).isEmpty }
     val networks = previous.fold(Map.empty[Source, SourceData])(_.record.data.filter { case (source, _) => Cinema.Networks.contains(source) })
     val previousNonVenue = previous.fold(Set.empty[Source])(_.record.data.keysIterator.filter(Source.cinemaOf(_).isEmpty).toSet)
@@ -85,5 +86,30 @@ private[identity] final class FilmRecordDrafts(index: ProjectionIndex, within: P
     shapes.put(counter, FilmShape(members, kept.map(_.keys).filter(k => (k eq keys) || k == keys).getOrElse(keys), plan.titles,
       kept.fold(venueShapes)(k => FilmShapes.sharing(k.venues, venueShapes, _ eq _))))
     venueShapes
+  }
+}
+
+private[identity] object FilmRecordDrafts {
+  /** The ids an unmatched film is linked by, from its cluster's decision alone: a film TMDB has no record of carries the
+   *  IMDb id of the fallback film the resolver took for it, else none. The TMDB film its listings' evidence leans to though
+   *  no rule took it ([[ResolverDecision.Leaning]]) links nothing: no rule took it — "Łowca androidów: Final Cut" leans to
+   *  Ridley Scott's 2026 film — and an id an earlier answer or a title search held for it is no input — PL "Lalka" (2026)
+   *  held the 1968 film's, and its 6.9. The rating and IMDb's slot go with an id that goes. A no-match reached before
+   *  every question was answered links what it names too: what an earlier decision linked is no input.
+   *  One standing on Filmweb's or Wikidata's own id (the agreement's, where no record links an IMDb id) links that
+   *  record instead: its Filmweb page — replacing a page a title search guessed, with its rating and slot — or its
+   *  Wikidata item, which nothing but such a stand gives a film TMDB has no record of. Without a stand, its Filmweb page
+   *  is Filmweb's own search's (`TmdbLessRatingLinks`), which keeps or drops it. */
+  def heldLinks(cluster: Cluster, base: MovieRecord, anchor: String): MovieRecord = {
+    val imdb = cluster.fallback.filter(_.source == "imdb").map(_.id)
+    val linked = (if (imdb == base.imdbId) base else base.copy(imdbId = imdb, imdbRating = None, data = base.data - Imdb))
+      .copy(wikidataId = cluster.fallback.collect { case ResolverDecision.Fallback("wikidata", id, _, _, _) => id })
+    cluster.fallback match {
+      case Some(ResolverDecision.Fallback("filmweb", id, _, title, year))
+          if !linked.filmwebUrl.flatMap(FilmwebPages.idOf).map(_.toString).contains(id) =>
+        linked.copy(filmwebUrl = id.toIntOption.map(FilmwebPages.url(_, "film", title.getOrElse(anchor), year)), filmwebRating = None,
+          data = linked.data - Filmweb)
+      case _ => linked
+    }
   }
 }
