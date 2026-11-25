@@ -1,14 +1,11 @@
 package services.cinemas.us
 
-import models.GeneratedTable
-
 /**
  * Regal's US estate: each venue's `data/us/venues.json` slug — the same slug
  * [[models.UsRoster.flicksSlugByCinema]] carries, and therefore the stable key a
  * `Cinema` is found by — paired with its Regal `TheatreCode`.
  *
- * GENERATED: the table `generated/us-regal-venues.tsv` (venue slug, theatre code), from
- * `docs/venue-maps/REGAL-VENUE-MAP.tsv`, which was built by
+ * The table is [[RegalTheatreCodes]], built from `docs/venue-maps/REGAL-VENUE-MAP.tsv` by
  * matching Regal's own roster (`GET /api/theatres`) to our venue rows by
  * coordinates + name tokens and then cross-checking every pairing against the
  * theatre slug in `regmovies.com/sitemap.xml` (`/theatres/<slug>-<code>`).
@@ -22,7 +19,7 @@ import models.GeneratedTable
 object RegalVenues {
 
   /** Venue slug -> Regal `TheatreCode`. */
-  val theatreCodeBySlug: Map[String, String] = GeneratedTable.lookup("generated/us-regal-venues.tsv")
+  val theatreCodeBySlug: Map[String, String] = RegalTheatreCodes.bySlug
 
   /** The chain's theatre codes, ascending — the order the request batches below
    *  are cut from, so a batch's membership (and therefore its URL, and therefore
