@@ -1,20 +1,16 @@
 package services.auth
 
 import java.time.Instant
-import java.util.concurrent.TimeUnit
 
-import scala.concurrent.Await
 import scala.concurrent.duration.*
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
-import com.mongodb.client.model.IndexOptions as JIndexOptions
 import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonString}
-import org.mongodb.scala.model.{Filters, Indexes}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
+import org.mongodb.scala.{Document, MongoDatabase, documentToUntypedDocument}
 import play.api.Logging
 
 /**
- * [[AuthExchangeCodeStore]] on Mongo, in the SHARED users database.
+ * [[AuthExchangeCodeStore]] over a keyed store ([[tools.KeyedStore]]) -- in Mongo, in the SHARED users database.
  *
  * Which database is the whole point. The cross-domain handoff mints a code on
  * `kinowo.net`'s pod and redeems it on `showtimes.cc`'s — two processes — so an
@@ -22,63 +18,53 @@ import play.api.Logging
  * code as unreachable as the session cookie it replaces. It lives beside `users`
  * and `userStates` in `UsersDatabase.name` for exactly that reason.
  *
- * `db` is `None` when there is no Mongo (local dev): the store then holds nothing
+ * `documents` is `None` when there is no Mongo (local dev): the store then holds nothing
  * and every redemption misses, which is why Wiring runs
  * [[InMemoryAuthExchangeCodeStore]] there instead.
- *
- * `timeout` bounds each round-trip; a miss past it reads as no code. Production
- * keeps [[MongoAuthExchangeCodeStore.Timeout]]; a spec checking what the store
- * hands back, not how fast, passes a budget a loaded shared test Mongo can meet.
  */
-class MongoAuthExchangeCodeStore(db: Option[MongoDatabase], timeout: FiniteDuration = MongoAuthExchangeCodeStore.Timeout) extends AuthExchangeCodeStore with Logging {
+abstract class KeyedAuthExchangeCodeStore(documents: Option[tools.StoreDocuments]) extends AuthExchangeCodeStore with Logging {
+  protected val codes = new tools.KeyedStore(documents.getOrElse(tools.StoreDocuments.Absent), tools.KeyCodec.Text, KeyedAuthExchangeCodeStore.Codec)
 
-  private val coll: Option[MongoCollection[Document]] =
-    db.map(_.getCollection(MongoAuthExchangeCodeStore.CollectionName))
-
-  // Off-thread so boot never waits on Mongo to build an index — the store works
-  // without it (the code is the `_id`), the index only sweeps up the codes nobody
-  // ever came back to redeem.
-  coll.foreach { c =>
-    val thread = new Thread(() => ensureTtlIndex(c), s"${MongoAuthExchangeCodeStore.CollectionName}-init")
-    thread.setDaemon(true)
-    thread.start()
+  override def put(pending: PendingExchangeCode): Unit = if (documents.isDefined) {
+    // WARN, not debug: the visitor lands signed out on the far side and has no
+    // way to tell why, so this line is the only trace the handoff was even
+    // attempted.
+    def lost(why: String): Unit = logger.warn(s"Auth exchange code not stored — the handoff will land signed out: $why")
+    Try(codes.insert(pending.code, pending)) match {
+      case Success(true)      => ()
+      case Success(false)     => lost("the code is already held")
+      case Failure(exception) => lost(exception.getMessage)
+    }
   }
 
-  override def put(pending: PendingExchangeCode): Unit = coll.foreach { c =>
-    Try(Await.result(c.insertOne(Document(MongoAuthExchangeCodeStore.encode(pending))).toFuture(), timeout))
-      // WARN, not debug: the visitor lands signed out on the far side and has no
-      // way to tell why, so this line is the only trace the handoff was even
-      // attempted.
-      .recover { case exception =>
-        logger.warn(s"Auth exchange code not stored — the handoff will land signed out: ${exception.getMessage}") }
-  }
+  /** A take rather than find-then-delete: single-use has to survive
+   *  two browsers arriving with the same code at once, and only the store
+   *  can make that one step. */
+  override def remove(code: String): Option[PendingExchangeCode] =
+    Try(codes.take(code)).recover { case exception =>
+      logger.warn(s"Auth exchange code lookup failed: ${exception.getMessage}"); None }.get
+}
 
-  /** `findOneAndDelete` rather than find-then-delete: single-use has to survive
-   *  two browsers arriving with the same code at once, and only the server can
-   *  make that one step. */
-  override def remove(code: String): Option[PendingExchangeCode] = coll.flatMap { c =>
-    Try(Await.result(c.findOneAndDelete(Filters.eq("_id", code)).headOption(), timeout))
-      .recover { case exception =>
-        logger.warn(s"Auth exchange code lookup failed: ${exception.getMessage}"); None }
-      .toOption.flatten
-      .flatMap(MongoAuthExchangeCodeStore.decode)
-  }
-
+object KeyedAuthExchangeCodeStore {
   /** Housekeeping only — [[AuthExchangeCodes.redeem]] is what actually refuses an
    *  expired code, and it does so the instant the code is presented. Mongo's TTL
-   *  monitor runs about once a minute, so this index is the sweep that stops
+   *  monitor runs about once a minute, so this expiry is the sweep that stops
    *  unredeemed codes accumulating, not the expiry rule. Given a minute of slack
    *  over the TTL for that reason: a row deleted slightly late costs nothing, and
    *  one deleted early would be indistinguishable from a code that never existed. */
-  private def ensureTtlIndex(c: MongoCollection[Document]): Unit =
-    Try {
-      Await.result(c.createIndex(
-        Indexes.ascending("issuedAt"),
-        new JIndexOptions().expireAfter(AuthExchangeCodes.Ttl.getSeconds + 60, TimeUnit.SECONDS)
-      ).toFuture(), 10.seconds)
-    }.recover { case exception =>
-      logger.debug(s"Auth exchange code TTL index not created: ${exception.getMessage}") }
+  val Expiry: tools.DocumentExpiry = tools.DocumentExpiry("issuedAt", (AuthExchangeCodes.Ttl.getSeconds + 60).seconds)
+
+  val Codec: tools.DocCodec[PendingExchangeCode] = new tools.DocCodec[PendingExchangeCode] {
+    def encode(pending: PendingExchangeCode): Document = Document(MongoAuthExchangeCodeStore.encode(pending))
+    def decode(document: Document): Option[PendingExchangeCode] = MongoAuthExchangeCodeStore.decode(document)
+  }
 }
+
+/** The `authExchangeCodes` collection of the shared users database, or nothing without one. `timeout` bounds each
+ *  round-trip; a miss past it reads as no code. Production keeps [[MongoAuthExchangeCodeStore.Timeout]]; a spec checking
+ *  what the store hands back, not how fast, passes a budget a loaded shared test Mongo can meet. */
+class MongoAuthExchangeCodeStore(db: Option[MongoDatabase], timeout: FiniteDuration = MongoAuthExchangeCodeStore.Timeout) extends KeyedAuthExchangeCodeStore(
+  db.map(d => tools.MongoStoreDocuments.of(d.getCollection(MongoAuthExchangeCodeStore.CollectionName), Some(KeyedAuthExchangeCodeStore.Expiry), timeout)))
 
 object MongoAuthExchangeCodeStore {
   val CollectionName = "authExchangeCodes"

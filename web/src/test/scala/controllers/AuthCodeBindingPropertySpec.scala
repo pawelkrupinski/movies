@@ -36,7 +36,7 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
     val users = new InMemoryUserRepository
     users.upsert(User(id = UserId, provider = "google", providerSub = "G-1", email = Some(UserId),
       displayName = None, avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
-    (users, new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned))
+    (users, new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(_root_.tools.SpecClock.Pinned), _root_.tools.SpecClock.Pinned))
   }
 
   private def fixture(): (AuthController, AuthExchangeCodes) = {
@@ -146,7 +146,7 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
     }
     forAll(Table(("challenge", "verifier"), (for { c <- Challenges; v <- Verifiers } yield (c, v))*)) { (challenge, verifier) =>
       val ctl = AuthControllerFixture(Helpers.stubControllerComponents(), Map("google" -> google), new InMemoryUserRepository,
-        new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
+        new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(_root_.tools.SpecClock.Pinned), _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
       val start = ctl.start("google")(FakeRequest("GET",
         s"/auth/google/start?platform=ios${challenge.fold("")(c => s"&challenge=$c")}"))
       val sess  = session(start)

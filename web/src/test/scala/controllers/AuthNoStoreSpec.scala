@@ -25,7 +25,7 @@ class AuthNoStoreSpec extends AnyFlatSpec with Matchers {
   }
 
   private val users = new InMemoryUserRepository
-  private val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned)
+  private val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(_root_.tools.SpecClock.Pinned), _root_.tools.SpecClock.Pinned)
   private val ctl   = AuthControllerFixture(Helpers.stubControllerComponents(), Map("google" -> Google), users, codes,
     models.Country.Poland, clock = _root_.tools.SpecClock.Pinned,
     nativeTokens = services.auth.NativeTokenVerifier.codeExchangeOnly(Map("google" -> Google)))

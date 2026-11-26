@@ -23,7 +23,7 @@ class SsoControllerSpec extends AnyFlatSpec with Matchers {
   /** A deployment serving `country`, over a user store and a code store of its own. */
   private def fixtureFor(country: models.Country): (SsoController, InMemoryUserRepository, AuthExchangeCodes) = {
     val repository = new InMemoryUserRepository
-    val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk)
+    val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(fixedClk), fixedClk)
     (new SsoController(Helpers.stubControllerComponents(), repository, codes, country), repository, codes)
   }
 
@@ -326,7 +326,7 @@ class SsoControllerSpec extends AnyFlatSpec with Matchers {
    *  used to. */
   private def pods(): (SsoController, SsoController, InMemoryUserRepository) = {
     val repository = new InMemoryUserRepository
-    val store      = new InMemoryAuthExchangeCodeStore
+    val store      = new InMemoryAuthExchangeCodeStore(fixedClk)
     def pod(country: models.Country) = new SsoController(
       Helpers.stubControllerComponents(), repository, new AuthExchangeCodes(store, fixedClk), country)
     (pod(models.Country.Poland), pod(models.Country.UnitedKingdom), repository)
@@ -361,7 +361,7 @@ class SsoControllerSpec extends AnyFlatSpec with Matchers {
   // code is now bound to the receiving browser, and only that browser can spend it.
   it should "not sign one browser in with a handoff code minted for another" in {
     val repository = new InMemoryUserRepository
-    val store      = new InMemoryAuthExchangeCodeStore
+    val store      = new InMemoryAuthExchangeCodeStore(fixedClk)
     def pod(country: models.Country): SsoController = new SsoController(
       Helpers.stubControllerComponents(), repository, new AuthExchangeCodes(store, fixedClk), country)
 

@@ -40,7 +40,7 @@ class NativeSignInPkceSpec extends AnyFlatSpec with Matchers {
 
   private def controller() =
     AuthControllerFixture(Helpers.stubControllerComponents(), Map("google" -> Google), new InMemoryUserRepository,
-      new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
+      new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(_root_.tools.SpecClock.Pinned), _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
 
   /** Start (with `startQuery`) and finish a native flow; the deep-link code. */
   private def deepLinkCode(ctl: AuthController, startQuery: String): String = {

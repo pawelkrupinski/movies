@@ -52,7 +52,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
     AuthControllerFixture(
       Helpers.stubControllerComponents(), Map(provider.name -> provider),
       new InMemoryUserRepository,
-      new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk),
+      new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(fixedClk), fixedClk),
       country, clock = fixedClk)
 
   /** A request as it arrives behind the proxy, which terminates TLS and forwards
@@ -267,7 +267,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
    *  so a test can seed a person or watch a code being spent. */
   private def podWith(country: Country): (AuthController, InMemoryUserRepository, AuthExchangeCodes) = {
     val repository = new InMemoryUserRepository
-    val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk)
+    val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(fixedClk), fixedClk)
     (AuthControllerFixture(Helpers.stubControllerComponents(), Map.empty, repository, codes, country, clock = fixedClk),
      repository, codes)
   }
@@ -275,7 +275,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   /** As [[podWith]], for the deployment's `/auth/sso` legs. */
   private def ssoPodWith(country: Country): (SsoController, InMemoryUserRepository, AuthExchangeCodes) = {
     val repository = new InMemoryUserRepository
-    val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk)
+    val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(fixedClk), fixedClk)
     (new SsoController(Helpers.stubControllerComponents(), repository, codes, country), repository, codes)
   }
 
@@ -316,7 +316,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
 
   "The pairing leg" should "sign the visitor in and hand them back where they were going" in {
     val repository = new InMemoryUserRepository
-    val store      = new InMemoryAuthExchangeCodeStore
+    val store      = new InMemoryAuthExchangeCodeStore(fixedClk)
     def pod(country: Country) = new SsoController(
       Helpers.stubControllerComponents(), repository, new AuthExchangeCodes(store, fixedClk), country)
 
@@ -335,7 +335,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   // stores, as production does.
   it should "end with the visitor signed in on both domains and back where they were going" in {
     val repository = new InMemoryUserRepository
-    val store      = new InMemoryAuthExchangeCodeStore
+    val store      = new InMemoryAuthExchangeCodeStore(fixedClk)
     def pod(country: Country) = AuthControllerFixture(
       Helpers.stubControllerComponents(), Map("google" -> new FakeProvider("google")), repository,
       new AuthExchangeCodes(store, fixedClk), country, clock = fixedClk)

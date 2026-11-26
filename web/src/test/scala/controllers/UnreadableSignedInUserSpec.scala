@@ -24,9 +24,9 @@ class UnreadableSignedInUserSpec extends AnyFlatSpec with Matchers {
   private val clock = Clock.fixed(Instant.parse("2026-09-24T10:00:00Z"), ZoneOffset.UTC)
   private val users = new FailingReadUserRepository
   private val auth  = AuthControllerFixture(Helpers.stubControllerComponents(), Map.empty, users,
-    new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock), Country.Poland, clock = clock)
+    new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(clock), clock), Country.Poland, clock = clock)
   private val sso   = new SsoController(Helpers.stubControllerComponents(), users,
-    new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock), Country.Poland)
+    new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(clock), clock), Country.Poland)
   private def signedIn(method: String, path: String) =
     FakeRequest(method, path).withSession(SignedInUser.UserIdKey -> "alice@example.com")
 

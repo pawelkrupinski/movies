@@ -243,9 +243,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("worker/src/main/scala/tools/HeapDumper.scala", "dump",
       "case Failure(e) =>") ->
       "None is \"no dump was written\", which is what happened; the restart proceeds either way",
-    ("web/src/main/scala/services/auth/MongoAuthExchangeCodeStore.scala", "remove",
-      ".recover { case exception =>") ->
-      "an exchange code that cannot be redeemed fails the sign-in, which the user retries — the safe direction for auth",
     ("scrapers/src/main/scala/services/cinemas/common/DetailFetchOutcome.scala", "transientToNone",
       "case Failure(_)     => None") ->
       "its contract: a TRANSIENT failure is \"no detail this time\" and retried next tick; a durable one is rethrown above",

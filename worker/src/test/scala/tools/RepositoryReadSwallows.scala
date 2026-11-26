@@ -37,8 +37,8 @@ object RepositoryReadSwallows {
       "Try {") ->
       "a forget: 0 entries forgotten is what a failed read-then-delete did; logged, and the next re-resolve asks the source again",
     ("web/src/main/scala/services/auth/MongoAuthExchangeCodeStore.scala", "remove",
-      "Try(Await.result(c.findOneAndDelete(Filters.eq(\"_id\", code)).headOption(), timeout))") ->
-      "a single-use code whose findOneAndDelete outcome is unknown: answered as unredeemable, the visitor signs in again; a retry could not be honoured safely anyway; logged at WARN",
+      "Try(codes.take(code)).recover { case exception =>") ->
+      "a single-use code whose take outcome is unknown: answered as unredeemable, the visitor signs in again; a retry could not be honoured safely anyway; logged at WARN",
     ("web/src/main/scala/services/users/UserRepository.scala", "revokeSessions",
       "Try(Option(Await.result(c.findOneAndUpdate(Filters.eq(\"id\", id), Updates.inc(\"sessionVersion\", 1),") ->
       "None is answered 503 'retry' by AuthController.revokeSessions — never read as 'no such user'",

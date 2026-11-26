@@ -51,7 +51,7 @@ trait UsersWiring { self: Wiring =>
   // keeps the native-app handoff working, since that one does start and finish
   // on the same pod.
   lazy val authExchangeCodes: AuthExchangeCodes = new AuthExchangeCodes(
-    usersConnection.database.fold[AuthExchangeCodeStore](new InMemoryAuthExchangeCodeStore)(
+    usersConnection.database.fold[AuthExchangeCodeStore](new InMemoryAuthExchangeCodeStore(clock))(
       database => new MongoAuthExchangeCodeStore(Some(database))), clock)
 
   lazy val accountDeletion: AccountDeletion = new AccountDeletion(userRepository, userStateRepository)

@@ -19,7 +19,7 @@ class AuthExchangeCodesSpec extends AnyFlatSpec with Matchers {
   private val Now = Instant.parse("2026-08-30T12:00:00Z")
 
   private def fixture(clock: Clock = Clock.fixed(Now, ZoneOffset.UTC)) =
-    new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock)
+    new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(clock), clock)
 
   "A minted code" should "redeem to the user it was minted for" in {
     val codes = fixture()
@@ -91,7 +91,7 @@ class AuthExchangeCodesSpec extends AnyFlatSpec with Matchers {
 
   "A code inside the TTL" should "still redeem at the last moment" in {
     val clock = new tools.MutableClock(Now)
-    val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock)
+    val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(clock), clock)
     val code  = codes.mint("alice@example.com")
 
     clock.setTo(Now.plus(AuthExchangeCodes.Ttl))
@@ -100,7 +100,7 @@ class AuthExchangeCodesSpec extends AnyFlatSpec with Matchers {
 
   "A code past the TTL" should "redeem to nothing" in {
     val clock = new tools.MutableClock(Now)
-    val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock)
+    val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(clock), clock)
     val code  = codes.mint("alice@example.com")
 
     clock.setTo(Now.plus(AuthExchangeCodes.Ttl).plusSeconds(1))
@@ -113,7 +113,7 @@ class AuthExchangeCodesSpec extends AnyFlatSpec with Matchers {
   // cleared it.
   it should "be consumed by the failed redemption rather than left in the store" in {
     val clock = new tools.MutableClock(Now)
-    val store = new InMemoryAuthExchangeCodeStore
+    val store = new InMemoryAuthExchangeCodeStore(clock)
     val codes = new AuthExchangeCodes(store, clock)
     val code  = codes.mint("alice@example.com")
     store.size shouldBe 1

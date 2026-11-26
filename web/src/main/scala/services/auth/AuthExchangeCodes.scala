@@ -3,7 +3,6 @@ package services.auth
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.time.{Clock, Duration, Instant}
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * A one-shot code that stands in for a signed-in `userId` just long enough to
@@ -143,20 +142,12 @@ object AuthExchangeCodes {
  * use. Correct for the native-app handoff, which starts and finishes on the same
  * pod; NOT correct for the cross-domain one, where the pod that mints the code is
  * by definition not the pod that redeems it. Wiring picks this only when there is
- * no database to share. Each code is kept as [[MongoAuthExchangeCodeStore]] stores it, written to BSON and read back.
+ * no database to share. Each code is kept as [[MongoAuthExchangeCodeStore]] stores it, and goes at its expiry on `clock`
+ * ([[KeyedAuthExchangeCodeStore.Expiry]]), as Mongo's TTL index deletes it.
  */
-class InMemoryAuthExchangeCodeStore extends AuthExchangeCodeStore {
-  private val codes = new ConcurrentHashMap[String, PendingExchangeCode]()
-
-  override def put(pending: PendingExchangeCode): Unit = {
-    val stored = MongoAuthExchangeCodeStore.decode(org.mongodb.scala.Document(tools.BsonRoundTrip(MongoAuthExchangeCodeStore.encode(pending))))
-      .getOrElse(throw new IllegalStateException("an exchange code does not read back as stored"))
-    codes.put(stored.code, stored); ()
-  }
-
-  override def remove(code: String): Option[PendingExchangeCode] = Option(codes.remove(code))
-
+class InMemoryAuthExchangeCodeStore(clock: Clock) extends KeyedAuthExchangeCodeStore(
+  Some(tools.InMemoryStoreDocuments.expiring(KeyedAuthExchangeCodeStore.Expiry, clock))) {
   /** Test/diagnostic view. Not part of the trait: nothing in production may ask a
    *  store how many codes it is holding. */
-  def size: Int = codes.size
+  def size: Int = codes.all().size
 }

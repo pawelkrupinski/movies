@@ -24,7 +24,7 @@ class NoTtlExpiredRowsInSpecsSpec extends AnyFlatSpec with Matchers {
   import ScalaSourceScan.{MainRoots, codeOf, read, scalaFiles}
 
   private val ItRoots      = SourceTrees("web/src/it", "worker/src/it")
-  private val TtlIndexCall = """MongoTtlIndex\.(?:ensure|reconcile)\(|IndexOptions\(\)\s*\.expireAfter\(""".r
+  private val TtlIndexCall = """MongoTtlIndex\.(?:ensure|reconcile)\(|IndexOptions\(\)\s*\.expireAfter\(|tools\.DocumentExpiry\(""".r
   private val Declaration  = """\b(?:class|object)\s+([\w$]+)""".r
   private val PastPinned   = """\bSpecClock\.Pinned\b""".r
   private val ParsedDate   = """Instant\.parse\(\s*"([^"]+)"""".r
@@ -65,7 +65,7 @@ class NoTtlExpiredRowsInSpecsSpec extends AnyFlatSpec with Matchers {
   }
 
   "the TTL-owning classes" should "be discovered from the main sources" in {
-    owners should contain allOf ("MongoAuthExchangeCodeStore", "MongoResolutionStore", "UptimeMonitor", "MongoCachingDetailFetch")
+    owners should contain allOf ("KeyedAuthExchangeCodeStore", "MongoResolutionStore", "UptimeMonitor", "MongoCachingDetailFetch")
   }
 
   "it specs naming a TTL-owning class" should "pin time past the TTL monitor's reach" in {
