@@ -586,7 +586,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/prod-ops.sh` | The shared harness of the prod-ops scripts (scripts/mongo-grants, scripts/fleet-db-finish, and the next one) | `bash scripts/prod-ops.sh` | 5 tools | prod-ops-test.sh | KEEP |
 | `scripts/with-prod-mongo.sh` | Run one command against prod Mongo from a laptop: the credential from the Touch ID vault, the connection through the ssh tunnel | `scripts/with-prod-mongo.sh` | 8 tools | with-prod-mongo-test.sh | KEEP |
 
-## Infra and deploy (54)
+## Infra and deploy (55)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -605,11 +605,12 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |
 | `infra/bin/cloudflare-ci-edge-allow` | Let ci-runner's security-headers check past Cloudflare's Bot Fight Mode on kinowo.net and showtimes.cc | `infra/bin/cloudflare-ci-edge-allow` | wf security-headers; 2 tools | cloudflare_ci_edge_allow_test.py | KEEP |
 | `infra/bin/cloudflare_ci_edge_allow.py` | Let ci-runner's Security headers check (.github/workflows/security-headers.yml) past Cloudflare's Bot Fight Mode on | `infra/bin/cloudflare_ci_edge_allow.py` | 1 tool | cloudflare_ci_edge_allow_test.py | Python |
-| `infra/bin/deploy` | Deploy ONE NixOS host from this checkout: preview what the switch does, then (only with | `infra/bin/deploy` | wf branch-ci, ci, identity-run +5; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 50 tools | - | Python |
+| `infra/bin/deploy` | Deploy ONE NixOS host from this checkout: preview what the switch does, then (only with | `infra/bin/deploy` | wf branch-ci, ci, identity-run +5; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 51 tools | - | Python |
 | `infra/bin/fetch-gitops` | Put the GitOps manifests where the deploy specs expect them | `infra/bin/fetch-gitops` | wf nix-update; hook pre-push; agentctl; skill CLAUDE.md; 8 tools | fetch-gitops-test.sh | KEEP |
 | `infra/bin/fleet-ssh` | Reach any host this flake declares, at the address `fleet_hosts.py` gives it -- as YOURSELF, | `infra/bin/fleet-ssh` | wf nix-stage-closures; 2 tools | - | Python |
 | `infra/bin/fleet_hosts.py` | WHERE A HOST IS, answered from the flake and from nowhere else. | `imported` | wf nix-stage-closures; 3 tools | - | Python |
-| `infra/bin/flux-rotate-deploy-keys` | rotate the kinowo cluster Flux's GitHub deploy keys (read and write) for movies-gitops, keys first, old keys last. | `infra/bin/flux-rotate-deploy-keys` | by hand | flux-rotate-deploy-keys-test.sh | MIGRATE |
+| `infra/bin/flux-rotate-deploy-keys` | rotate the kinowo cluster Flux's GitHub deploy keys (read and write) for movies-gitops, keys first, old keys last. | `infra/bin/flux-rotate-deploy-keys` | 1 tool | flux_rotate_deploy_keys_test.py | KEEP |
+| `infra/bin/flux_rotate_deploy_keys.py` | rotate the kinowo cluster Flux's GitHub deploy keys (read and write) for movies-gitops, keys first, old keys last. | `infra/bin/flux_rotate_deploy_keys.py` | 1 tool | flux_rotate_deploy_keys_test.py | Python |
 | `infra/bin/image_pins.py` | Every container image pin no other bumper owns, checked against its registry each week. | `infra/bin/image_pins.py` | wf nix-update; 3 tools | image_pins_test.py | Python |
 | `infra/bin/nix-update` | Find upgrades to the fleet flake's Nix dependencies and write them as ONE change for a pull request. | `infra/bin/nix-update` | wf mirror-pinned-images, nix-update; skill CLAUDE.md; 5 tools | nix-update-test.sh | Python |
 | `infra/bin/nix_path.py` | Where nix is: PATH if it has it, else the standard install locations. The ONE place infra/bin's tools | `python3 infra/bin/nix_path.py` | 6 tools | nix_path_test.py | Python |

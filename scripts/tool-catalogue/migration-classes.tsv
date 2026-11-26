@@ -24,7 +24,7 @@ android/scripts/store-screenshots.sh	MIGRATE
 infra/bin/check	MIGRATE
 infra/bin/cloudflare-ci-edge-allow	KEEP
 infra/bin/fetch-gitops	KEEP
-infra/bin/flux-rotate-deploy-keys	MIGRATE
+infra/bin/flux-rotate-deploy-keys	KEEP
 infra/bin/propose-pr	KEEP
 infra/bin/provision-mongodb-offbox-key	KEEP
 infra/bin/push-gh-secrets	KEEP
