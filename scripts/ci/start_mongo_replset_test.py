@@ -218,5 +218,21 @@ class StartMongoReplsetTest(cli_harness.ToolCase):
         self.assertFalse(os.path.exists(self.path("marker")))
 
 
+class StarterLogTest(unittest.TestCase):
+    """With no MONGO_NATIVE_LOG the log is made per run under a private (0700) directory, never a fixed /tmp name."""
+
+    def starter(self) -> object:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import start_mongo_replset  # noqa: E402
+        env = {"MONGO_NATIVE_HOME": "/nonexistent", "PATH": os.environ.get("PATH", "")}
+        return start_mongo_replset.Starter(env, lambda: 0.0, lambda _seconds: None)
+
+    def test_the_default_log_is_in_a_private_directory_made_per_run(self) -> None:
+        first, second = self.starter().log, self.starter().log  # type: ignore[attr-defined]
+        self.addCleanup(lambda: [os.rmdir(os.path.dirname(p)) for p in (first, second)])
+        self.assertNotEqual("/tmp/mongod.log", first)
+        self.assertNotEqual(os.path.dirname(first), os.path.dirname(second))
+        self.assertEqual(0o700, os.stat(os.path.dirname(first)).st_mode & 0o777)
+
 if __name__ == "__main__":
     unittest.main()

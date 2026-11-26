@@ -141,5 +141,20 @@ class WaitForMongoTunnelTest(cli_harness.ToolCase):
         self.assertFalse(os.path.exists(self.path("silent", "github-env")))
 
 
+class TunnelLogTest(unittest.TestCase):
+    """With no TUNNEL_LOG the log is made per run under a private (0700) directory, never a fixed /tmp name."""
+
+    def tunnel(self) -> object:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
+        import wait_for_mongo_tunnel  # noqa: E402
+        return wait_for_mongo_tunnel.Tunnel("27999", {"RUNNER_TEMP": "/nonexistent"})
+
+    def test_the_default_log_is_in_a_private_directory_made_per_run(self) -> None:
+        first, second = self.tunnel().log, self.tunnel().log  # type: ignore[attr-defined]
+        self.addCleanup(lambda: [os.rmdir(os.path.dirname(p)) for p in (first, second)])
+        self.assertNotEqual("/tmp/mongo-tunnel.log", first)
+        self.assertNotEqual(os.path.dirname(first), os.path.dirname(second))
+        self.assertEqual(0o700, os.stat(os.path.dirname(first)).st_mode & 0o777)
+
 if __name__ == "__main__":
     unittest.main()
