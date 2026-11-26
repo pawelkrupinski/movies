@@ -199,6 +199,8 @@ check "...and so does the exemption table: an exemption row added is judged by t
   "$(plan test/resources/coupling-exemptions.tsv)"
 check "...and so do the frozen reference sets: a split claim is held to them" "sbt" \
   "$(plan test/resources/coupling-fanout-refs.tsv)"
+check "...and so does the classification: a type moved into the data bucket is judged by the ratchet" "sbt" \
+  "$(plan test/resources/coupling-collaborators.tsv)"
 
 printf '\033[36m▸\033[0m pre-push --script-test-plan\n'
 script_tests() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --script-test-plan | tr '\n' ' ' | sed 's/ $//'; }

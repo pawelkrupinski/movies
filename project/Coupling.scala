@@ -34,10 +34,11 @@ object Coupling {
 
   /** The graph: every type, the dependencies between them (`from` uses `to`; both types' names), the types that are
    *  DATA ([[Collaborators]]: no coupling to depend on), why each other type is a collaborator, and each type's
-   *  supertypes among the types ([[supertypeClosure]]). */
+   *  supertypes among the types ([[supertypeClosure]]), and each named type's `logic` ([[Collaborators.logic]]). */
   final case class Graph(types: Seq[Type], edges: Set[(String, String)], data: Set[String] = Set.empty,
                          collaboratorWhy: Map[String, String] = Map.empty, coupledEdges: Option[Set[(String, String)]] = None,
-                         supertypes: Map[String, Set[String]] = Map.empty, units: Set[String] = Set.empty) {
+                         supertypes: Map[String, Set[String]] = Map.empty, units: Set[String] = Set.empty,
+                         logic: Map[String, Collaborators.Logic] = Map.empty) {
     val byName: Map[String, Type] = types.map(t => t.name -> t).toMap
     /** A class's package as this graph measures it ([[Coupling.packageOf]] over `units`, the deeper packages measured
      *  on their own: [[Layers.units]]). */
@@ -291,6 +292,55 @@ object Coupling {
      *  memo a `Qualifiers` instance holds. */
     def unitOf(binary: String, name: String): String = normalize(name) + (if (binary.endsWith("$")) "$" else "")
 
+    // ── the logic a data type may hold ──
+
+    /** What a type's methods do beyond holding and deriving values: `methods`, how many are non-trivial ([[nonTrivial]]),
+     *  and `decisions`, every conditional jump and switch their bodies (and their lambdas') take. Read from the class
+     *  files, so it is a bytecode count of the decisions, not the source's nesting-weighted cognitive complexity
+     *  (scripts/quality-report reads that from the text, per method): the cut is set against this count's own
+     *  distribution over the data types. */
+    final case class Logic(methods: Int, decisions: Int)
+
+    /** The most non-trivial methods and decisions a DATA type may hold (the 95th percentile of the 4812 data types when
+     *  the rule came in, 2026-11-26: 4 methods, 9 decisions; three quarters of them hold none): one past either makes it a collaborator ([[withLogic]]) -- a case class with
+     *  heavy methods, or an object of "pure" functions, is where logic hides once data costs no coupling. */
+    val DataMethodCut = 4
+    val DataDecisionCut = 9
+    /** The bytes of code from which a method with no decision is still logic (an accessor is under 10, a derived value
+     *  a string concatenation under 40). */
+    val TrivialBytes = 40
+
+    /** The methods the compiler writes for a case class, an enum, an object, a lazy val or a lambda: no logic of the
+     *  type's own (a lambda's decisions count, as its enclosing method's; a lazy val's initialiser is the type's data). */
+    private val Generated: Set[String] = Set("<init>", "<clinit>", "equals", "hashCode", "toString", "canEqual", "copy", "apply", "unapply",
+      "productArity", "productElement", "productElementName", "productElementNames", "productPrefix", "productIterator", "fromProduct",
+      "writeReplace", "readResolve", "$deserializeLambda$", "ordinal", "values", "valueOf", "fromOrdinal", "$values", "unapplySeq")
+    private def generated(name: String): Boolean =
+      Generated(name) || name.startsWith("copy$default$") || name.startsWith("apply$default$") || name.matches("_\\d+") || name.contains("$lzy") || name.contains("bitmap$")
+    private def lambda(name: String): Boolean = name.contains("$anonfun")
+
+    /** Whether a method does more than hold or derive a value: it takes a decision, or its body is longer than
+     *  [[TrivialBytes]]. A lambda is part of its enclosing method, never a method of its own. */
+    def nonTrivial(m: ClassReferences.Method): Boolean = !generated(m.name) && !lambda(m.name) && (m.branches > 0 || m.size > TrivialBytes)
+
+    def logicOf(classes: Seq[ClassReferences.Compiled]): Logic = {
+      val methods = classes.flatMap(_.shape.methods).filterNot(m => generated(m.name))
+      Logic(methods.count(nonTrivial), methods.map(_.branches).sum)
+    }
+
+    /** Every named type's logic: the methods of its class files, each folded into its named type (`unitOf`). */
+    def logic(compiled: Seq[ClassReferences.Compiled], unitOf: String => Option[String]): Map[String, Logic] =
+      compiled.flatMap(c => unitOf(c.name).map(_ -> c)).groupBy(_._1).map { case (u, cs) => u -> logicOf(cs.map(_._2)) }
+
+    /** `reasons` with every DATA type holding more logic than a data type may ([[DataMethodCut]], [[DataDecisionCut]])
+     *  made a collaborator: moving logic into a case class or an object of pure functions would otherwise hide it from
+     *  fan-out and abstractness. Added after [[classify]], so a type holding such a type stays data: the reason is the
+     *  type's own, it does not spread. */
+    def withLogic(reasons: Map[String, String], logic: Map[String, Logic]): Map[String, String] =
+      reasons ++ logic.collect { case (t, l) if !reasons.contains(t) && (l.methods > DataMethodCut || l.decisions > DataDecisionCut) =>
+        t -> s"data type with logic: ${l.methods} methods, total cognitive ${l.decisions}"
+      }
+
     /** The DATA types among `types`: those [[classify]] finds no reason in. */
     def data(types: Seq[String], reasons: Map[String, String]): Set[String] = types.filterNot(reasons.contains).toSet
 
@@ -367,6 +417,11 @@ object Coupling {
   def collaboratorRows(g: Graph): Seq[String] =
     (if (g.data.isEmpty && g.collaboratorWhy.isEmpty) g.types.map(_.name) else (g.data ++ g.collaboratorWhy.keys).toSeq).distinct.sorted
       .map(t => if (g.data(t)) s"$t\tdata\t" else s"$t\tcollaborator\t${g.collaboratorWhy.getOrElse(t, "")}")
+
+  /** Every named type's logic ([[Collaborators.logic]]), one `<type><TAB><non-trivial methods><TAB><decisions><TAB>data|collaborator`
+   *  line each, sorted (scripts/coupling-report --out keeps it as logic.tsv: the distribution the data-logic cut is read from). */
+  def logicRows(g: Graph): Seq[String] =
+    g.logic.toSeq.sortBy(_._1).map { case (t, l) => s"$t\t${l.methods}\t${l.decisions}\t${if (g.data(t)) "data" else "collaborator"}" }
 
   /** The strongly connected components of a directed graph with two or more nodes (Tarjan), each sorted, sorted. */
   def components(nodes: Seq[String], edges: Set[(String, String)]): Seq[Seq[String]] = {
@@ -503,6 +558,23 @@ object Coupling {
   /** Per class: its fan-out as the limit counts it ([[heldTargets]]: its collaborators, one each). */
   def heldFanOut(g: Graph): Map[String, Int] = heldTargets(g).map { case (c, ts) => c -> ts.size }
 
+  /** Per collaborator class: how many DATA types it uses -- the distinct types it references that no coupling counts
+   *  ([[heldFanOut]] counts the collaborators). A class drowning in domain shapes is as hard to change as one with many
+   *  collaborators, so it is held to a limit of its own ([[DefaultDataFanOutLimit]]). A data type is no such class: its
+   *  own references are bounded by [[dataBags]]. */
+  def dataFanOut(g: Graph): Map[String, Int] = {
+    val dataOnly = g.known.diff(g.coupled).groupBy(_._1).map { case (k, v) => k -> v.map(_._2).size }
+    g.types.filterNot(t => g.data(t.name)).map(t => t.name -> dataOnly.getOrElse(t.name, 0)).toMap
+  }
+
+  /** Per DATA type: the other types it references, of any kind (a field, a parameter, a result, a body's use). A data
+   *  type is a shape, and one referencing more than [[DefaultDataBagLimit]] types holds a domain's worth of it:
+   *  a bag, which would hide the coupling a class holding those types one by one would count. */
+  def dataBags(g: Graph): Map[String, Int] = {
+    val refs = g.known.groupBy(_._1).map { case (k, v) => k -> v.map(_._2).size }
+    g.types.filter(t => g.data(t.name)).map(t => t.name -> refs.getOrElse(t.name, 0)).toMap
+  }
+
   /** Per class: what its held fan-out counts -- the COLLABORATORS it references (a data type none). A
    *  `Coupling: split of <X>` claim holds the pieces' union of these to X's.
    *  A type's own supertypes are no collaborator of it, and a supertype of another collaborator it uses is that same
@@ -608,14 +680,20 @@ object Coupling {
    *  `refrozen`, with its `Coupling:` trailer): 1, Zinc's record alone (a class's uses of the top-level classes of its own
    *  file uncounted); 2, those counted ([[sameFileEdges]]); 3, a file's imports no longer charged to its last class
    *  ([[withoutImportCharge]]); 4, only COLLABORATORS counted ([[Collaborators]]: a data type, nested ones judged by
-   *  themselves, is no coupling). */
-  val FanOutMeasure = 4
+   *  themselves, is no coupling); 5, a data type with more logic than a data type may hold a collaborator too
+   *  ([[Collaborators.withLogic]]). */
+  val FanOutMeasure = 5
   /** How a package is measured, held as a limit row so a measurement fix re-takes the frozen distance rows (keeping
    *  their ceilings): 1, every class in its top two segments; 2, a package of three or more segments with a layer-table
    *  row of its own measured apart ([[Layers.units]], 2026-11-20). */
   val PackageMeasure = 2
   /** The outside packages a package with no row may depend on. */
   val DefaultNewPackageCeLimit = 8
+  /** The data types a collaborator class may use before it needs a frozen row (the distribution's 95th percentile when
+   *  the limit came in, 2026-11-26: 16 over the 1197 collaborator classes, cut at 15). */
+  val DefaultDataFanOutLimit = 15
+  /** The other types a data type may reference before it is a bag and needs a frozen row (the owner, 2026-11-26). */
+  val DefaultDataBagLimit = 9
   /** The distance from the main sequence, in hundredths, above which a package needs a frozen row or an exemption. */
   val DefaultDistanceLimit = 20
   /** The types a package needs before its distance is held: a smaller one's D swings on one class. */
@@ -629,9 +707,11 @@ object Coupling {
    *  a row, unless an exemption covers them. */
   def baselineRows(g: Graph, fanOutLimit: Int = DefaultFanOutLimit, newPackageCeLimit: Int = DefaultNewPackageCeLimit,
                    layers: Option[Layers] = None, exemptions: Exemptions = Exemptions.empty,
-                   distanceLimit: Int = DefaultDistanceLimit, distanceMinTypes: Int = DefaultDistanceMinTypes): Seq[String] = {
+                   distanceLimit: Int = DefaultDistanceLimit, distanceMinTypes: Int = DefaultDistanceMinTypes,
+                   dataFanOutLimit: Int = DefaultDataFanOutLimit, dataBagLimit: Int = DefaultDataBagLimit): Seq[String] = {
     val limits = Seq(s"limit\tfanout\t$fanOutLimit", s"limit\tfanout-measure\t$FanOutMeasure", s"limit\tnew-package-ce\t$newPackageCeLimit",
-      s"limit\tdistance\t$distanceLimit", s"limit\tdistance-min-types\t$distanceMinTypes", s"limit\tdistance-measure\t$PackageMeasure")
+      s"limit\tdistance\t$distanceLimit", s"limit\tdistance-min-types\t$distanceMinTypes", s"limit\tdistance-measure\t$PackageMeasure",
+      s"limit\tdatafanout\t$dataFanOutLimit", s"limit\tdatabag\t$dataBagLimit")
     val modules = moduleEdges(g).toSeq.sorted.map { case ((a, b), n) => s"module-edge\t$a->$b\t$n" }
     val cycleEdges = cycles(g).flatMap(_.edges).map { case ((a, b), refs) => s"cycle-edge\t$a->$b\t${refs.size}" }.sorted
     val pkgs = packages(g)
@@ -644,7 +724,9 @@ object Coupling {
     }.sorted
     val layerRows = layers.toSeq.flatMap(l => layerViolations(g, l)).map { case ((a, b), refs) => s"layer-violation\t$a->$b\t${refs.size}" }
     val rankRows = layers.toSeq.flatMap(l => rankViolations(g, l)).map { case ((a, b), refs) => s"rank-violation\t$a->$b\t${refs.size}" }
-    limits ++ modules ++ cycleEdges ++ ce ++ fanout ++ distance ++ layerRows ++ rankRows
+    val dataFanout = dataFanOut(g).toSeq.collect { case (c, n) if n > dataFanOutLimit => s"datafanout\t$c\t$n" }.sorted
+    val bags = dataBags(g).toSeq.collect { case (c, n) if n > dataBagLimit => s"databag\t$c\t$n" }.sorted
+    limits ++ modules ++ cycleEdges ++ ce ++ fanout ++ distance ++ dataFanout ++ bags ++ layerRows ++ rankRows
   }
 
   val BaselineHeader: Seq[String] = Seq(
@@ -668,6 +750,10 @@ object Coupling {
     "#                limit: FROZEN -- it may only fall; a new row is never admitted, only an exemption",
     "#                (test/resources/coupling-exemptions.tsv, with `Coupling: <why>`) lets a new class past the limit",
     "#   distance     <package>, its D in hundredths past the limit: frozen the same way",
+    "#   datafanout   <class>, the DATA types a collaborator class uses (distinct types no fan-out counts) past the limit: frozen",
+    "#                like fanout -- it may only fall, a new class past it fails",
+    "#   databag      <type>, the other types (any kind) a DATA type references past the limit: frozen the same way; a data type",
+    "#                with more logic than a data type may hold is a collaborator instead (Coupling.Collaborators.withLogic)",
     "#   distance-cap <package>, its frozen distance row's CEILING (hundredths): its value on 2026-11-19 + 2; a split's",
     "#                +0.02 stops there, a fall lowers it with the row (min(ceiling, row + 2)) and nothing raises it;",
     "#                scripts/ci/coupling_ratchet.py update writes it (not couplingReport, whose rows carry none)",

@@ -57,6 +57,13 @@ mutants=(
   'a loosened exemption table never fails @@ rise_refused(rng, EXEMPTIONS_PATH, @@ False and rise_refused(rng, EXEMPTIONS_PATH,'
   'the trailer is not read @@ return trailers.unjustified_rises(rng, path, "Coupling", rose) @@ return []'
   'growth never fails @@ rise_refused(rng, BASELINE_PATH, @@ False and rise_refused(rng, BASELINE_PATH,'
+  'a data bag or a data fan-out is no frozen kind @@ ,
+          ("datafanout", "class", "data fan-out"), ("databag", "type", "data references")) @@ )'
+  'a type moved into the data bucket passes @@ failed = bool(to_data) @@ failed = False'
+  'the classification is never checked @@ failed |= check_verdicts(ranges, collaborators_path, fanouts_path) @@ failed |= False'
+  'recording a flip needs no trailer @@ for t in flips(parse_verdicts(before), parse_verdicts(after))[0]] @@ for t in []]'
+  'a new type is a flip @@ if v == DATA and before.get(t) == COLLABORATOR] @@ if v == DATA and True]'
+  'a nested type is a type of its own @@ while name not in types and "." in name: @@ while False:'
   'violations never fail @@ return bool(found) @@ return False'
   'an added allow row is no loosening @@ out = [f"allow {edge} added" for edge in sorted(new[1] - old[1])] @@ out = []'
   'a moved layer is no loosening @@ if was is not None and now is not None and was != now: @@ if False:'
@@ -124,7 +131,7 @@ mkdir -p "$work/mutants/lib"
 # the tool's modules and the ones they import, side by side in a directory of each mutant (row parsing is
 # baseline_ratchet.parse_rows, the engine's: mutated by js-quality-ratchet-mutation-test.sh); tool_python is in ../lib
 modules=(coupling_ratchet coupling_rows coupling_violations coupling_growth coupling_exemption_table
-  coupling_exemption_history coupling_reasons coupling_renames coupling_splits trailers baseline_ratchet)
+  coupling_exemption_history coupling_reasons coupling_renames coupling_splits coupling_verdicts trailers baseline_ratchet)
 cp "$REPO_ROOT/scripts/lib/tool_python.py" "$work/mutants/lib/"
 i=0
 for m in "${mutants[@]}"; do

@@ -10,7 +10,7 @@ import sys
 from typing import Dict, List, Optional, Set, Tuple
 
 import tool_python
-from coupling_rows import LAYERS_PATH, layer_units, moved, package_of
+from coupling_rows import CLASS_KINDS, LAYERS_PATH, layer_units, moved, package_of
 from trailers import git, text_at as file_at
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -153,7 +153,7 @@ class RenameEvidence:
 def rename_claims(kind: str, gone: Dict[str, int], new: Dict[str, int],
                   evidence: RenameEvidence) -> Dict[str, List[Tuple[str, str]]]:
     """Each old name -> the (new name, how) pairs the range's renames give it."""
-    renamed = evidence.class_renamed if kind == "fanout" else evidence.package_renamed
+    renamed = evidence.class_renamed if kind in CLASS_KINDS else evidence.package_renamed
     claims: Dict[str, List[Tuple[str, str]]] = {}
     for key in sorted(new):
         for old in sorted(gone):

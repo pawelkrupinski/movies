@@ -39,8 +39,11 @@ object ClassReferences {
 
   /** One method: its name and descriptor, whether it is private, the classes its signature and body name (binary names,
    *  dotted) and the calls its body makes (`owner#name`, as [[Shape]]'s). A lambda's body is a method of its own
-   *  (`run$$anonfun$1`). `flags`: its access flags (what project/DeadCode.scala reads a public, non-synthetic method by). */
-  final case class Method(name: String, descriptor: String, isPrivate: Boolean, uses: Set[String], calls: Set[String], flags: Int = 0)
+   *  (`run$$anonfun$1`). `flags`: its access flags (what project/DeadCode.scala reads a public, non-synthetic method by).
+   *  `branches`: the decisions its body takes (every conditional jump, every switch once) and `size`: its code's bytes --
+   *  what Coupling.Collaborators.logic reads to tell a data type's logic from its accessors. */
+  final case class Method(name: String, descriptor: String, isPrivate: Boolean, uses: Set[String], calls: Set[String], flags: Int = 0,
+                          branches: Int = 0, size: Int = 0)
   object Shape {
     val empty: Shape = Shape("java.lang.Object", Nil, isInterface = false, isAbstract = false, Nil, Set.empty, Set.empty)
   }
@@ -82,6 +85,8 @@ object ClassReferences {
     // the method being read: its uses and calls (null outside a method)
     var methodUses: scala.collection.mutable.Set[String] = null
     var methodCalls: scala.collection.mutable.Set[String] = null
+    var methodBranches = 0
+    var methodSize = 0
     def use(name: String): Unit = { uses += name; if (methodUses != null) methodUses += name }
     def call(name: String): Unit = { calls += name; if (methodCalls != null) methodCalls += name }
     // a field write (putfield, putstatic) outside a constructor: the field's owner and name
@@ -132,7 +137,8 @@ object ClassReferences {
       in.readUnsignedShort(); in.readUnsignedShort()
       val code = new Array[Byte](in.readInt())
       in.readFully(code)
-      instructions(code, constant, written)
+      methodSize = code.length
+      instructions(code, constant, written, () => methodBranches += 1)
       val handlers: Int = in.readUnsignedShort()
       (0 until handlers).foreach { _ => in.readUnsignedShort(); in.readUnsignedShort(); in.readUnsignedShort(); classEntry(in.readUnsignedShort()) }
       attributes(code = true)
@@ -165,12 +171,13 @@ object ClassReferences {
       val descriptor: Int = in.readUnsignedShort()
       methodUses = scala.collection.mutable.Set.empty[String]
       methodCalls = scala.collection.mutable.Set.empty[String]
+      methodBranches = 0; methodSize = 0
       // the mirror's signature and body are the compiler's, not the source's: read past them
       muted = isMirrorOrdinal(name, utf8(descriptor))
       signature(descriptor); attributes(code = false)
       muted = false
       val method = Method(name, utf8(descriptor), (flags & 0x0002) != 0, methodUses.toSet.map((u: String) => u.replace('/', '.')), methodCalls.toSet,
-        flags)
+        flags, methodBranches, methodSize)
       methodUses = null; methodCalls = null
       method
     }
@@ -181,8 +188,8 @@ object ClassReferences {
     Compiled(name, uses.result().map(_.replace('/', '.')) - name, shape)
   }
 
-  /** Every constant-pool index a method body's instructions name, handed to `constant`; a field write's to `written` too. */
-  private def instructions(code: Array[Byte], constant: Int => Unit, written: Int => Unit): Unit = {
+  /** Every constant-pool index a method body's instructions name, handed to `constant`; a field write's to `written` too; each decision (a conditional jump, a switch) to `branch`. */
+  private def instructions(code: Array[Byte], constant: Int => Unit, written: Int => Unit, branch: () => Unit): Unit = {
     def u1(at: Int): Int = code(at) & 0xff
     def u2(at: Int): Int = (u1(at) << 8) | u1(at + 1)
     def s4(at: Int): Int = (u2(at) << 16) | u2(at + 2)
@@ -196,14 +203,17 @@ object ClassReferences {
         case 0xb9 | 0xba => constant(u2(pc + 1)); 5
         case 0xc5 => constant(u2(pc + 1)); 4
         case 0x10 | 0x15 | 0x16 | 0x17 | 0x18 | 0x19 | 0x36 | 0x37 | 0x38 | 0x39 | 0x3a | 0xa9 | 0xbc => 2
-        case 0x11 | 0x84 | 0xc6 | 0xc7 => 3
-        case b if b >= 0x99 && b <= 0xa8 => 3
+        case 0xc6 | 0xc7 => branch(); 3
+        case 0x11 | 0x84 => 3
+        case b if b >= 0x99 && b <= 0xa8 => if (b <= 0xa6) branch(); 3
         case 0xc8 | 0xc9 => 5
         case 0xc4 => if (u1(pc + 1) == 0x84) 6 else 4
         case 0xaa =>
+          branch()
           val at: Int = pc + 1 + (3 - (pc % 4))
           12 + (s4(at + 8) - s4(at + 4) + 1) * 4 + (at - pc)
         case 0xab =>
+          branch()
           val at: Int = pc + 1 + (3 - (pc % 4))
           8 + s4(at + 4) * 8 + (at - pc)
         case _ => 1

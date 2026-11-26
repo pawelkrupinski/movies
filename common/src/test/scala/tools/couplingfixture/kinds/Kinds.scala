@@ -50,6 +50,41 @@ final case class Title(raw: String) { lazy val clean: String = raw.trim }
 /** A method taking a collaborator: its caller holds the store, and counts it. */
 final case class Stamp(at: Long) { def stored(store: Store): Option[String] = store.get(at.toString) }
 
+// Data holding LOGIC (Coupling.Collaborators.withLogic): the cut is 4 non-trivial methods and 9 decisions.
+
+/** Five methods, each deciding something: one past the cut, so no longer data. */
+final case class HeavyRecord(n: Int) {
+  def a: Int = if (n > 1) 1 else 0
+  def b: Int = if (n > 2) 2 else 0
+  def c: Int = if (n > 3) 3 else 0
+  def d: Int = if (n > 4) 4 else 0
+  def e: Int = if (n > 5) 5 else 0
+}
+
+/** Four methods, each deciding something: at the cut, still data. */
+final case class LightRecord(n: Int) {
+  def a: Int = if (n > 1) 1 else 0
+  def b: Int = if (n > 2) 2 else 0
+  def c: Int = if (n > 3) 3 else 0
+  def d: Int = if (n > 4) 4 else 0
+}
+
+/** One method taking ten decisions: past the cut of nine, so no longer data. */
+final case class Branchy(n: Int) {
+  def grade: String =
+    if (n > 1) "a" else if (n > 2) "b" else if (n > 3) "c" else if (n > 4) "d" else if (n > 5) "e" else
+      if (n > 6) "f" else if (n > 7) "g" else if (n > 8) "h" else if (n > 9) "i" else if (n > 10) "j" else "k"
+}
+
+/** An object of "pure" functions taking everything as parameters, with the logic of five: where logic hides. */
+object PureHelper {
+  def a(n: Int): Int = if (n > 1) 1 else 0
+  def b(n: Int): Int = if (n > 2) 2 else 0
+  def c(n: Int): Int = if (n > 3) 3 else 0
+  def d(n: Int): Int = if (n > 4) 4 else 0
+  def e(n: Int): Int = if (n > 5) 5 else 0
+}
+
 // ── collaborators ──
 
 /** State: a var. */

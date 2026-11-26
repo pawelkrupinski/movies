@@ -28,6 +28,7 @@ BASELINE = "test/resources/coupling-baseline.tsv"
 LAYERS = "test/resources/coupling-layers.tsv"
 EXEMPTIONS = "test/resources/coupling-exemptions.tsv"
 REFS = "test/resources/coupling-fanout-refs.tsv"
+VERDICTS = "test/resources/coupling-collaborators.tsv"
 
 EXEMPTION_ROWS = """# kind\tpattern\tlimit|exempt\towner\twhy
 root\tmodules.*\texempt\tcoupling\tthe composition roots
@@ -47,6 +48,8 @@ limit\tfanout\t9
 limit\tnew-package-ce\t15
 limit\tdistance\t20
 limit\tdistance-min-types\t8
+limit\tdatafanout\t15
+limit\tdatabag\t9
 module-edge\tworker->common\t40
 ce\tmodels\t12
 ce\tservices.movies\t20
@@ -98,7 +101,7 @@ class RatchetHarness(unittest.TestCase):
         self.scratch("scratch_git", "commit", "-qm", message)
         return self.scratch("scratch_git", "rev-parse", "HEAD")
 
-    def check(self, current, rng=None, edges=None, fanouts=None):
+    def check(self, current, rng=None, edges=None, fanouts=None, collaborators=None):
         path = os.path.join(self.dir.name, "current.tsv")
         with open(path, "w") as f:
             f.write(current)
@@ -117,6 +120,11 @@ class RatchetHarness(unittest.TestCase):
             with open(fanouts_path, "w") as f:
                 f.write("".join(fanout_line(c, n) for c, n in fanouts.items()))
             args += ["--fanouts", fanouts_path]
+        if collaborators is not None:
+            collaborators_path = os.path.join(self.dir.name, "collaborators.tsv")
+            with open(collaborators_path, "w") as f:
+                f.write(collaborators)
+            args += ["--collaborators", collaborators_path]
         done = subprocess.run(args, cwd=self.repo, env=env, capture_output=True, text=True)
         return done.returncode, done.stdout + done.stderr
 
@@ -1144,6 +1152,91 @@ class DistanceCeilingTest(RatchetHarness):
         self.assertIn("distance services.readmodel: 30 -> 31 -- rose within the split's 2: tolerated; ceiling 32, "
                       "headroom 0.01 left", out)
         self.assertIn("distance services.movies: 48 -- ceiling 50, headroom 0.02 left", out)
+
+
+class DataGuardTest(RatchetHarness):
+    """THE DATA LIMITS and THE CLASSIFICATION (coupling_ratchet.py): a data type's references and a class's data types
+    are frozen kinds no exemption admits, and a type moved into the data bucket needs its `Coupling:` trailer."""
+
+    def frozen(self, kind, key, value):
+        self.commit({BASELINE: rows(f"{kind}\t{key}\t{value}")}, "freeze")
+
+    def test_a_data_bag_newly_past_the_limit_fails_and_no_exemption_admits_it(self):
+        self.assert_fails(rows("databag\tmodels.Bag\t10"), "type models.Bag: data references 10 past the limit 9",
+                          "no exemption admits it")
+
+    def test_a_frozen_bag_may_fall_but_not_rise(self):
+        self.frozen("databag", "models.Bag", 12)
+        self.assert_passes(rows("databag\tmodels.Bag\t11"))
+        self.assert_fails(rows("databag\tmodels.Bag\t13"), "type models.Bag: data references 13 past its frozen row 12")
+
+    def test_a_class_newly_past_the_data_fan_out_limit_fails(self):
+        self.assert_fails(rows("datafanout\tservices.a.Wide\t16"), "class services.a.Wide: data fan-out 16 past the limit 15")
+
+    def test_a_frozen_data_fan_out_may_fall_but_not_rise(self):
+        self.frozen("datafanout", "services.a.Wide", 20)
+        self.assert_passes(rows("datafanout\tservices.a.Wide\t19"))
+        self.assert_fails(rows("datafanout\tservices.a.Wide\t21"), "data fan-out 21 past its frozen row 20")
+
+    def test_a_new_frozen_data_row_in_a_range_fails_without_a_new_limit(self):
+        head = self.commit({BASELINE: rows("databag\tmodels.Bag\t12")}, "freeze a new bag\n\nCoupling: it is a roster")
+        self.assert_fails(rows("databag\tmodels.Bag\t12"), "databag models.Bag added at 12", rng=f"{self.base}..{head}")
+
+    def test_a_renamed_bag_keeps_its_row(self):
+        self.frozen("databag", "models.Bag", 12)
+        self.assert_passes(rows("databag\tmodels.other.Bag\t12"))
+
+    def verdict_check(self, measured, rng=None, types=None):
+        """The ratchet over a measured verdict set {type: data|collaborator} (couplingReport's collaborators and fanouts)."""
+        collaborators = "".join(f"{t}\t{v}\t{'state: x' if v == 'collaborator' else ''}\n" for t, v in measured.items())
+        return self.check(ROWS, rng, fanouts={t: 0 for t in (types or measured)}, collaborators=collaborators)
+
+    def record(self, **verdicts):
+        text = "# the classification\n" + "".join(f"{t}\t{v}\n" for t, v in verdicts.items())
+        return self.commit({VERDICTS: text}, "record the classification")
+
+    def test_the_recorded_classification_passes(self):
+        self.record(**{"services.a.Rules": "collaborator", "models.Row": "data"})
+        rc, out = self.verdict_check({"services.a.Rules": "collaborator", "models.Row": "data"})
+        self.assertEqual(0, rc, out)
+
+    def test_a_collaborator_measured_as_data_is_refused_until_it_is_recorded(self):
+        self.record(**{"services.a.Rules": "collaborator"})
+        rc, out = self.verdict_check({"services.a.Rules": "data"})
+        self.assertEqual(1, rc, out)
+        self.assertIn("A TYPE MOVED INTO THE DATA BUCKET", out)
+        self.assertIn("services.a.Rules was a collaborator, is data", out)
+
+    def test_recording_the_flip_needs_its_own_trailer(self):
+        base = self.record(**{"services.a.Rules": "collaborator"})
+        head = self.commit({VERDICTS: "services.a.Rules\tdata\n"}, "record the flip")
+        rc, out = self.verdict_check({"services.a.Rules": "data"}, rng=f"{base}..{head}")
+        self.assertEqual(1, rc, out)
+        self.assertIn("with no `Coupling: <why>` trailer", out)
+
+    def test_recording_the_flip_with_its_trailer_passes(self):
+        base = self.record(**{"services.a.Rules": "collaborator"})
+        head = self.commit({VERDICTS: "services.a.Rules\tdata\n"}, "record the flip\n\nCoupling: Rules holds no state any more")
+        rc, out = self.verdict_check({"services.a.Rules": "data"}, rng=f"{base}..{head}")
+        self.assertEqual(0, rc, out)
+
+    def test_a_flip_to_a_collaborator_is_said_and_passes(self):
+        self.record(**{"models.Row": "data"})
+        rc, out = self.verdict_check({"models.Row": "collaborator"})
+        self.assertEqual(0, rc, out)
+        self.assertIn("models.Row is a collaborator now, was data", out)
+
+    def test_a_new_or_deleted_type_is_no_flip(self):
+        self.record(**{"services.a.Gone": "collaborator"})
+        rc, out = self.verdict_check({"models.Fresh": "data"})
+        self.assertEqual(0, rc, out)
+
+    def test_the_verdict_file_folds_named_types_into_their_top_level_type(self):
+        self.record(**{"services.a.Outer": "collaborator"})
+        # `Outer` and its object are data, but a nested type of it a collaborator: the top-level type stays one
+        rc, out = self.verdict_check({"services.a.Outer": "data", "services.a.Outer.Inner": "collaborator", "services.a.Outer$": "data"},
+                                    types=["services.a.Outer"])
+        self.assertEqual(0, rc, out)
 
 
 class CouplingRefsTest(unittest.TestCase):

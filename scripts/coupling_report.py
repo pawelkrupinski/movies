@@ -13,10 +13,14 @@ this checkout's kept sbt server (scripts/sbt-warm).
                                       frozen distance row's ceiling kept (`distance-cap`, only falling; over a
                                       conflicted baseline the least of every side's); and
                                       each frozen class's reference set to test/resources/coupling-fanout-refs.tsv
-                                      (what a later `Coupling: split of <X>` claim is held to)
+                                      (what a later `Coupling: split of <X>` claim is held to) and every top-level
+                                      type's verdict to test/resources/coupling-collaborators.tsv (a type that was a
+                                      collaborator and is data needs the `Coupling:` trailer)
   scripts/coupling-report --out DIR   keep rows.tsv, report.md, edges.tsv (every package edge's class references),
-                                      fanouts.tsv (every class's held fan-out) and collaborators.tsv (every type's
-                                      verdict: data, or collaborator and why -- only a collaborator counts) in DIR
+                                      fanouts.tsv (every class's held fan-out), collaborators.tsv (every type's
+                                      verdict: data, or collaborator and why -- only a collaborator counts) and
+                                      logic.tsv (every type's non-trivial methods and decisions: the data-logic cut's
+                                      distribution) in DIR
                                       (default: a temporary directory; a relative DIR is under the checkout)
   scripts/coupling-report --check-split <X> <piece>... [--base REV]
                                       whether the ratchet would accept the WORKING TREE's split of frozen class X
@@ -63,7 +67,7 @@ import tool_process  # noqa: E402
 TOOL = "coupling-report"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RATCHET = os.path.join(ROOT, "scripts", "ci", "coupling_ratchet.py")
-REPORT_FILES = ("rows.tsv", "report.md", "edges.tsv", "fanouts.tsv", "collaborators.tsv")
+REPORT_FILES = ("rows.tsv", "report.md", "edges.tsv", "fanouts.tsv", "collaborators.tsv", "logic.tsv")
 
 
 class Usage(Exception):
@@ -188,11 +192,13 @@ class CouplingReport:
                                 *into, *base)
         with open(report, errors="replace") as f:
             sys.stdout.write(f.read() + "\n")
-        code = self.ratchet("check", "--current", rows, "--edges", edges, "--fanouts", fanouts)
-        return self.update(rows, fanouts) if self.o.update else code
+        collaborators = files[4]
+        code = self.ratchet("check", "--current", rows, "--edges", edges, "--fanouts", fanouts, "--collaborators", collaborators)
+        return self.update(rows, fanouts, collaborators) if self.o.update else code
 
-    def update(self, rows: str, fanouts: str) -> int:
-        code = self.ratchet("update", "--current", rows, "--baseline", "test/resources/coupling-baseline.tsv")
+    def update(self, rows: str, fanouts: str, collaborators: str) -> int:
+        code = self.ratchet("update", "--current", rows, "--baseline", "test/resources/coupling-baseline.tsv",
+                            "--fanouts", fanouts, "--collaborators", collaborators)
         if code != 0:
             return code
         refs = self.runner.capture(tool_process.Command(
@@ -202,7 +208,7 @@ class CouplingReport:
             f.write(refs.stdout)
         if refs.code != 0:
             return refs.code
-        print(f"{TOOL}: wrote test/resources/coupling-baseline.tsv and coupling-fanout-refs.tsv -- a rise is committed "
+        print(f"{TOOL}: wrote test/resources/coupling-baseline.tsv, coupling-fanout-refs.tsv and coupling-collaborators.tsv -- a rise is committed "
               "with a `Coupling: <why>` trailer")
         return 0
 

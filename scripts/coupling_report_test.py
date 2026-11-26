@@ -93,11 +93,12 @@ class CouplingReportTest(cli_harness.ToolCase):
         done = self.report("--out", out, RATCHET_EXIT="1")
         self.assertEqual(1, done.code, done.output)
         self.assertEqual("# couplingReport report.md\n\nratchet check\n", done.stdout)
-        files = [f"{out}/{name}" for name in ("rows.tsv", "report.md", "edges.tsv", "fanouts.tsv", "collaborators.tsv")]
+        files = [f"{out}/{name}" for name in ("rows.tsv", "report.md", "edges.tsv", "fanouts.tsv", "collaborators.tsv", "logic.tsv")]
         self.assertEqual([["couplingReport " + " ".join(files)]], self.sbt_called())
         self.assertEqual([["check", "--current", f"{out}/rows.tsv", "--edges", f"{out}/edges.tsv",
-                           "--fanouts", f"{out}/fanouts.tsv"]], self.ratchet_called())
-        self.assertEqual(["collaborators.tsv", "edges.tsv", "fanouts.tsv", "report.md", "rows.tsv", "sbt.log"],
+                           "--fanouts", f"{out}/fanouts.tsv", "--collaborators", f"{out}/collaborators.tsv"]],
+                         self.ratchet_called())
+        self.assertEqual(["collaborators.tsv", "edges.tsv", "fanouts.tsv", "logic.tsv", "report.md", "rows.tsv", "sbt.log"],
                          sorted(os.listdir(out)), "--out keeps every file")
 
     def test_a_relative_out_is_under_the_checkout(self) -> None:
@@ -117,15 +118,16 @@ class CouplingReportTest(cli_harness.ToolCase):
         done = self.report("--update", "--out", self.path("kept"))
         self.assertEqual(0, done.code, done.output)
         kept = self.path("kept")
-        self.assertEqual(["update", "--current", f"{kept}/rows.tsv", "--baseline", "test/resources/coupling-baseline.tsv"],
+        self.assertEqual(["update", "--current", f"{kept}/rows.tsv", "--baseline", "test/resources/coupling-baseline.tsv",
+                          "--fanouts", f"{kept}/fanouts.tsv", "--collaborators", f"{kept}/collaborators.tsv"],
                          self.ratchet_called()[-2])
         self.assertEqual(["refs", "--current", f"{kept}/rows.tsv", "--fanouts", f"{kept}/fanouts.tsv"],
                          self.ratchet_called()[-1])
         with open(os.path.join(self.root, "test", "resources", "coupling-fanout-refs.tsv")) as f:
             self.assertEqual("refs\trows\n", f.read())
         self.assertTrue(done.stdout.endswith(
-            "ratchet check\nratchet update\ncoupling-report: wrote test/resources/coupling-baseline.tsv and "
-            "coupling-fanout-refs.tsv -- a rise is committed with a `Coupling: <why>` trailer\n"), done.stdout)
+            "ratchet check\nratchet update\ncoupling-report: wrote test/resources/coupling-baseline.tsv, "
+            "coupling-fanout-refs.tsv and coupling-collaborators.tsv -- a rise is committed with a `Coupling: <why>` trailer\n"), done.stdout)
 
     def test_update_exits_0_past_a_refusing_check(self) -> None:
         self.fake_at("scripts/ci/coupling_ratchet.py", RATCHET.replace(

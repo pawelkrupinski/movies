@@ -67,6 +67,14 @@ def ce_rows(current: Rows, baseline: Rows) -> List[str]:
     return out
 
 
+def admits(kind: str) -> str:
+    """What may admit a row newly past its limit: an exemption row for a fan-out or a distance; for the data limits
+    (a data type's references, a class's data types) nothing -- cut it: a type moved into the data bucket is no way out."""
+    if kind in ("datafanout", "databag"):
+        return "no exemption admits it: split the type or hand its shapes on as one value, never --update"
+    return f"only an exemption row admits it ({EXEMPTIONS_PATH}, with `Coupling: <why>`), never --update"
+
+
 def frozen_kind_rows(kind: str, noun: str, what: str, current: Rows, baseline: Rows, renamed: Renamed) -> List[str]:
     out: List[str] = []
     limit = limits(baseline)[kind]
@@ -76,8 +84,7 @@ def frozen_kind_rows(kind: str, noun: str, what: str, current: Rows, baseline: R
             if value > base[key]:
                 out.append(f"{noun} {key}: {what} {value} past its frozen row {base[key]} -- a frozen row only falls")
         elif not moved(key, value, base, cur) and (kind, key) not in renamed:
-            out.append(f"{noun} {key}: {what} {value} past the limit {limit} -- cut it below the limit; only an "
-                       f"exemption row admits it ({EXEMPTIONS_PATH}, with `Coupling: <why>`), never --update")
+            out.append(f"{noun} {key}: {what} {value} past the limit {limit} -- cut it below the limit; " + admits(kind))
     return out
 
 

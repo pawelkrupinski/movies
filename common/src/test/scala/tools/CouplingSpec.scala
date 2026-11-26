@@ -181,8 +181,8 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
 
   "the baseline rows" should "hold the limits, the module and cycle edges, every package's Ce and the fan-outs past the limit" in {
     Coupling.baselineRows(graph, fanOutLimit = 2, newPackageCeLimit = 15, distanceMinTypes = 100) shouldBe Seq(
-      "limit\tfanout\t2", "limit\tfanout-measure\t4", "limit\tnew-package-ce\t15", "limit\tdistance\t20", "limit\tdistance-min-types\t100",
-      "limit\tdistance-measure\t2",
+      "limit\tfanout\t2", "limit\tfanout-measure\t5", "limit\tnew-package-ce\t15", "limit\tdistance\t20", "limit\tdistance-min-types\t100",
+      "limit\tdistance-measure\t2", "limit\tdatafanout\t15", "limit\tdatabag\t9",
       "module-edge\tcommon->base\t1", "module-edge\tworker->base\t1", "module-edge\tworker->common\t2",
       "cycle-edge\tmodels->services.movies\t1", "cycle-edge\tservices.movies->models\t1",
       "ce\tmodels\t1", "ce\tservices.movies\t2", "ce\ttools\t0", "ce\tworker\t3",
@@ -464,7 +464,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
   private val kinds = s"$fixture.kinds"
   private val kindNames = Seq("Point", "Origin", "Colour", "Figure", "Circle", "Blank", "Slug", "Units", "Score", "Celsius", "NotFound",
     "Booking", "Title", "Stamp", "Counter", "Memo", "Env", "Draft", "YearCap", "Normalizer", "Store", "MapStore", "Port", "Rule",
-    "EmptyRule", "Wiring", "Tickets", "Source", "Fixed", "Live", "Node", "Numbering")
+    "EmptyRule", "Wiring", "Tickets", "Source", "Fixed", "Live", "Node", "Numbering", "HeavyRecord", "LightRecord", "Branchy", "PureHelper")
   private lazy val kindReasons: Map[String, String] =
     Coupling.Collaborators.classify(compiled(kinds), Coupling.foldBinary(_, tops(kinds, kindNames*))).map { case (k, v) => k.stripPrefix(s"$kinds.") -> v }
 
@@ -505,6 +505,60 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     kindReasons.keySet should not contain "Numbering" // Counter's var is Counter's state, not its reader's
     kindReasons("Source") shouldBe s"implemented by $kinds.Live"
     kindReasons.keySet should not contain "Fixed"
+  }
+
+  // ── data that holds logic is a collaborator (Coupling.Collaborators.withLogic) ──
+
+  private lazy val kindLogic: Map[String, Coupling.Collaborators.Logic] =
+    Coupling.Collaborators.logic(compiled(kinds), Coupling.foldBinary(_, tops(kinds, kindNames*))).map { case (k, v) => k.stripPrefix(s"$kinds.") -> v }
+  private lazy val logicReasons: Map[String, String] = Coupling.Collaborators.withLogic(
+    Coupling.Collaborators.classify(compiled(kinds), Coupling.foldBinary(_, tops(kinds, kindNames*))), Coupling.Collaborators.logic(
+      compiled(kinds), Coupling.foldBinary(_, tops(kinds, kindNames*)))).map { case (k, v) => k.stripPrefix(s"$kinds.") -> v }
+
+  "a data type holding logic" should "count its non-trivial methods and decisions, not its accessors or the compiler's methods" in {
+    kindLogic("HeavyRecord") shouldBe Coupling.Collaborators.Logic(5, 5)
+    kindLogic("LightRecord") shouldBe Coupling.Collaborators.Logic(4, 4)
+    kindLogic("Branchy").decisions should be > 9
+    Seq("Point", "Origin", "Booking", "Title", "Stamp", "Colour", "Figure").foreach(n => withClue(n)(kindLogic(n).methods should be <= 1))
+  }
+
+  it should "be a collaborator once past the cut: five methods, or ten decisions, in a case class or an object of pure functions" in {
+    logicReasons("HeavyRecord") shouldBe "data type with logic: 5 methods, total cognitive 5"
+    logicReasons("PureHelper") shouldBe "data type with logic: 5 methods, total cognitive 5"
+    logicReasons("Branchy") should startWith("data type with logic: 1 methods")
+  }
+
+  it should "stay data at the cut, and a type's own reason stands" in {
+    Seq("LightRecord", "Point", "Booking", "Title", "Slug").filter(logicReasons.contains) shouldBe empty
+    logicReasons("Counter") shouldBe kindReasons("Counter")
+  }
+
+  it should "not spread: a type holding such a type is still data" in {
+    Coupling.Collaborators.withLogic(Map.empty, Map("a.Heavy" -> Coupling.Collaborators.Logic(9, 40), "a.Holder" -> Coupling.Collaborators.Logic(0, 0))).keySet shouldBe
+      Set("a.Heavy")
+  }
+
+  "a data bag" should "be a data type referencing more than nine other types, of any kind" in {
+    val bag = t("models.Bag")
+    val others = (1 to 10).map(i => t(s"models.Shape$i"))
+    val g = Graph(bag +: others, others.map(o => "models.Bag" -> o.name).toSet, data = (bag +: others).map(_.name).toSet)
+    Coupling.dataBags(g)("models.Bag") shouldBe 10
+    Coupling.baselineRows(g) should contain("databag\tmodels.Bag\t10")
+    val nine = g.copy(edges = g.edges - ("models.Bag" -> "models.Shape10"))
+    Coupling.baselineRows(nine).filter(_.startsWith("databag")) shouldBe empty
+    Coupling.baselineRows(g, dataBagLimit = 10).filter(_.startsWith("databag")) shouldBe empty
+  }
+
+  "a class's data fan-out" should "count the distinct data types it uses, beside its collaborators, and be limited on its own" in {
+    val user = t("services.a.User")
+    val store = t("services.a.Store")
+    val shapes = (1 to 16).map(i => t(s"models.Shape$i"))
+    val g = Graph(user +: store +: shapes, (store +: shapes).map(o => "services.a.User" -> o.name).toSet, data = shapes.map(_.name).toSet)
+    Coupling.dataFanOut(g)("services.a.User") shouldBe 16
+    Coupling.heldFanOut(g)("services.a.User") shouldBe 1
+    Coupling.dataFanOut(g) should not contain key("models.Shape1") // a data type's own references are the bag's
+    Coupling.baselineRows(g) should contain("datafanout\tservices.a.User\t16")
+    Coupling.baselineRows(g.copy(edges = g.edges - ("services.a.User" -> "models.Shape16"))).filter(_.startsWith("datafanout")) shouldBe empty
   }
 
   "a use of a nested type" should "be judged by that type: a nested data type no coupling, a call of its object's own function one" in {
@@ -573,7 +627,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     val rows = lines.filterNot(l => l.startsWith("#") || l.trim.isEmpty).map(_.split("\t", -1).toSeq)
     all(rows.map(_.size)) shouldBe 3
     rows.map(_.head).distinct.toSet should contain allElementsOf Set("limit", "module-edge", "ce")
-    rows.map(_.head).toSet -- Set("limit", "module-edge", "ce", "fanout", "distance", "distance-cap") shouldBe empty // no cycle-edge: the graph has none
+    rows.map(_.head).toSet -- Set("limit", "module-edge", "ce", "fanout", "distance", "distance-cap", "datafanout", "databag") shouldBe empty // no cycle-edge: the graph has none
     all(rows.map(_(2))) should fullyMatch regex "[0-9]+"
     rows.map(r => (r(0), r(1))).distinct.size shouldBe rows.size
     // every frozen distance row carries its ceiling (scripts/ci/coupling_ratchet.py, THE CEILING), at most 0.02 above the
@@ -585,6 +639,6 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     rows.collect { case Seq("limit", key, value) => key -> value.toInt }.toMap shouldBe
       Map("fanout" -> Coupling.DefaultFanOutLimit, "fanout-measure" -> Coupling.FanOutMeasure, "new-package-ce" -> Coupling.DefaultNewPackageCeLimit,
         "distance" -> Coupling.DefaultDistanceLimit, "distance-min-types" -> Coupling.DefaultDistanceMinTypes,
-        "distance-measure" -> Coupling.PackageMeasure)
+        "distance-measure" -> Coupling.PackageMeasure, "datafanout" -> Coupling.DefaultDataFanOutLimit, "databag" -> Coupling.DefaultDataBagLimit)
   }
 }

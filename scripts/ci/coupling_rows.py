@@ -16,15 +16,18 @@ REFS_PATH = "test/resources/coupling-fanout-refs.tsv"
 DISTANCE_SPLIT_TOLERANCE = 2  # hundredths a valid split may raise the distance of a package holding X, a piece, or a use
 DISTANCE_CAP = "distance-cap"  # a frozen distance row's ceiling (THE CEILING): it only falls
 PRESENCE = ("module-edge", "cycle-edge")  # only the pair is held, its weight is information (a cycle edge: none at all)
-VALUED = ("ce", "fanout", "distance")
-FROZEN = (("fanout", "class", "fan-out"), ("distance", "package", "distance D (hundredths)"))  # only an exemption admits a new one
+VALUED = ("ce", "fanout", "distance", "datafanout", "databag")
+FROZEN = (("fanout", "class", "fan-out"), ("distance", "package", "distance D (hundredths)"),
+          ("datafanout", "class", "data fan-out"), ("databag", "type", "data references"))  # only an exemption admits a new fan-out or distance
+CLASS_KINDS = ("fanout", "datafanout", "databag")  # the frozen kinds named by a class (the others by a package)
 DEFAULT_LIMITS = {"fanout": 9, "fanout-measure": 1, "new-package-ce": 8, "distance": 20, "distance-min-types": 8,
-                  "distance-measure": 1}
+                  "distance-measure": 1, "datafanout": 15, "databag": 9}
 # How a frozen kind is measured (project/Coupling.scala's FanOutMeasure, PackageMeasure): a baseline without the row is
 # measure 1. A measurement fix raises it, re-taking the kind's rows at their true values under its `Coupling:` trailer;
 # a distance re-measure keeps every ceiling (THE CEILING): it re-takes the rows, never the owner's caps.
 MEASURES = ("fanout-measure", "distance-measure")
-LIMIT_KEYS = {"fanout": ("fanout", "fanout-measure"), "distance": ("distance", "distance-min-types", "distance-measure")}
+LIMIT_KEYS = {"fanout": ("fanout", "fanout-measure"), "distance": ("distance", "distance-min-types", "distance-measure"),
+              "datafanout": ("datafanout",), "databag": ("databag",)}
 
 Rows = Dict[Tuple[str, str], int]
 Edges = Dict[str, List[str]]  # "<from package>-><to package>" -> its class references, "<from class> -> <to class>"

@@ -61,7 +61,8 @@ object CouplingAnalysis {
     val unitOfBinary: Map[String, String] = sourceNameOf.collect { case (binary, name) if topOf.contains(name) => binary -> Coupling.Collaborators.unitOf(binary, name) }
     val topOfUnit: Map[String, String] = sourceNameOf.collect { case (binary, name) if topOf.contains(name) => Coupling.Collaborators.unitOf(binary, name) -> topOf(name) }
     val unitOf: String => Option[String] = Coupling.foldBinary(_, unitOfBinary)
-    val reasons = Coupling.Collaborators.classify(compiled, unitOf)
+    val logic = Coupling.Collaborators.logic(compiled, unitOf)
+    val reasons = Coupling.Collaborators.withLogic(Coupling.Collaborators.classify(compiled, unitOf), logic)
     val classFileUses: Map[String, Set[String]] = compiled.flatMap(c => Coupling.foldBinary(c.name, topOfBinary).map(_ -> c.uses.flatMap(u => unitOf(u).toSeq)))
       .groupBy(_._1).map { case (k, v) => k -> v.flatMap(_._2).toSet }
     val typed = types.result().sortBy(_.name)
@@ -73,7 +74,7 @@ object CouplingAnalysis {
         (c.shape.superName +: c.shape.interfaces).flatMap(p => topOfBinary.get(p)).filter(_ != u.stripSuffix("$")).toSet)
     }.groupBy(_._1).map { case (k, v) => k -> v.flatMap(_._2).toSet }
     Coupling.Graph(typed, graphEdges, Coupling.Collaborators.data(topOfUnit.keys.toSeq, reasons), reasons, Some(coupled),
-      Coupling.supertypeClosure(parents))
+      Coupling.supertypeClosure(parents), logic = logic)
   }
 
   /** The class files of the production classes `tops`, by top-level class (each with its object, its nested classes

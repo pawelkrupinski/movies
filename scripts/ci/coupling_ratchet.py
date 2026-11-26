@@ -67,7 +67,7 @@
 # fan-out and what it counts) gives each piece's and the remainder's value and references.
 #
 #   coupling_ratchet.py check --current <rows> --baseline <file> [--layers <file>] [--edges <file>] [--exemptions <file>]
-#                             [--fanouts <file>] [--range A..B ...]
+#                             [--fanouts <file>] [--collaborators <file>] [--range A..B ...]
 #       violations: a package cycle edge and the measured rows past the baseline (exit 1), and, for each range, a
 #       baseline grown or a layer table loosened between A and B by a commit of the range not carrying `Coupling:`
 #       (exit 1). Falls not yet recorded are said, and pass. `--edges` (couplingReport's third output, every
@@ -88,6 +88,20 @@
 #   coupling_ratchet.py refs --current <rows> --fanouts <file>
 #       each frozen class's reference set (its `fanout` row's targets), `<class><TAB><target>` a line: what
 #       scripts/coupling-report --update writes to test/resources/coupling-fanout-refs.tsv.
+#
+# THE DATA LIMITS (the owner, 2026-11-26: "protection against logic / complexity being hidden in data types"): a DATA type
+# counts in no fan-out and no abstractness, so three limits keep logic from moving into one. (1) A data type holding
+# more logic than a data type may (Coupling.Collaborators.withLogic: its non-trivial methods, its decisions) is a
+# collaborator, measured, so no row. (2) `databag` <type>: the other types (any kind) a data type references past the
+# `limit databag`; (3) `datafanout` <class>: the DATA types a collaborator class uses past the `limit datafanout`. Both are
+# FROZEN kinds, like `fanout`: a row only falls, a new type or class past the limit fails, and -- unlike a fan-out --
+# no exemption admits one (cut it: split the type, or hand its shapes on as one value).
+#
+# THE CLASSIFICATION (same date): test/resources/coupling-collaborators.tsv records every top-level type's verdict, `data` or
+# `collaborator` (`update` writes it from couplingReport's collaborators and fanouts). A type measured as data that the
+# file has as a collaborator is refused until the file records it, and the commit recording it carries `Coupling: <why it
+# is data>` (the attribution rule): moving a type into the data bucket is never silent. A flip to a collaborator is said.
+# A type absent from the file is new, and a stale row fails nothing.
 #
 # A row is `kind<TAB>key<TAB>value`; `#` lines are comments (project/Coupling.scala's BaselineHeader has the kinds).from __future__ import annotations
 
@@ -111,6 +125,7 @@ from coupling_rows import (BASELINE_PATH, DISTANCE_SPLIT_TOLERANCE, EXEMPTIONS_P
                            REFS_PATH, Edges, Fanouts, Rows, ceilings, layer_units, of_kind, package_of, parse,
                            parse_layers, read_edges, read_fanouts, update, with_ceilings)
 from coupling_splits import SPLIT_RULE, SplitExplanation, resolve, split_claims, split_credit  # noqa: E402
+from coupling_verdicts import VERDICTS_PATH, flips, measured_verdicts, parse_verdicts, verdict_file  # noqa: E402
 from coupling_violations import violations  # noqa: E402
 from trailers import git, text_at as file_at  # noqa: E402
 
@@ -293,8 +308,40 @@ def say_falls(current: Rows, baseline: Rows) -> None:
             print(f"  - ... and {len(down) - 20} more")
 
 
+def verdict_rises(before: str, after: str) -> List[str]:
+    """The types a verdict file's text moved into the data bucket between two texts (THE CLASSIFICATION)."""
+    return [f"{t} was a collaborator, is data" for t in flips(parse_verdicts(before), parse_verdicts(after))[0]]
+
+
+def check_verdicts(ranges: List[str], collaborators_path: str, fanouts_path: str) -> bool:
+    """THE CLASSIFICATION: the types whose measured verdict flipped from the recorded one (test/resources/
+    coupling-collaborators.tsv) are said; a collaborator that is data now is refused until the file records it, and a
+    commit of a range recording it without its own `Coupling:` trailer is refused too. Whether any is refused."""
+    fanouts = read_fanouts(fanouts_path)
+    if not collaborators_path or fanouts is None or not os.path.exists(VERDICTS_PATH):
+        return False
+    recorded = parse_verdicts(file_text(VERDICTS_PATH))
+    to_data, to_collaborator = flips(recorded, measured_verdicts(file_text(collaborators_path), sorted(fanouts[0])))
+    for t in to_collaborator:
+        print(f"coupling: {t} is a collaborator now, was data: it counts in fan-out and abstractness")
+    if to_data:
+        print(f"A TYPE MOVED INTO THE DATA BUCKET ({VERDICTS_PATH} still has it a collaborator): it drops out of every fan-out and"
+              " abstractness count, so it is a loosening -- record it with scripts/coupling-report --update and commit that"
+              " with `Coupling: <why it is data, not a collaborator>`:")
+        for t in to_data:
+            print(f"  - {t} was a collaborator, is data")
+    failed = bool(to_data)
+    for rng in ranges:
+        base = rng.split("..")[0]
+        failed |= rise_refused(rng, VERDICTS_PATH, f"A TYPE MOVED INTO THE DATA BUCKET in {rng} with no `Coupling: <why>` trailer"
+                               " on the commit recording it:", verdict_rises(file_at(base, VERDICTS_PATH), file_text(VERDICTS_PATH)),
+                               verdict_rises)
+    return failed
+
+
 def check(current_path: str, baseline_path: str, ranges: List[str], layers_path: str = LAYERS_PATH,
-          edges_path: str = "", exemptions_path: str = EXEMPTIONS_PATH, fanouts_path: str = "") -> int:
+          edges_path: str = "", exemptions_path: str = EXEMPTIONS_PATH, fanouts_path: str = "",
+          collaborators_path: str = "") -> int:
     current, baseline = parse(file_text(current_path)), parse(file_text(baseline_path))
     ranks = parse_layers(file_text(layers_path))[2] if os.path.exists(layers_path) else {}
     fanouts = read_fanouts(fanouts_path)
@@ -309,10 +356,21 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
     for rng in ranges:
         failed |= check_range(rng, baseline, fanouts, renamed, layers_path)
     failed |= check_exemptions(ranges, exemptions_path)
+    failed |= check_verdicts(ranges, collaborators_path, fanouts_path)
     say_falls(current, baseline)
     if not failed:
         print(f"coupling: within {baseline_path} ({len(current)} rows)")
     return 1 if failed else 0
+
+
+def update_all(current_path: str, baseline_path: str, fanouts_path: str, collaborators_path: str) -> int:
+    """`update` (the module docstring): the baseline and, given the measured verdicts, the classification file."""
+    code = update(current_path, baseline_path)
+    fanouts = read_fanouts(fanouts_path)
+    if code == 0 and collaborators_path and fanouts is not None:
+        with open(VERDICTS_PATH, "w") as f:
+            f.write(verdict_file(measured_verdicts(file_text(collaborators_path), sorted(fanouts[0]))))
+    return code
 
 
 def snapshot() -> str:
@@ -450,6 +508,7 @@ def main(argv: List[str]) -> int:
     c.add_argument("--edges", default="")
     c.add_argument("--exemptions", default=EXEMPTIONS_PATH)
     c.add_argument("--fanouts", default="")
+    c.add_argument("--collaborators", default="")
     c.add_argument("--range", action="append", default=[])
     s = sub.add_parser("split-check")
     s.add_argument("--current", required=True)
@@ -460,6 +519,8 @@ def main(argv: List[str]) -> int:
     u = sub.add_parser("update")
     u.add_argument("--current", required=True)
     u.add_argument("--baseline", default=BASELINE_PATH)
+    u.add_argument("--fanouts", default="")
+    u.add_argument("--collaborators", default="")
     n = sub.add_parser("new-exemptions")
     n.add_argument("--since", default="7d")
     n.add_argument("--rev", default="")
@@ -469,14 +530,15 @@ def main(argv: List[str]) -> int:
     args = parser.parse_args(argv)
     try:
         if args.command == "update":
-            return update(args.current, args.baseline)
+            return update_all(args.current, args.baseline, args.fanouts, args.collaborators)
         if args.command == "new-exemptions":
             return new_exemptions(args.since, args.rev)
         if args.command == "refs":
             return refs(args.current, args.fanouts)
         if args.command == "split-check":
             return split_check(args.current, args.fanouts, args.split, args.into, args.base)
-        return check(args.current, args.baseline, args.range, args.layers, args.edges, args.exemptions, args.fanouts)
+        return check(args.current, args.baseline, args.range, args.layers, args.edges, args.exemptions, args.fanouts,
+                     args.collaborators)
     except (OSError, ValueError, subprocess.CalledProcessError) as e:
         print(f"coupling_ratchet: {e}", file=sys.stderr)
         return 2
