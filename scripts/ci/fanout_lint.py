@@ -118,15 +118,17 @@ def background_in_loops(lines: List[Tuple[int, str]]) -> List[Tuple[int, str]]:
     return found
 
 
+def governed_in_statement(lines: List[Tuple[int, str]], index: int) -> bool:
+    """Whether governed_workers( is in the line's own statement: the same logical line, or the `with ...:` just above."""
+    above = lines[index - 1][1] if index else ""
+    return bool(GOVERNED.search(lines[index][1])) or (bool(GOVERNED.search(above)) and above.rstrip().endswith(":"))
+
+
 def file_findings(rel: str, text: str, allowed: bool) -> Tuple[bool, List[str]]:
     """(whether the file fans out, its findings)."""
     lines = code_lines(text)
-    seen: List[Tuple[int, Optional[str]]] = []
-    for i, (n, line) in enumerate(lines):
-        # Governed in its own statement: the same logical line, or the `with governed_workers(...) as width:` above.
-        above = lines[i - 1][1] if i else ""
-        governed = bool(GOVERNED.search(line)) or (bool(GOVERNED.search(above)) and above.rstrip().endswith(":"))
-        seen.append((n, line_fanout(line, governed)))
+    seen: List[Tuple[int, Optional[str]]] = [
+        (n, line_fanout(line, governed_in_statement(lines, i))) for i, (n, line) in enumerate(lines)]
     seen += background_in_loops(lines) if not rel.endswith((".py", ".js", ".ts")) else []
     fans = sorted((n, why) for n, why in seen if why is not None)
     return bool(fans), [] if allowed else [f"{rel}:{n}: {why}" for n, why in fans if why]

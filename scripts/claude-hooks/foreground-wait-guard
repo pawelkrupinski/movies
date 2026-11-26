@@ -18,7 +18,7 @@ import re
 import sys
 import importlib.machinery
 import importlib.util
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple
 
 
 def load_shell_reader():
@@ -30,7 +30,7 @@ def load_shell_reader():
     return module
 
 
-shell = None
+shell: Any = None  # masked-exit-guard's tokenizer, loaded by main()
 
 SHORT_WAIT_SECONDS = 60
 COMMAND_START = {"then", "do", "else", "elif", "if", "while", "until", "!", "time", "nohup", "exec", "command"}
@@ -42,7 +42,7 @@ ADVICE = (
 )
 
 
-def seconds(value, bare_unit):
+def seconds(value: Optional[str], bare_unit: str) -> Optional[float]:
     match = re.fullmatch(r"([0-9.]+)([smhd]?)", value or "")
     if not match:
         return None
@@ -50,10 +50,14 @@ def seconds(value, bare_unit):
     return number * {"s": 1, "m": 60, "h": 3600, "d": 86400}[unit]
 
 
-def waits(words):
+Wait = Tuple[str, List[str], Optional[float]]  # (tool, its arguments, the seconds a `timeout` prefix bounds it to)
+
+
+def waits(words: List[str]) -> List[Wait]:
     """Each (tool, its arguments, the seconds a `timeout` prefix bounds it to or None) a waiting tool runs with, in
     command position. `timeout 30 scripts/wait-for ...` is a bounded check as much as `--timeout 30` is."""
-    found, position, prefix_timeout, bound = [], True, False, None
+    found: List[Wait] = []
+    position, prefix_timeout, bound = True, False, None
     for index, word in enumerate(words):
         if shell.is_punctuation(word):
             position = word not in ("<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|")
@@ -75,19 +79,25 @@ def waits(words):
         if word in COMMAND_START or shell.ASSIGNMENT.match(word) or word.startswith("-") or word in ("env", "nice"):
             continue  # a prefix or its option: the command is still to come
         name = os.path.basename(word)
-        rest = []
+        rest: List[str] = []
         for later in words[index + 1:]:
             if shell.is_punctuation(later):
                 break
             rest.append(later)
-        if name in ("wait-for", "ci-wait"):
-            found.append((name, rest, bound))
-        elif name == "agentctl" and rest[:1] == ["wait"]:
-            found.append(("agentctl wait", rest[1:], bound))
-        elif name in shell.SHELLS:
-            found.extend(waits_in_script(rest, bound))
+        found.extend(waiting_tool(name, rest, bound))
         position, prefix_timeout, bound = False, False, None
     return found
+
+
+def waiting_tool(name: str, arguments: List[str], bound: Optional[float]) -> List[Wait]:
+    """The wait a command in command position is, if it is one: a waiting tool itself, or a shell whose -c script runs one."""
+    if name in ("wait-for", "ci-wait"):
+        return [(name, arguments, bound)]
+    if name == "agentctl" and arguments[:1] == ["wait"]:
+        return [("agentctl wait", arguments[1:], bound)]
+    if name in shell.SHELLS:
+        return waits_in_script(arguments, bound)
+    return []
 
 
 def script_of(arguments: List[str]) -> Optional[str]:
@@ -100,7 +110,7 @@ def script_of(arguments: List[str]) -> Optional[str]:
     return None
 
 
-def waits_in_script(arguments: List[str], bound: Optional[float]):
+def waits_in_script(arguments: List[str], bound: Optional[float]) -> List[Wait]:
     """The waits a `bash -c` script runs, read as a command of its own and still held to the `timeout` prefix of the
     shell that runs it."""
     script = script_of(arguments)
@@ -130,7 +140,7 @@ def flag_timeout(name: str, arguments: List[str]) -> Optional[float]:
     return limit
 
 
-def unbounded_wait(command):
+def unbounded_wait(command: str) -> Optional[str]:
     """The waiting tool `command` runs for longer than a short check, or None."""
     try:
         words = shell.tokens(shell.without_heredoc_bodies(command.replace("\\\n", " ")))

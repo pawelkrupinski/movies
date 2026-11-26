@@ -111,100 +111,154 @@ def words_of(command: str) -> Optional[List[str]]:
     return None if any("pipestatus" in word.lower() for word in words) else words
 
 
+PIPES = ("|", "|&")
+REDIRECTIONS = ("<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|")
+DURATION = re.compile(r"[0-9.]+[smhd]?")
+OPTION_CLUSTER = re.compile(r"-[A-Za-z]+")
+
+
+class RunnerScan:
+    """One pass over a command's words, remembering what the shell would: which test runner the current pipeline stage
+    ends with, whether `set -o pipefail` keeps its status, and which word is next in command position.
+
+    Per nesting depth (a `( )` or `{ }` group opens one): the watched runner whose status the current pipeline stage
+    ends with (`stages`), and whether a separator (; && || & newline) has ended the stage's last command (`separated`)
+    -- the next command word then starts a new one. A group's runner is its last command's, so
+    `{ scripts/sbt-warm x; } | tail` counts."""
+
+    def __init__(self) -> None:
+        self.pipefail = False
+        self.set_flags: Optional[str] = None  # the last option cluster of a `set` command being read, else None
+        self.stages: List[Optional[str]] = [None]
+        self.separated = [False]
+        self.command_position = True
+        self.skip_target = False  # a redirection's target is no command
+        self.prefix: Optional[str] = None  # the prefix command whose options are being read
+        self.skip_value = False  # ... and an option's value comes next
+        self.shell_options = False  # a shell's options being read
+        self.script_next = False  # ... and its -c script comes next
+
+    def feed(self, word: str) -> Optional[str]:
+        """Take the next word; the runner a pipe has just been seen to discard, or None."""
+        if is_punctuation(word):
+            return self.punctuation(word)
+        if self.skip_target:
+            self.skip_target = False
+            return None
+        if self.shell_options or self.script_next:
+            return self.shell_word(word)
+        if self.group_word(word):
+            return None
+        if self.set_flags is not None:  # a `set` command's words: `-euo pipefail` turns the option on, `+o pipefail` off
+            self.pipefail, self.set_flags = set_option(self.pipefail, self.set_flags, word), word
+        elif not self.command_position:
+            self.argument(word)
+        elif not self.prefix_word(word):
+            self.command_word(word)
+        return None
+
+    def open_group(self) -> None:
+        self.stages.append(None)
+        self.separated.append(False)
+
+    def close_group(self) -> None:
+        if len(self.stages) > 1:
+            inner = self.stages.pop()
+            self.separated.pop()
+            if self.separated[-1]:
+                self.stages[-1], self.separated[-1] = None, False
+            self.stages[-1] = inner or self.stages[-1]
+
+    def punctuation(self, word: str) -> Optional[str]:
+        self.prefix, self.skip_value, self.shell_options, self.script_next, self.set_flags = None, False, False, False, None
+        if word == "(":
+            self.open_group()
+            self.command_position = True
+        elif word == ")":
+            self.close_group()
+            self.command_position = False
+        elif word in PIPES:
+            if self.stages[-1] and not self.pipefail:
+                return self.stages[-1]
+            self.command_position = True
+        elif word in REDIRECTIONS:
+            self.skip_target = True
+        else:  # ; && || & ;; and a newline
+            self.separated[-1] = True
+            self.command_position = True
+        return None
+
+    def shell_word(self, word: str) -> Optional[str]:
+        """A word of `bash -c '<script>'`: the options, then the script, read as a command of its own."""
+        if self.script_next:
+            self.shell_options = self.script_next = False
+            return masked_runner(word)
+        if OPTION_CLUSTER.fullmatch(word):
+            self.script_next = "c" in word
+        else:
+            self.shell_options = False  # a script file or `-o name`: not read
+        return None
+
+    def group_word(self, word: str) -> bool:
+        """Whether `word` was a `{` (in command position) or a `}`."""
+        if word == "{" and self.command_position:
+            self.open_group()
+            return True
+        if word == "}":
+            self.close_group()
+            self.command_position = False
+            return True
+        return False
+
+    def argument(self, word: str) -> None:
+        if is_help_flag(word) and not self.separated[-1]:  # reading a runner's help runs no test
+            self.stages[-1] = None
+
+    def prefix_word(self, word: str) -> bool:
+        """Whether `word` was an option (or option value) of the prefix command being read; a word that is not ends it."""
+        if self.skip_value:
+            self.skip_value = False
+            return True
+        if not self.prefix:
+            return False
+        if self.prefix == "command" and word in ("-v", "-V"):  # a lookup: `command -v sbt` runs nothing
+            self.prefix, self.command_position = None, False
+            return True
+        if word.startswith("-"):
+            self.skip_value = word in PREFIXES[self.prefix]
+            return True
+        if self.prefix in TIMEOUTS and DURATION.fullmatch(word):
+            return True
+        self.prefix = None
+        return False
+
+    def command_word(self, word: str) -> None:
+        if ASSIGNMENT.match(word) or word in KEYWORDS:
+            return
+        if word in PREFIXES:
+            self.prefix = word
+            return
+        if self.separated[-1]:
+            self.stages[-1], self.separated[-1] = None, False
+        name = os.path.basename(word)
+        if name in WATCHED:
+            self.stages[-1] = name
+        self.shell_options = name in SHELLS
+        if word == "set":
+            self.set_flags = ""
+        self.command_position = False
+
+
 def masked_runner(command):
     """The test runner whose exit status a pipe in `command` discards, or None."""
     words = words_of(command)
     if words is None:
         return None
-    pipefail, set_flags = False, None  # `set -o pipefail` seen so far; the last option cluster of a `set`, or None
-    # Per nesting depth (a `( )` or `{ }` group opens one): the watched runner whose status the current pipeline stage
-    # ends with, and whether a separator (; && || & newline) has ended the stage's last command -- the next command
-    # word then starts a new one. A group's runner is its last command's, so `{ scripts/sbt-warm x; } | tail` counts.
-    stages, separated = [None], [False]
-    command_position, skip_target = True, False
-    prefix, skip_value = None, False  # the prefix whose options are being read, and an option's value next
-    shell_options, script_next = False, False  # a shell's options being read, and its -c script next
-
-    def open_group():
-        stages.append(None); separated.append(False)
-
-    def close_group():
-        if len(stages) > 1:
-            inner = stages.pop(); separated.pop()
-            if separated[-1]:
-                stages[-1], separated[-1] = None, False
-            stages[-1] = inner or stages[-1]
-
+    scan = RunnerScan()
     for word in words:
-        if is_punctuation(word):
-            prefix, skip_value, shell_options, script_next, set_flags = None, False, False, False, None
-            if word == "(":
-                open_group(); command_position = True
-            elif word == ")":
-                close_group(); command_position = False
-            elif word in ("|", "|&"):
-                if stages[-1] and not pipefail:
-                    return stages[-1]
-                command_position = True
-            elif word in ("<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|"):
-                skip_target = True
-            else:  # ; && || & ;; and a newline
-                separated[-1] = True; command_position = True
-            continue
-        if skip_target:
-            skip_target = False
-            continue
-        if script_next:
-            shell_options = script_next = False
-            inner = masked_runner(word)
-            if inner:
-                return inner
-            continue
-        if shell_options:
-            if re.fullmatch(r"-[A-Za-z]+", word):
-                script_next = "c" in word
-                continue
-            shell_options = False  # a script file or `-o name`: not read
-            continue
-        if word == "{" and command_position:
-            open_group()
-            continue
-        if word == "}":
-            close_group(); command_position = False
-            continue
-        if set_flags is not None:  # a `set` command's words: `-euo pipefail` turns the option on, `+o pipefail` off
-            pipefail, set_flags = set_option(pipefail, set_flags, word), word
-            continue
-        if not command_position:
-            if is_help_flag(word) and not separated[-1]:  # reading a runner's help runs no test
-                stages[-1] = None
-            continue
-        if skip_value:
-            skip_value = False
-            continue
-        if prefix:
-            if prefix == "command" and word in ("-v", "-V"):  # a lookup: `command -v sbt` runs nothing
-                prefix, command_position = None, False
-                continue
-            if word.startswith("-"):
-                skip_value = word in PREFIXES[prefix]
-                continue
-            if prefix in TIMEOUTS and re.fullmatch(r"[0-9.]+[smhd]?", word):
-                continue
-            prefix = None
-        if ASSIGNMENT.match(word) or word in KEYWORDS:
-            continue
-        if word in PREFIXES:
-            prefix = word
-            continue
-        if separated[-1]:
-            stages[-1], separated[-1] = None, False
-        if os.path.basename(word) in WATCHED:
-            stages[-1] = os.path.basename(word)
-        shell_options = os.path.basename(word) in SHELLS
-        if word == "set":
-            set_flags = ""
-        command_position = False
+        runner = scan.feed(word)
+        if runner:
+            return runner
     return None
 
 

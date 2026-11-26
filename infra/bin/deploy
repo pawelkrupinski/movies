@@ -155,11 +155,8 @@ def ssh_g_hostname(host: str) -> str:
     return ""
 
 
-# A dead session is noticed in about a minute (4 unanswered keepalives 15 s apart), never the ~22 min
-# a silently dropped TCP connection took to time out (monitoring-1, 2026-11-10: the switch restarted
-# sshd and systemd-networkd under the session that was streaming it).
-# One authenticated session is shared by every call of a run: follow_switch alone polls a long switch every
-# few seconds, and each fresh ssh would be a new authentication (a Touch ID prompt each).
+# A dead session is noticed in about a minute (4 unanswered keepalives 15 s apart), not the ~22 min a dropped TCP connection took
+# (monitoring-1, 2026-11-10). One master session serves every call of a run: follow_switch polls every few seconds, each fresh ssh a Touch ID.
 SSH_OPTS = ("-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
             "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4",
             "-o", "ControlMaster=auto", "-o", "ControlPersist=10m", "-o", "ControlPath=~/.ssh/deploy-%C")

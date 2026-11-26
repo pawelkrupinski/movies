@@ -20,7 +20,7 @@ limit	fanout	9
 limit	cycle	0
 limit	pyright	0
 cognitive	infra/bin/backtest-alerts-local:prepare	16
-cognitive	infra/bin/backtest-alerts-replay:verdict	15
+cognitive	infra/bin/backtest-alerts-replay:verdict	14
 cognitive	infra/bin/backtest-alerts:Prometheus.get	17
 cognitive	infra/bin/backtest-alerts:check_incidents	38
 cognitive	infra/bin/backtest-alerts:firing_steps	14
@@ -156,8 +156,7 @@ cognitive	scripts/ci/xcresult_annotations.py:annotations	11
 cognitive	scripts/ci_wait.py:poll	58
 cognitive	scripts/ci_wait.py:wait	37
 cognitive	scripts/claude-hooks/foreground-wait-guard:unbounded_wait	12
-cognitive	scripts/claude-hooks/foreground-wait-guard:waits	32
-cognitive	scripts/claude-hooks/masked-exit-guard:masked_runner	67
+cognitive	scripts/claude-hooks/foreground-wait-guard:waits	28
 cognitive	scripts/claude-hooks/unbounded-poll-guard:Reader.check	87
 cognitive	scripts/claude-hooks/unbounded-poll-guard:fix_for	19
 cognitive	scripts/claude-hooks/unbounded-poll-guard:positions	14
@@ -219,7 +218,7 @@ cognitive	scripts/zinc_orphans.py:prune	20
 cognitive	scripts/zinc_orphans.py:strays	12
 cyclomatic	infra/bin/backtest-alerts-local:prepare	19
 cyclomatic	infra/bin/backtest-alerts-local:scope_arguments	12
-cyclomatic	infra/bin/backtest-alerts-replay:verdict	15
+cyclomatic	infra/bin/backtest-alerts-replay:verdict	14
 cyclomatic	infra/bin/backtest-alerts:check_incidents	22
 cyclomatic	infra/bin/backtest-alerts:load_rules	15
 cyclomatic	infra/bin/backtest-alerts:run_backtest	63
@@ -353,8 +352,7 @@ cyclomatic	scripts/ci_status.py:workflow_lines	11
 cyclomatic	scripts/ci_wait.py:parse	11
 cyclomatic	scripts/ci_wait.py:poll	55
 cyclomatic	scripts/ci_wait.py:wait	22
-cyclomatic	scripts/claude-hooks/foreground-wait-guard:waits	22
-cyclomatic	scripts/claude-hooks/masked-exit-guard:masked_runner	35
+cyclomatic	scripts/claude-hooks/foreground-wait-guard:waits	19
 cyclomatic	scripts/claude-hooks/owner-decisions:pending_decisions	11
 cyclomatic	scripts/claude-hooks/unbounded-poll-guard:Reader.check	60
 cyclomatic	scripts/claude-hooks/unbounded-poll-guard:fix_for	23
@@ -430,7 +428,6 @@ method-lines	scripts/ci/population_walk_diff.py:main	52
 method-lines	scripts/ci/recording_health.py:main	70
 method-lines	scripts/ci/runner_scheduler.py:decide	217
 method-lines	scripts/ci_wait.py:poll	81
-method-lines	scripts/claude-hooks/masked-exit-guard:masked_runner	95
 method-lines	scripts/claude-hooks/unbounded-poll-guard:Reader.check	105
 method-lines	scripts/deploy_watch.py:main	79
 method-lines	scripts/identity_rule_ablation.py:main	82
@@ -446,7 +443,7 @@ file-lines	infra/bin/deploy	718
 file-lines	infra/bin/nix-update	560
 file-lines	infra/nix/files/nixos-auto-apply.py	1343
 file-lines	infra/nix/files/scheduled_dispatch.py	582
-file-lines	scripts/ci/commit_rules.py	590
+file-lines	scripts/ci/commit_rules.py	589
 file-lines	scripts/ci/runner_scheduler.py	1245
 file-lines	scripts/identity_what_if.py	521
 file-lines	scripts/listing_history.py	527
@@ -456,7 +453,7 @@ copies	scripts/ci/lint_per_file_check.py|scripts/ci/lint_reads_trace.py	2
 copies	scripts/claude-hooks/foreground-wait-guard|scripts/claude-hooks/unbounded-poll-guard	2
 pyright	infra/bin/backtest-alerts	973
 pyright	infra/bin/backtest-alerts-local	469
-pyright	infra/bin/backtest-alerts-replay	210
+pyright	infra/bin/backtest-alerts-replay	135
 pyright	infra/bin/deploy	218
 pyright	infra/bin/fleet-ssh	33
 pyright	infra/bin/fleet_hosts.py	30
@@ -523,9 +520,9 @@ pyright	scripts/ci/xcresult_annotations.py	65
 pyright	scripts/ci/xcresult_junit.py	98
 pyright	scripts/ci_status.py	47
 pyright	scripts/ci_wait.py	258
-pyright	scripts/claude-hooks/foreground-wait-guard	40
+pyright	scripts/claude-hooks/foreground-wait-guard	1
 pyright	scripts/claude-hooks/gh-run-guard	9
-pyright	scripts/claude-hooks/masked-exit-guard	35
+pyright	scripts/claude-hooks/masked-exit-guard	31
 pyright	scripts/claude-hooks/owner-decisions	81
 pyright	scripts/claude-hooks/root-checkout-guard	108
 pyright	scripts/claude-hooks/unbounded-poll-guard	143

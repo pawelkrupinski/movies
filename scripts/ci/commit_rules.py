@@ -128,12 +128,9 @@ GAUGE_FILES = re.compile(
 
 
 def at(rev: str, path: str) -> str:
-    """The file's text at `rev`; "" when `rev` has no such path. A revision git cannot read at all (a shallow clone's
-    missing parent, a missing object) raises, and main answers exit 2 -- never "absent", which reads every row as new."""
-    git = tool_git.Git.here()
-    if not git.text("ls-tree", "--name-only", rev, "--", path).strip():
-        return ""
-    return git.text("show", f"{rev}:{path}")
+    """`path` at `rev`, "" when `rev` lacks it; a revision git cannot read at all (a shallow clone's parent) raises: exit 2."""
+    here = tool_git.Git.here()
+    return here.text("show", f"{rev}:{path}") if here.text("ls-tree", "--name-only", rev, "--", path).strip() else ""
 
 
 @dataclass

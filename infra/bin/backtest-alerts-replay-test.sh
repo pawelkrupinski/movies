@@ -63,7 +63,7 @@ check "an unknown revision -> exit 2" "2" "$(replay --alert HostDown --base nope
 check "nothing to replay is a usage error" "2" "$(replay)"
 check "the remote directories are removed" "0" "$(find /tmp -maxdepth 1 -name 'backtest-replay*' -newer "$work/ssh.log" 2>/dev/null | wc -l | tr -d ' ')"
 # A name made from the user and pid is one another user on the host can pre-create (a symlink) before the unpack.
-check "the host makes the directory itself (mktemp -d): no name built from the user and pid, 4 ssh calls on one directory" "1 0" \
+check "the host makes the directory itself (mktemp -d), never from the user and pid" "1 0" \
   "$(grep -c 'mktemp -d /tmp/backtest-replay' "$work/ssh-commands.log" | head -1 | awk '{print ($1>0)}') $(grep -c "backtest-replay-$(id -un)-" "$work/ssh-commands.log")"
 
 # --local: both revisions replayed HERE, by their own backtest-alerts, over the fixture copy of ci-runner's snapshot

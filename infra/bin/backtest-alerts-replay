@@ -39,6 +39,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from typing import Any, List, Optional, Sequence
 
 SNAPSHOT = "/mnt/data/prometheus-snapshot/current"
 TIMESTAMP = re.compile(r"^.*?\d{4}-\d\d-\d\dT[\d:.]+Z ?")
@@ -73,7 +74,7 @@ PATH="$yaml_bin:$PATH" exec infra/bin/backtest-alerts --source snapshot --no-wri
 """
 
 
-def run(command, **kwargs):
+def run(command: Sequence[str], **kwargs: Any) -> "subprocess.CompletedProcess[Any]":
     return subprocess.run(command, **kwargs)
 
 
@@ -117,9 +118,9 @@ def scope_for(host, remote_dir, scope, log_path):
 UNPACK = 'd=$(mktemp -d /tmp/backtest-replay.XXXXXXXX) && echo "$d" && tar -x -C "$d"'
 
 
-def replay(host, rev, sha, log_path, scope):
+def replay(host: str, rev: str, sha: str, log_path: str, scope: List[str]) -> str:
     """PASS, FAIL or ERROR for one revision on the host; the backtest's output streams to ours."""
-    remote_dir = None
+    remote_dir: Optional[str] = None
     print("== %s (%s) on %s" % (rev, sha[:8], host), flush=True)
     try:
         archive = subprocess.Popen(["git", "archive", sha, "infra", "scripts"], stdout=subprocess.PIPE)
