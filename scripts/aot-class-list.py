@@ -7,9 +7,10 @@ The list this repo checks in is regenerated with (sbt scrapers/package first):
   scripts/aot-class-list.py --package scrapers/target/scala-*/scrapers_3-1.0-SNAPSHOT.jar:services.cinemas. \
     <PL dumps> <UK dumps> ... > worker/src/main/resources/aot-classes.txt
 and, to add scraper classes without new dumps (what AotClassListSpec asks for when one is missing):
-  scripts/aot-class-list.py --keep worker/src/main/resources/aot-classes.txt \
-    --package scrapers/target/scala-*/scrapers_3-1.0-SNAPSHOT.jar:services.cinemas. > /tmp/aot-classes.txt \
-    && mv /tmp/aot-classes.txt worker/src/main/resources/aot-classes.txt
+  list=$(mktemp) && scripts/aot-class-list.py --keep worker/src/main/resources/aot-classes.txt \
+    --package scrapers/target/scala-*/scrapers_3-1.0-SNAPSHOT.jar:services.cinemas. > "$list" \
+    && mv "$list" worker/src/main/resources/aot-classes.txt
+(a mktemp file, not a fixed /tmp name: two agents regenerating the list at once would clobber each other's)
 
 Reads each dump's LOAD_CLASS records -- every class the JVM had loaded -- and prints the union, sorted,
 as binary names. Hidden classes (lambdas, LambdaForms, string-concat shapes, anything named with an
