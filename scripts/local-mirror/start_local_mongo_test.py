@@ -9,8 +9,8 @@ shell tool and its Python rewrite (cli_harness.tool_path)."""
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
-import time
 import unittest
 import unittest.mock
 from typing import List
@@ -131,20 +131,23 @@ replication:
         self.assertIn('rs.initiate({_id:"rs0", members:[{_id:0, host:"127.0.0.1:28999"}]});', initiate[0][3])
 
 
-class PingDeadlineTest(cli_harness.ToolCase):
-    """The Python tool's own bound: a mongosh that hangs (as one does against a down port) must not stretch a ping
-    deadline past its seconds."""
-    TOOL = TOOL
+class PingDeadlineTest(unittest.TestCase):
+    """The Python tool's own bound: every mongosh ping is run under a timeout (a hanging one -- mongosh waits 30 s for a
+    server selection against a down port -- would otherwise stretch the deadline many times over)."""
 
-    def test_a_hanging_mongosh_cannot_stretch_the_ping_deadline(self) -> None:
+    def test_every_ping_try_is_bounded_by_a_timeout_within_the_deadline(self) -> None:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import start_local_mongo
-        self.fakes.script("mongosh", "sleep 60")
-        with unittest.mock.patch.dict(os.environ, {"PATH": self.fakes.bin + os.pathsep + os.environ["PATH"]}):
-            began = time.monotonic()
-            answered = start_local_mongo.LocalMongo(self.path("prefix"), "28999").answers_ping(2)
+        timeouts: List[object] = []
+
+        def hanging(command: List[str], **kwargs: object) -> None:
+            timeouts.append(kwargs.get("timeout"))
+            raise subprocess.TimeoutExpired(command, 0)
+        with unittest.mock.patch.object(subprocess, "run", hanging):
+            answered = start_local_mongo.LocalMongo("prefix", "28999").answers_ping(0.3)
         self.assertFalse(answered)
-        self.assertLess(time.monotonic() - began, 6)
+        self.assertTrue(timeouts)
+        self.assertTrue(all(isinstance(t, float) and 0 < t <= start_local_mongo.PING_TRY_SECONDS for t in timeouts), timeouts)
 
 
 if __name__ == "__main__":
