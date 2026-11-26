@@ -41,7 +41,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     Coupling.packageOf("services.identity.agreement.inner.Helper", units) shouldBe "services.identity.agreement"
     Coupling.packageOf("services.identity.IdentityResolver", units) shouldBe "services.identity"
     Coupling.packageOf("services.identity.projection.FilmPlans", units) shouldBe "services.identity"
-    Coupling.packageOf("services.identityadapters.TakeReads", units) shouldBe "services.identityadapters"
+    Coupling.packageOf("services.identityadapters.AdapterSketch", units) shouldBe "services.identityadapters"
   }
 
   // services.identity <-> services.identity.agreement: one package, no cycle, until the agreement is measured on its own
