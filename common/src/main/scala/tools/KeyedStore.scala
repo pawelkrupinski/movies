@@ -45,6 +45,18 @@ trait StoreOnce[K, V] {
   def insertAll(values: Seq[(K, V)]): Int
 }
 
+/** Writes a store merely observing what it records does not wait for. */
+trait StoreDetached[K, V] {
+  /** [[StoreWriter.put]] without waiting for it: a failure goes to `onFailure`, never to the caller. */
+  def putDetached(key: K, value: V)(onFailure: Throwable => Unit): Unit
+}
+
+/** The rows by when each was last written, for a retention sweep. */
+trait StoreRetention {
+  /** The rows by their codec's stamp field ([[DocCodec.stampField]]); unswept without one. */
+  def retention: StampedRows
+}
+
 /** Many values in one write. */
 trait StoreBulk[K, V] {
   /** Each value stored over what its key held, in one bulk write however many. */
@@ -90,7 +102,8 @@ trait StoreMarks[K, V] {
  * field of the key's document, 0 until raised.
  */
 final class KeyedStore[K, V](documents: StoreDocuments, keys: KeyCodec[K], values: DocCodec[V])
-    extends StoreReader[K, V] with StoreWriter[K, V] with StoreOnce[K, V] with StoreBulk[K, V] with StoreCounters[K] with StoreCappedLists[K] with StoreMarks[K, V] {
+    extends StoreReader[K, V] with StoreWriter[K, V] with StoreDetached[K, V] with StoreRetention with StoreOnce[K, V] with StoreBulk[K, V]
+    with StoreCounters[K] with StoreCappedLists[K] with StoreMarks[K, V] {
 
   /** `value` as stored under `key`: `_id` first, then the codec's fields. */
   private def stored(key: K, value: V): BsonDocument = {
@@ -108,6 +121,8 @@ final class KeyedStore[K, V](documents: StoreDocuments, keys: KeyCodec[K], value
   def getAll(wanted: Seq[K]): Map[K, V]                    = documents.find(wanted.map(keys.id)).flatMap(decoded).toMap
   def scan(each: Seq[(K, V)] => Unit): ScanOutcome         = documents.scan(page => each(page.flatMap(decoded)))
   def put(key: K, value: V): Unit                          = documents.replace(Seq(stored(key, value)))
+  def putDetached(key: K, value: V)(onFailure: Throwable => Unit): Unit = documents.replaceDetached(stored(key, value))(onFailure)
+  def retention: StampedRows                               = values.stampField.fold(StampedRows.Unswept)(documents.stamped)
   def delete(key: K): Boolean                              = documents.delete(Seq(keys.id(key))) > 0
   def insert(key: K, value: V): Boolean                    = documents.insert(stored(key, value))
   def insertAll(inserted: Seq[(K, V)]): Int                = documents.insertAll(inserted.map(stored.tupled))
@@ -129,8 +144,27 @@ final class KeyedStore[K, V](documents: StoreDocuments, keys: KeyCodec[K], value
 }
 
 object KeyedStore {
+  /** A store of `values` by text key (most stores': a serialised key, a film key, a venue's name). */
+  def text[V](documents: StoreDocuments, values: DocCodec[V]): KeyedStore[String, V] = new KeyedStore(documents, KeyCodec.Text, values)
+
   /** A store of counters alone, by text key: documents with nothing but their `_id` and the counters raised in them. */
-  def counters(documents: StoreDocuments): KeyedStore[String, Unit] = new KeyedStore(documents, KeyCodec.Text, NoFields)
+  def counters(documents: StoreDocuments): KeyedStore[String, Unit] = text(documents, NoFields)
+}
+
+/**
+ * How a store's value is stored: the document's fields beside its `_id`, and back -- the value's half of a
+ * [[KeyedStore]], as [[KeyCodec]] is the key's. Shared by Mongo's and the in-memory documents, so a spec against the
+ * in-memory one reads what Mongo would.
+ */
+trait DocCodec[T] {
+  /** `value`'s fields, `_id` left out: the store writes it first. */
+  def encode(value: T): Document
+  /** The value of a whole stored document (its `_id` included); None for a malformed one, so one bad row cannot fail a
+   *  read. */
+  def decode(document: Document): Option[T]
+  /** The `Date` field each write stamps, when there is one: what a TTL index expires on ([[DocumentExpiry]]) and a
+   *  retention sweep reads ([[StoreRetention.retention]]). */
+  def stampField: Option[String] = None
 }
 
 /** The value of a document with no fields beside its `_id` (a marker, a counter's holder). */

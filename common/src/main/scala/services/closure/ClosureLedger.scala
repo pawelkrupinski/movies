@@ -4,7 +4,7 @@ import java.time.Instant
 
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.{MongoDatabase, documentToUntypedDocument}
-import tools.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
+import tools.{DocCodec, InMemoryStoreDocuments, KeyedStore, MongoStoreDocuments, StoreReader, StoreWriter}
 
 /** What the closure sweep found a venue to be. */
 enum LedgerKind(val stored: String) {
@@ -47,10 +47,10 @@ trait ClosureLedger extends ClosureLedgerReader {
 
 /** The ledger over its rows: Mongo and in-memory differ only in the rows. A read or write that
  *  fails throws — the sweep must not take an unread ledger for an empty one. */
-class KeyedClosureLedger(rows: KeyedDocStore[LedgerEntry]) extends ClosureLedger {
-  def entries(): Map[String, LedgerEntry]              = rows.all()
+class KeyedClosureLedger(rows: StoreReader[String, LedgerEntry] & StoreWriter[String, LedgerEntry]) extends ClosureLedger {
+  def entries(): Map[String, LedgerEntry]              = rows.all().toMap
   def record(cinema: String, entry: LedgerEntry): Unit = rows.put(cinema, entry)
-  def withdraw(cinema: String): Unit                   = rows.delete(cinema)
+  def withdraw(cinema: String): Unit                   = { rows.delete(cinema); () }
 }
 
 object KeyedClosureLedger {
@@ -64,11 +64,11 @@ object KeyedClosureLedger {
   }
 }
 
-final class InMemoryClosureLedger extends KeyedClosureLedger(new InMemoryKeyedDocStore(KeyedClosureLedger.Codec))
+final class InMemoryClosureLedger extends KeyedClosureLedger(KeyedStore.text(new InMemoryStoreDocuments(), KeyedClosureLedger.Codec))
 
 /** The `venue_closures` collection in the country's database. A handful of rows. */
 final class MongoClosureLedger(db: MongoDatabase)
-  extends KeyedClosureLedger(new MongoKeyedDocStore(db.getCollection(MongoClosureLedger.Collection), KeyedClosureLedger.Codec))
+  extends KeyedClosureLedger(KeyedStore.text(MongoStoreDocuments.of(db.getCollection(MongoClosureLedger.Collection)), KeyedClosureLedger.Codec))
 
 object MongoClosureLedger {
   val Collection = "venue_closures"

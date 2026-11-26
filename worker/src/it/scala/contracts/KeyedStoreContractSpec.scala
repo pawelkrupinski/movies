@@ -6,7 +6,7 @@ import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 import scala.concurrent.{Await, Future}
 
-import org.mongodb.scala.ObservableFuture
+import org.mongodb.scala.{ObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -26,6 +26,13 @@ class KeyedStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAndAft
   private val codec = new DocCodec[String] {
     def encode(note: String): Document              = Document("note" -> note)
     def decode(document: Document): Option[String] = document.get("note").filter(_.isString).map(_.asString.getValue)
+  }
+
+  private final case class Stamped(at: Option[java.time.Instant], note: String)
+  private val stamped = new DocCodec[Stamped] {
+    def encode(row: Stamped): Document = Document("note" -> row.note) ++ row.at.fold(Document())(at => Document("at" -> java.util.Date.from(at)))
+    def decode(d: Document): Option[Stamped] = Option(d.getString("note")).map(Stamped(Option(d.getDate("at")).map(_.toInstant), _))
+    override def stampField: Option[String] = Some("at")
   }
 
   private val clock       = tools.MongoTtlSpecClock.Pinned
@@ -115,6 +122,27 @@ class KeyedStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAndAft
       store.get("day") shouldBe Some("note")
       store.increment("fresh", "used", below = Some(1)) shouldBe Some(1)
       store.increment("fresh", "used", below = Some(1)) shouldBe None
+    }
+
+    it should "record a detached put" in {
+      val store = text()
+      store.putDetached("a", "a")(e => fail(e))
+      tools.Eventually.eventually(store.get("a") shouldBe Some("a"))
+    }
+
+    it should "sweep the rows stamped before a cutoff, keeping one written again since and one never stamped" in {
+      val store = new KeyedStore(documents(None), KeyCodec.Text, stamped)
+      val t0    = clock.instant()
+      store.put("old", Stamped(Some(t0.minusSeconds(3600)), "old"))
+      store.put("again", Stamped(Some(t0.minusSeconds(3600)), "again"))
+      store.put("new", Stamped(Some(t0), "new"))
+      store.put("unstamped", Stamped(None, "unstamped"))
+      val stale = store.retention.stampedBefore(t0.minusSeconds(60))
+      stale.map(_._1).toSet shouldBe Set("old", "again")
+      store.put("again", Stamped(Some(t0), "again"))
+      store.retention.deleteIfStill(stale) shouldBe 1
+      store.all().map(_._1).toSet shouldBe Set("again", "new", "unstamped")
+      text().retention.stampedBefore(t0) shouldBe empty   // a codec with no stamp field: unswept
     }
 
     it should "raise a field to a floor, never lowering it, making the document when there is none" in {

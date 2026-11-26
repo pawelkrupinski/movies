@@ -4,7 +4,7 @@ import org.bson.{BsonDateTime, BsonDocument, BsonInt64, BsonSerializationExcepti
 import org.scalatest.flatspec.AnyFlatSpec
 import tools.BsonRoundTrip
 import org.scalatest.matchers.should.Matchers
-import tools.{DocCodec, InMemoryKeyedDocStore}
+import tools.{DocCodec, InMemoryStoreDocuments, KeyedStore}
 import org.mongodb.scala.bson.collection.immutable.Document
 
 import java.time.Instant
@@ -47,7 +47,7 @@ class BsonRoundTripSpec extends AnyFlatSpec with Matchers {
   }
 
   "The in-memory keyed store" should "refuse a value Mongo cannot store" in {
-    val store = new InMemoryKeyedDocStore(Counts)
+    val store = KeyedStore.text(new InMemoryStoreDocuments(), Counts)
     store.put("ok", Map("a" -> 1))
     store.get("ok") shouldBe Some(Map("a" -> 1))
     a[BsonSerializationException] should be thrownBy store.put("nul", Map("a\u0000b" -> 1))

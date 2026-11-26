@@ -3,7 +3,7 @@
 Owner decision, 2026-11-26 (Scala consolidation item E): "Design a store abstraction covering bulk writes, TTL and
 counters, then migrate the 8 stores ... needs `itAll` plus careful tests on each store".
 
-`tools.KeyedDocStore` (2026-10-19) already holds five small stores: string key, whole-document replace, scan, retention
+`tools.KeyedDocStore` (2026-10-19; folded into `KeyedStore` 2026-11-27) held five small stores: string key, whole-document replace, scan, retention
 sweep. Eight more Mongo stores and their hand-written in-memory twins did not fit it. Each of them repeats the same
 `Await`/`Filters.eq("_id")`/upsert boilerplate in its Mongo class and copies the store's rules into its fake.
 
@@ -28,14 +28,16 @@ claim by `findOneAndUpdate` sort, pipelines), `IdentityModelStore` / `IdentityTr
 
 ## The interfaces
 
-All in `tools` (common), beside `KeyedDocStore`:
+All in `tools` (common):
 
 ```scala
 trait StoreReader[K, V]   { get(key); getAll(keys); scan(each: Seq[(K, V)] => Unit): ScanOutcome; final all() }
 trait StoreWriter[K, V]   { put(key, value); delete(key): Boolean }
 trait StoreOnce[K, V]     { insert(key, value): Boolean; take(key): Option[V] }      // claims, single-use codes
 trait StoreBulk[K, V]     { putAll(values); deleteAll(keys): Int }
-trait StoreCounters[K]    { increment(key, field, by = 1, below = None): Option[Long]; counted(key, field): Long }
+trait StoreDetached[K, V] { putDetached(key, value)(onFailure) }                   // a store observing what it records
+trait StoreRetention      { retention: StampedRows }                               // by the codec's stamp field
+trait StoreCounters[K]    { increment(key, field, by = 1, below = None): Option[Long]; raise(key, field, atLeast); counted(key, field): Long }
 
 trait KeyCodec[K]         { id(key): BsonValue; key(id): Option[K] }      // KeyCodec.Text, KeyCodec.Number (Long)
 trait DocCodec[V]         // the existing value codec: fields beside `_id`, and back
@@ -113,8 +115,10 @@ lesson). Racing callers each count; none passes the ceiling (contract-tested wit
 8. `FilmIdCounterStore` -- DONE 2026-11-27 (`StoreOnce.insertAll`, a unique field): `insert` per entry (or an unordered `insertAll` returning the count landed) and a unique
    secondary index; identity module, stamps as for 6.
 
-`OmdbBudget` is on `StoreCounters` (2026-11-27; `markSpent` is `StoreCounters.raise`, Mongo's `$max`, as before: an increment to the limit summed racing workers' shortfalls). Last: `KeyedDocStore` itself folded in (`KeyedDocStore[T]` is a
-`KeyedStore[String, T]` plus `putDetached` and `retention`): its five users move, and the two abstractions become one.
+`OmdbBudget` is on `StoreCounters` (2026-11-27; `markSpent` is `StoreCounters.raise`, Mongo's `$max`, as before: an increment to the limit summed racing workers' shortfalls). `KeyedDocStore` is folded in
+(2026-11-27): `putDetached` and `retention` are `StoreDetached` / `StoreRetention` over `StoreDocuments.replaceDetached` /
+`stamped`, its TTL a `DocumentExpiry` on the codec's stamp field, and its users (bulk task results, closure ledger,
+enrichment attempts, chunk page memo, OMDb attempts) take the interfaces they use; one abstraction is left.
 
 ## Coupling
 

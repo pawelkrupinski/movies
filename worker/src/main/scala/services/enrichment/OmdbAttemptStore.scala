@@ -7,7 +7,7 @@ import scala.util.Try
 
 import org.mongodb.scala.{Document, MongoDatabase}
 import play.api.Logging
-import tools.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
+import tools.{DocCodec, DocumentExpiry, InMemoryStoreDocuments, KeyedStore, MongoStoreDocuments, StoreDetached, StoreDocuments, StoreReader}
 
 /** A recorded OMDb resolution attempt for a film — when it last ran, and how many
  *  consecutive MISSES so far (the exponential-backoff level). */
@@ -45,7 +45,7 @@ object OmdbAttemptStore {
 /** The store over its rows: Mongo and in-memory differ only in the rows. A read that fails answers
  *  as if nothing were recorded, and a write is fire-and-forget: a lost backoff stamp just costs one
  *  extra OMDb probe. */
-class KeyedOmdbAttemptStore(rows: KeyedDocStore[OmdbAttempt]) extends OmdbAttemptStore with Logging {
+class KeyedOmdbAttemptStore(rows: StoreReader[String, OmdbAttempt] & StoreDetached[String, OmdbAttempt]) extends OmdbAttemptStore with Logging {
   def get(filmKey: String): Option[OmdbAttempt] = Try(rows.get(filmKey)).toOption.flatten
 
   /** One read of the whole (TTL-bounded) collection, keyed by filmKey. Used by the sweep to avoid a
@@ -66,16 +66,19 @@ class KeyedOmdbAttemptStore(rows: KeyedDocStore[OmdbAttempt]) extends OmdbAttemp
 object KeyedOmdbAttemptStore {
   /** `{ _id: <filmKey>, at: ISODate, level: Int }`. */
   val Codec: DocCodec[OmdbAttempt] = new DocCodec[OmdbAttempt] {
-    def encode(attempt: OmdbAttempt): Document = Document("at" -> java.util.Date.from(attempt.at), "level" -> attempt.level)
+    def encode(attempt: OmdbAttempt): Document = Document(Stamp -> java.util.Date.from(attempt.at), "level" -> attempt.level)
     def decode(document: Document): Option[OmdbAttempt] =
       document.get("at").filter(_.isDateTime).map(date =>
         OmdbAttempt(Instant.ofEpochMilli(date.asDateTime.getValue), document.get("level").filter(_.isNumber).fold(0)(_.asNumber.intValue)))
-    override def stampField: Option[String] = Some("at")
+    override def stampField: Option[String] = Some(Stamp)
   }
+
+  /** When an attempt ran: what its TTL expires on. */
+  val Stamp = "at"
 }
 
 /** In-memory store for tests / Mongo-less local dev. */
-class InMemoryOmdbAttemptStore extends KeyedOmdbAttemptStore(new InMemoryKeyedDocStore(KeyedOmdbAttemptStore.Codec))
+class InMemoryOmdbAttemptStore extends KeyedOmdbAttemptStore(KeyedStore.text(new InMemoryStoreDocuments(), KeyedOmdbAttemptStore.Codec))
 
 /**
  * Mongo-backed store: the `omdb_attempts` collection, written with the task queue's relaxed
@@ -84,9 +87,9 @@ class InMemoryOmdbAttemptStore extends KeyedOmdbAttemptStore(new InMemoryKeyedDo
  * persistence (every film eligible, no backoff).
  */
 class MongoOmdbAttemptStore(db: Option[MongoDatabase]) extends KeyedOmdbAttemptStore(
-  db.fold(KeyedDocStore.absent[OmdbAttempt])(d => new MongoKeyedDocStore(
+  KeyedStore.text(db.fold[StoreDocuments](StoreDocuments.Absent)(d => MongoStoreDocuments.of(
     d.getCollection(MongoOmdbAttemptStore.Collection).withWriteConcern(tools.MongoWriteConcerns.Bookkeeping),
-    KeyedOmdbAttemptStore.Codec, expireAfter = Some(90.days))))
+    expiry = Some(DocumentExpiry(KeyedOmdbAttemptStore.Stamp, 90.days)))), KeyedOmdbAttemptStore.Codec))
 
 object MongoOmdbAttemptStore {
   val Collection = "omdb_attempts"

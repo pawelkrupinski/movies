@@ -64,6 +64,24 @@ final class InMemoryStoreDocuments private (expiring: Option[(DocumentExpiry, ja
     documents.foreach(d => held.put(idOf(d), tools.BsonRoundTrip.bytes(d)))
   }
 
+  def replaceDetached(document: BsonDocument)(onFailure: Throwable => Unit): Unit =
+    scala.util.Try(replace(Seq(document))).failed.foreach(onFailure)
+
+  def stamped(field: String): StampedRows = new StampedRows {
+    private def stampOf(bytes: RawBsonDocument): Option[java.time.Instant] =
+      Option(read(bytes).get(field)).filter(_.isDateTime).map(d => java.time.Instant.ofEpochMilli(d.asDateTime.getValue))
+    def stampedBefore(cutoff: java.time.Instant): Seq[(String, java.time.Instant)] = {
+      swept()
+      held.entrySet.asScala.toSeq.flatMap(entry => KeyCodec.Text.key(entry.getKey).zip(stampOf(entry.getValue))).filter(_._2.isBefore(cutoff))
+    }
+    def deleteIfStill(stamped: Seq[(String, java.time.Instant)]): Int = stamped.count { case (key, at) =>
+      var deleted = false
+      held.computeIfPresent(KeyCodec.Text.id(key), (_, bytes) =>
+        if (stampOf(bytes).exists(_.toEpochMilli == at.toEpochMilli)) { deleted = true; null } else bytes)
+      deleted
+    }
+  }
+
   /** Documents held under another `_id` with the same value as `document` in a unique field. */
   private def clashes(document: BsonDocument): Boolean =
     unique.exists(field => Option(document.get(field)).exists(v => held.values.asScala.exists(other => Option(read(other).get(field)).contains(v))))

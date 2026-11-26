@@ -8,7 +8,7 @@ import org.mongodb.scala.bson.{BsonBoolean, BsonDateTime, BsonInt32, BsonString}
 import org.mongodb.scala.{Document, MongoDatabase, documentToUntypedDocument}
 import play.api.Logging
 import services.tasktypes.TaskType
-import tools.{DocCodec, KeyedDocStore, MongoKeyedDocStore}
+import tools.{DocCodec, KeyedStore, MongoStoreDocuments, StoreDocuments, StoreReader, StoreWriter}
 
 /**
  * The [[BulkTaskResultStore]] over its rows — exactly one per bulk `taskType` (keyed on
@@ -16,13 +16,13 @@ import tools.{DocCodec, KeyedDocStore, MongoKeyedDocStore}
  * Operator diagnostics, not a system of record: a failed write or read is logged, and the page
  * shows a slightly stale (or no) last-run line until the next run.
  */
-class KeyedBulkTaskResultStore(rows: KeyedDocStore[BulkTaskResult]) extends BulkTaskResultStore with Logging {
+class KeyedBulkTaskResultStore(rows: StoreReader[String, BulkTaskResult] & StoreWriter[String, BulkTaskResult]) extends BulkTaskResultStore with Logging {
   override def record(result: BulkTaskResult): Unit =
     Try(rows.put(result.taskType.name, result))
       .recover { case exception => logger.warn(s"BulkTaskResultStore.record(${result.taskType.name}) failed: ${exception.getMessage}") }
 
   override def latest(): Map[TaskType, BulkTaskResult] =
-    Try(rows.all().values.map(r => r.taskType -> r).toMap)
+    Try(rows.all().map((_, r) => r.taskType -> r).toMap)
       .recover { case exception =>
         logger.warn(s"BulkTaskResultStore.latest failed: ${exception.getMessage}")
         Map.empty[TaskType, BulkTaskResult]
@@ -75,8 +75,8 @@ object KeyedBulkTaskResultStore {
  * page. A tiny, bounded collection (≤ one row per bulk job type).
  */
 class MongoBulkTaskResultStore(db: Option[MongoDatabase]) extends KeyedBulkTaskResultStore(
-  db.fold(KeyedDocStore.absent[BulkTaskResult])(d => new MongoKeyedDocStore(
-    d.getCollection(MongoBulkTaskResultStore.Collection).withWriteConcern(tools.MongoWriteConcerns.Bookkeeping), KeyedBulkTaskResultStore.Codec)))
+  KeyedStore.text(db.fold[StoreDocuments](StoreDocuments.Absent)(d => MongoStoreDocuments.of(
+    d.getCollection(MongoBulkTaskResultStore.Collection).withWriteConcern(tools.MongoWriteConcerns.Bookkeeping))), KeyedBulkTaskResultStore.Codec))
 
 object MongoBulkTaskResultStore {
   val Collection = "bulk_task_results"

@@ -7,7 +7,7 @@ import scala.util.Try
 
 import org.mongodb.scala.{Document, MongoDatabase}
 import play.api.Logging
-import tools.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
+import tools.{DocCodec, DocumentExpiry, InMemoryStoreDocuments, KeyedStore, MongoStoreDocuments, StoreDocuments, StoreReader, StoreWriter}
 
 /** A chunk's last page and what it parsed to, by (cinema, chunk key): what lets a page identical to
  *  the last one skip its parse (`ScrapeChunkHandler`). A memo that cannot answer answers None, and the
@@ -36,7 +36,7 @@ object ChunkPageMemo {
 
 /** The memo over its rows, one small document per (cinema, chunk key): Mongo and in-memory differ only
  *  in the rows. A read that fails answers None and a write that fails is logged — a saving, never an input. */
-class KeyedChunkPageMemo(rows: KeyedDocStore[ChunkPageMemo.Entry]) extends ChunkPageMemo with Logging {
+class KeyedChunkPageMemo(rows: StoreReader[String, ChunkPageMemo.Entry] & StoreWriter[String, ChunkPageMemo.Entry]) extends ChunkPageMemo with Logging {
   private def id(cinema: String, key: String) = s"$cinema|$key"
 
   def recall(cinema: String, key: String): Option[ChunkPageMemo.Entry] = Try(rows.get(id(cinema, key))).toOption.flatten
@@ -49,23 +49,26 @@ object KeyedChunkPageMemo {
   /** `{_id: cinema|key, page, parser, slice, at}`, `at` when it was written by `clock`. */
   def codec(clock: Clock): DocCodec[ChunkPageMemo.Entry] = new DocCodec[ChunkPageMemo.Entry] {
     def encode(entry: ChunkPageMemo.Entry): Document =
-      Document("page" -> entry.page, "parser" -> entry.parser, "slice" -> entry.slice, "at" -> new java.util.Date(clock.millis()))
+      Document("page" -> entry.page, "parser" -> entry.parser, "slice" -> entry.slice, Stamp -> new java.util.Date(clock.millis()))
     def decode(d: Document): Option[ChunkPageMemo.Entry] =
       for { page <- d.get("page").map(_.asString.getValue); parser <- d.get("parser").filter(_.isString).map(_.asString.getValue)
             slice <- d.get("slice").map(_.asString.getValue) } yield ChunkPageMemo.Entry(page, parser, slice)
-    override def stampField: Option[String] = Some("at")
+    override def stampField: Option[String] = Some(Stamp)
   }
+
+  /** When a row was written: what its TTL expires on. */
+  val Stamp = "at"
 }
 
 /** The memo in a map: tests, and a worker without Mongo. */
-final class InMemoryChunkPageMemo(clock: Clock) extends KeyedChunkPageMemo(new InMemoryKeyedDocStore(KeyedChunkPageMemo.codec(clock)))
+final class InMemoryChunkPageMemo(clock: Clock) extends KeyedChunkPageMemo(KeyedStore.text(new InMemoryStoreDocuments(), KeyedChunkPageMemo.codec(clock)))
 
 /** The memo in Mongo (`scrape_chunk_pages`), because a worker restarts on every deploy, many times
  *  between two scrapes of a venue: each document gone a week after it was last written — a day page
  *  outlives its date by that at most. */
 final class MongoChunkPageMemo(db: Option[MongoDatabase], clock: Clock) extends KeyedChunkPageMemo(
-  db.fold(KeyedDocStore.absent[ChunkPageMemo.Entry])(d =>
-    new MongoKeyedDocStore(d.getCollection(MongoChunkPageMemo.Collection), KeyedChunkPageMemo.codec(clock), expireAfter = Some(7.days))))
+  KeyedStore.text(db.fold[StoreDocuments](StoreDocuments.Absent)(d => MongoStoreDocuments.of(d.getCollection(MongoChunkPageMemo.Collection),
+    expiry = Some(DocumentExpiry(KeyedChunkPageMemo.Stamp, 7.days)))), KeyedChunkPageMemo.codec(clock)))
 
 object MongoChunkPageMemo {
   val Collection = "scrape_chunk_pages"

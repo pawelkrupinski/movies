@@ -871,6 +871,8 @@ modules.webwiring.DebugWiring	collaborator
 modules.webwiring.MetricsWiring	collaborator
 modules.webwiring.MongoWiring	collaborator
 modules.webwiring.MovieControllerWiring	data
+modules.webwiring.MovieStoreWiring	collaborator
+modules.webwiring.MovieStores	collaborator
 modules.webwiring.ReadModelWiring	collaborator
 modules.webwiring.ReviewWiring	collaborator
 modules.webwiring.SiteWiring	collaborator
@@ -953,6 +955,7 @@ services.auth.FacebookTokenValidator	collaborator
 services.auth.GoogleOauthProvider	collaborator
 services.auth.GoogleTokenValidator	collaborator
 services.auth.InMemoryAuthExchangeCodeStore	collaborator
+services.auth.KeyedAuthExchangeCodeStore	collaborator
 services.auth.MongoAuthExchangeCodeStore	collaborator
 services.auth.NativeTokenVerifier	collaborator
 services.auth.OauthAccounts	collaborator
@@ -1341,6 +1344,7 @@ services.enrichment.ImdbSuggestions	collaborator
 services.enrichment.InMemoryOmdbAttemptStore	collaborator
 services.enrichment.InMemoryOmdbBudget	collaborator
 services.enrichment.KeyedOmdbAttemptStore	collaborator
+services.enrichment.KeyedOmdbBudget	collaborator
 services.enrichment.LetterboxdClient	collaborator
 services.enrichment.LetterboxdIdResolver	collaborator
 services.enrichment.MetacriticClient	collaborator
@@ -1471,6 +1475,8 @@ services.identity.InMemoryFilmIdCounterStore	collaborator
 services.identity.InMemoryIdentityModelStore	collaborator
 services.identity.InMemoryVenueSlotFingerprints	collaborator
 services.identity.IncrementalResolver	collaborator
+services.identity.KeyedFilmIdCounterStore	collaborator
+services.identity.KeyedPinStore	collaborator
 services.identity.LeanStageWorks	data
 services.identity.LeanVenueSlots	collaborator
 services.identity.LearnedCannotLinks	data
@@ -1757,6 +1763,8 @@ services.identityadapters.InMemoryTmdbDocuments	collaborator
 services.identityadapters.IndexedVenuePageFacts	collaborator
 services.identityadapters.InlineFamilyAsks	collaborator
 services.identityadapters.KeptFailures	collaborator
+services.identityadapters.KeyedPendingListingStore	collaborator
+services.identityadapters.KeyedRetainedListingStore	collaborator
 services.identityadapters.ListingHistoryEntries	data
 services.identityadapters.ListingRetainer	collaborator
 services.identityadapters.LiveAsks	collaborator
@@ -2075,6 +2083,7 @@ services.review.FilmIdentity	collaborator
 services.review.FilmRef	collaborator
 services.review.InMemoryReviewAnswerStore	collaborator
 services.review.JudgedListings	collaborator
+services.review.KeyedReviewAnswerStore	collaborator
 services.review.LabelRow	collaborator
 services.review.LabelsExport	collaborator
 services.review.LabelsTsv	collaborator
@@ -2118,6 +2127,7 @@ services.review.TakeHistory	collaborator
 services.review.TmdbPosterLookup	collaborator
 services.review.VenueFacts	data
 services.schedule.AlwaysClaimScheduledRunStore	data
+services.schedule.KeyedScheduledRunStore	collaborator
 services.schedule.MongoScheduledRunStore	collaborator
 services.schedule.OccurrenceKey	data
 services.schedule.ScheduledRunStore	collaborator
@@ -2235,6 +2245,7 @@ services.tasks.InMemoryScrapeCostStore	collaborator
 services.tasks.InMemoryTaskQueue	collaborator
 services.tasks.KeyedBulkTaskResultStore	collaborator
 services.tasks.KeyedChunkPageMemo	collaborator
+services.tasks.KeyedScrapeCostStore	collaborator
 services.tasks.LeasedTaskQueue	collaborator
 services.tasks.ListingIncompleteMetrics	collaborator
 services.tasks.LivenessWatchdog	collaborator
@@ -2499,6 +2510,8 @@ tools.DaemonExecutors	collaborator
 tools.DelegatingExecutorService	collaborator
 tools.Digest	data
 tools.DocCodec	collaborator
+tools.DocumentEdit	data
+tools.DocumentExpiry	collaborator
 tools.DrainablePool	collaborator
 tools.DueBoundary	data
 tools.EditDistance	collaborator
@@ -2538,15 +2551,17 @@ tools.HttpRead	collaborator
 tools.HttpReplies	collaborator
 tools.HttpStatusException	collaborator
 tools.HttpTransport	collaborator
+tools.IdSelection	data
 tools.InMemoryFleetHostPace	collaborator
-tools.InMemoryKeyedDocStore	collaborator
+tools.InMemoryStoreDocuments	collaborator
 tools.IncompleteScanException	data
 tools.IssuerCertificateFetching	collaborator
 tools.JsonBodies	collaborator
 tools.JsonLdBlocks	data
 tools.JsonLineEncoder	collaborator
 tools.JsonScalars	data
-tools.KeyedDocStore	collaborator
+tools.KeyCodec	collaborator
+tools.KeyedStore	collaborator
 tools.KeysetScan	collaborator
 tools.LatinScript	data
 tools.LegFailures	data
@@ -2563,9 +2578,9 @@ tools.MongoErrors	collaborator
 tools.MongoExpressions	data
 tools.MongoFleetHostPace	collaborator
 tools.MongoIndex	collaborator
-tools.MongoKeyedDocStore	collaborator
 tools.MongoRead	collaborator
 tools.MongoReplies	data
+tools.MongoStoreDocuments	collaborator
 tools.MongoTtlIndex	collaborator
 tools.MongoUnrecoveredHosts	collaborator
 tools.MongoUpdates	collaborator
@@ -2574,6 +2589,7 @@ tools.MongoWriteErrors	collaborator
 tools.MonotonicStamp	data
 tools.MonotonicStampSequence	collaborator
 tools.NeverSent	collaborator
+tools.NoFields	collaborator
 tools.OffThreadInit	collaborator
 tools.OgCardRenderer	collaborator
 tools.OrganisationName	data
@@ -2624,6 +2640,16 @@ tools.StampedRows	collaborator
 tools.StickyShardHttpFetch	collaborator
 tools.Stoppable	collaborator
 tools.Stopwatch	collaborator
+tools.StoreBulk	collaborator
+tools.StoreCappedLists	collaborator
+tools.StoreCounters	collaborator
+tools.StoreDetached	collaborator
+tools.StoreDocuments	collaborator
+tools.StoreMarks	collaborator
+tools.StoreOnce	collaborator
+tools.StoreReader	collaborator
+tools.StoreRetention	collaborator
+tools.StoreWriter	collaborator
 tools.SynopsisMarkdown	data
 tools.SynopsisSimilarity	collaborator
 tools.TempDirectories	collaborator

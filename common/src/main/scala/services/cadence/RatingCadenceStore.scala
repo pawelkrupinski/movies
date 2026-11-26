@@ -13,7 +13,7 @@ import org.mongodb.scala.bson.{BsonDateTime, BsonDocument, BsonInt32, BsonNull, 
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
 import play.api.Logging
-import tools.{KeysetScan, MongoKeyedDocStore}
+import tools.{KeysetScan, MongoStoreDocuments}
 
 /**
  * Per-(rating source, film) change history, keyed by the SAME dedup string the
@@ -123,7 +123,7 @@ class MongoRatingCadenceStore(db: Option[MongoDatabase] = None) extends RatingCa
     // already migrated away from). Each page is a bounded
     // `find(_id > last).sort(_id).limit`.
     var count = 0
-    val outcome = MongoKeyedDocStore.scanDocuments(c, "RatingCadenceStore hydrate", pageTimeout = 60.seconds)(_.foreach { document =>
+    val outcome = MongoStoreDocuments.scanDocuments(c, "RatingCadenceStore hydrate", pageTimeout = 60.seconds)(_.foreach { document =>
       MongoRatingCadenceStore.decodeRecord(document).foreach { case (key, stats) => mirror.put(key, stats); count += 1 }
     })
     // A short hydrate is a partly cold mirror, which the class doc already holds safe: the films
@@ -238,7 +238,7 @@ class MongoRatingCadenceReader(db: Option[MongoDatabase]) extends RatingCadenceR
         maxAttempts    = 3,
         initialBackoff = 500.millis,
         keyOf          = _.getString("_id"),
-        fetchPage      = MongoKeyedDocStore.documentsAfter(c, 60.seconds),
+        fetchPage      = MongoStoreDocuments.documentsAfter(c, 60.seconds),
         onIncomplete   = exception => logger.warn(s"Rating-cadence read keyset scan failed: ${exception.getMessage}")
       )(MongoRatingCadenceStore.decodeRecord).required
   }

@@ -11,7 +11,8 @@ import com.mongodb.MongoWriteException
 import org.bson.{BsonDocument, BsonValue}
 import org.mongodb.scala.model.{BulkWriteOptions, InsertManyOptions, Filters, FindOneAndUpdateOptions, IndexOptions, Indexes, PushOptions, ReplaceOneModel,
   ReplaceOptions, ReturnDocument, Sorts, UpdateOptions, Updates}
-import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
 import play.api.Logging
 
 /**
@@ -75,6 +76,15 @@ final class MongoStoreDocuments(collection: MongoCollection[BsonDocument], expir
     written(await(collection.bulkWrite(batch.map(d => ReplaceOneModel(byId(d.get("_id")), d, ReplaceOptions().upsert(true))),
       BulkWriteOptions().ordered(false)).toFuture()))
   }
+
+  def replaceDetached(document: BsonDocument)(onFailure: Throwable => Unit): Unit =
+    Try(collection.replaceOne(byId(document.get("_id")), document, ReplaceOptions().upsert(true))
+      .subscribe((_: org.mongodb.scala.result.UpdateResult) => (), { (failure: Throwable) =>
+        tools.MongoWriteErrors.observe(collection.namespace.getDatabaseName, name, failure); onFailure(failure)
+      })).failed.foreach(onFailure)
+
+  def stamped(field: String): StampedRows =
+    StampedRows.inMongo(collection.withDocumentClass[Document](), field)
 
   /** Unordered; a duplicate `_id` or unique-index key is refused and the rest land. `beforeInsert` runs first (a unique index
    *  a store makes at its first insert, never by a read). */
@@ -146,6 +156,27 @@ object MongoStoreDocuments {
    *  arrives as the same exception with no write errors, and must throw, not read as "every document was already there". */
   private[tools] def onlyAlreadyHeld(bulk: com.mongodb.MongoBulkWriteException): Boolean =
     bulk.getWriteConcernError == null && bulk.getWriteErrors.asScala.forall(_.getCode == DuplicateKey)
+
+  /** Every document of `collection` in `_id`-keyset pages of 2,000, each page retried with backoff and given
+   *  `pageTimeout`: the way a whole small collection is read by a store that keeps it in documents of its own. */
+  def scanDocuments(collection: MongoCollection[Document], label: String,
+                    pageTimeout: FiniteDuration = ScanPageTimeout)(each: Seq[Document] => Unit): ScanOutcome =
+    tools.KeysetScan.scan[Document](
+      label          = label,
+      batchSize      = ScanPage,
+      maxAttempts    = 3,
+      initialBackoff = 500.millis,
+      keyOf          = _.getString("_id"),
+      fetchPage      = documentsAfter(collection, pageTimeout)
+    )(each)
+
+  /** The [[KeysetScan]] page of `collection` after a `_id` (from the first without one): `limit` documents in `_id`
+   *  order, the read given `timeout`. */
+  def documentsAfter(collection: MongoCollection[Document], timeout: FiniteDuration)(
+    afterId: Option[String], limit: Int): Seq[Document] = {
+    val find = afterId.fold(collection.find())(a => collection.find(Filters.gt("_id", a)))
+    Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), timeout)
+  }
 
   /** `collection` read and written as plain BSON documents. */
   def of(collection: MongoCollection[?], expiry: Option[DocumentExpiry] = None, timeout: FiniteDuration = Timeout,

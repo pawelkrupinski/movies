@@ -5,7 +5,7 @@ import scala.util.Try
 import models.{AttemptOutcome, EnrichmentAttempt}
 import org.mongodb.scala.{Document, MongoDatabase, documentToUntypedDocument}
 import play.api.Logging
-import tools.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
+import tools.{DocCodec, InMemoryStoreDocuments, KeyedStore, MongoStoreDocuments, StoreDetached, StoreDocuments, StoreReader, StoreRetention}
 
 /**
  * The last enrichment attempt per (rating source, film), keyed by the SAME dedup
@@ -39,7 +39,7 @@ object EnrichmentAttemptStore {
  * The store over its rows, one document per (source, film) overwritten each attempt — see
  * [[EnrichmentAttempt]] on why only the last is kept. Mongo and in-memory differ only in the rows.
  */
-class KeyedEnrichmentAttemptStore(rows: KeyedDocStore[EnrichmentAttempt])
+class KeyedEnrichmentAttemptStore(rows: StoreReader[String, EnrichmentAttempt] & StoreDetached[String, EnrichmentAttempt] & StoreRetention)
     extends EnrichmentAttemptStore with EnrichmentAttemptReader with Logging {
   override def record(key: String, attempt: EnrichmentAttempt): Unit =
     rows.putDetached(key, attempt)(exception => logger.debug(s"Enrichment-attempt write failed for $key: ${exception.getMessage}"))
@@ -51,11 +51,11 @@ class KeyedEnrichmentAttemptStore(rows: KeyedDocStore[EnrichmentAttempt])
   override def forKeys(keys: Seq[String]): Map[String, EnrichmentAttempt] =
     if (keys.isEmpty) Map.empty else rows.getAll(keys)
 
-  def all(): Seq[(String, EnrichmentAttempt)] = rows.all().toSeq
+  def all(): Seq[(String, EnrichmentAttempt)] = rows.all()
 }
 
 /** In-memory store for tests and Mongo-less local dev. */
-class InMemoryEnrichmentAttemptStore extends KeyedEnrichmentAttemptStore(new InMemoryKeyedDocStore(EnrichmentAttempts.Codec))
+class InMemoryEnrichmentAttemptStore extends KeyedEnrichmentAttemptStore(KeyedStore.text(new InMemoryStoreDocuments(), EnrichmentAttempts.Codec))
 
 /**
  * Mongo-backed store, collection `enrichment_attempts` with documents
@@ -63,7 +63,7 @@ class InMemoryEnrichmentAttemptStore extends KeyedEnrichmentAttemptStore(new InM
  *    detail: String }`. The worker writes it; the web's debug page reads it, from the mirror.
  */
 class MongoEnrichmentAttemptStore(db: Option[MongoDatabase]) extends KeyedEnrichmentAttemptStore(
-  db.fold(KeyedDocStore.absent[EnrichmentAttempt])(d => new MongoKeyedDocStore(d.getCollection(EnrichmentAttempts.Collection), EnrichmentAttempts.Codec)))
+  KeyedStore.text(db.fold[StoreDocuments](StoreDocuments.Absent)(d => MongoStoreDocuments.of(d.getCollection(EnrichmentAttempts.Collection))), EnrichmentAttempts.Codec))
 
 /** Read-only view of `enrichment_attempts` for the dev debug page (the web app): one film's
  *  attempts at a time, never the whole collection. */

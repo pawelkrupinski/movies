@@ -20,6 +20,12 @@ trait StoreDocuments {
   def scan(each: Seq[BsonDocument] => Unit): ScanOutcome
   /** Each of `documents` stored over whatever its `_id` held (an upsert): one bulk write, however many. */
   def replace(documents: Seq[BsonDocument]): Unit
+  /** `document` stored over whatever its `_id` held, without waiting for it: for a store merely observing what it
+   *  records. A failure goes to `onFailure`, never to the caller. */
+  def replaceDetached(document: BsonDocument)(onFailure: Throwable => Unit): Unit
+  /** The documents by their `Date` field `field`, for a retention sweep ([[StampedRows]]): one without a date there is
+   *  never swept, as Mongo's `$lt` does not match it. */
+  def stamped(field: String): StampedRows
   /** `document` stored unless its `_id` is: whether it was (false: the `_id` was taken, whatever it held). */
   def insert(document: BsonDocument): Boolean
   /** Each of `documents` stored unless its `_id` is, or (an implementation made with unique fields) another document
@@ -67,6 +73,8 @@ object StoreDocuments {
     def find(ids: Seq[BsonValue]): Seq[BsonDocument]                                       = Nil
     def scan(each: Seq[BsonDocument] => Unit): ScanOutcome                                 = ScanOutcome.complete
     def replace(documents: Seq[BsonDocument]): Unit                                       = ()
+    def replaceDetached(document: BsonDocument)(onFailure: Throwable => Unit): Unit         = ()
+    def stamped(field: String): StampedRows                                                = StampedRows.Unswept
     def insert(document: BsonDocument): Boolean                                            = false
     def insertAll(documents: Seq[BsonDocument]): Int                                       = 0
     def take(id: BsonValue): Option[BsonDocument]                                          = None
