@@ -316,7 +316,8 @@ class Proof:
         after_rc = before_rc if before_rc == tool_process.TIMED_OUT else self.run_in(after, logs[1], seed)
         if tool_process.TIMED_OUT in (before_rc, after_rc):
             print(f"\n--- BEFORE (exit {before_rc}) ---\n{last_lines(logs[0])}", end="")
-            print(f"\n--- AFTER (exit {after_rc}) ---\n{last_lines(logs[1])}", end="", flush=True)
+            if os.path.exists(logs[1]):  # not run when BEFORE already had no verdict
+                print(f"\n--- AFTER (exit {after_rc}) ---\n{last_lines(logs[1])}", end="", flush=True)
             raise Died(f"a run timed out after {self.env.get('KINOWO_FAIL_BEFORE_TIMEOUT', '3000')}s (exit 124): no verdict "
                        "— a hang is not a failure")
         return verdict(before_rc, after_rc, logs[0], logs[1])
