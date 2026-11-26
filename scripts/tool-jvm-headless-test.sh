@@ -16,7 +16,7 @@ launches() {
     | grep -vE '^[^:]+-test\.sh:|^[^:]+_test\.py:|^[^:]+:[0-9]+:[[:space:]]*#'
 }
 # a Python tool's launch: an argv list holding `"java"` (or a `java` variable) -- the flag may sit in a constant of
-# the file (JVM_FLAGS), so a launch is headless when its file names it; a tuple of names (`("java", "mongod")`) is no
+# the file (JVM_FLAGS) or in lib/identity_jvm.JAVA_OPTIONS, so a launch is headless when its file names either; a tuple of names (`("java", "mongod")`) is no
 # argv. 2026-11-25, Tool self-tests #551: the shell-to-Python migration moved launches out of the shell grep's sight.
 python_launches() {
   python3 -I -B - "$@" <<'PY'
@@ -43,7 +43,7 @@ for path, text in sources(sys.argv[1:]):
         tree = ast.parse(text)
     except (SyntaxError, ValueError):
         continue
-    headless = b"-Djava.awt.headless=true" in text
+    headless = b"-Djava.awt.headless=true" in text or b"identity_jvm.JAVA_OPTIONS" in text
     for node in ast.walk(tree):
         if isinstance(node, ast.List) and any(is_java(e) for e in node.elts):
             print("%s:%d:%s" % (path, node.lineno, "-Djava.awt.headless=true" if headless else "bare"))
@@ -66,6 +66,9 @@ printf 'import subprocess\n# ["java", "-Xmx1g"] is only a comment\nsubprocess.ru
 printf '#!/usr/bin/env python3\nFLAGS = ["-Djava.awt.headless=true"]\njava = "java"\nARGV = ["gov-run", "--", java, *FLAGS, "Main"]\n' > "$scratch/ok-tool"
 check "the check finds a bare Python launch and passes a headless one (comments and name tuples aside)" \
   "$scratch/bare.py:3" "$(missing "$scratch" | grep -v '\.sh:')"
+printf 'import identity_jvm\nARGV = ["java", *identity_jvm.JAVA_OPTIONS, "Main"]\n' > "$scratch/shared-options.py"
+check "a Python launch spreading lib/identity_jvm.JAVA_OPTIONS (the shared headless flags) is headless" "" \
+  "$(missing "$scratch/shared-options.py")"
 check "an installed node_modules (binaries, vendored scripts) is never read as a launch" "" \
   "$(missing "$scratch/installed")"
 check "the repository's tool JVMs launch at least once (the check still sees them)" yes \
