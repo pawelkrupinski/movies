@@ -1,6 +1,6 @@
 package tools
 
-import org.bson.BsonDocument
+import org.bson.{BsonDocument, BsonValue}
 import org.mongodb.scala.bson.collection.immutable.Document
 
 /** Reading a store's values by key. */
@@ -53,6 +53,12 @@ trait StoreCounters[K] {
   def counted(key: K, field: String): Long
 }
 
+/** Elements added to the end of an array field of a key's document, the array kept to its last few. */
+trait StoreCappedLists[K] {
+  /** `element` appended to `field` of `key`'s document (made when there is none), keeping the last `keep`, in one step. */
+  def append(key: K, field: String, element: BsonValue, keep: Int): Unit
+}
+
 /**
  * The one keyed store: values of `V` under keys of `K` in `documents` -- `_id` the key as `keys` writes it, the other
  * fields the value as `values` writes it -- each of the segregated interfaces above, so a store above it takes only the
@@ -61,7 +67,7 @@ trait StoreCounters[K] {
  * field of the key's document, 0 until raised.
  */
 final class KeyedStore[K, V](documents: StoreDocuments, keys: KeyCodec[K], values: DocCodec[V])
-    extends StoreReader[K, V] with StoreWriter[K, V] with StoreOnce[K, V] with StoreBulk[K, V] with StoreCounters[K] {
+    extends StoreReader[K, V] with StoreWriter[K, V] with StoreOnce[K, V] with StoreBulk[K, V] with StoreCounters[K] with StoreCappedLists[K] {
 
   /** `value` as stored under `key`: `_id` first, then the codec's fields. */
   private def stored(key: K, value: V): BsonDocument = {
@@ -87,6 +93,7 @@ final class KeyedStore[K, V](documents: StoreDocuments, keys: KeyCodec[K], value
 
   def increment(key: K, field: String, by: Long = 1, below: Option[Long] = None): Option[Long] =
     documents.increment(keys.id(key), field, by, below)
+  def append(key: K, field: String, element: BsonValue, keep: Int): Unit = documents.append(keys.id(key), field, element, keep)
   def counted(key: K, field: String): Long =
     documents.find(Seq(keys.id(key))).headOption.flatMap(d => Option(d.get(field))).filter(_.isNumber).fold(0L)(_.asNumber.longValue)
 }

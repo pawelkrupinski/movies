@@ -1,7 +1,5 @@
 package services.tasks
 
-import scala.collection.concurrent.TrieMap
-
 /** What one scrape of a cinema cost the task queue, in tasks: 1 for a plain scrape,
  *  the planner + one per chunk + the reduce for a chunked one. */
 final case class ScrapeCost(tasks: Int) extends AnyVal
@@ -40,16 +38,6 @@ object ScrapeCostStore {
 }
 
 /** [[ScrapeCostStore]] in memory: tests, and a worker without Mongo. Each cinema's costs are kept as
- *  [[MongoScrapeCostStore]] stores them, written to BSON and read back. */
-class InMemoryScrapeCostStore extends ScrapeCostStore {
-  private val costs = TrieMap.empty[String, Vector[ScrapeCost]]
-
-  def record(dedupKey: String, cost: ScrapeCost): Unit = {
-    val _ = costs.updateWith(dedupKey) { prior =>
-      val recent = (prior.getOrElse(Vector.empty) :+ cost).takeRight(ScrapeCostStore.RecentRuns)
-      Some(MongoScrapeCostStore.decode(tools.BsonRoundTrip(MongoScrapeCostStore.encode(dedupKey, recent)))._2.toVector)
-    }
-  }
-
-  def recent(): Map[String, Seq[ScrapeCost]] = costs.toMap
-}
+ *  [[MongoScrapeCostStore]] stores them, in one keyed store over memory's documents. */
+final class InMemoryScrapeCostStore extends KeyedScrapeCostStore(new tools.KeyedStore(new tools.InMemoryStoreDocuments(),
+  tools.KeyCodec.Text, KeyedScrapeCostStore.Codec))

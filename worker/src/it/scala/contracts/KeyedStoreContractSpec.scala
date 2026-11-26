@@ -3,6 +3,7 @@ package services.contracts
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.concurrent.{Await, Future}
 
 import org.mongodb.scala.ObservableFuture
@@ -122,6 +123,26 @@ class KeyedStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAndAft
         using implicitly, tools.DedicatedThreads), SpecTimeouts.Io)
       raised.flatten.sorted shouldBe (1L to 15L)
       store.counted("budget", "used") shouldBe 15
+    }
+
+    it should "append to a key's array, beginning it, keeping the last few, and leave the key's other fields alone" in {
+      val docs  = documents(None)
+      val store = new KeyedStore(docs, KeyCodec.Text, codec)
+      store.put("log", "note")
+      (1 to 5).foreach(n => store.append("log", "entries", new org.bson.BsonInt32(n), keep = 3))
+      store.append("other", "entries", new org.bson.BsonInt32(9), keep = 3)
+      store.get("log") shouldBe Some("note")
+      def entries(key: String) = docs.find(Seq(new org.bson.BsonString(key))).head.getArray("entries").getValues.asScala.map(_.asInt32.getValue).toSeq
+      entries("log") shouldBe Seq(3, 4, 5)
+      entries("other") shouldBe Seq(9)
+    }
+
+    it should "land every one of many racing appends within the cap" in {
+      val docs  = documents(None)
+      val store = new KeyedStore(docs, KeyCodec.Text, codec)
+      Await.result(Future.sequence((1 to 20).map(n => tools.DedicatedThreads.future(store.append("raced", "entries", new org.bson.BsonInt32(n), keep = 50))))(
+        using implicitly, tools.DedicatedThreads), SpecTimeouts.Io)
+      docs.find(Seq(new org.bson.BsonString("raced"))).head.getArray("entries").getValues.asScala.map(_.asInt32.getValue).sorted.toSeq shouldBe (1 to 20)
     }
   }
 

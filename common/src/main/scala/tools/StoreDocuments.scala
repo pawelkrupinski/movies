@@ -30,6 +30,9 @@ trait StoreDocuments {
    *  none -- or None, nothing raised, when the field already stands at `below` or more (a ceiling). In one step: two
    *  callers raising one counter at once both count. */
   def increment(id: BsonValue, field: String, by: Long, below: Option[Long]): Option[Long]
+  /** `element` added to the end of the array `field` of `id`'s document -- the document made, the array begun, when there
+   *  is none -- keeping only the last `keep`. In one step: two callers appending at once both land. */
+  def append(id: BsonValue, field: String, element: BsonValue, keep: Int): Unit
 }
 
 object StoreDocuments {
@@ -42,6 +45,7 @@ object StoreDocuments {
     def take(id: BsonValue): Option[BsonDocument]                                          = None
     def delete(ids: Seq[BsonValue]): Int                                                   = 0
     def increment(id: BsonValue, field: String, by: Long, below: Option[Long]): Option[Long] = None
+    def append(id: BsonValue, field: String, element: BsonValue, keep: Int): Unit             = ()
   }
 }
 

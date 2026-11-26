@@ -8,7 +8,7 @@ import scala.util.Try
 
 import com.mongodb.MongoWriteException
 import org.bson.{BsonDocument, BsonValue}
-import org.mongodb.scala.model.{BulkWriteOptions, Filters, FindOneAndUpdateOptions, IndexOptions, Indexes, ReplaceOneModel,
+import org.mongodb.scala.model.{BulkWriteOptions, Filters, FindOneAndUpdateOptions, IndexOptions, Indexes, PushOptions, ReplaceOneModel,
   ReplaceOptions, ReturnDocument, Sorts, UpdateOptions, Updates}
 import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
@@ -79,6 +79,11 @@ final class MongoStoreDocuments(collection: MongoCollection[BsonDocument], expir
         await(collection.findOneAndUpdate(Filters.and(byId(id), Filters.lt(field, ceiling)), Updates.inc(field, by), after).toFutureOption())
     }
     raised.map(_.get(field).asNumber.longValue)
+  }
+
+  def append(id: BsonValue, field: String, element: BsonValue, keep: Int): Unit = written {
+    await(collection.updateOne(byId(id), Updates.pushEach(field, PushOptions().slice(-keep), element), UpdateOptions().upsert(true)).toFuture())
+    ()
   }
 
   private def made(id: BsonValue, field: String): Unit =

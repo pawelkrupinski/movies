@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentSkipListMap
 
 import scala.jdk.CollectionConverters.*
 
-import org.bson.{BsonDocument, BsonInt64, BsonValue, RawBsonDocument}
+import org.bson.{BsonArray, BsonDocument, BsonInt64, BsonValue, RawBsonDocument}
 
 /**
  * [[StoreDocuments]] in a map, for tests and a process without Mongo: each kept as its BSON bytes, written as the driver
@@ -64,6 +64,16 @@ final class InMemoryStoreDocuments private (expiring: Option[(DocumentExpiry, ja
       }
     })
     raised
+  }
+
+  def append(id: BsonValue, field: String, element: BsonValue, keep: Int): Unit = {
+    swept()
+    held.compute(id, (_, was) => {
+      val document = Option(was).map(read).getOrElse(new BsonDocument("_id", id))
+      val array    = Option(document.get(field)).filter(_.isArray).fold(Seq.empty[BsonValue])(_.asArray.getValues.asScala.toSeq)
+      tools.BsonRoundTrip.bytes(document.append(field, new BsonArray((array :+ element).takeRight(keep).asJava)))
+    })
+    ()
   }
 }
 
