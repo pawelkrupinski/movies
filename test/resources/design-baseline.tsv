@@ -147,7 +147,7 @@ effect	scripts/ci/shard_weights.py	1
 effect	scripts/ci/start_mongo_replset.py	9
 effect	scripts/ci/stress_races.py	6
 effect	scripts/ci/takes_skip_gate.py	3
-effect	scripts/ci/trailers.py	2
+effect	scripts/ci/trailers.py	3
 effect	scripts/ci/trend_github.py	8
 effect	scripts/ci/trend_records.py	1
 effect	scripts/ci/trend_source.py	1
