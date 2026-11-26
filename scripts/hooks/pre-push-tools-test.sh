@@ -2,6 +2,7 @@
 # shellcheck disable=SC2154 # the stubs' and the fixture's variables, set in pre-push-test-lib.sh
 # pre-push: the known-red baseline, a check's tool missing (it blocks, with the fix) and a check making no progress.
 # Run: bash scripts/hooks/pre-push-tools-test.sh (the shared harness: pre-push-test-lib.sh)
+# script-test-reads: scripts/stall-watch.sh scripts/stall_watch.py
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pre-push-test-lib.sh"
 
 gate_setup

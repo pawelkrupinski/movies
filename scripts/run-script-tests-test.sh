@@ -574,4 +574,11 @@ check "...on 3 cores the extra 2 does not fit: the ticket min(--jobs, tests) wid
   > "$work/out" 2>&1
 check "...under a parent's ticket the wide test gets one core" "width=1" "$(cat "$work/seen")"
 
+# The watchdog the pre-push hook runs reaches its self-test only through the hook (2026-11-26: 14eb62591d changed
+# stall-watch.sh, --changed never selected pre-push-tools-test.sh, and its stalled-check case failed on main): this
+# checkout's own tools test declares what it reads, so an edit to the watchdog selects it.
+printf 'scripts/stall-watch.sh\nscripts/stall_watch.py\n' > "$work/stall-paths"
+check "--paths: an edit to the stall watchdog selects the hook's tools test, which runs it through the hook" "2" \
+  "$("$BASH" "$REPO_ROOT/scripts/run-script-tests" --list --paths "$work/stall-paths" 2>/dev/null | cut -f1 | grep -c 'scripts/hooks/pre-push-tools-test.sh\|scripts/stall_watch_test.py')"
+
 spec_summary
