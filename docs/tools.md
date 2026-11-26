@@ -554,7 +554,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/wait-for-mongo-tunnel.sh` | Open the CI end of the route to prod Mongo and return only once bytes flow through it | `scripts/ci/wait-for-mongo-tunnel.sh` | wf country-convergence-leg, identity-capture, record-scrape-fixtures; 4 tools | wait_for_mongo_tunnel_test.py | KEEP |
 | `scripts/ci/wait_for_mongo_tunnel.py` | Open the CI end of the route to prod Mongo and DO NOT RETURN until bytes actually flow through it -- then hold it | `scripts/ci/wait_for_mongo_tunnel.py` | 2 tools | wait_for_mongo_tunnel_test.py | Python |
 | `scripts/discover-cinemas/discover.py` | Discover new UK cinemas on flicks.co.uk and wire them into the catalog. | `python3 scripts/discover-cinemas/discover.py` | wf decoration-discovery, discover-cinemas, nix-stage-closures; 4 tools | discover_test.py | Python |
-| `scripts/fleet-db-finish` | Count the fleet's three old collections in Poland's kinowo and drop them on an exact request (fleet DB migration, step 9) | `scripts/fleet-db-finish` | 2 tools | fleet-db-finish-test.sh | MIGRATE |
+| `scripts/fleet-db-finish` | Count the fleet's three old collections in Poland's kinowo and drop them on an exact request (fleet DB migration, step 9) | `scripts/fleet-db-finish` | 3 tools | fleet_db_finish_test.py | KEEP |
 | `scripts/lib/mongo_local.py` | THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib; | `imported` | 11 tools | - | Python |
 | `scripts/local-mirror/freshness` | How current the local prod mirror (:28017) is, per country — for every tool that reads it (identity-slice --prod-mirror, listing-history, …) | `scripts/local-mirror/freshness` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation; 25 tools | freshness-test.sh | KEEP |
 | `scripts/local-mirror/local-mongo.sh` | The one place that knows how to make the local mirror Mongo reachable | `scripts/local-mirror/local-mongo.sh` | 1 tool | - | KEEP |
@@ -565,7 +565,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/local-mirror/mirror_settings.py` | WHAT EVERY PROCESS OF THE MIRROR DAEMON SHARES (mirror.py): its endpoints and knobs, read once from the environment | `imported` | 4 tools | - | Python |
 | `scripts/local-mirror/mirror_supervisor.py` | ONE DATABASE'S SUPERVISOR (mirror.py --supervise <db> <force>), a child process of the daemon: every cycle it | `imported` | 1 tool | - | Python |
 | `scripts/local-mirror/mirror_upkeep.py` | THE DAEMON PARENT'S UPKEEP (mirror.py): its log kept under a size cap, what an earlier run left behind swept up, the | `imported` | 1 tool | - | Python |
-| `scripts/local-mirror/mongosh-at.sh` | `mongosh uri ARGS…` without the uri — and the password in it — on mongosh's command line, where `ps` shows it to every user | `scripts/local-mirror/mongosh-at.sh` | 7 tools | mongosh-at-test.sh | KEEP |
+| `scripts/local-mirror/mongosh-at.sh` | `mongosh uri ARGS…` without the uri — and the password in it — on mongosh's command line, where `ps` shows it to every user | `scripts/local-mirror/mongosh-at.sh` | 8 tools | mongosh-at-test.sh | KEEP |
 | `scripts/local-mirror/prod-tunnel.sh` | The one place that knows how a laptop reaches prod Mongo | `bash scripts/local-mirror/prod-tunnel.sh` | 9 tools | prod-tunnel-test.sh | MIGRATE |
 | `scripts/local-mirror/service.py` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure. | `scripts/local-mirror/service.py` | wf country-convergence-leg, nix-stage-closures; hook pre-push; skill external-api-rate-limits, identity-investigation, record-client-fixtures; 15 tools | service_test.py | Python |
 | `scripts/local-mirror/service.sh` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure (service.py beside it; this name is what the plist and the README run) | `scripts/local-mirror/service.sh` | 7 tools | service_test.py | KEEP |
@@ -670,7 +670,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (92)
+## Dev (93)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -688,6 +688,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/dead-code` | The dead-code finder (CLAUDE.md, "Cleanup and displaced-code audit"): production classes, objects and methods nothing calls, ranked | `scripts/dead-code` | skill test-layers; 2 tools | dead-code-test.sh | KEEP |
 | `scripts/dead_code.py` | THE DEAD-CODE LIST, ranked (scripts/dead-code): `deadCode`'s rows (project/DeadCode.scala: kind, verdict, name, | `python3 scripts/dead_code.py` | 1 tool | dead_code_test.py | Python |
 | `scripts/dev-server.sh` | Local dev server, run under a deliberately smaller heap than the rest of sbt | `scripts/dev-server.sh` | 3 tools | dev-server-test.sh | KEEP |
+| `scripts/fleet_db_finish.py` | Count the fleet's three old collections in Poland's kinowo and drop them on an exact request (fleet DB migration, step 9) | `scripts/fleet_db_finish.py` | 1 tool | fleet_db_finish_test.py | Python |
 | `scripts/hooks-path.sh` | What an absolute core.hooksPath names, for the two tools that mend one: scripts/install-hooks.sh and the pre-push hook | `bash scripts/hooks-path.sh` | hook pre-push; agentctl; 1 tool | - | KEEP |
 | `scripts/hotspots` | The hotspot report (CLAUDE.md, "Code quality ratchets"; a report, never a gate) | `scripts/hotspots` | wf quality-hotspots, report-timings; skill CLAUDE.md, test-layers; 2 tools | - | KEEP |
 | `scripts/ios-compile-check.sh` | Compile the iOS code the ways CI does and a Mac's `swift test` does not (a name for ios_compile_check.py) | `scripts/ios-compile-check.sh` | hook pre-push; 1 tool | ios_compile_check_test.py | KEEP |
@@ -710,7 +711,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 22 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 21 tools | tool_github_test.py | Python |
 | `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 94 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 95 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 15 tools | tool_python_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 20 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |

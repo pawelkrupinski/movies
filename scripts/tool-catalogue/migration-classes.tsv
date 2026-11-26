@@ -145,7 +145,7 @@ scripts/dead-code	KEEP
 scripts/deploy-watch	KEEP
 scripts/dev-server.sh	KEEP
 scripts/fail-before	MIGRATE
-scripts/fleet-db-finish	MIGRATE
+scripts/fleet-db-finish	KEEP
 scripts/flip-timeline	KEEP
 scripts/floor-bash	KEEP
 scripts/gitops-specs	KEEP
