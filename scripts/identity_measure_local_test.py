@@ -227,6 +227,17 @@ class MeasureLocalTest(cli_harness.ToolCase):
         self.assertEqual(0, runner.wait(120), self.text("locked.out"))
         self.assertEqual(2, len([c for c in self.calls() if c.startswith(third)]))
 
+    def test_a_ref_held_past_the_lock_deadline_is_given_up_on_naming_its_holder(self) -> None:
+        fifth = self.commit("fifth")
+        holder = self.hold_lock(os.path.join(self.store, f"{fifth}.flock"))
+        runner = self.start("stuck", "--base", self.base, "--head", fifth, "--countries", "pl", "--out",
+                            self.path("stuck"), KINOWO_MEASURE_LOCAL_POLL="0.2", KINOWO_MEASURE_LOCAL_LOCK_WAIT="1")
+        code = runner.wait(60)
+        holder.kill()
+        holder.wait()
+        self.assertNotEqual(0, code, self.text("stuck.out"))
+        self.assertIn(f"is still being resolved by pid {holder.pid} after 1s", self.text("stuck.out"))
+
     def test_every_jvm_slot_busy_the_resolve_waits_for_one(self) -> None:
         fourth = self.commit("fourth")
         slot = self.path("cache", "jvm-slots", "1.flock")
