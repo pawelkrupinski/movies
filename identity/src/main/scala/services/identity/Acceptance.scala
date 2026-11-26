@@ -1,22 +1,22 @@
 package services.identity
 
 import services.identity.AcceptanceRule.Weighing
-import services.identity.measures.IdentityMeasures.ListingFilm
 import services.identity.measures.Scored.Accepted
-import services.identity.measures.{DecisionTrace, IdentityMeasures, Measure, Scored}
+import services.identity.measures.{DecisionTrace, IdentityMeasures, Scored}
 
 /** Which of a listing's scored candidates — ranked best first, the denied ones among them — it TAKES, and at what
  *  confidence: [[aloneNamed]] for a node on its own evidence, [[pooled]] for a cluster's pooled evidence. Every rule is
  *  a row of [[AcceptanceRuleTable]], each a function of the ranked candidates alone, tried in the table's order, the
  *  first to accept deciding; the listing's season production, when a record names it, pre-empts them all
- *  ([[seasonProduction]]). A new rule is a new row there, its questions named in the rule file of its kind (title,
- *  facts, calibration, stage, vetoes, bills); this class only runs the table. */
-private[identity] final class Acceptance(private[identity] val calibration: IdentityCalibration)
-    extends AcceptanceRuleTable {
+ *  ([[seasonProduction]]). A new rule is a new row there, its questions functions of the rule object of its kind
+ *  ([[AcceptanceTitleRules]]: the title, bills and vetoes; [[AcceptanceFactRules]]: the facts and the calibrated rules;
+ *  [[AcceptanceStageRules]]: stage relays); this class only runs the table. */
+private[identity] final class Acceptance(private[identity] val calibration: IdentityCalibration) {
 
   val weights = new EvidenceWeights(calibration)
-  import weights.{against, fitsBetter, own, speaksAgainst}
-  import Acceptance.Refused
+  import weights.own
+  import AcceptanceRuleTable.{Calibrated, ExactTopHit, NumbersItsOwnInstalment, RelayRecord, SeasonRecord, Vetoes, aloneRules, atOwn,
+    pooledRules}
   import AcceptanceTitleRules.takesNoBill
 
   /** A rule's verdict: the film it accepts, or the first of its steps that refused — the identity trace's
@@ -24,65 +24,8 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
    *  was weighing when it did and what that candidate's evidence said ([[Acceptance.Refused]]). */
   private[identity] type Verdict = AcceptanceRule.Verdict
 
-  /** Neither denied nor reached only by IMDb's suggestion ([[Scored.suggestedOnly]]): a candidate the rules may take. */
-  private[identity] def isEligible(scored: Scored): Boolean = AcceptanceRule.isEligible(scored)
-  private[identity] def eligibleOf(ranked: Seq[Scored]): Seq[Scored] = ranked.filter(isEligible)
   /** `ranked` as the rules weigh it. */
   private[identity] def weighing(ranked: Seq[Scored]): Weighing = new Weighing(ranked, weights)
-
-  // ── what a rule takes its candidate at ──────────────────────────────────────────────────────
-
-  /** At its own probability. */
-  private[identity] lazy val atItsOwn: AcceptanceRule.Take = (_, scored) => Right(atOwn(scored))
-  private[identity] def atOwn(scored: Scored): Accepted = scored -> scored.probability
-  /** At what the priors lend the best eligible candidate ([[AcceptanceRule.Weighing.lentToTheBest]]). */
-  private[identity] lazy val atWhatThePriorsLend: AcceptanceRule.Take = (weighing, best) => Right(best -> weighing.lentToTheBest)
-  /** At what its evidence CLASS measured, its evidence read as `measures` makes it ([[classAccepted]]). */
-  private[identity] def atItsClass(measures: Scored => Map[String, Measure]): AcceptanceRule.Take =
-    (_, scored) => classAccepted(scored, measures(scored))
-  /** UNOPPOSED, read as `weighed` makes it (the candidate read as the rule reads its title): nothing it publishes speaks
-   *  against it so read, no other of `among` fits its facts so read better, and its evidence class clears the cut
-   *  ([[classAccepted]]). */
-  private[identity] def unopposedAs(weighed: Scored => Scored, among: Weighing => Seq[Scored] = _.eligible): AcceptanceRule.Take =
-    (weighing, scored) => {
-      val read = weighed(scored)
-      if (speaksAgainst(read)) Left(Refused("a published fact weighs against it", Some(scored.candidate.tmdbId), against(read).mkString(" ")))
-      else among(weighing).find(rival => (rival ne scored) && fitsBetter(rival, read))
-        .fold(classAccepted(scored, read.measures))(rival => Left(Refused("a rival fits its facts better", Some(scored.candidate.tmdbId), Acceptance.named(rival))))
-    }
-  /** `scored` at what its evidence CLASS measured (`IdentityCalibration.classProbability`), lending and never withdrawing —
-   *  its class read with the namesakes the release veto took away counted as no rivals ([[Scored.unvetoed]]). */
-  private[identity] def classAccepted(scored: Scored, measures: Map[String, Measure]): Verdict =
-    calibration.classProbability(ListingFilm, scored.unvetoed(measures)).toRight(Refused("no evidence class measured for it", Some(scored.candidate.tmdbId)))
-      .flatMap { classProbability =>
-        val lent = math.max(scored.probability, classProbability)
-        Either.cond(calibration.showsRatings(lent), scored -> lent, Refused("below the rating cut", Some(scored.candidate.tmdbId), cut(lent)))
-      }
-
-  // ── what the rows' refusals say ──────────────────────────────────────────────────────────────
-
-  private[identity] def cut(probability: Double) = f"${probability * 100}%.1f%% < ${calibration.ratingCut * 100}%.1f%%"
-  /** What a listing's facts leave a director's rule to go on: its credit, or that it credits nobody. */
-  private[identity] def credited(ranked: Seq[Scored]): String =
-    ranked.headOption.map(_.listing.directors).filter(_.nonEmpty).fold("the listing credits no director")(names => s"credits ${names.mkString(", ")}")
-  private[identity] def firstHit(ranked: Seq[Scored]): String = ranked.find(_.rank.contains(1)).fold("its search returned nothing")(hit => s"first hit ${Acceptance.named(hit)}")
-  /** Why the best candidate is not eligible, if it is denied. */
-  private[identity] def bestDenied(weighing: Weighing): String = weighing.ranked.headOption.flatMap(_.denial).fold("")(denial => s"best denied: $denial")
-  private[identity] def titleRelation(scored: Scored): String = s"title=${scored.category("title").getOrElse("absent")}"
-  private[identity] def titleYearDelta(scored: Scored): String = scored.number("titleYear.delta").fold("")(delta => f"titleYear.delta=$delta%.0f")
-  private[identity] def numeral(scored: Scored): String = s"numeral=${scored.category("numeral").getOrElse("")}"
-
-  // ── questions several rules ask ──────────────────────────────────────────────────────────────
-
-  private[identity] def joinedToAnotherWork(weighing: Weighing, scored: Scored): Boolean =
-    IdentityMeasures.joinsAnotherWork(weighing.listing, scored.candidate.film)
-  /** `found` without its HOLLOW records — no year, no running time — when it holds a full one beside them: TMDB's empty
-   *  duplicate of a film ("Solo", 1450958, beside Sophie Dupuis's 2023 "Solo") is no second film of its director. */
-  private[identity] def withoutHollow(found: Seq[Scored]): Seq[Scored] = {
-    def hollow(scored: Scored) = scored.candidate.film.year.isEmpty && scored.candidate.film.runtime.forall(_ <= 0)
-    val full = found.filterNot(hollow)
-    if (full.nonEmpty && full.size < found.size) full else found
-  }
 
   // ── running the table ────────────────────────────────────────────────────────────────────────
 
@@ -175,7 +118,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     topHit(ranked).filter(_._1.candidate.tmdbId == film).map(_._2)
       .orElse(calibrated(ranked).toOption.filter(_._1.candidate.tmdbId == film).map(_._2))
       .orElse(pooled(ranked).filter(_._1.candidate.tmdbId == film).map(_._2))
-      .getOrElse(eligibleOf(ranked).find(_.candidate.tmdbId == film).fold(0.0)(_.probability))
+      .getOrElse(ranked.filter(AcceptanceRule.isEligible).find(_.candidate.tmdbId == film).fold(0.0)(_.probability))
 
   /** Why an own match's confidence stands above its calibrated probability: its exact top hit's
    *  class, or the ranking priors lending ([[EvidenceWeights.priorsLent]]) — naming each rival the release veto took

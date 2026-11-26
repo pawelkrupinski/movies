@@ -1,7 +1,10 @@
 package services.identity
 
-import services.identity.AcceptanceRule.{First, Need, NeedOf, NoneOf, One, PickedBy, Veto}
-import services.identity.measures.{FactRelations, IdentityMeasures, MultiFilmBill}
+import services.identity.Acceptance.Refused
+import services.identity.AcceptanceRule.{First, Need, NeedOf, NoneOf, One, PickedBy, Veto, Weighing}
+import services.identity.measures.IdentityMeasures.ListingFilm
+import services.identity.measures.Scored.Accepted
+import services.identity.measures.{FactRelations, IdentityMeasures, Measure, MultiFilmBill, Scored}
 
 /** EVERY ACCEPTANCE RULE, one row each, in the order they are tried: what a node takes ALONE ([[aloneRules]]), what a
  *  cluster takes on its POOLED evidence ([[pooledRules]]), and the VETOES every rule's take is asked after it
@@ -10,8 +13,9 @@ import services.identity.measures.{FactRelations, IdentityMeasures, MultiFilmBil
  *  numbers another instalment. A row reads top to bottom as the rule does: what it requires of the ranking, how it
  *  picks its one candidate, each check that candidate must pass with the refusal the trace names it by, and what it
  *  takes the candidate at ([[AcceptanceRule]]); what a check asks is a named question of the rule files beside this
- *  one. Part of [[Acceptance]], which mixes it in. */
-private[identity] trait AcceptanceRuleTable { this: Acceptance =>
+ *  one. Every row reads the calibration and the evidence weights off the weighing it is handed; [[Acceptance]] runs
+ *  them. */
+private[identity] object AcceptanceRuleTable {
   import AcceptanceFactRules.{aNameAlone, anotherNamedBesideItsWork, asItsTitlesTopHit, contradicted, contradiction, datedTitles,
     directorsTitles, directorsWorks, firstHitsTitlingTheirWork, undated}
   import AcceptanceFactRules.{anotherOfItsDirector, closerThan, namedAlikeAndFittingBetter, namedWithinAnother, newerNamedAlikeByAFestival,
@@ -34,6 +38,64 @@ private[identity] trait AcceptanceRuleTable { this: Acceptance =>
   private[identity] lazy val Vetoes: List[Veto] = List(NumbersItsOwnInstalment, NoOtherFilmOfItsDirectorBeside, Takeable,
     OnNoReusedPage, NotPerformedBeside, NotAnAuthorsNamesake, NotANameAlone, NotAStagedShowsOwn, ReadsAsAFilm)
 
+  // ── what a rule takes its candidate at ──────────────────────────────────────────────────────
+
+  /** At its own probability. */
+  private[identity] lazy val atItsOwn: AcceptanceRule.Take = (_, scored) => Right(atOwn(scored))
+  private[identity] def atOwn(scored: Scored): Accepted = scored -> scored.probability
+  /** At what the priors lend the best eligible candidate ([[AcceptanceRule.Weighing.lentToTheBest]]). */
+  private[identity] lazy val atWhatThePriorsLend: AcceptanceRule.Take = (weighing, best) => Right(best -> weighing.lentToTheBest)
+  /** At what its evidence CLASS measured, its evidence read as `measures` makes it ([[classAccepted]]). */
+  private[identity] def atItsClass(measures: Scored => Map[String, Measure]): AcceptanceRule.Take =
+    (weighing, scored) => classAccepted(weighing, scored, measures(scored))
+  /** UNOPPOSED, read as `weighed` makes it (the candidate read as the rule reads its title): nothing it publishes speaks
+   *  against it so read, no other of `among` fits its facts so read better, and its evidence class clears the cut
+   *  ([[classAccepted]]). */
+  private[identity] def unopposedAs(weighed: Scored => Scored, among: Weighing => Seq[Scored] = _.eligible): AcceptanceRule.Take =
+    (weighing, scored) => {
+      val read    = weighed(scored)
+      val weights = weighing.weights
+      if (weights.speaksAgainst(read)) Left(Refused("a published fact weighs against it", Some(scored.candidate.tmdbId), weights.against(read).mkString(" ")))
+      else among(weighing).find(rival => (rival ne scored) && weights.fitsBetter(rival, read))
+        .fold(classAccepted(weighing, scored, read.measures))(rival => Left(Refused("a rival fits its facts better", Some(scored.candidate.tmdbId), Acceptance.named(rival))))
+    }
+  /** `scored` at what its evidence CLASS measured (`IdentityCalibration.classProbability`), lending and never withdrawing —
+   *  its class read with the namesakes the release veto took away counted as no rivals ([[Scored.unvetoed]]). */
+  private[identity] def classAccepted(weighing: Weighing, scored: Scored, measures: Map[String, Measure]): AcceptanceRule.Verdict = {
+    val calibration = weighing.weights.calibration
+    calibration.classProbability(ListingFilm, scored.unvetoed(measures)).toRight(Refused("no evidence class measured for it", Some(scored.candidate.tmdbId)))
+      .flatMap { classProbability =>
+        val lent = math.max(scored.probability, classProbability)
+        Either.cond(calibration.showsRatings(lent), scored -> lent, Refused("below the rating cut", Some(scored.candidate.tmdbId), cut(calibration, lent)))
+      }
+  }
+
+  // ── what the rows' refusals say ──────────────────────────────────────────────────────────────
+
+  private[identity] def cut(calibration: IdentityCalibration, probability: Double) =
+    f"${probability * 100}%.1f%% < ${calibration.ratingCut * 100}%.1f%%"
+  /** What a listing's facts leave a director's rule to go on: its credit, or that it credits nobody. */
+  private[identity] def credited(ranked: Seq[Scored]): String =
+    ranked.headOption.map(_.listing.directors).filter(_.nonEmpty).fold("the listing credits no director")(names => s"credits ${names.mkString(", ")}")
+  private[identity] def firstHit(ranked: Seq[Scored]): String = ranked.find(_.rank.contains(1)).fold("its search returned nothing")(hit => s"first hit ${Acceptance.named(hit)}")
+  /** Why the best candidate is not eligible, if it is denied. */
+  private[identity] def bestDenied(weighing: Weighing): String = weighing.ranked.headOption.flatMap(_.denial).fold("")(denial => s"best denied: $denial")
+  private[identity] def titleRelation(scored: Scored): String = s"title=${scored.category("title").getOrElse("absent")}"
+  private[identity] def titleYearDelta(scored: Scored): String = scored.number("titleYear.delta").fold("")(delta => f"titleYear.delta=$delta%.0f")
+  private[identity] def numeral(scored: Scored): String = s"numeral=${scored.category("numeral").getOrElse("")}"
+
+  // ── questions several rules ask ──────────────────────────────────────────────────────────────
+
+  private[identity] def joinedToAnotherWork(weighing: Weighing, scored: Scored): Boolean =
+    IdentityMeasures.joinsAnotherWork(weighing.listing, scored.candidate.film)
+  /** `found` without its HOLLOW records — no year, no running time — when it holds a full one beside them: TMDB's empty
+   *  duplicate of a film ("Solo", 1450958, beside Sophie Dupuis's 2023 "Solo") is no second film of its director. */
+  private[identity] def withoutHollow(found: Seq[Scored]): Seq[Scored] = {
+    def hollow(scored: Scored) = scored.candidate.film.year.isEmpty && scored.candidate.film.runtime.forall(_ <= 0)
+    val full = found.filterNot(hollow)
+    if (full.nonEmpty && full.size < found.size) full else found
+  }
+
   // ── steps several rules share ───────────────────────────────────────────────────────────────
 
   private lazy val HasCandidate = Need("no candidate", _.ranked.nonEmpty)
@@ -46,8 +108,8 @@ private[identity] trait AcceptanceRuleTable { this: Acceptance =>
   /** A film the title numbers as ANOTHER instalment than its own ([[IdentityMeasures.OtherInstalment]]). */
   private lazy val NotAnotherInstalment = NeedOf("the title numbers another instalment", (_, scored) => !otherInstalment(scored), (_, scored) => numeral(scored))
   /** The best eligible candidate's probability, the priors lending ([[AcceptanceRule.Weighing.lentToTheBest]]), clears the cut. */
-  private lazy val ClearsTheCut = NeedOf("below the rating cut", (weighing, _) => calibration.showsRatings(weighing.lentToTheBest),
-    (weighing, _) => cut(weighing.lentToTheBest))
+  private lazy val ClearsTheCut = NeedOf("below the rating cut", (weighing, _) => weighing.weights.calibration.showsRatings(weighing.lentToTheBest),
+    (weighing, _) => cut(weighing.weights.calibration, weighing.lentToTheBest))
   private lazy val BestEligible = First(_.eligible, "no eligible candidate", bestDenied)
 
   // ── the rules ───────────────────────────────────────────────────────────────────────────────
