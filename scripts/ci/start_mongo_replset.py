@@ -90,7 +90,8 @@ class Starter:
         # The pin's tag is the release (MongoServerVersionParitySpec), so the baked home is /opt/mongodb/<that tag>.
         self.native_home = env.get("MONGO_NATIVE_HOME") or "/opt/mongodb/" + (
             pinned_image(env, "--pin", "mongo", "tag") or "")
-        self.marker = env.get("MONGO_NATIVE_MARKER") or "/tmp/kinowo-mongo-native"
+        # In the runner's own temp directory (per runner, so two runners of one host never share it), else /tmp.
+        self.marker = env.get("MONGO_NATIVE_MARKER") or os.path.join(env.get("RUNNER_TEMP") or "/tmp", "kinowo-mongo-native")
         self.env = {**env, "MONGO_NATIVE_MARKER": self.marker}
         self.log = env.get("MONGO_NATIVE_LOG") or os.path.join(tempfile.mkdtemp(prefix="mongod-"), "mongod.log")  # 0700, per run
         self.native = not env.get("MONGO_NO_NATIVE") and all(

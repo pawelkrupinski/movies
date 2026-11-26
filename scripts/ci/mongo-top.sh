@@ -11,11 +11,14 @@
 # Sampled rather than read once at the end: a suite drops its databases as it finishes, and mongod
 # forgets a dropped namespace's counters, so each namespace keeps the last counters it was seen with.
 set -uo pipefail
-summary=/tmp/mongo-top.json
+# Where the samples go, the same for `start` and `report`: the runner's own temp directory beside a native mongod
+# (a fixed /tmp name is shared by every runner of the host), the container's /tmp otherwise (mongo-exec.sh).
+exec_tool="$(dirname "$0")/mongo-exec.sh"
+summary="$("$exec_tool" --scratch-dir)/mongo-top.json"
 case "${1:-}" in
   start)
     interval="${2:-20}"
-    "$(dirname "$0")/mongo-exec.sh" -d mongosh --quiet --eval "
+    "$exec_tool" -d mongosh --quiet --eval "
       const fs = require('fs'); const seen = {};
       while (true) {
         for (const [ns, t] of Object.entries(db.adminCommand({ top: 1 }).totals)) {
@@ -27,7 +30,7 @@ case "${1:-}" in
       }" ;;
   report)
     limit="${2:-15}"
-    "$(dirname "$0")/mongo-exec.sh" mongosh --quiet --eval "
+    "$exec_tool" mongosh --quiet --eval "
       const seen = JSON.parse(require('fs').readFileSync('$summary', 'utf8')); const totals = {};
       for (const [ns, s] of Object.entries(seen)) {
         const t = totals[ns.slice(ns.indexOf('.') + 1)] ??= { ms: 0, reads: 0, writes: 0 };

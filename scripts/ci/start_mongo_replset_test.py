@@ -198,6 +198,18 @@ class StartMongoReplsetTest(cli_harness.ToolCase):
         self.assertEqual(0, self.mongo_exec("none", "-d", "du", "-sh", "/data/db"))
         self.assertEqual(["exec -d -e HOME=/tmp mongo du -sh /data/db"], self.logged())
 
+    def test_the_marker_is_kept_in_the_runners_temp_directory_not_a_name_every_runner_of_the_host_shares(self) -> None:
+        runner = self.path("runner")
+        os.makedirs(runner)
+        env = {**self.base_env("healthy"), "MONGO_NATIVE_MARKER": None, "RUNNER_TEMP": runner,
+               "MONGO_START_TIMEOUT_SECONDS": "2", "MONGO_NATIVE_HOME": self.native}
+        self.write("log", "")
+        self.assertEqual(0, self.run_tool(env=env).code)
+        self.assertEqual(self.native + "\n", self.read("runner/kinowo-mongo-native"))
+        self.write("log", "")
+        self.assertEqual(0, self.run_tool("mongosh", "--quiet", tool=MONGO_EXEC, env=env).code)  # found there too
+        self.assertEqual(["mongosh HOME=/tmp --quiet"], self.logged())
+
     def test_the_native_data_directory_on_a_tmpfs_of_the_size_asked_for(self) -> None:
         self.start("healthy", native=True, MONGO_TMPFS="6g")
         uid, gid = os.getuid(), os.getgid()
