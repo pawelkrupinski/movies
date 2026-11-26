@@ -152,8 +152,20 @@ class ReportOnly(unittest.TestCase):
         self.assertTrue(only, why)
         self.assertIn("commit rules", why)
 
-    def test_a_job_the_registry_does_not_know_is_unproven(self):
-        self.assertTrue(self.verdict("e2e (brand new)", "ci")[0])
+    def test_a_job_the_registry_does_not_know_gates(self):
+        only, why = self.verdict("e2e (brand new)", "ci")
+        self.assertFalse(only, why)
+        self.assertIn("e2e (brand new)", why)
+
+    def test_a_new_matrix_leg_with_no_row_gates_though_a_sibling_has_one(self):
+        rows = load_rows(REGISTRY + CALLED)
+        jobs = [{"name": "leg (xx) / takes-drift-aa (xx)", "conclusion": "failure"}]
+        self.assertFalse(g.report_only(rows, "identity-model-convergence.yml", jobs)[0])
+
+    def test_a_pattern_row_covers_every_leg_it_matches(self):
+        pattern = {"kind": "job", "workflow": "main.yml", "name": "e2e (*)", "proven": "unproven", "note": "owner"}
+        jobs = [{"name": "e2e (brand new)", "conclusion": "failure"}]
+        self.assertTrue(g.report_only(self.rows + [pattern], "main.yml", jobs)[0])
 
     def test_a_proven_job_failing_gates(self):
         only, why = self.verdict("test (heavy1)", "commit rules", "ci")

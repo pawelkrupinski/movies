@@ -35,6 +35,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from typing import List, Mapping, Optional
 
@@ -133,7 +134,7 @@ class Tunnel:
         self.env = env
         self.paths = TunnelPaths.of(env)
         self.target = env.get("MONGO_CI_SSH_TARGET") or TARGET
-        self.log = env.get("TUNNEL_LOG") or "/tmp/mongo-tunnel.log"
+        self.log = env.get("TUNNEL_LOG") or os.path.join(tempfile.mkdtemp(prefix="mongo-tunnel-"), "tunnel.log")  # 0700, per run
         self.tries = int(env.get("TUNNEL_ATTEMPTS", "3")) * int(env.get("TUNNEL_PROBE_TRIES", "30"))
 
     def ssh(self) -> List[str]:

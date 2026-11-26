@@ -121,11 +121,21 @@ if [ -z "${BOUNDED_STEP:-}" ]; then
   set +m
   echo "$_bounded_pid $0" > "$(bounded_step_dir)/$BOUNDED_STEP"
   # A runner that does signal the step (github.com cancels this way) ends the whole group, not this shell alone.
-  trap 'kill -TERM -- "-$_bounded_pid" 2>/dev/null' TERM INT HUP
+  # A step that ignores TERM is killed after BOUNDED_STEP_GRACE seconds (30): this wrapper never waits on it for ever.
+  _bounded_killer=""
+  _bounded_signalled() {
+    kill -TERM -- "-$_bounded_pid" 2>/dev/null
+    if [ -z "$_bounded_killer" ]; then
+      ( sleep "${BOUNDED_STEP_GRACE:-30}"; kill -KILL -- "-$_bounded_pid" 2>/dev/null ) &
+      _bounded_killer=$!
+    fi
+  }
+  trap _bounded_signalled TERM INT HUP
   _bounded_rc=0
   wait "$_bounded_pid" || _bounded_rc=$?
   # A trapped signal interrupts `wait`; wait for the group's leader to actually end.
   while kill -0 "$_bounded_pid" 2>/dev/null; do wait "$_bounded_pid" || _bounded_rc=$?; done
+  if [ -n "$_bounded_killer" ]; then kill "$_bounded_killer" 2>/dev/null; fi
   rm -f "$(bounded_step_dir)/$BOUNDED_STEP"
   exit "$_bounded_rc"
 fi

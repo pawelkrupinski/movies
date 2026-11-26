@@ -148,12 +148,28 @@ class CommitRulesCiTest(cli_harness.ToolCase):
                 self.assertEqual(0, self.ci(env=env), self.out)
                 self.assertIn("commit-rules-ci: no green Main run and no push base: nothing to judge", self.out)
 
-    def test_a_base_that_is_no_ancestor_passes_saying_so(self) -> None:
+    def test_a_base_that_is_no_ancestor_judges_from_the_merge_base_and_advances_the_ref(self) -> None:
         other = self.commit("docs/z.md", "z", "elsewhere")
         self.git(self.checkout, "reset", "-q", "--hard", self.base)
         self.commit("docs/w.md", "w", "here")
-        self.assertEqual(0, self.ci("--base", other), self.out)
-        self.assertIn(f"commit-rules-ci: {other} is no ancestor of HEAD: nothing to judge", self.out)
+        self.assertEqual(0, self.on_main("--base", other), self.out)
+        self.assertIn(f"commit-rules-ci: {other} is no ancestor of HEAD (history rewritten): judging from the merge-base",
+                      self.out)
+        self.assertIn("  allowlists: every commit holds", self.out)
+        self.assertEqual(self.git(self.checkout, "rev-parse", "HEAD"), self.verified())
+
+    def test_a_rewritten_history_still_judges_the_commits_since_the_merge_base(self) -> None:
+        other = self.commit("docs/z.md", "z", "elsewhere")
+        self.git(self.checkout, "reset", "-q", "--hard", self.base)
+        self.commit(LIST, "pl\tv\tt\twhy", "adds an allow row")
+        self.assertNotEqual(0, self.ci("--base", other), self.out)
+
+    def test_a_base_sharing_no_history_with_head_is_no_verdict_exit_2(self) -> None:
+        self.git(self.checkout, "checkout", "-q", "--orphan", "island")
+        self.git(self.checkout, "commit", "-qm", "island", "--allow-empty")
+        island = self.git(self.checkout, "rev-parse", "HEAD")
+        self.git(self.checkout, "checkout", "-q", "main")
+        self.assertEqual(2, self.ci("--base", island), self.out)
 
     def test_an_origin_that_cannot_be_read_is_no_verdict_exit_2(self) -> None:
         self.git(self.checkout, "remote", "set-url", "origin", self.path("no-such-origin"))

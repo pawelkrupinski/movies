@@ -91,6 +91,17 @@ class CountriesTest(unittest.TestCase):
         r = Repo({RULES: HEADER + row("a", "pl,de") + row("b", "de")}, {RULES: HEADER + row("b", "de") + row("a", "pl,de")})
         self.assertEqual(r.countries(), ["de"])
 
+    def test_the_cli_reads_the_diff_when_stdin_is_empty_never_no_country(self):
+        r = Repo({RULES: HEADER + row("a", "pl,de")}, {RULES: HEADER + row("a", "pl,de", pattern="y")})
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        for kind in ("devnull", "empty pipe"):
+            with self.subTest(stdin=kind):
+                stdin = {"stdin": subprocess.DEVNULL} if kind == "devnull" else {"input": ""}
+                done = subprocess.run([sys.executable, "-B", ii.__file__, "countries", r.base, r.head, "--tree", r.path],
+                                      cwd=r.path, env=env, capture_output=True, text=True, **stdin)
+                self.assertEqual(0, done.returncode, done.stderr)
+                self.assertEqual("de,pl", ",".join(sorted(done.stdout.strip().split(","))), done.stdout)
+
     def test_comments_reach_no_country(self):
         r = Repo({RULES: HEADER + row("a")}, {RULES: HEADER + "# a note\n" + row("a")})
         self.assertEqual(r.countries(), [])

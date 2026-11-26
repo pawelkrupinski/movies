@@ -46,6 +46,7 @@ import re
 import resource
 import subprocess
 import sys
+import tempfile
 import time
 from typing import Callable, List, Mapping, Optional, Sequence
 
@@ -91,7 +92,7 @@ class Starter:
             pinned_image(env, "--pin", "mongo", "tag") or "")
         self.marker = env.get("MONGO_NATIVE_MARKER") or "/tmp/kinowo-mongo-native"
         self.env = {**env, "MONGO_NATIVE_MARKER": self.marker}
-        self.log = env.get("MONGO_NATIVE_LOG") or "/tmp/mongod.log"
+        self.log = env.get("MONGO_NATIVE_LOG") or os.path.join(tempfile.mkdtemp(prefix="mongod-"), "mongod.log")  # 0700, per run
         self.native = not env.get("MONGO_NO_NATIVE") and all(
             os.access(os.path.join(self.native_home, "bin", name), os.X_OK) for name in ("mongod", "mongosh"))
 

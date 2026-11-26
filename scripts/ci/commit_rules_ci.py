@@ -88,10 +88,13 @@ class CommitRules:
                 "fetch", "--quiet", "--no-tags", "--filter=blob:none", "origin", base, timeout=120):
             print(f"::error title=commit rules::no commit {base} to judge from")
             return 2
-        if not self.git.ok("merge-base", "--is-ancestor", base, "HEAD"):
-            print(f"commit-rules-ci: {base} is no ancestor of HEAD: nothing to judge")
-            return 0
         return None
+
+    def fork_point(self, base: str) -> Optional[str]:
+        """Where base meets HEAD: base itself when it is an ancestor, else the merge-base of a rewritten history (the
+        commits since it are judged, never none); None when they share no history."""
+        found = (self.git.out("merge-base", base, "HEAD", quiet=True) or "").strip()
+        return found or None
 
     def rule_sets(self, base: str) -> int:
         rc = 0
@@ -135,6 +138,14 @@ class CommitRules:
         unreachable = self.reachable(base)
         if unreachable is not None:
             return unreachable
+        fork = self.fork_point(base)
+        if fork is None:
+            print(f"::error title=commit rules::{base} and HEAD share no history: no range to judge")
+            return 2
+        if fork != base:
+            print(f"commit-rules-ci: {base} is no ancestor of HEAD (history rewritten): judging from the merge-base "
+                  f"{fork[:9]}")
+            base = fork
         head = (self.git.out("rev-parse", "--short=9", "HEAD") or "").strip()
         count = (self.git.out("rev-list", "--count", f"{base}..HEAD") or "").strip()
         print(f"commit rules over {base[:9]}..{head} ({count} commit(s))", flush=True)

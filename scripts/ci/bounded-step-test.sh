@@ -96,6 +96,16 @@ next=$(step "true")
 bash --noprofile --norc -eo pipefail "$next" > /dev/null 2>&1
 check "a bounded step ends what the previous one left before it runs" "gone" "$(alive "$(cat "$work/child")")"
 
+# 5. A step that ignores TERM does not hold the wrapper for ever: it is killed after the grace.
+stubborn=$(step "trap '' TERM; echo \$\$ > '$work/stubborn'; while :; do sleep 1; done")
+BOUNDED_STEP_GRACE=2 bash --noprofile --norc -eo pipefail "$stubborn" > /dev/null 2>&1 &
+wrapper=$!
+for _ in $(seq 1 50); do [ -s "$work/stubborn" ] && break; sleep 0.1; done
+kill -TERM "$wrapper"
+for _ in $(seq 1 100); do kill -0 "$wrapper" 2>/dev/null || break; sleep 0.1; done
+check "a step ignoring TERM is killed after the grace, the wrapper ending with it" "gone:gone" \
+  "$(alive "$wrapper"):$(alive "$(cat "$work/stubborn")")"
+
 check "nothing recorded: the reap exits 0" "0" "$(bash "$REPO_ROOT/scripts/ci/bounded-step.sh" --reap > /dev/null 2>&1; echo $?)"
 check "an unknown argument is a usage error" "2" "$(bash "$REPO_ROOT/scripts/ci/bounded-step.sh" --nope > /dev/null 2>&1; echo $?)"
 

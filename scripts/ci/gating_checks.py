@@ -186,13 +186,26 @@ def registry_name(name: str) -> str:
 
 
 # ── a red run: does it gate? ────────────────────────────────────────────────────────────────────────────────────────
+def row_state(state: dict, name: str) -> str:
+    """The registry's state of a run's job: its row by name, else a pattern row (`takes (*)`) it matches; `missing` for a
+    job with no row at all, which GATES (only an explicit `unproven` row reports)."""
+    for n in (name, registry_name(name)):
+        if n in state:
+            return state[n]
+    for pattern, proven in state.items():
+        if "*" in pattern and fnmatch.fnmatchcase(registry_name(name), pattern):
+            return proven
+    return "missing"
+
+
 def report_only(rows: list[dict], file: str, jobs: list[dict]) -> tuple[bool, str]:
-    """(True, why) when every failed job of a red run is unproven -- or an aggregate following one -- and one is."""
+    """(True, why) when every failed job of a red run is unproven -- or an aggregate following one -- and one is. A failed
+    job with no registry row gates: a new job's row lands `unproven`, so a missing one is a lint miss, never a pass."""
     state = {r["name"]: r["proven"] for r in rows if r["kind"] == "job" and r["workflow"] == file}
     failed = [j["name"] for j in jobs if j.get("conclusion") in ("failure", "timed_out")]
     if not failed:
         return False, "no failed job"
-    proven = {n: state.get(n, state.get(registry_name(n), "unproven")) for n in failed}
+    proven = {n: row_state(state, n) for n in failed}
     unproven = [n for n in failed if proven[n] == "unproven"]
     gating = [n for n in failed if proven[n] not in ("unproven", "aggregate")]
     if gating:

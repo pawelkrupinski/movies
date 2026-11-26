@@ -14,6 +14,7 @@ import identity_judgements as j  # noqa: E402
 import identity_judgements_lint as lint  # noqa: E402
 
 HEAD = j.HEADER + "\n"
+OTHER_HARD = {lint.HARD_CLUSTERS.format(cc=cc): "# none\n" for cc in lint.COUNTRIES}  # every country's file is read
 REPO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 
 
@@ -138,11 +139,25 @@ class JudgementsLintTest(unittest.TestCase):
         self.assertEqual(1, len(found))
         self.assertIn("expected-matches.tsv expects tmdb:30959", found[0])
 
+    def test_a_hard_cluster_line_of_no_known_shape_fails_never_skipped(self):
+        path = lint.HARD_CLUSTERS.format(cc="pl")
+        ok = "ktos|2007\tKtos (2007) tmdb=7183 imdb=tt1 address=ktos cinemas=[Kino Luna]\n"
+        unmatched = "ktos|2007\tKtos (2007) tmdb=7183 imdb=tt1 address=ktos cinemas_now=[Kino Luna]\n"
+        found = self.messages([], extra=dict(OTHER_HARD, **{path: "# c\n\n" + ok + "ktos|\tNo film (-) tmdb=— imdb=— cinemas=[X]\n"}))
+        self.assertEqual([], found)
+        found = self.messages([], extra=dict(OTHER_HARD, **{path: ok + unmatched}))
+        self.assertEqual(1, len(found), found)
+        self.assertIn("expected-hard-clusters-pl.txt line 2 matches no known shape", found[0])
+
+    def test_a_hard_cluster_file_missing_beside_its_siblings_fails(self):
+        found = self.messages([], extra={lint.HARD_CLUSTERS.format(cc="pl"): "# none\n"})
+        self.assertTrue(any("expected-hard-clusters-de.txt is missing" in f for f in found), found)
+
     def test_a_hard_cluster_expectation_the_judgements_call_wrong_fails_however_it_is_judged(self):
         # c151636f1: PL's hard clusters regenerated to the 2007 "Ktoś całkiem obcy", wrong at every venue
-        hard = {lint.HARD_CLUSTERS.format(cc="pl"):
+        hard = dict(OTHER_HARD, **{lint.HARD_CLUSTERS.format(cc="pl"):
                 "ktoscalkiemobcy|2007\tKtoś całkiem obcy (2007) tmdb=7183 imdb=tt0457433 address=ktos-calkiem-obcy "
-                "cinemas=[Kino 60 Krzeseł, Kino Kryterium, Kino Luna]\n"}
+                "cinemas=[Kino 60 Krzeseł, Kino Kryterium, Kino Luna]\n"})
         expects = ("expected-hard-clusters-pl.txt expects 'ktoscalkiemobcy' as tmdb:7183, which the judgements call wrong: the "
                    "projection withdraws that take (TakeJudgements.withdraw), so the spec cannot come out so -- regenerate the file")
         found = self.messages([row("pl", "*", "Ktoś całkiem obcy", "tmdb:7183", "wrong")], extra=hard)
@@ -153,8 +168,8 @@ class JudgementsLintTest(unittest.TestCase):
         # a venue's own right overrules every venue's wrong there, as withdraw does: only the other cinemas count
         luna_right = row("pl", "Kino Luna", "Ktoś całkiem obcy", "tmdb:7183", "right")
         self.assertEqual([expects], self.messages([row("pl", "*", "Ktoś całkiem obcy", "tmdb:7183", "wrong"), luna_right], extra=hard))
-        only_luna = {lint.HARD_CLUSTERS.format(cc="pl"): hard[lint.HARD_CLUSTERS.format(cc="pl")].replace(
-            "Kino 60 Krzeseł, Kino Kryterium, Kino Luna", "Kino Luna")}
+        only_luna = dict(OTHER_HARD, **{lint.HARD_CLUSTERS.format(cc="pl"): hard[lint.HARD_CLUSTERS.format(cc="pl")].replace(
+            "Kino 60 Krzeseł, Kino Kryterium, Kino Luna", "Kino Luna")})
         self.assertEqual([], self.messages([row("pl", "*", "Ktoś całkiem obcy", "tmdb:7183", "wrong"), luna_right], extra=only_luna))
         # Main #2600: no known-wrong row lets one stand -- the withdrawal cures every one, so the scope is no gate any more
         known = [row("pl", "*", "Ktoś całkiem obcy", "tmdb:7183", "wrong", "known-wrong", "hard-clusters", reason="fix the take, regenerate")]

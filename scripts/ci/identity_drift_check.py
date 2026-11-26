@@ -290,7 +290,7 @@ def has(pattern: "re.Pattern[str]", text: str) -> bool:
 def unpacked(packed: str, into: str) -> bool:
     try:
         with tarfile.open(packed) as t:
-            t.extractall(into)
+            t.extractall(into, filter="data")  # no path outside `into`, no device, no link out
         return True
     except (OSError, tarfile.TarError):
         return False

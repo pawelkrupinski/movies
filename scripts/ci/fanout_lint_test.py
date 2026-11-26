@@ -23,6 +23,7 @@ FILES = {
     "scripts/ci/threads.py": "import concurrent.futures\nconcurrent.futures.ThreadPoolExecutor(8)\n",
     "scripts/governed-test.sh": 'seq 1 9 | "$REPO/scripts/gov-parallel" --job m -P 4 -I{} true\n',
     "scripts/governed.py": "with governed_workers('m', 4) as w, ThreadPoolExecutor(w) as pool:\n    pass\n",
+    "scripts/continued-test.sh": "seq 1 9 | xargs -n1 \\\n    -P 4 true\n",
     "scripts/serial.sh": "seq 1 9 | xargs -n1 true  # one at a time\n",
     "scripts/commented.py": "# a ThreadPoolExecutor here would be wrong\n",
     "infra/bin/fetch": "import concurrent.futures\nconcurrent.futures.ThreadPoolExecutor(8)\n",
@@ -52,8 +53,8 @@ class FanoutLintTest(unittest.TestCase):
         r = lint(FILES)
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         caught = sorted({line.split(":", 1)[0] for line in r.stdout.splitlines()})
-        self.assertEqual(caught, ["infra/bin/fetch", "scripts/ci/threads.py", "scripts/mutants-test.sh",
-                                  "scripts/pool.py", "scripts/procs-test.sh"])
+        self.assertEqual(caught, ["infra/bin/fetch", "scripts/ci/threads.py", "scripts/continued-test.sh",
+                                  "scripts/mutants-test.sh", "scripts/pool.py", "scripts/procs-test.sh"])
         self.assertIn("scripts/gov-parallel", r.stdout, "it says how to fix an xargs -P")
 
     def test_an_allowed_pool_passes_and_a_stale_row_fails(self) -> None:

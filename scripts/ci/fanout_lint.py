@@ -56,7 +56,21 @@ def read_allow(root: str) -> Dict[str, str]:
 
 
 def code_lines(text: str) -> List[Tuple[int, str]]:
-    return [(n, line) for n, line in enumerate(text.splitlines(), 1) if not line.lstrip().startswith(("#", "//"))]
+    """The code lines, a shell line continued with a trailing backslash joined to its continuation (`xargs -n1 \\` with
+    `-P 4` on the next line is one command), numbered by its first physical line."""
+    out: List[Tuple[int, str]] = []
+    joining: Optional[Tuple[int, str]] = None
+    for n, line in enumerate(text.splitlines(), 1):
+        if joining is None and line.lstrip().startswith(("#", "//")):
+            continue
+        start, head = joining if joining else (n, "")
+        joined = head + line.rstrip("\\").rstrip() + " " if line.endswith("\\") else None
+        joining = (start, joined) if joined is not None else None
+        if joined is None:
+            out.append((start, head + line))
+    if joining:
+        out.append(joining)
+    return out
 
 
 XARGS_WHY = "an `xargs -P` fan-out: run it through scripts/gov-parallel --job J -P N"

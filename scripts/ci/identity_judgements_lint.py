@@ -139,14 +139,21 @@ def hard_cluster_findings(root, judged):
         if r.verdict in ("wrong", "right"):
             (wrong if r.verdict == "wrong" else right)[(r.country, key(r.rawTitle), r.film)].add(r.venue)
     out = []
+    present = [cc for cc in COUNTRIES if os.path.exists(os.path.join(root, HARD_CLUSTERS.format(cc=cc)))]
     for cc in COUNTRIES:
         path = os.path.join(root, HARD_CLUSTERS.format(cc=cc))
         if not os.path.exists(path):
+            if present:  # a country's file gone while its siblings stay: the check would pass over it
+                out.append((("expected", cc, "hard-clusters", "missing"), f"{HARD_CLUSTERS.format(cc=cc)} is missing"))
             continue
         with open(path, encoding="utf-8") as f:
-            for line in f:
+            for number, line in enumerate(f, 1):
                 m = HARD_LINE.match(line)
                 if not m:
+                    if line.strip() and not line.startswith("#") and "tmdb=—" not in line:
+                        out.append((("expected", cc, "hard-clusters", "unparseable", str(number)),
+                                    f"expected-hard-clusters-{cc}.txt line {number} matches no known shape, so it was not "
+                                    f"checked against the judgements: {line.strip()[:80]}"))
                     continue
                 film, cinemas = f"tmdb:{m['tmdb']}", {v.strip() for v in m["cinemas"].split(",")}
                 k = (cc, m["key"], film)

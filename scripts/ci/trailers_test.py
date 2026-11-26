@@ -154,6 +154,11 @@ class RangeTest(unittest.TestCase):
         head = self.commit({"a.txt": "abcd\n"}, "C grows it")
         self.assertEqual([f"{head[:9]} C grows it: 2 -> 5"], self.rises(f"{self.base}..{head}", self.longer))
 
+    def test_a_baseline_committed_empty_and_filled_by_the_next_commit_is_a_step_that_needs_the_trailer(self):
+        self.commit({"a.txt": ""}, f"A creates it empty\n\nLength: A's why\n{CO}")
+        head = self.commit({"a.txt": "abc\n"}, "B fills it")
+        self.assertEqual([f"{head[:9]} B fills it: 0 -> 4"], self.rises(f"{self.base}..{head}", self.longer))
+
     def test_a_trailer_on_a_commit_not_changing_the_path_justifies_nothing(self):
         first = self.commit({"a.txt": "ab\n"}, "A grows it")
         head = self.commit({"b.txt": "b\n"}, f"B\n\nLength: not A's\n{CO}")

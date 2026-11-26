@@ -111,6 +111,11 @@ def text_at(rev: str, path: str) -> str:
     return shown.stdout if shown.returncode == 0 else ""
 
 
+def exists_at(rev: str, path: str) -> bool:
+    """Whether `path` exists at `rev` (an empty file does: text_at's "" does not say)."""
+    return subprocess.run(["git", "cat-file", "-e", f"{rev}:{path}"], capture_output=True).returncode == 0
+
+
 def unjustified_rises(rng: str, path: str, key: str, rose: Callable[[str, str], List[str]]) -> List[str]:
     """The commits of `rng` whose own change to `path` grows it (`rose(its parent's text, its text)`, the ratchet's growth,
     non-empty) and that carry no `key:` trailer, oldest first: `<sha9> <subject>: <its rise>` each (THE ATTRIBUTION RULE,
@@ -121,7 +126,8 @@ def unjustified_rises(rng: str, path: str, key: str, rose: Callable[[str, str], 
     raisers, refused = 0, []
     for sha in changed:
         before, after = text_at(f"{sha}^", path), text_at(sha, path)
-        own = rose(before, after) if before and after else []
+        # created or deleted is no step; a baseline committed EMPTY is a file, and what is added to it is growth
+        own = rose(before, after) if exists_at(f"{sha}^", path) and exists_at(sha, path) else []
         if own:
             raisers += 1
             if not carries(sha, key):

@@ -14,7 +14,11 @@ Self-tests (`*_test.py`) are reported, never held. THE MIGRATED TOOLS (scripts/p
 scripts/shell-py-progress/migrate-tools.tsv and its new `.py` files) have NO row: one past a limit is refused whatever
 the baseline or a trailer says -- "migrated tools stay under the bar — split it".
 
-  py_quality_ratchet.py check --current <over-limit.tsv> [--range A..B ...]   exit 1 on a violation, 2 on an error
+  py_quality_ratchet.py check --current <over-limit.tsv> --migrated <files.txt> [--range A..B ...]
+                                                                              exit 1 on a violation, 2 on an error
+                                                                              (files.txt: the migrated tools' files, one
+                                                                              a line; `check` without it is an error, as
+                                                                              scripts/py-quality-report names them)
   py_quality_ratchet.py update --current <over-limit.tsv>                     rewrite the baseline from the measure"""
 from __future__ import annotations
 
@@ -82,8 +86,21 @@ def main(argv: List[str]) -> int:
     parser.add_argument("command", choices=("check", "update"))
     parser.add_argument("--current", required=True)
     parser.add_argument("--range", action="append", default=[])
+    parser.add_argument("--migrated", help="the migrated tools' files, one a line (required by `check`)")
     args = parser.parse_args(argv)
-    return baseline_ratchet.run(SPEC, args.command, args.current, args.range)
+    if args.command == "update":
+        return baseline_ratchet.run(SPEC, args.command, args.current, args.range)
+    if args.migrated is None:
+        print("py quality: `check` needs --migrated <files.txt>: without the migrated tools' files the strict rule"
+              " (no row admits one past a limit) would silently not apply", file=sys.stderr)
+        return 2
+    try:
+        with open(args.migrated, encoding="utf-8") as f:
+            files = {line.strip() for line in f if line.strip()}
+    except OSError as e:
+        print(f"py quality: {e}", file=sys.stderr)
+        return 2
+    return baseline_ratchet.run(spec_for(files), args.command, args.current, args.range)
 
 
 if __name__ == "__main__":

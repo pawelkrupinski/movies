@@ -375,8 +375,9 @@ def main(argv):
     p.add_argument("--every-test", help="identityImpact's `<out>.tests` (every test class): ALL runs each by name, once")
     a = ap.parse_args(argv)
     if a.cmd == "countries":
-        paths = [l.strip() for l in sys.stdin if l.strip()] if not sys.stdin.isatty() else \
-            git("diff", "--name-only", "--no-renames", a.base, a.head).split()
+        # an empty or detached stdin is no "no change": the paths come from the diff then (fail safe, never "none")
+        paths = [] if sys.stdin.isatty() else [l.strip() for l in sys.stdin if l.strip()]
+        paths = paths or git("diff", "--name-only", "--no-renames", a.base, a.head).split()
         print(",".join(countries(a.base, a.head, paths, a.tree)))
         return 0
     why, tests = read_impact(a.impact)
