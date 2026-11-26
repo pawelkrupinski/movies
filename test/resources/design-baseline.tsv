@@ -54,7 +54,7 @@ effect	infra/bin/backtest-alerts-local	17
 effect	infra/bin/backtest-alerts-replay	5
 effect	infra/bin/check.py	4
 effect	infra/bin/cloudflare_ci_edge_allow.py	4
-effect	infra/bin/deploy	6
+effect	infra/bin/deploy	7
 effect	infra/bin/fleet-ssh	3
 effect	infra/bin/fleet_hosts.py	1
 effect	infra/bin/flux_rotate_deploy_keys.py	7

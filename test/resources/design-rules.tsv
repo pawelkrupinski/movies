@@ -27,7 +27,8 @@ limit	clone-tokens	50	scala py js
 limit	fanout	9	scala py js
 limit	distance	0.2	scala py js
 limit	distance-min-modules	8	scala py js
-# The data guard (data holding logic is a collaborator; 2026-11-26): a data type with more non-trivial methods or
+# The data guard (data holding logic is a collaborator; 2026-11-26; Scala's own: project/Coupling.scala's DataMethodCut,
+# DataDecisionCut, DefaultDataBagLimit, DefaultDataFanOutLimit, checked equal to these by design_check_test.py): a data type with more non-trivial methods or
 # decisions than these is a collaborator; one naming more types a `databag` row; a module using more data types a
 # `datafanout` row.
 limit	data-methods	4	scala py

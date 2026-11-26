@@ -192,6 +192,10 @@ class TableTest(unittest.TestCase):
         self.assertEqual(RULES.limit("clone-tokens"), float(self.scala_constant("quality/src/main/scala/quality/Clones.scala", r"MinimumTokens = (\d+)")))
         self.assertEqual(RULES.limit("fanout"), float(self.scala_constant("project/Coupling.scala", r"DefaultFanOutLimit = (\d+)")))
         self.assertEqual(RULES.limit("distance") * 100, float(self.scala_constant("project/Coupling.scala", r"DefaultDistanceLimit = (\d+)")))
+        # the data guard: the Scala one (project/Coupling.scala, landed 2026-11-26) and this core's share its thresholds
+        for kind, constant in (("data-methods", "DataMethodCut"), ("data-decisions", "DataDecisionCut"),
+                               ("datafanout", "DefaultDataFanOutLimit"), ("databag", "DefaultDataBagLimit")):
+            self.assertEqual(RULES.limit(kind), float(self.scala_constant("project/Coupling.scala", rf"{constant} = (\d+)")), kind)
         import clones  # scripts/py-quality's
         self.assertEqual(RULES.limit("clone-tokens"), clones.MIN_TOKENS)
         self.assertEqual(RULES.limit("clone-tokens"), float(self.scala_constant("scripts/js-quality/clones.js", r"MinTokens = (\d+)")))
