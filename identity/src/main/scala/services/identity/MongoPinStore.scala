@@ -2,40 +2,47 @@ package services.identity
 
 import java.time.Instant
 
-import scala.concurrent.Await
-import scala.concurrent.duration.*
 import scala.util.Try
 
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonInt32, BsonNull, BsonValue}
-import org.mongodb.scala.model.{Filters, ReplaceOptions}
-import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.MongoDatabase
 import play.api.Logging
 import services.identity.vocabulary.{ListingKeyBson, Pin, PinClaim, PinStore}
 
 /**
- * The `identity_pins` collection: one document per pin, `_id` = the pin's content id. Tiny (an
- * escape hatch, not a workflow), so every read is a whole-collection find. `sharedDb` None →
- * disabled: reads are empty and writes are refused, as for the other admin stores without Mongo.
+ * The pins in a keyed store ([[tools.KeyedStore]]): one document per pin, `_id` = the pin's content id. Tiny (an
+ * escape hatch, not a workflow), so every read is a whole-collection scan. `documents` None -> disabled: reads are
+ * empty and writes are refused, as for the other admin stores without Mongo.
  */
-final class MongoPinStore(sharedDb: Option[MongoDatabase]) extends PinStore with Logging {
-  private val coll: Option[MongoCollection[Document]] = sharedDb.map(_.getCollection[Document](MongoPinStore.Collection))
+abstract class KeyedPinStore(documents: Option[tools.StoreDocuments]) extends PinStore {
+  private val pins = new tools.KeyedStore(documents.getOrElse(tools.StoreDocuments.Absent), tools.KeyCodec.Text, KeyedPinStore.Codec)
 
-  def all(): Seq[Pin] =
-    coll.toSeq.flatMap(c => Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)).flatMap { d =>
-      val pin = MongoPinStore.decode(d)
-      if (pin.isEmpty) logger.warn(s"identity_pins: undecodable pin ${d.get("_id")}; ignored")
-      pin
-    }
+  def all(): Seq[Pin] = pins.all().map(_._2)
 
-  def insert(pin: Pin): Unit = coll.fold(throw new IllegalStateException("identity_pins: no database")) { c =>
-    Await.result(c.replaceOne(Filters.eq("_id", pin.id), MongoPinStore.encode(pin), ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
-    ()
+  def insert(pin: Pin): Unit = {
+    if (documents.isEmpty) throw new IllegalStateException("identity_pins: no database")
+    pins.put(pin.id, pin)
   }
 
-  def delete(id: String): Boolean =
-    coll.exists(c => Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds).getDeletedCount > 0)
+  def delete(id: String): Boolean = pins.delete(id)
 }
+
+object KeyedPinStore extends Logging {
+  /** A pin's fields beside its `_id`; a document that is no pin is logged and ignored. */
+  val Codec: tools.DocCodec[Pin] = new tools.DocCodec[Pin] {
+    def encode(pin: Pin): Document = MongoPinStore.encode(pin)
+    def decode(document: Document): Option[Pin] = {
+      val pin = MongoPinStore.decode(document)
+      if (pin.isEmpty) logger.warn(s"identity_pins: undecodable pin ${document.get("_id")}; ignored")
+      pin
+    }
+  }
+}
+
+/** The `identity_pins` collection of the shared database, when there is one. */
+final class MongoPinStore(sharedDb: Option[MongoDatabase]) extends KeyedPinStore(
+  sharedDb.map(db => tools.MongoStoreDocuments.of(db.getCollection(MongoPinStore.Collection))))
 
 object MongoPinStore {
   val Collection = "identity_pins"
