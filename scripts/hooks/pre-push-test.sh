@@ -57,7 +57,7 @@ check "the local-tests list selects shellcheck by its directory (which skips it)
 check "a shell script runs its self-tests, shellcheck, and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
 # a tool with no extension is shellchecked by its shell shebang: 50 under scripts/ (sbt-warm, gitops-specs, ...) never
 # were, and sbt-warm's new SC2046 (d56231908, 2026-11-17) landed unseen
-check "a bash tool with no extension runs shellcheck too" "scripttests shellcheck sbt" "$(plan scripts/sbt-warm)"
+check "a bash tool with no extension runs shellcheck too" "scripttests shellcheck sbt" "$(plan scripts/gov-run)"
 check "...but not a Python tool with no extension (the Python quality ratchet does)" "pyquality scripttests sbt" "$(plan scripts/identity-ratchet-report)"
 check "the gating-checks registry runs its lint, and the lint specs" "newchecks sbt" "$(plan .github/gating-checks.tsv)"
 # THE HEAVY ROWS: Main's integration-test rows and e2e (corpus), in the landing check only (PREPUSH_HEAVY_ROWS=1); e2e (rest)
@@ -367,7 +367,10 @@ if command -v shellcheck >/dev/null; then
   mkdir -p "$repo/scripts/hooks"
   scratch_repo "$repo"
   cp "$REPO_ROOT/scripts/hooks/pre-push" "$REPO_ROOT/scripts/hooks/lint-registry.tsv" "$REPO_ROOT/scripts/hooks/lint-registry-missing" "$repo/scripts/hooks/"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$repo/scripts/hooks-path.sh"; cp "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/tool-conventions.sh"
-  for f in sbt-warm jvm-gate.sh zinc_orphans.py; do cp "$REPO_ROOT/scripts/$f" "$repo/scripts/$f"; done
+  for f in sbt-warm sbt-warm.sh-legacy jvm-gate.sh stall-watch.sh stall_watch.py zinc_orphans.py; do
+    cp "$REPO_ROOT/scripts/$f" "$repo/scripts/$f"
+  done
+  mkdir -p "$repo/scripts/lib"; cp "$REPO_ROOT"/scripts/lib/*.py "$repo/scripts/lib/"   # sbt-warm's Python modules
   printf '#!/usr/bin/env bash\necho "$1"\n' > "$repo/a.sh"
   scratch_git "$repo" add -A; scratch_git "$repo" commit -qm base
   base="$(scratch_git "$repo" rev-parse HEAD)"

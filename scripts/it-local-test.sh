@@ -67,10 +67,12 @@ check "...said, and its server stopped" "1 stopped" "$(grep -c 'did not become P
 # says so: a build starting while another is under way is an OVERLAP.
 . "$REPO_ROOT/scripts/scratch-git.sh"
 tree="$SCRATCH/tree"; scratch_repo "$tree"
-mkdir -p "$tree/scripts" "$tree/worker/target/scala-3.x" "$tree/project/target"
-for f in it-local.sh own-mongod.sh sbt-warm jvm-gate.sh tool-conventions.sh stall-watch.sh zinc_orphans.py; do
+mkdir -p "$tree/scripts/lib" "$tree/worker/target/scala-3.x" "$tree/project/target"
+for f in it-local.sh own-mongod.sh sbt-warm sbt-warm.sh-legacy jvm-gate.sh tool-conventions.sh stall-watch.sh \
+  stall_watch.py zinc_orphans.py; do
   cp "$REPO_ROOT/scripts/$f" "$tree/scripts/$f"
 done
+cp "$REPO_ROOT"/scripts/lib/*.py "$tree/scripts/lib/"   # sbt-warm's Python modules (scripts/lib/sbt_warm_*.py and theirs)
 export KINOWO_IDENTITY_CACHE="$SCRATCH/identity" KINOWO_SBT_CACHE="$SCRATCH/cache" \
   KINOWO_SBT_CACHE_PUBLISH=0 KINOWO_SBT_WARM_SEED="$SCRATCH/no-seed" KINOWO_SBT_WARM_GITOPS=0 \
   KINOWO_SBT_WARM_KEEPER_POLL=0.2 KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS=1

@@ -117,6 +117,8 @@ scripts/ci/identity_judgements.py
 .github/scripts/convergence_fill_folds.py
 scripts/ci/dispatch_takes.py
 scripts/lib/**
+# scripts/sbt-warm (Python since 2026-11-26) imports scripts/lib/sbt_warm_*.py (above) and scripts/stall_watch.py.
+scripts/stall_watch.py
 # The data the takes and drift rows read (ConvergenceReuse's ListedInputs: every input of either check listed): the
 # drift replay harness, its allow-lists and known-flips baseline, the unmatched families, the judgements.
 worker/src/test/scala/scripts/IdentityDrift.scala

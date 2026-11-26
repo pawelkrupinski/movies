@@ -107,6 +107,26 @@ def any_runnable(pids: Sequence[int]) -> bool:
     return bool(pids) and any(line.startswith("R") for line in ps("-o", "stat=", "-p", pid_list(pids)).splitlines())
 
 
+def tree_shrank(before: Sequence[int], after: Sequence[int]) -> bool:
+    """Whether the tree SHRANK between two polls: a pid of `before` is not in `after`, and every pid of `after` was in
+    `before` (sbt-warm's client watch counts it as progress: a wind-down; a tree only replacing its processes is none)."""
+    return set(after) <= set(before) and bool(set(before) - set(after))
+
+
+def any_gone(pids: Sequence[int]) -> bool:
+    """Whether one of `pids` has ended (gone, or a zombie not yet waited for)."""
+    if not pids:
+        return False
+    states = [line for line in ps("-o", "stat=", "-p", pid_list(pids)).splitlines() if not line.startswith("Z")]
+    return len(states) < len(pids)
+
+
+def kept_pids(before: Sequence[int], after: Sequence[int]) -> List[int]:
+    """The pids of `after` that were in `before` too."""
+    earlier = set(before)
+    return [p for p in after if p in earlier]
+
+
 def newer_than(path: str, mark_ns: int) -> bool:
     try:
         return os.stat(path).st_mtime_ns > mark_ns
