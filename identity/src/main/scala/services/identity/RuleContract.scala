@@ -45,8 +45,8 @@ object RuleContract {
   private def refusal(pattern: String, why: String): Declared =
     Declared(pattern, s"refusal why (rule:<DecisionTrace.id(why)>, Decision.scala): $why")
 
-  /** Kind (i): the listing's own facts and TMDB alone. */
-  val populationIndependent: Seq[Declared] = Seq(
+  /** Kind (i), the vetoes: a veto by the listing's own facts and TMDB alone. */
+  private val ownFactVetoes: Seq[Declared] = Seq(
     Declared("veto:learned-*", "learned listing-film cannot-link on the listing's own measures vs the TMDB record"),
     Declared("veto:learned-listing-film-probability-below-the-cannot-link-cut", "cut on weights.factsProbability: own facts only, rivals/rank excluded (EvidenceWeights.scala)"),
     Declared("veto:seasonsapart", "ListingConstraints.seasonsApart: listing's season vs film season/year (CannotLink.SeasonsApart.toString)"),
@@ -68,7 +68,11 @@ object RuleContract {
     Declared("veto:it-bills-a-silent-film-and-this-one-is-of-the-sound-era", "silentBillingDenies"),
     Declared("veto:its-venue-s-own-cast-field-names-none-of-its-top-billed-cast-and-no-fact-the-venue-states-agrees-with-it", "CastEvidence.mismatch over the node's listings"),
     Declared("veto:named-only-by-the-title-its-feed-*-copied*", "OPEN; feed-copied original title alone names it"),
-    Declared("veto:a-short-its-feed-*-linking-*", "OPEN; short beside the feed's link"),
+    Declared("veto:a-short-its-feed-*-linking-*", "OPEN; short beside the feed's link")
+  )
+
+  /** Kind (i): the listing's own facts and TMDB alone, its vetoes ([[ownFactVetoes]]) and its refusals. */
+  val populationIndependent: Seq[Declared] = ownFactVetoes ++ Seq(
     Declared("search:unanswered", "the node's own query unanswered (ResolverDecisions.scala)"),
     Declared("rule:none", "no refusal recorded"),
     refusal("rule:no-evidence-class-measured-for-it", "classProbability of own measures"),

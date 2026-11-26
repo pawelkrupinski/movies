@@ -192,7 +192,7 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [x] **screenedSeason's earlier-year bypass is unbounded** (done 2026-10-18: a stated year more than a season before the
   screened one reads the season record only when a screening falls within 3 days of its release, `Listing.airDays` and
   `StageRelays.airsOnItsDay`; local measure on recording 38713274617: 0 moves) (8545f8cb7: `IdentityModel.screenedSeason`'s
-  `year.forall(_ < season)`, `StageRelays.screenedSeasonRecord`): an encore of a 2019 capture screening in 2027 clears
+  `year.forall(_ < season)`, `StageSeasonRecords.screenedSeasonRecord`): an encore of a 2019 capture screening in 2027 clears
   its year against the 2026/27 record. Bound it (a year or two), or ask for a screening on the record's air day.
   Tried 2026-10-16, a one-season bound (`year > season - 1` falls back to the stated year): NOT LANDABLE (measure
   38812504435) — DE "MET Opera: Macbeth (Verdi)" ×3 states 2014, its production's premiere twelve years before the

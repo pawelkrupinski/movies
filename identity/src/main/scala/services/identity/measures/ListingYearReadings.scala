@@ -56,13 +56,13 @@ private[identity] object ListingYearReadings {
     }
 
   /** `m` with the published year absent when it predates the season the listing's screenings broadcast its stage work
-   *  in ([[MeasuredListing.screenedSeason]]), against the house's record of that season ([[StageRelays.screenedSeasonRecord]]): the year dates
+   *  in ([[MeasuredListing.screenedSeason]]), against the house's record of that season ([[StageSeasonRecords.screenedSeasonRecord]]): the year dates
    *  the staging's premiere, not the broadcast. UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025], screening on 25
    *  May 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet", aired that day — two years off its 2027, its title an
    *  overlap, it was denied, and the denial withdrew the record from every relay title-linked to it. Against any other
    *  record — the 2021/22 season's, the house's 2013 recording — the year stays the venue's fact. */
   private def premiereYear(l: MeasuredListing, f: Film, m: Map[String, Measure]): Map[String, Measure] =
-    if (l.year.isDefined && StageRelays.screenedSeasonRecord(l, f)) m ++ PublishedYear.map(_ -> MissingListing) else m
+    if (l.year.isDefined && StageSeasonRecords.screenedSeasonRecord(l, f)) m ++ PublishedYear.map(_ -> MissingListing) else m
 
   /** `m` with the published year absent when it is the year of an ANNIVERSARY the title bills: ES "Drácula. 30
    *  Aniversario" (original title "Bram Stoker's Dracula 30th Anniversary"), dated 2022, is Coppola's 1992 film — its

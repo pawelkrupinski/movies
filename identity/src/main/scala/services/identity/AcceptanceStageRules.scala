@@ -2,7 +2,7 @@ package services.identity
 
 import services.identity.AcceptanceRule.Weighing
 import services.identity.measures.Scored.Accepted
-import services.identity.measures.{FactRelations, Film, IdentityMeasures, MeasuredListing, RelayStage, Scored, StageRelays}
+import services.identity.measures.{FactRelations, Film, IdentityMeasures, MeasuredListing, RelayStage, Scored, StageRelays, StageSeasonRecords}
 import services.titles.YearWindow
 
 /** What the acceptance rules of a stage relay ask: the house's production, the relay's record ([[RelayStage]]), and the
@@ -113,7 +113,7 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
     val listing = weighing.listing
     val own     = (Seq(listing.title) ++ listing.rawTitle).map(plain).toSet
     ofItsBroadcastSeason(weighing.ranked.filter(scored => (isEligible(scored) || scored.deniedByCutOnly) && scored.candidate.film.season.isDefined &&
-      (scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))) || StageRelays.screenedSeasonRecord(listing, scored.candidate.film))))
+      (scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))) || StageSeasonRecords.screenedSeasonRecord(listing, scored.candidate.film))))
   }
   /** A season spans two years: a year the listing states outside them is another season's broadcast (UK Aldeburgh's "The
    *  Royal Ballet: Romeo & Juliet" [2025] is no "The Royal Ballet: Romeo and Juliet (2021/22)") — but for the record of the
@@ -121,7 +121,7 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
    *  screening on 25 May 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet", aired that day). */
   private[identity] def inItsSeason(listing: MeasuredListing, record: Scored): Boolean =
     listing.year.forall(year => record.candidate.film.season.forall(season => year == season || year == season + 1)) ||
-      StageRelays.screenedSeasonRecord(listing, record.candidate.film)
+      StageSeasonRecords.screenedSeasonRecord(listing, record.candidate.film)
 
   /** Of several season records of one stage work, the one season the listing's screenings broadcast it in
    *  ([[MeasuredListing.screenedSeason]]) when exactly that season's records are among them; all of them

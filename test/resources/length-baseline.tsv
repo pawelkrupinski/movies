@@ -7,5 +7,3 @@
 # commit carrying `Length: <why>` (CLAUDE.md, "Code quality ratchets").
 limit	method-lines	50
 limit	file-lines	500
-method-lines	identity/src/main/scala/services/identity/RuleContract.scala:RuleContract.populationIndependent	52
-file-lines	identity/src/main/scala/services/identity/measures/StageRelays.scala	518

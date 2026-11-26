@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.measures.{CastEvidence, EvidenceNode, IdentityMeasures, Scored, StageRelays, YearRuntimeMeasures}
+import services.identity.measures.{CastEvidence, EvidenceNode, IdentityMeasures, Scored, StageSeasonRecords, YearRuntimeMeasures}
 import services.identity.vocabulary.ResolverEdge
 
 /** Does a listing's OWN evidence corroborate the film its cluster took — at least one fact independent of the title and
@@ -124,13 +124,13 @@ private[identity] object Corroboration {
       !rival.category("numeral").exists(IdentityMeasures.OtherInstalment)
 
   /** Is `rival` the house's record of the work the listing bills bare, of the season its screenings fall in
-   *  ([[StageRelays.bareWorksSeasonRecord]])? A bare "Romeo and Juliet" screening in the season the Royal Ballet relays it
+   *  ([[StageSeasonRecords.bareWorksSeasonRecord]])? A bare "Romeo and Juliet" screening in the season the Royal Ballet relays it
    *  names that relay as closely as any film of the title, whatever its record's title adds (the house, the season): UK
    *  Theatr Gwaun Fishguard's, screening on 25 May 2027, took Zeffirelli's 1968 film alone, Carlei's 2013 one where the
    *  solver joined it to a listings site's mislinked "Romeo and Juliet (2013)", and none beside Riverside's dated
    *  billing -- a take that came and went with the family's venues (structural fix 2). The listing's own title and days
    *  decide it; the relay's standing in the family is [[support]]'s, as for any namesake. */
-  private def relayedBare(rival: Scored): Boolean = StageRelays.bareWorksSeasonRecord(rival.listing, rival.candidate.film)
+  private def relayedBare(rival: Scored): Boolean = StageSeasonRecords.bareWorksSeasonRecord(rival.listing, rival.candidate.film)
 
   /** [[naming]]'s tier of a title naming the film whole: its own title or its original. */
   private val Whole = 3

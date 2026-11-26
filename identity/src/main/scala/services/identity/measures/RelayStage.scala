@@ -28,10 +28,10 @@ private[identity] object RelayStage {
     /** Does it name a house in particular — what lifts the learned vetoes off its record? */
     def particular: Boolean = houses.nonEmpty
     /** Is `f` a record of the season its screenings fall in that airs on one of its days ([[MeasuredListing.airDays]], within
-     *  [[StageRelays.AirDayWindow]]): the broadcast it screens, whatever older year its title dates the staging by? */
+     *  [[StageSeasonRecords.AirDayWindow]]): the broadcast it screens, whatever older year its title dates the staging by? */
     def airedOn(f: Film): Boolean =
       airDays.nonEmpty && screeningsSeason.exists(seasonsOf(f)) && f.released.exists(aired =>
-        airDays.exists(day => math.abs(java.time.temporal.ChronoUnit.DAYS.between(aired, day)) <= StageRelays.AirDayWindow))
+        airDays.exists(day => math.abs(java.time.temporal.ChronoUnit.DAYS.between(aired, day)) <= StageSeasonRecords.AirDayWindow))
   }
 
   /** The relay `l` bills, when it names a stage house (or a relay series' banner, "The Met"), a stage work and a season:
@@ -50,7 +50,7 @@ private[identity] object RelayStage {
     if (!searchedInItsSeason(l)) None
     else {
       val works   = unencored(unclosed(l)).billedStageWorks
-      val stated  = l.year.orElse(StageRelays.bannerYear(l)).orElse(closingYear(l)).filter(year => l.dating.screeningsSeason.forall(year >= _))
+      val stated  = l.year.orElse(StageSeasonRecords.bannerYear(l)).orElse(closingYear(l)).filter(year => l.dating.screeningsSeason.forall(year >= _))
       val dated   = if (billsAnEncore(l)) l.dating.performanceYear else l.titleYear.orElse(stated)
       // an encore dating no performance airs one of its screenings' season or the season before, as a season's record is
       // encored the next season at most: US Showcase's "The Metropolitan Opera: Samson et Dalila ENCORE (2026)" (9 December

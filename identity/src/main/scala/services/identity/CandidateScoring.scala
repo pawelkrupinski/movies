@@ -3,7 +3,7 @@ package services.identity
 import scala.collection.mutable
 
 import services.evidence.ListingConstraints
-import services.identity.measures.{BannerHouses, Candidate, EvidenceNode, Film, IdentityMeasures, ListingShape, Measure, MeasuredListing, MultiFilmBill, RelayStage, StageRelays}
+import services.identity.measures.{BannerHouses, Candidate, EvidenceNode, Film, IdentityMeasures, ListingShape, Measure, MeasuredListing, MultiFilmBill, RelayStage, StageRelays, StageSeasonRecords}
 import services.identity.vocabulary.{Denial, PinConstraints}
 import services.titles.billing.BillingParse
 
@@ -53,9 +53,9 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
       .orElse(evidenceRefusals.collectFirst { case (denial, holds) if holds(listing, film, measures, country) => denial })
       // a relay's record of its house, work and season ([[RelayStage]]) files a broadcast's running time and its house's
       // banner on the work: the learned runtime-gap and title-overlap vetoes say nothing of it. Nor of the record of the
-      // very season a relay's screenings broadcast its work in ([[StageRelays.screenedSeasonRecord]]), under a banner naming
+      // very season a relay's screenings broadcast its work in ([[StageSeasonRecords.screenedSeasonRecord]]), under a banner naming
       // no house in particular: ES Ocine's "Carmen (OPERA LIVE)", screening the day the RBO's 2026/27 Carmen airs
-      .orElse(Option.unless(RelayStage.particularRecordOf(listing, film) || StageRelays.screenedSeasonRecord(listing, film))(LearnedCannotLinks.listingFilmDenial(calibration, measures, weights.factsProbability(measures))).flatten)
+      .orElse(Option.unless(RelayStage.particularRecordOf(listing, film) || StageSeasonRecords.screenedSeasonRecord(listing, film))(LearnedCannotLinks.listingFilmDenial(calibration, measures, weights.factsProbability(measures))).flatten)
 
   /** The reasons of the listing's own billing to rule a film out ([[evidenceDenial]]), in the order they are asked: each the
    *  denial it gives — its text what the trace names it by — and the question of the listing, the film, their measures

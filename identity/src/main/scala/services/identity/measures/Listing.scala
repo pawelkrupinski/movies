@@ -78,7 +78,7 @@ final case class Listing(
    *  released after it (`IdentityMeasures.yearBound`), never for one. Inside equality and hash. */
   yearUpperBound: Option[Int] = None,
   /** The year of the performance its venue's own synopsis says a stage relay screens ("the indelible 2010 Met
-   *  performance", [[StageRelays.performanceYear]]): what dates an ENCORE's relay, whose billed year is the encore's
+   *  performance", [[StageSeasonRecords.performanceYear]]): what dates an ENCORE's relay, whose billed year is the encore's
    *  ([[RelayStage.of]]). Inside equality and hash. */
   performanceYear: Option[Int] = None,
   /** Is it KEPT for its facts alone ([[ListingRetention]]): no venue bills it now, a present listing bills its title?
@@ -119,7 +119,7 @@ final case class Listing(
    *
    *  So is the season of one stating a year BEFORE that season opens: a relay screening in a later season than its year
    *  dates the staging's premiere by it, not the broadcast — UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025],
-   *  screening on 25 May 2027, the day the RBO's 2026/27 relay of it airs ([[StageRelays.screenedSeasonRecord]]).
+   *  screening on 25 May 2027, the day the RBO's 2026/27 relay of it airs ([[StageSeasonRecords.screenedSeasonRecord]]).
    *  A year within or after the season is the venue's dating of the broadcast, and stays the only one read. */
   lazy val screenedSeason: Option[Int] =
     if (screenings.isEmpty) None
@@ -132,7 +132,7 @@ final case class Listing(
 
   /** Its screening days where its stated year is more than [[Listing.StagingPredatesSeason]] before the season it
    *  screens in ([[screenedSeason]]): a year that old dates the staging only when a screening falls on the season
-   *  record's air day ([[StageRelays.screenedSeasonRecord]]) — the Met's 2014 "Macbeth" revival relayed on 17 October
+   *  record's air day ([[StageSeasonRecords.screenedSeasonRecord]]) — the Met's 2014 "Macbeth" revival relayed on 17 October
    *  2026 — and an encore of an old capture, on no air day, keeps its year. So are those of a relay whose title names a
    *  season further back than a season's record is encored ([[namesAStaleSeason]]). Empty for every other listing. */
   lazy val airDays: Seq[java.time.LocalDate] =
@@ -287,7 +287,7 @@ object Listing {
       certificate   = cm.ageRating.map(_.trim).filter(_.nonEmpty),
       listedCast    = if (cm.cast.isEmpty || !namesAreVenues(cinema, cm)) ListedCast.None else ListedCast.of(cm.cast),
       yearUpperBound = cm.movie.releaseYearUpperBound,
-      performanceYear = synopsisOf(cm).filter(_ => namesAreVenues(cinema, cm)).flatMap(StageRelays.performanceYear))
+      performanceYear = synopsisOf(cm).filter(_ => namesAreVenues(cinema, cm)).flatMap(StageSeasonRecords.performanceYear))
   }
 
   /** The titles external lookups are asked for besides the venue's own, if any: the one its rules ask

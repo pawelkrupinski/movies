@@ -10,7 +10,7 @@ import services.identity.vocabulary.{CandidateQuery, PinConstraints, ScreeningDa
 import services.identity.measures.{Evidence, Listing}
 
 /** The season a stage work's screenings fall in is read by its season rules ([[SearchMeasures.stageWorkQueries]]'s closing
- *  year, [[RelayStage.of]], [[StageRelays.bareWorksSeasonRecord]]), so it is part of the evidence a node is keyed by
+ *  year, [[RelayStage.of]], [[StageSeasonRecords.bareWorksSeasonRecord]]), so it is part of the evidence a node is keyed by
  *  ([[Evidence.key]]): two listings billing the same work alike but screening in different seasons are two questions,
  *  each searched with its own season. UK Riverside Theatre Woodbridge's "Romeo and Juliet (2027)", screening on 25 May
  *  2027 (season 2026/27), searches "Romeo and Juliet 2026" for the RBO 2026/27 relay; a billing alike screening in

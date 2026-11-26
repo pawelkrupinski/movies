@@ -26,7 +26,7 @@ private[identity] object SearchMeasures {
    *  is searched with the season its screenings fall in too: UK Picture House Uckfield's "Tosca (ROH)" {Oliver Mears}
    *  [205′] and Flicks' "Royal Opera House: Carmen" [220′] ×13 screen the RBO 2026/27 relays, whose records the work's
    *  name alone never reaches — which season's record it is stays the season rules' to tell ([[MeasuredListing.screenedSeason]]).
-   *  So is a bare work beside a running time ([[StageRelays.barelyTimed]]: UK Empire Theatre Halstead's "Romeo and Juliet" [170′]).
+   *  So is a bare work beside a running time ([[StageSeasonRecords.barelyTimed]]: UK Empire Theatre Halstead's "Romeo and Juliet" [170′]).
    *  Beside a year it states as well: Flicks dates "Royal Opera House: Carmen" 2024, the year of the page it links, and
    *  "Carmen 2024" finds the 2024 revival, never the 2026/27 broadcast its venues screen in November 2026.
    *  KNOWN GAP (convergence 38627416973, accepted.tsv): UK Lonsdale Alhambra Penrith's "RB&O 26/27: <work>" ×3 reached
@@ -37,8 +37,8 @@ private[identity] object SearchMeasures {
     if (l.seasonYear.isDefined) Nil
     // the year as the relay's record reads it ([[RelayStage]]): its field, its title's bracket, its banner ("RBO live 2027: Tosca"), else its
     // broadcast season -- or nothing searched "Tosca 2027", and the house's 2026/27 record could stay out of the pool
-    else (l.statedYear.orElse(StageRelays.bannerYear(l)).orElse(l.dating.broadcastSeason).toSeq ++
-      l.dating.screenedSeason.filter(_ => RelayStage.searchedInItsSeason(l) || StageRelays.barelyTimed(l)) ++ closedSeason(l)).distinct.flatMap(year => workSearches(l, year))
+    else (l.statedYear.orElse(StageSeasonRecords.bannerYear(l)).orElse(l.dating.broadcastSeason).toSeq ++
+      l.dating.screenedSeason.filter(_ => RelayStage.searchedInItsSeason(l) || StageSeasonRecords.barelyTimed(l)) ++ closedSeason(l)).distinct.flatMap(year => workSearches(l, year))
 
   /** The season its screenings fall in, when the year it states is the one that season CLOSES: a season record carries
    *  the year it opens ("Royal Ballet & Opera 2026/27: Romeo and Juliet"), which TMDB's search finds by "Romeo and Juliet
