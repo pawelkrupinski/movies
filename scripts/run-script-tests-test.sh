@@ -585,6 +585,19 @@ check "...on 3 cores the extra 2 does not fit: the ticket min(--jobs, tests) wid
 (cd "$work" && SEEN="$work/seen" spec_governed "$work/agentctl" env AGENTCTL_GOV_WIDTH=2 bash "$runner" --root "$tree" scripts/wide-test.sh) \
   > "$work/out" 2>&1
 check "...under a parent's ticket the wide test gets one core" "width=1" "$(cat "$work/seen")"
+# THE GRANTED WIDTH (agentctl 58a5ad1, 2026-11-26): a governor that grants is asked --min-cores 1 and the run fits in
+# what it grants -- the wide test keeping its width when the grant is wider than its extra, the pool running in what is
+# left; a grant no wider than the extra runs every test one core wide
+granted() { (cd "$work" && SEEN="$work/seen" CORES=8 GOV_FEATURES="admit cores route width grant" GOV_GRANT=$1 \
+  PATH="$work/cores-bin:$PATH" spec_governed "$work/agentctl" bash "$runner" --root "$tree" scripts/wide-test.sh scripts/a-test.sh) \
+  > "$work/out" 2>&1; }
+: > "$GOV_CALLS"; granted 3
+check "...granted 3 of the 4 asked: --min-cores 1 asked, the wide test 3 wide, the pool one at a time" "1 width=3 1" \
+  "$(grep -c -- '--job script-tests --cores 4 --min-cores 1$' "$GOV_CALLS") $(cat "$work/seen") \
+$(grep -c '2 script test(s), 1 at a time' "$work/out")"
+: > "$GOV_CALLS"; granted 2
+check "...granted only the extra's 2: the wide test one core" "1 width=1" \
+  "$(grep -c -- '--min-cores 1$' "$GOV_CALLS") $(cat "$work/seen")"
 
 # The watchdog the pre-push hook runs reaches its self-test only through the hook (2026-11-26: 14eb62591d changed
 # stall-watch.sh, --changed never selected pre-push-tools-test.sh, and its stalled-check case failed on main): this

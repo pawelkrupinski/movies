@@ -52,8 +52,13 @@ spec_fake_governor() {
   cat > "$1" <<'STUB'
 #!/usr/bin/env bash
 # an agentctl whose governor charges cores: its probe answers as the real one's does (jvm-gate.sh governor_bin)
-[ "$1 $2" = "gov probe" ] && { echo "agentctl governor: admit cores route width"; exit 0; }
+[ "$1 $2" = "gov probe" ] && { echo "agentctl governor: ${GOV_FEATURES:-admit cores route width}"; exit 0; }
 printf '%s\n' "$*" >> "$GOV_CALLS"
+# THE GRANTED WIDTH: with GOV_GRANT, a pool asking --min-cores is granted that many cores (its ticket record's)
+if [ -n "${GOV_GRANT:-}" ] && case " $* " in *" --min-cores "*) true ;; *) false ;; esac; then
+  ticket=$(printf '%s\n' "$@" | sed -n '/^--ticket$/{n;p;}')
+  echo "{\"cores\": $GOV_GRANT}" > "${ticket%.lock}.json"
+fi
 if [ -n "${GOV_HOLD:-}" ]; then
   echo waiting > "$GOV_HOLD.waiting"
   for _ in $(seq 1 2400); do [ -e "$GOV_HOLD" ] && break; sleep 0.05; done

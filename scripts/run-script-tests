@@ -221,9 +221,15 @@ govern_run() {
   cores=$(getconf _NPROCESSORS_ONLN 2> /dev/null || echo 0)
   [ $((want + extra)) -le "${cores:-0}" ] || extra=0
   gov_width run-script-tests script-tests $((want + extra)) 2
-  # the wide tests' extra counts only within the cores granted (THE GRANTED WIDTH: a grant may be narrower than the ask)
-  if [ -n "$JVM_SLOT" ] && [ "$extra" -gt 0 ] && [ "$GOV_WIDTH" -ge $((want + extra)) ]; then WIDE_TESTS=1; fi
-  [ "$GOV_WIDTH" -ge "$want" ] || jobs=$GOV_WIDTH
+  # the wide tests' extra counts only within the cores granted (THE GRANTED WIDTH: a grant may be narrower than the ask):
+  # out of a grant wider than it, the wide tests keep their width and the pool runs in what is left; a grant no wider
+  # than the extra runs every test one wide (a 1-wide mutation run of short-lived children reads as a stall)
+  if [ -n "$JVM_SLOT" ] && [ "$extra" -gt 0 ] && [ "$GOV_WIDTH" -gt "$extra" ]; then
+    WIDE_TESTS=1
+    [ $((GOV_WIDTH - extra)) -ge "$want" ] || jobs=$((GOV_WIDTH - extra))
+  elif [ "$GOV_WIDTH" -lt "$want" ]; then
+    jobs=$GOV_WIDTH
+  fi
   unset KINOWO_JVM_SLOT_HELD
 }
 
