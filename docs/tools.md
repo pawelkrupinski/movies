@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (251)
+## Landing and CI (252)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -240,23 +240,24 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/hooks/pre-commit` | Pre-commit: no commit is made in the root checkout (the clone's main worktree) | `scripts/hooks/pre-commit` | wf precommit-check; hook pre-push; agentctl; skill CLAUDE.md, agent-ops; 6 tools | pre-commit-test.sh | KEEP |
 | `scripts/hooks/pre-push` | Pre-push: the checks that fail CI in seconds, run here in seconds, for what this push changes | `scripts/hooks/pre-push` | wf ci, identity-findings-report, live-sites +5; hook lint-registry-missing; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 74 tools | pre-push-test.sh | MIGRATE |
 | `scripts/install-hooks.sh` | Point this clone's git hooks at scripts/hooks (the pre-push checks — see scripts/hooks/pre-push) | `scripts/install-hooks.sh` | hook pre-push; skill CLAUDE.md, agent-ops; 1 tool | install-hooks-test.sh | KEEP |
-| `scripts/js-quality-report` | The JS/TS quality report: complexity, length, clones and coupling of the production JS/TS (a name for js_quality_report.py) | `scripts/js-quality-report` | hook pre-push; skill CLAUDE.md, test-layers; 7 tools | js_quality_report_test.py | KEEP |
+| `scripts/js-quality-report` | The JS/TS quality report: complexity, length, clones and coupling of the production JS/TS (a name for js_quality_report.py) | `scripts/js-quality-report` | hook pre-push; skill CLAUDE.md, test-layers; 8 tools | js_quality_report_test.py | KEEP |
 | `scripts/js_quality_report.py` | The JS/TS quality report: complexity, length, clones and coupling of the production JS/TS | `scripts/js_quality_report.py` | hook pre-push; 2 tools | js_quality_report_test.py | Python |
 | `scripts/jvm-gate.sh` | The JVM gate (sourced): JVM slots, locks and governor tickets for the tools that start heavy JVMs | `bash scripts/jvm-gate.sh` | agentctl; skill CLAUDE.md, agent-ops, identity-investigation; 20 tools | jvm-gate-test.sh | MIGRATE |
 | `scripts/land-before-queue` | What `agentctl land` runs after its rebase, before it queues the change (~/bin/lib/agentctl/queue.py enqueue) | `scripts/land-before-queue` | agentctl; skill CLAUDE.md, identity-investigation; 2 tools | land-before-queue-test.sh | KEEP |
 | `scripts/land-precheck` | The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here | `scripts/land-precheck` | agentctl; 2 tools | land_precheck_test.py | MIGRATE |
 | `scripts/land_precheck.py` | The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here | `scripts/land_precheck.py` | 1 tool | land_precheck_test.py | Python |
+| `scripts/lib/js_quality_tools.py` | WHETHER scripts/js-quality-report CAN RUN HERE (scripts/lib; stdlib only): node on PATH, and its pinned tools either | `imported` | by hand | - | Python |
 | `scripts/py-quality-report` | The Python quality report and its ratchet (entry; the measure is scripts/py-quality/report.py) | `scripts/py-quality-report` | hook pre-push; skill CLAUDE.md; 2 tools | - | KEEP |
 | `scripts/py-quality/clones.py` | THE PYTHON CLONE GROUPS (scripts/py-quality/report.py): every run of MIN_TOKENS or more tokens appearing twice or more | `imported` | wf ios; hook pre-push; skill CLAUDE.md, test-layers; 8 tools | - | Python |
 | `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; skill CLAUDE.md; 15 tools | - | Python |
 | `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 27 tools | - | Python |
 | `scripts/py-quality/migrated.py` | THE MIGRATED TOOLS (scripts/py-quality/report.py; the owner, 2026-11-23): the files of the shell-to-Python migration's | `imported` | skill CLAUDE.md; 4 tools | - | Python |
 | `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push; skill CLAUDE.md; 4 tools | - | Python |
-| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +36; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 132 tools | report_test.py | Python |
+| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +36; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 133 tools | report_test.py | Python |
 | `scripts/quality-report` | The code-quality report (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, length and duplication (pmd cpd) | `scripts/quality-report` | wf quality-hotspots; hook pre-push; agentctl; skill CLAUDE.md, test-layers; 2 tools | - | KEEP |
 | `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs (a name for ratchet_diff_cli.py) | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 4 tools | - | KEEP |
 | `scripts/ratchet_diff_cli.py` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet_diff_cli.py` | 1 tool | ratchet_diff_cli_test.py | Python |
-| `scripts/run-script-tests` | Every script self-test, found by its name and run in parallel: the one way CI, the pre-push hook and a person at a terminal run them | `scripts/run-script-tests` | wf tool-self-tests; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, test-layers; 22 tools | run-script-tests-test.sh | MIGRATE |
+| `scripts/run-script-tests` | Every script self-test, found by its name and run in parallel: the one way CI, the pre-push hook and a person at a terminal run them | `scripts/run-script-tests` | wf tool-self-tests; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, test-layers; 23 tools | run-script-tests-test.sh | MIGRATE |
 | `scripts/sbt-warm` | sbt for agents, warm: one sbt server per checkout, kept between calls | `scripts/sbt-warm` | wf tool-self-tests; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 39 tools | sbt-warm-test.sh | MIGRATE |
 | `scripts/stall-report.sh` | What a stalled process group was doing, said before it is ended | `scripts/stall-report.sh` | 3 tools | - | KEEP |
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 3 tools | stall_watch_test.py | MIGRATE |
@@ -621,7 +622,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/nix_stage_steps.py` | THE TWO DECISION STEPS OF nix-stage-closures.yml, run from infra/ (the steps' working directory): | `infra/bin/nix_stage_steps.py` | wf nix-stage-closures | nix_stage_steps_test.py | Python |
 | `infra/bin/propose-pr` | Turn a bot's patch into one pull request on a fixed branch, opened or updated in place | `infra/bin/propose-pr` | wf nix-update; 1 tool | propose-pr-test.sh | KEEP |
 | `infra/bin/provision-mongodb-offbox-key` | Mint (or rotate) the ssh key monitoring-1 pulls mongo-1's dumps with -- roles/mongodb-offbox-backup.nix | `infra/bin/provision-mongodb-offbox-key` | by hand | - | KEEP |
-| `infra/bin/push-gh-secrets` | Copy vault values (operator's Touch ID `secrets`, namespace `movies`) into GitHub Actions secrets, per infra/k8s-secrets/github-secrets.map | `infra/bin/push-gh-secrets` | 1 tool | - | KEEP |
+| `infra/bin/push-gh-secrets` | Copy vault values (operator's Touch ID `secrets`, namespace `movies`) into GitHub Actions secrets, per infra/k8s-secrets/github-secrets.map | `infra/bin/push-gh-secrets` | 1 tool | push-gh-secrets-test.sh | KEEP |
 | `infra/bin/push-k8s-secrets` | Push the current vault values into the kinowo cluster's Secrets, per infra/k8s-secrets/secrets.map | `infra/bin/push-k8s-secrets` | by hand | push-k8s-secrets-test.sh | KEEP |
 | `infra/bin/rolling-reboot` | Reboot this fleet's hosts one at a time, each proven serving before the next | `infra/bin/rolling-reboot` | skill CLAUDE.md, agent-ops; 1 tool | rolling-reboot-test.sh | KEEP |
 | `infra/bin/snapshot-label-values` | Snapshot the fleet's REAL label values for every (metric, label) an alert or panel filters on. | `infra/bin/snapshot-label-values` | 2 tools | - | Python |
@@ -734,7 +735,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 49 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 24 tools | tool_github_test.py | Python |
 | `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 101 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 102 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 16 tools | tool_python_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 21 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |

@@ -5,12 +5,18 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
+from typing import Mapping
+
+import tool_process
 
 
-def ready(tool: str) -> bool:
+def ready(tool: str, runner: tool_process.Runner, env: Mapping[str, str]) -> bool:
     """Whether `tool` (the js-quality-report script) has node, and its tools installed or npm to install them."""
-    if shutil.which("node") is None:
+    if shutil.which("node", path=env.get("PATH")) is None:
         return False
-    tools_dir = subprocess.run([tool, "--tools-dir"], capture_output=True, text=True, check=True).stdout.strip()
-    return os.access(os.path.join(tools_dir, "node_modules", ".bin", "eslint"), os.X_OK) or shutil.which("npm") is not None
+    done = runner.capture(tool_process.Command([tool, "--tools-dir"], env))
+    if done.code != 0:
+        raise RuntimeError(f"{tool} --tools-dir: exit {done.code}: {done.stderr.strip()}")
+    tools_dir = done.stdout.strip()
+    installed = os.access(os.path.join(tools_dir, "node_modules", ".bin", "eslint"), os.X_OK)
+    return installed or shutil.which("npm", path=env.get("PATH")) is not None

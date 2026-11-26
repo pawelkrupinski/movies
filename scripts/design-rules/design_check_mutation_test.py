@@ -18,6 +18,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(SCRIPTS, "lib"))
 import js_quality_tools  # noqa: E402
+import tool_git  # noqa: E402
 TEST = os.path.join(HERE, "design_check_test.py")
 TABLE = "test/resources/design-rules.tsv"
 # name -> (file, exact text in it, what replaces it)
@@ -77,7 +78,7 @@ def run_test(core: str) -> Tuple[int, str]:
 class DesignCheckMutationTest(unittest.TestCase):
     def test_the_core_test_fails_against_every_mutant(self) -> None:
         survivors = []
-        js_here = js_quality_tools.ready(os.path.join(SCRIPTS, "js-quality-report"))
+        js_here = js_quality_tools.ready(os.path.join(SCRIPTS, "js-quality-report"), tool_git.shared_runner(), os.environ)
         for name, (path, old, new) in MUTANTS.items():
             if name.startswith("js ") and not js_here:
                 continue  # only the JS extractor's test catches it, and that test needs the JS tools (skipped here)

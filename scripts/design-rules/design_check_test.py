@@ -25,6 +25,7 @@ import design_lint  # noqa: E402
 import exemptions  # noqa: E402
 import extractors  # noqa: E402
 import js_quality_tools  # noqa: E402
+import tool_git  # noqa: E402
 import naming  # noqa: E402
 import packages  # noqa: E402
 import python_facts  # noqa: E402
@@ -159,7 +160,7 @@ class ExemptionsTest(unittest.TestCase):
         self.assertEqual([], exemptions.row_problems(good))
 
 
-@unittest.skipUnless(js_quality_tools.ready(os.path.join(SCRIPTS, "js-quality-report")),
+@unittest.skipUnless(js_quality_tools.ready(os.path.join(SCRIPTS, "js-quality-report"), tool_git.shared_runner(), os.environ),
                      "the JS extractor's leg not run: node, and its tools or npm to install them, are not here")
 class JsFactsTest(unittest.TestCase):
     def test_the_js_extractor_reads_effects_state_import_io_and_names(self) -> None:
