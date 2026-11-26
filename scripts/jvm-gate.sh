@@ -90,13 +90,17 @@
 #                          checkout red: admitted at once). scripts/gov-run is the same for one command
 #   gov_run <label> <job> <cores> <mem> <command...>  the command (a function too) under gov_hold's ticket, given back
 #                          when it ends: its exit status
-#   gov_width <label> <job> <want> [mem GB]  THE GOVERNED FAN-OUT (the owner, 2026-11-25: "fix structurally" -- load 103
+#   gov_width <label> <job> <want> [mem GB] [fixed]  THE GOVERNED FAN-OUT (the owner, 2026-11-25: "fix structurally" -- load 103
 #                          on 18 cores, `gov status` 0 admitted, 43 test processes ticketless): the width GOV_WIDTH a
 #                          parallel runner may use. Under a ticket already (AGENTCTL_GOV_WIDTH, exported by a ticket
 #                          charged its cores: a check's hook, gov_hold / gov-run with cores, a pool's own workers) it
 #                          takes NONE -- a nested runner never waits on its parent -- and runs at most that wide; else it
 #                          takes gov_hold's ticket charged <want> cores (a refused admission: one wide, warned). Its
-#                          workers run with AGENTCTL_GOV_WIDTH=1: one core each of the ticket. The one place a fan-out
+#                          workers run with AGENTCTL_GOV_WIDTH=1: one core each of the ticket. THE GRANTED WIDTH
+#                          (agentctl 58a5ad1, 2026-11-26: a 17-of-18-core ask held every suite): with a governor that
+#                          grants (`gov probe`: grant) it asks --min-cores 1 and runs as wide as granted (its ticket
+#                          record's cores), never wider than <want>; `fixed` (a pool with a time bound: a 1-core grant
+#                          timed agentctl's suite out) asks exactly <want>. The one place a fan-out
 #                          is sized: scripts/gov-parallel (xargs -P), scripts/lib/governed_pool.py (a Python pool),
 #                          run-script-tests' pool; scripts/ci/fanout_lint.py refuses any other
 #   jvm_route <job>        `ci` when the governor would hold <job> now and ci-runner's measure lane is free (`agentctl
@@ -151,7 +155,7 @@ except OSError:
 }
 lock_busy() { [ -e "$1" ] && ! _lock_flock - "$1"; }
 
-GOVERNOR_BIN=""
+GOVERNOR_BIN="" GOV_GRANTED=""
 governor_bin() {
   local g=${KINOWO_GOVERNOR_BIN:-$HOME/bin/agentctl} f
   GOVERNOR_BIN=""
@@ -200,14 +204,21 @@ gov_take() { # <label> [--try]
   if governor_has cores; then
     cores=(--job "$(gov_job "$label")")
     [ -z "${KINOWO_GOV_CORES:-}" ] || cores+=(--cores "$KINOWO_GOV_CORES")
+    # a pool that can run narrower (gov_width): granted what is free, at least this many (THE GRANTED WIDTH)
+    [ -z "${KINOWO_GOV_MIN_CORES:-}" ] || ! governor_has grant || cores+=(--min-cores "$KINOWO_GOV_MIN_CORES")
   fi
   ticket="${AGENTCTL_GOV_DIR:-$HOME/.cache/agentctl/gov}/t-$$-$RANDOM$RANDOM.lock"
   mkdir -p "$(dirname "$ticket")" && exec 7>> "$ticket" || return 1
   if "$g" gov admit --fd 7 --ticket "$ticket" --class "$(gov_class "$label")" --mem "${KINOWO_GOV_MEM_GB:-5}" \
       --label "$label" --pid $$ --cwd "$PWD" ${cores[@]+"${cores[@]}"} "$@"; then
     JVM_SLOT=$ticket; export KINOWO_JVM_SLOT_HELD="$ticket"
-    # charged a number of cores: that is the width every governed fan-out under it may run (gov_width)
-    if [ -n "${KINOWO_GOV_CORES:-}" ]; then AGENTCTL_GOV_WIDTH=$(_gov_whole "$KINOWO_GOV_CORES"); export AGENTCTL_GOV_WIDTH; fi
+    # charged a number of cores -- the GRANT when one was asked for (its record's `cores`) -- that is the width every
+    # governed fan-out under it may run (gov_width)
+    GOV_GRANTED=""
+    if [ -n "${KINOWO_GOV_CORES:-}" ]; then
+      case " ${cores[*]-} " in *" --min-cores "*) GOV_GRANTED=$(_gov_granted "$ticket") ;; esac
+      AGENTCTL_GOV_WIDTH=$(_gov_whole "${GOV_GRANTED:-$KINOWO_GOV_CORES}"); export AGENTCTL_GOV_WIDTH
+    fi
     return 0
   fi
   exec 7>&-; rm -f "$ticket"
@@ -241,10 +252,18 @@ gov_run() { # <label> <job> <cores> <mem> <command...>
   shift 4
   ( gov_hold "$label" "$job" "$charged" "$mem"; "$@" )
 }
+# _gov_granted <ticket> -> the cores the governor granted it (its record, <ticket less .lock>.json), or nothing
+_gov_granted() {
+  python3 -I -B -c 'import json, sys
+try:
+    print(json.load(open(sys.argv[1][: -len(".lock")] + ".json"))["cores"])
+except (OSError, ValueError, KeyError, TypeError):
+    pass' "$1" 2> /dev/null
+}
 # _gov_whole <cores> -> the whole cores, at least 1 ("1.5" -> 1)
 _gov_whole() { local n=${1%%.*}; [ "${n:-0}" -ge 1 ] 2> /dev/null && echo "$n" || echo 1; }
 # shellcheck disable=SC2034 # GOV_WIDTH: its caller's (gov-parallel, run-script-tests, tool_pool.py)
-gov_width() { # <label> <job> <want> [mem GB] -> GOV_WIDTH
+gov_width() { # <label> <job> <want> [mem GB] [fixed] -> GOV_WIDTH
   local want above=${AGENTCTL_GOV_WIDTH:-}
   want=$(_gov_whole "$3")
   if [ -n "$above" ]; then
@@ -256,7 +275,12 @@ gov_width() { # <label> <job> <want> [mem GB] -> GOV_WIDTH
   governor_bin > /dev/null || return 0
   jvm_slot_riding && return 0
   [ -z "${KINOWO_GOV_CPU_HELD:-}" ] && [ -z "$JVM_SLOT" ] || return 0
-  KINOWO_GOV_JOB=$2 KINOWO_GOV_CORES=$want KINOWO_GOV_MEM_GB=${4:-1} gov_take "$1" && return 0
+  if KINOWO_GOV_JOB=$2 KINOWO_GOV_CORES=$want KINOWO_GOV_MEM_GB=${4:-1} KINOWO_GOV_MIN_CORES=$([ "${5:-}" = fixed ] || echo 1) \
+      gov_take "$1"; then
+    [ -z "$GOV_GRANTED" ] || GOV_WIDTH=$(_gov_whole "$GOV_GRANTED")
+    [ "$GOV_WIDTH" -le "$want" ] || GOV_WIDTH=$want
+    return 0
+  fi
   GOV_WIDTH=1
   echo "[$1] the governor ($GOVERNOR_BIN gov admit) failed: running one wide, without a ticket" >&2
 }

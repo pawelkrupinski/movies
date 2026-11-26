@@ -202,7 +202,9 @@ declared_width() {
 }
 # govern_run <tests> -> THE GOVERNED FAN-OUT's width for min(--jobs, <tests>) (THE GOVERNOR; jvm-gate.sh gov_width): a
 # ticket charged that many cores plus every selected wide test's extra (declared_width - 1) while that sum fits the
-# machine's cores, or within the one this run is under (a check's hook: at most its width); --jobs is then that width.
+# machine's cores, or within the one this run is under (a check's hook: at most its width); --jobs is then that width,
+# or the narrower one the governor granted (agentctl 58a5ad1's --min-cores), the wide tests' extra then counted only
+# when the grant covers it.
 # TEST_WIDTH, what each test runs under (AGENTCTL_GOV_WIDTH, run_one): unset without a governor (CI: a test's own
 # fan-out as wide as it asks), its declared width under the run's own ticket that counts it, else 1 -- one core of it.
 # Its tests see no ticket either way (descriptor 7 closed in run_one).
@@ -219,7 +221,8 @@ govern_run() {
   cores=$(getconf _NPROCESSORS_ONLN 2> /dev/null || echo 0)
   [ $((want + extra)) -le "${cores:-0}" ] || extra=0
   gov_width run-script-tests script-tests $((want + extra)) 2
-  if [ -n "$JVM_SLOT" ] && [ "$extra" -gt 0 ]; then WIDE_TESTS=1; fi
+  # the wide tests' extra counts only within the cores granted (THE GRANTED WIDTH: a grant may be narrower than the ask)
+  if [ -n "$JVM_SLOT" ] && [ "$extra" -gt 0 ] && [ "$GOV_WIDTH" -ge $((want + extra)) ]; then WIDE_TESTS=1; fi
   [ "$GOV_WIDTH" -ge "$want" ] || jobs=$GOV_WIDTH
   unset KINOWO_JVM_SLOT_HELD
 }

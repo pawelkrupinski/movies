@@ -91,6 +91,27 @@ chmod +x "$work/refusing"; : > "$work/refused"
 out=$(seq 1 3 | spec_governed "$work/refusing" "$gp" --job j -P 3 -n 1 "$work/item" "$work/refused" 2>&1)
 check "a governor that fails: warned, and the fan-out runs one wide, never its full width ticketless" "1 3 1" \
   "$(printf '%s\n' "$out" | grep -c 'running one wide') $(grep -c '^1$' "$work/refused") $(overlap "$work/refused")"
+# THE GRANTED WIDTH (agentctl 58a5ad1, 2026-11-26: one run-script-tests ticket was charged 17 of 18 cores and held every
+# suite): a governor that grants (`gov probe` lists `grant`) is asked --min-cores 1 and grants what is free -- its
+# ticket record's `cores` -- and the fan-out runs that wide, not its ask. A governor without `grant` is asked as before.
+cat > "$work/granting" <<'STUB'
+#!/usr/bin/env bash
+[ "$1 $2" = "gov probe" ] && { echo "agentctl governor: admit cores route width grant"; exit 0; }
+printf '%s\n' "$*" >> "$GOV_CALLS"
+exec python3 -I -B -c '
+import fcntl, json, sys
+a = sys.argv[1:]
+t = a[a.index("--ticket") + 1]
+granted = "--min-cores" in a and int(a[a.index("--min-cores") + 1]) or int(a[a.index("--cores") + 1])
+json.dump({"cores": min(2, granted) if "--min-cores" in a else granted}, open(t[:-len(".lock")] + ".json", "w"))
+fcntl.flock(7, fcntl.LOCK_EX | fcntl.LOCK_NB)' "$@"
+STUB
+chmod +x "$work/granting"; : > "$GOV_CALLS"; : > "$work/granted"
+seq 1 6 | spec_governed "$work/granting" "$gp" --job g -P 8 -n 1 "$work/item" "$work/granted" > /dev/null 2>&1
+check "a grant narrower than the ask sizes the fan-out down: asked --min-cores 1, ran at most the 2 cores granted" \
+  "1 6 yes" "$(grep -c -- '--job g --cores 8 --min-cores 1$' "$GOV_CALLS") $(grep -c '^1$' "$work/granted") \
+$([ "$(overlap "$work/granted")" -le 2 ] && echo yes)"
+
 check "usage: no --job or no -P is 64" "64 64" \
   "$(echo | "$gp" -P 2 true > /dev/null 2>&1; echo $?) $(echo | "$gp" --job j true > /dev/null 2>&1; echo $?)"
 

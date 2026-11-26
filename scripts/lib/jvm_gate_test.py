@@ -35,6 +35,22 @@ class FakeCommands:
         return self.probe
 
 
+class GrantingCommands(FakeCommands):
+    """A governor that grants (`gov probe`: grant) `cores`, writing them in each ticket's record as agentctl does."""
+
+    def __init__(self, cores: int) -> None:
+        super().__init__(probe="agentctl governor: admit cores route width grant\n")
+        self.cores = cores
+
+    def status(self, argv: Sequence[str], pass_fds: Sequence[int] = (), quiet: bool = False,
+               out_to_err: bool = False) -> int:
+        if "admit" in argv:
+            ticket = argv[list(argv).index("--ticket") + 1]
+            with open(ticket[: -len(".lock")] + ".json", "w") as f:
+                f.write('{"cores": %d}' % self.cores)
+        return super().status(argv, pass_fds, quiet, out_to_err)
+
+
 class Case(unittest.TestCase):
     def setUp(self) -> None:
         self.dir = tempfile.TemporaryDirectory(prefix="jvm-gate-")
@@ -156,6 +172,37 @@ class GovernorTest(Case):
         self.assertEqual("", self.gate(system="Linux").cpu_options())
         self.env["KINOWO_JVM_CPUS"] = "0"
         self.assertEqual("", self.gate().cpu_options())
+
+
+class GrantTest(Case):
+    def granting(self, cores: int) -> FakeCommands:
+        """The case governed by a GrantingCommands."""
+        agentctl = os.path.join(self.work, "agentctl")
+        with open(agentctl, "w") as f:
+            f.write("#!/bin/sh\n")
+        os.chmod(agentctl, 0o755)
+        self.env.update({"KINOWO_GOVERNOR": "1", "KINOWO_GOVERNOR_BIN": agentctl, "AGENTCTL_GOV_DIR": self.work})
+        return GrantingCommands(cores)
+
+    def test_a_grant_narrower_than_the_ask_sizes_the_pool_down(self) -> None:
+        commands = self.granting(2)
+        gate = self.gate(commands)
+        self.assertEqual(2, gate.width("run-script-tests", "script-tests", 8))
+        self.assertEqual("2", self.env["AGENTCTL_GOV_WIDTH"])
+        admit = commands.calls[-1]
+        self.assertEqual(["--job", "script-tests", "--cores", "8", "--min-cores", "1"], admit[admit.index("--job"):])
+        gate.release()
+
+    def test_a_fixed_pool_asks_its_width_and_a_ticket_already_held_takes_none(self) -> None:
+        commands = self.granting(2)
+        gate = self.gate(commands)
+        self.assertEqual(8, gate.width("suite", "suite", 8, fixed=True))
+        self.assertNotIn("--min-cores", commands.calls[-1])
+        gate.release()
+        self.env["AGENTCTL_GOV_WIDTH"] = "3"
+        calls = len(commands.calls)
+        self.assertEqual(3, self.gate(commands).width("x", "x", 8))
+        self.assertEqual(calls, len(commands.calls))
 
 
 class MemoryTest(Case):

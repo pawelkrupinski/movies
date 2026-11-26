@@ -10,15 +10,17 @@ composition root is the tool's main().
   lock_busy(path)                       0 there: whether some process holds `path`'s lock
   Governor                              `agentctl gov` (probe, admit, route, usage): governor_bin, governor_has
   JvmGate                               slot_take, slot_try, take_if_free, riding, release, hand_off, keeper_start,
-                                        cpu_take, route, usage, cpu_options -- the shell functions of those names"""
+                                        cpu_take, width (gov_width, with THE GRANTED WIDTH: agentctl's --min-cores),
+                                        route, usage, cpu_options -- the shell functions of those names"""
 from __future__ import annotations
 
 import fcntl
+import json
 import os
 import random
 import subprocess
 from dataclasses import dataclass
-from typing import Callable, List, MutableMapping, Optional, Protocol, Sequence
+from typing import Callable, Dict, List, MutableMapping, Optional, Protocol, Sequence, cast
 
 from jvm_memory import MemoryGate, SlotWait
 
@@ -188,6 +190,17 @@ def gov_job(env: MutableMapping[str, str], label: str) -> str:
     return "keeper" if label in ("sbt-warm", "keeper") else "job"
 
 
+def granted(ticket: str) -> Optional[str]:
+    """The cores the governor granted a ticket (its record, <ticket less .lock>.json), None when it says none."""
+    try:
+        with open(ticket[: -len(".lock")] + ".json") as f:
+            record = json.load(f)
+    except (OSError, ValueError):
+        return None
+    cores: object = cast(Dict[str, object], record).get("cores") if isinstance(record, dict) else None
+    return str(cores) if isinstance(cores, (int, float)) else None
+
+
 def whole(cores: str) -> int:
     """The whole cores, at least 1 ("1.5" -> 1)."""
     head = cores.split(".")[0]
@@ -201,6 +214,7 @@ class JvmGate:
         self.host, self.governor, self.memory, self.slot_wait, self.slot_dir = host, governor, memory, slot_wait, slot_dir
         self.slot = ""
         self.lock: Optional[FileLock] = None
+        self.granted: Optional[str] = None
 
     @property
     def env(self) -> MutableMapping[str, str]:
@@ -221,15 +235,22 @@ class JvmGate:
         self.lock, self.slot = lock, lock.path
         self.env["KINOWO_JVM_SLOT_HELD"] = lock.path
 
+    def charge(self, label: str) -> List[str]:
+        """What a ticket for `label` is charged: its job, its cores, and with a governor that grants its minimum."""
+        if not self.governor.has("cores"):
+            return []
+        cores = ["--job", gov_job(self.env, label)]
+        cores += ["--cores", self.env["KINOWO_GOV_CORES"]] if self.env.get("KINOWO_GOV_CORES") else []
+        if self.env.get("KINOWO_GOV_MIN_CORES") and self.governor.has("grant"):
+            cores += ["--min-cores", self.env["KINOWO_GOV_MIN_CORES"]]
+        return cores
+
     def gov_take(self, label: str, try_once: bool = False) -> bool:
         """A governor ticket on descriptor 7: whether it was admitted."""
         g = self.governor.bin()
         if g is None:
             return False
-        cores: List[str] = []
-        if self.governor.has("cores"):
-            cores = ["--job", gov_job(self.env, label)]
-            cores += ["--cores", self.env["KINOWO_GOV_CORES"]] if self.env.get("KINOWO_GOV_CORES") else []
+        cores = self.charge(label)
         tickets = self.env.get("AGENTCTL_GOV_DIR") or os.path.join(self.host.home, ".cache/agentctl/gov")
         os.makedirs(tickets, exist_ok=True)
         lock = FileLock(os.path.join(tickets, f"t-{self.host.pid}-{random.randrange(10 ** 9)}.lock"), SLOT_FD)
@@ -242,16 +263,18 @@ class JvmGate:
                 "--cwd", self.env.get("PWD") or os.getcwd(), *cores, *(["--try"] if try_once else [])]
         if self.governor.admit(argv):
             self._held(lock)
+            self.granted = granted(lock.path) if "--min-cores" in cores else None
             if self.env.get("KINOWO_GOV_CORES"):
-                self.env["AGENTCTL_GOV_WIDTH"] = str(whole(self.env["KINOWO_GOV_CORES"]))
+                self.env["AGENTCTL_GOV_WIDTH"] = str(whole(self.granted or self.env["KINOWO_GOV_CORES"]))
             return True
         lock.close()
         os.remove(lock.path)
         return False
 
-    def _ticket(self, label: str, job: str, mem: str, cores: str = "") -> bool:
-        saved = {k: self.env.get(k) for k in ("KINOWO_GOV_JOB", "KINOWO_GOV_MEM_GB", "KINOWO_GOV_CORES")}
-        self.env.update({"KINOWO_GOV_JOB": job, "KINOWO_GOV_MEM_GB": mem, "KINOWO_GOV_CORES": cores})
+    def _ticket(self, label: str, job: str, mem: str, cores: str = "", min_cores: str = "") -> bool:
+        keys = ("KINOWO_GOV_JOB", "KINOWO_GOV_MEM_GB", "KINOWO_GOV_CORES", "KINOWO_GOV_MIN_CORES")
+        saved = {k: self.env.get(k) for k in keys}
+        self.env.update(dict(zip(keys, (job, mem, cores, min_cores))))
         try:
             return self.gov_take(label)
         finally:
@@ -260,6 +283,22 @@ class JvmGate:
                     self.env.pop(key, None)
                 else:
                     self.env[key] = value
+
+    def width(self, label: str, job: str, want: int, mem: str = "1", fixed: bool = False) -> int:
+        """THE GOVERNED FAN-OUT's width (jvm-gate.sh gov_width): under a ticket already at most its width, taking none;
+        else a ticket charged `want` cores -- with a governor that grants, asked --min-cores 1 (unless `fixed`: a pool
+        with a time bound) and as wide as it granted --, held until release(); one wide when the governor fails."""
+        want = max(1, want)
+        above = self.env.get("AGENTCTL_GOV_WIDTH")
+        if above:
+            return min(want, whole(above))
+        g = self.governor.bin()
+        if g is None or self.riding() or self.env.get("KINOWO_GOV_CPU_HELD") or self.slot:
+            return want
+        if self._ticket(label, job, mem, str(want), "" if fixed else "1"):
+            return min(want, whole(self.granted)) if self.granted else want
+        self.host.say(f"[{label}] the governor ({g} gov admit) failed: running one wide, without a ticket")
+        return 1
 
     def cpu_take(self, label: str, job: str) -> None:
         """A cores-only ticket for one call into a kept JVM (jvm-gate.sh jvm_cpu_take)."""
