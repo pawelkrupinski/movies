@@ -12,7 +12,7 @@ import services.identity.measures.{DecisionTrace, IdentityMeasures, Measure, Sco
  *  ([[seasonProduction]]). A new rule is a new row there, its questions named in the rule file of its kind (title,
  *  facts, calibration, stage, vetoes, bills); this class only runs the table. */
 private[identity] final class Acceptance(private[identity] val calibration: IdentityCalibration)
-    extends AcceptanceRuleTable, AcceptanceCalibratedRules, AcceptanceStageRules {
+    extends AcceptanceRuleTable, AcceptanceStageRules {
 
   val weights = new EvidenceWeights(calibration)
   import weights.{against, fitsBetter, own, speaksAgainst}
@@ -191,6 +191,8 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
   def billsSeveralWorks(ranked: Seq[Scored]): Boolean = AcceptanceTitleRules.billsSeveralWorks(ranked)
   /** Does the listing's page read as reused for `scored` ([[AcceptanceTitleRules.copiedBeyondItsBilling]])? */
   private[identity] def copiedBeyondItsBilling(scored: Scored): Boolean = AcceptanceTitleRules.copiedBeyondItsBilling(scored)
+  /** The film a node's evidence leans to though no rule took it ([[AcceptanceFactRules.leaning]]). */
+  def leaning(ranked: Seq[Scored]): Option[Scored] = AcceptanceFactRules.leaning(weights, ranked)
   /** The film a cluster no TMDB film was taken for falls back to ([[AcceptanceFactRules.fallback]]). */
   def fallback(ranked: Seq[Scored]): Option[Scored] = AcceptanceFactRules.fallback(weights, ranked)
 
@@ -274,7 +276,7 @@ private[identity] object Acceptance {
    *  cut, the rival it lost to. */
   final case class Refused(why: String, film: Option[Int] = None, detail: String = "")
 
-  /** How many times its runner-up's probability the film a no-match leans to holds ([[Acceptance.leaning]]): a tie
+  /** How many times its runner-up's probability the film a no-match leans to holds ([[AcceptanceFactRules.leaning]]): a tie
    *  between namesakes is no lean. */
   val LeanMargin = 1.25
   /** A candidate as a refusal names it: "1365683 Primavera (2025)". */

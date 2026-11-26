@@ -36,7 +36,7 @@ private[identity] object AcceptanceRule {
 
   /** A ranking — its candidates best first — as the rules weigh it: the views of it every rule reads, each worked out
    *  once however many rules read it. */
-  final class Weighing(val ranked: Seq[Scored], weights: EvidenceWeights) {
+  final class Weighing(val ranked: Seq[Scored], val weights: EvidenceWeights) {
     lazy val eligible: Seq[Scored]  = ranked.filter(isEligible)
     /** The undenied candidates, IMDb's own suggestions among them. */
     lazy val undenied: Seq[Scored]  = ranked.filterNot(_.denied)
