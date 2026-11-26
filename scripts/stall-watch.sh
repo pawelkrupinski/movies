@@ -5,20 +5,8 @@
 # budget fails a compile under a load of 100; this fails only a step that waits on nothing that moves.
 #
 #   scripts/stall-watch.sh watch <root pid> <seconds> <label> <stalled file> [<progress file>] [<dir>]
-#       the watchdog: polls every $KINOWO_STALL_POLL_SECONDS (30) and counts as progress (a) the CPU of <root pid>'s
-#       descendants (less the watchdog's own, with what their exited children used) growing by >= $KINOWO_STALL_CPU_CENTIS
-#       (100: one second) in a poll, (b) one of them runnable at the poll (state R: running, or waiting for a CPU), (c)
-#       <progress file> touched, (d) a file directly in <dir> written (its logs). (b) keeps a busy step alive on a loaded
-#       machine: under a load of 90 a shell loop forking `date` was granted 5 centiseconds a second, most of them in
-#       children gone before the poll (2026-10-27: pre-push-test's busy case judged STALLED). A step that waits on nothing
-#       sleeps. (Processes new since the last poll are no progress: the hook's own helper loops start some every second.)
-#       <seconds> without any: it appends <label> to
-#       <stalled file>, prints `STALLED: <label> (no progress for <seconds>s)` on stderr, and ends the descendants (TERM,
-#       KILL 10 s later). It ends itself when <root pid> does; its caller kills it once the step is done.
-#       KINOWO_STALL_GROUPS=1: the step runs in process groups of its own, under the root's (run-script-tests: each test
-#       under tool-conventions.sh's `bounded`): a stall first says what each of those groups was stuck on
-#       (scripts/stall-report.sh, on stderr), then ends their processes alone, never the root's own group -- whose
-#       `bounded` then returns the step's status as for any other end.
+#       the watchdog, scripts/stall_watch.py (its header says how it judges progress and what a stall does); this name
+#       stays: run-script-tests and the pre-push hook run `bash scripts/stall-watch.sh watch ...`
 #   . scripts/stall-watch.sh          the helpers: stall_tree_pids <pid>, stall_cpu_centis [<pid>...],
 #                                     stall_any_runnable [<pid>...], stall_tree_shrank <before> <after>,
 #                                     stall_any_gone [<pid>...], stall_kept_pids <before> <after>
@@ -101,75 +89,6 @@ stall_kept_pids() { # <before> <after>
   for p in $2; do case "$before" in *" $p "*) echo "$p" ;; esac; done
 }
 
-# Whether <file> was modified since the watchdog's mark <mark> (a file whose mtime is the previous poll)
-_stall_newer() { [ -n "$1" ] && [ -e "$1" ] && [ "$1" -nt "$2" ]; }
-
-stall_watch() { # <root pid> <seconds> <label> <stalled file> [<progress file>] [<dir>]
-  local root=$1 bound=$2 label=$3 stalled=$4 progress=${5:-} dir=${6:-}
-  local poll=${KINOWO_STALL_POLL_SECONDS:-30} need=${KINOWO_STALL_CPU_CENTIS:-100}
-  local mark="" quiet=0 last now mine pids p q moved own g groups
-  local nap=""
-  # ended at once, mid-poll: a trap waits for a foreground `sleep` to end, so the poll sleeps in the background (each
-  # check of the hook would otherwise wait up to a poll for its watchdog to go)
-  # (HUP too: a watchdog whose terminal or hook went away otherwise left its stall-mark.* in the temp directory)
-  # SET BEFORE THE MARK IS MADE: a caller ends its watchdog the moment a quick step is done, often while it is still in
-  # `$(mktemp)`. Untrapped, that TERM ended the shell mid-substitution: mktemp wrote into a pipe nobody read ("mktemp:
-  # failed to print directory name: Broken pipe" on the watchdog's stderr, which run-script-tests appends to the test's
-  # own log -- Tool self-tests 41193766567 on github.com) and its stall-mark.* was left behind. Trapped, bash runs the
-  # trap once the substitution is done, with the mark known, and removes it.
-  # ...AND MADE WITHOUT A `$(...)`: bash 5.2 (GitHub's ubuntu runner) runs a trap taken while it parses a command
-  # substitution with its parser still expecting that `)`, and the trap's own text then fails to parse ("trap: line 2:
-  # unexpected EOF while looking for matching `)'", Tool self-tests 42352127007 on github.com). The mark is named for
-  # the watchdog's own pid (each runs as its own process; a same-named mark left by a dead one is just reused).
-  trap 'kill $nap 2> /dev/null; [ -n "$mark" ] && rm -f "$mark"; exit 0' TERM INT HUP
-  mark="${TMPDIR:-/tmp}/stall-mark.${BASHPID:-$$}"
-  : > "$mark" || return 1
-  last=-1
-  while kill -0 "$root" 2> /dev/null; do
-    sleep "$poll" & nap=$!; wait "$nap"; nap=""
-    mine=" $(stall_tree_pids $$ | tr '\n' ' ')"
-    pids=""
-    for p in $(stall_tree_pids "$root" | sed 1d); do case "$mine" in *" $p "*) ;; *) pids="$pids $p" ;; esac; done
-    # shellcheck disable=SC2086 # one pid per word
-    now=$(stall_cpu_centis $pids)
-    moved=0
-    [ "$last" -ge 0 ] && [ $((now - last)) -ge "$need" ] && moved=1
-    [ "$last" -lt 0 ] && moved=1   # the first poll: no baseline yet
-    # shellcheck disable=SC2086
-    stall_any_runnable $pids && moved=1
-    _stall_newer "$progress" "$mark" && moved=1
-    [ -n "$dir" ] && [ -n "$(find "$dir" -maxdepth 1 -type f -newer "$mark" 2> /dev/null | head -1)" ] && moved=1
-    touch "$mark"; last=$now
-    if [ "$moved" = 1 ]; then quiet=0; continue; fi
-    quiet=$(awk -v q="$quiet" -v p="$poll" 'BEGIN { printf "%d", q + p + 0.5 }')
-    [ "$quiet" -ge "$bound" ] || continue
-    echo "$label" >> "$stalled"
-    echo "STALLED: $label (no progress for ${quiet}s: no CPU in its processes, no output, no progress mark)" >&2
-    if [ "${KINOWO_STALL_GROUPS:-}" = 1 ] && [ -n "$pids" ]; then
-      own=$(ps -o pgid= -p "$root" 2> /dev/null | tr -d ' ')
-      # shellcheck disable=SC2086 # one pid per word
-      groups=$(ps -o pid=,pgid= -p "$(echo $pids | tr ' ' ',')" 2> /dev/null | awk -v own="$own" '$2 != own { print $2 }' | sort -u)
-      # shellcheck disable=SC2086
-      pids=$(ps -o pid=,pgid= -p "$(echo $pids | tr ' ' ',')" 2> /dev/null | awk -v own="$own" '$2 != own { print $1 }' | tr '\n' ' ')
-      for g in $groups; do bash "$(dirname "${BASH_SOURCE[0]}")/stall-report.sh" "$g"; done
-    fi
-    # shellcheck disable=SC2086
-    [ -n "$pids" ] && kill -TERM $pids 2> /dev/null
-    for _ in $(seq 1 20); do
-      p=""; for q in $pids; do kill -0 "$q" 2> /dev/null && p="$p $q"; done
-      [ -z "$p" ] && break; sleep 0.5
-    done
-    # shellcheck disable=SC2086
-    [ -n "$p" ] && kill -KILL $p 2> /dev/null
-    break
-  done
-  rm -f "$mark"
-}
-
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-  case "${1:-}" in
-    watch) shift; [ $# -ge 4 ] || { echo "usage: stall-watch.sh watch <root pid> <seconds> <label> <stalled file> [<progress file>] [<dir>]" >&2; exit 2; }
-      stall_watch "$@" ;;
-    *) sed -n '2,/^set /p' "$0" | sed -e '$d' -e 's/^# \{0,1\}//'; exit 2 ;;
-  esac
+  exec python3 "$(dirname "$0")/stall_watch.py" "$@"
 fi
