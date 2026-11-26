@@ -35,7 +35,8 @@ DOCKER = '''echo "docker $1" >> "$STUB/calls"
 echo "$*" >> "$STUB/docker-args"
 case "$*" in *rs.initiate*) echo "$*" > "$STUB/initiate" ;; esac
 case "$1" in
-  exec) [ -e "$STUB/mongo-never-up" ] && exit 1
+  exec) [ -e "$STUB/docker-hangs" ] && exec sleep 60
+        [ -e "$STUB/mongo-never-up" ] && exit 1
         case "$*" in *myState*) echo 1 ;; esac ;;
 esac
 exit 0'''
@@ -170,6 +171,12 @@ class ConvergenceLocalTest(cli_harness.ToolCase):
         self.assertEqual(1, done.code, done.output)
         self.assertIn("the throwaway MongoDB never answered (ping) in 3s", done.stderr)
         self.assertEqual([], [c for c in self.calls() if c.startswith("sbt")])
+
+    def test_a_docker_call_that_stalls_ends_the_wait_at_its_wall_time_deadline(self) -> None:
+        self.write("docker-hangs", "")
+        done = self.leg("es", TMDB_API_KEY="tmdb", CONVERGENCE_LOCAL_DOCKER_TIMEOUT="1", CONVERGENCE_LOCAL_MONGO_WAIT="2")
+        self.assertEqual(1, done.code, done.output)
+        self.assertIn("the throwaway MongoDB never answered (ping) in 2s", done.stderr)
 
     def test_a_laid_pair_is_copied_in_for_its_country_alone(self) -> None:
         self.write("laid/corpus/cinema-scrapes-de.json.gz", "corpus\n")

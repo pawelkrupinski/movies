@@ -152,15 +152,20 @@ class Leg:
             self.throwaway(fallback)
         return f"mongodb://127.0.0.1:{fallback}/?directConnection=true"
 
+    def docker_bound(self) -> float:
+        """A docker call that stalls (a wedged Docker Desktop) ends at this many seconds, as a failure."""
+        return float(self.env.get("CONVERGENCE_LOCAL_DOCKER_TIMEOUT") or "60")
+
     def docker(self, *args: str) -> int:
-        done = self.runner.capture(Command(["docker", *args], self.env))
+        done = self.runner.capture(Command(["docker", *args], self.env, timeout=self.docker_bound()))
         return done.code
 
     def throwaway(self, port: str) -> None:
         say(f"==> starting a throwaway {IMAGE} single-node replica set on :{port}")
         self.started_container = True
         started = self.runner.capture(Command(["docker", "run", "-d", "--name", self.container, "-p", f"{port}:27017",
-                                               IMAGE, "--replSet", "rs0", "--bind_ip_all"], self.env))
+                                               IMAGE, "--replSet", "rs0", "--bind_ip_all"], self.env,
+                                              timeout=15 * 60))  # an image pull is in it
         sys.stderr.write(started.stderr)
         if started.code != 0:
             raise Stop(started.code)
@@ -173,7 +178,7 @@ class Leg:
     def mongosh(self, expression: str, quiet_errors: bool = True) -> Optional[str]:
         """The container's mongosh evaluating `expression`: its stdout, or None when it failed."""
         done = self.runner.capture(Command(["docker", "exec", self.container, "mongosh", "--quiet", "--eval", expression],
-                                           self.env))
+                                           self.env, timeout=self.docker_bound()))
         if not quiet_errors:
             sys.stderr.write(done.stderr)
         return done.stdout if done.code == 0 else None
@@ -186,13 +191,12 @@ class Leg:
         """Each wait has a deadline: a container that never comes up (an image pull refused, a crash loop) used to hold
         the leg forever, printing nothing."""
         bound = int(self.env.get("CONVERGENCE_LOCAL_MONGO_WAIT") or "120")
-        waited = 0
+        deadline = time.monotonic() + bound  # wall time: a call that stalls is part of the wait
         while not ready():
-            if waited >= bound:
+            if time.monotonic() >= deadline:
                 warn(f"the throwaway MongoDB never answered ({what}) in {bound}s — docker logs {self.container}")
                 raise Stop(1)
             self.sleep(1)
-            waited += 1
 
 
 def free_port() -> str:
