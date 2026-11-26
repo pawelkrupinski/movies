@@ -105,11 +105,14 @@ class StallWatchTest(cli_harness.ToolCase):
         self.assertTrue(os.path.exists(self.path("finished")), "stalled while its log was still written")
 
     def test_a_file_in_a_subdirectory_of_the_log_directory_is_no_progress(self) -> None:
+        # written for as long as the step runs, so only that file's not counting can stall it: with eight writes and
+        # then `finished`, the case raced six seconds, and a loaded machine (its `sleep`s runnable, waiting for a CPU:
+        # progress by design) stalled it after them (Tool self-tests #594, macOS)
         os.makedirs(self.path("logs", "sub"))
-        root = self.sh(TOUCHES % "echo x >> logs/sub/step.log")
+        root = self.sh("while :; do echo x >> logs/sub/step.log; sleep 0.75; done")
         proc = self.watch(str(root.pid), "3", "nested", self.path("stalled"), self.path("progress"), self.path("logs"))
         self.await_stall(proc)
-        self.assertFalse(os.path.exists(self.path("finished")), "a nested file was counted as progress")
+        self.assertEqual("nested\n", self.read("stalled"), "a nested file was counted as progress")
 
     def test_a_busy_process_is_progress(self) -> None:
         busy = "import time; end = time.time() + 6\nwhile time.time() < end: pass"
