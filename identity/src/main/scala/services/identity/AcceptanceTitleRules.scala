@@ -1,12 +1,12 @@
 package services.identity
 
-import services.identity.AcceptanceRule.Weighing
+import services.identity.AcceptanceRule.{Weighing, isEligible}
 import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredListing, Scored}
 
 /** What the acceptance rules that take a film by how its title is searched and billed ask: the exact and segment top
  *  hits, IMDb's suggestion, and the sole result ([[AcceptanceRuleTable]]).
- *  Part of [[Acceptance]], which mixes it in. */
-private[identity] trait AcceptanceTitleRules { this: Acceptance =>
+ *  Functions of the candidates and the listing they score. */
+private[identity] object AcceptanceTitleRules {
   import AcceptanceFactRules.asItsTitlesTopHit
   import Acceptance.Refused
 
@@ -87,6 +87,8 @@ private[identity] trait AcceptanceTitleRules { this: Acceptance =>
    *  first, the 1991 film IMDb suggests, above 1972's "Krõll")? */
   private[identity] def searchNamesAnother(scored: Scored, rival: Scored): Boolean = (rival ne scored) && rival.titleNamesIt &&
     rival.rank.exists(r => scored.rank.forall(r < _))
+  /** Does the title number another instalment than the film's own ([[IdentityMeasures.OtherInstalment]])? */
+  private[identity] def otherInstalment(scored: Scored): Boolean = scored.category("numeral").exists(IdentityMeasures.OtherInstalment)
   /** Does the title number the film's own instalment — or is it the film's own title but for a slip ([[slippedTitle]]),
    *  which never numbers another? */
   private[identity] def itsOwnInstalmentOrASlip(scored: Scored): Boolean =

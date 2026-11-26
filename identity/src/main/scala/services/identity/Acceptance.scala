@@ -12,8 +12,7 @@ import services.identity.measures.{DecisionTrace, IdentityMeasures, Measure, Sco
  *  ([[seasonProduction]]). A new rule is a new row there, its questions named in the rule file of its kind (title,
  *  facts, calibration, stage, vetoes, bills); this class only runs the table. */
 private[identity] final class Acceptance(private[identity] val calibration: IdentityCalibration)
-    extends AcceptanceRuleTable, AcceptanceTitleRules, AcceptanceCalibratedRules, AcceptanceStageRules, AcceptanceVetoRules,
-      AcceptanceBillRules {
+    extends AcceptanceRuleTable, AcceptanceCalibratedRules, AcceptanceStageRules, AcceptanceVetoRules, AcceptanceBillRules {
 
   val weights = new EvidenceWeights(calibration)
   import weights.{against, fitsBetter, own, speaksAgainst}
@@ -74,7 +73,6 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
 
   // ── questions several rules ask ──────────────────────────────────────────────────────────────
 
-  private[identity] def otherInstalment(scored: Scored) = scored.category("numeral").exists(IdentityMeasures.OtherInstalment)
   private[identity] def joinedToAnotherWork(weighing: Weighing, scored: Scored): Boolean =
     IdentityMeasures.joinsAnotherWork(weighing.listing, scored.candidate.film)
   /** `found` without its HOLLOW records — no year, no running time — when it holds a full one beside them: TMDB's empty
