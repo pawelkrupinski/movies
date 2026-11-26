@@ -7,6 +7,7 @@
 # `Persistent` does not run it again. The tool waits for what this list names, so the list is the
 # guard: mongo-1 must name mongodump.service, and a name that is not a real, non-RemainAfterExit
 # service must fail evaluation (an unknown unit reads `inactive`, so waiting for it waits for nothing).
+# shellcheck disable=SC2154 # `pass` and `fail` are case-check.sh's counters, which shellcheck does not follow
 set -uo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

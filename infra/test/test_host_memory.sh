@@ -5,6 +5,7 @@
 # `nix eval` of the toplevel (bin/check) proves the module evaluates; it cannot notice that a host
 # quietly has no swap, or that the kubelet config lost its memory threshold. Both are invisible until
 # the OOM killer is the only thing left to answer, so this asks each host for the values themselves.
+# shellcheck disable=SC2154 # `pass` and `fail` are case-check.sh's counters, which shellcheck does not follow
 set -uo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

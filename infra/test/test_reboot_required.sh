@@ -22,6 +22,7 @@
 # against the native `readlink` AND against a shim that imposes GNU semantics regardless of host.
 # `os.path.realpath` IS GNU's rule -- canonicalise, tolerate a missing final component -- which is
 # why the shim is three lines of Python rather than a dependency on coreutils being installed.
+# shellcheck disable=SC2154 # `pass` and `fail` are case-check.sh's counters, which shellcheck does not follow
 set -uo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -12,6 +12,7 @@
 #
 # `nix eval` of the toplevel (bin/check) proves the module evaluates; it cannot notice that a host
 # went back to asking whatever DHCP hands it. This asks each host for the values themselves.
+# shellcheck disable=SC2154 # `pass` and `fail` are case-check.sh's counters, which shellcheck does not follow
 set -uo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
