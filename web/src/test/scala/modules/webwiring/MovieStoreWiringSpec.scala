@@ -9,7 +9,7 @@ import tools.MutableClock
 /** The web tier reads every country's corpus through one wiring: the boot country's mirror and each /debug extra get alike-built stores. */
 class MovieStoreWiringSpec extends AnyFlatSpec with Matchers {
 
-  private val wiring = new MovieStoreWiring(new MutableClock(java.time.Instant.parse("2026-01-01T00:00:00Z")), tools.Stopwatch.System)
+  private val wiring = new MovieStoreWiring(new MutableClock(java.time.Instant.parse("2026-01-01T00:00:00Z")), _root_.tools.SpecStopwatch.Frozen)
 
   "MovieStoreWiring.readOnly" should "key the repository by the normalizer it is handed, one per country" in {
     val poland  = TitleNormalizer.forCountry(Country.Poland)
