@@ -5,10 +5,12 @@ WHY (2026-11-07): three Simulators booted for days (~22 GB; one named red33-iPho
 21 of 22 GB of swap. `xcodebuild test -destination ...` and a hand-run `xcrun simctl boot` boot a Simulator and leave it
 booted; nothing shut it down.
 
-  scripts/ios-simulators run -- <command...>   runs <command>, then shuts down every Simulator that was booted by it (the
-                                               set booted afterwards less the set booted before), on any exit, TERM and
-                                               INT too. A Simulator the owner had open is in the "before" set: never shut.
-                                               Each one it saw boot is also written to the ledger (below) while it runs.
+  scripts/ios-simulators run -- <command...>   runs <command>, then shuts down the Simulators it booted: those that came up
+                                               while it ran (the set booted less the set booted before) and that no test
+                                               process outside its command's own process tree names (another agent's
+                                               xcodebuild owns that one), on any exit, TERM and INT too. A Simulator the
+                                               owner had open is in the "before" set: never shut. Each one it claims is
+                                               written to the ledger (below) as it boots, so a killed run's is swept.
   scripts/ios-simulators sweep [--idle-hours H] [--dry-run]
                                                shuts down booted Simulators booted by agents and up for more than H hours
                                                (default 2), no xcodebuild / xctest process naming them. Run by hand, from
@@ -20,7 +22,8 @@ WHOSE IS A SIMULATOR (sweep touches only agents' ones; the owner's hand-booted "
 A Simulator's age is its launchd_sim process's elapsed time (ps), the clock that starts at boot.
 
 Test seams (scripts/ios-simulators-test.sh): XCRUN names the xcrun to call; IOS_SIM_PS_COMMAND prints `pid etime args` per
-process.
+process;
+IOS_SIM_TREE_COMMAND prints `pid ppid` per process (the tree of the run's command).
 """
 import argparse
 import json
@@ -29,6 +32,7 @@ import re
 import signal
 import subprocess
 import sys
+import threading
 
 AGENT_NAME = re.compile(r"^(agent|red\d+|fixer\d*)-", re.IGNORECASE)
 
@@ -92,9 +96,56 @@ def shutdown(udid, why):
         pass
 
 
+def descendants(root):
+    """The pids under `root` (itself included), from the process table's pid and ppid."""
+    command = os.environ.get("IOS_SIM_TREE_COMMAND", "ps -axo pid=,ppid=")
+    children = {}
+    for line in subprocess.run(command, shell=True, capture_output=True, text=True).stdout.splitlines():
+        fields = line.split()
+        if len(fields) == 2:
+            children.setdefault(int(fields[1]), []).append(int(fields[0]))
+    tree, pending = {root}, [root]
+    while pending:
+        for pid in children.get(pending.pop(), []):
+            if pid not in tree:
+                tree.add(pid)
+                pending.append(pid)
+    return tree
+
+
+def used_outside(udid, tree):
+    """Whether a test process outside `tree` names the Simulator: someone else's run owns it."""
+    for line in processes():
+        pid, _etime, args = (line.split(None, 2) + ["", ""])[:3]
+        if udid in args and re.search(r"xcodebuild|xctest|XCTRunner", args) and pid.isdigit() and int(pid) not in tree:
+            return True
+    return False
+
+
+def claim(udid):
+    os.makedirs(ledger_dir(), exist_ok=True)
+    with open(os.path.join(ledger_dir(), udid), "w") as entry:
+        entry.write(f"{os.getpid()}\n")
+
+
+def watch_boots(before, child_pid, claimed, stop):
+    """While the command runs, claim each Simulator that boots and no one else's test process names."""
+    while not stop.wait(float(os.environ.get("IOS_SIM_POLL_SECONDS", "1"))):
+        fresh = [udid for udid in booted() if udid not in before and udid not in claimed]
+        if fresh:
+            tree = descendants(child_pid)
+            for udid in fresh:
+                if not used_outside(udid, tree):
+                    claimed.add(udid)
+                    claim(udid)
+
+
 def run(command):
     before = set(booted())
     child = subprocess.Popen(command)
+    claimed, stop = set(), threading.Event()
+    watcher = threading.Thread(target=watch_boots, args=(before, child.pid, claimed, stop), daemon=True)
+    watcher.start()
 
     def forward(signum, _frame):
         child.send_signal(signum)
@@ -104,9 +155,12 @@ def run(command):
     try:
         status = child.wait()
     finally:
-        os.makedirs(ledger_dir(), exist_ok=True)
+        stop.set()
+        watcher.join()
+        tree = descendants(child.pid)
         for udid, name in booted().items():
-            if udid not in before:
+            if udid not in before and not used_outside(udid, tree):
+                claim(udid)
                 shutdown(udid, f"{name} was booted by `{command[0]}`")
     return status if status >= 0 else 128 - status
 

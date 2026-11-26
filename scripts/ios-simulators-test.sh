@@ -32,6 +32,7 @@ chmod +x "$work/xcrun"; export XCRUN="$work/xcrun"
 device() { echo "${3:-Shutdown}" > "$work/dev/$1=$2"; }
 state() { cat "$work/dev/$1="*; }
 device OWNER "iPhone 17" Booted
+: > "$work/no-ps"; export IOS_SIM_PS_COMMAND="cat $work/no-ps"  # no foreign test process, whatever runs on this machine
 device NEW "iPhone 16e"
 
 # run: shuts down what its command booted, not the owner's
@@ -45,6 +46,22 @@ check "run keeps the command's exit status and still shuts down" "7 Shutdown" "$
 device NEW "iPhone 16e"
 "$TOOL" run -- bash -c "'$work/xcrun' simctl boot NEW; kill -TERM \$\$" > /dev/null; rc=$?
 check "run shuts down after its command was killed" "Shutdown" "$(state NEW)"
+
+# another agent boots its own Simulator during the run and a test process of its own names it: not ours to shut down
+device NEW "iPhone 16e"; device OTHER "iPhone 16 Pro"
+echo "999999 00:10 xcodebuild test -destination platform=iOS Simulator,id=OTHER" > "$work/foreign-ps"
+IOS_SIM_PS_COMMAND="cat $work/foreign-ps" "$TOOL" run -- bash -c "'$work/xcrun' simctl boot NEW; '$work/xcrun' simctl boot OTHER" > /dev/null
+check "run shuts down its own Simulator but not one another agent's test process names" "Shutdown Booted" "$(state NEW) $(state OTHER)"
+device OTHER "iPhone 16 Pro"
+
+# a run killed hard leaves its Simulator in the ledger, for sweep
+device NEW "iPhone 16e"; rm -rf "$KINOWO_IOS_SIM_LEDGER"
+IOS_SIM_POLL_SECONDS=0.1 "$TOOL" run -- bash -c "'$work/xcrun' simctl boot NEW; echo \$\$ > '$work/child.pid'; sleep 30" > /dev/null 2>&1 &
+wrapper=$!
+for _ in $(seq 50); do [ -e "$KINOWO_IOS_SIM_LEDGER/NEW" ] && break; sleep 0.2; done
+kill -9 "$wrapper" 2>/dev/null; kill "$(cat "$work/child.pid")" 2>/dev/null; wait "$wrapper" 2>/dev/null
+check "run writes the Simulator it booted to the ledger while it runs" "yes" "$([ -e "$KINOWO_IOS_SIM_LEDGER/NEW" ] && echo yes || echo no)"
+device NEW "iPhone 16e"; rm -rf "$KINOWO_IOS_SIM_LEDGER"
 
 # sweep
 device NEW "iPhone 16e"
