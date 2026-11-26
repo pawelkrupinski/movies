@@ -11,7 +11,7 @@ import services.identity.vocabulary.Denial
 /** The acceptance rules read one listing's RANKED candidates ([[Scored]]) — no resolve needed. */
 class AcceptanceSpec extends AnyFlatSpec with Matchers {
   private val calibration = IdentityCalibration.resolver
-  private val acceptance  = new Acceptance(calibration)
+  private val acceptance  = new Acceptance(new EvidenceWeights(calibration))
   private val houses      = BannerHouses(Map("ntlive" -> "nationaltheatrelive"))
 
   /** `films` scored for `listing` as `FamilyScope.score` scores them: each at its search rank, against
@@ -39,6 +39,8 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     (700002, Film("The Misanthrope", year = Some(2011), runtime = Some(125)), Some(4)))
   private val national = (1693710, Film("National Theatre Live: The Misanthrope", year = Some(2026), runtime = Some(181)), Some(3))
 
+  private lazy val favouredCalibrated = acceptance.table.aloneRules.find(_.name == "favoured-calibrated").get
+
   "favoured-calibrated" should "refuse no own match for a closer record only a sibling's search reached" in {
     // structural fix 2, as for its runner-up (Scored.ownReach, DE "Es"): the record a title sits inside refuses the take
     // only when the listing's own evidence reached it -- one a sibling's search brought into the pool comes and goes with
@@ -47,9 +49,9 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val scored  = ranked(listing,
       (1, Film("Patagonia", year = Some(2023), runtime = Some(120), directors = Some(Seq("Ana Ruiz"))), Some(1)),
       (2, Film("Wild Patagonia Express", year = Some(2023)), None))
-    acceptance.rules.FavouredCalibrated.verdict(acceptance.weighing(scored)).left.map(_.why) shouldBe Left("its title sits inside a closer record")
+    favouredCalibrated.verdict(acceptance.weighing(scored)).left.map(_.why) shouldBe Left("its title sits inside a closer record")
     val siblingOnly = scored.map(s => if (s.candidate.tmdbId == 2) s.copy(ownReach = false) else s)
-    acceptance.rules.FavouredCalibrated.verdict(acceptance.weighing(siblingOnly)).map(_._1.candidate.tmdbId) shouldBe Right(1)
+    favouredCalibrated.verdict(acceptance.weighing(siblingOnly)).map(_._1.candidate.tmdbId) shouldBe Right(1)
   }
 
   "directors-title" should "not count TMDB's hollow duplicate of a film as its director's second film" in {

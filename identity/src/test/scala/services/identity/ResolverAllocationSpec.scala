@@ -225,7 +225,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
   }
 
   "a title dated by the year its film is from" should "be read off titles tokenised once per listing and film" in {
-    val acceptance = new Acceptance(model)
+    val acceptance = new Acceptance(new EvidenceWeights(model))
     val dated  = MeasuredListing("Akademia Kina Polskiego: Drogówka (2012)")
     val films  = Seq(167179 -> Film("Drogówka", year = Some(2013)), 900001 -> Film("Drogówka", year = Some(1978)))
     val ranked = films.zipWithIndex.map { case ((id, film), i) =>

@@ -2,17 +2,13 @@ package services.identity
 
 import services.identity.AcceptanceRule.{Weighing, isEligible}
 import services.identity.measures.Scored.Accepted
-import services.identity.measures.{Film, IdentityMeasures, ListingShape, Measure, MeasuredListing, MultiFilmBill, Scored}
-import services.titles.NonMovieEventClassifier
-import services.titles.billing.{BillingPieces, Credits}
+import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredListing, Scored}
 
 /** What the acceptance rules that take a film by how its title is searched and billed ask: the exact and segment top
- *  hits, IMDb's suggestion, and the sole result ([[AcceptanceRuleTable]]); and what makes a listing a BILL of several
- *  works, which no rule takes a film of; and what the vetoes of [[AcceptanceRuleTable.Vetoes]] ask of any rule's take:
- *  whether the billing is something else than the film it found — a performance beside it, an author's namesake, a
- *  staged show's own record, an event no film, a page reused for another evening — each answering with what it held
- *  against the film (the refusal's detail), if anything.
- *  Functions of the candidates and the listing they score; [[Acceptance]] makes the one its rules ask. */
+ *  hits, IMDb's suggestion, and the sole result ([[AcceptanceTitleRows]]); and the EDITION of a taken film the listing's
+ *  whole title names ([[editionNamed]]). What makes a listing a bill of several works is [[AcceptanceBillRules]]', what
+ *  the vetoes ask [[AcceptanceVetoRules]]'.
+ *  Functions of the candidates and the listing they score; [[AcceptanceWiring]] makes the one the rules ask. */
 private[identity] final class AcceptanceTitleRules {
   import Acceptance.Refused
 
@@ -225,209 +221,50 @@ private[identity] final class AcceptanceTitleRules {
   private[identity] def namesBeside(sole: Scored, other: Scored): Boolean =
     (other ne sole) && other.titleNamesIt && !(wordsOfIts(sole) && !wordsOfIts(other))
 
-  // ── bills of several works ──────────────────────────────────────────────────────────────────
-  /** A DOUBLE PROGRAMME: two quoted works a conjunction joins ([[services.titles.billing.BillingParse.quotesTwoJoined]], PL "„Mieszkanie” i „Owoce
-   *  rajskich drzew spożywamy”"), or a "+" joining two whole works ([[MultiFilmBill.billsTwoWholeWorks]]), whatever is held
-   *  of them, is neither film (user rule) — UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna
-   *  Harrison, Robin Shaw} ×133, its two films scored 91–93% and popularity's coin picking one; PL Kino Pałacowe's
-   *  "Historia kina w Popielawach + Pruska kultura", a 1908 short TMDB does not hold. A talk joined to one film
-   *  ("+ spotkanie z reżyserem") is no second work, and a film whose own whole title it is ("Romeo + Juliet") is no
-   *  bill. So is a programme a word bills as several films ([[MultiFilmBill]]: "Triple Feature: Lord of the Rings",
-   *  "The Dark Knight Trilogy", "Maraton Horrorów") — unless an eligible film's own title carries that word ("Marathon
-   *  Man"), and then only that film may be taken ([[takesNoBill]]). */
-  def billsSeveralWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
-    any.listing.rawTitle.exists(BillingPieces.quotesSeveralDated) || (any.listing.title +: any.listing.rawTitle.toSeq).exists(BillingPieces.quotesTwoJoined) ||
-    slashesTwoWorks(any.listing, ranked) || andJoinsTwoWorks(any.listing, ranked) ||
-    (MultiFilmBill.billsTwoWorks(any.listing) && !ranked.filter(isEligible).exists(_.category("title").contains("exact")) &&
-      MultiFilmBill.billsTwoWholeWorks(any.listing)) ||
-      markerOf(ranked).exists(marker => !ranked.filter(isEligible).exists(scored => MultiFilmBill.namedBy(marker, scored.candidate.film)) &&
-        billedAlone(ranked).isEmpty)
-  }
+  // ── the edition a take names ─────────────────────────────────────────────────────────────
 
-  /** Does a SLASH join two works — every piece of the title a slash parts the whole title of one candidate, a leading
-   *  article aside, and no candidate titled as two pieces? UK Savoy Cinema Corby's "We're Going on a Bear Hunt / Tiger
-   *  Who Came to Tea" bills the two shorts as one programme, as the "+" bills do; one film's titles either side of the
-   *  slash ("Le Fabuleux Destin d'Amélie Poulain / Die fabelhafte Welt der Amélie") are its own, and a piece naming no
-   *  candidate ("/ Baby Friendly") no second work. */
-  private[identity] def slashesTwoWorks(listing: MeasuredListing, ranked: Seq[Scored]): Boolean = {
-    def slashed(title: String) = {
-      val parts  = SlashBreak.split(title).toSeq
-      val pieces = parts.map(pieceKey).filter(_.nonEmpty)
-      // a format, a screening note or an event after the slash is no second work, whatever film carries its name
-      // ("Baranek Shaun i kudłata bestia / dubbing", '"LALKA" / Premiera')
-      pieces.sizeIs >= 2 && parts.forall(MultiFilmBill.namesAWork) && {
-        val named = pieces.map(piece => ranked.filter(isEligible).filter(_.candidate.film.titles.exists(pieceKey(_) == piece)).map(_.candidate.tmdbId).toSet)
-        named.forall(_.nonEmpty) && named.combinations(2).forall { case Seq(a, b) => (a intersect b).isEmpty }
-      }
+  /** The EDITION of the accepted film that the listing's whole title names, when there is exactly
+   *  one: a later record carrying the film's title under a qualifier (`IdentityMeasures.editionOf`
+   *  — "Radiohead X Nosferatu: A Symphony of Horror" of Murnau's "Nosferatu"), which the listing
+   *  names by its whole title MORE as its own than it names the film ([[namedAs]]). The
+   *  listing's facts chose the work, and an edition carries its work's facts — the venue credits
+   *  Murnau, TMDB the edition's maker — so they do not deny the edition; a pin still does. With the
+   *  confidence of the work. The film itself when the listing names it as its own — by its title
+   *  or its own original title — or no edition, or two.
+   *
+   *  A work the title names only by one of its ALTERNATIVE titles, while another record carries
+   *  that title as its own, is named as closely by the title as that record: TMDB files "Caligula:
+   *  The Ultimate Cut" among the 1979 "Caligula"'s alternatives beside the re-cut's own record, and
+   *  "Nosferatu: A Symphony of Horror" among Murnau's beside David Lee Fisher's 2023 remake. Then
+   *  the record is an edition by the work's OWN titles, and the listing's credit decides: a record
+   *  crediting another person than the listing's is another film, one crediting nobody else is the
+   *  work's edition — its running time is the cut's own. */
+  private[identity] def editionNamed(ranked: Seq[Scored])(accepted: Accepted): Accepted = {
+    val (work, confidence) = accepted
+    val named = namedAs(work.category("title"))
+    // The listing's own original title naming the work whole names it too ("Die Puppe", "Lalka").
+    if (named == NamedAsItsOwn || work.category("originalTitle").contains("match")) accepted
+    else ranked.filter(edition => (edition ne work) && !edition.deniedByPin && namesTheEdition(work, named)(edition)) match {
+      case Seq(edition) => edition -> confidence
+      case _            => accepted
     }
-    // read for every rule's every ranking: a title with no slash is split for nothing
-    def read(title: String) = title.indexOf('/') >= 0 && slashed(title)
-    read(listing.title) || listing.rawTitle.exists(raw => raw != listing.title && read(raw))
   }
-  private[identity] val SlashBreak = """\s+/\s+""".r
-  /** A title's words, a leading article aside: what a piece of a bill is matched to a film's whole title by. */
-  private def pieceKey(text: String): Seq[String] = {
-    val words = services.titles.TitleContainment.tokens(text)
-    if (words.sizeIs >= 2 && IdentityMeasures.LeadingArticles(words.head)) words.tail else words
-  }
+  /** Does the listing's title, naming `work` as `named` ([[namedAs]]), name `edition` more as its own, the
+   *  record an edition of the work ([[editionNamed]]): by any of the work's titles where the title names it by none of
+   *  them, else by the work's own titles alone and crediting no other person than the listing's? */
+  private def namesTheEdition(work: Scored, named: Int)(edition: Scored): Boolean =
+    namedAs(edition.category("title")) > named && (
+      if (named == 0) IdentityMeasures.editionOf(edition.candidate.film, work.candidate.film)
+      else IdentityMeasures.editionOf(edition.candidate.film, work.candidate.film.copy(alternativeTitles = Nil)) &&
+        !edition.category("director").contains("different"))
 
-  /** Does an "AND" join two works — the title's one "and" parting two pieces of two words or more, each the title of
-   *  another candidate (denied or not: a denial says the film is not the BILLING's, not that no film bears the piece's
-   *  title), a word of four or more apart at most, and no candidate titled as the whole billing? UK Hyde Park Picture
-   *  House's "The Tiger Who Came for Tea and We're Going on a Bear Hunt" bills the two shorts as one programme, as the
-   *  "+" and the slash bills do: it took The Tiger Who Came to Tea at 49.6%. A film's own title joining two phrases
-   *  ("Willy Wonka and the Chocolate Factory") is its candidate's whole title; a one-word piece ("The Boy and the Heron"
-   *  beside a film titled "The Boy") is too short to name a work of its own. */
-  private[identity] def andJoinsTwoWorks(listing: MeasuredListing, ranked: Seq[Scored]): Boolean = {
-    // read for every rule's every ranking: a title with no "and" is split for nothing
-    def read(title: String) = AndBreak.findFirstIn(title).isDefined && joinsTwoWorks(title, ranked)
-    read(listing.title) || listing.rawTitle.exists(raw => raw != listing.title && read(raw))
-  }
-  /** Does `title`'s "and" join two pieces naming a work each, no record titled the whole, each named by records the
-   *  other is not? */
-  private def joinsTwoWorks(title: String, ranked: Seq[Scored]): Boolean = AndBreak.split(title).toSeq match {
-    case Seq(first, second) if Seq(first, second).forall(piece => pieceKey(piece).sizeIs >= 2 && MultiFilmBill.namesAWork(piece)) =>
-      val whole = unjoinedKey(title)
-      !ranked.exists(_.candidate.film.titles.exists(unjoinedKey(_) == whole)) && {
-        val named = Seq(first, second).map(piece => ranked.filter(_.candidate.film.titles.exists(t => nearlyKey(pieceKey(t), pieceKey(piece)))).map(_.candidate.tmdbId).toSet)
-        named.forall(_.nonEmpty) && (named.head intersect named.last).isEmpty
-      }
-    case _ => false
-  }
-  private def unjoinedKey(text: String): Seq[String] = pieceKey(text).filterNot(_ == "and")
-  /** The same words, or as many, four at least, all but one alike. */
-  private def nearlyKey(title: Seq[String], piece: Seq[String]): Boolean =
-    title == piece || (title.sizeIs == piece.size && piece.sizeIs >= 4 && title.zip(piece).count((a, b) => a != b) == 1)
-  private val AndBreak = """(?i)\s+and\s+""".r
-
-  /** The one film a marathon billing one title names ([[MultiFilmBill.billedOne]]): the one eligible candidate titled
-   *  exactly so, when no eligible candidate's title extends it — PL "Inna Mamusia - maraton" is Inna mamusia (2026);
-   *  "Władca Pierścieni - maraton" bills Jackson's films, which extend Bakshi's "Władca Pierścieni". */
-  private[identity] def billedAlone(ranked: Seq[Scored]): Option[Int] =
-    ranked.headOption.flatMap(_.listing.billedOne).flatMap { title =>
-      val named    = IdentityMeasures.key(title)
-      val eligible = ranked.filter(isEligible)
-      def keys(scored: Scored) = scored.candidate.film.titles.map(IdentityMeasures.key)
-      val extended = eligible.exists(scored => keys(scored).exists(key => key != named && key.startsWith(named)))
-      eligible.filter(scored => keys(scored).contains(named)).map(_.candidate.tmdbId).distinct match {
-        case Seq(one) if !extended && named.nonEmpty => Some(one)
-        case _                                       => None
-      }
-    }
-
-  /** The word the ranked listing bills several films by, if any ([[MultiFilmBill.marker]]). */
-  private[identity] def markerOf(ranked: Seq[Scored]): Option[String] =
-    ranked.headOption.flatMap(_.listing.billMarker)
-
-  /** Is `taken` no film of a programme the listing bills by a word — the word its own title's, if the listing has one? */
-  private[identity] def takesNoBill(ranked: Seq[Scored])(taken: (Accepted, String)): Boolean =
-    markerOf(ranked).forall(marker => MultiFilmBill.namedBy(marker, taken._1._1.candidate.film) ||
-      billedAlone(ranked).contains(taken._1._1.candidate.tmdbId))
-
-  // ── what the vetoes ask ─────────────────────────────────────────────────────────────────────
-
-  /** A film the billing names by one piece while ANOTHER piece, sharing no word with the record's titles, bills a
-   *  performance ([[NonMovieEventClassifier.isPerformance]]: a tribute, a concert, a stage show): the evening is the show,
-   *  named after the film's title, and whatever record the venue's system attached to it is the namesake its search
-   *  found. UK Electric Palace Hastings' "Straight Talk: A Tribute to Dolly Parton" [1992] {Barnet Kellman} is a tribute
-   *  show named after her song, not the 1992 film she starred in. Only the event the billing bills is read
-   *  ([[FilmNess.eventBilled]]): a billing attaching a screening ("+ film", "pokaz", a festival's "Closing
-   *  Film + Awards") keeps its film, and a performance "joined with" the film is its companion ("DYRYGENT - POŁĄCZONY Z
-   *  KONCERTEM MUZYKI NA ŻYWO", Wajda's film). A record titled by the performance itself ("Kabaret", "Die Tribute von
-   *  Panem") is the film its event words name. A film of the silent era is screened to a performance — live music is
-   *  its accompaniment (PL Kino Wisła's "PANTEON - Gabinet Doktora Caligari | muzyka na żywo", Wiene's 1920 film). */
-  private[identity] def performedBeside(scored: Scored): Option[String] = {
-    val film      = scored.candidate.film
-    val pieces    = if (film.year.exists(_ <= ListingShape.SilentEraEnd)) Nil else scored.listing.performancePieces
-    lazy val filmWords = film.titles.flatMap(IdentityMeasures.countedWords).toSet
-    val performed =
-      if (pieces.isEmpty || !pieces.exists(_._2.forall(filmWords))) Nil
-      else pieces.collect { case (piece, words, true) if !words.exists(filmWords) => piece }
-    Option.when(performed.nonEmpty && !film.titles.exists(NonMovieEventClassifier.isPerformance(_)))(
-      s"${Acceptance.named(scored)} beside: ${performed.mkString(", ")}")
-  }
-
-  /** The staged show's OWN record for a billing naming a staged show ([[ListingShape.showsOwnRecord]]): a pantomime is an
-   *  event, whatever facts its billing shares with the record TMDB files of it. Held here, where a listing takes a film
-   *  ALONE, and not only after the assignment ([[BilledPiece]]): a listing holding the record would join no other spelling
-   *  of the event (`ConstraintEdges`' same-event must-link joins two holding no film). UK, prod 2026-11-13: 15 "Cbeebies
-   *  Panto: Treasure Island" billings (Lonsdale Alhambra Penrith, BEAM Hertford, Showcase's sensory-friendly ones) took
-   *  1785679 by favoured-calibrated, then lost it to the billed-as-one-piece veto alone. */
-  private[identity] def stagedShowsOwn(scored: Scored): Boolean =
-    ListingShape.showsOwnRecord(scored.listing.rawTitle.getOrElse(scored.listing.title), scored.candidate.film)
-
-  /** The older namesake of a work a billing credits to its author ([[ListingShape.creditDenies]]): DE Cineplex's "Fallen
-   *  Angels by Noël Coward", the 2026 capture of Coward's play, is not Wong Kar-wai's 1995 "Fallen Angels". A refusal, not
-   *  a denial: the billing's siblings stay free to join the namesake's listings (a denial's cannot-link split UK's
-   *  92-venue cluster of the capture, losing 16 of its takes). Asked of every accepted take, so a billing with no
-   *  authorship word allocates nothing ([[ResolverAllocationSpec]]'s dated-title budget). */
-  private[identity] def authorsNamesake(scored: Scored): Option[String] = {
-    val listing = scored.listing
-    Credits.authorCredited(listing.rawTitle.getOrElse(listing.title))
-      .filter(credit => ListingShape.creditDenies(credit, scored.candidate.film, listing.dating.screeningsSeason))
-      .map(credit => s"${Acceptance.named(scored)}: ${credit.work} by ${credit.person}")
-  }
-
-  /** A billing that reads as no film at all ([[FilmNess]]: event words — a gig, a tour, a festival, a show — and no relay
-   *  or screening attached) whose record shares none of its other words: the namesake a search for the event's words
-   *  found, not what the venue screens. The agreement stage already asks no family about such a billing
-   *  ([[NonFilmEvents]]); this holds the model's own takes to the same reading. Asked of every accepted take,
-   *  so a billing with no event word answers from the listing's one-off [[MeasuredListing.eventWords]] and
-   *  allocates nothing ([[ResolverAllocationSpec]]'s dated-title budget). */
-  private[identity] def readsAsNoFilm(scored: Scored): Boolean = {
-    val listing = scored.listing
-    val film    = scored.candidate.film
-    // V2: an event-worded billing whose record shares none of its other words — found by the event's words alone
-    // V3: V2 alone (V1's NonFilmEvents reading dropped), and only where the billing has words beside the event's
-    listing.eventWords.nonEmpty && listing.nonEventWords.nonEmpty &&
-      // V3d: the record's own and original title only — an alternative title TMDB files under the gig's own billing
-      // (1419814 carries "Tanzwut - Live Tour 2026 | Special Guest: Sagenbringer") is the reused record's echo, not its name
-      !(film.title +: film.originalTitle.toSeq).exists(t => IdentityMeasures.countedWords(t).exists(listing.nonEventWords)) &&
-      // V3e: a record in another script is named by its alternatives (Cinema City's "ENHYPEN WORLD TOUR 'BLOOD SAGA'"), and a
-      // year the billing states that the record shares is a film's fact ("Silent Night, Bloody Night (1972)")
-      !(film.title.exists(c => Character.isLetter(c) && Character.UnicodeScript.of(c) != Character.UnicodeScript.LATIN) &&
-        film.titles.exists(t => IdentityMeasures.countedWords(t).exists(listing.nonEventWords))) &&
-      !listing.statedYear.exists(year => film.year.exists(filmYear => math.abs(filmYear - year) <= 1))
-  }
-  private[identity] def onlyTheEventsWords(scored: Scored): String =
-    s"${Acceptance.named(scored)}: its record shares only the event's words (${scored.listing.eventWords.mkString(", ")})"
-
-  /** Any film while the listing's page reads as REUSED: a record its ORIGINAL title and the director it credits name
-   *  stands in its pool ([[copiedBeyondItsBilling]]) though the billing says more than that record's titles. The copied
-   *  title is what a search for the billing hit, copied onto a ticket page with the record's director, running time and
-   *  year: they agree with the record by construction and confirm nothing, and the billing's other words name something
-   *  else — a party, a band, a show the page was reused for. DE kinoheld: Kaminwerk's "Teenie Fasching" on Schweikart's
-   *  "Fasching" (1939), "Dark New Wave Night" on Ai's "New Wave", Lagerhalle's "Three for Silver" (a folk band) on Kamal's
-   *  "Tea For Three", KAP-Torgau's "VOODOO LOUNGE" (a Rolling Stones tribute) on Costabile's "VooDoo". Nor does such a
-   *  page lend another film its take: only one the billing names whole (an exact, original or alternative title) may
-   *  still be taken — Landsberg's "Helmut Schleich" (a Kabarett evening, on Kuzmic's "Helmut") is no more the 2018
-   *  recording of his "Kauf, du Sau" the bare name leads. */
-  private[identity] def reusedPage(weighing: Weighing, scored: Scored): Option[String] = {
-    def namedWhole = scored.category("title").exists(Set("exact", "original", "alternative"))
-    weighing.eligible.find(copiedBeyondItsBilling).filter(copied => (copied eq scored) || !namedWhole)
-      .map(copied => s"${Acceptance.named(copied)} billed beyond: ${billedBeyond(copied).mkString(", ")}")
-  }
-
-  /** Is `scored` named only by the listing's ORIGINAL title and the director it credits, that title a mere part of the
-   *  billing ([[MeasuredListing.originalStandsApart]] false), with the billing saying more than any of the
-   *  record's titles ([[billedBeyond]]) and stating no year of it? A billing the record's titles hold word for word
-   *  ("Matrix" of "The Matrix", or a translation TMDB holds as an alternative title) is its own, and a year the listing
-   *  states that the record shares makes the billing another record's spelling of it, as the copied facts' other reader
-   *  holds (`CopiedTitleDenial.namedOnlyByCopiedTitle`: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003]). The title
-   *  relation cannot tell: it reads the original title as one of the listing's own shapes, a `segment` of every record
-   *  so titled. */
-  private[identity] def copiedBeyondItsBilling(scored: Scored): Boolean = {
-    val listing = scored.listing
-    scored.category("originalTitle").contains("match") && IdentityMeasures.sameDirector(scored.measures) && !listing.originalStandsApart &&
-      !listing.year.exists(year => scored.candidate.film.year.exists(film => math.abs(film - year) <= 1)) && billedBeyond(scored).nonEmpty
-  }
-  /** The billing's words none of the record's titles carries — none when a whole piece of the billing, or the search its
-   *  title rules leave of it, is the record's word for word ("Twisters" of "(4DX Rewind) Twisters", "Endgame" of
-   *  "Vengadores: Endgame (Reestreno)", "Moje własne Idaho" of "… + DEBATA [POKAZ BEZPŁATNY]"): the rest decorates it. */
-  private[identity] def billedBeyond(scored: Scored): Seq[String] = {
-    val listing   = scored.listing
-    val filmWords = scored.candidate.film.titles.flatMap(IdentityMeasures.countedWords).toSet
-    val pieces    = IdentityMeasures.shapes(listing.ownTitles ++ listing.searchTitles, listing.decorations).map(IdentityMeasures.countedWords).filter(_.nonEmpty)
-    if (pieces.exists(_.forall(filmWords))) Nil else IdentityMeasures.countedWords(listing.title).filterNot(filmWords)
+  /** How much as ITS OWN a title relation names a record: by the record's own title or original
+   *  title ([[NamedAsItsOwn]]), by one of the alternative titles the database files beside them,
+   *  or not whole (0). */
+  private[identity] val NamedAsItsOwn = 2
+  private[identity] def namedAs(titleRelation: Option[String]): Int = titleRelation match {
+    case Some("exact") | Some("original") => NamedAsItsOwn
+    case Some("alternative")              => 1
+    case _                                => 0
   }
 }

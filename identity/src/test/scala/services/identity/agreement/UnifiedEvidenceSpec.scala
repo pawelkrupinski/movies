@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Acceptance, FilmTable, IdentityCalibration, IdentityResolver}
+import services.identity.{Acceptance, EvidenceWeights, FilmTable, IdentityCalibration, IdentityResolver}
 import services.identity.measures.{DecisionTrace, Listing, ResolverDecision}
 import services.identity.measures.{Film, Measure}
 import services.identity.vocabulary.{CatalogueId, CatalogueSources, VoterFamily}
@@ -347,7 +347,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
 
   it should "group every acceptance rule, so a model take by any of them reads as the model's rule" in {
     // a rule missing here takes its film with no `rule.*` signal, and the agreement's guards then veto the model's own take
-    val rules = new Acceptance(IdentityCalibration.resolver).rules
+    val rules = new Acceptance(new EvidenceWeights(IdentityCalibration.resolver)).table
     ((rules.aloneRules ++ rules.pooledRules).map(_.name).toSet -- RuleGroups.keySet) shouldBe empty
   }
 }

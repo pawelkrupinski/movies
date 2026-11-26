@@ -2,41 +2,36 @@ package services.identity
 
 import services.identity.AcceptanceRule.Weighing
 import services.identity.measures.Scored.Accepted
-import services.identity.measures.{DecisionTrace, IdentityMeasures, Scored}
+import services.identity.measures.{DecisionTrace, Scored}
 
 /** Which of a listing's scored candidates — ranked best first, the denied ones among them — it TAKES, and at what
  *  confidence: [[aloneNamed]] for a node on its own evidence, [[pooled]] for a cluster's pooled evidence. Every rule is
  *  a row of [[AcceptanceRuleTable]], each a function of the ranked candidates alone, tried in the table's order, the
  *  first to accept deciding; the listing's season production, when a record names it, pre-empts them all
- *  ([[seasonProduction]]). A new rule is a new row there, its questions functions of the rule object of its kind
- *  ([[AcceptanceTitleRules]]: the title, bills and vetoes; [[AcceptanceFactRules]]: the facts and the calibrated rules;
- *  [[AcceptanceStageRules]]: stage relays); this class only runs the table. */
-private[identity] final class Acceptance(private[identity] val calibration: IdentityCalibration) {
+ *  ([[AcceptanceStageRows.seasonProduction]]). A new rule is a new row of the rows of its kind ([[AcceptanceTitleRows]],
+ *  [[AcceptanceFactRows]], [[AcceptanceStageRows]]), its questions functions of the rule class of its kind; this class
+ *  only runs the table, over the rule graph [[AcceptanceWiring]] makes on the evidence `weights`. */
+private[identity] final class Acceptance(val weights: EvidenceWeights) {
 
-  val weights = new EvidenceWeights(calibration)
-  import weights.own
-  private val titleRules = new AcceptanceTitleRules
-  private val factRules  = new AcceptanceFactRules(weights, titleRules)
-  /** Every rule this acceptance runs, one row each ([[AcceptanceRuleTable]]). */
-  private[identity] val rules = new AcceptanceRuleTable(titleRules, factRules, new AcceptanceStageRules(factRules))
-  import rules.{Calibrated, ExactTopHit, NumbersItsOwnInstalment, RelayRecord, SeasonRecord, Vetoes, aloneRules, atOwn, pooledRules}
-  import titleRules.takesNoBill
+  private val wiring = new AcceptanceWiring(weights)
+  /** Every rule this acceptance runs, in order ([[AcceptanceRuleTable]]). */
+  private[identity] val table: AcceptanceRuleTable = wiring.table
+  private val stageRows: AcceptanceStageRows       = wiring.stageRows
+  private val titleRules: AcceptanceTitleRules     = wiring.titleRules
+  private val billRules: AcceptanceBillRules       = wiring.billRules
+  private val vetoRules: AcceptanceVetoRules       = wiring.vetoRules
+  private val fallbacks: AcceptanceFallbacks       = wiring.fallbacks
+  import table.{Vetoes, aloneRules, firstOf, pooledRules}
+  import billRules.takesNoBill
 
   /** A rule's verdict: the film it accepts, or the first of its steps that refused — the identity trace's
    *  `refused:<rule>:<why>`, so a listing no rule took says which condition stopped each — with the candidate the rule
    *  was weighing when it did and what that candidate's evidence said ([[Acceptance.Refused]]). */
   private[identity] type Verdict = AcceptanceRule.Verdict
-
   /** `ranked` as the rules weigh it. */
   private[identity] def weighing(ranked: Seq[Scored]): Weighing = new Weighing(ranked, weights)
 
   // ── running the table ────────────────────────────────────────────────────────────────────────
-
-  /** The first of `rules` to accept, with its name. */
-  private[identity] def firstOf(weighing: Weighing, rules: List[AcceptanceRule]): Option[(Accepted, String)] =
-    rules.iterator.filterNot(rule => Acceptance.ablated(rule.name)).map(rule => rule.accepts(weighing, Vetoes).map(_ -> rule.name))
-      .collectFirst { case Right(taken) => taken }
-
   /** Why each rule a node may be taken by alone refused it: `(rule, the first condition that stopped it)`. */
   def refusals(ranked: Seq[Scored]): Seq[DecisionTrace.Refusal] =
     if (billsSeveralWorks(ranked)) Seq(DecisionTrace.Refusal("alone", "bills several works"))
@@ -45,24 +40,15 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
       aloneRules.flatMap(rule => rule.accepts(weighed, Vetoes).left.toOption.map(refused =>
         DecisionTrace.Refusal(rule.name, refused.why, refused.film, refused.detail)))
     }
-
   /** The rules a cluster is taken by on its pooled evidence, by name in the order they are tried — after
    *  `season-production`, which pre-empts them: what `identity-resolver.md` §21 lists, a spec holding the two together
    *  (the alone rules' order it reads off [[refusals]]). */
   private[identity] def pooledOrder: Seq[String] = "season-production" +: pooledRules.map(_.name)
-
   /** What the rule called `name` says of `ranked`, its vetoes asked — for a spec holding one rule to its cases. */
   private[identity] def ruleVerdict(name: String)(ranked: Seq[Scored]): Verdict =
     (aloneRules ++ pooledRules).find(_.name == name).getOrElse(throw new NoSuchElementException(s"no rule $name")).accepts(weighing(ranked), Vetoes)
   /** What the rule called `name` alone takes of `ranked`. */
   private[identity] def byRule(name: String)(ranked: Seq[Scored]): Option[Accepted] = ruleVerdict(name)(ranked).toOption
-
-  /** The listing's exact top hit ([[ExactTopHit]]), asked only whether its title numbers another instalment: what the
-   *  decision's confidence reads. */
-  private[identity] def topHit(ranked: Seq[Scored]): Option[Accepted] = ExactTopHit.accepts(weighing(ranked), List(NumbersItsOwnInstalment)).toOption
-  /** The best eligible candidate the calibration's cut passes ([[Calibrated]]). */
-  private[identity] def calibrated(ranked: Seq[Scored]): Verdict = Calibrated.verdict(weighing(ranked))
-
   /** What a node accepts ON ITS OWN, with the rule that took it — only when its own facts favour it over the runner-up:
    *  a bare "Lalka" beside two 2026 "Lalka"s, told apart only by TMDB's popularity ranking, is not decided alone — it
    *  follows the film its title's credited siblings chose (the cluster's), or the pooled vote — unless it is the
@@ -72,9 +58,8 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
   def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] = {
     val weighed = weighing(ranked)
     takenBy(ranked, keep = { case ((taken, _), rule) => rule == "imdb-suggested" || !outweighedBySuggestion(ranked, taken) })(
-      relayOrBroadcastSeasonRecord(weighed).filterNot { case (_, rule) => Acceptance.ablated(rule) }.orElse(firstOf(weighed, aloneRules)))
+      stageRows.preemptingAlone(weighed).orElse(firstOf(weighed, aloneRules)))
   }
-
   /** Does an undenied film only IMDb's suggestion reached ([[Scored.suggestedOnly]], which only the IMDb rule may take),
    *  that another venue's listing of the title corroborates, weigh at least as much on the evidence as `taken`? Then the
    *  evidence does not single `taken` out, and no other rule takes it: PL Kino Kryterium's "DKF: Ktoś całkiem obcy" took
@@ -85,12 +70,10 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
   private[identity] def outweighedBySuggestion(ranked: Seq[Scored], taken: Scored): Boolean =
     ranked.exists(other => (other ne taken) && other.suggestedOnly && !other.denied && other.number("venues.corroborating").exists(_ > 0) &&
       other.probability >= taken.probability)
-
   /** What a cluster's POOLED scoring accepts: its season production, its exact top hit, or the
    *  best eligible candidate the calibration accepts that no namesake out-fits ([[UnrivalledCalibrated]]).
-   *  Each the edition of it the listing names, if any ([[editionNamed]]). */
+   *  Each the edition of it the listing names, if any ([[AcceptanceTitleRules.editionNamed]]). */
   def pooled(ranked: Seq[Scored]): Option[Accepted] = pooledNamed(ranked).map(_._1)
-
   /** [[pooled]], with the rule that accepted — for the decision's trace. */
   def pooledNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
     // a relay's broadcast-season record pre-empts the pooled rules as it does the alone ones: a cluster of "MET: Macbeth"
@@ -99,10 +82,9 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     // "Royal Ballet: The Nutcracker" [2025] as the 2025/26 record, and split Savoy Worksop's "MET:Manon" off the Met's
     takenBy(ranked) {
       val weighed = weighing(ranked)
-      broadcastSeasonRecord(weighed).map(_ -> "season-record").filterNot(_ => Acceptance.ablated("season-record"))
+      stageRows.preemptingPooled(weighed)
         .orElse(if (Acceptance.tiedAtTop(ranked)) None else firstOf(weighed, pooledRules))
     }
-
   /** What both ways of taking a film share: nothing for a bill of several works; the season's production when there is
    *  one (it pre-empts every rule, and a season production refused takes nothing), else what `rules` take — either only
    *  if `keep` keeps it — each the edition of it the listing names, and never a film the bill's word refuses
@@ -110,105 +92,35 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
   private[identity] def takenBy(ranked: Seq[Scored], keep: ((Accepted, String)) => Boolean = _ => true)
                      (rules: => Option[(Accepted, String)]): Option[(Accepted, String)] =
     if (billsSeveralWorks(ranked)) None
-    else seasonProduction(ranked).filterNot(_ => Acceptance.ablated("season-production")).map(_.map(_ -> "season-production")).getOrElse(rules).filter(keep).filter(_._1._1.untaken.isEmpty)
-      .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
-
+    else stageRows.seasonProductionTaken(ranked).map(_.map(_ -> "season-production")).getOrElse(rules).filter(keep).filter(_._1._1.untaken.isEmpty)
+      .map { case (accepted, rule) => titleRules.editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
   /** The probability that `film` is the listing's film — the decision's confidence, on the scale
    *  the rating gate reads: the calibrated one (rivals are in it, the `rivals` measure), its
    *  evidence class's when the film is the listing's accepted exact top hit, or the one the priors
    *  lent when the listing's facts accepted it ([[Calibrated]]). */
   def confidenceOf(ranked: Seq[Scored], film: Int): Double =
-    topHit(ranked).filter(_._1.candidate.tmdbId == film).map(_._2)
-      .orElse(calibrated(ranked).toOption.filter(_._1.candidate.tmdbId == film).map(_._2))
+    table.topHit(weighing(ranked)).filter(_._1.candidate.tmdbId == film).map(_._2)
+      .orElse(table.calibrated(weighing(ranked)).toOption.filter(_._1.candidate.tmdbId == film).map(_._2))
       .orElse(pooled(ranked).filter(_._1.candidate.tmdbId == film).map(_._2))
       .getOrElse(ranked.filter(AcceptanceRule.isEligible).find(_.candidate.tmdbId == film).fold(0.0)(_.probability))
-
   /** Why an own match's confidence stands above its calibrated probability: its exact top hit's
    *  class, or the ranking priors lending ([[EvidenceWeights.priorsLent]]) — naming each rival the release veto took
    *  out of the class it was accepted by ([[ReleaseVeto]]). */
   def liftedBy(ranked: Seq[Scored], scored: Scored, confidence: Double): String =
     if (confidence <= scored.probability) ""
-    else (if (topHit(ranked).exists(_._1.candidate.tmdbId == scored.candidate.tmdbId)) " as its exact top hit"
+    else (if (table.topHit(weighing(ranked)).exists(_._1.candidate.tmdbId == scored.candidate.tmdbId)) " as its exact top hit"
       else " with the ranking priors lending, never withdrawing") +
       (if (scored.vetoedRivals == 0) "" else ranked.flatMap(rival => rival.denial.filter(_.isReleaseVeto)
         .map(why => s"rival ${rival.candidate.tmdbId} $why")).mkString(" (", "; ", ")"))
 
-  /** Is the listing a bill of several works, which no rule takes a film of ([[AcceptanceTitleRules.billsSeveralWorks]])? */
-  def billsSeveralWorks(ranked: Seq[Scored]): Boolean = titleRules.billsSeveralWorks(ranked)
-  /** Does the listing's page read as reused for `scored` ([[AcceptanceTitleRules.copiedBeyondItsBilling]])? */
-  private[identity] def copiedBeyondItsBilling(scored: Scored): Boolean = titleRules.copiedBeyondItsBilling(scored)
-  /** The film a node's evidence leans to though no rule took it ([[AcceptanceFactRules.leaning]]). */
-  def leaning(ranked: Seq[Scored]): Option[Scored] = factRules.leaning(ranked)
-  /** The film a cluster no TMDB film was taken for falls back to ([[AcceptanceFactRules.fallback]]). */
-  def fallback(ranked: Seq[Scored]): Option[Scored] = factRules.fallback(ranked)
-
-  // ── what pre-empts the rules, and what follows a take ────────────────────────────────────────
-
-  /** The eligible candidate whose record names the listing's SEASON PRODUCTION — the season and
-   *  the work its title names. `None`: no candidate does. `Some(Some(x))`: `x` is the listing's
-   *  film on that identity, whatever the calibrated probability (the fitted weights do not read a
-   *  season yet): a season names its production as a published year names a film, and the
-   *  namesakes it rules out are already denied (`ListingConstraints.seasonsApart`).
-   *  `Some(None)`: two records do (two houses' stagings of one work in one season) and the
-   *  listing's own facts favour neither — ambiguity, so nothing is taken, on the season or on
-   *  the database's ranking. The confidence stays the calibrated probability. */
-  def seasonProduction(ranked: Seq[Scored]): Option[Option[Accepted]] =
-    ranked.filter(scored => !scored.denied && scored.seasonProduction).sortBy(scored => (-own(scored), scored.candidate.tmdbId)) match {
-      case Seq()       => None
-      case Seq(one)    => Some(Some(atOwn(one)))
-      case first +: second +: _ => Some(Option.when(own(first) > own(second))(atOwn(first)))
-    }
-
-  /** The relay's record ([[AcceptanceRuleTable.RelayRecord]]), asked only whether the title numbers another instalment. */
-  private def relayRecord(weighing: Weighing): Option[Accepted] = RelayRecord.accepts(weighing, List(NumbersItsOwnInstalment)).toOption
-  /** The season record ([[AcceptanceRuleTable.SeasonRecord]]), asked only whether the title numbers another instalment. */
-  private def seasonRecord(weighing: Weighing): Option[Accepted] = SeasonRecord.accepts(weighing, List(NumbersItsOwnInstalment)).toOption
-  /** [[seasonRecord]]'s answer when it is a record of the season the listing's screenings broadcast it in: it pre-empts
-   *  every rule, as [[seasonProduction]] does a season the title names — a house's other stagings of the work (the Met's
-   *  2014 "Macbeth", the Royal Ballet's 2013 "Romeo and Juliet") are other broadcasts than the one the venue screens. */
-  private[identity] def broadcastSeasonRecord(weighing: Weighing): Option[Accepted] = seasonRecord(weighing).filter { case (record, _) =>
-    record.listing.dating.screenedSeason.exists(record.candidate.film.season.contains)
-  }
-  /** The relay's record ([[relayRecord]]) or the season record its screenings' season names ([[broadcastSeasonRecord]]),
-   *  with the rule naming it: what pre-empts the rules after [[seasonProduction]]. */
-  private[identity] def relayOrBroadcastSeasonRecord(weighing: Weighing): Option[(Accepted, String)] =
-    relayRecord(weighing).map(_ -> "relay-record").orElse(broadcastSeasonRecord(weighing).map(_ -> "season-record"))
-
-  /** The EDITION of the accepted film that the listing's whole title names, when there is exactly
-   *  one: a later record carrying the film's title under a qualifier (`IdentityMeasures.editionOf`
-   *  — "Radiohead X Nosferatu: A Symphony of Horror" of Murnau's "Nosferatu"), which the listing
-   *  names by its whole title MORE as its own than it names the film ([[Acceptance.namedAs]]). The
-   *  listing's facts chose the work, and an edition carries its work's facts — the venue credits
-   *  Murnau, TMDB the edition's maker — so they do not deny the edition; a pin still does. With the
-   *  confidence of the work. The film itself when the listing names it as its own — by its title
-   *  or its own original title — or no edition, or two.
-   *
-   *  A work the title names only by one of its ALTERNATIVE titles, while another record carries
-   *  that title as its own, is named as closely by the title as that record: TMDB files "Caligula:
-   *  The Ultimate Cut" among the 1979 "Caligula"'s alternatives beside the re-cut's own record, and
-   *  "Nosferatu: A Symphony of Horror" among Murnau's beside David Lee Fisher's 2023 remake. Then
-   *  the record is an edition by the work's OWN titles, and the listing's credit decides: a record
-   *  crediting another person than the listing's is another film, one crediting nobody else is the
-   *  work's edition — its running time is the cut's own. */
-  def editionNamed(ranked: Seq[Scored])(accepted: Accepted): Accepted = {
-    val (work, confidence) = accepted
-    val named = Acceptance.namedAs(work.category("title"))
-    // The listing's own original title naming the work whole names it too ("Die Puppe", "Lalka").
-    if (named == Acceptance.NamedAsItsOwn || work.category("originalTitle").contains("match")) accepted
-    else ranked.filter(edition => (edition ne work) && !edition.deniedByPin && namesTheEdition(work, named)(edition)) match {
-      case Seq(edition) => edition -> confidence
-      case _            => accepted
-    }
-  }
-
-  /** Does the listing's title, naming `work` as `named` ([[Acceptance.namedAs]]), name `edition` more as its own, the
-   *  record an edition of the work ([[editionNamed]]): by any of the work's titles where the title names it by none of
-   *  them, else by the work's own titles alone and crediting no other person than the listing's? */
-  private def namesTheEdition(work: Scored, named: Int)(edition: Scored): Boolean =
-    Acceptance.namedAs(edition.category("title")) > named && (
-      if (named == 0) IdentityMeasures.editionOf(edition.candidate.film, work.candidate.film)
-      else IdentityMeasures.editionOf(edition.candidate.film, work.candidate.film.copy(alternativeTitles = Nil)) &&
-        !edition.category("director").contains("different"))
+  /** Is the listing a bill of several works, which no rule takes a film of ([[AcceptanceBillRules.billsSeveralWorks]])? */
+  def billsSeveralWorks(ranked: Seq[Scored]): Boolean = billRules.billsSeveralWorks(ranked)
+  /** Does the listing's page read as reused for `scored` ([[AcceptanceVetoRules.copiedBeyondItsBilling]])? */
+  private[identity] def copiedBeyondItsBilling(scored: Scored): Boolean = vetoRules.copiedBeyondItsBilling(scored)
+  /** The film a node's evidence leans to though no rule took it ([[AcceptanceFallbacks.leaning]]). */
+  def leaning(ranked: Seq[Scored]): Option[Scored] = fallbacks.leaning(ranked)
+  /** The film a cluster no TMDB film was taken for falls back to ([[AcceptanceFallbacks.fallback]]). */
+  def fallback(ranked: Seq[Scored]): Option[Scored] = fallbacks.fallback(ranked)
 }
 
 private[identity] object Acceptance {
@@ -226,9 +138,6 @@ private[identity] object Acceptance {
   /** Two pooled probabilities closer than this are one score: the pool sums in arrival order. */
   private[identity] val TieTolerance = 1e-9
 
-  /** Is the acceptance rule called `rule` switched off for an ablation run ([[RuleAblation]], as `accept:<rule>`)? */
-  def ablated(rule: String): Boolean = RuleAblation.disables("accept:" + rule)
-
   /** The rule a node's alone acceptance (`aloneNamed`'s answer) took `film` by, if it took that film. */
   def ruleTaking(taken: Option[(Accepted, String)], film: Int): Option[String] =
     taken.collect { case ((scored, _), rule) if scored.candidate.tmdbId == film => rule }
@@ -236,21 +145,9 @@ private[identity] object Acceptance {
    *  when it did, and what that candidate's evidence said there — the facts against it, its probability against the
    *  cut, the rival it lost to. */
   final case class Refused(why: String, film: Option[Int] = None, detail: String = "")
-
-  /** How many times its runner-up's probability the film a no-match leans to holds ([[AcceptanceFactRules.leaning]]): a tie
-   *  between namesakes is no lean. */
-  val LeanMargin = 1.25
-  /** A candidate as a refusal names it: "1365683 Primavera (2025)". */
-  def named(scored: Scored): String =
-    s"${scored.candidate.tmdbId} ${scored.candidate.film.title}${scored.candidate.film.year.fold("")(year => s" ($year)")}"
-
-  /** How much as ITS OWN a title relation names a record: by the record's own title or original
-   *  title ([[NamedAsItsOwn]]), by one of the alternative titles the database files beside them,
-   *  or not whole (0). */
-  val NamedAsItsOwn = 2
-  def namedAs(titleRelation: Option[String]): Int = titleRelation match {
-    case Some("exact") | Some("original") => NamedAsItsOwn
-    case Some("alternative")              => 1
-    case _                                => 0
+  object Refused {
+    /** A candidate as a refusal names it: "1365683 Primavera (2025)". */
+    def named(scored: Scored): String =
+      s"${scored.candidate.tmdbId} ${scored.candidate.film.title}${scored.candidate.film.year.fold("")(year => s" ($year)")}"
   }
 }

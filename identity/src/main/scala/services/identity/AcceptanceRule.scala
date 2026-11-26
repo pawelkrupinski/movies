@@ -62,7 +62,7 @@ private[identity] object AcceptanceRule {
   /** No `rival` of the picked candidate may stand, or the rule refuses it, naming the rival. */
   final case class NoneOf(refusal: String, rival: (Weighing, Scored) => Option[Scored]) extends Check {
     def refuses(weighing: Weighing, picked: Option[Scored]): Option[Refused] = picked.flatMap(scored =>
-      rival(weighing, scored).map(other => Refused(refusal, Some(scored.candidate.tmdbId), Acceptance.named(other))))
+      rival(weighing, scored).map(other => Refused(refusal, Some(scored.candidate.tmdbId), Refused.named(other))))
   }
 
   /** How a rule picks the one candidate it weighs. */
@@ -73,7 +73,7 @@ private[identity] object AcceptanceRule {
     def of(weighing: Weighing): Either[Refused, Scored] = among(weighing) match {
       case Seq(only) => Right(only)
       case Seq()     => Left(Refused(none, None, noneDetail(weighing)))
-      case found     => Left(Refused(many, None, found.map(Acceptance.named).mkString("; ")))
+      case found     => Left(Refused(many, None, found.map(Refused.named).mkString("; ")))
     }
   }
   /** The first candidate of `among`: refused as `none` (with `noneDetail`) when there is none. */

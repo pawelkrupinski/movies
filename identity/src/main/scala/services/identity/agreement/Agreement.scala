@@ -7,7 +7,7 @@ import services.identity.measures.{FactRelations, Film, IdentityMeasures}
 import services.identity.measures.{Listing, ListingShape, PosterEvidence, SourceReliability}
 import services.identity.vocabulary.toAnswer
 import services.identity.vocabulary.{Answer, Question}
-import services.identity.{Acceptance, IdentityCalibration, IdentityLookups, IdentityResolver}
+import services.identity.{AcceptanceFallbacks, IdentityCalibration, IdentityLookups, IdentityResolver}
 import services.titles.billing.BillingPieces
 import services.titles.{TitleContainment, TitleNormalizer}
 
@@ -68,14 +68,14 @@ object Agreement {
   }
 
   /** The film a family's evidence LEANS to though it took none: on every listing, its best undenied candidate, at
-   *  [[services.identity.Acceptance.LeanMargin]] times the runner-up's probability — the model's own lean
+   *  [[services.identity.AcceptanceFallbacks.LeanMargin]] times the runner-up's probability — the model's own lean
    *  (`Acceptance.leaning`) over the family's search. Never a pick: leans complete a quorum beside a taker, and
    *  a lean to another film is what makes a family's having weighed the film turning it down (PL "Sukienka": RT weighed
    *  "The Dress" at 6.0%, its runner-up at 2.7%; Tempo's IMDb weighed "Tempo" at 2.9% under "Old" at 33.0%). */
   private def leaningOf(nodes: Seq[IdentityResolver.NodeEvidence], lookups: FamilyLookups, answers: FamilyAnswers): Option[SourceRecord] =
     nodes.map { node =>
       val eligible = node.candidates.filterNot(_.denied).sortBy(-_.probability)
-      eligible.headOption.filter(best => eligible.lift(1).forall(runnerUp => best.probability >= Acceptance.LeanMargin * runnerUp.probability)).map(_.tmdbId)
+      eligible.headOption.filter(best => eligible.lift(1).forall(runnerUp => best.probability >= AcceptanceFallbacks.LeanMargin * runnerUp.probability)).map(_.tmdbId)
     }.distinct match {
       case Seq(Some(number)) => lookups.idOf(number).flatMap(id => answers.record(id).answered.flatten)
       case _                 => None

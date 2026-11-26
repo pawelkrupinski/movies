@@ -20,7 +20,7 @@ class FilmNessSpec extends AnyFunSuite {
 class FilmNessAcceptanceSpec extends AnyFunSuite {
   import IdentityMeasures.ListingFilm
   private val calibration = IdentityCalibration.resolver
-  private val acceptance  = new Acceptance(calibration)
+  private val acceptance  = new Acceptance(new EvidenceWeights(calibration))
 
   test("a gig's record found by its event words alone is not taken") {
     val gig  = MeasuredListing("Tanzwut - Live Tour 2026 | Special Guest: Sagenbringer", originalTitle = Some("Number_i LIVE TOUR 2024 No.I 特別編集版"))

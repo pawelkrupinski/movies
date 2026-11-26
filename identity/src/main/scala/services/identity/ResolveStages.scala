@@ -16,7 +16,7 @@ private[identity] final class ResolveStages(listings: Iterable[Listing], lookups
   private val all     = listings.toSeq.sorted.distinctBy(_.key)
   val ordered: Seq[Listing] = if (arrival) listings.toSeq.distinctBy(_.sortKey).filter(all.toSet) else all
   val generation = new CandidateGeneration(ordered, lookups, normalizer, pins, decorations, lazyLookups = mutation == Mutation.LazyLookups, corpus)
-  val acceptance = new Acceptance(calibration)
+  val acceptance = new Acceptance(new EvidenceWeights(calibration))
   val scoring    = new CandidateScoring(generation, calibration, acceptance.weights, pins)
   val links      = new TitleLinks(normalizer, pins, generation.context.wholeTitle, generation.context.bannerSegment)
   val families   = new Families(scoring, acceptance, links, normalizer, narrow = mutation == Mutation.NarrowFamilies)

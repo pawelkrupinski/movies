@@ -45,9 +45,10 @@ equivalence harness's commit, on `c1cc08eb9`).
 
 ## 1. The resolver (model)
 
-### 1.1 Acceptance — what a node or a cluster takes (`AcceptanceRuleTable.scala`)
+### 1.1 Acceptance — what a node or a cluster takes (`AcceptanceRuleTable.scala` and the rows of each kind)
 
-Every rule is a row of `AcceptanceRuleTable` (requires, picks, checks with their refusals, takes), and the vetoes asked
+Every rule is a row (requires, picks, checks with their refusals, takes) of the rows of its kind -- `AcceptanceTitleRows`,
+`AcceptanceFactRows`, `AcceptanceStageRows` --, ordered by `AcceptanceRuleTable`, and the vetoes asked
 of every take follow them there. Alone rules are tried in `aloneRules` order, first accept wins; `season-production`
 pre-empts them and `billsSeveralWorks` gates them all. The line column below predates the table (2026-11-20). Fires = listings whose decision names the rule (`accept:` alone, `pooled:` pooled).
 

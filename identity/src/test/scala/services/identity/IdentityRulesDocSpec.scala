@@ -14,7 +14,7 @@ class IdentityRulesDocSpec extends AnyFlatSpec with Matchers {
   private val rows = Files.readAllLines(Path.of("docs", "design", "identity-resolver.md"), StandardCharsets.UTF_8).asScala.toSeq
     .map(_.split("\\|", -1).map(_.trim).toSeq).collect { case Seq("", stage, n, rule, _, "") if n.forall(_.isDigit) && n.nonEmpty => (stage, n.toInt, rule) }
   private def listed(stage: String) = rows.filter(_._1 == stage).sortBy(_._2).map(_._3)
-  private val acceptance = new Acceptance(IdentityCalibration.resolver)
+  private val acceptance = new Acceptance(new EvidenceWeights(IdentityCalibration.resolver))
 
   "the rules table" should "list the alone rules in the order Acceptance tries them" in {
     // Every alone rule refuses a node no search answered, each named in the order it was tried — after
