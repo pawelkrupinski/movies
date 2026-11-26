@@ -2,7 +2,7 @@ package modules.webwiring
 
 import controllers.MovieControllerService
 import services.MongoConnection
-import services.movies.{MongoMovieChangeFeed, MongoMovieRepository, MovieChangeFeed, MovieRepository}
+import services.movies.{MovieChangeFeed, MovieRepository}
 import services.readmodel.{MongoReadModelRepository, ReadModelReader, ReadModelStreams, ReadModelUpkeep, WebReadModel}
 
 /** ── Denormalised read model ──────────────────────────────────────────────────
@@ -38,30 +38,21 @@ trait ReadModelWiring { self: Wiring =>
       processConfiguration.mirrorMongoUri,
       mirror => new MongoConnection(settings.MongoMirror.fromUri(mirror, mongoAddress.databaseFor(country), mongoTuning), services.MongoRequirement.Optional),
       mongoConnection)
-  // Showtimes split: /debug's movieRepository is read-only, so it only needs the
-  // read-stitch — re-inject showtimes from `screenings` on the same connection it
-  // reads `movies` from. The worker owns the backfill; here we just read.
-  lazy val screeningsRepository: services.movies.ScreeningsRepository =
-    new services.movies.MongoScreeningsRepository(movieMirrorConnection.database, clock = clock, stopwatch = stopwatch)
-  // Same read-stitch seam for the slots split. The worker owns the writes; web only
-  // needs the repository so a film whose slots have moved to `movie_slots` still reads
-  // complete.
-  lazy val slotsRepository: services.movies.SlotsRepository =
-    new services.movies.MongoSlotsRepository(movieMirrorConnection.database, clock = clock, stopwatch = stopwatch)
   /** The SERVING country's title rules. Passed explicitly so the web tier keys
    *  the same way the worker that wrote the corpus did; the per-country debug
    *  stacks (DebugWiring) each get their OWN, since they read another country's
    *  database. */
   lazy val titleNormalizer: services.titles.TitleNormalizer =
     services.titles.TitleNormalizer.forCountry(country)
-
-  lazy val movieRepository: MovieRepository & MovieChangeFeed = new MongoMovieRepository(
-    movieMirrorConnection.database, clock,
-    screenings = Some(screeningsRepository), slots = Some(slotsRepository),
-    normalizer = titleNormalizer, decodeFailures = webDecodeFailureMetrics, stopwatch = stopwatch) with MongoMovieChangeFeed()
+  lazy val movieStoreWiring: MovieStoreWiring = new MovieStoreWiring(clock, stopwatch)
+  // Showtimes and slots splits: /debug's movieRepository is read-only, so it only needs the read-stitch from `screenings`
+  // and `movie_slots` on the same connection it reads `movies` from. The worker owns the backfill and the writes.
+  lazy val movieStores: MovieStores = movieStoreWiring.readOnly(movieMirrorConnection.database, titleNormalizer, webDecodeFailureMetrics)
+  lazy val screeningsRepository: services.movies.ScreeningsRepository = movieStores.screenings
+  lazy val slotsRepository: services.movies.SlotsRepository = movieStores.slots
+  lazy val movieRepository: MovieRepository & MovieChangeFeed = movieStores.repository
   /** The /debug corpus table's read of `movies`, its showtimes stripped server-side. */
-  lazy val movieListingReader: services.movies.MovieListingReader = new services.movies.MongoMovieListingReader(
-    movieMirrorConnection.database, Some(slotsRepository), titleNormalizer, clock)
+  lazy val movieListingReader: services.movies.MovieListingReader = movieStores.listingReader
   lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database, decodeFailures = webDecodeFailureMetrics, stopwatch = stopwatch)
   lazy val webReadModel: WebReadModel = new WebReadModel(readModelRepository, clock = clock, servingCountry = Some(country))
   lazy val readModelReloadInterval    = processConfiguration.readModelReloadInterval(ReadModelUpkeep.DefaultReloadInterval)

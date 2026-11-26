@@ -2,7 +2,6 @@ package modules.webwiring
 
 import controllers.{CadenceController, CorpusListing, DebugController, DebugCountries, DebugReadModelController, DebugReadModels, DebugStack, DebugStreamController, RefreshingSnapshot, FileSnapshotStore, RehydrateController, SnapshotStore, TuneController}
 import play.api.Mode
-import services.movies.{MongoMovieChangeFeed, MongoMovieRepository}
 import services.readmodel.MongoReadModelRepository
 import services.{MongoConnection, ServiceTags}
 
@@ -95,21 +94,17 @@ trait DebugWiring { self: Wiring =>
           processConfiguration.mirrorMongoUri,
           mirror => new MongoConnection(settings.MongoMirror.forDatabase(mirror, country.mongoDb), services.MongoRequirement.Optional, sharedClient = Some(client)),
           new MongoConnection(settings.MongoConnectionSettings.of(mongoAddress.uri, settings.MongoDatabaseName(country.mongoDb), mongoTuning), services.MongoRequirement.Optional, sharedClient = Some(client)))
-        val screenings = new services.movies.MongoScreeningsRepository(conn.database, clock = clock, stopwatch = stopwatch)
-        val slots      = new services.movies.MongoSlotsRepository(conn.database, clock = clock, stopwatch = stopwatch)
         // THIS stack's country, not the serving one: /debug reads another
         // country's database, and folding its titles with the serving country's
         // rules would key rows the way no worker ever wrote them.
         val normalizer = services.titles.TitleNormalizer.forCountry(country)
         // Watched: the /debug live view streams the corpus's changes (its cursor position ephemeral).
-        val repository = new MongoMovieRepository(conn.database, clock,
-          screenings = Some(screenings), slots = Some(slots), normalizer = normalizer, stopwatch = stopwatch) with MongoMovieChangeFeed()
+        val stores     = movieStoreWiring.readOnly(conn.database, normalizer)
         val freshness  = mirrorFreshnessOf(conn)
-        val listingRead = new services.movies.MongoMovieListingReader(conn.database, Some(slots), normalizer, clock)
-        val listing    = debugSnapshot(s"/debug listing ${country.code}", freshness)(CorpusListing.read(listingRead, normalizer))
+        val listing    = debugSnapshot(s"/debug listing ${country.code}", freshness)(CorpusListing.read(stores.listingReader, normalizer))
         val cadence    = debugSnapshot(s"/debug/cadence ${country.code}", freshness)(
           new services.cadence.MongoRatingCadenceReader(conn.database).all())
-        val stack = new DebugStack(country, repository,
+        val stack = new DebugStack(country, stores.repository,
           new services.cadence.MongoRatingCadenceReader(conn.database),
           new services.attempts.MongoEnrichmentAttemptStore(conn.database),
           ratingCadenceSnapshot  = Some(() => cadence.get()),
