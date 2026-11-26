@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib
 import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/stall_watch.py", "scripts/stall-watch.sh")
+SHELL_NAME = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts", "stall-watch.sh")
 FAST = {"KINOWO_STALL_POLL_SECONDS": "1"}
 # a root that touches `$1` eight times, 0.75 s apart (six seconds of progress, a bound of three), says it finished,
 # and then waits on nothing
@@ -113,6 +114,23 @@ class StallWatchTest(cli_harness.ToolCase):
         proc = self.watch(str(root.pid), "3", "nested", self.path("stalled"), self.path("progress"), self.path("logs"))
         self.await_stall(proc)
         self.assertEqual("nested\n", self.read("stalled"), "a nested file was counted as progress")
+
+    def test_a_hung_python3_first_on_path_never_hangs_the_watchdog_its_callers_run(self) -> None:
+        # the callers' name (run-script-tests, the pre-push hook): a python3 on PATH that answers `-c` and hangs on
+        # anything else -- pre-push-tools-test's hung check -- ran the watchdog too (Tool self-tests #600)
+        os.makedirs(self.path("hung"))
+        with open(self.path("hung", "python3"), "w") as f:
+            f.write('#!/bin/sh\n[ "$1" = -c ] && exit 0\nexec sleep 86400\n')
+        os.chmod(self.path("hung", "python3"), 0o755)
+        root = self.root("sleep", "300")
+        err = open(self.path("err"), "wb")
+        self.addCleanup(err.close)
+        env = self.env({**FAST, "TMPDIR": self.work, "PATH": self.path("hung") + os.pathsep + os.environ["PATH"]})
+        proc = subprocess.Popen(["bash", SHELL_NAME, "watch", str(root.pid), "2", "shadowed", self.path("stalled")],
+                                cwd=self.work, env=env, start_new_session=True, stdout=subprocess.DEVNULL, stderr=err)
+        self.addCleanup(self.end_group, proc)
+        self.await_stall(proc)
+        self.assertEqual("shadowed\n", self.read("stalled"))
 
     def test_a_busy_process_is_progress(self) -> None:
         busy = "import time; end = time.time() + 6\nwhile time.time() < end: pass"
