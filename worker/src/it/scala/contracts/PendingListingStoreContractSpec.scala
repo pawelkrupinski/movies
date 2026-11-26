@@ -18,7 +18,8 @@ import tools.{IsolatedMongoDatabase, SpecTimeouts}
 
 /** The listings the model's input gate holds, as both stores keep them: what `update` writes `read` gives back, a key
  *  written again replaces its row, a released one is gone (a key both released and pending stays pending), and a row
- *  whose key no longer parses is skipped. */
+ *  whose key no longer parses is skipped. Both read in serialised-key order (Mongo's read its natural order until
+ *  2026-11-26, when both moved onto one keyed store). */
 class PendingListingStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
   private lazy val isolatedDatabase = IsolatedMongoDatabase.open(mongoTarget, "pending-listing-contract")
@@ -45,12 +46,18 @@ class PendingListingStoreContractSpec extends AnyFlatSpec with Matchers with Bef
       val store = fresh()
       store.read() shouldBe empty
       store.update(Seq(Pending(second.key, None, 2L), Pending(first.key, Some(first), 1L)), Nil)
-      val read = store.read().sortBy(p => ListingKey.serialised(p.key))   // the Mongo store read in natural order until 2026-11-26
+      val read = store.read()
       read.map(_.key) shouldBe Seq(first.key, second.key)
       read.map(_.since) shouldBe Seq(1L, 2L)
       read.head.ready.map(_.key) shouldBe Some(first.key)
       read.head.ready.map(_.rawTitle) shouldBe Some(first.rawTitle)
       read(1).ready shouldBe None
+    }
+
+    it should "read in serialised-key order, whatever order they were written in" in {
+      val store = fresh()
+      store.update(Seq(Pending(second.key, None, 2L), Pending(first.key, None, 1L)), Nil)
+      store.read().map(_.key) shouldBe Seq(first.key, second.key)
     }
 
     it should "replace a key written again, drop a released one, and keep a key released and pending at once" in {

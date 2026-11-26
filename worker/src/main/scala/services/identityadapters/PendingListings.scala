@@ -1,13 +1,11 @@
 package services.identityadapters
 
-import scala.concurrent.Await
 import scala.concurrent.duration.*
 
 import models.ListingKey
 import org.bson.{BsonDocument, BsonInt64, BsonString}
+import org.mongodb.scala.MongoDatabase
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.model.{Filters, ReplaceOneModel, ReplaceOptions}
-import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import services.identity.*
 import services.identity.measures.Listing
 
@@ -30,34 +28,38 @@ object PendingListingStore {
   /** `key` waits on its newest version's questions since `since` (epoch ms); the model reads `ready` meanwhile, or nothing. */
   final case class Pending(key: ListingKey, ready: Option[Listing], since: Long)
 
-  final class InMemory extends PendingListingStore {
-    private var held = Map.empty[ListingKey, Pending]
-    def read(): Seq[Pending] = synchronized(held.values.toSeq.sortBy(p => ListingKey.serialised(p.key)))
-    def update(pending: Seq[Pending], released: Iterable[ListingKey]): Unit =
-      synchronized { held = held -- released ++ pending.map(p => p.key -> p) }
-  }
+  /** The held listings in memory, as [[MongoPendingListingStore]] keeps them. */
+  final class InMemory extends KeyedPendingListingStore(new tools.InMemoryStoreDocuments())
 }
 
-/** The `identity_pending` collection: one document per listing the gate holds, `_id` its serialised key, `ready` the version
- *  the model reads meanwhile as [[ListingBson]] writes it (absent for a listing new to the model), `since` when it began to
- *  wait. */
-final class MongoPendingListingStore(db: MongoDatabase) extends PendingListingStore {
+/** The held listings in a keyed store, one document per listing: `_id` its serialised key, `ready` the version the model
+ *  reads meanwhile as [[ListingBson]] writes it (absent for a listing new to the model), `since` when it began to wait.
+ *  Read in key order; an update drops the released, then writes the pending, in one bulk write. */
+abstract class KeyedPendingListingStore(documents: tools.StoreDocuments) extends PendingListingStore {
   import PendingListingStore.Pending
-  private val coll: MongoCollection[Document] = db.getCollection[Document](MongoPendingListingStore.Collection)
-  private val Timeout = 30.seconds
+  private val held = new tools.KeyedStore(documents, KeyedPendingListingStore.Keys, KeyedPendingListingStore.Codec)
 
-  def read(): Seq[Pending] =
-    Await.result(coll.find().batchSize(tools.MongoReplies.Default).toFuture(), Timeout).flatMap(d => MongoPendingListingStore.pendingOf(d.toBsonDocument))
+  def read(): Seq[Pending] = held.all().map(_._2)
 
   def update(pending: Seq[Pending], released: Iterable[ListingKey]): Unit = {
-    val keys = released.map(ListingKey.serialised).toSeq
-    if (keys.nonEmpty) Await.result(coll.deleteMany(Filters.in("_id", keys*)).toFuture(), Timeout)
-    if (pending.nonEmpty)
-      Await.result(coll.bulkWrite(pending.map(p => ReplaceOneModel(Filters.eq("_id", ListingKey.serialised(p.key)),
-        MongoPendingListingStore.docOf(p), ReplaceOptions().upsert(true)))).toFuture(), Timeout)
-    ()
+    held.deleteAll(released)
+    held.putAll(pending.map(p => p.key -> p))
   }
 }
+
+object KeyedPendingListingStore {
+  /** A listing's `_id`: its serialised key. */
+  val Keys: tools.KeyCodec[ListingKey] = tools.KeyCodec.textual(ListingKey.serialised, ListingKey.parse)
+
+  val Codec: tools.DocCodec[PendingListingStore.Pending] = new tools.DocCodec[PendingListingStore.Pending] {
+    def encode(pending: PendingListingStore.Pending): Document = MongoPendingListingStore.docOf(pending)
+    def decode(document: Document): Option[PendingListingStore.Pending] = MongoPendingListingStore.pendingOf(document.toBsonDocument)
+  }
+}
+
+/** The `identity_pending` collection. */
+final class MongoPendingListingStore(db: MongoDatabase) extends KeyedPendingListingStore(
+  tools.MongoStoreDocuments.of(db.getCollection(MongoPendingListingStore.Collection), timeout = 30.seconds))
 
 object MongoPendingListingStore {
   val Collection = "identity_pending"
