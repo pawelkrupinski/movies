@@ -327,7 +327,8 @@ wait_file() { wait_until "$1 appeared" test -f "$1"; }
 python3 "$work/server.py" "$work" & meter_server=$!
 wait_file "$work/ready"
 meter_lister() { echo "$meter_server"; }
-KINOWO_CPU_METER_POLL=0.2 cpu_meter_start meter_lister
+meter_tmp="$work/meter-tmp"; mkdir -p "$meter_tmp"   # the meter's own TMPDIR: sibling tests run in parallel in the shared one
+TMPDIR="$meter_tmp" KINOWO_CPU_METER_POLL=0.2 cpu_meter_start meter_lister
 touch "$work/go"; wait_file "$work/done"
 metered=$(cpu_meter_stop)
 check "cpu meter: an exited fork's CPU counted, the server's CPU before the call not" "in 1..2 s" \
@@ -335,7 +336,7 @@ check "cpu meter: an exited fork's CPU counted, the server's CPU before the call
 kill "$meter_server" 2> /dev/null
 rm -f "$work/ready" "$work/go" "$work/done"
 late_lister() { [ -f "$work/late.pid" ] && cat "$work/late.pid"; }
-KINOWO_CPU_METER_POLL=0.2 cpu_meter_start late_lister
+TMPDIR="$meter_tmp" KINOWO_CPU_METER_POLL=0.2 cpu_meter_start late_lister
 python3 "$work/server.py" "$work" & echo $! > "$work/late.pid"
 touch "$work/go"; wait_file "$work/done"
 metered=$(cpu_meter_stop)
@@ -343,7 +344,7 @@ check "cpu meter: a server that starts during the call is metered from its start
   "$([ "$metered" -ge 2 ] && echo "2 s or more" || echo "$metered s")"
 kill "$(cat "$work/late.pid")" 2> /dev/null
 check "cpu meter: its samples removed" "" \
-  "$(find "${TMPDIR:-/tmp}" -maxdepth 1 -name 'cpu-meter.*' -newer "$work/late.pid" 2> /dev/null)"
+  "$(find "$meter_tmp" -maxdepth 1 -name 'cpu-meter.*' 2> /dev/null)"
 
 # jvm_usage names the meter only when its caller does: a worktree's old sbt-warm, running main's copy of this file, still
 # measures by ps -S, and its runs must not read as metered
