@@ -98,22 +98,22 @@ lesson). Racing callers each count; none passes the ceiling (contract-tested wit
 ## Migration order (lowest risk first, one store per commit)
 
 1. `ScheduledRunStore` -- insert-once + TTL, no reads, worker only. DONE first: the fake now models the 48 h TTL.
-2. `AuthExchangeCodeStore` -- insert + take + TTL, `Absent` for no database; web only, failures logged as now. Its
+2. `AuthExchangeCodeStore` -- DONE 2026-11-27: insert + take + TTL, `Absent` for no database; web only, failures logged as now. Its
    in-memory store is built without a clock by ~10 specs: each must hand it the `AuthExchangeCodes` clock, or a code
    minted on a pinned past instant expires on arrival.
-3. `ReviewAnswerStore` -- insert + ordered scan, local-mirror only (no prod data).
+3. `ReviewAnswerStore` -- DONE 2026-11-27 (the fake now reads in answer-time order, as Mongo did): insert + ordered scan, local-mirror only (no prod data).
 4. `PendingListingStore` -- `putAll` + `deleteAll` + read all. DONE: Mongo now reads in key order, as the fake did.
-5. `ScrapeCostStore` -- needs one more boundary operation, a capped append (`$push` + `$slice`), added with its
+5. `ScrapeCostStore` -- DONE 2026-11-27 (`StoreDocuments.append`, `StoreCappedLists`): needed one more boundary operation, a capped append (`$push` + `$slice`), added with its
    contract cases; or a read-modify-`put`, which loses the server-side atomicity two workers rely on. Prefer the former.
-6. `PinStore` -- identity module: check the identity stamps (`scripts/pure-move-check`; `MongoPinStore` is outside the
+6. `PinStore` -- DONE 2026-11-27, stamps unchanged: identity module: check the identity stamps (`scripts/pure-move-check`; `MongoPinStore` is outside the
    rules closure if the stamp digests do not move) before landing.
-7. `RetainedListingStore` -- bulk + its soft-expiry rule kept in the store above (an `updateMany` on the live filter
+7. `RetainedListingStore` -- DONE 2026-11-27 (`StoreMarks`: `scanAbsent` / `editAbsent`; Mongo now reads in key order): bulk + its soft-expiry rule kept in the store above (an `updateMany` on the live filter
    is a further boundary operation, `markWhere`), the marker document, its index. Read-model input: what-if if the
    identity closure is reached.
-8. `FilmIdCounterStore` -- `insert` per entry (or an unordered `insertAll` returning the count landed) and a unique
+8. `FilmIdCounterStore` -- DONE 2026-11-27 (`StoreOnce.insertAll`, a unique field): `insert` per entry (or an unordered `insertAll` returning the count landed) and a unique
    secondary index; identity module, stamps as for 6.
 
-Then `OmdbBudget` onto `StoreCounters`, and last `KeyedDocStore` itself folded in (`KeyedDocStore[T]` is a
+`OmdbBudget` is on `StoreCounters` (2026-11-27; `markSpent` is an increment to the limit, not `$max`). Last: `KeyedDocStore` itself folded in (`KeyedDocStore[T]` is a
 `KeyedStore[String, T]` plus `putDetached` and `retention`): its five users move, and the two abstractions become one.
 
 ## Coupling

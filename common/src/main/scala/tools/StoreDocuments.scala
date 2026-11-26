@@ -22,6 +22,10 @@ trait StoreDocuments {
   def replace(documents: Seq[BsonDocument]): Unit
   /** `document` stored unless its `_id` is: whether it was (false: the `_id` was taken, whatever it held). */
   def insert(document: BsonDocument): Boolean
+  /** Each of `documents` stored unless its `_id` is, or (an implementation made with unique fields) another document
+   *  holds the same value in one of them: how many were. Unordered -- a refused one does not stop the rest. Any other
+   *  failure throws. */
+  def insertAll(documents: Seq[BsonDocument]): Int
   /** The document of `id`, deleted in the same step: two callers taking one `id` at once, one of them gets it. */
   def take(id: BsonValue): Option[BsonDocument]
   /** The documents of `ids` deleted; how many there were. */
@@ -33,7 +37,25 @@ trait StoreDocuments {
   /** `element` added to the end of the array `field` of `id`'s document -- the document made, the array begun, when there
    *  is none -- keeping only the last `keep`. In one step: two callers appending at once both land. */
   def append(id: BsonValue, field: String, element: BsonValue, keep: Int): Unit
+  /** Every document whose `field` is absent or null, `_id` order, a page at a time (Mongo reads it by an index on `field`
+   *  when there is one, never every document). */
+  def scanAbsent(field: String, each: Seq[BsonDocument] => Unit): ScanOutcome
+  /** Of the documents whose `field` is absent or null, those `selection` names edited by `edit`: how many. In one step
+   *  per document: a document edited is no longer absent in `field` if `edit` sets it. */
+  def editAbsent(field: String, selection: IdSelection, edit: DocumentEdit): Int
 }
+
+/** Which `_id`s an edit reaches. */
+sealed trait IdSelection
+object IdSelection {
+  /** Exactly these. */
+  final case class Only(ids: Seq[BsonValue]) extends IdSelection
+  /** Every `_id` but these. */
+  final case class AllBut(ids: Seq[BsonValue]) extends IdSelection
+}
+
+/** Fields set, then fields removed (a dotted path reaches into a sub-document), on every document an edit reaches. */
+final case class DocumentEdit(set: Seq[(String, BsonValue)], unset: Seq[String])
 
 object StoreDocuments {
   /** No database: holds nothing, every write dropped (the store a process without Mongo is wired with). */
@@ -42,10 +64,13 @@ object StoreDocuments {
     def scan(each: Seq[BsonDocument] => Unit): ScanOutcome                                 = ScanOutcome.complete
     def replace(documents: Seq[BsonDocument]): Unit                                       = ()
     def insert(document: BsonDocument): Boolean                                            = false
+    def insertAll(documents: Seq[BsonDocument]): Int                                       = 0
     def take(id: BsonValue): Option[BsonDocument]                                          = None
     def delete(ids: Seq[BsonValue]): Int                                                   = 0
     def increment(id: BsonValue, field: String, by: Long, below: Option[Long]): Option[Long] = None
     def append(id: BsonValue, field: String, element: BsonValue, keep: Int): Unit             = ()
+    def scanAbsent(field: String, each: Seq[BsonDocument] => Unit): ScanOutcome               = ScanOutcome.complete
+    def editAbsent(field: String, selection: IdSelection, edit: DocumentEdit): Int            = 0
   }
 }
 

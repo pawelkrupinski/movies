@@ -14,9 +14,9 @@ import org.bson.{BsonArray, BsonDocument, BsonInt64, BsonValue, RawBsonDocument}
  * bytes). An expiring one ([[InMemoryStoreDocuments.expiring]]) applies its expiry on the injected clock ([[DocumentExpiry]]):
  * at every call, what is past it is gone.
  */
-final class InMemoryStoreDocuments private (expiring: Option[(DocumentExpiry, java.time.Clock)]) extends StoreDocuments {
+final class InMemoryStoreDocuments private (expiring: Option[(DocumentExpiry, java.time.Clock)], unique: Seq[String]) extends StoreDocuments {
   /** Documents that never expire. */
-  def this() = this(None)
+  def this() = this(None, Nil)
 
   private val held = new ConcurrentSkipListMap[BsonValue, RawBsonDocument](InMemoryStoreDocuments.IdOrder)
 
@@ -32,15 +32,45 @@ final class InMemoryStoreDocuments private (expiring: Option[(DocumentExpiry, ja
 
   def find(ids: Seq[BsonValue]): Seq[BsonDocument] = { swept(); ids.distinct.flatMap(id => Option(held.get(id)).map(read)) }
 
-  def scan(each: Seq[BsonDocument] => Unit): ScanOutcome = {
+  def scan(each: Seq[BsonDocument] => Unit): ScanOutcome = scanWhere(_ => true)(each)
+
+  def scanAbsent(field: String, each: Seq[BsonDocument] => Unit): ScanOutcome = scanWhere(InMemoryStoreDocuments.absent(_, field))(each)
+
+  private def scanWhere(which: BsonDocument => Boolean)(each: Seq[BsonDocument] => Unit): ScanOutcome = {
     swept()
-    each(held.values.asScala.toSeq.map(read))
+    each(held.values.asScala.toSeq.map(read).filter(which))
     ScanOutcome.complete
+  }
+
+  def editAbsent(field: String, selection: IdSelection, edit: DocumentEdit): Int = {
+    swept()
+    val chosen: BsonValue => Boolean = selection match {
+      case IdSelection.Only(ids)   => ids.toSet
+      case IdSelection.AllBut(ids) => id => !ids.contains(id)
+    }
+    held.keySet.asScala.toSeq.filter(chosen).count { id =>
+      var edited = false
+      held.computeIfPresent(id, (_, bytes) => {
+        val document = read(bytes)
+        edited = InMemoryStoreDocuments.absent(document, field)
+        if (edited) tools.BsonRoundTrip.bytes(InMemoryStoreDocuments.edited(document, edit)) else bytes
+      })
+      edited
+    }
   }
 
   def replace(documents: Seq[BsonDocument]): Unit = {
     swept()
     documents.foreach(d => held.put(idOf(d), tools.BsonRoundTrip.bytes(d)))
+  }
+
+  /** Documents held under another `_id` with the same value as `document` in a unique field. */
+  private def clashes(document: BsonDocument): Boolean =
+    unique.exists(field => Option(document.get(field)).exists(v => held.values.asScala.exists(other => Option(read(other).get(field)).contains(v))))
+
+  def insertAll(documents: Seq[BsonDocument]): Int = synchronized {
+    swept()
+    documents.count(d => !clashes(d) && held.putIfAbsent(idOf(d), tools.BsonRoundTrip.bytes(d)) == null)
   }
 
   def insert(document: BsonDocument): Boolean = { swept(); held.putIfAbsent(idOf(document), tools.BsonRoundTrip.bytes(document)) == null }
@@ -78,8 +108,25 @@ final class InMemoryStoreDocuments private (expiring: Option[(DocumentExpiry, ja
 }
 
 object InMemoryStoreDocuments {
+  /** Whether `field` is missing or null in `document`, as Mongo's `{field: null}` matches. */
+  private def absent(document: BsonDocument, field: String): Boolean = Option(document.get(field)).forall(_.isNull)
+
+  /** `document` with `edit` applied: its fields set, then its (dotted) paths removed. */
+  private def edited(document: BsonDocument, edit: DocumentEdit): BsonDocument = {
+    edit.set.foreach((field, value) => document.put(field, value))
+    edit.unset.foreach { path =>
+      val steps  = path.split('.').toList
+      val parent = steps.init.foldLeft(Option[BsonDocument](document))((at, step) => at.flatMap(d => Option(d.get(step)).filter(_.isDocument).map(_.asDocument)))
+      parent.foreach(_.remove(steps.last))
+    }
+    document
+  }
+
+  /** Documents of which no two hold the same value in any of `fields` -- a unique index's refusal in [[StoreDocuments.insertAll]]. */
+  def uniqueBy(fields: String*): InMemoryStoreDocuments = new InMemoryStoreDocuments(None, fields)
+
   /** Documents that expire by `expiry` on `clock`. */
-  def expiring(expiry: DocumentExpiry, clock: java.time.Clock): InMemoryStoreDocuments = new InMemoryStoreDocuments(Some(expiry -> clock))
+  def expiring(expiry: DocumentExpiry, clock: java.time.Clock): InMemoryStoreDocuments = new InMemoryStoreDocuments(Some(expiry -> clock), Nil)
 
   /** Mongo's order of `_id`s: numbers by value, before strings, strings by their UTF-8 bytes; any other type after, by
    *  its extended JSON (no store here keys by one). */

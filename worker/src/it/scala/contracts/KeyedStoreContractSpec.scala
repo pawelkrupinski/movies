@@ -137,6 +137,26 @@ class KeyedStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAndAft
       entries("other") shouldBe Seq(9)
     }
 
+    it should "mark rows instead of deleting them: the live ones read alone, an edit reaching only live rows, dotted unsets too" in {
+      val docs  = documents(None)
+      val store = new KeyedStore(docs, KeyCodec.Text, codec)
+      store.putAll(Seq("a" -> "a", "b" -> "b", "c" -> "c"))
+      docs.replace(Seq(new org.bson.BsonDocument("_id", new org.bson.BsonString("other")).append("note", new org.bson.BsonString("marker"))
+        .append("sub", new org.bson.BsonDocument("days", new org.bson.BsonInt32(1)).append("name", new org.bson.BsonString("kept")))))
+      val edit = tools.DocumentEdit(Seq("gone" -> new org.bson.BsonInt64(7)), Seq("sub.days"))
+      store.mark(Seq("a", "never"), "gone", edit) shouldBe 1
+      store.mark(Seq("a"), "gone", edit) shouldBe 0                       // already marked: not live
+      store.unmarked("gone").map(_._1) shouldBe Seq("b", "c", "other")
+      store.markAllBut(Seq("b"), "gone", edit, Seq(new org.bson.BsonString("other"))) shouldBe 1
+      store.unmarked("gone").map(_._1) shouldBe Seq("b", "other")
+      store.all().map(_._1) shouldBe Seq("a", "b", "c", "other")        // nothing was deleted
+      store.mark(Seq("other"), "gone", edit) shouldBe 1
+      val sub = docs.find(Seq(new org.bson.BsonString("other"))).head.getDocument("sub")
+      sub.containsKey("days") shouldBe false
+      sub.getString("name").getValue shouldBe "kept"
+      store.mark(Nil, "gone", edit) shouldBe 0
+    }
+
     it should "land every one of many racing appends within the cap" in {
       val docs  = documents(None)
       val store = new KeyedStore(docs, KeyCodec.Text, codec)
