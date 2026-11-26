@@ -84,8 +84,39 @@ def waits(words):
             found.append((name, rest, bound))
         elif name == "agentctl" and rest[:1] == ["wait"]:
             found.append(("agentctl wait", rest[1:], bound))
+        elif name in shell.SHELLS:
+            found.extend(waits_in_script(rest, bound))
         position, prefix_timeout, bound = False, False, None
     return found
+
+
+def script_of(arguments: List[str]) -> Optional[str]:
+    """The script of a shell's `-c` among its leading options (`bash -c '...'`, `bash -lc '...'`), or None."""
+    for index, word in enumerate(arguments):
+        if not re.fullmatch(r"-[A-Za-z]+", word):
+            return None  # a script file or `-o name`: not read
+        if "c" in word:
+            return arguments[index + 1] if index + 1 < len(arguments) else None
+    return None
+
+
+def waits_in_script(arguments: List[str], bound: Optional[float]):
+    """The waits a `bash -c` script runs, read as a command of its own and still held to the `timeout` prefix of the
+    shell that runs it."""
+    script = script_of(arguments)
+    if script is None:
+        return []
+    try:
+        words = shell.tokens(shell.without_heredoc_bodies(script.replace("\\\n", " ")))
+    except ValueError:
+        return []
+    return [(name, rest, tighter(inner, bound)) for name, rest, inner in waits(words)]
+
+
+def tighter(first: Optional[float], second: Optional[float]) -> Optional[float]:
+    """The smaller of two bounds, where None is no bound."""
+    bounds = [b for b in (first, second) if b is not None]
+    return min(bounds) if bounds else None
 
 
 def flag_timeout(name: str, arguments: List[str]) -> Optional[float]:
