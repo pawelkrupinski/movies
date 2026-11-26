@@ -112,7 +112,7 @@ class UnitTestSplitSpec extends AnyFlatSpec with Matchers {
     itJob should include("IT_ROW: ${{ matrix.row }}")
     RepoFile.withoutComments(itJob) should include("run: sbt itAll")
     // Every integration module carries the filter: a module without it would run its suites on both rows.
-    """\.settings\(itReportSettings, itRowSettings\)""".r.findAllIn(buildSbt).size shouldBe
+    """\.settings\(itReportSettings, itRowSettings[,)]""".r.findAllIn(buildSbt).size shouldBe
       """\.settings\(itReportSettings""".r.findAllIn(buildSbt).size
   }
 
