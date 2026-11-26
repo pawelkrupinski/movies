@@ -29,6 +29,9 @@ if [ -n "$current" ] && [ "$current" != scripts/hooks ] && ! hooks_path_is_own "
 fi
 
 git config core.hooksPath scripts/hooks
-chmod +x scripts/hooks/*
+# Only the hooks git runs (a data file or a test library in the directory is no hook).
+for hook in pre-push pre-commit post-commit; do
+    [ -f "scripts/hooks/$hook" ] && chmod +x "scripts/hooks/$hook"
+done
 echo "core.hooksPath = scripts/hooks (was: ${current:-unset}). Bypass once with 'git push --no-verify'."
 echo "The JVM reaper is agentctl's: ~/bin/agentctl reap, every 15 min by launchd net.bitcashier.agentctl-maintain."
