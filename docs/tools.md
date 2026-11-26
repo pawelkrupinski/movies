@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (251)
+## Landing and CI (252)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -97,13 +97,14 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/commit_rules_ci.py` | THE DRIFT GATE'S COMMIT RULES, ON CI (scripts/ci/commit_rules.py: `allowlists` and `driftguards`). The pre-push hook | `scripts/ci/commit_rules_ci.py` | 1 tool | commit_rules_ci_test.py | Python |
 | `scripts/ci/countries_disagree.py` | COUNTRIES DISAGREE: a title billed in two or more countries in the same week that one country takes as a film NO | `python3 scripts/ci/countries_disagree.py` | skill identity-investigation; 2 tools | countries_disagree_test.py | Python |
 | `scripts/ci/coupling_exemption_history.py` | The exemption rows commits added, and what admits them (coupling_ratchet.py, AN AGENT'S ROW ADDED): a specific why, | `imported` | 1 tool | - | Python |
-| `scripts/ci/coupling_exemption_table.py` | The coupling exemption table as the ratchet reads it (coupling_ratchet.py, its module docstring; | `imported` | 2 tools | - | Python |
+| `scripts/ci/coupling_exemption_table.py` | The coupling exemption table as the ratchet reads it (coupling_ratchet.py, its module docstring; | `imported` | 1 tool | - | Python |
 | `scripts/ci/coupling_growth.py` | How the coupling baseline and the layer table moved between two revisions (coupling_ratchet.py, its module | `imported` | 1 tool | - | Python |
-| `scripts/ci/coupling_ratchet.py` | The coupling ratchet (the pre-push sbt check's coupling step) | `scripts/ci/coupling_ratchet.py` | hook pre-push; agentctl; skill CLAUDE.md; 12 tools | coupling_ratchet_test.py | Python |
-| `scripts/ci/coupling_reasons.py` | When an exemption's why is no SPECIFIC reason (coupling_ratchet.py, AN AGENT'S ROW ADDED; the exemption table's | `imported` | 3 tools | - | Python |
+| `scripts/ci/coupling_ratchet.py` | The coupling ratchet (the pre-push sbt check's coupling step) | `scripts/ci/coupling_ratchet.py` | hook pre-push; agentctl; skill CLAUDE.md; 13 tools | coupling_ratchet_test.py | Python |
+| `scripts/ci/coupling_reasons.py` | When an exemption's why is no SPECIFIC reason (coupling_ratchet.py, AN AGENT'S ROW ADDED; the exemption table's | `imported` | 2 tools | - | Python |
 | `scripts/ci/coupling_renames.py` | What git says a range renamed, for the coupling ratchet's RENAME CREDIT (coupling_ratchet.py, A RENAME): the range's | `imported` | 2 tools | - | Python |
-| `scripts/ci/coupling_rows.py` | The coupling ratchet's rows (coupling_ratchet.py, its module docstring): the `kind<TAB>key<TAB>value` rows the | `imported` | 7 tools | - | Python |
+| `scripts/ci/coupling_rows.py` | The coupling ratchet's rows (coupling_ratchet.py, its module docstring): the `kind<TAB>key<TAB>value` rows the | `imported` | 8 tools | - | Python |
 | `scripts/ci/coupling_splits.py` | The coupling ratchet's SPLIT rule (coupling_ratchet.py, A SPLIT): which `Coupling: split of <X>` claims of a range are | `imported` | 1 tool | - | Python |
+| `scripts/ci/coupling_verdicts.py` | Which types the coupling measure calls DATA and which COLLABORATORS, as the ratchet holds them (coupling_ratchet.py, | `imported` | 1 tool | - | Python |
 | `scripts/ci/coupling_violations.py` | The measured rows the coupling ratchet refuses (coupling_ratchet.py, its module docstring): a package cycle edge, a | `imported` | 1 tool | - | Python |
 | `scripts/ci/coursier-forget-errors.sh` | Delete coursier's negative cache records so a retried fetch asks the repository again | `scripts/ci/coursier-forget-errors.sh` | wf main; 2 tools | - | KEEP |
 | `scripts/ci/cpu-sampler.sh` | Print the whole runner's CPU, split between the JVM and mongod, every <seconds> until killed | `scripts/ci/cpu-sampler.sh` | wf country-convergence-leg; 1 tool | cpu-sampler-test.sh | KEEP |
@@ -200,7 +201,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/stop-stray-sbt.sh` | End every JVM an earlier step left running in this build | `scripts/ci/stop-stray-sbt.sh` | wf country-convergence-leg, main; 2 tools | stop-stray-sbt-test.sh | KEEP |
 | `scripts/ci/stress-races.sh` | Run the race / concurrency harnesses many times over, to surface the interleavings a single CI run almost never meets | `scripts/ci/stress-races.sh` | wf nightly-stress; 1 tool | stress_races_test.py | KEEP |
 | `scripts/ci/stress_races.py` | Run the race / concurrency harnesses many times over, to surface the interleavings a single CI run almost never meets. | `scripts/ci/stress_races.py` | 1 tool | stress_races_test.py | Python |
-| `scripts/ci/trailers.py` | THE TRAILER PLACEMENT RULE: git reads a `Key: value` line as a trailer only in the message's final trailer block -- | `python3 scripts/ci/trailers.py` | wf coupling-exemptions; hook post-commit, pre-push; skill CLAUDE.md; 11 tools | trailers_test.py | Python |
+| `scripts/ci/trailers.py` | THE TRAILER PLACEMENT RULE: git reads a `Key: value` line as a trailer only in the message's final trailer block -- | `python3 scripts/ci/trailers.py` | wf coupling-exemptions; hook post-commit, pre-push; skill CLAUDE.md; 12 tools | trailers_test.py | Python |
 | `scripts/ci/tree-unchanged.sh` | A test run must leave every checked-in file exactly as it found it | `scripts/ci/tree-unchanged.sh` | wf ci, discover-cinemas | - | KEEP |
 | `scripts/ci/trend_events.py` | A run as flat JSON events for VictoriaLogs and back (scripts/ci/ci_trends.py's `export`; the schema is in | `imported` | 3 tools | - | Python |
 | `scripts/ci/trend_export.py` | The collector (scripts/ci/ci_trends.py `export`, run on ci-runner every few minutes): every completed run of the | `imported` | 1 tool | - | Python |
@@ -229,7 +230,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/claude-hooks/owner-decisions` | Put agentctl's pending OWNER DECISIONS in front of the session the owner is talking to. | `scripts/claude-hooks/owner-decisions` | agentctl; skill agent-ops | owner-decisions-test.sh | Python |
 | `scripts/claude-hooks/root-checkout-guard` | Keep agents out of the ROOT checkout: every change is made in a worktree of its own. | `scripts/claude-hooks/root-checkout-guard` | hook pre-commit; skill CLAUDE.md, agent-ops | root-checkout-guard-test.sh | Python |
 | `scripts/claude-hooks/unbounded-poll-guard` | Refuse a background poll loop that has no bound: it outlives the agent that started it. | `scripts/claude-hooks/unbounded-poll-guard` | skill CLAUDE.md, agent-ops; 2 tools | unbounded-poll-guard-test.sh | Python |
-| `scripts/coupling-report` | The coupling report (CLAUDE.md, Design rules): the production code's coupling, from Zinc's class-dependency record (a name for coupling_report.py) | `scripts/coupling-report` | wf coupling-exemptions; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation; 8 tools | coupling_report_test.py | KEEP |
+| `scripts/coupling-report` | The coupling report (CLAUDE.md, Design rules): the production code's coupling, from Zinc's class-dependency record (a name for coupling_report.py) | `scripts/coupling-report` | wf coupling-exemptions; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation; 9 tools | coupling_report_test.py | KEEP |
 | `scripts/coupling_report.py` | The coupling report (CLAUDE.md, Design rules): the production code's coupling, from Zinc's class-dependency record. | `scripts/coupling_report.py` | 1 tool | coupling_report_test.py | Python |
 | `scripts/fail-before` | Proves the commit gate: a test that fails before the change and passes after it | `scripts/fail-before` | wf identity-run; agentctl; skill CLAUDE.md, agent-ops; 9 tools | fail_before_test.py | MIGRATE |
 | `scripts/floor-bash` | The floor bash: the oldest bash every script tool promises to run under -- macOS's /bin/bash, gnu bash 3.2.57 -- found or built, its path printed | `scripts/floor-bash` | wf tool-self-tests; hook pre-push; 2 tools | floor-bash-test.sh | KEEP |

@@ -5,9 +5,14 @@ from its named types to their top-level types), and the flips between them. A ty
 of every fan-out and abstractness count, so it is a loosening that needs its `Coupling: <why>` trailer."""
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+import os
+from typing import Callable, Dict, List, Tuple
+
+from coupling_rows import read_fanouts, update
+from trailers import text_at as file_at
 
 VERDICTS_PATH = "test/resources/coupling-collaborators.tsv"
+RiseRefused = Callable[[str, str, str, List[str], Callable[[str, str], List[str]]], bool]  # the ratchet's `rise_refused(rng, path, header, rises, rose)`
 DATA, COLLABORATOR = "data", "collaborator"
 HEADER = ("# THE CLASSIFICATION (scripts/coupling-report --update writes it; scripts/ci/coupling_ratchet.py holds every push to it):\n"
           "# each top-level production type, `data` (no coupling: it counts in no fan-out or abstractness) or `collaborator`.\n"
@@ -59,3 +64,44 @@ def flips(before: Verdicts, after: Verdicts) -> Tuple[List[str], List[str]]:
 
 def verdict_file(measured: Verdicts) -> str:
     return HEADER + "".join(f"{t}\t{v}\n" for t, v in sorted(measured.items()))
+
+
+def verdict_rises(before: str, after: str) -> List[str]:
+    """The types a verdict file's text moved into the data bucket between two texts (THE CLASSIFICATION)."""
+    return [f"{t} was a collaborator, is data" for t in flips(parse_verdicts(before), parse_verdicts(after))[0]]
+
+
+def check_verdicts(rise_refused: RiseRefused, ranges: List[str], collaborators_path: str, fanouts_path: str) -> bool:
+    """THE CLASSIFICATION: the types whose measured verdict flipped from the recorded one (test/resources/
+    coupling-collaborators.tsv) are said; a collaborator that is data now is refused until the file records it, and a
+    commit of a range recording it without its own `Coupling:` trailer is refused too. Whether any is refused."""
+    fanouts = read_fanouts(fanouts_path)
+    if not collaborators_path or fanouts is None or not os.path.exists(VERDICTS_PATH):
+        return False
+    recorded = parse_verdicts(open(VERDICTS_PATH).read())
+    to_data, to_collaborator = flips(recorded, measured_verdicts(open(collaborators_path).read(), sorted(fanouts[0])))
+    for t in to_collaborator:
+        print(f"coupling: {t} is a collaborator now, was data: it counts in fan-out and abstractness")
+    if to_data:
+        print(f"A TYPE MOVED INTO THE DATA BUCKET ({VERDICTS_PATH} still has it a collaborator): it drops out of every fan-out and"
+              " abstractness count, so it is a loosening -- record it with scripts/coupling-report --update and commit that"
+              " with `Coupling: <why it is data, not a collaborator>`:")
+        for t in to_data:
+            print(f"  - {t} was a collaborator, is data")
+    failed = bool(to_data)
+    for rng in ranges:
+        base = rng.split("..")[0]
+        failed |= rise_refused(rng, VERDICTS_PATH, f"A TYPE MOVED INTO THE DATA BUCKET in {rng} with no `Coupling: <why>` trailer"
+                               " on the commit recording it:", verdict_rises(file_at(base, VERDICTS_PATH), open(VERDICTS_PATH).read()),
+                               verdict_rises)
+    return failed
+
+
+def update_all(current_path: str, baseline_path: str, fanouts_path: str, collaborators_path: str) -> int:
+    """`update` (the module docstring): the baseline and, given the measured verdicts, the classification file."""
+    code = update(current_path, baseline_path)
+    fanouts = read_fanouts(fanouts_path)
+    if code == 0 and collaborators_path and fanouts is not None:
+        with open(VERDICTS_PATH, "w") as f:
+            f.write(verdict_file(measured_verdicts(open(collaborators_path).read(), sorted(fanouts[0]))))
+    return code

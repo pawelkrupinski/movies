@@ -60,7 +60,7 @@ mutants=(
   'a data bag or a data fan-out is no frozen kind @@ ,
           ("datafanout", "class", "data fan-out"), ("databag", "type", "data references")) @@ )'
   'a type moved into the data bucket passes @@ failed = bool(to_data) @@ failed = False'
-  'the classification is never checked @@ failed |= check_verdicts(ranges, collaborators_path, fanouts_path) @@ failed |= False'
+  'the classification is never checked @@ failed |= check_verdicts(rise_refused, ranges, collaborators_path, fanouts_path) @@ failed |= False'
   'recording a flip needs no trailer @@ for t in flips(parse_verdicts(before), parse_verdicts(after))[0]] @@ for t in []]'
   'a new type is a flip @@ if v == DATA and before.get(t) == COLLABORATOR] @@ if v == DATA and True]'
   'a nested type is a type of its own @@ while name not in types and "." in name: @@ while False:'

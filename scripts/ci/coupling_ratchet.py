@@ -116,16 +116,14 @@ from typing import Callable, Dict, List, Optional, Set, Tuple
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [HERE, os.path.join(HERE, "..", "lib")]  # baseline_ratchet.py and trailers.py beside it, tool_python in lib
 import trailers  # noqa: E402
-from coupling_exemption_history import new_exemptions, unadmitted_exemptions  # noqa: E402
-from coupling_exemption_table import exemption_loosening, parse_exemptions  # noqa: E402
+from coupling_exemption_history import check_exemptions, new_exemptions  # noqa: E402
 from coupling_growth import DISTANCE_CUT, falls, frozen_growth, growth, loosening  # noqa: E402
-from coupling_reasons import REASON_SHAPE  # noqa: E402
 from coupling_renames import RenameEvidence, rename_credit  # noqa: E402
 from coupling_rows import (BASELINE_PATH, DISTANCE_SPLIT_TOLERANCE, EXEMPTIONS_PATH, FROZEN, LAYERS_PATH,  # noqa: E402
                            REFS_PATH, Edges, Fanouts, Rows, ceilings, layer_units, of_kind, package_of, parse,
-                           parse_layers, read_edges, read_fanouts, update, with_ceilings)
+                           parse_layers, read_edges, read_fanouts, with_ceilings)
 from coupling_splits import SPLIT_RULE, SplitExplanation, resolve, split_claims, split_credit  # noqa: E402
-from coupling_verdicts import VERDICTS_PATH, flips, measured_verdicts, parse_verdicts, verdict_file  # noqa: E402
+from coupling_verdicts import check_verdicts, update_all  # noqa: E402
 from coupling_violations import violations  # noqa: E402
 from trailers import git, text_at as file_at  # noqa: E402
 
@@ -263,40 +261,6 @@ def check_range(rng: str, baseline: Rows, fanouts: Optional[Fanouts], renamed: R
     return failed
 
 
-def loosening_refused(rng: str, exemptions_path: str) -> bool:
-    """Whether a commit of `rng` loosens the exemption table without its own `Coupling:` trailer."""
-    base = rng.split("..")[0]
-    loose = exemption_loosening(parse_exemptions(file_at(base, EXEMPTIONS_PATH)), parse_exemptions(file_text(exemptions_path)))
-    return rise_refused(rng, EXEMPTIONS_PATH, f"THE EXEMPTION TABLE LOOSENED in {rng} ({exemptions_path}) with no"
-                        " `Coupling: <why>` trailer on the commit changing it:", loose,
-                        lambda a, b: exemption_loosening(parse_exemptions(a), parse_exemptions(b)))
-
-
-def unadmitted_refused(rng: str, exemptions_path: str) -> bool:
-    """Whether a commit of `rng` adds an exemption row that nothing admits."""
-    unadmitted = unadmitted_exemptions(rng)
-    if unadmitted:
-        print(f"AN EXEMPTION ROW IS NOT ADMITTED in {rng} ({exemptions_path}): a row added carries a specific why, its"
-              " `added` date and the commit's own `Coupling: exempt <Class> — <reason>` trailer:")
-        for item in unadmitted:
-            print(f"  - {item}")
-        print(f"  The why: {REASON_SHAPE}.")
-        trailers.print_misplaced(rng, "Coupling", EXEMPTIONS_PATH)
-    return bool(unadmitted)
-
-
-def check_exemptions(ranges: List[str], exemptions_path: str) -> bool:
-    """The exemption table: a loosening a commit makes without its trailer, a row added that
-    nothing admits; whether any is refused."""
-    failed = False
-    if os.path.exists(exemptions_path):
-        for rng in ranges:
-            failed |= loosening_refused(rng, exemptions_path)
-    for rng in ranges:
-        failed |= unadmitted_refused(rng, exemptions_path)
-    return failed
-
-
 def say_falls(current: Rows, baseline: Rows) -> None:
     down = falls(current, baseline)
     if down:
@@ -306,37 +270,6 @@ def say_falls(current: Rows, baseline: Rows) -> None:
             print(f"  - {d}")
         if len(down) > 20:
             print(f"  - ... and {len(down) - 20} more")
-
-
-def verdict_rises(before: str, after: str) -> List[str]:
-    """The types a verdict file's text moved into the data bucket between two texts (THE CLASSIFICATION)."""
-    return [f"{t} was a collaborator, is data" for t in flips(parse_verdicts(before), parse_verdicts(after))[0]]
-
-
-def check_verdicts(ranges: List[str], collaborators_path: str, fanouts_path: str) -> bool:
-    """THE CLASSIFICATION: the types whose measured verdict flipped from the recorded one (test/resources/
-    coupling-collaborators.tsv) are said; a collaborator that is data now is refused until the file records it, and a
-    commit of a range recording it without its own `Coupling:` trailer is refused too. Whether any is refused."""
-    fanouts = read_fanouts(fanouts_path)
-    if not collaborators_path or fanouts is None or not os.path.exists(VERDICTS_PATH):
-        return False
-    recorded = parse_verdicts(file_text(VERDICTS_PATH))
-    to_data, to_collaborator = flips(recorded, measured_verdicts(file_text(collaborators_path), sorted(fanouts[0])))
-    for t in to_collaborator:
-        print(f"coupling: {t} is a collaborator now, was data: it counts in fan-out and abstractness")
-    if to_data:
-        print(f"A TYPE MOVED INTO THE DATA BUCKET ({VERDICTS_PATH} still has it a collaborator): it drops out of every fan-out and"
-              " abstractness count, so it is a loosening -- record it with scripts/coupling-report --update and commit that"
-              " with `Coupling: <why it is data, not a collaborator>`:")
-        for t in to_data:
-            print(f"  - {t} was a collaborator, is data")
-    failed = bool(to_data)
-    for rng in ranges:
-        base = rng.split("..")[0]
-        failed |= rise_refused(rng, VERDICTS_PATH, f"A TYPE MOVED INTO THE DATA BUCKET in {rng} with no `Coupling: <why>` trailer"
-                               " on the commit recording it:", verdict_rises(file_at(base, VERDICTS_PATH), file_text(VERDICTS_PATH)),
-                               verdict_rises)
-    return failed
 
 
 def check(current_path: str, baseline_path: str, ranges: List[str], layers_path: str = LAYERS_PATH,
@@ -355,22 +288,12 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
         print(f"  no rename credit: {r}")
     for rng in ranges:
         failed |= check_range(rng, baseline, fanouts, renamed, layers_path)
-    failed |= check_exemptions(ranges, exemptions_path)
-    failed |= check_verdicts(ranges, collaborators_path, fanouts_path)
+    failed |= check_exemptions(rise_refused, ranges, exemptions_path)
+    failed |= check_verdicts(rise_refused, ranges, collaborators_path, fanouts_path)
     say_falls(current, baseline)
     if not failed:
         print(f"coupling: within {baseline_path} ({len(current)} rows)")
     return 1 if failed else 0
-
-
-def update_all(current_path: str, baseline_path: str, fanouts_path: str, collaborators_path: str) -> int:
-    """`update` (the module docstring): the baseline and, given the measured verdicts, the classification file."""
-    code = update(current_path, baseline_path)
-    fanouts = read_fanouts(fanouts_path)
-    if code == 0 and collaborators_path and fanouts is not None:
-        with open(VERDICTS_PATH, "w") as f:
-            f.write(verdict_file(measured_verdicts(file_text(collaborators_path), sorted(fanouts[0]))))
-    return code
 
 
 def snapshot() -> str:

@@ -5,13 +5,17 @@ from __future__ import annotations
 
 import re
 import subprocess
-from typing import Dict, List, Optional, Tuple
+import os
+from typing import Callable, Dict, List, Optional, Tuple
 
 import trailers
-from coupling_exemption_table import exemption_columns
-from coupling_reasons import EXEMPT_TRAILER, ISO_DATE, reason_problems
+from coupling_exemption_table import exemption_columns, exemption_loosening, parse_exemptions
+from coupling_reasons import EXEMPT_TRAILER, ISO_DATE, REASON_SHAPE, reason_problems
 from coupling_rows import EXEMPTIONS_PATH
 from trailers import git, text_at as file_at
+
+# the ratchet's `rise_refused(rng, path, header, rises, rose)`: whether a commit of the range makes a rise without its trailer
+RiseRefused = Callable[[str, str, str, List[str], Callable[[str, str], List[str]]], bool]
 
 
 def coupling_trailers(sha: str) -> List[str]:
@@ -100,3 +104,37 @@ def new_exemptions(since: str, rev: str = "") -> int:
         print("No exemption rows added.")
     print(f"\nTo strike one: drop its row from {EXEMPTIONS_PATH} (no trailer needed) and cut the class below the limit.")
     return 0
+
+
+def loosening_refused(rise_refused: RiseRefused, rng: str, exemptions_path: str) -> bool:
+    """Whether a commit of `rng` loosens the exemption table without its own `Coupling:` trailer."""
+    base = rng.split("..")[0]
+    loose = exemption_loosening(parse_exemptions(file_at(base, EXEMPTIONS_PATH)), parse_exemptions(open(exemptions_path).read()))
+    return rise_refused(rng, EXEMPTIONS_PATH, f"THE EXEMPTION TABLE LOOSENED in {rng} ({exemptions_path}) with no"
+                        " `Coupling: <why>` trailer on the commit changing it:", loose,
+                        lambda a, b: exemption_loosening(parse_exemptions(a), parse_exemptions(b)))
+
+
+def unadmitted_refused(rng: str, exemptions_path: str) -> bool:
+    """Whether a commit of `rng` adds an exemption row that nothing admits."""
+    unadmitted = unadmitted_exemptions(rng)
+    if unadmitted:
+        print(f"AN EXEMPTION ROW IS NOT ADMITTED in {rng} ({exemptions_path}): a row added carries a specific why, its"
+              " `added` date and the commit's own `Coupling: exempt <Class> — <reason>` trailer:")
+        for item in unadmitted:
+            print(f"  - {item}")
+        print(f"  The why: {REASON_SHAPE}.")
+        trailers.print_misplaced(rng, "Coupling", EXEMPTIONS_PATH)
+    return bool(unadmitted)
+
+
+def check_exemptions(rise_refused: RiseRefused, ranges: List[str], exemptions_path: str) -> bool:
+    """The exemption table: a loosening a commit makes without its trailer, a row added that
+    nothing admits; whether any is refused."""
+    failed = False
+    if os.path.exists(exemptions_path):
+        for rng in ranges:
+            failed |= loosening_refused(rise_refused, rng, exemptions_path)
+    for rng in ranges:
+        failed |= unadmitted_refused(rng, exemptions_path)
+    return failed
