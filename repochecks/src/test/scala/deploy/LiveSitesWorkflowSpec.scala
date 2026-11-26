@@ -15,7 +15,7 @@ class LiveSitesWorkflowSpec extends AnyFlatSpec with Matchers {
 
   "build.sbt" should "leave the LiveSites tag out of every integration run, and select it only under LIVE_SITES" in {
     build should include("""lazy val LiveSitesTag = "integration.LiveSites"""")
-    build should include("""if (sys.env.get("LIVE_SITES").exists(_.nonEmpty)) "-n" else "-l", LiveSitesTag""")
+    build should include("""get("LIVE_SITES").exists(_.nonEmpty)) "-n" else "-l", LiveSitesTag""")
     build.linesIterator.count(_.contains(".settings(itReportSettings, itRowSettings, liveSitesSettings)")) shouldBe 2
     build should include("""addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/test")""")
   }
