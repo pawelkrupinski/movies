@@ -14,6 +14,9 @@ import services.identity.measures.{FactRelations, IdentityMeasures, MultiFilmBil
 private[identity] trait AcceptanceRuleTable { this: Acceptance =>
   import AcceptanceFactRules.{aNameAlone, anotherNamedBesideItsWork, asItsTitlesTopHit, contradicted, contradiction, datedTitles,
     directorsTitles, directorsWorks, firstHitsTitlingTheirWork, undated}
+  import AcceptanceTitleRules.{alternativeAgainstTmdbsSearch, asItsBareTitle, creditsAnotherDirector, filmsTheTitleNames, imdbRung,
+    itsOwnInstalmentOrASlip, itsTitlesFactsBeside, namesBeside, namesItsOnlyResult, otherInstalment, resultsFound, searchNamesAnother,
+    soleResults, standsForItsTitle, theExactTopHit}
 
   /** The rules a node may be taken by on its own evidence, first to accept deciding ([[Acceptance.aloneNamed]]). */
   private[identity] lazy val aloneRules: List[AcceptanceRule] = List(SoleWork, FavouredCalibrated, ExactTopHit, SegmentTopHit,

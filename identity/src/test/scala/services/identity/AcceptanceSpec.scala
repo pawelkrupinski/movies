@@ -408,7 +408,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     byImdb(suggested(ranked(MeasuredListing("A Boy and His Dog"), (7, Film("A Boy and Her Dog", year = Some(2010)), None)), 1, 7 -> 1)) shouldBe None
     byImdb(suggested(ranked(MeasuredListing("Harry Potter Part II"), (8, Film("Harry Potter Part III", year = Some(2011)), None)), 1, 8 -> 1)) shouldBe None
     byImdb(suggested(ranked(MeasuredListing("Ebeneezer"), (9, Film("Ebenezer", year = Some(2026)), None)), 1, 9 -> 1)) shouldBe None
-    acceptance.slippedTitle(MeasuredListing("Night of the Living Dead"), Film("Day of the Living Dead")) shouldBe false
+    AcceptanceTitleRules.slippedTitle(MeasuredListing("Night of the Living Dead"), Film("Day of the Living Dead")) shouldBe false
   }
 
   it should "take IMDb's first suggestion, the only suggested film the title is, when TMDB ranks no film it names above it" in {
