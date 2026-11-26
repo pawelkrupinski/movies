@@ -505,7 +505,6 @@ pyright	scripts/ci/landing_check_for_tree.py	17
 pyright	scripts/ci/lint_per_file_check.py	214
 pyright	scripts/ci/lint_reads_trace.py	301
 pyright	scripts/ci/lint_registry_reads.py	164
-pyright	scripts/ci/naming_lint.py	18
 pyright	scripts/ci/population_walk_diff.py	346
 pyright	scripts/ci/python_floor_lint.py	104
 pyright	scripts/ci/quality_ratchet.py	24

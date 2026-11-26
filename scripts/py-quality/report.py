@@ -14,7 +14,9 @@ quality ratchets") taken over the repository's Python tools -- every `.py` and e
 The measures (stdlib `ast` and `tokenize`, and pyright from scripts/py-quality's lock):
   cognitive <= 10, cyclomatic <= 10, inner defs <= 2, function <= 50 lines   functions.py
   file <= 500 lines; clone groups of 50+ tokens                               clones.py
-  fan-out <= 9 (measured modules imported), no import cycle                    imports.py
+  no import cycle                                                             imports.py
+  (fan-out <= 9 over COLLABORATORS, distance, layers, the data guard, the design lint and the names are the general
+  rule core's, scripts/design-rules/design_check.py, held to test/resources/design-baseline.tsv)
   strict pyright errors: 0 for a new file                                      pyright.py
   the migrated tools' files, held with NO row (a trailer admits none)          migrated.py"""
 from __future__ import annotations
@@ -30,6 +32,7 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "ci"))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
 import clones  # noqa: E402
 import functions  # noqa: E402
 import imports  # noqa: E402
@@ -37,11 +40,14 @@ import migrated  # noqa: E402
 import pyright  # noqa: E402
 import baseline_ratchet  # noqa: E402
 import py_quality_ratchet  # noqa: E402
+import rules_table  # noqa: E402
 
 ROOTS = ("scripts", ".github/scripts", "infra/bin", "infra/nix/bin", "infra/nix/files", "android/scripts", "ios/scripts")
+# the limits are the design rules table's (test/resources/design-rules.tsv: one table for every language)
+TABLE = rules_table.load(rules_table.checkout_root())
 LIMITS: Tuple[Tuple[str, float], ...] = (
-    ("cognitive", 10), ("cyclomatic", 10), ("inner-defs", 2), ("method-lines", 50), ("file-lines", 500),
-    ("copies", 0), ("clone-tokens", clones.MIN_TOKENS), ("fanout", 9), ("cycle", 0), ("pyright", 0))
+    *((kind, TABLE.limit(kind)) for kind in ("cognitive", "cyclomatic", "inner-defs", "method-lines", "file-lines")),
+    ("copies", 0), ("clone-tokens", clones.MIN_TOKENS), ("fanout", TABLE.limit("fanout")), ("cycle", 0), ("pyright", 0))
 Row = Tuple[str, str, float]
 
 
@@ -101,9 +107,9 @@ def file_rows(sources: Dict[str, str], trees: Dict[str, ast.AST]) -> List[Row]:
         key = "|".join(sorted({c.file for c in group.copies}))
         copies[key] = copies.get(key, 0) + len(group.copies)
     rows += [("copies", key, n) for key, n in sorted(copies.items())]
-    edges = imports.graph(trees)
-    rows += [("fanout", p, len(targets)) for p, targets in sorted(edges.items())]
-    rows += [("cycle", "|".join(members), len(members)) for members in imports.cycles(edges)]
+    # fan-out (collaborators only) and distance are the general rule core's (scripts/design-rules/design_check.py):
+    # their rows live in test/resources/design-baseline.tsv, the fan-out limit here
+    rows += [("cycle", "|".join(members), len(members)) for members in imports.cycles(imports.graph(trees))]
     return rows
 
 

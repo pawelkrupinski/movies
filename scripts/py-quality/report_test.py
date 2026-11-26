@@ -108,13 +108,13 @@ class ReportTest(cli_harness.ToolCase):
         self.assertIn("cognitive\tscripts/ci/hairy.py:hairy\t12\n", self.baseline())
         self.assertEqual(0, self.report("--check").code)
 
-    def test_a_clone_a_cycle_and_a_wide_fan_out_fail(self) -> None:
+    def test_a_clone_and_a_cycle_fail_and_fan_out_is_the_design_rules(self) -> None:
         many = {f"scripts/ci/m{n}.py": SIMPLE for n in range(10)}
         self.files({"scripts/ci/a.py": CLONE + "import b\n", "scripts/ci/b.py": CLONE + "import a\n",
                     "scripts/ci/wide.py": "".join(f"import m{n}\n" for n in range(10)), **many})
         self.assert_check_fails("copies scripts/ci/a.py|scripts/ci/b.py: 2",
-                                "cycle scripts/ci/a.py|scripts/ci/b.py: 2",
-                                "fanout scripts/ci/wide.py: 10, past the limit 9")
+                                "cycle scripts/ci/a.py|scripts/ci/b.py: 2")
+        self.assertNotIn("fanout scripts/ci/wide.py", self.report("--check").output)
 
     def test_a_self_tests_rows_are_reported_never_held(self) -> None:
         self.files({"scripts/ci/hairy_test.py": HAIRY + "x = 1  # type-error\n"})

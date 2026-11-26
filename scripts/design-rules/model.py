@@ -1,0 +1,48 @@
+"""THE LANGUAGE-AGNOSTIC MODEL the general rule core reads (scripts/design-rules/): every language's extractor
+(python_facts.py from `ast`, scripts/js-quality/facts.js from the JS/TS parsers, scala_names.py from the Scala
+sources) turns a source file into one `Module`, and every rule (naming.py, collaborators.py, packages.py,
+design_lint.py) reads only these -- so a rule is written once, for every language."""
+from __future__ import annotations
+
+import dataclasses
+from typing import Dict, FrozenSet, Tuple
+
+# The effects an extractor names: what reads or changes the world (CLAUDE.md, "Fan-out counts only COLLABORATORS": the
+# clock, environment, files, network, database, randomness, threads, logging, a process). The first three must be
+# injected -- only an `adapter` row's module may touch them directly (design_lint.py).
+EFFECTS = ("clock", "process", "env", "network", "files", "storage", "random", "threads", "logging", "dom")
+INJECTED = ("clock", "process", "env")
+
+
+@dataclasses.dataclass(frozen=True)
+class Name:
+    kind: str          # "type", "module" or "function"
+    name: str
+    public_defs: int   # a type's public methods (the action-name rule reads it); 0 otherwise
+    line: int
+
+
+@dataclasses.dataclass(frozen=True)
+class DataType:
+    """A data type (a dataclass, NamedTuple, Enum; a Scala case class or object of constants): its non-trivial methods,
+    its decisions and the types its fields name -- the data guard's inputs."""
+    name: str
+    methods: int
+    decisions: int
+    field_types: int
+
+
+@dataclasses.dataclass(frozen=True)
+class Module:
+    language: str                    # "scala", "py" or "js"
+    path: str                        # relative to the checkout
+    package: str                     # its package: a Scala package, a Python or JS directory
+    names: Tuple[Name, ...] = ()
+    effects: Dict[str, int] = dataclasses.field(default_factory=lambda: {})  # kind -> occurrences, anywhere in the module
+    import_io: int = 0               # effects run when the module is loaded, outside any function or main guard
+    state: Tuple[str, ...] = ()      # module-level names written after load (a stateful singleton)
+    stateful_types: Tuple[str, ...] = ()  # types whose instances are written after construction
+    abstract_types: int = 0          # Protocol / ABC / interface types it declares
+    data_types: Tuple[DataType, ...] = ()
+    imports: FrozenSet[str] = frozenset()  # the measured modules (paths) it uses
+    new: bool = False                # added by the ranges checked (the action-name rule warns on new ones only)

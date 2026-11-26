@@ -4,6 +4,6 @@
   "exclude": ["**/node_modules", "**/__pycache__", "**/.*"],
   "typeCheckingMode": "strict",
   "pythonVersion": "3.9",
-  "extraPaths": ["scripts/lib", "scripts/ci"],
+  "extraPaths": ["scripts/lib", "scripts/ci", "scripts/design-rules", "scripts/py-quality"],
   "reportMissingModuleSource": "none"
 }

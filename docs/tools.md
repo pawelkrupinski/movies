@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (252)
+## Landing and CI (251)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -78,10 +78,10 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci-status` | One line per workflow: where CI stands for main (or a commit) | `scripts/ci-status` | skill agent-ops; 2 tools | ci_status_test.py | KEEP |
 | `scripts/ci-wait` | Wait for GitHub Actions runs, bounded -- the one way a tool or an agent waits on CI. Never a hand-written `while gh run view ... | `scripts/ci-wait` | skill CLAUDE.md, agent-ops; 10 tools | ci_wait_test.py | KEEP |
 | `scripts/ci/alert-step.sh` | Alert, not red: run a check whose failure of a given kind is a third PARTY's or a BACKLOG's | `scripts/ci/alert-step.sh` | wf decodo-probe, identity-ci-staleness, identity-findings-report +2 | alert-step-test.sh | KEEP |
-| `scripts/ci/baseline_ratchet.py` | THE BASELINE RATCHET ENGINE: what the JS/TS and the Python quality ratchets share (js_quality_ratchet.py, | `imported` | hook pre-push; 6 tools | - | Python |
+| `scripts/ci/baseline_ratchet.py` | THE BASELINE RATCHET ENGINE: what the JS/TS and the Python quality ratchets share (js_quality_ratchet.py, | `imported` | hook pre-push; 7 tools | - | Python |
 | `scripts/ci/bounded-step.sh` | A step with its own `timeout-minutes` runs as a process group this script can end | `scripts/ci/bounded-step.sh` | wf country-convergence-leg, decoration-discovery, identity-capture +11; agentctl; skill CLAUDE.md | bounded-step-test.sh | KEEP |
 | `scripts/ci/build-image.sh` | Build one of the Dockerfile's images for linux/amd64 and push it under the commit's SHA tag only (main.yml's publish jobs give it the tags that ship) | `scripts/ci/build-image.sh` | wf ci; 3 tools | build_image_test.py | KEEP |
-| `scripts/ci/build_image.py` | Build one of the Dockerfile's images for linux/amd64 and push it under the commit's SHA tag ONLY (main.yml's publish | `scripts/ci/build_image.py` | 1 tool | build_image_test.py | Python |
+| `scripts/ci/build_image.py` | Build one of the Dockerfile's images for linux/amd64 and push it under the commit's SHA tag ONLY (main.yml's publish | `scripts/ci/build_image.py` | 2 tools | build_image_test.py | Python |
 | `scripts/ci/cache-marker.sh` | One cache's outcome as a log line and a metrics line (hit, partial or miss) | `scripts/ci/cache-marker.sh` | 3 tools | cache-marker-test.sh | KEEP |
 | `scripts/ci/cgroup-sampler.sh` | The job's own memory and disk writes, read from its cgroup | `scripts/ci/cgroup-sampler.sh` | wf country-convergence-leg; 6 tools | cgroup_sampler_test.py | KEEP |
 | `scripts/ci/cgroup_sampler.py` | The job's own memory and disk writes, read from its cgroup (the job container's, which holds the job's dockerd and | `scripts/ci/cgroup_sampler.py` | 1 tool | cgroup_sampler_test.py | Python |
@@ -100,7 +100,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/coupling_exemption_table.py` | The coupling exemption table as the ratchet reads it (coupling_ratchet.py, its module docstring; | `imported` | 1 tool | - | Python |
 | `scripts/ci/coupling_growth.py` | How the coupling baseline and the layer table moved between two revisions (coupling_ratchet.py, its module | `imported` | 1 tool | - | Python |
 | `scripts/ci/coupling_ratchet.py` | The coupling ratchet (the pre-push sbt check's coupling step) | `scripts/ci/coupling_ratchet.py` | hook pre-push; agentctl; skill CLAUDE.md; 13 tools | coupling_ratchet_test.py | Python |
-| `scripts/ci/coupling_reasons.py` | When an exemption's why is no SPECIFIC reason (coupling_ratchet.py, AN AGENT'S ROW ADDED; the exemption table's | `imported` | 2 tools | - | Python |
+| `scripts/ci/coupling_reasons.py` | When an exemption's why is no SPECIFIC reason (coupling_ratchet.py, AN AGENT'S ROW ADDED; the exemption table's | `imported` | 4 tools | - | Python |
 | `scripts/ci/coupling_renames.py` | What git says a range renamed, for the coupling ratchet's RENAME CREDIT (coupling_ratchet.py, A RENAME): the range's | `imported` | 2 tools | - | Python |
 | `scripts/ci/coupling_rows.py` | The coupling ratchet's rows (coupling_ratchet.py, its module docstring): the `kind<TAB>key<TAB>value` rows the | `imported` | 8 tools | - | Python |
 | `scripts/ci/coupling_splits.py` | The coupling ratchet's SPLIT rule (coupling_ratchet.py, A SPLIT): which `Coupling: split of <X>` claims of a range are | `imported` | 1 tool | - | Python |
@@ -151,7 +151,6 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/memory-guard.sh` | Watch a process tree on a CI runner, say every few minutes how it and the machine are doing, and end the tree -- naming why | `scripts/ci/memory-guard.sh` | wf country-convergence-leg; 2 tools | memory-guard-test.sh | KEEP |
 | `scripts/ci/mirror-pinned-images.sh` | Copy every image .github/pinned-images.tsv pins to its GHCR mirror by digest, and check that GHCR serves exactly the pin | `scripts/ci/mirror-pinned-images.sh` | wf mirror-pinned-images; 1 tool | mirror_pinned_images_test.py | KEEP |
 | `scripts/ci/mirror_pinned_images.py` | Copy every image .github/pinned-images.tsv pins to its GHCR mirror BY DIGEST, and check that GHCR serves exactly the | `scripts/ci/mirror_pinned_images.py` | 1 tool | mirror_pinned_images_test.py | Python |
-| `scripts/ci/naming_lint.py` | THE NAMING LINT (the owner's "names must match behaviour", 2026-11-19): the production Scala's top-level type names, | `python3 scripts/ci/naming_lint.py` | hook pre-push; skill CLAUDE.md | naming_lint_test.py | Python |
 | `scripts/ci/no-network` | No network for the tests: run a command that may reach loopback and nothing else | `scripts/ci/no-network` | wf order-independence; 4 tools | no_network_test.py | MIGRATE |
 | `scripts/ci/no_network.py` | No network for the tests: run a command that may reach loopback and nothing else. Order independence's test steps run | `scripts/ci/no_network.py` | 1 tool | no_network_test.py | Python |
 | `scripts/ci/old-ref-deps-key.sh` | The old refs' dependency cache: its key and fallback prefix, as GITHUB_OUTPUT lines (.github/actions/old-ref-deps) | `scripts/ci/old-ref-deps-key.sh` | wf main; 1 tool | - | KEEP |
@@ -201,7 +200,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/stop-stray-sbt.sh` | End every JVM an earlier step left running in this build | `scripts/ci/stop-stray-sbt.sh` | wf country-convergence-leg, main; 2 tools | stop-stray-sbt-test.sh | KEEP |
 | `scripts/ci/stress-races.sh` | Run the race / concurrency harnesses many times over, to surface the interleavings a single CI run almost never meets | `scripts/ci/stress-races.sh` | wf nightly-stress; 1 tool | stress_races_test.py | KEEP |
 | `scripts/ci/stress_races.py` | Run the race / concurrency harnesses many times over, to surface the interleavings a single CI run almost never meets. | `scripts/ci/stress_races.py` | 1 tool | stress_races_test.py | Python |
-| `scripts/ci/trailers.py` | THE TRAILER PLACEMENT RULE: git reads a `Key: value` line as a trailer only in the message's final trailer block -- | `python3 scripts/ci/trailers.py` | wf coupling-exemptions; hook post-commit, pre-push; skill CLAUDE.md; 12 tools | trailers_test.py | Python |
+| `scripts/ci/trailers.py` | THE TRAILER PLACEMENT RULE: git reads a `Key: value` line as a trailer only in the message's final trailer block -- | `python3 scripts/ci/trailers.py` | wf coupling-exemptions; hook post-commit, pre-push; skill CLAUDE.md; 14 tools | trailers_test.py | Python |
 | `scripts/ci/tree-unchanged.sh` | A test run must leave every checked-in file exactly as it found it | `scripts/ci/tree-unchanged.sh` | wf ci, discover-cinemas | - | KEEP |
 | `scripts/ci/trend_events.py` | A run as flat JSON events for VictoriaLogs and back (scripts/ci/ci_trends.py's `export`; the schema is in | `imported` | 3 tools | - | Python |
 | `scripts/ci/trend_export.py` | The collector (scripts/ci/ci_trends.py `export`, run on ci-runner every few minutes): every completed run of the | `imported` | 1 tool | - | Python |
@@ -239,9 +238,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/hooks/lint-registry-missing` | The repo-reading specs the lint registry (scripts/hooks/lint-registry.tsv) has no row for, as `<module>:<package.Spec>`, one a line | `scripts/hooks/lint-registry-missing` | hook pre-push | - | KEEP |
 | `scripts/hooks/post-commit` | Post-commit: the commit rules the landing checks judge, run over the commit just made | `scripts/hooks/post-commit` | 1 tool | post-commit-test.sh | KEEP |
 | `scripts/hooks/pre-commit` | Pre-commit: no commit is made in the root checkout (the clone's main worktree) | `scripts/hooks/pre-commit` | wf precommit-check; hook pre-push; agentctl; skill CLAUDE.md, agent-ops; 6 tools | pre-commit-test.sh | KEEP |
-| `scripts/hooks/pre-push` | Pre-push: the checks that fail CI in seconds, run here in seconds, for what this push changes | `scripts/hooks/pre-push` | wf ci, identity-findings-report, live-sites +5; hook lint-registry-missing; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 73 tools | pre-push-test.sh | MIGRATE |
+| `scripts/hooks/pre-push` | Pre-push: the checks that fail CI in seconds, run here in seconds, for what this push changes | `scripts/hooks/pre-push` | wf ci, identity-findings-report, live-sites +5; hook lint-registry-missing; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 74 tools | pre-push-test.sh | MIGRATE |
 | `scripts/install-hooks.sh` | Point this clone's git hooks at scripts/hooks (the pre-push checks — see scripts/hooks/pre-push) | `scripts/install-hooks.sh` | hook pre-push; skill CLAUDE.md, agent-ops; 1 tool | install-hooks-test.sh | KEEP |
-| `scripts/js-quality-report` | The JS/TS quality report: complexity, length, clones and coupling of the production JS/TS (a name for js_quality_report.py) | `scripts/js-quality-report` | hook pre-push; skill CLAUDE.md, test-layers; 6 tools | js_quality_report_test.py | KEEP |
+| `scripts/js-quality-report` | The JS/TS quality report: complexity, length, clones and coupling of the production JS/TS (a name for js_quality_report.py) | `scripts/js-quality-report` | hook pre-push; skill CLAUDE.md, test-layers; 7 tools | js_quality_report_test.py | KEEP |
 | `scripts/js_quality_report.py` | The JS/TS quality report: complexity, length, clones and coupling of the production JS/TS | `scripts/js_quality_report.py` | hook pre-push; 2 tools | js_quality_report_test.py | Python |
 | `scripts/jvm-gate.sh` | The JVM gate (sourced): JVM slots, locks and governor tickets for the tools that start heavy JVMs | `bash scripts/jvm-gate.sh` | agentctl; skill CLAUDE.md, agent-ops, identity-investigation; 20 tools | jvm-gate-test.sh | MIGRATE |
 | `scripts/land-before-queue` | What `agentctl land` runs after its rebase, before it queues the change (~/bin/lib/agentctl/queue.py enqueue) | `scripts/land-before-queue` | agentctl; skill CLAUDE.md, identity-investigation; 2 tools | land-before-queue-test.sh | KEEP |
@@ -249,11 +248,11 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/land_precheck.py` | The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here | `scripts/land_precheck.py` | 1 tool | land_precheck_test.py | Python |
 | `scripts/py-quality-report` | The Python quality report and its ratchet (entry; the measure is scripts/py-quality/report.py) | `scripts/py-quality-report` | hook pre-push; skill CLAUDE.md; 2 tools | - | KEEP |
 | `scripts/py-quality/clones.py` | THE PYTHON CLONE GROUPS (scripts/py-quality/report.py): every run of MIN_TOKENS or more tokens appearing twice or more | `imported` | wf ios; hook pre-push; skill CLAUDE.md, test-layers; 8 tools | - | Python |
-| `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; skill CLAUDE.md; 12 tools | - | Python |
-| `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 23 tools | - | Python |
+| `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; skill CLAUDE.md; 15 tools | - | Python |
+| `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 27 tools | - | Python |
 | `scripts/py-quality/migrated.py` | THE MIGRATED TOOLS (scripts/py-quality/report.py; the owner, 2026-11-23): the files of the shell-to-Python migration's | `imported` | skill CLAUDE.md; 4 tools | - | Python |
-| `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push; 4 tools | - | Python |
-| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +36; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 130 tools | report_test.py | Python |
+| `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push; skill CLAUDE.md; 4 tools | - | Python |
+| `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +36; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 132 tools | report_test.py | Python |
 | `scripts/quality-report` | The code-quality report (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, length and duplication (pmd cpd) | `scripts/quality-report` | wf quality-hotspots; hook pre-push; agentctl; skill CLAUDE.md, test-layers; 2 tools | - | KEEP |
 | `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs (a name for ratchet_diff_cli.py) | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 4 tools | - | KEEP |
 | `scripts/ratchet_diff_cli.py` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet_diff_cli.py` | 1 tool | ratchet_diff_cli_test.py | Python |
@@ -603,8 +602,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 231 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 231 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 232 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 232 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |
@@ -676,7 +675,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (94)
+## Dev (106)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -693,6 +692,17 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/coverage_touched.py` | Coverage of the methods a change touches (scoverage; a report, never a gate) | `scripts/coverage_touched.py` | 2 tools | coverage_touched_test.py | Python |
 | `scripts/dead-code` | The dead-code finder (CLAUDE.md, "Cleanup and displaced-code audit"): production classes, objects and methods nothing calls, ranked | `scripts/dead-code` | skill test-layers; 2 tools | dead-code-test.sh | KEEP |
 | `scripts/dead_code.py` | THE DEAD-CODE LIST, ranked (scripts/dead-code): `deadCode`'s rows (project/DeadCode.scala: kind, verdict, name, | `python3 scripts/dead_code.py` | 1 tool | dead_code_test.py | Python |
+| `scripts/design-rules/collaborators.py` | DATA OR COLLABORATOR, for every language (CLAUDE.md, "Fan-out counts only COLLABORATORS"; the Scala reading is | `imported` | wf coupling-exemptions; hook pre-push; skill CLAUDE.md; 12 tools | - | Python |
+| `scripts/design-rules/design_check.py` | THE DESIGN RULES GATE (CLAUDE.md, "Design rules"): the general rule core's rules, ONE implementation over every | `scripts/design-rules/design_check.py` | hook pre-push; 3 tools | design_check_test.py | Python |
+| `scripts/design-rules/design_lint.py` | THE DESIGN LINT, for Python and JS/TS (CLAUDE.md, "Design rules": Dependency Inversion; the injected clock; no | `imported` | 2 tools | - | Python |
+| `scripts/design-rules/exemptions.py` | THE DESIGN EXEMPTIONS (test/resources/design-exemptions.tsv): a NEW row past a general rule admitted on purpose, as | `imported` | wf coupling-exemptions, report-timings; hook pre-push; skill CLAUDE.md; 6 tools | - | Python |
+| `scripts/design-rules/extractors.py` | EVERY LANGUAGE'S MODULES, for the general rule core: the Python tools (python_facts.py over the quality report's | `imported` | hook pre-push; 2 tools | - | Python |
+| `scripts/design-rules/model.py` | THE LANGUAGE-AGNOSTIC MODEL the general rule core reads (scripts/design-rules/): every language's extractor | `imported` | wf ci, convergence-bisect, country-convergence-leg +16; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 89 tools | - | Python |
+| `scripts/design-rules/naming.py` | THE NAMING RULES, for every language (the owner's "names must match behaviour", 2026-11-19; CLAUDE.md, "Design | `imported` | wf ci, country-convergence-leg, discover-cinemas +8; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 88 tools | - | Python |
+| `scripts/design-rules/naming_lint.py` | THE NAMING LINT (the owner's "names must match behaviour", 2026-11-19), over EVERY language: the production Scala's | `python3 scripts/design-rules/naming_lint.py` | hook pre-push; skill CLAUDE.md; 2 tools | naming_lint_test.py | Python |
+| `scripts/design-rules/packages.py` | PACKAGES, for every language (CLAUDE.md, "Coupling is reviewed"): a Python or JS directory stands for a Scala | `imported` | wf android, branch-ci, ci +4; hook pre-push; skill CLAUDE.md, identity-investigation; 28 tools | - | Python |
+| `scripts/design-rules/python_facts.py` | THE PYTHON EXTRACTOR of the general rule core: a Python tool's `ast` read into a `model.Module` -- its names, the | `imported` | 2 tools | - | Python |
+| `scripts/design-rules/scala_names.py` | THE SCALA EXTRACTOR of the general rule core's NAMING rules: a production Scala source's top-level types (and how | `imported` | hook pre-push; 2 tools | - | Python |
 | `scripts/dev-server.sh` | Local dev server, run under a deliberately smaller heap than the rest of sbt | `scripts/dev-server.sh` | 3 tools | dev-server-test.sh | KEEP |
 | `scripts/fail_before.py` | Proves the commit gate: a test that fails before the change and passes after it | `scripts/fail_before.py` | 1 tool | fail_before_test.py | Python |
 | `scripts/fleet_db_finish.py` | Count the fleet's three old collections in Poland's kinowo and drop them on an exact request (fleet DB migration, step 9) | `scripts/fleet_db_finish.py` | 1 tool | fleet_db_finish_test.py | Python |
@@ -706,6 +716,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | wf android, security-headers; skill CLAUDE.md; 7 tools | cli_harness_test.py | Python |
 | `scripts/lib/pinned_npm_tools.py` | PINNED NODE TOOLS, installed OUTSIDE the checkout: a tool's package.json and its lock, `npm ci`'d once per lock into | `imported` | hook pre-push; 2 tools | - | Python |
 | `scripts/lib/prod_tunnel.py` | HOW A LAPTOP REACHES PROD MONGO, for the Python tools (scripts/lib): scripts/local-mirror/prod-tunnel.sh's | `imported` | 3 tools | prod_tunnel_test.py | Python |
+| `scripts/lib/rules_table.py` | THE DESIGN RULES TABLE, read (test/resources/design-rules.tsv; its header says every row's shape): the limits, the | `imported` | hook pre-push; 6 tools | - | Python |
 | `scripts/lib/scalafix_tree.py` | THE SCALAFIX TREE: what scripts/scalafix-move and scripts/scalafix-organize share -- a worktree KEPT between runs | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/lib/seeded_order.py` | THE SEEDED TEST ORDER the nightly order-independence legs share (ios/scripts/swift_test_shuffled.py, | `imported` | wf android; 2 tools | seeded_order_test.py | Python |
 | `scripts/lib/store_screenshots_common.py` | The store-screenshot drivers' SHARED ENGINE -- android/scripts/store_screenshots.py and ios/scripts/ | `imported` | 5 tools | - | Python |
@@ -715,10 +726,10 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 30 tools | tool_cli_test.py | Python |
 | `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 14 tools | - | Python |
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 10 tools | tool_dispatch_test.py | Python |
-| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 24 tools | tool_git_test.py | Python |
+| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 27 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 21 tools | tool_github_test.py | Python |
 | `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 98 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 99 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 16 tools | tool_python_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 21 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |

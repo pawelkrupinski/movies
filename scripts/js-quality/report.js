@@ -16,8 +16,17 @@ const { execFileSync } = require('node:child_process');
 const { measureFunctions } = require('./functions');
 const { findClones, MinTokens } = require('./clones');
 const { importEdges, globalEdges, measureCoupling } = require('./coupling');
+const { measureFacts } = require('./facts');
 
-const Limits = { cognitive: 10, cyclomatic: 10, innerDefs: 2, lines: 50, fileLines: 500, fanOut: 9, distance: 0.2, distanceMinModules: 8 };
+// The limits are the design rules table's (test/resources/design-rules.tsv: one table for every language).
+function tableLimits(file) {
+  const limit = new Map(fs.readFileSync(file, 'utf8').split('\n').map((line) => line.split('\t'))
+    .filter((cells) => cells[0] === 'limit').map((cells) => [cells[1], Number(cells[2])]));
+  const of = (kind) => { if (!limit.has(kind)) throw new Error(`${file}: no limit row for ${kind}`); return limit.get(kind); };
+  return { cognitive: of('cognitive'), cyclomatic: of('cyclomatic'), innerDefs: of('inner-defs'), lines: of('method-lines'),
+    fileLines: of('file-lines'), fanOut: of('fanout'), distance: of('distance'), distanceMinModules: of('distance-min-modules') };
+}
+const Limits = tableLimits(path.join(__dirname, '..', '..', 'test', 'resources', 'design-rules.tsv'));
 const Extensions = /\.(js|mjs|cjs|ts|mts|cts|jsx|tsx)$/;
 const Excluded = /(^|\/)(node_modules|dist|build|coverage)\/|\.min\.js$|\.d\.ts$/;
 // the pinned tools, installed outside the checkout by scripts/js-quality-report (JS_QUALITY_NODE_MODULES)
@@ -196,8 +205,8 @@ function overLimitRows(functions, files, clones, couplings) {
   }
   for (const [key, value] of copies) rows.push(['copies', key, value]);
   for (const { coupling } of couplings) {
-    for (const row of coupling.modules) push('fanout', row.file, row.fanOut, Limits.fanOut);
-    for (const row of coupling.packages.filter(isDistanceMeasured)) push('distance', row.dir, Number(row.distance.toFixed(2)), Limits.distance);
+    // fan-out and distance are the general rule core's (scripts/design-rules/design_check.py, collaborators only and
+    // D's V2 abstractness, from modules.json): their rows live in test/resources/design-baseline.tsv, their limits here
     for (const members of [...coupling.moduleCycles, ...coupling.packageCycles]) rows.push(['cycle', members.join('|'), members.length]);
   }
   return rows.map((row) => row.join('\t')).join('\n') + '\n';
@@ -206,9 +215,17 @@ function overLimitRows(functions, files, clones, couplings) {
 function couplingOf(area, root, areaFiles, texts, globalsProviders) {
   if (area.kind === 'globals') {
     const { edges, templateNames } = globalEdges(areaFiles, globalsProviders, texts);
-    return measureCoupling(edges, texts, templateNames);
+    return { ...measureCoupling(edges, texts, templateNames), edges };
   }
-  return measureCoupling(importEdges(root, areaFiles, bin('depcruise')), texts);
+  const edges = importEdges(root, areaFiles, bin('depcruise'));
+  return { ...measureCoupling(edges, texts), edges };
+}
+
+// modules.json: every file's facts (facts.js), its area, and the modules it uses -- what the general rule core
+// (scripts/design-rules/, js_quality_report.py) reads to classify collaborators and hold the design rules.
+function modulesJson(areaOf, facts, couplings) {
+  const edges = new Map(couplings.flatMap(({ coupling }) => [...coupling.edges].map(([file, targets]) => [file, [...targets].sort()])));
+  return JSON.stringify(facts.map((f) => ({ ...f, area: areaOf.get(f.path), imports: edges.get(f.path) || [] })), null, 1);
 }
 
 async function main() {
@@ -237,6 +254,9 @@ async function main() {
   if (unparsed.length) report += `\n### Not parsed\n\n${unparsed.map((u) => `- \`${u.file}\`: ${u.why}`).join('\n')}\n`;
   fs.writeFileSync(path.join(options.out, 'report.md'), report);
   fs.writeFileSync(path.join(options.out, 'over-limit.tsv'), overLimitRows(functions, files, clones, couplings));
+  const { facts, unparsed: unread } = measureFacts(all, texts);
+  fs.writeFileSync(path.join(options.out, 'modules.json'), modulesJson(areaOf, facts, couplings));
+  for (const u of unread) process.stderr.write(`js-quality-report: ${u.file}: facts not read (${u.why})\n`);
   fs.writeFileSync(path.join(options.out, 'functions.tsv'), ['file\tline\tname\tarea\tcognitive\tcyclomatic\tinner-defs\tlines',
     ...functions.map((r) => [r.file, r.line, r.name, r.area, r.cognitive, r.cyclomatic, r.innerDefs, r.lines].join('\t'))].join('\n') + '\n');
   fs.writeFileSync(path.join(options.out, 'coupling.tsv'), ['kind\tarea\tkey\tvalues',

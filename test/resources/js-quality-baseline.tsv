@@ -18,4 +18,3 @@ limit	clone-tokens	50
 limit	fanout	9
 limit	distance	0.2
 limit	cycle	0
-fanout	web/src/main/assets/js/shared/boot.js	10

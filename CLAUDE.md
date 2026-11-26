@@ -219,6 +219,29 @@ tools for your own confidence, not merge requirements. The merge queue (`agentct
 
 ## Design rules
 
+**Every rule below holds for every language** -- Scala, the Python tools and the production JS/TS (the owner,
+2026-11-26: "same rules as for scala"): written once here, with ONE limits and rules table,
+`test/resources/design-rules.tsv` (limits, forbidden suffixes, abbreviations and allowed idioms, effect adapters,
+the directories whose D is measured, the Python and JS directories' layers), which every language's measure reads.
+Where each is enforced: Scala's coupling, data guard and quality by `project/Coupling.scala` / the `quality` module
+(pre-push `sbt`); the Python and JS/TS measures of complexity, length, clones and cycles by `pyquality` / `jsquality`;
+and the GENERAL rule core, `scripts/design-rules/` (one implementation over every language's extractor: Python `ast`,
+`scripts/js-quality/facts.js`, the Scala text), in all three checks -- the naming lint (permutations block, action
+names warn), frozen rows of `test/resources/design-baseline.tsv` for forbidden suffixes and abbreviations (every
+language), and for Python and JS/TS collaborator-only fan-out, distance D (V2), layers and directory cycles, the data
+guard (`databag`, `datafanout`) and THE DESIGN LINT (`effect`: the clock, a process or the environment touched outside
+an `adapter` row's module -- inject it; `state`: module-level names a function writes -- no stateful singletons;
+`import-io`: IO when a module loads). Its exemptions (`test/resources/design-exemptions.tsv`) take the coupling
+exemptions' dated, specific why; its trailers are `Naming:`, `Design:` and `Coupling:`. The rest of this section
+(SOLID, DI, reuse, fakes sharing logic, simplicity) is review-enforced in every language. The agreed adaptations:
+D is measured only where abstractions exist (Scala, TypeScript, Python `Protocol`/ABC in `scripts/lib` and `scripts/ci`;
+plain browser JS has none: cycles and layers hold it); a JS callback passed inline is no inner def; a Python tool's
+`main()` and a page's `init()` are the composition root (module-level code does no IO), and web JS's one page-state
+object made in `init()` and passed on is no singleton; `args` / `kwargs` (and `self`, `e`, `i`, `j`, which never
+name a module, type or top-level function) are allowed idioms; Python is typed by strict pyright, JS gets no typing
+lane; identity stamps, zinc/TASTy and point-free `map` are Scala-only, and shell (being migrated) only takes
+shellcheck and bash 3.2.
+
 **Extract repeated patterns at two uses, not three.** A multi-line shape written a second time — a fake repository
 inside every spec, a regex + `replaceAll` chain in two parsers, a "load fixture and feed through this client" helper,
 a worker-pool scaffold, a `NFD → strip diacritics → ł→l → lowercase` chain, a JSON-LD-block idiom — gets extracted
@@ -367,7 +390,7 @@ tool of `scripts/shell-py-progress/migrate-tools.tsv` and every `.py` file new s
 (`scripts/py-quality/migrated.py`) past a limit is refused even with a trailer -- "migrated tools stay under the bar --
 split it". A migrated tool keeps its path, CLI and output, and its
 black-box `<tool>_test.py` (`scripts/lib/cli_harness.py`) passes byte-unchanged on the shell tool and on the Python one.
-**The naming lint** (`scripts/ci/naming_lint.py`, the same step; the owner's "names must match behaviour", 2026-11-19):
+**The naming lint** (`scripts/design-rules/naming_lint.py`, the same step and `pyquality` / `jsquality` for their languages; the owner's "names must match behaviour", 2026-11-19):
 two top-level types of one package named with the same words in another order (`PruneSweep` / `SweepPrune`) refuse the
 push -- rename one after what makes it distinct (a pair mid-rename sits in its `ALLOWED_PERMUTATIONS` with an owner); a
 NEW type named for an action (`...Apart`, `...Stages`, `...Read(s)`, `...Reading(s)`, `...Builds`, `...Rereads`,

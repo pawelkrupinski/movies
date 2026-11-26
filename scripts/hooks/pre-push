@@ -72,9 +72,12 @@
 #                 (test/resources/quality-data-tables.tsv: hand-written literal tables, measured as no method and no
 #                 source lines) must each read as data -- no def, branch, lambda or block -- and a row added carries
 #                 `Length: <why>`. And THE NAMING LINT
-#                 (scripts/ci/naming_lint.py, seconds): two top-level types of one package named with the same words
+#                 (scripts/design-rules/naming_lint.py, seconds): two top-level types of one package named with the same words
 #                 in another order refuse the push; a NEW type named for an action (...Apart, ...Plans, ...Reads) with
-#                 at most one public def is warned about.
+#                 at most one public def is warned about. And THE DESIGN RULES (scripts/design-rules/design_check.py
+#                 --languages scala): the Scala names' frozen suffix / abbreviation rows (test/resources/design-baseline.tsv).
+#                 `jsquality` and `pyquality` run the same two over their own language, with the general rules'
+#                 collaborator-only fan-out, distance, layers, data guard and design lint (CLAUDE.md, "Design rules").
 #                 PREPUSH_SKIP=quality skips just it
 #   `dashboards`  infra/test/test_dashboards.py — the Grafana dashboards' structure and queries,
 #                 the CI check `Stage NixOS closures` runs (well under a second)
@@ -402,14 +405,14 @@ coupling_paths() { # stdin: changed paths -> the ones that select the coupling s
 # the ratchet's verdict -- production Scala (a source's text is what is measured: no Java, no template), the measure,
 # its dependencies and the baselines
 quality_paths() { # stdin: changed paths -> the ones that select the quality step
-    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.scala|quality/src/main/.*|project/Dependencies\.scala|test/resources/(complexity|length|duplication)-baseline\.tsv|test/resources/quality-data-tables\.tsv|scripts/ci/quality_ratchet\.py|scripts/ci/naming_lint\.py)$' || true
+    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.scala|quality/src/main/.*|project/Dependencies\.scala|test/resources/(complexity|length|duplication)-baseline\.tsv|test/resources/quality-data-tables\.tsv|scripts/ci/quality_ratchet\.py|scripts/design-rules/(naming_lint|naming|scala_names|extractors|design_check|model|exemptions)\.py|scripts/lib/rules_table\.py|test/resources/design-(rules|baseline|exemptions)\.tsv)$' || true
 }
 
 # THE JS/TS QUALITY RATCHET'S PATHS (the header's `jsquality`; `--js-quality-plan` prints them): the production JS/TS the
 # ratchet measures (scripts/js-quality/ratchet-areas.tsv), its baseline, the ratchet and the measure -- no test, page
 # test, Playwright spec or script outside the measure: those are reported, not gated
 js_quality_paths() { # stdin: changed paths -> the ones that select the jsquality check
-    grep -E '^(web/src/main/assets/js/.*|infra/version-dashboard/src/.*|test/resources/js-quality-baseline\.tsv|scripts/ci/js_quality_ratchet\.py|scripts/ci/baseline_ratchet\.py|scripts/ci/trailers\.py|scripts/js-quality/.*|scripts/js-quality-report|scripts/js_quality_report\.py|scripts/lib/pinned_npm_tools\.py)$' || true
+    grep -E '^(web/src/main/assets/js/.*|infra/version-dashboard/src/.*|test/resources/js-quality-baseline\.tsv|scripts/ci/js_quality_ratchet\.py|scripts/ci/baseline_ratchet\.py|scripts/ci/trailers\.py|scripts/js-quality/.*|scripts/js-quality-report|scripts/js_quality_report\.py|scripts/lib/pinned_npm_tools\.py|scripts/design-rules/[a-z_]+\.py|scripts/lib/rules_table\.py|test/resources/design-(rules|baseline|exemptions)\.tsv)$' || true
 }
 
 # THE PYTHON QUALITY RATCHET'S PATHS (the header's `pyquality`; `--py-quality-plan` prints them): a Python tool under
@@ -422,6 +425,7 @@ py_quality_paths() { # stdin: changed paths -> the ones that select the pyqualit
         case "$path" in
             scripts/*.py|.github/scripts/*.py|infra/bin/*.py|infra/nix/bin/*.py|infra/nix/files/*.py|android/scripts/*.py|ios/scripts/*.py|\
             test/resources/py-quality-baseline.tsv|scripts/py-quality/*|scripts/py-quality-report|\
+            test/resources/design-rules.tsv|test/resources/design-baseline.tsv|test/resources/design-exemptions.tsv|\
             pyrightconfig.json) echo "$path" ;; # (the ratchet, its engine and trailers.py are scripts/*.py)
             scripts/*|.github/scripts/*|infra/bin/*|infra/nix/bin/*|infra/nix/files/*|android/scripts/*|ios/scripts/*)
                 case "${path##*/}" in *.*) ;; *) head -1 "$path" 2>/dev/null | grep -q '^#!.*python' && echo "$path" ;; esac ;;
@@ -553,7 +557,7 @@ plan() {
         # exemption row added as the exemptions loosening.
         case "$path" in test/resources/coupling-baseline.tsv|test/resources/coupling-layers.tsv|test/resources/coupling-exemptions.tsv|test/resources/coupling-fanout-refs.tsv|test/resources/coupling-collaborators.tsv) sbt=1 ;; esac
         # ...and so are the quality baselines and the quality ratchet itself (check_sbt's quality step)
-        case "$path" in test/resources/complexity-baseline.tsv|test/resources/length-baseline.tsv|test/resources/duplication-baseline.tsv|test/resources/quality-data-tables.tsv|scripts/ci/quality_ratchet.py|scripts/ci/naming_lint.py) sbt=1 ;; esac
+        case "$path" in test/resources/complexity-baseline.tsv|test/resources/length-baseline.tsv|test/resources/duplication-baseline.tsv|test/resources/quality-data-tables.tsv|scripts/ci/quality_ratchet.py|scripts/design-rules/naming_lint.py|scripts/design-rules/naming.py|scripts/design-rules/scala_names.py|scripts/design-rules/extractors.py|scripts/design-rules/design_check.py|scripts/design-rules/model.py|scripts/design-rules/exemptions.py|scripts/lib/rules_table.py|test/resources/design-rules.tsv|test/resources/design-baseline.tsv|test/resources/design-exemptions.tsv) sbt=1 ;; esac
         # A generated table (models.GeneratedTable) is code's data: the specs reading it decide whether it is right.
         case "$path" in
             geodata/src/main/resources/generated/*) sbt=1 ;;
@@ -1677,7 +1681,10 @@ check_jsquality() {
     [ -x "$(scripts/js-quality-report --tools-dir)/node_modules/.bin/eslint" ] \
         || need jsquality npm "install Node.js with npm (brew install node)" || return 1
     for r in "${ranges[@]}"; do args+=(--range "$r"); done
-    scripts/js-quality-report --check ${args[@]+"${args[@]}"} >&2
+    scripts/js-quality-report --check ${args[@]+"${args[@]}"} >&2 || return 1
+    # the general design rules over the JS/TS (scripts/design-rules: names, collaborator fan-out, distance, layers, the design lint)
+    python3 scripts/design-rules/naming_lint.py check --languages js ${args[@]+"${args[@]}"} >&2 || return 1
+    python3 scripts/design-rules/design_check.py check --languages js ${args[@]+"${args[@]}"} >&2
 }
 
 check_pyquality() {
@@ -1689,7 +1696,11 @@ check_pyquality() {
         || need pyquality npm "install Node.js with npm (brew install node)" || return 1
     for r in "${ranges[@]}"; do args+=(--range "$r"); done
     printf '%s\n' "$changed" > "$tmp/pyquality-paths" # strict pyright over the push's own files; the rest keep their rows
-    scripts/py-quality-report --check --paths "$tmp/pyquality-paths" ${args[@]+"${args[@]}"} >&2
+    scripts/py-quality-report --check --paths "$tmp/pyquality-paths" ${args[@]+"${args[@]}"} >&2 || return 1
+    # the general design rules over the Python (scripts/design-rules: names, collaborator fan-out, distance, layers,
+    # the data guard, the design lint)
+    python3 scripts/design-rules/naming_lint.py check --languages py ${args[@]+"${args[@]}"} >&2 || return 1
+    python3 scripts/design-rules/design_check.py check --languages py ${args[@]+"${args[@]}"} >&2
 }
 
 check_drift() {
@@ -2002,7 +2013,8 @@ check_sbt() {
         for r in "${ranges[@]}"; do qargs+=(--range "$r"); done
         [ -s "$tmp/quality.rows" ] || { warn "quality: quality/runMain quality.QualityReport wrote no rows (full log: $tmp/sbt.log)"; return 1; }
         python3 scripts/ci/quality_ratchet.py check --current "$tmp/quality.rows" ${qargs[@]+"${qargs[@]}"} >&2 || return 1
-        python3 scripts/ci/naming_lint.py check ${qargs[@]+"${qargs[@]}"} >&2 || return 1
+        python3 scripts/design-rules/naming_lint.py check --languages scala ${qargs[@]+"${qargs[@]}"} >&2 || return 1
+        python3 scripts/design-rules/design_check.py check --languages scala ${qargs[@]+"${qargs[@]}"} >&2 || return 1
     fi
     [ "$gitops_stale" = 0 ]
 }

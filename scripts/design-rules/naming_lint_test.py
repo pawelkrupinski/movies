@@ -81,6 +81,12 @@ class NamingLintTest(unittest.TestCase):
         self.assertEqual(1, rc, out)
         self.assertIn("services.sweeps: CacheSweep", out)
 
+    def test_two_python_modules_of_one_directory_with_the_same_words_reordered_fail(self):
+        self.commit({"scripts/ci/prune_sweep.py": "x = 1\n", "scripts/ci/sweep_prune.py": "y = 2\n"}, "both")
+        rc, out = self.lint()
+        self.assertEqual(1, rc, out)
+        self.assertIn("scripts/ci: prune_sweep (scripts/ci/prune_sweep.py), sweep_prune (scripts/ci/sweep_prune.py)", out)
+
     def test_the_same_words_in_two_packages_pass(self):
         self.commit({f"{DIR}/CacheSweep.scala": scala("CacheSweep"),
                      "common/src/main/scala/tools/SweepCache.scala": scala("SweepCache", package="tools")}, "apart")
@@ -111,7 +117,9 @@ class NamingLintTest(unittest.TestCase):
             source = f.read()
         tool = os.path.join(self.dir.name, "naming_lint.py")
         with open(tool, "w") as f:
-            f.write(source.replace("ALLOWED_PERMUTATIONS = {\n",
+            source = source.replace("sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))",
+                                    f"sys.path.insert(0, {HERE!r})", 1)  # the copy reads the real rule core
+            f.write(source.replace("ALLOWED_PERMUTATIONS: Dict[Tuple[str, FrozenSet[str]], str] = {\n",
                                    'ALLOWED_PERMUTATIONS = {\n    ("services.sweeps", frozenset({"CacheSweep", "SweepCache"})): "a rename under way",\n', 1))
         self.commit({f"{DIR}/CacheSweep.scala": scala("CacheSweep"), f"{DIR}/SweepCache.scala": scala("SweepCache")}, "being renamed")
         rc, out = self.lint(tool=tool)

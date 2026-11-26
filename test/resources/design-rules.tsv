@@ -1,0 +1,133 @@
+# THE DESIGN RULES TABLE (CLAUDE.md, "Design rules" and "Code quality ratchets"): ONE table of the rules every language
+# is held to -- Scala, Python and JS/TS -- read by the general rule core (scripts/design-rules/, design_check.py) and by
+# each language's measure (scripts/py-quality-report, scripts/js-quality-report; the Scala constants are checked equal
+# to it by scripts/design-rules/rules_table_test.py). Loosening a row -- a limit raised, an adapter or an allowed idiom
+# added, a layer moved up -- lands only with the kind's trailer (`Complexity:`, `Length:`, `Duplication:`, `Coupling:`,
+# `Design:`, `Naming: <why>`).
+#
+#   limit<TAB><kind><TAB><value><TAB><languages>         a measure's limit (every language listed holds it)
+#   suffix<TAB><word>                                   a name may not END in it (CLAUDE.md: "Never suffix a class with Impl")
+#   abbreviation<TAB><word>                             a word of a name that is an abbreviation of a real word
+#   idiom<TAB><word>                                    a language-standard idiom, allowed although it abbreviates
+#   adapter<TAB><language><TAB><module><TAB><effects>    a module allowed to touch these effects directly (clock,
+#                                                       process, env): every other module receives them
+#   distance<TAB><language><TAB><directory>             a directory whose distance D is measured: only where
+#                                                       abstractions exist (Protocol/ABC; plain browser JS has none)
+#   layer<TAB><language><TAB><directory><TAB><rank><TAB><why>   a directory's rank, bottom (0) up: a module may import
+#                                                       only from its own rank or a lower one; a directory with no row
+#                                                       places nothing (a new directory takes its row in its commit)
+#
+# The limits (the Scala quality module's and project/Coupling.scala's own; 2026-11-20 tightening):
+limit	cognitive	10	scala py js
+limit	cyclomatic	10	scala py js
+limit	inner-defs	2	scala py js
+limit	method-lines	50	scala py js
+limit	file-lines	500	scala py js
+limit	clone-tokens	50	scala py js
+limit	fanout	9	scala py js
+limit	distance	0.2	scala py js
+limit	distance-min-modules	8	scala py js
+# The data guard (data holding logic is a collaborator; 2026-11-26): a data type with more non-trivial methods or
+# decisions than these is a collaborator; one naming more types a `databag` row; a module using more data types a
+# `datafanout` row.
+limit	data-methods	4	scala py
+limit	data-decisions	9	scala py
+limit	databag	9	scala py
+limit	datafanout	15	scala py
+#
+# Naming (CLAUDE.md: "Never suffix a class with Impl"; Manager/Handler/Util/Helper/Processor are a smell; "no
+# abbreviations in names").
+suffix	Impl
+suffix	Manager
+suffix	Handler
+suffix	Util
+suffix	Utils
+suffix	Helper
+suffix	Helpers
+suffix	Processor
+abbreviation	cfg
+abbreviation	mgr
+abbreviation	impl
+abbreviation	util
+abbreviation	utils
+abbreviation	tmp
+abbreviation	ctx
+abbreviation	msg
+abbreviation	msgs
+abbreviation	btn
+abbreviation	req
+abbreviation	resp
+abbreviation	cnt
+abbreviation	idx
+abbreviation	str
+abbreviation	obj
+abbreviation	arr
+abbreviation	elem
+abbreviation	el
+abbreviation	fn
+abbreviation	cb
+abbreviation	err
+abbreviation	errs
+abbreviation	buf
+abbreviation	prev
+abbreviation	curr
+abbreviation	calc
+abbreviation	proc
+abbreviation	pkg
+abbreviation	attr
+abbreviation	attrs
+abbreviation	desc
+abbreviation	num
+abbreviation	val
+abbreviation	vals
+abbreviation	args
+abbreviation	kwargs
+# The idioms allowed (the owner, 2026-11-26): `args`, `kwargs`, `self`, `e` for events, `i`/`j` loop indexes, `ctx` only
+# where a library names it -- names checked here are types, modules and top-level functions, where none of the
+# single-letter ones occurs.
+idiom	args
+idiom	kwargs
+#
+# The adapters: the modules that touch the clock, a process or the environment for everyone else.
+adapter	py	scripts/lib/tool_process.py	process clock
+adapter	py	scripts/lib/tool_git.py	process env
+adapter	py	scripts/lib/tool_pool.py	process env
+adapter	py	scripts/lib/cli_harness.py	process env clock
+#
+# Distance D: where abstractions exist (the owner, 2026-11-26): the Python library packages and the TypeScript
+# dashboard. Plain browser JS (web/src/main/assets/js) has none, so D measures nothing there: cycles and layers hold it.
+distance	py	scripts/lib
+distance	py	scripts/ci
+distance	js	infra/version-dashboard/src
+distance	js	infra/version-dashboard/src/shared
+distance	js	infra/version-dashboard/src/app-stores
+distance	js	infra/version-dashboard/src/mobile
+distance	js	infra/version-dashboard/src/mobile-release
+#
+# The layers (ranks, bottom up), Python: the shared library under the tools, the tools and gates over it (scripts/ and
+# scripts/ci use each other: their cycle is a frozen `dircycle` row), every other tool collection over those, and the
+# general rule core over the quality measure it reads.
+layer	py	scripts/lib	0	the shared library every tool stands on: processes, git, GitHub, pools, the CLI harness
+layer	py	scripts	1	the repository's tools, beside the CI gates they share code with
+layer	py	scripts/ci	1	the CI and pre-push gates and the measures they hold, beside the tools
+layer	py	scripts/py-quality	2	the Python quality measure, over the ratchet engine in scripts/ci
+layer	py	.github/scripts	2	the workflows' own steps, over the tools and the library
+layer	py	scripts/ml-identity	2	the identity model experiments, over the CI readers
+layer	py	infra/bin	2	the fleet's operator tools, over the library
+layer	py	infra/nix/bin	2	the NixOS hosts' own tools
+layer	py	infra/nix/files	2	the files the NixOS hosts run
+layer	py	android/scripts	2	the Android app's release tools, over the library
+layer	py	ios/scripts	2	the iOS app's release tools, over the library
+layer	py	scripts/local-mirror	2	the local prod mirror's tools, over the library
+layer	py	scripts/claude-hooks	2	the agents' Claude Code hooks
+layer	py	scripts/discover-cinemas	2	the venue discovery bot
+layer	py	scripts/ops	2	one-off operator tools
+layer	py	scripts/design-rules	3	the general rule core, over the quality measure and the ratchet engine it reads
+# JS/TS: what every page builds on, then the store clients, then the pages and the servers over them.
+layer	js	web/src/main/assets/js/shared	0	what every web page's scripts build on
+layer	js	web/src/main/assets/js	1	the web pages' own scripts, over the shared ones
+layer	js	infra/version-dashboard/src/shared	0	what every dashboard page builds on: config, HTTP, processes
+layer	js	infra/version-dashboard/src/app-stores	1	the app stores' clients and the signing vault
+layer	js	infra/version-dashboard/src/mobile	2	the /mobile page, over the store clients
+layer	js	infra/version-dashboard/src/mobile-release	3	the mobile release run, over the /mobile page's readings
+layer	js	infra/version-dashboard/src	3	the dashboard's server and pages, over everything below
