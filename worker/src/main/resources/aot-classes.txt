@@ -8809,10 +8809,16 @@ services.cinemas.common.ReReleaseBilling
 services.cinemas.common.ReReleaseBilling$
 services.cinemas.common.RetryingCinemaScraper
 services.cinemas.common.RetryingCinemaScraper$
+services.cinemas.common.ScrapeClock
+services.cinemas.common.ScrapeClock$
+services.cinemas.common.ScrapeDates
+services.cinemas.common.ScrapeDates$
 services.cinemas.common.ScrapeErrors
 services.cinemas.common.ScrapeErrors$
 services.cinemas.common.ScrapeHorizon
 services.cinemas.common.ScrapeHorizon$
+services.cinemas.common.ScrapeImages
+services.cinemas.common.ScrapeImages$
 services.cinemas.common.ScrapeOutcome
 services.cinemas.common.ScrapeOutcome$
 services.cinemas.common.ScrapeOutcome$Empty$
@@ -8820,6 +8826,8 @@ services.cinemas.common.ScrapeOutcome$Failure$
 services.cinemas.common.ScrapeOutcome$Success$
 services.cinemas.common.ScrapeOutcomeListener
 services.cinemas.common.ScrapeOutcomeListener$
+services.cinemas.common.ScrapeRuntime
+services.cinemas.common.ScrapeRuntime$
 services.cinemas.common.ScrapedSlot
 services.cinemas.common.ScrapedSlot$
 services.cinemas.common.ScraperParse
