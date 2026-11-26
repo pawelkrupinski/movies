@@ -21,5 +21,7 @@ check "the bound overridden is a BYPASS, named in the output" "0 1" \
   "$status $(grep -c 'BYPASS KINOWO_LAND_STAMP_CARRY_SECONDS=1' <<< "$out")"
 out="$(STUB_RC=3 "$work/land-before-queue" a b 2>&1)"; status=$?
 check "a carry that fails is said and never fails the land" "0 1" "$status $(grep -c 'did not finish (exit 3)' <<< "$out")"
+out="$("$work/land-before-queue" a 2>&1)"; status=$?
+check "one ref only is a usage error (2), not a silent success" "2 1" "$status $(grep -c '^land-before-queue <base> <head>$' <<< "$out")"
 
 spec_summary
