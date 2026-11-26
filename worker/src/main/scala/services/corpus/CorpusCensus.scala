@@ -1,7 +1,6 @@
 package services.corpus
 
 import java.time.Clock
-import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration.*
 import scala.util.Try
@@ -11,7 +10,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.City
 import play.api.Logging
 import services.movies.MovieCache
-import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
+import tools.{PeriodicLoop, ThreadPools, TickRecorder, TickRun}
 
 /**
  * Every `movies`-census gauge the worker exposes ([[CensusGauges]]) — `WorkerCorpusMetrics`, `WorkerSourceFilmsMetrics`,
@@ -70,6 +69,8 @@ final class CorpusCensus(
 
   private val scheduler = threadPools.scheduler("corpus-census")
 
+  private val loop = new PeriodicLoop("corpus-census", () => publish(), publishInterval, publishInterval, ticks, logger, scheduler)
+
   /** The census as the films the cache holds now give it, against the clock now. */
   def reading(): CensusReading = parts.drainedReading()._1
 
@@ -118,10 +119,7 @@ final class CorpusCensus(
       seedLogged()
       publishQuietly()
     }
-    ticks.started("corpus-census", publishInterval, publishInterval)
-    scheduler.scheduleAtFixedRate(() => ScheduledTick.recorded("corpus-census", publishInterval, logger, ticks)(publish()),
-      publishInterval.toSeconds, publishInterval.toSeconds, TimeUnit.SECONDS)
-    ()
+    loop.start()
   }
 
   def stop(): Unit = scheduler.shutdown()

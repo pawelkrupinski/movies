@@ -42,7 +42,7 @@ class ClaimedPeriodicTaskSpec extends AnyFlatSpec with Matchers {
       interval, 20.millis, new InMemoryScheduledRunStore, clock, TickRecorder.Unrecorded, tools.SpecThreadPools.scheduling(scheduler))
     val logged = LogCapture.capture(classOf[ClaimedPeriodicTask].getName) {
       task.start()
-      scheduler.advance(Duration.ofMillis(20 + ClaimedPeriodicTask.MinimumFallbackDelay.toMillis))
+      scheduler.advance(Duration.ofMillis(20 + tools.PeriodicLoop.MinimumFallbackDelay.toMillis))
       task.stop()
     }
     runs.get() should be >= 2
@@ -65,7 +65,7 @@ class ClaimedPeriodicTaskSpec extends AnyFlatSpec with Matchers {
     LogCapture.capture(classOf[ClaimedPeriodicTask].getName) {
       task.start()
       broken = true
-      scheduler.advance(Duration.ofMillis(ClaimedPeriodicTask.MinimumFallbackDelay.toMillis - 1))
+      scheduler.advance(Duration.ofMillis(tools.PeriodicLoop.MinimumFallbackDelay.toMillis - 1))
       task.stop()
     }
     reads.get() shouldBe 2 // the first tick's claim and its next delay, then nothing for a minute

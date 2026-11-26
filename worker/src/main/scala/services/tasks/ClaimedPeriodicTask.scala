@@ -1,14 +1,14 @@
 package services.tasks
 
 import java.time.Clock
-import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+import java.util.concurrent.ScheduledExecutorService
 
 import scala.concurrent.duration.*
 
 import play.api.Logging
 import services.schedule.{OccurrenceKey, ScheduledRunStore}
 import tools.Stoppable
-import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
+import tools.{PeriodicLoop, ThreadPools, TickRecorder, TickRun}
 
 /**
  * A job run once per `interval` window, first after `initialDelay`, on its own daemon thread —
@@ -27,33 +27,13 @@ class ClaimedPeriodicTask(name: String, run: () => TickRun, interval: => FiniteD
 
   private val scheduler: ScheduledExecutorService = threadPools.scheduler(name)
 
+  private val loop = new PeriodicLoop(name, () => tickIfClaimed().getOrElse(TickRun.Completed), interval, initialDelay,
+    ticks, logger, scheduler)
+
   def start(): Unit = {
-    scheduleNext(initialDelay)
-    ticks.started(name, interval, initialDelay)
+    loop.start()
     logger.info(s"$name started: once per ${interval.toSeconds}s, first in ${initialDelay.toSeconds}s.")
   }
-
-  private def scheduleNext(delay: FiniteDuration): Unit = {
-    scheduler.schedule(new Runnable {
-      def run(): Unit = {
-        ScheduledTick.recorded(name, intervalOr(delay), logger, ticks)(tickIfClaimed().getOrElse(TickRun.Completed))
-        scheduleNext(intervalOr(delay))
-      }
-    }, delay.toMillis, TimeUnit.MILLISECONDS)
-    ()
-  }
-
-  /** The next run's delay: `interval` read afresh, or — when it cannot be read — the last delay,
-   *  never under [[ClaimedPeriodicTask.MinimumFallbackDelay]], said out loud. Read bare, an
-   *  `interval` that threw ended the schedule for good, silently; falling back to a first run's
-   *  zero initial delay re-ran the tick back to back, forever. */
-  private def intervalOr(lastDelay: FiniteDuration): FiniteDuration =
-    try interval
-    catch {
-      case scala.util.control.NonFatal(e) =>
-        val fallback = lastDelay.max(ClaimedPeriodicTask.MinimumFallbackDelay)
-        logger.warn(s"$name: interval unreadable, next run in ${fallback.toMillis}ms: $e", e); fallback
-    }
 
   /** Run only if this machine wins the current window's claim: how the run went, or `None` when another replica holds
    *  the window (a no-op, which completes). */
@@ -63,9 +43,4 @@ class ClaimedPeriodicTask(name: String, run: () => TickRun, interval: => FiniteD
   }
 
   override def stop(): Unit = { scheduler.shutdown(); () }
-}
-
-object ClaimedPeriodicTask {
-  /** The least delay a task waits when its interval cannot be read. */
-  val MinimumFallbackDelay: FiniteDuration = 1.minute
 }

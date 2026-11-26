@@ -1,13 +1,13 @@
 package services.tasks
 
-import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
+import java.util.concurrent.ScheduledExecutorService
 
 import scala.concurrent.duration.*
 import scala.util.Try
 
 import play.api.Logging
 import tools.Stoppable
-import tools.{ThreadPools, TickRecorder, TickRun, ScheduledTick}
+import tools.{PeriodicLoop, ThreadPools, TickRecorder, TickRun}
 
 /**
  * Periodic one-line log of the task-queue depth — the worker's activity signal.
@@ -32,6 +32,8 @@ class WorkerHeartbeat(
 ) extends Stoppable with Logging {
 
   private val scheduler: ScheduledExecutorService = threadPools.scheduler("worker-heartbeat")
+
+  private val loop = new PeriodicLoop("worker-heartbeat", () => beat(), intervalSeconds.seconds, intervalSeconds.seconds, ticks, logger, scheduler)
 
   // Wall-clock of the last scheduler firing — the worker's LIVENESS pulse. The
   // LivenessWatchdog reads it to tell a wedged JVM (heartbeat thread starved/dead,
@@ -72,10 +74,7 @@ class WorkerHeartbeat(
 
   def start(): Unit = {
     lastBeatMillis = now()
-    ticks.started("worker-heartbeat", intervalSeconds.seconds, intervalSeconds.seconds)
-    scheduler.scheduleAtFixedRate(
-      () => ScheduledTick.recorded("worker-heartbeat", intervalSeconds.seconds, logger, ticks)(beat()),
-      intervalSeconds, intervalSeconds, TimeUnit.SECONDS)
+    loop.start()
     logger.info(s"WorkerHeartbeat started; logging queue depth every ${intervalSeconds}s.")
   }
 

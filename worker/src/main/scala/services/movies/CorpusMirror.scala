@@ -9,7 +9,7 @@ import models.MovieRecord
 import models.{CacheKey, FilmId, StoredMovieRecord}
 import services.titles.TitleNormalizer
 import settings.{BootHydrateMaxAttempts, BootHydrateRetryInterval, CacheRehydrateInterval}
-import tools.{ThreadPools, ScheduledTick, TickRecorder, TickRun}
+import tools.{PeriodicLoop, ThreadPools, TickRecorder, TickRun}
 
 /**
  * The resident corpus of a [[CaffeineMovieCache]] as its [[CorpusMirror]] reaches it: the store
@@ -137,19 +137,14 @@ final class CorpusMirror(
       }
 
     def start(): Unit = {
-      ticks.started("movie-cache-cold-retry", CorpusMirror.ColdRetryInterval, CorpusMirror.ColdRetryInterval)
-      refreshScheduler.scheduleAtFixedRate(
-        () => ScheduledTick.recorded("movie-cache-cold-retry", CorpusMirror.ColdRetryInterval, logger, ticks)(coldRetryTick()),
-        CorpusMirror.ColdRetryInterval.toSeconds, CorpusMirror.ColdRetryInterval.toSeconds, TimeUnit.SECONDS)
+      new PeriodicLoop("movie-cache-cold-retry", () => coldRetryTick(), CorpusMirror.ColdRetryInterval,
+        CorpusMirror.ColdRetryInterval, ticks, logger, refreshScheduler).start()
       watchHandle = corpus.repository.watchChangesFencedWithVenues(changes.applyUpsert, changes.applyDelete, changes.applyVenueSlots)
       logger.info(
         s"MovieCache incremental change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — backstop only"}; " +
         s"backstop rehydrate every ${BackstopIntervalSeconds}s.")
-      ticks.started("movie-cache-rehydrate", rehydrateInterval.value, rehydrateInterval.value)
-      refreshScheduler.scheduleAtFixedRate(
-        () => ScheduledTick.recorded("movie-cache-rehydrate", rehydrateInterval.value, logger, ticks)(hydrate.rehydrateTick()),
-        BackstopIntervalSeconds, BackstopIntervalSeconds, TimeUnit.SECONDS
-      )
+      new PeriodicLoop("movie-cache-rehydrate", () => hydrate.rehydrateTick(), rehydrateInterval.value,
+        rehydrateInterval.value, ticks, logger, refreshScheduler).start()
     }
 
     def stop(): Unit = {
