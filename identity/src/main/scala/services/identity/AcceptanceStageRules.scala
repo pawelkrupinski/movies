@@ -1,16 +1,14 @@
 package services.identity
 
-import services.identity.AcceptanceRule.Weighing
-import services.identity.measures.Scored.Accepted
+import services.identity.AcceptanceRule.{Weighing, isEligible}
 import services.identity.measures.{FactRelations, Film, IdentityMeasures, MeasuredListing, RelayStage, Scored, StageRelays, StageSeasonRecords}
 import services.titles.YearWindow
 
 /** What the acceptance rules of a stage relay ask: the house's production, the relay's record ([[RelayStage]]), and the
  *  record of the season it is broadcast in ([[AcceptanceRuleTable]]).
- *  Part of [[Acceptance]], which mixes it in. */
-private[identity] trait AcceptanceStageRules { this: Acceptance =>
+ *  Functions of the candidates and the listing they score. */
+private[identity] object AcceptanceStageRules {
   import AcceptanceFactRules.contradicted
-  import weights.own
 
   /** The eligible records billing the listing's work under the listing's OWN house ([[Scored.houseProduction]]) that no
    *  published year or runtime contradicts. */
@@ -25,7 +23,7 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
   private[identity] def anotherRecordOfItsTitle(weighing: Weighing, house: Scored): Option[Scored] =
     weighing.eligible.find(other => (other ne house) &&
       (IdentityMeasures.key(other.candidate.film.title) == IdentityMeasures.key(house.candidate.film.title) ||
-        (other.titleNamesIt && own(other) >= own(house))))
+        (other.titleNamesIt && weighing.weights.own(other) >= weighing.weights.own(house))))
 
   /** The eligible records of the listing's RELAY ([[RelayStage]]): its house's records of its work from the season its title
    *  dates — DE "Royal Ballet & Opera im Kino: Manon" [2026] {Kenneth MacMillan} ×59 is "Royal Ballet & Opera 2026/27:
@@ -85,21 +83,6 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
     val film = scored.candidate.film
     scored.category("director").contains("same_person") && film.stageWorkIds.nonEmpty && !film.stageWorkIds.exists(relay.works) && relay.itsHouse(film)
   }
-
-  /** The relay's record ([[AcceptanceRuleTable.RelayRecord]]), asked only whether the title numbers another instalment. */
-  private[identity] def relayRecord(weighing: Weighing): Option[Accepted] = RelayRecord.accepts(weighing, List(NumbersItsOwnInstalment)).toOption
-  /** The season record ([[AcceptanceRuleTable.SeasonRecord]]), asked only whether the title numbers another instalment. */
-  private[identity] def seasonRecord(weighing: Weighing): Option[Accepted] = SeasonRecord.accepts(weighing, List(NumbersItsOwnInstalment)).toOption
-  /** [[seasonRecord]]'s answer when it is a record of the season the listing's screenings broadcast it in: it pre-empts
-   *  every rule, as [[seasonProduction]] does a season the title names — a house's other stagings of the work (the Met's
-   *  2014 "Macbeth", the Royal Ballet's 2013 "Romeo and Juliet") are other broadcasts than the one the venue screens. */
-  private[identity] def broadcastSeasonRecord(weighing: Weighing): Option[Accepted] = seasonRecord(weighing).filter { case (record, _) =>
-    record.listing.dating.screenedSeason.exists(record.candidate.film.season.contains)
-  }
-  /** The relay's record ([[relayRecord]]) or the season record its screenings' season names ([[broadcastSeasonRecord]]),
-   *  with the rule naming it: what pre-empts the rules after [[seasonProduction]]. */
-  private[identity] def relayOrBroadcastSeasonRecord(weighing: Weighing): Option[(Accepted, String)] =
-    relayRecord(weighing).map(_ -> "relay-record").orElse(broadcastSeasonRecord(weighing).map(_ -> "season-record"))
 
   /** The SEASON records whose title is the listing's own once its season is taken out ("&" and "and" alike): UK "Royal
    *  Ballet and Opera: Romeo and Juliet" {Kenneth MacMillan} ×127, screening May–June 2027, is "Royal Ballet & Opera

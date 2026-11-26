@@ -12,7 +12,7 @@ import services.identity.measures.{DecisionTrace, IdentityMeasures, Measure, Sco
  *  ([[seasonProduction]]). A new rule is a new row there, its questions named in the rule file of its kind (title,
  *  facts, calibration, stage, vetoes, bills); this class only runs the table. */
 private[identity] final class Acceptance(private[identity] val calibration: IdentityCalibration)
-    extends AcceptanceRuleTable, AcceptanceStageRules {
+    extends AcceptanceRuleTable {
 
   val weights = new EvidenceWeights(calibration)
   import weights.{against, fitsBetter, own, speaksAgainst}
@@ -212,6 +212,21 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
       case Seq(one)    => Some(Some(atOwn(one)))
       case first +: second +: _ => Some(Option.when(own(first) > own(second))(atOwn(first)))
     }
+
+  /** The relay's record ([[AcceptanceRuleTable.RelayRecord]]), asked only whether the title numbers another instalment. */
+  private def relayRecord(weighing: Weighing): Option[Accepted] = RelayRecord.accepts(weighing, List(NumbersItsOwnInstalment)).toOption
+  /** The season record ([[AcceptanceRuleTable.SeasonRecord]]), asked only whether the title numbers another instalment. */
+  private def seasonRecord(weighing: Weighing): Option[Accepted] = SeasonRecord.accepts(weighing, List(NumbersItsOwnInstalment)).toOption
+  /** [[seasonRecord]]'s answer when it is a record of the season the listing's screenings broadcast it in: it pre-empts
+   *  every rule, as [[seasonProduction]] does a season the title names — a house's other stagings of the work (the Met's
+   *  2014 "Macbeth", the Royal Ballet's 2013 "Romeo and Juliet") are other broadcasts than the one the venue screens. */
+  private[identity] def broadcastSeasonRecord(weighing: Weighing): Option[Accepted] = seasonRecord(weighing).filter { case (record, _) =>
+    record.listing.dating.screenedSeason.exists(record.candidate.film.season.contains)
+  }
+  /** The relay's record ([[relayRecord]]) or the season record its screenings' season names ([[broadcastSeasonRecord]]),
+   *  with the rule naming it: what pre-empts the rules after [[seasonProduction]]. */
+  private[identity] def relayOrBroadcastSeasonRecord(weighing: Weighing): Option[(Accepted, String)] =
+    relayRecord(weighing).map(_ -> "relay-record").orElse(broadcastSeasonRecord(weighing).map(_ -> "season-record"))
 
   /** The EDITION of the accepted film that the listing's whole title names, when there is exactly
    *  one: a later record carrying the film's title under a qualifier (`IdentityMeasures.editionOf`

@@ -19,6 +19,8 @@ private[identity] trait AcceptanceRuleTable { this: Acceptance =>
   import AcceptanceTitleRules.{alternativeAgainstTmdbsSearch, asItsBareTitle, creditsAnotherDirector, filmsTheTitleNames, imdbRung,
     itsOwnInstalmentOrASlip, itsTitlesFactsBeside, namesBeside, namesItsOnlyResult, otherInstalment, resultsFound, searchNamesAnother,
     soleResults, standsForItsTitle, theExactTopHit}
+  import AcceptanceStageRules.{AnotherDirector, airsTheYearItStates, anotherRecordOfItsTitle, creditsItsDirector, houseRecords,
+    houseRecordsOfItsYear, inItsSeason, relayDirectorsRecords, relayRecords, relaySeasons, seasonRecords}
   import AcceptanceTitleRules.{authorsNamesake, onlyTheEventsWords, performedBeside, readsAsNoFilm, reusedPage, stagedShowsOwn}
 
   /** The rules a node may be taken by on its own evidence, first to accept deciding ([[Acceptance.aloneNamed]]). */
