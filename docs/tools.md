@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (248)
+## Landing and CI (249)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -162,7 +162,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/order_compare_readers.py` | What order_compare.py reads a leg's failing tests from -- sbt's log, Gradle's JUnit reports, XCTest's log, the | `imported` | 1 tool | - | Python |
 | `scripts/ci/order_compare_verdicts.py` | order_compare.py's records read back: every leg's verdict as markdown (`summary`), scala's reverse and shuffled legs | `imported` | 1 tool | - | Python |
 | `scripts/ci/order_preflight.py` | RUNNER PREFLIGHT for an Order independence leg: before a minute of tests, check that this runner can run them -- the | `scripts/ci/order_preflight.py` | 1 tool | order_preflight_test.py | Python |
-| `scripts/ci/population-walk-diff` | The population walk's base side, for the pre-push hook's identity check | `scripts/ci/population-walk-diff` | hook pre-push; 1 tool | population_walk_diff_test.py | MIGRATE |
+| `scripts/ci/population-walk-diff` | The population walk's base side, for the pre-push hook's identity check | `scripts/ci/population-walk-diff` | hook pre-push; 2 tools | population_walk_diff_test.py | KEEP |
+| `scripts/ci/population_walk_base.py` | The population walk's base side, for the pre-push hook's identity check | `scripts/ci/population_walk_base.py` | 1 tool | population_walk_base_test.py | Python |
 | `scripts/ci/population_walk_diff.py` | THE POPULATION WALK, JUDGED AGAINST THE CHANGE'S BASE (the landing check's half of | `python3 scripts/ci/population_walk_diff.py` | hook pre-push; 2 tools | population_walk_diff_test.py | Python |
 | `scripts/ci/precommit-share.sh` | The landing check's shares (.github/workflows/precommit-check.yml) | `scripts/ci/precommit-share.sh` | wf precommit-check; agentctl; 4 tools | precommit_share_test.py | KEEP |
 | `scripts/ci/precommit_share.py` | THE LANDING CHECK'S SHARES (.github/workflows/precommit-check.yml): how one job of the check calls the pre-push hook, | `scripts/ci/precommit_share.py` | 1 tool | precommit_share_test.py | Python |
@@ -237,7 +238,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/hooks/lint-registry-missing` | The repo-reading specs the lint registry (scripts/hooks/lint-registry.tsv) has no row for, as `<module>:<package.Spec>`, one a line | `scripts/hooks/lint-registry-missing` | hook pre-push | - | KEEP |
 | `scripts/hooks/post-commit` | Post-commit: the commit rules the landing checks judge, run over the commit just made | `scripts/hooks/post-commit` | by hand | post-commit-test.sh | KEEP |
 | `scripts/hooks/pre-commit` | Pre-commit: no commit is made in the root checkout (the clone's main worktree) | `scripts/hooks/pre-commit` | wf precommit-check; hook pre-push; agentctl; skill CLAUDE.md, agent-ops; 5 tools | pre-commit-test.sh | KEEP |
-| `scripts/hooks/pre-push` | Pre-push: the checks that fail CI in seconds, run here in seconds, for what this push changes | `scripts/hooks/pre-push` | wf ci, identity-findings-report, live-sites +5; hook lint-registry-missing; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 71 tools | pre-push-test.sh | MIGRATE |
+| `scripts/hooks/pre-push` | Pre-push: the checks that fail CI in seconds, run here in seconds, for what this push changes | `scripts/hooks/pre-push` | wf ci, identity-findings-report, live-sites +5; hook lint-registry-missing; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 72 tools | pre-push-test.sh | MIGRATE |
 | `scripts/install-hooks.sh` | Point this clone's git hooks at scripts/hooks (the pre-push checks — see scripts/hooks/pre-push) | `scripts/install-hooks.sh` | hook pre-push; skill CLAUDE.md, agent-ops; 1 tool | - | KEEP |
 | `scripts/js-quality-report` | The JS/TS quality report: complexity, length, clones and coupling of the production JS/TS (a name for js_quality_report.py) | `scripts/js-quality-report` | hook pre-push; skill CLAUDE.md, test-layers; 6 tools | js_quality_report_test.py | KEEP |
 | `scripts/js_quality_report.py` | The JS/TS quality report: complexity, length, clones and coupling of the production JS/TS | `scripts/js_quality_report.py` | hook pre-push; 2 tools | js_quality_report_test.py | Python |
@@ -478,7 +479,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/identity_dispatch.py` | A COMMIT MEASURED ON CI, the steps the identity tools share (scripts/lib; identity-tools.sh's identity_measure_branch, | `imported` | 4 tools | - | Python |
 | `scripts/lib/identity_jvm.py` | THE JVM EVERY IDENTITY TOOL RUNS IN, for the Python tools (scripts/lib; stdlib only): identity-tools.sh's | `imported` | 3 tools | - | Python |
 | `scripts/lib/identity_kept_jvms.py` | The kept JVMs of the identity tools in Python (identity-what-if's and identity-slice's): each a JVM started once and | `imported` | 3 tools | - | Python |
-| `scripts/lib/identity_ref_trees.py` | A REF'S CODE LAID OUT AND COMPILED for the local identity tools that run a JVM under it (scripts/lib; title_trace.py, | `imported` | 3 tools | - | Python |
+| `scripts/lib/identity_ref_trees.py` | A REF'S CODE LAID OUT AND COMPILED for the local identity tools that run a JVM under it (scripts/lib; title_trace.py, | `imported` | 4 tools | - | Python |
 | `scripts/listing-history` | One listing's identity take over time, grouped by the worker deploy that logged it | `scripts/listing-history` | skill CLAUDE.md, identity-investigation; 3 tools | listing_history_test.py | KEEP |
 | `scripts/listing_history.py` | ONE LISTING'S IDENTITY TAKE OVER TIME (scripts/listing-history). | `scripts/listing_history.py` | 4 tools | listing_history_test.py | Python |
 | `scripts/ml-identity/cross_country_experiment.py` | Cross-country agreement, OFFLINE experiment (2026-10-19, branch experiment-cross-country; docs/identity-experiments.md). | `imported` | 1 tool | - | Python |
@@ -599,8 +600,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/backtest-alerts` | Replay every alerting rule against the fleet's REAL Prometheus history, and say what it did. | `infra/bin/backtest-alerts` | wf alert-backtest; 4 tools | - | Python |
 | `infra/bin/backtest-alerts-local` | Run the alert backtest on the laptop, over a local copy of the Prometheus blocks ci-runner pulls nightly. | `infra/bin/backtest-alerts-local` | skill CLAUDE.md, agent-ops; 2 tools | backtest_alerts_local_test.py | Python |
 | `infra/bin/backtest-alerts-replay` | Replay a red Alert backtest at two revisions, here or on ci-runner, and say whether a fix turned it green. | `infra/bin/backtest-alerts-replay` | by hand | backtest-alerts-replay-test.sh | Python |
-| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 228 tools | check_test.py | MIGRATE |
-| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 228 tools | check_test.py | Python |
+| `infra/bin/check` | The gate for infra/: everything this tree can be verified for without touching a live machine | `infra/bin/check` | wf android, ci, convergence-daily +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 229 tools | check_test.py | MIGRATE |
+| `infra/bin/check.py` | The gate for infra/: everything this tree can be verified for without touching a live machine. | `infra/bin/check.py` | wf android, ci, convergence-daily +20; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 229 tools | check_test.py | Python |
 | `infra/bin/check_gate.py` | The running gate of infra/bin/check: how a step's commands run (from infra/, nix's bin first on their PATH), what a | `imported` | 3 tools | - | Python |
 | `infra/bin/check_hosts.py` | infra/bin/check's steps that ask the flake about each host: its toplevel derivation, then three questions `nix eval` | `imported` | 1 tool | - | Python |
 | `infra/bin/check_steps.py` | infra/bin/check's offline steps: terraform, the dashboard's plists and its lint + tests, and the test/ scripts (what | `imported` | 1 tool | - | Python |
@@ -713,8 +714,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 22 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 21 tools | tool_github_test.py | Python |
 | `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 95 tools | tool_process_test.py | Python |
-| `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 15 tools | tool_python_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 96 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 16 tools | tool_python_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 20 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |

@@ -107,7 +107,7 @@ scripts/ci/order-passes-present.sh	KEEP
 scripts/ci/order-phases.sh	KEEP
 scripts/ci/order-preflight.sh	KEEP
 scripts/ci/order-seed.sh	KEEP
-scripts/ci/population-walk-diff	MIGRATE
+scripts/ci/population-walk-diff	KEEP
 scripts/ci/precommit-share.sh	KEEP
 scripts/ci/preflight.sh	KEEP
 scripts/ci/prune-actions-caches.sh	KEEP
