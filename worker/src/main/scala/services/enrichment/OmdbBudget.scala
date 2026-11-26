@@ -2,12 +2,7 @@ package services.enrichment
 
 import java.time.{Instant, LocalDate, ZoneId}
 
-import scala.concurrent.Await
-import scala.concurrent.duration.*
-
-import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.model.{Filters, Updates}
-import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture}
+import org.mongodb.scala.MongoDatabase
 
 /**
  * The fleet's ONE daily OMDb budget: every country's worker holds the same key, and OMDb's free plan answers 1,000
@@ -95,68 +90,43 @@ object OmdbBudget {
   }
 }
 
-/** The budget in this process: a test's, or a worker with no fleet database (it then spends a day's budget alone). */
-final class InMemoryOmdbBudget(limit: Int = OmdbBudget.DailyLimit) extends OmdbBudget {
-  private var day: Option[LocalDate] = None
-  private var used = 0
-
-  private def roll(now: Instant): Unit = {
-    val today = OmdbBudget.dayOf(now)
-    if (!day.contains(today)) { day = Some(today); used = 0 }
-  }
-
-  def take(ask: OmdbAsk, now: Instant): OmdbBudget.Permit = synchronized {
-    roll(now)
-    if (used < OmdbBudget.ceiling(ask, limit, now)) { used += 1; OmdbBudget.Granted }
-    else OmdbBudget.Spent(OmdbBudget.retryAt(ask, used, limit, now))
-  }
-
-  def markSpent(now: Instant): Unit = synchronized { roll(now); used = used.max(limit) }
-
-  def usedToday(now: Instant): Int = synchronized { roll(now); used }
-}
-
-/** The budget in the fleet database's `omdb_budget`: one document per OMDb day (`_id` its date, `used` the permits
- *  granted), taken by one atomic conditional increment each, so every country's worker draws on the same count. */
-final class MongoOmdbBudget(db: MongoDatabase, limit: Int = OmdbBudget.DailyLimit) extends OmdbBudget {
-  private val Timeout = 10.seconds
-  private lazy val collection: MongoCollection[Document] = db.getCollection[Document](MongoOmdbBudget.Collection)
+/** The budget over a keyed store of day counters: one document per OMDb day (`_id` its date, `used` the permits
+ *  granted), taken by one atomic conditional increment each ([[tools.StoreCounters.increment]]), so every country's
+ *  worker draws on the same count. */
+abstract class KeyedOmdbBudget(days: tools.StoreCounters[String], limit: Int) extends OmdbBudget {
+  import KeyedOmdbBudget.Used
 
   def take(ask: OmdbAsk, now: Instant): OmdbBudget.Permit = {
     val day     = OmdbBudget.dayOf(now).toString
     val ceiling = OmdbBudget.ceiling(ask, limit, now)
-    if (ceiling <= 0) OmdbBudget.Spent(OmdbBudget.retryAt(ask, usedOn(day), limit, now))
-    else {
-      open(day)
-      val below = Filters.and(Filters.eq("_id", day), Filters.lt("used", ceiling))
-      Await.result(collection.findOneAndUpdate(below, Updates.inc("used", 1)).toFutureOption(), Timeout) match {
-        case Some(_) => OmdbBudget.Granted
-        case None    => OmdbBudget.Spent(OmdbBudget.retryAt(ask, usedOn(day), limit, now)) // at this ask's ceiling
-      }
-    }
+    if (ceiling > 0 && days.increment(day, Used, below = Some(ceiling.toLong)).isDefined) OmdbBudget.Granted
+    else OmdbBudget.Spent(OmdbBudget.retryAt(ask, usedOn(day), limit, now))     // at this ask's ceiling
   }
 
-  /** Create the day's document at 0 unless it exists, so the conditional increment never upserts: an upsert whose
-   *  filter also reads `used` met a worker opening the same day as a duplicate key, indistinguishable from "spent".
-   *  Two workers opening it at once still clash on the id (the filter is the id alone, which the server retries, and
-   *  a clash left over means the document is there either way). */
-  private def open(day: String): Unit =
-    try {
-      Await.result(collection.updateOne(Filters.eq("_id", day), Updates.setOnInsert("used", 0),
-        org.mongodb.scala.model.UpdateOptions().upsert(true)).toFuture(), Timeout)
-      ()
-    } catch { case e: com.mongodb.MongoException if e.getCode == 11000 => () }
-
+  /** The day's count raised to the limit (never lowered): a take racing in between may leave it a permit above. */
   def markSpent(now: Instant): Unit = {
-    Await.result(collection.updateOne(Filters.eq("_id", OmdbBudget.dayOf(now).toString), Updates.max("used", limit),
-      org.mongodb.scala.model.UpdateOptions().upsert(true)).toFuture(), Timeout)
+    val day = OmdbBudget.dayOf(now).toString
+    days.increment(day, Used, by = (limit - usedOn(day)).max(0).toLong)
     ()
   }
 
-  private def usedOn(day: String): Int =
-    Await.result(collection.find(Filters.eq("_id", day)).headOption(), Timeout)
-      .flatMap(_.get[org.mongodb.scala.bson.BsonInt32]("used")).map(_.getValue).getOrElse(0)
+  private def usedOn(day: String): Int = days.counted(day, Used).toInt
 }
+
+object KeyedOmdbBudget {
+  private val Used = "used"
+}
+
+/** The budget in this process: a test's, or a worker with no fleet database (it then spends a day's budget alone). */
+final class InMemoryOmdbBudget private (days: tools.KeyedStore[String, Unit], limit: Int) extends KeyedOmdbBudget(days, limit) {
+  def this(limit: Int = OmdbBudget.DailyLimit) = this(tools.KeyedStore.counters(new tools.InMemoryStoreDocuments()), limit)
+
+  def usedToday(now: Instant): Int = days.counted(OmdbBudget.dayOf(now).toString, "used").toInt
+}
+
+/** The budget in the fleet database's `omdb_budget`. */
+final class MongoOmdbBudget(db: MongoDatabase, limit: Int = OmdbBudget.DailyLimit) extends KeyedOmdbBudget(
+  tools.KeyedStore.counters(tools.MongoStoreDocuments.of(db.getCollection(MongoOmdbBudget.Collection))), limit)
 
 object MongoOmdbBudget {
   val Collection = "omdb_budget"
