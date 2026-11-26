@@ -31,6 +31,8 @@ Every script, action and workflow, with its purpose, callers, self-test and migr
 
 - [read-model-convergence.md](read-model-convergence.md) — "the prune is a no-op": every update path must leave the
   read model as a settle would.
+- [design/mongo-store-abstraction.md](design/mongo-store-abstraction.md) — one keyed store (`tools.KeyedStore`) over
+  Mongo and memory: segregated reader/writer/once/bulk/counter interfaces, TTL and counter semantics, migration order.
 - [design/identity-resolver.md](design/identity-resolver.md) — the identity resolver: §1–18 historical design and
   rollout record; §14, §19–21 current reference.
 - [design/identity-resolver-rules-inventory.md](design/identity-resolver-rules-inventory.md) — HISTORICAL rules
