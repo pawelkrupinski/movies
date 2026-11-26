@@ -17,6 +17,7 @@ private[identity] trait AcceptanceRuleTable { this: Acceptance =>
   import AcceptanceTitleRules.{alternativeAgainstTmdbsSearch, asItsBareTitle, creditsAnotherDirector, filmsTheTitleNames, imdbRung,
     itsOwnInstalmentOrASlip, itsTitlesFactsBeside, namesBeside, namesItsOnlyResult, otherInstalment, resultsFound, searchNamesAnother,
     soleResults, standsForItsTitle, theExactTopHit}
+  import AcceptanceTitleRules.{authorsNamesake, onlyTheEventsWords, performedBeside, readsAsNoFilm, reusedPage, stagedShowsOwn}
 
   /** The rules a node may be taken by on its own evidence, first to accept deciding ([[Acceptance.aloneNamed]]). */
   private[identity] lazy val aloneRules: List[AcceptanceRule] = List(SoleWork, FavouredCalibrated, ExactTopHit, SegmentTopHit,
@@ -280,8 +281,8 @@ private[identity] trait AcceptanceRuleTable { this: Acceptance =>
   /** An UNTAKEN film ([[Scored.untaken]]): it stays a rival, never a take. */
   private lazy val Takeable = Veto("untaken", (_, scored) => scored.untaken)
   private lazy val OnNoReusedPage = Veto("its page reads as reused: only a copied original title names a film of it, and the billing says more", reusedPage)
-  private lazy val NotPerformedBeside = Veto("another piece of its billing is a performance the film is not", performedBeside)
-  private lazy val NotAnAuthorsNamesake = Veto("its billing credits its work to an author who made no such film", authorsNamesake)
+  private lazy val NotPerformedBeside = Veto("another piece of its billing is a performance the film is not", (_, scored) => performedBeside(scored))
+  private lazy val NotAnAuthorsNamesake = Veto("its billing credits its work to an author who made no such film", (_, scored) => authorsNamesake(scored))
   /** A record whose longer title a billing of a NAME alone merely leads, no fact the venue states agreeing ([[aNameAlone]]):
    *  a performer billed bare is the performer's evening, not a recording of one programme, whichever rule found it. */
   private lazy val NotANameAlone = Veto("its billing is a name alone, which the record's longer title only leads, and no fact agrees",

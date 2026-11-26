@@ -12,7 +12,7 @@ import services.identity.measures.{DecisionTrace, IdentityMeasures, Measure, Sco
  *  ([[seasonProduction]]). A new rule is a new row there, its questions named in the rule file of its kind (title,
  *  facts, calibration, stage, vetoes, bills); this class only runs the table. */
 private[identity] final class Acceptance(private[identity] val calibration: IdentityCalibration)
-    extends AcceptanceRuleTable, AcceptanceCalibratedRules, AcceptanceStageRules, AcceptanceVetoRules {
+    extends AcceptanceRuleTable, AcceptanceCalibratedRules, AcceptanceStageRules {
 
   val weights = new EvidenceWeights(calibration)
   import weights.{against, fitsBetter, own, speaksAgainst}
@@ -189,6 +189,8 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
 
   /** Is the listing a bill of several works, which no rule takes a film of ([[AcceptanceTitleRules.billsSeveralWorks]])? */
   def billsSeveralWorks(ranked: Seq[Scored]): Boolean = AcceptanceTitleRules.billsSeveralWorks(ranked)
+  /** Does the listing's page read as reused for `scored` ([[AcceptanceTitleRules.copiedBeyondItsBilling]])? */
+  private[identity] def copiedBeyondItsBilling(scored: Scored): Boolean = AcceptanceTitleRules.copiedBeyondItsBilling(scored)
   /** The film a cluster no TMDB film was taken for falls back to ([[AcceptanceFactRules.fallback]]). */
   def fallback(ranked: Seq[Scored]): Option[Scored] = AcceptanceFactRules.fallback(weights, ranked)
 
