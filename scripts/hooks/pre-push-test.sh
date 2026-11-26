@@ -644,6 +644,7 @@ for f in hooks/pre-push hooks/lint-registry-missing hooks-path.sh tool-conventio
 cp "$REPO_ROOT"/scripts/pure_move_*.py "$area/scripts/"
 cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$REPO_ROOT/scripts/ci/shard_tests.py" "$REPO_ROOT/scripts/ci/shard_weights.py" "$REPO_ROOT/scripts/ci/population_walk_diff.py" "$area/scripts/ci/"
 mkdir -p "$area/scripts/lib"
+echo '__pycache__/' > "$area/.gitignore"  # shard_tests now imports a module, whose bytecode the next `add -A` would commit as a scripts/ change
 cp "$REPO_ROOT/scripts/lib/tool_git.py" "$REPO_ROOT/scripts/lib/tool_process.py" "$area/scripts/lib/"  # what trailers.py and the pure-move tools import
 cat > "$area/scripts/hooks/local-tests.txt" <<'TESTS'
 # a comment
