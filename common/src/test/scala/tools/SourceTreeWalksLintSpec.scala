@@ -100,7 +100,7 @@ class SourceTreeWalksLintSpec extends AnyFlatSpec with Matchers {
           "common/src/main/scala/services/titles/rules/", "identity/src/main/scala/services/identity/agreement/")),
     "worker/src/test/scala/tools/NoDecisionKeyedByMutableIdSpec.scala" ->
       ("prefixes of the allowlist's field ids (`<path>#<field>`); the walk is the declared Roots",
-        Set("identity/src/main/scala/services/identity/", "worker/src/main/scala/services/tmdb/", "worker/src/main/scala/services/agreementasks/", "worker/src/main/scala/services/identitystaging/", "worker/src/main/scala/services/lookupfill/", "worker/src/main/scala/services/identityvenuepages/", "worker/src/main/scala/services/identityprojection/", "worker/src/main/scala/services/identitymodel/")),
+        Set("identity/src/main/scala/services/identity/")),
     "worker/src/test/scala/tools/NoSwallowedFailureSpec.scala" ->
       ("prefixes a scanned file is matched against (which code reads an upstream); the walk is ScalaSourceScan's MainRoots",
         Set("scrapers/src/main/scala/services/cinemas/", "worker/src/main/scala/services/enrichment/", "common/src/main/scala/tools/",
