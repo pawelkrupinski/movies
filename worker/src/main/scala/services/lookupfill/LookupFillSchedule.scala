@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.lookupfill
 
 import scala.concurrent.duration.FiniteDuration
 

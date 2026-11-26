@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.lookupfill
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry

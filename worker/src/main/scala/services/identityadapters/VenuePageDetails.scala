@@ -1,5 +1,6 @@
 package services.identityadapters
 
+import services.lookupfill.{LookupGaps, VenueDetails}
 import services.cinemas.common.DetailEnricher
 import services.identity.vocabulary.ObservationReads
 

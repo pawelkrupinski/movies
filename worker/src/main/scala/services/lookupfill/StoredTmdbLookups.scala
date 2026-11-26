@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.lookupfill
 
 import services.tmdb.{TmdbKind, TmdbStore}
 import java.util.concurrent.ConcurrentHashMap

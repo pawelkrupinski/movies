@@ -2,12 +2,13 @@ package services.identity
 package adapters
 
 import services.identityadapters.*
+import services.lookupfill.{NormalizingHttpFetch, StoredFirstLookups, StoredTmdbLookups, TmdbIdentityLookups, TmdbNormalizer}
 import services.tmdb.{InMemoryTmdbDocuments, TmdbDocuments, TmdbKind, TmdbStore}
 import tools.SpecPool
 import tools.SpecTimeouts
 
 import clients.HttpTmdbClient
-import services.identityadapters.TmdbIdentityReads.*
+import services.lookupfill.TmdbIdentityReads.*
 import clients.tools.{AnyMethodByUrlHttpFetch, FakeHttpFetch, FixtureFile}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

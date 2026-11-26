@@ -43,7 +43,7 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
   private val httpFetch = Decorated[HttpFetch](
     classOf[HttpFetch],
     // One class per classes directory a decorator may live in: http, common, the scrapers, the worker.
-    anchors = Seq(classOf[HttpFetch], classOf[PacedHttpFetch], classOf[services.cinemas.CinemaScraperCatalog], classOf[services.identityadapters.LookupFillLiveFetch]),
+    anchors = Seq(classOf[HttpFetch], classOf[PacedHttpFetch], classOf[services.cinemas.CinemaScraperCatalog], classOf[services.lookupfill.LookupFillLiveFetch]),
     factories = Map(
       classOf[PacedHttpFetch]              -> ((d: HttpFetch) => PacedHttpFetch.perProcess(d, intervalFor = _ => None, clock = SpecClock.Pinned)),
       classOf[ThrottledHttpFetch]          -> ((d: HttpFetch) => new ThrottledHttpFetch(d, clock = SpecClock.Pinned)),
@@ -57,18 +57,18 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       classOf[FallbackHttpFetch]           -> ((d: HttpFetch) => new FallbackHttpFetch(Seq("only" -> d), _root_.tools.SpecStopwatch.Frozen)),
       classOf[SessionWarmingHttpFetch]     -> ((d: HttpFetch) => new SessionWarmingHttpFetch(d, "https://decorator.test/")),
       // A budget with room: every call reaches the fetch it decorates.
-      classOf[services.identityadapters.LookupFillLiveFetch] -> ((d: HttpFetch) =>
-        new services.identityadapters.LookupFillLiveFetch(d, new services.identityadapters.LookupFillBudget(Int.MaxValue, 0.seconds, _ => ()))),
+      classOf[services.lookupfill.LookupFillLiveFetch] -> ((d: HttpFetch) =>
+        new services.lookupfill.LookupFillLiveFetch(d, new services.lookupfill.LookupFillBudget(Int.MaxValue, 0.seconds, _ => ()))),
       // Counts the changes sweep's requests against its per-minute allowance.
-      classOf[services.identityadapters.TmdbChangesSweep.CountingFetch] -> ((d: HttpFetch) =>
-        new services.identityadapters.TmdbChangesSweep.CountingFetch(d)),
+      classOf[services.lookupfill.TmdbChangesSweep.CountingFetch] -> ((d: HttpFetch) =>
+        new services.lookupfill.TmdbChangesSweep.CountingFetch(d)),
       // Counts the model's live asks' failed reads, so a gap whose read failed is asked again on the failure backoff.
-      classOf[services.identityadapters.LiveAsks.Counted] -> ((d: HttpFetch) => new services.identityadapters.LiveAsks.Counted(d)),
+      classOf[services.lookupfill.LiveAsks.Counted] -> ((d: HttpFetch) => new services.lookupfill.LiveAsks.Counted(d)),
       // Asks a recoverable failure again on the spot.
       classOf[RetryingHttpFetch] -> ((d: HttpFetch) => new RetryingHttpFetch(d, _ => ())),
       // Normalizes what it sees into a store as a side effect; every call reaches the fetch it decorates.
-      classOf[services.identityadapters.NormalizingHttpFetch] -> ((d: HttpFetch) =>
-        new services.identityadapters.NormalizingHttpFetch(d, new services.identityadapters.TmdbNormalizer(
+      classOf[services.lookupfill.NormalizingHttpFetch] -> ((d: HttpFetch) =>
+        new services.lookupfill.NormalizingHttpFetch(d, new services.lookupfill.TmdbNormalizer(
           new services.tmdb.TmdbStore(new services.tmdb.InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)))))
     ),
     mayInherit =
@@ -77,9 +77,9 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       Seq(classOf[PacedHttpFetch], classOf[ThrottledHttpFetch], classOf[HostCircuitBreakerHttpFetch],
           classOf[MemoizedHttpFetch], classOf[CachingDetailFetch], classOf[MongoCachingDetailFetch],
           classOf[MonitoringHttpFetch], classOf[CountingHttpFetch], classOf[StickyShardHttpFetch],
-          classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.identityadapters.LookupFillLiveFetch],
-          classOf[services.identityadapters.NormalizingHttpFetch], classOf[services.identityadapters.TmdbChangesSweep.CountingFetch],
-          classOf[services.identityadapters.LiveAsks.Counted], classOf[RetryingHttpFetch])
+          classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.lookupfill.LookupFillLiveFetch],
+          classOf[services.lookupfill.NormalizingHttpFetch], classOf[services.lookupfill.TmdbChangesSweep.CountingFetch],
+          classOf[services.lookupfill.LiveAsks.Counted], classOf[RetryingHttpFetch])
         .map(c => (c: Class[?], getAsync) -> "the default async get goes through the decorator's own get").toMap ++
       Map(
         // A detail page does not vary by request header; both caches key on the URL alone.

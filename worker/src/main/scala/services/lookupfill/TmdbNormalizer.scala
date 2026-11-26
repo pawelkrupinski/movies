@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.lookupfill
 
 import services.tmdb.{FailureHistory, TmdbKind, TmdbStore}
 import java.net.{URI, URLDecoder}

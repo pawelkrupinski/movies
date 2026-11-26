@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.lookupfill.{LiveAsks, StoredFirstLookups}
 import services.tmdb.{InMemoryTmdbDocuments, QuestionMemory, QuestionPolicies, TmdbKind}
 import clients.tools.FailingHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec

@@ -1,6 +1,6 @@
 package scripts
 
-import services.identityadapters.{NormalizingHttpFetch, TmdbNormalizer}, services.tmdb.{InMemoryTmdbDocuments, TmdbKind, TmdbStore}
+import services.lookupfill.{NormalizingHttpFetch, TmdbNormalizer}, services.tmdb.{InMemoryTmdbDocuments, TmdbKind, TmdbStore}
 import clients.HttpTmdbClient
 import clients.tools.{FakeHttpFetch, FixtureFile}
 import org.bson.BsonDocument

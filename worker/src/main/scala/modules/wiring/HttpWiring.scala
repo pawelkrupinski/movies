@@ -117,7 +117,7 @@ trait HttpWiring { self: WorkerWiring =>
   // fill, the model's live gap). Wrapped OUTSIDE the chain, so what is filed is what the
   // pipeline itself received — a replayed fixture, a remembered verdict or the wire.
   lazy val identityLookupFetch: HttpFetch =
-    new services.identityadapters.NormalizingHttpFetch(enrichmentFetch, identityTmdbNormalizer)
+    new services.lookupfill.NormalizingHttpFetch(enrichmentFetch, identityTmdbNormalizer)
 
   // ── External API clients ──────────────────────────────────────────────────
   // All draw from the `enrich` phase (the TMDB client through `identityLookupFetch`), apart from

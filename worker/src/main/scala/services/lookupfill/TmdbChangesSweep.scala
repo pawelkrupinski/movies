@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.lookupfill
 
 import services.tmdb.{TmdbDocuments, TmdbKind, TmdbStore}
 import java.time.{Clock, LocalDate, ZoneOffset}
@@ -11,7 +11,7 @@ import clients.TmdbClient
 import org.bson.{BsonArray, BsonDocument, BsonInt32, BsonString}
 import play.api.Logging
 import services.identity.measures.*
-import services.identityadapters.TmdbIdentityReads.*
+import services.lookupfill.TmdbIdentityReads.*
 import tools.{DueBoundary, ForwardingHttpFetch, HttpFetch}
 
 /**

@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.lookupfill.TmdbNormalizer
 import services.tmdb.{InMemoryTmdbDocuments, QuestionRenewals, TmdbKind, TmdbStore}
 import org.bson.{BsonArray, BsonDocument, BsonInt64}
 import org.scalatest.flatspec.AnyFlatSpec

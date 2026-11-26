@@ -1,5 +1,6 @@
 package services.identityadapters
 
+import services.lookupfill.{LookupGap, LookupGaps}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
 import services.identity.vocabulary.ObservationReads
 import tools.LookupQuery

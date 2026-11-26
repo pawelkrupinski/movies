@@ -6,7 +6,7 @@ import models.Country
 import services.alerts.TelegramNotificationMetrics
 import services.corpus.CorpusCensus
 import services.agreementasks.IdentityAgreementMetrics
-import services.identityadapters.IdentityLookupFillMetrics
+import services.lookupfill.IdentityLookupFillMetrics
 import services.identityadapters.IdentityModelGauges
 import services.identityadapters.IdentityProjectionGauges
 import services.identitystaging.IdentityTakeMetrics

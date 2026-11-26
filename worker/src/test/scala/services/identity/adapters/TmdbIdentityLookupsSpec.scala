@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.lookupfill.TmdbIdentityLookups
 import tools.SpecPool
 import tools.SpecTimeouts
 

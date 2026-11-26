@@ -9,7 +9,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
 import services.identity._
-import services.identityadapters.TmdbIdentityLookups
+import services.lookupfill.TmdbIdentityLookups
 import services.movies.{ScrapeListing, ScreeningTokens}
 import tools._
 

@@ -6,7 +6,7 @@ import services.identity.IdentityLookups
 import services.identity.measures.Film
 import services.identity.vocabulary.Answer
 import services.identity.agreement.SuspectTakes
-import services.identityadapters.TmdbIdentityLookups
+import services.lookupfill.TmdbIdentityLookups
 import models.ListingKey
 import tools.{IdentityJudgements, UnmatchedClusters}
 import tools.UnmatchedClusters.{Capture, Label, Take}

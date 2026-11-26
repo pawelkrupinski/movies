@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.lookupfill.TmdbNormalizer
 import services.tmdb.{HistoryEntry, HistoryTmdbDocuments, InMemoryIdentityHistory, InMemoryTmdbDocuments, KeptFailures, TakeExplanation, TakeHistory, TakeReads, TmdbKind, TmdbStore}
 import models.{Country, KinoMuza, Multikino}
 import org.scalatest.flatspec.AnyFlatSpec

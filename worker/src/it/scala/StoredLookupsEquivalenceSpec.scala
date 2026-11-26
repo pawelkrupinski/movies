@@ -4,7 +4,7 @@ import clients.tools.FakeHttpFetch
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identityadapters.TmdbIdentityLookups
+import services.lookupfill.TmdbIdentityLookups
 import services.identity.vocabulary.{Answer, CandidateQuery}
 
 class StoredLookupsEquivalenceSpec extends AnyFlatSpec with Matchers {

@@ -1,6 +1,6 @@
 package services.tasks
 
-import services.identityadapters.{LookupFill, LookupFillChain, LookupFillLedger, StoredFirstLookups, TmdbChangesSweep, TmdbIdentityLookups, TmdbNormalizer}, services.agreementasks.AgreementQuestions, services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, QuestionMemory, TmdbStore}
+import services.lookupfill.{LookupFill, LookupFillChain, LookupFillLedger, StoredFirstLookups, TmdbChangesSweep, TmdbIdentityLookups, TmdbNormalizer}, services.agreementasks.AgreementQuestions, services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, QuestionMemory, TmdbStore}
 import services.tasktypes.TaskType
 
 import clients.tools.ConstantHttpFetch

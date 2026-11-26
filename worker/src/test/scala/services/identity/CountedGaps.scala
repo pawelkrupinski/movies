@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identityadapters.TmdbIdentityLookups
+import services.lookupfill.TmdbIdentityLookups
 import scala.util.Try
 import services.identity.vocabulary.Answer
 import services.identity.vocabulary.toAnswer

@@ -1,8 +1,8 @@
 package tools
 
-import services.identityadapters.{NormalizingHttpFetch, TmdbNormalizer}, services.tmdb.{InMemoryTmdbDocuments, TmdbKind, TmdbStore}
+import services.lookupfill.{NormalizingHttpFetch, TmdbNormalizer}, services.tmdb.{InMemoryTmdbDocuments, TmdbKind, TmdbStore}
 import clients.HttpTmdbClient
-import services.identityadapters.TmdbIdentityReads.*
+import services.lookupfill.TmdbIdentityReads.*
 import clients.tools.FakeHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

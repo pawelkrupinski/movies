@@ -1,6 +1,6 @@
 package scripts
 
-import services.identityadapters.{NormalizingHttpFetch, TmdbNormalizer}, services.tmdb.{MongoTmdbDocuments, TmdbKind, TmdbStore}
+import services.lookupfill.{NormalizingHttpFetch, TmdbNormalizer}, services.tmdb.{MongoTmdbDocuments, TmdbKind, TmdbStore}
 import clients.HttpTmdbClient
 import models.Country
 import org.bson.{BsonDocument, BsonValue}

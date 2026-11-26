@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.lookupfill
 
 import models.Cinema
 import services.cinemas.common.DetailEnricher

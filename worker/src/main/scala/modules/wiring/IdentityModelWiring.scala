@@ -73,28 +73,28 @@ trait IdentityModelWiring { self: WorkerWiring =>
     new services.tasks.ClaimedPeriodicTask("tmdb-store-sweep", () => { identityTmdbSweep.sweep(); tools.TickRun.Completed },
       services.tmdb.TmdbStoreSweep.Interval, WorkerWiring.TmdbSweepInitialDelay, scheduledRunStore, clock, ticks, threadPools = threadPools))
   lazy val identityTmdbStore: services.tmdb.TmdbStore = identityTmdbLayer.store
-  lazy val identityTmdbNormalizer: services.identityadapters.TmdbNormalizer =
-    new services.identityadapters.TmdbNormalizer(identityTmdbStore, tmdbJsonBodies,
+  lazy val identityTmdbNormalizer: services.lookupfill.TmdbNormalizer =
+    new services.lookupfill.TmdbNormalizer(identityTmdbStore, tmdbJsonBodies,
       new services.tmdb.KeptFailures(identityHistory, clock, configuration.commit.value))
   /** Keeps the store current from TMDB's change lists (`TmdbChangesSweep`): each day's edits checked at a
    *  pace spread over the day, from the country's own hashed phase, through the lookup chain (`enrichmentFetch`). */
-  lazy val identityTmdbChanges: services.identityadapters.TmdbChangesSweep =
-    new services.identityadapters.TmdbChangesSweep(identityTmdbStore, identityTmdbDocuments,
-      new services.identityadapters.NormalizingHttpFetch(enrichmentFetch, identityTmdbNormalizer), tmdbClientOver,
-      country.language.toLanguageTag, services.identityadapters.TmdbChangesSweep.Schedule.forCountry(country.code), clock)
+  lazy val identityTmdbChanges: services.lookupfill.TmdbChangesSweep =
+    new services.lookupfill.TmdbChangesSweep(identityTmdbStore, identityTmdbDocuments,
+      new services.lookupfill.NormalizingHttpFetch(enrichmentFetch, identityTmdbNormalizer), tmdbClientOver,
+      country.language.toLanguageTag, services.lookupfill.TmdbChangesSweep.Schedule.forCountry(country.code), clock)
   /** The sweep's minute ticks, each spending a minute's allowance. */
   lazy val identityTmdbChangesSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("tmdb-changes-sweep", () => identityTmdbChanges.tick().run,
-      services.identityadapters.TmdbChangesSweep.TickInterval,
+      services.lookupfill.TmdbChangesSweep.TickInterval,
       configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock, ticks, threadPools = threadPools))
   /** An operator's TMDB films just edited, fetched again with the questions of the families they reach
    *  (`TmdbFilmRefresh`, the `tmdb-films` source of a `RefreshSource` task), through the lookup chain (`enrichmentFetch`). */
-  lazy val identityTmdbFilmRefresh: services.identityadapters.TmdbFilmRefresh =
-    new services.identityadapters.TmdbFilmRefresh(
-      new services.identityadapters.NormalizingHttpFetch(enrichmentFetch, identityTmdbNormalizer),
-      services.identityadapters.TmdbFilmRefresh.liveLookups(tmdbClientOver),
+  lazy val identityTmdbFilmRefresh: services.lookupfill.TmdbFilmRefresh =
+    new services.lookupfill.TmdbFilmRefresh(
+      new services.lookupfill.NormalizingHttpFetch(enrichmentFetch, identityTmdbNormalizer),
+      services.lookupfill.TmdbFilmRefresh.liveLookups(tmdbClientOver),
       families = () => identityModel.caughtUp(WorkerWiring.IdentityModelPeek)(engine =>
-        services.identityadapters.TmdbFilmRefresh.Family.of(engine.familyQuestions, engine.listings)), fold = titleNormalizer.sanitize)
+        services.lookupfill.TmdbFilmRefresh.Family.of(engine.familyQuestions, engine.listings)), fold = titleNormalizer.sanitize)
   /** The model's answers due to be asked again for their age (`QuestionRenewals`): its questions, then the records and
    *  people it reads, while it is taken up. */
   lazy val identityRenewals: services.tmdb.QuestionRenewals =
@@ -145,10 +145,10 @@ trait IdentityModelWiring { self: WorkerWiring =>
   /** The model's TMDB and IMDb answers from its normalized store, and venue details from venue_pages
    *  ([[venuePageIndex]]) — what the model reads first ([[cutoverLookups]]). */
   def storedLookups(reads: services.identity.vocabulary.ObservationReads = services.identity.vocabulary.ObservationReads.Untracked): services.identity.IdentityLookups =
-    new services.identityadapters.StoredTmdbLookups(identityTmdbStore, country.language.toLanguageTag, venueDetailLookups(reads), reads)
+    new services.lookupfill.StoredTmdbLookups(identityTmdbStore, country.language.toLanguageTag, venueDetailLookups(reads), reads)
   /** What the venues' own detail pages state of their listings ([[venuePageIndex]]). */
-  def venueDetailLookups(reads: services.identity.vocabulary.ObservationReads = services.identity.vocabulary.ObservationReads.Untracked): services.identityadapters.VenueDetailLookups =
-    new services.identityadapters.VenueDetailLookups(services.identityadapters.VenuePageDetails.of(detailEnrichers, venuePageIndex, reads))
+  def venueDetailLookups(reads: services.identity.vocabulary.ObservationReads = services.identity.vocabulary.ObservationReads.Untracked): services.lookupfill.VenueDetailLookups =
+    new services.lookupfill.VenueDetailLookups(services.identityadapters.VenuePageDetails.of(detailEnrichers, venuePageIndex, reads))
 
   /** What a drain of the identity model sets off: the projection of what moved and the fill of the gaps it found.
    *  Neither runs on a period. */
@@ -160,10 +160,10 @@ trait IdentityModelWiring { self: WorkerWiring =>
   /** A cut-over model's lookups: [[storedLookups]] first, and a TMDB or IMDb question the store has no
    *  answer to asked live through `identityLookupFetch`, which files the answer into the store. */
   def cutoverLookups(reads: services.identity.vocabulary.ObservationReads = services.identity.vocabulary.ObservationReads.Untracked): services.identity.IdentityLookups = {
-    val counted = new services.identityadapters.LiveAsks.Counted(identityLookupFetch)
-    new services.identityadapters.StoredFirstLookups(storedLookups(reads),
-      new services.identityadapters.TmdbIdentityLookups(tmdbClientOver(counted), new services.enrichment.ImdbClient(counted), Nil),
-      services.identityadapters.LiveAsks.remembered(identityQuestionMemory))
+    val counted = new services.lookupfill.LiveAsks.Counted(identityLookupFetch)
+    new services.lookupfill.StoredFirstLookups(storedLookups(reads),
+      new services.lookupfill.TmdbIdentityLookups(tmdbClientOver(counted), new services.enrichment.ImdbClient(counted), Nil),
+      services.lookupfill.LiveAsks.remembered(identityQuestionMemory))
   }
 
   /** What was asked and left unanswered, and when it is due again: one memory for the fill, the model's live asks and
@@ -217,11 +217,11 @@ trait IdentityModelWiring { self: WorkerWiring =>
   // (`QuestionRenewals`) — and any question still open; a record TMDB changed since is `identityTmdbChanges`'.
   // Through the lookup chain (`enrichmentFetch`: its 429 gate, breaker and pace), at most
   // `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` per minute, the answers filed in the model's TMDB store.
-  lazy val lookupFill: services.identityadapters.LookupFill =
-    new services.identityadapters.LookupFill(
+  lazy val lookupFill: services.lookupfill.LookupFill =
+    new services.lookupfill.LookupFill(
       questions   = () => identityModel.peek(WorkerWiring.IdentityModelPeek).fold(services.identity.vocabulary.AnswersChanged.Empty)(_.gaps),
-      chain       = new services.identityadapters.LookupFillChain(tmdbClientOver, enrichmentFetch, identityTmdbNormalizer),
-      ledger      = new services.identityadapters.LookupFillLedger(identityQuestionMemory, identityTmdbNormalizer.recordAbsent),
+      chain       = new services.lookupfill.LookupFillChain(tmdbClientOver, enrichmentFetch, identityTmdbNormalizer),
+      ledger      = new services.lookupfill.LookupFillLedger(identityQuestionMemory, identityTmdbNormalizer.recordAbsent),
       renewals    = () => identityRenewals.due(),
       rate        = configuration.identityLookupFillRate(WorkerWiring.DefaultLookupFillRate),
       window      = identityLookupFillInterval,
@@ -241,7 +241,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
     configuration.identityLookupFillInterval(WorkerWiring.DefaultLookupFillInterval)
   /** The fill's rounds, every `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` (30 minutes). */
   lazy val identityLookupRefreshSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
-    services.identityadapters.LookupFillSchedule(lookupFill, identityLookupFillInterval.value,
+    services.lookupfill.LookupFillSchedule(lookupFill, identityLookupFillInterval.value,
       configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock, ticks,
       threadPools))
 

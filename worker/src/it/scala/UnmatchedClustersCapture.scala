@@ -1,6 +1,6 @@
 package integration
 
-import services.identityadapters.{TmdbIdentityLookups}, services.agreementasks.PosterAnswerStore, services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind}
+import services.lookupfill.TmdbIdentityLookups, services.agreementasks.PosterAnswerStore, services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind}
 import services.identity._
 import services.identity.measures.Listing
 

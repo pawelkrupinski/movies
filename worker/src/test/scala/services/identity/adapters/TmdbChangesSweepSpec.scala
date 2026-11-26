@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.lookupfill.{NormalizingHttpFetch, TmdbChangesSweep, TmdbNormalizer}
 import services.tmdb.{InMemoryTmdbDocuments, TmdbKind, TmdbStore}
 import clients.tools.FixtureFile
 import clients.HttpTmdbClient

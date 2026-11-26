@@ -4,7 +4,7 @@ import services.identity.{IdentityCalibration, IdentityLookups, IdentityResolver
 import services.identity.measures.Listing
 import services.identity.measures.Film
 import services.identity.vocabulary.{Answer, CandidateQuery, DetailFacts, Hit, ObservationReads}
-import services.identityadapters.TmdbIdentityLookups
+import services.lookupfill.TmdbIdentityLookups
 import services.titles.TitleNormalizer
 
 /**

@@ -1,6 +1,6 @@
 package integration
 
-import services.identityadapters.{TmdbNormalizer}, services.tmdb.{InMemoryTmdbDocuments, MongoTmdbDocuments, TmdbDocuments, TmdbKind, TmdbStore}
+import services.lookupfill.TmdbNormalizer, services.tmdb.{InMemoryTmdbDocuments, MongoTmdbDocuments, TmdbDocuments, TmdbKind, TmdbStore}
 import org.bson.BsonDocument
 import org.mongodb.scala.{ObservableFuture, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll

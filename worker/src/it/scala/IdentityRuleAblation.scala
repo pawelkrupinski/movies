@@ -4,7 +4,7 @@ import models.Country
 import play.api.libs.json.{JsNull, JsNumber, JsObject, JsString, JsValue, Json}
 import services.identity._
 import services.identity.measures.{Listing, Resolution}
-import services.identityadapters.TmdbIdentityLookups
+import services.lookupfill.TmdbIdentityLookups
 import models.ListingKey
 import services.titles.TitleNormalizer
 import services.titles.rules.{ExtraTitleRules, TitleRuleSet, TitleRules}

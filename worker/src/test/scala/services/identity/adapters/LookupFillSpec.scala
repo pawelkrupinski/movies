@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.lookupfill.{LookupFill, LookupFillBudget, LookupFillChain, LookupFillLedger, LookupFillLiveFetch, LookupFillRound, LookupFillSchedule, StoredTmdbLookups, TmdbNormalizer}
 import services.tmdb.{InMemoryTmdbDocuments, QuestionMemory, QuestionPolicies, QuestionRenewals, TmdbKind, TmdbStore}
 import clients.tools.{AnyMethodByUrlHttpFetch, ConstantHttpFetch, FailingHttpFetch}
 import models._

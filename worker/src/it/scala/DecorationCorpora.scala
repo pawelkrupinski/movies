@@ -3,7 +3,7 @@ package integration
 import scripts.IdentityCalibrationData.{TmdbAnswers, languageOf}
 import services.identity._
 import services.identity.measures.Listing
-import services.identityadapters.TmdbIdentityLookups
+import services.lookupfill.TmdbIdentityLookups
 import models.ListingKey
 import tools.{ConvergenceStorage, IntegrationMongoTarget}
 
