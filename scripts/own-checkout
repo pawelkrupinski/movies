@@ -10,6 +10,7 @@
 # Exit 0 when the working directory is inside the tool's checkout, or inside no git checkout at all (nothing to mix up);
 # 2, saying which copy to run, when it is inside another. own-checkout-test.sh holds every such tool to calling it.
 set -uo pipefail
+case "${1:-}" in -h|--help) . "$(dirname "$0")/tool-conventions.sh"; usage_from_header "$0"; exit 0 ;; esac
 tool="${1:?usage: own-checkout <tool path>}"
 own="$(cd "$(dirname "$tool")" && git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 here="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0

@@ -21,6 +21,7 @@ out="$(run_in "$work/other")"; status=$?
 check "inside another checkout: exit 2, naming the copy to run" "2 1" \
   "$status $(grep -c "this copy measures $work/own, its own checkout, but this is $work/other: run $work/other/scripts/tool" <<< "$out")"
 check "inside its own checkout: it runs" "0 ran" "$(out="$(run_in "$work/own")"; echo "$? $out")"
+check "--help prints the header and exits 0" "0 1" "$(out="$("$REPO_ROOT/scripts/own-checkout" --help 2>&1)"; echo "$? $(grep -c 'THE OWN-CHECKOUT GUARD' <<< "$out")")"
 check "outside any checkout: it runs" "0 ran" "$(out="$(run_in "$work/plain")"; echo "$? $out")"
 
 # every tool that works in its own checkout calls the guard; these choose their tree otherwise

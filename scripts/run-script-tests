@@ -177,7 +177,7 @@ while [ $# -gt 0 ]; do
     --bash) flag_value "$@"; test_bash="$2"; shift ;;
     --floor) flag_value "$@"; floor_bash="$2"; shift ;;
     --linux) linux=1 ;;
-    -h|--help) usage ;;
+    -h|--help) usage_from_header "${BASH_SOURCE[0]}"; exit 0 ;;
     -*) echo "run-script-tests: unknown option $1" >&2; usage ;;
     *) filters+=("$1") ;;
   esac

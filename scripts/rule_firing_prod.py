@@ -113,8 +113,14 @@ def render(rows, counted, window, others=None):
 
 
 def ask(query):
-    command = ["ssh", MONITORING_HOST, f"curl -s {PROMETHEUS} --data-urlencode {shlex.quote('query=' + query)}"]
-    done = subprocess.run(command, capture_output=True, text=True, timeout=120)
+    # BatchMode: a passphrase / Touch ID prompt fails at once instead of hanging; curl -f fails on an HTTP error
+    # (a plain -s swallowed it into an empty answer) and --max-time bounds the query inside the ssh timeout.
+    command = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", MONITORING_HOST,
+               f"curl -sf --max-time 30 {PROMETHEUS} --data-urlencode {shlex.quote('query=' + query)}"]
+    try:
+        done = subprocess.run(command, capture_output=True, text=True, timeout=120)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"ssh {MONITORING_HOST} timed out after 120 s")
     if done.returncode != 0:
         raise RuntimeError(f"ssh {MONITORING_HOST} failed: {done.stderr.strip()[:300]}")
     return done.stdout

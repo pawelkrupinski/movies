@@ -7,8 +7,10 @@ classified into dead in prod / dead in the recordings, every outside call answer
 import io
 import json
 import os
+import subprocess
 import sys
 import unittest
+from unittest import mock
 from contextlib import redirect_stdout
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -83,6 +85,18 @@ class RuleFiringProdTest(unittest.TestCase):
         self.assertIn("120000 listings counted", text)
         self.assertIn("DEAD IN BOTH (1)\n  xtra-pp-lato-cycle  [banner, season jun-sep]  prod 0  recordings -", text)
         self.assertIn("  veto:learned-x  prod 0\n  accept:sole-work  prod 9000", text)
+
+    def test_the_ssh_query_cannot_hang_or_swallow_a_failure(self):
+        seen = []
+
+        def run(command, **kwargs):
+            seen.append(command)
+            raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+        with mock.patch.object(subprocess, "run", run):
+            with self.assertRaisesRegex(RuntimeError, "timed out"):
+                rfp.ask("up")
+        self.assertEqual(["-o", "BatchMode=yes", "-o", "ConnectTimeout=10"], seen[0][1:5])
+        self.assertIn("curl -sf --max-time 30", seen[0][-1])
 
     def test_refuses_a_window_with_nothing_counted(self):
         ask, _ = fake_ask([prom([]), prom([])])

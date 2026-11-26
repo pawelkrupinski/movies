@@ -35,6 +35,8 @@ check "a key holding a space, a glob, a quote or a backslash: one quoted, escape
   "\"imdb\" \"two words\" \"*\" \"say \\\"hi\\\"\" \"back\\\\slash\"" "$(sed -n 4p "$work/seen" | sed 's/^.* --run [^ ]* //')"
 check "a key holding a line break is refused, nothing run" "2 no" \
   "$(rm -f "$work/seen"; refresh kinowo imdb "$(printf 'a\nb')") $([ -f "$work/seen" ] && echo yes || echo no)"
+check "no arguments at all is a usage error, not a quiet success" "2" "$(rm -f "$work/seen"; refresh)"
+check "--help exits 0" "0" "$(refresh --help)"
 check "too few arguments is a usage error, nothing run" "2" "$(rm -f "$work/seen"; refresh kinowo tmdb-films)"
 check "...nothing handed on" "no" "$([ -f "$work/seen" ] && echo yes || echo no)"
 

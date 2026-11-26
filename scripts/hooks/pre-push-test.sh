@@ -610,6 +610,14 @@ STUB
            | bash scripts/hooks/pre-push origin url 2>&1)"
   check "warns when origin/main is missing, instead of checking nothing in silence" "1" \
     "$(printf '%s\n' "$out" | grep -c 'origin/main')"
+  # origin/main present but sharing no history with the pushed commit: the base cannot be found -- said too.
+  orphan="$(scratch_git "$repo" commit-tree -m orphan "$(scratch_git "$repo" mktree </dev/null)")"
+  scratch_git "$repo" update-ref refs/remotes/origin/main "$head"
+  out="$(cd "$repo" && printf 'refs/heads/y %s refs/heads/y %s\n' "$orphan" 0000000000000000000000000000000000000000 \
+           | bash scripts/hooks/pre-push origin url 2>&1)"
+  scratch_git "$repo" update-ref -d refs/remotes/origin/main
+  check "warns when the pushed commit shares no history with origin/main, instead of checking nothing in silence" "1" \
+    "$(printf '%s\n' "$out" | grep -c 'shares no history')"
   # A TAG changes nothing main builds (the experiment/<name> tags keep dropped experiments' code): a push of refs/tags/*
   # alone runs no code check -- it once ran 3759 s of scripttests, page and sbt, and blocked on them.
   out="$(cd "$repo" && printf 'refs/tags/experiment/x %s refs/tags/experiment/x %s\n' "$head" 0000000000000000000000000000000000000000 \

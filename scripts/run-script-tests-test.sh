@@ -353,6 +353,7 @@ scratch_git "$tree" checkout -q -- scripts/fl
 rm -rf "$tree/scripts/fl"; scratch_git "$tree" add -A && scratch_git "$tree" commit -qm 'floor done'
 
 check "an unknown option is a usage error" "64" "$(run --bogus)"
+check "--help prints the usage and exits 0" "0 1" "$(c="$(run --help)"; echo "$c $(grep -c '^Options: --jobs N' "$work/out")")"
 check "a flag given last without its value is a usage error, 64 (not 1)" "64" "$(run --jobs)"
 check "...named, before the usage" "1" "$(grep -c 'run-script-tests: --jobs needs a value' "$work/out")"
 check "...the usage read from the header" "1" "$(grep -c '^Options: --jobs N' "$work/out")"
