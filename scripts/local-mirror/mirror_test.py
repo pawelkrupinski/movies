@@ -131,11 +131,13 @@ if os.path.exists(table):
     with open(table) as f:
         out(f.read(), end="")
 '''
-# agentctl: a governor charging cores (`def cmd_gov def gov_route`, what jvm-gate.sh greps for); `gov admit` waits while
+# agentctl: a governor charging cores (it answers the `gov probe` jvm-gate.sh's governor_bin reads); `gov admit` waits while
 # $GOV_HOLD names a file not there yet (a starved laptop), then takes the ticket's lock on the descriptor it was given
 GOVERNOR = r'''
-# def cmd_gov def gov_route
 import fcntl, select, time
+if argv[:2] == ["gov", "probe"]:
+    print("agentctl governor: admit cores route width")
+    exit(0)
 if env.get("GOV_HOLD"):
     with open(env["GOV_HOLD"] + ".waiting", "w") as f:
         f.write("waiting\n")
