@@ -388,7 +388,8 @@ class EndToEndTest(cli_harness.ToolCase):
         self.assertEqual("app/core/big.js\t600;", self.row("file-lines"))
         # the one clone group (its files joined by |, its copies), the files importing alike none
         self.assertEqual("app/core/clone-a.js|app/feature/clone-b.js\t2;", self.row("copies"))
-        self.assertEqual("hub/hub.mjs\t10;", self.row("fanout"))  # 10 modules imported: over the fan-out of 9
+        # fan-out is the general design rules' (collaborators only, scripts/design-rules): no row here, its limit only
+        self.assertEqual("", self.row("fanout"))
         # the module cycles (imports and globals) and the directory cycle
         self.assertEqual("app/core/c.js|app/feature/f.js\t2;app/core|app/feature\t2;web/shared/a.js|web/shared/b.js\t2;",
                          self.row("cycle"))
