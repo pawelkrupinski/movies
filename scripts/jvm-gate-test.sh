@@ -323,7 +323,7 @@ while not os.path.exists(sys.argv[1] + "/go"): time.sleep(0.05)
 subprocess.run([sys.executable, "-c", "import time\nwhile time.process_time() < 1.5: pass"])
 open(sys.argv[1] + "/done", "w").close(); time.sleep(30)
 PY
-wait_file() { for _ in $(seq 600); do [ -f "$1" ] && return 0; sleep 0.1; done; return 1; }
+wait_file() { wait_until "$1 appeared" test -f "$1"; }
 python3 "$work/server.py" "$work" & meter_server=$!
 wait_file "$work/ready"
 meter_lister() { echo "$meter_server"; }
