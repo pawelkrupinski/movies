@@ -123,6 +123,34 @@ describe("release", () => {
     expect(d.play.writes().map((call) => call.method)).toEqual(["POST", "DELETE"]); // the read-only edit
   });
 
+  describe("another commit landing on main right after the bump's push", () => {
+    const LATER_SHA = "c".repeat(40);
+    /** main is at LATER_SHA by the time it is read back; the bump is (or is not) its ancestor. */
+    function movedOn(d: ReturnType<typeof deps>, bumpIsAncestor: boolean): ReleaseDeps {
+      return {
+        ...d,
+        run: async (argv, runOptions) => {
+          const line = argv.join(" ");
+          if (line === "git ls-remote origin refs/heads/main") return ok(`${LATER_SHA}\trefs/heads/main`);
+          if (line.startsWith("git merge-base --is-ancestor")) return { ...ok(), code: bumpIsAncestor ? 0 : 1 };
+          return d.run(argv, runOptions);
+        },
+      };
+    }
+
+    it("still releases: the bump is on main, below the newer commit", async () => {
+      const ran: Ran[] = [];
+      const d = deps([], ran);
+      await release(movedOn(d, true), options);
+      expect(ran.some((r) => r.argv[0] === "./gradlew")).toBe(true);
+    });
+
+    it("refuses when the bump is not on main at all", async () => {
+      const d = deps([], []);
+      await expect(release(movedOn(d, false), options)).rejects.toThrow(`pushed ${BUMP_SHA} but origin/main is ${LATER_SHA}`);
+    });
+  });
+
   it("bumps main, builds both from the bump commit, submits iOS before promoting Android", async () => {
     const events: string[] = [];
     const ran: Ran[] = [];

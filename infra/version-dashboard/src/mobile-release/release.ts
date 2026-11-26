@@ -225,6 +225,12 @@ async function releaseVersion(deps: ReleaseDeps, options: ReleaseOptions, inspec
   log(`released ${version} to ${options.only ? STORE_NAME[options.only] : "both stores"} from ${releaseSha.slice(0, 9)}`);
 }
 
+/** Whether `sha` is on the release remote's main, however far main has moved since it was pushed. */
+async function onMain(git: Git, worktree: string, sha: string): Promise<boolean> {
+  await git.run(["fetch", "--quiet", RELEASE_REMOTE, "main"], worktree);
+  return git.succeeds(["merge-base", "--is-ancestor", sha, `${RELEASE_REMOTE}/main`], worktree);
+}
+
 /**
  * Commit the bump on top of main and push it straight to main. Retries a race with another push by
  * rebasing: the bump touches only mobile-version.txt and the pbxproj, so it replays cleanly.
@@ -244,7 +250,8 @@ async function bumpMain(deps: ReleaseDeps, git: Git, worktree: string, version: 
     });
     if (push.code === 0) {
       const remote = (await git.run(["ls-remote", RELEASE_REMOTE, "refs/heads/main"])).split("\t")[0];
-      if (remote !== sha) throw new Error(`pushed ${sha} but ${RELEASE_REMOTE}/main is ${remote}`);
+      // Another agent landing in the window after our push moves main on: the bump is still on it.
+      if (remote !== sha && !(await onMain(git, worktree, sha))) throw new Error(`pushed ${sha} but ${RELEASE_REMOTE}/main is ${remote}`);
       deps.log(`main bumped to ${version} at ${sha.slice(0, 9)} (pre-push iOS compile check skipped: the archive compiles it)`);
       return sha;
     }
