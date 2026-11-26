@@ -325,7 +325,7 @@ changes are verified and pushed TOGETHER (`~/bin/AGENTCTL.md`, "THE PUSH BATCH")
    checkout's kept `scripts/sbt-warm` server if one is live; otherwise in a temporary worktree of the pushed commit
    (cold: an sbt check there takes minutes). A non-kept live sbt in the checkout also forces the temporary worktree.
 8. **Area selection.** A change on the identity paths (`is_identity_path`: `identity/`,
-   `worker/src/main/scala/services/identityadapters/`, `common/src/main/resources/title-{rules,words}.tsv`,
+   `worker/src/main/scala/services/{tmdb,agreementasks,identitystaging,lookupfill,identityvenuepages,identityprojection,identitymodel}/`, `common/src/main/resources/title-{rules,words}.tsv`,
    `common/src/main/scala/services/titles/rules/`, `common/src/main/scala/services/titles/TitleNormalizer.scala`,
    `test/resources/fixtures/identity-*`; and what the identity specs read beside them, 2026-11-19: their own spec trees
    `*/src/test/scala/services/{identity,titles/rules}/`, `worker/src/test/scala/scripts/`, the hard-cluster ratchet

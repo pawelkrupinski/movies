@@ -217,7 +217,7 @@ class IdentityChangeTest(PlanCase):
         for path in ("identity/src/main/scala/A.scala", "common/src/main/resources/title-rules.tsv",
                      "common/src/main/scala/services/titles/TitleNormalizer.scala",
                      "test/resources/fixtures/identity-judgements.tsv",
-                     "worker/src/main/scala/services/identityadapters/A.scala"):
+                     "worker/src/main/scala/services/tmdb/A.scala"):
             self.assertEqual(["identity"], self.plan("--identity-change", ["docs/a.md", path]), path)
 
     def test_an_identity_spec_or_fixture_moves_no_take(self):

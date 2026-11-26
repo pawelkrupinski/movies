@@ -17,10 +17,10 @@ def matches(path: str, patterns: Sequence[str]) -> bool:
     return any(fnmatchcase(path, pattern) for pattern in patterns)
 
 
-# The worker's identity adapters (services.identityadapters and the concept packages split out of it): identity paths.
+# The worker's identity adapters: the concept packages that adapt the identity model to the stores and the worker.
 IDENTITY_ADAPTERS = tuple(f"worker/src/main/scala/services/{name}/*" for name in (
-    "identityadapters", "tmdb", "agreementasks", "identitystaging", "lookupfill", "identityvenuepages",
-    "identityprojection", "identitymodel"))
+    "tmdb", "agreementasks", "identitystaging", "lookupfill", "identityvenuepages", "identityprojection",
+    "identitymodel"))
 
 IDENTITY = (
     "identity/*", *IDENTITY_ADAPTERS,

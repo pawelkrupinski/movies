@@ -105,7 +105,7 @@ check "a hard-cluster expectation runs it, and the identity area (the hard-clust
 
 # THE AREAS (the owner, 2026-10-26: no pre-merge CI; the basic tests, plus an area's own local tests when it is touched).
 check "the resolver runs the identity area's tests" "driftguards sbt identity" "$(plan identity/src/main/scala/services/identity/Resolver.scala)"
-check "a worker identity adapter runs them" "driftguards sbt identity" "$(plan worker/src/main/scala/services/identityadapters/Adapter.scala)"
+check "a worker identity adapter runs them" "driftguards sbt identity" "$(plan worker/src/main/scala/services/tmdb/Adapter.scala)"
 check "a title rule runs them" "driftguards sbt identity|driftguards sbt identity" \
   "$(plan common/src/main/resources/title-rules.tsv)|$(plan common/src/main/scala/services/titles/rules/Rule.scala)"
 check "the title normalizer runs them (it applies the title rules: Main #2266, a dropped venue row a scraper spec caught)" \
@@ -156,7 +156,7 @@ check "...but not a common resource no identity rule names (its readers are foun
 kinds() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --identity-change | tr '\n' ' ' | sed 's/ $//'; }
 check "the resolver, an identity adapter, a title rule, the title words, the normalizer and the judgements are identity changes" \
   "identity|identity|identity|identity|identity|identity|identity" \
-  "$(kinds identity/src/main/scala/services/identity/Resolver.scala)|$(kinds worker/src/main/scala/services/identityadapters/A.scala)|$(kinds common/src/main/scala/services/titles/rules/Rule.scala)|$(kinds common/src/main/resources/title-words.tsv)|$(kinds common/src/main/resources/title-rules.tsv)|$(kinds common/src/main/scala/services/titles/TitleNormalizer.scala)|$(kinds test/resources/fixtures/identity-judgements.tsv)"
+  "$(kinds identity/src/main/scala/services/identity/Resolver.scala)|$(kinds worker/src/main/scala/services/tmdb/A.scala)|$(kinds common/src/main/scala/services/titles/rules/Rule.scala)|$(kinds common/src/main/resources/title-words.tsv)|$(kinds common/src/main/resources/title-rules.tsv)|$(kinds common/src/main/scala/services/titles/TitleNormalizer.scala)|$(kinds test/resources/fixtures/identity-judgements.tsv)"
 check "...a common model, a testkit helper, an identity spec, a capture or a slice is not, though the area runs for it" "||||" \
   "$(kinds common/src/main/scala/models/FilmId.scala)|$(kinds testkit/src/main/scala/tools/MutableClock.scala)|$(kinds identity/src/test/scala/services/identity/MemoSpec.scala)|$(kinds test/resources/fixtures/identity-unmatched/pl.json.gz)|$(kinds test/resources/fixtures/drift-slices/pl-a/expected.tsv)"
 check "...and one take path among others makes the change one" "identity" "$(kinds web/src/main/scala/A.scala identity/src/main/scala/B.scala)"

@@ -110,7 +110,7 @@ SELF_TEST_FILES = re.compile(
 
 # What the worker serves over time -- the model's input gate, holds, settle, asks -- and what sees it
 SERVING_FILES = re.compile(
-    r"^(worker/src/main/scala/services/(identityadapters|tmdb|agreementasks|identitystaging|lookupfill|identityvenuepages|identityprojection|identitymodel)/(IdentityModelService|ModelInputGate|AgreementReadiness|PendingListings"
+    r"^(worker/src/main/scala/services/(tmdb|agreementasks|identitystaging|lookupfill|identityvenuepages|identityprojection|identitymodel)/(IdentityModelService|ModelInputGate|AgreementReadiness|PendingListings"
     r"|AgreementQuestions|AgreementAsker|InlineFamilyAsks|QuestionMemory|QuestionPolicies|QuestionRenewals|OutstandingQuestions|VenuePageWait"
     r"|RetainedListings|ProjectionTriggers)\.scala|identity/src/main/scala/services/identity/(ListingReadiness|PageWait)\.scala"
     r"|worker/src/main/scala/services/tasks/SettleReaper\.scala)$")
@@ -121,7 +121,7 @@ GAUGE_FILES = re.compile(
     r"|worker/src/main/scala/services/tasks/(WorkerTaskMetrics|TaskPipelineSeries|MeteredTaskQueue|ParkedScrapeMetrics"
     r"|RatingRunCensus|CinemaScrapeCensus|CinemaContentCensus|ListingIncompleteMetrics)\.scala"
     r"|worker/src/main/scala/services/corpus/CorpusCensus\.scala"
-    r"|worker/src/main/scala/services/(identityadapters|tmdb|agreementasks|identitystaging|lookupfill|identityvenuepages|identityprojection|identitymodel)/(IdentityAgreementMetrics|IdentityLookupFillMetrics|IdentityModelGauges"
+    r"|worker/src/main/scala/services/(tmdb|agreementasks|identitystaging|lookupfill|identityvenuepages|identityprojection|identitymodel)/(IdentityAgreementMetrics|IdentityLookupFillMetrics|IdentityModelGauges"
     r"|IdentityProjectionGauges|IdentityTakeMetrics)\.scala"
     r"|infra/nix/files/monitoring/(rules/.*\.rules|grafana/.*)"
     r"|infra/test/app-metrics-catalogue/.*)$")
