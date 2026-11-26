@@ -58,7 +58,7 @@ class DependencyReadSpec extends AnyFlatSpec with Matchers {
     val listingOf: ListingKey => Option[Listing] = Map(listing.key -> listing).get
 
     /** A receipt of every kind, recorded as the stage records each: its lookups through [[AgreementStage.Noting]], a
-     *  family's answers through [[AgreementEvidence.Recording]], the year and an attempt through the one reader. */
+     *  family's answers through [[AgreementEvidence.recording]], the year and an attempt through the one reader. */
     def recorded(): Map[Dependency, Long] = {
       val reads = mutable.Map.empty[Dependency, Long]
       stage.pipeline.evidence.receipting(reads) {
@@ -66,7 +66,7 @@ class DependencyReadSpec extends AnyFlatSpec with Matchers {
         looked.film(film); looked.releaseDay(film); looked.cast(film); looked.overview(film); looked.candidates(query)
         stage.pipeline.evidence.venuesLooked.detail(listing)
       }
-      val recording = new AgreementEvidence.Recording(answers, mutable.Set.empty, reads)
+      val recording = AgreementEvidence.recording(answers, mutable.Set.empty, reads)
       recording.titled("Lalka"); recording.record("tt1"); recording.record("tt2")
       Seq[Dependency](Dependency.Year, Dependency.Attempted(Question.Record(film))).foreach(read => stage.pipeline.evidence.readNow(read).foreach(reads(read) = _))
       reads.toMap

@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{FamilyIndex, IdentityLookups}
+import services.identity.{FamilyIndex, IdentityLookups, LookupLedger, RecordingLookups}
 import services.identity.measures.{Listing, Resolution}
 import services.identity.vocabulary.{ContentHash, Dependency, Question}
 import models.ListingKey
@@ -30,7 +30,8 @@ object FamilyFinalReads {
     val clock    = new MutableClock(recordedAt)
     val answers  = new scripts.IdentityDrift.Answers(reads, docs(reads.filed), clock, _ => None)
     val verdicts = new InMemoryAgreementVerdicts
-    val recorded = new FamilyIndex.RecordingLookups(lookups)
+    val ledger   = new LookupLedger
+        val recorded = new RecordingLookups(lookups, ledger.record)
     val stage    = answers.stage(recorded, verdicts, budgets = false)
     val byKey    = listings.map(l => l.key -> l).toMap
     val model    = UnmatchedClusters.resolutionOf(resolution.decisions.filter(_.members.exists(byKey.contains)))
@@ -38,7 +39,7 @@ object FamilyFinalReads {
       log = false)
     val pending  = scripts.IdentityDrift.pendingOf(result.decisions)
     val takes    = scripts.IdentityDrift.takesOf(result).collect { case (key, take) if byKey.contains(key) => key -> Option.when(!pending(key))(take.film) }
-    Settled(takes, verdicts.all().flatMap(_.reads).toMap, recorded.reads, listings.map(l => l.key -> ContentHash.of(l)).toMap, stage,
+    Settled(takes, verdicts.all().flatMap(_.reads).toMap, ledger.reads, listings.map(l => l.key -> ContentHash.of(l)).toMap, stage,
       lookups, byKey.get)
   }
 

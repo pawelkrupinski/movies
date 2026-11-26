@@ -4,8 +4,8 @@ import scala.collection.mutable
 
 import models.ListingKey
 import services.identity.measures.Listing
-import services.identity.vocabulary.{Answer, DetailFacts, VoterFamily}
-import services.identity.{ForwardingIdentityLookups, IdentityCalibration, IdentityLookups}
+import services.identity.vocabulary.{Answer, VoterFamily}
+import services.identity.{IdentityCalibration, IdentityLookups, ReadEvent, RecordingLookups}
 import services.titles.TitleNormalizer
 
 /** Each family's verdict over a cluster's listings ([[Agreement.verdict]]), kept with everything its resolve read — each of
@@ -28,7 +28,7 @@ private[agreement] final class FamilyVerdicts(venues: IdentityLookups, normalize
   /** How many verdicts were resolved and how many handed back kept, since the stage was made. */
   private[agreement] var resolved, handedBack = 0L
 
-  /** `answers`' family's verdict over `listings`, noting what it read in `asked` and `reads` as a [[AgreementEvidence.Recording]] does.
+  /** `answers`' family's verdict over `listings`, noting what it read in `asked` and `reads` as a [[AgreementEvidence.recording]] does.
    *  A verdict not kept is resolved, and a kept one checked against what it read, OUTSIDE the lock, so verdicts over other
    *  listings are read side by side (the model's input gate reading many listings' questions at once: `scripts.IdentityDrift`'s
    *  replay): the lock guards what is kept, never a resolve nor a check, which read the answers and a kept verdict's own
@@ -47,8 +47,8 @@ private[agreement] final class FamilyVerdicts(venues: IdentityLookups, normalize
         k.verdict
       case None =>
         val tape    = mutable.ArrayBuffer.empty[Read]
-        val verdict = Agreement.verdict(listings, new AgreementEvidence.Recording(new Taping(answers, tape), asked, reads),
-          new TapingVenues(venues, tape), normalizer, calibrations(answers.family))
+        val verdict = Agreement.verdict(listings, AgreementEvidence.recording(answers, asked, reads, taping(tape)),
+          new RecordingLookups(venues, taping(tape)), normalizer, calibrations(answers.family))
         synchronized {
           kept(key) = Kept(listings, tape.distinct.toArray, verdict, applies)
           resolved += 1
@@ -75,10 +75,10 @@ private[agreement] object FamilyVerdicts {
   /** One thing a verdict's resolve read, by the digest of what it read. */
   private sealed trait Read {
     def stands(answers: FamilyAnswers, venues: IdentityLookups): Boolean
-    /** Noted as a [[AgreementEvidence.Recording]] notes it: a venue page is in no receipt of a family's verdict. */
+    /** Noted as a [[AgreementEvidence.recording]] notes it: a venue page is in no receipt of a family's verdict. */
     def note(answers: FamilyAnswers, asked: mutable.Set[services.identity.vocabulary.Question], reads: mutable.Map[services.identity.vocabulary.Dependency, Long]): Unit = ()
   }
-  /** A family's answer to `question` (`title|…`, `director|…`, `record|…`, `showing|…`, as [[AgreementEvidence.Recording]] names it). */
+  /** A family's answer to `question` (`title|…`, `director|…`, `record|…`, `showing|…`, as [[AgreementEvidence.recording]] names it). */
   private final case class FamilyRead(question: String, digest: Long, unknown: Boolean) extends Read {
     def stands(answers: FamilyAnswers, venues: IdentityLookups): Boolean = digestOf(ask(answers, question)) == digest
     override def note(answers: FamilyAnswers, asked: mutable.Set[services.identity.vocabulary.Question], reads: mutable.Map[services.identity.vocabulary.Dependency, Long]): Unit =
@@ -99,23 +99,11 @@ private[agreement] object FamilyVerdicts {
     case _                        => throw new IllegalArgumentException(s"no family question $question")
   }
 
-  /** `inner`, each answer it gives taped. */
-  private final class Taping(inner: FamilyAnswers, tape: mutable.ArrayBuffer[Read]) extends FamilyAnswers {
-    val family: VoterFamily = inner.family
-    private def taped[A](question: String, answer: Answer[A]): Answer[A] = {
-      tape += FamilyRead(question, digestOf(answer), answer == Answer.Unknown)
-      answer
-    }
-    def titled(text: String): Answer[Seq[SourceHit]]     = taped(s"title|$text", inner.titled(text))
-    def directedBy(name: String): Answer[Seq[SourceHit]] = taped(s"director|$name", inner.directedBy(name))
-    def record(id: String): Answer[Option[SourceRecord]] = taped(s"record|$id", inner.record(id))
-    override def showing(venue: String): Answer[Seq[Showing]] = taped(s"showing|$venue", inner.showing(venue))
-    override def fresh(question: String): Boolean        = inner.fresh(question)
-  }
-
-  /** The venues' lookups, each venue page a resolve reads taped. */
-  private final class TapingVenues(inner: IdentityLookups, tape: mutable.ArrayBuffer[Read]) extends ForwardingIdentityLookups(inner) {
-    override def hasDetail(listing: Listing): Boolean = { val has = inner.hasDetail(listing); tape += HasDetailRead(listing, has); has }
-    override def detail(listing: Listing): Answer[Option[DetailFacts]] = { val answer = inner.detail(listing); tape += DetailRead(listing, digestOf(answer)); answer }
+  /** What a resolve reads of the venues' pages, taped. */
+  private def taping(tape: mutable.ArrayBuffer[Read]): ReadEvent => Unit = {
+    case ReadEvent.FamilyAnswered(question, answer)  => tape += FamilyRead(question, digestOf(answer), answer == Answer.Unknown)
+    case ReadEvent.DetailAnswered(listing, answer)   => tape += DetailRead(listing, digestOf(answer))
+    case ReadEvent.DetailPresence(listing, has)      => tape += HasDetailRead(listing, has)
+    case _: ReadEvent.LookupAnswered                 => ()
   }
 }

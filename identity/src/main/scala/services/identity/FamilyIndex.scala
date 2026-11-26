@@ -144,28 +144,6 @@ object FamilyIndex {
     protected def overviewOf(tmdbId: Int): Answer[Option[ProseWords]]
   }
 
-  /** Lookups recording every read as its [[Dependency]]: the answer, and its digest as a receipt digests it
-   *  ([[Dependency.digest]]); and which listings' venues publish a detail page. */
-  private[identity] final class RecordingLookups(underlying: IdentityLookups) extends ReadingLookups {
-    val answers: TrieMap[Dependency, Answer[?]] = TrieMap.empty
-    val detailed: TrieMap[ListingKey, Boolean] = TrieMap.empty
-    protected def read[A](dependency: Dependency, ask: => Answer[A]): Answer[A] = { val answer = ask; answers.update(dependency, answer); answer }
-    def reads: Map[Dependency, Long] = answers.toMap.map { case (dependency, answer) => dependency -> Dependency.digest(answer) }
-    def hasDetail(listing: Listing): Boolean = { val has = underlying.hasDetail(listing); detailed.update(listing.key, has); has }
-    override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit =
-      underlying.prefetch(queries, films, details)
-    override def prefetchAnswered(): Unit = underlying.prefetchAnswered()
-    override def released(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[ListingKey]): Unit =
-      underlying.released(queries, films, details)
-    override def numbersFilmsByTmdbId: Boolean = underlying.numbersFilmsByTmdbId
-    protected def detailOf(listing: Listing): Answer[Option[DetailFacts]] = underlying.detail(listing)
-    protected def searchOf(query: CandidateQuery): Answer[Seq[Hit]] = underlying.candidates(query)
-    protected def recordOf(tmdbId: Int): Answer[Option[Film]] = underlying.film(tmdbId)
-    protected def releaseOf(tmdbId: Int): Answer[Option[java.time.LocalDate]] = underlying.releaseDay(tmdbId)
-    protected def castOf(tmdbId: Int): Answer[Option[Seq[String]]] = underlying.cast(tmdbId)
-    protected def overviewOf(tmdbId: Int): Answer[Option[ProseWords]] = underlying.overview(tmdbId)
-  }
-
   /** The lookups a family's recorded answers answer, and nothing else ([[Unindexed]]). */
   private final class ReplayLookups(recorded: Recorded) extends ReadingLookups {
     protected def read[A](dependency: Dependency, ask: => Answer[A]): Answer[A] =
@@ -266,7 +244,8 @@ object FamilyIndex {
     val families   = all.groupBy(listing => whole.familyOf.getOrElse(listing.key, -1)).toSeq.sortBy(_._1).map(_._2)
     def entryOf(members: Seq[Listing]): (Entry, Seq[ListingKey], Option[Recorded]) = {
       val context  = new RecordingContext(corpus)
-      val recorded = new RecordingLookups(lookups)
+      val ledger   = new LookupLedger
+      val recorded = new RecordingLookups(lookups, ledger.record)
       val regions  = IdentityResolver.resolveRegion(members, recorded, normalizer, inputs, context)
       val decided  = regions.flatMap(_.decisions).flatMap(decision => decision.members.map(_ -> decision)).toMap
       val keys     = members.map(_.key)
@@ -274,8 +253,8 @@ object FamilyIndex {
       val rules    = keys.map(key => key -> decided.get(key).toSeq.flatMap(d => d.trace.rulesOf(key) ++ d.trace.stage)).toMap
       val apart    = keys.filter(key => whole.decisionOf.get(key).flatMap(PopulationMonotonicity.takeOf) != takes(key))
       (Entry(members.map(l => l.key -> modelDigest(l)).toMap, regions.flatMap(_.blockKeys).toSet, context.reads,
-        recorded.reads, inputs.pins.idsTouching(keys.toSet), takes, rules), apart,
-        Option.when(values)(Recorded(members, context.values.toMap, recorded.answers.toMap, recorded.detailed.toMap)))
+        ledger.reads, inputs.pins.idsTouching(keys.toSet), takes, rules), apart,
+        Option.when(values)(Recorded(members, context.values.toMap, ledger.answers.toMap, ledger.detailed.toMap)))
     }
     val built =
       if (threads <= 1 || families.sizeIs < 2) families.map(entryOf)

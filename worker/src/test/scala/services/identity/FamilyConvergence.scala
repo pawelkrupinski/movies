@@ -168,7 +168,8 @@ object FamilyConvergence {
         if (gone.nonEmpty && kept.isEmpty) takes(subset) else memo.getOrElseUpdate((subset, Subset(kept.map(l => members.indexWhere(_.key == l.key))*)), {
         val present  = billed ++ kept
         val context  = new FamilyIndex.RecordingContext(without(generation.context, keys -- present.map(_.key)))
-        val recorded = new FamilyIndex.RecordingLookups(lookups)
+        val ledger   = new LookupLedger
+        val recorded = new RecordingLookups(lookups, ledger.record)
         val regions  = IdentityResolver.resolveRegion(present, recorded, reads.normalizer, inputs.calibration, inputs.pins, inputs.decorations, context)
         val decided  = regions.flatMap(_.decisions)
         decided.foreach(d => d.members.foreach(k => fired.updateWith(k)(was => Some(was.getOrElse(Set.empty) ++ d.trace.rulesOf(k) ++ d.trace.stage))))
@@ -176,7 +177,7 @@ object FamilyConvergence {
         // a context read by the WHOLE corpus's value: the subset's view of it (its absent listings taken out) is a function
         // of that value and the family's members, which the key holds
         context.reads.keys.foreach(read => note("context", read.id, read.digestIn(generation.context)))
-        recorded.reads.foreach { case (read, d) => note("lookup", Dependency.encode(read), d) }
+        ledger.reads.foreach { case (read, d) => note("lookup", Dependency.encode(read), d) }
         settled.lookups.foreach { case (read, d) => note("lookup", Dependency.encode(read), d) }
         // the year: the one receipt read of no question. A family answer asked only by a sub-population: no settle of the
         // whole family files it, so it is read again alone (the oracle's own store) -- by that digest; the ask memory's

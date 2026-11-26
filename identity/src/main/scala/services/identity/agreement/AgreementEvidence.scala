@@ -6,7 +6,7 @@ import models.ListingKey
 import services.identity.measures.Film
 import services.identity.measures.Listing
 import services.identity.vocabulary.{Answer, CandidateQuery, Dependency, DetailFacts, Hit, Question, VoterFamily}
-import services.identity.{IdentityCalibration, IdentityLookups}
+import services.identity.{IdentityCalibration, IdentityLookups, ReadEvent}
 import services.titles.TitleNormalizer
 
 /**
@@ -101,7 +101,7 @@ private[agreement] final class AgreementEvidence(sources: AgreementSources.Evide
   def readNow(read: Dependency): Option[Long] = digestNow(read, _ => None)
 
   /** What a receipt's dependency reads now — the one reader a receipt is compared through: a family's answer, as
-   *  [[AgreementEvidence.Recording]] notes it; TMDB's and the venues' lookups', as [[Noting]] notes them, a detail page of
+   *  [[AgreementEvidence.recording]] notes it; TMDB's and the venues' lookups', as [[Noting]] notes them, a detail page of
    *  a listing `listingOf` names; whether a question was attempted; the year the apply reads by. None for one nothing
    *  reads again — what holds it never stands. */
   def reread(read: Dependency, listingOf: ListingKey => Option[Listing]): Option[Answer[?]] = read match {
@@ -113,7 +113,7 @@ private[agreement] final class AgreementEvidence(sources: AgreementSources.Evide
     case Dependency.Asked(_) | Dependency.Unparsed(_) => None
   }
 
-  /** `answers`' answer now to a family's `question`, as [[AgreementEvidence.Recording]] names it (`title|…`, `director|…`,
+  /** `answers`' answer now to a family's `question`, as [[AgreementEvidence.recording]] names it (`title|…`, `director|…`,
    *  `record|…`, `showing|…`); None for a question named otherwise. */
   private def familyAnswer(answers: FamilyAnswers, question: String): Option[Answer[?]] =
     question.split("\\|", 2) match {
@@ -225,18 +225,16 @@ private[agreement] object AgreementEvidence {
       case _                                                       => None
     }
 
-  /** A family's answers that note every question still a gap, and the digest of every answer read. */
-  private[agreement] final class Recording(answers: FamilyAnswers, asked: mutable.Set[Question], reads: mutable.Map[Dependency, Long]) extends FamilyAnswers {
-    val family: VoterFamily = answers.family
-    private def noted[A](question: String, answer: Answer[A]): Answer[A] = {
-      AgreementEvidence.noted(answers, question, Dependency.digest(answer), answer == Answer.Unknown, asked, reads)
-      answer
-    }
-    def titled(text: String): Answer[Seq[SourceHit]]     = noted(s"title|$text", answers.titled(text))
-    def directedBy(name: String): Answer[Seq[SourceHit]] = noted(s"director|$name", answers.directedBy(name))
-    def record(id: String): Answer[Option[SourceRecord]] = noted(s"record|$id", answers.record(id))
-    override def showing(venue: String): Answer[Seq[Showing]] = noted(s"showing|$venue", answers.showing(venue))
-  }
+  /** A family's answers that note every question still a gap, and the digest of every answer read; `alsoOnRead` sees each
+   *  read first. */
+  private[agreement] def recording(answers: FamilyAnswers, asked: mutable.Set[Question], reads: mutable.Map[Dependency, Long],
+                                   alsoOnRead: ReadEvent => Unit = _ => ()): FamilyAnswers =
+    new RecordingAnswers(answers, {
+      case event @ ReadEvent.FamilyAnswered(question, answer) =>
+        alsoOnRead(event)
+        noted(answers, question, Dependency.digest(answer), answer == Answer.Unknown, asked, reads)
+      case event => alsoOnRead(event)
+    })
 
   /** A family's answer to `question` read, as its digest and whether it was a gap: in the receipt `reads` — answered or
    *  not, so an answer filed where none was reads the verdict again as one that moved does — and among the questions
