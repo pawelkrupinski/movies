@@ -36,7 +36,7 @@ import cli_harness  # noqa: E402
 TOOL = cli_harness.tool_path("scripts/ci/identity_drift_check.py", "scripts/ci/identity-drift-check.sh")
 CI = os.path.join(cli_harness.ROOT, "scripts/ci")
 COPIED = ("identity-drift-check.sh", "drift-replays-compare.sh", "drift_seeds.py", "drift_diff.py", "drift_explorer.py",
-          "drift_scenario.py", "memory-guard.sh", "memory-guard-stop.sh", "gh-release.sh", "release-store-prune.sh")
+          "drift_scenario.py", "header_tsv.py", "memory-guard.sh", "memory-guard-stop.sh", "gh-release.sh", "release-store-prune.sh")
 STRANGER = "Riverside|The Stranger"
 NEW = "Kino Muza|New Film"
 

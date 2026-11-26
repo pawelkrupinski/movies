@@ -545,7 +545,8 @@ class RatchetTest(unittest.TestCase):
         for old, new, case, edit, shape in self.RETYPE_MUTATIONS:
             self.assertIn(old, source, f"the mutation for {case} no longer applies: update RETYPE_MUTATIONS")
             mutant = os.path.join(self.dir.name, "commit_rules_mutant.py")
-            shutil.copy(os.path.join(HERE, "trailers.py"), self.dir.name)  # the module it imports, beside it
+            for module in ("scripts/ci/trailers.py", "scripts/lib/tool_git.py", "scripts/lib/tool_process.py"):
+                shutil.copy(os.path.join(ROOT, module), self.dir.name)  # the modules it imports, beside it
             with open(mutant, "w") as f:
                 f.write(source.replace(old, new, 1))
             if shape == "using":
