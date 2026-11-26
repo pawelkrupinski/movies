@@ -461,7 +461,7 @@ pyright	infra/bin/backtest-alerts	973
 pyright	infra/bin/backtest-alerts-local	469
 pyright	infra/bin/backtest-alerts-replay	210
 pyright	infra/bin/deploy	218
-pyright	infra/bin/fleet-ssh	34
+pyright	infra/bin/fleet-ssh	33
 pyright	infra/bin/fleet_hosts.py	30
 pyright	infra/bin/image_pins.py	356
 pyright	infra/bin/nix-update	292

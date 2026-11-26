@@ -18,6 +18,8 @@ distinction (`target` vs `admin_target`) for the same reason on the CI side. `lo
 falls back to your own account, never to that one.
 """
 
+from __future__ import annotations
+
 import os
 import re
 import subprocess
