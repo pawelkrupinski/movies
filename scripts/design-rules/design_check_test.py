@@ -130,9 +130,9 @@ class PackagesTest(unittest.TestCase):
 
 class DesignLintTest(unittest.TestCase):
     def test_a_direct_clock_outside_its_adapter_is_a_row_and_inside_it_is_not(self) -> None:
-        source = "import time\n\ndef stamp():\n    return time.time()\n"
+        source = "import time\n\ndef stamp():\n    return time.time() + time.time()\n"
         rows = kinds(design_lint.rows([py("tools/t.py", source), py("lib/clock.py", source)], EXTRA))
-        self.assertEqual({("effect", "tools/t.py"): 1}, rows)
+        self.assertEqual({("effect", "tools/t.py"): 1}, rows)  # one effect touched, however often
 
     def test_module_state_written_by_a_function_is_a_row_and_a_constant_or_a_local_is_not(self) -> None:
         source = ("CACHE = {}\nNAMES = ('a',)\nCOUNT = 0\n\ndef put(k):\n    CACHE[k] = 1\n\ndef bump():\n    global COUNT\n"
