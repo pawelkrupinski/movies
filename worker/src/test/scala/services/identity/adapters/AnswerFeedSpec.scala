@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.identityvenuepages.VenuePageIndex
 import services.tmdb.{FamilyAnswerStore, FiledAnswerFeed, InMemoryTmdbDocuments, TmdbKind, TmdbStore}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

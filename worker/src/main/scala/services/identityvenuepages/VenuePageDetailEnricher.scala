@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identityvenuepages
 
 import services.lookupfill.{LookupGap, LookupGaps}
 import services.cinemas.common.{DetailEnricher, FilmDetail}

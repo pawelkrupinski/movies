@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.identityvenuepages.{IndexedVenuePageFacts, VenuePageDetailEnricher, VenuePageIndex}
 import services.lookupfill.{LookupGaps, TmdbIdentityLookups}
 import services.tmdb.FiledAnswerFeed
 import services.venuepages.{EnrichDetailsHandlerOf, EnrichDetailsTasks}

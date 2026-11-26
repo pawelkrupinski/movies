@@ -39,7 +39,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
 
   // The venue pages as a venue slot is built from them, and as which of them moved since the projection last asked.
   private lazy val venuePageFacts =
-    new services.identityadapters.IndexedVenuePageFacts(detailEnrichers, venuePageIndex, country.language, identityTmdbLayer.feed)
+    new services.identityvenuepages.IndexedVenuePageFacts(detailEnrichers, venuePageIndex, country.language, identityTmdbLayer.feed)
 
   // The projection reads the model's resolution.
   /** The answers a listing's own questions are filed under, as the take-change lines and the history name them. */

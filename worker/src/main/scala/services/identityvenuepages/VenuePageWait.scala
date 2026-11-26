@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identityvenuepages
 
 import services.cinemas.common.DetailEnricher
 import services.identity.*

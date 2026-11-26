@@ -111,7 +111,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
     var tracked  = Option.empty[TrackedLookups]
     // A new listing's unread venue page is asked for, read into venue_pages by a ReadVenuePage task; the model's input
     // gate takes the listing in once it is read or its read was attempted.
-    val pageWait = new services.identityadapters.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore, clock)
+    val pageWait = new services.identityvenuepages.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore, clock)
     val model = new IdentityModelService(
       newModel   = () => {
         // the one builder of a resolve's inputs, the drift checks' and the identity slice's too
@@ -148,7 +148,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
     new services.lookupfill.StoredTmdbLookups(identityTmdbStore, country.language.toLanguageTag, venueDetailLookups(reads), reads)
   /** What the venues' own detail pages state of their listings ([[venuePageIndex]]). */
   def venueDetailLookups(reads: services.identity.vocabulary.ObservationReads = services.identity.vocabulary.ObservationReads.Untracked): services.lookupfill.VenueDetailLookups =
-    new services.lookupfill.VenueDetailLookups(services.identityadapters.VenuePageDetails.of(detailEnrichers, venuePageIndex, reads))
+    new services.lookupfill.VenueDetailLookups(services.identityvenuepages.VenuePageDetails.of(detailEnrichers, venuePageIndex, reads))
 
   /** What a drain of the identity model sets off: the projection of what moved and the fill of the gaps it found.
    *  Neither runs on a period. */
@@ -180,8 +180,8 @@ trait IdentityModelWiring { self: WorkerWiring =>
       new services.venuepages.MongoVenuePageStore(_))
 
   /** The venue detail pages read into venue_pages, as the identity model reads them. */
-  lazy val venuePageIndex: services.identityadapters.VenuePageIndex = {
-    import services.identityadapters.VenuePageIndex
+  lazy val venuePageIndex: services.identityvenuepages.VenuePageIndex = {
+    import services.identityvenuepages.VenuePageIndex
     identityTmdbLayer.feed.subscribe(key => if (VenuePageIndex.isKey(key)) identityModel.observed(key))
     new VenuePageIndex(venuePageStore, changed = identityTmdbLayer.feed.publish)
   }

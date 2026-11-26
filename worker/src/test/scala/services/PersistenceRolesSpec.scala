@@ -53,7 +53,7 @@ class PersistenceRolesSpec extends AnyFlatSpec with Matchers {
       classOf[services.tasks.RecheckedAudit], classOf[services.tasks.ScrapeReaper], classOf[services.tasks.QueueEnrichmentRetrigger], classOf[services.tasks.RetriggerEnqueuer],
       classOf[services.tasks.ChunkScrapePlanner], classOf[services.tasks.ChunkScrapeReaper], classOf[services.tasks.ChunkScrapeCoordinator],
       classOf[services.sharecards.ShareCardService], classOf[services.sharecards.CityCardService],
-      classOf[services.sharecards.ShareCardBackfill], classOf[services.identityadapters.VenuePageWait]
+      classOf[services.sharecards.ShareCardBackfill], classOf[services.identityvenuepages.VenuePageWait]
     ).flatMap(writerTypedIn(_, classOf[TaskQueue])) ++
       writerTypedIn(module("services.venuepages.ReadVenuePageTasks"), classOf[TaskQueue], "enqueue") ++
       writerTypedIn(classOf[services.venuepages.DetailSchedule], classOf[TaskQueue]) shouldBe empty

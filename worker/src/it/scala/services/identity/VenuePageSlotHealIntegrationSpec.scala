@@ -2,7 +2,7 @@ package services.identity
 
 import models.{FilmId, StringPool}
 
-import services.identityadapters.{IndexedVenuePageFacts, VenuePageIndex}, services.tmdb.FiledAnswerFeed
+import services.identityvenuepages.{IndexedVenuePageFacts, VenuePageIndex}, services.tmdb.FiledAnswerFeed
 
 import models.{CinemaMovie, CinemaShowing, Country, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec

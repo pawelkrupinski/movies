@@ -60,6 +60,7 @@ rank	7	services.enrichment	the ratings and ids, run as tasks
 rank	7	services.sharecards	the share cards, rendered as tasks
 rank	7	services.venuepages	the venue pages a detail fetch keeps, fetched as tasks
 rank	8	services.identityadapters	the identity model's worker adapters: its stores, asks, projection and fill over everything below
+rank	8	services.identityvenuepages	the venue pages the identity model reads: their index, details, enrichment and wait
 rank	8	services.lookupfill	the TMDB lookups and the fill of the gaps the model found: identity reads over the stores, the normalizer, the sweeps, venue details and the model's lookups
 rank	8	services.identitystaging	the identity model's staged inputs as the worker reads them: staged changes, clusters, evidence, questions and resolutions, and their publisher
 rank	8	services.agreementasks	the film databases' agreement asks: the asker and its questions over the family sources and the stored answers
