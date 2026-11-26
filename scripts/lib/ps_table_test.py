@@ -51,6 +51,10 @@ class PsTableTest(unittest.TestCase):
         self.assertEqual(3723.5, ps_table.clock_seconds("1:02:03.50"))
         self.assertEqual(86400 + 3661, ps_table.clock_seconds("1-01:01:01"))
 
+    def test_clock_seconds_of_a_garbled_clock_is_zero(self) -> None:
+        for garbled in ("", "-", "ab:cd", "1-x:00", "12:3x", "::"):
+            self.assertEqual(0.0, ps_table.clock_seconds(garbled), garbled)
+
 
 if __name__ == "__main__":
     unittest.main()

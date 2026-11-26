@@ -5,7 +5,7 @@ arguments with whitespace collapsed), the table by pid, the tree under some of t
   ProcessTable(runner, env).read()   the table of every process, `ps -Ao pid=,ppid=,args=`, through the injected runner;
                                ProcessTable.here(env) over this process's one subprocess runner
   descendants(table, of)       every pid under one of `of`, to any depth (not `of` themselves)
-  clock_seconds("1-02:03:04.50")   ps's etime / cputime in seconds"""
+  clock_seconds("1-02:03:04.50")   ps's etime / cputime in seconds (0.0 when garbled)"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -62,8 +62,12 @@ def descendants(table: Table, of: Set[int]) -> Set[int]:
 
 
 def clock_seconds(text: str) -> float:
-    days, _, rest = text.rpartition("-")
-    seconds = 0.0
-    for part in rest.split(":"):
-        seconds = seconds * 60 + float(part)
-    return seconds + (int(days) * 86400 if days else 0)
+    """ps's clock in seconds; 0.0 for a garbled one (a torn `ps` row must not stop a sweep)."""
+    try:
+        days, _, rest = text.rpartition("-")
+        seconds = 0.0
+        for part in rest.split(":"):
+            seconds = seconds * 60 + float(part)
+        return seconds + (int(days) * 86400 if days else 0)
+    except ValueError:
+        return 0.0
