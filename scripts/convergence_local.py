@@ -21,8 +21,10 @@ environment if set, else from the Touch ID vault, INLINE into sbt's env only -- 
 production's. OMDB_API_KEY likewise, optional (CI has it; without it the OMDb rung of ImdbIdResolver is absent).
 
 Every collection runs on a real MongoDB replica set (change streams and the staging fold's transaction both need one).
-MONGODB_URI if given; else the itAll mongod on :28017 if it answers; else a throwaway mongo:8.3.17 container on :27117
-(CONVERGENCE_LOCAL_MONGO_PORT), waited for at most CONVERGENCE_LOCAL_MONGO_WAIT seconds (120) a step. Each run's
+MONGODB_URI if given; else the itAll mongod on :28017 if it answers; else a throwaway mongo:8.3.17 container of this
+run's own (convergence-local-mongo-<pid>, on a free port, or CONVERGENCE_LOCAL_MONGO_PORT -- whatever already answers
+there is reused, never replaced), waited for at most CONVERGENCE_LOCAL_MONGO_WAIT seconds (120) a step and removed when
+sbt ends (a killed run leaves it: `docker rm -f convergence-local-mongo-<pid>`). Each run's
 databases are created under a MONGODB_DB prefix unique to it and dropped by the suite (`ConvergenceStorage.close`).
 CONVERGENCE_LOCAL_PAIR=<recording run | laid fixtures dir> lays a pair already on this machine instead (offline: GitHub
 unreachable), said as not necessarily the pin CI holds. CONVERGENCE_LOCAL_OWN_MONGOD=1 runs the leg on a mongod of its
@@ -33,6 +35,7 @@ from __future__ import annotations
 import glob
 import os
 import shutil
+import socket
 import sys
 import time
 from typing import Callable, Dict, List, Mapping, NoReturn, Optional, Sequence
@@ -45,7 +48,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FLAG = "--i-need-a-local-leg"
 SUITES = {"pl": "convergencePoland", "de": "convergenceGermany", "uk": "convergenceUk", "us": "convergenceUs",
           "es": "convergenceSpain"}
-CONTAINER = "convergence-local-mongo"
+CONTAINER_PREFIX = "convergence-local-mongo"  # + "-<pid>": one container a run, never shared with another agent's leg
 IMAGE = "mongo:8.3.17"  # the server release production runs (MongoServerVersionParitySpec; infra/bin/nix-update moves it)
 FASTER_TOOLS = """  Which takes a change moves:  scripts/identity-slice (--ref A --ref B, --batch, --explain), seconds per listing
   The whole corpus, base vs head: scripts/identity-measure (CI, ~8 min, LANDABLE / NOT LANDABLE)
@@ -77,6 +80,8 @@ class Leg:
         self.code = code
         self.suite = suite
         self.sleep = sleep
+        self.container = f"{CONTAINER_PREFIX}-{os.getpid()}"
+        self.started_container = False
 
     def lay_pair(self) -> None:
         laid = self.env.get("CONVERGENCE_LOCAL_PAIR", "")
@@ -133,7 +138,7 @@ class Leg:
                 "KINOWO_CONVERGENCE_HERMETIC": "true"}
 
     def mongo_uri(self) -> str:
-        fallback = self.env.get("CONVERGENCE_LOCAL_MONGO_PORT") or "27117"
+        fallback = self.env.get("CONVERGENCE_LOCAL_MONGO_PORT") or free_port()
         if self.env.get("MONGODB_URI"):
             say("==> MongoDB from MONGODB_URI")
             return self.env["MONGODB_URI"]
@@ -153,8 +158,8 @@ class Leg:
 
     def throwaway(self, port: str) -> None:
         say(f"==> starting a throwaway {IMAGE} single-node replica set on :{port}")
-        self.docker("rm", "-f", CONTAINER)
-        started = self.runner.capture(Command(["docker", "run", "-d", "--name", CONTAINER, "-p", f"{port}:27017",
+        self.started_container = True
+        started = self.runner.capture(Command(["docker", "run", "-d", "--name", self.container, "-p", f"{port}:27017",
                                                IMAGE, "--replSet", "rs0", "--bind_ip_all"], self.env))
         sys.stderr.write(started.stderr)
         if started.code != 0:
@@ -167,11 +172,15 @@ class Leg:
 
     def mongosh(self, expression: str, quiet_errors: bool = True) -> Optional[str]:
         """The container's mongosh evaluating `expression`: its stdout, or None when it failed."""
-        done = self.runner.capture(Command(["docker", "exec", CONTAINER, "mongosh", "--quiet", "--eval", expression],
+        done = self.runner.capture(Command(["docker", "exec", self.container, "mongosh", "--quiet", "--eval", expression],
                                            self.env))
         if not quiet_errors:
             sys.stderr.write(done.stderr)
         return done.stdout if done.code == 0 else None
+
+    def remove_container(self) -> None:
+        if self.started_container:
+            self.docker("rm", "-f", self.container)
 
     def until_mongo(self, what: str, ready: Callable[[], bool]) -> None:
         """Each wait has a deadline: a container that never comes up (an image pull refused, a crash loop) used to hold
@@ -180,10 +189,17 @@ class Leg:
         waited = 0
         while not ready():
             if waited >= bound:
-                warn(f"the throwaway MongoDB never answered ({what}) in {bound}s — docker logs {CONTAINER}")
+                warn(f"the throwaway MongoDB never answered ({what}) in {bound}s — docker logs {self.container}")
                 raise Stop(1)
             self.sleep(1)
             waited += 1
+
+
+def free_port() -> str:
+    """A port nothing listens on (the kernel's pick), for this run's own container."""
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return str(probe.getsockname()[1])
 
 
 def run_leg(leg: Leg) -> NoReturn:
@@ -200,7 +216,10 @@ def run_leg(leg: Leg) -> NoReturn:
     say(f"==> sbt {leg.suite}")
     say(f"    watch: '[{leg.code}] <phase> done in Ns', 'scraped N/M', 'staging round N: A → B rows', "
         "'coverage — N films'")
-    execute(["sbt", leg.suite], {**leg.hermetic(), "MONGODB_URI": uri, "MONGODB_DB": database})
+    environment = {**leg.hermetic(), "MONGODB_URI": uri, "MONGODB_DB": database}
+    if not leg.started_container:
+        execute(["sbt", leg.suite], environment)
+    raise Stop(leg.runner.run(Command(["sbt", leg.suite], environment)))  # a container of ours: sbt must not replace us
 
 
 def execute(argv: List[str], env: Mapping[str, str]) -> NoReturn:
@@ -228,10 +247,13 @@ def run(argv: Sequence[str], env: Mapping[str, str], runner: Runner) -> int:
     warn("convergence-local: running a local leg (tens of minutes). If you only need take changes, stop and use:")
     sys.stderr.write(FASTER_TOOLS)
     os.chdir(ROOT)
+    leg = Leg(runner, env, code, args[1] if len(args) > 1 and args[1] else SUITES[code])
     try:
-        run_leg(Leg(runner, env, code, args[1] if len(args) > 1 and args[1] else SUITES[code]))
+        run_leg(leg)
     except Stop as stop:
         return stop.code
+    finally:
+        leg.remove_container()
 
 
 def main() -> int:

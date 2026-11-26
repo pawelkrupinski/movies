@@ -32,6 +32,7 @@ env | grep -E '^(MONGODB_URI|MONGODB_DB|TMDB_API_KEY|OMDB_API_KEY|KINOWO_[A-Z_]+
 SECRETS = '[ "$1 $2" = "get movies" ] && [ -f "$STUB/vault-$3" ] && cat "$STUB/vault-$3"'
 # docker: a container that answers its ping (or never does while $STUB/mongo-never-up exists) and reports PRIMARY
 DOCKER = '''echo "docker $1" >> "$STUB/calls"
+echo "$*" >> "$STUB/docker-args"
 case "$*" in *rs.initiate*) echo "$*" > "$STUB/initiate" ;; esac
 case "$1" in
   exec) [ -e "$STUB/mongo-never-up" ] && exit 1
@@ -65,7 +66,7 @@ class ConvergenceLocalTest(cli_harness.ToolCase):
         os.chmod(path, 0o755)
 
     def leg(self, *args: str, bare: bool = False, **env: str) -> cli_harness.Done:
-        for name in ("calls", "sbt-env"):
+        for name in ("calls", "sbt-env", "docker-args"):
             if os.path.exists(self.path(name)):
                 os.remove(self.path(name))
         given: Dict[str, Optional[str]] = {
@@ -142,13 +143,26 @@ class ConvergenceLocalTest(cli_harness.ToolCase):
     def test_nothing_listening_starts_a_throwaway_replica_set_and_waits_for_it(self) -> None:
         done = self.leg("es", TMDB_API_KEY="tmdb")
         self.assertEqual(0, done.code, done.output)
-        self.assertEqual(["docker rm", "docker run", "docker exec", "docker exec", "docker exec"],
+        self.assertEqual(["docker run", "docker exec", "docker exec", "docker exec", "docker rm"],
                          [c for c in self.calls() if c.startswith("docker")])
         self.assertEqual(f"mongodb://127.0.0.1:{NO_FALLBACK}/?directConnection=true", self.sbt_env("MONGODB_URI"))
         self.assertIn("sbt convergenceSpain", self.calls())
         # majority acknowledged on apply, not on a journal sync (scripts/own-mongod.sh)
         self.assertIn("rs.initiate({_id: 'rs0', writeConcernMajorityJournalDefault: false, members: [{_id: 0, host: "
                       "'127.0.0.1:27017'}]})", self.read("initiate"))
+
+    def test_the_container_is_this_runs_own_and_removed_when_sbt_ends_never_a_shared_name(self) -> None:
+        self.leg("es", TMDB_API_KEY="tmdb")
+        named = [a.split("--name ")[1].split()[0] for a in self.read("docker-args").splitlines() if " --name " in a]
+        removed = [a for a in self.read("docker-args").splitlines() if a.startswith("rm ")]
+        self.assertEqual(1, len(named), named)
+        self.assertRegex(named[0], r"^convergence-local-mongo-[0-9]+$")
+        self.assertEqual([f"rm -f {named[0]}"], removed)
+        self.assertLess(self.calls().index("sbt convergenceSpain"), self.calls().index("docker rm"))
+        # an unset port is a free one of its own, never one fixed port every agent's leg fights over
+        self.leg("es", TMDB_API_KEY="tmdb", CONVERGENCE_LOCAL_MONGO_PORT="")
+        self.assertNotIn(":27117/", self.sbt_env("MONGODB_URI"))
+        self.assertNotEqual("", self.sbt_env("MONGODB_URI"))
 
     def test_a_container_that_never_answers_is_given_up_on(self) -> None:
         self.write("mongo-never-up", "")
