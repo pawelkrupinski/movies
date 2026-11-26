@@ -7,7 +7,7 @@ import services.identity.measures.{IdentityMeasures, Measure, Scored}
  *  title, year, director, runtime, original title and country measures — as opposed to the film
  *  database's ranking priors (search rank, popularity, rivals) and the family's pooled count
  *  (`venues.corroborating`), which [[Priors]] names. */
-private[identity] final class EvidenceWeights(calibration: IdentityCalibration) {
+private[identity] final class EvidenceWeights(val calibration: IdentityCalibration) {
 
   val Priors: Set[String] = IdentityMeasures.RankingPriors ++ IdentityMeasures.PooledMeasures
   /** What the listing's own evidence leaves out: the [[Priors]] and the weighted guards ([[IdentityMeasures.GuardMeasures]]),
