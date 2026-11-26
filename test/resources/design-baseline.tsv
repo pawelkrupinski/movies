@@ -102,9 +102,9 @@ effect	scripts/ci/convergence_preflight.py	1
 effect	scripts/ci/convergence_reuse.py	2
 effect	scripts/ci/countries_disagree.py	2
 effect	scripts/ci/coupling_exemption_history.py	1
-effect	scripts/ci/coupling_ratchet.py	2
 effect	scripts/ci/coupling_renames.py	2
 effect	scripts/ci/coupling_rows.py	1
+effect	scripts/ci/coupling_splits.py	1
 effect	scripts/ci/darwin_sampler.py	1
 effect	scripts/ci/dispatch_takes.py	1
 effect	scripts/ci/drift_seeds.py	2
@@ -112,7 +112,6 @@ effect	scripts/ci/family_shards.py	1
 effect	scripts/ci/fanout_lint.py	1
 effect	scripts/ci/gating_checks.py	2
 effect	scripts/ci/gh_bounded.py	2
-effect	scripts/ci/harness_aa.py	1
 effect	scripts/ci/hotspots.py	1
 effect	scripts/ci/identity_ci_staleness.py	2
 effect	scripts/ci/identity_drift_check.py	2
@@ -132,7 +131,7 @@ effect	scripts/ci/no_network.py	2
 effect	scripts/ci/order_compare.py	1
 effect	scripts/ci/order_preflight.py	2
 effect	scripts/ci/population_walk_base.py	3
-effect	scripts/ci/population_walk_diff.py	2
+effect	scripts/ci/population_walk_diff.py	1
 effect	scripts/ci/precommit_share.py	2
 effect	scripts/ci/preflight.py	2
 effect	scripts/ci/pull_pinned_image.py	3
@@ -159,7 +158,7 @@ effect	scripts/ci/wait_out_registry_outage.py	3
 effect	scripts/ci/xcresult_junit.py	1
 effect	scripts/ci/xcuitest_each_class_alone.py	2
 effect	scripts/ci_sbt.py	2
-effect	scripts/ci_status.py	3
+effect	scripts/ci_status.py	2
 effect	scripts/ci_wait.py	3
 effect	scripts/class_cycles.py	1
 effect	scripts/claude-hooks/owner-decisions	3
@@ -202,9 +201,7 @@ effect	scripts/identity_slice_cli_keys.py	1
 effect	scripts/identity_slice_coverage.py	1
 effect	scripts/identity_slice_refresh.py	1
 effect	scripts/identity_stamp_carry.py	2
-effect	scripts/identity_stamp_carry_published.py	2
-effect	scripts/identity_stamp_carry_ranges.py	1
-effect	scripts/identity_what_if.py	1
+effect	scripts/identity_stamp_carry_published.py	1
 effect	scripts/identity_what_if_cli.py	2
 effect	scripts/identity_what_if_cli_bisect.py	1
 effect	scripts/identity_what_if_cli_fixture.py	2
@@ -223,6 +220,7 @@ effect	scripts/lib/pinned_npm_tools.py	1
 effect	scripts/lib/prod_tunnel.py	1
 effect	scripts/lib/store_screenshots_common.py	2
 effect	scripts/lib/tool_dispatch.py	2
+effect	scripts/lib/tool_github.py	1
 effect	scripts/lib/touched_tree.py	2
 effect	scripts/linux-tree-sync.py	2
 effect	scripts/listing_history.py	3
@@ -239,7 +237,6 @@ effect	scripts/poster_eval.py	2
 effect	scripts/poster_eval_dataset.py	3
 effect	scripts/poster_eval_images.py	2
 effect	scripts/poster_hash.py	2
-effect	scripts/pure_move_check.py	1
 effect	scripts/pure_move_git.py	1
 effect	scripts/py-quality/migrated.py	1
 effect	scripts/py-quality/pyright.py	1
@@ -254,7 +251,6 @@ effect	scripts/shell_py_progress.py	1
 effect	scripts/stall_watch.py	3
 effect	scripts/title_trace.py	1
 effect	scripts/tool_catalogue.py	1
-effect	scripts/touched_methods.py	2
 effect	scripts/touched_tree_fixture.py	1
 effect	scripts/unmatched_census.py	3
 effect	scripts/vault_env.py	2
@@ -292,6 +288,6 @@ import-io	scripts/lib/cli_harness.py	2
 import-io	scripts/listing_history.py	2
 import-io	scripts/rule_firing_prod.py	1
 fanout	web/src/main/assets/js/shared/boot.js	10
-distance	scripts/ci	0.6
-distance	scripts/lib	0.91
+distance	scripts/ci	0.55
+distance	scripts/lib	0.92
 dircycle	scripts|scripts/ci	2
