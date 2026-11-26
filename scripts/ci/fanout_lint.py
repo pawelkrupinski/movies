@@ -7,9 +7,12 @@ parallel runner sizes itself through THE GOVERNED FAN-OUT (scripts/jvm-gate.sh g
 in every tool under the roots below:
 
 - an `xargs ... -P N` (or --max-procs) anywhere but scripts/gov-parallel;
-- a ThreadPoolExecutor, ProcessPoolExecutor, multiprocessing pool or pytest `-n auto` in a file that does not size it
-  with governed_workers( -- unless the file has a row in scripts/ci/fanout-allow.tsv (<path> TAB <why>, 30+
-  characters: a network-bound pool, a race under test, workers each holding a ticket of their own);
+- a ThreadPoolExecutor, ProcessPoolExecutor, multiprocessing pool or pytest `-n auto` that is not sized by
+  governed_workers( in its own statement (the same `with`, or the `with governed_workers(...) as width:` just above
+  it) -- unless the file has a row in scripts/ci/fanout-allow.tsv (<path> TAB <why>, 30+ characters: a network-bound
+  pool, a race under test, workers each holding a ticket of their own);
+- a shell loop that starts a background job per iteration (`... &` between `do` and `done`) in a file that also
+  `wait`s: a hand-rolled pool, to run through scripts/gov-parallel instead;
 - an allow row whose file no longer fans out, or names no file (stale).
 
   python3 scripts/ci/fanout_lint.py [--root DIR]
@@ -29,8 +32,13 @@ HELPERS = {"scripts/gov-parallel", "scripts/lib/tool_pool.py", "scripts/ci/fanou
            "scripts/ci/fanout_lint_test.py"}
 ALLOW = "scripts/ci/fanout-allow.tsv"
 XARGS = re.compile(r"\bxargs\b[^|;&]*?(\s-P\s*\S|\s--max-procs)")
-POOL = re.compile(r"\b(ThreadPoolExecutor|ProcessPoolExecutor|multiprocessing)\b|\s-n\s+auto\b")
+POOL = re.compile(r"\b(ThreadPoolExecutor|ProcessPoolExecutor)\(|\bmultiprocessing\b|\s-n\s+auto\b")
 GOVERNED = re.compile(r"\bgoverned_workers\(")
+BACKGROUND = re.compile(r"(?<![&|>0-9])&\s*(#.*)?$")
+WAIT = re.compile(r"(^|[;&(\s])wait(\s|;|$)")
+QUOTED = re.compile(r"\'[^\']*\'|\"[^\"]*\"")
+DO = re.compile(r"(?:^|[;\s])do(?=$|[;\s])")
+DONE = re.compile(r"(?:^|[;\s])done(?=$|[;\s])")
 MIN_WHY = 30
 
 
@@ -83,6 +91,8 @@ def code_lines(text: str) -> List[Tuple[int, str]]:
 
 XARGS_WHY = "an `xargs -P` fan-out: run it through scripts/gov-parallel --job J -P N"
 POOL_WHY = f"a worker pool not sized by governed_workers (scripts/lib/tool_pool.py), nor allowed in {ALLOW}"
+BACKGROUND_WHY = (f"a background job per loop iteration, then `wait`: a hand-rolled pool -- run it through "
+                  f"scripts/gov-parallel --job J -P N, or say why in {ALLOW}")
 
 
 def line_fanout(line: str, governed: bool) -> Optional[str]:
@@ -94,11 +104,31 @@ def line_fanout(line: str, governed: bool) -> Optional[str]:
     return None
 
 
+def background_in_loops(lines: List[Tuple[int, str]]) -> List[Tuple[int, str]]:
+    """The lines starting a background job inside a loop body (`do` .. `done`), when the file waits for them."""
+    if not any(WAIT.search(line) for _, line in lines):
+        return []
+    found: List[Tuple[int, str]] = []
+    depth = 0
+    for n, line in lines:
+        bare = QUOTED.sub("''", line)  # a `do` inside a quoted `bash -c '...'` opens no loop of this file's
+        depth += len(DO.findall(bare)) - len(DONE.findall(bare))
+        if depth > 0 and BACKGROUND.search(line):
+            found.append((n, BACKGROUND_WHY))
+    return found
+
+
 def file_findings(rel: str, text: str, allowed: bool) -> Tuple[bool, List[str]]:
     """(whether the file fans out, its findings)."""
-    governed = bool(GOVERNED.search(text))
-    seen = [(n, line_fanout(line, governed)) for n, line in code_lines(text)]
-    fans = [(n, why) for n, why in seen if why is not None]
+    lines = code_lines(text)
+    seen: List[Tuple[int, Optional[str]]] = []
+    for i, (n, line) in enumerate(lines):
+        # Governed in its own statement: the same logical line, or the `with governed_workers(...) as width:` above.
+        above = lines[i - 1][1] if i else ""
+        governed = bool(GOVERNED.search(line)) or (bool(GOVERNED.search(above)) and above.rstrip().endswith(":"))
+        seen.append((n, line_fanout(line, governed)))
+    seen += background_in_loops(lines) if not rel.endswith((".py", ".js", ".ts")) else []
+    fans = sorted((n, why) for n, why in seen if why is not None)
     return bool(fans), [] if allowed else [f"{rel}:{n}: {why}" for n, why in fans if why]
 
 
