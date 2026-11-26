@@ -563,6 +563,16 @@ class ApplyEndToEnd(unittest.TestCase):
             self.assertIn("ServerAliveInterval=15", argv)
             self.assertIn("ServerAliveCountMax=4", argv)
 
+    def test_every_ssh_reuses_one_authenticated_session(self):
+        # A switch polled every 5 s was a fresh authentication (Touch ID) per poll.
+        self.apply()
+        sessions = [a for a in self.ssh_argvs if a[1] != "-G"]
+        self.assertTrue(sessions)
+        for argv in sessions:
+            self.assertIn("ControlMaster=auto", argv)
+            self.assertIn("ControlPersist=10m", argv)
+            self.assertIn("ControlPath=~/.ssh/deploy-%C", argv)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=1)
