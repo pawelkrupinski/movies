@@ -100,9 +100,9 @@ check "a bounded step ends what the previous one left before it runs" "gone" "$(
 stubborn=$(step "trap '' TERM; echo \$\$ > '$work/stubborn'; while :; do sleep 1; done")
 BOUNDED_STEP_GRACE=2 bash --noprofile --norc -eo pipefail "$stubborn" > /dev/null 2>&1 &
 wrapper=$!
-for _ in $(seq 1 50); do [ -s "$work/stubborn" ] && break; sleep 0.1; done
+wait_until "the stubborn step recorded its pid" '[ -s "$work/stubborn" ]'
 kill -TERM "$wrapper"
-for _ in $(seq 1 100); do kill -0 "$wrapper" 2>/dev/null || break; sleep 0.1; done
+wait_until "the wrapper ended after the grace" '! kill -0 "$wrapper" 2>/dev/null'
 check "a step ignoring TERM is killed after the grace, the wrapper ending with it" "gone:gone" \
   "$(alive "$wrapper"):$(alive "$(cat "$work/stubborn")")"
 
