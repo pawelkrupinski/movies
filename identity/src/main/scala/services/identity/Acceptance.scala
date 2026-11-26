@@ -12,11 +12,12 @@ import services.identity.measures.{DecisionTrace, IdentityMeasures, Measure, Sco
  *  ([[seasonProduction]]). A new rule is a new row there, its questions named in the rule file of its kind (title,
  *  facts, calibration, stage, vetoes, bills); this class only runs the table. */
 private[identity] final class Acceptance(private[identity] val calibration: IdentityCalibration)
-    extends AcceptanceRuleTable, AcceptanceCalibratedRules, AcceptanceStageRules, AcceptanceVetoRules, AcceptanceBillRules {
+    extends AcceptanceRuleTable, AcceptanceCalibratedRules, AcceptanceStageRules, AcceptanceVetoRules {
 
   val weights = new EvidenceWeights(calibration)
   import weights.{against, fitsBetter, own, speaksAgainst}
   import Acceptance.Refused
+  import AcceptanceTitleRules.takesNoBill
 
   /** A rule's verdict: the film it accepts, or the first of its steps that refused — the identity trace's
    *  `refused:<rule>:<why>`, so a listing no rule took says which condition stopped each — with the candidate the rule
@@ -186,6 +187,8 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
       (if (scored.vetoedRivals == 0) "" else ranked.flatMap(rival => rival.denial.filter(_.isReleaseVeto)
         .map(why => s"rival ${rival.candidate.tmdbId} $why")).mkString(" (", "; ", ")"))
 
+  /** Is the listing a bill of several works, which no rule takes a film of ([[AcceptanceTitleRules.billsSeveralWorks]])? */
+  def billsSeveralWorks(ranked: Seq[Scored]): Boolean = AcceptanceTitleRules.billsSeveralWorks(ranked)
   /** The film a cluster no TMDB film was taken for falls back to ([[AcceptanceFactRules.fallback]]). */
   def fallback(ranked: Seq[Scored]): Option[Scored] = AcceptanceFactRules.fallback(weights, ranked)
 
