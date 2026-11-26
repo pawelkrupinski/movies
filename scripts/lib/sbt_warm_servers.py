@@ -10,7 +10,7 @@ import re
 import signal
 import sys
 from dataclasses import dataclass
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Protocol
 
 import machine
 from jvm_gate import lock_busy
@@ -20,6 +20,22 @@ STOPS_KEPT, STOPS_CUT = 5000, 2000
 
 def command_out(argv: List[str]) -> str:
     return machine.output(argv)[1]
+
+
+class ProcessTable(Protocol):
+    """What sbt-warm reads of the machine's processes, and the signals it sends them."""
+
+    def args(self, pid: int) -> str: ...
+
+    def parent(self, pid: int) -> int: ...
+
+    def cwd(self, pid: int) -> str: ...
+
+    def matching(self, pattern: str) -> List[int]: ...
+
+    def alive(self, pid: int) -> bool: ...
+
+    def signal(self, pid: int, signum: int, group: bool = False) -> bool: ...
 
 
 class Procs:
@@ -91,7 +107,7 @@ def remove(*paths: str) -> None:
 
 
 class Servers:
-    def __init__(self, procs: Procs, state: str, say: Callable[[str], None], sleep: Callable[[float], None],
+    def __init__(self, procs: ProcessTable, state: str, say: Callable[[str], None], sleep: Callable[[float], None],
                  now: Callable[[], datetime.datetime]) -> None:
         self.procs, self.state, self.say, self.sleep, self.now = procs, state, say, sleep, now
         self.stops_log = os.path.join(state, "stops.log")
