@@ -24,7 +24,8 @@ Every collection runs on a real MongoDB replica set (change streams and the stag
 MONGODB_URI if given; else the itAll mongod on :28017 if it answers; else a throwaway mongo:8.3.17 container of this
 run's own (convergence-local-mongo-<pid>, on a free port, or CONVERGENCE_LOCAL_MONGO_PORT -- whatever already answers
 there is reused, never replaced), waited for at most CONVERGENCE_LOCAL_MONGO_WAIT seconds (120) a step and removed when
-sbt ends (a killed run leaves it: `docker rm -f convergence-local-mongo-<pid>`). Each run's
+sbt ends or the leg is ended by INT, TERM or HUP (only a KILL leaves it: `docker rm -f convergence-local-mongo-<pid>`); the sbt of such a leg runs in a group of its own, ended with it, and at most
+CONVERGENCE_LOCAL_SBT_TIMEOUT seconds (6 hours). Each run's
 databases are created under a MONGODB_DB prefix unique to it and dropped by the suite (`ConvergenceStorage.close`).
 CONVERGENCE_LOCAL_PAIR=<recording run | laid fixtures dir> lays a pair already on this machine instead (offline: GitHub
 unreachable), said as not necessarily the pin CI holds. CONVERGENCE_LOCAL_OWN_MONGOD=1 runs the leg on a mongod of its
@@ -35,9 +36,11 @@ from __future__ import annotations
 import glob
 import os
 import shutil
+import signal
 import socket
 import sys
 import time
+from types import FrameType
 from typing import Callable, Dict, List, Mapping, NoReturn, Optional, Sequence
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
@@ -223,7 +226,9 @@ def run_leg(leg: Leg) -> NoReturn:
     environment = {**leg.hermetic(), "MONGODB_URI": uri, "MONGODB_DB": database}
     if not leg.started_container:
         execute(["sbt", leg.suite], environment)
-    raise Stop(leg.runner.run(Command(["sbt", leg.suite], environment)))  # a container of ours: sbt must not replace us
+    bound = float(leg.env.get("CONVERGENCE_LOCAL_SBT_TIMEOUT") or str(6 * 3600))
+    # a container of ours: sbt must not replace us, and runs in a group of its own that a signal to us ends with us
+    raise Stop(leg.runner.run(Command(["sbt", leg.suite], environment, timeout=bound)))
 
 
 def execute(argv: List[str], env: Mapping[str, str]) -> NoReturn:
@@ -260,7 +265,15 @@ def run(argv: Sequence[str], env: Mapping[str, str], runner: Runner) -> int:
         leg.remove_container()
 
 
+def end_by_signal(signum: int, _frame: Optional[FrameType]) -> NoReturn:
+    """INT, TERM and HUP end the leg as an exception, so its `finally` removes the container (a default TERM or HUP kills
+    the process outright, leaving it)."""
+    raise Stop(128 + signum)
+
+
 def main() -> int:
+    for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):  # before the runner, which passes a signal on to this
+        signal.signal(sig, end_by_signal)
     return run(sys.argv[1:], os.environ, SubprocessRunner())
 
 

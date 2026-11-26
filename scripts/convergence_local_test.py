@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import os
 import shutil
+import signal
 import socket
+import subprocess
 import sys
 import unittest
 from typing import Dict, List, Optional
@@ -164,6 +166,36 @@ class ConvergenceLocalTest(cli_harness.ToolCase):
         self.leg("es", TMDB_API_KEY="tmdb", CONVERGENCE_LOCAL_MONGO_PORT="")
         self.assertNotIn(":27117/", self.sbt_env("MONGODB_URI"))
         self.assertNotEqual("", self.sbt_env("MONGODB_URI"))
+
+    def ended_by(self, sig: int, sbt: str) -> cli_harness.Done:
+        """The leg on a throwaway container, `sig` sent to it once its sbt (the stub `sbt`) has started: how it ended."""
+        self.fakes.script("sbt", sbt, shell="/usr/bin/env bash")
+        env = self.env({"STUB": self.work, "LOCAL_MIRROR_PORT": self.mirror_port, "CONVERGENCE_LOCAL_MONGO_PORT": NO_FALLBACK,
+                        "CONVERGENCE_LOCAL_MONGO_WAIT": "3", "TMDB_API_KEY": "tmdb", "MONGODB_URI": None,
+                        "MONGODB_DB": None, "CONVERGENCE_LOCAL_PAIR": None, "CONVERGENCE_LOCAL_OWN_MONGOD": None})
+        proc = subprocess.Popen([self.tool, "--i-need-a-local-leg", "es"], env=env, cwd=self.work, text=True,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+        try:
+            self.assertTrue(cli_harness.wait_until(lambda: os.path.exists(self.path("sbt-started")), 30), "sbt never started")
+            proc.send_signal(sig)
+            out, err = proc.communicate(timeout=30)
+        finally:
+            if proc.poll() is None:
+                os.killpg(proc.pid, signal.SIGKILL)
+        return cli_harness.Done(proc.returncode, out, err)
+
+    def test_a_leg_ended_by_a_signal_still_removes_its_container_and_ends_sbt(self) -> None:
+        for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+            with self.subTest(signal=sig.name):
+                for name in ("sbt-started", "docker-args", "sbt-pid"):
+                    if os.path.exists(self.path(name)):
+                        os.remove(self.path(name))
+                self.ended_by(sig, 'echo $$ > "$STUB/sbt-pid"; echo started > "$STUB/sbt-started"; exec sleep 60')
+                named = [a.split("--name ")[1].split()[0] for a in self.read("docker-args").splitlines() if " --name " in a]
+                self.assertEqual(1, len(named), named)
+                self.assertIn(f"rm -f {named[0]}", self.read("docker-args").splitlines())
+                self.assertTrue(cli_harness.wait_until(lambda: not cli_harness.alive(int(self.read("sbt-pid"))), 10),
+                                "sbt outlived the leg")
 
     def test_a_container_that_never_answers_is_given_up_on(self) -> None:
         self.write("mongo-never-up", "")
