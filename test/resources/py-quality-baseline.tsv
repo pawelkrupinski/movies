@@ -74,16 +74,6 @@ cognitive	scripts/ci/commit_rules.py:main	18
 cognitive	scripts/ci/commit_rules.py:renamed_types	16
 cognitive	scripts/ci/convergence_paths.py:main	14
 cognitive	scripts/ci/corpus_shape_diff.py:findings_of	11
-cognitive	scripts/ci/coupling_ratchet.py:check	68
-cognitive	scripts/ci/coupling_ratchet.py:falls	11
-cognitive	scripts/ci/coupling_ratchet.py:frozen_growth	36
-cognitive	scripts/ci/coupling_ratchet.py:growth	12
-cognitive	scripts/ci/coupling_ratchet.py:new_exemptions	17
-cognitive	scripts/ci/coupling_ratchet.py:rename_credit	20
-cognitive	scripts/ci/coupling_ratchet.py:split_check	62
-cognitive	scripts/ci/coupling_ratchet.py:split_credit	58
-cognitive	scripts/ci/coupling_ratchet.py:unadmitted_exemptions	13
-cognitive	scripts/ci/coupling_ratchet.py:violations	37
 cognitive	scripts/ci/cross_country.py:disagreeing	11
 cognitive	scripts/ci/cross_country.py:read_films	11
 cognitive	scripts/ci/cross_country.py:read_listings	28
@@ -286,13 +276,6 @@ cyclomatic	scripts/ci/convergence_slots.py:plan_suites	15
 cyclomatic	scripts/ci/countries_disagree.py:disagreements	14
 cyclomatic	scripts/ci/countries_disagree.py:line_of	11
 cyclomatic	scripts/ci/countries_disagree.py:takes_of	12
-cyclomatic	scripts/ci/coupling_ratchet.py:RenameEvidence.class_renamed	11
-cyclomatic	scripts/ci/coupling_ratchet.py:check	37
-cyclomatic	scripts/ci/coupling_ratchet.py:frozen_growth	25
-cyclomatic	scripts/ci/coupling_ratchet.py:rename_credit	18
-cyclomatic	scripts/ci/coupling_ratchet.py:split_check	43
-cyclomatic	scripts/ci/coupling_ratchet.py:split_credit	40
-cyclomatic	scripts/ci/coupling_ratchet.py:violations	21
 cyclomatic	scripts/ci/cross_country.py:read_listings	36
 cyclomatic	scripts/ci/drift_diff.py:main	27
 cyclomatic	scripts/ci/drift_explorer.py:main	19
@@ -445,9 +428,6 @@ method-lines	infra/nix/files/nixos-auto-apply.py:classify_and_apply	127
 method-lines	infra/nix/files/nixos-auto-apply.py:classify_output	59
 method-lines	infra/nix/files/nixos-auto-apply.py:main	92
 method-lines	infra/nix/files/nixos-auto-apply.py:publish	56
-method-lines	scripts/ci/coupling_ratchet.py:check	117
-method-lines	scripts/ci/coupling_ratchet.py:split_check	66
-method-lines	scripts/ci/coupling_ratchet.py:split_credit	82
 method-lines	scripts/ci/identity_judgements.py:problems	51
 method-lines	scripts/ci/population_walk_diff.py:main	52
 method-lines	scripts/ci/recording_health.py:main	70
@@ -470,7 +450,6 @@ file-lines	infra/bin/nix-update	560
 file-lines	infra/nix/files/nixos-auto-apply.py	1343
 file-lines	infra/nix/files/scheduled_dispatch.py	582
 file-lines	scripts/ci/commit_rules.py	595
-file-lines	scripts/ci/coupling_ratchet.py	1200
 file-lines	scripts/ci/runner_scheduler.py	1245
 file-lines	scripts/identity_what_if.py	530
 file-lines	scripts/listing_history.py	527
@@ -502,7 +481,6 @@ pyright	scripts/ci/convergence_paths.py	66
 pyright	scripts/ci/convergence_slots.py	50
 pyright	scripts/ci/corpus_shape_diff.py	86
 pyright	scripts/ci/countries_disagree.py	158
-pyright	scripts/ci/coupling_ratchet.py	158
 pyright	scripts/ci/cross_country.py	122
 pyright	scripts/ci/decodo-probe.py	31
 pyright	scripts/ci/drift_diff.py	77
