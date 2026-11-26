@@ -524,7 +524,7 @@ pyright	scripts/ci/workflow_steps.py	25
 pyright	scripts/ci/xcresult_annotations.py	65
 pyright	scripts/ci/xcresult_junit.py	98
 pyright	scripts/ci_status.py	47
-pyright	scripts/ci_wait.py	260
+pyright	scripts/ci_wait.py	258
 pyright	scripts/claude-hooks/foreground-wait-guard	42
 pyright	scripts/claude-hooks/gh-run-guard	9
 pyright	scripts/claude-hooks/masked-exit-guard	45
@@ -543,10 +543,10 @@ pyright	scripts/identity_rule_ablation.py	478
 pyright	scripts/identity_slice_diff.py	56
 pyright	scripts/identity_stamp_carry.py	19
 pyright	scripts/identity_what_if.py	483
-pyright	scripts/ios-simulators	59
+pyright	scripts/ios-simulators	32
 pyright	scripts/label-lookup	312
 pyright	scripts/linux-tree-sync.py	108
-pyright	scripts/listing_history.py	581
+pyright	scripts/listing_history.py	575
 pyright	scripts/ml-identity/cross_country_experiment.py	237
 pyright	scripts/mongo_grants.py	69
 pyright	scripts/ops/dumpheap.py	27
