@@ -86,33 +86,48 @@ def parse(argv: Sequence[str]) -> Options:
     return options
 
 
-def failure_lines(log: str) -> str:
+class FailureLines:
     """The failure's own lines of an sbt log: each failing test with its whole assertion message (the indented lines
     under it, up to its first stack frame, at most CLUE_LINES), the failed suites, sbt's errors -- never the specs that
     passed (2026-11-19: every passing `should` line was kept, the assertion dropped, and the NOT LANDED named two
     passes; 2026-11-23, b4be01: only the message's first line was kept, and a withClue's reason list under it was
-    lost). The log whole when none of those is in it."""
-    kept: List[str] = []
-    clue = 0  # 0: not inside a failing test's message, else the lines of it kept so far, plus one
-    for line in log.splitlines():
-        if clue:
-            if CLUE_LINE.search(line) and not STACK_FRAME.search(line):
-                if clue <= CLUE_LINES:
-                    kept.append(line)
-                clue += 1
-                continue
-            clue = 0
+    lost)."""
+
+    def __init__(self) -> None:
+        self.kept: List[str] = []
+        self.clue = 0  # 0: not inside a failing test's message, else the lines of it kept so far, plus one
+
+    def in_clue(self, line: str) -> bool:
+        """`line` read as a line of the message of the failing test above it (kept while room is left)."""
+        if not (self.clue and CLUE_LINE.search(line) and not STACK_FRAME.search(line)):
+            self.clue = 0
+            return False
+        if self.clue <= CLUE_LINES:
+            self.kept.append(line)
+        self.clue += 1
+        return True
+
+    def feed(self, line: str) -> None:
+        if self.in_clue(line):
+            return
         if FAILED_TEST.search(line):
-            kept.append(line)
-            clue = 1
+            self.kept.append(line)
+            self.clue = 1
         elif FAILED_SUMMARY.search(line):
-            kept.append(line)
-    return "\n".join(kept) + "\n" if kept else log
+            self.kept.append(line)
+
+
+def failure_lines(log: str) -> str:
+    """The lines of `log` that say why it failed; the log whole when none of them is in it."""
+    lines = FailureLines()
+    for line in log.splitlines():
+        lines.feed(line)
+    return "\n".join(lines.kept) + "\n" if lines.kept else log
 
 
 def lint_command(plan: str) -> str:
     """The one sbt-warm argument of a `module:spec` plan: a `testOnly` of each module's specs, `; ` between."""
-    parts = []
+    parts: List[str] = []
     for module in MODULES:
         specs = [line[len(module) + 1:] for line in plan.splitlines() if line.startswith(f"{module}:")]
         if specs:
