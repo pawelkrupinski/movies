@@ -3,7 +3,7 @@ package adapters
 
 import services.identity.vocabulary.PosterQuestion
 
-import services.identityadapters.*
+import services.agreementasks.AgreementReadiness
 import services.tmdb.{InMemoryTmdbDocuments, QuestionMemory, QuestionPolicies}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

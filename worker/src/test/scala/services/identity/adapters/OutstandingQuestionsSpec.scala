@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.agreementasks.AgreementQuestions
 import services.tmdb.{InMemoryTmdbDocuments, OutstandingQuestions, QuestionMemory}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

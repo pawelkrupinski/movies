@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.agreementasks
 
 import services.enrichment.WikidataClient
 import services.identity.agreement.{SourceHit, SourceRecord}

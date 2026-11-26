@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.agreementasks
 
 import services.enrichment.{MetacriticClient, RottenTomatoesClient}
 import services.identity.agreement.{SourceHit, SourceRecord}

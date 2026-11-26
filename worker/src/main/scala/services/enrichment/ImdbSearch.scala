@@ -6,7 +6,7 @@ import tools.{HttpFetch, HttpRead, ReadOutcome}
 /**
  * IMDb's own search, GraphQL `mainSearch` on [[ImdbClient.Endpoint]]: titles in any language IMDb lists them under, and
  * the people a name finds with the films they directed — what the identity resolver's IMDb family asks
- * (`services.identityadapters.ImdbFamily`), beside [[ImdbClient]]'s suggestions and records.
+ * (`services.agreementasks.ImdbFamily`), beside [[ImdbClient]]'s suggestions and records.
  */
 final class ImdbSearch(http: HttpFetch) {
   import ImdbSearch._

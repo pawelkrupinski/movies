@@ -1,6 +1,6 @@
 package integration
 
-import services.identityadapters.{AgreementQuestions, FamilySource, FilmwebFamily, ImdbFamily, MetacriticFamily, PosterAnswerStore, RottenTomatoesFamily, WikiFamily}, services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind}
+import services.agreementasks.{AgreementQuestions, FamilySource, FilmwebFamily, ImdbFamily, MetacriticFamily, PosterAnswerStore, RottenTomatoesFamily, WikiFamily}, services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind}
 import services.identity._
 import services.identity.measures.{FallbackIds, Listing, PosterEvidence, ResolverDecision}
 

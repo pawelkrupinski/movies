@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.agreementasks
 
 import services.enrichment.FilmwebClient
 import services.identity.agreement.{Showing, SourceHit, SourceRecord}

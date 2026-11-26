@@ -68,7 +68,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
       def country: models.Country                            = de
       def normalizer: services.titles.TitleNormalizer        = services.titles.TitleNormalizer.forCountry(de)
       def families: Seq[VoterFamily]                         = Nil
-      def sources: Map[VoterFamily, services.identityadapters.FamilySource] = Map.empty
+      def sources: Map[VoterFamily, services.agreementasks.FamilySource] = Map.empty
       def fetch: tools.HttpFetch                             = gap
       def posterImages(tmdbId: Int): Seq[clients.TmdbClient.PosterImage] = Nil
       def find(imdb: String): services.identity.vocabulary.Answer[Option[Int]] = services.identity.vocabulary.Answer.Unknown

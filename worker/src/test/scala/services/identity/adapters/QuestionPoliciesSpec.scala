@@ -3,7 +3,7 @@ package adapters
 
 import services.identity.vocabulary.{PosterQuestion, VoterFamily}
 
-import services.identityadapters.*
+import services.agreementasks.{AgreementQuestions, CatalogueAnswerStore}
 import services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, QuestionMemory, QuestionPolicies, TmdbKind, TmdbStore, TmdbStoreSweep}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

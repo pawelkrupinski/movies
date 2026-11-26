@@ -116,7 +116,7 @@ class StageAnswers(answering: StageAnswers.Sources, docs: StageAnswers.Documents
     if (failed.nonEmpty) { val _ = marks.incrementAndGet() }
   }
   /** The family questions a stage asks INLINE ([[AgreementStage.AskNow]]): answered before its apply reads them again,
-   *  as the worker's inline asks answer them ([[services.identityadapters.InlineFamilyAsks]]) — else a take the worker
+   *  as the worker's inline asks answer them ([[services.agreementasks.InlineFamilyAsks]]) — else a take the worker
    *  reads its answers for at its first apply waited here for the queue's next round, served the model's film meanwhile. */
   def inline(release: String => Boolean): AgreementStage.AskNow = (questions, _) => fileNow(questions, release)
   /** `questions`' family questions answered now -- a held filed answer released, the rest asked of the sources: an
@@ -173,7 +173,7 @@ object StageAnswers {
 
   /** Which of the family questions `open` a round asks the sources: none `release` files (a held filed answer),
    *  nor one whose answer the store holds fresh — skipped, as production's asker skips it
-   *  ([[services.identityadapters.AgreementAsker]], `Fresh`). A wait lists the gaps it met while their answers were
+   *  ([[services.agreementasks.AgreementAsker]], `Fresh`). A wait lists the gaps it met while their answers were
    *  held, and keeps listing them once filed; asked again, the recording's answer replaced the filed one, which no whole
    *  resolve ever reads (PL "LALKA / DOLLY", seed 2, run 3154: RT's filed "Lalka Dolly" search read again as no hits). */
   def asks(store: FamilyAnswerStore, open: Seq[(VoterFamily, String)], release: String => Boolean,

@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.agreementasks
 
 /** Where the agreement's questions report: each one enqueued (`added`, or already queued), and each one asked, by how it
  *  came out — [[Answered]], [[Nothing]] there (a refused query, a missing page: filed as no film), [[Fresh]] (an answer

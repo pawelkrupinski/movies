@@ -1,6 +1,6 @@
 package clients.us
 
-import services.identityadapters.{CatalogueLinkReader, TmdbIdentityLookups, VenueDetails}
+import services.identityadapters.{TmdbIdentityLookups, VenueDetails}, services.agreementasks.CatalogueLinkReader
 import clients.tools.FakeHttpFetch
 import models.{CinemaMovie, UsRoster}
 import org.scalatest.OptionValues

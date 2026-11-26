@@ -60,7 +60,7 @@ object TaskType {
   case object AuditShareCards       extends TaskType { val name = "AuditShareCards"       }
   /** An identity agreement question — a family's search, record or programme, TMDB's find of an agreed IMDb id or a
    *  record read again, a poster to hash, a catalogue page or a batch of catalogue ids — named by its id
-   *  (`services.identity.vocabulary.Question.id`) and asked by `services.identityadapters.AgreementAsker`. */
+   *  (`services.identity.vocabulary.Question.id`) and asked by `services.agreementasks.AgreementAsker`. */
   case object AskQuestion           extends TaskType { val name = "AskQuestion"           }
   // The four agreement task types AskQuestion replaced, each its own payload, asked as AskQuestion is
   // (`AgreementQuestions.questionsOf`). Old queued tasks only; remove after 2026-11-07.

@@ -1,6 +1,6 @@
 package tools
 
-import services.identityadapters.{AgreementQuestions, FamilySource}, services.tmdb.FamilyAnswerStore
+import services.agreementasks.{AgreementQuestions, FamilySource}, services.tmdb.FamilyAnswerStore
 
 import services.identity.vocabulary.VoterFamily
 

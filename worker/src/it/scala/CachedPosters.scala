@@ -1,6 +1,6 @@
 package integration
 
-import services.identityadapters.{HashedPoster, PosterAnswerStore, PosterHashing}
+import services.agreementasks.{HashedPoster, PosterAnswerStore, PosterHashing}
 import tools.TempDirectories
 import clients.{HttpTmdbClient, TmdbClient}
 import play.api.libs.json.{JsArray, Json}

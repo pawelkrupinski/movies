@@ -5,7 +5,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.Country
 import services.alerts.TelegramNotificationMetrics
 import services.corpus.CorpusCensus
-import services.identityadapters.IdentityAgreementMetrics
+import services.agreementasks.IdentityAgreementMetrics
 import services.identityadapters.IdentityLookupFillMetrics
 import services.identityadapters.IdentityModelGauges
 import services.identityadapters.IdentityProjectionGauges

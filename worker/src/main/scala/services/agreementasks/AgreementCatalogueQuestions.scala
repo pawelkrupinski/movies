@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.agreementasks
 
 import services.identity.*
 import services.identity.vocabulary.CatalogueQuestion

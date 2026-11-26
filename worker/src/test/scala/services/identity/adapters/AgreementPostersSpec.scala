@@ -3,7 +3,7 @@ package adapters
 
 import services.identity.vocabulary.PosterQuestion
 
-import services.identityadapters.*
+import services.agreementasks.{AgreementQuestions, HashedPoster, PosterAnswerStore, PosterHashing}
 import services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, QuestionMemory, QuestionPolicies}
 import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec

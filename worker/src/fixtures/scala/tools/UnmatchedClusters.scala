@@ -1,6 +1,6 @@
 package tools
 
-import services.identityadapters.{CatalogueAnswerStore, PosterAnswerStore}, services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind}
+import services.agreementasks.{CatalogueAnswerStore, PosterAnswerStore}, services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind}
 import models.Country
 import org.bson.{BsonArray, BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
 import org.bson.json.{JsonMode, JsonWriterSettings}

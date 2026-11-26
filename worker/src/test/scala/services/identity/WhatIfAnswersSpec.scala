@@ -82,14 +82,14 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     val mirror = new InMemoryTmdbDocuments
     mirror.put(TmdbKind.Family, Seq("poster|film|1" -> filed(4, 4), "poster|film|2" -> filed(PosterEvidence.FilmPosters, PosterEvidence.FilmPosters)))
     val source  = WhatIfAnswers.live(mirror, scratch(), tools.RoutingHttpFetch.dead("tmdb"), settings.TmdbApiKey("replay"), poland, clock)
-    val posters = new services.identityadapters.PosterAnswerStore(new services.tmdb.FamilyAnswerStore(source.docs, clock), clock)
+    val posters = new services.agreementasks.PosterAnswerStore(new services.tmdb.FamilyAnswerStore(source.docs, clock), clock)
     // film 1: the mirror's cut document is hidden, so the stage asks again, files into the local store and reads that
     posters.film(1) shouldBe Answer.Unknown
     posters.fresh(PosterQuestion.Film(1)) shouldBe false
-    posters.file(PosterQuestion.Film(1), (1 to 6).map(h => services.identityadapters.HashedPoster(s"/p$h.jpg", PosterHash(h.toLong))))
+    posters.file(PosterQuestion.Film(1), (1 to 6).map(h => services.agreementasks.HashedPoster(s"/p$h.jpg", PosterHash(h.toLong))))
     posters.film(1).answered.get should have size 6
     // film 2: fresh to this code, so the mirror's is read even over another side's re-ask in the shared local store
-    posters.file(PosterQuestion.Film(2), (1 to 16).map(h => services.identityadapters.HashedPoster(s"/p$h.jpg", PosterHash(h.toLong))))
+    posters.file(PosterQuestion.Film(2), (1 to 16).map(h => services.agreementasks.HashedPoster(s"/p$h.jpg", PosterHash(h.toLong))))
     posters.film(2).answered.get should have size PosterEvidence.FilmPosters.toLong
     mirror.get(TmdbKind.Family, Seq("poster|film|1"))("poster|film|1").getArray("hashes").size shouldBe 4
   }

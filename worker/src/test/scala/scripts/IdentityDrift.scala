@@ -1,6 +1,6 @@
 package scripts
 
-import services.identityadapters.{AgreementReadiness, ModelInputGate, PendingListingStore}, services.tmdb.{FamilyAnswerStore, TmdbDocuments, TmdbKind, TmdbStore}
+import services.identityadapters.{ModelInputGate, PendingListingStore}, services.agreementasks.AgreementReadiness, services.tmdb.{FamilyAnswerStore, TmdbDocuments, TmdbKind, TmdbStore}
 import models.Country
 import org.bson.BsonDocument
 
@@ -417,7 +417,7 @@ object IdentityDrift {
     def country: Country                                   = reads.country
     def normalizer: services.titles.TitleNormalizer        = reads.normalizer
     def families: Seq[VoterFamily]                         = reads.families
-    def sources: Map[VoterFamily, services.identityadapters.FamilySource] = reads.sources
+    def sources: Map[VoterFamily, services.agreementasks.FamilySource] = reads.sources
     def fetch: tools.HttpFetch                             = reads.fetch
     def posterImages(tmdbId: Int): Seq[clients.TmdbClient.PosterImage] = reads.tmdb.posters(tmdbId, also = Seq("en"))
     def find(imdb: String): Answer[Option[Int]] = reads.gaps.answered(reads.tmdb.findByImdbId(imdb).map(_.id)) match {

@@ -1,6 +1,6 @@
 package integration
 
-import services.identityadapters.{FamilySource, FilmwebFamily, ImdbFamily, MetacriticFamily, RottenTomatoesFamily, WikiFamily}
+import services.agreementasks.{FamilySource, FilmwebFamily, ImdbFamily, MetacriticFamily, RottenTomatoesFamily, WikiFamily}
 
 import services.identity.vocabulary.VoterFamily
 import tools.HttpFetch

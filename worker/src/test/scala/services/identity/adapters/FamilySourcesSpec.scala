@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.agreementasks.{FilmwebFamily, ImdbFamily, MetacriticFamily, RottenTomatoesFamily, WikiFamily}
 import clients.tools.FixtureFile
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

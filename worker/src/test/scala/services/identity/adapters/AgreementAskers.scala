@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.agreementasks.{AgreementAsker, AgreementCatalogueQuestions, AgreementPosterQuestions, AgreementQuestionMetrics, AgreementQuestions, CatalogueAnswerStore, CatalogueLinkReader, CatalogueMapping, FamilySource, PosterAnswerStore, PosterHashing}
 import services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, QuestionMemory}
 import services.identity.vocabulary.VoterFamily
 import services.sharecards.{PosterDownload, VipsPosterShrinker}

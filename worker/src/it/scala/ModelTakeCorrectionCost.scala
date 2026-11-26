@@ -1,6 +1,6 @@
 package integration
 
-import services.identityadapters.{CatalogueAnswerStore, PosterAnswerStore}, services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind}
+import services.agreementasks.{CatalogueAnswerStore, PosterAnswerStore}, services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind}
 import services.identity._
 import services.identity.measures.ResolverDecision
 

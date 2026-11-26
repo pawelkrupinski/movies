@@ -19,7 +19,7 @@ object OlderRefs {
    *  and beside it -- since 2026-11-20 -- IMDb's own search (`services.enrichment.ImdbSearch`), which an older ref's
    *  family reads off the client. By name: the family's package moved on 2026-11-18 (OlderRefsPackage). */
   def imdbFamily[F](fetch: tools.HttpFetch): F = {
-    val family      = Seq("services.identityadapters.ImdbFamily", "services.identity.adapters.ImdbFamily")
+    val family      = Seq("services.agreementasks.ImdbFamily", "services.identity.adapters.ImdbFamily")
       .flatMap(name => scala.util.Try(Class.forName(name)).toOption).head
     val constructor = family.getConstructors.maxBy(_.getParameterCount)
     val search      = Option.when(constructor.getParameterCount == 2)(
