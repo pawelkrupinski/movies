@@ -8,8 +8,9 @@ import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path[:0] = [os.path.dirname(os.path.abspath(__file__)), os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib")]
 import python_floor_lint as lint  # noqa: E402
+import tool_git  # noqa: E402
 
 REPO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 FLOOR = (3, 9)
@@ -101,8 +102,8 @@ class PythonFloorLintTest(unittest.TestCase):
             f.write("#!/usr/bin/env python3\ndef f(x: str | None):\n    pass\n")
         with open(os.path.join(root, "scripts", "shell"), "w") as f:
             f.write("#!/usr/bin/env bash\necho 'def f(x: str | None): pass'\n")
-        lint.git(root, "init", "-q")
-        lint.git(root, "add", "-A")
+        tool_git.Git.here(root).text("init", "-q")
+        tool_git.Git.here(root).text("add", "-A")
         self.assertEqual(["scripts/tool"], list(lint.python_files(root)))
         self.assertEqual(1, lint.main([root]))
 
