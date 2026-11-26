@@ -155,6 +155,19 @@ class RatchetTest(unittest.TestCase):
         head = self.commit({"other-allow.tsv": HEAD + "x\ty\tz\twhy\n"}, "other")
         self.assertEqual((0, ""), self.ratchet(f"{self.base}..{head}"))
 
+    def test_a_path_missing_from_a_revision_is_absent_but_a_revision_git_cannot_read_is_no_answer(self):
+        sys.path.insert(0, HERE)
+        import commit_rules
+        here = os.getcwd()
+        os.chdir(self.repo)
+        try:
+            self.assertEqual(HEAD, commit_rules.at(self.base, LIST))
+            self.assertEqual("", commit_rules.at(self.base, "no/such/file"))
+            with self.assertRaises(subprocess.CalledProcessError):
+                commit_rules.at("0" * 40, LIST)  # what a shallow clone's missing parent looks like
+        finally:
+            os.chdir(here)
+
     def test_an_unreadable_range_is_no_verdict(self):
         self.assertEqual(2, self.ratchet("nosuch..alsonot")[0])
 
