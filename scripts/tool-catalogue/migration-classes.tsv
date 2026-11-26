@@ -119,7 +119,7 @@ scripts/ci/recording-preflight.sh	KEEP
 scripts/ci/release-store-prune.sh	KEEP
 scripts/ci/roster-audit.sh	KEEP
 scripts/ci/sbt-deps-resolve.sh	KEEP
-scripts/ci/sbt-guard/sbt	MIGRATE
+scripts/ci/sbt-guard/sbt	KEEP
 scripts/ci/sbt-invalidate-exporters.sh	KEEP
 scripts/ci/sbt-sources-key.sh	KEEP
 scripts/ci/scheduled-failure-issue.sh	KEEP
