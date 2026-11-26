@@ -13,19 +13,19 @@ import services.identity.measures.{FactRelations, IdentityMeasures, Measure, Mul
  *  numbers another instalment. A row reads top to bottom as the rule does: what it requires of the ranking, how it
  *  picks its one candidate, each check that candidate must pass with the refusal the trace names it by, and what it
  *  takes the candidate at ([[AcceptanceRule]]); what a check asks is a named question of the rule files beside this
- *  one. Every row reads the calibration and the evidence weights off the weighing it is handed; [[Acceptance]] runs
- *  them. */
-private[identity] object AcceptanceRuleTable {
-  import AcceptanceFactRules.{aNameAlone, anotherNamedBesideItsWork, asItsTitlesTopHit, contradicted, contradiction, datedTitles,
+ *  one — `titleRules`', `factRules`' and `stageRules`' — and every row reads the calibration and the evidence weights off
+ *  the weighing it is handed; [[Acceptance]] makes the table and runs it. */
+private[identity] final class AcceptanceRuleTable(titleRules: AcceptanceTitleRules, factRules: AcceptanceFactRules, stageRules: AcceptanceStageRules) {
+  import factRules.{aNameAlone, anotherNamedBesideItsWork, contradicted, contradiction, datedTitles,
     directorsTitles, directorsWorks, firstHitsTitlingTheirWork, undated}
-  import AcceptanceFactRules.{anotherOfItsDirector, closerThan, namedAlikeAndFittingBetter, namedWithinAnother, newerNamedAlikeByAFestival,
+  import factRules.{anotherOfItsDirector, closerThan, namedAlikeAndFittingBetter, namedWithinAnother, newerNamedAlikeByAFestival,
     ownReached, runnerUpItsFactsDoNotBeat}
-  import AcceptanceTitleRules.{alternativeAgainstTmdbsSearch, asItsBareTitle, creditsAnotherDirector, filmsTheTitleNames, imdbRung,
+  import titleRules.{alternativeAgainstTmdbsSearch, asItsBareTitle, asItsTitlesTopHit, creditsAnotherDirector, filmsTheTitleNames, imdbRung,
     itsOwnInstalmentOrASlip, itsTitlesFactsBeside, namesBeside, namesItsOnlyResult, otherInstalment, resultsFound, searchNamesAnother,
     soleResults, standsForItsTitle, theExactTopHit}
-  import AcceptanceStageRules.{AnotherDirector, airsTheYearItStates, anotherRecordOfItsTitle, creditsItsDirector, houseRecords,
+  import stageRules.{AnotherDirector, airsTheYearItStates, anotherRecordOfItsTitle, creditsItsDirector, houseRecords,
     houseRecordsOfItsYear, inItsSeason, relayDirectorsRecords, relayRecords, relaySeasons, seasonRecords}
-  import AcceptanceTitleRules.{authorsNamesake, onlyTheEventsWords, performedBeside, readsAsNoFilm, reusedPage, stagedShowsOwn}
+  import titleRules.{authorsNamesake, onlyTheEventsWords, performedBeside, readsAsNoFilm, reusedPage, stagedShowsOwn}
 
   /** The rules a node may be taken by on its own evidence, first to accept deciding ([[Acceptance.aloneNamed]]). */
   private[identity] lazy val aloneRules: List[AcceptanceRule] = List(SoleWork, FavouredCalibrated, ExactTopHit, SegmentTopHit,
@@ -145,7 +145,7 @@ private[identity] object AcceptanceRuleTable {
    *  the listing's own evidence reached. */
   private[identity] lazy val FavouredCalibrated = Calibrated.copy(name = "favoured-calibrated", checks = Calibrated.checks ++ List(
     NoneOf("its own facts do not favour it over the runner-up", runnerUpItsFactsDoNotBeat),
-    NoneOf("its title sits inside a closer record", (weighing, best) => closerThan(weighing.weights, best, ownReached(weighing, best)))))
+    NoneOf("its title sits inside a closer record", (weighing, best) => closerThan(best, ownReached(weighing, best)))))
 
   /** [[Calibrated]] — unless the title names another candidate by the very same pieces and the pooled FACTS
    *  ([[EvidenceWeights.facts]]) fit that one better: four "Camino dla opornych" whose original title "Santiago" names two
@@ -155,7 +155,7 @@ private[identity] object AcceptanceRuleTable {
    *  are measured evidence there (a bare "Resident Evil" at 148 venues). Two films the title names by disjoint pieces
    *  ([[IdentityMeasures.namedApart]]) are not namesakes: only the facts may pick one of "Lalka (Dolly)"'s two. */
   private[identity] lazy val UnrivalledCalibrated = Calibrated.copy(name = "unrivalled-calibrated", checks = Calibrated.checks ++ List(
-    NoneOf("its title sits inside a closer record", (weighing, best) => closerThan(weighing.weights, best, weighing.eligible)),
+    NoneOf("its title sits inside a closer record", (weighing, best) => closerThan(best, weighing.eligible)),
     NoneOf("a film the title names alike fits its facts better", namedAlikeAndFittingBetter),
     NoneOf("a festival's bare billing names a newer film alike", newerNamedAlikeByAFestival),
     NoneOf("the title names it only within another candidate's longer title",

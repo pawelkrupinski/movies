@@ -15,9 +15,12 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
 
   val weights = new EvidenceWeights(calibration)
   import weights.own
-  import AcceptanceRuleTable.{Calibrated, ExactTopHit, NumbersItsOwnInstalment, RelayRecord, SeasonRecord, Vetoes, aloneRules, atOwn,
-    pooledRules}
-  import AcceptanceTitleRules.takesNoBill
+  private val titleRules = new AcceptanceTitleRules
+  private val factRules  = new AcceptanceFactRules(weights, titleRules)
+  /** Every rule this acceptance runs, one row each ([[AcceptanceRuleTable]]). */
+  private[identity] val rules = new AcceptanceRuleTable(titleRules, factRules, new AcceptanceStageRules(factRules))
+  import rules.{Calibrated, ExactTopHit, NumbersItsOwnInstalment, RelayRecord, SeasonRecord, Vetoes, aloneRules, atOwn, pooledRules}
+  import titleRules.takesNoBill
 
   /** A rule's verdict: the film it accepts, or the first of its steps that refused — the identity trace's
    *  `refused:<rule>:<why>`, so a listing no rule took says which condition stopped each — with the candidate the rule
@@ -131,13 +134,13 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
         .map(why => s"rival ${rival.candidate.tmdbId} $why")).mkString(" (", "; ", ")"))
 
   /** Is the listing a bill of several works, which no rule takes a film of ([[AcceptanceTitleRules.billsSeveralWorks]])? */
-  def billsSeveralWorks(ranked: Seq[Scored]): Boolean = AcceptanceTitleRules.billsSeveralWorks(ranked)
+  def billsSeveralWorks(ranked: Seq[Scored]): Boolean = titleRules.billsSeveralWorks(ranked)
   /** Does the listing's page read as reused for `scored` ([[AcceptanceTitleRules.copiedBeyondItsBilling]])? */
-  private[identity] def copiedBeyondItsBilling(scored: Scored): Boolean = AcceptanceTitleRules.copiedBeyondItsBilling(scored)
+  private[identity] def copiedBeyondItsBilling(scored: Scored): Boolean = titleRules.copiedBeyondItsBilling(scored)
   /** The film a node's evidence leans to though no rule took it ([[AcceptanceFactRules.leaning]]). */
-  def leaning(ranked: Seq[Scored]): Option[Scored] = AcceptanceFactRules.leaning(weights, ranked)
+  def leaning(ranked: Seq[Scored]): Option[Scored] = factRules.leaning(ranked)
   /** The film a cluster no TMDB film was taken for falls back to ([[AcceptanceFactRules.fallback]]). */
-  def fallback(ranked: Seq[Scored]): Option[Scored] = AcceptanceFactRules.fallback(weights, ranked)
+  def fallback(ranked: Seq[Scored]): Option[Scored] = factRules.fallback(ranked)
 
   // ── what pre-empts the rules, and what follows a take ────────────────────────────────────────
 

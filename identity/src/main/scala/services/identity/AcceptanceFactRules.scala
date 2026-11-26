@@ -1,16 +1,17 @@
 package services.identity
 
 import services.identity.AcceptanceRule.{Weighing, isEligible}
-import services.identity.measures.{FactRelations, Film, IdentityMeasures, ListingShape, Measure, MultiFilmBill, Scored, SearchMeasures,
+import services.identity.measures.{FactRelations, Film, IdentityMeasures, ListingShape, MultiFilmBill, Scored, SearchMeasures,
   StageRelays, TitleTextMeasures}
 import services.titles.YearWindow
 
 /** What the acceptance rules that take a film by the listing's facts ask — a sole work, a director's work or title, a
  *  dated title, and the calibrated rules, favoured and unrivalled ([[AcceptanceRuleTable]]) — and the fallback a no-match
  *  may fall back to, unless its facts contradict it, and the candidate its evidence leans to.
- *  Functions of the candidates and the listing they score, and of the evidence weights where one asks them. */
-private[identity] object AcceptanceFactRules {
-  import AcceptanceTitleRules.billsSeveralWorks
+ *  Functions of the candidates and the listing they score, and of the evidence `weights` where one asks them; whether
+ *  the listing bills several works is `titleRules`' to say. [[Acceptance]] makes the one its rules ask. */
+private[identity] final class AcceptanceFactRules(weights: EvidenceWeights, titleRules: AcceptanceTitleRules) {
+  import titleRules.billsSeveralWorks
 
   /** What [[contradicted]] read: the year distance and the runtime delta the listing published. */
   private[identity] def contradiction(scored: Scored): String =
@@ -22,7 +23,7 @@ private[identity] object AcceptanceFactRules {
    *  none, on a listing billing one work, with no rival so titled that its facts do not favour it over. Stricter than any
    *  TMDB rule: a fallback record has no search rank or popularity to lend, and a wrong film is worse than none (measured
    *  2026-09-30: every correct rating page for a film TMDB lacks came from a row publishing a year or a director). */
-  def fallback(weights: EvidenceWeights, ranked: Seq[Scored]): Option[Scored] = {
+  def fallback(ranked: Seq[Scored]): Option[Scored] = {
     // on the source's own record only — one parsed from IMDb's answer always holds its principal credits — never the
     // title and year a suggestion gave before the record was filed, which no credit or running time could rule out
     val titled = ranked.filter(isEligible).filter(scored => scored.category("title").exists(IdentityMeasures.Rivalling) && scored.candidate.film.directors.isDefined)
@@ -33,12 +34,6 @@ private[identity] object AcceptanceFactRules {
   /** A fact the listing publishes agrees: the director it credits, or the year it gives, exactly. */
   private[identity] def corroborated(scored: Scored): Boolean =
     IdentityMeasures.sameDirector(scored.measures) || scored.number("year.distance").contains(0.0)
-
-  /** The candidate read as its title's exact top hit, unrivalled — how a rule taking a film by another title (an IMDb
-   *  suggestion, a search's only result) has its own facts weighed, the title's evidence granted. */
-  private[identity] def asItsTitlesTopHit(scored: Scored): Scored = scored.copy(measures = scored.measures ++ TopHitMeasures)
-  private[identity] val TopHitMeasures = Map("title" -> Measure.Category("exact"), "search.rank" -> Measure.Number(1),
-    "rivals" -> Measure.Number(0))
 
   /** A published year more than one off, or a runtime 30 minutes or more off: the listing's own facts against it. */
   private[identity] def contradicted(scored: Scored): Boolean =
@@ -179,7 +174,7 @@ private[identity] object AcceptanceFactRules {
    *  film the billing could name, one the listing's own evidence reached. */
   private[identity] def runnerUpItsFactsDoNotBeat(weighing: Weighing, best: Scored): Option[Scored] =
     weighing.eligible.filterNot(r => (r eq best) || !r.ownReach || IdentityMeasures.eventNamed(r.listing, r.candidate.film)).headOption
-      .filterNot(weighing.weights.favours(best, _))
+      .filterNot(weights.favours(best, _))
   /** `best` and the eligible records the listing's own evidence reached: a sibling's search alone brings a record and
    *  takes it away. */
   private[identity] def ownReached(weighing: Weighing, best: Scored): Seq[Scored] = weighing.eligible.filter(r => (r eq best) || r.ownReach)
@@ -210,15 +205,15 @@ private[identity] object AcceptanceFactRules {
    *  earlier answer gave the card that film's ([[IdentityProjectionPlan]]). PL "Tatarak" read 18.4% for Wajda's 2009
    *  film, its 1965 namesake 3.3%; "Lalka" leans to the 2026 film at 68.1%, not the 1968 one the old pipeline rated
    *  it as; "Bolek i Lolek" (28.9% beside "Reksio" at 28.9%) and the 1986 and 2025 "Caravaggio" lean to neither. */
-  def leaning(weights: EvidenceWeights, ranked: Seq[Scored]): Option[Scored] =
+  def leaning(ranked: Seq[Scored]): Option[Scored] =
     Option.when(ranked.headOption.forall(any => !MultiFilmBill.billsTwoWorks(any.listing)) && !billsSeveralWorks(ranked))(ranked.filter(isEligible))
       .flatMap(eligible => eligible.headOption.filter(_.untaken.isEmpty).filter(best => eligible.lift(1).forall(runnerUp =>
-        best.probability >= Acceptance.LeanMargin * runnerUp.probability) && closerThan(weights, best, eligible).isEmpty))
+        best.probability >= Acceptance.LeanMargin * runnerUp.probability) && closerThan(best, eligible).isEmpty))
 
   /** The eligible record the listing's title sits inside ([[titledCloser]]) whose answered facts
    *  `best`'s do not beat, if any: then `best`, which the title only overlaps, is not the listing's
    *  film on that evidence — on its own or pooled. */
-  private[identity] def closerThan(weights: EvidenceWeights, best: Scored, eligible: Seq[Scored]): Option[Scored] =
+  private[identity] def closerThan(best: Scored, eligible: Seq[Scored]): Option[Scored] =
     eligible.find(closer => (closer ne best) && titledCloser(closer, best) && weights.factsAnswered(best, closer) <= weights.factsAnswered(closer, closer))
 
   /** Does `closer`'s record hold the listing's title, or name a whole piece of it
@@ -241,7 +236,7 @@ private[identity] object AcceptanceFactRules {
   private[identity] def namedAlikeAndFittingBetter(weighing: Weighing, best: Scored): Option[Scored] =
     weighing.eligible.find(rival => (rival ne best) && {
       val apart = IdentityMeasures.namedApart(best.listing, best.candidate.film, rival.candidate.film)
-      val facts = weighing.weights.facts
+      val facts = weights.facts
       (namedAlike(best, rival) && facts(rival) > facts(best)) || (apart && facts(rival) >= facts(best))
     })
   /** A newer film named alike that a festival's bare billing names rather than `best` ([[ListingShape.festivalsOlderNamesake]]). */

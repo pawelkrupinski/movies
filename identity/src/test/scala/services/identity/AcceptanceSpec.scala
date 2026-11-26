@@ -47,9 +47,9 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val scored  = ranked(listing,
       (1, Film("Patagonia", year = Some(2023), runtime = Some(120), directors = Some(Seq("Ana Ruiz"))), Some(1)),
       (2, Film("Wild Patagonia Express", year = Some(2023)), None))
-    AcceptanceRuleTable.FavouredCalibrated.verdict(acceptance.weighing(scored)).left.map(_.why) shouldBe Left("its title sits inside a closer record")
+    acceptance.rules.FavouredCalibrated.verdict(acceptance.weighing(scored)).left.map(_.why) shouldBe Left("its title sits inside a closer record")
     val siblingOnly = scored.map(s => if (s.candidate.tmdbId == 2) s.copy(ownReach = false) else s)
-    AcceptanceRuleTable.FavouredCalibrated.verdict(acceptance.weighing(siblingOnly)).map(_._1.candidate.tmdbId) shouldBe Right(1)
+    acceptance.rules.FavouredCalibrated.verdict(acceptance.weighing(siblingOnly)).map(_._1.candidate.tmdbId) shouldBe Right(1)
   }
 
   "directors-title" should "not count TMDB's hollow duplicate of a film as its director's second film" in {
@@ -408,7 +408,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     byImdb(suggested(ranked(MeasuredListing("A Boy and His Dog"), (7, Film("A Boy and Her Dog", year = Some(2010)), None)), 1, 7 -> 1)) shouldBe None
     byImdb(suggested(ranked(MeasuredListing("Harry Potter Part II"), (8, Film("Harry Potter Part III", year = Some(2011)), None)), 1, 8 -> 1)) shouldBe None
     byImdb(suggested(ranked(MeasuredListing("Ebeneezer"), (9, Film("Ebenezer", year = Some(2026)), None)), 1, 9 -> 1)) shouldBe None
-    AcceptanceTitleRules.slippedTitle(MeasuredListing("Night of the Living Dead"), Film("Day of the Living Dead")) shouldBe false
+    new AcceptanceTitleRules().slippedTitle(MeasuredListing("Night of the Living Dead"), Film("Day of the Living Dead")) shouldBe false
   }
 
   it should "take IMDb's first suggestion, the only suggested film the title is, when TMDB ranks no film it names above it" in {

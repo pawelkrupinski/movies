@@ -1408,14 +1408,11 @@ services.freshness.InMemoryFreshnessStore	collaborator
 services.freshness.MongoFreshnessStore	collaborator
 services.freshness.StampMirror	collaborator
 services.identity.Acceptance	collaborator
-services.identity.AcceptanceBillRules	collaborator
-services.identity.AcceptanceCalibratedRules	collaborator
 services.identity.AcceptanceFactRules	collaborator
 services.identity.AcceptanceRule	collaborator
 services.identity.AcceptanceRuleTable	collaborator
 services.identity.AcceptanceStageRules	collaborator
 services.identity.AcceptanceTitleRules	collaborator
-services.identity.AcceptanceVetoRules	collaborator
 services.identity.Authority	collaborator
 services.identity.Backer	collaborator
 services.identity.BilledPiece	collaborator
