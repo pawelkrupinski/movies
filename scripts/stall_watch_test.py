@@ -183,6 +183,23 @@ class StallWatchTest(cli_harness.ToolCase):
         self.assertEqual([], self.marks())
         self.assertFalse(self.stalled())
 
+    def test_the_shell_name_ended_while_it_picks_its_python3_says_nothing(self) -> None:
+        # run-script-tests ends a quick test's watchdog at once; the probe for a python3 that answers had not finished,
+        # and its echo into the dead parent's pipe wrote `echo: write error: Broken pipe` into the test's own log
+        # (Linux floor run of run-script-tests-test.sh, "its whole log kept": expected `line 1|boom`)
+        os.makedirs(self.path("slow"))
+        with open(self.path("slow", "python3"), "w") as f:
+            f.write('#!/bin/sh\nsleep 1\nexec %s "$@"\n' % sys.executable)
+        os.chmod(self.path("slow", "python3"), 0o755)
+        env = self.env({"TMPDIR": self.work, "PATH": self.path("slow") + os.pathsep + os.environ["PATH"]})
+        proc = subprocess.Popen(["sh", "-c", 'trap "" PIPE; exec bash "$0" watch 1 60 x "$1"', SHELL_NAME, self.path("stalled")],
+                                cwd=self.work, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.PIPE)
+        threading.Event().wait(0.3)
+        proc.terminate()
+        threading.Event().wait(1.5)
+        self.assertEqual("", proc.communicate()[1].decode())
+
     def test_a_watchdog_ended_as_it_starts_says_nothing_and_leaves_no_mark(self) -> None:
         # run-script-tests ends a quick test's watchdog the moment it starts, 0-60 ms in: no stderr, no stall-mark.*
         root = self.root("sleep", "300")
