@@ -505,7 +505,10 @@ check "a racy test passes alone" "0" "$(run racy-test)"
 check "--stress 4: run 4 times at once, the race caught" "1 4" "$(run --stress 4 --burn 2 racy-test) $(grep -c '^[A-Z]* .*scripts/racy-test.sh (run [1-4]/4)$' "$work/out")"
 check "...its verdict: how many of its runs failed, beside the CPU burners asked for" "1 1" \
   "$(grep -c '^STRESS  scripts/racy-test.sh: 3 of 4 run(s) failed$' "$work/out") $(grep -c 'beside 2 CPU burner(s)' "$work/out")"
-check "...the burners gone with the run" "0" "$(ps -axo command | grep -c '[r]un-script-tests-burner')"
+# A burner names the run that started it (its last word): only one whose run is gone is stranded -- another agent's or
+# another stress copy's live run has burners of its own, which this machine-wide count once took for ours (4 of 4 stress runs red).
+check "...the burners gone with the run" "0" \
+  "$(ps -axo command | grep '[r]un-script-tests-burner' | awk '{print $NF}' | while read -r runner; do kill -0 "$runner" 2> /dev/null || echo stranded; done | grep -c stranded)"
 check "--stress with no names: the concurrency-heavy (marked) tests only" "scripts/racy-test.sh scripts/steady-test.sh" "$(listed --stress 2)"
 check "a steady test passes under stress" "0 1" "$(run --stress 3 --burn 1 steady-test) $(grep -c '^STRESS  scripts/steady-test.sh: 0 of 3 run(s) failed$' "$work/out")"
 check "a --changed run selecting a concurrency-heavy test names the stress command" "0 1" \
