@@ -73,20 +73,20 @@ fi
 }
 echo "==> Device: model=$MODEL version=$VERSION"
 
-TARGETS=(--test-targets "class pl.kinowo.DeepLinkInstrumentedTest")
-[[ "${FULL:-}" == "1" ]] && TARGETS=()
-
+# The command's arguments in one array that is never empty: an empty array expanded under `set -u` is an
+# unbound variable on bash 3.2.
+RUN=(gcloud firebase test android run)
 # Default to --async (submit + print results URL + return) because the only
 # Xiaomi device is Low-capacity and blocking can queue for a long time. WAIT=1
 # blocks for the pass/fail exit code (useful when capacity allows / in CI).
-ASYNC=(--async)
-[[ "${WAIT:-}" == "1" ]] && ASYNC=()
+[[ "${WAIT:-}" == "1" ]] || RUN+=(--async)
+RUN+=(
+  --type instrumentation
+  --app "$APP_APK"
+  --test "$TEST_APK"
+  --device "model=$MODEL,version=$VERSION,locale=pl,orientation=portrait"
+  --timeout 5m
+)
+[[ "${FULL:-}" == "1" ]] || RUN+=(--test-targets "class pl.kinowo.DeepLinkInstrumentedTest")
 
-exec gcloud firebase test android run \
-  "${ASYNC[@]}" \
-  --type instrumentation \
-  --app "$APP_APK" \
-  --test "$TEST_APK" \
-  --device "model=$MODEL,version=$VERSION,locale=pl,orientation=portrait" \
-  --timeout 5m \
-  "${TARGETS[@]}"
+exec "${RUN[@]}"
