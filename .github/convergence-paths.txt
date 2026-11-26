@@ -258,13 +258,11 @@ scripts/identity_slice_cli_modes.py
 scripts/identity_slice_cli_options.py
 scripts/identity_slice_cli_run.py
 scripts/identity_slice_diff.py
-scripts/it-local.sh
 scripts/jvm-gate.sh
 scripts/label-lookup
 scripts/local-mirror/freshness
 scripts/local-mirror/service.sh
 scripts/local-mirror/start-local-mongo.sh
-scripts/own-mongod.sh
 scripts/read-model-snapshot-inputs.sh
 scripts/sbt-warm
 scripts/shell-spec.sh
