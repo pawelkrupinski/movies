@@ -1,7 +1,7 @@
 package modules.wiring
 
 import services.identity.vocabulary.toAnswer
-import services.identityadapters.IdentityProjection
+import services.identityprojection.IdentityProjection
 
 /**
  * The agreement stage (docs/design/identity-questions.md): the no-matches ≥3 other film database families agree on, the

@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identityprojection
 
 import scala.util.Try
 import scala.util.chaining.scalaUtilChainingOps

@@ -153,7 +153,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
   /** What a drain of the identity model sets off: the projection of what moved and the fill of the gaps it found.
    *  Neither runs on a period. */
   protected[modules] def onModelBatch(batch: services.identityadapters.ModelBatch): Unit = if (batch.moved) {
-    identityProjection.asked(services.identityadapters.IdentityProjection.Trigger.Scrape)
+    identityProjection.asked(services.identityprojection.IdentityProjection.Trigger.Scrape)
     identityProjectionTrigger.request(); identityFillTrigger.request()
   }
 

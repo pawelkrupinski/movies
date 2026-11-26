@@ -1,6 +1,6 @@
 package services.identity.adapters
 
-import services.identityadapters.IdentityProjectionGauges
+import services.identityprojection.IdentityProjectionGauges
 import services.metrics.{ExpositionSamples, PrometheusExposition}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec

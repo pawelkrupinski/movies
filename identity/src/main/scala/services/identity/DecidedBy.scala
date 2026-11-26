@@ -5,7 +5,7 @@ import services.identity.measures.{DecisionTrace, ResolverDecision}
 
 /**
  * Which stage decided a listing's take, and by which rule — each as ONE short id, what a take-change line
- * ([[TakeChangeLines]]) and the rule-firing count (`services.identityadapters.RuleFiringCount`) are filtered and grouped by:
+ * ([[TakeChangeLines]]) and the rule-firing count (`services.identityprojection.RuleFiringCount`) are filtered and grouped by:
  *
  *  - [[stage]]: `pin`; `model` (the resolver's acceptance rules); `relay` (its stage-relay rules, [[RelayStage]]); and the
  *    agreement stage's takes after the model, `agreement`, `poster`, `broadcast`, `fill`, `catalogue`, `correction`,

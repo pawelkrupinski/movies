@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{CinemaScraper, PreScrapedCinemaScraper}
 import services.identity.measures.Listing
-import services.identityadapters.ProjectionTick
+import services.identityprojection.ProjectionTick
 import services.titles.TitleNormalizer
 import tools._
 

@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identityprojection
 
 import models.{Cinema, ListingKey, StoredMovieRecord}
 import services.evidence.LatestTitleYear

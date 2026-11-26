@@ -8,7 +8,7 @@ import services.corpus.CorpusCensus
 import services.agreementasks.IdentityAgreementMetrics
 import services.lookupfill.IdentityLookupFillMetrics
 import services.identityadapters.IdentityModelGauges
-import services.identityadapters.IdentityProjectionGauges
+import services.identityprojection.IdentityProjectionGauges
 import services.identitystaging.IdentityTakeMetrics
 import services.metrics.*
 import services.metrics.worker.{EnvGatedFeatureMetrics, HttpBreakerMetrics, JvmVitalsSampler, PaidEgressMetrics, RetiredVenueCensus, StringPoolMetrics, TtlIndexMetrics, WorkerCacheMetrics, WorkerCitySeasonMetrics, WorkerCorpusMetrics, WorkerHttpMetrics, WorkerResolutionMetrics, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}

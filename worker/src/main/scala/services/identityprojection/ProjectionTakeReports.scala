@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identityprojection
 
 import services.tmdb.TakeHistory
 import models.ListingKey

@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identityprojection
 
 import java.time.{Clock, LocalDateTime, ZoneOffset}
 import java.util.Locale

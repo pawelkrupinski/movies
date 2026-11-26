@@ -3,7 +3,7 @@ package services.identity
 import models.{CacheKey, StringPool}
 
 import tools.SpecPool
-import services.identityadapters.IdentityProjection
+import services.identityprojection.IdentityProjection
 import tools.SpecClock.given
 
 import models.{Cinema, CinemaCityChain, CinemaCityKinepolis, CinemaMovie, CinemaShowing, Country, Helios, KinoApollo, KinoMuza, KinoPalacowe, Movie, MovieRecord, Multikino, Rialto, Showtime, Source, SourceData, Tmdb, ListingKey}

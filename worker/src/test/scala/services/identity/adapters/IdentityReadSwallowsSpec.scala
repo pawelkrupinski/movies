@@ -5,7 +5,7 @@ import models.{ListingKey, MovieRecord, Tmdb}
 import org.bson.{BsonDocument, BsonInt64, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identityadapters.{MongoPendingListingStore, MongoRetainedListingStore, ProjectionDrafter, RetainedListingStore}, services.tmdb.HistoryEntry
+import services.identityadapters.{MongoPendingListingStore, MongoRetainedListingStore, RetainedListingStore}, services.identityprojection.ProjectionDrafter, services.tmdb.HistoryEntry
 
 /** What the identity adapters read and could not use -- a stored listing that no longer decodes, a film's TMDB details
  *  that failed -- each left out as before, and now said out loud: the read gives less than the store holds. */
@@ -41,7 +41,7 @@ class IdentityReadSwallowsSpec extends AnyFlatSpec with Matchers {
   "a film whose TMDB details fail" should "be drafted without them, and say so" in {
     val draft  = FilmDraft(1L, None, Nil, MovieRecord(tmdbId = Some(42)), "anchor")
     var drafted: Seq[FilmDraft] = Nil
-    val lines = warnings("services.identityadapters.ProjectionDrafter") {
+    val lines = warnings("services.identityprojection.ProjectionDrafter") {
       drafted = ProjectionDrafter.detailed(Seq(draft), (_, _) => throw new IllegalStateException("TMDB down"))
     }
     drafted shouldBe Seq(draft)

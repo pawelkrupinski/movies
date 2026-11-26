@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identityprojection
 
 import services.identity.IdentityLookups
 import services.identity.measures.Film

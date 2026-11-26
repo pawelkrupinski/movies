@@ -10274,9 +10274,9 @@ services.identityadapters.IdentityModelGauges
 services.identityadapters.IdentityModelGauges$$anon$1
 services.identityadapters.IdentityModelMetrics
 services.identityadapters.IdentityModelService
-services.identityadapters.IdentityProjection
-services.identityadapters.IdentityProjectionGauges
-services.identityadapters.IdentityProjectionMetrics
+services.identityprojection.IdentityProjection
+services.identityprojection.IdentityProjectionGauges
+services.identityprojection.IdentityProjectionMetrics
 services.lookupfill.LookupFill
 services.lookupfill.LookupFillBudget
 services.lookupfill.LookupFillLiveFetch

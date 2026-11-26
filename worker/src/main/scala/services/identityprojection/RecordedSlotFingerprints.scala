@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identityprojection
 
 import scala.util.{Failure, Success, Try}
 

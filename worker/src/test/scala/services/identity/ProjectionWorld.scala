@@ -2,7 +2,7 @@ package services.identity
 
 import models.{CacheKey, StringPool}
 
-import services.identityadapters.{IdentityProjection, IdentityProjectionMetrics}
+import services.identityprojection.{IdentityProjection, IdentityProjectionMetrics}
 
 import models.{Cinema, CinemaMovie, CinemaShowing, Country, MovieRecord, ScrapeAttempt}
 import services.movies.{CaffeineMovieCache, CinemaSlotBuilder, InMemoryScrapeGuardLedger, ScreeningTokens, SingleCountryNormalizer}
@@ -69,7 +69,7 @@ private[identity] final class ProjectionWorld(
     def reconciled(measured: Boolean): Unit = { reconciles += measured; () }
     def takesChanged(changes: Seq[TakeChange]): Unit = { takes ++= changes; () }
     override def takesReversed(reversals: Seq[TakeReversals.Reversal]): Unit = { reversed ++= reversals; () }
-    def agreementPhase(mode: String, phase: services.identityadapters.ProjectionPhase): Unit = ()
+    def agreementPhase(mode: String, phase: services.identityprojection.ProjectionPhase): Unit = ()
   }
   private val logger = play.api.Logger(classOf[IdentityProjection])
   private given services.evidence.LatestTitleYear = services.evidence.LatestTitleYear(clock)
@@ -80,16 +80,16 @@ private[identity] final class ProjectionWorld(
     changedListings = () => { listingsRead(); intake.projectedChanged(venues) },
     resolve = resolve,
     cache = cache, filmIds = filmIds,
-    scoping = new services.identityadapters.ProjectionScoping(normalizer, pagesMoved),
-    drafter = new services.identityadapters.ProjectionDrafter(normalizer, slotSource, details,
-      new services.identityadapters.RecordedSlotFingerprints(fingerprints, logger), slotMemoOf),
-    writer = new services.identityadapters.ProjectionWrite(cache, filmIds,
+    scoping = new services.identityprojection.ProjectionScoping(normalizer, pagesMoved),
+    drafter = new services.identityprojection.ProjectionDrafter(normalizer, slotSource, details,
+      new services.identityprojection.RecordedSlotFingerprints(fingerprints, logger), slotMemoOf),
+    writer = new services.identityprojection.ProjectionWrite(cache, filmIds,
       (k, _) => { if (announceFails) throw new IllegalStateException(s"bus down for ${k.cleanTitle}"); announced += k; () },
       normalizer, slotSource, backlog, logger),
-    drift = new services.identityadapters.ProjectionDrift(normalizer, metrics, logger),
+    drift = new services.identityprojection.ProjectionDrift(normalizer, metrics, logger),
     // as the worker's: each take kept as the projection moves it (AsyncIdentityHistory writes takes before it returns),
     // the reversal count seeded from them at construction
-    takeReports = new services.identityadapters.ProjectionTakeReports(metrics, _ => (),
+    takeReports = new services.identityprojection.ProjectionTakeReports(metrics, _ => (),
       new TakeChangeLines(Country.Poland, settings.CommitSha("0e41a4812")),
       new services.tmdb.TakeHistory(history, _ => Nil, clock, "0e41a4812"),
       new TakeReversals(clock, seed = services.tmdb.TakeHistory.reversalsHeld(history, clock.millis())), logger),

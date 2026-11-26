@@ -4,7 +4,7 @@ package adapters
 import models.{FilmId, ListingKey, MovieRecord, StoredMovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identityadapters.{IdentityProjectionMetrics, ProjectionDrift, ProjectionTick}
+import services.identityprojection.{IdentityProjectionMetrics, ProjectionDrift, ProjectionTick}
 
 /** A reconciling projection's drift: the films it wrote or retired outside the scope its changes gave it, counted and
  *  named — a film new to the store, one whose fields moved, one that moved its key alone, one retired. */
@@ -22,7 +22,7 @@ class ProjectionDriftSpec extends AnyFlatSpec with Matchers {
     def drifted(films: Int): Unit = { drifts += films; () }
     def reconciled(measured: Boolean): Unit = ()
     def takesChanged(changes: Seq[TakeChange]): Unit = ()
-    def agreementPhase(mode: String, phase: services.identityadapters.ProjectionPhase): Unit = ()
+    def agreementPhase(mode: String, phase: services.identityprojection.ProjectionPhase): Unit = ()
   }
 
   "a reconcile's drift" should "count and name each film written or retired outside its scope, and none inside it" in {

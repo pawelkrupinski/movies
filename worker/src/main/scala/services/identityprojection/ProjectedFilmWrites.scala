@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identityprojection
 
 import models.MovieRecord
 import models.{CacheKey, FilmId}

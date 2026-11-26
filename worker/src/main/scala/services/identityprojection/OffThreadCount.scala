@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identityprojection
 
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicReference

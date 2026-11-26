@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identityprojection
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
@@ -66,11 +66,11 @@ import services.identity.measures.ResolverDecision
  *  - `kinowo_worker_identity_rule_fires_total{rule}` — per rule id (a title rule's `title:<title-rules.tsv id>`, the
  *    model's `accept:` / `pooled:` / `veto:` / `apart:` / `join:` / `refused:` ids, a later stage's `stage:<rule>`), the
  *    live listings it fired on, added up over each written whole-corpus projection
- *    ([[services.identityadapters.RuleFiringCount]]); `kinowo_worker_identity_rule_counted_listings_total` the listings
+ *    ([[services.identityprojection.RuleFiringCount]]); `kinowo_worker_identity_rule_counted_listings_total` the listings
  *    those counts were over, so a rule's share of the corpus is the ratio of the two's increases. A rule with no series,
  *    or no increase over a week, fired on no live listing: dead in prod. Rule ids only, a few hundred series a country;
  *  - `kinowo_worker_identity_agreement_phase_seconds{mode}` / `kinowo_worker_identity_agreement_phase_allocated_bytes{mode}` —
- *    every projection's agreement phase ([[services.identityadapters.ProjectionPhase]], the "agreement 69.1s/9579MB" of
+ *    every projection's agreement phase ([[services.identityprojection.ProjectionPhase]], the "agreement 69.1s/9579MB" of
  *    its log line), by its mode (`periodic`, `whole`, `changed`): the distribution `kinowo_worker_identity_agreement_seconds`,
  *    the last stage run's wall clock alone, cannot give. `IdentityAgreementCostRegression` compares its hour's median with
  *    its week's;
@@ -201,14 +201,14 @@ final class IdentityProjectionGauges(countryCodes: Seq[String], registry: Promet
     .labelNames("country")
     .register(registry)
 
-  /** Where a country's rule-firing count goes ([[services.identityadapters.RuleFiringCount]]): each rule's listings, and
+  /** Where a country's rule-firing count goes ([[services.identityprojection.RuleFiringCount]]): each rule's listings, and
    *  how many listings were counted. */
   def ruleFirings(country: String): (Map[String, Int], Int) => Unit = { (fired, listings) =>
     fired.foreach { case (rule, n) => ruleFires.labelValues(country, rule).inc(n.toDouble) }
     ruleCountedListings.labelValues(country).inc(listings.toDouble)
   }
 
-  /** Where a country's suspect-take count goes ([[services.identityadapters.SuspectTakeCount]]): one series per signal. */
+  /** Where a country's suspect-take count goes ([[services.identityprojection.SuspectTakeCount]]): one series per signal. */
   def suspects(country: String): Map[SuspectTakes.Signal, Int] => Unit =
     counts => counts.foreach { case (signal, n) => suspectTakes.labelValues(country, signal.label).set(n.toDouble) }
 
@@ -273,7 +273,7 @@ final class IdentityProjectionGauges(countryCodes: Seq[String], registry: Promet
     }
     def refused(reason: IdentityProjectionMetrics.Refusal): Unit = refusals.labelValues(country, reason.label).inc()
     def drifted(films: Int): Unit = drift.labelValues(country).inc(films.toDouble)
-    def agreementPhase(mode: String, phase: services.identityadapters.ProjectionPhase): Unit = {
+    def agreementPhase(mode: String, phase: services.identityprojection.ProjectionPhase): Unit = {
       agreementSeconds.labelValues(country, mode).observe(phase.seconds)
       agreementBytes.labelValues(country, mode).observe(phase.allocatedBytes.toDouble)
     }

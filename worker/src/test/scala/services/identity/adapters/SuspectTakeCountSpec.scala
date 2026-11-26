@@ -3,7 +3,7 @@ package adapters
 
 import services.identity.agreement.SuspectTakes
 
-import services.identityadapters.*
+import services.identityprojection.{PrefetchedRecords, SuspectTakeCount}
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

@@ -5,7 +5,7 @@ import services.identity.measures.{Resolution, ResolverDecision}
  * THE HAND JUDGEMENTS OF TAKES as the live worker reads them: `test/resources/fixtures/identity-judgements.tsv` (its
  * columns and states: `tools.IdentityJudgements`, the gates' reader), bundled into the worker and handed in by its
  * composition root (`modules.wiring.BundledJudgements`) so its
- * suspect-take count (`services.identityadapters.SuspectTakeCount`) counts only the suspects no one has judged, and
+ * suspect-take count (`services.identityprojection.SuspectTakeCount`) counts only the suspects no one has judged, and
  * the takes a judgement calls wrong apart; and the projection withdraws each listing's take a judgement calls wrong
  * ([[withdraw]]), after the model and the agreement stage decided: a wrong judgement corrects the take.
  *

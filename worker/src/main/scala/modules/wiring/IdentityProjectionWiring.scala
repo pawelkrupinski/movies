@@ -1,7 +1,7 @@
 package modules.wiring
 
 import services.identity.{FilmIdCounterStore, IdentityListingIntake, InMemoryFilmIdCounterStore, InMemoryVenueSlotFingerprints, MongoFilmIdCounterStore, MongoVenueSlotFingerprints, VenueSlotFingerprints}
-import services.identityadapters.IdentityProjection
+import services.identityprojection.IdentityProjection
 import services.movies.{CinemaSlotBuilder, ScrapeHealth}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.tasks.SettleReaper
@@ -62,13 +62,13 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
           IdentityProjection.Resolved(snapshot.resolution, snapshot.listings.view.map(_.key), snapshot.listings)) },
       cache       = movieCache,
       filmIds     = filmIdCounterStore,
-      scoping     = new services.identityadapters.ProjectionScoping(titleNormalizer, venuePageFacts.takeMoved),
-      drafter     = new services.identityadapters.ProjectionDrafter(titleNormalizer, slotSource, movieService.withFilmDetails,
-        new services.identityadapters.RecordedSlotFingerprints(venueSlotFingerprints, logger)),
-      writer      = new services.identityadapters.ProjectionWrite(movieCache, filmIdCounterStore, movieService.announceReidentified,
+      scoping     = new services.identityprojection.ProjectionScoping(titleNormalizer, venuePageFacts.takeMoved),
+      drafter     = new services.identityprojection.ProjectionDrafter(titleNormalizer, slotSource, movieService.withFilmDetails,
+        new services.identityprojection.RecordedSlotFingerprints(venueSlotFingerprints, logger)),
+      writer      = new services.identityprojection.ProjectionWrite(movieCache, filmIdCounterStore, movieService.announceReidentified,
         titleNormalizer, slotSource, () => agreementStage.backlog, logger),
-      drift       = new services.identityadapters.ProjectionDrift(titleNormalizer, metrics, logger),
-      takeReports = new services.identityadapters.ProjectionTakeReports(metrics,
+      drift       = new services.identityprojection.ProjectionDrift(titleNormalizer, metrics, logger),
+      takeReports = new services.identityprojection.ProjectionTakeReports(metrics,
         changeFeed = { val projections = new java.util.concurrent.atomic.AtomicLong
           changes => {
             takeChangesTold(changes)
@@ -99,9 +99,9 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
    *  corpus (`kinowo_worker_identity_suspect_takes`, `…_wrong`): its
    *  listings as their venue pages state them, as the agreement reads them, and the agreed films' records from the model's
    *  store, in one batch — counted on a thread of its own, put off while the heap is near its limit. */
-  lazy val suspectTakeCount: services.identityadapters.SuspectTakeCount =
-    new services.identityadapters.SuspectTakeCount(venueDetailLookups(),
-      services.identityadapters.PrefetchedRecords.of(storedLookups()), clock, country.zone, workerMetrics.identityProjection.suspects(country.code),
+  lazy val suspectTakeCount: services.identityprojection.SuspectTakeCount =
+    new services.identityprojection.SuspectTakeCount(venueDetailLookups(),
+      services.identityprojection.PrefetchedRecords.of(storedLookups()), clock, country.zone, workerMetrics.identityProjection.suspects(country.code),
       runner = managedResources.executor("identity suspect takes")(tools.DaemonExecutors.boundedPool(s"identity-suspect-takes-${country.code}",
         threads = 1, queueCapacity = 1, tools.WhenFull.WaitForRoom)),
       pressed = () => tools.HeapPressure.pressed(), judgements = judged,
@@ -109,8 +109,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
 
   /** How often each rule fires on the live listings (`kinowo_worker_identity_rule_fires_total{rule}`), over each written
    *  projection of the whole corpus — counted on a thread of its own, put off while the heap is near its limit. */
-  lazy val ruleFiringCount: services.identityadapters.RuleFiringCount =
-    new services.identityadapters.RuleFiringCount(titleNormalizer, workerMetrics.identityProjection.ruleFirings(country.code),
+  lazy val ruleFiringCount: services.identityprojection.RuleFiringCount =
+    new services.identityprojection.RuleFiringCount(titleNormalizer, workerMetrics.identityProjection.ruleFirings(country.code),
       runner = managedResources.executor("identity rule firings")(tools.DaemonExecutors.boundedPool(s"identity-rule-firings-${country.code}",
         threads = 1, queueCapacity = 1, tools.WhenFull.WaitForRoom)),
       pressed = () => tools.HeapPressure.pressed())
@@ -174,8 +174,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   def identityModelTakenUp(): Unit = identityProjectionTrigger.once(scala.concurrent.duration.Duration.Zero)(bootProjectionTick())
   lazy val settleReaper = {
     managedResources.stopping(new SettleReaper(() => settleTick(),
-    interval = SettleInterval(services.identityadapters.IdentityProjection.ReconcileEvery),
-    initialDelay = SettleReaper.InitialDelay(services.identityadapters.IdentityProjection.ReconcileEvery),
+    interval = SettleInterval(services.identityprojection.IdentityProjection.ReconcileEvery),
+    initialDelay = SettleReaper.InitialDelay(services.identityprojection.IdentityProjection.ReconcileEvery),
     runStore = scheduledRunStore, clock = clock, ticks = ticks, threadPools = threadPools))
   }
 }

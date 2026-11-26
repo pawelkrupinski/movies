@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identityprojection
 
 /** What set each identity projection off, as its `trigger` names it in its log lines and take changes
  *  ([[IdentityProjection]]): [[asked]] notes what asks for the next, [[next]] names the one starting. */
