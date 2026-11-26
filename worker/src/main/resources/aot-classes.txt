@@ -9856,6 +9856,8 @@ services.cinemas.us.RegalClient$
 services.cinemas.us.RegalParser
 services.cinemas.us.RegalParser$
 services.cinemas.us.RegalParser$$anon$1
+services.cinemas.us.RegalTheatreCodes
+services.cinemas.us.RegalTheatreCodes$
 services.cinemas.us.RegalVenues
 services.cinemas.us.RegalVenues$
 services.cinemas.us.SquarespaceEventsClient
