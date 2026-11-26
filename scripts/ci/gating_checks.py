@@ -186,7 +186,7 @@ def registry_name(name: str) -> str:
 
 
 # ── a red run: does it gate? ────────────────────────────────────────────────────────────────────────────────────────
-def row_state(state: dict, name: str) -> str:
+def row_state(state: dict[str, str], name: str) -> str:
     """The registry's state of a run's job: its row by name, else a pattern row (`takes (*)`) it matches; `missing` for a
     job with no row at all, which GATES (only an explicit `unproven` row reports)."""
     for n in (name, registry_name(name)):

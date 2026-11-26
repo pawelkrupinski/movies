@@ -361,6 +361,12 @@ def fork_group(module, cls, scope):
     return "1-refit" if apart else "2"
 
 
+def changed_paths(base: str, head: str) -> "list[str]":
+    """The changed paths: stdin's, else the diff's -- an empty or detached stdin is no "no change" (fail safe, never "none")."""
+    piped = [] if sys.stdin.isatty() else [l.strip() for l in sys.stdin if l.strip()]
+    return piped or (git("diff", "--name-only", "--no-renames", base, head) or "").split()
+
+
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -375,9 +381,7 @@ def main(argv):
     p.add_argument("--every-test", help="identityImpact's `<out>.tests` (every test class): ALL runs each by name, once")
     a = ap.parse_args(argv)
     if a.cmd == "countries":
-        # an empty or detached stdin is no "no change": the paths come from the diff then (fail safe, never "none")
-        paths = [] if sys.stdin.isatty() else [l.strip() for l in sys.stdin if l.strip()]
-        paths = paths or git("diff", "--name-only", "--no-renames", a.base, a.head).split()
+        paths = changed_paths(a.base, a.head)
         print(",".join(countries(a.base, a.head, paths, a.tree)))
         return 0
     why, tests = read_impact(a.impact)

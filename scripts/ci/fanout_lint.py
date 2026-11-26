@@ -55,22 +55,30 @@ def read_allow(root: str) -> Dict[str, str]:
     return rows
 
 
-def code_lines(text: str) -> List[Tuple[int, str]]:
-    """The code lines, a shell line continued with a trailing backslash joined to its continuation (`xargs -n1 \\` with
-    `-P 4` on the next line is one command), numbered by its first physical line."""
+def is_comment(line: str) -> bool:
+    return line.lstrip().startswith(("#", "//"))
+
+
+def logical_lines(text: str) -> List[Tuple[int, str]]:
+    """The lines, a shell line continued with a trailing backslash joined to its continuation (`xargs -n1 \\` with `-P 4`
+    on the next line is one command), numbered by its first physical line."""
     out: List[Tuple[int, str]] = []
-    joining: Optional[Tuple[int, str]] = None
+    start = 0
+    parts: List[str] = []
     for n, line in enumerate(text.splitlines(), 1):
-        if joining is None and line.lstrip().startswith(("#", "//")):
+        start = start if parts else n
+        if line.endswith("\\") and (parts or not is_comment(line)):
+            parts.append(line[:-1].rstrip())
             continue
-        start, head = joining if joining else (n, "")
-        joined = head + line.rstrip("\\").rstrip() + " " if line.endswith("\\") else None
-        joining = (start, joined) if joined is not None else None
-        if joined is None:
-            out.append((start, head + line))
-    if joining:
-        out.append(joining)
+        out.append((start, " ".join([*parts, line])))
+        parts = []
+    if parts:
+        out.append((start, " ".join(parts)))
     return out
+
+
+def code_lines(text: str) -> List[Tuple[int, str]]:
+    return [(n, line) for n, line in logical_lines(text) if not is_comment(line)]
 
 
 XARGS_WHY = "an `xargs -P` fan-out: run it through scripts/gov-parallel --job J -P N"

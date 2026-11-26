@@ -49,6 +49,7 @@ import sys
 import tempfile
 import unicodedata
 from collections import defaultdict
+from typing import Any, Dict, Iterable, List, Set, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_judgements as j  # noqa: E402  (the one reader of the judgements, shared with the takes check)
@@ -129,40 +130,61 @@ def expected_match_findings(expected, labels):
 HARD_LINE = re.compile(r"^(?P<key>[^|\t]*)\|[^\t]*\t.*\btmdb=(?P<tmdb>\d+)\b.*\bcinemas=\[(?P<cinemas>[^\]]*)\]")
 
 
-def hard_cluster_findings(root, judged):
-    """The hard-cluster expectations that take a film the judgements call wrong for the billing at one of its cinemas.
-    The projection withdraws every such take (TakeJudgements.withdraw, 176074559) -- its venue's or every venue's wrong,
-    unless its venue's calls the film right -- so HardClusterConvergenceIntegrationSpec cannot come out so: the file is
-    stale (Main #2600), and no known-wrong row can let it stand."""
-    wrong, right = defaultdict(set), defaultdict(set)  # (cc, title key, film) -> venues ("*" for every)
+Finding = Tuple[Tuple[str, ...], str]
+Venues = Dict[Tuple[str, str, str], Set[str]]  # (cc, title key, film) -> venues ("*" for every)
+
+
+def judged_venues(judged: Iterable[Any]) -> Tuple[Venues, Venues]:
+    """The venues each (country, title key, film) is judged (wrong, right) at."""
+    wrong: Venues = defaultdict(set)
+    right: Venues = defaultdict(set)
     for r in judged:
         if r.verdict in ("wrong", "right"):
             (wrong if r.verdict == "wrong" else right)[(r.country, key(r.rawTitle), r.film)].add(r.venue)
-    out = []
-    present = [cc for cc in COUNTRIES if os.path.exists(os.path.join(root, HARD_CLUSTERS.format(cc=cc)))]
-    for cc in COUNTRIES:
-        path = os.path.join(root, HARD_CLUSTERS.format(cc=cc))
-        if not os.path.exists(path):
-            if present:  # a country's file gone while its siblings stay: the check would pass over it
-                out.append((("expected", cc, "hard-clusters", "missing"), f"{HARD_CLUSTERS.format(cc=cc)} is missing"))
-            continue
-        with open(path, encoding="utf-8") as f:
-            for number, line in enumerate(f, 1):
-                m = HARD_LINE.match(line)
-                if not m:
-                    if line.strip() and not line.startswith("#") and "tmdb=—" not in line:
-                        out.append((("expected", cc, "hard-clusters", "unparseable", str(number)),
-                                    f"expected-hard-clusters-{cc}.txt line {number} matches no known shape, so it was not "
-                                    f"checked against the judgements: {line.strip()[:80]}"))
-                    continue
-                film, cinemas = f"tmdb:{m['tmdb']}", {v.strip() for v in m["cinemas"].split(",")}
-                k = (cc, m["key"], film)
-                denied = {v for v in cinemas if ("*" in wrong[k] or v in wrong[k]) and v not in right[k]}
-                if denied:
-                    out.append((("expected", cc, "hard-clusters", m["key"], film),
-                                f"expected-hard-clusters-{cc}.txt expects '{m['key']}' as {film}, which the judgements call wrong: "
-                                f"the projection withdraws that take (TakeJudgements.withdraw), so the spec cannot come out so "
-                                f"-- regenerate the file"))
+    return wrong, right
+
+
+def hard_line_finding(cc: str, m: "re.Match[str]", wrong: Venues, right: Venues) -> List[Finding]:
+    film, cinemas = f"tmdb:{m['tmdb']}", {v.strip() for v in m["cinemas"].split(",")}
+    k = (cc, m["key"], film)
+    denied = {v for v in cinemas if ("*" in wrong[k] or v in wrong[k]) and v not in right[k]}
+    if not denied:
+        return []
+    return [(("expected", cc, "hard-clusters", m["key"], film),
+             f"expected-hard-clusters-{cc}.txt expects '{m['key']}' as {film}, which the judgements call wrong: "
+             f"the projection withdraws that take (TakeJudgements.withdraw), so the spec cannot come out so "
+             f"-- regenerate the file")]
+
+
+def hard_file_findings(cc: str, path: str, wrong: Venues, right: Venues) -> List[Finding]:
+    out: List[Finding] = []
+    with open(path, encoding="utf-8") as f:
+        for number, line in enumerate(f, 1):
+            m = HARD_LINE.match(line)
+            if m:
+                out += hard_line_finding(cc, m, wrong, right)
+            elif line.strip() and not line.startswith("#") and "tmdb=—" not in line:
+                out.append((("expected", cc, "hard-clusters", "unparseable", str(number)),
+                            f"expected-hard-clusters-{cc}.txt line {number} matches no known shape, so it was not "
+                            f"checked against the judgements: {line.strip()[:80]}"))
+    return out
+
+
+def hard_cluster_findings(root: str, judged: Iterable[Any]) -> List[Finding]:
+    """The hard-cluster expectations that take a film the judgements call wrong for the billing at one of its cinemas.
+    The projection withdraws every such take (TakeJudgements.withdraw, 176074559) -- its venue's or every venue's wrong,
+    unless its venue's calls the film right -- so HardClusterConvergenceIntegrationSpec cannot come out so: the file is
+    stale (Main #2600), and no known-wrong row can let it stand. A file that is gone while its siblings stay, or a line
+    of no known shape, is a finding too: the check would pass over it."""
+    wrong, right = judged_venues(judged)
+    paths = {cc: os.path.join(root, HARD_CLUSTERS.format(cc=cc)) for cc in COUNTRIES}
+    present = any(os.path.exists(path) for path in paths.values())
+    out: List[Finding] = []
+    for cc, path in paths.items():
+        if os.path.exists(path):
+            out += hard_file_findings(cc, path, wrong, right)
+        elif present:
+            out.append((("expected", cc, "hard-clusters", "missing"), f"{HARD_CLUSTERS.format(cc=cc)} is missing"))
     return out
 
 
