@@ -94,6 +94,7 @@ adapter	py	scripts/lib/tool_process.py	process clock
 adapter	py	scripts/lib/tool_git.py	process env
 adapter	py	scripts/lib/tool_pool.py	process env
 adapter	py	scripts/lib/cli_harness.py	process env clock
+adapter	py	scripts/lib/machine.py	process env clock
 #
 # Distance D: where abstractions exist (the owner, 2026-11-26): the Python library packages and the TypeScript
 # dashboard. Plain browser JS (web/src/main/assets/js) has none, so D measures nothing there: cycles and layers hold it.

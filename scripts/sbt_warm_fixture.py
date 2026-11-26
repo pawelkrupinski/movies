@@ -15,6 +15,7 @@ from typing import Dict, List, Mapping, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import cli_harness  # noqa: E402
+import machine  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/sbt-warm")
 ROOT = cli_harness.ROOT
@@ -65,12 +66,8 @@ def lock_state(path: str) -> str:
 
 def kill_group(pid: int) -> None:
     """`pid`'s process group, else `pid` alone, killed."""
-    for kill in (os.killpg, os.kill):
-        try:
-            kill(pid, 9)
-            return
-        except OSError:
-            pass
+    if not machine.send(pid, 9, group=True):
+        machine.send(pid, 9)
 
 
 def state_word(pid: int) -> str:
@@ -169,8 +166,8 @@ class SbtWarmCase(cli_harness.ToolCase):
               stderr: Optional[str] = None) -> "subprocess.Popen[bytes]":
         """The tool in the background (stdout dropped, stderr to the file `stderr` or dropped)."""
         sink = os.open(stderr, os.O_WRONLY | os.O_CREAT | os.O_TRUNC) if stderr else subprocess.DEVNULL
-        proc = subprocess.Popen([self.TOOL, *args], cwd=cwd, env=self.env(self.environment(env)),
-                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=sink)
+        how = machine.Ran(cwd, self.env(self.environment(env)), subprocess.DEVNULL, sink)
+        proc = machine.spawn([self.TOOL, *args], how)
         if stderr:
             os.close(sink)
         self.servers.append(proc)
@@ -179,8 +176,8 @@ class SbtWarmCase(cli_harness.ToolCase):
     def fake_server(self, cwd: str) -> int:
         """A process standing in for an sbt server of `cwd` (its command line a server's), once it carries it. A JVM
         survives SIGQUIT (the thread dump's signal), so the stand-in ignores it."""
-        proc = subprocess.Popen(["bash", "-c", "trap '' QUIT; exec -a \"%s\" sleep 300" % SERVER_ARGS], cwd=cwd,
-                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        proc = machine.spawn(["bash", "-c", "trap '' QUIT; exec -a \"%s\" sleep 300" % SERVER_ARGS],
+                             machine.Ran(cwd, None, subprocess.DEVNULL, subprocess.DEVNULL))
         self.servers.append(proc)
         self.assertTrue(cli_harness.wait_until(lambda: "--detach-stdio" in self.args_of(proc.pid)),
                         f"fake server {proc.pid} never carried the server's command line")
@@ -194,7 +191,7 @@ class SbtWarmCase(cli_harness.ToolCase):
                 proc.wait()
 
     def background(self, argv: List[str]) -> "subprocess.Popen[bytes]":
-        proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        proc = machine.spawn(argv, machine.Ran(None, None, subprocess.DEVNULL, subprocess.DEVNULL))
         self.servers.append(proc)
         return proc
 
@@ -225,7 +222,7 @@ class SbtWarmCase(cli_harness.ToolCase):
 
     @staticmethod
     def args_of(pid: int) -> str:
-        return subprocess.run(["ps", "-o", "args=", "-p", str(pid)], capture_output=True, text=True).stdout
+        return machine.ps("-o", "args=", "-p", str(pid))
 
     def state_file(self, checkout: str, suffix: str) -> str:
         return os.path.join(self.state, checkout_key(checkout) + suffix)

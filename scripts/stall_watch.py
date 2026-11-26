@@ -47,84 +47,14 @@ import sys
 import time
 from dataclasses import dataclass
 from types import FrameType
-from typing import Dict, List, Optional, Sequence, Set, Tuple
+from typing import List, Optional, Sequence, Set, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+from machine import any_runnable, children_flag, cpu_centis, pid_list, ps, tree_pids  # noqa: E402
 
 USAGE = ("usage: stall-watch.sh watch <root pid> <seconds> <label> <stalled file> [<progress file>] [<dir>]")
 REPORT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stall-report.sh")
 KILL_AFTER = 20  # half-second checks between TERM and KILL: ten seconds
-
-
-def ps(*args: str) -> str:
-    """ps's stdout, empty when it says nothing or cannot be run."""
-    try:
-        return subprocess.run(["ps", *args], capture_output=True, text=True).stdout
-    except OSError:
-        return ""
-
-
-def tree_pids(root: int) -> List[int]:
-    """`root` and every descendant of it, breadth first."""
-    kids: Dict[int, List[int]] = {}
-    for line in ps("-axo", "pid=,ppid=").splitlines():
-        fields = line.split()
-        if len(fields) == 2 and fields[0].isdigit() and fields[1].isdigit():
-            kids.setdefault(int(fields[1]), []).append(int(fields[0]))
-    queue = [root]
-    for pid in queue:
-        queue.extend(kids.get(pid, []))
-    return queue
-
-
-def centis(clock: str) -> int:
-    """ps's `time` -- [[dd-]hh:]mm:ss[.cc] -- in centiseconds."""
-    days, _, rest = clock.rpartition("-")
-    seconds = 0.0
-    for part in rest.split(":"):
-        seconds = seconds * 60 + float(part)
-    return round((seconds + (int(days) * 86400 if days else 0)) * 100)
-
-
-def pid_list(pids: Sequence[int]) -> str:
-    return ",".join(str(p) for p in pids)
-
-
-def children_flag() -> List[str]:
-    """ps's flag that adds the CPU of a process's exited (reaped) children to its own: `-S` (BSD, procps), else none."""
-    ok = subprocess.run(["ps", "-S", "-o", "time=", "-p", str(os.getpid())], capture_output=True).returncode == 0
-    return ["-S"] if ok else []
-
-
-def cpu_centis(pids: Sequence[int], flag: Sequence[str]) -> int:
-    """The CPU the live `pids` have used, summed, with their exited children's where ps can add it."""
-    if not pids:
-        return 0
-    return sum(centis(line.strip()) for line in ps(*flag, "-o", "time=", "-p", pid_list(pids)).splitlines()
-               if line.strip())
-
-
-def any_runnable(pids: Sequence[int]) -> bool:
-    """Whether one of the live `pids` is runnable (ps state R): running, or ready and waiting for a CPU."""
-    return bool(pids) and any(line.startswith("R") for line in ps("-o", "stat=", "-p", pid_list(pids)).splitlines())
-
-
-def tree_shrank(before: Sequence[int], after: Sequence[int]) -> bool:
-    """Whether the tree SHRANK between two polls: a pid of `before` is not in `after`, and every pid of `after` was in
-    `before` (sbt-warm's client watch counts it as progress: a wind-down; a tree only replacing its processes is none)."""
-    return set(after) <= set(before) and bool(set(before) - set(after))
-
-
-def any_gone(pids: Sequence[int]) -> bool:
-    """Whether one of `pids` has ended (gone, or a zombie not yet waited for)."""
-    if not pids:
-        return False
-    states = [line for line in ps("-o", "stat=", "-p", pid_list(pids)).splitlines() if not line.startswith("Z")]
-    return len(states) < len(pids)
-
-
-def kept_pids(before: Sequence[int], after: Sequence[int]) -> List[int]:
-    """The pids of `after` that were in `before` too."""
-    earlier = set(before)
-    return [p for p in after if p in earlier]
 
 
 def newer_than(path: str, mark_ns: int) -> bool:

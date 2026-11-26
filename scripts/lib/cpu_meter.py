@@ -5,9 +5,10 @@ its parent's, so a server's forked test JVMs went uncounted (2026-11-25). The sa
 it ends with it, however it ends."""
 from __future__ import annotations
 
-import subprocess
 import threading
 from typing import Callable, Dict, List, Optional
+
+import machine
 
 
 def centis(clock: str) -> int:
@@ -20,10 +21,7 @@ def centis(clock: str) -> int:
 
 
 def table() -> str:
-    try:
-        return subprocess.run(["ps", "-axo", "pid=,ppid=,time="], capture_output=True, text=True).stdout
-    except OSError:
-        return ""
+    return machine.ps("-axo", "pid=,ppid=,time=")
 
 
 def sample(roots: List[int], listing: Callable[[], str] = table) -> Dict[int, int]:

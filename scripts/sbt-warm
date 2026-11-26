@@ -132,7 +132,6 @@ import glob
 import hashlib
 import os
 import platform
-import subprocess
 import sys
 import time
 from typing import Callable, List, MutableMapping, Optional, Tuple
@@ -142,6 +141,7 @@ SELF = os.path.join(HERE, "sbt-warm")
 sys.path.insert(0, os.path.join(HERE, "lib"))
 sys.path.insert(0, HERE)
 
+import machine  # noqa: E402
 from jvm_gate import Governor, Host, JvmGate, SubprocessCommands, lock_busy  # noqa: E402
 from jvm_memory import Clock, MemoryGate, SlotWait  # noqa: E402
 from sbt_warm_cache import Builds, Places  # noqa: E402
@@ -164,7 +164,7 @@ def usage() -> str:
 def legacy(argv: List[str]) -> None:
     """THE FALLBACK: the shell version, its $0 this file's path (its keeper is `scripts/sbt-warm --keep`, and the
     keeper's call, inheriting KINOWO_SBT_WARM_LEGACY, comes back here)."""
-    os.execvp("bash", ["bash", "-c", '. "$0.sh-legacy"', SELF, *argv])
+    machine.replace(["bash", "-c", '. "$0.sh-legacy"', SELF, *argv])
 
 
 def say_to_stderr(stamped: bool, now: Callable[[], datetime.datetime]) -> Callable[[str], None]:
@@ -181,8 +181,8 @@ def raw_stderr(line: str) -> None:
 
 
 def checkout_root() -> str:
-    done = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True)
-    return os.path.realpath(done.stdout.strip() if done.returncode == 0 and done.stdout.strip() else os.getcwd())
+    code, out = machine.output(["git", "rev-parse", "--show-toplevel"])
+    return os.path.realpath(out.strip() if code == 0 and out.strip() else os.getcwd())
 
 
 def compose(env: MutableMapping[str, str], keeper: bool) -> Tools:
@@ -209,8 +209,8 @@ def compose(env: MutableMapping[str, str], keeper: bool) -> Tools:
 
 
 def git_dir(flag: str) -> str:
-    done = subprocess.run(["git", "rev-parse", "--path-format=absolute", flag], capture_output=True, text=True)
-    return done.stdout.strip() if done.returncode == 0 else ""
+    code, out = machine.output(["git", "rev-parse", "--path-format=absolute", flag])
+    return out.strip() if code == 0 else ""
 
 
 def stop(t: Tools, argv: List[str]) -> int:
@@ -233,7 +233,7 @@ def status(t: Tools) -> int:
         kept = read(pid_file) if os.path.exists(pid_file) else "?"
         keeper = read(keep) if lock_busy(keep) else "none"
         try:
-            used = time.strftime("%Y-%m-%d %H:%M", time.localtime(os.stat(prefix + ".used").st_mtime))
+            used = machine.local_text("%Y-%m-%d %H:%M", os.stat(prefix + ".used").st_mtime)
         except OSError:
             used = ""
         print(f"kept: {read(mark)} (pid {kept}, keeper {keeper}, last used {used})")
@@ -279,8 +279,7 @@ def exclusive(t: Tools, argv: List[str]) -> int:
     with open(t.checkout.file(".exclusive"), "w") as f:
         f.write(f"{os.getpid()} {who}\n")
     os.set_inheritable(fd, True)
-    os.execvp(command[0], command)
-    return 127
+    machine.replace(command)
 
 
 def parsed(t: Tools, argv: List[str]) -> Tuple[str, List[str], bool]:
@@ -316,7 +315,7 @@ def command_call(t: Tools, argv: List[str]) -> int:
             if serve:
                 raise UsageError("--ci cannot serve")
             ci_sbt = t.env.get("KINOWO_CI_SBT") or os.path.join(HERE, "ci-sbt")
-            os.execv(ci_sbt, [ci_sbt, "--", call.command])
+            machine.replace([ci_sbt, "--", call.command])
     except UsageError as e:
         t.log(str(e))
         return 2
@@ -335,9 +334,10 @@ def main(argv: List[str]) -> int:
     if first in ("", "-h", "--help"):
         sys.stdout.write(usage())
         return 0
-    if os.environ.get("KINOWO_SBT_WARM_LEGACY") == "1":
+    env = machine.environment()
+    if env.get("KINOWO_SBT_WARM_LEGACY") == "1":
         legacy(argv)
-    t = compose(os.environ, keeper=first == "--keep")
+    t = compose(env, keeper=first == "--keep")
     if first == "--keep":
         return keep(t)
     if first == "--reap":

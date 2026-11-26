@@ -22,6 +22,7 @@ import subprocess
 from dataclasses import dataclass
 from typing import Callable, Dict, List, MutableMapping, Optional, Protocol, Sequence, cast
 
+import machine
 from jvm_memory import MemoryGate, SlotWait
 
 SLOT_FD = 7
@@ -116,18 +117,11 @@ class SubprocessCommands:
     def status(self, argv: Sequence[str], pass_fds: Sequence[int] = (), quiet: bool = False,
                out_to_err: bool = False) -> int:
         out = subprocess.DEVNULL if quiet else (2 if out_to_err else None)
-        try:
-            return subprocess.run(list(argv), pass_fds=tuple(pass_fds), stdin=subprocess.DEVNULL, stdout=out,
-                                  stderr=subprocess.DEVNULL if quiet else None).returncode
-        except OSError:
-            return 127
+        return machine.status(argv, out=out, err=subprocess.DEVNULL if quiet else None, pass_fds=pass_fds)
 
     def output(self, argv: Sequence[str]) -> Optional[str]:
-        try:
-            done = subprocess.run(list(argv), capture_output=True, text=True, stdin=subprocess.DEVNULL)
-        except OSError:
-            return None
-        return done.stdout if done.returncode == 0 else None
+        code, out = machine.output(argv)
+        return out if code == 0 else None
 
 
 @dataclass
@@ -359,8 +353,8 @@ class JvmGate:
         to it. Its pid."""
         keep = tuple(fd for fd in (*held, SLOT_FD) if descriptor_open(fd))
         with open(log, "a") as out:
-            proc = subprocess.Popen(["nohup", *argv], cwd=directory, stdin=subprocess.DEVNULL, stdout=out,
-                                    stderr=subprocess.STDOUT, pass_fds=keep, preexec_fn=os.setpgrp)
+            proc = machine.spawn(["nohup", *argv], machine.Ran(directory, None, out, subprocess.STDOUT, keep),
+                                 own_group=True)
         self.hand_off(proc.pid)
         return proc.pid
 

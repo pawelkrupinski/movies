@@ -7,10 +7,10 @@ import glob
 import os
 import shutil
 import subprocess
-import time
 from dataclasses import dataclass
 from typing import Callable, List, Mapping, Optional, Tuple
 
+import machine
 from tool_git import Git
 
 ZINC_ORPHANS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "zinc_orphans.py")
@@ -19,8 +19,8 @@ ZINC_ORPHANS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 def clone(source: str, target: str) -> None:
     """`source` copied to `target` as APFS clones (`cp -c`), or plainly where the volume cannot clone."""
     os.makedirs(os.path.dirname(target), exist_ok=True)
-    if subprocess.run(["cp", "-cR", source, target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0:
-        subprocess.run(["cp", "-R", source, target])
+    if machine.status(["cp", "-cR", source, target], out=subprocess.DEVNULL, err=subprocess.DEVNULL) != 0:
+        machine.status(["cp", "-R", source, target])
 
 
 def line(git: Git, *args: str) -> Optional[str]:
@@ -116,7 +116,7 @@ class Builds:
         missing = self.unbuilt()
         if not missing:
             return
-        started = time.monotonic()
+        started = machine.monotonic()
         src = self.env.get("KINOWO_SBT_WARM_SEED") or self.source()
         if not src:
             self.say("no local build of main to seed from: the first compile is cold")
@@ -127,8 +127,8 @@ class Builds:
             self.copy(src, item)
         if "project/target" in missing:
             remove(os.path.join(root, "project/target/active.json"))
-        subprocess.run(["python3", ZINC_ORPHANS, root])
-        self.say(f"seeded in {int(time.monotonic() - started)}s")
+        machine.status(["python3", ZINC_ORPHANS, root])
+        self.say(f"seeded in {int(machine.monotonic() - started)}s")
 
     def copy(self, src: str, item: str) -> None:
         """One unbuilt item seeded from `src`: project/target as it is, a module its target/scala-* directories."""
@@ -167,11 +167,11 @@ class Builds:
         for path in build_paths(self.places.root):
             clone(os.path.join(self.places.root, path), os.path.join(part, path))
         remove(os.path.join(part, "project/target/active.json"))
-        subprocess.run(["python3", ZINC_ORPHANS, part], stdout=subprocess.DEVNULL)
+        machine.status(["python3", ZINC_ORPHANS, part], out=subprocess.DEVNULL)
         with open(os.path.join(part, ".zincs"), "w") as f:
             f.write(f"{zincs}\n")
         if os.path.isdir(entry):
-            os.rename(entry, f"{entry}.retired-{int(time.time())}")
+            os.rename(entry, f"{entry}.retired-{int(machine.wall())}")
         try:
             os.rename(part, entry)
             self.say(f"published this build of {head[:10]} ({zincs} configurations) to the shared build cache "
@@ -196,7 +196,7 @@ def drop_aged(path: str) -> None:
     """A retired entry older than 10 minutes, or an abandoned .part copy older than an hour, deleted."""
     name = os.path.basename(path)
     minutes = 10 if ".retired-" in name else 60 if ".part-" in name else None
-    if minutes is not None and os.path.isdir(path) and time.time() - os.stat(path).st_mtime > minutes * 60:
+    if minutes is not None and os.path.isdir(path) and machine.wall() - os.stat(path).st_mtime > minutes * 60:
         shutil.rmtree(path, ignore_errors=True)
 
 

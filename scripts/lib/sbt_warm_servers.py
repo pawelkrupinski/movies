@@ -8,21 +8,18 @@ import glob
 import os
 import re
 import signal
-import subprocess
 import sys
 from dataclasses import dataclass
 from typing import Callable, List, Optional
 
+import machine
 from jvm_gate import lock_busy
 
 STOPS_KEPT, STOPS_CUT = 5000, 2000
 
 
 def command_out(argv: List[str]) -> str:
-    try:
-        return subprocess.run(argv, capture_output=True, text=True, stdin=subprocess.DEVNULL).stdout
-    except OSError:
-        return ""
+    return machine.output(argv)[1]
 
 
 class Procs:
@@ -43,23 +40,10 @@ class Procs:
         return [int(p) for p in command_out(["pgrep", "-f", pattern]).split() if p.isdigit()]
 
     def alive(self, pid: int) -> bool:
-        try:
-            os.kill(pid, 0)
-        except ProcessLookupError:
-            return False
-        except PermissionError:
-            return True
-        return True
+        return machine.alive(pid)
 
     def signal(self, pid: int, signum: int, group: bool = False) -> bool:
-        try:
-            if group:
-                os.killpg(pid, signum)
-            else:
-                os.kill(pid, signum)
-        except OSError:
-            return False
-        return True
+        return machine.send(pid, signum, group)
 
 
 def own_args() -> str:

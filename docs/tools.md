@@ -263,11 +263,11 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs (a name for ratchet_diff_cli.py) | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 4 tools | - | KEEP |
 | `scripts/ratchet_diff_cli.py` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet_diff_cli.py` | 1 tool | ratchet_diff_cli_test.py | Python |
 | `scripts/run-script-tests` | Every script self-test, found by its name and run in parallel: the one way CI, the pre-push hook and a person at a terminal run them | `scripts/run-script-tests` | wf tool-self-tests; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, test-layers; 23 tools | run-script-tests-test.sh | MIGRATE |
-| `scripts/sbt-warm` | sbt for agents, warm: one sbt server per checkout, kept between calls | `scripts/sbt-warm` | wf tool-self-tests; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 47 tools | sbt_warm_test.py | Python |
+| `scripts/sbt-warm` | sbt for agents, warm: one sbt server per checkout, kept between calls | `scripts/sbt-warm` | wf tool-self-tests; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 48 tools | sbt_warm_test.py | Python |
 | `scripts/sbt_warm_fixture.py` | The fixture scripts/sbt-warm's black-box tests share (sbt_warm_test.py, sbt_warm_keeper_test.py, | `imported` | by hand | - | Python |
 | `scripts/stall-report.sh` | What a stalled process group was doing, said before it is ended | `scripts/stall-report.sh` | 3 tools | - | KEEP |
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 3 tools | stall_watch_test.py | MIGRATE |
-| `scripts/stall_watch.py` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall_watch.py` | hook pre-push; 4 tools | stall_watch_test.py | Python |
+| `scripts/stall_watch.py` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall_watch.py` | hook pre-push; 3 tools | stall_watch_test.py | Python |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 7 tools | wait-for-test.sh | KEEP |
 
 ## Identity (226)
@@ -683,7 +683,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (113)
+## Dev (114)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -723,9 +723,10 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/it-local.sh` | Run the it/ layer locally against a MongoDB of this run's own | `scripts/it-local.sh` | skill agent-ops, identity-investigation, test-layers; 11 tools | it-local-test.sh | KEEP |
 | `scripts/lib/atomic.py` | ATOMIC FILE WRITES, the one way the Python tools replace a file (scripts/lib): the new content goes into a uniquely | `imported` | skill CLAUDE.md; 8 tools | atomic_test.py | Python |
 | `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | wf android, security-headers; skill CLAUDE.md; 8 tools | cli_harness_test.py | Python |
-| `scripts/lib/cpu_meter.py` | THE CPU METER (scripts/jvm-gate.sh's cpu_meter_start / cpu_meter_stop, for the Python tools): the CPU time of the | `imported` | 2 tools | - | Python |
-| `scripts/lib/jvm_gate.py` | THE JVM GATE for the Python tools: scripts/jvm-gate.sh's slots, locks and governor tickets (its header says why and | `imported` | 4 tools | jvm_gate_test.py | Python |
-| `scripts/lib/jvm_memory.py` | THE MEMORY GATE and the wait for a JVM slot, for the Python tools (scripts/jvm-gate.sh's memory_gate and | `imported` | 2 tools | - | Python |
+| `scripts/lib/cpu_meter.py` | THE CPU METER (scripts/jvm-gate.sh's cpu_meter_start / cpu_meter_stop, for the Python tools): the CPU time of the | `imported` | 3 tools | - | Python |
+| `scripts/lib/jvm_gate.py` | THE JVM GATE for the Python tools: scripts/jvm-gate.sh's slots, locks and governor tickets (its header says why and | `imported` | 5 tools | jvm_gate_test.py | Python |
+| `scripts/lib/jvm_memory.py` | THE MEMORY GATE and the wait for a JVM slot, for the Python tools (scripts/jvm-gate.sh's memory_gate and | `imported` | 3 tools | - | Python |
+| `scripts/lib/machine.py` | THE MACHINE: the processes, clock and environment the laptop tools touch, in one adapter (the design rules table's | `imported` | wf alert-backtest, android, archive-recording +44; hook pre-push; skill CLAUDE.md, identity-investigation, test-layers; 62 tools | - | Python |
 | `scripts/lib/pinned_npm_tools.py` | PINNED NODE TOOLS, installed OUTSIDE the checkout: a tool's package.json and its lock, `npm ci`'d once per lock into | `imported` | hook pre-push; 2 tools | - | Python |
 | `scripts/lib/prod_tunnel.py` | HOW A LAPTOP REACHES PROD MONGO, for the Python tools (scripts/lib): scripts/local-mirror/prod-tunnel.sh's | `imported` | 3 tools | prod_tunnel_test.py | Python |
 | `scripts/lib/production_scala.py` | THE DEPLOYED SCALA SOURCES (scripts/lib): the modules whose `src/main` ships (quality.QualityReport.ProductionModules) | `imported` | 2 tools | production_scala_test.py | Python |

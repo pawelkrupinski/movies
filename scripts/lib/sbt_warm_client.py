@@ -11,9 +11,9 @@ import signal
 import subprocess
 import time
 from dataclasses import dataclass
-from typing import Callable, List, Mapping, Optional
+from typing import IO, Callable, List, Mapping, Optional
 
-import stall_watch
+import machine
 from sbt_warm_servers import Checkout, Servers, command_out, remove
 
 STALLED = 75
@@ -45,9 +45,10 @@ class Ended:
 
 class Client:
     def __init__(self, checkout: Checkout, servers: Servers, command: str, sbt: str, env: Mapping[str, str],
-                 say: Callable[[str], None], now: Callable[[], datetime.datetime]) -> None:
+                 say: Callable[[str], None], now: Callable[[], datetime.datetime],
+                 pause: Callable[[float], None]) -> None:
         self.checkout, self.servers, self.command, self.sbt, self.env = checkout, servers, command, sbt, env
-        self.say, self.now = say, now
+        self.say, self.now, self.pause = say, now, pause
         self.proc: Optional["subprocess.Popen[bytes]"] = None
 
     @property
@@ -57,7 +58,7 @@ class Client:
     def start(self, sbt_opts: str) -> None:
         env = dict(self.env)
         env["SBT_OPTS"] = f"{env.get('SBT_OPTS', '')} {sbt_opts}"
-        self.proc = subprocess.Popen([self.sbt, "--client", self.command], cwd=self.root, env=env)
+        self.proc = machine.spawn([self.sbt, "--client", self.command], machine.Ran(self.root, env))
 
     def running(self) -> bool:
         """Whether the client still runs: an ended one not yet waited for (a zombie) does not."""
@@ -65,31 +66,31 @@ class Client:
 
     def tree(self) -> List[int]:
         """The client's and the server's process trees."""
-        pids = stall_watch.tree_pids(self.proc.pid) if self.proc is not None else []
+        pids = machine.tree_pids(self.proc.pid) if self.proc is not None else []
         server = self.servers.pid(self.root)
-        return pids + (stall_watch.tree_pids(server) if server is not None else [])
+        return pids + (machine.tree_pids(server) if server is not None else [])
 
     def tree_state(self) -> str:
         """The client's and server's processes as one line (pid, state, CPU time, command)."""
-        out = command_out(["ps", "-o", "pid=,stat=,time=,args=", "-p", stall_watch.pid_list(self.tree())])
+        out = command_out(["ps", "-o", "pid=,stat=,time=,args=", "-p", machine.pid_list(self.tree())])
         return ";".join(re.sub(" +", " ", line[:160]) for line in out.splitlines())
 
     def end(self) -> None:
         """The client's tree ended: TERM, then KILL 5 s later; one surviving even KILL is abandoned, never waited for."""
         if self.proc is None:
             return
-        pids = stall_watch.tree_pids(self.proc.pid)
+        pids = machine.tree_pids(self.proc.pid)
         signal_all(pids, signal.SIGTERM)
         for _ in range(10):
             if not tree_running(pids):
                 break
-            time.sleep(0.5)
+            self.pause(0.5)
         if tree_running(pids):
             signal_all(pids, signal.SIGKILL)
         for _ in range(4):
             if not self.running():
                 break
-            time.sleep(0.5)
+            self.pause(0.5)
         if self.running():
             self.say(f"client pid {self.proc.pid} survives KILL: abandoned")
 
@@ -141,26 +142,20 @@ class Client:
                      f"({'at ' + frame.group(1) if frame else ''})")
 
 
-def run_into(argv: List[str], sink: object) -> int:
-    try:
-        return subprocess.run(argv, stdout=sink, stderr=subprocess.STDOUT).returncode  # type: ignore[arg-type]
-    except OSError:
-        return 127
+def run_into(argv: List[str], sink: IO[str]) -> int:
+    return machine.status(argv, out=sink, err=subprocess.STDOUT)
 
 
 def signal_all(pids: List[int], signum: int) -> None:
     for pid in pids:
-        try:
-            os.kill(pid, signum)
-        except OSError:
-            pass
+        machine.send(pid, signum)
 
 
 def tree_running(pids: List[int]) -> bool:
     """Whether one of `pids` runs (an ended one not yet waited for, a zombie, does not)."""
     if not pids:
         return False
-    out = command_out(["ps", "-o", "stat=", "-p", stall_watch.pid_list(pids)])
+    out = command_out(["ps", "-o", "stat=", "-p", machine.pid_list(pids)])
     return any(line.strip() and not line.startswith("Z") for line in out.splitlines())
 
 
@@ -170,7 +165,7 @@ class Watch:
     def __init__(self, client: Client, settings: WatchSettings, progress: Optional[str],
                  clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], None] = time.sleep) -> None:
         self.client, self.settings, self.progress, self.clock, self.sleep = client, settings, progress, clock, sleep
-        self.flag = stall_watch.children_flag()
+        self.flag = machine.children_flag()
         self.server_seen, self.gone_checks = False, 0
         self.before: List[int] = []
         self.last, self.quiet = 0, 0.0
@@ -184,14 +179,14 @@ class Watch:
         return self.gone_checks >= 2 if self.server_seen else waited >= self.settings.start
 
     def progressed(self, last: int, now: int, before: List[int], pids: List[int]) -> bool:
-        return (now - last >= self.settings.need or stall_watch.any_runnable(pids)
-                or stall_watch.tree_shrank(before, pids) or stall_watch.any_gone(stall_watch.kept_pids(before, pids)))
+        return (now - last >= self.settings.need or machine.any_runnable(pids)
+                or machine.tree_shrank(before, pids) or machine.any_gone(machine.kept_pids(before, pids)))
 
     def run(self) -> Ended:
         self.started = self.clock()
         self.due, self.live = self.started + self.settings.poll, self.started + self.settings.live
         self.before = self.client.tree()
-        self.last, self.quiet = stall_watch.cpu_centis(self.before, self.flag), 0.0
+        self.last, self.quiet = machine.cpu_centis(self.before, self.flag), 0.0
         while self.client.running():
             self.sleep(0.5)
             ended = self.tick()
@@ -216,7 +211,7 @@ class Watch:
     def poll(self) -> bool:
         """One progress poll; false when the client ended meanwhile (a poll that finds it ended judges nothing)."""
         pids = self.client.tree()
-        now = stall_watch.cpu_centis(pids, self.flag)
+        now = machine.cpu_centis(pids, self.flag)
         if not self.client.running():
             return False
         if self.progressed(self.last, now, self.before, pids):

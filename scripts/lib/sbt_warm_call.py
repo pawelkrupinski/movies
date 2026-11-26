@@ -13,12 +13,11 @@ import signal
 import subprocess
 import sys
 import threading
-import time
 from dataclasses import dataclass
 from types import FrameType
 from typing import Callable, List, MutableMapping, Optional
 
-import stall_watch
+import machine
 from cpu_meter import CpuMeter
 from jvm_gate import FileLock, JvmGate, lock_busy
 from sbt_warm_cache import Builds
@@ -54,8 +53,7 @@ def settings_digest(env: MutableMapping[str, str]) -> str:
     """The KINOWO_* settings a server starts with (less the tool-side knobs), as `env | grep | sort | shasum` says."""
     lines = [line for line in "".join(f"{k}={v}\n" for k, v in env.items()).splitlines()
              if line.startswith("KINOWO_") and not line.startswith(TOOL_KNOBS)]
-    done = subprocess.run(["sort"], input="".join(line + "\n" for line in lines), capture_output=True, text=True)
-    return digest(done.stdout.encode())
+    return digest(machine.output(["sort"], "".join(line + "\n" for line in lines))[1].encode())
 
 
 def build_digest(root: str) -> str:
@@ -126,11 +124,8 @@ class Call:
             return
         self.t.log(f"no GitOps manifests in {self.root}: fetching them for the deploy specs (infra/bin/fetch-gitops)")
         env = {**self.t.env, "KINOWO_GITOPS_DEST": os.path.join(self.root, "infra/kubernetes")}
-        try:
-            code = subprocess.run([fetch], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                  timeout=float(self.t.env.get("KINOWO_SBT_WARM_GITOPS_SECONDS") or 90)).returncode
-        except (OSError, subprocess.TimeoutExpired):
-            code = 1
+        code = machine.status([fetch], env=env, out=subprocess.DEVNULL, err=subprocess.DEVNULL,
+                              timeout=float(self.t.env.get("KINOWO_SBT_WARM_GITOPS_SECONDS") or 90))
         if code != 0:
             self.t.log("the GitOps fetch failed: the deploy specs will fail on the missing manifests (run infra/bin/fetch-gitops)")
 
@@ -272,17 +267,15 @@ class Call:
 
     def terminated(self, signum: int, _frame: Optional[FrameType]) -> None:
         if self.client is not None and self.client.proc is not None:
-            for pid in stall_watch.tree_pids(self.client.proc.pid):
-                try:
-                    os.kill(pid, signal.SIGTERM)
-                except OSError:
-                    pass
+            for pid in machine.tree_pids(self.client.proc.pid):
+                machine.send(pid, signal.SIGTERM)
         os._exit(143)
 
     def client_for(self) -> Client:
         guard = os.path.join(os.path.dirname(self.t.me), "ci/sbt-guard/sbt")
         sbt = guard if os.access(guard, os.X_OK) else "sbt"
-        return Client(self.t.checkout, self.t.servers, self.command, sbt, self.t.env, self.t.log, self.t.servers.now)
+        return Client(self.t.checkout, self.t.servers, self.command, sbt, self.t.env, self.t.log, self.t.servers.now,
+                      self.t.sleep)
 
     def run_client(self) -> Ended:
         self.client = self.client_for()
@@ -347,7 +340,7 @@ class Call:
     def execute(self) -> int:
         gate, servers = self.t.gate, self.t.servers
         gate.cpu_take(f"sbt-warm {self.job}", self.job)
-        started = time.monotonic()
+        started = machine.monotonic()
         meter = CpuMeter(lambda: [p for p in [servers.pid(self.root)] if p is not None],
                          float(self.t.env.get("KINOWO_CPU_METER_POLL") or 2), servers.procs.alive)
         if self.serve:
@@ -359,7 +352,7 @@ class Call:
         code = self.run_watched()
         self.client = None
         if not self.serve:
-            self.passed(code, meter.stop(), int(time.monotonic() - started))
+            self.passed(code, meter.stop(), int(machine.monotonic() - started))
         self.ended.set()
         gate.release()
         touch(self.file(".used"))

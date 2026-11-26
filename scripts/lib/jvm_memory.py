@@ -8,9 +8,10 @@ from __future__ import annotations
 import math
 import os
 import re
-import subprocess
 from dataclasses import dataclass
 from typing import Callable, List, MutableMapping, Optional, Protocol, Tuple
+
+import machine
 
 
 class Slots(Protocol):
@@ -23,15 +24,12 @@ class Slots(Protocol):
 
 def shell_number(command: str) -> Optional[int]:
     """The number a probe command prints (the shell gate evals it), None when it prints none."""
-    out = subprocess.run(["bash", "-c", command], capture_output=True, text=True).stdout.strip()
+    out = machine.output(["bash", "-c", command])[1].strip()
     return int(out) if re.fullmatch(r"-?[0-9]+", out) else None
 
 
 def command_out(argv: List[str]) -> str:
-    try:
-        return subprocess.run(argv, capture_output=True, text=True).stdout
-    except OSError:
-        return ""
+    return machine.output(argv)[1]
 
 
 def vm_pages(stat: str, names: str) -> int:
