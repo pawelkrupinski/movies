@@ -78,7 +78,7 @@ def service_hint(host, private_address):
     return "\n".join(lines)
 
 
-def install_ssh_config(block, path=None):
+def install_ssh_config(block: str, path: str | None = None) -> str:
     """Write `block` into `~/.ssh/config`, replacing a block this command wrote before rather
     than piling up a duplicate on every run -- everything outside the markers is a human's own
     config and is left exactly as it was."""

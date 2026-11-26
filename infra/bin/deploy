@@ -558,19 +558,16 @@ def switch_unit_name(now: float) -> str:
 # Getting the closure onto the host
 # -------------------------------------------------------------------------------------------------
 
-def probe_until_answered(target: str, args, *, attempts=24, every=5, sleep=None) -> str:
-    """One PROBE, retried while the host does not answer: right after a switch sshd or the network may
-    still be restarting. Bounded (`attempts` x `every` seconds); the last failure is then Unmeasured."""
-    sleep = sleep or time.sleep
-    for attempt in range(1, attempts + 1):
+def probe_until_answered(target: str, args: list[str], *, attempts: int = 24, every: int = 5) -> str:
+    """One PROBE, retried while the host does not answer (sshd or the network still restarting after a
+    switch): `attempts` x `every` seconds at most, then the last failure is Unmeasured."""
+    for _ in range(attempts - 1):
         try:
             return remote(target, PROBE, args, timeout=300)
         except Unmeasured as exc:
-            if attempt == attempts:
-                raise
             print(f"   · {target} not answering the post-switch probe ({str(exc)[:120]}); retrying in {every}s")
-            sleep(every)
-    raise AssertionError("unreachable")
+            time.sleep(every)
+    return remote(target, PROBE, args, timeout=300)
 
 
 def build_on_host(flake: str, host: str, target: str) -> None:
