@@ -29,17 +29,18 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     def nanos(): Long = { val n = current; current += stepNanos; n }
   }
 
-  /** Fake scheduler that CAPTURES the fixed-rate tasks the sweeper's `schedule` submits instead of
+  /** Fake scheduler that CAPTURES the first runs the sweeper's `schedule` arms (one per periodic loop) instead of
    *  running them on a timer, so a test can assert exactly what was scheduled and run
    *  the tasks deterministically. */
   private class CapturingScheduler extends java.util.concurrent.ScheduledThreadPoolExecutor(1) {
     val scheduled = scala.collection.mutable.Buffer.empty[Runnable]
-    override def scheduleAtFixedRate(command: Runnable, initialDelay: Long, period: Long,
-                                     unit: java.util.concurrent.TimeUnit): java.util.concurrent.ScheduledFuture[?] = {
+    override def schedule(command: Runnable, delay: Long, unit: java.util.concurrent.TimeUnit): java.util.concurrent.ScheduledFuture[?] = {
       scheduled += command
       null
     }
-    def runAll(): Unit = scheduled.foreach(_.run())
+    /** The periodic loops' first runs: the boot's own one-shot hand-off is no schedule. */
+    def loops: Seq[Runnable] = scheduled.toList.filter(_.getClass.getName.contains("PeriodicLoop"))
+    def runAll(): Unit = loops.foreach(_.run())
   }
 
   // Whether splitting `synopsisByCity` off the card would spare any rewrites is a question
@@ -1695,7 +1696,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projectorBoot.start(ReadModelSweeper(projector.projection))
 
-    fakeScheduler.scheduled shouldBe empty
+    fakeScheduler.loops shouldBe empty
     rm.findAllMovieIds() shouldBe Seq(fid)         // the sweeper's boot heal ran: Foo had no card
     projectorBoot.stop()
   }
@@ -1712,7 +1713,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     sweeper.schedule(fakeScheduler, tools.TickRecorder.Unrecorded)
     val healedAtBoot = rm.movieUpserts.size       // Foo had no card, so the boot heal wrote it
 
-    fakeScheduler.scheduled should have size 2   // the prune and the derivation tick, never the reproject
+    fakeScheduler.loops should have size 2   // the prune and the derivation tick, never the reproject
     fakeScheduler.runAll()                        // a scheduled reproject WOULD rewrite Foo here
     rm.movieUpserts     should have size healedAtBoot   // prune re-projects nothing
     projectorBoot.stop()
