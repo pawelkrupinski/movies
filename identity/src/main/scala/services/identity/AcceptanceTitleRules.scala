@@ -7,6 +7,7 @@ import services.identity.measures.{Film, IdentityMeasures, Measure, MeasuredList
  *  hits, IMDb's suggestion, and the sole result ([[AcceptanceRuleTable]]).
  *  Part of [[Acceptance]], which mixes it in. */
 private[identity] trait AcceptanceTitleRules { this: Acceptance =>
+  import AcceptanceFactRules.asItsTitlesTopHit
   import Acceptance.Refused
 
   /** The one film the listing's whole title names exactly that its own title search returned first, in TMDB's order

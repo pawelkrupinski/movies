@@ -1,14 +1,13 @@
 package services.identity
 
-import services.identity.AcceptanceRule.Weighing
+import services.identity.AcceptanceRule.{Weighing, isEligible}
 import services.identity.measures.{FactRelations, Film, IdentityMeasures, Measure, MultiFilmBill, Scored, SearchMeasures, StageRelays}
 import services.titles.YearWindow
 
 /** What the acceptance rules that take a film by the listing's facts ask — a sole work, a director's work or title, a
  *  dated title ([[AcceptanceRuleTable]]) — and the fallback a no-match may fall back to, unless its facts contradict it.
- *  Part of [[Acceptance]], which mixes it in. */
-private[identity] trait AcceptanceFactRules { this: Acceptance =>
-  import weights.favours
+ *  Functions of the candidates and the listing they score, and of the evidence weights where one asks them. */
+private[identity] object AcceptanceFactRules {
 
   /** What [[contradicted]] read: the year distance and the runtime delta the listing published. */
   private[identity] def contradiction(scored: Scored): String =
@@ -20,12 +19,12 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
    *  none, on a listing billing one work, with no rival so titled that its facts do not favour it over. Stricter than any
    *  TMDB rule: a fallback record has no search rank or popularity to lend, and a wrong film is worse than none (measured
    *  2026-09-30: every correct rating page for a film TMDB lacks came from a row publishing a year or a director). */
-  def fallback(ranked: Seq[Scored]): Option[Scored] = {
+  def fallback(weights: EvidenceWeights, ranked: Seq[Scored]): Option[Scored] = {
     // on the source's own record only — one parsed from IMDb's answer always holds its principal credits — never the
     // title and year a suggestion gave before the record was filed, which no credit or running time could rule out
-    val titled = eligibleOf(ranked).filter(scored => scored.category("title").exists(IdentityMeasures.Rivalling) && scored.candidate.film.directors.isDefined)
+    val titled = ranked.filter(isEligible).filter(scored => scored.category("title").exists(IdentityMeasures.Rivalling) && scored.candidate.film.directors.isDefined)
     titled.headOption.filter(best => !MultiFilmBill.billsTwoWorks(best.listing) && !contradicted(best) && corroborated(best) &&
-      !best.category("director").contains("different") && titled.drop(1).forall(favours(best, _)))
+      !best.category("director").contains("different") && titled.drop(1).forall(weights.favours(best, _)))
   }
 
   /** A fact the listing publishes agrees: the director it credits, or the year it gives, exactly. */
