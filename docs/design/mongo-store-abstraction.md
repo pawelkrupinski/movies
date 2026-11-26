@@ -98,9 +98,11 @@ lesson). Racing callers each count; none passes the ceiling (contract-tested wit
 ## Migration order (lowest risk first, one store per commit)
 
 1. `ScheduledRunStore` -- insert-once + TTL, no reads, worker only. DONE first: the fake now models the 48 h TTL.
-2. `AuthExchangeCodeStore` -- insert + take + TTL, `Absent` for no database; web only, failures logged as now.
+2. `AuthExchangeCodeStore` -- insert + take + TTL, `Absent` for no database; web only, failures logged as now. Its
+   in-memory store is built without a clock by ~10 specs: each must hand it the `AuthExchangeCodes` clock, or a code
+   minted on a pinned past instant expires on arrival.
 3. `ReviewAnswerStore` -- insert + ordered scan, local-mirror only (no prod data).
-4. `PendingListingStore` -- `putAll` + `deleteAll` + read all.
+4. `PendingListingStore` -- `putAll` + `deleteAll` + read all. DONE: Mongo now reads in key order, as the fake did.
 5. `ScrapeCostStore` -- needs one more boundary operation, a capped append (`$push` + `$slice`), added with its
    contract cases; or a read-modify-`put`, which loses the server-side atomicity two workers rely on. Prefer the former.
 6. `PinStore` -- identity module: check the identity stamps (`scripts/pure-move-check`; `MongoPinStore` is outside the
