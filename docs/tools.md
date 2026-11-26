@@ -231,7 +231,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/claude-hooks/unbounded-poll-guard` | Refuse a background poll loop that has no bound: it outlives the agent that started it. | `scripts/claude-hooks/unbounded-poll-guard` | skill CLAUDE.md, agent-ops; 2 tools | unbounded-poll-guard-test.sh | Python |
 | `scripts/coupling-report` | The coupling report (CLAUDE.md, Design rules): the production code's coupling, from Zinc's class-dependency record (a name for coupling_report.py) | `scripts/coupling-report` | wf coupling-exemptions; hook pre-push; agentctl; skill CLAUDE.md, agent-ops, identity-investigation; 8 tools | coupling_report_test.py | KEEP |
 | `scripts/coupling_report.py` | The coupling report (CLAUDE.md, Design rules): the production code's coupling, from Zinc's class-dependency record. | `scripts/coupling_report.py` | 1 tool | coupling_report_test.py | Python |
-| `scripts/fail-before` | Proves the commit gate: a test that fails before the change and passes after it | `scripts/fail-before` | wf identity-run; agentctl; skill CLAUDE.md, agent-ops; 8 tools | fail-before-test.sh | MIGRATE |
+| `scripts/fail-before` | Proves the commit gate: a test that fails before the change and passes after it | `scripts/fail-before` | wf identity-run; agentctl; skill CLAUDE.md, agent-ops; 9 tools | fail_before_test.py | MIGRATE |
 | `scripts/floor-bash` | The floor bash: the oldest bash every script tool promises to run under -- macOS's /bin/bash, gnu bash 3.2.57 -- found or built, its path printed | `scripts/floor-bash` | wf tool-self-tests; hook pre-push; 2 tools | floor-bash-test.sh | KEEP |
 | `scripts/gov-parallel` | THE GOVERNED FAN-OUT for a shell: xargs -P under a governor ticket charged its width, or within the ticket it runs under | `scripts/gov-parallel` | skill CLAUDE.md; 4 tools | gov-parallel-test.sh | - |
 | `scripts/gov-run` | The governor for one command: <command> run under a governor ticket (scripts/jvm-gate.sh gov_hold, `agentctl gov`, ~/bin/AGENTCTL.md "gov") | `scripts/gov-run` | skill CLAUDE.md, agent-ops; 11 tools | gov-run-test.sh | KEEP |
@@ -674,7 +674,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (93)
+## Dev (94)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -692,6 +692,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/dead-code` | The dead-code finder (CLAUDE.md, "Cleanup and displaced-code audit"): production classes, objects and methods nothing calls, ranked | `scripts/dead-code` | skill test-layers; 2 tools | dead-code-test.sh | KEEP |
 | `scripts/dead_code.py` | THE DEAD-CODE LIST, ranked (scripts/dead-code): `deadCode`'s rows (project/DeadCode.scala: kind, verdict, name, | `python3 scripts/dead_code.py` | 1 tool | dead_code_test.py | Python |
 | `scripts/dev-server.sh` | Local dev server, run under a deliberately smaller heap than the rest of sbt | `scripts/dev-server.sh` | 3 tools | dev-server-test.sh | KEEP |
+| `scripts/fail_before.py` | Proves the commit gate: a test that fails before the change and passes after it | `scripts/fail_before.py` | 1 tool | fail_before_test.py | Python |
 | `scripts/fleet_db_finish.py` | Count the fleet's three old collections in Poland's kinowo and drop them on an exact request (fleet DB migration, step 9) | `scripts/fleet_db_finish.py` | 1 tool | fleet_db_finish_test.py | Python |
 | `scripts/hooks-path.sh` | What an absolute core.hooksPath names, for the two tools that mend one: scripts/install-hooks.sh and the pre-push hook | `bash scripts/hooks-path.sh` | hook pre-push; agentctl; 1 tool | - | KEEP |
 | `scripts/hotspots` | The hotspot report (CLAUDE.md, "Code quality ratchets"; a report, never a gate) | `scripts/hotspots` | wf quality-hotspots, report-timings; skill CLAUDE.md, test-layers; 2 tools | - | KEEP |
@@ -709,15 +710,15 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/store_screenshots_fixture.py` | The store-screenshot drivers' TEST FIXTURE (android/scripts/store_screenshots_test.py, ios/scripts/ | `imported` | by hand | - | Python |
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 7 tools | tool_actions_test.py | Python |
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; the retired | `imported` | 3 tools | tool_ci_wait_test.py | Python |
-| `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 28 tools | tool_cli_test.py | Python |
+| `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 29 tools | tool_cli_test.py | Python |
 | `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 14 tools | - | Python |
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 10 tools | tool_dispatch_test.py | Python |
-| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 22 tools | tool_git_test.py | Python |
+| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 23 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 21 tools | tool_github_test.py | Python |
 | `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 96 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 97 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 16 tools | tool_python_test.py | Python |
-| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 20 tools | - | Python |
+| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 21 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 1 tool | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 6 tools | - | KEEP |
@@ -756,7 +757,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/timezonefinder-python` | Print a directory whose python3 imports timezonefinder, for the pre-push drift check | `scripts/timezonefinder-python` | hook pre-push; 3 tools | timezonefinder-python-test.sh | KEEP |
 | `scripts/timezonefinder-python-stub.sh` | A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder | `sourced` | by hand | - | KEEP |
 | `scripts/title_trace.py` | Every step one raw billing goes through, in production order: the ingest tidy, the venue's own title rules, the format | `python3 scripts/title_trace.py` | wf main; 2 tools | title_trace_test.py | Python |
-| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 58 tools | tool-conventions-test.sh | MIGRATE |
+| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 57 tools | tool-conventions-test.sh | MIGRATE |
 | `scripts/tool_catalogue.py` | The tool catalogue: docs/tools.md, generated from every tool's own one-line purpose. | `python3 scripts/tool_catalogue.py` | skill CLAUDE.md | tool_catalogue_test.py | Python |
 | `scripts/touched-tree-stub.sh` | The stub sbt for the touched-code tools' specs (mutation-check, coverage-touched) | `scripts/touched-tree-stub.sh` | 1 tool | - | KEEP |
 | `scripts/touched_methods.py` | THE METHODS A CHANGE TOUCHES, and what the refactoring tools say about each (scripts/mutation-check, | `python3 scripts/touched_methods.py` | 4 tools | touched_methods_test.py | Python |
