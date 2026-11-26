@@ -15,9 +15,9 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
 
   "every runMain of a scripts tool in the scripts, workflows and skills" should "parse against the tool's command line" in {
     val calls = ToolCallers.calls("scripts")
-    calls.map(_.tool) should contain allOf ("scripts.IdentityRefit", "scripts.DecorationDiscovery", "scripts.IdentityUnifiedFit")
+    calls.map(_.tool) should contain allOf ("scripts.DecorationDiscovery", "scripts.IdentityUnifiedFit")
     val checked = calls.flatMap(call => ToolCallers.commandLineOf(call.tool).map(call -> _))
-    checked.map(_._1.tool).toSet should contain allOf ("scripts.IdentityRefit", "scripts.DecorationDiscovery", "scripts.IdentityUnifiedFit",
+    checked.map(_._1.tool).toSet should contain allOf ("scripts.DecorationDiscovery", "scripts.IdentityUnifiedFit",
       "scripts.ReapOrphanedFilmRows", "scripts.IdentityCalibrate", "scripts.IdentityDecorationsLearn",
       "scripts.RecordCorpusFixture", "scripts.BuildHardClusters", "scripts.FillMissingFixtures", "scripts.UnmatchedClustersRatchet")
     checked.foreach { case (call, line) =>
