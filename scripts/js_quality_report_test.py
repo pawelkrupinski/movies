@@ -22,6 +22,7 @@ from typing import Dict, List
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import cli_harness  # noqa: E402
+import js_quality_tools  # noqa: E402
 
 ROOT = cli_harness.ROOT
 TOOLS = os.path.join(ROOT, "scripts", "js-quality")
@@ -347,13 +348,7 @@ def fixture_files() -> Dict[str, str]:
     return files
 
 
-def tools_ready() -> bool:
-    """The pinned tools installed, or npm here to install them (the --linux container has neither)."""
-    tools_dir = subprocess.run([TOOL, "--tools-dir"], capture_output=True, text=True, check=True).stdout.strip()
-    return os.access(os.path.join(tools_dir, "node_modules", ".bin", "eslint"), os.X_OK) or shutil.which("npm") is not None
-
-
-@unittest.skipIf(shutil.which("node") is None or not tools_ready(),
+@unittest.skipUnless(js_quality_tools.ready(TOOL),
                  "end-to-end leg not run: the tools are not installed and npm cannot install them here")
 class EndToEndTest(cli_harness.ToolCase):
     """The whole report over a fixture checkout, with the pinned tools (installed in the real cache, as callers do)."""

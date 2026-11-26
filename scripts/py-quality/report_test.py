@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import os
+import shutil
 import sys
 import unittest
 from typing import Dict
@@ -185,7 +186,11 @@ class ReportTest(cli_harness.ToolCase):
         self.assertIn(said, done.output)
 
     def test_no_node_blocks(self) -> None:
-        env = cli_harness.isolated_env(os.environ, dict(self.tool_env, PATH="/usr/bin:/bin"))
+        # A PATH of git alone: a system PATH may hold a node (the --linux container's /usr/bin/node)
+        git_only = self.path("git-only-bin")
+        os.makedirs(git_only)
+        os.symlink(shutil.which("git") or "git", os.path.join(git_only, "git"))
+        env = cli_harness.isolated_env(os.environ, dict(self.tool_env, PATH=git_only))
         done = cli_harness.run_bounded([sys.executable, REPORT, "--root", self.root, "--check"], env=env, cwd=self.root,
                                        stdin=None)
         self.assertEqual(2, done.code, done.output)
