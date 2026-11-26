@@ -44,7 +44,7 @@ printf '%s\n' "$stub_dir/native" > "$runner_temp/kinowo-mongo-native"
 mkdir -p "$stub_dir/native/bin"
 printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "$STUB_LOG"\n' > "$stub_dir/native/bin/mongosh"; chmod +x "$stub_dir/native/bin/mongosh"
 # A native `start` runs detached (nohup ... &), so its stub's write lands a moment after the call returns.
-native_top() { : > "$STUB_LOG"; RUNNER_TEMP="$runner_temp" top "$@" >/dev/null; for _ in $(seq 1 50); do [ -s "$STUB_LOG" ] && return; sleep 0.1; done; }
+native_top() { : > "$STUB_LOG"; RUNNER_TEMP="$runner_temp" top "$@" >/dev/null; wait_until "the stub mongosh has logged its call" '[ -s "$STUB_LOG" ]'; }
 check "beside a native mongod, start keeps its samples under the runner's temp directory" "1" \
   "$(native_top start 5; grep -c "writeFileSync('$runner_temp/mongo-top.json'" "$STUB_LOG")"
 check "...and report reads that same file" "1" \
