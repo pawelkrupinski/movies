@@ -142,6 +142,14 @@ scratch_git "$tree" checkout -q -- .github/workflows/main.yml scripts/hooks/gate
 mkdir -p "$tree/tools/x" && put tools/x/deep.py 'print(1)'
 check "--changed: a .py anywhere selects the test reading every .py" "scripts/ci/floor_test.py" "$(listed --changed "$readers")"
 rm -r "$tree/tools"
+# 0544a8f758 (2026-11-26): an EXTENSIONLESS Python tool (infra/bin/fleet-ssh) broke the 3.9 floor, and --changed never
+# selected python_floor_lint_test.py, which reads every *.py: such a tool is a .py to a declared glob. A bash one is not.
+mkdir -p "$tree/tools/x" && put tools/x/deep '#!/usr/bin/env python3' && put tools/x/shelly '#!/usr/bin/env bash'
+check "--changed: an extensionless Python tool selects the test reading every .py" "scripts/ci/floor_test.py" \
+  "$(listed --changed "$readers")"
+rm "$tree/tools/x/deep"
+check "...an extensionless bash tool does not" "" "$(listed --changed "$readers")"
+rm -r "$tree/tools"
 check "--reads: every glob a test declares, once each, sorted" "*.py .github/actions/* .github/workflows/*" \
   "$(run --reads > /dev/null; tr '\n' ' ' < "$work/out" | sed 's/ $//')"
 echo '# edited' >> "$tree/scripts/hooks/gate"

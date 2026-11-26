@@ -46,7 +46,8 @@
 # `# script-test-reads: <glob> [<glob>...]` line in its first 40 lines, the globs relative to the root, `*` crossing
 # `/` (a `case` pattern); --changed selects it when a changed path matches one, and the pre-push hook runs its
 # `scripttests` check for such a path (`--reads`). An extensionless tool (scripts/hooks/pre-push) is named by its
-# directory and name (`hooks/pre-push`), a test naming it so selected by its edit (pre-push-gate-test.sh, #71-72).
+# directory and name (`hooks/pre-push`), a test naming it so selected by its edit (pre-push-gate-test.sh, #71-72); an
+# extensionless Python tool is a .py to a declared glob (`*.py` selects the floor lint for infra/bin/fleet-ssh).
 # `--readers` keeps, of what --changed selects, only the tests a declared glob selects: what the hook's --verify-only
 # runs over agentctl's combined tree, where a change and what landed beside it share no file, yet a test holding every
 # .py or spec to a rule can break on the two together.
@@ -361,9 +362,21 @@ reads_changed() { # <test path> <changed paths file>: a changed path matches a g
     while IFS= read -r changed; do
       # shellcheck disable=SC2254 # the declared glob is a pattern on purpose
       case "$changed" in $glob) return 0 ;; esac
-    done < "$2"
+    done < "$2.reads"
   done < "$work/reads"
   return 1
+}
+# The changed paths as a declared glob sees them: each, and an extensionless Python tool (a python shebang) as a .py
+# too -- infra/bin/fleet-ssh broke the 3.9 floor and no glob `*.py` selected python_floor_lint_test.py (0544a8f758)
+as_read() { # <changed paths file> -> <file>.reads
+  local path
+  while IFS= read -r path; do
+    echo "$path"
+    case "${path##*/}" in
+      *.*) ;;
+      *) [ -f "$path" ] && head -1 "$path" 2>/dev/null | grep -qE '^#!.*python' && echo "$path.py" ;;
+    esac
+  done < "$1" > "$1.reads"
 }
 
 # ── The floor's static half (FLOOR): the bash the change touches, parsed by --bash, its added lines held to 3.2 ────
@@ -695,6 +708,7 @@ if [ -n "$changed_base" ]; then
   fi
   with_their_users "$work/changed.direct" > "$work/changed"
   changed_keys "$work/changed"
+  as_read "$work/changed"
   discover | cut -f1 | declared_reads > "$work/reads"
 fi
 
