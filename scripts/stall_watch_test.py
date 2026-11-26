@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib
 import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/stall_watch.py", "scripts/stall-watch.sh")
-SHELL_NAME = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts", "stall-watch.sh")
+SHELL_NAME = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stall-watch.sh")
 FAST = {"KINOWO_STALL_POLL_SECONDS": "1"}
 # a root that touches `$1` eight times, 0.75 s apart (six seconds of progress, a bound of three), says it finished,
 # and then waits on nothing
@@ -115,22 +115,44 @@ class StallWatchTest(cli_harness.ToolCase):
         self.await_stall(proc)
         self.assertEqual("nested\n", self.read("stalled"), "a nested file was counted as progress")
 
-    def test_a_hung_python3_first_on_path_never_hangs_the_watchdog_its_callers_run(self) -> None:
-        # the callers' name (run-script-tests, the pre-push hook): a python3 on PATH that answers `-c` and hangs on
-        # anything else -- pre-push-tools-test's hung check -- ran the watchdog too (Tool self-tests #600)
-        os.makedirs(self.path("hung"))
-        with open(self.path("hung", "python3"), "w") as f:
-            f.write('#!/bin/sh\n[ "$1" = -c ] && exit 0\nexec sleep 86400\n')
-        os.chmod(self.path("hung", "python3"), 0o755)
-        root = self.root("sleep", "300")
-        err = open(self.path("err"), "wb")
-        self.addCleanup(err.close)
-        env = self.env({**FAST, "TMPDIR": self.work, "PATH": self.path("hung") + os.pathsep + os.environ["PATH"]})
-        proc = subprocess.Popen(["bash", SHELL_NAME, "watch", str(root.pid), "2", "shadowed", self.path("stalled")],
-                                cwd=self.work, env=env, start_new_session=True, stdout=subprocess.DEVNULL, stderr=err)
+    def watch_by_name(self, python3: str, *argv: str, wrap: str = "", err: Optional[int] = None
+                      ) -> "subprocess.Popen[bytes]":
+        """The watchdog run as its callers run it (run-script-tests, the pre-push hook): `bash stall-watch.sh`, with
+        the given python3 script first on PATH, its stderr in `err` (or the given stream)."""
+        os.makedirs(self.path("shadow"))
+        with open(self.path("shadow", "python3"), "w") as f:
+            f.write(python3)
+        os.chmod(self.path("shadow", "python3"), 0o755)
+        if err is None:
+            err = open(self.path("err"), "wb")
+            self.addCleanup(err.close)
+        env = self.env({**FAST, "TMPDIR": self.work, "PATH": self.path("shadow") + os.pathsep + os.environ["PATH"]})
+        command = f'{wrap}exec bash "$0" "$@"'
+        proc = subprocess.Popen(["bash", "-c", command, SHELL_NAME, *argv], cwd=self.work, env=env,
+                                start_new_session=True, stdout=subprocess.DEVNULL, stderr=err)
         self.addCleanup(self.end_group, proc)
+        return proc
+
+    def test_a_hung_python3_first_on_path_never_hangs_the_watchdog_its_callers_run(self) -> None:
+        # a python3 on PATH that answers `-c` and hangs on anything else -- pre-push-tools-test's hung check -- ran the
+        # watchdog too (Tool self-tests #600)
+        root = self.root("sleep", "300")
+        proc = self.watch_by_name('#!/bin/sh\n[ "$1" = -c ] && exit 0\nexec sleep 86400\n',
+                                  "watch", str(root.pid), "2", "shadowed", self.path("stalled"))
         self.await_stall(proc)
         self.assertEqual("shadowed\n", self.read("stalled"))
+
+    def test_a_watchdog_ended_while_it_picks_its_python3_says_nothing(self) -> None:
+        # run-script-tests ends the watchdog as soon as its test does, its stderr the test's log: ended while it picked
+        # its python3, under a SIGPIPE ignored (GitHub's runners), the pick's `echo` into a gone `$(...)` wrote
+        # "echo: write error: Broken pipe" into a log the test reads back (Tool self-tests #603). This python3 answers
+        # the probe only after ending the watchdog (its session's leader) and so stands in for that kill.
+        stub = '#!/bin/sh\n[ "$1" = -c ] || exit 3\nkill -TERM "$(ps -o pgid= -p $$ | tr -d " ")"\nsleep 1\necho stall-watch\n'
+        root = self.root("sleep", "300")
+        proc = self.watch_by_name(stub, "watch", str(root.pid), "2", "ended", self.path("stalled"),
+                                  wrap="trap '' PIPE; ", err=subprocess.PIPE)
+        self.addCleanup(proc.stderr.close)
+        self.assertEqual(b"", proc.stderr.read(), "stderr, read until every process of the watchdog's is gone")
 
     def test_a_busy_process_is_progress(self) -> None:
         busy = "import time; end = time.time() + 6\nwhile time.time() < end: pass"

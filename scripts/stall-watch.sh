@@ -89,21 +89,23 @@ stall_kept_pids() { # <before> <after>
   for p in $2; do case "$before" in *" $p "*) echo "$p" ;; esac; done
 }
 
-# stall_python -> the first python3 on PATH that answers a probe: the watchdog never runs on the interpreter a watched
-# check may be stuck in. A python3 shadowed on PATH that hangs (a test's hung stub that answers `-c` alone, a broken
-# shim) hung the watchdog with the check it was there to end (Tool self-tests #600: pre-push-tools-test's stall case
-# sat 300 s on two `sleep 86400`, its check's and its watchdog's).
+# stall_python: STALL_PYTHON = the first python3 on PATH that answers a probe, so the watchdog never runs on the
+# interpreter a watched check may be stuck in. A python3 shadowed on PATH that hangs (a test's hung stub that answers `-c`
+# alone, a broken shim) hung the watchdog with the check it was there to end (Tool self-tests #600: pre-push-tools-test's
+# stall case sat 300 s on two `sleep 86400`, its check's and its watchdog's). Set, never echoed through a `$(...)`: a
+# watchdog ended while it picked (run-script-tests ends it with its test) left that subshell's echo to a gone reader,
+# "echo: write error: Broken pipe" in the test's log under a SIGPIPE ignored (Tool self-tests #603).
 stall_python() {
   local dir py IFS=:
   for dir in $PATH; do
     py="${dir:-.}/python3"
     [ -x "$py" ] || continue
-    [ "$("$py" -c 'print("stall-watch")' 2> /dev/null < /dev/null)" = stall-watch ] && { echo "$py"; return 0; }
+    [ "$("$py" -c 'print("stall-watch")' 2> /dev/null < /dev/null)" = stall-watch ] && { STALL_PYTHON=$py; return 0; }
   done
   return 1
 }
 
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-  py=$(stall_python) || { echo "stall-watch: no python3 on PATH answers" >&2; exit 2; }
-  exec "$py" -I "$(dirname "$0")/stall_watch.py" "$@"
+  stall_python || { echo "stall-watch: no python3 on PATH answers" >&2; exit 2; }
+  exec "$STALL_PYTHON" -I "$(dirname "$0")/stall_watch.py" "$@"
 fi
