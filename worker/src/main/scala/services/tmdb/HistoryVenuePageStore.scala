@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.tmdb
 
 import services.cinemas.common.FilmDetail
 import services.venuepages.{StoredVenuePage, VenuePage, VenuePageKey, VenuePageStore}

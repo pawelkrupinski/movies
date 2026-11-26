@@ -5,7 +5,7 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
 import services.identity.MongoPinStore
 import services.identity.vocabulary.Pin
-import services.identityadapters.TmdbKind
+import services.tmdb.TmdbKind
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}

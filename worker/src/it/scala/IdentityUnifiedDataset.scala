@@ -1,7 +1,7 @@
 package integration
 
 import services.identity.agreement.{FamilyAnswers, FamilyIdentification, UnifiedEvidence}
-import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
+import services.identityadapters.{PosterAnswerStore}, services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind}
 import services.identity._
 import services.identity.measures.{Evidence, FallbackIds, Listing, PosterEvidence, ResolverDecision}
 

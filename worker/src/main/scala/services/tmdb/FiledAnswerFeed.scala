@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.tmdb
 
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{ConcurrentSkipListMap, CopyOnWriteArrayList}

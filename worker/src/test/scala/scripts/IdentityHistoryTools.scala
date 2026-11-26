@@ -1,6 +1,6 @@
 package scripts
 
-import services.identityadapters.{HistoryEntry, IdentityHistoryReplay, MongoIdentityHistory, MongoTmdbDocuments, TakeExplanation}
+import services.tmdb.{HistoryEntry, IdentityHistoryReplay, MongoIdentityHistory, MongoTmdbDocuments, TakeExplanation}
 import models.Country
 import org.bson.BsonDocument
 import org.mongodb.scala.{MongoClient, MongoDatabase, ObservableFuture}

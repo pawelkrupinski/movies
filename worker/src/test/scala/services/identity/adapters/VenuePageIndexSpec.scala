@@ -2,6 +2,7 @@ package services.identity
 package adapters
 
 import services.identityadapters.*
+import services.tmdb.FiledAnswerFeed
 import services.venuepages.{EnrichDetailsHandlerOf, EnrichDetailsTasks}
 import models.{CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaMovie, KinoApollo, Movie, MovieRecord, Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec

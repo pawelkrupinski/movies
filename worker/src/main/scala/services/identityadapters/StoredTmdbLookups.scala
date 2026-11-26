@@ -1,5 +1,6 @@
 package services.identityadapters
 
+import services.tmdb.{TmdbKind, TmdbStore}
 import java.util.concurrent.ConcurrentHashMap
 
 import scala.jdk.CollectionConverters.*

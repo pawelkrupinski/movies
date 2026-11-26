@@ -4,9 +4,10 @@ package adapters
 import services.identity.vocabulary.{PosterQuestion, VoterFamily}
 
 import services.identityadapters.*
+import services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, QuestionMemory, QuestionPolicies, TmdbKind, TmdbStore, TmdbStoreSweep}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identityadapters.QuestionPolicies.{NonAnswer, Renewal, Sweep}
+import services.tmdb.QuestionPolicies.{NonAnswer, Renewal, Sweep}
 import models.ListingKey
 import services.tasktypes.TaskType
 import tools.HttpPath

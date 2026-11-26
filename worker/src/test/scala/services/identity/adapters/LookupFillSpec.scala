@@ -2,6 +2,7 @@ package services.identity
 package adapters
 
 import services.identityadapters.*
+import services.tmdb.{InMemoryTmdbDocuments, QuestionMemory, QuestionPolicies, QuestionRenewals, TmdbKind, TmdbStore}
 import clients.tools.{AnyMethodByUrlHttpFetch, ConstantHttpFetch, FailingHttpFetch}
 import models._
 import org.scalatest.flatspec.AnyFlatSpec

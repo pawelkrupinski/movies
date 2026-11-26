@@ -2,6 +2,7 @@ package services.identity
 package adapters
 
 import services.identityadapters.*
+import services.tmdb.{InMemoryTmdbDocuments, TmdbDocuments, TmdbKind, TmdbStore}
 import clients.tools.ConstantHttpFetch
 import org.bson.BsonDocument
 import org.scalatest.LoneElement

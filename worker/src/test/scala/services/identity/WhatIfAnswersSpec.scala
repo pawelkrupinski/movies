@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identityadapters.{InMemoryTmdbDocuments, TmdbKind}
+import services.tmdb.{InMemoryTmdbDocuments, TmdbKind}
 import tools.SpecPool
 import clients.tools.FixtureFile
 import models.Country
@@ -78,11 +78,11 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   "a live what-if" should "re-ask a film's posters its own code calls out of date, and read the mirror's where it calls them fresh" in {
         // filed by prod: film 1 under a cap of 4 (cut: today's cap is higher, TMDB may keep more), film 2 under today's cap
     def filed(cap: Int, hashes: Int) = new BsonDocument("hashes", new org.bson.BsonArray((1 to hashes).map(h => new org.bson.BsonInt64(h.toLong)).asJava))
-      .append("cap", new org.bson.BsonInt32(cap)).append(services.identityadapters.TmdbStore.FetchedAt, new org.bson.BsonInt64(clock.millis()))
+      .append("cap", new org.bson.BsonInt32(cap)).append(services.tmdb.TmdbStore.FetchedAt, new org.bson.BsonInt64(clock.millis()))
     val mirror = new InMemoryTmdbDocuments
     mirror.put(TmdbKind.Family, Seq("poster|film|1" -> filed(4, 4), "poster|film|2" -> filed(PosterEvidence.FilmPosters, PosterEvidence.FilmPosters)))
     val source  = WhatIfAnswers.live(mirror, scratch(), tools.RoutingHttpFetch.dead("tmdb"), settings.TmdbApiKey("replay"), poland, clock)
-    val posters = new services.identityadapters.PosterAnswerStore(new services.identityadapters.FamilyAnswerStore(source.docs, clock), clock)
+    val posters = new services.identityadapters.PosterAnswerStore(new services.tmdb.FamilyAnswerStore(source.docs, clock), clock)
     // film 1: the mirror's cut document is hidden, so the stage asks again, files into the local store and reads that
     posters.film(1) shouldBe Answer.Unknown
     posters.fresh(PosterQuestion.Film(1)) shouldBe false
@@ -109,7 +109,7 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     val reads = new java.util.concurrent.atomic.AtomicInteger
     val inner = new InMemoryTmdbDocuments
     inner.put(TmdbKind.Family, Seq("a" -> new BsonDocument("n", new BsonString("1"))))
-    val counted = new services.identityadapters.TmdbDocuments {
+    val counted = new services.tmdb.TmdbDocuments {
       def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = { reads.incrementAndGet(); inner.get(kind, ids) }
       def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = inner.put(kind, docs)
     }

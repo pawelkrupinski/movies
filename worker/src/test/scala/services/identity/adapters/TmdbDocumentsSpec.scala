@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.tmdb.{InMemoryTmdbDocuments, TmdbDocumentRetention, TmdbDocuments, TmdbKind, TmdbStore}
 import org.bson.{BsonArray, BsonDocument, BsonInt32, BsonNull, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

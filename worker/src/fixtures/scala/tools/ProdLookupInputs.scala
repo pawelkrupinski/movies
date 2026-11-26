@@ -1,6 +1,6 @@
 package tools
 
-import services.identityadapters.{InMemoryTmdbDocuments, LiveAsks, MongoTmdbDocuments, QuestionMemory, StoredFirstLookups, StoredTmdbLookups, TmdbDocumentRetention, TmdbDocuments, TmdbKind, TmdbStore, VenueDetailLookups, VenuePageDetails, VenuePageIndex}
+import services.identityadapters.{LiveAsks, StoredFirstLookups, StoredTmdbLookups, VenueDetailLookups, VenuePageDetails, VenuePageIndex}, services.tmdb.{InMemoryTmdbDocuments, MongoTmdbDocuments, QuestionMemory, TmdbDocumentRetention, TmdbDocuments, TmdbKind, TmdbStore}
 import models.{CinemaMovie, Country}
 import org.bson.BsonDocument
 import org.bson.json.{JsonMode, JsonWriterSettings}

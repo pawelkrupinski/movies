@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.tmdb
 
 import java.util.concurrent.ConcurrentHashMap
 
@@ -35,7 +35,7 @@ final class IdentityHistoryReplay(entries: Seq[HistoryEntry], at: Long) {
 
   /** The venue pages as `venue_pages` held them at `at`, given its documents now (each by its `_id`). */
   def pages(current: Seq[BsonDocument]): Seq[BsonDocument] = {
-    val kind    = services.identityadapters.VenuePageAnswerEntries.Kind
+    val kind    = services.tmdb.VenuePageAnswerEntries.Kind
     val now     = current.map(d => d.getString("_id").getValue -> d).toMap
     val touched = byKindAndId.keySet.collect { case (`kind`, id) => id }
     now.view.filterKeys(id => !touched(id)).values.toSeq ++ touched.toSeq.flatMap(id => valueAt(kind, id, now.get(id)))
@@ -59,6 +59,6 @@ final class IdentityHistoryReplay(entries: Seq[HistoryEntry], at: Long) {
 
 object IdentityHistoryReplay {
   /** The kinds a replay reads. */
-  val Kinds: Seq[String] = HistoryEntry.Answers ++ Seq(services.identityadapters.VenuePageAnswerEntries.Kind, HistoryEntry.Listing)
+  val Kinds: Seq[String] = HistoryEntry.Answers ++ Seq(services.tmdb.VenuePageAnswerEntries.Kind, HistoryEntry.Listing)
   def from(reader: IdentityHistoryReader, at: Long): IdentityHistoryReplay = new IdentityHistoryReplay(reader.since(Kinds, at), at)
 }

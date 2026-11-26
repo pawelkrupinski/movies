@@ -1,5 +1,6 @@
 package services.identityadapters
 
+import services.tmdb.{FamilyAnswerStore, QuestionPolicies, TmdbStore}
 import java.time.Clock
 
 import org.bson.{BsonDocument, BsonInt32, BsonString}

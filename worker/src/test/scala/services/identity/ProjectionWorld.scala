@@ -32,7 +32,7 @@ private[identity] final class ProjectionWorld(
   pagesMoved:        () => Option[Seq[(Cinema, String)]] = () => Some(Nil),
   slotMemoOf:        Long => VenueSlotMemo = new VenueSlotMemo(_),
   /** The identity history (`identity_history`): the takes each projection moved, kept across a restart. */
-  val history:       services.identityadapters.InMemoryIdentityHistory = new services.identityadapters.InMemoryIdentityHistory) {
+  val history:       services.tmdb.InMemoryIdentityHistory = new services.tmdb.InMemoryIdentityHistory) {
   import ProjectionWorld.normalizer
 
   /** This world's worker restarted: what Mongo holds kept, everything in memory (the cache, the intake's held
@@ -91,8 +91,8 @@ private[identity] final class ProjectionWorld(
     // the reversal count seeded from them at construction
     takeReports = new services.identityadapters.ProjectionTakeReports(metrics, _ => (),
       new TakeChangeLines(Country.Poland, settings.CommitSha("0e41a4812")),
-      new services.identityadapters.TakeHistory(history, _ => Nil, clock, "0e41a4812"),
-      new TakeReversals(clock, seed = services.identityadapters.TakeHistory.reversalsHeld(history, clock.millis())), logger),
+      new services.tmdb.TakeHistory(history, _ => Nil, clock, "0e41a4812"),
+      new TakeReversals(clock, seed = services.tmdb.TakeHistory.reversalsHeld(history, clock.millis())), logger),
     metrics = metrics, clock = clock,
     scopedBetweenWhole = scopedBetweenWhole,
     suspects = (resolution, listings) => { suspected += ((resolution.decisions.size, listings.size)); () })

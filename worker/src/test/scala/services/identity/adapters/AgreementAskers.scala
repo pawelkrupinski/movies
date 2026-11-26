@@ -2,6 +2,7 @@ package services.identity
 package adapters
 
 import services.identityadapters.*
+import services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, QuestionMemory}
 import services.identity.vocabulary.VoterFamily
 import services.sharecards.{PosterDownload, VipsPosterShrinker}
 import services.tasks.Task

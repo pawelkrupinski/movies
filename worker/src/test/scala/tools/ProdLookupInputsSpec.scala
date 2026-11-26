@@ -5,7 +5,7 @@ import org.bson.{BsonArray, BsonDateTime, BsonDocument, BsonInt32, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity._
-import services.identityadapters.{InMemoryTmdbDocuments, QuestionMemory, TmdbKind, TmdbStore}
+import services.tmdb.{InMemoryTmdbDocuments, QuestionMemory, TmdbKind, TmdbStore}
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 import scala.jdk.CollectionConverters._

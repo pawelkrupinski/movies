@@ -1,6 +1,6 @@
 package integration
 
-import services.identityadapters.{MongoTmdbDocuments, TmdbDocuments, TmdbKind}
+import services.tmdb.{MongoTmdbDocuments, TmdbDocuments, TmdbKind}
 import tools.SpecTimeouts
 
 import com.mongodb.{ConnectionString, MongoClientSettings}
@@ -21,7 +21,7 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.adapters.TmdbD
 
   override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 
-  protected def newDocuments(): TmdbDocuments & services.identityadapters.TmdbDocumentRetention = {
+  protected def newDocuments(): TmdbDocuments & services.tmdb.TmdbDocumentRetention = {
     TmdbKind.values.foreach(k => Await.result(database.getCollection(k.collection).drop().toFuture(), SpecTimeouts.Io))
     new MongoTmdbDocuments(database)
   }
@@ -70,10 +70,10 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.adapters.TmdbD
       val documents = new MongoTmdbDocuments(watched.getDatabase(database.name))
       finds.clear()
       documents.filmHits(films.map(_._1) :+ "9999") shouldBe
-        films.flatMap { case (id, d) => services.identityadapters.TmdbStore.filmHit(id.toInt, d).map(id -> _) }.toMap
+        films.flatMap { case (id, d) => services.tmdb.TmdbStore.filmHit(id.toInt, d).map(id -> _) }.toMap
       import scala.jdk.CollectionConverters._
       finds.asScala.toSeq.map(_.getDocument("projection", new org.bson.BsonDocument()).keySet.asScala.toSet) shouldBe
-        Seq(services.identityadapters.TmdbStore.HitFields.toSet)
+        Seq(services.tmdb.TmdbStore.HitFields.toSet)
     } finally watched.close()
   }
 
@@ -87,7 +87,7 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.adapters.TmdbD
       }).build())
     try {
       newDocuments()
-      val documents = new services.identityadapters.CoalescedTmdbDocuments(new MongoTmdbDocuments(watched.getDatabase(database.name)))
+      val documents = new services.tmdb.CoalescedTmdbDocuments(new MongoTmdbDocuments(watched.getDatabase(database.name)))
       val pool  = java.util.concurrent.Executors.newThreadPerTaskExecutor(Thread.ofVirtual().factory())
       val start = new java.util.concurrent.CountDownLatch(1)
       val filed = (0 until 64).map(i => pool.submit((() => {
@@ -117,7 +117,7 @@ class MongoTmdbDocumentsIntegrationSpec extends services.identity.adapters.TmdbD
       }).build())
     try {
       newDocuments()
-      val documents = new services.identityadapters.CoalescedTmdbDocuments(new services.identityadapters.CachedTmdbDocuments(
+      val documents = new services.tmdb.CoalescedTmdbDocuments(new services.tmdb.CachedTmdbDocuments(
         new MongoTmdbDocuments(watched.getDatabase(database.name))))
       def film(n: Int) = new org.bson.BsonDocument("hit", new org.bson.BsonDocument("n", new org.bson.BsonInt32(n)))
       documents.put(TmdbKind.Film, (1 to 600).map(i => i.toString -> film(i)))

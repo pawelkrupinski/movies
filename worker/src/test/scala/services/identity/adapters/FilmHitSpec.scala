@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.measures.Film
 import services.identity.vocabulary.{Hit, PopularityBucket}
-import services.identityadapters.TmdbStore
+import services.tmdb.TmdbStore
 
 /** [[TmdbStore.filmHit]]: a film's hit, which every film a search names is asked for -- off its record when it has one.
  *  It reads the record's four hit fields as the frozen reading below did, which decoded the whole record for them:

@@ -48,7 +48,7 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
     .labelNames("country")
     .register(registry)
 
-  /** Count `n` history entries dropped for `country` ([[services.identityadapters.AsyncIdentityHistory]]). */
+  /** Count `n` history entries dropped for `country` ([[services.tmdb.AsyncIdentityHistory]]). */
   def historyDropped(country: String)(n: Long): Unit = historyDropped.labelValues(country).inc(n.toDouble)
 
   private val resolved: Counter = Counter.builder()

@@ -1,6 +1,6 @@
 package tools
 
-import services.identityadapters.{FamilyAnswerStore, FamilySource, InMemoryTmdbDocuments}
+import services.identityadapters.{FamilySource}, services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

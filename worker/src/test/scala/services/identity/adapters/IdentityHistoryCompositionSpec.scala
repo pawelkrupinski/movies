@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.tmdb.{IdentityHistory, InMemoryIdentityHistory}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -20,6 +20,6 @@ class IdentityHistoryCompositionSpec extends AnyFlatSpec with Matchers {
   "the convergence legs' wiring" should "name Unwritten, and production's wiring no override" in {
     Files.readString(Paths.get("worker/src/fixtures/scala/tools/ArchiveReplayWiring.scala")) should include ("IdentityHistory.Override.Unwritten")
     Files.readString(Paths.get("worker/src/main/scala/modules/wiring/IdentityModelWiring.scala")) should include (
-      "protected def identityHistoryOverrides: Set[services.identityadapters.IdentityHistory.Override] = Set.empty")
+      "protected def identityHistoryOverrides: Set[services.tmdb.IdentityHistory.Override] = Set.empty")
   }
 }

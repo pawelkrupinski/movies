@@ -1,7 +1,7 @@
 package services.metrics.worker
 
 import services.metrics.{CacheMetricSamples, PrometheusExposition}
-import services.identityadapters.{CachedTmdbDocuments, InMemoryTmdbDocuments, TmdbKind}
+import services.tmdb.{CachedTmdbDocuments, InMemoryTmdbDocuments, TmdbKind}
 import tools.CacheOccupancy
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import io.prometheus.metrics.model.registry.PrometheusRegistry

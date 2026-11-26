@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identityadapters.{HistoryEntry, InMemoryIdentityHistory, InMemoryTmdbDocuments}
+import services.tmdb.{HistoryEntry, InMemoryIdentityHistory, InMemoryTmdbDocuments}
 import models.{CinemaMovie, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

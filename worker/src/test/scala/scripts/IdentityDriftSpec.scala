@@ -1,6 +1,6 @@
 package scripts
 
-import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind, TmdbStore}
+import services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind, TmdbStore}
 import clients.tools.ConstantHttpFetch
 import org.bson.{BsonArray, BsonDocument, BsonInt64}
 import org.scalatest.flatspec.AnyFlatSpec

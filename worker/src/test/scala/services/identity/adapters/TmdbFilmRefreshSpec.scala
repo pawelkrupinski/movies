@@ -2,6 +2,7 @@ package services.identity
 package adapters
 
 import services.identityadapters.*
+import services.tmdb.{InMemoryTmdbDocuments, TmdbKind, TmdbStore}
 import clients.HttpTmdbClient
 import models.{KinoMuza, Kinoteka}
 import org.scalatest.flatspec.AnyFlatSpec

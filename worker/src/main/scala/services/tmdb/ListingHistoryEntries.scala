@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.tmdb
 
 import models.ListingKey
 import services.identity.ListingBson

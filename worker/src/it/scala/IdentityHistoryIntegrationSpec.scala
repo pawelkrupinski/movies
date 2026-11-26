@@ -1,6 +1,6 @@
 package integration
 
-import services.identityadapters.{HistoryEntry, IdentityHistory, InMemoryIdentityHistory, MongoIdentityHistory, TakeExplanation}
+import services.tmdb.{HistoryEntry, IdentityHistory, InMemoryIdentityHistory, MongoIdentityHistory, TakeExplanation}
 import org.bson.{BsonDocument, BsonString}
 import org.mongodb.scala.ObservableFuture
 import org.scalatest.flatspec.AnyFlatSpec

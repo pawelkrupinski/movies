@@ -2,7 +2,7 @@ package services
 
 import models.FilmId
 
-import services.identityadapters.{MongoTmdbDocuments, TmdbKind, TmdbStore}
+import services.tmdb.{MongoTmdbDocuments, TmdbKind, TmdbStore}
 import tools.{QueryPlans, SpecTimeouts, TtlIndexMismatches}
 
 import models.{CinemaShowing, KinoMuranow, MovieRecord, Showtime, Source, SourceData, Tmdb}

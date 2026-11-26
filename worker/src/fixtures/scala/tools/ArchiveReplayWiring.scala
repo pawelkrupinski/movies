@@ -59,8 +59,8 @@ class ArchiveReplayWiring(
   tmdbBodies:       JsonBodies = new JsonBodies
 ) extends WorkerWiring(replayCountry, env = environment) with TestWiring {
   // A convergence leg replays a recording: it writes no identity history (IdentityHistory.Override.Unwritten).
-  override protected def identityHistoryOverrides: Set[services.identityadapters.IdentityHistory.Override] =
-    Set(services.identityadapters.IdentityHistory.Override.Unwritten)
+  override protected def identityHistoryOverrides: Set[services.tmdb.IdentityHistory.Override] =
+    Set(services.tmdb.IdentityHistory.Override.Unwritten)
 
   private def live(fetch: HttpFetch): HttpFetch = sharedLive.fold(fetch)(_.over(fetch))
 
@@ -227,17 +227,17 @@ class ArchiveReplayWiring(
 
   /** The TMDB and IMDb answers the replay files and reads (`tmdb_films`, `tmdb_queries`, `tmdb_people`, the question
    *  markers) held in memory, as their BSON bytes (`InMemoryTmdbDocuments`), not in the run's Mongo. Every rule over
-   *  them is [[services.identityadapters.TmdbStore]]'s, above the seam, and the two stores pass one contract
+   *  them is [[services.tmdb.TmdbStore]]'s, above the seam, and the two stores pass one contract
    *  (`TmdbDocumentRetentionBehaviour`: `TmdbDocumentsSpec`, `MongoTmdbDocumentsIntegrationSpec`). Over Mongo they
    *  were the replay's largest read cost: ~150k reads and writes of `tmdb_films` and ~160k reads of `tmdb_queries`,
    *  ~100 s of mongod beside the JVM on Germany's 4-core row, with the driver in 23% of the suite's CPU samples (JFR,
    *  run 41438546199). The history the worker files every answer into is kept. Their heap: the United States' row
    *  peaked at 8.63 of its 10 GB with them (8.04-8.10 before; run 41964526286), so a pinned US recording ~15% larger
    *  than 573 would need the heap raised or these answers bounded. */
-  override protected lazy val identityTmdbLayer: services.identityadapters.IdentityTmdbLayer =
-    new services.identityadapters.IdentityTmdbLayer(None, clock, identityHistory, configuration.commit.value,
-      recordedTmdbAnswers.fold[services.identityadapters.TmdbDocuments & services.identityadapters.TmdbDocumentRetention](
-        new services.identityadapters.InMemoryTmdbDocuments)(new ProdLookupInputs.Held(_)))
+  override protected lazy val identityTmdbLayer: services.tmdb.IdentityTmdbLayer =
+    new services.tmdb.IdentityTmdbLayer(None, clock, identityHistory, configuration.commit.value,
+      recordedTmdbAnswers.fold[services.tmdb.TmdbDocuments & services.tmdb.TmdbDocumentRetention](
+        new services.tmdb.InMemoryTmdbDocuments)(new ProdLookupInputs.Held(_)))
 
   /** The recording's capture of prod's TMDB store as prod's model read it ([[ProdLookupInputs]]): the answers the model
    *  reads first, prod's wherever prod held one, so the replay's model weighs what prod's weighed — never the tree's

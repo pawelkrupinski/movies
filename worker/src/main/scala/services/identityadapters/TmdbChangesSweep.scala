@@ -1,5 +1,6 @@
 package services.identityadapters
 
+import services.tmdb.{TmdbDocuments, TmdbKind, TmdbStore}
 import java.time.{Clock, LocalDate, ZoneOffset}
 
 import scala.concurrent.duration.*

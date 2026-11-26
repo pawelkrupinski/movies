@@ -1,5 +1,6 @@
 package services.identityadapters
 
+import services.tmdb.{FailureHistory, TmdbKind, TmdbStore}
 import java.net.{URI, URLDecoder}
 import java.nio.charset.StandardCharsets
 

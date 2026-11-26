@@ -5,6 +5,7 @@ import services.identity.measures.{Film, Listing, ResolverDecision, TakeOutcome}
 import services.identity.vocabulary.PosterQuestion
 
 import services.identityadapters.*
+import services.tmdb.{InMemoryTmdbDocuments, QuestionMemory, QuestionPolicies}
 import tools.SpecTimeouts
 
 import models._

@@ -1,5 +1,6 @@
 package services.identityadapters
 
+import services.tmdb.TakeHistory
 import models.ListingKey
 import models.{FilmId, StoredMovieRecord}
 import services.identity.*

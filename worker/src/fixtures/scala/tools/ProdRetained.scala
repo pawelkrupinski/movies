@@ -31,9 +31,9 @@ object ProdRetained {
   def read(database: org.mongodb.scala.MongoDatabase, now: Long): Seq[Listing] =
     // read only: the clock dates no write
     new MongoRetainedListingStore(database, java.time.Clock.fixed(java.time.Instant.ofEpochMilli(now), java.time.ZoneOffset.UTC)).read().map(_.map(_.listing)).getOrElse {
-      val history = new services.identityadapters.MongoIdentityHistory(database, new tools.TtlIndexMismatches)
-      RetainedListingStore.fromHistory(history.since(Seq(services.identityadapters.HistoryEntry.Listing),
-        now - services.identityadapters.IdentityHistory.Kept.toMillis).filter(_.at <= now))
+      val history = new services.tmdb.MongoIdentityHistory(database, new tools.TtlIndexMismatches)
+      RetainedListingStore.fromHistory(history.since(Seq(services.tmdb.HistoryEntry.Listing),
+        now - services.tmdb.IdentityHistory.Kept.toMillis).filter(_.at <= now))
     }
 
   /** The model's input as prod's take-up holds it: the listings `billed`, and those of `recorded` (prod's kept set) a

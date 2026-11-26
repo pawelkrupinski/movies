@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.tmdb
 
 import scala.jdk.CollectionConverters.*
 

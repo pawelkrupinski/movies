@@ -1,8 +1,8 @@
 package services.identity
 package adapters
 
-import services.identityadapters.HistoryVenuePageStore
-import services.identityadapters.*
+import services.tmdb.HistoryVenuePageStore
+import services.tmdb.{HistoryTmdbDocuments, IdentityHistoryReplay, InMemoryIdentityHistory, InMemoryTmdbDocuments, TmdbKind, TmdbStore}
 import org.bson.{BsonDocument, BsonInt64, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

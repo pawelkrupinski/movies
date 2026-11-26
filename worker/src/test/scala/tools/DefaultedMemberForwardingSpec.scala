@@ -69,7 +69,7 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       // Normalizes what it sees into a store as a side effect; every call reaches the fetch it decorates.
       classOf[services.identityadapters.NormalizingHttpFetch] -> ((d: HttpFetch) =>
         new services.identityadapters.NormalizingHttpFetch(d, new services.identityadapters.TmdbNormalizer(
-          new services.identityadapters.TmdbStore(new services.identityadapters.InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)))))
+          new services.tmdb.TmdbStore(new services.tmdb.InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)))))
     ),
     mayInherit =
       // The default runs `this.get(url)` on a pool thread — through the decorator's own

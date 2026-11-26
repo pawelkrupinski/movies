@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.tmdb
 
 import org.bson.BsonDocument
 import services.identity.vocabulary.Hit

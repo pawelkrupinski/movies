@@ -44,7 +44,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   // The projection reads the model's resolution.
   /** The answers a listing's own questions are filed under, as the take-change lines and the history name them. */
   private lazy val takeReads: services.identity.measures.Listing => Seq[String] =
-    services.identityadapters.TakeReads.of(country.language.toLanguageTag)
+    services.tmdb.TakeReads.of(country.language.toLanguageTag)
   lazy val identityProjection: IdentityProjection = {
     // every piece logs under the projection's own logger, as its lines always have
     val logger  = play.api.Logger(classOf[IdentityProjection])
@@ -77,7 +77,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
           } },
         takeLines   = new services.identity.TakeChangeLines(country, configuration.commit,
           listing => titleNormalizer.firedRules(listing.cinema, listing.rawTitle), takeReads),
-        takeHistory = new services.identityadapters.TakeHistory(identityHistory, takeReads, clock, configuration.commit.value),
+        takeHistory = new services.tmdb.TakeHistory(identityHistory, takeReads, clock, configuration.commit.value),
         reversals   = new services.identity.TakeReversals(clock, seed = identityReversalsHeld()), logger = logger),
       metrics     = metrics,
       clock       = clock,

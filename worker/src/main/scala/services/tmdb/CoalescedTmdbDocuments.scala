@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.tmdb
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{CompletableFuture, ConcurrentLinkedQueue, ExecutionException, Semaphore, TimeUnit, TimeoutException}

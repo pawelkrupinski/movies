@@ -5,7 +5,7 @@ import models.{ListingKey, MovieRecord, Tmdb}
 import org.bson.{BsonDocument, BsonInt64, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identityadapters.{HistoryEntry, MongoPendingListingStore, MongoRetainedListingStore, ProjectionDrafter, RetainedListingStore}
+import services.identityadapters.{MongoPendingListingStore, MongoRetainedListingStore, ProjectionDrafter, RetainedListingStore}, services.tmdb.HistoryEntry
 
 /** What the identity adapters read and could not use -- a stored listing that no longer decodes, a film's TMDB details
  *  that failed -- each left out as before, and now said out loud: the read gives less than the store holds. */

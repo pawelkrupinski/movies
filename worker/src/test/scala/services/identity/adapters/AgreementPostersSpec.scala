@@ -4,6 +4,7 @@ package adapters
 import services.identity.vocabulary.PosterQuestion
 
 import services.identityadapters.*
+import services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, QuestionMemory, QuestionPolicies}
 import tools.ScratchDirectories
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

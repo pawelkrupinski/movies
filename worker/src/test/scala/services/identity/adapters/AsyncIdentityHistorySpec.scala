@@ -2,6 +2,7 @@ package services.identity
 package adapters
 
 import services.identityadapters.*
+import services.tmdb.{AsyncIdentityHistory, HistoryEntry, HistoryTmdbDocuments, IdentityHistory, InMemoryIdentityHistory, InMemoryTmdbDocuments, TmdbKind, TmdbStore}
 import models.{CinemaMovie, KinoMuza, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

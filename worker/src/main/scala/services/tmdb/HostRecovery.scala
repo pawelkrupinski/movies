@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.tmdb
 
 import play.api.Logging
 import services.identity.vocabulary.Question

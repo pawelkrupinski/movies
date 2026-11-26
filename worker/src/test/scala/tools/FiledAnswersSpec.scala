@@ -5,7 +5,7 @@ import org.bson.{BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity._
-import services.identityadapters.TmdbKind
+import services.tmdb.TmdbKind
 import services.identity.vocabulary.{Answer, CandidateQuery, Hit}
 
 /** The answers a recording does not hold as an identity slice reads them ([[FiledAnswers]]): prod's family answers

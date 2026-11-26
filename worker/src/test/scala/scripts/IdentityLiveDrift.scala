@@ -6,7 +6,7 @@ import services.identity._
 import services.identity.measures.{Resolution, ResolverDecision, WaitingOn}
 import services.movies.ScrapeListing
 import services.titles.TitleNormalizer
-import services.identityadapters.TmdbStore
+import services.tmdb.TmdbStore
 import tools.{MutableClock, ProdFilm, ProdFilms, ProdIdentityInputs, ProdListings, ProdLookupInputs, ProdRetained}
 
 import java.nio.file.{Files, Path}

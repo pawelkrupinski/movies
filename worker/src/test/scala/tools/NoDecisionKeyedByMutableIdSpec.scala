@@ -213,7 +213,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"worker/src/main/scala/services/identityadapters/StoredTmdbLookups.scala#films"  -> Content("by TMDB id, released with held"),
     s"worker/src/main/scala/services/identityadapters/StoredTmdbLookups.scala#hits"   -> Content("by TMDB id, released with held"),
     s"worker/src/main/scala/services/identityadapters/TmdbIdentityLookups.scala#reading" -> Content("single-flight by title, removed when the read completes"),
-    s"worker/src/main/scala/services/identityadapters/TmdbStore.scala#byKind"         -> Store("InMemoryTmdbDocuments' rows"),
+    s"worker/src/main/scala/services/tmdb/TmdbStore.scala#byKind"         -> Store("InMemoryTmdbDocuments' rows"),
     s"worker/src/main/scala/services/identityadapters/VenuePageIndex.scala#pending"   -> Name("the pages to read again, removed as each is read"),
     s"worker/src/main/scala/services/identityadapters/LookupFill.scala#overloaded"    -> Pass(PerRound),
     s"worker/src/main/scala/services/identityadapters/LookupFill.scala#wanted"        -> Pass(PerRound),
@@ -237,8 +237,8 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"worker/src/main/scala/services/identityadapters/RuleFiringCount.scala#titleRules"       -> Content("by venue and raw title: the title is the content its rules are read from"),
     s"worker/src/main/scala/services/identityadapters/VenuePageIndex.scala#answers"           -> Store("each page's answer as read, compared by value to see it move"),
     s"worker/src/main/scala/services/identityadapters/LookupGaps.scala#kinds"         -> Content("a counter per gap kind"),
-    s"worker/src/main/scala/services/identityadapters/IdentityHistoryReplay.scala#written" -> Store("a replay's own writes, by document id: it decides nothing, the replay is built per moment"),
-    s"worker/src/main/scala/services/identityadapters/FailureHistory.scala#failedAt"     -> Content("by redacted URL and failure: when each was last kept, to keep one a minute; decides no take"),
+    s"worker/src/main/scala/services/tmdb/IdentityHistoryReplay.scala#written" -> Store("a replay's own writes, by document id: it decides nothing, the replay is built per moment"),
+    s"worker/src/main/scala/services/tmdb/FailureHistory.scala#failedAt"     -> Content("by redacted URL and failure: when each was last kept, to keep one a minute; decides no take"),
     s"worker/src/main/scala/services/identityadapters/IdentityModelGauges.scala#holding" -> Content("by country and hold (gate, stage): the held gauges' last count and oldest wait; decides no take")
   )
 

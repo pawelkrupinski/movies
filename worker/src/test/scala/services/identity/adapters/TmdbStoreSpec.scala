@@ -2,6 +2,7 @@ package services.identity
 package adapters
 
 import services.identityadapters.*
+import services.tmdb.{InMemoryTmdbDocuments, TmdbDocuments, TmdbKind, TmdbStore}
 import tools.SpecPool
 import tools.SpecTimeouts
 

@@ -15,19 +15,19 @@ trait IdentityModelWiring { self: WorkerWiring =>
   // a person and a question each once, as native BSON holding only what the resolver reads. Filled
   // by the pipeline's client (`identityLookupFetch`) and the fill; read by the model. Where the model
   // runs, in the country's database — documents, store and family answers as one layer.
-  protected lazy val identityTmdbLayer: services.identityadapters.IdentityTmdbLayer =
-    new services.identityadapters.IdentityTmdbLayer(mongoConnection.database, clock, identityHistory, configuration.commit.value)
+  protected lazy val identityTmdbLayer: services.tmdb.IdentityTmdbLayer =
+    new services.tmdb.IdentityTmdbLayer(mongoConnection.database, clock, identityHistory, configuration.commit.value)
   /** The identity system's history (`identity_history`, a month of it): every answer, venue page and listing the model
    *  read as it moved, every read that failed, and every take the projection moved with what decided it — what
    *  `scripts/identity-replay` resolves a past moment from and `scripts/identity-why` explains a take change by. */
   // Written on a thread of its own (AsyncIdentityHistory): no caller waits on it, a document's queued changes coalesce
   // into its latest, a full queue drops and counts -- except the take entries, written with the projection (a killed
   // worker loses no take).
-  lazy val identityHistory: services.identityadapters.IdentityHistory =
-    services.identityadapters.IdentityHistory.composed(
-      mongoConnection.database.fold[services.identityadapters.IdentityHistory](services.identityadapters.IdentityHistory.Discard)(db =>
-        managedResources.stopping(new services.identityadapters.AsyncIdentityHistory(
-          new services.identityadapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches),
+  lazy val identityHistory: services.tmdb.IdentityHistory =
+    services.tmdb.IdentityHistory.composed(
+      mongoConnection.database.fold[services.tmdb.IdentityHistory](services.tmdb.IdentityHistory.Discard)(db =>
+        managedResources.stopping(new services.tmdb.AsyncIdentityHistory(
+          new services.tmdb.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches),
           workerMetrics.identityModel.historyDropped(country.code)))),
       identityHistoryOverrides)
   /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing's version is taken in once its
@@ -47,35 +47,35 @@ trait IdentityModelWiring { self: WorkerWiring =>
    *  persisted (`RetainedListingStore.fromHistory`). */
   protected def identityHeldBefore(): Seq[services.identity.measures.Listing] =
     mongoConnection.database.fold(Seq.empty[services.identity.measures.Listing]) { db =>
-      val reader = new services.identityadapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches)
+      val reader = new services.tmdb.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches)
       services.identityadapters.RetainedListingStore.fromHistory(
-        reader.since(Seq(services.identityadapters.HistoryEntry.Listing), clock.millis() - services.identityadapters.IdentityHistory.Kept.toMillis))
+        reader.since(Seq(services.tmdb.HistoryEntry.Listing), clock.millis() - services.tmdb.IdentityHistory.Kept.toMillis))
     }
   /** The take history's last film change of each listing within the reversal count's horizon, as the count holds them
    *  (`TakeHistory.reversalsHeld`): none without a database, or when the read fails (logged). */
   protected def identityReversalsHeld(): Seq[(models.ListingKey, services.identity.TakeReversals.Held)] =
     mongoConnection.database.fold(Seq.empty[(models.ListingKey, services.identity.TakeReversals.Held)]) { db =>
-      val reader = new services.identityadapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches)
-      scala.util.Try(services.identityadapters.TakeHistory.reversalsHeld(reader, clock.millis()))
+      val reader = new services.tmdb.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches)
+      scala.util.Try(services.tmdb.TakeHistory.reversalsHeld(reader, clock.millis()))
         .recover { case scala.util.control.NonFatal(e) => logger.warn(s"take reversals: the take history not read, counting from none: $e"); Nil }.get
     }
   /** How this wiring's history differs from the worker's (`IdentityHistory.Override`): none in production; a harness's
    *  wiring names its own. */
-  protected def identityHistoryOverrides: Set[services.identityadapters.IdentityHistory.Override] = Set.empty
-  lazy val identityTmdbDocuments: services.identityadapters.TmdbDocuments = identityTmdbLayer.documents
+  protected def identityHistoryOverrides: Set[services.tmdb.IdentityHistory.Override] = Set.empty
+  lazy val identityTmdbDocuments: services.tmdb.TmdbDocuments = identityTmdbLayer.documents
   /** The layer's document cache, by cache name, for `registerCacheMetrics`. */
   lazy val identityTmdbCacheOccupancies: Seq[(String, () => tools.CacheOccupancy)] = identityTmdbLayer.cacheOccupancies
   /** The store's retention (`TmdbStoreSweep`): answers the model no longer reads, and stale gap markers. */
-  lazy val identityTmdbSweep: services.identityadapters.TmdbStoreSweep =
-    new services.identityadapters.TmdbStoreSweep(identityTmdbLayer.backend,
+  lazy val identityTmdbSweep: services.tmdb.TmdbStoreSweep =
+    new services.tmdb.TmdbStoreSweep(identityTmdbLayer.backend,
       liveKeys = () => identityModel.peek(WorkerWiring.IdentityModelPeek).map(_ => identityReads.trackedKeys), clock)
   lazy val identityTmdbSweepSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("tmdb-store-sweep", () => { identityTmdbSweep.sweep(); tools.TickRun.Completed },
-      services.identityadapters.TmdbStoreSweep.Interval, WorkerWiring.TmdbSweepInitialDelay, scheduledRunStore, clock, ticks, threadPools = threadPools))
-  lazy val identityTmdbStore: services.identityadapters.TmdbStore = identityTmdbLayer.store
+      services.tmdb.TmdbStoreSweep.Interval, WorkerWiring.TmdbSweepInitialDelay, scheduledRunStore, clock, ticks, threadPools = threadPools))
+  lazy val identityTmdbStore: services.tmdb.TmdbStore = identityTmdbLayer.store
   lazy val identityTmdbNormalizer: services.identityadapters.TmdbNormalizer =
     new services.identityadapters.TmdbNormalizer(identityTmdbStore, tmdbJsonBodies,
-      new services.identityadapters.KeptFailures(identityHistory, clock, configuration.commit.value))
+      new services.tmdb.KeptFailures(identityHistory, clock, configuration.commit.value))
   /** Keeps the store current from TMDB's change lists (`TmdbChangesSweep`): each day's edits checked at a
    *  pace spread over the day, from the country's own hashed phase, through the lookup chain (`enrichmentFetch`). */
   lazy val identityTmdbChanges: services.identityadapters.TmdbChangesSweep =
@@ -97,8 +97,8 @@ trait IdentityModelWiring { self: WorkerWiring =>
         services.identityadapters.TmdbFilmRefresh.Family.of(engine.familyQuestions, engine.listings)), fold = titleNormalizer.sanitize)
   /** The model's answers due to be asked again for their age (`QuestionRenewals`): its questions, then the records and
    *  people it reads, while it is taken up. */
-  lazy val identityRenewals: services.identityadapters.QuestionRenewals =
-    new services.identityadapters.QuestionRenewals(identityTmdbStore, identityTmdbLayer.backend, country.language.toLanguageTag,
+  lazy val identityRenewals: services.tmdb.QuestionRenewals =
+    new services.tmdb.QuestionRenewals(identityTmdbStore, identityTmdbLayer.backend, country.language.toLanguageTag,
       questions = () => identityModel.peek(WorkerWiring.IdentityModelPeek).fold(Seq.empty[(Set[services.identity.vocabulary.CandidateQuery], Boolean)])(_.questions),
       liveKeys = () => identityModel.peek(WorkerWiring.IdentityModelPeek).map(_ => identityReads.trackedKeys), clock)
   // The model is the country's identity: the intake's accepted listings, answered from the model's
@@ -167,13 +167,13 @@ trait IdentityModelWiring { self: WorkerWiring =>
   }
 
   /** What was asked and left unanswered, and when it is due again: one memory for the fill, the model's live asks and
-   *  the agreement's questions ([[services.identityadapters.QuestionMemory]]). */
-  lazy val identityQuestionMemory: services.identityadapters.QuestionMemory =
-    new services.identityadapters.QuestionMemory(identityTmdbDocuments, country.language.toLanguageTag, clock)
+   *  the agreement's questions ([[services.tmdb.QuestionMemory]]). */
+  lazy val identityQuestionMemory: services.tmdb.QuestionMemory =
+    new services.tmdb.QuestionMemory(identityTmdbDocuments, country.language.toLanguageTag, clock)
 
   /** `venue_pages`: every venue detail page read, written once by page (`VenuePageReader`). */
   lazy val venuePageStore: services.venuepages.VenuePageStore =
-    new services.identityadapters.HistoryVenuePageStore(newVenuePageStore, identityHistory, clock, configuration.commit.value)
+    new services.tmdb.HistoryVenuePageStore(newVenuePageStore, identityHistory, clock, configuration.commit.value)
   /** The store [[venuePageStore]] holds, built once. */
   protected def newVenuePageStore: services.venuepages.VenuePageStore =
     mongoConnection.database.fold[services.venuepages.VenuePageStore](new services.venuepages.InMemoryVenuePageStore)(

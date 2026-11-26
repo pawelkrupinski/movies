@@ -1,8 +1,7 @@
 package integration
 
 import services.identity.agreement.SuspectTakes
-import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbIdentityLookups,
-  TmdbKind}
+import services.identityadapters.{PosterAnswerStore, TmdbIdentityLookups}, services.tmdb.{FamilyAnswerStore, InMemoryTmdbDocuments, TmdbKind}
 import play.api.libs.json.{JsArray, JsNull, JsNumber, JsObject, JsString, Json}
 import services.identity._
 import services.identity.measures.{Listing, Resolution, ResolverDecision}

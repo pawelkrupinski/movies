@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.tmdb.{CoalescedTmdbDocuments, InMemoryTmdbDocuments, TmdbDocuments, TmdbKind}
 import tools.SpecTimeouts
 
 import org.bson.{BsonDocument, BsonInt32, BsonString}

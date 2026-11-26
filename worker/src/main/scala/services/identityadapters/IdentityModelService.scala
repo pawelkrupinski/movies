@@ -1,5 +1,6 @@
 package services.identityadapters
 
+import services.tmdb.{IdentityHistory, ListingHistoryEntries}
 import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUnit}
 
 import scala.concurrent.duration.FiniteDuration

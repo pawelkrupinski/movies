@@ -1,6 +1,6 @@
 package tools
 
-import services.identityadapters.{InMemoryTmdbDocuments, NormalizingHttpFetch, TmdbKind, TmdbNormalizer, TmdbStore}
+import services.identityadapters.{NormalizingHttpFetch, TmdbNormalizer}, services.tmdb.{InMemoryTmdbDocuments, TmdbKind, TmdbStore}
 import clients.HttpTmdbClient
 import services.identityadapters.TmdbIdentityReads.*
 import clients.tools.FakeHttpFetch

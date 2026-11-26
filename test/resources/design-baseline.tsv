@@ -1569,7 +1569,7 @@ mixed	worker/src/main/scala/diagnostics/RosterAudit.scala:RosterAudit.main	4
 mixed	worker/src/main/scala/modules/WorkerMain.scala:WorkerMain.ensureHeapDumpDirectory	3
 mixed	worker/src/main/scala/services/facebook/FacebookGraph.scala:HttpFacebookGraph.scrape	4
 mixed	worker/src/main/scala/services/identityadapters/AgreementPosters.scala:PosterHashing.hash	9
-mixed	worker/src/main/scala/services/identityadapters/IdentityHistory.scala:MongoIdentityHistory.append	4
+mixed	worker/src/main/scala/services/tmdb/IdentityHistory.scala:MongoIdentityHistory.append	4
 mixed	worker/src/main/scala/services/resolution/ResolutionStore.scala:MongoResolutionStore.removeForFilm	3
 mixed	worker/src/main/scala/services/sharecards/CityCardWriter.scala:CityCardWriter.render	4
 mixed	worker/src/main/scala/services/sharecards/MongoFacebookRescrapeStore.scala:MongoFacebookRescrapeStore.add	3

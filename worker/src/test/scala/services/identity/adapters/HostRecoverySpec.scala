@@ -2,6 +2,7 @@ package services.identity
 package adapters
 
 import services.identityadapters.*
+import services.tmdb.{FamilyAnswerStore, HostRecovery, InMemoryTmdbDocuments, QuestionMemory}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.{SourceHit, SourceRecord}

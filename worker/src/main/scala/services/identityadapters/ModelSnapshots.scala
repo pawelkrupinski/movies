@@ -1,5 +1,6 @@
 package services.identityadapters
 
+import services.tmdb.QuestionRenewals
 import services.identity.*
 import services.identity.measures.{DecisionTrace, ResolverDecision}
 

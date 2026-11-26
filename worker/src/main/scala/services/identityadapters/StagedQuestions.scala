@@ -1,5 +1,6 @@
 package services.identityadapters
 
+import services.tmdb.QuestionMemory
 import services.identity.staging.StagedQuestion
 import services.identity.vocabulary.Question
 

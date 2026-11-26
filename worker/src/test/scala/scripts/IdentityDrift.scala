@@ -1,7 +1,6 @@
 package scripts
 
-import services.identityadapters.{AgreementReadiness, FamilyAnswerStore, ModelInputGate, PendingListingStore,
-  TmdbDocuments, TmdbKind, TmdbStore}
+import services.identityadapters.{AgreementReadiness, ModelInputGate, PendingListingStore}, services.tmdb.{FamilyAnswerStore, TmdbDocuments, TmdbKind, TmdbStore}
 import models.Country
 import org.bson.BsonDocument
 

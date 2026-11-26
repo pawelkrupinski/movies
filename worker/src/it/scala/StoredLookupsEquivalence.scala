@@ -1,6 +1,6 @@
 package integration
 
-import services.identityadapters.{InMemoryTmdbDocuments, NormalizingHttpFetch, StoredTmdbLookups, TmdbIdentityLookups, TmdbNormalizer, TmdbStore}
+import services.identityadapters.{NormalizingHttpFetch, StoredTmdbLookups, TmdbIdentityLookups, TmdbNormalizer}, services.tmdb.{InMemoryTmdbDocuments, TmdbStore}
 import services.identity._
 
 import services.identity.measures._

@@ -11,7 +11,7 @@ import services.identityadapters.IdentityProjection
 trait AgreementWiring { self: WorkerWiring =>
 
   /** What the other film database families answered (`identity_family_answers`), kept long. */
-  lazy val familyAnswerStore: services.identityadapters.FamilyAnswerStore = identityTmdbLayer.familyAnswers
+  lazy val familyAnswerStore: services.tmdb.FamilyAnswerStore = identityTmdbLayer.familyAnswers
   /** The families asked in this country: Filmweb only where it indexes the country's titles (measured 2026-10-04: it helps
    *  in PL, DE and ES, adds nothing in the UK, and its dissent blocks a right US agreement). */
   def agreementFamilies: Seq[services.identity.vocabulary.VoterFamily] = {
@@ -51,12 +51,12 @@ trait AgreementWiring { self: WorkerWiring =>
       retrying = identityQuestionMemory.attempted)
   /** The questions the live stage waits on that a lost task left unattempted, or that failed and are due again, queued
    *  again: under the settle rule an unattempted question holds its cluster. */
-  lazy val outstandingQuestions: services.identityadapters.OutstandingQuestions =
-    new services.identityadapters.OutstandingQuestions(() => agreementStage.wanted, identityQuestionMemory, enqueueAgreementQuestions, clock)
-  /** Runs [[outstandingQuestions]] every [[services.identityadapters.OutstandingQuestions.Interval]]. */
+  lazy val outstandingQuestions: services.tmdb.OutstandingQuestions =
+    new services.tmdb.OutstandingQuestions(() => agreementStage.wanted, identityQuestionMemory, enqueueAgreementQuestions, clock)
+  /** Runs [[outstandingQuestions]] every [[services.tmdb.OutstandingQuestions.Interval]]. */
   lazy val outstandingQuestionsSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("identity-outstanding-questions", () => outstandingQuestions.reask().enqueued.run,
-      services.identityadapters.OutstandingQuestions.Interval, services.identityadapters.OutstandingQuestions.Interval, scheduledRunStore, clock, ticks, threadPools = threadPools))
+      services.tmdb.OutstandingQuestions.Interval, services.tmdb.OutstandingQuestions.Interval, scheduledRunStore, clock, ticks, threadPools = threadPools))
   /** How many of a new cluster's family questions are asked inline at once: one per family and kind, roughly. */
   private val InlineFamilyAskThreads = 16
   /** An agreement stage over this country's answers: the live one ([[agreementStage]]), and the drift check's, which keeps
@@ -149,15 +149,15 @@ trait AgreementWiring { self: WorkerWiring =>
         identityModel.wake()
       }, identityQuestionMemory, agreementQuestionMetrics)
   /** Asks again at once the questions that failed against an enrichment host that is back: the open agreement questions
-   *  queued, and a fill round for the model's gaps ([[services.identityadapters.HostRecovery]]). */
-  lazy val identityHostRecovery: services.identityadapters.HostRecovery =
-    new services.identityadapters.HostRecovery(identityQuestionMemory, () => agreementStage.wanted,
+   *  queued, and a fill round for the model's gaps ([[services.tmdb.HostRecovery]]). */
+  lazy val identityHostRecovery: services.tmdb.HostRecovery =
+    new services.tmdb.HostRecovery(identityQuestionMemory, () => agreementStage.wanted,
       askAgain = questions => { enqueueAgreementQuestions(questions); () },
       fill = () => identityFillTrigger.request())
   /** What the enrichment chain's host breakers tell the identity questions: a host back is handed to
    *  [[identityHostRecovery]] on a thread of its own, off the request that brought the news. */
   def identityHostTransition(host: String, transition: tools.HostCircuitBreakerHttpFetch.Transition): Unit =
-    if (services.identityadapters.HostRecovery.recovers(transition)) identityHostRecoveryExecutor.execute { () =>
+    if (services.tmdb.HostRecovery.recovers(transition)) identityHostRecoveryExecutor.execute { () =>
       try identityHostRecovery.heard(host, transition)
       catch { case scala.util.control.NonFatal(e) => logger.warn(s"[${country.code}] identity questions: $host back, but asking again failed", e) }
     }
