@@ -642,7 +642,9 @@ scratch_repo "$area"
 mkdir -p "$area/scripts/ci"
 for f in hooks/pre-push hooks/lint-registry-missing hooks-path.sh tool-conventions.sh ci/commit_rules.py ci/trailers.py pure-move-check; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
 cp "$REPO_ROOT"/scripts/pure_move_*.py "$area/scripts/"
-cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$REPO_ROOT/scripts/ci/shard_tests.py" "$REPO_ROOT/scripts/ci/population_walk_diff.py" "$area/scripts/ci/"
+cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$REPO_ROOT/scripts/ci/shard_tests.py" "$REPO_ROOT/scripts/ci/shard_weights.py" "$REPO_ROOT/scripts/ci/population_walk_diff.py" "$area/scripts/ci/"
+mkdir -p "$area/scripts/lib"
+cp "$REPO_ROOT/scripts/lib/tool_git.py" "$REPO_ROOT/scripts/lib/tool_process.py" "$area/scripts/lib/"  # what trailers.py and the pure-move tools import
 cat > "$area/scripts/hooks/local-tests.txt" <<'TESTS'
 # a comment
 basic sbt Test/compile

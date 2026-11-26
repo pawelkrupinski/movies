@@ -506,6 +506,7 @@ jobs:
                   # cone mode (WorkflowScriptsRunnableSpec): convergence_reuse.py, and .github for the workflow it reads
                   sparse-checkout: |
                       scripts/ci
+                      scripts/lib
                       .github
             # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
             - uses: ./.github/actions/job-telemetry

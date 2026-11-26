@@ -38,9 +38,6 @@ import tempfile
 import zlib
 from typing import List, Mapping, NoReturn, Sequence
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import tool_git  # noqa: E402
-
 TOOLING = ("testkit/src/main/scala/services/movies/NormalizerTrace.scala",
            "testkit/src/main/scala/services/movies/NormalizerTraceCheck.scala",
            "scripts/ci/takes_skip_gate.py", "scripts/ci/identity-takes-check.sh", "scripts/ci/identity_takes_check*.py")
@@ -63,6 +60,10 @@ def require(holds: bool, reason: str) -> None:
         raise Run(reason)
 
 
+def git(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["git", *args], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+
+
 def eligible(path: str) -> bool:
     if path == PLACEHOLDERS:
         return False
@@ -75,21 +76,20 @@ def inert(path: str) -> bool:
 
 def changed_files(base: str, head: str) -> List[str]:
     """2: what changed (an error is RUN, not "nothing")."""
-    diff = tool_git.Git.here().out("diff", "--name-only", "--no-renames", base, head, "--", quiet=True)
-    require(diff is not None, f"git could not diff {base} and {head}")
-    changed = [f for f in (diff or "").split("\n") if f]
+    diff = git("diff", "--name-only", "--no-renames", base, head, "--")
+    require(diff.returncode == 0, f"git could not diff {base} and {head}")
+    changed = [f for f in diff.stdout.split("\n") if f]
     require(bool(changed), "no file changed: nothing for a proof to stand for")
     return changed
 
 
 def tooling_unchanged(base: str, head: str) -> None:
     """5: asked first -- its files are no rule, and 3 would refuse them under another name."""
-    git = tool_git.Git.here()
-    diff = git.out("diff", "--name-only", base, head, "--", *TOOLING, quiet=True)
-    require(diff is not None, "git could not diff the trace tooling")
-    require(not (diff or "").strip(), f"the trace tooling changed: {(diff or '').split(chr(10))[0]}")
+    diff = git("diff", "--name-only", base, head, "--", *TOOLING)
+    require(diff.returncode == 0, "git could not diff the trace tooling")
+    require(not diff.stdout.strip(), f"the trace tooling changed: {diff.stdout.split(chr(10))[0]}")
     for f in TOOLING[:2]:
-        require(git.ok("cat-file", "-e", f"{head}:{f}", quiet=True), f"the head has no {f}")
+        require(git("cat-file", "-e", f"{head}:{f}").returncode == 0, f"the head has no {f}")
 
 
 def only_rules(changed: Sequence[str]) -> int:
