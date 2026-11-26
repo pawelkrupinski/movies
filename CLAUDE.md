@@ -283,7 +283,8 @@ once from its owner's fields, never written again). A nested type is judged by i
 parameter: the caller holds it, and counts it. A class's own supertypes are no collaborator of it, and a collaborator
 and an interface it implements are ONE (handing a `TitleNormalizer` on as its `TitleForms` costs nothing: segregating an
 interface never raises a fan-out). Cycles, layers, module edges and a package's Ca/Ce/D still read every
-dependency (a data type's users do make its package harder to change). What was past the limits then is frozen (`fanout` / `distance` rows, which only fall); a class or package
+dependency (a data type's users do make its package harder to change). **A package's abstractness A counts collaborator types only** (the owner, 2026-11-26): A = abstract collaborators ÷ collaborators, like fan-out, so
+data types (case classes, enums, constants) no longer dilute it; a package with no collaborator type has A = 0; I (Ce, Ca) is unchanged. What was past the limits then is frozen (`fanout` / `distance` rows, which only fall); a class or package
 NEWLY past a limit fails, and neither `--update` nor a trailer admits it -- cut it (a trait at the seam, a leaf value type
 down to `models`, a generic helper to `tools`), or add an exemption row to `test/resources/coupling-exemptions.tsv` with a
 `Coupling: <why>` trailer. **An agent may exempt a genuinely new class** (the owner, 2026-11-19) with a `class` row: a

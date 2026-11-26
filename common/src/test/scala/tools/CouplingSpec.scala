@@ -128,6 +128,21 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     (byName("worker").ce, byName("worker").cePackages) shouldBe ((3, 3))
   }
 
+  "a package's abstractness" should "count collaborator types only: a data type dilutes neither the abstract count nor the total" in {
+    val types = Seq(t("services.a.Port", isAbstract = true), t("services.a.Adapter"), t("services.a.Row"), t("services.a.Kind"), t("services.a.Consts"))
+    val data = Set("services.a.Row", "services.a.Kind", "services.a.Consts")
+    val diluted = Coupling.packages(Graph(types, Set.empty)).head // data not measured: every type a collaborator
+    (diluted.types, diluted.collaborators, diluted.abstracts, diluted.abstractness) shouldBe ((5, 5, 1, 0.2))
+    val measured = Coupling.packages(Graph(types, Set.empty, data = data)).head
+    (measured.types, measured.collaborators, measured.abstracts, measured.abstractness) shouldBe ((5, 2, 1, 0.5))
+  }
+
+  it should "be 0 for a package of data types only, which still counts its types for the minimum-types gate" in {
+    val only = Graph(Seq(t("models.Row"), t("models.Kind"), t("models.Port", isAbstract = true)), Set.empty, data = Set("models.Row", "models.Kind", "models.Port"))
+    val p = Coupling.packages(only).head
+    (p.types, p.collaborators, p.abstracts, p.abstractness, p.distance) shouldBe ((3, 0, 0, 0.0, 1.0))
+  }
+
   "a package's Ce in packages" should "not rise when a dependency is split into roles in the same package" in {
     def ce(edges: Set[(String, String)]) = {
       val g = Graph(Seq(t("services.a.User"), t("services.b.Store", isAbstract = true), t("services.b.Reader", isAbstract = true),
@@ -285,7 +300,7 @@ class CouplingSpec extends AnyFlatSpec with Matchers {
     val report = Coupling.report(graph, Map("worker" -> Set("common"), "common" -> Set("base", "geodata")))
     report should include("`worker -> base` (1 refs) is used but not declared")
     report should not include ("`worker -> common` (2 refs) is used but not declared")
-    report should include("| `services.movies` | common | 2 | 1 | 2 | 2 | 2 | 0.50 | 0.50 | 0.00 |")
+    report should include("| `services.movies` | common | 2 | 2 | 1 | 2 | 2 | 2 | 0.50 | 0.50 | 0.00 |")
     report should include("1. `models`, `services.movies`")
   }
 

@@ -10,7 +10,7 @@ package kinowo.build
  *  - PACKAGES (a class's package cut to its top two segments: `services.identity`, `models`): afferent coupling Ca (the
  *    classes outside the package depending on one inside), efferent coupling Ce (the classes outside it that its classes
  *    depend on; and, held by the ratchet, the outside PACKAGES they depend on -- splitting a trait into roles, which raises
- *    the class count without a new dependency, leaves it), instability I = Ce / (Ca + Ce), abstractness A (traits and abstract classes / all its types) and the
+ *    the class count without a new dependency, leaves it), instability I = Ce / (Ca + Ce), abstractness A (abstract collaborator types / collaborator types: a data type is in neither, like fan-out) and the
  *    distance from the main sequence D = |A + I - 1|; and the package CYCLES, the strongly connected components of the
  *    package graph, with every package edge inside one (its weight, and the class references that make it);
  *  - CLASSES: fan-in and fan-out (distinct production classes referencing it / referenced by it);
@@ -47,8 +47,8 @@ object Coupling {
     /** The known edges into a COLLABORATOR: what a class's fan-out and fan-in count -- `coupledEdges` when measured
      *  ([[Collaborators.coupledEdges]]: a use of a nested type judged by that type), else every edge into a type not in
      *  `data`. Cycles, layers, module edges and a package's Ca, Ce and D read every known edge: a data type's users do
-     *  make its package harder to change (a field renamed breaks them), and Ca/Ce over collaborators alone, against an
-     *  abstractness over every type, put 10 more packages past the distance limit (2026-11-19). */
+     *  make its package harder to change (a field renamed breaks them). Abstractness is the one package measure that
+     *  counts collaborators only (2026-11-26), so data types do not dilute it. */
     val coupled: Set[(String, String)] = coupledEdges.fold(known.filterNot { case (_, to) => data(to) })(known.intersect)
   }
 
@@ -321,9 +321,13 @@ object Coupling {
 
   // ── packages ──
 
-  final case class PackageStats(name: String, types: Int, abstracts: Int, ca: Int, ce: Int, cePackages: Int, modules: Seq[String]) {
+  final case class PackageStats(name: String, types: Int, collaborators: Int, abstracts: Int, ca: Int, ce: Int, cePackages: Int, modules: Seq[String]) {
     def instability: Double = if (ca + ce == 0) 0.0 else ce.toDouble / (ca + ce)
-    def abstractness: Double = if (types == 0) 0.0 else abstracts.toDouble / types
+    /** A counts COLLABORATOR types only, like fan-out (the owner, 2026-11-26): `abstracts` are the abstract collaborators,
+     *  `collaborators` all of them; a data type (a case class, an enum, an object of constants) is in neither, so it no
+     *  longer dilutes A. A package with no collaborator type has no A to take: 0.0, as a package with no type at all
+     *  has had (`types` still counts every type: the distance-min-types gate reads it). */
+    def abstractness: Double = if (collaborators == 0) 0.0 else abstracts.toDouble / collaborators
     def distance: Double = math.abs(abstractness + instability - 1)
   }
 
@@ -333,8 +337,9 @@ object Coupling {
     val ce = cross.groupBy { case (from, _) => pkg(from) }.map { case (p, es) => p -> es.map(_._2).toSet.size }
     val ca = cross.groupBy { case (_, to) => pkg(to) }.map { case (p, es) => p -> es.map(_._1).toSet.size }
     val cePackages = cross.groupBy { case (from, _) => pkg(from) }.map { case (p, es) => p -> es.map(e => pkg(e._2)).toSet.size }
+    def isCollaborator(t: Type): Boolean = !g.data(t.name)
     g.types.groupBy(t => pkg(t.name)).toSeq.map { case (p, ts) =>
-      PackageStats(p, ts.size, ts.count(_.isAbstract), ca.getOrElse(p, 0), ce.getOrElse(p, 0), cePackages.getOrElse(p, 0), ts.map(_.module).distinct.sorted)
+      PackageStats(p, ts.size, ts.count(isCollaborator), ts.count(t => isCollaborator(t) && t.isAbstract), ca.getOrElse(p, 0), ce.getOrElse(p, 0), cePackages.getOrElse(p, 0), ts.map(_.module).distinct.sorted)
     }.sortBy(_.name)
   }
 
@@ -710,11 +715,11 @@ object Coupling {
     out += ""
     out += "## Packages"
     out += ""
-    out += "Ca: outside classes using the package; Ce: outside classes it uses (Ce pkgs: outside packages, what the ratchet holds); I = Ce/(Ca+Ce); A = abstract types / types; D = |A+I-1|. Sorted by D, then Ce."
+    out += "Ca: outside classes using the package; Ce: outside classes it uses (Ce pkgs: outside packages, what the ratchet holds); I = Ce/(Ca+Ce); A = abstract collaborators / collaborators (data types in neither); D = |A+I-1|. Sorted by D, then Ce."
     out += ""
-    out ++= table(Seq("package", "modules", "types", "abstract", "Ca", "Ce", "Ce pkgs", "I", "A", "D"),
+    out ++= table(Seq("package", "modules", "types", "collab.", "abstract", "Ca", "Ce", "Ce pkgs", "I", "A", "D"),
       pkgs.sortBy(p => (-math.round(p.distance * 1000), -p.ce, p.name)).map(p =>
-        Seq(s"`${p.name}`", p.modules.mkString(" "), p.types.toString, p.abstracts.toString, p.ca.toString, p.ce.toString, p.cePackages.toString, f2(p.instability), f2(p.abstractness), f2(p.distance))))
+        Seq(s"`${p.name}`", p.modules.mkString(" "), p.types.toString, p.collaborators.toString, p.abstracts.toString, p.ca.toString, p.ce.toString, p.cePackages.toString, f2(p.instability), f2(p.abstractness), f2(p.distance))))
     out += ""
     out += s"## Package cycles (${cyc.size})"
     out += ""

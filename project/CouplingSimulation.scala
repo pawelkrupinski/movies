@@ -92,7 +92,7 @@ object CouplingSimulation {
     val touched = (moves.renames.keys.map(before.packageOf) ++ moves.renames.keys.map(c => after.packageOf(renamed(moves)(c))) ++
       moves.layerRows.flatMap(_.split("\t", -1).lift(2))).toSet
     // a package whose numbers move: one a class left or entered, or any whose Ca, Ce or types changed
-    val changed = (pb.keySet ++ pa.keySet).toSeq.sorted.filter(p => touched(p) || pb.get(p).map(x => (x.types, x.ca, x.ce, x.abstracts)) != pa.get(p).map(x => (x.types, x.ca, x.ce, x.abstracts)))
+    val changed = (pb.keySet ++ pa.keySet).toSeq.sorted.filter(p => touched(p) || pb.get(p).map(x => (x.types, x.collaborators, x.ca, x.ce, x.abstracts)) != pa.get(p).map(x => (x.types, x.collaborators, x.ca, x.ce, x.abstracts)))
     def cell(p: Option[Coupling.PackageStats])(f: Coupling.PackageStats => String): String = p.fold("-")(f)
     def pair(p: String)(f: Coupling.PackageStats => String): String = {
       val (b, a) = (cell(pb.get(p))(f), cell(pa.get(p))(f))
