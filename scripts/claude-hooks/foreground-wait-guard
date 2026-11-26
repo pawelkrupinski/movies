@@ -90,7 +90,7 @@ def waits(words):
 def unbounded_wait(command):
     """The waiting tool `command` runs for longer than a short check, or None."""
     try:
-        words = shell.tokens(shell.without_heredoc_bodies(command))
+        words = shell.tokens(shell.without_heredoc_bodies(command.replace("\\\n", " ")))
     except ValueError:
         return None
     for name, arguments, bound in waits(words):
@@ -98,6 +98,8 @@ def unbounded_wait(command):
             continue
         limit = None
         for flag, value in zip(arguments, arguments[1:] + [""]):
+            if flag.startswith("--timeout="):
+                flag, value = "--timeout", flag.partition("=")[2]
             if flag == "--timeout":
                 limit = seconds(value, "m" if name == "ci-wait" else "s")
         if bound is not None and (limit is None or bound < limit):

@@ -11,7 +11,8 @@ failed test; the pipe threw it away.
 PreToolUse on Bash (.claude/settings.json): DENIES (exit 2, the reason on stderr) a command in which a test runner --
 scripts/sbt-warm, sbt, sbtn, scripts/it-local.sh, scripts/run-script-tests, scripts/fail-before,
 scripts/convergence-local.sh, scripts/page-tests-local -- runs in a pipeline stage other than the last, unless the
-command keeps the runner's status (`set -o pipefail`, or reads bash's `PIPESTATUS` or zsh's `pipestatus` -- the Bash
+command keeps the runner's status (a real `set -o pipefail` / `set -euo pipefail` before the pipe -- not the word in
+quoted text, not `set +o pipefail` --, or reads bash's `PIPESTATUS` or zsh's `pipestatus` -- the Bash
 tool's shell is zsh). A `bash -c` / `sh -c` / `zsh -c` script is read the same way, and a prefix's options
 (`timeout -s KILL 900`, `nice -n 5`, `env -u X`, `time -p`) leave the runner after them in command position. Write the run to a log and read the log:
 `scripts/sbt-warm "<cmd>" > "$log" 2>&1; echo "exit=$?"; grep -E '...' "$log"`.
@@ -89,12 +90,13 @@ def is_punctuation(token):
 
 def masked_runner(command):
     """The test runner whose exit status a pipe in `command` discards, or None."""
-    if "pipefail" in command or "pipestatus" in command.lower():
-        return None
     try:
-        words = tokens(without_heredoc_bodies(command))
+        words = tokens(without_heredoc_bodies(command.replace("\\\n", " ")))
     except ValueError:
         return None
+    if any("pipestatus" in word.lower() for word in words):  # a real word, not a comment (shlex drops those)
+        return None
+    pipefail, set_flags = False, None  # `set -o pipefail` seen so far; the last option cluster of a `set`, or None
     # Per nesting depth (a `( )` or `{ }` group opens one): the watched runner whose status the current pipeline stage
     # ends with, and whether a separator (; && || & newline) has ended the stage's last command -- the next command
     # word then starts a new one. A group's runner is its last command's, so `{ scripts/sbt-warm x; } | tail` counts.
@@ -115,13 +117,13 @@ def masked_runner(command):
 
     for word in words:
         if is_punctuation(word):
-            prefix, skip_value, shell_options, script_next = None, False, False, False
+            prefix, skip_value, shell_options, script_next, set_flags = None, False, False, False, None
             if word == "(":
                 open_group(); command_position = True
             elif word == ")":
                 close_group(); command_position = False
             elif word in ("|", "|&"):
-                if stages[-1]:
+                if stages[-1] and not pipefail:
                     return stages[-1]
                 command_position = True
             elif word in ("<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|"):
@@ -150,7 +152,14 @@ def masked_runner(command):
         if word == "}":
             close_group(); command_position = False
             continue
+        if set_flags is not None:  # a `set` command's words: `-euo pipefail` turns the option on, `+o pipefail` off
+            if word == "pipefail" and re.fullmatch(r"[-+][A-Za-z]*o", set_flags):
+                pipefail = set_flags[0] == "-"
+            set_flags = word
+            continue
         if not command_position:
+            if word in ("-h", "--help") and not separated[-1]:  # reading a runner's help runs no test
+                stages[-1] = None
             continue
         if skip_value:
             skip_value = False
@@ -175,6 +184,8 @@ def masked_runner(command):
         if os.path.basename(word) in WATCHED:
             stages[-1] = os.path.basename(word)
         shell_options = os.path.basename(word) in SHELLS
+        if word == "set":
+            set_flags = ""
         command_position = False
     return None
 

@@ -136,12 +136,13 @@ def sleeps(words, where):
 
 
 def has_bound(words):
-    if any("SECONDS" in w or "deadline" in w.lower() or "+%s" in w for w in words):
+    joined = " ".join(words)
+    compares = any(w in NUMERIC_TESTS for w in words) or re.search(r"\( \(.*[<>]", joined)
+    # a clock read AND compared (`[ $SECONDS -gt 3600 ]`): a loop that merely prints `$SECONDS` is not bounded by it
+    if compares and any("SECONDS" in w or "deadline" in w.lower() or "+%s" in w for w in words):
         return True
     # a counter: a numeric comparison AND something counting up (`$((n+1))`, `n++`, `n+=1`, `let`); a comparison
     # alone may read a count that never comes (`until [ $(grep -c x f) -ge 3 ]`)
-    joined = " ".join(words)
-    compares = any(w in NUMERIC_TESTS for w in words) or re.search(r"\( \(.*[<>]", joined)
     counts = re.search(r"\$ \( \(|\+\+|\+=|(^| )(let|expr) ", joined)
     return bool(compares and counts)
 

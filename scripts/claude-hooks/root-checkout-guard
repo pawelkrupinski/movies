@@ -24,6 +24,8 @@ hook needs no path configured and leaves every other repository alone. Errors in
 it exits 0 (a broken guard must not wedge every session). Stdin is the hook's JSON; stdout/stderr per Claude Code.
 """
 import hashlib
+import importlib.machinery
+import importlib.util
 import json
 import os
 import re
@@ -122,8 +124,50 @@ def guard_session_start(event, repo):
     return 0
 
 
-DEV_SERVER = re.compile(r"(?:^|[;&|(\s])(?:sbt\b[^;&|]*\bweb/run\b|(?:\S*/)?scripts/dev-server\.sh\b|\./dev-server\.sh\b)")
-CHANGES_DIRECTORY = re.compile(r"(?:^|[;&|(]\s*)(?:cd|pushd)\s")
+DEV_PREFIXES = {"env", "nohup", "exec", "time", "command", "nice", "caffeinate"}
+DEV_KEYWORDS = {"then", "do", "else", "elif", "if", "while", "until", "!", "{"}
+
+
+def shell_reader():
+    """masked-exit-guard's tokenizer (shared with the other guards): quoted text is one word, not a command."""
+    path = os.path.join(HERE, "masked-exit-guard")
+    loader = importlib.machinery.SourceFileLoader("masked_exit_guard", path)
+    module = importlib.util.module_from_spec(importlib.util.spec_from_loader(loader.name, loader))
+    loader.exec_module(module)
+    return module
+
+
+def dev_server_commands(command):
+    """(launches the dev server, changes directory) for the commands in COMMAND POSITION of `command`: `sbt ... web/run`
+    or a dev-server.sh script runs it; `grep "sbt web/run" docs/x` merely names it."""
+    reader = shell_reader()
+    words = reader.tokens(reader.without_heredoc_bodies(command.replace("\\\n", " ")))
+    launches = changes = False
+    start = True
+    for index, word in enumerate(words):
+        if reader.is_punctuation(word):
+            start = word not in ("<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|")
+            continue
+        if not start:
+            continue
+        if reader.ASSIGNMENT.match(word) or word in DEV_PREFIXES or word in DEV_KEYWORDS or word.startswith("-"):
+            continue
+        start = False
+        name = os.path.basename(word)
+        if name in ("cd", "pushd"):
+            changes = True
+        elif name == "dev-server.sh":
+            launches = True
+        elif name == "sbt":
+            rest = []
+            for later in words[index + 1:]:
+                if reader.is_punctuation(later):
+                    break
+                rest.append(later)
+            launches = launches or "web/run" in rest
+    return launches, changes
+
+
 REVIEW_ADVICE = (
     "The dev server's /debug review pages write the user's hand labels into identity-judgements.tsv of the checkout "
     "they run in, which must never be the root. Run `scripts/review-server` instead: it keeps a worktree of its own "
@@ -137,7 +181,11 @@ def launches_dev_server_in_root(event, root):
     that `cd`s first is judged to know where it goes)."""
     command = (event.get("tool_input") or {}).get("command") or ""
     cwd = event.get("cwd") or os.getcwd()
-    if not DEV_SERVER.search(command) or CHANGES_DIRECTORY.search(command):
+    try:
+        launches, changes = dev_server_commands(command)
+    except ValueError:  # a command shlex cannot read is allowed
+        return False
+    if not launches or changes:
         return False
     code, top = git(nearest_dir(cwd), "rev-parse", "--show-toplevel")
     return code == 0 and real(top.strip()) == root

@@ -38,6 +38,12 @@ check "a pipe inside an sh -ec script" 2 "$(verdict 'sh -ec "cd /x; scripts/sbt-
 check "a prefix's options before the runner: timeout -s KILL" 2 "$(verdict 'timeout -s KILL 900 scripts/sbt-warm x | tail')"
 check "a prefix's options before the runner: time -p, nice -n, env -u" 2 \
   "$(verdict 'time -p nice -n 5 env -u JAVA_OPTS scripts/sbt-warm x | tail')"
+check "a runner joined by backslash-newline continuations, piped out" 2 "$(verdict $'scripts/sbt-warm testUnit \\\n  2>&1 \\\n  | tail -5')"
+check "the word pipefail in quoted text does not disarm it" 2 "$(verdict "echo 'set +o pipefail'; scripts/sbt-warm x | tail")"
+check "the word pipefail in a commit message does not disarm it" 2 "$(verdict "git commit -m 'run pipefail'; scripts/sbt-warm x | tail")"
+check "set +o pipefail turns it off" 2 "$(verdict 'set -o pipefail; set +o pipefail; scripts/sbt-warm x | tail')"
+check "pipefail set only after the pipe does not count" 2 "$(verdict 'scripts/sbt-warm x | tail; set -o pipefail')"
+check "the word pipestatus in a comment does not disarm it" 2 "$(verdict $'scripts/sbt-warm x | tail # pipestatus')"
 check "the denial says why and what to do instead" 1 \
   "$(python3 -c 'import json; print(json.dumps({"tool_input": {"command": "scripts/sbt-warm compile | tail"}}))' |
     python3 "$guard" 2>&1 | grep -c 'LAST command.*log')"
@@ -46,6 +52,10 @@ printf '\033[36m▸\033[0m allowed\n'
 check "a run written to a log, its status echoed, the log grepped" 0 \
   "$(verdict 'scripts/sbt-warm testUnit > "$log" 2>&1; echo "exit=$?"; grep -E "FAILED|Tests:" "$log" | tail -20')"
 check "a pipe under set -o pipefail" 0 "$(verdict 'set -o pipefail; scripts/sbt-warm compile 2>&1 | tail -3')"
+check "a pipe under set -euo pipefail" 0 "$(verdict 'set -euo pipefail; scripts/sbt-warm compile 2>&1 | tail -3')"
+check "a pipe under set -e -o pipefail on an earlier line" 0 "$(verdict $'set -e -o pipefail\nscripts/sbt-warm compile | tail -3')"
+check "a continued runner under pipefail" 0 "$(verdict $'set -o pipefail; scripts/sbt-warm x \\\n  | tail')"
+check "a runner's --help through a filter" 0 "$(verdict 'scripts/run-script-tests --help | head -3')"
 check "a pipe whose status is read from PIPESTATUS" 0 "$(verdict 'scripts/sbt-warm compile | tail -3; echo "${PIPESTATUS[0]}"')"
 check "a pipe whose status is read from zsh's pipestatus (the Bash tool's shell)" 0 \
   "$(verdict 'scripts/sbt-warm compile | tail -3; echo "exit=${pipestatus[1]}"')"

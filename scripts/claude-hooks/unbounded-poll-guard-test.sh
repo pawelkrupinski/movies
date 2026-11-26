@@ -56,6 +56,7 @@ check "a compound condition gets the general advice only" 0 \
   "$(advice 'until [ -f a ] && grep -q X a; do sleep 5; done' | grep -c 'Here:')"
 
 printf '\033[36m▸\033[0m denied\n'
+check "a loop that merely prints \$SECONDS has no bound" 2 "$(verdict 'while true; do sleep 5; echo $SECONDS; done')"
 check "a while true poll" 2 "$(verdict 'while true; do curl -s localhost:9000/health && break; sleep 2; done')"
 check "a loop backgrounded with & from the foreground" 2 "$(verdict '(until grep -q x f; do sleep 5; done; echo y) & echo started' foreground)"
 check "nohup ... & of an unbounded bash -c" 2 "$(verdict "nohup bash -c 'while :; do date; sleep 60; done' > /dev/null 2>&1 &" foreground)"
