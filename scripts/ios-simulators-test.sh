@@ -58,7 +58,7 @@ device OTHER "iPhone 16 Pro"
 device NEW "iPhone 16e"; rm -rf "$KINOWO_IOS_SIM_LEDGER"
 IOS_SIM_POLL_SECONDS=0.1 "$TOOL" run -- bash -c "'$work/xcrun' simctl boot NEW; echo \$\$ > '$work/child.pid'; sleep 30" > /dev/null 2>&1 &
 wrapper=$!
-for _ in $(seq 50); do [ -e "$KINOWO_IOS_SIM_LEDGER/NEW" ] && break; sleep 0.2; done
+wait_until "the run claimed the Simulator it booted" '[ -e "$KINOWO_IOS_SIM_LEDGER/NEW" ]'
 kill -9 "$wrapper" 2>/dev/null; kill "$(cat "$work/child.pid")" 2>/dev/null; wait "$wrapper" 2>/dev/null
 check "run writes the Simulator it booted to the ledger while it runs" "yes" "$([ -e "$KINOWO_IOS_SIM_LEDGER/NEW" ] && echo yes || echo no)"
 device NEW "iPhone 16e"; rm -rf "$KINOWO_IOS_SIM_LEDGER"
