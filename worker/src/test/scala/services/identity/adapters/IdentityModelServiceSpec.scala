@@ -412,6 +412,33 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     world.gate.twinsDeleted shouldBe Seq(1 -> false)
   }
 
+  // `identity_retained` reads in key order since the keyed store (2026-11-27; in its index's order before): the order a
+  // take-up reads the departed listings in moves nothing. The kept set is a filter by title relation over sets
+  // (ListingRetention.retained), and the model holds and resolves its listings by key.
+  it should "take up the same model whatever order the store reads the departed listings in" in {
+    def takenUp(order: Seq[ListingRetention.Departed] => Seq[ListingRetention.Departed]) = {
+      val world  = new World
+      world.scrapes = Map(Helios -> Seq(movie(Helios, "Lalka"), movie(Helios, "Matilda")))
+      val stored = listingsOf(Map(Multikino -> Seq(movie(Multikino, "Lalka", Some(2025)), movie(Multikino, "Lalka 2D", Some(1968)),
+        movie(Multikino, "Matilda", Some(1996)), movie(Multikino, "Matilda (napisy)"), movie(Multikino, "Pinokio"))))
+      val held   = new RetainedListingStore.InMemory(Some(RetainedListingStore.undated(stored)))
+      world.retained = new RetainedListingStore {
+        def read() = held.read().map(order)
+        def update(departed: Seq[ListingRetention.Departed], released: Iterable[ListingKey]): Unit = held.update(departed, released)
+        def replace(departed: Seq[ListingRetention.Departed]): Unit = held.replace(departed)
+        def delete(keys: Iterable[ListingKey]): Unit = held.delete(keys)
+      }
+      val service = world.service()
+      service.takeUp()
+      val model = service.peek(10.seconds).get
+      (model.listings.map(_.key).toSet, decided(model.resolution.decisions))
+    }
+    val inKeyOrder = takenUp(identity)
+    inKeyOrder._1.count(_.venue == Multikino.displayName) should be >= 2       // kept listings resumed, Pinokio not
+    takenUp(_.reverse) shouldBe inKeyOrder
+    (1 to 5).foreach(seed => takenUp(scala.util.Random(seed).shuffle(_)) shouldBe inKeyOrder)
+  }
+
   it should "resume no recorded kept listing whose title no venue bills" in {
     val world = new World
     world.scrapes = Map(Helios -> Seq(movie(Helios, "Matilda")))
