@@ -96,8 +96,8 @@ class KeyedStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAndAft
 
     it should "grant one of many racing inserts and takes of a key" in {
       val store = text()
-      given scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
-      def race[A](body: => A) = Await.result(Future.sequence((1 to 8).map(_ => Future(body))), SpecTimeouts.Io)
+      def race[A](body: => A) =
+        Await.result(Future.sequence((1 to 8).map(_ => tools.DedicatedThreads.future(body)))(using implicitly, tools.DedicatedThreads), SpecTimeouts.Io)
       race(store.insert("raced", "x")).count(identity) shouldBe 1
       race(store.take("raced")).flatten shouldBe Seq("x")
     }
@@ -118,8 +118,8 @@ class KeyedStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAndAft
 
     it should "count every one of many racing increments, and none past the ceiling" in {
       val store = text()
-      given scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
-      val raised = Await.result(Future.sequence((1 to 20).map(_ => Future(store.increment("budget", "used", below = Some(15))))), SpecTimeouts.Io)
+      val raised = Await.result(Future.sequence((1 to 20).map(_ => tools.DedicatedThreads.future(store.increment("budget", "used", below = Some(15)))))(
+        using implicitly, tools.DedicatedThreads), SpecTimeouts.Io)
       raised.flatten.sorted shouldBe (1L to 15L)
       store.counted("budget", "used") shouldBe 15
     }

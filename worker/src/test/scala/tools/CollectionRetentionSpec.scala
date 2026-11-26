@@ -36,7 +36,7 @@ class CollectionRetentionSpec extends AnyFlatSpec with Matchers {
   they should "name a sweep class that exists, and a TTL field some source indexes with an expiry" in {
     val classes = """\b(?:class|object)\s+(\w+)""".r
     val defined = sources.flatMap(s => classes.findAllMatchIn(s).map(_.group(1))).toSet
-    val expiring = sources.filter(s => s.contains("expireAfter") || s.contains("MongoTtlIndex."))
+    val expiring = sources.filter(s => s.contains("expireAfter") || s.contains("MongoTtlIndex.") || s.contains("DocumentExpiry("))
     val broken = declared.toSeq.collect {
       case (name, Retention.Sweep(by)) if !defined(by) => s"$name: no class $by"
       case (name, Retention.Ttl(field)) if !expiring.exists(_.contains(s"\"$field\"")) => s"$name: no expiring index on $field"

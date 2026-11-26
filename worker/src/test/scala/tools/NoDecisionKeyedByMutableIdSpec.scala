@@ -210,7 +210,6 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${W}ListingRetainer.scala#retained"          -> Store("the departed listings the model holds as kept (ListingRetention.retainedAt, recomputed whole each drain): membership only, the listing itself the engine's, by its key"),
     s"${W}ModelInputGate.scala#pending"            -> Store("the listings the input gate holds (an input, identity_pending in memory): each its newest version itself, its ready version and what it waits on under its own key; whether it is ready is read afresh from the answers on every drain"),
     s"${W}ModelInputGate.scala#unwritten"          -> Store("the keys whose last identity_pending write failed: membership only, each written again from `pending` (or released) by the next write, cleared once one lands"),
-    s"${W}PendingListings.scala#held"              -> Store("the persisted held listings (identity_pending) in memory: each its ready version and since under its own key, replaced whole"),
     s"${W}RetainedListings.scala#held"             -> Store("the persisted departed listings (identity_retained) in memory: each the whole listing and its departure under its own key, replaced whole when it leaves again"),
     s"${W}StoredTmdbLookups.scala#held"   -> Content("by the store document's id, a TMDB id or a question; released around every prefetch"),
     s"${W}StoredTmdbLookups.scala#films"  -> Content("by TMDB id, released with held"),

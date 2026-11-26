@@ -50,9 +50,10 @@ object AlwaysClaimScheduledRunStore extends ScheduledRunStore {
  */
 abstract class KeyedScheduledRunStore(claims: tools.StoreOnce[String, Instant], clock: java.time.Clock) extends ScheduledRunStore with Logging {
   override def claim(occurrenceId: String): Boolean =
-    Try(claims.insert(occurrenceId, clock.instant())).recover { case exception =>
-      logger.warn(s"ScheduledRunStore.claim($occurrenceId) failed: ${exception.getMessage}")
-      false
+    Try(claims.insert(occurrenceId, clock.instant())).recover {
+      case exception =>
+        logger.warn(s"ScheduledRunStore.claim($occurrenceId) failed: ${exception.getMessage}")
+        false
     }.get
 }
 
