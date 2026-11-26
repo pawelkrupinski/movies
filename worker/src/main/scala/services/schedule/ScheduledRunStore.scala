@@ -1,19 +1,14 @@
 package services.schedule
 
-import java.util.concurrent.TimeUnit
+import java.time.Instant
 
-import scala.concurrent.Await
 import scala.concurrent.duration.*
 import scala.util.Try
 
-import com.mongodb.MongoWriteException
-import com.mongodb.client.model.IndexOptions as JIndexOptions
+import org.mongodb.scala.MongoCollection
+import org.mongodb.scala.bson.BsonDateTime
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.bson.{BsonDateTime, BsonString}
-import org.mongodb.scala.model.Indexes
-import org.mongodb.scala.{MongoCollection, SingleObservableFuture}
 import play.api.Logging
-import tools.MongoErrors
 
 /**
  * Cluster-wide, one-shot claim on a single scheduled occurrence. Each worker
@@ -24,8 +19,8 @@ import tools.MongoErrors
  * become "run on one machine per occurrence, rotating" without a separate lock
  * or wall-clock-aligned timers: the bucketed id makes the claim idempotent.
  *
- * The claim is fire-and-forget — there is no release. A 48h TTL on the backing
- * store expires old occurrence records so the (high-churn) collection stays
+ * The claim is fire-and-forget — there is no release. A 48h expiry on the backing
+ * store deletes old occurrence records so the (high-churn) collection stays
  * bounded; occurrence ids never recur, so an expired claim is never re-contested.
  */
 trait ScheduledRunStore {
@@ -41,55 +36,42 @@ object AlwaysClaimScheduledRunStore extends ScheduledRunStore {
 }
 
 /**
- * Mongo-backed [[ScheduledRunStore]]. Stores one document per claimed occurrence
- * in the collection passed in (typically `kinowo.scheduled_runs`):
+ * [[ScheduledRunStore]] over a keyed store of claims ([[tools.KeyedStore]]), one per claimed occurrence:
  * {{{ { _id: "enrich-imdb@2026-06-13T09:00:00Z", claimedAt: ISODate(...) } }}}
  *
- * `claim` is an `insertOne` keyed by the occurrence id: the first machine's
- * insert wins; a second machine inserting the same `_id` gets a duplicate-key
- * (11000) error, caught and returned as `false` — the same dup-key-insert idiom
- * as `MongoTaskQueue` (see [[tools.MongoErrors]]).
+ * `claim` is an insert keyed by the occurrence id ([[tools.StoreOnce.insert]]): the first machine's insert wins, a second
+ * inserting the same `_id` is refused -- the same dup-key-insert idiom as `MongoTaskQueue`. Any other failure skips
+ * rather than risk a double run: the next occurrence gets a fresh claim, and a missed one is recovered by the reaper's
+ * freshness gating, which re-queues the same stale work later.
  *
- * `claimedAt` is the wiring's clock's instant. A TTL index on it (`expireAfter` 48h) lets Mongo delete stale
- * occurrence documents, so the collection doesn't grow without bound (a document per
- * occurrence per window — ~1/min for the scrape reaper). Created fire-and-forget
- * at construction, matching `MongoTaskQueue`'s index init.
+ * `claimedAt` is the wiring's clock's instant, and a claim lives [[KeyedScheduledRunStore.Expiry]] past it
+ * ([[tools.DocumentExpiry]]: Mongo's TTL index, the in-memory store's clock), so the collection doesn't grow without
+ * bound (a document per occurrence per window -- ~1/min for the scrape reaper).
  */
-class MongoScheduledRunStore(coll: MongoCollection[Document], clock: java.time.Clock) extends ScheduledRunStore with Logging {
+abstract class KeyedScheduledRunStore(claims: tools.StoreOnce[String, Instant], clock: java.time.Clock) extends ScheduledRunStore with Logging {
+  override def claim(occurrenceId: String): Boolean =
+    Try(claims.insert(occurrenceId, clock.instant())).recover { case exception =>
+      logger.warn(s"ScheduledRunStore.claim($occurrenceId) failed: ${exception.getMessage}")
+      false
+    }.get
+}
 
-  tools.OffThreadInit.start("scheduled-runs-init") {
-    Try {
-      Await.result(coll.createIndex(
-        Indexes.ascending("claimedAt"),
-        new JIndexOptions().expireAfter(MongoScheduledRunStore.TtlHours, TimeUnit.HOURS)
-      ).toFuture(), 10.seconds)
-    }.recover { case exception => logger.warn(s"scheduled_runs TTL index init failed: ${exception.getMessage}") }
-    ()
+object KeyedScheduledRunStore {
+  /** How long a claimed-occurrence document lives before it is deleted. Comfortably longer than any job's period so a
+   *  claim can't expire while its window is still live, short enough to keep the collection small. */
+  val Expiry: tools.DocumentExpiry = tools.DocumentExpiry("claimedAt", 48.hours)
+
+  /** A claim's document: when it was claimed. */
+  val Codec: tools.DocCodec[Instant] = new tools.DocCodec[Instant] {
+    def encode(claimedAt: Instant): Document = Document("claimedAt" -> BsonDateTime(claimedAt.toEpochMilli))
+    def decode(document: Document): Option[Instant] =
+      document.get("claimedAt").filter(_.isDateTime).map(d => Instant.ofEpochMilli(d.asDateTime.getValue))
   }
 
-  override def claim(occurrenceId: String): Boolean =
-    Try {
-      Await.result(coll.insertOne(Document(
-        "_id"       -> BsonString(occurrenceId),
-        "claimedAt" -> BsonDateTime(clock.millis())
-      )).toFuture(), 10.seconds)
-      true
-    }.recover {
-      case exception: MongoWriteException if MongoErrors.isDuplicateKey(exception) =>
-        // Another machine already claimed this occurrence — skip.
-        false
-      case exception =>
-        // On any other failure, skip rather than risk a double-run; the next
-        // occurrence gets a fresh claim. (A missed occurrence is recovered by the
-        // reaper's freshness gating, which re-queues the same stale work later.)
-        logger.warn(s"ScheduledRunStore.claim($occurrenceId) failed: ${exception.getMessage}")
-        false
-    }.getOrElse(false)
+  /** The claims in `documents`. */
+  def claims(documents: tools.StoreDocuments): tools.KeyedStore[String, Instant] = new tools.KeyedStore(documents, tools.KeyCodec.Text, Codec)
 }
 
-object MongoScheduledRunStore {
-  /** How long a claimed-occurrence document lives before Mongo's TTL monitor deletes
-   *  it. Comfortably longer than any job's period so a claim can't expire while
-   *  its window is still live, short enough to keep the collection small. */
-  val TtlHours: Long = 48L
-}
+/** The claims in the collection passed in (typically `kinowo.scheduled_runs`), its TTL index made at construction. */
+class MongoScheduledRunStore(coll: MongoCollection[Document], clock: java.time.Clock) extends KeyedScheduledRunStore(
+  KeyedScheduledRunStore.claims(tools.MongoStoreDocuments.of(coll, Some(KeyedScheduledRunStore.Expiry))), clock)

@@ -12,15 +12,15 @@ import ScalaSourceScan.{MainRoots, TestRoots, codeOf, scalaFiles}
  * unit spec because the in-memory store kept what it was handed (2026-10-25).
  *
  * An `InMemory*` class stands in for a Mongo-backed store when a `Mongo*` class in main sources extends one of the
- * types it extends. Its body must name `BsonRoundTrip`, or build on `InMemoryKeyedDocStore`, which does.
+ * types it extends. Its body must name `BsonRoundTrip`, or build on `InMemoryKeyedDocStore` or `InMemoryStoreDocuments`,
+ * which do.
  */
 class InMemoryStoresRoundTripSpec extends AnyFlatSpec with Matchers {
 
   /** Stand-ins with nothing to round-trip, and why. */
   private val Exempt = Map(
     "InMemoryOmdbBudget"        -> "counts permits it grants itself: no caller hands it a value, so nothing to write",
-    "InMemoryReviewSource"      -> "read-only: it holds what its spec constructs it with, and nothing writes through it",
-    "InMemoryScheduledRunStore" -> "holds only the claimed occurrence ids, never a document")
+    "InMemoryReviewSource"      -> "read-only: it holds what its spec constructs it with, and nothing writes through it")
 
   private val Header = """(?m)^(?:final\s+|abstract\s+|sealed\s+)*class\s+(\w+)[^{]*""".r
   private val TopLevel = """(?m)^(?:final\s+|abstract\s+|sealed\s+|private\s+|case\s+)*(?:class|object|trait|enum)\s""".r
@@ -39,14 +39,14 @@ class InMemoryStoresRoundTripSpec extends AnyFlatSpec with Matchers {
     val mongoBacked = mains.flatMap(classesIn).collect { case (name, parents, _) if name.startsWith("Mongo") => parents }.flatten.toSet
     sources.flatMap(classesIn).collect {
       case (name, parents, body) if name.startsWith("InMemory") && !name.endsWith("Spec") && parents.exists(mongoBacked) &&
-          !body.contains("BsonRoundTrip") && !body.contains("InMemoryKeyedDocStore(") && !Exempt.contains(name) => name
+          !body.contains("BsonRoundTrip") && !body.contains("InMemoryKeyedDocStore(") && !body.contains("InMemoryStoreDocuments") && !Exempt.contains(name) => name
     }.sorted
   }
 
   "Every in-memory stand-in for a Mongo-backed store" should "write each value through the round-trip base" in {
     val mains = scalaFiles(MainRoots).map(codeOf)
     withClue("write each stored value through tools.BsonRoundTrip with the Mongo store's own codec (or build on " +
-      "InMemoryKeyedDocStore), or exempt the class here with why it holds nothing to round-trip: ")(
+      "InMemoryKeyedDocStore or InMemoryStoreDocuments), or exempt the class here with why it holds nothing to round-trip: ")(
       notRoundTripping(scalaFiles(MainRoots ++ TestRoots).map(codeOf), mains) shouldBe empty)
   }
 
