@@ -76,6 +76,20 @@ def watch(fake, *args, checks=CHECKS):
 
 
 class DeployWatchTest(unittest.TestCase):
+    def test_the_prometheus_ssh_never_waits_on_a_prompt(self):
+        seen = []
+
+        def run(cmd, **_kwargs):
+            seen.append(cmd)
+            return subprocess.CompletedProcess(cmd, 0, stdout='{"status":"success","data":{"result":[]}}', stderr="")
+
+        original, deploy_watch.subprocess.run = deploy_watch.subprocess.run, run
+        try:
+            deploy_watch.prometheus_query("up")
+        finally:
+            deploy_watch.subprocess.run = original
+        self.assertIn("BatchMode=yes", seen[0])
+
     def test_waits_for_every_worker_on_the_image_then_passes_a_clean_window(self):
         half = pods({**{cc: NEW for cc in ALL[:3]}, **{cc: OLD for cc in ALL[3:]}})
         fake = Fake([half, pods({cc: NEW for cc in ALL})],

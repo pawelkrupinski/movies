@@ -89,7 +89,7 @@ def prometheus_query(promql: str) -> list[dict]:
         cmd = [*shlex.split(override), promql]
     else:
         url = os.environ.get("DEPLOY_WATCH_PROMETHEUS", PROMETHEUS)
-        cmd = ["ssh", "-o", "ConnectTimeout=15", "monitoring-1",
+        cmd = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "monitoring-1",
                f"curl -sS --max-time 60 --data-urlencode query={shlex.quote(promql)} {url}/api/v1/query"]
     done = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
     try:

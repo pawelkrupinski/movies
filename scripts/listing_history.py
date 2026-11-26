@@ -265,7 +265,8 @@ def run_command(argv, timeout=900):
 
 def _remote_curl(url, params):
     args = " ".join(f"--data-urlencode {shlex.quote(f'{k}={v}')}" for k, v in params)
-    return ["ssh", MONITORING_HOST, f"curl -s {url} {args}"]
+    return ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", MONITORING_HOST,
+            f"curl -sS --max-time 60 {shlex.quote(url)} {args}"]
 
 
 def parse_args(argv):
