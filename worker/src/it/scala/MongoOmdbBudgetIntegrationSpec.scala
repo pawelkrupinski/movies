@@ -84,8 +84,10 @@ class MongoOmdbBudgetIntegrationSpec extends AnyFlatSpec with Matchers with Inte
         val budget = new MongoOmdbBudget(isolated.database, limit = 1000)
         pool.submit((() => { barrier.await(); budget.markSpent(day) }): Runnable)
       }.foreach(_.get(tools.SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS))
-      val days = tools.KeyedStore.counters(tools.MongoStoreDocuments.of(isolated.database.getCollection(MongoOmdbBudget.Collection)))
-      days.counted(OmdbBudget.dayOf(day).toString, "used") shouldBe 1000
+      import org.mongodb.scala.bson.collection.immutable.Document
+      val stored = scala.concurrent.Await.result(isolated.database.getCollection[Document](MongoOmdbBudget.Collection)
+        .find(org.mongodb.scala.model.Filters.eq("_id", OmdbBudget.dayOf(day).toString)).head(), tools.SpecTimeouts.Io)
+      stored.get("used").map(_.asNumber.longValue) shouldBe Some(1000L)
     } finally pool.shutdownNow()
   }
 }
