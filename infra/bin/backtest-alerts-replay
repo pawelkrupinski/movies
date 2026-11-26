@@ -18,8 +18,8 @@ copy, scoped to the alerts the red run named (--from-run fetches that run's log;
 --from-log selects them), run at the base (default origin/main) and at the head (default HEAD). Verdict:
 base=FAIL head=PASS (exit 0) is a fix that fixes; anything else (exit 1) is not one; a harness error is exit 2.
 
-HOW (on --host). Per revision: `git archive <rev> infra scripts` (the 1.3 GB whole tree took minutes over ssh, 14 MB takes seconds) is unpacked over ssh into /tmp/backtest-replay-<user>-<pid>-<rev8> on the
-host and removed after; there infra/bin/backtest-alerts --source snapshot --no-write replays against
+HOW (on --host). Per revision: `git archive <rev> infra scripts` (the 1.3 GB whole tree took minutes over ssh, 14 MB takes seconds) is unpacked over ssh into a directory the host's `mktemp -d` makes (/tmp/backtest-replay.XXXXXXXX, mode 0700: no
+name another user can predict and pre-create) and removed after; there infra/bin/backtest-alerts --source snapshot --no-write replays against
 /mnt/data/prometheus-snapshot/current (the tool copies the blocks privately). The host has neither the Prometheus
 binary nor PyYAML: the binary of the copy's version is downloaded once into ~/.cache/backtest-prometheus/<version>/,
 checksum-verified as .github/workflows/alert-backtest.yml does, and PyYAML comes from scripts/python-venv. Production
@@ -114,15 +114,19 @@ def scope_for(host, remote_dir, scope, log_path):
         return rest + [x for name in alerts_named(handle.read()) for x in ("--alert", name)]
 
 
-def replay(host, rev, sha, log_path, scope, user):
+UNPACK = 'd=$(mktemp -d /tmp/backtest-replay.XXXXXXXX) && echo "$d" && tar -x -C "$d"'
+
+
+def replay(host, rev, sha, log_path, scope):
     """PASS, FAIL or ERROR for one revision on the host; the backtest's output streams to ours."""
-    remote_dir = "/tmp/backtest-replay-%s-%d-%s" % (user, os.getpid(), sha[:8])
+    remote_dir = None
     print("== %s (%s) on %s" % (rev, sha[:8], host), flush=True)
     try:
         archive = subprocess.Popen(["git", "archive", sha, "infra", "scripts"], stdout=subprocess.PIPE)
-        unpack = run(["ssh", host, "mkdir -p %s && tar -x -C %s" % (remote_dir, remote_dir)], stdin=archive.stdout)
+        unpack = run(["ssh", host, UNPACK], stdin=archive.stdout, stdout=subprocess.PIPE, text=True)
         archive.stdout.close()
-        if archive.wait() != 0 or unpack.returncode != 0:
+        remote_dir = unpack.stdout.strip() or None  # the host's own private directory, once it made one
+        if archive.wait() != 0 or unpack.returncode != 0 or remote_dir is None:
             return "ERROR"
         with open(log_path, "rb") as handle:
             if run(["ssh", host, "cat > %s/red-run.log" % remote_dir], stdin=handle).returncode != 0:
@@ -135,7 +139,8 @@ def replay(host, rev, sha, log_path, scope, user):
         done = run(["ssh", host, command], input=REMOTE.encode())
         return {0: "PASS", 1: "FAIL"}.get(done.returncode, "ERROR")
     finally:
-        run(["ssh", host, "rm -rf %s" % remote_dir])
+        if remote_dir:
+            run(["ssh", host, "rm -rf %s" % shlex.quote(remote_dir)])
 
 
 def load_local():
@@ -238,7 +243,7 @@ def verdict(args, argv, scratch):
     else:
         verdicts = {}
         for (label, sha), rev in zip(revisions, (args.base, args.head)):
-            verdicts[label] = replay(args.host, rev, sha, log_path, scope, os.environ.get("USER") or str(os.getuid()))
+            verdicts[label] = replay(args.host, rev, sha, log_path, scope)
             print("-- %s: %s%s" % (label, verdicts[label], " (harness error: exit 2 or a failed ssh/step)"
                                    if verdicts[label] == "ERROR" else ""), flush=True)
     if "ERROR" in verdicts.values():

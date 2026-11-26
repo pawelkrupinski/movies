@@ -31,6 +31,7 @@ echo good > "$repo/infra/rule-state"; scratch_git "$repo" commit -qam fix; scrat
 cat > "$fakebin/ssh" <<'STUB'
 #!/usr/bin/env bash
 echo "ssh $1" >> "$FAKE_SSH_LOG"; shift
+printf '%s\n' "$1" >> "$FAKE_SSH_COMMANDS"
 exec bash -c "$1"
 STUB
 cat > "$fakebin/gh" <<'STUB'
@@ -39,7 +40,7 @@ printf 'backtest\tBacktest every rule\t2026-11-19T12:50:01.1234567Z   - Identity
 printf 'backtest\tBacktest every rule\t2026-11-19T12:50:01.1234567Z   - incident abc: HostDown should have fired and did not\n'
 STUB
 chmod +x "$fakebin/ssh" "$fakebin/gh"
-export FAKE_SSH_LOG="$work/ssh.log" BACKTEST_REPLAY_PROMETHEUS_BINARY=/bin/true
+export FAKE_SSH_LOG="$work/ssh.log" FAKE_SSH_COMMANDS="$work/ssh-commands.log" BACKTEST_REPLAY_PROMETHEUS_BINARY=/bin/true
 replay() { (cd "$repo" && env PATH="$fakebin:$PATH" python3 infra/bin/backtest-alerts-replay "$@") > "$work/out" 2>&1; echo $?; }
 
 check "a fix: base fails, head passes -> exit 0" "0" "$(replay --from-run 7 --base broken --head fixed)"
@@ -60,7 +61,10 @@ check "a harness error (exit 2) is not a verdict -> exit 2, no trailer" "2 0" \
   "$(STUB_EXIT=2 replay --alert HostDown --base fixed --head fixed) $(grep -c '^Fix-Replay' "$work/out")"
 check "an unknown revision -> exit 2" "2" "$(replay --alert HostDown --base nope --head fixed)"
 check "nothing to replay is a usage error" "2" "$(replay)"
-check "the remote directories are removed" "0" "$(find /tmp -maxdepth 1 -name 'backtest-replay-*-*' -newer "$work/ssh.log" 2>/dev/null | wc -l | tr -d ' ')"
+check "the remote directories are removed" "0" "$(find /tmp -maxdepth 1 -name 'backtest-replay*' -newer "$work/ssh.log" 2>/dev/null | wc -l | tr -d ' ')"
+# A name made from the user and pid is one another user on the host can pre-create (a symlink) before the unpack.
+check "the host makes the directory itself (mktemp -d): no name built from the user and pid, 4 ssh calls on one directory" "1 0" \
+  "$(grep -c 'mktemp -d /tmp/backtest-replay' "$work/ssh-commands.log" | head -1 | awk '{print ($1>0)}') $(grep -c "backtest-replay-$(id -un)-" "$work/ssh-commands.log")"
 
 # --local: both revisions replayed HERE, by their own backtest-alerts, over the fixture copy of ci-runner's snapshot
 # (infra/test/fixtures/backtest-snapshot-remote, real Prometheus blocks) on the real Prometheus: a rule reading a metric
