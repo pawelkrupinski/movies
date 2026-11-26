@@ -9,7 +9,7 @@ import services.agreementasks.IdentityAgreementMetrics
 import services.identityadapters.IdentityLookupFillMetrics
 import services.identityadapters.IdentityModelGauges
 import services.identityadapters.IdentityProjectionGauges
-import services.identityadapters.IdentityTakeMetrics
+import services.identitystaging.IdentityTakeMetrics
 import services.metrics.*
 import services.metrics.worker.{EnvGatedFeatureMetrics, HttpBreakerMetrics, JvmVitalsSampler, PaidEgressMetrics, RetiredVenueCensus, StringPoolMetrics, TtlIndexMetrics, WorkerCacheMetrics, WorkerCitySeasonMetrics, WorkerCorpusMetrics, WorkerHttpMetrics, WorkerResolutionMetrics, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics}
 import services.tasks.CinemaContentCensus

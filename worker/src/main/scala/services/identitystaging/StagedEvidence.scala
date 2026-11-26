@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identitystaging
 
 import services.identity.*
 import services.identity.measures.{DecisionTrace, Listing, ResolverDecision}

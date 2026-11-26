@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identitystaging
 
 import models.ListingKey
 import services.identity.*

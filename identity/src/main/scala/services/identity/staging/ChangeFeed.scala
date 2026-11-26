@@ -3,7 +3,7 @@ package services.identity.staging
 /**
  * What the identity system tells the staging screen as it happens, held until its publisher drains it: a bounded
  * first-in-first-out buffer between the threads that change takes (the projection) and the one that writes them out
- * (`services.identityadapters.IdentityStagingPublisher`). Full, it lets the oldest go and counts them: a publisher that stopped draining
+ * (`services.identitystaging.IdentityStagingPublisher`). Full, it lets the oldest go and counts them: a publisher that stopped draining
  * never holds the worker's memory, and the next drain says how many it missed.
  */
 final class ChangeFeed[A](capacity: Int) {

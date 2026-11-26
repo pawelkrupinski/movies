@@ -138,21 +138,21 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   /** What the staging publisher drains as it happens: each written projection's change list, and the live agreement
    *  stage's waits starting and ending. */
   lazy val identityStagingEvents: services.identity.staging.ChangeFeed[services.identity.staging.StagingEvent] =
-    new services.identity.staging.ChangeFeed(services.identityadapters.IdentityStagingPublisher.FeedCapacity)
+    new services.identity.staging.ChangeFeed(services.identitystaging.IdentityStagingPublisher.FeedCapacity)
 
   /** The staging screen's store (`identity_staging`), in this country's database, which the local screen reads beside
    *  every other country's; in memory without one. */
   lazy val identityStaging: services.identity.staging.IdentityStaging =
     services.identity.staging.IdentityStaging.in(mongoConnection.database, clock)
   /** What this country's takes still wait on, published for the local staging screen (`scripts/identity-staging`). */
-  lazy val identityStagingPublisher: services.identityadapters.IdentityStagingPublisher = managedResources.stopping(
-    new services.identityadapters.IdentityStagingPublisher(country.code, identityStaging,
+  lazy val identityStagingPublisher: services.identitystaging.IdentityStagingPublisher = managedResources.stopping(
+    new services.identitystaging.IdentityStagingPublisher(country.code, identityStaging,
       taken = () => identityProjection.lastProjected.map(_.taken), changes = () => identityStagingEvents.drain(),
       snapshots = stagingSnapshots, clock = clock, ticks = ticks,
       takeMetrics = workerMetrics.identityTakes.forCountry(country.code), threadPools = threadPools))
   /** What each staging publish works out ([[identityStagingPublisher]]): the clusters staging, what resolved, the beat. */
-  private lazy val stagingSnapshots: services.identityadapters.StagingSnapshots =
-    new services.identityadapters.StagingSnapshots(waitingOn = agreementStage.waits.waitingOn,
+  private lazy val stagingSnapshots: services.identitystaging.StagingSnapshots =
+    new services.identitystaging.StagingSnapshots(waitingOn = agreementStage.waits.waitingOn,
       outcomes = identityQuestionMemory.outcomes,
       storedFilm = { val records = storedLookups(); id => records.film(id).answered.flatten },
       read = () => identityProjection.lastProjected.fold(Iterator.empty[services.identity.measures.Listing])(_.read()),

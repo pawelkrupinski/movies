@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identitystaging
 
 import java.time.Clock
 import java.util.concurrent.TimeUnit

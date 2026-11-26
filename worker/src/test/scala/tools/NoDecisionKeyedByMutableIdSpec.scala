@@ -233,7 +233,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}VenueSlots.scala#recorded"              -> Content("venue slot fingerprints"),
     s"worker/src/main/scala/services/identityadapters/RecordedSlotFingerprints.scala#recorded" -> Content("venue slot fingerprints"),
     s"worker/src/main/scala/services/identityadapters/ProjectionWrite.scala#lastUnwritten"    -> Pass("the films the last write left unwritten, replaced by each"),
-    s"worker/src/main/scala/services/identityadapters/IdentityStagingPublisher.scala#published" -> Store("what the last publish left in the store, compared by value"),
+    s"worker/src/main/scala/services/identitystaging/IdentityStagingPublisher.scala#published" -> Store("what the last publish left in the store, compared by value"),
     s"worker/src/main/scala/services/identityadapters/RuleFiringCount.scala#titleRules"       -> Content("by venue and raw title: the title is the content its rules are read from"),
     s"worker/src/main/scala/services/identityadapters/VenuePageIndex.scala#answers"           -> Store("each page's answer as read, compared by value to see it move"),
     s"worker/src/main/scala/services/identityadapters/LookupGaps.scala#kinds"         -> Content("a counter per gap kind"),

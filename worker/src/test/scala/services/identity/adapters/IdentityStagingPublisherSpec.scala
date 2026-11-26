@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.identitystaging.{IdentityStagingPublisher, StagingSnapshots}
 import services.tmdb.QuestionMemory
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identitystaging
 
 import services.tmdb.QuestionMemory
 import services.identity.measures.{ResolverDecision, WaitingOn}
