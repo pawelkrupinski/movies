@@ -14,8 +14,12 @@ import subprocess
 import time
 import urllib.parse
 import urllib.request
+import sys
 import zipfile
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import atomic  # noqa: E402
 
 from trend_records import Record, job_record, run_record
 
@@ -133,10 +137,7 @@ class GitHub:
                 return json.load(handle)
         value = compute()
         try:
-            os.makedirs(self.cache_dir, exist_ok=True)
-            with open(path + ".tmp", "w", encoding="utf-8") as handle:
-                json.dump(value, handle)
-            os.replace(path + ".tmp", path)
+            atomic.write_json(path, value)
         except OSError:
             pass
         return value

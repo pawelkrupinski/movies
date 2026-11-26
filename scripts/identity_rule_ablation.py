@@ -32,6 +32,8 @@ from datetime import datetime, timezone
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "ci"))
+sys.path.insert(0, os.path.join(HERE, "lib"))
+import atomic  # noqa: E402
 import identity_measure as measure  # noqa: E402
 from identity_judgements import read as read_judgements  # noqa: E402
 
@@ -374,9 +376,7 @@ def main(argv=None):
     state = json.load(open(state_path)) if os.path.exists(state_path) else {"round": 0, "settled": {}, "interactions": [], "pending": None}
 
     def save():
-        with open(state_path + ".tmp", "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=1)
-        os.replace(state_path + ".tmp", state_path)
+        atomic.write_json(state_path, state, indent=1)
 
     # round 0: the baselines alone (their fired rules choose the batches; base-again proves the replay deterministic).
     # A resumed state has chosen its batches already, and every later round resolves its own baseline.

@@ -22,6 +22,7 @@ from typing import Dict, List, Mapping, Optional, Set
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import cli_harness  # noqa: E402
+import ps_table  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/identity_slice_cli.py", "scripts/identity-slice")
 ROOT = cli_harness.ROOT
@@ -147,20 +148,17 @@ def keeper_of(jvm: int) -> List[int]:
     """The keeper watching <jvm>: the process whose arguments hold `--keep-served <jvm>` as two words, not a subshell
     of its poll (which carries the same command line for a moment) -- a substring match would take a co-agent's keeper
     of JVM 4242 for one of JVM 424."""
-    rows = subprocess.run(["ps", "-axo", "pid=,ppid=,args="], capture_output=True, text=True).stdout.splitlines()
     parents: Dict[int, int] = {}
-    for row in rows:
-        words = row.split()
-        if len(words) > 2 and any(w == "--keep-served" and nxt == str(jvm) for w, nxt in zip(words[2:], words[3:])):
-            parents[int(words[0])] = int(words[1])
+    for process in ps_table.ProcessTable.here(os.environ).read().values():
+        if any(w == "--keep-served" and nxt == str(jvm) for w, nxt in zip(process.words, process.words[1:])):
+            parents[process.pid] = process.ppid
     return sorted(pid for pid, parent in parents.items() if parent not in parents)
 
 
 def children(pid: int, command: str) -> Set[int]:
     """The pids of <pid>'s children running <command> (its first word)."""
-    rows = subprocess.run(["ps", "-axo", "pid=,ppid=,args="], capture_output=True, text=True).stdout.splitlines()
-    return {int(w[0]) for w in (r.split() for r in rows)
-            if len(w) > 2 and w[1] == str(pid) and os.path.basename(w[2]) == command}
+    return {p.pid for p in ps_table.ProcessTable.here(os.environ).read().values()
+            if p.ppid == pid and os.path.basename(p.words[0]) == command}
 
 
 class SliceCase(cli_harness.ToolCase):

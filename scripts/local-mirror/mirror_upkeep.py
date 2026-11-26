@@ -23,9 +23,13 @@ import os
 import re
 import signal
 import subprocess
+import sys
 from typing import Dict, List, Set, Tuple
 
 from mirror_settings import HERE, Settings, here, say
+
+sys.path.insert(0, os.path.join(HERE, "..", "lib"))
+import ps_table  # noqa: E402
 
 LIB = os.path.join(os.path.dirname(HERE), "lib")
 MAX_LOG_BYTES, LOG_KEEP_LINES = 8 * 1024 * 1024, 2000
@@ -56,61 +60,32 @@ def rotate_log(path: str) -> None:
     say(f"log passed {MAX_LOG_BYTES // 1024 // 1024}MB — trimmed to its last {LOG_KEEP_LINES} lines")
 
 
-Table = Dict[int, Tuple[int, str]]  # pid -> (ppid, args)
-
-
-def process_table(text: str) -> Table:
-    """`ps -Ao pid=,ppid=,args=` text, each args' whitespace collapsed."""
-    table: Table = {}
-    for line in text.splitlines():
-        fields = line.split()
-        if len(fields) >= 3 and fields[0].isdigit() and fields[1].isdigit():
-            table[int(fields[0])] = (int(fields[1]), " ".join(fields[2:]))
-    return table
-
-
 def orphan_root(args: str) -> str:
     if MIRROR.search(args):
         return "orphaned mirror.sh"
     return "orphaned prod tunnel" if FORWARD.search(args) else ""
 
 
-def roots(table: Table, self_pid: int) -> Dict[int, str]:
+def roots(table: ps_table.Table, self_pid: int) -> Dict[int, str]:
     picked: Dict[int, str] = {}
-    for pid, (ppid, args) in table.items():
-        reason = orphan_root(args) if pid != self_pid and ppid == 1 else ""
+    for pid, process in table.items():
+        reason = orphan_root(process.args) if pid != self_pid and process.ppid == 1 else ""
         if reason:
             picked[pid] = reason
     return picked
 
 
-def descendants(table: Table, of: Set[int]) -> Set[int]:
-    """Every process under one of `of`, to any depth (a tree is shallow; a pass that adds nothing ends it)."""
-    found: Set[int] = set()
-    grew = True
-    while grew:
-        under = {pid for pid, (ppid, _) in table.items() if pid not in found and pid not in of and ppid in of | found}
-        found |= under
-        grew = bool(under)
-    return found
-
-
-def orphans(text: str, self_pid: int) -> List[Tuple[int, str, str]]:
-    """(pid, reason, args) of every process to stop, from the process table's text."""
-    table = process_table(text)
+def orphans(table: ps_table.Table, self_pid: int) -> List[Tuple[int, str, str]]:
+    """(pid, reason, args) of every process to stop, from the process table."""
     pick = roots(table, self_pid)
     mirrors = {pid for pid, reason in pick.items() if reason == "orphaned mirror.sh"}
-    for pid in descendants(table, mirrors):
+    for pid in ps_table.descendants(table, mirrors):
         pick.setdefault(pid, "under an orphaned mirror.sh")
-    return [(pid, reason, table[pid][1]) for pid, reason in pick.items()]
+    return [(pid, reason, table[pid].args) for pid, reason in pick.items()]
 
 
 def sweep_orphans(env: Dict[str, str]) -> None:
-    try:
-        table = subprocess.run(["ps", "-Ao", "pid=,ppid=,args="], capture_output=True, text=True, env=env).stdout
-    except OSError:
-        return
-    for pid, reason, args in orphans(table, os.getpid()):
+    for pid, reason, args in orphans(ps_table.ProcessTable.here(env).read(), os.getpid()):
         say(f"sweep: stopping pid {pid} ({reason}): {args[:120]}")
         try:
             os.kill(pid, signal.SIGTERM)

@@ -36,6 +36,9 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import atomic  # noqa: E402
+
 STATE_DIR = os.environ.get("OWNER_DECISIONS_STATE_DIR", os.path.expanduser("~/.cache/claude-owner-decisions"))
 REMIND_SECONDS = float(os.environ.get("OWNER_DECISIONS_REMIND_SECONDS", 30 * 60))
 STATE_TTL_SECONDS = 7 * 24 * 3600
@@ -62,11 +65,7 @@ def load_state(session):
 
 
 def save_state(session, state):
-    os.makedirs(STATE_DIR, exist_ok=True)
-    tmp = state_path(session) + ".tmp"
-    with open(tmp, "w") as f:
-        json.dump(state, f)
-    os.replace(tmp, state_path(session))
+    atomic.write_json(state_path(session), state)
     now = time.time()
     for name in os.listdir(STATE_DIR):  # a session's file outlives it; a week is plenty
         path = os.path.join(STATE_DIR, name)

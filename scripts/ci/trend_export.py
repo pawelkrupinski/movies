@@ -13,6 +13,9 @@ import os
 import sys
 from typing import Callable, Dict, List, Sequence, Tuple, TextIO
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import atomic  # noqa: E402
+
 from trend_events import commit_change, events_of, post_events
 from trend_github import GitHub, job_windows, record_of
 from trend_measures import run_window, saturation
@@ -32,11 +35,7 @@ def load_state(path: str) -> State:
 
 
 def save_state(path: str, state: State) -> None:
-    folder = os.path.dirname(os.path.abspath(path))
-    os.makedirs(folder, exist_ok=True)
-    with open(path + ".tmp", "w", encoding="utf-8") as handle:
-        json.dump(state, handle)
-    os.replace(path + ".tmp", path)
+    atomic.write_json(path, state)
 
 
 def _key(run: Record) -> str:

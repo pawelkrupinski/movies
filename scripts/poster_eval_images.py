@@ -7,6 +7,7 @@ import itertools
 import json
 import os
 import sqlite3
+import sys
 import threading
 import time
 import urllib.error
@@ -16,8 +17,10 @@ from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-import poster_hash
-from poster_eval_common import Language, UserAgent, log
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import atomic  # noqa: E402
+import poster_hash  # noqa: E402
+from poster_eval_common import Language, UserAgent, log  # noqa: E402
 
 Poster = Tuple[str, Optional[str], int]  # TMDB's file path, its language, its votes
 Hashed = Optional[int]  # the hash; None: unreadable or unfetchable; -1 (Images.hash_of only): not hashed yet
@@ -249,9 +252,7 @@ class TmdbLists:
         with ThreadPoolExecutor(8) as pool:
             for f, posters in pool.map(one, need):
                 self.lists[f] = posters
-        with open(self.path + ".tmp", "w") as out:
-            json.dump(self.lists, out)
-        os.replace(self.path + ".tmp", self.path)
+        atomic.write_json(self.path, self.lists)
         log(f"poster-eval: {len(need)} lists in {time.time() - started:.0f}s")
 
     def posters(self, film: object) -> List[Poster]:
