@@ -216,7 +216,7 @@ scripts/quality-report	KEEP
 scripts/ratchet-diff	KEEP
 scripts/read-model-snapshot-inputs.sh	KEEP
 scripts/recording-diff	KEEP
-scripts/reset-corpus.sh	MIGRATE
+scripts/reset-corpus.sh	KEEP
 scripts/restore-country-corpus.sh	KEEP
 scripts/review-commit	KEEP
 scripts/review-server	KEEP

@@ -259,7 +259,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push; agentctl; 2 tools | stall-watch-test.sh | MIGRATE |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 7 tools | wait-for-test.sh | KEEP |
 
-## Identity (225)
+## Identity (226)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -483,7 +483,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ml-identity/cross_country_experiment.py` | Cross-country agreement, OFFLINE experiment (2026-10-19, branch experiment-cross-country; docs/identity-experiments.md). | `imported` | 1 tool | - | Python |
 | `scripts/recording-diff` | Two "Record scrape fixtures" recordings compared — "is it the code, or new data?" in seconds | `scripts/recording-diff` | skill CLAUDE.md, identity-investigation; 3 tools | recording-diff-test.sh | KEEP |
 | `scripts/recording_diff.py` | TWO RECORDINGS COMPARED: did the input change, or the code? (scripts/recording-diff) | `scripts/recording_diff.py` | 1 tool | recording_diff_test.py | Python |
-| `scripts/reset-corpus.sh` | Full corpus reset: wipe the scrape, enrichment, staging and read-model collections so the worker rebuilds them (incidents) | `scripts/reset-corpus.sh` | 2 tools | reset-corpus-test.sh | MIGRATE |
+| `scripts/reset-corpus.sh` | Full corpus reset: wipe the scrape, enrichment, staging and read-model collections so the worker rebuilds them (incidents) | `scripts/reset-corpus.sh` | 3 tools | reset_corpus_test.py | KEEP |
+| `scripts/reset_corpus.py` | Full corpus reset: wipe the scrape, enrichment, staging and read-model collections so the worker rebuilds them (incidents) | `scripts/reset_corpus.py` | 1 tool | reset_corpus_test.py | Python |
 | `scripts/restore-country-corpus.sh` | Restore the recorded pair a hermetic convergence leg replays into this checkout | `scripts/restore-country-corpus.sh` | skill test-layers; 4 tools | restore_country_corpus_test.py | KEEP |
 | `scripts/restore_country_corpus.py` | Restore the recorded pair a hermetic convergence leg replays into this checkout. | `scripts/restore_country_corpus.py` | 1 tool | restore_country_corpus_test.py | Python |
 | `scripts/title-trace` | Every step one raw billing goes through, in production order, to the title the resolver reads | `scripts/title-trace` | wf main; skill CLAUDE.md, identity-investigation; 6 tools | title_trace_test.py | MIGRATE |
@@ -564,8 +565,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/local-mirror/mirror_settings.py` | WHAT EVERY PROCESS OF THE MIRROR DAEMON SHARES (mirror.py): its endpoints and knobs, read once from the environment | `imported` | 4 tools | - | Python |
 | `scripts/local-mirror/mirror_supervisor.py` | ONE DATABASE'S SUPERVISOR (mirror.py --supervise <db> <force>), a child process of the daemon: every cycle it | `imported` | 1 tool | - | Python |
 | `scripts/local-mirror/mirror_upkeep.py` | THE DAEMON PARENT'S UPKEEP (mirror.py): its log kept under a size cap, what an earlier run left behind swept up, the | `imported` | 1 tool | - | Python |
-| `scripts/local-mirror/mongosh-at.sh` | `mongosh uri ARGS…` without the uri — and the password in it — on mongosh's command line, where `ps` shows it to every user | `scripts/local-mirror/mongosh-at.sh` | 6 tools | mongosh-at-test.sh | KEEP |
-| `scripts/local-mirror/prod-tunnel.sh` | The one place that knows how a laptop reaches prod Mongo | `bash scripts/local-mirror/prod-tunnel.sh` | 10 tools | prod-tunnel-test.sh | MIGRATE |
+| `scripts/local-mirror/mongosh-at.sh` | `mongosh uri ARGS…` without the uri — and the password in it — on mongosh's command line, where `ps` shows it to every user | `scripts/local-mirror/mongosh-at.sh` | 7 tools | mongosh-at-test.sh | KEEP |
+| `scripts/local-mirror/prod-tunnel.sh` | The one place that knows how a laptop reaches prod Mongo | `bash scripts/local-mirror/prod-tunnel.sh` | 9 tools | prod-tunnel-test.sh | MIGRATE |
 | `scripts/local-mirror/service.py` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure. | `scripts/local-mirror/service.py` | wf country-convergence-leg, nix-stage-closures; hook pre-push; skill external-api-rate-limits, identity-investigation, record-client-fixtures; 15 tools | service_test.py | Python |
 | `scripts/local-mirror/service.sh` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure (service.py beside it; this name is what the plist and the README run) | `scripts/local-mirror/service.sh` | 7 tools | service_test.py | KEEP |
 | `scripts/local-mirror/start-local-mongo.sh` | Ensure the native (Homebrew) single-node replica-set Mongo that backs local dev is up on :28017 (a name for start_local_mongo.py) | `scripts/local-mirror/start-local-mongo.sh` | 6 tools | start_local_mongo_test.py | KEEP |
@@ -696,20 +697,20 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/it-local.sh` | Run the it/ layer locally against a MongoDB of this run's own | `scripts/it-local.sh` | skill agent-ops, identity-investigation, test-layers; 10 tools | it-local-test.sh | KEEP |
 | `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | wf android, security-headers; skill CLAUDE.md; 7 tools | cli_harness_test.py | Python |
 | `scripts/lib/pinned_npm_tools.py` | PINNED NODE TOOLS, installed OUTSIDE the checkout: a tool's package.json and its lock, `npm ci`'d once per lock into | `imported` | hook pre-push; 2 tools | - | Python |
-| `scripts/lib/prod_tunnel.py` | HOW A LAPTOP REACHES PROD MONGO, for the Python tools (scripts/lib): scripts/local-mirror/prod-tunnel.sh's | `imported` | 2 tools | - | Python |
+| `scripts/lib/prod_tunnel.py` | HOW A LAPTOP REACHES PROD MONGO, for the Python tools (scripts/lib): scripts/local-mirror/prod-tunnel.sh's | `imported` | 3 tools | - | Python |
 | `scripts/lib/scalafix_tree.py` | THE SCALAFIX TREE: what scripts/scalafix-move and scripts/scalafix-organize share -- a worktree KEPT between runs | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/lib/seeded_order.py` | THE SEEDED TEST ORDER the nightly order-independence legs share (ios/scripts/swift_test_shuffled.py, | `imported` | wf android; 2 tools | seeded_order_test.py | Python |
 | `scripts/lib/store_screenshots_common.py` | The store-screenshot drivers' SHARED ENGINE -- android/scripts/store_screenshots.py and ios/scripts/ | `imported` | 5 tools | - | Python |
 | `scripts/lib/store_screenshots_fixture.py` | The store-screenshot drivers' TEST FIXTURE (android/scripts/store_screenshots_test.py, ios/scripts/ | `imported` | by hand | - | Python |
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 7 tools | tool_actions_test.py | Python |
 | `scripts/lib/tool_ci_wait.py` | WAITING FOR A RUN'S CONCLUSION, the one way the Python tools do it (scripts/lib; the retired | `imported` | 3 tools | tool_ci_wait_test.py | Python |
-| `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 27 tools | tool_cli_test.py | Python |
+| `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 28 tools | tool_cli_test.py | Python |
 | `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 14 tools | - | Python |
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 10 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 22 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 21 tools | tool_github_test.py | Python |
 | `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 93 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 94 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | 15 tools | tool_python_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 20 tools | - | Python |
 | `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
@@ -758,7 +759,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/unit-changed` | The unit tests of the modules a change touches, in this checkout's warm sbt server | `scripts/unit-changed` | skill test-layers | unit-changed-test.sh | KEEP |
 | `scripts/unmatched_census.py` | Census of the listings the identity resolver leaves unmatched, read from the local prod mirror (READ-ONLY). | `scripts/unmatched_census.py` | skill identity-investigation | unmatched_census_test.py | Python |
 | `scripts/vault-env.sh` | The one way a local script gets a secret: from its environment, else from the Touch ID vault | `bash scripts/vault-env.sh` | 4 tools | vault-env-test.sh | KEEP |
-| `scripts/vault_env.py` | The Python twin of scripts/vault-env.sh: a secret from the environment, else from the Touch ID vault. | `imported` | 5 tools | - | Python |
+| `scripts/vault_env.py` | The Python twin of scripts/vault-env.sh: a secret from the environment, else from the Touch ID vault. | `imported` | 6 tools | - | Python |
 | `scripts/venue_replay.py` | ONE venue's listings as the code at one or two git refs reads them, from a recording — never the network. Answers | `python3 scripts/venue_replay.py` | 2 tools | venue_replay_test.py | Python |
 | `scripts/venue_replay_diff.py` | scripts/venue-replay with two refs: every listing either ref alone reads, and every field the two read differently. | `imported` | 1 tool | - | Python |
 | `scripts/zinc_orphans.py` | Delete the class files in a checkout's sbt output that its own Zinc analysis never produced. | `python3 scripts/zinc_orphans.py` | 3 tools | zinc_orphans_test.py | Python |
