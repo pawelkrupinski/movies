@@ -48,20 +48,6 @@ class FilmIdCountersSpec extends AnyFlatSpec with Matchers {
     }).append(Seq(film("a", 1))).isLeft shouldBe true
   }
 
-  "MongoFilmIdCounterStore.onlyAlreadyMapped" should "read duplicate-key refusals as already mapped, but not a write-concern failure" in {
-    import com.mongodb.{MongoBulkWriteException, ServerAddress}
-    import com.mongodb.bulk.{BulkWriteError, BulkWriteResult, WriteConcernError}
-    import org.bson.BsonDocument
-    import java.util.Collections
-    def bulk(errors: java.util.List[BulkWriteError], concern: WriteConcernError) =
-      new MongoBulkWriteException(BulkWriteResult.unacknowledged(), errors, concern, new ServerAddress(), Collections.emptySet[String]())
-    val duplicate = new BulkWriteError(11000, "E11000 duplicate key", new BsonDocument(), 0)
-    MongoFilmIdCounterStore.onlyAlreadyMapped(bulk(java.util.List.of(duplicate), null)) shouldBe true
-    MongoFilmIdCounterStore.onlyAlreadyMapped(bulk(java.util.List.of(new BulkWriteError(121, "validation", new BsonDocument(), 0)), null)) shouldBe false
-    MongoFilmIdCounterStore.onlyAlreadyMapped(
-      bulk(Collections.emptyList(), new WriteConcernError(64, "WriteConcernFailed", "waiting for replication timed out", new BsonDocument()))) shouldBe false
-  }
-
   "MongoFilmIdCounterStore.decode" should "skip an undecodable entry, keeping the others and the counter it holds" in {
     import org.bson.{BsonDocument, BsonInt64, BsonString}
     def doc(id: org.bson.BsonValue, counter: org.bson.BsonValue) = new BsonDocument("_id", id).append("counter", counter)

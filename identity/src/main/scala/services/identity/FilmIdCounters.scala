@@ -1,12 +1,10 @@
 package services.identity
 
-import scala.concurrent.Await
 import scala.concurrent.duration.*
-import scala.jdk.CollectionConverters.*
 
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.model.{IndexOptions, Indexes, InsertManyOptions}
-import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.MongoDatabase
+import org.mongodb.scala.model.{IndexOptions, Indexes}
 import play.api.Logging
 
 /** One film's entry in the FilmId map: today's opaque string id (legacy `title|year` or `f…`) and
@@ -96,59 +94,56 @@ trait FilmIdCounterStore {
   def insert(entries: Seq[FilmIdCounter]): Int
 }
 
-/** The map as [[MongoFilmIdCounterStore]] would hold it: each entry written as its document to BSON and read back. */
-final class InMemoryFilmIdCounterStore extends FilmIdCounterStore {
-  private val stored = scala.collection.mutable.LinkedHashMap.empty[String, Long]
-  def allChecked(): tools.ReadOutcome[Seq[FilmIdCounter]] =
-    synchronized(tools.ReadOutcome.Answered(stored.iterator.map { case (f, c) => FilmIdCounter(f, c) }.toSeq))
-  def insert(entries: Seq[FilmIdCounter]): Int = synchronized {
-    entries.count { e =>
-      val free = !stored.contains(e.filmId) && !stored.valuesIterator.contains(e.counter)
-      if (free) MongoFilmIdCounterStore.decode(Seq(tools.BsonRoundTrip(MongoFilmIdCounterStore.encode(e)))).foreach(s => stored.update(s.filmId, s.counter))
-      free
-    }
-  }
-}
-
-/** The `identity_film_ids` collection: `{_id: filmId, counter}`, `counter` uniquely indexed. */
-final class MongoFilmIdCounterStore(database: MongoDatabase) extends FilmIdCounterStore with Logging {
-  private val coll: MongoCollection[Document] = database.getCollection[Document](MongoFilmIdCounterStore.Collection)
-
-  // Built by the first INSERT, never by a read, so a dry run against production writes nothing.
-  private lazy val counterIndex: Unit =
-    tools.MongoIndex.ensure(database, MongoFilmIdCounterStore.Collection, Indexes.ascending("counter"),
-      IndexOptions().unique(true), "identity_film_ids") match {
-      case tools.MongoIndex.Outcome.NotInPlace(reason) =>
-        throw new IllegalStateException(s"identity_film_ids has no unique counter index: $reason")
-      case _ => ()
-    }
-
-  /** Every entry, a document that does not decode skipped and logged ([[MongoFilmIdCounterStore.decode]]);
-   *  failed only when the read itself failed. */
+/** The map in a keyed store ([[tools.KeyedStore]]) of counters by film id: `{_id: filmId, counter}`, `counter` unique
+ *  (in Mongo a unique index, in memory a unique field). */
+abstract class KeyedFilmIdCounterStore(entries: tools.KeyedStore[String, Long]) extends FilmIdCounterStore with Logging {
   def allChecked(): tools.ReadOutcome[Seq[FilmIdCounter]] = {
-    val read = tools.MongoRead(60.seconds)(coll.find().batchSize(tools.MongoReplies.Default).toFuture())
-      .map(docs => MongoFilmIdCounterStore.decode(docs.map(_.toBsonDocument)))
+    val read = tools.ReadOutcome.of(entries.all().map { case (filmId, counter) => FilmIdCounter(filmId, counter) })
     read match {
       case tools.ReadOutcome.Failed(cause) => logger.warn(s"${MongoFilmIdCounterStore.Collection}: read failed: ${cause.explain}")
-      case _                 => ()
+      case _                               => ()
     }
     read
   }
 
   /** Unordered inserts: a duplicate `_id` or `counter` is refused by the store and the rest land.
    *  Any other failure throws — the seeding tool must not read it as "nothing to add". */
-  def insert(entries: Seq[FilmIdCounter]): Int =
-    if (entries.isEmpty) 0
-    else try {
-      counterIndex
-      Await.result(coll.insertMany(entries.map(e => Document(MongoFilmIdCounterStore.encode(e))),
-        InsertManyOptions().ordered(false)).toFuture(), 120.seconds).getInsertedIds.size()
-    } catch {
-      case bulk: com.mongodb.MongoBulkWriteException if MongoFilmIdCounterStore.onlyAlreadyMapped(bulk) =>
-        logger.warn(s"${MongoFilmIdCounterStore.Collection}: ${bulk.getWriteErrors.size()} entr(ies) refused as already mapped")
-        bulk.getWriteResult.getInsertedCount
-    }
+  def insert(counters: Seq[FilmIdCounter]): Int = {
+    val landed = entries.insertAll(counters.map(e => e.filmId -> e.counter))
+    if (landed < counters.size) logger.warn(s"${MongoFilmIdCounterStore.Collection}: ${counters.size - landed} entr(ies) refused as already mapped")
+    landed
+  }
 }
+
+object KeyedFilmIdCounterStore {
+  /** The unique field. */
+  val Counter = "counter"
+
+  /** A film id is its `_id` text; an `_id` that is no text is read as a film id no film has, so its counter stays reserved
+   *  ([[MongoFilmIdCounterStore.decode]]). */
+  val Keys: tools.KeyCodec[String] = new tools.KeyCodec[String] {
+    def id(filmId: String): org.bson.BsonValue = new org.bson.BsonString(filmId)
+    def key(id: org.bson.BsonValue): Option[String] =
+      Some(if (id.isString) id.asString.getValue else s"${MongoFilmIdCounterStore.UndecodedPrefix}$id")
+  }
+
+  /** The counter beside the `_id`; a document with none that decodes (below 1, or no number) is skipped and logged. */
+  val Counters: tools.DocCodec[Long] = new tools.DocCodec[Long] {
+    def encode(counter: Long): Document = Document(Counter -> counter)
+    def decode(document: Document): Option[Long] =
+      MongoFilmIdCounterStore.decode(Seq(document.toBsonDocument)).headOption.map(_.counter)
+  }
+}
+
+/** The map as [[MongoFilmIdCounterStore]] would hold it: one keyed store over memory's documents, `counter` unique. */
+final class InMemoryFilmIdCounterStore extends KeyedFilmIdCounterStore(new tools.KeyedStore(
+  tools.InMemoryStoreDocuments.uniqueBy(KeyedFilmIdCounterStore.Counter), KeyedFilmIdCounterStore.Keys, KeyedFilmIdCounterStore.Counters))
+
+/** The `identity_film_ids` collection: `{_id: filmId, counter}`, `counter` uniquely indexed. */
+final class MongoFilmIdCounterStore(database: MongoDatabase) extends KeyedFilmIdCounterStore(new tools.KeyedStore(
+  tools.MongoStoreDocuments.of(database.getCollection(MongoFilmIdCounterStore.Collection), timeout = 120.seconds,
+    beforeInsert = () => MongoFilmIdCounterStore.ensureCounterIndex(database)),
+  KeyedFilmIdCounterStore.Keys, KeyedFilmIdCounterStore.Counters))
 
 object MongoFilmIdCounterStore extends Logging {
   val Collection = "identity_film_ids"
@@ -181,11 +176,15 @@ object MongoFilmIdCounterStore extends Logging {
   /** The film id a reserved counter of an undecodable entry is kept under: no film's id starts so. */
   private[identity] val UndecodedPrefix = "\u0000undecoded:"
 
-  /** A bulk insert refused ONLY for entries already mapped (duplicate `_id`). A write-concern
-   *  failure arrives as the same exception with no write errors, and must throw, not read as
-   *  "every entry was already there". */
-  private[identity] def onlyAlreadyMapped(bulk: com.mongodb.MongoBulkWriteException): Boolean =
-    bulk.getWriteConcernError == null && bulk.getWriteErrors.asScala.forall(_.getCode == 11000)
+  /** The unique `counter` index, made by the first INSERT, never by a read, so a dry run against production writes nothing;
+   *  throws when it cannot be in place (a store without it would not refuse a counter held twice). */
+  private[identity] def ensureCounterIndex(database: MongoDatabase): Unit =
+    tools.MongoIndex.ensure(database, Collection, Indexes.ascending(KeyedFilmIdCounterStore.Counter),
+      IndexOptions().unique(true), Collection) match {
+      case tools.MongoIndex.Outcome.NotInPlace(reason) =>
+        throw new IllegalStateException(s"identity_film_ids has no unique counter index: $reason")
+      case _ => ()
+    }
 }
 
 /**
