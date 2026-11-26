@@ -57,6 +57,8 @@ trait StoreBulk[K, V] {
 trait StoreCounters[K] {
   /** `field` of `key` raised by `by`, and its new value; None, nothing raised, when it stands at `below` or more. */
   def increment(key: K, field: String, by: Long = 1, below: Option[Long] = None): Option[Long]
+  /** `field` of `key` raised to `atLeast`, never lowered, in one step: racing callers leave the higher value. */
+  def raise(key: K, field: String, atLeast: Long): Unit
   /** `field` of `key` as it stands; 0 for a counter never raised. */
   def counted(key: K, field: String): Long
 }
@@ -115,6 +117,7 @@ final class KeyedStore[K, V](documents: StoreDocuments, keys: KeyCodec[K], value
 
   def increment(key: K, field: String, by: Long = 1, below: Option[Long] = None): Option[Long] =
     documents.increment(keys.id(key), field, by, below)
+  def raise(key: K, field: String, atLeast: Long): Unit = documents.raise(keys.id(key), field, atLeast)
   def append(key: K, field: String, element: BsonValue, keep: Int): Unit = documents.append(keys.id(key), field, element, keep)
   def scanUnmarked(marker: String)(each: Seq[(K, V)] => Unit): ScanOutcome = documents.scanAbsent(marker, page => each(page.flatMap(decoded)))
   def mark(gone: Iterable[K], marker: String, edit: DocumentEdit): Int =

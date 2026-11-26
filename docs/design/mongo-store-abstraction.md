@@ -113,7 +113,7 @@ lesson). Racing callers each count; none passes the ceiling (contract-tested wit
 8. `FilmIdCounterStore` -- DONE 2026-11-27 (`StoreOnce.insertAll`, a unique field): `insert` per entry (or an unordered `insertAll` returning the count landed) and a unique
    secondary index; identity module, stamps as for 6.
 
-`OmdbBudget` is on `StoreCounters` (2026-11-27; `markSpent` is an increment to the limit, not `$max`). Last: `KeyedDocStore` itself folded in (`KeyedDocStore[T]` is a
+`OmdbBudget` is on `StoreCounters` (2026-11-27; `markSpent` is `StoreCounters.raise`, Mongo's `$max`, as before: an increment to the limit summed racing workers' shortfalls). Last: `KeyedDocStore` itself folded in (`KeyedDocStore[T]` is a
 `KeyedStore[String, T]` plus `putDetached` and `retention`): its five users move, and the two abstractions become one.
 
 ## Coupling

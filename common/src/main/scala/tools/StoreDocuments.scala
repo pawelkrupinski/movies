@@ -34,6 +34,10 @@ trait StoreDocuments {
    *  none -- or None, nothing raised, when the field already stands at `below` or more (a ceiling). In one step: two
    *  callers raising one counter at once both count. */
   def increment(id: BsonValue, field: String, by: Long, below: Option[Long]): Option[Long]
+  /** `field` of `id`'s document raised to `atLeast` unless it already stands there or higher -- never lowered; the
+   *  document made, the field set, when there is none. In one step (Mongo's `$max`): two callers raising one field at
+   *  once leave the higher of the two, never their sum. */
+  def raise(id: BsonValue, field: String, atLeast: Long): Unit
   /** `element` added to the end of the array `field` of `id`'s document -- the document made, the array begun, when there
    *  is none -- keeping only the last `keep`. In one step: two callers appending at once both land. */
   def append(id: BsonValue, field: String, element: BsonValue, keep: Int): Unit
@@ -68,6 +72,7 @@ object StoreDocuments {
     def take(id: BsonValue): Option[BsonDocument]                                          = None
     def delete(ids: Seq[BsonValue]): Int                                                   = 0
     def increment(id: BsonValue, field: String, by: Long, below: Option[Long]): Option[Long] = None
+    def raise(id: BsonValue, field: String, atLeast: Long): Unit                            = ()
     def append(id: BsonValue, field: String, element: BsonValue, keep: Int): Unit             = ()
     def scanAbsent(field: String, each: Seq[BsonDocument] => Unit): ScanOutcome               = ScanOutcome.complete
     def editAbsent(field: String, selection: IdSelection, edit: DocumentEdit): Int            = 0

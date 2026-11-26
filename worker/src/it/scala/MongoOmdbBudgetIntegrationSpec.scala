@@ -48,4 +48,44 @@ class MongoOmdbBudgetIntegrationSpec extends AnyFlatSpec with Matchers with Inte
       refused shouldBe empty
     } finally pool.shutdownNow()
   }
+
+  // The days opened before the keyed store hold their count as an Int32 (`$inc` by 1, `$max` to an Int limit); the store
+  // raises it by Int64s. Both read as the day's count: one at the limit stays spent, one below it keeps granting.
+  it should "read the Int32 counts of days opened before the keyed store" in {
+    import org.mongodb.scala.SingleObservableFuture
+    import org.mongodb.scala.bson.collection.immutable.Document
+    val collection = isolated.database.getCollection[Document](MongoOmdbBudget.Collection)
+    def opened(day: String, used: Int): Unit = {
+      scala.concurrent.Await.result(collection.insertOne(Document("_id" -> day, "used" -> org.mongodb.scala.bson.BsonInt32(used))).toFuture(),
+        tools.SpecTimeouts.Io); ()
+    }
+    val budget = new MongoOmdbBudget(isolated.database, limit = 10)
+    val spentDay = Instant.parse("2027-03-01T17:00:00Z")
+    opened(OmdbBudget.dayOf(spentDay).toString, 10)
+    budget.take(OmdbAsk.NewFilm, spentDay) shouldBe OmdbBudget.Spent(Instant.parse("2027-03-02T06:00:00Z"))
+    val openDay = Instant.parse("2027-03-03T17:00:00Z")
+    opened(OmdbBudget.dayOf(openDay).toString, 7)
+    budget.take(OmdbAsk.Routine, openDay) shouldBe OmdbBudget.Granted        // 7 of routine's 8
+    budget.take(OmdbAsk.Routine, openDay) shouldBe OmdbBudget.Spent(Instant.parse("2027-03-04T06:00:00Z"))
+    budget.markSpent(openDay)
+    budget.take(OmdbAsk.NewFilm, openDay) shouldBe OmdbBudget.Spent(Instant.parse("2027-03-04T06:00:00Z"))
+  }
+
+  it should "leave the day at the limit when every worker marks it spent at once" in {
+    import java.util.concurrent.{CyclicBarrier, Executors, TimeUnit}
+    val workers = 8
+    val pool    = Executors.newFixedThreadPool(workers)
+    val day     = Instant.parse("2027-04-01T17:00:00Z")
+    try {
+      val reader  = new MongoOmdbBudget(isolated.database, limit = 1000)
+      (1 to 3).foreach(_ => reader.take(OmdbAsk.NewFilm, day))
+      val barrier = new CyclicBarrier(workers)
+      (1 to workers).map { _ =>
+        val budget = new MongoOmdbBudget(isolated.database, limit = 1000)
+        pool.submit((() => { barrier.await(); budget.markSpent(day) }): Runnable)
+      }.foreach(_.get(tools.SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS))
+      val days = tools.KeyedStore.counters(tools.MongoStoreDocuments.of(isolated.database.getCollection(MongoOmdbBudget.Collection)))
+      days.counted(OmdbBudget.dayOf(day).toString, "used") shouldBe 1000
+    } finally pool.shutdownNow()
+  }
 }

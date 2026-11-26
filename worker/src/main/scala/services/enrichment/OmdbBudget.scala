@@ -92,7 +92,8 @@ object OmdbBudget {
 
 /** The budget over a keyed store of day counters: one document per OMDb day (`_id` its date, `used` the permits
  *  granted), taken by one atomic conditional increment each ([[tools.StoreCounters.increment]]), so every country's
- *  worker draws on the same count. */
+ *  worker draws on the same count. A count read as any BSON number: the days opened before the keyed store hold an Int32,
+ *  those since an Int64. */
 abstract class KeyedOmdbBudget(days: tools.StoreCounters[String], limit: Int) extends OmdbBudget {
   import KeyedOmdbBudget.Used
 
@@ -103,12 +104,9 @@ abstract class KeyedOmdbBudget(days: tools.StoreCounters[String], limit: Int) ex
     else OmdbBudget.Spent(OmdbBudget.retryAt(ask, usedOn(day), limit, now))     // at this ask's ceiling
   }
 
-  /** The day's count raised to the limit (never lowered): a take racing in between may leave it a permit above. */
-  def markSpent(now: Instant): Unit = {
-    val day = OmdbBudget.dayOf(now).toString
-    days.increment(day, Used, by = (limit - usedOn(day)).max(0).toLong)
-    ()
-  }
+  /** The day's count raised to the limit, never lowered, in one step (Mongo's `$max`): workers told at once that the
+   *  key is spent leave it AT the limit -- a read-then-increment summed their shortfalls past it. */
+  def markSpent(now: Instant): Unit = days.raise(OmdbBudget.dayOf(now).toString, Used, limit.toLong)
 
   private def usedOn(day: String): Int = days.counted(day, Used).toInt
 }

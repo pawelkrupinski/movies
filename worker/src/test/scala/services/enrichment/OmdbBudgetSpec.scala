@@ -69,4 +69,28 @@ class OmdbBudgetSpec extends AnyFlatSpec with Matchers {
     budget.take(OmdbAsk.NewFilm, noon) shouldBe OmdbBudget.Spent(Instant.parse("2026-10-27T05:00:00Z"))
     budget.take(OmdbAsk.NewFilm, Instant.parse("2026-10-27T05:00:00Z")) shouldBe OmdbBudget.Granted
   }
+
+  // OMDb's 401 reaches every worker holding the key at once, and each marks the day spent. A read-then-increment summed
+  // their shortfalls (8 workers at 400 left the day near 5,200); Mongo's `$max`, as before the keyed store, leaves it at
+  // the limit.
+  it should "leave the day at the limit when many workers mark it spent at once" in {
+    import java.util.concurrent.{CyclicBarrier, Executors, TimeUnit}
+    val workers = 8
+    val days    = tools.KeyedStore.counters(new tools.InMemoryStoreDocuments())
+    val pool    = Executors.newFixedThreadPool(workers)
+    try {
+      val counts = (1 to 50).map { dayOffset =>
+        val day     = noon.plus(java.time.Duration.ofDays(dayOffset.toLong))
+        val barrier = new CyclicBarrier(workers)
+        (1 to 400).foreach(_ => days.increment(OmdbBudget.dayOf(day).toString, "used"))
+        val marks   = (1 to workers).map { _ =>
+          val budget = new KeyedOmdbBudget(days, 1000) {}
+          pool.submit((() => { barrier.await(); budget.markSpent(day) }): Runnable)
+        }
+        marks.foreach(_.get(tools.SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS))
+        days.counted(OmdbBudget.dayOf(day).toString, "used")
+      }
+      counts.distinct shouldBe Seq(1000L)
+    } finally pool.shutdownNow()
+  }
 }

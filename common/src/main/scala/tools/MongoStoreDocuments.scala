@@ -111,6 +111,11 @@ final class MongoStoreDocuments(collection: MongoCollection[BsonDocument], expir
     raised.map(_.get(field).asNumber.longValue)
   }
 
+  def raise(id: BsonValue, field: String, atLeast: Long): Unit = written {
+    await(collection.updateOne(byId(id), Updates.max(field, atLeast), UpdateOptions().upsert(true)).toFuture())
+    ()
+  }
+
   def append(id: BsonValue, field: String, element: BsonValue, keep: Int): Unit = written {
     await(collection.updateOne(byId(id), Updates.pushEach(field, PushOptions().slice(-keep), element), UpdateOptions().upsert(true)).toFuture())
     ()

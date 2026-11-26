@@ -96,6 +96,17 @@ final class InMemoryStoreDocuments private (expiring: Option[(DocumentExpiry, ja
     raised
   }
 
+  /** As Mongo's `$max`: a field missing (or no number) is set; one at `atLeast` or more is left as it is, its type too. */
+  def raise(id: BsonValue, field: String, atLeast: Long): Unit = {
+    swept()
+    held.compute(id, (_, was) => {
+      val document = Option(was).map(read).getOrElse(new BsonDocument("_id", id))
+      if (Option(document.get(field)).filter(_.isNumber).exists(_.asNumber.longValue >= atLeast)) was
+      else tools.BsonRoundTrip.bytes(document.append(field, new BsonInt64(atLeast)))
+    })
+    ()
+  }
+
   def append(id: BsonValue, field: String, element: BsonValue, keep: Int): Unit = {
     swept()
     held.compute(id, (_, was) => {

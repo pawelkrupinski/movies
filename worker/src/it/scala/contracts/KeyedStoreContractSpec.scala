@@ -117,6 +117,32 @@ class KeyedStoreContractSpec extends AnyFlatSpec with Matchers with BeforeAndAft
       store.increment("fresh", "used", below = Some(1)) shouldBe None
     }
 
+    it should "raise a field to a floor, never lowering it, making the document when there is none" in {
+      val docs  = documents(None)
+      val store = new KeyedStore(docs, KeyCodec.Text, codec)
+      store.put("day", "note")
+      store.raise("day", "used", 10)
+      store.counted("day", "used") shouldBe 10
+      store.raise("day", "used", 4)
+      store.counted("day", "used") shouldBe 10
+      store.increment("day", "used") shouldBe Some(11)
+      store.raise("day", "used", 11)
+      store.counted("day", "used") shouldBe 11
+      store.get("day") shouldBe Some("note")
+      store.raise("fresh", "used", 3)
+      store.counted("fresh", "used") shouldBe 3
+      docs.replace(Seq(new org.bson.BsonDocument("_id", new org.bson.BsonString("int32")).append("used", new org.bson.BsonInt32(20))))
+      store.raise("int32", "used", 15)
+      docs.find(Seq(new org.bson.BsonString("int32"))).head.get("used") shouldBe new org.bson.BsonInt32(20)  // untouched, its type too
+    }
+
+    it should "leave the higher of many racing raises, never their sum" in {
+      val store = text()
+      Await.result(Future.sequence((1 to 20).map(n => tools.DedicatedThreads.future(store.raise("budget", "used", n.toLong))))(
+        using implicitly, tools.DedicatedThreads), SpecTimeouts.Io)
+      store.counted("budget", "used") shouldBe 20
+    }
+
     it should "count every one of many racing increments, and none past the ceiling" in {
       val store = text()
       val raised = Await.result(Future.sequence((1 to 20).map(_ => tools.DedicatedThreads.future(store.increment("budget", "used", below = Some(15)))))(
