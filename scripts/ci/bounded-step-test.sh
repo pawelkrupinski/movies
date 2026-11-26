@@ -97,7 +97,7 @@ bash --noprofile --norc -eo pipefail "$next" > /dev/null 2>&1
 check "a bounded step ends what the previous one left before it runs" "gone" "$(alive "$(cat "$work/child")")"
 
 # 5. A step that ignores TERM does not hold the wrapper for ever: it is killed after the grace.
-stubborn=$(step "trap '' TERM; echo \$\$ > '$work/stubborn'; while :; do sleep 1; done")
+stubborn=$(step "trap '' TERM; echo \$\$ > '$work/stubborn'; while :; do sleep 100; done")
 BOUNDED_STEP_GRACE=2 bash --noprofile --norc -eo pipefail "$stubborn" > /dev/null 2>&1 &
 wrapper=$!
 wait_until "the stubborn step recorded its pid" '[ -s "$work/stubborn" ]'
