@@ -3,6 +3,7 @@
 well; stdin closed when asked; 127 for a command not found and 126 for one not executable, said on stderr."""
 from __future__ import annotations
 
+import contextlib
 import io
 import os
 import signal
@@ -70,6 +71,13 @@ class SubprocessRunnerTest(unittest.TestCase):
     def test_cwd(self) -> None:
         done = self.runner.capture(tool_process.Command(["pwd"], dict(os.environ), cwd=self.dir.name))
         self.assertEqual(os.path.realpath(self.dir.name), os.path.realpath(done.stdout.strip()))
+
+    def test_capture_loudly_answers_like_capture_and_passes_stderr_on(self) -> None:
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            done = tool_process.capture_loudly(self.runner, tool_process.Command([*SH, "echo out; echo warn >&2; exit 3"],
+                                                                                 dict(os.environ)))
+        self.assertEqual((3, "out\n", "warn\n", "warn\n"), (done.code, done.stdout, done.stderr, err.getvalue()))
 
     def test_input_is_what_stdin_reads(self) -> None:
         done = self.runner.capture(tool_process.Command([*SH, "tr a-z A-Z"], dict(os.environ), input="one\ntwo\n"))

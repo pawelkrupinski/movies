@@ -27,7 +27,7 @@ import os
 import shutil
 import sys
 from dataclasses import dataclass, field
-from typing import List, Mapping, Optional, Tuple
+from typing import List, Mapping, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import identity_ref_trees  # noqa: E402
@@ -83,16 +83,6 @@ def with_vault_key(argv: List[str], env: Mapping[str, str]) -> Optional[int]:
                dict(env))
 
 
-def options(argv: List[str]) -> Tuple[Optional[int], Optional[Options]]:
-    try:
-        o = tool_cli.read_options(Options(), argv, usage(), Options.word)
-    except tool_cli.UsageError as error:
-        return tool_cli.usage_failed(TOOL, error), None
-    except tool_cli.Refused as refusal:
-        return tool_cli.refused(refusal, usage()), None
-    return (0, None) if o is None else (None, o)
-
-
 def cards(o: Options, env: Mapping[str, str]) -> int:
     refs = identity_ref_trees.RefTrees(env, tool_process.SubprocessRunner(), TOOL)
     if not o.offline and not env.get("TMDB_API_KEY"):
@@ -115,7 +105,7 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
     vault = with_vault_key(argv, env)
     if vault is not None:
         return vault
-    code, o = options(argv)
+    code, o = tool_cli.parse_call(TOOL, usage(), lambda: tool_cli.read_options(Options(), argv, usage(), Options.word))
     return cards(o, env) if o is not None else code or 0
 
 

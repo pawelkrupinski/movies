@@ -63,9 +63,7 @@ class Check:
         self.runner, self.env, self.movies, self.check = runner, dict(env), movies, check
 
     def git(self, *args: str) -> tool_process.Captured:
-        done = self.runner.capture(tool_process.Command(["git", *args], self.env))
-        sys.stderr.write(done.stderr)
-        return done
+        return tool_process.capture_loudly(self.runner, tool_process.Command(["git", *args], self.env))
 
     def worktree_at_main(self) -> None:
         if self.git("-C", self.movies, "fetch", "--quiet", "origin", "main").code != 0:

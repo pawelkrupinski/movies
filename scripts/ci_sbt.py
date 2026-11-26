@@ -178,9 +178,8 @@ class CiSbt:
 
     def dispatch(self, commit: str) -> str:
         dispatcher = self.env.get("KINOWO_IDENTITY_CI_RUN") or os.path.join(HERE, "identity-ci-run")
-        done = self.runner.capture(tool_process.Command(
+        done = tool_process.capture_loudly(self.runner, tool_process.Command(
             [dispatcher, "--head", commit, "--no-wait", "--countries", "pl", "--command", self.o.command], self.env))
-        sys.stderr.write(done.stderr)
         if done.code != 0:
             raise NoVerdict(f"could not dispatch `{self.o.command}` at {commit[:9]} (identity-ci-run)")
         lines = done.stdout.splitlines()
@@ -243,12 +242,9 @@ class CiSbt:
 
 
 def main() -> int:
-    try:
-        o = options(sys.argv[1:])
-    except tool_cli.UsageError as e:
-        return tool_cli.usage_failed(TOOL, e)
+    code, o = tool_cli.parse_call(TOOL, "", lambda: options(sys.argv[1:]))
     if o is None:
-        return 0
+        return code or 0
     try:
         return CiSbt(o, dict(os.environ), tool_process.SubprocessRunner()).main()
     except NoVerdict as e:

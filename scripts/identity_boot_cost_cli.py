@@ -144,11 +144,8 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
     runner = tool_process.SubprocessRunner()
     if not own_checkout(runner, env):
         return 2
-    try:
-        o = parsed(argv)
-    except tool_cli.UsageError as e:
-        return tool_cli.usage_failed(TOOL, e)
-    return 0 if o is None else checked(o, env, runner)
+    code, o = tool_cli.parse_call(TOOL, "", lambda: parsed(argv))
+    return checked(o, env, runner) if o is not None else code or 0
 
 
 if __name__ == "__main__":

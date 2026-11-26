@@ -83,12 +83,9 @@ def organize(o: Options, tree: scalafix_tree.ScalafixTree) -> int:
 
 
 def main() -> int:
-    try:
-        o = options(sys.argv[1:])
-    except tool_cli.UsageError as e:
-        return tool_cli.usage_failed(TOOL, e)
+    code, o = tool_cli.parse_call(TOOL, "", lambda: options(sys.argv[1:]))
     if o is None:
-        return 0
+        return code or 0
     try:
         tree = scalafix_tree.ScalafixTree.opened(TOOL, tool_process.SubprocessRunner(), os.environ)
         try:

@@ -120,10 +120,7 @@ class Context:
 
     def capture(self, argv: Sequence[str], cwd: Optional[str] = None) -> tool_process.Captured:
         """`$(command)`: its stdout, its stderr passed on."""
-        done = self.runner.capture(tool_process.Command(argv, self.env, cwd=cwd))
-        sys.stderr.write(done.stderr)
-        sys.stderr.flush()
-        return done
+        return tool_process.capture_loudly(self.runner, tool_process.Command(argv, self.env, cwd=cwd))
 
     def git(self, *args: str) -> tool_process.Captured:
         return self.capture(["git", "-C", self.repo, *args])

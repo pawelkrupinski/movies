@@ -226,11 +226,10 @@ class Check:
 
     def explore(self) -> int:
         target = self.path(f"explore-{self.cc}.tsv")
-        done = self.keys.runner.capture(tool_process.Command(
+        done = tool_process.capture_loudly(self.keys.runner, tool_process.Command(
             ["python3", os.path.join(self.root, "scripts/ci/drift_explorer.py"), "new-flips", "--backlog",
              f"{self.fixtures}/identity-flip-backlog.tsv", "--date", datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
              "--ref", self.env.get("DRIFT_EXPLORE_REF", ""), self.path(f"flips-{self.cc}.tsv")], self.env))
-        sys.stderr.write(done.stderr)
         with open(target, "w") as f:
             f.write(done.stdout)
         if done.code != 0:

@@ -31,13 +31,12 @@ QUERY = 'source:ci kind:suite workflow_file:="precommit-check.yml" job:~"^check 
 def read_rows(path):
     """{class: seconds} of a weights file (comments and the header skipped)."""
     rows = {}
-    if os.path.exists(path):
-        with open(path, encoding="utf-8") as fh:
-            for raw in fh:
-                raw = raw.split("#", 1)[0].strip()
-                if raw:
-                    name, seconds = raw.split()
-                    rows[name] = float(seconds)
+    with open(path, encoding="utf-8") as fh:
+        for raw in fh:
+            raw = raw.split("#", 1)[0].strip()
+            if raw:
+                name, seconds = raw.split()
+                rows[name] = float(seconds)
     return rows
 
 
@@ -110,7 +109,7 @@ def main(argv):
     if not measured:
         print("shard_weights: no suite measured in the window: the file is left as it is", file=sys.stderr)
         return 1
-    sys.stdout.write(render(merge(measured, read_rows(a.current), class_exists(os.path.dirname(os.path.dirname(HERE)))),
+    sys.stdout.write(render(merge(measured, read_rows(a.current) if os.path.exists(a.current) else {}, class_exists(os.path.dirname(os.path.dirname(HERE)))),
                             a.days, a.min_runs))
     return 0
 

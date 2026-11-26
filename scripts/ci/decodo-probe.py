@@ -16,23 +16,12 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import script_module  # noqa: E402
+sys.path.insert(0, os.path.join(HERE, "..", "lib"))
+from proxy_properties import read_pool as proxy_pool  # noqa: E402
 
 headers = script_module.load(os.path.join(HERE, "check-security-headers.py"))
-PROPERTIES = os.path.join(HERE, "..", "..", "worker", "src", "main", "resources", "residential-proxy.properties")
 URL = "https://kinowo.net/"
 TIMEOUT = 20
-
-
-def proxy_pool(path=PROPERTIES):
-    """(host, [ports]) from the committed residential-proxy.properties."""
-    props = {}
-    with open(path) as handle:
-        for line in handle:
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, value = line.split("=", 1)
-                props[key.strip()] = value.strip()
-    return props["host"], [p.strip() for p in props["ports"].split(",") if p.strip()]
 
 
 def probe(host, port, user, password, url=URL, timeout=TIMEOUT):

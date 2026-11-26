@@ -71,9 +71,7 @@ class Restorer:
 
     def capture(self, argv: List[str], cwd: Optional[str] = None) -> tool_process.Captured:
         """`$(cmd)`: its stdout captured, trailing newlines dropped; its stderr passed on."""
-        done = self.runner.capture(tool_process.Command(argv, self.env, cwd=cwd))
-        sys.stderr.write(done.stderr)
-        sys.stderr.flush()
+        done = tool_process.capture_loudly(self.runner, tool_process.Command(argv, self.env, cwd=cwd))
         return tool_process.Captured(done.code, done.stdout.rstrip("\n"), done.stderr)
 
     def script(self, relative: str) -> str:

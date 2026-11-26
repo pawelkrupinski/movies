@@ -211,14 +211,9 @@ def die_with(lines: List[str], why: str) -> None:
 
 
 def main(argv: List[str]) -> int:
-    try:
-        o = options(argv)
-    except tool_cli.UsageError as e:
-        return tool_cli.usage_failed(TOOL, e)
-    except tool_cli.Refused as refusal:
-        return tool_cli.refused(refusal, usage())
+    code, o = tool_cli.parse_call(TOOL, usage(), lambda: options(argv))
     if o is None:
-        return 0
+        return code or 0
     os.chdir(ROOT)
     return Refit(o, dict(os.environ), tool_process.SubprocessRunner()).main()
 

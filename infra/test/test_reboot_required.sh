@@ -27,19 +27,8 @@ set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 script="$here/../nix/files/reboot-required.sh"
 
-pass=0
-fail=0
-
-check() {
-  local name="$1" expected="$2" actual="$3"
-  if [[ "$expected" == "$actual" ]]; then
-    printf '  ok   %s\n' "$name"
-    pass=$((pass + 1))
-  else
-    printf '  FAIL %s -- expected %s, got %s\n' "$name" "$expected" "$actual"
-    fail=$((fail + 1))
-  fi
-}
+# shellcheck source=SCRIPTDIR/case-check.sh
+. "$here/case-check.sh"
 
 root="$(mktemp -d)"
 trap 'rm -rf "$root"' EXIT

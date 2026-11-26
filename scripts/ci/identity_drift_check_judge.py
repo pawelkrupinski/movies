@@ -121,8 +121,7 @@ class Judge:
                 self.path(f"flips-{self.cc}.tsv"), *side, "--base-said", said,
                 "--allow", f"{fixtures}/identity-flips-allow.tsv", "--backlog", f"{fixtures}/identity-flip-backlog.tsv",
                 "--new-out", self.path(f"new-{seed}.tsv")]
-        done = self.runner.capture(tool_process.Command(argv, self.env))
-        sys.stderr.write(done.stderr)
+        done = tool_process.capture_loudly(self.runner, tool_process.Command(argv, self.env))
         with open(log, "w") as out:
             out.write(done.stdout)
         return done.code

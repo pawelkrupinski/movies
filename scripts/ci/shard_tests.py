@@ -23,6 +23,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import shard_weights  # noqa: E402
+
 LINE = re.compile(r"^(?P<cmd>(?:\w+/)?(?:Test/)?testOnly)\s+(?P<classes>.*?)(?P<args>\s+--(?:\s.*)?)?$")
 CLASS = re.compile(r"^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$")
 
@@ -47,13 +50,7 @@ def read_weights(path):
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"shard-weights-{path}.tsv")
         if not os.path.exists(path):
             return weights
-    with open(path, encoding="utf-8") as fh:
-        for raw in fh:
-            raw = raw.split("#", 1)[0].strip()
-            if raw:
-                name, seconds = raw.split()
-                weights[name] = float(seconds)
-    return weights
+    return shard_weights.read_rows(path)
 
 
 def assign(lines, n, weights, default_weight, whole_weight):

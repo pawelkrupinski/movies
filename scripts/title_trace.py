@@ -191,17 +191,6 @@ def parsed(argv: List[str]) -> Optional[Tuple[Options, List[str]]]:
     return None if o is None else (o, o.trace_args())
 
 
-def refused(argv: List[str]) -> Tuple[Optional[int], Optional[Tuple[Options, List[str]]]]:
-    """(the exit, None) for a call that ends here -- the usage asked for or refused -- else (None, the parsed call)."""
-    try:
-        call = parsed(argv)
-    except tool_cli.UsageError as error:
-        return tool_cli.usage_failed(TOOL, error), None
-    except tool_cli.Refused as refusal:
-        return tool_cli.refused(refusal, usage()), None
-    return (0, None) if call is None else (None, call)
-
-
 def main(argv: List[str], env: Mapping[str, str]) -> int:
     if not argv:
         sys.stderr.write(usage())
@@ -212,7 +201,7 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
             print(f"{TOOL}: --compiles REF", file=sys.stderr)
             return 1
         return tracer.compiles(argv[1])
-    code, call = refused(argv)
+    code, call = tool_cli.parse_call(TOOL, usage(), lambda: parsed(argv))
     if call is None:
         return code or 0
     o, args = call

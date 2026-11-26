@@ -159,14 +159,9 @@ def parsed(argv: List[str]) -> Optional[Tuple[List[str], List[str]]]:
 
 
 def main(argv: List[str], env: Mapping[str, str]) -> int:
-    try:
-        call = parsed(argv)
-    except tool_cli.Refused as e:
-        return tool_cli.refused(e, usage())
-    except tool_cli.UsageError as e:
-        return tool_cli.usage_failed(TOOL, e)
+    code, call = tool_cli.parse_call(TOOL, usage(), lambda: parsed(argv))
     if call is None:
-        return 0
+        return code or 0
     recording, cases = call
     scratch = tempfile.mkdtemp(prefix=f"{TOOL}.", dir=env.get("TMPDIR") or None)
     try:

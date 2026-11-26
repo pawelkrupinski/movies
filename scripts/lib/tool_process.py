@@ -72,6 +72,14 @@ class Runner(Protocol):
     def capture(self, command: Command) -> Captured: ...
 
 
+def capture_loudly(runner: Runner, command: Command) -> Captured:
+    """`capture`, the command's stderr passed on to this process's once it is said (`$(cmd)`, stderr not silenced)."""
+    done = runner.capture(command)
+    sys.stderr.write(done.stderr)
+    sys.stderr.flush()
+    return done
+
+
 
 class SubprocessRunner:
     """The real runner: each command a child process of this one."""

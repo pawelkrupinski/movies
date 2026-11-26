@@ -215,12 +215,9 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
     if len(argv) < 2:
         sys.stderr.write(usage())
         return 2
-    try:
-        o = options(argv)
-    except tool_cli.UsageError as error:
-        return tool_cli.usage_failed(TOOL, error)
-    except tool_cli.Refused as refusal:
-        return tool_cli.refused(refusal, usage())
+    code, o = tool_cli.parse_call(TOOL, usage(), lambda: options(argv))
+    if o is None:
+        return code or 0
     work = tempfile.mkdtemp(prefix="venue-replay.", dir=env.get("TMPDIR") or "/tmp")
     try:
         return Replay(o, env, tool_process.SubprocessRunner(), work).replay()

@@ -13,7 +13,6 @@ and its machine-wide lock) until that library moves too. Its stdout is the answe
 from __future__ import annotations
 
 import os
-import sys
 from typing import Mapping, Optional, Sequence
 
 import tool_process
@@ -29,10 +28,7 @@ def shell_command(env: Mapping[str, str], library: str, function: str, args: Seq
 
 def shell_function(runner: tool_process.Runner, env: Mapping[str, str], library: str, function: str,
                    args: Sequence[str], then: str = "", prelude: str = "") -> tool_process.Captured:
-    done = runner.capture(shell_command(env, library, function, args, then, prelude))
-    sys.stderr.write(done.stderr)
-    sys.stderr.flush()
-    return done
+    return tool_process.capture_loudly(runner, shell_command(env, library, function, args, then, prelude))
 
 
 def download_run(runner: tool_process.Runner, env: Mapping[str, str], timeout: float, run: str, pattern: str,

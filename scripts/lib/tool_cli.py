@@ -16,7 +16,7 @@ from __future__ import annotations
 import signal
 import sys
 from types import FrameType
-from typing import Callable, List, Optional, TypeVar
+from typing import Callable, List, Optional, Tuple, TypeVar
 
 EX_USAGE = 64
 T = TypeVar("T")
@@ -44,6 +44,18 @@ def run_main(tool: Callable[[], int]) -> int:
 def usage_failed(tool: str, error: UsageError) -> int:
     print(f"{tool}: {error}\n{tool}: see {tool} --help", file=sys.stderr)
     return 2
+
+
+def parse_call(tool: str, usage: str, parse: Callable[[], Optional[T]]) -> Tuple[Optional[int], Optional[T]]:
+    """(the exit, None) for a command line that ends here -- usage asked for (`parse` gives None), refused or wrong --
+    else (None, what `parse` read)."""
+    try:
+        parsed = parse()
+    except UsageError as error:
+        return usage_failed(tool, error), None
+    except Refused as refusal:
+        return refused(refusal, usage), None
+    return (0, None) if parsed is None else (None, parsed)
 
 
 def read_options(o: T, argv: List[str], usage: str, word: Callable[[T, List[str], int], int]) -> Optional[T]:

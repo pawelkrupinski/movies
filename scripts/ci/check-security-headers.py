@@ -60,12 +60,13 @@ import sys
 import urllib.error
 import urllib.request
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+from proxy_properties import read_pool as proxy_pool  # noqa: E402
+
 HOSTS = ("kinowo.net", "showtimes.cc")
 ONE_YEAR = 365 * 24 * 3600
 FOREIGN_ORIGIN = "https://security-check.invalid"
 SESSION_COOKIE = "PLAY_SESSION"
-PROXY_PROPERTIES = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, os.pardir,
-                                "worker", "src", "main", "resources", "residential-proxy.properties")
 PROXY_UNAVAILABLE = "proxy unavailable (Decodo"
 EDGE_CHECK_HEADER = "X-Kinowo-Edge-Check"
 
@@ -159,18 +160,6 @@ def redact(text):
             for form in {secret, urllib.request.quote(secret, safe="")}:
                 text = text.replace(form, "***")
     return text
-
-
-def proxy_pool(path=PROXY_PROPERTIES):
-    """(host, [port, ...]) from the worker's residential-proxy.properties."""
-    properties = {}
-    with open(path) as source:
-        for line in source:
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, value = line.split("=", 1)
-                properties[key.strip()] = value.strip()
-    return properties["host"], [port.strip() for port in properties["ports"].split(",") if port.strip()]
 
 
 class ProxyPoolUnavailable(Exception):

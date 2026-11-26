@@ -22,18 +22,8 @@ flake="$(fleet_flake "$here/..")"
 errors="$(mktemp)"
 trap 'rm -f "$errors"' EXIT
 
-pass=0
-fail=0
-check() {
-  local name="$1" expected="$2" actual="$3"
-  if [[ "$expected" == "$actual" ]]; then
-    printf '  ok   %s\n' "$name"
-    pass=$((pass + 1))
-  else
-    printf '  FAIL %s -- expected %s, got %s\n' "$name" "$expected" "$actual"
-    fail=$((fail + 1))
-  fi
-}
+# shellcheck source=SCRIPTDIR/case-check.sh
+. "$here/case-check.sh"
 
 # One evaluation per host: the stated nameservers and, for every wired networkd network (the
 # wireless default NixOS also declares matches no interface a Hetzner server has), whether it still
