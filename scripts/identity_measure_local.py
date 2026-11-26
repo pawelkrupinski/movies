@@ -153,29 +153,28 @@ class Resolver:
 
     def lock(self, path: str) -> None:
         """`until jvm_lock <path>; do …; done`: this process holds its kernel lock, its pid written in."""
-        said = False
         bound = float(self.m.env.get("KINOWO_MEASURE_LOCAL_LOCK_WAIT") or str(4 * 3600))  # seconds; a hung holder
         deadline = time.monotonic() + bound
+        name = os.path.basename(path)[:-len(".flock")]
+        waited = False
         while True:
             f = open(path, "a")
             try:
                 fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
             except OSError:
                 f.close()
-                if time.monotonic() >= deadline:
-                    raise Failed(f"{os.path.basename(path)[:-len('.flock')]} is still being resolved by pid {read(path)} "
-                                 f"after {bound:g}s (KINOWO_MEASURE_LOCAL_LOCK_WAIT): stop that run, or it is hung")
-                if not said:
-                    say(f"{TOOL}: {os.path.basename(path)[:-len('.flock')]} is being resolved by pid "
-                        f"{read(path)}: waiting for it")
-                    said = True
-                time.sleep(float(self.m.env.get("KINOWO_MEASURE_LOCAL_POLL") or "5"))
-                continue
-            f.truncate(0)
-            f.write(f"{os.getpid()}\n")
-            f.flush()
-            self.held, self.held_path = f, path
-            return
+            if time.monotonic() >= deadline:
+                raise Failed(f"{name} is still being resolved by pid {read(path)} after {bound:g}s "
+                             "(KINOWO_MEASURE_LOCAL_LOCK_WAIT): stop that run, or it is hung")
+            if not waited:
+                say(f"{TOOL}: {name} is being resolved by pid {read(path)}: waiting for it")
+                waited = True
+            time.sleep(float(self.m.env.get("KINOWO_MEASURE_LOCAL_POLL") or "5"))
+        f.truncate(0)
+        f.write(f"{os.getpid()}\n")
+        f.flush()
+        self.held, self.held_path = f, path
 
     def unlock(self) -> None:
         if self.held is not None:

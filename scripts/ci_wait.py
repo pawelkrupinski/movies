@@ -378,7 +378,7 @@ def parse(argv: list) -> argparse.Namespace:
     return args
 
 
-def targets_of(args) -> list:
+def targets_of(args) -> list[Target]:
     common = dict(follow=not args.no_follow, or_later=args.or_later, until_green=args.until_green)
     targets = [Target(run_id=r, **common) for r in args.run]
     sha = resolve_sha(args.sha) if args.sha else ""

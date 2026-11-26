@@ -263,10 +263,9 @@ def run_command(argv, timeout=900):
     return done.returncode, done.stdout + (done.stderr if done.returncode else "")
 
 
-def _remote_curl(url, params):
+def _remote_curl(url: str, params: list[tuple[str, object]]) -> list[str]:
     args = " ".join(f"--data-urlencode {shlex.quote(f'{k}={v}')}" for k, v in params)
-    return ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", MONITORING_HOST,
-            f"curl -sS --max-time 60 {shlex.quote(url)} {args}"]
+    return ["ssh", "-oBatchMode=yes", "-oConnectTimeout=15", MONITORING_HOST, f"curl -sS --max-time 60 {shlex.quote(url)} {args}"]
 
 
 def parse_args(argv):

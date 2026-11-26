@@ -33,6 +33,8 @@ import signal
 import subprocess
 import sys
 import threading
+from types import FrameType
+from typing import Dict, List, Optional, Set
 
 AGENT_NAME = re.compile(r"^(agent|red\d+|fixer\d*)-", re.IGNORECASE)
 
@@ -41,12 +43,12 @@ def xcrun(*args):
     return subprocess.run([os.environ.get("XCRUN", "xcrun"), *args], capture_output=True, text=True, timeout=60)
 
 
-def booted():
+def booted() -> Dict[str, str]:
     """{udid: name} of the booted Simulators."""
     result = xcrun("simctl", "list", "devices", "-j")
     if result.returncode != 0:
         return {}
-    found = {}
+    found: Dict[str, str] = {}
     for devices in json.loads(result.stdout or "{}").get("devices", {}).values():
         for device in devices:
             if device.get("state") == "Booted":
@@ -87,7 +89,7 @@ def age_and_users(udid, lines):
     return age, used
 
 
-def shutdown(udid, why):
+def shutdown(udid: str, why: str) -> None:
     print(f"ios-simulators: shutting down {udid} ({why})", flush=True)
     xcrun("simctl", "shutdown", udid)
     try:
@@ -96,10 +98,10 @@ def shutdown(udid, why):
         pass
 
 
-def descendants(root):
+def descendants(root: int) -> Set[int]:
     """The pids under `root` (itself included), from the process table's pid and ppid."""
     command = os.environ.get("IOS_SIM_TREE_COMMAND", "ps -axo pid=,ppid=")
-    children = {}
+    children: Dict[int, List[int]] = {}
     for line in subprocess.run(command, shell=True, capture_output=True, text=True).stdout.splitlines():
         fields = line.split()
         if len(fields) == 2:
@@ -113,7 +115,7 @@ def descendants(root):
     return tree
 
 
-def used_outside(udid, tree):
+def used_outside(udid: str, tree: Set[int]) -> bool:
     """Whether a test process outside `tree` names the Simulator: someone else's run owns it."""
     for line in processes():
         pid, _etime, args = (line.split(None, 2) + ["", ""])[:3]
@@ -122,32 +124,37 @@ def used_outside(udid, tree):
     return False
 
 
-def claim(udid):
+def claim(udid: str) -> None:
     os.makedirs(ledger_dir(), exist_ok=True)
     with open(os.path.join(ledger_dir(), udid), "w") as entry:
         entry.write(f"{os.getpid()}\n")
 
 
-def watch_boots(before, child_pid, claimed, stop):
-    """While the command runs, claim each Simulator that boots and no one else's test process names."""
+def claim_fresh(before: Set[str], child_pid: int, claimed: Set[str]) -> None:
+    """Claim each Simulator booted since `before` that no one else's test process names."""
+    fresh = [udid for udid in booted() if udid not in before and udid not in claimed]
+    tree = descendants(child_pid) if fresh else set()
+    for udid in fresh:
+        if not used_outside(udid, tree):
+            claimed.add(udid)
+            claim(udid)
+
+
+def watch_boots(before: Set[str], child_pid: int, claimed: Set[str], stop: threading.Event) -> None:
+    """While the command runs, claim the Simulators it boots (the ledger: a killed run's are still swept)."""
     while not stop.wait(float(os.environ.get("IOS_SIM_POLL_SECONDS", "1"))):
-        fresh = [udid for udid in booted() if udid not in before and udid not in claimed]
-        if fresh:
-            tree = descendants(child_pid)
-            for udid in fresh:
-                if not used_outside(udid, tree):
-                    claimed.add(udid)
-                    claim(udid)
+        claim_fresh(before, child_pid, claimed)
 
 
-def run(command):
+def run(command: List[str]) -> int:
     before = set(booted())
     child = subprocess.Popen(command)
-    claimed, stop = set(), threading.Event()
+    claimed: Set[str] = set()
+    stop = threading.Event()
     watcher = threading.Thread(target=watch_boots, args=(before, child.pid, claimed, stop), daemon=True)
     watcher.start()
 
-    def forward(signum, _frame):
+    def forward(signum: int, _frame: Optional[FrameType]) -> None:
         child.send_signal(signum)
 
     signal.signal(signal.SIGTERM, forward)

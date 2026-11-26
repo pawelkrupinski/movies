@@ -101,7 +101,7 @@ class ParseTest(unittest.TestCase):
 
     def test_the_remote_curl_cannot_hang_or_hide_its_failure(self):
         argv = history._remote_curl("http://x:9428/q?a b", [("query", "x y")])
-        self.assertEqual(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15"], argv[:5])
+        self.assertEqual(["ssh", "-oBatchMode=yes", "-oConnectTimeout=15"], argv[:3])
         remote = argv[-1]
         self.assertIn("curl -sS --max-time 60 'http://x:9428/q?a b'", remote)
 
