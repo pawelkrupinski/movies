@@ -393,7 +393,12 @@ def main(argv=None, gh=None, git=None, clock=None) -> int:
     except SystemExit as e:
         return 2 if e.code else 0
     github = GitHub(gh or gh_runner(float(os.environ.get("CI_WAIT_GH_TIMEOUT", "60"))), args.repo, git)
-    return wait(targets_of(args), github, clock or Clock(), args.timeout, args.interval,
+    try:
+        targets = targets_of(args)
+    except SystemExit as e:  # a --sha that is no commit: no verdict (2), never "a run failed" (1)
+        print(e.code, file=sys.stderr)
+        return 2
+    return wait(targets, github, clock or Clock(), args.timeout, args.interval,
                 int(os.environ.get("CI_WAIT_MAX_MISSES", "10")), parent_alive())
 
 

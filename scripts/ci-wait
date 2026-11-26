@@ -32,7 +32,8 @@
 # Output: one line per state change on stderr; at the end one line per target on stdout,
 #   <run id> <sha> <conclusion> <workflow> [<note>]       (tab-separated; conclusion "timeout"/"pending"/"unreadable"
 #                                                          and run id "-" when it has none)
-# Exit: 0 every target green; 1 any failed (or another conclusion: timed_out, startup_failure...); 2 timeout, or
+# Exit: 0 every target green; 1 any failed (or another conclusion: timed_out, startup_failure...); 2 timeout, a usage
+# error (a --sha that is no commit too: no verdict, never 1), or
 # CI_WAIT_MAX_MISSES (10) unreadable reads in a row -- a null/partial answer from gh is asked again, never a verdict;
 # 3 cancelled (not superseded, or --no-follow). Each gh call is bounded by CI_WAIT_GH_TIMEOUT (60 s).
 # Run it in the background (run_in_background) and act on its notification; never sleep-poll a run by hand.

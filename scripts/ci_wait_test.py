@@ -147,6 +147,10 @@ class RunTest(unittest.TestCase):
 
 
 class ShaTest(unittest.TestCase):
+    def test_a_sha_that_is_no_commit_is_exit_2_not_a_failed_run(self):
+        status, _, _ = wait(["--workflow", "main.yml", "--sha", "no-such-ref-" + "x" * 8], Gh())
+        self.assertEqual(2, status)
+
     def test_a_run_for_the_commit_is_waited_for_to_appear_then_to_complete(self):
         gh = Gh(lists={"main.yml": [[], [run(8, sha=B)], [run(9, sha=A, status="queued"), run(8, sha=B)],
                                     [run(9, sha=A), run(8, sha=B)]]})
