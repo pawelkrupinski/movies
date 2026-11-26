@@ -44,12 +44,15 @@ def said(text: str, error: bool = False) -> None:
     print(f"[local-mongo] {text}", file=sys.stderr if error else sys.stdout, flush=True)
 
 
-def output(argv: Sequence[str], quiet: bool = True) -> Optional[str]:
-    """The command's stdout (its stderr dropped unless not quiet); None when it failed or is missing."""
+PING_TRY_SECONDS = 5.0  # one mongosh ping's own bound: against a down port it would wait its 30 s selection timeout
+
+
+def output(argv: Sequence[str], quiet: bool = True, timeout: Optional[float] = None) -> Optional[str]:
+    """The command's stdout (its stderr dropped unless not quiet); None when it failed, timed out or is missing."""
     try:
         done = subprocess.run(list(argv), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL if quiet else None,
-                              text=True)
-    except OSError:
+                              text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired):
         return None
     return done.stdout if done.returncode == 0 else None
 
@@ -93,14 +96,17 @@ class LocalMongo:
         self.port = port
         self.uri = mongo_local.local_mongo_uri({"LOCAL_MIRROR_PORT": port})
 
-    def evaluates(self, script: str) -> str:
-        return last_line(output(["mongosh", self.uri, "--quiet", "--eval", script]))
+    def evaluates(self, script: str, timeout: Optional[float] = None) -> str:
+        return last_line(output(["mongosh", self.uri, "--quiet", "--eval", script], timeout=timeout))
 
-    def answers_ping(self, tries: int) -> bool:
-        for _ in range(tries):
-            if self.evaluates("db.runCommand({ping:1}).ok") == "1":
+    def answers_ping(self, seconds: float) -> bool:
+        """Whether mongod answers a ping within `seconds`: every try is bounded too, so a hanging mongosh cannot stretch
+        the deadline."""
+        deadline = time.monotonic() + seconds
+        while (remaining := deadline - time.monotonic()) > 0:
+            if self.evaluates("db.runCommand({ping:1}).ok", min(PING_TRY_SECONDS, remaining)) == "1":
                 return True
-            time.sleep(1)
+            time.sleep(min(1.0, max(0.0, deadline - time.monotonic())))
         return False
 
     def mongod_bin(self, formula: str) -> str:

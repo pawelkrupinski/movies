@@ -86,8 +86,8 @@ class ResetCorpusTest(cli_harness.ToolCase):
     def test_a_reset_scales_both_down_wipes_and_scales_both_back_up(self) -> None:
         done = self.reset("pl", None, "--yes")
         self.assertEqual(0, done.code, done.output)
-        self.assertEqual(["web-pl --replicas=0", "worker-pl --replicas=0", "worker-pl --replicas=1",
-                          "web-pl --replicas=1"], self.scaled())
+        self.assertEqual(["web-pl --replicas=0", "worker-pl --replicas=0", "web-pl --replicas=1",
+                          "worker-pl --replicas=1"], self.scaled())
 
     def test_prod_unreachable_is_refused_before_anything_is_scaled(self) -> None:
         done = self.reset("pl", None, "--yes", SSH_FAILS="1")
@@ -97,8 +97,16 @@ class ResetCorpusTest(cli_harness.ToolCase):
     def test_a_wipe_that_fails_half_way_still_scales_both_back_up(self) -> None:
         done = self.reset("pl", None, "--yes", DROP_FAILS="1")
         self.assertEqual(1, done.code, done.output)
-        self.assertEqual(["web-pl --replicas=0", "worker-pl --replicas=0", "worker-pl --replicas=1",
-                          "web-pl --replicas=1"], self.scaled())
+        self.assertEqual(["web-pl --replicas=0", "worker-pl --replicas=0", "web-pl --replicas=1",
+                          "worker-pl --replicas=1"], self.scaled())
+
+    def test_a_worker_that_will_not_scale_up_never_leaves_web_at_zero(self) -> None:
+        self.fakes.script("kubectl", 'case "$*" in *worker-pl*--replicas=1) exit 1;; esac')
+        done = self.reset("pl", None, "--yes")
+        self.assertEqual(1, done.code, done.output)
+        self.assertEqual(["web-pl --replicas=0", "worker-pl --replicas=0", "web-pl --replicas=1",
+                          "worker-pl --replicas=1", "web-pl --replicas=1", "worker-pl --replicas=1"], self.scaled())
+        self.assertIn("could not scale back up: worker-pl", done.stderr)
 
     def test_an_unknown_argument_is_refused(self) -> None:
         done = self.reset("pl", None, "--bogus")

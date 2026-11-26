@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 import unittest
+import unittest.mock
 from typing import List
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
@@ -127,6 +129,22 @@ replication:
         self.assertEqual(1, len(initiate))
         self.assertEqual(["mongodb://127.0.0.1:28999/?directConnection=true", "--quiet", "--eval"], initiate[0][:3])
         self.assertIn('rs.initiate({_id:"rs0", members:[{_id:0, host:"127.0.0.1:28999"}]});', initiate[0][3])
+
+
+class PingDeadlineTest(cli_harness.ToolCase):
+    """The Python tool's own bound: a mongosh that hangs (as one does against a down port) must not stretch a ping
+    deadline past its seconds."""
+    TOOL = TOOL
+
+    def test_a_hanging_mongosh_cannot_stretch_the_ping_deadline(self) -> None:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import start_local_mongo
+        self.fakes.script("mongosh", "sleep 60")
+        with unittest.mock.patch.dict(os.environ, {"PATH": self.fakes.bin + os.pathsep + os.environ["PATH"]}):
+            began = time.monotonic()
+            answered = start_local_mongo.LocalMongo(self.path("prefix"), "28999").answers_ping(2)
+        self.assertFalse(answered)
+        self.assertLess(time.monotonic() - began, 6)
 
 
 if __name__ == "__main__":

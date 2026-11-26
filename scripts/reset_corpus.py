@@ -138,11 +138,27 @@ class Reset:
         if code != 0:
             raise Fatal("", code)
 
+    def scale_back_up(self) -> None:
+        """Web FIRST (serving matters most), then the worker; every deployment is attempted even when one fails, and
+        `scaled_down` stays True until all are up so the failure path retries them. Fatal naming what stayed down."""
+        failed = []
+        for tier in ("web", "worker"):
+            try:
+                self.scale(f"{tier}-{self.country}", 1)
+            except Fatal as e:
+                say_err(str(e))
+                failed.append(f"{tier}-{self.country}")
+        if failed:
+            raise Fatal(f"could not scale back up: {' '.join(failed)}")
+        self.scaled_down = False
+
     def scale_back_up_after_a_failure(self) -> None:
         if self.scaled_down:
-            say_err(f"the reset did not finish -- scaling worker-{self.country} and web-{self.country} back up")
-            for tier in ("worker", "web"):
-                self.kubectl("scale", f"deploy/{tier}-{self.country}", "--replicas=1")
+            say_err(f"the reset did not finish -- scaling web-{self.country} and worker-{self.country} back up")
+            try:
+                self.scale_back_up()
+            except Fatal as e:
+                say_err(f"{e} -- scale them up by hand")
 
     def run(self) -> int:
         dry = self.options.dry
@@ -176,9 +192,7 @@ class Reset:
             self.scale(f"worker-{self.country}", 0)
         self.wipe()
         if not self.options.dry:
-            self.scaled_down = False
-            self.scale(f"worker-{self.country}", 1)
-            self.scale(f"web-{self.country}", 1)
+            self.scale_back_up()
 
 
 def tunnel_form(uri: str, env: Mapping[str, str]) -> str:
