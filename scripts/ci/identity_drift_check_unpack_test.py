@@ -10,8 +10,8 @@ import tarfile
 import tempfile
 import unittest
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path[:0] = [HERE, os.path.join(HERE, "..", "lib")]
 import identity_drift_check  # noqa: E402
 
 

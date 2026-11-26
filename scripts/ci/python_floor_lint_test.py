@@ -8,7 +8,8 @@ import sys
 import tempfile
 import unittest
 
-sys.path[:0] = [os.path.dirname(os.path.abspath(__file__)), os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib")]
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path[:0] = [HERE, os.path.join(HERE, "..", "lib")]
 import python_floor_lint as lint  # noqa: E402
 import tool_git  # noqa: E402
 

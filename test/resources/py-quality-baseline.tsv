@@ -433,7 +433,7 @@ method-lines	scripts/ci_wait.py:poll	81
 method-lines	scripts/claude-hooks/masked-exit-guard:masked_runner	95
 method-lines	scripts/claude-hooks/unbounded-poll-guard:Reader.check	105
 method-lines	scripts/deploy_watch.py:main	79
-method-lines	scripts/identity_rule_ablation.py:main	84
+method-lines	scripts/identity_rule_ablation.py:main	82
 method-lines	scripts/identity_stamp_carry.py:auto	56
 method-lines	scripts/label-lookup:lookup	114
 method-lines	scripts/listing_history.py:replay	69
@@ -446,9 +446,9 @@ file-lines	infra/bin/deploy	718
 file-lines	infra/bin/nix-update	560
 file-lines	infra/nix/files/nixos-auto-apply.py	1343
 file-lines	infra/nix/files/scheduled_dispatch.py	582
-file-lines	scripts/ci/commit_rules.py	595
+file-lines	scripts/ci/commit_rules.py	590
 file-lines	scripts/ci/runner_scheduler.py	1245
-file-lines	scripts/identity_what_if.py	530
+file-lines	scripts/identity_what_if.py	521
 file-lines	scripts/listing_history.py	527
 file-lines	scripts/recording_diff.py	550
 copies	infra/bin/backtest-alerts	2
@@ -471,7 +471,7 @@ pyright	infra/nix/files/scheduled_dispatch.py	494
 pyright	scripts/adopt_ci_budgets.py	19
 pyright	scripts/agent_time.py	194
 pyright	scripts/aot-class-list.py	41
-pyright	scripts/ci/check-security-headers.py	266
+pyright	scripts/ci/check-security-headers.py	255
 pyright	scripts/ci/ci_http_calls.py	94
 pyright	scripts/ci/commit_rules.py	75
 pyright	scripts/ci/convergence_paths.py	66
@@ -479,9 +479,9 @@ pyright	scripts/ci/convergence_slots.py	50
 pyright	scripts/ci/corpus_shape_diff.py	86
 pyright	scripts/ci/countries_disagree.py	158
 pyright	scripts/ci/cross_country.py	122
-pyright	scripts/ci/decodo-probe.py	31
-pyright	scripts/ci/drift_diff.py	77
-pyright	scripts/ci/drift_explorer.py	70
+pyright	scripts/ci/decodo-probe.py	17
+pyright	scripts/ci/drift_diff.py	64
+pyright	scripts/ci/drift_explorer.py	36
 pyright	scripts/ci/drift_scenario.py	50
 pyright	scripts/ci/drift_seeds.py	70
 pyright	scripts/ci/family_flips_report.py	109
@@ -489,7 +489,7 @@ pyright	scripts/ci/family_reach.py	55
 pyright	scripts/ci/family_shards.py	35
 pyright	scripts/ci/fix_replay_exemptions.py	3
 pyright	scripts/ci/gating_checks.py	112
-pyright	scripts/ci/harness_aa.py	73
+pyright	scripts/ci/harness_aa.py	60
 pyright	scripts/ci/hotspots.py	40
 pyright	scripts/ci/identity_findings_report.py	291
 pyright	scripts/ci/identity_impact.py	307
@@ -505,8 +505,8 @@ pyright	scripts/ci/landing_check_for_tree.py	17
 pyright	scripts/ci/lint_per_file_check.py	214
 pyright	scripts/ci/lint_reads_trace.py	301
 pyright	scripts/ci/lint_registry_reads.py	164
-pyright	scripts/ci/population_walk_diff.py	346
-pyright	scripts/ci/python_floor_lint.py	104
+pyright	scripts/ci/population_walk_diff.py	340
+pyright	scripts/ci/python_floor_lint.py	98
 pyright	scripts/ci/quality_ratchet.py	24
 pyright	scripts/ci/ratchet_diff.py	56
 pyright	scripts/ci/recording_health.py	173
@@ -515,7 +515,7 @@ pyright	scripts/ci/runner_cache.py	117
 pyright	scripts/ci/runner_scheduler.py	737
 pyright	scripts/ci/script_module.py	12
 pyright	scripts/ci/shard_tests.py	69
-pyright	scripts/ci/shard_weights.py	74
+pyright	scripts/ci/shard_weights.py	73
 pyright	scripts/ci/trailers.py	16
 pyright	scripts/ci/upstream_run.py	57
 pyright	scripts/ci/workflow_steps.py	25
@@ -526,7 +526,7 @@ pyright	scripts/ci_wait.py	258
 pyright	scripts/claude-hooks/foreground-wait-guard	40
 pyright	scripts/claude-hooks/gh-run-guard	9
 pyright	scripts/claude-hooks/masked-exit-guard	35
-pyright	scripts/claude-hooks/owner-decisions	82
+pyright	scripts/claude-hooks/owner-decisions	81
 pyright	scripts/claude-hooks/root-checkout-guard	108
 pyright	scripts/claude-hooks/unbounded-poll-guard	143
 pyright	scripts/convergence-findings.py	12
@@ -540,7 +540,7 @@ pyright	scripts/identity_precision_sample.py	307
 pyright	scripts/identity_rule_ablation.py	478
 pyright	scripts/identity_slice_diff.py	56
 pyright	scripts/identity_stamp_carry.py	19
-pyright	scripts/identity_what_if.py	483
+pyright	scripts/identity_what_if.py	475
 pyright	scripts/ios-simulators	32
 pyright	scripts/label-lookup	312
 pyright	scripts/linux-tree-sync.py	108
@@ -551,7 +551,7 @@ pyright	scripts/ops/dumpheap.py	27
 pyright	scripts/poster_hash.py	95
 pyright	scripts/recording_diff.py	775
 pyright	scripts/rule_firing_prod.py	110
-pyright	scripts/touched_methods.py	214
+pyright	scripts/touched_methods.py	201
 pyright	scripts/unmatched_census.py	245
 pyright	scripts/venue_replay_diff.py	31
 pyright	scripts/zinc_orphans.py	11
