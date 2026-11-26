@@ -19,7 +19,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 
 # ---- the fake pulls API: GET lists the PRs it holds, POST opens #7, PATCH logs; every call appended to calls.log
 cat >"${tmp}/api.py" <<'PY'
-import json, sys
+import json, sys, urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 log, prs = sys.argv[1], []
 class H(BaseHTTPRequestHandler):
@@ -35,7 +35,12 @@ class H(BaseHTTPRequestHandler):
             f.write(json.dumps({"method": self.command, "path": self.path, "auth": self.headers.get("Authorization"),
                                 "body": body}) + "\n")
     def do_GET(self):
-        self.note(None); self.reply(prs)
+        # Like the forge: `head=<owner>:<branch>` filters; an unfiltered list is its first page of 50 other PRs.
+        self.note(None); q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        if "head" in q:
+            self.reply([p for p in prs if q["head"] == ["acme:" + p["head"]["ref"]]])
+        else:
+            self.reply([{"number": 100 + i, "head": {"ref": "other-%d" % i}} for i in range(50)])
     def do_POST(self):
         b = self.body(); self.note(b); prs.append({"number": 7, "head": {"ref": b["head"]}}); self.reply({"number": 7})
     def do_PATCH(self):

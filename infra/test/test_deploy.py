@@ -435,6 +435,7 @@ class ApplyEndToEnd(unittest.TestCase):
     def setUp(self):
         self.running, self.failed = self.OLD, ""
         self.ssh_argvs, self.unreachable, self.switched = [], 0, False
+        self.post_switch_unreachable = 0
         self.switch_status, self.journal = 0, ["starting the following units: nix-daemon.service, sshd.service",
                                                "the following new units were started: sshd.service"]
 
@@ -461,6 +462,9 @@ class ApplyEndToEnd(unittest.TestCase):
         args = shlex.split(argv[-1])[3:]
         if self.unreachable:
             self.unreachable -= 1
+            return "", 255
+        if script == deploy.PROBE and not args[0] and self.switched and self.post_switch_unreachable:
+            self.post_switch_unreachable -= 1  # sshd still coming back when the verification probe asks
             return "", 255
         if script == deploy.PROBE:
             return self.probe(args[0] if args else ""), 0
@@ -532,6 +536,13 @@ class ApplyEndToEnd(unittest.TestCase):
         self.assertEqual(rc, 0, out)
         self.assertIn(f"verified: monitoring-1 runs {self.CAND} at {self.REV}", out)
         self.assertIn("the following new units were started: sshd.service", out)
+
+    def test_a_host_still_restarting_sshd_when_the_verification_probe_asks_is_retried(self):
+        self.post_switch_unreachable = 3
+        rc, out = self.apply()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("not answering the post-switch probe", out)
+        self.assertIn(f"verified: monitoring-1 runs {self.CAND}", out)
 
     def test_a_switch_that_genuinely_fails_says_so_with_its_journal(self):
         self.switch_status = 4

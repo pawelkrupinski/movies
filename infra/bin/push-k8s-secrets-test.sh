@@ -24,9 +24,30 @@ case "$1" in
   *)      exit 2 ;;
 esac
 STUB
-# The stub server: every Secret is empty, so every key the vault holds would change.
-printf '#!/usr/bin/env bash\nexit 0\n' > "$stub/ssh"
-chmod +x "$stub/secrets" "$stub/ssh"
+# The stub server: every Secret is empty, so every key the vault holds would change. STUB_SSH_FAIL_GET makes the
+# read of the current Secret fail; a patch's stdin is kept in $STUB_VAULT/patch.
+cat > "$stub/ssh" <<'STUB'
+#!/usr/bin/env bash
+case "$*" in
+  *"get secret"*) exec bash -c "${@: -1}" ;;   # run the remote pipeline here, against the stub kubectl
+  *"patch secret"*) cat > "$STUB_VAULT/patch" ;;
+esac
+exit 0
+STUB
+# The stub kubectl: an empty Secret, or a failure.
+cat > "$stub/kubectl" <<'STUB'
+#!/usr/bin/env bash
+[ -z "${STUB_SSH_FAIL_GET:-}" ] || exit 1
+echo '{"data":{}}'
+STUB
+# A jq that records every argument it is started with, to prove no secret is among them.
+real_jq=$(command -v jq)
+cat > "$stub/jq" <<STUB
+#!/usr/bin/env bash
+printf '%s\n' "\$@" >> "\$STUB_VAULT/jq-argv"
+exec $real_jq "\$@"
+STUB
+chmod +x "$stub/secrets" "$stub/ssh" "$stub/jq" "$stub/kubectl"
 
 printf 'kinowo-tmdb' > "$vault/movies/TMDB_API_KEY"
 printf 'filmowo-tmdb' > "$vault/filmowo/TMDB_API_KEY"
@@ -51,5 +72,20 @@ check "a key missing from its namespace is skipped, named with that namespace" \
   "  filmowo/filmowo-secrets TRAKT_KEY: vault key filmowo:TRAKT_KEY not set yet -- skipped" "$(grep TRAKT_KEY <<<"$out")"
 check "a plain key is never looked up in another namespace" \
   "  kinowo/worker-secrets RAPIDAPI_KEY: vault key movies:RAPIDAPI_KEY not set yet -- skipped" "$(grep 'worker-secrets RAPIDAPI' <<<"$out")"
+
+# A real push: the patch reaches the server on stdin with each value base64'd, and no value is in any jq argv.
+rm -f "$vault/gets" "$vault/jq-argv" "$vault/patch"
+PATH="$stub:$PATH" STUB_VAULT="$vault" K8S_SECRETS_MAP="$work/secrets.map" \
+  bash "$REPO_ROOT/infra/bin/push-k8s-secrets" kinowo/worker-secrets >/dev/null 2>&1
+check "the patch carries the base64 value, one data entry per changed key" \
+  '{"data":{"TMDB_API_KEY":"a2lub3dvLXRtZGI="}}' "$(jq -c . "$vault/patch" 2>/dev/null)"
+check "no secret value appears in any jq argument" "0" "$(grep -c 'kinowo-tmdb' "$vault/jq-argv")"
+
+# An unreadable Secret is an error, not "every key changed".
+rm -f "$vault/patch"
+PATH="$stub:$PATH" STUB_VAULT="$vault" STUB_SSH_FAIL_GET=1 K8S_SECRETS_MAP="$work/secrets.map" \
+  bash "$REPO_ROOT/infra/bin/push-k8s-secrets" kinowo/worker-secrets >/dev/null 2>&1; code=$?
+check "a failed read of the current Secret aborts without patching" "1 absent" \
+  "$code $([ -e "$vault/patch" ] && echo patched || echo absent)"
 
 spec_summary

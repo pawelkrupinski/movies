@@ -15,9 +15,10 @@ trap '[ -n "$server" ] && kill "$server" 2>/dev/null; rm -rf "$work"' EXIT
 
 # The fake registry: $work/state.json is {repo: {tag: digest}}; a manifest DELETE drops every tag on that digest.
 cat > "$work/registry.py" <<'PY'
-import json, sys
+import json, os, sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 state_file, port_file = sys.argv[1], sys.argv[2]
+fail_once = state_file + ".fail-once"
 def load():
     with open(state_file) as f: return json.load(f)
 def save(state):
@@ -41,6 +42,8 @@ class Registry(BaseHTTPRequestHandler):
             return self.answer(200, json.dumps({"name": repo, "tags": sorted(state.get(repo, {}))}).encode())
         if "/manifests/" in path:
             repo, ref = self.manifest(); tags = state.get(repo, {})
+            if self.command == "HEAD" and os.path.exists(fail_once) and open(fail_once).read().strip() == ref:
+                os.remove(fail_once); return self.answer(500)  # one transient registry error on this tag
             digest = tags.get(ref) or (ref if ref in tags.values() else None)
             return self.answer(200, b"{}", [("Docker-Content-Digest", digest)]) if digest else self.answer(404)
         self.answer(404)
@@ -52,7 +55,7 @@ class Registry(BaseHTTPRequestHandler):
         self.answer(202)
 server = HTTPServer(("127.0.0.1", 0), Registry)
 with open(port_file + ".tmp", "w") as f: f.write(str(server.server_address[1]))
-import os; os.rename(port_file + ".tmp", port_file)
+os.rename(port_file + ".tmp", port_file)
 server.serve_forever()
 PY
 
@@ -93,5 +96,19 @@ check "...an older one is deleted" "deleted" "$(has main-20261105040000-1111111)
 check "latest, and an old sha tag on a kept image's digest, are kept" "kept kept" "$(has latest) $(has "$sha_c")"
 check "a repository with no main-* tag is left alone" "some-tag" "$(tags scratch)"
 check "...and said so" "1" "$(grep -c 'scratch: no main-\* tags, left alone' <<<"$out")"
+
+# A transient error reading a keeper's digest must not turn into a delete of that keeper: the repository is skipped
+# whole (fail closed) and the run says it failed, while other repositories are still pruned.
+cat > "$work/state.json" <<JSON
+{"flaky": {"main-20261105040000-1111111": "sha256:oldf", "main-20261107030000-3333333": "sha256:newf",
+           "latest": "sha256:newf"},
+ "other": {"main-20261105040000-1111111": "sha256:oldo", "main-20261107030000-3333333": "sha256:newo"}}
+JSON
+printf 'main-20261107030000-3333333' > "$work/state.json.fail-once"
+out=$(bash "$REPO_ROOT/infra/nix/files/registry-prune.sh" "$api" 1 "$storage" 1440 2>&1); code=$?
+check "a failed keeper digest deletes nothing from that repository" \
+  "latest main-20261105040000-1111111 main-20261107030000-3333333" "$(tags flaky)"
+check "...and the run exits non-zero, naming the repository" "1 1" "$code $(grep -c 'flaky: .*skipped' <<<"$out")"
+check "...while another repository is still pruned" "main-20261107030000-3333333" "$(tags other)"
 
 spec_summary

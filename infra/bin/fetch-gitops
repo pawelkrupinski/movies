@@ -46,9 +46,14 @@ git_() { # <source> <git args...>
 fetch() { # <repo>
     if [ -d "$dest/.git" ]; then
         echo "updating $dest from $1"
-        git -C "$dest" remote set-url origin "$1"
+        git -C "$dest" remote set-url origin "$1" || return 1
         git_ "$1" -C "$dest" fetch --quiet origin main && git -C "$dest" reset --quiet --hard origin/main
     else
+        # never wipe a directory this tool did not make: a mis-set KINOWO_GITOPS_DEST must not cost its contents
+        if [ -e "$dest" ] && [ -n "$(ls -A "$dest" 2>/dev/null)" ]; then
+            echo "fetch-gitops: refusing to replace $dest: it is not empty and not a clone (KINOWO_GITOPS_DEST mis-set?)" >&2
+            exit 1
+        fi
         echo "cloning $1 -> $dest"
         rm -rf "$dest"
         git_ "$1" clone --quiet --depth 1 --single-branch --branch main "${1/#\//file:///}" "$dest"

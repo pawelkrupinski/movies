@@ -35,6 +35,7 @@ digest() {
     tr -d '\r' | grep -i '^docker-content-digest:' | cut -d' ' -f2
 }
 
+failed=0
 for repo in $(curl -fsS "$api/_catalog?n=1000" | jq -r '.repositories[]?'); do
   tags=$(curl -fsS "$api/$repo/tags/list" | jq -r '.tags[]?')
   newest=$(grep -E '^main-[0-9]{14}-[0-9a-f]{7}$' <<<"$tags" | sort -r | head -n "$keep" || true)
@@ -43,7 +44,15 @@ for repo in $(curl -fsS "$api/_catalog?n=1000" | jq -r '.repositories[]?'); do
     continue
   fi
   handoffs=$(for t in $tags; do if fresh "$repo" "$t"; then echo "$t"; fi; done)
-  keepers=$(for t in $newest $(grep -x latest <<<"$tags" || true) $handoffs; do digest "$repo" "$t"; done | sort -u)
+  # FAIL CLOSED: a keeper whose digest cannot be read (a transient registry error) would be missing from the keepers
+  # and then deleted by the loop below, so one failure skips the whole repository.
+  keepers=$(
+    for t in $newest $(grep -x latest <<<"$tags" || true) $handoffs; do
+      d=$(digest "$repo" "$t") && [ -n "$d" ] || exit 1
+      echo "$d"
+    done | sort -u
+    exit "${PIPESTATUS[0]}"
+  ) || { echo "$repo: could not read every keeper's digest, skipped (nothing deleted)" >&2; failed=1; continue; }
   deleted=0
   for t in $tags; do
     d=$(digest "$repo" "$t") || continue
@@ -53,3 +62,4 @@ for repo in $(curl -fsS "$api/_catalog?n=1000" | jq -r '.repositories[]?'); do
   done
   echo "$repo: kept $(wc -l <<<"$keepers") image(s), deleted $deleted"
 done
+exit "$failed"

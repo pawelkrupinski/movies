@@ -102,7 +102,7 @@ echo "pushed ${branch} ($(git rev-parse --short HEAD))"
 
 title="$(head -n1 "${out}/title")"
 body_json="$(jq -n --arg title "${title}" --rawfile body "${out}/body.md" '{title: $title, body: $body}')"
-number="$(auth_curl -fsS "${api}/pulls?state=open&per_page=50" |
+number="$(auth_curl -fsS "${api}/pulls?state=open&head=${repo%%/*}:${branch}" |
   jq -r --arg b "${branch}" 'map(select(.head.ref == $b)) | first | .number // empty')"
 if [ -n "${number}" ]; then
   auth_curl -fsS -o /dev/null -X PATCH -H 'Content-Type: application/json' \

@@ -90,12 +90,17 @@ def install_ssh_config(block, path=None):
     marked = re.compile(re.escape(SSH_CONFIG_BEGIN) + r".*?" + re.escape(SSH_CONFIG_END) + r"\n?",
                          re.DOTALL)
     if marked.search(existing):
-        updated = marked.sub(block.rstrip("\n"), existing)
+        updated = marked.sub(lambda _match: block, existing)  # `block` ends in the newline the match took
     else:
         sep = "\n" if existing and not existing.endswith("\n") else ""
         updated = existing + sep + block
-    with open(path, "w") as f:
+    # temp + rename, so a crash never leaves a half-written ~/.ssh/config
+    mode = os.stat(path).st_mode & 0o777 if os.path.exists(path) else 0o600
+    temp = f"{path}.fleet-ssh.{os.getpid()}"
+    fd = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
+    with os.fdopen(fd, "w") as f:
         f.write(updated)
+    os.replace(temp, path)
     return path
 
 

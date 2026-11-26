@@ -35,6 +35,10 @@ check "...on a fresh checkout too" "0 local" "$(gitops KINOWO_GITOPS_REPO="$work
 check "...and no local clone: it fails, naming it" "1 1" \
   "$(gitops KINOWO_GITOPS_REPO="$work/gone" KINOWO_GITOPS_OFFLINE=1 KINOWO_GITOPS_LOCAL="$work/none") $(grep -c 'no local clone' "$work/out")"
 
+rm -rf "$work/dest"; mkdir "$work/dest"; echo precious > "$work/dest/keep.txt"
+check "a destination that is no clone and not empty is refused, untouched" "1 precious" \
+  "$(gitops KINOWO_GITOPS_REPO="$remote") $(cat "$work/dest/keep.txt")"
+
 rm -rf "$work/dest"
 check "no override, on the laptop: GitHub, not the local clone" "0 remote2 0" \
   "$(GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="url.$remote.insteadOf" GIT_CONFIG_VALUE_0=https://github.com/pawelkrupinski/movies-gitops.git \
