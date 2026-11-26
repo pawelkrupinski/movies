@@ -1,6 +1,6 @@
 package tools
 
-import services.identityadapters.{MongoRetainedListingStore, RetainedListingStore}
+import services.identitymodel.{MongoRetainedListingStore, RetainedListingStore}
 import org.bson.BsonDocument
 
 import services.identity.ListingBson

@@ -59,7 +59,7 @@ rank	7	services.corpus	the worker's film-row orchestration over the tasks and th
 rank	7	services.enrichment	the ratings and ids, run as tasks
 rank	7	services.sharecards	the share cards, rendered as tasks
 rank	7	services.venuepages	the venue pages a detail fetch keeps, fetched as tasks
-rank	8	services.identityadapters	the identity model's worker adapters: its stores, asks, projection and fill over everything below
+rank	8	services.identitymodel	the identity model's host: its service, input gate, snapshots and the listings it holds and retains
 rank	8	services.identityprojection	the identity model's projection onto the films: drafting, scoping, drift, writes and the takes' reports, with the counts it reports
 rank	8	services.identityvenuepages	the venue pages the identity model reads: their index, details, enrichment and wait
 rank	8	services.lookupfill	the TMDB lookups and the fill of the gaps the model found: identity reads over the stores, the normalizer, the sweeps, venue details and the model's lookups

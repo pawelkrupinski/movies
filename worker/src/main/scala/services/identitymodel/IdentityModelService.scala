@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identitymodel
 
 import services.tmdb.{IdentityHistory, ListingHistoryEntries}
 import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUnit}

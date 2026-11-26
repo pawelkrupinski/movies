@@ -203,12 +203,12 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}staging/IdentityStaging.scala#held" -> Store("InMemoryStagingDocuments' rows"),
     s"${I}measures/ListingFilmMeasures.scala#Slots"    -> Content("a constant table, never written"),
     s"${I}ProjectionScope.scala#seen"       -> Pass("one close's worklist of what it reached, dropped when the close returns"),
-    s"worker/src/main/scala/services/identityadapters/IdentityModelService.scala#venues"       -> Store("the latest scrape per venue, until drained"),
-    s"worker/src/main/scala/services/identityadapters/IdentityModelService.scala#observations" -> Pass("an event queue, drained by the model's thread"),
-    s"worker/src/main/scala/services/identityadapters/ListingRetainer.scala#departed"          -> Store("every listing that left, its last-seen facts and departure under its own key (an input, identity_retained in memory): replaced whole when it leaves again, removed when billed again"),
-    s"worker/src/main/scala/services/identityadapters/ListingRetainer.scala#retained"          -> Store("the departed listings the model holds as kept (ListingRetention.retainedAt, recomputed whole each drain): membership only, the listing itself the engine's, by its key"),
-    s"worker/src/main/scala/services/identityadapters/ModelInputGate.scala#pending"            -> Store("the listings the input gate holds (an input, identity_pending in memory): each its newest version itself, its ready version and what it waits on under its own key; whether it is ready is read afresh from the answers on every drain"),
-    s"worker/src/main/scala/services/identityadapters/ModelInputGate.scala#unwritten"          -> Store("the keys whose last identity_pending write failed: membership only, each written again from `pending` (or released) by the next write, cleared once one lands"),
+    s"worker/src/main/scala/services/identitymodel/IdentityModelService.scala#venues"       -> Store("the latest scrape per venue, until drained"),
+    s"worker/src/main/scala/services/identitymodel/IdentityModelService.scala#observations" -> Pass("an event queue, drained by the model's thread"),
+    s"worker/src/main/scala/services/identitymodel/ListingRetainer.scala#departed"          -> Store("every listing that left, its last-seen facts and departure under its own key (an input, identity_retained in memory): replaced whole when it leaves again, removed when billed again"),
+    s"worker/src/main/scala/services/identitymodel/ListingRetainer.scala#retained"          -> Store("the departed listings the model holds as kept (ListingRetention.retainedAt, recomputed whole each drain): membership only, the listing itself the engine's, by its key"),
+    s"worker/src/main/scala/services/identitymodel/ModelInputGate.scala#pending"            -> Store("the listings the input gate holds (an input, identity_pending in memory): each its newest version itself, its ready version and what it waits on under its own key; whether it is ready is read afresh from the answers on every drain"),
+    s"worker/src/main/scala/services/identitymodel/ModelInputGate.scala#unwritten"          -> Store("the keys whose last identity_pending write failed: membership only, each written again from `pending` (or released) by the next write, cleared once one lands"),
     s"worker/src/main/scala/services/lookupfill/StoredTmdbLookups.scala#held"   -> Content("by the store document's id, a TMDB id or a question; released around every prefetch"),
     s"worker/src/main/scala/services/lookupfill/StoredTmdbLookups.scala#films"  -> Content("by TMDB id, released with held"),
     s"worker/src/main/scala/services/lookupfill/StoredTmdbLookups.scala#hits"   -> Content("by TMDB id, released with held"),
@@ -239,7 +239,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"worker/src/main/scala/services/lookupfill/LookupGaps.scala#kinds"         -> Content("a counter per gap kind"),
     s"worker/src/main/scala/services/tmdb/IdentityHistoryReplay.scala#written" -> Store("a replay's own writes, by document id: it decides nothing, the replay is built per moment"),
     s"worker/src/main/scala/services/tmdb/FailureHistory.scala#failedAt"     -> Content("by redacted URL and failure: when each was last kept, to keep one a minute; decides no take"),
-    s"worker/src/main/scala/services/identityadapters/IdentityModelGauges.scala#holding" -> Content("by country and hold (gate, stage): the held gauges' last count and oldest wait; decides no take")
+    s"worker/src/main/scala/services/identitymodel/IdentityModelGauges.scala#holding" -> Content("by country and hold (gate, stage): the held gauges' last count and oldest wait; decides no take")
   )
 
   private lazy val fields: Seq[Field] = ScalaSourceScan.scalaFiles(Roots).flatMap(StatefulFieldScan.fieldsIn)

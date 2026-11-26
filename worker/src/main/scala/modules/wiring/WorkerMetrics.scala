@@ -7,7 +7,7 @@ import services.alerts.TelegramNotificationMetrics
 import services.corpus.CorpusCensus
 import services.agreementasks.IdentityAgreementMetrics
 import services.lookupfill.IdentityLookupFillMetrics
-import services.identityadapters.IdentityModelGauges
+import services.identitymodel.IdentityModelGauges
 import services.identityprojection.IdentityProjectionGauges
 import services.identitystaging.IdentityTakeMetrics
 import services.metrics.*

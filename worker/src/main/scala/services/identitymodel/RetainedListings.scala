@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identitymodel
 
 import services.tmdb.HistoryEntry
 import scala.concurrent.duration.*

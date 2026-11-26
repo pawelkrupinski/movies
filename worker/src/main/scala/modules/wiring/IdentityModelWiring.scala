@@ -36,19 +36,19 @@ trait IdentityModelWiring { self: WorkerWiring =>
   def identityModelReadiness(pages: services.identity.PageWait): services.identity.ListingReadiness =
     WorkerWiring.modelReadiness(services.identity.ListingReadiness.ofPage(pages), identityListingReadiness)
   /** The listings the model's input gate holds, persisted (`identity_pending`): what a take-up resumes. */
-  lazy val identityPendingStore: services.identityadapters.PendingListingStore =
-    mongoConnection.database.fold[services.identityadapters.PendingListingStore](new services.identityadapters.PendingListingStore.InMemory())(
-      new services.identityadapters.MongoPendingListingStore(_))
+  lazy val identityPendingStore: services.identitymodel.PendingListingStore =
+    mongoConnection.database.fold[services.identitymodel.PendingListingStore](new services.identitymodel.PendingListingStore.InMemory())(
+      new services.identitymodel.MongoPendingListingStore(_))
   /** Every listing that left, with its facts and departure, persisted (`identity_retained`): the input ListingRetention keeps from. */
-  lazy val identityRetainedStore: services.identityadapters.RetainedListingStore =
-    mongoConnection.database.fold[services.identityadapters.RetainedListingStore](new services.identityadapters.RetainedListingStore.InMemory())(
-      services.identityadapters.MongoRetainedListingStore.indexed(_, clock))
+  lazy val identityRetainedStore: services.identitymodel.RetainedListingStore =
+    mongoConnection.database.fold[services.identitymodel.RetainedListingStore](new services.identitymodel.RetainedListingStore.InMemory())(
+      services.identitymodel.MongoRetainedListingStore.indexed(_, clock))
   /** The listings the identity history last saw the model hold: what the kept set starts from before it was ever
    *  persisted (`RetainedListingStore.fromHistory`). */
   protected def identityHeldBefore(): Seq[services.identity.measures.Listing] =
     mongoConnection.database.fold(Seq.empty[services.identity.measures.Listing]) { db =>
       val reader = new services.tmdb.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches)
-      services.identityadapters.RetainedListingStore.fromHistory(
+      services.identitymodel.RetainedListingStore.fromHistory(
         reader.since(Seq(services.tmdb.HistoryEntry.Listing), clock.millis() - services.tmdb.IdentityHistory.Kept.toMillis))
     }
   /** The take history's last film change of each listing within the reversal count's horizon, as the count holds them
@@ -103,10 +103,10 @@ trait IdentityModelWiring { self: WorkerWiring =>
       liveKeys = () => identityModel.peek(WorkerWiring.IdentityModelPeek).map(_ => identityReads.trackedKeys), clock)
   // The model is the country's identity: the intake's accepted listings, answered from the model's
   // store and asked live on a gap (`cutoverLookups`).
-  lazy val identityModel: services.identityadapters.IdentityModelService = {
+  lazy val identityModel: services.identitymodel.IdentityModelService = {
     import services.identity._
     import services.identity.measures.Listing
-    import services.identityadapters.IdentityModelService
+    import services.identitymodel.IdentityModelService
     val pinStore = new MongoPinStore(mongoConnection.database)
     var tracked  = Option.empty[TrackedLookups]
     // A new listing's unread venue page is asked for, read into venue_pages by a ReadVenuePage task; the model's input
@@ -136,9 +136,9 @@ trait IdentityModelWiring { self: WorkerWiring =>
       clock      = clock,
       history    = identityHistory,
       build      = configuration.commit.value,
-      retained   = services.identityadapters.ListingRetainer.Settings(identityRetainedStore, () => identityHeldBefore(),
+      retained   = services.identitymodel.ListingRetainer.Settings(identityRetainedStore, () => identityHeldBefore(),
         configuration.identityRetentionWindow(WorkerWiring.DefaultRetentionWindow).duration),
-      gate       = services.identityadapters.ModelInputGate.Settings(identityModelReadiness(pageWait), identityPendingStore))
+      gate       = services.identitymodel.ModelInputGate.Settings(identityModelReadiness(pageWait), identityPendingStore))
     identityTmdbStore.onChanged(model.filed)
     model
   }
@@ -152,7 +152,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
 
   /** What a drain of the identity model sets off: the projection of what moved and the fill of the gaps it found.
    *  Neither runs on a period. */
-  protected[modules] def onModelBatch(batch: services.identityadapters.ModelBatch): Unit = if (batch.moved) {
+  protected[modules] def onModelBatch(batch: services.identitymodel.ModelBatch): Unit = if (batch.moved) {
     identityProjection.asked(services.identityprojection.IdentityProjection.Trigger.Scrape)
     identityProjectionTrigger.request(); identityFillTrigger.request()
   }

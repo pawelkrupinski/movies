@@ -1,4 +1,4 @@
-package services.identityadapters
+package services.identitymodel
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry

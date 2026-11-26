@@ -4,7 +4,7 @@ package adapters
 import services.identity.measures.{Film, Listing, ResolverDecision, TakeOutcome}
 import services.identity.vocabulary.PosterQuestion
 
-import services.identityadapters.*
+import services.identitymodel.{IdentityModelMetrics, IdentityModelService, ListingRetainer, ModelBatch, ModelInputGate, PendingListingStore, RetainedListingStore}
 import services.agreementasks.AgreementReadiness
 import services.tmdb.{InMemoryTmdbDocuments, QuestionMemory, QuestionPolicies}
 import tools.SpecTimeouts

@@ -306,8 +306,8 @@ class ArchiveReplayWiring(
 
   // The model's take-up reads the recorded set as prod's reads its store (ListingRetention.retainedAt): the model's
   // input is the listings billed AND those kept, never the billed alone. No history behind a recording's set.
-  override lazy val identityRetainedStore: services.identityadapters.RetainedListingStore =
-    new services.identityadapters.RetainedListingStore.InMemory(Some(ProdRetained.departures(retainedOfReplay, recordedAt)))
+  override lazy val identityRetainedStore: services.identitymodel.RetainedListingStore =
+    new services.identitymodel.RetainedListingStore.InMemory(Some(ProdRetained.departures(retainedOfReplay, recordedAt)))
 
 
   /** When the replayed recording was made: its newest scrape (none archived: now, as a take-up dates an undated one). */

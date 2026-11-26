@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import services.identityadapters.*
+import services.identitymodel.IdentityModelService
 import services.lookupfill.StoredTmdbLookups
 import services.tmdb.{AsyncIdentityHistory, HistoryEntry, HistoryTmdbDocuments, IdentityHistory, InMemoryIdentityHistory, InMemoryTmdbDocuments, TmdbKind, TmdbStore}
 import models.{CinemaMovie, KinoMuza, Movie, Multikino, Showtime}

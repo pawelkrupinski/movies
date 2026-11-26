@@ -438,8 +438,8 @@ class RatchetTest(unittest.TestCase):
         self.assertEqual(2, self.guards("nosuch..HEAD"))
 
     # ── gauges before behaviour (identity-and-convergence review 2026-11-06, P4) ──
-    GATE_FILE = "worker/src/main/scala/services/identityadapters/IdentityModelService.scala"
-    GAUGES = "worker/src/main/scala/services/identityadapters/IdentityModelGauges.scala"
+    GATE_FILE = "worker/src/main/scala/services/identitymodel/IdentityModelService.scala"
+    GAUGES = "worker/src/main/scala/services/identitymodel/IdentityModelGauges.scala"
 
     def test_a_serving_behaviour_change_without_its_gauges_fails(self):
         head = self.commit({self.GATE_FILE: "hold\n"}, "Identity model: hold a listing until its asks are answered")
