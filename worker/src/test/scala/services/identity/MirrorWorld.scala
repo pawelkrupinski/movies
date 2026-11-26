@@ -22,7 +22,7 @@ import scala.concurrent.Await
 object MirrorWorld {
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
-  import services.identity.adapters.*, services.identityadapters.*
+  import services.identity.adapters.*, services.identityadapters.*, services.tmdb.*, services.agreementasks.*, services.identitystaging.*, services.lookupfill.*, services.identityvenuepages.*, services.identityprojection.*, services.identitymodel.*
   // Listing and the decision values, in either package a ref keeps them: services.identity before 2026-11-20 (lane P7),
   // services.identity.measures since.
   import services.identity.measures.*

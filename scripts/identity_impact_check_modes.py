@@ -21,7 +21,7 @@ SCOPED = {"services.identity.UnmatchedClustersRatchetSpec", "services.identity.N
           "scripts.IdentityRefitCaptureReplaySpec"}
 # the hook's identity paths (pre-push's is_identity_path), as git pathspecs; the worker's identity adapters:
 # services.identityadapters, services/identity/adapters before 2026-11-18 (the replay walks both)
-IDENTITY_PATHS = ["identity/", "worker/src/main/scala/services/identityadapters/", "worker/src/main/scala/services/identity/",
+IDENTITY_PATHS = ["identity/", "worker/src/main/scala/services/identityadapters/", "worker/src/main/scala/services/tmdb/", "worker/src/main/scala/services/agreementasks/", "worker/src/main/scala/services/identitystaging/", "worker/src/main/scala/services/lookupfill/", "worker/src/main/scala/services/identityvenuepages/", "worker/src/main/scala/services/identityprojection/", "worker/src/main/scala/services/identitymodel/", "worker/src/main/scala/services/identity/",
                   ":(glob)*/src/test/scala/services/identity/**",
                   "common/src/main/resources/title-rules.tsv", "common/src/main/resources/title-words.tsv",
                   "common/src/main/scala/services/titles/rules/", "common/src/main/scala/services/titles/TitleNormalizer.scala",

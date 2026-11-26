@@ -39,7 +39,7 @@ object FiledAnswers {
   import services.identity.measures.*
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
-  import services.identity.adapters.*, services.identityadapters.*
+  import services.identity.adapters.*, services.identityadapters.*, services.tmdb.*, services.agreementasks.*, services.identitystaging.*, services.lookupfill.*, services.identityvenuepages.*, services.identityprojection.*, services.identitymodel.*
 
   def of(country: models.Country): FiledAnswers = FiledAnswers(UnmatchedClusters.Capture(country, Nil, Nil, Map.empty, Map.empty, Map.empty, Set.empty,
     Map.empty, Map.empty), "")

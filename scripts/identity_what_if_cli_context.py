@@ -30,7 +30,7 @@ TOOL_FILES = (
     "worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala",
     "worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala",
     "worker/src/fixtures/scala/tools/KeptJvm.scala", "worker/src/test/scala/services/identity/MirrorWorld.scala",
-    "worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala")
+    "worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/tmdb/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/agreementasks/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identitystaging/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/lookupfill/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identityvenuepages/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identityprojection/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identitymodel/OlderRefsPackage.scala")
 # the what-if's own code: with the tool files, the tooling hash a published verdict is keyed by
 OWN_FILES = (
     "scripts/identity-what-if", "scripts/identity_what_if.py", IDENTITY_TOOLS, "scripts/identity_what_if_cli.py",

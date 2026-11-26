@@ -17,8 +17,14 @@ def matches(path: str, patterns: Sequence[str]) -> bool:
     return any(fnmatchcase(path, pattern) for pattern in patterns)
 
 
+# The worker's identity adapters (services.identityadapters and the concept packages split out of it): identity paths.
+IDENTITY_ADAPTERS = tuple(f"worker/src/main/scala/services/{name}/*" for name in (
+    "identityadapters", "tmdb", "agreementasks", "identitystaging", "lookupfill", "identityvenuepages",
+    "identityprojection", "identitymodel"))
+
 IDENTITY = (
-    "identity/*", "worker/src/main/scala/services/identityadapters/*", "*/src/test/scala/services/identity/*",
+    "identity/*", *IDENTITY_ADAPTERS,
+    "*/src/test/scala/services/identity/*",
     "common/src/main/resources/title-rules.tsv", "common/src/main/resources/title-words.tsv",
     "common/src/main/scala/services/titles/rules/*", "common/src/main/scala/services/titles/TitleNormalizer.scala",
     "*/src/test/scala/services/titles/rules/*", "worker/src/test/scala/scripts/*",
@@ -28,7 +34,7 @@ IDENTITY = (
     "testkit/src/main/scala/services/movies/NormalizerTrace.scala",
     "test/resources/fixtures/identity-*", "test/resources/fixtures/corpus/*", "test/resources/fixtures/drift-slices/*")
 TAKES = (
-    "identity/src/main/*", "worker/src/main/scala/services/identityadapters/*",
+    "identity/src/main/*", *IDENTITY_ADAPTERS,
     "common/src/main/resources/title-rules.tsv", "common/src/main/resources/title-words.tsv",
     "common/src/main/scala/services/titles/rules/*", "common/src/main/scala/services/titles/TitleNormalizer.scala",
     "test/resources/fixtures/identity-judgements.tsv")

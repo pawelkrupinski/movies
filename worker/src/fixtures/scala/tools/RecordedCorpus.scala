@@ -27,7 +27,7 @@ object RecordedCorpus {
   final class Opened(val country: Country, val rows: Seq[Archived.Row], val fetch: HttpFetch, val leaf: GapLeaf, val missing: MissingFixtures) {
     // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
     // 2026-11-18, services.identityadapters since).
-    import services.identity.*, services.identity.adapters.*, services.identityadapters.*
+    import services.identity.*, services.identity.adapters.*, services.identityadapters.*, services.tmdb.*, services.agreementasks.*, services.identitystaging.*, services.lookupfill.*, services.identityvenuepages.*, services.identityprojection.*, services.identitymodel.*
 
     /** The gaps met so far, as `TmdbIdentityLookups` tells a gap from an answer: per thread, lookups reading side by side. */
     def gaps: TmdbIdentityLookups.Gaps = new TmdbIdentityLookups.Gaps {

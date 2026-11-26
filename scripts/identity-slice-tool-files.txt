@@ -19,5 +19,12 @@ worker/src/fixtures/scala/tools/ProdMirror.scala
 worker/src/fixtures/scala/tools/IdentityJudgements.scala
 worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala
 worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala
+worker/src/fixtures/scala/services/tmdb/OlderRefsPackage.scala
+worker/src/fixtures/scala/services/agreementasks/OlderRefsPackage.scala
+worker/src/fixtures/scala/services/identitystaging/OlderRefsPackage.scala
+worker/src/fixtures/scala/services/lookupfill/OlderRefsPackage.scala
+worker/src/fixtures/scala/services/identityvenuepages/OlderRefsPackage.scala
+worker/src/fixtures/scala/services/identityprojection/OlderRefsPackage.scala
+worker/src/fixtures/scala/services/identitymodel/OlderRefsPackage.scala
 common/src/main/scala/tools/TempDirectories.scala
 worker/src/fixtures/scala/tools/KeptJvm.scala

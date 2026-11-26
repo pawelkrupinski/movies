@@ -62,7 +62,7 @@ TOOL_FILES = ("worker/src/test/scala/scripts/VenueReplay.scala", "worker/src/fix
               "worker/src/fixtures/scala/tools/CinemaSlotInvariants.scala",
               "worker/src/fixtures/scala/tools/SearchQueryMarkers.scala",
               "worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala",
-              "worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala")
+              "worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/tmdb/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/agreementasks/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identitystaging/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/lookupfill/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identityvenuepages/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identityprojection/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identitymodel/OlderRefsPackage.scala")
 PROD_NEEDS = "cinema_scrapes,identity_listings,venue_pages"
 
 

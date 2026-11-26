@@ -17,7 +17,7 @@ final class CatalogueFill(families: CatalogueFill.Families, clock: Clock, fetch:
   import services.identity.measures.*
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
-  import services.identity.adapters.*, services.identityadapters.*
+  import services.identity.adapters.*, services.identityadapters.*, services.tmdb.*, services.agreementasks.*, services.identitystaging.*, services.lookupfill.*, services.identityvenuepages.*, services.identityprojection.*, services.identitymodel.*
 
   val answers: CatalogueAnswerStore = new CatalogueAnswerStore(families, clock, UnmatchedClusters.CataloguePages)
   private val mapping = new WikidataCatalogueMapping(new services.enrichment.WikidataClient(fetch), new services.enrichment.LetterboxdClient(fetch))
@@ -49,7 +49,7 @@ object CatalogueFill {
   import services.identity.measures.*
   // The identity adapters, in either package a ref keeps them (OlderRefsPackage: services.identity.adapters before
   // 2026-11-18, services.identityadapters since).
-  import services.identity.adapters.*, services.identityadapters.*
+  import services.identity.adapters.*, services.identityadapters.*, services.tmdb.*, services.agreementasks.*, services.identitystaging.*, services.lookupfill.*, services.identityvenuepages.*, services.identityprojection.*, services.identitymodel.*
 
   type Families = FamilyAnswerStore
 }

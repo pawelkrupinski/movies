@@ -41,7 +41,8 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
   private final case class Pass(why: String)                     extends Kept
   private final case class Store(why: String)                    extends Kept
 
-  private val Roots = SourceTrees("identity/src/main/scala/services/identity", "worker/src/main/scala/services/identityadapters")
+  private val Roots = SourceTrees("identity/src/main/scala/services/identity", "worker/src/main/scala/services/identityadapters",
+    "worker/src/main/scala/services/tmdb", "worker/src/main/scala/services/agreementasks", "worker/src/main/scala/services/identitystaging", "worker/src/main/scala/services/lookupfill", "worker/src/main/scala/services/identityvenuepages", "worker/src/main/scala/services/identityprojection", "worker/src/main/scala/services/identitymodel")
 
   /** Key types that are content by construction: what they name cannot change under them. */
   private val ContentKeys = Set("Question", "PosterQuestion", "CandidateQuery", "Dependency", "ResolverDecision",
@@ -52,7 +53,6 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
 
   private val I = "identity/src/main/scala/services/identity/"
   private val A = I + "agreement/"
-  private val W = "worker/src/main/scala/services/identityadapters/"
 
   private val PerResolve = "its owner is built per resolve"
   private val PerApply   = "a field of AgreementPass, built per apply"
@@ -203,21 +203,21 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}staging/IdentityStaging.scala#held" -> Store("InMemoryStagingDocuments' rows"),
     s"${I}measures/ListingFilmMeasures.scala#Slots"    -> Content("a constant table, never written"),
     s"${I}ProjectionScope.scala#seen"       -> Pass("one close's worklist of what it reached, dropped when the close returns"),
-    s"${W}IdentityModelService.scala#venues"       -> Store("the latest scrape per venue, until drained"),
-    s"${W}IdentityModelService.scala#observations" -> Pass("an event queue, drained by the model's thread"),
-    s"${W}ListingRetainer.scala#departed"          -> Store("every listing that left, its last-seen facts and departure under its own key (an input, identity_retained in memory): replaced whole when it leaves again, removed when billed again"),
-    s"${W}ListingRetainer.scala#retained"          -> Store("the departed listings the model holds as kept (ListingRetention.retainedAt, recomputed whole each drain): membership only, the listing itself the engine's, by its key"),
-    s"${W}ModelInputGate.scala#pending"            -> Store("the listings the input gate holds (an input, identity_pending in memory): each its newest version itself, its ready version and what it waits on under its own key; whether it is ready is read afresh from the answers on every drain"),
-    s"${W}ModelInputGate.scala#unwritten"          -> Store("the keys whose last identity_pending write failed: membership only, each written again from `pending` (or released) by the next write, cleared once one lands"),
-    s"${W}StoredTmdbLookups.scala#held"   -> Content("by the store document's id, a TMDB id or a question; released around every prefetch"),
-    s"${W}StoredTmdbLookups.scala#films"  -> Content("by TMDB id, released with held"),
-    s"${W}StoredTmdbLookups.scala#hits"   -> Content("by TMDB id, released with held"),
-    s"${W}TmdbIdentityLookups.scala#reading" -> Content("single-flight by title, removed when the read completes"),
-    s"${W}TmdbStore.scala#byKind"         -> Store("InMemoryTmdbDocuments' rows"),
-    s"${W}VenuePageIndex.scala#pending"   -> Name("the pages to read again, removed as each is read"),
-    s"${W}LookupFill.scala#overloaded"    -> Pass(PerRound),
-    s"${W}LookupFill.scala#wanted"        -> Pass(PerRound),
-    s"${W}LookupFill.scala#byHost"        -> Pass(PerRound),
+    s"worker/src/main/scala/services/identityadapters/IdentityModelService.scala#venues"       -> Store("the latest scrape per venue, until drained"),
+    s"worker/src/main/scala/services/identityadapters/IdentityModelService.scala#observations" -> Pass("an event queue, drained by the model's thread"),
+    s"worker/src/main/scala/services/identityadapters/ListingRetainer.scala#departed"          -> Store("every listing that left, its last-seen facts and departure under its own key (an input, identity_retained in memory): replaced whole when it leaves again, removed when billed again"),
+    s"worker/src/main/scala/services/identityadapters/ListingRetainer.scala#retained"          -> Store("the departed listings the model holds as kept (ListingRetention.retainedAt, recomputed whole each drain): membership only, the listing itself the engine's, by its key"),
+    s"worker/src/main/scala/services/identityadapters/ModelInputGate.scala#pending"            -> Store("the listings the input gate holds (an input, identity_pending in memory): each its newest version itself, its ready version and what it waits on under its own key; whether it is ready is read afresh from the answers on every drain"),
+    s"worker/src/main/scala/services/identityadapters/ModelInputGate.scala#unwritten"          -> Store("the keys whose last identity_pending write failed: membership only, each written again from `pending` (or released) by the next write, cleared once one lands"),
+    s"worker/src/main/scala/services/identityadapters/StoredTmdbLookups.scala#held"   -> Content("by the store document's id, a TMDB id or a question; released around every prefetch"),
+    s"worker/src/main/scala/services/identityadapters/StoredTmdbLookups.scala#films"  -> Content("by TMDB id, released with held"),
+    s"worker/src/main/scala/services/identityadapters/StoredTmdbLookups.scala#hits"   -> Content("by TMDB id, released with held"),
+    s"worker/src/main/scala/services/identityadapters/TmdbIdentityLookups.scala#reading" -> Content("single-flight by title, removed when the read completes"),
+    s"worker/src/main/scala/services/identityadapters/TmdbStore.scala#byKind"         -> Store("InMemoryTmdbDocuments' rows"),
+    s"worker/src/main/scala/services/identityadapters/VenuePageIndex.scala#pending"   -> Name("the pages to read again, removed as each is read"),
+    s"worker/src/main/scala/services/identityadapters/LookupFill.scala#overloaded"    -> Pass(PerRound),
+    s"worker/src/main/scala/services/identityadapters/LookupFill.scala#wanted"        -> Pass(PerRound),
+    s"worker/src/main/scala/services/identityadapters/LookupFill.scala#byHost"        -> Pass(PerRound),
     s"${I}vocabulary/EventTrigger.scala#bursts"              -> Pass("each debounce window's burst since the last run: timing, no decision"),
     s"${I}IdentityListingIntake.scala#entries"    -> Store("each venue's latest listings as written, with their stamp"),
     s"${I}IdentityProjectionPlan.scala#kept"      -> Digested("members", "as `drafted`, the shapes it commits"),
@@ -231,15 +231,15 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}LiveProjectionIndex.scala#films"        -> Name("a field of a Slot: the stored films with a slot there"),
     s"${I}VenueSlotFingerprints.scala#kept"       -> Content("venue slot fingerprints"),
     s"${I}VenueSlots.scala#recorded"              -> Content("venue slot fingerprints"),
-    s"${W}RecordedSlotFingerprints.scala#recorded" -> Content("venue slot fingerprints"),
-    s"${W}ProjectionWrite.scala#lastUnwritten"    -> Pass("the films the last write left unwritten, replaced by each"),
-    s"${W}IdentityStagingPublisher.scala#published" -> Store("what the last publish left in the store, compared by value"),
-    s"${W}RuleFiringCount.scala#titleRules"       -> Content("by venue and raw title: the title is the content its rules are read from"),
-    s"${W}VenuePageIndex.scala#answers"           -> Store("each page's answer as read, compared by value to see it move"),
-    s"${W}LookupGaps.scala#kinds"         -> Content("a counter per gap kind"),
-    s"${W}IdentityHistoryReplay.scala#written" -> Store("a replay's own writes, by document id: it decides nothing, the replay is built per moment"),
-    s"${W}FailureHistory.scala#failedAt"     -> Content("by redacted URL and failure: when each was last kept, to keep one a minute; decides no take"),
-    s"${W}IdentityModelGauges.scala#holding" -> Content("by country and hold (gate, stage): the held gauges' last count and oldest wait; decides no take")
+    s"worker/src/main/scala/services/identityadapters/RecordedSlotFingerprints.scala#recorded" -> Content("venue slot fingerprints"),
+    s"worker/src/main/scala/services/identityadapters/ProjectionWrite.scala#lastUnwritten"    -> Pass("the films the last write left unwritten, replaced by each"),
+    s"worker/src/main/scala/services/identityadapters/IdentityStagingPublisher.scala#published" -> Store("what the last publish left in the store, compared by value"),
+    s"worker/src/main/scala/services/identityadapters/RuleFiringCount.scala#titleRules"       -> Content("by venue and raw title: the title is the content its rules are read from"),
+    s"worker/src/main/scala/services/identityadapters/VenuePageIndex.scala#answers"           -> Store("each page's answer as read, compared by value to see it move"),
+    s"worker/src/main/scala/services/identityadapters/LookupGaps.scala#kinds"         -> Content("a counter per gap kind"),
+    s"worker/src/main/scala/services/identityadapters/IdentityHistoryReplay.scala#written" -> Store("a replay's own writes, by document id: it decides nothing, the replay is built per moment"),
+    s"worker/src/main/scala/services/identityadapters/FailureHistory.scala#failedAt"     -> Content("by redacted URL and failure: when each was last kept, to keep one a minute; decides no take"),
+    s"worker/src/main/scala/services/identityadapters/IdentityModelGauges.scala#holding" -> Content("by country and hold (gate, stage): the held gauges' last count and oldest wait; decides no take")
   )
 
   private lazy val fields: Seq[Field] = ScalaSourceScan.scalaFiles(Roots).flatMap(StatefulFieldScan.fieldsIn)

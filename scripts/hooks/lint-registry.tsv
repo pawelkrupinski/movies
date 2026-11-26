@@ -216,7 +216,7 @@ worker:tools.LoadIndependentTestsSpec	*/src/test/*.scala */src/fixtures/*.scala 
 worker:tools.MetricRegistrationsUniqueSpec	*/src/main/*
 worker:tools.ModelReadOnlySpec	*/src/main/* */src/test/* http/src/fixtures/* web/src/it/* web/src/page/* worker/src/fixtures/* worker/src/it/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each source alone: a whole-corpus listing read
 worker:tools.NoCheckedTupleReadSpec	*/src/main/*
-worker:tools.NoDecisionKeyedByMutableIdSpec	identity/src/main/scala/services/identity/* worker/src/main/scala/services/identityadapters/*
+worker:tools.NoDecisionKeyedByMutableIdSpec	identity/src/main/scala/services/identity/* worker/src/main/scala/services/identityadapters/* worker/src/main/scala/services/tmdb/* worker/src/main/scala/services/agreementasks/* worker/src/main/scala/services/identitystaging/* worker/src/main/scala/services/lookupfill/* worker/src/main/scala/services/identityvenuepages/* worker/src/main/scala/services/identityprojection/* worker/src/main/scala/services/identitymodel/*
 worker:tools.NoDefaultLocaleCaseMappingSpec	*/src/*/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each source or template alone: a default-locale case mapping
 worker:tools.NoDefaultTitleNormalizerSpec	*/src/main/*.java */src/main/*.scala
 worker:tools.NoDefaultZoneSpec	*/src/*/*.java */src/*/*.scala
@@ -229,7 +229,7 @@ worker:tools.NoHandRolledYearInferenceSpec	scrapers/src/main/scala/services/cine
 worker:tools.NoLiteralWaitBoundSpec	*/src/*/*
 worker:tools.NoPolandDefaultCountrySpec	*/src/main/*
 worker:tools.NoRealDependenciesInUnitSpecsSpec	*/src/test/* http/src/fixtures/* scrapers/src/fixtures/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each unit spec alone: a real dependency it reaches
-worker:tools.NoRuntimeLookupsInIdentitySpec	identity/src/main/*.java identity/src/main/*.scala worker/src/main/scala/services/identityadapters/*.java worker/src/main/scala/services/identityadapters/*.scala
+worker:tools.NoRuntimeLookupsInIdentitySpec	identity/src/main/*.java identity/src/main/*.scala worker/src/main/scala/services/identityadapters/*.java worker/src/main/scala/services/identityadapters/*.scala worker/src/main/scala/services/tmdb/*.java worker/src/main/scala/services/tmdb/*.scala worker/src/main/scala/services/agreementasks/*.java worker/src/main/scala/services/agreementasks/*.scala worker/src/main/scala/services/identitystaging/*.java worker/src/main/scala/services/identitystaging/*.scala worker/src/main/scala/services/lookupfill/*.java worker/src/main/scala/services/lookupfill/*.scala worker/src/main/scala/services/identityvenuepages/*.java worker/src/main/scala/services/identityvenuepages/*.scala worker/src/main/scala/services/identityprojection/*.java worker/src/main/scala/services/identityprojection/*.scala worker/src/main/scala/services/identitymodel/*.java worker/src/main/scala/services/identitymodel/*.scala
 worker:tools.NoSleepInTestsSpec	*/src/*/*.java */src/*/*.scala
 worker:tools.NoSwallowedFailureSpec	*/src/main/*.java */src/main/*.scala
 worker:tools.NoTtlExpiredRowsInSpecsSpec	*/src/main/* web/src/it/* worker/src/it/*

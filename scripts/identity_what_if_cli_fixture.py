@@ -28,7 +28,7 @@ TOOL_FILES = (
     "worker/src/fixtures/scala/services/identity/vocabulary/OlderRefsPackage.scala",
     "worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala",
     "worker/src/fixtures/scala/tools/KeptJvm.scala", "worker/src/test/scala/services/identity/MirrorWorld.scala",
-    "worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala")
+    "worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/tmdb/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/agreementasks/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identitystaging/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/lookupfill/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identityvenuepages/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identityprojection/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identitymodel/OlderRefsPackage.scala")
 KEY = "Pthe venue\x1ethe film"
 # the mirror generation the tool keys its sides by: the seed generation and the tail position's digest
 TAIL_DIGEST = hashlib.sha1(b"T0").hexdigest()[:12]
