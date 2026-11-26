@@ -16,7 +16,7 @@ class RuleContractSpec extends AnyFlatSpec with Matchers {
 
   "Every acceptance rule" should "declare its kind, alone and pooled" in {
     val acceptance = new Acceptance(IdentityCalibration.resolver)
-    undeclared(AcceptanceRuleTable.aloneRules.map("accept:" + _.name) ++ acceptance.pooledOrder.map("pooled:" + _)) shouldBe empty
+    undeclared(acceptance.rules.aloneRules.map("accept:" + _.name) ++ acceptance.pooledOrder.map("pooled:" + _)) shouldBe empty
   }
 
   "Every basis a decision is taken by" should "name a rule of a declared kind when its trace names none" in {

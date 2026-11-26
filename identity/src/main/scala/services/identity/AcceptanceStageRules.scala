@@ -6,9 +6,10 @@ import services.titles.YearWindow
 
 /** What the acceptance rules of a stage relay ask: the house's production, the relay's record ([[RelayStage]]), and the
  *  record of the season it is broadcast in ([[AcceptanceRuleTable]]).
- *  Functions of the candidates and the listing they score. */
-private[identity] object AcceptanceStageRules {
-  import AcceptanceFactRules.contradicted
+ *  Functions of the candidates and the listing they score, each asking `factRules` whether a published fact
+ *  contradicts a record. [[Acceptance]] makes the one its rules ask. */
+private[identity] final class AcceptanceStageRules(factRules: AcceptanceFactRules) {
+  import factRules.contradicted
 
   /** The eligible records billing the listing's work under the listing's OWN house ([[Scored.houseProduction]]) that no
    *  published year or runtime contradicts. */

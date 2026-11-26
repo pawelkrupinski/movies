@@ -12,9 +12,8 @@ import services.titles.billing.{BillingPieces, Credits}
  *  whether the billing is something else than the film it found — a performance beside it, an author's namesake, a
  *  staged show's own record, an event no film, a page reused for another evening — each answering with what it held
  *  against the film (the refusal's detail), if anything.
- *  Functions of the candidates and the listing they score. */
-private[identity] object AcceptanceTitleRules {
-  import AcceptanceFactRules.asItsTitlesTopHit
+ *  Functions of the candidates and the listing they score; [[Acceptance]] makes the one its rules ask. */
+private[identity] final class AcceptanceTitleRules {
   import Acceptance.Refused
 
   /** The one film the listing's whole title names exactly that its own title search returned first, in TMDB's order
@@ -210,6 +209,11 @@ private[identity] object AcceptanceTitleRules {
     weighing.ranked.filter(scored => scored.soleResult && (isEligible(scored) || cutOnly(scored)))
   private[identity] def resultsFound(weighing: Weighing): String = s"${weighing.ranked.count(_.rank.isDefined)} film(s) found by its searches"
   private[identity] def namesItsOnlyResult(sole: Scored): Boolean = sole.titleNamesIt || wordsOfIts(sole)
+  /** The candidate read as its title's exact top hit, unrivalled — how a rule taking a film by another title (an IMDb
+   *  suggestion, a search's only result) has its own facts weighed, the title's evidence granted. */
+  private[identity] def asItsTitlesTopHit(scored: Scored): Scored = scored.copy(measures = scored.measures ++ TopHitMeasures)
+  private[identity] val TopHitMeasures = Map("title" -> Measure.Category("exact"), "search.rank" -> Measure.Number(1),
+    "rivals" -> Measure.Number(0))
   /** The sole result's facts as its title's exact top hit's, its year and running time aside: a search's only film is
    *  taken unless a fact CONTRADICTS it, which the rule asked already. */
   private[identity] def itsTitlesFactsBeside(sole: Scored): Map[String, Measure] =

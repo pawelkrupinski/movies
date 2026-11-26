@@ -44,7 +44,7 @@ module-edge	common->geodata	14
 module-edge	common->http	65
 module-edge	http->base	10
 module-edge	identity->base	25
-module-edge	identity->common	524
+module-edge	identity->common	522
 module-edge	identity->http	6
 module-edge	scrapers->base	51
 module-edge	scrapers->common	1489
@@ -115,10 +115,6 @@ fanout	services.cinemas.pl.NoveKinoClient	10
 fanout	services.cinemas.pl.UjazdowskiClient	10
 fanout	services.corpus.CorpusCensus	10
 fanout	services.corpus.MovieService	14
-fanout	services.identity.AcceptanceCalibratedRules	10
-fanout	services.identity.AcceptanceFactRules	12
-fanout	services.identity.AcceptanceRuleTable	10
-fanout	services.identity.AcceptanceStageRules	10
 fanout	services.identity.BilledPiece	10
 fanout	services.identity.CandidateScoring	18
 fanout	services.identity.ClusterVoting	15
