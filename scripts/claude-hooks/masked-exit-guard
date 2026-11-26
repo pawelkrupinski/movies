@@ -25,6 +25,7 @@ import os
 import re
 import shlex
 import sys
+from typing import List, Optional
 
 WATCHED = {
     "sbt-warm", "sbt", "sbtn", "it-local.sh", "run-script-tests", "fail-before", "convergence-local.sh",
@@ -88,13 +89,32 @@ def is_punctuation(token):
     return token != "" and all(c in "();<>|&\n" for c in token)
 
 
-def masked_runner(command):
-    """The test runner whose exit status a pipe in `command` discards, or None."""
+def set_option(pipefail: bool, previous: str, word: str) -> bool:
+    """Whether pipefail is on after `word` of a `set` command, `previous` being the word before: `-o pipefail` or
+    `-euo pipefail` turns it on, `+o pipefail` off, anything else leaves it."""
+    if word == "pipefail" and re.fullmatch(r"[-+][A-Za-z]*o", previous):
+        return previous[0] == "-"
+    return pipefail
+
+
+def is_help_flag(word: str) -> bool:
+    return word in ("-h", "--help")
+
+
+def words_of(command: str) -> Optional[List[str]]:
+    """The command's words, its continuations joined; None when it cannot be tokenized or reads the pipe's status
+    (a PIPESTATUS / pipestatus word, not a comment: shlex drops those)."""
     try:
         words = tokens(without_heredoc_bodies(command.replace("\\\n", " ")))
     except ValueError:
         return None
-    if any("pipestatus" in word.lower() for word in words):  # a real word, not a comment (shlex drops those)
+    return None if any("pipestatus" in word.lower() for word in words) else words
+
+
+def masked_runner(command):
+    """The test runner whose exit status a pipe in `command` discards, or None."""
+    words = words_of(command)
+    if words is None:
         return None
     pipefail, set_flags = False, None  # `set -o pipefail` seen so far; the last option cluster of a `set`, or None
     # Per nesting depth (a `( )` or `{ }` group opens one): the watched runner whose status the current pipeline stage
@@ -153,12 +173,10 @@ def masked_runner(command):
             close_group(); command_position = False
             continue
         if set_flags is not None:  # a `set` command's words: `-euo pipefail` turns the option on, `+o pipefail` off
-            if word == "pipefail" and re.fullmatch(r"[-+][A-Za-z]*o", set_flags):
-                pipefail = set_flags[0] == "-"
-            set_flags = word
+            pipefail, set_flags = set_option(pipefail, set_flags, word), word
             continue
         if not command_position:
-            if word in ("-h", "--help") and not separated[-1]:  # reading a runner's help runs no test
+            if is_help_flag(word) and not separated[-1]:  # reading a runner's help runs no test
                 stages[-1] = None
             continue
         if skip_value:

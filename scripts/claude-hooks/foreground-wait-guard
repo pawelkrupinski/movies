@@ -18,6 +18,7 @@ import re
 import sys
 import importlib.machinery
 import importlib.util
+from typing import List, Optional
 
 
 def load_shell_reader():
@@ -87,6 +88,17 @@ def waits(words):
     return found
 
 
+def flag_timeout(name: str, arguments: List[str]) -> Optional[float]:
+    """The seconds a `--timeout N` / `--timeout=N` among a wait tool's `arguments` bounds it to, or None."""
+    limit = None
+    for flag, value in zip(arguments, arguments[1:] + [""]):
+        if flag.startswith("--timeout="):
+            flag, value = "--timeout", flag.partition("=")[2]
+        if flag == "--timeout":
+            limit = seconds(value, "m" if name == "ci-wait" else "s")
+    return limit
+
+
 def unbounded_wait(command):
     """The waiting tool `command` runs for longer than a short check, or None."""
     try:
@@ -96,12 +108,7 @@ def unbounded_wait(command):
     for name, arguments, bound in waits(words):
         if "-h" in arguments or "--help" in arguments:
             continue
-        limit = None
-        for flag, value in zip(arguments, arguments[1:] + [""]):
-            if flag.startswith("--timeout="):
-                flag, value = "--timeout", flag.partition("=")[2]
-            if flag == "--timeout":
-                limit = seconds(value, "m" if name == "ci-wait" else "s")
+        limit = flag_timeout(name, arguments)
         if bound is not None and (limit is None or bound < limit):
             limit = bound
         if limit is None or limit > SHORT_WAIT_SECONDS:

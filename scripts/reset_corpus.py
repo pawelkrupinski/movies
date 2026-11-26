@@ -141,7 +141,7 @@ class Reset:
     def scale_back_up(self) -> None:
         """Web FIRST (serving matters most), then the worker; every deployment is attempted even when one fails, and
         `scaled_down` stays True until all are up so the failure path retries them. Fatal naming what stayed down."""
-        failed = []
+        failed: List[str] = []
         for tier in ("web", "worker"):
             try:
                 self.scale(f"{tier}-{self.country}", 1)

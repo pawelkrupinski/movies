@@ -28,10 +28,11 @@ import importlib.machinery
 import importlib.util
 import json
 import os
-import re
+import types
 import subprocess
 import sys
 import tempfile
+from typing import List, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -128,7 +129,7 @@ DEV_PREFIXES = {"env", "nohup", "exec", "time", "command", "nice", "caffeinate"}
 DEV_KEYWORDS = {"then", "do", "else", "elif", "if", "while", "until", "!", "{"}
 
 
-def shell_reader():
+def shell_reader() -> types.ModuleType:
     """masked-exit-guard's tokenizer (shared with the other guards): quoted text is one word, not a command."""
     path = os.path.join(HERE, "masked-exit-guard")
     loader = importlib.machinery.SourceFileLoader("masked_exit_guard", path)
@@ -137,35 +138,32 @@ def shell_reader():
     return module
 
 
-def dev_server_commands(command):
-    """(launches the dev server, changes directory) for the commands in COMMAND POSITION of `command`: `sbt ... web/run`
-    or a dev-server.sh script runs it; `grep "sbt web/run" docs/x` merely names it."""
+def simple_commands(command: str) -> List[List[str]]:
+    """The words of each simple command in `command`, its assignments, prefixes (`env`, `nohup`) and keywords (`then`)
+    taken off the front; redirect targets stay as (harmless) arguments."""
     reader = shell_reader()
     words = reader.tokens(reader.without_heredoc_bodies(command.replace("\\\n", " ")))
-    launches = changes = False
-    start = True
-    for index, word in enumerate(words):
+    commands: List[List[str]] = [[]]
+    for word in words:
         if reader.is_punctuation(word):
-            start = word not in ("<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|")
-            continue
-        if not start:
-            continue
-        if reader.ASSIGNMENT.match(word) or word in DEV_PREFIXES or word in DEV_KEYWORDS or word.startswith("-"):
-            continue
-        start = False
-        name = os.path.basename(word)
-        if name in ("cd", "pushd"):
-            changes = True
-        elif name == "dev-server.sh":
-            launches = True
-        elif name == "sbt":
-            rest = []
-            for later in words[index + 1:]:
-                if reader.is_punctuation(later):
-                    break
-                rest.append(later)
-            launches = launches or "web/run" in rest
-    return launches, changes
+            commands.append([])
+        elif commands[-1] or not (reader.ASSIGNMENT.match(word) or word in DEV_PREFIXES or word in DEV_KEYWORDS
+                                  or word.startswith("-")):
+            commands[-1].append(word)
+    return [c for c in commands if c]
+
+
+def starts_dev_server(words: List[str]) -> bool:
+    """`sbt ... web/run` or a dev-server.sh script; `grep "sbt web/run" docs/x` merely names it."""
+    name = os.path.basename(words[0])
+    return name == "dev-server.sh" or (name == "sbt" and "web/run" in words[1:])
+
+
+def dev_server_commands(command: str) -> Tuple[bool, bool]:
+    """(launches the dev server, changes directory) over the commands in COMMAND POSITION of `command`."""
+    commands = simple_commands(command)
+    return (any(starts_dev_server(c) for c in commands),
+            any(os.path.basename(c[0]) in ("cd", "pushd") for c in commands))
 
 
 REVIEW_ADVICE = (
