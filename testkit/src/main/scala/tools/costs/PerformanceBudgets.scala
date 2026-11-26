@@ -127,8 +127,13 @@ object PerformanceBudgets {
    *  3.98 -> 5.02 MB on 2026-10-31, agree-or-none removed (identity-flips-structural step 6, the owner: decide from the
    *  inputs as they stand): a deliberate trade, the fixture's clusters whose records its recording never files serving a
    *  provisional film the stage reads, as before aed6950bb. Main's e2e row on github.com printed 5.02 (run 41234591191);
-   *  locally 4.35 on its parent d9261accb, 5.34 with the step's model commit alone and 5.31 at the step's tip. */
-  val QuietProjectionTick = bytes("quiet identity projection tick", measured = mb(5.02))
+   *  locally 4.35 on its parent d9261accb, 5.34 with the step's model commit alone and 5.31 at the step's tip.
+   *  5.02 -> 5.90 MB on 2026-11-27 when the film id counters moved onto the keyed store (2c880a9d61): a deliberate trade,
+   *  the in-memory store now decoding every read from its BSON bytes as a Mongo read does, where it handed back its map.
+   *  Every tick reads the whole map (`FilmIdMapping.load`), so the fake now pays what production's Mongo store always
+   *  paid: 483 KB a read of 613 counters, 373 KB of it the BSON decode, the store layers above it ~110 KB. Main's e2e row
+   *  printed 5.90 (#2966, run 45910538517); locally 5.32 on its parent e717c5f48c, 6.28 at it. */
+  val QuietProjectionTick = bytes("quiet identity projection tick", measured = mb(5.90))
   /** The whole tick: 34.1 -> 36.1 MB, re-measured 2026-10-24 (35.92 / 36.71 / 36.07 locally on quiet-tick-alloc's
    *  3ef51dd60; Main's e2e row printed 35.01 on ff779d962 — CI's Linux JVM runs ~3% under a Mac's here). */
   val WholeProjectionTick = bytes("whole identity projection tick, nothing moved", measured = mb(36.1))
