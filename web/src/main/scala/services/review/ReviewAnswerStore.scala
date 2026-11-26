@@ -3,14 +3,12 @@ package services.review
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
 
-import scala.concurrent.Await
 import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonDocument, BsonInt32, BsonNull, BsonString, BsonValue}
-import org.mongodb.scala.model.{Filters, Sorts}
-import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.MongoDatabase
 
 /** The storage seam of the review answers: append one, read them all back in the order they were
  *  given. What an answer history MEANS ([[ReviewAnswers]]) is never a backend's to decide. */
@@ -20,45 +18,40 @@ trait ReviewAnswerStore {
   def all(): Seq[ReviewAnswer]
 }
 
-/** The answers as [[MongoReviewAnswerStore]] would hold them: each written through its codec to BSON and read back. */
-final class InMemoryReviewAnswerStore extends ReviewAnswerStore {
-  private val kept = scala.collection.mutable.ArrayBuffer.empty[ReviewAnswer]
-  private val stored = tools.BsonRoundTrip.via(MongoReviewAnswerStore.encode, MongoReviewAnswerStore.decode)
-  def append(answer: ReviewAnswer): Unit = synchronized(kept += stored(answer))
-  def all(): Seq[ReviewAnswer] = synchronized(kept.toList)
+/** The answers as [[MongoReviewAnswerStore]] keeps them: one keyed store over memory's documents, each answer through its codec. */
+final class InMemoryReviewAnswerStore extends KeyedReviewAnswerStore(new tools.InMemoryStoreDocuments())
+
+/**
+ * The answers in a keyed store ([[tools.KeyedStore]]), one document per answer.
+ *
+ * `_id` is the answer's time (`at`, zero-padded epoch millis — the clock the caller gave it) and a per-process sequence, so
+ * the keyset read returns them in the order they were given — the order [[ReviewAnswers.current]] reads them in — and a
+ * short random tail keeps two processes' ids apart.
+ */
+abstract class KeyedReviewAnswerStore(documents: tools.StoreDocuments) extends ReviewAnswerStore {
+  private val answers  = new tools.KeyedStore(documents, tools.KeyCodec.Text, KeyedReviewAnswerStore.Codec)
+  private val sequence = new AtomicLong
+
+  def append(answer: ReviewAnswer): Unit =
+    answers.put(f"${answer.at.toEpochMilli}%015d-${sequence.incrementAndGet()}%06d-${java.util.UUID.randomUUID().toString.take(8)}", answer)
+
+  def all(): Seq[ReviewAnswer] = answers.all().map(_._2)
+}
+
+object KeyedReviewAnswerStore {
+  /** An answer's fields beside its `_id`; a document that is no answer throws on read, as it always has. */
+  val Codec: tools.DocCodec[ReviewAnswer] = new tools.DocCodec[ReviewAnswer] {
+    def encode(answer: ReviewAnswer): Document = Document(MongoReviewAnswerStore.encode(answer))
+    def decode(document: Document): Option[ReviewAnswer] = Some(MongoReviewAnswerStore.decode(document.toBsonDocument))
+  }
 }
 
 /**
- * The answers in `review_answers`, one document per answer — on the LOCAL mirror instance, in its
- * own database ([[MongoReviewAnswerStore.Database]]) so a mirror re-seed, which drops and refills
- * the mirrored collections, can never touch them, and so they never reach prod.
- *
- * `_id` is the answer's time (`at`, zero-padded epoch millis — the clock the caller gave it) and a per-process sequence, so
- * the keyset read below returns them in the order they were given — the order [[ReviewAnswers.current]] reads them in.
+ * The answers in `review_answers` — on the LOCAL mirror instance, in its own database ([[MongoReviewAnswerStore.Database]])
+ * so a mirror re-seed, which drops and refills the mirrored collections, can never touch them, and so they never reach prod.
  */
-final class MongoReviewAnswerStore(db: MongoDatabase) extends ReviewAnswerStore {
-  import MongoReviewAnswerStore._
-  private val Timeout = 30.seconds
-  private lazy val collection: MongoCollection[Document] = db.getCollection[Document](Collection)
-  private val sequence = new AtomicLong
-
-  def append(answer: ReviewAnswer): Unit = {
-    val id = f"${answer.at.toEpochMilli}%015d-${sequence.incrementAndGet()}%06d-${java.util.UUID.randomUUID().toString.take(8)}"
-    Await.result(collection.insertOne(Document(encode(answer).append("_id", BsonString(id)))).toFuture(), Timeout)
-    ()
-  }
-
-  def all(): Seq[ReviewAnswer] = {
-    val out = Vector.newBuilder[ReviewAnswer]
-    val outcome = tools.KeysetScan.scan[Document](
-      "review_answers", batchSize = tools.MongoReplies.Default, maxAttempts = 3, initialBackoff = 200.millis,
-      keyOf = _.toBsonDocument.getString("_id").getValue,
-      fetchPage = (after, limit) => Await.result(collection.find(after.fold(Filters.empty())(id => Filters.gt("_id", id)))
-        .sort(Sorts.ascending("_id")).limit(limit).batchSize(limit).toFuture(), Timeout))(batch => out ++= batch.map(d => decode(d.toBsonDocument)))
-    if (!outcome.isComplete) throw new IllegalStateException("review_answers read incomplete")
-    out.result()
-  }
-}
+final class MongoReviewAnswerStore(db: MongoDatabase) extends KeyedReviewAnswerStore(
+  tools.MongoStoreDocuments.of(db.getCollection(MongoReviewAnswerStore.Collection), timeout = 30.seconds))
 
 object MongoReviewAnswerStore {
   val Collection = "review_answers"
