@@ -12,8 +12,8 @@ import services.identity.measures.{DecisionTrace, IdentityMeasures, Measure, Sco
  *  ([[seasonProduction]]). A new rule is a new row there, its questions named in the rule file of its kind (title,
  *  facts, calibration, stage, vetoes, bills); this class only runs the table. */
 private[identity] final class Acceptance(private[identity] val calibration: IdentityCalibration)
-    extends AcceptanceRuleTable, AcceptanceTitleRules, AcceptanceCalibratedRules, AcceptanceFactRules, AcceptanceStageRules,
-      AcceptanceVetoRules, AcceptanceBillRules {
+    extends AcceptanceRuleTable, AcceptanceTitleRules, AcceptanceCalibratedRules, AcceptanceStageRules, AcceptanceVetoRules,
+      AcceptanceBillRules {
 
   val weights = new EvidenceWeights(calibration)
   import weights.{against, fitsBetter, own, speaksAgainst}
@@ -187,6 +187,9 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
       else " with the ranking priors lending, never withdrawing") +
       (if (scored.vetoedRivals == 0) "" else ranked.flatMap(rival => rival.denial.filter(_.isReleaseVeto)
         .map(why => s"rival ${rival.candidate.tmdbId} $why")).mkString(" (", "; ", ")"))
+
+  /** The film a cluster no TMDB film was taken for falls back to ([[AcceptanceFactRules.fallback]]). */
+  def fallback(ranked: Seq[Scored]): Option[Scored] = AcceptanceFactRules.fallback(weights, ranked)
 
   // ── what pre-empts the rules, and what follows a take ────────────────────────────────────────
 

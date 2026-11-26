@@ -12,6 +12,8 @@ import services.identity.measures.{FactRelations, IdentityMeasures, MultiFilmBil
  *  takes the candidate at ([[AcceptanceRule]]); what a check asks is a named question of the rule files beside this
  *  one. Part of [[Acceptance]], which mixes it in. */
 private[identity] trait AcceptanceRuleTable { this: Acceptance =>
+  import AcceptanceFactRules.{aNameAlone, anotherNamedBesideItsWork, asItsTitlesTopHit, contradicted, contradiction, datedTitles,
+    directorsTitles, directorsWorks, firstHitsTitlingTheirWork, undated}
 
   /** The rules a node may be taken by on its own evidence, first to accept deciding ([[Acceptance.aloneNamed]]). */
   private[identity] lazy val aloneRules: List[AcceptanceRule] = List(SoleWork, FavouredCalibrated, ExactTopHit, SegmentTopHit,

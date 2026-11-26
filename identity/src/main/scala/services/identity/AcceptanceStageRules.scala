@@ -9,6 +9,7 @@ import services.titles.YearWindow
  *  record of the season it is broadcast in ([[AcceptanceRuleTable]]).
  *  Part of [[Acceptance]], which mixes it in. */
 private[identity] trait AcceptanceStageRules { this: Acceptance =>
+  import AcceptanceFactRules.contradicted
   import weights.own
 
   /** The eligible records billing the listing's work under the listing's OWN house ([[Scored.houseProduction]]) that no
