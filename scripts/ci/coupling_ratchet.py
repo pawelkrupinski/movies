@@ -120,7 +120,7 @@ from coupling_renames import RenameEvidence, rename_credit  # noqa: E402
 from coupling_rows import (BASELINE_PATH, DISTANCE_SPLIT_TOLERANCE, EXEMPTIONS_PATH, FROZEN, LAYERS_PATH,  # noqa: E402
                            REFS_PATH, Edges, Fanouts, Rows, ceilings, layer_units, of_kind, package_of, parse,
                            parse_layers, read_edges, read_fanouts, with_ceilings)
-from coupling_splits import SPLIT_RULE, SplitExplanation, resolve, split_claims, split_credit  # noqa: E402
+from coupling_splits import SPLIT_RULE, SplitExplanation, default_base, resolve, snapshot, split_claims, split_credit  # noqa: E402
 from coupling_verdicts import check_verdicts, update_all  # noqa: E402
 from coupling_violations import violations  # noqa: E402
 from trailers import text_at as file_at  # noqa: E402
