@@ -3,7 +3,7 @@ package services.metrics.worker
 import scala.concurrent.duration.FiniteDuration
 
 import play.api.Logging
-import tools.{PeriodicLoop, ThreadPools, TickRecorder}
+import tools.{PeriodicLoop, ThreadPools, TickRecorder, TickRun}
 
 /**
  * The sample-on-a-timer scaffolding every census in this package shares: take the first
@@ -46,7 +46,7 @@ trait SampledCensus extends tools.Stoppable with Logging {
   private lazy val scheduler = threadPools.scheduler(censusName)
 
   private lazy val loop =
-    PeriodicLoop.completing(censusName, () => sample(), sampleInterval, firstSampleDelay, ticks, logger, scheduler)
+    PeriodicLoop.fixedRate(censusName, () => { sample(); TickRun.Completed }, sampleInterval, firstSampleDelay, ticks, logger, scheduler)
 
   /** Which of [[SampledCensus.Slots]] this census takes its first reading in: 0 for a light one. */
   protected def firstSampleSlot: Int = 0

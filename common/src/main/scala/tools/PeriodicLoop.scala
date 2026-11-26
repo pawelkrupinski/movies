@@ -9,18 +9,30 @@ import play.api.Logger
 
 /**
  * A job run once per `interval`, first after `initialDelay`, on the `scheduler` it is handed: the one place the
- * periodic loops' scheduling, [[TickRecorder]] reporting and error handling live ([[ScheduledTick.recorded]]).
- * Self-rescheduling: each run reads `interval` afresh, so an `/admin/config` flip applies on the next cycle, and a
- * failing run (or an unreadable interval) never stops the schedule. `run` says how a run went: one that caught its own
- * failure is [[TickRun.Incomplete]] and does not count as completed. The caller owns the scheduler and shuts it.
- * `ClaimedPeriodicTask` is this loop whose run is gated by an occurrence claim.
+ * periodic loops' scheduling, [[TickRecorder]] reporting and error handling live ([[ScheduledTick.recorded]]). A failing
+ * run never stops the schedule. `run` says how a run went: one that caught its own failure is [[TickRun.Incomplete]] and
+ * does not count as completed. The caller owns the scheduler and shuts it. Built by [[PeriodicLoop.fixedRate]] (the
+ * scheduler's `scheduleAtFixedRate`, the interval read once at `start`) or [[PeriodicLoop.rereading]] (each run
+ * schedules the next, reading `interval` afresh, so an `/admin/config` flip applies on the next cycle; what
+ * `ClaimedPeriodicTask` rides).
  */
-final class PeriodicLoop(name: String, run: () => TickRun, interval: => FiniteDuration, initialDelay: FiniteDuration,
-                         ticks: TickRecorder, logger: Logger, scheduler: ScheduledExecutorService) {
+final class PeriodicLoop private (name: String, run: () => TickRun, interval: => FiniteDuration, initialDelay: FiniteDuration,
+                                  ticks: TickRecorder, logger: Logger, scheduler: ScheduledExecutorService,
+                                  pacing: PeriodicLoop.Pacing) {
 
   def start(): Unit = {
     ticks.started(name, interval, initialDelay)
-    scheduleNext(initialDelay)
+    pacing match {
+      case PeriodicLoop.Pacing.FixedRate  => armFixedRate()
+      case PeriodicLoop.Pacing.Rereading  => scheduleNext(initialDelay)
+    }
+  }
+
+  private def armFixedRate(): Unit = {
+    val every = interval
+    scheduler.scheduleAtFixedRate(() => ScheduledTick.recorded(name, every, logger, ticks)(run()),
+      initialDelay.toMillis, every.toMillis, TimeUnit.MILLISECONDS)
+    ()
   }
 
   private def scheduleNext(delay: FiniteDuration): Unit = {
@@ -47,11 +59,18 @@ final class PeriodicLoop(name: String, run: () => TickRun, interval: => FiniteDu
 }
 
 object PeriodicLoop {
-  /** The least delay a loop waits when its interval cannot be read. */
+  enum Pacing { case FixedRate, Rereading }
+
+  /** The least delay a rereading loop waits when its interval cannot be read. */
   val MinimumFallbackDelay: FiniteDuration = 1.minute
 
-  /** A loop whose run returns nothing of its own: every run that returns is a completed one. */
-  def completing(name: String, run: () => Unit, interval: => FiniteDuration, initialDelay: FiniteDuration,
-                 ticks: TickRecorder, logger: Logger, scheduler: ScheduledExecutorService): PeriodicLoop =
-    new PeriodicLoop(name, () => { run(); TickRun.Completed }, interval, initialDelay, ticks, logger, scheduler)
+  /** Runs on the scheduler's fixed rate; `interval` is read once, at `start`. */
+  def fixedRate(name: String, run: () => TickRun, interval: FiniteDuration, initialDelay: FiniteDuration,
+                ticks: TickRecorder, logger: Logger, scheduler: ScheduledExecutorService): PeriodicLoop =
+    new PeriodicLoop(name, run, interval, initialDelay, ticks, logger, scheduler, Pacing.FixedRate)
+
+  /** Each run schedules the next one `interval` (read afresh) later. */
+  def rereading(name: String, run: () => TickRun, interval: => FiniteDuration, initialDelay: FiniteDuration,
+                ticks: TickRecorder, logger: Logger, scheduler: ScheduledExecutorService): PeriodicLoop =
+    new PeriodicLoop(name, run, interval, initialDelay, ticks, logger, scheduler, Pacing.Rereading)
 }

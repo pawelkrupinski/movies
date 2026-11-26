@@ -27,7 +27,7 @@ class ClaimedPeriodicTask(name: String, run: () => TickRun, interval: => FiniteD
 
   private val scheduler: ScheduledExecutorService = threadPools.scheduler(name)
 
-  private val loop = new PeriodicLoop(name, () => tickIfClaimed().getOrElse(TickRun.Completed), interval, initialDelay,
+  private val loop = PeriodicLoop.rereading(name, () => tickIfClaimed().getOrElse(TickRun.Completed), interval, initialDelay,
     ticks, logger, scheduler)
 
   def start(): Unit = {

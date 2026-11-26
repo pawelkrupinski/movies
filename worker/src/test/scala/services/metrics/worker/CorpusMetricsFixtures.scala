@@ -79,9 +79,10 @@ object CorpusMetricsFixtures {
 
   /** The census over `cache`, onto `registry`'s census gauges, reading `at`. Not started: a spec seeds and publishes it. */
   def censusOver(cache: MovieCache, registry: PrometheusRegistry, at: Clock = clock,
-                 metrics: CorpusCensusMetrics = CorpusCensusMetrics.noop): CorpusCensus =
+                 metrics: CorpusCensusMetrics = CorpusCensusMetrics.noop,
+                 threadPools: tools.ThreadPools = tools.ThreadPools.Unmanaged): CorpusCensus =
     new CorpusCensus(cache, WorkerCorpusMetrics.gauge(registry), WorkerSourceFilmsMetrics.gauge(registry),
-      WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), WorkerCitySeasonMetrics.gauge(registry), "pl", City.all, at, metrics, threadPools = tools.ThreadPools.Unmanaged)
+      WorkerShowtimesMetrics.gauge(registry), WorkerSlotFanoutMetrics.gauge(registry), WorkerCitySeasonMetrics.gauge(registry), "pl", City.all, at, metrics, threadPools = threadPools)
 
   /** The census of exactly `rows`, against `at`. */
   def reading(rows: Seq[StoredMovieRecord], at: Clock = clock): CensusReading =

@@ -63,11 +63,11 @@ class ReadModelSweeper private[readmodel] (
     val bootDelay  = scala.concurrent.duration.Duration(PruneBootDelaySeconds, TimeUnit.SECONDS)
     // Cheap orphan prune: frequent, no per-row re-projection (can't spike CPU). Deferred
     // off the boot path so it doesn't compete with boot hydrate + the first scrape.
-    new PeriodicLoop("read-model-prune", () => pruneOrphans(), prune, bootDelay, ticks, logger, scheduler).start()
+    PeriodicLoop.fixedRate("read-model-prune", () => pruneOrphans(), prune, bootDelay, ticks, logger, scheduler).start()
     // The derivation pass's slices, paced: a no-op unless the first sweep found one owed.
     derivationPass.foreach { pass =>
       val derivation = scala.concurrent.duration.Duration(ReadModelDerivationPass.TickSeconds, TimeUnit.SECONDS)
-      new PeriodicLoop("read-model-derivation-pass", () => pass.advance(), derivation, bootDelay, ticks, logger, scheduler).start()
+      PeriodicLoop.fixedRate("read-model-derivation-pass", () => pass.advance(), derivation, bootDelay, ticks, logger, scheduler).start()
     }
     logger.info(s"read-model sweeps scheduled: orphan-prune every ${PruneSeconds}s (first in ${PruneBootDelaySeconds}s).")
   }

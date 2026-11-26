@@ -69,7 +69,7 @@ final class CorpusCensus(
 
   private val scheduler = threadPools.scheduler("corpus-census")
 
-  private val loop = new PeriodicLoop("corpus-census", () => publish(), publishInterval, publishInterval, ticks, logger, scheduler)
+  private val loop = PeriodicLoop.fixedRate("corpus-census", () => publish(), publishInterval, publishInterval, ticks, logger, scheduler)
 
   /** The census as the films the cache holds now give it, against the clock now. */
   def reading(): CensusReading = parts.drainedReading()._1

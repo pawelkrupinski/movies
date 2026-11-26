@@ -33,7 +33,7 @@ class WorkerHeartbeat(
 
   private val scheduler: ScheduledExecutorService = threadPools.scheduler("worker-heartbeat")
 
-  private val loop = new PeriodicLoop("worker-heartbeat", () => beat(), intervalSeconds.seconds, intervalSeconds.seconds, ticks, logger, scheduler)
+  private val loop = PeriodicLoop.fixedRate("worker-heartbeat", () => beat(), intervalSeconds.seconds, intervalSeconds.seconds, ticks, logger, scheduler)
 
   // Wall-clock of the last scheduler firing — the worker's LIVENESS pulse. The
   // LivenessWatchdog reads it to tell a wedged JVM (heartbeat thread starved/dead,

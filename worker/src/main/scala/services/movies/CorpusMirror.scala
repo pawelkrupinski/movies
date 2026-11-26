@@ -137,13 +137,13 @@ final class CorpusMirror(
       }
 
     def start(): Unit = {
-      new PeriodicLoop("movie-cache-cold-retry", () => coldRetryTick(), CorpusMirror.ColdRetryInterval,
+      PeriodicLoop.fixedRate("movie-cache-cold-retry", () => coldRetryTick(), CorpusMirror.ColdRetryInterval,
         CorpusMirror.ColdRetryInterval, ticks, logger, refreshScheduler).start()
       watchHandle = corpus.repository.watchChangesFencedWithVenues(changes.applyUpsert, changes.applyDelete, changes.applyVenueSlots)
       logger.info(
         s"MovieCache incremental change-stream watch ${if (watchHandle.isDefined) "active" else "unavailable — backstop only"}; " +
         s"backstop rehydrate every ${BackstopIntervalSeconds}s.")
-      new PeriodicLoop("movie-cache-rehydrate", () => hydrate.rehydrateTick(), rehydrateInterval.value,
+      PeriodicLoop.fixedRate("movie-cache-rehydrate", () => hydrate.rehydrateTick(), rehydrateInterval.value,
         rehydrateInterval.value, ticks, logger, refreshScheduler).start()
     }
 
