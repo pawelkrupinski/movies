@@ -73,12 +73,12 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
     sparse.getOrElse(Set.empty) should contain("scripts/lib")
   }
 
-  /** The title names the convergence run, which is how a reader goes from one to the other: convergence_reuse.py's
+  /** The title names the convergence run, which is how a reader goes from one to the other: convergence_forge.py's
    *  takes_child (a reuse) and tool_dispatch.py's find_titled (identity-measure --full) read this exact title. */
   it should "carry its convergence run's id in its title, as both of its readers look it up" in {
     workflow should include(
       "run-name: ${{ inputs.parent-run != '' && format('Identity takes (convergence run {0})', inputs.parent-run) || 'Identity takes' }}")
-    RepoFile.read("scripts/ci/convergence_reuse.py") should include("TAKES_TITLE = \"Identity takes (convergence run {})\"")
+    RepoFile.read("scripts/ci/convergence_forge.py") should include("TAKES_TITLE = \"Identity takes (convergence run {})\"")
     RepoFile.read("scripts/identity_measure_cli_dispatch.py") should include("""find_titled(WORKFLOW, f"Identity takes (convergence run {""")
   }
 
