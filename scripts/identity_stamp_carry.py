@@ -67,6 +67,7 @@ from identity_stamp_carry_published import (  # noqa: E402  (THE PUBLISHED VERDI
     ASSET, COUNTRIES, VERDICTS, asset_name, cached_verdict, country_refusals, diff_id, fetch_asset, identity_cache,
     moved_rows, publish, release, verdict_path, what_if_verdicts)
 from pure_move_check import Undecidable, git  # noqa: E402  (the one git a proof reads, and its refusal)
+import tool_git  # noqa: E402
 import tool_python  # noqa: E402
 from identity_stamp_carry_ranges import RANGES, cited_range, record_of, write_ranges  # noqa: E402  (THE QUEUE REWRITES)
 
@@ -208,7 +209,7 @@ def covered(proof: str, base: str, head: str, at: str | None = None,
     """The stamps `proof` over base..head carries, and why it carries none, if it does not hold. A what-if's record is
     this machine's, or, `at` a commit, the one committed there (what_if_verdicts) under the range its row cites --
     `record`, (head, base), when the queue rewrote that range into base..head (THE QUEUE REWRITES)."""
-    if base == head or subprocess.run(["git", "merge-base", "--is-ancestor", base, head], capture_output=True).returncode != 0:
+    if base == head or not tool_git.Git.here().ok("merge-base", "--is-ancestor", base, head, quiet=True):
         return set(), [f"{base[:12]} is not an ancestor of {head[:12]}"]
     why = design_refusals(base, head)
     if proof == "pure-move":
@@ -331,7 +332,7 @@ def range_verdict(base: str, head: str) -> tuple[str, str] | None:
 
 def is_commit(sha: str) -> bool:
     return bool(re.fullmatch(r"[0-9a-f]{40}", sha)) and \
-        subprocess.run(["git", "cat-file", "-e", f"{sha}^{{commit}}"], capture_output=True).returncode == 0
+        tool_git.Git.here().ok("cat-file", "-e", f"{sha}^{{commit}}", quiet=True)
 
 
 def auto(rng: str, table: str, commit: bool) -> int:

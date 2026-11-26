@@ -26,6 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(ROOT, "scripts", "lib"))
 import identity_ref_trees  # noqa: E402
+import tool_git  # noqa: E402
 import tool_process  # noqa: E402
 import tool_python  # noqa: E402
 
@@ -35,11 +36,6 @@ FIXTURES = "test/resources/fixtures"
 
 def say(line: str) -> None:
     print(f"population walk: {line}", file=sys.stderr, flush=True)
-
-
-def git(*args: str) -> Optional[str]:
-    done = subprocess.run(["git", *args], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-    return done.stdout.strip() if done.returncode == 0 else None
 
 
 def judge(*args: str, stdout: Optional[str] = None) -> int:
@@ -67,7 +63,7 @@ class BaseWalk:
     def key_of(self, name: str) -> str:
         """A slice's cache file: its name and the tree hash of its data at the head; none for an uncommitted slice (a
         laptop run on edits), which is never cached."""
-        tree = git("rev-parse", "--verify", f"HEAD:{FIXTURES}/{name}")
+        tree = tool_git.Git.here(ROOT).line("rev-parse", "--verify", f"HEAD:{FIXTURES}/{name}")
         return os.path.join(self.cache, f"{name.replace('/', '_')}-{tree[:12]}.txt") if tree else ""
 
     def append_rows(self, text: str) -> None:
@@ -143,7 +139,7 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
     slices = captured_slices(directory)
     if not slices:
         return 0
-    sha = git("rev-parse", "--verify", f"{base_ref}^{{commit}}")
+    sha = tool_git.Git.here(ROOT).line("rev-parse", "--verify", f"{base_ref}^{{commit}}")
     if sha is None:
         say(f"no base commit {base_ref}: judged on the known rows alone")
         return judge("judge", directory, "/dev/null")

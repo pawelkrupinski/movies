@@ -44,8 +44,10 @@ Usage: population_walk_diff.py judge <candidates dir> <base rows file> [--brough
 import datetime
 import os
 import re
-import subprocess
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import tool_git  # noqa: E402
 
 FIXTURES = "test/resources/fixtures"
 BACKLOG = f"{FIXTURES}/identity-flip-backlog.tsv"
@@ -132,30 +134,27 @@ def population_rows(text):
     return {k: sorted(v) for k, v in out.items()}
 
 
-def _git(cwd, *args):
-    return subprocess.run(["git", "-c", "core.quotePath=false", *args], cwd=cwd, capture_output=True, text=True)
-
-
 def _rows_at(base, cwd):
     """The backlog's `population` rows at `base` and in the working tree."""
-    shown = _git(cwd, "show", f"{base}:{BACKLOG}")
+    shown = tool_git.Git.here(cwd).out("show", f"{base}:{BACKLOG}", quiet=True) or ""
     try:
         with open(os.path.join(cwd, BACKLOG), encoding="utf-8") as fh:
             head = population_rows(fh.read())
     except FileNotFoundError:
         head = {}
-    return population_rows(shown.stdout if shown.returncode == 0 else ""), head
+    return population_rows(shown), head
 
 
 def brought(candidates, base, cwd="."):
     """The candidate slices the change brings against `base` (the working tree's side): data that differ (a new or
     edited slice, an untracked file in it) or `population` rows of it the backlog added or removed."""
     base_rows, head_rows = _rows_at(base, cwd)
+    git = tool_git.Git.here(cwd)
     out = []
     for name in sorted(candidates):
         path = f"{FIXTURES}/{name}"
-        changed = _git(cwd, "diff", "--quiet", base, "--", path).returncode != 0
-        untracked = bool(_git(cwd, "ls-files", "--others", "--exclude-standard", "--", path).stdout.strip())
+        changed = not git.ok("diff", "--quiet", base, "--", path, quiet=True)
+        untracked = any(git.lines("ls-files", "--others", "--exclude-standard", "--", path))
         if changed or untracked or base_rows.get(name, []) != head_rows.get(name, []):
             out.append(name)
     return out
@@ -179,8 +178,9 @@ def changed_slices(base, cwd="."):
     files differ or are untracked, or its `population` rows changed -- the slices on disk only (a deleted one walks no
     more)."""
     roots = [f"{FIXTURES}/{r}" for r in SLICE_ROOTS]
-    paths = _git(cwd, "diff", "--name-only", "--no-renames", base, "--", *roots).stdout.splitlines()
-    paths += _git(cwd, "ls-files", "--others", "--exclude-standard", "--", *roots).stdout.splitlines()
+    git = tool_git.Git.here(cwd)
+    paths = git.lines("diff", "--name-only", "--no-renames", base, "--", *roots)
+    paths += git.lines("ls-files", "--others", "--exclude-standard", "--", *roots)
     names = {slice_of(p[len(FIXTURES) + 1:]) for p in paths if p.startswith(FIXTURES + "/")}
     base_rows, head_rows = _rows_at(base, cwd)
     names |= {n for n in set(base_rows) | set(head_rows) if base_rows.get(n, []) != head_rows.get(n, [])}

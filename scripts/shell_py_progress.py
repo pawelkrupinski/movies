@@ -52,7 +52,7 @@ class Tree:
 
     def __init__(self, repo: str, rev: str) -> None:
         self.rev = rev
-        listing = git(repo, "ls-tree", "-r", "--name-only", rev)
+        listing = tool_git.Git.here(repo).text("ls-tree", "-r", "--name-only", rev)
         self.paths = [p for p in listing.splitlines() if p]
         self._present = set(self.paths)
         self._repo = repo
@@ -66,10 +66,6 @@ class Tree:
         if wanted:
             self._texts.update(zip(wanted, cat_files(self._repo, self.rev, wanted)))
         return {p: self._texts[p] for p in paths if p in self._texts}
-
-
-def git(repo: str, *args: str) -> str:
-    return tool_git.Git.here(repo).text(*args)
 
 
 def cat_files(repo: str, rev: str, paths: Sequence[str]) -> List[str]:
@@ -196,8 +192,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         tool_git.Git.here(args.repo).call("fetch", "-q", "origin")
     start, now = Tree(args.repo, args.start), Tree(args.repo, args.rev)
     tools = read_tools(args.tools)
-    out = [f"START {args.start} ({git(args.repo, 'log', '-1', '--format=%cs', args.start).strip()}), "
-           f"NOW {args.rev} ({git(args.repo, 'log', '-1', '--format=%h %cs', args.rev).strip()})"]
+    out = [f"START {args.start} ({tool_git.Git.here(args.repo).text('log', '-1', '--format=%cs', args.start).strip()}), "
+           f"NOW {args.rev} ({tool_git.Git.here(args.repo).text('log', '-1', '--format=%h %cs', args.rev).strip()})"]
     out += render_tools(now, statuses(now, [Tree(args.repo, q) for q in args.queued], tools), len(tools))
     out += render_lines(line_counts(start), line_counts(now))
     sys.stdout.write("\n".join(out) + "\n")

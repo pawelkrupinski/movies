@@ -35,6 +35,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import drift_seeds  # noqa: E402
+import header_tsv  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 BACKLOG = os.path.join(ROOT, "test/resources/fixtures/identity-flip-backlog.tsv")
@@ -47,17 +48,6 @@ def clean(text: str) -> str:
     return text.replace("\t", " ").replace("\n", " ").strip()
 
 
-def read_tsv(path: str) -> list[dict]:
-    """A TSV's rows as dicts by its header (its first line not `#`)."""
-    if not os.path.exists(path):
-        return []
-    with open(path, newline="", encoding="utf-8") as f:
-        lines = [line for line in f if line.strip() and not line.startswith("#")]
-    reader = csv.reader(lines, delimiter="\t", quoting=csv.QUOTE_NONE)
-    header = next(reader, None) or []
-    return [dict(zip(header, cols + [""] * (len(header) - len(cols)))) for cols in reader]
-
-
 def struck_beside(backlog: str) -> str:
     """The struck flips beside a backlog (identity-flips-struck.tsv; scripts.IdentityDrift.struck): listings whose flips
     the owner struck as an input artefact, never filed as backlog rows again."""
@@ -67,7 +57,7 @@ def struck_beside(backlog: str) -> str:
 def known(backlog: str) -> set[tuple[str, str, str]]:
     """The listings no row is filed for: the backlog's, and the struck ones beside it."""
     return {(r.get("country", ""), r.get("venue", ""), r.get("rawTitle", ""))
-            for r in read_tsv(backlog) + read_tsv(struck_beside(backlog))}
+            for r in header_tsv.read(backlog, missing_ok=True) + header_tsv.read(struck_beside(backlog), missing_ok=True)}
 
 
 # `auto`: a row's seeds by the country's replay cost (one seed: ES ~2 min, PL ~6, the US/UK ~8-12, DE ~16), each row
@@ -109,7 +99,7 @@ def merge(backlog: str, paths: list[str]) -> list[list[str]]:
     """The rows (NEW_HEADER) of several explore-<cc>.tsv, one per listing (its lowest seed), none the backlog names now."""
     have, out = known(backlog), {}
     for path in paths:
-        for r in read_tsv(path):
+        for r in header_tsv.read(path, missing_ok=True):
             key = (r.get("country", ""), r.get("venue", ""), r.get("rawTitle", ""))
             if not all(key) or key in have or not r.get("seed", "").isdigit():
                 continue
@@ -120,7 +110,7 @@ def merge(backlog: str, paths: list[str]) -> list[list[str]]:
 
 def file(asset: str, backlog: str, seeds: str, owner: str) -> list[str]:
     have, filed, rows = known(backlog), [], []
-    for r in read_tsv(asset):
+    for r in header_tsv.read(asset, missing_ok=True):
         key = (r.get("country", ""), r.get("venue", ""), r.get("rawTitle", ""))
         if not all(key) or not r.get("seed", "").isdigit() or key in have:
             continue

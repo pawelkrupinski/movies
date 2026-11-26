@@ -10,13 +10,15 @@ import hashlib
 import json
 import os
 import re
-import subprocess
 import sys
 import tempfile
 from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pure_move_check import git  # noqa: E402  (the one git a proof reads)
+import tool_git  # noqa: E402
+import tool_github  # noqa: E402
+import tool_process  # noqa: E402
 
 # the what-if records a what-if row stands on, committed with it (<head>-<base>.tsv, identity-tools.sh's format)
 VERDICTS = "test/resources/identity-what-if-verdicts"
@@ -42,8 +44,8 @@ def diff_id(base: str, head: str) -> str:
     """The stable patch-id of base..head's whole diff (`git patch-id --stable`): the same for a change rebased onto a main
     that moved elsewhere, another for any other diff; "" for an empty one."""
     diff = git("diff", "--binary", base, head)
-    done = subprocess.run(["git", "patch-id", "--stable"], input=diff, capture_output=True, text=True)
-    return done.stdout.split()[0] if done.stdout.strip() else ""
+    patch_id = tool_git.Git.here().call("patch-id", "--stable", input=diff, quiet=True).stdout
+    return patch_id.split()[0] if patch_id.strip() else ""
 
 
 def verdict_path(head: str, base: str) -> str:
@@ -58,13 +60,10 @@ def release() -> str:
     return os.environ.get("KINOWO_WHAT_IF_RELEASE") or "identity-what-if-verdicts"
 
 
-def gh(*args: str, timeout: int = 120) -> subprocess.CompletedProcess[str]:
+def gh(*args: str, timeout: int = 120) -> tool_process.Captured:
     """gh against the repository (KINOWO_GH: a test's fake, the seam), bounded; a hung or missing gh is a failed call."""
-    command = [os.environ.get("KINOWO_GH") or "gh", *args, "-R", os.environ.get("KINOWO_REPO") or "pawelkrupinski/movies"]
-    try:
-        return subprocess.run(command, capture_output=True, text=True, timeout=timeout)
-    except (OSError, subprocess.TimeoutExpired) as e:
-        return subprocess.CompletedProcess(command, 124, "", str(e))
+    repository = os.environ.get("KINOWO_REPO") or "pawelkrupinski/movies"
+    return tool_github.GitHub.here().call([*args, "-R", repository], timeout, quiet=True)
 
 
 def asset_name(head: str, base: str, patch_id: str, countries: str, tools: str, run: str) -> str:
@@ -102,12 +101,12 @@ def publish(head: str, base: str, countries: str, tools: str, run: str) -> int:
         with open(path, "w") as f:
             json.dump(body, f, indent=1, sort_keys=True)
         done = gh("release", "upload", release(), path, "--clobber")
-        if done.returncode != 0 and "not found" in (done.stderr + done.stdout).lower():
+        if done.code != 0 and "not found" in (done.stderr + done.stdout).lower():
             gh("release", "create", release(), "--prerelease", "--title", "Identity what-if verdicts (rolling)", "--notes",
                "Each scripts/identity-what-if run's verdict and takes diffs: what scripts/identity-stamp-carry verify "
                "checks a committed what-if verdict against.")
             done = gh("release", "upload", release(), path, "--clobber")
-    if done.returncode != 0:
+    if done.code != 0:
         print(f"could not publish {name} on release {release()}: {(done.stderr or done.stdout).strip()[-300:]} -- a stamp "
               "carry refuses this verdict until it is published (run the what-if again)", file=sys.stderr)
         return 1
@@ -132,7 +131,7 @@ def fetch_asset(name: str, wanted: str) -> dict[str, Any] | None:
     if body is not None and wanted in body.get("lines", []):
         return body
     os.makedirs(cache, exist_ok=True)
-    if gh("release", "download", release(), "-p", name, "-O", kept + ".part", "--clobber").returncode != 0:
+    if gh("release", "download", release(), "-p", name, "-O", kept + ".part", "--clobber").code != 0:
         return None
     os.replace(kept + ".part", kept)
     return read()

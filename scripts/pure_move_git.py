@@ -2,8 +2,13 @@
 blob contents through a single `git cat-file --batch`. Stdlib only, beside pure_move_check.py."""
 from __future__ import annotations
 
+import os
 import subprocess
+import sys
 from typing import Dict, Optional, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import tool_git  # noqa: E402
 
 
 class Undecidable(Exception):
@@ -11,10 +16,10 @@ class Undecidable(Exception):
 
 
 def git(*args: str, ok: Tuple[int, ...] = (0,)) -> str:
-    done = subprocess.run(["git", "-c", "core.quotePath=false", *args], capture_output=True, text=True)
-    if done.returncode not in ok:
-        raise Undecidable(f"git {' '.join(args)}: {done.stderr.strip() or done.returncode}")
-    return done.stdout
+    try:
+        return tool_git.Git.here().text(*args, ok=ok)
+    except tool_git.Failed as failed:
+        raise Undecidable(str(failed)) from failed
 
 
 class Blobs:

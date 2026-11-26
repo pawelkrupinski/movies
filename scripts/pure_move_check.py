@@ -39,13 +39,13 @@ head, a Scala file that cannot be lexed). Tested by scripts/pure_move_check_test
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 from typing import List, Tuple
 
 sys.path[:0] = [os.path.dirname(os.path.abspath(__file__))]  # the modules beside it: `python3 -I` adds no script directory
 from pure_move_compare import Verdict, compare_scala, compare_text  # noqa: E402
 from pure_move_git import Blobs, Undecidable, git  # noqa: E402
+import tool_git  # noqa: E402
 from pure_move_lexer import segments  # noqa: E402
 from pure_move_moves import Moves, find_moves  # noqa: E402
 from pure_move_risks import literal_hits, name_risks  # noqa: E402
@@ -86,7 +86,7 @@ def check(base: str, head: str) -> Tuple[Verdict, Moves]:
     blobs = Blobs()
     for ref in (base, head):
         git("rev-parse", "--verify", f"{ref}^{{commit}}")
-    if subprocess.run(["git", "merge-base", "--is-ancestor", base, head]).returncode != 0:
+    if not tool_git.Git.here().ok("merge-base", "--is-ancestor", base, head, quiet=True):
         raise Undecidable(f"{base} is not an ancestor of {head}")
     moves = find_moves(base, head, blobs)
     verdict = Verdict(moved=sorted(moves.files.items()))

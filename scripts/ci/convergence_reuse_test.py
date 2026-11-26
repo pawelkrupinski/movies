@@ -17,6 +17,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import convergence_reuse as reuse  # noqa: E402
+import tool_git  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 with open(os.path.join(ROOT, reuse.WORKFLOW)) as f:
@@ -508,7 +509,7 @@ class ListedInputs(unittest.TestCase):
         self.assertEqual([p for p in sorted(inputs) if not reuse.listed(p, self.patterns)], [])
 
     def test_every_listed_path_exists(self):
-        tracked = reuse.git("ls-files").splitlines()
+        tracked = tool_git.Git.here(reuse.ROOT).text("ls-files").splitlines()
         missing = [p for p in self.patterns if not p.startswith("!") and not any(reuse._under(t, p) for t in tracked)]
         self.assertEqual(missing, [])
 

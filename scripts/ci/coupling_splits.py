@@ -3,14 +3,18 @@ honest -- every piece takes over X's code, each below X's frozen fan-out, and th
 remainder reference within X's frozen reference set at the base -- and the packages whose distance they may raise."""
 from __future__ import annotations
 
+import os
 import re
+import shutil
+import tempfile
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 from coupling_renames import MIN_MOVED_MEMBERS, Pairs, members, name_status_pairs, source_of
 from coupling_rows import (DISTANCE_CAP, DISTANCE_SPLIT_TOLERANCE, LAYERS_PATH, REFS_PATH, Fanouts, Rows,
                            layer_units, moved, of_kind, package_of, recorded_refs)
-from trailers import git, text_at as file_at
+from trailers import text_at as file_at
+import tool_git
 
 SPLIT_TRAILER = re.compile(r"split of\s+(\S+)(?:\s+into\s+(.+))?$")
 Claims = List[Tuple[str, List[str]]]
@@ -38,7 +42,7 @@ class SplitExplanation:
 
 def split_claims(rng: str) -> Claims:
     """The `Coupling: split of <X> [into <A>, <B>]` trailers of the commits of `rng`: (X, the pieces named)."""
-    log = git("log", "--format=%x00%(trailers:key=Coupling,valueonly,unfold,separator=%x1e)", rng)
+    log = tool_git.Git.here().text("log", "--format=%x00%(trailers:key=Coupling,valueonly,unfold,separator=%x1e)", rng)
     claims: Claims = []
     for value in (v.strip() for entry in log.split("\x00") for v in entry.split("\x1e")):
         m = SPLIT_TRAILER.match(value)
@@ -196,3 +200,22 @@ def reached_packages(head: str, pieces: List[str], original: str, union: Set[str
     units = layer_units(file_at(head, LAYERS_PATH))
     internal = set(pieces) | {original}
     return {package_of(c, units) for c in internal} | {package_of(t, units) for t in union}
+
+
+def snapshot() -> str:
+    """A commit of the working tree (tracked and untracked, .gitignore respected) on top of HEAD, built in a copy of
+    the index: no ref, the index and the tree untouched."""
+    index = tool_git.Git.here().text("rev-parse", "--git-path", "index").strip()
+    with tempfile.TemporaryDirectory() as d:
+        env = dict(os.environ, GIT_INDEX_FILE=os.path.join(d, "index"))
+        if os.path.exists(index):
+            shutil.copy(index, env["GIT_INDEX_FILE"])
+        git = tool_git.Git(tool_git.shared_runner(), env, ".")
+        git.text("add", "-A")
+        return git.text("commit-tree", git.text("write-tree").strip(), "-p", "HEAD", "-m",
+                        "split-check: the working tree").strip()
+
+
+def default_base() -> str:
+    git = tool_git.Git.here()
+    return git.line("merge-base", "HEAD", "origin/main") or git.text("rev-parse", "HEAD").strip()

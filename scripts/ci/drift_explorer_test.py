@@ -11,6 +11,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import drift_explorer as explorer  # noqa: E402
+import header_tsv  # noqa: E402
 
 FLIPS = "country\tseed\tvenue\trawTitle\tfilms\treasons\ttakes\n"
 BACKLOG = "# the backlog\n" + "\t".join(explorer.BACKLOG_COLUMNS) + "\n" \
@@ -82,12 +83,12 @@ class DriftExplorerTest(unittest.TestCase):
                            + "CinemaxX Regensburg\tTitans\tde\t77\t2026-11-05\trun:9/a\tnone -> a -> none\n"
                            + "CinemaxX Dammtor\tTitans\tde\t311\t2026-11-05\trun:9/a\tx\n")
         self.assertEqual(["filed de 77 CinemaxX Regensburg | Titans"], explorer.file(asset, self.backlog, self.seeds, "fixer"))
-        rows = explorer.read_tsv(self.backlog)
+        rows = header_tsv.read(self.backlog)
         self.assertEqual(("drift", "de", "77", "CinemaxX Regensburg"), (rows[-1]["kind"], rows[-1]["country"], rows[-1]["seed"],
                                                                          rows[-1]["venue"]))
         self.assertIn(77, explorer.drift_seeds.fixed("de", path=self.seeds))
         self.assertEqual([], explorer.file(asset, self.backlog, self.seeds, "fixer"))  # filed already: nothing again
-        self.assertEqual(2, len(explorer.read_tsv(self.backlog)))
+        self.assertEqual(2, len(header_tsv.read(self.backlog)))
 
 
 if __name__ == "__main__":

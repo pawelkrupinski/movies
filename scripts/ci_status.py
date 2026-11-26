@@ -6,9 +6,12 @@ import argparse
 import hashlib
 import json
 import os
-import subprocess
 import sys
 import time
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import tool_git  # noqa: E402
+import tool_github  # noqa: E402
 
 GH = os.environ.get("KINOWO_GH") or "gh"
 REPO = os.environ.get("KINOWO_GH_REPO") or os.environ.get("KINOWO_REPO") or "pawelkrupinski/movies"
@@ -31,13 +34,9 @@ def gh_api(path: str, use_cache: bool):
                 return json.load(f)
     except (OSError, ValueError):
         pass
-    try:
-        done = subprocess.run([GH, "api", f"repos/{REPO}/{path}"], capture_output=True, text=True,
-                              timeout=GH_TIMEOUT, stdin=subprocess.DEVNULL)
-        if done.returncode != 0:
-            return None
-        data = json.loads(done.stdout)
-    except (subprocess.TimeoutExpired, OSError, ValueError):
+    data = tool_github.GitHub(tool_git.shared_runner(), os.environ, GH).json(
+        ["api", f"repos/{REPO}/{path}"], GH_TIMEOUT, quiet=True, closed_stdin=True)
+    if data is None:
         return None
     try:
         os.makedirs(cache_dir(), exist_ok=True)
@@ -49,11 +48,7 @@ def gh_api(path: str, use_cache: bool):
 
 
 def resolve_sha(rev: str) -> str:
-    try:
-        done = subprocess.run(["git", "rev-parse", "--verify", "-q", rev], capture_output=True, text=True, timeout=10)
-        return done.stdout.strip() if done.returncode == 0 else rev
-    except (subprocess.TimeoutExpired, OSError):
-        return rev
+    return tool_git.Git.here().line("rev-parse", "--verify", "-q", rev, timeout=10) or rev
 
 
 def matches(run: dict, workflow: str) -> bool:

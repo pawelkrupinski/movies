@@ -47,7 +47,8 @@ from typing import Dict, List, Tuple
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # baseline_ratchet.py and trailers.py beside it, under `python3 -I` too
 import baseline_ratchet  # noqa: E402
 import trailers  # noqa: E402
-from trailers import git, text_at as file_at  # noqa: E402
+from trailers import text_at as file_at  # noqa: E402
+import tool_git  # noqa: E402
 from coupling_reasons import GENERIC_REASONS, ISO_DATE  # noqa: E402
 
 Rows = Dict[Tuple[str, str], int]
@@ -227,10 +228,10 @@ class Renames:
             if path in seen:
                 return None
             seen.add(path)
-            deleted = git("log", "-1", "--no-renames", "--diff-filter=D", "--format=%H", "--", path).strip()
+            deleted = tool_git.Git.here().text("log", "-1", "--no-renames", "--diff-filter=D", "--format=%H", "--", path).strip()
             if not deleted:
                 return None
-            fields = git("diff", "-M", "--name-status", "-z", f"{deleted}^", deleted).split("\0")
+            fields = tool_git.Git.here().text("diff", "-M", "--name-status", "-z", f"{deleted}^", deleted).split("\0")
             renames = {fields[i + 1]: fields[i + 2] for i in range(len(fields) - 2) if fields[i].startswith("R")}
             if path not in renames:
                 return None

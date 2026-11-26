@@ -30,18 +30,14 @@ import csv
 import os
 import sys
 
-
-def read_tsv(path: str) -> list[dict]:
-    """By the header, unquoted: a raw title's `"` is a character, as drift_explorer and IdentityDrift write it."""
-    with open(path, newline="") as f:
-        lines = [line for line in f if line.strip() and not line.startswith("#")]
-    return list(csv.DictReader(lines, delimiter="\t", quoting=csv.QUOTE_NONE))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import header_tsv  # noqa: E402
 
 
 def flips(path: str, seed: str) -> dict[tuple[str, str], dict]:
     """The flips of one seed, by listing (venue, raw title): the first row of each."""
     out = {}
-    for row in read_tsv(path):
+    for row in header_tsv.read(path):
         if row.get("venue") is None or row.get("rawTitle") is None:
             raise ValueError(f"{path}: no venue/rawTitle columns")
         if row.get("seed", seed) != seed:
@@ -53,13 +49,13 @@ def flips(path: str, seed: str) -> dict[tuple[str, str], dict]:
 def allowed(cc: str, path: str | None) -> list[tuple[str, str]]:
     if not path or not os.path.isfile(path):
         return []
-    return [(r["venue"], r["rawTitle"]) for r in read_tsv(path) if r.get("country") == cc]
+    return [(r["venue"], r["rawTitle"]) for r in header_tsv.read(path) if r.get("country") == cc]
 
 
 def backlog(cc: str, path: str | None) -> dict[tuple[str, str], dict]:
     if not path or not os.path.isfile(path):
         return {}
-    return {(r["venue"], r["rawTitle"]): r for r in read_tsv(path)
+    return {(r["venue"], r["rawTitle"]): r for r in header_tsv.read(path)
             if r.get("country") == cc and r.get("kind", "drift") == "drift"}
 
 
@@ -71,7 +67,7 @@ def struck(cc: str, backlog_path: str | None) -> dict[tuple[str, str], dict]:
     path = os.path.join(os.path.dirname(os.path.abspath(backlog_path)), "identity-flips-struck.tsv")
     if not os.path.isfile(path):
         return {}
-    return {(r["venue"], r["rawTitle"]): r for r in read_tsv(path) if r.get("country") == cc}
+    return {(r["venue"], r["rawTitle"]): r for r in header_tsv.read(path) if r.get("country") == cc}
 
 
 def covered(key: tuple[str, str], allow: list[tuple[str, str]]) -> bool:

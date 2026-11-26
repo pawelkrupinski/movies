@@ -43,8 +43,9 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, HERE)
-sys.path.insert(0, os.path.join(HERE, "ci"))
+sys.path[:0] = [HERE, os.path.join(HERE, "ci"), os.path.join(HERE, "lib")]
+import tool_git  # noqa: E402
+import header_tsv  # noqa: E402
 import identity_measure as measure  # noqa: E402
 import identity_takes_diff as takes  # noqa: E402
 from identity_judgements import read as read_judgements  # noqa: E402
@@ -160,9 +161,9 @@ class Sources:
     def files(self, side, roots=(IDENTITY_SOURCES,)):
         ref = self.sides[side]
         if ref == ".":
-            out = git(self.repo, "ls-files", "--cached", "--others", "--exclude-standard", "--", *roots)
+            out = tool_git.Git.here(self.repo).text("ls-files", "--cached", "--others", "--exclude-standard", "--", *roots)
         else:
-            out = git(self.repo, "ls-tree", "-r", "--name-only", ref, "--", *roots)
+            out = tool_git.Git.here(self.repo).text("ls-tree", "-r", "--name-only", ref, "--", *roots)
         return [p for p in out.splitlines() if p.endswith(".scala")]
 
     def lines(self, side, path):
@@ -174,7 +175,7 @@ class Sources:
                     with open(os.path.join(self.repo, path), encoding="utf-8") as f:
                         text = f.read()
                 else:
-                    text = git(self.repo, "show", f"{ref}:{path}")
+                    text = tool_git.Git.here(self.repo).text("show", f"{ref}:{path}")
             except (OSError, subprocess.CalledProcessError):
                 text = ""
             self.cache[key] = text.splitlines()
@@ -259,12 +260,6 @@ def matches(rule_ids, patterns):
     return any(fnmatch.fnmatchcase(rule, pattern) for rule in rule_ids for pattern in patterns)
 
 
-def read_tsv(path):
-    with open(path, encoding="utf-8") as f:
-        header = f.readline().rstrip("\n").split("\t")
-        return [dict(zip(header, line.rstrip("\n").split("\t"))) for line in f if line.strip()]
-
-
 def select(rows, patterns):
     """The keys of every listing of a family any member of which a pattern names, and the families picked."""
     families = {}
@@ -275,19 +270,15 @@ def select(rows, patterns):
     return sorted(r["key"] for f in picked for r in families[f]), len(picked), len(families)
 
 
-def git(repo, *args):
-    return subprocess.run(["git", "-c", "core.quotePath=false", "-C", repo, *args], check=True, capture_output=True, text=True).stdout
-
-
 def changes_between(repo, base, head):
     if head == ".":
-        text = git(repo, "diff", "-U0", "--no-color", "--no-ext-diff", base)
-        for path in git(repo, "ls-files", "--others", "--exclude-standard").splitlines():
+        text = tool_git.Git.here(repo).text("diff", "-U0", "--no-color", "--no-ext-diff", base)
+        for path in tool_git.Git.here(repo).text("ls-files", "--others", "--exclude-standard").splitlines():
             if path.endswith(".scala") or not inert_path(path):
                 with open(os.path.join(repo, path), encoding="utf-8", errors="replace") as f:
                     text += f"\ndiff --git a/{path} b/{path}\n@@ -0,0 +1 @@\n" + "".join("+" + l for l in f.read().splitlines(True))
         return hunks(text)
-    return hunks(git(repo, "diff", "-U0", "--no-color", "--no-ext-diff", base, head))
+    return hunks(tool_git.Git.here(repo).text("diff", "-U0", "--no-color", "--no-ext-diff", base, head))
 
 
 def reach(args):
@@ -305,7 +296,7 @@ def run_reaches(args):
 
 
 def run_select(args):
-    rows = read_tsv(args.takes)
+    rows = header_tsv.read(args.takes)
     patterns, why = reach(args)
     families = len({r["family"] for r in rows})
     if patterns is None:
@@ -412,7 +403,7 @@ def final_rows(base_rows, path):
     if not os.path.exists(path):
         return None
     by = {r["key"]: r for r in base_rows}
-    return [dict(by[r["key"]], take=r["final"], rules=r.get("basis", "")) for r in read_tsv(path) if r["key"] in by]
+    return [dict(by[r["key"]], take=r["final"], rules=r.get("basis", "")) for r in header_tsv.read(path) if r["key"] in by]
 
 
 def write_rows(path, rows):
@@ -434,11 +425,11 @@ def verified(report, stage):
 
 
 def run_diff(args):
-    base_rows = read_tsv(os.path.join(args.base, "takes.tsv"))
-    head_rows = read_tsv(os.path.join(args.head, "takes.tsv"))
-    prod = {r["key"]: r["prod"] for r in read_tsv(os.path.join(args.base, "prod.tsv"))}
+    base_rows = header_tsv.read(os.path.join(args.base, "takes.tsv"))
+    head_rows = header_tsv.read(os.path.join(args.head, "takes.tsv"))
+    prod = {r["key"]: r["prod"] for r in header_tsv.read(os.path.join(args.base, "prod.tsv"))}
     whole_path = os.path.join(args.head, "takes-whole.tsv")
-    whole = read_tsv(whole_path) if args.verify and os.path.exists(whole_path) else None
+    whole = header_tsv.read(whole_path) if args.verify and os.path.exists(whole_path) else None
     if args.verify and whole is None:
         print("--verify: the head wrote no takes-whole.tsv", file=sys.stderr)
         return 2
@@ -476,9 +467,9 @@ def side_take(side, listing=None):
     """One whole side's take, as --bisect compares sides: the listing's (`[cc|]venue|raw title`) model and final take --
     every key it bills under -- or, with none, a digest of every take."""
     import hashlib
-    rows = read_tsv(os.path.join(side, "takes.tsv"))
+    rows = header_tsv.read(os.path.join(side, "takes.tsv"))
     final_path = os.path.join(side, "final.tsv")
-    finals = {r["key"]: r["final"] for r in read_tsv(final_path)} if os.path.exists(final_path) else {}
+    finals = {r["key"]: r["final"] for r in header_tsv.read(final_path)} if os.path.exists(final_path) else {}
     if listing is None:
         digest = lambda pairs: hashlib.sha256("\n".join(sorted(pairs)).encode()).hexdigest()[:12]
         return (f"model {digest(r['key'] + chr(9) + r['take'] for r in rows)}, "

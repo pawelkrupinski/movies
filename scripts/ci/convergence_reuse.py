@@ -86,7 +86,7 @@ import drift_seeds as drift_seeds  # noqa: E402,F401
 from convergence_forge import PATHS_FILE as PATHS_FILE  # noqa: E402,F401
 from convergence_forge import ROOT, SEED_KEYS, SUITE_FILES as SUITE_FILES, SUITES as SUITES, WORKFLOW as WORKFLOW  # noqa: E402,F401
 from convergence_forge import TAKES_WORKFLOW_FILE, WORKFLOW_FILE, Status, StatusCache, Unproven as Unproven  # noqa: E402,F401
-from convergence_forge import copy_statuses, git as git, key as key, listed as listed, main_base, same_tree  # noqa: E402,F401
+from convergence_forge import copy_statuses, key as key, listed as listed, main_base, same_tree  # noqa: E402,F401
 from convergence_forge import gh, pair_of, repo, patterns_of as patterns_of, run_facts, run_jobs, run_json, source_base  # noqa: E402,F401
 from convergence_forge import takes_child, under, workflow_at as workflow_at  # noqa: E402,F401
 from convergence_judge import Facts, Mine  # noqa: E402,F401

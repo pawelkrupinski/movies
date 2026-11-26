@@ -6,6 +6,8 @@ for ITS repository, so a bare `git -C <other>` reads the hook's), and prints a p
 `drift-slices/pl/...przemyśl...` is not a quoted octal escape that no prefix test matches).
 
   Git(runner, env, root).out("rev-parse", "HEAD") -> stdout, or None when git failed
+  .line("rev-parse", "--verify", x)               -> stdout stripped, or None when git failed (its stderr unprinted)
+  .lines("ls-files", "--others")                  -> its stdout lines, [] when git failed (its stderr unprinted)
   .ok("diff", "--quiet", a, b)                    -> whether git exited 0
   .text("show", "HEAD:x", ok=(0, 128))           -> stdout, or raises Failed outside `ok` (git's stderr unprinted)
   Git.here(root)                                  -> over this process's one subprocess runner and its environment"""
@@ -15,7 +17,7 @@ import functools
 import os
 import subprocess
 import sys
-from typing import BinaryIO, Mapping, Optional, Sequence, cast
+from typing import BinaryIO, List, Mapping, Optional, Sequence, cast
 
 import tool_process
 
@@ -60,6 +62,15 @@ class Git:
     def out(self, *args: str, timeout: Optional[float] = None, quiet: bool = False) -> Optional[str]:
         done = self.call(*args, timeout=timeout, quiet=quiet)
         return done.stdout if done.code == 0 else None
+
+    def line(self, *args: str, timeout: Optional[float] = None) -> Optional[str]:
+        """The stripped stdout of a git that succeeded (`rev-parse --verify`), None when it failed; its stderr unprinted."""
+        out = self.out(*args, timeout=timeout, quiet=True)
+        return None if out is None else out.strip()
+
+    def lines(self, *args: str, timeout: Optional[float] = None) -> List[str]:
+        """The lines of a git that succeeded (`ls-files`, `diff --name-only`); none when it failed -- its stderr unprinted."""
+        return (self.out(*args, timeout=timeout, quiet=True) or "").splitlines()
 
     def ok(self, *args: str, timeout: Optional[float] = None, quiet: bool = False) -> bool:
         return self.call(*args, timeout=timeout, quiet=quiet).code == 0

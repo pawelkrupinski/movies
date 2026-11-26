@@ -27,6 +27,9 @@ import subprocess
 import sys
 import tokenize
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import tool_git  # noqa: E402
+
 RUNNER = "scripts/run-script-tests"
 
 
@@ -39,14 +42,8 @@ def floor_of(root):
     return int(found.group(1)), int(found.group(2))
 
 
-def git(root, *args):
-    """git in `root`, whatever repository a calling hook's GIT_DIR / GIT_WORK_TREE / GIT_INDEX_FILE point at."""
-    env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
-    return subprocess.run(["git", "-C", root] + list(args), capture_output=True, text=True, check=True, env=env).stdout
-
-
 def python_files(root):
-    tracked = git(root, "ls-files", "-z")
+    tracked = tool_git.Git.here(root).text("ls-files", "-z")
     for path in sorted(p for p in tracked.split("\0") if p):
         name = os.path.basename(path)
         if name.endswith(".py"):

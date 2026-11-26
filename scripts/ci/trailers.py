@@ -27,10 +27,14 @@ a `Fixes-Red:` commit touching only CI or report plumbing (`plumbing_only`).
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
 from typing import Callable, Iterable, List, NamedTuple, Optional
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import tool_git  # noqa: E402
 
 # Every trailer key a ratchet, commit rule, the red gate or agentctl (Rework-Of: a revert notice closed) reads.
 KNOWN_KEYS = ("Coupling", "Complexity", "Duplication", "Length", "Typing", "Pure-Move", "Fixes-Red", "Fix-Replay",
@@ -47,13 +51,9 @@ class Misplaced(NamedTuple):
     text: str   # the line as written, stripped
 
 
-def git(*args: str, stdin: Optional[str] = None) -> str:
-    return subprocess.run(["git", *args], input=stdin, check=True, capture_output=True, text=True).stdout
-
-
 def parsed(message: str) -> set:
     """(key lowercased, value) of every trailer git reads from `message`."""
-    out = git("interpret-trailers", "--parse", stdin=message)
+    out = tool_git.Git.here().text("interpret-trailers", "--parse", input=message)
     return {(k.strip().lower(), v.strip()) for k, sep, v in (line.partition(":") for line in out.splitlines()) if sep}
 
 
@@ -83,13 +83,13 @@ def explain(m: Misplaced) -> str:
 
 
 def message_of(sha: str) -> str:
-    return git("log", "-1", "--format=%B", sha)
+    return tool_git.Git.here().text("log", "-1", "--format=%B", sha)
 
 
 def misplaced_notes(rng: str, key: str, path: Optional[str] = None) -> List[str]:
     """`<sha9>: found ...` for every `key:` line of a commit of `rng` (changing `path`, when given) that git does not
     read as a trailer: why a ratchet refusing for want of `key` saw none."""
-    shas = git("rev-list", rng, *(["--", path] if path else [])).split()
+    shas = tool_git.Git.here().text("rev-list", rng, *(["--", path] if path else [])).split()
     return [f"{sha[:9]}: {explain(m)}" for sha in shas for m in misplaced(message_of(sha), (key,))]
 
 
@@ -101,14 +101,13 @@ def print_misplaced(rng: str, key: str, path: Optional[str] = None) -> None:
 
 def carries(sha: str, key: str) -> bool:
     """Whether commit `sha` carries a non-empty `key:` trailer (git's reading: the final trailer block)."""
-    value = git("log", "-1", f"--format=%(trailers:key={key},valueonly,separator=%x20)", sha)
+    value = tool_git.Git.here().text("log", "-1", f"--format=%(trailers:key={key},valueonly,separator=%x20)", sha)
     return bool(value.strip())
 
 
 def text_at(rev: str, path: str) -> str:
     """`path` at `rev`, "" where it does not exist (or `rev` does not: a root commit's parent)."""
-    shown = subprocess.run(["git", "show", f"{rev}:{path}"], capture_output=True, text=True)
-    return shown.stdout if shown.returncode == 0 else ""
+    return tool_git.Git.here().out("show", f"{rev}:{path}", quiet=True) or ""
 
 
 def exists_at(rev: str, path: str) -> bool:
@@ -122,7 +121,7 @@ def unjustified_rises(rng: str, path: str, key: str, rose: Callable[[str, str], 
     above). A commit creating or deleting `path` is no step (the range's own check has no baseline to compare). When no
     single commit's step grows it although the range does (each step within its parent's limit), some commit of the
     range changing `path` must carry the trailer. Empty when every rise is justified where it was made."""
-    changed = git("rev-list", "--reverse", rng, "--", path).split()
+    changed = tool_git.Git.here().text("rev-list", "--reverse", rng, "--", path).split()
     raisers, refused = 0, []
     for sha in changed:
         before, after = text_at(f"{sha}^", path), text_at(sha, path)
@@ -131,7 +130,7 @@ def unjustified_rises(rng: str, path: str, key: str, rose: Callable[[str, str], 
         if own:
             raisers += 1
             if not carries(sha, key):
-                subject = git("log", "-1", "--format=%s", sha).strip()
+                subject = tool_git.Git.here().text("log", "-1", "--format=%s", sha).strip()
                 refused.append(f"{sha[:9]} {subject}: " + "; ".join(own))
     if not raisers and not any(carries(sha, key) for sha in changed):
         refused.append(f"no commit of {rng} changing {path} carries `{key}:`")
@@ -149,7 +148,7 @@ def diagnoses_hint(sha: str) -> Optional[str]:
     message = message_of(sha)
     if not any(k == "fixes-red" for k, _v in parsed(message)):
         return None
-    paths = git("diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha).split()
+    paths = tool_git.Git.here().text("diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha).split()
     if not plumbing_only(paths):
         return None
     return ("it says `Fixes-Red:` but touches only CI or report plumbing (" + ", ".join(paths[:3])
@@ -164,7 +163,7 @@ def main(argv: List[str]) -> int:
         return 2
     try:
         for rng in argv[2::2]:
-            for sha in git("rev-list", "--reverse", rng).split():
+            for sha in tool_git.Git.here().text("rev-list", "--reverse", rng).split():
                 for m in misplaced(message_of(sha)):
                     print(f"trailers: {sha[:9]}: {explain(m)}", file=sys.stderr)
                 hint = diagnoses_hint(sha)

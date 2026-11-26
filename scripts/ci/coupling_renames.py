@@ -11,7 +11,8 @@ from typing import Dict, List, Optional, Set, Tuple
 
 import tool_python
 from coupling_rows import CLASS_KINDS, LAYERS_PATH, layer_units, moved, package_of
-from trailers import git, text_at as file_at
+from trailers import text_at as file_at
+import tool_git
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # scripts/pure-move-check's code; COUPLING_PURE_MOVE_CHECK names it for a copy of this tool elsewhere (the mutation test's)
@@ -39,7 +40,7 @@ def members(text: str) -> Set[str]:
 
 def name_status_pairs(*args: str) -> List[Tuple[str, str, str]]:
     """The (status letter, from, to) of each rename (R) or copy (C) in `git diff --name-status <args>`."""
-    status = git("diff", *args, "--name-status")
+    status = tool_git.Git.here().text("diff", *args, "--name-status")
     return [(cols[0][:1], cols[1], cols[2]) for cols in (line.split("\t") for line in status.splitlines())
             if len(cols) == 3 and cols[0][:1] in "RC"]
 
@@ -92,7 +93,7 @@ class RenameEvidence:
         return self._pure[sha]
 
     def commits(self, *paths: str) -> List[str]:
-        return git("rev-list", "--reverse", self.rng, "--", *paths).split() if paths else []
+        return tool_git.Git.here().text("rev-list", "--reverse", self.rng, "--", *paths).split() if paths else []
 
     def pure_commit(self, origin: str, old: str, new: str) -> str:
         """The commit touching `origin` after which `new` is declared and `old` no longer is, that is a PURE MOVE ("" for none)."""
@@ -121,7 +122,7 @@ class RenameEvidence:
         if not origin or not dest:
             return []
         left = members(file_at(self.base, origin)) - members(file_at(self.head, dest))
-        changed = git("diff", "--name-only", "--diff-filter=ACMR", "-M", self.base, self.head, "--", "*/src/main/*.scala").split()
+        changed = tool_git.Git.here().text("diff", "--name-only", "--diff-filter=ACMR", "-M", self.base, self.head, "--", "*/src/main/*.scala").split()
         out: List[str] = []
         for path in changed:
             if path == dest:

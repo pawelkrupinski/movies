@@ -12,7 +12,8 @@ import trailers
 from coupling_exemption_table import exemption_columns, exemption_loosening, parse_exemptions
 from coupling_reasons import EXEMPT_TRAILER, ISO_DATE, REASON_SHAPE, reason_problems
 from coupling_rows import EXEMPTIONS_PATH
-from trailers import git, text_at as file_at
+from trailers import text_at as file_at
+import tool_git
 
 # the ratchet's `rise_refused(rng, path, header, rises, rose)`: whether a commit of the range makes a rise without its trailer
 RiseRefused = Callable[[str, str, str, List[str], Callable[[str, str], List[str]]], bool]
@@ -20,7 +21,7 @@ RiseRefused = Callable[[str, str, str, List[str], Callable[[str, str], List[str]
 
 def coupling_trailers(sha: str) -> List[str]:
     """The `Coupling:` trailers of `sha` as git reads them (the final trailer block)."""
-    out = git("log", "-1", "--format=%(trailers:key=Coupling,valueonly,unfold,separator=%x1e)", sha)
+    out = tool_git.Git.here().text("log", "-1", "--format=%(trailers:key=Coupling,valueonly,unfold,separator=%x1e)", sha)
     return [v.strip() for v in out.split("\x1e") if v.strip()]
 
 
@@ -59,12 +60,12 @@ def unadmitted_exemptions(rng: str) -> List[str]:
     """Each fan-out or package exemption row a commit of `rng` adds without what admits it (AN AGENT'S ROW ADDED): a specific why,
     its `added` date, and the commit's own `Coupling: exempt <Class> — <reason>` trailer."""
     out: List[str] = []
-    for sha in git("rev-list", "--reverse", rng, "--", EXEMPTIONS_PATH).split():
+    for sha in tool_git.Git.here().text("rev-list", "--reverse", rng, "--", EXEMPTIONS_PATH).split():
         added = rows_added(sha)
         if not added:
             continue
         values = coupling_trailers(sha)
-        subject = git("log", "-1", "--format=%s", sha).strip()
+        subject = tool_git.Git.here().text("log", "-1", "--format=%s", sha).strip()
         for cols in added:
             out += row_problems(f"{sha[:9]} {subject}: {cols[0]} {cols[1]}", cols, values)
     return out
@@ -73,7 +74,7 @@ def unadmitted_exemptions(rng: str) -> List[str]:
 def print_added(sha: str, present: Dict[Tuple[str, str], List[str]]) -> int:
     """One commit's added exemption rows, each with its date, reason and trailer; how many there were."""
     values = coupling_trailers(sha)
-    day, subject = git("log", "-1", "--format=%cs%x1f%s", sha).strip().split("\x1f", 1)
+    day, subject = tool_git.Git.here().text("log", "-1", "--format=%cs%x1f%s", sha).strip().split("\x1f", 1)
     found = 0
     for cols in rows_added(sha):
         found += 1
@@ -96,7 +97,7 @@ def new_exemptions(since: str, rev: str = "") -> int:
                                               capture_output=True).returncode == 0 else "HEAD"
     days = re.fullmatch(r"(\d+)d", since)
     after = f"{days.group(1)} days ago" if days else since
-    shas = git("log", "--reverse", f"--since={after}", "--format=%H", rev, "--", EXEMPTIONS_PATH).split()
+    shas = tool_git.Git.here().text("log", "--reverse", f"--since={after}", "--format=%H", rev, "--", EXEMPTIONS_PATH).split()
     present = exemption_columns(file_at(rev, EXEMPTIONS_PATH))
     print(f"# Coupling exemptions added since {since} (on {rev}, {EXEMPTIONS_PATH})\n")
     found = sum(print_added(sha, present) for sha in shas)

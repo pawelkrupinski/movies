@@ -14,12 +14,12 @@ Tested by scripts/identity_stamp_carry_test.py."""
 from __future__ import annotations
 
 import os
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from identity_stamp_carry_published import diff_id, read_text  # noqa: E402  (the one patch-id of a range)
 from pure_move_check import git  # noqa: E402
+import tool_git  # noqa: E402
 
 RANGES = "test/resources/identity-stamp-carry-ranges.tsv"
 
@@ -59,7 +59,7 @@ def cited_range(base: str, head: str, old: str, new: str) -> tuple[str, str] | N
     """Where the pushed history old..new holds the cited range base..head: itself when `new` holds its head, else the
     newest first-parent pair h~count..h of old..new whose diff has the range's patch-id (RANGES at `new`); None when
     none has."""
-    if subprocess.run(["git", "merge-base", "--is-ancestor", head, new], capture_output=True).returncode == 0:
+    if tool_git.Git.here().ok("merge-base", "--is-ancestor", head, new, quiet=True):
         return base, head
     count, patch_id = read_ranges(git("show", f"{new}:{RANGES}", ok=(0, 128))).get((base, head), (0, ""))
     if not count or not patch_id:

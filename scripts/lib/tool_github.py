@@ -3,6 +3,8 @@ answer, never a step waiting out its job's timeout), its stderr passed on unless
 fails told apart from one that answered -- `read` gives None for a failed call, never an empty answer.
 
   GitHub(runner, env).read(["api", "repos/o/r/commits/x", "--jq", ".sha"], timeout=120) -> stdout, or None
+  .json(["api", ...], timeout, quiet=True)                                               -> the parsed answer, or None when gh failed or said no JSON
+  GitHub.here()                                                                          -> over this process's one subprocess runner and its environment
   .succeeds([...], timeout, quiet=True)                                                  -> whether gh exited 0
   .download(release, asset, dest, timeout)  `gh release download` of one asset to `dest`: whether it is there now
   .asset_names(release, timeout)            the release's asset names, or None when they could not be listed
@@ -12,9 +14,11 @@ from __future__ import annotations
 import gzip
 import os
 import shutil
+import json
 import sys
-from typing import List, Mapping, Optional, Sequence
+from typing import Any, List, Mapping, Optional, Sequence
 
+import tool_git
 import tool_process
 
 
@@ -24,8 +28,15 @@ class GitHub:
         self.env = env
         self.gh = gh
 
-    def call(self, args: Sequence[str], timeout: float, quiet: bool = False) -> tool_process.Captured:
-        done = self.runner.capture(tool_process.Command([self.gh, *args], self.env, timeout=timeout))
+    @classmethod
+    def here(cls) -> "GitHub":
+        return cls(tool_git.shared_runner(), os.environ, os.environ.get("KINOWO_GH") or "gh")
+
+    def call(self, args: Sequence[str], timeout: float, quiet: bool = False, input: Optional[str] = None,
+             closed_stdin: bool = False) -> tool_process.Captured:
+        """`gh args`, bounded by `timeout`; `input` is what its stdin reads, `closed_stdin` a stdin that reads nothing."""
+        done = self.runner.capture(tool_process.Command([self.gh, *args], self.env, timeout=timeout, input=input,
+                                                        closed_stdin=closed_stdin))
         if done.stderr and not quiet:
             sys.stderr.write(done.stderr)
             sys.stderr.flush()
@@ -34,6 +45,16 @@ class GitHub:
     def read(self, args: Sequence[str], timeout: float, quiet: bool = False) -> Optional[str]:
         done = self.call(args, timeout, quiet)
         return done.stdout if done.code == 0 else None
+
+    def json(self, args: Sequence[str], timeout: float, quiet: bool = False, closed_stdin: bool = False) -> Any:
+        """What gh answered, parsed: None when the call failed or its answer is no JSON."""
+        done = self.call(args, timeout, quiet, closed_stdin=closed_stdin)
+        if done.code != 0:
+            return None
+        try:
+            return json.loads(done.stdout)
+        except ValueError:
+            return None
 
     def succeeds(self, args: Sequence[str], timeout: float, quiet: bool = True) -> bool:
         return self.call(args, timeout, quiet).code == 0

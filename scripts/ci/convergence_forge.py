@@ -9,11 +9,15 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 from typing import Any, Dict, List, Optional, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
+sys.path.insert(0, os.path.join(HERE, os.pardir, "lib"))
+import tool_git  # noqa: E402
+import tool_github  # noqa: E402
 PATHS_FILE = ".github/convergence-paths.txt"
 WORKFLOW = ".github/workflows/identity-model-convergence.yml"
 WORKFLOW_FILE = "identity-model-convergence.yml"
@@ -45,10 +49,6 @@ class Unproven(Exception):
 # ── the key ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
-def git(*args: str, cwd: Optional[str] = None) -> str:
-    return subprocess.run(["git", *args], cwd=cwd or ROOT, check=True, capture_output=True, text=True).stdout
-
-
 def patterns_of(text: str) -> List[str]:
     """The paths file's patterns, as the changed-paths action's matches.sh reads them: `dir/**`, an exact path, either
     `!`-prefixed to take paths out; `#` comments, blanks, a YAML list's `- ` and quotes dropped."""
@@ -73,11 +73,11 @@ def listed(path: str, patterns: List[str]) -> bool:
 def key(rev: str = "HEAD", cwd: Optional[str] = None) -> str:
     """sha256 over `<mode> <type> <object>\\t<path>` of every path the commit's own paths file lists, in path order: two
     commits share a key exactly when every such file is byte-identical (and the file itself is listed)."""
-    patterns = patterns_of(git("show", f"{rev}:{PATHS_FILE}", cwd=cwd))
+    patterns = patterns_of(tool_git.Git.here(cwd or ROOT).text("show", f"{rev}:{PATHS_FILE}"))
     if not patterns:
         raise Unproven(f"{rev} lists no convergence paths")
     digest = hashlib.sha256()
-    for line in git("ls-tree", "-r", "--full-tree", rev, cwd=cwd).splitlines():
+    for line in tool_git.Git.here(cwd or ROOT).text("ls-tree", "-r", "--full-tree", rev).splitlines():
         meta, path = line.split("\t", 1)
         if listed(path, patterns):
             digest.update(f"{meta}\t{path}\n".encode())
@@ -88,27 +88,24 @@ def same_tree(a: Optional[str], b: Optional[str]) -> bool:
     if not a or not b:
         return False
     try:
-        a = git("rev-parse", "--verify", f"{a}^{{commit}}").strip()
-        b = git("rev-parse", "--verify", f"{b}^{{commit}}").strip()
+        a = tool_git.Git.here(ROOT).text("rev-parse", "--verify", f"{a}^{{commit}}").strip()
+        b = tool_git.Git.here(ROOT).text("rev-parse", "--verify", f"{b}^{{commit}}").strip()
     except subprocess.CalledProcessError:
         return False
     return a == b or key(a) == key(b)
 
 
 def workflow_at(rev: str) -> str:
-    return git("show", f"{rev}:{WORKFLOW}")
+    return tool_git.Git.here(ROOT).text("show", f"{rev}:{WORKFLOW}")
 
 
 # ── reading the forge ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 
 def gh(*args: str, parse: bool = True) -> Any:
-    try:
-        res = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=GH_SECONDS)
-    except (OSError, subprocess.TimeoutExpired) as e:
-        raise Unproven(f"gh {' '.join(args[:2])}: {e}")
-    if res.returncode != 0:
-        raise Unproven(f"gh {' '.join(args[:3])}: {res.stderr.strip()[:200]}")
+    res = tool_github.GitHub.here().call(args, GH_SECONDS, quiet=True)
+    if res.code != 0:
+        raise Unproven(f"gh {' '.join(args[:3])}: {res.stderr.strip()[:200] or 'exit ' + str(res.code)}")
     if not parse:
         return res.stdout
     try:
@@ -136,12 +133,9 @@ def run_jobs(run_id: str) -> List[Status]:
 def run_facts(run_id: str) -> Optional[Dict[str, Any]]:
     """The run's facts artifact, or None when it has none (a run from before them); a failed read is Unproven."""
     with tempfile.TemporaryDirectory() as tmp:
-        try:
-            res = subprocess.run(["gh", "run", "download", str(run_id), "-n", FACTS_ARTIFACT, "-D", tmp],
-                                 capture_output=True, text=True, timeout=GH_SECONDS)
-        except (OSError, subprocess.TimeoutExpired) as e:
-            raise Unproven(f"gh run download {run_id}: {e}")
-        if res.returncode != 0:
+        res = tool_github.GitHub.here().call(["run", "download", str(run_id), "-n", FACTS_ARTIFACT, "-D", tmp],
+                                             GH_SECONDS, quiet=True)
+        if res.code != 0:
             if "no artifact" in (res.stderr + res.stdout).lower():
                 return None
             raise Unproven(f"gh run download {run_id}: {res.stderr.strip()[:200]}")
@@ -190,7 +184,7 @@ def source_base(code: str, sha: str, run: Status, cache: StatusCache) -> Optiona
 def main_base(code: str, sha: str, cache: StatusCache) -> Optional[str]:
     """The base main's takes check would take for `sha`: the newest commit before it, first parents, whose newest
     `identity takes (<code>)` status passed (identity-takes-check.sh's pick_base)."""
-    for commit in git("rev-list", "--first-parent", f"--max-count={BASE_WALK}", f"{sha}^").split():
+    for commit in tool_git.Git.here(ROOT).text("rev-list", "--first-parent", f"--max-count={BASE_WALK}", f"{sha}^").split():
         for s in statuses(commit, cache):
             if s.get("context") == takes_context(code):
                 if state(s) == "success":

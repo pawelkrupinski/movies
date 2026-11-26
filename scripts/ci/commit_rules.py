@@ -73,6 +73,8 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import tool_git  # noqa: E402
 import trailers  # noqa: E402
 
 REGISTRY = ".github/allow-lists.txt"
@@ -125,16 +127,9 @@ GAUGE_FILES = re.compile(
     r"|infra/test/app-metrics-catalogue/.*)$")
 
 
-def git(*args: str) -> str:
-    # core.quotePath=false: a path with a non-ASCII letter (drift-slices/pl/centrum-3d-przemyśl-...) is printed as
-    # itself, not as a quoted octal escape that no prefix test matches (2026-11-01: a push's committed Zniknięcie slice
-    # read as "no drift slice", landing check run 41275275554)
-    return subprocess.run(["git", "-c", "core.quotePath=false", *args], check=True, capture_output=True, text=True).stdout
-
-
 def at(rev: str, path: str) -> str:
     try:
-        return git("show", f"{rev}:{path}")
+        return tool_git.Git.here().text("show", f"{rev}:{path}")
     except subprocess.CalledProcessError:
         return ""  # absent there
 
@@ -153,16 +148,16 @@ class Commit:
 
     @staticmethod
     def read(sha: str) -> "Commit":
-        subject = git("log", "-1", "--format=%s", sha).strip()
+        subject = tool_git.Git.here().text("log", "-1", "--format=%s", sha).strip()
         trailers: dict[str, list[str]] = {}
-        for line in git("log", "-1", "--format=%(trailers:only,unfold)", sha).splitlines():
+        for line in tool_git.Git.here().text("log", "-1", "--format=%(trailers:only,unfold)", sha).splitlines():
             key, sep, value = line.partition(":")
             if sep and value.strip():
                 trailers.setdefault(key.strip().lower(), []).append(value.strip())
-        has_parent = subprocess.run(["git", "rev-parse", "-q", "--verify", f"{sha}^"], capture_output=True).returncode == 0
-        names = git("diff", "--name-only", "--no-renames", f"{sha}^", sha) if has_parent \
-            else git("diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha)
-        return Commit(sha, subject, trailers, {n for n in names.splitlines() if n}, git("log", "-1", "--format=%B", sha))
+        has_parent = tool_git.Git.here().ok("rev-parse", "-q", "--verify", f"{sha}^", quiet=True)
+        names = tool_git.Git.here().text("diff", "--name-only", "--no-renames", f"{sha}^", sha) if has_parent \
+            else tool_git.Git.here().text("diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha)
+        return Commit(sha, subject, trailers, {n for n in names.splitlines() if n}, tool_git.Git.here().text("log", "-1", "--format=%B", sha))
 
     def has(self, key: str) -> bool:
         return bool(self.trailers.get(key.lower()))
@@ -232,7 +227,7 @@ def known(rev: str, slices_too: bool = True) -> set[tuple[str, str, str]]:
     out = set()
     for path in DRIFT_LISTS + BASELINES:
         try:
-            history = git("log", "--format=%H", f"{rev}^", "--", path).split()
+            history = tool_git.Git.here().text("log", "--format=%H", f"{rev}^", "--", path).split()
         except subprocess.CalledProcessError:
             history = []
         for old in history:
@@ -240,7 +235,7 @@ def known(rev: str, slices_too: bool = True) -> set[tuple[str, str, str]]:
     if not slices_too:
         return out
     try:
-        slices = [p for p in git("ls-tree", "-r", "--name-only", f"{rev}^", "--", SLICES).split("\n") if p.endswith("/slice.json.gz")]
+        slices = [p for p in tool_git.Git.here().text("ls-tree", "-r", "--name-only", f"{rev}^", "--", SLICES).split("\n") if p.endswith("/slice.json.gz")]
     except subprocess.CalledProcessError:
         slices = []
     for path in slices:
@@ -263,7 +258,7 @@ def is_known(row: tuple[str, str, str], before: set[tuple[str, str, str]]) -> bo
 def existed_before(sha: str, path: str) -> bool:
     """Whether any ancestor of `sha` held `path`: a baseline is created once, never made again."""
     try:
-        return bool(git("log", "--format=%H", "-1", f"{sha}^", "--", path).strip())
+        return bool(tool_git.Git.here().text("log", "--format=%H", "-1", f"{sha}^", "--", path).strip())
     except subprocess.CalledProcessError:
         return False
 
@@ -420,7 +415,7 @@ ALIAS_OPAQUE = re.compile(r"\bopaque\b")
 def code_lines(c: Commit, path: str) -> tuple[list[str], list[str]]:
     """The (removed, added) lines of `c` in `path`, blank and comment lines dropped, stripped, in diff order."""
     removed, added = [], []
-    for line in git("diff", "-U0", "--no-color", c.parent, c.sha, "--", path).splitlines():
+    for line in tool_git.Git.here().text("diff", "-U0", "--no-color", c.parent, c.sha, "--", path).splitlines():
         if line.startswith(("---", "+++")) or not line[:1] in "+-":
             continue
         body = line[1:].strip()
@@ -519,13 +514,13 @@ def gauges_before_behaviour(c: Commit, opts: dict) -> list[str]:
     for value in c.trailers.get("gauges-shipped", []):
         sha = value.split()[0]
         try:
-            full = git("rev-parse", "--verify", "-q", f"{sha}^{{commit}}").strip()
+            full = tool_git.Git.here().text("rev-parse", "--verify", "-q", f"{sha}^{{commit}}").strip()
         except subprocess.CalledProcessError:
             why.append(f"Gauges-Shipped: {sha} names no commit")
             continue
         if full in opts["in_push"]:
             why.append(f"Gauges-Shipped: {sha} is in the same push, so the same deploy: land the gauges first")
-        elif subprocess.run(["git", "merge-base", "--is-ancestor", full, c.parent]).returncode != 0:
+        elif not tool_git.Git.here().ok("merge-base", "--is-ancestor", full, c.parent):
             why.append(f"Gauges-Shipped: {sha} is not an ancestor of this commit")
         elif not any(GAUGE_FILES.match(p) for p in Commit.read(full).changed):
             why.append(f"Gauges-Shipped: {sha} changes no gauge, alert or dashboard file")
@@ -550,8 +545,8 @@ def check(rule_set: str, ranges: list[str], opts: dict) -> list[str]:
     refused = []
     for rng in ranges:
         # what the whole push changes: a drift fix's slice may come in a later commit of it
-        opts = {**opts, "pushed": set(git("diff", "--name-only", "--no-renames", rng.replace("..", "...", 1)).split("\n")) - {""}}
-        commits = [Commit.read(sha) for sha in git("rev-list", "--reverse", rng).split()]
+        opts = {**opts, "pushed": set(tool_git.Git.here().text("diff", "--name-only", "--no-renames", rng.replace("..", "...", 1)).split("\n")) - {""}}
+        commits = [Commit.read(sha) for sha in tool_git.Git.here().text("rev-list", "--reverse", rng).split()]
         opts["in_push"] = {c.sha for c in commits}
         # a published commit's `Drift-Slice:` given by a later commit of the range, by its sha: main is never amended
         opts["declared"] = [(m.group(1).lower(), m.group(2)) for c in commits for v in c.trailers.get("drift-slice-for", [])

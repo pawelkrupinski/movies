@@ -37,7 +37,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import coupling_ratchet  # noqa: E402
 import js_quality_ratchet  # noqa: E402
 import quality_ratchet  # noqa: E402
-from coupling_ratchet import git  # noqa: E402
+import tool_git  # noqa: E402
 
 COUPLING = coupling_ratchet.BASELINE_PATH
 # metric -> (baseline file, ratchet family); the order the tables print in
@@ -55,7 +55,7 @@ Row = Tuple[str, str, Optional[int], Optional[int], str]  # metric, key, before,
 
 def renames(base: str, head: Optional[str]) -> Dict[str, str]:
     """The sources git's rename detection follows from `base` to `head` (the working tree when None)."""
-    fields = git("diff", "-M", "--name-status", "-z", base, *([head] if head else [])).split("\0")
+    fields = tool_git.Git.here().text("diff", "-M", "--name-status", "-z", base, *([head] if head else [])).split("\0")
     out, i = {}, 0
     while i < len(fields) - 1:
         status = fields[i]
@@ -82,8 +82,8 @@ class Untouched:
     """The sources that exist at `base` and that the range from it to `head` (the working tree when None) never changed."""
 
     def __init__(self, base: str, head: Optional[str]):
-        changed = set(git("diff", "--name-only", "-z", base, *([head] if head else [])).split("\0"))
-        self.paths = {p for p in git("ls-tree", "-r", "--name-only", "-z", base).split("\0") if p and p not in changed}
+        changed = set(tool_git.Git.here().text("diff", "--name-only", "-z", base, *([head] if head else [])).split("\0"))
+        self.paths = {p for p in tool_git.Git.here().text("ls-tree", "-r", "--name-only", "-z", base).split("\0") if p and p not in changed}
 
     def holds(self, key: str) -> bool:
         """Whether every source of a quality key (`<path>:<Owner.method>`, `<path>`, `<path>|<path>...`) is untouched."""

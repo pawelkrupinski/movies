@@ -40,6 +40,17 @@ class GitTest(unittest.TestCase):
             self.assertEqual("przemyśl.tsv\n", git.out("diff", "--cached", "--name-only"))
             self.assertEqual("", tool_git.Git(tool_process.SubprocessRunner(), env, hook).out("status", "--porcelain"))
 
+    def test_line_and_lines_answer_stripped_stdout_or_nothing_when_git_failed(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            git = tool_git.Git(tool_process.SubprocessRunner(), cli_harness.isolated_env(os.environ), d)
+            self.assertIsNone(git.line("rev-parse", "--verify", "-q", "HEAD"))
+            self.assertEqual([], git.lines("ls-files"))
+            self.assertTrue(git.ok("init", "-q"))
+            for name in ("a", "b"):
+                open(os.path.join(d, name), "w").close()
+            self.assertEqual(["a", "b"], git.lines("ls-files", "--others"))
+            self.assertEqual("a", git.line("ls-files", "--others", "a"))
+
     def test_text_raises_outside_the_expected_codes_saying_gits_stderr(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             git = tool_git.Git(tool_process.SubprocessRunner(), cli_harness.isolated_env(os.environ), d)

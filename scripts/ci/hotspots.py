@@ -19,18 +19,15 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from collections import Counter
 from itertools import combinations
 from typing import Dict, List, Tuple
 
-PRODUCTION_MODULES = ("geodata", "base", "http", "common", "identity", "scrapers", "worker", "web")
-
-
-def is_production(path: str) -> bool:
-    parts = path.split("/")
-    return len(parts) > 3 and parts[0] in PRODUCTION_MODULES and parts[1:3] == ["src", "main"] and path.endswith(".scala")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+from production_scala import PRODUCTION_MODULES, is_production  # noqa: E402
 
 
 def read_files(path: str) -> Dict[str, Tuple[int, int]]:

@@ -107,10 +107,8 @@
 
 import argparse
 import os
-import shutil
 import subprocess
 import sys
-import tempfile
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -125,7 +123,7 @@ from coupling_rows import (BASELINE_PATH, DISTANCE_SPLIT_TOLERANCE, EXEMPTIONS_P
 from coupling_splits import SPLIT_RULE, SplitExplanation, resolve, split_claims, split_credit  # noqa: E402
 from coupling_verdicts import check_verdicts, update_all  # noqa: E402
 from coupling_violations import violations  # noqa: E402
-from trailers import git, text_at as file_at  # noqa: E402
+from trailers import text_at as file_at  # noqa: E402
 
 Renamed = Dict[Tuple[str, str], str]
 
@@ -295,26 +293,6 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
         print(f"coupling: within {baseline_path} ({len(current)} rows)")
     return 1 if failed else 0
 
-
-def snapshot() -> str:
-    """A commit of the working tree (tracked and untracked, .gitignore respected) on top of HEAD, built in a copy of
-    the index: no ref, the index and the tree untouched."""
-    index = git("rev-parse", "--git-path", "index").strip()
-    with tempfile.TemporaryDirectory() as d:
-        env = dict(os.environ, GIT_INDEX_FILE=os.path.join(d, "index"))
-        if os.path.exists(index):
-            shutil.copy(index, env["GIT_INDEX_FILE"])
-
-        def run(*a: str) -> str:
-            return subprocess.run(["git", *a], check=True, capture_output=True, text=True, env=env).stdout.strip()
-
-        run("add", "-A")
-        return run("commit-tree", run("write-tree"), "-p", "HEAD", "-m", "split-check: the working tree")
-
-
-def default_base() -> str:
-    found = subprocess.run(["git", "merge-base", "HEAD", "origin/main"], capture_output=True, text=True)
-    return found.stdout.strip() if found.returncode == 0 else git("rev-parse", "HEAD").strip()
 
 
 def piece_line(piece: str, value: Optional[int], frozen: int) -> str:

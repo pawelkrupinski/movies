@@ -50,6 +50,25 @@ class GitHubTest(unittest.TestCase):
             self.assertFalse(tool_github.GitHub(FakeRunner(1, "", "HTTP 502\n"), {}).succeeds(["api", "x"], timeout=7))
         self.assertEqual("", err.getvalue(), "succeeds is quiet by default")
 
+    def test_json_parses_the_answer_and_is_none_for_a_failure_or_no_json(self) -> None:
+        self.assertEqual({"a": 1}, tool_github.GitHub(FakeRunner(0, '{"a": 1}'), {}).json(["api", "x"], 7, quiet=True))
+        self.assertIsNone(tool_github.GitHub(FakeRunner(1, '{"a": 1}'), {}).json(["api", "x"], 7, quiet=True))
+        self.assertIsNone(tool_github.GitHub(FakeRunner(0, "<html>"), {}).json(["api", "x"], 7, quiet=True))
+
+    def test_call_passes_stdin_on(self) -> None:
+        runner = FakeRunner(0)
+        tool_github.GitHub(runner, {}).call(["issue", "create", "-F", "-"], 7, input="body")
+        tool_github.GitHub(runner, {}).call(["api", "x"], 7, closed_stdin=True)
+        self.assertEqual(("body", False, None, True), (runner.commands[0].input, runner.commands[0].closed_stdin,
+                                                      runner.commands[1].input, runner.commands[1].closed_stdin))
+
+    def test_here_runs_the_gh_the_environment_names(self) -> None:
+        os.environ["KINOWO_GH"] = "/fake/gh"
+        try:
+            self.assertEqual("/fake/gh", tool_github.GitHub.here().gh)
+        finally:
+            del os.environ["KINOWO_GH"]
+
     def test_download_says_whether_the_asset_is_there(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             dest = os.path.join(d, "sub", "a.gz")

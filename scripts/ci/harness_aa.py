@@ -42,14 +42,12 @@ from __future__ import annotations
 import csv
 import json
 import os
-import subprocess
 import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import tool_git  # noqa: E402
+
 PATHS = ".github/harness-aa-paths.txt"
-
-
-def git(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-c", "core.quotePath=false", *args], capture_output=True, text=True)
 
 
 def prefixes(path: str) -> list[str]:
@@ -60,13 +58,13 @@ def prefixes(path: str) -> list[str]:
 def decide(head: str, since: str, paths_file: str) -> int:
     base = f"{head}^"
     if since:
-        if git("merge-base", "--is-ancestor", since, head).returncode == 0:
+        if tool_git.Git.here().ok("merge-base", "--is-ancestor", since, head, quiet=True):
             base = since
         else:
             print(f"harness-aa: {since[:12]} is unknown here or no ancestor of {head[:12]}: judging the parent alone",
                   file=sys.stderr)
-    diff = git("diff", "--name-only", "--no-renames", base, head)
-    if diff.returncode != 0:
+    diff = tool_git.Git.here().call("diff", "--name-only", "--no-renames", base, head, quiet=True)
+    if diff.code != 0:
         print(f"harness-aa: could not diff {base}..{head}: {diff.stderr.strip()}", file=sys.stderr)
         return 2
     watched = prefixes(paths_file)

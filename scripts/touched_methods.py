@@ -22,28 +22,19 @@ import argparse
 import json
 import os
 import re
-import subprocess
 import sys
 import xml.etree.ElementTree as ElementTree
 
-# the deployed modules (quality.QualityReport.ProductionModules): what ships
-PRODUCTION_MODULES = ("geodata", "base", "http", "common", "identity", "scrapers", "worker", "web")
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import tool_git  # noqa: E402
+from production_scala import is_production  # noqa: E402
+
 HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
-
-
-def is_production(path):
-    parts = path.split("/")
-    return len(parts) > 3 and parts[0] in PRODUCTION_MODULES and parts[1:3] == ["src", "main"] and path.endswith(".scala")
-
-
-def git(repo, *args):
-    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    return subprocess.run(["git", "-C", repo, *args], check=True, capture_output=True, text=True, env=env).stdout
 
 
 def changed_paths(repo, base, head):
     """The production sources the head has and the range changed (added, modified or renamed to)."""
-    out = git(repo, "diff", "--name-only", "--diff-filter=AMR", "-M", base, head)
+    out = tool_git.Git.here(repo).text("diff", "--name-only", "--diff-filter=AMR", "-M", base, head)
     return [p for p in out.splitlines() if is_production(p)]
 
 
@@ -68,7 +59,7 @@ def range_lines(repo, base, head):
     paths = changed_paths(repo, base, head)
     if not paths:
         return {}
-    return {p: ls for p, ls in changed_lines(git(repo, "diff", "-U0", "-M", base, head, "--", *paths)).items() if is_production(p)}
+    return {p: ls for p, ls in changed_lines(tool_git.Git.here(repo).text("diff", "-U0", "-M", base, head, "--", *paths)).items() if is_production(p)}
 
 
 def read_spans(path):
