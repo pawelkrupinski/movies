@@ -24,6 +24,7 @@ PORT_LOW, PORT_HIGH, PORT_TRIES = 27100, 27900, 200
 SSH_OPTIONS = ["-o", "ExitOnForwardFailure=yes", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
                "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=3",
                "-o", "ControlMaster=no", "-o", "ControlPath=none"]
+PING_TIMEOUT = 15  # seconds: serverSelectionTimeoutMS bounds the connect, not a mongod that stalls after it
 URI_PORT = re.compile(r"^mongodb://([^@/]*@)?127\.0\.0\.1:([0-9]+)")
 
 
@@ -97,8 +98,12 @@ class ProdTunnel:
             return True  # nothing to authenticate with; TCP is all we have
         probe = re.sub(r"[?&]serverSelectionTimeoutMS=[0-9]+", "", self.probe_uri)
         probe += ("&" if "?" in probe else "?") + "serverSelectionTimeoutMS=3000"
-        done = subprocess.run([*self.mongosh_at, probe, "--quiet", "--eval", "db.adminCommand({ping:1})"],
-                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            done = subprocess.run([*self.mongosh_at, probe, "--quiet", "--eval", "db.adminCommand({ping:1})"],
+                                  stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                  timeout=PING_TIMEOUT)
+        except subprocess.TimeoutExpired:
+            return False  # a half-open tunnel: ssh up, mongod stalled
         return done.returncode == 0
 
     def alive(self) -> bool:
