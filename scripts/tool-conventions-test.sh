@@ -75,10 +75,6 @@ check "path_flag: a relative path made absolute against the caller's directory" 
 check "...a directory that is not there is a usage error, never /<name>" "demo: --out nope/f: no directory nope|demo: see demo --help|exit=2" \
   "$(cd "$work/here" && lib 'path_flag --out nope/f' | paste -sd'|' -)"
 
-# ── bounded refuses a bound that would not bound ──────────────────────────────────────────────────
-for bad in 0 abc ""; do
-  check "bounded '$bad' is a usage error (64), never an unbounded run" "64" "$(bounded "$bad" true 2>/dev/null; echo $?)"
-done
 # ── bounded under a terminal ──────────────────────────────────────────────────────────────────────
 # A pseudo-terminal from script(1) (BSD's/macOS's and util-linux's take their arguments differently): the line runs in
 # its foreground with it on stdin, as a tool run by hand does. The feed holds the terminal's input open until the line

@@ -56,7 +56,6 @@ local_mongo_port() { echo "${LOCAL_MIRROR_PORT:-28017}"; }
 local_mongo_uri() { echo "mongodb://127.0.0.1:$(local_mongo_port)/${1:-}?directConnection=true"; }
 
 bounded() {
-  case "${1:-}" in ''|*[!0-9]*|0|00*) echo "bounded: <seconds> must be a positive integer, not '${1:-}'" >&2; return 64 ;; esac
   perl -e '
     use POSIX ":sys_wait_h";
     my $seconds = shift;
