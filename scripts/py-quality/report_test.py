@@ -189,7 +189,8 @@ class ReportTest(cli_harness.ToolCase):
         # A PATH of git alone: a system PATH may hold a node (the --linux container's /usr/bin/node)
         git_only = self.path("git-only-bin")
         os.makedirs(git_only)
-        os.symlink(shutil.which("git") or "git", os.path.join(git_only, "git"))
+        for name in "git".split():
+            os.symlink(shutil.which(name) or name, os.path.join(git_only, name))
         env = cli_harness.isolated_env(os.environ, dict(self.tool_env, PATH=git_only))
         done = cli_harness.run_bounded([sys.executable, REPORT, "--root", self.root, "--check"], env=env, cwd=self.root,
                                        stdin=None)

@@ -38,6 +38,7 @@ check "a report with no samples says so, and succeeds" "0:1" \
   "$(status=$(STUB_FAILS=1 top report); echo "$status:$(grep -c 'no samples' "$stub_dir/out")")"
 # A native mongod's marker (mongo-exec.sh): the samples go under the runner's own temp directory, not a /tmp name every
 # runner of the host shares, and `report` reads the same file `start` wrote.
+container_tmp=/tmp  # the container's own, where no marker says otherwise
 runner_temp="$stub_dir/runner"; mkdir -p "$runner_temp"
 printf '%s\n' "$stub_dir/native" > "$runner_temp/kinowo-mongo-native"
 mkdir -p "$stub_dir/native/bin"
@@ -49,7 +50,7 @@ check "beside a native mongod, start keeps its samples under the runner's temp d
 check "...and report reads that same file" "1" \
   "$(native_top report 3; grep -c "readFileSync('$runner_temp/mongo-top.json'" "$STUB_LOG")"
 check "...and the container's samples stay at its own /tmp" "1" \
-  "$(top start 5 >/dev/null; grep -c "writeFileSync('/tmp/mongo-top.json'" "$STUB_LOG")"
+  "$(top start 5 >/dev/null; grep -c "writeFileSync('$container_tmp/mongo-top.json'" "$STUB_LOG")"
 check "an unknown command is a usage error" "64" "$(top bogus)"
 
 spec_summary
