@@ -312,7 +312,8 @@ class Proof:
         logs = (os.path.join(work, "before.log"), os.path.join(work, "after.log"))
         seed = self.seed()
         before_rc = self.run_in(before, logs[0], seed)
-        after_rc = self.run_in(after, logs[1], seed)
+        # a BEFORE run that hung gives no verdict whatever AFTER does: not another timeout's worth of sbt to learn it
+        after_rc = before_rc if before_rc == tool_process.TIMED_OUT else self.run_in(after, logs[1], seed)
         if tool_process.TIMED_OUT in (before_rc, after_rc):
             print(f"\n--- BEFORE (exit {before_rc}) ---\n{last_lines(logs[0])}", end="")
             print(f"\n--- AFTER (exit {after_rc}) ---\n{last_lines(logs[1])}", end="", flush=True)

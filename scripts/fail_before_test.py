@@ -157,6 +157,7 @@ class FailBeforeTest(cli_harness.ToolCase):
                          done.output)
         self.assertIn("a run timed out after 1s (exit 124): no verdict", done.stderr)
         self.assertEqual(0, cli_harness.still_running(grandchild))
+        self.assertEqual(1, len(self.read("grandchild").split()), "AFTER ran although BEFORE had no verdict")
 
     def ci(self, *args: str, env: Optional[Dict[str, Optional[str]]] = None) -> cli_harness.Done:
         self.fakes.script("ci-sbt", CI_SBT)
