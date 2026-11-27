@@ -91,5 +91,13 @@ Round 3 added the two rows above. `identity-slice` and `identity-what-if` are dr
 download or real JVM is reached: a non-pure `identity-what-if` goes on to the local prod mirror (and the vault), so it stays
 in its black-box tests. `mobile-ship.sh` is left out: its flow starts by inspecting the App Store and Google Play through
 their signed HTTP APIs (credentials from the vault), and a stub of both stores' APIs would be most of a second tool. It has no
-working-tree check to prove (it builds from a detached worktree at main's sha and pushes only the version bump it cut);
-that logic is held by the dashboard's own tests (`infra/version-dashboard/test`).
+working-tree check, and needs none: a dirty caller checkout cannot leak into a release. The code path
+(`infra/version-dashboard/src/mobile-release/release.ts`): `inspect` fetches and reads `origin/main`'s sha and its
+`mobile-version.txt` with `git show <sha>:`, never the caller's files; `releaseVersion` makes a detached worktree AT that
+sha under the temp dir and runs the bump (`mobile-release.sh --here`, whose `REPO_ROOT` is its own worktree), the iOS
+archive, Gradle and the tag script from it; the bump is pushed from it as `HEAD:main`. The caller's tracked edits,
+untracked files and unpushed commits are read by nothing. The one input from the caller's tree is the gitignored
+`android/local.properties` (SDK path), copied in on purpose. The guarantee is tested over real git, with stores and builds
+stubbed, in `infra/version-dashboard/test/mobile-release/release.test.ts` ("a caller's checkout with uncommitted ... work":
+at Gradle time the worktree is at origin/main's sha with none of the three kinds of dirt; the caller's own state is left
+as it was); building from `HEAD` instead of the sha fails it.

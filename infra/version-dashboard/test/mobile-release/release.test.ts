@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -185,6 +186,60 @@ describe("release", () => {
     expect(at("PATCH /v1/reviewSubmissions/sub")).toBeLessThan(at("PUT /edits/edit-2/tracks/production"));
     expect(events.at(-1)).toContain("git worktree remove --force");
     expect(d.lines.at(-1)).toBe(`released 2.0.10 to both stores from ${BUMP_SHA.slice(0, 9)}`);
+  });
+
+  describe("a caller's checkout with uncommitted, untracked and unpushed work", () => {
+    const git = (cwd: string, ...args: string[]): string =>
+      execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", ...args], { cwd, encoding: "utf8" }).trim();
+
+    /** A real origin and a real caller clone, dirtied three ways; the release runs over REAL git, the rest stubbed. */
+    function dirtyCaller() {
+      const origin = join(dir, "origin.git");
+      const caller = join(dir, "repo");
+      const seed = join(dir, "seed");
+      git(dir, "init", "--quiet", "--bare", "-b", "main", origin);
+      git(dir, "clone", "--quiet", origin, seed);
+      writeFileSync(join(seed, "mobile-version.txt"), "2.0.9\n");
+      writeFileSync(join(seed, "tracked.txt"), "origin\n");
+      git(seed, "add", ".");
+      git(seed, "commit", "--quiet", "-m", "main");
+      git(seed, "push", "--quiet", "origin", "HEAD:main");
+      const mainSha = git(seed, "rev-parse", "HEAD");
+      rmSync(caller, { recursive: true, force: true }); // the fixture's empty android/ dir
+      git(dir, "clone", "--quiet", origin, caller);
+      // dirty 1: an UNPUSHED local commit moving HEAD off origin/main; dirty 2: a tracked edit; dirty 3: an untracked file
+      writeFileSync(join(caller, "mobile-version.txt"), "9.9.9\n");
+      git(caller, "commit", "--quiet", "-am", "local only");
+      writeFileSync(join(caller, "tracked.txt"), "dirty edit\n");
+      writeFileSync(join(caller, "untracked.txt"), "stray\n");
+      return { caller, mainSha };
+    }
+
+    it("builds the release from origin/main's commit in its own worktree, none of the caller's changes in it", async () => {
+      const { caller, mainSha } = dirtyCaller();
+      const base = deps([], []);
+      const seen: Record<string, string>[] = [];
+      const real: Executor = async (argv, runOptions) => {
+        const line = argv.join(" ");
+        const stubbed = line.startsWith("git ls-remote --tags") || line.startsWith("git diff --quiet") || line.includes("refs/tags/mobile-");
+        if (argv[0] === "git" && !stubbed) return ok(git(runOptions.cwd as string, ...argv.slice(1)));
+        if (argv[0] === "./gradlew") {
+          const tree = join(runOptions.cwd as string, "..");
+          seen.push({
+            head: git(tree, "rev-parse", "HEAD"),
+            status: git(tree, "status", "--porcelain"), // "?? ios/" is the stubbed iOS build's own output
+            version: readFileSync(join(tree, "mobile-version.txt"), "utf8"),
+            tracked: readFileSync(join(tree, "tracked.txt"), "utf8"),
+            untracked: String(existsSync(join(tree, "untracked.txt"))),
+          });
+        }
+        return base.run(argv, runOptions);
+      };
+      await release({ ...base, repoDir: caller, run: real }, options);
+      expect(seen).toEqual([{ head: mainSha, status: "?? ios/", version: "2.0.9\n", tracked: "origin\n", untracked: "false" }]);
+      expect(git(caller, "rev-parse", "HEAD")).not.toBe(mainSha);
+      expect(git(caller, "status", "--porcelain")).toBe("M tracked.txt\n?? untracked.txt"); // left as it was (git() trims the leading blank)
+    });
   });
 
   it("logs a build's output whole and in order, one write after another", async () => {
