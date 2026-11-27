@@ -29,6 +29,10 @@ final class CardShareMenuUITests: XCTestCase {
         let anytime = app.buttons[A11y.TopBar.datePillAnytime]
         XCTAssertTrue(anytime.waitForExistence(timeout: 30), "Top bar never appeared")
         anytime.tap()
+        // The tap pages the listing's TabView to "Wszystkie"; the press waits for that page to be the selected one,
+        // so it never lands on the page change itself.
+        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: anytime)
+        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 10), .completed, "Wszystkie never became the selected day")
         XCTAssertTrue(FixtureLaunch.firstFilmCard(app).waitForExistence(timeout: 30), "Grid never appeared")
     }
 
@@ -57,11 +61,13 @@ final class CardShareMenuUITests: XCTestCase {
 
     // MARK: - helpers
 
-    /// A user's hold: past the context menu's ~0.5 s threshold with 0.3 s to
-    /// spare, which the application-anchored point leaves intact (its re-resolve
-    /// during the gesture costs ~0.05 s of main thread on CI, where the card
-    /// query cost up to 1.5 s and needed a 2 s hold to outlast).
-    private static let holdSeconds: TimeInterval = 0.8
+    /// A user's hold, past the context menu's ~0.5 s threshold with 1.5 s to spare: the recognizer's timer runs on the
+    /// app's main thread, and a stall there that ends after the touch-up is handled turns the hold into a tap (the
+    /// detail opens). The application-anchored point keeps XCUITest's own finds out of it (~0.05 s each), but the app
+    /// itself can stall: Order independence #132, the class alone and first on a CI Simulator, played a 0.8 s hold in
+    /// 1.18 s with finds of 0.05 s, and "Film 1"'s detail opened. Holding longer costs the behaviour nothing: a 2 s
+    /// hold is still a long press.
+    private static let holdSeconds: TimeInterval = 2
 
     /// The share entry of the card's `.contextMenu`, surfaced as a button while
     /// the menu is open. Addressed by identifier, not label — the label is
