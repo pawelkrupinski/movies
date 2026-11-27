@@ -17,7 +17,7 @@ import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/ci/wait_for_run_artifact.py", "scripts/ci/wait-for-run-artifact.sh")
 GH = r"""
-dir="$STUB"; [ -n "${STUB_DELAY:-}" ] && sleep "$STUB_DELAY"  # a slow runner's gh
+dir="$STUB"
 case "$2" in
   *artifacts*)
     n=$(cat "$dir/calls" 2>/dev/null || echo 0); echo $((n + 1)) > "$dir/calls"
@@ -115,19 +115,17 @@ class WaitForRunArtifactTest(cli_harness.ToolCase):
     def test_waits_while_the_producer_is_still_queued_its_timeout_not_begun(self) -> None:
         self.artifacts([], [], ["stage-worker"])
         self.jobs("queued ")
-        # the wait it says is the clock's, never the poll count's: each gh call a second, as on a loaded runner
-        # (Tool self-tests #629, macOS: "after 1s" where the case expected "after 0s")
-        done = self.wait("0", env={"STUB_DELAY": "1"})
+        done = self.wait("0")
         self.assertEqual(0, done.code, done.output)
-        self.assertRegex(done.stdout, r"'e2e \(corpus\)' is still queued for a runner after \d+s: waiting for it to start")
+        self.assertIn("'e2e (corpus)' is still queued for a runner after 0s: waiting for it to start", done.stdout)
 
     def test_but_not_past_the_queued_bound_naming_it(self) -> None:
         self.artifacts([])
         self.jobs("queued ", "waiting ")
-        done = self.wait("60", env={"WAIT_QUEUED_SECONDS": "0", "STUB_DELAY": "1"})
+        done = self.wait("60", env={"WAIT_QUEUED_SECONDS": "0"})
         self.assertEqual(1, done.code, done.output)
-        self.assertRegex(done.stdout, r"::error::'e2e \(corpus\)' still waited for a runner after \d+s, so stage-worker "
-                         r"never came")
+        self.assertIn("::error::'e2e (corpus)' still waited for a runner after 0s, so stage-worker never came",
+                      done.stdout)
 
     def test_a_matrix_with_one_producing_job_running_counts_its_timeout(self) -> None:
         self.artifacts([])
