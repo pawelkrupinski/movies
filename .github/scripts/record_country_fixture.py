@@ -36,6 +36,7 @@ from typing import Dict, List, Mapping, Optional, TextIO
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path[:0] = [os.path.join(ROOT, "scripts"), os.path.join(ROOT, "scripts", "lib")]
+import machine  # noqa: E402
 import tool_process  # noqa: E402
 import vault_env  # noqa: E402
 
@@ -133,7 +134,7 @@ def main(argv: List[str]) -> int:
     run`, naming only the missing keys. A CI runner has every key set (and no `secrets` CLI), so nothing happens there;
     anything still missing is refused by the check in `run` either way."""
     vault_env.exec_under_vault(REQUIRED, [sys.executable, os.path.abspath(__file__), *argv])
-    recording = Recording(ROOT, os.environ, tool_process.SubprocessRunner(), sys.stdout, sys.stderr)
+    recording = Recording(ROOT, machine.environment(), tool_process.SubprocessRunner(), sys.stdout, sys.stderr)
     return recording.run(argv[0] if argv else "")
 
 

@@ -13,7 +13,7 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from workflow_steps import FILES, ROOT, action_steps  # noqa: E402
+from workflow_steps import workflow_files, ROOT, action_steps  # noqa: E402
 
 
 def upload_steps(text):
@@ -22,11 +22,11 @@ def upload_steps(text):
 
 class UploadArtifactOverwrite(unittest.TestCase):
     def test_found_some(self):
-        self.assertTrue(any(upload_steps(open(f).read()) for f in FILES))
+        self.assertTrue(any(upload_steps(open(f).read()) for f in workflow_files()))
 
     def test_every_upload_overwrites(self):
         missing = []
-        for f in FILES:
+        for f in workflow_files():
             for line, block in upload_steps(open(f).read()):
                 if not re.search(r"^\s*overwrite:\s*true\s*$", block, re.M):
                     missing.append("%s:%d" % (os.path.relpath(f, ROOT), line))

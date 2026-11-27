@@ -9,6 +9,7 @@ import subprocess
 import sys
 from typing import Dict, List, Optional, Set, Tuple
 
+import ci_machine
 import tool_python
 from coupling_rows import CLASS_KINDS, LAYERS_PATH, layer_units, moved, package_of
 from trailers import text_at as file_at
@@ -16,7 +17,13 @@ import tool_git
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # scripts/pure-move-check's code; COUPLING_PURE_MOVE_CHECK names it for a copy of this tool elsewhere (the mutation test's)
-PURE_MOVE_CHECK = os.environ.get("COUPLING_PURE_MOVE_CHECK") or os.path.join(os.path.dirname(HERE), "pure_move_check.py")
+
+
+def pure_move_check() -> str:
+    return (ci_machine.environment().get("COUPLING_PURE_MOVE_CHECK")
+            or os.path.join(os.path.dirname(HERE), "pure_move_check.py"))
+
+
 DECLARES = re.compile(r"\b(?:def|val|var|type|class|object|trait|enum)\s+([A-Za-z_][A-Za-z0-9_]*)")
 MIN_MOVED_MEMBERS = 2
 
@@ -88,7 +95,7 @@ class RenameEvidence:
     def pure(self, sha: str) -> bool:
         """Whether scripts/pure-move-check calls commit `sha` a PURE MOVE (exit 0; NOT PURE and undecidable are not)."""
         if sha not in self._pure:
-            done = subprocess.run(tool_python.isolated(PURE_MOVE_CHECK, f"{sha}^..{sha}", "--quiet", python=sys.executable), capture_output=True, text=True)
+            done = subprocess.run(tool_python.isolated(pure_move_check(), f"{sha}^..{sha}", "--quiet", python=sys.executable), capture_output=True, text=True)
             self._pure[sha] = done.returncode == 0
         return self._pure[sha]
 

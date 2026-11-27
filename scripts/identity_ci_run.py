@@ -36,6 +36,7 @@ from typing import Dict, List, Mapping, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
+import machine  # noqa: E402
 import identity_dispatch  # noqa: E402
 import ci_wait  # noqa: E402
 import tool_cli  # noqa: E402
@@ -233,4 +234,4 @@ def main(argv: List[str], env: Dict[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], dict(os.environ)))
+    sys.exit(main(sys.argv[1:], dict(machine.environment())))

@@ -7,35 +7,42 @@ import hashlib
 import json
 import os
 import sys
-import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import machine  # noqa: E402
 import tool_git  # noqa: E402
 import tool_github  # noqa: E402
 
-GH = os.environ.get("KINOWO_GH") or "gh"
-REPO = os.environ.get("KINOWO_GH_REPO") or os.environ.get("KINOWO_REPO") or "pawelkrupinski/movies"
 GATE_WORKFLOWS = ["main.yml", "identity-model-convergence.yml", "identity-takes.yml"]
 CACHE_SECONDS = 30
 GH_TIMEOUT = 60
 OK = ("success", "skipped", "neutral")
 
 
+def gh_binary() -> str:
+    return machine.environment().get("KINOWO_GH") or "gh"
+
+
+def repository() -> str:
+    env = machine.environment()
+    return env.get("KINOWO_GH_REPO") or env.get("KINOWO_REPO") or "pawelkrupinski/movies"
+
+
 def cache_dir() -> str:
-    return os.environ.get("CI_STATUS_CACHE_DIR") or os.path.expanduser("~/.cache/ci-status")
+    return machine.environment().get("CI_STATUS_CACHE_DIR") or os.path.expanduser("~/.cache/ci-status")
 
 
 def gh_api(path: str, use_cache: bool):
     """The JSON gh api answers for `path`, from the cache when it is under CACHE_SECONDS old; None when unreachable."""
-    key = os.path.join(cache_dir(), hashlib.sha1(f"{REPO} {path}".encode()).hexdigest())
+    key = os.path.join(cache_dir(), hashlib.sha1(f"{repository()} {path}".encode()).hexdigest())
     try:
-        if use_cache and time.time() - os.path.getmtime(key) < CACHE_SECONDS:
+        if use_cache and machine.wall() - os.path.getmtime(key) < CACHE_SECONDS:
             with open(key) as f:
                 return json.load(f)
     except (OSError, ValueError):
         pass
-    data = tool_github.GitHub(tool_git.shared_runner(), os.environ, GH).json(
-        ["api", f"repos/{REPO}/{path}"], GH_TIMEOUT, quiet=True, closed_stdin=True)
+    data = tool_github.GitHub(tool_git.shared_runner(), machine.environment(), gh_binary()).json(
+        ["api", f"repos/{repository()}/{path}"], GH_TIMEOUT, quiet=True, closed_stdin=True)
     if data is None:
         return None
     try:

@@ -11,6 +11,7 @@ import re
 import sys
 from typing import Callable, List, Mapping, Optional, Sequence
 
+import machine
 import tool_git
 import tool_process
 
@@ -24,7 +25,7 @@ SbtRun = Callable[[Sequence[str]], int]
 
 
 def log(line: str) -> None:
-    now = datetime.datetime.now(datetime.timezone.utc).strftime("%H:%M:%S")
+    now = datetime.datetime.fromtimestamp(machine.wall(), datetime.timezone.utc).strftime("%H:%M:%S")
     print(f"[identity-refit {now}] {line}", file=sys.stderr, flush=True)
 
 

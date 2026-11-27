@@ -58,7 +58,7 @@ def say_out(line: str) -> None:
     print(f"[reset] {line}", flush=True)
 
 
-def say_err(line: str) -> None:
+def say_error(line: str) -> None:
     print(f"[reset] {line}", file=sys.stderr, flush=True)
 
 
@@ -146,7 +146,7 @@ class Reset:
             try:
                 self.scale(f"{tier}-{self.country}", 1)
             except Fatal as e:
-                say_err(str(e))
+                say_error(str(e))
                 failed.append(f"{tier}-{self.country}")
         if failed:
             raise Fatal(f"could not scale back up: {' '.join(failed)}")
@@ -154,11 +154,11 @@ class Reset:
 
     def scale_back_up_after_a_failure(self) -> None:
         if self.scaled_down:
-            say_err(f"the reset did not finish -- scaling web-{self.country} and worker-{self.country} back up")
+            say_error(f"the reset did not finish -- scaling web-{self.country} and worker-{self.country} back up")
             try:
                 self.scale_back_up()
             except Fatal as e:
-                say_err(f"{e} -- scale them up by hand")
+                say_error(f"{e} -- scale them up by hand")
 
     def run(self) -> int:
         dry = self.options.dry
@@ -171,7 +171,7 @@ class Reset:
             self.reset()
         except Fatal as e:
             if str(e):
-                say_err(str(e))
+                say_error(str(e))
             return e.code
         finally:
             self.scale_back_up_after_a_failure()
@@ -203,7 +203,7 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
     try:
         options = parsed(argv)
     except tool_cli.UsageError as e:
-        say_err(str(e))
+        say_error(str(e))
         return 1
     if not vault_env.exec_under_vault(["MONGODB_URI"], [sys.executable, os.path.abspath(__file__), *argv]):
         print("[vault] MONGODB_URI not set, and no `secrets` CLI on PATH to read it from the vault", file=sys.stderr)
@@ -213,7 +213,7 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
     if env.get("MONGODB_DB") and env["MONGODB_DB"] != expected:
         # The database is the COUNTRY's (models.Country.mongoDb); it must be the one whose web/worker get scaled to
         # zero, so an exported MONGODB_DB naming another country's is refused rather than wiped while that country serves.
-        say_err(f"MONGODB_DB={env['MONGODB_DB']} is not {country}'s database ({expected}) -- refusing")
+        say_error(f"MONGODB_DB={env['MONGODB_DB']} is not {country}'s database ({expected}) -- refusing")
         return 1
     tool_cli.raise_on_signals()
     try:

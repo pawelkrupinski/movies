@@ -44,6 +44,7 @@ from typing import Dict, List, Optional, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [HERE, os.path.join(HERE, "lib")]
+import machine  # noqa: E402
 import identity_jvm  # noqa: E402
 import identity_refit_checks  # noqa: E402
 import tool_actions  # noqa: E402
@@ -215,7 +216,7 @@ def main(argv: List[str]) -> int:
     if o is None:
         return code or 0
     os.chdir(ROOT)
-    return Refit(o, dict(os.environ), tool_process.SubprocessRunner()).main()
+    return Refit(o, dict(machine.environment()), tool_process.SubprocessRunner()).main()
 
 
 if __name__ == "__main__":

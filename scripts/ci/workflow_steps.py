@@ -6,8 +6,12 @@ import os
 import re
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-FILES = sorted(glob.glob(os.path.join(ROOT, ".github/workflows/*.yml"))
-               + glob.glob(os.path.join(ROOT, ".github/actions/*/action.yml")))
+
+
+def workflow_files():
+    """Every workflow and composite action file of the checkout."""
+    return sorted(glob.glob(os.path.join(ROOT, ".github/workflows/*.yml"))
+                  + glob.glob(os.path.join(ROOT, ".github/actions/*/action.yml")))
 
 
 def action_steps(text, action):

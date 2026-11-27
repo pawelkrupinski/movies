@@ -20,15 +20,20 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 import atomic  # noqa: E402
+import ci_machine  # noqa: E402
 
 from trend_records import Record, job_record, run_record
 
 METRICS_ARTIFACT_PREFIX = "ci-metrics-"
 # Where completed runs' jobs and metrics are kept: CI_TIMINGS_CACHE, else systemd's STATE_DIRECTORY (the collector),
 # else the user's cache. A cache that cannot be written is skipped, never an error.
-CACHE_DIR = os.environ.get("CI_TIMINGS_CACHE") or (
-    os.path.join(os.environ["STATE_DIRECTORY"].split(":")[0], "cache") if os.environ.get("STATE_DIRECTORY")
-    else os.path.join(os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"), "ci-timings"))
+def default_cache_dir() -> str:
+    env = ci_machine.environment()
+    return env.get("CI_TIMINGS_CACHE") or (
+        os.path.join(env["STATE_DIRECTORY"].split(":")[0], "cache") if env.get("STATE_DIRECTORY")
+        else os.path.join(env.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"), "ci-timings"))
+
+
 GH_TIMEOUT_SECONDS = 120
 _NEXT_PAGE = re.compile(r'<([^>]+)>;\s*rel="next"')
 Page = Tuple[Any, Optional[str]]
@@ -47,9 +52,6 @@ class DropAuthOnRedirect(urllib.request.HTTPRedirectHandler):
                     del new.headers[name]
             new.unredirected_hdrs.pop("Authorization", None)
         return new
-
-
-_OPENER = urllib.request.build_opener(DropAuthOnRedirect)
 
 
 def parse_metrics(text: str) -> List[Record]:
@@ -83,17 +85,17 @@ def _api_request(url: str, token: str) -> Tuple[bytes, str]:
     request = urllib.request.Request(url, headers={"Authorization": "Bearer " + token,
                                                    "Accept": "application/vnd.github+json",
                                                    "X-GitHub-Api-Version": "2022-11-28"})
-    with _OPENER.open(request, timeout=GH_TIMEOUT_SECONDS) as response:
+    with urllib.request.build_opener(DropAuthOnRedirect).open(request, timeout=GH_TIMEOUT_SECONDS) as response:
         return response.read(), response.headers.get("Link") or ""
 
 
 class GitHub:
     """The API, with a disk cache for what cannot change any more: a completed run's jobs and metrics artifacts."""
 
-    def __init__(self, repo: str, cache_dir: str = CACHE_DIR, token: Optional[str] = None) -> None:
+    def __init__(self, repo: str, cache_dir: Optional[str] = None, token: Optional[str] = None) -> None:
         self.repo = repo
-        self.cache_dir = os.path.join(cache_dir, repo.replace("/", "_"))
-        self.token = token if token is not None else (os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN"))
+        self.cache_dir = os.path.join(cache_dir or default_cache_dir(), repo.replace("/", "_"))
+        self.token = token if token is not None else (ci_machine.environment().get("GH_TOKEN") or ci_machine.environment().get("GITHUB_TOKEN"))
         self.calls = 0
 
     def _url(self, path: str) -> str:

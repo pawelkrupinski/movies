@@ -53,6 +53,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, cast
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
+import machine  # noqa: E402
 import mongo_local  # noqa: E402
 import tool_countries  # noqa: E402
 import tool_dispatch  # noqa: E402
@@ -398,4 +399,4 @@ if __name__ == "__main__":
     if sys.argv[1:2] in (["-h"], ["--help"]):
         print(__doc__)
         sys.exit(0)
-    sys.exit(main(sys.argv[1:], dict(os.environ)))
+    sys.exit(main(sys.argv[1:], dict(machine.environment())))

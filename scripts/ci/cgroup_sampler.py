@@ -160,7 +160,7 @@ class Command:
         self.rss_kb = 0.0
 
 
-def proc_rows(proc: str, page: int) -> Tuple[Dict[str, Command], List[str]]:
+def process_rows(proc: str, page: int) -> Tuple[Dict[str, Command], List[str]]:
     """Per command, over every process's /proc/<pid>/stat: the processes, their RSS, their CPU ticks so far and their
     threads; and the pids of the JVMs, whose command lines the loop keeps."""
     commands: Dict[str, Command] = {}
@@ -212,7 +212,7 @@ class Sampler:
 
     def sample(self, page: int) -> None:
         self.append(".series", Machine(self.proc, self.env).series_line())
-        commands, jvms = proc_rows(self.proc, page)
+        commands, jvms = process_rows(self.proc, page)
         now = str(int(time.time()))
         kept = {c: m for c, m in commands.items() if m.rss_kb >= 20480 or c in ("java", "mongod")}
         self.append(".procs", "".join(f"{now}\t{c}\t{m.count}\t{int(m.rss_kb)}\t{m.ticks}\t{m.threads}\n"

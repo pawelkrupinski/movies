@@ -9,12 +9,13 @@ import sys
 from typing import List
 
 from identity_what_if_cli_context import Context, Exit
+import machine  # scripts/lib, on the path the context put it on
 from identity_what_if_cli_mirror import Mirror
 from identity_what_if_cli_sides import SideKey, Sides
 
 
 def minute_now() -> str:
-    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:00Z")
+    return datetime.datetime.fromtimestamp(machine.wall(), datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:00Z")
 
 
 def day_before(snapshot: str) -> str:

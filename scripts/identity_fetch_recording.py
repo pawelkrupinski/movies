@@ -37,6 +37,7 @@ from typing import Dict, List, Optional, Union
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
+import machine  # noqa: E402
 import tool_countries  # noqa: E402
 import tool_process  # noqa: E402
 import tool_shell  # noqa: E402
@@ -235,7 +236,7 @@ def main(argv: List[str]) -> int:
     if o is None:
         print(__doc__, file=sys.stderr)
         return 2
-    return Fetch(o, dict(os.environ), tool_process.SubprocessRunner()).main()
+    return Fetch(o, dict(machine.environment()), tool_process.SubprocessRunner()).main()
 
 
 if __name__ == "__main__":

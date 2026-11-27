@@ -79,13 +79,13 @@ class EnumerationTests(unittest.TestCase):
 
 class GroupTests(unittest.TestCase):
     def test_reads_the_group_each_wired_venue_is_in(self):
-        vals = d.scraper_vals(ROSTER)
+        vals = d.scraper_values(ROSTER)
         self.assertEqual(vals["ChapterCardiff"], "cardiff")
         self.assertEqual(vals["CineworldCardiff"], "cardiff")   # own-site clients count too
         self.assertEqual(vals["HomeManchester"], "manchester")
 
     def test_nearest_wired_venue_decides_the_group(self):
-        vals = d.scraper_vals(ROSTER)
+        vals = d.scraper_values(ROSTER)
         # a point in central Cardiff resolves to a Cardiff venue, not Manchester/London
         group = d.nearest_group(51.48, -3.18, VENUES, vals, LONDON)
         self.assertEqual(group.section, "cardiff")

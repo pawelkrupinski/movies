@@ -115,7 +115,7 @@ class Group:
     london: bool      # that venue is on the London page
 
 
-def scraper_vals(groups: list[dict]) -> dict[str, str]:
+def scraper_values(groups: list[dict]) -> dict[str, str]:
     """Every venue object the roster wires → the group it is in."""
     return {v["object"]: g["group"] for g in groups for v in g["venues"]}
 
@@ -261,7 +261,7 @@ def build_plan(groups, venues, london, metas, gone_dead, gone_live) -> Plan:
     rows = uk_roster.venues(groups)
     taken = {v["object"] for v in rows}
     names = {v["displayName"] for v in rows}
-    vals = scraper_vals(groups)
+    vals = scraper_values(groups)
     for meta in metas:
         if not meta.display:
             plan.park.append(Parked(meta.slug, "could not read cinema page / display name"))

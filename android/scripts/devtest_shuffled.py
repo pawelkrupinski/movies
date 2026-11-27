@@ -19,6 +19,7 @@ from typing import List, Mapping, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "scripts", "lib"))
+import machine  # noqa: E402
 from seeded_order import seeded_order  # noqa: E402
 from tool_process import Command, Runner, SubprocessRunner  # noqa: E402
 
@@ -102,7 +103,7 @@ def run(argv: Sequence[str], env: Mapping[str, str], runner: Runner) -> int:
 
 
 def main() -> int:
-    return run(sys.argv[1:], os.environ, SubprocessRunner())
+    return run(sys.argv[1:], machine.environment(), SubprocessRunner())
 
 
 if __name__ == "__main__":

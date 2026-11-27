@@ -15,16 +15,16 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from workflow_steps import FILES, ROOT, action_steps  # noqa: E402
+from workflow_steps import workflow_files, ROOT, action_steps  # noqa: E402
 
 
 class DownloadArtifactLayout(unittest.TestCase):
     def test_found_some(self):
-        self.assertTrue(any(action_steps(open(f).read(), "actions/download-artifact") for f in FILES))
+        self.assertTrue(any(action_steps(open(f).read(), "actions/download-artifact") for f in workflow_files()))
 
     def test_no_pattern_download_lays_artifacts_out_by_how_many_matched(self):
         varying = []
-        for f in FILES:
+        for f in workflow_files():
             for line, block in action_steps(open(f).read(), "actions/download-artifact"):
                 if re.search(r"^\s*pattern:", block, re.M) and not re.search(r"^\s*merge-multiple:\s*true\s*$", block, re.M):
                     varying.append("%s:%d" % (os.path.relpath(f, ROOT), line))

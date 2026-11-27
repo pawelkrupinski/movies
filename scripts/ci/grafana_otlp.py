@@ -19,7 +19,9 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-OPEN: Callable[..., Any] = urllib.request.build_opener(NoRedirect).open
+def OPEN(*args: Any, **kwargs: Any) -> Any:
+    """The opener that does not follow a redirect, opened (built per call: no network at import)."""
+    return urllib.request.build_opener(NoRedirect).open(*args, **kwargs)
 
 
 def post(payload: object, url: str, token: str, opener: Callable[..., Any] = OPEN) -> Optional[str]:

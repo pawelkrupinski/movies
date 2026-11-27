@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import machine  # noqa: E402
 import identity_ref_trees  # noqa: E402
 import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
@@ -209,4 +210,4 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
     return tracer.at_refs(o.refs, args, bool(o.batch)) if o.refs else tracer.trace(REPO, args)
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], os.environ))
+    sys.exit(main(sys.argv[1:], machine.environment()))

@@ -14,6 +14,7 @@ import shutil
 from typing import List, Optional
 
 from identity_what_if_cli_context import Context, Exit, alive
+import machine  # scripts/lib, on the path the context put it on
 from identity_what_if_cli_resolve import Resolver, read
 
 
@@ -42,7 +43,7 @@ class Sides:
         root = self.root(cc, sha)
         if not os.path.isdir(root):
             return ""
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.fromtimestamp(machine.wall(), datetime.timezone.utc)
         want = "final.tsv" if self.final else "prod.tsv"
         window = datetime.timedelta(hours=float(self.ctx.o.max_age))
         fresh = [d for d in os.listdir(root) if os.path.exists(os.path.join(root, d, "prod.tsv"))

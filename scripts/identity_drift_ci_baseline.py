@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(HERE, "ci"))
 import drift_seeds  # noqa: E402
 import identity_drift_ci_runs as runs_  # noqa: E402
 import tool_countries  # noqa: E402
+import machine  # noqa: E402
 import tool_dispatch  # noqa: E402
 from identity_drift_ci_runs import Row, say  # noqa: E402
 from tool_cli import UsageError  # noqa: E402
@@ -196,6 +197,6 @@ class Poll:
         if path:
             try:
                 with open(path, "a") as f:
-                    f.write(f"{int(time.time())}\n")
+                    f.write(f"{int(machine.wall())}\n")
             except OSError:
                 pass

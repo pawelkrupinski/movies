@@ -37,6 +37,7 @@ from typing import List
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 sys.path[:0] = [HERE] + [os.path.join(HERE, sub) for sub in ("ci", "lib")]  # its modules, identity_impact, scripts/lib
+import machine  # noqa: E402
 import identity_impact_check_tree as tree_module  # noqa: E402
 import identity_impact_check_modes as modes  # noqa: E402
 import tool_process  # noqa: E402
@@ -79,7 +80,7 @@ def main(argv: List[str]) -> int:
     a = arguments(argv)
     out = a.tree + ".results"  # beside the checkout: a reset cleans its untracked files
     try:
-        outcome = proof(tree_module.Checkout(tool_process.SubprocessRunner(), os.environ, REPO, a.tree), a, out)
+        outcome = proof(tree_module.Checkout(tool_process.SubprocessRunner(), machine.environment(), REPO, a.tree), a, out)
     except (RuntimeError, OSError) as e:
         say(f"could not be made: {e}")
         return 2

@@ -6,6 +6,7 @@ WhatIfResolve, gh's release upload -- each appending what it ran to <work>/calls
 from identity-what-if-test.sh; the same cases hold the shell tool and its Python rewrite (cli_harness.tool_path)."""
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import subprocess
@@ -29,7 +30,7 @@ TOOL_FILES = (
     "worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala")
 KEY = "Pthe venue\x1ethe film"
 # the mirror generation the tool keys its sides by: the seed generation and the tail position's digest
-TAIL_DIGEST = subprocess.run(["shasum"], input="T0", capture_output=True, text=True, check=True).stdout[:12]
+TAIL_DIGEST = hashlib.sha1(b"T0").hexdigest()[:12]
 GENERATION = "100.1-tail" + TAIL_DIGEST
 
 # THE MIRROR'S GENERATION, as freshness --generation reports it: each call takes the next line of $work/generations
@@ -130,7 +131,7 @@ class WhatIfCase(cli_harness.ToolCase):
 
     def _tools_hash(self) -> str:
         listing = "".join(f + "\n" + self.read("repo/" + f) for f in TOOL_FILES)
-        return subprocess.run(["shasum"], input=listing, capture_output=True, text=True, check=True).stdout[:12]
+        return hashlib.sha1(listing.encode()).hexdigest()[:12]
 
     def commit(self, message: str) -> str:
         self.write("repo/change.txt", message + "\n")

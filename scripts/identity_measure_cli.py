@@ -155,6 +155,7 @@ from typing import Dict, List, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
+import machine  # noqa: E402
 import identity_measure_cli_options as options_  # noqa: E402
 import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
@@ -198,4 +199,4 @@ def main(argv: List[str], env: Dict[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], dict(os.environ)))
+    sys.exit(main(sys.argv[1:], dict(machine.environment())))
