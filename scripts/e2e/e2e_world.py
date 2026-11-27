@@ -52,7 +52,7 @@ SHIM_PRELUDE = """#!{python} -B
 import json, os, sys
 NAME = {name!r}
 argv = sys.argv[1:]
-stdin = "" if sys.stdin is None or sys.stdin.isatty() else sys.stdin.read()
+stdin = "" if sys.stdin is None or sys.stdin.isatty() or {quiet_stdin} else sys.stdin.read()
 with open(os.environ["E2E_CALLS"], "a") as _log:
     _log.write(json.dumps({{"name": NAME, "argv": argv, "cwd": os.getcwd(), "stdin": stdin[:4000]}}) + "\\n")
 def out(text, end="\\n"):
@@ -152,10 +152,12 @@ class World:
             self._gh_server, self.gh_url = gh_stub.serve(self.gh)
         return self.gh
 
-    def shim(self, name: str, body: str) -> str:
-        """A shim `name` first on PATH: Python, with NAME, argv, stdin, out(), err() in scope; every call logged."""
+    def shim(self, name: str, body: str, reads_stdin: bool = True) -> str:
+        """A shim `name` first on PATH: Python, with NAME, argv, stdin, out(), err() in scope; every call logged. A tool
+        that never reads its stdin (a vault's `get` inside a `while read` loop) takes `reads_stdin=False`, or the shim
+        would eat the loop's input."""
         path = os.path.join(self.bin, name)
-        self.files.replace_text(path, SHIM_PRELUDE.format(python=sys.executable, name=name) + body + "\n", 0o755)
+        self.files.replace_text(path, SHIM_PRELUDE.format(python=sys.executable, name=name, quiet_stdin=not reads_stdin) + body + "\n", 0o755)
         return path
 
     def calls(self, name: str) -> List[Dict[str, Any]]:

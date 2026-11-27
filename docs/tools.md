@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (264)
+## Landing and CI (265)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -187,10 +187,10 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/runner_cache.py` | A runner-local mirror of actions/cache entries, for the self-hosted runners on ci-runner. | `python3 scripts/ci/runner_cache.py` | 1 tool | runner_cache_test.py | Python |
 | `scripts/ci/runner_scheduler.py` | CI-RUNNER'S MOVIES RUNNER SCHEDULER (the owner, 2026-11-06: "make movies runs take all the ci-runner runners when | `python3 scripts/ci/runner_scheduler.py` | wf precommit-check; agentctl; 1 tool | runner_scheduler_test.py | Python |
 | `scripts/ci/sbt-deps-resolve.sh` | Resolve every dependency of the sbt build once (`sbt update` over the root aggregate | `scripts/ci/sbt-deps-resolve.sh` | wf ci; 2 tools | sbt-deps-resolve-test.sh | KEEP |
-| `scripts/ci/sbt-guard/sbt` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH | `scripts/ci/sbt-guard/sbt` | wf ci, country-convergence-leg, country-fixture-artifact +21; hook lint-registry-missing, pre-push, pre-push.sh-legacy; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 165 tools | - | KEEP |
+| `scripts/ci/sbt-guard/sbt` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH | `scripts/ci/sbt-guard/sbt` | wf ci, country-convergence-leg, country-fixture-artifact +21; hook lint-registry-missing, pre-push, pre-push.sh-legacy; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 167 tools | - | KEEP |
 | `scripts/ci/sbt-invalidate-exporters.sh` | Delete the compiled classes of every Scala source holding a wildcard export (`export X.*`, `export x.{a as _, *}`) | `scripts/ci/sbt-invalidate-exporters.sh` | skill CLAUDE.md; 2 tools | sbt-invalidate-exporters-test.sh | KEEP |
 | `scripts/ci/sbt-sources-key.sh` | The hash an sbt build cache is keyed by: the content of the sources a job compiles | `scripts/ci/sbt-sources-key.sh` | wf ci; 1 tool | sbt-sources-key-test.sh | KEEP |
-| `scripts/ci/sbt_guard.py` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH (scripts/ci/sbt-guard/sbt) | `scripts/ci/sbt_guard.py` | 1 tool | sbt_guard_test.py | Python |
+| `scripts/ci/sbt_guard.py` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH (scripts/ci/sbt-guard/sbt) | `scripts/ci/sbt_guard.py` | 2 tools | sbt_guard_test.py | Python |
 | `scripts/ci/scheduled-failure-issue.sh` | Turn a failed scheduled workflow run into a GitHub issue assigned to the repo owner, and close it again when the workflow next passes | `scripts/ci/scheduled-failure-issue.sh` | wf coupling-exemptions, prune-actions-caches, security-headers; 2 tools | scheduled_failure_issue_test.py | KEEP |
 | `scripts/ci/scheduled_failure_issue.py` | Turn a failed SCHEDULED workflow run into a GitHub issue assigned to the repo owner, and close it again when the | `scripts/ci/scheduled_failure_issue.py` | wf security-headers; 1 tool | scheduled_failure_issue_test.py | Python |
 | `scripts/ci/script_module.py` | A tool whose file name is no module name -- `check-security-headers.py`, an extension-less `scripts/<tool>` -- imported | `imported` | wf security-headers; 1 tool | script_module_test.py | Python |
@@ -234,6 +234,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/claude-hooks/unbounded-poll-guard` | Refuse a background poll loop that has no bound: it outlives the agent that started it. | `scripts/claude-hooks/unbounded-poll-guard` | skill CLAUDE.md, agent-ops; 2 tools | unbounded-poll-guard-test.sh | Python |
 | `scripts/coupling-report` | The coupling report (CLAUDE.md, Design rules): the production code's coupling, from Zinc's class-dependency record (a name for coupling_report.py) | `scripts/coupling-report` | wf coupling-exemptions; hook pre-push, pre-push.sh-legacy; agentctl; skill CLAUDE.md, agent-ops, identity-investigation; 9 tools | coupling_report_test.py | KEEP |
 | `scripts/coupling_report.py` | The coupling report (CLAUDE.md, Design rules): the production code's coupling, from Zinc's class-dependency record. | `scripts/coupling_report.py` | 1 tool | coupling_report_test.py | Python |
+| `scripts/e2e/sbt_stub.py` | The `sbt` of the tools' e2e worlds that run scripts/sbt-warm (sbt_warm_e2e_test, land_precheck_e2e_test): `sbt --client | `imported` | by hand | - | Python |
 | `scripts/fail-before` | Proves the commit gate: a test that fails before the change and passes after it | `scripts/fail-before` | wf identity-run; agentctl; skill CLAUDE.md, agent-ops; 9 tools | fail_before_test.py | MIGRATE |
 | `scripts/floor-bash` | The floor bash: the oldest bash every script tool promises to run under -- macOS's /bin/bash, gnu bash 3.2.57 -- found or built, its path printed | `scripts/floor-bash` | wf tool-self-tests; hook pre-push, pre-push.sh-legacy; 3 tools | floor-bash-test.sh | KEEP |
 | `scripts/gov-parallel` | THE GOVERNED FAN-OUT for a shell: xargs -P under a governor ticket charged its width, or within the ticket it runs under | `scripts/gov-parallel` | skill CLAUDE.md; 4 tools | gov-parallel-test.sh | - |
@@ -248,7 +249,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/jvm-gate.sh` | The JVM gate (sourced): JVM slots, locks and governor tickets for the tools that start heavy JVMs | `bash scripts/jvm-gate.sh` | agentctl; skill CLAUDE.md, agent-ops, identity-investigation; 24 tools | jvm-gate-test.sh | MIGRATE |
 | `scripts/land-before-queue` | What `agentctl land` runs after its rebase, before it queues the change (~/bin/lib/agentctl/queue.py enqueue) | `scripts/land-before-queue` | agentctl; skill CLAUDE.md, identity-investigation; 2 tools | land-before-queue-test.sh | KEEP |
 | `scripts/land-precheck` | The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here | `scripts/land-precheck` | agentctl; 1 tool | land_precheck_test.py | MIGRATE |
-| `scripts/land_precheck.py` | The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here | `scripts/land_precheck.py` | 1 tool | land_precheck_test.py | Python |
+| `scripts/land_precheck.py` | The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here | `scripts/land_precheck.py` | 2 tools | land_precheck_test.py | Python |
 | `scripts/lib/gov_queue.py` | WHERE A RUN STANDS IN THE GOVERNOR'S QUEUE, said while it waits (scripts/run-script-tests; jvm_gate.JvmGate's | `imported` | 1 tool | gov_queue_test.py | Python |
 | `scripts/lib/governed_kill.py` | THE KILL OF A GOVERNED RUN, judged (scripts/claude-hooks/governed-kill-guard): `run-script-tests` and `sbt-warm` | `imported` | 1 tool | governed_kill_test.py | Python |
 | `scripts/lib/js_quality_tools.py` | WHETHER scripts/js-quality-report CAN RUN HERE (scripts/lib; stdlib only): node on PATH, and its pinned tools either | `imported` | by hand | - | Python |
@@ -256,7 +257,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/sbt_warm_call.py` | One call of scripts/sbt-warm: its commands run in this checkout's kept server (its header says every rule this | `imported` | 1 tool | - | Python |
 | `scripts/lib/sbt_warm_client.py` | scripts/sbt-warm's sbt client and its watch (its header: ONE BUILD PATH, NO PROGRESS and SERVER LIVENESS): the client | `imported` | 1 tool | - | Python |
 | `scripts/lib/sbt_warm_keeper.py` | scripts/sbt-warm's KEEPER (`--keep`; its header: ONE JVM, ONE SLOT and IDLE EXIT): a small process beside a checkout's | `imported` | 1 tool | - | Python |
-| `scripts/lib/sbt_warm_servers.py` | scripts/sbt-warm's servers and keepers (its header: ONE SERVER, THE STOPS LOG, ONE KEEPER PER CHECKOUT): finding a | `imported` | 4 tools | - | Python |
+| `scripts/lib/sbt_warm_servers.py` | scripts/sbt-warm's servers and keepers (its header: ONE SERVER, THE STOPS LOG, ONE KEEPER PER CHECKOUT): finding a | `imported` | 5 tools | - | Python |
 | `scripts/lib/script_tests_floor.py` | THE FLOOR'S STATIC HALF (scripts/run-script-tests --bash / --floor with --changed): every bash file the change | `imported` | 1 tool | - | Python |
 | `scripts/py-quality-report` | The Python quality report and its ratchet (entry; the measure is scripts/py-quality/report.py) | `scripts/py-quality-report` | hook pre-push, pre-push.sh-legacy; skill CLAUDE.md; 4 tools | - | KEEP |
 | `scripts/py-quality/clones.py` | THE PYTHON CLONE GROUPS (scripts/py-quality/report.py): every run of MIN_TOKENS or more tokens appearing twice or more | `imported` | wf ios; hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, test-layers; 9 tools | - | Python |
@@ -269,7 +270,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs (a name for ratchet_diff_cli.py) | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 4 tools | - | KEEP |
 | `scripts/ratchet_diff_cli.py` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet_diff_cli.py` | 1 tool | ratchet_diff_cli_test.py | Python |
 | `scripts/run-script-tests` | Every script self-test, found by its name and run in parallel: the one way CI, the pre-push hook and a person at a terminal run them | `scripts/run-script-tests` | wf tool-self-tests; hook pre-push, pre-push.sh-legacy; agentctl; skill CLAUDE.md, agent-ops, test-layers; 46 tools | run_script_tests_test.py | Python |
-| `scripts/sbt-warm` | sbt for agents, warm: one sbt server per checkout, kept between calls | `scripts/sbt-warm` | wf tool-self-tests; hook pre-push, pre-push.sh-legacy; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 53 tools | sbt_warm_test.py | Python |
+| `scripts/sbt-warm` | sbt for agents, warm: one sbt server per checkout, kept between calls | `scripts/sbt-warm` | wf tool-self-tests; hook pre-push, pre-push.sh-legacy; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 54 tools | sbt_warm_test.py | Python |
 | `scripts/sbt_warm_fixture.py` | The fixture scripts/sbt-warm's black-box tests share (sbt_warm_test.py, sbt_warm_keeper_test.py, | `imported` | by hand | - | Python |
 | `scripts/stall-report.sh` | What a stalled process group was doing, said before it is ended | `scripts/stall-report.sh` | 5 tools | - | KEEP |
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push, pre-push.sh-legacy; agentctl; 7 tools | stall_watch_test.py | MIGRATE |
@@ -624,7 +625,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/cloudflare_ci_edge_allow.py` | Let ci-runner's Security headers check (.github/workflows/security-headers.yml) past Cloudflare's Bot Fight Mode on | `infra/bin/cloudflare_ci_edge_allow.py` | 1 tool | cloudflare_ci_edge_allow_test.py | Python |
 | `infra/bin/deploy` | Deploy ONE NixOS host from this checkout: preview what the switch does, then (only with | `infra/bin/deploy` | wf branch-ci, ci, identity-run +5; hook lint-registry-missing, pre-push, pre-push.sh-legacy; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 52 tools | - | Python |
 | `infra/bin/fetch-gitops` | Put the GitOps manifests where the deploy specs expect them | `infra/bin/fetch-gitops` | wf nix-update; hook pre-push, pre-push.sh-legacy; agentctl; skill CLAUDE.md; 8 tools | fetch-gitops-test.sh | KEEP |
-| `infra/bin/fleet-ssh` | Reach any host this flake declares, at the address `fleet_hosts.py` gives it -- as YOURSELF, | `infra/bin/fleet-ssh` | wf nix-stage-closures; 3 tools | fleet_ssh_test.py | Python |
+| `infra/bin/fleet-ssh` | Reach any host this flake declares, at the address `fleet_hosts.py` gives it -- as YOURSELF, | `infra/bin/fleet-ssh` | wf nix-stage-closures; 4 tools | fleet_ssh_test.py | Python |
 | `infra/bin/fleet_hosts.py` | WHERE A HOST IS, answered from the flake and from nowhere else. | `imported` | wf nix-stage-closures; 3 tools | - | Python |
 | `infra/bin/flux-rotate-deploy-keys` | rotate the kinowo cluster Flux's GitHub deploy keys (read and write) for movies-gitops, keys first, old keys last. | `infra/bin/flux-rotate-deploy-keys` | 1 tool | flux_rotate_deploy_keys_test.py | KEEP |
 | `infra/bin/flux_rotate_deploy_keys.py` | rotate the kinowo cluster Flux's GitHub deploy keys (read and write) for movies-gitops, keys first, old keys last. | `infra/bin/flux_rotate_deploy_keys.py` | 1 tool | flux_rotate_deploy_keys_test.py | Python |
@@ -635,7 +636,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/bin/propose-pr` | Turn a bot's patch into one pull request on a fixed branch, opened or updated in place | `infra/bin/propose-pr` | wf nix-update; 1 tool | propose-pr-test.sh | KEEP |
 | `infra/bin/provision-mongodb-offbox-key` | Mint (or rotate) the ssh key monitoring-1 pulls mongo-1's dumps with -- roles/mongodb-offbox-backup.nix | `infra/bin/provision-mongodb-offbox-key` | by hand | - | KEEP |
 | `infra/bin/push-gh-secrets` | Copy vault values (operator's Touch ID `secrets`, namespace `movies`) into GitHub Actions secrets, per infra/k8s-secrets/github-secrets.map | `infra/bin/push-gh-secrets` | 1 tool | push-gh-secrets-test.sh | KEEP |
-| `infra/bin/push-k8s-secrets` | Push the current vault values into the kinowo cluster's Secrets, per infra/k8s-secrets/secrets.map | `infra/bin/push-k8s-secrets` | by hand | push-k8s-secrets-test.sh | KEEP |
+| `infra/bin/push-k8s-secrets` | Push the current vault values into the kinowo cluster's Secrets, per infra/k8s-secrets/secrets.map | `infra/bin/push-k8s-secrets` | 1 tool | push-k8s-secrets-test.sh | KEEP |
 | `infra/bin/rolling-reboot` | Reboot this fleet's hosts one at a time, each proven serving before the next | `infra/bin/rolling-reboot` | skill CLAUDE.md, agent-ops; 1 tool | rolling-reboot-test.sh | KEEP |
 | `infra/bin/snapshot-label-values` | Snapshot the fleet's REAL label values for every (metric, label) an alert or panel filters on. | `infra/bin/snapshot-label-values` | 2 tools | - | Python |
 | `infra/bin/stage-nixos-closures` | Build each NixOS host's closure once and put it ON the host, WITHOUT activating it. | `infra/bin/stage-nixos-closures` | wf nix-stage-closures; 4 tools | - | Python |
@@ -719,7 +720,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/design-rules/scala_names.py` | THE SCALA EXTRACTOR of the general rule core's NAMING and MIXED rules: a production Scala source's top-level types | `imported` | hook pre-push.sh-legacy; 5 tools | - | Python |
 | `scripts/design-rules/splits.py` | THE SPLIT CREDIT FOR IMPORTERS (the owner, 2026-11-27): a module X split into pieces -- its git functions moved into | `imported` | wf ci, country-convergence-leg, verify-scrape-recording; hook pre-push.sh-legacy; skill CLAUDE.md, agent-ops; 15 tools | - | Python |
 | `scripts/dev-server.sh` | Local dev server, run under a deliberately smaller heap than the rest of sbt | `scripts/dev-server.sh` | 3 tools | dev-server-test.sh | KEEP |
-| `scripts/e2e/e2e_world.py` | THE TOOLS' END-TO-END HARNESS (the owner, 2026-11-27: "for the important Python scripts, also add end-to-end tests"). | `imported` | 3 tools | - | Python |
+| `scripts/e2e/e2e_world.py` | THE TOOLS' END-TO-END HARNESS (the owner, 2026-11-27: "for the important Python scripts, also add end-to-end tests"). | `imported` | 4 tools | - | Python |
 | `scripts/e2e/gh_shim.py` | The tools' e2e `gh` (first on every tool's PATH as `gh`, scripts/e2e/e2e_world.py): each call goes to the scenario's | `scripts/e2e/gh_shim.py` | 2 tools | - | Python |
 | `scripts/e2e/gh_stub.py` | THE STUB GITHUB of the tools' end-to-end layer (scripts/e2e/e2e_world.py): a local HTTP server holding a toy | `imported` | 2 tools | - | Python |
 | `scripts/e2e/mutations.py` | The tools' e2e layer's mutation proof: each scenario fails when the behaviour it holds is broken | `scripts/e2e/mutations.py` | 6 tools | - | Python |

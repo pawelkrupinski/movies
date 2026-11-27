@@ -63,10 +63,10 @@ agent goes through it on every push. Tools that reach prod come next.
 | 7 | `scripts/ci-wait` | Every wait on CI. A misread verdict lands on red or waits forever; a cancelled run must be followed to the run that superseded it. | `ci_wait_e2e_test.py` |
 | 8 | `infra/bin/rolling-reboot` | Reboots prod hosts. The web tier must not go down (`--accept-outage` for k3s-worker-1). | not here: the guards are fleetkit's, proved in fleetkit with `PROFILE=movies`, and the wrapper needs `npm ci` in `infra/version-dashboard` |
 | 9 | `scripts/identity-stamp-carry` | A wrong carry skips re-resolving stored families on boot. | next: needs sbt's digests, so a stubbed sbt at the process boundary |
-| 10 | `scripts/sbt-warm` | Every sbt call. A wedged server stalls every land. | next: a stub sbt server |
-| 11 | `scripts/land-precheck` | The cheap rejects before `agentctl land` queues a change. | next |
+| 10 | `scripts/sbt-warm` | Every sbt call. A wedged server stalls every land. | `sbt_warm_e2e_test.py` (lifecycle, slot, stale-TASTy retry; stall detection stays in the black-box tests) |
+| 11 | `scripts/land-precheck` | The cheap rejects before `agentctl land` queues a change. | `land_precheck_e2e_test.py` |
 | 12 | `identity-what-if`, `identity-measure`, `identity-slice` | Identity verdicts that a landing relies on. | next: JVM, mirror and CI dispatch; their black-box tests hold them today |
-| 13 | `infra/bin/fleet-ssh`, `infra/bin/push-k8s-secrets` | Reach prod hosts and the cluster's Secrets. | next: ssh and kubectl shims (the shims exist) |
+| 13 | `infra/bin/fleet-ssh`, `infra/bin/push-k8s-secrets` | Reach prod hosts and the cluster's Secrets. | `fleet_ssh_e2e_test.py` (`--ssh-config`), `push_k8s_secrets_e2e_test.py` |
 | 14 | `scripts/mobile-ship.sh`, `scripts/source-refresh`, `scripts/local-mirror/*` | Releases, the source refresh and the mirror. | later |
 
 ## The scenarios and their mutations
@@ -77,6 +77,14 @@ agent goes through it on every push. Tools that reach prod come next.
 | `fail_before_e2e_test` | A fix and its test: `FAIL-BEFORE: yes`, `PASS-AFTER: yes`, and the caller's tree and worktree list are untouched. A test that already passes at the parent: `FAIL-BEFORE: no`, exit 1. | the default test-side globs widened to `*` |
 | `deploy_e2e_test` | At origin main: the preview (running, candidate, start/stop/restart) and only the PROBE is sent to the host. Behind origin main: REFUSED before any ssh or nix call. A reply with no end marker: COULD NOT MEASURE. | staleness ignored; end marker not required |
 | `ci_wait_e2e_test` | A run that goes queued, then running, then green exits 0. A red run exits 1. A cancelled run is followed, through the clone's real git ancestry, to its descendant's green run. | ancestry asked the wrong way round; failure read as success |
+| `push_k8s_secrets_e2e_test` | A map, a stub vault (`secrets`) and a stub k3s server behind `ssh`. `--dry-run` says what would change and patches nothing; a real run patches only the keys whose sha256 differs (a key the vault lacks is skipped), through ssh's stdin; no vault value is in any argv; a rerun patches nothing. | the equal-sha check never equal; `--dry-run` patching; the patch given to kubectl as an argument |
+| `fleet_ssh_e2e_test` | `fleet-ssh --ssh-config` over a stub flake (`nix`) and a temp `~/.ssh/config`: the block is appended once, the person's own text and mode are kept, a rerun changes nothing, a moved host is replaced in the same block, an empty address skipped. | the block appended on every run; the person's config overwritten |
+| `land_precheck_e2e_test` | `land-precheck` in a worktree of a clone, the real hook run as a black box. A conflict with a moved main fails `rebase` naming the file and skips the lints; a clean change passes all three steps and touches no ref; a failing lint spec fails `lints`, sbt never reaching a server is UNCHECKED (exit 2); a row added to an allow-list fails `rules`. | a conflict read as clean; a rules refusal read as pass; an sbt that never ran read as a failure |
+| `sbt_warm_e2e_test` | `sbt-warm` over a stub `sbt --client` (`sbt_stub.py`): one server and a keeper holding the JVM slot across calls, a failing command's exit, the stale-TASTy retry, `--stop` freeing server, keeper and slot. | `--stop` leaving the server running; no stale-TASTy retry |
 
 The pre-push scenario runs only the check under test (`PREPUSH_ONLY`, the landing check's own split), with the
 floor bash and the `--linux` container skipped. Those depend on the machine, and the hook's own tests cover them.
+
+Round 2 left out: `identity-stamp-carry` (its `stamps` need a real sbt build of identity's digests; its logic is held by
+`identity_stamp_carry_test.py`), the identity tools (JVM, mirror and CI dispatch) and `mobile-ship.sh` (a wrapper over the
+dashboard's TypeScript, which needs `npm ci`; the release logic lives in `infra/version-dashboard`).
