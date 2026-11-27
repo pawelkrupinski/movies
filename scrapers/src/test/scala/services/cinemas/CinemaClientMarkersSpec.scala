@@ -3,7 +3,7 @@ package services.cinemas
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import tools.GetOnlyHttpFetch
-import services.cinemas.common.{CinemaClientMarkers, MultiListingScraper}
+import services.cinemas.common.CinemaClientMarkers
 
 import java.time.LocalDate
 
@@ -56,10 +56,9 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "derive shared vs custom purely from the catalog's per-client cinema count" in {
-    val counts = catalog.all.map {
-      case venue: MultiListingScraper => venue.listings.head
-      case single                     => single
-    }.groupBy(_.getClass.getSimpleName).view.mapValues(_.size).toMap
+    // By `clientName`, the name a marker carries: a venue read off several listings, or a chain of sources
+    // (`FirstAnsweringScraper`), names the client behind it.
+    val counts = catalog.all.groupBy(_.clientName).view.mapValues(_.size).toMap
     markers.foreach { case (cinema, tag) =>
       val Array(kind, client) = tag.split(":", 2)
       val expected = if (counts(client) > 1) "shared" else "custom"
