@@ -26,9 +26,9 @@ mutants=(
   'a raised limit is no growth @@ if old_limit is not None and new_limit > old_limit: @@ if False:'
   'an added or raised row is no growth @@ if value > before.get(key, allowed_new) and not @@ if False and not'
   'trailers.py: the trailer is not read @@ return bool(value.strip()) @@ return True'
-  'trailers.py: any trailer counts @@ trailers:key={key},valueonly @@ trailers:valueonly'
-  'trailers.py: any commit of the range justifies a rise @@ if not carries(sha, key): @@ if not any(carries(s, key) for s in changed):'
-  'trailers.py: a step is judged against the range'"'"'s base @@ before, after = text_at(f"{sha}^", path), text_at(sha, path) @@ before, after = text_at(rng.split("..")[0], path), text_at(sha, path)'
+  'trailers.py: any trailer counts @@ repository(repo).trailer_values(sha, key) @@ [v for _k, v in repository(repo).trailers(sha)]'
+  'trailers.py: any commit of the range justifies a rise @@ if not carries(sha, key, repo): @@ if not any(carries(s, key, repo) for s in changed):'
+  'trailers.py: a step is judged against the range'"'"'s base @@ before, after = text_at(f"{sha}^", path, repo), text_at(sha, path, repo) @@ before, after = text_at(rng.split("..")[0], path, repo), text_at(sha, path, repo)'
   'growth is judged on another ratchet'"'"'s trailer @@ trailers.unjustified_rises(rng, ratchet.baseline, ratchet.trailer, @@ trailers.unjustified_rises(rng, ratchet.baseline, "Complexity",'
   'growth never fails @@ if unjustified: @@ if False:'
   'violations never fail @@     if found:

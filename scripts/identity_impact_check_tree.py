@@ -28,7 +28,7 @@ import tool_process
 Classes = Dict[str, Set[str]]
 # identity_impact.py, untyped (scripts/ci is another lane's): the four names this tool reads, typed here
 READ_IMPACT: Callable[[str], Tuple[List[str], Classes]] = getattr(identity_impact, "read_impact")
-COUNTRIES_OF: Callable[[str, Optional[str], List[str], str], List[str]] = getattr(identity_impact, "countries")
+COUNTRIES_OF: Callable[[str, Optional[str], List[str], str, tool_git.GitRepo], List[str]] = getattr(identity_impact, "countries")
 PLAN: Callable[..., List[str]] = getattr(identity_impact, "plan")
 COUNTRIES: List[str] = getattr(identity_impact, "COUNTRIES")
 TOOLING = ["identity-impact.sbt", "project/TestImpact.scala", "project/SameFileEdges.scala",
@@ -102,8 +102,9 @@ class Checkout:
     def countries(self, base: str, head: Optional[str], changed: List[str]) -> List[str]:
         cwd = os.getcwd()
         try:
-            os.chdir(self.tree)  # identity_impact reads the revisions with git in the working directory
-            return COUNTRIES_OF(base, head, changed, self.tree)
+            os.chdir(self.tree)  # identity_impact reads the working tree's files (a head of None) relative to it
+            repo = tool_git.SubprocessGitRepo(tool_git.Git(self.runner, self.env, self.tree))
+            return COUNTRIES_OF(base, head, changed, self.tree, repo)
         finally:
             os.chdir(cwd)
 

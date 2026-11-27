@@ -9,10 +9,10 @@ import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import identity_impact as ii  # noqa: E402
-
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path[:0] = [HERE, os.path.join(os.path.dirname(HERE), "lib")]  # the tool beside it, and scripts/lib's tool_git
+import identity_impact as ii  # noqa: E402
+import tool_git  # noqa: E402
 
 RULES = "common/src/main/resources/title-rules.tsv"
 HEADER = "# id\tkind\tcinema\tcountries\tflags\teffect\tseason\tpattern\treplacement\tnote\texamples\n"
@@ -26,10 +26,9 @@ def row(rid, countries="", cinema="", pattern="x"):
 SCRATCH_GIT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scratch-git.sh")
 
 
-class Repo:
+class ScratchRepo:
     """A scratch repository made through scripts/scratch-git.sh -- never a raw git, which under the pre-push hook inherits
-    its GIT_DIR and writes into the repository every worktree shares -- a base commit, then a head commit, of the given
-    files. countries() reads it with every GIT_* variable of this process dropped, for the same reason."""
+    its GIT_DIR and writes into the repository every worktree shares -- for the CLI's black-box case."""
 
     def __init__(self, base, head):
         self.dir = tempfile.TemporaryDirectory()
@@ -42,32 +41,41 @@ class Repo:
         return subprocess.run(["bash", "-c", '. "$1"; "$2" "$3" "${@:4}"', "_", SCRATCH_GIT, helper, self.path, *args],
                               check=True, capture_output=True, text=True).stdout.strip()
 
-    def git(self, *args):
-        return self.scratch("scratch_git", *args)
-
     def commit(self, files):
-        for name, text in files.items():
-            p = os.path.join(self.path, name)
-            if text is None:
-                if os.path.exists(p):
-                    os.remove(p)
-                continue
-            os.makedirs(os.path.dirname(p), exist_ok=True)
-            with open(p, "w", encoding="utf-8") as fh:
+        write_tree(self.path, files)
+        self.scratch("scratch_git", "add", "-A")
+        self.scratch("scratch_git", "commit", "-q", "--allow-empty", "-m", "c")
+        return self.scratch("scratch_git", "rev-parse", "HEAD")
+
+
+def write_tree(root, files):
+    """`files` laid over the directory `root`: a text written, None removed."""
+    for name, text in files.items():
+        full = os.path.join(root, name)
+        if text is not None:
+            os.makedirs(os.path.dirname(full), exist_ok=True)
+            with open(full, "w", encoding="utf-8") as fh:
                 fh.write(text)
-        self.git("add", "-A")
-        self.git("commit", "-q", "--allow-empty", "-m", "c")
-        return self.git("rev-parse", "HEAD")
+        elif os.path.exists(full):
+            os.remove(full)
+
+
+class Repo:
+    """A base commit, then a head commit, of the given files, in an InMemoryGitRepo (tool_git's fake, held to git by
+    tool_git_contract_test.py); the head's files also written to a checkout directory, where the rosters are read."""
+
+    def __init__(self, base, head):
+        self.repo = tool_git.InMemoryGitRepo()
+        self.base = self.repo.commit(base, "base")
+        self.head = self.repo.commit(head, "head")
+        self.dir = tempfile.TemporaryDirectory()
+        write_tree(self.dir.name, {**base, **head})
 
     def countries(self):
-        changed = self.git("diff", "--name-only", "--no-renames", self.base, self.head).split()
-        cwd, saved = os.getcwd(), {k: os.environ.pop(k) for k in list(os.environ) if k.startswith("GIT_")}
         try:
-            os.chdir(self.path)
-            return ii.countries(self.base, self.head, changed, self.path)
+            changed = self.repo.changed(self.base, self.head)
+            return ii.countries(self.base, self.head, changed, self.dir.name, self.repo)
         finally:
-            os.chdir(cwd)
-            os.environ.update(saved)
             self.dir.cleanup()
 
 
@@ -92,7 +100,7 @@ class CountriesTest(unittest.TestCase):
         self.assertEqual(r.countries(), ["de"])
 
     def test_the_cli_reads_the_diff_when_stdin_is_empty_never_no_country(self):
-        r = Repo({RULES: HEADER + row("a", "pl,de")}, {RULES: HEADER + row("a", "pl,de", pattern="y")})
+        r = ScratchRepo({RULES: HEADER + row("a", "pl,de")}, {RULES: HEADER + row("a", "pl,de", pattern="y")})
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         for kind in ("devnull", "empty pipe"):
             with self.subTest(stdin=kind):

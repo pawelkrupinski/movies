@@ -146,7 +146,6 @@ cognitive	scripts/ci/runner_scheduler.py:_idle_to_stop	11
 cognitive	scripts/ci/runner_scheduler.py:decide	24
 cognitive	scripts/ci/runner_scheduler.py:decide.borrow_check	11
 cognitive	scripts/ci/runner_scheduler.py:tick	15
-cognitive	scripts/ci/trailers.py:main	14
 cognitive	scripts/ci/trailers.py:unjustified_rises	11
 cognitive	scripts/ci/upstream_run.py:choose	14
 cognitive	scripts/ci/upstream_run.py:main	11
@@ -341,7 +340,7 @@ cyclomatic	scripts/ci/runner_scheduler.py:decide.borrow_check	19
 cyclomatic	scripts/ci/runner_scheduler.py:decide.room_for	13
 cyclomatic	scripts/ci/runner_scheduler.py:read_readings	24
 cyclomatic	scripts/ci/runner_scheduler.py:tick	18
-cyclomatic	scripts/ci/trailers.py:main	14
+cyclomatic	scripts/ci/trailers.py:main	11
 cyclomatic	scripts/ci/trailers.py:misplaced	16
 cyclomatic	scripts/ci/upstream_run.py:choose	14
 cyclomatic	scripts/ci/upstream_run.py:main	11
@@ -487,7 +486,7 @@ pyright	scripts/ci/gating_checks.py	112
 pyright	scripts/ci/harness_aa.py	60
 pyright	scripts/ci/hotspots.py	40
 pyright	scripts/ci/identity_findings_report.py	291
-pyright	scripts/ci/identity_impact.py	307
+pyright	scripts/ci/identity_impact.py	260
 pyright	scripts/ci/identity_judgements.py	269
 pyright	scripts/ci/identity_judgements_lint.py	272
 pyright	scripts/ci/identity_live_drift.py	74
@@ -511,7 +510,6 @@ pyright	scripts/ci/runner_scheduler.py	717
 pyright	scripts/ci/script_module.py	12
 pyright	scripts/ci/shard_tests.py	69
 pyright	scripts/ci/shard_weights.py	73
-pyright	scripts/ci/trailers.py	16
 pyright	scripts/ci/upstream_run.py	57
 pyright	scripts/ci/workflow_steps.py	25
 pyright	scripts/ci/xcresult_annotations.py	65

@@ -23,15 +23,17 @@ a `Fixes-Red:` commit touching only CI or report plumbing (`plumbing_only`).
 
   scripts/ci/trailers.py lint --range A..B [--range ...]   warn (stderr) about every misplaced known-trailer line of
                                                            the pushed commits, and every Fixes-Red commit of plumbing
-                                                           alone; always exits 0 (pre-push runs it)"""
+                                                           alone; always exits 0 (pre-push runs it)
+
+Every reading takes the repository as a `tool_git.GitRepo` (CLAUDE.md, "Side effects live at the leaves"): the unit
+tests hand it an InMemoryGitRepo; a caller passing none reads the checkout it runs in (`repository`)."""
 
 from __future__ import annotations
 
 import os
 import re
-import subprocess
 import sys
-from typing import Callable, Iterable, List, NamedTuple, Optional
+from typing import Callable, Iterable, List, NamedTuple, Optional, Set, Tuple, cast
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 import tool_git  # noqa: E402
@@ -51,13 +53,17 @@ class Misplaced(NamedTuple):
     text: str   # the line as written, stripped
 
 
-def parsed(message: str) -> set:
+def repository(repo: Optional[tool_git.GitRepo]) -> tool_git.GitRepo:
+    """`repo`, or the checkout this process runs in: the default of a caller not yet handing one."""
+    return repo if repo is not None else tool_git.SubprocessGitRepo.here()
+
+
+def parsed(message: str, repo: Optional[tool_git.GitRepo] = None) -> Set[Tuple[str, str]]:
     """(key lowercased, value) of every trailer git reads from `message`."""
-    out = tool_git.Git.here().text("interpret-trailers", "--parse", input=message)
-    return {(k.strip().lower(), v.strip()) for k, sep, v in (line.partition(":") for line in out.splitlines()) if sep}
+    return {(k.lower(), v) for k, v in repository(repo).parse_trailers(message)}
 
 
-def misplaced(message: str, keys: Iterable[str] = KNOWN_KEYS) -> List[Misplaced]:
+def misplaced(message: str, keys: Iterable[str] = KNOWN_KEYS, repo: Optional[tool_git.GitRepo] = None) -> List[Misplaced]:
     """Each line of `message` (the subject aside) starting with one of `keys` that git does not read as a trailer."""
     wanted = {k.lower() for k in keys}
     lines = message.splitlines()
@@ -65,10 +71,10 @@ def misplaced(message: str, keys: Iterable[str] = KNOWN_KEYS) -> List[Misplaced]
                   and m.group(2).lower() in wanted]
     if not candidates:
         return []
-    read = parsed(message)
+    read = parsed(message, repo)
     nonblank = [i for i, line in enumerate(lines, start=1) if line.strip()]
     block_start = next((i + 1 for i in range(nonblank[-1] - 1, 0, -1) if not lines[i - 1].strip()), 1)
-    found = []
+    found: List[Misplaced] = []
     for number, m in candidates:
         key, value = m.group(2).lower(), m.group(3).strip()
         # git unfolds a value continued on indented lines, so the line holds only the read value's start
@@ -82,15 +88,16 @@ def explain(m: Misplaced) -> str:
             " Co-Authored-By, no blank line between); git does not read it as a trailer")
 
 
-def message_of(sha: str) -> str:
-    return tool_git.Git.here().text("log", "-1", "--format=%B", sha)
+def message_of(sha: str, repo: Optional[tool_git.GitRepo] = None) -> str:
+    return repository(repo).message(sha)
 
 
-def misplaced_notes(rng: str, key: str, path: Optional[str] = None) -> List[str]:
+def misplaced_notes(rng: str, key: str, path: Optional[str] = None, repo: Optional[tool_git.GitRepo] = None) -> List[str]:
     """`<sha9>: found ...` for every `key:` line of a commit of `rng` (changing `path`, when given) that git does not
     read as a trailer: why a ratchet refusing for want of `key` saw none."""
-    shas = tool_git.Git.here().text("rev-list", rng, *(["--", path] if path else [])).split()
-    return [f"{sha[:9]}: {explain(m)}" for sha in shas for m in misplaced(message_of(sha), (key,))]
+    repo = repository(repo)
+    shas = repo.commits(rng, [path] if path else [])
+    return [f"{sha[:9]}: {explain(m)}" for sha in shas for m in misplaced(repo.message(sha), (key,), repo)]
 
 
 def print_misplaced(rng: str, key: str, path: Optional[str] = None) -> None:
@@ -99,40 +106,41 @@ def print_misplaced(rng: str, key: str, path: Optional[str] = None) -> None:
         print(f"  {note}")
 
 
-def carries(sha: str, key: str) -> bool:
+def carries(sha: str, key: str, repo: Optional[tool_git.GitRepo] = None) -> bool:
     """Whether commit `sha` carries a non-empty `key:` trailer (git's reading: the final trailer block)."""
-    value = tool_git.Git.here().text("log", "-1", f"--format=%(trailers:key={key},valueonly,separator=%x20)", sha)
+    value = " ".join(repository(repo).trailer_values(sha, key))
     return bool(value.strip())
 
 
-def text_at(rev: str, path: str) -> str:
+def text_at(rev: str, path: str, repo: Optional[tool_git.GitRepo] = None) -> str:
     """`path` at `rev`, "" where it does not exist (or `rev` does not: a root commit's parent)."""
-    return tool_git.Git.here().out("show", f"{rev}:{path}", quiet=True) or ""
+    return repository(repo).show(rev, path) or ""
 
 
-def exists_at(rev: str, path: str) -> bool:
+def exists_at(rev: str, path: str, repo: Optional[tool_git.GitRepo] = None) -> bool:
     """Whether `path` exists at `rev` (an empty file does: text_at's "" does not say)."""
-    return subprocess.run(["git", "cat-file", "-e", f"{rev}:{path}"], capture_output=True).returncode == 0
+    return repository(repo).exists(rev, path)
 
 
-def unjustified_rises(rng: str, path: str, key: str, rose: Callable[[str, str], List[str]]) -> List[str]:
+def unjustified_rises(rng: str, path: str, key: str, rose: Callable[[str, str], List[str]],
+                      repo: Optional[tool_git.GitRepo] = None) -> List[str]:
     """The commits of `rng` whose own change to `path` grows it (`rose(its parent's text, its text)`, the ratchet's growth,
     non-empty) and that carry no `key:` trailer, oldest first: `<sha9> <subject>: <its rise>` each (THE ATTRIBUTION RULE,
     above). A commit creating or deleting `path` is no step (the range's own check has no baseline to compare). When no
     single commit's step grows it although the range does (each step within its parent's limit), some commit of the
     range changing `path` must carry the trailer. Empty when every rise is justified where it was made."""
-    changed = tool_git.Git.here().text("rev-list", "--reverse", rng, "--", path).split()
-    raisers, refused = 0, []
+    repo = repository(repo)
+    changed = repo.commits(rng, [path], reverse=True)
+    raisers, refused = 0, cast(List[str], [])
     for sha in changed:
-        before, after = text_at(f"{sha}^", path), text_at(sha, path)
+        before, after = text_at(f"{sha}^", path, repo), text_at(sha, path, repo)
         # created or deleted is no step; a baseline committed EMPTY is a file, and what is added to it is growth
-        own = rose(before, after) if exists_at(f"{sha}^", path) and exists_at(sha, path) else []
+        own = rose(before, after) if exists_at(f"{sha}^", path, repo) and exists_at(sha, path, repo) else []
         if own:
             raisers += 1
-            if not carries(sha, key):
-                subject = tool_git.Git.here().text("log", "-1", "--format=%s", sha).strip()
-                refused.append(f"{sha[:9]} {subject}: " + "; ".join(own))
-    if not raisers and not any(carries(sha, key) for sha in changed):
+            if not carries(sha, key, repo):
+                refused.append(f"{sha[:9]} {repo.subject(sha)}: " + "; ".join(own))
+    if not raisers and not any(carries(sha, key, repo) for sha in changed):
         refused.append(f"no commit of {rng} changing {path} carries `{key}:`")
     return refused
 
@@ -143,17 +151,28 @@ def plumbing_only(paths: Iterable[str]) -> bool:
     return bool(paths) and all(p.startswith(PLUMBING) or p.endswith(".md") for p in paths)
 
 
-def diagnoses_hint(sha: str) -> Optional[str]:
+def diagnoses_hint(sha: str, repo: tool_git.GitRepo) -> Optional[str]:
     """The suggestion for a `Fixes-Red:` commit of plumbing alone (DIAGNOSTICS ARE NO FIX), or None."""
-    message = message_of(sha)
-    if not any(k == "fixes-red" for k, _v in parsed(message)):
+    if not repo.trailer_values(sha, "Fixes-Red"):
         return None
-    paths = tool_git.Git.here().text("diff-tree", "--no-commit-id", "--name-only", "-r", "--root", sha).split()
+    paths = repo.changed_in(sha)
     if not plumbing_only(paths):
         return None
     return ("it says `Fixes-Red:` but touches only CI or report plumbing (" + ", ".join(paths[:3])
             + (", ..." if len(paths) > 3 else "") + "): if it only collects evidence, say `Diagnoses-Red: <run>` "
             "instead -- a Fixes-Red moves the red to fix-pending and stands its fixer down")
+
+
+def lint(ranges: List[str], repo: tool_git.GitRepo) -> List[str]:
+    """Every warning `lint` says of the ranges' commits, oldest first."""
+    out: List[str] = []
+    for rng in ranges:
+        for sha in repo.commits(rng, reverse=True):
+            out += [f"trailers: {sha[:9]}: {explain(m)}" for m in misplaced(repo.message(sha), repo=repo)]
+            hint = diagnoses_hint(sha, repo)
+            if hint:
+                out.append(f"trailers: {sha[:9]}: {hint}")
+    return out
 
 
 def main(argv: List[str]) -> int:
@@ -162,14 +181,9 @@ def main(argv: List[str]) -> int:
         print(usage, file=sys.stderr)
         return 2
     try:
-        for rng in argv[2::2]:
-            for sha in tool_git.Git.here().text("rev-list", "--reverse", rng).split():
-                for m in misplaced(message_of(sha)):
-                    print(f"trailers: {sha[:9]}: {explain(m)}", file=sys.stderr)
-                hint = diagnoses_hint(sha)
-                if hint:
-                    print(f"trailers: {sha[:9]}: {hint}", file=sys.stderr)
-    except subprocess.CalledProcessError as e:
+        for warning in lint(argv[2::2], tool_git.SubprocessGitRepo.here()):
+            print(warning, file=sys.stderr)
+    except tool_git.Failed as e:
         print(f"trailers: could not read the range: {(e.stderr or '').strip() or e}", file=sys.stderr)
     return 0
 

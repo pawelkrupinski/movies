@@ -15,6 +15,10 @@ from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import cli_harness  # noqa: E402
+import tool_git  # noqa: E402
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fail_before  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/fail_before.py", "scripts/fail-before")
 # ci-sbt: runs the "sbt command" as a script in the commit's tree (as CI runs it in a checkout of it), logging its call
@@ -265,6 +269,33 @@ class FailBeforeTest(cli_harness.ToolCase):
         self.fail_before("--", "bash", "exists-test.sh")
         self.assertEqual(1, len(self.git(self.repository, "worktree", "list").strip().splitlines()))
         self.assertEqual([], os.listdir(self.path("work")))
+
+
+class TestPathsTest(unittest.TestCase):
+    """The selection, over an InMemoryGitRepo: the commit's own added or modified test-side files."""
+
+    BUILD = 'lazy val PageTest = config("page") extend Test\nPageTest / scalaSource := baseDirectory.value / "src" / "pagetest"\n'
+
+    def setUp(self) -> None:
+        self.repo = tool_git.InMemoryGitRepo()
+        self.repo.commit({"build.sbt": self.BUILD, "web/src/test/scala/Old.scala": "x", "web/src/main/scala/A.scala": "a"},
+                         "base")
+
+    def test_the_builds_test_directories_and_the_default_patterns_select_and_production_and_deletes_do_not(self) -> None:
+        sha = self.repo.commit({"web/src/page/scala/P.scala": "p", "web/src/main/scala/A.scala": "b",
+                                "scripts/x_test.py": "t", "web/src/test/scala/Old.scala": None,
+                                "test/resources/fixture.tsv": "f"}, "change")
+        self.assertEqual(["scripts/x_test.py", "test/resources/fixture.tsv", "web/src/page/scala/P.scala"],
+                         fail_before.test_paths(self.repo, sha, []))
+
+    def test_files_patterns_replace_the_selection(self) -> None:
+        sha = self.repo.commit({"web/src/main/scala/A.scala": "b", "scripts/x_test.py": "t"}, "change")
+        self.assertEqual(["web/src/main/scala/A.scala"], fail_before.test_paths(self.repo, sha, ["web/src/main/*"]))
+
+    def test_a_commit_changing_no_test_side_file_is_refused(self) -> None:
+        sha = self.repo.commit({"web/src/main/scala/A.scala": "b"}, "production only")
+        with self.assertRaisesRegex(fail_before.Died, "changes no test-side file"):
+            fail_before.test_paths(self.repo, sha, [])
 
 
 if __name__ == "__main__":

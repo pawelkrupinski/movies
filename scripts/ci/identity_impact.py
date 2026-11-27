@@ -36,7 +36,9 @@ Usage:
       [--except FILE] less the `<module>:<class>` classes another line of the same run runs
       [--every-test FILE]  every test class (`<module> <class>` lines): ALL runs each of them once, by name
 
-Proof: scripts/identity-impact-check (replay of history, mutations).
+Proof: scripts/identity-impact-check (replay of history, mutations). The revisions are read through a
+`tool_git.GitRepo` (CLAUDE.md, "Side effects live at the leaves"): `main` hands the checkout's, the tests an
+InMemoryGitRepo.
 """
 
 import argparse
@@ -44,9 +46,12 @@ import fnmatch
 import json
 import os
 import re
-import subprocess
 import sys
+import typing
 import unicodedata
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import tool_git  # noqa: E402
 
 COUNTRIES = ["pl", "uk", "de", "us", "es"]
 DATA_DIRS = {"pl": "pl", "germany": "de", "uk": "uk", "us": "us", "spain": "es"}
@@ -64,20 +69,18 @@ CHAIN_PREFIXES = {"cinema-city": "Cinema City", "helios": "Helios", "multikino":
 CC = "(pl|uk|de|us|es)"
 
 
-def git(*args, check=True):
-    return subprocess.run(["git", *args], capture_output=True, text=True, check=check).stdout
+def working_file(path: str) -> "str | None":
+    """The working tree's file, or None where it is absent or no text."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+    except (OSError, UnicodeDecodeError):
+        return None
 
 
-def show(rev, path):
+def show(rev: "str | None", path: str, repo: tool_git.GitRepo) -> "str | None":
     """The file at a revision (None: the working tree), or None where it is absent."""
-    if rev is None:
-        try:
-            with open(path, encoding="utf-8") as fh:
-                return fh.read()
-        except (OSError, UnicodeDecodeError):
-            return None
-    r = subprocess.run(["git", "show", f"{rev}:{path}"], capture_output=True, text=True)
-    return r.stdout if r.returncode == 0 else None
+    return working_file(path) if rev is None else repo.show(rev, path)
 
 
 # ── the venue keys (TitleRuleKey) ────────────────────────────────────────────────────────────────────────────────────
@@ -220,17 +223,17 @@ def row_file_reach(base_text, head_text):
     return out
 
 
-def path_reach(path, base, head, tree):
+def path_reach(path: str, base: str, head: "str | None", tree: str, repo: tool_git.GitRepo) -> "set[str]":
     """The countries a change to `path` can reach (the module docstring)."""
     every = set(COUNTRIES)
     if path.endswith(".md") or path.startswith(("docs/", ".claude/", "http/")):
         return set()
     if path == TITLE_RULES:
-        return title_rules_reach(show(base, path), show(head, path), tree)
+        return title_rules_reach(show(base, path, repo), show(head, path, repo), tree)
     if path == TITLE_WORDS:
-        return every if changed_rows(show(base, path), show(head, path)) else set()
+        return every if changed_rows(show(base, path, repo), show(head, path, repo)) else set()
     if path in ROW_FILES:
-        return row_file_reach(show(base, path), show(head, path))
+        return row_file_reach(show(base, path, repo), show(head, path, repo))
     for pattern in (rf"^test/resources/fixtures/identity-unmatched/{CC}\.[^/]+$",
                     rf"^test/resources/fixtures/identity-slices/{CC}-[^/]+/",
                     rf"^test/resources/fixtures/corpus/[^/]+-{CC}(-sample)?\.[^/]+$",
@@ -244,10 +247,11 @@ def path_reach(path, base, head, tree):
     return every
 
 
-def countries(base, head, paths, tree="."):
-    reach = set()
+def countries(base: str, head: "str | None", paths: "list[str]", tree: str, repo: tool_git.GitRepo) -> "list[str]":
+    """The countries the changed `paths` reach, base to head (None: the working tree), read through `repo`."""
+    reach: "set[str]" = set()
     for path in paths:
-        reach |= path_reach(path, base, head, tree)
+        reach |= path_reach(path, base, head, tree, repo)
         if len(reach) == len(COUNTRIES):
             break
     return [cc for cc in COUNTRIES if cc in reach]
@@ -361,10 +365,14 @@ def fork_group(module, cls, scope):
     return "1-refit" if apart else "2"
 
 
-def changed_paths(base: str, head: str) -> "list[str]":
+def piped_paths(stdin: "typing.TextIO") -> "list[str]":
+    """The paths a pipe gives, one a line; none from a terminal."""
+    return [] if stdin.isatty() else [line.strip() for line in stdin if line.strip()]
+
+
+def changed_paths(base: str, head: str, piped: "list[str]", repo: tool_git.GitRepo) -> "list[str]":
     """The changed paths: stdin's, else the diff's -- an empty or detached stdin is no "no change" (fail safe, never "none")."""
-    piped = [] if sys.stdin.isatty() else [l.strip() for l in sys.stdin if l.strip()]
-    return piped or (git("diff", "--name-only", "--no-renames", base, head) or "").split()
+    return piped or repo.changed(base, head)
 
 
 def main(argv):
@@ -381,8 +389,9 @@ def main(argv):
     p.add_argument("--every-test", help="identityImpact's `<out>.tests` (every test class): ALL runs each by name, once")
     a = ap.parse_args(argv)
     if a.cmd == "countries":
-        paths = changed_paths(a.base, a.head)
-        print(",".join(countries(a.base, a.head, paths, a.tree)))
+        repo = tool_git.SubprocessGitRepo.here()
+        paths = changed_paths(a.base, a.head, piped_paths(sys.stdin), repo)
+        print(",".join(countries(a.base, a.head, paths, a.tree, repo)))
         return 0
     why, tests = read_impact(a.impact)
     every_test = read_impact(a.every_test)[1] if why and a.every_test else None

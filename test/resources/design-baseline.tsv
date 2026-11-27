@@ -189,7 +189,6 @@ effect	scripts/ci/identity_drift_check_store.py:files	7
 effect	scripts/ci/identity_family_nightly.py:files	17
 effect	scripts/ci/identity_findings_report.py	1
 effect	scripts/ci/identity_findings_report.py:files	9
-effect	scripts/ci/identity_impact.py	1
 effect	scripts/ci/identity_impact.py:files	11
 effect	scripts/ci/identity_judgements.py:files	5
 effect	scripts/ci/identity_judgements_lint.py	2
@@ -257,7 +256,6 @@ effect	scripts/ci/stress_races.py	1
 effect	scripts/ci/stress_races.py:files	10
 effect	scripts/ci/takes_skip_gate.py	2
 effect	scripts/ci/takes_skip_gate.py:files	5
-effect	scripts/ci/trailers.py	1
 effect	scripts/ci/trend_events.py:network	2
 effect	scripts/ci/trend_export.py:files	1
 effect	scripts/ci/trend_github.py	2
@@ -857,7 +855,6 @@ mixed	scripts/ci/identity_impact.py:read_excluded	3
 mixed	scripts/ci/identity_impact.py:read_impact	6
 mixed	scripts/ci/identity_impact.py:read_reads	4
 mixed	scripts/ci/identity_impact.py:roster_names	16
-mixed	scripts/ci/identity_impact.py:show	4
 mixed	scripts/ci/identity_judgements.py:blank_lines	3
 mixed	scripts/ci/identity_judgements.py:edit_in_place	4
 mixed	scripts/ci/identity_judgements.py:lines	5
@@ -1002,10 +999,6 @@ mixed	scripts/ci/stress_races.py:stress	7
 mixed	scripts/ci/takes_skip_gate.py:proof_exit	6
 mixed	scripts/ci/takes_skip_gate.py:proof_readings	8
 mixed	scripts/ci/takes_skip_gate.py:trace_readings	5
-mixed	scripts/ci/trailers.py:diagnoses_hint	5
-mixed	scripts/ci/trailers.py:misplaced_notes	4
-mixed	scripts/ci/trailers.py:parsed	4
-mixed	scripts/ci/trailers.py:unjustified_rises	9
 mixed	scripts/ci/trend_events.py:post_events	3
 mixed	scripts/ci/trend_events.py:vl_query	5
 mixed	scripts/ci/trend_github.py:GitHub.__init__	4
@@ -1606,5 +1599,5 @@ mixed	worker/src/main/scala/tools/HeapDumper.scala:HeapDumper.dump	3
 mixed	worker/src/main/scala/tools/HeapPressure.scala:HeapPressure.heldAfterCollection	3
 mixed	worker/src/main/scala/tools/ResidentialProxyProbe.scala:ResidentialProxyProbe.statusThrough	3
 distance	scripts/ci	0.54
-distance	scripts/lib	0.74
+distance	scripts/lib	0.72
 dircycle	scripts|scripts/ci	2

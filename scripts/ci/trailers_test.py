@@ -2,7 +2,8 @@
 """trailers.py: a known trailer key (`Coupling:`, `Fixes-Red:`, ...) written outside the message's final trailer block --
 a paragraph of its own above `Co-Authored-By:`, indented, in the body -- is found with its line number and said plainly;
 one in the final block, beside Co-Authored-By with no blank line between, is a trailer and is not; `lint` warns about
-every misplaced line of a range and always exits 0."""
+every misplaced line of a range and always exits 0. The readings run on an InMemoryGitRepo (tool_git's fake, held to
+git by tool_git_contract_test.py); `lint` black-box, on a repository git makes."""
 
 from __future__ import annotations
 
@@ -17,54 +18,58 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 SCRATCH_GIT = os.path.join(ROOT, "scripts/scratch-git.sh")
 TOOL = os.path.join(HERE, "trailers.py")
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(ROOT, "scripts", "lib"))
+import tool_git  # noqa: E402
 import trailers  # noqa: E402
 
 CO = "Co-Authored-By: A <a@b.c>"
 
 
 class MisplacedTest(unittest.TestCase):
+    repo = tool_git.InMemoryGitRepo()
+
     def test_a_trailer_in_a_paragraph_of_its_own_is_misplaced_with_its_line(self):
-        found = trailers.misplaced(f"split it\n\nCoupling: split of X\n\n{CO}\n")
+        found = trailers.misplaced(f"split it\n\nCoupling: split of X\n\n{CO}\n", repo=self.repo)
         self.assertEqual([("Coupling", 3, "Coupling: split of X")], [(m.key, m.line, m.text) for m in found])
 
     def test_the_explanation_names_the_line_and_the_rule(self):
-        (m,) = trailers.misplaced(f"split it\n\nCoupling: split of X\n\n{CO}\n")
+        (m,) = trailers.misplaced(f"split it\n\nCoupling: split of X\n\n{CO}\n", repo=self.repo)
         self.assertEqual("found `Coupling: split of X` on line 3, but it is not in the final trailer block (it must sit"
                          " with Co-Authored-By, no blank line between); git does not read it as a trailer",
                          trailers.explain(m))
 
     def test_a_trailer_beside_co_authored_by_is_placed(self):
-        self.assertEqual([], trailers.misplaced(f"split it\n\nSome prose.\n\nCoupling: split of X\n{CO}\n"))
+        self.assertEqual([], trailers.misplaced(f"split it\n\nSome prose.\n\nCoupling: split of X\n{CO}\n", repo=self.repo))
 
     def test_every_known_key_is_judged_and_case_does_not_hide_one(self):
         message = "s\n\n" + "\n".join(f"{k.lower()}: v" for k in trailers.KNOWN_KEYS) + f"\nprose stops the block\n\n{CO}\n"
-        self.assertEqual(list(trailers.KNOWN_KEYS), [m.key for m in trailers.misplaced(message)])
+        self.assertEqual(list(trailers.KNOWN_KEYS), [m.key for m in trailers.misplaced(message, repo=self.repo)])
 
     def test_a_rework_of_above_the_final_block_is_misplaced_agentctl_reads_it_to_close_a_revert_notice(self):
-        found = trailers.misplaced(f"re-land it\n\nRework-Of: 604134d1a\n\n{CO}\n")
+        found = trailers.misplaced(f"re-land it\n\nRework-Of: 604134d1a\n\n{CO}\n", repo=self.repo)
         self.assertEqual([("Rework-Of", 3)], [(m.key, m.line) for m in found])
 
     def test_an_indented_trailer_in_the_final_block_is_folded_into_the_one_above_not_read(self):
         self.assertEqual([("Complexity", 4)],
-                         [(m.key, m.line) for m in trailers.misplaced(f"s\n\n{CO}\n  Complexity: why\n")])
+                         [(m.key, m.line) for m in trailers.misplaced(f"s\n\n{CO}\n  Complexity: why\n", repo=self.repo)])
 
     def test_a_trailer_continued_on_an_indented_line_is_placed(self):
-        self.assertEqual([], trailers.misplaced(f"s\n\nCoupling: exempt X — a long reason\n continued here\n{CO}\n"))
+        self.assertEqual([], trailers.misplaced(f"s\n\nCoupling: exempt X — a long reason\n continued here\n{CO}\n", repo=self.repo))
 
     def test_a_final_paragraph_git_reads_no_trailers_from_misplaces_its_key_lines(self):
         found = trailers.misplaced("s\n\nThis paragraph is prose, not trailers at all, and long.\nMore prose here.\n"
-                                   "And more prose.\nLength: why\n")
+                                   "And more prose.\nLength: why\n", repo=self.repo)
         self.assertEqual([("Length", 6)], [(m.key, m.line) for m in found])
 
     def test_a_key_mentioned_mid_line_or_an_unknown_key_is_no_trailer_line(self):
-        self.assertEqual([], trailers.misplaced(f"s\n\nIt explains the Coupling: trailer in prose.\nSee: also\n\n{CO}\n"))
+        self.assertEqual([], trailers.misplaced(f"s\n\nIt explains the Coupling: trailer in prose.\nSee: also\n\n{CO}\n", repo=self.repo))
 
     def test_the_subject_is_never_judged(self):
-        self.assertEqual([], trailers.misplaced(f"Coupling: the ratchet reads the matrix\n\n{CO}\n"))
+        self.assertEqual([], trailers.misplaced(f"Coupling: the ratchet reads the matrix\n\n{CO}\n", repo=self.repo))
 
     def test_a_key_filter_judges_only_that_key(self):
         message = f"s\n\nCoupling: a\nLength: b\n\n{CO}\n"
-        self.assertEqual(["Length"], [m.key for m in trailers.misplaced(message, ("Length",))])
+        self.assertEqual(["Length"], [m.key for m in trailers.misplaced(message, ("Length",), repo=self.repo)])
 
 
 class RangeTest(unittest.TestCase):
@@ -125,25 +130,26 @@ class RangeTest(unittest.TestCase):
         self.assertEqual((0, ""), self.lint(f"{self.base}..{diag}"))
         self.assertTrue(fix)
 
+
+class RangeReadingsTest(unittest.TestCase):
+    """misplaced_notes and unjustified_rises over a commit graph in memory."""
+
+    def setUp(self):
+        self.repo = tool_git.InMemoryGitRepo()
+        self.base = self.commit({"a.txt": "a\n"}, "base")
+
+    def commit(self, files, message):
+        return self.repo.commit(files, message)
+
     def test_notes_name_only_commits_changing_the_path(self):
-        os.chdir(self.repo)
-        try:
-            self.commit({"b.txt": "b\n"}, f"other\n\nLength: not this one\n\n{CO}")
-            head = self.commit({"a.txt": "c\n"}, f"this\n\nLength: this one\n\n{CO}")
-            notes = trailers.misplaced_notes(f"{self.base}..{head}", "Length", "a.txt")
-        finally:
-            os.chdir(ROOT)
+        self.commit({"b.txt": "b\n"}, f"other\n\nLength: not this one\n\n{CO}")
+        head = self.commit({"a.txt": "c\n"}, f"this\n\nLength: this one\n\n{CO}")
+        notes = trailers.misplaced_notes(f"{self.base}..{head}", "Length", "a.txt", self.repo)
         self.assertEqual(1, len(notes), notes)
         self.assertIn("`Length: this one` on line 3", notes[0])
 
-
     def rises(self, rng, rose):
-        os.chdir(self.repo)
-        try:
-            return trailers.unjustified_rises(rng, "a.txt", "Length", rose)
-        finally:
-            os.chdir(ROOT)
-
+        return trailers.unjustified_rises(rng, "a.txt", "Length", rose, self.repo)
     @staticmethod
     def longer(before, after):
         return [f"{len(before)} -> {len(after)}"] if len(after) > len(before) else []
@@ -172,6 +178,8 @@ class RangeTest(unittest.TestCase):
                          self.rises(f"{self.base}..{head}", whole))
         head = self.commit({"a.txt": "d\n"}, f"C\n\nLength: the range's why\n{CO}")
         self.assertEqual([], self.rises(f"{self.base}..{head}", whole))
+
+
 
 
 if __name__ == "__main__":

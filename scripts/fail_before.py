@@ -147,6 +147,17 @@ def test_directories(build: str) -> List[str]:
     return sorted(set(directories + [m.group(3) for m in overrides if m.group(1) in values]))
 
 
+def test_paths(repo: tool_git.GitRepo, sha: str, patterns: Sequence[str]) -> List[str]:
+    """The commit's own test-side files (added, modified; the selection): those `patterns` match, or -- none given --
+    those under its build.sbt's test directories (`*/src/<d>/*`) and DEFAULT_PATTERNS. Died when it changes none."""
+    wanted = list(patterns) or [f"*/src/{d}/*" for d in test_directories(repo.show(sha, "build.sbt") or "")] + \
+        list(DEFAULT_PATTERNS)
+    paths = [p for p in repo.changed_in(sha, "AMCR") if any(fnmatch.fnmatchcase(p, pat) for pat in wanted)]
+    if not paths:
+        raise Died(f"{sha} changes no test-side file (see --files): nothing to prove")
+    return paths
+
+
 def sbt_command_of(command: Sequence[str]) -> str:
     """The sbt command line ("a; b") of a test command that is one scripts/sbt-warm call; "" for anything else (a shell
     line of several commands, a pipe, a redirect, an sbt-warm flag)."""
@@ -185,19 +196,10 @@ class Proof:
                  options: Options) -> None:
         self.runner, self.env, self.top, self.sha, self.parent, self.options = runner, env, top, sha, parent, options
         self.git = tool_git.Git(runner, env, top)
+        self.repo = tool_git.SubprocessGitRepo(self.git)
         self.command_line = options.command[0] if len(options.command) == 1 else shlex.join(options.command)
-        self.test_paths = self.find_test_paths()
+        self.test_paths = test_paths(self.repo, sha, options.patterns)
         self.sbt_command = sbt_command_of(options.command)
-
-    def find_test_paths(self) -> List[str]:
-        build = self.git.out("show", f"{self.sha}:build.sbt", quiet=True) or ""
-        patterns = self.options.patterns or (
-            [f"*/src/{d}/*" for d in test_directories(build)] + list(DEFAULT_PATTERNS))
-        changed = self.git.out("diff-tree", "--no-commit-id", "--name-only", "-r", "--diff-filter=AMCR", self.sha) or ""
-        paths = [p for p in changed.splitlines() if p and any(fnmatch.fnmatchcase(p, pat) for pat in patterns)]
-        if not paths:
-            raise Died(f"{self.sha} changes no test-side file (see --files): nothing to prove")
-        return paths
 
     def short(self, rev: str) -> str:
         return (self.git.out("rev-parse", "--short", rev) or "").strip()
