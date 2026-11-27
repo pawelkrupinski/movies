@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(HERE, os.pardir, "lib"))
+import ci_machine  # noqa: E402
 import tool_git  # noqa: E402
 import tool_github  # noqa: E402
 PATHS_FILE = ".github/convergence-paths.txt"
@@ -115,7 +116,7 @@ def gh(*args: str, parse: bool = True) -> Any:
 
 
 def repo() -> str:
-    name = os.environ.get("GH_REPO") or os.environ.get("GITHUB_REPOSITORY")
+    name = ci_machine.environment().get("GH_REPO") or ci_machine.environment().get("GITHUB_REPOSITORY")
     if not name:
         raise Unproven("no GH_REPO")
     return name

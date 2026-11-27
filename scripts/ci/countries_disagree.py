@@ -31,6 +31,7 @@ import sys
 
 sys.path[:0] = [os.path.dirname(os.path.abspath(__file__)), os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib")]
 import cross_country as X  # noqa: E402
+import ci_machine  # noqa: E402
 import mongo_local  # noqa: E402
 from identity_judgements import COUNTRIES, label_of, labels_by_country, read  # noqa: E402
 
@@ -120,7 +121,7 @@ def export(mirror, data, countries):
         for mode in ("traces", "listings", "films"):
             with open(os.path.join(data, f"{mode}-{cc}.jsonl"), "w", encoding="utf-8") as out:
                 subprocess.run(["mongosh", "--quiet", f"{mirror.rstrip('/')}/{database}", os.path.abspath(EXPORT)],
-                               stdout=out, check=True, env=dict(os.environ, CC=cc, MODE=mode, LIGHT="1"))
+                               stdout=out, check=True, env=dict(ci_machine.environment(), CC=cc, MODE=mode, LIGHT="1"))
 
 
 def read_found(data, judgements, countries=COUNTRIES):
@@ -137,7 +138,7 @@ def main(argv=None):
     p.add_argument("--limit", type=int, default=30)
     a = p.parse_args(argv)
     if a.mirror:
-        port = mongo_local.local_mongo_port(os.environ)
+        port = mongo_local.local_mongo_port(ci_machine.environment())
         if f"127.0.0.1:{port}" not in a.mirror and f"localhost:{port}" not in a.mirror:
             print(f"--mirror reads the LOCAL prod mirror only (127.0.0.1:{port})", file=sys.stderr)
             return 64

@@ -7,9 +7,9 @@ call or artifact download is a failure the caller already handles, never a job t
   gh([...], capture=False)  -> "" (its output goes to this process's: a download's progress stays visible)"""
 from __future__ import annotations
 
-import os
 import subprocess
 from typing import List, Optional
+import ci_machine  # noqa: E402
 
 LIMIT = 300.0  # seconds: a paginated listing or an artifact download, past which gh is hung, not slow
 TIMED_OUT = 124  # `timeout`'s and tool_process's code for a command the bound ended
@@ -17,7 +17,7 @@ TIMED_OUT = 124  # `timeout`'s and tool_process's code for a command the bound e
 
 def gh(args: List[str], input: Optional[str] = None, cwd: Optional[str] = None, timeout: Optional[float] = None,
        capture: bool = True) -> str:
-    argv = [os.environ.get("KINOWO_GH") or "gh", *args]
+    argv = [ci_machine.environment().get("KINOWO_GH") or "gh", *args]
     timeout = LIMIT if timeout is None else timeout
     try:
         done = subprocess.run(argv, input=input, capture_output=capture, text=True, cwd=cwd, timeout=timeout)

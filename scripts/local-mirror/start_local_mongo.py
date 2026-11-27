@@ -29,6 +29,7 @@ import time
 from typing import List, Optional, Sequence
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import machine  # noqa: E402
 import mongo_local  # noqa: E402
 
 FORMULA = re.compile(r"mongodb-community(@[0-9.]+)?")
@@ -83,8 +84,8 @@ def config(prefix: str, port: str) -> str:
 def installed_formula() -> str:
     """The installed MongoDB formula: the newest `mongodb-community[@X.Y]`, or the one LOCAL_MONGO_FORMULA names;
     empty when brew has none (mongod from elsewhere)."""
-    if os.environ.get("LOCAL_MONGO_FORMULA"):
-        return os.environ["LOCAL_MONGO_FORMULA"]
+    if machine.environment().get("LOCAL_MONGO_FORMULA"):
+        return machine.environment()["LOCAL_MONGO_FORMULA"]
     listed = (output(["brew", "list", "--formula", "-1"]) or "").splitlines()
     formulas = sorted((f for f in listed if FORMULA.fullmatch(f)), key=version_key)
     return formulas[-1] if formulas else ""
@@ -102,11 +103,11 @@ class LocalMongo:
     def answers_ping(self, seconds: float) -> bool:
         """Whether mongod answers a ping within `seconds`: every try is bounded too, so a hanging mongosh cannot stretch
         the deadline."""
-        deadline = time.monotonic() + seconds
-        while (remaining := deadline - time.monotonic()) > 0:
+        deadline = machine.monotonic() + seconds
+        while (remaining := deadline - machine.monotonic()) > 0:
             if self.evaluates("db.runCommand({ping:1}).ok", min(PING_TRY_SECONDS, remaining)) == "1":
                 return True
-            time.sleep(min(1.0, max(0.0, deadline - time.monotonic())))
+            time.sleep(min(1.0, max(0.0, deadline - machine.monotonic())))
         return False
 
     def mongod_bin(self, formula: str) -> str:
@@ -147,7 +148,7 @@ class LocalMongo:
 
 
 def main() -> int:
-    port = mongo_local.local_mongo_port(os.environ)
+    port = mongo_local.local_mongo_port(machine.environment())
     prefix = (output(["brew", "--prefix"], quiet=False) or "").strip()
     if not prefix:
         return 1

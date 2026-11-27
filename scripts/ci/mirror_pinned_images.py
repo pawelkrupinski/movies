@@ -28,6 +28,7 @@ import sys
 from typing import List, Mapping, Optional, Sequence, Tuple
 
 from pull_pinned_image import SHA256, Pin
+import ci_machine  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 READ_SECONDS = 120
@@ -150,4 +151,4 @@ def main(env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(os.environ))
+    sys.exit(main(ci_machine.environment()))

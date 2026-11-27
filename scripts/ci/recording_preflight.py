@@ -33,6 +33,7 @@ import subprocess
 import sys
 import tempfile
 from typing import List, Mapping, Sequence, Tuple
+import ci_machine  # noqa: E402
 
 OMDB_ERROR = re.compile(r'"Error" *: *"([^"]*)"')
 QUOTA = ("::warning::OMDb's daily quota is spent (HTTP {status}: {error}) — recording without OMDb, its best-effort "
@@ -124,4 +125,4 @@ def main(_argv: Sequence[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], dict(os.environ)))
+    sys.exit(main(sys.argv[1:], dict(ci_machine.environment())))

@@ -24,6 +24,7 @@ import shutil
 import subprocess
 import sys
 from typing import Callable, Dict, Mapping, Optional, Sequence
+import ci_machine  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LEGS = "scala|android|android-instrumented|device|swift|ios"
@@ -201,4 +202,4 @@ def main(argv: Sequence[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], dict(os.environ)))
+    sys.exit(main(sys.argv[1:], dict(ci_machine.environment())))

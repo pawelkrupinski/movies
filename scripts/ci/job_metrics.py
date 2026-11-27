@@ -30,10 +30,10 @@ import os
 import re
 import subprocess
 import sys
-import time
 import urllib.request
 import xml.etree.ElementTree as ElementTree
 from typing import Any, Callable, Mapping
+import ci_machine  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SAMPLE_SECONDS = 5
@@ -48,15 +48,15 @@ UPTIME = re.compile(r"^\[([0-9.]+)s\]")
 
 
 def temp_dir():
-    return os.environ.get("RUNNER_TEMP") or "/tmp"
+    return ci_machine.environment().get("RUNNER_TEMP") or "/tmp"
 
 
 def metrics_file():
-    return os.environ.get("CI_METRICS_FILE") or os.path.join(temp_dir(), "ci-metrics", "metrics.jsonl")
+    return ci_machine.environment().get("CI_METRICS_FILE") or os.path.join(temp_dir(), "ci-metrics", "metrics.jsonl")
 
 
 def sampler_out():
-    return os.environ.get("CGROUP_SAMPLER_OUT") or os.path.join(temp_dir(), "cgroup-sampler.max")
+    return ci_machine.environment().get("CGROUP_SAMPLER_OUT") or os.path.join(temp_dir(), "cgroup-sampler.max")
 
 
 def gc_dir():
@@ -72,7 +72,7 @@ def append(*objects):
 
 
 def github_env(name, value):
-    path = os.environ.get("GITHUB_ENV")
+    path = ci_machine.environment().get("GITHUB_ENV")
     if path:
         with open(path, "a", encoding="utf-8") as handle:
             handle.write("%s=%s\n" % (name, value))
@@ -92,17 +92,17 @@ def rate_limit(token, opener=urllib.request.urlopen):
 
 
 def identity():
-    return {"github_job": os.environ.get("GITHUB_JOB"), "runner_name": os.environ.get("RUNNER_NAME"),
-            "run_id": os.environ.get("GITHUB_RUN_ID"), "run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
-            "label": os.environ.get("CI_METRICS_LABEL") or None}
+    return {"github_job": ci_machine.environment().get("GITHUB_JOB"), "runner_name": ci_machine.environment().get("RUNNER_NAME"),
+            "run_id": ci_machine.environment().get("GITHUB_RUN_ID"), "run_attempt": ci_machine.environment().get("GITHUB_RUN_ATTEMPT"),
+            "label": ci_machine.environment().get("CI_METRICS_LABEL") or None}
 
 
-def start(env: Mapping[str, str] = os.environ, run: Callable[..., Any] = subprocess.run, platform: str = sys.platform,
+def start(env: Mapping[str, str] = ci_machine.environment(), run: Callable[..., Any] = subprocess.run, platform: str = sys.platform,
           spawn: Callable[..., Any] = subprocess.Popen) -> None:
     os.makedirs(gc_dir(), exist_ok=True)
     github_env("CI_METRICS_FILE", metrics_file())
     run([os.path.join(HERE, "machine-id.sh")], check=False, timeout=30)
-    line = dict(kind="job_start", t=round(time.time(), 1), **identity())
+    line = dict(kind="job_start", t=round(ci_machine.wall(), 1), **identity())
     limits = rate_limit(env.get("GH_TOKEN"))
     if limits:
         line["rate_remaining"] = limits["remaining"]
@@ -307,12 +307,12 @@ def summary(lines):
 def artifact_name(now=None):
     """`ci-metrics-<job>-<runner>-<finish epoch>`: one runner runs several jobs of a run, the matrix rows of one job id
     among them (the landing check's identity shards), and without the time the second upload overwrote the first."""
-    raw = "ci-metrics-%s-%s-%d" % (os.environ.get("GITHUB_JOB") or "job", os.environ.get("RUNNER_NAME") or str(os.getpid()),
-                                  int(now if now is not None else time.time()))
+    raw = "ci-metrics-%s-%s-%d" % (ci_machine.environment().get("GITHUB_JOB") or "job", ci_machine.environment().get("RUNNER_NAME") or str(os.getpid()),
+                                  int(now if now is not None else ci_machine.wall()))
     return re.sub(r"[^A-Za-z0-9_.-]+", "-", raw)[:200]
 
 
-def finish(env=os.environ, root="."):
+def finish(env=ci_machine.environment(), root="."):
     out = sampler_out()
     lines = []
     columns, rows = table(out + ".series")
@@ -326,7 +326,7 @@ def finish(env=os.environ, root="."):
     limits = rate_limit(env.get("GH_TOKEN"))
     if limits:
         lines.append(dict(kind="rate_limit", **limits))
-    lines.append(dict(kind="job_end", t=round(time.time(), 1), status=env.get("CI_JOB_STATUS") or None, **identity()))
+    lines.append(dict(kind="job_end", t=round(ci_machine.wall(), 1), status=env.get("CI_JOB_STATUS") or None, **identity()))
     append(*lines)
     print(summary(lines))
     output = env.get("GITHUB_OUTPUT")

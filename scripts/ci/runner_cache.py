@@ -34,13 +34,14 @@ import subprocess
 import sys
 import tempfile
 from fnmatch import fnmatchcase
+import ci_machine  # noqa: E402
 
 ENTRY_SUFFIX = ".tar.zst"
 
 
 def mirror_dir():
     """The mirror directory from MOVIES_RUNNER_CACHE when it exists and this job may write it, else None."""
-    directory = os.environ.get("MOVIES_RUNNER_CACHE", "")
+    directory = ci_machine.environment().get("MOVIES_RUNNER_CACHE", "")
     if not directory or not os.path.isdir(directory) or not os.access(directory, os.W_OK | os.X_OK):
         return None
     if shutil.which("zstd") is None or shutil.which("tar") is None:

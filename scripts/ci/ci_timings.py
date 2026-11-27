@@ -72,6 +72,7 @@ import urllib.parse
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, TextIO, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ci_machine  # noqa: E402
 import grafana_otlp  # noqa: E402
 import run_metrics  # noqa: E402
 from report_fields import parse_instant  # noqa: E402
@@ -388,7 +389,7 @@ def handle(github: GitHub, run: Record, args: argparse.Namespace, out: TextIO = 
     record = run_metrics.metrics_record(run)
     run_metrics.attach(jobs, run_metrics.job_cpu(record))
     report(run, jobs, out)
-    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    summary = ci_machine.environment().get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as handle_:
             handle_.write(summary_markdown(run, jobs))
@@ -400,7 +401,7 @@ def handle(github: GitHub, run: Record, args: argparse.Namespace, out: TextIO = 
         ready = None
     payload = otlp_payload(run, jobs, ready)
     if args.push and payload:
-        print(push(payload, os.environ.get("GRAFANA_URL"), os.environ.get("GRAFANA_ANNOTATION_TOKEN")), file=out)
+        print(push(payload, ci_machine.environment().get("GRAFANA_URL"), ci_machine.environment().get("GRAFANA_ANNOTATION_TOKEN")), file=out)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

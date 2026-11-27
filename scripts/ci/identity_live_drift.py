@@ -34,6 +34,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ci_machine  # noqa: E402
 import grafana_otlp  # noqa: E402
 
 SERVICE_NAME = "kinowo-ci"
@@ -111,7 +112,7 @@ def main(argv=None, now=None, opener=None):
     if not args.push:
         return 0
     stamp = int((now if now is not None else datetime.datetime.now(datetime.timezone.utc).timestamp()) * 1e9)
-    failed = push(otlp_payload(found, stamp), os.environ.get("GRAFANA_URL"), os.environ.get("GRAFANA_ANNOTATION_TOKEN"),
+    failed = push(otlp_payload(found, stamp), ci_machine.environment().get("GRAFANA_URL"), ci_machine.environment().get("GRAFANA_ANNOTATION_TOKEN"),
                   **({"opener": opener} if opener else {}))
     if failed:
         print("::error::drift counts not pushed: %s" % failed)

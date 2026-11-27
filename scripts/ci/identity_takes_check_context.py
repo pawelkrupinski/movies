@@ -115,3 +115,13 @@ def read(path: str) -> str:
 
 def nonempty(path: str) -> bool:
     return os.path.isfile(path) and os.path.getsize(path) > 0
+
+
+def live(cc: str, out: str, env: Mapping[str, str], own_temp: str) -> Context:
+    """The check's Context over the real runner, gh and git in the working directory; `own_temp` is the temp directory
+    of this run's own, used when Actions gave none."""
+    runner = tool_process.SubprocessRunner()
+    git = tool_git.Git(runner, env, os.getcwd())
+    head = env.get("GITHUB_SHA") or (git.out("rev-parse", "HEAD") or "").strip()
+    return Context(cc=cc, out=out, here=os.getcwd(), head=head, env=env, temp=env.get("RUNNER_TEMP") or own_temp,
+                   runner=runner, gh=tool_github.GitHub(runner, env), git=git)

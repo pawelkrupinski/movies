@@ -38,8 +38,8 @@ import shlex
 import subprocess
 import sys
 import threading
-import time
 from typing import BinaryIO, List, Mapping, Optional
+import ci_machine  # noqa: E402
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 GUARD_DIR = os.path.join(HERE, "sbt-guard")
@@ -125,7 +125,7 @@ def seconds_of(value: str) -> Optional[int]:
         when = email.utils.parsedate_to_datetime(value).timestamp()
     except (TypeError, ValueError):
         return None
-    return max(0, int(when - time.time()))
+    return max(0, int(when - ci_machine.wall()))
 
 
 def wait_before_retry(log: str, step: int, env: Mapping[str, str]) -> None:
@@ -173,4 +173,4 @@ def main(args: List[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], os.environ))
+    sys.exit(main(sys.argv[1:], ci_machine.environment()))

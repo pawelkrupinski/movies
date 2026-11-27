@@ -24,6 +24,7 @@ import shutil
 import subprocess
 import sys
 from typing import Dict, List, Mapping, Sequence, TextIO
+import ci_machine  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = "target/stress-races"
@@ -147,4 +148,4 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], os.environ))
+    sys.exit(main(sys.argv[1:], ci_machine.environment()))

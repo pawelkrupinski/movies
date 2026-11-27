@@ -59,7 +59,6 @@ import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [HERE, os.path.join(HERE, "lib"), os.path.join(HERE, "ci")]  # its own modules, tool_python, commit_rules
 from commit_rules import HARNESS_FILES  # noqa: E402  (the drift harness: one definition)
@@ -67,6 +66,7 @@ from identity_stamp_carry_published import (  # noqa: E402  (THE PUBLISHED VERDI
     ASSET, COUNTRIES, VERDICTS, asset_name, cached_verdict, country_refusals, diff_id, fetch_asset, identity_cache,
     moved_rows, publish, release, verdict_path, what_if_verdicts)
 from pure_move_check import Undecidable, git  # noqa: E402  (the one git a proof reads, and its refusal)
+import machine  # noqa: E402
 import tool_git  # noqa: E402
 import tool_python  # noqa: E402
 from identity_stamp_carry_ranges import RANGES, cited_range, record_of, write_ranges  # noqa: E402  (THE QUEUE REWRITES)
@@ -120,7 +120,7 @@ def sha_of(ref: str) -> str:
 def stamps_of(sha: str) -> dict[str, str]:
     """Each stamp's RAW digest at `sha`, made by the build over a tree of that commit (identity-stamp-carry stamps). A
     test names another maker in KINOWO_STAMP_CARRY_STAMPS: the compile is the infrastructure, the rules are this file's."""
-    maker = os.environ.get("KINOWO_STAMP_CARRY_STAMPS") or os.path.join(HERE, "identity-stamp-carry")
+    maker = machine.environment().get("KINOWO_STAMP_CARRY_STAMPS") or os.path.join(HERE, "identity-stamp-carry")
     done = subprocess.run([maker, "stamps", sha], capture_output=True, text=True)
     if done.returncode != 0:
         raise Undecidable(f"the stamps of {sha[:12]} could not be made (exit {done.returncode}): {done.stderr.strip()[-600:]}")

@@ -17,6 +17,7 @@ from typing import Callable, List, Mapping
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
+import ci_machine  # noqa: E402
 import tool_process  # noqa: E402
 
 KINDS = ("title", "accept", "veto", "join", "apart")
@@ -58,9 +59,9 @@ def preflight(env: Mapping[str, str], held: Callable[[str], bool]) -> int:
 def main() -> int:
     """The composition point: the environment, and recording-held.sh through the real runner."""
     runner = tool_process.SubprocessRunner()
-    env = dict(os.environ, GH_REPO=os.environ.get("GITHUB_REPOSITORY", ""))
+    env = dict(ci_machine.environment(), GH_REPO=ci_machine.environment().get("GITHUB_REPOSITORY", ""))
     checker = os.path.join(HERE, "recording-held.sh")
-    return preflight(os.environ, lambda run: runner.run(tool_process.Command([checker, run], env)) == 0)
+    return preflight(ci_machine.environment(), lambda run: runner.run(tool_process.Command([checker, run], env)) == 0)
 
 
 if __name__ == "__main__":

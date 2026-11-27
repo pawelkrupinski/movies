@@ -46,9 +46,7 @@ import identity_takes_check_head as head_module  # noqa: E402
 import identity_takes_check_sides as sides  # noqa: E402
 import identity_takes_check_store as store_module  # noqa: E402
 import identity_takes_check_verdict as verdict_module  # noqa: E402
-import tool_git  # noqa: E402
-import tool_github  # noqa: E402
-import tool_process  # noqa: E402
+import ci_machine  # noqa: E402
 
 Context = ctx_module.Context
 
@@ -159,13 +157,11 @@ def main(argv: List[str]) -> int:
     if len(argv) < 2:
         print("usage: identity_takes_check.py <cc> <out dir>", file=sys.stderr)
         return 1
-    cc, env, runner = argv[0], dict(os.environ), tool_process.SubprocessRunner()
+    cc, env = argv[0], dict(ci_machine.environment())
     os.makedirs(argv[1], exist_ok=True)
     own = "" if env.get("RUNNER_TEMP") else tempfile.mkdtemp()  # outside Actions: one of this run's own, removed at exit
-    git = tool_git.Git(runner, env, os.getcwd())
-    head = env.get("GITHUB_SHA") or (git.out("rev-parse", "HEAD") or "").strip()
-    ctx = Context(cc=cc, out=os.path.abspath(argv[1]), here=os.getcwd(), head=head, env=env,
-                  temp=env.get("RUNNER_TEMP") or own, runner=runner, gh=tool_github.GitHub(runner, env), git=git)
+    ctx = ctx_module.live(cc, os.path.abspath(argv[1]), env, own)
+    git = ctx.git
     try:
         return check(ctx, aa_of(env), side_of(env, cc))
     except ctx_module.Stop as stop:

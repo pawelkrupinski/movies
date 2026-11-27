@@ -65,6 +65,7 @@ from dataclasses import dataclass, field
 from typing import IO, Dict, List, Mapping, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import machine  # noqa: E402
 import tool_cli  # noqa: E402
 import tool_countries  # noqa: E402
 import tool_git  # noqa: E402
@@ -154,7 +155,7 @@ class Resolver:
     def lock(self, path: str) -> None:
         """`until jvm_lock <path>; do …; done`: this process holds its kernel lock, its pid written in."""
         bound = float(self.m.env.get("KINOWO_MEASURE_LOCAL_LOCK_WAIT") or str(4 * 3600))  # seconds; a hung holder
-        deadline = time.monotonic() + bound
+        deadline = machine.monotonic() + bound
         name = os.path.basename(path)[:-len(".flock")]
         waited = False
         while True:
@@ -164,7 +165,7 @@ class Resolver:
                 break
             except OSError:
                 f.close()
-            if time.monotonic() >= deadline:
+            if machine.monotonic() >= deadline:
                 raise Failed(f"{name} is still being resolved by pid {read(path)} after {bound:g}s "
                              "(KINOWO_MEASURE_LOCAL_LOCK_WAIT): stop that run, or it is hung")
             if not waited:
@@ -216,10 +217,10 @@ class Resolver:
         if not os.path.isdir(tree) and m.runner.run(tool_process.Command(
                 ["git", "-C", m.repo, "worktree", "add", "--detach", "--quiet", tree, sha], m.env)) != 0:
             return False
-        started = time.monotonic()
+        started = machine.monotonic()
         status = m.runner.run(tool_process.Command(
             ["bash", "-c", SESSION, TOOL, os.path.join(m.repo, "scripts", "jvm-gate.sh"), tree, log, *commands], m.env))
-        say(f"{TOOL}: {sha} resolved in {int(time.monotonic() - started)}s (exit {status}, log {log})")
+        say(f"{TOOL}: {sha} resolved in {int(machine.monotonic() - started)}s (exit {status}, log {log})")
         if status == 0:
             self.keep(sha)
         else:
@@ -464,4 +465,4 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], os.environ))
+    sys.exit(main(sys.argv[1:], machine.environment()))

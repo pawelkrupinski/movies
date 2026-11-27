@@ -18,6 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import machine  # noqa: E402
 import atomic  # noqa: E402
 import poster_hash  # noqa: E402
 from poster_eval_common import Language, UserAgent, log  # noqa: E402
@@ -87,17 +88,17 @@ class Progress:
 
     def __init__(self, what: str, total: int) -> None:
         self.what, self.total, self.counts = what, total, Counter[str]()
-        self.started = self.last = time.time()
+        self.started = self.last = machine.wall()
 
     def tick(self, outcome: str) -> None:
         self.counts[outcome] += 1
-        if time.time() - self.last >= 10:
-            self.last = time.time()
+        if machine.wall() - self.last >= 10:
+            self.last = machine.wall()
             done = sum(self.counts.values())
             log(f"poster-eval: {self.what} {done}/{self.total} {dict(self.counts)} {done / (self.last - self.started):.0f}/s")
 
     def done(self) -> None:
-        elapsed = time.time() - self.started
+        elapsed = machine.wall() - self.started
         log(f"poster-eval: {self.what} done {dict(self.counts)} in {elapsed:.0f}s, {self.total / max(elapsed, 1e-3):.1f}/s")
 
 
@@ -237,12 +238,12 @@ class TmdbLists:
         need = sorted({str(f) for f in films} - set(self.lists))
         if not need:
             return
-        key = os.environ.get("TMDB_API_KEY")
+        key = machine.environment().get("TMDB_API_KEY")
         if not key:
             raise SystemExit(f"poster-eval: {len(need)} films' TMDB poster lists are not cached; run under "
                              "`secrets run movies TMDB_API_KEY -- scripts/poster-eval ...`")
         log(f"poster-eval: fetching {len(need)} TMDB poster lists")
-        started = time.time()
+        started = machine.wall()
         api = Pool(8)
 
         def one(f: str) -> Tuple[str, List[List[Any]]]:
@@ -253,7 +254,7 @@ class TmdbLists:
             for f, posters in pool.map(one, need):
                 self.lists[f] = posters
         atomic.write_json(self.path, self.lists)
-        log(f"poster-eval: {len(need)} lists in {time.time() - started:.0f}s")
+        log(f"poster-eval: {len(need)} lists in {machine.wall() - started:.0f}s")
 
     def posters(self, film: object) -> List[Poster]:
         return [(p[0], p[1], p[2]) for p in self.lists.get(str(film), [])]

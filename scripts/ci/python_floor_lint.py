@@ -28,6 +28,7 @@ import sys
 import tokenize
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import ci_machine  # noqa: E402
 import tool_git  # noqa: E402
 
 RUNNER = "scripts/run-script-tests"
@@ -92,7 +93,7 @@ def floor_interpreter(floor):
     """An interpreter at the floor, or None: this one, $PYTHON_FLOOR_INTERPRETER, python<M.N> on the PATH, /usr/bin/python3."""
     if tuple(sys.version_info[:2]) == tuple(floor):
         return sys.executable
-    candidates = [os.environ.get("PYTHON_FLOOR_INTERPRETER"), shutil.which(f"python{floor[0]}.{floor[1]}"), "/usr/bin/python3"]
+    candidates = [ci_machine.environment().get("PYTHON_FLOOR_INTERPRETER"), shutil.which(f"python{floor[0]}.{floor[1]}"), "/usr/bin/python3"]
     return next((c for c in candidates if c and is_floor(c, floor)), None)
 
 

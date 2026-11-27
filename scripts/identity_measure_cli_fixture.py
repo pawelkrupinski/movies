@@ -14,6 +14,7 @@ import sys
 from typing import List, Mapping, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import machine  # noqa: E402
 import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/identity_measure_cli.py", "scripts/identity-measure")
@@ -258,5 +259,5 @@ class MeasureCase(cli_harness.ToolCase):
 
     def raw_git(self, *args: str) -> bytes:
         """git's stdout as it is (cli_harness's `git` strips it), for what hashes it."""
-        return subprocess.run(["git", "-C", self.checkout, *args], env=cli_harness.isolated_env(os.environ),
+        return subprocess.run(["git", "-C", self.checkout, *args], env=cli_harness.isolated_env(machine.environment()),
                               check=True, capture_output=True).stdout

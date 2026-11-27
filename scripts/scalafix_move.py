@@ -24,10 +24,10 @@ import fnmatch
 import os
 import re
 import sys
-import time
 from typing import List, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import machine  # noqa: E402
 import scalafix_tree  # noqa: E402
 import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
@@ -108,9 +108,9 @@ def scalafix_move(argv: List[str]) -> int:
         from_name, to_name = names(argv)
     except tool_cli.UsageError as e:
         return tool_cli.usage_failed(TOOL, e)
-    tree = scalafix_tree.ScalafixTree.opened(TOOL, tool_process.SubprocessRunner(), os.environ)
+    tree = scalafix_tree.ScalafixTree.opened(TOOL, tool_process.SubprocessRunner(), machine.environment())
     try:
-        started = int(time.time())
+        started = int(machine.wall())
         from_package, name = from_name.rsplit(".", 1)
         to_package, new_name = to_name.rsplit(".", 1)
         package_dir = from_package.replace(".", "/")
@@ -126,7 +126,7 @@ def scalafix_move(argv: List[str]) -> int:
         move(tree, source, target, "--rules=file:scripts/scalafix-rules/MoveSymbol.scala"
                                    f" --settings.MoveSymbol.from={from_name} --settings.MoveSymbol.to={to_name}")
         print(tree.staged_stat())
-        print(f"{TOOL}: compiled and staged in the checkout ({int(time.time()) - started} s); now grep -rn "
+        print(f"{TOOL}: compiled and staged in the checkout ({int(machine.wall()) - started} s); now grep -rn "
               f"'{name}' for strings and docs")
         return 0
     finally:

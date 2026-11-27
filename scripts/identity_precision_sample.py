@@ -54,6 +54,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [os.path.join(HERE, "ci"), os.path.join(HERE, "lib")]
+import machine  # noqa: E402
 import mongo_local  # noqa: E402
 from identity_judgements import COUNTRIES, label_of, labels_by_country, normalise, read  # noqa: E402
 
@@ -186,9 +187,9 @@ def pooled(per_country, totals):
 # ── I/O ─────────────────────────────────────────────────────────────────────────────────────────
 
 def export(cc, now, mirror: "str | None" = None):
-    mirror = mirror or mongo_local.local_mongo_server(os.environ)
+    mirror = mirror or mongo_local.local_mongo_server(machine.environment())
     out = subprocess.run(["mongosh", "--quiet", f"{mirror}/{mongo_local.mirror_database(cc)}", EXPORT], check=True, capture_output=True,
-                         text=True, env=dict(os.environ, NOW=now)).stdout
+                         text=True, env=dict(machine.environment(), NOW=now)).stdout
     return [json.loads(line) for line in out.splitlines() if line.strip()]
 
 

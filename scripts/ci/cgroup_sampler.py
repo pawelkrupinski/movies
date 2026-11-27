@@ -33,6 +33,7 @@ import subprocess
 import sys
 import time
 from typing import Dict, List, Mapping, Optional, Sequence, Set, Tuple
+import ci_machine  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # The machine's figures, one tab-separated row, cumulative counters as the kernel keeps them.
@@ -143,7 +144,7 @@ class Machine:
         return lines[1].split()[3] if len(lines) > 1 and len(lines[1].split()) > 3 else ""
 
     def series_line(self) -> str:
-        row: Row = {"t": str(int(time.time())), "disk_free_kb": self.free_kb()}
+        row: Row = {"t": str(int(ci_machine.wall())), "disk_free_kb": self.free_kb()}
         for read_into in (self.cpu, self.load, self.memory, self.pressure, self.disks, self.counters,
                           self.network):
             read_into(row)
@@ -213,7 +214,7 @@ class Sampler:
     def sample(self, page: int) -> None:
         self.append(".series", Machine(self.proc, self.env).series_line())
         commands, jvms = process_rows(self.proc, page)
-        now = str(int(time.time()))
+        now = str(int(ci_machine.wall()))
         kept = {c: m for c, m in commands.items() if m.rss_kb >= 20480 or c in ("java", "mongod")}
         self.append(".procs", "".join(f"{now}\t{c}\t{m.count}\t{int(m.rss_kb)}\t{m.ticks}\t{m.threads}\n"
                                       for c, m in kept.items()))
@@ -319,4 +320,4 @@ def main(argv: Sequence[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], dict(os.environ)))
+    sys.exit(main(sys.argv[1:], dict(ci_machine.environment())))

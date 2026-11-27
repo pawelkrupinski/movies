@@ -30,6 +30,7 @@ from typing import List, Mapping, Optional, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "..", "scripts", "lib"))
+import machine  # noqa: E402
 from tool_process import Command, Runner, SubprocessRunner  # noqa: E402
 from tool_shell import shell_function  # noqa: E402
 
@@ -139,4 +140,4 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], os.environ))
+    sys.exit(main(sys.argv[1:], machine.environment()))

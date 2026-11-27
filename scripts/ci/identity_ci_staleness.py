@@ -35,6 +35,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, TextI
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
+import ci_machine  # noqa: E402
 import tool_actions  # noqa: E402
 import tool_git  # noqa: E402
 import tool_github  # noqa: E402
@@ -257,4 +258,4 @@ def main(env: Mapping[str, str], out: TextIO) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(os.environ, sys.stdout))
+    sys.exit(main(ci_machine.environment(), sys.stdout))

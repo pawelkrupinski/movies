@@ -26,11 +26,17 @@ import shlex
 import subprocess
 import sys
 
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib")]
+import machine  # noqa: E402
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RULES_TSV = os.path.join(REPO, "common/src/main/resources/title-rules.tsv")
 INVENTORY = os.path.join(REPO, "docs/investigations/2026-10-22-rule-consolidation.md")
 PROMETHEUS = "http://10.20.0.11:9090/api/v1/query"
-MONITORING_HOST = os.environ.get("RULE_FIRING_MONITORING_HOST", "monitoring-1")
+
+
+def monitoring_host() -> str:
+    return machine.environment().get("RULE_FIRING_MONITORING_HOST", "monitoring-1")
 
 
 def title_rules(text):
@@ -115,14 +121,14 @@ def render(rows, counted, window, others=None):
 def ask(query):
     # BatchMode: a passphrase / Touch ID prompt fails at once instead of hanging; curl -f fails on an HTTP error
     # (a plain -s swallowed it into an empty answer) and --max-time bounds the query inside the ssh timeout.
-    command = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", MONITORING_HOST,
+    command = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", monitoring_host(),
                f"curl -sf --max-time 30 {PROMETHEUS} --data-urlencode {shlex.quote('query=' + query)}"]
     try:
         done = subprocess.run(command, capture_output=True, text=True, timeout=120)
     except subprocess.TimeoutExpired:
-        raise RuntimeError(f"ssh {MONITORING_HOST} timed out after 120 s")
+        raise RuntimeError(f"ssh {monitoring_host()} timed out after 120 s")
     if done.returncode != 0:
-        raise RuntimeError(f"ssh {MONITORING_HOST} failed: {done.stderr.strip()[:300]}")
+        raise RuntimeError(f"ssh {monitoring_host()} failed: {done.stderr.strip()[:300]}")
     return done.stdout
 
 

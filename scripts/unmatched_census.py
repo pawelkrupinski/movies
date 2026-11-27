@@ -37,6 +37,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, 'lib'))
+import machine  # noqa: E402
 import mongo_local  # noqa: E402
 
 DATA = os.path.join(HERE, 'unmatched-census')
@@ -56,7 +57,7 @@ def listing_title(listing_key):
 
 
 def query_mirror(mongo, country, since):
-    environment = dict(os.environ, UNMATCHED_CENSUS_DATABASE=mongo_local.mirror_database(country), UNMATCHED_CENSUS_SINCE=since)
+    environment = dict(machine.environment(), UNMATCHED_CENSUS_DATABASE=mongo_local.mirror_database(country), UNMATCHED_CENSUS_SINCE=since)
     command = [os.path.join(HERE, 'local-mirror', 'mongosh-at.sh'), mongo, '--quiet', '--file',
                os.path.join(DATA, 'query.js')]
     return json.loads(subprocess.run(command, env=environment, capture_output=True, text=True, check=True).stdout)
@@ -240,7 +241,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--countries', default=','.join(COUNTRIES))
     parser.add_argument('--since', default=datetime.date.today().isoformat())
-    parser.add_argument('--mongo', default=mongo_local.local_mongo_server(os.environ), help='the local prod mirror; :27017 is refused')
+    parser.add_argument('--mongo', default=mongo_local.local_mongo_server(machine.environment()), help='the local prod mirror; :27017 is refused')
     parser.add_argument('--event-patterns', default=os.path.join(DATA, 'event-patterns.txt'))
     parser.add_argument('--watch', default=os.path.join(DATA, 'watch.tsv'))
     parser.add_argument('--verdicts', default=os.path.join(DATA, 'verdicts.tsv'))

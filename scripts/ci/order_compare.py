@@ -42,6 +42,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [HERE, os.path.join(os.path.dirname(HERE), "lib")]
 import order_compare_readers as readers  # noqa: E402
 import order_compare_verdicts as verdicts  # noqa: E402
+import ci_machine  # noqa: E402
 import tool_actions  # noqa: E402
 import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
@@ -203,7 +204,7 @@ def dispatch(legs: Legs, argv: List[str]) -> int:
 def main(argv: List[str]) -> int:
     """The composition point: the checkout, the environment, the real runner and step commands."""
     root = os.path.dirname(os.path.dirname(HERE))
-    legs = Legs(root, os.environ, tool_process.SubprocessRunner(), tool_actions.Actions(os.environ, sys.stdout))
+    legs = Legs(root, ci_machine.environment(), tool_process.SubprocessRunner(), tool_actions.Actions(ci_machine.environment(), sys.stdout))
     return tool_cli.run_main(lambda: dispatch(legs, argv))
 
 

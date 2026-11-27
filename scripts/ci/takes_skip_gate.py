@@ -37,6 +37,7 @@ import sys
 import tempfile
 import zlib
 from typing import List, Mapping, NoReturn, Sequence
+import ci_machine  # noqa: E402
 
 TOOLING = ("testkit/src/main/scala/services/movies/NormalizerTrace.scala",
            "testkit/src/main/scala/services/movies/NormalizerTraceCheck.scala",
@@ -212,4 +213,4 @@ def main(argv: Sequence[str], env: Mapping[str, str]) -> NoReturn:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:], os.environ)
+    main(sys.argv[1:], ci_machine.environment())

@@ -9,6 +9,7 @@ import sys
 from typing import Callable, Dict, List, Mapping, NamedTuple, Optional, Sequence, TextIO, Type
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "scripts/lib"))
+import machine  # noqa: E402
 import tool_actions  # noqa: E402
 import tool_cli  # noqa: E402
 import tool_github  # noqa: E402
@@ -135,7 +136,7 @@ def dispatch(step: Step, tool: str, table: Dict[str, Usage], overall: str, argv:
 
 def main(step: Type[Step], tool: str, table: Dict[str, Usage], overall: str, argv: List[str]) -> int:
     """A convergence script's composition point: the environment, the real runner, stdout and the clock."""
-    composed = step(os.environ, tool_process.SubprocessRunner(), sys.stdout,
+    composed = step(machine.environment(), tool_process.SubprocessRunner(), sys.stdout,
                     lambda: datetime.datetime.now(datetime.timezone.utc))
     return tool_cli.run_main(lambda: dispatch(composed, tool, table, overall, argv))
 

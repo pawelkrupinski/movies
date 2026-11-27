@@ -52,6 +52,7 @@ from collections import defaultdict
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ci_machine  # noqa: E402
 import identity_judgements as j  # noqa: E402  (the one reader of the judgements, shared with the takes check)
 import identity_takes  # noqa: E402  (the one reader of the take files)
 from identity_judgements import label_of, normalise  # noqa: E402
@@ -279,7 +280,7 @@ def main(argv=None):
     ap.add_argument("--replay-head", action="store_true",
                     help="replay the newly-wrong served takes at the checked-out code (scripts/identity-slice, or $IDENTITY_SLICE)")
     a = ap.parse_args(argv)
-    replay = slice_replay(os.environ.get("IDENTITY_SLICE", os.path.join(a.root, "scripts/identity-slice"))) if a.replay_head else None
+    replay = slice_replay(ci_machine.environment().get("IDENTITY_SLICE", os.path.join(a.root, "scripts/identity-slice"))) if a.replay_head else None
     try:
         findings = lint(a.root, a.served, a.before, replay)
         named = notices(j.read_at(a.root))

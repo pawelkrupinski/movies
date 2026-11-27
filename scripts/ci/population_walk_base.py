@@ -19,12 +19,12 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-import time
 from typing import List, Mapping, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(ROOT, "scripts", "lib"))
+import ci_machine  # noqa: E402
 import identity_ref_trees  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
@@ -156,11 +156,11 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
     say(f"{len(slices)} candidate slice(s), {len(brought)} the change brings, "
         f"{len(slices) - len(brought) - len(todo)} cached for base {sha[:9]}")
     if todo:
-        started = time.time()
+        started = ci_machine.wall()
         walk.walk(todo)
-        say(f"base side {len(todo)} slice(s) in {int(time.time() - started)} s")
+        say(f"base side {len(todo)} slice(s) in {int(ci_machine.wall() - started)} s")
     return judge("judge", directory, walk.rows, "--brought", brought_file)
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], os.environ))
+    sys.exit(main(sys.argv[1:], ci_machine.environment()))

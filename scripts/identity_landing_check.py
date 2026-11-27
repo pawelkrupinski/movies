@@ -70,6 +70,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import identity_landing_check_sbt as sbt  # noqa: E402
 import identity_landing_check_verdict as verdict  # noqa: E402
+import machine  # noqa: E402
 import tool_cli  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
@@ -325,7 +326,7 @@ def check(argv: List[str], runner: tool_process.Runner, env: Mapping[str, str]) 
 
 def main() -> int:
     # tool-conventions.sh's export, which the shell tool's commands inherited
-    env = {**os.environ, "KINOWO_IDENTITY_CACHE": os.environ.get("KINOWO_IDENTITY_CACHE")
+    env = {**machine.environment(), "KINOWO_IDENTITY_CACHE": machine.environment().get("KINOWO_IDENTITY_CACHE")
            or os.path.join(os.path.expanduser("~"), ".cache", "kinowo-identity")}
     try:
         return check(sys.argv[1:], tool_process.SubprocessRunner(), env)

@@ -67,14 +67,12 @@ from typing import Callable, Dict, List, Mapping, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
+import machine  # noqa: E402
 import identity_dispatch  # noqa: E402
 import identity_drift_ci_baseline as baseline_  # noqa: E402
 import identity_drift_ci_options as options_  # noqa: E402
 import identity_drift_ci_runs as runs_  # noqa: E402
 import identity_drift_ci_verdict as verdict_  # noqa: E402
-import tool_dispatch  # noqa: E402
-import tool_git  # noqa: E402
-import tool_github  # noqa: E402
 import tool_process  # noqa: E402
 from identity_drift_ci_runs import say  # noqa: E402
 
@@ -91,11 +89,8 @@ class DriftCi:
                  clock: Callable[[], float] = time.monotonic) -> None:
         self.o, self.env, self.runner, self.clock = o, env, runner, clock
         self.timeout = float(env.get("IDENTITY_DRIFT_GH_TIMEOUT") or 90)
-        gh = tool_github.GitHub(runner, env, env.get("KINOWO_GH") or "gh")
-        self.reads = runs_.Runs(runner, env, gh, self.timeout, base_root, WORKFLOW)
-        self.dispatcher = tool_dispatch.Dispatcher(gh, tool_dispatch.Settings.of(env, self.timeout))
-        self.git = tool_git.Git(runner, env, os.getcwd())
-        self.ci = identity_dispatch.MeasureCi(runner, env, self.git, self.dispatcher)
+        wiring = runs_.Wiring(runner, env, self.timeout, base_root, WORKFLOW)
+        self.reads, self.dispatcher, self.git, self.ci = wiring.reads, wiring.dispatcher, wiring.git, wiring.ci
         self.remote = env.get("IDENTITY_MEASURE_REMOTE") or "origin"
         self.branch = ""
         self.started = clock()
@@ -223,4 +218,4 @@ def main(argv: List[str], env: Dict[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], dict(os.environ)))
+    sys.exit(main(sys.argv[1:], dict(machine.environment())))

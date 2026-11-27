@@ -44,6 +44,7 @@ from types import FrameType
 from typing import Callable, Dict, List, Mapping, NoReturn, Optional, Sequence
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import machine  # noqa: E402
 import mongo_local  # noqa: E402
 from tool_process import Command, Runner, SubprocessRunner  # noqa: E402
 
@@ -194,9 +195,9 @@ class Leg:
         """Each wait has a deadline: a container that never comes up (an image pull refused, a crash loop) used to hold
         the leg forever, printing nothing."""
         bound = int(self.env.get("CONVERGENCE_LOCAL_MONGO_WAIT") or "120")
-        deadline = time.monotonic() + bound  # wall time: a call that stalls is part of the wait
+        deadline = machine.monotonic() + bound  # wall time: a call that stalls is part of the wait
         while not ready():
-            if time.monotonic() >= deadline:
+            if machine.monotonic() >= deadline:
                 warn(f"the throwaway MongoDB never answered ({what}) in {bound}s — docker logs {self.container}")
                 raise Stop(1)
             self.sleep(1)
@@ -274,7 +275,7 @@ def end_by_signal(signum: int, _frame: Optional[FrameType]) -> NoReturn:
 def main() -> int:
     for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):  # before the runner, which passes a signal on to this
         signal.signal(sig, end_by_signal)
-    return run(sys.argv[1:], os.environ, SubprocessRunner())
+    return run(sys.argv[1:], machine.environment(), SubprocessRunner())
 
 
 if __name__ == "__main__":

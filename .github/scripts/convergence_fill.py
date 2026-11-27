@@ -40,6 +40,7 @@ from typing import Callable, List, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 import convergence_fill_folds  # noqa: E402  (its own directory is sys.path's first, run as a script)
+import machine  # noqa: E402
 import convergence_release  # noqa: E402
 import tool_process  # noqa: E402
 
@@ -174,7 +175,7 @@ OVERALL = "fills <code> <corpus> | unpack <stage> [asset...] | gaps <code> <corp
 
 
 def main(argv: List[str]) -> int:
-    if not os.environ.get("FIXTURE_RELEASE_TAG"):
+    if not machine.environment().get("FIXTURE_RELEASE_TAG"):
         sys.stderr.write(f"{TOOL}: FIXTURE_RELEASE_TAG: FIXTURE_RELEASE_TAG names the rolling release\n")
         return 1
     known: Callable[[str], bool] = USAGE.__contains__

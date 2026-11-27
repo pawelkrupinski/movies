@@ -494,7 +494,7 @@ pyright	scripts/ci/identity_live_drift.py	74
 pyright	scripts/ci/identity_run_shards.py	26
 pyright	scripts/ci/identity_takes.py	37
 pyright	scripts/ci/identity_takes_diff.py	348
-pyright	scripts/ci/job_metrics.py	171
+pyright	scripts/ci/job_metrics.py	162
 pyright	scripts/ci/junit_failures.py	16
 pyright	scripts/ci/landing_check_for_tree.py	17
 pyright	scripts/ci/lint_per_file_check.py	214

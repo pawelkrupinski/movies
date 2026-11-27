@@ -19,12 +19,12 @@ still gone at the deadline fails naming it; any other failure is the command's v
 Stdlib only: the publish jobs check out .github and scripts/ci, nothing else. Tested by wait_out_registry_outage_test.py."""
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 import sys
 import time
 from typing import List, Optional, Tuple
+import ci_machine  # noqa: E402
 
 LOST = re.compile(r"connection refused|connection reset by peer|i/o timeout|no such host|502 Bad Gateway"
                   r"|503 Service Unavailable")
@@ -82,8 +82,8 @@ def main(argv: List[str]) -> int:
     if not lost:
         return status
     why = why_gone(time.strftime("%H%M", time.gmtime()))
-    limit = float(os.environ.get("IMAGE_PUSH_WAIT_SECONDS", "600"))
-    answer, waited = wait_for(host, lost, limit, float(os.environ.get("IMAGE_PUSH_POLL_SECONDS", "15")))
+    limit = float(ci_machine.environment().get("IMAGE_PUSH_WAIT_SECONDS", "600"))
+    answer, waited = wait_for(host, lost, limit, float(ci_machine.environment().get("IMAGE_PUSH_POLL_SECONDS", "15")))
     if answer not in SERVING:
         print(f"::error::lost {host}: {lost}, and it still answered {answer} after {limit:.0f} s -- {why}, not the command")
         return status

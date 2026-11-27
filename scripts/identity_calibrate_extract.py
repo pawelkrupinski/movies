@@ -17,6 +17,7 @@ from typing import Dict, List
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(HERE, "lib"))
+import machine  # noqa: E402
 import tool_process  # noqa: E402
 
 URI = "KINOWO_CALIBRATE_URI"
@@ -39,11 +40,11 @@ def extract(runner: tool_process.Runner, env: Dict[str, str], prod: str) -> int:
 
 
 def main(argv: List[str]) -> int:
-    if len(argv) != 1 or URI not in os.environ:
+    if len(argv) != 1 or URI not in machine.environment():
         print(f"usage: {URI}=<tunnel uri> identity_calibrate_extract.py <prod dir>", file=sys.stderr)
         return 64
     os.chdir(ROOT)
-    return extract(tool_process.SubprocessRunner(), dict(os.environ), argv[0])
+    return extract(tool_process.SubprocessRunner(), dict(machine.environment()), argv[0])
 
 
 if __name__ == "__main__":

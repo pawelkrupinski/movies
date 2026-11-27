@@ -25,9 +25,9 @@ import csv
 import glob
 import os
 import sys
-import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ci_machine  # noqa: E402
 import grafana_otlp  # noqa: E402
 
 SERVICE_NAME = "ci-recording"
@@ -69,7 +69,7 @@ def summary_markdown(totals, title):
 
 
 def otlp_payload(totals, country, row, run_id, workflow, now=None):
-    stamp = str(int((now if now is not None else time.time()) * 1000) * 1000000)
+    stamp = str(int((now if now is not None else ci_machine.wall()) * 1000) * 1000000)
     points = [{"asDouble": float(count), "timeUnixNano": stamp,
                "attributes": [{"key": k, "value": {"stringValue": str(v)}} for k, v in sorted({
                    "country": country, "service": service, "phase": phase, "outcome": outcome,
@@ -94,8 +94,8 @@ def main(argv=None, out=sys.stdout):
     parser.add_argument("--dir", default=DIRECTORY)
     parser.add_argument("--country", required=True)
     parser.add_argument("--row", default="")
-    parser.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", ""))
-    parser.add_argument("--workflow", default=os.environ.get("GITHUB_WORKFLOW", ""))
+    parser.add_argument("--run-id", default=ci_machine.environment().get("GITHUB_RUN_ID", ""))
+    parser.add_argument("--workflow", default=ci_machine.environment().get("GITHUB_WORKFLOW", ""))
     parser.add_argument("--push", action="store_true", help="push to Prometheus (GRAFANA_URL, GRAFANA_ANNOTATION_TOKEN)")
     args = parser.parse_args(argv)
     totals = read(args.dir)
@@ -104,13 +104,13 @@ def main(argv=None, out=sys.stdout):
         return 0
     markdown = summary_markdown(totals, " ".join(p for p in (args.country, args.row) if p))
     print(markdown, file=out)
-    summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    summary = ci_machine.environment().get("GITHUB_STEP_SUMMARY")
     if summary:
         with open(summary, "a", encoding="utf-8") as handle:
             handle.write(markdown)
     if args.push:
         payload = otlp_payload(totals, args.country, args.row, args.run_id, args.workflow)
-        print(push(payload, os.environ.get("GRAFANA_URL"), os.environ.get("GRAFANA_ANNOTATION_TOKEN")), file=out)
+        print(push(payload, ci_machine.environment().get("GRAFANA_URL"), ci_machine.environment().get("GRAFANA_ANNOTATION_TOKEN")), file=out)
     return 0
 
 

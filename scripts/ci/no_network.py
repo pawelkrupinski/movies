@@ -22,6 +22,7 @@ import platform
 import subprocess
 import sys
 from typing import List, NoReturn, Optional
+import ci_machine  # noqa: E402
 
 SANDBOX_PROFILE = ('(version 1)(allow default)(deny network-outbound (remote ip "*:*"))'
                    '(allow network-outbound (remote ip "localhost:*"))')
@@ -61,7 +62,7 @@ def netns_allowed() -> bool:
     if netns_works():
         return True
     # GitHub's Ubuntu VMs restrict unprivileged user namespaces (AppArmor); the VM is the job's alone, so lift it there
-    if os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted" or platform.system() != "Linux":
+    if ci_machine.environment().get("RUNNER_ENVIRONMENT") != "github-hosted" or platform.system() != "Linux":
         return False
     if not quiet(["sudo", "-n", "sysctl", "-qw", "kernel.apparmor_restrict_unprivileged_userns=0"]):
         return False
@@ -73,7 +74,7 @@ def sandbox_works() -> bool:
 
 
 def mode() -> str:
-    forced = os.environ.get("NO_NETWORK_MODE", "")
+    forced = ci_machine.environment().get("NO_NETWORK_MODE", "")
     if forced == "netns" and not netns_allowed():
         raise ModeError("no-network: NO_NETWORK_MODE=netns, but this runner allows no network namespace", 1)
     if forced == "sandbox" and not sandbox_works():
@@ -89,10 +90,10 @@ def exec_proxied(command: List[str]) -> NoReturn:
     print("::warning title=no-network::this runner allows no network namespace: HTTP(S) clients go to a closed port, "
           "raw sockets are not stopped", file=sys.stderr, flush=True)
     for name in ("http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY"):
-        os.environ[name] = f"http://{CLOSED}"
-    os.environ["no_proxy"] = os.environ["NO_PROXY"] = "localhost,127.0.0.1,::1"
-    java = os.environ.get("JAVA_TOOL_OPTIONS", "")
-    os.environ["JAVA_TOOL_OPTIONS"] = (f"{java} " if java else "") + (
+        ci_machine.environment()[name] = f"http://{CLOSED}"
+    ci_machine.environment()["no_proxy"] = ci_machine.environment()["NO_PROXY"] = "localhost,127.0.0.1,::1"
+    java = ci_machine.environment().get("JAVA_TOOL_OPTIONS", "")
+    ci_machine.environment()["JAVA_TOOL_OPTIONS"] = (f"{java} " if java else "") + (
         "-Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=9 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=9 "
         "-Dhttp.nonProxyHosts=localhost|127.*|[::1]")
     exec_command(command)

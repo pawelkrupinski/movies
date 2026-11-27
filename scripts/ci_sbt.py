@@ -36,6 +36,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, cast
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import machine  # noqa: E402
 import tool_cli  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
@@ -201,12 +202,12 @@ class CiSbt:
     def completed(self, run: str) -> Dict[str, Any]:
         """The run's view once it completed; NoVerdict past the deadline."""
         timeout = int(self.env.get("KINOWO_CI_SBT_TIMEOUT") or "10800")
-        deadline = int(time.monotonic()) + timeout
+        deadline = int(machine.monotonic()) + timeout
         while True:
             run_view = self.view(run)
             if run_view.get("status") == "completed":
                 return run_view
-            if int(time.monotonic()) >= deadline:
+            if int(machine.monotonic()) >= deadline:
                 raise NoVerdict(f"run {run} did not complete within {timeout}s")
             time.sleep(int(self.env.get("KINOWO_CI_SBT_POLL") or "30"))
 
@@ -246,7 +247,7 @@ def main() -> int:
     if o is None:
         return code or 0
     try:
-        return CiSbt(o, dict(os.environ), tool_process.SubprocessRunner()).main()
+        return CiSbt(o, dict(machine.environment()), tool_process.SubprocessRunner()).main()
     except NoVerdict as e:
         say(str(e))
         return 2

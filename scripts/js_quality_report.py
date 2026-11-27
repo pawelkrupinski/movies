@@ -48,6 +48,7 @@ from typing import List, Mapping, NoReturn
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
+import machine  # noqa: E402
 import pinned_npm_tools  # noqa: E402
 import tool_process  # noqa: E402
 
@@ -148,8 +149,8 @@ def ensure_tools(installed: str, env: Mapping[str, str]) -> None:
 def node_env(installed: str) -> Mapping[str, str]:
     """report.js finds the tools here: its binaries by JS_QUALITY_NODE_MODULES, its require()s by NODE_PATH."""
     modules = os.path.join(installed, "node_modules")
-    node_path = os.environ.get("NODE_PATH")
-    return {**os.environ, "JS_QUALITY_NODE_MODULES": modules,
+    node_path = machine.environment().get("NODE_PATH")
+    return {**machine.environment(), "JS_QUALITY_NODE_MODULES": modules,
             "NODE_PATH": modules + (":" + node_path if node_path else "")}
 
 
@@ -178,11 +179,11 @@ def run(argv: List[str]) -> int:
             print("Purpose: " + (__doc__ or ""), end="")
             return 0
         i = read_word(o, argv, i) + 1
-    installed = tools_dir(os.environ)
+    installed = tools_dir(machine.environment())
     if o.print_tools:
         print(installed)
         return 0
-    ensure_tools(installed, os.environ)
+    ensure_tools(installed, machine.environment())
     if o.out:
         return report(o, o.out, node_env(installed))
     signal.signal(signal.SIGTERM, ended)

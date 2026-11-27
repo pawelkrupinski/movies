@@ -34,19 +34,19 @@ import sys
 import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass, field
-
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "scripts", "lib"))
+import machine  # noqa: E402
 import mongo_local  # noqa: E402
 
 LOGS = "http://10.20.0.11:9428/select/logsql/query"
 PROMETHEUS = "http://10.20.0.11:9090/api/v1/query_range"
-MONITORING_HOST = os.environ.get("LISTING_HISTORY_MONITORING_HOST", "monitoring-1")
+MONITORING_HOST = machine.environment().get("LISTING_HISTORY_MONITORING_HOST", "monitoring-1")
 MIRROR = "mongodb://127.0.0.1:{port}/{db}?directConnection=true&serverSelectionTimeoutMS=5000"
 MIRROR_NEEDS = "identity_traces,identity_model_families,identity_listings"   # agreements and pins may hold nothing
 LOG_LIMIT = 2000
 # the identity-slice every replay runs: another checkout's when this one's tool files no longer compile at old refs
-SLICE = os.environ.get("LISTING_HISTORY_SLICE", os.path.join(REPO, "scripts", "identity-slice"))
+SLICE = machine.environment().get("LISTING_HISTORY_SLICE", os.path.join(REPO, "scripts", "identity-slice"))
 TOOLS = os.path.join(REPO, "scripts", "identity-tools.sh")
 DEPLOY_SLACK = 600   # a pod of the previous image logs on for a few minutes while the rollout passes
 
@@ -361,7 +361,7 @@ def report(args, run=run_command, now=None):
                    + (" …" if len(quiet) > 12 else ""))
 
     prod, state, readable = [], {}, False
-    port = mongo_local.local_mongo_port(os.environ)
+    port = mongo_local.local_mongo_port(machine.environment())
     code, text = run([os.path.join(REPO, "scripts/local-mirror/freshness"), args.cc, "--need", MIRROR_NEEDS, "--quiet"])
     prod.extend(f"  {line}" for line in text.strip().splitlines())
     if code == 2:

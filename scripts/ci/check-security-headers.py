@@ -61,6 +61,7 @@ import urllib.error
 import urllib.request
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import ci_machine  # noqa: E402
 from proxy_properties import read_pool as proxy_pool  # noqa: E402
 
 HOSTS = ("kinowo.net", "showtimes.cc")
@@ -143,11 +144,11 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def _proxy_credentials():
-    return os.environ.get("DECODO_PROXY_USER", "").strip(), os.environ.get("DECODO_PROXY_PASS", "").strip()
+    return ci_machine.environment().get("DECODO_PROXY_USER", "").strip(), ci_machine.environment().get("DECODO_PROXY_PASS", "").strip()
 
 
 def _edge_check_key():
-    return os.environ.get("EDGE_CHECK_KEY", "").strip()
+    return ci_machine.environment().get("EDGE_CHECK_KEY", "").strip()
 
 
 def redact(text):
@@ -289,7 +290,7 @@ def check_host(opener, host, require_secure):
 
 def main(argv):
     hosts = argv[1:] or HOSTS
-    require_secure = os.environ.get("REQUIRE_SECURE_SESSION_COOKIE", "").strip().lower() == "true"
+    require_secure = ci_machine.environment().get("REQUIRE_SECURE_SESSION_COOKIE", "").strip().lower() == "true"
     opener = _opener()
     failures, warnings, missed = [], [], []
     for host in hosts:

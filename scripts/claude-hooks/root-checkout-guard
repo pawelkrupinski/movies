@@ -33,6 +33,7 @@ from typing import List, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "lib"))
+import machine  # noqa: E402
 import hook_event  # noqa: E402
 import shell_words  # noqa: E402
 
@@ -43,7 +44,7 @@ ADVICE = (
 
 
 def git(cwd, *args):
-    env = dict(os.environ, GIT_OPTIONAL_LOCKS="0")  # a status here must never take another agent's index lock
+    env = dict(machine.environment(), GIT_OPTIONAL_LOCKS="0")  # a status here must never take another agent's index lock
     for k in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"):
         env.pop(k, None)
     r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, env=env, timeout=20)

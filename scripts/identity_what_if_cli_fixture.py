@@ -14,6 +14,7 @@ import sys
 from typing import Dict, List, Mapping, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import machine  # noqa: E402
 import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/identity_what_if_cli.py", "scripts/identity-what-if")
@@ -142,7 +143,7 @@ class WhatIfCase(cli_harness.ToolCase):
 
     def tool_env(self, extra: Optional[Mapping[str, Optional[str]]] = None) -> Dict[str, str]:
         env: Dict[str, Optional[str]] = {
-            "WORK": self.work, "STUB": self.work, "PATH": self.path("bin") + os.pathsep + os.environ.get("PATH", ""),
+            "WORK": self.work, "STUB": self.work, "PATH": self.path("bin") + os.pathsep + machine.environment().get("PATH", ""),
             "KINOWO_GH": self.path("bin/gh"), "KINOWO_IDENTITY_CACHE": self.path("cache"),
             "KINOWO_MIRROR_FENCE_DIR": self.path("fence"), "TMDB_API_KEY": "stub"}
         env.update(extra or {})

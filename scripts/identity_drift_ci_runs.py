@@ -15,7 +15,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "ci"))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import convergence_reuse  # noqa: E402
+import identity_dispatch  # noqa: E402
 import tool_cli  # noqa: E402
+import tool_dispatch  # noqa: E402
+import tool_git  # noqa: E402
 import tool_github  # noqa: E402
 import tool_process  # noqa: E402
 import tool_shell  # noqa: E402
@@ -116,3 +119,16 @@ def open_findings(verdict: str) -> str:
         if found:
             return str(int(found.group(1)) + int(found.group(2)))
     return ""
+
+
+class Wiring:
+    """The drift check's live collaborators, built once from the runner and the environment: gh and the run reads
+    through it, the dispatcher, git in the working directory and the measure CI that pushes and dispatches."""
+
+    def __init__(self, runner: tool_process.Runner, env: Mapping[str, str], timeout: float, base_root: str,
+                 workflow: str) -> None:
+        gh = tool_github.GitHub(runner, env, env.get("KINOWO_GH") or "gh")
+        self.reads = Runs(runner, env, gh, timeout, base_root, workflow)
+        self.dispatcher = tool_dispatch.Dispatcher(gh, tool_dispatch.Settings.of(env, timeout))
+        self.git = tool_git.Git(runner, env, os.getcwd())
+        self.ci = identity_dispatch.MeasureCi(runner, env, self.git, self.dispatcher)

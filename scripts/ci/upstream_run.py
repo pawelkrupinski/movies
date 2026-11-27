@@ -34,6 +34,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ci_machine  # noqa: E402
 import gh_bounded  # noqa: E402
 
 MAX_AGE_HOURS = 48
@@ -85,7 +86,7 @@ def main(argv=None, now=None, listing=None):
     parser.add_argument("--trigger", default="", help="the run named or triggering; empty: none")
     parser.add_argument("--conclusion", default="", help="the triggering run's; empty: dispatched")
     parser.add_argument("--branch", default="main")
-    parser.add_argument("--repo", default=os.environ.get("KINOWO_REPO", "pawelkrupinski/movies"))
+    parser.add_argument("--repo", default=ci_machine.environment().get("KINOWO_REPO", "pawelkrupinski/movies"))
     parser.add_argument("--max-age-hours", type=int, default=MAX_AGE_HOURS)
     parser.add_argument("--on-fallback", choices=("newest", "skip"), default="newest")
     args = parser.parse_args(argv)

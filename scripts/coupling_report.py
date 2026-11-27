@@ -62,6 +62,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import machine  # noqa: E402
 import tool_process  # noqa: E402
 
 TOOL = "coupling-report"
@@ -221,7 +222,7 @@ class CouplingReport:
 
 def main() -> int:
     runner = tool_process.SubprocessRunner()
-    env = dict(os.environ)
+    env = dict(machine.environment())
     own = runner.run(tool_process.Command([os.path.join(ROOT, "scripts", "own-checkout"),
                                            os.path.join(ROOT, "scripts", TOOL)], env))
     if own != 0:

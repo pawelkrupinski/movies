@@ -33,6 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "ci"))
 sys.path.insert(0, os.path.join(HERE, "lib"))
+import machine  # noqa: E402
 import atomic  # noqa: E402
 import identity_measure as measure  # noqa: E402
 from identity_judgements import read as read_judgements  # noqa: E402
@@ -245,14 +246,14 @@ def end_group(p, grace=30):
 
 def group_gone(p, seconds):
     """Whether the process group `p` leads has no member left within `seconds` (`p` itself reaped)."""
-    until = time.monotonic() + seconds
+    until = machine.monotonic() + seconds
     while True:
         p.poll()
         try:
             os.killpg(p.pid, 0)
         except ProcessLookupError:
             return True
-        if time.monotonic() > until:
+        if machine.monotonic() > until:
             return False
         time.sleep(0.05)
 
@@ -260,7 +261,7 @@ def group_gone(p, seconds):
 def sbt_argv(repo, command):
     """The sbt run of `command`: against the MongoDB MONGODB_URI names when one is set (CI's), else in a mongod of its
     own (scripts/it-local.sh, the laptop's), niced either way."""
-    if os.environ.get("MONGODB_URI"):
+    if machine.environment().get("MONGODB_URI"):
         return ["nice", "-n", "10", "sbt", command]
     return ["nice", "-n", "10", os.path.join(repo, "scripts", "it-local.sh"), command]
 
@@ -339,7 +340,7 @@ def main(argv=None):
     p.add_argument("--recordings", default="38713274617,573,528")
     p.add_argument("--out", required=True)
     p.add_argument("--judgements", default=None)
-    p.add_argument("--lock", default=os.environ.get("KINOWO_HEAVY_LOCK", ""))
+    p.add_argument("--lock", default=machine.environment().get("KINOWO_HEAVY_LOCK", ""))
     p.add_argument("--hot", type=int, default=8, help="batch size of rules a baseline listing fires")
     p.add_argument("--cold", type=int, default=48, help="batch size of rules none fires")
     p.add_argument("--chunk", type=int, default=25, help="configurations per sbt run")
@@ -353,7 +354,7 @@ def main(argv=None):
     p.add_argument("--merge", metavar="DIR", help="the shards' downloaded artifacts: merge every state.json under DIR into "
                    "one report in --out, run nothing")
     a = p.parse_args(argv)
-    started = time.monotonic()
+    started = machine.monotonic()
     if a.merge is not None:
         states = shard_states(a.merge)
         if not states:
@@ -368,7 +369,7 @@ def main(argv=None):
         # configurations left are a sweep's next dispatch (resume-run), not a failure: every `rounds`-bounded row leaves some
         return 0
     repo = os.path.dirname(HERE)
-    cache = os.environ.get("KINOWO_IDENTITY_CACHE", os.path.expanduser("~/.cache/kinowo-identity"))
+    cache = machine.environment().get("KINOWO_IDENTITY_CACHE", os.path.expanduser("~/.cache/kinowo-identity"))
     recordings = {r: os.path.join(cache, "recordings", r, "pair", "test", "resources", "fixtures") for r in a.recordings.split(",")}
     rows = read_judgements(a.judgements or os.path.join(repo, "test", "resources", "fixtures", "identity-judgements.tsv"))
     os.makedirs(a.out, exist_ok=True)
@@ -402,7 +403,7 @@ def main(argv=None):
         state["round"] = 1
         save()
     # read from round 1 only: a round-0 cut would leave baselines (fired-<cc>.tsv) a resumed run does not carry
-    past_deadline = (lambda: time.monotonic() - started > a.deadline_minutes * 60) if a.deadline_minutes else (lambda: False)
+    past_deadline = (lambda: machine.monotonic() - started > a.deadline_minutes * 60) if a.deadline_minutes else (lambda: False)
     try:
         resolve_rounds(a, repo, recordings, rows, state, save, past_deadline)
     except Deadline:

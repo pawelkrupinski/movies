@@ -29,7 +29,9 @@ import sys
 import time
 from typing import Any, Callable
 
-GH = os.environ.get("KINOWO_GH") or "gh"
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "lib"))
+import machine  # noqa: E402
 
 EXIT_SUCCESS, EXIT_FAILURE, EXIT_NO_VERDICT, EXIT_CANCELLED = 0, 1, 2, 3
 RUN_FIELDS = "databaseId,headSha,headBranch,status,conclusion,workflowName,createdAt,updatedAt"
@@ -54,7 +56,7 @@ def gh_runner(gh_timeout: float):
 
     def run(argv):
         try:
-            done = subprocess.run([GH] + argv, capture_output=True, text=True, timeout=gh_timeout,
+            done = subprocess.run([machine.environment().get("KINOWO_GH") or "gh"] + argv, capture_output=True, text=True, timeout=gh_timeout,
                                   stdin=subprocess.DEVNULL)
         except subprocess.TimeoutExpired:
             return 124, ""
@@ -339,10 +341,10 @@ def wait_for_run(run: str, timeout: int, poll: int, gh: Any = None, clock: Any =
     (success, failure, cancelled...), or None when it gave none within `timeout` seconds or could not be read (said).
     A deadline already past still reads the run once; a null or partial answer from gh is asked again."""
     timeout = max(timeout, 0)
-    github = GitHub(gh or gh_runner(float(os.environ.get("CI_WAIT_GH_TIMEOUT", "60"))))
+    github = GitHub(gh or gh_runner(float(machine.environment().get("CI_WAIT_GH_TIMEOUT", "60"))))
     lines: list[str] = []
     status = wait([Target(run_id=int(run), follow=False)], github, clock or Clock(), timeout, poll,
-                  int(os.environ.get("CI_WAIT_MAX_MISSES", "10")), out=lines.append)
+                  int(machine.environment().get("CI_WAIT_MAX_MISSES", "10")), out=lines.append)
     if status in (EXIT_SUCCESS, EXIT_FAILURE, EXIT_CANCELLED):
         fields = lines[0].split("\t")
         return fields[2] if len(fields) > 2 else ""
@@ -383,7 +385,7 @@ def parse(argv: list) -> argparse.Namespace:
     p.add_argument("--no-follow", action="store_true")
     p.add_argument("--timeout", type=lambda s: duration(s, "m"), default=60 * 60)
     p.add_argument("--interval", type=lambda s: duration(s, "s"),
-                   default=float(os.environ.get("CI_WAIT_POLL_SECONDS", "30")))
+                   default=float(machine.environment().get("CI_WAIT_POLL_SECONDS", "30")))
     p.add_argument("--repo")
     args = p.parse_args(argv)
     if not args.run and not args.workflow:
@@ -411,14 +413,14 @@ def main(argv=None, gh=None, git=None, clock=None) -> int:
         args = parse(sys.argv[1:] if argv is None else argv)
     except SystemExit as e:
         return 2 if e.code else 0
-    github = GitHub(gh or gh_runner(float(os.environ.get("CI_WAIT_GH_TIMEOUT", "60"))), args.repo, git)
+    github = GitHub(gh or gh_runner(float(machine.environment().get("CI_WAIT_GH_TIMEOUT", "60"))), args.repo, git)
     try:
         targets = targets_of(args)
     except SystemExit as e:  # a --sha that is no commit: no verdict (2), never "a run failed" (1)
         print(e.code, file=sys.stderr)
         return 2
     return wait(targets, github, clock or Clock(), args.timeout, args.interval,
-                int(os.environ.get("CI_WAIT_MAX_MISSES", "10")), parent_alive())
+                int(machine.environment().get("CI_WAIT_MAX_MISSES", "10")), parent_alive())
 
 
 if __name__ == "__main__":

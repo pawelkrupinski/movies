@@ -35,6 +35,7 @@ import sys
 import time
 from dataclasses import dataclass
 from typing import List, Mapping, Optional, Sequence
+import ci_machine  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIELDS = "image|repository|tag|digest|mirror"
@@ -252,4 +253,4 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], os.environ))
+    sys.exit(main(sys.argv[1:], ci_machine.environment()))

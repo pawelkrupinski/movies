@@ -29,6 +29,7 @@ import time
 from typing import List, Mapping
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ci_machine  # noqa: E402
 from mongo_tunnel import DEFAULT_PORT, TunnelPaths  # noqa: E402
 
 PROOF_SECONDS = 5  # a killed process can hold its socket for a moment; a few seconds, not forever
@@ -74,4 +75,4 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], os.environ))
+    sys.exit(main(sys.argv[1:], ci_machine.environment()))

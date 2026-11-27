@@ -32,11 +32,11 @@ import os
 import re
 import sys
 import tempfile
-import time
 from dataclasses import dataclass, replace
 from typing import Dict, List, Mapping, Sequence, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import machine  # noqa: E402
 import tool_cli  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
@@ -143,12 +143,12 @@ class Precheck:
     def __init__(self, runner: tool_process.Runner, env: Mapping[str, str], options: Options, tmp: str) -> None:
         self.runner, self.env, self.options, self.tmp = runner, dict(env), options, tmp
         self.git = tool_git.Git(runner, env, ".")
-        self.started = time.monotonic()
+        self.started = machine.monotonic()
         self.failed = ""
         self.unchecked = ""
 
     def seconds(self, since: float) -> int:
-        return int(time.monotonic() - since)
+        return int(machine.monotonic() - since)
 
     def report(self, step: str, status: str, since: float, detail: str = "") -> None:
         print(f"precheck {step} {status} ({self.seconds(since)} s)")
@@ -172,7 +172,7 @@ class Precheck:
 
     def rebase(self, base_sha: str, head_sha: str, merge_base: str) -> None:
         """The change replayed onto the base in memory, never in the worktree."""
-        since = time.monotonic()
+        since = machine.monotonic()
         if merge_base == base_sha:
             return self.report("rebase", "PASS", since)
         replay = self.git.call("replay", "--ref-action=print", "--onto", base_sha, f"{merge_base}..{head_sha}", quiet=True)
@@ -190,7 +190,7 @@ class Precheck:
 
     def rules(self, base_sha: str, head_sha: str) -> None:
         """The hook's own checks, alone."""
-        since = time.monotonic()
+        since = machine.monotonic()
         env = {**self.env, "PREPUSH_NO_REUSE": "1", "PREPUSH_ONLY": RULE_CHECKS}
         code, text = self.logged("rules", ["scripts/hooks/pre-push", "--checks-only", f"{base_sha}..{head_sha}"], env,
                                  self.bound("PRECHECK_RULES_SECONDS", "300"))
@@ -213,7 +213,7 @@ class Precheck:
 
     def lints(self, base_sha: str, head_sha: str) -> None:
         """The registry's selection for the pushed paths, in the checkout's kept sbt server."""
-        since = time.monotonic()
+        since = machine.monotonic()
         env = self.with_gitops()
         names = self.git.out("diff", "--name-only", "--no-renames", f"{base_sha}...{head_sha}") or ""
         planned = self.runner.capture(tool_process.Command(["scripts/hooks/pre-push", "--lint-plan"], env, input=names,
@@ -292,4 +292,4 @@ def main(argv: Sequence[str], environ: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], os.environ))
+    sys.exit(main(sys.argv[1:], machine.environment()))

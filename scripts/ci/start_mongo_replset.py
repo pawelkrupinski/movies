@@ -49,6 +49,7 @@ import sys
 import tempfile
 import time
 from typing import Callable, List, Mapping, Optional, Sequence
+import ci_machine  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PULL = os.path.join(HERE, "pull-pinned-image.sh")
@@ -243,4 +244,4 @@ def main(argv: Sequence[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], dict(os.environ)))
+    sys.exit(main(sys.argv[1:], dict(ci_machine.environment())))

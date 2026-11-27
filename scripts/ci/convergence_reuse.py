@@ -98,6 +98,7 @@ from convergence_rows import leg_matrix as leg_matrix, leg_plan as leg_plan, leg
 from convergence_rows import matrix_phases as matrix_phases, matrix_rows as matrix_rows, order_matrix as order_matrix  # noqa: E402,F401
 from convergence_rows import parse_rows as parse_rows, planned_matrix as planned_matrix, recorded_matrix  # noqa: E402,F401
 from convergence_rows import suite_tails as suite_tails  # noqa: E402,F401
+import ci_machine  # noqa: E402
 import convergence_slots  # noqa: E402
 
 _under = under
@@ -163,7 +164,7 @@ def read_json(path: str) -> Any:
 
 
 def summary(lines: List[str]) -> None:
-    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    path = ci_machine.environment().get("GITHUB_STEP_SUMMARY")
     if path:
         with open(path, "a") as f:
             f.write("\n".join(lines) + "\n")
@@ -171,16 +172,16 @@ def summary(lines: List[str]) -> None:
 
 def suite_of(opts: Optional[Mapping[str, str]] = None) -> str:
     """The suite a command judges: --suite, else $CONVERGENCE_SUITE, else convergence."""
-    suite = (opts or {}).get("suite") or os.environ.get("CONVERGENCE_SUITE") or "convergence"
+    suite = (opts or {}).get("suite") or ci_machine.environment().get("CONVERGENCE_SUITE") or "convergence"
     if suite not in SUITES:
         raise ValueError(f"suite {suite!r}: one of {', '.join(SUITES)}")
     return suite
 
 
 def cmd_inputs(_: Opts) -> int:
-    inputs = leg_inputs(os.environ)
+    inputs = leg_inputs(ci_machine.environment())
     try:
-        inputs.update(run_seeds(os.environ, inputs))
+        inputs.update(run_seeds(ci_machine.environment(), inputs))
     except ValueError as e:
         print(f"::error title=drift seeds::{e}", file=sys.stderr)
         return 2
@@ -188,10 +189,10 @@ def cmd_inputs(_: Opts) -> int:
         print(f"{name}={value}")
     pinned = f", pinned {inputs['drift-seeds']!r}" if inputs["drift-seeds"] else ", each row its fixed set"
     summary([f"Takes-drift seeds this run: takes-drift-1 replays seed {inputs['drift-seed-1'] or '(none)'}, takes-drift-2 "
-             f"seed {inputs['drift-seed-2'] or '(none)'} (run #{os.environ.get('GITHUB_RUN_NUMBER', '?')}"
+             f"seed {inputs['drift-seed-2'] or '(none)'} (run #{ci_machine.environment().get('GITHUB_RUN_NUMBER', '?')}"
              f"{pinned}; scripts/ci/drift_seeds.py)"])
-    if os.environ.get("LEG_INPUTS_FILE"):
-        with open(os.environ["LEG_INPUTS_FILE"], "w") as f:
+    if ci_machine.environment().get("LEG_INPUTS_FILE"):
+        with open(ci_machine.environment()["LEG_INPUTS_FILE"], "w") as f:
             json.dump(inputs, f, sort_keys=True)
     return 0
 
@@ -215,9 +216,9 @@ def cmd_complete(opts: Opts) -> int:
 
 def _leg_matrix_of(rows: List[Row], suite: str) -> Matrix:
     """The `leg` matrix of a normal dispatch (planned from the legs' inputs file), its plan on the step summary."""
-    inputs = read_json(os.environ["LEG_INPUTS_FILE"])  # the file `inputs` wrote
-    order_phases = os.environ.get("ORDER_PHASES") or "both"
-    harness_aa = os.environ.get("HARNESS_AA") == "true"
+    inputs = read_json(ci_machine.environment()["LEG_INPUTS_FILE"])  # the file `inputs` wrote
+    order_phases = ci_machine.environment().get("ORDER_PHASES") or "both"
+    harness_aa = ci_machine.environment().get("HARNESS_AA") == "true"
     matrix = planned_matrix(rows, inputs, order_phases, harness_aa, suite)
     if matrix["include"]:
         summary([f"Rows longest first, each country's share of the runners ({suite}; scripts/ci/convergence_slots.py):", ""]
@@ -237,8 +238,8 @@ def cmd_legs(opts: Opts) -> int:
     verify-scrape-recording.yml, LEG_CODES (the recording's complete countries, comma-separated) instead (recorded_matrix),
     and no row is an error: GitHub drops a reusable call over an empty matrix without a word."""
     suite = suite_of(opts)
-    rows = parse_rows(os.environ.get("LEG_ROWS") or _workflow_leg_rows())
-    codes = os.environ.get("LEG_CODES")
+    rows = parse_rows(ci_machine.environment().get("LEG_ROWS") or _workflow_leg_rows())
+    codes = ci_machine.environment().get("LEG_CODES")
     if codes is not None:
         matrix = recorded_matrix(rows, codes)
         if not matrix["include"]:
@@ -258,7 +259,7 @@ def cmd_legs(opts: Opts) -> int:
 def cmd_facts(opts: Opts) -> int:
     workflow = workflow_at(opts["sha"])
     inputs = read_json(opts["inputs"])
-    facts: Dict[str, Any] = {"version": 1, "suite": suite_of(opts), "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+    facts: Dict[str, Any] = {"version": 1, "suite": suite_of(opts), "run_id": ci_machine.environment().get("GITHUB_RUN_ID", ""),
                              "sha": opts["sha"], "key": key(opts["sha"]), "inputs": inputs,
                              "order_phases": opts.get("order-phases", "both"), "reused_from": opts.get("reused-from", "")}
     if facts["reused_from"]:

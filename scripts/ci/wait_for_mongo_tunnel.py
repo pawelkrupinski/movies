@@ -40,6 +40,7 @@ import time
 from typing import List, Mapping, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ci_machine  # noqa: E402
 from mongo_tunnel import DEFAULT_PORT, TunnelPaths, ci_read_uri  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -227,4 +228,4 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], os.environ))
+    sys.exit(main(sys.argv[1:], ci_machine.environment()))

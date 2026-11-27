@@ -33,14 +33,14 @@ import re
 import signal
 import subprocess
 import sys
-import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import machine  # noqa: E402
 import atomic  # noqa: E402
 import hook_event  # noqa: E402
 
-STATE_DIR = os.environ.get("OWNER_DECISIONS_STATE_DIR", os.path.expanduser("~/.cache/claude-owner-decisions"))
-REMIND_SECONDS = float(os.environ.get("OWNER_DECISIONS_REMIND_SECONDS", 30 * 60))
+STATE_DIR = machine.environment().get("OWNER_DECISIONS_STATE_DIR", os.path.expanduser("~/.cache/claude-owner-decisions"))
+REMIND_SECONDS = float(machine.environment().get("OWNER_DECISIONS_REMIND_SECONDS", 30 * 60))
 STATE_TTL_SECONDS = 7 * 24 * 3600
 STALE_SECONDS = 3600     # a snapshot no tick (or mirror) refreshed for this long is not believed
 STDIN_SECONDS = 2
@@ -66,7 +66,7 @@ def load_state(session):
 
 def save_state(session, state):
     atomic.write_json(state_path(session), state)
-    now = time.time()
+    now = machine.wall()
     for name in os.listdir(STATE_DIR):  # a session's file outlives it; a week is plenty
         path = os.path.join(STATE_DIR, name)
         try:
@@ -77,9 +77,9 @@ def save_state(session, state):
 
 
 def snapshot_path():
-    if os.environ.get("AGENTCTL_STATE_FILE"):
-        return os.environ["AGENTCTL_STATE_FILE"]
-    return os.path.join(os.environ.get("AGENTCTL_STATE_ROOT") or os.path.expanduser("~/.cache/agentctl"), "state.json")
+    if machine.environment().get("AGENTCTL_STATE_FILE"):
+        return machine.environment()["AGENTCTL_STATE_FILE"]
+    return os.path.join(machine.environment().get("AGENTCTL_STATE_ROOT") or os.path.expanduser("~/.cache/agentctl"), "state.json")
 
 
 def pending_decisions(now):
@@ -107,7 +107,7 @@ def describe(ask):
 
 def prompt(hook):
     session = str(hook.get("session_id") or "unknown")
-    state, now, shown = load_state(session), time.time(), []
+    state, now, shown = load_state(session), machine.wall(), []
     for ask in pending_decisions(now):
         key = str(ask.get("block") or ask.get("keys"))
         digest = hashlib.sha1(json.dumps([ask.get("q"), ask.get("how"), ask.get("keys")]).encode()).hexdigest()[:16]
@@ -128,7 +128,7 @@ def prompt(hook):
 def in_root_checkout(cwd):
     def rev(flag):
         r = subprocess.run(["git", "-C", cwd, "rev-parse", "--path-format=absolute", flag],
-                           capture_output=True, text=True, timeout=5, env=dict(os.environ, GIT_OPTIONAL_LOCKS="0"))
+                           capture_output=True, text=True, timeout=5, env=dict(machine.environment(), GIT_OPTIONAL_LOCKS="0"))
         return os.path.realpath(r.stdout.strip()) if r.returncode == 0 and r.stdout.strip() else None
     git_dir = rev("--git-dir")
     return git_dir is not None and git_dir == rev("--git-common-dir")

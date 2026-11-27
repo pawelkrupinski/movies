@@ -43,6 +43,7 @@ from typing import List, Mapping, Optional, Sequence
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "lib"))
+import ci_machine  # noqa: E402
 from tool_process import Command, Runner, SubprocessRunner  # noqa: E402
 
 CLASS_DECLARATION = re.compile(r"class\s+([A-Za-z0-9_]+)\s*:\s*XCTestCase")
@@ -143,11 +144,11 @@ def since(started: float) -> int:
 
 
 def main() -> int:
-    if not os.environ.get("DESTINATION"):
+    if not ci_machine.environment().get("DESTINATION"):
         print("xcuitest-each-class-alone: DESTINATION: the simulator to run on, as an xcodebuild -destination",
               file=sys.stderr)
         return 1
-    return EachClassAlone(SubprocessRunner(), os.environ).run()
+    return EachClassAlone(SubprocessRunner(), ci_machine.environment()).run()
 
 
 if __name__ == "__main__":

@@ -54,6 +54,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ci_machine  # noqa: E402
 import countries_disagree  # noqa: E402
 import gh_bounded  # noqa: E402
 from identity_judgements import judgements_of, label_of, normalise  # noqa: E402  (the one reading of a judgement)
@@ -341,8 +342,8 @@ def main(argv=None, run_gh=gh):
     p.add_argument("--today", help="YYYY-MM-DD, default today (UTC)")
     p.add_argument("--max-age-days", type=int, default=3)
     p.add_argument("--assignee", default="")
-    p.add_argument("--server", default=os.environ.get("GITHUB_SERVER_URL", "https://github.com"))
-    p.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY", ""))
+    p.add_argument("--server", default=ci_machine.environment().get("GITHUB_SERVER_URL", "https://github.com"))
+    p.add_argument("--repo", default=ci_machine.environment().get("GITHUB_REPOSITORY", ""))
     p.add_argument("--work", default="identity-findings")
     p.add_argument("--diagnostics", help="read <dir>/<cc>/ instead of downloading the run's artifacts")
     p.add_argument("--dry-run", action="store_true", help="print the bodies' verdicts, touch no issue")
@@ -365,8 +366,8 @@ def main(argv=None, run_gh=gh):
     if read == 0:
         print(f"::error::run {a.run} left no country's findings -- nothing was reported")
         return 2
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+    if ci_machine.environment().get("GITHUB_OUTPUT"):
+        with open(ci_machine.environment()["GITHUB_OUTPUT"], "a") as out:
             out.write(f"overdue={'true' if overdue else 'false'}\n")
     return 2 if unwritten else 0
 

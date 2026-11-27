@@ -24,6 +24,7 @@ from typing import Dict, List, Mapping, TextIO, cast
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(HERE)), "scripts", "lib"))
+import machine  # noqa: E402
 import tool_actions  # noqa: E402
 import tool_process  # noqa: E402
 
@@ -127,8 +128,8 @@ def private_file(path: str, text: str) -> str:
 
 def main(argv: List[str]) -> int:
     """The composition point: infra/ (this file's parent's), the environment, the real runner and step commands."""
-    steps = Steps(os.path.dirname(HERE), os.environ, tool_process.SubprocessRunner(),
-                  tool_actions.Actions(os.environ, sys.stdout), sys.stdout)
+    steps = Steps(os.path.dirname(HERE), machine.environment(), tool_process.SubprocessRunner(),
+                  tool_actions.Actions(machine.environment(), sys.stdout), sys.stdout)
     commands = {"evaluate": steps.evaluate, "stage": steps.stage}
     if len(argv) != 1 or argv[0] not in commands:
         print("usage: nix_stage_steps.py evaluate|stage", file=sys.stderr)

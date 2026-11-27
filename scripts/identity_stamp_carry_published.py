@@ -16,6 +16,7 @@ from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pure_move_check import git  # noqa: E402  (the one git a proof reads)
+import machine  # noqa: E402
 import tool_git  # noqa: E402
 import tool_github  # noqa: E402
 import tool_process  # noqa: E402
@@ -27,7 +28,7 @@ COUNTRIES = ("pl", "de", "uk", "es", "us")  # a what-if row needs a verdict of e
 
 def identity_cache() -> str:
     """The cache every identity tool shares (tool-conventions.sh's KINOWO_IDENTITY_CACHE)."""
-    return os.environ.get("KINOWO_IDENTITY_CACHE") or os.path.expanduser("~/.cache/kinowo-identity")
+    return machine.environment().get("KINOWO_IDENTITY_CACHE") or os.path.expanduser("~/.cache/kinowo-identity")
 
 
 def cached_verdict(head: str, base: str) -> str:
@@ -57,12 +58,12 @@ ASSET = re.compile(r"what-if-verdict-[0-9a-f]{32}\.json")
 
 
 def release() -> str:
-    return os.environ.get("KINOWO_WHAT_IF_RELEASE") or "identity-what-if-verdicts"
+    return machine.environment().get("KINOWO_WHAT_IF_RELEASE") or "identity-what-if-verdicts"
 
 
 def gh(*args: str, timeout: int = 120) -> tool_process.Captured:
     """gh against the repository (KINOWO_GH: a test's fake, the seam), bounded; a hung or missing gh is a failed call."""
-    repository = os.environ.get("KINOWO_REPO") or "pawelkrupinski/movies"
+    repository = machine.environment().get("KINOWO_REPO") or "pawelkrupinski/movies"
     return tool_github.GitHub.here().call([*args, "-R", repository], timeout, quiet=True)
 
 

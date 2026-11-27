@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import sys
 from typing import List, Mapping, Optional
+import ci_machine  # noqa: E402
 
 NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 # The licence Gradle's SDK auto-install needs for platforms, build-tools and the NDK. Everything else sdkmanager lists
@@ -98,4 +99,4 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], os.environ))
+    sys.exit(main(sys.argv[1:], ci_machine.environment()))

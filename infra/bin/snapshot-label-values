@@ -31,6 +31,7 @@ import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "test"))
+import machine  # noqa: E402
 import promql_selectors  # noqa: E402
 
 OUTPUT = os.path.join(HERE, "..", "test", "label-values.json")
@@ -105,7 +106,7 @@ def main():
                         help="refresh only metric-names.json (one query) -- what its age check asks for")
     args = parser.parse_args()
 
-    end = int(time.time())
+    end = int(machine.wall())
     window = {"start": end - args.days * 86400, "end": end}
     names = fetch(args.prometheus, "/api/v1/label/__name__/values", window)
     write_metric_names(names, args.days, end)
@@ -115,7 +116,7 @@ def main():
     pairs = wanted_pairs(names)
     jobs = [(metric, label) for metric, labels in sorted(pairs.items()) for label in sorted(labels)]
 
-    started = time.time()
+    started = machine.wall()
     snapshot = {metric: {} for metric in pairs}
     with concurrent.futures.ThreadPoolExecutor(WORKERS) as pool:
         futures = {
@@ -128,7 +129,7 @@ def main():
             values = sorted(future.result())
             if values:
                 snapshot[metric][label] = values
-    elapsed = time.time() - started
+    elapsed = machine.wall() - started
 
     # The three kinowo_uptime_recent_* families carry the same ~9,000 service names; writing each
     # list once keeps the fixture reviewable. The reader resolves `same_as` back to the list.

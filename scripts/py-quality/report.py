@@ -33,6 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "ci"))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
+import machine  # noqa: E402
 import clones  # noqa: E402
 import functions  # noqa: E402
 import imports  # noqa: E402
@@ -117,7 +118,7 @@ def pyright_rows(root: str, files: List[str], typed: Optional[List[str]], baseli
     """Every file's strict errors -- or, with `typed` (the push's own files), those files' and the baseline's rows for
     the rest, which nothing in the push can have moved."""
     asked = files if typed is None else [p for p in typed if p in files]
-    counts = pyright.errors(root, asked, os.environ)
+    counts = pyright.errors(root, asked, machine.environment())
     rows: List[Row] = [("pyright", p, n) for p, n in sorted(counts.items())]
     if typed is not None:
         rows += [(k, key, v) for (k, key), v in baseline.items() if k == "pyright" and key not in counts]
@@ -167,7 +168,7 @@ def read_paths(path: Optional[str]) -> Optional[List[str]]:
 
 def run(args: argparse.Namespace) -> int:
     if args.tools_dir:
-        print(pyright.tools_dir(os.environ))
+        print(pyright.tools_dir(machine.environment()))
         return 0
     os.chdir(args.root)
     checking = args.ratchet == "check"

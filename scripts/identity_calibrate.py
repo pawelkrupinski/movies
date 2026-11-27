@@ -60,6 +60,7 @@ from typing import Dict, List, Sequence
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 sys.path.insert(0, HERE)
+import machine  # noqa: E402
 import identity_calibrate_extract  # noqa: E402
 import identity_jvm  # noqa: E402
 import tool_process  # noqa: E402
@@ -184,7 +185,7 @@ def main(argv: List[str]) -> int:
         print(__doc__)
         return 0
     os.chdir(ROOT)
-    env = dict(os.environ)
+    env = dict(machine.environment())
     today = env.get("TODAY") or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
     try:
         return Calibration(env, tool_process.SubprocessRunner(), today).main(argv)

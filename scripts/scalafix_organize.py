@@ -20,11 +20,11 @@ from __future__ import annotations
 
 import os
 import sys
-import time
 from dataclasses import dataclass
 from typing import List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+import machine  # noqa: E402
 import scalafix_tree  # noqa: E402
 import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
@@ -58,15 +58,15 @@ def check(tree: scalafix_tree.ScalafixTree, started: int) -> int:
     files = [line[3:] for line in status.splitlines()]
     tree.discard()
     if not files:
-        print(f"{TOOL}: every source's imports are in order ({int(time.time()) - started} s)")
+        print(f"{TOOL}: every source's imports are in order ({int(machine.wall()) - started} s)")
         return 0
     print("\n".join(files))
-    print(f"{TOOL}: {len(files)} source(s) would change ({int(time.time()) - started} s)")
+    print(f"{TOOL}: {len(files)} source(s) would change ({int(machine.wall()) - started} s)")
     return 1
 
 
 def organize(o: Options, tree: scalafix_tree.ScalafixTree) -> int:
-    started = int(time.time())
+    started = int(machine.wall())
     commands = [c for c in scalafix_tree.commands("") if not o.main or "/Compile/" in c]
     log = tree.path("scalafix.log")
     if tree.sbt(log, commands) != 0:
@@ -75,10 +75,10 @@ def organize(o: Options, tree: scalafix_tree.ScalafixTree) -> int:
     if o.check:
         return check(tree, started)
     if not tree.apply():
-        print(f"{TOOL}: every source's imports are in order ({int(time.time()) - started} s)")
+        print(f"{TOOL}: every source's imports are in order ({int(machine.wall()) - started} s)")
         return 0
     print(tree.staged_stat())
-    print(f"{TOOL}: laid over the checkout and its index ({int(time.time()) - started} s)")
+    print(f"{TOOL}: laid over the checkout and its index ({int(machine.wall()) - started} s)")
     return 0
 
 
@@ -87,7 +87,7 @@ def main() -> int:
     if o is None:
         return code or 0
     try:
-        tree = scalafix_tree.ScalafixTree.opened(TOOL, tool_process.SubprocessRunner(), os.environ)
+        tree = scalafix_tree.ScalafixTree.opened(TOOL, tool_process.SubprocessRunner(), machine.environment())
         try:
             return organize(o, tree)
         finally:
