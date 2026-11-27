@@ -24,6 +24,8 @@ Every script, action and workflow, with its purpose, callers, self-test and migr
   through the fleet's oauth2-proxy and where the gate actually is.
 - [landing-process.md](landing-process.md) — commit to main: no pre-merge CI, `agentctl land` (lock, local basic and
   area tests, push, the watch of main's CI), every pre-push hook step, the red gate, each refusal and what to do.
+- [tool-e2e.md](tool-e2e.md) — the tools' end-to-end layer (`scripts/e2e/`): the important tools ranked, the harness
+  (one temp root, real git and real tools, stub GitHub / ssh / nix / agentctl), each scenario and its mutation proof.
 - [agent-workflow-history.md](agent-workflow-history.md) — the dated incidents behind the agent rules in `CLAUDE.md`
   (stranded WIP, PR breaches, pkill, CI waits, push batching, the red gate, no reruns).
 
