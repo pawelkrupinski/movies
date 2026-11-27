@@ -9,7 +9,7 @@ questions of it while it runs: the checks a push runs, the test configs it compi
   scripts/pre_push.py <hook> --run [args]     THE RUN: what the hook does for a push (git's stdin) or a dry run
                                               (--range / --checks-only / --fast-only / --verify-only A..B):
                                               scripts/lib/pre_push_run.py, the checks the hook's own shell functions
-  scripts/pre_push.py <hook> --check <c> <state>   one light check (scripts/lib/pre_push_light.py) at this directory,
+  scripts/pre_push.py <hook> --check <c> <state>   one Python check (scripts/lib/pre_push_registry.py) here,
                                               after the run's state (JSON): what the run starts for each
 
 Paths are read on stdin, one a line; the answer goes to stdout. The checkout is the hook's working tree's root (git's);
@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "li
 import machine  # noqa: E402
 import pre_push_modes as modes  # noqa: E402
 import pre_push_light as light  # noqa: E402
+import pre_push_registry as registry  # noqa: E402
 import pre_push_run  # noqa: E402
 from pre_push_repo import Repo, Terminal  # noqa: E402
 from tool_files import Files, LocalDisk  # noqa: E402
@@ -54,11 +55,11 @@ def check(hook: str, name: str, state: str) -> int:
     files = Files(LocalDisk(), os.getcwd())
     found = light.Check(Repo(os.getcwd(), env, files), Terminal(sys.stdout, sys.stderr),
                         light.state_of(files.read_text(state)), hook)
-    return light.CHECKS[name](found)
+    return registry.CHECKS[name](found)
 
 
 def main(argv: List[str]) -> int:
-    if len(argv) == 4 and argv[1] == "--check" and argv[2] in light.CHECKS:
+    if len(argv) == 4 and argv[1] == "--check" and argv[2] in registry.CHECKS:
         return check(argv[0], argv[2], argv[3])
     if len(argv) >= 2 and argv[1] == "--run":
         return pre_push_run.main(argv[0], argv[2:], machine.environment(), sys.stdin, sys.stdout, sys.stderr)

@@ -1,7 +1,7 @@
 """THE PRE-PUSH HOOK'S RUN (scripts/hooks/pre-push execs `scripts/pre_push.py <hook> --run [args]`; its header says
 what every step guards): where it runs (pre_push_tree), what is pushed and the checks its paths and messages select
 (pre_push_push, the selection pre_push_modes answers), the red gate and the stranded trailers (pre_push_gate), the
-known-red baseline, the reuse and a remote pass (pre_push_reuse), then each check (pre_push_checks: pre_push_light's,
+known-red baseline, the reuse and a remote pass (pre_push_reuse), then each check (pre_push_checks: pre_push_registry's,
 and the hook's `check_<name>` functions) and the verdict. pre_push_run_test.py holds it black-box."""
 from __future__ import annotations
 

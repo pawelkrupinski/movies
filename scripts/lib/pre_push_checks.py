@@ -1,10 +1,10 @@
-"""THE CHECKS, RUN (scripts/hooks/pre-push's header: NO STEP HANGS, THE KNOWN-RED BASELINE). The light checks are
-Python's (pre_push_light, `Python`: a process of their own after the run's state as JSON); the rest are still the hook's
-own shell functions `check_<name>`: the hook, SOURCED (not run), defines them, and `Shell` calls one in a bash of its
-own after the run's state (the changed paths, ranges, shas, temp dir, ...) as shell variables -- what the checks read
-as the one shell's globals before. Each runs under the stall watchdog (scripts/stall-watch.sh) and is said as the shell
-hook said it: `▸ pre-push <c> ok (Ns)`, `! pre-push <c> FAILED (Ns)`, `pre-push STALLED: <c> ...` (agentctl land
-parses them)."""
+"""THE CHECKS, RUN (scripts/hooks/pre-push's header: NO STEP HANGS, THE KNOWN-RED BASELINE). The light checks and the
+script self-tests are Python's (pre_push_registry, `Python`: a process of their own after the run's state as JSON); the
+rest are still the hook's own shell functions `check_<name>`: the hook, SOURCED (not run), defines them, and `Shell`
+calls one in a bash of its own after the run's state (the changed paths, ranges, shas, temp dir, ...) as shell variables
+-- what the checks read as the one shell's globals before. Each runs under the stall watchdog (scripts/stall-watch.sh)
+and is said as the shell hook said it: `▸ pre-push <c> ok (Ns)`, `! pre-push <c> FAILED (Ns)`, `pre-push STALLED: <c>
+...` (agentctl land parses them)."""
 from __future__ import annotations
 
 import json
@@ -15,7 +15,7 @@ from typing import Dict, List, Mapping, MutableMapping, Optional, Protocol, Sequ
 
 import machine
 import pre_push_known_red as known_red
-import pre_push_light as light
+import pre_push_registry as registry
 import tool_python
 from pre_push_repo import Say, into
 from tool_files import Files
@@ -78,11 +78,11 @@ class Shell:
 
 @dataclass
 class Python:
-    """The checks that are Python's (`names`: pre_push_light.CHECKS), each `scripts/pre_push.py <hook> --check <name>
+    """The checks that are Python's (`names`: pre_push_registry.CHECKS), each `scripts/pre_push.py <hook> --check <name>
     <state>` in a process of its own at the shell's cwd, after the run's state as JSON; every other call the hook's
     shell function's (`shell`)."""
     shell: Shell
-    names: Sequence[str] = tuple(light.CHECKS)
+    names: Sequence[str] = tuple(registry.CHECKS)
     state: Dict[str, Value] = field(default_factory=no_state)
 
     def __post_init__(self) -> None:

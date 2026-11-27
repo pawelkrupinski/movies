@@ -89,6 +89,10 @@ class Check:
     def shown(self, lines: Sequence[str]) -> None:
         self.say.raw("".join(line + "\n" for line in lines))
 
+    def printed(self, lines: Sequence[str]) -> None:
+        """Lines on stdout (`shown`'s go to stderr)."""
+        self.say.raw("".join(line + "\n" for line in lines), to_err=False)
+
     def both(self, argv: Sequence[str]) -> "tuple[int, str, str]":
         return machine.both(argv, self.repo.cwd, self.repo.env)
 
