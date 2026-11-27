@@ -102,6 +102,22 @@ class CliHarnessTest(cli_harness.ToolCase):
         # a cleanup ending a case's process (SbtWarmCase's keepers) must find the directory it writes in (#637)
         self.assertEqual([True], seen)
 
+    def test_a_sandboxed_tool_runs_with_the_lib_adapters_it_imports(self) -> None:
+        """verified_ref imports tool_git and tool_process: copied alone it dies on its first import; sandboxed it runs
+        from the scratch tree and prints its usage."""
+        copied = self.sandbox("tree", "scripts/ci/verified_ref.py")
+        self.assertIn("scripts/lib/tool_git.py", copied)
+        self.assertIn("scripts/lib/tool_process.py", copied)
+        self.assertIn("scripts/lib/atomic.py", self.sandbox("files", "scripts/lib/tool_files.py"))  # transitively
+        self.assertNotIn("scripts/lib/cli_harness.py", copied)
+        done = self.run_tool(tool=self.path("tree/scripts/ci/verified_ref.py"))
+        self.assertIn("usage: verified-ref.sh", done.output)
+        self.assertNotIn("ModuleNotFoundError", done.output)
+        with open(os.path.join(cli_harness.ROOT, "scripts/ci/verified_ref.py")) as f:
+            alone = self.write("alone/scripts/ci/verified_ref.py", f.read())
+        os.chmod(alone, 0o755)
+        self.assertIn("ModuleNotFoundError", self.run_tool(tool=alone).output)
+
     def test_wait_until_is_bounded(self) -> None:
         self.assertTrue(cli_harness.wait_until(lambda: True, 0.1))
         self.assertFalse(cli_harness.wait_until(lambda: False, 0.1))

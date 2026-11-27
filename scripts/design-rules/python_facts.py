@@ -226,6 +226,16 @@ def classes(tree: ast.Module) -> List[ast.ClassDef]:
     return [s for s in tree.body if isinstance(s, ast.ClassDef)]
 
 
+def constants(tree: ast.Module) -> List[Name]:
+    """The module-level names bound by an assignment (`HOME = ...`): what the split credit reads as moved code."""
+    out: List[Name] = []
+    for s in tree.body:
+        if isinstance(s, (ast.Assign, ast.AnnAssign)):
+            targets = s.targets if isinstance(s, ast.Assign) else [s.target]
+            out += [Name("constant", t.id, 0, s.lineno) for t in targets if isinstance(t, ast.Name)]
+    return out
+
+
 def names(path: str, tree: ast.Module) -> Tuple[Name, ...]:
     stem = os.path.basename(path)
     out = [Name("module", stem[:-3] if stem.endswith(".py") else stem, 0, 1)]
@@ -235,7 +245,7 @@ def names(path: str, tree: ast.Module) -> Tuple[Name, ...]:
             out.append(Name("type", s.name, public, s.lineno))
         elif isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef)):
             out.append(Name("function", s.name, 0, s.lineno))
-    return tuple(out)
+    return tuple(out + constants(tree))
 
 
 FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)

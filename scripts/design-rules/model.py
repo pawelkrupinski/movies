@@ -19,7 +19,7 @@ INJECTED = INJECTED_BY_KIND + INJECTED_BY_USE
 
 @dataclasses.dataclass(frozen=True)
 class Name:
-    kind: str          # "type", "module" or "function"
+    kind: str          # "type", "module", "function" or (Python) "constant": a module-level name bound once
     name: str
     public_defs: int   # a type's public methods (the action-name rule reads it); 0 otherwise
     line: int

@@ -36,6 +36,9 @@ import unittest
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
+import sandbox_closure
+import tool_files
+
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 HANG_BOUND = float(os.environ.get("SPEC_HANG_BOUND", "600"))
 WAIT_BOUND = float(os.environ.get("SPEC_WAIT_BOUND", "120"))
@@ -304,6 +307,12 @@ class ToolCase(unittest.TestCase):
             os.makedirs(self.path(relative, "scripts", sub), exist_ok=True)
             for f in glob.glob(os.path.join(scripts, sub, "*.py")) + glob.glob(os.path.join(scripts, sub, "*.sh")):
                 shutil.copy2(f, self.path(relative, "scripts", sub))
+
+    def sandbox(self, relative: str, *tools: str) -> List[str]:
+        """THE ONE WAY TO BUILD A SANDBOX: `tools` (paths from the repository root) AND every repository module they
+        import (the scripts/lib adapters among them), copied into <relative>/ at the same relative paths -- a tool
+        run from there finds what it imports. Never copy a tool alone (sandbox_closure.py). The files copied."""
+        return sandbox_closure.copy(tool_files.Files.here(), ROOT, self.path(relative), tools)
 
     def hold_lock(self, lock: str) -> "subprocess.Popen[bytes]":
         """Another process holding `lock`'s kernel lock, as scripts/jvm-gate.sh's jvm_lock takes it (shell-spec.sh's

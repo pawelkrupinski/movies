@@ -51,7 +51,7 @@ def read_from(m: Module, target: str) -> Set[str]:
 
 
 def defined(m: Module) -> Set[str]:
-    return {n.name for n in m.names if n.kind in ("function", "type")}
+    return {n.name for n in m.names if n.kind in ("function", "type", "constant")}
 
 
 def credit(importer: str, x: str, pieces: List[str], sides: Tuple[Modules, Modules],

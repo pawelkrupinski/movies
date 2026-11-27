@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 from typing import Dict, Iterable, List, Set, Tuple
 
-from model import Module
+from model import Module, Name
 from rules_table import Rules
 
 WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z0-9]+")
@@ -64,11 +64,17 @@ def suffixed(name: str, suffixes: Iterable[str]) -> bool:
     return bool(found) and any(found[-1] == s.lower() for s in suffixes)
 
 
+def naming_names(m: Module) -> List[Name]:
+    """The names the naming rules read: a module's types, functions and modules -- not its constants, which the split
+    credit reads as moved code (splits.py)."""
+    return [n for n in m.names if n.kind != "constant"]
+
+
 def rows(modules: Iterable[Module], rules: Rules) -> List[Row]:
     refused: Set[str] = rules.words_refused()
     out: List[Row] = []
     for m in modules:
-        for n in m.names:
+        for n in naming_names(m):
             key = f"{m.path}:{n.name}"
             if n.kind in ("type", "module") and suffixed(n.name, rules.suffixes):
                 out.append(("suffix", key, 1))

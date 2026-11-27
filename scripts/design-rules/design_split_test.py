@@ -23,9 +23,10 @@ import tool_process  # noqa: E402
 
 CO = "Co-Authored-By: A <a@b.c>"
 HELPERS = [f"h{n}" for n in range(8)]   # eight collaborators every importer uses: with core, at the limit of 9
-CORE_BEFORE = "import subprocess\n\n\ndef run_git(a):\n    return subprocess.run(a)\n\n\ndef keep(a):\n    return subprocess.run(a)\n"
+CORE_BEFORE = "import subprocess\n\nHOME = '/h'\n\n\ndef run_git(a):\n    return subprocess.run(a)\n\n\ndef keep(a):\n    return subprocess.run(a)\n"
 CORE_AFTER = "import subprocess\n\n\ndef keep(a):\n    return subprocess.run(a)\n"
-GITREPO = "import subprocess\n\n\ndef run_git(a):\n    return subprocess.run(a)\n"
+CALLS = "    gitrepo.run_git(gitrepo.HOME)\n    core.keep(2)\n"
+GITREPO = "import subprocess\n\nHOME = '/h'\n\n\ndef run_git(a):\n    return subprocess.run(a)\n"
 NET = "import subprocess\n\n\ndef get(u):\n    return subprocess.run(u)\n"
 
 
@@ -48,7 +49,7 @@ class SplitCreditTest(unittest.TestCase):
         self.git.text("init", "-q", "-b", "main")
         files = {f"scripts/lib/{h}.py": "import subprocess\n\n\ndef f():\n    return subprocess.run(['x'])\n" for h in HELPERS}
         files.update({"scripts/lib/core.py": CORE_BEFORE, "scripts/lib/net.py": NET,
-                      "scripts/user.py": user("core", calls="    core.run_git(1)\n    core.keep(2)\n")})
+                      "scripts/user.py": user("core", calls="    core.run_git(core.HOME)\n    core.keep(2)\n")})
         self.base = self.commit(files, "base")
 
     def design(self, *args: str) -> "subprocess.CompletedProcess[str]":
@@ -70,7 +71,7 @@ class SplitCreditTest(unittest.TestCase):
     def check(self, head: str) -> "subprocess.CompletedProcess[str]":
         return self.design("check", "--languages", "py", "--range", f"{self.base}..{head}")
 
-    def split(self, message: str, calls: str = "    gitrepo.run_git(1)\n    core.keep(2)\n", *extra: str) -> str:
+    def split(self, message: str, calls: str = CALLS, *extra: str) -> str:
         return self.commit({"scripts/lib/core.py": CORE_AFTER, "scripts/lib/gitrepo.py": GITREPO,
                             "scripts/user.py": user("core", "gitrepo", *extra, calls=calls)}, message)
 
@@ -81,6 +82,20 @@ class SplitCreditTest(unittest.TestCase):
         with open(os.path.join(self.root, "test/resources/design-baseline.tsv")) as f:
             self.assertIn("fanout\tscripts/user.py\t10\n", f.read())
 
+    def test_a_constant_the_importer_read_from_the_original_is_credited_in_the_piece(self) -> None:
+        # setUp's importer reads core.HOME; the split moves HOME to gitrepo and the importer reads it there
+        head = self.split(f"split core\n\nCoupling: split of scripts/lib/core.py into scripts/lib/gitrepo.py\n{CO}\n")
+        done = self.check(head)
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+
+    def test_a_constant_born_in_the_piece_is_not_credited(self) -> None:
+        head = self.commit({"scripts/lib/core.py": CORE_AFTER, "scripts/lib/gitrepo.py": GITREPO + "NEW = 1\n",
+                            "scripts/user.py": user("core", "gitrepo", calls=CALLS.replace("HOME", "NEW"))},
+                           f"split core\n\nCoupling: split of scripts/lib/core.py into scripts/lib/gitrepo.py\n{CO}\n")
+        done = self.check(head)
+        self.assertEqual(1, done.returncode, done.stdout + done.stderr)
+        self.assertIn("reads NEW from scripts/lib/gitrepo.py", done.stdout)
+
     def test_the_same_split_without_the_trailer_fails(self) -> None:
         done = self.check(self.split(f"split core\n\n{CO}\n"))
         self.assertEqual(1, done.returncode, done.stdout + done.stderr)
@@ -88,7 +103,7 @@ class SplitCreditTest(unittest.TestCase):
 
     def test_an_importer_gaining_an_unrelated_collaborator_fails_under_the_split_trailer(self) -> None:
         head = self.split(f"split core\n\nCoupling: split of scripts/lib/core.py into scripts/lib/gitrepo.py\n{CO}\n",
-                          "    gitrepo.run_git(1)\n    core.keep(2)\n    net.get(3)\n", "net")
+                          CALLS + "    net.get(3)\n", "net")
         done = self.check(head)
         self.assertEqual(1, done.returncode, done.stdout + done.stderr)
         self.assertIn("scripts/user.py gained scripts/lib/net.py, no piece of scripts/lib/core.py", done.stdout)
