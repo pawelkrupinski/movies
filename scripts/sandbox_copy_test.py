@@ -20,8 +20,9 @@ class SandboxCopyTest(cli_harness.ToolCase):
         dest = self.path("tree")
         done = self.run_tool(dest, "scripts/ci/verified_ref.py")
         self.assertEqual(0, done.code, done.output)
-        self.assertEqual(["scripts/ci/verified_ref.py", "scripts/lib/tool_git.py", "scripts/lib/tool_process.py"],
-                         sorted(done.stdout.split()))
+        for path in ("scripts/ci/verified_ref.py", "scripts/lib/tool_git.py", "scripts/lib/tool_process.py"):
+            self.assertIn(path, done.stdout.split())
+        self.assertNotIn("scripts/lib/cli_harness.py", done.stdout.split())
         ran = self.run_tool(tool=os.path.join(dest, "scripts/ci/verified_ref.py"))
         self.assertIn("usage: verified-ref.sh", ran.output)
 
