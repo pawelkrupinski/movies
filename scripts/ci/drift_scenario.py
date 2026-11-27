@@ -21,14 +21,18 @@ Exit: 0 the same scenario (or nothing to compare: a side wrote no scenario -- a 
 error (each difference named), 2 unreadable. The last line is always `scenario: <verdict>`.
 """
 import argparse
+import os
 import sys
+from typing import Sequence
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+from tool_files import Files  # noqa: E402
 
 
-def read(path, seed):
+def read(files: Files, path: str, seed: str):
     """(arrangement {part: digest}, fills {key: value}) of `seed` in a scenario TSV; None when the file is absent or empty."""
     try:
-        with open(path, encoding="utf-8") as f:
-            lines = f.read().splitlines()
+        lines = files.read_text(path).splitlines()
     except FileNotFoundError:
         return None
     if not lines:
@@ -77,7 +81,7 @@ def compare(head, base):
 DOCSTRING = __doc__ or ""  # None under python -OO
 
 
-def main(argv=None):
+def main(argv: Sequence[str], files: Files) -> int:
     p = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     sub = p.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("compare")
@@ -86,7 +90,7 @@ def main(argv=None):
     c.add_argument("--base", required=True)
     a = p.parse_args(argv)
     try:
-        head, base = read(a.head, a.seed), read(a.base, a.seed)
+        head, base = read(files, a.head, a.seed), read(files, a.base, a.seed)
     except (OSError, ValueError) as e:
         print(f"scenario: unreadable -- {e}")
         return 2
@@ -107,4 +111,4 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:], Files.here()))

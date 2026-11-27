@@ -28,7 +28,9 @@ from typing import List, Mapping, Optional, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
+import machine  # noqa: E402
 import tool_git  # noqa: E402
+from tool_files import Files  # noqa: E402
 import tool_process  # noqa: E402
 
 RULE_SETS = ("allowlists", "driftguards")
@@ -53,9 +55,10 @@ def base_option(argv: Sequence[str]) -> str:
 
 
 class CommitRules:
-    def __init__(self, runner: tool_process.Runner, env: Mapping[str, str]) -> None:
+    def __init__(self, runner: tool_process.Runner, env: Mapping[str, str], files: Files) -> None:
         self.runner = runner
         self.env = env
+        self.files = files
         self.git = tool_git.Git(runner, env, ".")
 
     def python(self, *args: str) -> int:
@@ -112,7 +115,7 @@ class CommitRules:
         return rc
 
     def gating_checks(self) -> int:
-        if not os.path.isfile(".github/gating-checks.tsv"):
+        if not self.files.is_file(".github/gating-checks.tsv"):
             return 0
         if self.python(os.path.join(HERE, "gating_checks.py"), "lint") == 0:
             print("  gating checks: every job, label and gate workflow registered", flush=True)
@@ -157,14 +160,14 @@ class CommitRules:
         return self.advance() if rc == 0 and on_main else rc
 
 
-def main(argv: List[str], env: Mapping[str, str]) -> int:
+def main(argv: List[str], env: Mapping[str, str], files: Files) -> int:
     try:
         named = base_option(argv)
     except Usage as why:
         print(why, file=sys.stderr)
         return 2
-    return CommitRules(tool_process.SubprocessRunner(), env).check(named)
+    return CommitRules(tool_process.SubprocessRunner(), env, files).check(named)
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], dict(os.environ)))
+    sys.exit(main(sys.argv[1:], dict(machine.environment()), Files.here()))

@@ -476,7 +476,7 @@ pyright	scripts/ci/cross_country.py	122
 pyright	scripts/ci/decodo-probe.py	15
 pyright	scripts/ci/drift_diff.py	64
 pyright	scripts/ci/drift_explorer.py	36
-pyright	scripts/ci/drift_scenario.py	49
+pyright	scripts/ci/drift_scenario.py	40
 pyright	scripts/ci/drift_seeds.py	70
 pyright	scripts/ci/family_flips_report.py	109
 pyright	scripts/ci/family_reach.py	55
