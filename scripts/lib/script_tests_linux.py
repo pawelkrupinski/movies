@@ -21,6 +21,10 @@ import tool_python
 
 GIT_ENTRIES = ("config", "config.worktree", "HEAD", "ORIG_HEAD", "FETCH_HEAD", "commondir", "gitdir", "index",
                "packed-refs", "refs", "shallow", "info")
+# bash stays the container's PID 1 (no exec): the orphans the tests leave are reparented to it, and bash reaps them -- a
+# Python runner as PID 1 reaps none, and a zombie answers `kill -0` (cli_harness_test, bounded-step-test: "still running")
+# (and not as its last command either, which bash would exec)
+CONTAINER_SHELL = '[ -z "$0" ] || tar -xf - -C "$0" || exit 2; "$@" < /dev/null; status=$?; exit "$status"'
 MIRROR_LOST = ("could not fetch content descriptor", "unknown blob")
 Say = Callable[[str], None]
 
@@ -198,7 +202,7 @@ def run(c: Container, tests: Sequence[str], say: Say, sleep: Callable[[float], N
     say(f"run-script-tests: {len(tests)} test(s) on Linux ({image})")
     argv = [docker, "run", "--rm", "-i", "--user", f"{os.getuid()}:{os.getgid()}", "-e", "HOME=/tmp", "-e",
             "TERM=dumb", "-e", f"RUN_SCRIPT_TESTS_LOG_DIR={c.log_dir}", *mounts(c, slot.tree, common), "-w", c.root,
-            image, "bash", "-c", '[ -z "$0" ] || tar -xf - -C "$0" || exit 2; exec "$@" < /dev/null', common, *c.inner,
+            image, "bash", "-c", CONTAINER_SHELL, common, *c.inner,
             *tests]
     tar = ["tar", "-C", common, "--no-xattrs", "-cf", "-", *metadata_entries(common, own)] if common else ["true"]
     env = {**machine.environment(), "COPYFILE_DISABLE": "1"}
