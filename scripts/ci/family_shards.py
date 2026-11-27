@@ -24,6 +24,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ci_machine  # noqa: E402
 import header_tsv  # noqa: E402
 
 # country code -> shards; the order is the order the rows start in (the slowest first)
@@ -65,7 +66,7 @@ def main(argv):
         print(__doc__, file=sys.stderr)
         return 2
     argv = list(argv)
-    today = datetime.date.today()
+    today = ci_machine.today()
     if "--date" in argv:
         i = argv.index("--date")
         today = datetime.date.fromisoformat(argv[i + 1])

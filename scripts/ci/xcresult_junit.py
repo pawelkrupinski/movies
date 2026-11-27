@@ -9,8 +9,8 @@ test, its duration, and for a failure every assertion message with the file:line
 
 Replaces `brew install xcresultparser` in ios.yml, which spent ~50 s of every run installing a
 formula to do this, and whose report filed every test under "Uncategorized"."""
+import ci_machine
 import json
-import subprocess
 import sys
 from xml.sax.saxutils import escape, quoteattr
 
@@ -20,7 +20,7 @@ def load_tree(argv):
         with open(argv[2], encoding="utf-8") as f:
             return json.load(f)
     if len(argv) == 2:
-        out = subprocess.run(
+        out = ci_machine.run(
             ["xcrun", "xcresulttool", "get", "test-results", "tests", "--path", argv[1]],
             check=True, capture_output=True, text=True).stdout
         return json.loads(out)

@@ -39,6 +39,7 @@ import sys
 from typing import IO, Dict, Iterable, List, Mapping, Optional, Sequence, Set
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import machine  # noqa: E402
 import tool_git  # noqa: E402
 import tool_github  # noqa: E402
 import tool_process  # noqa: E402
@@ -232,4 +233,4 @@ def main(argv: Sequence[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], dict(os.environ)))
+    sys.exit(main(sys.argv[1:], dict(machine.environment())))

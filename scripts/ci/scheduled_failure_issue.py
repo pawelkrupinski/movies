@@ -32,6 +32,7 @@ Stdlib only. .github/actions/report-scheduled-run runs it by the name scripts/ci
 scheduled_failure_issue_test.py beside it against a fake `gh`."""
 from __future__ import annotations
 
+import ci_machine
 import json
 import subprocess
 import sys
@@ -53,7 +54,7 @@ class Failed(Exception):
 
 def gh(*args: str, capture: bool = False) -> str:
     sys.stdout.flush()
-    done = subprocess.run(["gh", *args], stdout=subprocess.PIPE if capture else None, text=True)
+    done = ci_machine.run(["gh", *args], stdout=subprocess.PIPE if capture else None, text=True)
     if done.returncode != 0:
         raise Failed(done.returncode)
     return done.stdout or ""

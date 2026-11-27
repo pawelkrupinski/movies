@@ -23,8 +23,9 @@ A job with no artifact (none uploaded, expired, cancelled) has none of these ser
 Test: python3 scripts/ci/ci_timings_test.py (CpuTest, SummaryTest)
 """
 import importlib
-import os
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, cast
+
+import ci_machine
 
 TICKS_PER_SECOND = 100.0
 
@@ -49,7 +50,7 @@ def trends() -> Any:
 def metrics_record(run: Record) -> Union[Record, Exception]:
     """The run as ci_trends reads it (record_of); the error when it cannot be read. Never raises: a chart is no gate."""
     try:
-        repo = run.get("repository", {}).get("full_name") or os.environ.get("GITHUB_REPOSITORY", "")
+        repo = run.get("repository", {}).get("full_name") or ci_machine.environment().get("GITHUB_REPOSITORY", "")
         return cast(Record, trends().record_of(trends().GitHub(repo), dict(run, status="in_progress")))
     except Exception as error:  # noqa: BLE001
         return error

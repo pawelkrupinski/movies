@@ -141,3 +141,4 @@ layer	js	infra/version-dashboard/src/app-stores	1	the app stores' clients and th
 layer	js	infra/version-dashboard/src/mobile	2	the /mobile page, over the store clients
 layer	js	infra/version-dashboard/src/mobile-release	3	the mobile release run, over the /mobile page's readings
 layer	js	infra/version-dashboard/src	3	the dashboard's server and pages, over everything below
+adapter	py	scripts/ci/ci_machine.py	process env clock

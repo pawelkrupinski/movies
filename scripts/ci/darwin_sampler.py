@@ -14,6 +14,7 @@ NEVER FAILS: a row that cannot be read is skipped, never the loop.
 
 Test: python3 scripts/ci/job_metrics_test.py (Darwin)
 """
+import ci_machine
 import ctypes
 import ctypes.util
 import os
@@ -115,7 +116,7 @@ def darwin_row(host: Readings, now: Optional[float] = None) -> List[Cell]:
     """One DARWIN_SERIES row; an unreadable figure is an empty cell."""
     user, system, idle, nice = host.cpu_ticks()
     memsize, swap, pressure = host.memsize(), host.swap(), host.pressure_level()
-    return [int(now if now is not None else time.time()), user + nice + system + idle, user + nice + system,
+    return [int(now if now is not None else ci_machine.wall()), user + nice + system + idle, user + nice + system,
             user + nice, system, round(os.getloadavg()[0], 2), memsize // 1024 if memsize else "",
             host.available_pages() * resource.getpagesize() // 1024, swap[0] // 1024 if swap else "",
             swap[1] // 1024 if swap else "", pressure if pressure else ""]

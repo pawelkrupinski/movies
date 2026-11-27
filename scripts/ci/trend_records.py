@@ -5,6 +5,7 @@ job as a record whose window is read off its STEPS, the job's metrics lines fold
 """
 from __future__ import annotations
 
+import ci_machine
 import datetime
 import math
 import re
@@ -75,7 +76,7 @@ def iso(seconds: float) -> str:
 
 def parse_when(text: str, now: Optional[float] = None) -> float:
     """`2026-11-01`, `2026-11-01T10:00:00Z`, `7d`/`12h`/`30m` ago, or `now`, as epoch seconds."""
-    now = datetime.datetime.now(datetime.timezone.utc).timestamp() if now is None else now
+    now = ci_machine.wall() if now is None else now
     text = text.strip()
     if text == "now":
         return now

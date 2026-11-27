@@ -5,9 +5,9 @@ commit range, run ids or a time window -- VictoriaLogs' events first (with a URL
 """
 from __future__ import annotations
 
+import ci_machine
 import concurrent.futures
 import re
-import subprocess
 import sys
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
 
@@ -28,7 +28,7 @@ def workflow_matches(record: Record, workflow: Optional[str]) -> bool:
 
 
 def commits_in(spec: str) -> Set[str]:
-    out = subprocess.run(["git", "rev-list", spec], check=True, capture_output=True, text=True, timeout=60).stdout
+    out = ci_machine.run(["git", "rev-list", spec], check=True, capture_output=True, text=True, timeout=60).stdout
     return set(out.split())
 
 

@@ -10,6 +10,7 @@ import tempfile
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
+import ci_machine
 from coupling_renames import MIN_MOVED_MEMBERS, Pairs, members, name_status_pairs, source_of
 from coupling_rows import (DISTANCE_CAP, DISTANCE_SPLIT_TOLERANCE, LAYERS_PATH, REFS_PATH, Fanouts, Rows,
                            layer_units, moved, of_kind, package_of, recorded_refs)
@@ -207,7 +208,7 @@ def snapshot() -> str:
     the index: no ref, the index and the tree untouched."""
     index = tool_git.Git.here().text("rev-parse", "--git-path", "index").strip()
     with tempfile.TemporaryDirectory() as d:
-        env = dict(os.environ, GIT_INDEX_FILE=os.path.join(d, "index"))
+        env = dict(ci_machine.environment(), GIT_INDEX_FILE=os.path.join(d, "index"))
         if os.path.exists(index):
             shutil.copy(index, env["GIT_INDEX_FILE"])
         git = tool_git.Git(tool_git.shared_runner(), env, ".")

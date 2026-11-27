@@ -14,6 +14,7 @@ Usage: landing_check_for_tree.py <tree sha> [--repo OWNER/NAME]   prints the run
 none (2 when gh cannot say): run the tests
 """
 
+import ci_machine
 import argparse
 import re
 import subprocess
@@ -27,7 +28,7 @@ FAST_ONLY = re.compile(r"^check/(red-)?fast-")
 
 def runs(repo):
     """(run id, head branch, tree id, conclusion) of the workflow's newest completed successful runs."""
-    out = subprocess.run(
+    out = ci_machine.run(
         ["gh", "api", f"repos/{repo}/actions/workflows/{WORKFLOW}/runs?status=success&per_page=100",
          "--jq", '.workflow_runs[] | [.id, .head_branch, .head_commit.tree_id, .conclusion] | @tsv'],
         capture_output=True, text=True, timeout=60)
