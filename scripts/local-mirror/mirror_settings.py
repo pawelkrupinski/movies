@@ -13,8 +13,8 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-import threading
 from dataclasses import dataclass
+from types import FrameType
 from typing import Dict, List, Mapping, Optional, Set
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
@@ -42,30 +42,60 @@ def seconds(value: float) -> str:
     return f"{value:g}"
 
 
+class Stopped(SystemExit):
+    """A TERM (or INT) taken, raised at the process's next pause or wait (Pauses.check), never by the signal handler: an
+    exception raised from a handler lands wherever the process is, and inside subprocess's timed child-wait (Python
+    3.12) it left the Popen's lock held, so the wait the cleanup then made never returned (ci-runner, 2026-11-27: the
+    keeper hung on it, its ssh holding the tunnel and the daemon's output open). A SystemExit, so a thread it ends
+    ends quietly."""
+
+    def __init__(self, status: int) -> None:
+        super().__init__(status)
+        self.status = status
+
+
 class Pauses:
-    """Every pause is a `sleep` child; the ones still running when the daemon stops are ended with it."""
+    """Every pause is a `sleep` child, and every child a process waits on is waited through `wait`: a TERM (`on_signal`)
+    ends those still running at once and the process stops at its next pause (Stopped), with the code given."""
 
     def __init__(self) -> None:
         self.live: Set["subprocess.Popen[bytes]"] = set()
-        self.lock = threading.Lock()
+        self.stopped: Optional[int] = None
+
+    def check(self) -> None:
+        if self.stopped is not None:
+            raise Stopped(self.stopped)
+
+    def wait(self, child: "subprocess.Popen[bytes]", timeout: Optional[float] = None) -> int:
+        """`child`'s exit status; a stop ends it (TERM) meanwhile. TimeoutExpired as Popen.wait raises it."""
+        self.live.add(child)
+        try:
+            if self.stopped is not None:
+                child.terminate()
+            return child.wait(timeout)
+        finally:
+            self.live.discard(child)
 
     def __call__(self, how_long: str) -> None:
+        self.check()
         child = subprocess.Popen(["sleep", how_long], stdin=subprocess.DEVNULL)
-        with self.lock:
-            self.live.add(child)
         try:
-            child.wait()
+            self.wait(child)
         finally:
             if child.poll() is None:
                 child.kill()
                 child.wait()
-            with self.lock:
-                self.live.discard(child)
+        self.check()
 
-    def stop(self) -> None:
-        with self.lock:
-            for child in self.live:
-                child.kill()
+    def stop(self, code: int = 0) -> None:
+        """Safe inside a signal handler: it takes no lock and raises nothing (the set is copied in one step)."""
+        if self.stopped is None:
+            self.stopped = code
+        for child in list(self.live):
+            child.terminate()
+
+    def on_signal(self, signum: int, _frame: Optional[FrameType]) -> None:
+        self.stop(128 + signum)
 
 
 def tuned(source: str) -> str:

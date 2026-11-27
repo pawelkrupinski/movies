@@ -35,17 +35,12 @@ import subprocess
 import sys
 import tempfile
 import threading
-from types import FrameType
-from typing import Dict, List, NoReturn, Optional
+from typing import Dict, List
 
 import mirror_keeper
 import mirror_supervisor
 import mirror_upkeep
 from mirror_settings import Pauses, Settings, here, say, warn
-
-
-def leave(signum: int, _frame: Optional[FrameType]) -> NoReturn:
-    raise SystemExit(128 + signum)
 
 
 def under_the_vault(argv: List[str]) -> int:
@@ -177,8 +172,8 @@ def daemon(argv: List[str], env: Dict[str, str]) -> int:
         return under_the_vault(argv)
     stamp_output(env)
     parent = Parent(Settings.for_parent(env, env["MONGODB_URI"]), argv[:1] == ["--reseed"])
-    signal.signal(signal.SIGTERM, leave)
-    signal.signal(signal.SIGINT, leave)
+    signal.signal(signal.SIGTERM, parent.pause.on_signal)  # it stops at its next pause, mirror_settings.Stopped
+    signal.signal(signal.SIGINT, parent.pause.on_signal)
     try:
         return parent.run()
     finally:

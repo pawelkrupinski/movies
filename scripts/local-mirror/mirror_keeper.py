@@ -7,18 +7,9 @@ closes the forward it holds either way."""
 from __future__ import annotations
 
 import signal
-from types import FrameType
-from typing import Dict, NoReturn, Optional
+from typing import Dict
 
-from mirror_settings import Pauses, Settings, say, seconds
-
-
-class Ended(Exception):
-    pass
-
-
-def end(_signum: int, _frame: Optional[FrameType]) -> NoReturn:
-    raise Ended()
+from mirror_settings import Pauses, Settings, Stopped, say, seconds
 
 
 class Keeper:
@@ -34,14 +25,14 @@ class Keeper:
         self.wait = self.poll
 
     def run(self) -> int:
-        signal.signal(signal.SIGTERM, end)
-        signal.signal(signal.SIGINT, end)
+        signal.signal(signal.SIGTERM, self.pause.on_signal)
+        signal.signal(signal.SIGINT, self.pause.on_signal)
         try:
             while not self.settings.parent_gone():
                 self.step()
                 self.pause(seconds(self.wait))
             say("tunnel keeper: parent is gone — closing the tunnel and exiting")
-        except Ended:
+        except Stopped:
             pass
         finally:
             self.pause.stop()

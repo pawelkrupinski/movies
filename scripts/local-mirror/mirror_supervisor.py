@@ -10,24 +10,13 @@ from __future__ import annotations
 import os
 import signal
 import subprocess
-from types import FrameType
-from typing import NoReturn, Optional
+from typing import Optional
 
 import mirror_settings
-from mirror_settings import Pauses, Settings, here, say, warn
+from mirror_settings import Pauses, Settings, Stopped, here, say, warn
 from prod_tunnel import shell_status
 
 RESEED, TAIL = True, False
-
-
-class Stop(Exception):
-    def __init__(self, code: int) -> None:
-        super().__init__(code)
-        self.code = code
-
-
-def stop_on(signum: int, _frame: Optional[FrameType]) -> NoReturn:
-    raise Stop(128 + signum)
 
 
 def fence_holder(settings: Settings, database: str) -> str:
@@ -44,11 +33,12 @@ def published_digest(settings: Settings) -> str:
         return ""
 
 
-def bounded(argv: "list[str]", limit: float) -> int:
-    """argv's exit status, or 124 once it outlives `limit` seconds (it is TERMed, then waited for)."""
+def bounded(pause: Pauses, argv: "list[str]", limit: float) -> int:
+    """argv's exit status, or 124 once it outlives `limit` seconds (it is TERMed, then waited for); a stop meanwhile
+    TERMs it (Pauses.wait)."""
     child = subprocess.Popen(argv, stdin=subprocess.DEVNULL)
     try:
-        return shell_status(child.wait(timeout=limit))
+        return shell_status(pause.wait(child, timeout=limit))
     except subprocess.TimeoutExpired:
         child.terminate()
         child.wait()
@@ -71,14 +61,14 @@ class Supervisor:
         self.tunnel_waits = 0
 
     def run(self) -> int:
-        signal.signal(signal.SIGTERM, stop_on)
-        signal.signal(signal.SIGINT, stop_on)
+        signal.signal(signal.SIGTERM, self.pause.on_signal)
+        signal.signal(signal.SIGINT, self.pause.on_signal)
         code = 1
         try:
             while True:
                 self.cycle()
-        except Stop as stopped:
-            code = stopped.code
+        except Stopped as stopped:
+            code = stopped.status
         except Exception as failed:  # a supervisor never ends on purpose: say which, how and on what
             warn(f"{self.db}: supervisor failing on `{failed!r}` (exit 1)")
         finally:
@@ -90,7 +80,7 @@ class Supervisor:
     def stop_if_orphaned(self) -> None:
         if self.settings.parent_gone():
             say(f"{self.db}: parent mirror.sh is gone — stopping this database's tailer")
-            raise Stop(0)
+            raise Stopped(0)
 
     def stop_tailer(self) -> None:
         if self.tailer is not None and self.tailer.poll() is None:
@@ -126,7 +116,8 @@ class Supervisor:
             "--file", here("mirror-targets.js"), "--file", here("stream-start.js"), "--file", here("fence-rule.js"),
             "--file", here("tail.js")), stdin=subprocess.DEVNULL)
         restarted = self.watch(self.tailer, launched_with)
-        code = shell_status(self.tailer.wait())
+        code = shell_status(self.pause.wait(self.tailer))
+        self.pause.check()
         self.tailer = None
         if restarted:
             self.fails = 0  # a tailer WE stopped is no failure
@@ -167,10 +158,12 @@ class Supervisor:
         if holder:
             warn(f"{self.db}: held by the what-if fence {holder} — no re-seed audit meanwhile")
             return TAIL
-        code = bounded(self.settings.mongosh("--quiet", "--eval", self.settings.db_vars(self.db),
-                                             "--file", here("mirror-targets.js"), "--file", here("staleness-rule.js"),
-                                             "--file", here("staleness.js")),
+        code = bounded(self.pause, self.settings.mongosh("--quiet", "--eval", self.settings.db_vars(self.db),
+                                                         "--file", here("mirror-targets.js"),
+                                                         "--file", here("staleness-rule.js"),
+                                                         "--file", here("staleness.js")),
                        float(self.settings.knob("STALENESS_TIMEOUT", "120")))
+        self.pause.check()
         if code == 3:
             return RESEED
         if code != 0:
@@ -179,12 +172,15 @@ class Supervisor:
 
     def reseed_or_wait(self) -> bool:
         """A seed under a governor ticket (jvm-gate.sh gov_run: 1 core, 1 GB); a failure is a cycle to retry."""
-        code = subprocess.run(["bash", "-c", '. "$1" || exit 2; shift; gov_run "$@"', "gov_run",
-                               os.path.join(os.path.dirname(mirror_settings.HERE), "jvm-gate.sh"),
-                               f"mirror seed {self.db}", "mirror-seed", "1", "1",
-                               *self.settings.mongosh("--quiet", "--eval", self.settings.db_vars(self.db),
-                                                      "--file", here("mirror-targets.js"), "--file", here("seed.js"))],
-                              stdin=subprocess.DEVNULL, env=self.settings.env).returncode
+        seed = subprocess.Popen(["bash", "-c", '. "$1" || exit 2; shift; gov_run "$@"', "gov_run",
+                                 os.path.join(os.path.dirname(mirror_settings.HERE), "jvm-gate.sh"),
+                                 f"mirror seed {self.db}", "mirror-seed", "1", "1",
+                                 *self.settings.mongosh("--quiet", "--eval", self.settings.db_vars(self.db),
+                                                        "--file", here("mirror-targets.js"),
+                                                        "--file", here("seed.js"))],
+                                 stdin=subprocess.DEVNULL, env=self.settings.env)
+        code = self.pause.wait(seed)
+        self.pause.check()
         if code == 0:
             return True
         say(f"{self.db}: seed failed (exit {shell_status(code)}) — retrying in 30s")

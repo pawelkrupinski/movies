@@ -147,6 +147,57 @@ if env.get("GOV_HOLD"):
 fcntl.flock(7, fcntl.LOCK_EX | fcntl.LOCK_NB)
 '''
 
+# A TERM landing just after a child-wait took subprocess's private lock, before the code that releases it: Python 3.12's
+# timed wait meets it when the signal arrives between its acquire(False) and its try (ci-runner's python3; 3.15 waits on a
+# kqueue or pidfd first, and no longer does). On the PYTHONPATH as sitecustomize: in the mirror.py process whose role
+# $FAKE_TERM_IN_WAIT names (keeper, supervisor, daemon), the first wait on a probe (mongosh-at.sh) after the file exists
+# TERMs the process itself, once.
+TERM_IN_WAIT = r"""
+import os, signal, subprocess, sys, threading
+ARMED = os.environ.get("FAKE_TERM_IN_WAIT", "")
+
+
+def role():
+    if not sys.argv or not sys.argv[0].endswith("mirror.py"):
+        return ""
+    return {"--keep-tunnel": "keeper", "--supervise": "supervisor"}.get((sys.argv[1:] or [""])[0], "daemon")
+
+
+class Window:
+    def __init__(self, child):
+        self.lock, self.child = threading.Lock(), child
+
+    def acquire(self, blocking=True, timeout=-1):
+        got = self.lock.acquire(blocking, timeout)
+        if got and "mongosh-at.sh" in str(self.child.args) and os.path.exists(ARMED):
+            with open(ARMED) as f:
+                wanted = f.read().strip()
+            if wanted == role():
+                os.remove(ARMED)
+                os.kill(os.getpid(), signal.SIGTERM)
+        return got
+
+    def release(self):
+        self.lock.release()
+
+    def locked(self):
+        return self.lock.locked()
+
+    __enter__ = acquire
+
+    def __exit__(self, *_):
+        self.release()
+
+
+if ARMED:
+    started = subprocess.Popen.__init__
+
+    def windowed(self, *args, **kwargs):
+        started(self, *args, **kwargs)
+        self._waitpid_lock = Window(self)
+    subprocess.Popen.__init__ = windowed
+"""
+
 
 def listening() -> socket.socket:
     """A port that answers: every connection taken and closed (an unaccepted backlog fills, and the port goes quiet)."""
@@ -539,6 +590,48 @@ class TunnelTest(MirrorCase):
         os.kill(supervisor, signal.SIGKILL)
         self.until_said(f"database supervisor {supervisor} is gone — exiting so launchd restarts the sync")
         self.assertEqual(143, self.ended())
+
+
+class TermInWaitTest(MirrorCase):
+    """A TERM ends each of the daemon's processes at its next pause, never by an exception raised mid-call: raised inside
+    a timed child-wait, it left subprocess's lock held, and the wait that cleanup then made never returned (ci-runner,
+    pre-push scripttests STALLED: the keeper hung on the lock, its ssh holding the forward and the run's output open)."""
+
+    def armed(self) -> Dict[str, Optional[str]]:
+        os.makedirs(self.path("site"))
+        self.write("site/sitecustomize.py", TERM_IN_WAIT)
+        return {"PYTHONPATH": self.path("site"), "FAKE_TERM_IN_WAIT": self.path("term-in-wait")}
+
+    def term_in_wait(self, role: str) -> None:
+        self.write("term-in-wait", role + "\n")
+
+    def fired(self) -> None:
+        self.until("the TERM never landed", lambda: not os.path.exists(self.path("term-in-wait")))
+
+    def test_the_keeper_termed_mid_probe_closes_its_tunnel_and_ends(self) -> None:
+        self.start(**self.armed())
+        self.until_tailing()
+        self.term_in_wait("keeper")
+        [ssh] = self.ssh_pids()
+        keeper = int(described(ssh).split()[1])
+        self.fired()
+        self.until(f"the TERMed keeper kept its tunnel: {described(ssh)}", lambda: gone(ssh))
+        self.until(f"the TERMed keeper never ended: {described(keeper)}", lambda: gone(keeper))
+
+    def test_a_supervisor_termed_mid_probe_ends_and_takes_the_daemon_down(self) -> None:
+        self.term_in_wait("supervisor")
+        self.start(**self.armed())
+        self.fired()
+        self.until_said("kinowo: supervisor ended (exit 143)")
+        self.assertEqual(143, self.ended())
+
+    def test_the_daemon_termed_mid_probe_ends_with_its_children(self) -> None:
+        self.term_in_wait("daemon")
+        self.start(**self.armed())
+        self.fired()
+        self.assertEqual(143, self.ended())
+        for pid in self.ssh_pids():
+            self.until(f"pid {pid} outlived the TERMed daemon", lambda: gone(pid))
 
 
 class UpkeepTest(MirrorCase):
