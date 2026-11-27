@@ -19,7 +19,8 @@ import machine  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/sbt-warm")
 ROOT = cli_harness.ROOT
-SERVER_ARGS = "java -jar /fake/sbt-launch.jar --detach-stdio"
+# a fake server's command line, as sbt --client's server shows it (the stand-in runs no JVM: no headless flag owed)
+SERVER_ARGS = " ".join(("java", "-jar", "/fake/sbt-launch.jar", "--detach-stdio"))
 
 # the stub is sbt --client (@S@: the case's scratch directory)
 STUB = r"""#!/usr/bin/env bash

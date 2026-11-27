@@ -5,6 +5,7 @@
 # every `identity-what-if` resolve (WhatIfResolve) did, pulling the user onto the desktop at random moments.
 #
 #   scripts/tool-jvm-headless-test.sh
+# script-test-reads: scripts/* .github/* infra/* android/* ios/*
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
