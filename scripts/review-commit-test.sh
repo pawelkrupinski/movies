@@ -12,7 +12,7 @@ trap 'rm -rf "$SCRATCH"' EXIT
 root="$SCRATCH/movies"; wt="$SCRATCH/wt"
 scratch_repo "$root" -b main
 mkdir -p "$root/scripts/ci" "$root/test/resources/fixtures"
-cp "$REPO_ROOT/scripts/review-commit" "$root/scripts/review-commit"
+cp "$REPO_ROOT/scripts/review-commit" "$REPO_ROOT/scripts/tool-conventions.sh" "$root/scripts/"
 printf '#!/usr/bin/env python3\n' > "$root/scripts/ci/identity_judgements_lint.py"
 printf 'country\n' > "$root/test/resources/fixtures/identity-judgements.tsv"
 echo 2026-01-01T00:00:00Z > "$root/test/resources/fixtures/identity-judgements.tsv.used-until"
@@ -27,5 +27,7 @@ check "the root checkout is refused, naming scripts/review-server" 1 \
   "$( (cd "$root" && scripts/review-commit 2>&1 >/dev/null) | grep -c review-server)"
 check "...and nothing was committed there" "base" "$(scratch_git "$root" log --format=%s -1)"
 (cd "$wt" && scripts/review-commit >"$SCRATCH/out" 2>&1); rc=$?; cat "$SCRATCH/out" >&2
+check "--help prints the whole header, past the eleventh line" 1 \
+  "$(cd "$wt" && scripts/review-commit --help 2>&1 | grep -c "REVIEW_LABELS_FILE=")"
 check "a linked worktree commits the answers" "0 Judgements: the user's review answers" "$rc $(scratch_git "$wt" log --format=%s -1)"
 spec_summary

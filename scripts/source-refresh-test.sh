@@ -37,6 +37,8 @@ check "a key holding a line break is refused, nothing run" "2 no" \
   "$(rm -f "$work/seen"; refresh kinowo imdb "$(printf 'a\nb')") $([ -f "$work/seen" ] && echo yes || echo no)"
 check "no arguments at all is a usage error, not a quiet success" "2" "$(rm -f "$work/seen"; refresh)"
 check "--help exits 0" "0" "$(refresh --help)"
+check "--help prints the whole header, past the eleventh line" "1" \
+  "$("$REPO_ROOT/scripts/source-refresh" --help | grep -c "restarts the server again")"
 check "too few arguments is a usage error, nothing run" "2" "$(rm -f "$work/seen"; refresh kinowo tmdb-films)"
 check "...nothing handed on" "no" "$([ -f "$work/seen" ] && echo yes || echo no)"
 

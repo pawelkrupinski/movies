@@ -11,8 +11,10 @@
 # environment it started with, so it would read another call's database), and the program refuses to run unless the
 # environment it reads carries that same id (`--run`). A later call without it restarts the server again.
 set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
 case "${1:-}" in
-  -h|--help) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help) usage_from_header; exit 0 ;;
   "") echo "usage: scripts/source-refresh <database> <source> <keys...> [--apply]" >&2; exit 2 ;;
 esac
 [ $# -ge 3 ] || { echo "usage: scripts/source-refresh <database> <source> <keys...> [--apply]" >&2; exit 2; }
