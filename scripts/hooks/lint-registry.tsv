@@ -138,7 +138,7 @@ repochecks:deploy.JunitReportNoCheckRunSpec	.github/actions/*.yaml .github/actio
 repochecks:deploy.K8sDeployKubeconfigAccessSpec	infra/nix/modules/roles/k3s-server.nix infra/nix/modules/roles/k8s-deploy.nix
 repochecks:deploy.K8sTierPathGatingSpec	@gitops .github/actions/deployed-base/action.yml .github/workflows/main.yml .github/actions/changed-paths/matches.sh
 repochecks:deploy.KickConvergenceWiringSpec	.github/workflows/main.yml
-repochecks:deploy.LandingCheckSplitSpec	.github/gating-checks.tsv .github/workflows/ci.yml .github/workflows/main.yml .github/workflows/precommit-check.yml build.sbt scripts/ci/hook-beside.sh scripts/ci/precommit-share.sh scripts/ci/precommit_share.py scripts/hooks/local-tests.txt scripts/hooks/pre-push scripts/land-precheck scripts/ci/start-mongo-replset.sh
+repochecks:deploy.LandingCheckSplitSpec	.github/gating-checks.tsv .github/workflows/ci.yml .github/workflows/main.yml .github/workflows/precommit-check.yml build.sbt scripts/ci/hook-beside.sh scripts/ci/precommit-share.sh scripts/ci/precommit_share.py scripts/hooks/local-tests.txt scripts/hooks/pre-push scripts/lib/pre_push_push.py scripts/land-precheck scripts/ci/start-mongo-replset.sh
 repochecks:deploy.LegVerdictWiringSpec	.github/workflows/*
 repochecks:deploy.MainAfterRedCiSpec	.github/workflows/main.yml
 repochecks:deploy.MetricsPackagesSpec	*/src/main/scala/services/metrics/*

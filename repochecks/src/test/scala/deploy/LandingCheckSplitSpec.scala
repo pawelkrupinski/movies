@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * THE SPLIT CHECK (scripts/hooks/pre-push, PREPUSH_ONLY / PREPUSH_ELSEWHERE): the landing check's jobs share the hook's
+ * THE SPLIT CHECK (scripts/lib/pre_push_push.py split, PREPUSH_ONLY / PREPUSH_ELSEWHERE): the landing check's jobs share the hook's
  * selected checks and run at once. In one job they ran one after another under one 80-minute cap, and landing check run
  * 4025 (a 124-path batch) ran out of it with three checks still to go after the page area's 37 minutes (the page area
  * has since moved to Main: below).
@@ -146,8 +146,9 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
   }
 
   "the pre-push hook" should "run only the checks its share names, and say which it leaves to the other jobs" in {
-    val hook = RepoFile.read("scripts/hooks/pre-push")
-    hook should include("split_out() {")
-    hook should include("left to the landing check's other job(s):")
+    // the run is Python's since the hook's stage 2 (shell-to-Python migration, section 10): pre_push_push.split
+    val push = RepoFile.read("scripts/lib/pre_push_push.py")
+    push should include("def split(say: Say, env: Mapping[str, str], checks: List[str]) -> List[str]:")
+    push should include("left to the landing check's other job(s): ")
   }
 }
