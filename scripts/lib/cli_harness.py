@@ -34,7 +34,7 @@ import tempfile
 import time
 import unittest
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 HANG_BOUND = float(os.environ.get("SPEC_HANG_BOUND", "600"))
@@ -187,7 +187,7 @@ def alive(pid: int) -> bool:
     return True
 
 
-def kill_group(proc: "subprocess.Popen[bytes]") -> None:
+def kill_group(proc: "subprocess.Popen[Any]") -> None:
     """KILL the process group `proc` leads (started with start_new_session): one already gone is done -- ESRCH, or
     macOS's EPERM for a group of only zombies, which a leader exiting just before the kill leaves under load."""
     try:

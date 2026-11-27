@@ -236,7 +236,7 @@ def relay(argv, cwd, log, now=lambda: datetime.now(timezone.utc).strftime("%H:%M
         return p.wait()
 
 
-def end_group(p, grace=30):
+def end_group(p: "subprocess.Popen[str]", grace: float = 30) -> None:
     """TERM the process group `p` leads, KILL it after `grace` seconds; return once every member is gone, not only `p`:
     the leader dying first left a member still running (Main #2583: the test's `sleep` alive after relay raised)."""
     if not send_to_group(p, signal.SIGTERM):
@@ -245,7 +245,7 @@ def end_group(p, grace=30):
         group_gone(p, 5)
 
 
-def send_to_group(p, sig):
+def send_to_group(p: "subprocess.Popen[str]", sig: int) -> bool:
     """Send `sig` to the group `p` leads (it made it: process_group=0); False when none is left to receive it. macOS
     answers EPERM, not ESRCH, for a group of only zombies (the leader exiting just before the kill, under load), so any
     OSError means the group is gone, as in tool_process.group_alive."""
@@ -256,7 +256,7 @@ def send_to_group(p, sig):
     return True
 
 
-def group_gone(p, seconds):
+def group_gone(p: "subprocess.Popen[str]", seconds: float) -> bool:
     """Whether the process group `p` leads has no member left within `seconds` (`p` itself reaped)."""
     until = machine.monotonic() + seconds
     while True:

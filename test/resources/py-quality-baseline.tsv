@@ -531,7 +531,7 @@ pyright	scripts/identity-stage-works.py	23
 pyright	scripts/identity_boot_cost.py	62
 pyright	scripts/identity_measure.py	201
 pyright	scripts/identity_precision_sample.py	307
-pyright	scripts/identity_rule_ablation.py	478
+pyright	scripts/identity_rule_ablation.py	462
 pyright	scripts/identity_slice_diff.py	56
 pyright	scripts/identity_stamp_carry.py	19
 pyright	scripts/identity_what_if.py	475
