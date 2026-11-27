@@ -1,7 +1,6 @@
 """The scratch checkout scripts/run-script-tests' black-box tests drive (run_script_tests_*_test.py): a git repository of
 fake self-tests and tools under the script roots, the runner run over it with --root, and what its listing selects.
-The tests hold the tool to its command line only, so they pass unchanged on the shell tool it replaced
-(scripts/run-script-tests.sh-legacy, KINOWO_RUN_SCRIPT_TESTS_LEGACY=1) and on the Python one."""
+The tests hold the tool to its command line only (they passed unchanged on the shell tool it replaced)."""
 from __future__ import annotations
 
 import os

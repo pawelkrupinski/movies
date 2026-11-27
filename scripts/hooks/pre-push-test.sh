@@ -367,7 +367,7 @@ if command -v shellcheck >/dev/null; then
   mkdir -p "$repo/scripts/hooks"
   scratch_repo "$repo"
   cp "$REPO_ROOT/scripts/hooks/pre-push" "$REPO_ROOT/scripts/hooks/lint-registry.tsv" "$REPO_ROOT/scripts/hooks/lint-registry-missing" "$repo/scripts/hooks/"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$repo/scripts/hooks-path.sh"; cp "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/tool-conventions.sh"
-  for f in sbt-warm sbt-warm.sh-legacy jvm-gate.sh stall-watch.sh stall_watch.py zinc_orphans.py; do
+  for f in sbt-warm jvm-gate.sh stall-watch.sh stall_watch.py zinc_orphans.py; do
     cp "$REPO_ROOT/scripts/$f" "$repo/scripts/$f"
   done
   mkdir -p "$repo/scripts/lib"; cp "$REPO_ROOT"/scripts/lib/*.py "$repo/scripts/lib/"   # sbt-warm's Python modules

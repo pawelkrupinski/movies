@@ -129,8 +129,7 @@
 # 2 a --changed base that is no commit, 64 usage.
 #
 # Python (scripts/lib/script_tests_*.py, tool_bounded.py, jvm_gate.py; this file is main(), the composition root).
-# THE FALLBACK: KINOWO_RUN_SCRIPT_TESTS_LEGACY=1 runs the shell version it replaced (scripts/run-script-tests.sh-legacy)
-# until five real landings have passed through this one. The pre-push hook greps this file for the flags it passes:
+# The pre-push hook greps this file for the flags it passes:
 # --floor) --stress) --readers --linux --bash.
 from __future__ import annotations
 
@@ -405,8 +404,6 @@ def print_reads(root: str) -> int:
 
 def main(argv: List[str]) -> int:
     env = machine.environment()
-    if env.get("KINOWO_RUN_SCRIPT_TESTS_LEGACY") == "1":
-        machine.replace(["bash", os.path.join(HERE, "run-script-tests.sh-legacy"), *argv])
     tree_check = prepared(env)
     scratch = ""
     try:

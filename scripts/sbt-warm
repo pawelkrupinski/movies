@@ -3,9 +3,7 @@
 #
 # sbt for agents, warm: ONE sbt server per checkout, kept between calls, and a fresh checkout's compile seeded from the
 # newest local build of main — so neither the JVM start (~40 s) nor the cold compile (~4–15 min) is paid per call.
-# Python (scripts/lib/sbt_warm_*.py, jvm_gate.py, cpu_meter.py; this file is main(), the composition root). THE FALLBACK:
-# KINOWO_SBT_WARM_LEGACY=1 runs the shell version it replaced (scripts/sbt-warm.sh-legacy) until five real landings
-# have passed through this one; the two share every lock and record, so either may meet the other's server or keeper.
+# Python (scripts/lib/sbt_warm_*.py, jvm_gate.py, cpu_meter.py; this file is main(), the composition root).
 #
 #   scripts/sbt-warm <sbt command>...    run the commands (each one argument, e.g. "worker/testOnly services.identity.X")
 #                                        in this checkout's server — started, and seeded, when there is none
@@ -155,12 +153,6 @@ from tool_cli import UsageError, header_usage  # noqa: E402
 def usage() -> str:
     """The header above, as tool-conventions.sh's usage_from_header prints a shell tool's."""
     return header_usage(os.path.realpath(__file__))
-
-
-def legacy(argv: List[str]) -> None:
-    """THE FALLBACK: the shell version, its $0 this file's path (its keeper is `scripts/sbt-warm --keep`, and the
-    keeper's call, inheriting KINOWO_SBT_WARM_LEGACY, comes back here)."""
-    machine.replace(["bash", "-c", '. "$0.sh-legacy"', SELF, *argv])
 
 
 def say_to_stderr(stamped: bool, now: Callable[[], datetime.datetime]) -> Callable[[str], None]:
@@ -330,10 +322,7 @@ def main(argv: List[str]) -> int:
     if first in ("", "-h", "--help"):
         sys.stdout.write(usage())
         return 0
-    env = machine.environment()
-    if env.get("KINOWO_SBT_WARM_LEGACY") == "1":
-        legacy(argv)
-    t = compose(env, keeper=first == "--keep")
+    t = compose(machine.environment(), keeper=first == "--keep")
     if first == "--keep":
         return keep(t)
     if first == "--reap":

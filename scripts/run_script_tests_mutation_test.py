@@ -37,7 +37,6 @@ def copy_runner(into: str, mutate: bool) -> str:
 
 def derived_reads_test(runner: str) -> int:
     env = {**os.environ, "CLI_TOOL_UNDER_TEST": runner, "PYTHONDONTWRITEBYTECODE": "1"}
-    env.pop("KINOWO_RUN_SCRIPT_TESTS_LEGACY", None)
     return subprocess.run([sys.executable, "-B", os.path.join(HERE, "run_script_tests_test.py"), "DerivedReadsTest"],
                           env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
 
