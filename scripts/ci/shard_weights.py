@@ -17,10 +17,17 @@ import argparse
 import json
 import os
 import statistics
-import subprocess
 import sys
 import urllib.parse
-import urllib.request
+from typing import Callable, Dict, Iterator, List, Mapping, Sequence, Tuple
+
+LIB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib")
+sys.path.insert(0, LIB)
+from tool_files import Files  # noqa: E402
+import tool_http  # noqa: E402
+import tool_git  # noqa: E402
+import machine  # noqa: E402
+import tool_process  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_FILE = os.path.join(HERE, "shard-weights-identity.tsv")
@@ -28,15 +35,14 @@ DEFAULT_URL = "http://victoria-logs-ci.service.consul:9429"
 QUERY = 'source:ci kind:suite workflow_file:="precommit-check.yml" job:~"^check \\\\(identity " | fields run_id, suite, time_s'
 
 
-def read_rows(path):
-    """{class: seconds} of a weights file (comments and the header skipped)."""
-    rows = {}
-    with open(path, encoding="utf-8") as fh:
-        for raw in fh:
-            raw = raw.split("#", 1)[0].strip()
-            if raw:
-                name, seconds = raw.split()
-                rows[name] = float(seconds)
+def read_rows(text: str) -> Dict[str, float]:
+    """{class: seconds} of a weights file's text (comments and the header skipped)."""
+    rows: Dict[str, float] = {}
+    for raw in text.splitlines():
+        raw = raw.split("#", 1)[0].strip()
+        if raw:
+            name, seconds = raw.split()
+            rows[name] = float(seconds)
     return rows
 
 
@@ -73,27 +79,48 @@ def render(rows, days, min_runs):
     return "\n".join(head + [f"{name}\t{round(seconds)}" for name, seconds in rows]) + "\n"
 
 
-def class_exists(root):
-    """A test class name -> whether a Scala source under root declares it (`class <Simple>`)."""
-    out = subprocess.run(["git", "-C", root, "grep", "-h", "-o", "-E", "class [A-Za-z0-9_]+", "--", "*.scala"],
-                         capture_output=True, text=True).stdout
+def class_exists(git: tool_git.Git) -> Callable[[str], bool]:
+    """A test class name -> whether a Scala source in `git`'s repository declares it (`class <Simple>`)."""
+    out = git.out("grep", "-h", "-o", "-E", "class [A-Za-z0-9_]+", "--", "*.scala", quiet=True) or ""
     simple = {line.split()[1] for line in out.splitlines() if len(line.split()) == 2}
     return lambda name: name.rsplit(".", 1)[-1] in simple
 
 
-def fetch(url, days):
+def sample_rows(lines: Sequence[str]) -> Iterator[Tuple[str, str, float]]:
+    for line in lines:
+        if line.strip():
+            d = json.loads(line)
+            yield d["run_id"], d["suite"], float(d["time_s"])
+
+
+def fetch(http: tool_http.Http, url: str, days: int) -> List[Tuple[str, str, float]]:
     form = urllib.parse.urlencode({"query": QUERY, "start": f"now-{days}d", "limit": "100000"}).encode()
-    with urllib.request.urlopen(urllib.request.Request(f"{url}/select/logsql/query", data=form), timeout=60) as r:
-        for line in r.read().decode().splitlines():
-            if line.strip():
-                d = json.loads(line)
-                yield d["run_id"], d["suite"], float(d["time_s"])
+    answer = http.post(f"{url}/select/logsql/query", 60, body=form,
+                       headers={"Content-Type": "application/x-www-form-urlencoded"})
+    if not answer.ok:
+        raise tool_http.HttpFailed(f"{url}: HTTP {answer.status}")
+    return list(sample_rows(answer.text().splitlines()))
 
 
 DOCSTRING = __doc__ or ""  # None under python -OO
 
 
-def main(argv):
+def refresh(a: argparse.Namespace, files: Files, git: tool_git.Git, http: tool_http.Http) -> int:
+    """The new weights file on stdout, from the samples (a file, or the telemetry) and the current file."""
+    if a.samples:
+        samples = list(sample_rows(files.read_text(a.samples).splitlines()))
+    else:
+        samples = fetch(http, a.url, a.days)
+    measured = medians(samples, a.min_runs)
+    if not measured:
+        print("shard_weights: no suite measured in the window: the file is left as it is", file=sys.stderr)
+        return 1
+    current = read_rows(files.read_text_or(a.current, ""))
+    sys.stdout.write(render(merge(measured, current, class_exists(git)), a.days, a.min_runs))
+    return 0
+
+
+def main(argv: Sequence[str], env: Mapping[str, str]) -> int:
     ap = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("refresh")
@@ -103,19 +130,9 @@ def main(argv):
     r.add_argument("--current", default=DEFAULT_FILE)
     r.add_argument("--samples", help="a JSON-lines file of {run_id, suite, time_s} in place of the query (tests)")
     a = ap.parse_args(argv)
-    if a.samples:
-        with open(a.samples, encoding="utf-8") as fh:
-            samples = [(d["run_id"], d["suite"], float(d["time_s"])) for d in map(json.loads, filter(str.strip, fh))]
-    else:
-        samples = list(fetch(a.url, a.days))
-    measured = medians(samples, a.min_runs)
-    if not measured:
-        print("shard_weights: no suite measured in the window: the file is left as it is", file=sys.stderr)
-        return 1
-    sys.stdout.write(render(merge(measured, read_rows(a.current) if os.path.exists(a.current) else {}, class_exists(os.path.dirname(os.path.dirname(HERE)))),
-                            a.days, a.min_runs))
-    return 0
+    git = tool_git.Git(tool_process.SubprocessRunner(), env, os.path.dirname(os.path.dirname(HERE)))
+    return refresh(a, Files.here(), git, tool_http.Http.here())
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main(sys.argv[1:], machine.environment()))

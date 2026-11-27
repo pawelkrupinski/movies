@@ -22,9 +22,11 @@ import argparse
 import os
 import re
 import sys
+from typing import Dict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import shard_weights  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 LINE = re.compile(r"^(?P<cmd>(?:\w+/)?(?:Test/)?testOnly)\s+(?P<classes>.*?)(?P<args>\s+--(?:\s.*)?)?$")
 CLASS = re.compile(r"^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$")
@@ -41,16 +43,17 @@ def parse(line):
     return m.group("cmd"), classes, (m.group("args") or "")
 
 
-def read_weights(path):
-    """<class> <seconds> rows. A bare NAME is shard-weights-NAME.tsv beside this tool; absent, no weights."""
-    weights = {}
-    if not path:
-        return weights
-    if "/" not in path:
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"shard-weights-{path}.tsv")
-        if not os.path.exists(path):
-            return weights
-    return shard_weights.read_rows(path)
+def weights_text(files: Files, path: str) -> str:
+    """The text of a weights file: a path as given (missing: an error), or a bare NAME's shard-weights-NAME.tsv beside this
+    tool (absent: none)."""
+    if "/" in path:
+        return files.read_text(path)
+    return files.read_text_or(os.path.join(os.path.dirname(os.path.abspath(__file__)), f"shard-weights-{path}.tsv"), "")
+
+
+def read_weights(files: Files, path: str) -> Dict[str, float]:
+    """<class> <seconds> rows, read through `files`; no path, no weights."""
+    return shard_weights.read_rows(weights_text(files, path)) if path else {}
 
 
 def assign(lines, n, weights, default_weight, whole_weight):
@@ -102,7 +105,7 @@ def main(argv):
     m = re.fullmatch(r"(\d+)/(\d+)", a.shard)
     if not m or not 1 <= int(m.group(1)) <= int(m.group(2)):
         ap.error(f"--shard {a.shard}: not K/N with 1 <= K <= N")
-    for line in shard(sys.stdin.readlines(), int(m.group(1)) - 1, int(m.group(2)), read_weights(a.weights),
+    for line in shard(sys.stdin.readlines(), int(m.group(1)) - 1, int(m.group(2)), read_weights(Files.here(), a.weights),
                       a.default_weight, a.whole_weight):
         print(line)
     return 0
