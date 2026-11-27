@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, MutableMapping, Optional, Protocol, Sequence, Tuple, cast
 
 import machine
+import cpu_meter
 from cpu_meter import CpuMeter
 from jvm_memory import MemoryGate, SlotWait
 
@@ -206,9 +207,10 @@ class JvmGate:
     """One process's JVM slot or governor ticket, on descriptor 7 (jvm-gate.sh's JVM_SLOT)."""
 
     def __init__(self, host: Host, governor: Governor, memory: MemoryGate, slot_wait: SlotWait, slot_dir: str,
-                 own_tree_meter: Callable[[], CpuMeter]) -> None:
+                 own_tree_meter: Optional[Callable[[], CpuMeter]] = None) -> None:
         self.host, self.governor, self.memory, self.slot_wait, self.slot_dir = host, governor, memory, slot_wait, slot_dir
-        self.own_tree_meter = own_tree_meter
+        self.own_tree_meter = own_tree_meter or (
+            lambda: cpu_meter.own_tree_meter(float(host.env.get("KINOWO_CPU_METER_POLL") or 2)))
         self.metered: Optional[Tuple[CpuMeter, str, float]] = None  # the meter of this process's tree, its job, its start
         self.slot = ""
         self.lock: Optional[FileLock] = None

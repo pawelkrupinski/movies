@@ -368,6 +368,7 @@ cpu_meter_start() { # <lister>
     done
     rm -rf "$CPU_METER_DIR" ) > /dev/null 2>&1 5>&- 6>&- 7>&- 8>&- 9>&- &
   CPU_METER_PID=$!
+  disown "$CPU_METER_PID" 2> /dev/null || true  # its end is no job message of ours ("Terminated")
 }
 cpu_meter_stop() {
   [ -n "$CPU_METER_DIR" ] || { echo 0; return 0; }

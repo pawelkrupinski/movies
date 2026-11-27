@@ -142,7 +142,6 @@ sys.path.insert(0, os.path.join(HERE, "lib"))
 sys.path.insert(0, HERE)
 
 import machine  # noqa: E402
-from cpu_meter import own_tree_meter  # noqa: E402
 from jvm_gate import Governor, Host, JvmGate, SubprocessCommands, lock_busy  # noqa: E402
 from jvm_memory import Clock, MemoryGate, SlotWait  # noqa: E402
 from sbt_warm_cache import Builds, Places  # noqa: E402
@@ -196,8 +195,7 @@ def compose(env: MutableMapping[str, str], keeper: bool) -> Tools:
     governor = Governor(host, SubprocessCommands())
     memory = MemoryGate(env, Clock(time.sleep), raw_stderr, lambda: governor.bin() is not None, platform.system())
     slots = os.path.join(env["KINOWO_IDENTITY_CACHE"], "jvm-slots")
-    poll = float(env.get("KINOWO_CPU_METER_POLL") or 2)
-    gate = JvmGate(host, governor, memory, SlotWait(memory, slots), slots, lambda: own_tree_meter(poll))
+    gate = JvmGate(host, governor, memory, SlotWait(memory, slots), slots)
     servers = Servers(Procs(), state, log, time.sleep, now)
     runner = tool_git.shared_runner()
     places = Places(root, os.path.join(env["KINOWO_IDENTITY_CACHE"], "refs"),

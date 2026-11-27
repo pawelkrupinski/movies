@@ -149,7 +149,6 @@ LIB = os.path.join(HERE, "lib")
 sys.path.insert(0, LIB)
 
 import machine  # noqa: E402
-from cpu_meter import own_tree_meter  # noqa: E402
 from jvm_gate import Governor, Host, JvmGate, SubprocessCommands  # noqa: E402
 from jvm_memory import Clock, MemoryGate, SlotWait  # noqa: E402
 from script_tests_found import Found, concurrency_heavy, declared_reads, discover  # noqa: E402
@@ -267,8 +266,7 @@ def compose_gate(env: MutableMapping[str, str], root: str) -> JvmGate:
     governor = Governor(host, SubprocessCommands())
     memory = MemoryGate(env, Clock(time.sleep), say, lambda: governor.bin() is not None, platform.system())
     slots = os.path.join(env.get("KINOWO_IDENTITY_CACHE") or os.path.join(home, ".cache/kinowo-identity"), "jvm-slots")
-    poll = float(env.get("KINOWO_CPU_METER_POLL") or 2)
-    return JvmGate(host, governor, memory, SlotWait(memory, slots), slots, lambda: own_tree_meter(poll))
+    return JvmGate(host, governor, memory, SlotWait(memory, slots), slots)
 
 
 def too_old_python(tests: Sequence[Found]) -> bool:
