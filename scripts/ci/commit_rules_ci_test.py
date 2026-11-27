@@ -18,8 +18,7 @@ import cli_harness  # noqa: E402
 TOOL = cli_harness.tool_path("scripts/ci/commit_rules_ci.py", "scripts/ci/commit-rules-ci.sh")
 # what the tool calls, copied beside it: whichever of them exist
 COPIED = ("scripts/ci/commit-rules-ci.sh", "scripts/ci/commit_rules_ci.py", "scripts/ci/verified-ref.sh",
-          "scripts/ci/verified_ref.py", "scripts/ci/commit_rules.py", "scripts/ci/trailers.py",
-          "scripts/lib/tool_git.py", "scripts/lib/tool_process.py")
+          "scripts/ci/verified_ref.py", "scripts/ci/commit_rules.py", "scripts/ci/trailers.py")
 LIST = "test/resources/fixtures/identity-flips-allow.tsv"
 REF = "refs/verified/commit-rules"
 
@@ -28,9 +27,7 @@ class CommitRulesCiTest(cli_harness.ToolCase):
     def setUp(self) -> None:
         super().setUp()
         self.origin, self.checkout = self.origin_and_checkout()
-        for f in COPIED:
-            if os.path.exists(os.path.join(cli_harness.ROOT, f)):
-                self.copy(f)
+        self.sandbox("repo", *(f for f in COPIED if os.path.exists(os.path.join(cli_harness.ROOT, f))))
         self.put(".github/allow-lists.txt", f"# the registry\n{LIST}\n")
         self.put(LIST, "# reviewed flips\ncountry\tvenue\trawTitle\treason\n")
         self.git(self.checkout, "add", "-A")
@@ -39,11 +36,6 @@ class CommitRulesCiTest(cli_harness.ToolCase):
         self.git(self.checkout, "push", "-q", "origin", "main")
         self.TOOL = os.path.join(self.checkout, os.path.relpath(TOOL, cli_harness.ROOT))
         self.out = ""
-
-    def copy(self, relative: str) -> None:
-        target = os.path.join(self.checkout, relative)
-        os.makedirs(os.path.dirname(target), exist_ok=True)
-        shutil.copy2(os.path.join(cli_harness.ROOT, relative), target)
 
     def put(self, relative: str, text: str, append: bool = False) -> None:
         full = os.path.join(self.checkout, relative)
@@ -113,7 +105,7 @@ class CommitRulesCiTest(cli_harness.ToolCase):
 
     def test_a_gating_checks_registry_out_of_step_fails(self) -> None:
         self.verify(self.base)
-        self.copy("scripts/ci/gating_checks.py")
+        self.sandbox("repo", "scripts/ci/gating_checks.py")
         self.put(".github/gating-checks.tsv", "kind\tworkflow\tname\tproven\tnote\njob\tmain.yml\tnew\tunproven\n")
         self.assertEqual(1, self.ci(), self.out)
         self.assertIn("::error title=commit rules (gating checks)::", self.out)

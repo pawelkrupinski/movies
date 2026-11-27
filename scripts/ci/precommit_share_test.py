@@ -32,6 +32,7 @@ class PrecommitShareTest(cli_harness.ToolCase):
                 target = os.path.join(self.checkout, f)
                 os.makedirs(os.path.dirname(target), exist_ok=True)
                 shutil.copy2(os.path.join(cli_harness.ROOT, f), target)
+        self.sandbox("repo", "scripts/ci/precommit_share.py", "scripts/ci/commit_rules.py", "scripts/ci/ci_row_scope.py")
         self.git(self.checkout, "add", "-A")
         self.git(self.checkout, "commit", "-qm", "base")
         self.git(self.checkout, "update-ref", "refs/remotes/origin/main", "HEAD")

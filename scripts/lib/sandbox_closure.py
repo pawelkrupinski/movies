@@ -13,9 +13,7 @@ from __future__ import annotations
 
 import ast
 import os
-from typing import Iterable, List, Set
-
-from tool_files import Files
+from typing import Callable, Iterable, List, Set
 
 SEARCH = ("scripts/lib", "scripts/ci", "scripts", "scripts/design-rules")
 
@@ -31,14 +29,14 @@ def imported_names(source: str) -> Set[str]:
     return names
 
 
-def found(files: Files, root: str, importer: str, name: str) -> List[str]:
+def found(is_file: Callable[[str], bool], importer: str, name: str) -> List[str]:
     """The repository files `name` can be imported from by `importer`: beside it, else in SEARCH."""
     here = os.path.dirname(importer)
     candidates = [f"{here}/{name}.py" if here else f"{name}.py", *(f"{d}/{name}.py" for d in SEARCH)]
-    return [c for c in dict.fromkeys(candidates) if files.is_file(f"{root}/{c}") and not c.endswith("_test.py")]
+    return [c for c in dict.fromkeys(candidates) if is_file(c) and not c.endswith("_test.py")]
 
 
-def closure(files: Files, root: str, tools: Iterable[str]) -> List[str]:
+def closure(read: Callable[[str], str], is_file: Callable[[str], bool], tools: Iterable[str]) -> List[str]:
     """`tools` (paths from the repository root) and every repository module their Python imports reach."""
     order: List[str] = []
     todo = list(tools)
@@ -48,14 +46,6 @@ def closure(files: Files, root: str, tools: Iterable[str]) -> List[str]:
             continue
         order.append(path)
         if path.endswith(".py"):
-            for name in sorted(imported_names(files.read_text(f"{root}/{path}"))):
-                todo.extend(found(files, root, path, name)[:1])
+            for name in sorted(imported_names(read(path))):
+                todo.extend(found(is_file, path, name)[:1])
     return order
-
-
-def copy(files: Files, root: str, dest: str, tools: Iterable[str]) -> List[str]:
-    copied = closure(files, root, tools)
-    for path in copied:
-        text = files.read_text(f"{root}/{path}")
-        files.replace_text(f"{dest}/{path}", text, 0o755 if text.startswith("#!") else 0o644)
-    return copied

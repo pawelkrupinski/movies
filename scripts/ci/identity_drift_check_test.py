@@ -166,15 +166,10 @@ class IdentityDriftCheckTest(cli_harness.ToolCase):
 
     def repo_dir(self) -> str:
         repo = self.path("repo")
-        os.makedirs(os.path.join(repo, "scripts/ci"))
-        os.makedirs(os.path.join(repo, "scripts/lib"))
-        tool_files = [os.path.join(CI, n) for n in COPIED if os.path.exists(os.path.join(CI, n))]
-        tool_files += [p for p in glob.glob(os.path.join(CI, "identity_drift_check*.py")) if not p.endswith("_test.py")]
-        for path in tool_files:
-            shutil.copy2(path, os.path.join(repo, "scripts/ci"))
-        for path in glob.glob(os.path.join(cli_harness.ROOT, "scripts/lib/*.py")):
-            if not path.endswith("_test.py"):
-                shutil.copy2(path, os.path.join(repo, "scripts/lib"))
+        tools = [f"scripts/ci/{n}" for n in COPIED if os.path.exists(os.path.join(CI, n))]
+        tools += [f"scripts/ci/{os.path.basename(p)}" for p in glob.glob(os.path.join(CI, "identity_drift_check*.py"))
+                  if not p.endswith("_test.py")]
+        self.sandbox("repo", *tools)
         self.write("repo/test/resources/fixtures/identity-flips-allow.tsv",
                    "country\tvenue\trawTitle\treason\npl\tKino Nowe\tAllowed Film\tTEMPORARY owner: x; remove when y; z\n")
         self.write("repo/test/resources/fixtures/identity-flip-backlog.tsv",
