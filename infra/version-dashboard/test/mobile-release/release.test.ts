@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +6,7 @@ import type { CommandOptions, CommandResult, Executor } from "../../src/shared/e
 import { notesFrom } from "../../src/mobile-release/notes.js";
 import { release, type ReleaseDeps } from "../../src/mobile-release/release.js";
 import { fetchFailed } from "../mobile/errors.js";
+import { TempRepo } from "../mobile/repo.js";
 import { FakeAsc, FakePlay, fakeVault, fixture, fixtureJson, noSleep, signingFilesIn } from "./fakes.js";
 
 const APP = "6792566321";
@@ -189,8 +189,8 @@ describe("release", () => {
   });
 
   describe("a caller's checkout with uncommitted, untracked and unpushed work", () => {
-    const git = (cwd: string, ...args: string[]): string =>
-      execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", ...args], { cwd, encoding: "utf8" }).trim();
+    // Through TempRepo, which runs under setup.ts's isolated git environment (its identity, unsigned commits).
+    const git = (cwd: string, ...args: string[]): string => new TempRepo(cwd).git(...args);
 
     /** A real origin and a real caller clone, dirtied three ways; the release runs over REAL git, the rest stubbed. */
     function dirtyCaller() {
