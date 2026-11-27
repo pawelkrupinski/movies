@@ -5,6 +5,8 @@ holds -- and gets the one check and the one update:
 
   - a measured row past its baseline row fails; a key without one past its kind's limit fails (a NEW function, file,
     clone, cycle over a limit); the measure's limit may not rise past the baseline's;
+  - a row whose source git renamed (`git diff -M`) keeps its baseline row at the new path, the function or class name
+    unchanged, when its value does not rise: a moved file re-keys its rows, and the move adds nothing;
   - only HELD rows count: a row whose files all lie outside the spec's held paths is reported, never gated;
   - the baseline grows (a row added or raised, a limit raised) only in a commit changing it that carries the kind's
     trailer in its final trailer block (trailers.py, THE ATTRIBUTION RULE); a fall needs none, and `update` records it;
@@ -18,7 +20,7 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Tuple, TypeVar
+from typing import Callable, Dict, List, Optional, Tuple, TypeVar
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
 import trailers  # noqa: E402
@@ -44,6 +46,56 @@ class Spec:
     @property
     def kinds(self) -> Tuple[str, ...]:
         return tuple(kind for kinds in self.trailers.values() for kind in kinds)
+
+
+class Renames:
+    """Where git's rename detection says a source that is no longer in the tree went: the commit that deleted it,
+    diffed against its parent with `-M` (content similarity, git's default 50%), followed hop by hop until a source in
+    the tree. A path still in the tree stays itself; one git saw deleted, not renamed, has no target (None)."""
+
+    def __init__(self) -> None:
+        self.known: Dict[str, Optional[str]] = {}
+
+    def follow(self, path: str) -> Optional[str]:
+        if path not in self.known:
+            self.known[path] = self.trace(path)
+        return self.known[path]
+
+    @staticmethod
+    def git(*args: str) -> str:
+        return subprocess.run(["git", *args], capture_output=True, text=True, check=False).stdout
+
+    @classmethod
+    def trace(cls, path: str) -> Optional[str]:
+        seen = set()
+        while not os.path.exists(path):
+            if path in seen:
+                return None
+            seen.add(path)
+            deleted = cls.git("log", "-1", "--no-renames", "--diff-filter=D", "--format=%H", "--", path).strip()
+            if not deleted:
+                return None
+            fields = cls.git("diff", "-M", "--name-status", "-z", f"{deleted}^", deleted).split("\0")
+            renames = {fields[i + 1]: fields[i + 2] for i in range(len(fields) - 2) if fields[i].startswith("R")}
+            if path not in renames:
+                return None
+            path = renames[path]
+        return path
+
+
+def moved_key(key: str, renames: Renames) -> Optional[str]:
+    """`key` with each of its sources (`<path>:<name>`, `<path>`, `<path>|<path>...`) replaced by where git renamed it,
+    the function or class name kept; None when a source is gone with no rename."""
+    paths, sep, name = key.partition(":")
+    followed = [renames.follow(p) for p in paths.split("|")]
+    return None if None in followed else "|".join(sorted(p for p in followed if p)) + sep + name
+
+
+def moved_from(key: str, value: N, before: Dict[str, N], present: Dict[str, N], renames: Renames) -> Optional[str]:
+    """The row `key` is a MOVE of: a row of `before` no longer `present` whose sources git renamed to `key`'s, the name
+    unchanged, at or above `value` (a moved source re-keys its rows, and the move adds nothing). None for none."""
+    return next((old for old, was in sorted(before.items())
+                 if old not in present and moved_key(old, renames) == key and was >= value), None)
 
 
 def parse_rows(text: str, number: Callable[[str], N]) -> Dict[Tuple[str, str], N]:
@@ -86,23 +138,23 @@ def limit_of(rows: Rows, kind: str) -> float:
     return rows[("limit", kind)]
 
 
-def kind_violations(spec: Spec, current: Rows, baseline: Rows, kind: str) -> List[str]:
+def kind_violations(spec: Spec, current: Rows, baseline: Rows, kind: str, renames: Renames) -> List[str]:
     out: List[str] = []
     limit = limit_of(baseline, kind)
     if limit_of(current, kind) > limit:
         out.append(f"the measure's {kind} limit {show(limit_of(current, kind))} is past the baseline's {show(limit)}")
-    base = of_kind(spec, baseline, kind)
-    for key, value in sorted(of_kind(spec, current, kind).items()):
+    base, now = of_kind(spec, baseline, kind), of_kind(spec, current, kind)
+    for key, value in sorted(now.items()):
         if key in base:
             if value > base[key]:
                 out.append(f"{kind} {key}: {show(value)}, past its baseline {show(base[key])}")
-        elif value > limit:
+        elif value > limit and not moved_from(key, value, base, now, renames):
             out.append(f"{kind} {key}: {show(value)}, past the limit {show(limit)} (no baseline row)")
     return out
 
 
-def violations(spec: Spec, current: Rows, baseline: Rows) -> List[str]:
-    return [v for kind in spec.kinds for v in kind_violations(spec, current, baseline, kind)]
+def violations(spec: Spec, current: Rows, baseline: Rows, renames: Renames) -> List[str]:
+    return [v for kind in spec.kinds for v in kind_violations(spec, current, baseline, kind, renames)]
 
 
 def strict_violations(spec: Spec, current: Rows) -> List[str]:
@@ -112,24 +164,25 @@ def strict_violations(spec: Spec, current: Rows) -> List[str]:
             if kind in spec.kinds and any(spec.held(part) and spec.strict(part) for part in key.split("|"))]
 
 
-def kind_growth(spec: Spec, kind: str, old: Rows, new: Rows) -> List[str]:
+def kind_growth(spec: Spec, kind: str, old: Rows, new: Rows, renames: Renames) -> List[str]:
     out: List[str] = []
     old_limit = old.get(("limit", kind))
     new_limit = limit_of(new, kind)
     if old_limit is not None and new_limit > old_limit:
         out.append(f"limit {kind} raised {show(old_limit)} -> {show(new_limit)}")
     allowed = old_limit if old_limit is not None else new_limit
-    before = of_kind(spec, old, kind)
-    for key, value in sorted(of_kind(spec, new, kind).items()):
-        if value > before.get(key, allowed):
+    before, after = of_kind(spec, old, kind), of_kind(spec, new, kind)
+    for key, value in sorted(after.items()):
+        if value > before.get(key, allowed) and not (key not in before and moved_from(key, value, before, after, renames)):
             was = show(before[key]) if key in before else f"<={show(allowed)}"
             out.append(f"{kind} {key} raised {was} -> {show(value)}")
     return out
 
 
-def growth(spec: Spec, kinds: Tuple[str, ...], old: Rows, new: Rows) -> List[str]:
-    """How the baseline grew in `kinds` from `old` to `new`: a limit raised, a row added past the old limit or raised."""
-    return [g for kind in kinds for g in kind_growth(spec, kind, old, new)]
+def growth(spec: Spec, kinds: Tuple[str, ...], old: Rows, new: Rows, renames: Renames) -> List[str]:
+    """How the baseline grew in `kinds` from `old` to `new`: a limit raised, a row added past the old limit or raised
+    (a row a renamed source carried over, at or below its old value, is no addition)."""
+    return [g for kind in kinds for g in kind_growth(spec, kind, old, new, renames)]
 
 
 def falls(spec: Spec, current: Rows, baseline: Rows) -> List[str]:
@@ -142,7 +195,7 @@ def falls(spec: Spec, current: Rows, baseline: Rows) -> List[str]:
     return out
 
 
-def unjustified_growth(spec: Spec, rng: str, baseline: Rows) -> bool:
+def unjustified_growth(spec: Spec, rng: str, baseline: Rows, renames: Renames) -> bool:
     """Whether `rng` grew the baseline in some trailer's kinds with no commit justifying it; says so."""
     old_text = trailers.text_at(rng.split("..")[0], spec.baseline)
     if not old_text:
@@ -150,8 +203,8 @@ def unjustified_growth(spec: Spec, rng: str, baseline: Rows) -> bool:
     found = False
     for trailer, kinds in spec.trailers.items():
         def rose(a: str, b: str, kinds: Tuple[str, ...] = kinds) -> List[str]:
-            return growth(spec, kinds, parse(a), parse(b))
-        if not growth(spec, kinds, parse(old_text), baseline):
+            return growth(spec, kinds, parse(a), parse(b), renames)
+        if not growth(spec, kinds, parse(old_text), baseline, renames):
             continue
         unjustified = trailers.unjustified_rises(rng, spec.baseline, trailer, rose)
         if unjustified:
@@ -176,8 +229,8 @@ def say_falls(spec: Spec, current: Rows, baseline: Rows) -> None:
 def check(spec: Spec, current: Rows, ranges: List[str]) -> bool:
     with open(spec.baseline) as f:
         baseline = parse(f.read())
-    ok = True
-    found = violations(spec, current, baseline)
+    ok, renames = True, Renames()
+    found = violations(spec, current, baseline, renames)
     if found:
         ok = False
         print(f"{spec.title} GREW past {spec.baseline}:")
@@ -190,7 +243,7 @@ def check(spec: Spec, current: Rows, ranges: List[str]) -> bool:
         print("\n".join(f"  - {v}" for v in strict))
         print(f"  {spec.strict_hint}")
     for rng in ranges:
-        if unjustified_growth(spec, rng, baseline):
+        if unjustified_growth(spec, rng, baseline, renames):
             ok = False
     say_falls(spec, current, baseline)
     if ok:

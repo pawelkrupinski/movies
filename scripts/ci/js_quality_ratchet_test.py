@@ -167,6 +167,41 @@ class JsQualityRatchetTest(unittest.TestCase):
         self.assertNotIn("overLimitRows", self.baseline())
         self.assertNotIn("version-dashboard/test", self.baseline())
 
+    # ── a moved source keeps its rows ──
+
+    def move_a_js(self):
+        """a.js added, then renamed to moved.js by git (content unchanged): the base the rename tests start from."""
+        body = "".join(f"const line{i} = {i};\n" for i in range(40))
+        self.commit({f"{WEB}/a.js": body}, "add a.js")
+        self.scratch("scratch_git", "mv", f"{WEB}/a.js", f"{WEB}/moved.js")
+        self.scratch("scratch_git", "commit", "-qm", "move a.js")
+
+    def test_a_row_follows_its_file_renamed_at_the_same_value(self):
+        self.move_a_js()
+        self.assert_passes(rows(f"cognitive\t{WEB}/moved.js:render\t15", drop=("cognitive",)))
+
+    def test_a_renamed_files_row_rising_still_fails(self):
+        self.move_a_js()
+        self.assert_fails(rows(f"cognitive\t{WEB}/moved.js:render\t16", drop=("cognitive",)),
+                          f"cognitive {WEB}/moved.js:render: 16, past the limit 10 (no baseline row)")
+
+    def test_a_same_named_function_in_a_file_git_never_renamed_is_new(self):
+        self.commit({f"{WEB}/other.js": "const x = 1;\n"}, "an unrelated file")
+        self.assert_fails(rows(f"cognitive\t{WEB}/other.js:render\t15", drop=("cognitive",)),
+                          f"cognitive {WEB}/other.js:render: 15, past the limit 10 (no baseline row)")
+
+    def test_a_baseline_rekeyed_by_a_rename_needs_no_trailer(self):
+        self.move_a_js()
+        moved = rows(f"cognitive\t{WEB}/moved.js:render\t15", drop=("cognitive",))
+        head = self.commit({BASELINE: moved}, "the baseline follows the rename")
+        self.assert_passes(moved, rng=f"{self.base}..{head}")
+
+    def test_a_baseline_row_raised_in_a_rename_needs_its_trailer(self):
+        self.move_a_js()
+        raised = rows(f"cognitive\t{WEB}/moved.js:render\t16", drop=("cognitive",))
+        head = self.commit({BASELINE: raised}, "the baseline rises with the rename")
+        self.assert_fails(raised, "THE JS/TS QUALITY BASELINE GREW", rng=f"{self.base}..{head}")
+
     # ── falls ──
 
     def test_a_fall_passes_is_said_and_update_records_it(self):

@@ -48,7 +48,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # baseline_ratch
 import baseline_ratchet  # noqa: E402
 import trailers  # noqa: E402
 from trailers import text_at as file_at  # noqa: E402
-import tool_git  # noqa: E402
 from coupling_reasons import GENERIC_REASONS, ISO_DATE  # noqa: E402
 
 Rows = Dict[Tuple[str, str], int]
@@ -208,51 +207,9 @@ def limit_of(rows: Rows, kind: str) -> int:
     return limits[kind]
 
 
-class Renames:
-    """Where git's rename detection says a source that is no longer in the tree went: the commit that deleted it,
-    diffed against its parent with `-M` (content similarity, git's default 50%), followed hop by hop until a source in
-    the tree. A path still in the tree stays itself; one git saw deleted, not renamed, has no target (None)."""
-
-    def __init__(self):
-        self.known: Dict[str, object] = {}
-
-    def follow(self, path: str):
-        if path not in self.known:
-            self.known[path] = self.trace(path)
-        return self.known[path]
-
-    @staticmethod
-    def trace(path: str):
-        seen = set()
-        while not os.path.exists(path):
-            if path in seen:
-                return None
-            seen.add(path)
-            deleted = tool_git.Git.here().text("log", "-1", "--no-renames", "--diff-filter=D", "--format=%H", "--", path).strip()
-            if not deleted:
-                return None
-            fields = tool_git.Git.here().text("diff", "-M", "--name-status", "-z", f"{deleted}^", deleted).split("\0")
-            renames = {fields[i + 1]: fields[i + 2] for i in range(len(fields) - 2) if fields[i].startswith("R")}
-            if path not in renames:
-                return None
-            path = renames[path]
-        return path
-
-
-def moved_key(key: str, renames: Renames):
-    """`key` with each of its sources (`<path>:<Owner.method>`, `<path>`, `<path>|<path>...`) replaced by where git
-    renamed it, the method or class name kept; None when a source is gone with no rename."""
-    paths, sep, name = key.partition(":")
-    followed = [renames.follow(p) for p in paths.split("|")]
-    return None if None in followed else "|".join(sorted(followed)) + sep + name
-
-
-def moved_from(key: str, value: int, before: Dict[str, int], present: Dict[str, int], renames: Renames):
-    """The row `key` is a MOVE of: a row of `before` no longer `present` whose sources git renamed to `key`'s, the
-    name unchanged, at or above `value` (a source moved to another package re-keys its rows, and the move adds
-    nothing). None for none."""
-    return next((old for old, was in sorted(before.items())
-                 if old not in present and moved_key(old, renames) == key and was >= value), None)
+# Renames, moved_key and moved_from -- git's rename detection followed to a key's source -- are baseline_ratchet's,
+# which the Python and JS/TS ratchets share.
+Renames, moved_key, moved_from = baseline_ratchet.Renames, baseline_ratchet.moved_key, baseline_ratchet.moved_from
 
 
 def violations(ratchet: Ratchet, current: Rows, baseline: Rows, renames: Renames) -> List[str]:

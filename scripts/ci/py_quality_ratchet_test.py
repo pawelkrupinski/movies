@@ -55,5 +55,48 @@ class PyQualityRatchetCliTest(unittest.TestCase):
         self.assertEqual(2, self.check("--migrated", "no-such.txt").returncode)
 
 
+class PyQualityRatchetRenameTest(unittest.TestCase):
+    """A tool git renamed keeps its baseline rows at its new path when no value rises (the engine is baseline_ratchet's,
+    shared with the JS/TS and Scala ratchets)."""
+
+    def setUp(self) -> None:
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        self.repo = os.path.join(self.dir.name, "repo")
+        self.git("scratch_repo", "-q")
+        os.makedirs(os.path.join(self.repo, "test/resources"))
+        os.makedirs(os.path.join(self.repo, "scripts"))
+        self.write(BASELINE, OVER)
+        self.write("scripts/tool.py", "".join(f"line_{i} = {i}\n" for i in range(40)))
+        self.git("scratch_git", "add", "-A")
+        self.git("scratch_git", "commit", "-qm", "base")
+        self.git("scratch_git", "mv", "scripts/tool.py", "scripts/renamed.py")
+        self.git("scratch_git", "commit", "-qm", "rename")
+        self.write("migrated.txt", "scripts/other.py\n")
+
+    def git(self, helper: str, *args: str) -> None:
+        subprocess.run(["bash", "-c", '. "$1"; "$2" "$3" "${@:4}"', "_", os.path.join(HERE, "..", "scratch-git.sh"), helper,
+                        self.repo, *args], check=True, capture_output=True, text=True)
+
+    def write(self, name: str, text: str) -> None:
+        with open(os.path.join(self.repo, name), "w") as f:
+            f.write(text)
+
+    def check(self, current: str) -> subprocess.CompletedProcess:
+        self.write("over.tsv", current)
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        return subprocess.run([sys.executable, "-I", "-B", TOOL, "check", "--current", "over.tsv", "--migrated", "migrated.txt"],
+                              cwd=self.repo, env=env, capture_output=True, text=True)
+
+    def test_a_row_follows_its_tool_renamed_at_the_same_value(self) -> None:
+        done = self.check(LIMITS + "cognitive\tscripts/renamed.py:work\t12\n")
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+
+    def test_a_renamed_tools_row_rising_fails(self) -> None:
+        done = self.check(LIMITS + "cognitive\tscripts/renamed.py:work\t13\n")
+        self.assertEqual(1, done.returncode, done.stdout + done.stderr)
+        self.assertIn("past the limit 10 (no baseline row)", done.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
