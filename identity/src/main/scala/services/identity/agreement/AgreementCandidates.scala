@@ -34,6 +34,13 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
   private[agreement] def undatedOf(lookups: IdentityLookups): Int => Boolean =
     film => lookups.releaseDay(film).isAwaited && waitsOn(film)
 
+  /** The broadcast join ([[Broadcast.take]]) of the cluster's listings, as the model measures them ([[measured]]), over
+   *  the `records` its evidence reaches — the house productions read for a production's credit ([[productionsOf]],
+   *  gaps noted in `asked`) and a record dated by its year alone read again (`undated`) before the day decides. */
+  private[agreement] def broadcastOf(listings: Seq[Listing], records: Seq[(Int, services.identity.measures.Film)], asked: mutable.Set[Question],
+                                     undated: Int => Boolean): Either[Seq[Int], Option[Broadcast.Taken]] =
+    Broadcast.take(listings, measured, records, () => productionsOf(listings, asked, receipt = None))(undated)
+
   /** The candidates of a relay whose listings link a listings site's catalogue entry as their page, read as the venues
    *  bill them — the entry's facts left out: Flicks links an encore to an old season's page, whose year denies the
    *  broadcast's record before its day is read (UK "MetOpera: Samson et Dalila", 8 December 2026, linked to the
@@ -50,8 +57,7 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
    *  records read — for the broadcast join's credit of a production ([[Broadcast]]); `Unknown`, each gap noted in
    *  `asked`, while one is not answered — and not attempted: one attempted is read as no production ([[settled]]). Read only for a relay whose banner spells another house than a record it fits.
    *  `receipt`, a verdict's where it reads them, notes each. */
-  private[agreement] def productionsOf(listings: Seq[Listing], measured: Listing => services.identity.measures.MeasuredListing,
-                            asked: mutable.Set[Question], receipt: Option[mutable.Map[Dependency, Long]] = None): Answer[Seq[services.identity.measures.Film]] = {
+  private[agreement] def productionsOf(listings: Seq[Listing], asked: mutable.Set[Question], receipt: Option[mutable.Map[Dependency, Long]]): Answer[Seq[services.identity.measures.Film]] = {
     val queries = listings.flatMap(listing => services.identity.measures.IdentityMeasures.searchQueries(measured(listing))).distinct
     var unknown = false
     def noted[A](family: VoterFamily, question: String, answer: Answer[A]): Option[A] = {

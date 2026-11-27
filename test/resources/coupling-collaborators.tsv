@@ -1559,6 +1559,7 @@ services.identity.VenueSlotSource	collaborator
 services.identity.VenueSlots	collaborator
 services.identity.WholeCorpusContext	collaborator
 services.identity.agreement.AgreedFilm	data
+services.identity.agreement.AgreedTake	collaborator
 services.identity.agreement.Agreement	collaborator
 services.identity.agreement.AgreementCandidates	collaborator
 services.identity.agreement.AgreementCorrections	collaborator
@@ -1574,8 +1575,10 @@ services.identity.agreement.AgreementVerdicts	collaborator
 services.identity.agreement.AnswerChanges	collaborator
 services.identity.agreement.AnswerFeed	collaborator
 services.identity.agreement.Broadcast	collaborator
+services.identity.agreement.BroadcastTake	collaborator
 services.identity.agreement.Catalogue	collaborator
 services.identity.agreement.CatalogueSplits	data
+services.identity.agreement.CatalogueTake	collaborator
 services.identity.agreement.ClusterKeys	collaborator
 services.identity.agreement.ClusterVerdicts	collaborator
 services.identity.agreement.Correction	collaborator
@@ -1585,11 +1588,13 @@ services.identity.agreement.FamilyLookups	collaborator
 services.identity.agreement.FamilyPick	data
 services.identity.agreement.FamilyVerdict	data
 services.identity.agreement.FamilyVerdicts	collaborator
+services.identity.agreement.FillTake	collaborator
 services.identity.agreement.InMemoryAgreementKeys	collaborator
 services.identity.agreement.InMemoryAgreementVerdicts	collaborator
 services.identity.agreement.InlineAsker	collaborator
 services.identity.agreement.MongoAgreementKeys	collaborator
 services.identity.agreement.MongoAgreementVerdicts	collaborator
+services.identity.agreement.PosterVoteTake	collaborator
 services.identity.agreement.QuestionHandOver	collaborator
 services.identity.agreement.RecordingAnswers	collaborator
 services.identity.agreement.SameFilm	collaborator
@@ -1608,6 +1613,7 @@ services.identity.agreement.TmdbReadTracking	collaborator
 services.identity.agreement.UnifiedEvidence	collaborator
 services.identity.agreement.UnifiedRules	collaborator
 services.identity.agreement.VenueListings	collaborator
+services.identity.agreement.VenueText	collaborator
 services.identity.agreement.VerdictIndex	collaborator
 services.identity.measures.BannerHouses	collaborator
 services.identity.measures.BilledBeside	collaborator

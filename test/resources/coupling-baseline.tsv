@@ -148,11 +148,12 @@ fanout	services.identity.agreement.AgreementEvidence	16
 fanout	services.identity.agreement.AgreementPipeline	21
 fanout	services.identity.agreement.AgreementSources	11
 fanout	services.identity.agreement.AgreementStage	13
-fanout	services.identity.agreement.AgreementTakes	24
+fanout	services.identity.agreement.AgreementTakes	18
 fanout	services.identity.agreement.Broadcast	12
 fanout	services.identity.agreement.Catalogue	11
 fanout	services.identity.agreement.ClusterVerdicts	15
 fanout	services.identity.agreement.FamilyVerdicts	10
+fanout	services.identity.agreement.FillTake	11
 fanout	services.identity.agreement.SuspectTakes	16
 fanout	services.identity.agreement.UnifiedEvidence	17
 fanout	services.identity.measures.IdentityMeasures	15

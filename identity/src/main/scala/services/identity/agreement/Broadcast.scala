@@ -24,6 +24,9 @@ object Broadcast {
   /** A record the cluster's screenings take, and why. */
   final case class Taken(film: Int, line: String)
 
+  /** Whether one of `listings` states a day it screens on: a cluster stating none names no broadcast ([[take]]). */
+  def onScreeningDays(listings: Seq[Listing]): Boolean = listings.exists(!_.screenings.isEmpty)
+
   /** The one record the cluster's screenings name: broadcast on one of the days the cluster screens on, else — a listing
    *  of the cluster billing the record's house or its season — the one broadcast within [[EncoreDays]] before one. Every record
    *  must bill a stage work each listing bills, and no fact a listing states may stand against it: its year, its
