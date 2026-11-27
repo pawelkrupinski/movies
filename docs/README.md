@@ -26,6 +26,7 @@ Every script, action and workflow, with its purpose, callers, self-test and migr
   area tests, push, the watch of main's CI), every pre-push hook step, the red gate, each refusal and what to do.
 - [tool-e2e.md](tool-e2e.md) — the tools' end-to-end layer (`scripts/e2e/`): the important tools ranked, the harness
   (one temp root, real git and real tools, stub GitHub / ssh / nix / agentctl), each scenario and its mutation proof.
+- [pyright-rules-review.md](pyright-rules-review.md) — which strict pyright rules found real bugs in the Python tools, and a keep / warn / drop verdict for each
 - [agent-workflow-history.md](agent-workflow-history.md) — the dated incidents behind the agent rules in `CLAUDE.md`
   (stranded WIP, PR breaches, pkill, CI waits, push batching, the red gate, no reruns).
 
