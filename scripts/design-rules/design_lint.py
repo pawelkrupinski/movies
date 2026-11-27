@@ -26,14 +26,21 @@ Row = Tuple[str, str, float]
 def rows(modules: Iterable[Module], rules: Rules) -> List[Row]:
     out: List[Row] = []
     for m in modules:
-        allowed = rules.adapter_effects(m.language, m.path)
-        direct = {kind: n for kind, n in m.effects.items() if n and kind not in allowed}
-        touched = [kind for kind in INJECTED_BY_KIND if kind in direct]
-        if touched:  # how many of the three it touches, not how often: one more call is no new dependency
-            out.append(("effect", m.path, len(touched)))
-        out += [("effect", f"{m.path}:{kind}", direct[kind]) for kind in INJECTED_BY_USE if kind in direct]
+        out += effect_rows(m, rules)
         if m.state:
             out.append(("state", m.path, len(m.state)))
         if m.import_io:
             out.append(("import-io", m.path, m.import_io))
+    return out
+
+
+def effect_rows(m: Module, rules: Rules) -> List[Row]:
+    """The injected effects it touches outside its adapter rows."""
+    allowed = rules.adapter_effects(m.language, m.path)
+    direct = {kind: n for kind, n in m.effects.items() if n and kind not in allowed}
+    touched = [kind for kind in INJECTED_BY_KIND if kind in direct]
+    out: List[Row] = []
+    if touched:  # how many of the three it touches, not how often: one more call is no new dependency
+        out.append(("effect", m.path, len(touched)))
+    out += [("effect", f"{m.path}:{kind}", direct[kind]) for kind in INJECTED_BY_USE if kind in direct]
     return out
