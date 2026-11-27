@@ -24,7 +24,7 @@ Each is a row per module (its count) or function, frozen in test/resources/desig
 may only fall."""
 from __future__ import annotations
 
-from typing import FrozenSet, Iterable, List, Tuple
+from typing import Dict, FrozenSet, Iterable, List, Tuple
 
 from model import INJECTED, INJECTED_BY_KIND, INJECTED_BY_USE, Function, Module
 from rules_table import Rules
@@ -42,6 +42,18 @@ def rows(modules: Iterable[Module], rules: Rules) -> List[Row]:
         if m.import_io:
             out.append(("import-io", m.path, m.import_io))
         out += mixed_rows(m, rules)
+    return out
+
+
+def effect_rows(m: Module, rules: Rules) -> List[Row]:
+    """The injected effects it touches outside its adapter rows."""
+    allowed = rules.adapter_effects(m.language, m.path)
+    direct = {kind: n for kind, n in m.effects.items() if n and kind not in allowed}
+    touched = [kind for kind in INJECTED_BY_KIND if kind in direct]
+    out: List[Row] = []
+    if touched:  # how many of the three it touches, not how often: one more call is no new dependency
+        out.append(("effect", m.path, len(touched)))
+    out += [("effect", f"{m.path}:{kind}", direct[kind]) for kind in INJECTED_BY_USE if kind in direct]
     return out
 
 
@@ -63,28 +75,23 @@ def effectful(f: Function, adapters: FrozenSet[str]) -> bool:
     return any(f.effects.get(kind) for kind in INJECTED) or any(into_adapter(c, adapters) for c in f.calls)
 
 
+def adapter_names(rules: Rules, language: str) -> FrozenSet[str]:
+    return frozenset(dotted_module(module) for lang, module in rules.adapters if lang == language)
+
+
+def is_adapter(m: Module, rules: Rules) -> bool:
+    return any(language == m.language and module == m.path for language, module in rules.adapters)
+
+
 def mixed_rows(m: Module, rules: Rules) -> List[Row]:
     """The functions of `m` mixing an effect with decisions (`mixed`, above); none in an adapter module."""
-    if any(language == m.language and module == m.path for language, module in rules.adapters):
+    if is_adapter(m, rules):
         return []
-    adapters = frozenset(dotted_module(module) for language, module in rules.adapters if language == m.language)
+    adapters = adapter_names(rules, m.language)
     limit = rules.limit("mixed-cyclomatic")
-    found = {}
+    found: Dict[str, int] = {}
     for f in m.functions:
-        if f.name in COMPOSITION_ROOTS or f.cyclomatic < limit or not effectful(f, adapters):
-            continue
-        key = f"{m.path}:{f.name}"
-        found[key] = max(found.get(key, 0), f.cyclomatic)
+        if f.name not in COMPOSITION_ROOTS and f.cyclomatic >= limit and effectful(f, adapters):
+            key = f"{m.path}:{f.name}"
+            found[key] = max(found.get(key, 0), f.cyclomatic)
     return [("mixed", key, n) for key, n in sorted(found.items())]
-
-
-def effect_rows(m: Module, rules: Rules) -> List[Row]:
-    """The injected effects it touches outside its adapter rows."""
-    allowed = rules.adapter_effects(m.language, m.path)
-    direct = {kind: n for kind, n in m.effects.items() if n and kind not in allowed}
-    touched = [kind for kind in INJECTED_BY_KIND if kind in direct]
-    out: List[Row] = []
-    if touched:  # how many of the three it touches, not how often: one more call is no new dependency
-        out.append(("effect", m.path, len(touched)))
-    out += [("effect", f"{m.path}:{kind}", direct[kind]) for kind in INJECTED_BY_USE if kind in direct]
-    return out

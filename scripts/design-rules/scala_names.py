@@ -75,20 +75,26 @@ def spans(lines: List[str]) -> List[Tuple[str, str, int, int]]:
     return out
 
 
+def own_text(lines: List[str], start: int, end: int, nested: List[Tuple[int, int]]) -> str:
+    """A def's lines, its nested defs' and types' left to them."""
+    return "\n".join(line for i, line in enumerate(lines[start:end], start) if not any(s <= i < e for s, e in nested))
+
+
+def function_of(name: str, start: int, own: str) -> Function:
+    effects = {k: len(p.findall(own)) for k, p in SCALA_EFFECTS.items() if p.search(own)}
+    return Function(name, start + 1, effects, frozenset(), 1 + len(SCALA_DECISIONS.findall(own)))
+
+
 def functions(text: str) -> Tuple[Function, ...]:
     """Every def, qualified by the types and defs holding it: its own lines' effects and decisions."""
     lines = blank(text).split("\n")
     found = spans(lines)
     out: List[Function] = []
     for index, (kind, name, start, end) in enumerate(found):
-        if kind != "def":
-            continue
-        holders = [n for _k, n, s, e in found[:index] if s < start < e]
-        nested = [(s, e) for k, _n, s, e in found[index + 1:] if start < s < end]
-        own = "\n".join(line for i, line in enumerate(lines[start:end], start) if not any(s <= i < e for s, e in nested))
-        effects = {k: len(p.findall(own)) for k, p in SCALA_EFFECTS.items() if p.search(own)}
-        out.append(Function(".".join([*holders, name]), start + 1, effects, frozenset(),
-                            1 + len(SCALA_DECISIONS.findall(own))))
+        if kind == "def":
+            holders = [n for _k, n, s, e in found[:index] if s < start < e]
+            nested = [(s, e) for _k, _n, s, e in found[index + 1:] if start < s < end]
+            out.append(function_of(".".join([*holders, name]), start, own_text(lines, start, end, nested)))
     return tuple(out)
 
 

@@ -260,18 +260,18 @@ def cyclomatic(nodes: List[ast.AST]) -> int:
     return count + sum(len(n.values) - 1 for n in nodes if isinstance(n, ast.BoolOp))
 
 
+def imported_name(call: ast.Call, names: Dict[str, str]) -> Optional[str]:
+    """The dotted name a call goes through when its head is an imported name (`tool_git.Git.here`), else None."""
+    head = call.func
+    while isinstance(head, ast.Attribute):
+        head = head.value
+    return dotted(call.func, names) if isinstance(head, ast.Name) and head.id in names else None
+
+
 def imported_calls(nodes: List[ast.AST], names: Dict[str, str]) -> FrozenSet[str]:
-    """The dotted names of the calls made through an import (`tool_git.Git.here`): what an adapter module offers."""
-    out: Set[str] = set()
-    for n in nodes:
-        if isinstance(n, ast.Call):
-            head = n.func
-            while isinstance(head, ast.Attribute):
-                head = head.value
-            name = dotted(n.func, names) if isinstance(head, ast.Name) and head.id in names else None
-            if name:
-                out.add(name)
-    return frozenset(out)
+    """The dotted names of the calls made through an import: what an adapter module offers."""
+    found = (imported_name(n, names) for n in nodes if isinstance(n, ast.Call))
+    return frozenset(name for name in found if name)
 
 
 def functions(tree: ast.Module, names: Dict[str, str]) -> Tuple[Function, ...]:
