@@ -16,8 +16,14 @@ families moves the denominator, which the report says.
 import argparse
 import os
 import sys
+from typing import Any, Dict, List, Optional, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "lib"))
+from tool_files import Files  # noqa: E402
+
+Row = Tuple[int, int, int]  # families, bytes, nanoseconds
+
 DEFAULT_BASELINE = os.path.join(HERE, "..", "test", "resources", "identity-boot-cost-baseline.tsv")
 PHASES = ("resolve", "boot", "boot-steady")
 HEADER = """# THE IDENTITY BOOT-COST BASELINE (scripts/identity-boot-cost --update writes it; scripts/identity_boot_cost.py holds a
@@ -31,33 +37,33 @@ HEADER = """# THE IDENTITY BOOT-COST BASELINE (scripts/identity-boot-cost --upda
 """
 
 
-def read_rows(path):
+def read_rows(files: Files, path: str) -> Tuple[Dict[str, Row], List[Tuple[Any, ...]]]:
     """{phase: (families, bytes, nanos)} from the measure's totals, and [(phase, slice, families, bytes, nanos)] its slices."""
-    totals, slices = {}, []
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            if not line.strip():
-                continue
-            phase, slice_name, families, total_bytes, nanos = line.rstrip("\n").split("\t")
-            row = (int(families), int(total_bytes), int(nanos))
-            if slice_name == "*":
-                totals[phase] = row
-            else:
-                slices.append((phase, slice_name) + row)
+    totals: Dict[str, Row] = {}
+    slices: List[Tuple[Any, ...]] = []
+    for line in files.read_text(path).splitlines():
+        if not line.strip():
+            continue
+        phase, slice_name, families, total_bytes, nanos = line.split("\t")
+        row = (int(families), int(total_bytes), int(nanos))
+        if slice_name == "*":
+            totals[phase] = row
+        else:
+            slices.append((phase, slice_name) + row)
     return totals, slices
 
 
-def read_baseline(path):
-    tolerance, phases = None, {}
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            if not line.strip() or line.startswith("#"):
-                continue
-            cells = line.rstrip("\n").split("\t")
-            if cells[0] == "tolerance":
-                tolerance = float(cells[1])
-            elif cells[0] == "phase":
-                phases[cells[1]] = (int(cells[2]), int(cells[3]), int(cells[4]))
+def read_baseline(files: Files, path: str) -> Tuple[Optional[float], Dict[str, Row]]:
+    tolerance: Optional[float] = None
+    phases: Dict[str, Row] = {}
+    for line in files.read_text(path).splitlines():
+        if not line.strip() or line.startswith("#"):
+            continue
+        cells = line.split("\t")
+        if cells[0] == "tolerance":
+            tolerance = float(cells[1])
+        elif cells[0] == "phase":
+            phases[cells[1]] = (int(cells[2]), int(cells[3]), int(cells[4]))
     if tolerance is None:
         raise ValueError(f"{path}: no tolerance row")
     return tolerance, phases
@@ -115,22 +121,25 @@ def baseline_text(totals, tolerance):
     return "\n".join(lines) + "\n"
 
 
-def main(argv):
+def run(argv: List[str], files: Files) -> int:
     parser = argparse.ArgumentParser(prog="identity_boot_cost.py")
     parser.add_argument("command", choices=("check", "update"))
     parser.add_argument("--current", required=True)
     parser.add_argument("--baseline", default=DEFAULT_BASELINE)
     args = parser.parse_args(argv)
-    totals, slices = read_rows(args.current)
-    tolerance, baseline = read_baseline(args.baseline)
+    totals, slices = read_rows(files, args.current)
+    tolerance, baseline = read_baseline(files, args.baseline)
     report, failed = compare(totals, slices, tolerance, baseline)
     print("\n".join(report))
     if args.command == "update":
-        with open(args.baseline, "w", encoding="utf-8") as f:
-            f.write(baseline_text(totals, tolerance))
+        files.replace_text(args.baseline, baseline_text(totals, tolerance))
         print(f"\nidentity-boot-cost: {args.baseline} updated")
         return 0
     return 1 if failed else 0
+
+
+def main(argv: List[str]) -> int:
+    return run(argv, Files.here())
 
 
 if __name__ == "__main__":

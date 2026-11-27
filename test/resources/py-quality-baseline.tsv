@@ -516,7 +516,7 @@ pyright	scripts/ci/upstream_run.py	57
 pyright	scripts/ci/workflow_steps.py	25
 pyright	scripts/ci/xcresult_annotations.py	65
 pyright	scripts/ci/xcresult_junit.py	98
-pyright	scripts/ci_status.py	47
+pyright	scripts/ci_status.py	37
 pyright	scripts/ci_wait.py	258
 pyright	scripts/claude-hooks/gh-run-guard	9
 pyright	scripts/claude-hooks/masked-exit-guard	4
@@ -528,7 +528,7 @@ pyright	scripts/dead_code.py	89
 pyright	scripts/deploy_watch.py	50
 pyright	scripts/discover-cinemas/discover.py	170
 pyright	scripts/identity-stage-works.py	23
-pyright	scripts/identity_boot_cost.py	76
+pyright	scripts/identity_boot_cost.py	62
 pyright	scripts/identity_measure.py	201
 pyright	scripts/identity_precision_sample.py	307
 pyright	scripts/identity_rule_ablation.py	478

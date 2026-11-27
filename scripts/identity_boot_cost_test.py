@@ -5,17 +5,17 @@ rewrites the baseline from the measure keeping its tolerance."""
 
 import os
 import sys
-import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(HERE, "lib"))
 import identity_boot_cost as cost  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 
-def write(path, text):
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(text)
+def write(files, path, text):
+    files.write_text(path, text)
     return path
 
 
@@ -33,10 +33,10 @@ def rows(resolve=10_000_000, boot=20_000_000, steady=1_000_000, boot_families=10
 
 class CheckTest(unittest.TestCase):
     def run_check(self, current):
-        with tempfile.TemporaryDirectory() as d:
-            totals, slices = cost.read_rows(write(os.path.join(d, "rows.tsv"), current))
-            tolerance, baseline = cost.read_baseline(write(os.path.join(d, "base.tsv"), BASELINE))
-            return cost.compare(totals, slices, tolerance, baseline)
+        files = Files.in_memory()
+        totals, slices = cost.read_rows(files, write(files, "rows.tsv", current))
+        tolerance, baseline = cost.read_baseline(files, write(files, "base.tsv", BASELINE))
+        return cost.compare(totals, slices, tolerance, baseline)
 
     def test_the_measure_as_recorded_passes(self):
         report, failed = self.run_check(rows())
@@ -69,14 +69,15 @@ class CheckTest(unittest.TestCase):
 
 class UpdateTest(unittest.TestCase):
     def test_update_rewrites_the_rows_and_keeps_the_tolerance(self):
-        with tempfile.TemporaryDirectory() as d:
-            current = write(os.path.join(d, "rows.tsv"), rows(boot=30_000_000))
-            base = write(os.path.join(d, "base.tsv"), BASELINE)
-            self.assertEqual(cost.main(["update", "--current", current, "--baseline", base]), 0)
-            tolerance, phases = cost.read_baseline(base)
-            self.assertEqual(tolerance, 5.0)
-            self.assertEqual(phases["boot"], (10, 3_000_000, 2_000_000))
-            self.assertEqual(cost.main(["check", "--current", current, "--baseline", base]), 0)
+        files = Files.in_memory()
+        current = write(files, "rows.tsv", rows(boot=30_000_000))
+        base = write(files, "base.tsv", BASELINE)
+        self.assertEqual(cost.run(["update", "--current", current, "--baseline", base], files), 0)
+        tolerance, phases = cost.read_baseline(files, base)
+        self.assertEqual(tolerance, 5.0)
+        self.assertEqual(phases["boot"], (10, 3_000_000, 2_000_000))
+        self.assertEqual(cost.run(["check", "--current", current, "--baseline", base], files), 0)
+        self.assertEqual(["base.tsv", "rows.tsv"], files.list("."))  # the baseline replaced whole, nothing beside it
 
 
 if __name__ == "__main__":

@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import os
 import sys
+from typing import Any, Callable
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import machine  # noqa: E402
 import tool_git  # noqa: E402
 import tool_github  # noqa: E402
+import tool_state  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 GATE_WORKFLOWS = ["main.yml", "identity-model-convergence.yml", "identity-takes.yml"]
 CACHE_SECONDS = 30
@@ -32,26 +34,32 @@ def cache_dir() -> str:
     return machine.environment().get("CI_STATUS_CACHE_DIR") or os.path.expanduser("~/.cache/ci-status")
 
 
-def gh_api(path: str, use_cache: bool):
-    """The JSON gh api answers for `path`, from the cache when it is under CACHE_SECONDS old; None when unreachable."""
-    key = os.path.join(cache_dir(), hashlib.sha1(f"{repository()} {path}".encode()).hexdigest())
-    try:
-        if use_cache and machine.wall() - os.path.getmtime(key) < CACHE_SECONDS:
-            with open(key) as f:
-                return json.load(f)
-    except (OSError, ValueError):
-        pass
-    data = tool_github.GitHub(tool_git.shared_runner(), machine.environment(), gh_binary()).json(
-        ["api", f"repos/{repository()}/{path}"], GH_TIMEOUT, quiet=True, closed_stdin=True)
-    if data is None:
-        return None
-    try:
-        os.makedirs(cache_dir(), exist_ok=True)
-        with open(key, "w") as f:
-            json.dump(data, f)
-    except OSError:
-        pass
-    return data
+class CachedApi:
+    """gh api's answers for one repository, each kept CACHE_SECONDS in <cache>/<sha1 of the repository and path>, read
+    and written through the injected files; `use_cache` off asks gh every time (and still refreshes the cache)."""
+
+    def __init__(self, github: tool_github.GitHub, files: Files, wall: Callable[[], float], repository: str,
+                 cache: str, use_cache: bool) -> None:
+        self.github, self.files, self.wall = github, files, wall
+        self.repository, self.cache, self.use_cache = repository, cache, use_cache
+
+    def get(self, path: str) -> Any:
+        """The JSON gh api answers for `path`, from the cache when it is fresh; None when unreachable."""
+        kept = tool_state.JsonState(self.files, os.path.join(
+            self.cache, hashlib.sha1(f"{self.repository} {path}".encode()).hexdigest()))
+        try:
+            if self.use_cache and self.wall() - self.files.mtime(kept.path) < CACHE_SECONDS:
+                return kept.load()
+        except (OSError, ValueError):
+            pass
+        data = self.github.json(["api", f"repos/{self.repository}/{path}"], GH_TIMEOUT, quiet=True, closed_stdin=True)
+        if data is None:
+            return None
+        try:
+            kept.save(data)
+        except OSError:
+            pass
+        return data
 
 
 def resolve_sha(rev: str) -> str:
@@ -63,8 +71,8 @@ def matches(run: dict, workflow: str) -> bool:
     return workflow in (os.path.basename(path), run.get("name"))
 
 
-def workflow_lines(workflows, branch, sha, use_cache):
-    runs = gh_api(f"actions/runs?branch={branch}&per_page=60", use_cache)
+def workflow_lines(api: CachedApi, workflows, branch, sha):
+    runs = api.get(f"actions/runs?branch={branch}&per_page=60")
     if runs is None:
         return None
     lines = []
@@ -80,12 +88,12 @@ def workflow_lines(workflows, branch, sha, use_cache):
     return lines
 
 
-def job_annotations(job_id, use_cache):
+def job_annotations(api: CachedApi, job_id):
     """A job that did not succeed with no failed step (cancelled before a step ran, or never given a runner) has no log to
     read: its cause is in its check run's annotations. iOS #526 (run 43903912001): ui-tests (macos-latest) sat 15 min
     with no runner and was cancelled, the cause only in "The job was not acquired by Runner of type hosted even after
     multiple attempts" -- and ci-why, reading logs, called it UNCLEAR. Each distinct annotation once, indented."""
-    data = gh_api(f"check-runs/{job_id}/annotations", use_cache)
+    data = api.get(f"check-runs/{job_id}/annotations")
     seen = []
     for annotation in data if isinstance(data, list) else []:
         line = f"  {annotation.get('annotation_level') or '-'}: {(annotation.get('message') or '').strip()}"
@@ -94,8 +102,8 @@ def job_annotations(job_id, use_cache):
     return seen
 
 
-def run_lines(run_id, use_cache):
-    data = gh_api(f"actions/runs/{run_id}/jobs?per_page=100", use_cache)
+def run_lines(api: CachedApi, run_id):
+    data = api.get(f"actions/runs/{run_id}/jobs?per_page=100")
     if data is None:
         return None
     jobs = data.get("jobs", [])
@@ -107,7 +115,7 @@ def run_lines(run_id, use_cache):
         lines.append("\t".join([job["name"], str(job.get("id", "-")), job.get("status") or "-",
                                 job.get("conclusion") or "-", steps or "-"]))
         if not steps and job.get("id") is not None:
-            lines += job_annotations(job["id"], use_cache)
+            lines += job_annotations(api, job["id"])
     lines.append(f"why (reads the failed step's log): ~/bin/agentctl ci-why {run_id}")
     return lines
 
@@ -120,12 +128,13 @@ def main(argv):
     parser.add_argument("--run")
     parser.add_argument("--no-cache", action="store_true")
     args = parser.parse_args(argv)
-    use_cache = not args.no_cache
+    github = tool_github.GitHub(tool_git.shared_runner(), machine.environment(), gh_binary())
+    api = CachedApi(github, Files.here(), machine.wall, repository(), cache_dir(), use_cache=not args.no_cache)
     if args.run:
-        lines = run_lines(args.run, use_cache)
+        lines = run_lines(api, args.run)
     else:
         sha = resolve_sha(args.sha) if args.sha else ""
-        lines = workflow_lines(args.workflow or GATE_WORKFLOWS, args.branch, sha, use_cache)
+        lines = workflow_lines(api, args.workflow or GATE_WORKFLOWS, args.branch, sha)
     if lines is None:
         print("ci-status: gh could not be reached (or answered nothing)", file=sys.stderr)
         return 2

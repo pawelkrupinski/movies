@@ -108,5 +108,70 @@ esac
         self.assertEqual(status, 2)
 
 
+sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(HERE, "lib"))
+import ci_status  # noqa: E402
+import tool_github  # noqa: E402
+import tool_process  # noqa: E402
+from tool_files import Files  # noqa: E402
+
+
+class Gh:
+    """gh answering `stdout` with `code`, counting its calls."""
+
+    def __init__(self, stdout, code=0):
+        self.stdout, self.code, self.asked = stdout, code, []
+
+    def run(self, command):
+        return self.capture(command).code
+
+    def capture(self, command):
+        self.asked.append(list(command.argv))
+        return tool_process.Captured(self.code, self.stdout, "")
+
+
+class CachedApiTest(unittest.TestCase):
+    """The cache over in-memory files and an injected clock: fresh for 30 s, then asked again; --no-cache asks every
+    time; a torn cache file is asked again, never an error; gh failing is None and nothing kept."""
+
+    def api(self, gh, use_cache=True):
+        self.clock = [1000.0]
+        self.files = Files.in_memory(now=lambda: self.clock[0])
+        return ci_status.CachedApi(tool_github.GitHub(gh, {}, "gh"), self.files, lambda: self.clock[0], "o/r",
+                                   "/cache", use_cache)
+
+    def test_an_answer_is_kept_thirty_seconds(self):
+        gh = Gh('{"n": 1}')
+        api = self.api(gh)
+        self.assertEqual({"n": 1}, api.get("actions/runs"))
+        self.clock[0] += 29
+        self.assertEqual({"n": 1}, api.get("actions/runs"))
+        self.assertEqual(1, len(gh.asked))
+        self.clock[0] += 2
+        api.get("actions/runs")
+        self.assertEqual([["gh", "api", "repos/o/r/actions/runs"]] * 2, gh.asked)
+
+    def test_no_cache_asks_every_time(self):
+        gh = Gh("[]")
+        api = self.api(gh, use_cache=False)
+        api.get("x")
+        api.get("x")
+        self.assertEqual(2, len(gh.asked))
+
+    def test_a_torn_cache_file_is_asked_again(self):
+        gh = Gh('{"n": 2}')
+        api = self.api(gh)
+        api.get("x")
+        [kept] = self.files.list("/cache")
+        self.files.write_text("/cache/" + kept, '{"n"')
+        self.assertEqual({"n": 2}, api.get("x"))
+        self.assertEqual(2, len(gh.asked))
+
+    def test_gh_failing_is_none_and_keeps_nothing(self):
+        api = self.api(Gh("", code=1))
+        self.assertIsNone(api.get("x"))
+        self.assertFalse(self.files.exists("/cache"))
+
+
 if __name__ == "__main__":
     unittest.main()

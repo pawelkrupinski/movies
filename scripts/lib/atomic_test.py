@@ -46,6 +46,17 @@ class AtomicTest(unittest.TestCase):
         atomic.write_text(nested, "x", mode=0o644)
         self.assertEqual(0o644, stat.S_IMODE(os.stat(nested).st_mode))
 
+    def test_write_bytes_replaces_the_file_whole_and_a_failed_one_keeps_the_old(self) -> None:
+        atomic.write_bytes(self.path, b"old\xff", mode=0o600)
+        with open(self.path, "rb") as f:
+            self.assertEqual(b"old\xff", f.read())
+        self.assertEqual(0o600, stat.S_IMODE(os.stat(self.path).st_mode))
+        with self.assertRaises(TypeError):
+            atomic.write_bytes(self.path, "not bytes")  # type: ignore[arg-type]
+        with open(self.path, "rb") as f:
+            self.assertEqual(b"old\xff", f.read())
+        self.assertEqual(["state.json"], os.listdir(self.directory))
+
     def test_write_json_passes_its_options_on(self) -> None:
         atomic.write_json(self.path, {"b": 1, "a": 2}, sort_keys=True)
         with open(self.path) as f:
