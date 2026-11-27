@@ -5,7 +5,7 @@
 #   cognitive / cyclomatic / inner-defs   <file>:<function>[#n]                 Complexity:
 #   method-lines <file>:<function>[#n], file-lines <file>                       Length:
 #   copies <file>|<file>... (clone groups spanning exactly them), clone-tokens  Duplication:
-#   fanout <file>, cycle <member>|<member>...                                   Coupling:
+#   cycle <member>|<member>...                                                  Coupling:
 #   pyright <file> (strict errors)                                              Typing:
 # A row may only fall (--update records it, no trailer); a row added or raised, or a limit raised, lands only in a
 # commit carrying its kind's trailer (CLAUDE.md, "Code quality ratchets"). Self-tests are reported, not held.
@@ -16,7 +16,6 @@ limit	method-lines	50
 limit	file-lines	500
 limit	copies	0
 limit	clone-tokens	50
-limit	fanout	9
 limit	cycle	0
 limit	pyright	0
 cognitive	infra/bin/backtest-alerts-local:prepare	16

@@ -47,7 +47,7 @@ ROOTS = ("scripts", ".github/scripts", "infra/bin", "infra/nix/bin", "infra/nix/
 TABLE = rules_table.load(rules_table.checkout_root())
 LIMITS: Tuple[Tuple[str, float], ...] = (
     *((kind, TABLE.limit(kind)) for kind in ("cognitive", "cyclomatic", "inner-defs", "method-lines", "file-lines")),
-    ("copies", 0), ("clone-tokens", clones.MIN_TOKENS), ("fanout", TABLE.limit("fanout")), ("cycle", 0), ("pyright", 0))
+    ("copies", 0), ("clone-tokens", clones.MIN_TOKENS), ("cycle", 0), ("pyright", 0))
 Row = Tuple[str, str, float]
 
 

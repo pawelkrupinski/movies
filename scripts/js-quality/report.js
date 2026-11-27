@@ -167,7 +167,7 @@ function markdown(areas, summaries, functions, files, clones, couplings) {
 // The ratchet's limits (scripts/ci/js_quality_ratchet.py reads them from the rows, as the Scala ratchets do).
 const LimitRows = [['cognitive', Limits.cognitive], ['cyclomatic', Limits.cyclomatic], ['inner-defs', Limits.innerDefs],
   ['method-lines', Limits.lines], ['file-lines', Limits.fileLines], ['copies', 0], ['clone-tokens', MinTokens],
-  ['fanout', Limits.fanOut], ['distance', Limits.distance], ['cycle', 0]];
+  ['cycle', 0]];
 
 // A function's ratchet key: `<file>:<name>`, no line (an edit above it must not re-key it), `#2`, `#3`... for the later
 // functions of one file sharing a name (two `anonymous` callbacks), in line order.

@@ -5,7 +5,7 @@
 #   cognitive / cyclomatic / inner-defs   <file>:<function>[#n]                 Complexity:
 #   method-lines <file>:<function>[#n], file-lines <file>                       Length:
 #   copies <file>|<file>... (clone groups spanning exactly them), clone-tokens  Duplication:
-#   fanout <file>, distance <directory>, cycle <member>|<member>...             Coupling:
+#   cycle <member>|<member>...                                                  Coupling:
 # A row may only fall (--update records it, no trailer); a row added or raised, or a limit raised, lands only in a
 # commit carrying its kind's trailer (CLAUDE.md, "Code quality ratchets"). Tests and scripts are reported, not held.
 limit	cognitive	10
@@ -15,6 +15,4 @@ limit	method-lines	50
 limit	file-lines	500
 limit	copies	0
 limit	clone-tokens	50
-limit	fanout	9
-limit	distance	0.2
 limit	cycle	0

@@ -31,15 +31,11 @@ limit\tmethod-lines\t50
 limit\tfile-lines\t500
 limit\tcopies\t0
 limit\tclone-tokens\t50
-limit\tfanout\t9
-limit\tdistance\t0.2
 limit\tcycle\t0
 cognitive\t{WEB}/a.js:render\t15
 method-lines\t{DASH}/server.ts:main\t81
 file-lines\t{WEB}/a.js\t578
 copies\t{WEB}/a.js\t2
-fanout\t{WEB}/boot.js\t10
-distance\t{DASH}\t0.85
 cycle\t{WEB}/a.js|{WEB}/b.js\t2
 """
 TEST_ROWS = ("method-lines\tpage-tests-playwright/tests/x.spec.ts:test.describe('x') callback\t300\n"
@@ -137,18 +133,17 @@ class JsQualityRatchetTest(unittest.TestCase):
     def test_a_clone_set_gaining_a_copy_fails(self):
         self.assert_fails(rows(f"copies\t{WEB}/a.js\t3", drop=("copies",)), f"copies {WEB}/a.js: 3, past its baseline 2")
 
-    def test_a_directory_distance_rising_fails_and_falling_passes(self):
-        self.assert_fails(rows(f"distance\t{DASH}\t0.9", drop=("distance",)), f"distance {DASH}: 0.9, past its baseline 0.85")
-        self.assert_passes(rows(f"distance\t{DASH}\t0.5", drop=("distance",)))
+    def test_fan_out_and_distance_are_the_design_rules_not_this_ratchets(self):
+        self.assert_passes(rows(f"fanout\t{WEB}/boot.js\t99", f"distance\t{DASH}\t0.9", "limit\tfanout\t9"))
 
     def test_a_measure_whose_limit_rose_fails(self):
         self.assert_fails(rows("limit\tclone-tokens\t60", drop=("limit\tclone-tokens",)),
                           "the measure's clone-tokens limit 60 is past the baseline's 50")
 
     def test_a_missing_limit_is_an_error(self):
-        rc, out = self.check(rows(drop=("limit\tfanout",)))
+        rc, out = self.check(rows(drop=("limit\tclone-tokens",)))
         self.assertEqual(2, rc, out)
-        self.assertIn("no `limit<TAB>fanout<TAB>N` row", out)
+        self.assertIn("no `limit<TAB>clone-tokens<TAB>N` row", out)
 
     def test_a_malformed_row_is_an_error(self):
         rc, out = self.check(rows("cognitive\tno value"))
@@ -158,7 +153,7 @@ class JsQualityRatchetTest(unittest.TestCase):
 
     def test_rows_of_tests_and_scripts_are_not_gated(self):
         out = self.assert_passes(rows(TEST_ROWS.rstrip("\n")))
-        self.assertIn("7 production rows", out)
+        self.assertIn("5 production rows", out)
 
     def test_update_leaves_tests_and_scripts_out_of_the_baseline(self):
         rc, out = self.run_tool("update", rows(TEST_ROWS.rstrip("\n")))
@@ -205,24 +200,22 @@ class JsQualityRatchetTest(unittest.TestCase):
     # ── falls ──
 
     def test_a_fall_passes_is_said_and_update_records_it(self):
-        fell = rows(f"cognitive\t{WEB}/a.js:render\t12", drop=("cognitive", "fanout"))
+        fell = rows(f"cognitive\t{WEB}/a.js:render\t12", drop=("cognitive",))
         out = self.assert_passes(fell)
-        self.assertIn("js quality fell (2 rows", out)
+        self.assertIn("js quality fell (1 rows", out)
         self.assertIn(f"cognitive {WEB}/a.js:render 15 -> 12", out)
-        self.assertIn(f"fanout {WEB}/boot.js 10 -> within the limit", out)
         rc, out = self.run_tool("update", fell)
         self.assertEqual(0, rc, out)
         written = self.baseline()
         self.assertTrue(written.startswith("# THE JS/TS QUALITY BASELINE"))
         self.assertIn(f"cognitive\t{WEB}/a.js:render\t12\n", written)
-        self.assertNotIn("boot.js", written)
-        self.assertIn(f"distance\t{DASH}\t0.85\n", written)
-        self.assertIn("limit\tdistance\t0.2\n", written)
+        self.assertNotIn("fanout", written)
+        self.assertNotIn("distance", written)
         self.assertEqual(0, self.check(fell)[0])
 
     def test_a_shrunk_baseline_needs_no_trailer(self):
-        fell = rows(drop=("fanout",))
-        head = self.commit({BASELINE: fell}, "boot.js loses a dependency")
+        fell = rows(drop=("cognitive",))
+        head = self.commit({BASELINE: fell}, "render gets simpler")
         self.assert_passes(fell, rng=f"{self.base}..{head}")
 
     # ── a grown baseline and its trailer ──

@@ -13,7 +13,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TOOL = os.path.join(HERE, "py_quality_ratchet.py")
 BASELINE = "test/resources/py-quality-baseline.tsv"
 LIMITS = "".join(f"limit\t{kind}\t10\n" for kind in ("cognitive", "cyclomatic", "inner-defs", "method-lines", "file-lines",
-                                                  "copies", "clone-tokens", "fanout", "cycle", "pyright"))
+                                                  "copies", "clone-tokens", "cycle", "pyright"))
 OVER = LIMITS + "cognitive\tscripts/tool.py:work\t12\n"
 
 

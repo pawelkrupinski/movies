@@ -7,7 +7,7 @@ scripts/, .github/scripts/, infra/bin/, infra/nix/bin/, infra/nix/files/, androi
   Complexity:   cognitive, cyclomatic, inner-defs     <file>:<function>[#n] (no line: an edit above never re-keys it)
   Length:       method-lines <file>:<function>[#n], file-lines <file>
   Duplication:  copies <file>|<file>... (the copies of every clone group spanning exactly those files), clone-tokens
-  Coupling:     fanout <file>, cycle <member>|<member>...
+  Coupling:     cycle <member>|<member>... (fan-out and distance are the design rules': scripts/design-rules/)
   Typing:       pyright <file> (its strict pyright errors; a new file has none)
 
 Self-tests (`*_test.py`) are reported, never held. THE MIGRATED TOOLS (scripts/py-quality/migrated.py: every tool of
@@ -37,7 +37,7 @@ TRAILERS: Dict[str, Tuple[str, ...]] = {
     "Complexity": ("cognitive", "cyclomatic", "inner-defs"),
     "Length": ("method-lines", "file-lines"),
     "Duplication": ("copies", "clone-tokens"),
-    "Coupling": ("fanout", "cycle"),
+    "Coupling": ("cycle",),
     "Typing": ("pyright",),
 }
 HEADER = """# THE PYTHON QUALITY BASELINE (scripts/py-quality-report --update writes it; scripts/ci/py_quality_ratchet.py holds
@@ -47,7 +47,7 @@ HEADER = """# THE PYTHON QUALITY BASELINE (scripts/py-quality-report --update wr
 #   cognitive / cyclomatic / inner-defs   <file>:<function>[#n]                 Complexity:
 #   method-lines <file>:<function>[#n], file-lines <file>                       Length:
 #   copies <file>|<file>... (clone groups spanning exactly them), clone-tokens  Duplication:
-#   fanout <file>, cycle <member>|<member>...                                   Coupling:
+#   cycle <member>|<member>...                                                  Coupling:
 #   pyright <file> (strict errors)                                              Typing:
 # A row may only fall (--update records it, no trailer); a row added or raised, or a limit raised, lands only in a
 # commit carrying its kind's trailer (CLAUDE.md, "Code quality ratchets"). Self-tests are reported, not held."""

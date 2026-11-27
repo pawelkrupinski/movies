@@ -8,15 +8,15 @@
 #   Complexity:   cognitive, cyclomatic, inner-defs     <file>:<function>[#n] (no line: an edit above never re-keys it)
 #   Length:       method-lines <file>:<function>[#n], file-lines <file>
 #   Duplication:  copies <file>|<file>... (the copies of every clone group spanning exactly those files), clone-tokens
-#   Coupling:     fanout <file>, distance <directory>, cycle <member>|<member>...
+#   Coupling:     cycle <member>|<member>... (fan-out and distance are the design rules': scripts/design-rules/)
 #
 # A row is `kind<TAB>key<TAB>value`, `limit<TAB>kind<TAB>value` a kind's limit; `#` lines are comments. A key with a
 # baseline row may not rise past it; a key without one past its kind's limit fails (a NEW function, file, clone, cycle
 # over a limit); the measure's limit may not rise past the baseline's. Only PRODUCTION rows are held: a row whose files
 # all lie outside ratchet-areas.tsv's paths (a test, a page test, Playwright, a script) is reported, never gated. The
 # baseline grows (a row added or raised, a limit raised) only in a commit changing it that carries the kind's trailer in
-# its final trailer block (trailers.py, THE ATTRIBUTION RULE); a fall needs none, and `update` records it. No rename
-# credit: a moved file's rows are new rows (record them with --update and the trailer).
+# its final trailer block (trailers.py, THE ATTRIBUTION RULE); a fall needs none, and `update` records it. A file git renamed
+# keeps its rows at its new path when no value rises (baseline_ratchet.py).
 #
 #   js_quality_ratchet.py check --current <over-limit.tsv> [--range A..B ...]   exit 1 on a violation, 2 on an error
 #   js_quality_ratchet.py update --current <over-limit.tsv>                     rewrite the baseline from the measure
@@ -36,7 +36,7 @@ TRAILERS: Dict[str, Tuple[str, ...]] = {
     "Complexity": ("cognitive", "cyclomatic", "inner-defs"),
     "Length": ("method-lines", "file-lines"),
     "Duplication": ("copies", "clone-tokens"),
-    "Coupling": ("fanout", "distance", "cycle"),
+    "Coupling": ("cycle",),
 }
 HEADER = """# THE JS/TS QUALITY BASELINE (scripts/js-quality-report --update writes it; scripts/ci/js_quality_ratchet.py holds
 # every push touching production JS/TS to it). Every production function, file, clone set, module and directory
@@ -45,7 +45,7 @@ HEADER = """# THE JS/TS QUALITY BASELINE (scripts/js-quality-report --update wri
 #   cognitive / cyclomatic / inner-defs   <file>:<function>[#n]                 Complexity:
 #   method-lines <file>:<function>[#n], file-lines <file>                       Length:
 #   copies <file>|<file>... (clone groups spanning exactly them), clone-tokens  Duplication:
-#   fanout <file>, distance <directory>, cycle <member>|<member>...             Coupling:
+#   cycle <member>|<member>...                                                  Coupling:
 # A row may only fall (--update records it, no trailer); a row added or raised, or a limit raised, lands only in a
 # commit carrying its kind's trailer (CLAUDE.md, "Code quality ratchets"). Tests and scripts are reported, not held."""
 HINT = ("Split the function or file, extract the clone, cut the dependency -- or record it: scripts/js-quality-report"
