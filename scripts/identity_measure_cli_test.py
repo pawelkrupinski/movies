@@ -174,14 +174,14 @@ class IdentityMeasureTest(MeasureCase):
             tool = subprocess.Popen([self.TOOL, "--no-what-if", "the measure spec", *PL], env=env, cwd=self.checkout,
                                     stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT,
                                     start_new_session=True)
-        self.addCleanup(lambda: tool.poll() is not None or os.killpg(tool.pid, signal.SIGKILL))
+        self.addCleanup(lambda: cli_harness.kill_group(tool))
         self.assertTrue(cli_harness.wait_until(lambda: os.path.exists(self.path("stub", "watched"))), self.read("out"))
         tool.send_signal(signal.SIGTERM)
         # bounded: a tool that defers the signal must fail this, not hang it
         try:
             status = tool.wait(20)
         except subprocess.TimeoutExpired:
-            os.killpg(tool.pid, signal.SIGKILL)
+            cli_harness.kill_group(tool)
             status = tool.wait()
         self.assertEqual(130, status, self.read("out"))
         self.assertEqual(("cancelled", []), (self.stub("cancelled"), self.measure_branches()))

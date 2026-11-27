@@ -115,6 +115,14 @@ class RelayTest(unittest.TestCase):
             with self.assertRaises(ProcessLookupError):
                 os.kill(pid, 0)
 
+    def test_a_group_of_only_zombies_answering_eperm_counts_as_gone(self):
+        # macOS answers EPERM, not ESRCH, to a kill of a group whose members are all zombies: a flake under load
+        from unittest import mock
+        p = mock.Mock(pid=4242)
+        with mock.patch.object(ablation.os, "killpg", side_effect=PermissionError(1, "Operation not permitted")):
+            ablation.end_group(p)
+            self.assertTrue(ablation.group_gone(p, 1))
+
     def test_a_run_cut_at_its_deadline_keeps_its_round_and_ends_well(self):
         import contextlib
         import io

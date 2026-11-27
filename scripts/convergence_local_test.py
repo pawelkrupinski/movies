@@ -181,7 +181,7 @@ class ConvergenceLocalTest(cli_harness.ToolCase):
             out, err = proc.communicate(timeout=30)
         finally:
             if proc.poll() is None:
-                os.killpg(proc.pid, signal.SIGKILL)
+                cli_harness.kill_group(proc)
         return cli_harness.Done(proc.returncode, out, err)
 
     def test_a_leg_ended_by_a_signal_still_removes_its_container_and_ends_sbt(self) -> None:

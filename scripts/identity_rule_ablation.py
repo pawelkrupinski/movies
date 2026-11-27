@@ -34,6 +34,7 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "ci"))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import machine  # noqa: E402
+from tool_process import group_alive  # noqa: E402
 import atomic  # noqa: E402
 import identity_measure as measure  # noqa: E402
 from identity_judgements import read as read_judgements  # noqa: E402
@@ -238,10 +239,21 @@ def relay(argv, cwd, log, now=lambda: datetime.now(timezone.utc).strftime("%H:%M
 def end_group(p, grace=30):
     """TERM the process group `p` leads, KILL it after `grace` seconds; return once every member is gone, not only `p`:
     the leader dying first left a member still running (Main #2583: the test's `sleep` alive after relay raised)."""
-    os.killpg(p.pid, signal.SIGTERM)
-    if not group_gone(p, grace):
-        os.killpg(p.pid, signal.SIGKILL)
+    if not send_to_group(p, signal.SIGTERM):
+        return
+    if not group_gone(p, grace) and send_to_group(p, signal.SIGKILL):
         group_gone(p, 5)
+
+
+def send_to_group(p, sig):
+    """Send `sig` to the group `p` leads (it made it: process_group=0); False when none is left to receive it. macOS
+    answers EPERM, not ESRCH, for a group of only zombies (the leader exiting just before the kill, under load), so any
+    OSError means the group is gone, as in tool_process.group_alive."""
+    try:
+        os.killpg(p.pid, sig)
+    except OSError:
+        return False
+    return True
 
 
 def group_gone(p, seconds):
@@ -249,9 +261,7 @@ def group_gone(p, seconds):
     until = machine.monotonic() + seconds
     while True:
         p.poll()
-        try:
-            os.killpg(p.pid, 0)
-        except ProcessLookupError:
+        if not group_alive(p.pid):
             return True
         if machine.monotonic() > until:
             return False

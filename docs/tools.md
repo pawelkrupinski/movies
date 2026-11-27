@@ -768,7 +768,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | skill CLAUDE.md; 23 tools | tool_github_test.py | Python |
 | `scripts/lib/tool_http.py` | HTTP, INJECTED (scripts/lib; CLAUDE.md, "Design rules": the network is an injected effect since 2026-11-27): a tool | `imported` | skill CLAUDE.md; 1 tool | tool_http_test.py | Python |
 | `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 105 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 106 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | wf main; 19 tools | tool_python_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 21 tools | - | Python |
 | `scripts/lib/tool_state.py` | STATE AND KEY-VALUE STORAGE, INJECTED (scripts/lib; CLAUDE.md, "Design rules": storage is an injected effect since | `imported` | skill CLAUDE.md; 2 tools | tool_state_test.py | Python |

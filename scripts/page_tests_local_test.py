@@ -222,7 +222,7 @@ class PageTestsLocalTest(cli_harness.ToolCase):
             output, _ = run.communicate(timeout=cli_harness.HANG_BOUND)
         finally:
             if run.poll() is None:
-                os.killpg(run.pid, 9)
+                cli_harness.kill_group(run)
                 run.wait()
         self.assertEqual(0, run.returncode, output)
         self.assertEqual(["http://127.0.0.1:4321 5 ticket"] * 3 + ["http://127.0.0.1:4321 1 ticket"], self.npx_runs(),

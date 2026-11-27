@@ -99,7 +99,7 @@ class SlotTest(SliceCase):
         # run's fake keeper can share (92 in 100 runs saw each other's with a fixed number, 2026-11-16)
         script = self.write("fake-keeper.sh", "( sleep 30; : ) &\nwait\n")
         fake = subprocess.Popen(["bash", script, "--keep-served", str(os.getpid())], start_new_session=True)
-        self.addCleanup(lambda: (os.killpg(fake.pid, signal.SIGKILL), fake.wait()))
+        self.addCleanup(lambda: (cli_harness.kill_group(fake), fake.wait()))
         self.assertTrue(cli_harness.wait_until(lambda: bool(children(fake.pid, "bash"))))
         self.assertEqual([fake.pid], keeper_of(os.getpid()))
 

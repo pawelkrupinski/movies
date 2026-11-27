@@ -155,7 +155,7 @@ def run_bounded(argv: Sequence[str], *, env: Mapping[str, str], cwd: str, stdin:
         out, err = proc.communicate(stdin, timeout=bound)
         return Done(proc.returncode, out, err)
     except subprocess.TimeoutExpired:
-        os.killpg(proc.pid, signal.SIGKILL)
+        kill_group(proc)
         out, err = proc.communicate()
         return Done(124, out, err + f"\n(cli_harness: ended past its {bound:g} s bound)\n")
 
@@ -185,6 +185,15 @@ def alive(pid: int) -> bool:
     except OSError:
         return False
     return True
+
+
+def kill_group(proc: "subprocess.Popen[bytes]") -> None:
+    """KILL the process group `proc` leads (started with start_new_session): one already gone is done -- ESRCH, or
+    macOS's EPERM for a group of only zombies, which a leader exiting just before the kill leaves under load."""
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except OSError:
+        pass
 
 
 def wait_until(condition: Callable[[], bool], bound: float = WAIT_BOUND) -> bool:
