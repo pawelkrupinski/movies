@@ -387,8 +387,8 @@ pages recorded 11-27):
   skin falls back to the heading text when there is no `title` attribute. Both sort orders carry the same 60 November
   events. The client now also reads the portal's event-labels feed, so its plays ("SPEKTAKL - …", filed `Teatr`) and
   concerts drop out.
-- **Sanok:** its day reader stays for the recorded corpora. It hands over to an injected `MsiClient` when the day page
-  lists nothing.
+- **Sanok:** its day reader stays for the recorded corpora. An `MsiClient` follows it when the day page
+  lists nothing (a `FirstAnsweringScraper` of the two at the catalog).
 - **Snapshots:** Kijów's 5 corpus titles take MSI's unconditional sentence case ("Tom i jerry: przygoda w muzeum"), the
   same as every MSI venue. Its MSI posters now feed the poster fallbacks (the 3 page snapshots).
 - **Who else shares the path:** every other bespoke client that reads an MSI path (Kinematograf, Iskra, Kino Kultura,

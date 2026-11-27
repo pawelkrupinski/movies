@@ -15,8 +15,11 @@ object PodkarpackieVenues {
       own(kit => new KinoCentrum3DPrzemyslClient(kit.http, KinoCentrum3DPrzemysl)),
       msi(KinoIkar, "https://kinoikar.mok-jar.pl"),
       msi(KinoNaBiegunach, "https://jaroslaw.kinonabiegunach.pl"),
-      own(kit => new KinoSDKSanokClient(kit.http, KinoSDK, kit.today,
-        standardPages = new MsiClient(kit.http, KinoSDKSanokClient.BaseUrl, KinoSDK, kit.today))),
+      // The portal moved to MSI's standard month pages on 2026-11-25, and its old day page now lists nothing; the
+      // day reader stays first for the recorded corpora, which hold the old pages.
+      own(kit => new services.cinemas.common.FirstAnsweringScraper(Seq(
+        new KinoSDKSanokClient(kit.http, KinoSDK, kit.today),
+        new MsiClient(kit.http, KinoSDKSanokClient.BaseUrl, KinoSDK, kit.today)))),
     )
 
     override val nearbyTowns: Seq[PolishVenue] = Seq(

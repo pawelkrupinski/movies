@@ -18,15 +18,8 @@ import java.time.{LocalDate, LocalDateTime}
  *  prove its programme is real and reachable on its own ticketing portal. */
 class KinoSDKSanokClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  // These old day pages list events, so the standard month pages are never asked for.
-  private object NoStandardPages extends services.cinemas.common.CinemaScraper {
-    val cinema: models.Cinema = KinoSDK
-    def scrapeHosts: Set[String] = Set.empty
-    def fetch(): Seq[models.CinemaMovie] = fail("the day pages listed events: no month page is needed")
-  }
-
   private val movies =
-    new KinoSDKSanokClient(new FakeHttpFetch("kino-sdk-sanok"), KinoSDK, today = LocalDate.of(2026, 6, 16), standardPages = NoStandardPages).fetch()
+    new KinoSDKSanokClient(new FakeHttpFetch("kino-sdk-sanok"), KinoSDK, today = LocalDate.of(2026, 6, 16)).fetch()
 
   "KinoSDKSanokClient" should "return a non-empty, single-cinema event list with showtimes" in {
     movies should not be empty
@@ -46,7 +39,7 @@ class KinoSDKSanokClientSpec extends AnyFlatSpec with Matchers with OptionValues
     val replay  = new FakeHttpFetch("kino-sdk-sanok")
     val brokenDay = KinoSDKSanokClient.listingUrl(LocalDate.of(2026, 6, 21))
     val oneDown = new PatchedHttpFetch(replay)({ case url if url == brokenDay => throw new java.io.IOException("reset") })
-    val partial = new KinoSDKSanokClient(oneDown, KinoSDK, today = LocalDate.of(2026, 6, 16), standardPages = NoStandardPages).fetch()
+    val partial = new KinoSDKSanokClient(oneDown, KinoSDK, today = LocalDate.of(2026, 6, 16)).fetch()
     val days    = partial.flatMap(_.showtimes).map(_.dateTime.toLocalDate).toSet
     days should not contain LocalDate.of(2026, 6, 21)
     days shouldBe movies.flatMap(_.showtimes).map(_.dateTime.toLocalDate).toSet - LocalDate.of(2026, 6, 21)
