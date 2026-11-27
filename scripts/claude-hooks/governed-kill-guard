@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+"""Refuse a Bash command that kills a governed `run-script-tests` / `sbt-warm` run while it may be queued, not hung.
+
+A governed run WAITS for its governor ticket while the laptop is starved; two lanes took the silence for a hang and
+killed their own queued runs (2026-11-27). PreToolUse on Bash (.claude/settings.json): DENIES (exit 2, the reason on
+stderr) a `kill <pid>`, `pkill` or `killall` that would end a governed run the governor (`agentctl gov status`) still
+lists, unless the run is already past its own bound (its `--timeout S`, else 3000 s). The judgement is
+scripts/lib/governed_kill.py's; run-script-tests says its queue position while it waits.
+
+It reads the command, not the shell; a broken guard never blocks (exit 0), and neither does a machine with no governor.
+Self-test: scripts/lib/governed_kill_test.py."""
+import os
+import subprocess
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+import governed_kill  # noqa: E402
+import hook_event  # noqa: E402
+import shell_words  # noqa: E402
+
+
+def ps(args):
+    done = subprocess.run(["ps", *args], capture_output=True, text=True, timeout=10)
+    return done.stdout if done.returncode == 0 else None
+
+
+def governor_status():
+    agentctl = os.environ.get("KINOWO_GOVERNOR_BIN") or os.path.expanduser("~/bin/agentctl")
+    if not os.access(agentctl, os.X_OK):
+        return ""
+    done = subprocess.run([agentctl, "gov", "status"], capture_output=True, text=True, timeout=10)
+    return done.stdout if done.returncode == 0 else ""
+
+
+def commands(words):
+    """The simple commands of a tokenized command line, as lists of words."""
+    out, current = [], []
+    for word in words:
+        if shell_words.is_punctuation(word):
+            out.append(current)
+            current = []
+        else:
+            current.append(word)
+    return out + [current]
+
+
+def main():
+    try:
+        command = hook_event.read_event().get("tool_input", {}).get("command", "")
+        if not isinstance(command, str) or not any(k in command for k in governed_kill.KILLERS):
+            return 0
+        reason = governed_kill.refusal(commands(shell_words.command_words(command)), ps, governor_status())
+    except Exception:  # a broken guard must not wedge every session
+        return 0
+    if reason:
+        print(reason, file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
