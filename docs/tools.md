@@ -745,7 +745,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/pre_push_modes.py` | THE PRE-PUSH HOOK'S PLAN MODES (scripts/hooks/pre-push; pre_push_test.py holds every one): each reads changed paths | `imported` | 2 tools | - | Python |
 | `scripts/lib/pre_push_paths.py` | THE PRE-PUSH HOOK'S PATH CLASSES (scripts/hooks/pre-push; its header says what each check guards): which changed path | `imported` | 3 tools | - | Python |
 | `scripts/lib/pre_push_plan.py` | WHICH CHECKS A SET OF CHANGED PATHS SELECTS (scripts/hooks/pre-push --plan; the hook's header says what each check | `imported` | 1 tool | - | Python |
-| `scripts/lib/pre_push_push.py` | WHAT A PUSH PUSHES, and the checks its commits add or drop (scripts/hooks/pre-push's header: the ranges git's stdin | `imported` | 1 tool | - | Python |
+| `scripts/lib/pre_push_push.py` | WHAT A PUSH PUSHES, and the checks its commits add or drop (scripts/hooks/pre-push's header: the ranges git's stdin | `imported` | hook pre-push; 1 tool | - | Python |
 | `scripts/lib/pre_push_repo.py` | THE PRE-PUSH HOOK'S RUN, its two ends (scripts/lib/pre_push_run.py composes them): `Repo`, the checkout the run | `imported` | 5 tools | - | Python |
 | `scripts/lib/pre_push_reuse.py` | THE REUSE and A REMOTE PASS (scripts/hooks/pre-push's header): a passed run's key answers a re-push of the SAME | `imported` | 1 tool | - | Python |
 | `scripts/lib/pre_push_run.py` | THE PRE-PUSH HOOK'S RUN (scripts/hooks/pre-push execs `scripts/pre_push.py <hook> --run [args]`; its header says | `imported` | hook pre-push; 2 tools | - | Python |

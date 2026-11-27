@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Purpose: Pre-push: the checks that fail CI in seconds, run here in seconds, for what this push changes
+# shellcheck disable=SC2154 # the run's state (changed, ranges, head_sha, tmp, ...) comes from the state file pre_push_checks.Shell sources first
 # PRE-PUSH: the checks that fail CI in seconds, run here in seconds, for what this push changes.
 # (The selection functions named below -- plan, js_quality_paths, lint_plan, is_shell_path, ... -- are Python's:
 # scripts/pre_push.py over scripts/lib/pre_push_{paths,plan,units,lints,modes}.py; the checks run here.)
@@ -360,7 +361,6 @@ fi
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../tool-conventions.sh" # bounded: every gh read below has a deadline
 
-Zero=0000000000000000000000000000000000000000
 
 skipped() { case " ${PREPUSH_SKIP:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
