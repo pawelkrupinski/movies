@@ -13,6 +13,8 @@ Usage:
   shard_weights.py refresh [--days 7] [--min-runs 3] [--url URL] [--current FILE] > FILE   the new file on stdout
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
