@@ -86,7 +86,7 @@ effect	scripts/ci/identity_drift_check.py	2
 effect	scripts/ci/identity_drift_check_replay.py	1
 effect	scripts/ci/identity_findings_report.py	1
 effect	scripts/ci/identity_impact.py	1
-effect	scripts/ci/identity_judgements_lint.py	1
+effect	scripts/ci/identity_judgements_lint.py	2
 effect	scripts/ci/identity_live_drift.py	1
 effect	scripts/ci/lint_reads_trace.py	2
 effect	scripts/ci/lint_registry_reads.py	2
