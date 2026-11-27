@@ -164,11 +164,11 @@ ROOTS = "scripts .github/scripts .github/actions android/scripts ios/scripts inf
 PythonFloor="3.9"  # noqa: E225  (python_floor_lint.py reads this line as it is)
 # CI's runner (tool-self-tests.yml's `script-tests` job) as an image: the Dockerfile's ubuntu base, same digest
 # (infra/bin/image_pins.py refreshes it here), from mirror.gcr.io (CiImageMirrorSpec: never Docker Hub first), plus
-# what the runner ships that the tests reach for (zstd, rsync, node, PyYAML among them). Its hash tags the image.
+# what the runner ships that the tests reach for (zstd, rsync, node, PyYAML, nc among them). Its hash tags the image.
 LINUX_IMAGE_RECIPE = r'''FROM mirror.gcr.io/library/ubuntu:26.04@sha256:d66b366dac61b575bee2aef07e9c26e8070096fbe84a3d4d3eb0da069b5d76db
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
       bash coreutils findutils sed gawk grep diffutils git jq python3 perl curl ca-certificates unzip zip xz-utils \
-      file procps lsof bc tzdata shellcheck zstd rsync nodejs python3-yaml > /dev/null && rm -rf /var/lib/apt/lists/* \
+      file procps lsof bc tzdata shellcheck zstd rsync nodejs python3-yaml netcat-openbsd > /dev/null && rm -rf /var/lib/apt/lists/* \
  && git config --system safe.directory "*"'''
 CI_CONTEXT = ("GITHUB_STEP_SUMMARY GITHUB_OUTPUT GITHUB_ENV GITHUB_PATH GITHUB_STATE GITHUB_REF GITHUB_REF_NAME "
               "GITHUB_REF_TYPE GITHUB_REF_PROTECTED GITHUB_HEAD_REF GITHUB_BASE_REF GITHUB_SHA GITHUB_EVENT_NAME "

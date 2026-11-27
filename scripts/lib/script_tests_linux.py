@@ -5,10 +5,12 @@ checkout itself but its copy in one of a few fixed slots (Rancher's VM keeps a h
 container saw: 25 worktrees mounted in a day filled the Mac's file table on 2026-11-20), held by an flock for the run's
 life. Its git metadata (config, HEAD, refs, the worktree's own dir) is a snapshot unpacked into a tmpfs at the git dir's
 own path, only the objects (and those it borrows, objects/info/alternates) mounted live: a host git rewriting the
-shared .git/config read as missing in there for most of the next second. The tests run as this user, not root."""
+shared .git/config read as missing in there for most of the next second. The tests run as this user, not root, and the
+user has a passwd entry in there as on CI's runner (`pwd.getpwuid`, `getpass.getuser` raise for a uid the image lacks)."""
 from __future__ import annotations
 
 import fcntl
+import getpass
 import os
 import shutil
 import subprocess
@@ -166,8 +168,19 @@ def git_dirs(root: str) -> Tuple[str, str]:
     return (common[1].strip() if common[0] == 0 else "", own[1].strip() if own[0] == 0 else "")
 
 
+def passwd_mount(c: Container) -> List[str]:
+    """/etc/passwd with this user in it, as on CI's runner: the image knows root only, and a uid it lacks makes
+    pwd.getpwuid raise (identity_dispatch's branch name, no_network_test)."""
+    path = os.path.join(c.home, ".cache/movies-linux-tree", f"passwd-{os.getuid()}")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    user = getpass.getuser()
+    with open(path, "w") as f:
+        f.write(f"root:x:0:0:root:/root:/bin/bash\n{user}:x:{os.getuid()}:{os.getgid()}::/tmp:/bin/bash\n")
+    return ["-v", f"{path}:/etc/passwd:ro"]
+
+
 def mounts(c: Container, tree: str, common: str) -> List[str]:
-    out = ["-v", f"{tree}:{c.root}:ro"]
+    out = ["-v", f"{tree}:{c.root}:ro", *passwd_mount(c)]
     if common:
         out += ["--mount", f"type=tmpfs,destination={common},tmpfs-mode=1777",
                 "-v", f"{common}/objects:{common}/objects:ro"]

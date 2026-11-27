@@ -57,6 +57,9 @@ class LinuxTest(ScriptTestsCase):
         slot0 = re.escape(f"-v {self.slots}/slot-0:{self.tree}:ro")
         self.assertEqual((1, 0), (self.calls(f"^run .*{slot0}"), self.calls(re.escape(f"-v {self.tree}:"))))
         self.assertEqual(1, self.calls(re.escape(f"--user {os.getuid()}:{os.getgid()}")))
+        self.assertEqual(1, self.calls(re.escape(f"-v {self.slots}/passwd-{os.getuid()}:/etc/passwd:ro")))
+        with open(f"{self.slots}/passwd-{os.getuid()}") as f:
+            self.assertIn(f":x:{os.getuid()}:{os.getgid()}:", f.read())
         with open(f"{self.slots}/slot-0/scripts/a.sh") as f:
             self.assertEqual("echo tool a", f.readline().strip())
         self.assertTrue(os.path.isdir(f"{self.slots}/slot-0/.git"))
