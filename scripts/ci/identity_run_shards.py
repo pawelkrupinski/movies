@@ -40,8 +40,11 @@ def plan(command, countries):
     return shards
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv):
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.splitlines()[0])
     parser.add_argument("--command", required=True)
     parser.add_argument("--countries", default="")
     args = parser.parse_args(argv)

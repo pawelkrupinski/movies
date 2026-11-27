@@ -316,6 +316,9 @@ def file_rows(backlog, new_rows):
     return added
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv):
     if len(argv) == 2 and argv[0] == "slices":
         for name in sorted(read_candidates(argv[1])):
@@ -352,7 +355,7 @@ def main(argv):
     if len(argv) == 5 and argv[3] == "--brought":
         brought_file, argv = argv[4], argv[:3]
     if len(argv) != 3 or argv[0] != "judge":
-        print(__doc__.split("\n\n")[-2], file=sys.stderr)
+        print(DOCSTRING.split("\n\n")[-2], file=sys.stderr)
         return 2
     candidates = read_candidates(argv[1])
     walked, failed = read_base(argv[2])

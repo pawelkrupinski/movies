@@ -93,8 +93,11 @@ def summary(found):
         for cc in sorted(found))
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv=None, now=None, opener=None):
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("directory")
     parser.add_argument("--push", action="store_true", help="push to Prometheus (GRAFANA_URL, GRAFANA_ANNOTATION_TOKEN)")
     args = parser.parse_args(argv)

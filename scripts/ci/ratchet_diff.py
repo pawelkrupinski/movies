@@ -20,7 +20,7 @@
 #             change to the measure (2026-11-21: member vals and given aliases) or a limit is what froze it
 #   removed   gone from the baseline: within the limit now (or its code gone)
 #   moved     re-keyed with the same value or lower (a renamed source: git -M; a moved class: the same simple name) --
-#             the ratchets' own move rules (quality_ratchet.moved_key, coupling_ratchet.moved)
+#             the ratchets' own move rules (baseline_ratchet.moved_key, coupling_ratchet.moved)
 # then, per metric, the rows and the summed value before -> after and how many rows are still over the limit at head.
 from __future__ import annotations
 
@@ -34,6 +34,7 @@ from typing import Dict, List, Optional, Tuple
 # is ignored, and their __pycache__ landed in scripts/ci (Order independence #105).
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import baseline_ratchet  # noqa: E402
 import coupling_ratchet  # noqa: E402
 import js_quality_ratchet  # noqa: E402
 import quality_ratchet  # noqa: E402
@@ -69,7 +70,7 @@ def renames(base: str, head: Optional[str]) -> Dict[str, str]:
 
 
 class RefRenames:
-    """quality_ratchet.Renames' shape (follow(path) -> the path at head) over one diff between two refs."""
+    """baseline_ratchet.Follows' shape (follow(path) -> the path at head) over one diff between two refs."""
 
     def __init__(self, moves: Dict[str, str]):
         self.moves = moves
@@ -110,7 +111,7 @@ def diff_metric(metric: str, family: str, before: Dict[str, int], after: Dict[st
             out.append((metric, key, a, b, "fell" if b < a else "rose"))
     for key, value in sorted(fresh.items()):
         if family == "quality":
-            origin = next((old for old in sorted(gone) if quality_ratchet.moved_key(old, moves) == key), None)
+            origin = next((old for old in sorted(gone) if baseline_ratchet.moved_key(old, moves) == key), None)
         elif metric == "fanout":
             simple = key.rsplit(".", 1)[-1]
             origin = next((old for old in sorted(gone) if old.rsplit(".", 1)[-1] == simple), None)

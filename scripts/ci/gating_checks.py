@@ -262,12 +262,15 @@ def sync(root: str, owner: str) -> list[str]:
     return changed
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv: list[str]) -> int:
     args = {"--root": "."}
     cmd, rest = (argv[0], argv[1:]) if argv else ("", [])
     while rest:
         if len(rest) < 2:
-            print(__doc__.split("usage:")[1], file=sys.stderr)
+            print(DOCSTRING.split("usage:")[1], file=sys.stderr)
             return 2
         args[rest[0]], rest = rest[1], rest[2:]
     root = args["--root"]
@@ -283,7 +286,7 @@ def main(argv: list[str]) -> int:
             print(f"gating-checks: {p}", file=sys.stderr)
         return 1 if problems else 0
     if cmd not in ("report-only", "prove") or "--workflow-file" not in args:
-        print("usage: " + __doc__.split("usage:")[1].split("Exit:")[0].strip(), file=sys.stderr)
+        print("usage: " + DOCSTRING.split("usage:")[1].split("Exit:")[0].strip(), file=sys.stderr)
         return 2
     file = args["--workflow-file"]
     try:

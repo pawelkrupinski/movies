@@ -131,16 +131,17 @@ def newer_fstrings(source):
     except (tokenize.TokenError, SyntaxError):
         return []
     found, open_fstrings = set(), []  # each open f-string's quote
+    fstring_start, fstring_middle, fstring_end = getattr(tokenize, "FSTRING_START"), getattr(tokenize, "FSTRING_MIDDLE"), getattr(tokenize, "FSTRING_END")
     for tok in tokens:
-        if tok.type == tokenize.FSTRING_END:
+        if tok.type == fstring_end:
             open_fstrings.pop()
             continue
-        if not open_fstrings or tok.type == tokenize.FSTRING_MIDDLE:
-            if tok.type == tokenize.FSTRING_START:
+        if not open_fstrings or tok.type == fstring_middle:
+            if tok.type == fstring_start:
                 open_fstrings.append(tok.string.lstrip("rRfFbBuU"))
             continue
         quote = open_fstrings[-1]
-        if tok.type in (tokenize.STRING, tokenize.FSTRING_START) and tok.string.lstrip("rRfFbBuU").startswith(quote):
+        if tok.type in (tokenize.STRING, fstring_start) and tok.string.lstrip("rRfFbBuU").startswith(quote):
             found.add((tok.start[0], f"a quote ({quote}) inside an f-string of the same quote (Python 3.12)"))
         elif tok.type == tokenize.COMMENT:
             found.add((tok.start[0], "a comment inside an f-string's expression (Python 3.12)"))
@@ -148,7 +149,7 @@ def newer_fstrings(source):
             found.add((tok.start[0], "a backslash inside an f-string's expression (Python 3.12)"))
         elif tok.type == tokenize.NL and len(quote) == 1:
             found.add((tok.start[0], "a single-quoted f-string's expression across lines (Python 3.12)"))
-        if tok.type == tokenize.FSTRING_START:
+        if tok.type == fstring_start:
             open_fstrings.append(tok.string.lstrip("rRfFbBuU"))
     return sorted(found)
 

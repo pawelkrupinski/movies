@@ -49,6 +49,7 @@ import re
 import sys
 import typing
 import unicodedata
+from typing import AbstractSet, Set, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 import tool_git  # noqa: E402
@@ -292,7 +293,7 @@ def read_reads(path):
     return reads
 
 
-def read_excluded(path):
+def read_excluded(path) -> Set[Tuple[str, ...]]:
     """{(module, class)} of `<module>:<class>` lines (pre-push's lint plan): classes another line of the run runs."""
     with open(path, encoding="utf-8") as fh:
         return {tuple(l.strip().split(":", 1)) for l in fh if ":" in l}
@@ -314,7 +315,8 @@ def universe(line, modules):
     return [(mod, globs) for mod in ([module] if module else modules)]
 
 
-def plan(lines, why, tests, scope, reads=None, reads_lines=(), excluded=frozenset(), every_test=None):
+def plan(lines, why, tests, scope, reads=None, reads_lines=(), excluded: AbstractSet[Tuple[str, ...]] = frozenset(),
+         every_test=None):
     """`lines` narrowed to the selected `tests`; plus the `reads` classes (read_reads) any of `reads_lines` runs, in
     whichever module (the combined-tree verification's: every module's unit lines); less the `excluded` (module, class)
     pairs, which another line of the same run runs. ALL (`why`) selects every test: narrowed to `every_test` class
@@ -375,8 +377,11 @@ def changed_paths(base: str, head: str, piped: "list[str]", repo: tool_git.GitRe
     return piped or repo.changed(base, head)
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv):
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("countries")
     c.add_argument("base"); c.add_argument("head")

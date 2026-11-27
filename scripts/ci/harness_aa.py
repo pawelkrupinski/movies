@@ -148,8 +148,11 @@ def moved(cc: str, a: str, b: str) -> int:
     return 0
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv: list[str]) -> int:
-    usage = __doc__.split("usage: ", 1)[1].split("Tested by", 1)[0]
+    usage = DOCSTRING.split("usage: ", 1)[1].split("Tested by", 1)[0]
     if not argv or argv[0] not in ("decide", "since", "judge", "takes", "moved"):
         print(f"usage: {usage}", file=sys.stderr)
         return 2

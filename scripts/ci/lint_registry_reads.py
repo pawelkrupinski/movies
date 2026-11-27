@@ -75,7 +75,7 @@ def probes(literal, repo):
     found = {}
     below = list(repo.under(path + "/"))
     if not below and os.path.isdir(path):
-        below = [os.path.join(root, name) for root, dirs, files in sorted(os.walk(path)) for name in sorted(files)]
+        below = [os.path.join(root, name) for root, _dirs, files in sorted(os.walk(path)) for name in sorted(files)]
     for file in below:
         extension = os.path.splitext(file)[1]
         found.setdefault(extension if EXTENSION.fullmatch(extension) else "", file)

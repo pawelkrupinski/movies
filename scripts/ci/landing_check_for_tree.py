@@ -45,8 +45,11 @@ def passed_for(tree, rows):
     return None
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv):
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     ap.add_argument("tree")
     ap.add_argument("--repo", default="{owner}/{repo}")
     a = ap.parse_args(argv)
