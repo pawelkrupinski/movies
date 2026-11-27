@@ -6,7 +6,9 @@ version of a tool."""
 from __future__ import annotations
 
 import os
+import resource
 import sys
+import time
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -103,6 +105,17 @@ class CliHarnessTest(cli_harness.ToolCase):
     def test_wait_until_is_bounded(self) -> None:
         self.assertTrue(cli_harness.wait_until(lambda: True, 0.1))
         self.assertFalse(cli_harness.wait_until(lambda: False, 0.1))
+
+    def test_the_busy_tree_never_burns_more_cpu_than_its_wall_less_the_idle(self) -> None:
+        """The metered-ticket tests tell the tree's CPU from its wall by a margin of IDLE_SECONDS: a chain of children
+        cannot burn more CPU than the wall it takes, however loaded the machine, so this holds on any runner."""
+        before, started = resource.getrusage(resource.RUSAGE_CHILDREN), time.monotonic()
+        cli_harness.burn_then_idle()
+        wall = time.monotonic() - started
+        after = resource.getrusage(resource.RUSAGE_CHILDREN)
+        cpu = (after.ru_utime + after.ru_stime) - (before.ru_utime + before.ru_stime)
+        self.assertGreaterEqual(cpu, cli_harness.BUSY_CPU_SECONDS)
+        self.assertLessEqual(cpu, wall - cli_harness.IDLE_SECONDS, f"cpu {cpu:.2f}s over a wall of {wall:.2f}s")
 
 
 if __name__ == "__main__":

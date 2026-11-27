@@ -208,17 +208,20 @@ def wait_until(condition: Callable[[], bool], bound: float = WAIT_BOUND) -> bool
 
 
 # A metered ticket's busy tree, sized so that its reading tells measured CPU from a width however loaded the runner:
-# three children each burn BUSY_CPU_SECONDS / 3 of CPU, then the tree idles IDLE_SECONDS. The CPU the meter must
-# report is at least BUSY_CPU_SECONDS (CPU time does not stretch under load) and below the ticket's wall, while a
-# width-1 reading IS the wall. A cpu / wall ratio does stretch: 0.2 on a starved macOS runner (Tool self-tests #634).
+# three children, ONE AFTER ANOTHER, each burn BUSY_CPU_SECONDS / 3 of CPU, then the tree idles IDLE_SECONDS. A chain of
+# single-threaded children cannot use more CPU than the wall it takes, so the CPU the meter must report is at least
+# BUSY_CPU_SECONDS (CPU time does not stretch under load) and at most the ticket's wall minus IDLE_SECONDS -- a margin
+# no load or startup cost can eat -- while a width-1 reading IS the wall. (Three children side by side made the wall
+# only BUSY_CPU_SECONDS / 3 + IDLE_SECONDS, a hair over the CPU, and startup CPU under load reached it; a cpu / wall
+# ratio stretches too: 0.2 on a starved macOS runner, Tool self-tests #634.)
 BUSY_CPU_SECONDS = 3
 IDLE_SECONDS = 3.0
 
 
 def burn_then_idle() -> None:
     burn = f"import time; t = time.process_time()\nwhile time.process_time() - t < {BUSY_CPU_SECONDS / 3}: pass"
-    for worker in [subprocess.Popen([sys.executable, "-c", burn]) for _ in range(3)]:
-        worker.wait()
+    for _ in range(3):
+        subprocess.run([sys.executable, "-c", burn], check=True)
     time.sleep(IDLE_SECONDS)
 
 

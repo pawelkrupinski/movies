@@ -256,6 +256,9 @@ class StartLockTest(SbtWarmCase):
         holder = self.hold_lock(self.state_file(locked, ".flock"))
         holder.kill()
         holder.wait()
+        # the kernel lets go of a killed holder's flock a few ms after wait() returns, so wait for it, don't race it
+        lock = self.state_file(locked, ".flock")
+        self.assertTrue(cli_harness.wait_until(lambda: lock_state(lock) == "free"), lock_state(lock))
         done = self.warm(locked, "compile", env={"KINOWO_SBT_WARM_LOCK_SECONDS": "0"})
         self.assertEqual(0, done.code, done.output)
         self.assertEqual("free", lock_state(self.state_file(locked, ".flock")))

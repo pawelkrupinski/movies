@@ -98,7 +98,8 @@ class LocksTest(Case):
         self.assertFalse(FileLock(path).take(os.getpid()))
         holder.kill()
         holder.wait()
-        self.assertFalse(lock_busy(path))
+        # macOS lets go of a killed holder's flock a few ms after wait() returns (1 kill in ~120, loaded)
+        self.assertTrue(cli_harness.wait_until(lambda: not lock_busy(path)), "the killed holder's lock is released")
         self.assertTrue(FileLock(path).take(os.getpid()))
 
 
