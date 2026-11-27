@@ -18,12 +18,12 @@ mutants=(
         print(f"{spec.title} GREW @@ ok = True
         print(f"{spec.title} GREW'
   'a frozen row rising passes @@ if value > base[key]: @@ if False:'
-  'a new key past the limit passes @@ elif value > limit: @@ elif False:'
+  'a new key past the limit passes @@ elif value > limit and not moved_from @@ elif False and not moved_from'
   'the measure'"'"'s limit is not compared @@ if limit_of(current, kind) > limit: @@ if False:'
   'tests and scripts are gated too @@ held=lambda p: p.startswith(production) or p + "/" in production) @@ held=lambda p: True)'
   'a directory key is not production @@ or p + "/" in production @@ or False'
   'a raised limit is no growth @@ if old_limit is not None and new_limit > old_limit: @@ if False:'
-  'an added or raised row is no growth @@ if value > before.get(key, allowed): @@ if False:'
+  'an added or raised row is no growth @@ if value > before.get(key, allowed) and not carried @@ if False and not carried'
   'growth never fails @@ if unjustified:
             found = True @@ if unjustified:
             found = False'

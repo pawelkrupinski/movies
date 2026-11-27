@@ -5,7 +5,8 @@
 # working and let complexity, length or duplication grow unreviewed (or a data table hold logic, or be declared
 # without a why). Each mutant is applied by exact text; a mutant
 # whose text is no longer in the tool exactly once fails this test too (the tool changed: re-aim the mutant at the new
-# check). A mutant named `trailers.py: ...` mutates the module the tool imports (the attribution rule lives there), each
+# check). A mutant named `trailers.py: ...` or `baseline_ratchet.py: ...` mutates the module the tool imports (the
+# attribution rule, the rename credit live there), each
 # mutant in a directory of its own beside its own copy of that module. Row parsing is the engine's
 # (baseline_ratchet.parse_rows), mutated by js-quality-ratchet-mutation-test.sh.
 set -uo pipefail
@@ -33,13 +34,13 @@ mutants=(
   'violations never fail @@     if found:
         failed = True @@     if found:
         failed = False'
-  'a move needs no departure @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if moved_key(old, renames) == key and was >= value), None)'
-  'a move may grow @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if old not in present and moved_key(old, renames) == key), None)'
-  'a same-named source is a move @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if old not in present and old.rsplit("/", 1)[-1] == key.rsplit("/", 1)[-1] and was >= value), None)'
-  'a deleted source counts as renamed @@             if path not in renames:
+  'baseline_ratchet.py: a move needs no departure @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if moved_key(old, renames) == key and was >= value), None)'
+  'baseline_ratchet.py: a move may grow @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if old not in present and moved_key(old, renames) == key), None)'
+  'baseline_ratchet.py: a same-named source is a move @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if old not in present and old.rsplit("/", 1)[-1] == key.rsplit("/", 1)[-1] and was >= value), None)'
+  'baseline_ratchet.py: a deleted source counts as renamed @@             if path not in renames:
                 return None @@             if path not in renames:
                 return path.replace("a/src/main/scala/", "b/src/main/scala/x/")'
-  'a move may change the method name @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if old not in present and (moved_key(old, renames) or "").partition(":")[0] == key.partition(":")[0] and was >= value), None)'
+  'baseline_ratchet.py: a move may change the method name @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if old not in present and (moved_key(old, renames) or "").partition(":")[0] == key.partition(":")[0] and was >= value), None)'
   'a move is growth @@ and not (key not in before and moved_from(key, value, before, after, renames)): @@ :'
   'a declared table holding logic passes @@         if key in data:
             continue @@         if True:
@@ -67,7 +68,10 @@ for m in "${mutants[@]}"; do
   cp "$tool" "$REPO_ROOT/scripts/ci/trailers.py" "$REPO_ROOT/scripts/ci/coupling_reasons.py" \
      "$REPO_ROOT/scripts/ci/baseline_ratchet.py" "$work/mutants/$i/"
   target="$work/mutants/$i/quality_ratchet.py"
-  case "$name" in "trailers.py: "*) target="$work/mutants/$i/trailers.py" ;; esac
+  case "$name" in
+    "trailers.py: "*) target="$work/mutants/$i/trailers.py" ;;
+    "baseline_ratchet.py: "*) target="$work/mutants/$i/baseline_ratchet.py" ;; # the engine's rename credit (moved_from, Renames)
+  esac
   python3 -I -B - "$target" "$target" "$from" "$to" <<'PY'
 import sys
 src, dst, frm, to = sys.argv[1:]
