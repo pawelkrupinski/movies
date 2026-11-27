@@ -8,6 +8,7 @@ signal and wait for processes only through it; their tests hand in fakes where t
   output(argv) / status(argv)      a command's stdout (and status) / its status, stdout and stderr as asked
   captured(argv)                   a command's status and stdout, its stderr this process's
   errors(argv)                     a command's status and its stderr
+  both(argv)                       a command's status, stdout and stderr
   spawn(argv)                      a command started in the background (a Popen)
   send(pid, signal) / alive(pid)   a signal to a process (or its group) / whether it exists
   own_pid() / waited(proc, s)      this process's pid / whether a spawned command ended within s seconds
@@ -74,6 +75,17 @@ def errors(argv: Sequence[str], cwd: Optional[str] = None, env: Optional[Mutable
     except OSError:
         return 127, ""
     return done.returncode, done.stderr
+
+
+def both(argv: Sequence[str], cwd: Optional[str] = None,
+         env: Optional[MutableMapping[str, str]] = None) -> Tuple[int, str, str]:
+    """(status, stdout, stderr) of a command, its stdin closed; 127 and nothing when it cannot be run."""
+    try:
+        done = subprocess.run(list(argv), cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, text=True)
+    except OSError:
+        return 127, "", ""
+    return done.returncode, done.stdout, done.stderr
 
 
 def status(argv: Sequence[str], cwd: Optional[str] = None, env: Optional[MutableMapping[str, str]] = None,

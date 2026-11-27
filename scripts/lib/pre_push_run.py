@@ -1,7 +1,7 @@
 """THE PRE-PUSH HOOK'S RUN (scripts/hooks/pre-push execs `scripts/pre_push.py <hook> --run [args]`; its header says
 what every step guards): where it runs (pre_push_tree), what is pushed and the checks its paths and messages select
-(pre_push_push, the selection pre_push_modes answers), the red gate and the stranded trailers (still the hook's shell
-functions), the known-red baseline, the reuse and a remote pass (pre_push_reuse), then each check (pre_push_checks: the
+(pre_push_push, the selection pre_push_modes answers), the red gate and the stranded trailers (pre_push_gate), the
+known-red baseline, the reuse and a remote pass (pre_push_reuse), then each check (pre_push_checks: the
 hook's `check_<name>` functions) and the verdict. pre_push_run_test.py holds it black-box."""
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from typing import IO, List, MutableMapping, Optional, Sequence
 
 import machine
 import pre_push_checks as running
+import pre_push_gate as gating
 import pre_push_modes as modes
 import pre_push_push as pushed
 import pre_push_reuse as reuse
@@ -106,7 +107,7 @@ class Run:
             self.say.log("tag push: a tag changes nothing main builds -- nothing to check")
         raise Ended(0)
 
-    # ── the red gate (the hook's shell functions until it moves here) ──
+    # ── the red gate (pre_push_gate) ──
     def gate(self) -> None:
         if not self.push.to_main:
             return
@@ -117,7 +118,7 @@ class Run:
                              timeout=float(self.env.get("PREPUSH_TRAILER_LINT_SECONDS", "20")))
         if self.skipped("trailers"):
             self.say.warn("trailers SKIPPED (PREPUSH_SKIP)")
-        elif self.shell.call("check_stranded_trailers", *self.push.ranges) != 0:
+        elif not gating.Gate.of(self.repo, self.say).stranded_trailers(self.push.ranges):
             raise Ended(1)
         self.gate_state = self.judge_gate()
 
@@ -131,9 +132,9 @@ class Run:
             if flag:
                 self.say.log(f"--{mode}: the red gate is not judged (it is when {when} pushed)", True)
                 return mode
-        code = self.shell.call("redgate_state", *p.ranges)
-        state = self.files.read_text_or(f"{self.tmp}/gate-state", "")
-        if code != 0:
+        self.say.flush()
+        landing, state = gating.Gate.of(self.repo, self.say).judge(p.ranges)
+        if not landing:
             raise Ended(1)
         return state
 

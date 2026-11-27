@@ -45,8 +45,8 @@ jobs:
     preflight:
         runs-on: gate-lane
 """
-HOOK = ('GatingWorkflows=("Main" "Identity model convergence" "Identity takes")\n'
-        'GatingWorkflowFiles=("main.yml" "identity-model-convergence.yml" "identity-takes.yml")\n')
+HOOK = ('GATING_WORKFLOWS = ("Main", "Identity model convergence", "Identity takes")\n'
+        'GATING_WORKFLOW_FILES = ("main.yml", "identity-model-convergence.yml", "identity-takes.yml")\n')
 REGISTRY = """# the registry
 kind\tworkflow\tname\tproven\tnote
 workflow\tmain.yml\t-\t2722\tthe gate
@@ -80,7 +80,7 @@ class Lint(unittest.TestCase):
         self.write(".github/workflows/ci.yml", CI)
         self.write(".github/workflows/identity-model-convergence.yml", CONV)
         self.write(".github/workflows/identity-takes.yml", TAKES)
-        self.write("scripts/hooks/pre-push", HOOK)
+        self.write("scripts/lib/pre_push_gate.py", HOOK)
         self.write(".github/gating-checks.tsv", REGISTRY)
 
     def tearDown(self):
@@ -120,7 +120,7 @@ class Lint(unittest.TestCase):
         self.assertIn("'script self-tests' names no job", " ".join(g.lint(self.root)))
 
     def test_a_new_gate_workflow_needs_a_row(self):
-        self.write("scripts/hooks/pre-push", HOOK.replace('"identity-takes.yml")', '"identity-takes.yml" "recording.yml")'))
+        self.write("scripts/lib/pre_push_gate.py", HOOK.replace('"identity-takes.yml")', '"identity-takes.yml", "recording.yml")'))
         self.assertIn("recording.yml gates pushes", " ".join(g.lint(self.root)))
 
     def test_a_new_gate_workflow_lands_unproven_with_its_owner_and_reports(self):
@@ -213,7 +213,7 @@ class Sync(unittest.TestCase):
         self.root = tempfile.mkdtemp()
         for path, text in ((".github/workflows/main.yml", MAIN), (".github/workflows/ci.yml", CI),
                            (".github/workflows/identity-model-convergence.yml", CONV),
-                           (".github/workflows/identity-takes.yml", TAKES), ("scripts/hooks/pre-push", HOOK),
+                           (".github/workflows/identity-takes.yml", TAKES), ("scripts/lib/pre_push_gate.py", HOOK),
                            (".github/gating-checks.tsv", REGISTRY)):
             full = os.path.join(self.root, path)
             os.makedirs(os.path.dirname(full), exist_ok=True)
