@@ -36,6 +36,18 @@ class DataType:
 
 
 @dataclasses.dataclass(frozen=True)
+class Function:
+    """One function or method (nested ones apart, lambdas and anonymous callbacks folded into the function holding
+    them): the effects its own body performs directly, the calls it makes through an import (a dotted name for Python,
+    `tool_git.Git.here`; a resolved module path for JS/TS) and its cyclomatic complexity -- the `mixed` rule's inputs."""
+    name: str                        # qualified: `Class.method`, `outer.inner`
+    line: int
+    effects: Dict[str, int] = dataclasses.field(default_factory=lambda: {})  # kind -> occurrences in its own body
+    calls: FrozenSet[str] = frozenset()
+    cyclomatic: int = 1
+
+
+@dataclasses.dataclass(frozen=True)
 class Module:
     language: str                    # "scala", "py" or "js"
     path: str                        # relative to the checkout
@@ -49,3 +61,4 @@ class Module:
     data_types: Tuple[DataType, ...] = ()
     imports: FrozenSet[str] = frozenset()  # the measured modules (paths) it uses
     new: bool = False                # added by the ranges checked (the action-name rule warns on new ones only)
+    functions: Tuple[Function, ...] = ()  # every function's own effects, calls and decisions (the `mixed` rule)

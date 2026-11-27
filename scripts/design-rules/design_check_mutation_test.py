@@ -52,6 +52,21 @@ MUTANTS: Dict[str, Tuple[str, str, str]] = {
     "js network not read": ("../js-quality/facts.js", "['network', ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'navigator.sendBeacon']],", ""),
     "js storage not read": ("../js-quality/facts.js", "['storage', ['localStorage', 'sessionStorage', 'indexedDB', 'document.cookie']],", ""),
     "js clock not read": ("../js-quality/facts.js", "['clock', ['Date.now', 'performance.now']],", ""),
+    "no mixed rule": ("design_lint.py", "        out += mixed_rows(m, rules)\n", ""),
+    "adapter calls are no effect": ("design_lint.py", " or any(into_adapter(c, adapters) for c in f.calls)", ""),
+    "an adapter's trailing name not matched": ("design_lint.py", ' or a.endswith("." + p)', ""),
+    "adapter modules held too": ("design_lint.py", "if any(language == m.language and module == m.path for language, module in rules.adapters):", "if False:"),
+    "composition roots held": ("design_lint.py", "f.name in COMPOSITION_ROOTS or ", ""),
+    "mixed ignores the limit": ("design_lint.py", " or f.cyclomatic < limit", ""),
+    "nested defs folded in": ("python_facts.py", "if not isinstance(node, (*FUNCTIONS, ast.ClassDef)):", "if True:"),
+    "boolean operators no decision": ("python_facts.py", "    return count + sum(len(n.values) - 1 for n in nodes if isinstance(n, ast.BoolOp))", "    return count"),
+    "python adapter calls not read": ("python_facts.py", "            if name:\n                out.add(name)", "            if name:\n                pass"),
+    "scala effects not read": ("scala_names.py", "effects = {k: len(p.findall(own)) for k, p in SCALA_EFFECTS.items() if p.search(own)}", "effects = {}"),
+    "scala comments and strings read": ("scala_names.py", 'lines = blank(text).split("\\n")', 'lines = text.split("\\n")'),
+    "scala nested defs folded in": ("scala_names.py", "if not any(s <= i < e for s, e in nested)", "if True"),
+    "js function effects not read": ("../js-quality/facts.js", "if (effect) here.effects[effect] = (here.effects[effect] || 0) + 1;", ";"),
+    "js adapter calls not read": ("../js-quality/facts.js", "if (bound && bound.module) here.calls.add(bound.module);", ";"),
+    "js decisions not counted": ("../js-quality/facts.js", "here.cyclomatic += decisionsAt(node);", ";"),
 }
 
 

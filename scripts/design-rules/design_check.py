@@ -6,13 +6,14 @@ fall; a new row, or a frozen row rising, fails unless its commit carries the kin
 
   Naming:    suffix, abbreviation <file>:<name>          naming.py (and permutations BLOCK, action names warn)
   Design:    effect, state, import-io <file>; effect <file>:<files|storage|network>   design_lint.py (Python, JS/TS)
+             mixed <file>:<function> (an effect and decisions in one function)    design_lint.py (every language)
   Coupling:  fanout <file> (collaborators only), databag <file>:<type>, datafanout <file>   collaborators.py
              distance, unplaced, dircycle <directory>, layer <from>-><to>                    packages.py
   An exemption (test/resources/design-exemptions.tsv: kind, key, added date, a SPECIFIC why -- coupling_reasons.py's
   lint) admits one NEW row; its row added carries the kind's trailer too.
 
 Scala's own fan-out, distance, layers, cycles and data guard stay project/Coupling.scala's (read from the class files);
-Scala is held here for its names.
+Scala is held here for its names and its `mixed` functions (scala_names.py reads both from the text).
 
   design_check.py check  [--root DIR] [--range A..B]... [--languages scala,py,js] [--js-modules FILE]
       the asked languages' rows held (each pre-push check holds its own); exit 1 on a violation, 2 on an error
@@ -45,15 +46,15 @@ from model import Module  # noqa: E402
 BASELINE = "test/resources/design-baseline.tsv"
 TRAILERS: Dict[str, Tuple[str, ...]] = {
     "Naming": ("suffix", "abbreviation"),
-    "Design": ("effect", "state", "import-io"),
+    "Design": ("effect", "state", "import-io", "mixed"),
     "Coupling": ("fanout", "distance", "layer", "unplaced", "dircycle", "databag", "datafanout"),
 }
-ZERO_LIMITS = ("suffix", "abbreviation", "effect", "state", "import-io", "layer", "unplaced", "dircycle")
+ZERO_LIMITS = ("suffix", "abbreviation", "effect", "state", "import-io", "mixed", "layer", "unplaced", "dircycle")
 HEADER = """# THE DESIGN BASELINE (scripts/design-rules/design_check.py update writes it; the pre-push pyquality, jsquality and
 # quality checks hold every push to it). Every module, name and directory of the Scala, Python and JS/TS past a
 # general rule (test/resources/design-rules.tsv), frozen:
 #   suffix / abbreviation <file>:<name>                 Naming:
-#   effect / state / import-io <file>, effect <file>:<files|storage|network>   Design:
+#   effect / state / import-io <file>, effect <file>:<files|storage|network>, mixed <file>:<function>   Design:
 #   fanout <file>, databag <file>:<type>, datafanout <file>, distance / unplaced / dircycle <directory>,
 #   layer <from>-><to>                                  Coupling:
 # A row may only fall (update records it, no trailer); a row added or raised lands only with its kind's trailer."""
@@ -69,8 +70,8 @@ Row = Tuple[str, str, float]
 
 def language_rows(language: str, modules: Dict[str, Module], rules: rules_table.Rules) -> List[Row]:
     out = naming.rows(modules.values(), rules)
-    if language == "scala":
-        return out  # its coupling, data and design measures are project/Coupling.scala's
+    if language == "scala":  # its coupling, data and other design measures are project/Coupling.scala's
+        return out + [r for m in modules.values() for r in design_lint.mixed_rows(m, rules)]
     collaborating = collaborators.collaborators(modules, rules)
     out += design_lint.rows(modules.values(), rules)
     out += [("fanout", p, n) for p, m in sorted(modules.items())

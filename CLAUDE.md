@@ -409,6 +409,21 @@ when you visit it, and move its unit tests to the in-memory implementations; kee
 where the filesystem IS the behaviour (atomic writes and temporary-file races, lock files, SQLite locking, the CLI
 black-box harness).
 
+**Side effects live at the leaves** (the owner, 2026-11-27: "move side effects to leaves, with fake implementations for
+testing (repos etc.)"; every language):
+- side effects live only in LEAF adapters (git, gh, files, a store or database, the network, a process, the clock); the
+  decision logic above them is pure and takes the adapters as parameters;
+- each adapter has a fake or in-memory implementation that SHARES its logic (`writing-fakes`), and one contract suite
+  holds both: `tool_git`'s `GitRepo` (`SubprocessGitRepo` against temp repositories, `InMemoryGitRepo` a commit graph),
+  `tool_github`'s `GitHub` over the `gh` binary or `InMemoryGh`, `tool_files`, `tool_state`, `tool_http`;
+- real resources (temporary git repositories, real files, real SQLite) are for integration and e2e tests only; unit
+  tests run on the fakes;
+- a function mixing decisions with IO that you change is split, decision up and IO down -- gradually, on visit.
+The design lint measures it (`mixed <file>:<function>`, `scripts/design-rules/design_lint.py`): a function outside an
+adapter module that performs an effect (an injected one directly, or a call into an adapter module) with cyclomatic
+complexity 3 or more (`mixed-cyclomatic`); a composition root (`main`, a page's `init`) aside. Today's are frozen
+(2026-11-27) and only fall; a NEW mixed function fails the push unless its commit carries `Design: <why>`.
+
 **Share business logic between real and fake implementations.** They differ only at the infrastructure boundary
 (storage, HTTP backend, clock), never in the rules; a fake that re-implements logic lets tests pass while real code
 is broken. Read the `writing-fakes` skill before writing any `Fake*` / `Stub*` / `InMemory*`.

@@ -190,8 +190,97 @@ function names(file, program) {
   return { names: out, classes };
 }
 
+// THE FUNCTIONS (the `mixed` rule's inputs, model.Function): every named function -- a declaration, a function bound
+// to a name, a method, a property's function -- qualified by the classes and functions holding it; an anonymous
+// callback is folded into the function holding it (one at the top level into `(anonymous)`). Each: the effects its own
+// body touches (a name bound by an import of `child_process` / `fs` / `http` counts as that effect where it is used),
+// the local modules its own calls go through (resolved against `known`, the files measured), its cyclomatic complexity.
+const Branches = /^(IfStatement|ConditionalExpression|ForStatement|ForInStatement|ForOfStatement|WhileStatement|DoWhileStatement|CatchClause)$/;
+
+function decisionsAt(node) {
+  if (Branches.test(node.type)) return 1;
+  if (node.type === 'SwitchCase') return node.test ? 1 : 0;
+  return node.type === 'LogicalExpression' ? 1 : 0;
+}
+
+const Extensions = ['', '.ts', '.js', '.mjs', '.cjs', '.tsx', '/index.ts', '/index.js'];
+
+function resolveLocal(file, source, known) {
+  if (typeof source !== 'string' || !source.startsWith('.')) return null;
+  const base = path.posix.normalize(path.posix.join(path.posix.dirname(file), source.replace(/\.js$/, '')));
+  const withJs = path.posix.normalize(path.posix.join(path.posix.dirname(file), source));
+  for (const candidate of [withJs, ...Extensions.map((e) => base + e)]) if (known.has(candidate)) return candidate;
+  return null;
+}
+
+// local name -> { effect } for a binding of an effectful node module, { module } for one of a measured local module
+function importBindings(file, program, known) {
+  const out = new Map();
+  const bind = (names, source) => {
+    const effect = typeof source === 'string' ? EffectModules.get(source.replace(/^node:/, '')) : null;
+    const local = resolveLocal(file, source, known);
+    for (const name of names) if (effect || local) out.set(name, effect ? { effect } : { module: local });
+  };
+  const patternNames = (id) => (id.type === 'Identifier' ? [id.name]
+    : id.type === 'ObjectPattern' ? id.properties.filter((p) => p.value && p.value.type === 'Identifier').map((p) => p.value.name) : []);
+  for (const statement of program.body) {
+    if (statement.type === 'ImportDeclaration') bind(statement.specifiers.map((sp) => sp.local.name), statement.source.value);
+    if (statement.type !== 'VariableDeclaration') continue;
+    for (const d of statement.declarations) if (d.init && moduleSource(d.init)) bind(patternNames(d.id), moduleSource(d.init));
+  }
+  return out;
+}
+
+function nameOf(node, parent) {
+  if (node.id && node.id.type === 'Identifier') return node.id.name;
+  if (!parent) return null;
+  if (parent.type === 'VariableDeclarator' && parent.init === node && parent.id.type === 'Identifier') return parent.id.name;
+  if (/^(MethodDefinition|Property|PropertyDefinition)$/.test(parent.type) && parent.value === node && !parent.computed) {
+    return parent.key.type === 'Identifier' ? parent.key.name : parent.key.type === 'Literal' ? String(parent.key.value) : null;
+  }
+  if (parent.type === 'AssignmentExpression' && parent.right === node) return dotted(parent.left);
+  return null;
+}
+
+// An identifier read as a name: no property key, member name, import specifier or TypeScript type.
+const isReference = (node, parent) => !parent || !(
+  (parent.type === 'MemberExpression' && parent.property === node && !parent.computed)
+  || (/Property|MethodDefinition/.test(parent.type) && parent.key === node && !parent.computed)
+  || /^Import/.test(parent.type) || /^TS/.test(parent.type));
+
+function functionFacts(file, program, known) {
+  const bindings = importBindings(file, program, known);
+  const records = new Map();
+  const recordOf = (name, line) => {
+    if (!records.has(name)) records.set(name, { name, line, effects: {}, calls: new Set(), cyclomatic: 1 });
+    return records.get(name);
+  };
+  const visit = (node, parent, scope, current) => {
+    let here = current;
+    let inner = scope;
+    if (isFunction(node)) {
+      const name = nameOf(node, parent);
+      if (name) {
+        inner = [...scope, name];
+        here = recordOf(inner.join('.'), node.loc.start.line);
+      } else if (!here) here = recordOf('(anonymous)', node.loc.start.line);
+    } else if (/^Class(Declaration|Expression)$/.test(node.type) && node.id) inner = [...scope, node.id.name];
+    if (here) {
+      const kind = node.type === 'ImportDeclaration' ? null : effectAt(node, parent);
+      const bound = node.type === 'Identifier' && isReference(node, parent) ? bindings.get(node.name) : null;
+      const effect = kind || (bound && bound.effect) || null;
+      if (effect) here.effects[effect] = (here.effects[effect] || 0) + 1;
+      if (bound && bound.module) here.calls.add(bound.module);
+      here.cyclomatic += decisionsAt(node);
+    }
+    for (const child of children(node)) visit(child, node, inner, here);
+  };
+  visit(program, null, [], null);
+  return [...records.values()].map((r) => ({ name: r.name, line: r.line, effects: r.effects, calls: [...r.calls].sort(), cyclomatic: r.cyclomatic }));
+}
+
 // A file's facts, the shape model.Module reads.
-function factsOf(file, program) {
+function factsOf(file, program, known = new Set()) {
   const { names: found, classes } = names(file, program);
   return {
     path: file,
@@ -201,6 +290,7 @@ function factsOf(file, program) {
     state: moduleState(program),
     statefulTypes: classes.filter((c) => c.stateful).map((c) => c.name),
     abstractTypes: classes.filter((c) => c.abstract).length + (exportsOnlyTypes(program) ? 1 : 0),
+    functions: functionFacts(file, program, known),
   };
 }
 
@@ -219,9 +309,10 @@ function measureFacts(files, texts) {
   const parsers = { espree: require('espree'), typescript: require('@typescript-eslint/typescript-estree') };
   const facts = [];
   const unparsed = [];
+  const known = new Set(files);
   for (const file of files) {
     try {
-      facts.push(factsOf(file, parse(file, texts.get(file), parsers)));
+      facts.push(factsOf(file, parse(file, texts.get(file), parsers), known));
     } catch (error) {
       unparsed.push({ file, why: String(error.message || error).split('\n')[0] });
     }

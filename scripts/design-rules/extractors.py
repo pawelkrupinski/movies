@@ -20,7 +20,7 @@ import report as py_quality  # noqa: E402  (scripts/py-quality/report.py: the me
 import scala_names  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
-from model import Module, Name  # noqa: E402
+from model import Function, Module, Name  # noqa: E402
 
 JS_REPORT = os.path.join(os.path.dirname(HERE), "js-quality-report")
 JS_AREAS = os.path.join(os.path.dirname(HERE), "js-quality", "ratchet-areas.tsv")
@@ -52,7 +52,10 @@ def js_module(row: Dict[str, Any], known: FrozenSet[str], added: Set[str]) -> Mo
         effects={str(k): int(v) for k, v in row["effects"].items()}, import_io=int(row["importIo"]),
         state=tuple(row["state"]), stateful_types=tuple(row["statefulTypes"]),
         abstract_types=int(row["abstractTypes"]),
-        imports=frozenset(t for t in row["imports"] if t in known), new=path in added)
+        imports=frozenset(t for t in row["imports"] if t in known), new=path in added,
+        functions=tuple(Function(str(f["name"]), int(f["line"]), {str(k): int(v) for k, v in f["effects"].items()},
+                                 frozenset(str(c) for c in f["calls"]), int(f["cyclomatic"]))
+                        for f in row.get("functions", ())))
 
 
 def read_js(modules_json: str, added: Set[str]) -> Modules:

@@ -8,7 +8,7 @@ import ast
 import os
 from typing import Dict, FrozenSet, List, Optional, Set, Tuple
 
-from model import DataType, Module, Name
+from model import DataType, Function, Module, Name
 
 # dotted-name prefixes of each effect: `p.` matches what starts with it, `p` that name or its members
 EFFECT_NAMES: Dict[str, Tuple[str, ...]] = {
@@ -72,10 +72,10 @@ def dotted(node: ast.expr, names: Dict[str, str]) -> Optional[str]:
     return ".".join([head, *reversed(parts)])
 
 
-def chain_tops(tree: ast.AST) -> List[ast.expr]:
+def chain_tops(nodes: List[ast.AST]) -> List[ast.expr]:
     """Every Name or Attribute that is no other Attribute's object: one per dotted reference."""
-    inner: Set[int] = {id(n.value) for n in ast.walk(tree) if isinstance(n, ast.Attribute)}
-    return [n for n in ast.walk(tree) if isinstance(n, (ast.Name, ast.Attribute)) and id(n) not in inner]
+    inner: Set[int] = {id(n.value) for n in nodes if isinstance(n, ast.Attribute)}
+    return [n for n in nodes if isinstance(n, (ast.Name, ast.Attribute)) and id(n) not in inner]
 
 
 def effect_at(node: ast.expr, names: Dict[str, str], called: Set[int]) -> Optional[str]:
@@ -90,9 +90,13 @@ def effect_at(node: ast.expr, names: Dict[str, str], called: Set[int]) -> Option
 
 
 def effects(tree: ast.AST, names: Dict[str, str]) -> Dict[str, int]:
-    called: Set[int] = {id(n.func) for n in ast.walk(tree) if isinstance(n, ast.Call)}
+    return effects_of(list(ast.walk(tree)), names)
+
+
+def effects_of(nodes: List[ast.AST], names: Dict[str, str]) -> Dict[str, int]:
+    called: Set[int] = {id(n.func) for n in nodes if isinstance(n, ast.Call)}
     out: Dict[str, int] = {}
-    for node in chain_tops(tree):
+    for node in chain_tops(nodes):
         kind = effect_at(node, names, called)
         if kind:
             out[kind] = out.get(kind, 0) + 1
@@ -234,6 +238,62 @@ def names(path: str, tree: ast.Module) -> Tuple[Name, ...]:
     return tuple(out)
 
 
+FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
+
+
+def own_nodes(fn: ast.AST) -> List[ast.AST]:
+    """A function's own nodes: its body's, a nested def's or class's left to that one (a lambda's are its own)."""
+    out: List[ast.AST] = []
+    todo = list(ast.iter_child_nodes(fn))
+    while todo:
+        node = todo.pop()
+        out.append(node)
+        if not isinstance(node, (*FUNCTIONS, ast.ClassDef)):
+            todo.extend(ast.iter_child_nodes(node))
+    return out
+
+
+def cyclomatic(nodes: List[ast.AST]) -> int:
+    """1 + its decisions: each branch, loop, handler, comprehension (and its conditions), and each `and` / `or`."""
+    count = 1 + sum(1 for n in nodes if isinstance(n, DECISIONS))
+    count += sum(len(n.ifs) for n in nodes if isinstance(n, ast.comprehension))
+    return count + sum(len(n.values) - 1 for n in nodes if isinstance(n, ast.BoolOp))
+
+
+def imported_calls(nodes: List[ast.AST], names: Dict[str, str]) -> FrozenSet[str]:
+    """The dotted names of the calls made through an import (`tool_git.Git.here`): what an adapter module offers."""
+    out: Set[str] = set()
+    for n in nodes:
+        if isinstance(n, ast.Call):
+            head = n.func
+            while isinstance(head, ast.Attribute):
+                head = head.value
+            name = dotted(n.func, names) if isinstance(head, ast.Name) and head.id in names else None
+            if name:
+                out.add(name)
+    return frozenset(out)
+
+
+def functions(tree: ast.Module, names: Dict[str, str]) -> Tuple[Function, ...]:
+    """Every def, qualified by the classes and defs holding it."""
+    out: List[Function] = []
+
+    def visit(node: ast.AST, prefix: str) -> None:
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, FUNCTIONS):
+                own = own_nodes(child)
+                out.append(Function(prefix + child.name, child.lineno, effects_of(own, names),
+                                    imported_calls(own, names), cyclomatic(own)))
+                visit(child, f"{prefix}{child.name}.")
+            elif isinstance(child, ast.ClassDef):
+                visit(child, f"{prefix}{child.name}.")
+            elif not isinstance(child, ast.expr):
+                visit(child, prefix)
+
+    visit(tree, "")
+    return tuple(out)
+
+
 def module(path: str, tree: ast.Module, imports: FrozenSet[str]) -> Module:
     local = aliases(tree)
     types = classes(tree)
@@ -243,5 +303,6 @@ def module(path: str, tree: ast.Module, imports: FrozenSet[str]) -> Module:
         effects=effects(tree, local), import_io=import_io(tree, local), state=state(tree),
         stateful_types=tuple(c.name for c in plain if is_stateful(c)),
         abstract_types=sum(1 for c in plain if base_names(c) & ABSTRACT_BASES),
-        data_types=tuple(data_type(c) for c in types if is_dataclass(c)), imports=imports)
+        data_types=tuple(data_type(c) for c in types if is_dataclass(c)), imports=imports,
+        functions=functions(tree, local))
 

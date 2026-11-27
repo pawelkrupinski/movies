@@ -4,7 +4,8 @@
 abbreviation, idioms), data or collaborator (effects, state, interfaces, the data guard, the closure), collaborator-only
 fan-out, distance with V2 abstractness, layers, the design lint (adapters, state, import-time IO, the main guard), the
 exemption lint -- each through its extractor (Python's `ast`, JS/TS's facts.js, Scala's text), and the one rules table
-every language's constants agree with. DESIGN_RULES_UNDER_TEST names another copy of the core (the mutation test's)."""
+every language's constants agree with, and the `mixed` rule (a function performing an effect and deciding) over each
+extractor's functions. DESIGN_RULES_UNDER_TEST names another copy of the core (the mutation test's)."""
 from __future__ import annotations
 
 import ast
@@ -38,7 +39,7 @@ RULES = rules_table.load(ROOT)
 EXTRA = rules_table.parse("\n".join([
     "limit\tfanout\t2\tpy", "limit\tdistance\t0.2\tpy", "limit\tdistance-min-modules\t2\tpy",
     "limit\tdata-methods\t4\tpy", "limit\tdata-decisions\t9\tpy", "limit\tdatabag\t9\tpy", "limit\tdatafanout\t2\tpy",
-    "adapter\tpy\tlib/clock.py\tclock", "adapter\tpy\tlib/io.py\tfiles storage network", "distance\tpy\tlib",
+    "limit\tmixed-cyclomatic\t3\tscala py js", "adapter\tpy\tlib/clock.py\tclock", "adapter\tpy\tlib/git_repo.py\tprocess", "adapter\tpy\tlib/io.py\tfiles storage network", "distance\tpy\tlib",
     "layer\tpy\tlib\t0\tthe library", "layer\tpy\ttools\t1\tthe tools"]))
 
 
@@ -159,6 +160,86 @@ class DesignLintTest(unittest.TestCase):
         self.assertEqual(0, rooted.import_io)
 
 
+MIXED = """import subprocess
+import git_repo
+
+
+def decide_and_run(paths):
+    for p in paths:
+        if p.endswith(".py"):
+            subprocess.run(["x", p])
+
+
+def decide(paths, repo):
+    for p in paths:
+        if p and repo.exists(p):
+            return p
+
+
+def run_once(argv):
+    return subprocess.run(argv) or None
+
+
+def through_the_adapter(rev):
+    if rev:
+        return git_repo.Repo.here().show(rev) or ""
+
+
+def outer(paths):
+    def inner(p):
+        return subprocess.run(p)
+    return [inner(p) for p in paths if p]
+
+
+def main(argv):
+    if argv and argv[0] == "-h":
+        return subprocess.run(argv)
+
+
+class Tool:
+    def check(self, argv):
+        if argv:
+            return subprocess.run(argv) if argv[0] else None
+"""
+
+
+class MixedTest(unittest.TestCase):
+    def test_a_function_both_performing_an_effect_and_deciding_is_a_row_valued_its_cyclomatic(self) -> None:
+        rows = kinds(design_lint.mixed_rows(py("tools/t.py", MIXED), EXTRA))
+        self.assertEqual({("mixed", "tools/t.py:decide_and_run"): 3, ("mixed", "tools/t.py:through_the_adapter"): 3,
+                          ("mixed", "tools/t.py:Tool.check"): 3}, rows)
+
+    def test_a_pure_decision_over_an_injected_adapter_an_effect_alone_and_the_composition_root_are_no_row(self) -> None:
+        rows = kinds(design_lint.mixed_rows(py("tools/t.py", MIXED), EXTRA))
+        for name in ("decide", "run_once", "outer", "outer.inner", "main"):
+            self.assertNotIn(("mixed", f"tools/t.py:{name}"), rows)
+
+    def test_an_adapter_modules_own_functions_are_the_leaves(self) -> None:
+        self.assertEqual([], design_lint.mixed_rows(py("lib/git_repo.py", MIXED), EXTRA))
+        self.assertIn(("mixed", "tools/t.py:decide_and_run"), kinds(design_lint.rows([py("tools/t.py", MIXED)], EXTRA)))
+
+    def test_a_functions_facts_are_its_own_body_and_count_each_boolean_operator(self) -> None:
+        facts = {f.name: f for f in py("tools/t.py", MIXED).functions}
+        self.assertEqual(({}, 3), (facts["outer"].effects, facts["outer"].cyclomatic))
+        self.assertEqual({"process": 1}, facts["outer.inner"].effects)
+        self.assertEqual(4, facts["decide"].cyclomatic)
+        self.assertEqual(frozenset({"git_repo.Repo.here"}), facts["through_the_adapter"].calls)
+
+    def test_a_scala_defs_own_lines_with_comments_and_strings_blanked(self) -> None:
+        source = ("package a\n\nfinal class Store(clock: Clock) {\n  def save(\n    p: Path\n  ): Unit = {\n"
+                  "    if (p.isAbsolute && clock.ok) Files.writeString(p, \"if || if\")\n"
+                  "    def nested(n: Int) = if (n > 0 || n < 9) Files.size(p) else 0\n  }\n\n"
+                  "  // if if Files.readString(p) if\n  def pure(n: Int): Int = if (n > 0 && n < 9) 1 else 0\n}\n")
+        m = scala_names.module("common/src/main/scala/a/Store.scala", source)
+        facts = {f.name: f for f in m.functions}
+        self.assertEqual(({"files": 1}, 3), (facts["Store.save"].effects, facts["Store.save"].cyclomatic))
+        self.assertEqual(({"files": 1}, 3), (facts["Store.save.nested"].effects, facts["Store.save.nested"].cyclomatic))
+        self.assertEqual(({}, 3), (facts["Store.pure"].effects, facts["Store.pure"].cyclomatic))
+        self.assertEqual({("mixed", "common/src/main/scala/a/Store.scala:Store.save"): 3,
+                          ("mixed", "common/src/main/scala/a/Store.scala:Store.save.nested"): 3},
+                         kinds(design_lint.mixed_rows(m, EXTRA)))
+
+
 class ExemptionsTest(unittest.TestCase):
     def test_a_generic_or_undated_why_is_refused_and_a_specific_one_passes(self) -> None:
         bad = exemptions.parse("effect\ttools/t.py\tyesterday\tneeded for now\n")
@@ -212,6 +293,31 @@ class JsFactsTest(unittest.TestCase):
                           ("effect", "src/page.js:storage"): 1, ("import-io", "src/page.js"): 1,
                           ("state", "src/page.js"): 2}, kinds(design_lint.rows([m], RULES)))
         self.assertIn(("abbreviation", "src/page.js:readCfg"), kinds(naming.rows([m], RULES)))
+
+    def test_the_js_extractor_reads_each_functions_effects_adapter_calls_and_decisions(self) -> None:
+        sources = {"src/exec.ts": "export function run(argv: string[]): string { return argv.join(' '); }\n",
+                   "src/tool.ts": ("import { run } from './exec';\nimport fs from 'node:fs';\n"
+                                   "export function decide(xs: string[], repo: { has(x: string): boolean }) {\n"
+                                   "  for (const x of xs) { if (repo.has(x)) return x; }\n  return null;\n}\n"
+                                   "export function mixed(p: string) {\n  if (p && fs.existsSync(p)) return 1;\n  return 0;\n}\n"
+                                   "export function viaAdapter(xs: string[]) {\n  return xs.length > 1 && xs[0] ? run(xs) : '';\n}\n"
+                                   "class Page { tick() { return Date.now() > 3 ? (Date.now() > 4 ? 1 : 2) : 0; } }\n")}
+        with tempfile.TemporaryDirectory() as root:
+            for path, text in sources.items():
+                os.makedirs(os.path.join(root, os.path.dirname(path)), exist_ok=True)
+                with open(os.path.join(root, path), "w") as f:
+                    f.write(text)
+            out = os.path.join(root, "out")
+            subprocess.run([os.path.join(SCRIPTS, "js-quality-report"), "--root", root, "--area", "app=src",
+                            "--out", out], check=True, stdout=subprocess.DEVNULL)
+            m = extractors.read_js(os.path.join(out, "modules.json"), set())["src/tool.ts"]
+        facts = {f.name: f for f in m.functions}
+        self.assertEqual(({"files": 1}, 3), (facts["mixed"].effects, facts["mixed"].cyclomatic))
+        self.assertEqual(frozenset({"src/exec.ts"}), facts["viaAdapter"].calls)
+        self.assertEqual(({"clock": 2}, 3), (facts["Page.tick"].effects, facts["Page.tick"].cyclomatic))
+        adapters = rules_table.parse("limit\tmixed-cyclomatic\t3\tjs\nadapter\tjs\tsrc/exec.ts\tprocess\n")
+        self.assertEqual({("mixed", "src/tool.ts:mixed"): 3, ("mixed", "src/tool.ts:viaAdapter"): 3,
+                          ("mixed", "src/tool.ts:Page.tick"): 3}, kinds(design_lint.mixed_rows(m, adapters)))
 
 
 class TableTest(unittest.TestCase):
