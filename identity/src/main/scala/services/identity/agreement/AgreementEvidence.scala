@@ -79,6 +79,16 @@ private[agreement] final class AgreementEvidence(sources: AgreementSources.Evide
   }
   /** `reads`, read on the way to the decision being made: in its receipt too, if one is being made. */
   def noted(reads: Iterable[(Dependency, Long)]): Unit = if (receipt != null) receipt ++= reads
+  /** `reads`, a KEPT read's receipt, read again on the way to the decision being made: noted ([[noted]]), and its TMDB
+   *  records and searches among what the apply read ([[TmdbReadTracking]]), as a fresh read through [[Noting]] tracks them. */
+  def notedKept(reads: collection.Map[Dependency, Long]): Unit = {
+    reads.keysIterator.foreach {
+      case Dependency.Lookup(_, _, Question.FilmRecord(film)) => tmdbReads.record(film)
+      case _                                                  => ()
+    }
+    if (reads.keysIterator.exists { case Dependency.Lookup(_, _, Question.Candidate(_)) => true; case _ => false }) tmdbReads.queried()
+    noted(reads)
+  }
 
   /** `inner`, each read noted: in the [[receipt]] being made, if any — as the question it reads, through `via`, with the
    *  digest of what it read, nothing there yet too ([[AgreementEvidence.reread]] reads it again) — and TMDB's

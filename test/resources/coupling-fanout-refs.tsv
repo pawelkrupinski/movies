@@ -463,7 +463,6 @@ services.identity.agreement.AgreementCandidates	services.identity.agreement.Agre
 services.identity.agreement.AgreementCandidates	services.identity.agreement.AnswerChanges
 services.identity.agreement.AgreementCandidates	services.identity.agreement.Broadcast
 services.identity.agreement.AgreementCandidates	services.identity.agreement.FamilyAnswers
-services.identity.agreement.AgreementCandidates	services.identity.agreement.TmdbReadTracking
 services.identity.agreement.AgreementCandidates	services.identity.measures.Film
 services.identity.agreement.AgreementCandidates	services.identity.measures.IdentityMeasures
 services.identity.agreement.AgreementCandidates	services.identity.measures.Listing
@@ -619,7 +618,6 @@ services.identity.agreement.ClusterVerdicts	services.identity.measures.Listing
 services.identity.agreement.ClusterVerdicts	services.identity.measures.ResolverDecision
 services.identity.agreement.ClusterVerdicts	services.identity.vocabulary.Answer
 services.identity.agreement.ClusterVerdicts	services.identity.vocabulary.Dependency
-services.identity.agreement.ClusterVerdicts	services.identity.vocabulary.Memo
 services.identity.agreement.ClusterVerdicts	services.identity.vocabulary.Question
 services.identity.agreement.FamilyVerdicts	services.identity.IdentityCalibration
 services.identity.agreement.FamilyVerdicts	services.identity.RecordingLookups

@@ -86,11 +86,11 @@ private[agreement] final class ClusterVerdicts(evidence: AgreementEvidence, verd
     if (clean && reread) askStale()
     if (clean && pass.validating()) {
       // the full validation's: read again whole, though the index calls it standing — a drift is decided again
-      val checked = verdicts.memo.verified(id, kept, evidence.digestNow(_, AgreementEvidence.listingIn(listings)))
+      val checked = verdicts.verified(id, kept, evidence.digestNow(_, AgreementEvidence.listingIn(listings)))
       pass.validated += checked
       checked.drifted == 0
     } else clean || {
-      val stands = verdicts.memo.stands(kept, evidence.digestNow(_, AgreementEvidence.listingIn(listings)))
+      val stands = verdicts.stands(kept, evidence.digestNow(_, AgreementEvidence.listingIn(listings)))
       if (stands) { verdicts.check(id, digest, version); askStale() }
       stands
     }
@@ -177,7 +177,7 @@ private[agreement] final class ClusterVerdicts(evidence: AgreementEvidence, verd
       // cluster at the same answers read no verdict and took none — a re-resolve of the family elsewhere flipped the
       // take, the next filing flipped it back (UK Cineworld's "RBO Cinema Season 2026-27: La Fanciulla Del West" ×73)
       waiting(id) = ClusterWait(digest, Set.empty, blindAt = Some(version), read = Some(verdict))
-      verdicts.memo.uncheck(id)
+      verdicts.uncheck(id)
     } else {
       if (!verdicts.get(id).contains(verdict)) pass.moved += verdict
       verdicts.check(id, digest, version)

@@ -163,12 +163,7 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
     }
     if (now.blindAt.isDefined) blindReads += 1
     // kept, its reads are this apply's too, and the receipt's being made
-    if (kept.isDefined) now.reads.keysIterator.foreach {
-      case Dependency.Lookup(_, _, Question.FilmRecord(film)) => evidence.tmdbReads.record(film)
-      case _                                                  => ()
-    }
-    if (kept.isDefined && now.reads.keysIterator.exists { case Dependency.Lookup(_, _, Question.Candidate(_)) => true; case _ => false }) evidence.tmdbReads.queried()
-    evidence.noted(now.reads)
+    if (kept.isDefined) evidence.notedKept(now.reads) else evidence.noted(now.reads)
     now.films
   }
 

@@ -42,6 +42,12 @@ private[identity] final class VerdictIndex(sources: AgreementSources.VerdictSour
   def moved(kind: Dependency => Boolean, now: Dependency => Option[Long]): Int = memo.moved(kind, now)
   /** `id`'s verdict checked at `version` over the listings digesting to `digest`. */
   def check(id: String, digest: Long, version: Long): Unit = memo.check(id, digest, version)
+  /** `id`'s verdict checked no more: read again at its next decision ([[Memo.uncheck]]). */
+  def uncheck(id: String): Unit = memo.uncheck(id)
+  /** Does `verdict` stand on what it read, each read as it reads `now` ([[Memo.stands]])? */
+  def stands(verdict: StoredVerdict, now: Dependency => Option[Long]): Boolean = memo.stands(verdict, now)
+  /** `id`'s `verdict` read again whole, each read as it reads `now`: what was read, and what drifted ([[Memo.verified]]). */
+  def verified(id: String, verdict: StoredVerdict, now: Dependency => Option[Long]): Memo.Validation = memo.verified(id, verdict, now)
   /** Does `id`'s verdict stand at `version` over the listings digesting to `digest`: none of its reads filed since it was
    *  checked, or each filed one read `again` alike ([[Memo.clean]])? */
   def clean(id: String, digest: Long, version: Long, again: (Dependency, Long) => Boolean): Boolean =
