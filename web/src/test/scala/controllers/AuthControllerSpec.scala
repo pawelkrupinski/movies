@@ -46,12 +46,12 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   // two-minute window — live in `AuthExchangeCodes` above the seam, so what this
   // spec exercises is the same policy production runs and only the persistence
   // differs. Returned alongside so a test can watch a code being spent.
-  private def fixture(providers: OauthProvider*): (AuthControllers, InMemoryUserRepository, AuthExchangeCodes) =
+  private def fixture(providers: OauthProvider*): (SignInControllers, InMemoryUserRepository, AuthExchangeCodes) =
     fixtureFor(models.Country.Poland, providers*)
 
   /** As `fixture`, for a deployment serving `country` — the apex flows need a
    *  controller that is Poland (the process mounted at `/`) finishing a UK flow. */
-  private def fixtureFor(country: models.Country, providers: OauthProvider*): (AuthControllers, InMemoryUserRepository, AuthExchangeCodes) = {
+  private def fixtureFor(country: models.Country, providers: OauthProvider*): (SignInControllers, InMemoryUserRepository, AuthExchangeCodes) = {
     val repository = new InMemoryUserRepository
     val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(fixedClk), fixedClk)
     val byName = providers.map(p => p.name -> p).toMap
@@ -71,7 +71,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   "AuthController.start" should "302 to the provider's authUrl and stash state + provider in session" in {
     val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
-    val result   = ctl.start("google")(FakeRequest("GET", "/auth/google/start"))
+    val result   = ctl.web.start("google")(FakeRequest("GET", "/auth/google/start"))
 
     status(result) shouldBe SEE_OTHER
     val location = redirectLocation(result).value
@@ -85,20 +85,20 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "404 when the provider isn't wired (env var missing → not in the map)" in {
     val (ctl, _, _) = fixture()
-    status(ctl.start("google")(FakeRequest("GET", "/auth/google/start"))) shouldBe NOT_FOUND
+    status(ctl.web.start("google")(FakeRequest("GET", "/auth/google/start"))) shouldBe NOT_FOUND
   }
 
   it should "flag the session as a mobile client for platform=ios and platform=android" in {
     val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     for (platform <- Seq("ios", "android")) {
-      val result = ctl.start("google")(FakeRequest("GET", s"/auth/google/start?platform=$platform"))
+      val result = ctl.web.start("google")(FakeRequest("GET", s"/auth/google/start?platform=$platform"))
       session(result).get("mobileClient").value shouldBe "1"
     }
   }
 
   it should "not flag a mobile client for a plain web start (no platform parameter)" in {
     val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
-    val result   = ctl.start("google")(FakeRequest("GET", "/auth/google/start"))
+    val result   = ctl.web.start("google")(FakeRequest("GET", "/auth/google/start"))
     session(result).get("mobileClient") shouldBe empty
   }
 
@@ -110,7 +110,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
     val request = FakeRequest("GET", "/auth/google/callback?code=AUTH_CODE&state=THE_STATE")
       .withSession("oauthState" -> "THE_STATE", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
-    val result  = ctl.callback("google")(request)
+    val result  = ctl.web.callback("google")(request)
 
     status(result)            shouldBe SEE_OTHER
     // Straight home: this request did not arrive on a deployed origin, so there
@@ -136,7 +136,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, repository, _) = fixture(provider)
 
     // First login — creates the user.
-    val firstSession = session(ctl.callback("google")(
+    val firstSession = session(ctl.web.callback("google")(
       FakeRequest("GET", "/auth/google/callback?code=C1&state=S1")
         .withSession("oauthState" -> "S1", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
     ))
@@ -151,7 +151,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
         new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(fixedClk), fixedClk), models.Country.Poland, clock = fixedClk),
       repository
     )
-    val secondSession = session(ctl2.callback("google")(
+    val secondSession = session(ctl2.web.callback("google")(
       FakeRequest("GET", "/auth/google/callback?code=C2&state=S2")
         .withSession("oauthState" -> "S2", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
     ))
@@ -168,7 +168,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
         "oauthState" -> "THE_STATE", "oauthProvider" -> "google",
         "oauthStateTimestamp" -> NowMs.toString, "mobileClient" -> "1"
       )
-    val result = ctl.callback("google")(request)
+    val result = ctl.web.callback("google")(request)
 
     status(result) shouldBe SEE_OTHER
     val location = redirectLocation(result).value
@@ -193,7 +193,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, repository, _) = fixture(new FakeProvider("google", Profile))
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=ATTACKER_GUESS")
       .withSession("oauthState" -> "THE_REAL_ONE", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
-    val result  = ctl.callback("google")(request)
+    val result  = ctl.web.callback("google")(request)
 
     status(result) shouldBe BAD_REQUEST
     contentAsString(result) should include ("state mismatch")
@@ -202,7 +202,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "reject the callback when session has no state at all (no prior /start)" in {
     val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
-    val result   = ctl.callback("google")(FakeRequest("GET", "/auth/google/callback?code=C&state=S"))
+    val result   = ctl.web.callback("google")(FakeRequest("GET", "/auth/google/callback?code=C&state=S"))
     status(result) shouldBe BAD_REQUEST
     contentAsString(result) should include ("Missing session state")
   }
@@ -217,7 +217,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     )
     val request = FakeRequest("GET", "/auth/facebook/callback?code=C&state=S")
       .withSession("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
-    val result  = ctl.callback("facebook")(request)
+    val result  = ctl.web.callback("facebook")(request)
 
     status(result) shouldBe BAD_REQUEST
     contentAsString(result) should include ("Provider mismatch")
@@ -232,7 +232,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, repository, _) = fixture(brokenProvider)
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=S")
       .withSession("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
-    val result  = ctl.callback("google")(request)
+    val result  = ctl.web.callback("google")(request)
 
     status(result) shouldBe INTERNAL_SERVER_ERROR
     repository.findById("anything") shouldBe empty   // nothing persisted
@@ -244,7 +244,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val request = FakeRequest("POST", "/auth/logout")
       .withSession("userId" -> "alice", "oauthState" -> "leftover", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
-    val result = ctl.logout()(request)
+    val result = ctl.session.logout()(request)
 
     status(result)              shouldBe SEE_OTHER
     // Straight home, for the same reason as the callback above.
@@ -260,7 +260,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   "AuthController.start" should "stamp oauthStateTimestamp in the session" in {
     val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
-    val result   = ctl.start("google")(FakeRequest("GET", "/auth/google/start"))
+    val result   = ctl.web.start("google")(FakeRequest("GET", "/auth/google/start"))
     session(result).get("oauthStateTimestamp").value.toLong shouldBe NowMs
   }
 
@@ -270,8 +270,8 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=S")
       .withSession("oauthState" -> "S", "oauthProvider" -> "google")   // no oauthStateTimestamp
-    status(ctl.callback("google")(request))      shouldBe BAD_REQUEST
-    contentAsString(ctl.callback("google")(request)) should include ("oauthStateTimestamp")
+    status(ctl.web.callback("google")(request))      shouldBe BAD_REQUEST
+    contentAsString(ctl.web.callback("google")(request)) should include ("oauthStateTimestamp")
   }
 
   it should "reject when oauthStateTimestamp is older than 10 minutes" in {
@@ -279,7 +279,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val tenMinAndChange = NowMs - (11 * 60 * 1000).toLong
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=S")
       .withSession("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTimestamp" -> tenMinAndChange.toString)
-    val result = ctl.callback("google")(request)
+    val result = ctl.web.callback("google")(request)
     status(result) shouldBe BAD_REQUEST
     contentAsString(result) should include ("expired")
   }
@@ -289,7 +289,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val fresh = NowMs - (9 * 60 * 1000).toLong
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=S")
       .withSession("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTimestamp" -> fresh.toString)
-    status(ctl.callback("google")(request)) shouldBe SEE_OTHER
+    status(ctl.web.callback("google")(request)) shouldBe SEE_OTHER
   }
 
   // ── Account linking by email ────────────────────────────────────────────
@@ -300,14 +300,14 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val fbProvider     = new FakeProvider("facebook", fbProfile)
     val (ctl, repository, _)    = fixture(googleProvider, fbProvider)
 
-    val googleSession = session(ctl.callback("google")(
+    val googleSession = session(ctl.web.callback("google")(
       FakeRequest("GET", "/auth/google/callback?code=C1&state=S1")
         .withSession("oauthState" -> "S1", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
     ))
     val firstUserId = googleSession.get("userId").value
     firstUserId shouldBe "alice@example.com"
 
-    val fbSession = session(ctl.callback("facebook")(
+    val fbSession = session(ctl.web.callback("facebook")(
       FakeRequest("GET", "/auth/facebook/callback?code=C2&state=S2")
         .withSession("oauthState" -> "S2", "oauthProvider" -> "facebook", "oauthStateTimestamp" -> NowMs.toString)
     ))
@@ -324,7 +324,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
       new FakeProvider("facebook", OauthProfile(sub = "FB-99", email = None, None, None))
     )
 
-    val result = ctl.callback("facebook")(
+    val result = ctl.web.callback("facebook")(
       FakeRequest("GET", "/auth/facebook/callback?code=C1&state=S1")
         .withSession("oauthState" -> "S1", "oauthProvider" -> "facebook", "oauthStateTimestamp" -> NowMs.toString)
     )
@@ -343,7 +343,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val apex    = store // each pod reads the shared store directly (see `UsersWiring.userRepository`)
     val sibling = store
 
-    def pod(users: services.users.UserRepository, provider: OauthProvider*): AuthControllers =
+    def pod(users: services.users.UserRepository, provider: OauthProvider*): SignInControllers =
       AuthControllerFixture(
         Helpers.stubControllerComponents(), provider.map(p => p.name -> p).toMap, users,
         new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(fixedClk), fixedClk), models.Country.Poland,
@@ -366,14 +366,14 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val facebook = new FakeProvider("facebook", OauthProfile(
       sub = "FB-1", email = Some("alice@example.com"),
       displayName = Some("Alice K"), avatarUrl = Some("https://platform-lookaside.fbsbx.com/alice")))
-    val signIn = pod(apex, facebook).callback("facebook")(
+    val signIn = pod(apex, facebook).web.callback("facebook")(
       FakeRequest("GET", "/auth/facebook/callback?code=C&state=S")
         .withSession("oauthState" -> "S", "oauthProvider" -> "facebook", "oauthStateTimestamp" -> NowMs.toString))
     status(signIn) shouldBe SEE_OTHER
 
     // The next page is rendered by the OTHER pod, off the session the apex just
     // issued — the cookie is all they share.
-    val onSibling = pod(sibling).me()(FakeRequest("GET", "/auth/me").withSession(session(signIn).data.toSeq*))
+    val onSibling = pod(sibling).session.me()(FakeRequest("GET", "/auth/me").withSession(session(signIn).data.toSeq*))
 
     status(onSibling) shouldBe OK
     (contentAsJson(onSibling) \ "provider").as[String]  shouldBe "facebook"
@@ -396,7 +396,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
       id = "alice@example.com", provider = "google", providerSub = "G-9",
       email = Some("alice@example.com"), displayName = Some("Alice"), avatarUrl = None,
       createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
-    val result = ctl.me()(
+    val result = ctl.session.me()(
       FakeRequest("GET", "/api/me").withSession("userId" -> "alice@example.com"))
 
     status(result) shouldBe OK
@@ -408,7 +408,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   // a signed-in visitor is anonymous.
   it should "say the same about a 401" in {
     val (ctl, _, _) = fixture()
-    val result = ctl.me()(FakeRequest("GET", "/api/me"))
+    val result = ctl.session.me()(FakeRequest("GET", "/api/me"))
 
     status(result) shouldBe UNAUTHORIZED
     header("Cache-Control", result).value shouldBe PerUserResponse.CacheControl
@@ -416,20 +416,20 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   // ── POST /auth/logout signs out EVERY session ───────────────────────────
 
-  private def logoutAs(ctl: AuthControllers, session: play.api.mvc.Session) =
-    ctl.logout()(FakeRequest("POST", "/auth/logout").withSession(session.data.toSeq*))
+  private def logoutAs(ctl: SignInControllers, session: play.api.mvc.Session) =
+    ctl.session.logout()(FakeRequest("POST", "/auth/logout").withSession(session.data.toSeq*))
 
   /** A browser signed in as the account stands now. */
   private def browserSession(repository: InMemoryUserRepository, email: String) =
     SignedInUser.establish(play.api.mvc.Session(), repository.findById(email).value)
 
   /** The session `/auth/token` hands a native app — `Profile` is alice@example.com. */
-  private def appSession(ctl: AuthControllers) =
-    session(ctl.token()(FakeRequest("POST", "/auth/token").withBody(play.api.libs.json.Json.obj(
+  private def appSession(ctl: SignInControllers) =
+    session(ctl.native.token()(FakeRequest("POST", "/auth/token").withBody(play.api.libs.json.Json.obj(
       "provider" -> "google", "token" -> "C", "redirectUri" -> "kinowo://auth"))))
 
-  private def meAs(ctl: AuthControllers, session: play.api.mvc.Session) =
-    status(ctl.me()(FakeRequest("GET", "/api/me").withSession(session.data.toSeq*)))
+  private def meAs(ctl: SignInControllers, session: play.api.mvc.Session) =
+    status(ctl.session.me()(FakeRequest("GET", "/api/me").withSession(session.data.toSeq*)))
 
   // Logout is global: the laptop's cookie and the phone app's cookie (what
   // `/auth/token` hands the native apps) are separate sessions of one account,
@@ -462,7 +462,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   it should "redirect an anonymous caller home, revoking nothing" in {
     val (ctl, repository, _) = fixture()
     val email  = signedIn(repository, "alice@example.com", Now)
-    val result = ctl.logout()(FakeRequest("POST", "/auth/logout"))
+    val result = ctl.session.logout()(FakeRequest("POST", "/auth/logout"))
 
     status(result) shouldBe SEE_OTHER
     redirectLocation(result) shouldBe Some("/")
@@ -491,7 +491,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     }
     val ctl = AuthControllerFixture(Helpers.stubControllerComponents(), Map.empty, repository,
       new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(fixedClk), fixedClk), models.Country.Poland, clock = fixedClk)
-    val result = ctl.logout()(FakeRequest("POST", "/auth/logout").withSession("userId" -> "alice@example.com"))
+    val result = ctl.session.logout()(FakeRequest("POST", "/auth/logout").withSession("userId" -> "alice@example.com"))
 
     status(result) shouldBe SEE_OTHER
     session(result).get("userId") shouldBe empty
@@ -513,9 +513,9 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val ctl = AuthControllerFixture(Helpers.stubControllerComponents(), Map("google" -> new FakeProvider("google", Profile)),
       repository, new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(fixedClk), fixedClk), models.Country.Poland, clock = fixedClk)
     signedIn(repository, "alice@example.com", Now)
-    val started = session(ctl.start("google")(FakeRequest("GET", "/auth/google/start")))
+    val started = session(ctl.web.start("google")(FakeRequest("GET", "/auth/google/start")))
     repository.revokeOnNextRead = true
-    val back = ctl.callback("google")(FakeRequest("GET", s"/auth/google/callback?code=C&state=${started.get("oauthState").value}")
+    val back = ctl.web.callback("google")(FakeRequest("GET", s"/auth/google/callback?code=C&state=${started.get("oauthState").value}")
       .withSession(started.data.toSeq*))
     repository.findById("alice@example.com").value.sessionVersion shouldBe 1
     SignedInUser(FakeRequest().withSession(session(back).data.toSeq*), repository).map(_.id) shouldBe Some("alice@example.com")
@@ -528,17 +528,17 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   // finish. Pinned whole so a restructuring of how they are reached cannot
   // change what they say.
 
-  private def callbackWith(ctl: AuthControllers, query: String, session: (String, String)*) =
-    ctl.callback("google")(FakeRequest("GET", s"/auth/google/callback$query").withSession(session*))
+  private def callbackWith(ctl: SignInControllers, query: String, session: (String, String)*) =
+    ctl.web.callback("google")(FakeRequest("GET", s"/auth/google/callback$query").withSession(session*))
 
   private val FreshSession = Seq("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
 
   "Every refused flow" should "answer start's refusals with their own words" in {
     val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
-    val unknown = ctl.start("facebook")(FakeRequest("GET", "/auth/facebook/start"))
+    val unknown = ctl.web.start("facebook")(FakeRequest("GET", "/auth/facebook/start"))
     status(unknown) shouldBe NOT_FOUND
     contentAsString(unknown) shouldBe "Provider not configured: facebook"
-    val badChallenge = ctl.start("google")(FakeRequest("GET", "/auth/google/start?platform=ios&challenge=not%20base64"))
+    val badChallenge = ctl.web.start("google")(FakeRequest("GET", "/auth/google/start?platform=ios&challenge=not%20base64"))
     status(badChallenge) shouldBe BAD_REQUEST
     contentAsString(badChallenge) shouldBe "challenge must be base64url(SHA-256(verifier)), unpadded"
   }
@@ -546,7 +546,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   it should "name each failed callback check in a 400" in {
     val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val reasons = Seq(
-      ctl.callback("facebook")(FakeRequest("GET", "/auth/facebook/callback?code=C&state=S").withSession(FreshSession*))
+      ctl.web.callback("facebook")(FakeRequest("GET", "/auth/facebook/callback?code=C&state=S").withSession(FreshSession*))
                                                      -> "Unknown provider: facebook",
       callbackWith(ctl, "?state=S", FreshSession*)    -> "Missing code",
       callbackWith(ctl, "?code=C", FreshSession*)     -> "Missing state",
@@ -578,8 +578,8 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "answer the native endpoints' refusals as JSON errors" in {
     val (ctl, repository, codes) = fixture(new FakeProvider("google", OauthProfile(sub = "G-2", email = None, None, None)))
-    def token(body: play.api.libs.json.JsObject) = ctl.token()(FakeRequest("POST", "/auth/token").withBody(body))
-    def exchange(body: play.api.libs.json.JsObject) = ctl.exchange()(FakeRequest("POST", "/auth/exchange").withBody(body))
+    def token(body: play.api.libs.json.JsObject) = ctl.native.token()(FakeRequest("POST", "/auth/token").withBody(body))
+    def exchange(body: play.api.libs.json.JsObject) = ctl.native.exchange()(FakeRequest("POST", "/auth/exchange").withBody(body))
     val answers = Seq(
       token(play.api.libs.json.Json.obj("token" -> "t"))           -> (BAD_REQUEST, "missing provider"),
       token(play.api.libs.json.Json.obj("provider" -> "google"))   -> (BAD_REQUEST, "missing token"),
@@ -599,7 +599,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   "AuthController.start" should "replace every key of a flow abandoned earlier, and keep the rest of the session" in {
     val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
-    val result = ctl.start("google")(FakeRequest("GET", "/auth/google/start").withSession(
+    val result = ctl.web.start("google")(FakeRequest("GET", "/auth/google/start").withSession(
       "oauthState" -> "OLD", "oauthProvider" -> "facebook", "oauthStateTimestamp" -> "1",
       "mobileClient" -> "1", SignInFlow.MobileChallengeKey -> "c", "lang" -> "en"))
     val sess = session(result)

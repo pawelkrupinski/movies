@@ -32,27 +32,27 @@ class AuthNoStoreSpec extends AnyFlatSpec with Matchers {
   private val sso   = new SsoController(Helpers.stubControllerComponents(), users, codes, models.Country.Poland)
 
   "POST /auth/token" should "forbid keeping a copy of a successful sign-in" in {
-    val result = ctl.token()(FakeRequest("POST", "/auth/token")
+    val result = ctl.native.token()(FakeRequest("POST", "/auth/token")
       .withBody(Json.obj("provider" -> "google", "token" -> "code", "redirectUri" -> "https://x/cb")))
     status(result) shouldBe OK
     header("Cache-Control", result) shouldBe Some(PerUserResponse.CacheControl)
   }
 
   it should "forbid keeping a copy of a refusal too" in {
-    val result = ctl.token()(FakeRequest("POST", "/auth/token").withBody(Json.obj("provider" -> "apple", "token" -> "t")))
+    val result = ctl.native.token()(FakeRequest("POST", "/auth/token").withBody(Json.obj("provider" -> "apple", "token" -> "t")))
     header("Cache-Control", result) shouldBe Some(PerUserResponse.CacheControl)
   }
 
   "POST /auth/exchange" should "forbid keeping a copy of the session it hands out" in {
     users.upsert(models.User(id = "bob@example.com", provider = "google", providerSub = "G-2", email = Some("bob@example.com"),
       displayName = Some("Bob"), avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
-    val result = ctl.exchange()(FakeRequest("POST", "/auth/exchange").withBody(Json.obj("code" -> codes.mint("bob@example.com"))))
+    val result = ctl.native.exchange()(FakeRequest("POST", "/auth/exchange").withBody(Json.obj("code" -> codes.mint("bob@example.com"))))
     status(result) shouldBe OK
     header("Cache-Control", result) shouldBe Some(PerUserResponse.CacheControl)
   }
 
   it should "forbid keeping a copy of a refused code" in {
-    val result = ctl.exchange()(FakeRequest("POST", "/auth/exchange").withBody(Json.obj("code" -> "nope")))
+    val result = ctl.native.exchange()(FakeRequest("POST", "/auth/exchange").withBody(Json.obj("code" -> "nope")))
     status(result) shouldBe UNAUTHORIZED
     header("Cache-Control", result) shouldBe Some(PerUserResponse.CacheControl)
   }

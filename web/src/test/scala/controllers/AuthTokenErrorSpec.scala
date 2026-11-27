@@ -17,7 +17,7 @@ class AuthTokenErrorSpec extends AnyFlatSpec with Matchers {
     new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(_root_.tools.SpecClock.Pinned), _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
 
   private def token(provider: String) =
-    ctl.token()(FakeRequest("POST", "/auth/token").withBody(Json.obj("provider" -> provider, "token" -> "t")))
+    ctl.native.token()(FakeRequest("POST", "/auth/token").withBody(Json.obj("provider" -> provider, "token" -> "t")))
 
   "a refused token" should "401 with a generic message, not the exception's" in {
     val result = token("google") // no validator wired → "Google not configured" internally

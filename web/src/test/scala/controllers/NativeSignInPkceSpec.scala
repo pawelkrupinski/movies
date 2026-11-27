@@ -43,18 +43,18 @@ class NativeSignInPkceSpec extends AnyFlatSpec with Matchers {
       new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(_root_.tools.SpecClock.Pinned), _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
 
   /** Start (with `startQuery`) and finish a native flow; the deep-link code. */
-  private def deepLinkCode(ctl: AuthControllers, startQuery: String): String = {
-    val start = ctl.start("google")(FakeRequest("GET", s"/auth/google/start?platform=ios$startQuery"))
+  private def deepLinkCode(ctl: SignInControllers, startQuery: String): String = {
+    val start = ctl.web.start("google")(FakeRequest("GET", s"/auth/google/start?platform=ios$startQuery"))
     status(start) shouldBe SEE_OTHER
     val sess  = session(start)
     val state = sess.get("oauthState").value
-    val back  = ctl.callback("google")(FakeRequest("GET", s"/auth/google/callback?code=C&state=$state")
+    val back  = ctl.web.callback("google")(FakeRequest("GET", s"/auth/google/callback?code=C&state=$state")
       .withSession(sess.data.toSeq*))
     redirectLocation(back).value.stripPrefix("kinowo://auth-done?code=")
   }
 
-  private def exchange(ctl: AuthControllers, body: play.api.libs.json.JsObject) =
-    status(ctl.exchange()(FakeRequest("POST", "/auth/exchange").withBody(body)))
+  private def exchange(ctl: SignInControllers, body: play.api.libs.json.JsObject) =
+    status(ctl.native.exchange()(FakeRequest("POST", "/auth/exchange").withBody(body)))
 
   "A native sign-in started with a challenge" should "exchange its code for the matching verifier" in {
     val ctl  = controller()
@@ -93,28 +93,28 @@ class NativeSignInPkceSpec extends AnyFlatSpec with Matchers {
   // browser must not inherit them.
   "/auth/:provider/start" should "not let an abandoned native flow's keys ride into a later web sign-in" in {
     val ctl       = controller()
-    val abandoned = session(ctl.start("google")(FakeRequest("GET",
+    val abandoned = session(ctl.web.start("google")(FakeRequest("GET",
       s"/auth/google/start?platform=android&challenge=${challengeOf(Verifier)}")))
-    val web   = ctl.start("google")(FakeRequest("GET", "/auth/google/start").withSession(abandoned.data.toSeq*))
+    val web   = ctl.web.start("google")(FakeRequest("GET", "/auth/google/start").withSession(abandoned.data.toSeq*))
     val sess  = session(web)
     sess.get("mobileClient") shouldBe None
     sess.get(SignInFlow.MobileChallengeKey) shouldBe None
-    val back = ctl.callback("google")(FakeRequest("GET", s"/auth/google/callback?code=C&state=${sess.get("oauthState").value}")
+    val back = ctl.web.callback("google")(FakeRequest("GET", s"/auth/google/callback?code=C&state=${sess.get("oauthState").value}")
       .withSession(sess.data.toSeq*))
     redirectLocation(back).value should not startWith "kinowo://"
   }
 
   it should "not stamp an abandoned flow's challenge on a later challenge-less native code" in {
     val ctl       = controller()
-    val abandoned = session(ctl.start("google")(FakeRequest("GET",
+    val abandoned = session(ctl.web.start("google")(FakeRequest("GET",
       s"/auth/google/start?platform=android&challenge=${challengeOf(Verifier)}")))
-    session(ctl.start("google")(FakeRequest("GET", "/auth/google/start?platform=android")
+    session(ctl.web.start("google")(FakeRequest("GET", "/auth/google/start?platform=android")
       .withSession(abandoned.data.toSeq*))).get(SignInFlow.MobileChallengeKey) shouldBe None
   }
 
   it should "refuse a challenge that is not a base64url SHA-256" in {
     val ctl = controller()
     for (bad <- Seq("short", "=" * 43, "a" * 44))
-      status(ctl.start("google")(FakeRequest("GET", s"/auth/google/start?platform=android&challenge=$bad"))) shouldBe BAD_REQUEST
+      status(ctl.web.start("google")(FakeRequest("GET", s"/auth/google/start?platform=android&challenge=$bad"))) shouldBe BAD_REQUEST
   }
 }

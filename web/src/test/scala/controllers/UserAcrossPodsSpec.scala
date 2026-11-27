@@ -47,7 +47,7 @@ class UserAcrossPodsSpec extends AnyFlatSpec with Matchers {
         users, clock)
     }
 
-    def authPod(): AuthControllers =
+    def authPod(): SignInControllers =
       AuthControllerFixture(Helpers.stubControllerComponents(), Map.empty, users,
         new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(_root_.tools.SpecClock.Pinned), _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
   }
@@ -95,10 +95,10 @@ class UserAcrossPodsSpec extends AnyFlatSpec with Matchers {
     val phone   = aliceSession
 
     // The laptop's cookie is in use on the sibling pod…
-    status(sibling.me()(as(laptop)(FakeRequest("GET", "/api/me")))) shouldBe OK
+    status(sibling.session.me()(as(laptop)(FakeRequest("GET", "/api/me")))) shouldBe OK
     // …when Alice signs out on her phone, answered by the apex pod.
-    status(apex.logout()(as(phone)(FakeRequest("POST", "/auth/logout")))) shouldBe SEE_OTHER
+    status(apex.session.logout()(as(phone)(FakeRequest("POST", "/auth/logout")))) shouldBe SEE_OTHER
 
-    status(sibling.me()(as(laptop)(FakeRequest("GET", "/api/me")))) shouldBe UNAUTHORIZED
+    status(sibling.session.me()(as(laptop)(FakeRequest("GET", "/api/me")))) shouldBe UNAUTHORIZED
   }
 }

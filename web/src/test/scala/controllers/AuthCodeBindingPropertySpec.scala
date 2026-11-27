@@ -39,7 +39,7 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
     (users, new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(_root_.tools.SpecClock.Pinned), _root_.tools.SpecClock.Pinned))
   }
 
-  private def fixture(): (AuthControllers, AuthExchangeCodes) = {
+  private def fixture(): (SignInControllers, AuthExchangeCodes) = {
     val (users, codes) = stores()
     (AuthControllerFixture(Helpers.stubControllerComponents(), Map.empty, users, codes, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned), codes)
   }
@@ -114,8 +114,8 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
       case _                  => false
     }
 
-  private def exchange(ctl: AuthControllers, code: String, verifier: Option[String]) =
-    status(ctl.exchange()(FakeRequest("POST", "/auth/exchange")
+  private def exchange(ctl: SignInControllers, code: String, verifier: Option[String]) =
+    status(ctl.native.exchange()(FakeRequest("POST", "/auth/exchange")
       .withBody(Json.obj("code" -> code) ++ verifier.fold(Json.obj())(v => Json.obj("verifier" -> v)))))
 
   private val exchangeCases = Table(("code binding", "code challenge", "verifier"),
@@ -147,10 +147,10 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
     forAll(Table(("challenge", "verifier"), (for { c <- Challenges; v <- Verifiers } yield (c, v))*)) { (challenge, verifier) =>
       val ctl = AuthControllerFixture(Helpers.stubControllerComponents(), Map("google" -> google), new InMemoryUserRepository,
         new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(_root_.tools.SpecClock.Pinned), _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
-      val start = ctl.start("google")(FakeRequest("GET",
+      val start = ctl.web.start("google")(FakeRequest("GET",
         s"/auth/google/start?platform=ios${challenge.fold("")(c => s"&challenge=$c")}"))
       val sess  = session(start)
-      val back  = ctl.callback("google")(FakeRequest("GET", s"/auth/google/callback?code=C&state=${sess.get("oauthState").value}")
+      val back  = ctl.web.callback("google")(FakeRequest("GET", s"/auth/google/callback?code=C&state=${sess.get("oauthState").value}")
         .withSession(sess.data.toSeq*))
       val code  = redirectLocation(back).value.stripPrefix("kinowo://auth-done?code=")
       val expected = verifierAnswers(challenge, verifier)
