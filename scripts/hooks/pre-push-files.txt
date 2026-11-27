@@ -1,0 +1,12 @@
+# What a tree that copies scripts/hooks/pre-push copies beside it (its selection is these Python modules), one path a
+# line from the repository root. A test laying out a scratch tree reads this list (shell: spec_copy_hook_files in
+# scripts/shell-spec.sh) rather than naming them itself; the hook's reuse key hashes them with the hook.
+scripts/pre_push.py
+scripts/lib/pre_push_paths.py
+scripts/lib/pre_push_plan.py
+scripts/lib/pre_push_units.py
+scripts/lib/pre_push_lints.py
+scripts/lib/pre_push_modes.py
+scripts/lib/tool_files.py
+scripts/lib/atomic.py
+scripts/lib/machine.py

@@ -17,7 +17,10 @@ import cli_harness  # noqa: E402
 TOOL = cli_harness.tool_path("scripts/ci/precommit_share.py", "scripts/ci/precommit-share.sh")
 COPIED = ("scripts/hooks/pre-push", "scripts/hooks/local-tests.txt", "scripts/hooks-path.sh", "scripts/tool-conventions.sh",
           "scripts/ci/commit_rules.py", "scripts/ci/ci-row-scope.sh", "scripts/ci/ci_row_scope.py",
-          "scripts/ci/precommit-share.sh", "scripts/ci/precommit_share.py", "build.sbt")
+          "scripts/ci/precommit-share.sh", "scripts/ci/precommit_share.py", "build.sbt",
+          "scripts/hooks/pre-push-files.txt") + tuple(
+    line for line in open(os.path.join(cli_harness.ROOT, "scripts/hooks/pre-push-files.txt")).read().splitlines()
+    if line and not line.startswith("#"))
 
 
 class PrecommitShareTest(cli_harness.ToolCase):

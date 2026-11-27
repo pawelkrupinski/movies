@@ -33,7 +33,9 @@ class AllowListRatchetSpec extends AnyFlatSpec with Matchers {
     val hook = RepoFile.read("scripts/hooks/pre-push")
     hook should include("python3 scripts/ci/commit_rules.py \"$1\"")
     hook should include("check_allowlists() { commit_rules allowlists; }")
-    hook should include("grep -qxF -- \"$path\" .github/allow-lists.txt && allowlists=1")
+    // the selection is Python's (scripts/pre_push.py): a registered list's own path selects the ratchet
+    RepoFile.read("scripts/lib/pre_push_modes.py") should include("allow_lists=set(allow.splitlines())")
+    RepoFile.read("scripts/lib/pre_push_plan.py") should include("(\"allowlists\", lambda p, t: p in t.allow_lists)")
     // the birth check runs every drift row against main's newest run, through drift_ci (which shows its progress)
     hook should include("drift_ci \"$tmp/drift-birth.log\" --head \"$head_sha\" --against main")
     hook should include("{ scripts/identity-drift-ci \"$@\" 2>&1;")

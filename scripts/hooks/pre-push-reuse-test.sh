@@ -106,7 +106,7 @@ head -7 "$reuse/runs" > "$reuse/runs.kept" && mv "$reuse/runs.kept" "$reuse/runs
 scratch_git "$grepo" reset -q --hard "$docs_only"
 # A hook that differs by one byte: a copy beside the helpers it sources, a comment appended.
 mkdir -p "$reuse/hook/scripts/hooks"
-cp "$REPO_ROOT/scripts/hooks-path.sh" "$reuse/hook/scripts/"; spec_copy_conventions "$reuse/hook/scripts"
+cp "$REPO_ROOT/scripts/hooks-path.sh" "$reuse/hook/scripts/"; spec_copy_conventions "$reuse/hook/scripts"; spec_copy_hook_files "$reuse/hook/scripts"
 cp "$REPO_ROOT/scripts/hooks/pre-push" "$reuse/hook/scripts/hooks/pre-push"; echo "# one more byte" >> "$reuse/hook/scripts/hooks/pre-push"
 check "a hook that differs runs everything" "0 8" "$(HOOK="$reuse/hook/scripts/hooks/pre-push" reuse_push "$rbase..$docs_only")"
 echo "# and a helper" >> "$reuse/hook/scripts/tool-conventions.sh"

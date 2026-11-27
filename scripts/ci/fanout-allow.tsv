@@ -14,6 +14,7 @@ scripts/poster_eval_dataset.py	network-bound: reads of the local mirror Mongo, t
 scripts/poster_eval_images.py	network-bound: poster and TMDB list fetches over HTTP
 scripts/design-rules/python_facts.py	no pool: the process-pool module is named as an effect the extractor reads, never run
 scripts/hooks/pre-push	one stall watchdog per check, started in the background beside a check that runs on in the loop: no pool of checks
+scripts/hooks/pre-push.sh-legacy	one stall watchdog per check, started in the background beside a check that runs on in the loop: no pool of checks (the legacy copy, KINOWO_PRE_PUSH_LEGACY=1)
 scripts/identity-tools-test.sh	a race under test: twelve racers contend for one identity lock, the point of the test
 scripts/jvm-gate-test.sh	a race under test: sixteen racers contend for one jvm lock and twelve for the slots, the point of the test
 scripts/local-mirror/mongosh-at-test.sh	one background mongosh per shell under test, the kill-and-reap behaviour the test asserts

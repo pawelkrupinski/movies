@@ -95,6 +95,17 @@ spec_bounded() { ( . "$_spec_dir/tool-conventions.sh" && bounded "$SPEC_HANG_BOU
 
 # spec_copy_conventions <scripts dir> -> tool-conventions.sh and the scripts/lib files its shims run
 # (tool-conventions-files.txt) copied into <scripts dir>, a scratch tree's scripts/: a tool sourcing the shim finds them.
+# spec_copy_hook_files <scripts dir> -> the Python selection scripts/hooks/pre-push runs (scripts/hooks/pre-push-files.txt),
+# copied under <scripts dir> as a scratch tree copying the hook needs it
+spec_copy_hook_files() {
+  local f
+  while IFS= read -r f; do
+    case "$f" in ''|'#'*) continue ;; esac
+    mkdir -p "$1/$(dirname "${f#scripts/}")" && cp "$_spec_dir/${f#scripts/}" "$1/${f#scripts/}" || return 1
+  done < "$_spec_dir/hooks/pre-push-files.txt"
+  mkdir -p "$1/hooks" && cp "$_spec_dir/hooks/pre-push-files.txt" "$1/hooks/"
+}
+
 spec_copy_conventions() {
   local f
   while IFS= read -r f; do

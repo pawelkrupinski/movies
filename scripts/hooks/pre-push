@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Purpose: Pre-push: the checks that fail CI in seconds, run here in seconds, for what this push changes
 # PRE-PUSH: the checks that fail CI in seconds, run here in seconds, for what this push changes.
+# (The selection functions named below -- plan, js_quality_paths, lint_plan, is_shell_path, ... -- are Python's:
+# scripts/pre_push.py over scripts/lib/pre_push_{paths,plan,units,lints,modes}.py; the checks run here.)
 #
 # About one CI failure in nine over four weeks (2026-08-27 → 09-24) was a lint or a generated
 # artefact: nothing a ten-minute pipeline needed to discover. Each check below runs only when the
@@ -104,7 +106,7 @@
 #                 so never by default; a run selecting one says so
 #   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks), and changed
 #                 composite actions' `run:` blocks (scripts/ci/shellcheck-action-runs.sh)
-#   `shellcheck`  changed *.sh, hook scripts and extensionless tools with a shell shebang (is_shell_path) —
+#   `shellcheck`  changed *.sh, hook scripts and extensionless tools with a shell shebang (pre_push_paths.is_shell_path) —
 #                 fails only on warnings the push ADDS, so a file that was already noisy can still be edited
 #   (no `oldrefs` check: identity-slice's old-ref compile, scripts/identity-slice-old-ref-test.sh, runs after landing, on
 #                 Main's `identity-slice old-ref compile` row -- the owner, 2026-11-21, "(5)": it caught 1 change in 27
@@ -112,7 +114,7 @@
 #   `itrest` `itidentity` `e2ecorpus`  THE HEAVY ROWS, in the landing check only (PREPUSH_HEAVY_ROWS=1, precommit-check.yml's
 #                 `check (rest)` job, after its sbt check): Main's `integration-test (rest)` and `(identity)` (`IT_ROW=<row> sbt itAll`,
 #                 against the job's throwaway MongoDB, $PREPUSH_HEAVY_MONGODB_URI: theirs alone) and, with the identity row, `e2e (corpus)`
-#                 (`sbt e2eCorpus`), selected by the paths each row can move (heavy_rows). 8 of Main's 14
+#                 (`sbt e2eCorpus`), selected by the paths each row can move (pre_push_plan.heavy_rows). 8 of Main's 14
 #                 code reds in the five days to 2026-10-30 were in rows nothing ran before main (ci-failures-2026-10-30
 #                 §2.1). Never on the laptop: off CI the variable is unset and none is selected. `e2e (rest)` is no longer
 #                 one (the owner, 2026-11-17, "B1": 0 failures in 95 landing checks, 303 runner-min a week): it runs
@@ -121,7 +123,7 @@
 #                 IntegrationTest compiles, FilmScheduleEndToEnd + ReadModelSnapshot, the worker's DocCommentPlacement,
 #                 RegisteredCollectionLists and deploy specs) ride the `sbt` check's one sbt run, whenever it runs --
 #                 the basic tests before every merge (once the merge queue's pre-check list)
-#   `identity`    local-tests.txt's `identity` lines, on a change to the identity paths (is_identity_path) or to what the
+#   `identity`    local-tests.txt's `identity` lines, on a change to the identity paths (pre_push_paths.IDENTITY) or to what the
 #                 identity specs read by class alone, common's production code and the testkit (is_identity_reach_path): the identity
 #                 specs that run in under 15 min on the laptop (measured there); convergence and the takes measure
 #                 are main's CI's. FIRST, its `first` line: SLICE ANSWER COVERAGE (scripts/identity-slice-coverage,
@@ -295,6 +297,21 @@
 # `waiting` branch while main is red (the gate is judged again when that branch is pushed). `--range A..B` runs the
 # hook for the commits in A..B (diffed from their merge-base) instead of reading git's stdin.
 set -uo pipefail
+# THE LEGACY FALLBACK (shell-to-Python migration, section 10): KINOWO_PRE_PUSH_LEGACY=1 runs the whole hook as it was
+# before its selection moved to Python, scripts/hooks/pre-push.sh-legacy, sourced so its command line still names
+# this hook (agentctl finds a push's hook by `hooks/pre-push` in it).
+if [ "${KINOWO_PRE_PUSH_LEGACY:-}" = 1 ]; then exec bash -c '. "$0.sh-legacy"' "${BASH_SOURCE[0]}" "$@"; fi
+# THE SELECTION IS PYTHON'S (scripts/pre_push.py over scripts/lib/pre_push_*.py): which checks, compiles, lint specs
+# and tests a list of paths selects. The plan modes are answered there whole, and the run below asks it (pre_push_py).
+PrePushHook="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+PrePushPy="${PrePushHook%/*}/../pre_push.py"
+pre_push_py() { python3 -I -B "$PrePushPy" "$PrePushHook" "$@"; }
+case "${1:-}" in
+    --plan|--compile-plan|--coupling-plan|--quality-plan|--js-quality-plan|--py-quality-plan|--identity-change|\
+    --unit-plan|--unit-universe|--source-lints|--lint-plan|--per-file-lints|--script-test-plan|--failure-summary)
+        # ── a plan mode: the copy asked answers it, never handed over ──
+        exec python3 -I -B "$PrePushPy" "$PrePushHook" "$@" ;;
+esac
 # git exports GIT_DIR (and, by setup, GIT_INDEX_FILE / GIT_WORK_TREE) for the repository being
 # pushed — for a worktree, ITS git dir. Every check inherits them, and in the temporary checkout
 # below they would point each `git` back at the pushing worktree's HEAD and index. The hook runs at
@@ -308,11 +325,9 @@ root="$(git rev-parse --show-toplevel)" || exit 1
 # absolute path (three times on 2026-10-14, very likely an IDE's git integration), every worktree's push ran
 # the ROOT checkout's copy — an older hook, judging new work by stale checks. So a hook git runs for another
 # checkout than its own hands over to that checkout's copy. Once only (PREPUSH_DELEGATED_FROM), and never for
-# the dry runs (the plan modes, --range, --checks-only, --fast-only, --verify-only), which name the file they mean.
-# THE PLAN MODES print what a push would run (or summarise a log) and exit: ONE list, read here and by the root
-# check below (--lint-plan was in that one only, so a lint-plan query from another checkout ran that checkout's copy).
-is_plan_mode() { case "${1:-}" in --plan|--compile-plan|--coupling-plan|--quality-plan|--identity-change|--unit-plan|--unit-universe|--lint-plan|--per-file-lints|--script-test-plan|--failure-summary) return 0 ;; esac; return 1; }
-is_plan_mode "${1:-}" && dry_run=1 || dry_run=0
+# the dry runs (--range, --checks-only, --fast-only, --verify-only), which name the file they mean; the plan modes were
+# answered above (scripts/pre_push.py), for the hook that was asked.
+dry_run=0
 case "${1:-}" in --range|--checks-only|--fast-only|--verify-only) dry_run=1 ;; esac
 case "$dry_run" in
     1) ;;
@@ -356,10 +371,6 @@ hooks_path_at_start="$(hooks_path_now)"
 # The shared root checkout off main or dirty strands every agent's next rebase: said on every push, never blocking it.
 root_check="$(dirname "${BASH_SOURCE[0]}")/../root-checkout-check"
 root_warning=""
-# A plan mode only prints what a push would run: the root checkout's state means nothing to it, and the check's
-# `git status` over the whole root is the cost of every plan call -- in a Linux container, where the bind mount's
-# stat data never matches the index, a full rehash: pre-push-test.sh's ~20 plan calls ran past its 600 s bound.
-! is_plan_mode "${1:-}" || root_check=""
 [ ! -x "$root_check" ] || root_warning="$("$root_check" "$root" 2>&1)"
 [ -z "$root_warning" ] || printf '\033[33m! pre-push\033[0m %s\n' "$root_warning" >&2
 tree="" area_tests=""
@@ -384,669 +395,19 @@ Zero=0000000000000000000000000000000000000000
 
 skipped() { case " ${PREPUSH_SKIP:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
-# Whether a push of <path> runs the sbt check for the lint specs: scripts, workflows, skills, the docs, the build, the
-# test, it and page trees, the fixtures. It decides only THAT the check runs (plan); WHICH specs it runs is each lint
-# registry row's own reads (lint_plan) -- once `@repo`, every spec selected by any of these paths (below).
-read_by_lint_specs() { # <path>
-    case "$1" in
-        # the mobile apps' own trees are no sbt module's (`*/src/test/*` caught android/app/src/test: 2026-11-21)
-        android/*|ios/*) return 1 ;;
-        scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|scrapers/src/fixtures/*|http/src/fixtures/*|repochecks/src/fixtures/*|testkit/*) return 0 ;;
-    esac
-    return 1
-}
-
-# THE COUPLING RATCHET'S PATHS (the header's `sbt`; `--coupling-plan` prints them): what can move the production code's coupling or the ratchet's verdict
-coupling_paths() { # stdin: changed paths -> the ones that select the coupling step
-    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.(scala|java)|build\.sbt|coupling\.sbt|project/[^/]*\.scala|test/resources/coupling-(baseline|layers|exemptions|fanout-refs|collaborators)\.tsv|scripts/ci/coupling_(ratchet|rows|violations|growth|exemption_table|exemption_history|reasons|renames|splits|verdicts)\.py)$' || true
-}
-
-# THE CODE-QUALITY RATCHETS' PATHS (the header's `sbt`; `--quality-plan` prints them): what can move the measured rows or
-# the ratchet's verdict -- production Scala (a source's text is what is measured: no Java, no template), the measure,
-# its dependencies and the baselines
-quality_paths() { # stdin: changed paths -> the ones that select the quality step
-    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.scala|quality/src/main/.*|project/Dependencies\.scala|test/resources/(complexity|length|duplication)-baseline\.tsv|test/resources/quality-data-tables\.tsv|scripts/ci/quality_ratchet\.py|scripts/design-rules/(naming_lint|naming|scala_names|extractors|design_check|model|exemptions)\.py|scripts/lib/rules_table\.py|test/resources/design-(rules|baseline|exemptions)\.tsv)$' || true
-}
-
-# THE JS/TS QUALITY RATCHET'S PATHS (the header's `jsquality`; `--js-quality-plan` prints them): the production JS/TS the
-# ratchet measures (scripts/js-quality/ratchet-areas.tsv), its baseline, the ratchet and the measure -- no test, page
-# test, Playwright spec or script outside the measure: those are reported, not gated
-js_quality_paths() { # stdin: changed paths -> the ones that select the jsquality check
-    grep -E '^(web/src/main/assets/js/.*|infra/version-dashboard/src/.*|test/resources/js-quality-baseline\.tsv|scripts/ci/js_quality_ratchet\.py|scripts/ci/baseline_ratchet\.py|scripts/ci/trailers\.py|scripts/js-quality/.*|scripts/js-quality-report|scripts/js_quality_report\.py|scripts/lib/pinned_npm_tools\.py|scripts/design-rules/[a-z_]+\.py|scripts/lib/rules_table\.py|test/resources/design-(rules|baseline|exemptions)\.tsv)$' || true
-}
-
-# THE PYTHON QUALITY RATCHET'S PATHS (the header's `pyquality`; `--py-quality-plan` prints them): a Python tool under
-# scripts/, .github/scripts/, infra/bin/, infra/nix/bin/, infra/nix/files/, android/scripts/ or ios/scripts/ -- a .py, or an extension-less file whose first line names python -- its baseline, the
-# measure, its engine and pyrightconfig.json
-py_quality_paths() { # stdin: changed paths -> the ones that select the pyquality check
-    local path
-    while IFS= read -r path; do
-        case "$path" in *_test.py) continue ;; esac # a self-test is reported, never held: it selects no check
-        case "$path" in
-            scripts/*.py|.github/scripts/*.py|infra/bin/*.py|infra/nix/bin/*.py|infra/nix/files/*.py|android/scripts/*.py|ios/scripts/*.py|\
-            test/resources/py-quality-baseline.tsv|scripts/py-quality/*|scripts/py-quality-report|\
-            test/resources/design-rules.tsv|test/resources/design-baseline.tsv|test/resources/design-exemptions.tsv|\
-            pyrightconfig.json) echo "$path" ;; # (the ratchet, its engine and trailers.py are scripts/*.py)
-            scripts/*|.github/scripts/*|infra/bin/*|infra/nix/bin/*|infra/nix/files/*|android/scripts/*|ios/scripts/*)
-                case "${path##*/}" in *.*) ;; *) head -1 "$path" 2>/dev/null | grep -q '^#!.*python' && echo "$path" ;; esac ;;
-        esac
-    done
-    return 0
-}
-
-# ── The local tests: basic, and per AREA ─────────────────────────────────────────────────────────
-# NO PRE-MERGE CI (the owner, 2026-10-26): "only run the basic tests before merging and merge on green (main not green
-# branch); if some specific area (browser / page, identity) is touched, run tests specific to that locally (unless it
-# takes longer than 15 mins), then merge to main and test everything there". scripts/hooks/local-tests.txt is the ONE
-# definition of those tests: `<set> sbt <command>` (one scripts/sbt-warm call per set, its sbt commands in order) or
-# `<set> sh <command>`. The sets:
-#   basic     rides the `sbt` check's one sbt run, whenever that runs (any Scala, build, script, test or workflow change)
-#   identity  the `identity` check, on a change to the identity paths below
-# The page area is gone (the owner, 2026-11-17, "B1"): the page specs and Playwright run after landing, on Main.
-# Each area's set holds only what runs in under 15 min on the laptop, warm (measured, in local-tests.txt); the rest
-# (convergence, the takes measure, the page tests) is main's CI's. scripts/identity-landing-check is an optional manual tool now:
-# nothing requires its LANDABLE.
-LocalTests="$(dirname "${BASH_SOURCE[0]}")/local-tests.txt"
-has_local_tests() { # <set>
-    [ -f "$LocalTests" ] && grep -qE "^$1[[:space:]]+(sbt|sh|first)[[:space:]]" "$LocalTests"
-}
-# The identity paths: the resolver, its worker adapters (services.identityadapters), title rules and the normalizer
-# applying them, the identity fixtures -- and what the identity set's specs read beside them (2026-11-19, identity-impact-check
-# hook: NO AREA for a capture reader whose mutation failed the ratchet): the set's own spec trees (services.identity.*,
-# services.titles.rules.*, scripts.*, the hard-cluster ratchet and its country scope, in whichever module), the worker's
-# fixtures config (the capture readers, the corpus and enrichment-cache harness), testkit's identity doubles and the
-# normalizers the specs build, and the corpus captures, hard-cluster seeds and drift slices. The test-impact selection
-# narrows each to the specs that read it (identityImpact: one a fixtures tool no spec reaches selects none, and runs none).
-is_identity_path() { # <path>
-    case "$1" in
-        identity/*|worker/src/main/scala/services/identityadapters/*|*/src/test/scala/services/identity/*|\
-        common/src/main/resources/title-rules.tsv|common/src/main/resources/title-words.tsv|\
-        common/src/main/scala/services/titles/rules/*|common/src/main/scala/services/titles/TitleNormalizer.scala|\
-        */src/test/scala/services/titles/rules/*|worker/src/test/scala/scripts/*|\
-        worker/src/test/scala/tools/HardClusterRatchetSpec.scala|worker/src/test/scala/tools/CountryScope.scala|\
-        worker/src/fixtures/*|testkit/src/main/scala/services/identity/*|\
-        testkit/src/main/scala/services/movies/SingleCountryNormalizer.scala|testkit/src/main/scala/services/movies/NormalizerTrace.scala|\
-        test/resources/fixtures/identity-*|test/resources/fixtures/corpus/*|test/resources/fixtures/drift-slices/*) return 0 ;;
-    esac
-    return 1
-}
-# What can MOVE TAKES (agentctl's identity change, checked alone: `--identity-change`): the resolver and its worker
-# adapters, the title rules and words and the normalizer applying them, and the judgements. Narrower than the identity
-# area on purpose (2026-11-19): a spec, a fixture or a common/ change that only runs some identity specs still batches.
-is_take_path() { # <path>
-    case "$1" in
-        identity/src/main/*|worker/src/main/scala/services/identityadapters/*|\
-        common/src/main/resources/title-rules.tsv|common/src/main/resources/title-words.tsv|\
-        common/src/main/scala/services/titles/rules/*|common/src/main/scala/services/titles/TitleNormalizer.scala|\
-        test/resources/fixtures/identity-judgements.tsv) return 0 ;;
-    esac
-    return 1
-}
-# One line per path on stdin; prints `identity` when one can move takes (is_take_path), nothing otherwise.
-identity_change() {
-    local path
-    while IFS= read -r path; do
-        is_take_path "$path" && { echo identity; return 0; }
-    done
-    return 0
-}
-# What the identity specs read through their class dependencies alone (2026-11-19: a common/ model or a generic testkit
-# helper -- MutableClock, SpecClock -- started no identity area, though identity specs read them): common's production
-# code and the testkit. They select the identity area and nothing else (no drift guards: is_drift_path); the test-impact
-# selection keeps only the specs whose classes reach the changed ones, so most such changes run no identity spec.
-is_identity_reach_path() { # <path>
-    case "$1" in
-        common/src/main/scala/*|common/src/main/java/*|testkit/src/main/scala/*) return 0 ;;
-    esac
-    return 1
-}
-# What shellcheck reads: a .sh, the hooks, and a tool with no extension whose shebang names a shell (sbt-warm,
-# gitops-specs, ...: 50 under scripts/ were never shellchecked, and sbt-warm's SC2046 of d56231908 landed unseen).
-is_shell_path() { # <path>
-    case "$1" in *.sh|scripts/hooks/*) return 0 ;; esac
-    case "${1##*/}" in *.*) return 1 ;; esac
-    [ -f "$1" ] && head -n 1 "$1" 2> /dev/null | grep -qE '^#!.*[/ ](ba|da|k)?sh( |$)'
-}
-# What a fix to a drift or flip red touches: the identity paths, the worker's code, the drift harness and its slices.
-is_drift_path() { # <path>
-    is_identity_path "$1" && return 0
-    case "$1" in
-        worker/src/main/*|worker/src/test/scala/scripts/IdentityDrift*|worker/src/test/scala/scripts/IdentityLiveDrift*|\
-        scripts/ci/identity-drift-check*|scripts/ci/identity_drift_check*|scripts/ci/commit_rules*) return 0 ;;
-    esac
-    return 1
-}
-
-# ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
-# One line per path on stdin; prints the selected check names, one per line, in run order.
-plan() {
-    local eslint=0 jsquality=0 pyquality=0 drift=0 snapshot=0 sbt=0 dashboards=0 metricalerts=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 path
-    local identity=0 allowlists=0 driftguards=0 newchecks=0 schedules=0 flipbacklog=0 stampcarry=0
-    local script_test_reads glob
-    # What a repo-reading self-test declares it reads (run-script-tests' READS): a workflow, a .py or a spec edit runs
-    # the `scripttests` check, which selects that test (download_artifact_layout_test.py's workflow, Tool self-tests
-    # #259-263, landed without it).
-    script_test_reads="$("$(dirname "${BASH_SOURCE[0]}")/../run-script-tests" --reads 2>/dev/null)"
-    local registry_files
-    registry_files="$(registry_files)"
-    local all_paths=""
-    while IFS= read -r path; do
-        all_paths+="$path"$'\n'
-        # js_quality_paths' set, as a pattern (no grep a path)
-        case "$path" in
-            web/src/main/assets/js/*|infra/version-dashboard/src/*|test/resources/js-quality-baseline.tsv|\
-            scripts/ci/js_quality_ratchet.py|scripts/ci/baseline_ratchet.py|scripts/ci/trailers.py|scripts/js-quality/*|scripts/js-quality-report|scripts/js_quality_report.py|scripts/lib/pinned_npm_tools.py) jsquality=1 ;;
-        esac
-        case "$path" in
-            web/src/main/assets/js/*.js|web/src/page/resources/*.js|eslint.config.js|eslint-rules/*.js|package.json|package-lock.json|page-tests-playwright/tests/*.ts|page-tests-playwright/lint-flake-patterns*.mjs) eslint=1 ;;
-        esac
-        case "$path" in
-            common/src/main/scala/models/*|geodata/src/main/scala/models/*|geodata/src/main/resources/generated/*|data/*|android/app/src/main/java/pl/kinowo/model/City.kt|ios/Kinowo/Models/City.swift|scripts/ci/generated-artefacts-drift.sh) drift=1 ;;
-        esac
-        case "$path" in
-            test/resources/fixtures/08-06-2026/*|scripts/read-model-snapshot-inputs.sh) snapshot=1 ;;
-        esac
-        case "$path" in
-            *.scala|*.java|build.sbt|project/*|infra/nix/files/monitoring/grafana/dashboards/*) sbt=1 ;;
-        esac
-        # The templates and the browser assets: compiled into web, and read by its unit specs (PageSnapshotSpec's
-        # expected-*.html) -- the page area selected the sbt check for them until it moved to Main (2026-11-17).
-        case "$path" in web/src/main/assets/*|web/src/main/twirl/*|web/src/page/*) sbt=1 ;; esac
-        # The coupling baseline, the layer table and the exemption table are the ratchet's (check_sbt's coupling step): a
-        # hand edit of the baseline is judged as any growth, an `allow` row or a moved layer as the table loosening, an
-        # exemption row added as the exemptions loosening.
-        case "$path" in test/resources/coupling-baseline.tsv|test/resources/coupling-layers.tsv|test/resources/coupling-exemptions.tsv|test/resources/coupling-fanout-refs.tsv|test/resources/coupling-collaborators.tsv) sbt=1 ;; esac
-        # ...and so are the quality baselines and the quality ratchet itself (check_sbt's quality step)
-        case "$path" in test/resources/complexity-baseline.tsv|test/resources/length-baseline.tsv|test/resources/duplication-baseline.tsv|test/resources/quality-data-tables.tsv|scripts/ci/quality_ratchet.py|scripts/design-rules/naming_lint.py|scripts/design-rules/naming.py|scripts/design-rules/scala_names.py|scripts/design-rules/extractors.py|scripts/design-rules/design_check.py|scripts/design-rules/model.py|scripts/design-rules/exemptions.py|scripts/lib/rules_table.py|test/resources/design-rules.tsv|test/resources/design-baseline.tsv|test/resources/design-exemptions.tsv) sbt=1 ;; esac
-        # A generated table (models.GeneratedTable) is code's data: the specs reading it decide whether it is right.
-        case "$path" in
-            geodata/src/main/resources/generated/*) sbt=1 ;;
-        esac
-        # What NoSilencedGhCurlSpec reads: a script that silences a gh/curl read failed Main from a push this check never
-        # selected (d00c5edf2).
-        case "$path" in
-            scripts/*.sh|.github/*.sh|.github/*.yml|.github/*.yaml|infra/*.sh|infra/*.yml|infra/*.yaml) sbt=1 ;;
-        esac
-        # What the repo-reading lint specs `--lint-plan` adds read: scripts, workflows, tests, fixtures, skills, the docs and
-        # the build -- each turned Main red from a push this check never selected (2026-10-13..15).
-        read_by_lint_specs "$path" && sbt=1
-        # An artefact a registered spec reads (a file a lint-registry row names: the Dockerfile, the AOT class list,
-        # host-memory.json, a fixture): its row selects the spec, so the sbt check that runs it must run (Main
-        # #2547/#2550, #2601: a Dockerfile or an AOT-list change selected no sbt check at all).
-        # A here-string, never `printf | grep -q` (here and throughout the hook): under pipefail, grep -q exiting at
-        # its match makes printf's next write die of SIGPIPE, the pipeline false -- the ~6 KB file list is two writes,
-        # and on a loaded Linux container host-memory.json, in the first, selected no sbt check (2026-11-19).
-        if [ $sbt = 0 ] && [ -n "$registry_files" ] && grep -qxF -- "$path" <<< "$registry_files"; then sbt=1; fi
-        case "$path" in
-            infra/nix/files/monitoring/*|infra/test/test_dashboards.py) dashboards=1 ;;
-        esac
-        # What test_metric_alert_coverage.py reads: the alerts, the code's metric declarations, the fleet's exporters.
-        case "$path" in
-            infra/nix/files/monitoring/rules/*|infra/nix/files/monitoring/grafana/alerting/*|\
-            infra/test/app-metrics-catalogue/*|infra/test/test_metric_alert_coverage.py|\
-            infra/test/app_metrics_catalogue.py|infra/test/app_metrics_absent.py|infra/test/promql_selectors.py|\
-            test/resources/metrics-without-alerts.tsv|scripts/pyyaml-requirements.txt|scripts/python-venv|\
-            */src/main/*etrics*) metricalerts=1 ;;
-            # a fleet exporter: a script that echoes a `# TYPE kinowo_...` header
-            infra/nix/*.sh|infra/nix/*.nix|scripts/ci/*.py) grep -q '# TYPE kinowo_' "$path" 2>/dev/null && metricalerts=1 ;;
-        esac
-        case "$path" in
-            scripts/*|.github/scripts/*|.github/actions/*|android/scripts/*|ios/scripts/*|infra/bin/*|data/*) scripttests=1 ;;
-        esac
-        if [ $scripttests = 0 ] && [ -n "$script_test_reads" ]; then
-            while IFS= read -r glob; do
-                # shellcheck disable=SC2254 # a declared glob is a pattern on purpose
-                case "$path" in $glob) scripttests=1; break ;; esac
-            done <<< "$script_test_reads"
-        fi
-        case "$path" in
-            .github/workflows/*.yml|.github/workflows/*.yaml|.github/actions/*/action.yml|.github/actions/*/action.yaml) actionlint=1 ;;
-        esac
-        is_shell_path "$path" && shellcheck=1
-        case "$path" in
-            ios/*) ios=1 ;;
-        esac
-        case "$path" in
-            test/resources/fixtures/identity-judgements.tsv|test/resources/fixtures/identity-unmatched/*.tsv|\
-            test/resources/fixtures/corpus/expected-hard-clusters-*|\
-            scripts/ci/identity_judgements*.py|scripts/ci/identity_takes*.py) judgements=1 ;;
-        esac
-        case "$path" in .github/allow-lists.txt|scripts/ci/commit_rules*.py) allowlists=1 ;; esac
-        [ -f .github/allow-lists.txt ] && grep -qxF -- "$path" .github/allow-lists.txt && allowlists=1
-        { is_identity_path "$path" || is_identity_reach_path "$path"; } && identity=1
-        is_drift_path "$path" && driftguards=1
-        case "$path" in
-            test/resources/fixtures/identity-flip-backlog.tsv|test/resources/fixtures/identity-flips-struck.tsv|\
-            test/resources/fixtures/drift-gate-seeds.tsv|test/resources/fixtures/drift-slices/*|\
-            test/resources/fixtures/identity-slices/*|scripts/ci/population_walk_diff*.py) flipbacklog=1 ;;
-        esac
-        case "$path" in .github/workflows/*|.github/gating-checks.tsv|scripts/ci/gating_checks*|scripts/hooks/pre-push) newchecks=1 ;; esac
-        case "$path" in test/resources/identity-stamp-carry.tsv) stampcarry=1 ;; esac
-        case "$path" in .github/workflows/*|infra/nix/files/scheduled-workflows.json|infra/nix/files/scheduled_dispatch.py) schedules=1 ;; esac
-    done
-    [ -n "$(printf '%s' "$all_paths" | py_quality_paths)" ] && pyquality=1
-    # an area runs only when local-tests.txt (beside this hook) names tests for it
-    has_local_tests identity || identity=0
-    [ $identity = 1 ] && sbt=1
-    [ $judgements = 1 ] && echo judgements
-    [ $allowlists = 1 ] && echo allowlists
-    [ $newchecks = 1 ] && echo newchecks
-    [ $schedules = 1 ] && echo schedules
-    [ $driftguards = 1 ] && echo driftguards
-    [ $eslint = 1 ] && echo eslint
-    [ $jsquality = 1 ] && echo jsquality
-    [ $pyquality = 1 ] && echo pyquality
-    [ $drift = 1 ] && echo drift
-    [ $snapshot = 1 ] && echo snapshot
-    [ $dashboards = 1 ] && echo dashboards
-    [ $metricalerts = 1 ] && echo metricalerts
-    [ $scripttests = 1 ] && echo scripttests
-    [ $actionlint = 1 ] && echo actionlint
-    [ $shellcheck = 1 ] && echo shellcheck
-    [ $sbt = 1 ] && echo sbt
-    [ $flipbacklog = 1 ] && echo flipbacklog
-    [ $stampcarry = 1 ] && echo stampcarry
-    [ $identity = 1 ] && echo identity
-    [ $ios = 1 ] && echo ios
-    [ "${PREPUSH_HEAVY_ROWS:-}" = 1 ] && [ $sbt = 1 ] && heavy_rows "$all_paths"
-    return 0
-}
-
-# THE HEAVY ROWS a set of changed paths can move (the header's `itrest` `itidentity` `e2ecorpus`), one per line:
-#   itrest      any change the sbt check selects that reaches compiled code or what the specs read: every integration
-#               spec but the identity row's (build.sbt's IT_ROW split)
-#   itidentity  an identity path or what the identity specs read (is_identity_reach_path), the build, the worker's code
-#               and the hard-cluster harness the convergence boots, or the fixtures it replays
-#   e2ecorpus   with itidentity: `sbt e2eCorpus`, e2e (corpus)'s whole-corpus replays, the identity cutover's among them --
-#               only while `basic` does not already run them (corpus_in_basic)
-# build.sbt's e2eCorpus specs, every one named on local-tests.txt's `basic` e2e lines; an alias it cannot read: no (the row runs)
-corpus_in_basic() {
-    local build line specs="" basic=" " spec
-    build="$(dirname "${BASH_SOURCE[0]}")/../../build.sbt"
-    [ -f "$build" ] && [ -f "$LocalTests" ] || return 1
-    while IFS= read -r line; do
-        case "$line" in 'addCommandAlias("e2eCorpus",'*'"e2e/Test/testOnly '*) specs="${line#*testOnly }"; specs="${specs%%\"*}" ;; esac
-    done < "$build"
-    while IFS= read -r line; do
-        case "$line" in basic*sbt*' e2e/testOnly '*|basic*sbt*' e2e/Test/testOnly '*) basic+="${line#*testOnly } " ;; esac
-    done < "$LocalTests"
-    [ -n "${specs// /}" ] || return 1
-    for spec in $specs; do case "$spec" in -*) return 1 ;; esac; case "$basic" in *" $spec "*) ;; *) return 1 ;; esac; done
-}
-heavy_rows() { # <paths, one per line>
-    local itrest=0 itidentity=0 path
-    while IFS= read -r path; do
-        case "$path" in
-            */src/main/*|*/src/it/*|*/src/test/*|*/src/fixtures/*|build.sbt|project/*|conf/*|test/resources/*) itrest=1 ;;
-        esac
-        { is_identity_path "$path" || is_identity_reach_path "$path"; } && itidentity=1
-        # the identity row's spec (HardClusterConvergenceIntegrationSpec, ~40 s here) boots the worker's own code and reads
-        # its harness beside it (HardClusterPasses, HardClusterRecord, ...): Main #2712/#2716/#2717 went red there while
-        # the harness's own fix (2130751d7) and every worker/src/main change ran the rest row alone (2026-11-20)
-        case "$path" in build.sbt|project/*|test/resources/fixtures/*|common/src/main/*|base/src/main/*|\
-            worker/src/main/*|worker/src/it/scala/HardCluster*) itidentity=1 ;; esac
-    done <<< "$1"
-    [ $itrest = 1 ] && echo itrest
-    [ $itidentity = 1 ] && echo itidentity
-    # e2e (corpus)'s identity-cutover replay: the identity row's paths -- unless its specs already run in `basic`, which
-    # rides the `sbt` check every heavy row comes with (none without it: plan): once there, not twice (FilmScheduleEndToEnd
-    # ran 252 s in the rest's sbt AND 160 s on this row: precommit-check run 41627361428)
-    [ $itidentity = 1 ] && ! corpus_in_basic && echo e2ecorpus
-    return 0
-}
-
-# ── Which test configs a set of changed paths has to compile ────────────────────────────────────
-# One line per path on stdin; prints the sbt compile tasks, one per line, in dependency order. A
-# module's own test configs plus those of every module that depends on it (build.sbt's dependsOn):
-# geodata, base → http → common → identity → testkit → scrapers → worker (test->fixtures on scrapers) → web (page->fixtures) → e2e. The build
-# itself touches them all.
-compile_plan() {
-    local common=0 identity=0 testkit=0 scrapers=0 repochecks=0 worker=0 worker_it=0 web=0 e2e=0 path tests=""
-    while IFS= read -r path; do
-        # A TEST TREE IS ITS MODULE'S TESTS' ALONE (2026-11-21, landing-speed proposal 1): `<m>/src/test|it|page/` is
-        # compiled by <m>'s Test config and those extending it (It, Page) -- no module depends on another's Test but the
-        # worker's It on repochecks' (`it->test`, below; build.sbt's dependsOn, held by pre-push-test.sh) -- so it
-        # compiles none of the modules downstream of <m>, which compile <m>'s main and fixtures alone.
-        case "$path" in
-            repochecks/src/test/*.scala|repochecks/src/test/*.java) repochecks=1; worker_it=1; continue ;;
-            worker/src/it/*.scala|worker/src/it/*.java) worker_it=1; continue ;;
-            web/src/it/*.scala|web/src/it/*.java) tests="$tests web/It/compile"; continue ;;
-            web/src/page/*.scala|web/src/page/*.java) tests="$tests web/Page/compile"; continue ;;
-            web/src/test/*.scala|web/src/test/*.java) tests="$tests web/Test/compile web/It/compile web/Page/compile"; continue ;;
-            worker/src/test/*.scala|worker/src/test/*.java) tests="$tests worker/Test/compile"; worker_it=1; continue ;;
-            base/src/test/*.scala|http/src/test/*.scala|geodata/src/test/*.scala|common/src/test/*.scala|common/src/test/*.java)
-                tests="$tests ${path%%/*}/Test/compile"; continue ;;
-            identity/src/test/*.scala|identity/src/test/*.java) tests="$tests identity/Test/compile"; continue ;;
-            scrapers/src/test/*.scala|scrapers/src/test/*.java) tests="$tests scrapers/Test/compile"; continue ;;
-            testkit/src/test/*.scala) tests="$tests testkit/Test/compile"; continue ;;
-        esac
-        case "$path" in
-            build.sbt|project/*)  common=1 ;;
-            common/*.scala|common/*.java|geodata/*.scala|base/*.scala|http/*.scala)   common=1 ;;
-            identity/*.scala|identity/*.java) identity=1 ;;
-            testkit/*.scala|testkit/*.java) testkit=1 ;;
-            scrapers/*.scala|scrapers/*.java) scrapers=1 ;;
-            # the worker's deploy specs compile against repochecks' fixtures (test->fixtures), its integration deploy
-            # specs against repochecks' specs too (it->test).
-            repochecks/src/fixtures/*)      repochecks=1; worker=1 ;;
-            repochecks/*.scala|repochecks/*.java) repochecks=1; worker_it=1 ;;
-            # web's Page config compiles against worker's fixtures config (page->fixtures).
-            worker/src/fixtures/*)          worker=1; web=1 ;;
-            worker/*.scala|worker/*.java)   worker=1 ;;
-            web/*.scala|web/*.java)         web=1 ;;
-            e2e/*.scala|e2e/*.java)         e2e=1 ;;
-        esac
-    done
-    [ $common = 1 ] && identity=1
-    [ $identity = 1 ] && testkit=1
-    [ $testkit = 1 ] && scrapers=1
-    [ $scrapers = 1 ] && worker=1
-    [ $worker = 1 ] && e2e=1
-    [ $web = 1 ] && e2e=1
-    [ $testkit = 1 ] && web=1
-    [ $testkit = 1 ] && repochecks=1
-    [ $common = 1 ] && echo common/Test/compile
-    [ $identity = 1 ] && echo identity/Test/compile
-    [ $testkit = 1 ] && echo testkit/Test/compile
-    [ $scrapers = 1 ] && echo scrapers/Test/compile
-    [ $repochecks = 1 ] && echo repochecks/Test/compile
-    [ $worker = 1 ] && printf '%s\n' worker/Test/compile worker/It/compile
-    [ $worker = 0 ] && [ $worker_it = 1 ] && echo worker/It/compile
-    [ $web = 1 ] && printf '%s\n' web/Test/compile web/It/compile web/Page/compile
-    [ $e2e = 1 ] && echo e2e/Test/compile
-    # the test trees' own configs, those the modules above do not already compile
-    local config
-    for config in $tests; do
-        case "$config" in
-            common/*|base/*|http/*|geodata/*) [ $common = 1 ] && [ "${config%%/*}" = common ] ;; identity/*) [ $identity = 1 ] ;; testkit/*) [ $testkit = 1 ] ;;
-            scrapers/*) [ $scrapers = 1 ] ;; worker/*) [ $worker = 1 ] ;; web/*) [ $web = 1 ] ;; *) false ;;
-        esac && continue
-        echo "$config"
-    done | awk '!seen[$0]++'
-    return 0
-}
-
-# ── Which unit tests the combined-tree verification runs (--verify-only) ────────────────────────
-# One line per path on stdin; prints sbt test commands, one per line: `<module>/Test/test` for every module with a
-# path under its src/ (base, http, common, identity, testkit, scrapers, repochecks, web; e2e is the heavy rows', geodata has
-# none), the worker's `rest` unit row (worker_rest_row: build.sbt's WORKER_ROW, read from the build), and the worker
-# identity-row specs the paths change, by name.
-#
-# THE WORKER'S REST ROW IS BUILD.SBT'S, READ FROM IT (review 2026-11-16: a hand-written copy left out
-# scripts.IdentityDriftSlicesShard3Spec, which the rest row runs): every suite outside the identity row's prefixes
-# (`Seq(...).exists(suite.startsWith)`, the `identity` area's) and the heavy rows (HeavyRows, no unit stage's), plus
-# the suites the rest row runs instead (WorkerRestSuites). A build whose definition this cannot read prints a command
-# sbt refuses -- the verification fails closed, never runs a row it guessed.
-# build.sbt's worker rows, one `<kind> <name>` a line: `prefix` (the identity row's), `heavy`, `rest` (WorkerRestSuites)
-worker_rows() {
-    awk '
-        function quoted(kind, s) { sub(/\/\/.*/, "", s); while (match(s, /"[^"]*"/)) {
-            n = substr(s, RSTART + 1, RLENGTH - 2); if (kind == "prefix" || n ~ /\./) print kind " " n; s = substr(s, RSTART + RLENGTH) } }
-        /^lazy val HeavyRows/ { block = "heavy" } /^lazy val HeavySuites/ { block = "" }
-        /^lazy val WorkerRestSuites/ { block = "rest" } /^lazy val workerRowSettings/ { block = "row" }
-        block == "row" && /exists\(suite\.startsWith\)/ { quoted("prefix", $0) }
-        block == "heavy" || block == "rest" { quoted(block, $0) }
-        block == "rest" && /\)[[:space:]]*(\/\/.*)?$/ { block = "" }
-        block == "row" && /^[^[:space:]]/ { if ($0 !~ /^lazy val workerRowSettings/) block = "" }' build.sbt 2>/dev/null
-    return 0
-}
-worker_rest_row() {
-    local rows prefixes exclusions="" suites="" kind name
-    rows="$(worker_rows)"
-    prefixes="$(printf '%s\n' "$rows" | sed -n 's/^prefix //p')"
-    if [ -z "$prefixes" ] || ! grep -q '^rest ' <<< "$rows"; then
-        echo "worker/build.sbt-WORKER_ROW-unreadable"; return 0
-    fi
-    while IFS= read -r name; do exclusions+=" -$name*"; done <<< "$prefixes"
-    while read -r kind name; do
-        local covered=""
-        while IFS= read -r prefix; do case "$name" in "$prefix"*) covered=1 ;; esac; done <<< "$prefixes"
-        case "$kind" in
-            heavy) [ -n "$covered" ] || exclusions+=" -$name" ;;
-            rest) grep -qxF "heavy $name" <<< "$rows" || suites+=" $name" ;;
-        esac
-    done <<< "$rows"
-    echo "worker/testOnly *$exclusions"
-    printf '%s\n' "${suites# }"
-}
-# EVERY MODULE'S UNIT TESTS, the universe a test-side reader's tests (TestImpact's `READS` lines) join the verification
-# from, whichever module they live in: every module's Test/test, and the worker's every suite but its heavy rows' (its
-# source lints are its identity row's `tools.*`). Narrowed to the READS classes only, never run whole.
-unit_universe() {
-    local module rows heavy="" kind name
-    for module in base http common identity testkit scrapers repochecks web; do echo "$module/Test/test"; done
-    rows="$(worker_rows)"
-    if ! grep -q '^heavy ' <<< "$rows"; then echo "worker/build.sbt-HeavyRows-unreadable"; return 0; fi
-    while read -r kind name; do [ "$kind" = heavy ] && heavy+=" -$name"; done <<< "$rows"
-    echo "worker/testOnly *$heavy"
-}
-# THE LINTS WALKING EVERY MODULE'S SOURCES, for a verification with no narrowed selection to say who reads the change
-# (TestImpact's `ALL`, a cold check, no answer: review round 7 -- the READS lints the selection adds were left out where
-# coverage should be widest): the specs built on the source walkers (the worker's ScalaSourceScan and StatefulFieldScan,
-# common's ModuleSources, and testsupport.SourceTrees, the one way a test walks a source tree), as `<module>/testOnly <classes>` lines. Stdin: the plan's lines -- a module it runs whole
-# (`<module>/Test/test`), or a class it names, already runs them; $1: the lint specs this run runs (lint_plan's
-# `<module>:<class>`), never twice. Every walker's spec is a fast source scan.
-source_lint_lines() { # <lints> < plan lines
-    local plan module spec cls classes
-    plan="$(cat)"
-    for module in base http common identity testkit scrapers repochecks web worker; do
-        grep -qxF "$module/Test/test" <<< "$plan" && continue
-        classes=""
-        while IFS= read -r spec; do
-            [ -n "$spec" ] || continue
-            cls="${spec#"$module"/src/test/scala/}"; cls="${cls%.scala}"; cls="${cls//\//.}"
-            grep -qxF "$module:$cls" <<< "${1:-}" && continue
-            grep -qE "^$module/testOnly( .*)? ${cls//./\\.}( |$)" <<< "$plan" && continue
-            classes+=" $cls"
-        done < <(grep -rlwE 'ScalaSourceScan|StatefulFieldScan|ModuleSources|SourceTrees' --include='*Spec.scala' "$module/src/test/scala" 2> /dev/null | LC_ALL=C sort)
-        [ -z "$classes" ] || echo "$module/testOnly${classes}"
-    done
-    return 0
-}
-unit_plan() {
-    local path module modules=" " specs="" spec
-    while IFS= read -r path; do
-        module="${path%%/*}"
-        case "$module" in base|http|common|identity|testkit|scrapers|repochecks|web|worker) ;; *) continue ;; esac
-        case "$path" in "$module"/src/*) ;; *) continue ;; esac
-        case "$modules" in *" $module "*) ;; *) modules+="$module " ;; esac
-        case "$path" in
-            worker/src/test/scala/services/identity/*Spec.scala|worker/src/test/scala/scripts/*Spec.scala|worker/src/test/scala/tools/*Spec.scala)
-                spec="${path#worker/src/test/scala/}"; spec="${spec%.scala}"; specs+=" ${spec//\//.}" ;;
-        esac
-    done
-    local rest_row="" rest_suites=""
-    for module in base http common identity testkit scrapers repochecks web worker; do
-        case "$modules" in *" $module "*) ;; *) continue ;; esac
-        if [ "$module" = worker ]; then
-            rest_row="$(worker_rest_row)"
-            head -1 <<< "$rest_row"
-            rest_suites="$(sed -n '2p' <<< "$rest_row")"
-        else echo "$module/Test/test"; fi
-    done
-    # the rest row's own identity suites and the identity-row specs the paths change, in one run, each once
-    for spec in $specs; do case " $rest_suites " in *" $spec "*) ;; *) rest_suites+=" $spec" ;; esac; done
-    rest_suites="${rest_suites# }"
-    if [ -n "$rest_suites" ]; then echo "worker/testOnly $rest_suites"; fi
-    return 0
-}
-
-# ── Which lint specs the sbt check runs ─────────────────────────────────────────────────────────
-# One line per path on stdin; prints `<module>:<spec>`, one per line, read off THE LINT REGISTRY
-# (scripts/hooks/lint-registry.tsv; its header has the format), never off a spec's name: a spec runs when a pushed path
-# matches what its row says it reads. `*` rows (the standing lints) run whatever the push touches; a pattern row
-# (`.github/workflows/*`, `*/src/main/scala/*`: what the spec opens) when a pushed path matches it; `@repo` rows on any
-# path (a spec reading the whole tree); `@code` rows on their own code alone (below); `-` rows never (a spec booting a
-# server). Every row but a `-` one also runs when
-# the push changes the code its spec is compiled with: a test-side path (a test, it, page or fixtures tree, testkit/,
-# the build) whose compile plan holds the spec's module's Test config (own_code_modules). `@gitops` rows run only with
-# the GitOps manifests in place (PREPUSH_GITOPS=1: CI checks them out; the sbt check runs infra/bin/fetch-gitops first).
-# WHAT A ROW READS IS WHAT ITS SPEC OPENS (the owner, 2026-11-21, landing-speed proposal 1): until then 175 rows said
-# `@repo`, selected by any script, workflow, skill or test-tree path, so agentctl's MINIMAL RECHECKS found every two
-# changes sharing a lint and kept no verdict in 11-19..21. scripts/hooks/lint-registry-test.sh fails when a
-# repo-reading spec has no row, or a row misses a path its spec's source names (lint_registry_reads.py);
-# scripts/ci/lint_reads_trace.py runs each spec and fails on a file it opened that its row does not select.
-# `--per-file-lints` prints the `@per-file` specs among them that the paths select by what the spec reads alone, not by
-# its own code: a spec judging each file alone (scripts/ci/lint_per_file_check.py proves it), which agentctl's MINIMAL
-# RECHECKS counts as shared only where both sides change one file (a full round anyway) or one side changes its code.
-# Skip all but the `*` rows with PREPUSH_SKIP=lintspecs.
-LintRegistry="$(dirname "${BASH_SOURCE[0]}")/lint-registry.tsv"
-# The lints every sbt check runs, whatever the push touches: the registry's `*` rows.
-standing_lints() { [ -f "$LintRegistry" ] && awk -F'\t' '!/^#/ && $2 == "*" { print $1 }' "$LintRegistry"; return 0; }
-# The FILES the registry's rows name (a word with no pattern character: the Dockerfile, the AOT class list,
-# host-memory.json, one fixture), each once: an artefact a spec reads, whose change alone runs the sbt check that runs
-# it (plan). A pattern (`docs/*`, `test/resources/fixtures/*`) still selects its spec, but only when the check runs
-# anyway: a directory-wide read is a scan's coverage, and docs or a fixture tree alone run no sbt check.
-registry_files() {
-    [ -f "$LintRegistry" ] || return 0
-    awk -F'\t' '!/^#/ && NF >= 2 { n = split($2, word, " "); for (i = 1; i <= n; i++) if (word[i] !~ /[*?[]|^-$|^@/ && !(word[i] in seen)) { seen[word[i]] = 1; print word[i] } }' "$LintRegistry"
-}
-# The modules whose Test config compiles a pushed test-side path (its specs' own code: a spec, a helper, a fixture, the
-# build), one a line: compile_plan over the paths under a test, it, page or fixtures tree, testkit/ or the build. A
-# production path is no spec's own code here: a row reading production sources says so (`*/src/main/*.scala`).
-own_code_modules() {
-    grep -E '^(build\.sbt|project/.*|testkit/.*|[^/]+/src/(test|it|page|fixtures)/.*)$' | compile_plan | sed -n 's|/Test/compile$||p'
-    return 0
-}
-# Whether the paths on stdin select a row reading the GitOps manifests (`@gitops`): the sbt check fetches the manifests
-# for exactly these (on 2026-11-10 a push of an alert rule and its test ran CinemaScrapeStalenessAlertSpec with no
-# fetch, and CI's pre-commit check, which has no infra/kubernetes, failed it).
-reads_gitops() {
-    [ -f "$LintRegistry" ] || return 1
-    local selected
-    selected="$(PREPUSH_GITOPS=1 lint_plan)"
-    [ -n "$selected" ] || return 1
-    SELECTED="$selected" awk -F'\t' 'BEGIN { n = split(ENVIRON["SELECTED"], s, "\n"); for (i = 1; i <= n; i++) want[s[i]] = 1 }
-        !/^#/ && (" " $2 " ") ~ / @gitops / && ($1 in want) { found = 1 } END { exit found ? 0 : 1 }' "$LintRegistry"
-}
-# The testOnly lines on stdin, each with `-<spec>` added for every `@gitops` row's spec of its module its patterns select,
-# unless this run fetched the manifests (PREPUSH_GITOPS=1): the lint plan runs those specs once infra/bin/fetch-gitops
-# has; any other line (a basic `deploy.*`, a unit row's `*`) read whatever infra/kubernetes holds -- stale on the laptop
-# and ci-runner, absent on a fresh GitHub runner. precommit-check 44355591693 (2026-11-18): the basic line's hand-kept
-# exclusions missed NodePodsSpec and FluxWebhookReceiverSpec, red on a web change no manifest reads, green on retry.
-without_unfetched_gitops() {
-    local rows="" line module row spec word selected add
-    [ "${PREPUSH_GITOPS:-}" != 1 ] && [ -f "$LintRegistry" ] \
-        && rows="$(awk -F'\t' '!/^#/ && (" " $2 " ") ~ / @gitops / { print $1 }' "$LintRegistry")"
-    while IFS= read -r line; do
-        add=""
-        case "$line" in */testOnly\ *)
-            module="${line%%/*}"
-            while IFS= read -r row; do
-                [ -n "$row" ] && [ "${row%%:*}" = "$module" ] || continue
-                spec="${row#*:}" selected=0
-                set -f
-                # shellcheck disable=SC2086 # the line's words, a pattern among them matched below, never expanded
-                for word in ${line#*testOnly }; do
-                    # shellcheck disable=SC2254 # the line's patterns and exclusions, matched as patterns
-                    case "$word" in
-                        --) break ;;
-                        -*) case "$spec" in ${word#-}) selected=0; break ;; esac ;;
-                        *) case "$spec" in $word) selected=1 ;; esac ;;
-                    esac
-                done
-                set +f
-                [ "$selected" = 0 ] || add="$add -$spec"
-            done <<< "$rows" ;;
-        esac
-        # before a `--`: what follows it is the framework's (-z), not a suite to leave out
-        case "$line" in *" -- "*) printf '%s%s -- %s\n' "${line%% -- *}" "$add" "${line#* -- }" ;; *) printf '%s%s\n' "$line" "$add" ;; esac
-    done
-}
-lint_plan() { # [per-file]: only the `@per-file` specs the paths select by what the spec reads, never by its own code
-    local paths own spec reads word path selected mode="${1:-}"
-    paths="$(cat)"
-    [ -f "$LintRegistry" ] || return 0
-    own=" $(printf '%s\n' "$paths" | own_code_modules | tr '\n' ' ')"
-    while IFS=$'\t' read -r spec reads _; do
-        case "$spec" in ''|'#'*) continue ;; esac
-        # a GitOps reader runs only with the manifests in place, whichever of its reads selects it
-        case " $reads " in *" @gitops "*) [ "${PREPUSH_GITOPS:-}" = 1 ] || continue ;; esac
-        selected=0
-        # shellcheck disable=SC2086 # the reads are words, a pattern among them is matched below, never expanded
-        set -f; set -- $reads; set +f
-        for word in "$@"; do
-            case "$word" in
-                '*') selected=1 ;;
-                -) selected=-1; break ;;
-                @repo) [ -n "$paths" ] && selected=1 ;;
-                @gitops|@code|@per-file) ;;
-                # a leading `*/` is ONE directory, a module: `*/src/test/*` never reaches android/app/src/test/
-                '*/'*) while IFS= read -r path; do
-                       # shellcheck disable=SC2254 # the registry's pattern, matched as a pattern
-                       case "$path" in */*) case "${path#*/}" in ${word#\*/}) selected=1; break ;; esac ;; esac
-                   done <<< "$paths" ;;
-                *) while IFS= read -r path; do
-                       # shellcheck disable=SC2254 # the registry's pattern, matched as a pattern
-                       case "$path" in $word) selected=1; break ;; esac
-                   done <<< "$paths" ;;
-            esac
-            [ $selected = 1 ] && break
-        done
-        if [ "$mode" = per-file ]; then
-            [ $selected = 1 ] || continue
-            case " $reads " in *" @per-file "*) ;; *) continue ;; esac
-            case "$own " in *" ${spec%%:*} "*) continue ;; esac
-            echo "$spec"; continue
-        fi
-        # its own code: a test-side path its module's Test config compiles
-        [ $selected = 0 ] && case "$own " in *" ${spec%%:*} "*) selected=1 ;; esac
-        [ $selected = 1 ] || continue
-        [ "$reads" != '*' ] && skipped lintspecs && continue
-        echo "$spec"
-    done < "$LintRegistry"
-    return 0
-}
-
-# ── Which script self-tests the scripttests check runs ──────────────────────────────────────────
-# One line per path on stdin; prints the self-tests `scripts/run-script-tests --changed` would select for them (their
-# own test, the tests of the tools sourcing or importing them, the tests naming them or declaring they read them), one
-# path a line. The `scripttests` word of --plan is the CHECK; this is what it reads, per test: agentctl's land queue
-# (MINIMAL RECHECKS) re-checks a change main moved under only when a test both sides select is among them -- the one
-# `scripttests` word made every two script changes share a check (33 of 131 rechecks, 2026-11-17..20).
-script_test_plan() {
-    local paths
-    paths="$(mktemp "${TMPDIR:-/tmp}/script-test-plan.XXXXXX")" || return 1
-    cat > "$paths"
-    "$(dirname "${BASH_SOURCE[0]}")/../run-script-tests" --paths "$paths" --list | cut -f1
-    local rc=${PIPESTATUS[0]}
-    rm -f "$paths"
-    return "$rc"
-}
-
-# What a failed sbt (or area) run shows of its log: every failing test with its message's first lines, THEN sbt's
-# [error] lines (`Failed tests:`, the specs, the task), each capped. Failures first, so the cap never cuts them: a single
-# `grep -E 'FAILED|should|...' | head -60` once filled its 60 lines with passing `- should ...` names and left a failed
-# check naming no test (land 4ae7f84e4c, 2026-11-08). `--failure-summary <log>` prints it (pre-push-test.sh).
-failure_summary() { # <log>
-    local shown
-    # a failing test, then its message: the lines indented under it (`[info]   ...`), at most four
-    shown="$(awk '/\*\*\* (FAILED|ABORTED) \*\*\*/ { print; under = 4; next }
-         under > 0 && /^(\033\[[0-9;]*m)*\[(\033\[[0-9;]*m)*info(\033\[[0-9;]*m)*\](\033\[[0-9;]*m)* (\033\[[0-9;]*m)*  / { print; under--; next }
-         { under = 0 }' "$1" | head -80
-    grep -E '\[error\]|\*\*\* [0-9]+ TESTS? FAILED|✘|[0-9]+ failed|Error:' "$1" | head -40)"
-    # a run that failed before any test or [error] line (sbt-warm refused, a JVM that never started): the log's end,
-    # less the population walk's lines, which run_local_tests has shown already
-    if [ -n "$shown" ]; then printf '%s\n' "$shown"; else grep -v '^population walk: ' "$1" | tail -20; fi
-    return 0
-}
-
-case "${1:-}" in
-    --plan)         plan; exit 0 ;;
-    --compile-plan) compile_plan; exit 0 ;;
-    --coupling-plan) coupling_paths; exit 0 ;;
-    --quality-plan) quality_paths; exit 0 ;;
-    --js-quality-plan) js_quality_paths; exit 0 ;;
-    --py-quality-plan) py_quality_paths; exit 0 ;;
-    --identity-change) identity_change; exit 0 ;;
-    --unit-plan)    unit_plan; exit 0 ;;
-    --unit-universe) unit_universe; exit 0 ;;
-    --source-lints) source_lint_lines "${2:-}"; exit 0 ;;
-    --lint-plan)    lint_plan; exit 0 ;;
-    --per-file-lints) lint_plan per-file; exit 0 ;;
-    --script-test-plan) script_test_plan; exit $? ;;
-    --failure-summary) failure_summary "$2"; exit 0 ;;
-esac
+# ── Which checks, compiles, lint specs and tests a push selects: scripts/pre_push.py (the header says what each
+# check guards; scripts/pre_push_test.py holds the selection). Each reads paths (or sbt lines) on stdin.
+plan() { pre_push_py --plan; }
+compile_plan() { pre_push_py --compile-plan; }
+coupling_paths() { pre_push_py --coupling-plan; }
+quality_paths() { pre_push_py --quality-plan; }
+unit_plan() { pre_push_py --unit-plan; }
+unit_universe() { pre_push_py --unit-universe < /dev/null; }
+source_lint_lines() { pre_push_py --source-lints "${1:-}"; } # <lints> < plan lines
+lint_plan() { pre_push_py --lint-plan; }
+reads_gitops() { pre_push_py --reads-gitops > /dev/null; }
+without_unfetched_gitops() { pre_push_py --without-unfetched-gitops; }
+failure_summary() { pre_push_py --failure-summary "$1"; } # <log>
 
 log()  { printf '\033[36m▸ pre-push\033[0m %s\n' "$*"; }
 warn() { printf '\033[33m! pre-push\033[0m %s\n' "$*" >&2; }
@@ -1154,22 +515,11 @@ episode_fix() { # <value> <workflow index> <episode>
     return 1
 }
 
-# A production path: what reaches a running pod or a fleet host. Everything else — scripts/, docs/, .claude/, the
-# test, it and fixture trees, test/resources/, .github/ tooling — is tools, which may land while red (user, 2026-10-14).
-is_production_path() { # <path>
-    case "$1" in
-        */src/main/*|conf/*|*/conf/*|build.sbt|project/*|infra/nix/*|infra/kubernetes/*|Dockerfile) return 0 ;;
-    esac
-    return 1
-}
-
-# Whether <commit> changes any production path.
+# Whether <commit> changes any production path (what reaches a running pod or a fleet host: pre_push_paths.PRODUCTION;
+# everything else -- scripts/, docs/, .claude/, the test, it and fixture trees, test/resources/, .github/ tooling -- is
+# tools, which may land while red: user, 2026-10-14).
 touches_production() { # <commit>
-    local path
-    while IFS= read -r path; do
-        [ -n "$path" ] && is_production_path "$path" && return 0
-    done < <(git diff-tree --no-commit-id --name-only -r --root -m "$1")
-    return 1
+    [ -n "$(git diff-tree --no-commit-id --name-only -r --root -m "$1" | pre_push_py --production-paths)" ]
 }
 
 # The pushed commits (<range>...) that change a production path, one a line.
@@ -1425,7 +775,12 @@ if [ -n "${PREPUSH_BASELINE_DIR:-}" ]; then
     fi
 fi
 
-checks=""; [ -z "$changed" ] || checks="$(printf '%s\n' "$changed" | plan)" # a deletion-only push: the drift check's alone
+# THE SELECTION FAILS CLOSED: no python3, or scripts/pre_push.py failing, and nothing would be selected -- the push BLOCKED
+command -v python3 > /dev/null || { missing_tool selection python3 "install Python 3 (brew install python)"; exit 1; }
+checks="" # a deletion-only push: the drift check's alone
+if [ -n "$changed" ]; then
+    checks="$(printf '%s\n' "$changed" | plan)" || { warn "the selection (scripts/pre_push.py --plan) failed: the push is BLOCKED"; exit 1; }
+fi
 # --fast-only: the `sbt` check (compiles, lints, the `fast` set) and the seconds-cheap linters of the touched files
 # (the shellcheck and actionlint checks), whatever else the paths select: a lint finding is never left for main to find (16 commits in
 # the week to 2026-10-31 fixed a lint after landing; simplification-2026-10-31, "lints before landing").
@@ -1589,12 +944,14 @@ export -n PREPUSH_ONLY PREPUSH_ELSEWHERE PREPUSH_HEAVY_ROWS PREPUSH_HEAVY_MONGOD
 # PREPUSH_NO_REUSE=1 runs everything regardless.
 reuse_dir="${PREPUSH_REUSE_DIR:-$HOME/.cache/kinowo-prepush}" reuse_key=""
 compute_reuse_key() { # prints the key, or fails when any part of it cannot be read
-    local here tree base_tree hook known_base=none
-    here="$(dirname "${BASH_SOURCE[0]}")"
+    local tree base_tree hook known_base=none
     if [ -n "$baseline" ]; then known_base="$(git hash-object "$baseline")" && [ -n "$known_base" ] || return 1; fi
     tree="$(git rev-parse --verify -q "$head_sha^{tree}")" && [ -n "$tree" ] || return 1
     base_tree="$(git rev-parse --verify -q "$base_sha^{tree}")" && [ -n "$base_tree" ] || return 1
-    hook="$(cat "${BASH_SOURCE[0]}" "$here/../hooks-path.sh" "$here/../tool-conventions.sh" | git hash-object --stdin)" \
+    # the hook, the shell it sources and its Python selection (scripts/hooks/pre-push-files.txt), beside it
+    # shellcheck disable=SC2046 # the listed paths are words, one a line, none with a space
+    hook="$(cd "${PrePushHook%/*}/.." && cat "$PrePushHook" hooks-path.sh tool-conventions.sh \
+        $(sed -n 's|^scripts/||p' hooks/pre-push-files.txt 2> /dev/null) | git hash-object --stdin)" \
         && [ -n "$hook" ] || return 1
     { echo "tree $tree"; echo "base $base_tree"; echo "hook $hook"; echo "gate $gate_state"; echo "baseline $known_base"
       echo "skip $(tr -s ' ' '\n' <<< "${PREPUSH_SKIP:-}" | grep -v '^$' | LC_ALL=C sort -u | tr '\n' ' ')"
@@ -1870,7 +1227,7 @@ check_shellcheck() {
     need shellcheck shellcheck "brew install shellcheck" || return 1
     local f before after rc=0
     while IFS= read -r f; do
-        [ -f "$f" ] && is_shell_path "$f" || continue
+        [ -n "$f" ] || continue
         case "$f" in *.txt|*.tsv) continue ;; esac # local-tests.txt, lint-registry.tsv: the hook's tables, no shell
         after="$(shellcheck -S warning -f gcc "$f" 2>/dev/null | wc -l | tr -d ' ')"
         if git cat-file -e "$base_sha:$f" 2>/dev/null; then
@@ -1884,7 +1241,7 @@ check_shellcheck() {
             shellcheck -S warning "$f" >&2
             rc=1
         fi
-    done <<< "$changed"
+    done < <(printf '%s\n' "$changed" | pre_push_py --shell-paths)
     return $rc
 }
 

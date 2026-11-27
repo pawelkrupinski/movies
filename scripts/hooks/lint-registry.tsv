@@ -71,7 +71,7 @@ web:tools.NoEnvCountryOutsideWiringSpec	web/src/main/scala/* web/src/main/twirl/
 repochecks:deploy.ActionPinningSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
 repochecks:deploy.ActionsCachePruneWiringSpec	.github/workflows/*
 repochecks:deploy.AlertIsNotRedSpec	.github/actions/report-scheduled-run/action.yml .github/workflows/decodo-probe.yml .github/workflows/identity-ci-staleness.yml .github/workflows/identity-findings-report.yml .github/workflows/record-scrape-fixtures.yml .github/workflows/security-headers.yml scripts/ci/scheduled-failure-issue.sh scripts/ci/scheduled_failure_issue.py scripts/ci/identity-ci-staleness.sh scripts/ci/recording-preflight.sh
-repochecks:deploy.AllowListRatchetSpec	test/resources/fixtures/* .github/allow-lists.txt .github/identity-drift-gate-paths.txt .github/workflows/ci.yml .github/workflows/precommit-check.yml scripts/ci/commit-rules-ci.sh scripts/ci/commit_rules_ci.py scripts/hooks/pre-push
+repochecks:deploy.AllowListRatchetSpec	test/resources/fixtures/* .github/allow-lists.txt .github/identity-drift-gate-paths.txt .github/workflows/ci.yml .github/workflows/precommit-check.yml scripts/ci/commit-rules-ci.sh scripts/ci/commit_rules_ci.py scripts/hooks/pre-push scripts/lib/pre_push_modes.py scripts/lib/pre_push_plan.py
 repochecks:deploy.AndroidBuildCacheVersionCodeSpec	.github/workflows/android.yml android/app/build.gradle.kts infra/version-dashboard/src/mobile-release/release.ts
 repochecks:deploy.AotCacheOptionsSpec	@gitops build.sbt infra/jvm/web.options infra/jvm/worker.options
 repochecks:deploy.BotPullRequestBranchSpec	.github/workflows/* @per-file	per-file (lint_per_file_check.py, 2026-11-21): each workflow job alone: how it rebuilds its bot branch

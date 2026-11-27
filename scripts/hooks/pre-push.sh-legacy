@@ -1,0 +1,2560 @@
+#!/usr/bin/env bash
+# Purpose: Pre-push: the checks that fail CI in seconds, run here in seconds, for what this push changes
+# PRE-PUSH: the checks that fail CI in seconds, run here in seconds, for what this push changes.
+#
+# About one CI failure in nine over four weeks (2026-08-27 → 09-24) was a lint or a generated
+# artefact: nothing a ten-minute pipeline needed to discover. Each check below runs only when the
+# push touches the paths it guards, so a typical push costs a few seconds and a Scala push well
+# under a minute on a warm build:
+#
+#   `eslint`      web/src/main/assets/js/**, web/src/page/resources/**/*.js, eslint.config.js, eslint-rules/** (the repo's own rules), package*.json + page-tests-playwright/tests/*.ts + lint-flake-patterns*.mjs (the page-spec flake lint)
+#   `jsquality`   THE JS/TS QUALITY RATCHET (CLAUDE.md, "Code quality ratchets"), on a change to the production JS/TS
+#                 (web/src/main/assets/js/**, infra/version-dashboard/src/**), its baseline or the measure (js_quality_paths):
+#                 scripts/js-quality-report --check measures it (scripts/js-quality/ratchet-areas.tsv; ESLint + sonarjs,
+#                 jscpd, dependency-cruiser and the /* global */ graph, ~2-3 s) and scripts/ci/js_quality_ratchet.py holds
+#                 it to test/resources/js-quality-baseline.tsv -- no new function, file, clone set, module or cycle past a
+#                 limit (cognitive / cyclomatic 10, inner defs 2, function 50 lines, file 500, clones 50 tokens, fan-out 9,
+#                 D 0.20, no cycle), no frozen row rising -- and the baseline grows only in a commit carrying the kind's
+#                 trailer (`Complexity:`, `Length:`, `Duplication:`, `Coupling: <why>`; scripts/js-quality-report --update
+#                 writes it; falls need none). Tests, page tests, Playwright and scripts are reported, never gated: they
+#                 select no check. Its tools: `npm ci` once per lock, outside the tree in ~/.cache/kinowo/js-quality (npm or node missing BLOCKS)
+#   `pyquality`   THE PYTHON QUALITY RATCHET (CLAUDE.md, "Code quality ratchets"), on a change to a Python tool under
+#                 scripts/, .github/scripts/, infra/bin/, infra/nix/bin/, infra/nix/files/, android/ or ios/scripts/ (a .py, or an
+#                 extension-less file with a python shebang), its baseline, the
+#                 measure or pyrightconfig.json (py_quality_paths): scripts/py-quality-report --check measures every one
+#                 (stdlib ast + tokenize: cognitive / cyclomatic 10, inner defs 2, function 50 lines, file 500, clones 50
+#                 tokens, fan-out 9, no import cycle; ~1 s) and strict pyright over the push's own .py files, and
+#                 scripts/ci/py_quality_ratchet.py holds them to test/resources/py-quality-baseline.tsv -- no new row
+#                 past a limit, no frozen row rising, a new file with no type error -- the baseline growing only under the
+#                 kind's trailer (`Complexity:`, `Length:`, `Duplication:`, `Coupling:`, `Typing: <why>`). Self-tests
+#                 are reported, never held. Pyright: `npm ci` once per lock, outside the tree in ~/.cache/kinowo/py-quality
+#                 (npm or node missing BLOCKS)
+#   `drift`       the generated roster chain (scripts/ci/generated-artefacts-drift.sh)
+#   `snapshot`    the read-model snapshot's input stamp (scripts/read-model-snapshot-inputs.sh)
+#   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, the two Grafana metric-coverage
+#                 specs and NoSilencedGhCurlSpec, in ONE sbt run, on any Scala or dashboard change, any
+#                 script or workflow under scripts/, .github/ or infra/, or any file a lint-registry row says its spec
+#                 reads (the Dockerfile, the AOT class list, host-memory.json, a fixture: THE ARTEFACT READERS, every
+#                 spec reading a checked-in or generated artefact, held to its row by lint_registry_reads.py) -- plus, on any change under scripts/,
+#                 .github/, .claude/, CLAUDE.md, build.sbt, project/ or */src/test|it/ (`--lint-plan`, ~30 s warm),
+#                 the repo-reading lint specs whose rows read what the push changes (each row: what its spec opens,
+#                 and its own code): the deploy/ specs and the No*/*Lint* source lints, bar the
+#                 ones listed at lint_plan that boot a server -- those reading the GitOps manifests too, once
+#                 infra/bin/fetch-gitops has put them in place (GitHub unreachable: the push BLOCKED, never
+#                 checked against stale manifests); `lintspecs` skips just those -- and,
+#                 ahead of them in that same run, the Test/It/Page configs of every module the push
+#                 touches and every module depending on one (`sbt compile` skips them all: f20a6b5dd
+#                 broke worker/It/compile and only CI saw it). `--compile-plan` prints that list.
+#                 AND THE COUPLING RATCHET (CLAUDE.md, Design rules), in that same run, when the push touches a deployed
+#                 module's src/main, the build or the ratchet (coupling_paths): `couplingReport` measures the production
+#                 code's coupling from Zinc's record (project/Coupling.scala; ~2 s warm) and scripts/ci/coupling_ratchet.py
+#                 holds it to NO package cycle (any cycle edge refuses, naming its class references; no trailer
+#                 excuses one) and to test/resources/coupling-baseline.tsv -- no new cross-module edge kind, package
+#                 Ce past its row, class fan-out or package distance D past its frozen row or the limit (9; 0.20 for a package of 8+
+#                 types; only an exemption, test/resources/coupling-exemptions.tsv, admits a new one), package edge into a higher layer or, inside
+#                 an ordered layer, a higher rank, package without its layer or rank (test/resources/coupling-layers.tsv)
+#                 -- and the baseline grows, and the layer table loosens (an `allow` row, a moved layer or rank), only
+#                 in a commit carrying `Coupling: <why>` (scripts/coupling-report --update writes the baseline; falls
+#                 need no trailer; a frozen class cut into pieces freezes them at their own values under
+#                 `Coupling: split of <X>` when they take over X's code and reference nothing X did not,
+#                 test/resources/coupling-fanout-refs.tsv, the classification test/resources/coupling-collaborators.tsv).
+#                 PREPUSH_SKIP=coupling skips just it.
+#                 AND THE CODE-QUALITY RATCHETS (CLAUDE.md, "Code quality ratchets"), in that same run, when the push
+#                 touches a deployed module's src/main Scala, the `quality` module, a quality baseline or the ratchet
+#                 (quality_paths): `quality/runMain quality.QualityReport` measures every production method's
+#                 complexity from its source (scalameta) and scripts/ci/quality_ratchet.py holds it to
+#                 test/resources/complexity-baseline.tsv -- no new method past a limit (cognitive 10, cyclomatic 10,
+#                 inner defs 2), no frozen row rising -- and its length to length-baseline.tsv (method 50 lines, file
+#                 500), and its clone groups (PMD CPD, 50+ tokens, beside the parse: ~7 s together) to
+#                 duplication-baseline.tsv -- no new group, no group gaining a copy; a baseline grows only in a commit
+#                 carrying its trailer (`Complexity: <why>`, `Length: <why>`, `Duplication: <why>`;
+#                 scripts/quality-report --update writes them; falls need no trailer); the declared data tables
+#                 (test/resources/quality-data-tables.tsv: hand-written literal tables, measured as no method and no
+#                 source lines) must each read as data -- no def, branch, lambda or block -- and a row added carries
+#                 `Length: <why>`. And THE NAMING LINT
+#                 (scripts/design-rules/naming_lint.py, seconds): two top-level types of one package named with the same words
+#                 in another order refuse the push; a NEW type named for an action (...Apart, ...Plans, ...Reads) with
+#                 at most one public def is warned about. And THE DESIGN RULES (scripts/design-rules/design_check.py
+#                 --languages scala): the Scala names' frozen suffix / abbreviation rows (test/resources/design-baseline.tsv).
+#                 `jsquality` and `pyquality` run the same two over their own language, with the general rules'
+#                 collaborator-only fan-out, distance, layers, data guard and design lint (CLAUDE.md, "Design rules").
+#                 PREPUSH_SKIP=quality skips just it
+#   `dashboards`  infra/test/test_dashboards.py — the Grafana dashboards' structure and queries,
+#                 the CI check `Stage NixOS closures` runs (well under a second)
+#   `metricalerts` infra/test/test_metric_alert_coverage.py — every kinowo_* metric family and recording rule is read by
+#                 an alert or has a row (metric, reason, owner) in test/resources/metrics-without-alerts.tsv; on a change
+#                 to the rule files, the Grafana alerts, the metric catalogue (what a new registration regenerates), a
+#                 metrics source (`*/src/main/*etrics*`), a fleet exporter (an infra/nix *.sh/*.nix or scripts/ci/*.py
+#                 echoing `# TYPE kinowo_`) or the TSV. Its PyYAML comes from the pinned venv scripts/python-venv builds
+#                 once (about a second)
+#   `scripttests` scripts/run-script-tests --changed <base>, on any change under the script-test roots (scripts/,
+#                 .github/scripts|actions, android/scripts, ios/scripts, infra/bin, data) or matching a glob a self-test
+#                 declares it reads (`run-script-tests --reads`: every workflow, .py and Scala spec): only the self-tests
+#                 whose test, tool, a file they name, or one they read the push changed -- this hook's own test among them (it names
+#                 install-hooks.sh and hooks-path.sh), since a new check changes what the hook plans; and the
+#                 floor bash 3.2 the tools promise to run on, in its own scope (run-script-tests' FLOOR: the bash the
+#                 push touches parsed by it and its added lines held to 3.2, the self-tests of those bash files run
+#                 under it instead of natively, in the same run; `--changed <base> --floor "$(scripts/floor-bash)"`: a Mac's
+#                 /bin/bash, on Linux -- ci-runner's landing checks -- the GNU 3.2.57 `scripts/floor-bash --install`
+#                 builds; none BLOCKS, PREPUSH_SKIP=floor skips it); and, Docker running, beside them on Linux
+#                 (`--linux`, CI's ubuntu-26.04; PREPUSH_SKIP=linux skips it) -- unless the hook already runs on Linux
+#                 (ci-runner's landing checks: the native run is the Linux one). Opt-in, PREPUSH_STRESS=N: the
+#                 concurrency-heavy self-tests the push selects (`# script-test-stress:`) run again N times at once
+#                 beside a CPU burner a core (run-script-tests' STRESS) -- minutes of CPU, past the landing budget,
+#                 so never by default; a run selecting one says so
+#   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks), and changed
+#                 composite actions' `run:` blocks (scripts/ci/shellcheck-action-runs.sh)
+#   `shellcheck`  changed *.sh, hook scripts and extensionless tools with a shell shebang (is_shell_path) —
+#                 fails only on warnings the push ADDS, so a file that was already noisy can still be edited
+#   (no `oldrefs` check: identity-slice's old-ref compile, scripts/identity-slice-old-ref-test.sh, runs after landing, on
+#                 Main's `identity-slice old-ref compile` row -- the owner, 2026-11-21, "(5)": it caught 1 change in 27
+#                 landing checks, at a p90 of 20 min)
+#   `itrest` `itidentity` `e2ecorpus`  THE HEAVY ROWS, in the landing check only (PREPUSH_HEAVY_ROWS=1, precommit-check.yml's
+#                 `check (rest)` job, after its sbt check): Main's `integration-test (rest)` and `(identity)` (`IT_ROW=<row> sbt itAll`,
+#                 against the job's throwaway MongoDB, $PREPUSH_HEAVY_MONGODB_URI: theirs alone) and, with the identity row, `e2e (corpus)`
+#                 (`sbt e2eCorpus`), selected by the paths each row can move (heavy_rows). 8 of Main's 14
+#                 code reds in the five days to 2026-10-30 were in rows nothing ran before main (ci-failures-2026-10-30
+#                 §2.1). Never on the laptop: off CI the variable is unset and none is selected. `e2e (rest)` is no longer
+#                 one (the owner, 2026-11-17, "B1": 0 failures in 95 landing checks, 303 runner-min a week): it runs
+#                 after landing, on Main, as the page tests do
+#   `basic`       NOT a check of its own: scripts/hooks/local-tests.txt's `basic` lines (all test configs compiled, the
+#                 IntegrationTest compiles, FilmScheduleEndToEnd + ReadModelSnapshot, the worker's DocCommentPlacement,
+#                 RegisteredCollectionLists and deploy specs) ride the `sbt` check's one sbt run, whenever it runs --
+#                 the basic tests before every merge (once the merge queue's pre-check list)
+#   `identity`    local-tests.txt's `identity` lines, on a change to the identity paths (is_identity_path) or to what the
+#                 identity specs read by class alone, common's production code and the testkit (is_identity_reach_path): the identity
+#                 specs that run in under 15 min on the laptop (measured there); convergence and the takes measure
+#                 are main's CI's. FIRST, its `first` line: SLICE ANSWER COVERAGE (scripts/identity-slice-coverage,
+#                 ~30 s warm, ~2.5 min under load) -- every pinned slice case and drift slice replayed at the pushed code, every request one
+#                 asks that its fixture lacks named at once with the `--repin` line that pins them all from their
+#                 recordings (Unmatched C's new searches turned main red twice, #2180, found a case at a time). Through scripts/sbt-warm, warm. Only the specs the change can reach, over the
+#                 countries it can reach (TEST-IMPACT SELECTION, select_identity_tests; proof: identity-impact-check).
+#                 The population walk (PopulationMonotonicitySpec) is judged AGAINST THE MERGE BASE: a slice whose flips
+#                 differ from the known rows is walked again with the base's code (scripts/ci/population-walk-diff), and
+#                 only a flip the base lacks (or a known row cured) refuses -- the listing, slice and chain named
+#                 Its rows are kept per digest of its code and data (sbt identityWalkDigest) and per slice content:
+#                 a change leaving both as a checked commit had them walks only the slices whose files differ
+#   (no `page` check: the page specs and the Playwright rows run after landing, on Main's `page-tests-*` rows -- the
+#                 owner, 2026-11-17, "B1": 0 failures in 14 landing checks, ~23 min each. scripts/page-tests-local runs
+#                 them on the laptop, by hand, for a UI change)
+#   `identitydrift` scripts/identity-drift-ci --for-red <run>, on a push to main whose commits carry `Fixes-Red: <run>` (and no
+#                 `Red-Unrelated:`) and touch a drift path (.github/identity-drift-paths.txt): the red's own failed
+#                 `takes-drift-1|2 (<country>)` rows, run drift-only on CI, ~12-16 min. A
+#                 fix no better than the red in any row, or worse in one, refuses the push (a partial fix lands): a
+#                 "fix" for a drift red is judged on the red's rows before it lands, not ~48 min after on main
+#                 (convergence-failures-2026-10-29 §7.2: two refuted fixes, 52 fixer launches).
+#                 A red with no failed drift row has nothing to judge; a run that could not be made warns and passes
+#                 (nothing heavy runs on the laptop either way). Not from a CI job (agentctl's remote checks): said so.
+#                 AND A CHECK'S BIRTH LANDS GREEN: a push touching the gate itself (.github/identity-drift-gate-paths.txt:
+#                 the drift-check script, the replay harness, the flip predicate, the allow-lists), or carrying
+#                 `New-Check:` and touching a drift path, runs every drift row against main's newest run
+#                 (identity-drift-ci --against main): a row worse than main's refuses the push
+#   `newchecks`   scripts/ci/gating_checks.py lint, on a change to a workflow, the gating-checks registry or this hook: every
+#                 job, runner label and gate workflow THE GATE reads is registered, a new one `unproven` (with its owner)
+#                 until a green run proves it (`prove`). The red gate below holds no push for a run red only in unproven
+#                 checks: A NEW CHECK GATES ONLY ONCE IT HAS BEEN GREEN (ci-failures-2026-10-30, recommendation 5)
+#   `schedules`   infra/nix/files/scheduled_dispatch.py check, on a change to a workflow or the external scheduler's
+#                 generated schedule: monitoring-1's dispatch timers are generated from the workflows' own crons
+#                 (scheduled-workflows.json), and every covered workflow treats the scheduler's repository_dispatch as
+#                 its schedule (under a second)
+#   `allowlists`  scripts/ci/commit_rules.py allowlists over the pushed commits, on a change to a registered allow-list
+#                 (.github/allow-lists.txt) or the ratchet itself: a row lands only with its check's birth (`New-Check:`,
+#                 the row TEMPORARY with an owner and when it goes); otherwise a list only shrinks
+#   `ios`         scripts/ios-compile-check.sh (app target + XCUITests, Mac and Linux SwiftPM; fails on a concurrency
+#                 diagnostic) on ios/** — this one
+#                 is minutes, not seconds, and only runs for iOS pushes
+#   `driftguards` scripts/ci/commit_rules.py driftguards over the pushed commits, on a change to the identity paths, worker/src/main or
+#                 the drift harness (is_drift_path), or on any pushed commit carrying `Fixes-Red:` (CI judges every one): a commit fixing a drift or flip red (`Fixes-Red:` and a message
+#                 about drift/flips) lands with its drift slice (test/resources/fixtures/drift-slices/, cut by
+#                 scripts/identity-slice --emit-drift-slice) or `Drift-Slice: none -- <why>`; a red fix changing
+#                 resolver or agreement RULE code names the design
+#                 doc that measured it (`Identity-Design: <doc>`; red fixers fix incremental state, not rules -- the
+#                 owner, 2026-10-29); and a change to the drift harness
+#                 (IdentityDrift, IdentityLiveDrift, TakeFlips, identity-drift-check.sh) carries its self-test in the same
+#                 commit (IdentityDriftSpec, CorrectionFlipReplaySpec, TakeFlipsSpec, the check's test) or
+#                 `Drift-Harness-Refactor: <why>`; and a change to what the worker serves over time (the model's
+#                 input gate, holds, settle, asks) ships its gauges/alert in the same commit or names the earlier
+#                 push's commit that did (`Gauges-Shipped: <sha>`; else `Gauges: none -- <why>`). Seconds: git only
+#   `puremove`    scripts/pure-move-check <sha>^..<sha> over each pushed commit carrying `Pure-Move: verified`, whatever it
+#                 touches: a commit claiming to be a pure move (files, packages and classes renamed, nothing else, so no
+#                 take can move and scripts/identity-what-if has nothing to measure) is one. The trailer is optional --
+#                 identity-what-if runs the check itself -- and verified only when present. Such a commit's paths select
+#                 no `identity` area and no identity heavy rows (A VERIFIED PURE MOVE OWES NO IDENTITY AREA, below);
+#                 the commits without the claim still do. Seconds a commit
+#   `stampcarry`  scripts/identity-stamp-carry verify over the pushed range, on a change to the stamp carry table
+#                 (test/resources/identity-stamp-carry.tsv; project/StampCarry.scala): every row the push adds or changes
+#                 is proven again -- its pure-move-check re-run, or its recorded identity-what-if verdict (every country,
+#                 every family, no take moved) re-read, for exactly the row's base and head, and both digests made again
+#                 by the build over those commits' trees. A row it cannot prove refuses the push: a carried stamp keeps
+#                 every worker's stored families on the next boot, so only a proven-equivalent change may carry one.
+#                 Seconds when the rows' trees are compiled (propose compiled them), a compile a tree when not
+#   `flipbacklog` THE FLIP BACKLOG IS COMPLETE (Main #2515: 97d260d67 committed the Ratzeburg Grinch drift slice with its
+#                 `drift` row alone; PopulationMonotonicitySpec failed main on four A -> B -> A takes no `population` row
+#                 named, and a slice changed alone selected no check at all), on a change to the flip backlog, the
+#                 struck flips, the drift-gate seeds, a drift or identity slice, or its judge: every slice the change
+#                 brings (its files, or its `population` rows, differ from the merge base's:
+#                 scripts/ci/population_walk_diff.py changed-slices) walked with PopulationMonotonicitySpec.main through
+#                 scripts/sbt-warm, and judged on the known rows alone, as main's spec judges it (judge-walk): a flip no
+#                 row names refuses with the row to add, as do a cured row, a rule contract breach and a failed walk.
+#                 No slice brought (a seeds-only explorer filing): no sbt, a second. Else ~3 s a slice warm
+#   `judgements`  scripts/ci/identity_judgements_lint.py on identity-judgements.tsv, the expected
+#                 matches and hard clusters: the judgements are well formed and the files leaning on
+#                 them agree. A judgements change is also read against the takes the newest Identity
+#                 model convergence legs served (their diagnostics artifacts, cached per run): a take
+#                 the push newly calls wrong that no known-wrong row tolerates fails here, not in the
+#                 leg after the push (911d8f486)
+#
+# WHAT IS CHECKED is the pushed commit's tree: in place when the checkout is that tree, else in a
+# temporary worktree of it (cold, so an sbt check there takes minutes, not seconds). The same
+# temporary worktree is used when an sbt check would share target/ with a live sbt in the
+# checkout (e.g. the DevPanel's `sbt web/run`): two compilers over one classes dir race.
+#
+# RED BUILDS GATE EVERY PUSH TO MAIN. Before any path check: when the newest COMPLETED run on main of a
+# gating workflow (Main, Identity model convergence and Identity takes, the owner's gate of 2026-10-27 and 2026-11-08; a cancelled run says nothing
+# and is passed over) is red, the push lands only as a fix for it — every pushed commit carries a
+# `Fixes-Red: <run>` trailer naming a run of the current red episode (A FIX MATCHES THE RED, below) — except a commit touching no production path
+# (*/src/main/, conf/, build.sbt, project/, infra/nix/, infra/kubernetes/, Dockerfile): tools — scripts, docs,
+# skills, tests, fixtures, CI tooling — land while red (user, 2026-10-14). On 2026-10-13/14, 50 of 96 identity commits
+# landed while Identity model convergence was red: 3f11e2cc3's wrong switches hid behind a DE red for six
+# hours, and three gates and label batches each turned it red again. One `gh run list` a workflow, each
+# bounded and tried $PREPUSH_GATE_ATTEMPTS (3) times; gh, curl or jq NOT INSTALLED blocks, as any missing tool does
+# (BYPASS below).
+# THE GATE FAILS CLOSED: a gate it cannot read -- no token, an API error, no answer in time -- may be red, so a push with
+# a production commit in it is REFUSED, saying how to hand the hook the token; a tools-only push lands, as it would
+# while red. 2026-10-27 08:05Z: a gate skipped for want of a token let agentctl's waiting processor push onto a red Main.
+# Bypass: PREPUSH_SKIP=redgate. NOT gating: the Identity findings report (a recording's own suspects and
+# corpus-shape findings, red after 3 days untriaged) -- no push makes or mends a recording's data.
+#
+# A STRANDED TRAILER REFUSES EVERY PUSH TO MAIN, green or red, a dry run (--checks-only, --fast-only) too: a pushed
+# commit's `Fixes-Red:`, `Red-Unrelated:`, `New-Check:`, `Retires:` or `Pure-Move:` line outside the message's closing trailer block
+# (a paragraph of its own above `Co-Authored-By:`) is prose to git's trailer parser, the only reader the red gate and
+# agentctl's red bookkeeping have. 38 of main's 204 Fixes-Red commits from 2026-10-20 to 11-02 had theirs there: Main
+# #2164's and #2547's fixes landed unlinked, the reds stayed open and fixers were sent at them again; 2 of 2026-11-19's 3
+# `Pure-Move:` claims were never checked, and paid the identity area a pure move owes none of. Bypass:
+# PREPUSH_SKIP=trailers.
+# A MISPLACED TRAILER WARNS (never refuses): any known key (scripts/ci/trailers.py KNOWN_KEYS -- Coupling, Complexity,
+# Duplication, Length, Pure-Move, Fixes-Red, Identity-Design, Drift-Harness-Refactor) on a line git reads no trailer
+# from is named with its commit and line number, before a ratchet refuses the push as if no trailer was given.
+#
+# THE KNOWN-RED BASELINE: with $PREPUSH_BASELINE_DIR set (agentctl sets it), a check that fails is held against the push
+# only when it fails in a way plain main does not. `<dir>/<base commit sha>` is the hook's own output of the same checks
+# on the base's tree, its first line `pre-push baseline <base commit sha>` (agentctl's `land` writes it when a change's
+# dry run fails: `--checks-only` over main's tree on top of the change). A failing check whose failure lines (the strong
+# markers -- *** FAILED, [error], Error:, assertion, exit code, FAILED -- else every line, normalized: no timestamps,
+# temp paths, shas or numbers) ALL appear in that check's failure on the base is KNOWN RED: said, not blocking. A
+# change that fixes one simply passes it. FAIL-CLOSED: no file for the push's base, a file without that first line, or
+# more than one pushed range, and every failing check blocks as ever. A stall is never known red. Without the variable,
+# nothing changes (2026-10-27: every land failed on main's own breakage, the fix included).
+#
+# REUSE: a push of a tree that already passed -- same tree, base, changed paths, hook, red-gate state and PREPUSH_SKIP --
+# skips the path checks (THE REUSE, below; the key kept in ~/.cache/kinowo-prepush). Anything different runs them all.
+# PREPUSH_NO_REUSE=1 runs them regardless.
+#
+# NO STEP HANGS: each check runs under a no-progress bound (scripts/stall-watch.sh): no CPU in the hook's processes, no
+# log written in its temp dir and no progress from scripts/sbt-warm (KINOWO_PROGRESS_FILE: a kept sbt server's work is
+# no CPU of the hook's) for $PREPUSH_STALL_SECONDS (1200) ends the check's processes and fails it with
+# `pre-push STALLED: <check>`, and the hook with exit 75 -- THE STALL SIGNAL, which scripts/sbt-warm gives too (its
+# own bound, 600 s, fires first inside an sbt step). 2026-10-27: a land's hook sat 2.5 h in one sbt-warm call, the
+# landing lock held, five lands behind it.
+#
+# BYPASS: `git push --no-verify` skips the whole hook. `PREPUSH_SKIP="ios sbt" git push` skips
+# the named checks.
+#
+# A MISSING LOCAL TOOL BLOCKS THE PUSH, saying how to fix it -- never a skip (user, 2026-10-21: an agent's push, sbt off
+# its PATH, skipped the sbt check and landed unchecked). sbt and a java that runs (sbt), shellcheck,
+# actionlint, npm (eslint), python3 (drift, dashboards, judgements, metricalerts) and the drift's timezonefinder and metricalerts' PyYAML (the
+# pinned venvs scripts/python-venv builds by itself; blocked only when it cannot), gh (judgements; the
+# red gate); the red gate unread blocks a production
+# push (THE GATE FAILS CLOSED, above). What stays a WARNING is what lies outside
+# this machine's install: an external service unreachable (a served-takes download) and a Docker or Xcode that is not RUNNING/selected (scripttests --linux, ios: CI runs
+# both). Not the GitOps manifests: their fetch failing BLOCKS (the checkout left behind is stale, and specs passed or
+# failed against it).
+#
+# INSTALL: scripts/install-hooks.sh (sets core.hooksPath=scripts/hooks, which every worktree of
+# this clone shares; the path is relative, so each worktree runs its own checkout's hook).
+# An ABSOLUTE path (an IDE rewrote it three times on 2026-10-14) is warned about, and the hook it names
+# hands over to the pushing worktree's own copy, so a stale root checkout never judges a worktree's push.
+#
+# DRY RUN / TEST: `scripts/hooks/pre-push --plan < paths` prints the checks a list of changed
+# paths selects, without running them (scripts/hooks/pre-push-test.sh). `--fast-only A..B` is the `waiting` batch's
+# combined check at green (each change was checked alone, on an older main, before it joined; the rebase writes the
+# combined tree no member saw): the red gate is not judged
+# and only the `sbt` check runs -- every test config compiled, the lint specs, and local-tests.txt's `fast` set instead
+# of `basic`; no area tests -- with the touched files' shellcheck and actionlint checks, and the checks a touched
+# union-merged file selects (THE COMBINED FILES: the rebase wrote it, no member checked it; e.g. `judgements`). Its pass is stored like any (THE REUSE), and a push with PREPUSH_REUSE_FAST=1 (agentctl's
+# batch push) of the same tree on the same base reuses it after judging the red gate. `--verify-only A..B` is agentctl's
+# COMBINED-TREE VERIFICATION (the owner, 2026-11-16, "but always recompile and unit test"): a change fully checked on an
+# older main A, rebased onto a main that moved with no file overlap, so A..B is what landed since plus the change --
+# the --fast-only set over those paths, plus the unit tests of every module they touch (`--unit-plan < paths` prints
+# them; the worker's are its `rest` unit row -- its identity row is the `identity` area's, its heavy rows no unit
+# stage's -- and any worker identity-row spec the paths change, by name; through the kept server narrowed to the
+# classes the combined change reaches, test_impact, joined by the tests in ANY module a test-side reader of a changed
+# file reaches: `--unit-universe`), plus the self-tests holding repo-wide files
+# to a rule (`run-script-tests --readers`) when those paths touch what they read. `--checks-only A..B` is `--range A..B` without
+# the red gate: every check, judged as a push to main whatever main's state -- what `agentctl land` runs on the
+# `waiting` branch while main is red (the gate is judged again when that branch is pushed). `--range A..B` runs the
+# hook for the commits in A..B (diffed from their merge-base) instead of reading git's stdin.
+set -uo pipefail
+# git exports GIT_DIR (and, by setup, GIT_INDEX_FILE / GIT_WORK_TREE) for the repository being
+# pushed — for a worktree, ITS git dir. Every check inherits them, and in the temporary checkout
+# below they would point each `git` back at the pushing worktree's HEAD and index. The hook runs at
+# the checkout's root, where git finds the repository on its own: clear them once, for every check.
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX
+
+root="$(git rev-parse --show-toplevel)" || exit 1
+
+# ── The PUSHING checkout's own hook runs, whatever core.hooksPath says ──────────────────────────
+# core.hooksPath=scripts/hooks is relative: each worktree runs its own checkout's copy. Rewritten to an
+# absolute path (three times on 2026-10-14, very likely an IDE's git integration), every worktree's push ran
+# the ROOT checkout's copy — an older hook, judging new work by stale checks. So a hook git runs for another
+# checkout than its own hands over to that checkout's copy. Once only (PREPUSH_DELEGATED_FROM), and never for
+# the dry runs (the plan modes, --range, --checks-only, --fast-only, --verify-only), which name the file they mean.
+# THE PLAN MODES print what a push would run (or summarise a log) and exit: ONE list, read here and by the root
+# check below (--lint-plan was in that one only, so a lint-plan query from another checkout ran that checkout's copy).
+is_plan_mode() { case "${1:-}" in --plan|--compile-plan|--coupling-plan|--quality-plan|--identity-change|--unit-plan|--unit-universe|--lint-plan|--per-file-lints|--script-test-plan|--failure-summary) return 0 ;; esac; return 1; }
+is_plan_mode "${1:-}" && dry_run=1 || dry_run=0
+case "${1:-}" in --range|--checks-only|--fast-only|--verify-only) dry_run=1 ;; esac
+case "$dry_run" in
+    1) ;;
+    *)
+        if [ -z "${PREPUSH_DELEGATED_FROM:-}" ]; then
+            hooks_path="$(git config --get core.hooksPath || true)"
+            case "$hooks_path" in
+                /*|~*) printf '\033[33m! pre-push\033[0m core.hooksPath is absolute (%s): every worktree reaches that one copy — scripts/install-hooks.sh sets it back to the relative scripts/hooks\n' "$hooks_path" >&2 ;;
+            esac
+            hook_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+            own="$(cd "$root" && pwd -P)/scripts/hooks/pre-push"
+            if [ "$(cd "$root" && pwd -P)" != "$hook_root" ] && [ -f "$own" ] && ! [ "$own" -ef "${BASH_SOURCE[0]}" ]; then
+                export PREPUSH_DELEGATED_FROM="$hook_root"
+                exec bash "$own" "$@"
+            fi
+        fi ;;
+esac
+unset PREPUSH_DELEGATED_FROM
+# ── end of the hand-over ──
+cd "$root" || exit 1
+
+# ── core.hooksPath stays RELATIVE, and this hook proves it did not move it ──────────────────────
+# Absolute (an IDE wrote it three times on 2026-10-14, a fourth time with no IDE running, between two pushes), it sends
+# every worktree to ONE copy of the hooks. An absolute path that names a worktree of THIS clone's scripts/hooks holds
+# only this repository's own hooks, so it is set back to relative here (a foreign directory is left alone). The value
+# the hook starts with is then compared at EXIT: a hook that finds it moved while the checks ran says so, names the
+# processes that could have done it, and restores it — a writer inside the checks is caught, not guessed at.
+hooks_path_now() { git config --local --get core.hooksPath 2>/dev/null || true; }
+# shellcheck source=scripts/hooks-path.sh
+. "$(dirname "${BASH_SOURCE[0]}")/../hooks-path.sh"
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "${BASH_SOURCE[0]}")/../tool-conventions.sh" # bounded: every gh read below has a deadline
+case "$(hooks_path_now)" in
+    /*)
+        if hooks_path_is_own "$(hooks_path_now)"; then
+            printf '\033[33m! pre-push\033[0m core.hooksPath was %s: set back to the relative scripts/hooks\n' "$(hooks_path_now)" >&2
+            git config --local core.hooksPath scripts/hooks
+        fi ;;
+esac
+hooks_path_at_start="$(hooks_path_now)"
+# The shared root checkout off main or dirty strands every agent's next rebase: said on every push, never blocking it.
+root_check="$(dirname "${BASH_SOURCE[0]}")/../root-checkout-check"
+root_warning=""
+# A plan mode only prints what a push would run: the root checkout's state means nothing to it, and the check's
+# `git status` over the whole root is the cost of every plan call -- in a Linux container, where the bind mount's
+# stat data never matches the index, a full rehash: pre-push-test.sh's ~20 plan calls ran past its 600 s bound.
+! is_plan_mode "${1:-}" || root_check=""
+[ ! -x "$root_check" ] || root_warning="$("$root_check" "$root" 2>&1)"
+[ -z "$root_warning" ] || printf '\033[33m! pre-push\033[0m %s\n' "$root_warning" >&2
+tree="" area_tests=""
+on_exit() {
+    local now
+    cd "$root" || return # a temporary checkout is about to go; git has to run somewhere that stays
+    if [ -n "$tree" ]; then
+        # the area tests' kept sbt server, started in the temporary checkout, goes with it
+        [ -n "$area_tests" ] && [ -x "$tree/scripts/sbt-warm" ] && (cd "$tree" && scripts/sbt-warm --stop) >/dev/null 2>&1
+        git -C "$root" worktree remove --force "$tree" >/dev/null 2>&1; git -C "$root" worktree prune
+    fi
+    now="$(hooks_path_now)"
+    if [ "$now" != "$hooks_path_at_start" ]; then
+        printf '\033[31m! pre-push\033[0m core.hooksPath moved from "%s" to "%s" WHILE this hook ran — restoring it. Candidates:\n' "$hooks_path_at_start" "$now" >&2
+        ps -axo pid,ppid,command | grep -E 'git( |-)config|install-hooks|hooksPath' | grep -v grep >&2
+        if [ -n "$hooks_path_at_start" ]; then git config --local core.hooksPath "$hooks_path_at_start"; else git config --local --unset core.hooksPath; fi
+    fi
+}
+trap on_exit EXIT
+
+Zero=0000000000000000000000000000000000000000
+
+skipped() { case " ${PREPUSH_SKIP:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+
+# Whether a push of <path> runs the sbt check for the lint specs: scripts, workflows, skills, the docs, the build, the
+# test, it and page trees, the fixtures. It decides only THAT the check runs (plan); WHICH specs it runs is each lint
+# registry row's own reads (lint_plan) -- once `@repo`, every spec selected by any of these paths (below).
+read_by_lint_specs() { # <path>
+    case "$1" in
+        # the mobile apps' own trees are no sbt module's (`*/src/test/*` caught android/app/src/test: 2026-11-21)
+        android/*|ios/*) return 1 ;;
+        scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|scrapers/src/fixtures/*|http/src/fixtures/*|repochecks/src/fixtures/*|testkit/*) return 0 ;;
+    esac
+    return 1
+}
+
+# THE COUPLING RATCHET'S PATHS (the header's `sbt`; `--coupling-plan` prints them): what can move the production code's coupling or the ratchet's verdict
+coupling_paths() { # stdin: changed paths -> the ones that select the coupling step
+    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.(scala|java)|build\.sbt|coupling\.sbt|project/[^/]*\.scala|test/resources/coupling-(baseline|layers|exemptions|fanout-refs|collaborators)\.tsv|scripts/ci/coupling_(ratchet|rows|violations|growth|exemption_table|exemption_history|reasons|renames|splits|verdicts)\.py)$' || true
+}
+
+# THE CODE-QUALITY RATCHETS' PATHS (the header's `sbt`; `--quality-plan` prints them): what can move the measured rows or
+# the ratchet's verdict -- production Scala (a source's text is what is measured: no Java, no template), the measure,
+# its dependencies and the baselines
+quality_paths() { # stdin: changed paths -> the ones that select the quality step
+    grep -E '^((geodata|base|http|common|identity|scrapers|worker|web)/src/main/.*\.scala|quality/src/main/.*|project/Dependencies\.scala|test/resources/(complexity|length|duplication)-baseline\.tsv|test/resources/quality-data-tables\.tsv|scripts/ci/quality_ratchet\.py|scripts/design-rules/(naming_lint|naming|scala_names|extractors|design_check|model|exemptions)\.py|scripts/lib/rules_table\.py|test/resources/design-(rules|baseline|exemptions)\.tsv)$' || true
+}
+
+# THE JS/TS QUALITY RATCHET'S PATHS (the header's `jsquality`; `--js-quality-plan` prints them): the production JS/TS the
+# ratchet measures (scripts/js-quality/ratchet-areas.tsv), its baseline, the ratchet and the measure -- no test, page
+# test, Playwright spec or script outside the measure: those are reported, not gated
+js_quality_paths() { # stdin: changed paths -> the ones that select the jsquality check
+    grep -E '^(web/src/main/assets/js/.*|infra/version-dashboard/src/.*|test/resources/js-quality-baseline\.tsv|scripts/ci/js_quality_ratchet\.py|scripts/ci/baseline_ratchet\.py|scripts/ci/trailers\.py|scripts/js-quality/.*|scripts/js-quality-report|scripts/js_quality_report\.py|scripts/lib/pinned_npm_tools\.py|scripts/design-rules/[a-z_]+\.py|scripts/lib/rules_table\.py|test/resources/design-(rules|baseline|exemptions)\.tsv)$' || true
+}
+
+# THE PYTHON QUALITY RATCHET'S PATHS (the header's `pyquality`; `--py-quality-plan` prints them): a Python tool under
+# scripts/, .github/scripts/, infra/bin/, infra/nix/bin/, infra/nix/files/, android/scripts/ or ios/scripts/ -- a .py, or an extension-less file whose first line names python -- its baseline, the
+# measure, its engine and pyrightconfig.json
+py_quality_paths() { # stdin: changed paths -> the ones that select the pyquality check
+    local path
+    while IFS= read -r path; do
+        case "$path" in *_test.py) continue ;; esac # a self-test is reported, never held: it selects no check
+        case "$path" in
+            scripts/*.py|.github/scripts/*.py|infra/bin/*.py|infra/nix/bin/*.py|infra/nix/files/*.py|android/scripts/*.py|ios/scripts/*.py|\
+            test/resources/py-quality-baseline.tsv|scripts/py-quality/*|scripts/py-quality-report|\
+            test/resources/design-rules.tsv|test/resources/design-baseline.tsv|test/resources/design-exemptions.tsv|\
+            pyrightconfig.json) echo "$path" ;; # (the ratchet, its engine and trailers.py are scripts/*.py)
+            scripts/*|.github/scripts/*|infra/bin/*|infra/nix/bin/*|infra/nix/files/*|android/scripts/*|ios/scripts/*)
+                case "${path##*/}" in *.*) ;; *) head -1 "$path" 2>/dev/null | grep -q '^#!.*python' && echo "$path" ;; esac ;;
+        esac
+    done
+    return 0
+}
+
+# ── The local tests: basic, and per AREA ─────────────────────────────────────────────────────────
+# NO PRE-MERGE CI (the owner, 2026-10-26): "only run the basic tests before merging and merge on green (main not green
+# branch); if some specific area (browser / page, identity) is touched, run tests specific to that locally (unless it
+# takes longer than 15 mins), then merge to main and test everything there". scripts/hooks/local-tests.txt is the ONE
+# definition of those tests: `<set> sbt <command>` (one scripts/sbt-warm call per set, its sbt commands in order) or
+# `<set> sh <command>`. The sets:
+#   basic     rides the `sbt` check's one sbt run, whenever that runs (any Scala, build, script, test or workflow change)
+#   identity  the `identity` check, on a change to the identity paths below
+# The page area is gone (the owner, 2026-11-17, "B1"): the page specs and Playwright run after landing, on Main.
+# Each area's set holds only what runs in under 15 min on the laptop, warm (measured, in local-tests.txt); the rest
+# (convergence, the takes measure, the page tests) is main's CI's. scripts/identity-landing-check is an optional manual tool now:
+# nothing requires its LANDABLE.
+LocalTests="$(dirname "${BASH_SOURCE[0]}")/local-tests.txt"
+has_local_tests() { # <set>
+    [ -f "$LocalTests" ] && grep -qE "^$1[[:space:]]+(sbt|sh|first)[[:space:]]" "$LocalTests"
+}
+# The identity paths: the resolver, its worker adapters (services.identityadapters), title rules and the normalizer
+# applying them, the identity fixtures -- and what the identity set's specs read beside them (2026-11-19, identity-impact-check
+# hook: NO AREA for a capture reader whose mutation failed the ratchet): the set's own spec trees (services.identity.*,
+# services.titles.rules.*, scripts.*, the hard-cluster ratchet and its country scope, in whichever module), the worker's
+# fixtures config (the capture readers, the corpus and enrichment-cache harness), testkit's identity doubles and the
+# normalizers the specs build, and the corpus captures, hard-cluster seeds and drift slices. The test-impact selection
+# narrows each to the specs that read it (identityImpact: one a fixtures tool no spec reaches selects none, and runs none).
+is_identity_path() { # <path>
+    case "$1" in
+        identity/*|worker/src/main/scala/services/identityadapters/*|*/src/test/scala/services/identity/*|\
+        common/src/main/resources/title-rules.tsv|common/src/main/resources/title-words.tsv|\
+        common/src/main/scala/services/titles/rules/*|common/src/main/scala/services/titles/TitleNormalizer.scala|\
+        */src/test/scala/services/titles/rules/*|worker/src/test/scala/scripts/*|\
+        worker/src/test/scala/tools/HardClusterRatchetSpec.scala|worker/src/test/scala/tools/CountryScope.scala|\
+        worker/src/fixtures/*|testkit/src/main/scala/services/identity/*|\
+        testkit/src/main/scala/services/movies/SingleCountryNormalizer.scala|testkit/src/main/scala/services/movies/NormalizerTrace.scala|\
+        test/resources/fixtures/identity-*|test/resources/fixtures/corpus/*|test/resources/fixtures/drift-slices/*) return 0 ;;
+    esac
+    return 1
+}
+# What can MOVE TAKES (agentctl's identity change, checked alone: `--identity-change`): the resolver and its worker
+# adapters, the title rules and words and the normalizer applying them, and the judgements. Narrower than the identity
+# area on purpose (2026-11-19): a spec, a fixture or a common/ change that only runs some identity specs still batches.
+is_take_path() { # <path>
+    case "$1" in
+        identity/src/main/*|worker/src/main/scala/services/identityadapters/*|\
+        common/src/main/resources/title-rules.tsv|common/src/main/resources/title-words.tsv|\
+        common/src/main/scala/services/titles/rules/*|common/src/main/scala/services/titles/TitleNormalizer.scala|\
+        test/resources/fixtures/identity-judgements.tsv) return 0 ;;
+    esac
+    return 1
+}
+# One line per path on stdin; prints `identity` when one can move takes (is_take_path), nothing otherwise.
+identity_change() {
+    local path
+    while IFS= read -r path; do
+        is_take_path "$path" && { echo identity; return 0; }
+    done
+    return 0
+}
+# What the identity specs read through their class dependencies alone (2026-11-19: a common/ model or a generic testkit
+# helper -- MutableClock, SpecClock -- started no identity area, though identity specs read them): common's production
+# code and the testkit. They select the identity area and nothing else (no drift guards: is_drift_path); the test-impact
+# selection keeps only the specs whose classes reach the changed ones, so most such changes run no identity spec.
+is_identity_reach_path() { # <path>
+    case "$1" in
+        common/src/main/scala/*|common/src/main/java/*|testkit/src/main/scala/*) return 0 ;;
+    esac
+    return 1
+}
+# What shellcheck reads: a .sh, the hooks, and a tool with no extension whose shebang names a shell (sbt-warm,
+# gitops-specs, ...: 50 under scripts/ were never shellchecked, and sbt-warm's SC2046 of d56231908 landed unseen).
+is_shell_path() { # <path>
+    case "$1" in *.sh|scripts/hooks/*) return 0 ;; esac
+    case "${1##*/}" in *.*) return 1 ;; esac
+    [ -f "$1" ] && head -n 1 "$1" 2> /dev/null | grep -qE '^#!.*[/ ](ba|da|k)?sh( |$)'
+}
+# What a fix to a drift or flip red touches: the identity paths, the worker's code, the drift harness and its slices.
+is_drift_path() { # <path>
+    is_identity_path "$1" && return 0
+    case "$1" in
+        worker/src/main/*|worker/src/test/scala/scripts/IdentityDrift*|worker/src/test/scala/scripts/IdentityLiveDrift*|\
+        scripts/ci/identity-drift-check*|scripts/ci/identity_drift_check*|scripts/ci/commit_rules*) return 0 ;;
+    esac
+    return 1
+}
+
+# ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
+# One line per path on stdin; prints the selected check names, one per line, in run order.
+plan() {
+    local eslint=0 jsquality=0 pyquality=0 drift=0 snapshot=0 sbt=0 dashboards=0 metricalerts=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 path
+    local identity=0 allowlists=0 driftguards=0 newchecks=0 schedules=0 flipbacklog=0 stampcarry=0
+    local script_test_reads glob
+    # What a repo-reading self-test declares it reads (run-script-tests' READS): a workflow, a .py or a spec edit runs
+    # the `scripttests` check, which selects that test (download_artifact_layout_test.py's workflow, Tool self-tests
+    # #259-263, landed without it).
+    script_test_reads="$("$(dirname "${BASH_SOURCE[0]}")/../run-script-tests" --reads 2>/dev/null)"
+    local registry_files
+    registry_files="$(registry_files)"
+    local all_paths=""
+    while IFS= read -r path; do
+        all_paths+="$path"$'\n'
+        # js_quality_paths' set, as a pattern (no grep a path)
+        case "$path" in
+            web/src/main/assets/js/*|infra/version-dashboard/src/*|test/resources/js-quality-baseline.tsv|\
+            scripts/ci/js_quality_ratchet.py|scripts/ci/baseline_ratchet.py|scripts/ci/trailers.py|scripts/js-quality/*|scripts/js-quality-report|scripts/js_quality_report.py|scripts/lib/pinned_npm_tools.py) jsquality=1 ;;
+        esac
+        case "$path" in
+            web/src/main/assets/js/*.js|web/src/page/resources/*.js|eslint.config.js|eslint-rules/*.js|package.json|package-lock.json|page-tests-playwright/tests/*.ts|page-tests-playwright/lint-flake-patterns*.mjs) eslint=1 ;;
+        esac
+        case "$path" in
+            common/src/main/scala/models/*|geodata/src/main/scala/models/*|geodata/src/main/resources/generated/*|data/*|android/app/src/main/java/pl/kinowo/model/City.kt|ios/Kinowo/Models/City.swift|scripts/ci/generated-artefacts-drift.sh) drift=1 ;;
+        esac
+        case "$path" in
+            test/resources/fixtures/08-06-2026/*|scripts/read-model-snapshot-inputs.sh) snapshot=1 ;;
+        esac
+        case "$path" in
+            *.scala|*.java|build.sbt|project/*|infra/nix/files/monitoring/grafana/dashboards/*) sbt=1 ;;
+        esac
+        # The templates and the browser assets: compiled into web, and read by its unit specs (PageSnapshotSpec's
+        # expected-*.html) -- the page area selected the sbt check for them until it moved to Main (2026-11-17).
+        case "$path" in web/src/main/assets/*|web/src/main/twirl/*|web/src/page/*) sbt=1 ;; esac
+        # The coupling baseline, the layer table and the exemption table are the ratchet's (check_sbt's coupling step): a
+        # hand edit of the baseline is judged as any growth, an `allow` row or a moved layer as the table loosening, an
+        # exemption row added as the exemptions loosening.
+        case "$path" in test/resources/coupling-baseline.tsv|test/resources/coupling-layers.tsv|test/resources/coupling-exemptions.tsv|test/resources/coupling-fanout-refs.tsv|test/resources/coupling-collaborators.tsv) sbt=1 ;; esac
+        # ...and so are the quality baselines and the quality ratchet itself (check_sbt's quality step)
+        case "$path" in test/resources/complexity-baseline.tsv|test/resources/length-baseline.tsv|test/resources/duplication-baseline.tsv|test/resources/quality-data-tables.tsv|scripts/ci/quality_ratchet.py|scripts/design-rules/naming_lint.py|scripts/design-rules/naming.py|scripts/design-rules/scala_names.py|scripts/design-rules/extractors.py|scripts/design-rules/design_check.py|scripts/design-rules/model.py|scripts/design-rules/exemptions.py|scripts/lib/rules_table.py|test/resources/design-rules.tsv|test/resources/design-baseline.tsv|test/resources/design-exemptions.tsv) sbt=1 ;; esac
+        # A generated table (models.GeneratedTable) is code's data: the specs reading it decide whether it is right.
+        case "$path" in
+            geodata/src/main/resources/generated/*) sbt=1 ;;
+        esac
+        # What NoSilencedGhCurlSpec reads: a script that silences a gh/curl read failed Main from a push this check never
+        # selected (d00c5edf2).
+        case "$path" in
+            scripts/*.sh|.github/*.sh|.github/*.yml|.github/*.yaml|infra/*.sh|infra/*.yml|infra/*.yaml) sbt=1 ;;
+        esac
+        # What the repo-reading lint specs `--lint-plan` adds read: scripts, workflows, tests, fixtures, skills, the docs and
+        # the build -- each turned Main red from a push this check never selected (2026-10-13..15).
+        read_by_lint_specs "$path" && sbt=1
+        # An artefact a registered spec reads (a file a lint-registry row names: the Dockerfile, the AOT class list,
+        # host-memory.json, a fixture): its row selects the spec, so the sbt check that runs it must run (Main
+        # #2547/#2550, #2601: a Dockerfile or an AOT-list change selected no sbt check at all).
+        # A here-string, never `printf | grep -q` (here and throughout the hook): under pipefail, grep -q exiting at
+        # its match makes printf's next write die of SIGPIPE, the pipeline false -- the ~6 KB file list is two writes,
+        # and on a loaded Linux container host-memory.json, in the first, selected no sbt check (2026-11-19).
+        if [ $sbt = 0 ] && [ -n "$registry_files" ] && grep -qxF -- "$path" <<< "$registry_files"; then sbt=1; fi
+        case "$path" in
+            infra/nix/files/monitoring/*|infra/test/test_dashboards.py) dashboards=1 ;;
+        esac
+        # What test_metric_alert_coverage.py reads: the alerts, the code's metric declarations, the fleet's exporters.
+        case "$path" in
+            infra/nix/files/monitoring/rules/*|infra/nix/files/monitoring/grafana/alerting/*|\
+            infra/test/app-metrics-catalogue/*|infra/test/test_metric_alert_coverage.py|\
+            infra/test/app_metrics_catalogue.py|infra/test/app_metrics_absent.py|infra/test/promql_selectors.py|\
+            test/resources/metrics-without-alerts.tsv|scripts/pyyaml-requirements.txt|scripts/python-venv|\
+            */src/main/*etrics*) metricalerts=1 ;;
+            # a fleet exporter: a script that echoes a `# TYPE kinowo_...` header
+            infra/nix/*.sh|infra/nix/*.nix|scripts/ci/*.py) grep -q '# TYPE kinowo_' "$path" 2>/dev/null && metricalerts=1 ;;
+        esac
+        case "$path" in
+            scripts/*|.github/scripts/*|.github/actions/*|android/scripts/*|ios/scripts/*|infra/bin/*|data/*) scripttests=1 ;;
+        esac
+        if [ $scripttests = 0 ] && [ -n "$script_test_reads" ]; then
+            while IFS= read -r glob; do
+                # shellcheck disable=SC2254 # a declared glob is a pattern on purpose
+                case "$path" in $glob) scripttests=1; break ;; esac
+            done <<< "$script_test_reads"
+        fi
+        case "$path" in
+            .github/workflows/*.yml|.github/workflows/*.yaml|.github/actions/*/action.yml|.github/actions/*/action.yaml) actionlint=1 ;;
+        esac
+        is_shell_path "$path" && shellcheck=1
+        case "$path" in
+            ios/*) ios=1 ;;
+        esac
+        case "$path" in
+            test/resources/fixtures/identity-judgements.tsv|test/resources/fixtures/identity-unmatched/*.tsv|\
+            test/resources/fixtures/corpus/expected-hard-clusters-*|\
+            scripts/ci/identity_judgements*.py|scripts/ci/identity_takes*.py) judgements=1 ;;
+        esac
+        case "$path" in .github/allow-lists.txt|scripts/ci/commit_rules*.py) allowlists=1 ;; esac
+        [ -f .github/allow-lists.txt ] && grep -qxF -- "$path" .github/allow-lists.txt && allowlists=1
+        { is_identity_path "$path" || is_identity_reach_path "$path"; } && identity=1
+        is_drift_path "$path" && driftguards=1
+        case "$path" in
+            test/resources/fixtures/identity-flip-backlog.tsv|test/resources/fixtures/identity-flips-struck.tsv|\
+            test/resources/fixtures/drift-gate-seeds.tsv|test/resources/fixtures/drift-slices/*|\
+            test/resources/fixtures/identity-slices/*|scripts/ci/population_walk_diff*.py) flipbacklog=1 ;;
+        esac
+        case "$path" in .github/workflows/*|.github/gating-checks.tsv|scripts/ci/gating_checks*|scripts/hooks/pre-push) newchecks=1 ;; esac
+        case "$path" in test/resources/identity-stamp-carry.tsv) stampcarry=1 ;; esac
+        case "$path" in .github/workflows/*|infra/nix/files/scheduled-workflows.json|infra/nix/files/scheduled_dispatch.py) schedules=1 ;; esac
+    done
+    [ -n "$(printf '%s' "$all_paths" | py_quality_paths)" ] && pyquality=1
+    # an area runs only when local-tests.txt (beside this hook) names tests for it
+    has_local_tests identity || identity=0
+    [ $identity = 1 ] && sbt=1
+    [ $judgements = 1 ] && echo judgements
+    [ $allowlists = 1 ] && echo allowlists
+    [ $newchecks = 1 ] && echo newchecks
+    [ $schedules = 1 ] && echo schedules
+    [ $driftguards = 1 ] && echo driftguards
+    [ $eslint = 1 ] && echo eslint
+    [ $jsquality = 1 ] && echo jsquality
+    [ $pyquality = 1 ] && echo pyquality
+    [ $drift = 1 ] && echo drift
+    [ $snapshot = 1 ] && echo snapshot
+    [ $dashboards = 1 ] && echo dashboards
+    [ $metricalerts = 1 ] && echo metricalerts
+    [ $scripttests = 1 ] && echo scripttests
+    [ $actionlint = 1 ] && echo actionlint
+    [ $shellcheck = 1 ] && echo shellcheck
+    [ $sbt = 1 ] && echo sbt
+    [ $flipbacklog = 1 ] && echo flipbacklog
+    [ $stampcarry = 1 ] && echo stampcarry
+    [ $identity = 1 ] && echo identity
+    [ $ios = 1 ] && echo ios
+    [ "${PREPUSH_HEAVY_ROWS:-}" = 1 ] && [ $sbt = 1 ] && heavy_rows "$all_paths"
+    return 0
+}
+
+# THE HEAVY ROWS a set of changed paths can move (the header's `itrest` `itidentity` `e2ecorpus`), one per line:
+#   itrest      any change the sbt check selects that reaches compiled code or what the specs read: every integration
+#               spec but the identity row's (build.sbt's IT_ROW split)
+#   itidentity  an identity path or what the identity specs read (is_identity_reach_path), the build, the worker's code
+#               and the hard-cluster harness the convergence boots, or the fixtures it replays
+#   e2ecorpus   with itidentity: `sbt e2eCorpus`, e2e (corpus)'s whole-corpus replays, the identity cutover's among them --
+#               only while `basic` does not already run them (corpus_in_basic)
+# build.sbt's e2eCorpus specs, every one named on local-tests.txt's `basic` e2e lines; an alias it cannot read: no (the row runs)
+corpus_in_basic() {
+    local build line specs="" basic=" " spec
+    build="$(dirname "${BASH_SOURCE[0]}")/../../build.sbt"
+    [ -f "$build" ] && [ -f "$LocalTests" ] || return 1
+    while IFS= read -r line; do
+        case "$line" in 'addCommandAlias("e2eCorpus",'*'"e2e/Test/testOnly '*) specs="${line#*testOnly }"; specs="${specs%%\"*}" ;; esac
+    done < "$build"
+    while IFS= read -r line; do
+        case "$line" in basic*sbt*' e2e/testOnly '*|basic*sbt*' e2e/Test/testOnly '*) basic+="${line#*testOnly } " ;; esac
+    done < "$LocalTests"
+    [ -n "${specs// /}" ] || return 1
+    for spec in $specs; do case "$spec" in -*) return 1 ;; esac; case "$basic" in *" $spec "*) ;; *) return 1 ;; esac; done
+}
+heavy_rows() { # <paths, one per line>
+    local itrest=0 itidentity=0 path
+    while IFS= read -r path; do
+        case "$path" in
+            */src/main/*|*/src/it/*|*/src/test/*|*/src/fixtures/*|build.sbt|project/*|conf/*|test/resources/*) itrest=1 ;;
+        esac
+        { is_identity_path "$path" || is_identity_reach_path "$path"; } && itidentity=1
+        # the identity row's spec (HardClusterConvergenceIntegrationSpec, ~40 s here) boots the worker's own code and reads
+        # its harness beside it (HardClusterPasses, HardClusterRecord, ...): Main #2712/#2716/#2717 went red there while
+        # the harness's own fix (2130751d7) and every worker/src/main change ran the rest row alone (2026-11-20)
+        case "$path" in build.sbt|project/*|test/resources/fixtures/*|common/src/main/*|base/src/main/*|\
+            worker/src/main/*|worker/src/it/scala/HardCluster*) itidentity=1 ;; esac
+    done <<< "$1"
+    [ $itrest = 1 ] && echo itrest
+    [ $itidentity = 1 ] && echo itidentity
+    # e2e (corpus)'s identity-cutover replay: the identity row's paths -- unless its specs already run in `basic`, which
+    # rides the `sbt` check every heavy row comes with (none without it: plan): once there, not twice (FilmScheduleEndToEnd
+    # ran 252 s in the rest's sbt AND 160 s on this row: precommit-check run 41627361428)
+    [ $itidentity = 1 ] && ! corpus_in_basic && echo e2ecorpus
+    return 0
+}
+
+# ── Which test configs a set of changed paths has to compile ────────────────────────────────────
+# One line per path on stdin; prints the sbt compile tasks, one per line, in dependency order. A
+# module's own test configs plus those of every module that depends on it (build.sbt's dependsOn):
+# geodata, base → http → common → identity → testkit → scrapers → worker (test->fixtures on scrapers) → web (page->fixtures) → e2e. The build
+# itself touches them all.
+compile_plan() {
+    local common=0 identity=0 testkit=0 scrapers=0 repochecks=0 worker=0 worker_it=0 web=0 e2e=0 path tests=""
+    while IFS= read -r path; do
+        # A TEST TREE IS ITS MODULE'S TESTS' ALONE (2026-11-21, landing-speed proposal 1): `<m>/src/test|it|page/` is
+        # compiled by <m>'s Test config and those extending it (It, Page) -- no module depends on another's Test but the
+        # worker's It on repochecks' (`it->test`, below; build.sbt's dependsOn, held by pre-push-test.sh) -- so it
+        # compiles none of the modules downstream of <m>, which compile <m>'s main and fixtures alone.
+        case "$path" in
+            repochecks/src/test/*.scala|repochecks/src/test/*.java) repochecks=1; worker_it=1; continue ;;
+            worker/src/it/*.scala|worker/src/it/*.java) worker_it=1; continue ;;
+            web/src/it/*.scala|web/src/it/*.java) tests="$tests web/It/compile"; continue ;;
+            web/src/page/*.scala|web/src/page/*.java) tests="$tests web/Page/compile"; continue ;;
+            web/src/test/*.scala|web/src/test/*.java) tests="$tests web/Test/compile web/It/compile web/Page/compile"; continue ;;
+            worker/src/test/*.scala|worker/src/test/*.java) tests="$tests worker/Test/compile"; worker_it=1; continue ;;
+            base/src/test/*.scala|http/src/test/*.scala|geodata/src/test/*.scala|common/src/test/*.scala|common/src/test/*.java)
+                tests="$tests ${path%%/*}/Test/compile"; continue ;;
+            identity/src/test/*.scala|identity/src/test/*.java) tests="$tests identity/Test/compile"; continue ;;
+            scrapers/src/test/*.scala|scrapers/src/test/*.java) tests="$tests scrapers/Test/compile"; continue ;;
+            testkit/src/test/*.scala) tests="$tests testkit/Test/compile"; continue ;;
+        esac
+        case "$path" in
+            build.sbt|project/*)  common=1 ;;
+            common/*.scala|common/*.java|geodata/*.scala|base/*.scala|http/*.scala)   common=1 ;;
+            identity/*.scala|identity/*.java) identity=1 ;;
+            testkit/*.scala|testkit/*.java) testkit=1 ;;
+            scrapers/*.scala|scrapers/*.java) scrapers=1 ;;
+            # the worker's deploy specs compile against repochecks' fixtures (test->fixtures), its integration deploy
+            # specs against repochecks' specs too (it->test).
+            repochecks/src/fixtures/*)      repochecks=1; worker=1 ;;
+            repochecks/*.scala|repochecks/*.java) repochecks=1; worker_it=1 ;;
+            # web's Page config compiles against worker's fixtures config (page->fixtures).
+            worker/src/fixtures/*)          worker=1; web=1 ;;
+            worker/*.scala|worker/*.java)   worker=1 ;;
+            web/*.scala|web/*.java)         web=1 ;;
+            e2e/*.scala|e2e/*.java)         e2e=1 ;;
+        esac
+    done
+    [ $common = 1 ] && identity=1
+    [ $identity = 1 ] && testkit=1
+    [ $testkit = 1 ] && scrapers=1
+    [ $scrapers = 1 ] && worker=1
+    [ $worker = 1 ] && e2e=1
+    [ $web = 1 ] && e2e=1
+    [ $testkit = 1 ] && web=1
+    [ $testkit = 1 ] && repochecks=1
+    [ $common = 1 ] && echo common/Test/compile
+    [ $identity = 1 ] && echo identity/Test/compile
+    [ $testkit = 1 ] && echo testkit/Test/compile
+    [ $scrapers = 1 ] && echo scrapers/Test/compile
+    [ $repochecks = 1 ] && echo repochecks/Test/compile
+    [ $worker = 1 ] && printf '%s\n' worker/Test/compile worker/It/compile
+    [ $worker = 0 ] && [ $worker_it = 1 ] && echo worker/It/compile
+    [ $web = 1 ] && printf '%s\n' web/Test/compile web/It/compile web/Page/compile
+    [ $e2e = 1 ] && echo e2e/Test/compile
+    # the test trees' own configs, those the modules above do not already compile
+    local config
+    for config in $tests; do
+        case "$config" in
+            common/*|base/*|http/*|geodata/*) [ $common = 1 ] && [ "${config%%/*}" = common ] ;; identity/*) [ $identity = 1 ] ;; testkit/*) [ $testkit = 1 ] ;;
+            scrapers/*) [ $scrapers = 1 ] ;; worker/*) [ $worker = 1 ] ;; web/*) [ $web = 1 ] ;; *) false ;;
+        esac && continue
+        echo "$config"
+    done | awk '!seen[$0]++'
+    return 0
+}
+
+# ── Which unit tests the combined-tree verification runs (--verify-only) ────────────────────────
+# One line per path on stdin; prints sbt test commands, one per line: `<module>/Test/test` for every module with a
+# path under its src/ (base, http, common, identity, testkit, scrapers, repochecks, web; e2e is the heavy rows', geodata has
+# none), the worker's `rest` unit row (worker_rest_row: build.sbt's WORKER_ROW, read from the build), and the worker
+# identity-row specs the paths change, by name.
+#
+# THE WORKER'S REST ROW IS BUILD.SBT'S, READ FROM IT (review 2026-11-16: a hand-written copy left out
+# scripts.IdentityDriftSlicesShard3Spec, which the rest row runs): every suite outside the identity row's prefixes
+# (`Seq(...).exists(suite.startsWith)`, the `identity` area's) and the heavy rows (HeavyRows, no unit stage's), plus
+# the suites the rest row runs instead (WorkerRestSuites). A build whose definition this cannot read prints a command
+# sbt refuses -- the verification fails closed, never runs a row it guessed.
+# build.sbt's worker rows, one `<kind> <name>` a line: `prefix` (the identity row's), `heavy`, `rest` (WorkerRestSuites)
+worker_rows() {
+    awk '
+        function quoted(kind, s) { sub(/\/\/.*/, "", s); while (match(s, /"[^"]*"/)) {
+            n = substr(s, RSTART + 1, RLENGTH - 2); if (kind == "prefix" || n ~ /\./) print kind " " n; s = substr(s, RSTART + RLENGTH) } }
+        /^lazy val HeavyRows/ { block = "heavy" } /^lazy val HeavySuites/ { block = "" }
+        /^lazy val WorkerRestSuites/ { block = "rest" } /^lazy val workerRowSettings/ { block = "row" }
+        block == "row" && /exists\(suite\.startsWith\)/ { quoted("prefix", $0) }
+        block == "heavy" || block == "rest" { quoted(block, $0) }
+        block == "rest" && /\)[[:space:]]*(\/\/.*)?$/ { block = "" }
+        block == "row" && /^[^[:space:]]/ { if ($0 !~ /^lazy val workerRowSettings/) block = "" }' build.sbt 2>/dev/null
+    return 0
+}
+worker_rest_row() {
+    local rows prefixes exclusions="" suites="" kind name
+    rows="$(worker_rows)"
+    prefixes="$(printf '%s\n' "$rows" | sed -n 's/^prefix //p')"
+    if [ -z "$prefixes" ] || ! grep -q '^rest ' <<< "$rows"; then
+        echo "worker/build.sbt-WORKER_ROW-unreadable"; return 0
+    fi
+    while IFS= read -r name; do exclusions+=" -$name*"; done <<< "$prefixes"
+    while read -r kind name; do
+        local covered=""
+        while IFS= read -r prefix; do case "$name" in "$prefix"*) covered=1 ;; esac; done <<< "$prefixes"
+        case "$kind" in
+            heavy) [ -n "$covered" ] || exclusions+=" -$name" ;;
+            rest) grep -qxF "heavy $name" <<< "$rows" || suites+=" $name" ;;
+        esac
+    done <<< "$rows"
+    echo "worker/testOnly *$exclusions"
+    printf '%s\n' "${suites# }"
+}
+# EVERY MODULE'S UNIT TESTS, the universe a test-side reader's tests (TestImpact's `READS` lines) join the verification
+# from, whichever module they live in: every module's Test/test, and the worker's every suite but its heavy rows' (its
+# source lints are its identity row's `tools.*`). Narrowed to the READS classes only, never run whole.
+unit_universe() {
+    local module rows heavy="" kind name
+    for module in base http common identity testkit scrapers repochecks web; do echo "$module/Test/test"; done
+    rows="$(worker_rows)"
+    if ! grep -q '^heavy ' <<< "$rows"; then echo "worker/build.sbt-HeavyRows-unreadable"; return 0; fi
+    while read -r kind name; do [ "$kind" = heavy ] && heavy+=" -$name"; done <<< "$rows"
+    echo "worker/testOnly *$heavy"
+}
+# THE LINTS WALKING EVERY MODULE'S SOURCES, for a verification with no narrowed selection to say who reads the change
+# (TestImpact's `ALL`, a cold check, no answer: review round 7 -- the READS lints the selection adds were left out where
+# coverage should be widest): the specs built on the source walkers (the worker's ScalaSourceScan and StatefulFieldScan,
+# common's ModuleSources, and testsupport.SourceTrees, the one way a test walks a source tree), as `<module>/testOnly <classes>` lines. Stdin: the plan's lines -- a module it runs whole
+# (`<module>/Test/test`), or a class it names, already runs them; $1: the lint specs this run runs (lint_plan's
+# `<module>:<class>`), never twice. Every walker's spec is a fast source scan.
+source_lint_lines() { # <lints> < plan lines
+    local plan module spec cls classes
+    plan="$(cat)"
+    for module in base http common identity testkit scrapers repochecks web worker; do
+        grep -qxF "$module/Test/test" <<< "$plan" && continue
+        classes=""
+        while IFS= read -r spec; do
+            [ -n "$spec" ] || continue
+            cls="${spec#"$module"/src/test/scala/}"; cls="${cls%.scala}"; cls="${cls//\//.}"
+            grep -qxF "$module:$cls" <<< "${1:-}" && continue
+            grep -qE "^$module/testOnly( .*)? ${cls//./\\.}( |$)" <<< "$plan" && continue
+            classes+=" $cls"
+        done < <(grep -rlwE 'ScalaSourceScan|StatefulFieldScan|ModuleSources|SourceTrees' --include='*Spec.scala' "$module/src/test/scala" 2> /dev/null | LC_ALL=C sort)
+        [ -z "$classes" ] || echo "$module/testOnly${classes}"
+    done
+    return 0
+}
+unit_plan() {
+    local path module modules=" " specs="" spec
+    while IFS= read -r path; do
+        module="${path%%/*}"
+        case "$module" in base|http|common|identity|testkit|scrapers|repochecks|web|worker) ;; *) continue ;; esac
+        case "$path" in "$module"/src/*) ;; *) continue ;; esac
+        case "$modules" in *" $module "*) ;; *) modules+="$module " ;; esac
+        case "$path" in
+            worker/src/test/scala/services/identity/*Spec.scala|worker/src/test/scala/scripts/*Spec.scala|worker/src/test/scala/tools/*Spec.scala)
+                spec="${path#worker/src/test/scala/}"; spec="${spec%.scala}"; specs+=" ${spec//\//.}" ;;
+        esac
+    done
+    local rest_row="" rest_suites=""
+    for module in base http common identity testkit scrapers repochecks web worker; do
+        case "$modules" in *" $module "*) ;; *) continue ;; esac
+        if [ "$module" = worker ]; then
+            rest_row="$(worker_rest_row)"
+            head -1 <<< "$rest_row"
+            rest_suites="$(sed -n '2p' <<< "$rest_row")"
+        else echo "$module/Test/test"; fi
+    done
+    # the rest row's own identity suites and the identity-row specs the paths change, in one run, each once
+    for spec in $specs; do case " $rest_suites " in *" $spec "*) ;; *) rest_suites+=" $spec" ;; esac; done
+    rest_suites="${rest_suites# }"
+    if [ -n "$rest_suites" ]; then echo "worker/testOnly $rest_suites"; fi
+    return 0
+}
+
+# ── Which lint specs the sbt check runs ─────────────────────────────────────────────────────────
+# One line per path on stdin; prints `<module>:<spec>`, one per line, read off THE LINT REGISTRY
+# (scripts/hooks/lint-registry.tsv; its header has the format), never off a spec's name: a spec runs when a pushed path
+# matches what its row says it reads. `*` rows (the standing lints) run whatever the push touches; a pattern row
+# (`.github/workflows/*`, `*/src/main/scala/*`: what the spec opens) when a pushed path matches it; `@repo` rows on any
+# path (a spec reading the whole tree); `@code` rows on their own code alone (below); `-` rows never (a spec booting a
+# server). Every row but a `-` one also runs when
+# the push changes the code its spec is compiled with: a test-side path (a test, it, page or fixtures tree, testkit/,
+# the build) whose compile plan holds the spec's module's Test config (own_code_modules). `@gitops` rows run only with
+# the GitOps manifests in place (PREPUSH_GITOPS=1: CI checks them out; the sbt check runs infra/bin/fetch-gitops first).
+# WHAT A ROW READS IS WHAT ITS SPEC OPENS (the owner, 2026-11-21, landing-speed proposal 1): until then 175 rows said
+# `@repo`, selected by any script, workflow, skill or test-tree path, so agentctl's MINIMAL RECHECKS found every two
+# changes sharing a lint and kept no verdict in 11-19..21. scripts/hooks/lint-registry-test.sh fails when a
+# repo-reading spec has no row, or a row misses a path its spec's source names (lint_registry_reads.py);
+# scripts/ci/lint_reads_trace.py runs each spec and fails on a file it opened that its row does not select.
+# `--per-file-lints` prints the `@per-file` specs among them that the paths select by what the spec reads alone, not by
+# its own code: a spec judging each file alone (scripts/ci/lint_per_file_check.py proves it), which agentctl's MINIMAL
+# RECHECKS counts as shared only where both sides change one file (a full round anyway) or one side changes its code.
+# Skip all but the `*` rows with PREPUSH_SKIP=lintspecs.
+LintRegistry="$(dirname "${BASH_SOURCE[0]}")/lint-registry.tsv"
+# The lints every sbt check runs, whatever the push touches: the registry's `*` rows.
+standing_lints() { [ -f "$LintRegistry" ] && awk -F'\t' '!/^#/ && $2 == "*" { print $1 }' "$LintRegistry"; return 0; }
+# The FILES the registry's rows name (a word with no pattern character: the Dockerfile, the AOT class list,
+# host-memory.json, one fixture), each once: an artefact a spec reads, whose change alone runs the sbt check that runs
+# it (plan). A pattern (`docs/*`, `test/resources/fixtures/*`) still selects its spec, but only when the check runs
+# anyway: a directory-wide read is a scan's coverage, and docs or a fixture tree alone run no sbt check.
+registry_files() {
+    [ -f "$LintRegistry" ] || return 0
+    awk -F'\t' '!/^#/ && NF >= 2 { n = split($2, word, " "); for (i = 1; i <= n; i++) if (word[i] !~ /[*?[]|^-$|^@/ && !(word[i] in seen)) { seen[word[i]] = 1; print word[i] } }' "$LintRegistry"
+}
+# The modules whose Test config compiles a pushed test-side path (its specs' own code: a spec, a helper, a fixture, the
+# build), one a line: compile_plan over the paths under a test, it, page or fixtures tree, testkit/ or the build. A
+# production path is no spec's own code here: a row reading production sources says so (`*/src/main/*.scala`).
+own_code_modules() {
+    grep -E '^(build\.sbt|project/.*|testkit/.*|[^/]+/src/(test|it|page|fixtures)/.*)$' | compile_plan | sed -n 's|/Test/compile$||p'
+    return 0
+}
+# Whether the paths on stdin select a row reading the GitOps manifests (`@gitops`): the sbt check fetches the manifests
+# for exactly these (on 2026-11-10 a push of an alert rule and its test ran CinemaScrapeStalenessAlertSpec with no
+# fetch, and CI's pre-commit check, which has no infra/kubernetes, failed it).
+reads_gitops() {
+    [ -f "$LintRegistry" ] || return 1
+    local selected
+    selected="$(PREPUSH_GITOPS=1 lint_plan)"
+    [ -n "$selected" ] || return 1
+    SELECTED="$selected" awk -F'\t' 'BEGIN { n = split(ENVIRON["SELECTED"], s, "\n"); for (i = 1; i <= n; i++) want[s[i]] = 1 }
+        !/^#/ && (" " $2 " ") ~ / @gitops / && ($1 in want) { found = 1 } END { exit found ? 0 : 1 }' "$LintRegistry"
+}
+# The testOnly lines on stdin, each with `-<spec>` added for every `@gitops` row's spec of its module its patterns select,
+# unless this run fetched the manifests (PREPUSH_GITOPS=1): the lint plan runs those specs once infra/bin/fetch-gitops
+# has; any other line (a basic `deploy.*`, a unit row's `*`) read whatever infra/kubernetes holds -- stale on the laptop
+# and ci-runner, absent on a fresh GitHub runner. precommit-check 44355591693 (2026-11-18): the basic line's hand-kept
+# exclusions missed NodePodsSpec and FluxWebhookReceiverSpec, red on a web change no manifest reads, green on retry.
+without_unfetched_gitops() {
+    local rows="" line module row spec word selected add
+    [ "${PREPUSH_GITOPS:-}" != 1 ] && [ -f "$LintRegistry" ] \
+        && rows="$(awk -F'\t' '!/^#/ && (" " $2 " ") ~ / @gitops / { print $1 }' "$LintRegistry")"
+    while IFS= read -r line; do
+        add=""
+        case "$line" in */testOnly\ *)
+            module="${line%%/*}"
+            while IFS= read -r row; do
+                [ -n "$row" ] && [ "${row%%:*}" = "$module" ] || continue
+                spec="${row#*:}" selected=0
+                set -f
+                # shellcheck disable=SC2086 # the line's words, a pattern among them matched below, never expanded
+                for word in ${line#*testOnly }; do
+                    # shellcheck disable=SC2254 # the line's patterns and exclusions, matched as patterns
+                    case "$word" in
+                        --) break ;;
+                        -*) case "$spec" in ${word#-}) selected=0; break ;; esac ;;
+                        *) case "$spec" in $word) selected=1 ;; esac ;;
+                    esac
+                done
+                set +f
+                [ "$selected" = 0 ] || add="$add -$spec"
+            done <<< "$rows" ;;
+        esac
+        # before a `--`: what follows it is the framework's (-z), not a suite to leave out
+        case "$line" in *" -- "*) printf '%s%s -- %s\n' "${line%% -- *}" "$add" "${line#* -- }" ;; *) printf '%s%s\n' "$line" "$add" ;; esac
+    done
+}
+lint_plan() { # [per-file]: only the `@per-file` specs the paths select by what the spec reads, never by its own code
+    local paths own spec reads word path selected mode="${1:-}"
+    paths="$(cat)"
+    [ -f "$LintRegistry" ] || return 0
+    own=" $(printf '%s\n' "$paths" | own_code_modules | tr '\n' ' ')"
+    while IFS=$'\t' read -r spec reads _; do
+        case "$spec" in ''|'#'*) continue ;; esac
+        # a GitOps reader runs only with the manifests in place, whichever of its reads selects it
+        case " $reads " in *" @gitops "*) [ "${PREPUSH_GITOPS:-}" = 1 ] || continue ;; esac
+        selected=0
+        # shellcheck disable=SC2086 # the reads are words, a pattern among them is matched below, never expanded
+        set -f; set -- $reads; set +f
+        for word in "$@"; do
+            case "$word" in
+                '*') selected=1 ;;
+                -) selected=-1; break ;;
+                @repo) [ -n "$paths" ] && selected=1 ;;
+                @gitops|@code|@per-file) ;;
+                # a leading `*/` is ONE directory, a module: `*/src/test/*` never reaches android/app/src/test/
+                '*/'*) while IFS= read -r path; do
+                       # shellcheck disable=SC2254 # the registry's pattern, matched as a pattern
+                       case "$path" in */*) case "${path#*/}" in ${word#\*/}) selected=1; break ;; esac ;; esac
+                   done <<< "$paths" ;;
+                *) while IFS= read -r path; do
+                       # shellcheck disable=SC2254 # the registry's pattern, matched as a pattern
+                       case "$path" in $word) selected=1; break ;; esac
+                   done <<< "$paths" ;;
+            esac
+            [ $selected = 1 ] && break
+        done
+        if [ "$mode" = per-file ]; then
+            [ $selected = 1 ] || continue
+            case " $reads " in *" @per-file "*) ;; *) continue ;; esac
+            case "$own " in *" ${spec%%:*} "*) continue ;; esac
+            echo "$spec"; continue
+        fi
+        # its own code: a test-side path its module's Test config compiles
+        [ $selected = 0 ] && case "$own " in *" ${spec%%:*} "*) selected=1 ;; esac
+        [ $selected = 1 ] || continue
+        [ "$reads" != '*' ] && skipped lintspecs && continue
+        echo "$spec"
+    done < "$LintRegistry"
+    return 0
+}
+
+# ── Which script self-tests the scripttests check runs ──────────────────────────────────────────
+# One line per path on stdin; prints the self-tests `scripts/run-script-tests --changed` would select for them (their
+# own test, the tests of the tools sourcing or importing them, the tests naming them or declaring they read them), one
+# path a line. The `scripttests` word of --plan is the CHECK; this is what it reads, per test: agentctl's land queue
+# (MINIMAL RECHECKS) re-checks a change main moved under only when a test both sides select is among them -- the one
+# `scripttests` word made every two script changes share a check (33 of 131 rechecks, 2026-11-17..20).
+script_test_plan() {
+    local paths
+    paths="$(mktemp "${TMPDIR:-/tmp}/script-test-plan.XXXXXX")" || return 1
+    cat > "$paths"
+    "$(dirname "${BASH_SOURCE[0]}")/../run-script-tests" --paths "$paths" --list | cut -f1
+    local rc=${PIPESTATUS[0]}
+    rm -f "$paths"
+    return "$rc"
+}
+
+# What a failed sbt (or area) run shows of its log: every failing test with its message's first lines, THEN sbt's
+# [error] lines (`Failed tests:`, the specs, the task), each capped. Failures first, so the cap never cuts them: a single
+# `grep -E 'FAILED|should|...' | head -60` once filled its 60 lines with passing `- should ...` names and left a failed
+# check naming no test (land 4ae7f84e4c, 2026-11-08). `--failure-summary <log>` prints it (pre-push-test.sh).
+failure_summary() { # <log>
+    local shown
+    # a failing test, then its message: the lines indented under it (`[info]   ...`), at most four
+    shown="$(awk '/\*\*\* (FAILED|ABORTED) \*\*\*/ { print; under = 4; next }
+         under > 0 && /^(\033\[[0-9;]*m)*\[(\033\[[0-9;]*m)*info(\033\[[0-9;]*m)*\](\033\[[0-9;]*m)* (\033\[[0-9;]*m)*  / { print; under--; next }
+         { under = 0 }' "$1" | head -80
+    grep -E '\[error\]|\*\*\* [0-9]+ TESTS? FAILED|✘|[0-9]+ failed|Error:' "$1" | head -40)"
+    # a run that failed before any test or [error] line (sbt-warm refused, a JVM that never started): the log's end,
+    # less the population walk's lines, which run_local_tests has shown already
+    if [ -n "$shown" ]; then printf '%s\n' "$shown"; else grep -v '^population walk: ' "$1" | tail -20; fi
+    return 0
+}
+
+case "${1:-}" in
+    --plan)         plan; exit 0 ;;
+    --compile-plan) compile_plan; exit 0 ;;
+    --coupling-plan) coupling_paths; exit 0 ;;
+    --quality-plan) quality_paths; exit 0 ;;
+    --js-quality-plan) js_quality_paths; exit 0 ;;
+    --py-quality-plan) py_quality_paths; exit 0 ;;
+    --identity-change) identity_change; exit 0 ;;
+    --unit-plan)    unit_plan; exit 0 ;;
+    --unit-universe) unit_universe; exit 0 ;;
+    --source-lints) source_lint_lines "${2:-}"; exit 0 ;;
+    --lint-plan)    lint_plan; exit 0 ;;
+    --per-file-lints) lint_plan per-file; exit 0 ;;
+    --script-test-plan) script_test_plan; exit $? ;;
+    --failure-summary) failure_summary "$2"; exit 0 ;;
+esac
+
+log()  { printf '\033[36m▸ pre-push\033[0m %s\n' "$*"; }
+warn() { printf '\033[33m! pre-push\033[0m %s\n' "$*" >&2; }
+
+# A local tool a check needs, missing: the check FAILS, saying how to fix it (header: A MISSING LOCAL TOOL).
+missing_tool() { # <check> <tool> <fix>
+    warn "$2 not found: the $1 check cannot run, so the push is BLOCKED (never skipped). Fix: $3 -- then push again (or PREPUSH_SKIP=$1, named in your report)."
+    return 1
+}
+need() { # <check> <tool> <fix>
+    command -v "$2" >/dev/null || missing_tool "$@"
+}
+SdkmanFix='put sdkman'"'"'s sbt and java on PATH: export PATH="$HOME/.sdkman/candidates/sbt/current/bin:$HOME/.sdkman/candidates/java/current/bin:$PATH" (or run: . "$HOME/.sdkman/bin/sdkman-init.sh")'
+# sbt, and a java that RUNS (macOS's /usr/bin/java is a stub that only says no runtime is installed); sbt's launcher
+# takes $JAVA_HOME's first.
+need_jvm() { # <check>
+    local java=java
+    need "$1" sbt "$SdkmanFix" || return 1
+    [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/java" ] && java="$JAVA_HOME/bin/java"
+    bounded 30 "$java" -version >/dev/null 2>&1 || missing_tool "$1" "a java that runs (\$JAVA_HOME or PATH)" "$SdkmanFix"
+}
+
+# ── Red builds gate the push ────────────────────────────────────────────────────────────────────
+# The nightly data's verdict is VERIFY's, never the capture's ("Capture, then verify"): Record scrape
+# fixtures goes red when it could not scrape or record a country -- a fact about the night, not about any push -- and is
+# watched by its own issue and identity-ci-staleness's recording-stale; Verify scrape recording replays what it captured,
+# hermetically, and goes red when the code does not hold on it.
+# THE GATE (the owner, 2026-10-27: "if the latest main and convergence runs are green, just push then, remember that";
+# "if the latest completed run(s) is green, just check in"): exactly the newest COMPLETED run on main of Main, of
+# Identity model convergence and -- since its takes rows split off (the owner, 2026-11-08) -- of Identity takes; running,
+# queued and cancelled runs say nothing. A gate workflow new to the registry (.github/gating-checks.tsv, `unproven`)
+# reports until its first green run proves it. Verify scrape
+# recording no longer gates (`agentctl ci-why` lists its red, and any other, as information only).
+GatingWorkflows=("Main" "Identity model convergence" "Identity takes")
+# The same workflows by file (gating_checks.py's registry keys on it).
+GatingWorkflowFiles=("main.yml" "identity-model-convergence.yml" "identity-takes.yml")
+GhSeconds="${PREPUSH_GH_SECONDS:-15}"
+# Each workflow's verdict is asked this many times, $PREPUSH_GATE_RETRY_SECONDS apart, before it counts as unread.
+GateAttempts="${PREPUSH_GATE_ATTEMPTS:-3}"
+GateRetrySeconds="${PREPUSH_GATE_RETRY_SECONDS:-2}"
+
+# `<conclusion> <run id> <url> <episode>` of a workflow's newest decided run on main (success or a failure of any kind;
+# cancelled, skipped and unfinished runs say nothing), empty when it has none; non-zero when gh cannot answer in time.
+# <episode>: its RED EPISODE, the decided runs since the workflow's last green on main (newest first, the newest itself
+# included; none when it is green), each `<run id>/<run number>` -- what a `Fixes-Red:` may name (A FIX MATCHES THE RED).
+newest_verdict() { # <workflow name> [<run id passed over>...]
+    local workflow=$1 skip err rc=0
+    shift
+    skip="$(printf '"%s",' "$@")"
+    # A GATE WORKFLOW NOT YET ON MAIN HAS NO RUN THERE (Identity takes, 2026-11-08: added to the gate in the push that
+    # adds it): gh's "could not find any workflows named" is no verdict -- like no run -- never an unread gate. Any
+    # other error stays an error (THE GATE FAILS CLOSED).
+    err="$(mktemp)"
+    bounded "$GhSeconds" \
+        gh run list --workflow "$workflow" --branch main --limit 30 --json databaseId,number,status,conclusion,url \
+        --jq '[.[] | select(.status == "completed" and (.conclusion | IN("cancelled", "skipped", "neutral", "") | not))
+                   | select((.databaseId | tostring) | IN('"${skip%,}"') | not)] as $d
+              | ($d[0] // empty) as $n
+              | ([first(range($d | length) as $i | select($d[$i].conclusion == "success") | $i)] | .[0] // ($d | length)) as $g
+              | "\($n.conclusion) \($n.databaseId) \($n.url) \([$d[:$g][] | "\(.databaseId)/\(.number // "")"] | join(" "))"' \
+        2> "$err" || rc=$?
+    if [ "$rc" != 0 ] && grep -qi 'could not find any workflows named' "$err"; then rc=0; fi
+    [ "$rc" = 0 ] || cat "$err" >&2
+    rm -f "$err"
+    return "$rc"
+}
+
+# A FIX MATCHES THE RED IT FIXES, NOT ONE RUN NUMBER (2026-11-05). Every push landing while main is red (tools-only commits
+# land freely) starts a new run failing the same way: a fix naming the run it was written against was refused once the
+# next one went red (Main #2164, then #2172, named while the gate read #2173, then #2174; main red ~5.5 h until the fix
+# was re-trailered by hand, twice). A `Fixes-Red:` counts when it names the newest red run, or an earlier run of the
+# same red EPISODE (newest_verdict: failed runs since the workflow's last green on main) that shares a failed job with
+# the newest one -- the aggregates (.github/gating-checks.tsv `aggregate`: they fail whenever anything does) set aside.
+# A run of an older episode (main went green since) never counts; jobs gh cannot read in time: it does not count.
+# agentctl's waiting and batch judge the same rule by its red signatures (~/bin AGENTCTL.md, episode_names).
+# The failed jobs of <run id>, one a line, sorted, the aggregates of <workflow file> left out (`all`: kept); non-zero when unread.
+failed_jobs() { # <run id> <workflow file> [all: the aggregates kept]
+    local jobs aggregates=""
+    jobs="$(bounded "$GhSeconds" gh run view "$1" --json jobs \
+        --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out") | .name' 2>/dev/null)" || return 1
+    [ "${3:-}" = all ] && { printf '%s\n' "$jobs" | awk NF | sort -u; return 0; }
+    [ -f .github/gating-checks.tsv ] \
+        && aggregates="$(awk -F'\t' -v f="$2" '$1 == "job" && $2 == f && $4 == "aggregate" { print $3 }' .github/gating-checks.tsv)"
+    printf '%s\n' "$jobs" | AGGREGATES="$aggregates" \
+        awk 'BEGIN { n = split(ENVIRON["AGGREGATES"], a, "\n"); for (i = 1; i <= n; i++) skip[a[i]] = 1 } NF && !($0 in skip)' | sort -u
+}
+
+# Whether `Fixes-Red: <value>` names a run of <workflow index>'s current red episode failing as its newest red does.
+# <episode>: newest_verdict's, the newest red first. Says why when the value is of the episode and still does not count.
+episode_fix() { # <value> <workflow index> <episode>
+    local value="${1#\#}" tok rid num newest="" mine theirs
+    for tok in $3; do
+        rid="${tok%%/*}" num="${tok#*/}"
+        [ -z "$newest" ] && newest="$rid"
+        [ "$value" = "$rid" ] || [ "$value" = "$num" ] || continue
+        [ "$rid" = "$newest" ] && return 0
+        mine="$(failed_jobs "$rid" "${GatingWorkflowFiles[$2]}")" && theirs="$(failed_jobs "$newest" "${GatingWorkflowFiles[$2]}")" || {
+            warn "Fixes-Red: $value is a run of ${GatingWorkflows[$2]}'s red episode, but gh did not say its failed jobs: not counted"
+            return 1; }
+        [ -n "$mine" ] && [ -n "$(comm -12 <(printf '%s\n' "$mine") <(printf '%s\n' "$theirs"))" ] && {
+            log "Fixes-Red: $value: a run of ${GatingWorkflows[$2]}'s red episode failing as run $newest does" >&2; return 0; }
+        warn "Fixes-Red: $value is a run of ${GatingWorkflows[$2]}'s red episode that failed another way than run $newest: not counted"
+        return 1
+    done
+    return 1
+}
+
+# A production path: what reaches a running pod or a fleet host. Everything else — scripts/, docs/, .claude/, the
+# test, it and fixture trees, test/resources/, .github/ tooling — is tools, which may land while red (user, 2026-10-14).
+is_production_path() { # <path>
+    case "$1" in
+        */src/main/*|conf/*|*/conf/*|build.sbt|project/*|infra/nix/*|infra/kubernetes/*|Dockerfile) return 0 ;;
+    esac
+    return 1
+}
+
+# Whether <commit> changes any production path.
+touches_production() { # <commit>
+    local path
+    while IFS= read -r path; do
+        [ -n "$path" ] && is_production_path "$path" && return 0
+    done < <(git diff-tree --no-commit-id --name-only -r --root -m "$1")
+    return 1
+}
+
+# The pushed commits (<range>...) that change a production path, one a line.
+production_commits() { # <range>...
+    local r commit
+    for r in "$@"; do
+        while IFS= read -r commit; do touches_production "$commit" && echo "$commit"; done < <(git log --format=%H "$r")
+    done
+}
+
+# <workflow index>'s newest verdict (newest_verdict), asked up to
+# $GateAttempts times; the last attempt's error on stderr, and its status (124: cut off) when every attempt failed.
+read_verdict() { # <workflow index> [<run id passed over>...]
+    local attempt rc=0 index=$1
+    shift
+    for ((attempt = 1; attempt <= GateAttempts; attempt++)); do
+        newest_verdict "${GatingWorkflows[$index]}" "$@" && return 0
+        rc=$?
+        [ "$attempt" -lt "$GateAttempts" ] && sleep "$GateRetrySeconds"
+    done
+    return "$rc"
+}
+
+# A CHECK GATES ONLY ONCE IT HAS BEEN GREEN (scripts/ci/gating_checks.py, .github/gating-checks.tsv; ci-failures-2026-10-30
+# recommendation 5): a red run of <workflow index> whose failed jobs are all unproven -- with the aggregates that follow
+# them -- prints why and succeeds. Anything else, the registry or the run's jobs unreadable included, fails: the red gates.
+unproven_only() { # <workflow index> <run id>
+    [ -f scripts/ci/gating_checks.py ] && [ -f .github/gating-checks.tsv ] || return 1
+    bounded "$GhSeconds" \
+        python3 scripts/ci/gating_checks.py report-only --workflow-file "${GatingWorkflowFiles[$1]}" --run "$2" 2>/dev/null
+}
+
+# Refuses a pushed commit with a trailer line git reads no trailer from (A STRANDED TRAILER, above): more `<key>:` lines
+# in its message than `%(trailers:key=<key>)` values. Silent when there is none. <range>... the pushed commits.
+check_stranded_trailers() {
+    local r commit key declared parsed bad=0
+    for r in "$@"; do
+        for commit in $(git rev-list "$r"); do
+            for key in Fixes-Red Red-Unrelated New-Check Retires Pure-Move; do
+                declared="$(git log -1 --format=%B "$commit" | grep -ciE "^$key:" || true)"
+                [ "$declared" -gt 0 ] || continue
+                parsed="$(git log -1 --format="%(trailers:key=$key,valueonly,unfold)" "$commit" | grep -c . || true)"
+                [ "$parsed" -ge "$declared" ] && continue
+                warn "${commit:0:9}: a $key: line outside the message's closing trailer block, where git reads no trailer"
+                bad=1
+            done
+        done
+    done
+    [ "$bad" = 0 ] && return 0
+    warn "neither the red gate, agentctl nor the puremove check sees such a line. Put it in the message's LAST paragraph, beside"
+    warn "Co-Authored-By: with no blank line between them (git commit --amend / git rebase on unpushed commits)."
+    return 1
+}
+
+# Refuses a push to main while a gating workflow's newest verdict is red, unless every pushed commit that touches a
+# production path names a run of the red episode in a `Fixes-Red: <run>` trailer (episode_fix) -- and while the gate cannot be read
+# at all, unless no pushed commit touches a production path (THE GATE FAILS CLOSED, above). <range>... the pushed commits.
+check_redgate() {
+    local workflow verdict conclusion id url episode reds="" episodes=() commit fixes ok bad=0 r errors i unread="" prod rc jobs passed
+    need redgate gh "brew install gh" || return 1
+    if [ -z "$unread" ]; then
+        # gh's stderr kept apart from its answer: a warning beside a green verdict would otherwise be read as the verdict.
+        errors="$(mktemp)"
+        for i in "${!GatingWorkflows[@]}"; do
+            workflow="${GatingWorkflows[$i]}"
+            verdict="$(read_verdict "$i" 2>"$errors")" || {
+                rc=$?
+                if [ "$rc" = 124 ]; then warn "gh did not answer $workflow's verdict within ${GhSeconds}s ($GateAttempts attempts): cut off"
+                else warn "could not read $workflow's verdict from gh ($(head -n 1 "$errors")) in $GateAttempts attempts"
+                fi
+                unread="${unread:+$unread; }$workflow's verdict unread"
+                gate_state="$gate_state $i:unread"
+                continue
+            }
+            [ -n "$verdict" ] || { gate_state="$gate_state $i:none"; continue; }
+            read -r conclusion id url episode <<< "$verdict"
+            # AN INCOMPLETE RUN IS NO VERDICT (the owner, 2026-11-08: read main's verdict as agentctl does). A red run whose
+            # failed jobs are aggregates alone (.github/gating-checks.tsv; failed_jobs drops them) -- a run whose takes rows did
+            # not all decide, failing only `verdict complete` (Identity model convergence #1063) -- is passed
+            # over, and the complete run before it decides. Jobs gh cannot say: it stays red (the gate fails closed).
+            passed=()
+            while [ "$conclusion" != success ] && [ "${#passed[@]}" -lt 3 ] \
+                && jobs="$(failed_jobs "$id" "${GatingWorkflowFiles[$i]}" all)" && [ -n "$jobs" ] \
+                && jobs="$(failed_jobs "$id" "${GatingWorkflowFiles[$i]}")" && [ -z "$jobs" ]; do
+                log "$workflow's run $id is NO VERDICT: only an aggregate failed (an incomplete run); the complete run before it decides" >&2
+                passed+=("$id")
+                verdict="$(read_verdict "$i" "${passed[@]}" 2>"$errors")" && [ -n "$verdict" ] || { verdict=""; break; }
+                read -r conclusion id url episode <<< "$verdict"
+            done
+            [ -n "$verdict" ] || { gate_state="$gate_state $i:none"; continue; }
+            gate_state="$gate_state $i:$conclusion:$id"
+            if [ "$conclusion" != success ] && only="$(unproven_only "$i" "$id")"; then
+                warn "$workflow's run $id is red only in checks no green run has proven yet: it REPORTS, it does not gate ($only; .github/gating-checks.tsv)"
+                gate_state="$gate_state:report-only"
+            elif [ "$conclusion" != success ]; then
+                reds="$reds $id"
+                episodes[$i]="$episode"
+                warn "$workflow is RED on main: run $id ($conclusion) $url"
+                [ "$(wc -w <<< "$episode")" -gt 1 ] \
+                    && log "...its red episode since the last green: $(printf '%s\n' $episode | sed 's|.*/|#|' | tr '\n' ' ')(a Fixes-Red: naming one failing the same way counts)" >&2
+            fi
+        done
+        rm -f "$errors"
+    fi
+    if [ -n "$unread" ]; then
+        prod="$(production_commits "$@")"
+        if [ -z "$prod" ]; then
+            log "red-build gate UNREAD ($unread): every pushed commit is tools-only, which lands while red" >&2
+            return 0
+        fi
+        warn "red-build gate UNREAD ($unread): the push is REFUSED -- a gate that cannot be read may be red, and"
+        warn "production commits land only on a green (or Fixes-Red:) main: $(printf '%s\n' "$prod" | cut -c1-9 | tr '\n' ' ')"
+        warn "GitHub did not answer: check the network and \`gh auth status\`, then push again."
+        return 1
+    fi
+    [ -z "$reds" ] && return 0
+    for r in "$@"; do
+        while IFS=$'\t' read -r commit fixes; do
+            if ! touches_production "$commit"; then
+                log "${commit:0:9} is tools-only (touch no production path): lands while red" >&2
+                continue
+            fi
+            ok=0
+            for id in $(printf '%s' "$fixes" | tr ',;' '  '); do
+                for i in "${!episodes[@]}"; do
+                    episode_fix "$id" "$i" "${episodes[$i]}" && { ok=1; break 2; }
+                done
+            done
+            [ "$ok" = 1 ] && continue
+            warn "${commit:0:9} carries no Fixes-Red: trailer naming a run of the red episode (red:$reds)"
+            bad=1
+        done < <(git log --format='%H%x09%(trailers:key=Fixes-Red,valueonly,unfold,separator=%x2C)' "$r")
+    done
+    [ "$bad" = 0 ] && { log "every pushed production commit is declared a fix for a red run"; return 0; }
+    warn "main is red: only a fix for it lands. Add 'Fixes-Red: <run id>' to each commit's message (git commit --amend"
+    warn "on unpushed commits), or bypass with PREPUSH_SKIP=redgate."
+    return 1
+}
+
+# ── What is being pushed ────────────────────────────────────────────────────────────────────────
+# git feeds "<local ref> <local sha> <remote ref> <remote sha>" per pushed ref. The base for a new
+# remote branch (or a remote sha this clone has never fetched) is its merge-base with origin/main.
+base_for() {
+    local local_sha="$1" remote_sha="$2"
+    if [ "$remote_sha" != "$Zero" ] && git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
+        echo "$remote_sha"
+    elif git rev-parse -q --verify origin/main >/dev/null; then
+        git merge-base "$local_sha" origin/main 2>/dev/null || \
+            printf '\033[33m! pre-push\033[0m %s shares no history with origin/main (unrelated or shallow) — nothing checked (git fetch --unshallow, or rebase onto origin/main)\n' "${local_sha:0:9}" >&2
+    else
+        # Said out loud: an unfetched clone would otherwise check nothing and pass.
+        printf '\033[33m! pre-push\033[0m no origin/main to find the base of %s from — nothing checked (git fetch origin, then push again)\n' "${local_sha:0:9}" >&2
+    fi
+}
+
+ranges=()
+to_main=0
+# A MEASUREMENT'S BRANCH (scripts/identity-measure's `measure/<user>/<sha>-<rand>`) is pushed only for CI to run the
+# commit's identity takes from: it never lands, nothing merges it, and its run deletes it. The checks below guard what
+# main's CI will build, so a push of measure/ refs alone checks nothing -- what the commit becomes on main is checked
+# when it is pushed there. Any other ref in the same push is checked as ever. A CHECK BRANCH (agentctl's remote checks,
+# `check/<entry>`) is the same: pushed only for .github/workflows/precommit-check.yml to run these checks on CI,
+# deleted after its run, never landed.
+# A TAG (refs/tags/*, e.g. experiment/<name> keeping a dropped experiment's code) is the same: it moves nothing main
+# builds, so a tag-only push runs no code check (it once ran 3759 s of scripttests, page and sbt and blocked on them).
+measure_only="" other="" tag_only=""
+checks_only="" fast_only="" verify_only=""
+if [ "${1:-}" = "--range" ] || [ "${1:-}" = "--checks-only" ] || [ "${1:-}" = "--fast-only" ] || [ "${1:-}" = "--verify-only" ]; then
+    [ "$1" = "--checks-only" ] && checks_only=1
+    [ "$1" = "--fast-only" ] && checks_only=1 fast_only=1
+    [ "$1" = "--verify-only" ] && checks_only=1 fast_only=1 verify_only=1
+    ranges+=("${2:?$1 A..B}")
+    to_main=1   # a dry run is judged as a push to main
+else
+    pushed=""
+    while read -r _local_ref local_sha remote_ref remote_sha; do
+        pushed+="$_local_ref $local_sha $remote_ref $remote_sha"$'\n'
+        [ "$local_sha" = "$Zero" ] && continue   # deleting a remote ref: nothing to check
+        case "$remote_ref" in refs/tags/*) tag_only=1; continue ;; esac
+        case "$remote_ref" in refs/heads/measure/*|refs/heads/check/*|refs/heads/land/*) measure_only=1; continue ;; *) other=1 ;; esac
+        base="$(base_for "$local_sha" "$remote_sha")"
+        [ -n "$base" ] && ranges+=("$base..$local_sha")
+        [ "$remote_ref" = refs/heads/main ] && to_main=1
+    done
+    # THE SQUASH GUARD (2026-10-22): a commit built by `git reset --soft` onto a main that had moved since the worktree
+    # was cut silently reverts everyone else's work in between -- one would have reverted 71 files (the red gate
+    # caught it by luck). agentctl refuses a push that returns files to an older main. Where agentctl is not installed
+    # (CI, another machine), nothing changes.
+    if [ "$to_main" = 1 ] && [ -x "$HOME/bin/agentctl" ]; then
+        printf '%s' "$pushed" | "$HOME/bin/agentctl" prepush-check --hook "${1:-origin}" "${2:-}" || exit 1
+    fi
+fi
+if [ "${#ranges[@]}" -eq 0 ]; then
+    [ -n "$measure_only" ] && [ -z "$other" ] && log "measure/ or check/ branch: a CI run's ref, never landed -- nothing to check"
+    [ -n "$tag_only" ] && [ -z "$other" ] && log "tag push: a tag changes nothing main builds -- nothing to check"
+    exit 0
+fi
+
+# The red gate's state, one word a workflow (`<i>:<conclusion>:<run>`, `<i>:unread`, `<i>:none`): a key of THE REUSE below.
+gate_state="not-main"
+if [ "$to_main" = 1 ]; then
+    trailer_lint="$(dirname "${BASH_SOURCE[0]}")/../ci/trailers.py"
+    if [ -f "$trailer_lint" ] && command -v python3 > /dev/null; then
+        lint_ranges=(); for r in "${ranges[@]}"; do lint_ranges+=(--range "$r"); done
+        bounded "${PREPUSH_TRAILER_LINT_SECONDS:-20}" python3 "$trailer_lint" lint "${lint_ranges[@]}" || true  # warns only
+    fi
+    if skipped trailers; then warn "trailers SKIPPED (PREPUSH_SKIP)"
+    else check_stranded_trailers "${ranges[@]}" || exit 1
+    fi
+    if skipped redgate; then warn "redgate SKIPPED (PREPUSH_SKIP)"; gate_state="skipped"
+    elif [ -n "$verify_only" ]; then log "--verify-only: the red gate is not judged (it is when the change is pushed)" >&2
+        gate_state="verify-only"
+    elif [ -n "$fast_only" ]; then log "--fast-only: the red gate is not judged (it is when the batch is pushed)" >&2
+        gate_state="fast-only"
+    elif [ -n "$checks_only" ]; then log "--checks-only: the red gate is not judged (it is when these commits are pushed)" >&2
+        gate_state="checks-only"
+    else gate_state=""; check_redgate "${ranges[@]}" || exit 1
+    fi
+fi
+
+# THREE dots: what the pushed commits changed since they left the base, not how the two tips
+# differ. A fetch by any agent moves origin/main under every worktree of this clone, and a two-dot
+# diff would count those newer commits of main as this push's changes.
+changed="" drift_changed=""
+for r in "${ranges[@]}"; do
+    # A diff that fails is not "nothing changed".
+    names="$(git diff --name-only --diff-filter=d "${r/../...}")" \
+        && deleted="$(git diff --name-only --diff-filter=D "${r/../...}")" \
+        || { printf '\033[33m! pre-push\033[0m cannot diff %s — blocked (bypass with --no-verify)\n' "$r" >&2; exit 1; }
+    changed="$changed$names"$'\n'
+    # the drift check's selection counts deletions too: deleting a gate file (the gate seeds) changes what the gate holds
+    drift_changed="$drift_changed$names"$'\n'"$deleted"$'\n'
+done
+changed="$(printf '%s' "$changed" | grep -v '^$' | LC_ALL=C sort -u)"
+drift_changed="$(printf '%s' "$drift_changed" | grep -v '^$' | LC_ALL=C sort -u)"
+[ -z "$drift_changed" ] && exit 0
+# A commit, not a name: `--range A..HEAD` must compare equal to the checkout's own HEAD.
+head_sha="$(git rev-parse --verify "${ranges[${#ranges[@]}-1]##*..}^{commit}")" || exit 1
+base_sha="${ranges[0]%%..*}"
+
+# THE KNOWN-RED BASELINE (the header): the base's own failures, or none (every failure blocks).
+baseline="" baseline_note=""
+if [ -n "${PREPUSH_BASELINE_DIR:-}" ]; then
+    base_commit="$(git rev-parse --verify -q "$base_sha^{commit}" || true)"
+    if [ "${#ranges[@]}" -ne 1 ]; then
+        baseline_note="no known-red baseline for a push of ${#ranges[@]} ranges: every failing check blocks"
+    elif [ -z "$base_commit" ] || [ ! -r "$PREPUSH_BASELINE_DIR/$base_commit" ]; then
+        baseline_note="no known-red baseline for base ${base_commit:0:10} in $PREPUSH_BASELINE_DIR: every failing check blocks"
+    elif [ "$(head -1 "$PREPUSH_BASELINE_DIR/$base_commit")" != "pre-push baseline $base_commit" ]; then
+        baseline_note="$PREPUSH_BASELINE_DIR/$base_commit does not start 'pre-push baseline $base_commit': every failing check blocks"
+    else
+        baseline="$PREPUSH_BASELINE_DIR/$base_commit"
+    fi
+fi
+
+checks=""; [ -z "$changed" ] || checks="$(printf '%s\n' "$changed" | plan)" # a deletion-only push: the drift check's alone
+# --fast-only: the `sbt` check (compiles, lints, the `fast` set) and the seconds-cheap linters of the touched files
+# (the shellcheck and actionlint checks), whatever else the paths select: a lint finding is never left for main to find (16 commits in
+# the week to 2026-10-31 fixed a lint after landing; simplification-2026-10-31, "lints before landing").
+FastChecks='^(sbt|shellcheck|actionlint)$'
+# THE COMBINED FILES: a path git merges by union (.gitattributes `merge=union`) is the one file the batch's rebase writes
+# from two members' edits without a conflict, so no member's own check judged what the batch holds -- the checks such a
+# path selects run too, bar the area tests and heavy rows no batch runs. 2026-11-05: 81469b9c1 moved Lowther's
+# Nutcracker judgements, 2a4ac45c4 (checked on the older main: `judgements` consistent) re-added them, batch 957f4776f's
+# rebase kept both, its pass ran `sbt` alone and the push reused it: Tool self-tests #74-#76 red on "a second row".
+AreaChecks='^(identity|itrest|itidentity|e2ecorpus)$'
+union_changed() { # the changed paths the pushed tree merges by union; every changed path when git cannot say (fail closed)
+    local attrs
+    attrs="$(printf '%s\n' "$changed" | git check-attr --source="$head_sha" --stdin merge)" \
+        || { printf '%s\n' "$changed"; return 0; }
+    printf '%s\n' "$attrs" | sed -n 's/: merge: union$//p'
+}
+fast_select() { # stdin: the checks the paths select -> those --fast-only runs, in the same order
+    local combined c
+    combined=" $(union_changed | grep -v '^$' | plan | grep -vE "$AreaChecks" | tr '\n' ' ') "
+    while IFS= read -r c; do
+        [ -n "$c" ] || continue
+        if grep -qE "$FastChecks" <<< "$c"; then echo "$c"
+        else case "$combined" in *" $c "*) echo "$c" ;; esac; fi
+    done
+}
+[ -n "$fast_only" ] && checks="$(printf '%s\n' "$checks" | fast_select)"
+# --verify-only: THE REPO-WIDE SELF-TESTS. A test holding every .py, workflow or spec to a rule (a `# script-test-reads:`
+# glob, run-script-tests' READS) breaks on a combined tree whose two sides share no file -- 18 of Tool self-tests' first
+# 35 reds were that class (python_floor_lint_test.py on a .py, lint-registry-test.sh on a spec) -- so exactly those run
+# (`--readers`, natively: a rule over files' content, no floor or Linux run) when the combined change touches what
+# they read. A runner from before --readers runs none, as before.
+scripttests_readers=""
+if [ -n "$verify_only" ] && ! grep -qx scripttests <<< "$checks" && [ -n "$changed" ] \
+        && grep -q -e '--readers' scripts/run-script-tests 2>/dev/null; then
+    reader_globs="$(scripts/run-script-tests --reads 2>/dev/null)"
+    while IFS= read -r path && [ -z "$scripttests_readers" ]; do
+        while IFS= read -r glob; do
+            # shellcheck disable=SC2254 # a declared glob is a pattern on purpose
+            [ -n "$glob" ] && case "$path" in $glob) scripttests_readers=1; break ;; esac
+        done <<< "$reader_globs"
+    done <<< "$changed"
+    [ -n "$scripttests_readers" ] && checks="${checks:+$checks$'\n'}scripttests"
+fi
+# --verify-only: the touched modules' unit tests ride the sbt check, which runs whenever there are any
+if [ -n "$verify_only" ] && [ -n "$(printf '%s\n' "$changed" | unit_plan)" ] && ! grep -qx sbt <<< "$checks"; then
+    checks="sbt${checks:+$'\n'$checks}"
+fi
+# THE DRIFT GUARDS ON A RED FIX, WHATEVER ITS PATHS: the slice rule reads the message (`Fixes-Red:` and drift/flips), and
+# CI's commit rules judge every pushed commit, so a commit claiming a fix is judged here too, in a third of a second: a
+# scripts-only drift-explorer fix the paths never selected it for turned Main #2172's commit rules red.
+if ! grep -qx driftguards <<< "$checks"; then
+    for r in "${ranges[@]}"; do
+        [ -n "$(git log --format='%(trailers:key=Fixes-Red,valueonly,unfold)' "$r" | grep -v '^$' || true)" ] || continue
+        checks="$(printf '%s\ndriftguards' "$checks" | grep -v '^$')"; break
+    done
+fi
+# A PURE MOVE'S CLAIM HOLDS (the header's `puremove`), whatever the commit touches: selected by the trailer alone.
+for r in "${ranges[@]}"; do
+    [ -n "$(git log --format='%(trailers:key=Pure-Move,valueonly,unfold)' "$r" | grep -v '^$' || true)" ] || continue
+    checks="$(printf '%s\npuremove' "$checks" | grep -v '^$')"; break
+done
+# A VERIFIED PURE MOVE OWES NO IDENTITY AREA (2026-11-19, the owner's "make it simpler and faster": an identity check's
+# shards queued ~17 min and ran ~16 beside the rest's ~7+7, and kept the change out of every backlog batch). A commit
+# saying `Pure-Move: verified` only moves code -- the puremove check above proves it, failing the push otherwise -- so
+# it moves no take, the rule identity-what-if skips such a commit by. The identity area and the identity heavy rows are
+# selected by the paths of the commits WITHOUT that claim alone; the claimed commits' paths still select every other
+# check (sbt, the lints, coupling, ...). agentctl's backlog batch reads the same rule (batch.py identity_change).
+PureMoveAreas='^(identity|itidentity|e2ecorpus)$'
+if grep -qE "$PureMoveAreas" <<< "$checks"; then
+    unclaimed="" claimed_any=""
+    for r in "${ranges[@]}"; do
+        for sha in $(git rev-list "$r"); do
+            if [ "$(git log -1 --format='%(trailers:key=Pure-Move,valueonly,unfold)' "$sha" | grep -v '^$' || true)" = verified ]; then
+                claimed_any=1; continue
+            fi
+            unclaimed+="$(git diff-tree --no-commit-id --name-only -r -m --root "$sha")"$'\n'
+        done
+    done
+    if [ -n "$claimed_any" ]; then
+        unclaimed_areas=" "
+        if [ -n "$(printf '%s' "$unclaimed" | grep -v '^$' || true)" ]; then
+            unclaimed_areas=" $(printf '%s' "$unclaimed" | grep -v '^$' | sort -u | plan | grep -E "$PureMoveAreas" | tr '\n' ' ')"
+        fi
+        kept=""
+        while IFS= read -r c; do
+            [ -n "$c" ] || continue
+            if [[ "$c" =~ $PureMoveAreas ]] && [[ "$unclaimed_areas" != *" $c "* ]]; then
+                log "$c: left out -- only commits saying 'Pure-Move: verified' select it (the puremove check holds them)" >&2
+                continue
+            fi
+            kept+="$c"$'\n'
+        done <<< "$checks"
+        checks="$(printf '%s' "$kept" | grep -v '^$' || true)"
+    fi
+fi
+# THE IDENTITY DRIFT CHECK (the header): the runs a push to main claims to fix, when it touches a drift path. A commit carrying
+# `Red-Unrelated:` claims no fix (a speed-up landing on red under the owner's rule), so its trailer names none here.
+drift_reds="" drift_birth=""
+if [ "$to_main" = 1 ] && [ -z "$fast_only" ] && [ -f .github/identity-drift-paths.txt ]; then
+    # touches_list <paths file> -> true/false; a matcher that fails blocks the push, never reads as "not touched"
+    touches_list() {
+        local out
+        out="$(printf '%s\n' "$drift_changed" | .github/actions/changed-paths/matches.sh "$1")" && [ -n "$out" ] \
+            || { printf '\033[31m! pre-push\033[0m cannot match the pushed paths against %s -- blocked\n' "$1" >&2; exit 1; }
+        [ "$out" = true ]
+    }
+    drift_touched=""; touches_list .github/identity-drift-paths.txt && drift_touched=1
+    if [ -n "$drift_touched" ]; then
+        for r in "${ranges[@]}"; do
+            drift_reds+="$(git log --format='%(trailers:key=Red-Unrelated,valueonly,unfold,separator=%x2C)%x09%(trailers:key=Fixes-Red,valueonly,unfold,separator=%x2C)' "$r" \
+                | awk -F'\t' '$1 == "" { print $2 }' | tr ',; ' '\n' | sed 's/^#//' | grep -E '^[0-9]+$' || true)"$'\n'
+        done
+        drift_reds="$(printf '%s' "$drift_reds" | grep -v '^$' | LC_ALL=C sort -un | tr '\n' ' ' | sed 's/ $//')"
+    fi
+    # A CHECK'S BIRTH OR TIGHTENING (the header): the gate's own files -- whatever else the push touches -- or `New-Check:`
+    # on a commit of a push touching a drift path
+    if [ -f .github/identity-drift-gate-paths.txt ] && touches_list .github/identity-drift-gate-paths.txt; then
+        drift_birth="the gate's own files"
+    fi
+    for r in "${ranges[@]}"; do
+        [ -n "$drift_birth" ] || [ -z "$drift_touched" ] && break
+        [ -z "$(git log --format='%(trailers:key=New-Check,valueonly,unfold)' "$r" | grep -v '^$' || true)" ] || drift_birth="New-Check:"
+    done
+    { [ -z "$drift_reds" ] && [ -z "$drift_birth" ]; } || checks="$(printf '%s\nidentitydrift' "$checks" | grep -v '^$')"
+fi
+# THE SPLIT CHECK (.github/workflows/precommit-check.yml): the landing check's jobs share the selected checks and run at
+# once, so the identity area's shards no longer queue behind the rest under one 80-min cap (run 4025 ran out of it with
+# oldrefs, ios and identitydrift still to go). PREPUSH_ONLY="<checks>": this run runs only those of the selected checks;
+# PREPUSH_ELSEWHERE="<checks>": every selected check but those, a sibling job's. A check left to another job is said.
+split_out() { # <check> -> true when this run leaves it to another job
+    if [ -n "${PREPUSH_ONLY:-}" ]; then case " $PREPUSH_ONLY " in *" $1 "*) return 1 ;; *) return 0 ;; esac; fi
+    case " ${PREPUSH_ELSEWHERE:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+if [ -n "${PREPUSH_ONLY:-}${PREPUSH_ELSEWHERE:-}" ]; then
+    kept="" for_others=""
+    for c in $checks; do if split_out "$c"; then for_others+=" $c"; else kept+="$c"$'\n'; fi; done
+    [ -z "$for_others" ] || log "left to the landing check's other job(s):$for_others" >&2
+    checks="$(printf '%s' "$kept" | grep -v '^$' || true)"
+fi
+# THE LANDING CHECK'S PLAN (.github/workflows/precommit-check.yml's `plan` job and each job's own gate): PREPUSH_LIST=1 prints
+# the checks this run WOULD run -- the same selection, after the split above, so with PREPUSH_ONLY/PREPUSH_ELSEWHERE a
+# job's own share -- one a line, runs none and exits 0. A job set up only when this names a check of its share runs exactly
+# what it ran when it always set up: nothing else reads the list.
+if [ "${PREPUSH_LIST:-}" = 1 ]; then printf '%s\n' "$checks" | grep -v '^$' || true; exit 0; fi
+[ -z "$checks" ] && [ -z "$fast_only" ] && exit 0
+# THE JOB'S SPLIT IS THIS RUN'S ALONE: read here, never handed to what the checks run -- a self-test running a hook of its
+# own inherited the landing check's PREPUSH_ONLY / _HEAVY_MONGODB_URI and judged another job's share (landing check run
+# 44246845439). Kept as this shell's variables (heavy_row and the identity shard still read theirs).
+export -n PREPUSH_ONLY PREPUSH_ELSEWHERE PREPUSH_HEAVY_ROWS PREPUSH_HEAVY_MONGODB_URI PREPUSH_HEAVY_MONGODB_DB \
+    PREPUSH_IDENTITY_SHARD PREPUSH_IDENTITY_PLAN 2>/dev/null || true
+
+# ── THE REUSE: a passed result answers a re-push of the SAME tree ───────────────────────────────
+# A re-push of the very same tree -- a no-content rebase, a reworded message, a push that lost its race at the remote
+# after the checks passed -- ran every check again: minutes of sbt for a tree already judged. A run that passes stores
+# its KEY in ~/.cache/kinowo-prepush ($PREPUSH_REUSE_DIR); a later push with the same key skips the path checks, said in
+# one line. The key is everything the checks' verdict reads: the pushed tree and the base's (shellcheck and scripttests
+# judge against the base), the changed paths and the checks they select, this hook's own bytes and the helpers it
+# sources, the red gate's state and PREPUSH_SKIP. One byte of difference in any of them -- the tree, the hook, a red run
+# appearing or clearing -- is another key, and everything runs. A key part that cannot be read means no reuse at all. Only
+# a push of one ref is reused; a failed run stores nothing. The red gate itself always runs (above).
+# PREPUSH_NO_REUSE=1 runs everything regardless.
+reuse_dir="${PREPUSH_REUSE_DIR:-$HOME/.cache/kinowo-prepush}" reuse_key=""
+compute_reuse_key() { # prints the key, or fails when any part of it cannot be read
+    local here tree base_tree hook known_base=none
+    here="$(dirname "${BASH_SOURCE[0]}")"
+    if [ -n "$baseline" ]; then known_base="$(git hash-object "$baseline")" && [ -n "$known_base" ] || return 1; fi
+    tree="$(git rev-parse --verify -q "$head_sha^{tree}")" && [ -n "$tree" ] || return 1
+    base_tree="$(git rev-parse --verify -q "$base_sha^{tree}")" && [ -n "$base_tree" ] || return 1
+    hook="$(cat "${BASH_SOURCE[0]}" "$here/../hooks-path.sh" "$here/../tool-conventions.sh" | git hash-object --stdin)" \
+        && [ -n "$hook" ] || return 1
+    { echo "tree $tree"; echo "base $base_tree"; echo "hook $hook"; echo "gate $gate_state"; echo "baseline $known_base"
+      echo "skip $(tr -s ' ' '\n' <<< "${PREPUSH_SKIP:-}" | grep -v '^$' | LC_ALL=C sort -u | tr '\n' ' ')"
+      echo "checks $(printf '%s' "$checks" | tr '\n' ' ')"; printf '%s\n' "$changed"; } | git hash-object --stdin
+}
+if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ -n "${PREPUSH_REUSE_FAST:-}" ] && [ -z "$fast_only" ]; then
+    # agentctl's push of the `waiting` batch: the batch's --fast-only pass of this tree on this base stands for it
+    fast_key="$(gate_state=fast-only; checks="$(printf '%s\n' "$checks" | fast_select)"; compute_reuse_key)" || fast_key=""
+    if [ -n "$fast_key" ] && [ -f "$reuse_dir/$fast_key" ]; then
+        log "the waiting batch's fast check passed for tree $(git rev-parse --short "$head_sha^{tree}") on this base $(cat "$reuse_dir/$fast_key"): reused (each change was checked alone before it joined, and this check covered the combined tree)" >&2
+        exit 0
+    fi
+fi
+# A REMOTE PASS (agentctl's remote checks: under memory or CPU pressure a queued change's checks run in CI,
+# .github/workflows/precommit-check.yml on a check/<entry> branch): the push to main carries PREPUSH_REMOTE_RUN=<run id>,
+# and that run stands for this hook's checks only once GitHub says it is a precommit-check.yml run on exactly the commit
+# pushed that SUCCEEDED -- or, still going, whose verdict jobs (its VERDICT_JOBS line at that commit, the globs agentctl
+# decides by) all concluded in success or skipped, with no job of it failed: a report still queued holds nothing
+# (2026-11-07). Anything else -- another workflow, a failure, a verdict job still going, another commit, no
+# VERDICT_JOBS line, gh silent -- and every check runs here. The red gate ran above.
+remote_pass() { # <run id> -> 0 when GitHub vouches for it
+    local said line jobs status conclusion name glob named=0 hit
+    local -a globs=()
+    said="$(bounded "$GhSeconds" gh api "repos/{owner}/{repo}/actions/runs/$1" \
+        --jq '"\(.path) \(.conclusion) \(.head_sha)"' 2>/dev/null)" || return 1
+    [ "$said" = ".github/workflows/precommit-check.yml success $head_sha" ] && return 0
+    [ "$said" = ".github/workflows/precommit-check.yml null $head_sha" ] || return 1
+    line="$(git show "$head_sha:.github/workflows/precommit-check.yml" 2>/dev/null \
+        | sed -n "s/^[[:space:]][[:space:]]*VERDICT_JOBS:[[:space:]]*['\"]\{0,1\}\([^'\"#]*\).*/\1/p" | head -1)"
+    IFS=, read -r -a globs <<< "$line"
+    # no VERDICT_JOBS line: nothing to decide by (and "${globs[@]}" of an empty array is unbound under set -u in bash 3.2)
+    [ "${#globs[@]}" -gt 0 ] || return 1
+    jobs="$(bounded "$GhSeconds" gh api "repos/{owner}/{repo}/actions/runs/$1/jobs?per_page=100" \
+        --jq '.jobs[] | "\(.status)\t\(.conclusion)\t\(.name)"' 2>/dev/null)" || return 1
+    while IFS=$'\t' read -r status conclusion name; do
+        [ -n "$status" ] || continue
+        case "$conclusion" in failure|timed_out|startup_failure|action_required) return 1 ;; esac
+        hit=0
+        for glob in "${globs[@]}"; do
+            glob="${glob#"${glob%%[![:space:]]*}"}"; glob="${glob%"${glob##*[![:space:]]}"}"
+            # shellcheck disable=SC2254 # the glob is the pattern
+            [ -n "$glob" ] && case "$name" in $glob) hit=1 ;; esac
+        done
+        [ "$hit" = 1 ] || continue
+        named=$((named + 1))
+        [ "$status" = completed ] && case "$conclusion" in success|skipped|neutral) continue ;; esac
+        return 1
+    done <<< "$jobs"
+    [ "$named" -gt 0 ]
+}
+if [ -n "${PREPUSH_REMOTE_RUN:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ "$to_main" = 1 ]; then
+    if remote_pass "$PREPUSH_REMOTE_RUN"; then
+        log "the checks passed in CI for ${head_sha:0:10} (precommit-check.yml run $PREPUSH_REMOTE_RUN, confirmed with GitHub): not run again here" >&2
+        exit 0
+    fi
+    warn "PREPUSH_REMOTE_RUN=$PREPUSH_REMOTE_RUN does not vouch for ${head_sha:0:10} (GitHub: not a successful precommit-check.yml run of it): every check runs here"
+fi
+if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ]; then
+    reuse_key="$(compute_reuse_key)" || reuse_key=""
+    if [ -n "$reuse_key" ] && [ -f "$reuse_dir/$reuse_key" ]; then
+        log "same tree $(git rev-parse --short "$head_sha^{tree}"), base, hook and red-gate state as a push that passed $(cat "$reuse_dir/$reuse_key"): $(printf '%s' "$checks" | tr '\n' ' ')reused, not run again (PREPUSH_NO_REUSE=1 runs them)" >&2
+        exit 0
+    fi
+fi
+
+# ── Running them ────────────────────────────────────────────────────────────────────────────────
+changed_matching() { printf '%s\n' "$changed" | grep -E "$1" || true; }
+
+check_eslint() {
+    need eslint npm "install Node.js (brew install node)" || return 1
+    if [ ! -x node_modules/.bin/eslint ]; then
+        log "installing ESLint (npm ci, once per worktree)"
+        npm ci --no-audit --no-fund --silent >/dev/null || return 1
+    fi
+    npm run --silent lint
+}
+
+check_jsquality() {
+    need jsquality node "install Node.js (brew install node)" || return 1
+    need jsquality python3 "install Python 3 (brew install python)" || return 1
+    local args=() r
+    # the tools are js-quality-report's to install, once per lock and OUTSIDE the checkout (--tools-dir): an `npm ci` in
+    # scripts/js-quality here left node_modules in every check's tree, for a self-test's `grep -r` to read (#99)
+    [ -x "$(scripts/js-quality-report --tools-dir)/node_modules/.bin/eslint" ] \
+        || need jsquality npm "install Node.js with npm (brew install node)" || return 1
+    for r in "${ranges[@]}"; do args+=(--range "$r"); done
+    scripts/js-quality-report --check ${args[@]+"${args[@]}"} >&2 || return 1
+    # the general design rules over the JS/TS (scripts/design-rules: names, collaborator fan-out, distance, layers, the design lint)
+    python3 scripts/design-rules/naming_lint.py check --languages js ${args[@]+"${args[@]}"} >&2 || return 1
+    python3 scripts/design-rules/design_check.py check --languages js ${args[@]+"${args[@]}"} >&2
+}
+
+check_pyquality() {
+    need pyquality node "install Node.js (brew install node)" || return 1
+    need pyquality python3 "install Python 3 (brew install python)" || return 1
+    local args=() r
+    # pyright is py-quality-report's to install, once per lock and OUTSIDE the checkout (--tools-dir), as js-quality's
+    [ -f "$(scripts/py-quality-report --tools-dir)/node_modules/pyright/index.js" ] \
+        || need pyquality npm "install Node.js with npm (brew install node)" || return 1
+    for r in "${ranges[@]}"; do args+=(--range "$r"); done
+    printf '%s\n' "$changed" > "$tmp/pyquality-paths" # strict pyright over the push's own files; the rest keep their rows
+    scripts/py-quality-report --check --paths "$tmp/pyquality-paths" ${args[@]+"${args[@]}"} >&2 || return 1
+    # the general design rules over the Python (scripts/design-rules: names, collaborator fan-out, distance, layers,
+    # the data guard, the design lint)
+    python3 scripts/design-rules/naming_lint.py check --languages py ${args[@]+"${args[@]}"} >&2 || return 1
+    python3 scripts/design-rules/design_check.py check --languages py ${args[@]+"${args[@]}"} >&2
+}
+
+check_drift() {
+    need drift python3 "install Python 3 (brew install python)" || return 1
+    # data/us/scripts/generate_roster.py needs timezonefinder: the PATH's python3 when it has it, else the pinned venv
+    # scripts/timezonefinder-python builds once (2026-11-17: Homebrew's python refuses a pip install, PEP 668)
+    local tzf tzf_tool
+    tzf_tool="$(dirname "${BASH_SOURCE[0]}")/../timezonefinder-python"
+    tzf="$("$tzf_tool" 2>"$tmp/timezonefinder.log")" \
+        || { cat "$tmp/timezonefinder.log" >&2
+             missing_tool drift "python3's timezonefinder" "scripts/timezonefinder-python (it builds the pinned venv; its error is above)"
+             return 1; }
+    # GeoNames' Polish gazetteer, kept in the shared git dir so every worktree downloads it once.
+    PATH="$tzf:$PATH" GEONAMES_CACHE="$(git rev-parse --path-format=absolute --git-common-dir)/kinowo-cache/geonames" \
+        scripts/ci/generated-artefacts-drift.sh > "$tmp/drift.log" 2>&1 \
+        || { if grep -q '::error::' "$tmp/drift.log"; then sed -n '/::error::/,$p' "$tmp/drift.log" | head -80 >&2
+             else tail -30 "$tmp/drift.log" >&2; fi; return 1; }
+}
+
+check_snapshot() {
+    scripts/read-model-snapshot-inputs.sh check "$head_sha" > "$tmp/snapshot.log" 2>&1 \
+        || { tail -40 "$tmp/snapshot.log" >&2; warn "full log: $tmp/snapshot.log"; return 1; }
+}
+
+check_dashboards() {
+    need dashboards python3 "install Python 3 (brew install python)" || return 1
+    python3 infra/test/test_dashboards.py > "$tmp/dashboards.log" 2>&1 \
+        || { sed -n '/^FAIL\|^ERROR\|AssertionError/,+3p' "$tmp/dashboards.log" | head -40 >&2; return 1; }
+}
+
+check_metricalerts() {
+    need metricalerts python3 "install Python 3 (brew install python)" || return 1
+    local yaml_bin tools
+    tools="$(dirname "${BASH_SOURCE[0]}")/.."
+    yaml_bin="$("$tools/python-venv" "$tools/pyyaml-requirements.txt" yaml)" \
+        || { missing_tool metricalerts "python3's PyYAML" "scripts/python-venv (it builds the pinned venv; its error is above)"
+             return 1; }
+    PATH="$yaml_bin:$PATH" python3 infra/test/test_metric_alert_coverage.py > "$tmp/metricalerts.log" 2>&1 \
+        || { sed -n '/^FAIL\|^ERROR\|AssertionError/,$p' "$tmp/metricalerts.log" | head -60 >&2; return 1; }
+}
+
+# The floor the tools promise, bash 3.2 (scripts/floor-bash: a Mac's /bin/bash, elsewhere the GNU 3.2.57 it builds), its
+# path printed; nothing printed when there is no floor run (PREPUSH_SKIP=floor, or a pushed runner from before --bash:
+# the hook is the working tree's, the runner the pushed commit's). No floor bash BLOCKS, as any missing tool does:
+# ci-runner's Linux landing checks, whose missing bash 3 once passed it in silence, let ed160b94b land a construct 3.2
+# cannot parse (Order independence #72). PREPUSH_FLOOR_BASH names one (the hook's test).
+scripttests_floor() {
+    grep -q -e '--bash' scripts/run-script-tests 2>/dev/null || return 0
+    if skipped floor; then warn "scripttests under the floor bash 3.2 SKIPPED (PREPUSH_SKIP=floor)"; return 0; fi
+    local floor major
+    if [ -n "${PREPUSH_FLOOR_BASH:-}" ]; then
+        floor=$PREPUSH_FLOOR_BASH
+    elif [ -x scripts/floor-bash ]; then
+        floor=$(scripts/floor-bash 2> "$tmp/floor-bash.err") \
+            || { missing_tool floor "bash 3.2 ($(tr '\n' ' ' < "$tmp/floor-bash.err"))" "scripts/floor-bash --install"; return 1; }
+    else
+        floor=/bin/bash # a pushed tree from before scripts/floor-bash
+    fi
+    # shellcheck disable=SC2016 # expanded by that bash
+    major=$([ -x "$floor" ] && "$floor" -c 'echo "${BASH_VERSINFO[0]}"' 2>/dev/null) || major=""
+    case "$major" in
+        3) echo "$floor" ;;
+        *) missing_tool floor "bash 3.2 (the floor; $floor is ${major:+bash }${major:-no bash})" \
+               "scripts/floor-bash --install, or PREPUSH_FLOOR_BASH=<a bash 3.2>" ;;
+    esac
+}
+
+check_scripttests() {
+    # In the same run (--floor): the floor bash 3.2 (scripttests_floor) over the bash the push touches -- parsed,
+    # its added lines held to 3.2, its own self-tests run under it (run-script-tests' FLOOR; every selected test re-run cost a
+    # landing ~+70 s) -- so a bash-4-only construct is caught at the push, not by the nightly macOS job; and on Linux (`--linux`: CI's ubuntu-26.04, in Docker) -- GNU tools a Mac's BSD ones hide
+    # (03b3a6825), beside it in the background. Warm, that adds ~4 s to a run the native one outlasts: ~0 s of wall time.
+    local floor floor_pid="" linux_pid="" rc=0
+    if [ -n "$scripttests_readers" ]; then # --verify-only's repo-wide self-tests (above), alone
+        if scripts/run-script-tests --changed "$base_sha" --readers > "$tmp/scripttests.log" 2>&1; then
+            tail -1 "$tmp/scripttests.log"; return 0
+        fi
+        grep -v '^PASS\|✓' "$tmp/scripttests.log" | head -80 >&2; return 1
+    fi
+    local native=()
+    floor=$(scripttests_floor) || return 1
+    # ONE RUN, ONE POOL (run-script-tests --floor): the floor's scope under 3.2 and the rest natively. Run side by side,
+    # a test in both ran twice at once -- pre-push-test.sh, minutes each -- and the contention alone kept a hook change
+    # ~+43 s over the landing budget (2026-11-16). A runner from before --floor gets its own floor run, as before.
+    if [ -n "$floor" ] && grep -q -e '--floor)' scripts/run-script-tests 2>/dev/null; then
+        native=(--floor "$floor")
+    elif [ -n "$floor" ]; then
+        scripts/run-script-tests --changed "$base_sha" --bash "$floor" > "$tmp/scripttests-floor.log" 2>&1 &
+        floor_pid=$!
+    fi
+    # ALREADY ON LINUX (ci-runner's landing checks, CI's ubuntu): the native run IS the Linux run, so the Docker copy of
+    # it repeated it for 120-150 CPU-s a job (2026-11-18) -- skipped, said
+    if [ "${PREPUSH_UNAME:-$(uname -s)}" = Linux ]; then
+        echo "on Linux: this run is Linux's (the Docker pass, run-script-tests --linux, would repeat it)"
+    elif ! skipped linux && grep -q -e '--linux' scripts/run-script-tests 2>/dev/null; then
+        scripts/run-script-tests --linux --changed "$base_sha" > "$tmp/scripttests-linux.log" 2>&1 &
+        linux_pid=$!
+    fi
+    if scripts/run-script-tests --changed "$base_sha" ${native[@]+"${native[@]}"} > "$tmp/scripttests.log" 2>&1; then
+        tail -1 "$tmp/scripttests.log"
+        [ "${PREPUSH_STRESS:-0}" != 0 ] || grep '^run-script-tests: concurrency-heavy' "$tmp/scripttests.log" || true
+        [ ${#native[@]} -eq 0 ] || echo "under $floor: the floor's scope, in the same run ($(grep -c ' (floor)$' "$tmp/scripttests.log" | tr -d ' ') test(s))"
+    else
+        grep -v '^PASS\|✓' "$tmp/scripttests.log" | head -80 >&2; rc=1
+    fi
+    if [ -n "$linux_pid" ]; then
+        if wait "$linux_pid"; then
+            echo "on Linux: $(tail -1 "$tmp/scripttests-linux.log")"
+        elif grep -q -- '--linux needs a running Docker' "$tmp/scripttests-linux.log"; then
+            echo "on Linux: SKIPPED (Docker is not running -- start Rancher/Docker Desktop to run them as CI does)"
+        else
+            echo "on Linux (scripts/run-script-tests --linux; PREPUSH_SKIP=linux skips it):" >&2
+            grep -v '^PASS\|✓' "$tmp/scripttests-linux.log" | head -80 >&2
+            rc=1
+        fi
+    fi
+    # STRESS, opt-in (PREPUSH_STRESS=N): the concurrency-heavy tests the push selects, N runs of each at once under load
+    if [ "$rc" = 0 ] && [ "${PREPUSH_STRESS:-0}" != 0 ] && grep -q -e '--stress)' scripts/run-script-tests 2>/dev/null; then
+        if scripts/run-script-tests --changed "$base_sha" --stress "$PREPUSH_STRESS" > "$tmp/scripttests-stress.log" 2>&1; then
+            echo "stressed (PREPUSH_STRESS=$PREPUSH_STRESS): $(grep -E '^STRESS|no concurrency-heavy' "$tmp/scripttests-stress.log" | paste -sd';' -)"
+        else
+            echo "under stress (PREPUSH_STRESS=$PREPUSH_STRESS, scripts/run-script-tests --stress):" >&2
+            grep -v '^PASS\|✓' "$tmp/scripttests-stress.log" | head -80 >&2
+            rc=1
+        fi
+    fi
+    if [ -n "$floor_pid" ]; then
+        if wait "$floor_pid"; then
+            echo "under $floor: $(tail -1 "$tmp/scripttests-floor.log")"
+        else
+            echo "under the floor bash $floor (scripts/floor-bash; PREPUSH_SKIP=floor skips it):" >&2
+            grep -v '^PASS\|✓' "$tmp/scripttests-floor.log" | head -80 >&2
+            rc=1
+        fi
+    fi
+    return $rc
+}
+
+# actionlint over changed workflows; a composite action's `run:` blocks, which actionlint does not
+# lint, through scripts/ci/shellcheck-action-runs.sh. CI's `Workflow lint` step runs both over the
+# whole tree, so a missing tool here only defers the finding to CI.
+check_actionlint() {
+    local workflows actions rc=0
+    workflows="$(changed_matching '^\.github/workflows/.*\.ya?ml$')"
+    actions="$(changed_matching '^\.github/actions/[^/]*/action\.ya?ml$')"
+    if [ -n "$workflows" ]; then
+        if command -v actionlint >/dev/null; then
+            # shellcheck disable=SC2086 # workflow file names carry no spaces
+            SHELLCHECK_OPTS='-S warning' actionlint $workflows || rc=1
+        else
+            missing_tool actionlint actionlint "brew install actionlint" || rc=1
+        fi
+    fi
+    if [ -n "$actions" ]; then
+        if command -v shellcheck >/dev/null; then
+            # shellcheck disable=SC2086 # action paths carry no spaces
+            scripts/ci/shellcheck-action-runs.sh $actions || rc=1
+        else
+            missing_tool actionlint shellcheck "brew install shellcheck" || rc=1
+        fi
+    fi
+    return "$rc"
+}
+
+# Fail on a warning the push ADDS: count each changed script's warnings at the base and at HEAD.
+check_shellcheck() {
+    need shellcheck shellcheck "brew install shellcheck" || return 1
+    local f before after rc=0
+    while IFS= read -r f; do
+        [ -f "$f" ] && is_shell_path "$f" || continue
+        case "$f" in *.txt|*.tsv) continue ;; esac # local-tests.txt, lint-registry.tsv: the hook's tables, no shell
+        after="$(shellcheck -S warning -f gcc "$f" 2>/dev/null | wc -l | tr -d ' ')"
+        if git cat-file -e "$base_sha:$f" 2>/dev/null; then
+            git show "$base_sha:$f" > "$tmp/base.sh"
+            before="$(cd "$(dirname "$f")" && shellcheck -S warning -f gcc "$tmp/base.sh" 2>/dev/null | wc -l | tr -d ' ')"
+        else
+            before=0
+        fi
+        if [ "$after" -gt "$before" ]; then
+            warn "$f: shellcheck warnings $before → $after"
+            shellcheck -S warning "$f" >&2
+            rc=1
+        fi
+    done <<< "$changed"
+    return $rc
+}
+
+check_sbt() {
+    # A NEW REPO-READING SPEC NEEDS ITS LINT-REGISTRY ROW (Tool self-tests #158, #166: two deploy specs landed rowless,
+    # so no push ever ran them, and lint-registry-test.sh -- run only when a script changes -- saw it on main after).
+    local unregistered spec
+    unregistered="$("$(dirname "${BASH_SOURCE[0]}")/lint-registry-missing")" || return 1
+    if [ -n "$unregistered" ]; then
+        for spec in $unregistered; do
+            warn "$spec has no lint-registry row: add one to scripts/hooks/lint-registry.tsv (its header has the format)"
+        done
+        return 1
+    fi
+    # ...AND ITS ROW SELECTS IT FOR EVERY PATH IT READS (Tool self-tests #194: a row missed two test/resources files its
+    # spec reads, seen on main only). A push of the registry or its readers runs the reads check over every row (~8 s);
+    # a push of specs alone, over theirs (a second).
+    local misses line only=()
+    if grep -qE '(/src/test/scala/.*Spec\.scala|^scripts/hooks/lint-registry\.tsv)$' <<< "$changed" \
+        && [ -f scripts/ci/lint_registry_reads.py ]; then
+        if ! grep -qE '^scripts/(hooks/lint-registry\.tsv|hooks/pre-push|ci/lint_registry_reads\.py)$' <<< "$changed"; then
+            only=(--only)
+            while IFS= read -r line; do only+=("$line"); done < <(printf '%s\n' "$changed" \
+                | sed -nE 's|^([^/]+)/src/test/scala/(.*Spec)\.scala$|\1:\2|p' | tr / .)
+        fi
+        misses="$(python3 scripts/ci/lint_registry_reads.py ${only[@]+"${only[@]}"})" || return 1
+        if [ -n "$misses" ]; then
+            while IFS=$'\t' read -r spec line; do
+                warn "$spec reads $line, which its lint-registry row does not select: add the path's glob to its row"
+            done <<< "$misses"
+            return 1
+        fi
+    fi
+    need_jvm sbt || return 1
+    local compiles
+    # shellcheck disable=SC2207 # task names carry no spaces
+    compiles=($(printf '%s\n' "$changed" | compile_plan))
+    local lints module tests=() gitops_stale=0
+    # The specs reading the GitOps manifests join the lints once infra/bin/fetch-gitops has put them in this checkout
+    # (from GitHub). The fetch failing BLOCKS the push: the checkout left behind is stale, and the local clone
+    # the script once fell back to went stale with GitHub (2026-10-19) -- a spec then failed on a probe movies-gitops
+    # 24a5162 had already fixed. The specs needing them stay out of this run; the rest still run, for their verdicts.
+    if printf '%s\n' "$changed" | reads_gitops && ! skipped lintspecs && [ -x infra/bin/fetch-gitops ]; then
+        if KINOWO_GITOPS_DEST="$PWD/infra/kubernetes" bounded "${PREPUSH_GITOPS_SECONDS:-90}" infra/bin/fetch-gitops > "$tmp/fetch-gitops.log" 2>&1; then
+            export PREPUSH_GITOPS=1
+        else
+            gitops_stale=1
+            sed 's/^/    /' "$tmp/fetch-gitops.log" | tail -8 >&2
+            warn "GitOps manifests STALE: infra/bin/fetch-gitops could not fetch movies-gitops main, so the push is BLOCKED. Fix: the network to github.com, then push again (or PREPUSH_SKIP=lintspecs, named in your report)."
+        fi
+    fi
+    lints="$(printf '%s\n' "$changed" | lint_plan)"
+    # a module none of whose rows the push selects runs none: a bare `testOnly` would run its every test
+    local module_lints
+    for module in http common scrapers repochecks worker web; do
+        module_lints="$(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')"
+        [ -z "$module_lints" ] || tests+=("$module/Test/testOnly $module_lints")
+    done
+    # the basic tests (local-tests.txt's `basic sbt` lines) ride the same run, after the compiles and lints; --fast-only:
+    # the `fast` set instead
+    local set=basic
+    [ -n "$fast_only" ] && set=fast
+    while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < <(local_test_lines "$set" sbt | without_unfetched_gitops)
+    if [ -n "$verify_only" ]; then
+        # THE COMBINED TREE'S UNIT TESTS, NARROWED TO WHAT THE CHANGE REACHES (TEST-IMPACT SELECTION, as the identity
+        # area's): the worker's whole rest row cost every worker-touching verification ~70-90 s for the few specs the
+        # change can reach. Through the kept server only (one more call to the warm compiler that runs the check); a
+        # cold `sbt -batch` check, or no answer, runs every touched module's unit tests, as before. The selection also
+        # adds, in ANY module, the tests a test-side reader of a changed file reaches (its `READS` lines: the worker's
+        # source lints over a scrapers change, through ScalaSourceScan's `scrapers/src/main`), and leaves out the lint
+        # specs this run already runs, so none runs twice.
+        printf '%s\n' "$changed" | unit_plan > "$tmp/unit.plan"
+        unit_universe > "$tmp/unit.universe"
+        printf '%s\n' "$lints" > "$tmp/unit.lints"
+        local widen=""
+        [ -s "$tmp/unit.plan" ] && widen=1
+        if [ -s "$tmp/unit.plan" ] && [ "$sbt_client" = 1 ] && test_impact unit > "$tmp/unit.select.log" 2>&1 \
+                && python3 scripts/ci/identity_impact.py plan --impact "$tmp/unit.impact" --reads "$tmp/unit.universe" \
+                    --except "$tmp/unit.lints" < "$tmp/unit.plan" > "$tmp/unit.narrowed"; then
+            log "verify: the unit tests the combined change reaches: $(grep -c . "$tmp/unit.narrowed" | tr -d ' ') sbt line(s)$(grep -m1 '^ALL' "$tmp/unit.impact" | sed 's/^ALL/, every one:/')" >&2
+            mv "$tmp/unit.narrowed" "$tmp/unit.plan"
+            grep -q '^ALL' "$tmp/unit.impact" || widen=""
+        elif [ -s "$tmp/unit.plan" ] && [ "$sbt_client" = 1 ]; then
+            warn "verify: no test-impact selection ($(tail -1 "$tmp/unit.select.log")) -- every touched module's unit tests"
+        fi
+        # no selection naming the change's readers (ALL, cold, no answer): every module's source-walking lints join
+        if [ -n "$widen" ]; then
+            source_lint_lines "$lints" < "$tmp/unit.plan" > "$tmp/unit.sourcelints"
+            log "verify: no selection names the change's readers -- every module's source lints join ($(grep -c . "$tmp/unit.sourcelints" | tr -d ' ') sbt line(s))" >&2
+            cat "$tmp/unit.sourcelints" >> "$tmp/unit.plan"
+        fi
+        while IFS= read -r line; do [ -n "$line" ] && tests+=("$line"); done < <(without_unfetched_gitops < "$tmp/unit.plan")
+    fi
+    local coupling=""
+    if [ -n "$(printf '%s\n' "$changed" | coupling_paths)" ] && [ -f coupling.sbt ]; then
+        if skipped coupling; then warn "coupling SKIPPED (PREPUSH_SKIP)"
+        else coupling=1; rm -f "$tmp/coupling.rows" "$tmp/coupling.edges" "$tmp/coupling.fanouts" "$tmp/coupling.collaborators"
+            tests+=("couplingReport $tmp/coupling.rows $tmp/coupling.md $tmp/coupling.edges $tmp/coupling.fanouts $tmp/coupling.collaborators"); fi
+    fi
+    local quality=""
+    if [ -n "$(printf '%s\n' "$changed" | quality_paths)" ] && [ -d quality ]; then
+        if skipped quality; then warn "quality SKIPPED (PREPUSH_SKIP)"
+        else quality=1; rm -f "$tmp/quality.rows"; tests+=("quality/runMain quality.QualityReport --root $PWD --rows $tmp/quality.rows"); fi
+    fi
+    local run=(sbt -batch -Dsbt.server.forcestart=false ${compiles[@]+"${compiles[@]}"} "${tests[@]}")
+    if [ "$sbt_client" = 1 ]; then
+        local line
+        line="$(printf '%s; ' ${compiles[@]+"${compiles[@]}"} "${tests[@]}")"
+        # through scripts/sbt-warm, as any call to the kept server: a bare `sbt --client` held no busy lock and kept no
+        # last-used mark fresh, so the server's keeper, seeing it idle, could stop it mid-check (2026-10-19)
+        run=("$root/scripts/sbt-warm" "${line%; }")
+    fi
+    "${run[@]}" > "$tmp/sbt.log" 2>&1 \
+        || { failure_summary "$tmp/sbt.log" >&2; warn "full log: $tmp/sbt.log"; return 1; }
+    if [ -n "$coupling" ]; then
+        local args=() r
+        need sbt python3 "install Python 3 (brew install python)" || return 1
+        for r in "${ranges[@]}"; do args+=(--range "$r"); done
+        [ -s "$tmp/coupling.rows" ] || { warn "coupling: sbt couplingReport wrote no rows (full log: $tmp/sbt.log)"; return 1; }
+        python3 scripts/ci/coupling_ratchet.py check --current "$tmp/coupling.rows" --edges "$tmp/coupling.edges" \
+            --fanouts "$tmp/coupling.fanouts" --collaborators "$tmp/coupling.collaborators" ${args[@]+"${args[@]}"} >&2 || return 1
+    fi
+    if [ -n "$quality" ]; then
+        local qargs=() r
+        need sbt python3 "install Python 3 (brew install python)" || return 1
+        for r in "${ranges[@]}"; do qargs+=(--range "$r"); done
+        [ -s "$tmp/quality.rows" ] || { warn "quality: quality/runMain quality.QualityReport wrote no rows (full log: $tmp/sbt.log)"; return 1; }
+        python3 scripts/ci/quality_ratchet.py check --current "$tmp/quality.rows" ${qargs[@]+"${qargs[@]}"} >&2 || return 1
+        python3 scripts/design-rules/naming_lint.py check --languages scala ${qargs[@]+"${qargs[@]}"} >&2 || return 1
+        python3 scripts/design-rules/design_check.py check --languages scala ${qargs[@]+"${qargs[@]}"} >&2 || return 1
+    fi
+    [ "$gitops_stale" = 0 ]
+}
+
+# The commands of <set> of <kind> (sbt|sh|first) in the CHECKED tree's local-tests.txt, one per line.
+local_test_lines() { # <set> <kind>
+    [ -f scripts/hooks/local-tests.txt ] || return 0
+    sed -nE "s/^$1[[:space:]]+$2[[:space:]]+//p" scripts/hooks/local-tests.txt
+}
+# An area's local tests: its first lines (each a fast check whose failure names everything at once: it fails the area
+# there, nothing else run; the identity area's after its test-impact selection, none when it selected nothing), its sbt
+# lines in ONE scripts/sbt-warm call (the checkout's kept server: warm, and the one
+# compiler over its target/), then its sh lines. A failure shows the failing specs; the full log stays.
+# THE IDENTITY PLAN ALONE: PREPUSH_IDENTITY_PLAN=<file> makes the identity area write the sbt lines its TEST-IMPACT
+# SELECTION picked (a `# ` line first: the selection's summary, or why there was none and every identity test is the
+# plan) and run nothing -- no first line, no spec. scripts/identity-impact-check's `hook` mode reads it from a detached
+# checkout of its own, as a landing check's tree is (2026-11-19: tracebacks of a missing identity.impact in a landing
+# check's failure dump, which were the hook self-test's stub runs, not the check's selection).
+run_local_tests() { # <set>
+    local cmds=() line rc=0 sh_lines=1 plan_only=""
+    [ "$1" != identity ] || plan_only="${PREPUSH_IDENTITY_PLAN:-}"
+    need_jvm "$1" || return 1
+    while IFS= read -r line; do [ -n "$line" ] && cmds+=("$line"); done < <(local_test_lines "$1" sbt)
+    if [ "$1" = identity ] && [ "${#cmds[@]}" -gt 0 ]; then
+        local selected=()
+        local said
+        if select_identity_tests "${cmds[@]}" > "$tmp/identity.plan" 2> "$tmp/identity.select.log"; then
+            while IFS= read -r line; do [ -n "$line" ] && selected+=("$line"); done < "$tmp/identity.plan"
+            said="$(tr '\n' ';' < "$tmp/identity.summary" | sed 's/;$//; s/;/; /')"
+            log "identity: $said"
+            cmds=(${selected[@]+"${selected[@]}"})
+        else
+            said="no test-impact selection ($(tail -1 "$tmp/identity.select.log")) -- every identity test"
+            warn "identity: $said"
+        fi
+        if [ -n "$plan_only" ]; then
+            { printf '# %s\n' "$said"; [ "${#cmds[@]}" -eq 0 ] || printf '%s\n' "${cmds[@]}"; } > "$plan_only"
+            log "identity: the plan alone, to $plan_only (PREPUSH_IDENTITY_PLAN): nothing run"
+            return 0
+        fi
+        if [ "${#cmds[@]}" -eq 0 ]; then log "identity: the change reaches no identity spec"; return 0; fi
+    fi
+    # the first lines: once, never sharded (shard 1 runs them, as the sh lines); the identity area's after its selection,
+    # and only when that reached a spec (a fixtures tool no identity spec reads ran the slice coverage for nothing)
+    if [ -z "${PREPUSH_IDENTITY_SHARD:-}" ] || [ "$1" != identity ] || [ "${PREPUSH_IDENTITY_SHARD%%/*}" = 1 ]; then
+        while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            if ! bash -c "$line" < /dev/null > "$tmp/$1.first.log" 2>&1; then
+                cat "$tmp/$1.first.log" >&2
+                warn "$1: \`$line\` failed (full log: $tmp/$1.first.log)"
+                return 1
+            fi
+            grep -m1 -E '^[a-z-]+: [0-9]+ ' "$tmp/$1.first.log" || true
+        done < <(local_test_lines "$1" first)
+    fi
+    # THE IDENTITY SHARDS (precommit-check.yml's `check (identity k/n)` jobs): PREPUSH_IDENTITY_SHARD=<k>/<n> runs shard k of
+    # the selected lines (scripts/ci/shard_tests.py: every class in exactly one shard, under its own line's command and
+    # arguments; a line naming no class outright whole in one). The n jobs together run what one job ran.
+    if [ "$1" = identity ] && [ -n "${PREPUSH_IDENTITY_SHARD:-}" ] && [ "${#cmds[@]}" -gt 0 ]; then
+        local sharded=()
+        # balanced on scripts/ci/shard-weights-identity.tsv (absent: every class weighs the same)
+        printf '%s\n' "${cmds[@]}" | python3 scripts/ci/shard_tests.py --shard "$PREPUSH_IDENTITY_SHARD" --weights identity \
+            > "$tmp/identity.shard" \
+            || { warn "identity: shard $PREPUSH_IDENTITY_SHARD could not be cut"; return 1; }
+        while IFS= read -r line; do [ -n "$line" ] && sharded+=("$line"); done < "$tmp/identity.shard"
+        log "identity: shard $PREPUSH_IDENTITY_SHARD, $(wc -w < "$tmp/identity.shard" | tr -d ' ') words of ${#cmds[@]} line(s)"
+        cmds=(${sharded[@]+"${sharded[@]}"})
+        # the area's sh lines are no classes to split: shard 1 runs them
+        [ "${PREPUSH_IDENTITY_SHARD%%/*}" = 1 ] || sh_lines=0
+        if [ "${#cmds[@]}" -eq 0 ] && [ "$sh_lines" = 0 ]; then log "identity: nothing in shard $PREPUSH_IDENTITY_SHARD"; return 0; fi
+    fi
+    # THE POPULATION WALK AGAINST THE BASE (PopulationMonotonicitySpec's CandidatesKey, scripts/ci/population-walk-diff):
+    # every identity testOnly line names the candidates directory, so a slice whose flips differ from the known rows is
+    # judged against the change's merge base after the run -- a flip main has too passes, one the change adds refuses
+    # the push naming the listing, slice and chain. No candidate (the usual case): nothing more runs.
+    # THE WALK'S ROWS KEPT (PopulationMonotonicitySpec's CacheKey, sbt's identityWalkDigest): the walk's rows of a slice
+    # are kept per digest of every path the walk's code and data are (the slices apart: each keyed by its own files)
+    # under $KINOWO_POPULATION_WALK_ROWS (default $KINOWO_IDENTITY_CACHE/population-walk-rows)/<digest>/ -- a change that leaves the walk's code and data as a
+    # walked commit had them walks only the slices whose files differ; the rows are judged as walked ones, every run.
+    # No digest (a working tree with changes, the task failed): every slice walks. The landing check keeps the directory
+    # between runs (precommit-check.yml's actions/cache); a digest unused for 5 days is dropped.
+    local popwalk="" walkcache=""
+    if [ "$1" = identity ] && [ "${#cmds[@]}" -gt 0 ]; then
+        popwalk="$tmp/population-walk"
+        walkcache="$(population_walk_rows identity)"
+        local i extra="-Didentity.population.candidates=$popwalk${walkcache:+ -Didentity.population.cache=$walkcache}"
+        for i in "${!cmds[@]}"; do
+            case "${cmds[$i]}" in
+                *testOnly\ *\ --\ *) cmds[$i]="${cmds[$i]} $extra" ;;
+                *testOnly\ *) cmds[$i]="${cmds[$i]} -- $extra" ;;
+            esac
+        done
+    fi
+    if [ "${#cmds[@]}" -gt 0 ]; then
+        scripts/sbt-warm "${cmds[@]}" > "$tmp/$1.log" 2>&1 || rc=1
+    fi
+    # judged even when another spec failed: the refusal names its listings beside the other failures
+    if [ -n "$popwalk" ] && [ -d "$popwalk" ]; then
+        local walk_base
+        walk_base="$(git merge-base "$base_sha" "$head_sha" 2>/dev/null || echo "$base_sha")"
+        scripts/ci/population-walk-diff "$popwalk" "$walk_base" >> "$tmp/$1.log" 2>&1 || rc=1
+        grep '^population walk: ' "$tmp/$1.log" | tail -40 >&2
+    fi
+    if [ "$rc" = 0 ] && [ "$sh_lines" = 1 ]; then
+        while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            bash -c "$line" < /dev/null >> "$tmp/$1.log" 2>&1 || { rc=1; break; }
+        done < <(local_test_lines "$1" sh)
+    fi
+    if [ "$rc" != 0 ]; then
+        failure_summary "$tmp/$1.log" >&2
+        warn "full log: $tmp/$1.log"
+        return 1
+    fi
+    grep -E 'Tests: succeeded|All tests passed|[0-9]+ passed' "$tmp/$1.log" | tail -3
+}
+# The walk's rows kept (THE WALK'S ROWS KEPT, above): <the rows root>/<identityWalkDigest>, printed (made, fresh); nothing
+# when sbt gives no digest (every slice walks); what it says goes to stderr. Asked once a run (its answer kept in $tmp): the identity area and the
+# flipbacklog check share it, so a slice the change brings is walked once between them, not by each (~3-10 s a slice).
+population_walk_rows() { # <the check asking>
+    local rows_root="${KINOWO_POPULATION_WALK_ROWS:-${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/population-walk-rows}" digest=""
+    if [ ! -f "$tmp/walk-digest.asked" ]; then
+        scripts/sbt-warm "identityWalkDigest $tmp/identity.walk-digest" > "$tmp/identity.walk-digest.log" 2>&1 \
+            || rm -f "$tmp/identity.walk-digest"
+        touch "$tmp/walk-digest.asked"
+    fi
+    [ -f "$tmp/identity.walk-digest" ] && digest="$(tr -cd '0-9a-f' < "$tmp/identity.walk-digest")"
+    if [ "${#digest}" != 64 ]; then
+        log "$1: no population walk digest ($(tail -1 "$tmp/identity.walk-digest.log" 2> /dev/null)): every slice walks" >&2
+        return 0
+    fi
+    mkdir -p "$rows_root/$digest" && touch "$rows_root/$digest"
+    find "$rows_root" -mindepth 1 -maxdepth 1 -type d -mtime +5 -exec rm -rf {} + 2> /dev/null
+    log "$1: the population walk's rows kept under digest ${digest:0:12} ($(find "$rows_root/$digest" -name '*.tsv' | wc -l | tr -d ' ') slice(s) kept)" >&2
+    echo "$rows_root/$digest"
+}
+# TEST-IMPACT SELECTION (scripts/ci/identity_impact.py, project/TestImpact.scala): of the identity set's sbt lines, only
+# the specs the pushed change can reach (the compiler's dependency record; the data's readers by name), each once, the
+# country-scoped ones (tools.CountryScope) over the countries it can reach. Every path the range changed counts,
+# deletions too (a deleted source selects every test); one range only -- several, and every test runs. Prints the sbt
+# lines to run (none: no spec reached), or fails (every test runs).
+# test_impact <name>: the range's changed paths to $tmp/<name>.changed and the classes they reach (identityImpact's
+# `<module> <class>` lines, or `ALL <why>`) to $tmp/<name>.impact, through the checkout's kept sbt server; says why not.
+test_impact() {
+    local mb
+    [ "${#ranges[@]}" -eq 1 ] || { echo "the push holds ${#ranges[@]} ranges"; return 1; }
+    mb="$(git merge-base "$base_sha" "$head_sha")" || { echo "no merge base of ${base_sha:0:9} and ${head_sha:0:9}"; return 1; }
+    git diff --name-only --no-renames "$mb" "$head_sha" > "$tmp/$1.changed" || return 1
+    scripts/sbt-warm "identityImpact $tmp/$1.changed $tmp/$1.impact" > "$tmp/$1.impact.log" 2>&1 \
+        || { tail -20 "$tmp/$1.impact.log"; echo "sbt identityImpact failed"; return 1; }
+    # an exit 0 that wrote nothing (a kept server answering for a command it never ran) is no answer, said as one
+    [ -f "$tmp/$1.impact" ] || { tail -20 "$tmp/$1.impact.log"; echo "sbt identityImpact wrote no answer"; return 1; }
+}
+select_identity_tests() { # <the set's sbt lines>...
+    local mb countries every_test=()
+    test_impact identity >&2 || return 1 # its why on stderr: stdout is the plan
+    [ ! -s "$tmp/identity.impact.tests" ] || every_test=(--every-test "$tmp/identity.impact.tests")
+    mb="$(git merge-base "$base_sha" "$head_sha")" || return 1
+    countries="$(python3 scripts/ci/identity_impact.py countries "$mb" "$head_sha" < "$tmp/identity.changed")" \
+        || { echo "the countries could not be read" >&2; return 1; }
+    # ALL (every test) runs each class once and by name (--every-test: identityImpact's list of every test class), so
+    # identity's specs no longer run twice and the landing check's shards split it by class
+    printf '%s\n' "$@" | python3 scripts/ci/identity_impact.py plan --impact "$tmp/identity.impact" --countries "$countries" \
+        ${every_test[@]+"${every_test[@]}"} || { echo "no plan" >&2; return 1; }
+    if grep -q '^ALL' "$tmp/identity.impact"; then
+        echo "every identity spec: $(grep -m1 '^ALL' "$tmp/identity.impact" | cut -c5-)"
+    else echo "the specs the change reaches ($(grep -c . "$tmp/identity.impact") test classes in every module)"
+    fi > "$tmp/identity.summary"
+    echo "countries in scope: ${countries:-none}" >> "$tmp/identity.summary"
+}
+check_identity() { run_local_tests identity; }
+# THE RATCHET (the header's `allowlists`): an allow-list row only with its check's birth, TEMPORARY; else lists only shrink
+# THE DRIFT GATE'S COMMIT RULES (the header's `allowlists` and `driftguards`): one walker, scripts/ci/commit_rules.py
+commit_rules() { # <rule set>
+    local args=() r
+    need "$1" python3 "install Python 3 (brew install python)" || return 1
+    for r in "${ranges[@]}"; do args+=(--range "$r"); done
+    python3 scripts/ci/commit_rules.py "$1" "${args[@]}"
+}
+check_allowlists() { commit_rules allowlists; }
+# A NEW CHECK GATES ONLY ONCE IT HAS BEEN GREEN (the header's `newchecks`): every job, runner label and gate workflow THE
+# GATE reads has its row in .github/gating-checks.tsv -- a new one as `unproven`, with its owner -- so it reports until a
+# green run proves it (scripts/ci/gating_checks.py lint, seconds)
+check_newchecks() {
+    need newchecks python3 "install Python 3 (brew install python)" || return 1
+    python3 scripts/ci/gating_checks.py lint
+}
+# THE EXTERNAL SCHEDULER'S SCHEDULE IS THE WORKFLOWS' OWN CRONS (the header's `schedules`): a cron edited without
+# regenerating infra/nix/files/scheduled-workflows.json, or a covered workflow's `== 'schedule'` condition missing the
+# scheduler's repository_dispatch, refuses the push with the fix
+check_schedules() {
+    need schedules python3 "install Python 3 (brew install python)" || return 1
+    python3 infra/nix/files/scheduled_dispatch.py check
+}
+# THE IDENTITY DRIFT CHECK: each claimed red's failed takes-drift rows, on CI (scripts/identity-drift-ci --for-red). 1 blocks; 2
+# (the run could not be made: CI unreachable, no token) warns and passes -- a fix is not held hostage to an outage, and
+# main's own run still judges it.
+# identity-drift-ci <log> <args...>: its whole output kept in <log>, each poll's progress line shown as it comes -- a run
+# queued behind a saturated ci-runner polls for many minutes, and a hook silent that long is ended by `agentctl land` as
+# stalled (#1041) -- and its exit status returned.
+drift_ci() {
+    local log=$1; shift
+    { scripts/identity-drift-ci "$@" 2>&1; echo "drift-ci-exit:$?"; } | tee "$log" \
+        | { grep --line-buffered -E '^identity-drift-ci: run [0-9]+: [0-9]+/[0-9]+ drift row' >&2 || true; }
+    return "$(sed -n 's/^drift-ci-exit://p' "$log" | tail -1)"
+}
+check_identitydrift() {
+    local run rc=0 r
+    if [ "${GITHUB_ACTIONS:-}" = true ]; then
+        warn "drift: not run from a CI job (it pushes a measure/ branch and dispatches from the laptop): main's run judges ${drift_reds:+Fixes-Red: $drift_reds}${drift_birth:+ the birth of a check}"
+        return 0
+    fi
+    if [ -n "$drift_birth" ]; then
+        log "drift: a check's birth or tightening ($drift_birth): every drift row at ${head_sha:0:9}, against main's newest run"
+        drift_ci "$tmp/drift-birth.log" --head "$head_sha" --against main; r=$?
+        grep -vE '^identity-drift-ci: run [0-9]+: [0-9]+/[0-9]+ drift row|^drift-ci-exit:' "$tmp/drift-birth.log" | tail -40 >&2
+        case $r in
+            0) ;;
+            1) warn "drift: the check finds what main's run does not -- a new or tightened check lands green: put what it finds at birth on its allow-list, TEMPORARY with an owner and when it goes, under New-Check: (full log: $tmp/drift-birth.log)"; rc=1 ;;
+            *) warn "drift: no verdict on the check's birth (exit $r): not held against the push; main's run judges it" ;;
+        esac
+    fi
+    for run in $drift_reds; do
+        log "drift: the takes-drift rows run $run failed, at ${head_sha:0:9}, drift-only on ci-runner (scripts/identity-drift-ci)"
+        drift_ci "$tmp/drift-$run.log" --head "$head_sha" --for-red "$run"; r=$?
+        grep -vE '^identity-drift-ci: run [0-9]+: [0-9]+/[0-9]+ drift row|^drift-ci-exit:' "$tmp/drift-$run.log" | tail -40 >&2
+        case $r in
+            0) ;;
+            1) warn "drift: Fixes-Red: $run does not fix its drift rows at ${head_sha:0:9} (full log: $tmp/drift-$run.log)"; rc=1 ;;
+            *) warn "drift: no verdict for Fixes-Red: $run (exit $r): not held against the push; main's run judges it" ;;
+        esac
+    done
+    return $rc
+}
+check_driftguards() { commit_rules driftguards; }
+# A PURE MOVE'S CLAIM HOLDS (the header's `puremove`): each commit saying `Pure-Move:` is one, by the check identity-what-if
+# runs, over that commit alone
+check_puremove() {
+    local r sha claim rc=0
+    need puremove python3 "install Python 3 (brew install python)" || return 1
+    for r in "${ranges[@]}"; do
+        while IFS= read -r sha; do
+            claim="$(git log -1 --format='%(trailers:key=Pure-Move,valueonly,unfold)' "$sha" | grep -v '^$' || true)"
+            [ -n "$claim" ] || continue
+            if [ "$claim" != verified ]; then
+                warn "puremove: ${sha:0:9} says 'Pure-Move: $claim': the trailer is 'Pure-Move: verified', or none"; rc=1; continue
+            fi
+            if scripts/pure-move-check "$sha^..$sha" > "$tmp/puremove.$sha" 2>&1; then
+                log "puremove: ${sha:0:9} is a pure move"
+            else
+                cat "$tmp/puremove.$sha" >&2
+                warn "puremove: ${sha:0:9} says 'Pure-Move: verified' but scripts/pure-move-check does not find a pure move: drop the trailer (and run scripts/identity-what-if) or make the commit one"
+                rc=1
+            fi
+        done < <(git rev-list --reverse "$r")
+    done
+    return $rc
+}
+# A CARRIED STAMP IS PROVEN (the header's `stampcarry`): every carry row the push adds or changes, proven again
+check_stampcarry() {
+    local r rc=0
+    need stampcarry python3 "install Python 3 (brew install python)" || return 1
+    for r in "${ranges[@]}"; do
+        scripts/identity-stamp-carry verify "$r" || rc=1
+    done
+    return $rc
+}
+# THE FLIP BACKLOG IS COMPLETE (the header's `flipbacklog`): the slices the change brings walked, judged as main's spec
+# judges them
+check_flipbacklog() {
+    local mb s dirs=()
+    need flipbacklog python3 "install Python 3 (brew install python)" || return 1
+    mb="$(git merge-base "$base_sha" "$head_sha")" || { warn "flipbacklog: no merge base of ${base_sha:0:9} and ${head_sha:0:9}"; return 1; }
+    python3 scripts/ci/population_walk_diff.py changed-slices "$mb" > "$tmp/flipbacklog.slices" \
+        || { warn "flipbacklog: the slices the change brings could not be read"; return 1; }
+    while IFS= read -r s; do [ -n "$s" ] && dirs+=("test/resources/fixtures/$s"); done < "$tmp/flipbacklog.slices"
+    if [ "${#dirs[@]}" -eq 0 ]; then log "flipbacklog: no slice the change brings"; return 0; fi
+    need_jvm flipbacklog || return 1
+    local walkcache
+    walkcache="$(population_walk_rows flipbacklog)"
+    log "flipbacklog: ${#dirs[@]} slice(s) the change brings, walked (PopulationMonotonicitySpec)"
+    if ! scripts/sbt-warm "worker/Test/runMain services.identity.PopulationMonotonicitySpec ${walkcache:+--cache $walkcache }${dirs[*]}" > "$tmp/flipbacklog.log" 2>&1; then
+        tail -n 20 "$tmp/flipbacklog.log" >&2; warn "flipbacklog: the walk did not run (full log: $tmp/flipbacklog.log)"; return 1
+    fi
+    sed -nE 's/^\[info\] //; /^(# )?(drift|identity)-slices\//p' "$tmp/flipbacklog.log" > "$tmp/flipbacklog.walk"
+    python3 scripts/ci/population_walk_diff.py judge-walk "$tmp/flipbacklog.walk"
+}
+
+# THE HEAVY ROWS (the header): Main's own commands, with Main's row filter, against the job's MongoDB. They ride the
+# landing check's rest job (2026-11-18: a job of their own waited up to 17 min for a slot), so the MongoDB is named to
+# them alone, $PREPUSH_HEAVY_MONGODB_URI / _DB: the rest's other checks (the basic e2e specs among them) run as Main's
+# unit rows do, with none ($MONGODB_URI is still read, for a caller from before).
+heavy_row() { # <check> <sbt command> [env...]
+    local check=$1 cmd=$2; shift 2
+    local uri="${PREPUSH_HEAVY_MONGODB_URI:-${MONGODB_URI:-}}" db="${PREPUSH_HEAVY_MONGODB_DB:-${MONGODB_DB:-}}"
+    need_jvm "$check" || return 1
+    [ -n "$uri" ] || [ "${check#e2e}" != "$check" ] \
+        || { warn "$check: no \$PREPUSH_HEAVY_MONGODB_URI -- the integration specs need a MongoDB replica set (scripts/ci/start-mongo-replset.sh)"; return 1; }
+    # the e2e rows run as Main's do, with no MongoDB named; the integration rows against the job's
+    local mongo=()
+    case "$check" in
+        e2e*) mongo=(-u MONGODB_URI -u MONGODB_DB) ;;
+        *) mongo=(MONGODB_URI="$uri"); [ -z "$db" ] || mongo+=(MONGODB_DB="$db") ;;
+    esac
+    env "${mongo[@]}" "$@" sbt -batch "$cmd" > "$tmp/$check.log" 2>&1 \
+        || { grep -E '\*\*\* FAILED|\[error\]|Failed tests:|TEST FAILED' "$tmp/$check.log" | head -80 >&2; warn "full log: $tmp/$check.log"; return 1; }
+    grep -E 'Tests: succeeded|All tests passed|Passed: Total' "$tmp/$check.log" | tail -3 || true
+}
+# the rest row's deploy specs read the GitOps manifests: fetched here when nothing put them in place (the sbt check's
+# lint plan fetches them only for a change reading them)
+check_itrest() {
+    if [ ! -d infra/kubernetes ] && [ -x infra/bin/fetch-gitops ]; then
+        KINOWO_GITOPS_DEST="$PWD/infra/kubernetes" bounded "${PREPUSH_GITOPS_SECONDS:-90}" infra/bin/fetch-gitops > "$tmp/fetch-gitops.log" 2>&1 \
+            || { tail -8 "$tmp/fetch-gitops.log" >&2; warn "itrest: infra/bin/fetch-gitops could not fetch the GitOps manifests the deploy specs read"; return 1; }
+    fi
+    heavy_row itrest itAll IT_ROW=rest
+}
+check_itidentity() { heavy_row itidentity itAll IT_ROW=identity; }
+check_e2ecorpus() { heavy_row e2ecorpus e2eCorpus; }
+
+check_ios() {
+    scripts/ios-compile-check.sh
+}
+
+# The takes the newest decided Identity model convergence legs served, as `<dir>/<cc>-takes/<cc>.json.gz` under a cache
+# kept per run in the shared git dir; prints the files, or nothing (warned) when gh cannot fetch them in time. A run that
+# reused an earlier run's verdict (scripts/ci/convergence_reuse.py) ran no leg and served nothing: the next one back is
+# read, up to three.
+served_takes() {
+    local runs run cache part found=""
+    runs="$(bounded "$GhSeconds" gh run list --workflow "Identity model convergence" \
+        --branch main --status completed --limit 30 --json databaseId,conclusion \
+        --jq '[.[] | select(.conclusion == "success" or .conclusion == "failure")][0:3][].databaseId' 2>/dev/null)" || runs=""
+    [ -n "$runs" ] || { warn "judgements: no Identity model convergence run to read served takes from — served check SKIPPED"; return 0; }
+    for run in $runs; do
+        cache="$(git rev-parse --path-format=absolute --git-common-dir)/kinowo-cache/served-takes/$run"
+        if [ ! -d "$cache" ]; then
+            # Agents push at once and share this cache: each downloads into a directory of its own, and only the first to
+            # finish renames it into place (rename(2) onto a filled directory fails; `mv` would nest it inside).
+            part=""
+            mkdir -p "$(dirname "$cache")" && part="$(mktemp -d "$cache.part.XXXXXX")" \
+                && bounded 120 gh run download "$run" -p 'convergence-diagnostics-*-convergence' \
+                -D "$part" >/dev/null 2>&1 \
+                || { [ -n "$part" ] && rm -rf "$part"; continue; }
+            perl -e 'rename($ARGV[0], $ARGV[1]) or exit 1' "$part" "$cache" 2>/dev/null || rm -rf "$part"
+        fi
+        found=$(find "$cache" -path '*-takes/*.json.gz')
+        [ -z "$found" ] || { echo "$found"; return 0; }
+    done
+    warn "judgements: could not fetch the served takes of runs $(echo $runs) — served check SKIPPED"
+}
+
+check_judgements() {
+    local served=() before=""
+    need judgements python3 "install Python 3 (brew install python)" || return 1
+    # grep reads the whole list, never -q: quitting at the match SIGPIPEs printf over a long one, failing the pipeline.
+    # --fast-only (THE COMBINED FILES): the files' own consistency; each member's own check read the served takes.
+    if [ -z "$fast_only" ] && printf '%s\n' "$changed" | grep -x 'test/resources/fixtures/identity-judgements.tsv' > /dev/null; then
+        need judgements gh "brew install gh" || return 1
+        while IFS= read -r f; do [ -n "$f" ] && served+=("$f"); done < <(served_takes)
+        before="$tmp/judgements-before.tsv"
+        git show "$base_sha:test/resources/fixtures/identity-judgements.tsv" > "$before" 2>/dev/null || before=""
+    fi
+    # --replay-head: the takes the push newly judges wrong judged at the PUSHED code (identity-slice), not the last leg's
+    python3 scripts/ci/identity_judgements_lint.py ${served[@]+--served "${served[@]}"} ${before:+--before "$before" --replay-head}
+}
+
+tmp="$(mktemp -d)"
+
+# THE PUSHED COMMITS ARE JUDGED, not the working tree: that can hold edits the push does not
+# carry, or sit on another branch entirely (`git push origin other:main`). When HEAD is the
+# pushed commit and nothing the push changed differs from it, the checkout is that tree and the
+# checks run in place, warm. Otherwise they run in a temporary worktree of the pushed commit —
+# never `git stash`, which is shared by every worktree of this clone — removed afterwards.
+in_place() {
+    [ "$(git rev-parse HEAD)" = "$head_sha" ] || return 1
+    local path
+    while IFS= read -r path; do
+        [ -n "$path" ] || continue # a deletion-only push changed no path still there
+        git diff --quiet HEAD -- "$path" || return 1
+        [ -z "$(git ls-files --others --exclude-standard -- "$path")" ] || return 1
+    done <<< "$changed"
+}
+# ONE sbt PER target/. A live sbt JVM in this checkout — the DevPanel's `sbt web/run`, an IDE's
+# BSP server, an agent's test run — compiles into the same target/ as the check would: Play's dev
+# server recompiles on the first request after a merge changes sources. Two Zincs over one classes
+# dir delete and rewrite each other's class files, and the check's tests then load a class the
+# other has just deleted (NoClassDefFoundError: services/movies/MovieRepository$, twice on
+# 2026-09-26; a retry passed once both had settled). Echoes the first such pid.
+live_sbt_in_checkout() {
+    local here pid cwd
+    here="$(pwd -P)"
+    for pid in $(pgrep -f 'sbt-launch|xsbt\.boot\.Boot' 2>/dev/null); do
+        cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
+        [ -n "$cwd" ] && [ "$(cd "$cwd" 2>/dev/null && pwd -P)" = "$here" ] && { echo "$pid"; return 0; }
+    done
+    return 1
+}
+isolate_reason="" sbt_client=0
+if ! in_place; then
+    isolate_reason="the working tree is not ${head_sha:0:9}"
+elif grep -qxE 'sbt|identity' <<< "$checks" && ! skipped sbt && live_pid="$(live_sbt_in_checkout)"; then
+    # the checkout's KEPT server (scripts/sbt-warm: `sbt --client`, launched --detach-stdio) is no rival compiler —
+    # it is the one compiler: the check runs through it (by scripts/sbt-warm), in place and warm
+    if ps -o args= -p "$live_pid" 2>/dev/null | grep -q -- '--detach-stdio'; then
+        sbt_client=1
+        log "the sbt check runs through this checkout's kept sbt server (pid $live_pid), warm"
+    else
+        isolate_reason="a live sbt (pid $live_pid) shares this checkout's target/"
+    fi
+fi
+# The area tests run through scripts/sbt-warm: in place, the sbt check joins them in the checkout's kept server (one warm
+# JVM for both) instead of a JVM of its own.
+area_tests="$(printf '%s\n' "$checks" | grep -xE 'identity' | tr '\n' ' ')"
+if [ -z "$isolate_reason" ] && [ -n "$area_tests" ]; then sbt_client=1; fi
+if [ -n "$isolate_reason" ]; then
+    tree="$tmp/tree"
+    git worktree add -q --detach "$tree" "$head_sha" || { warn "cannot check out ${head_sha:0:9} to check it"; exit 1; }
+    [ -d "$root/node_modules" ] && ln -s "$root/node_modules" "$tree/node_modules"
+    log "$isolate_reason: checking a temporary checkout of ${head_sha:0:9}"
+    cd "$tree" || exit 1
+fi
+
+failed="" stalled=""
+StallSeconds="${PREPUSH_STALL_SECONDS:-1200}"
+stall_watch="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/stall-watch.sh"
+[ -f "$stall_watch" ] || stall_watch="$root/scripts/stall-watch.sh"
+# The check's watchdog, ended. ONE TERM is not enough: a check that returns at once (a missing tool's) sends it within
+# microseconds of the watchdog's fork, and under a load of 85-100 that TERM was lost -- most likely taken by the
+# hook's own bash handler (its EXIT trap installs one) in the forked child before it execs, and dropped by the exec.
+# The watchdog then polled on for its whole bound (it ends when the hook does; the hook waited on it): Main #2059 and
+# #2066's pre-push-test.sh sat 600 s in `missing tool` cases. So the TERM is sent again every second while it lives
+# (its trap is up by then), and KILL after ten.
+stop_watchdog() { # <pid>
+    local nudger
+    kill "$1" 2>/dev/null
+    ( for _ in 1 2 3 4 5 6 7 8 9 10; do sleep 1; kill "$1" 2>/dev/null; done; kill -KILL "$1" 2>/dev/null ) &
+    nudger=$!
+    wait "$1" 2>/dev/null
+    kill "$nudger" 2>/dev/null; wait "$nudger" 2>/dev/null
+}
+# THE KNOWN-RED BASELINE (the header). A check's failure lines from its output on stdin: the strong markers, else every
+# non-empty line; normalized (what changes run to run out), sorted, unique.
+Esc="$(printf '\033')"
+failure_lines() {
+    local all strong
+    all="$(sed "s/${Esc}\[[0-9;]*[A-Za-z]//g" | grep -v '^[[:space:]]*$')"
+    strong="$(printf '%s\n' "$all" | grep -E '\*\*\* FAILED|\[error\]|::error::|[Aa]ssert(ion)?|Error:|ENOENT|[Ee]xit code [1-9]|FAILED' || true)"
+    [ -n "$strong" ] || strong="$all"
+    [ -n "$strong" ] || return 0
+    # Temp paths: the usual roots, and wherever this host's mktemp puts them -- GNU mktemp honours $TMPDIR (a GitHub
+    # runner's /home/runner/work/_temp/...), macOS's does not (2026-10-31: every Linux land's known red blocked on it).
+    printf '%s\n' "$strong" \
+        | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z //; s#/(private/)?(tmp|var/folders)/[^[:space:]]*#<tmp>#g' \
+        | awk -v a="${tmp%/*}/" -v b="${TMPDIR:+${TMPDIR%/}/}" '
+            function untmp(p,   i, rest) {
+                if (length(p) < 3) return
+                while ((i = index($0, p)) > 0) {
+                    rest = substr($0, i + length(p)); sub(/^[^ \t]*/, "", rest)
+                    $0 = substr($0, 1, i - 1) "<tmp>" rest } }
+            { untmp(a); untmp(b); print }' \
+        | tr '[:upper:]' '[:lower:]' \
+        | sed -E 's/[0-9a-f]{7,40}/H/g; s/[0-9]+(\.[0-9]+)?/N/g; s/[[:space:]]+/ /g; s/^ //; s/ $//' \
+        | cut -c1-160 | LC_ALL=C sort -u
+}
+# The output the baseline's run printed for <check> before its `<check> FAILED` line; fails when it did not fail there.
+baseline_failure() { # <check>
+    sed "s/${Esc}\[[0-9;]*[A-Za-z]//g" "$baseline" | awk -v c="$1" '
+        /pre-push [^ ]+ (ok|FAILED) \([0-9]+s\)/ || / — for [0-9]+ changed path/ {
+            if (index($0, "pre-push " c " FAILED (")) { printf "%s", seg; found = 1 }
+            seg = ""; next }
+        { seg = seg $0 "\n" }
+        END { exit !found }'
+}
+# <check> failed (its output in <file>) only in ways it fails on the base: every failure line of it is one of the base's.
+known_red() { # <check> <file>
+    local base mine
+    base="$(baseline_failure "$1")" || return 1
+    mine="$(failure_lines < "$2")"
+    [ -n "$mine" ] || return 1
+    [ -z "$(LC_ALL=C comm -23 <(printf '%s\n' "$mine") <(printf '%s\n' "$base" | failure_lines))" ]
+}
+known=""
+started=$SECONDS
+log "$(printf '%s' "$checks" | tr '\n' ' ') — for $(printf '%s\n' "$changed" | wc -l | tr -d ' ') changed path(s)"
+for check in $checks; do
+    if skipped "$check"; then warn "$check SKIPPED (PREPUSH_SKIP)"; continue; fi
+    t0=$SECONDS
+    # NO STEP HANGS (the header): the check's watchdog, and the marks sbt-warm reports its progress and stalls to
+    export KINOWO_PROGRESS_FILE="$tmp/progress.$check" KINOWO_STALL_FILE="$tmp/stalled.$check"
+    watchdog=""
+    if [ -f "$stall_watch" ]; then
+        bash "$stall_watch" watch $$ "$StallSeconds" "$check" "$KINOWO_STALL_FILE" "$KINOWO_PROGRESS_FILE" "$tmp" 2>/dev/null &
+        watchdog=$!
+    fi
+    # with a known-red baseline the check's output is kept, to be compared with the base's (then shown, as ever)
+    if [ -n "$baseline" ]; then
+        "check_$check" > "$tmp/output.$check" 2>&1; rc=$?
+        cat "$tmp/output.$check" >&2
+    else
+        "check_$check"; rc=$?
+    fi
+    if [ "$rc" = 0 ]; then
+        log "$check ok ($((SECONDS - t0))s)"
+    elif [ -s "$KINOWO_STALL_FILE" ]; then
+        printf 'pre-push STALLED: %s (no progress for %ss: %s; ended after %ss)\n' "$check" "$StallSeconds" \
+            "$(tr '\n' ';' < "$KINOWO_STALL_FILE" | sed 's/;$//')" "$((SECONDS - t0))" >&2
+        failed="$failed $check" stalled="$stalled $check"
+    else
+        warn "$check FAILED ($((SECONDS - t0))s)"
+        if [ -n "$baseline" ] && known_red "$check" "$tmp/output.$check"; then
+            warn "KNOWN RED: $check fails the same way on the base ${base_commit:0:10} (the known-red baseline): not held against this push"
+            known="$known $check"
+        else
+            failed="$failed $check"
+        fi
+    fi
+    [ -z "$watchdog" ] || stop_watchdog "$watchdog"
+done
+unset KINOWO_PROGRESS_FILE KINOWO_STALL_FILE
+
+if [ -n "$failed" ]; then
+    [ -z "$baseline_note" ] || warn "$baseline_note"
+    warn "blocked by:$failed ($((SECONDS - started))s). Fix, or bypass with PREPUSH_SKIP=\"${failed# }\" / --no-verify."
+    [ -z "$stalled" ] || exit 75   # THE STALL SIGNAL: a step hung, no verdict on the change
+    exit 1
+fi
+rm -rf "$tmp"
+if [ -n "$reuse_key" ] && mkdir -p "$reuse_dir" 2>/dev/null; then
+    printf '%s (%s)\n' "$(date -u +%Y-%m-%dT%H:%MZ)" "${head_sha:0:9}" > "$reuse_dir/$reuse_key.$$" && mv -f "$reuse_dir/$reuse_key.$$" "$reuse_dir/$reuse_key"
+    find "$reuse_dir" -type f -mtime +14 -delete 2>/dev/null
+fi
+if [ -n "$known" ]; then log "all clear but main's own known red:$known ($((SECONDS - started))s)"
+else log "all clear ($((SECONDS - started))s)"; fi
+# CHECK FIRST: git opens the push's ssh connection BEFORE it runs this hook and sends the pack only after it, so a long
+# hook holds that connection idle, and a connection held that long can die (a network change, keepalives missed under
+# load): on 2026-10-23 pushes whose hook ran 20-76 min printed "all clear"
+# and then "Connection to localhost closed by remote host" / "Broken pipe" / "unexpected disconnect while reading
+# sideband packet". Nothing here can keep that connection; the re-push can be fast instead: this pass is stored (THE
+# REUSE), so the same push again skips the checks.
+if [ "${1:-}" != --range ] && [ "${1:-}" != --checks-only ] && [ "$SECONDS" -ge "${PREPUSH_LONG_SECONDS:-300}" ]; then
+    warn "this hook ran ${SECONDS}s with the push's connection open (git connects first): if the push now dies with \"closed by remote host\" / \"Broken pipe\" / \"unexpected disconnect\", run the same git push again -- this pass is stored and is reused in seconds. Next time check first: scripts/hooks/pre-push --range ${1:-<remote>}/main..HEAD, then git push"
+fi
