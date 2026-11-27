@@ -30,7 +30,6 @@ import hashlib
 import json
 import os
 import re
-import select
 import signal
 import subprocess
 import sys
@@ -38,6 +37,7 @@ import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 import atomic  # noqa: E402
+import hook_event  # noqa: E402
 
 STATE_DIR = os.environ.get("OWNER_DECISIONS_STATE_DIR", os.path.expanduser("~/.cache/claude-owner-decisions"))
 REMIND_SECONDS = float(os.environ.get("OWNER_DECISIONS_REMIND_SECONDS", 30 * 60))
@@ -151,22 +151,6 @@ def session_start(hook):
          "scripts/claude-hooks/owner-decisions." % NOTIFIER)
 
 
-def read_stdin():
-    """The hook's JSON input, read for at most STDIN_SECONDS; {} from a terminal or a writer that never finishes."""
-    if sys.stdin is None or sys.stdin.isatty():
-        return {}
-    data, end = b"", time.monotonic() + STDIN_SECONDS
-    fd = sys.stdin.fileno()
-    while True:
-        left = end - time.monotonic()
-        if left <= 0 or not select.select([fd], [], [], left)[0]:
-            return {}
-        chunk = os.read(fd, 65536)
-        if not chunk:
-            return json.loads(data or b"{}")
-        data += chunk
-
-
 def give_up(_signum, _frame):
     os._exit(0)
 
@@ -175,7 +159,7 @@ def main():
     signal.signal(signal.SIGALRM, give_up)
     signal.alarm(DEADLINE_SECONDS)
     try:
-        hook = read_stdin()
+        hook = hook_event.read_event(STDIN_SECONDS)
         if not isinstance(hook, dict):
             return
         {"prompt": prompt, "session-start": session_start}[sys.argv[1]](hook)

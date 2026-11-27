@@ -24,17 +24,17 @@ hook needs no path configured and leaves every other repository alone. Errors in
 it exits 0 (a broken guard must not wedge every session). Stdin is the hook's JSON; stdout/stderr per Claude Code.
 """
 import hashlib
-import importlib.machinery
-import importlib.util
 import json
 import os
-import types
 import subprocess
 import sys
 import tempfile
 from typing import List, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "..", "lib"))
+import hook_event  # noqa: E402
+import shell_words  # noqa: E402
 
 ADVICE = (
     "Work in a worktree of your own: `git worktree add -b <branch> ../movies-<name> origin/main`, then edit "
@@ -129,25 +129,15 @@ DEV_PREFIXES = {"env", "nohup", "exec", "time", "command", "nice", "caffeinate"}
 DEV_KEYWORDS = {"then", "do", "else", "elif", "if", "while", "until", "!", "{"}
 
 
-def shell_reader() -> types.ModuleType:
-    """masked-exit-guard's tokenizer (shared with the other guards): quoted text is one word, not a command."""
-    path = os.path.join(HERE, "masked-exit-guard")
-    loader = importlib.machinery.SourceFileLoader("masked_exit_guard", path)
-    module = importlib.util.module_from_spec(importlib.util.spec_from_loader(loader.name, loader))
-    loader.exec_module(module)
-    return module
-
-
 def simple_commands(command: str) -> List[List[str]]:
     """The words of each simple command in `command`, its assignments, prefixes (`env`, `nohup`) and keywords (`then`)
     taken off the front; redirect targets stay as (harmless) arguments."""
-    reader = shell_reader()
-    words = reader.tokens(reader.without_heredoc_bodies(command.replace("\\\n", " ")))
+    words = shell_words.command_words(command)
     commands: List[List[str]] = [[]]
     for word in words:
-        if reader.is_punctuation(word):
+        if shell_words.is_punctuation(word):
             commands.append([])
-        elif commands[-1] or not (reader.ASSIGNMENT.match(word) or word in DEV_PREFIXES or word in DEV_KEYWORDS
+        elif commands[-1] or not (shell_words.ASSIGNMENT.match(word) or word in DEV_PREFIXES or word in DEV_KEYWORDS
                                   or word.startswith("-")):
             commands[-1].append(word)
     return [c for c in commands if c]
@@ -237,7 +227,7 @@ def main(argv):
         return 64
     repo = argv[argv.index("--repo") + 1] if "--repo" in argv else HERE
     try:
-        event = json.load(sys.stdin)
+        event = hook_event.read_event()
         return {"edit": guard_edit, "bash-pre": guard_bash_pre, "bash-post": guard_bash_post,
                 "session-start": guard_session_start}[argv[1]](event, repo)
     except Exception as e:  # the guard failing must never block a session

@@ -12,25 +12,15 @@ whose command runs one of them in command position -- unless it is bounded to a 
 wait-for and agentctl wait, `--timeout 60s` / `--timeout 1` for ci-wait, whose bare number is minutes, or a
 `timeout 60` prefix), a check that is answered at once. `--help` is allowed. A broken guard never blocks (exit 0).
 """
-import json
 import os
 import re
 import sys
-import importlib.machinery
-import importlib.util
-from typing import Any, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+import hook_event  # noqa: E402
+import shell_words as shell  # noqa: E402
 
-def load_shell_reader():
-    """masked-exit-guard's tokenizer, which reads a command the way the shell does: shared, not copied."""
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "masked-exit-guard")
-    loader = importlib.machinery.SourceFileLoader("masked_exit_guard", path)
-    module = importlib.util.module_from_spec(importlib.util.spec_from_loader(loader.name, loader))
-    loader.exec_module(module)
-    return module
-
-
-shell: Any = None  # masked-exit-guard's tokenizer, loaded by main()
 
 SHORT_WAIT_SECONDS = 60
 COMMAND_START = {"then", "do", "else", "elif", "if", "while", "until", "!", "time", "nohup", "exec", "command"}
@@ -117,7 +107,7 @@ def waits_in_script(arguments: List[str], bound: Optional[float]) -> List[Wait]:
     if script is None:
         return []
     try:
-        words = shell.tokens(shell.without_heredoc_bodies(script.replace("\\\n", " ")))
+        words = shell.command_words(script)
     except ValueError:
         return []
     return [(name, rest, tighter(inner, bound)) for name, rest, inner in waits(words)]
@@ -143,7 +133,7 @@ def flag_timeout(name: str, arguments: List[str]) -> Optional[float]:
 def unbounded_wait(command: str) -> Optional[str]:
     """The waiting tool `command` runs for longer than a short check, or None."""
     try:
-        words = shell.tokens(shell.without_heredoc_bodies(command.replace("\\\n", " ")))
+        words = shell.command_words(command)
     except ValueError:
         return None
     for name, arguments, bound in waits(words):
@@ -160,8 +150,7 @@ def unbounded_wait(command: str) -> Optional[str]:
 def main():
     global shell
     try:
-        shell = load_shell_reader()
-        event = json.load(sys.stdin)
+        event = hook_event.read_event()
         tool_input = event.get("tool_input", {})
         if tool_input.get("run_in_background") is True:
             return 0

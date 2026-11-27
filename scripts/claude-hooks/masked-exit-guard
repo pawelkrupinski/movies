@@ -20,12 +20,14 @@ tool's shell is zsh). A `bash -c` / `sh -c` / `zsh -c` script is read the same w
 It reads the command, not the shell: heredoc bodies are dropped first, and a command it cannot tokenize is allowed. A
 broken guard never blocks (exit 0).
 """
-import json
 import os
 import re
-import shlex
 import sys
 from typing import List, Optional
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+import hook_event  # noqa: E402
+from shell_words import ASSIGNMENT, SHELLS, command_words, is_punctuation  # noqa: E402
 
 WATCHED = {
     "sbt-warm", "sbt", "sbtn", "it-local.sh", "run-script-tests", "fail-before", "convergence-local.sh",
@@ -38,9 +40,6 @@ PREFIXES = {"env": {"-u", "-C", "-S"}, "time": set(), "nice": {"-n"}, "exec": {"
             "nohup": set(), "caffeinate": {"-t", "-w"}, "builtin": set(), "timeout": {"-s", "-k"},
             "gtimeout": {"-s", "-k"}}
 TIMEOUTS = {"timeout", "gtimeout"}  # ... and a duration before the command
-SHELLS = {"bash", "sh", "zsh"}  # `bash -c '<script>'`: the script is read as a command of its own
-ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
-HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
 
 ADVICE = (
     "A pipeline exits with its LAST command's status, so a failed test run piped into grep/tail/head reads as exit 0 "
@@ -48,45 +47,6 @@ ADVICE = (
     "`scripts/sbt-warm \"<cmd>\" > \"$log\" 2>&1; echo \"exit=$?\"; grep -E 'FAILED|Tests:|error\\]' \"$log\"` -- "
     "or start the command with `set -o pipefail;`."
 )
-
-
-def without_heredoc_bodies(command):
-    """The command with every heredoc's body removed (its lines up to the delimiter line)."""
-    lines, out, closing = command.split("\n"), [], []
-    for line in lines:
-        if closing:
-            if line.strip() == closing[0]:
-                closing.pop(0)
-            continue
-        out.append(line)
-        closing.extend(m.group(2) for m in HEREDOC.finditer(line))
-    return "\n".join(out)
-
-
-OPERATORS = sorted(["&&", "||", ";;", "|&", "&>>", "&>", ">>", ">&", "<&", "<<<", "<<", "<>", ">|",
-                    "(", ")", ";", "&", "|", "<", ">", "\n"], key=len, reverse=True)
-
-
-def tokens(command):
-    """Words and shell operators; shlex runs adjacent operators together (`)|`, `&&\\n`), split them apart here."""
-    lexer = shlex.shlex(command, posix=True, punctuation_chars="();<>|&\n")
-    lexer.whitespace = " \t\r"
-    lexer.whitespace_split = True
-    lexer.commenters = "#"
-    out = []
-    for token in lexer:
-        if not is_punctuation(token):
-            out.append(token)
-            continue
-        while token:
-            operator = next(o for o in OPERATORS if token.startswith(o))
-            out.append(operator)
-            token = token[len(operator):]
-    return out
-
-
-def is_punctuation(token):
-    return token != "" and all(c in "();<>|&\n" for c in token)
 
 
 def set_option(pipefail: bool, previous: str, word: str) -> bool:
@@ -105,7 +65,7 @@ def words_of(command: str) -> Optional[List[str]]:
     """The command's words, its continuations joined; None when it cannot be tokenized or reads the pipe's status
     (a PIPESTATUS / pipestatus word, not a comment: shlex drops those)."""
     try:
-        words = tokens(without_heredoc_bodies(command.replace("\\\n", " ")))
+        words = command_words(command)
     except ValueError:
         return None
     return None if any("pipestatus" in word.lower() for word in words) else words
@@ -264,7 +224,7 @@ def masked_runner(command):
 
 def main():
     try:
-        event = json.load(sys.stdin)
+        event = hook_event.read_event()
         command = event.get("tool_input", {}).get("command", "")
         runner = masked_runner(command) if isinstance(command, str) else None
     except Exception:  # a broken guard must not wedge every session

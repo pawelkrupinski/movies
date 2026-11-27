@@ -10,16 +10,17 @@ log, tailed), `scripts/ci-wait` / `~/bin/agentctl wait run <id>` (waiting, in th
 PreToolUse on Bash (.claude/settings.json). `gh run list|view|watch` is ADVISED (exit 0, the advice as additional
 context: the call still runs, a one-off query the tools do not cover is legitimate). `gh run rerun` is DENIED (exit 2):
 a rerun is never a fix here -- a red is investigated to its root cause (CLAUDE.md, "Investigate every red"). `gh run
-download` and `cancel` pass silently. It reads the command, not the shell, through masked-exit-guard's tokenizer; a
+download` and `cancel` pass silently. It reads the command, not the shell, through lib/shell_words; a
 command it cannot tokenize is allowed, and a broken guard never blocks.
 """
-import importlib.machinery
-import importlib.util
 import json
 import os
 import sys
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+import hook_event  # noqa: E402
+import shell_words as shell  # noqa: E402
+
 KEYWORDS = {"then", "do", "else", "elif", "if", "while", "until", "!"}
 
 DENY = ("gh-run-guard: `gh run rerun` is not a fix. A red is investigated to its root cause and the cause fixed "
@@ -35,29 +36,19 @@ ADVICE = {
 }
 
 
-def load_tokenizer():
-    path = os.path.join(HERE, "masked-exit-guard")
-    loader = importlib.machinery.SourceFileLoader("masked_exit_guard", path)
-    spec = importlib.util.spec_from_loader("masked_exit_guard", loader)
-    module = importlib.util.module_from_spec(spec)
-    loader.exec_module(module)
-    return module
-
-
 def gh_run_verbs(command):
     """The verbs of the `gh run <verb>` calls in `command` (list, view, ...), in order."""
-    guard = load_tokenizer()
-    words = guard.tokens(guard.without_heredoc_bodies(command))
+    words = shell.tokens(shell.without_heredoc_bodies(command))
     verbs = []
     for i, word in enumerate(words[:-2]):
-        if os.path.basename(word) == "gh" and words[i + 1] == "run" and not guard.is_punctuation(words[i + 2]):
+        if os.path.basename(word) == "gh" and words[i + 1] == "run" and not shell.is_punctuation(words[i + 2]):
             verbs.append(words[i + 2])
     return verbs
 
 
 def main():
     try:
-        event = json.load(sys.stdin)
+        event = hook_event.read_event()
         command = event.get("tool_input", {}).get("command", "")
         verbs = gh_run_verbs(command) if isinstance(command, str) and "gh" in command else []
     except Exception:  # a broken guard must not wedge every session

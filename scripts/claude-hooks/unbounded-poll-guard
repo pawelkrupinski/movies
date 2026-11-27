@@ -23,25 +23,15 @@ so long-running servers (scripts/sbt-warm --serve, scripts/local-mirror/mirror.s
 It reads the command, not the shell: what it cannot tokenize is allowed, and a broken guard never blocks (exit 0).
 Self-test: scripts/claude-hooks/unbounded-poll-guard-test.sh.
 """
-import importlib.machinery
-import importlib.util
-import json
 import os
 import re
 import shlex
 import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+import hook_event  # noqa: E402
+import shell_words as shell  # noqa: E402
 
-def load_shell_reader():
-    """masked-exit-guard's tokenizer, which reads a command the way the shell does: shared, not copied."""
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "masked-exit-guard")
-    loader = importlib.machinery.SourceFileLoader("masked_exit_guard", path)
-    module = importlib.util.module_from_spec(importlib.util.spec_from_loader(loader.name, loader))
-    loader.exec_module(module)
-    return module
-
-
-shell = load_shell_reader()
 
 REDIRECTS = {"<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|"}
 # Words after which the next word is still a command.
@@ -210,7 +200,7 @@ class Reader:
             if commands and os.path.basename(commands[0]) in SHELLS and "-c" not in head:
                 self.check(body, depth + 1)
         try:
-            words = shell.tokens(shell.without_heredoc_bodies(command))
+            words = shell.command_words(command)
         except ValueError:
             return
         for word in words:
@@ -302,14 +292,14 @@ class Reader:
 
 def backgrounds_itself(command):
     try:
-        return "&" in shell.tokens(shell.without_heredoc_bodies(command))
+        return "&" in shell.command_words(command)
     except ValueError:
         return False
 
 
 def main():
     try:
-        event = json.load(sys.stdin)
+        event = hook_event.read_event()
         tool_input = event.get("tool_input", {})
         command = tool_input.get("command", "")
         if not isinstance(command, str):
