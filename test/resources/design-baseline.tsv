@@ -259,5 +259,6 @@ import-io	scripts/label-lookup	1
 import-io	scripts/lib/cli_harness.py	2
 import-io	scripts/listing_history.py	2
 import-io	scripts/rule_firing_prod.py	1
+distance	scripts/lib	0.86
 distance	scripts/ci	0.55
 dircycle	scripts|scripts/ci	2
