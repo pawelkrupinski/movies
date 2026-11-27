@@ -19,15 +19,12 @@ import os
 import statistics
 import sys
 import urllib.parse
-from typing import Callable, Dict, Iterator, List, Mapping, Sequence, Tuple
+from typing import TYPE_CHECKING, Callable, Dict, Iterator, List, Sequence, Tuple
 
-LIB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib")
-sys.path.insert(0, LIB)
-from tool_files import Files  # noqa: E402
-import tool_http  # noqa: E402
-import tool_git  # noqa: E402
-import machine  # noqa: E402
-import tool_process  # noqa: E402
+if TYPE_CHECKING:  # the adapters are imported where they are built (main): shard_tests.py imports this module for read_rows alone
+    import tool_git
+    import tool_http
+    from tool_files import Files
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_FILE = os.path.join(HERE, "shard-weights-identity.tsv")
@@ -35,7 +32,7 @@ DEFAULT_URL = "http://victoria-logs-ci.service.consul:9429"
 QUERY = 'source:ci kind:suite workflow_file:="precommit-check.yml" job:~"^check \\\\(identity " | fields run_id, suite, time_s'
 
 
-def read_rows(text: str) -> Dict[str, float]:
+def parse_rows(text: str) -> Dict[str, float]:
     """{class: seconds} of a weights file's text (comments and the header skipped)."""
     rows: Dict[str, float] = {}
     for raw in text.splitlines():
@@ -44,6 +41,12 @@ def read_rows(text: str) -> Dict[str, float]:
             name, seconds = raw.split()
             rows[name] = float(seconds)
     return rows
+
+
+def read_rows(path: str) -> Dict[str, float]:
+    """The weights file at `path` (shard_tests.py's reader; a refresh reads its `--current` through Files)."""
+    with open(path, encoding="utf-8") as fh:
+        return parse_rows(fh.read())
 
 
 def medians(samples, min_runs):
@@ -115,12 +118,19 @@ def refresh(a: argparse.Namespace, files: Files, git: tool_git.Git, http: tool_h
     if not measured:
         print("shard_weights: no suite measured in the window: the file is left as it is", file=sys.stderr)
         return 1
-    current = read_rows(files.read_text_or(a.current, ""))
+    current = parse_rows(files.read_text_or(a.current, ""))
     sys.stdout.write(render(merge(measured, current, class_exists(git)), a.days, a.min_runs))
     return 0
 
 
-def main(argv: Sequence[str], env: Mapping[str, str]) -> int:
+def main(argv: Sequence[str]) -> int:
+    sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
+    import machine
+    import tool_git
+    import tool_http
+    import tool_process
+    from tool_files import Files
+    env = machine.environment()
     ap = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("refresh")
@@ -135,4 +145,4 @@ def main(argv: Sequence[str], env: Mapping[str, str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], machine.environment()))
+    sys.exit(main(sys.argv[1:]))

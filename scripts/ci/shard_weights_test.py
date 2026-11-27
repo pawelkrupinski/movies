@@ -52,7 +52,7 @@ class WeightsTest(unittest.TestCase):
             target = os.path.join(d, "new.tsv")
             with open(target, "w") as fh:
                 fh.write(out)
-            self.assertEqual(shard_tests.read_weights(Files.here(), target), {"services.identity.FamilyIndexCompletenessSpec": 450.0})
+            self.assertEqual(shard_tests.read_weights(target), {"services.identity.FamilyIndexCompletenessSpec": 450.0})
 
     def test_refresh_over_a_telemetry_answer_a_scripted_git_and_files_in_memory(self):
         suite = "services.identity.FamilyIndexCompletenessSpec"
@@ -86,7 +86,7 @@ class WeightsTest(unittest.TestCase):
             "scripts.IdentityDriftSlicesSpec", "services.identity.agreement.IncrementalWholeEquivalenceSpec",
             "services.identity.UnmatchedClustersRatchetSpec", "services.identity.agreement.LateInputEquivalenceSpec",
             "scripts.IdentityRefitMeasureAllSpec"]
-        weights = shard_tests.read_weights(Files.here(), "identity")
+        weights = shard_tests.read_weights("identity")
         self.assertEqual([c for c in measured_long if c not in weights], [])
         self.assertGreater(weights["services.identity.FamilyIndexCompletenessSpec"], 100)
 
