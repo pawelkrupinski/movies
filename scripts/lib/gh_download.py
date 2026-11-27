@@ -65,6 +65,7 @@ from typing import Callable, List, Mapping, MutableMapping, Optional, Sequence, 
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))  # run as `python3 -I`: its own directory is not there
 import machine  # noqa: E402
+import tool_python  # noqa: E402
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 BOUNDED = os.path.join(HERE, "tool_bounded.py")
@@ -81,7 +82,7 @@ RATE_LIMIT_RESET = "[.resources.core, .resources.graphql] | map(select(.remainin
 
 
 def bounded(seconds: int, argv: Sequence[str]) -> List[str]:
-    return [sys.executable, "-I", "-B", BOUNDED, str(seconds), *argv]
+    return tool_python.isolated(BOUNDED, str(seconds), *argv, python=sys.executable)
 
 
 def number(env: Mapping[str, str], name: str, default: int) -> int:
