@@ -212,10 +212,15 @@ def listing(row: str) -> tuple[str, str, str]:
     """A drift or flips row's listing: country, venue, raw title (a baseline row's seed, its second column, aside)."""
     cols = row.split("\t")
     if cols[0].strip() in BACKLOG_KINDS:  # a backlog row: kind, country, seed, slice, venue, rawTitle, ...
-        return tuple(c.strip() for c in ([cols[1]] + cols[4:6] + ["", "", ""])[:3])
+        return _first_three([cols[1]] + cols[4:6])
     if len(cols) > 1 and cols[1].strip().isdigit():
         cols = [cols[0]] + cols[2:]
-    return tuple(c.strip() for c in (cols + ["", "", ""])[:3])
+    return _first_three(cols)
+
+
+def _first_three(cols: list[str]) -> tuple[str, str, str]:
+    country, venue, title = (cols + ["", "", ""])[:3]
+    return country.strip(), venue.strip(), title.strip()
 
 
 def known(rev: str, slices_too: bool = True) -> set[tuple[str, str, str]]:

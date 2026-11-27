@@ -65,6 +65,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from typing import Dict, List, TypedDict
 
 API = "https://api.github.com"
 SCHEDULED_EVENTS = ("schedule", "repository_dispatch")
@@ -258,8 +259,21 @@ def stem(file_name):
     return file_name.rsplit(".", 1)[0]
 
 
-def generate(workflows):
-    covered, excluded = {}, {}
+class ScheduledWorkflow(TypedDict):
+    file: str
+    crons: List[str]
+    onCalendar: List[str]
+
+
+class Document(TypedDict):
+    generatedBy: str
+    workflows: Dict[str, ScheduledWorkflow]
+    excluded: Dict[str, str]
+
+
+def generate(workflows) -> Document:
+    covered: Dict[str, ScheduledWorkflow] = {}
+    excluded: Dict[str, str] = {}
     for name, text in sorted(workflows.items()):
         crons = workflow_crons(text)
         if not crons:
@@ -549,8 +563,11 @@ def run(args, clock=None, sleep=time.sleep, log=None):
                   sleep)
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
     gen = sub.add_parser("generate", help=f"write {JSON_PATH} from the workflows' crons")
     gen.add_argument("--root", default=".")

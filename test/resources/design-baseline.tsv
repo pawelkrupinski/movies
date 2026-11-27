@@ -124,7 +124,7 @@ effect	scripts/ci/baseline_ratchet.py:files	5
 effect	scripts/ci/build_image.py:files	4
 effect	scripts/ci/cgroup_sampler.py	2
 effect	scripts/ci/cgroup_sampler.py:files	11
-effect	scripts/ci/check-security-headers.py:network	7
+effect	scripts/ci/check-security-headers.py:network	4
 effect	scripts/ci/ci_http_calls.py:files	3
 effect	scripts/ci/ci_row_scope.py:files	5
 effect	scripts/ci/ci_timings.py	1
@@ -158,7 +158,7 @@ effect	scripts/ci/coupling_splits.py:files	3
 effect	scripts/ci/coupling_verdicts.py:files	6
 effect	scripts/ci/cross_country.py:files	1
 effect	scripts/ci/darwin_sampler.py:files	3
-effect	scripts/ci/decodo-probe.py:network	5
+effect	scripts/ci/decodo-probe.py:network	3
 effect	scripts/ci/drift_diff.py:files	4
 effect	scripts/ci/drift_explorer.py:files	2
 effect	scripts/ci/drift_scenario.py:files	1
@@ -734,7 +734,6 @@ mixed	scripts/ci/cgroup_sampler.py:process_rows	6
 mixed	scripts/ci/cgroup_sampler.py:start	3
 mixed	scripts/ci/check-security-headers.py:_opener	3
 mixed	scripts/ci/check-security-headers.py:fetch	5
-mixed	scripts/ci/check-security-headers.py:redact	4
 mixed	scripts/ci/ci_http_calls.py:otlp_payload	3
 mixed	scripts/ci/ci_http_calls.py:read	6
 mixed	scripts/ci/ci_row_scope.py:Outputs.newest_green	5

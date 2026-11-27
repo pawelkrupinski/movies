@@ -59,7 +59,7 @@ Shares = Dict[str, Dict[str, Any]]
 
 def cost(code: str, phase: str, costs: Costs, drift_twice: bool = False) -> float:
     like, times = LIKE.get(phase, (None, 1.0))
-    minutes = costs.get((code, phase)) or (costs[(code, like)] * times if (code, like) in costs else UNMEASURED_MINUTES)
+    minutes = costs.get((code, phase)) or (costs[(code, like)] * times if like is not None and (code, like) in costs else UNMEASURED_MINUTES)
     return minutes * 2 if drift_twice and phase.startswith("takes-drift-") else minutes
 
 
@@ -74,7 +74,7 @@ def longest_first(code, phases, costs, drift_twice=False):
     order."""
     def weight(phase):
         served = STARTS_BEFORE.get(phase)
-        if served in phases:
+        if served is not None and served in phases:
             return (-cost(code, served, costs, drift_twice), 0)
         return (-cost(code, phase, costs, drift_twice), 1)
     return sorted(phases, key=weight)

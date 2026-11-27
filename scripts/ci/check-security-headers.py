@@ -58,6 +58,7 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
@@ -158,7 +159,7 @@ def redact(text):
     text = re.sub(r"(\w+://)[^/@\s]+@", r"\1***@", text)
     for secret in _proxy_credentials() + (_edge_check_key(),):
         if secret:
-            for form in {secret, urllib.request.quote(secret, safe="")}:
+            for form in {secret, urllib.parse.quote(secret, safe="")}:
                 text = text.replace(form, "***")
     return text
 
@@ -222,7 +223,7 @@ def _opener():
 
     def open_via(port, request, timeout):
         if port not in openers:
-            proxy = "http://%s:%s@%s:%s" % (urllib.request.quote(user, safe=""), urllib.request.quote(password, safe=""), host, port)
+            proxy = "http://%s:%s@%s:%s" % (urllib.parse.quote(user, safe=""), urllib.parse.quote(password, safe=""), host, port)
             openers[port] = urllib.request.build_opener(_NoRedirect(), urllib.request.ProxyHandler({"https": proxy, "http": proxy}))
         return openers[port].open(request, timeout=timeout)
     return DirectThenProxy(direct, ProxyPool(host, ports, open_via))

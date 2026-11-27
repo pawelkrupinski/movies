@@ -74,8 +74,11 @@ def compare(head, base):
     return lines, said
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv=None):
-    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    p = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     sub = p.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("compare")
     c.add_argument("--seed", required=True)

@@ -63,8 +63,11 @@ def exemptions(since: str, rev: str) -> List[Exemption]:
     return out
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv: List[str]) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.splitlines()[0])
     parser.add_argument("--since", default="7d")
     parser.add_argument("--rev", default="")
     args = parser.parse_args(argv)

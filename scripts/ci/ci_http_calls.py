@@ -85,8 +85,11 @@ def push(payload, url, token, opener=grafana_otlp.OPEN):
     return "::warning::external-call counts not pushed: %s" % failed if failed else "Pushed external-call counts."
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv=None, out=sys.stdout):
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("--dir", default=DIRECTORY)
     parser.add_argument("--country", required=True)
     parser.add_argument("--row", default="")

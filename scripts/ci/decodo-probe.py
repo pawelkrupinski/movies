@@ -11,6 +11,7 @@ import collections
 import os
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +27,7 @@ TIMEOUT = 20
 
 def probe(host, port, user, password, url=URL, timeout=TIMEOUT):
     """(passed, text) for one port."""
-    proxy = "http://%s:%s@%s:%s" % (urllib.request.quote(user, safe=""), urllib.request.quote(password, safe=""), host, port)
+    proxy = "http://%s:%s@%s:%s" % (urllib.parse.quote(user, safe=""), urllib.parse.quote(password, safe=""), host, port)
     opener = urllib.request.build_opener(
         headers._NoRedirect(), urllib.request.ProxyHandler({"https": proxy, "http": proxy}))
     request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "kinowo-decodo-probe"})

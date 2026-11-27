@@ -23,7 +23,7 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Set, Tuple, TypeVar
+from typing import Callable, Dict, List, Optional, Protocol, Set, Tuple, TypeVar
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
 import trailers  # noqa: E402  (puts scripts/lib on the path)
@@ -87,7 +87,13 @@ class Renames:
         return path
 
 
-def moved_key(key: str, renames: Renames) -> Optional[str]:
+class Follows(Protocol):
+    """What moved_key and moved_from read of a rename source: where a path went (Renames, or one diff between two refs)."""
+
+    def follow(self, path: str) -> Optional[str]: ...
+
+
+def moved_key(key: str, renames: Follows) -> Optional[str]:
     """`key` with each of its sources (`<path>:<name>`, `<path>`, `<path>|<path>...`) replaced by where git renamed it,
     the function or class name kept; None when a source is gone with no rename."""
     paths, sep, name = key.partition(":")
@@ -95,7 +101,7 @@ def moved_key(key: str, renames: Renames) -> Optional[str]:
     return None if None in followed else "|".join(sorted(p for p in followed if p)) + sep + name
 
 
-def moved_from(key: str, value: N, before: Dict[str, N], present: Dict[str, N], renames: Renames) -> Optional[str]:
+def moved_from(key: str, value: N, before: Dict[str, N], present: Dict[str, N], renames: Follows) -> Optional[str]:
     """The row `key` is a MOVE of: a row of `before` no longer `present` whose sources git renamed to `key`'s, the name
     unchanged, at or above `value` (a moved source re-keys its rows, and the move adds nothing). None for none."""
     return next((old for old, was in sorted(before.items())

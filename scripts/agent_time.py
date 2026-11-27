@@ -393,8 +393,11 @@ def default_tasks_dir() -> str | None:
     return max(found, key=os.path.getmtime) if found else None
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv: list) -> int:
-    parser = argparse.ArgumentParser(prog="agent-time", description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(prog="agent-time", description=DOCSTRING.splitlines()[0])
     parser.add_argument("tasks_dir", nargs="?", help="a session's tasks directory (default: the newest session's)")
     parser.add_argument("--agent", help="one agent's slowest steps (its id, or a prefix of it)")
     parser.add_argument("--top", type=int, default=20, help="steps --agent lists (default 20)")
