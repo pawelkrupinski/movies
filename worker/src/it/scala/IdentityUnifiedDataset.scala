@@ -1,6 +1,6 @@
 package integration
 
-import services.identity.agreement.{Agreement, FamilyAnswers, UnifiedEvidence}
+import services.identity.agreement.{FamilyAnswers, FamilyIdentification, UnifiedEvidence}
 import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
 import services.identity._
 import services.identity.measures.{Evidence, FallbackIds, Listing, PosterEvidence, ResolverDecision}
@@ -169,7 +169,7 @@ object IdentityUnifiedDataset {
         val nodes    = model.members.flatMap(nodeOf.get).distinctBy(_.keys)
         if (nodes.isEmpty) count("no-nodes")
         val verdicts = answers.flatMap { case (family, familyAnswers) =>
-          Agreement.verdict(listings, familyAnswers, venues, c.normalizer, IdentityCalibration.resolver.withPriorSpread(family.priorSpread)).answered
+          new FamilyIdentification(c.normalizer, IdentityCalibration.resolver.withPriorSpread(family.priorSpread)).verdict(listings, familyAnswers, venues).answered
         }
         if (verdicts.nonEmpty) count("with-families")
         val distances = posterDistances(listings, nodes, verdicts)

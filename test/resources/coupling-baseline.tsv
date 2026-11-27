@@ -52,7 +52,7 @@ module-edge	scrapers->geodata	4
 module-edge	scrapers->http	337
 module-edge	scrapers->identity	8
 module-edge	web->base	26
-module-edge	web->common	637
+module-edge	web->common	639
 module-edge	web->geodata	1
 module-edge	web->http	20
 module-edge	web->identity	41
@@ -141,7 +141,7 @@ fanout	services.identity.ResolverDecisions	14
 fanout	services.identity.ResolverRun	13
 fanout	services.identity.SourceCannotLinks	11
 fanout	services.identity.VenueSlots	12
-fanout	services.identity.agreement.Agreement	24
+fanout	services.identity.agreement.Agreement	17
 fanout	services.identity.agreement.AgreementCandidates	20
 fanout	services.identity.agreement.AgreementCorrections	21
 fanout	services.identity.agreement.AgreementEvidence	16
@@ -245,7 +245,7 @@ databag	services.identity.StoredFilmSlots	16
 databag	services.identity.StoredIdentityConfidence	15
 databag	services.identity.TitleRelation	12
 databag	services.identity.VenueSlots	23
-databag	services.identity.agreement.Agreement	40
+databag	services.identity.agreement.Agreement	29
 databag	services.identity.agreement.AgreementStageComposition	12
 databag	services.identity.agreement.Broadcast	16
 databag	services.identity.agreement.Catalogue	16

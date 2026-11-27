@@ -2532,8 +2532,8 @@ Calibrated = fitted from data today (`identity-weights.json`, §14). Feature = a
 | season / house production | record names the listing's season / house production | `Scored` | pre-empts the rules | no | `production.season`, `production.house` |
 | double programme | a "+" joining two whole works, whatever a database holds (`MultiFilmBill.billsTwoWholeWorks`) | `Acceptance.billsSeveralWorks` | takes neither | no | — (the fill guards it as `bill.several`) |
 | model lean / best candidate | `ResolverDecision.leaning` (≥2× runner-up) / `candidate` | `ResolverDecisions` | the agreement's TMDB vote | no | `model.lean`, `model.best` |
-| family take (imdb, wiki, filmweb, metacritic, rt) | the resolver over the family's answers takes one film | `Agreement.verdict` | one vote each; `priorSpread` 1.5/0.5/0.5/1.0/1.5 (cross-validated) | spread only | `family.<f>.took` |
-| family lean | best undenied ≥ `LeanMargin` × runner-up | `Agreement.leaningOf` | completes a quorum | no | `family.<f>.leans` |
+| family take (imdb, wiki, filmweb, metacritic, rt) | the resolver over the family's answers takes one film | `FamilyIdentification.verdict` | one vote each; `priorSpread` 1.5/0.5/0.5/1.0/1.5 (cross-validated) | spread only | `family.<f>.took` |
+| family lean | best undenied ≥ `LeanMargin` × runner-up | `FamilyIdentification.leaningOf` | completes a quorum | no | `family.<f>.leans` |
 | quorum | ≥3 supporting, +1 per dissenting family; a film is weighed only as a group of picks, so it always has a taker | `Agreement.agreed` | `Quorum` 3 | no | `agreement.quorum` (the rule's own verdict) |
 | turned down | a family weighed it and leaned to another it does not contradict | `Agreement.supported` | veto | no | `family.turnedDown` |
 | dissent | a family took another film the title names | `Agreement.agreed` | raises the quorum | no | `family.dissent` |

@@ -8,7 +8,7 @@ import services.identity.vocabulary.{Answer, VoterFamily}
 import services.identity.{IdentityCalibration, IdentityLookups, ReadEvent, RecordingLookups}
 import services.titles.TitleNormalizer
 
-/** Each family's verdict over a cluster's listings ([[Agreement.verdict]]), kept with everything its resolve read — each of
+/** Each family's verdict over a cluster's listings ([[FamilyIdentification.verdict]]), kept with everything its resolve read — each of
  *  the family's answers and each venue page, by the digest of what it read, nothing there yet too — and handed back while
  *  every one of them reads the same again. A take's correction read afresh because one family's answer was filed asked
  *  every other family's resolve again over the same listings: ~40% of a drift replay's CPU (PL, 2026-10-26 profile).
@@ -23,6 +23,9 @@ import services.titles.TitleNormalizer
 private[agreement] final class FamilyVerdicts(venues: IdentityLookups, normalizer: TitleNormalizer, calibrations: Map[VoterFamily, IdentityCalibration]) {
   import FamilyVerdicts.*
 
+  /** Each family's identification of a cluster, under the stage's normaliser and the family's calibration. */
+  private val identifications: Map[VoterFamily, FamilyIdentification] =
+    calibrations.map { case (family, calibration) => family -> new FamilyIdentification(normalizer, calibration) }
   private val kept    = mutable.HashMap.empty[(VoterFamily, Seq[ListingKey]), Kept]
   private var applies = 0L
   /** How many verdicts were resolved and how many handed back kept, since the stage was made. */
@@ -47,8 +50,8 @@ private[agreement] final class FamilyVerdicts(venues: IdentityLookups, normalize
         k.verdict
       case None =>
         val tape    = mutable.ArrayBuffer.empty[Read]
-        val verdict = Agreement.verdict(listings, AgreementEvidence.recording(answers, asked, reads, taping(tape)),
-          new RecordingLookups(venues, taping(tape)), normalizer, calibrations(answers.family))
+        val verdict = identifications(answers.family).verdict(listings, AgreementEvidence.recording(answers, asked, reads, taping(tape)),
+          new RecordingLookups(venues, taping(tape)))
         synchronized {
           kept(key) = Kept(listings, tape.distinct.toArray, verdict, applies)
           resolved += 1

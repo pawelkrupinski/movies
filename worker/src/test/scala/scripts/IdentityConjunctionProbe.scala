@@ -1,6 +1,6 @@
 package scripts
 
-import services.identity.agreement.{Agreement, UnifiedEvidence, VenueListings}
+import services.identity.agreement.{FamilyIdentification, UnifiedEvidence, VenueListings}
 import services.identityadapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbKind}
 import services.identity._
 import services.identity.measures.{Evidence, FallbackIds, Listing, PosterEvidence, ResolverDecision}
@@ -79,7 +79,7 @@ object IdentityConjunctionProbe {
         else {
           val nodes    = IdentityResolver.evidenceOf(listings, replay, normalizer)(_ => true)
           val verdicts = answers.flatMap { case (family, fa) =>
-            Agreement.verdict(listings, fa, replay, normalizer, IdentityCalibration.resolver.withPriorSpread(family.priorSpread)).answered }
+            new FamilyIdentification(normalizer, IdentityCalibration.resolver.withPriorSpread(family.priorSpread)).verdict(listings, fa, replay).answered }
           def page(x: Listing) = if (replay.hasDetail(x)) replay.detail(x).answered.flatten else None
           val stated = listings.map { x =>
             page(x).fold(x) { detail =>

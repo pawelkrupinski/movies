@@ -21,7 +21,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
   private val klondike1932 = film("Klondike", 1932, "Phil Rosen", 68)
 
   private def picks(listings: Seq[Listing], families: Seq[FamilyAnswers]): Seq[FamilyVerdict] =
-    families.flatMap(answers => Agreement.verdict(listings, answers, NoVenueDetails, normalizer, IdentityCalibration.resolver).answered)
+    families.flatMap(answers => new FamilyIdentification(normalizer, IdentityCalibration.resolver).verdict(listings, answers, NoVenueDetails).answered)
 
   "Three families each identifying the listing" should "agree on the film, by cross-id or by its facts" in {
     val bare = Seq(listing(KinoMuza, "Klondike", year = Some(2022)))
@@ -529,7 +529,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
       def directedBy(name: String) = { asked += s"director|$name"; held.directedBy(name) }
       def record(id: String)       = held.record(id)
     }
-    val verdict = Agreement.verdict(bare, counted, NoVenueDetails, normalizer, IdentityCalibration.resolver)
+    val verdict = new FamilyIdentification(normalizer, IdentityCalibration.resolver).verdict(bare, counted, NoVenueDetails)
     verdict.answered.map(_.pick) shouldBe Some(None)
     asked.groupBy(identity).collect { case (question, times) if times.size > 1 => question } shouldBe empty
   }
@@ -542,16 +542,16 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val film444 = film("444", 2026, "Aleksandr Petrov", 90)
     val bare = listing(KinoMuza, "Der Film 444 und ein Treffen mit dem Protagonisten und dem Autor").copy(originalTitle = Some("444"))
     val fed  = bare.copy(catalogueIds = Seq(services.identity.vocabulary.CatalogueId("cineamo", "1669788m")))
-    def chosen(of: Listing) = Agreement.verdict(Seq(of), new HeldFamilyAnswers(VoterFamily.Imdb,
+    def chosen(of: Listing) = new FamilyIdentification(normalizer, IdentityCalibration.resolver).verdict(Seq(of), new HeldFamilyAnswers(VoterFamily.Imdb,
       Map("tt33394780" -> SourceRecord(film444, Map("imdb" -> "tt33394780")))),
-      NoVenueDetails, normalizer, IdentityCalibration.resolver).answered.map(verdict => verdict.pick.map(_.record.film).orElse(verdict.leaning.map(_.film)))
+      NoVenueDetails).answered.map(verdict => verdict.pick.map(_.record.film).orElse(verdict.leaning.map(_.film)))
     chosen(bare) shouldBe Some(Some(film444))
     chosen(fed) shouldBe chosen(bare)
   }
 
   "A family whose questions are not answered yet" should "pick nothing yet — a gap, not a verdict" in {
     val bare = Seq(listing(KinoMuza, "Klondike"))
-    Agreement.verdict(bare, new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty, unanswered = true), NoVenueDetails, normalizer, IdentityCalibration.resolver) shouldBe Answer.Unknown
+    new FamilyIdentification(normalizer, IdentityCalibration.resolver).verdict(bare, new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty, unanswered = true), NoVenueDetails) shouldBe Answer.Unknown
   }
 
   "Two records of one film in two languages" should "be the same film by director, year and a shared title word" in {

@@ -21,8 +21,6 @@ controllers.ApiFilm	collaborator
 controllers.ApiFilmDetails	data
 controllers.ApiRatings	data
 controllers.ApiShowtime	data
-controllers.NativeSignInController	collaborator
-controllers.OauthSignInController	collaborator
 controllers.BarData	data
 controllers.BrowseHref	data
 controllers.BrowsePage	collaborator
@@ -103,6 +101,8 @@ controllers.MongoMirrorFreshness	collaborator
 controllers.MovieApiController	collaborator
 controllers.MovieController	collaborator
 controllers.MovieControllerService	collaborator
+controllers.NativeSignInController	collaborator
+controllers.OauthSignInController	collaborator
 controllers.PageMeta	data
 controllers.PageTags	data
 controllers.PerUserResponse	data
@@ -133,11 +133,13 @@ controllers.ScriptJson	data
 controllers.SearchTitles	collaborator
 controllers.ServedCity	data
 controllers.ServiceRow	data
+controllers.SessionController	collaborator
 controllers.ShareCardFiles	collaborator
 controllers.ShareCardGallery	data
 controllers.ShareCardGalleryController	collaborator
 controllers.ShareCardUrl	data
 controllers.ShowingsMarkup	collaborator
+controllers.SignInFlow	collaborator
 controllers.SignedInUser	collaborator
 controllers.SitemapBuilder	data
 controllers.SnapshotStore	collaborator
@@ -1578,6 +1580,7 @@ services.identity.agreement.ClusterKeys	collaborator
 services.identity.agreement.ClusterVerdicts	collaborator
 services.identity.agreement.Correction	collaborator
 services.identity.agreement.FamilyAnswers	collaborator
+services.identity.agreement.FamilyIdentification	collaborator
 services.identity.agreement.FamilyLookups	collaborator
 services.identity.agreement.FamilyPick	data
 services.identity.agreement.FamilyVerdict	data

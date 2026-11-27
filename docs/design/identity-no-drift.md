@@ -394,7 +394,7 @@ Measured costs without caches:
 | Whole projection tick | 36 MB |
 | Quiet projection tick | 5.3 MB |
 
-Clustering is cheap (near-linear union-find). The cost is per-family scoring and acceptance, plus `Agreement.verdict` and poster distances. Use `IncrementalResolver.Timings` to get a per-phase breakdown.
+Clustering is cheap (near-linear union-find). The cost is per-family scoring and acceptance, plus `FamilyIdentification.verdict` and poster distances. Use `IncrementalResolver.Timings` to get a per-phase breakdown.
 
 The caches needed:
 - **Model:** `RegionFamily` keyed by (sorted listing set and node keys, Slice digest, `rulesVersion`).

@@ -5,7 +5,7 @@ import services.identityadapters.{AgreementQuestions, FamilyAnswerStore, FamilyS
 import services.identity._
 import services.identity.measures.{FallbackIds, Listing, PosterEvidence, ResolverDecision}
 
-import services.identity.agreement.{Agreement, FamilyAnswers, FamilyVerdict, SourceHit, SourceRecord}
+import services.identity.agreement.{FamilyAnswers, FamilyIdentification, FamilyVerdict, SourceHit, SourceRecord}
 import services.identity.vocabulary.VoterFamily
 import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 
@@ -118,8 +118,7 @@ object ModelTakeAnswersFill {
     def verdictsOf(open: java.util.Set[(VoterFamily, String)]): Seq[Seq[FamilyVerdict]] = asking.map { listings =>
       pool.submit(new java.util.concurrent.Callable[Seq[FamilyVerdict]] {
         def call(): Seq[FamilyVerdict] = families.flatMap { family =>
-          Try(Agreement.verdict(listings, new Recording(store.answers(family), open), l.lookups, c.normalizer,
-            IdentityCalibration.resolver.withPriorSpread(family.priorSpread)).answered).toOption.flatten
+          Try(new FamilyIdentification(c.normalizer, IdentityCalibration.resolver.withPriorSpread(family.priorSpread)).verdict(listings, new Recording(store.answers(family), open), l.lookups).answered).toOption.flatten
         }
       })
     }.map(_.get())

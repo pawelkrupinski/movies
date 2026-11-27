@@ -5,15 +5,13 @@ import scala.collection.mutable
 import services.identity.measures.SourceReliability.{Fact, Trust}
 import services.identity.measures.{FactRelations, Film, IdentityMeasures}
 import services.identity.measures.{Listing, ListingShape, PosterEvidence, SourceReliability}
-import services.identity.vocabulary.toAnswer
 import services.identity.vocabulary.{Answer, Question}
-import services.identity.{Acceptance, IdentityCalibration, IdentityLookups, IdentityResolver}
 import services.titles.billing.BillingPieces
-import services.titles.{TitleContainment, TitleNormalizer}
+import services.titles.TitleContainment
 
 object Agreement {
 
-  /** How many families must agree: each taking the film, or leaning to it ([[leaningOf]]) beside one that takes it. A
+  /** How many families must agree: each taking the film, or leaning to it ([[FamilyIdentification.leaningOf]]) beside one that takes it. A
    *  film is weighed for agreement only as a group of families' picks ([[agreed]]), so it always has a taker: leans and
    *  corroboration complete an agreement, never make one alone (PL "Pianista - Kino Konesera": IMDb takes "The
    *  Pianist", Wikidata and Filmweb lean to it). */
@@ -47,39 +45,6 @@ object Agreement {
    *  [[VoterFamily.database]]): the venue's identification of it. PL "Imago" lists Filmweb's 872645, Chajdas's 2023 film
    *  Filmweb and Metacritic take. */
   val Catalogue = "catalogue"
-
-  /** The film `family` identifies `listings` as — the resolver itself over the family's answers, as the experiment ran
-   *  it — or none, with every record it weighed; `Unknown` while a question it asked is not answered yet. */
-  def verdict(listings: Seq[Listing], answers: FamilyAnswers, venues: IdentityLookups, normalizer: TitleNormalizer,
-              calibration: IdentityCalibration): Answer[FamilyVerdict] = {
-    val lookups    = new FamilyLookups(answers, venues,
-      listings.flatMap(l => Seq(l.title, l.rawTitle, l.cleanTitle) ++ l.originalTitle ++ l.searchTitle).distinct)
-    val scored     = IdentityResolver.resolveScored(listings, lookups, normalizer, calibration)
-    val resolution = scored.resolution
-    if (resolution.unknownQueries > 0 || resolution.unknownFilms > 0) Answer.Unknown
-    else resolution.decisions.flatMap(_.film).distinct match {
-      case Seq(number) =>
-        (for { id <- lookups.idOf(number); answered <- answers.record(id).answered; record <- answered }
-          yield FamilyVerdict(answers.family, Some(FamilyPick(answers.family, id, record)), lookups.weighed))
-          .toAnswer
-      case _ => // none, or the family splits the cluster: no one film
-        Answer.Known(FamilyVerdict(answers.family, None, lookups.weighed, leaningOf(scored.evidence, lookups, answers)))
-    }
-  }
-
-  /** The film a family's evidence LEANS to though it took none: on every listing, its best undenied candidate, at
-   *  [[services.identity.Acceptance.LeanMargin]] times the runner-up's probability — the model's own lean
-   *  (`Acceptance.leaning`) over the family's search. Never a pick: leans complete a quorum beside a taker, and
-   *  a lean to another film is what makes a family's having weighed the film turning it down (PL "Sukienka": RT weighed
-   *  "The Dress" at 6.0%, its runner-up at 2.7%; Tempo's IMDb weighed "Tempo" at 2.9% under "Old" at 33.0%). */
-  private def leaningOf(nodes: Seq[IdentityResolver.NodeEvidence], lookups: FamilyLookups, answers: FamilyAnswers): Option[SourceRecord] =
-    nodes.map { node =>
-      val eligible = node.candidates.filterNot(_.denied).sortBy(-_.probability)
-      eligible.headOption.filter(best => eligible.lift(1).forall(runnerUp => best.probability >= Acceptance.LeanMargin * runnerUp.probability)).map(_.tmdbId)
-    }.distinct match {
-      case Seq(Some(number)) => lookups.idOf(number).flatMap(id => answers.record(id).answered.flatten)
-      case _                 => None
-    }
 
   /** The film the families' evidence, pooled, agrees on: one family or more takes it (picks join, through any agreeing
    *  record, by a shared cross-id, else by [[equivalent]] facts), and with the families leaning to it and what

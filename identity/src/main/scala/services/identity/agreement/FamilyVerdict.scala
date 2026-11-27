@@ -6,7 +6,7 @@ import services.identity.vocabulary.VoterFamily
 final case class FamilyPick(family: VoterFamily, id: String, record: SourceRecord)
 
 /** What a family made of a cluster: the film it took, if any, every film's record it weighed on the way, and the film its
- *  evidence `leaning` favours though no rule took it ([[Agreement.leaningOf]]) — a family that weighed a film and took
+ *  evidence `leaning` favours though no rule took it ([[FamilyIdentification.leaningOf]]) — a family that weighed a film and took
  *  none, leaning to another, has looked at it and turned it down. */
 final case class FamilyVerdict(family: VoterFamily, pick: Option[FamilyPick], weighed: Seq[SourceRecord] = Nil,
                                leaning: Option[SourceRecord] = None)

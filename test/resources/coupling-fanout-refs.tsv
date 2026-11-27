@@ -439,11 +439,6 @@ services.identity.VenueSlots	services.movies.ScrapeListing
 services.identity.VenueSlots	services.movies.ScreeningTokens
 services.identity.VenueSlots	services.movies.VenuePageFacts
 services.identity.VenueSlots	services.titles.TitleNormalizer
-services.identity.agreement.Agreement	services.identity.Acceptance
-services.identity.agreement.Agreement	services.identity.IdentityCalibration
-services.identity.agreement.Agreement	services.identity.IdentityResolver
-services.identity.agreement.Agreement	services.identity.agreement.FamilyAnswers
-services.identity.agreement.Agreement	services.identity.agreement.FamilyLookups
 services.identity.agreement.Agreement	services.identity.agreement.SameFilm
 services.identity.agreement.Agreement	services.identity.agreement.SuspectTakes
 services.identity.agreement.Agreement	services.identity.measures.FactRelations
@@ -453,14 +448,12 @@ services.identity.agreement.Agreement	services.identity.measures.IdentityMeasure
 services.identity.agreement.Agreement	services.identity.measures.Listing
 services.identity.agreement.Agreement	services.identity.measures.ListingShape
 services.identity.agreement.Agreement	services.identity.measures.PosterEvidence
-services.identity.agreement.Agreement	services.identity.measures.ResolverDecision
 services.identity.agreement.Agreement	services.identity.measures.SourceReliability
 services.identity.agreement.Agreement	services.identity.measures.TitleTextMeasures
 services.identity.agreement.Agreement	services.identity.vocabulary.Answer
 services.identity.agreement.Agreement	services.identity.vocabulary.Question
 services.identity.agreement.Agreement	services.identity.vocabulary.ScreeningDays
 services.identity.agreement.Agreement	services.titles.TitleContainment
-services.identity.agreement.Agreement	services.titles.TitleNormalizer
 services.identity.agreement.Agreement	services.titles.billing.BillingPieces
 services.identity.agreement.Agreement	tools.EditDistance
 services.identity.agreement.AgreementCandidates	models.ListingKey
@@ -644,9 +637,9 @@ services.identity.agreement.ClusterVerdicts	services.identity.vocabulary.Memo
 services.identity.agreement.ClusterVerdicts	services.identity.vocabulary.Question
 services.identity.agreement.FamilyVerdicts	services.identity.IdentityCalibration
 services.identity.agreement.FamilyVerdicts	services.identity.RecordingLookups
-services.identity.agreement.FamilyVerdicts	services.identity.agreement.Agreement
 services.identity.agreement.FamilyVerdicts	services.identity.agreement.AgreementEvidence
 services.identity.agreement.FamilyVerdicts	services.identity.agreement.FamilyAnswers
+services.identity.agreement.FamilyVerdicts	services.identity.agreement.FamilyIdentification
 services.identity.agreement.FamilyVerdicts	services.identity.measures.Listing
 services.identity.agreement.FamilyVerdicts	services.identity.vocabulary.Answer
 services.identity.agreement.FamilyVerdicts	services.identity.vocabulary.Dependency
