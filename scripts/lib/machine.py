@@ -6,9 +6,11 @@ signal and wait for processes only through it; their tests hand in fakes where t
   environment()                    the process's own environment (a tool's main() hands it on)
   monotonic() / wall() / sleep(s)  the clock
   output(argv) / status(argv)      a command's stdout (and status) / its status, stdout and stderr as asked
+  captured(argv)                   a command's status and stdout, its stderr this process's
   errors(argv)                     a command's status and its stderr
   spawn(argv)                      a command started in the background (a Popen)
   send(pid, signal) / alive(pid)   a signal to a process (or its group) / whether it exists
+  own_pid() / waited(proc, s)      this process's pid / whether a spawned command ended within s seconds
   replace(argv)                    this process becomes the command (exec)
   spawn_group(argv, env, tty)      a command leading a process group of its own, handed the terminal (tool_bounded)
   piped(producer, consumer, how)   one command's stdout the next one's stdin (`a | b`): the consumer's status
@@ -24,6 +26,8 @@ from dataclasses import dataclass
 from typing import IO, Dict, List, MutableMapping, NoReturn, Optional, Sequence, Tuple, Union
 
 Sink = Union[int, IO[str], IO[bytes], None]
+QUIET: Sink = subprocess.DEVNULL  # a Sink dropping what is written to it
+Process = subprocess.Popen         # what spawn() starts: `machine.Process[bytes]`
 
 
 def environment() -> MutableMapping[str, str]:
@@ -50,6 +54,14 @@ def output(argv: Sequence[str], text_in: Optional[str] = None, cwd: Optional[str
            env: Optional[MutableMapping[str, str]] = None) -> Tuple[int, str]:
     """(status, stdout) of a command, its stderr dropped; 127 and nothing when it cannot be run."""
     return run(argv, Ran(cwd, env, subprocess.PIPE, subprocess.DEVNULL), text_in)
+
+
+def captured(argv: Sequence[str], text_in: Optional[str] = None, cwd: Optional[str] = None,
+             env: Optional[MutableMapping[str, str]] = None, timeout: Optional[float] = None,
+             quiet: bool = False) -> Tuple[int, str]:
+    """(status, stdout) of a command, its stderr this process's (a shell's `$(command)`; dropped when `quiet`); 124 past
+    `timeout`, 127 and nothing when it cannot be run."""
+    return run(argv, Ran(cwd, env, subprocess.PIPE, subprocess.DEVNULL if quiet else None, (), timeout), text_in)
 
 
 def errors(argv: Sequence[str], cwd: Optional[str] = None, env: Optional[MutableMapping[str, str]] = None,
@@ -147,6 +159,19 @@ def send(pid: int, signum: int, group: bool = False) -> bool:
         else:
             os.kill(pid, signum)
     except OSError:
+        return False
+    return True
+
+
+def own_pid() -> int:
+    return os.getpid()
+
+
+def waited(proc: "subprocess.Popen[bytes]", seconds: Optional[float]) -> bool:
+    """Whether `proc` ended within `seconds` (None: however long it takes)."""
+    try:
+        proc.wait(seconds)
+    except subprocess.TimeoutExpired:
         return False
     return True
 

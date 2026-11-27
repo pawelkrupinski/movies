@@ -7,6 +7,13 @@ scripts/lib/pre_push_plan.py
 scripts/lib/pre_push_units.py
 scripts/lib/pre_push_lints.py
 scripts/lib/pre_push_modes.py
+scripts/lib/pre_push_run.py
+scripts/lib/pre_push_repo.py
+scripts/lib/pre_push_push.py
+scripts/lib/pre_push_reuse.py
+scripts/lib/pre_push_known_red.py
+scripts/lib/pre_push_checks.py
+scripts/lib/pre_push_tree.py
 scripts/lib/tool_files.py
 scripts/lib/atomic.py
 scripts/lib/machine.py

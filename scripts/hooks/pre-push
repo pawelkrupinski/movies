@@ -301,95 +301,61 @@ set -uo pipefail
 # before its selection moved to Python, scripts/hooks/pre-push.sh-legacy, sourced so its command line still names
 # this hook (agentctl finds a push's hook by `hooks/pre-push` in it).
 if [ "${KINOWO_PRE_PUSH_LEGACY:-}" = 1 ]; then exec bash -c '. "$0.sh-legacy"' "${BASH_SOURCE[0]}" "$@"; fi
-# THE SELECTION IS PYTHON'S (scripts/pre_push.py over scripts/lib/pre_push_*.py): which checks, compiles, lint specs
-# and tests a list of paths selects. The plan modes are answered there whole, and the run below asks it (pre_push_py).
+# THE SELECTION AND THE RUN ARE PYTHON'S (scripts/pre_push.py over scripts/lib/pre_push_*.py): which checks, compiles,
+# lint specs and tests a list of paths selects (every plan mode), and the run itself -- the hand-over, what is pushed,
+# the range rules, the known-red baseline, the reuse, the check loop with its watchdog and the verdict lines
+# (scripts/lib/pre_push_run.py; its process keeps this hook's path on its command line, which agentctl finds a push's
+# hook by). Run, this file execs it; SOURCED (pre_push_checks.Shell, after the run's state as shell variables), it
+# defines the checks below -- `check_<name>`, the red gate and the stranded-trailer refusal -- each called by name in a
+# bash of its own.
 PrePushHook="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 PrePushPy="${PrePushHook%/*}/../pre_push.py"
 pre_push_py() { python3 -I -B "$PrePushPy" "$PrePushHook" "$@"; }
-case "${1:-}" in
-    --plan|--compile-plan|--coupling-plan|--quality-plan|--js-quality-plan|--py-quality-plan|--identity-change|\
-    --unit-plan|--unit-universe|--source-lints|--lint-plan|--per-file-lints|--script-test-plan|--failure-summary)
-        # ── a plan mode: the copy asked answers it, never handed over ──
-        exec python3 -I -B "$PrePushPy" "$PrePushHook" "$@" ;;
-esac
-# git exports GIT_DIR (and, by setup, GIT_INDEX_FILE / GIT_WORK_TREE) for the repository being
-# pushed — for a worktree, ITS git dir. Every check inherits them, and in the temporary checkout
-# below they would point each `git` back at the pushing worktree's HEAD and index. The hook runs at
-# the checkout's root, where git finds the repository on its own: clear them once, for every check.
-unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX
-
-root="$(git rev-parse --show-toplevel)" || exit 1
-
-# ── The PUSHING checkout's own hook runs, whatever core.hooksPath says ──────────────────────────
-# core.hooksPath=scripts/hooks is relative: each worktree runs its own checkout's copy. Rewritten to an
-# absolute path (three times on 2026-10-14, very likely an IDE's git integration), every worktree's push ran
-# the ROOT checkout's copy — an older hook, judging new work by stale checks. So a hook git runs for another
-# checkout than its own hands over to that checkout's copy. Once only (PREPUSH_DELEGATED_FROM), and never for
-# the dry runs (--range, --checks-only, --fast-only, --verify-only), which name the file they mean; the plan modes were
-# answered above (scripts/pre_push.py), for the hook that was asked.
-dry_run=0
-case "${1:-}" in --range|--checks-only|--fast-only|--verify-only) dry_run=1 ;; esac
-case "$dry_run" in
-    1) ;;
-    *)
-        if [ -z "${PREPUSH_DELEGATED_FROM:-}" ]; then
-            hooks_path="$(git config --get core.hooksPath || true)"
-            case "$hooks_path" in
-                /*|~*) printf '\033[33m! pre-push\033[0m core.hooksPath is absolute (%s): every worktree reaches that one copy — scripts/install-hooks.sh sets it back to the relative scripts/hooks\n' "$hooks_path" >&2 ;;
-            esac
-            hook_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
-            own="$(cd "$root" && pwd -P)/scripts/hooks/pre-push"
-            if [ "$(cd "$root" && pwd -P)" != "$hook_root" ] && [ -f "$own" ] && ! [ "$own" -ef "${BASH_SOURCE[0]}" ]; then
-                export PREPUSH_DELEGATED_FROM="$hook_root"
-                exec bash "$own" "$@"
-            fi
-        fi ;;
-esac
-unset PREPUSH_DELEGATED_FROM
-# ── end of the hand-over ──
-cd "$root" || exit 1
-
-# ── core.hooksPath stays RELATIVE, and this hook proves it did not move it ──────────────────────
-# Absolute (an IDE wrote it three times on 2026-10-14, a fourth time with no IDE running, between two pushes), it sends
-# every worktree to ONE copy of the hooks. An absolute path that names a worktree of THIS clone's scripts/hooks holds
-# only this repository's own hooks, so it is set back to relative here (a foreign directory is left alone). The value
-# the hook starts with is then compared at EXIT: a hook that finds it moved while the checks ran says so, names the
-# processes that could have done it, and restores it — a writer inside the checks is caught, not guessed at.
-hooks_path_now() { git config --local --get core.hooksPath 2>/dev/null || true; }
-# shellcheck source=scripts/hooks-path.sh
-. "$(dirname "${BASH_SOURCE[0]}")/../hooks-path.sh"
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    case "${1:-}" in
+        --plan|--compile-plan|--coupling-plan|--quality-plan|--js-quality-plan|--py-quality-plan|--identity-change|\
+        --unit-plan|--unit-universe|--source-lints|--lint-plan|--per-file-lints|--script-test-plan|--failure-summary)
+            # ── a plan mode: the copy asked answers it, never handed over ──
+            exec python3 -I -B "$PrePushPy" "$PrePushHook" "$@" ;;
+    esac
+    # git exports GIT_DIR (and, by setup, GIT_INDEX_FILE / GIT_WORK_TREE) for the repository being pushed — for a
+    # worktree, ITS git dir: cleared once, for every check (the temporary checkout's git would read the pusher's).
+    unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX
+    root="$(git rev-parse --show-toplevel)" || exit 1
+    # ── The PUSHING checkout's own hook runs, whatever core.hooksPath says ──────────────────────────
+    # core.hooksPath=scripts/hooks is relative: each worktree runs its own checkout's copy. Rewritten to an absolute path
+    # (three times on 2026-10-14, very likely an IDE's git integration), every worktree's push ran the ROOT checkout's
+    # copy — an older hook, judging new work by stale checks. So a hook git runs for another checkout than its own hands
+    # over to that checkout's copy. Once only (PREPUSH_DELEGATED_FROM), and never for the dry runs (--range,
+    # --checks-only, --fast-only, --verify-only), which name the file they mean; the plan modes were answered above.
+    case "${1:-}" in
+        --range|--checks-only|--fast-only|--verify-only) ;;
+        *)
+            if [ -z "${PREPUSH_DELEGATED_FROM:-}" ]; then
+                hooks_path="$(git config --get core.hooksPath || true)"
+                case "$hooks_path" in
+                    /*|~*) printf '\033[33m! pre-push\033[0m core.hooksPath is absolute (%s): every worktree reaches that one copy — scripts/install-hooks.sh sets it back to the relative scripts/hooks\n' "$hooks_path" >&2 ;;
+                esac
+                hook_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+                own="$(cd "$root" && pwd -P)/scripts/hooks/pre-push"
+                if [ "$(cd "$root" && pwd -P)" != "$hook_root" ] && [ -f "$own" ] && ! [ "$own" -ef "${BASH_SOURCE[0]}" ]; then
+                    export PREPUSH_DELEGATED_FROM="$hook_root"
+                    exec bash "$own" "$@"
+                fi
+            fi ;;
+    esac
+    unset PREPUSH_DELEGATED_FROM
+# ── end of the hand-over ── (at the line's start: pre-push-test.sh stamps the hook after it)
+    # THE RUN FAILS CLOSED: no python3, and nothing would be selected -- the push BLOCKED (A MISSING LOCAL TOOL)
+    command -v python3 > /dev/null || {
+        printf '\033[33m! pre-push\033[0m python3 not found: the selection check cannot run, so the push is BLOCKED (never skipped). Fix: install Python 3 (brew install python) -- then push again (or PREPUSH_SKIP=selection, named in your report).\n' >&2
+        exit 1; }
+    cd "$root" || exit 1
+    exec python3 -I -B "$PrePushPy" "$PrePushHook" --run "$@"
+fi
+# ── sourced: the checks ─────────────────────────────────────────────────────────────────────────
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../tool-conventions.sh" # bounded: every gh read below has a deadline
-case "$(hooks_path_now)" in
-    /*)
-        if hooks_path_is_own "$(hooks_path_now)"; then
-            printf '\033[33m! pre-push\033[0m core.hooksPath was %s: set back to the relative scripts/hooks\n' "$(hooks_path_now)" >&2
-            git config --local core.hooksPath scripts/hooks
-        fi ;;
-esac
-hooks_path_at_start="$(hooks_path_now)"
-# The shared root checkout off main or dirty strands every agent's next rebase: said on every push, never blocking it.
-root_check="$(dirname "${BASH_SOURCE[0]}")/../root-checkout-check"
-root_warning=""
-[ ! -x "$root_check" ] || root_warning="$("$root_check" "$root" 2>&1)"
-[ -z "$root_warning" ] || printf '\033[33m! pre-push\033[0m %s\n' "$root_warning" >&2
-tree="" area_tests=""
-on_exit() {
-    local now
-    cd "$root" || return # a temporary checkout is about to go; git has to run somewhere that stays
-    if [ -n "$tree" ]; then
-        # the area tests' kept sbt server, started in the temporary checkout, goes with it
-        [ -n "$area_tests" ] && [ -x "$tree/scripts/sbt-warm" ] && (cd "$tree" && scripts/sbt-warm --stop) >/dev/null 2>&1
-        git -C "$root" worktree remove --force "$tree" >/dev/null 2>&1; git -C "$root" worktree prune
-    fi
-    now="$(hooks_path_now)"
-    if [ "$now" != "$hooks_path_at_start" ]; then
-        printf '\033[31m! pre-push\033[0m core.hooksPath moved from "%s" to "%s" WHILE this hook ran — restoring it. Candidates:\n' "$hooks_path_at_start" "$now" >&2
-        ps -axo pid,ppid,command | grep -E 'git( |-)config|install-hooks|hooksPath' | grep -v grep >&2
-        if [ -n "$hooks_path_at_start" ]; then git config --local core.hooksPath "$hooks_path_at_start"; else git config --local --unset core.hooksPath; fi
-    fi
-}
-trap on_exit EXIT
 
 Zero=0000000000000000000000000000000000000000
 
@@ -659,363 +625,16 @@ check_redgate() {
     return 1
 }
 
-# ── What is being pushed ────────────────────────────────────────────────────────────────────────
-# git feeds "<local ref> <local sha> <remote ref> <remote sha>" per pushed ref. The base for a new
-# remote branch (or a remote sha this clone has never fetched) is its merge-base with origin/main.
-base_for() {
-    local local_sha="$1" remote_sha="$2"
-    if [ "$remote_sha" != "$Zero" ] && git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
-        echo "$remote_sha"
-    elif git rev-parse -q --verify origin/main >/dev/null; then
-        git merge-base "$local_sha" origin/main 2>/dev/null || \
-            printf '\033[33m! pre-push\033[0m %s shares no history with origin/main (unrelated or shallow) — nothing checked (git fetch --unshallow, or rebase onto origin/main)\n' "${local_sha:0:9}" >&2
-    else
-        # Said out loud: an unfetched clone would otherwise check nothing and pass.
-        printf '\033[33m! pre-push\033[0m no origin/main to find the base of %s from — nothing checked (git fetch origin, then push again)\n' "${local_sha:0:9}" >&2
-    fi
-}
 
-ranges=()
-to_main=0
-# A MEASUREMENT'S BRANCH (scripts/identity-measure's `measure/<user>/<sha>-<rand>`) is pushed only for CI to run the
-# commit's identity takes from: it never lands, nothing merges it, and its run deletes it. The checks below guard what
-# main's CI will build, so a push of measure/ refs alone checks nothing -- what the commit becomes on main is checked
-# when it is pushed there. Any other ref in the same push is checked as ever. A CHECK BRANCH (agentctl's remote checks,
-# `check/<entry>`) is the same: pushed only for .github/workflows/precommit-check.yml to run these checks on CI,
-# deleted after its run, never landed.
-# A TAG (refs/tags/*, e.g. experiment/<name> keeping a dropped experiment's code) is the same: it moves nothing main
-# builds, so a tag-only push runs no code check (it once ran 3759 s of scripttests, page and sbt and blocked on them).
-measure_only="" other="" tag_only=""
-checks_only="" fast_only="" verify_only=""
-if [ "${1:-}" = "--range" ] || [ "${1:-}" = "--checks-only" ] || [ "${1:-}" = "--fast-only" ] || [ "${1:-}" = "--verify-only" ]; then
-    [ "$1" = "--checks-only" ] && checks_only=1
-    [ "$1" = "--fast-only" ] && checks_only=1 fast_only=1
-    [ "$1" = "--verify-only" ] && checks_only=1 fast_only=1 verify_only=1
-    ranges+=("${2:?$1 A..B}")
-    to_main=1   # a dry run is judged as a push to main
-else
-    pushed=""
-    while read -r _local_ref local_sha remote_ref remote_sha; do
-        pushed+="$_local_ref $local_sha $remote_ref $remote_sha"$'\n'
-        [ "$local_sha" = "$Zero" ] && continue   # deleting a remote ref: nothing to check
-        case "$remote_ref" in refs/tags/*) tag_only=1; continue ;; esac
-        case "$remote_ref" in refs/heads/measure/*|refs/heads/check/*|refs/heads/land/*) measure_only=1; continue ;; *) other=1 ;; esac
-        base="$(base_for "$local_sha" "$remote_sha")"
-        [ -n "$base" ] && ranges+=("$base..$local_sha")
-        [ "$remote_ref" = refs/heads/main ] && to_main=1
-    done
-    # THE SQUASH GUARD (2026-10-22): a commit built by `git reset --soft` onto a main that had moved since the worktree
-    # was cut silently reverts everyone else's work in between -- one would have reverted 71 files (the red gate
-    # caught it by luck). agentctl refuses a push that returns files to an older main. Where agentctl is not installed
-    # (CI, another machine), nothing changes.
-    if [ "$to_main" = 1 ] && [ -x "$HOME/bin/agentctl" ]; then
-        printf '%s' "$pushed" | "$HOME/bin/agentctl" prepush-check --hook "${1:-origin}" "${2:-}" || exit 1
-    fi
-fi
-if [ "${#ranges[@]}" -eq 0 ]; then
-    [ -n "$measure_only" ] && [ -z "$other" ] && log "measure/ or check/ branch: a CI run's ref, never landed -- nothing to check"
-    [ -n "$tag_only" ] && [ -z "$other" ] && log "tag push: a tag changes nothing main builds -- nothing to check"
-    exit 0
-fi
-
-# The red gate's state, one word a workflow (`<i>:<conclusion>:<run>`, `<i>:unread`, `<i>:none`): a key of THE REUSE below.
-gate_state="not-main"
-if [ "$to_main" = 1 ]; then
-    trailer_lint="$(dirname "${BASH_SOURCE[0]}")/../ci/trailers.py"
-    if [ -f "$trailer_lint" ] && command -v python3 > /dev/null; then
-        lint_ranges=(); for r in "${ranges[@]}"; do lint_ranges+=(--range "$r"); done
-        bounded "${PREPUSH_TRAILER_LINT_SECONDS:-20}" python3 "$trailer_lint" lint "${lint_ranges[@]}" || true  # warns only
-    fi
-    if skipped trailers; then warn "trailers SKIPPED (PREPUSH_SKIP)"
-    else check_stranded_trailers "${ranges[@]}" || exit 1
-    fi
-    if skipped redgate; then warn "redgate SKIPPED (PREPUSH_SKIP)"; gate_state="skipped"
-    elif [ -n "$verify_only" ]; then log "--verify-only: the red gate is not judged (it is when the change is pushed)" >&2
-        gate_state="verify-only"
-    elif [ -n "$fast_only" ]; then log "--fast-only: the red gate is not judged (it is when the batch is pushed)" >&2
-        gate_state="fast-only"
-    elif [ -n "$checks_only" ]; then log "--checks-only: the red gate is not judged (it is when these commits are pushed)" >&2
-        gate_state="checks-only"
-    else gate_state=""; check_redgate "${ranges[@]}" || exit 1
-    fi
-fi
-
-# THREE dots: what the pushed commits changed since they left the base, not how the two tips
-# differ. A fetch by any agent moves origin/main under every worktree of this clone, and a two-dot
-# diff would count those newer commits of main as this push's changes.
-changed="" drift_changed=""
-for r in "${ranges[@]}"; do
-    # A diff that fails is not "nothing changed".
-    names="$(git diff --name-only --diff-filter=d "${r/../...}")" \
-        && deleted="$(git diff --name-only --diff-filter=D "${r/../...}")" \
-        || { printf '\033[33m! pre-push\033[0m cannot diff %s — blocked (bypass with --no-verify)\n' "$r" >&2; exit 1; }
-    changed="$changed$names"$'\n'
-    # the drift check's selection counts deletions too: deleting a gate file (the gate seeds) changes what the gate holds
-    drift_changed="$drift_changed$names"$'\n'"$deleted"$'\n'
-done
-changed="$(printf '%s' "$changed" | grep -v '^$' | LC_ALL=C sort -u)"
-drift_changed="$(printf '%s' "$drift_changed" | grep -v '^$' | LC_ALL=C sort -u)"
-[ -z "$drift_changed" ] && exit 0
-# A commit, not a name: `--range A..HEAD` must compare equal to the checkout's own HEAD.
-head_sha="$(git rev-parse --verify "${ranges[${#ranges[@]}-1]##*..}^{commit}")" || exit 1
-base_sha="${ranges[0]%%..*}"
-
-# THE KNOWN-RED BASELINE (the header): the base's own failures, or none (every failure blocks).
-baseline="" baseline_note=""
-if [ -n "${PREPUSH_BASELINE_DIR:-}" ]; then
-    base_commit="$(git rev-parse --verify -q "$base_sha^{commit}" || true)"
-    if [ "${#ranges[@]}" -ne 1 ]; then
-        baseline_note="no known-red baseline for a push of ${#ranges[@]} ranges: every failing check blocks"
-    elif [ -z "$base_commit" ] || [ ! -r "$PREPUSH_BASELINE_DIR/$base_commit" ]; then
-        baseline_note="no known-red baseline for base ${base_commit:0:10} in $PREPUSH_BASELINE_DIR: every failing check blocks"
-    elif [ "$(head -1 "$PREPUSH_BASELINE_DIR/$base_commit")" != "pre-push baseline $base_commit" ]; then
-        baseline_note="$PREPUSH_BASELINE_DIR/$base_commit does not start 'pre-push baseline $base_commit': every failing check blocks"
-    else
-        baseline="$PREPUSH_BASELINE_DIR/$base_commit"
-    fi
-fi
-
-# THE SELECTION FAILS CLOSED: no python3, or scripts/pre_push.py failing, and nothing would be selected -- the push BLOCKED
-command -v python3 > /dev/null || { missing_tool selection python3 "install Python 3 (brew install python)"; exit 1; }
-checks="" # a deletion-only push: the drift check's alone
-if [ -n "$changed" ]; then
-    checks="$(printf '%s\n' "$changed" | plan)" || { warn "the selection (scripts/pre_push.py --plan) failed: the push is BLOCKED"; exit 1; }
-fi
-# --fast-only: the `sbt` check (compiles, lints, the `fast` set) and the seconds-cheap linters of the touched files
-# (the shellcheck and actionlint checks), whatever else the paths select: a lint finding is never left for main to find (16 commits in
-# the week to 2026-10-31 fixed a lint after landing; simplification-2026-10-31, "lints before landing").
-FastChecks='^(sbt|shellcheck|actionlint)$'
-# THE COMBINED FILES: a path git merges by union (.gitattributes `merge=union`) is the one file the batch's rebase writes
-# from two members' edits without a conflict, so no member's own check judged what the batch holds -- the checks such a
-# path selects run too, bar the area tests and heavy rows no batch runs. 2026-11-05: 81469b9c1 moved Lowther's
-# Nutcracker judgements, 2a4ac45c4 (checked on the older main: `judgements` consistent) re-added them, batch 957f4776f's
-# rebase kept both, its pass ran `sbt` alone and the push reused it: Tool self-tests #74-#76 red on "a second row".
-AreaChecks='^(identity|itrest|itidentity|e2ecorpus)$'
-union_changed() { # the changed paths the pushed tree merges by union; every changed path when git cannot say (fail closed)
-    local attrs
-    attrs="$(printf '%s\n' "$changed" | git check-attr --source="$head_sha" --stdin merge)" \
-        || { printf '%s\n' "$changed"; return 0; }
-    printf '%s\n' "$attrs" | sed -n 's/: merge: union$//p'
+# The red gate's verdict, and the state it read (`<i>:<conclusion>:<run>` ...: a key of THE REUSE) left in
+# $tmp/gate-state for the run (scripts/lib/pre_push_run.py), which calls it by name.
+redgate_state() { # <range>...
+    local rc
+    gate_state=""
+    check_redgate "$@"; rc=$?
+    printf '%s' "$gate_state" > "$tmp/gate-state"
+    return "$rc"
 }
-fast_select() { # stdin: the checks the paths select -> those --fast-only runs, in the same order
-    local combined c
-    combined=" $(union_changed | grep -v '^$' | plan | grep -vE "$AreaChecks" | tr '\n' ' ') "
-    while IFS= read -r c; do
-        [ -n "$c" ] || continue
-        if grep -qE "$FastChecks" <<< "$c"; then echo "$c"
-        else case "$combined" in *" $c "*) echo "$c" ;; esac; fi
-    done
-}
-[ -n "$fast_only" ] && checks="$(printf '%s\n' "$checks" | fast_select)"
-# --verify-only: THE REPO-WIDE SELF-TESTS. A test holding every .py, workflow or spec to a rule (a `# script-test-reads:`
-# glob, run-script-tests' READS) breaks on a combined tree whose two sides share no file -- 18 of Tool self-tests' first
-# 35 reds were that class (python_floor_lint_test.py on a .py, lint-registry-test.sh on a spec) -- so exactly those run
-# (`--readers`, natively: a rule over files' content, no floor or Linux run) when the combined change touches what
-# they read. A runner from before --readers runs none, as before.
-scripttests_readers=""
-if [ -n "$verify_only" ] && ! grep -qx scripttests <<< "$checks" && [ -n "$changed" ] \
-        && grep -q -e '--readers' scripts/run-script-tests 2>/dev/null; then
-    reader_globs="$(scripts/run-script-tests --reads 2>/dev/null)"
-    while IFS= read -r path && [ -z "$scripttests_readers" ]; do
-        while IFS= read -r glob; do
-            # shellcheck disable=SC2254 # a declared glob is a pattern on purpose
-            [ -n "$glob" ] && case "$path" in $glob) scripttests_readers=1; break ;; esac
-        done <<< "$reader_globs"
-    done <<< "$changed"
-    [ -n "$scripttests_readers" ] && checks="${checks:+$checks$'\n'}scripttests"
-fi
-# --verify-only: the touched modules' unit tests ride the sbt check, which runs whenever there are any
-if [ -n "$verify_only" ] && [ -n "$(printf '%s\n' "$changed" | unit_plan)" ] && ! grep -qx sbt <<< "$checks"; then
-    checks="sbt${checks:+$'\n'$checks}"
-fi
-# THE DRIFT GUARDS ON A RED FIX, WHATEVER ITS PATHS: the slice rule reads the message (`Fixes-Red:` and drift/flips), and
-# CI's commit rules judge every pushed commit, so a commit claiming a fix is judged here too, in a third of a second: a
-# scripts-only drift-explorer fix the paths never selected it for turned Main #2172's commit rules red.
-if ! grep -qx driftguards <<< "$checks"; then
-    for r in "${ranges[@]}"; do
-        [ -n "$(git log --format='%(trailers:key=Fixes-Red,valueonly,unfold)' "$r" | grep -v '^$' || true)" ] || continue
-        checks="$(printf '%s\ndriftguards' "$checks" | grep -v '^$')"; break
-    done
-fi
-# A PURE MOVE'S CLAIM HOLDS (the header's `puremove`), whatever the commit touches: selected by the trailer alone.
-for r in "${ranges[@]}"; do
-    [ -n "$(git log --format='%(trailers:key=Pure-Move,valueonly,unfold)' "$r" | grep -v '^$' || true)" ] || continue
-    checks="$(printf '%s\npuremove' "$checks" | grep -v '^$')"; break
-done
-# A VERIFIED PURE MOVE OWES NO IDENTITY AREA (2026-11-19, the owner's "make it simpler and faster": an identity check's
-# shards queued ~17 min and ran ~16 beside the rest's ~7+7, and kept the change out of every backlog batch). A commit
-# saying `Pure-Move: verified` only moves code -- the puremove check above proves it, failing the push otherwise -- so
-# it moves no take, the rule identity-what-if skips such a commit by. The identity area and the identity heavy rows are
-# selected by the paths of the commits WITHOUT that claim alone; the claimed commits' paths still select every other
-# check (sbt, the lints, coupling, ...). agentctl's backlog batch reads the same rule (batch.py identity_change).
-PureMoveAreas='^(identity|itidentity|e2ecorpus)$'
-if grep -qE "$PureMoveAreas" <<< "$checks"; then
-    unclaimed="" claimed_any=""
-    for r in "${ranges[@]}"; do
-        for sha in $(git rev-list "$r"); do
-            if [ "$(git log -1 --format='%(trailers:key=Pure-Move,valueonly,unfold)' "$sha" | grep -v '^$' || true)" = verified ]; then
-                claimed_any=1; continue
-            fi
-            unclaimed+="$(git diff-tree --no-commit-id --name-only -r -m --root "$sha")"$'\n'
-        done
-    done
-    if [ -n "$claimed_any" ]; then
-        unclaimed_areas=" "
-        if [ -n "$(printf '%s' "$unclaimed" | grep -v '^$' || true)" ]; then
-            unclaimed_areas=" $(printf '%s' "$unclaimed" | grep -v '^$' | sort -u | plan | grep -E "$PureMoveAreas" | tr '\n' ' ')"
-        fi
-        kept=""
-        while IFS= read -r c; do
-            [ -n "$c" ] || continue
-            if [[ "$c" =~ $PureMoveAreas ]] && [[ "$unclaimed_areas" != *" $c "* ]]; then
-                log "$c: left out -- only commits saying 'Pure-Move: verified' select it (the puremove check holds them)" >&2
-                continue
-            fi
-            kept+="$c"$'\n'
-        done <<< "$checks"
-        checks="$(printf '%s' "$kept" | grep -v '^$' || true)"
-    fi
-fi
-# THE IDENTITY DRIFT CHECK (the header): the runs a push to main claims to fix, when it touches a drift path. A commit carrying
-# `Red-Unrelated:` claims no fix (a speed-up landing on red under the owner's rule), so its trailer names none here.
-drift_reds="" drift_birth=""
-if [ "$to_main" = 1 ] && [ -z "$fast_only" ] && [ -f .github/identity-drift-paths.txt ]; then
-    # touches_list <paths file> -> true/false; a matcher that fails blocks the push, never reads as "not touched"
-    touches_list() {
-        local out
-        out="$(printf '%s\n' "$drift_changed" | .github/actions/changed-paths/matches.sh "$1")" && [ -n "$out" ] \
-            || { printf '\033[31m! pre-push\033[0m cannot match the pushed paths against %s -- blocked\n' "$1" >&2; exit 1; }
-        [ "$out" = true ]
-    }
-    drift_touched=""; touches_list .github/identity-drift-paths.txt && drift_touched=1
-    if [ -n "$drift_touched" ]; then
-        for r in "${ranges[@]}"; do
-            drift_reds+="$(git log --format='%(trailers:key=Red-Unrelated,valueonly,unfold,separator=%x2C)%x09%(trailers:key=Fixes-Red,valueonly,unfold,separator=%x2C)' "$r" \
-                | awk -F'\t' '$1 == "" { print $2 }' | tr ',; ' '\n' | sed 's/^#//' | grep -E '^[0-9]+$' || true)"$'\n'
-        done
-        drift_reds="$(printf '%s' "$drift_reds" | grep -v '^$' | LC_ALL=C sort -un | tr '\n' ' ' | sed 's/ $//')"
-    fi
-    # A CHECK'S BIRTH OR TIGHTENING (the header): the gate's own files -- whatever else the push touches -- or `New-Check:`
-    # on a commit of a push touching a drift path
-    if [ -f .github/identity-drift-gate-paths.txt ] && touches_list .github/identity-drift-gate-paths.txt; then
-        drift_birth="the gate's own files"
-    fi
-    for r in "${ranges[@]}"; do
-        [ -n "$drift_birth" ] || [ -z "$drift_touched" ] && break
-        [ -z "$(git log --format='%(trailers:key=New-Check,valueonly,unfold)' "$r" | grep -v '^$' || true)" ] || drift_birth="New-Check:"
-    done
-    { [ -z "$drift_reds" ] && [ -z "$drift_birth" ]; } || checks="$(printf '%s\nidentitydrift' "$checks" | grep -v '^$')"
-fi
-# THE SPLIT CHECK (.github/workflows/precommit-check.yml): the landing check's jobs share the selected checks and run at
-# once, so the identity area's shards no longer queue behind the rest under one 80-min cap (run 4025 ran out of it with
-# oldrefs, ios and identitydrift still to go). PREPUSH_ONLY="<checks>": this run runs only those of the selected checks;
-# PREPUSH_ELSEWHERE="<checks>": every selected check but those, a sibling job's. A check left to another job is said.
-split_out() { # <check> -> true when this run leaves it to another job
-    if [ -n "${PREPUSH_ONLY:-}" ]; then case " $PREPUSH_ONLY " in *" $1 "*) return 1 ;; *) return 0 ;; esac; fi
-    case " ${PREPUSH_ELSEWHERE:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac
-}
-if [ -n "${PREPUSH_ONLY:-}${PREPUSH_ELSEWHERE:-}" ]; then
-    kept="" for_others=""
-    for c in $checks; do if split_out "$c"; then for_others+=" $c"; else kept+="$c"$'\n'; fi; done
-    [ -z "$for_others" ] || log "left to the landing check's other job(s):$for_others" >&2
-    checks="$(printf '%s' "$kept" | grep -v '^$' || true)"
-fi
-# THE LANDING CHECK'S PLAN (.github/workflows/precommit-check.yml's `plan` job and each job's own gate): PREPUSH_LIST=1 prints
-# the checks this run WOULD run -- the same selection, after the split above, so with PREPUSH_ONLY/PREPUSH_ELSEWHERE a
-# job's own share -- one a line, runs none and exits 0. A job set up only when this names a check of its share runs exactly
-# what it ran when it always set up: nothing else reads the list.
-if [ "${PREPUSH_LIST:-}" = 1 ]; then printf '%s\n' "$checks" | grep -v '^$' || true; exit 0; fi
-[ -z "$checks" ] && [ -z "$fast_only" ] && exit 0
-# THE JOB'S SPLIT IS THIS RUN'S ALONE: read here, never handed to what the checks run -- a self-test running a hook of its
-# own inherited the landing check's PREPUSH_ONLY / _HEAVY_MONGODB_URI and judged another job's share (landing check run
-# 44246845439). Kept as this shell's variables (heavy_row and the identity shard still read theirs).
-export -n PREPUSH_ONLY PREPUSH_ELSEWHERE PREPUSH_HEAVY_ROWS PREPUSH_HEAVY_MONGODB_URI PREPUSH_HEAVY_MONGODB_DB \
-    PREPUSH_IDENTITY_SHARD PREPUSH_IDENTITY_PLAN 2>/dev/null || true
-
-# ── THE REUSE: a passed result answers a re-push of the SAME tree ───────────────────────────────
-# A re-push of the very same tree -- a no-content rebase, a reworded message, a push that lost its race at the remote
-# after the checks passed -- ran every check again: minutes of sbt for a tree already judged. A run that passes stores
-# its KEY in ~/.cache/kinowo-prepush ($PREPUSH_REUSE_DIR); a later push with the same key skips the path checks, said in
-# one line. The key is everything the checks' verdict reads: the pushed tree and the base's (shellcheck and scripttests
-# judge against the base), the changed paths and the checks they select, this hook's own bytes and the helpers it
-# sources, the red gate's state and PREPUSH_SKIP. One byte of difference in any of them -- the tree, the hook, a red run
-# appearing or clearing -- is another key, and everything runs. A key part that cannot be read means no reuse at all. Only
-# a push of one ref is reused; a failed run stores nothing. The red gate itself always runs (above).
-# PREPUSH_NO_REUSE=1 runs everything regardless.
-reuse_dir="${PREPUSH_REUSE_DIR:-$HOME/.cache/kinowo-prepush}" reuse_key=""
-compute_reuse_key() { # prints the key, or fails when any part of it cannot be read
-    local tree base_tree hook known_base=none
-    if [ -n "$baseline" ]; then known_base="$(git hash-object "$baseline")" && [ -n "$known_base" ] || return 1; fi
-    tree="$(git rev-parse --verify -q "$head_sha^{tree}")" && [ -n "$tree" ] || return 1
-    base_tree="$(git rev-parse --verify -q "$base_sha^{tree}")" && [ -n "$base_tree" ] || return 1
-    # the hook, the shell it sources and its Python selection (scripts/hooks/pre-push-files.txt), beside it
-    # shellcheck disable=SC2046 # the listed paths are words, one a line, none with a space
-    hook="$(cd "${PrePushHook%/*}/.." && cat "$PrePushHook" hooks-path.sh tool-conventions.sh \
-        $(sed -n 's|^scripts/||p' hooks/pre-push-files.txt 2> /dev/null) | git hash-object --stdin)" \
-        && [ -n "$hook" ] || return 1
-    { echo "tree $tree"; echo "base $base_tree"; echo "hook $hook"; echo "gate $gate_state"; echo "baseline $known_base"
-      echo "skip $(tr -s ' ' '\n' <<< "${PREPUSH_SKIP:-}" | grep -v '^$' | LC_ALL=C sort -u | tr '\n' ' ')"
-      echo "checks $(printf '%s' "$checks" | tr '\n' ' ')"; printf '%s\n' "$changed"; } | git hash-object --stdin
-}
-if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ -n "${PREPUSH_REUSE_FAST:-}" ] && [ -z "$fast_only" ]; then
-    # agentctl's push of the `waiting` batch: the batch's --fast-only pass of this tree on this base stands for it
-    fast_key="$(gate_state=fast-only; checks="$(printf '%s\n' "$checks" | fast_select)"; compute_reuse_key)" || fast_key=""
-    if [ -n "$fast_key" ] && [ -f "$reuse_dir/$fast_key" ]; then
-        log "the waiting batch's fast check passed for tree $(git rev-parse --short "$head_sha^{tree}") on this base $(cat "$reuse_dir/$fast_key"): reused (each change was checked alone before it joined, and this check covered the combined tree)" >&2
-        exit 0
-    fi
-fi
-# A REMOTE PASS (agentctl's remote checks: under memory or CPU pressure a queued change's checks run in CI,
-# .github/workflows/precommit-check.yml on a check/<entry> branch): the push to main carries PREPUSH_REMOTE_RUN=<run id>,
-# and that run stands for this hook's checks only once GitHub says it is a precommit-check.yml run on exactly the commit
-# pushed that SUCCEEDED -- or, still going, whose verdict jobs (its VERDICT_JOBS line at that commit, the globs agentctl
-# decides by) all concluded in success or skipped, with no job of it failed: a report still queued holds nothing
-# (2026-11-07). Anything else -- another workflow, a failure, a verdict job still going, another commit, no
-# VERDICT_JOBS line, gh silent -- and every check runs here. The red gate ran above.
-remote_pass() { # <run id> -> 0 when GitHub vouches for it
-    local said line jobs status conclusion name glob named=0 hit
-    local -a globs=()
-    said="$(bounded "$GhSeconds" gh api "repos/{owner}/{repo}/actions/runs/$1" \
-        --jq '"\(.path) \(.conclusion) \(.head_sha)"' 2>/dev/null)" || return 1
-    [ "$said" = ".github/workflows/precommit-check.yml success $head_sha" ] && return 0
-    [ "$said" = ".github/workflows/precommit-check.yml null $head_sha" ] || return 1
-    line="$(git show "$head_sha:.github/workflows/precommit-check.yml" 2>/dev/null \
-        | sed -n "s/^[[:space:]][[:space:]]*VERDICT_JOBS:[[:space:]]*['\"]\{0,1\}\([^'\"#]*\).*/\1/p" | head -1)"
-    IFS=, read -r -a globs <<< "$line"
-    # no VERDICT_JOBS line: nothing to decide by (and "${globs[@]}" of an empty array is unbound under set -u in bash 3.2)
-    [ "${#globs[@]}" -gt 0 ] || return 1
-    jobs="$(bounded "$GhSeconds" gh api "repos/{owner}/{repo}/actions/runs/$1/jobs?per_page=100" \
-        --jq '.jobs[] | "\(.status)\t\(.conclusion)\t\(.name)"' 2>/dev/null)" || return 1
-    while IFS=$'\t' read -r status conclusion name; do
-        [ -n "$status" ] || continue
-        case "$conclusion" in failure|timed_out|startup_failure|action_required) return 1 ;; esac
-        hit=0
-        for glob in "${globs[@]}"; do
-            glob="${glob#"${glob%%[![:space:]]*}"}"; glob="${glob%"${glob##*[![:space:]]}"}"
-            # shellcheck disable=SC2254 # the glob is the pattern
-            [ -n "$glob" ] && case "$name" in $glob) hit=1 ;; esac
-        done
-        [ "$hit" = 1 ] || continue
-        named=$((named + 1))
-        [ "$status" = completed ] && case "$conclusion" in success|skipped|neutral) continue ;; esac
-        return 1
-    done <<< "$jobs"
-    [ "$named" -gt 0 ]
-}
-if [ -n "${PREPUSH_REMOTE_RUN:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ "$to_main" = 1 ]; then
-    if remote_pass "$PREPUSH_REMOTE_RUN"; then
-        log "the checks passed in CI for ${head_sha:0:10} (precommit-check.yml run $PREPUSH_REMOTE_RUN, confirmed with GitHub): not run again here" >&2
-        exit 0
-    fi
-    warn "PREPUSH_REMOTE_RUN=$PREPUSH_REMOTE_RUN does not vouch for ${head_sha:0:10} (GitHub: not a successful precommit-check.yml run of it): every check runs here"
-fi
-if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ]; then
-    reuse_key="$(compute_reuse_key)" || reuse_key=""
-    if [ -n "$reuse_key" ] && [ -f "$reuse_dir/$reuse_key" ]; then
-        log "same tree $(git rev-parse --short "$head_sha^{tree}"), base, hook and red-gate state as a push that passed $(cat "$reuse_dir/$reuse_key"): $(printf '%s' "$checks" | tr '\n' ' ')reused, not run again (PREPUSH_NO_REUSE=1 runs them)" >&2
-        exit 0
-    fi
-fi
 
 # ── Running them ────────────────────────────────────────────────────────────────────────────────
 changed_matching() { printf '%s\n' "$changed" | grep -E "$1" || true; }
@@ -1738,180 +1357,3 @@ check_judgements() {
     # --replay-head: the takes the push newly judges wrong judged at the PUSHED code (identity-slice), not the last leg's
     python3 scripts/ci/identity_judgements_lint.py ${served[@]+--served "${served[@]}"} ${before:+--before "$before" --replay-head}
 }
-
-tmp="$(mktemp -d)"
-
-# THE PUSHED COMMITS ARE JUDGED, not the working tree: that can hold edits the push does not
-# carry, or sit on another branch entirely (`git push origin other:main`). When HEAD is the
-# pushed commit and nothing the push changed differs from it, the checkout is that tree and the
-# checks run in place, warm. Otherwise they run in a temporary worktree of the pushed commit —
-# never `git stash`, which is shared by every worktree of this clone — removed afterwards.
-in_place() {
-    [ "$(git rev-parse HEAD)" = "$head_sha" ] || return 1
-    local path
-    while IFS= read -r path; do
-        [ -n "$path" ] || continue # a deletion-only push changed no path still there
-        git diff --quiet HEAD -- "$path" || return 1
-        [ -z "$(git ls-files --others --exclude-standard -- "$path")" ] || return 1
-    done <<< "$changed"
-}
-# ONE sbt PER target/. A live sbt JVM in this checkout — the DevPanel's `sbt web/run`, an IDE's
-# BSP server, an agent's test run — compiles into the same target/ as the check would: Play's dev
-# server recompiles on the first request after a merge changes sources. Two Zincs over one classes
-# dir delete and rewrite each other's class files, and the check's tests then load a class the
-# other has just deleted (NoClassDefFoundError: services/movies/MovieRepository$, twice on
-# 2026-09-26; a retry passed once both had settled). Echoes the first such pid.
-live_sbt_in_checkout() {
-    local here pid cwd
-    here="$(pwd -P)"
-    for pid in $(pgrep -f 'sbt-launch|xsbt\.boot\.Boot' 2>/dev/null); do
-        cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')"
-        [ -n "$cwd" ] && [ "$(cd "$cwd" 2>/dev/null && pwd -P)" = "$here" ] && { echo "$pid"; return 0; }
-    done
-    return 1
-}
-isolate_reason="" sbt_client=0
-if ! in_place; then
-    isolate_reason="the working tree is not ${head_sha:0:9}"
-elif grep -qxE 'sbt|identity' <<< "$checks" && ! skipped sbt && live_pid="$(live_sbt_in_checkout)"; then
-    # the checkout's KEPT server (scripts/sbt-warm: `sbt --client`, launched --detach-stdio) is no rival compiler —
-    # it is the one compiler: the check runs through it (by scripts/sbt-warm), in place and warm
-    if ps -o args= -p "$live_pid" 2>/dev/null | grep -q -- '--detach-stdio'; then
-        sbt_client=1
-        log "the sbt check runs through this checkout's kept sbt server (pid $live_pid), warm"
-    else
-        isolate_reason="a live sbt (pid $live_pid) shares this checkout's target/"
-    fi
-fi
-# The area tests run through scripts/sbt-warm: in place, the sbt check joins them in the checkout's kept server (one warm
-# JVM for both) instead of a JVM of its own.
-area_tests="$(printf '%s\n' "$checks" | grep -xE 'identity' | tr '\n' ' ')"
-if [ -z "$isolate_reason" ] && [ -n "$area_tests" ]; then sbt_client=1; fi
-if [ -n "$isolate_reason" ]; then
-    tree="$tmp/tree"
-    git worktree add -q --detach "$tree" "$head_sha" || { warn "cannot check out ${head_sha:0:9} to check it"; exit 1; }
-    [ -d "$root/node_modules" ] && ln -s "$root/node_modules" "$tree/node_modules"
-    log "$isolate_reason: checking a temporary checkout of ${head_sha:0:9}"
-    cd "$tree" || exit 1
-fi
-
-failed="" stalled=""
-StallSeconds="${PREPUSH_STALL_SECONDS:-1200}"
-stall_watch="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/stall-watch.sh"
-[ -f "$stall_watch" ] || stall_watch="$root/scripts/stall-watch.sh"
-# The check's watchdog, ended. ONE TERM is not enough: a check that returns at once (a missing tool's) sends it within
-# microseconds of the watchdog's fork, and under a load of 85-100 that TERM was lost -- most likely taken by the
-# hook's own bash handler (its EXIT trap installs one) in the forked child before it execs, and dropped by the exec.
-# The watchdog then polled on for its whole bound (it ends when the hook does; the hook waited on it): Main #2059 and
-# #2066's pre-push-test.sh sat 600 s in `missing tool` cases. So the TERM is sent again every second while it lives
-# (its trap is up by then), and KILL after ten.
-stop_watchdog() { # <pid>
-    local nudger
-    kill "$1" 2>/dev/null
-    ( for _ in 1 2 3 4 5 6 7 8 9 10; do sleep 1; kill "$1" 2>/dev/null; done; kill -KILL "$1" 2>/dev/null ) &
-    nudger=$!
-    wait "$1" 2>/dev/null
-    kill "$nudger" 2>/dev/null; wait "$nudger" 2>/dev/null
-}
-# THE KNOWN-RED BASELINE (the header). A check's failure lines from its output on stdin: the strong markers, else every
-# non-empty line; normalized (what changes run to run out), sorted, unique.
-Esc="$(printf '\033')"
-failure_lines() {
-    local all strong
-    all="$(sed "s/${Esc}\[[0-9;]*[A-Za-z]//g" | grep -v '^[[:space:]]*$')"
-    strong="$(printf '%s\n' "$all" | grep -E '\*\*\* FAILED|\[error\]|::error::|[Aa]ssert(ion)?|Error:|ENOENT|[Ee]xit code [1-9]|FAILED' || true)"
-    [ -n "$strong" ] || strong="$all"
-    [ -n "$strong" ] || return 0
-    # Temp paths: the usual roots, and wherever this host's mktemp puts them -- GNU mktemp honours $TMPDIR (a GitHub
-    # runner's /home/runner/work/_temp/...), macOS's does not (2026-10-31: every Linux land's known red blocked on it).
-    printf '%s\n' "$strong" \
-        | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z //; s#/(private/)?(tmp|var/folders)/[^[:space:]]*#<tmp>#g' \
-        | awk -v a="${tmp%/*}/" -v b="${TMPDIR:+${TMPDIR%/}/}" '
-            function untmp(p,   i, rest) {
-                if (length(p) < 3) return
-                while ((i = index($0, p)) > 0) {
-                    rest = substr($0, i + length(p)); sub(/^[^ \t]*/, "", rest)
-                    $0 = substr($0, 1, i - 1) "<tmp>" rest } }
-            { untmp(a); untmp(b); print }' \
-        | tr '[:upper:]' '[:lower:]' \
-        | sed -E 's/[0-9a-f]{7,40}/H/g; s/[0-9]+(\.[0-9]+)?/N/g; s/[[:space:]]+/ /g; s/^ //; s/ $//' \
-        | cut -c1-160 | LC_ALL=C sort -u
-}
-# The output the baseline's run printed for <check> before its `<check> FAILED` line; fails when it did not fail there.
-baseline_failure() { # <check>
-    sed "s/${Esc}\[[0-9;]*[A-Za-z]//g" "$baseline" | awk -v c="$1" '
-        /pre-push [^ ]+ (ok|FAILED) \([0-9]+s\)/ || / — for [0-9]+ changed path/ {
-            if (index($0, "pre-push " c " FAILED (")) { printf "%s", seg; found = 1 }
-            seg = ""; next }
-        { seg = seg $0 "\n" }
-        END { exit !found }'
-}
-# <check> failed (its output in <file>) only in ways it fails on the base: every failure line of it is one of the base's.
-known_red() { # <check> <file>
-    local base mine
-    base="$(baseline_failure "$1")" || return 1
-    mine="$(failure_lines < "$2")"
-    [ -n "$mine" ] || return 1
-    [ -z "$(LC_ALL=C comm -23 <(printf '%s\n' "$mine") <(printf '%s\n' "$base" | failure_lines))" ]
-}
-known=""
-started=$SECONDS
-log "$(printf '%s' "$checks" | tr '\n' ' ') — for $(printf '%s\n' "$changed" | wc -l | tr -d ' ') changed path(s)"
-for check in $checks; do
-    if skipped "$check"; then warn "$check SKIPPED (PREPUSH_SKIP)"; continue; fi
-    t0=$SECONDS
-    # NO STEP HANGS (the header): the check's watchdog, and the marks sbt-warm reports its progress and stalls to
-    export KINOWO_PROGRESS_FILE="$tmp/progress.$check" KINOWO_STALL_FILE="$tmp/stalled.$check"
-    watchdog=""
-    if [ -f "$stall_watch" ]; then
-        bash "$stall_watch" watch $$ "$StallSeconds" "$check" "$KINOWO_STALL_FILE" "$KINOWO_PROGRESS_FILE" "$tmp" 2>/dev/null &
-        watchdog=$!
-    fi
-    # with a known-red baseline the check's output is kept, to be compared with the base's (then shown, as ever)
-    if [ -n "$baseline" ]; then
-        "check_$check" > "$tmp/output.$check" 2>&1; rc=$?
-        cat "$tmp/output.$check" >&2
-    else
-        "check_$check"; rc=$?
-    fi
-    if [ "$rc" = 0 ]; then
-        log "$check ok ($((SECONDS - t0))s)"
-    elif [ -s "$KINOWO_STALL_FILE" ]; then
-        printf 'pre-push STALLED: %s (no progress for %ss: %s; ended after %ss)\n' "$check" "$StallSeconds" \
-            "$(tr '\n' ';' < "$KINOWO_STALL_FILE" | sed 's/;$//')" "$((SECONDS - t0))" >&2
-        failed="$failed $check" stalled="$stalled $check"
-    else
-        warn "$check FAILED ($((SECONDS - t0))s)"
-        if [ -n "$baseline" ] && known_red "$check" "$tmp/output.$check"; then
-            warn "KNOWN RED: $check fails the same way on the base ${base_commit:0:10} (the known-red baseline): not held against this push"
-            known="$known $check"
-        else
-            failed="$failed $check"
-        fi
-    fi
-    [ -z "$watchdog" ] || stop_watchdog "$watchdog"
-done
-unset KINOWO_PROGRESS_FILE KINOWO_STALL_FILE
-
-if [ -n "$failed" ]; then
-    [ -z "$baseline_note" ] || warn "$baseline_note"
-    warn "blocked by:$failed ($((SECONDS - started))s). Fix, or bypass with PREPUSH_SKIP=\"${failed# }\" / --no-verify."
-    [ -z "$stalled" ] || exit 75   # THE STALL SIGNAL: a step hung, no verdict on the change
-    exit 1
-fi
-rm -rf "$tmp"
-if [ -n "$reuse_key" ] && mkdir -p "$reuse_dir" 2>/dev/null; then
-    printf '%s (%s)\n' "$(date -u +%Y-%m-%dT%H:%MZ)" "${head_sha:0:9}" > "$reuse_dir/$reuse_key.$$" && mv -f "$reuse_dir/$reuse_key.$$" "$reuse_dir/$reuse_key"
-    find "$reuse_dir" -type f -mtime +14 -delete 2>/dev/null
-fi
-if [ -n "$known" ]; then log "all clear but main's own known red:$known ($((SECONDS - started))s)"
-else log "all clear ($((SECONDS - started))s)"; fi
-# CHECK FIRST: git opens the push's ssh connection BEFORE it runs this hook and sends the pack only after it, so a long
-# hook holds that connection idle, and a connection held that long can die (a network change, keepalives missed under
-# load): on 2026-10-23 pushes whose hook ran 20-76 min printed "all clear"
-# and then "Connection to localhost closed by remote host" / "Broken pipe" / "unexpected disconnect while reading
-# sideband packet". Nothing here can keep that connection; the re-push can be fast instead: this pass is stored (THE
-# REUSE), so the same push again skips the checks.
-if [ "${1:-}" != --range ] && [ "${1:-}" != --checks-only ] && [ "$SECONDS" -ge "${PREPUSH_LONG_SECONDS:-300}" ]; then
-    warn "this hook ran ${SECONDS}s with the push's connection open (git connects first): if the push now dies with \"closed by remote host\" / \"Broken pipe\" / \"unexpected disconnect\", run the same git push again -- this pass is stored and is reused in seconds. Next time check first: scripts/hooks/pre-push --range ${1:-<remote>}/main..HEAD, then git push"
-fi
