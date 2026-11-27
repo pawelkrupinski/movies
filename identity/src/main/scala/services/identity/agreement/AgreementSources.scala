@@ -42,6 +42,12 @@ object AgreementSources {
     def venuePages: IdentityLookups
     def tmdbLookups: Option[IdentityLookups]
     def normalizer: TitleNormalizer
+    /** The calibration the families' resolves and the model's evidence are scored under. */
+    def calibration: IdentityCalibration
+    /** The TMDB film TMDB finds by an IMDb id, as filed. */
+    def tmdbOf: String => Answer[Option[Int]]
+    /** Whether a question was asked and its answer given up on or not given yet (the settle rule). */
+    def attempted: Question => Boolean
   }
 
   /** What was filed since a verdict was read. */

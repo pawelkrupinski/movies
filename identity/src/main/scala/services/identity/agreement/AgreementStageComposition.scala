@@ -40,8 +40,8 @@ object AgreementStageComposition {
 
   def apply(sources: Sources, effects: Effects = Effects(), overrides: Set[Override] = Set.empty): AgreementStage = {
     val unbudgeted = overrides(Override.Unbudgeted)
-    val pipeline   = new AgreementPipeline(sources, sources.calibration, sources.tmdbOf, sources.identities,
-      services.identity.agreement.UnifiedRules.resolver, sources.listedOn, effects.askNow, sources.attempted, sources.clock)
+    val pipeline   = new AgreementPipeline(sources, sources.identities,
+      services.identity.agreement.UnifiedRules.resolver, sources.listedOn, effects.askNow, sources.clock)
     new AgreementStage(pipeline, ask = effects.ask, metrics = effects.metrics,
       correctionPostersAtOnce = if (unbudgeted) Int.MaxValue else AgreementStage.CorrectionPostersAtOnce,
       correctionsPerApply = overrides.collectFirst { case Override.CorrectionsPerApply(n) => n }

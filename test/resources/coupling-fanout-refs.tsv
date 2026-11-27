@@ -562,16 +562,6 @@ services.identity.agreement.AgreementStage	services.identity.measures.Listing
 services.identity.agreement.AgreementStage	services.identity.measures.ResolverDecision
 services.identity.agreement.AgreementStage	services.identity.vocabulary.Question
 services.identity.agreement.AgreementStage	tools.Stopwatch
-services.identity.agreement.AgreementStageComposition	services.identity.IdentityCalibration
-services.identity.agreement.AgreementStageComposition	services.identity.agreement.AgreementKeys
-services.identity.agreement.AgreementStageComposition	services.identity.agreement.AgreementPipeline
-services.identity.agreement.AgreementStageComposition	services.identity.agreement.AgreementSources
-services.identity.agreement.AgreementStageComposition	services.identity.agreement.AgreementStage
-services.identity.agreement.AgreementStageComposition	services.identity.agreement.ClusterKeys
-services.identity.agreement.AgreementStageComposition	services.identity.agreement.TmdbReadTracking
-services.identity.agreement.AgreementStageComposition	services.identity.agreement.UnifiedRules
-services.identity.agreement.AgreementStageComposition	services.identity.vocabulary.Answer
-services.identity.agreement.AgreementStageComposition	services.identity.vocabulary.Question
 services.identity.agreement.AgreementTakes	models.ListingKey
 services.identity.agreement.AgreementTakes	services.identity.BilledPiece
 services.identity.agreement.AgreementTakes	services.identity.IdentityLookups

@@ -18,8 +18,11 @@ import services.titles.TitleNormalizer
  * The stage hands it to each of its parts — the candidates, the takes, the corrections — as the one way they read: none
  * of them reaches the stage itself. `version` and `yearNow` are the apply under way's, set by the stage as it starts one.
  */
-private[agreement] final class AgreementEvidence(sources: AgreementSources.EvidenceSource, val calibration: IdentityCalibration, tmdbOf: String => Answer[Option[Int]],
-                                                val attempted: Question => Boolean, val tmdbReads: TmdbReadTracking) {
+private[agreement] final class AgreementEvidence(sources: AgreementSources.EvidenceSource, val tmdbReads: TmdbReadTracking) {
+  val calibration: IdentityCalibration          = sources.calibration
+  /** The TMDB film TMDB finds by an IMDb id ([[AgreementSources.EvidenceSource.tmdbOf]]): what the catalogue's take reads too. */
+  val tmdbOf: String => Answer[Option[Int]]     = sources.tmdbOf
+  val attempted: Question => Boolean            = sources.attempted
   val families: Map[VoterFamily, FamilyAnswers] = sources.families
   val normalizer: TitleNormalizer               = sources.normalizer
   private val tmdb: Option[IdentityLookups]     = sources.tmdbLookups

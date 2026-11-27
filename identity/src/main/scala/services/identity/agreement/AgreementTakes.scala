@@ -13,8 +13,7 @@ import services.identity.vocabulary.{Answer, DetailFacts, ProseWords, Question, 
  *  `evidence` ([[AgreementEvidence]]) and the cluster's `candidates`, by the selected `rules`; a film TMDB holds no record of stands
  *  on the first of `identities` that names it, and the listings' catalogue ids are read from `catalogue`. */
 private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candidates: AgreementCandidates, rules: services.identity.agreement.UnifiedRules,
-                                             identities: Seq[VoterFamily], catalogue: AgreementSources.CatalogueSource,
-                                             tmdbOf: String => Answer[Option[Int]]) {
+                                             identities: Seq[VoterFamily], catalogue: AgreementSources.CatalogueSource) {
   import evidence.{looked, venues}
   import candidates.{candidatesOf, measured, productionsOf, titledFilms, titlePicks, undatedOf, uncatalogued}
   import AgreementTakes.taking
@@ -233,7 +232,7 @@ private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candi
   /** The decision with the film its listings' catalogue ids name taken ([[Catalogue.take]]) — none while a question it
    *  needs is open, each noted to ask. */
   private def catalogued(decision: ResolverDecision, listings: Seq[Listing], asked: mutable.Set[Question]): Option[ResolverDecision] =
-    Catalogue.take(listings, listings.map(evidence.asStated), catalogue, evidence.families, tmdbOf, () => titlePicks(listings), asked, evidence.attempted)
+    Catalogue.take(listings, listings.map(evidence.asStated), catalogue, evidence.families, evidence.tmdbOf, () => titlePicks(listings), asked, evidence.attempted)
       .answered.flatten.map { taken =>
       taken.film.fold(taking(decision)(ResolverDecision.Basis.Catalogue, taken.line,
         fallback = taken.fallback.map { case (source, id) => AgreementTakes.fallbackOn(source, id, taken.title, taken.year) }))(film =>

@@ -148,7 +148,6 @@ fanout	services.identity.agreement.AgreementEvidence	16
 fanout	services.identity.agreement.AgreementPipeline	24
 fanout	services.identity.agreement.AgreementSources	11
 fanout	services.identity.agreement.AgreementStage	14
-fanout	services.identity.agreement.AgreementStageComposition	10
 fanout	services.identity.agreement.AgreementTakes	24
 fanout	services.identity.agreement.Broadcast	12
 fanout	services.identity.agreement.Catalogue	11
@@ -246,7 +245,7 @@ databag	services.identity.StoredIdentityConfidence	15
 databag	services.identity.TitleRelation	12
 databag	services.identity.VenueSlots	23
 databag	services.identity.agreement.Agreement	29
-databag	services.identity.agreement.AgreementStageComposition	12
+databag	services.identity.agreement.AgreementStageComposition	10
 databag	services.identity.agreement.Broadcast	16
 databag	services.identity.agreement.Catalogue	16
 databag	services.identity.agreement.SuspectTakes	25

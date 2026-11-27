@@ -4,8 +4,8 @@ import scala.collection.mutable
 
 import models.ListingKey
 import services.identity.measures.{Listing, PosterEvidence, Resolution, ResolverDecision}
-import services.identity.vocabulary.{Answer, Question, VoterFamily}
-import services.identity.{IdentityCalibration, NonFilmEvents}
+import services.identity.vocabulary.{Question, VoterFamily}
+import services.identity.NonFilmEvents
 
 /**
  * What each model decision is TAKEN AS ([[decide]]): a model take read by its CORRECTION ([[AgreementCorrections]]), a
@@ -16,10 +16,9 @@ import services.identity.{IdentityCalibration, NonFilmEvents}
  * ([[AgreementStageComposition]], the specs' `AgreementStageFixture`) and handed to the stage whole: the stage keeps
  * only what an apply does with it.
  */
-private[agreement] final class AgreementPipeline(sources: AgreementSources.StageSources, calibration: IdentityCalibration,
-                                                 tmdbOf: String => Answer[Option[Int]], identities: Seq[VoterFamily],
+private[agreement] final class AgreementPipeline(sources: AgreementSources.StageSources, identities: Seq[VoterFamily],
                                                  rules: services.identity.agreement.UnifiedRules, listedOn: Option[VoterFamily],
-                                                 askNow: AgreementStage.AskNow, attempted: Question => Boolean,
+                                                 askNow: AgreementStage.AskNow,
                                                  private[agreement] val clock: java.time.Clock,
                                                  private[agreement] val tmdbReads: TmdbReadTracking = new TmdbReadTracking) {
 
@@ -27,13 +26,13 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
    *  root configures it with outside that code ([[AgreementStage.configured]]) — a refit of the rules, or a family asked
    *  or let a film stand in one more country, decides every verdict again, as a change of the code does. */
   private[agreement] val decidedUnder: String =
-    s"${AgreementStage.RulesVersion}|${rules.version}|${AgreementStage.configured(sources.voters, identities, listedOn, calibration)}"
+    s"${AgreementStage.RulesVersion}|${rules.version}|${AgreementStage.configured(sources.voters, identities, listedOn, sources.calibration)}"
 
   /** What one apply reads of the posters' hashes and of `listedOn`'s programmes, afresh each apply ([[AgreementPass.Read]]). */
   def reading(): AgreementPass.Read = new AgreementPass.Read(sources, listedOn)
 
   /** What every stage of the pipeline reads, through the receipt being made ([[AgreementEvidence]]). */
-  private[agreement] val evidence = new AgreementEvidence(sources, calibration, tmdbOf, attempted, tmdbReads)
+  private[agreement] val evidence = new AgreementEvidence(sources, tmdbReads)
   import evidence.verdictsOf
 
   /** The verdicts kept ([[VerdictIndex]]), by their cluster's key and by their listings' digest. */
@@ -59,7 +58,7 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
   /** A model take read against the evidence that can contradict it. */
   private[agreement] val corrections = new AgreementCorrections(evidence, candidates, verdicts, inline, decidedUnder, listedOn)
   /** A no-match's take of its families' verdict: the agreed film, else the posters', the broadcast's, a fill's or the catalogue's. */
-  private[agreement] val takes           = new AgreementTakes(evidence, candidates, rules, identities, sources, tmdbOf)
+  private[agreement] val takes           = new AgreementTakes(evidence, candidates, rules, identities, sources)
   /** A no-match's families' verdict, held while what it read stands. */
   private[agreement] val clusterVerdicts = new ClusterVerdicts(evidence, verdicts, takes, inline, decidedUnder, clock)
   import corrections.{correctable, corrected}

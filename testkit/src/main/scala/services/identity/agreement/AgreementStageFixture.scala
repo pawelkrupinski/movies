@@ -34,8 +34,8 @@ object AgreementStageFixture {
             pressed: () => Boolean = () => false,
             fullValidationEvery: Int = AgreementStage.FullValidationEvery): AgreementStage =
     new AgreementStage(
-      new AgreementPipeline(Given(families, venuePages, tmdb, normalizer, stored, changes, posters, catalogue), calibration,
-        tmdbOf, identities, rules, listedOn, askNow, attempted, clock, tmdbReads),
+      new AgreementPipeline(Given(families, venuePages, tmdb, normalizer, stored, changes, posters, catalogue, calibration, tmdbOf, attempted),
+        identities, rules, listedOn, askNow, clock, tmdbReads),
       ask = ask, metrics = metrics, correctionPostersAtOnce = correctionPostersAtOnce, correctionsPerApply = correctionsPerApply,
       backfillPerApply = backfillPerApply, givenUp = givenUp, attemptsMarked = attemptsMarked, staging = staging,
       clusterKeys = clusterKeys, pressed = pressed, fullValidationEvery = fullValidationEvery)
@@ -43,5 +43,7 @@ object AgreementStageFixture {
   /** The hand-made sources, each role as the spec gave it. */
   private final case class Given(families: Map[VoterFamily, FamilyAnswers], venuePages: IdentityLookups,
                                  tmdbLookups: Option[IdentityLookups], normalizer: TitleNormalizer, stored: AgreementVerdicts,
-                                 changes: AnswerChanges, posters: PosterAnswers, catalogue: CatalogueAnswers) extends AgreementSources.StageSources
+                                 changes: AnswerChanges, posters: PosterAnswers, catalogue: CatalogueAnswers,
+                                 calibration: IdentityCalibration, tmdbOf: String => Answer[Option[Int]],
+                                 attempted: Question => Boolean) extends AgreementSources.StageSources
 }
