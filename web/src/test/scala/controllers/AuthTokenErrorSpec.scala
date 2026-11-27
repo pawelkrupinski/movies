@@ -22,11 +22,11 @@ class AuthTokenErrorSpec extends AnyFlatSpec with Matchers {
   "a refused token" should "401 with a generic message, not the exception's" in {
     val result = token("google") // no validator wired → "Google not configured" internally
     status(result) shouldBe UNAUTHORIZED
-    (contentAsJson(result) \ "error").as[String] shouldBe AuthController.TokenRejected
+    (contentAsJson(result) \ "error").as[String] shouldBe SignInFlow.TokenRejected
     contentAsString(result) should not include "configured"
   }
 
   it should "say the same for an unknown provider" in {
-    (contentAsJson(token("myspace")) \ "error").as[String] shouldBe AuthController.TokenRejected
+    (contentAsJson(token("myspace")) \ "error").as[String] shouldBe SignInFlow.TokenRejected
   }
 }

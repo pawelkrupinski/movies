@@ -47,7 +47,7 @@ class UserAcrossPodsSpec extends AnyFlatSpec with Matchers {
         users, clock)
     }
 
-    def authPod(): AuthController =
+    def authPod(): AuthControllers =
       AuthControllerFixture(Helpers.stubControllerComponents(), Map.empty, users,
         new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(_root_.tools.SpecClock.Pinned), _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
   }

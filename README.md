@@ -69,7 +69,7 @@ worker/                   # Scrape + enrich app (one pod per country)
 │       └── tasks/, schedule/, alerts/   # scrape loop, task queue, alerting
 web/                      # Play serving app (one pod per country)
 │   ├── src/main/scala/
-│   │   ├── controllers/      # MovieController, AuthController, UserStateController, ...
+│   │   ├── controllers/      # MovieController, OauthSignInController, UserStateController, ...
 │   │   ├── modules/          # AppLoader composition root (compile-time DI)
 │   │   └── services/         # auth/ (OAuth2), users/ (per-user state)
 │   ├── src/main/twirl/views/ # Twirl templates

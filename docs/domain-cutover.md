@@ -104,7 +104,7 @@ ordering — several of the steps below are only safe in one sequence.
 
 ## What DNS and a deploy do not cover
 
-- **OAuth redirect URIs.** `AuthController.callbackUrl` builds the callback from
+- **OAuth redirect URIs.** `SignInFlow.callbackUrl` builds the callback from
   the REQUEST host, so no code names a domain — but Google and Facebook both
   reject an unregistered `redirect_uri`. Register
   `https://kinowo.net/auth/{google,facebook}/callback` and

@@ -16,7 +16,7 @@ class MovieController( cc: ControllerComponents,
                        // find out who asked for it, so no response of its can vary by
                        // session, so a shared cache holding the listing cannot leak
                        // anybody.
-                       // Who is signed in is `AuthController`'s question, answered
+                       // Who is signed in is `SessionController`'s question, answered
                        // per client at `/api/me`.
                        listing: ListingResponse,
                        browsePage: BrowsePage,

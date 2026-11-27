@@ -20,14 +20,14 @@ import services.users.UserLookup
  *     land on that country's home. The binding is what stops a signed-in
  *     attacker's code from signing a victim in (login CSRF).
  *   - GET `/auth/sso/logout` (and its `confirm` page) — the far half of
- *     [[AuthController.logout]].
+ *     [[SessionController.logout]].
  *
  * These legs exist for ONE boundary. `/uk`, `/de` and `/us` share an origin and
  * so share the session cookie outright (`AppLoader.mountedAt` leaves its path at
  * the host root); Poland is on `kinowo.net`, a different registrable domain,
  * where no cookie can follow. `to` is matched against the deployed countries'
  * own base URLs and nothing else, so it cannot be pointed anywhere off-brand.
- * [[AuthController]] starts the pairing leg after a sign-in and the far logout
+ * [[OauthSignInController]] starts the pairing leg after a sign-in and the far logout
  * after a sign-out; this controller answers them.
  *
  * Session key used: `ssoBinding` — set by a codeless `/auth/sso/finish`, spent
@@ -38,7 +38,7 @@ class SsoController(
   userLookup:     UserLookup,
   // The one-shot codes a handoff carries across the domain boundary.
   exchangeCodes:  AuthExchangeCodes,
-  // The country THIS deployment serves (see [[AuthController]]): where a finished
+  // The country THIS deployment serves (see [[OauthSignInController]]): where a finished
   // handoff lands, and the language of the logout question.
   country:        models.Country
 ) extends AbstractController(cc) with Logging {
@@ -120,11 +120,11 @@ class SsoController(
   private def handOffSession(user: User, target: String, onward: Seq[(String, String)], request: RequestHeader): Result =
     request.getQueryString(SsoController.BindParam).filter(_.nonEmpty) match {
       case None =>
-        Redirect(s"$target${SsoController.SsoFinishPath}${AuthController.query(onward)}")
+        Redirect(s"$target${SsoController.SsoFinishPath}${SignInFlow.query(onward)}")
       case Some(binding) =>
         // The Location carries a live code: nothing may keep a copy of it.
         val code = exchangeCodes.mint(user.id, Some(binding))
-        PerUserResponse(Redirect(s"$target${SsoController.SsoFinishPath}${AuthController.query(("code" -> code) +: onward)}"))
+        PerUserResponse(Redirect(s"$target${SsoController.SsoFinishPath}${SignInFlow.query(("code" -> code) +: onward)}"))
     }
 
   /** Receive a session handed over by [[ssoStart]] on another domain.
@@ -157,7 +157,7 @@ class SsoController(
     val self    = here + request.path.stripSuffix(SsoController.SsoFinishPath)
     val onward  = Seq(LandingController.CityParam, LandingController.PickCityParam, "next")
       .flatMap(key => request.getQueryString(key).map(key -> _))
-    PerUserResponse(Redirect(s"$sibling${SsoController.SsoStartPath}${AuthController.query(
+    PerUserResponse(Redirect(s"$sibling${SsoController.SsoStartPath}${SignInFlow.query(
       Seq("to" -> self, SsoController.BindParam -> binding) ++ onward)}")
       .withSession(request.session + (SsoController.SsoBindingKey -> binding)))
   }
@@ -201,7 +201,7 @@ class SsoController(
           .getOrElse(routes.LandingController.index().url) + pick))
   }
 
-  /** The far half of [[AuthController.logout]]: drop the session on this domain and send the
+  /** The far half of [[SessionController.logout]]: drop the session on this domain and send the
    *  visitor back where they pressed the button.
    *
    *  Never propagates onwards — this IS the propagation — so the pair cannot
@@ -223,7 +223,7 @@ class SsoController(
     PerUserResponse(request.session.get(SignedInUser.UserIdKey) match {
       case None    => Redirect(onward)
       case Some(_) =>
-        val signOut = routes.SsoController.ssoLogout().url + AuthController.query(validNext.map("next" -> _).toSeq)
+        val signOut = routes.SsoController.ssoLogout().url + SignInFlow.query(validNext.map("next" -> _).toSeq)
         Ok(views.html.ssoLogoutConfirm(signOut, onward)(using deploymentMessages))
     })
   }
@@ -237,7 +237,7 @@ object SsoController {
   /** The SSO legs' paths, as the OTHER domain has to spell them.
    *
    *  Literals rather than reverse routes for the same reason as
-   *  [[AuthController.callbackPath]]: these address a DIFFERENT deployment, whose mount point is
+   *  [[SignInFlow.callbackPath]]: these address a DIFFERENT deployment, whose mount point is
    *  not ours, and the reverse route would helpfully prepend ours.
    *  `AuthCallbackRelaySpec` pins them against a root-mounted reverse route. */
   val SsoStartPath  = "/auth/sso/start"

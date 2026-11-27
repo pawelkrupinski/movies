@@ -136,16 +136,16 @@ GET     /auth/sso/logout            controllers.SsoController.ssoLogout()
 # left signed in on this domain. A page, not a state change.
 GET     /auth/sso/logout/confirm    controllers.SsoController.ssoLogoutConfirm(next: Option[String] ?= None)
 
-GET     /auth/:provider/start       controllers.AuthController.start(provider: String)
-GET     /auth/:provider/callback    controllers.AuthController.callback(provider: String)
+GET     /auth/:provider/start       controllers.OauthSignInController.start(provider: String)
+GET     /auth/:provider/callback    controllers.OauthSignInController.callback(provider: String)
 + nocsrf
-POST    /auth/logout                controllers.AuthController.logout()
+POST    /auth/logout                controllers.SessionController.logout()
 
-GET     /api/me                     controllers.AuthController.me()
+GET     /api/me                     controllers.SessionController.me()
 + nocsrf
-POST    /auth/token                 controllers.AuthController.token()
+POST    /auth/token                 controllers.NativeSignInController.token()
 + nocsrf
-POST    /auth/exchange              controllers.AuthController.exchange()
+POST    /auth/exchange              controllers.NativeSignInController.exchange()
 
 # ── Per-user state (hidden / disabled-cinemas) ──────────────────────────────
 # The browser JS (Phase D) calls these when logged in instead of writing to

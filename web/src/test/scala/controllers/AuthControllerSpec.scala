@@ -46,12 +46,12 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   // two-minute window — live in `AuthExchangeCodes` above the seam, so what this
   // spec exercises is the same policy production runs and only the persistence
   // differs. Returned alongside so a test can watch a code being spent.
-  private def fixture(providers: OauthProvider*): (AuthController, InMemoryUserRepository, AuthExchangeCodes) =
+  private def fixture(providers: OauthProvider*): (AuthControllers, InMemoryUserRepository, AuthExchangeCodes) =
     fixtureFor(models.Country.Poland, providers*)
 
   /** As `fixture`, for a deployment serving `country` — the apex flows need a
    *  controller that is Poland (the process mounted at `/`) finishing a UK flow. */
-  private def fixtureFor(country: models.Country, providers: OauthProvider*): (AuthController, InMemoryUserRepository, AuthExchangeCodes) = {
+  private def fixtureFor(country: models.Country, providers: OauthProvider*): (AuthControllers, InMemoryUserRepository, AuthExchangeCodes) = {
     val repository = new InMemoryUserRepository
     val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(fixedClk), fixedClk)
     val byName = providers.map(p => p.name -> p).toMap
@@ -343,7 +343,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val apex    = store // each pod reads the shared store directly (see `UsersWiring.userRepository`)
     val sibling = store
 
-    def pod(users: services.users.UserRepository, provider: OauthProvider*): AuthController =
+    def pod(users: services.users.UserRepository, provider: OauthProvider*): AuthControllers =
       AuthControllerFixture(
         Helpers.stubControllerComponents(), provider.map(p => p.name -> p).toMap, users,
         new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(fixedClk), fixedClk), models.Country.Poland,
@@ -416,7 +416,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   // ── POST /auth/logout signs out EVERY session ───────────────────────────
 
-  private def logoutAs(ctl: AuthController, session: play.api.mvc.Session) =
+  private def logoutAs(ctl: AuthControllers, session: play.api.mvc.Session) =
     ctl.logout()(FakeRequest("POST", "/auth/logout").withSession(session.data.toSeq*))
 
   /** A browser signed in as the account stands now. */
@@ -424,11 +424,11 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     SignedInUser.establish(play.api.mvc.Session(), repository.findById(email).value)
 
   /** The session `/auth/token` hands a native app — `Profile` is alice@example.com. */
-  private def appSession(ctl: AuthController) =
+  private def appSession(ctl: AuthControllers) =
     session(ctl.token()(FakeRequest("POST", "/auth/token").withBody(play.api.libs.json.Json.obj(
       "provider" -> "google", "token" -> "C", "redirectUri" -> "kinowo://auth"))))
 
-  private def meAs(ctl: AuthController, session: play.api.mvc.Session) =
+  private def meAs(ctl: AuthControllers, session: play.api.mvc.Session) =
     status(ctl.me()(FakeRequest("GET", "/api/me").withSession(session.data.toSeq*)))
 
   // Logout is global: the laptop's cookie and the phone app's cookie (what
@@ -528,7 +528,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   // finish. Pinned whole so a restructuring of how they are reached cannot
   // change what they say.
 
-  private def callbackWith(ctl: AuthController, query: String, session: (String, String)*) =
+  private def callbackWith(ctl: AuthControllers, query: String, session: (String, String)*) =
     ctl.callback("google")(FakeRequest("GET", s"/auth/google/callback$query").withSession(session*))
 
   private val FreshSession = Seq("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
@@ -601,7 +601,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val result = ctl.start("google")(FakeRequest("GET", "/auth/google/start").withSession(
       "oauthState" -> "OLD", "oauthProvider" -> "facebook", "oauthStateTimestamp" -> "1",
-      "mobileClient" -> "1", AuthController.MobileChallengeKey -> "c", "lang" -> "en"))
+      "mobileClient" -> "1", SignInFlow.MobileChallengeKey -> "c", "lang" -> "en"))
     val sess = session(result)
     sess.data.keySet shouldBe Set("oauthState", "oauthProvider", "oauthStateTimestamp", "lang")
     sess.get("oauthState").value should not be "OLD"
@@ -618,7 +618,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val sess = session(result)
     sess.get("lang").value shouldBe "en"
     sess.get("userId").value shouldBe "alice@example.com"
-    Seq("oauthState", "oauthProvider", "oauthStateTimestamp", "mobileClient", AuthController.MobileChallengeKey)
+    Seq("oauthState", "oauthProvider", "oauthStateTimestamp", "mobileClient", SignInFlow.MobileChallengeKey)
       .flatMap(sess.get) shouldBe empty
   }
 }

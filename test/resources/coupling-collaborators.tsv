@@ -21,7 +21,8 @@ controllers.ApiFilm	collaborator
 controllers.ApiFilmDetails	data
 controllers.ApiRatings	data
 controllers.ApiShowtime	data
-controllers.AuthController	collaborator
+controllers.NativeSignInController	collaborator
+controllers.OauthSignInController	collaborator
 controllers.BarData	data
 controllers.BrowseHref	data
 controllers.BrowsePage	collaborator

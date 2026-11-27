@@ -39,7 +39,7 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
     (users, new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(_root_.tools.SpecClock.Pinned), _root_.tools.SpecClock.Pinned))
   }
 
-  private def fixture(): (AuthController, AuthExchangeCodes) = {
+  private def fixture(): (AuthControllers, AuthExchangeCodes) = {
     val (users, codes) = stores()
     (AuthControllerFixture(Helpers.stubControllerComponents(), Map.empty, users, codes, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned), codes)
   }
@@ -114,7 +114,7 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
       case _                  => false
     }
 
-  private def exchange(ctl: AuthController, code: String, verifier: Option[String]) =
+  private def exchange(ctl: AuthControllers, code: String, verifier: Option[String]) =
     status(ctl.exchange()(FakeRequest("POST", "/auth/exchange")
       .withBody(Json.obj("code" -> code) ++ verifier.fold(Json.obj())(v => Json.obj("verifier" -> v)))))
 

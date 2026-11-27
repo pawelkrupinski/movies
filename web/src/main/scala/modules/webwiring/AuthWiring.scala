@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{AuthController, SsoController}
+import controllers.{NativeSignInController, OauthSignInController, SessionController, SsoController}
 import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, NativeTokenVerifier, OauthAccounts, OauthProvider}
 
 /** ── Sign-in ───────────────────────────────────────────────────────────────
@@ -37,10 +37,12 @@ trait AuthWiring { self: Wiring =>
 
   /** The account a provider's profile signs in as. */
   lazy val oauthAccounts: OauthAccounts = new OauthAccounts(userRepository, clock)
-  lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, oauthAccounts, authExchangeCodes,
-    country, clock, new NativeTokenVerifier(oauthProviders, googleTokenValidator, facebookTokenValidator, appleTokenValidator))
+  lazy val oauthSignInController = new OauthSignInController(controllerComponents, oauthProviders, oauthAccounts, authExchangeCodes, country, clock)
+  lazy val nativeSignInController = new NativeSignInController(controllerComponents, userRepository, oauthAccounts, authExchangeCodes,
+    new NativeTokenVerifier(oauthProviders, googleTokenValidator, facebookTokenValidator, appleTokenValidator))
+  lazy val sessionController = new SessionController(controllerComponents, userRepository)
   lazy val ssoController    = new SsoController(controllerComponents, userRepository, authExchangeCodes, country)
 
   /** The controllers the router serves the sign-in routes with ([[modules.AppComponents.router]]). */
-  lazy val authRouted = (ssoController, authController)
+  lazy val authRouted = (ssoController, oauthSignInController, nativeSignInController, sessionController)
 }

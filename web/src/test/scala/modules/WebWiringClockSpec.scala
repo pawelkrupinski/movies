@@ -40,7 +40,7 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
     wiring.authExchangeCodes.redeem(code) shouldBe None
   }
 
-  "the wiring's AuthController" should "stamp a starting flow's state on the wiring clock" in {
+  "the wiring's OauthSignInController" should "stamp a starting flow's state on the wiring clock" in {
     val wiring = new ClockedWiring {
       override lazy val oauthProviders: Map[String, OauthProvider] = Map("google" -> new OauthProvider {
         val name = "google"
@@ -48,7 +48,7 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
         def exchangeCode(code: String, redirectUri: String): OauthProfile = OauthProfile("s", None, None, None)
       })
     }
-    val start = wiring.authController.start("google")(FakeRequest("GET", "/auth/google/start"))
+    val start = wiring.oauthSignInController.start("google")(FakeRequest("GET", "/auth/google/start"))
     session(start).get("oauthStateTimestamp").value shouldBe Pinned.toEpochMilli.toString
   }
 

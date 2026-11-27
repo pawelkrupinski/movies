@@ -43,7 +43,7 @@ class NativeSignInPkceSpec extends AnyFlatSpec with Matchers {
       new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(_root_.tools.SpecClock.Pinned), _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
 
   /** Start (with `startQuery`) and finish a native flow; the deep-link code. */
-  private def deepLinkCode(ctl: AuthController, startQuery: String): String = {
+  private def deepLinkCode(ctl: AuthControllers, startQuery: String): String = {
     val start = ctl.start("google")(FakeRequest("GET", s"/auth/google/start?platform=ios$startQuery"))
     status(start) shouldBe SEE_OTHER
     val sess  = session(start)
@@ -53,7 +53,7 @@ class NativeSignInPkceSpec extends AnyFlatSpec with Matchers {
     redirectLocation(back).value.stripPrefix("kinowo://auth-done?code=")
   }
 
-  private def exchange(ctl: AuthController, body: play.api.libs.json.JsObject) =
+  private def exchange(ctl: AuthControllers, body: play.api.libs.json.JsObject) =
     status(ctl.exchange()(FakeRequest("POST", "/auth/exchange").withBody(body)))
 
   "A native sign-in started with a challenge" should "exchange its code for the matching verifier" in {
@@ -98,7 +98,7 @@ class NativeSignInPkceSpec extends AnyFlatSpec with Matchers {
     val web   = ctl.start("google")(FakeRequest("GET", "/auth/google/start").withSession(abandoned.data.toSeq*))
     val sess  = session(web)
     sess.get("mobileClient") shouldBe None
-    sess.get(AuthController.MobileChallengeKey) shouldBe None
+    sess.get(SignInFlow.MobileChallengeKey) shouldBe None
     val back = ctl.callback("google")(FakeRequest("GET", s"/auth/google/callback?code=C&state=${sess.get("oauthState").value}")
       .withSession(sess.data.toSeq*))
     redirectLocation(back).value should not startWith "kinowo://"
@@ -109,7 +109,7 @@ class NativeSignInPkceSpec extends AnyFlatSpec with Matchers {
     val abandoned = session(ctl.start("google")(FakeRequest("GET",
       s"/auth/google/start?platform=android&challenge=${challengeOf(Verifier)}")))
     session(ctl.start("google")(FakeRequest("GET", "/auth/google/start?platform=android")
-      .withSession(abandoned.data.toSeq*))).get(AuthController.MobileChallengeKey) shouldBe None
+      .withSession(abandoned.data.toSeq*))).get(SignInFlow.MobileChallengeKey) shouldBe None
   }
 
   it should "refuse a challenge that is not a base64url SHA-256" in {

@@ -72,21 +72,21 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
 
   "The redirect_uri" should "be the SAME single URL from every deployed country" in {
     val urls = Country.switchable.flatMap(_.webOrigin).distinct
-      .map(origin => AuthController.callbackUrlFor("google", origin))
+      .map(origin => SignInFlow.callbackUrlFor("google", origin))
 
     urls.distinct shouldBe List("https://showtimes.cc/auth/google/callback")
   }
 
   it should "differ only by provider — two console entries in total" in {
-    AuthController.callbackUrlFor("google",   Apex) shouldBe "https://showtimes.cc/auth/google/callback"
-    AuthController.callbackUrlFor("facebook", Apex) shouldBe "https://showtimes.cc/auth/facebook/callback"
+    SignInFlow.callbackUrlFor("google",   Apex) shouldBe "https://showtimes.cc/auth/google/callback"
+    SignInFlow.callbackUrlFor("facebook", Apex) shouldBe "https://showtimes.cc/auth/facebook/callback"
   }
 
   // A developer's sign-in has to finish on their own machine: nothing registered
   // the apex on their behalf, and pointing them at production would be worse
   // than useless.
   it should "stay the caller's own address off a deployed origin" in {
-    AuthController.callbackUrlFor("google", "http://localhost:9000") shouldBe
+    SignInFlow.callbackUrlFor("google", "http://localhost:9000") shouldBe
       "http://localhost:9000/auth/google/callback"
   }
 
@@ -94,36 +94,36 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   // the reverse route would add on /uk. Pinned to the routes file through a
   // root-mounted reverse route so the two cannot drift apart.
   it should "match the route the application actually serves at the root" in {
-    AuthController.callbackPath("google") shouldBe
-      new controllers.ReverseAuthController("/").callback("google").url
-    AuthController.callbackPath("facebook") shouldBe
-      new controllers.ReverseAuthController("/").callback("facebook").url
+    SignInFlow.callbackPath("google") shouldBe
+      new controllers.ReverseOauthSignInController("/").callback("google").url
+    SignInFlow.callbackPath("facebook") shouldBe
+      new controllers.ReverseOauthSignInController("/").callback("facebook").url
   }
 
   // ── The state ────────────────────────────────────────────────────────────
 
   "The OAuth state" should "name the country that started the flow" in {
     Country.all.foreach { country =>
-      AuthController.stateCountry(AuthController.newState(country)).value shouldBe country
+      SignInFlow.stateCountry(SignInFlow.newState(country)).value shouldBe country
     }
   }
 
   it should "still be unguessable — the nonce is what the cookie check compares" in {
-    AuthController.newState(Country.Poland) should not be AuthController.newState(Country.Poland)
+    SignInFlow.newState(Country.Poland) should not be SignInFlow.newState(Country.Poland)
   }
 
   // A flow that started before this shape existed is still in the air across a
   // deploy; it finishes where it lands, which is what it did before.
   it should "name nothing when it carries no country" in {
-    AuthController.stateCountry("2b6f0cc9-04b3-4f0c-9d1c-1c9d0f4b2a11") shouldBe empty
-    AuthController.stateCountry("nonce.atlantis")                       shouldBe empty
-    AuthController.stateCountry("")                                     shouldBe empty
+    SignInFlow.stateCountry("2b6f0cc9-04b3-4f0c-9d1c-1c9d0f4b2a11") shouldBe empty
+    SignInFlow.stateCountry("nonce.atlantis")                       shouldBe empty
+    SignInFlow.stateCountry("")                                     shouldBe empty
   }
 
   // ── Finish here, or hand on ──────────────────────────────────────────────
 
   "A callback for a country on this origin" should "be finished here, not relayed" in {
-    val state  = AuthController.newState(Country.UnitedKingdom)
+    val state  = SignInFlow.newState(Country.UnitedKingdom)
     // The apex deployment IS Poland's process; the UK flow's cookie reached it
     // because the two share the showtimes.cc origin.
     val result = podFor(Country.Poland).callback("google")(
@@ -134,7 +134,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "drop the visitor back on the country they signed in from, not on this one" in {
-    val state  = AuthController.newState(Country.UnitedKingdom)
+    val state  = SignInFlow.newState(Country.UnitedKingdom)
     val result = podFor(Country.Poland).callback("google")(
       arrivingAt(Apex, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
 
@@ -142,7 +142,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "stay on a relative landing when the flow is this deployment's own" in {
-    val state  = AuthController.newState(Country.Poland)
+    val state  = SignInFlow.newState(Country.Poland)
     val result = podFor(Country.Poland).callback("google")(
       arrivingAt(PlOrigin, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
 
@@ -152,7 +152,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   "A callback for a country on ANOTHER origin" should "be handed on, unread, to the deployment holding the session" in {
-    val state  = AuthController.newState(Country.Poland)
+    val state  = SignInFlow.newState(Country.Poland)
     val provider = new FakeProvider("google")
     // No session: the browser's kinowo.net cookie was never sent to showtimes.cc.
     // That is exactly the case the relay exists for.
@@ -171,7 +171,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   // that should report it — so everything the provider sent is carried, not
   // just the happy-path pair.
   it should "carry a provider error across too" in {
-    val state  = AuthController.newState(Country.Poland)
+    val state  = SignInFlow.newState(Country.Poland)
     val result = podFor(Country.Poland).callback("google")(
       arrivingAt(Apex, s"/auth/google/callback?error=access_denied&state=$state"))
 
@@ -180,7 +180,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be finished normally once it arrives there" in {
-    val state  = AuthController.newState(Country.Poland)
+    val state  = SignInFlow.newState(Country.Poland)
     val result = podFor(Country.Poland).callback("google")(
       arrivingAt(PlOrigin, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
 
@@ -190,7 +190,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   // One hop, never two: the relay target is the origin that serves the flow's
   // country, so the check that sent it there passes on arrival.
   it should "not relay again from the deployment it was handed to" in {
-    val state = AuthController.newState(Country.Poland)
+    val state = SignInFlow.newState(Country.Poland)
     val landed = podFor(Country.Poland).callback("google")(
       arrivingAt(PlOrigin, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
 
@@ -198,7 +198,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   "A callback off a deployed origin" should "never be relayed at production" in {
-    val state  = AuthController.newState(Country.Poland)
+    val state  = SignInFlow.newState(Country.Poland)
     val result = podFor(Country.Poland).callback("google")(
       FakeRequest("GET", s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
 
@@ -214,7 +214,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
     // 1. Start on /uk. The provider is handed the ONE registered URL.
     val started = ukPod.start("google")(arrivingAt(Apex, "/uk/auth/google/start"))
     val state   = session(started).get("oauthState").value
-    AuthController.stateCountry(state).value shouldBe Country.UnitedKingdom
+    SignInFlow.stateCountry(state).value shouldBe Country.UnitedKingdom
 
     // 2. The provider comes back to the apex, which is Poland's process.
     val apexPod = podFor(Country.Poland, provider)
@@ -265,7 +265,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
 
   /** A deployment serving `country`, with the repository and code store exposed
    *  so a test can seed a person or watch a code being spent. */
-  private def podWith(country: Country): (AuthController, InMemoryUserRepository, AuthExchangeCodes) = {
+  private def podWith(country: Country): (AuthControllers, InMemoryUserRepository, AuthExchangeCodes) = {
     val repository = new InMemoryUserRepository
     val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore(fixedClk), fixedClk)
     (AuthControllerFixture(Helpers.stubControllerComponents(), Map.empty, repository, codes, country, clock = fixedClk),
@@ -280,7 +280,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   "A finished sign-in" should "route home through the other domain, so both end up signed in" in {
-    val state  = AuthController.newState(Country.Poland)
+    val state  = SignInFlow.newState(Country.Poland)
     val result = podFor(Country.Poland).callback("google")(
       arrivingAt(PlOrigin, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
 
@@ -296,7 +296,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still sign the visitor in HERE, whatever happens to the pairing leg" in {
-    val state  = AuthController.newState(Country.Poland)
+    val state  = SignInFlow.newState(Country.Poland)
     val result = podFor(Country.Poland).callback("google")(
       arrivingAt(PlOrigin, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
 
@@ -306,7 +306,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   // The native apps keep a cookie jar per host and finish through the deep link,
   // so there is no second domain to pair and the hop would break the handoff.
   it should "not pair for a native client finishing through the deep link" in {
-    val state  = AuthController.newState(Country.Poland)
+    val state  = SignInFlow.newState(Country.Poland)
     val result = podFor(Country.Poland).callback("google")(
       arrivingAt(PlOrigin, s"/auth/google/callback?code=C&state=$state")
         .withSession((sessionFor(state) :+ ("mobileClient" -> "1"))*))
@@ -350,7 +350,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
     val kinowoSso = ssoPod(Country.Poland)
     val apex      = ssoPod(Country.Poland)   // the process mounted at showtimes.cc's root
 
-    val state    = AuthController.newState(Country.Poland)
+    val state    = SignInFlow.newState(Country.Poland)
     val signedIn = kinowo.callback("google")(
       arrivingAt(PlOrigin, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
     val onKinowo = session(signedIn).data.toSeq
@@ -471,7 +471,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   // stayed signed out. Reported as "logging in only carries from .net to .cc".
 
   "A sign-in finishing at the apex" should "pair the OTHER domain, not the one it is already on" in {
-    val state  = AuthController.newState(Country.UnitedKingdom)
+    val state  = SignInFlow.newState(Country.UnitedKingdom)
     // The apex deployment IS Poland's process, serving showtimes.cc.
     val result = podFor(Country.Poland).callback("google")(
       arrivingAt(Apex, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
@@ -480,7 +480,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "hand the visitor back to the country they signed in on" in {
-    val state  = AuthController.newState(Country.UnitedKingdom)
+    val state  = SignInFlow.newState(Country.UnitedKingdom)
     val result = podFor(Country.Poland).callback("google")(
       arrivingAt(Apex, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
 
@@ -494,24 +494,24 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   // reverse routes a spec sees are mounted at `/` whatever the deployment says,
   // which is exactly why this got through.
   "The return address" should "not repeat the country's mount point" in {
-    AuthController.absoluteLanding(Apex, "/uk/") shouldBe s"$UkBase/"
-    AuthController.absoluteLanding(PlOrigin, "/") shouldBe s"$PlOrigin/"
+    SignInFlow.absoluteLanding(Apex, "/uk/") shouldBe s"$UkBase/"
+    SignInFlow.absoluteLanding(PlOrigin, "/") shouldBe s"$PlOrigin/"
   }
 
   // ...and being a real deployed base URL is what lets the far side accept it.
   it should "survive the allowlist the far side checks it against" in {
-    SsoController.switchTarget(Some(AuthController.absoluteLanding(Apex, "/uk/"))).value shouldBe UkBase
-    SsoController.switchTarget(Some(AuthController.absoluteLanding(PlOrigin, "/"))).value shouldBe PlOrigin
+    SsoController.switchTarget(Some(SignInFlow.absoluteLanding(Apex, "/uk/"))).value shouldBe UkBase
+    SsoController.switchTarget(Some(SignInFlow.absoluteLanding(PlOrigin, "/"))).value shouldBe PlOrigin
   }
 
   it should "leave an already-absolute landing alone" in {
-    AuthController.absoluteLanding(Apex, s"$UkBase/") shouldBe s"$UkBase/"
+    SignInFlow.absoluteLanding(Apex, s"$UkBase/") shouldBe s"$UkBase/"
   }
 
   // A developer on localhost has no sibling to pair with, and must not be sent
   // to production looking for one.
   "A sign-in off a deployed origin" should "not pair anything" in {
-    val state  = AuthController.newState(Country.Poland)
+    val state  = SignInFlow.newState(Country.Poland)
     val result = podFor(Country.Poland).callback("google")(
       FakeRequest("GET", s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
 
@@ -543,7 +543,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   "A finished sign-in" should "not be a response anything may keep" in {
-    val state  = AuthController.newState(Country.Poland)
+    val state  = SignInFlow.newState(Country.Poland)
     val result = podFor(Country.Poland).callback("google")(
       arrivingAt(PlOrigin, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
 
