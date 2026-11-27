@@ -259,13 +259,10 @@ def summary_markdown(run: Record, jobs: Sequence[Job]) -> str:
 
 def gauge_point(stamp: str, shared: Dict[str, str], value: float, **labels: Any) -> Dict[str, Any]:
     """One OTLP data point at `stamp`: its own labels plus the run's (`workflow`, `ref`)."""
-    return {"asDouble": float(value), "timeUnixNano": stamp,
-            "attributes": [{"key": key, "value": {"stringValue": str(text)}}
-                           for key, text in sorted(dict(labels, **shared).items())]}
+    return grafana_otlp.point(stamp, value, dict(labels, **shared))
 
 
-def gauge(name: str, points: List[Dict[str, Any]]) -> Dict[str, Any]:
-    return {"name": name, "gauge": {"dataPoints": points}}
+gauge = grafana_otlp.gauge
 
 
 def run_gauges(run: Record, jobs: Sequence[Job], ready: Optional[datetime.datetime],
@@ -306,10 +303,7 @@ def otlp_payload(run: Record, jobs: Sequence[Job], ready: Optional[datetime.date
     by_name = {g["name"]: g for g in run_gauges(run, jobs, ready, point) + job_gauges(jobs, point)}
     ordered = [by_name[name] for name in GAUGE_ORDER]
     metrics = ordered + run_metrics.gauges(jobs, point)
-    return {"resourceMetrics": [{
-        "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": SERVICE_NAME}}]},
-        "scopeMetrics": [{"metrics": [m for m in metrics if m["gauge"]["dataPoints"]]}],
-    }]}
+    return grafana_otlp.document(SERVICE_NAME, [m for m in metrics if m["gauge"]["dataPoints"]])
 
 
 def merged(steps: Iterable[Tuple[str, float]]) -> List[Tuple[str, float]]:

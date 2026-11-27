@@ -98,13 +98,14 @@ jobs:
         # nightly explorer, a bot -- is reported from any free slot of ci-runner's (`movies`): after the run, holding up
         # nothing while it queues.
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && !(github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.name == 'Main' || github.ref == 'refs/heads/main' && (github.workflow == 'Main' || github.workflow == 'Identity model convergence' || github.workflow == 'Identity takes')) && 'movies' || 'ubuntu-26.04' }}
-        timeout-minutes: 5
+        timeout-minutes: 8
         steps:
             # The workflows too: each job's `timeout-minutes` goes out beside its time (ci_timings.py `workflow_ceilings`).
             - uses: actions/checkout@v5
               with:
                   sparse-checkout: |
                       scripts/ci
+                      scripts/lib
                       .github/actions/report-timings
                       .github/workflows
                       .github/actions/job-telemetry
@@ -134,6 +135,45 @@ jobs:
                   run-id: ${{ inputs.run-id || github.event.workflow_run.id }}
                   grafana-url: ${{ secrets.GRAFANA_URL }}
                   grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+            # THE CODE-QUALITY SERIES (scripts/ci/quality_metrics.py, the "Code quality" Grafana board; the owner,
+            # 2026-11-27): after each Main run on main -- every push to main but one a newer push replaced while it
+            # queued -- the ratchet baselines its commit committed, read back (nothing re-measured), and agentctl's
+            # (public) at its last commit by then; the tool is main's (scripts/ci, scripts/lib and, beside them,
+            # scripts/shell_py_progress.py above). Its own sparse checkout: the baselines, and the tools the migration
+            # counter reads, never the 1.1 GB of test/resources/fixtures. Never fails the report.
+            - name: Check out the reported commit's baselines
+              if: github.event.workflow_run.name == 'Main' && github.event.workflow_run.head_branch == 'main'
+              continue-on-error: true
+              uses: actions/checkout@v5
+              with:
+                  ref: ${{ github.event.workflow_run.head_sha }}
+                  path: quality-source
+                  # cone mode (WorkflowScriptsRunnableSpec): a listed directory brings the files beside its parents,
+                  # so the 14 KB identity-what-if-verdicts brings test/resources' own files -- the baselines
+                  sparse-checkout: |
+                      test/resources/identity-what-if-verdicts
+                      scripts
+                      .github/scripts
+                      android/scripts
+                      ios/scripts
+                      infra/bin
+                      infra/nix/bin
+                      infra/nix/files
+                      infra/version-dashboard/scripts
+            - name: Push the code-quality series
+              if: github.event.workflow_run.name == 'Main' && github.event.workflow_run.head_branch == 'main'
+              continue-on-error: true
+              timeout-minutes: 3
+              env:
+                  GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+                  GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  git clone -q --filter=blob:none --no-checkout https://github.com/pawelkrupinski/agentctl.git agentctl-source
+                  scripts/ci/quality_metrics.py --repo-dir quality-source --agentctl agentctl-source --push
+            - name: End what the code-quality push left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
             - uses: ./.github/actions/job-telemetry
               if: ${{ !cancelled() }}
               with:

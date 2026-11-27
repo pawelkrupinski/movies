@@ -54,7 +54,9 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     // Added 2026-08-29 with the HTTP dashboard. EVERY live dashboard has to be listed here or the
     // spec's guarantee inverts: a metric charted only on an unlisted dashboard reads as uncharted,
     // and someone "fixes" that by adding a duplicate panel to a listed one.
-    "infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json"
+    "infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json",
+    // Added 2026-11-27: the committed ratchet baselines (scripts/ci/quality_metrics.py).
+    "infra/nix/files/monitoring/grafana/dashboards/apps/code-quality.json"
   )
 
   /** Worker metrics deliberately exported without a panel, each with the reason.

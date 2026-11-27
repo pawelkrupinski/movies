@@ -1,0 +1,765 @@
+{
+  "uid": "kinowo-code-quality",
+  "title": "Code quality \u2014 the ratchets",
+  "tags": [
+    "ci",
+    "quality"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30m",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "description": "Every language's frozen ratchet rows over time -- Scala, Python, JS/TS, the design rules, the shell-to-Python migration, agentctl -- read from the baselines each main commit commits (scripts/ci/quality_metrics.py).",
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "purple",
+        "name": "Deploys",
+        "tags": [
+          "deploy"
+        ],
+        "type": "tags"
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Baselines",
+      "type": "link",
+      "targetBlank": true,
+      "url": "https://github.com/pawelkrupinski/movies/tree/main/test/resources"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "repo",
+        "label": "Repo",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "local-prometheus"
+        },
+        "definition": "label_values(kinowo_quality_rows, repo)",
+        "query": {
+          "query": "label_values(kinowo_quality_rows, repo)",
+          "refId": "repo"
+        },
+        "current": {
+          "text": "All",
+          "value": "$__all",
+          "selected": true
+        },
+        "includeAll": true,
+        "multi": true,
+        "refresh": 2,
+        "sort": 1,
+        "hide": 0,
+        "description": "movies, or agentctl (~/bin, its own repository).",
+        "regex": ""
+      },
+      {
+        "name": "language",
+        "label": "Language",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "local-prometheus"
+        },
+        "definition": "label_values(kinowo_quality_rows{repo=~\"$repo\"}, language)",
+        "query": {
+          "query": "label_values(kinowo_quality_rows{repo=~\"$repo\"}, language)",
+          "refId": "language"
+        },
+        "current": {
+          "text": "All",
+          "value": "$__all",
+          "selected": true
+        },
+        "includeAll": true,
+        "multi": true,
+        "refresh": 2,
+        "sort": 1,
+        "hide": 0,
+        "description": "scala, py (the Python tools), js (the production JS/TS); one quality row each.",
+        "regex": "/^(scala|py|js)$/"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Every ratchet baseline main COMMITS, read back after each Main run (`scripts/ci/quality_metrics.py`, from `report-timings.yml`): nothing is re-measured. **Rows** = the frozen rows past a limit (a method, file, clone set, package or module each); **sum** = their values added up (lines, errors, fan-out). Families: **quality** (the complexity / length / duplication / coupling / pyright / mypy ratchets), **design** (the general rule core, `design-baseline.tsv`), **migration** (the shell-to-Python MIGRATE list), **ceilings** (agentctl's `ctx` and locator ceilings). The ratchets only let a row fall, so every line here should step DOWN."
+      }
+    },
+    {
+      "id": 2,
+      "type": "row",
+      "title": "Now, and falling?",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 3
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Frozen quality rows now",
+      "description": "The quality family's frozen rows per repo and language at the latest commit read (complexity, length, clones, coupling, pyright / mypy files). Falls as the work list is cleared.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 5
+      },
+      "interval": "1h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (repo, language) (last_over_time(kinowo_quality_rows{repo=~\"$repo\", language=~\"$language\", family=\"quality\"}[30d]))",
+          "legendFormat": "{{repo}} {{language}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value_and_name",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Frozen design-rule rows now",
+      "description": "The design family's frozen rows per repo and language: naming, effects, state, import-time IO, fan-out, distance, layers, directory cycles.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 5
+      },
+      "interval": "1h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (repo, language) (last_over_time(kinowo_quality_rows{repo=~\"$repo\", language=~\"$language\", family=\"design\"}[30d]))",
+          "legendFormat": "{{repo}} {{language}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value_and_name",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Falling? Rows now, and their change over 7 and 30 days",
+      "description": "Each measure's frozen rows now, and now minus 7 / 30 days ago: negative is the ratchet doing its job, positive a row added with its trailer. A change is blank where the series is younger than the offset (the backfill reaches 2026-10-27).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 24,
+        "h": 12
+      },
+      "interval": "1h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (repo, language, family, measure) (last_over_time(kinowo_quality_rows{repo=~\"$repo\", language=~\"$language\", family=~\"quality|design|ceilings\"}[30d]))",
+          "legendFormat": "",
+          "refId": "now",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (repo, language, family, measure) (last_over_time(kinowo_quality_rows{repo=~\"$repo\", language=~\"$language\", family=~\"quality|design|ceilings\"}[30d])) - sum by (repo, language, family, measure) (last_over_time(kinowo_quality_rows{repo=~\"$repo\", language=~\"$language\", family=~\"quality|design|ceilings\"}[30d] offset 7d))",
+          "legendFormat": "",
+          "refId": "7d",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (repo, language, family, measure) (last_over_time(kinowo_quality_rows{repo=~\"$repo\", language=~\"$language\", family=~\"quality|design|ceilings\"}[30d])) - sum by (repo, language, family, measure) (last_over_time(kinowo_quality_rows{repo=~\"$repo\", language=~\"$language\", family=~\"quality|design|ceilings\"}[30d] offset 30d))",
+          "legendFormat": "",
+          "refId": "30d",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "Value #now": "rows now",
+              "Value #7d": "change 7d",
+              "Value #30d": "change 30d"
+            },
+            "indexByName": {
+              "repo": 0,
+              "language": 1,
+              "family": 2,
+              "measure": 3,
+              "Value #now": 4,
+              "Value #7d": 5,
+              "Value #30d": 6
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "rows now",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "change.*"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "text",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.5
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "$language: the quality ratchets",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "repeat": "language"
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Frozen rows by measure",
+      "description": "Each measure's rows past its limit (complexity, length, clones, cycles, fan-out, distance, the data guard, pyright / mypy files), per repo. A held measure with no row draws 0.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 12,
+        "h": 9
+      },
+      "interval": "1h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (repo, measure) (last_over_time(kinowo_quality_rows{repo=~\"$repo\", language=\"$language\", family=\"quality\"}[7d]))",
+          "legendFormat": "{{repo}} {{measure}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Their values, summed by measure",
+      "description": "The same rows' values added up: the total cognitive / cyclomatic complexity of the frozen methods, their lines, the clone copies, the fan-out, the strict pyright / mypy errors.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 22,
+        "w": 12,
+        "h": 9
+      },
+      "interval": "1h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (repo, measure) (last_over_time(kinowo_quality_sum{repo=~\"$repo\", language=\"$language\", family=\"quality\"}[7d]))",
+          "legendFormat": "{{repo}} {{measure}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Design rules: the effects, stacked by kind",
+      "description": "Modules touching an injected effect outside its adapter, stacked: effect-clock-process-env is ONE row a module for those three (design-baseline.tsv does not split them), effect-files / -storage / -network one row each. Falls as modules receive them instead.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 12,
+        "h": 9
+      },
+      "interval": "1h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (repo, measure) (last_over_time(kinowo_quality_rows{repo=~\"$repo\", language=\"$language\", family=\"design\", measure=~\"effect-.*\"}[7d]))",
+          "legendFormat": "{{repo}} {{measure}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Design rules: the other kinds",
+      "description": "The design family's other rows: suffix and abbreviation names, module state, import-time IO, fan-out, the data guard, distance, layer edges, directory cycles (and `mixed` once it lands).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 31,
+        "w": 12,
+        "h": 9
+      },
+      "interval": "1h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (repo, measure) (last_over_time(kinowo_quality_rows{repo=~\"$repo\", language=\"$language\", family=\"design\", measure!~\"effect-.*\"}[7d]))",
+          "legendFormat": "{{repo}} {{measure}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "row",
+      "title": "The shell-to-Python migration, and agentctl's ceilings",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "MIGRATE tools done and left",
+      "description": "The shell-to-Python analysis's MIGRATE list (scripts/shell-py-progress/migrate-tools.tsv, from 2026-11-22): done (Python, a thin forwarder, or retired) and left, as scripts/shell_py_progress.py counts them.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 41,
+        "w": 12,
+        "h": 8
+      },
+      "interval": "1h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (measure) (last_over_time(kinowo_quality_rows{repo=~\"$repo\", family=\"migration\"}[7d]))",
+          "legendFormat": "{{measure}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "agentctl: ctx parameters and service locators",
+      "description": "agentctl's frozen ceilings, which only fall: functions taking `ctx` (tests/test_no_new_ctx_parameters.py), the `wire_*` locators left and their ambient readers (tests/test_no_service_locators.py: modules, functions).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 41,
+        "w": 12,
+        "h": 8
+      },
+      "interval": "1h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (measure) (last_over_time(kinowo_quality_sum{repo=~\"$repo\", family=\"ceilings\"}[7d]))",
+          "legendFormat": "{{measure}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    }
+  ]
+}

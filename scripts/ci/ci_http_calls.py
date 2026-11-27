@@ -70,15 +70,11 @@ def summary_markdown(totals, title):
 
 def otlp_payload(totals, country, row, run_id, workflow, now=None):
     stamp = str(int((now if now is not None else ci_machine.wall()) * 1000) * 1000000)
-    points = [{"asDouble": float(count), "timeUnixNano": stamp,
-               "attributes": [{"key": k, "value": {"stringValue": str(v)}} for k, v in sorted({
-                   "country": country, "service": service, "phase": phase, "outcome": outcome,
-                   "row": row, "run_id": run_id, "workflow": workflow}.items())]}
+    points = [grafana_otlp.point(stamp, count, {
+                  "country": country, "service": service, "phase": phase, "outcome": outcome,
+                  "row": row, "run_id": run_id, "workflow": workflow})
               for (service, phase, outcome), count in sorted(totals.items())]
-    return {"resourceMetrics": [{
-        "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": SERVICE_NAME}}]},
-        "scopeMetrics": [{"metrics": [{"name": METRIC, "gauge": {"dataPoints": points}}]}],
-    }]}
+    return grafana_otlp.document(SERVICE_NAME, [grafana_otlp.gauge(METRIC, points)])
 
 
 def push(payload, url, token, opener=grafana_otlp.OPEN):

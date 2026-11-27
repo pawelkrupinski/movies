@@ -62,12 +62,9 @@ def otlp_payload(found, now_nanos):
     stamp = str(now_nanos)
 
     def point(value, **labels):
-        return {"asDouble": float(value), "timeUnixNano": stamp,
-                "attributes": [{"key": key, "value": {"stringValue": str(text)}} for key, text in sorted(labels.items())]}
+        return grafana_otlp.point(stamp, value, labels)
 
-    def gauge(name, points):
-        return {"name": name, "gauge": {"dataPoints": points}}
-
+    gauge = grafana_otlp.gauge
     countries = sorted(found)
     metrics = [
         gauge("kinowo_identity_drift_listings",
@@ -77,10 +74,7 @@ def otlp_payload(found, now_nanos):
         gauge("kinowo_identity_drift_recorded_timestamp_seconds",
               [point(recorded_seconds(found[cc]), country=cc) for cc in countries]),
     ]
-    return {"resourceMetrics": [{
-        "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": SERVICE_NAME}}]},
-        "scopeMetrics": [{"metrics": metrics}],
-    }]}
+    return grafana_otlp.document(SERVICE_NAME, metrics)
 
 
 def push(payload, url, token, opener=grafana_otlp.OPEN):

@@ -97,6 +97,12 @@ EVENT_ONLY_VALUES = {
     # (AutoApplySwitchFailed), and the snapshot holds no blocked host's `reason` at all. Re-snapshot once a host
     # has published it, then drop this.
     ("nixos_auto_apply_blocked_reason", "reason", "switch_failed"),
+    # NOT PUBLISHED YET (2026-11-27): the code-quality series (scripts/ci/quality_metrics.py, pushed over OTLP after
+    # each Main run on main) are new with apps/code-quality.json, so the snapshot has none. Re-snapshot once
+    # monitoring-1 holds them, then drop these.
+    *{(metric, "family", value) for metric in ("kinowo_quality_rows", "kinowo_quality_sum")
+      for value in ("quality", "design", "migration", "ceilings")},
+    ("kinowo_quality_rows", "measure", "effect-.*"),
     # HISTORY, not a value: the write burst had no `trigger` label before 7d59bc7e3, and
     # ReadModelProjectionWritePerCallHigh's `trigger=~"stream|"` keeps the empty branch so the
     # unlabelled series it fired on can still be replayed (alert-incidents.yml).

@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (263)
+## Landing and CI (264)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -89,7 +89,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/ci-row-scope.sh` | Can this push move ci.yml's slow rows? Prints true when a changed path can change what they test | `scripts/ci/ci-row-scope.sh` | wf ci; skill identity-investigation; 2 tools | ci_row_scope_test.py | KEEP |
 | `scripts/ci/ci-timings` | Where CI's time goes across runs: report, trend, compare, collect | `scripts/ci/ci-timings` | wf alert-backtest, android, archive-recording +44; 8 tools | ci_timings_test.py | KEEP |
 | `scripts/ci/ci_http_calls.py` | What a CI job asked the outside world: its outbound calls per external service and outcome, as a | `scripts/ci/ci_http_calls.py` | wf country-convergence-leg; 1 tool | ci_http_calls_test.py | Python |
-| `scripts/ci/ci_machine.py` | THE MACHINE, for the scripts/ci tools that run in a sparse checkout (scripts/ci alone, no scripts/lib, so no | `imported` | 43 tools | - | Python |
+| `scripts/ci/ci_machine.py` | THE MACHINE, for the scripts/ci tools that run in a sparse checkout (scripts/ci alone, no scripts/lib, so no | `imported` | 44 tools | - | Python |
 | `scripts/ci/ci_row_scope.py` | CAN THIS PUSH MOVE ci.yml's SLOW ROWS? Reads changed paths on stdin and prints `true` when one of them can change | `scripts/ci/ci_row_scope.py` | 1 tool | ci_row_scope_test.py | Python |
 | `scripts/ci/ci_timings.py` | Where a GitHub Actions run spent its time: every job and step, plus the `PhaseTimer` phases a | `python3 scripts/ci/ci_timings.py` | wf country-convergence-leg, identity-lean-whole, report-timings; 8 tools | ci_timings_test.py | Python |
 | `scripts/ci/ci_trends.py` | Where CI's time goes, across many runs: per job and step, setup against work, the critical path, queueing, the | `scripts/ci/ci_trends.py` | 17 tools | ci_trends_test.py | Python |
@@ -123,7 +123,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/gh-optional.sh` | `gh <download args...>` for something that may legitimately not exist yet — a marker asset on a release | `scripts/ci/gh-optional.sh` | wf convergence-bisect, country-convergence-leg; 7 tools | gh-optional-test.sh | KEEP |
 | `scripts/ci/gh-release.sh` | `gh release <args...>`, retried only when GitHub answers with a race rather than a verdict | `scripts/ci/gh-release.sh` | wf alert-backtest, android, quality-hotspots; 12 tools | gh-release-test.sh | KEEP |
 | `scripts/ci/gh_bounded.py` | GH, BOUNDED, for the CI tools a sparse checkout runs (scripts/ci, stdlib only: those jobs check out no scripts/lib, | `imported` | 4 tools | gh_bounded_test.py | Python |
-| `scripts/ci/grafana_otlp.py` | METRICS TO GRAFANA OVER OTLP, the one way the CI reporters push them (scripts/ci; the sparse checkouts that run them | `imported` | 3 tools | grafana_otlp_test.py | Python |
+| `scripts/ci/grafana_otlp.py` | METRICS TO GRAFANA OVER OTLP, the one way the CI reporters push them (scripts/ci; the sparse checkouts that run them | `imported` | 4 tools | grafana_otlp_test.py | Python |
 | `scripts/ci/harness_aa.py` | THE DRIFT HARNESS'S A/A SELF-TEST (identity-and-convergence review 2026-11-06, P5; the owner approved it). | `scripts/ci/harness_aa.py` | wf country-convergence-leg, identity-takes; 6 tools | harness_aa_test.py | Python |
 | `scripts/ci/header_tsv.py` | A TSV WITH A HEADER, the one way the CI tools read and write one (scripts/ci; the sparse checkouts that run them | `imported` | 6 tools | header_tsv_test.py | Python |
 | `scripts/ci/hook-beside.sh` | One check beside the rest (.github/workflows/precommit-check.yml's `check (rest)`) | `scripts/ci/hook-beside.sh` | wf precommit-check; 1 tool | hook-beside-test.sh | KEEP |
@@ -176,6 +176,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/pull_pinned_image.py` | Pull one of .github/pinned-images.tsv's images BY DIGEST, from the first source that serves it, and refuse any other. | `scripts/ci/pull_pinned_image.py` | 2 tools | pull_pinned_image_test.py | Python |
 | `scripts/ci/py_quality_ratchet.py` | THE PYTHON QUALITY RATCHET (the pre-push `pyquality` check; CLAUDE.md, "Code quality ratchets"): the repository's | `python3 scripts/ci/py_quality_ratchet.py` | hook pre-push, pre-push.sh-legacy; 2 tools | py_quality_ratchet_test.py | Python |
 | `scripts/ci/python_floor_lint.py` | Every Python tool in the repository runs on the Python floor, scripts/run-script-tests' `PythonFloor` (3.9: macOS's | `python3 scripts/ci/python_floor_lint.py` | wf tool-self-tests; 1 tool | python_floor_lint_test.py | Python |
+| `scripts/ci/quality_metrics.py` | THE CODE-QUALITY SERIES (the "Code quality" Grafana board, infra/nix/files/monitoring/grafana/dashboards/apps/ | `scripts/ci/quality_metrics.py` | wf report-timings | quality_metrics_test.py | Python |
 | `scripts/ci/quality_ratchet.py` | The code-quality ratchets (the pre-push sbt check's quality step) | `scripts/ci/quality_ratchet.py` | hook pre-push, pre-push.sh-legacy; skill CLAUDE.md; 8 tools | quality_ratchet_test.py | Python |
 | `scripts/ci/ratchet_diff.py` | The ratchet diff: every frozen row that changed between two refs, before and after | `scripts/ci/ratchet_diff.py` | 2 tools | ratchet_diff_test.py | Python |
 | `scripts/ci/recorded-countries.sh` | Which countries a recording captured complete | `scripts/ci/recorded-countries.sh` | wf record-scrape-fixtures, verify-scrape-recording | recorded-countries-test.sh | KEEP |
@@ -259,10 +260,10 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/script_tests_floor.py` | THE FLOOR'S STATIC HALF (scripts/run-script-tests --bash / --floor with --changed): every bash file the change | `imported` | 1 tool | - | Python |
 | `scripts/py-quality-report` | The Python quality report and its ratchet (entry; the measure is scripts/py-quality/report.py) | `scripts/py-quality-report` | hook pre-push, pre-push.sh-legacy; skill CLAUDE.md; 3 tools | - | KEEP |
 | `scripts/py-quality/clones.py` | THE PYTHON CLONE GROUPS (scripts/py-quality/report.py): every run of MIN_TOKENS or more tokens appearing twice or more | `imported` | wf ios; hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, test-layers; 9 tools | - | Python |
-| `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; hook pre-push; skill CLAUDE.md; 20 tools | - | Python |
+| `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; hook pre-push; skill CLAUDE.md; 21 tools | - | Python |
 | `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 31 tools | - | Python |
 | `scripts/py-quality/migrated.py` | THE MIGRATED TOOLS (scripts/py-quality/report.py; the owner, 2026-11-23): the files of the shell-to-Python migration's | `imported` | skill CLAUDE.md; 5 tools | - | Python |
-| `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push, pre-push.sh-legacy; skill CLAUDE.md; 5 tools | - | Python |
+| `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push, pre-push.sh-legacy; skill CLAUDE.md; 6 tools | - | Python |
 | `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +36; hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 137 tools | report_test.py | Python |
 | `scripts/quality-report` | The code-quality report (CLAUDE.md, "Code quality ratchets"): the production code's method complexity, length and duplication (pmd cpd) | `scripts/quality-report` | wf quality-hotspots; hook pre-push, pre-push.sh-legacy; agentctl; skill CLAUDE.md, test-layers; 2 tools | - | KEEP |
 | `scripts/ratchet-diff` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs (a name for ratchet_diff_cli.py) | `scripts/ratchet-diff` | agentctl; skill CLAUDE.md, agent-ops; 4 tools | - | KEEP |
@@ -583,7 +584,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/local-mirror/mirror_upkeep.py` | THE DAEMON PARENT'S UPKEEP (mirror.py): its log kept under a size cap, what an earlier run left behind swept up, the | `imported` | 1 tool | - | Python |
 | `scripts/local-mirror/mongosh-at.sh` | `mongosh uri ARGS…` without the uri — and the password in it — on mongosh's command line, where `ps` shows it to every user | `scripts/local-mirror/mongosh-at.sh` | 8 tools | mongosh-at-test.sh | KEEP |
 | `scripts/local-mirror/prod-tunnel.sh` | The one place that knows how a laptop reaches prod Mongo | `bash scripts/local-mirror/prod-tunnel.sh` | 9 tools | prod-tunnel-test.sh | MIGRATE |
-| `scripts/local-mirror/service.py` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure. | `scripts/local-mirror/service.py` | wf country-convergence-leg, nix-stage-closures; hook pre-push, pre-push.sh-legacy; skill external-api-rate-limits, identity-investigation, record-client-fixtures; 15 tools | service_test.py | Python |
+| `scripts/local-mirror/service.py` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure. | `scripts/local-mirror/service.py` | wf country-convergence-leg, nix-stage-closures; hook pre-push, pre-push.sh-legacy; skill external-api-rate-limits, identity-investigation, record-client-fixtures; 17 tools | service_test.py | Python |
 | `scripts/local-mirror/service.sh` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure (service.py beside it; this name is what the plist and the README run) | `scripts/local-mirror/service.sh` | 7 tools | service_test.py | KEEP |
 | `scripts/local-mirror/start-local-mongo.sh` | Ensure the native (Homebrew) single-node replica-set Mongo that backs local dev is up on :28017 (a name for start_local_mongo.py) | `scripts/local-mirror/start-local-mongo.sh` | 6 tools | start_local_mongo_test.py | KEEP |
 | `scripts/local-mirror/start_local_mongo.py` | Ensure the native (Homebrew) single-node replica-set Mongo that backs local dev is up on :28017. | `scripts/local-mirror/start_local_mongo.py` | 1 tool | start_local_mongo_test.py | Python |
@@ -776,7 +777,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | wf main; 15 tools | - | Python |
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 11 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_files.py` | FILES, INJECTED (scripts/lib; CLAUDE.md, "Design rules": files are an injected effect since 2026-11-27): a tool | `imported` | skill CLAUDE.md; 16 tools | tool_files_test.py | Python |
-| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 51 tools | tool_git_test.py | Python |
+| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 52 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | skill CLAUDE.md; 23 tools | tool_github_test.py | Python |
 | `scripts/lib/tool_http.py` | HTTP, INJECTED (scripts/lib; CLAUDE.md, "Design rules": the network is an injected effect since 2026-11-27): a tool | `imported` | skill CLAUDE.md; 2 tools | tool_http_test.py | Python |
 | `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
@@ -820,7 +821,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/scratch-git.sh` | Throwaway git repositories for the shell test scripts — and nothing else, ever | `bash scripts/scratch-git.sh` | 2 tools | scratch-git-test.sh | KEEP |
 | `scripts/scratch-zinc.sh` | A stand-in Zinc analysis for the shell test scripts: what scripts/zinc_orphans.py reads of a real one | `bash scripts/scratch-zinc.sh` | 1 tool | - | KEEP |
 | `scripts/shell-spec.sh` | The assertion harness the shell test scripts share | `scripts/shell-spec.sh` | wf android; 7 tools | shell-spec-test.sh | KEEP |
-| `scripts/shell_py_progress.py` | THE SHELL-TO-PYTHON MIGRATION'S PROGRESS (/Users/pawel/Documents/shell-to-python-migration.md): the analysis's | `scripts/shell_py_progress.py` | by hand | shell_py_progress_test.py | Python |
+| `scripts/shell_py_progress.py` | THE SHELL-TO-PYTHON MIGRATION'S PROGRESS (/Users/pawel/Documents/shell-to-python-migration.md): the analysis's | `scripts/shell_py_progress.py` | wf report-timings; 1 tool | shell_py_progress_test.py | Python |
 | `scripts/source-refresh` | Ask a country's prod worker to fetch again what one stored external source holds for given keys | `scripts/source-refresh` | by hand | source-refresh-test.sh | KEEP |
 | `scripts/timezonefinder-python` | Print a directory whose python3 imports timezonefinder, for the pre-push drift check | `scripts/timezonefinder-python` | hook pre-push, pre-push.sh-legacy; 3 tools | timezonefinder-python-test.sh | KEEP |
 | `scripts/timezonefinder-python-stub.sh` | A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder | `sourced` | by hand | - | KEEP |

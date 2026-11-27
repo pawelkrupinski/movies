@@ -3,12 +3,16 @@ check out this directory): a JSON OTLP payload POSTed to <GRAFANA_URL>/ci/otlp/v
 bounded, never following a redirect, never raising.
 
   post(payload, url, token)  None when pushed, else why not ("HTTP 302", the error)
-  NoRedirect / OPEN          the handler and the opener it builds"""
+  NoRedirect / OPEN          the handler and the opener it builds
+  point / gauge / document   the payload's shape: a gauge's data point at a stamp, a gauge of them, the document of
+                             gauges one service (Prometheus's `job` label) pushes -- the one copy every reporter builds on"""
 from __future__ import annotations
 
 import json
 import urllib.request
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Dict, List, Mapping, Optional
+
+Json = Dict[str, Any]
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -34,3 +38,21 @@ def post(payload: object, url: str, token: str, opener: Callable[..., Any] = OPE
     except Exception as error:  # noqa: BLE001 -- a push never fails its job: the caller says why
         return str(error)
     return None if status == 200 else "HTTP %s" % status
+
+
+def point(stamp: str, value: float, labels: Mapping[str, object]) -> Json:
+    """One data point at `stamp` (Unix nanoseconds, a string), its labels sorted."""
+    return {"asDouble": float(value), "timeUnixNano": stamp,
+            "attributes": [{"key": key, "value": {"stringValue": str(text)}} for key, text in sorted(labels.items())]}
+
+
+def gauge(name: str, points: List[Json]) -> Json:
+    return {"name": name, "gauge": {"dataPoints": points}}
+
+
+def document(service: str, metrics: List[Json]) -> Json:
+    """The OTLP/JSON payload of `metrics`, pushed as `service` (Prometheus's `job` label)."""
+    return {"resourceMetrics": [{
+        "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": service}}]},
+        "scopeMetrics": [{"metrics": metrics}],
+    }]}

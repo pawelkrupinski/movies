@@ -289,7 +289,7 @@ class CeilingTest(unittest.TestCase):
         self.assertEqual(timings.ceiling_of("preflight", self.CEILINGS), 5)
         # a called workflow's job (verify-scrape-recording.yml calls report-timings.yml; convergence dispatches it)
         self.assertEqual(timings.ceiling_of("report (timings)",
-                                            timings.workflow_ceilings(".github/workflows/verify-scrape-recording.yml")), 5)
+                                            timings.workflow_ceilings(".github/workflows/verify-scrape-recording.yml")), 8)
 
     def test_a_caller_row_is_not_its_callee(self):
         self.assertIsNone(timings.ceiling_of("leg (poland)", self.CEILINGS))
