@@ -1517,7 +1517,7 @@ mixed	scripts/shell_py_progress.py:Tree.__init__	3
 mixed	scripts/shell_py_progress.py:cat_files	3
 mixed	scripts/shell_py_progress.py:read_tools	4
 mixed	scripts/stall_watch.py:declare_stalled	4
-mixed	scripts/stall_watch.py:end_all	9
+mixed	scripts/stall_watch.py:end_all	7
 mixed	scripts/stall_watch.py:exists	3
 mixed	scripts/stall_watch.py:log_written	4
 mixed	scripts/stall_watch.py:made_progress	7

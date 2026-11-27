@@ -14,7 +14,7 @@ budget fails a compile under a load of 100; this fails only a step that waits on
       sleeps. (Processes new since the last poll are no progress: the hook's own helper loops start some every second.)
       <seconds> without any: it appends <label> to
       <stalled file>, prints `STALLED: <label> (no progress for <seconds>s)` on stderr, and ends the descendants (TERM,
-      KILL 10 s later). It ends itself when <root pid> does; its caller kills it once the step is done.
+      KILL 10 s later, or at once if the watchdog is ended first). It ends itself when <root pid> does; its caller kills it once the step is done.
       KINOWO_STALL_GROUPS=1: the step runs in process groups of its own, under the root's (run-script-tests: each test
       under tool-conventions.sh's `bounded`): a stall first says what each of those groups was stuck on
       (scripts/stall-report.sh, on stderr), then ends their processes alone, never the root's own group -- whose
@@ -50,11 +50,12 @@ from types import FrameType
 from typing import List, Optional, Sequence, Set, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-from machine import any_runnable, children_flag, cpu_centis, pid_list, ps, tree_pids  # noqa: E402
+from machine import any_runnable, children_flag, cpu_centis, pid_list, ps, send, tree_pids  # noqa: E402
 
 USAGE = ("usage: stall-watch.sh watch <root pid> <seconds> <label> <stalled file> [<progress file>] [<dir>]")
 REPORT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stall-report.sh")
 KILL_AFTER = 20  # half-second checks between TERM and KILL: ten seconds
+ENDING_SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)  # what its caller ends it with
 
 
 def newer_than(path: str, mark_ns: int) -> bool:
@@ -113,24 +114,30 @@ def other_groups(root: int, pids: Sequence[int]) -> Tuple[List[int], List[int]]:
     return sorted(groups), kept
 
 
+def send_all(pids: Sequence[int], signum: int) -> None:
+    """`signum` to each of `pids`, the watchdog's own ending held until the last is sent (Tool self-tests #663: the
+    hook ends it the moment the check returns, which the first TERM brings about, and the sweep stopped half-way)."""
+    signal.pthread_sigmask(signal.SIG_BLOCK, ENDING_SIGNALS)
+    try:
+        for pid in pids:
+            send(pid, signum)
+    finally:
+        signal.pthread_sigmask(signal.SIG_UNBLOCK, ENDING_SIGNALS)
+
+
 def end_all(pids: Sequence[int]) -> None:
-    """TERM to `pids`, then KILL ten seconds later to those still there."""
-    for pid in pids:
-        try:
-            os.kill(pid, signal.SIGTERM)
-        except OSError:
-            pass
+    """TERM to `pids`, then KILL to those still there ten seconds later -- or at once, should the watchdog be ended
+    meanwhile: no descendant outlives it."""
     left = list(pids)
-    for _ in range(KILL_AFTER):
-        left = [p for p in left if exists(p)]
-        if not left:
-            return
-        time.sleep(0.5)
-    for pid in left:
-        try:
-            os.kill(pid, signal.SIGKILL)
-        except OSError:
-            pass
+    try:
+        send_all(left, signal.SIGTERM)
+        for _ in range(KILL_AFTER):
+            left = [p for p in left if exists(p)]
+            if not left:
+                return
+            time.sleep(0.5)
+    finally:
+        send_all([p for p in left if exists(p)], signal.SIGKILL)
 
 
 def declare_stalled(w: Watch, quiet: int, pids: List[int]) -> None:
@@ -175,7 +182,7 @@ def watch_loop(w: Watch, mark: str) -> None:
 
 
 def watch(w: Watch) -> int:
-    for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+    for signum in ENDING_SIGNALS:
         signal.signal(signum, stop)
     mark = os.path.join(os.environ.get("TMPDIR", "/tmp"), f"stall-mark.{os.getpid()}")
     try:

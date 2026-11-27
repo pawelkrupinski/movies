@@ -15,6 +15,7 @@ import subprocess
 import sys
 import threading
 import unittest
+import unittest.mock
 from typing import List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
@@ -252,6 +253,20 @@ class StallWatchTest(cli_harness.ToolCase):
         self.assertFalse(self.alive("stubborn"), "the watchdog ended before the descendant was killed")
         self.assertIsNone(root.poll(), "the root is never ended")
 
+    def test_a_watchdog_ended_while_it_waits_to_kill_kills_what_is_left(self) -> None:
+        # Tool self-tests #663: the hook ends the watchdog as soon as the check returns, which a stall's own TERM
+        # brings about within milliseconds; the descendants still there must not outlive the watchdog's end
+        stubborn = 'trap "" TERM; echo $$ > stubborn; while :; do sleep 1; done'
+        root = self.sh(f"sh -c '{stubborn}' & wait; exec sleep 300")
+        self.assertTrue(cli_harness.wait_until(lambda: os.path.exists(self.path("stubborn"))
+                                               and os.path.getsize(self.path("stubborn")) > 0))
+        proc = self.watch(str(root.pid), "2", "stubborn", self.path("stalled"))
+        self.assertTrue(cli_harness.wait_until(self.stalled), self.read("err"))
+        proc.send_signal(signal.SIGTERM)
+        proc.wait(timeout=5)
+        self.assertTrue(cli_harness.wait_until(lambda: not self.alive("stubborn"), bound=3),
+                        "a descendant outlived the watchdog's end")
+
     def test_a_missing_argument_is_a_usage_error(self) -> None:
         done = self.run_tool("watch", "1", "2", "label")
         self.assertEqual(2, done.code, done.output)
@@ -265,6 +280,34 @@ class StallWatchTest(cli_harness.ToolCase):
             self.assertIn("A NO-PROGRESS bound: a step is ended once it has made no progress for N seconds",
                           done.stdout)
             self.assertIn("scripts/stall-watch.sh watch <root pid> <seconds> <label> <stalled file>", done.stdout)
+
+
+class EndAllTest(unittest.TestCase):
+    """stall_watch.end_all in process: the watchdog's caller ends it with a TERM at any moment of its sweep."""
+
+    def test_a_term_arriving_between_two_kills_still_ends_every_descendant(self) -> None:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import stall_watch
+        children = [subprocess.Popen(["sleep", "300"]) for _ in range(2)]
+        for child in children:
+            self.addCleanup(child.wait)
+            self.addCleanup(lambda c=child: c.poll() is None and c.kill())
+        previous = signal.signal(signal.SIGTERM, stall_watch.stop)
+        self.addCleanup(signal.signal, signal.SIGTERM, previous)
+        real_kill, sent = os.kill, []
+
+        def kill_then_ended(pid: int, signum: int) -> None:
+            real_kill(pid, signum)
+            if signum == signal.SIGTERM and not sent:
+                sent.append(pid)
+                real_kill(os.getpid(), signal.SIGTERM)  # the caller's TERM, landing right after the first descendant's
+
+        with unittest.mock.patch.object(stall_watch.os, "kill", kill_then_ended):
+            with self.assertRaises(SystemExit):
+                stall_watch.end_all([c.pid for c in children])
+        for child in children:
+            self.assertTrue(cli_harness.wait_until(lambda c=child: c.poll() is not None, bound=3),
+                            f"{child.pid} outlived the watchdog's end")
 
 
 if __name__ == "__main__":
