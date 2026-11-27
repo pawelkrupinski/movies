@@ -24,8 +24,9 @@ SSH = """echo "ssh $*" >> "$STUB/calls"
 for last; do :; done
 [ "$last" = credential ] && cat "$STUB/credential" 2>/dev/null
 exit 0"""
-# socat and setsid only record their arguments: the supervisor is never started -- it would loop forever
-RECORDS = 'echo "{name} $*" >> "$STUB/calls"'
+# socat and setsid only record their arguments: the supervisor is never started -- it would loop forever. setsid's record
+# is its last write; SETSID_DELAY holds it back, as a loaded runner does (a detached process outliving the tool)
+RECORDS = '[ "{name}" = setsid ] && [ -n "${{SETSID_DELAY:-}}" ] && sleep "$SETSID_DELAY"\necho "{name} $*" >> "$STUB/calls"'
 # python3: the probe answers when $STUB/answers exists; every other use is the real interpreter (the tool's own too)
 PYTHON = """case "${{1:-}}" in
   */mongo-ping.py) echo "probe $*" >> "$STUB/calls"; [ -e "$STUB/answers" ] ;;
@@ -60,6 +61,11 @@ class WaitForMongoTunnelTest(cli_harness.ToolCase):
         env.update(extra or {})
         done = self.run_tool("27999", env=env)
         self.out = done.output
+        if "supervisor detached" in self.out:
+            # the tool never waits for the supervisor it detaches: wait for its fake's last write, or the case's
+            # scratch directory is removed while it writes there (Tool self-tests #637: ENOTEMPTY on .fakes)
+            self.assertTrue(cli_harness.wait_until(lambda: any(c.startswith("setsid ") for c in self.calls(case))),
+                            self.calls(case))
         return done.code
 
     def calls(self, case: str) -> List[str]:
@@ -125,12 +131,16 @@ class WaitForMongoTunnelTest(cli_harness.ToolCase):
         self.write("supervised/answers", "")
         self.assertEqual(0, self.tunnel("supervised"), self.out)
         tmp = self.path("supervised", "tmp")
-        detached = f"setsid nohup {tmp}/mongo-tunnel-supervisor.sh"
-        # started in the background, so it may write its call after the tool has returned
-        self.assertTrue(cli_harness.wait_until(lambda: detached in self.calls("supervised")), self.calls("supervised"))
+        self.assertIn(f"setsid nohup {tmp}/mongo-tunnel-supervisor.sh", self.calls("supervised"))
         supervisor = self.read(os.path.join(tmp, "mongo-tunnel-supervisor.sh"))
         self.assertIn(f'socat "TCP4-LISTEN:27999,bind=127.0.0.1,reuseaddr,fork" "EXEC:{tmp}/mongo-relay.sh"',
                       supervisor)
+
+    def test_a_run_ends_only_once_the_supervisor_it_detached_has_done_writing(self) -> None:
+        self.ready_case("late")
+        self.write("late/answers", "")
+        self.assertEqual(0, self.tunnel("late", {"SETSID_DELAY": "1"}), self.out)
+        self.assertEqual(1, len([c for c in self.calls("late") if c.startswith("setsid ")]), self.calls("late"))
 
     def test_the_probe_never_answering_fails_with_the_logs_tail_and_exports_no_uri(self) -> None:
         self.ready_case("silent")
