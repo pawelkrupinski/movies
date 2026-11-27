@@ -108,7 +108,7 @@ private[identity] object TitleLinks {
     def reasonToDrop(key: String): Option[String] = title.reasonToDrop(key)
     def droppedPieces: Seq[(String, String)] = title.droppedPieces
     val blocked: Set[String] = title.blocked
-    val pinned: Seq[String] = pins.blockKeys(node.listings.head.key).toSeq.sorted
+    val pinned: Seq[String] = pins.blockKeys(node.key).toSeq.sorted
     val catalogued: Seq[String] = node.listings.flatMap(_.catalogueIds).distinct.sorted.map(_.key)
     def keys: Set[String] = blocked ++ pinned ++ catalogued
   }

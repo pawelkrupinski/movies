@@ -1484,6 +1484,7 @@ services.identity.LeanVenueSlots	collaborator
 services.identity.LearnedCannotLinks	data
 services.identity.ListingBson	data
 services.identity.ListingCannotLinks	collaborator
+services.identity.ListingDenials	collaborator
 services.identity.ListingEntries	collaborator
 services.identity.ListingExplanation	data
 services.identity.ListingReadiness	collaborator
@@ -1499,6 +1500,7 @@ services.identity.MongoIdentityModelStore	collaborator
 services.identity.MongoIdentityTraceStore	collaborator
 services.identity.MongoPinStore	collaborator
 services.identity.MongoVenueSlotFingerprints	collaborator
+services.identity.NamingPieces	collaborator
 services.identity.NoFilmMembers	collaborator
 services.identity.NodeCandidates	data
 services.identity.NodeDenials	collaborator
@@ -1549,6 +1551,7 @@ services.identity.TitleLinks	collaborator
 services.identity.TitleRelation	collaborator
 services.identity.TitleRuleChange	collaborator
 services.identity.TitleRuleRecord	data
+services.identity.TitleShapeRefusals	data
 services.identity.TrackedLookups	collaborator
 services.identity.VenueBacking	collaborator
 services.identity.VenueShape	data
@@ -1583,6 +1586,7 @@ services.identity.agreement.ClusterVerdicts	collaborator
 services.identity.agreement.Correction	collaborator
 services.identity.agreement.CorrectionReading	collaborator
 services.identity.agreement.CorrectionRecords	collaborator
+services.identity.agreement.DecisionCaches	collaborator
 services.identity.agreement.FamilyAnswers	collaborator
 services.identity.agreement.FamilyCorrection	collaborator
 services.identity.agreement.FamilyIdentification	collaborator
@@ -1614,6 +1618,7 @@ services.identity.agreement.StoredKey	data
 services.identity.agreement.StoredVerdict	data
 services.identity.agreement.SuspectTakes	collaborator
 services.identity.agreement.SynopsisEvidence	data
+services.identity.agreement.Take	data
 services.identity.agreement.TmdbReadTracking	collaborator
 services.identity.agreement.UnifiedEvidence	collaborator
 services.identity.agreement.UnifiedRules	collaborator

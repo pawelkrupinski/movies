@@ -51,7 +51,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
    *  is withdrawn by no sibling: one house stages a work once a season, so a sibling's denial (another season, another
    *  house, other credits) says the sibling is another production, never that the node is. And a node whose banner alone bills the record under its house
    *  ([[Scored.houseProduction]]) is withdrawn by no sibling denying the record as ANOTHER house's season production
-   *  ([[CandidateScoring.AnotherHousesSeason]]): that denial is about the sibling's banner, not the work — two houses'
+   *  ([[ListingDenials.AnotherHousesSeason]]): that denial is about the sibling's banner, not the work — two houses'
    *  stagings are two productions, and a banner wrongly learned as another house denies nothing. UK, run 38355584482:
    *  Flicks' "RBO Cinema Season 2026-27: Macbeth" ×34 (RBO's cinema season relays the Met) withdrew Savoy's "The
    *  Metropolitan Opera: Macbeth" ×6 from the Met's 2026/27 record, and its Fanciulla billing (the original title Vue's

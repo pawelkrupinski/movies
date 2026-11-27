@@ -12,7 +12,7 @@ import services.identity.vocabulary.{Answer, Question, VoterFamily}
 private[agreement] final class FillTake(evidence: AgreementEvidence, candidates: AgreementCandidates,
                                         rules: services.identity.agreement.UnifiedRules, venueText: VenueText) {
   import candidates.{measured, productionsOf}
-  import AgreementTakes.{taking, Take}
+  import AgreementTakes.taking
 
   /** The film the first selected FILL rule takes for a cluster the families agreed on nothing for
    *  ([[services.identity.agreement.UnifiedRules.filled]] over [[services.identity.agreement.UnifiedEvidence.contenders]]: the cluster's own

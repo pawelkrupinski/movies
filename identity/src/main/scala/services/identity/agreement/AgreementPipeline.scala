@@ -3,7 +3,7 @@ package services.identity.agreement
 import scala.collection.mutable
 
 import models.ListingKey
-import services.identity.measures.{Listing, PosterEvidence, Resolution, ResolverDecision}
+import services.identity.measures.{Listing, Resolution, ResolverDecision}
 import services.identity.vocabulary.{Question, VoterFamily}
 import services.identity.NonFilmEvents
 
@@ -39,16 +39,9 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
   /** The verdicts kept ([[VerdictIndex]]), by their cluster's key and by their listings' digest. */
   private[agreement] val verdicts = new VerdictIndex(sources)
 
-  /** Each model decision the pipeline took, with what it took it as: handed back as that same object while neither moved,
-   *  so the projection, which diffs decisions by identity, redrafts a cluster only when its take moved ([[reused]]). */
-  private val takenAs = new java.util.IdentityHashMap[ResolverDecision, ResolverDecision]()
-  /** Each model decision's cluster id, listings and their digest, kept while the decision is the same object: the model
-   *  hands over a new decision when one of its listings or a fact it reads moves, so a quiet tick reads no listing again
-   *  — and one re-published with a field only the stage reads is forgotten ([[apply]]'s `republished`). */
-  private[agreement] val digested = new java.util.IdentityHashMap[ResolverDecision, AgreementEvidence.Cluster]()
-  /** Each model decision's verdict as an event no film database holds ([[NonFilmEvents]]), kept while the decision is
-   *  the same object: such a cluster is asked nothing — neither the agreement's questions nor a model take's correction. */
-  private[agreement] val events = new java.util.IdentityHashMap[ResolverDecision, Option[String]]()
+  /** What the pipeline read of each model decision, kept while the model hands that same object over ([[DecisionCaches]]). */
+  private val caches = new DecisionCaches(evidence)
+  import caches.{eventOf, reused}
 
   // THE PIPELINE ([[decide]]): a model take is read by its CORRECTION, a no-match by its families' VERDICT and that
   // verdict by its TAKE -- each stage handed the evidence it reads and the rest it needs, never the stage itself.
@@ -84,47 +77,15 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
       reused(decision, now)
     }
 
-  /** `now`, what the model's `decision` is taken as — `decision` itself while it is taken as it stands, else the object
-   *  it was last taken as while the two are equal ([[takenAs]]). */
-  private def reused(decision: ResolverDecision, now: ResolverDecision): ResolverDecision =
-    if (now eq decision) decision
-    else Option(takenAs.get(decision)).filter(_ == now).getOrElse { takenAs.put(decision, now); now }
-
   /** What a model no-match that bills a film is taken as: its cluster read, its families' verdict found or decided
    *  ([[ClusterVerdicts.verdictOf]]), and that verdict's take ([[AgreementTakes.verdictTake]]) — the decision as the model
    *  left it while there is none. What its take asks is noted in `pass`. */
   private def unmatched(decision: ResolverDecision, listingOf: ListingKey => Option[Listing], pass: AgreementPass): ResolverDecision = {
-    val AgreementEvidence.Cluster(id, listings, digest) = digestedOf(decision, pass.keys.get(decision), listingOf)
+    val AgreementEvidence.Cluster(id, listings, digest) = caches.clusterOf(decision, pass.keys.get(decision), listingOf)
     pass.seen += id
     pass.shapes += digest
     takes.verdictTake(decision, id, digest, listings, clusterVerdicts.verdictOf(decision, id, listings, digest, pass), pass)
   }
-
-  /** Why the decision's cluster is an event no film database holds, or `None` — read once per decision object. */
-  private def eventOf(decision: ResolverDecision, listingOf: ListingKey => Option[Listing]): Option[String] =
-    Option(events.get(decision)).getOrElse {
-      // a title shaped as a franchise's marathon is a film's own as the MODEL's searches found ([[ResolverDecision.filmTitled]]):
-      // its answers, in its decision -- one moved hands the stage a new decision, read again -- never a search of the stage's
-      val event = NonFilmEvents.of(decision.members.flatMap(listingOf), listing => decision.filmTitled(listing.key))
-      events.put(decision, event); event
-    }
-
-  /** The decision's cluster key (`key`), its listings sorted and their digest, kept while the model hands the same
-   *  decision over — which keeps its key as long. */
-  private def digestedOf(decision: ResolverDecision, key: String, listingOf: ListingKey => Option[Listing]): AgreementEvidence.Cluster =
-    Option(digested.get(decision)).getOrElse {
-      val listings = AgreementEvidence.sortedListings(decision, listingOf)
-      val fresh    = AgreementEvidence.Cluster(key, listings,
-        AgreementStage.digest(Seq(digestOf(listings).toString, decision.leaning.toString, decision.candidate.toString,
-          PosterEvidence.urls(listings).mkString("\u0001"))))
-      digested.put(decision, fresh); fresh
-    }
-
-  /** The listings as published, the people their own text names, and the venue detail page the picks read of each. */
-  private def digestOf(listings: Seq[Listing]): Long =
-    AgreementStage.digest(listings.map(l => l.sortKey + l.screenedSeason.fold("")(season => s"\u0002$season") +
-      (if (l.names.isEmpty) "" else s"\u0003${l.names.##}") +
-      evidence.detailMark(l)))
 
   /** The questions `listing`'s OWN facts lead the stage to ask -- its titles' and directors' searches and the records
    *  their hits name, as the stage asks them of any cluster holding it (the family verdicts over the listing alone, every
@@ -153,7 +114,7 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
   def forgetRead(resolution: Resolution, keys: Iterable[ListingKey]): Boolean = keys.nonEmpty && {
     val moved   = keys.toSet
     val touched = resolution.decisions.filter(_.members.exists(moved))
-    touched.foreach(digested.remove)
+    caches.forgetRead(touched)
     touched.exists(decision => decision.film.isEmpty || correctable(decision))
   }
 
@@ -171,11 +132,7 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
     corrections.correctionWaits --= corrections.correctionWaits.keySet.toSet -- pass.correcting
     takes.forgetAllBut(pass.seen)
     if (removed.nonEmpty || moved.nonEmpty) verdicts.store(removed, moved.toSeq)
-    val current = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[ResolverDecision, java.lang.Boolean]())
-    resolution.decisions.foreach(current.add)
-    takenAs.keySet.retainAll(current)   // the model's decisions this resolution no longer holds
-    digested.keySet.retainAll(current)
-    events.keySet.retainAll(current)
+    caches.retainOnly(resolution)
   }
 
   /** Does a verdict kept, or this apply's TMDB reads, read the TMDB record or search a filing under `id` comes as? */
@@ -188,8 +145,8 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
   /** What each cluster waits on, as the last apply left it ([[StageWaits]]): the waits the pipeline's stages keep, each
    *  cluster named by `keyOf`, and the takes standing meanwhile (`standingTakes`). */
   def waits(keyOf: ResolverDecision => String, standingTakes: StandingTakes, givenUp: Question => Boolean): StageWaits =
-    new StageWaits(clusterVerdicts.waiting, takes.takeWaits, corrections.correctionWaits, keyOf, standingTakes, digested,
-      id => verdicts.get(id), evidence.readNow, evidence.tried, givenUp)
+    new StageWaits(clusterVerdicts.waiting, takes.takeWaits, corrections.correctionWaits, keyOf, standingTakes, caches.digested,
+      id => verdicts.get(id), evidence, givenUp)
 
   /** How many clusters wait on a family's answer. */
   def waitingClusters: Int = clusterVerdicts.waiting.size
@@ -201,12 +158,12 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
    *  read another is read again ([[services.identity.vocabulary.Dependency.Year]]: an input no filing announces). */
   def yearTurned(year: Int): Boolean = year != evidence.yearNow && {
     evidence.yearNow = year
-    verdicts.moved(_ == services.identity.vocabulary.Dependency.Year, evidence.readNow)
+    verdicts.yearMoved(evidence)
     true
   }
 
   /** The verdicts whose receipt read a question's attempt as it no longer reads, read again: how many. */
-  def uncheckAttempted(): Int = verdicts.moved(VerdictIndex.isAttempt, evidence.readNow)
+  def uncheckAttempted(): Int = verdicts.attemptsMoved(evidence)
 
   /** An apply at `version` begins: the kept verdicts' and candidates' passes begun, and — on the stage's `first` apply,
    *  which meets every cluster and asks none inline — every verdict stored under these rules, of the year it read,
@@ -215,11 +172,7 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
   def opened(version: Long, first: Boolean): Unit = {
     verdicts.newPass(); candidates.newPass()
     inline.firstPass = first
-    if (first) {
-      val year = evidence.readNow(services.identity.vocabulary.Dependency.Year)
-      verdicts.values.filter(v => v.rules == decidedUnder && v.reads.get(services.identity.vocabulary.Dependency.Year).forall(year.contains))
-        .foreach(v => verdicts.check(v.id, v.listings, version))
-    }
+    if (first) verdicts.trustStored(decidedUnder, version, evidence)
     evidence.version = version
   }
 
@@ -227,5 +180,5 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
   def closed(): Unit = evidence.applied()
 
   /** Forget the listings read for every decision: each read again. */
-  def forgetAllRead(): Unit = digested.clear()
+  def forgetAllRead(): Unit = caches.forgetAllRead()
 }

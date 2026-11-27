@@ -11,7 +11,7 @@ import services.identity.vocabulary.{Answer, Question, VoterFamily}
  *  synopsis refuses it (`venueText`, [[VenueText.synopsisAgainst]]), or an answer it waits on is not in. Read through
  *  `evidence` ([[AgreementEvidence]]); a film TMDB holds no record of stands on the first of `identities` that names it. */
 private[agreement] final class AgreedTake(evidence: AgreementEvidence, venueText: VenueText, identities: Seq[VoterFamily]) {
-  import AgreementTakes.{taking, Take}
+  import AgreementTakes.taking
 
   /** What became of the film the families agree on for the cluster `id` (its `listings` digesting to `digest`) on their
    *  `verdict` ([[taken]]): none to take where they agree on none. What it waits on is noted in `finding`. */
@@ -19,6 +19,10 @@ private[agreement] final class AgreedTake(evidence: AgreementEvidence, venueText
          finding: mutable.Set[Question], distances: AgreementTakes.Distances): Take[ResolverDecision] =
     verdict.agreed.fold[Take[ResolverDecision]](Take.Untaken)(taken(decision, _, finding, distances,
       film => venueText.synopsisAgainst(id, digest, listings, film)))
+
+  /** Does a listing of the cluster bill a stage work ([[services.identity.measures.ListingShape.stagesAWork]])? Then a screen
+   *  adaptation agreed for it yields to the relay its screening days name ([[AgreementTakes.BroadcastTake]]). */
+  def yieldsToBroadcast(listings: Seq[Listing]): Boolean = listings.exists(services.identity.measures.ListingShape.stagesAWork)
 
   /** Why the film the families agree on is none of the cluster's: its billing names it as ONE PIECE beside another thing
    *  ([[BilledPiece.ofFamilies]]) — DE "Femme - Frauen heilen die Welt" is a documentary, not the 2023 "Femme". Then the

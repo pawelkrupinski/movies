@@ -1,23 +1,18 @@
 package services.identity
 
-import scala.collection.mutable
-
-import services.evidence.ListingConstraints
-import services.identity.measures.{BannerHouses, Candidate, EvidenceNode, Film, IdentityMeasures, ListingShape, Measure, MeasuredListing, MultiFilmBill, RelayStage, StageRelays, StageSeasonRecords}
+import services.identity.measures.{BannerHouses, Candidate, EvidenceNode, Film, Measure, MeasuredListing}
 import services.identity.vocabulary.{Denial, PinConstraints}
-import services.titles.billing.BillingParse
 
 /** How every node scores the candidates it has an evidence path to, family by family
  *  (each family its [[FamilyScope]]), with the corpus-wide facts the scoring reads: which house each banner is,
  *  and which titles the venues list together (`venues.corroborating`). */
 private[identity] final class CandidateScoring(val generation: CandidateGeneration, val calibration: IdentityCalibration,
                                                weights: EvidenceWeights, val pins: PinConstraints) {
-  import EvidenceNode.placesOf
 
   /** Whether the curation's pins deny `node`'s listings the film `id` (`PinConstraints.deniedFilms`, by its first listing). */
-  def pinDenies(node: EvidenceNode, id: Int): Boolean = pins.deniedFilms(node.listings.head.key)(id)
+  def pinDenies(node: EvidenceNode, id: Int): Boolean = pins.deniedFilms(node.key)(id)
   /** The film the curation's pins give `node`'s listings (`PinConstraints.filmOf`, by its first listing), if any. */
-  def pinnedFilm(node: EvidenceNode): Option[Int] = pins.filmOf(node.listings.head.key)
+  def pinnedFilm(node: EvidenceNode): Option[Int] = pins.filmOf(node.key)
 
   /** Which house each listing banner is, learned from how every node's candidates bill its works
    *  (`BannerHouses`): the title relation reads a record of the listing's house as
@@ -25,123 +20,32 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
   val houses: BannerHouses = generation.context.houses
   /** Each banner's contending houses, as [[houses]] ranked them — for a report reading why a banner is, or is not, a house. */
   def houseRanking: Map[String, Seq[BannerHouses.Contender]] = generation.context.houseRanking
-  def namesItsSeasonProduction(listing: MeasuredListing, film: Film): Boolean =
-    StageRelays.namesSeasonProduction(listing, film) && !StageRelays.billing(listing, film).exists(houses.other)
+  /** The films the listing's own evidence rules out ([[ListingDenials]]), banners read as [[houses]] reads them. */
+  private val denials = new ListingDenials(houses, calibration, weights)
+  /** The pieces of a node's title that name a candidate's film ([[NamingPieces]]), read once for this resolve. */
+  private val naming = new NamingPieces(generation)
 
-  /** Does the listing's own evidence rule the film out: a learned cannot-link, its facts'
-   *  probability below the certified cut, a season its title names that the film is not of (but its house's recording
-   *  of it, [[StageRelays.itsHousesRecording]], or the relay its screenings air, [[RelayStage.airsItsRelay]]),
-   *  its season's production of its work by ANOTHER house than its banner's (`houses`), a screen
-   *  namesake of the work its stage house's banner bills ([[StageRelays.screenNamesake]]), a record of
-   *  another work than that banner's relay names ([[StageRelays.namesAnotherWork]]), a house's record of another
-   *  production of its work than the season its screenings fall in ([[StageRelays.anotherProduction]]), an old
-   *  catalogue namesake of a bare billing under a film festival's banner ([[ListingShape.festivalsCatalogueNamesake]]),
-   *  one work of a "//" double bill ([[MultiFilmBill.slashesAnotherWork]]), a film of another part than the one its title numbers and subtitles ([[IdentityMeasures.titlesAnotherPart]]), or
-   *  of another instalment than the one its title numbers and its original title subtitles
-   *  ([[IdentityMeasures.numbersAnotherSubtitle]]), or another year's edition of the series its title dates
-   *  ([[IdentityMeasures.datesAnotherEdition]]). A learned cannot-link never denies a relay its own house's record of
-   *  its work and season ([[RelayStage.particularRecordOf]]). */
+  /** [[ListingDenials.namesItsSeasonProduction]]. */
+  def namesItsSeasonProduction(listing: MeasuredListing, film: Film): Boolean = denials.namesItsSeasonProduction(listing, film)
+  /** Does the listing's own evidence rule the film out ([[ListingDenials.evidenceDenies]])? */
   def evidenceDenies(listing: MeasuredListing, film: Film, measures: Map[String, Measure], country: Option[String]): Boolean =
-    evidenceDenial(listing, film, measures, country).isDefined
-
-  /** [[evidenceDenies]], saying which of its reasons rules the film out: the season its title names first, then the first
-   *  of [[evidenceRefusals]] that holds, then a learned cannot-link. `country`: the venue's (ISO-3166-1). */
+    denials.evidenceDenies(listing, film, measures, country)
+  /** Which of its reasons the listing's own evidence rules the film out by ([[ListingDenials.evidenceDenial]]). */
   def evidenceDenial(listing: MeasuredListing, film: Film, measures: Map[String, Measure], country: Option[String]): Option[Denial] =
-    ListingConstraints.seasonsApart(listing.seasonYear, film.season, film.year)
-      .filterNot(_ => StageRelays.itsHousesRecording(listing, film) || RelayStage.airsItsRelay(listing, film))
-      .map(link => Denial(link.toString))
-      .orElse(evidenceRefusals.collectFirst { case (denial, holds) if holds(listing, film, measures, country) => denial })
-      // a relay's record of its house, work and season ([[RelayStage]]) files a broadcast's running time and its house's
-      // banner on the work: the learned runtime-gap and title-overlap vetoes say nothing of it. Nor of the record of the
-      // very season a relay's screenings broadcast its work in ([[StageSeasonRecords.screenedSeasonRecord]]), under a banner naming
-      // no house in particular: ES Ocine's "Carmen (OPERA LIVE)", screening the day the RBO's 2026/27 Carmen airs
-      .orElse(Option.unless(RelayStage.particularRecordOf(listing, film) || StageSeasonRecords.screenedSeasonRecord(listing, film))(LearnedCannotLinks.listingFilmDenial(calibration, measures, weights.factsProbability(measures))).flatten)
+    denials.evidenceDenial(listing, film, measures, country)
 
-  /** The reasons of the listing's own billing to rule a film out ([[evidenceDenial]]), in the order they are asked: each the
-   *  denial it gives — its text what the trace names it by — and the question of the listing, the film, their measures
-   *  and the venue's country that gives it. */
-  private val evidenceRefusals: List[(Denial, CandidateScoring.Question)] = List(
-    (Denial(CandidateScoring.AnotherHousesSeason, Denial.Kind.AnotherHousesSeason),
-      (l, f, _, _) => StageRelays.namesSeasonProduction(l, f) && !namesItsSeasonProduction(l, f)),
-    // a credit the venue publishes names its staging's record whatever TMDB titles it
-    (Denial("a screen namesake of the work its stage house's billing names", Denial.Kind.NotTheWork(creditOverrules = true)),
-      (l, f, measures, _) => StageRelays.screenNamesake(l, f) && !IdentityMeasures.sameDirector(measures)),
-    // a credit or a running time never holds a record of another work: a screen director films many
-    (Denial("a record of another work than its stage house's billing names"), (l, f, _, _) => StageRelays.namesAnotherWork(l, f)),
-    (Denial("another production of its work than the season its screenings fall in"),
-      (l, f, _, country) => StageRelays.anotherProduction(l, f, country)),
-    (Denial("a catalogue namesake of a bare billing under a film festival's banner"), (l, f, _, _) => ListingShape.festivalsCatalogueNamesake(l, f)),
-    (Denial("one work of a \"//\" double bill, whose other piece none of its titles holds"), (l, f, _, _) => MultiFilmBill.slashesAnotherWork(l, f)),
-    (Denial("a part its title gives a subtitle none of the film's titles holds"), (l, f, _, _) => IdentityMeasures.titlesAnotherPart(l, f)),
-    (Denial("an instalment its title numbers, whose subtitle none of the film's titles holds"),
-      (l, f, _, _) => IdentityMeasures.numbersAnotherSubtitle(l, f)),
-    (Denial("another year's edition of the series its title dates"), (l, f, _, _) => IdentityMeasures.datesAnotherEdition(l, f)))
-
-  /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
-   *  listing's, the venue's name or its city's? Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA
-   *  OCEANU" bills the venue, not *The Rock*, whose Polish title is "Twierdza"; the Alamo
-   *  Drafthouse circuit's "Dismember the Alamo 2026 - Chicago" at its Chicago venue names the
-   *  city, not the musical. A title that is the venue's name and nothing more (a year aside) still
-   *  names its film, whatever the venue is called. */
-  def namesOnlyItsVenue(node: EvidenceNode, candidate: Candidate): Boolean = {
-    val pieces = namingPieces(node, candidate)
-    // The rest of the title must say something beside the venue: "Charlotte (2021)" at a
-    // Charlotte venue is the film, its year only dating it.
-    def besideIt(piece: Seq[String]) = node.titleWords.diff(piece).exists(_.exists(Character.isLetter))
-    pieces.nonEmpty && pieces.forall(piece => besideIt(piece) && node.listings.forall(listing => places(listing.cinema).exists(_.containsSlice(piece))))
-  }
-
-  /** Does `node`'s title name the film only by a PROGRAMME TAG — a whole delimited piece billed in capitals beside a
-   *  rest that is not ([[IdentityMeasures.capitalisedTags]]), that RECURS across the corpus's titles
-   *  ([[CorpusContext.recurringSegment]]: no listing's whole title, a piece of three whole titles or more) while no
-   *  other piece of the title recurs? Learned by frequency, as a decoration is, not listed: PL Kino Amondo bills the
-   *  Ukrainian Film Festival "Alim | UFF", "Atlantyda | UFF", "Odblask | UFF", and "Uff" (2020) is an Indian film
-   *  TMDB ranks first for the tag. A work billed under recurring banners is the work ("UFF | Kino Seniora" beside
-   *  "Lalka | Kino Seniora" and more), and a tag billed once is a title piece like any other. */
-  def namesOnlyATag(node: EvidenceNode, candidate: Candidate): Boolean = {
-    val listing = node.evidence.published
-    val billed  = listing.rawTitle.getOrElse(listing.title)
-    val tags    = IdentityMeasures.capitalisedTags(listing).map(IdentityMeasures.key).toSet
-    tags.nonEmpty && {
-      val pieces = namingPieces(node, candidate).map(words => IdentityMeasures.key(words.mkString(" ")))
-      val (tagged, rest) = listing.shapesOfOwn(billed).partition(shape => tags(IdentityMeasures.key(shape)))
-      def recurs(piece: String) = generation.context.recurringSegment(generation.normalizer.sanitize(piece))
-      pieces.nonEmpty && pieces.forall(tags) && tagged.filter(tag => pieces(IdentityMeasures.key(tag))).forall(recurs) && !rest.exists(recurs)
-    }
-  }
-
-  /** Does `node`'s title name the film only by the PROGRAMME SLOT it bills under a festival's banner
-   *  ([[services.titles.billing.BillingParse.programmeSlot]])? UK "Unrestricted View Horror Film Festival 2026: Opening Night" names the 2016
-   *  "Opening Night" (and Cassavetes' 1977 one) by its slot alone: the festival's opening night, an event. */
-  def namesOnlyAProgrammeSlot(node: EvidenceNode, candidate: Candidate): Boolean = {
-    val listing = node.evidence.published
-    BillingParse(listing.rawTitle.getOrElse(listing.title)).programmeSlot.exists { slot =>
-      val pieces = namingPieces(node, candidate)
-      pieces.nonEmpty && pieces.forall(_ == services.titles.TitleContainment.tokens(slot).toSeq)
-    }
-  }
-
-  // Once per (node, film) and per venue for THIS resolve, dropped with it: every node meets every
-  // candidate of its family's pool here and in the constraint edges (`ConstraintEdges.namesBeside`).
-  private val piecesOf = mutable.HashMap.empty[(String, Int), Set[Seq[String]]]
-  private val placesOfVenue = mutable.HashMap.empty[models.Cinema, Seq[Seq[String]]]
-  /** The pieces of `node`'s title that name `candidate`'s film ([[IdentityMeasures.namingPieces]]). */
-  def namingPieces(node: EvidenceNode, candidate: Candidate): Set[Seq[String]] =
-    piecesOf.getOrElseUpdate((node.id, candidate.tmdbId), IdentityMeasures.namingPieces(node.evidence.measured, candidate.film))
-  private def places(cinema: models.Cinema): Seq[Seq[String]] = placesOfVenue.getOrElseUpdate(cinema, placesOf(cinema))
+  /** [[NamingPieces.namesOnlyItsVenue]]. */
+  def namesOnlyItsVenue(node: EvidenceNode, candidate: Candidate): Boolean = naming.namesOnlyItsVenue(node, candidate)
+  /** [[NamingPieces.namesOnlyATag]]. */
+  def namesOnlyATag(node: EvidenceNode, candidate: Candidate): Boolean = naming.namesOnlyATag(node, candidate)
+  /** [[NamingPieces.namesOnlyAProgrammeSlot]]. */
+  def namesOnlyAProgrammeSlot(node: EvidenceNode, candidate: Candidate): Boolean = naming.namesOnlyAProgrammeSlot(node, candidate)
+  /** The pieces of `node`'s title that name `candidate`'s film ([[NamingPieces.namingPieces]]). */
+  def namingPieces(node: EvidenceNode, candidate: Candidate): Set[Seq[String]] = naming.namingPieces(node, candidate)
 
   /** Which venues back a listing's film, over the corpus's title groups (`CorpusContext.titleGroups`):
    *  every node's, not a family's — a title a learned decoration wraps (`IdentityMeasures.titleGroups`)
    *  is listed plain by venues whose listings are not title-linked to it, so not in its family. */
   val backing: VenueBacking = generation.context.backing
 
-}
-
-private[identity] object CandidateScoring {
-  /** A question [[CandidateScoring.evidenceDenial]] asks of a listing and a film, beside their measures and the venue's
-   *  country. */
-  type Question = (MeasuredListing, Film, Map[String, Measure], Option[String]) => Boolean
-  /** How [[CandidateScoring.evidenceDenial]] names a season production its listing's banner is not the house of: a denial
-   *  about the banner, which says nothing of another listing billing the record's own house ([[Families.deniedBySibling]]). */
-  val AnotherHousesSeason = "another house's season production"
 }

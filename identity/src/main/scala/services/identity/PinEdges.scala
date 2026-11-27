@@ -22,5 +22,5 @@ private[identity] final class PinEdges(scoring: CandidateScoring) {
   }
   /** Does a derived edge stand beside the pins? */
   def admitted(link: ResolverEdge): Boolean =
-    pins.admits(FamilyClosure.Edge(nodeById(link.a).listings.head.key, nodeById(link.b).listings.head.key, link.must, link.reason))
+    pins.admits(FamilyClosure.Edge(nodeById(link.a).key, nodeById(link.b).key, link.must, link.reason))
 }

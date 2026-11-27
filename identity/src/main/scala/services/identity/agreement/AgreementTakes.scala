@@ -3,7 +3,7 @@ package services.identity.agreement
 import scala.collection.mutable
 
 import services.identity.agreement.StageWaits.ClusterWait
-import services.identity.measures.{Listing, PosterEvidence, ResolverDecision}
+import services.identity.measures.{Listing, ResolverDecision}
 import services.identity.vocabulary.{Answer, Question, VoterFamily}
 
 /** The stage's takes of a cluster the model left unmatched, one class a take kind: the film the families agree on
@@ -25,7 +25,7 @@ private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candi
   private val fills       = new FillTake(evidence, candidates, rules, venueText)
   private val catalogues  = new CatalogueTake(evidence, candidates, catalogue)
 
-  /** The clusters whose agreed take the last apply left pending ([[AgreementTakes.Take.Pending]]: a venue poster not
+  /** The clusters whose agreed take the last apply left pending ([[Take.Pending]]: a venue poster not
    *  hashed, an IMDb id not found in TMDB yet), with what it asked: the model's take is served meanwhile, typed Pending
    *  ([[StageWaits.outcomeOf]]). UK "Hocus Pocus", PL "Siostry (1972)" (drift slices): agreed, then after a restart pending on the
    *  posters of the candidates it read again, the model's no film served. */
@@ -62,17 +62,17 @@ private[agreement] final class AgreementTakes(evidence: AgreementEvidence, candi
     agreed.pieceOf(v, listings).fold(agreed.agreedTake(decision, id, digest, listings, v, asking, distances) match {
       // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
       // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
-      case AgreementTakes.Take.Taken(agreed) if listings.exists(services.identity.measures.ListingShape.stagesAWork) =>
+      case Take.Taken(agreed) if this.agreed.yieldsToBroadcast(listings) =>
         ruleTake(AgreementTakes.BroadcastTake, cluster).getOrElse(agreed)
-      case AgreementTakes.Take.Taken(agreed) => agreed
-      case AgreementTakes.Take.Pending       => takeWaits(id) = ClusterWait(digest, asking.toSet); decision
-      case AgreementTakes.Take.Vetoed        => pass.posterVetoed += 1; fellWaiting(cluster)
+      case Take.Taken(agreed) => agreed
+      case Take.Pending       => takeWaits(id) = ClusterWait(digest, asking.toSet); decision
+      case Take.Vetoed        => pass.posterVetoed += 1; fellWaiting(cluster)
       // the venue's synopsis naming a namesake's description says why, where nothing else takes one
-      case AgreementTakes.Take.Refused(why)  =>
+      case Take.Refused(why)  =>
         val fell = fellWaiting(cluster)
         if (fell eq decision) taking(decision)(decision.basis, why) else fell
       // the guard that refused the film the families would agree on says why, where nothing else takes one
-      case AgreementTakes.Take.Untaken       =>
+      case Take.Untaken       =>
         val fell = fellWaiting(cluster)
         v.refused.filter(_ => fell eq decision).fold(fell)(why => taking(decision)(decision.basis, why))
     })(line => taking(decision)(decision.basis, line))
@@ -126,32 +126,8 @@ private[identity] object AgreementTakes {
   private[agreement] final case class Unagreed(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], verdict: StoredVerdict,
                                    distances: Distances, asking: mutable.Set[Question] = mutable.Set.empty)
   /** A cluster's venue posters' distances to its candidates and to the film given (an agreed or filled one): what a take
-   *  is screened by ([[AgreementTakes.Take.screened]]). `Unknown` while a poster is not hashed. */
+   *  is screened by ([[Take.screened]]). `Unknown` while a poster is not hashed. */
   private[agreement] type Distances = Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]
-
-  /** What became of the film a cluster's families agree on: taken, pending an answer, vetoed by a venue poster, refused by
-   *  the venue's synopsis (and why), or none to take. */
-  private[agreement] enum Take[+A] {
-    case Taken(decision: A)
-    case Pending
-    case Vetoed
-    case Refused(why: String)
-    case Untaken
-  }
-  private[agreement] object Take {
-    /** `take` of `film` as the venues' evidence lets it stand — what an agreed film and a filled one are both screened by:
-     *  pending while a venue poster is not hashed (its `distances`), VETOED where one names another candidate
-     *  ([[PosterEvidence.veto]]), REFUSED where the venue's synopsis names another's description (`synopsis`,
-     *  [[VenueText.synopsisAgainst]]), else taken. */
-    def screened[A](film: Option[Int], distances: Distances, synopsis: Int => Option[String])(take: => A): Take[A] =
-      // a poster given up on (Failed) is no evidence for or against: as no distance found
-      distances(film).failedAs(Nil) match {
-        case Answer.Known(found) =>
-          if (PosterEvidence.veto(film, found).nonEmpty) Take.Vetoed
-          else film.flatMap(synopsis).fold[Take[A]](Take.Taken(take))(Take.Refused(_))
-        case Answer.Unknown | Answer.Failed => Take.Pending // failedAs leaves no Failed
-      }
-  }
 
   /** `d` taken on `basis`, `line` explaining it — with the `film`, `fallback` and `agreed` ids it takes, where they move. */
   private[agreement] def taking(d: ResolverDecision)(basis: ResolverDecision.Basis, line: String, film: Option[Int] = d.film,

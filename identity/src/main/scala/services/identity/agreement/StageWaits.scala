@@ -16,8 +16,8 @@ import services.identity.vocabulary.{Dependency, Question}
 final class StageWaits(waiting: TrieMap[String, ClusterWait], takeWaits: TrieMap[String, ClusterWait],
                        correctionWaits: TrieMap[String, ClusterWait], keyOf: ResolverDecision => String,
                        standingTakes: StandingTakes, digested: java.util.IdentityHashMap[ResolverDecision, AgreementEvidence.Cluster],
-                       held: String => Option[StoredVerdict], readNow: Dependency => Option[Long],
-                       tried: Question => Boolean, givenUp: Question => Boolean) {
+                       held: String => Option[StoredVerdict], evidence: AgreementEvidence, givenUp: Question => Boolean) {
+  import evidence.{readNow, tried}
 
   /** What `decision`'s take waits on, as the last [[AgreementStage.apply]] left it: the model's gaps, and the stage's own —
    *  its cluster's family questions or its fill's TMDB answers (`waiting`), and its take's correction's questions

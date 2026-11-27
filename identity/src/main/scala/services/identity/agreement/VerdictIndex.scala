@@ -40,6 +40,16 @@ private[identity] final class VerdictIndex(sources: AgreementSources.VerdictSour
   def newPass(): Unit = memo.newPass()
   /** The verdicts that read a dependency of `kind` as it no longer reads `now`, unchecked: how many ([[Memo.moved]]). */
   def moved(kind: Dependency => Boolean, now: Dependency => Option[Long]): Int = memo.moved(kind, now)
+  /** The verdicts that read another year than `evidence` reads now, unchecked: how many ([[Dependency.Year]]). */
+  def yearMoved(evidence: AgreementEvidence): Int = moved(_ == Dependency.Year, evidence.readNow)
+  /** The verdicts whose receipt read a question's attempt as `evidence` no longer reads it, unchecked: how many. */
+  def attemptsMoved(evidence: AgreementEvidence): Int = moved(VerdictIndex.isAttempt, evidence.readNow)
+  /** Every verdict stored under `rules`, of the year `evidence` reads now, checked at `version`: trusted to stand on the
+   *  stage's first apply ([[AgreementPipeline.opened]]). */
+  def trustStored(rules: String, version: Long, evidence: AgreementEvidence): Unit = {
+    val year = evidence.readNow(Dependency.Year)
+    values.filter(v => v.rules == rules && v.reads.get(Dependency.Year).forall(year.contains)).foreach(v => check(v.id, v.listings, version))
+  }
   /** `id`'s verdict checked at `version` over the listings digesting to `digest`. */
   def check(id: String, digest: Long, version: Long): Unit = memo.check(id, digest, version)
   /** `id`'s verdict checked no more: read again at its next decision ([[Memo.uncheck]]). */

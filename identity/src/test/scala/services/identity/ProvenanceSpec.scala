@@ -42,9 +42,9 @@ class ProvenanceSpec extends AnyFlatSpec with Matchers {
   "Every rule site" should "read provenance through the table, never re-derive it" in {
     val files = SourceTrees("identity/src/main/scala/services/identity").scalaFiles
     // where a provenance is DEFINED or carried, not weighed: the table, the listing and its codec, retention's mark, the
-    // backer's key, the denials' kinds and the scoring that makes them
+    // backer's key, the denials' kinds and the listing denials that make them
     val definers = Set("Authority.scala", "Listing.scala", "ListingBson.scala", "ListingRetention.scala", "VenueBacking.scala",
-      "Denial.scala", "CandidateScoring.scala")
+      "Denial.scala", "ListingDenials.scala")
     val Reads = Seq(
       "a listing's kept mark"           -> """(?<![\w.])(_|l|listing|node\.listings\.head)\.kept\b""".r,
       "a backer's kept mark"            -> """Backer\.kept\(""".r,

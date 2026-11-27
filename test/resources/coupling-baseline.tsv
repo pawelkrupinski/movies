@@ -44,7 +44,7 @@ module-edge	common->geodata	14
 module-edge	common->http	65
 module-edge	http->base	10
 module-edge	identity->base	25
-module-edge	identity->common	541
+module-edge	identity->common	543
 module-edge	identity->http	5
 module-edge	scrapers->base	51
 module-edge	scrapers->common	1483
@@ -116,7 +116,7 @@ fanout	services.cinemas.pl.UjazdowskiClient	10
 fanout	services.corpus.CorpusCensus	10
 fanout	services.corpus.MovieService	14
 fanout	services.identity.BilledPiece	10
-fanout	services.identity.CandidateScoring	18
+fanout	services.identity.CandidateScoring	10
 fanout	services.identity.ClusterVoting	15
 fanout	services.identity.ConstraintEdges	16
 fanout	services.identity.CorpusContext	12
@@ -144,10 +144,10 @@ fanout	services.identity.VenueSlots	12
 fanout	services.identity.agreement.Agreement	17
 fanout	services.identity.agreement.AgreementCandidates	19
 fanout	services.identity.agreement.AgreementEvidence	16
-fanout	services.identity.agreement.AgreementPipeline	21
+fanout	services.identity.agreement.AgreementPipeline	20
 fanout	services.identity.agreement.AgreementSources	11
 fanout	services.identity.agreement.AgreementStage	13
-fanout	services.identity.agreement.AgreementTakes	18
+fanout	services.identity.agreement.AgreementTakes	16
 fanout	services.identity.agreement.Broadcast	12
 fanout	services.identity.agreement.Catalogue	11
 fanout	services.identity.agreement.ClusterVerdicts	15

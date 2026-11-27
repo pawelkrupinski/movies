@@ -33,7 +33,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       Option.when(read.awaited.nonEmpty)(s"${read.awaited.size} record(s) awaited: ${read.awaited.take(5).mkString(", ")}") ++
       read.fallback.map(taken => s"falls back to ${taken.source} ${taken.id} at ${ResolverDecision.percent(taken.probability)}") ++
       read.leaning.map(lean => s"leans to ${lean.film} (tt${lean.imdbNumber})")) :+
-      s"node ${cluster.head.listings.head.key}"
+      s"node ${cluster.head.key}"
   }
 
   private def overruledLines(read: ClusterDecisionFacts): Seq[String] =
