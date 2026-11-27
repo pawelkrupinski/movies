@@ -6,9 +6,11 @@ from __future__ import annotations
 import os
 import signal
 import subprocess
+import sys
 from dataclasses import dataclass
 from typing import Callable, List, MutableMapping, Optional, Protocol, Sequence, Tuple
 
+import gov_queue
 import machine
 from script_tests_found import declared_width
 from script_tests_pool import Plan, Pool, Tools
@@ -27,6 +29,10 @@ class Gate(Protocol):
     def governs(self) -> bool: ...
 
     def width(self, label: str, job: str, want: int, mem: str = "1", fixed: bool = False) -> int: ...
+
+    def governor_output(self, args: Sequence[str]) -> Optional[str]: ...
+
+    def gov_class(self, label: str) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -55,6 +61,14 @@ def cores() -> int:
     return int(out.strip()) if code == 0 and out.strip().isdigit() else 0
 
 
+def queue_seconds(env: MutableMapping[str, str]) -> float:
+    """How often a waiting run says where it stands in the governor's queue (KINOWO_GOV_QUEUE_SECONDS, 30)."""
+    try:
+        return max(float(env.get("KINOWO_GOV_QUEUE_SECONDS") or 30), 0.05)
+    except ValueError:
+        return 30.0
+
+
 def govern(gate: Optional[Gate], env: MutableMapping[str, str], root: str, jobs: int, tests: Sequence[str]) -> Width:
     """THE GOVERNED FAN-OUT's width for min(--jobs, tests): each test then runs one core of the ticket (its declared
     width when the run's own ticket counts it), and sees no ticket of the run's."""
@@ -64,7 +78,10 @@ def govern(gate: Optional[Gate], env: MutableMapping[str, str], root: str, jobs:
     extra = sum(declared_width(os.path.join(root, t)) - 1 for t in tests)
     if want + extra > cores():
         extra = 0
-    granted = gate.width("run-script-tests", "script-tests", want + extra, "2")
+    with gov_queue.reporting("run-script-tests", lambda args: gate.governor_output(args), os.getpid(),
+                             gate.gov_class("run-script-tests"), lambda line: print(line, file=sys.stderr, flush=True),
+                             queue_seconds(env)):
+        granted = gate.width("run-script-tests", "script-tests", want + extra, "2")
     env.pop("KINOWO_JVM_SLOT_HELD", None)
     return within(jobs, want, extra, granted, bool(gate.slot))
 

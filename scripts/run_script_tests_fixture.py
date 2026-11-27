@@ -35,12 +35,17 @@ BASE_TREE: Dict[str, str] = {
 # $GOV_CALLS, waits while $GOV_HOLD names a file not there yet (a starved laptop), then takes the ticket's lock on fd 7
 FAKE_GOVERNOR = r'''#!/usr/bin/env bash
 [ "$1 $2" = "gov probe" ] && { echo "agentctl governor: ${GOV_FEATURES:-admit cores route width}"; exit 0; }
+case "$1 $2" in
+  "gov status") [ -z "${GOV_STATUS:-}" ] || sed "s/PID/$(cat "$GOV_HOLD.pid" 2>/dev/null)/" "$GOV_STATUS"; exit 0 ;;
+  "gov stats") [ -z "${GOV_STATS:-}" ] || cat "$GOV_STATS"; exit 0 ;;
+esac
 printf '%s\n' "$*" >> "$GOV_CALLS"
 if [ -n "${GOV_GRANT:-}" ] && case " $* " in *" --min-cores "*) true ;; *) false ;; esac; then
   ticket=$(printf '%s\n' "$@" | sed -n '/^--ticket$/{n;p;}')
   echo "{\"cores\": $GOV_GRANT}" > "${ticket%.lock}.json"
 fi
 if [ -n "${GOV_HOLD:-}" ]; then
+  printf '%s\n' "$@" | sed -n '/^--pid$/{n;p;}' > "$GOV_HOLD.pid"
   echo waiting > "$GOV_HOLD.waiting"
   for _ in $(seq 1 2400); do [ -e "$GOV_HOLD" ] && break; sleep 0.05; done
 fi

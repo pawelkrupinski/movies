@@ -46,6 +46,28 @@ class GovernorTest(ScriptTestsCase):
         self.assertEqual(1, self.admits(r"^gov admit .*--class agent --mem 2 --label run-script-tests .*"
                                         r"--job script-tests --cores 2$"))
 
+    def test_a_waiting_run_says_its_place_in_the_governors_queue(self) -> None:
+        hold, status, stats = self.path("admit"), self.path("status"), self.path("stats")
+        with open(status, "w") as f:
+            f.write("governor: 5 admitted, 15.0/77 GB committed, 15/18 cores charged\n"
+                    "  WAITING agent    2.0 GB    8 cores  run-script-tests  pid 1\n"
+                    "  WAITING agent    2.0 GB    8 cores  run-script-tests  pid PID\n")
+        with open(stats, "w") as f:
+            f.write("  class admits  p50 wait  p90 wait waited>1m\n  agent   4751        0s        7s       208\n")
+        env = self.env(self.governed(self.agentctl, {"SEEN": self.seen, "GOV_HOLD": hold, "GOV_STATUS": status,
+                                                     "GOV_STATS": stats, "KINOWO_GOV_QUEUE_SECONDS": "0.2"}))
+        log = self.path("run-stderr")
+        with open(log, "w") as err:
+            run = subprocess.Popen([self.TOOL, "--root", self.tree, "scripts/sees-test.sh"], env=env, cwd=self.work,
+                                   stdout=subprocess.DEVNULL, stderr=err, stdin=subprocess.DEVNULL)
+            self.assertTrue(cli_harness.wait_until(lambda: "2nd of 2 waiting" in self.read("run-stderr")))
+            self.write("admit", "")
+            self.assertEqual(0, run.wait(cli_harness.WAIT_BOUND))
+        said = self.read("run-stderr")
+        self.assertIn("run-script-tests: queued at the governor, 2nd of 2 waiting (5 admitted, 15/18 cores charged)", said)
+        self.assertIn("agent class's admissions wait 0s at the median, 7s at the 90th percentile", said)
+        self.assertEqual(1, said.count("queued at the governor"), "said once while the place is the same")
+
     def test_under_a_parents_ticket_it_rides_it(self) -> None:
         done = self.run_tool("--job", "outer", "--", self.TOOL, "--root", self.tree, "scripts/sees-test.sh",
                              tool=os.path.join(ROOT, "scripts/gov-run"),

@@ -218,6 +218,11 @@ class JvmGate:
         """Whether this process holds a slot, its own or its parent's (descriptor 7 open, its name exported)."""
         return bool(self.env.get("KINOWO_JVM_SLOT_HELD")) and descriptor_open(SLOT_FD)
 
+    def governor_output(self, args: Sequence[str]) -> Optional[str]:
+        """What `agentctl gov <args>` prints (its status, its stats), None when no governor governs or it fails."""
+        g = self.governor.bin()
+        return self.governor.commands.output([g, "gov", *args]) if g else None
+
     def gov_class(self, label: str) -> str:
         if self.env.get("KINOWO_GOV_CLASS"):
             return self.env["KINOWO_GOV_CLASS"]
