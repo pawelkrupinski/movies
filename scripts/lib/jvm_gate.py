@@ -326,6 +326,36 @@ class JvmGate:
         if not self.slot and not self._ticket(label, job, "0"):
             self.host.say(f"[{label}] the governor ({g} gov admit) failed: running without a cores ticket")
 
+    def core_try(self, label: str, job: str) -> Optional[Tuple[int, str]]:
+        """ONE MORE CORE, if the governor has one free this moment (`gov admit --try`, never waiting): a cores-only ticket
+        on a descriptor of its own, held by this process until core_give -- a pool that was granted less than it asked
+        takes cores as the laptop frees them instead of staying that narrow for the whole run. The descriptor and the
+        ticket's file, None when none is free (or no governor grants cores here)."""
+        g = self.governor.bin()
+        if g is None or not self.governor.has("cores"):
+            return None
+        tickets = self.env.get("AGENTCTL_GOV_DIR") or os.path.join(self.host.home, ".cache/agentctl/gov")
+        os.makedirs(tickets, exist_ok=True)
+        path = os.path.join(tickets, f"t-{self.host.pid}-{random.randrange(10 ** 9)}.lock")
+        fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
+        os.set_inheritable(fd, True)
+        argv = [g, "gov", "admit", "--fd", str(fd), "--ticket", path, "--class", self.gov_class(label), "--mem", "0",
+                "--label", label, "--pid", str(self.host.pid), "--cwd", self.env.get("PWD") or os.getcwd(),
+                "--job", job, "--cores", "1", "--try"]
+        if self.governor.commands.status(argv, pass_fds=(fd,), quiet=True) == 0:
+            return fd, path
+        self.core_give((fd, path))
+        return None
+
+    def core_give(self, held: Tuple[int, str]) -> None:
+        """A core taken by core_try given back: the descriptor closed (the lock with it), the ticket's file removed."""
+        os.close(held[0])
+        for leftover in (held[1], held[1][: -len(".lock")] + ".json"):
+            try:
+                os.remove(leftover)
+            except OSError:
+                pass
+
     def slot_try(self, label: str = "tool") -> bool:
         """One pass over the slots, never waiting (with the governor: one look, its --try)."""
         if self.governor.bin() is not None:

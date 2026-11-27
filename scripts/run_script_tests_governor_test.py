@@ -159,6 +159,34 @@ class WidthTest(ScriptTestsCase):
             peak, most = max(peak, held), max(most, tests)
         self.assertEqual((5, 3), (peak, most), "the cores held at once, the tests at once")
 
+    def peaks(self, spare: bool) -> int:
+        """The most tests running at once of four, under a grant of ONE core with `spare` cores free (or none)."""
+        body = 'echo "+" >> "$HELD"; sleep 2; echo "-" >> "$HELD"'
+        for n in range(4):
+            self.put(f"scripts/widen/w{n}-test.sh", body)
+        free = self.write("spare", "") if spare else self.path("no-spare")
+        self.write("gov-calls", "")
+        done = self.runner("--jobs", "4", "scripts/widen", env=self.governed(self.agentctl, {
+            "GOV_FEATURES": "admit cores route width grant", "GOV_GRANT": "1", "GOV_SPARE": free,
+            "HELD": self.path("held")}))
+        self.assertEqual(0, done.code, done.output)
+        held = 0
+        peak = 0
+        for line in self.read("held").split():
+            held += 1 if line == "+" else -1
+            peak = max(peak, held)
+        return peak
+
+    def test_a_run_granted_one_core_takes_more_as_the_governor_has_them_free(self) -> None:
+        """2026-11-27: admitted at load 28 with ONE core, a run stayed one wide for its 40 minutes while the laptop
+        freed up. It asks for a core each time it has tests waiting, `gov admit --try`, and runs one more test on each."""
+        self.assertEqual(4, self.peaks(spare=True))
+        self.assertEqual(3, self.gov_calls().count("--cores 1 --try"))
+
+    def test_a_run_granted_one_core_stays_one_wide_while_none_is_free(self) -> None:
+        self.assertEqual(1, self.peaks(spare=False))
+        self.assertEqual(1, self.gov_calls().count("--cores 1 --try"), "asked again only after a pause")
+
 
 if __name__ == "__main__":
     unittest.main()

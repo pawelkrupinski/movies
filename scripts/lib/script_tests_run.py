@@ -8,12 +8,12 @@ import signal
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Callable, List, MutableMapping, Optional, Protocol, Sequence, Tuple
+from typing import Callable, List, MutableMapping, Optional, Protocol, Sequence, Tuple, cast
 
 import gov_queue
 import machine
 from script_tests_found import declared_width
-from script_tests_pool import Plan, Pool, Tools
+from script_tests_pool import Plan, Pool, Tools, Widening
 from script_tests_report import Report, floor_block, heavy_hint, keep_times, longest_first
 from script_tests_tree import Attribution, Leftovers, Window, tree_state
 
@@ -36,6 +36,10 @@ class Gate(Protocol):
 
     def release(self) -> None: ...
 
+    def core_try(self, label: str, job: str) -> Optional[Tuple[int, str]]: ...
+
+    def core_give(self, held: Tuple[int, str]) -> None: ...
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -57,6 +61,7 @@ class Width:
     test_width: Optional[int] = None
     wide_tests: bool = False
     budget: int = 0  # the cores the grant holds when wide tests share it (0: the pool is just --jobs wide)
+    more: int = 0  # the cores the run asked for beyond its grant: taken later, as the governor frees them
 
 
 def cores() -> int:
@@ -97,8 +102,21 @@ def within(jobs: int, want: int, extra: int, granted: int, own_ticket: bool, wid
     wide tests ran a minute each (2026-11-27: 8 tests, 13 minutes, one at a time). A grant narrower than the widest
     test runs every test one core wide."""
     if own_ticket and extra > 0 and widest <= granted:
-        return Width(min(jobs, want), 1, True, granted)
-    return Width(granted if granted < want else jobs, 1)
+        return Width(min(jobs, want), 1, True, granted, max(0, want + extra - granted))
+    return Width(granted if granted < want else jobs, 1, False, 0, max(0, want - granted) if own_ticket else 0)
+
+
+def widening(gate: Gate, plan: Plan) -> Optional[Widening]:
+    """The run's wish for more cores than it was granted (THE GRANTED WIDTH), asked of the governor as they free."""
+    if plan.more <= 0:
+        return None
+
+    def take() -> Optional[object]:
+        return gate.core_try("run-script-tests", "script-tests")
+
+    def give(held: object) -> None:
+        gate.core_give(cast(Tuple[int, str], held))
+    return Widening(take, give, plan.more, machine.monotonic)
 
 
 def expanded(paths: Sequence[str], stress: int) -> Tuple[List[str], List[str]]:
@@ -191,7 +209,7 @@ def plan_run(root: str, scratch: str, selected: Sequence[str], s: Settings, widt
     paths, runs = expanded(ordered, s.stress)
     jobs = width.jobs if not s.stress or s.jobs_given else len(paths)
     return Plan(root, scratch, paths, runs, jobs, s.timeout, s.stall, test_width=width.test_width,
-                wide_tests=width.wide_tests, budget=width.budget), len(ordered)
+                wide_tests=width.wide_tests, budget=width.budget, more=width.more), len(ordered)
 
 
 def tools(lib: str, scripts: str) -> Tools:

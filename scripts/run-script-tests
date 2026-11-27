@@ -154,7 +154,7 @@ from script_tests_found import Found, concurrency_heavy, declared_reads, discove
 from script_tests_select import Options, Refused, Selection, git_in, heavy_only, select  # noqa: E402
 import script_tests_linux as linux  # noqa: E402
 from script_tests_pool import Pool  # noqa: E402
-from script_tests_run import Plan, Run, Settings, Width, govern, plan_run, tools  # noqa: E402
+from script_tests_run import Plan, Run, Settings, Width, govern, plan_run, tools, widening  # noqa: E402
 from tool_cli import header_usage  # noqa: E402
 
 ROOTS = "scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin infra/nix/bin infra/nix/files data"
@@ -372,16 +372,16 @@ def run_here(o: Options, s: Settings, env: MutableMapping[str, str], scratch: st
     gate = compose_gate(env, o.root)
     try:
         width = govern(gate, env, o.root, s.jobs, tests)
-        return run_planned(o, s, env, scratch, scope, chosen, plan_run(o.root, scratch, tests, s, width))
+        return run_planned(o, s, env, scratch, scope, chosen, plan_run(o.root, scratch, tests, s, width), gate)
     finally:
         gate.release()
 
 
 def run_planned(o: Options, s: Settings, env: MutableMapping[str, str], scratch: str, scope: Floor,
-                chosen: Selection, planned: Tuple[Plan, int]) -> int:
+                chosen: Selection, planned: Tuple[Plan, int], gate: JvmGate) -> int:
     plan, count = planned
     plan.floor_tests, plan.floor_bin = scope.tests, scope.bin
-    pool = Pool(plan, dict(env), tools(LIB, HERE), time.sleep)
+    pool = Pool(plan, dict(env), tools(LIB, HERE), time.sleep, widening=widening(gate, plan))
     heavy = [p for p in plan.paths[:count] if concurrency_heavy(os.path.join(o.root, p))]
     return Run(s, pool, git_in(o.root), time.sleep).run(count, bool(o.changed), heavy, chosen.findings)
 

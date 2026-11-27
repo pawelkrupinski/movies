@@ -48,7 +48,10 @@ if [ -n "${GOV_HOLD:-}" ]; then
   echo waiting > "$GOV_HOLD.waiting"
   for _ in $(seq 1 2400); do [ -e "$GOV_HOLD" ] && break; sleep 0.05; done
 fi
-python3 -I -B -c 'import fcntl; fcntl.flock(7, fcntl.LOCK_EX | fcntl.LOCK_NB)'
+# an extra core (`--try`, the pool widening as the laptop frees): refused while $GOV_SPARE names no file, else admitted
+case " $* " in *" --try "*) [ -e "${GOV_SPARE:-/nonexistent}" ] || exit 1 ;; esac
+fd=$(printf '%s\n' "$@" | sed -n '/^--fd$/{n;p;}')
+python3 -I -B -c 'import fcntl, sys; fcntl.flock(int(sys.argv[1]), fcntl.LOCK_EX | fcntl.LOCK_NB)' "${fd:-7}"
 '''
 
 

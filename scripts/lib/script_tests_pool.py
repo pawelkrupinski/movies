@@ -45,6 +45,7 @@ class Plan:
     test_width: Optional[int] = None
     wide_tests: bool = False
     budget: int = 0  # cores the tests running at once may add up to (0: no budget, only `jobs`)
+    more: int = 0  # cores beyond `jobs` (or the budget) the run still wants, taken as the governor frees them
 
 
 @dataclass
@@ -72,6 +73,37 @@ class Running:
     start: int
 
 
+class Widening:
+    """THE RUN WIDENED AS THE LAPTOP FREES: a grant is the cores free at admission, and a run admitted at load 28 was
+    one wide for its 40 minutes. While tests wait, one more core is asked of the governor (`take`, never waiting; it
+    answers None while none is free) every RETRY seconds, and each one taken lets one more test run; all are given
+    back (`give`) once nothing waits."""
+    RETRY = 10.0
+
+    def __init__(self, take: Callable[[], Optional[object]], give: Callable[[object], None], more: int,
+                 clock: Callable[[], float]) -> None:
+        self.take, self.give, self.more, self.clock = take, give, more, clock
+        self.held: List[object] = []
+        self.next_try = 0.0
+
+    @property
+    def extra(self) -> int:
+        return len(self.held)
+
+    def tick(self, waiting: bool) -> None:
+        if not waiting:
+            self.release()
+        elif len(self.held) < self.more and self.clock() >= self.next_try:
+            core = self.take()
+            if core is not None:
+                self.held.append(core)
+            self.next_try = self.clock() + (0.0 if core is not None else self.RETRY)
+
+    def release(self) -> None:
+        while self.held:
+            self.give(self.held.pop())
+
+
 @dataclass
 class Pool:
     """The run: its plan, the environment its tests get, and each finished run's result."""
@@ -80,6 +112,7 @@ class Pool:
     tools: Tools
     sleep: Callable[[float], None]
     results: Dict[int, Result] = field(default_factory=lambda: {})
+    widening: Optional[Widening] = None
 
     def file(self, index: object, kind: str) -> str:
         return os.path.join(self.plan.scratch, f"{index}.{kind}")
@@ -135,14 +168,20 @@ class Pool:
         """Whether the next run fits the budget beside those running (one always runs: it cannot wait on nothing)."""
         if not self.plan.budget or not running:
             return True
-        return sum(self.cost(int(r.key)) for r in running) + self.cost(index) <= self.plan.budget
+        return sum(self.cost(int(r.key)) for r in running) + self.cost(index) <= self.plan.budget + self.extra()
+
+    def extra(self) -> int:
+        return self.widening.extra if self.widening else 0
 
     def run_all(self, report: Callable[[int, Result], None]) -> None:
         """Every planned run, at most `jobs` at once, each reported as it ends."""
         running: List[Running] = []
         upcoming = list(range(len(self.plan.paths)))
         while running or upcoming:
-            while upcoming and len(running) < self.plan.jobs and self.fits(running, upcoming[0]):
+            if self.widening:
+                self.widening.tick(bool(upcoming))
+            while upcoming and len(running) < self.plan.jobs + (0 if self.plan.budget else self.extra()) \
+                    and self.fits(running, upcoming[0]):
                 i = upcoming.pop(0)
                 running.append(self.start(str(i), self.plan.paths[i]))
             for r in [r for r in running if r.root.poll() is not None]:
@@ -151,6 +190,8 @@ class Pool:
                 report(int(r.key), self.results[int(r.key)])
             if running:
                 self.sleep(0.2)
+        if self.widening:
+            self.widening.release()
 
     def run_alone(self, index: int) -> int:
         """One planned run again, alone (the tree check's): its seconds."""
