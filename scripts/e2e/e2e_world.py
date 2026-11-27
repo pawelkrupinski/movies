@@ -180,8 +180,13 @@ class World:
             raise StepFailed(f"{' '.join(argv)} still running after {bound:.0f} s (ended)\n{out[-3000:]}\n{err[-3000:]}")
         return cli_harness.Done(p.returncode, out, err)
 
+    def git_run(self, cwd: str, *args: str, env: Optional[Mapping[str, Optional[str]]] = None) -> cli_harness.Done:
+        """git in `cwd` under the world's isolation (no GIT_* inherited), its outcome whatever it is: a push the
+        hook may refuse."""
+        return self.run(["git", *args], cwd, env=env)
+
     def git(self, cwd: str, *args: str) -> str:
-        done = self.run(["git", *args], cwd)
+        done = self.git_run(cwd, *args)
         if done.code != 0:
             raise StepFailed(f"git {' '.join(args)} in {cwd}: {done.code}\n{done.output}")
         return done.stdout.strip()

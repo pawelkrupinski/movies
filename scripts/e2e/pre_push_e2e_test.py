@@ -45,8 +45,8 @@ class PrePushE2ETest(e2e_world.Scenario):
         """`git push` to main, running only `check` of what the hook selects. The floor bash and the --linux
         container are left out (PREPUSH_SKIP): which of them a machine has is not this flow's, and the hook's own
         tests hold them."""
-        return self.w.run(["git", "push", "origin", "HEAD:main"], self.clone,
-                          env={"PREPUSH_ONLY": check, "PREPUSH_NO_REUSE": "1", "PREPUSH_SKIP": "floor linux"})
+        return self.w.git_run(self.clone, "push", "origin", "HEAD:main",
+                              env={"PREPUSH_ONLY": check, "PREPUSH_NO_REUSE": "1", "PREPUSH_SKIP": "floor linux"})
 
     def test_a_failing_self_test_blocks_the_push_until_it_passes(self) -> None:
         before = self.repo.main()
