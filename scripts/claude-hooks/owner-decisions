@@ -160,8 +160,6 @@ def main():
     signal.alarm(DEADLINE_SECONDS)
     try:
         hook = hook_event.read_event(STDIN_SECONDS)
-        if not isinstance(hook, dict):
-            return
         {"prompt": prompt, "session-start": session_start}[sys.argv[1]](hook)
     except Exception:  # a broken hook must never wedge a prompt
         pass

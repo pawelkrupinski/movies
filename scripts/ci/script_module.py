@@ -20,6 +20,7 @@ def load(path, name=None):
     name = name or re.sub(r"\W", "_", os.path.basename(str(path)).rsplit(".py", 1)[0])
     loader = importlib.machinery.SourceFileLoader(name, str(path))
     spec = importlib.util.spec_from_file_location(name, str(path), loader=loader)
+    assert spec is not None  # a SourceFileLoader always yields a spec
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
     try:

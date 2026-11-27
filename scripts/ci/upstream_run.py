@@ -31,7 +31,6 @@ import datetime
 import json
 import os
 import sys
-from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ci_machine  # noqa: E402
@@ -80,8 +79,11 @@ def choose(trigger, conclusion, branch, runs, now, max_age_hours=MAX_AGE_HOURS, 
     return run, "%s: reading the newest successful run on main instead, %s (created %s)" % (why, run, at.isoformat())
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv=None, now=None, listing=None):
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("--workflow", required=True, help="the producing workflow's name")
     parser.add_argument("--trigger", default="", help="the run named or triggering; empty: none")
     parser.add_argument("--conclusion", default="", help="the triggering run's; empty: dispatched")

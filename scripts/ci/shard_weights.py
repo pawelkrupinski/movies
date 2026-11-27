@@ -90,8 +90,11 @@ def fetch(url, days):
                 yield d["run_id"], d["suite"], float(d["time_s"])
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv):
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("refresh")
     r.add_argument("--days", type=int, default=7)

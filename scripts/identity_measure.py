@@ -45,6 +45,7 @@ import argparse
 import json
 import os
 import sys
+from typing import Dict, List, Optional, TypedDict
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci"))
 import identity_takes_diff as takes  # noqa: E402
@@ -112,7 +113,15 @@ def classify(cc, base, head, rows):
 UNMEASURED = "not measured (outside the footprint)"
 
 
-def read_country(directory, cc, rows, conclusions=None):
+class Country(TypedDict):
+    verdict: List[str]
+    base: Optional[str]
+    stages: Dict[str, Dict[str, list]]
+    missing: Optional[str]
+    unmeasured: bool
+
+
+def read_country(directory, cc, rows, conclusions=None) -> Country:
     """{"verdict": [lines], "base": sha, "stages": {stage: buckets}, "missing": reason or None, "unmeasured": bool} of one
     country's artifact. `conclusions`, the run's takes rows ({cc: conclusion}), tells a row that never ran from one that
     failed before uploading."""
@@ -129,7 +138,7 @@ def read_country(directory, cc, rows, conclusions=None):
         with open(path, encoding="utf-8") as f:
             return f.read()
     verdict = [l for l in text("verdict.txt").splitlines() if l.strip()]
-    out = {"verdict": verdict, "base": text("base.txt").strip() or None, "stages": {}, "missing": None, "unmeasured": False}
+    out: Country = {"verdict": verdict, "base": text("base.txt").strip() or None, "stages": {}, "missing": None, "unmeasured": False}
     unchanged = any("nothing can have moved" in l or "no take can have moved" in l for l in verdict)
     for stage, name in STAGES:
         b_path, h_path = (os.path.join(root, side, name.format(cc=cc)) for side in ("base", "head"))
@@ -222,8 +231,11 @@ def render(countries, rows, examples=3):
     return "\n".join(out)
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv=None):
-    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    p = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     p.add_argument("dir")
     p.add_argument("--judgements", required=True)
     p.add_argument("--countries", default=",".join(COUNTRIES))

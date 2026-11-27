@@ -73,7 +73,7 @@ def seconds(value):
 
 def heredocs(command):
     """(the line that opens it, its body) for every heredoc, in order."""
-    found, pending, body, header = [], [], [], None
+    found, pending, body = [], [], []
     for line in command.split("\n"):
         if pending:
             if line.strip() == pending[0][0]:

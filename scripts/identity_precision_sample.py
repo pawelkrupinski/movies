@@ -308,8 +308,11 @@ def report(out, judgements, countries):
     return "\n".join(lines)
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv=None):
-    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    p = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("sample")
     s.add_argument("--n", type=int, default=150)

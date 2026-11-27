@@ -89,8 +89,11 @@ def shard(lines, k, n, weights=None, default_weight=3.0, whole_weight=600.0):
     return out
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv):
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     ap.add_argument("--shard", required=True, help="K/N, 1-based")
     ap.add_argument("--weights", help="a TSV of <class> <seconds> rows (# comments), or NAME: shard-weights-NAME.tsv here")
     ap.add_argument("--default-weight", type=float, default=3.0)

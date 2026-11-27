@@ -63,9 +63,12 @@ def titles(line: str):
         yield from (key for _, key in CINEMA_KEY.findall(m.group(1)))
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv):
     if len(argv) < 3:
-        sys.stderr.write(__doc__)
+        sys.stderr.write(DOCSTRING)
         return 2
     code, logs = argv[1].lower(), argv[2:]
     seen = []

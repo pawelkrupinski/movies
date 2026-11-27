@@ -14,6 +14,11 @@ def workflow_files():
                   + glob.glob(os.path.join(ROOT, ".github/actions/*/action.yml")))
 
 
+def _indent(line: str) -> int:
+    """The width of the whitespace a line starts with."""
+    return len(line) - len(line.lstrip())
+
+
 def action_steps(text, action):
     """(line number, the step's `with:` block) for each `uses: <action>@...` in text."""
     lines = text.split("\n")
@@ -26,10 +31,10 @@ def action_steps(text, action):
         if j == len(lines):
             yield i + 1, ""
             continue
-        w_indent = len(re.match(r"\s*", lines[j]).group())
+        w_indent = _indent(lines[j])
         block = []
         j += 1
-        while j < len(lines) and (not lines[j].strip() or len(re.match(r"\s*", lines[j]).group()) > w_indent):
+        while j < len(lines) and (not lines[j].strip() or _indent(lines[j]) > w_indent):
             block.append(lines[j])
             j += 1
         yield i + 1, "\n".join(block)
