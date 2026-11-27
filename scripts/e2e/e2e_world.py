@@ -191,10 +191,11 @@ class World:
             raise StepFailed(f"{' '.join(argv)} still running after {limit:.0f} s (ended)\n{done.output[-6000:]}")
         return done
 
-    def git_run(self, cwd: str, *args: str, env: Optional[Mapping[str, Optional[str]]] = None) -> cli_harness.Done:
+    def git_run(self, cwd: str, *args: str, env: Optional[Mapping[str, Optional[str]]] = None,
+                stdin: str = "") -> cli_harness.Done:
         """git in `cwd` under the world's isolation (no GIT_* inherited), its outcome whatever it is: a push the
         hook may refuse."""
-        return self.run(["git", *args], cwd, env=env)
+        return self.run(["git", *args], cwd, env=env, stdin=stdin)
 
     def git(self, cwd: str, *args: str) -> str:
         done = self.git_run(cwd, *args)

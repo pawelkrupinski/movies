@@ -89,8 +89,8 @@ class IdentityStampCarryE2ETest(e2e_world.Scenario):
         edited = self.w.commit(self.tree, "an edit the carry cannot call pure")
         stamps = dict(line.split("\t") for line in self.carry("stamps", edited).stdout.splitlines())
         before = dict(line.split("\t") for line in self.carry("stamps", landed).stdout.splitlines())
-        diff = self.w.run(["git", "diff", landed, edited], self.tree).stdout
-        patch_id = self.w.run(["git", "patch-id", "--stable"], self.tree, stdin=diff).stdout.split()[0]
+        diff = self.w.git(self.tree, "diff", landed, edited)
+        patch_id = self.w.git_run(self.tree, "patch-id", "--stable", stdin=diff + "\n").stdout.split()[0]
         record = "".join(f"{cc}\tdone\t2026-11-27T00:00:00Z\t-\t0\twhole,final\t-\n" for cc in ("pl", "de", "uk", "es", "us"))
         self.w.write(self.tree, f"test/resources/identity-what-if-verdicts/{edited}-{landed}.tsv",
                      record + f"patch-id\t{patch_id}\t{edited}\t{landed}\n")
