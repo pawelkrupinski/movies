@@ -17,9 +17,9 @@ trap 'rm -rf "$work"' EXIT
 repo="$work/repo" um="$work/repo/test/resources/fixtures/identity-unmatched"
 judgements="$work/repo/test/resources/fixtures/identity-judgements.tsv"
 mkdir -p "$repo/scripts/ci" "$um" "$work/bin" "$repo/scripts/local-mirror"
-cp "$REPO_ROOT/scripts/label-lookup" "$repo/scripts/"
-cp "$REPO_ROOT/scripts/local-mirror/freshness" "$repo/scripts/local-mirror/"; spec_copy_conventions "$repo/scripts"
-cp "$REPO_ROOT"/scripts/ci/identity_*.py "$repo/scripts/ci/"  # the tool and every shared module it imports
+# the tool, freshness and every module they import (the identity readers, the scripts/lib adapters): sandbox_copy.py
+python3 "$REPO_ROOT/scripts/sandbox_copy.py" "$repo" scripts/label-lookup scripts/local-mirror/freshness > /dev/null
+spec_copy_conventions "$repo/scripts"
 
 row() { # country venue rawTitle film verdict [state scope reason evidence]
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t\t%s\t2026-10-14\t%s\n' "$1" "$2" "$3" "$4" "$5" "${6:-open}" "${7:-}" "${8:-}" "${9:-}"; }

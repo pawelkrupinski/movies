@@ -15,6 +15,8 @@ replacement) or `InMemoryDisk` (a dict), held alike by tool_files_test.py's cont
   files.list(directory, suffix="") -> [name]      sorted; FileNotFoundError when there is no such directory
   files.under(directory) -> [path]                every file below it, sorted (`os.walk`)
   files.remove(path, missing_ok=True)
+  files.read_bytes(path) -> bytes / files.size(path) -> int
+  with files.scratch(prefix) as directory:        a new empty directory, removed with all below it after the block
   files.mtime(path) -> float                      seconds since the epoch; FileNotFoundError when there is none
   files.make_directories(path)                    the directory and those above it
   files.rename(source, target) -> bool            renamed whole (a directory too); False when it could not be (onto a
@@ -27,6 +29,8 @@ from __future__ import annotations
 
 import io
 import os
+import shutil
+import tempfile
 from types import TracebackType
 from typing import Callable, Dict, Iterator, List, Optional, Protocol, Set
 
@@ -53,6 +57,10 @@ class Disk(Protocol):
     def mtime(self, path: str) -> float: ...                               # FileNotFoundError
 
     def rename(self, source: str, target: str) -> None: ...                # OSError; never onto a filled directory
+
+    def make_scratch(self, prefix: str) -> str: ...                        # a new empty directory, its absolute path
+
+    def remove_tree(self, path: str) -> None: ...                          # a directory and all below it; none: fine
 
 
 class LocalDisk:
@@ -87,6 +95,12 @@ class LocalDisk:
     def rename(self, source: str, target: str) -> None:
         os.rename(source, target)
 
+    def make_scratch(self, prefix: str) -> str:
+        return os.path.realpath(tempfile.mkdtemp(prefix=prefix))
+
+    def remove_tree(self, path: str) -> None:
+        shutil.rmtree(path, ignore_errors=True)
+
 
 class InMemoryDisk:
     """A dict of files and a set of directories; a write stamped by the injected clock (`now`)."""
@@ -96,6 +110,7 @@ class InMemoryDisk:
         self.files: Dict[str, bytes] = {}
         self.stamps: Dict[str, float] = {}
         self.directories: Set[str] = {os.sep}
+        self.scratches = 0
 
     def read(self, path: str) -> bytes:
         if path not in self.files:
@@ -148,6 +163,18 @@ class InMemoryDisk:
         self.stamps = {moved(p, source, target): when for p, when in self.stamps.items()}
         self.directories = {moved(p, source, target) for p in self.directories}
 
+    def make_scratch(self, prefix: str) -> str:
+        self.scratches += 1
+        path = f"/scratch/{prefix}{self.scratches}"
+        self.make_directories(path)
+        return path
+
+    def remove_tree(self, path: str) -> None:
+        below = path + os.sep
+        self.files = {p: d for p, d in self.files.items() if p != path and not p.startswith(below)}
+        self.stamps = {p: t for p, t in self.stamps.items() if p in self.files}
+        self.directories = {p for p in self.directories if p != path and not p.startswith(below)}
+
 
 def moved(path: str, source: str, target: str) -> str:
     """`path` after `source` is renamed to `target`."""
@@ -167,6 +194,20 @@ class Replacing:
     def __exit__(self, kind: Optional[type], _value: Optional[BaseException], _trace: Optional[TracebackType]) -> None:
         if kind is None:
             self.files.replace_text(self.path, self.out.getvalue(), self.mode)
+
+
+class Scratch:
+    """A new directory for the length of a block (a proof's output, a mutant's copy)."""
+
+    def __init__(self, disk: Disk, prefix: str) -> None:
+        self.disk, self.prefix, self.path = disk, prefix, ""
+
+    def __enter__(self) -> str:
+        self.path = self.disk.make_scratch(self.prefix)
+        return self.path
+
+    def __exit__(self, kind: Optional[type], _value: Optional[BaseException], _trace: Optional[TracebackType]) -> None:
+        self.disk.remove_tree(self.path)
 
 
 class Files:
@@ -189,6 +230,17 @@ class Files:
 
     def read_text(self, path: str) -> str:
         return self.disk.read(self.path(path)).decode("utf-8")
+
+    def read_bytes(self, path: str) -> bytes:
+        return self.disk.read(self.path(path))
+
+    def size(self, path: str) -> int:
+        """A file's size in bytes; FileNotFoundError when there is none."""
+        return len(self.disk.read(self.path(path)))
+
+    def scratch(self, prefix: str = "scratch-") -> "Scratch":
+        """`with files.scratch() as directory:` a new empty directory, removed with all below it when the block ends."""
+        return Scratch(self.disk, prefix)
 
     def read_text_or(self, path: str, default: str) -> str:
         try:

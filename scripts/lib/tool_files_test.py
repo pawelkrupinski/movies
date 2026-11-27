@@ -102,6 +102,20 @@ class Contract:
             self.assertFalse(self.f.rename("other", "cache"))
             self.assertEqual(self.f.read_text("other/y"), "y")
 
+        def test_bytes_and_size_are_the_files_own(self) -> None:
+            self.f.write_text("a.txt", "Łódź")
+            self.assertEqual("Łódź".encode(), self.f.read_bytes("a.txt"))
+            self.assertEqual(len("Łódź".encode()), self.f.size("a.txt"))
+            with self.assertRaises(FileNotFoundError):
+                self.f.size("none.txt")
+
+        def test_a_scratch_directory_is_new_empty_and_gone_with_its_contents_after_the_block(self) -> None:
+            with self.f.scratch("proof-") as one, self.f.scratch("proof-") as two:
+                self.assertNotEqual(one, two)
+                self.assertTrue(self.f.is_dir(one) and self.f.list(one) == [])
+                self.f.write_text(f"{one}/deep/x.txt", "x")
+            self.assertFalse(self.f.exists(one) or self.f.exists(two))
+
         def test_mtime_is_a_written_files(self) -> None:
             self.f.write_text("a.txt", "x")
             self.assertIsInstance(self.f.mtime("a.txt"), float)

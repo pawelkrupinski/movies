@@ -8,7 +8,7 @@ injected its effects -- never the tool alone. The closure is read from the tools
                                                      a script with a shebang executable
 
 A module is found as `<name>.py` beside the importer or in the directories every tool imports from (SEARCH); a name
-that is no file of the repository (the standard library, a third party) is no dependency. A test file is never one."""
+that is no file of the repository (the standard library, a third party) is no dependency. A test file is never one. A tool is read as Python when its name says so or its shebang does."""
 from __future__ import annotations
 
 import ast
@@ -39,6 +39,11 @@ def imported_names(source: str) -> Set[str]:
     return names
 
 
+def python_shebang(text: str) -> bool:
+    """Whether a file with no `.py` name (`scripts/label-lookup`) is a Python script: its first line says so."""
+    return text.startswith("#!") and "python" in text.split("\n", 1)[0]
+
+
 def found(is_file: Callable[[str], bool], importer: str, name: str) -> List[str]:
     """The repository files `name` can be imported from by `importer`: beside it, else in SEARCH."""
     here = os.path.dirname(importer)
@@ -55,8 +60,9 @@ def closure(read: Callable[[str], str], is_file: Callable[[str], bool], tools: I
         if path in order:
             continue
         order.append(path)
-        if path.endswith(".py"):
-            for name in sorted(imported_names(read(path))):
+        text = read(path)
+        if path.endswith(".py") or python_shebang(text):
+            for name in sorted(imported_names(text)):
                 todo.extend(found(is_file, path, name)[:1])
     return order
 

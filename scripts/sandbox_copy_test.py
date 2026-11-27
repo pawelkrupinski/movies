@@ -26,6 +26,12 @@ class SandboxCopyTest(cli_harness.ToolCase):
         ran = self.run_tool(tool=os.path.join(dest, "scripts/ci/verified_ref.py"))
         self.assertIn("usage: verified-ref.sh", ran.output)
 
+    def test_a_python_tool_without_a_py_name_is_read_for_its_imports_too(self) -> None:
+        done = self.run_tool(self.path("tree"), "scripts/label-lookup")
+        self.assertEqual(0, done.code, done.output)
+        for path in ("scripts/label-lookup", "scripts/ci/identity_judgements.py", "scripts/lib/tool_process.py"):
+            self.assertIn(path, done.stdout.split())
+
     def test_a_missing_tool_or_destination_is_a_usage_error(self) -> None:
         self.assertEqual(2, self.run_tool(self.path("t"), "scripts/ci/nope.py").code)
         self.assertEqual(2, self.run_tool(self.path("t")).code)

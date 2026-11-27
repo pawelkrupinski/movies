@@ -251,8 +251,6 @@ effect	scripts/ci/start_mongo_replset.py	1
 effect	scripts/ci/start_mongo_replset.py:files	4
 effect	scripts/ci/stress_races.py	1
 effect	scripts/ci/stress_races.py:files	10
-effect	scripts/ci/takes_skip_gate.py	2
-effect	scripts/ci/takes_skip_gate.py:files	5
 effect	scripts/ci/trend_events.py:network	2
 effect	scripts/ci/trend_export.py:files	1
 effect	scripts/ci/trend_github.py	2
@@ -386,8 +384,6 @@ effect	scripts/ios_release.py	2
 effect	scripts/ios_release.py:files	9
 effect	scripts/js_quality_report.py	1
 effect	scripts/js_quality_report.py:files	6
-effect	scripts/label-lookup	2
-effect	scripts/label-lookup:files	1
 effect	scripts/land_precheck.py:files	3
 effect	scripts/lib/cli_harness.py:files	19
 effect	scripts/lib/gh_download.py:files	14
@@ -510,7 +506,6 @@ effect	web/src/main/assets/js/shared/language-sync.js:storage	7
 effect	web/src/main/assets/js/shared/local-store.js:storage	6
 state	infra/version-dashboard/src/shared/exec.ts	2
 state	infra/version-dashboard/src/shared/http.ts	1
-import-io	scripts/label-lookup	1
 import-io	scripts/lib/cli_harness.py	2
 mixed	.github/scripts/convergence_bisect.py:Bisect.halve	4
 mixed	.github/scripts/convergence_bisect.py:Bisect.pathspecs	7
@@ -989,9 +984,6 @@ mixed	scripts/ci/start_mongo_replset.py:Starter.start_native	4
 mixed	scripts/ci/stress_races.py:iteration	7
 mixed	scripts/ci/stress_races.py:missing	4
 mixed	scripts/ci/stress_races.py:stress	7
-mixed	scripts/ci/takes_skip_gate.py:proof_exit	6
-mixed	scripts/ci/takes_skip_gate.py:proof_readings	8
-mixed	scripts/ci/takes_skip_gate.py:trace_readings	5
 mixed	scripts/ci/trend_events.py:post_events	3
 mixed	scripts/ci/trend_events.py:vl_query	5
 mixed	scripts/ci/trend_github.py:GitHub.__init__	4
@@ -1288,9 +1280,6 @@ mixed	scripts/ios_release.py:run_logged	4
 mixed	scripts/js_quality_report.py:ensure_tools	6
 mixed	scripts/js_quality_report.py:report	3
 mixed	scripts/js_quality_report.py:run	6
-mixed	scripts/label-lookup:all_entries	3
-mixed	scripts/label-lookup:blame	17
-mixed	scripts/label-lookup:prod_takes	8
 mixed	scripts/land_precheck.py:Precheck.lints	6
 mixed	scripts/land_precheck.py:Precheck.rebase	5
 mixed	scripts/land_precheck.py:Precheck.rules	4
