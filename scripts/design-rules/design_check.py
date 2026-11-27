@@ -5,7 +5,7 @@ engine every quality ratchet uses (scripts/ci/baseline_ratchet.py): what is past
 fall; a new row, or a frozen row rising, fails unless its commit carries the kind's trailer.
 
   Naming:    suffix, abbreviation <file>:<name>          naming.py (and permutations BLOCK, action names warn)
-  Design:    effect, state, import-io <file>             design_lint.py (Python, JS/TS)
+  Design:    effect, state, import-io <file>; effect <file>:<files|storage|network>   design_lint.py (Python, JS/TS)
   Coupling:  fanout <file> (collaborators only), databag <file>:<type>, datafanout <file>   collaborators.py
              distance, unplaced, dircycle <directory>, layer <from>-><to>                    packages.py
   An exemption (test/resources/design-exemptions.tsv: kind, key, added date, a SPECIFIC why -- coupling_reasons.py's
@@ -53,7 +53,7 @@ HEADER = """# THE DESIGN BASELINE (scripts/design-rules/design_check.py update w
 # quality checks hold every push to it). Every module, name and directory of the Scala, Python and JS/TS past a
 # general rule (test/resources/design-rules.tsv), frozen:
 #   suffix / abbreviation <file>:<name>                 Naming:
-#   effect / state / import-io <file>                   Design:
+#   effect / state / import-io <file>, effect <file>:<files|storage|network>   Design:
 #   fanout <file>, databag <file>:<type>, datafanout <file>, distance / unplaced / dircycle <directory>,
 #   layer <from>-><to>                                  Coupling:
 # A row may only fall (update records it, no trailer); a row added or raised lands only with its kind's trailer."""

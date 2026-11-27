@@ -10,7 +10,8 @@
 #   abbreviation<TAB><word>                             a word of a name that is an abbreviation of a real word
 #   idiom<TAB><word>                                    a language-standard idiom, allowed although it abbreviates
 #   adapter<TAB><language><TAB><module><TAB><effects>    a module allowed to touch these effects directly (clock,
-#                                                       process, env): every other module receives them
+#                                                       process, env, files, storage, network): every other module
+#                                                       receives them
 #   distance<TAB><language><TAB><directory>             a directory whose distance D is measured: only where
 #                                                       abstractions exist (Protocol/ABC; plain browser JS has none)
 #   layer<TAB><language><TAB><directory><TAB><rank><TAB><why>   a directory's rank, bottom (0) up: a module may import
@@ -89,7 +90,14 @@ abbreviation	kwargs
 idiom	args
 idiom	kwargs
 #
-# The adapters: the modules that touch the clock, a process or the environment for everyone else.
+# The adapters: the modules that touch the clock, a process, the environment, files, storage or the network for
+# everyone else (files, storage and the network injected since 2026-11-27: each seam one real and one in-memory
+# implementation sharing the logic, held by one contract suite run against both).
+adapter	py	scripts/lib/atomic.py	files
+adapter	py	scripts/lib/tool_files.py	files
+adapter	py	scripts/lib/tool_state.py	storage
+adapter	py	scripts/lib/tool_http.py	network
+adapter	js	infra/version-dashboard/src/shared/http.ts	network
 adapter	py	scripts/lib/tool_process.py	process clock
 adapter	py	scripts/lib/tool_git.py	process env
 adapter	py	scripts/lib/tool_pool.py	process env

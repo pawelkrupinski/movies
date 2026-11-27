@@ -8,10 +8,13 @@ import dataclasses
 from typing import Dict, FrozenSet, Tuple
 
 # The effects an extractor names: what reads or changes the world (CLAUDE.md, "Fan-out counts only COLLABORATORS": the
-# clock, environment, files, network, database, randomness, threads, logging, a process). The first three must be
-# injected -- only an `adapter` row's module may touch them directly (design_lint.py).
+# clock, environment, files, network, database, randomness, threads, logging, a process). The INJECTED ones -- the
+# clock, a process, the environment and (the owner, 2026-11-27) files, storage (a database, a key-value store) and the
+# network -- only an `adapter` row's module may touch directly; every other module receives them (design_lint.py).
 EFFECTS = ("clock", "process", "env", "network", "files", "storage", "random", "threads", "logging", "dom")
-INJECTED = ("clock", "process", "env")
+INJECTED_BY_KIND = ("clock", "process", "env")        # one `effect <file>` row: how many of these it touches
+INJECTED_BY_USE = ("files", "storage", "network")     # an `effect <file>:<kind>` row each: how many direct uses
+INJECTED = INJECTED_BY_KIND + INJECTED_BY_USE
 
 
 @dataclasses.dataclass(frozen=True)

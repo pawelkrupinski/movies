@@ -38,7 +38,7 @@ RULES = rules_table.load(ROOT)
 EXTRA = rules_table.parse("\n".join([
     "limit\tfanout\t2\tpy", "limit\tdistance\t0.2\tpy", "limit\tdistance-min-modules\t2\tpy",
     "limit\tdata-methods\t4\tpy", "limit\tdata-decisions\t9\tpy", "limit\tdatabag\t9\tpy", "limit\tdatafanout\t2\tpy",
-    "adapter\tpy\tlib/clock.py\tclock", "distance\tpy\tlib",
+    "adapter\tpy\tlib/clock.py\tclock", "adapter\tpy\tlib/io.py\tfiles storage network", "distance\tpy\tlib",
     "layer\tpy\tlib\t0\tthe library", "layer\tpy\ttools\t1\tthe tools"]))
 
 
@@ -137,6 +137,15 @@ class DesignLintTest(unittest.TestCase):
         rows = kinds(design_lint.rows([py("tools/t.py", source), py("lib/clock.py", source)], EXTRA))
         self.assertEqual({("effect", "tools/t.py"): 1}, rows)  # one effect touched, however often
 
+    def test_files_storage_and_network_outside_their_adapters_are_a_row_each_counted_by_use(self) -> None:
+        source = ("import sqlite3\nimport time\nimport urllib.request\n\ndef keep(path, url):\n"
+                  "    with open(path) as f:\n        f.read()\n    open(path + '.bak', 'w').close()\n"
+                  "    sqlite3.connect(path)\n    return urllib.request.urlopen(url, timeout=time.time())\n")
+        rows = kinds(design_lint.rows([py("tools/io.py", source), py("lib/io.py", source)], EXTRA))
+        self.assertEqual({("effect", "tools/io.py"): 1, ("effect", "tools/io.py:files"): 2,
+                          ("effect", "tools/io.py:storage"): 1, ("effect", "tools/io.py:network"): 1,
+                          ("effect", "lib/io.py"): 1}, rows)  # the adapter's own clock is still a row: not its effect
+
     def test_module_state_written_by_a_function_is_a_row_and_a_constant_or_a_local_is_not(self) -> None:
         source = ("CACHE = {}\nNAMES = ('a',)\nCOUNT = 0\n\ndef put(k):\n    CACHE[k] = 1\n\ndef bump():\n    global COUNT\n"
                   "    COUNT += 1\n\nTOTAL = []\n\ndef local():\n    TOTAL = []\n    TOTAL.append(1)\n")
@@ -186,7 +195,8 @@ class JsFactsTest(unittest.TestCase):
     def test_the_js_extractor_reads_effects_state_import_io_and_names(self) -> None:
         source = ("let count = 0;\nconst seen = [];\nconst LIMIT = 3;\nconst started = Date.now();\n"
                   "function readCfg() { count += 1; seen.push(new Date()); return LIMIT; }\n"
-                  "function init() { const page = { n: 0 }; page.n = 1; return process.env.HOME; }\n")
+                  "function init() { const page = { n: 0 }; page.n = 1; return process.env.HOME; }\n"
+                  "function load() { localStorage.getItem('k'); return fetch('/api'); }\n")
         with tempfile.TemporaryDirectory() as root:
             os.makedirs(os.path.join(root, "src"))
             with open(os.path.join(root, "src", "page.js"), "w") as f:
@@ -197,7 +207,10 @@ class JsFactsTest(unittest.TestCase):
             m = extractors.read_js(os.path.join(out, "modules.json"), set())["src/page.js"]
         self.assertEqual(("count", "seen"), m.state)
         self.assertEqual(1, m.import_io)
-        self.assertEqual({"clock": 2, "env": 1}, m.effects)
+        self.assertEqual({"clock": 2, "env": 1, "network": 1, "storage": 1}, m.effects)
+        self.assertEqual({("effect", "src/page.js"): 2, ("effect", "src/page.js:network"): 1,
+                          ("effect", "src/page.js:storage"): 1, ("import-io", "src/page.js"): 1,
+                          ("state", "src/page.js"): 2}, kinds(design_lint.rows([m], RULES)))
         self.assertIn(("abbreviation", "src/page.js:readCfg"), kinds(naming.rows([m], RULES)))
 
 

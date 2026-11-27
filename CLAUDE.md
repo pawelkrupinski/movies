@@ -397,6 +397,18 @@ NEW type named for an action (`...Apart`, `...Stages`, `...Read(s)`, `...Reading
 `...Drafts`, `...Traces`, `...Denials`, `...Plans`) with at most one public def is warned about: fold it into the class
 whose data it reads, or name the one thing it is.
 
+**Injected effects** (the owner, 2026-11-27; every language): the clock, processes, the environment, FILES, STORAGE
+(a database, a key-value or state file) and the NETWORK reach a function through its parameters, never directly; only a
+module with an `adapter` row of `test/resources/design-rules.tsv` touches one (the design lint's `effect` rows,
+`scripts/design-rules/`: the clock, a process and the environment one `effect <file>` row, files, storage and the
+network an `effect <file>:<kind>` row each counting its direct uses, frozen 2026-11-27 and only falling; a new direct use
+outside an adapter needs `Design: <why>`). The Python seams are `scripts/lib`'s `tool_files` (`Files`), `tool_state`
+(JSON/TSV state, `KeyValue` over SQLite) and `tool_http` (`Http`; GitHub stays `tool_github`'s `gh`), each one real
+and one in-memory implementation sharing the rules, held by one contract suite run against both. Migrate a function
+when you visit it, and move its unit tests to the in-memory implementations; keep real-filesystem INTEGRATION tests
+where the filesystem IS the behaviour (atomic writes and temporary-file races, lock files, SQLite locking, the CLI
+black-box harness).
+
 **Share business logic between real and fake implementations.** They differ only at the infrastructure boundary
 (storage, HTTP backend, clock), never in the rules; a fake that re-implements logic lets tests pass while real code
 is broken. Read the `writing-fakes` skill before writing any `Fake*` / `Stub*` / `InMemory*`.

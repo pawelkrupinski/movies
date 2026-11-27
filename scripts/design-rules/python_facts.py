@@ -22,11 +22,12 @@ EFFECT_NAMES: Dict[str, Tuple[str, ...]] = {
     "files": ("open", "os.remove", "os.unlink", "os.rename", "os.replace", "os.makedirs", "os.mkdir", "os.listdir",
               "os.walk", "os.scandir", "os.rmdir", "os.chdir", "os.stat", "os.path.exists", "os.path.isfile",
               "os.path.isdir", "os.path.getmtime", "shutil", "tempfile", "glob"),
+    "storage": ("sqlite3.connect", "dbm.open", "shelve.open", "pymongo.MongoClient"),
     "random": ("random", "secrets", "uuid.uuid4", "os.urandom"),
     "threads": ("threading", "concurrent.futures", "multiprocessing", "signal"),
     "logging": ("logging",),
 }
-AT_IMPORT = ("process", "env", "clock", "network", "files", "random")
+AT_IMPORT = ("process", "env", "clock", "network", "files", "storage", "random")
 MUTATORS = frozenset({"append", "extend", "insert", "remove", "pop", "clear", "update", "setdefault", "add", "discard",
                       "popitem", "sort", "reverse"})
 DATA_BASES = frozenset({"NamedTuple", "Enum", "IntEnum", "StrEnum", "Flag", "IntFlag", "TypedDict"})
