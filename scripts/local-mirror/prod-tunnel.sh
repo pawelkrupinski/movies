@@ -5,7 +5,8 @@
 # local shell script whose source is prod (../reset-corpus.sh, ../with-prod-mongo.sh,
 # ../prod-ops.sh, ../identity-capture.sh, ../identity-calibrate.sh); its Python
 # twin, for the /debug mirror daemon (mirror.py), is scripts/lib/prod_tunnel.py.
-# Repoint both together.
+# The URI rewrite and the free-port scan are written once, in the Python file; the forward itself (its pid, its
+# ssh options) is in both. Repoint both together.
 #
 # WHY THIS FILE EXISTS AT ALL. Those scripts had their own copies of the same
 # "nc -z :27017 || flyctl proxy" block. When prod moved off the Fly app
@@ -84,31 +85,14 @@ init_prod_tunnel() {
 # Idempotent, so an exported URI that is already in tunnel form passes through.
 #
 #   prod_tunnel_uri <uri>   — prints the rewritten URI
-prod_tunnel_uri() {
-  local rest="${1#*://}" creds="" tail query
-  case "$rest" in *@*) creds="${rest%%@*}@"; rest="${rest#*@}" ;; esac
-  tail="${rest#"${rest%%[/?]*}"}"                 # drop the host list: what's left is /path?query
-  case "$tail" in /*) ;; *) tail="/$tail" ;; esac
-  case "$tail" in
-    *\?*) query="${tail#*\?}"; tail="${tail%%\?*}"
-          query="$(printf '%s' "$query" | tr '&' '\n' | { grep -v '^directConnection=' || true; } | paste -sd'&' -)" ;;
-    *)    query="" ;;
-  esac
-  printf 'mongodb://%s127.0.0.1:%s%s?%sdirectConnection=true\n' "$creds" "$(prod_tunnel_free_port || echo 27017)" "$tail" "${query:+$query&}"
-}
+prod_tunnel_uri() { python3 -B "$PROD_TUNNEL_PY" uri --pid $$ "$1"; }
 
 # The local port this caller's tunnel binds: $PROD_TUNNEL_PORT when set, else the first port from a pid-derived start
 # (27100-27899) that nothing accepts on. $$ is the caller's pid even inside $(...), so the URI built before the tunnel
-# opens and the tunnel opened later pick the same port. Fails (nothing printed) when 200 in a row are taken.
-prod_tunnel_free_port() {
-  if [ -n "${PROD_TUNNEL_PORT:-}" ]; then printf '%s\n' "$PROD_TUNNEL_PORT"; return 0; fi
-  local port=$((27100 + $$ % 800))
-  for _ in $(seq 1 200); do
-    nc -z -w1 127.0.0.1 "$port" 2>/dev/null || { printf '%s\n' "$port"; return 0; }
-    port=$((port + 1)); [ "$port" -lt 27900 ] || port=27100
-  done
-  return 1
-}
+# opens and the tunnel opened later pick the same port. Fails (nothing printed) when 200 in a row are taken. The
+# rewrite and the scan are scripts/lib/prod_tunnel.py's, the Python tools' too: written once.
+PROD_TUNNEL_PY="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/prod_tunnel.py"
+prod_tunnel_free_port() { python3 -B "$PROD_TUNNEL_PY" free-port --pid $$; }
 
 # The port of THIS caller's tunnel: the pinned one, else the one its probe URI already names (so the forward is the
 # one the URI the caller hands its command points at), else a free one.

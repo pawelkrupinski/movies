@@ -1,13 +1,17 @@
 """HOW A LAPTOP REACHES PROD MONGO, for the Python tools (scripts/lib): scripts/local-mirror/prod-tunnel.sh's
 prod_tunnel_uri, prod_tunnel_free_port, prod_tunnel_port, prod_tunnel_target, prod_tunnel_answers, ensure_prod_tunnel
 and close_prod_tunnel, with the same lines. The shell library stays for its shell callers (with-prod-mongo.sh,
-prod-ops.sh, identity-capture.sh, identity-calibrate.sh, reset-corpus.sh); its header says why an ssh forward, why
+prod-ops.sh, identity-capture.sh, identity-calibrate.sh, reset-corpus.sh), which hold the forward's pid; its header says why an ssh forward, why
 127.0.0.1 on the far side, why a port of each caller's own, why an authenticated ping and not a TCP probe, and why each
 ssh option. Repoint both together.
 
   tunnel_uri(uri, port)    the laptop's view of a prod URI: 127.0.0.1:<port>, directConnection=true, the rest kept
   free_port(env, pid)      PROD_TUNNEL_PORT, else the first port nothing accepts on from a pid-derived start
   ProdTunnel(tag, probe_uri, env, mongosh_at, pause)   .answers(), .ensure(), .close(), .alive(): ONE caller's forward
+
+The shell library calls the two pure steps through this file's command line, so each is written once:
+  prod_tunnel.py uri --pid <caller's pid> <prod uri>   the laptop's URI (exit 1, nothing printed: no free port)
+  prod_tunnel.py free-port --pid <caller's pid>        the port the caller's tunnel binds (exit 1: none free)
 """
 from __future__ import annotations
 
@@ -17,7 +21,8 @@ import subprocess
 import sys
 from typing import Callable, List, Mapping, Optional
 
-import mongo_local
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import mongo_local  # noqa: E402
 
 DEFAULT_TARGET = "root@178.105.221.61"  # mongo-1's public address (infra/nix/hosts/mongo-1/default.nix)
 PORT_LOW, PORT_HIGH, PORT_TRIES = 27100, 27900, 200
@@ -157,3 +162,26 @@ class ProdTunnel:
         except subprocess.TimeoutExpired:
             ssh.kill()
             ssh.wait()
+
+
+def main(argv: List[str], env: Mapping[str, str]) -> int:
+    """`uri --pid N <prod uri>` or `free-port --pid N`: what the shell library asks of this file (see the header)."""
+    if len(argv) < 3 or argv[0] not in ("uri", "free-port") or argv[1] != "--pid" or not argv[2].isdigit():
+        print("usage: prod_tunnel.py uri --pid N <prod uri> | free-port --pid N", file=sys.stderr)
+        return 64
+    port = free_port(env, int(argv[2]))
+    if port is None:
+        print(f"no free local port in {PORT_LOW}-{PORT_HIGH - 1} for the prod tunnel", file=sys.stderr)
+        return 1
+    if argv[0] == "free-port":
+        print(port)
+    elif len(argv) == 4:
+        print(tunnel_uri(argv[3], port))
+    else:
+        print("usage: prod_tunnel.py uri --pid N <prod uri>", file=sys.stderr)
+        return 64
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:], os.environ))
