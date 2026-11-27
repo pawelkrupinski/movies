@@ -232,7 +232,10 @@ language), and for Python and JS/TS collaborator-only fan-out, distance D (V2), 
 guard (`databag`, `datafanout`) and THE DESIGN LINT (`effect`: the clock, a process or the environment touched outside
 an `adapter` row's module -- inject it; `state`: module-level names a function writes -- no stateful singletons;
 `import-io`: IO when a module loads). Its exemptions (`test/resources/design-exemptions.tsv`) take the coupling
-exemptions' dated, specific why; its trailers are `Naming:`, `Design:` and `Coupling:`. The rest of this section
+exemptions' dated, specific why; its trailers are `Naming:`, `Design:` and `Coupling:`. A movies change to a vendored
+file (`scripts/design-rules/*`, `scripts/ci/baseline_ratchet.py`, `scripts/ci/trailers.py`, `scripts/lib/ps_table.py`,
+`scripts/lib/atomic.py`) is followed by agentctl's automatic sync: agentctl's `VENDOR_DRIFT` escalation (ef8d8bb). No
+manual follow-up is needed. The rest of this section
 (SOLID, DI, reuse, fakes sharing logic, simplicity) is review-enforced in every language. The agreed adaptations:
 D is measured only where abstractions exist (Scala, TypeScript, Python `Protocol`/ABC in `scripts/lib` and `scripts/ci`;
 plain browser JS has none: cycles and layers hold it); a JS callback passed inline is no inner def; a Python tool's

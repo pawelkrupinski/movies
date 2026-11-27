@@ -8,7 +8,13 @@ fails told apart from one that answered -- `read` gives None for a failed call, 
   .succeeds([...], timeout, quiet=True)                                                  -> whether gh exited 0
   .download(release, asset, dest, timeout)  `gh release download` of one asset to `dest`: whether it is there now
   .asset_names(release, timeout)            the release's asset names, or None when they could not be listed
-  .fetch_gzipped(release, asset, path, timeout)  a gzipped asset unpacked into `path`: whether it is there, non-empty"""
+  .fetch_gzipped(release, asset, path, timeout)  a gzipped asset unpacked into `path`: whether it is there, non-empty
+
+THE FAKE (CLAUDE.md, "Side effects live at the leaves"): `GitHub(InMemoryGh(api=..., releases=...), {})` -- every rule
+above is GitHub's own, shared; only the boundary differs. InMemoryGh is a runner answering `gh` as GitHub would from
+what it holds: `api <path> [--jq <path>]` (a JSON value per path; the jq paths the tools use: `.a.b`, `.[]`,
+`.a[].b`), `release view <tag> --json assets`, `release download <tag> -p <asset> -O <dest>`; anything else exits 1
+saying it is not held. tool_github_contract_test.py holds GitHub alike over it and over a real `gh` process."""
 from __future__ import annotations
 
 import gzip
@@ -16,8 +22,9 @@ import os
 import shutil
 import json
 import sys
-from typing import Any, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, cast
 
+import atomic
 import tool_git
 import tool_process
 
@@ -83,3 +90,74 @@ class GitHub:
             return False
         os.remove(packed)
         return os.path.getsize(path) > 0
+
+
+def jq_step(values: List[Any], step: str, path: str) -> List[Any]:
+    if step == "[]":
+        return [item for v in values for item in (cast(List[Any], v) if isinstance(v, list)
+                                                  else list(cast(Dict[str, Any], v).values()) if isinstance(v, dict) else [])]
+    if not step.replace("_", "").replace("-", "").isalnum():
+        raise ValueError(f"jq path {path!r}: only .key and [] steps are held")
+    return [cast(Dict[str, Any], v).get(step) if isinstance(v, dict) else None for v in values]
+
+
+def jq_path(value: Any, path: str) -> List[Any]:
+    """The values a jq path of `.key` and `[]` steps (`.assets[].name`) reads from `value`; ValueError for any other."""
+    out: List[Any] = [value]
+    for step in path.replace("[]", ".[]").split(".")[1:]:
+        if step:
+            out = jq_step(out, step, path)
+    return out
+
+
+def jq_text(values: List[Any]) -> str:
+    """gh --jq's output: a string raw, anything else as JSON, one per line."""
+    return "".join((v if isinstance(v, str) else json.dumps(v)) + "\n" for v in values)
+
+
+class InMemoryGh:
+    """A runner answering `gh` from memory: `api` paths -> JSON values, releases -> {asset name: bytes}."""
+
+    def __init__(self, api: Optional[Mapping[str, Any]] = None,
+                 releases: Optional[Mapping[str, Mapping[str, bytes]]] = None) -> None:
+        self.api: Dict[str, Any] = dict(api or {})
+        self.releases: Dict[str, Dict[str, bytes]] = {k: dict(v) for k, v in (releases or {}).items()}
+        self.asked: List[List[str]] = []  # every gh argv it answered
+
+    def capture(self, command: tool_process.Command) -> tool_process.Captured:
+        self.asked.append(list(command.argv))
+        return tool_process.Captured(*self.answer(list(command.argv)[1:]))
+
+    def run(self, command: tool_process.Command) -> int:
+        return self.capture(command).code
+
+    def answer(self, args: List[str]) -> Tuple[int, str, str]:
+        """(exit code, stdout, stderr) of `gh args`."""
+        jq = args[args.index("--jq") + 1] if "--jq" in args else None
+        if args[:1] == ["api"] and len(args) > 1:
+            return self.api_answer(args[1], jq)
+        if args[:2] in (["release", "view"], ["release", "download"]) and len(args) > 2:
+            assets = self.releases.get(args[2])
+            if assets is None:
+                return 1, "", "release not found\n"
+            return self.view(assets, jq) if args[1] == "view" else self.download(assets, args)
+        return 1, "", f"InMemoryGh: `gh {' '.join(args)}` is not held\n"
+
+    def api_answer(self, path: str, jq: Optional[str]) -> Tuple[int, str, str]:
+        if path not in self.api:
+            return 1, "", "gh: Not Found (HTTP 404)\n"
+        value = self.api[path]
+        return 0, jq_text(jq_path(value, jq)) if jq else json.dumps(value) + "\n", ""
+
+    @staticmethod
+    def view(assets: Mapping[str, bytes], jq: Optional[str]) -> Tuple[int, str, str]:
+        value = {"assets": [{"name": name, "size": len(data)} for name, data in sorted(assets.items())]}
+        return 0, jq_text(jq_path(value, jq)) if jq else json.dumps(value) + "\n", ""
+
+    @staticmethod
+    def download(assets: Mapping[str, bytes], args: List[str]) -> Tuple[int, str, str]:
+        name, dest = args[args.index("-p") + 1], args[args.index("-O") + 1]
+        if name not in assets:
+            return 1, "", f"no assets match the file pattern {name}\n"
+        atomic.write_bytes(dest, assets[name])  # gh writes the file: the boundary's one effect
+        return 0, "", ""
