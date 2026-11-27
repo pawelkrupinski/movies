@@ -54,6 +54,7 @@ import re
 import tempfile
 import urllib.parse
 import urllib.request
+from typing import Dict, TypedDict
 
 FILM_WINDOW = 6 * 3600
 BUILD_WINDOW = 24 * 3600
@@ -70,7 +71,15 @@ ALERTED_CAUSE = "code"
 
 # Mirrors identity-regressions.rules (pinned by test_identity_regressions.py). Build thresholds are per
 # country; any country not named uses "*".
-THRESHOLDS = {
+class Thresholds(TypedDict):
+    film_net_lost: int
+    film_for_seconds: int
+    build_net_lost: Dict[str, int]
+    build_for_seconds: int
+    listing_flips: int
+
+
+THRESHOLDS: Thresholds = {
     "film_net_lost": 10,
     "film_for_seconds": 900,
     "build_net_lost": {"de": 65, "uk": 25, "*": 10},
@@ -364,8 +373,11 @@ def run_backtest(args):
                   f"{info.get('title', '')!r}  build={info.get('build', key[1] if alert == 'IdentityBuildNetLosses' else '')[:9]}")
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv=None):
-    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    p = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     sub = p.add_subparsers(dest="cmd", required=True)
     pp = sub.add_parser("publish")
     pp.add_argument("--url", required=True)

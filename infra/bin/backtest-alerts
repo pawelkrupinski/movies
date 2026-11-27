@@ -92,6 +92,7 @@ import sys
 import tempfile
 import time
 import urllib.parse
+from typing import Any
 
 import yaml
 
@@ -500,9 +501,11 @@ class Prometheus(object):
         if self.socks:
             command += ["--socks5-hostname", self.socks]
         command.append(self.url + path)
+        error = "no attempt made"
         for attempt in range(3):
             out = subprocess.run(command, capture_output=True, text=True)
             if out.returncode == 0:
+                body: dict[str, Any]
                 try:
                     body = json.loads(out.stdout)
                 except ValueError:
@@ -836,8 +839,11 @@ def select_alerts(alerts, names=(), groups=(), log_text=None):
     return sorted(chosen)
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("--days", type=float, default=14)
     parser.add_argument("--step", type=int, default=60, help="evaluation resolution, seconds")
     parser.add_argument("--end", help="window end (ISO, UTC); default now")
@@ -1092,10 +1098,11 @@ def refresh_metric_names(names, days, end, path=None):
     arrived can be struck without asking production (Alert backtest #5/#6: five such entries, the file 9 days old)."""
     loader = importlib.machinery.SourceFileLoader("snapshot_label_values", os.path.join(HERE, "snapshot-label-values"))
     spec = importlib.util.spec_from_loader("snapshot_label_values", loader)
+    assert spec is not None  # a SourceFileLoader always yields a spec
     module = importlib.util.module_from_spec(spec)
     loader.exec_module(module)
     if path:
-        module.NAMES_OUTPUT = path
+        setattr(module, "NAMES_OUTPUT", path)
     module.write_metric_names(names, days, end)
 
 
@@ -1115,7 +1122,9 @@ def check_incidents(prom, alerts, catalogue, step, floor, only, end):
             results.append({"id": ident, "skipped": why})
             continue
         start -= start % step
-        row = {"id": ident, "firing": {}, "quiet": {}}
+        firing: dict[str, str] = {}
+        quiet: dict[str, str] = {}
+        row = {"id": ident, "firing": firing, "quiet": quiet}
         before = len(problems)
         wanted = [(n, True) for n in incident.get("expect_firing") or []] + \
                  [(n, False) for n in incident.get("expect_quiet") or []]
@@ -1127,12 +1136,12 @@ def check_incidents(prom, alerts, catalogue, step, floor, only, end):
                 continue
             window_end = min(end + grace if should_fire else end, now)
             window_end -= window_end % step
-            stats = backtest(prom, alerts[name], start, window_end, step, floor)
+            stats: dict[str, Any] = backtest(prom, alerts[name], start, window_end, step, floor)
             if stats.get("error"):
                 problems.append("incident %s: %s query failed: %s" % (ident, name, stats["error"]))
                 continue
             first = iso(stats["runs"][0][0]) if stats["runs"] else None
-            (row["firing"] if should_fire else row["quiet"])[name] = first or "never"
+            (firing if should_fire else quiet)[name] = first or "never"
             if should_fire and not first:
                 problems.append("incident %s: %s should have fired between %s and %s and did not"
                                 % (ident, name, iso(start), iso(window_end)))

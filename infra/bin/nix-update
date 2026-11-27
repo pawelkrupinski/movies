@@ -43,6 +43,7 @@ written to --out), 2 it could not look at all. Python 3.9 (scripts/run-script-te
 
 import argparse
 import base64
+import dataclasses
 import datetime
 import hashlib
 import json
@@ -52,6 +53,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from typing import List, Optional
 
 import image_pins  # beside this script: the container image pins no other bumper owns
 import nix_path  # beside this script: where nix is when PATH lacks it
@@ -198,6 +200,20 @@ def header_comment(text, line_pattern):
     return " ".join(reversed(out))
 
 
+@dataclasses.dataclass
+class MongodbBump:
+    """What bump_mongodb found: the pin, the version to take (None when nothing newer is proposable), the newer major
+    it holds back, and the PR's wording."""
+    name: str
+    path: str
+    current: str
+    take: Optional[str]
+    later: Optional[str]
+    header: str
+    notes: List[str]
+    checked: str = ""
+
+
 class Refused(Exception):
     """A pinned package's new bytes did not match upstream's checksum."""
 
@@ -210,19 +226,19 @@ def bump_mongodb():
     if not releases:
         raise ValueError("upstream listed no releases at all, which is not the same as none being newer")
     newer, later = choose(current, releases)
-    found = {"name": "mongodb", "path": f"infra/{MONGODB_FILE}", "current": current, "take": None,
-             "later": later, "header": header_comment(text, MONGODB_VERSION_LINE), "notes": []}
+    found = MongodbBump("mongodb", f"infra/{MONGODB_FILE}", current, None, later,
+                        header_comment(text, MONGODB_VERSION_LINE), [])
     digest = None
     for v in newer:
         digest = docker_hub_digest(v)
         if digest:
-            found["take"] = v
+            found.take = v
             break
-        found["notes"].append(f"mongodb {v}: Docker Hub has no `mongo:{v}` yet, and CI's mongod must run "
+        found.notes.append(f"mongodb {v}: Docker Hub has no `mongo:{v}` yet, and CI's mongod must run "
                               "the same release (MongoServerVersionParitySpec) -- not proposed")
-    if not found["take"]:
+    take = found.take
+    if not take:
         return found
-    take = found["take"]
     hashes = {}
     for template, _ in pairs:
         url = template.replace("${mongodbVersion}", take)
@@ -239,11 +255,11 @@ def bump_mongodb():
     (REPO / MONGODB_FILE).write_text(rewrite_mongodb(text, take, hashes))
     for p, t in rewritten.items():
         (ROOT / p).write_text(t)
-    found["checked"] = "each tarball matches MongoDB's published sha256; `mongo:` tags in " + \
+    found.checked = "each tarball matches MongoDB's published sha256; `mongo:` tags in " + \
         ", ".join(f"`{p}`" for p in MONGODB_TAG_FILES) + f" moved with it (CI's pin to Docker Hub's {digest}; " \
         "mirror-pinned-images.yml copies it to GHCR once this lands, CI pulling it from mirror.gcr.io until then)"
     # start_mongo_replset.py looks for a job image's native mongod at /opt/mongodb/<the pin's tag>
-    found["notes"].append(f"mongodb {take}: a CI job image baking its native mongod at `/opt/mongodb/{current}` "
+    found.notes.append(f"mongodb {take}: a CI job image baking its native mongod at `/opt/mongodb/{current}` "
                           "(bitcashier/infra `nix/files/movies-job-image/Dockerfile`) must bake "
                           f"`/opt/mongodb/{take}` too; until then CI starts the `mongo:{take}` container (slower, same release)")
     return found
@@ -299,6 +315,12 @@ def build(drvs):
     return built
 
 
+def changed(line: str) -> Optional[str]:
+    """The `old → new` part of a diff-closures line, None for a line that is not a version change."""
+    matched = DIFF_LINE.match(line)
+    return matched["change"] if matched else None
+
+
 DIFF_LINE = re.compile(r"^(?P<pkg>[^:]+): (?P<change>.*→.*?)(?:, [+-][\d.]+ [KMG]?i?B)?$")
 # diff-closures colours the size even when its output is not a terminal.
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
@@ -309,14 +331,17 @@ def update(old_tree, out):
     summary = []
 
     # 1. The pinned package, within its major.
-    bumped, held, pin_failures, pin_notes = [], [], [], []
+    bumped: List[MongodbBump] = []
+    held: List[MongodbBump] = []
+    pin_failures: List[str] = []
+    pin_notes: List[str] = []
     try:
         found = bump_mongodb()
-        if found["take"]:
+        if found.take:
             bumped.append(found)
-        if found["later"]:
+        if found.later:
             held.append(found)
-        pin_notes += found["notes"]
+        pin_notes += found.notes
     except Refused as e:
         pin_failures.append(f"**mongodb**: REFUSED -- {e}")
         status = 1
@@ -324,9 +349,9 @@ def update(old_tree, out):
         pin_failures.append(f"**mongodb**: could not check upstream -- {e}")
         status = 1
     for f in bumped:
-        summary.append(f"{f['name']} {f['current']} -> {f['take']}")
+        summary.append(f"{f.name} {f.current} -> {f.take}")
     for f in held:
-        summary.append(f"{f['name']} {f['later']} is a newer major, not proposed")
+        summary.append(f"{f.name} {f.later} is a newer major, not proposed")
     summary += pin_notes
 
     # 2. Container image pins (infra/bin/image_pins.py): this checkout's are rewritten, movies-gitops' only listed
@@ -398,8 +423,7 @@ def update(old_tree, out):
     caught_up = ""
     if names and "mongo-1" in names:
         code, nixpkgs_mongo, _ = run(["nix", "eval", "--raw", ".#nixosConfigurations.mongo-1.pkgs.mongodb-ce.version"], REPO)
-        pinned = (bumped[0]["take"] if bumped else None) or MONGODB_VERSION_LINE.search(
-            (REPO / MONGODB_FILE).read_text()).group(2)
+        pinned = (bumped[0].take if bumped else None) or mongodb_shape((REPO / MONGODB_FILE).read_text())[0]
         if code == 0 and is_release(nixpkgs_mongo.strip()) and version_key(nixpkgs_mongo.strip()) >= version_key(pinned):
             caught_up = (f"- nixpkgs' `mongodb-ce` is now **{nixpkgs_mongo.strip()}**, not behind the pin ({pinned}): "
                          f"the override in `infra/{MONGODB_FILE}` can go (its comment says so).\n")
@@ -409,9 +433,9 @@ def update(old_tree, out):
         return f"all {len(names)} hosts" if len(hs) == len(names) else f"{len(hs)}: {', '.join(sorted(hs))}"
     lines = sorted(changes.items(), key=lambda kv: (-len(kv[1]), kv[0]))
     package_rows = [f"- `{change}` ({where(hs)})" for change, hs in lines]
-    pin_rows = [f"| `{f['path']}` | {f['current']} | **{f['take']}** | {f['checked']} |" for f in bumped]
+    pin_rows = [f"| `{f.path}` | {f.current} | **{f.take}** | {f.checked} |" for f in bumped]
     pin_why = "".join(f"\n<details><summary>Why <code>{f['name']}</code> is pinned (the file's comment)</summary>\n\n"
-                      f"> {f['header']}\n</details>\n" for f in bumped)
+                      f"> {f.header}\n</details>\n" for f in bumped)
     input_rows = []
     for n in moved:
         o, w = old_in.get(n, {}), new_in[n]
@@ -438,7 +462,7 @@ Newest release within each package's current major; a newer major is only listed
        + "\nA mongod bump restarts mongod on mongo-1, which auto-apply never does: deploy it by hand "
          "(`colmena apply --on @database`).\n"
        if bumped else "None.\n") + "".join(
-        f"- **{f['name']} {f['later']}** is a newer major than {f['current']} -- not proposed.\n" for f in held) + "".join(
+        f"- **{f.name} {f.later}** is a newer major than {f.current} -- not proposed.\n" for f in held) + "".join(
         f"- {line}\n" for line in pin_notes + pin_failures) + caught_up + f"""
 ## flake.lock ({len(moved)})
 """ + ("| input | from | to | |\n|---|---|---|---|\n" + "\n".join(input_rows) + "\n" if moved else "No input moved.\n") + f"""
@@ -464,7 +488,7 @@ From `nix store diff-closures` of each host's closure before and after; size-onl
     if code != 0 or not diff:
         print(f"git diff failed or was empty: {err}", file=sys.stderr)
         return 1
-    parts = ([f"{f['name']} {f['take']}" for f in bumped] + (["flake.lock: " + ", ".join(moved)] if moved else [])
+    parts = ([f"{f.name} {f.take}" for f in bumped] + (["flake.lock: " + ", ".join(moved)] if moved else [])
              + [f"{r['name']} {r['latest']}" for r in images_bumped])
     (out / "changes.patch").write_text(diff)
     (out / "title").write_text(f"deps: weekly update ({'; '.join(parts)})\n")
@@ -511,8 +535,8 @@ def self_test():
           "image=mirror.gcr.io/library/mongo:8.3.13\nrun mongo:8.3.13 --x\nmongo:8.3.111\n")
     pin = "mongo\tdocker.io/library/mongo:8.3.13@sha256:" + "a" * 64 + "\tghcr.io/o/mongo\n"
     check("pinned digest", rewrite_pinned_digest(pin, "8.3.13", "sha256:" + "b" * 64), pin.replace("a" * 64, "b" * 64))
-    check("diff line", DIFF_LINE.match("openssl: 3.5.1 → 3.5.2, +4.1 KiB")["change"], "3.5.1 → 3.5.2")
-    check("coloured size dropped", DIFF_LINE.match(ANSI.sub("", "libgcrypt: 1.12.2 → 1.12.4, \x1b[31;1m+9.6 KiB\x1b[0m"))["change"],
+    check("diff line", changed("openssl: 3.5.1 → 3.5.2, +4.1 KiB"), "3.5.1 → 3.5.2")
+    check("coloured size dropped", changed(ANSI.sub("", "libgcrypt: 1.12.2 → 1.12.4, \x1b[31;1m+9.6 KiB\x1b[0m")),
           "1.12.2 → 1.12.4")
     check("size-only line ignored", DIFF_LINE.match("openssl: +4.1 KiB"), None)
 

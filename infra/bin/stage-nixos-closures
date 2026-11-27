@@ -123,13 +123,15 @@ FETCH_CACHE_RACE = ("opening Git repository", "tarball-cache")
 
 
 def run(argv, **kwargs):
-    for attempt in range(3):
+    attempt = 0
+    while True:
         result = subprocess.run(argv, cwd=REPO, capture_output=True, text=True, **kwargs)
         if result.returncode == 0:
             return result.stdout.strip(), None
         stderr = result.stderr or ""
         if attempt < 2 and all(marker in stderr for marker in FETCH_CACHE_RACE):
             time.sleep(2 * (attempt + 1))
+            attempt += 1
             continue
         break
     detail = (result.stderr or result.stdout).strip().splitlines()
@@ -203,7 +205,7 @@ def sign(path):
 def configurations():
     out, error = run(["nix", "eval", "--json", ".#nixosConfigurations",
                       "--apply", "builtins.attrNames"])
-    if error:
+    if error or out is None:
         return None, error
     return [n for n in json.loads(out) if n not in NOT_A_MACHINE], None
 
@@ -299,7 +301,7 @@ def main():
         print(f"could not fetch this flake's inputs, so NOTHING was staged: {error}")
         return 2
     names, error = configurations()
-    if error:
+    if names is None:
         print(f"could not read this flake's hosts, so NOTHING was staged: {error}")
         return 2
     if wanted:

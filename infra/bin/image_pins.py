@@ -44,6 +44,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from typing import Any
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]  # the git checkout
 GITOPS = ROOT / "infra" / "kubernetes"  # infra/bin/fetch-gitops' checkout of movies-gitops
@@ -190,6 +191,7 @@ class Registry:
                         timeout=60) as r:
                     body = json.loads(r.read())
                 self.tokens[repository] = body.get("token") or body["access_token"]
+        raise AssertionError("the second attempt returns or raises")
 
     def tags(self, repository):
         url, out = f"{self.base}/v2/{repository}/tags/list?n=1000", []
@@ -239,7 +241,7 @@ def check(pin, root=ROOT, gitops=GITOPS, write=(), registry=None):
     tag, digest = next(iter(pins.values()))
     registry = registry or Registry(pin.registry)
     same, later = choose(tag, registry.tags(pin.repository), pin.tag_key)
-    row = {"name": pin.name, "files": [str(base.relative_to(root) / f) if base != root else f for f in pin.files],
+    row: dict[str, Any] = {"name": pin.name, "files": [str(base.relative_to(root) / f) if base != root else f for f in pin.files],
            "current": tag + (f"@{digest[:19]}" if digest else ""), "latest": None, "later": later,
            "own_files": pin.files, "action": "current", "note": pin.note, "gitops": pin.root == "gitops"}
     new_tag, new_digest = tag, digest
@@ -352,8 +354,11 @@ def propose_gitops(out, root=ROOT, gitops=GITOPS, pins=None):
     return failures
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main():
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("--gitops-out", type=pathlib.Path, metavar="DIR",
                         help="rewrite movies-gitops' pins in place and write its PR's title, body.md and changes.patch")
     args = parser.parse_args()

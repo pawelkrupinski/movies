@@ -66,7 +66,7 @@ class Flake:
         is a thing that silently stops matching the fleet."""
         out, error = self._run(["nix", "eval", "--json", ".#nixosConfigurations",
                                 "--apply", "builtins.attrNames"])
-        if error:
+        if error or out is None:
             return None, error
         return [n for n in json.loads(out) if n not in NOT_A_MACHINE], None
 

@@ -125,7 +125,8 @@ def replay(host: str, rev: str, sha: str, log_path: str, scope: List[str]) -> st
     try:
         archive = subprocess.Popen(["git", "archive", sha, "infra", "scripts"], stdout=subprocess.PIPE)
         unpack = run(["ssh", host, UNPACK], stdin=archive.stdout, stdout=subprocess.PIPE, text=True)
-        archive.stdout.close()
+        if archive.stdout is not None:
+            archive.stdout.close()
         remote_dir = unpack.stdout.strip() or None  # the host's own private directory, once it made one
         if archive.wait() != 0 or unpack.returncode != 0 or remote_dir is None:
             return "ERROR"
@@ -149,6 +150,7 @@ def load_local():
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backtest-alerts-local")
     loader = importlib.machinery.SourceFileLoader("backtest_alerts_local", path)
     spec = importlib.util.spec_from_loader(loader.name, loader)
+    assert spec is not None  # a SourceFileLoader always yields a spec
     module = importlib.util.module_from_spec(spec)
     loader.exec_module(module)
     return module
@@ -176,7 +178,8 @@ def local_verdicts(args, revisions, log_path, scope, scratch):
         os.makedirs(tree)
         archive = subprocess.Popen(["git", "archive", sha, "infra", "scripts"], stdout=subprocess.PIPE)
         unpack = run(["tar", "-x", "-C", tree], stdin=archive.stdout)
-        archive.stdout.close()
+        if archive.stdout is not None:
+            archive.stdout.close()
         if archive.wait() != 0 or unpack.returncode != 0:
             return {label: "ERROR"}
         trees[label] = tree
@@ -201,9 +204,12 @@ def local_verdicts(args, revisions, log_path, scope, scratch):
     return verdicts
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("--from-run", help="the red Alert backtest run (GitHub run id): its problem lines scope the replay")
     parser.add_argument("--base", default="origin/main")
     parser.add_argument("--head", default="HEAD")

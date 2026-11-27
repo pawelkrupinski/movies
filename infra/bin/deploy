@@ -682,8 +682,11 @@ def deploy(args) -> int:
     return 0
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n\n")[0])
     parser.add_argument("host", nargs="?")
     parser.add_argument("--apply", action="store_true", help="switch after the preview")
     parser.add_argument("--build", action="store_true",

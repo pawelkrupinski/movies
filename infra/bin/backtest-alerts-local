@@ -73,6 +73,7 @@ def load_backtest(path):
     """backtest-alerts as a module: its rule loading, selection and duration parsing are this tool's too."""
     loader = importlib.machinery.SourceFileLoader("backtest_alerts_%d" % (abs(hash(path)) % 10 ** 8), path)
     spec = importlib.util.spec_from_loader(loader.name, loader)
+    assert spec is not None  # a SourceFileLoader always yields a spec
     module = importlib.util.module_from_spec(spec)
     loader.exec_module(module)
     return module
@@ -351,7 +352,8 @@ def release_prometheus(version, cache_root):
         archive = os.path.join(scratch, name + ".tar.gz")
         urllib.request.urlretrieve(base + name + ".tar.gz", archive)
         with urllib.request.urlopen(base + "sha256sums.txt") as response:
-            sums = dict(reversed(line.split()) for line in response.read().decode().splitlines() if line.strip())
+            listing: str = response.read().decode()
+        sums = {fields[1]: fields[0] for fields in (line.split() for line in listing.splitlines()) if fields}
         with open(archive, "rb") as handle:
             if hashlib.sha256(handle.read()).hexdigest() != sums.get(name + ".tar.gz"):
                 raise SyncError("the downloaded %s.tar.gz does not match the release's sha256sums.txt" % name)
@@ -467,8 +469,11 @@ def backtest_command(tool, snapshot, binary, scope):
             "--prometheus-binary", binary] + scope
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def parser():
-    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    p = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     p.add_argument("--alert", action="append", default=[], help="only these alerts (repeatable)")
     p.add_argument("--group", action="append", default=[], help="only the alerts of this rule file (repeatable)")
     p.add_argument("--from-log", help="only the alerts a failing run's log names")
@@ -496,7 +501,7 @@ def parse(argv):
 def ensure_yaml():
     """Re-run under a python that imports PyYAML (scripts/python-venv), as CI's job puts one on PATH."""
     try:
-        import yaml  # noqa: F401
+        importlib.import_module("yaml")
         return
     except ImportError:
         pass

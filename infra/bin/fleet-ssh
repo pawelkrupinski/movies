@@ -130,13 +130,16 @@ def write_ssh_config(flake):
     return 0
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main():
     args = sys.argv[1:]
     if args and args[0] == "--ssh-config":
         return write_ssh_config(fleet_hosts.Flake())
 
     if not args:
-        print(__doc__.strip().splitlines()[0])
+        print(DOCSTRING.strip().splitlines()[0])
         print("\nusage: fleet-ssh <host> [remote command...]")
         print("       fleet-ssh --ssh-config")
         return 2
@@ -144,7 +147,7 @@ def main():
     name = args[0]
     flake = fleet_hosts.Flake()
     address, error = fleet_hosts.resolve(name, flake)
-    if error:
+    if error or address is None:
         print(error)
         return 2
 
