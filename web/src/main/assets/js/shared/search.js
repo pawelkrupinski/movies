@@ -1,6 +1,7 @@
 // The search field: its iOS zoom lock, the floating pill's keyboard inset and tap-away dismiss, and
 // moving the listing's day as a search begins and ends.
 
+/* global pageState */  // page-state.js
 /* global applyFiltersDebounced */  // filters.js
 /* global onDateChange */  // day-carousel.js
 /* global beginSearchFrom, currentQuery, endSearch, searchIsRunning, whileSearchMovesDay */  // search-day.js
@@ -18,18 +19,17 @@
 // would disable zoom for good — a WCAG no-no). Undoing an already-applied
 // zoom proved unreliable on real MobileSafari; preventing it is robust.
 const _viewportMeta = () => document.querySelector('meta[name="viewport"]');
-let _searchBaseViewport = null;
 function lockSearchZoom() {
   const viewport = _viewportMeta();
-  if (!viewport || _searchBaseViewport !== null) return;   // already locked — no-op
-  _searchBaseViewport = viewport.getAttribute('content');
-  viewport.setAttribute('content', _searchBaseViewport + ', maximum-scale=1');
+  if (!viewport || pageState.searchBaseViewport !== null) return;   // already locked — no-op
+  pageState.searchBaseViewport = viewport.getAttribute('content');
+  viewport.setAttribute('content', pageState.searchBaseViewport + ', maximum-scale=1');
 }
 function unlockSearchZoom() {
   const viewport = _viewportMeta();
-  if (!viewport || _searchBaseViewport === null) return;
-  viewport.setAttribute('content', _searchBaseViewport);
-  _searchBaseViewport = null;
+  if (!viewport || pageState.searchBaseViewport === null) return;
+  viewport.setAttribute('content', pageState.searchBaseViewport);
+  pageState.searchBaseViewport = null;
 }
 
 // On mobile portrait the search field is a floating pill pinned to the bottom
@@ -83,17 +83,16 @@ document.addEventListener('focusout', applySearchKeyboardInset);
 // outside taps behave normally. Both listeners are capture-phase so they
 // pre-empt the card-tap and dropdown-dismiss handlers further down.
 const _floatingSearchMq = window.matchMedia('(max-width: 575px) and (orientation: portrait)');
-let _dismissSearchOnClick = false;
 document.addEventListener('pointerdown', e => {
   const search = document.getElementById('search-input');
-  _dismissSearchOnClick =
+  pageState.dismissSearchOnClick =
     _floatingSearchMq.matches &&
     !!search && document.activeElement === search &&
     e.target instanceof Element && !e.target.closest('.navbar-search');
 }, true);
 document.addEventListener('click', e => {
-  if (!_dismissSearchOnClick) return;
-  _dismissSearchOnClick = false;
+  if (!pageState.dismissSearchOnClick) return;
+  pageState.dismissSearchOnClick = false;
   e.preventDefault();
   e.stopImmediatePropagation();
   const search = document.getElementById('search-input');

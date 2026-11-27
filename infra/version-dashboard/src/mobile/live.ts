@@ -3,6 +3,7 @@
  * open tab. A request never builds anything.
  */
 import { Store } from "../shared/store.js";
+import { systemClock } from "../host/system.js";
 import { buildMobile, nextBuildDelayMs, type MobileSources } from "./build.js";
 import { allPlatformsNetworkFailed, emptyMobileState, type MobileState, type ReleaseRun } from "./model.js";
 import { describeError } from "../app-stores/network.js";
@@ -38,7 +39,7 @@ export class MobileLive {
   private stopped = true;
 
   constructor(sources: MobileSources | null, options: MobileLiveOptions = {}) {
-    const now = options.now ?? Date.now;
+    const now = options.now ?? systemClock;
     this.store = new Store(emptyMobileState(), now);
     this.build = options.build ?? (() => {
       if (!sources) throw new Error("no sources to build from");

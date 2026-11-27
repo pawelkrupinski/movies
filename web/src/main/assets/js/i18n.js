@@ -27,7 +27,12 @@ var I18N_PACKS = (function() {
   try { return el ? JSON.parse(el.textContent) : {}; } catch (e) { return {}; }
 })();
 var DEFAULT_LANG = (typeof KINOWO_LOCALE !== 'undefined' && KINOWO_LOCALE.lang) || 'pl';
-var currentLang  = DEFAULT_LANG;
+
+// The language the page speaks now: the deployment's own until `applyLanguage` records a pick in `KINOWO_LOCALE.lang`
+// (the page's locale object, which every page defines), so this file holds no state of its own.
+function currentLang() {
+  return (typeof KINOWO_LOCALE !== 'undefined' && KINOWO_LOCALE.lang) || DEFAULT_LANG;
+}
 
 // The client-side half of the `{0}`/`{1}` placeholders `messages.*` still
 // carries — server-side rendering runs the same strings through Play's real
@@ -45,7 +50,7 @@ function formatPack(value, args) {
 // deployment default (never crash the page over a translation gap) and
 // finally to the bare key.
 function t(key, args) {
-  var pack = I18N_PACKS[currentLang] || I18N_PACKS[DEFAULT_LANG] || {};
+  var pack = I18N_PACKS[currentLang()] || I18N_PACKS[DEFAULT_LANG] || {};
   var value = pack[key];
   return formatPack(value == null ? key : value, args);
 }
@@ -103,7 +108,7 @@ function adoptLocaleArrays(code) {
 // Pure DOM mutation — no navigation, no request.
 function applyLanguage(code) {
   if (!I18N_PACKS[code]) return;
-  currentLang = code;
+  if (typeof KINOWO_LOCALE !== 'undefined') KINOWO_LOCALE.lang = code;
   translateMarkedElements();
   adoptLocaleArrays(code);
   document.documentElement.lang = code;

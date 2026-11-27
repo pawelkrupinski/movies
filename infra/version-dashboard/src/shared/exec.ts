@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { systemEnvironment } from "../host/system.js";
 
 export interface CommandResult {
   /** Exit code; null when the process was killed (timeout) or could not start. */
@@ -106,7 +107,7 @@ export const spawnExecutor: Executor = (argv, options) =>
     }
     const child = spawn(command, args, {
       cwd: options.cwd,
-      env: options.env ? { ...process.env, ...options.env } : undefined,
+      env: options.env ? { ...systemEnvironment(), ...options.env } : undefined,
       stdio: ["pipe", "pipe", "pipe"],
       // ITS OWN PROCESS GROUP, so the timeout can kill everything it started: killing only the
       // direct child left a grandchild (npm ci's scripts, ssh's ProxyCommand) holding the pipes,

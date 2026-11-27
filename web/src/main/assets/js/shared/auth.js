@@ -2,6 +2,8 @@
 // another tab), and the once-a-day nudge to sign in.
 
 /* global mountPrefix */  // city.js
+/* global wallClockNow */  // clock.js
+/* global pageState */  // page-state.js
 /* global readStoredFlag, storeFlag */  // local-store.js
 /* global closeDialog, openDialog, toggleAuthMenu */  // overlays.js
 /* exported closeAnonymousNag, closeLoginModal, hydrateAuth, isLoggedIn, maybeShowAnonymousNag,
@@ -93,37 +95,28 @@ function buildAuthMenu(me) {
   login.parentNode.appendChild(menu);
 }
 
-// Ask once per document, and hand every caller the same promise so the boot
-// order is "hydrate, then everything that depends on knowing".
-let _authHydration = null;
-// Whether `/api/me` ANSWERED — signed in (200) or signed out (401) — rather
-// than failing (offline, a 5xx). A page that could not ask renders signed
-// out, the safe way to be wrong about what to SHOW; it must not also act as
-// if the account were gone and drop what this device still owes it (see
-// `bootMergeFromServer`).
-let _authAnswered = false;
 // The last answer this device had, kept across pages: '1' while `/api/me`
 // last said signed in. A page that cannot ask goes by it — edits made
 // offline by someone who was signed in are owed to the account (see
 // `_writeHiddenFilms`), and edits by someone who was not are nobody's.
 const SIGNED_IN_KEY = 'signedIn';
 function sessionUnconfirmed() {
-  if (isLoggedIn() || _authAnswered) return false;
+  if (isLoggedIn() || pageState.authAnswered) return false;
   try { return localStorage.getItem(SIGNED_IN_KEY) === '1'; } catch { return false; }
 }
 // Signed out as far as this page can tell, but only because `/api/me` could not be asked.
-function whoIsLookingIsUnknown() { return !isLoggedIn() && !_authAnswered; }
+function whoIsLookingIsUnknown() { return !isLoggedIn() && !pageState.authAnswered; }
 function hydrateAuth() {
-  if (_authHydration) return _authHydration;
+  if (pageState.authHydration) return pageState.authHydration;
   // Nothing to sign in to (a deployment with no OAuth secrets), or a page that
   // already carries the menu: either way there is nothing to ask.
   if (!HAS_OAUTH_PROVIDERS || isLoggedIn()) {
-    _authAnswered = true;
-    return (_authHydration = Promise.resolve());
+    pageState.authAnswered = true;
+    return (pageState.authHydration = Promise.resolve());
   }
-  _authHydration = fetch(mountPrefix() + '/api/me', { credentials: 'same-origin' })
+  pageState.authHydration = fetch(mountPrefix() + '/api/me', { credentials: 'same-origin' })
     .then(response => {
-      _authAnswered = response.ok || response.status === 401;
+      pageState.authAnswered = response.ok || response.status === 401;
       try {
         if (response.ok) localStorage.setItem(SIGNED_IN_KEY, '1');
         else if (response.status === 401) localStorage.removeItem(SIGNED_IN_KEY);
@@ -135,7 +128,7 @@ function hydrateAuth() {
     // safe way to be wrong — it offers the way back in rather than an avatar
     // for a session we could not confirm.
     .catch(() => {});
-  return _authHydration;
+  return pageState.authHydration;
 }
 
 // ── Signing out ───────────────────────────────────────────────────────────
@@ -257,18 +250,17 @@ function maybeShowAnonymousNag() {
   if (isLoggedIn() || !HAS_OAUTH_PROVIDERS) return;
   const lastAt = parseInt(readStoredFlag('lastAnonymousNagAt') || '0', 10);
   const dayMs  = 24 * 60 * 60 * 1000;
-  if (Date.now() - lastAt < dayMs) return;
-  storeFlag('lastAnonymousNagAt', Date.now().toString());
+  if (wallClockNow() - lastAt < dayMs) return;
+  storeFlag('lastAnonymousNagAt', wallClockNow().toString());
   showAnonymousNag();
 }
 
-let _nagDismissTimer = 0;
 function showAnonymousNag() {
   const toast = document.getElementById('anon-nag-toast');
   if (!toast) return;
   toast.classList.add('open');
-  clearTimeout(_nagDismissTimer);
-  _nagDismissTimer = setTimeout(closeAnonymousNag, 8000);
+  clearTimeout(pageState.nagDismissTimer);
+  pageState.nagDismissTimer = setTimeout(closeAnonymousNag, 8000);
 }
 function closeAnonymousNag() {
   const toast = document.getElementById('anon-nag-toast');

@@ -1,6 +1,7 @@
 // Keeping a signed-in visitor's language pick in step with the account: the debounced push, the
 // unload flush, and the reconcile at boot.
 
+/* global pageState */  // page-state.js
 /* global mountPrefix */  // city.js
 /* global isLoggedIn, sessionUnconfirmed */  // auth.js
 /* exported forgetPendingLanguage, reconcileLanguage, scheduleServerSync */
@@ -12,7 +13,6 @@
 // union/authoritative dance (`hidden-films-sync.js`) entirely (see
 // `reconcileLanguage` for why) but keeps the debounced-push machinery below, narrowed to a
 // `language`-only body now that hiddenFilms/disabledCinemas both left it.
-let _serverSyncTimer = 0;
 // A language pick the account has not confirmed yet — its debounced push is
 // still waiting, it failed, or the page was offline. Persisted so the next
 // signed-in load pushes it instead of adopting the account's OLDER pick over
@@ -36,9 +36,9 @@ function scheduleServerSync() {
   if (!isLoggedIn() && !sessionUnconfirmed()) return;
   _setPendingLanguage((() => { try { return localStorage.getItem('kinowo_lang'); } catch { return null; } })());
   if (!isLoggedIn()) return; // could not confirm the session: the next signed-in load pushes it
-  clearTimeout(_serverSyncTimer);
+  clearTimeout(pageState.serverSyncTimer);
   // 400ms — long enough that a rapid run of picker clicks folds into one PUT.
-  _serverSyncTimer = setTimeout(pushStateToServer, 400);
+  pageState.serverSyncTimer = setTimeout(pushStateToServer, 400);
 }
 
 // Called for a pick (`onLanguageChange` in i18n.js, via the debounce in
@@ -61,12 +61,11 @@ function scheduleServerSync() {
 // "not confirmed", like offline — the pick stays pending and the next push or
 // reconcile resends it.
 const LANGUAGE_PUSH_TIMEOUT_MS = 10000;
-let _languagePush = Promise.resolve();
 function pushStateToServer(opts) {
-  _serverSyncTimer = 0;
+  pageState.serverSyncTimer = 0;
   if (opts && opts.keepalive) return _sendLanguage(true);
-  _languagePush = _languagePush.then(() => _sendLanguage(false));
-  return _languagePush;
+  pageState.languagePush = pageState.languagePush.then(() => _sendLanguage(false));
+  return pageState.languagePush;
 }
 function _sendLanguage(keepalive) {
   const lang = (() => { try { return localStorage.getItem('kinowo_lang'); } catch { return null; } })();
@@ -100,8 +99,8 @@ function _sendLanguage(keepalive) {
 // server. Runs on pagehide and on tab-hide (the reliable signals;
 // beforeunload is unreliable on mobile).
 function flushServerSync() {
-  if (!isLoggedIn() || !_serverSyncTimer) return;
-  clearTimeout(_serverSyncTimer);
+  if (!isLoggedIn() || !pageState.serverSyncTimer) return;
+  clearTimeout(pageState.serverSyncTimer);
   pushStateToServer({ keepalive: true });
 }
 window.addEventListener('pagehide', flushServerSync);

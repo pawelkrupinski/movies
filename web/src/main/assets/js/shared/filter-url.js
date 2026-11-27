@@ -1,7 +1,8 @@
 // The URL and the filters: reading every filter off the URL at boot, keeping the day in it, the
 // share link, and putting session-local controls back on a Back.
 
-/* global SUBMENU_KEYS, ensurePanel, updateFormatBtn, updateRoomCinemaCount, updateSubmenuCount */  // filters.js
+/* global pageState */  // page-state.js
+/* global SUBMENU_KEYS, ensurePanel, resetSubmenuPanels, updateFormatButton, updateRoomCinemaCount, updateSubmenuCount */  // filters.js
 /* global beginSearchAtBoot, restoreSearchDay, searchDayState, urlDay */  // search-day.js
 /* global buildCinemaPanel, getDisabledCinemas, setDisabledCinemas */  // cinemas.js
 /* global formatDateLabelShort */  // dates.js
@@ -235,13 +236,12 @@ function resetFilterControls() {
 // The controls are static navbar markup, looked up once: `syncDateToURL` runs
 // on every filter pass, which has a fixed DOM-query budget.
 const REMEMBERED_CONTROLS = ['search-input', 'sort-by', 'from-hour', 'from-minute'];
-let _rememberedElements = null;
 function rememberedElements() {
-  if (!_rememberedElements)
-    _rememberedElements = REMEMBERED_CONTROLS
+  if (!pageState.rememberedElements)
+    pageState.rememberedElements = REMEMBERED_CONTROLS
       .map(id => [id, document.getElementById(id)])
       .filter(([, element]) => element);
-  return _rememberedElements;
+  return pageState.rememberedElements;
 }
 function rememberedControlsState() {
   const controls = {};
@@ -259,17 +259,12 @@ function restoreRememberedControls() {
   restoreSearchDay(history.state.searchDay);
 }
 
-// The belt for an entry with no recorded state (one written before this
-// shipped): re-filter at `pageshow` when the engine's restore has moved the
-// controls away from the pass that drew what is on screen. Comparing, rather
-// than re-running unconditionally, keeps an ordinary load to its single pass.
-let _appliedSignature = null;
 function filterSignature() {
   return rememberedElements().map(([, element]) => element.value).join('\u0000');
 }
-function noteFiltersApplied() { _appliedSignature = filterSignature(); }
+function noteFiltersApplied() { pageState.appliedSignature = filterSignature(); }
 window.addEventListener('pageshow', function () {
-  if (_appliedSignature === null || filterSignature() === _appliedSignature) return;
+  if (pageState.appliedSignature === null || filterSignature() === pageState.appliedSignature) return;
   applyFilters();
   noteFiltersApplied();
 });
@@ -278,6 +273,8 @@ window.addEventListener('pageshow', function () {
 // back: the day, the search, the format axes, the from-time, the sort, the
 // submenus, the cinemas.
 function applyFiltersFromURL() {
+  // The grid-scanning submenu panels are built lazily: drop any stale build-flags so they re-tally this grid.
+  resetSubmenuPanels();
   resetFilterControls();
   const searchParams = new URLSearchParams(window.location.search);
 
@@ -305,7 +302,7 @@ function applyFiltersFromURL() {
   // entry outranks the `q`/`sort`/`from` the entry was first opened with.
   restoreRememberedControls();
   beginSearchAtBoot();
-  updateFormatBtn();
+  updateFormatButton();
 }
 
 // `?date=`: one of the four presets, or an ISO day.

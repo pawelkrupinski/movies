@@ -18,6 +18,7 @@
 import { spawn } from "node:child_process";
 import { closeSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { systemEnvironment } from "../host/system.js";
 import { NOTES_LANGUAGES, PLAY_NOTES_LIMIT, plannedVersion, type ReleaseNotes, type ReleaseRun } from "./model.js";
 
 /** A plan older than this is not acted on: the stores it read may have moved since. */
@@ -41,7 +42,7 @@ export const realDetachedProcesses: DetachedProcesses = {
     if (!command) throw new Error("empty command");
     const out = openSync(log, "a");
     try {
-      const child = spawn(command, args, { cwd, env: { ...process.env, ...env }, detached: true, stdio: ["ignore", out, out] });
+      const child = spawn(command, args, { cwd, env: { ...systemEnvironment(), ...env }, detached: true, stdio: ["ignore", out, out] });
       child.unref();
       if (!child.pid) throw new Error(`could not start ${command}`);
       return child.pid;

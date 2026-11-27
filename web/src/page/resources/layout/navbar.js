@@ -1,6 +1,6 @@
 // The listing navbar's layout, measured and staged for `PageJsBehaviourSpec`'s
 // mobile and desktop sweeps, as `window.__navbar`.
-/* global onFormatChange, updateFormatBtn, applySearchKeyboardInset */
+/* global onFormatChange, updateFormatButton, applySearchKeyboardInset */
 (function () {
   // The navbar's children that occupy a row: no zero-size slot (an empty
   // anonymous auth), and — when `skipFixed` — not the floating search pill,
@@ -85,7 +85,7 @@
       document.getElementById('format-imax').click();
       document.getElementById('from-hour').value = '18';
       onFormatChange();
-      updateFormatBtn();
+      updateFormatButton();
     },
     // An on-screen keyboard taking `inset` px off the visual viewport, the search
     // field focused, and the page's keyboard tracker run.

@@ -1,6 +1,7 @@
 // A film card's own interactions: the card tap and its hide button, the room tooltip on a
 // showtime, and the IMDb pill's app link on Android.
 
+/* global pageState */  // page-state.js
 /* global CITY_BASE */  // city.js
 /* global hideFilm */  // hidden-films.js
 
@@ -62,20 +63,19 @@ document.addEventListener('mouseover', e => {
 });
 
 // Mobile long-press
-let _roomTimer = null;
 
 document.addEventListener('touchstart', e => {
   if (!(e.target instanceof Element)) return;
   const badge = e.target.closest('.badge-time[data-room]');
   if (!badge) return;
-  _roomTimer = setTimeout(() => {
+  pageState.roomTimer = setTimeout(() => {
     showRoomTooltip(badge);
     setTimeout(hideRoomTooltip, 2000);
   }, 500);
 }, { passive: true });
 
-document.addEventListener('touchend',  () => { clearTimeout(_roomTimer); _roomTimer = null; }, { passive: true });
-document.addEventListener('touchmove', () => { clearTimeout(_roomTimer); _roomTimer = null; }, { passive: true });
+document.addEventListener('touchend',  () => { clearTimeout(pageState.roomTimer); pageState.roomTimer = null; }, { passive: true });
+document.addEventListener('touchmove', () => { clearTimeout(pageState.roomTimer); pageState.roomTimer = null; }, { passive: true });
 
 // ── IMDb "open in app" on Android ─────────────────────────────────────────
 // Tapping an IMDb rating badge on Android Chrome opens the IMDb app at the

@@ -4541,7 +4541,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // Two arrow presses fired before the first slide can settle must BOTH register:
   // the day advances twice, not once. The second press used to be swallowed by
-  // the in-flight `_animating` guard ("keyboard presses seem to be lost"); it is
+  // the in-flight `pageState.animating` guard ("keyboard presses seem to be lost"); it is
   // now queued and replayed as a follow-on slide on commit.
   it should "honour a second keyboard step pressed mid-slide (two presses → two days)" in {
     onPath("/") { page =>
@@ -5895,7 +5895,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  — the tail of `shared.js`'s per-country write chain. A negative check ("no
    *  PUT for X") read after this is final, not a guess at how long a request takes. */
   private def awaitHiddenFilmsWrites(page: CdpPage, country: String = "pl"): Unit =
-    page.eval(s"(_hiddenFilmsWrites[${jsString(country)}] || Promise.resolve()).then(() => true)")
+    page.eval(s"(pageState.hiddenFilmsWrites[${jsString(country)}] || Promise.resolve()).then(() => true)")
 
   /** Hold each `GET /api/me/state` this tab makes -- the boot's language reconcile -- for `delayMs` in the browser
    *  before it goes out, as a slow runner answers it (Main #2201), without holding the one-at-a-time fixture server

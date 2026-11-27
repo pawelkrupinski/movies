@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { ascApi, playClient, RELEASE_SECRET_NAMES, SECRETS_BIN, VAULT_NAMESPACE, vaultSecrets } from "../app-stores/clients.js";
 import { CACHE_DIR, REPO_DIR } from "../shared/config.js";
+import { systemClock, systemEnvironment } from "../host/system.js";
 import type { Page } from "../shared/page.js";
 import type { MobileSources } from "./build.js";
 import { MobileLive } from "./live.js";
@@ -18,7 +19,7 @@ type WakeSource = { readonly onWake: (listener: () => void) => void };
 export function mobileSources(repoDir: string = REPO_DIR): MobileSources {
   const asc = ascApi();
   const play = playClient();
-  return { repoDir, ios: () => iosReleaseState(asc.get), android: () => androidReleaseState(play), now: Date.now };
+  return { repoDir, ios: () => iosReleaseState(asc.get), android: () => androidReleaseState(play), now: systemClock };
 }
 
 /**
@@ -27,7 +28,7 @@ export function mobileSources(repoDir: string = REPO_DIR): MobileSources {
  */
 export function releaseEnvironment(home = homedir(), exists: (path: string) => boolean = existsSync): Record<string, string> {
   const env: Record<string, string> = {};
-  const path = [process.env.PATH ?? ""];
+  const path = [systemEnvironment().PATH ?? ""];
   const java = join(home, ".sdkman", "candidates", "java", "current");
   if (exists(java)) {
     env.JAVA_HOME = java;
@@ -48,7 +49,7 @@ function mobileReleaseRuns(live: MobileLive): ReleaseRuns {
     secrets: { bin: SECRETS_BIN, namespace: VAULT_NAMESPACE, names: RELEASE_SECRET_NAMES },
     stateDir: join(CACHE_DIR, "mobile-release"),
     processes: realDetachedProcesses,
-    now: Date.now,
+    now: systemClock,
     publish: (run) => live.showRelease(run),
   });
 }
@@ -75,7 +76,7 @@ export function createMobilePage(
       live.stop();
       releases.stop();
     },
-    renderBody: (snapshot) => renderMobile(snapshot.state, Date.now()).__raw,
+    renderBody: (snapshot) => renderMobile(snapshot.state, systemClock()).__raw,
     routes: (app) => mobileRoutes(app, live, unlockVault, releases),
   };
 }

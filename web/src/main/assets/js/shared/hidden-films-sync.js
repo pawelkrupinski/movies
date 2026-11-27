@@ -1,8 +1,9 @@
 // Keeping a signed-in visitor's hidden films in step with the account, per country: each write,
 // the ones still owed, and the reconcile at boot.
 
+/* global pageState */  // page-state.js
 /* global currentCountryCode, mountPrefix */  // city.js
-/* global updateFormatBtn */  // filters.js
+/* global updateFormatButton */  // filters.js
 /* global getHidden, setHidden */  // hidden-films-store.js
 /* global isLoggedIn, sessionUnconfirmed, whoIsLookingIsUnknown */  // auth.js
 /* global forgetPendingLanguage */  // language-sync.js
@@ -121,12 +122,7 @@ function _forgetHiddenFilmsValidators(country) {
   } catch {}
 }
 
-// The tail of each country's write chain — see `_writeHiddenFilms`.
-const _hiddenFilmsWrites = {};
-// How many writes each country has been asked for on this page — how a
-// reconcile tells that an edit was made while its fetch was out.
-const _hiddenFilmsEdits = {};
-function _editCount(country) { return _hiddenFilmsEdits[country] || 0; }
+function _editCount(country) { return pageState.hiddenFilmsEdits[country] || 0; }
 
 // The one request shape every hiddenFilms write shares. A write that never
 // landed (offline, 401, 5xx) leaves localStorage ahead of the server, so the
@@ -134,7 +130,7 @@ function _editCount(country) { return _hiddenFilmsEdits[country] || 0; }
 // reconcile takes the server's answer instead of 304-ing onto the drift.
 function _writeHiddenFilms(method, country, title) {
   country = country || currentCountryCode();
-  _hiddenFilmsEdits[country] = _editCount(country) + 1;
+  pageState.hiddenFilmsEdits[country] = _editCount(country) + 1;
   const key = title === undefined ? null : title;
   if (!isLoggedIn()) {
     // A page that could not confirm the session (offline) of a visitor who
@@ -154,7 +150,7 @@ function _writeHiddenFilms(method, country, title) {
   // One write at a time per country, in the order they were made: two
   // concurrent requests may reach the server either way round, and a clear
   // landing after the hide made just behind it wipes that hide.
-  const previous = _hiddenFilmsWrites[country] || Promise.resolve();
+  const previous = pageState.hiddenFilmsWrites[country] || Promise.resolve();
   const sent = previous.then(() => fetch(_hiddenFilmsUrl(country, title), { method: method }))
     .then(async resp => {
       if (resp.ok) {
@@ -175,7 +171,7 @@ function _writeHiddenFilms(method, country, title) {
       }
     })
     .catch(() => failed(true));
-  _hiddenFilmsWrites[country] = sent;
+  pageState.hiddenFilmsWrites[country] = sent;
   return sent;
 }
 
@@ -204,14 +200,14 @@ async function bootMergeFromServer(attempt = 0) {
     _storeHiddenFilmsValidators(country, resp);
     _mergeServerHiddenFilms(country, remote.hiddenFilms || [], firstSync);
     applyFilters();
-    updateFormatBtn();   // the merged hidden set may light or clear the funnel
+    updateFormatButton();   // the merged hidden set may light or clear the funnel
   } catch (e) { /* network blew up — localStorage is still usable */ }
 }
 
 // At most three times: a visitor cannot keep editing faster than a round trip for long.
 async function _mergeAgainAfterWrites(country, attempt) {
   if (attempt >= 3) return;
-  await (_hiddenFilmsWrites[country] || Promise.resolve());
+  await (pageState.hiddenFilmsWrites[country] || Promise.resolve());
   return bootMergeFromServer(attempt + 1);
 }
 

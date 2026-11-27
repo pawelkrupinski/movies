@@ -1,11 +1,12 @@
 // The Filtry panel: what each control asks for (format, start time, sort, the submenus), the
 // funnel's active state, the folds, the lazily built submenu lists, and Wyczyść.
 
+/* global pageState */  // page-state.js
 /* global clampPanel, closeOtherPanels, setPanelOpen */  // overlays.js
 /* exported SUBMENU_KEYS, applyFiltersDebounced, badgeFormatMatch, compareCards, ensurePanel, getCastFilter,
    getCountryFilter, getDirectorFilter, getFormatFilter, getFromMinutes, getSortBy, getSubmenuFilter,
    gridScope, isSubsequence, makeFoldHeader, onFormatChange, onSortChange, registerNarrowing,
-   resetFormatFilter, resetSubmenuPanels, toggleFormatPanel, toggleSubmenu, updateFormatBtn, updateRoomCinemaCount,
+   resetFormatFilter, resetSubmenuPanels, toggleFormatPanel, toggleSubmenu, updateFormatButton, updateRoomCinemaCount,
    updateSubmenuCount */
 
 // ── Format-filter dropdown ────────────────────────────────────────────────
@@ -82,10 +83,9 @@ function badgeFormatMatch(badgeFormatSet, requiredTokens) {
 
 // Debounce wrapper for fast-firing inputs (the search box). Discrete inputs
 // like select/radio/checkbox still call applyFilters() directly.
-let _filterDebounce = 0;
 function applyFiltersDebounced() {
-  clearTimeout(_filterDebounce);
-  _filterDebounce = setTimeout(applyFilters, 80);
+  clearTimeout(pageState.filterDebounce);
+  pageState.filterDebounce = setTimeout(applyFilters, 80);
 }
 
 // The Filtry submenus, each a checkbox list `#<key>-list` under its row `#<key>-row`.
@@ -96,9 +96,8 @@ const SUBMENU_KEYS = ['country', 'genre', 'director', 'cast', 'room'];
 // it loads, how to tell that it narrows it (`isActive`) and how to put it back
 // (`clear`, which does nothing when there is nothing to put back), so the
 // funnel lights for it and "Wyczyść" clears it without this module knowing it.
-const _otherNarrowings = [];
 function registerNarrowing(isActive, clear) {
-  _otherNarrowings.push({ isActive, clear });
+  pageState.otherNarrowings.push({ isActive, clear });
 }
 
 // True when anything narrows the listing — i.e. exactly what "Wyczyść"
@@ -111,17 +110,17 @@ function filtersActive() {
   return getFormatFilter().length > 0          // Wymiar / Wersja / IMAX
     || getFromMinutes() !== null               // Od godziny
     || SUBMENU_KEYS.some(key => getSubmenuFilter(key) !== null)
-    || _otherNarrowings.some(narrowing => narrowing.isActive());
+    || pageState.otherNarrowings.some(narrowing => narrowing.isActive());
 }
 
-function updateFormatBtn() {
+function updateFormatButton() {
   const button = document.getElementById('format-filter-btn');
   if (!button) return;  // Filtry button not rendered on this page.
   button.classList.toggle('filters-active', filtersActive());
 }
 
 function onFormatChange() {
-  updateFormatBtn();
+  updateFormatButton();
   applyFilters();
 }
 
@@ -187,7 +186,7 @@ function resetFormatFilter() {
   });
   // Re-enable every cinema in this city and un-hide every hidden film, as the
   // iOS and Android Wyczyść do.
-  _otherNarrowings.forEach(narrowing => narrowing.clear());
+  pageState.otherNarrowings.forEach(narrowing => narrowing.clear());
   setPanelOpen(document.getElementById('format-panel'), false);
   onFormatChange();
 }
@@ -288,12 +287,12 @@ function renderSubmenuCheckboxes(key, entries) {
   list.innerHTML = '';
 
   appendAllToggle(list, function() {
-    updateSubmenuCount(key); updateFormatBtn(); applyFilters();
+    updateSubmenuCount(key); updateFormatButton(); applyFilters();
   });
 
   entries.forEach(function(entry) {
     list.appendChild(submenuEntryRow(entry.value, entry.label, entry.count, function() {
-      updateSubmenuCount(key); updateFormatBtn(); applyFilters();
+      updateSubmenuCount(key); updateFormatButton(); applyFilters();
     }));
   });
 }
@@ -322,11 +321,10 @@ function submenuEntryRow(value, labelText, count, onchange) {
 // to tally values, but they populate dropdowns hidden until the user opens
 // Filtry. So build them lazily — on first Filtry-open, or on demand when a
 // shared `?genre=…`/`?room=…` link needs one applied at boot — instead of
-// eagerly at load. `_panelBuilt` is reset per view (see `bootView`) so each
+// eagerly at load. `pageState.panelBuilt` is reset per view (see `bootView`) so each
 // view's grid gets a fresh tally.
-const _panelBuilt = {};
 function ensurePanel(key) {
-  if (_panelBuilt[key]) return;
+  if (pageState.panelBuilt[key]) return;
   switch (key) {
     case 'country':  buildCountryPanel();  break;
     case 'genre':    buildGenrePanel();    break;
@@ -335,13 +333,13 @@ function ensurePanel(key) {
     case 'room':     buildRoomPanel();     break;
     default: return;
   }
-  _panelBuilt[key] = true;
+  pageState.panelBuilt[key] = true;
 }
 function ensureSubmenuPanels() {
   SUBMENU_KEYS.forEach(ensurePanel);
 }
 function resetSubmenuPanels() {
-  Object.keys(_panelBuilt).forEach(function(k) { delete _panelBuilt[k]; });
+  Object.keys(pageState.panelBuilt).forEach(function(k) { delete pageState.panelBuilt[k]; });
 }
 
 function buildCountryPanel() {
@@ -383,7 +381,7 @@ function buildRoomPanel() {
   // cinema's header count following.
   appendAllToggle(list, function() {
     list.querySelectorAll('.room-cinema-header').forEach(function(h) { updateRoomCinemaCount(h); });
-    updateSubmenuCount('room'); updateFormatBtn(); applyFilters();
+    updateSubmenuCount('room'); updateFormatButton(); applyFilters();
   });
 
   cinemas.forEach(function(cinema) { appendRoomCinemaFold(list, cinema, byCinema[cinema]); });
@@ -443,7 +441,7 @@ function appendRoomCinemaFold(list, cinema, roomCounts) {
   rooms.forEach(function(room) {
     inner.appendChild(submenuEntryRow(cinema + '|' + room, room, roomCounts[room], function() {
       updateRoomCinemaCount(header);
-      updateSubmenuCount('room'); updateFormatBtn(); applyFilters();
+      updateSubmenuCount('room'); updateFormatButton(); applyFilters();
     }));
   });
 

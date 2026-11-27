@@ -95,6 +95,11 @@ adapter	py	scripts/lib/tool_git.py	process env
 adapter	py	scripts/lib/tool_pool.py	process env
 adapter	py	scripts/lib/cli_harness.py	process env clock
 adapter	py	scripts/lib/machine.py	process env clock
+adapter	js	web/src/main/assets/js/shared/clock.js	clock
+adapter	js	infra/version-dashboard/src/host/system.ts	clock env
+adapter	js	infra/version-dashboard/src/shared/exec.ts	process
+adapter	js	infra/version-dashboard/src/mobile/release-run.ts	process
+adapter	js	infra/version-dashboard/src/mobile-release/android-signed.ts	process
 #
 # Distance D: where abstractions exist (the owner, 2026-11-26): the Python library packages and the TypeScript
 # dashboard. Plain browser JS (web/src/main/assets/js) has none, so D measures nothing there: cycles and layers hold it.
@@ -128,6 +133,7 @@ layer	py	scripts/design-rules	3	the general rule core, over the quality measure 
 # JS/TS: what every page builds on, then the store clients, then the pages and the servers over them.
 layer	js	web/src/main/assets/js/shared	0	what every web page's scripts build on
 layer	js	web/src/main/assets/js	1	the web pages' own scripts, over the shared ones
+layer	js	infra/version-dashboard/src/host	0	the process's clock and environment, read once for every dashboard module
 layer	js	infra/version-dashboard/src/shared	0	what every dashboard page builds on: config, HTTP, processes
 layer	js	infra/version-dashboard/src/app-stores	1	the app stores' clients and the signing vault
 layer	js	infra/version-dashboard/src/mobile	2	the /mobile page, over the store clients

@@ -7,6 +7,7 @@ import { localGitForge } from "fleetkit/fleet/assemble";
 import type { FleetConfig } from "fleetkit/fleet/config";
 import { createFleetPage as createPage, type FleetPage, type WakeSource } from "fleetkit/fleet/page";
 import { CACHE_DIR, INFRA_DIR } from "./shared/config.js";
+import { systemEnvironment } from "./host/system.js";
 
 /** Keyed on the role, so a second database host inherits it by declaring `role = "mongo"`. */
 export const MONGO_WARNING = "This is the PRODUCTION DATABASE. Activating can restart mongod, and the web tier's change "
@@ -16,7 +17,7 @@ export const MONGO_WARNING = "This is the PRODUCTION DATABASE. Activating can re
 /** nix-stage-closures.yml's push `paths`, relative to infra/. */
 export const STAGED_PATHS = [".", "../.github/workflows/nix-stage-closures.yml"] as const;
 
-export function kinowoFleet(env: NodeJS.ProcessEnv = process.env, infraDir = INFRA_DIR): FleetConfig {
+export function kinowoFleet(env: NodeJS.ProcessEnv = systemEnvironment(), infraDir = INFRA_DIR): FleetConfig {
   return {
     infraDir,
     // NO FORGE TOKEN HERE (this page runs outside the vault), so the checkout is the forge: main is

@@ -19,6 +19,8 @@
 #   (`search.js`) must come before the dropdowns' click-outside close (`overlays.js`), so the tap that drops the
 #   keyboard does only that.
 js/shared/city.js
+js/shared/page-state.js
+js/shared/clock.js
 js/shared/local-store.js
 js/shared/filters.js
 js/shared/search-day.js

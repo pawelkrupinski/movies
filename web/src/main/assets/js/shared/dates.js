@@ -1,6 +1,8 @@
 // The listing's dates: date arithmetic and labels (re-worded on a language switch), the day the
 // page is on, and the day pills.
 
+/* global wallClockNow */  // clock.js
+/* global pageState */  // page-state.js
 /* exported dateBounds, formatDateLabelShort, highlightDayPill, pageToday, refreshDateLabels, syncDayPills */
 
 // ── Date helpers ──────────────────────────────────────────────────────────
@@ -58,8 +60,6 @@ function refreshDateLabels() {
   if (customOption) customOption.textContent = formatDateLabelShort(customOption.dataset.date);
 }
 
-let _cachedDay = null, _cachedToday, _cachedTomorrow, _cachedIn7Days;
-
 // The calendar day the PAGE is on. Two things it deliberately is not:
 //
 //  - the visitor's timezone. Showtimes, their expiry stamps and the midnight
@@ -77,19 +77,19 @@ let _cachedDay = null, _cachedToday, _cachedTomorrow, _cachedIn7Days;
 // carries absolute past dates; a live clock would age the day filters out).
 function pageToday() {
   if (window.KINOWO_PINNED_TODAY) return window.KINOWO_PINNED_TODAY;
-  const nowMs = typeof window.showtimeNow === 'function' ? window.showtimeNow() : Date.now();
+  const nowMs = typeof window.showtimeNow === 'function' ? window.showtimeNow() : wallClockNow();
   return new Date(nowMs).toLocaleDateString('sv', { timeZone: window.CITY_TIMEZONE });
 }
 
 function dateBounds() {
   const today = pageToday();
-  if (today !== _cachedDay) {
-    _cachedDay      = today;
-    _cachedToday    = today;
-    _cachedTomorrow = isoAddDays(today, 1);
-    _cachedIn7Days  = isoAddDays(today, 6);
+  if (today !== pageState.cachedDay) {
+    pageState.cachedDay      = today;
+    pageState.cachedToday    = today;
+    pageState.cachedTomorrow = isoAddDays(today, 1);
+    pageState.cachedIn7Days  = isoAddDays(today, 6);
   }
-  return { today: _cachedToday, tomorrow: _cachedTomorrow, in7Days: _cachedIn7Days };
+  return { today: pageState.cachedToday, tomorrow: pageState.cachedTomorrow, in7Days: pageState.cachedIn7Days };
 }
 
 // Reflect the hidden `#date-filter` value onto the visible day pills: set

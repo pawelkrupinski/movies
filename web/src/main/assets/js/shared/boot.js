@@ -1,7 +1,6 @@
 // Booting the page once the document is parsed: index and filter the grid, then ask who is looking.
 
 /* global rememberCity */  // city.js
-/* global resetSubmenuPanels */  // filters.js
 /* global refreshHiddenFilmsControls */  // hidden-films.js
 /* global buildCinemaPanel, maybeShowAreaPicker */  // cinemas.js
 /* global hydrateAuth, settleSignOut */  // auth.js
@@ -29,10 +28,8 @@ function bootView() {
   // first open of Filtry has the checkboxes ready. Cheap (one row per cinema,
   // no grid scan), so it stays eager.
   buildCinemaPanel();
-  // The grid-scanning submenu panels are built lazily (on Filtry-open) — drop
-  // any stale build-flags so they re-tally this grid.
-  resetSubmenuPanels();
-  // URL → controls AFTER the picker is built so checkbox updates land on real
+  // URL → controls (it first drops the lazy submenu panels' stale build-flags)
+  // AFTER the picker is built so checkbox updates land on real
   // DOM nodes; then one `applyFilters()` pass renders the grid already
   // filtered.
   applyFiltersFromURL();   // ends by lighting the funnel for what it applied

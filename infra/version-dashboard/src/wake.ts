@@ -7,6 +7,8 @@
  * learned the same thing from node-cron (commit a1d5087) and fixed it the same way: a heartbeat
  * that treats a wall-clock gap much longer than its own interval as a wake.
  */
+import { systemClock } from "./host/system.js";
+
 export const HEARTBEAT_MS = 5_000;
 const WAKE_GAP_MS = HEARTBEAT_MS * 3;
 
@@ -15,7 +17,7 @@ export class WakeDetector {
   private last: number;
   private timer: NodeJS.Timeout | null = null;
 
-  constructor(private readonly now: () => number = Date.now) {
+  constructor(private readonly now: () => number = systemClock) {
     this.last = now();
   }
 

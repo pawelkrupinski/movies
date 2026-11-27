@@ -2,7 +2,7 @@
 // cinema and area panels, the first-visit area picker, and the empty state they can cause.
 
 /* global readStoredJson, storeJson */  // local-store.js
-/* global makeFoldHeader, registerNarrowing, updateFormatBtn */  // filters.js
+/* global makeFoldHeader, registerNarrowing, updateFormatButton */  // filters.js
 /* exported buildCinemaPanel, getDisabledCinemas, maybeShowAreaPicker, setDisabledCinemas, toggleAllCinemas,
    updateEmptyState */
 
@@ -82,7 +82,7 @@ function buildCinemaRow(cinema) {
     }
     syncAreaCheckboxes();
     syncAllCheckbox();
-    updateFormatBtn();   // cinema count is part of the Filtry label now
+    updateFormatButton();   // cinema count is part of the Filtry label now
     applyFilters();
   };
   label.appendChild(checkbox);
@@ -210,7 +210,7 @@ function toggleArea(area, checked) {
   refreshCinemaCheckboxes();
   syncAreaCheckboxes();
   syncAllCheckbox();
-  updateFormatBtn();
+  updateFormatButton();
   applyFilters();
 }
 
@@ -225,7 +225,7 @@ function syncAllCheckbox() {
 // Cinema picker now lives inside the Filtry dropdown; no standalone
 // open/close handler. `buildCinemaPanel` populates the same `#cinema-list`
 // element (just re-parented into `#format-panel`), so no changes needed
-// there. The cinema-count summary surfaces in `updateFormatBtn` instead.
+// there. The cinema-count summary surfaces in `updateFormatButton` instead.
 
 function toggleAllCinemas(checked) {
   // Only flip THIS city's cinemas; leave deselections made in other cities
@@ -238,7 +238,7 @@ function toggleAllCinemas(checked) {
   refreshCinemaCheckboxes();
   syncAreaCheckboxes();
   syncAllCheckbox();
-  updateFormatBtn();
+  updateFormatButton();
   applyFilters();
 }
 
@@ -369,7 +369,7 @@ function areaPickerConfirm(overlay, boxes) {
     try { localStorage.setItem(areaPickerKey(), '1'); } catch (e) {}
     overlay.remove();
     buildCinemaPanel();
-    updateFormatBtn();
+    updateFormatButton();
     applyFilters();
   };
   return btn;

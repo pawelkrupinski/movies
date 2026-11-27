@@ -3,7 +3,8 @@ import { build } from "esbuild";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Autodeploy } from "./autodeploy.js";
-import { AUTODEPLOY, HOST, PORT, ROOT } from "./shared/config.js";
+import { autodeploy as autodeployOn, HOST, port, ROOT } from "./shared/config.js";
+import { systemClock, systemEnvironment } from "./host/system.js";
 import { killRunningCommands as killFleetCommands } from "fleetkit/exec";
 import { killRunningCommands } from "./shared/exec.js";
 import { drain, isDraining, runningWork } from "./lifecycle.js";
@@ -38,7 +39,7 @@ function streamSnapshots(page: Page<unknown>, request: FastifyRequest, reply: Fa
   const send = (snapshot: unknown) => out.write(`event: snapshot\ndata: ${JSON.stringify(snapshot)}\n\n`);
   send(page.store.get());
   const unsubscribe = page.store.subscribe(send);
-  const heartbeat = setInterval(() => out.write(`: ${Date.now()}\n\n`), HEARTBEAT_MS);
+  const heartbeat = setInterval(() => out.write(`: ${systemClock()}\n\n`), HEARTBEAT_MS);
   request.raw.on("close", () => {
     clearInterval(heartbeat);
     unsubscribe();
@@ -46,11 +47,11 @@ function streamSnapshots(page: Page<unknown>, request: FastifyRequest, reply: Fa
 }
 
 /** Answers only this Mac's own browser, takes writes only from its own pages, and caches nothing. */
-function guardRequests(app: FastifyInstance): void {
+function guardRequests(app: FastifyInstance, listenPort: number): void {
   app.addHook("onRequest", async (request, reply) => {
-    if (!isLocalHost(request.headers.host, PORT)) return reply.code(421).send("this dashboard answers only http://127.0.0.1 and http://localhost");
+    if (!isLocalHost(request.headers.host, listenPort)) return reply.code(421).send("this dashboard answers only http://127.0.0.1 and http://localhost");
     const fetchSite = request.headers["sec-fetch-site"];
-    if (!isOwnOriginWrite(request.method, request.headers.origin, typeof fetchSite === "string" ? fetchSite : undefined, PORT))
+    if (!isOwnOriginWrite(request.method, request.headers.origin, typeof fetchSite === "string" ? fetchSite : undefined, listenPort))
       return reply.code(403).send("this dashboard accepts writes only from its own pages");
   });
   // NO-STORE ON EVERYTHING. The log endpoint is polled with an increasing offset; a cached answer
@@ -105,9 +106,10 @@ function serveHealth(app: FastifyInstance, pages: readonly Page<unknown>[]): voi
 }
 
 async function main(): Promise<void> {
+  const listenPort = port(systemEnvironment());
   const pages = createPages();
   const app = Fastify({ logger: { level: "warn" }, forceCloseConnections: true });
-  guardRequests(app);
+  guardRequests(app, listenPort);
   await serveAssets(app, pages);
   routePages(app, pages);
   serveHealth(app, pages);
@@ -135,10 +137,10 @@ async function main(): Promise<void> {
 
   // Bind before any source starts: the watchdog restarts a process whose port does not answer,
   // and a slow start-up that looked dead would be killed mid-build into a crash loop.
-  await app.listen({ port: PORT, host: HOST });
-  for (const page of pages) console.log(`kinowo ${page.title} on http://${HOST}:${PORT}${page.path}`);
+  await app.listen({ port: listenPort, host: HOST });
+  for (const page of pages) console.log(`kinowo ${page.title} on http://${HOST}:${listenPort}${page.path}`);
   for (const page of pages) await page.start();
-  if (AUTODEPLOY) {
+  if (autodeployOn(systemEnvironment())) {
     autodeploy = new Autodeploy({ root: ROOT, restart: (reason) => void shutdown(reason) });
     autodeploy.start();
     console.log(`autodeploy: watching ${ROOT} for merged changes`);

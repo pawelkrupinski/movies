@@ -2,7 +2,7 @@
 // un-hiding them all (the list itself: `hidden-films-store.js`).
 
 /* global getHidden, setHidden */  // hidden-films-store.js
-/* global registerNarrowing, updateFormatBtn */  // filters.js
+/* global registerNarrowing, updateFormatButton */  // filters.js
 /* global closeDialog, closeOtherPanels, openDialog */  // overlays.js
 /* global maybeShowAnonymousNag */  // auth.js
 /* global clearHiddenFilmsOnServer, hideFilmOnServer, unhideFilmOnServer */  // hidden-films-sync.js
@@ -21,7 +21,7 @@
 // The hidden-films row and the funnel: every hide / restore / un-hide-all
 // lands here, and a hidden film lights the funnel (`filtersActive`).
 function refreshHiddenFilmsControls() {
-  updateFormatBtn();
+  updateFormatButton();
   const hidden = getHidden();
   const row     = document.getElementById('hidden-row');
   const divider = document.getElementById('hidden-row-divider');

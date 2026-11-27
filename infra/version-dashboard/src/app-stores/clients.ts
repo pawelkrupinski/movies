@@ -8,6 +8,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { runCommand, type Executor } from "../shared/exec.js";
 import { httpRequest, type HttpRequest } from "../shared/http.js";
+import { systemClock } from "../host/system.js";
 import { withNetworkRetries } from "./network.js";
 
 export const IOS_APP_ID = "6792566321";
@@ -139,7 +140,7 @@ export function retryingReads(asc: AscApi, sleep: Sleep): AscApi {
 }
 
 /** App Store Connect, signing a fresh token per call from the key in the Touch ID vault. */
-export function ascApi(secrets: Secrets = vaultSecrets().get, now: () => number = Date.now): AscApi {
+export function ascApi(secrets: Secrets = vaultSecrets().get, now: () => number = systemClock): AscApi {
   const send = async (method: HttpMethod, path: string, body?: unknown) => {
     const keyId = await secrets("APP_STORE_KEY_ID");
     const issuerId = await secrets("APP_STORE_ISSUER_ID");
@@ -177,7 +178,7 @@ export function playAssertion(credentials: PlayCredentials, nowSeconds: number):
 }
 
 /** The Play Developer API through the service account in the Touch ID vault (PLAY_SERVICE_ACCOUNT_JSON). */
-export function playClient(secrets: Secrets = vaultSecrets().get, now: () => number = Date.now): PlayApi {
+export function playClient(secrets: Secrets = vaultSecrets().get, now: () => number = systemClock): PlayApi {
   const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
   return {
     async token() {

@@ -1,6 +1,7 @@
 // Changing the listing's day: the arrow keys, a pill, the hidden select and a swipe (`day-swipe.js`)
 // all slide the grid there through one carousel, with the first-run swipe hint.
 
+/* global pageState */  // page-state.js
 /* global readStoredFlag, storeFlag */  // local-store.js
 /* global noteDayChange */  // search-day.js
 /* global undoTruncation */  // showings.js
@@ -17,25 +18,12 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') stepDate(1);
 });
 
-// The day the centre grid is currently rendering. Tracked separately from the
-// `#date-filter` value because the carousel moves the dropdown to the target
-// up front (at slide start) while the centre grid keeps showing the old day
-// until the slide commits — `animateToDay` derives the slide direction from
-// THIS, not from the dropdown's already-moved index.
-let _appliedDay = null;
 
-// The day at the HEAD of the user's intent: the day the latest key-press /
-// pick is heading toward, which can sit ahead of `_appliedDay` while a slide
-// is still in flight (or while follow-on steps are queued). A keyboard step
-// advances from THIS, so a second arrow press stacked on an unfinished slide
-// moves a further day instead of recomputing the same one. Resync'd to
-// `_appliedDay` whenever the carousel finally settles with nothing queued.
-let _headDay = null;
 
 // The day the boot's first filter pass draws: whatever `#date-filter` says once the URL is applied.
 function rememberDisplayedDay() {
   const sel = document.getElementById('date-filter');
-  if (sel) _appliedDay = sel.value;
+  if (sel) pageState.appliedDay = sel.value;
 }
 
 // The Left/Right keys: step one day and slide there like a swipe. Clamps at
@@ -48,9 +36,9 @@ function stepDate(dir) {
   // Step from the day we're HEADING to (the in-flight / queued destination),
   // not the day currently rendered — so a second arrow press fired before the
   // first slide settles advances a further day rather than recomputing the
-  // same one (the press used to be dropped by the `_animating` guard). Falls
+  // same one (the press used to be dropped by the `pageState.animating` guard). Falls
   // back to the displayed day, then the dropdown value, when idle.
-  const from = ring.indexOf(_headDay ?? _appliedDay ?? sel.value);
+  const from = ring.indexOf(pageState.headDay ?? pageState.appliedDay ?? sel.value);
   if (from < 0) return;
   const next = from + dir;
   if (next < 0 || next >= ring.length) return;   // clamp at the ends — no wrap
@@ -85,7 +73,7 @@ function pickDay(value) {
 // The `#date-filter` dropdown changed — slide to the chosen day (one slide
 // toward the index delta, even for a multi-step jump). The select has already
 // moved to the new value by the time `onchange` fires; `animateToDay` reads
-// the still-displayed day from `_appliedDay`.
+// the still-displayed day from `pageState.appliedDay`.
 //
 // Unlike the arrow/keyboard/swipe paths (which wrap and want the shorter way
 // round the ring), a dropdown pick is a LINEAR list choice: the slide enters
@@ -97,7 +85,7 @@ function onDateSelect() {
   const sel = document.getElementById('date-filter');
   if (!sel) return;
   const ring    = dayRing();
-  const fromIdx = ring.indexOf(_appliedDay);
+  const fromIdx = ring.indexOf(pageState.appliedDay);
   const toIdx   = ring.indexOf(sel.value);
   const dir = (fromIdx < 0 || toIdx < 0) ? null : (toIdx > fromIdx ? 1 : -1);
   animateToDay(sel.value, dir);
@@ -111,8 +99,8 @@ function onDateSelect() {
 function onDateChange() {
   const sel = document.getElementById('date-filter');
   if (sel) {
-    noteDayChange(_appliedDay, sel.value);
-    _appliedDay = sel.value;
+    noteDayChange(pageState.appliedDay, sel.value);
+    pageState.appliedDay = sel.value;
   }
   syncDayPills();
   applyFilters();
@@ -148,9 +136,7 @@ function swipeAnimMs() {
     ? SWIPE_ANIM_MS
     : Math.round(SWIPE_ANIM_MS * DESKTOP_ANIM_FACTOR);
 }
-let _animating = false;   // guards re-entrancy while a commit animation runs
-function slideInFlight() { return _animating; }
-let _queuedDay = null;    // a day-step requested mid-slide → run as a follow-on slide on commit
+function slideInFlight() { return pageState.animating; }
 
 // A large city (`MovieControllerService.LargeCityShowtimeThreshold`, stamped
 // as `data-large-city` on `#view-root`) ships every showtime for every day
@@ -190,7 +176,6 @@ function stepDateWrap(direction) {
 const SWIPE_HINT_DAY  = 'kinowoSwipeHintDay';   // last calendar day (Warsaw) it was shown
 const SWIPE_HINT_DONE = 'kinowoSwipeHintDone';  // set on the first swipe → never show again
 const SWIPE_HINT_MS   = 3000;                   // auto-hide after this long if untouched
-let _swipeHintTimer = null;
 
 // Reveal the hint if this is a touch device, the user hasn't swiped before,
 // and it hasn't already shown today. Called once at boot.
@@ -203,13 +188,13 @@ function maybeShowSwipeHint() {
   if (readStoredFlag(SWIPE_HINT_DAY) === today) return;        // already shown today
   storeFlag(SWIPE_HINT_DAY, today);
   element.classList.add('visible');
-  clearTimeout(_swipeHintTimer);
-  _swipeHintTimer = setTimeout(() => element.classList.remove('visible'), SWIPE_HINT_MS);
+  clearTimeout(pageState.swipeHintTimer);
+  pageState.swipeHintTimer = setTimeout(() => element.classList.remove('visible'), SWIPE_HINT_MS);
 }
 
 // Hide the hint without retiring it (the user has started a horizontal drag).
 function dismissSwipeHint() {
-  clearTimeout(_swipeHintTimer);
+  clearTimeout(pageState.swipeHintTimer);
   document.getElementById('swipe-hint')?.classList.remove('visible');
 }
 
@@ -323,28 +308,28 @@ function setTrack(dx) {
 // committed-change behaviour), then tear the clones down.
 function commitDay(targetValue) {
   const sel = document.getElementById('date-filter');
-  if (sel) { sel.value = targetValue; onDateChange(); }   // sets `_appliedDay = targetValue`, re-syncs pills
+  if (sel) { sel.value = targetValue; onDateChange(); }   // sets `pageState.appliedDay = targetValue`, re-syncs pills
   window.scrollTo(0, 0);
   unmountNeighbors();
-  _animating = false;
+  pageState.animating = false;
   // A further day-step was requested mid-slide? Continue toward it now — one
   // follow-on slide from the just-committed day to the newest requested day —
   // so a rapid double-press advances twice instead of dropping the second
   // press. `onDateChange` just reset the pill to the intermediate day, so
   // re-flip it to the destination (synchronous → no flicker).
-  if (_queuedDay != null && _queuedDay !== _appliedDay) {
-    const next = _queuedDay;
-    _queuedDay = null;
+  if (pageState.queuedDay != null && pageState.queuedDay !== pageState.appliedDay) {
+    const next = pageState.queuedDay;
+    pageState.queuedDay = null;
     highlightDayPill(next);
     const ring = dayRing();
-    const from = ring.indexOf(_appliedDay);
+    const from = ring.indexOf(pageState.appliedDay);
     const to   = ring.indexOf(next);
     const dir  = (from < 0 || to < 0) ? 1 : (to >= from ? 1 : -1);
     runSlide(next, dir);
     return;
   }
-  _queuedDay = null;
-  _headDay = _appliedDay;
+  pageState.queuedDay = null;
+  pageState.headDay = pageState.appliedDay;
 }
 
 // Animate the armed track to the dir side and commit `targetValue` when it
@@ -356,7 +341,7 @@ function slideArmedTo(dir, targetValue, fromPx) {
   const w   = pagerWidth();
   const end = dir > 0 ? -2 * w : 0;   // -200vw reveals next, 0 reveals previous
   const ms  = swipeAnimMs();
-  _animating = true;
+  pageState.animating = true;
   track.style.transition = 'none';
   setTrack(fromPx || 0);
   void track.offsetWidth;
@@ -404,7 +389,7 @@ function runSlide(targetValue, dir) {
 // THE single entry point every day change funnels through. `targetValue` is a
 // `#date-filter` option value; `dir` (optional) forces a slide direction —
 // when omitted it's derived from the ring index delta between the CURRENTLY
-// DISPLAYED day (`_appliedDay`) and the target (a multi-step dropdown jump
+// DISPLAYED day (`pageState.appliedDay`) and the target (a multi-step dropdown jump
 // does ONE slide toward the delta's sign, not an animation through every
 // intermediate day). Wrap-around picks the shorter visual direction. Reduced
 // motion skips straight to the committed change.
@@ -417,20 +402,20 @@ function animateToDay(targetValue, dir) {
   // day lit until partway through the travel (the old mid-slide timer). The
   // finger-drag path keeps its own boundary-crossing preview.
   highlightDayPill(targetValue);
-  _headDay = targetValue;
-  if (targetValue === _appliedDay && !_animating) {   // already showing, nothing in flight
+  pageState.headDay = targetValue;
+  if (targetValue === pageState.appliedDay && !pageState.animating) {   // already showing, nothing in flight
     if (sel.value !== targetValue) { sel.value = targetValue; onDateChange(); }
-    _queuedDay = null;
+    pageState.queuedDay = null;
     return;
   }
   retireSwipeHint();   // any deliberate day change means they've got the gesture
   if (usesInstantDayChange()) { commitDay(targetValue); return; }
-  if (_animating) {
+  if (pageState.animating) {
     // A slide is already running: don't drop this step. Remember the latest
     // destination; the in-flight commit (`commitDay`) continues the slide on
     // to it. Rapid presses collapse to "go to the newest day" in one
     // follow-on slide.
-    _queuedDay = targetValue;
+    pageState.queuedDay = targetValue;
     return;
   }
   const slideDir = dir ?? shorterWayRound(targetValue);
@@ -442,7 +427,7 @@ function animateToDay(targetValue, dir) {
 // the day ring (+1 forward/right, -1 back), or null when either is not in it.
 function shorterWayRound(targetValue) {
   const ring = dayRing();
-  const from = ring.indexOf(_appliedDay);
+  const from = ring.indexOf(pageState.appliedDay);
   const to   = ring.indexOf(targetValue);
   if (from < 0 || to < 0) return null;
   const ringLength = ring.length;

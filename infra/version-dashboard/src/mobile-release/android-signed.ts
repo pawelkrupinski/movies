@@ -6,13 +6,14 @@
  */
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
+import { systemEnvironment } from "../host/system.js";
 import { unlockingWhenLocked, vaultSecrets } from "../app-stores/clients.js";
 import { runSigned, type SignedRun } from "./signing.js";
 
 /** Interactive: the child shares this terminal, and runs for as long as it takes (no timeout). */
 const inheritTerminal: SignedRun = (argv, env) =>
   new Promise((resolve, reject) => {
-    const child = spawn(argv[0] as string, argv.slice(1), { stdio: "inherit", env: { ...process.env, ...env } });
+    const child = spawn(argv[0] as string, argv.slice(1), { stdio: "inherit", env: { ...systemEnvironment(), ...env } });
     child.on("error", reject);
     child.on("exit", (code, signal) => resolve(code ?? (signal ? 128 : 1)));
   });

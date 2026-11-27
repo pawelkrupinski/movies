@@ -133,7 +133,7 @@ async function stressNavbar(page: Page): Promise<void> {
 
   // Re-run the page's filter pass so the Filtry button picks up the
   // disabledCinemas localStorage value (read on `applyFilters`,
-  // which `updateFormatBtn` runs through).
+  // which `updateFormatButton` runs through).
   await page.evaluate(() => {
     const fn = (globalThis as { applyFilters?: () => void }).applyFilters;
     if (typeof fn === 'function') fn();

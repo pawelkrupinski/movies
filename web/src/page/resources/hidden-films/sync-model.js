@@ -2,7 +2,7 @@
 // document's own fetches still in flight from the moment it starts, so "nothing
 // in flight" can be asked of the page itself, and drives the page's hide button
 // the way a visitor does.
-/* global hideFilm, _serverSyncTimer */
+/* global hideFilm, pageState */
 (function () {
   var inflight = 0;
   var original = window.fetch.bind(window);
@@ -19,7 +19,7 @@
     // Loaded, nothing in flight, and no debounced language push armed.
     idle: function () {
       return document.readyState === 'complete' && inflight === 0 &&
-        (typeof _serverSyncTimer === 'undefined' || _serverSyncTimer === 0);
+        (typeof pageState === 'undefined' || pageState.serverSyncTimer === 0);
     },
     // The card button's own handler, on a card carrying `title`.
     hideFilm: function (title) {

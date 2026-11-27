@@ -1,6 +1,7 @@
 // The finger swipe on the listing's grid: following the finger with the neighbour day's column,
 // then sliding on to that day or snapping back when it lifts (the slide itself: `day-carousel.js`).
 
+/* global pageState */  // page-state.js
 /* global highlightDayPill, syncDayPills */  // dates.js
 /* global armTrack, commitDay, dayTrack, dismissSwipeHint, neighborDay, pagerWidth, retireSwipeHint, setTrack,
    slideArmedTo, slideInFlight, swipeAnimMs, unmountNeighbors, usesInstantDayChange */  // day-carousel.js
@@ -16,7 +17,6 @@ const SWIPE_DEADZONE_PX = 10;    // horizontal travel before we lock to a swipe
 const SWIPE_VBAIL_PX    = 16;    // vertical must travel at least this far to even consider bailing
 const SWIPE_VBIAS_RATIO = 1.6;   // …and beat horizontal by this factor → it's a real vertical scroll
 
-let _drag = null;   // the finger drag in progress: where it began, its axis once locked, its speed
 
 // While a finger drag is in flight, move the day-pill highlight to the day a
 // release RIGHT NOW would land on: past the commit boundary → the neighbour
@@ -76,7 +76,7 @@ document.addEventListener('pointerdown', (e) => {
   if (!matchMedia('(pointer: coarse)').matches) return;
   if (!document.getElementById('view-root')) return;     // not the listing grid
   if (!document.getElementById('date-filter')) return;   // no day axis to step
-  _drag = { x0: e.clientX, y0: e.clientY, axis: null, lastDx: 0, vx: 0, lastT: e.timeStamp };
+  pageState.drag = { x0: e.clientX, y0: e.clientY, axis: null, lastDx: 0, vx: 0, lastT: e.timeStamp };
 }, { passive: true });
 
 // Claim a single-finger HORIZONTAL drag so the browser can't decide mid-drag
@@ -85,32 +85,32 @@ document.addEventListener('pointerdown', (e) => {
 // allowed; it fires only for a horizontal-leaning single touch, so vertical
 // scroll and two-finger pinch-zoom still pass through untouched.
 document.addEventListener('touchmove', (e) => {
-  if (!_drag || !e.cancelable || e.touches.length !== 1) return;
-  if (_drag.axis === 'x') { e.preventDefault(); return; }   // already a swipe — keep it
-  const tdx = Math.abs(e.touches[0].clientX - _drag.x0);
-  const tdy = Math.abs(e.touches[0].clientY - _drag.y0);
+  if (!pageState.drag || !e.cancelable || e.touches.length !== 1) return;
+  if (pageState.drag.axis === 'x') { e.preventDefault(); return; }   // already a swipe — keep it
+  const tdx = Math.abs(e.touches[0].clientX - pageState.drag.x0);
+  const tdy = Math.abs(e.touches[0].clientY - pageState.drag.y0);
   if (tdy >= SWIPE_VBAIL_PX && tdy > tdx * SWIPE_VBIAS_RATIO) return;
   if (tdx > tdy) e.preventDefault();
 }, { passive: false });
 
 document.addEventListener('pointermove', (e) => {
-  if (!_drag) return;
-  const dx = e.clientX - _drag.x0, dy = e.clientY - _drag.y0;
-  if (_drag.axis === null) lockDragAxis(dx, dy);
-  if (!_drag || _drag.axis !== 'x') return;
+  if (!pageState.drag) return;
+  const dx = e.clientX - pageState.drag.x0, dy = e.clientY - pageState.drag.y0;
+  if (pageState.drag.axis === null) lockDragAxis(dx, dy);
+  if (!pageState.drag || pageState.drag.axis !== 'x') return;
   // Track the latest delta + a smoothed velocity HERE — `pointerup`'s clientX
   // is unreliable on touch (iOS often reports the touchstart point or 0), so
   // the release decision reads `lastDx`/`vx`, never the pointerup coordinate.
-  const dt = Math.max(1, e.timeStamp - _drag.lastT);
-  _drag.vx = (dx - _drag.lastDx) / dt;   // px per ms
-  _drag.lastDx = dx;
-  _drag.lastT = e.timeStamp;
+  const dt = Math.max(1, e.timeStamp - pageState.drag.lastT);
+  pageState.drag.vx = (dx - pageState.drag.lastDx) / dt;   // px per ms
+  pageState.drag.lastDx = dx;
+  pageState.drag.lastT = e.timeStamp;
   // The track follows the finger 1:1 (on top of the parked -100vw), revealing
   // the neighbour day's column from whichever edge the finger pulls in; the
   // pill highlight previews the day a release would land on. A large city has
   // no neighbour mounted to reveal, so it skips the track transform and just
   // keeps the pill preview — the grid itself changes only on commit.
-  if (_drag.armed) {
+  if (pageState.drag.armed) {
     if (!usesInstantDayChange()) setTrack(dx);
     previewDayPillForDrag(dx);
   }
@@ -122,14 +122,14 @@ document.addEventListener('pointermove', (e) => {
 function lockDragAxis(dx, dy) {
   const adx = Math.abs(dx), ady = Math.abs(dy);
   // Clear vertical scroll — enough vertical travel AND vertical dominates → yield to the browser.
-  if (ady >= SWIPE_VBAIL_PX && ady > adx * SWIPE_VBIAS_RATIO) { _drag = null; return; }
+  if (ady >= SWIPE_VBAIL_PX && ady > adx * SWIPE_VBIAS_RATIO) { pageState.drag = null; return; }
   // Horizontal intent — past the deadzone and at least as horizontal as vertical → lock the swipe.
   if (adx < SWIPE_DEADZONE_PX || adx < ady) return;
-  _drag.axis = 'x';
+  pageState.drag.axis = 'x';
   dismissSwipeHint();                    // they're swiping — get the nudge out of the way
   // Large cities skip the neighbour-clone preview (see `usesInstantDayChange`)
   // — nothing to mount, but the gesture is still live and can still commit.
-  _drag.armed = usesInstantDayChange()
+  pageState.drag.armed = usesInstantDayChange()
     // Mount BOTH neighbour columns so either drag direction reveals the
     // right day from the screen edge, parked at -100vw. The day ring wraps,
     // so every direction has a destination.
@@ -141,8 +141,8 @@ function lockDragAxis(dx, dy) {
 // the day if the drag ended past ~40% of the width OR left with a quick flick;
 // otherwise snap back. Reads the tracked `lastDx`/`vx`.
 function endDrag() {
-  const drag = _drag;
-  _drag = null;
+  const drag = pageState.drag;
+  pageState.drag = null;
   if (!drag || drag.axis !== 'x') return;
   if (!drag.armed) { unmountNeighbors(); return; }   // arming failed — just clean up
   const dx    = drag.lastDx;
