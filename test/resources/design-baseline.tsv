@@ -735,7 +735,7 @@ mixed	scripts/ci/cgroup_sampler.py:start	3
 mixed	scripts/ci/check-security-headers.py:_opener	3
 mixed	scripts/ci/check-security-headers.py:fetch	5
 mixed	scripts/ci/check-security-headers.py:redact	4
-mixed	scripts/ci/ci_http_calls.py:otlp_payload	4
+mixed	scripts/ci/ci_http_calls.py:otlp_payload	3
 mixed	scripts/ci/ci_http_calls.py:read	6
 mixed	scripts/ci/ci_row_scope.py:Outputs.newest_green	5
 mixed	scripts/ci/ci_row_scope.py:Scripts.consumers_text	5
@@ -954,6 +954,7 @@ mixed	scripts/ci/pull_pinned_image.py:read_pin	5
 mixed	scripts/ci/python_floor_lint.py:floor_interpreter	5
 mixed	scripts/ci/python_floor_lint.py:floor_syntax	3
 mixed	scripts/ci/python_floor_lint.py:python_files	9
+mixed	scripts/ci/quality_metrics.py:send	3
 mixed	scripts/ci/quality_ratchet.py:check_one	14
 mixed	scripts/ci/quality_ratchet.py:check_tables	7
 mixed	scripts/ci/quality_ratchet.py:update_one	4
@@ -1616,6 +1617,6 @@ mixed	worker/src/main/scala/tools/HeapDumper.scala:HeapDumper.dump	3
 mixed	worker/src/main/scala/tools/HeapPressure.scala:HeapPressure.heldAfterCollection	3
 mixed	worker/src/main/scala/tools/ResidentialProxyProbe.scala:ResidentialProxyProbe.statusThrough	3
 fanout	scripts/design-rules/design_check.py	10
-distance	scripts/ci	0.54
+distance	scripts/ci	0.52
 distance	scripts/lib	0.72
 dircycle	scripts|scripts/ci	2
