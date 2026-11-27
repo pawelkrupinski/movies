@@ -66,7 +66,7 @@ class LinuxTest(ScriptTestsCase):
         self.assertEqual((1, 1, 0), (self.calls(f"^run .*--mount type=tmpfs,destination={git},tmpfs-mode=1777"),
                                      self.calls(f"^run .*-v {git}/objects:{git}/objects:ro"),
                                      self.calls(f"-v {git}:")))
-        self.assertEqual(1, self.calls(r'^run .* bash -c .*tar -xf - -C "\$0".* %s bash scripts/run-script-tests ' % git))
+        self.assertEqual(1, self.calls(r'^run .* bash -c .*tar -xf - -C "\$0".* %s .*scripts/run-script-tests ' % git))
         names = self.snapshot()
         self.assertEqual((True, True, True, []), ("config" in names, "HEAD" in names, "refs/heads/main" in names,
                                                   [n for n in names if n.startswith("objects")]))

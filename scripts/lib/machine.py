@@ -5,14 +5,18 @@ signal and wait for processes only through it; their tests hand in fakes where t
 
   environment()                    the process's own environment (a tool's main() hands it on)
   output(argv) / status(argv)      a command's stdout (and status) / its status, stdout and stderr as asked
+  errors(argv)                     a command's status and its stderr
   spawn(argv)                      a command started in the background (a Popen)
   send(pid, signal) / alive(pid)   a signal to a process (or its group) / whether it exists
   replace(argv)                    this process becomes the command (exec)
+  spawn_group(argv, env, tty)      a command leading a process group of its own, handed the terminal (tool_bounded)
+  piped(producer, consumer, how)   one command's stdout the next one's stdin (`a | b`): the consumer's status
   ps(...), tree_pids, cpu_centis, any_runnable, any_gone, children_flag   the process table, through `ps` on the PATH
   tree_shrank, kept_pids, pid_list, centis                                pure readings of its listings"""
 from __future__ import annotations
 
 import os
+import signal
 import subprocess
 import time
 from dataclasses import dataclass
@@ -41,6 +45,16 @@ def output(argv: Sequence[str], text_in: Optional[str] = None, cwd: Optional[str
            env: Optional[MutableMapping[str, str]] = None) -> Tuple[int, str]:
     """(status, stdout) of a command, its stderr dropped; 127 and nothing when it cannot be run."""
     return run(argv, Ran(cwd, env, subprocess.PIPE, subprocess.DEVNULL), text_in)
+
+
+def errors(argv: Sequence[str], cwd: Optional[str] = None) -> Tuple[int, str]:
+    """(status, stderr) of a command, its stdout dropped; 127 and nothing when it cannot be run."""
+    try:
+        done = subprocess.run(list(argv), cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                              stderr=subprocess.PIPE, text=True)
+    except OSError:
+        return 127, ""
+    return done.returncode, done.stderr
 
 
 def status(argv: Sequence[str], cwd: Optional[str] = None, env: Optional[MutableMapping[str, str]] = None,
@@ -78,6 +92,44 @@ def spawn(argv: Sequence[str], how: Ran = Ran(), own_group: bool = False) -> "su
     """A command started in the background, its stdin closed; in a process group of its own with `own_group`."""
     return subprocess.Popen(list(argv), cwd=how.cwd, env=how.env, stdin=subprocess.DEVNULL, stdout=how.out,
                             stderr=how.err, pass_fds=how.pass_fds, preexec_fn=os.setpgrp if own_group else None)
+
+
+def spawn_group(argv: Sequence[str], env: MutableMapping[str, str], tty: Optional[int]) -> "subprocess.Popen[bytes]":
+    """A command leading a process group of its own, this process's descriptors (a held ticket on 7 among them) and
+    stdin passed on; with `tty` (the terminal it reads, whose foreground this process holds), its group handed that
+    foreground before it runs, so one touching the terminal (stty, a prompt) is not stopped."""
+    def lead() -> None:
+        os.setpgrp()
+        if tty is not None:
+            signal.signal(signal.SIGTTOU, signal.SIG_IGN)
+            try:
+                os.tcsetpgrp(tty, os.getpid())
+            except OSError:
+                pass
+            signal.signal(signal.SIGTTOU, signal.SIG_DFL)
+    return subprocess.Popen(list(argv), env=dict(env), close_fds=False, preexec_fn=lead)
+
+
+def piped(producer: Sequence[str], consumer: Sequence[str], how: Ran = Ran()) -> int:
+    """`producer | consumer`: the consumer's status, its stdout and stderr where `how` says, the producer's stderr
+    this process's; 127 when either cannot be run."""
+    try:
+        left = subprocess.Popen(list(producer), cwd=how.cwd, env=how.env, stdin=subprocess.DEVNULL,
+                                stdout=subprocess.PIPE)
+    except OSError:
+        return 127
+    try:
+        right = subprocess.Popen(list(consumer), cwd=how.cwd, env=how.env, stdin=left.stdout, stdout=how.out,
+                                 stderr=how.err)
+    except OSError:
+        left.kill()
+        left.wait()
+        return 127
+    if left.stdout is not None:
+        left.stdout.close()
+    code = right.wait()
+    left.wait()
+    return code
 
 
 def send(pid: int, signum: int, group: bool = False) -> bool:

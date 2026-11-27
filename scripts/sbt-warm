@@ -149,16 +149,12 @@ from sbt_warm_call import Call, Tools  # noqa: E402
 from sbt_warm_keeper import Keeper, KeeperSettings  # noqa: E402
 from sbt_warm_servers import Checkout, Procs, Servers, read  # noqa: E402
 import tool_git  # noqa: E402
-from tool_cli import UsageError  # noqa: E402
+from tool_cli import UsageError, header_usage  # noqa: E402
 
 
 def usage() -> str:
     """The header above, as tool-conventions.sh's usage_from_header prints a shell tool's."""
-    with open(os.path.realpath(__file__)) as f:
-        lines = f.read().splitlines()[1:]
-    header = [line for line in lines[: next(i for i, line in enumerate(lines) if not line.startswith("#"))]]
-    text = [line[2:] if line.startswith("# ") else line[1:] for line in header]
-    return "\n".join(text[1:] if text and text[0] == "" else text) + "\n"
+    return header_usage(os.path.realpath(__file__))
 
 
 def legacy(argv: List[str]) -> None:

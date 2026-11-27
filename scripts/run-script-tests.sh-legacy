@@ -1,0 +1,960 @@
+#!/usr/bin/env bash
+# Purpose: Every script self-test, found by its name and run in parallel: the one way CI, the pre-push hook and a person at a terminal run them
+# Every script self-test, found by its name and run in parallel: the one way CI, the pre-push hook and
+# a person at a terminal run them.
+#
+#   scripts/run-script-tests                       # every self-test (the untagged ones)
+#   scripts/run-script-tests scripts/ci identity   # only those whose path is under / contains / matches one of these
+#   scripts/run-script-tests --changed origin/main # only those whose test, tool, a file they name, or one they
+#                                                  # source or import (transitively) changed
+#   scripts/run-script-tests --list [--all]        # what would run: path, tag, reason (tab-separated)
+#   scripts/run-script-tests --tag manual          # only the tests tagged so (see TAGS)
+#   scripts/run-script-tests --reads               # every glob a test declares it reads (see READS), one a line
+#   scripts/run-script-tests --changed A --readers # only those a glob they declare they read selects (READS)
+#   scripts/run-script-tests --paths FILE --list   # what --changed would select for the paths FILE lists, one a line
+#                                                  # (no git: the land queue asks which tests two changes share)
+#   scripts/run-script-tests --bash "$(scripts/floor-bash)"  # every self-test under the floor bash 3.2 (macOS's
+#                                                  # /bin/bash; elsewhere scripts/floor-bash --install builds it)
+#   scripts/run-script-tests --changed origin/main --bash "$(scripts/floor-bash)"  # the floor's own scope (FLOOR)
+#   scripts/run-script-tests --changed origin/main --floor "$(scripts/floor-bash)" # both in ONE run: the floor's scope
+#                                                  # under the floor bash, the rest natively (FLOOR; the pre-push hook)
+#   scripts/run-script-tests --linux [<names>]     # the selected tests in an ubuntu-26.04 container, as CI runs
+#                                                  # them (default: those --changed origin/main selects); Docker
+#   scripts/run-script-tests --stress 8 [<names>]  # each named test (none named: each concurrency-heavy one, STRESS)
+#                                                  # run 8 times at once beside a CPU burner a core; with --changed,
+#                                                  # the concurrency-heavy ones it selects (the hook's PREPUSH_STRESS=N)
+#
+# Options: --jobs N (8 at once; under --stress every run at once), --burn K (--stress's CPU burners: one a core), --stall S (a test ended after 300 s without progress), --timeout S (a wall-clock
+# ceiling on each test; none by default), --root DIR (the checkout; this script's own),
+# --bash PATH (each .sh test run by it, and first on the PATH as `bash`, so the tools it starts through their
+# `#!/usr/bin/env bash` and every `bash -c` run by it too).
+#
+# WHY. The self-tests were listed by hand: ~60 lines of one background step in ci.yml plus single
+# lines in six other workflows, and a test nobody listed ran nowhere (ScriptSelfTestsRunInCiSpec
+# caught several). Found by name, a new test runs the moment it exists: NAME IT `<tool>-test.sh` or
+# `<tool>_test.py`, beside its tool, under one of the roots below, and nothing needs wiring.
+#
+# TAGS. A `# script-test: <tag> <why>` line in a test's first 40 lines keeps it out of the default
+# run: `manual` for one that needs what no CI job has (a live replica set, a device farm) or is not a
+# self-test at all; any other tag (`own-job`, ...) for one a workflow runs by name where its toolchain
+# is (ScriptSelfTestsRunInCiSpec holds those to it). `--tag <tag>` runs them; `--all` lists everything.
+#
+# READS. A test holding the repository's own files to a rule (every workflow, every .py, every Scala spec) names none of
+# them, so --changed never selected it for the edit it exists to catch, and the pre-push hook let that edit land: 18 of
+# Tool self-tests' first 35 reds (download_artifact_layout_test.py #259-263 on a workflow, python_floor_lint_test.py
+# #131-134 on a .py, lint-registry-test.sh #158-166 and #194 on a spec). Such a test says what it reads, in a
+# `# script-test-reads: <glob> [<glob>...]` line in its first 40 lines, the globs relative to the root, `*` crossing
+# `/` (a `case` pattern); --changed selects it when a changed path matches one, and the pre-push hook runs its
+# `scripttests` check for such a path (`--reads`). An extensionless tool (scripts/hooks/pre-push) is named by its
+# directory and name (`hooks/pre-push`), a test naming it so selected by its edit (pre-push-gate-test.sh, #71-72); an
+# extensionless Python tool is a .py to a declared glob (`*.py` selects the floor lint for infra/bin/fleet-ssh).
+# `--readers` keeps, of what --changed selects, only the tests a declared glob selects: what the hook's --verify-only
+# runs over agentctl's combined tree, where a change and what landed beside it share no file, yet a test holding every
+# .py or spec to a rule can break on the two together.
+#
+# FLOOR. `--bash` with `--changed` is the pre-push hook's floor run, scoped to what a change can break under 3.2 (it
+# re-ran every selected test, ~+70 s a landing, 2026-11-16): every bash file the change touches (a .sh, or an
+# extensionless file with a bash shebang) parsed by that bash (`-n`: ed160b94b's `case ... in pat)` inside `$( )`,
+# Order independence #72), its ADDED lines held to the constructs bash 3.2 lacks (scripts/floor-constructs.tsv: declare -A,
+# mapfile, ${x,,}, wait -n, ...; a line's comment is no code), each finding a `FLOOR <file>:<line>: <construct>` row
+# failing the run -- and, re-run under it, the self-tests of those bash files and of the scripts sourcing them, never a
+# test selected only by a name it mentions or a glob it reads (those run on today's bash: no bash the change touched
+# is theirs to run). tool-self-tests.yml's macOS job runs a push's floor scope, and on a dispatch every self-test under it.
+# `--floor <bash>` with `--changed` is both runs in ONE: the floor's static half, the floor's scope under it, and every
+# other selected test natively, in one pool of --jobs. The hook ran the two side by side, so a test in both ran twice at
+# once -- pre-push-test.sh, ~150-220 s each, kept a hook change ~+43 s (+14%) over its budget by the contention alone
+# (2026-11-16) -- and each test of the floor's scope now runs once, under 3.2. Its run on today's bash is the --linux
+# run's (CI's ubuntu bash 5) and CI's; a construct that bash 5 rejects and 3.2 accepts is the rare way round.
+#
+# LONGEST FIRST. A run lasts as long as its slowest slot, and a few tests take minutes where most take seconds, so a slow
+# one started last stretches the run. Tests start in descending order of the seconds their last PASS took, kept in
+# $RUN_SCRIPT_TESTS_DURATIONS (default ~/.cache/kinowo-script-tests/durations.tsv, `path<TAB>seconds`, merged and
+# replaced by temp file + mv, so concurrent runs lose at worst one another's update). A test with no recorded time
+# (new, or no cache: CI's container, --linux) starts FIRST, the larger file first -- it may be a slow one, and size
+# is the only proxy there is. Only the order changes, never which tests run nor their verdicts.
+#
+# Each test runs from the checkout's root, `bash` for .sh and `python3` for .py, stdin closed, in a
+# process group of its own (tool-conventions.sh's `bounded`: the whole group ended, and a Ctrl-C
+# reaching it, which GNU timeout's own process group would not).
+#
+# A NO-PROGRESS BOUND, NOT A WALL CLOCK (scripts/stall-watch.sh): a test is ended, STALLED, once it has
+# gone --stall seconds with no output, no CPU in its processes and none of them runnable, and its log
+# says what the group was stuck on (scripts/stall-report.sh). A test that is working is never cut short
+# however long a loaded machine makes it: Tool self-tests #2857 ran four of them (identity-takes-check,
+# pre-push, pre-push-tools, identity-measure; 115-450 s on a quiet runner) under a load of 160 and cut
+# each, passing case after passing case, at the 600 s a test it had then. --timeout S adds a wall-clock
+# ceiling for a caller that wants one; CI's is the job's own timeout. The table names each PASS / FAIL /
+# STALLED / TIMEOUT with its seconds; a failure's last lines follow.
+# STRESS. A race between a test's own processes (a background compile and the resolve reading the tree it lays out:
+# identity-what-if-test.sh, Order independence #89-#91, fixed in 8be54b489; sbt-warm-test.sh's keeper #74;
+# identity-slice-test.sh #94) shows on the slow 3-core macOS runner and almost never on a laptop. `--stress N` makes the
+# laptop that runner: every named test N times, all at once (--jobs: N x tests), beside --burn K busy loops (one a core),
+# its table a row a run, and a verdict a test (`STRESS <test>: K of N failed`). A test whose first 40 lines say
+# `# script-test-stress: <why>` is CONCURRENCY-HEAVY: `--stress N` with no names runs those, with --changed those it
+# selects; a --changed run that selects one says so, naming the command. The pre-push hook stresses them only when
+# asked (PREPUSH_STRESS=N): a stressed what-if test is minutes of CPU, past the landing budget. No durations are kept and
+# the tree is not checked under --stress (copies of one test share the checkout on purpose). The burners end with the
+# run, and by themselves once it is gone. It reproduces what the runner did: sbt-warm-test.sh at the parent of f69ccf47f
+# (its busy stub ending before the first poll) failed 6 of 6 at `--stress 6 --burn 36` on an 18-core laptop, main 0 of
+# 6. Races needing a slow disk rather than a slow CPU (identity-what-if's tree layout, #89-#91) it did not reproduce.
+#
+# THE TREE IS LEFT AS FOUND. Every test shares ONE checkout with the 7 others running beside it, so a file one test leaves
+# there is read by the next: js-quality-report-test.sh's `npm ci` left scripts/js-quality/node_modules, and
+# tool-jvm-headless-test.sh's `grep -r` read it (Order independence #99) -- the victim failed, the polluter passed. So the
+# polluter fails: the checkout's state (`git status --porcelain --ignored`: what is new, changed, deleted, or new and
+# ignored) is taken before the run and after it, and each path new after it is put on the test that made it, a test FAIL
+# (POLLUTE) naming it. Under --jobs, who made it is read in two steps. Its candidates are the tests running when it was
+# made (its ctime -- tar or `cp -p` keep an mtime, never a ctime -- inside a test's start..end); then each candidate runs
+# AGAIN, ALONE, with the leftovers moved aside, and the one that makes a path again is its polluter (the leftovers are put
+# back afterwards: the tree ends as the run left it). Confirming costs a run of each candidate, paid only when something
+# was left. A path no candidate makes again alone (an edit beside the run, a co-agent's sbt writing target/) is said and
+# does not fail the run. Two snapshots cost ~1 s a run; a per-test snapshot could not tell 8 concurrent tests apart
+# anyway. Skipped (RUN_SCRIPT_TESTS_TREE_CHECK=0 -- the landing check's beside run sets it, scripts/ci/hook-beside.sh:
+# another run writes the same checkout --, or a --root that is no writable git checkout: --linux's read-only copy). Tests install their tools outside the tree (~/.cache/kinowo/<tool>/<lock hash>, js-quality-report), and run
+# with PYTHONDONTWRITEBYTECODE=1: an import's __pycache__ is no test's to leave. `python3 -I` ignores that variable (-I
+# implies -E), so every launch passes -B beside it (scripts/lib/tool_python.py; its test refuses one without).
+#
+# THE GOVERNOR. A run (and --linux's container, and its image build) holds a governor ticket on the Mac (jvm-gate.sh
+# gov_width, `agentctl gov`), charged its parallelism (--jobs, or fewer tests): while the laptop is starved it waits for
+# admission, then starts by itself (the owner, 2026-11-19). None under a ticket already (AGENTCTL_GOV_WIDTH: a check's
+# hook, whose width caps --jobs), off the Mac, with KINOWO_GOVERNOR=0, or riding a parent's. The tests themselves run
+# with descriptor 7 closed and KINOWO_JVM_SLOT_HELD unset -- a test of the gate fakes its own governor and must see no
+# ticket of this run's (and shell-spec.sh keeps the real governor out of every spec) -- and AGENTCTL_GOV_WIDTH=1: each
+# holds one core of the run's ticket, so a fan-out inside one (scripts/gov-parallel) runs one wide, ticketless.
+# Exit: 0 all passed (or none selected by --changed), 1 any failed or a filter matched nothing,
+# 2 a --changed base that is no commit, 64 usage. Bash 3.2 (macOS /bin/bash): no wait -n, no maps.
+set -uo pipefail
+# The tree check's switch is this run's own, never its tests': read here and dropped from the environment, so a test
+# that runs run-script-tests or the landing check's hook itself (run-script-tests-test.sh, hook-beside-test.sh) sees
+# none -- under the landing check's beside run (=0) those tests' own tree checks silently went off (run 45004298899).
+tree_check_flag=${RUN_SCRIPT_TESTS_TREE_CHECK:-1}
+unset RUN_SCRIPT_TESTS_TREE_CHECK
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "${BASH_SOURCE[0]}")/tool-conventions.sh" # bounded: each test under its timeout, Ctrl-C reaching it
+# shellcheck source=scripts/jvm-gate.sh
+. "$(dirname "${BASH_SOURCE[0]}")/jvm-gate.sh" # gov_hold: the run under a governor ticket (THE GOVERNOR, above)
+# A self-test runs its tool as a test, never as the CI step it is run from: one that reads GITHUB_STEP_SUMMARY or
+# GITHUB_OUTPUT would write into the calling step's own. Nor does it see the run it is in: the ref, event, commit, forge
+# and run a workflow step is about are a tool's INPUTS, which a test sets itself, so a test passing on a laptop (where
+# none is set) once failed on CI by reading the job's own -- GITHUB_SERVER_URL turning fleetkit-access-test.sh's Forgejo
+# case into GitHub's (#1-3), the push event making commit-rules-ci-test.sh's branch run a push to main (#21), GITHUB_REF
+# leaking into identity-drift-check-test.sh (#172). Each was fixed in its test; here, no test sees them.
+unset GITHUB_STEP_SUMMARY GITHUB_OUTPUT GITHUB_ENV GITHUB_PATH GITHUB_STATE \
+  GITHUB_REF GITHUB_REF_NAME GITHUB_REF_TYPE GITHUB_REF_PROTECTED GITHUB_HEAD_REF GITHUB_BASE_REF GITHUB_SHA \
+  GITHUB_EVENT_NAME GITHUB_EVENT_PATH GITHUB_SERVER_URL GITHUB_API_URL GITHUB_GRAPHQL_URL GITHUB_REPOSITORY \
+  GITHUB_REPOSITORY_OWNER GITHUB_RUN_ID GITHUB_RUN_NUMBER GITHUB_RUN_ATTEMPT GITHUB_WORKFLOW GITHUB_WORKFLOW_REF \
+  GITHUB_JOB GITHUB_ACTOR GITHUB_TRIGGERING_ACTOR
+# ...nor writes an import's bytecode into the checkout (THE TREE IS LEFT AS FOUND)
+export PYTHONDONTWRITEBYTECODE=1
+
+Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin infra/nix/bin infra/nix/files data"
+# The oldest python3 every Python tool runs on: macOS's /usr/bin/python3 (3.9). scripts/ci/python_floor_lint.py holds
+# the code to it -- no syntax, and no annotation evaluated at runtime, newer than this.
+PythonFloor="3.9"
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+stall_report="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stall-report.sh" # this script's own, whatever --root
+stall_watch="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stall-watch.sh"
+linux_tree_sync="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/linux-tree-sync.py" # --linux's copy of the checkout
+jobs=8 jobs_given=0 stress=0 burn="" timeout_s=0 stall_s=300 list=0 all=0 reads=0 readers=0 tag="" changed_base="" paths_file="" test_bash="" floor_bash="" linux=0 filters=()
+usage() { usage_from_header "${BASH_SOURCE[0]}" >&2; exit 64; }
+# A caller's mistake exits 64 here (above), not tool-conventions.sh's 2: flag_value's missing value too.
+usage_error() { echo "run-script-tests: $*" >&2; usage; }
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --jobs) flag_value "$@"; jobs="$2"; jobs_given=1; shift ;;
+    --stress) flag_value "$@"; stress="$2"; shift ;;
+    --burn) flag_value "$@"; burn="$2"; shift ;;
+    --timeout) flag_value "$@"; timeout_s="$2"; shift ;;
+    --stall) flag_value "$@"; stall_s="$2"; shift ;;
+    --root) flag_value "$@"; root="$(cd "$2" && pwd)" || exit 64; shift ;;
+    --list) list=1 ;;
+    --all) all=1 ;;
+    --reads) reads=1 ;;
+    --readers) readers=1 ;;
+    --tag) flag_value "$@"; tag="$2"; shift ;;
+    --changed) flag_value "$@"; changed_base="$2"; shift ;;
+    --paths) flag_value "$@"; paths_file="$2"; changed_base="(the paths in $2)"; shift ;;
+    --bash) flag_value "$@"; test_bash="$2"; shift ;;
+    --floor) flag_value "$@"; floor_bash="$2"; shift ;;
+    --linux) linux=1 ;;
+    -h|--help) usage_from_header "${BASH_SOURCE[0]}"; exit 0 ;;
+    -*) echo "run-script-tests: unknown option $1" >&2; usage ;;
+    *) filters+=("$1") ;;
+  esac
+  shift
+done
+cd "$root" || exit 64
+[ "$readers" = 0 ] || [ -n "$changed_base" ] || usage_error "--readers needs --changed"
+[ -z "$paths_file" ] || [ "$list" = 1 ] || usage_error "--paths only lists (--list): a run is --changed's"
+case "$stress" in *[!0-9]*) usage_error "--stress takes a count" ;; esac
+[ "$stress" = 0 ] || [ "$linux" = 0 ] || usage_error "--stress runs here, not --linux"
+[ -z "$floor_bash" ] || { [ -n "$changed_base" ] && [ -z "$test_bash" ]; } || usage_error "--floor needs --changed, and no --bash"
+# --linux with nothing named: the tests the pre-push hook would run, those the changes since origin/main touch
+[ "$linux" = 1 ] && [ ${#filters[@]} -eq 0 ] && [ -z "$changed_base" ] && [ -z "$tag" ] && changed_base=origin/main
+
+# declared_width <test> -> the width its `# script-test-width: N` line (first 40 lines) declares, 1 without one: a test
+# that fans out itself (a mutation test's scripts/gov-parallel -P 4) runs that wide when the run's ticket is charged it
+declared_width() {
+  local w
+  w=$(sed -n '1,40s/^# script-test-width: *\([0-9][0-9]*\).*/\1/p' "$1" 2>/dev/null | head -1)
+  _gov_whole "${w:-1}"
+}
+# govern_run <tests> -> THE GOVERNED FAN-OUT's width for min(--jobs, <tests>) (THE GOVERNOR; jvm-gate.sh gov_width): a
+# ticket charged that many cores plus every selected wide test's extra (declared_width - 1) while that sum fits the
+# machine's cores, or within the one this run is under (a check's hook: at most its width); --jobs is then that width,
+# or the narrower one the governor granted (agentctl 58a5ad1's --min-cores), the wide tests' extra then counted only
+# when the grant covers it.
+# TEST_WIDTH, what each test runs under (AGENTCTL_GOV_WIDTH, run_one): unset without a governor (CI: a test's own
+# fan-out as wide as it asks), its declared width under the run's own ticket that counts it, else 1 -- one core of it.
+# Its tests see no ticket either way (descriptor 7 closed in run_one).
+TEST_WIDTH="" WIDE_TESTS=0
+govern_run() {
+  local want=$jobs extra=0 p cores
+  [ "$1" -lt "$want" ] && want=$1
+  [ "$want" -ge 1 ] || return 0
+  governor_bin > /dev/null || return 0
+  TEST_WIDTH=1
+  while IFS="$(printf '\t')" read -r p _; do
+    extra=$((extra + $(declared_width "$root/$p") - 1))
+  done < "$work/selected"
+  cores=$(getconf _NPROCESSORS_ONLN 2> /dev/null || echo 0)
+  [ $((want + extra)) -le "${cores:-0}" ] || extra=0
+  gov_width run-script-tests script-tests $((want + extra)) 2
+  # the wide tests' extra counts only within the cores granted (THE GRANTED WIDTH: a grant may be narrower than the ask):
+  # out of a grant wider than it, the wide tests keep their width and the pool runs in what is left; a grant no wider
+  # than the extra runs every test one wide (a 1-wide mutation run of short-lived children reads as a stall)
+  if [ -n "$JVM_SLOT" ] && [ "$extra" -gt 0 ] && [ "$GOV_WIDTH" -gt "$extra" ]; then
+    WIDE_TESTS=1
+    [ $((GOV_WIDTH - extra)) -ge "$want" ] || jobs=$((GOV_WIDTH - extra))
+  elif [ "$GOV_WIDTH" -lt "$want" ]; then
+    jobs=$GOV_WIDTH
+  fi
+  unset KINOWO_JVM_SLOT_HELD
+}
+
+# ── Discovery ──────────────────────────────────────────────────────────────────────────────────
+discover() { # every self-test under the roots: path<TAB>tag<TAB>reason
+  local r present=()
+  for r in $Roots; do [ -d "$r" ] && present+=("$r"); done
+  [ ${#present[@]} -eq 0 ] && return 0
+  find "${present[@]}" \( -name node_modules -o -name build -o -name .build -o -name target \) -prune -o \
+        -type f \( -name '*-test.sh' -o -name '*_test.py' \) -print \
+    | LC_ALL=C sort -u \
+    | while IFS= read -r path; do
+        local marker
+        marker="$(head -40 "$path" | sed -n 's/^#[[:space:]]*script-test:[[:space:]]*//p' | head -1)"
+        if [ -n "$marker" ]; then
+          printf '%s\t%s\t%s\n' "$path" "${marker%%[[:space:]]*}" "$(printf '%s' "${marker#"${marker%%[[:space:]]*}"}" | sed 's/^[[:space:]]*//')"
+        else
+          printf '%s\t-\t\n' "$path"
+        fi
+      done
+}
+
+# Every `<test path> <glob>` the tests' `# script-test-reads:` lines (in their first 40) declare: one grep, whatever the size.
+declared_reads() { # test paths on stdin -> path<TAB>glob, one a line
+  tr '\n' '\0' | xargs -0 grep -HnE '^#[[:space:]]*script-test-reads:' 2>/dev/null \
+    | awk '{ colon = index($0, ":"); path = substr($0, 1, colon - 1); rest = substr($0, colon + 1)
+             colon = index(rest, ":"); if (substr(rest, 1, colon - 1) + 0 > 40) next
+             sub(/^[^:]*:#[[:space:]]*script-test-reads:[[:space:]]*/, "", rest)
+             n = split(rest, globs, /[[:space:]]+/); for (i = 1; i <= n; i++) if (globs[i] != "") print path "\t" globs[i] }'
+}
+if [ "$reads" = 1 ]; then
+  discover | cut -f1 | declared_reads | cut -f2 | LC_ALL=C sort -u
+  exit 0
+fi
+
+matches_filter() { # <path>: no filters, or one names a directory above it, a substring of it, or a glob matching it
+  [ ${#filters[@]} -eq 0 ] && return 0
+  local f
+  for f in "${filters[@]}"; do
+    f="${f%/}"
+    # shellcheck disable=SC2254 # the filter is a glob on purpose
+    case "$1" in "$f"|"$f"/*|*"$f"*|$f) return 0 ;; esac
+  done
+  return 1
+}
+
+# The paths a --changed run is about: committed since leaving the base, plus uncommitted and untracked.
+changed_paths() {
+  if [ -n "$paths_file" ]; then # --paths: the paths given, the working tree's scripts reading them
+    [ -r "$paths_file" ] || { echo "run-script-tests: --paths $paths_file cannot be read" >&2; return 2; }
+    grep -v '^$' "$paths_file" | LC_ALL=C sort -u
+    return 0
+  fi
+  git rev-parse -q --verify "$changed_base^{commit}" >/dev/null 2>&1 \
+    || { echo "run-script-tests: --changed $changed_base is no commit" >&2; return 2; }
+  { git diff --name-only "$changed_base...HEAD" && git diff --name-only HEAD && git ls-files --others --exclude-standard; } \
+    | LC_ALL=C sort -u
+}
+
+stem() { # <file name> -> the tool name a test or tool shares, - and _ alike, extension dropped
+  local n="${1%.*}"; n="${n%-test}"; n="${n%_test}"; printf '%s' "$n" | tr _ -; }
+
+# A library's change reaches the tests of every tool that uses it, though none of them names it: what a changed file
+# is sourced or imported by (bash `. f` / `source f` / `# shellcheck source=f`; python `import m` / `from m import`),
+# however deep, counts as changed too. A sourced or imported name is resolved among the checkout's own scripts by file
+# name, the importer's directory's alone when it has one (a module a tool finds through the sys.path it extends is
+# named so too); a name none of them has (os, json) is the standard library's. One grep and one awk, whatever the size.
+script_index() { # the checkout's scripts: what a source or an import can name
+  # shellcheck disable=SC2086 # the roots, a word each
+  { git ls-files -- $Roots; git ls-files --others --exclude-standard -- $Roots; } 2>/dev/null \
+    | grep -E '\.(sh|py)$|(^|/)[^./]+$' | LC_ALL=C sort -u
+}
+with_their_users() { # <changed paths file> -> those paths, and every script that sources or imports one, transitively
+  script_index > "$work/index"
+  tr '\n' '\0' < "$work/index" | xargs -0 grep -HE \
+    '^[[:space:]]*(\.|source)[[:space:]]|shellcheck[[:space:]]+source=|^[[:space:]]*(import|from)[[:space:]]+[A-Za-z_]' \
+    2>/dev/null > "$work/uses"
+  awk '
+    function dir_of(p) { return p ~ /\// ? substr(p, 1, match(p, /\/[^\/]*$/) - 1) : "." }
+    function base_of(p) { sub(/.*\//, "", p); return p }
+    function use(importer, name,   d, n, i, paths) {
+      d = dir_of(importer)
+      if ((d "/" name) in indexed) { users[d "/" name] = users[d "/" name] " " importer; return }
+      n = split(named[name], paths, " ")
+      for (i = 1; i <= n; i++) if (paths[i] != importer) users[paths[i]] = users[paths[i]] " " importer
+    }
+    FILENAME == ARGV[1] { indexed[$0] = 1; named[base_of($0)] = named[base_of($0)] " " $0; next }
+    FILENAME == ARGV[2] {
+      colon = index($0, ":"); importer = substr($0, 1, colon - 1); line = substr($0, colon + 1)
+      if (line ~ /^[[:space:]]*(import|from)[[:space:]]/) {
+        if (importer ~ /\.sh$/) next
+        sub(/^[[:space:]]*(import|from)[[:space:]]+/, "", line); match(line, /^[A-Za-z_][A-Za-z0-9_]*/)
+        use(importer, substr(line, 1, RLENGTH) ".py"); next
+      }
+      while (match(line, /[A-Za-z0-9_.-]+\.sh/)) { use(importer, substr(line, RSTART, RLENGTH)); line = substr(line, RSTART + RLENGTH) }
+      next
+    }
+    { if (!($0 in out)) { out[$0] = 1; queue[++tail] = $0 } }
+    END {
+      for (head = 1; head <= tail; head++) {
+        print queue[head]
+        n = split(users[queue[head]], more, " ")
+        for (i = 1; i <= n; i++) if (!(more[i] in out)) { out[more[i]] = 1; queue[++tail] = more[i] }
+      }
+    }' "$work/index" "$work/uses" "$1"
+}
+
+# What touched_by reads, worked out once a run rather than once a test and a changed path: the changed paths, each one's
+# "<dir> <stem>" (its test's, were it a tool), and a pattern a test naming it matches.
+changed_keys() { # <changed paths file> -> $work/changed.keys and $work/changed.names
+  awk -v keys="$work/changed.keys" -v names="$work/changed.names" '
+    NF {
+      dir = $0 ~ /\// ? substr($0, 1, match($0, /\/[^\/]*$/) - 1) : "."
+      name = $0; sub(/.*\//, "", name)
+      stem = name; sub(/\.[^.]*$/, "", stem); sub(/-test$/, "", stem); sub(/_test$/, "", stem); gsub(/_/, "-", stem)
+      print dir " " stem > keys
+      if (name ~ /\./) { gsub(/[.[\\*^$]/, "\\\\&", name); print "(^|[^A-Za-z0-9_.-])" name "([^A-Za-z0-9_-]|$)" > names }
+      else if (dir != ".") {
+        # an extensionless tool, named by its directory and name: the bare name (land, pre-push) is a word in prose
+        parent = dir; sub(/.*\//, "", parent); name = parent "/" name
+        gsub(/[.[\\*^$]/, "\\\\&", name); print "(^|[^A-Za-z0-9_.-])" name "([^A-Za-z0-9_-]|$)" > names
+      }
+    }' "$1"
+  touch "$work/changed.keys" "$work/changed.names"
+}
+
+touched_by() { # <test path> <changed paths file>: the test, its tool, a file whose name it mentions, or one it reads
+  if [ "$readers" = 1 ]; then reads_changed "$1" "$2"; return; fi # --readers: a glob it declares, alone
+  grep -qxF "$1" "$2" && return 0
+  grep -qxF "$(dirname "$1") $(stem "$(basename "$1")")" "$work/changed.keys" && return 0
+  [ -z "$test_bash" ] || return 1 # the floor's scope: a changed bash file's own self-test only (FLOOR)
+  [ -s "$work/changed.names" ] && grep -qEf "$work/changed.names" "$1" 2>/dev/null && return 0
+  reads_changed "$1" "$2"
+}
+reads_changed() { # <test path> <changed paths file>: a changed path matches a glob the test declares it reads
+  local test glob changed
+  while IFS="$(printf '\t')" read -r test glob; do
+    [ "$test" = "$1" ] || continue
+    while IFS= read -r changed; do
+      # shellcheck disable=SC2254 # the declared glob is a pattern on purpose
+      case "$changed" in $glob) return 0 ;; esac
+    done < "$2.reads"
+  done < "$work/reads"
+  return 1
+}
+# The changed paths as a declared glob sees them: each, and an extensionless Python tool (a python shebang) as a .py
+# too -- infra/bin/fleet-ssh broke the 3.9 floor and no glob `*.py` selected python_floor_lint_test.py (0544a8f758)
+as_read() { # <changed paths file> -> <file>.reads
+  local path
+  while IFS= read -r path; do
+    echo "$path"
+    case "${path##*/}" in
+      *.*) ;;
+      *) [ -f "$path" ] && head -1 "$path" 2>/dev/null | grep -qE '^#!.*python' && echo "$path.py" ;;
+    esac
+  done < "$1" > "$1.reads"
+}
+
+# ── The floor's static half (FLOOR): the bash the change touches, parsed by --bash, its added lines held to 3.2 ────
+bash_sources() { # paths on stdin -> those that are bash: a .sh, or an extensionless file with a bash shebang
+  local path
+  while IFS= read -r path; do
+    [ -f "$path" ] || continue
+    case "${path##*/}" in
+      *.sh) echo "$path" ;;
+      *.*) ;;
+      *) head -1 "$path" 2>/dev/null | grep -qE '^#!.*[/ ]bash([[:space:]]|$)' && echo "$path" ;;
+    esac
+  done
+}
+# path<TAB>line<TAB>text of each line the change adds to these files, as they are now: the working tree against where it
+# left the base (committed and uncommitted alike -- a line a commit added and the tree took out again is none), untracked
+# files whole
+added_lines() { # <bash files file>
+  [ -s "$1" ] || return 0
+  local path since
+  since="$(git merge-base "$changed_base" HEAD)" || return 0
+  {
+    tr '\n' '\0' < "$1" | xargs -0 git diff -U0 --no-color --no-ext-diff "$since" --
+    while IFS= read -r path; do
+      git ls-files --error-unmatch -- "$path" > /dev/null 2>&1 || git diff -U0 --no-color --no-index /dev/null "$path"
+    done < "$1"
+  } | awk '
+    /^\+\+\+ / { path = substr($0, 5); sub(/^b\//, "", path); next }
+    /^@@ / { split($3, plus, ","); line = substr(plus[1], 2) + 0; next }
+    /^\+/ && path != "" { print path "\t" line "\t" substr($0, 2); line++ }'
+}
+# The constructs bash 3.2 lacks, one ERE and what to say a row: data beside this script (scripts/floor-constructs.tsv),
+# so no bash file holds them as text. A file whose first 40 lines say `# bash-floor: <why>` names them as DATA (this
+# script's own test): it is parsed by the floor, its lines never held to the table.
+floor_constructs="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/floor-constructs.tsv"
+floor_findings() { # <bash files file> -> a `FLOOR <file>[:<line>]: <why>` row for each thing the floor cannot run
+  local path
+  while IFS= read -r path; do
+    "$test_bash" -n "$path" > /dev/null 2> "$work/floor-parse.err" \
+      || printf 'FLOOR   %s: bash 3.2 cannot parse it: %s\n' "$path" "$(head -3 "$work/floor-parse.err" | tr '\n' ' ')"
+  done < "$1"
+  while IFS= read -r path; do
+    head -40 "$path" | grep -qE '^#[[:space:]]*bash-floor:' || echo "$path"
+  done < "$1" > "$work/floor-held"
+  added_lines "$work/floor-held" | awk -F'\t' '
+    FILENAME == ARGV[1] { if ($0 !~ /^#/ && NF >= 2) { re[++n] = $1; why[n] = $2 } next }
+    { code = $3; sub(/^[[:space:]]*#.*/, "", code); sub(/[[:space:]]#.*$/, "", code)
+      for (i = 1; i <= n; i++) if (code ~ re[i]) { print "FLOOR   " $1 ":" $2 ": " why[i] ": " $3; break } }' \
+    "$floor_constructs" -
+}
+
+# ── --linux: the selected tests in a container like CI's runner ───────────────────────────────────
+# CI runs these on ubuntu-26.04 (tool-self-tests.yml's `script-tests` job): GNU coreutils/sed/find/grep, a newer bash and python3. A Mac's
+# BSD tools and /bin/bash 3.2 pass what Linux fails -- 03b3a6825's refit logged `sysctl machdep.cpu.brand_string`,
+# macOS-only, and CI run 38772214523 failed on it. The image is the Dockerfile's ubuntu 26.04 base, same digest (image_pins.py), from mirror.gcr.io (CiImageMirrorSpec:
+# never Docker Hub first) plus the packages below, built once and kept, tagged by this recipe's hash. The checkout is
+# mounted READ-ONLY at its own path -- not the checkout itself but its copy in one of a few fixed slots (linux_tree_slot:
+# Rancher's VM keeps a host descriptor for every file and directory a container saw through the shared home, deleted
+# or not, and 25 worktrees mounted in a day filled the Mac's file table on 2026-11-20); the tests write only to their mktemp scratch, the container's own /tmp. Its git
+# metadata (config, HEAD, refs, the worktree's own dir: git_metadata_tar) is a snapshot in a tmpfs at the git dir's own
+# path, only the objects mounted live (a worktree's .git file names the clone's git dir by absolute path). They run as this user, not
+# root, as CI's `runner` does: root passes a chmod-000 check that fails everywhere else. The package list is what the
+# runner image ships that the tests reach for -- zstd (every recording/tree archive the convergence and restore tools
+# unpack), rsync (ios-release.sh pins /usr/bin/rsync), node (local-mirror/rules-test.sh) and PyYAML (infra/bin/backtest_alerts_local_test.py; the image has no python3-venv for scripts/python-venv to build one) among them: a tool the runner has and this image lacks fails
+# a test here that CI passes.
+LinuxImageRecipe='FROM mirror.gcr.io/library/ubuntu:26.04@sha256:d66b366dac61b575bee2aef07e9c26e8070096fbe84a3d4d3eb0da069b5d76db
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+      bash coreutils findutils sed gawk grep diffutils git jq python3 perl curl ca-certificates unzip zip xz-utils \
+      file procps lsof bc tzdata shellcheck zstd rsync nodejs python3-yaml > /dev/null && rm -rf /var/lib/apt/lists/* \
+ && git config --system safe.directory "*"'
+# <objects dir> [depth] -> every object directory it borrows from, transitively (objects/info/alternates; git follows
+# five levels), each absolute and resolved: a repository reads them as its own, so a container without them cannot.
+alternate_object_dirs() {
+  local objects="$1" depth="${2:-0}" line dir
+  [ "$depth" -lt 5 ] && [ -f "$objects/info/alternates" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in ''|'#'*) continue ;; /*) dir=$line ;; *) dir="$objects/$line" ;; esac
+    dir="$(cd "$dir" 2>/dev/null && pwd -P)" || continue
+    echo "$dir"
+    alternate_object_dirs "$dir" $((depth + 1))
+  done < "$objects/info/alternates"
+}
+# <common dir> <git dir> -> a tar of the git metadata a checkout reads, all but the objects, relative to the common dir.
+# Mounted live, the clone's shared .git/config read as missing in the container whenever a host git rewrote it (every
+# agent's worktree commits through it; git writes a config.lock and renames it over): Rancher's virtiofs answered
+# ENOENT for most of the next second, and git died "unknown error occurred while reading the configuration files" --
+# 58 of pre-push-test.sh's checks on plain main (2026-10-28), passing alone. A file mounted over it went the same way:
+# the rename invalidates that path, and the mount on it with it.
+git_metadata_tar() {
+  local common=$1 dir=$2 prefix entry entries=()
+  for prefix in "" "${dir#"$common"/}/"; do
+    [ "$prefix" = "$dir/" ] && continue # the main checkout: its git dir is the common dir
+    for entry in config config.worktree HEAD ORIG_HEAD FETCH_HEAD commondir gitdir index packed-refs refs shallow info; do
+      [ -e "$common/$prefix$entry" ] && entries+=("$prefix$entry")
+    done
+  done
+  COPYFILE_DISABLE=1 tar -C "$common" --no-xattrs -cf - "${entries[@]}" # no macOS ._ files, no xattr headers
+}
+# linux_tree= the copy of the checkout this run mounts (set here, not printed: a $( ) subshell would let go of the
+# lock as it ended): the first of $RUN_SCRIPT_TESTS_LINUX_SLOTS (4) fixed slots under
+# ~/.cache/movies-linux-tree no other run holds, synced to the checkout (linux-tree-sync.py). The VM then only ever sees
+# those trees, however many worktrees run. A slot is held by an flock on its descriptor 9, which this run keeps open to
+# its end: the kernel lets go when the run does, so a killed run strands no lock. All held: wait, saying so each half
+# minute, up to $RUN_SCRIPT_TESTS_LINUX_WAIT seconds (1800).
+linux_tree_slot() {
+  local base="$HOME/.cache/movies-linux-tree" slots=${RUN_SCRIPT_TESTS_LINUX_SLOTS:-4} n deadline said=0
+  deadline=$(( $(date +%s) + ${RUN_SCRIPT_TESTS_LINUX_WAIT:-1800} ))
+  mkdir -p "$base" || return 2
+  while :; do
+    n=0
+    while [ "$n" -lt "$slots" ]; do
+      exec 9> "$base/slot-$n.lock"
+      if python3 -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_EX | fcntl.LOCK_NB)' 2> /dev/null; then
+        python3 "$linux_tree_sync" "$root" "$base/slot-$n" >&2 || return 2
+        linux_tree="$base/slot-$n"; return 0
+      fi
+      exec 9>&-
+      n=$((n + 1))
+    done
+    if [ "$(date +%s)" -ge "$deadline" ]; then
+      echo "run-script-tests: every Linux tree slot is busy ($slots under $base, RUN_SCRIPT_TESTS_LINUX_SLOTS) -- another run holds each" >&2
+      return 2
+    fi
+    [ $((said % 15)) = 0 ] && echo "run-script-tests: all $slots Linux tree slots busy, waiting" >&2
+    said=$((said + 1)); sleep 2
+  done
+}
+run_on_linux() {
+  local docker image git_common git_dir alternate linux_tree mounts=() selected=()
+  docker=$(command -v docker || true)
+  [ -z "$docker" ] && [ -x "$HOME/.rd/bin/docker" ] && docker="$HOME/.rd/bin/docker" # Rancher Desktop's
+  if [ -z "$docker" ] || ! bounded 20 "$docker" info > /dev/null 2>&1; then
+    echo "run-script-tests: --linux needs a running Docker (docker info failed) -- start Docker / Rancher Desktop" >&2
+    return 2
+  fi
+  image="kinowo-script-tests:$(printf '%s' "$LinuxImageRecipe" | git hash-object --stdin | cut -c1-12)"
+  if ! "$docker" image inspect "$image" > /dev/null 2>&1; then
+    echo "run-script-tests: building $image (once)" >&2
+    # The mirror sometimes answers "not found" for a blob it served minutes before (precommit-check run 3968,
+    # 2026-10-30; scripts/ci/build-image.sh's reason): then the same base once more from Docker Hub, as that does.
+    local log; log=$(mktemp)
+    if ! printf '%s\n' "$LinuxImageRecipe" | bounded 900 "$docker" build -q -t "$image" - > /dev/null 2> "$log"; then
+      cat "$log" >&2
+      if ! grep -qE 'could not fetch content descriptor|unknown blob' "$log"; then
+        rm -f "$log"; echo "run-script-tests: could not build $image" >&2; return 2
+      fi
+      echo "run-script-tests: mirror.gcr.io could not fetch a blob: building $image from Docker Hub" >&2
+      printf '%s\n' "${LinuxImageRecipe/FROM mirror.gcr.io\/library\//FROM docker.io/library/}" \
+        | bounded 900 "$docker" build -q -t "$image" - > /dev/null \
+        || { rm -f "$log"; echo "run-script-tests: could not build $image" >&2; return 2; }
+    fi
+    rm -f "$log"
+  fi
+  linux_tree_slot || return 2
+  mounts=(-v "$linux_tree:$root:ro")
+  git_common="$(cd "$root" && git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
+  git_dir="$(cd "$root" && git rev-parse --path-format=absolute --git-dir 2>/dev/null)"
+  [ -z "$git_common" ] || mounts+=(--mount "type=tmpfs,destination=$git_common,tmpfs-mode=1777"
+    -v "$git_common/objects:$git_common/objects:ro")
+  # ...and the object directories it borrows from: a checkout's objects/info/alternates may name a
+  # git mirror, which holds every object the job's fetch did not bring. Unmounted,
+  # `git show HEAD:<path>` failed in here for a blob the mirror already had -- identity-measure-test.sh's "HEAD has no
+  # .github/convergence-paths.txt" (run 3260), passing wherever the mirror lagged the commit.
+  if [ -n "$git_common" ]; then
+    while IFS= read -r alternate; do mounts+=(-v "$alternate:$alternate:ro"); done < <(alternate_object_dirs "$git_common/objects")
+  fi
+  while IFS="$(printf '\t')" read -r path _; do selected+=("$path"); done < "$work/selected"
+  echo "run-script-tests: ${#selected[@]} test(s) on Linux ($image)" >&2
+  # each path names exactly its own test; a tag, when one selected them, keeps the tagged ones in
+  # the failing logs land on the host, in the run's own log directory
+  mkdir -p "$log_dir" && mounts+=(-v "$log_dir:$log_dir")
+  # the snapshot comes in on stdin, unpacked before the tests start (their stdin closed, as ever)
+  # shellcheck disable=SC2016 # expanded by the container's bash
+  { [ -z "$git_common" ] || git_metadata_tar "$git_common" "$git_dir"; } |
+    "$docker" run --rm -i --user "$(id -u):$(id -g)" -e HOME=/tmp -e TERM=dumb -e RUN_SCRIPT_TESTS_LOG_DIR="$log_dir" "${mounts[@]}" -w "$root" "$image" \
+      bash -c '[ -z "$0" ] || tar -xf - -C "$0" || exit 2; exec "$@" < /dev/null' "$git_common" \
+      env KINOWO_RUN_SCRIPT_TESTS_LEGACY=1 scripts/run-script-tests --jobs "$jobs" --timeout "$timeout_s" --stall "$stall_s" ${tag:+--tag "$tag"} "${selected[@]}"
+}
+
+# failing_cases <log> -> under a heading, each failing case of a log longer than the report's 60-line tail: a shell
+# spec's `✗` line and the three after it (expected / actual), a unittest `FAIL:` / `ERROR:` header, at most 80 lines
+failing_cases() {
+  [ "$(wc -l < "$1")" -gt 60 ] || return 0
+  local cases
+  cases=$(awk '/✗|^(FAIL|ERROR): / { left = 4 } left > 0 { print; left-- }' "$1" | head -80)
+  [ -z "$cases" ] || { echo "    failing cases (from the whole log):"; printf '%s\n' "$cases" | sed 's/^/    /'; echo "    last 60 lines:"; }
+}
+
+# ── The tree is left as found (THE TREE IS LEFT AS FOUND, above) ──────────────────────────────────
+tree_check_on() { # the run checks the checkout: asked to, a git checkout, writable, and a python3 to read ctimes with
+  [ "$tree_check_flag" != 0 ] && [ -w "$root" ] && command -v python3 > /dev/null \
+    && [ "$(git -C "$root" rev-parse --is-inside-work-tree 2> /dev/null)" = true ]
+}
+# macOS's own metadata is no test's leftover: agentctl's maintain pass drops Spotlight's `.metadata_never_index` in every
+# worktree (out of `git status` through info/exclude, which --ignored lists all the same) and Finder a `.DS_Store`
+# anywhere -- made beside a run, each was charged to whichever test was running (pre-push-test.sh POLLUTE)
+tree_state() { # the checkout's state, a sorted line a path: XY and the path (new and ignored ones too, not their insides)
+  GIT_OPTIONAL_LOCKS=0 git -C "$root" status --porcelain=v1 --ignored --untracked-files=normal 2> /dev/null \
+    | awk '{ n = split(substr($0, 4), part, "/") } part[n] != ".metadata_never_index" && part[n] != ".DS_Store"' \
+    | LC_ALL=C sort
+}
+# <paths file> -> path<TAB>ctime (float) of each, or of its nearest ancestor that exists (a path deleted)
+ctimes() {
+  python3 -c '
+import os, sys
+root = sys.argv[1]
+for line in open(sys.argv[2]):
+    path = line.rstrip("\n"); probe = path.rstrip("/")
+    while probe and not os.path.lexists(os.path.join(root, probe)):
+        probe = os.path.dirname(probe)
+    print("%s\t%.3f" % (path, os.lstat(os.path.join(root, probe or ".")).st_ctime))' "$root" "$1"
+}
+now() { python3 -c 'import time; print("%.3f" % time.time())'; }
+restore_aside() { # every leftover moved aside to confirm its polluter, put back where nothing took its place
+  [ -n "${work:-}" ] && [ -s "$work/aside.list" ] || return 0
+  local path
+  while IFS= read -r path; do
+    [ -e "$root/$path" ] || [ -L "$root/$path" ] || { mkdir -p "$(dirname "$root/$path")" && mv "$work/aside/${path%/}" "$root/${path%/}"; }
+  done < "$work/aside.list"
+  : > "$work/aside.list"
+}
+move_aside() { # <dir under $work> <paths file>: each new or ignored leftover that exists, moved under <dir>
+  local path
+  while IFS= read -r path; do
+    [ -e "$root/$path" ] || [ -L "$root/$path" ] || continue
+    mkdir -p "$(dirname "$1/$path")" && mv "$root/$path" "$1/${path%/}" && echo "$path"
+  done < "$2"
+}
+# THE CONTROL WINDOW (landing check run 45008924490): what runs BESIDE the run -- the landing check's sbt check writing
+# target/ beside its scripttests -- went on making a path while a candidate ran alone, and the candidate was charged with
+# it (lint-registry-test.sh POLLUTE `!! target/`, which no run of it alone ever made). So, with NO test running, each
+# claimed path is watched for as long as the slowest candidate's alone run took (2..60 s): made again in that window,
+# it is no test's -- dropped from $work/polluted, said as unclaimed, never a FAIL.
+control_window() {
+  [ -s "$work/polluted" ] || return 0
+  local wait_s t0 path line
+  wait_s=$(LC_ALL=C sort -n "$work/again.seconds" | tail -1)
+  wait_s=${wait_s:-0}; [ "$wait_s" -ge 2 ] || wait_s=2; [ "$wait_s" -le 60 ] || wait_s=60
+  cut -f2 "$work/polluted" | cut -c4- | LC_ALL=C sort -u > "$work/claimed.paths"
+  t0=$(now)
+  sleep "$wait_s"
+  ctimes "$work/claimed.paths" > "$work/control.ctimes"
+  while IFS= read -r path; do
+    if grep -qxF "$path" "$work/left.movable"; then
+      [ -e "$root/$path" ] || [ -L "$root/$path" ] || continue # not made again with no test running: the candidate's
+    else
+      awk -F'\t' -v p="$path" -v t0="$t0" '$1 == p && $2 >= t0 { found = 1 } END { exit !found }' "$work/control.ctimes" || continue
+    fi
+    awk -F'\t' -v p="$path" 'substr($2, 4) != p' "$work/polluted" > "$work/polluted.kept"
+    mv "$work/polluted.kept" "$work/polluted"
+  done < "$work/claimed.paths"
+}
+# What a run left: its new lines; each path's candidates (the tests running at its ctime), each candidate run again
+# alone, and the paths it makes again are its own. Writes $work/polluted (index<TAB>status line, a line a path) and
+# $work/unclaimed (status line<TAB>the tests running when it was made).
+attribute_leftovers() {
+  LC_ALL=C comm -13 "$work/tree.before" "$work/tree.after" > "$work/tree.new"
+  : > "$work/polluted"; : > "$work/unclaimed"
+  [ -s "$work/tree.new" ] || return 0
+  cut -c4- "$work/tree.new" > "$work/left.paths"
+  grep -E '^(\?\?|!!) ' "$work/tree.new" | cut -c4- > "$work/left.movable"
+  local k=0
+  while [ "$k" -lt "$total" ]; do echo "$k $(cat "$work/$k.window" 2> /dev/null)"; k=$((k + 1)); done > "$work/windows"
+  # path<TAB>the candidates, by index (start - 1 <= ctime <= end + 1: windows are whole seconds)
+  ctimes "$work/left.paths" | awk -F'\t' 'FILENAME == ARGV[1] { split($0, w, " "); if (w[3] != "") { start[w[1]] = w[2]; end[w[1]] = w[3] } next }
+    { c = ""; for (i in start) if ($2 >= start[i] - 1 && $2 <= end[i] + 1) c = c " " i; print $1 "\t" c }' "$work/windows" - > "$work/left.candidates"
+  local candidates candidate path t0 again
+  # the quickest first, and none once every path is claimed: a long test runs again only when it has to
+  candidates="$(cut -f2 "$work/left.candidates" | tr ' ' '\n' | grep . | LC_ALL=C sort -un \
+    | while read -r candidate; do echo "$(cat "$work/$candidate.seconds" 2> /dev/null || echo 0) $candidate"; done | LC_ALL=C sort -n | cut -d' ' -f2)"
+  printf '\nrun-script-tests: %s path(s) left in the checkout; running each of the %s test(s) running when they were made again, alone\n' \
+    "$(wc -l < "$work/tree.new" | tr -d ' ')" "$(printf '%s' "$candidates" | grep -c .)"
+  move_aside "$work/aside" "$work/left.movable" >> "$work/aside.list"
+  : > "$work/again.seconds"
+  for candidate in $candidates; do
+    t0=$(now) s0=$SECONDS
+    run_one "again-$candidate" "${paths[$candidate]}"
+    echo $((SECONDS - s0)) >> "$work/again.seconds"
+    ctimes "$work/left.paths" > "$work/again.ctimes"
+    while IFS="$(printf '\t')" read -r path _; do
+      if grep -qxF "$path" "$work/left.movable"; then
+        [ -e "$root/$path" ] || [ -L "$root/$path" ] || continue # made again: there once more
+      else
+        awk -F'\t' -v p="$path" -v t0="$t0" '$1 == p && $2 >= t0 { found = 1 } END { exit !found }' "$work/again.ctimes" || continue
+      fi
+      printf '%s\t%s\n' "$candidate" "$(awk -v p="$path" 'substr($0, 4) == p' "$work/tree.new" | head -1)" >> "$work/polluted"
+    done < "$work/left.candidates"
+    again="$work/again/$candidate"; mkdir -p "$again"
+    move_aside "$again" "$work/left.movable" > /dev/null # the next candidate starts without them too
+    [ "$(cut -f2 "$work/polluted" | LC_ALL=C sort -u | wc -l)" -lt "$(wc -l < "$work/left.paths")" ] || break
+  done
+  control_window
+  restore_aside
+  while IFS="$(printf '\t')" read -r path candidates; do
+    cut -f2 "$work/polluted" | awk -v p="$path" 'substr($0, 4) == p { found = 1 } END { exit !found }' && continue
+    printf '%s\t%s\n' "$(awk -v p="$path" 'substr($0, 4) == p' "$work/tree.new" | head -1)" \
+      "$(for candidate in $candidates; do printf '%s ' "${paths[$candidate]}"; done)" >> "$work/unclaimed"
+  done < "$work/left.candidates"
+}
+
+work="$(mktemp -d)"
+: > "$work/aside.list"
+trap 'restore_aside; rm -rf "$work"' EXIT
+# where a failing test's whole log is kept (the report shows its last 60 lines)
+log_dir=${RUN_SCRIPT_TESTS_LOG_DIR:-$HOME/.cache/kinowo-script-tests/failed}
+if [ -n "$test_bash" ]; then
+  [ -x "$test_bash" ] || { echo "run-script-tests: --bash $test_bash is no executable" >&2; exit 64; }
+  mkdir "$work/bash-bin" && ln -s "$test_bash" "$work/bash-bin/bash" || exit 64
+  PATH="$work/bash-bin:$PATH"; export PATH
+fi
+: > "$work/floor"; : > "$work/floor.tests"
+if [ -n "$floor_bash" ]; then # --floor: the floor's own scope, worked out by its own run's rules (FLOOR), run in this one
+  [ -x "$floor_bash" ] || { echo "run-script-tests: --floor $floor_bash is no executable" >&2; exit 64; }
+  mkdir "$work/floor-bin" && ln -s "$floor_bash" "$work/floor-bin/bash" || exit 64
+  "$BASH" "${BASH_SOURCE[0]}" --root "$root" --changed "$changed_base" --bash "$floor_bash" --list > "$work/floor.list" \
+    || { cat "$work/floor.list" >&2; exit 2; }
+  cut -f1 "$work/floor.list" > "$work/floor.tests"
+fi
+if [ -n "$changed_base" ]; then
+  changed_paths > "$work/changed.direct" || exit 2
+  if [ -n "$floor_bash" ] && [ "$list" = 0 ]; then
+    bash_sources < "$work/changed.direct" > "$work/changed.bash"
+    test_bash=$floor_bash floor_findings "$work/changed.bash" > "$work/floor"
+  fi
+  if [ -n "$test_bash" ]; then # the floor's scope (FLOOR): only the bash the change touches
+    bash_sources < "$work/changed.direct" > "$work/changed.bash"
+    [ "$list" = 1 ] || floor_findings "$work/changed.bash" > "$work/floor"
+    mv "$work/changed.bash" "$work/changed.direct"
+  fi
+  with_their_users "$work/changed.direct" > "$work/changed"
+  changed_keys "$work/changed"
+  as_read "$work/changed"
+  discover | cut -f1 | declared_reads > "$work/reads"
+fi
+
+: > "$work/selected"
+discover | while IFS="$(printf '\t')" read -r path t reason; do
+  if [ -n "$tag" ]; then [ "$t" = "$tag" ] || continue
+  elif [ "$all" = 0 ]; then [ "$t" = - ] || continue
+  fi
+  matches_filter "$path" || continue
+  if [ -n "$changed_base" ]; then touched_by "$path" "$work/changed" || continue; fi
+  printf '%s\t%s\t%s\n' "$path" "$t" "$reason"
+done > "$work/selected"
+
+concurrency_heavy() { # <path>: its first 40 lines mark it (STRESS)
+  head -40 "$1" | grep -qE '^#[[:space:]]*script-test-stress:'
+}
+if [ "$stress" -gt 0 ] && [ ${#filters[@]} -eq 0 ]; then # --stress, none named: the concurrency-heavy ones selected
+  while IFS="$(printf '\t')" read -r path rest; do
+    concurrency_heavy "$path" && printf '%s\t%s\n' "$path" "$rest"
+  done < "$work/selected" > "$work/selected.heavy"
+  mv "$work/selected.heavy" "$work/selected"
+  if [ ! -s "$work/selected" ] && [ "$list" = 0 ]; then
+    echo "run-script-tests: no concurrency-heavy script test selected${changed_base:+ by the changes since $changed_base} (STRESS)"
+    [ -n "$changed_base" ] && exit 0
+    exit 1
+  fi
+fi
+
+if [ "$list" = 1 ]; then cat "$work/selected"; exit 0; fi
+
+if [ "$linux" = 1 ]; then
+  [ -s "$work/selected" ] || { echo "run-script-tests: no script tests selected${changed_base:+ by the changes since $changed_base}"; exit 0; }
+  govern_run "$(wc -l < "$work/selected" | tr -d ' ')"
+  run_on_linux
+  exit $?
+fi
+
+floor_failed() { # the floor's findings (FLOOR) fail the run whatever its tests say: said, and true when there are any
+  [ -s "$work/floor" ] || return 1
+  echo; cat "$work/floor"
+  echo "run-script-tests: $(wc -l < "$work/floor" | tr -d ' ') thing(s) the floor bash ${test_bash:-$floor_bash} cannot run (FLOOR)"
+}
+if [ ! -s "$work/selected" ]; then
+  if [ -n "$changed_base" ]; then
+    echo "run-script-tests: no script tests selected by the changes since ${changed_base}"
+    floor_failed && exit 1
+    exit 0
+  fi
+  echo "run-script-tests: no script test matches ${filters[*]:-the roots}${tag:+ tagged $tag}" >&2
+  exit 1
+fi
+
+# A python3 below the floor fails every Python test in its own way (a TypeError on `str | None`, a SyntaxError on
+# `match`); say so once, instead.
+if grep -q '\.py	' "$work/selected" && ! python3 -c "import sys; sys.exit(sys.version_info < (${PythonFloor/./, }))" 2>/dev/null; then
+  echo "run-script-tests: $(python3 --version 2>&1) is too old -- the Python tools need ${PythonFloor} or newer" >&2
+  exit 1
+fi
+
+govern_run "$(wc -l < "$work/selected" | tr -d ' ')"
+
+# ── Running ────────────────────────────────────────────────────────────────────────────────────
+run_one() { # <index> <path>: its log, exit status and seconds land in $work/<index>.*
+  local i="$1" path="$2" start=$SECONDS code interpreter=bash test_path=$PATH started_at
+  started_at=$(date +%s)
+  case "$path" in *.py) interpreter=python3 ;; esac
+  # --floor: the floor's scope runs under the floor bash alone -- ONCE, not again natively beside it (FLOOR). A Python
+  # self-test of a bash tool in that scope (identity_what_if_test.py, of identity-what-if, which sources scratch-git.sh)
+  # stays python3's, with the floor bash first on its PATH for the bash it runs: read by bash, it failed to parse.
+  if grep -qxF "$path" "$work/floor.tests"; then
+    test_path="$work/floor-bin:$PATH"
+    case "$path" in *.py) ;; *) interpreter=$work/floor-bin/bash ;; esac # the floor-bin name: the $BASH a tool it starts by `bash` sees too
+  fi
+  # a test that stalls (or outlasts a --timeout) says what it was stuck on, in its own log (the report's tail shows it)
+  # (appended to, as the watch below appends its report: neither writes over the other)
+  : > "$work/$i.log"
+  local width=$TEST_WIDTH
+  [ "$WIDE_TESTS" = 1 ] && width=$(declared_width "$root/$path")
+  if [ -n "$width" ]; then export AGENTCTL_GOV_WIDTH=$width; else unset AGENTCTL_GOV_WIDTH; fi
+  PATH=$test_path BOUNDED_ON_TIMEOUT="$stall_report" bounded "$timeout_s" "$interpreter" "$path" < /dev/null >> "$work/$i.log" 2>&1 7>&- &
+  local test_pid=$! watch_pid
+  # the no-progress bound: its log written counts as progress; a stall says what the test's group was stuck on, in its
+  # log, and ends the group. Run by this script's own bash: a --bash under test runs the tests only.
+  # shellcheck disable=SC2094 # the watch only reads the log's time, and appends to it
+  KINOWO_STALL_POLL_SECONDS="${KINOWO_STALL_POLL_SECONDS:-$(stall_poll)}" KINOWO_STALL_GROUPS=1 \
+    "$BASH" "$stall_watch" watch "$test_pid" "$stall_s" "$path" "$work/$i.stalled" "$work/$i.log" < /dev/null 2>> "$work/$i.log" &
+  watch_pid=$!
+  wait "$test_pid"
+  code=$?
+  kill "$watch_pid" 2> /dev/null; wait "$watch_pid" 2> /dev/null
+  echo "$((SECONDS - start))" > "$work/$i.seconds"
+  echo "$started_at $(date +%s)" > "$work/$i.window"
+  echo "$code" > "$work/$i.rc"
+}
+
+# how often the no-progress bound looks: a tenth of it, 1-30 s
+stall_poll() { local p=$((stall_s / 10)); [ "$p" -lt 1 ] && p=1; [ "$p" -gt 30 ] && p=30; echo "$p"; }
+
+durations_file=${RUN_SCRIPT_TESTS_DURATIONS:-$HOME/.cache/kinowo-script-tests/durations.tsv}
+durations=$durations_file; [ -f "$durations" ] || durations=/dev/null
+sizes="$work/sizes"; : > "$sizes"
+while IFS="$(printf '\t')" read -r path _; do printf '%s\t%s\n' "$path" "$(wc -c < "$path" | tr -d ' ')" >> "$sizes"; done < "$work/selected"
+# <rank 0 unknown / 1 known> <seconds, or size when unknown> <path>, the largest first within a rank
+awk -F'\t' 'FILENAME == ARGV[1] { if ($2 ~ /^[0-9]+$/) secs[$1] = $2; next }
+  { if ($1 in secs) print "1\t" secs[$1] "\t" $1; else print "0\t" $2 "\t" $1 }' "$durations" "$sizes" \
+  | LC_ALL=C sort -t "$(printf '\t')" -k1,1n -k2,2nr -k3,3 | cut -f3 > "$work/order"
+paths=() runs=()
+while IFS= read -r path; do paths+=("$path"); runs+=(""); done < "$work/order"
+tests=${#paths[@]}
+if [ "$stress" -gt 0 ]; then # STRESS: each test N times, every run at once unless --jobs says otherwise
+  r=2
+  while [ "$r" -le "$stress" ]; do
+    k=0; while [ "$k" -lt "$tests" ]; do paths+=("${paths[$k]}"); runs+=(" (run $r/$stress)"); k=$((k + 1)); done
+    r=$((r + 1))
+  done
+  k=0; while [ "$k" -lt "$tests" ]; do runs[$k]=" (run 1/$stress)"; k=$((k + 1)); done
+  [ "$jobs_given" = 1 ] || jobs=${#paths[@]}
+fi
+total=${#paths[@]}
+started=$SECONDS
+printf '\033[36m▸\033[0m %s script test(s), %s at a time\n' "$total" "$jobs"
+burn_cpu() { # STRESS's load: <K> busy loops, each ending once this run is gone (a killed run strands none)
+  local k=0 runner=$$
+  while [ "$k" -lt "$1" ]; do
+    # shellcheck disable=SC2016 # expanded by the burner's bash
+    "$BASH" -c 'while kill -0 "$1" 2> /dev/null; do i=0; while [ "$i" -lt 20000 ]; do i=$((i + 1)); done; done' \
+      run-script-tests-burner "$runner" < /dev/null > /dev/null 2>&1 &
+    burners+=($!); k=$((k + 1))
+  done
+}
+burners=()
+if [ "$stress" -gt 0 ]; then
+  [ -n "$burn" ] || burn=$(getconf _NPROCESSORS_ONLN 2> /dev/null || sysctl -n hw.ncpu 2> /dev/null || echo 2)
+  printf '  stress: each of %s test(s) %s times at once, beside %s CPU burner(s)\n' "$tests" "$stress" "$burn"
+  burn_cpu "$burn"
+fi
+
+pids=() idx=() next=0 done_count=0 failed=0
+tree_check=0
+if [ "$stress" = 0 ] && tree_check_on; then tree_check=1; tree_state > "$work/tree.before"; fi
+report() { # <index>
+  local i="$1" code secs status
+  code="$(cat "$work/$i.rc")"; secs="$(cat "$work/$i.seconds")"
+  if [ "$code" = 0 ]; then status=PASS
+  elif [ -s "$work/$i.stalled" ]; then status=STALLED
+  elif [ "$code" = 124 ] || [ "$code" = 137 ]; then status=TIMEOUT
+  else status=FAIL
+  fi
+  printf '%-7s %4ss  %s%s%s\n' "$status" "$secs" "${paths[$i]}" "${runs[$i]}" "$(grep -qxF "${paths[$i]}" "$work/floor.tests" && echo " (floor)")" >> "$work/table"
+  [ "$status" = PASS ] && [ "$stress" = 0 ] && printf '%s\t%s\n' "${paths[$i]}" "$secs" >> "$work/seconds.tsv"
+  [ "$status" = PASS ] || echo "${paths[$i]}" >> "$work/stress.failed"
+  if [ "$status" != PASS ]; then
+    failed=$((failed + 1))
+    { printf '\n── %s %s%s (exit %s) ──\n' "$status" "${paths[$i]}" "${runs[$i]}" "$code"
+      # every failing case first, from the whole log: one printed above its last 60 lines was lost from a CI report
+      # with the runner that kept the log (Order independence #94, identity-slice-test's five failures)
+      failing_cases "$work/$i.log"
+      tail -60 "$work/$i.log" | sed 's/^/    /'
+      # the whole log kept: a flake's 42 failures past the last 60 lines were lost once (2026-10-18, pre-push-test.sh on Linux)
+      local kept; kept="$log_dir/$(date +%Y%m%d-%H%M%S)-$$-$(basename "${paths[$i]}").log"
+      if mkdir -p "$log_dir" 2>/dev/null && cp "$work/$i.log" "$kept" 2>/dev/null; then printf '    (whole log: %s)\n' "$kept"; fi
+    } >> "$work/failures"
+  fi
+}
+: > "$work/table"; : > "$work/failures"
+while [ "$done_count" -lt "$total" ]; do
+  while [ "${#pids[@]}" -lt "$jobs" ] && [ "$next" -lt "$total" ]; do
+    run_one "$next" "${paths[$next]}" &
+    pids+=($!); idx+=("$next"); next=$((next + 1))
+  done
+  still=() still_idx=() k=0
+  while [ "$k" -lt "${#pids[@]}" ]; do
+    if kill -0 "${pids[$k]}" 2>/dev/null; then still+=("${pids[$k]}"); still_idx+=("${idx[$k]}")
+    else wait "${pids[$k]}" 2>/dev/null; report "${idx[$k]}"; done_count=$((done_count + 1))
+    fi
+    k=$((k + 1))
+  done
+  pids=(${still[@]+"${still[@]}"}); idx=(${still_idx[@]+"${still_idx[@]}"})
+  [ "$done_count" -lt "$total" ] && sleep 0.2
+done
+
+if [ ${#burners[@]} -gt 0 ]; then kill "${burners[@]}" 2> /dev/null; wait "${burners[@]}" 2> /dev/null; fi
+: >> "$work/stress.failed"
+stress_verdicts() { # STRESS: a line a test, how many of its runs failed
+  local k=0 n
+  while [ "$k" -lt "$tests" ]; do
+    n=$(grep -cxF "${paths[$k]}" "$work/stress.failed")
+    printf 'STRESS  %s: %s of %s run(s) failed\n' "${paths[$k]}" "$n" "$stress"
+    k=$((k + 1))
+  done
+}
+# a --changed run that selected a concurrency-heavy test says how to stress it (STRESS)
+heavy_hint() {
+  local k=0 heavy=""
+  while [ "$k" -lt "$tests" ]; do concurrency_heavy "${paths[$k]}" && heavy="$heavy ${paths[$k]}"; k=$((k + 1)); done
+  [ -z "$heavy" ] || printf 'run-script-tests: concurrency-heavy, selected:%s -- `scripts/run-script-tests --stress 4%s` (PREPUSH_STRESS=4 at a push) runs each 4 times at once under CPU load (STRESS)\n' "$heavy" "$heavy"
+}
+
+# what the run left in the checkout, put on the test that made it (THE TREE IS LEFT AS FOUND)
+if [ "$tree_check" = 1 ]; then
+  tree_state > "$work/tree.after"
+  attribute_leftovers
+  for k in $(cut -f1 "$work/polluted" | LC_ALL=C sort -un); do
+    failed=$((failed + 1))
+    # its row says so (a passing test's PASS replaced; a failing one keeps its status and gains the mark)
+    awk -v p="${paths[$k]}" '{ n = split($0, f, " "); if (f[3] == p) { if (f[1] == "PASS") sub(/^PASS   /, "POLLUTE"); else $0 = $0 " (and POLLUTE)" } print }' \
+      "$work/table" > "$work/table.new" && mv "$work/table.new" "$work/table"
+    { printf '\n── POLLUTE %s: left in the checkout, and made again when it ran alone ──\n' "${paths[$k]}"
+      awk -F'\t' -v k="$k" '$1 == k { print "    " $2 }' "$work/polluted"
+      echo "    (a test writes only under its own mktemp scratch, and installs its tools outside the tree: ~/.cache/kinowo/<tool>/<lock hash>)"
+    } >> "$work/failures"
+  done
+  if [ -s "$work/unclaimed" ]; then
+    echo; echo "run-script-tests: left in the checkout during the run, and made again by no test run alone (an edit beside the run?), not failing it:"
+    awk -F'\t' '{ print "    " $1 "   (running then: " $2 ")" }' "$work/unclaimed"
+  fi
+fi
+
+# keep this run's times: the cache's other rows stay, these replace theirs; written aside and renamed into place
+if [ -s "$work/seconds.tsv" ] && mkdir -p "$(dirname "$durations_file")" 2>/dev/null; then
+  # (no cache yet: this run's alone -- awk printing them and then failing on the missing file wrote each row twice)
+  if [ -f "$durations_file" ]; then
+    awk -F'\t' 'FILENAME == ARGV[1] { seen[$1] = 1; print; next } !($1 in seen)' "$work/seconds.tsv" "$durations_file"
+  else
+    cat "$work/seconds.tsv"
+  fi > "$work/durations.new" 2>/dev/null
+  tmp=$(mktemp "$durations_file.XXXXXX" 2>/dev/null) && cp "$work/durations.new" "$tmp" && mv "$tmp" "$durations_file" || true
+fi
+LC_ALL=C sort -k3 "$work/table"
+cat "$work/failures"
+echo
+[ "$stress" = 0 ] || stress_verdicts
+[ "$stress" != 0 ] || [ -z "$changed_base" ] || heavy_hint
+floor=0; floor_failed && floor=1
+if [ "$failed" -gt 0 ]; then
+  printf '%s of %s failed (%ss)\n' "$failed" "$total" "$((SECONDS - started))"
+  exit 1
+fi
+printf 'all %s passed (%ss)\n' "$total" "$((SECONDS - started))"
+exit "$floor"

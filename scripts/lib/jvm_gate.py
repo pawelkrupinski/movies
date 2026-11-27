@@ -278,6 +278,10 @@ class JvmGate:
                 else:
                     self.env[key] = value
 
+    def governs(self) -> bool:
+        """Whether a governor governs here (the Mac, KINOWO_GOVERNOR not 0, an agentctl answering its probe)."""
+        return self.governor.bin() is not None
+
     def width(self, label: str, job: str, want: int, mem: str = "1", fixed: bool = False) -> int:
         """THE GOVERNED FAN-OUT's width (jvm-gate.sh gov_width): under a ticket already at most its width, taking none;
         else a ticket charged `want` cores -- with a governor that grants, asked --min-cores 1 (unless `fixed`: a pool

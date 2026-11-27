@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 import unittest
 
 from run_script_tests_fixture import ROOT, RUNNER, ScriptTestsCase
@@ -159,6 +160,33 @@ class ReadsTest(ScriptTestsCase):
         self.assertIn("scripts/stall_watch_test.py", selected)
 
 
+class DerivedReadsTest(ScriptTestsCase):
+    """THE DERIVED READS (14eb62591d): a test is selected by a change to what it runs and what that runs, with no
+    `# script-test-reads:` line -- the test runs the hook, the hook runs the watchdog."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.put("scripts/hooks/hook", '#!/usr/bin/env bash\n"$(dirname "$0")/../watch.sh" watch "$$"', mode=0o755)
+        self.put("scripts/watch.sh", '#!/bin/sh\nexec python3 "$(dirname "$0")/watch_py.py" "$@"', mode=0o755)
+        self.put("scripts/watch_py.py", "print('watching')")
+        self.put("scripts/hooks/hook-tools-test.sh", 'out=$(bash scripts/hooks/hook) && [ "$out" = watching ]')
+        self.put("scripts/hooks/prose-test.sh", "# what scripts/hooks/hook runs is not this test's\nexit 0")
+        self.derived = self.commit("a hook running a watchdog")
+
+    def test_what_a_test_runs_runs_selects_it_with_no_declaration(self) -> None:
+        self.append("scripts/watch.sh", "# edited")
+        self.assertEqual("scripts/hooks/hook-tools-test.sh", self.listed("--changed", self.derived))
+        done = self.runner("--changed", self.derived)
+        self.assertEqual((0, 1), (done.code, self.rows(done, "PASS", "hooks/hook-tools-test.sh")), done.output)
+
+    def test_never_through_a_comment_nor_past_two_steps_nor_in_the_floors_scope(self) -> None:
+        self.append("scripts/watch_py.py", "# edited")
+        self.assertNotIn("hook-tools-test", self.listed("--changed", self.derived))
+        self.restore("scripts/watch_py.py")
+        self.append("scripts/watch.sh", "# edited")
+        self.assertEqual("", self.listed("--changed", self.derived, "--bash", "/bin/bash"))
+
+
 class BoundsTest(ScriptTestsCase):
     def test_a_hung_test_is_cut_at_its_timeout_and_left_running_none(self) -> None:
         self.put("scripts/slow-test.sh", "echo $$ >> '%s'; exec sleep 86400" % self.path("hung"))
@@ -218,8 +246,9 @@ class OrderTest(ScriptTestsCase):
 
 class UsageTest(ScriptTestsCase):
     def test_a_python3_below_the_floor_fails_a_run_with_python_tests_before_any(self) -> None:
+        # its tests' python3 too old; a runner in Python itself started by the real one (`*`: a script)
         self.write("oldpy/python3", '#!/bin/sh\ncase "$1" in -V|--version) echo "Python 3.8.10" ;; -c) exit 1 ;; '
-                                    "*) exit 0 ;; esac\n")
+                                    '*) exec %s "$@" ;; esac\n' % sys.executable)
         os.chmod(self.path("oldpy/python3"), 0o755)
         old = {"PATH": self.path("oldpy") + os.pathsep + self.env()["PATH"]}
         done = self.runner("scripts/ci", env=old)

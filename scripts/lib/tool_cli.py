@@ -10,7 +10,9 @@ with 128 + the signal, as a shell does.
   minutes(flag, value)           a whole number of minutes, a UsageError otherwise
   Refused(line, with_usage)      a command line refused as a shell tool refused it (`echo line >&2; usage >&2; exit 2`):
                                  `refused(r, usage)` prints it and gives the exit, 2
-  say_as(tool)                   the tool's `say(line)`: `tool: line` on stderr, flushed"""
+  say_as(tool)                   the tool's `say(line)`: `tool: line` on stderr, flushed
+  header_usage(path)             a tool's header comment as its usage, as tool-conventions.sh's usage_from_header
+                                 prints a shell tool's: from line 2 to the first line that is no comment"""
 from __future__ import annotations
 
 import signal
@@ -20,6 +22,14 @@ from typing import Callable, List, Optional, Tuple, TypeVar
 
 EX_USAGE = 64
 T = TypeVar("T")
+
+
+def header_usage(path: str) -> str:
+    with open(path) as f:
+        lines = f.read().splitlines()[1:]
+    header = lines[: next((i for i, line in enumerate(lines) if not line.startswith("#")), len(lines))]
+    text = [line[2:] if line.startswith("# ") else line[1:] for line in header]
+    return "\n".join(text[1:] if text and text[0] == "" else text) + "\n"
 
 
 def say_as(tool: str) -> Callable[[str], None]:
