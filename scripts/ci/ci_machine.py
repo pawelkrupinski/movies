@@ -9,7 +9,7 @@ import datetime
 import os
 import subprocess
 import time
-from typing import Any, MutableMapping, Sequence
+from typing import MutableMapping, Optional, Sequence
 
 
 def environment() -> MutableMapping[str, str]:
@@ -24,6 +24,8 @@ def today() -> datetime.date:
     return datetime.date.today()
 
 
-def run(argv: Sequence[str], **options: Any) -> "subprocess.CompletedProcess[Any]":
-    """subprocess.run, with its keywords (capture_output, text, check, cwd, timeout, input...)."""
-    return subprocess.run(list(argv), **options)
+def run(argv: Sequence[str], capture_output: bool = False, check: bool = False,
+        timeout: Optional[float] = None, stdout: Optional[int] = None) -> "subprocess.CompletedProcess[str]":
+    """subprocess.run with the keywords the tools use; the output is text."""
+    return subprocess.run(list(argv), capture_output=capture_output, text=True, check=check, timeout=timeout,
+                          stdout=stdout)

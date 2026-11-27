@@ -22,7 +22,7 @@ def load_tree(argv):
     if len(argv) == 2:
         out = ci_machine.run(
             ["xcrun", "xcresulttool", "get", "test-results", "tests", "--path", argv[1]],
-            check=True, capture_output=True, text=True).stdout
+            check=True, capture_output=True).stdout
         return json.loads(out)
     sys.exit("usage: xcresult_junit.py <bundle.xcresult> | --json <tests.json>")
 

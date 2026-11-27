@@ -54,7 +54,7 @@ class Failed(Exception):
 
 def gh(*args: str, capture: bool = False) -> str:
     sys.stdout.flush()
-    done = ci_machine.run(["gh", *args], stdout=subprocess.PIPE if capture else None, text=True)
+    done = ci_machine.run(["gh", *args], stdout=subprocess.PIPE if capture else None)
     if done.returncode != 0:
         raise Failed(done.returncode)
     return done.stdout or ""

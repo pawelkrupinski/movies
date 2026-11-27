@@ -31,7 +31,7 @@ def runs(repo):
     out = ci_machine.run(
         ["gh", "api", f"repos/{repo}/actions/workflows/{WORKFLOW}/runs?status=success&per_page=100",
          "--jq", '.workflow_runs[] | [.id, .head_branch, .head_commit.tree_id, .conclusion] | @tsv'],
-        capture_output=True, text=True, timeout=60)
+        capture_output=True, timeout=60)
     if out.returncode != 0:
         raise RuntimeError(out.stderr.strip() or f"gh exited {out.returncode}")
     return [tuple(line.split("\t")) for line in out.stdout.splitlines() if line.count("\t") == 3]

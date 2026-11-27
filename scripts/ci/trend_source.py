@@ -28,7 +28,7 @@ def workflow_matches(record: Record, workflow: Optional[str]) -> bool:
 
 
 def commits_in(spec: str) -> Set[str]:
-    out = ci_machine.run(["git", "rev-list", spec], check=True, capture_output=True, text=True, timeout=60).stdout
+    out = ci_machine.run(["git", "rev-list", spec], check=True, capture_output=True, timeout=60).stdout
     return set(out.split())
 
 
