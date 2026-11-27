@@ -22,6 +22,7 @@ country with no dump still gets its own. A class the list lacks still loads norm
 /data/heapdumps (docs/heap-dumps.md).
 """
 import gzip, re, struct, sys, zipfile
+from typing import List, Set
 
 HIDDEN = re.compile(r'\$\$Lambda|LambdaForm\$|/0x[0-9a-f]+|\+0x|\$Proxy\d|jdk/internal/reflect/Generated|HiddenClass')
 
@@ -67,11 +68,16 @@ def packaged_classes(jar, prefix):
         return {n[:-len('.class')] for n in z.namelist()
                 if n.endswith('.class') and n.startswith(path_prefix) and not n.startswith('META-INF/')}
 
-def main(argv):
-    arguments, names = argv, set()
+def kept_names(path: str) -> Set[str]:
+    with open(path) as kept:
+        return {line.strip().replace('.', '/') for line in kept if line.strip() and not line.startswith('#')}
+
+
+def main(argv: List[str]) -> None:
+    arguments: List[str] = argv
+    names: Set[str] = set()
     if arguments[:1] == ['--keep']:
-        with open(arguments[1]) as kept:
-            names |= {line.strip().replace('.', '/') for line in kept if line.strip() and not line.startswith('#')}
+        names |= kept_names(arguments[1])
         arguments = arguments[2:]
     while arguments[:1] == ['--package']:
         jar, prefix = arguments[1].rsplit(':', 1)

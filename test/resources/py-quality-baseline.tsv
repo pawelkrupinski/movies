@@ -465,7 +465,7 @@ pyright	infra/nix/files/nixos-auto-apply.py	262
 pyright	infra/nix/files/scheduled_dispatch.py	494
 pyright	scripts/adopt_ci_budgets.py	19
 pyright	scripts/agent_time.py	194
-pyright	scripts/aot-class-list.py	41
+pyright	scripts/aot-class-list.py	32
 pyright	scripts/ci/check-security-headers.py	255
 pyright	scripts/ci/ci_http_calls.py	94
 pyright	scripts/ci/commit_rules.py	75
