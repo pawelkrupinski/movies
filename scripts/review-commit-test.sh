@@ -12,7 +12,7 @@ trap 'rm -rf "$SCRATCH"' EXIT
 root="$SCRATCH/movies"; wt="$SCRATCH/wt"
 scratch_repo "$root" -b main
 mkdir -p "$root/scripts/ci" "$root/test/resources/fixtures"
-cp "$REPO_ROOT/scripts/review-commit" "$REPO_ROOT/scripts/tool-conventions.sh" "$root/scripts/"
+cp "$REPO_ROOT/scripts/review-commit" "$root/scripts/" && spec_copy_conventions "$root/scripts"
 printf '#!/usr/bin/env python3\n' > "$root/scripts/ci/identity_judgements_lint.py"
 printf 'country\n' > "$root/test/resources/fixtures/identity-judgements.tsv"
 echo 2026-01-01T00:00:00Z > "$root/test/resources/fixtures/identity-judgements.tsv.used-until"

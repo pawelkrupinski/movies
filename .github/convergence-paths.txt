@@ -268,10 +268,12 @@ scripts/local-mirror/start-local-mongo.sh
 scripts/read-model-snapshot-inputs.sh
 scripts/sbt-warm
 scripts/shell-spec.sh
+scripts/stall-report.sh
 scripts/title-trace
 scripts/title-trace-tool-files.txt
 scripts/title_trace.py
 scripts/title_trace_test.py
+scripts/tool-conventions-files.txt
 scripts/tool-conventions.sh
 scripts/zinc_orphans.py
 # END GENERATED

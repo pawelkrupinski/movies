@@ -306,6 +306,11 @@ jobs:
                       scripts/lib/tool_shell.py
                       scripts/identity-tools.sh
                       scripts/tool-conventions.sh
+                      scripts/tool-conventions-files.txt
+                      scripts/lib/tool_bounded.py
+                      scripts/lib/machine.py
+                      scripts/lib/gh_download.py
+                      scripts/lib/tool_countries.py
                       scripts/identity-slice-old-ref-test.sh
                       scripts/ci/verified-ref.sh
                       scripts/ci/verified_ref.py

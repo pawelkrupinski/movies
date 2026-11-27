@@ -186,7 +186,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/runner_cache.py` | A runner-local mirror of actions/cache entries, for the self-hosted runners on ci-runner. | `python3 scripts/ci/runner_cache.py` | 1 tool | runner_cache_test.py | Python |
 | `scripts/ci/runner_scheduler.py` | CI-RUNNER'S MOVIES RUNNER SCHEDULER (the owner, 2026-11-06: "make movies runs take all the ci-runner runners when | `python3 scripts/ci/runner_scheduler.py` | wf precommit-check; agentctl; 1 tool | runner_scheduler_test.py | Python |
 | `scripts/ci/sbt-deps-resolve.sh` | Resolve every dependency of the sbt build once (`sbt update` over the root aggregate | `scripts/ci/sbt-deps-resolve.sh` | wf ci; 2 tools | sbt-deps-resolve-test.sh | KEEP |
-| `scripts/ci/sbt-guard/sbt` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH | `scripts/ci/sbt-guard/sbt` | wf ci, country-convergence-leg, country-fixture-artifact +21; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 156 tools | - | KEEP |
+| `scripts/ci/sbt-guard/sbt` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH | `scripts/ci/sbt-guard/sbt` | wf ci, country-convergence-leg, country-fixture-artifact +21; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 155 tools | - | KEEP |
 | `scripts/ci/sbt-invalidate-exporters.sh` | Delete the compiled classes of every Scala source holding a wildcard export (`export X.*`, `export x.{a as _, *}`) | `scripts/ci/sbt-invalidate-exporters.sh` | skill CLAUDE.md; 2 tools | sbt-invalidate-exporters-test.sh | KEEP |
 | `scripts/ci/sbt-sources-key.sh` | The hash an sbt build cache is keyed by: the content of the sources a job compiles | `scripts/ci/sbt-sources-key.sh` | wf ci; 1 tool | sbt-sources-key-test.sh | KEEP |
 | `scripts/ci/sbt_guard.py` | The one way CI runs sbt: every sbt setup on CI puts this wrapper first on the PATH (scripts/ci/sbt-guard/sbt) | `scripts/ci/sbt_guard.py` | 1 tool | sbt_guard_test.py | Python |
@@ -688,7 +688,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (125)
+## Dev (126)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -729,10 +729,11 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/atomic.py` | ATOMIC FILE WRITES, the one way the Python tools replace a file (scripts/lib): the new content goes into a uniquely | `imported` | skill CLAUDE.md; 8 tools | atomic_test.py | Python |
 | `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | wf android, security-headers; skill CLAUDE.md; 9 tools | cli_harness_test.py | Python |
 | `scripts/lib/cpu_meter.py` | THE CPU METER (scripts/jvm-gate.sh's cpu_meter_start / cpu_meter_stop, for the Python tools): the CPU time of the | `imported` | 6 tools | - | Python |
+| `scripts/lib/gh_download.py` | A GITHUB DOWNLOAD, BOUNDED AND RETRIED, absent told from failed (scripts/lib; tool-conventions.sh's gh_download, | `imported` | wf convergence-bisect, main; 12 tools | - | Python |
 | `scripts/lib/hook_event.py` | THE HOOK EVENT the claude-hooks read: the JSON Claude Code writes on a hook's stdin, read for a bounded time. | `imported` | 7 tools | hook_event_test.py | Python |
 | `scripts/lib/jvm_gate.py` | THE JVM GATE for the Python tools: scripts/jvm-gate.sh's slots, locks and governor tickets (its header says why and | `imported` | 6 tools | jvm_gate_test.py | Python |
 | `scripts/lib/jvm_memory.py` | THE MEMORY GATE and the wait for a JVM slot, for the Python tools (scripts/jvm-gate.sh's memory_gate and | `imported` | 4 tools | - | Python |
-| `scripts/lib/machine.py` | THE MACHINE: the processes, clock and environment the laptop tools touch, in one adapter (the design rules table's | `imported` | wf alert-backtest, android, archive-recording +44; hook pre-push; skill CLAUDE.md, identity-investigation, test-layers; 135 tools | - | Python |
+| `scripts/lib/machine.py` | THE MACHINE: the processes, clock and environment the laptop tools touch, in one adapter (the design rules table's | `imported` | wf alert-backtest, android, archive-recording +44; hook pre-push; skill CLAUDE.md, identity-investigation, test-layers; 136 tools | - | Python |
 | `scripts/lib/pinned_npm_tools.py` | PINNED NODE TOOLS, installed OUTSIDE the checkout: a tool's package.json and its lock, `npm ci`'d once per lock into | `imported` | hook pre-push; 2 tools | - | Python |
 | `scripts/lib/prod_tunnel.py` | HOW A LAPTOP REACHES PROD MONGO, for the Python tools (scripts/lib): scripts/local-mirror/prod-tunnel.sh's | `imported` | 4 tools | prod_tunnel_test.py | Python |
 | `scripts/lib/production_scala.py` | THE DEPLOYED SCALA SOURCES (scripts/lib): the modules whose `src/main` ships (quality.QualityReport.ProductionModules) | `imported` | 2 tools | production_scala_test.py | Python |
@@ -753,9 +754,9 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/store_screenshots_common.py` | The store-screenshot drivers' SHARED ENGINE -- android/scripts/store_screenshots.py and ios/scripts/ | `imported` | 5 tools | - | Python |
 | `scripts/lib/store_screenshots_fixture.py` | The store-screenshot drivers' TEST FIXTURE (android/scripts/store_screenshots_test.py, ios/scripts/ | `imported` | by hand | - | Python |
 | `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 7 tools | tool_actions_test.py | Python |
-| `scripts/lib/tool_bounded.py` | BOUNDED: a command ended once it outlasts <seconds> (exit 124), else its own status -- timeout(1)'s contract without | `imported` | 5 tools | - | Python |
+| `scripts/lib/tool_bounded.py` | BOUNDED: a command ended once it outlasts <seconds> (exit 124), else its own status -- timeout(1)'s contract without | `imported` | wf main; 7 tools | - | Python |
 | `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 32 tools | tool_cli_test.py | Python |
-| `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | 14 tools | - | Python |
+| `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | wf main; 15 tools | - | Python |
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 11 tools | tool_dispatch_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; 51 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | 22 tools | tool_github_test.py | Python |
@@ -802,7 +803,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/timezonefinder-python` | Print a directory whose python3 imports timezonefinder, for the pre-push drift check | `scripts/timezonefinder-python` | hook pre-push; 3 tools | timezonefinder-python-test.sh | KEEP |
 | `scripts/timezonefinder-python-stub.sh` | A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder | `sourced` | by hand | - | KEEP |
 | `scripts/title_trace.py` | Every step one raw billing goes through, in production order: the ingest tidy, the venue's own title rules, the format | `python3 scripts/title_trace.py` | wf main; 2 tools | title_trace_test.py | Python |
-| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 60 tools | tool-conventions-test.sh | MIGRATE |
+| `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; hook pre-push; 62 tools | tool-conventions-test.sh | MIGRATE |
 | `scripts/tool_catalogue.py` | The tool catalogue: docs/tools.md, generated from every tool's own one-line purpose. | `python3 scripts/tool_catalogue.py` | skill CLAUDE.md | tool_catalogue_test.py | Python |
 | `scripts/touched-tree-stub.sh` | The stub sbt for the touched-code tools' specs (mutation-check, coverage-touched) | `scripts/touched-tree-stub.sh` | 1 tool | - | KEEP |
 | `scripts/touched_methods.py` | THE METHODS A CHANGE TOUCHES, and what the refactoring tools say about each (scripts/mutation-check, | `python3 scripts/touched_methods.py` | 4 tools | touched_methods_test.py | Python |

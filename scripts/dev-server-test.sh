@@ -18,7 +18,7 @@ trap 'rm -rf "$SCRATCH"' EXIT
 # 43345620431).
 DEV="$SCRATCH/repo"
 mkdir -p "$DEV/scripts/ci" "$DEV/identity/src/main/scala/services/identity/measures" || exit 1
-cp "$REPO_ROOT/scripts/dev-server.sh" "$REPO_ROOT/scripts/vault-env.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$DEV/scripts/" &&
+cp "$REPO_ROOT/scripts/dev-server.sh" "$REPO_ROOT/scripts/vault-env.sh" "$DEV/scripts/" && spec_copy_conventions "$DEV/scripts" &&
   cp "$REPO_ROOT/scripts/ci/sbt-invalidate-exporters.sh" "$DEV/scripts/ci/" &&
   cp "$REPO_ROOT/identity/src/main/scala/services/identity/measures/IdentityMeasures.scala" \
     "$DEV/identity/src/main/scala/services/identity/measures/" || exit 1

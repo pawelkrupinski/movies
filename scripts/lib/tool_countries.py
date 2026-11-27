@@ -10,10 +10,13 @@ KINOWO_COUNTRIES and country_flag, identity-tools.sh's identity_country_code / _
                                the index of its last word"""
 from __future__ import annotations
 
+import os
 import re
+import sys
 from typing import List, Sequence, Tuple
 
-from tool_cli import UsageError
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))  # run as `python3 -I`: its own directory is not there
+from tool_cli import UsageError  # noqa: E402
 
 CODES = ("pl", "de", "uk", "us", "es")
 NAMES = {"pl": "poland", "de": "germany", "uk": "united-kingdom", "es": "spain", "us": "united-states"}
@@ -53,3 +56,18 @@ def flag_at(argv: Sequence[str], i: int, before: Sequence[str]) -> Tuple[List[st
     flag = arg.split("=", 1)[0]
     values, i = ([arg.split("=", 1)[1]], i) if "=" in arg else (list(argv[i + 1:i + 2]), i + 1)
     return selected(flag, values or [""], before), i
+
+
+def main(argv: Sequence[str]) -> int:
+    """`tool_countries.py <flag> <value> [code...]`: tool-conventions.sh's country_flag -- the codes named so far and
+    those the flag's value names, on one line; a usage error's line on stdout, exit 2 (the shell says it)."""
+    try:
+        print(" ".join(selected(argv[0], [argv[1]], argv[2:])))
+    except UsageError as bad:
+        print(bad)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

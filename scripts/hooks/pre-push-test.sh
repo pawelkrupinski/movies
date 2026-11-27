@@ -343,7 +343,7 @@ check "no module path, no unit tests (e2e is the heavy rows')" "" \
 
 planrepo="$testroot/planrepo"; mkdir -p "$planrepo/scripts/hooks"
 scratch_repo "$planrepo"
-for f in hooks/pre-push hooks-path.sh tool-conventions.sh; do cp "$REPO_ROOT/scripts/$f" "$planrepo/scripts/$f"; done
+for f in hooks/pre-push hooks-path.sh; do cp "$REPO_ROOT/scripts/$f" "$planrepo/scripts/$f"; done; spec_copy_conventions "$planrepo/scripts"
 printf '#!/usr/bin/env bash\necho checked >> "%s/root-checked"\n' "$planrepo" > "$planrepo/scripts/root-checkout-check"
 chmod +x "$planrepo/scripts/root-checkout-check"
 scratch_git "$planrepo" add -A; scratch_git "$planrepo" commit -qm base
@@ -366,7 +366,7 @@ if command -v shellcheck >/dev/null; then
   repo="$scratch/repo"
   mkdir -p "$repo/scripts/hooks"
   scratch_repo "$repo"
-  cp "$REPO_ROOT/scripts/hooks/pre-push" "$REPO_ROOT/scripts/hooks/lint-registry.tsv" "$REPO_ROOT/scripts/hooks/lint-registry-missing" "$repo/scripts/hooks/"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$repo/scripts/hooks-path.sh"; cp "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/tool-conventions.sh"
+  cp "$REPO_ROOT/scripts/hooks/pre-push" "$REPO_ROOT/scripts/hooks/lint-registry.tsv" "$REPO_ROOT/scripts/hooks/lint-registry-missing" "$repo/scripts/hooks/"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$repo/scripts/hooks-path.sh"; spec_copy_conventions "$repo/scripts"
   for f in sbt-warm jvm-gate.sh stall-watch.sh stall_watch.py zinc_orphans.py; do
     cp "$REPO_ROOT/scripts/$f" "$repo/scripts/$f"
   done
@@ -643,7 +643,7 @@ printf '\033[36m▸\033[0m pre-push basic and area tests\n'
 area="$testroot/area"; areabin="$testroot/areabin"; mkdir -p "$area/scripts/hooks" "$areabin"
 scratch_repo "$area"
 mkdir -p "$area/scripts/ci"
-for f in hooks/pre-push hooks/lint-registry-missing hooks-path.sh tool-conventions.sh ci/commit_rules.py ci/trailers.py pure-move-check; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
+spec_copy_conventions "$area/scripts"; for f in hooks/pre-push hooks/lint-registry-missing hooks-path.sh ci/commit_rules.py ci/trailers.py pure-move-check; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
 cp "$REPO_ROOT"/scripts/pure_move_*.py "$area/scripts/"
 cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$REPO_ROOT/scripts/ci/shard_tests.py" "$REPO_ROOT/scripts/ci/shard_weights.py" "$REPO_ROOT/scripts/ci/population_walk_diff.py" "$area/scripts/ci/"
 mkdir -p "$area/scripts/lib"
@@ -1019,7 +1019,7 @@ scratch_repo "$hp/clone"
 mkdir -p "$hp/clone/scripts/hooks"
 # stamp <copy> <word>: the hook with a line, right after its hand-over, recording which copy went on to run
 stamp() { awk -v w="$2" -v m="$hp/ran" '{ print } /^# ── end of the hand-over ──/ { print "echo " w " >> " m }' \
-  "$REPO_ROOT/scripts/hooks/pre-push" > "$1"; chmod +x "$1"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/root-checkout-check" "$(dirname "$1")/../"; }
+  "$REPO_ROOT/scripts/hooks/pre-push" > "$1"; chmod +x "$1"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$REPO_ROOT/scripts/root-checkout-check" "$(dirname "$1")/../"; spec_copy_conventions "$(dirname "$1")/.."; }
 stamp "$hp/clone/scripts/hooks/pre-push" old
 echo base > "$hp/clone/README"; scratch_git "$hp/clone" add -A; scratch_git "$hp/clone" commit -qm base
 scratch_git "$hp/clone" remote add origin "$hp/origin.git"; scratch_git "$hp/clone" push -q origin HEAD:main 2>/dev/null

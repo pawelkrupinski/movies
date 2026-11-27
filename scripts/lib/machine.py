@@ -4,6 +4,7 @@
 signal and wait for processes only through it; their tests hand in fakes where they need to.
 
   environment()                    the process's own environment (a tool's main() hands it on)
+  monotonic() / wall() / sleep(s)  the clock
   output(argv) / status(argv)      a command's stdout (and status) / its status, stdout and stderr as asked
   errors(argv)                     a command's status and its stderr
   spawn(argv)                      a command started in the background (a Popen)
@@ -37,6 +38,10 @@ def wall() -> float:
     return time.time()
 
 
+def sleep(seconds: float) -> None:
+    time.sleep(seconds)
+
+
 def local_text(form: str, epoch: float) -> str:
     return time.strftime(form, time.localtime(epoch))
 
@@ -47,10 +52,12 @@ def output(argv: Sequence[str], text_in: Optional[str] = None, cwd: Optional[str
     return run(argv, Ran(cwd, env, subprocess.PIPE, subprocess.DEVNULL), text_in)
 
 
-def errors(argv: Sequence[str], cwd: Optional[str] = None) -> Tuple[int, str]:
-    """(status, stderr) of a command, its stdout dropped; 127 and nothing when it cannot be run."""
+def errors(argv: Sequence[str], cwd: Optional[str] = None, env: Optional[MutableMapping[str, str]] = None,
+           out: Sink = subprocess.DEVNULL) -> Tuple[int, str]:
+    """(status, stderr) of a command, its stdout dropped (or where `out` says: None, this process's); 127 and nothing
+    when it cannot be run."""
     try:
-        done = subprocess.run(list(argv), cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+        done = subprocess.run(list(argv), cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=out,
                               stderr=subprocess.PIPE, text=True)
     except OSError:
         return 127, ""

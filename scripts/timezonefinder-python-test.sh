@@ -14,7 +14,7 @@ base="$(mktemp -d)"
 trap 'rm -rf "$base"' EXIT
 # The tool's copy beside its own lock file, so a case can change the lock.
 mkdir -p "$base/scripts"
-cp "$HERE/timezonefinder-python" "$HERE/python-venv" "$HERE/timezonefinder-requirements.txt" "$HERE/tool-conventions.sh" "$base/scripts/"
+cp "$HERE/timezonefinder-python" "$HERE/python-venv" "$HERE/timezonefinder-requirements.txt" "$base/scripts/" && spec_copy_conventions "$base/scripts"
 tool="$base/scripts/timezonefinder-python"
 export KINOWO_TIMEZONEFINDER_VENVS="$base/venvs"
 . "$HERE/timezonefinder-python-stub.sh"

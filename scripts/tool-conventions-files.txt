@@ -1,0 +1,8 @@
+# What a tree that copies scripts/tool-conventions.sh copies beside it (its shims run these), one path a line from
+# the repository root. A test that lays out a scratch tree reads this list rather than naming them itself.
+scripts/tool-conventions.sh
+scripts/lib/tool_bounded.py
+scripts/lib/machine.py
+scripts/lib/gh_download.py
+scripts/lib/tool_countries.py
+scripts/lib/tool_cli.py

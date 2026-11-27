@@ -261,9 +261,9 @@ conventions="$REPO_ROOT/scripts/tool-conventions.sh"
 # whose own 124 would otherwise look the same (shell-spec.sh's HUNG STUBS)
 check "bounded ends a command that outlasts it, 124" "inner 124" \
   "$(spec_bounded bash -c '. "$1"; bounded 1 sleep 86400; echo "inner $?"' _ "$conventions")"
-# stock macOS: no timeout(1) on the PATH, only perl
+# stock macOS: no timeout(1) on the PATH, only its python3 (the shim runs scripts/lib/tool_bounded.py)
 mkdir -p "$work/bare"
-for c in perl sleep bash; do ln -sf "$(command -v "$c")" "$work/bare/$c"; done
+for c in python3 sleep bash; do ln -sf "$(command -v "$c")" "$work/bare/$c"; done
 bare() { PATH="$work/bare" "$work/bare/bash" -c '. "$1"; shift; "$@"' _ "$conventions" "$@"; }
 check "without timeout(1) (stock macOS) bounded still ends it, 124" "124" "$(bare bounded 1 sleep 20; echo $?)"
 check "...and hands back a command's own status" "3" "$(bare bounded 5 bash -c 'exit 3'; echo $?)"

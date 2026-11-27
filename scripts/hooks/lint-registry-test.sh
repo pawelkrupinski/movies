@@ -108,7 +108,7 @@ check "#2564: host-memory.json and k3s-server.nix run the sbt check, and select 
 # write let the second die of SIGPIPE, and the pipeline read false -- a race only a loaded host lost. A registry padded
 # past the pipe buffer, the hook copied beside it, loses it every time.
 mkdir -p "$scratch/hook/scripts"
-cp -R scripts/hooks "$scratch/hook/scripts/" && cp scripts/hooks-path.sh scripts/tool-conventions.sh "$scratch/hook/scripts/"
+cp -R scripts/hooks "$scratch/hook/scripts/" && cp scripts/hooks-path.sh "$scratch/hook/scripts/" && spec_copy_conventions "$scratch/hook/scripts"
 awk 'BEGIN { for (i = 1; i <= 3000; i++) printf "x:Padding%dSpec\tpadding/file-%d.txt\n", i, i }' >> "$scratch/hook/scripts/hooks/lint-registry.tsv"
 check "...however long the registry's file list (no SIGPIPE in the match)" "yes" \
   "$(has "$(printf 'infra/nix/files/host-memory.json\n' | "$scratch/hook/scripts/hooks/pre-push" --plan 2>/dev/null | tr '\n' ' ')" sbt)"

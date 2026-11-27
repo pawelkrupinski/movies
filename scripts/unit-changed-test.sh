@@ -6,6 +6,8 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/scratch-git.sh
 . "$REPO_ROOT/scripts/scratch-git.sh"
+# shellcheck source=scripts/shell-spec.sh
+. "$REPO_ROOT/scripts/shell-spec.sh" # spec_copy_conventions (its own check below replaces the spec's)
 
 testroot="$(cd "$(mktemp -d)" && pwd -P)"; trap 'rm -rf "$testroot"' EXIT
 fails=0
@@ -18,7 +20,7 @@ origin="$testroot/origin.git"; repo="$testroot/repo"; log="$testroot/log"
 scratch_repo "$origin" --bare
 scratch_repo "$repo" -b main
 mkdir -p "$repo/scripts/hooks"
-cp "$REPO_ROOT/scripts/unit-changed" "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/"
+cp "$REPO_ROOT/scripts/unit-changed" "$repo/scripts/"; spec_copy_conventions "$repo/scripts"
 # The plan stub: a test command per module named by a path's first segment, the paths it was handed logged.
 cat > "$repo/scripts/hooks/pre-push" <<STUB
 #!/usr/bin/env bash

@@ -9,7 +9,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 printf '\033[36m▸\033[0m land-before-queue\n'
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-cp "$REPO_ROOT/scripts/land-before-queue" "$REPO_ROOT/scripts/tool-conventions.sh" "$work/"
+cp "$REPO_ROOT/scripts/land-before-queue" "$work/" && spec_copy_conventions "$work"
 printf '#!/usr/bin/env bash\necho "carry $*"\nexit "${STUB_RC:-0}"\n' > "$work/identity-stamp-carry"
 chmod +x "$work/identity-stamp-carry"
 

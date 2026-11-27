@@ -93,6 +93,16 @@ _spec_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # bounded: its whole process group ended). An executable, not a shell function: bounded execs it.
 spec_bounded() { ( . "$_spec_dir/tool-conventions.sh" && bounded "$SPEC_HANG_BOUND" "$@" ); }
 
+# spec_copy_conventions <scripts dir> -> tool-conventions.sh and the scripts/lib files its shims run
+# (tool-conventions-files.txt) copied into <scripts dir>, a scratch tree's scripts/: a tool sourcing the shim finds them.
+spec_copy_conventions() {
+  local f
+  while IFS= read -r f; do
+    case "$f" in ''|'#'*) continue ;; esac
+    mkdir -p "$1/$(dirname "${f#scripts/}")" && cp "$_spec_dir/${f#scripts/}" "$1/${f#scripts/}" || return 1
+  done < "$_spec_dir/tool-conventions-files.txt"
+}
+
 # spec_still_running <pid file> -> how many of the pids it lists are alive after a grace of up to 10 s each (a TERM
 # being delivered); each one still alive is killed, so a failing case strands nothing
 spec_still_running() {

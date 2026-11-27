@@ -5,6 +5,9 @@
 # country codes, and the shared identity cache's path. Sourcing it defines
 # functions and constants only (and exports KINOWO_IDENTITY_CACHE, so a Python tool started from a Bash one reads the
 # same cache). bash 3.2 compatible: no mapfile, no associative arrays, no ${x,,}.
+# A SHIM over scripts/lib (since 2026-11-27): bounded is tool_bounded.py, the country flag tool_countries.py, the gh
+# download gh_download.py; what stays here must run in the calling shell (an exit, a variable it sets). A tree that
+# copies this file copies the files of tool-conventions-files.txt beside it.
 #
 # THE CONVENTIONS
 #   set -euo pipefail   a tool whose every step must succeed for its answer to mean anything: the first failure ends it.
@@ -55,58 +58,15 @@ KINOWO_GH=${KINOWO_GH:-gh}
 local_mongo_port() { echo "${LOCAL_MIRROR_PORT:-28017}"; }
 local_mongo_uri() { echo "mongodb://127.0.0.1:$(local_mongo_port)/${1:-}?directConnection=true"; }
 
+# builtins only: a bare PATH (a spec's, stock macOS's) still finds it
+case "${BASH_SOURCE[0]}" in */*) TOOL_CONVENTIONS_LIB=${BASH_SOURCE[0]%/*} ;; *) TOOL_CONVENTIONS_LIB=. ;; esac
+TOOL_CONVENTIONS_LIB="$(cd "$TOOL_CONVENTIONS_LIB" && pwd)/lib"
+
 bounded() {
   case "${1:-}" in
     ''|*[!0-9]*|0) echo "bounded: <seconds> must be a positive whole number, not '${1:-}'" >&2; return 64 ;;
   esac
-  perl -e '
-    use POSIX ":sys_wait_h";
-    my $seconds = shift;
-    my $on_timeout = delete $ENV{BOUNDED_ON_TIMEOUT}; # for this bound alone, never one the command sets itself
-    # The terminal: when bounded runs in its foreground with it on stdin, the command'"'"'s group is handed the foreground
-    # while it runs, and it is taken back after -- a group of its own in the background is stopped (SIGTTOU/SIGTTIN)
-    # the moment it touches the terminal (stty, a password prompt, a JLine sbt client), until the deadline.
-    my $home = getpgrp();
-    my $tty = (-t STDIN && POSIX::tcgetpgrp(0) == $home) ? 0 : undef;
-    $SIG{TTOU} = "IGNORE" if defined $tty; # a group out of the foreground may then move it, as a shell does
-    my $pid = fork() // die "fork: $!";
-    if ($pid == 0) {
-      setpgrp(0, 0);
-      if (defined $tty) { POSIX::tcsetpgrp($tty, $$); $SIG{TTOU} = "DEFAULT"; }
-      exec @ARGV or exit 127;
-    }
-    if (defined $tty) { setpgrp($pid, $pid); POSIX::tcsetpgrp($tty, $pid); } # whichever of the two runs first
-    my $take_back = sub { POSIX::tcsetpgrp($tty, $home) if defined $tty; };
-    # the whole group: TERM, a moment to go, then KILL whatever is left of it (a forked JVM included)
-    my $end_group = sub {
-      kill "TERM", -$pid;
-      for (1 .. 20) { waitpid($pid, WNOHANG); last unless kill 0, -$pid; select(undef, undef, undef, 0.1); }
-      kill "KILL", -$pid;
-      $take_back->();
-    };
-    my $stop = sub {
-      my ($code, $signal) = @_;
-      $end_group->();
-      # a signal is passed on as one: the calling shell sees it interrupted, as it would the command itself
-      if ($signal) { $SIG{$signal} = "DEFAULT"; kill $signal, $$; }
-      exit $code;
-    };
-    $SIG{ALRM} = sub { system($on_timeout, $pid) if $on_timeout; $stop->(124) };
-    $SIG{INT} = sub { $stop->(130, "INT") };
-    $SIG{TERM} = sub { $stop->(143, "TERM") };
-    alarm $seconds;
-    waitpid($pid, 0);
-    my $status = $?;
-    $take_back->();
-    # A Ctrl-C at the terminal reached only the command, the foreground: what it left running (a background job,
-    # which ignores it) is ended with it, and the signal passed on to the group bounded was called from, as the
-    # terminal would have sent it, so the caller stops as it would had the command run in its group.
-    if (defined $tty && grep { ($status & 127) == $_ } (2, 3)) {
-      $end_group->();
-      $SIG{INT} = $SIG{QUIT} = "DEFAULT";
-      kill $status & 127, -$home;
-    }
-    exit($status & 127 ? 128 + ($status & 127) : $status >> 8);' "$@"
+  python3 -I -B "$TOOL_CONVENTIONS_LIB/tool_bounded.py" "$@"
 }
 
 usage_from_header() { sed -n '2,/^set /p' "${1:-$0}" | sed -e '$d' -e 's/^# \{0,1\}//' -e 's/^#$//' | sed -e '1{/^$/d;}'; }
@@ -135,24 +95,15 @@ usage_error() {
 SELECTED_COUNTRIES=()
 # shellcheck disable=SC2034 # COUNTRY_FLAG_ARGS is the calling loop's
 country_flag() {
-  local flag=$1 value cc known codes=() named=0
+  local flag=$1 value codes
   COUNTRY_FLAG_ARGS=1
   case "$flag" in
     --country=*|--countries=*) value=${flag#*=}; flag=${flag%%=*} ;;
-    *) value=${2:-}; COUNTRY_FLAG_ARGS=2; [ $# -ge 2 ] || COUNTRY_FLAG_ARGS=1 ;;
+    *) value=${2:-}; [ $# -lt 2 ] || COUNTRY_FLAG_ARGS=2 ;;
   esac
-  [ -n "$value" ] && [ "${value#-}" = "$value" ] || usage_error "$flag needs a country code (one of $(kinowo_countries_csv))"
-  # split on commas and spaces into an array, never through an unquoted expansion: a `*` stays a `*`
-  IFS=', ' read -r -a codes <<< "$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
-  for cc in ${codes[@]+"${codes[@]}"}; do
-    [ -n "$cc" ] || continue
-    named=1
-    known=""
-    case ",$(kinowo_countries_csv)," in *",$cc,"*) known=1 ;; esac
-    [ -n "$known" ] || usage_error "unknown country $cc (one of $(kinowo_countries_csv))"
-    case " ${SELECTED_COUNTRIES[*]:-} " in *" $cc "*) ;; *) SELECTED_COUNTRIES+=("$cc") ;; esac
-  done
-  [ "$named" = 1 ] || usage_error "$flag names no country code (one of $(kinowo_countries_csv))"
+  codes=$(python3 -I -B "$TOOL_CONVENTIONS_LIB/tool_countries.py" "$flag" "$value" ${SELECTED_COUNTRIES[@]+"${SELECTED_COUNTRIES[@]}"}) ||
+    usage_error "$codes"
+  read -r -a SELECTED_COUNTRIES <<< "$codes"
 }
 selected_countries_csv() {
   if [ ${#SELECTED_COUNTRIES[@]} -eq 0 ]; then kinowo_countries_csv; else local IFS=,; echo "${SELECTED_COUNTRIES[*]}"; fi
@@ -175,160 +126,13 @@ path_flag() {
 }
 
 # ── Downloading from GitHub ─────────────────────────────────────────────────────────────────────────
-#   gh_download <seconds> <run|release> download <args...> -> 0 downloaded; 3 ABSENT (gh says there is nothing to
-#        download: no asset matches, no such or an expired artifact, a 404 or 410); 1 a FAILED read — every attempt
-#        failed, each ended once it outlasts <seconds> (a hung gh is a failed attempt, not a wait forever).
-#   A failed read is asked again, GH_DOWNLOAD_ATTEMPTS times in all (3), the wait doubling from GH_DOWNLOAD_BACKOFF
-#   seconds (5). A THROTTLED one — a 5xx, a 429 or a rate limit, Azure's "Egress is over the account limit" from the
-#   artifact storage — is asked up to GH_DOWNLOAD_TRANSIENT_ATTEMPTS times (10): 5, 10, 20, 40, 80, then 120 s
-#   (GH_DOWNLOAD_MAX_WAIT) a wait, each plus up to half again of jitter, ~11-16 minutes in all. The storage account
-#   behind Actions artifacts is shared by many repositories and throttles in bursts (run 38763455103: one leg's
-#   download refused while its 16 sibling jobs' succeeded, the same artifact downloading in 3 s two hours later);
-#   jitter keeps a matrix's legs from asking again in step, and past ~15 minutes it is an outage a re-run answers, not
-#   a wait worth a runner. An absent one is an answer, never asked again — and never confused with a failed one,
-#   which a caller treating "absent" as "carry on with less" must not read as it.
-#   A RELEASE THAT MUST EXIST: GH_DOWNLOAD_RELEASE_EXISTS=1 makes gh's "release not found" a failed read, asked again,
-#   not an absent asset -- for a permanent release (the identity-recordings archive), whose tag GitHub's API now and
-#   then answers 404 for a moment: Identity takes run 43317254260's es takes-base read the archive's 573 corpus as
-#   absent at 22:34:06 while its sibling legs downloaded the same asset from the same release around it.
-#   A `run download`'s --dir is emptied before each retry (gh refuses to overwrite what a cut-short attempt left), so
-#   it must be a directory of the download's own. gh's own messages go to stderr.
-#
-#   PUBLIC ASSETS, NO API. A `release download <tag> --pattern <one exact name>` is fetched from the release's public
-#   URL, https://github.com/<repo>/releases/download/<tag>/<name>, which the CDN serves without the REST API — where gh
-#   spends three API requests on each (the release by tag, a GraphQL lookup, the asset). A convergence run downloads
-#   ~500 fills that way; two runs side by side drew the repository's GITHUB_TOKEN budget dry (run 41228549464: every
-#   uk-2 retry 403 "API rate limit exceeded for installation" for 14 minutes; run 41228572378's de-2 waited out its
-#   900 s tree-restore bound inside the same window, its fill retries silenced). Taken when GH_DOWNLOAD_PUBLIC=1, and
-#   by default on an Actions runner (GITHUB_ACTIONS). The repository is -R's, else GH_REPO's, else GITHUB_REPOSITORY's.
-#   A 404 there (a private repository, a missing asset) and any other failure fall back to gh from then on: the API's
-#   answer decides absent from failed, as it always did.
-#   PROGRESS, NOT A CLOCK: the public fetch ends once it moves under GH_DOWNLOAD_STALL_BYTES (1024) bytes a second for
-#   GH_DOWNLOAD_STALL_SECONDS (60) — a stalled connection is a failed attempt within a minute, not one that holds the
-#   whole <seconds> bound — and gh, on a fresh connection, takes over.
-#   RATE LIMIT: a gh refused with "API rate limit exceeded" waits for that limit's reset (`gh api rate_limit`, which
-#   the limit does not count; X-RateLimit-Reset's value) plus a few seconds of jitter, said in the log, when the reset is at
-#   most GH_RATE_LIMIT_MAX_WAIT (600) seconds away: one request after the reset instead of blind ones inside the empty
-#   window. Further than that, or unreadable, it backs off as any throttle.
-gh_download() {
-  local seconds=$1 attempt=1 attempts err status dir="" arg prev="" wait public=1
-  shift
-  for arg in "$@"; do [ "$prev" = --dir ] && dir=$arg; prev=$arg; done
-  while :; do
-    if [ -n "$public" ]; then
-      gh_release_public "$seconds" "$@"
-      status=$?
-      [ "$status" -eq 0 ] && return 0
-      public=""
-      # 4: not a download the public URL serves -- gh, quietly, as before
-      [ "$status" -eq 4 ] || echo "gh $1 $2: the public asset URL did not serve it (status $status); asking the API" >&2
-    fi
-    # gh's stderr read into a variable, its stdout left where it was (fd 3, opened outside the substitution, is this
-    # function's stdout): no temporary file for a signal to strand
-    { err=$(bounded "$seconds" "$KINOWO_GH" "$@" 2>&1 1>&3 3>&-); status=$?; } 3>&1
-    [ -z "$err" ] || printf '%s\n' "$err" >&2
-    [ "$status" -eq 0 ] && return 0
-    if printf '%s' "$err" | grep -Eq 'no assets match|release not found|no artifact matches|no valid artifacts found|HTTP 404|HTTP 410' &&
-       ! { [ -n "${GH_DOWNLOAD_RELEASE_EXISTS:-}" ] && printf '%s' "$err" | grep -q 'release not found'; }; then
-      return 3
-    fi
-    attempts=${GH_DOWNLOAD_ATTEMPTS:-3}
-    if printf '%s' "$err" | grep -Eiq 'HTTP 5[0-9][0-9]|HTTP 429|rate limit|Egress is over|ServerBusy'; then
-      attempts=${GH_DOWNLOAD_TRANSIENT_ATTEMPTS:-10}
-    fi
-    if [ "$attempt" -ge "$attempts" ]; then
-      echo "gh $1 $2: failed after $attempt attempt(s) (exit $status)" >&2
-      return 1
-    fi
-    if printf '%s' "$err" | grep -Eiq 'API rate limit exceeded' && wait=$(gh_rate_limit_wait); then
-      echo "gh $1 $2: the API rate limit is spent; it resets in $wait s -- asking again then (attempt $attempt of $attempts)" >&2
-    else
-      wait=$(( ${GH_DOWNLOAD_BACKOFF:-5} << (attempt - 1) ))
-      [ "$wait" -le "${GH_DOWNLOAD_MAX_WAIT:-120}" ] || wait=${GH_DOWNLOAD_MAX_WAIT:-120}
-      wait=$(( wait + RANDOM % (wait / 2 + 1) ))
-      echo "gh $1 $2: attempt $attempt of $attempts failed (exit $status); asking again in ${wait}s" >&2
-    fi
-    sleep "$wait"
-    if [ "$1" = run ] && [ -n "$dir" ] && [ -d "$dir" ]; then find "$dir" -mindepth 1 -delete; fi
-    attempt=$((attempt + 1))
-  done
-}
-
-# gh_rate_limit_wait -> the seconds until the spent API rate limit (REST core or GraphQL, whichever is at 0) resets,
-#   plus GH_RATE_LIMIT_SLACK (5) and up to GH_RATE_LIMIT_JITTER (10) seconds, so a matrix's legs do not ask in step;
-#   status 1 when none is spent, it cannot be read, or the reset is over GH_RATE_LIMIT_MAX_WAIT
-#   (600) seconds away. `gh api rate_limit` is not counted against the limit it reads.
-gh_rate_limit_wait() {
-  local reset now wait
-  # allow-silenced: an unreadable limit only means the caller backs off blind, as it did before.
-  reset=$(bounded 30 "$KINOWO_GH" api rate_limit \
-            --jq '[.resources.core, .resources.graphql] | map(select(.remaining == 0) | .reset) | max // empty' 2>/dev/null) || return 1
-  [[ "$reset" =~ ^[0-9]+$ ]] || return 1
-  now=$(date +%s)
-  wait=$(( reset - now ))
-  [ "$wait" -ge 0 ] || wait=0
-  [ "$wait" -le "${GH_RATE_LIMIT_MAX_WAIT:-600}" ] || return 1
-  echo $(( wait + ${GH_RATE_LIMIT_SLACK:-5} + RANDOM % (${GH_RATE_LIMIT_JITTER:-10} + 1) ))
-}
-
-# gh_release_public <seconds> <gh release download args...> -> 0 fetched from the public asset URL; 3 that URL said 404;
-#   4 not a download it serves (see gh_download: off, not github.com, a glob or several patterns, an option it does not
-#   know, a file it would have to overwrite without --clobber); 1 any other failure, said on stderr. KINOWO_CURL
-#   overrides curl (a test's stub, a counting wrapper).
-gh_release_public() {
-  local seconds=$1 tag repo name="" dir=. output="" clobber="" dest tmp code status
-  shift
-  case "${GH_DOWNLOAD_PUBLIC:-}" in
-    1) ;;
-    0) return 4 ;;
-    *) [ "${GITHUB_ACTIONS:-}" = true ] || return 4 ;;
-  esac
-  [ "${1:-}" = release ] && [ "${2:-}" = download ] && [ $# -ge 3 ] || return 4
-  tag=$3 repo=${GH_REPO:-${GITHUB_REPOSITORY:-}}
-  shift 3
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      -R|--repo) [ $# -ge 2 ] || return 4; repo=$2; shift 2 ;;
-      -p|--pattern) [ $# -ge 2 ] && [ -z "$name" ] || return 4; name=$2; shift 2 ;;
-      -D|--dir) [ $# -ge 2 ] || return 4; dir=$2; shift 2 ;;
-      -O|--output) [ $# -ge 2 ] || return 4; output=$2; shift 2 ;;
-      --clobber) clobber=1; shift ;;
-      *) return 4 ;;
-    esac
-  done
-  # owner/name, and a tag and an asset name of URL-safe characters only: a glob, a host prefix or anything to escape
-  # stays gh's
-  [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || return 4
-  [[ "$tag" =~ ^[A-Za-z0-9_.~+-]+$ ]] && [[ "$name" =~ ^[A-Za-z0-9_.~+-]+$ ]] || return 4
-  if [ -n "$output" ]; then dest=$output; else dest=$dir/$name; fi
-  [ "$dest" = - ] || [ -n "$clobber" ] || [ ! -e "$dest" ] || return 4
-  if [ "$dest" = - ]; then tmp=$(mktemp) || return 1; else mkdir -p "$(dirname "$dest")" || return 1; tmp=$dest.part; fi
-  code=$(bounded "$seconds" "${KINOWO_CURL:-curl}" -sSL --connect-timeout 20 \
-           --speed-limit "${GH_DOWNLOAD_STALL_BYTES:-1024}" --speed-time "${GH_DOWNLOAD_STALL_SECONDS:-60}" \
-           -o "$tmp" -w '%{http_code}' "https://github.com/$repo/releases/download/$tag/$name")
-  status=$?
-  if [ "$status" -eq 0 ] && [ "$code" = 200 ]; then
-    if [ "$dest" = - ]; then cat "$tmp"; rm -f "$tmp"; else mv -f "$tmp" "$dest"; fi
-    return 0
-  fi
-  rm -f "$tmp"
-  [ "$code" != 404 ] || return 3
-  # curl 28: the transfer stalled under the speed limit (or the bound ended it)
-  echo "public asset $repo $tag/$name: curl exit $status, HTTP ${code:-none}" >&2
-  return 1
-}
-
-# prod_latest_run <cc> -> the run id of the freshest COMPLETE nightly recording of that country (`--recording prod-latest`):
-# its corpus scraped from prod that night, its enrichment tree filled live over it, as prod-latest-<cc>.txt on the
-# convergence-fixtures release names it (.github/scripts/convergence-publish.sh latest). Not the hermetic pair the
-# identity measure lands on (573). 1, said, when there is none yet or the release cannot be read.
-prod_latest_run() {
-  local cc=$1 dir run
-  dir=$(mktemp -d)
-  gh_download "${KINOWO_IDENTITY_GH_TIMEOUT:-60}" release download "${FIXTURE_RELEASE_TAG:-convergence-fixtures}" \
-    -R "$KINOWO_GH_REPO" --pattern "prod-latest-$cc.txt" --dir "$dir" >/dev/null ||
-    { rm -rf "$dir"; echo "no prod-latest $cc recording (no prod-latest-$cc.txt on ${FIXTURE_RELEASE_TAG:-convergence-fixtures}, or it could not be read): the nightly \"Record scrape fixtures\" writes it once a $cc leg completes" >&2; return 1; }
-  run=$(cut -d' ' -f1 "$dir/prod-latest-$cc.txt"); rm -rf "$dir"
-  [[ "$run" =~ ^[0-9]+$ ]] || { echo "prod-latest-$cc.txt names no run" >&2; return 1; }
-  echo "$run"
-}
+#   gh_download <seconds> <run|release> download <args...> -> 0 downloaded, 3 absent, 1 failed: bounded and retried
+#   gh_release_public <seconds> release download <args...>  -> one asset from its public URL (4: not one it serves)
+#   gh_rate_limit_wait                                      -> the seconds until a spent API rate limit resets
+#   prod_latest_run <cc>                                    -> the freshest complete nightly recording's run id
+#   All in scripts/lib/gh_download.py, whose header holds the contract (the retries, absent against failed, the
+#   public URL, the rate limit) and every knob.
+gh_download() { python3 -I -B "$TOOL_CONVENTIONS_LIB/gh_download.py" download "$@"; }
+gh_rate_limit_wait() { python3 -I -B "$TOOL_CONVENTIONS_LIB/gh_download.py" rate-limit-wait; }
+gh_release_public() { python3 -I -B "$TOOL_CONVENTIONS_LIB/gh_download.py" public "$@"; }
+prod_latest_run() { python3 -I -B "$TOOL_CONVENTIONS_LIB/gh_download.py" prod-latest "$1"; }
