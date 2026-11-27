@@ -99,6 +99,9 @@ class LoadIndependentTestsSpec extends AnyFlatSpec with Matchers {
         "time the tree check moves it aside, until the case's stop file; the case waits on nothing it does"),
     s"scripts/ci/ci_timings_test.py: time.sleep(0.1)" ->
       "the pause inside the test's wait_until helper, which polls to a deadline and fails naming what it waited on",
+    "scripts/lib/cli_harness_test.py: wall = time.monotonic() - started" ->
+      ("the claim IS a structural bound, not a timing one: a chain of single-threaded children cannot burn more CPU than " +
+        "the wall it takes, so cpu <= wall - IDLE_SECONDS holds on any load; the case asserts it so the metered-ticket cases may"),
     "common/src/test/scala/tools/ManagedResourcesSpec.scala: stopwatch.elapsed should be < (grace * 2)" ->
       ("the claim IS a duration: one grace for every stuck pool, not one each (3 pools: 3 x grace against < 2 x); the " +
         "pools spin deaf to their interrupt, so nothing but the grace ends the stop"),
