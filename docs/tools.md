@@ -261,8 +261,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/script_tests_floor.py` | THE FLOOR'S STATIC HALF (scripts/run-script-tests --bash / --floor with --changed): every bash file the change | `imported` | 1 tool | - | Python |
 | `scripts/py-quality-report` | The Python quality report and its ratchet (entry; the measure is scripts/py-quality/report.py) | `scripts/py-quality-report` | hook pre-push, pre-push.sh-legacy; skill CLAUDE.md; 4 tools | - | KEEP |
 | `scripts/py-quality/clones.py` | THE PYTHON CLONE GROUPS (scripts/py-quality/report.py): every run of MIN_TOKENS or more tokens appearing twice or more | `imported` | wf ios; hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, test-layers; 9 tools | - | Python |
-| `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; hook pre-push; skill CLAUDE.md; 26 tools | - | Python |
-| `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 32 tools | - | Python |
+| `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; hook pre-push; skill CLAUDE.md; 27 tools | - | Python |
+| `scripts/py-quality/imports.py` | THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as | `imported` | wf identity-model-convergence; skill CLAUDE.md, identity-investigation, test-layers; 34 tools | - | Python |
 | `scripts/py-quality/migrated.py` | THE MIGRATED TOOLS (scripts/py-quality/report.py; the owner, 2026-11-23): the files of the shell-to-Python migration's | `imported` | skill CLAUDE.md; 5 tools | - | Python |
 | `scripts/py-quality/pyright.py` | STRICT PYRIGHT, PINNED (scripts/py-quality/report.py's `pyright` rows): the type checker of scripts/py-quality's | `imported` | hook pre-push, pre-push.sh-legacy; skill CLAUDE.md; 7 tools | - | Python |
 | `scripts/py-quality/report.py` | THE PYTHON QUALITY REPORT (scripts/py-quality-report): the Scala and JS/TS code-quality measures (CLAUDE.md, "Code | `scripts/py-quality/report.py` | wf alert-backtest, android, ci +36; hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 138 tools | report_test.py | Python |
@@ -690,7 +690,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (152)
+## Dev (154)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -718,7 +718,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/design-rules/packages.py` | PACKAGES, for every language (CLAUDE.md, "Coupling is reviewed"): a Python or JS directory stands for a Scala | `imported` | wf android, branch-ci, ci +4; hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, identity-investigation; 27 tools | - | Python |
 | `scripts/design-rules/python_facts.py` | THE PYTHON EXTRACTOR of the general rule core: a Python tool's `ast` read into a `model.Module` -- its names, the | `imported` | 2 tools | - | Python |
 | `scripts/design-rules/scala_names.py` | THE SCALA EXTRACTOR of the general rule core's NAMING and MIXED rules: a production Scala source's top-level types | `imported` | hook pre-push.sh-legacy; 5 tools | - | Python |
-| `scripts/design-rules/splits.py` | THE SPLIT CREDIT FOR IMPORTERS (the owner, 2026-11-27): a module X split into pieces -- its git functions moved into | `imported` | wf ci, country-convergence-leg, verify-scrape-recording; hook pre-push.sh-legacy; skill CLAUDE.md, agent-ops; 15 tools | - | Python |
+| `scripts/design-rules/splits.py` | THE SPLIT CREDIT FOR IMPORTERS (the owner, 2026-11-27): a module X split into pieces -- its git functions moved into | `imported` | wf ci, country-convergence-leg, verify-scrape-recording; hook pre-push.sh-legacy; skill CLAUDE.md, agent-ops; 16 tools | - | Python |
 | `scripts/dev-server.sh` | Local dev server, run under a deliberately smaller heap than the rest of sbt | `scripts/dev-server.sh` | 3 tools | dev-server-test.sh | KEEP |
 | `scripts/e2e/e2e_world.py` | THE TOOLS' END-TO-END HARNESS (the owner, 2026-11-27: "for the important Python scripts, also add end-to-end tests"). | `imported` | 4 tools | - | Python |
 | `scripts/e2e/gh_shim.py` | The tools' e2e `gh` (first on every tool's PATH as `gh`, scripts/e2e/e2e_world.py): each call goes to the scenario's | `scripts/e2e/gh_shim.py` | 2 tools | - | Python |
@@ -763,6 +763,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/proxy_properties.py` | THE RESIDENTIAL PROXY POOL, as the CI probes read it (scripts/lib): the worker's committed residential-proxy.properties | `imported` | 2 tools | proxy_properties_test.py | Python |
 | `scripts/lib/ps_table.py` | THE PROCESS TABLE, the one way the Python tools read `ps` (scripts/lib): every process a `Process` (pid, parent, its | `imported` | skill CLAUDE.md; 2 tools | ps_table_test.py | Python |
 | `scripts/lib/rules_table.py` | THE DESIGN RULES TABLE, read (test/resources/design-rules.tsv; its header says every row's shape): the limits, the | `imported` | hook pre-push.sh-legacy; 8 tools | - | Python |
+| `scripts/lib/sandbox_closure.py` | THE SANDBOX CLOSURE (scripts/lib): a self-test that runs a tool from a scratch tree copies the tool AND everything it | `imported` | 2 tools | - | Python |
 | `scripts/lib/scalafix_tree.py` | THE SCALAFIX TREE: what scripts/scalafix-move and scripts/scalafix-organize share -- a worktree KEPT between runs | `imported` | skill test-layers; 2 tools | - | Python |
 | `scripts/lib/script_tests_changed.py` | WHAT A --changed RUN SELECTS (scripts/run-script-tests): the paths changed since the base, and every self-test they | `imported` | 5 tools | - | Python |
 | `scripts/lib/script_tests_found.py` | THE SELF-TESTS scripts/run-script-tests finds, and what each says of itself in its first 40 lines: a `# script-test: | `imported` | 6 tools | - | Python |
@@ -781,12 +782,12 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 32 tools | tool_cli_test.py | Python |
 | `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | wf main; 15 tools | - | Python |
 | `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 11 tools | tool_dispatch_test.py | Python |
-| `scripts/lib/tool_files.py` | FILES, INJECTED (scripts/lib; CLAUDE.md, "Design rules": files are an injected effect since 2026-11-27): a tool | `imported` | skill CLAUDE.md; 16 tools | tool_files_test.py | Python |
-| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; skill CLAUDE.md; 54 tools | tool_git_test.py | Python |
+| `scripts/lib/tool_files.py` | FILES, INJECTED (scripts/lib; CLAUDE.md, "Design rules": files are an injected effect since 2026-11-27): a tool | `imported` | skill CLAUDE.md; 19 tools | tool_files_test.py | Python |
+| `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; skill CLAUDE.md; 55 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | skill CLAUDE.md; 23 tools | tool_github_test.py | Python |
 | `scripts/lib/tool_http.py` | HTTP, INJECTED (scripts/lib; CLAUDE.md, "Design rules": the network is an injected effect since 2026-11-27): a tool | `imported` | skill CLAUDE.md; 2 tools | tool_http_test.py | Python |
 | `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
-| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 106 tools | tool_process_test.py | Python |
+| `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 107 tools | tool_process_test.py | Python |
 | `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | wf main; 22 tools | tool_python_test.py | Python |
 | `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 21 tools | - | Python |
 | `scripts/lib/tool_state.py` | STATE AND KEY-VALUE STORAGE, INJECTED (scripts/lib; CLAUDE.md, "Design rules": storage is an injected effect since | `imported` | skill CLAUDE.md; 2 tools | tool_state_test.py | Python |
@@ -818,6 +819,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/rule-firing-prod` | Which title rules fire on prod's live listings, beside the recordings: scripts/rule_firing_prod.py (its --help) | `scripts/rule-firing-prod` | skill identity-investigation; 1 tool | rule_firing_prod_test.py | KEEP |
 | `scripts/rule_firing_prod.py` | Which title rules fire on prod's live listings, beside the recordings: dead in prod vs dead in the recordings. | `scripts/rule_firing_prod.py` | 1 tool | rule_firing_prod_test.py | Python |
 | `scripts/run_script_tests_fixture.py` | The scratch checkout scripts/run-script-tests' black-box tests drive (run_script_tests_*_test.py): a git repository of | `imported` | by hand | - | Python |
+| `scripts/sandbox_copy.py` | copy tools and every repository module they import into a scratch tree, so a shell self-test can run them there | `scripts/sandbox_copy.py` | by hand | sandbox_copy_test.py | Python |
 | `scripts/scalafix-move` | Move a class to another package, its references rewritten compiler-checked (scalafix MoveSymbol) (a name for scalafix_move.py) | `scripts/scalafix-move` | skill test-layers; 2 tools | scalafix_move_test.py | KEEP |
 | `scripts/scalafix-organize` | Organise imports with scalafix (.scalafix.conf: OrganizeImports, Scala 3 dialect), never by hand (a name for scalafix_organize.py) | `scripts/scalafix-organize` | skill test-layers; 3 tools | scalafix_organize_test.py | KEEP |
 | `scripts/scalafix_move.py` | Move a class to another package, its references rewritten compiler-checked (scalafix MoveSymbol). | `scripts/scalafix_move.py` | 1 tool | scalafix_move_test.py | Python |

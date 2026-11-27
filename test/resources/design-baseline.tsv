@@ -263,7 +263,6 @@ effect	scripts/ci/trend_github.py:files	2
 effect	scripts/ci/trend_github.py:network	2
 effect	scripts/ci/upstream_run.py	1
 effect	scripts/ci/verified_ref.py	1
-effect	scripts/ci/verified_ref.py:files	2
 effect	scripts/ci/wait_for_mongo_tunnel.py	2
 effect	scripts/ci/wait_for_mongo_tunnel.py:files	8
 effect	scripts/ci/wait_out_registry_outage.py	2
@@ -1007,7 +1006,6 @@ mixed	scripts/ci/trend_github.py:GitHub.cached	3
 mixed	scripts/ci/trend_github.py:_gh_cli	5
 mixed	scripts/ci/trend_github.py:default_cache_dir	4
 mixed	scripts/ci/trend_records.py:parse_when	5
-mixed	scripts/ci/verified_ref.py:VerifiedRef.marker	5
 mixed	scripts/ci/wait_for_mongo_tunnel.py:Tunnel.__init__	3
 mixed	scripts/ci/wait_for_mongo_tunnel.py:Tunnel.credential	4
 mixed	scripts/ci/wait_for_mongo_tunnel.py:Tunnel.ready	4
@@ -1617,5 +1615,5 @@ mixed	worker/src/main/scala/tools/HeapPressure.scala:HeapPressure.heldAfterColle
 mixed	worker/src/main/scala/tools/ResidentialProxyProbe.scala:ResidentialProxyProbe.statusThrough	3
 fanout	scripts/design-rules/design_check.py	10
 distance	scripts/ci	0.52
-distance	scripts/lib	0.72
+distance	scripts/lib	0.71
 dircycle	scripts|scripts/ci	2

@@ -312,12 +312,7 @@ class ToolCase(unittest.TestCase):
         """THE ONE WAY TO BUILD A SANDBOX: `tools` (paths from the repository root) AND every repository module they
         import (the scripts/lib adapters among them), copied into <relative>/ at the same relative paths -- a tool
         run from there finds what it imports. Never copy a tool alone (sandbox_closure.py). The files copied."""
-        files = tool_files.Files.here()
-        copied = sandbox_closure.closure(lambda p: files.read_text(f"{ROOT}/{p}"),
-                                         lambda p: files.is_file(f"{ROOT}/{p}"), tools)
-        for path in copied:
-            text = files.read_text(f"{ROOT}/{path}")
-            files.replace_text(self.path(relative, path), text, 0o755 if text.startswith("#!") else 0o644)
+        copied = sandbox_closure.copy(tool_files.Files.here(), ROOT, self.path(relative), tools)
         return copied
 
     def hold_lock(self, lock: str) -> "subprocess.Popen[bytes]":

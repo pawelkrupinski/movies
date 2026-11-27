@@ -36,6 +36,14 @@ class Contract:
             self.assertEqual("Łódź\n", self.f.read_text(self.f.path("a.txt")))
             self.assertEqual("Łódź\n", self.f.read_text("sub/../a.txt"))
 
+        def test_a_script_is_copied_whole_with_its_directories_and_the_text_it_had(self) -> None:
+            self.f.write_text("a.py", "#!/usr/bin/env python3\nprint(1)\n")
+            self.f.write_text("b.txt", "plain\n")
+            self.f.copy_script("a.py", "x/y/a.py")
+            self.f.copy_script("b.txt", "x/b.txt")
+            self.assertEqual("#!/usr/bin/env python3\nprint(1)\n", self.f.read_text("x/y/a.py"))
+            self.assertEqual("plain\n", self.f.read_text("x/b.txt"))
+
         def test_a_missing_file_raises_or_gives_the_default(self) -> None:
             with self.assertRaises(FileNotFoundError):
                 self.f.read_text("none.txt")
@@ -108,6 +116,15 @@ class LocalDiskContractTest(Contract.FilesContract):
     def test_its_mtime_is_the_files_own(self) -> None:
         self.f.write_text("a.txt", "x")
         self.assertEqual(os.path.getmtime(os.path.join(self.directory, "a.txt")), self.f.mtime("a.txt"))
+
+    def test_a_copied_script_is_executable_only_with_a_shebang(self) -> None:
+        f = self.files()
+        f.write_text("a.py", "#!/usr/bin/env python3\n")
+        f.write_text("b.txt", "x\n")
+        f.copy_script("a.py", "c/a.py")
+        f.copy_script("b.txt", "c/b.txt")
+        self.assertTrue(os.access(f.path("c/a.py"), os.X_OK))
+        self.assertFalse(os.access(f.path("c/b.txt"), os.X_OK))
 
     def test_a_replacement_keeps_its_mode(self) -> None:
         self.f.replace_text("run.sh", "#!/bin/sh\n", mode=0o755)

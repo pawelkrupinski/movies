@@ -8,6 +8,7 @@ replacement) or `InMemoryDisk` (a dict), held alike by tool_files_test.py's cont
   files.read_text(path) -> str                    FileNotFoundError when there is none
   files.read_text_or(path, default) -> str        `default` when there is none
   files.write_text(path, text)                    its directories made
+  files.copy_script(source, target)               a text file copied whole, executable if it starts with `#!`
   files.replace_text(path, text, mode=None)       atomic: a reader sees the old file or the whole new one
   with files.replacing(path) as out: out.write()  the same, written piece by piece; a block that raises leaves `path` be
   files.exists(path) / files.is_file(path) / files.is_dir(path)
@@ -204,6 +205,11 @@ class Files:
         full = self.path(path)
         self.disk.make_directories(os.path.dirname(full))
         self.disk.replace(full, text.encode("utf-8"), mode)
+
+    def copy_script(self, source: str, target: str) -> None:
+        """`source`'s text whole into `target` (its directories made): executable when it starts with a shebang."""
+        text = self.read_text(source)
+        self.replace_text(target, text, 0o755 if text.startswith("#!") else 0o644)
 
     def replacing(self, path: str, mode: Optional[int] = None) -> Replacing:
         return Replacing(self, path, mode)
