@@ -160,8 +160,19 @@ class SharedBuildCacheTest(SbtWarmCase):
             done = self.warm(fromcache, "--publish")
             self.assertIn("nothing published", done.stderr)
             self.assertEqual("3", self.text(self.entry + "/.zincs"))
-        self.warm(fromcache, "--publish")
-        self.assertEqual("5", self.text(self.entry + "/.zincs"))
+        done = self.warm(fromcache, "--publish")
+        self.assertEqual("5", self.text(self.entry + "/.zincs"), done.output)
+
+    def test_an_entry_retired_twice_in_one_second_is_still_replaced(self) -> None:
+        """ci-runner, 2026-11-27: two publishes in one second retired the entry onto the first's retired copy, a
+        rename onto a full directory, and the newer build was never published."""
+        self.warm(self.pub, "compile")
+        os.makedirs(self.pub + "/identity/target/scala-3.x/zinc")
+        now = int(os.stat(self.write("clock-mark", "")).st_mtime)  # this second, read off the disk
+        for second in range(now - 1, now + 30):
+            os.makedirs(f"{self.entry}.retired-{second}/x", exist_ok=True)
+        done = self.warm(self.pub, "compile")
+        self.assertEqual("3", self.text(self.entry + "/.zincs"), done.output)
 
     def test_a_stale_tasty_read_is_recovered_through_sbt_guard(self) -> None:
         done = self.warm(self.pub, "worker/compile", env={"STUB_STALE_ONCE": self.path("stale-once")})

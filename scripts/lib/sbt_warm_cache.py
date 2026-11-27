@@ -171,7 +171,8 @@ class Builds:
         with open(os.path.join(part, ".zincs"), "w") as f:
             f.write(f"{zincs}\n")
         if os.path.isdir(entry):
-            os.rename(entry, f"{entry}.retired-{int(machine.wall())}")
+            # its publisher's pid too: an entry retired twice in one second (a fast runner) is no rename onto the first
+            os.rename(entry, f"{entry}.retired-{int(machine.wall())}-{self.pid}")
         try:
             os.rename(part, entry)
             self.say(f"published this build of {head[:10]} ({zincs} configurations) to the shared build cache "
