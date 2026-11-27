@@ -63,7 +63,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [HERE, os.path.join(HERE, "lib"), os.path.join(HERE, "ci")]  # its own modules, tool_python, commit_rules
 from commit_rules import HARNESS_FILES  # noqa: E402  (the drift harness: one definition)
 from identity_stamp_carry_published import (  # noqa: E402  (THE PUBLISHED VERDICT: the what-if's record)
-    ASSET, COUNTRIES, VERDICTS, asset_name, cached_verdict, country_refusals, diff_id, fetch_asset, identity_cache,
+    ASSET, COUNTRIES, asset_name, cached_verdict, country_refusals, diff_id, fetch_asset, identity_cache,
     moved_rows, publish, release, verdict_path, what_if_verdicts)
 from pure_move_check import Undecidable, git  # noqa: E402  (the one git a proof reads, and its refusal)
 import machine  # noqa: E402
@@ -232,11 +232,11 @@ def covered(proof: str, base: str, head: str, at: str | None = None,
 def propose(rng: str, proof: str | None, table: str) -> int:
     base, head = (sha_of(r) for r in rng.split("..", 1))
     kinds = [proof] if proof else ["pure-move", "what-if"]
-    carried, refusals = set(), []
+    carried, refusals, proven = set(), [], ""
     for kind in kinds:
         carried, why = covered(kind, base, head)
         if carried:
-            proof = kind
+            proven = kind
             break
         refusals += [f"{kind}: {w}" for w in why]
     if not carried:
@@ -245,7 +245,7 @@ def propose(rng: str, proof: str | None, table: str) -> int:
             print(f"  {w}", file=sys.stderr)
         return 1
     before, after = stamps_of(base), stamps_of(head)
-    new = carry_rows(proof, base, head, carried, before, after, table)
+    new = carry_rows(proven, base, head, carried, before, after, table)
     write_rows(table, new)
     return 0
 

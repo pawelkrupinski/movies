@@ -268,8 +268,11 @@ def _remote_curl(url: str, params: list[tuple[str, object]]) -> list[str]:
     return ["ssh", "-oBatchMode=yes", "-oConnectTimeout=15", MONITORING_HOST, f"curl -sS --max-time 60 {shlex.quote(url)} {args}"]
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("cc")
     parser.add_argument("--venue", default="", help="a venue substring; none: every venue")
     parser.add_argument("--title", required=True)
@@ -492,7 +495,7 @@ def replay(args, known, run, state=None):
         for c in deploy.changes:
             keys.setdefault((c.listing, c.before, c.after), c.key)
         before = known[known.index(deploy) - 1] if known.index(deploy) > 0 else None
-        for (listing, was, now), key in keys.items():
+        for (_listing, was, now), key in keys.items():
             lines.append(f"REPLAY {deploy.sha7} {key} (prod: {was} → {now}):")
             lines.append(f"  prod now (mirror identity_traces): {trace_reason(state, key)}")
             for view in views:

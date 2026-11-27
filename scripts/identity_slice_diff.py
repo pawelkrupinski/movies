@@ -9,6 +9,7 @@ Each TSV is scripts.IdentitySlice's `--out` (header: selector key venue rawTitle
 blocker runnerUp verdict explanation); the verdicts are its `verdict` column, judged by the slice itself."""
 import os
 import sys
+from typing import Dict, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci"))
 from identity_takes import OUTCOMES, outcome, table  # noqa: E402
@@ -31,6 +32,15 @@ def take(r):
     return f"{r['film']}{title} via {r['basis']} [{r['verdict']}]"
 
 
+def print_move(a: Optional[Dict[str, str]], b: Optional[Dict[str, str]]):
+    """A moved listing: its venue and title, the take it left and the one it took, and the slice's explanation."""
+    r = a or b or {}
+    print(f"  {r['venue']} | {r['rawTitle']}: {take(a)} -> {take(b)}")
+    why = (b or r)["explanation"]
+    if why:
+        print(f"      {why[:220]}")
+
+
 def main(argv):
     if len(argv) != 4:
         print("usage: identity_slice_diff.py BASE.tsv HEAD.tsv BASE_NAME HEAD_NAME", file=sys.stderr)
@@ -47,12 +57,8 @@ def main(argv):
         if not of_kind:
             continue
         print(f"\n{kind.upper()} ({len(of_kind)}):")
-        for k, a, b in of_kind:
-            r = a or b
-            print(f"  {r['venue']} | {r['rawTitle']}: {take(a)} -> {take(b)}")
-            why = (b or a)["explanation"]
-            if why:
-                print(f"      {why[:220]}")
+        for _k, a, b in of_kind:
+            print_move(a, b)
     print("\nTALLY " + ", ".join(f"{k} {v}" for k, v in tally.items()))
     return 0
 

@@ -150,6 +150,7 @@ def lookup(root, cc, title=None, venue=None, film=None, prod=True, history=True)
         hits = [e for e in entries if film in e.films]
         out.append(f"label-lookup {cc.upper()} · film {film}")
     else:
+        assert title is not None  # the caller gives a film or a title
         want = single_spaced(title)
         exact = any(e.title == want for e in entries)
         hits = [e for e in entries if (e.title == want if exact else folded(want) in folded(e.title))]
@@ -158,19 +159,18 @@ def lookup(root, cc, title=None, venue=None, film=None, prod=True, history=True)
         out.append(f"label-lookup {cc.upper()} · listing '{want}'" + (f" at '{venue}'" if venue else " at every venue") +
                    (" (exact title)" if exact else " (titles holding it, case and accents aside)"))
     titles = sorted({e.title for e in hits})
-    films = sorted({f for e in hits for f in e.films if re.match(r"^(tmdb|imdb):", f)})
 
     if venue and not film:
         out.append(f"effective verdict at '{venue}' (the judgements: the venue's own row overrides '*'):")
-        judged = False
+        any_judged = False
         for t in titles:
             for f in sorted({e.films[0] for e in hits if e.path == store.PATH and e.title == t}):
                 own, every = labels.get((venue, t, f)), labels.get(("*", t, f))
                 why = ("the venue's own" if own and not every else "'*'" if every and not own else
                        f"the venue's own {own} beside '*' {every}" if own and every else "")
                 out.append(f"  {t} · {f}: {(label_of(labels, venue, t, f) or '-').upper()} ({why})")
-                judged = True
-        if not judged:
+                any_judged = True
+        if not any_judged:
             out.append("  none: the judgements judge no film for it")
         right = {e.films[0] for e in hits if e.path == store.PATH and e.films[0].startswith("tmdb:") and label_of(labels, venue, e.title, e.films[0]) == "right"}
         if len(right) > 1:

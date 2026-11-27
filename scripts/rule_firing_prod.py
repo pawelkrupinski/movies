@@ -132,8 +132,11 @@ def ask(query):
     return done.stdout
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv, ask=ask, read=lambda path: open(path, encoding="utf-8").read()):
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("--window", default="7d")
     parser.add_argument("--country", default="")
     parser.add_argument("--all-kinds", action="store_true")

@@ -47,7 +47,6 @@ sys.path[:0] = [HERE, os.path.join(HERE, "ci"), os.path.join(HERE, "lib")]
 import tool_git  # noqa: E402
 import header_tsv  # noqa: E402
 import identity_measure as measure  # noqa: E402
-import identity_takes_diff as takes  # noqa: E402
 from identity_judgements import read as read_judgements  # noqa: E402
 
 ROOTS = os.path.join(HERE, "identity-what-if-roots.tsv")
@@ -135,13 +134,12 @@ def diff_path(header):
 
 def hunks(diff_text):
     """[(path, side, line numbers)] of a `git diff -U0`: each changed line's number on the base ('-') or head ('+') side."""
-    out, path, old, new = [], None, None, None
+    out, path, old, new = [], None, None, 0
     for line in diff_text.splitlines():
         if line.startswith("diff --git "):
             path = diff_path(line)
         elif line.startswith("@@"):
-            m = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
-            old, new = int(m.group(1)), int(m.group(2))
+            old, new = map(int, re.findall(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)[0])
         elif old is not None and line.startswith("-") and not line.startswith("---"):
             out.append((path, "-", old, line[1:]))
             old += 1

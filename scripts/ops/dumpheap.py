@@ -65,8 +65,11 @@ def attach(host_pid, payload, wait_s=10.0):
                 pass
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv):
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n\n")[0])
     parser.add_argument("pid", type=int, help="the JVM's pid on the node")
     target = parser.add_mutually_exclusive_group(required=True)
     target.add_argument("path", nargs="?", help="where the dump is written, inside the container")

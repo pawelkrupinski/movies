@@ -285,8 +285,8 @@ def compare_origins(a, b):
     flags = {f.origin: f.reason for f in recording_health.judge(b, a)}
     out = []
     for origin in sorted(set(a["origins"]) | set(b["origins"])):
-        ca = a["origins"].get(origin, recording_health._origin_counts())
-        cb = b["origins"].get(origin, recording_health._origin_counts())
+        ca = a["origins"].get(origin, recording_health.origin_counts())
+        cb = b["origins"].get(origin, recording_health.origin_counts())
         share_a = ca["refused"] / recording_health.asked(ca) if recording_health.asked(ca) else 0
         share_b = cb["refused"] / recording_health.asked(cb) if recording_health.asked(cb) else 0
         enough = max(recording_health.asked(ca), recording_health.asked(cb)) >= recording_health.MIN_REQUESTS
@@ -296,8 +296,8 @@ def compare_origins(a, b):
             verdict = "refusing more" if share_b > share_a else "recovered"
         else:
             continue
-        out.append({"origin": origin, "verdict": verdict, "before": recording_health._share(ca),
-                    "after": recording_health._share(cb), "tree": (ca["tree"], cb["tree"]),
+        out.append({"origin": origin, "verdict": verdict, "before": recording_health.share(ca),
+                    "after": recording_health.share(cb), "tree": (ca["tree"], cb["tree"]),
                     "refusals": ", ".join(f"{k}×{n}" for k, n in sorted(cb["refusals"].items(), key=lambda kv: -kv[1]))})
     return sorted(out, key=lambda m: (m["verdict"] not in ("refusing", "gone"), m["origin"]))
 
@@ -307,7 +307,7 @@ def health(tree, since, cache=None):
     if cache and os.path.isfile(cache):
         with open(cache) as handle:
             return json.load(handle)
-    manifest = recording_health.manifest(tree, recording_health._since(str(since)))
+    manifest = recording_health.manifest(tree, recording_health.since(str(since)))
     if cache:
         os.makedirs(os.path.dirname(cache), exist_ok=True)
         with open(cache + ".part", "w") as handle:
@@ -516,8 +516,11 @@ def _coverage(directory, cc):
         return json.load(handle)
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv):
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("cc")
     parser.add_argument("dir_a")
     parser.add_argument("dir_b")

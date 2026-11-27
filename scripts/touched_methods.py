@@ -200,8 +200,11 @@ def mutation_report(spans, by_method, outside):
     return out
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv):
-    parser = argparse.ArgumentParser(prog="touched_methods.py", description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(prog="touched_methods.py", description=DOCSTRING.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
     paths = sub.add_parser("paths")
     paths.add_argument("base")

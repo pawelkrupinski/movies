@@ -25,6 +25,7 @@ import re
 import subprocess
 import sys
 import urllib.parse
+from typing import NoReturn
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
@@ -36,7 +37,7 @@ MONGOSH_AT = os.path.join(HERE, "local-mirror", "mongosh-at.sh")
 IMPLIES = {"read": {"read", "readWrite", "dbOwner"}, "readWrite": {"readWrite", "dbOwner"}}
 
 
-def die(message):
+def die(message) -> NoReturn:
     print(f"[mongo-grants] {message}", file=sys.stderr)
     sys.exit(1)
 

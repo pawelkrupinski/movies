@@ -79,7 +79,7 @@ def age_and_users(udid, lines):
     """(seconds up, whether a test process names it) for a Simulator."""
     age, used = None, False
     for line in lines:
-        pid, etime, args = (line.split(None, 2) + ["", ""])[:3]
+        _pid, etime, args = (line.split(None, 2) + ["", ""])[:3]
         if udid not in args:
             continue
         if "launchd_sim" in args:

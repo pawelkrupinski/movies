@@ -101,7 +101,7 @@ def _refusal(status, message):
     return head.rsplit(".", 1)[-1] or "error"
 
 
-def _origin_counts():
+def origin_counts():
     return {"tree": 0, "answered": 0, "notFound": 0, "refused": 0, "refusals": {}, "proxyDown": 0, "originDown": 0}
 
 
@@ -112,7 +112,7 @@ def manifest(tree, since):
     for host in sorted(os.listdir(tree)):
         if host.startswith(".") or not os.path.isdir(os.path.join(tree, host)):
             continue
-        counts = origins.setdefault(host, _origin_counts())
+        counts = origins.setdefault(host, origin_counts())
         for directory, _, files in os.walk(os.path.join(tree, host)):
             for name in files:
                 counts["tree"] += 1
@@ -131,7 +131,7 @@ def manifest(tree, since):
                 continue   # undecodable: FileEnrichmentCacheStore skips it too
             if kind != "failed" or fetched_at < since:
                 continue
-            counts = origins.setdefault(_origin(key), _origin_counts())
+            counts = origins.setdefault(_origin(key), origin_counts())
             if status in NOT_FOUND:
                 counts["notFound"] += 1
             else:
@@ -170,7 +170,7 @@ def judge(this, previous):
     flags = []
     before = (previous or {}).get("origins", {})
     for origin in sorted(set(this["origins"]) | set(before)):
-        counts = this["origins"].get(origin, _origin_counts())
+        counts = this["origins"].get(origin, origin_counts())
         if asked(counts) >= MIN_REQUESTS and counts["refused"] > REFUSING_SHARE * asked(counts):
             proxy_down = counts.get("proxyDown", 0) > REFUSING_SHARE * counts["refused"]
             down = counts.get("originDown", 0) > REFUSING_SHARE * counts["refused"]
@@ -180,7 +180,7 @@ def judge(this, previous):
     return flags
 
 
-def _share(counts):
+def share(counts):
     total = asked(counts)
     if total == 0:
         return "—"
@@ -195,26 +195,29 @@ def table(this, previous, flags):
     lines = ["| origin | verdict | refused / asked | refusals | in tree | last green: refused / asked | last green: in tree |",
              "|---|---|---|---|---|---|---|"]
     for origin in origins:
-        counts = this["origins"].get(origin, _origin_counts())
+        counts = this["origins"].get(origin, origin_counts())
         was = before.get(origin)
         refusals = ", ".join(f"{label}×{n}" for label, n in sorted(counts["refusals"].items(), key=lambda kv: -kv[1]))
         verdict = (f"**{flagged[origin].upper()}{' (UNKNOWN)' if flagged[origin] in UNKNOWN_REASONS else ''}"
                    f"{' (BEST EFFORT)' if origin in BEST_EFFORT else ''}**"
                    if origin in flagged else "ok")
-        lines.append(f"| {origin} | {verdict} | {_share(counts)} | {refusals or '—'} | {counts['tree']} | "
-                     f"{_share(was) if was else 'n/a'} | {was['tree'] if was else 'n/a'} |")
+        lines.append(f"| {origin} | {verdict} | {share(counts)} | {refusals or '—'} | {counts['tree']} | "
+                     f"{share(was) if was else 'n/a'} | {was['tree'] if was else 'n/a'} |")
     return "\n".join(lines)
 
 
-def _since(raw):
+def since(raw):
     try:
         return float(raw)
     except ValueError:
         return parse_instant(raw).timestamp()
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv):
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("tree")
     parser.add_argument("--since", required=True, help="the recording's start: ISO-8601 or epoch seconds")
     parser.add_argument("--previous", help="the last green recording's manifest; a missing file is the floor alone")
@@ -224,7 +227,7 @@ def main(argv):
     args = parser.parse_args(argv)
 
     try:
-        this = manifest(args.tree, _since(args.since))
+        this = manifest(args.tree, since(args.since))
         previous = None
         if args.previous and os.path.isfile(args.previous):
             with open(args.previous) as handle:
@@ -262,7 +265,7 @@ def main(argv):
                     ": the site's own outage, not a block on us; its previous recording is kept")
     for flag in flags:
         if not flag.blocking:
-            refused = this["origins"].get(flag.origin, _origin_counts())["refused"]
+            refused = this["origins"].get(flag.origin, origin_counts())["refused"]
             verdict += (f"\n\n**{BEST_EFFORT[flag.origin]} unavailable: {refused} call(s) refused** ({flag.origin} {flag.reason}; "
                         "best effort -- warned, not failing the recording)")
     report = (f"{heading}\n\n{verdict} ({basis}; flagged at ≥{MIN_REQUESTS} asked and >{round(100 * REFUSING_SHARE)}% "
@@ -272,9 +275,9 @@ def main(argv):
         with open(args.summary, "a") as handle:
             handle.write(report + "\n")
     for flag in flags:
-        counts = this["origins"].get(flag.origin, _origin_counts())
-        what = (f"refused {_share(counts)} of what this recording asked it" if flag.reason == "refusing"
-                else f"refused {_share(counts)} of what this recording asked it, {counts.get('proxyDown', 0)} with the residential "
+        counts = this["origins"].get(flag.origin, origin_counts())
+        what = (f"refused {share(counts)} of what this recording asked it" if flag.reason == "refusing"
+                else f"refused {share(counts)} of what this recording asked it, {counts.get('proxyDown', 0)} with the residential "
                      "proxy unreachable -- proxy unreachable, the origin not judged" if flag.reason == "proxy-unreachable"
                 else f"answered {counts.get('originDown', 0)} of {counts['refused']} refusals with a 5xx or a timeout both direct and through the "
                      "proxy -- down for everyone, its previous recording kept" if flag.reason == "origin-down"
