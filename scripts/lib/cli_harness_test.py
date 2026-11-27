@@ -83,6 +83,23 @@ class CliHarnessTest(cli_harness.ToolCase):
         finally:
             del os.environ["CLI_TOOL_UNDER_TEST"]
 
+    def test_a_cases_own_cleanups_run_before_its_scratch_directory_is_removed(self) -> None:
+        seen: list = []
+
+        class Inner(cli_harness.ToolCase):
+            def setUp(self) -> None:
+                super().setUp()
+                self.addCleanup(lambda: seen.append(os.path.isdir(self.work)))
+
+            def test_nothing(self) -> None:
+                pass
+
+        result = unittest.TestResult()
+        Inner("test_nothing").run(result)
+        self.assertEqual(([], []), (result.errors, result.failures))
+        # a cleanup ending a case's process (SbtWarmCase's keepers) must find the directory it writes in (#637)
+        self.assertEqual([True], seen)
+
     def test_wait_until_is_bounded(self) -> None:
         self.assertTrue(cli_harness.wait_until(lambda: True, 0.1))
         self.assertFalse(cli_harness.wait_until(lambda: False, 0.1))

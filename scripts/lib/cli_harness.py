@@ -236,9 +236,9 @@ class ToolCase(unittest.TestCase):
         self._dir = tempfile.TemporaryDirectory(prefix="cli-case-")
         self.work = os.path.realpath(self._dir.name)
         self.fakes = Fakes(os.path.join(self.work, ".fakes"))
-
-    def tearDown(self) -> None:
-        self._dir.cleanup()
+        # the FIRST cleanup, so the last to run: unittest runs tearDown before any cleanup, and a subclass's cleanups
+        # end the processes that write here (SbtWarmCase's keepers: ENOTEMPTY on state/, Tool self-tests #634)
+        self.addCleanup(self._dir.cleanup)
 
     def path(self, *parts: str) -> str:
         return os.path.join(self.work, *parts)
