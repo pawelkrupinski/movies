@@ -37,7 +37,7 @@ check "a commit in a linked worktree goes through" 1 "$([ "$(head_of "$wt")" != 
 
 # The generated convergence paths: a workflow the commit makes run a new helper gets the helper listed, in that commit.
 mkdir -p "$wt/scripts/ci" "$wt/.github/workflows" "$wt/.github/scripts"
-cp "$REPO_ROOT/scripts/ci/convergence_paths.py" "$wt/scripts/ci/"
+python3 "$REPO_ROOT/scripts/sandbox_copy.py" "$wt" scripts/ci/convergence_paths.py > /dev/null
 printf '# paths\nworker/src/main/**\n' > "$wt/.github/convergence-paths.txt"
 printf 'jobs:\n  x:\n    steps:\n      - run: .github/scripts/leg-helper.sh\n' > "$wt/.github/workflows/identity-model-convergence.yml"
 : > "$wt/.github/workflows/country-convergence-leg.yml"; : > "$wt/.github/scripts/leg-helper.sh"

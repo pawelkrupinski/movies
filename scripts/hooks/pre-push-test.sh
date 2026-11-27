@@ -646,12 +646,12 @@ printf '\033[36m▸\033[0m pre-push basic and area tests\n'
 area="$testroot/area"; areabin="$testroot/areabin"; mkdir -p "$area/scripts/hooks" "$areabin"
 scratch_repo "$area"
 mkdir -p "$area/scripts/ci"
-spec_copy_conventions "$area/scripts"; spec_copy_hook_files "$area/scripts"; for f in hooks/pre-push hooks/lint-registry-missing hooks-path.sh ci/commit_rules.py ci/trailers.py pure-move-check; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
+spec_copy_conventions "$area/scripts"; spec_copy_hook_files "$area/scripts"; for f in hooks/pre-push hooks/lint-registry-missing hooks-path.sh pure-move-check; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
 cp "$REPO_ROOT"/scripts/pure_move_*.py "$area/scripts/"
-cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$REPO_ROOT/scripts/ci/shard_tests.py" "$REPO_ROOT/scripts/ci/shard_weights.py" "$REPO_ROOT/scripts/ci/population_walk_diff.py" "$area/scripts/ci/"
+python3 "$REPO_ROOT/scripts/sandbox_copy.py" "$area" scripts/ci/identity_impact.py scripts/ci/shard_tests.py scripts/ci/population_walk_diff.py scripts/ci/commit_rules.py scripts/ci/trailers.py > /dev/null
 mkdir -p "$area/scripts/lib"
 echo '__pycache__/' > "$area/.gitignore"  # shard_tests now imports a module, whose bytecode the next `add -A` would commit as a scripts/ change
-cp "$REPO_ROOT/scripts/lib/tool_git.py" "$REPO_ROOT/scripts/lib/tool_process.py" "$area/scripts/lib/"  # what trailers.py and the pure-move tools import
+cp "$REPO_ROOT/scripts/lib/tool_git.py" "$REPO_ROOT/scripts/lib/tool_process.py" "$area/scripts/lib/"  # what the pure-move tools import
 cat > "$area/scripts/hooks/local-tests.txt" <<'TESTS'
 # a comment
 basic sbt Test/compile

@@ -145,7 +145,7 @@ check "gh hanging is cut off by its bound for each workflow, said out loud, and 
 # A CHECK GATES ONLY ONCE IT HAS BEEN GREEN: a red run whose failed jobs are all unproven in .github/gating-checks.tsv
 # (scripts/ci/gating_checks.py, its jobs read through `gh run view`, stubbed here) reports and holds no push
 mkdir -p "$grepo/scripts/ci" "$grepo/.github"
-cp "$REPO_ROOT/scripts/ci/gating_checks.py" "$grepo/scripts/ci/"
+python3 "$REPO_ROOT/scripts/sandbox_copy.py" "$grepo" scripts/ci/gating_checks.py > /dev/null
 printf 'kind\tworkflow\tname\tproven\tnote\njob\tmain.yml\ttest (a)\t5\njob\tmain.yml\tci\taggregate\njob\tmain.yml\tnew check\tunproven\tborn today; owner: x\n' > "$grepo/.github/gating-checks.tsv"
 unproven='{"jobs":[{"name":"new check","conclusion":"failure"},{"name":"ci","conclusion":"failure"},{"name":"test (a)","conclusion":"success"}]}'
 proven='{"jobs":[{"name":"test (a)","conclusion":"failure"},{"name":"new check","conclusion":"failure"}]}'

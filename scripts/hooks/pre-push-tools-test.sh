@@ -112,8 +112,7 @@ check "...its row in place under a locale whose order is not C's, nothing said o
 mkdir -p "$grepo/scripts/ci" "$grepo/data"
 cp "$REPO_ROOT/scripts/hooks/pre-push" "$grepo/scripts/hooks/pre-push"
 cp "$REPO_ROOT/scripts/hooks/lint-registry-missing" "$grepo/scripts/hooks/lint-registry-missing"
-cp "$REPO_ROOT/scripts/ci/lint_registry_reads.py" "$grepo/scripts/ci/lint_registry_reads.py"
-mkdir -p "$grepo/scripts/lib" && cp "$REPO_ROOT/scripts/lib/tool_pool.py" "$REPO_ROOT/scripts/lib/cpu_meter.py" "$REPO_ROOT/scripts/lib/machine.py" "$grepo/scripts/lib/"  # the lint sizes its pool by it (and meters it)
+python3 "$REPO_ROOT/scripts/sandbox_copy.py" "$grepo" scripts/ci/lint_registry_reads.py > /dev/null  # with its import closure (the pool it sizes, its meter)
 cp "$REPO_ROOT/scripts/hooks-path.sh" "$grepo/scripts/hooks-path.sh"; spec_copy_conventions "$grepo/scripts"; spec_copy_hook_files "$grepo/scripts"
 echo rows > "$grepo/data/rows.tsv"
 mkdir -p "$grepo/worker/src/test/scala/deploy"
