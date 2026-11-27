@@ -32,7 +32,7 @@ import subprocess
 import sys
 import urllib.request
 import xml.etree.ElementTree as ElementTree
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, List, Mapping, Optional, TypedDict
 import ci_machine  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -181,7 +181,18 @@ def jvm_flags(command):
                     and not word.startswith("-Xlog"))[:600]
 
 
-def gc_of(path):
+class GcFigures(TypedDict):
+    gc_count: int
+    gc_full: int
+    gc_pause_ms: float
+    gc_max_pause_ms: float
+    heap_after_max_mb: int
+    heap_committed_max_mb: int
+    uptime_s: float
+    gc_overhead: Optional[float]
+
+
+def gc_of(path) -> GcFigures:
     """One GC log (`-Xlog:gc`, the uptime decorator first): pauses, their total and max, the largest after-GC heap."""
     count = full = 0
     pause_ms = max_ms = 0.0
@@ -278,6 +289,13 @@ def junit(root="."):
         [t for t in failed_tests if t not in slow_tests]
 
 
+def psi_line(first: Optional[float], last: Optional[float], seconds: float) -> List[str]:
+    """The memory-pressure part of the summary: [] unless the series read it at both ends and spans some time."""
+    if seconds > 0 and first is not None and last is not None:
+        return ["PSI mem some %.1f%%" % ((last - first) / seconds / 1e4)]
+    return []
+
+
 def summary(lines):
     series = next((l for l in lines if l["kind"] == "series"), None)
     parts = []
@@ -290,8 +308,7 @@ def summary(lines):
         busy = (get(last, "cpu_busy") or 0) - (get(first, "cpu_busy") or 0)
         if ticks > 0:
             parts.append("CPU %.0f%% (%.0f CPU-s)" % (100.0 * busy / ticks, busy / float(TICKS_PER_SECOND)))
-        if seconds > 0 and get(last, "psi_mem_some_us") is not None:
-            parts.append("PSI mem some %.1f%%" % ((get(last, "psi_mem_some_us") - get(first, "psi_mem_some_us")) / seconds / 1e4))
+        parts += psi_line(get(first, "psi_mem_some_us"), get(last, "psi_mem_some_us"), seconds)
         parts.append("%d samples" % len(series["rows"]))
     jvm_lines = [l for l in lines if l["kind"] == "jvm"]
     if jvm_lines:

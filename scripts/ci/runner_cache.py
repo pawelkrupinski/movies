@@ -117,7 +117,8 @@ def save(directory, key, paths_text, root):
             tar = subprocess.Popen(["tar", "-C", root, "--null", "--no-recursion", "-T", listing.name, "-cf", "-"],
                                    stdout=subprocess.PIPE)
             zstd = subprocess.run(["zstd", "-q", "-T0", "-3", "-c"], stdin=tar.stdout, stdout=out)
-            tar.stdout.close()
+            if tar.stdout is not None:
+                tar.stdout.close()
             if tar.wait() != 0 or zstd.returncode != 0:
                 os.unlink(temporary.name)
                 return "failed"
@@ -152,7 +153,8 @@ def restore(directory, key, paths_text, root):
     with entry:
         zstd = subprocess.Popen(["zstd", "-q", "-d", "-c"], stdin=entry, stdout=subprocess.PIPE)
         tar = subprocess.run(["tar", "-C", root, "-xf", "-"], stdin=zstd.stdout)
-        zstd.stdout.close()
+        if zstd.stdout is not None:
+            zstd.stdout.close()
         if zstd.wait() != 0 or tar.returncode != 0:
             _remove_restored(paths_text)
             return False
@@ -163,8 +165,11 @@ def restore(directory, key, paths_text, root):
     return True
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("command", choices=["dir", "restore", "save"])
     parser.add_argument("--key", default="")
     parser.add_argument("--paths", default="")

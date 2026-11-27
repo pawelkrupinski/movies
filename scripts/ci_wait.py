@@ -399,12 +399,13 @@ def parse(argv: list) -> argparse.Namespace:
     return args
 
 
-def targets_of(args) -> list[Target]:
-    common = dict(follow=not args.no_follow, or_later=args.or_later, until_green=args.until_green)
-    targets = [Target(run_id=r, **common) for r in args.run]
+def targets_of(args: argparse.Namespace) -> list[Target]:
+    follow, or_later, until_green = not args.no_follow, args.or_later, args.until_green
+    targets = [Target(run_id=r, follow=follow, or_later=or_later, until_green=until_green) for r in args.run]
     sha = resolve_sha(args.sha) if args.sha else ""
     for w in args.workflow:
-        targets.append(Target(workflow=w, branch=args.branch, sha=sha, any_completed=args.any_completed, **common))
+        targets.append(Target(workflow=w, branch=args.branch, sha=sha, any_completed=args.any_completed,
+                              follow=follow, or_later=or_later, until_green=until_green))
     return targets
 
 

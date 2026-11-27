@@ -107,7 +107,7 @@ cognitive	scripts/ci/identity_takes_diff.py:pair	12
 cognitive	scripts/ci/identity_takes_diff.py:suspects_of	13
 cognitive	scripts/ci/job_metrics.py:junit	32
 cognitive	scripts/ci/job_metrics.py:main_class	15
-cognitive	scripts/ci/job_metrics.py:summary	20
+cognitive	scripts/ci/job_metrics.py:summary	17
 cognitive	scripts/ci/junit_failures.py:failed	16
 cognitive	scripts/ci/lint_per_file_check.py:check_command	11
 cognitive	scripts/ci/lint_reads_trace.py:_compacted	19
@@ -143,7 +143,7 @@ cognitive	scripts/ci/runner_cache.py:main	11
 cognitive	scripts/ci/runner_scheduler.py:GitHub.request	13
 cognitive	scripts/ci/runner_scheduler.py:Host.instances	19
 cognitive	scripts/ci/runner_scheduler.py:_idle_to_stop	11
-cognitive	scripts/ci/runner_scheduler.py:decide	25
+cognitive	scripts/ci/runner_scheduler.py:decide	24
 cognitive	scripts/ci/runner_scheduler.py:decide.borrow_check	11
 cognitive	scripts/ci/runner_scheduler.py:tick	15
 cognitive	scripts/ci/trailers.py:main	14
@@ -304,7 +304,7 @@ cyclomatic	scripts/ci/identity_run_shards.py:plan	13
 cyclomatic	scripts/ci/identity_takes_diff.py:main	19
 cyclomatic	scripts/ci/identity_takes_diff.py:render	17
 cyclomatic	scripts/ci/job_metrics.py:junit	29
-cyclomatic	scripts/ci/job_metrics.py:summary	25
+cyclomatic	scripts/ci/job_metrics.py:summary	23
 cyclomatic	scripts/ci/lint_per_file_check.py:check_command	25
 cyclomatic	scripts/ci/lint_per_file_check.py:main	11
 cyclomatic	scripts/ci/lint_per_file_check.py:pairs	11
@@ -336,7 +336,7 @@ cyclomatic	scripts/ci/runner_cache.py:collect	11
 cyclomatic	scripts/ci/runner_scheduler.py:GitHub.request	12
 cyclomatic	scripts/ci/runner_scheduler.py:Host.instances	17
 cyclomatic	scripts/ci/runner_scheduler.py:_idle_to_stop	32
-cyclomatic	scripts/ci/runner_scheduler.py:decide	57
+cyclomatic	scripts/ci/runner_scheduler.py:decide	56
 cyclomatic	scripts/ci/runner_scheduler.py:decide.borrow_check	19
 cyclomatic	scripts/ci/runner_scheduler.py:decide.room_for	13
 cyclomatic	scripts/ci/runner_scheduler.py:read_readings	24
@@ -425,7 +425,7 @@ method-lines	infra/nix/files/nixos-auto-apply.py:publish	56
 method-lines	scripts/ci/identity_judgements.py:problems	51
 method-lines	scripts/ci/population_walk_diff.py:main	52
 method-lines	scripts/ci/recording_health.py:main	70
-method-lines	scripts/ci/runner_scheduler.py:decide	217
+method-lines	scripts/ci/runner_scheduler.py:decide	216
 method-lines	scripts/ci_wait.py:poll	81
 method-lines	scripts/claude-hooks/unbounded-poll-guard:Reader.check	105
 method-lines	scripts/deploy_watch.py:main	79
@@ -494,7 +494,7 @@ pyright	scripts/ci/identity_live_drift.py	74
 pyright	scripts/ci/identity_run_shards.py	26
 pyright	scripts/ci/identity_takes.py	37
 pyright	scripts/ci/identity_takes_diff.py	348
-pyright	scripts/ci/job_metrics.py	162
+pyright	scripts/ci/job_metrics.py	161
 pyright	scripts/ci/junit_failures.py	16
 pyright	scripts/ci/landing_check_for_tree.py	17
 pyright	scripts/ci/lint_per_file_check.py	214
@@ -506,8 +506,8 @@ pyright	scripts/ci/quality_ratchet.py	21
 pyright	scripts/ci/ratchet_diff.py	56
 pyright	scripts/ci/recording_health.py	173
 pyright	scripts/ci/reusable_workflow_inputs.py	153
-pyright	scripts/ci/runner_cache.py	117
-pyright	scripts/ci/runner_scheduler.py	737
+pyright	scripts/ci/runner_cache.py	114
+pyright	scripts/ci/runner_scheduler.py	717
 pyright	scripts/ci/script_module.py	12
 pyright	scripts/ci/shard_tests.py	69
 pyright	scripts/ci/shard_weights.py	73
@@ -517,7 +517,7 @@ pyright	scripts/ci/workflow_steps.py	25
 pyright	scripts/ci/xcresult_annotations.py	65
 pyright	scripts/ci/xcresult_junit.py	98
 pyright	scripts/ci_status.py	37
-pyright	scripts/ci_wait.py	258
+pyright	scripts/ci_wait.py	235
 pyright	scripts/claude-hooks/gh-run-guard	9
 pyright	scripts/claude-hooks/masked-exit-guard	4
 pyright	scripts/claude-hooks/owner-decisions	78
@@ -531,7 +531,7 @@ pyright	scripts/identity-stage-works.py	23
 pyright	scripts/identity_boot_cost.py	62
 pyright	scripts/identity_measure.py	201
 pyright	scripts/identity_precision_sample.py	307
-pyright	scripts/identity_rule_ablation.py	462
+pyright	scripts/identity_rule_ablation.py	445
 pyright	scripts/identity_slice_diff.py	56
 pyright	scripts/identity_stamp_carry.py	19
 pyright	scripts/identity_what_if.py	475

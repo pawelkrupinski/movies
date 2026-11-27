@@ -542,15 +542,14 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
     `demand` (queued jobs per class), the laned classes' queued jobs (`queue`, queue_of; or only their counts per lane,
     `lanes`, none pinned; neither given: all in the classes' plain labels' lanes), the `instances` that exist and the
     host's live readings `r`."""
-    if queue is None:
-        lanes = dict(lanes or {})
-        queue = [Queued(lane) for lane, n in lanes.items() for _ in range(n)]
-    queue = sorted(queue, key=lambda q: q.created)
+    counted = dict(lanes or {})
+    jobs: list = sorted(queue if queue is not None else [Queued(lane) for lane, n in counted.items() for _ in range(n)],
+                        key=lambda q: q.created)
     for cls, order in LANES.items():  # a class whose lanes nobody counted: all its demand in its plain label's lane
-        if not any(lane in (lanes or {}) for lane in order) and not any(q.lane in order for q in queue):
-            queue += [Queued(LABELS[cls])] * demand.get(cls, 0)
+        if not any(lane in counted for lane in order) and not any(q.lane in order for q in jobs):
+            jobs += [Queued(LABELS[cls])] * demand.get(cls, 0)
     full = saturated(cfg, bc)
-    stops = _idle_to_stop(cfg, bc, demand, instances, now, r, queue)
+    stops = _idle_to_stop(cfg, bc, demand, instances, now, r, jobs)
     alive = [i for i in instances if i.slot not in stops]
     used = {i.slot for i in instances}  # a stopping slot is not reused in the same tick
     pending = [i for i in alive if settling(cfg, i, now)]
@@ -617,7 +616,7 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
         tick (uncovered)."""
         waiting = ([(i.lane, i.pin) for i in alive if i.cls == CLASS_OF[label] and i.lane == label and not i.busy]
                    + [(lane_label, pins[slot]) for slot, lane_label in labels.items() if lane_label == label])
-        return uncovered([q for q in queue if q.lane == label], waiting)
+        return uncovered([q for q in jobs if q.lane == label], waiting)
 
     def lane_unserved(label: str) -> int:
         """A lane's queued jobs with no runner of that lane waiting for them or starting this tick."""
@@ -666,7 +665,7 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
         # core slows it, under its slice's weight, but never queues it)
         cpu_holds = cpu[cls] - keep_cpus >= cores or (cls == "check" and lane()[0] > 0)
         return (len(slots) > keep_slots and memory - keep_gib >= size and cpu_holds
-                and (cls != "check" or peak_room() is None or peak_room() > 0)
+                and (cls != "check" or (room := peak_room()) is None or room > 0)
                 and (held[cls] is None or held[cls] - keep_held >= size) and caps.get(cls, 1) - keep_measurements >= 1)
 
     def admit(cls: str, slots: list, among: tuple | None = None, keep_measurements: int = 0) -> None:
@@ -750,7 +749,7 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
         take(slot, "light", "light")
         warm.append(slot)
         spare += 1
-    room = 0 if full else max(0, min(v for k, v in limits.items() if k in ADMISSION_LIMITS and v is not None))
+    room = 0 if full else max(0, min(v for k, v in limits.items() if k in ADMISSION_LIMITS and isinstance(v, int)))
     return Decision(room, full, tuple(starts), tuple(sorted(stops)), limits, tuple(borrowed),
                     tuple(sorted(labels.items())), tuple(sorted(pins.items())), tuple(warm))
 
@@ -923,10 +922,11 @@ class CpuMeter:
     def busy_cores(self, cores: int, released_seconds: float = 0.0) -> float | None:
         """The busy cores over the window, less `released_seconds` of CPU time the window holds of jobs that have ended
         (RELEASED ON FINISH, RunnerUsage.ended_seconds)."""
-        if len(self.samples) < 2 or self.samples[-1][2] == self.samples[0][2]:
+        span = self.span_seconds()
+        if span is None or self.samples[-1][2] == self.samples[0][2]:
             return None
         (_, b0, t0), (_, b1, t1) = self.samples[0], self.samples[-1]
-        return max(0.0, cores * (b1 - b0) / (t1 - t0) - released_seconds / self.span_seconds())
+        return max(0.0, cores * (b1 - b0) / (t1 - t0) - released_seconds / span)
 
 
 class CpuMeters:
@@ -1179,7 +1179,7 @@ class GitHub:
 
 
 # ── the loop ────────────────────────────────────────────────────────────────────────────────────────────────────────
-def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeters, dry_run: bool = False) -> Decision:
+def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeters, dry_run: bool = False) -> tuple[Decision, int]:
     now = time.time()
     bc = Bitcashier(busy_runners(cfg.builder_cgroups), busy_runners(cfg.deployer_cgroups))
     jobs = reader.queued_jobs()

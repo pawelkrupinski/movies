@@ -28,6 +28,7 @@ import sys
 import time
 from collections import defaultdict
 from datetime import datetime, timezone
+from typing import Dict, List, TypedDict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -99,7 +100,7 @@ def batches(rules, countries_of, fired, hot_size, cold_size, prefix="b"):
         key = (rule.split(":", 1)[0], ",".join(sorted(cs)) if cs else "*", bool(fired.get(rule)))
         groups[key].append(rule)
     out = []
-    for (kind, cs, hot), rs in sorted(groups.items()):
+    for (_kind, cs, hot), rs in sorted(groups.items()):
         size = hot_size if hot else cold_size
         for i in range(0, len(rs), size):
             out.append({"id": f"{prefix}{len(out) + 1:03d}", "rules": rs[i:i + size],
@@ -224,7 +225,8 @@ def relay(argv, cwd, log, now=lambda: datetime.now(timezone.utc).strftime("%H:%M
     its job log how far it got (run 3559 timed out with every line of it in a log whose upload the timeout cancelled).
     Past the deadline (read at each line) it ends the run's process group and raises Deadline."""
     with open(log, "a", encoding="utf-8") as f, subprocess.Popen(argv, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                                                  text=True, errors="replace", process_group=0) as p:
+                                                                  text=True, errors="replace", start_new_session=True) as p:
+        assert p.stdout is not None  # stdout=PIPE
         for line in p.stdout:
             f.write(line)
             m = PROGRESS.match(line.rstrip("\n"))
@@ -246,7 +248,7 @@ def end_group(p: "subprocess.Popen[str]", grace: float = 30) -> None:
 
 
 def send_to_group(p: "subprocess.Popen[str]", sig: int) -> bool:
-    """Send `sig` to the group `p` leads (it made it: process_group=0); False when none is left to receive it. macOS
+    """Send `sig` to the group `p` leads (it made it: start_new_session, which Python 3.9 has and process_group= lacks); False when none is left to receive it. macOS
     answers EPERM, not ESRCH, for a group of only zombies (the leader exiting just before the kill, under load), so any
     OSError means the group is gone, as in tool_process.group_alive."""
     try:
@@ -290,9 +292,17 @@ def shard_states(root):
     return sorted(os.path.join(d, "state.json") for d, _, files in os.walk(root) if "state.json" in files)
 
 
-def merge(states):
+class MergedState(TypedDict):
+    round: int
+    settled: Dict[str, object]
+    interactions: List[object]
+    pending: List[object]
+    fired: Dict[str, object]
+
+
+def merge(states) -> MergedState:
     """One state of several shards' (each settling its own rules): their settled rules, interactions and fired counts."""
-    out = {"round": max((s.get("round", 0) for s in states), default=0), "settled": {}, "interactions": [], "pending": [], "fired": {}}
+    out: MergedState = {"round": max((s.get("round", 0) for s in states), default=0), "settled": {}, "interactions": [], "pending": [], "fired": {}}
     for s in states:
         out["settled"].update(s.get("settled", {}))
         out["interactions"] += s.get("interactions", [])
@@ -345,8 +355,11 @@ def determinism(round_dir, recordings):
     return noisy
 
 
+DOCSTRING = __doc__ or ""  # None under python -OO
+
+
 def main(argv=None):
-    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    p = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     p.add_argument("--recordings", default="38713274617,573,528")
     p.add_argument("--out", required=True)
     p.add_argument("--judgements", default=None)

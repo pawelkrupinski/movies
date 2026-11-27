@@ -45,6 +45,13 @@ class Parsers(unittest.TestCase):
         self.assertEqual(10.0, figures["uptime_s"])
         self.assertAlmostEqual(0.0102, figures["gc_overhead"], places=4)
 
+    def test_a_series_whose_first_row_lacks_a_psi_reading_summarises_without_it(self):
+        series = {"kind": "series", "columns": ["t", "cpu_total", "cpu_busy", "psi_mem_some_us"],
+                  "rows": [[100, 0, 0, None], [105, 2000, 1000, 50000]]}
+        text = jm.summary([series])
+        self.assertIn("CPU 50%", text)
+        self.assertNotIn("PSI", text)
+
     def test_jvm_command_lines(self):
         command = "/opt/java/bin/java -Xmx4g -XX:+UseG1GC -Xlog:gc:file=x -cp a.jar:b.jar xsbt.boot.Boot testUnit"
         self.assertEqual("xsbt.boot.Boot", jm.main_class(command))
