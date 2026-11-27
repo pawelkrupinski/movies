@@ -75,6 +75,15 @@ check "path_flag: a relative path made absolute against the caller's directory" 
 check "...a directory that is not there is a usage error, never /<name>" "demo: --out nope/f: no directory nope|demo: see demo --help|exit=2" \
   "$(cd "$work/here" && lib 'path_flag --out nope/f' | paste -sd'|' -)"
 
+# ── bounded's argument ────────────────────────────────────────────────────────────────────────────
+# A zero or garbage bound used to cancel perl's alarm: an env override of 0 meant "no bound", not an error.
+check "bounded 0 is refused, the command never run" "bounded: <seconds> must be a positive whole number, not '0'|exit=64" \
+  "$(lib 'bounded 0 touch "'"$work"'/ran"' | paste -sd'|' -)"
+check "bounded with a word is refused" "bounded: <seconds> must be a positive whole number, not 'soon'|exit=64" \
+  "$(lib 'bounded soon true' | paste -sd'|' -)"
+check "...and the command did not run" "no" "$([ -e "$work/ran" ] && echo yes || echo no)"
+check "bounded with a whole number runs the command" "ok|exit=0" "$(lib 'bounded 5 echo ok' | paste -sd'|' -)"
+
 # ── bounded under a terminal ──────────────────────────────────────────────────────────────────────
 # A pseudo-terminal from script(1) (BSD's/macOS's and util-linux's take their arguments differently): the line runs in
 # its foreground with it on stdin, as a tool run by hand does. The feed holds the terminal's input open until the line
