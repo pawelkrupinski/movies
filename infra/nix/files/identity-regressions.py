@@ -69,6 +69,7 @@ FIELDS = ("_time", "country", "kind", "build", "venue", "listing",
 UNSTATED_CAUSE = "code"
 ALERTED_CAUSE = "code"
 
+
 # Mirrors identity-regressions.rules (pinned by test_identity_regressions.py). Build thresholds are per
 # country; any country not named uses "*".
 class Thresholds(TypedDict):

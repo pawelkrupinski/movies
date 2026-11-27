@@ -70,6 +70,7 @@ SCRIPTS: Tuple[Tuple[str, str, str, str, str], ...] = (
     ("test_alert_rules.sh", "alerting rule tests", "echo", "said", "echo"),
     ("test_backtest_alerts.py", "alert backtest logic", "count", "said", "tail25"),
     ("test_identity_regressions.py", "identity regression watch", "count", "runs", "tail25"),
+    ("test_nix_python_writers.py", "python writers' build-time flake8", "count", "said", "tail25"),
     ("test_alertmanager.sh", "alertmanager routing", "echo", "said", "echo"),
     ("test_log_fields.sh", "pod log fields", "echo", "said", "echo"),
     ("test_mongodb_exporter_patch.sh", "mongodb_exporter patch", "echo", "runs", "echo"),

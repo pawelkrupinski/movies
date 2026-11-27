@@ -1,0 +1,6 @@
+# The pinned flake8 infra/test/test_nix_python_writers.py lints the fleet's writePython3Bin scripts with, as their Nix
+# build does, installed by scripts/python-venv into a venv of its own.
+flake8==7.5.0
+mccabe==0.7.0
+pycodestyle==2.15.0
+pyflakes==4.1.0

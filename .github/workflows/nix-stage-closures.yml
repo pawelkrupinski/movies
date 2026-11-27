@@ -288,6 +288,13 @@ jobs:
         working-directory: infra
         run: python3 test/test_dashboards.py
 
+      # Every writePython3Bin script passes the flake8 its BUILD runs, with that writer's ignores. `nix eval`
+      # below never builds, so until 2026-11-27 such an error first showed as a host's closure failing to build
+      # in the staging job (Stage NixOS closures #148: E302 in identity-regressions.py, monitoring-1).
+      - name: The fleet's Python writers pass the flake8 their build runs
+        working-directory: infra
+        run: python3 test/test_nix_python_writers.py
+
       # The assertion in fleet/auto-apply.nix reads a forgiven oneshot's start bound through this; a
       # oneshot declaring no timeout is unbounded (2026-11-16: it was read as 0 and passed).
       - name: A oneshot's start bound reads an undeclared timeout as unbounded

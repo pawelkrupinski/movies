@@ -643,7 +643,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `infra/nix/bin/convert-host` | Convert one stock-Ubuntu Hetzner Cloud server into a NixOS host from this flake | `infra/nix/bin/convert-host` | 2 tools | convert_host_test.py | KEEP |
 | `infra/nix/bin/convert_host.py` | Convert one stock-Ubuntu Hetzner Cloud server into a NixOS host from this flake. | `infra/nix/bin/convert_host.py` | 1 tool | convert_host_test.py | Python |
 | `infra/nix/files/heap-dumps.sh` | Keep the JVM heap dumps of every kinowo pod bounded, oldest deleted first | `infra/nix/files/heap-dumps.sh` | wf main; 1 tool | - | MIGRATE |
-| `infra/nix/files/identity-regressions.py` | Production match regressions, read from the identity take-change log and published as metrics. | `python3 infra/nix/files/identity-regressions.py` | 1 tool | - | Python |
+| `infra/nix/files/identity-regressions.py` | Production match regressions, read from the identity take-change log and published as metrics. | `python3 infra/nix/files/identity-regressions.py` | wf nix-stage-closures; 1 tool | - | Python |
 | `infra/nix/files/mongodb-offbox-pull.sh` | The off-box copy of mongo-1'S nightly dump, pulled from A machine that is not mongo-1 | `bash infra/nix/files/mongodb-offbox-pull.sh` | 1 tool | - | KEEP |
 | `infra/nix/files/nix-stage-endpoint.sh` | The ONLY thing the CI deploy key can run on this host | `infra/nix/files/nix-stage-endpoint.sh` | wf nix-stage-closures; 2 tools | - | KEEP |
 | `infra/nix/files/nixos-auto-apply.py` | Activate the closure CI already staged here, but ONLY when doing so would disturb nothing. | `infra/nix/files/nixos-auto-apply.py` | wf nix-stage-closures; 5 tools | - | Python |

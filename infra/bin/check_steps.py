@@ -131,6 +131,8 @@ SCRIPTS_BEFORE_EVAL = (
     Script("alert backtest logic", "test_backtest_alerts.py", "count", "said", "tail25"),
     # nix/files/identity-regressions.py: net losses and flips from the take-change log
     Script("identity regression watch", "test_identity_regressions.py", "count", "runs", "tail25"),
+    # every writePython3Bin script linted by the flake8 its build runs (nix eval never builds them)
+    Script("python writers' build-time flake8", "test_nix_python_writers.py", "count", "said", "tail25"),
     # which receiver an alert's labels reach (first-match-wins routing)
     Script("alertmanager routing", "test_alertmanager.sh", "echo", "said", "echo"),
     # the vector transform run by the real vector (INFRA_CHECK_BUILD_VECTOR=1 forces the build)
