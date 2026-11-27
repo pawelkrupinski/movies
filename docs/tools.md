@@ -486,7 +486,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity_what_if_cli_sides.py` | THE KEPT WHOLE SIDES (scripts/identity_what_if_cli.py): a commit's every family resolved at a snapshot -- takes, | `imported` | 4 tools | - | Python |
 | `scripts/identity_what_if_cli_verdict.py` | THE VERDICT RECORD (scripts/identity_what_if_cli.py): a line a country finished, under (head, base), written by | `imported` | 3 tools | - | Python |
 | `scripts/label-lookup` | Every hand judgement touching one listing or one film, with who added it and when, and what prod takes today. | `scripts/label-lookup` | skill CLAUDE.md, identity-investigation; 7 tools | label-lookup-test.sh | Python |
-| `scripts/lib/identity_dispatch.py` | A COMMIT MEASURED ON CI, the steps the identity tools share (scripts/lib; identity-tools.sh's identity_measure_branch, | `imported` | 4 tools | - | Python |
+| `scripts/lib/identity_dispatch.py` | A COMMIT MEASURED ON CI, the steps the identity tools share (scripts/lib; identity-tools.sh's identity_measure_branch, | `imported` | 5 tools | - | Python |
 | `scripts/lib/identity_jvm.py` | THE JVM EVERY IDENTITY TOOL RUNS IN, for the Python tools (scripts/lib; stdlib only): identity-tools.sh's | `imported` | 3 tools | - | Python |
 | `scripts/lib/identity_kept_jvms.py` | The kept JVMs of the identity tools in Python (identity-what-if's and identity-slice's): each a JVM started once and | `imported` | 3 tools | - | Python |
 | `scripts/lib/identity_ref_trees.py` | A REF'S CODE LAID OUT AND COMPILED for the local identity tools that run a JVM under it (scripts/lib; title_trace.py, | `imported` | 4 tools | - | Python |
