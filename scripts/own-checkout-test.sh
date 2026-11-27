@@ -25,7 +25,7 @@ check "--help prints the header and exits 0" "0 1" "$(out="$("$REPO_ROOT/scripts
 check "outside any checkout: it runs" "0 ran" "$(out="$(run_in "$work/plain")"; echo "$? $out")"
 
 # every tool that works in its own checkout calls the guard; these choose their tree otherwise
-exempt=" scripts/hooks/pre-push scripts/run-script-tests "  # git runs the hook in its own checkout; --root names the tree
+exempt=" scripts/hooks/pre-push scripts/run-script-tests scripts/run-script-tests.sh-legacy "  # git runs the hook in its own checkout; --root names the tree
 missing=""
 while IFS= read -r f; do
   rel="${f#"$REPO_ROOT"/}"

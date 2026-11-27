@@ -151,7 +151,9 @@ check "gh missing on a judgements push: BLOCKED (the served-takes check needs it
 # NO STEP HANGS (2026-10-27: a land's hook sat 2.5 h in one sbt-warm call, the landing lock held): a check making no
 # progress -- no CPU, no log, no sbt-warm progress mark -- for PREPUSH_STALL_SECONDS is ended, the hook failing with
 # `pre-push STALLED: <check>` and exit 75, the stall signal agentctl land reads
-mkdir -p "$gate/hungpy"; printf '#!/bin/sh\n[ "$1" = -c ] && exit 0\necho $$ >> "$PY_HANGS"\nexec sleep 86400\n' > "$gate/hungpy/python3"
+# (only the check's own python3 hangs: the hook's other Python tools -- run-script-tests --reads -- run on the real one)
+real_python3="$(command -v python3)"
+mkdir -p "$gate/hungpy"; printf '#!/bin/sh\ncase "$1" in *test_dashboards.py) ;; *) exec %s "$@" ;; esac\necho $$ >> "$PY_HANGS"\nexec sleep 86400\n' "$real_python3" > "$gate/hungpy/python3"
 chmod +x "$gate/hungpy/python3"; : > "$gate/py-hung"
 scratch_git "$grepo" reset -q --hard "$fixture_base"; thung="$(commit_paths "change dashboards" -- infra/test/test_dashboards.py)"
 code="$(cd "$grepo" && all_green spec_bounded env PREPUSH_SKIP="${pathchecks/dashboards/} redgate" PATH="$gate/hungpy:$PATH" \
@@ -161,7 +163,7 @@ check "a check making no progress is ended: exit 75, \`pre-push STALLED: <check>
   "$code $(grep -c '^pre-push STALLED: dashboards' "$gate/err") $(spec_still_running "$gate/py-hung")"
 # ...while one busy past the bound (CPU in its processes) is no stall, however loaded the machine: busy, it is runnable at
 # every poll, whatever CPU share it gets (it loops in bash builtins, forking nothing)
-printf '#!/usr/bin/env bash\n[ "$1" = -c ] && exit 0\nend=$((SECONDS + 4)); while [ "$SECONDS" -lt "$end" ]; do :; done\n' > "$gate/hungpy/python3"
+printf '#!/usr/bin/env bash\ncase "$1" in *test_dashboards.py) ;; *) exec %s "$@" ;; esac\nend=$((SECONDS + 4)); while [ "$SECONDS" -lt "$end" ]; do :; done\n' "$real_python3" > "$gate/hungpy/python3"
 code="$(cd "$grepo" && all_green spec_bounded env PREPUSH_SKIP="${pathchecks/dashboards/} redgate" PATH="$gate/hungpy:$PATH" \
   PREPUSH_STALL_SECONDS=2 KINOWO_STALL_POLL_SECONDS=1 KINOWO_STALL_CPU_CENTIS=10 \
   bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$fixture_base..$thung" >/dev/null 2>"$gate/err"; echo $?)"

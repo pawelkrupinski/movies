@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import IO, Callable, List, Optional, Sequence, Tuple
 
 import machine
+import tool_python
 
 GIT_ENTRIES = ("config", "config.worktree", "HEAD", "ORIG_HEAD", "FETCH_HEAD", "commondir", "gitdir", "index",
                "packed-refs", "refs", "shallow", "info")
@@ -98,7 +99,9 @@ def build_once(c: Container, docker: str, image: str, recipe: str) -> Tuple[int,
     """(status, stderr) of one bounded `docker build` of the recipe."""
     log = os.path.join(c.scratch, "build.log")
     with open(log, "w") as err:
-        code = machine.run([sys.executable, "-I", "-B", bounded_tool(), "900", docker, "build", "-q", "-t", image, "-"],
+        argv = tool_python.isolated(bounded_tool(), "900", docker, "build", "-q", "-t", image, "-",
+                                    python=sys.executable)
+        code = machine.run(argv,
                            machine.Ran(out=subprocess.DEVNULL, err=err), recipe + "\n")[0]
     with open(log) as f:
         return code, f.read()
@@ -173,7 +176,8 @@ def mounts(c: Container, tree: str, common: str) -> List[str]:
 def ready(c: Container, say: Say, sleep: Callable[[float], None]) -> Optional[Tuple[str, str, Slot]]:
     """(docker, image, the slot holding the tree) once Docker answers, the image is built and a slot is held."""
     docker = docker_binary(c.home)
-    if docker is None or machine.status([sys.executable, "-I", "-B", bounded_tool(), "20", docker, "info"],
+    info = tool_python.isolated(bounded_tool(), "20", docker or "docker", "info", python=sys.executable)
+    if docker is None or machine.status(info,
                                         out=subprocess.DEVNULL, err=subprocess.DEVNULL) != 0:
         say("run-script-tests: --linux needs a running Docker (docker info failed) -- start Docker / Rancher Desktop")
         return None

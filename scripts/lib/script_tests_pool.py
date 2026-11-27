@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, List, MutableMapping, Optional, Sequence
 
 import machine
+import tool_python
 from script_tests_found import declared_width
 
 TAIL = 60
@@ -101,12 +102,13 @@ class Pool:
 
     def start(self, key: str, path: str) -> Running:
         log = open(self.file(key, "log"), "w")
-        argv = [sys.executable, "-I", "-B", self.tools.bounded, str(self.plan.timeout), self.interpreter(path), path]
+        argv = tool_python.isolated(self.tools.bounded, str(self.plan.timeout), self.interpreter(path), path,
+                                    python=sys.executable)
         root = machine.spawn(argv, machine.Ran(cwd=self.plan.root, env=self.test_env(path), out=log, err=log))
         stall_env = dict(self.env, KINOWO_STALL_GROUPS="1",
                          KINOWO_STALL_POLL_SECONDS=self.env.get("KINOWO_STALL_POLL_SECONDS") or str(self.stall_poll()))
-        watch = machine.spawn([sys.executable, "-I", "-B", self.tools.watch, "watch", str(root.pid), str(self.plan.stall),
-                               path, self.file(key, "stalled"), self.file(key, "log")],
+        watch = machine.spawn(tool_python.isolated(self.tools.watch, "watch", str(root.pid), str(self.plan.stall),
+                               path, self.file(key, "stalled"), self.file(key, "log"), python=sys.executable),
                               machine.Ran(cwd=self.plan.root, env=stall_env, out=log, err=log))
         log.close()
         return Running(key, root, watch, machine.monotonic(), int(machine.wall()))

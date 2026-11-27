@@ -17,4 +17,4 @@ scripts/hooks/pre-push	one stall watchdog per check, started in the background b
 scripts/identity-tools-test.sh	a race under test: twelve racers contend for one identity lock, the point of the test
 scripts/jvm-gate-test.sh	a race under test: sixteen racers contend for one jvm lock and twelve for the slots, the point of the test
 scripts/local-mirror/mongosh-at-test.sh	one background mongosh per shell under test, the kill-and-reap behaviour the test asserts
-scripts/run-script-tests	the runner's own pool, sized by jvm-gate.sh gov_width (the governed width of its ticket), plus the stress burners
+scripts/run-script-tests.sh-legacy	the shell runner's own pool (the fallback, KINOWO_RUN_SCRIPT_TESTS_LEGACY=1), sized by jvm-gate.sh gov_width, plus the stress burners
