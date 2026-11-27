@@ -1,13 +1,13 @@
 # White-cinema investigations
 
-> **Summary.** An append-only log, newest run first (34 runs, 2026-06-25 → 2026-11-14). Before
+> **Summary.** An append-only log, newest run first (35 runs, 2026-06-25 → 2026-11-27). Before
 > investigating a white (parsed-but-empty) or red venue, search this file for the venue's name: its last verdict
 > (`fixed` / `unfixable` / `intentionally-dormant` / `needs-human` / `recovered` / `transient`) is in the newest run
 > that names it. The [methodology](#how-to-find-the-white-list-methodology) section is current; run entries are
 > dated records — those before 2026-08-29 mention a `flyctl proxy` on `:27017` that no longer exists, and those
 > before 2026-10-23 read prod Mongo directly, which is user-only now (runs read the local prod mirror).
 >
-> **Runs:** [2026-11-14](#2026-11-14) · [2026-11-09](#2026-11-09) · [2026-11-06](#2026-11-06) · [2026-11-03](#2026-11-03) · [2026-10-30](#2026-10-30) · [2026-10-27](#2026-10-27) · [2026-10-23](#2026-10-23) · [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
+> **Runs:** [2026-11-27](#2026-11-27) · [2026-11-14](#2026-11-14) · [2026-11-09](#2026-11-09) · [2026-11-06](#2026-11-06) · [2026-11-03](#2026-11-03) · [2026-10-30](#2026-10-30) · [2026-10-27](#2026-10-27) · [2026-10-23](#2026-10-23) · [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
 
 Durable cross-run log for the recurring (~every 3 days) "white cinema"
 investigation. A **white** uptime bar = the scrape *fetch succeeded* but the
@@ -337,9 +337,147 @@ for (const name of DBS){
 print(JSON.stringify(out));
 ```
 
+### MSI portals are re-skinning (found 2026-11-27)
+
+MSI is rolling a new theme out to its portals. Kino Kijów changed on 11-19 and Kino SDK Sanok on 11-25. A portal on the
+shared `msi(...)` wiring keeps working, because the new pages are the standard `movies-movie__single` skin. A venue
+with a BESPOKE client that reads an MSI path goes white or onto the fallback. Every run, check the bespoke clients
+that read an MSI path (`git grep -l 'MSI/mvc' scrapers/src/main`: Kinematograf, Iskra, Kultura, MCSW Elektrownia, OKF
+Iluzja, Sanok) against their bars. Then fetch `<base>/MSI/mvc/pl?sort=Name&date=<YYYY-MM>`. A page that serves
+`movies-movie__single__title` means the venue can move onto `MsiClient`.
+
 A venue with a `filmwebFallback` doc reading `UNCOVERED` and `fallbackRef: null`
 has NO Filmweb cover. Before 2026-09-29 that was every venue outside the five
 big cities (see that entry). It is now only venues Filmweb itself doesn't list.
+
+---
+
+## 2026-11-27
+
+**Nineteenth all-five-country sweep**, read from the local prod mirror at 15:09 UTC on a **Friday afternoon**, 13 days after
+the last run. The sweep is the checked-in script, unchanged. All five mirrors were fresh (newest bucket 15:00 UTC, and the
+log was tailing every database).
+
+| DB | services | white | white % | red | green→white | seasonal | `thin` | fallback venues | probed |
+|---|---|---|---|---|---|---|---|---|---|
+| `kinowo` (PL) | 542 | **11** | 2.0% | **1** | 1 | 0 | 34 | 5 (Filmweb), 5 active | all 11 + 1 red + 5 active |
+| `kinowo_uk` | 857 | **47** | 5.5% | 0 | 0 | 2 | 22 | 0 | 7 (all `noScheduleListed`) |
+| `kinowo_de` | 1,528 | **286** | 18.7% | 0 | 0 | 114 | 23 | 44 (kinoprogramm.com / kinoheld chain) | 20 (14 `noScheduleListed`, 6 probed) |
+| `kinowo_us` | 5,008 | **882** | 17.6% | 0 | 0 | 257 | 0 | 0 | 12 (all `noScheduleListed`) |
+| `kinowo_es` | 602 | **145** | 24.1% | 0 | 2 | 25 | 11 | 0 | 9 (all `noScheduleListed`) |
+
+Against Saturday 11-14: UK 40 → 47, DE 285 → 286, US 876 → 882, ES 149 → 145. No client clusters. The DE fallback count rose
+from 27 to 44. These are single-film venues covered for one or two buckets each (a Friday shape). The exception is
+Viktoria-Theater (below).
+
+### The real cause this run: MSI is re-skinning its portals. Two venues `fixed` @b40e25de34
+
+**Kino Kijów (Kraków, `kupbilet.kijow.pl`) was on the Filmweb fallback from 11-20 04:10 UTC (153 failed probes,
+"primary returned no screenings").** On 11-19 the portal replaced its date-sorted "timeline" page (`div.cd-timeline-content`,
+one block a screening), which the bespoke `KinoKijowClient` parsed. The new page is MSI's standard `movies-movie__single`
+skin. On the date-sorted page the title `h3` carries no `title` attribute, so even the standard skin read the titles as
+blank. **Kino SDK (Sanok, `bilety.sdksanok.pl`)** did the same on 11-25: 503s first (UNCOVERED 11-25 12:14), then from
+11-26 20:15 the fallback with "no screenings". Its per-day "lista wydarzeń" page (`sort=Flow`) now lists no event and no
+picker day. The month pages (`sort=Name`) carry the programme, 9 titles in December.
+
+The fix (fail-before on both wiring specs, `KinoKijowWiringSpec` and `KinoSDKWiringSpec` in `PolishTownsSpec.scala`, over
+pages recorded 11-27):
+- **Kijów is now `msi(KinoKijow, …, monthOrder = ByDate)`**, and `KinoKijowClient` is deleted. Its old timeline page is a
+  fourth `MsiScraper` skin, so the 2026-06-08 corpus (which holds that page under `sort=Date`) still replays. The standard
+  skin falls back to the heading text when there is no `title` attribute. Both sort orders carry the same 60 November
+  events. The client now also reads the portal's event-labels feed, so its plays ("SPEKTAKL - …", filed `Teatr`) and
+  concerts drop out.
+- **Sanok:** its day reader stays for the recorded corpora. It hands over to an injected `MsiClient` when the day page
+  lists nothing.
+- **Snapshots:** Kijów's 5 corpus titles take MSI's unconditional sentence case ("Tom i jerry: przygoda w muzeum"), the
+  same as every MSI venue. Its MSI posters now feed the poster fallbacks (the 3 page snapshots).
+- **Who else shares the path:** every other bespoke client that reads an MSI path (Kinematograf, Iskra, Kino Kultura,
+  MCSW Elektrownia, OKF Iluzja, Kino Zamek) is green in all 24 buckets. Venues on the shared `msi(...)` wiring are
+  unaffected, because the new skin is the standard one. The methodology section has the check for next runs.
+
+**Heads-up, not fixed:** `MsiClient.cleanTitle` sentence-cases every title, cased or shouted. `TextNormalization.sentenceCase`
+says callers must gate it on all-caps. It lowers proper nouns at mixed-case MSI venues ("Diabeł ubiera się u prady 2" at
+Kino Na Biegunach). Gating it moved 100 corpus lines across ~15 MSI venues, with mixed results: half-shouted titles like
+"Re- wizje IV. … - CZŁOWIEK Z MARMURU" stay shouted. That is a casing-policy change for a lane of its own, measured on
+identity, not a white-venue fix.
+
+### Filmweb-fallback sweep (PL only): 5 active, 2 fixed
+
+| Venue | Since | Last reason | Verdict |
+|---|---|---|---|
+| **Kino Kijów (Kraków)** | 11-20 04:10 | primary returned no screenings | **`fixed` @b40e25de34** (above) |
+| **Kino SDK (Sanok)** | 11-26 20:15 | primary returned no screenings (503 on 11-25) | **`fixed` @b40e25de34** (above) |
+| Wybrzeże (Kołobrzeg) | 10-23 14:57 | primary returned no screenings | **intentionally-dormant (closed; Filmweb covers DKF)**, the standing decision |
+| Kino Warszawa (Przeworsk) | 11-01 01:18 | primary returned no screenings | **intentionally-dormant** (as 11-03 to 11-14; archive 26 d) |
+| Kino Tatry (Łódź) | 11-01 05:01 | primary returned no screenings | **intentionally-dormant**, closed until 2027-04-01 |
+
+ENTER→RECOVERED / UNCOVERED since 11-14:
+- **Kino Ikar: `recovered`** on 11-14 10:44 off its MSI portal, once the Certum root (@b704e39030d) was deployed. 11-14's
+  open question is closed. It flapped once more (11-16 09:44 → 14:44, connect timeout, covered): **transient.**
+- **Kino Muza: `recovered`** on 11-14 10:46, after 6 h on Filmweb 75 through the 503 outage. Green since.
+- **Covered transients.** Each flap below was covered by Filmweb, and each venue is green now:
+  - Kozienicki DK: 11-22, 2 h, connect timeout.
+  - Kino Zamek: 11-16, 11 h, an SSL `certificate_unknown` that the host fixed.
+  - Kino Promień: 11-14/15, 10 h, `HTTP 502`.
+  - Kino Roma: 11-20 → 11-22, connect timeout.
+  - Kino Na Biegunach: 11-26, 3 h, `HTTP 500`.
+  - Stopiak: 11-26, 1 h, SSL.
+  - Kino Ostrovia: 11-26 → 11-27, 20 h, SSL `certificate_unknown`. It recovered at 10:29 and its 24 buckets are 19 `fallback: true`.
+  - Świt Zwoleń: 11-25/26, 10 h, no route to host.
+- **Overnight empties, covered:** Kino Rejs (11-21), Kultura Bełchatów (11-20), Cinema N 3D (11-20 and 11-27), Żeglarz
+  (11-23). Kino Mazur, Centrum Brzeg and Kino za Rogiem RECOVERED on 11-19 and 11-23. **transient.**
+- **UNCOVERED, not dark for long:** Kino GOK (11-16, a 45 s budget timeout on bilety.goktychowo.pl) and MDK Opoczno (11-14, a
+  biletyna timeout). Both are green or dormant now.
+
+### Red: 1 PL venue, 0 elsewhere
+
+| Venue | Host | Error class | Red since | Covered? | Verdict |
+|---|---|---|---|---|---|
+| **Zacisze (Piekary Śląskie)** | www.kinozacisze.pl | `ConnectException` (DNS) | 11-27 11:11 UTC | Filmweb 2350 after the 6 h grace (~17:11 UTC) | **upstream: the venue's domain lapsed**. Re-check next run. |
+
+The `.pl` registry answers NXDOMAIN for kinozacisze.pl, and whois says "billing period had finished". The domain was
+created 2018-11-27 11:31, so its year ran out at **11-27 11:31**, twenty minutes after the first failure. It is in the
+redemption period until 12-27. The site itself is alive: pinned to its old Cloudflare IP it serves `/repertuar/` with
+200. Nothing to fix on our side. If the venue renews, it recovers on its own. If the domain drops after 12-27, this is
+`needs-human: move Zacisze onto Filmweb 2350`.
+
+### Poland: 11 white
+
+| Venue | Source | Verdict |
+|---|---|---|
+| **DKF Politechnika (Wrocław)** | Filmweb 1645 | **intentionally-dormant** (the green→white). Its only screening, Funny Games, was 11-26 19:00 UTC, as on 11-14. |
+| **Teatr Atelier (Sopot)**, **Teatr Boto (Sopot)** | biletyna | **intentionally-dormant** (new). One film each, "Róża", on 11-24 and 11-25. Barren since the screening. |
+| **BCKino Bytom** | systembiletowy (bck) | **intentionally-dormant** (new). Its only screening, Ziemia obiecana, was 11-21 14:00 UTC. |
+| Wybrzeże, Kino Warszawa, Kino Tatry | see the fallback table | **intentionally-dormant** |
+| Teatr Gryphiusa, Kino na Szekspirowskim, MDK Opoczno | biletyna | **intentionally-dormant** (as 11-14; archives 19–76 days, 1 film each) |
+| Kino Wisła Brzeszcze | bilety24 1539 | **intentionally-dormant** (never an archive) |
+
+Wawerska Strefa Kultury, Nowotomyski OK and Drawieński OK, white on 11-14, are not white now. **PL `thin`: 34**, not
+re-probed (11-09 probed all 87 and found 0 bugs).
+
+### UK / DE / ES / US: 48 candidates, 0 parser bugs
+
+The cut is unchanged from 11-14. UK, DE and ES take non-seasonal whites with an archive of 10 days or less, plus every
+green→white (7 / 20 / 9). US takes an archive of 3 days or less **and at least 3 films**, plus green→white (12). **42 of the
+48 carry `lastBarren.noScheduleListed: true`**, so they are empty or lagging and were not hand-probed. The 6 DE venues
+without it read `outcome: empty`:
+- **kinoheld, empty at source:** `programShows` returns 0 shows for Raststätte (2417), Kleines Theater Am Weingarten
+  (3905), Arthaus-Kino LVR Bonn (1461) and naxos.Kino (1874). The control, 807, returns 100. **intentionally-dormant.**
+- **filmstarts:** Kino im COMMA (A0416) reads `data-showtimes-dates="[]"`: **intentionally-dormant.** CineAStA (A2728) lists
+  only 12-02: **lag.**
+
+**DE Viktoria-Theater (Dreieich, A1257)** is on its fallback chain in 20 of 20 buckets, `active` since 11-10. filmstarts lists
+only 12-21, while kinoheld carries its real programme ("Tatsächlich … Liebe" and more), which the chain serves. **Covered,
+working as designed.**
+
+### Left for next run
+- **Kijów and Sanok:** are both green off their own portals after deploy (no `fallback: true` buckets, and the docs RECOVERED)?
+- **Zacisze:** renewed, or still NXDOMAIN? The domain drops after 12-27.
+- **The MSI re-skin:** run the check in the methodology section on the bespoke MSI clients.
+- **The MSI casing heads-up** above.
+- **Carried over:** the own-site re-check for Krobia, Harmonia and Książka; Kino Sokół Strzyżów; Kino Tatry after 2027-04-01;
+  the `command sleep` heads-up from 11-09; whether an all-past scrape (Rumcajs, Łapy) should classify white; Kozienice's
+  flaps (one in 13 days now).
 
 ---
 
