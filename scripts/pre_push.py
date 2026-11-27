@@ -35,14 +35,21 @@ from tool_files import Files, LocalDisk  # noqa: E402
 GIT_VARIABLES = pre_push_run.GIT_VARIABLES
 
 
-def checkout(hook: str, env: MutableMapping[str, str]) -> modes.Checkout:
-    """The checkout the hook was run in, its root found by git; SystemExit(1) outside one."""
+def no_checkout(mode: str, code: int, err: str) -> str:
+    said = err.strip().replace("\n", "; ") or ("it could not be started" if code == 127 else "no answer")
+    return f"pre-push {mode}: no checkout: git rev-parse --show-toplevel exited {code} ({said})\n"
+
+
+def checkout(hook: str, mode: str, env: MutableMapping[str, str]) -> modes.Checkout:
+    """The checkout the hook was run in, its root found by git; SystemExit(1) outside one, SAID (agentctl's
+    queue reads a plan's nonzero exit as "the hook's plan could not be read" and checks the change again)."""
     for name in GIT_VARIABLES:
         env.pop(name, None)
-    code, root = machine.output(["git", "rev-parse", "--show-toplevel"], env=env)
-    if code != 0 or not root.strip():
-        raise SystemExit(1)
+    code, root, err = machine.both(["git", "rev-parse", "--show-toplevel"], env=env)
     root = root.strip()
+    if code != 0 or not root:
+        sys.stderr.write(no_checkout(mode, code, err))
+        raise SystemExit(1)
 
     def run(argv: Sequence[str], text: str) -> Tuple[int, str]:
         return machine.output(argv, text, cwd=root, env=env)
@@ -67,7 +74,7 @@ def main(argv: List[str]) -> int:
         sys.stderr.write(__doc__ or "")
         return 64
     hook, mode, args = argv[0], argv[1], argv[2:]
-    found = checkout(hook, machine.environment())
+    found = checkout(hook, mode, machine.environment())
     code, out = modes.answer(found, mode, args, "" if mode in ("--unit-universe", "--failure-summary") else sys.stdin.read())
     sys.stdout.write(out)
     return code

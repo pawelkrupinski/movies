@@ -19,12 +19,13 @@ signal and wait for processes only through it; their tests hand in fakes where t
   tree_shrank, kept_pids, pid_list, centis                                pure readings of its listings"""
 from __future__ import annotations
 
+import errno
 import os
 import signal
 import subprocess
 import time
 from dataclasses import dataclass
-from typing import IO, Dict, List, MutableMapping, NoReturn, Optional, Sequence, Set, Tuple, Union
+from typing import IO, Callable, Dict, List, MutableMapping, NoReturn, Optional, Sequence, Set, Tuple, Union
 
 Sink = Union[int, IO[str], IO[bytes], None]
 QUIET: Sink = subprocess.DEVNULL  # a Sink dropping what is written to it
@@ -52,6 +53,29 @@ def local_text(form: str, epoch: float) -> str:
     return time.strftime(form, time.localtime(epoch))
 
 
+# A START REFUSED FOR WANT OF A RESOURCE IS TRIED AGAIN: fork's EAGAIN (the user's process limit), ENFILE / EMFILE (the
+# system's or the process's file table full: no pipe), ENOMEM. The command never started, so starting it again runs it
+# once. 2026-11-27: under a load of ~67, the night the reconciler logged ENFILE, agentctl twice read a NONZERO EXIT from
+# the pre-push hook's `--plan` within seconds -- one `git rev-parse` that could not be started was the plan's exit 1,
+# said nowhere. Five tries over ~3 s; still refused: 127, as before.
+TRANSIENT_START = frozenset({errno.EAGAIN, errno.ENFILE, errno.EMFILE, errno.ENOMEM})
+START_TRIES = 5
+START_PAUSE = 0.2  # seconds, doubled each try
+
+
+def completed(start: Callable[[], "subprocess.CompletedProcess[str]"]
+              ) -> Optional["subprocess.CompletedProcess[str]"]:
+    """`start()`'s result, tried again while it is refused for want of a resource; None when it cannot be run."""
+    for attempt in range(START_TRIES):
+        try:
+            return start()
+        except OSError as e:
+            if e.errno not in TRANSIENT_START or attempt + 1 == START_TRIES:
+                return None
+            time.sleep(START_PAUSE * 2 ** attempt)
+    return None
+
+
 def output(argv: Sequence[str], text_in: Optional[str] = None, cwd: Optional[str] = None,
            env: Optional[MutableMapping[str, str]] = None) -> Tuple[int, str]:
     """(status, stdout) of a command, its stderr dropped; 127 and nothing when it cannot be run."""
@@ -70,23 +94,17 @@ def errors(argv: Sequence[str], cwd: Optional[str] = None, env: Optional[Mutable
            out: Sink = subprocess.DEVNULL) -> Tuple[int, str]:
     """(status, stderr) of a command, its stdout dropped (or where `out` says: None, this process's); 127 and nothing
     when it cannot be run."""
-    try:
-        done = subprocess.run(list(argv), cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=out,
-                              stderr=subprocess.PIPE, text=True)
-    except OSError:
-        return 127, ""
-    return done.returncode, done.stderr
+    done = completed(lambda: subprocess.run(list(argv), cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=out,
+                                            stderr=subprocess.PIPE, text=True))
+    return (127, "") if done is None else (done.returncode, done.stderr)
 
 
 def both(argv: Sequence[str], cwd: Optional[str] = None,
          env: Optional[MutableMapping[str, str]] = None) -> Tuple[int, str, str]:
     """(status, stdout, stderr) of a command, its stdin closed; 127 and nothing when it cannot be run."""
-    try:
-        done = subprocess.run(list(argv), cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, text=True)
-    except OSError:
-        return 127, "", ""
-    return done.returncode, done.stdout, done.stderr
+    done = completed(lambda: subprocess.run(list(argv), cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True))
+    return (127, "", "") if done is None else (done.returncode, done.stdout, done.stderr)
 
 
 def status(argv: Sequence[str], cwd: Optional[str] = None, env: Optional[MutableMapping[str, str]] = None,
@@ -110,14 +128,12 @@ class Ran:
 def run(argv: Sequence[str], how: Ran, text_in: Optional[str] = None) -> Tuple[int, str]:
     """(status, stdout when piped) of a command: 124 past its bound, 127 when it cannot be run."""
     try:
-        done = subprocess.run(list(argv), input=text_in, text=True, cwd=how.cwd, env=how.env, stdout=how.out,
-                              stderr=how.err, stdin=None if text_in is not None else subprocess.DEVNULL,
-                              pass_fds=how.pass_fds, timeout=how.timeout)
+        done = completed(lambda: subprocess.run(
+            list(argv), input=text_in, text=True, cwd=how.cwd, env=how.env, stdout=how.out, stderr=how.err,
+            stdin=None if text_in is not None else subprocess.DEVNULL, pass_fds=how.pass_fds, timeout=how.timeout))
     except subprocess.TimeoutExpired:
         return 124, ""
-    except OSError:
-        return 127, ""
-    return done.returncode, done.stdout or ""
+    return (127, "") if done is None else (done.returncode, done.stdout or "")
 
 
 def spawn(argv: Sequence[str], how: Ran = Ran(), own_group: bool = False) -> "subprocess.Popen[bytes]":

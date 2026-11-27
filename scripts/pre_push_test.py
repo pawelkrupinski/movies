@@ -342,5 +342,17 @@ class NotAPlanModeTest(PlanCase):
         self.assertEqual(["ios"], lines(done.stdout))
 
 
+
+class PlanFailsClosedTest(PlanCase):
+    """A plan that cannot find its checkout exits nonzero SAYING WHY on stderr (agentctl reads the exit as "the hook's
+    plan could not be read" and checks the change again) -- never silently."""
+
+    def test_no_checkout_is_said(self):
+        os.makedirs(self.path("elsewhere"))
+        done = self.run_tool("--plan", cwd=self.path("elsewhere"), stdin="ios/A.swift\n",
+                             env={"GIT_CEILING_DIRECTORIES": self.path()}, tool=self.path("repo", "scripts", "hooks", "pre-push"))
+        self.assertEqual(1, done.code, done.output)
+        self.assertIn("pre-push --plan: no checkout: git rev-parse --show-toplevel exited 128", done.stderr)
+
 if __name__ == "__main__":
     unittest.main()
