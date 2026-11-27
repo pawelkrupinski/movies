@@ -107,5 +107,5 @@ stall_python() {
 
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   stall_python || { echo "stall-watch: no python3 on PATH answers" >&2; exit 2; }
-  exec "$STALL_PYTHON" -I "$(dirname "$0")/stall_watch.py" "$@"
+  exec "$STALL_PYTHON" -I -B "$(dirname "$0")/stall_watch.py" "$@"
 fi

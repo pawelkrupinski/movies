@@ -19,7 +19,9 @@ sys.path.insert(0, HERE)
 import cli_harness  # noqa: E402
 
 SKIPPED_DIRECTORIES = {"__pycache__", "node_modules", "target", ".venv"}
-BARE_SHELL = re.compile(r"\bpython3 -I(?! -B)(?=[\s\"']|$)")
+# `python3 -I`, or an interpreter picked into a variable (`"$STALL_PYTHON" -I`: stall-watch.sh's watchdog wrote
+# scripts/lib/__pycache__/machine.*.pyc beside every test it watched, Tool self-tests #622)
+BARE_SHELL = re.compile(r"(?:\bpython3|\$\{?[A-Z_]*PY[A-Z_]*\}?)\"? -I(?! -B)(?=[\s\"']|$)")
 LIST_FLAG = re.compile(r"\"-I\"")
 LIST_FLAG_WITH_B = re.compile(r"\"-I\",\s*\"-B\"")
 
