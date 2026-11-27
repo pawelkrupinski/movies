@@ -1986,17 +1986,18 @@
     "provisional" : false
   }, {
     "_id" : "f1995f5461c6aabc",
-    "title" : "90. rocznica urodzin Pavarottiego- Koncert gwiazd z Arena di Verona",
+    "title" : "90. Rocznica urodzin pavarottiego- koncert gwiazd z arena di verona",
+    "posterUrl" : "https://kupbilet.kijow.pl/MSI/ImageData.ashx?id=3191&mode=thumb",
     "fallbackPosterUrls" : [ ],
     "genres" : [ ],
     "countries" : [ ],
-    "directors" : [ ],
+    "directors" : [ "Luigi Antonini (reżyser)", "Matteo Parmeggiani (dyrygent)" ],
     "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/90.+rocznica+urodzin+Pavarottiego-+Koncert+gwiazd+z+Arena+di+Verona/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=90.+rocznica+urodzin+Pavarottiego-+Koncert+gwiazd+z+Arena+di+Verona",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=90.+rocznica+urodzin+Pavarottiego-+Koncert+gwiazd+z+Arena+di+Verona"
+      "metacriticUrl" : "https://www.metacritic.com/search/90.+Rocznica+urodzin+pavarottiego-+koncert+gwiazd+z+arena+di+verona/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=90.+Rocznica+urodzin+pavarottiego-+koncert+gwiazd+z+arena+di+verona",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=90.+Rocznica+urodzin+pavarottiego-+koncert+gwiazd+z+arena+di+verona"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
@@ -4161,7 +4162,7 @@
     "title" : "Kurozając i świątynia Świstaka",
     "originalTitle" : "Hopper et le secret de la marmotte",
     "posterUrl" : "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7921D2R.jpg",
-    "fallbackPosterUrls" : [ "https://movies.helios.pl/images/Kurozajacplakat.jpg", "https://kinobajka.pl/wp-content/uploads/2026/05/obraz_2026-05-13_132455941.png", "https://bilety.ck105.koszalin.pl/MSI/ImageData.ashx?id=2647&mode=thumb", "https://image.tmdb.org/t/p/w500/wjWScLTIj5mAR8szmUdXZINhrns.jpg" ],
+    "fallbackPosterUrls" : [ "https://movies.helios.pl/images/Kurozajacplakat.jpg", "https://kupbilet.kijow.pl/MSI/ImageData.ashx?id=3189&mode=thumb", "https://kinobajka.pl/wp-content/uploads/2026/05/obraz_2026-05-13_132455941.png", "https://image.tmdb.org/t/p/w500/wjWScLTIj5mAR8szmUdXZINhrns.jpg" ],
     "runtimeMinutes" : 88,
     "releaseYear" : 2025,
     "genres" : [ "Animacja", "Przygodowy", "Komedia", "Familijny" ],
@@ -4216,7 +4217,7 @@
     "title" : "Kmw: Kurozając i świątynia świstaka",
     "originalTitle" : "Hopper et le secret de la marmotte",
     "posterUrl" : "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/7921D2R.jpg",
-    "fallbackPosterUrls" : [ "https://movies.helios.pl/images/Kurozajacplakat.jpg", "https://kinobajka.pl/wp-content/uploads/2026/05/obraz_2026-05-13_132455941.png", "https://bilety.ck105.koszalin.pl/MSI/ImageData.ashx?id=2647&mode=thumb", "https://image.tmdb.org/t/p/w500/wjWScLTIj5mAR8szmUdXZINhrns.jpg" ],
+    "fallbackPosterUrls" : [ "https://movies.helios.pl/images/Kurozajacplakat.jpg", "https://kupbilet.kijow.pl/MSI/ImageData.ashx?id=3189&mode=thumb", "https://kinobajka.pl/wp-content/uploads/2026/05/obraz_2026-05-13_132455941.png", "https://image.tmdb.org/t/p/w500/wjWScLTIj5mAR8szmUdXZINhrns.jpg" ],
     "runtimeMinutes" : 88,
     "releaseYear" : 2025,
     "genres" : [ "Animacja", "Przygodowy", "Komedia", "Familijny" ],
@@ -15439,7 +15440,7 @@
     "_id" : "fa046e3ce7a9010d",
     "title" : "Posłani",
     "posterUrl" : "http://kinobulgarska19.pl/wp-content/uploads/2026/05/123-2.jpg",
-    "fallbackPosterUrls" : [ "https://movies.helios.pl/images/PoslaniPlakat.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_medium/dealer-default/1225/poslani.jpg", "https://biletyna.pl/file/get/id/362214", "https://image.tmdb.org/t/p/w500/u9IK99Q1jOPg9pJK38ZdiCkwLfZ.jpg" ],
+    "fallbackPosterUrls" : [ "https://kupbilet.kijow.pl/MSI/ImageData.ashx?id=3185&mode=thumb", "https://movies.helios.pl/images/PoslaniPlakat.jpg", "https://image.bilety24.pl/nf_repertoire_cinema_medium/dealer-default/1225/poslani.jpg", "https://image.tmdb.org/t/p/w500/u9IK99Q1jOPg9pJK38ZdiCkwLfZ.jpg" ],
     "runtimeMinutes" : 83,
     "releaseYear" : 2026,
     "genres" : [ "Dokumentalny" ],
@@ -22829,7 +22830,7 @@
     "title" : "Niesamowita historia Mumbo Jumbo",
     "originalTitle" : "Da Mumbo Jumbo blev kæmpestor",
     "posterUrl" : "https://www.iluzjon.fn.org.pl/public/covers/movie-7837.jpg",
-    "fallbackPosterUrls" : [ "https://muzhp.pl/uploads/thumbs/2026-06/6a22894ce957b258412566.png", "https://image.bilety24.pl/nf_repertoire_cinema_medium/dealer-default/776/niesamowita-historia-mumbo.jpg", "https://bilety.csm.tarnow.pl/Kino/ImageData.ashx?id=402&mode=thumb", "https://image.tmdb.org/t/p/w500/ivnoXwbT3dzf28dkfXGgTceucds.jpg", "https://m.media-amazon.com/images/M/MV5BN2QxYTU0MmUtZmYwNi00NmM4LWE0NmUtYTI3ZWFhMTQ0M2ZiXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://muzhp.pl/uploads/thumbs/2026-06/6a22894ce957b258412566.png", "https://kupbilet.kijow.pl/MSI/ImageData.ashx?id=3207&mode=thumb", "https://image.bilety24.pl/nf_repertoire_cinema_medium/dealer-default/776/niesamowita-historia-mumbo.jpg", "https://image.tmdb.org/t/p/w500/ivnoXwbT3dzf28dkfXGgTceucds.jpg", "https://m.media-amazon.com/images/M/MV5BN2QxYTU0MmUtZmYwNi00NmM4LWE0NmUtYTI3ZWFhMTQ0M2ZiXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 82,
     "releaseYear" : 2026,
     "genres" : [ "Animacja", "Familijny" ],
@@ -30809,37 +30810,37 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-08T14:00:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76740&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ ]
+      "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-08T20:45:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76688&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ ]
+      "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-09T14:00:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76746&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ ]
+      "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-09T20:45:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76694&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ ]
+      "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-10T14:30:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76752&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ ]
+      "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-10T20:45:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76700&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ ]
+      "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-11T14:30:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76758&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ ]
+      "format" : [ "NAP" ]
     }, {
       "dateTime" : "2026-06-11T20:45:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76705&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ ]
+      "format" : [ "NAP" ]
     } ],
-    "listingKeys" : [ "P\u0000Kino Kijów\u0000Diabeł ubiera się u Prady 2\u0000" ]
+    "listingKeys" : [ "P\u0000Kino Kijów\u0000Diabeł ubiera się u Prady 2 Napisy PL\u0000" ]
   }, {
     "_id" : "f15ec75f88ed98ac|krakow|Kino Pod Baranami",
     "filmId" : "f15ec75f88ed98ac",
@@ -33947,9 +33948,9 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-24T18:00:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76166&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ ]
+      "format" : [ "NAP" ]
     } ],
-    "listingKeys" : [ "P\u0000Kino Kijów\u000090. rocznica urodzin Pavarottiego- Koncert gwiazd z Arena di Verona\u0000" ]
+    "listingKeys" : [ "P\u0000Kino Kijów\u000090. rocznica urodzin Pavarottiego- Koncert gwiazd z Arena di Verona Napisy PL\u0000\u0000Luigi Antonini (reżyser)\u0000Matteo Parmeggiani (dyrygent)" ]
   }, {
     "_id" : "f1a1591e25948c6c|brzeg-dolny|Kino Astra",
     "filmId" : "f1a1591e25948c6c",
@@ -41593,7 +41594,7 @@
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76721&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
       "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "P\u0000Kino Kijów\u0000Kurozając i świątynia świstaka\u0000" ]
+    "listingKeys" : [ "P\u0000Kino Kijów\u0000Kurozając i świątynia świstaka 2D DUBBING\u0000" ]
   }, {
     "_id" : "f2ccdedef6559607|krosno|Helios Krosno",
     "filmId" : "f2ccdedef6559607",
@@ -49334,7 +49335,7 @@
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76667&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
       "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "P\u0000Kino Kijów\u0000Drzewo magii\u0000" ]
+    "listingKeys" : [ "P\u0000Kino Kijów\u0000Drzewo magii 2D DUBBING\u0000" ]
   }, {
     "_id" : "f41d3a5b34e49ed3|krakow|Kino Kika",
     "filmId" : "f41d3a5b34e49ed3",
@@ -79332,7 +79333,7 @@
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76638&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
       "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "P\u0000Kino Kijów\u0000Tom i Jerry: Przygoda w muzeum\u0000" ]
+    "listingKeys" : [ "P\u0000Kino Kijów\u0000Tom i Jerry: Przygoda w muzeum 2D DUBBING\u0000" ]
   }, {
     "_id" : "f650fb00745169cf|krosno|Helios Krosno",
     "filmId" : "f650fb00745169cf",
@@ -99202,11 +99203,11 @@
     }, {
       "dateTime" : "2026-06-08T18:45:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76687&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ "2D" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-08T20:15:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76655&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ "2D" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-09T15:00:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76691&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
@@ -99214,11 +99215,11 @@
     }, {
       "dateTime" : "2026-06-09T18:45:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76693&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ "2D" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-09T20:15:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76660&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ "2D" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-10T16:45:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76698&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
@@ -99226,7 +99227,7 @@
     }, {
       "dateTime" : "2026-06-10T18:45:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76699&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ "2D" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-11T16:45:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76703&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
@@ -99234,9 +99235,9 @@
     }, {
       "dateTime" : "2026-06-11T18:45:00",
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76704&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
-      "format" : [ "2D" ]
+      "format" : [ "2D", "NAP" ]
     } ],
-    "listingKeys" : [ "P\u0000Kino Kijów\u0000Straszny film\u0000" ]
+    "listingKeys" : [ "P\u0000Kino Kijów\u0000Straszny film 2D DUBBING\u0000" ]
   }, {
     "_id" : "f84ee0f9135837f5|krosno|Helios Krosno",
     "filmId" : "f84ee0f9135837f5",
@@ -126833,7 +126834,7 @@
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76670&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
       "format" : [ "2D", "NAP" ]
     } ],
-    "listingKeys" : [ "P\u0000Kino Kijów\u0000Gwiezdne wojny: Mandalorian i Grogu\u0000" ]
+    "listingKeys" : [ "P\u0000Kino Kijów\u0000Gwiezdne wojny: Mandalorian i Grogu 2D DUBBING\u0000" ]
   }, {
     "_id" : "fa1763cbe0401d95|krosno|Helios Krosno",
     "filmId" : "fa1763cbe0401d95",
@@ -143846,7 +143847,7 @@
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76757&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
       "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "P\u0000Kino Kijów\u0000Niesamowite przygody skarpetek 3. Ale kosmos!\u0000" ]
+    "listingKeys" : [ "P\u0000Kino Kijów\u0000Niesamowite przygody skarpetek 3. Ale kosmos! 2D DUBBING\u0000" ]
   }, {
     "_id" : "fa37191800ada1c1|krakow|Kino Kika",
     "filmId" : "fa37191800ada1c1",
@@ -167214,7 +167215,7 @@
       "bookingUrl" : "https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=76722&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dDate%26date%3d2026-06",
       "format" : [ "2D", "DUB" ]
     } ],
-    "listingKeys" : [ "P\u0000Kino Kijów\u0000Niesamowita historia Mumbo Jumbo\u0000" ]
+    "listingKeys" : [ "P\u0000Kino Kijów\u0000Niesamowita historia Mumbo Jumbo 2D DUBBING\u0000" ]
   }, {
     "_id" : "feb88969c63ea2d3|krotoszyn|Kino Hel",
     "filmId" : "feb88969c63ea2d3",

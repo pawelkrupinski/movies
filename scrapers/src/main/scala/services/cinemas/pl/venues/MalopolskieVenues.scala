@@ -17,7 +17,7 @@ object MalopolskieVenues {
       systemBiletowy(MikroBronowice, "https://bilety.kinomikro.pl", institution = Some(Institution("Mikro Bronowice"))),
       own(kit => new KinoSfinksClient(kit.http, KinoSfinks)),
       own(kit => new KinoPodBaranamiClient(kit.http, KinoPodBaranami, kit.today)),
-      own(kit => new KinoKijowClient(kit.http, KinoKijow, kit.today, titles = kit.titles)),
+      msi(KinoKijow, "https://kupbilet.kijow.pl", monthOrder = MsiClient.MonthOrder.ByDate),
       own(kit => new KinoKikaClient(kit.http, KinoKika)),
       own(kit => new KinoAgrafkaClient(kit.http, KinoAgrafka)),
       own(kit => new KinoParadoxClient(kit.http, KinoParadox)),

@@ -205,6 +205,18 @@ class MsiClientSpec
     zawodowcy.showtimes.map(_.format).head shouldBe List("NAP")
   }
 
+  // The "timeline" skin: Kino Kijów's date-sorted page before its 2026-11-19 re-skin, as the 2026-06-08 corpus
+  // recorded it — one block a screening, the date in the block's `span.cd-date`, the title after the h2's hidden
+  // "08 cze 10:45 - " lead-in.
+  it should "read the timeline skin (Kino Kijów's date-sorted page until 2026-11)" in {
+    val movies = new MsiClient(new FakeHttpFetch("08-06-2026"), "https://kupbilet.kijow.pl", KinoKijow,
+      today = LocalDate.of(2026, 6, 8), monthOrder = MsiClient.MonthOrder.ByDate).fetch()
+    val drzewo = movies.find(_.movie.title.toLowerCase(java.util.Locale.ROOT) == "drzewo magii").value
+    drzewo.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 8, 10, 45))
+    drzewo.showtimes.map(_.format).head shouldBe List("2D", "DUB")
+    drzewo.showtimes.flatMap(_.bookingUrl).head should startWith("https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=")
+  }
+
   it should "honour a non-default mvcPath (Kino Planeta serves the page at /Rezerwacja/mvc/pl)" in {
     val movies = new MsiClient(new FakeHttpFetch("kino-planeta"), "https://rezerwacja.planetabrzesko.pl",
       KinoPlaneta, today = LocalDate.of(2026, 6, 10), mvcPath = "/Rezerwacja/mvc/pl").fetch()

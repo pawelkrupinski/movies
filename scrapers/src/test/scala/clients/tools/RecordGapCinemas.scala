@@ -27,7 +27,7 @@ object RecordGapCinemas {
 
     // ── Kraków ──
     report("Kino Pod Baranami")(new KinoPodBaranamiClient(record("kino-pod-baranami"), KinoPodBaranami, today = venueClock.todayInPoland).fetch().size)
-    report("Kino Kijów")(new KinoKijowClient(record("kino-kijow"), KinoKijow, titles = titleNormalizer, today = venueClock.todayInPoland).fetch().size)
+    report("Kino Kijów")(new MsiClient(record("kino-kijow"), "https://kupbilet.kijow.pl", KinoKijow, today = venueClock.todayInPoland, monthOrder = MsiClient.MonthOrder.ByDate).fetch().size)
     report("Kino Kika")(new KinoKikaClient(record("kino-kika"), KinoKika).fetch().size)
     report("Kino Agrafka")(new KinoAgrafkaClient(record("kino-agrafka"), KinoAgrafka).fetch().size)
     report("Kino Paradox")(new KinoParadoxClient(record("kino-paradox"), KinoParadox).fetch().size)

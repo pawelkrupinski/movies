@@ -96,7 +96,7 @@ final class PolishScraperCatalog(
     case msi: PolishVenue.Msi =>
       new MsiClient(fetchOf(msi.route), msi.baseUrl, msi.cinema, today,
         mvcPath = msi.mvcPath, titlePrefix = msi.titlePrefix, titleSuffix = msi.titleSuffix,
-        filmLabel = msi.filmLabel, otherVenueLocations = msi.otherVenueLocations)
+        filmLabel = msi.filmLabel, otherVenueLocations = msi.otherVenueLocations, monthOrder = msi.monthOrder)
     case PolishVenue.Biletyna(cinema, page) =>
       new BiletynaClient(bnFetch, page, cinema, nationalFeed = Some(biletynaNationalFeed))
     case PolishVenue.BiletynaHalls(cinema, halls) =>

@@ -2,14 +2,13 @@ package services.cinemas
 
 import clients.tools.ConstantHttpFetch
 import tools.HttpFetch
-import models.{KinoBajka, KinoCyfroweKino, KinoFarys, KinoNaStarowce, KinoOskard, KinoStaryMlyn}
+import models.{KinoBajka, KinoCyfroweKino, KinoFarys, KinoKijow, KinoNaStarowce, KinoOskard, KinoStaryMlyn}
 import services.titles.rules.{ExtraTitleRules, TitleRules, TitleRuleSet}
 import services.titles.TitleNormalizer
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import services.cinemas.pl.{Bilety24Client, Bilety24OrganizerClient, CyfroweKinoClient, KinoBajkaClient, KinoKijowClient, SystemBiletowyClient, VisualSoftPortal}
+import services.cinemas.pl.{Bilety24Client, Bilety24OrganizerClient, CyfroweKinoClient, KinoBajkaClient, SystemBiletowyClient, VisualSoftPortal}
 
-import java.time.YearMonth
 
 /** Proves the three dedicated clients route their scraped title through
  *  their injected normalizer's `cinemaClean("<slug>", …)`, so the fourth-wave per-cinema
@@ -69,17 +68,12 @@ class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
   // A bare "Napisy PL" now comes off in the shared format strip (FormatTags drops
   // a PL that qualifies a version word), so the per-cinema rule is load-bearing
   // only for the Ukrainian-screening marker it also takes: "… UA Napisy PL".
-  private val kijowHtml =
-    """<div class="cd-timeline-content eventlist">
-      |  <span class="cd-date">20 sie 18:00</span>
-      |  <h2>20 sie 18:00 - Diabeł ubiera się u Prady 2 UA Napisy PL</h2>
-      |  <a class="btn-badge2" href="/MSI/Default.aspx?id=1">Bilety</a>
-      |</div>""".stripMargin
-
+  // Kijów is a standard MSI venue, so its rule is applied where every listing's title is read: the venue's rules
+  // keyed by its name (`TitleNormalizer.listingTitle`).
   private def kijowTitles(titles: TitleNormalizer) =
-    KinoKijowClient.parseDocument(kijowHtml, YearMonth.of(2026, 8), titles).map(_.title)
+    Seq(titles.listingTitle(KinoKijow, "Diabeł ubiera się u Prady 2 UA Napisy PL")._1)
 
-  "KinoKijowClient" should "strip the 'UA Napisy PL' subtitle suffix via cinemaClean" in {
+  "Kino Kijów's listing title" should "lose the 'UA Napisy PL' subtitle suffix to its venue rule" in {
     kijowTitles(withExtras) shouldBe Seq("Diabeł ubiera się u Prady 2")
   }
   it should "be load-bearing — the seed rules alone leave the 'UA' marker" in {

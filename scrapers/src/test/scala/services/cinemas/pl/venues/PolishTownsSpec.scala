@@ -56,3 +56,65 @@ class PolishTownsSpec extends AnyFlatSpec with Matchers {
     catalog.egressByHost("bilety.ck105.koszalin.pl") should be theSameInstanceAs zyte
   }
 }
+
+/** Kino Kijów (Kraków) re-skinned its MSI portal on 2026-11-19: the date-sorted month page its bespoke parser read
+ *  (`div.cd-timeline-content`, one block a screening) became the standard `movies-movie__single` page, whose title
+ *  heading carries no `title` attribute there, so every scrape parsed nothing and Filmweb covered the venue for a
+ *  week. Both layouts are MSI skins, so Kijów is wired as an [[services.cinemas.pl.MsiClient]] like every other MSI
+ *  venue. Replays the Kraków registry's own wiring over the portal recorded on 2026-11-27 (the date-sorted November
+ *  and December pages, and the event-labels feed). */
+class KinoKijowWiringSpec extends AnyFlatSpec with Matchers with org.scalatest.OptionValues {
+
+  private lazy val kijow = {
+    val portal = new FakeHttpFetch("kino-kijow")
+    val catalog = new PolishScraperCatalog(
+      CinemaEgress(portal, multikino = portal, biletyna = portal, zyte = portal, flicks = portal, vue = portal,
+        odeon = portal, odeonBearer = services.cinemas.uk.OdeonBearer.fixed(None)),
+      VenueClock.fixedOn(LocalDate.of(2026, 11, 27)), (_, h: HttpFetch, ttl) => new CachingDetailFetch(h, ttl),
+      titleNormalizer, MalopolskieVenues.KrakowVenues.venues,
+      services.cinemas.CinemaScraperCatalog.OnTheAskingThread)
+    catalog.scrapers.find(_.cinema == models.KinoKijow).value.fetch()
+  }
+
+  private def titled(prefix: String) = kijow.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).startsWith(prefix)).value
+
+  "Kino Kijów's wiring" should "read the venue's standard MSI month pages" in {
+    val rocky = titled("jestem rocky")
+    rocky.showtimes.map(_.dateTime) should contain(java.time.LocalDateTime.of(2026, 11, 27, 17, 30))
+    rocky.showtimes.flatMap(_.bookingUrl).head should startWith("https://kupbilet.kijow.pl/MSI/Default.aspx?event_id=")
+  }
+
+  it should "lift the version word off the title into the showtime's format" in {
+    titled("hokus").showtimes.map(_.format).head shouldBe List("2D", "DUB")
+  }
+
+  it should "drop the portal's plays, filed under Teatr" in {
+    kijow.map(_.movie.title.toLowerCase(java.util.Locale.ROOT)).exists(_.contains("spektakl")) shouldBe false
+  }
+}
+
+/** Kino SDK (Sanok) re-skinned its MSI portal on 2026-11-25: the per-day "lista wydarzeń" page its own reader walks
+ *  (`?sort=Flow&date=<day>`, a date picker and `list-group-item` cards) now lists no event and no picker day, while
+ *  the standard month pages (`?sort=Name&date=<month>`) carry the programme, so the venue sat on the Filmweb fallback.
+ *  Replays the Przemyśl registry's own wiring over the portal recorded on 2026-11-27 (the day page, the November and
+ *  December month pages and the event-labels feed). */
+class KinoSDKWiringSpec extends AnyFlatSpec with Matchers with org.scalatest.OptionValues {
+
+  private lazy val sanok = {
+    val portal = new FakeHttpFetch("kino-sdk-sanok-2026-11")
+    val catalog = new PolishScraperCatalog(
+      CinemaEgress(portal, multikino = portal, biletyna = portal, zyte = portal, flicks = portal, vue = portal,
+        odeon = portal, odeonBearer = services.cinemas.uk.OdeonBearer.fixed(None)),
+      VenueClock.fixedOn(LocalDate.of(2026, 11, 27)), (_, h: HttpFetch, ttl) => new CachingDetailFetch(h, ttl),
+      titleNormalizer, PodkarpackieVenues.PrzemyslVenues.filmwebCatchment,
+      services.cinemas.CinemaScraperCatalog.OnTheAskingThread)
+    catalog.scrapers.find(_.cinema == models.KinoSDK).value.fetch()
+  }
+
+  "Kino SDK's wiring" should "read the standard month pages when the day page lists nothing" in {
+    val rocky = sanok.find(_.movie.title.toLowerCase(java.util.Locale.ROOT) == "jestem rocky").value
+    rocky.showtimes should not be empty
+    rocky.showtimes.flatMap(_.bookingUrl).head should startWith("https://bilety.sdksanok.pl/MSI/Default.aspx?event_id=")
+    sanok.map(_.movie.title.toLowerCase(java.util.Locale.ROOT)) should contain("struś pędziwiatr i zemsta kojota")
+  }
+}

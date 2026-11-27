@@ -1494,7 +1494,7 @@ cinemaScrapes:
   Kino Atlantic / Diabeł ubiera się u Prady 2 / 2026
   Kino Echo / Diabeł ubiera się u Prady 2 / —
   Kino GCK / Diabeł ubiera się u Prady 2 / —
-  Kino Kijów / Diabeł ubiera się u Prady 2 / —
+  Kino Kijów / Diabeł ubiera się u prady 2 / —
   Kino Kępa / Diabeł ubiera się u Prady 2 / 2026
   Kino MOKiS / Diabeł ubiera się u Prady 2 / —
   Kino Moskwa / DIABEŁ UBIERA SIĘ U PRADY 2 / —
@@ -3291,7 +3291,7 @@ cinemaScrapes:
   Kino Hel / GWIEZDNE WOJNY: MANDALORIAN i GROGU - 3D dubbing - Premiera Krajowa / —
   Kino Ignacy / Mandalorian i grogu / —
   Kino KDK / GWIEZDNE WOJNY: MANDALORIAN I GROGU / —
-  Kino Kijów / Gwiezdne wojny: Mandalorian i Grogu / —
+  Kino Kijów / Gwiezdne wojny: mandalorian i grogu / —
   Kino Kolory / Star Wars: Mandalorian i Grogu / —
   Kino MCK / Gwiezdne wojny: mandalorian i grogu / —
   Kino MOK Centrum / GWIEZDNE WOJNY : MANDALORIAN I GROGU / —
@@ -6532,7 +6532,7 @@ cinemaScrapes:
   Kino Forum / Orły republiki / —
   Kino IKM / Orły republiki / —
   Kino Iluzjon / Orły Republiki / 2025
-  Kino Kijów / Orły Republiki / —
+  Kino Kijów / Orły republiki / —
   Kino Kika / ORŁY REPUBLIKI / —
   Kino Kultura / Orły republiki / —
   Kino Lot / Orły Republiki / —
@@ -8504,7 +8504,7 @@ cinemaScrapes:
   Kino Głębocka 66 / Tom i Jerry: Przygoda w muzeum / —
   Kino Ignacy / Tom i jerry: przygoda w muzeum / —
   Kino KDK / Tom i Jerry: Przygoda w muzeum / —
-  Kino Kijów / Tom i Jerry: Przygoda w muzeum / —
+  Kino Kijów / Tom i jerry: przygoda w muzeum / —
   Kino Kryterium / Bezpieczne wakacje: tom i jerry: przygoda w muzeum / —
   Kino Lewart / Tom i Jerry: Przygoda w muzeum / —
   Kino Luna / Tom i Jerry: Przygoda w muzeum / —
@@ -9800,7 +9800,7 @@ cinemaScrapes:
   Kino Głębocka 66 / Tom i Jerry: Przygoda w muzeum / —
   Kino Ignacy / Tom i jerry: przygoda w muzeum / —
   Kino KDK / Tom i Jerry: Przygoda w muzeum / —
-  Kino Kijów / Tom i Jerry: Przygoda w muzeum / —
+  Kino Kijów / Tom i jerry: przygoda w muzeum / —
   Kino Kryterium / Bezpieczne wakacje: tom i jerry: przygoda w muzeum / —
   Kino Lewart / Tom i Jerry: Przygoda w muzeum / —
   Kino Luna / Tom i Jerry: Przygoda w muzeum / —

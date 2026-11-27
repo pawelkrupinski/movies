@@ -114,7 +114,9 @@ class MsiClient(
   // is dropped — and a feed that cannot be read FAILS the scrape, since the
   // portal then cannot be split and listing the other venue's films here would
   // be wrong rather than merely incomplete.
-  otherVenueLocations: Set[String] = Set.empty
+  otherVenueLocations: Set[String] = Set.empty,
+  // How the month pages are asked for: see [[MsiClient.MonthOrder]].
+  monthOrder: MsiClient.MonthOrder = MsiClient.MonthOrder.ByName
 ) extends CinemaScraper with OnlyMovieEventsFilter with Logging {
 
   import MsiClient._
@@ -158,7 +160,7 @@ class MsiClient(
     var namesLabelsFeed = false
 
     ScrapeHorizon.liveMonths(YearMonth.from(today)) { month =>
-      val body = Try(HttpRead.page(http, monthUrl(baseUrl, mvcPath, month)))
+      val body = Try(HttpRead.page(http, monthUrl(baseUrl, mvcPath, month, monthOrder)))
       attempts += body
       namesLabelsFeed ||= body.toOption.exists(_.contains(LabelsFeedRoute))
       val monthSlots = body.toOption.filter(_.nonEmpty).toSeq
@@ -200,8 +202,16 @@ object MsiClient {
     * second copy of the path. */
   val DefaultMvcPath = "/MSI/mvc/pl"
 
-  def monthUrl(baseUrl: String, mvcPath: String, ym: YearMonth): String =
-    s"$baseUrl$mvcPath?sort=Name&date=${ym.getYear}-${"%02d".format(ym.getMonthValue)}"
+  /** How a month page is asked for. Every install sorts it by film name, which groups a film's screenings into one
+    * block; Kino Kijów is asked by date (`sort=Date&datestart=0`), the page its recorded corpus holds — measured
+    * 2026-11-27, both orders carry the same events (60 in November). */
+  enum MonthOrder(val query: String) {
+    case ByName extends MonthOrder("sort=Name")
+    case ByDate extends MonthOrder("sort=Date&datestart=0")
+  }
+
+  def monthUrl(baseUrl: String, mvcPath: String, ym: YearMonth, order: MonthOrder = MonthOrder.ByName): String =
+    s"$baseUrl$mvcPath?${order.query}&date=${ym.getYear}-${"%02d".format(ym.getMonthValue)}"
 
   /** The portal's event-labels feed: every upcoming event's filter-panel labels. */
   def eventLabelsUrl(baseUrl: String, mvcPath: String): String =

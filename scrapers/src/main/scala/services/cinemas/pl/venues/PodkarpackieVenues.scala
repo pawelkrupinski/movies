@@ -15,7 +15,8 @@ object PodkarpackieVenues {
       own(kit => new KinoCentrum3DPrzemyslClient(kit.http, KinoCentrum3DPrzemysl)),
       msi(KinoIkar, "https://kinoikar.mok-jar.pl"),
       msi(KinoNaBiegunach, "https://jaroslaw.kinonabiegunach.pl"),
-      own(kit => new KinoSDKSanokClient(kit.http, KinoSDK, kit.today)),
+      own(kit => new KinoSDKSanokClient(kit.http, KinoSDK, kit.today,
+        standardPages = new MsiClient(kit.http, KinoSDKSanokClient.BaseUrl, KinoSDK, kit.today))),
     )
 
     override val nearbyTowns: Seq[PolishVenue] = Seq(

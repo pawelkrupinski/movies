@@ -37,11 +37,11 @@ object PolishVenue {
   final case class NoveKino(slug: String, cinema: Cinema) extends Platform
   /** Filmweb's seances, by Filmweb's internal cinema id. */
   final case class Filmweb(filmwebCinemaId: Int, cinema: Cinema) extends Platform
-  /** An MSI / VisualTicket portal: `mvcPath` / `titlePrefix` / `titleSuffix` / `filmLabel` / `otherVenueLocations` are
+  /** An MSI / VisualTicket portal: `mvcPath` / `titlePrefix` / `titleSuffix` / `filmLabel` / `otherVenueLocations` / `monthOrder` are
    *  the per-install quirks [[MsiClient]] documents; `route` the egress its host needs ([[Route]]). */
   final case class Msi(cinema: Cinema, baseUrl: String, mvcPath: String, titlePrefix: Option[String],
                        titleSuffix: Option[String], filmLabel: Option[String], otherVenueLocations: Set[String],
-                       route: Route) extends Platform
+                       route: Route, monthOrder: MsiClient.MonthOrder) extends Platform
   /** A biletyna.pl place page. biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so every biletyna venue
    *  routes through the biletyna egress — the residential proxy in prod, the fixture fake in tests — and reads the
    *  one national event feed all of them share. */
@@ -112,8 +112,9 @@ trait PolishVenueRegistry {
                           titleSuffix:         Option[String] = None,
                           filmLabel:           Option[String] = None,
                           otherVenueLocations: Set[String]    = Set.empty,
-                          route:               PolishVenue.Route = PolishVenue.Route.Direct): PolishVenue =
-    PolishVenue.Msi(cinema, baseUrl, mvcPath, titlePrefix, titleSuffix, filmLabel, otherVenueLocations, route)
+                          route:               PolishVenue.Route = PolishVenue.Route.Direct,
+                          monthOrder:          MsiClient.MonthOrder = MsiClient.MonthOrder.ByName): PolishVenue =
+    PolishVenue.Msi(cinema, baseUrl, mvcPath, titlePrefix, titleSuffix, filmLabel, otherVenueLocations, route, monthOrder)
   protected final def biletyna(cinema: Cinema, page: String): PolishVenue = PolishVenue.Biletyna(cinema, BiletynaPlacePage(page))
   protected final def biletynaHalls(cinema: Cinema, halls: Seq[(String, String)]): PolishVenue =
     PolishVenue.BiletynaHalls(cinema, halls.map { case (page, hall) => BiletynaPlacePage(page) -> hall })

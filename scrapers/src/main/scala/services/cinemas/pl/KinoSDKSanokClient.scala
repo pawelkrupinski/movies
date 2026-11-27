@@ -43,11 +43,19 @@ import tools.HttpFetch
  * real films we capture ALL listed events; the central enrichment (TMDB /
  * Filmweb matching) is the backstop that fails to resolve a non-film and lets
  * it fall away. Previously scraped from Filmweb (id 2118).
+ *
+ * STANDARD PAGES: on 2026-11-25 the portal moved to the standard MSI month pages
+ * ([[MsiClient]], which also reads the portal's event labels, so its concerts and
+ * broadcasts drop out), and the day page now lists no event and no picker day.
+ * A day page that reads nothing hands over to `standardPages`, the portal's
+ * [[MsiClient]]; the day reader stays for the recorded corpora, which hold the
+ * old pages.
  */
 class KinoSDKSanokClient(
   http:   HttpFetch,
   override val cinema: Cinema = KinoSDK,
-  today:  => LocalDate
+  today:  => LocalDate,
+  standardPages: CinemaScraper
 ) extends CinemaScraper with OnlyMovieEventsFilter {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoSDKSanokClient.BaseUrl)
@@ -56,7 +64,8 @@ class KinoSDKSanokClient(
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     val days = DayPickerProgramme.read("kino-sdk-sanok", http, KinoSDKSanokClient.BaseUrl, today,
       KinoSDKSanokClient.listingUrl)(KinoSDKSanokClient.pickerDates)
-    KinoSDKSanokClient.group(days.flatMap { case (date, doc) => KinoSDKSanokClient.parseDay(doc, date) }, cinema)
+    val listed = KinoSDKSanokClient.group(days.flatMap { case (date, doc) => KinoSDKSanokClient.parseDay(doc, date) }, cinema)
+    if (listed.nonEmpty) listed else standardPages.fetch()
   }
 }
 

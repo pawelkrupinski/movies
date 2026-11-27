@@ -51,9 +51,12 @@ import services.cinemas.common.{SlotsToMovies, SynopsisProse}
  * identical text but the block has no `list-group-item`/`movies-movie__single`
  * marker class to key off), and showtimes are `a.btn-badge[href]` anchors
  * whose text interleaves a clock icon and a seat-count badge around the same
- * `DD mmm HH:MM` — `EventTimePat` finds it as a substring regardless. Tried
- * last since its block selector (`div.media`) is the least specific of the
- * three.
+ * `DD mmm HH:MM` — `EventTimePat` finds it as a substring regardless.
+ *
+ * A FOURTH, "timeline" skin is the date-sorted page Kino Kijów served until
+ * 2026-11-19 (`?sort=Date`, one `div.cd-timeline-content` per screening, its
+ * date in a `span.cd-date` beside the booking link). Kijów's recorded corpus
+ * holds that page.
  *
  * Showtimes for the same cleaned title across all fetched months are merged
  * before returning.
@@ -270,7 +273,8 @@ private[cinemas] object MsiScraper {
 
   /** How one MSI skin lays out its film blocks: the block, the raw title in it, its desktop showtime anchors. The
    *  skins differ only in these, so they share everything else ([[parseBlocks]]). */
-  private final case class Skin(blockSelector: String, rawTitleOf: org.jsoup.nodes.Element => String, showtimeAnchorSelector: String)
+  private final case class Skin(blockSelector: String, rawTitleOf: org.jsoup.nodes.Element => String, showtimeAnchorSelector: String,
+                                 eventTextOf: (org.jsoup.nodes.Element, org.jsoup.nodes.Element) => String = (_, anchor) => anchor.text)
 
   /** The skins, tried in order: the first that yields a slot is the page's. */
   private val Skins: Seq[Skin] = Seq(
@@ -280,7 +284,10 @@ private[cinemas] object MsiScraper {
     // duplicate lacks the extra `d-none` class, so each event is counted once).
     Skin(
       "div.movies-movie__single",
-      m => Option(m.selectFirst(".movies-movie__single__title")).map(_.attr("title").trim).filter(_.nonEmpty).getOrElse(""),
+      // The `title` attribute where the portal sets one; Kino Kijów's date-sorted page (2026-11) leaves it off and
+      // carries the same text as the heading's content.
+      m => Option(m.selectFirst(".movies-movie__single__title"))
+        .map(heading => Option(heading.attr("title").trim).filter(_.nonEmpty).getOrElse(heading.text.trim)).getOrElse(""),
       "div.movies-movie__single__options.d-none ul.movies-movie__single__options__hours a[href]"),
     // Alternate "list-group" skin (e.g. Max Kino Świebodzin at
     // repertuar.maxkino.eu): each film is a `div.list-group-item.event-background`,
@@ -300,7 +307,19 @@ private[cinemas] object MsiScraper {
     Skin(
       "div.panel-default.eventlist div.media",
       m => Option(m.selectFirst(".media-heading h4")).map(_.text.trim).filter(_.nonEmpty).getOrElse(""),
-      "ul.list-unstyled a.btn-badge[href]")
+      "ul.list-unstyled a.btn-badge[href]"),
+    // Fourth "timeline" skin (Kino Kijów's date-sorted page until 2026-11-19, kupbilet.kijow.pl): one
+    // `div.cd-timeline-content.eventlist` per SCREENING; the `h2` repeats the date in a hidden lead-in before
+    // " - " and the title after it; the date is the block's `span.cd-date`, the booking link its `a.btn-badge2`
+    // (whose own text is "Rezerwuj lub kup bilet").
+    Skin(
+      "div.cd-timeline-content.eventlist",
+      m => Option(m.selectFirst("h2")).map(_.text.trim).map(h2 => h2.indexOf(" - ") match {
+        case -1    => h2
+        case index => h2.substring(index + 3).trim
+      }).getOrElse(""),
+      "a.btn-badge2[href*=\"Default.aspx\"]",
+      (block, _) => Option(block.selectFirst("span.cd-date")).map(_.text).getOrElse(""))
   )
 
   /** One pass over a skin's film blocks: for each block, read its raw title and
@@ -315,7 +334,7 @@ private[cinemas] object MsiScraper {
       else movieDiv.select(skin.showtimeAnchorSelector).asScala.toSeq.flatMap { a =>
         val href    = a.attr("abs:href")
         val booking = if (href.nonEmpty) Some(href) else None
-        parseEventTime(a.text.trim, yearMonth).map { dt =>
+        parseEventTime(skin.eventTextOf(movieDiv, a).trim, yearMonth).map { dt =>
           RawSlot(title, rawTitle, dt, booking, format, meta,
             EventIdPat.findFirstMatchIn(href).map(_.group(1).toLong))
         }

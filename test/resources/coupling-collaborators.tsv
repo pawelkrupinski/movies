@@ -1143,7 +1143,6 @@ services.cinemas.pl.KinoJOKClient	collaborator
 services.cinemas.pl.KinoJednoscClient	collaborator
 services.cinemas.pl.KinoKadrTomaszowLubelskiClient	collaborator
 services.cinemas.pl.KinoKarolinkaClient	collaborator
-services.cinemas.pl.KinoKijowClient	collaborator
 services.cinemas.pl.KinoKikaClient	collaborator
 services.cinemas.pl.KinoKreskaClient	collaborator
 services.cinemas.pl.KinoKulturaChojnowClient	collaborator

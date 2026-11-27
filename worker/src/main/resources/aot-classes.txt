@@ -9239,8 +9239,6 @@ services.cinemas.pl.KinoKadrTomaszowLubelskiClient
 services.cinemas.pl.KinoKadrTomaszowLubelskiClient$
 services.cinemas.pl.KinoKarolinkaClient
 services.cinemas.pl.KinoKarolinkaClient$
-services.cinemas.pl.KinoKijowClient
-services.cinemas.pl.KinoKijowClient$
 services.cinemas.pl.KinoKikaClient
 services.cinemas.pl.KinoKikaClient$
 services.cinemas.pl.KinoKikaClient$RawSlot
