@@ -173,6 +173,18 @@ class Pool:
     def extra(self) -> int:
         return self.widening.extra if self.widening else 0
 
+    def room(self, running: Sequence[Running], upcoming: Sequence[int]) -> bool:
+        """Whether the next planned run may start now: a place among `jobs` (and the cores taken beyond them), the budget."""
+        cap = self.plan.jobs + (0 if self.plan.budget else self.extra())
+        return bool(upcoming) and len(running) < cap and self.fits(running, upcoming[0])
+
+    def reap(self, running: List[Running], report: Callable[[int, Result], None]) -> None:
+        """Each run that has ended: out of `running`, its result kept and reported."""
+        for r in [r for r in running if r.root.poll() is not None]:
+            running.remove(r)
+            self.results[int(r.key)] = self.finish(r)
+            report(int(r.key), self.results[int(r.key)])
+
     def run_all(self, report: Callable[[int, Result], None]) -> None:
         """Every planned run, at most `jobs` at once, each reported as it ends."""
         running: List[Running] = []
@@ -180,14 +192,10 @@ class Pool:
         while running or upcoming:
             if self.widening:
                 self.widening.tick(bool(upcoming))
-            while upcoming and len(running) < self.plan.jobs + (0 if self.plan.budget else self.extra()) \
-                    and self.fits(running, upcoming[0]):
+            while self.room(running, upcoming):
                 i = upcoming.pop(0)
                 running.append(self.start(str(i), self.plan.paths[i]))
-            for r in [r for r in running if r.root.poll() is not None]:
-                running.remove(r)
-                self.results[int(r.key)] = self.finish(r)
-                report(int(r.key), self.results[int(r.key)])
+            self.reap(running, report)
             if running:
                 self.sleep(0.2)
         if self.widening:
