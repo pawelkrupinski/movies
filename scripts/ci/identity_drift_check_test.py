@@ -202,7 +202,10 @@ class IdentityDriftCheckTest(cli_harness.ToolCase):
         self.write("sbt-calls", "")
         shutil.rmtree(self.path("out"), ignore_errors=True)
         extra: Dict[str, Optional[str]] = {"GITHUB_REF": "refs/heads/drift-check-test", "FAKE_LOG": self.path("sbt-calls"),
-                                           "RUNNER_TEMP": self.path("tmp"), "FAKE_STORE": self.store}
+                                           "RUNNER_TEMP": self.path("tmp"), "FAKE_STORE": self.store,
+                                           # the memory guard's sleep outlives the guard and holds the tool's pipes
+                                           # open until it ends: at its 5 s sample it was 5 s of every call
+                                           "MEMORY_GUARD_INTERVAL": "0.1"}
         extra.update(env)
         done = self.run_tool("pl", self.path("out"), env=extra, tool=self.check_tool, cwd=self.repo)
         self.said = done.stdout + done.stderr

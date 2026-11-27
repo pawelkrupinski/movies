@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (266)
+## Landing and CI (267)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -246,7 +246,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/install-hooks.sh` | Point this clone's git hooks at scripts/hooks (the pre-push checks — see scripts/hooks/pre-push) | `scripts/install-hooks.sh` | hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, agent-ops; 2 tools | install-hooks-test.sh | KEEP |
 | `scripts/js-quality-report` | The JS/TS quality report: complexity, length, clones and coupling of the production JS/TS (a name for js_quality_report.py) | `scripts/js-quality-report` | hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, test-layers; 11 tools | js_quality_report_test.py | KEEP |
 | `scripts/js_quality_report.py` | The JS/TS quality report: complexity, length, clones and coupling of the production JS/TS | `scripts/js_quality_report.py` | hook pre-push.sh-legacy; 4 tools | js_quality_report_test.py | Python |
-| `scripts/jvm-gate.sh` | The JVM gate (sourced): JVM slots, locks and governor tickets for the tools that start heavy JVMs | `bash scripts/jvm-gate.sh` | agentctl; skill CLAUDE.md, agent-ops, identity-investigation; 24 tools | jvm-gate-test.sh | MIGRATE |
+| `scripts/jvm-gate.sh` | The JVM gate (sourced): JVM slots, locks and governor tickets for the tools that start heavy JVMs | `bash scripts/jvm-gate.sh` | agentctl; skill CLAUDE.md, agent-ops, identity-investigation; 25 tools | jvm-gate-test.sh | MIGRATE |
 | `scripts/land-before-queue` | What `agentctl land` runs after its rebase, before it queues the change (~/bin/lib/agentctl/queue.py enqueue) | `scripts/land-before-queue` | agentctl; skill CLAUDE.md, identity-investigation; 2 tools | land-before-queue-test.sh | KEEP |
 | `scripts/land-precheck` | The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here | `scripts/land-precheck` | agentctl; 1 tool | land_precheck_test.py | MIGRATE |
 | `scripts/land_precheck.py` | The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here | `scripts/land_precheck.py` | 2 tools | land_precheck_test.py | Python |
@@ -272,7 +272,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ratchet_diff_cli.py` | The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs | `scripts/ratchet_diff_cli.py` | 1 tool | ratchet_diff_cli_test.py | Python |
 | `scripts/run-script-tests` | Every script self-test, found by its name and run in parallel: the one way CI, the pre-push hook and a person at a terminal run them | `scripts/run-script-tests` | wf tool-self-tests; hook pre-push, pre-push.sh-legacy; agentctl; skill CLAUDE.md, agent-ops, test-layers; 46 tools | run_script_tests_test.py | Python |
 | `scripts/sbt-warm` | sbt for agents, warm: one sbt server per checkout, kept between calls | `scripts/sbt-warm` | wf tool-self-tests; hook pre-push, pre-push.sh-legacy; agentctl; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 57 tools | sbt_warm_test.py | Python |
-| `scripts/sbt_warm_fixture.py` | The fixture scripts/sbt-warm's black-box tests share (sbt_warm_test.py, sbt_warm_keeper_test.py, | `imported` | by hand | - | Python |
+| `scripts/sbt_warm_fixture.py` | The fixture scripts/sbt-warm's black-box tests share (sbt_warm_test.py, sbt_warm_cache_test.py, | `imported` | 1 tool | - | Python |
+| `scripts/sbt_warm_stall_fixture.py` | The fixture scripts/sbt_warm_stall_test.py, sbt_warm_progress_test.py and sbt_warm_serve_test.py share (on top of | `imported` | by hand | - | Python |
 | `scripts/stall-report.sh` | What a stalled process group was doing, said before it is ended | `scripts/stall-report.sh` | 5 tools | - | KEEP |
 | `scripts/stall-watch.sh` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall-watch.sh` | hook pre-push, pre-push.sh-legacy; agentctl; 7 tools | stall_watch_test.py | MIGRATE |
 | `scripts/stall_watch.py` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall_watch.py` | hook pre-push.sh-legacy; 8 tools | stall_watch_test.py | Python |
@@ -509,7 +510,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/title-trace` | Every step one raw billing goes through, in production order, to the title the resolver reads | `scripts/title-trace` | wf main; skill CLAUDE.md, identity-investigation; 6 tools | title_trace_test.py | MIGRATE |
 | `scripts/venue-replay` | One venue's listings as the code at one or two git refs reads them, from a recording — never the network | `scripts/venue-replay` | skill CLAUDE.md, identity-investigation; 6 tools | venue_replay_test.py | MIGRATE |
 
-## Mirror and data (91)
+## Mirror and data (92)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -578,13 +579,14 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/local-mirror/freshness` | How current the local prod mirror (:28017) is, per country — for every tool that reads it (identity-slice --prod-mirror, listing-history, …) | `scripts/local-mirror/freshness` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation; 25 tools | freshness-test.sh | KEEP |
 | `scripts/local-mirror/local-mongo.sh` | The one place that knows how to make the local mirror Mongo reachable | `scripts/local-mirror/local-mongo.sh` | 1 tool | - | KEEP |
 | `scripts/local-mirror/log-path.sh` | Where the launchd agent's stdout/stderr land | `sourced` | 3 tools | - | KEEP |
-| `scripts/local-mirror/mirror.py` | Keep a local mirror of prod's /debug data in sync, continuously, so the dev `/debug` pages read from a fast LAN Mongo | `scripts/local-mirror/mirror.py` | wf ci, mirror-pinned-images, precommit-check; skill CLAUDE.md, agent-ops, identity-investigation; 69 tools | mirror_test.py | Python |
-| `scripts/local-mirror/mirror.sh` | Keep a local mirror of prod's /debug data in sync, continuously (mirror.py beside it; this name is what service.sh and the README run) | `scripts/local-mirror/mirror.sh` | 11 tools | mirror_test.py | KEEP |
+| `scripts/local-mirror/mirror.py` | Keep a local mirror of prod's /debug data in sync, continuously, so the dev `/debug` pages read from a fast LAN Mongo | `scripts/local-mirror/mirror.py` | wf ci, mirror-pinned-images, precommit-check; skill CLAUDE.md, agent-ops, identity-investigation; 70 tools | mirror_test.py | Python |
+| `scripts/local-mirror/mirror.sh` | Keep a local mirror of prod's /debug data in sync, continuously (mirror.py beside it; this name is what service.sh and the README run) | `scripts/local-mirror/mirror.sh` | 12 tools | mirror_test.py | KEEP |
+| `scripts/local-mirror/mirror_fixture.py` | The fixture scripts/local-mirror/mirror_test.py, mirror_supervision_test.py and mirror_tunnel_test.py share: the fake | `imported` | by hand | - | Python |
 | `scripts/local-mirror/mirror_keeper.py` | THE PROD TUNNEL'S ONE OWNER (mirror.py --keep-tunnel), a child process of the daemon: the only thing that opens, | `imported` | 1 tool | - | Python |
 | `scripts/local-mirror/mirror_settings.py` | WHAT EVERY PROCESS OF THE MIRROR DAEMON SHARES (mirror.py): its endpoints and knobs, read once from the environment | `imported` | 4 tools | - | Python |
 | `scripts/local-mirror/mirror_supervisor.py` | ONE DATABASE'S SUPERVISOR (mirror.py --supervise <db> <force>), a child process of the daemon: every cycle it | `imported` | 1 tool | - | Python |
 | `scripts/local-mirror/mirror_upkeep.py` | THE DAEMON PARENT'S UPKEEP (mirror.py): its log kept under a size cap, what an earlier run left behind swept up, the | `imported` | 1 tool | - | Python |
-| `scripts/local-mirror/mongosh-at.sh` | `mongosh uri ARGS…` without the uri — and the password in it — on mongosh's command line, where `ps` shows it to every user | `scripts/local-mirror/mongosh-at.sh` | 8 tools | mongosh-at-test.sh | KEEP |
+| `scripts/local-mirror/mongosh-at.sh` | `mongosh uri ARGS…` without the uri — and the password in it — on mongosh's command line, where `ps` shows it to every user | `scripts/local-mirror/mongosh-at.sh` | 9 tools | mongosh-at-test.sh | KEEP |
 | `scripts/local-mirror/prod-tunnel.sh` | The one place that knows how a laptop reaches prod Mongo | `bash scripts/local-mirror/prod-tunnel.sh` | 9 tools | prod-tunnel-test.sh | MIGRATE |
 | `scripts/local-mirror/service.py` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure. | `scripts/local-mirror/service.py` | wf country-convergence-leg, nix-stage-closures; hook pre-push, pre-push.sh-legacy; skill external-api-rate-limits, identity-investigation, record-client-fixtures; 17 tools | service_test.py | Python |
 | `scripts/local-mirror/service.sh` | Run the local `/debug` mirror sync as a macOS launchd user agent, so it starts at login and restarts on failure (service.py beside it; this name is what the plist and the README run) | `scripts/local-mirror/service.sh` | 7 tools | service_test.py | KEEP |
@@ -735,7 +737,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ios_release.py` | Archive, export and upload the iOS app to App Store Connect. | `scripts/ios_release.py` | 1 tool | ios_release_test.py | Python |
 | `scripts/it-local.sh` | Run the it/ layer locally against a MongoDB of this run's own | `scripts/it-local.sh` | skill agent-ops, identity-investigation, test-layers; 11 tools | it-local-test.sh | KEEP |
 | `scripts/lib/atomic.py` | ATOMIC FILE WRITES, the one way the Python tools replace a file (scripts/lib): the new content goes into a uniquely | `imported` | skill CLAUDE.md; 10 tools | atomic_test.py | Python |
-| `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | wf android, security-headers; skill CLAUDE.md; 13 tools | cli_harness_test.py | Python |
+| `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | wf android, security-headers; skill CLAUDE.md; 15 tools | cli_harness_test.py | Python |
 | `scripts/lib/cpu_meter.py` | THE CPU METER (scripts/jvm-gate.sh's cpu_meter_start / cpu_meter_stop, for the Python tools): the CPU time of the | `imported` | 6 tools | - | Python |
 | `scripts/lib/gh_download.py` | A GITHUB DOWNLOAD, BOUNDED AND RETRIED, absent told from failed (scripts/lib; tool-conventions.sh's gh_download, | `imported` | wf convergence-bisect, main; 13 tools | - | Python |
 | `scripts/lib/hook_event.py` | THE HOOK EVENT the claude-hooks read: the JSON Claude Code writes on a hook's stdin, read for a bounded time. | `imported` | 7 tools | hook_event_test.py | Python |

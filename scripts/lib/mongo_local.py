@@ -28,8 +28,10 @@ def mirror_database(cc: str) -> str:
     return "kinowo_prod_mirror" if cc.lower() == "pl" else f"kinowo_{cc.lower()}_prod_mirror"
 
 
-def answers(port: str, host: str = "127.0.0.1", timeout: float = 2.0) -> bool:
-    """Whether something accepts a TCP connection on `host`:`port` (the shell tools' `echo > /dev/tcp/...`)."""
+def answers(port: str, host: str = "127.0.0.1", timeout: float = 0.5) -> bool:
+    """Whether something accepts a TCP connection on `host`:`port` (the shell tools' `echo > /dev/tcp/...`). A loopback
+    listener answers in milliseconds (its backlog takes the connection whatever its process is doing); only macOS lets
+    a connection to a bound, never listening port hang to the timeout instead of refusing it, so the bound is short."""
     try:
         with socket.create_connection((host, int(port)), timeout=timeout):
             return True

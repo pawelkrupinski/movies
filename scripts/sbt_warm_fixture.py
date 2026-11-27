@@ -1,5 +1,6 @@
-"""The fixture scripts/sbt-warm's black-box tests share (sbt_warm_test.py, sbt_warm_keeper_test.py,
-sbt_warm_stall_test.py, sbt_warm_governor_test.py), ported from sbt-warm-test.sh: a scratch origin and repository at two
+"""The fixture scripts/sbt-warm's black-box tests share (sbt_warm_test.py, sbt_warm_cache_test.py,
+sbt_warm_server_test.py, sbt_warm_keeper_test.py, sbt_warm_stall_test.py, sbt_warm_progress_test.py,
+sbt_warm_serve_test.py, sbt_warm_governor_test.py), ported from sbt-warm-test.sh: a scratch origin and repository at two
 main commits, builds of an older main commit (a worktree), of the newest (an identity ref tree) and of a branch ahead of
 main, and a stub `sbt --client` that runs the commands in the server project/target/active.json names (starting one in
 the current checkout when there is none) and logs which sources that server sees. The tool runs by path, so the same

@@ -55,7 +55,7 @@ def free_port(env: Mapping[str, str], pid: int) -> Optional[str]:
         return env["PROD_TUNNEL_PORT"]
     port = PORT_LOW + pid % (PORT_HIGH - PORT_LOW)
     for _ in range(PORT_TRIES):
-        if not mongo_local.answers(str(port), timeout=1):
+        if not mongo_local.answers(str(port)):
             return str(port)
         port = port + 1 if port + 1 < PORT_HIGH else PORT_LOW
     return None
