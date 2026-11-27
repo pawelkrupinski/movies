@@ -38,7 +38,7 @@ out="$(in_tunnel '
   echo "pinned=$(PROD_TUNNEL_PORT=27555 prod_tunnel_free_port)"
   python3 -c "import socket, sys, time; s = socket.socket(); s.bind((\"127.0.0.1\", int(sys.argv[1]))); s.listen(1); print(\"up\", flush=True); time.sleep(20)" "$p" > "'"$scratch"'/listener" &
   listener=$!
-  for _ in $(seq 1 50); do grep -q up "'"$scratch"'/listener" && break; sleep 0.1; done
+  . "'"$REPO_ROOT"'/scripts/shell-spec.sh"; wait_until "the listener is bound" grep -q up "'"$scratch"'/listener"
   echo "skipped=$(prod_tunnel_free_port) taken=$p"; kill "$listener" 2>/dev/null
   echo "uri=$(prod_tunnel_uri mongodb://u:p@10.20.0.13:27017/kinowo)"')"
 val() { printf '%s\n' "$out" | sed -n "s/.*$1=\([^ ]*\).*/\1/p" | head -1; }
