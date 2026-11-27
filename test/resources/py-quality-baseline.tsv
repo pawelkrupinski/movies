@@ -449,7 +449,6 @@ file-lines	scripts/listing_history.py	527
 file-lines	scripts/recording_diff.py	550
 copies	infra/bin/backtest-alerts	2
 copies	scripts/ci/lint_per_file_check.py|scripts/ci/lint_reads_trace.py	2
-copies	scripts/claude-hooks/foreground-wait-guard|scripts/claude-hooks/unbounded-poll-guard	2
 pyright	infra/bin/backtest-alerts	973
 pyright	infra/bin/backtest-alerts-local	469
 pyright	infra/bin/backtest-alerts-replay	135
@@ -503,7 +502,7 @@ pyright	scripts/ci/lint_reads_trace.py	301
 pyright	scripts/ci/lint_registry_reads.py	164
 pyright	scripts/ci/population_walk_diff.py	340
 pyright	scripts/ci/python_floor_lint.py	98
-pyright	scripts/ci/quality_ratchet.py	24
+pyright	scripts/ci/quality_ratchet.py	21
 pyright	scripts/ci/ratchet_diff.py	56
 pyright	scripts/ci/recording_health.py	173
 pyright	scripts/ci/reusable_workflow_inputs.py	153
@@ -519,12 +518,11 @@ pyright	scripts/ci/xcresult_annotations.py	65
 pyright	scripts/ci/xcresult_junit.py	98
 pyright	scripts/ci_status.py	47
 pyright	scripts/ci_wait.py	258
-pyright	scripts/claude-hooks/foreground-wait-guard	1
 pyright	scripts/claude-hooks/gh-run-guard	9
-pyright	scripts/claude-hooks/masked-exit-guard	31
-pyright	scripts/claude-hooks/owner-decisions	81
-pyright	scripts/claude-hooks/root-checkout-guard	108
-pyright	scripts/claude-hooks/unbounded-poll-guard	143
+pyright	scripts/claude-hooks/masked-exit-guard	4
+pyright	scripts/claude-hooks/owner-decisions	78
+pyright	scripts/claude-hooks/root-checkout-guard	107
+pyright	scripts/claude-hooks/unbounded-poll-guard	142
 pyright	scripts/convergence-findings.py	12
 pyright	scripts/dead_code.py	89
 pyright	scripts/deploy_watch.py	50

@@ -85,7 +85,7 @@ class Collected:
                      frozenset(self.idioms), self.adapters, frozenset(self.distance_dirs), tuple(self.layers))
 
 
-def parse(text: str) -> Rules:
+def parse(text: str, table: str = TABLE) -> Rules:
     rows = Collected()
     for number, line in enumerate(text.splitlines(), 1):
         if not line.strip() or line.startswith("#"):
@@ -94,13 +94,14 @@ def parse(text: str) -> Rules:
         try:
             rows.add(cells[0], cells)
         except (IndexError, ValueError) as e:
-            raise ValueError(f"{TABLE}:{number}: {e}: {line!r}") from e
+            raise ValueError(f"{table}:{number}: {e}: {line!r}") from e
     return rows.rules()
 
 
-def load(root: str) -> Rules:
-    with open(os.path.join(root, TABLE), encoding="utf-8") as f:
-        return parse(f.read())
+def load(root: str, table: str = TABLE) -> Rules:
+    """The rules of `table` (relative to `root`; the checkout's own by default: another repository names its own)."""
+    with open(os.path.join(root, table), encoding="utf-8") as f:
+        return parse(f.read(), table)
 
 
 def checkout_root() -> str:

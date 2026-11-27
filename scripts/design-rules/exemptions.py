@@ -25,16 +25,16 @@ def parse(text: str) -> Dict[Key, Tuple[str, str]]:
     return out
 
 
-def read(root: str) -> Dict[Key, Tuple[str, str]]:
-    path = os.path.join(root, TABLE)
+def read(root: str, table: str = TABLE) -> Dict[Key, Tuple[str, str]]:
+    path = os.path.join(root, table)
     if not os.path.isfile(path):
         return {}
     with open(path, encoding="utf-8") as f:
         return parse(f.read())
 
 
-def keys(root: str) -> Set[Key]:
-    return set(read(root))
+def keys(root: str, table: str = TABLE) -> Set[Key]:
+    return set(read(root, table))
 
 
 def row_problems(rows: Dict[Key, Tuple[str, str]]) -> List[str]:
@@ -54,11 +54,11 @@ def added_rows(kinds: Tuple[str, ...]):  # -> the `rose` reading trailers.unjust
     return rose
 
 
-def problems(root: str, ranges: List[str], trailer_kinds: Dict[str, Tuple[str, ...]]) -> List[str]:
-    out = row_problems(read(root))
+def problems(root: str, ranges: List[str], trailer_kinds: Dict[str, Tuple[str, ...]], table: str = TABLE) -> List[str]:
+    out = row_problems(read(root, table))
     for rng in ranges:
         for trailer, kinds in trailer_kinds.items():
-            if not added_rows(kinds)(trailers.text_at(rng.split("..")[0], TABLE), trailers.text_at(rng.split("..")[1] or "HEAD", TABLE)):
+            if not added_rows(kinds)(trailers.text_at(rng.split("..")[0], table), trailers.text_at(rng.split("..")[1] or "HEAD", table)):
                 continue
-            out += [f"{u} (no `{trailer}:` trailer)" for u in trailers.unjustified_rises(rng, TABLE, trailer, added_rows(kinds))]
+            out += [f"{u} (no `{trailer}:` trailer)" for u in trailers.unjustified_rises(rng, table, trailer, added_rows(kinds))]
     return out

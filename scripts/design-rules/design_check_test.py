@@ -159,6 +159,25 @@ class ExemptionsTest(unittest.TestCase):
                                 " reader, which receive its runner\n")
         self.assertEqual([], exemptions.row_problems(good))
 
+    def test_another_repositorys_table_path_is_read(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, "rules"))
+            with open(os.path.join(root, "rules", "own-exemptions.tsv"), "w") as f:
+                f.write("effect\ttools/t.py\t2026-11-26\tprocess adapter: runs the one git binary for every reader\n")
+            self.assertEqual({("effect", "tools/t.py")}, exemptions.keys(root, "rules/own-exemptions.tsv"))
+            self.assertEqual({}, exemptions.read(root))
+            self.assertEqual([], exemptions.problems(root, [], {}, "rules/own-exemptions.tsv"))
+
+    def test_the_rules_of_another_repositorys_table_are_loaded_and_its_name_is_in_the_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            with open(os.path.join(root, "own-rules.tsv"), "w") as f:
+                f.write("limit\tfanout\t7\tscala py js\n")
+            self.assertEqual(7, rules_table.load(root, "own-rules.tsv").limit("fanout"))
+            with open(os.path.join(root, "bad.tsv"), "w") as f:
+                f.write("limit\n")
+            with self.assertRaisesRegex(ValueError, "bad.tsv:1"):
+                rules_table.load(root, "bad.tsv")
+
 
 @unittest.skipUnless(js_quality_tools.ready(os.path.join(SCRIPTS, "js-quality-report"), tool_git.shared_runner(), os.environ),
                      "the JS extractor's leg not run: node, and its tools or npm to install them, are not here")

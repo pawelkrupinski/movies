@@ -27,10 +27,13 @@ import os
 import re
 import shlex
 import sys
+from typing import Any
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
 import hook_event  # noqa: E402
-import shell_words as shell  # noqa: E402
+import shell_words as _shell_words  # noqa: E402
+
+shell: Any = _shell_words  # the reader's helpers, typed as loosely as this guard's own
 
 
 REDIRECTS = {"<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|"}

@@ -22,7 +22,9 @@ HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
 
 def without_heredoc_bodies(command: str) -> str:
     """The command with every heredoc's body removed (its lines up to the delimiter line)."""
-    lines, out, closing = command.split("\n"), [], []
+    out: List[str] = []
+    closing: List[str] = []
+    lines = command.split("\n")
     for line in lines:
         if closing:
             if line.strip() == closing[0]:
@@ -43,7 +45,7 @@ def tokens(command: str) -> List[str]:
     lexer.whitespace = " \t\r"
     lexer.whitespace_split = True
     lexer.commenters = "#"
-    out = []
+    out: List[str] = []
     for token in lexer:
         if not is_punctuation(token):
             out.append(token)

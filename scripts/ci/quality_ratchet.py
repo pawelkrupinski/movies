@@ -209,7 +209,7 @@ def limit_of(rows: Rows, kind: str) -> int:
 
 # Renames, moved_key and moved_from -- git's rename detection followed to a key's source -- are baseline_ratchet's,
 # which the Python and JS/TS ratchets share.
-Renames, moved_key, moved_from = baseline_ratchet.Renames, baseline_ratchet.moved_key, baseline_ratchet.moved_from
+from baseline_ratchet import Renames, moved_from, moved_key  # noqa: E402,F401
 
 
 def violations(ratchet: Ratchet, current: Rows, baseline: Rows, renames: Renames) -> List[str]:

@@ -20,12 +20,13 @@ import os
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Tuple, TypeVar
+from typing import Callable, Dict, List, Optional, Set, Tuple, TypeVar
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
 import trailers  # noqa: E402
 
 Rows = Dict[Tuple[str, str], float]
+Rows1 = Dict[str, float]
 N = TypeVar("N", int, float)
 
 
@@ -67,7 +68,7 @@ class Renames:
 
     @classmethod
     def trace(cls, path: str) -> Optional[str]:
-        seen = set()
+        seen: Set[str] = set()
         while not os.path.exists(path):
             if path in seen:
                 return None
@@ -76,7 +77,7 @@ class Renames:
             if not deleted:
                 return None
             fields = cls.git("diff", "-M", "--name-status", "-z", f"{deleted}^", deleted).split("\0")
-            renames = {fields[i + 1]: fields[i + 2] for i in range(len(fields) - 2) if fields[i].startswith("R")}
+            renames: Dict[str, str] = {fields[i + 1]: fields[i + 2] for i in range(len(fields) - 2) if fields[i].startswith("R")}
             if path not in renames:
                 return None
             path = renames[path]
@@ -164,6 +165,11 @@ def strict_violations(spec: Spec, current: Rows) -> List[str]:
             if kind in spec.kinds and any(spec.held(part) and spec.strict(part) for part in key.split("|"))]
 
 
+def carried(key: str, value: float, before: Rows1, after: Rows1, renames: Renames) -> bool:
+    """Whether the row `key` is no addition: a renamed source's row, carried over at or below its old value."""
+    return key not in before and moved_from(key, value, before, after, renames) is not None
+
+
 def kind_growth(spec: Spec, kind: str, old: Rows, new: Rows, renames: Renames) -> List[str]:
     out: List[str] = []
     old_limit = old.get(("limit", kind))
@@ -173,7 +179,7 @@ def kind_growth(spec: Spec, kind: str, old: Rows, new: Rows, renames: Renames) -
     allowed = old_limit if old_limit is not None else new_limit
     before, after = of_kind(spec, old, kind), of_kind(spec, new, kind)
     for key, value in sorted(after.items()):
-        if value > before.get(key, allowed) and not (key not in before and moved_from(key, value, before, after, renames)):
+        if value > before.get(key, allowed) and not carried(key, value, before, after, renames):
             was = show(before[key]) if key in before else f"<={show(allowed)}"
             out.append(f"{kind} {key} raised {was} -> {show(value)}")
     return out
@@ -226,9 +232,20 @@ def say_falls(spec: Spec, current: Rows, baseline: Rows) -> None:
             print(f"  - ... and {len(down) - 20} more")
 
 
+def read_baseline(spec: Spec) -> Optional[Rows]:
+    """The checked-in baseline's rows; None, said, when there is none (a checkout that never recorded one)."""
+    try:
+        with open(spec.baseline) as f:
+            return parse(f.read())
+    except FileNotFoundError:
+        print(f"{spec.tool}: no baseline {spec.baseline} -- record the measure first: {spec.update_command}", file=sys.stderr)
+        return None
+
+
 def check(spec: Spec, current: Rows, ranges: List[str]) -> bool:
-    with open(spec.baseline) as f:
-        baseline = parse(f.read())
+    baseline = read_baseline(spec)
+    if baseline is None:
+        return False
     ok, renames = True, Renames()
     found = violations(spec, current, baseline, renames)
     if found:
