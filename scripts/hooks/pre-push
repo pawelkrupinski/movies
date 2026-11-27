@@ -346,6 +346,9 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     esac
     unset PREPUSH_DELEGATED_FROM
 # ── end of the hand-over ── (at the line's start: pre-push-test.sh stamps the hook after it)
+# A CI RUN'S REF checks nothing (scripts/lib/pre_push_push.py CI_REFS): refs/heads/measure/*, refs/heads/check/* and
+# refs/heads/land/* -- agentctl reads that this hook supports land/ refs by the literal `refs/heads/land/` in this file
+# (~/bin lib/agentctl/queuesubmit.py land_refs_supported), so it stays here, named.
     # THE RUN FAILS CLOSED: no python3, and nothing would be selected -- the push BLOCKED (A MISSING LOCAL TOOL)
     command -v python3 > /dev/null || {
         printf '\033[33m! pre-push\033[0m python3 not found: the selection check cannot run, so the push is BLOCKED (never skipped). Fix: install Python 3 (brew install python) -- then push again (or PREPUSH_SKIP=selection, named in your report).\n' >&2

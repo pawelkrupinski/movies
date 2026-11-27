@@ -13,6 +13,9 @@ plan() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --plan | tr '\
 check "production JS runs ESLint, the JS/TS quality ratchet and the sbt check (no page area: the page tests run on Main, 2026-11-17)" "eslint jsquality sbt" "$(plan web/src/main/assets/js/shared/city.js)"
 check "a page spec's JS runs ESLint and the sbt check" "eslint sbt" "$(plan web/src/page/resources/landing/hold-picker-panes.js)"
 check "the ESLint config runs ESLint" "eslint" "$(plan eslint.config.js)"
+# agentctl (~/bin lib/agentctl/queuesubmit.py land_refs_supported) reads land/ ref support off this file's text at main
+check "the hook names refs/heads/land/, where agentctl reads that a land/ ref push checks nothing" "1" \
+  "$(grep -c 'refs/heads/land/' "$REPO_ROOT/scripts/hooks/pre-push")"
 check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/storage-access-in-try.js)"
 check "a version-dashboard source runs the JS/TS quality ratchet" "jsquality" "$(plan infra/version-dashboard/src/server.ts)"
 check "...and so do its baseline and the measure" "jsquality" "$(plan test/resources/js-quality-baseline.tsv)"
