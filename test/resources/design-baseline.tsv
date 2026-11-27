@@ -106,10 +106,11 @@ effect	scripts/ci/sbt_guard.py	1
 effect	scripts/ci/shard_weights.py	1
 effect	scripts/ci/start_mongo_replset.py	1
 effect	scripts/ci/stress_races.py	1
-effect	scripts/ci/takes_skip_gate.py	1
+effect	scripts/ci/takes_skip_gate.py	2
 effect	scripts/ci/trailers.py	1
 effect	scripts/ci/trend_github.py	2
 effect	scripts/ci/upstream_run.py	1
+effect	scripts/ci/verified_ref.py	1
 effect	scripts/ci/wait_for_mongo_tunnel.py	2
 effect	scripts/ci/wait_out_registry_outage.py	2
 effect	scripts/ci/xcuitest_each_class_alone.py	1
