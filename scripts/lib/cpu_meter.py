@@ -2,9 +2,16 @@
 processes a lister names and of all their descendants, sampled every KINOWO_CPU_METER_POLL seconds (2) while a call
 runs, a process that ended counted to its last sample. Sampled, not `ps -S`: macOS's ps adds no exited child's CPU to
 its parent's, so a server's forked test JVMs went uncounted (2026-11-25). The sampler is a daemon thread of the caller:
-it ends with it, however it ends."""
+it ends with it, however it ends.
+
+A process that holds the ticket for work it started ITSELF (run-script-tests, a governed pool) also reads `reaped`: the
+CPU of every descendant it has waited for (getrusage's RUSAGE_CHILDREN: a burst of 25 short-lived node processes that no
+2-second sample sees), and the meter reports the larger of the two readings, never their sum (a waited-for process was
+sampled too)."""
 from __future__ import annotations
 
+import os
+import resource
 import threading
 from typing import Callable, Dict, List, Optional
 
@@ -44,14 +51,27 @@ def sample(roots: List[int], listing: Callable[[], str] = table) -> Dict[int, in
     return found
 
 
+def reaped_centis() -> int:
+    """The CPU this process's waited-for descendants have used, in centiseconds."""
+    usage = resource.getrusage(resource.RUSAGE_CHILDREN)
+    return int((usage.ru_utime + usage.ru_stime) * 100)
+
+
+def own_tree_meter(poll: float) -> "CpuMeter":
+    """The meter of THIS process's tree: the processes below it, the waited-for ones counted too (a ticket holder's)."""
+    return CpuMeter(lambda: [os.getpid()], poll, machine.alive, reaped=reaped_centis)
+
+
 def all_alive(pids: List[int], alive: Callable[[int], bool]) -> bool:
     return bool(pids) and all(alive(p) for p in pids)
 
 
 class CpuMeter:
     def __init__(self, lister: Callable[[], List[int]], poll: float, alive: Callable[[int], bool],
-                 sampler: Callable[[List[int]], Dict[int, int]] = sample) -> None:
-        self.lister, self.poll, self.alive, self.sampler = lister, poll, alive, sampler
+                 sampler: Callable[[List[int]], Dict[int, int]] = sample,
+                 reaped: Optional[Callable[[], int]] = None) -> None:
+        self.lister, self.poll, self.alive, self.sampler, self.reaped = lister, poll, alive, sampler, reaped
+        self.reaped_base = 0
         self.base: Dict[int, int] = {}
         self.top: Dict[int, int] = {}
         self.done = threading.Event()
@@ -60,6 +80,7 @@ class CpuMeter:
 
     def start(self) -> None:
         self.base = self.sampler(self.lister())
+        self.reaped_base = self.reaped() if self.reaped else 0
         self.top = dict(self.base)
         self.thread = threading.Thread(target=self._run, daemon=True)
         self.thread.start()
@@ -83,6 +104,7 @@ class CpuMeter:
         self.done.set()
         self.thread.join()
         self._seen(self.sampler(self.lister()))
-        used = sum(max(0, top - self.base.get(pid, 0)) for pid, top in self.top.items())
+        sampled = sum(max(0, top - self.base.get(pid, 0)) for pid, top in self.top.items())
+        waited = self.reaped() - self.reaped_base if self.reaped else 0
         self.thread = None
-        return used // 100
+        return max(sampled, waited) // 100

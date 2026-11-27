@@ -195,7 +195,8 @@ def compose(env: MutableMapping[str, str], keeper: bool) -> Tools:
     governor = Governor(host, SubprocessCommands())
     memory = MemoryGate(env, Clock(time.sleep), raw_stderr, lambda: governor.bin() is not None, platform.system())
     slots = os.path.join(env["KINOWO_IDENTITY_CACHE"], "jvm-slots")
-    gate = JvmGate(host, governor, memory, SlotWait(memory, slots), slots)
+    poll = float(env.get("KINOWO_CPU_METER_POLL") or 2)
+    gate = JvmGate(host, governor, memory, SlotWait(memory, slots), slots, lambda: own_tree_meter(poll))
     servers = Servers(Procs(), state, log, time.sleep, now)
     runner = tool_git.shared_runner()
     places = Places(root, os.path.join(env["KINOWO_IDENTITY_CACHE"], "refs"),

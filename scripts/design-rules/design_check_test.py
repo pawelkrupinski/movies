@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# script-test-width: 3 (node-heavy: its JS extractor / report.js bursts of short-lived node processes; run-script-tests counts the extra cores)
 """The general rule core (scripts/design-rules/): every rule over every language's modules -- naming (suffix,
 abbreviation, idioms), data or collaborator (effects, state, interfaces, the data guard, the closure), collaborator-only
 fan-out, distance with V2 abstractness, layers, the design lint (adapters, state, import-time IO, the main guard), the

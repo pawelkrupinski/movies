@@ -72,19 +72,19 @@ seq 1 3 | spec_bounded env -u AGENTCTL_GOV_WIDTH -u KINOWO_GOVERNOR_FEATURES -u 
   "$gp" --job outer -P 3 -n 1 bash -c 'seq 1 2 | "$1" --job inner -P 4 -n 1 "$2" "$3"' _ "$gp" "$work/item" "$work/nested" > "$work/out" 2>&1
 status=$?
 check "a fan-out inside a governed one: no deadlock, one ticket (the outer's), each inner command one core" "0 1 1" \
-  "$status $(wc -l < "$GOV_CALLS" | tr -d ' ') $(sort -u "$work/nested.width" | paste -sd' ' -)"
+  "$status $(grep -c '^gov admit' "$GOV_CALLS") $(sort -u "$work/nested.width" | paste -sd' ' -)"
 check "...the inner fan-outs ran one wide each: all 6 commands, at most the outer's 3 at once" "6 yes" \
   "$(grep -c '^1$' "$work/nested") $([ "$(overlap "$work/nested")" -le 3 ] && echo yes)"
 
 : > "$GOV_CALLS"; : > "$work/under"
 seq 1 6 | governed env AGENTCTL_GOV_WIDTH=2 "$gp" --job j -P 8 -n 1 "$work/item" "$work/under" > /dev/null 2>&1
 check "under a ticket of width 2 (a check's hook): none asked, -P 8 runs at most 2 at once" "0 6 2" \
-  "$(wc -l < "$GOV_CALLS" | tr -d ' ') $(grep -c '^1$' "$work/under") $(overlap "$work/under")"
+  "$(grep -c '^gov admit' "$GOV_CALLS") $(grep -c '^1$' "$work/under") $(overlap "$work/under")"
 
 : > "$GOV_CALLS"; : > "$work/free"
 seq 1 3 | KINOWO_GOVERNOR=0 "$gp" --job j -P 3 -n 1 "$work/item" "$work/free" > /dev/null 2>&1
 check "ungoverned (KINOWO_GOVERNOR=0, Linux CI): no ticket, every command run" "0 3" \
-  "$(wc -l < "$GOV_CALLS" | tr -d ' ') $(grep -c '^1$' "$work/free")"
+  "$(grep -c '^gov admit' "$GOV_CALLS") $(grep -c '^1$' "$work/free")"
 
 printf '#!/usr/bin/env bash\n[ "$1 $2" = "gov probe" ] && { echo "agentctl governor: admit cores"; exit 0; }\nexit 1\n' > "$work/refusing"
 chmod +x "$work/refusing"; : > "$work/refused"

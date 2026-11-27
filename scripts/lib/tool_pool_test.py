@@ -71,8 +71,21 @@ class GovernedWorkersTest(unittest.TestCase):
             self.assertEqual(seen.strip(), "1", "each worker one core of it")
         self.assertFalse(lock_held(ticket), "given back once the pool ends")
         self.assertNotIn("AGENTCTL_GOV_WIDTH", os.environ, "the environment restored")
-        [call] = self.calls_made()
+        [call] = [c for c in self.calls_made() if c.startswith("gov admit")]
         self.assertIn("--job mutation-tests --cores 4", call)
+
+    def test_a_pool_whose_children_burn_cores_records_them_not_its_width(self) -> None:
+        os.environ["KINOWO_CPU_METER_POLL"] = "0.1"
+        burn = "import time; t = time.process_time()\nwhile time.process_time() - t < 1.0: pass"
+        with tool_pool.governed_workers("mutation-tests", 1):
+            workers = [subprocess.Popen([sys.executable, "-c", burn]) for _ in range(3)]
+            for worker in workers:
+                worker.wait()
+        [usage] = [c.split() for c in self.calls_made() if c.startswith("gov usage")]
+        self.assertEqual(["--job", "mutation-tests"], usage[2:4])
+        cores = int(usage[usage.index("--cpu") + 1]) / max(1, int(usage[usage.index("--wall") + 1]))
+        self.assertGreaterEqual(cores, 2.0, "three busy children: about 3 cores, though it asked for 1")
+        self.assertEqual("tree", usage[usage.index("--meter") + 1])
 
     def test_under_a_ticket_it_takes_none_and_runs_at_most_its_width(self) -> None:
         os.environ["AGENTCTL_GOV_WIDTH"] = "2"

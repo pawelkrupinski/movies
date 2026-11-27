@@ -103,6 +103,10 @@
 #                          timed agentctl's suite out) asks exactly <want>. The one place a fan-out
 #                          is sized: scripts/gov-parallel (xargs -P), scripts/lib/governed_pool.py (a Python pool),
 #                          run-script-tests' pool; scripts/ci/fanout_lint.py refuses any other
+#   gov_metered <job> <command...>  the command as a child of this process, its exit status, and -- under a ticket this
+#                          process took -- its process TREE's measured CPU recorded for <job> (jvm_usage ... tree): what
+#                          scripts/gov-run and scripts/gov-parallel run their command with, so the governor sees what a
+#                          ticket's descendants (npm, node, Docker's client, a pool's workers) really used, not its width
 #   jvm_route <job>        `ci` when the governor would hold <job> now and ci-runner's measure lane is free (`agentctl
 #                          gov route`), else `local` -- the reason on stderr. Only an agent's own work (gov_class agent):
 #                          local without the governor, riding, under KINOWO_GOV_CPU_HELD (a tool inside a check or a
@@ -283,6 +287,42 @@ gov_width() { # <label> <job> <want> [mem GB] [fixed] -> GOV_WIDTH
   fi
   GOV_WIDTH=1
   echo "[$1] the governor ($GOVERNOR_BIN gov admit) failed: running one wide, without a ticket" >&2
+}
+# _children_centis -> CHILDREN_CENTIS: the CPU this shell's waited-for descendants have used so far, in centiseconds (bash's
+# `times`, read through a file: in a command substitution or a pipe it is a subshell's, and that has waited for nothing)
+CHILDREN_CENTIS=0
+_children_centis() {
+  local file
+  file=$(mktemp "${TMPDIR:-/tmp}/times.XXXXXX") || return 0
+  times > "$file"
+  CHILDREN_CENTIS=$(awk 'NR == 2 { for (i = 1; i <= 2; i++) { split($i, a, /[ms]/); s += a[1] * 60 + a[2] } printf "%d\n", s * 100 }' "$file")
+  rm -f "$file"
+}
+# gov_metered <job> <command...>: the command, run as a child of this process, its exit status -- and, when this process
+# holds a ticket of its own (gov_hold / gov_width took one), its process TREE's measured CPU recorded for <job> (jvm_usage
+# ... tree: THE TICKET'S MEASURED CPU, the larger of cpu_meter's samples and `times`' waited-for children, so a burst of 25
+# short-lived node processes no 2-second sample sees still counts). No ticket of its own: the command exec'd.
+GOV_METERED_CHILD=""
+_gov_metered_lister() { echo "$GOV_METERED_CHILD"; }
+gov_metered() {
+  local job=$1 started=$SECONDS base sampled waited rc
+  shift
+  [ -n "$JVM_SLOT" ] || exec "$@"
+  _children_centis; base=$CHILDREN_CENTIS
+  "$@" <&0 &
+  GOV_METERED_CHILD=$!
+  # shellcheck disable=SC2064 # the child's pid, now
+  trap "kill -TERM $GOV_METERED_CHILD 2> /dev/null" TERM INT HUP
+  cpu_meter_start _gov_metered_lister
+  while :; do
+    wait "$GOV_METERED_CHILD"; rc=$?
+    kill -0 "$GOV_METERED_CHILD" 2> /dev/null || break
+  done
+  trap - TERM INT HUP
+  sampled=$(cpu_meter_stop)
+  _children_centis; waited=$(((CHILDREN_CENTIS - base) / 100))
+  jvm_usage "$job" $((SECONDS - started)) $((sampled > waited ? sampled : waited)) tree
+  return "$rc"
 }
 jvm_route() { # <job>
   local g

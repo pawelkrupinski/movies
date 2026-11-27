@@ -30,4 +30,5 @@ done
 # shellcheck source=scripts/jvm-gate.sh
 . "$(dirname "${BASH_SOURCE[0]}")/jvm-gate.sh"
 gov_width "$job" "$job" "$want" 1
-AGENTCTL_GOV_WIDTH=1 exec xargs -P "$GOV_WIDTH" "$@"
+# under a ticket of its own the xargs tree's CPU is recorded for the job (gov_metered), else xargs is exec'd
+AGENTCTL_GOV_WIDTH=1 gov_metered "$job" xargs -P "$GOV_WIDTH" "$@"

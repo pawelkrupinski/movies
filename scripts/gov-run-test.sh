@@ -39,14 +39,14 @@ check "...asked once, as an agent's job, charged its job, cores and memory" "1" 
 ( cd "$work" && governed "$REPO_ROOT/scripts/gov-run" --job page-tests --label outer -- \
     "$REPO_ROOT/scripts/gov-run" --job inner -- "$work/probe" "$REPO_ROOT" ) > "$work/out" 2>&1
 check "a gated command run by a gated command rides its parent's ticket: one ticket, no wait on itself" "rides held|1" \
-  "$(cat "$work/out")|$(wc -l < "$GOV_CALLS" | tr -d ' ')"
+  "$(cat "$work/out")|$(grep -c '^gov admit' "$GOV_CALLS")"
 check "...no --cores: the job's own figure, the label as given" "1" "$(grep -c -- '--label outer .*--job page-tests$' "$GOV_CALLS")"
 
 : > "$GOV_CALLS"
 ( governed bash -c '. "$1/scripts/jvm-gate.sh"; gov_run t page-tests 5 2 "$2" "$1"; gov_run t2 x "" "" true; exit 7' \
     _ "$REPO_ROOT" "$work/probe" ) > "$work/out" 2>&1; status=$?
 check "gov_run: the command (a function too) under its own ticket, given back after: the next takes one of its own" \
-  "rides held|2|7" "$(head -1 "$work/out")|$(wc -l < "$GOV_CALLS" | tr -d ' ')|$status"
+  "rides held|2|7" "$(head -1 "$work/out")|$(grep -c '^gov admit' "$GOV_CALLS")|$status"
 check "...exit status the command's" "3" "$(governed bash -c '. "$1/scripts/jvm-gate.sh"; gov_run t j 1 1 false; gov_run t j 1 1 bash -c "exit 3"' _ "$REPO_ROOT"; echo $?)"
 
 : > "$GOV_CALLS"
@@ -63,7 +63,7 @@ check "classes: a red fixer's checkout asks as red (admitted at once), --class a
   governed env KINOWO_GOV_CPU_HELD=1 "$REPO_ROOT/scripts/gov-run" --job j -- "$work/probe" "$REPO_ROOT"
 } > "$work/out" 2>&1
 check "ungated, the command run at once with no ticket: KINOWO_GOVERNOR=0, Linux (CI), no agentctl, inside a check" \
-  "none none none none|0" "$(paste -sd' ' "$work/out")|$(wc -l < "$GOV_CALLS" | tr -d ' ')"
+  "none none none none|0" "$(paste -sd' ' "$work/out")|$(grep -c '^gov admit' "$GOV_CALLS")"
 
 printf '#!/usr/bin/env bash\n[ "$1 $2" = "gov probe" ] && { echo "agentctl governor: admit cores"; exit 0; }\nprintf "%%s\\n" "$*" >> "$GOV_CALLS"; exit 1\n' > "$work/refusing"
 chmod +x "$work/refusing"
@@ -72,5 +72,21 @@ check "a governor that fails: warned, and the command runs all the same" "1 ran"
   "$(printf '%s\n' "$out" | grep -c 'failed: running without a ticket') $(printf '%s\n' "$out" | tail -1)"
 check "usage: no --job or no command is 64" "64 64" \
   "$("$REPO_ROOT/scripts/gov-run" -- true > /dev/null 2>&1; echo $?) $("$REPO_ROOT/scripts/gov-run" --job j > /dev/null 2>&1; echo $?)"
+
+# THE TICKET'S MEASURED CPU: a command whose children burn 3 cores records about 3 in its ticket's job, not its width (1)
+: > "$GOV_CALLS"
+( cd "$work" && KINOWO_CPU_METER_POLL=0.2 governed "$REPO_ROOT/scripts/gov-run" --job script-tests --cores 1 -- bash -c '
+    for _ in 1 2 3; do python3 -I -B -c "import time; t = time.process_time()
+while time.process_time() - t < 1.0: pass" & done; wait; exit 5' ) > /dev/null 2>&1
+status=$?
+usage=$(grep '^gov usage' "$GOV_CALLS")
+check "metered: a tree of 3 busy children records its CPU (3 s over about 1 s wall) as the job's, with the tree meter" "5 1 tree" \
+  "$status $(printf '%s\n' "$usage" | grep -c -- '--job script-tests') $(printf '%s\n' "$usage" | sed -n 's/.*--meter //p')"
+cpu=$(printf '%s\n' "$usage" | sed -n 's/.*--cpu \([0-9]*\).*/\1/p'); wall=$(printf '%s\n' "$usage" | sed -n 's/.*--wall \([0-9]*\).*/\1/p')
+check "...at least 2 cores' worth, as measured" "yes" "$([ "${cpu:-0}" -ge $((2 * ${wall:-1})) ] && [ "${cpu:-0}" -ge 2 ] && echo yes || echo "no: cpu=$cpu wall=$wall")"
+: > "$GOV_CALLS"
+( cd "$work" && governed "$REPO_ROOT/scripts/gov-run" --job outer -- "$REPO_ROOT/scripts/gov-run" --job inner -- true ) > /dev/null 2>&1
+check "...a command riding its parent's ticket records nothing: only the ticket's holder reports its tree" "outer" \
+  "$(sed -n 's/^gov usage --job \([a-z]*\) .*/\1/p' "$GOV_CALLS" | paste -sd' ' -)"
 
 spec_summary

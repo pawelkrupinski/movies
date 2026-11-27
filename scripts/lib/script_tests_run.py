@@ -34,6 +34,8 @@ class Gate(Protocol):
 
     def gov_class(self, label: str) -> str: ...
 
+    def release(self) -> None: ...
+
 
 @dataclass(frozen=True)
 class Settings:

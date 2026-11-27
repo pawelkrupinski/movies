@@ -20,9 +20,10 @@ import os
 import random
 import subprocess
 from dataclasses import dataclass
-from typing import Callable, Dict, List, MutableMapping, Optional, Protocol, Sequence, cast
+from typing import Callable, Dict, List, MutableMapping, Optional, Protocol, Sequence, Tuple, cast
 
 import machine
+from cpu_meter import CpuMeter
 from jvm_memory import MemoryGate, SlotWait
 
 SLOT_FD = 7
@@ -204,8 +205,11 @@ def whole(cores: str) -> int:
 class JvmGate:
     """One process's JVM slot or governor ticket, on descriptor 7 (jvm-gate.sh's JVM_SLOT)."""
 
-    def __init__(self, host: Host, governor: Governor, memory: MemoryGate, slot_wait: SlotWait, slot_dir: str) -> None:
+    def __init__(self, host: Host, governor: Governor, memory: MemoryGate, slot_wait: SlotWait, slot_dir: str,
+                 own_tree_meter: Callable[[], CpuMeter]) -> None:
         self.host, self.governor, self.memory, self.slot_wait, self.slot_dir = host, governor, memory, slot_wait, slot_dir
+        self.own_tree_meter = own_tree_meter
+        self.metered: Optional[Tuple[CpuMeter, str, float]] = None  # the meter of this process's tree, its job, its start
         self.slot = ""
         self.lock: Optional[FileLock] = None
         self.granted: Optional[str] = None
@@ -299,9 +303,18 @@ class JvmGate:
         if g is None or self.riding() or self.env.get("KINOWO_GOV_CPU_HELD") or self.slot:
             return want
         if self._ticket(label, job, mem, str(want), "" if fixed else "1"):
+            self._meter(job)
             return min(want, whole(self.granted)) if self.granted else want
         self.host.say(f"[{label}] the governor ({g} gov admit) failed: running one wide, without a ticket")
         return 1
+
+    def _meter(self, job: str) -> None:
+        """THE TICKET'S MEASURED CPU: from here to release() the CPU of this process's whole tree -- node, Docker's client,
+        every pool worker below it -- is metered, and release() records it (`gov usage`), so the job's charge follows what it
+        really used rather than the width it asked for."""
+        meter = self.own_tree_meter()
+        meter.start()
+        self.metered = (meter, job, machine.monotonic())
 
     def cpu_take(self, label: str, job: str) -> None:
         """A cores-only ticket for one call into a kept JVM (jvm-gate.sh jvm_cpu_take)."""
@@ -341,6 +354,10 @@ class JvmGate:
         return not self.riding() and self.env.get("KINOWO_JVM_SLOTS", "4") != "0" and self.slot_try(label)
 
     def release(self) -> None:
+        if self.metered is not None:
+            meter, job, started = self.metered
+            self.metered = None
+            self.usage(job, int(machine.monotonic() - started), meter.stop(), "tree")
         if self.lock is not None:
             self.lock.give()
         self._forget()

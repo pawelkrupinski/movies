@@ -19,7 +19,9 @@
 # rides that ticket (KINOWO_JVM_SLOT_HELD), never waiting on its own parent. No ticket, <command> run at once: off the
 # Mac (Linux CI), with KINOWO_GOVERNOR=0, without ~/bin/agentctl ($KINOWO_GOVERNOR_BIN), riding a parent's ticket,
 # under KINOWO_GOV_CPU_HELD (a pre-commit check's hook: its ticket is charged its cores) -- and when the governor fails
-# (warned). A process started to OUTLIVE <command> is started with descriptor 7 closed (`7>&-`), or it holds the ticket.
+# (warned). THE TICKET'S MEASURED CPU: under a ticket of its own <command> is run as a child and its whole process tree's
+# CPU (gov_metered: node, npm, Docker's client, every pool worker) is recorded for <job> when it ends (`gov usage`), so
+# the charge follows what the job really used; no ticket of its own, it is exec'd. A process started to OUTLIVE <command> is started with descriptor 7 closed (`7>&-`), or it holds the ticket.
 # Exit: <command>'s; 64 usage.
 set -uo pipefail
 usage() { sed -n '7,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 64; }
@@ -48,4 +50,4 @@ if [ -n "$class" ]; then
 else
   gov_hold "${label:-$job}" "$job" "$cores" "$mem"
 fi
-exec "$@"
+gov_metered "$job" "$@"

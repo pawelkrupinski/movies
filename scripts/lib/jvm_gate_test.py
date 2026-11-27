@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Sequence
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cli_harness  # noqa: E402
-from cpu_meter import CpuMeter, centis, sample  # noqa: E402
+from cpu_meter import CpuMeter, centis, own_tree_meter, sample  # noqa: E402
 from jvm_gate import SLOT_FD, FileLock, Governor, Host, JvmGate, gov_job, lock_busy, whole  # noqa: E402
 from jvm_memory import Clock, MemoryGate, SlotWait  # noqa: E402
 
@@ -72,7 +72,7 @@ class Case(unittest.TestCase):
         governor = Governor(host, commands or FakeCommands())
         memory = MemoryGate(self.env, Clock(lambda _s: None), self.said.append, lambda: False, system)
         slots = os.path.join(self.work, "slots")
-        return JvmGate(host, governor, memory, SlotWait(memory, slots), slots)
+        return JvmGate(host, governor, memory, SlotWait(memory, slots), slots, lambda: own_tree_meter(0.1))
 
     def shell(self, script: str, *args: str) -> "subprocess.Popen[str]":
         proc = subprocess.Popen(["bash", "-c", '. "$1"; shift; ' + script, "_", GATE, *args],
@@ -203,6 +203,19 @@ class GrantTest(Case):
         calls = len(commands.calls)
         self.assertEqual(3, self.gate(commands).width("x", "x", 8))
         self.assertEqual(calls, len(commands.calls))
+
+    def test_a_ticket_records_the_cpu_of_its_whole_tree_not_its_width(self) -> None:
+        commands = self.granting(4)
+        gate = self.gate(commands)
+        self.assertEqual(1, gate.width("run-script-tests", "script-tests", 1))
+        burn = "import time; t = time.process_time()\nwhile time.process_time() - t < 1.0: pass"
+        for worker in [subprocess.Popen([sys.executable, "-c", burn]) for _ in range(3)]:
+            worker.wait()
+        gate.release()
+        [usage] = [c for c in commands.calls if c[1:3] == ["gov", "usage"]]
+        self.assertEqual("tree", usage[usage.index("--meter") + 1])
+        cores = int(usage[usage.index("--cpu") + 1]) / max(1, int(usage[usage.index("--wall") + 1]))
+        self.assertGreaterEqual(cores, 2.0, "three busy children: about 3 cores, though it asked for 1")
 
 
 class MemoryTest(Case):

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# script-test-width: 3 (node-heavy: its JS extractor / report.js bursts of short-lived node processes; run-script-tests counts the extra cores)
 """scripts/js-quality-report, black-box (cli_harness): its own command line -- where the pinned tools live, their
 install, which report.js run and which ratchet each mode makes, the usage errors -- against a fake node and npm; then,
 as js-quality-report-test.sh did, the coupling and clone-grouping logic (node alone) and the whole report over a small

@@ -149,13 +149,14 @@ LIB = os.path.join(HERE, "lib")
 sys.path.insert(0, LIB)
 
 import machine  # noqa: E402
+from cpu_meter import own_tree_meter  # noqa: E402
 from jvm_gate import Governor, Host, JvmGate, SubprocessCommands  # noqa: E402
 from jvm_memory import Clock, MemoryGate, SlotWait  # noqa: E402
 from script_tests_found import Found, concurrency_heavy, declared_reads, discover  # noqa: E402
 from script_tests_select import Options, Refused, Selection, git_in, heavy_only, select  # noqa: E402
 import script_tests_linux as linux  # noqa: E402
 from script_tests_pool import Pool  # noqa: E402
-from script_tests_run import Run, Settings, govern, plan_run, tools  # noqa: E402
+from script_tests_run import Plan, Run, Settings, Width, govern, plan_run, tools  # noqa: E402
 from tool_cli import header_usage  # noqa: E402
 
 ROOTS = "scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin infra/nix/bin infra/nix/files data"
@@ -266,7 +267,8 @@ def compose_gate(env: MutableMapping[str, str], root: str) -> JvmGate:
     governor = Governor(host, SubprocessCommands())
     memory = MemoryGate(env, Clock(time.sleep), say, lambda: governor.bin() is not None, platform.system())
     slots = os.path.join(env.get("KINOWO_IDENTITY_CACHE") or os.path.join(home, ".cache/kinowo-identity"), "jvm-slots")
-    return JvmGate(host, governor, memory, SlotWait(memory, slots), slots)
+    poll = float(env.get("KINOWO_CPU_METER_POLL") or 2)
+    return JvmGate(host, governor, memory, SlotWait(memory, slots), slots, lambda: own_tree_meter(poll))
 
 
 def too_old_python(tests: Sequence[Found]) -> bool:
@@ -293,7 +295,15 @@ def run_on_linux(o: Options, s: Settings, env: MutableMapping[str, str], scratch
     if not tests:
         print(f"run-script-tests: no script tests selected{' by the changes since ' + o.changed if o.changed else ''}")
         return 0
-    width = govern(compose_gate(env, o.root), env, o.root, s.jobs, tests)
+    gate = compose_gate(env, o.root)
+    try:
+        return run_in_container(o, s, scratch, env, tests, govern(gate, env, o.root, s.jobs, tests))
+    finally:
+        gate.release()
+
+
+def run_in_container(o: Options, s: Settings, env: MutableMapping[str, str], scratch: str, tests: List[str],
+                     width: Width) -> int:
     inner = ["scripts/run-script-tests", "--jobs", str(width.jobs), "--timeout", o.timeout, "--stall", o.stall]
     c = linux.Container(o.root, LINUX_IMAGE_RECIPE, s.log_dir, inner + (["--tag", o.tag] if o.tag else []),
                         os.path.expanduser("~"), os.path.join(HERE, "linux-tree-sync.py"), scratch,
@@ -362,8 +372,17 @@ def run(o: Options, env: MutableMapping[str, str], scratch: str, tree_check: boo
 def run_here(o: Options, s: Settings, env: MutableMapping[str, str], scratch: str, scope: Floor,
              chosen: Selection) -> int:
     tests = [t.path for t in chosen.tests]
-    width = govern(compose_gate(env, o.root), env, o.root, s.jobs, tests)
-    plan, count = plan_run(o.root, scratch, tests, s, width)
+    gate = compose_gate(env, o.root)
+    try:
+        width = govern(gate, env, o.root, s.jobs, tests)
+        return run_planned(o, s, env, scratch, scope, chosen, plan_run(o.root, scratch, tests, s, width))
+    finally:
+        gate.release()
+
+
+def run_planned(o: Options, s: Settings, env: MutableMapping[str, str], scratch: str, scope: Floor,
+                chosen: Selection, planned: Tuple[Plan, int]) -> int:
+    plan, count = planned
     plan.floor_tests, plan.floor_bin = scope.tests, scope.bin
     pool = Pool(plan, dict(env), tools(LIB, HERE), time.sleep)
     heavy = [p for p in plan.paths[:count] if concurrency_heavy(os.path.join(o.root, p))]

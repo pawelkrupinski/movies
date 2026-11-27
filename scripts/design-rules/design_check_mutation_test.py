@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# script-test-width: 3 (node-heavy: its JS extractor / report.js bursts of short-lived node processes; run-script-tests counts the extra cores)
 """THE GENERAL RULE CORE FAILS CLOSED, proved by mutation (takes_skip_gate_mutation_test.py's model): each mutant below
 is the core (scripts/design-rules/) with ONE rule taken out, and design_check_test.py must FAIL against every one -- a
 rule whose removal no test notices could silently stop holding a language. A mutant is applied by exact text; a mutant
