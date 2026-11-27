@@ -17,11 +17,10 @@ import argparse
 import json
 import os
 import statistics
+import subprocess
 import sys
 import urllib.parse
 import urllib.request
-
-import ci_machine
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_FILE = os.path.join(HERE, "shard-weights-identity.tsv")
@@ -76,7 +75,7 @@ def render(rows, days, min_runs):
 
 def class_exists(root):
     """A test class name -> whether a Scala source under root declares it (`class <Simple>`)."""
-    out = ci_machine.run(["git", "-C", root, "grep", "-h", "-o", "-E", "class [A-Za-z0-9_]+", "--", "*.scala"],
+    out = subprocess.run(["git", "-C", root, "grep", "-h", "-o", "-E", "class [A-Za-z0-9_]+", "--", "*.scala"],
                          capture_output=True, text=True).stdout
     simple = {line.split()[1] for line in out.splitlines() if len(line.split()) == 2}
     return lambda name: name.rsplit(".", 1)[-1] in simple
