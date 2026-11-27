@@ -142,7 +142,7 @@ class CiRun:
             print(run)
             return 0
         minutes = int(self.env.get("IDENTITY_CI_RUN_TIMEOUT_MINUTES") or 660)
-        conclusion = tool_ci_wait.wait_for_run(self.runner, self.env, run, minutes * 60,
+        conclusion = tool_ci_wait.wait_for_run(run, minutes * 60,
                                                int(self.env.get("IDENTITY_CI_RUN_POLL") or 30))
         if conclusion is None:
             raise Die(f"run {run} gave no conclusion in time")

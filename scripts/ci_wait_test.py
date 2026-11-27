@@ -18,6 +18,8 @@ from contextlib import redirect_stderr, redirect_stdout
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import ci_wait  # noqa: E402
+sys.path.insert(0, os.path.join(HERE, "lib"))
+import tool_ci_wait  # noqa: E402
 
 A, B, C = "a" * 40, "b" * 40, "c" * 40  # three commits on main, in order: A, then B, then C
 DESCENDS = {(A, B): True, (A, C): True, (B, C): True, (B, A): False, (C, A): False, (C, B): False}
@@ -242,6 +244,33 @@ class SetTest(unittest.TestCase):
             status = ci_wait.main(argv + ["--interval", "1"], gh=gh, git=lambda a, b: DESCENDS.get((a, b)),
                                   clock=FakeClock())
         return status, out.getvalue().strip().splitlines(), err.getvalue()
+
+
+class WaitForRunTest(unittest.TestCase):
+    """The Python tools' wait on a dispatched run (lib/tool_ci_wait.py): the same reads, in process -- it was a second
+    process asked for the same thing, its answer parsed back from a line."""
+
+    def wait_for_run(self, gh, timeout=600):
+        err = io.StringIO()
+        with redirect_stderr(err):
+            conclusion = tool_ci_wait.wait_for_run("7", timeout, 30, gh=gh, clock=FakeClock())
+        return conclusion, err.getvalue()
+
+    def test_a_run_is_waited_on_through_a_null_answer_to_its_conclusion(self):
+        gh = Gh(view=["null", run(7, status="in_progress"), run(7, conclusion="success")])
+        self.assertEqual("success", self.wait_for_run(gh)[0])
+
+    def test_failure_and_cancelled_are_conclusions_not_followed(self):
+        self.assertEqual("failure", self.wait_for_run(Gh(view=[run(7, conclusion="failure")]))[0])
+        self.assertEqual("cancelled", self.wait_for_run(Gh(view=[run(7, conclusion="cancelled")]))[0])
+
+    def test_a_run_that_never_ends_gives_none_said(self):
+        conclusion, said = self.wait_for_run(Gh(view=[run(7, status="in_progress")]), timeout=60)
+        self.assertIsNone(conclusion)
+        self.assertIn("dispatch: run 7 gave no conclusion within 60s (or could not be read)", said)
+
+    def test_a_deadline_already_past_still_reads_the_run_once(self):
+        self.assertEqual("success", self.wait_for_run(Gh(view=[run(7)]), timeout=-5)[0])
 
 
 class UsageTest(unittest.TestCase):

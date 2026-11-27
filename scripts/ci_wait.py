@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Waiting on GitHub Actions runs, bounded: the logic behind scripts/ci-wait (its header has the usage); tests:
-scripts/ci_wait_test.py.
+scripts/ci_wait_test.py. The one implementation: scripts/lib/tool_ci_wait.py's wait_for_run reads the same polls in
+process for the Python tools.
 
 A TARGET is one thing waited for -- a run (`--run`), a workflow's run for a commit (`--workflow --sha`), or a
 workflow's newest verdict (`--workflow --any-completed`) -- and every poll reads each unresolved target once. A read
@@ -26,6 +27,7 @@ import re
 import subprocess
 import sys
 import time
+from typing import Callable
 
 GH = os.environ.get("KINOWO_GH") or "gh"
 
@@ -287,7 +289,8 @@ def parent_alive():
 
 
 def wait(targets: list, github: GitHub, clock: Clock, timeout_s: float, interval_s: float, max_misses: int,
-         caller_alive=lambda: True) -> int:
+         caller_alive=lambda: True, out: Callable[[str], object] = print) -> int:
+    """Waits on `targets`: each one's verdict line goes to `out` (the tool prints it on stdout), the exit status back."""
     deadline = clock.now() + timeout_s
     misses = 0
     ended = "pending"
@@ -323,10 +326,10 @@ def wait(targets: list, github: GitHub, clock: Clock, timeout_s: float, interval
     for t in targets:
         if t.verdict:
             run, note = t.verdict
-            print("\t".join([str(run.id), run.sha, run.conclusion, t.workflow or t.label(), note]).rstrip("\t"))
+            out("\t".join([str(run.id), run.sha, run.conclusion, t.workflow or t.label(), note]).rstrip("\t"))
         else:
             own = t.own
-            print("\t".join([str(own.id) if own else "-", own.sha if own else (t.sha or "-"),
+            out("\t".join([str(own.id) if own else "-", own.sha if own else (t.sha or "-"),
                              ended, t.workflow or t.label(), t.state]).rstrip("\t"))
     return exit_status(targets)
 

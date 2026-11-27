@@ -160,7 +160,7 @@ class Dispatch:
         c, s = self.c, self.c.state
         if not s.convergence_run or verdict > 1:
             return verdict
-        conclusion: Optional[str] = tool_ci_wait.wait_for_run(c.runner, c.env, s.convergence_run,
+        conclusion: Optional[str] = tool_ci_wait.wait_for_run(s.convergence_run,
                                                               int(max(deadline - c.clock(), 0)), c.poll)
         if conclusion is None:
             self.waiter.timed_out(s.convergence_run)
