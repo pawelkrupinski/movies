@@ -49,6 +49,7 @@ from typing import List, Mapping, NoReturn
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import pinned_npm_tools  # noqa: E402
+import tool_process  # noqa: E402
 
 TOOLS = os.path.join(HERE, "js-quality")
 MANIFESTS = ("package.json", "package-lock.json")
@@ -128,7 +129,7 @@ def has_eslint(installed: str) -> bool:
     return os.access(os.path.join(installed, "node_modules", ".bin", "eslint"), os.X_OK)
 
 
-def ensure_tools(installed: str) -> None:
+def ensure_tools(installed: str, env: Mapping[str, str]) -> None:
     if shutil.which("node") is None:
         raise Refused(2, "js-quality-report: node is not installed")
     if has_eslint(installed):
@@ -137,7 +138,7 @@ def ensure_tools(installed: str) -> None:
         raise Refused(2, "js-quality-report: npm is not installed (needed once, to install the tools)")
     print(f"js-quality-report: installing the tools (npm ci in {installed})", file=sys.stderr)
     try:
-        pinned_npm_tools.npm_ci(TOOLS, MANIFESTS, installed, capture=False)
+        pinned_npm_tools.npm_ci(TOOLS, MANIFESTS, installed, capture=False, runner=tool_process.SubprocessRunner(), env=env)
     except pinned_npm_tools.NpmFailed:
         raise Refused(2) from None  # npm said why, on stderr
     if not has_eslint(installed):
@@ -181,7 +182,7 @@ def run(argv: List[str]) -> int:
     if o.print_tools:
         print(installed)
         return 0
-    ensure_tools(installed)
+    ensure_tools(installed, os.environ)
     if o.out:
         return report(o, o.out, node_env(installed))
     signal.signal(signal.SIGTERM, ended)

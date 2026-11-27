@@ -18,8 +18,6 @@ from contextlib import redirect_stderr, redirect_stdout
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import ci_wait  # noqa: E402
-sys.path.insert(0, os.path.join(HERE, "lib"))
-import tool_ci_wait  # noqa: E402
 
 A, B, C = "a" * 40, "b" * 40, "c" * 40  # three commits on main, in order: A, then B, then C
 DESCENDS = {(A, B): True, (A, C): True, (B, C): True, (B, A): False, (C, A): False, (C, B): False}
@@ -247,13 +245,13 @@ class SetTest(unittest.TestCase):
 
 
 class WaitForRunTest(unittest.TestCase):
-    """The Python tools' wait on a dispatched run (lib/tool_ci_wait.py): the same reads, in process -- it was a second
+    """The Python tools' wait on a dispatched run (ci_wait.wait_for_run): the same reads, in process -- it was a second
     process asked for the same thing, its answer parsed back from a line."""
 
     def wait_for_run(self, gh, timeout=600):
         err = io.StringIO()
         with redirect_stderr(err):
-            conclusion = tool_ci_wait.wait_for_run("7", timeout, 30, gh=gh, clock=FakeClock())
+            conclusion = ci_wait.wait_for_run("7", timeout, 30, gh=gh, clock=FakeClock())
         return conclusion, err.getvalue()
 
     def test_a_run_is_waited_on_through_a_null_answer_to_its_conclusion(self):

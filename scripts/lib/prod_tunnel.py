@@ -10,7 +10,7 @@ ssh option. Repoint both together.
   ProdTunnel(tag, probe_uri, env, mongosh_at, pause)   .answers(), .ensure(), .close(), .alive(): ONE caller's forward
 
 The shell library calls the two pure steps through this file's command line, so each is written once:
-  prod_tunnel.py uri --pid <caller's pid> <prod uri>   the laptop's URI (exit 1, nothing printed: no free port)
+  prod_tunnel.py uri --pid <caller's pid> [--pin $PROD_TUNNEL_PORT] <prod uri>   the laptop's URI (exit 1, nothing printed: no free port)
   prod_tunnel.py free-port --pid <caller's pid>        the port the caller's tunnel binds (exit 1: none free)
 """
 from __future__ import annotations
@@ -164,24 +164,31 @@ class ProdTunnel:
             ssh.wait()
 
 
-def main(argv: List[str], env: Mapping[str, str]) -> int:
-    """`uri --pid N <prod uri>` or `free-port --pid N`: what the shell library asks of this file (see the header)."""
-    if len(argv) < 3 or argv[0] not in ("uri", "free-port") or argv[1] != "--pid" or not argv[2].isdigit():
-        print("usage: prod_tunnel.py uri --pid N <prod uri> | free-port --pid N", file=sys.stderr)
+def main(argv: List[str]) -> int:
+    """`uri --pid N [--pin PORT] <prod uri>` or `free-port --pid N [--pin PORT]`: what the shell library asks of this
+    file (see the header); --pin is its $PROD_TUNNEL_PORT, when set."""
+    rest = argv[1:]
+    pinned = {}
+    if "--pin" in rest and rest.index("--pin") + 1 < len(rest):
+        at = rest.index("--pin")
+        pinned = {"PROD_TUNNEL_PORT": rest[at + 1]}
+        rest = rest[:at] + rest[at + 2:]
+    if len(rest) < 2 or argv[0] not in ("uri", "free-port") or rest[0] != "--pid" or not rest[1].isdigit():
+        print("usage: prod_tunnel.py uri --pid N [--pin PORT] <prod uri> | free-port --pid N [--pin PORT]", file=sys.stderr)
         return 64
-    port = free_port(env, int(argv[2]))
+    port = free_port(pinned, int(rest[1]))
     if port is None:
         print(f"no free local port in {PORT_LOW}-{PORT_HIGH - 1} for the prod tunnel", file=sys.stderr)
         return 1
     if argv[0] == "free-port":
         print(port)
-    elif len(argv) == 4:
-        print(tunnel_uri(argv[3], port))
+    elif len(rest) == 3:
+        print(tunnel_uri(rest[2], port))
     else:
-        print("usage: prod_tunnel.py uri --pid N <prod uri>", file=sys.stderr)
+        print("usage: prod_tunnel.py uri --pid N [--pin PORT] <prod uri>", file=sys.stderr)
         return 64
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:], os.environ))
+    sys.exit(main(sys.argv[1:]))

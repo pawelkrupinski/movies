@@ -78,11 +78,16 @@ def backoff_next(seconds: int, cap: int = 300) -> int:
 
 class Dispatcher:
     def __init__(self, gh: GhCalls, settings: Settings, clock: Callable[[], float] = time.monotonic,
-                 sleep: Callable[[float], None] = time.sleep) -> None:
+                 sleep: Callable[[float], None] = time.sleep, wall: Callable[[], float] = time.time) -> None:
         self.gh = gh
         self.settings = settings
         self.clock = clock
         self.sleep = sleep
+        self.wall = wall
+
+    def utc_stamp(self) -> str:
+        """The wall time as the `since` of `find_run` (GitHub's createdAt shape)."""
+        return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(self.wall()))
 
     def _read(self, args: Sequence[str]) -> Optional[str]:
         done = self.gh.call(args, self.settings.gh_timeout, quiet=True)
@@ -120,7 +125,7 @@ class Dispatcher:
             return None
         remaining, reset = int(parts[0]), int(parts[1])
         wait = self.settings.rate_limit_secondary if remaining > 0 else \
-            max(reset - int(time.time()) + self.settings.rate_limit_pad, 0)
+            max(reset - int(self.wall()) + self.settings.rate_limit_pad, 0)
         return wait if wait <= self.settings.rate_limit_max_wait else None
 
     def find_run(self, workflow: str, since: str, predicate: str, args: Sequence[str] = ()) -> Optional[str]:

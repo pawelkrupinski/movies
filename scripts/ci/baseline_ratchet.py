@@ -23,7 +23,8 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Set, Tuple, TypeVar
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # trailers.py beside it, under `python3 -I` too
-import trailers  # noqa: E402
+import trailers  # noqa: E402  (puts scripts/lib on the path)
+import tool_git  # noqa: E402
 
 Rows = Dict[Tuple[str, str], float]
 Rows1 = Dict[str, float]
@@ -63,20 +64,16 @@ class Renames:
         return self.known[path]
 
     @staticmethod
-    def git(*args: str) -> str:
-        return subprocess.run(["git", *args], capture_output=True, text=True, check=False).stdout
-
-    @classmethod
-    def trace(cls, path: str) -> Optional[str]:
+    def trace(path: str) -> Optional[str]:
         seen: Set[str] = set()
         while not os.path.exists(path):
             if path in seen:
                 return None
             seen.add(path)
-            deleted = cls.git("log", "-1", "--no-renames", "--diff-filter=D", "--format=%H", "--", path).strip()
+            deleted = tool_git.Git.here().text("log", "-1", "--no-renames", "--diff-filter=D", "--format=%H", "--", path).strip()
             if not deleted:
                 return None
-            fields = cls.git("diff", "-M", "--name-status", "-z", f"{deleted}^", deleted).split("\0")
+            fields = tool_git.Git.here().text("diff", "-M", "--name-status", "-z", f"{deleted}^", deleted).split("\0")
             renames: Dict[str, str] = {fields[i + 1]: fields[i + 2] for i in range(len(fields) - 2) if fields[i].startswith("R")}
             if path not in renames:
                 return None

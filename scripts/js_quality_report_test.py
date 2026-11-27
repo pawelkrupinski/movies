@@ -379,7 +379,7 @@ class EndToEndTest(cli_harness.ToolCase):
         # same-named one #2
         self.assertEqual("app/core/c.js:long\t57;app/feature/twins.js:twin\t57;app/feature/twins.js:twin#2\t57;",
                          re.sub(r"app.feature.twins.js:(one|two)\t[0-9]+;", "", self.row("method-lines")))
-        self.assertEqual("clone-tokens\t50;cognitive\t10;copies\t0;cycle\t0;cyclomatic\t10;distance\t0.2;fanout\t9;"
+        self.assertEqual("clone-tokens\t50;cognitive\t10;copies\t0;cycle\t0;cyclomatic\t10;"
                          "file-lines\t500;inner-defs\t2;method-lines\t50;", self.row("limit"))  # each limit a row
         self.assertEqual("app/core/big.js\t600;", self.row("file-lines"))
         # the one clone group (its files joined by |, its copies), the files importing alike none

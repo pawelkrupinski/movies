@@ -59,6 +59,18 @@ def refusals(*errors: str) -> Answer:
     return answer
 
 
+class UtcStampTest(unittest.TestCase):
+    def test_the_since_of_a_dispatch_is_the_injected_wall_clock_in_githubs_shape(self) -> None:
+        gh = FakeGh(refusals())
+        d = tool_dispatch.Dispatcher(gh, tool_dispatch.Settings(), wall=lambda: 1_700_000_000)
+        self.assertEqual("2023-11-14T22:13:20Z", d.utc_stamp())
+
+    def test_the_rate_limit_wait_reads_the_same_wall_clock(self) -> None:
+        d = tool_dispatch.Dispatcher(FakeGh(lambda args: (0, "0 1000100\n", "")), tool_dispatch.Settings(rate_limit_pad=5),
+                                     lambda: 0.0, lambda _s: None, wall=lambda: 1_000_000)
+        self.assertEqual(105, d._rate_limit_wait())
+
+
 class DispatchTest(unittest.TestCase):
     def test_a_5xx_is_asked_again_after_the_pause(self) -> None:
         d, gh, clock = dispatcher(refusals("HTTP 502: Bad Gateway\n"), retry=7)

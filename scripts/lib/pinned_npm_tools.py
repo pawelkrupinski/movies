@@ -11,10 +11,11 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 from typing import Mapping, Sequence
+
+import tool_process
 
 
 class NpmFailed(Exception):
@@ -31,19 +32,20 @@ def cache_root(env: Mapping[str, str]) -> str:
         env.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache"), "kinowo")
 
 
-def npm_ci(sources: str, manifests: Sequence[str], installed: str, *, capture: bool) -> None:
+def npm_ci(sources: str, manifests: Sequence[str], installed: str, *, capture: bool, runner: tool_process.Runner,
+           env: Mapping[str, str]) -> None:
     """`npm ci` of `sources`' `manifests` into a directory beside `installed`, renamed into place. `capture`: npm's
-    output kept for NpmFailed; otherwise all of it goes to this process's stderr, as it runs."""
+    output kept for NpmFailed; otherwise all of it goes to this process's stderr, as it runs. The `runner` runs npm, in
+    `env` (the caller's composition root hands both)."""
     os.makedirs(os.path.dirname(installed), exist_ok=True)
     build = tempfile.mkdtemp(prefix=os.path.basename(installed) + ".build.", dir=os.path.dirname(installed))
     try:
         for name in manifests:
             shutil.copy(os.path.join(sources, name), build)
         sys.stderr.flush()
-        done = subprocess.run(["npm", "ci", "--no-audit", "--no-fund", "--silent"], cwd=build,
-                              stdout=subprocess.DEVNULL if capture else sys.stderr.fileno(),
-                              stderr=subprocess.PIPE if capture else None, text=True)
-        if done.returncode != 0:
+        done = runner.capture(tool_process.Command(["npm", "ci", "--no-audit", "--no-fund", "--silent"], env, cwd=build,
+                                                   stderr_through=not capture))
+        if done.code != 0:
             raise NpmFailed(build, (done.stderr or "").strip()[-400:])
         try:
             os.rename(build, installed)

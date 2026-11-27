@@ -16,6 +16,7 @@ from typing import Any, Dict, Mapping, Sequence
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
 import pinned_npm_tools  # noqa: E402
+import tool_process  # noqa: E402
 
 MANIFESTS = ("package.json", "package-lock.json")
 
@@ -37,12 +38,12 @@ def entry(installed: str) -> str:
     return os.path.join(installed, "node_modules", "pyright", "index.js")
 
 
-def install(installed: str) -> None:
+def install(installed: str, env: Mapping[str, str]) -> None:
     """`npm ci` into a directory beside `installed`, renamed into place: two installs at once each finish, one wins."""
     if shutil.which("npm") is None:
         raise ToolMissing("npm is not installed (needed once, to install pyright): brew install node")
     try:
-        pinned_npm_tools.npm_ci(HERE, MANIFESTS, installed, capture=True)
+        pinned_npm_tools.npm_ci(HERE, MANIFESTS, installed, capture=True, runner=tool_process.SubprocessRunner(), env=env)
     except pinned_npm_tools.NpmFailed as e:
         raise ToolMissing(f"npm ci of pyright failed in {e.build}: {e.said}") from None
     if not os.path.isfile(entry(installed)):
@@ -54,7 +55,7 @@ def ensure(env: Mapping[str, str]) -> str:
         raise ToolMissing("node is not installed (pyright runs on it): brew install node")
     installed = tools_dir(env)
     if not os.path.isfile(entry(installed)):
-        install(installed)
+        install(installed, env)
     return entry(installed)
 
 

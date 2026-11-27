@@ -37,7 +37,7 @@ from typing import Dict, List, Mapping, Optional
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import identity_dispatch  # noqa: E402
-import tool_ci_wait  # noqa: E402
+import ci_wait  # noqa: E402
 import tool_cli  # noqa: E402
 import tool_dispatch  # noqa: E402
 import tool_git  # noqa: E402
@@ -142,7 +142,7 @@ class CiRun:
             print(run)
             return 0
         minutes = int(self.env.get("IDENTITY_CI_RUN_TIMEOUT_MINUTES") or 660)
-        conclusion = tool_ci_wait.wait_for_run(run, minutes * 60,
+        conclusion = ci_wait.wait_for_run(run, minutes * 60,
                                                int(self.env.get("IDENTITY_CI_RUN_POLL") or 30))
         if conclusion is None:
             raise Die(f"run {run} gave no conclusion in time")

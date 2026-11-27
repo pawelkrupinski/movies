@@ -40,19 +40,25 @@ def bound_seconds(command: str) -> int:
     return int(found.group(1)) if found else DEFAULT_BOUND_SECONDS
 
 
+def run_rows(ps: Ps) -> List[Tuple[int, str]]:
+    """(pid, command) of every process `ps` lists."""
+    rows = [line.split(None, 1) for line in (ps(["-axo", "pid=,command="]) or "").splitlines() if line.strip()]
+    return [(int(row[0]), row[1]) for row in rows if len(row) > 1 and row[0].isdigit()]
+
+
+def matching_runs(patterns: Sequence[str], ps: Ps) -> List[int]:
+    """The pids of the governed tools' runs a pkill / killall pattern would match."""
+    matched = [t for t in GOVERNED_TOOLS if any(t in w or w in t for w in patterns)]
+    return [pid for pid, command in run_rows(ps) if any(t in command for t in matched)] if matched else []
+
+
 def killed_pids(words: Sequence[str], ps: Ps) -> List[int]:
     """The pids a kill command names: `kill [-SIG] pid...`; for pkill / killall, the pids of the governed tools' runs
     its pattern would match."""
-    name = words[0].rsplit("/", 1)[-1]
-    rest = [w for w in words[1:] if not w.startswith("-")]
-    if name == "kill":
-        return [int(w) for w in rest if w.isdigit()]
-    matched = [t for t in GOVERNED_TOOLS if any(t in w or w in t for w in rest)]
-    if not matched:
-        return []
-    listing = ps(["-axo", "pid=,command="]) or ""
-    return [int(line.split(None, 1)[0]) for line in listing.splitlines()
-            if line.strip() and any(t in line for t in matched) and line.split(None, 1)[0].isdigit()]
+    operands = [w for w in words[1:] if not w.startswith("-")]
+    if words[0].rsplit("/", 1)[-1] == "kill":
+        return [int(w) for w in operands if w.isdigit()]
+    return matching_runs(operands, ps)
 
 
 def protected(pid: int, ps: Ps, listed: Sequence[int]) -> Optional[Tuple[str, int, int]]:

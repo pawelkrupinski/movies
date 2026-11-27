@@ -100,6 +100,8 @@ adapter	js	infra/version-dashboard/src/host/system.ts	clock env
 adapter	js	infra/version-dashboard/src/shared/exec.ts	process
 adapter	js	infra/version-dashboard/src/mobile/release-run.ts	process
 adapter	js	infra/version-dashboard/src/mobile-release/android-signed.ts	process
+adapter	py	scripts/lib/hook_event.py	clock
+adapter	py	scripts/claude-hooks/governed-kill-guard	env
 #
 # Distance D: where abstractions exist (the owner, 2026-11-26): the Python library packages and the TypeScript
 # dashboard. Plain browser JS (web/src/main/assets/js) has none, so D measures nothing there: cycles and layers hold it.

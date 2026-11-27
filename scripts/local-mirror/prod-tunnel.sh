@@ -85,14 +85,14 @@ init_prod_tunnel() {
 # Idempotent, so an exported URI that is already in tunnel form passes through.
 #
 #   prod_tunnel_uri <uri>   — prints the rewritten URI
-prod_tunnel_uri() { python3 -B "$PROD_TUNNEL_PY" uri --pid $$ "$1"; }
+prod_tunnel_uri() { python3 -B "$PROD_TUNNEL_PY" uri --pid $$ ${PROD_TUNNEL_PORT:+--pin "$PROD_TUNNEL_PORT"} "$1"; }
 
 # The local port this caller's tunnel binds: $PROD_TUNNEL_PORT when set, else the first port from a pid-derived start
 # (27100-27899) that nothing accepts on. $$ is the caller's pid even inside $(...), so the URI built before the tunnel
 # opens and the tunnel opened later pick the same port. Fails (nothing printed) when 200 in a row are taken. The
 # rewrite and the scan are scripts/lib/prod_tunnel.py's, the Python tools' too: written once.
 PROD_TUNNEL_PY="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/prod_tunnel.py"
-prod_tunnel_free_port() { python3 -B "$PROD_TUNNEL_PY" free-port --pid $$; }
+prod_tunnel_free_port() { python3 -B "$PROD_TUNNEL_PY" free-port --pid $$ ${PROD_TUNNEL_PORT:+--pin "$PROD_TUNNEL_PORT"}; }
 
 # The port of THIS caller's tunnel: the pinned one, else the one its probe URI already names (so the forward is the
 # one the URI the caller hands its command points at), else a free one.

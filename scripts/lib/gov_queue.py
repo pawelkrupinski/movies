@@ -11,7 +11,7 @@ from __future__ import annotations
 import contextlib
 import re
 import threading
-from typing import Callable, Iterator, List, Optional, Tuple
+from typing import Callable, Generator, List, Optional, Tuple
 
 WAITER = re.compile(r"^\s*WAITING\s+(\S+)\s.*\bpid\s+(\d+)\s*$")
 ADMITTED = re.compile(r"^governor:\s*(\d+) admitted,.*?([\d.]+/\d+) cores charged")
@@ -76,7 +76,7 @@ class QueueReport:
 
 @contextlib.contextmanager
 def reporting(tool: str, run: Output, pid: int, governor_class: str, say: Callable[[str], None],
-              interval: float) -> Iterator[QueueReport]:
+              interval: float) -> Generator[QueueReport, None, None]:
     """While the body waits for its ticket, the queue line is said every `interval` seconds when it changes."""
     report = QueueReport(tool, run, pid, governor_class, say, interval)
     thread = threading.Thread(target=report.watch, daemon=True)

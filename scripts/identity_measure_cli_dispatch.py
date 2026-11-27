@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import List, Optional, Tuple
 
 import identity_dispatch
-import tool_ci_wait
+import ci_wait
 import tool_dispatch
 from identity_measure_cli_collect import Collector
 from identity_measure_cli_context import IDENTITY_TOOLS, Context, Die, Exit, say
@@ -160,7 +160,7 @@ class Dispatch:
         c, s = self.c, self.c.state
         if not s.convergence_run or verdict > 1:
             return verdict
-        conclusion: Optional[str] = tool_ci_wait.wait_for_run(s.convergence_run,
+        conclusion: Optional[str] = ci_wait.wait_for_run(s.convergence_run,
                                                               int(max(deadline - c.clock(), 0)), c.poll)
         if conclusion is None:
             self.waiter.timed_out(s.convergence_run)

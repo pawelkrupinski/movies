@@ -17,7 +17,7 @@ ROOT = os.path.dirname(HERE)
 TOOLING = ["scripts/identity-measure", "scripts/identity_measure.py", "scripts/identity-tools.sh",
            "scripts/tool-conventions.sh", "scripts/ci/identity_takes.py", "scripts/ci/identity_takes_diff.py",
            "scripts/lib/tool_process.py", "scripts/lib/tool_github.py", "scripts/lib/tool_git.py",
-           "scripts/lib/tool_dispatch.py", "scripts/lib/identity_dispatch.py", "scripts/lib/tool_ci_wait.py",
+           "scripts/lib/tool_dispatch.py", "scripts/lib/identity_dispatch.py", "scripts/ci_wait.py",
            "scripts/lib/tool_shell.py", "scripts/ci/dispatch-takes.sh", ".github/workflows/identity-takes.yml",
            ".github/workflows/identity-model-convergence.yml", ".github/workflows/country-convergence-leg.yml"]
 TOOLING_GLOBS = ["scripts/identity_measure_cli*.py", "scripts/ci/identity_takes_check*.py"]

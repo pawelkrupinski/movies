@@ -20,7 +20,6 @@ import os
 import re
 import sys
 import tempfile
-import time
 from typing import Mapping, Optional, Sequence
 
 import tool_dispatch
@@ -81,7 +80,7 @@ class MeasureCi:
         return None if done.code == 0 else done.stdout.strip()
 
     def dispatch(self, workflow: str, branch: str, push: str, purpose: str, args: Sequence[str]) -> str:
-        since = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        since = self.dispatcher.utc_stamp()
         if not self.dispatcher.dispatch(workflow, branch, args):
             raise DispatchFailed(f"could not dispatch {workflow} on {branch}")
         run = self.dispatcher.find_run(workflow, since, f'.headSha == "{push}"', ["--branch", branch])

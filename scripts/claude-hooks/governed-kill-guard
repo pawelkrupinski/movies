@@ -10,31 +10,33 @@ scripts/lib/governed_kill.py's; run-script-tests says its queue position while i
 It reads the command, not the shell; a broken guard never blocks (exit 0), and neither does a machine with no governor.
 Self-test: scripts/lib/governed_kill_test.py."""
 import os
-import subprocess
 import sys
+from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
 import governed_kill  # noqa: E402
 import hook_event  # noqa: E402
 import shell_words  # noqa: E402
+import tool_process  # noqa: E402
 
 
-def ps(args):
-    done = subprocess.run(["ps", *args], capture_output=True, text=True, timeout=10)
-    return done.stdout if done.returncode == 0 else None
+def ps(runner: tool_process.Runner, env: Mapping[str, str], args: Sequence[str]) -> Optional[str]:
+    done = runner.capture(tool_process.Command(["ps", *args], env, timeout=10))
+    return done.stdout if done.code == 0 else None
 
 
-def governor_status():
-    agentctl = os.environ.get("KINOWO_GOVERNOR_BIN") or os.path.expanduser("~/bin/agentctl")
+def governor_status(runner: tool_process.Runner, env: Mapping[str, str]) -> str:
+    agentctl = env.get("KINOWO_GOVERNOR_BIN") or os.path.expanduser("~/bin/agentctl")
     if not os.access(agentctl, os.X_OK):
         return ""
-    done = subprocess.run([agentctl, "gov", "status"], capture_output=True, text=True, timeout=10)
-    return done.stdout if done.returncode == 0 else ""
+    done = runner.capture(tool_process.Command([agentctl, "gov", "status"], env, timeout=10))
+    return done.stdout if done.code == 0 else ""
 
 
-def commands(words):
+def commands(words: Sequence[str]) -> List[List[str]]:
     """The simple commands of a tokenized command line, as lists of words."""
-    out, current = [], []
+    out: List[List[str]] = []
+    current: List[str] = []
     for word in words:
         if shell_words.is_punctuation(word):
             out.append(current)
@@ -44,12 +46,15 @@ def commands(words):
     return out + [current]
 
 
-def main():
+def main() -> int:
     try:
-        command = hook_event.read_event().get("tool_input", {}).get("command", "")
+        tool_input: Any = hook_event.read_event().get("tool_input")
+        command: Any = cast(Dict[str, Any], tool_input).get("command") if isinstance(tool_input, dict) else ""
         if not isinstance(command, str) or not any(k in command for k in governed_kill.KILLERS):
             return 0
-        reason = governed_kill.refusal(commands(shell_words.command_words(command)), ps, governor_status())
+        runner, env = tool_process.SubprocessRunner(), os.environ
+        reason = governed_kill.refusal(commands(shell_words.command_words(command)),
+                                       lambda args: ps(runner, env, args), governor_status(runner, env))
     except Exception:  # a broken guard must not wedge every session
         return 0
     if reason:

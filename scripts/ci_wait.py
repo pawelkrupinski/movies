@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Waiting on GitHub Actions runs, bounded: the logic behind scripts/ci-wait (its header has the usage); tests:
-scripts/ci_wait_test.py. The one implementation: scripts/lib/tool_ci_wait.py's wait_for_run reads the same polls in
-process for the Python tools.
+scripts/ci_wait_test.py. The one implementation: `wait_for_run` reads the same polls in process for the Python tools
+(identity-ci-run, identity-measure), which used to run ci-wait as a second process and parse its line back.
 
 A TARGET is one thing waited for -- a run (`--run`), a workflow's run for a commit (`--workflow --sha`), or a
 workflow's newest verdict (`--workflow --any-completed`) -- and every poll reads each unresolved target once. A read
@@ -27,7 +27,7 @@ import re
 import subprocess
 import sys
 import time
-from typing import Callable
+from typing import Any, Callable
 
 GH = os.environ.get("KINOWO_GH") or "gh"
 
@@ -332,6 +332,22 @@ def wait(targets: list, github: GitHub, clock: Clock, timeout_s: float, interval
             out("\t".join([str(own.id) if own else "-", own.sha if own else (t.sha or "-"),
                              ended, t.workflow or t.label(), t.state]).rstrip("\t"))
     return exit_status(targets)
+
+
+def wait_for_run(run: str, timeout: int, poll: int, gh: Any = None, clock: Any = None) -> str | None:
+    """A dispatched run waited on, bounded and polled as given (never followed past a cancellation): its conclusion
+    (success, failure, cancelled...), or None when it gave none within `timeout` seconds or could not be read (said).
+    A deadline already past still reads the run once; a null or partial answer from gh is asked again."""
+    timeout = max(timeout, 0)
+    github = GitHub(gh or gh_runner(float(os.environ.get("CI_WAIT_GH_TIMEOUT", "60"))))
+    lines: list[str] = []
+    status = wait([Target(run_id=int(run), follow=False)], github, clock or Clock(), timeout, poll,
+                  int(os.environ.get("CI_WAIT_MAX_MISSES", "10")), out=lines.append)
+    if status in (EXIT_SUCCESS, EXIT_FAILURE, EXIT_CANCELLED):
+        fields = lines[0].split("\t")
+        return fields[2] if len(fields) > 2 else ""
+    print(f"dispatch: run {run} gave no conclusion within {timeout}s (or could not be read)", file=sys.stderr)
+    return None
 
 
 def duration(text: str, unit: str) -> float:

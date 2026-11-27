@@ -49,8 +49,9 @@ class CommandLineTest(unittest.TestCase):
 
     def run_main(self, argv: list, env: dict) -> tuple:
         out, err = io.StringIO(), io.StringIO()
+        pin = ["--pin", env["PROD_TUNNEL_PORT"]] if "PROD_TUNNEL_PORT" in env else []
         with redirect_stdout(out), redirect_stderr(err):
-            code = prod_tunnel.main(argv, env)
+            code = prod_tunnel.main(argv[:1] + pin + argv[1:])
         return code, out.getvalue(), err.getvalue()
 
     def test_uri_names_the_pinned_port_and_keeps_the_rest(self) -> None:
