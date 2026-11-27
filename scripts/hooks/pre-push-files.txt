@@ -17,6 +17,9 @@ scripts/lib/pre_push_tree.py
 scripts/lib/pre_push_gate.py
 scripts/lib/pre_push_light.py
 scripts/lib/pre_push_scripttests.py
+scripts/lib/pre_push_area.py
+scripts/lib/pre_push_sbt.py
+scripts/lib/pre_push_heavy.py
 scripts/lib/pre_push_registry.py
 scripts/lib/tool_python.py
 scripts/lib/tool_bounded.py

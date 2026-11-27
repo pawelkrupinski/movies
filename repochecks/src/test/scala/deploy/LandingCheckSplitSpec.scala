@@ -101,7 +101,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     identity should include("shard: [1, 2, 3, 4]")
     identity should include("PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/4")
     identity should include("name: check (identity ${{ matrix.shard }}/4)")
-    RepoFile.read("scripts/hooks/pre-push") should include("scripts/ci/shard_tests.py --shard \"$PREPUSH_IDENTITY_SHARD\"")
+    RepoFile.read("scripts/lib/pre_push_area.py") should include(""""scripts/ci/shard_tests.py", "--shard", shard""")
   }
 
   /** 8 of Main's 14 code reds in the five days to 2026-10-30 were in integration-test or e2e rows nothing ran before the
@@ -118,14 +118,14 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     rest should include("|| 'ubuntu-22.04' }}")
     rest should include("PREPUSH_HEAVY_MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true")
     rest.linesIterator.map(_.trim).filter(_.startsWith("MONGODB_URI:")).toSeq shouldBe empty
-    RepoFile.read("scripts/hooks/pre-push") should include("""local uri="${PREPUSH_HEAVY_MONGODB_URI:-${MONGODB_URI:-}}"""")
+    RepoFile.read("scripts/lib/pre_push_heavy.py") should include("""return split_value(c, "PREPUSH_HEAVY_MONGODB_URI") or c.repo.env.get("MONGODB_URI", "")""")
   }
 
   "the heavy rows" should "run Main's own commands" in {
-    val hook = RepoFile.read("scripts/hooks/pre-push")
-    hook should include("    heavy_row itrest itAll IT_ROW=rest\n}")
-    hook should include("check_itidentity() { heavy_row itidentity itAll IT_ROW=identity; }")
-    hook should include("check_e2ecorpus() { heavy_row e2ecorpus e2eCorpus; }")
+    val rows = RepoFile.read("scripts/lib/pre_push_heavy.py")
+    rows should include("""return heavy_row(c, "itrest", "itAll", "IT_ROW=rest")""")
+    rows should include("""return heavy_row(c, "itidentity", "itAll", "IT_ROW=identity")""")
+    rows should include("""return heavy_row(c, "e2ecorpus", "e2eCorpus")""")
     val ci = RepoFile.read(".github/workflows/ci.yml")
     ci should include("run: sbt itAll")
     ci should include("cmd: e2eRest")
