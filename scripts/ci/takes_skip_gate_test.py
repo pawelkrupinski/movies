@@ -127,6 +127,25 @@ class Shared:
         return path
 
 
+# THE GATE ENDED AS IT STARTS ITS PROOF: runs the gate (argv[1], its arguments after) with subprocess.Popen wrapped, so
+# that spawning the proof (argv[0] == $ENDED_AT) records the proof's pid in $ENDED_PIDS and TERMs the gate at once --
+# before the gate has the process in hand. The window a loaded runner hit (Tool self-tests #632), made certain.
+ENDED_AS_IT_STARTS = r"""
+import os, runpy, signal, subprocess, sys
+spawn = subprocess.Popen
+def spawn_then_ended(args, *rest, **kwargs):
+    proc = spawn(args, *rest, **kwargs)
+    if list(args)[:1] == [os.environ["ENDED_AT"]]:
+        with open(os.environ["ENDED_PIDS"], "a") as f:
+            f.write(f"{proc.pid}\n")
+        os.kill(os.getpid(), signal.SIGTERM)
+    return proc
+subprocess.Popen = spawn_then_ended
+sys.argv = sys.argv[1:]
+runpy.run_path(sys.argv[0], run_name="__main__")
+"""
+
+
 class TakesSkipGateTest(cli_harness.ToolCase):
     TOOL = TOOL
     shared: Shared
@@ -286,6 +305,16 @@ class TakesSkipGateTest(cli_harness.ToolCase):
             gate.kill()
             gate.wait()
         self.assertEqual(0, cli_harness.still_running(self.hung))
+
+    def test_a_gate_ended_as_it_starts_its_proof_ends_its_proof_too(self) -> None:
+        s, pids = self.shared, self.path("ended-pids")
+        gate = subprocess.run([sys.executable, "-c", ENDED_AS_IT_STARTS, self.TOOL, s.base, s.commits["rules"], s.trace,
+                               "--", s.proof], cwd=s.repo, timeout=60, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                              env=self.env({"TAKES_SKIP_MODE": "shadow", "STUB_PROOF": "hang", "PROOF_LOG": self.proof_log,
+                                            "PROOF_HUNG": self.hung, "ENDED_AT": s.proof, "ENDED_PIDS": pids}))
+        self.assertNotEqual(0, gate.returncode)
+        self.assertTrue(os.path.getsize(pids) > 0)
+        self.assertEqual(0, cli_harness.still_running(pids))
 
     def test_a_proof_command_that_does_not_exist_is_run(self) -> None:
         s = self.shared

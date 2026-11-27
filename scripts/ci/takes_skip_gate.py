@@ -120,7 +120,21 @@ def trace_readings(trace: str) -> None:
 
 def proof_exit(command: Sequence[str], out: str, timeout: float) -> int:
     """The proof's exit, its output (both streams) in `out`. It runs in a process group of its own, ended past
-    `timeout` (124) and when the gate itself is ended (INT, TERM): a caller's bound strands no proof."""
+    `timeout` (124) and when the gate itself is ended (INT, TERM): a caller's bound strands no proof. The handlers are
+    in place BEFORE the proof is spawned -- an end arriving while Popen returns is held and acted on once the process
+    is in hand (Tool self-tests #632: a TERM in that window killed the gate and left its proof running)."""
+    held: List[int] = []
+    started: List[subprocess.Popen[bytes]] = []
+
+    def end(signum: int, _frame: object) -> None:
+        if not started:
+            held.append(signum)
+            return
+        end_group(started[0])
+        sys.exit(128 + signum)
+
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(signum, end)
     with open(out, "w") as sink:
         try:
             proc = subprocess.Popen(list(command), stdout=sink, stderr=subprocess.STDOUT, start_new_session=True)
@@ -128,13 +142,9 @@ def proof_exit(command: Sequence[str], out: str, timeout: float) -> int:
             return 126
         except OSError:
             return 127
-
-        def end(signum: int, _frame: object) -> NoReturn:
-            end_group(proc)
-            sys.exit(128 + signum)
-
-        for signum in (signal.SIGINT, signal.SIGTERM):
-            signal.signal(signum, end)
+        started.append(proc)
+        if held:
+            end(held[0], None)
         try:
             return proc.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
