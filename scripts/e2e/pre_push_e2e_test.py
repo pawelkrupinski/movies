@@ -70,6 +70,8 @@ class PrePushE2ETest(e2e_world.Scenario):
         self.assertRegex(done.output, r"PASS +[0-9]+s +scripts/probe_adder_test\.py|[0-9]+ passed")
         self.assertEqual(head, self.repo.main())
         self.assertTrue(self.w.calls("agentctl"), "the hook never asked agentctl's prepush-check")
+        self.assertNotIn("UNREAD", done.output, "the red gate could not read the stub GitHub")
+        self.assertTrue([c for c in self.w.calls("gh") if c["argv"][:2] == ["run", "list"]], "the red gate never asked")
 
     def test_a_pure_move_claim_is_checked(self) -> None:
         self.w.write(self.clone, "web/src/main/scala/e2eprobe/E2eProbe.scala", SCALA.format(package="e2eprobe", answer=1))

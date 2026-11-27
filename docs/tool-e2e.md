@@ -28,6 +28,11 @@ Each scenario gets one `World`, which is one temp root that is removed at the en
   - a fixed, unsigned git identity;
   - the governor and the JVM gate are off inside. The scenario itself runs under run-script-tests' ticket.
 
+The harness's own effects go through the library's seams: processes through `cli_harness.run_bounded`, the
+environment through `machine`, files through `tool_files`, and the gh shim's HTTP through `tool_http`. The one
+exception is making and removing the temp root (one `test/resources/design-exemptions.tsv` row). `scripts/e2e` has
+its own layer row (rank 2, over the library).
+
 Every step is bounded (`TOOLS_E2E_STEP_BOUND`, default 240 s). Past the bound, the step's process group is killed
 and the step fails. A scenario never runs inside another scenario's world (`TOOLS_E2E_INSIDE`). Otherwise the
 pre-push scenario's own run-script-tests would push a clone of a clone.

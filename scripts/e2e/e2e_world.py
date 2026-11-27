@@ -15,7 +15,9 @@ ONE temp root per scenario (`World`, removed at its end) holds every piece:
 - the isolation of cli_harness.isolated_env: no GIT_*, GITHUB_*, AGENTCTL_* or PREPUSH_* of the run around it, a fixed
   git identity, unsigned commits, the governor and the JVM gate off inside (the scenario itself runs under
   run-script-tests' ticket, one core of it).
-Every step is bounded (STEP_BOUND): its whole process group is ended past it and the step fails, never hangs.
+Every step is bounded (step_bound(), $TOOLS_E2E_STEP_BOUND or 240 s): its whole process group is ended past it and the
+step fails, never hangs. Its effects go through the library's seams -- processes through cli_harness.run_bounded, the
+environment through machine, files through tool_files -- but for making and removing the temp root itself.
 
 THE MUTATION PROOF (scripts/e2e/mutations): with $E2E_MUTATION set ({"file", "old", "new"}: one exact replacement,
 which must match once), every tool a scenario runs comes from a copy of the tool trees with it applied -- `tool()`,
@@ -25,8 +27,6 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import signal
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -37,8 +37,9 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(ROOT, "scripts", "lib"))
 sys.path.insert(0, HERE)
 import cli_harness  # noqa: E402
+import machine  # noqa: E402
+import tool_files  # noqa: E402
 
-STEP_BOUND = float(os.environ.get("TOOLS_E2E_STEP_BOUND") or 240)
 # The trees a tool runs from: what a mutation's copy holds, and what movies_clone lays over its checkout
 TOOL_TREES = ("scripts", "infra/bin", ".github/scripts", ".github/actions", "docs/tools.md")
 # Left out of movies_clone's checkout: ~1.1 GB of recordings no tool under test reads
@@ -70,38 +71,46 @@ class StepFailed(AssertionError):
     """A step that could not be made (a setup git command, a step past its bound)."""
 
 
+def step_bound() -> float:
+    return float(machine.environment().get("TOOLS_E2E_STEP_BOUND") or 240)
+
+
 def mutation() -> Optional[Dict[str, str]]:
-    raw = os.environ.get("E2E_MUTATION")
+    raw = machine.environment().get("E2E_MUTATION")
     return json.loads(raw) if raw else None
 
 
-def mutate(tree: str, m: Mapping[str, str]) -> None:
+def mutate(files: tool_files.Files, tree: str, m: Mapping[str, str]) -> None:
     path = os.path.join(tree, m["file"])
-    with open(path) as f:
-        text = f.read()
+    text = files.read_text(path)
     if text.count(m["old"]) != 1:
         raise StepFailed(f"the mutation of {m['file']} matches {text.count(m['old'])} times, not once "
                          "(scripts/e2e/mutations is stale)")
-    with open(path, "w") as f:
-        f.write(text.replace(m["old"], m["new"]))
+    files.replace_text(path, text.replace(m["old"], m["new"]), mode_of(path))
 
 
-def working_files(source: str, prefixes: Sequence[str]) -> List[str]:
+def mode_of(path: str) -> int:
+    return 0o755 if os.access(path, os.X_OK) else 0o644
+
+
+def working_files(files: tool_files.Files, source: str, prefixes: Sequence[str]) -> List[str]:
     """The files of `prefixes` in `source`'s working tree, tracked or new (ignored ones left out)."""
-    done = subprocess.run(["git", "-C", source, "ls-files", "-co", "--exclude-standard", "-z", "--", *prefixes],
-                          capture_output=True, text=True, check=True, env=cli_harness.isolated_env(os.environ))
-    return sorted(p for p in set(done.stdout.split("\0")) if p and os.path.isfile(os.path.join(source, p)))
+    done = cli_harness.run_bounded(["git", "-C", source, "ls-files", "-co", "--exclude-standard", "-z", "--", *prefixes],
+                                   env=cli_harness.isolated_env(machine.environment()), cwd=source, stdin=None, bound=120)
+    if done.code != 0:
+        raise StepFailed(f"git ls-files in {source}: {done.output}")
+    return sorted(p for p in set(done.stdout.split("\0")) if p and files.is_file(os.path.join(source, p)))
 
 
-def read(path: str) -> str:
-    with open(path) as f:
-        return f.read()
+def copy_file(files: tool_files.Files, source: str, target: str) -> None:
+    """`source`'s bytes at `target` (its directory made), executable when `source` is."""
+    files.disk.make_directories(os.path.dirname(target))
+    files.disk.replace(target, files.disk.read(source), mode_of(source))
 
 
-def copy_files(source: str, target: str, files: Sequence[str]) -> None:
-    for rel in files:
-        os.makedirs(os.path.dirname(os.path.join(target, rel)), exist_ok=True)
-        shutil.copy2(os.path.join(source, rel), os.path.join(target, rel))
+def copy_files(files: tool_files.Files, source: str, target: str, paths: Sequence[str]) -> None:
+    for rel in paths:
+        copy_file(files, os.path.join(source, rel), os.path.join(target, rel))
 
 
 class World:
@@ -109,21 +118,24 @@ class World:
     GitHub and removes the root."""
 
     def __init__(self) -> None:
+        self.files = tool_files.Files(tool_files.LocalDisk(), "/")  # every path here is absolute
         self.root = os.path.realpath(tempfile.mkdtemp(prefix="tools-e2e-"))
         self.home, self.bin, self.tmp = (os.path.join(self.root, d) for d in ("home", "bin", "tmp"))
         for d in (self.home, self.bin, self.tmp, os.path.join(self.home, "bin")):
-            os.makedirs(d, exist_ok=True)
+            self.files.disk.make_directories(d)
         self.calls_file = os.path.join(self.root, "calls.jsonl")
-        open(self.calls_file, "w").close()
+        self.files.write_text(self.calls_file, "")
         self._tools: Optional[str] = None
         self.gh = None
         self._gh_server = None
         self.gh_url = ""
-        shutil.copy2(os.path.join(HERE, "gh_shim.py"), os.path.join(self.bin, "gh"))
+        # the shim itself stays beside the library it imports; `gh` on PATH only runs it
+        self.files.replace_text(os.path.join(self.bin, "gh"), f'#!/bin/sh\nexec "{sys.executable}" -B '
+                                f'"{os.path.join(HERE, "gh_shim.py")}" "$@"\n', 0o755)
         for name in ("ssh", "nix", "kubectl", "sbt", "sbt-warm", "docker"):
             self.shim(name, REFUSING_SHIM)
         self.shim("agentctl", AGENTCTL_SHIM)
-        shutil.copy2(os.path.join(self.bin, "agentctl"), os.path.join(self.home, "bin", "agentctl"))
+        copy_file(self.files, os.path.join(self.bin, "agentctl"), os.path.join(self.home, "bin", "agentctl"))
 
     def close(self) -> None:
         if self._gh_server is not None:
@@ -143,15 +155,14 @@ class World:
     def shim(self, name: str, body: str) -> str:
         """A shim `name` first on PATH: Python, with NAME, argv, stdin, out(), err() in scope; every call logged."""
         path = os.path.join(self.bin, name)
-        with open(path, "w") as f:
-            f.write(SHIM_PRELUDE.format(python=sys.executable, name=name) + body + "\n")
-        os.chmod(path, 0o755)
+        self.files.replace_text(path, SHIM_PRELUDE.format(python=sys.executable, name=name) + body + "\n", 0o755)
         return path
 
     def calls(self, name: str) -> List[Dict[str, Any]]:
-        """Each call of shim `name`: its argv, cwd and stdin."""
-        with open(self.calls_file) as f:
-            logged: List[Dict[str, Any]] = [json.loads(line) for line in f]
+        """Each call of shim `name`: its argv, cwd and stdin (gh's: its argv, as the stub GitHub kept it)."""
+        if name == "gh":
+            return [{"name": "gh", "argv": argv} for argv in (self.gh.calls if self.gh else [])]
+        logged: List[Dict[str, Any]] = [json.loads(line) for line in self.files.read_text(self.calls_file).splitlines()]
         return [c for c in logged if c["name"] == name]
 
     # --- running
@@ -159,26 +170,24 @@ class World:
         if self.gh is None:
             self.github()
         cache = os.path.join(self.home, ".cache")
-        return cli_harness.isolated_env(os.environ, {
+        around = machine.environment()
+        return cli_harness.isolated_env(around, {
             "HOME": self.home, "TMPDIR": self.tmp, "XDG_CACHE_HOME": cache, "E2E_CALLS": self.calls_file,
-            "E2E_GH_URL": self.gh_url, "GH_TOKEN": "e2e-not-a-token", "PATH": self.bin + os.pathsep + os.environ["PATH"],
+            "E2E_GH_URL": self.gh_url, "GH_TOKEN": "e2e-not-a-token", "PATH": self.bin + os.pathsep + around["PATH"],
             "KINOWO_FAIL_BEFORE_DIR": os.path.join(cache, "kinowo-fail-before"), "KINOWO_FAIL_BEFORE_ROUTE": "local",
             "KINOWO_SBT_WARM_ROUTE": "local", "RUN_SCRIPT_TESTS_DURATIONS": os.path.join(cache, "durations.tsv"),
             "RUN_SCRIPT_TESTS_LOG_DIR": os.path.join(cache, "script-tests-failed"),
-            "PREPUSH_REUSE_DIR": os.path.join(cache, "kinowo-prepush"), "E2E_MUTATION": None, "CI": None, INSIDE: "1", **(extra or {})})
+            "PREPUSH_REUSE_DIR": os.path.join(cache, "kinowo-prepush"), "E2E_MUTATION": None, "CI": None, INSIDE: "1",
+            **(extra or {})})
 
     def run(self, argv: Sequence[str], cwd: str, env: Optional[Mapping[str, Optional[str]]] = None,
-            stdin: str = "", bound: float = STEP_BOUND) -> cli_harness.Done:
+            stdin: str = "", bound: Optional[float] = None) -> cli_harness.Done:
         """`argv` in `cwd`, its own process group, ended (and the step failed) past `bound` seconds."""
-        p = subprocess.Popen(list(argv), cwd=cwd, env=self.env(env), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE, text=True, start_new_session=True)
-        try:
-            out, err = p.communicate(stdin, timeout=bound)
-        except subprocess.TimeoutExpired:
-            os.killpg(p.pid, signal.SIGKILL)
-            out, err = p.communicate()
-            raise StepFailed(f"{' '.join(argv)} still running after {bound:.0f} s (ended)\n{out[-3000:]}\n{err[-3000:]}")
-        return cli_harness.Done(p.returncode, out, err)
+        limit = bound or step_bound()
+        done = cli_harness.run_bounded(argv, env=self.env(env), cwd=cwd, stdin=stdin, bound=limit)
+        if done.code == 124 and "ended past its" in done.stderr:
+            raise StepFailed(f"{' '.join(argv)} still running after {limit:.0f} s (ended)\n{done.output[-6000:]}")
+        return done
 
     def git_run(self, cwd: str, *args: str, env: Optional[Mapping[str, Optional[str]]] = None) -> cli_harness.Done:
         """git in `cwd` under the world's isolation (no GIT_* inherited), its outcome whatever it is: a push the
@@ -199,18 +208,17 @@ class World:
             return os.path.join(ROOT, rel)
         if self._tools is None:
             self._tools = os.path.join(self.root, "tools")
-            copy_files(ROOT, self._tools, working_files(ROOT, TOOL_TREES))
-            mutate(self._tools, m)
+            copy_files(self.files, ROOT, self._tools, working_files(self.files, ROOT, TOOL_TREES))
+            mutate(self.files, self._tools, m)
         return os.path.join(self._tools, rel)
 
     # --- repositories
+    def read(self, path: str) -> str:
+        return self.files.read_text(path)
+
     def write(self, repo: str, rel: str, text: str, executable: bool = False) -> str:
         path = os.path.join(repo, rel)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as f:
-            f.write(text)
-        if executable:
-            os.chmod(path, 0o755)
+        self.files.replace_text(path, text, 0o755 if executable else 0o644)
         return path
 
     def commit(self, repo: str, message: str, *paths: str) -> str:
@@ -221,7 +229,7 @@ class World:
     def toy_repo(self, name: str, files: Mapping[str, str]) -> "Repo":
         """A bare origin and a clone of it, holding `files` {path: text} in one commit pushed to main."""
         bare, clone = os.path.join(self.root, "github", f"{name}.git"), os.path.join(self.root, name)
-        os.makedirs(os.path.dirname(bare), exist_ok=True)
+        self.files.disk.make_directories(os.path.dirname(bare))
         self.git(self.root, "init", "-q", "--bare", "-b", "main", bare)
         self.git(self.root, "clone", "-q", bare, clone)
         for rel, text in files.items():
@@ -243,9 +251,9 @@ class World:
             self.tool("scripts")  # the mutated copy of the tool trees
             source = self._tools or ROOT
         for rel in self.git(clone, "ls-files", "--", *TOOL_TREES).splitlines():
-            if not os.path.exists(os.path.join(source, rel)):
-                os.remove(os.path.join(clone, rel))
-        copy_files(source, clone, working_files(source, TOOL_TREES))
+            if not self.files.exists(os.path.join(source, rel)):
+                self.files.remove(os.path.join(clone, rel))
+        copy_files(self.files, source, clone, working_files(self.files, source, TOOL_TREES))
         if self.git(clone, "status", "--porcelain", "--", *TOOL_TREES):
             self.commit(clone, "e2e: the tools under test, as the working tree has them", *TOOL_TREES)
         self.git(clone, "push", "-q", "-f", "--no-verify", "origin", "HEAD:main")  # the temp bare's main: this HEAD
@@ -273,7 +281,7 @@ class Scenario(unittest.TestCase):
     """A scenario's base: its World, closed at its end."""
 
     def setUp(self) -> None:
-        if os.environ.get(INSIDE):
+        if machine.environment().get(INSIDE):
             self.skipTest("inside another scenario's world: its own run is the outer one's")
         self.w = World()
         self.addCleanup(self.w.close)

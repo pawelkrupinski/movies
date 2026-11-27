@@ -136,6 +136,7 @@ layer	py	infra/nix/files	2	the files the NixOS hosts run
 layer	py	android/scripts	2	the Android app's release tools, over the library
 layer	py	ios/scripts	2	the iOS app's release tools, over the library
 layer	py	scripts/local-mirror	2	the local prod mirror's tools, over the library
+layer	py	scripts/e2e	2	the tools' end-to-end harness and scenarios, over the library (cli_harness, machine, tool_files)
 layer	py	scripts/claude-hooks	2	the agents' Claude Code hooks
 layer	py	scripts/discover-cinemas	2	the venue discovery bot
 layer	py	scripts/ops	2	one-off operator tools

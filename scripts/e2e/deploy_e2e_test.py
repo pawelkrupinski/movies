@@ -56,7 +56,7 @@ if host.get("end_marker", True):
 class DeployE2ETest(e2e_world.Scenario):
     def setUp(self) -> None:
         super().setUp()
-        files = {rel: e2e_world.read(self.w.tool(rel)) for rel in ("infra/bin/deploy", "infra/bin/nix_path.py")}
+        files = {rel: self.w.read(self.w.tool(rel)) for rel in ("infra/bin/deploy", "infra/bin/nix_path.py")}
         self.repo = self.w.toy_repo("fleet", dict(files, **{"infra/flake.nix": "{ outputs = _: { }; }\n"}))
         self.host_file = os.path.join(self.w.root, "host.json")
         self.host({})

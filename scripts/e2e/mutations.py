@@ -14,11 +14,13 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import sys
 from typing import Dict, List, Tuple
 
 HERE = os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
+import cli_harness  # noqa: E402
+import machine  # noqa: E402
 
 # (scenario module, the tool file, its text, the mutation, what it breaks)
 MUTATIONS: List[Tuple[str, str, str, str, str]] = [
@@ -51,18 +53,18 @@ MUTATIONS: List[Tuple[str, str, str, str, str]] = [
 ]
 
 
-def run(module: str, change: Dict[str, str]) -> "subprocess.CompletedProcess[str]":
-    env = dict(os.environ, E2E_MUTATION=json.dumps(change), PYTHONDONTWRITEBYTECODE="1")
-    return subprocess.run([sys.executable, "-B", os.path.join(HERE, module + ".py")], cwd=HERE, env=env,
-                          capture_output=True, text=True, timeout=900)
+def run(module: str, change: Dict[str, str]) -> cli_harness.Done:
+    env = dict(machine.environment(), E2E_MUTATION=json.dumps(change), PYTHONDONTWRITEBYTECODE="1")
+    return cli_harness.run_bounded([sys.executable, "-B", os.path.join(HERE, module + ".py")], env=env, cwd=HERE,
+                                   stdin=None, bound=900)
 
 
 def caught(module: str, rel: str, old: str, new: str, why: str) -> bool:
     """The scenario run with this mutation: whether it failed (a stale entry is no catch)."""
     done = run(module, {"file": rel, "old": old, "new": new})
-    output: str = done.stdout + done.stderr
+    output = done.output
     stale = "is stale" in output
-    ok = done.returncode != 0 and not stale
+    ok = done.code != 0 and not stale
     print(f"{'CAUGHT' if ok else 'STALE ' if stale else 'MISSED'} {module}: {why} ({rel})", flush=True)
     if not ok:
         print(output[-3000:])

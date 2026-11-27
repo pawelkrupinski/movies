@@ -1,0 +1,3 @@
+# THE DESIGN EXEMPTIONS (scripts/design-rules/exemptions.py): a NEW row past a general rule admitted on purpose.
+# <kind>	<key>	<added YYYY-MM-DD>	<role>: <what it does, and why it needs the exemption>
+effect	scripts/e2e/e2e_world.py:files	2026-11-27	test-world builder: makes each scenario's temp root (tempfile.mkdtemp) and removes it whole (shutil.rmtree) -- tool_files has no temp directory or tree removal; every other file it touches goes through tool_files
