@@ -44,6 +44,7 @@ class Plan:
     floor_bin: str = ""
     test_width: Optional[int] = None
     wide_tests: bool = False
+    budget: int = 0  # cores the tests running at once may add up to (0: no budget, only `jobs`)
 
 
 @dataclass
@@ -125,12 +126,23 @@ class Pool:
         return Result(128 - code if code < 0 else code, int(machine.monotonic() - r.began), r.start, int(machine.wall()),
                       stalled)
 
+    def cost(self, index: int) -> int:
+        """The cores a planned run holds of the budget: its declared width, or one."""
+        path = self.plan.paths[index]
+        return min(declared_width(os.path.join(self.plan.root, path)), self.plan.budget) if self.plan.wide_tests else 1
+
+    def fits(self, running: Sequence[Running], index: int) -> bool:
+        """Whether the next run fits the budget beside those running (one always runs: it cannot wait on nothing)."""
+        if not self.plan.budget or not running:
+            return True
+        return sum(self.cost(int(r.key)) for r in running) + self.cost(index) <= self.plan.budget
+
     def run_all(self, report: Callable[[int, Result], None]) -> None:
         """Every planned run, at most `jobs` at once, each reported as it ends."""
         running: List[Running] = []
         upcoming = list(range(len(self.plan.paths)))
         while running or upcoming:
-            while upcoming and len(running) < self.plan.jobs:
+            while upcoming and len(running) < self.plan.jobs and self.fits(running, upcoming[0]):
                 i = upcoming.pop(0)
                 running.append(self.start(str(i), self.plan.paths[i]))
             for r in [r for r in running if r.root.poll() is not None]:

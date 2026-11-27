@@ -56,6 +56,7 @@ class Width:
     jobs: int
     test_width: Optional[int] = None
     wide_tests: bool = False
+    budget: int = 0  # the cores the grant holds when wide tests share it (0: the pool is just --jobs wide)
 
 
 def cores() -> int:
@@ -77,7 +78,8 @@ def govern(gate: Optional[Gate], env: MutableMapping[str, str], root: str, jobs:
     want = min(jobs, len(tests))
     if want < 1 or gate is None or not gate.governs():
         return Width(jobs)
-    extra = sum(declared_width(os.path.join(root, t)) - 1 for t in tests)
+    widths = [declared_width(os.path.join(root, t)) for t in tests]
+    extra = sum(w - 1 for w in widths)
     if want + extra > cores():
         extra = 0
     with gov_queue.reporting("run-script-tests", lambda args: gate.governor_output(args), os.getpid(),
@@ -85,14 +87,17 @@ def govern(gate: Optional[Gate], env: MutableMapping[str, str], root: str, jobs:
                              queue_seconds(env)):
         granted = gate.width("run-script-tests", "script-tests", want + extra, "2")
     env.pop("KINOWO_JVM_SLOT_HELD", None)
-    return within(jobs, want, extra, granted, bool(gate.slot))
+    return within(jobs, want, extra, granted, bool(gate.slot), max(widths, default=1))
 
 
-def within(jobs: int, want: int, extra: int, granted: int, own_ticket: bool) -> Width:
-    """THE GRANTED WIDTH: the wide tests' extra counts only within the cores granted -- out of a grant wider than it
-    they keep their width and the pool runs in what is left; a grant no wider runs every test one core wide."""
-    if own_ticket and 0 < extra < granted:
-        return Width(jobs if granted - extra >= want else granted - extra, 1, True)
+def within(jobs: int, want: int, extra: int, granted: int, own_ticket: bool, widest: int = 1) -> Width:
+    """THE GRANTED WIDTH: a grant that holds the widest wide test is a BUDGET of cores the pool spends on what runs at
+    once (a wide test its declared width, any other one core, never more than --jobs tests): the old rule took every
+    wide test's extra off the pool's width up front, so 6 cores of a 7-core grant left the pool ONE wide while the
+    wide tests ran a minute each (2026-11-27: 8 tests, 13 minutes, one at a time). A grant narrower than the widest
+    test runs every test one core wide."""
+    if own_ticket and extra > 0 and widest <= granted:
+        return Width(min(jobs, want), 1, True, granted)
     return Width(granted if granted < want else jobs, 1)
 
 
@@ -126,7 +131,8 @@ class Run:
 
     def run(self, tests: int, changed: bool, heavy: Sequence[str], findings: Sequence[str]) -> int:
         plan, started = self.pool.plan, machine.monotonic()
-        print(f"\033[36m▸\033[0m {len(plan.paths)} script test(s), {plan.jobs} at a time", flush=True)
+        print(f"\033[36m▸\033[0m {len(plan.paths)} script test(s), {plan.jobs} at a time"
+              + (f", within {plan.budget} cores" if plan.budget else ""), flush=True)
         load = []
         if self.s.stress:
             burn = int(self.s.burn) if self.s.burn else (cores() or 2)
@@ -185,7 +191,7 @@ def plan_run(root: str, scratch: str, selected: Sequence[str], s: Settings, widt
     paths, runs = expanded(ordered, s.stress)
     jobs = width.jobs if not s.stress or s.jobs_given else len(paths)
     return Plan(root, scratch, paths, runs, jobs, s.timeout, s.stall, test_width=width.test_width,
-                wide_tests=width.wide_tests), len(ordered)
+                wide_tests=width.wide_tests, budget=width.budget), len(ordered)
 
 
 def tools(lib: str, scripts: str) -> Tools:

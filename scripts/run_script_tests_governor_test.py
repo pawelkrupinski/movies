@@ -133,9 +133,31 @@ class WidthTest(ScriptTestsCase):
         self.assertEqual(0, done.code, done.output)
         self.assertEqual(1, self.gov_calls().count("--job script-tests --cores 4 --min-cores 1\n"))
         self.assertEqual("width=3", self.read("seen").strip())
-        self.assertIn("2 script test(s), 1 at a time", done.stdout)
+        self.assertIn("2 script test(s), 2 at a time, within 3 cores", done.stdout)
         self.wide("8", {**grants, "GOV_GRANT": "2"})
         self.assertEqual((1, "width=1"), (self.gov_calls().count("--min-cores 1\n"), self.read("seen").strip()))
+
+    def test_wide_tests_share_the_grant_as_a_budget_not_a_reservation(self) -> None:
+        """2026-11-27: a 7-core grant, wide tests' extra 6 -- the pool was ONE wide for 13 minutes. Granted 5 cores
+        with two 3-wide tests: they never run together (6 > 5), the one core beside one wide test is used, and the
+        rest run beside each other."""
+        log = self.path("held")
+        body = 'echo "+${AGENTCTL_GOV_WIDTH}" >> "$HELD"; sleep 1; echo "-${AGENTCTL_GOV_WIDTH}" >> "$HELD"'
+        for n in (1, 2):
+            self.put(f"scripts/budget/w{n}-test.sh", f"# script-test-width: 3\n{body}")
+        for n in (1, 2, 3, 4):
+            self.put(f"scripts/budget/p{n}-test.sh", body)
+        done = self.runner("scripts/budget", env=self.governed(self.agentctl, {
+            "GOV_FEATURES": "admit cores route width grant", "GOV_GRANT": "5", "HELD": log, "CORES": "16",
+            "PATH": self.path("cores-bin") + os.pathsep + self.env()["PATH"]}))
+        self.assertEqual(0, done.code, done.output)
+        self.assertIn("6 script test(s), 6 at a time, within 5 cores", done.stdout)
+        held, peak, tests, most = 0, 0, 0, 0
+        for line in self.read("held").split():
+            held += int(line[1:]) * (1 if line[0] == "+" else -1)
+            tests += 1 if line[0] == "+" else -1
+            peak, most = max(peak, held), max(most, tests)
+        self.assertEqual((5, 3), (peak, most), "the cores held at once, the tests at once")
 
 
 if __name__ == "__main__":
