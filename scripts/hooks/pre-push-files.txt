@@ -15,6 +15,7 @@ scripts/lib/pre_push_known_red.py
 scripts/lib/pre_push_checks.py
 scripts/lib/pre_push_tree.py
 scripts/lib/pre_push_gate.py
+scripts/lib/pre_push_light.py
 scripts/lib/tool_python.py
 scripts/lib/tool_bounded.py
 scripts/lib/tool_files.py

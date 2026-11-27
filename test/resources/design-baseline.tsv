@@ -1618,5 +1618,5 @@ mixed	worker/src/main/scala/tools/HeapPressure.scala:HeapPressure.heldAfterColle
 mixed	worker/src/main/scala/tools/ResidentialProxyProbe.scala:ResidentialProxyProbe.statusThrough	3
 fanout	scripts/design-rules/design_check.py	10
 distance	scripts/ci	0.52
-distance	scripts/lib	0.72
+distance	scripts/lib	0.71
 dircycle	scripts|scripts/ci	2

@@ -1,8 +1,8 @@
 """THE PRE-PUSH HOOK'S RUN (scripts/hooks/pre-push execs `scripts/pre_push.py <hook> --run [args]`; its header says
 what every step guards): where it runs (pre_push_tree), what is pushed and the checks its paths and messages select
 (pre_push_push, the selection pre_push_modes answers), the red gate and the stranded trailers (pre_push_gate), the
-known-red baseline, the reuse and a remote pass (pre_push_reuse), then each check (pre_push_checks: the
-hook's `check_<name>` functions) and the verdict. pre_push_run_test.py holds it black-box."""
+known-red baseline, the reuse and a remote pass (pre_push_reuse), then each check (pre_push_checks: pre_push_light's,
+and the hook's `check_<name>` functions) and the verdict. pre_push_run_test.py holds it black-box."""
 from __future__ import annotations
 
 import os
@@ -49,6 +49,7 @@ class Run:
         self.started = machine.monotonic()
         self.tmp = machine.output(["mktemp", "-d"], env=self.env)[1].strip()
         self.shell = running.Shell(hook, self.files, self.env, repo.cwd, f"{self.tmp}/state.sh")
+        self.functions = running.Python(self.shell)
         self.state = self.shell.state
         self.state.update({"root": repo.cwd, "tmp": self.tmp})
         self.push = pushed.Push()
@@ -291,7 +292,7 @@ class Run:
         self.shell.cwd = cwd
         scripts = os.path.realpath(f"{os.path.dirname(self.hook)}/..")
         watch = f"{scripts}/stall-watch.sh"
-        loop = running.Loop(self.shell, self.say, self.files, cwd, self.env, self.tmp,
+        loop = running.Loop(self.functions, self.say, self.files, cwd, self.env, self.tmp,
                             watch if self.files.is_file(watch) else f"{self.repo.cwd}/scripts/stall-watch.sh",
                             self.env.get("PREPUSH_STALL_SECONDS", "1200"),
                             self.files.read_text_or(self.baseline, "") if self.baseline else "", self.base_commit,

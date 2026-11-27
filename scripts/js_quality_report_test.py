@@ -118,9 +118,10 @@ class CommandLineTest(cli_harness.ToolCase):
         self.assertEqual(f"{self.path('x')}/kinowo/js-quality/{lock_key()}\n", xdg.stdout)
 
     def test_the_pre_push_hook_installs_no_js_quality_tools_in_the_tree(self) -> None:
-        with open(os.path.join(ROOT, "scripts", "hooks", "pre-push")) as f:
+        # the check is Python's since the hook's stage 4 (scripts/lib/pre_push_light.py)
+        with open(os.path.join(ROOT, "scripts", "lib", "pre_push_light.py")) as f:
             hook = f.read()
-        body = re.search(r"^check_jsquality\(\) \{\n(.*?)^\}", hook, re.S | re.M)
+        body = re.search(r"^def jsquality\(c: Check\) -> int:\n(.*?)^\S", hook, re.S | re.M)
         assert body is not None
         code = [line for line in body.group(1).splitlines() if not line.lstrip().startswith("#")]
         self.assertEqual([], [line for line in code if "npm ci" in line])

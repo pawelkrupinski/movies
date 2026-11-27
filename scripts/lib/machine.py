@@ -28,6 +28,7 @@ from typing import IO, Dict, List, MutableMapping, NoReturn, Optional, Sequence,
 
 Sink = Union[int, IO[str], IO[bytes], None]
 QUIET: Sink = subprocess.DEVNULL  # a Sink dropping what is written to it
+PIPE: Sink = subprocess.PIPE     # a Sink run() hands back as the command's output
 Process = subprocess.Popen         # what spawn() starts: `machine.Process[bytes]`
 
 

@@ -85,6 +85,15 @@ class Contract:
             with self.assertRaises(FileNotFoundError):
                 self.f.remove("a.txt", missing_ok=False)
 
+        def test_a_rename_moves_a_directory_whole_but_never_onto_a_filled_one(self) -> None:
+            self.f.write_text("part/a/x.gz", "x")
+            self.assertTrue(self.f.rename("part", "cache"))
+            self.assertEqual(self.f.read_text("cache/a/x.gz"), "x")
+            self.assertFalse(self.f.exists("part"))
+            self.f.write_text("other/y", "y")
+            self.assertFalse(self.f.rename("other", "cache"))
+            self.assertEqual(self.f.read_text("other/y"), "y")
+
         def test_mtime_is_a_written_files(self) -> None:
             self.f.write_text("a.txt", "x")
             self.assertIsInstance(self.f.mtime("a.txt"), float)

@@ -31,8 +31,10 @@ class AllowListRatchetSpec extends AnyFlatSpec with Matchers {
 
   "the pre-push hook" should "run the ratchet on a change to a registered list, and the birth check on the gate's files" in {
     val hook = RepoFile.read("scripts/hooks/pre-push")
-    hook should include("python3 scripts/ci/commit_rules.py \"$1\"")
-    hook should include("check_allowlists() { commit_rules allowlists; }")
+    // the check is Python's (scripts/lib/pre_push_light.py, the hook's light checks since its stage 4)
+    val light = RepoFile.read("scripts/lib/pre_push_light.py")
+    light should include("""return c.run(["python3", "scripts/ci/commit_rules.py", rules, *c.range_args()])""")
+    light should include(""""allowlists": commit_rules("allowlists")""")
     // the selection is Python's (scripts/pre_push.py): a registered list's own path selects the ratchet
     RepoFile.read("scripts/lib/pre_push_modes.py") should include("allow_lists=set(allow.splitlines())")
     RepoFile.read("scripts/lib/pre_push_plan.py") should include("(\"allowlists\", lambda p, t: p in t.allow_lists)")

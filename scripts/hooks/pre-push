@@ -361,7 +361,6 @@ fi
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../tool-conventions.sh" # bounded: every gh read below has a deadline
 
-
 skipped() { case " ${PREPUSH_SKIP:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
 # ── Which checks, compiles, lint specs and tests a push selects: scripts/pre_push.py (the header says what each
@@ -400,90 +399,8 @@ need_jvm() { # <check>
 }
 
 # ── Red builds gate the push: scripts/lib/pre_push_gate.py (THE GATE, A FIX MATCHES THE RED, A STRANDED TRAILER) ─
-# gh's bound, for the checks below that still read GitHub (the served takes)
-GhSeconds="${PREPUSH_GH_SECONDS:-15}"
 
-# ── Running them ────────────────────────────────────────────────────────────────────────────────
-changed_matching() { printf '%s\n' "$changed" | grep -E "$1" || true; }
-
-check_eslint() {
-    need eslint npm "install Node.js (brew install node)" || return 1
-    if [ ! -x node_modules/.bin/eslint ]; then
-        log "installing ESLint (npm ci, once per worktree)"
-        npm ci --no-audit --no-fund --silent >/dev/null || return 1
-    fi
-    npm run --silent lint
-}
-
-check_jsquality() {
-    need jsquality node "install Node.js (brew install node)" || return 1
-    need jsquality python3 "install Python 3 (brew install python)" || return 1
-    local args=() r
-    # the tools are js-quality-report's to install, once per lock and OUTSIDE the checkout (--tools-dir): an `npm ci` in
-    # scripts/js-quality here left node_modules in every check's tree, for a self-test's `grep -r` to read (#99)
-    [ -x "$(scripts/js-quality-report --tools-dir)/node_modules/.bin/eslint" ] \
-        || need jsquality npm "install Node.js with npm (brew install node)" || return 1
-    for r in "${ranges[@]}"; do args+=(--range "$r"); done
-    scripts/js-quality-report --check ${args[@]+"${args[@]}"} >&2 || return 1
-    # the general design rules over the JS/TS (scripts/design-rules: names, collaborator fan-out, distance, layers, the design lint)
-    python3 scripts/design-rules/naming_lint.py check --languages js ${args[@]+"${args[@]}"} >&2 || return 1
-    python3 scripts/design-rules/design_check.py check --languages js ${args[@]+"${args[@]}"} >&2
-}
-
-check_pyquality() {
-    need pyquality node "install Node.js (brew install node)" || return 1
-    need pyquality python3 "install Python 3 (brew install python)" || return 1
-    local args=() r
-    # pyright is py-quality-report's to install, once per lock and OUTSIDE the checkout (--tools-dir), as js-quality's
-    [ -f "$(scripts/py-quality-report --tools-dir)/node_modules/pyright/index.js" ] \
-        || need pyquality npm "install Node.js with npm (brew install node)" || return 1
-    for r in "${ranges[@]}"; do args+=(--range "$r"); done
-    printf '%s\n' "$changed" > "$tmp/pyquality-paths" # strict pyright over the push's own files; the rest keep their rows
-    scripts/py-quality-report --check --paths "$tmp/pyquality-paths" ${args[@]+"${args[@]}"} >&2 || return 1
-    # the general design rules over the Python (scripts/design-rules: names, collaborator fan-out, distance, layers,
-    # the data guard, the design lint)
-    python3 scripts/design-rules/naming_lint.py check --languages py ${args[@]+"${args[@]}"} >&2 || return 1
-    python3 scripts/design-rules/design_check.py check --languages py ${args[@]+"${args[@]}"} >&2
-}
-
-check_drift() {
-    need drift python3 "install Python 3 (brew install python)" || return 1
-    # data/us/scripts/generate_roster.py needs timezonefinder: the PATH's python3 when it has it, else the pinned venv
-    # scripts/timezonefinder-python builds once (2026-11-17: Homebrew's python refuses a pip install, PEP 668)
-    local tzf tzf_tool
-    tzf_tool="$(dirname "${BASH_SOURCE[0]}")/../timezonefinder-python"
-    tzf="$("$tzf_tool" 2>"$tmp/timezonefinder.log")" \
-        || { cat "$tmp/timezonefinder.log" >&2
-             missing_tool drift "python3's timezonefinder" "scripts/timezonefinder-python (it builds the pinned venv; its error is above)"
-             return 1; }
-    # GeoNames' Polish gazetteer, kept in the shared git dir so every worktree downloads it once.
-    PATH="$tzf:$PATH" GEONAMES_CACHE="$(git rev-parse --path-format=absolute --git-common-dir)/kinowo-cache/geonames" \
-        scripts/ci/generated-artefacts-drift.sh > "$tmp/drift.log" 2>&1 \
-        || { if grep -q '::error::' "$tmp/drift.log"; then sed -n '/::error::/,$p' "$tmp/drift.log" | head -80 >&2
-             else tail -30 "$tmp/drift.log" >&2; fi; return 1; }
-}
-
-check_snapshot() {
-    scripts/read-model-snapshot-inputs.sh check "$head_sha" > "$tmp/snapshot.log" 2>&1 \
-        || { tail -40 "$tmp/snapshot.log" >&2; warn "full log: $tmp/snapshot.log"; return 1; }
-}
-
-check_dashboards() {
-    need dashboards python3 "install Python 3 (brew install python)" || return 1
-    python3 infra/test/test_dashboards.py > "$tmp/dashboards.log" 2>&1 \
-        || { sed -n '/^FAIL\|^ERROR\|AssertionError/,+3p' "$tmp/dashboards.log" | head -40 >&2; return 1; }
-}
-
-check_metricalerts() {
-    need metricalerts python3 "install Python 3 (brew install python)" || return 1
-    local yaml_bin tools
-    tools="$(dirname "${BASH_SOURCE[0]}")/.."
-    yaml_bin="$("$tools/python-venv" "$tools/pyyaml-requirements.txt" yaml)" \
-        || { missing_tool metricalerts "python3's PyYAML" "scripts/python-venv (it builds the pinned venv; its error is above)"
-             return 1; }
-    PATH="$yaml_bin:$PATH" python3 infra/test/test_metric_alert_coverage.py > "$tmp/metricalerts.log" 2>&1 \
-        || { sed -n '/^FAIL\|^ERROR\|AssertionError/,$p' "$tmp/metricalerts.log" | head -60 >&2; return 1; }
-}
+# ── Running them: the light checks (eslint ... judgements, ios) are scripts/lib/pre_push_light.py's ──
 
 # The floor the tools promise, bash 3.2 (scripts/floor-bash: a Mac's /bin/bash, elsewhere the GNU 3.2.57 it builds), its
 # path printed; nothing printed when there is no floor run (PREPUSH_SKIP=floor, or a pushed runner from before --bash:
@@ -579,55 +496,6 @@ check_scripttests() {
             rc=1
         fi
     fi
-    return $rc
-}
-
-# actionlint over changed workflows; a composite action's `run:` blocks, which actionlint does not
-# lint, through scripts/ci/shellcheck-action-runs.sh. CI's `Workflow lint` step runs both over the
-# whole tree, so a missing tool here only defers the finding to CI.
-check_actionlint() {
-    local workflows actions rc=0
-    workflows="$(changed_matching '^\.github/workflows/.*\.ya?ml$')"
-    actions="$(changed_matching '^\.github/actions/[^/]*/action\.ya?ml$')"
-    if [ -n "$workflows" ]; then
-        if command -v actionlint >/dev/null; then
-            # shellcheck disable=SC2086 # workflow file names carry no spaces
-            SHELLCHECK_OPTS='-S warning' actionlint $workflows || rc=1
-        else
-            missing_tool actionlint actionlint "brew install actionlint" || rc=1
-        fi
-    fi
-    if [ -n "$actions" ]; then
-        if command -v shellcheck >/dev/null; then
-            # shellcheck disable=SC2086 # action paths carry no spaces
-            scripts/ci/shellcheck-action-runs.sh $actions || rc=1
-        else
-            missing_tool actionlint shellcheck "brew install shellcheck" || rc=1
-        fi
-    fi
-    return "$rc"
-}
-
-# Fail on a warning the push ADDS: count each changed script's warnings at the base and at HEAD.
-check_shellcheck() {
-    need shellcheck shellcheck "brew install shellcheck" || return 1
-    local f before after rc=0
-    while IFS= read -r f; do
-        [ -n "$f" ] || continue
-        case "$f" in *.txt|*.tsv) continue ;; esac # local-tests.txt, lint-registry.tsv: the hook's tables, no shell
-        after="$(shellcheck -S warning -f gcc "$f" 2>/dev/null | wc -l | tr -d ' ')"
-        if git cat-file -e "$base_sha:$f" 2>/dev/null; then
-            git show "$base_sha:$f" > "$tmp/base.sh"
-            before="$(cd "$(dirname "$f")" && shellcheck -S warning -f gcc "$tmp/base.sh" 2>/dev/null | wc -l | tr -d ' ')"
-        else
-            before=0
-        fi
-        if [ "$after" -gt "$before" ]; then
-            warn "$f: shellcheck warnings $before → $after"
-            shellcheck -S warning "$f" >&2
-            rc=1
-        fi
-    done < <(printf '%s\n' "$changed" | pre_push_py --shell-paths)
     return $rc
 }
 
@@ -929,29 +797,6 @@ select_identity_tests() { # <the set's sbt lines>...
     echo "countries in scope: ${countries:-none}" >> "$tmp/identity.summary"
 }
 check_identity() { run_local_tests identity; }
-# THE RATCHET (the header's `allowlists`): an allow-list row only with its check's birth, TEMPORARY; else lists only shrink
-# THE DRIFT GATE'S COMMIT RULES (the header's `allowlists` and `driftguards`): one walker, scripts/ci/commit_rules.py
-commit_rules() { # <rule set>
-    local args=() r
-    need "$1" python3 "install Python 3 (brew install python)" || return 1
-    for r in "${ranges[@]}"; do args+=(--range "$r"); done
-    python3 scripts/ci/commit_rules.py "$1" "${args[@]}"
-}
-check_allowlists() { commit_rules allowlists; }
-# A NEW CHECK GATES ONLY ONCE IT HAS BEEN GREEN (the header's `newchecks`): every job, runner label and gate workflow THE
-# GATE reads has its row in .github/gating-checks.tsv -- a new one as `unproven`, with its owner -- so it reports until a
-# green run proves it (scripts/ci/gating_checks.py lint, seconds)
-check_newchecks() {
-    need newchecks python3 "install Python 3 (brew install python)" || return 1
-    python3 scripts/ci/gating_checks.py lint
-}
-# THE EXTERNAL SCHEDULER'S SCHEDULE IS THE WORKFLOWS' OWN CRONS (the header's `schedules`): a cron edited without
-# regenerating infra/nix/files/scheduled-workflows.json, or a covered workflow's `== 'schedule'` condition missing the
-# scheduler's repository_dispatch, refuses the push with the fix
-check_schedules() {
-    need schedules python3 "install Python 3 (brew install python)" || return 1
-    python3 infra/nix/files/scheduled_dispatch.py check
-}
 # THE IDENTITY DRIFT CHECK: each claimed red's failed takes-drift rows, on CI (scripts/identity-drift-ci --for-red). 1 blocks; 2
 # (the run could not be made: CI unreachable, no token) warns and passes -- a fix is not held hostage to an outage, and
 # main's own run still judges it.
@@ -989,39 +834,6 @@ check_identitydrift() {
             1) warn "drift: Fixes-Red: $run does not fix its drift rows at ${head_sha:0:9} (full log: $tmp/drift-$run.log)"; rc=1 ;;
             *) warn "drift: no verdict for Fixes-Red: $run (exit $r): not held against the push; main's run judges it" ;;
         esac
-    done
-    return $rc
-}
-check_driftguards() { commit_rules driftguards; }
-# A PURE MOVE'S CLAIM HOLDS (the header's `puremove`): each commit saying `Pure-Move:` is one, by the check identity-what-if
-# runs, over that commit alone
-check_puremove() {
-    local r sha claim rc=0
-    need puremove python3 "install Python 3 (brew install python)" || return 1
-    for r in "${ranges[@]}"; do
-        while IFS= read -r sha; do
-            claim="$(git log -1 --format='%(trailers:key=Pure-Move,valueonly,unfold)' "$sha" | grep -v '^$' || true)"
-            [ -n "$claim" ] || continue
-            if [ "$claim" != verified ]; then
-                warn "puremove: ${sha:0:9} says 'Pure-Move: $claim': the trailer is 'Pure-Move: verified', or none"; rc=1; continue
-            fi
-            if scripts/pure-move-check "$sha^..$sha" > "$tmp/puremove.$sha" 2>&1; then
-                log "puremove: ${sha:0:9} is a pure move"
-            else
-                cat "$tmp/puremove.$sha" >&2
-                warn "puremove: ${sha:0:9} says 'Pure-Move: verified' but scripts/pure-move-check does not find a pure move: drop the trailer (and run scripts/identity-what-if) or make the commit one"
-                rc=1
-            fi
-        done < <(git rev-list --reverse "$r")
-    done
-    return $rc
-}
-# A CARRIED STAMP IS PROVEN (the header's `stampcarry`): every carry row the push adds or changes, proven again
-check_stampcarry() {
-    local r rc=0
-    need stampcarry python3 "install Python 3 (brew install python)" || return 1
-    for r in "${ranges[@]}"; do
-        scripts/identity-stamp-carry verify "$r" || rc=1
     done
     return $rc
 }
@@ -1078,49 +890,3 @@ check_itrest() {
 check_itidentity() { heavy_row itidentity itAll IT_ROW=identity; }
 check_e2ecorpus() { heavy_row e2ecorpus e2eCorpus; }
 
-check_ios() {
-    scripts/ios-compile-check.sh
-}
-
-# The takes the newest decided Identity model convergence legs served, as `<dir>/<cc>-takes/<cc>.json.gz` under a cache
-# kept per run in the shared git dir; prints the files, or nothing (warned) when gh cannot fetch them in time. A run that
-# reused an earlier run's verdict (scripts/ci/convergence_reuse.py) ran no leg and served nothing: the next one back is
-# read, up to three.
-served_takes() {
-    local runs run cache part found=""
-    runs="$(bounded "$GhSeconds" gh run list --workflow "Identity model convergence" \
-        --branch main --status completed --limit 30 --json databaseId,conclusion \
-        --jq '[.[] | select(.conclusion == "success" or .conclusion == "failure")][0:3][].databaseId' 2>/dev/null)" || runs=""
-    [ -n "$runs" ] || { warn "judgements: no Identity model convergence run to read served takes from — served check SKIPPED"; return 0; }
-    for run in $runs; do
-        cache="$(git rev-parse --path-format=absolute --git-common-dir)/kinowo-cache/served-takes/$run"
-        if [ ! -d "$cache" ]; then
-            # Agents push at once and share this cache: each downloads into a directory of its own, and only the first to
-            # finish renames it into place (rename(2) onto a filled directory fails; `mv` would nest it inside).
-            part=""
-            mkdir -p "$(dirname "$cache")" && part="$(mktemp -d "$cache.part.XXXXXX")" \
-                && bounded 120 gh run download "$run" -p 'convergence-diagnostics-*-convergence' \
-                -D "$part" >/dev/null 2>&1 \
-                || { [ -n "$part" ] && rm -rf "$part"; continue; }
-            perl -e 'rename($ARGV[0], $ARGV[1]) or exit 1' "$part" "$cache" 2>/dev/null || rm -rf "$part"
-        fi
-        found=$(find "$cache" -path '*-takes/*.json.gz')
-        [ -z "$found" ] || { echo "$found"; return 0; }
-    done
-    warn "judgements: could not fetch the served takes of runs $(echo $runs) — served check SKIPPED"
-}
-
-check_judgements() {
-    local served=() before=""
-    need judgements python3 "install Python 3 (brew install python)" || return 1
-    # grep reads the whole list, never -q: quitting at the match SIGPIPEs printf over a long one, failing the pipeline.
-    # --fast-only (THE COMBINED FILES): the files' own consistency; each member's own check read the served takes.
-    if [ -z "$fast_only" ] && printf '%s\n' "$changed" | grep -x 'test/resources/fixtures/identity-judgements.tsv' > /dev/null; then
-        need judgements gh "brew install gh" || return 1
-        while IFS= read -r f; do [ -n "$f" ] && served+=("$f"); done < <(served_takes)
-        before="$tmp/judgements-before.tsv"
-        git show "$base_sha:test/resources/fixtures/identity-judgements.tsv" > "$before" 2>/dev/null || before=""
-    fi
-    # --replay-head: the takes the push newly judges wrong judged at the PUSHED code (identity-slice), not the last leg's
-    python3 scripts/ci/identity_judgements_lint.py ${served[@]+--served "${served[@]}"} ${before:+--before "$before" --replay-head}
-}

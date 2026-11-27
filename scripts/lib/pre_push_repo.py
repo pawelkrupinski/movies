@@ -15,6 +15,14 @@ WARN = "\033[33m! pre-push\033[0m "
 ALARM = "\033[31m! pre-push\033[0m "
 
 
+INTO = 'exec "$@" > "$0" 2>&1'
+
+
+def into(log: str, argv: Sequence[str]) -> List[str]:
+    """`argv`, its stdout and stderr into the file `log`, made anew (a shell's `> log 2>&1`)."""
+    return ["bash", "-c", INTO, log, *argv]
+
+
 class Say(Protocol):
     """The hook's lines: `log` (`▸ pre-push`, stdout unless `to_err`), `warn` / `alarm` (`! pre-push`, stderr), `raw`
     text, and `flush` before a command writes to the same streams."""

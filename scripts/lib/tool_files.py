@@ -15,6 +15,9 @@ replacement) or `InMemoryDisk` (a dict), held alike by tool_files_test.py's cont
   files.under(directory) -> [path]                every file below it, sorted (`os.walk`)
   files.remove(path, missing_ok=True)
   files.mtime(path) -> float                      seconds since the epoch; FileNotFoundError when there is none
+  files.make_directories(path)                    the directory and those above it
+  files.rename(source, target) -> bool            renamed whole (a directory too); False when it could not be (onto a
+                                                  filled directory: rename(2))
   files.path(*parts) -> str                       the absolute path the parts name, against the base
 
 Real-filesystem INTEGRATION tests stay where the filesystem IS the behaviour (atomic.py's temporaries and their races,
@@ -48,6 +51,8 @@ class Disk(Protocol):
 
     def mtime(self, path: str) -> float: ...                               # FileNotFoundError
 
+    def rename(self, source: str, target: str) -> None: ...                # OSError; never onto a filled directory
+
 
 class LocalDisk:
     """The real disk."""
@@ -77,6 +82,9 @@ class LocalDisk:
 
     def mtime(self, path: str) -> float:
         return os.path.getmtime(path)
+
+    def rename(self, source: str, target: str) -> None:
+        os.rename(source, target)
 
 
 class InMemoryDisk:
@@ -129,6 +137,20 @@ class InMemoryDisk:
         if path not in self.stamps:
             raise FileNotFoundError(path)
         return self.stamps[path]
+
+    def rename(self, source: str, target: str) -> None:
+        if self.kind(source) is None or os.path.dirname(target) not in self.directories:
+            raise FileNotFoundError(source)
+        if target in self.files or any(os.path.dirname(p) == target for p in [*self.files, *self.directories]):
+            raise OSError(f"{target} is not empty")
+        self.files = {moved(p, source, target): data for p, data in self.files.items()}
+        self.stamps = {moved(p, source, target): when for p, when in self.stamps.items()}
+        self.directories = {moved(p, source, target) for p in self.directories}
+
+
+def moved(path: str, source: str, target: str) -> str:
+    """`path` after `source` is renamed to `target`."""
+    return target + path[len(source):] if path == source or path.startswith(source + os.sep) else path
 
 
 class Replacing:
@@ -218,3 +240,13 @@ class Files:
 
     def mtime(self, path: str) -> float:
         return self.disk.mtime(self.path(path))
+
+    def make_directories(self, path: str) -> None:
+        self.disk.make_directories(self.path(path))
+
+    def rename(self, source: str, target: str) -> bool:
+        try:
+            self.disk.rename(self.path(source), self.path(target))
+        except OSError:
+            return False
+        return True

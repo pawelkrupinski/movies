@@ -1,18 +1,23 @@
-"""THE CHECKS, RUN (scripts/hooks/pre-push's header: NO STEP HANGS, THE KNOWN-RED BASELINE). Each check is still the
-hook's own shell function `check_<name>`: the hook, SOURCED (not run), defines them, and `Shell` calls one in a bash of
-its own after the run's state (the changed paths, ranges, shas, temp dir, ...) as shell variables -- what the checks read
+"""THE CHECKS, RUN (scripts/hooks/pre-push's header: NO STEP HANGS, THE KNOWN-RED BASELINE). The light checks are
+Python's (pre_push_light, `Python`: a process of their own after the run's state as JSON); the rest are still the hook's
+own shell functions `check_<name>`: the hook, SOURCED (not run), defines them, and `Shell` calls one in a bash of its
+own after the run's state (the changed paths, ranges, shas, temp dir, ...) as shell variables -- what the checks read
 as the one shell's globals before. Each runs under the stall watchdog (scripts/stall-watch.sh) and is said as the shell
 hook said it: `▸ pre-push <c> ok (Ns)`, `! pre-push <c> FAILED (Ns)`, `pre-push STALLED: <c> ...` (agentctl land
 parses them)."""
 from __future__ import annotations
 
+import json
+import os
 import shlex
 from dataclasses import dataclass, field
 from typing import Dict, List, Mapping, MutableMapping, Optional, Protocol, Sequence, Union
 
 import machine
 import pre_push_known_red as known_red
-from pre_push_repo import Say
+import pre_push_light as light
+import tool_python
+from pre_push_repo import Say, into
 from tool_files import Files
 
 # the hook's state file, then the hook (sourced: it defines the functions), then the function asked, with its arguments
@@ -69,6 +74,33 @@ class Shell:
             run_env["PREPUSH_CHECK_OUTPUT"] = output
         return machine.status(["bash", "-c", CALL_INTO if output else CALL, "pre-push", self.state_file, self.hook,
                                function, *args], cwd=self.cwd, env=run_env)
+
+
+@dataclass
+class Python:
+    """The checks that are Python's (`names`: pre_push_light.CHECKS), each `scripts/pre_push.py <hook> --check <name>
+    <state>` in a process of its own at the shell's cwd, after the run's state as JSON; every other call the hook's
+    shell function's (`shell`)."""
+    shell: Shell
+    names: Sequence[str] = tuple(light.CHECKS)
+    state: Dict[str, Value] = field(default_factory=no_state)
+
+    def __post_init__(self) -> None:
+        self.state = self.shell.state  # one state: the run writes it, both kinds of check read it
+
+    def call(self, function: str, *args: str, env: Optional[Mapping[str, str]] = None,
+             output: Optional[str] = None) -> int:
+        name = function[len("check_"):]
+        if not function.startswith("check_") or name not in self.names:
+            return self.shell.call(function, *args, env=env, output=output)
+        state = f"{self.shell.state_file}.json"
+        self.shell.files.replace_text(state, json.dumps(self.state))
+        script = f"{os.path.dirname(self.shell.hook)}/../pre_push.py"
+        argv = tool_python.isolated(script, self.shell.hook, "--check", name, state)
+        return self.start(into(output, argv) if output else argv, dict(self.shell.env, **(env or {})))
+
+    def start(self, argv: Sequence[str], env: MutableMapping[str, str]) -> int:
+        return machine.status(argv, cwd=self.shell.cwd, env=env)
 
 
 @dataclass
