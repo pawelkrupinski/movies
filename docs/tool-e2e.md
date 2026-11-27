@@ -62,12 +62,12 @@ agent goes through it on every push. Tools that reach prod come next.
 | 6 | `scripts/fail-before` | The commit gate's proof. A false "yes" admits a test that proves nothing. | `fail_before_e2e_test.py` |
 | 7 | `scripts/ci-wait` | Every wait on CI. A misread verdict lands on red or waits forever; a cancelled run must be followed to the run that superseded it. | `ci_wait_e2e_test.py` |
 | 8 | `infra/bin/rolling-reboot` | Reboots prod hosts. The web tier must not go down (`--accept-outage` for k3s-worker-1). | not here: the guards are fleetkit's, proved in fleetkit with `PROFILE=movies`, and the wrapper needs `npm ci` in `infra/version-dashboard` |
-| 9 | `scripts/identity-stamp-carry` | A wrong carry skips re-resolving stored families on boot. | next: needs sbt's digests, so a stubbed sbt at the process boundary |
+| 9 | `scripts/identity-stamp-carry` | A wrong carry skips re-resolving stored families on boot. | `identity_stamp_carry_e2e_test.py` (`propose` and `verify`; the stamps from a stub sbt) |
 | 10 | `scripts/sbt-warm` | Every sbt call. A wedged server stalls every land. | `sbt_warm_e2e_test.py` (lifecycle, slot, stale-TASTy retry; stall detection stays in the black-box tests) |
 | 11 | `scripts/land-precheck` | The cheap rejects before `agentctl land` queues a change. | `land_precheck_e2e_test.py` |
-| 12 | `identity-what-if`, `identity-measure`, `identity-slice` | Identity verdicts that a landing relies on. | next: JVM, mirror and CI dispatch; their black-box tests hold them today |
+| 12 | `identity-what-if`, `identity-measure`, `identity-slice` | Identity verdicts that a landing relies on. | `identity_tools_e2e_test.py` (`identity-slice --explain`, `identity-what-if` over a pure move); the mirror and CI-dispatch paths stay in their black-box tests |
 | 13 | `infra/bin/fleet-ssh`, `infra/bin/push-k8s-secrets` | Reach prod hosts and the cluster's Secrets. | `fleet_ssh_e2e_test.py` (`--ssh-config`), `push_k8s_secrets_e2e_test.py` |
-| 14 | `scripts/mobile-ship.sh`, `scripts/source-refresh`, `scripts/local-mirror/*` | Releases, the source refresh and the mirror. | later |
+| 14 | `scripts/mobile-ship.sh`, `scripts/source-refresh`, `scripts/local-mirror/*` | Releases, the source refresh and the mirror. | `mobile-ship.sh`: not here (below); the rest later |
 
 ## The scenarios and their mutations
 
@@ -81,10 +81,15 @@ agent goes through it on every push. Tools that reach prod come next.
 | `fleet_ssh_e2e_test` | `fleet-ssh --ssh-config` over a stub flake (`nix`) and a temp `~/.ssh/config`: the block is appended once, the person's own text and mode are kept, a rerun changes nothing, a moved host is replaced in the same block, an empty address skipped. | the block appended on every run; the person's config overwritten |
 | `land_precheck_e2e_test` | `land-precheck` in a worktree of a clone, the real hook run as a black box. A conflict with a moved main fails `rebase` naming the file and skips the lints; a clean change passes all three steps and touches no ref; a failing lint spec fails `lints`, sbt never reaching a server is UNCHECKED (exit 2); a row added to an allow-list fails `rules`. | a conflict read as clean; a rules refusal read as pass; an sbt that never ran read as a failure |
 | `sbt_warm_e2e_test` | `sbt-warm` over a stub `sbt --client` (`sbt_stub.py`): one server and a keeper holding the JVM slot across calls, a failing command's exit, the stale-TASTy retry, `--stop` freeing server, keeper and slot. | `--stop` leaving the server running; no stale-TASTy retry |
+| `identity_stamp_carry_e2e_test` | `identity-stamp-carry` in a worktree of a clone. The real `stamps` lays each commit out whole and runs the real sbt command line over the stub sbt, whose digest of a stamp is a hash of the paths and text under `identity/src/main/scala/e2e/<stamp>/`. A pure move of a rules file: `propose` writes the one row (the build's digest of the head, the base's as `equals`, proof pure-move) and the range, says the other two stamps are unchanged; committed, `verify` proves it again. A row with its digest or its `equals` edited, a rebase over identity code under the carry, and a what-if row over a hand-written verdict (no published asset) are each REFUSED by `verify` (exit 1). A move that also edits a line: `propose` exits 1 and writes nothing. | the pure-move proof read as always holding; the row's digest, or its `equals`, never compared; the cited range taken as the pushed one; the published asset not asked for |
+| `identity_tools_e2e_test` | `identity-slice de --explain` over a two-listing capture and a stub `java` that decides each listing by the ref's own rules file: the selector reaches the JVM (the other listing never shown), the JVM runs in this checkout's tree or in each `--ref`'s laid-out tree, two refs print side by side then the diff naming the TAKE that moved, one ref twice is identical. `identity-what-if` over a pure move prints `PURE MOVE: what-if skipped`, starts no JVM, reaches no mirror, and records a `pure-move` verdict for each country under the move's head and base. | the selector never passed on; different traces called identical; the verdict recorded under the wrong head; only the first country recorded |
 
 The pre-push scenario runs only the check under test (`PREPUSH_ONLY`, the landing check's own split), with the
 floor bash and the `--linux` container skipped. Those depend on the machine, and the hook's own tests cover them.
 
-Round 2 left out: `identity-stamp-carry` (its `stamps` need a real sbt build of identity's digests; its logic is held by
-`identity_stamp_carry_test.py`), the identity tools (JVM, mirror and CI dispatch) and `mobile-ship.sh` (a wrapper over the
-dashboard's TypeScript, which needs `npm ci`; the release logic lives in `infra/version-dashboard`).
+Round 3 added the two rows above. `identity-slice` and `identity-what-if` are driven only where no mirror, recording
+download or real JVM is reached: a non-pure `identity-what-if` goes on to the local prod mirror (and the vault), so it stays
+in its black-box tests. `mobile-ship.sh` is left out: its flow starts by inspecting the App Store and Google Play through
+their signed HTTP APIs (credentials from the vault), and a stub of both stores' APIs would be most of a second tool. It has no
+working-tree check to prove (it builds from a detached worktree at main's sha and pushes only the version bump it cut);
+that logic is held by the dashboard's own tests (`infra/version-dashboard/test`).

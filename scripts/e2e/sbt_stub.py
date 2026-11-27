@@ -1,18 +1,44 @@
-"""The `sbt` of the tools' e2e worlds that run scripts/sbt-warm (sbt_warm_e2e_test, land_precheck_e2e_test): `sbt --client
+"""The `sbt` of the tools' e2e worlds that run scripts/sbt-warm (sbt_warm_e2e_test, land_precheck_e2e_test) or the identity tools
+(identity_stamp_carry_e2e_test, identity_tools_e2e_test): `sbt --client
 <command>` as sbt's client answers it, at the process boundary. The first call in a checkout starts a stand-in server (a
 `sleep` carrying a server's command line, its socket in project/target/active.json, its pid appended to $E2E_SERVERS);
 $E2E_SBT_MODE's file says whether commands pass (`pass`), fail (`fail`), name a failing spec (`spec-fails`), never reach
-a server (`never-ran`) or fail once on a stale TASTy read (`stale-once`)."""
+a server (`never-ran`) or fail once on a stale TASTy read (`stale-once`). The identity tools' own `sbt -batch <tasks>`
+answers the worker's classpath and the stamps task whatever the mode (IDENTITY_BUILD)."""
 import os
 from typing import Dict, List, Optional
 
 import e2e_world
 
+# The identity tools' own `sbt -batch <tasks>` (identity-tools.sh: no client, no server): the worker's classpath, and the
+# stamps task, whose three digests the SCENARIO controls through the tree's own files -- each stamp's digest is a hash of the
+# paths and text under identity/src/main/scala/e2e/<stamp>/, as the build's is of the sources it digests, so a commit that
+# moves a file or edits a line moves the digest, and one that touches nothing there leaves it.
+IDENTITY_BUILD = """
+STAMPS = ("identity-rules", "venue-slot", "agreement-rules")
+if "-batch" in argv:
+    if "identity/Compile/managedResources" in argv:
+        here = "identity/target/scala-3.x/resource_managed/main/services/identity"
+        os.makedirs(here, exist_ok=True)
+        for stamp in STAMPS:
+            digest = hashlib.sha256(stamp.encode())
+            for base, _, names in sorted(os.walk("identity/src/main/scala/e2e/" + stamp)):
+                for name in sorted(names):
+                    digest.update((os.path.join(base, name) + "\\n").encode() + open(os.path.join(base, name), "rb").read())
+            with open(os.path.join(here, stamp + "-digest.txt"), "w") as f:
+                f.write(digest.hexdigest() + "\\n")
+            with open(os.path.join(here, stamp + "-version.txt"), "w") as f:
+                f.write("v" + stamp + "\\n")
+    elif "export worker/Test/fullClasspath" in argv:
+        out(os.getcwd() + "/worker/target/scala-3.x/test-classes:/lib/a.jar")
+    sys.exit(0)
+"""
 SERVER = " ".join(("java", "-jar", "/fake/sbt-launch.jar", "--detach-stdio"))  # as sbt --client's server shows it
 # `sbt --client <command>`: the first call in a checkout starts the stand-in server (never left holding our pipes), the
 # mode file says whether commands pass, fail, or fail once with a stale TASTy
 STUB = f"""
-import re, subprocess
+import hashlib, re, subprocess
+{IDENTITY_BUILD}
 mode = open(os.environ["E2E_SBT_MODE"]).read().strip()
 active = "project/target/active.json"
 if not os.path.exists(active):
