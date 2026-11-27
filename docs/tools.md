@@ -728,7 +728,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/it-local.sh` | Run the it/ layer locally against a MongoDB of this run's own | `scripts/it-local.sh` | skill agent-ops, identity-investigation, test-layers; 11 tools | it-local-test.sh | KEEP |
 | `scripts/lib/atomic.py` | ATOMIC FILE WRITES, the one way the Python tools replace a file (scripts/lib): the new content goes into a uniquely | `imported` | skill CLAUDE.md; 8 tools | atomic_test.py | Python |
 | `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | wf android, security-headers; skill CLAUDE.md; 9 tools | cli_harness_test.py | Python |
-| `scripts/lib/cpu_meter.py` | THE CPU METER (scripts/jvm-gate.sh's cpu_meter_start / cpu_meter_stop, for the Python tools): the CPU time of the | `imported` | 7 tools | - | Python |
+| `scripts/lib/cpu_meter.py` | THE CPU METER (scripts/jvm-gate.sh's cpu_meter_start / cpu_meter_stop, for the Python tools): the CPU time of the | `imported` | 6 tools | - | Python |
 | `scripts/lib/hook_event.py` | THE HOOK EVENT the claude-hooks read: the JSON Claude Code writes on a hook's stdin, read for a bounded time. | `imported` | 7 tools | hook_event_test.py | Python |
 | `scripts/lib/jvm_gate.py` | THE JVM GATE for the Python tools: scripts/jvm-gate.sh's slots, locks and governor tickets (its header says why and | `imported` | 6 tools | jvm_gate_test.py | Python |
 | `scripts/lib/jvm_memory.py` | THE MEMORY GATE and the wait for a JVM slot, for the Python tools (scripts/jvm-gate.sh's memory_gate and | `imported` | 4 tools | - | Python |
