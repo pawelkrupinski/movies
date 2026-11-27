@@ -208,14 +208,13 @@ class GrantTest(Case):
         commands = self.granting(4)
         gate = self.gate(commands)
         self.assertEqual(1, gate.width("run-script-tests", "script-tests", 1))
-        burn = "import time; t = time.process_time()\nwhile time.process_time() - t < 1.0: pass"
-        for worker in [subprocess.Popen([sys.executable, "-c", burn]) for _ in range(3)]:
-            worker.wait()
+        cli_harness.burn_then_idle()
         gate.release()
         [usage] = [c for c in commands.calls if c[1:3] == ["gov", "usage"]]
         self.assertEqual("tree", usage[usage.index("--meter") + 1])
-        cores = int(usage[usage.index("--cpu") + 1]) / max(1, int(usage[usage.index("--wall") + 1]))
-        self.assertGreaterEqual(cores, 2.0, "three busy children: about 3 cores, though it asked for 1")
+        cpu, wall = cli_harness.usage_seconds(usage)
+        self.assertGreaterEqual(cpu, cli_harness.BUSY_CPU_SECONDS, "the CPU its three busy children burned")
+        self.assertLess(cpu, wall, "not its width of 1 over the wall")
 
 
 class MemoryTest(Case):

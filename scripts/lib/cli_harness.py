@@ -198,6 +198,26 @@ def wait_until(condition: Callable[[], bool], bound: float = WAIT_BOUND) -> bool
     return True
 
 
+# A metered ticket's busy tree, sized so that its reading tells measured CPU from a width however loaded the runner:
+# three children each burn BUSY_CPU_SECONDS / 3 of CPU, then the tree idles IDLE_SECONDS. The CPU the meter must
+# report is at least BUSY_CPU_SECONDS (CPU time does not stretch under load) and below the ticket's wall, while a
+# width-1 reading IS the wall. A cpu / wall ratio does stretch: 0.2 on a starved macOS runner (Tool self-tests #634).
+BUSY_CPU_SECONDS = 3
+IDLE_SECONDS = 3.0
+
+
+def burn_then_idle() -> None:
+    burn = f"import time; t = time.process_time()\nwhile time.process_time() - t < {BUSY_CPU_SECONDS / 3}: pass"
+    for worker in [subprocess.Popen([sys.executable, "-c", burn]) for _ in range(3)]:
+        worker.wait()
+    time.sleep(IDLE_SECONDS)
+
+
+def usage_seconds(usage: Sequence[str]) -> Tuple[int, int]:
+    """A `gov usage` call's (--cpu, --wall) seconds."""
+    return int(usage[usage.index("--cpu") + 1]), int(usage[usage.index("--wall") + 1])
+
+
 def scratch_git(repo: str, *args: str) -> str:
     """git in a scratch repository, isolated as a tool's is (scratch-git.sh's scratch_git), its stdout stripped: for
     what a case class shares (a repository made once in setUpClass) as for ToolCase.git."""

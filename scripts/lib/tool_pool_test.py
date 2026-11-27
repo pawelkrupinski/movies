@@ -12,6 +12,7 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import cli_harness  # noqa: E402
 import tool_pool  # noqa: E402
 
 STUB = """#!/usr/bin/env bash
@@ -76,15 +77,13 @@ class GovernedWorkersTest(unittest.TestCase):
 
     def test_a_pool_whose_children_burn_cores_records_them_not_its_width(self) -> None:
         os.environ["KINOWO_CPU_METER_POLL"] = "0.1"
-        burn = "import time; t = time.process_time()\nwhile time.process_time() - t < 1.0: pass"
         with tool_pool.governed_workers("mutation-tests", 1):
-            workers = [subprocess.Popen([sys.executable, "-c", burn]) for _ in range(3)]
-            for worker in workers:
-                worker.wait()
+            cli_harness.burn_then_idle()
         [usage] = [c.split() for c in self.calls_made() if c.startswith("gov usage")]
         self.assertEqual(["--job", "mutation-tests"], usage[2:4])
-        cores = int(usage[usage.index("--cpu") + 1]) / max(1, int(usage[usage.index("--wall") + 1]))
-        self.assertGreaterEqual(cores, 2.0, "three busy children: about 3 cores, though it asked for 1")
+        cpu, wall = cli_harness.usage_seconds(usage)
+        self.assertGreaterEqual(cpu, cli_harness.BUSY_CPU_SECONDS, "the CPU its three busy children burned")
+        self.assertLess(cpu, wall, "not its width of 1 over the wall")
         self.assertEqual("tree", usage[usage.index("--meter") + 1])
 
     def test_under_a_ticket_it_takes_none_and_runs_at_most_its_width(self) -> None:
