@@ -2,7 +2,7 @@
 drift check or a commit rule over what the push changed, each in seconds -- eslint, jsquality, pyquality, drift,
 snapshot, dashboards, metricalerts, actionlint, shellcheck, newchecks, schedules, allowlists, driftguards, puremove,
 stampcarry, judgements, ios. Each runs in a process of its own (`scripts/pre_push.py <hook> --check <name> <state>`,
-pre_push_checks.Python), at the checked tree, after the run's state (pre_push_checks.Shell's variables, as JSON); its
+pre_push_checks.Processes), at the checked tree, after the run's state (as JSON); its
 lines are the shell hook's: `▸ pre-push` on stdout, `! pre-push` on stderr, each tool's own output where it wrote it."""
 from __future__ import annotations
 
@@ -290,8 +290,14 @@ def shellcheck(c: Check) -> int:
     if not c.need("shellcheck", "shellcheck", "brew install shellcheck"):
         return 1
     shell = c.shell_paths()
-    # local-tests.txt, lint-registry.tsv: the hook's tables, no shell
-    return int(any([added_warnings(c, p) for p in shell if p and not p.endswith((".txt", ".tsv"))]))
+    # local-tests.txt, lint-registry.tsv, pre-push-capabilities: the hook's tables, no shell
+    return int(any([added_warnings(c, p) for p in shell if p and not is_table(c, p)]))
+
+
+def is_table(c: Check, path: str) -> bool:
+    """A table beside the hook: a .txt / .tsv, or a file under scripts/hooks/ with no `#!` line (pre-push-capabilities)."""
+    return path.endswith((".txt", ".tsv")) or (path.startswith("scripts/hooks/")
+                                                 and not c.repo.files.read_text_or(path, "").startswith("#!"))
 
 
 def added_warnings(c: Check, path: str) -> bool:
@@ -443,6 +449,6 @@ CHECKS: Dict[str, Light] = {
 
 
 def state_of(text: str) -> Dict[str, Value]:
-    """The run's state, as pre_push_checks.Python wrote it: a JSON object of strings and lists of strings."""
+    """The run's state, as pre_push_checks.Processes wrote it: a JSON object of strings and lists of strings."""
     loaded: Dict[str, Value] = json.loads(text)
     return loaded

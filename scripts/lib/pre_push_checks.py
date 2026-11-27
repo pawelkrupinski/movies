@@ -1,15 +1,13 @@
-"""THE CHECKS, RUN (scripts/hooks/pre-push's header: NO STEP HANGS, THE KNOWN-RED BASELINE). The light checks and the
-script self-tests are Python's (pre_push_registry, `Python`: a process of their own after the run's state as JSON); the
-rest are still the hook's own shell functions `check_<name>`: the hook, SOURCED (not run), defines them, and `Shell`
-calls one in a bash of its own after the run's state (the changed paths, ranges, shas, temp dir, ...) as shell variables
--- what the checks read as the one shell's globals before. Each runs under the stall watchdog (scripts/stall-watch.sh)
-and is said as the shell hook said it: `▸ pre-push <c> ok (Ns)`, `! pre-push <c> FAILED (Ns)`, `pre-push STALLED: <c>
-...` (agentctl land parses them)."""
+"""THE CHECKS, RUN (scripts/hooks/pre-push's header: NO STEP HANGS, THE KNOWN-RED BASELINE). Every check is Python's
+(pre_push_registry): `Processes` starts each as `scripts/pre_push.py <hook> --check <name> <state>`, a process of its
+own at the checked tree after the run's state as JSON (the changed paths, ranges, shas, temp dir, ...), so the
+watchdog's marks and the known-red output capture work for it. Each runs under the stall watchdog
+(scripts/stall-watch.sh) and is said as the shell hook said it: `▸ pre-push <c> ok (Ns)`, `! pre-push <c> FAILED
+(Ns)`, `pre-push STALLED: <c> ...` (agentctl land parses them)."""
 from __future__ import annotations
 
 import json
 import os
-import shlex
 from dataclasses import dataclass, field
 from typing import Dict, List, Mapping, MutableMapping, Optional, Protocol, Sequence, Union
 
@@ -20,18 +18,8 @@ import tool_python
 from pre_push_repo import Say, into
 from tool_files import Files
 
-# the hook's state file, then the hook (sourced: it defines the functions), then the function asked, with its arguments
-CALL = '. "$1" || exit 1; . "$2" || exit 1; shift 2; "$@"'
-CALL_INTO = '. "$1" || exit 1; . "$2" || exit 1; shift 2; "$@" > "$PREPUSH_CHECK_OUTPUT" 2>&1'
-
-
-Value = Union[str, List[str]]  # a shell variable's: a string, or an array
-
-
-def shell_value(value: Value) -> str:
-    if isinstance(value, list):
-        return "(" + " ".join(shlex.quote(v) for v in value) + ")"
-    return shlex.quote(value)
+Value = Union[str, List[str]]  # a state value: a string, or a list of them
+UNKNOWN = 127  # a check no module holds: a command not found, as the shell hook's missing function was
 
 
 def no_state() -> Dict[str, Value]:
@@ -42,71 +30,45 @@ def no_names() -> List[str]:
     return []
 
 
-class Functions(Protocol):
-    """The hook's checks and gate steps by name: what the run calls (the hook's shell functions today, `Shell`; each
-    migration stage moves some into Python behind the same call)."""
+class Starter(Protocol):
+    """What the check loop calls: a check by name, its status."""
     state: Dict[str, Value]
 
-    def call(self, function: str, *args: str, env: Optional[Mapping[str, str]] = None,
-             output: Optional[str] = None) -> int: ...
+    def start(self, check: str, env: Optional[Mapping[str, str]] = None, output: Optional[str] = None) -> int: ...
 
 
 @dataclass
-class Shell:
-    """The hook's shell functions, each called in a bash of its own at `cwd` with `env`, after `state`."""
+class Processes:
+    """Each check (`names`: pre_push_registry.CHECKS) a `scripts/pre_push.py <hook> --check <name> <state>` process at
+    `cwd` with `env`, after `state` written as JSON to `state_file`."""
     hook: str
     files: Files
     env: MutableMapping[str, str]
     cwd: str
     state_file: str
-    state: Dict[str, Value] = field(default_factory=no_state)
-
-    def write_state(self) -> None:
-        self.files.replace_text(self.state_file, "".join(
-            f"{name}={shell_value(value)}\n" for name, value in self.state.items()))
-
-    def call(self, function: str, *args: str, env: Optional[Mapping[str, str]] = None,
-             output: Optional[str] = None) -> int:
-        """`function args...`'s status; its stdout and stderr this process's, or both into `output`."""
-        self.write_state()
-        run_env = dict(self.env, **(env or {}))
-        if output:
-            run_env["PREPUSH_CHECK_OUTPUT"] = output
-        return machine.status(["bash", "-c", CALL_INTO if output else CALL, "pre-push", self.state_file, self.hook,
-                               function, *args], cwd=self.cwd, env=run_env)
-
-
-@dataclass
-class Python:
-    """The checks that are Python's (`names`: pre_push_registry.CHECKS), each `scripts/pre_push.py <hook> --check <name>
-    <state>` in a process of its own at the shell's cwd, after the run's state as JSON; every other call the hook's
-    shell function's (`shell`)."""
-    shell: Shell
     names: Sequence[str] = tuple(registry.CHECKS)
     state: Dict[str, Value] = field(default_factory=no_state)
 
-    def __post_init__(self) -> None:
-        self.state = self.shell.state  # one state: the run writes it, both kinds of check read it
+    def start(self, check: str, env: Optional[Mapping[str, str]] = None, output: Optional[str] = None) -> int:
+        """The check's status; its stdout and stderr this process's, or both into `output`."""
+        if check not in self.names:
+            return UNKNOWN
+        self.files.replace_text(self.state_file, json.dumps(self.state))
+        return self.started(self.argv(check, output), dict(self.env, **(env or {})))
 
-    def call(self, function: str, *args: str, env: Optional[Mapping[str, str]] = None,
-             output: Optional[str] = None) -> int:
-        name = function[len("check_"):]
-        if not function.startswith("check_") or name not in self.names:
-            return self.shell.call(function, *args, env=env, output=output)
-        state = f"{self.shell.state_file}.json"
-        self.shell.files.replace_text(state, json.dumps(self.state))
-        script = f"{os.path.dirname(self.shell.hook)}/../pre_push.py"
-        argv = tool_python.isolated(script, self.shell.hook, "--check", name, state)
-        return self.start(into(output, argv) if output else argv, dict(self.shell.env, **(env or {})))
+    def argv(self, check: str, output: Optional[str]) -> List[str]:
+        script = f"{os.path.dirname(self.hook)}/../pre_push.py"
+        argv = tool_python.isolated(script, self.hook, "--check", check, self.state_file)
+        return into(output, argv) if output else list(argv)
 
-    def start(self, argv: Sequence[str], env: MutableMapping[str, str]) -> int:
-        return machine.status(argv, cwd=self.shell.cwd, env=env)
+    def started(self, argv: Sequence[str], env: MutableMapping[str, str]) -> int:
+        return machine.status(argv, cwd=self.cwd, env=env)
 
 
 @dataclass
 class Loop:
     """What the check loop needs beside the checks."""
-    shell: Functions
+    checks: Starter
     say: Say
     files: Files
     cwd: str
@@ -147,7 +109,7 @@ def run_one(loop: Loop, check: str) -> None:
     dog = watchdog(loop, check, stall, progress)
     output = f"{loop.tmp}/output.{check}" if loop.baseline else None
     loop.say.flush()
-    code = loop.shell.call(f"check_{check}", env=marks, output=output)
+    code = loop.checks.start(check, env=marks, output=output)
     if output:
         loop.say.raw(loop.files.read_text_or(output, ""))
     took = int(machine.monotonic() - started)

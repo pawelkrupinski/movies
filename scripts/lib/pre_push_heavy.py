@@ -2,7 +2,7 @@
 (`flipbacklog`: the slices the change brings walked, judged as main's spec judges them), the identity drift check
 (`identitydrift`: each claimed red's takes-drift rows, and a check's birth, on CI), and THE HEAVY ROWS (`itrest`,
 `itidentity`, `e2ecorpus`: Main's own commands with Main's row filter, against the landing check's MongoDB). Run as
-light checks (pre_push_checks.Python); their lines are the shell hook's."""
+light checks (pre_push_checks.Processes); their lines are the shell hook's."""
 from __future__ import annotations
 
 import re

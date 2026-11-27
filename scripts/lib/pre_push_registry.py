@@ -1,7 +1,7 @@
-"""EVERY CHECK THAT IS PYTHON'S, by name (pre_push_checks.Python runs them, scripts/pre_push.py --check answers one):
+"""EVERY CHECK, by name (pre_push_checks.Processes starts them, scripts/pre_push.py --check answers one):
 the light checks (pre_push_light), the script self-tests (pre_push_scripttests), the sbt check (pre_push_sbt), the
 identity area (pre_push_area), the flip backlog, the identity drift check and the heavy rows (pre_push_heavy). A name
-not here is still the hook's shell function `check_<name>`."""
+not here is no check (exit 127)."""
 from __future__ import annotations
 
 from typing import Dict

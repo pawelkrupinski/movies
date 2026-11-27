@@ -4,7 +4,7 @@ paths select (the GitOps-reading ones once infra/bin/fetch-gitops has put the ma
 BLOCKS), local-tests.txt's `basic` set (`fast` for --fast-only), --verify-only's unit tests narrowed to what the
 combined change reaches, the coupling report and the quality report -- through the checkout's kept server
 (scripts/sbt-warm) when there is one, else `sbt -batch`; then the coupling and quality ratchets and the design rules
-over their rows. Run as a light check (pre_push_checks.Python); its lines are the shell hook's."""
+over their rows. Run as a light check (pre_push_checks.Processes); its lines are the shell hook's."""
 from __future__ import annotations
 
 import re

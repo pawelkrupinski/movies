@@ -2,7 +2,7 @@
 what every step guards): where it runs (pre_push_tree), what is pushed and the checks its paths and messages select
 (pre_push_push, the selection pre_push_modes answers), the red gate and the stranded trailers (pre_push_gate), the
 known-red baseline, the reuse and a remote pass (pre_push_reuse), then each check (pre_push_checks: pre_push_registry's,
-and the hook's `check_<name>` functions) and the verdict. pre_push_run_test.py holds it black-box."""
+each a process of its own) and the verdict. pre_push_run_test.py holds it black-box."""
 from __future__ import annotations
 
 import os
@@ -22,7 +22,7 @@ from tool_files import Files, LocalDisk
 
 GIT_VARIABLES = ("GIT_DIR", "GIT_INDEX_FILE", "GIT_WORK_TREE", "GIT_OBJECT_DIRECTORY",
                  "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_COMMON_DIR", "GIT_PREFIX")
-# THE JOB'S SPLIT IS THIS RUN'S ALONE: the checks read them as the hook's shell variables, never exported to what they run
+# THE JOB'S SPLIT IS THIS RUN'S ALONE: the checks read them from the run's state, never exported to what they run
 SPLIT_VARIABLES = ("PREPUSH_ONLY", "PREPUSH_ELSEWHERE", "PREPUSH_HEAVY_ROWS", "PREPUSH_HEAVY_MONGODB_URI",
                    "PREPUSH_HEAVY_MONGODB_DB", "PREPUSH_IDENTITY_SHARD", "PREPUSH_IDENTITY_PLAN")
 
@@ -48,9 +48,8 @@ class Run:
         self.env = repo.env
         self.started = machine.monotonic()
         self.tmp = machine.output(["mktemp", "-d"], env=self.env)[1].strip()
-        self.shell = running.Shell(hook, self.files, self.env, repo.cwd, f"{self.tmp}/state.sh")
-        self.functions = running.Python(self.shell)
-        self.state = self.shell.state
+        self.starter = running.Processes(hook, self.files, self.env, repo.cwd, f"{self.tmp}/state.json")
+        self.state = self.starter.state
         self.state.update({"root": repo.cwd, "tmp": self.tmp})
         self.push = pushed.Push()
         self.paths: List[str] = []
@@ -280,7 +279,7 @@ class Run:
             "tree": self.tree or ""})
 
     def hold_split(self) -> None:
-        """THE JOB'S SPLIT IS THIS RUN'S ALONE: kept as the checks' shell variables, never exported to what they run."""
+        """THE JOB'S SPLIT IS THIS RUN'S ALONE: kept in the checks' state, never exported to what they run."""
         for name in SPLIT_VARIABLES:
             if name in self.env:
                 self.state[name] = self.env.pop(name)
@@ -289,10 +288,10 @@ class Run:
         self.check_state()
         cwd = self.place()
         self.state["tree"] = self.tree or ""
-        self.shell.cwd = cwd
+        self.starter.cwd = cwd
         scripts = os.path.realpath(f"{os.path.dirname(self.hook)}/..")
         watch = f"{scripts}/stall-watch.sh"
-        loop = running.Loop(self.functions, self.say, self.files, cwd, self.env, self.tmp,
+        loop = running.Loop(self.starter, self.say, self.files, cwd, self.env, self.tmp,
                             watch if self.files.is_file(watch) else f"{self.repo.cwd}/scripts/stall-watch.sh",
                             self.env.get("PREPUSH_STALL_SECONDS", "1200"),
                             self.files.read_text_or(self.baseline, "") if self.baseline else "", self.base_commit,

@@ -49,7 +49,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
   "the landing check" should "leave identity-slice's old-ref compile to Main, after landing" in {
     jobs.keySet should not contain "check-oldrefs"
     jobs("plan") should not include "outputs.oldrefs"
-    RepoFile.read("scripts/hooks/pre-push") should not include "check_oldrefs()"
+    RepoFile.read("scripts/lib/pre_push_registry.py") should not include "\"oldrefs\""
     RepoFile.read("scripts/land-precheck") should not include " oldrefs\""
     RepoFile.jobs(RepoFile.read(".github/workflows/main.yml"))("old-ref-compile") should include(
       "bash scripts/identity-slice-old-ref-test.sh")
@@ -66,10 +66,11 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     jobs("check") should include("grep -qxE 'itrest|itidentity'")
     RepoFile.read("scripts/ci/precommit_share.py") should include("""SHARES = ("rest", "identity", "plan")""")
     RepoFile.read("scripts/hooks/local-tests.txt").linesIterator.filter(_.startsWith("page ")).toSeq shouldBe empty
-    val hook = RepoFile.read("scripts/hooks/pre-push")
-    hook should not include "check_page()"
-    hook should not include "check_e2e()"
-    hook.linesIterator.map(_.trim).filter(_.endsWith("echo e2e")).toSeq shouldBe empty
+    // every check is Python's since the hook's stage 6: no `page` or `e2e` check registered, none planned
+    val checks = RepoFile.read("scripts/lib/pre_push_registry.py")
+    checks should not include "\"page\""
+    checks should not include "\"e2e\""
+    RepoFile.read("scripts/lib/pre_push_plan.py") should not include "rows.append(\"e2e\")"
     val gate = RepoFile.read(".github/gating-checks.tsv")
     gate should include("main.yml\te2e (rest)")
     gate should include("main.yml\tpage-tests-chrome (stable)")

@@ -64,9 +64,8 @@ class ToolSelfTestsOffGateSpec extends AnyFlatSpec with Matchers {
     val check = RepoFile.read("scripts/lib/pre_push_scripttests.py")
     check should include("RUNNER = \"scripts/run-script-tests\"")
     check should include("[RUNNER, \"--changed\"")
-    val hook = RepoFile.read("scripts/hooks/pre-push")
-    hook should not include "check_oldrefs()"
-    hook.linesIterator.map(_.trim).filter(_.endsWith("echo oldrefs")).toSeq shouldBe empty
+    RepoFile.read("scripts/lib/pre_push_registry.py") should not include "\"oldrefs\""
+    RepoFile.read("scripts/lib/pre_push_plan.py") should not include "\"oldrefs\""
   }
 
   it should "run on a change to every checked-in file the judgements lint's self-test reads" in {

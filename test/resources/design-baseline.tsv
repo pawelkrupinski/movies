@@ -1299,7 +1299,6 @@ mixed	scripts/lib/jvm_gate.py:granted	4
 mixed	scripts/lib/jvm_gate.py:lock_busy	3
 mixed	scripts/lib/jvm_memory.py:holders	4
 mixed	scripts/lib/pinned_npm_tools.py:npm_ci	5
-mixed	scripts/lib/pre_push_checks.py:Shell.call	4
 mixed	scripts/lib/pre_push_checks.py:run_one	6
 mixed	scripts/lib/pre_push_checks.py:stop_watchdog	3
 mixed	scripts/lib/pre_push_gate.py:Gate.read_verdict	4

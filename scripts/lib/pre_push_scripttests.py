@@ -2,7 +2,7 @@
 push changed -- natively, with the floor bash 3.2 over the bash the push touches in the same run (`--floor`), and on
 Linux (`--linux`, CI's ubuntu in Docker) beside it in the background; opt-in, the concurrency-heavy tests under load
 (PREPUSH_STRESS=N). --verify-only's repo-wide readers run alone. A runner from before a flag (the pushed tree's own,
-read by grep) is called as it was then. Run as a light check (pre_push_checks.Python), its lines the shell hook's."""
+read by grep) is called as it was then. Run as a light check (pre_push_checks.Processes), its lines the shell hook's."""
 from __future__ import annotations
 
 import re

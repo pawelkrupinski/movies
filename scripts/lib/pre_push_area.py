@@ -4,7 +4,7 @@ its `sbt` lines in ONE scripts/sbt-warm call (the checkout's kept server: warm, 
 then its `sh` lines; a failure shows the failing specs, the full log kept. The identity area's lines are narrowed first
 by TEST-IMPACT SELECTION (`test_impact`, also the sbt check's --verify-only narrowing), cut into the landing check's
 shards (PREPUSH_IDENTITY_SHARD) and given the population walk's candidates and kept rows (`walk_rows`, shared with the
-flipbacklog check). Run as a light check (pre_push_checks.Python); its lines are the shell hook's."""
+flipbacklog check). Run as a light check (pre_push_checks.Processes); its lines are the shell hook's."""
 from __future__ import annotations
 
 import fnmatch

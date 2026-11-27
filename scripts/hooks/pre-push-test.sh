@@ -16,6 +16,9 @@ check "the ESLint config runs ESLint" "eslint" "$(plan eslint.config.js)"
 # agentctl (~/bin lib/agentctl/queuesubmit.py land_refs_supported) reads land/ ref support off this file's text at main
 check "the hook names refs/heads/land/, where agentctl reads that a land/ ref push checks nothing" "1" \
   "$(grep -c 'refs/heads/land/' "$REPO_ROOT/scripts/hooks/pre-push")"
+# ...and off scripts/hooks/pre-push-capabilities (its reading of the file; the literal above its fallback)
+check "the capabilities file lists land-refs, one capability a line" "1" \
+  "$(grep -cx 'land-refs' "$REPO_ROOT/scripts/hooks/pre-push-capabilities")"
 check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/storage-access-in-try.js)"
 check "a version-dashboard source runs the JS/TS quality ratchet" "jsquality" "$(plan infra/version-dashboard/src/server.ts)"
 check "...and so do its baseline and the measure" "jsquality" "$(plan test/resources/js-quality-baseline.tsv)"
@@ -404,6 +407,11 @@ if command -v shellcheck >/dev/null; then
   scratch_git "$repo" add scripts/hooks/a-table.tsv; scratch_git "$repo" commit -qm "a table beside the hook"
   (cd "$repo" && PREPUSH_SKIP="scripttests sbt" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1); code=$?
   check "...and a .tsv table beside the hook (lint-registry.tsv)" "0" "$code"
+  scratch_git "$repo" reset -q --hard HEAD~1
+  printf '# what the hook supports, no shebang\nland-refs\n' > "$repo/scripts/hooks/pre-push-capabilities"
+  scratch_git "$repo" add scripts/hooks/pre-push-capabilities; scratch_git "$repo" commit -qm "the capabilities beside the hook"
+  (cd "$repo" && PREPUSH_SKIP="scripttests sbt" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1); code=$?
+  check "...and a table with no extension and no shebang (pre-push-capabilities)" "0" "$code"
   scratch_git "$repo" reset -q --hard HEAD~1
   check "...and removes its temporary worktree on success too" "1" "$(scratch_git "$repo" worktree list | wc -l | tr -d ' ')"
   scratch_git "$repo" checkout -q -- a.sh

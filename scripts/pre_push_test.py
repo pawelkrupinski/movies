@@ -15,7 +15,7 @@ import unittest
 from typing import List, Mapping, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
-from pre_push_fixture import PlanCase, lines  # noqa: E402
+from pre_push_fixture import FILES, HOOK, PlanCase, lines  # noqa: E402
 
 ALL_COMPILES = ["common/Test/compile", "identity/Test/compile", "testkit/Test/compile", "scrapers/Test/compile",
                 "repochecks/Test/compile", "worker/Test/compile", "worker/It/compile", "web/Test/compile",
@@ -353,6 +353,23 @@ class PlanFailsClosedTest(PlanCase):
                              env={"GIT_CEILING_DIRECTORIES": self.path()}, tool=self.path("repo", "scripts", "hooks", "pre-push"))
         self.assertEqual(1, done.code, done.output)
         self.assertIn("pre-push --plan: no checkout: git rev-parse --show-toplevel exited 128", done.stderr)
+
+
+class AgentctlReadsTest(PlanCase):
+    """What agentctl reads off the hook's TEXT at main: each mode it may ask as `<mode>)` (~/bin
+    lib/agentctl/queuerecheck.py hook_text_modes; stage 1's one `a|b|...)` arm hid every mode but the last, so its
+    MINIMAL RECHECKS read "the hook has no plan saying what its checks read"), the dry runs, land/ ref support."""
+
+    def test_every_mode_it_may_ask_is_an_arm_of_its_own(self):
+        text = FILES.read_text(f"{self.checkout}/{HOOK}")
+        for mode in ("--plan", "--compile-plan", "--coupling-plan", "--quality-plan", "--lint-plan",
+                     "--script-test-plan", "--per-file-lints"):
+            self.assertIn(f"{mode})", text, mode)
+        for literal in ("--checks-only", "--verify-only", "refs/heads/land/"):
+            self.assertIn(literal, text)
+        for mode in ("--plan", "--per-file-lints", "--failure-summary"):  # and each arm answers
+            self.assertEqual(0, self.hook(mode, *(["/dev/null"] if mode == "--failure-summary" else [])).code, mode)
+
 
 if __name__ == "__main__":
     unittest.main()

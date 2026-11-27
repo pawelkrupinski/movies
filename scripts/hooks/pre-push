@@ -301,60 +301,71 @@ set -uo pipefail
 # before its selection moved to Python, scripts/hooks/pre-push.sh-legacy, sourced so its command line still names
 # this hook (agentctl finds a push's hook by `hooks/pre-push` in it).
 if [ "${KINOWO_PRE_PUSH_LEGACY:-}" = 1 ]; then exec bash -c '. "$0.sh-legacy"' "${BASH_SOURCE[0]}" "$@"; fi
-# THE SELECTION AND THE RUN ARE PYTHON'S (scripts/pre_push.py over scripts/lib/pre_push_*.py): which checks, compiles,
-# lint specs and tests a list of paths selects (every plan mode), and the run itself -- the hand-over, what is pushed,
-# the range rules, the red gate and the stranded trailers (scripts/lib/pre_push_gate.py), the known-red baseline, the
-# reuse, the check loop with its watchdog and the verdict lines (scripts/lib/pre_push_run.py; its process keeps this
-# hook's path on its command line, which agentctl finds a push's hook by) and every check (scripts/lib/pre_push_registry.py).
-# Run, this file execs it; SOURCED (pre_push_checks.Shell, for a check no module holds), it defines nothing.
+# THE HOOK IS PYTHON'S (scripts/pre_push.py over scripts/lib/pre_push_*.py): which checks, compiles, lint specs and
+# tests a list of paths selects (every plan mode), and the run itself -- what is pushed, the range rules, the red gate and
+# the stranded trailers (scripts/lib/pre_push_gate.py), the known-red baseline, the reuse, the check loop with its
+# watchdog, every check (scripts/lib/pre_push_registry.py) and the verdict lines (scripts/lib/pre_push_run.py; its process
+# keeps this hook's path on its command line, which agentctl finds a push's hook by). This entry only answers a plan
+# mode, hands a push over to the pushing checkout's own copy, and execs the run.
 PrePushHook="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 PrePushPy="${PrePushHook%/*}/../pre_push.py"
-pre_push_py() { python3 -I -B "$PrePushPy" "$PrePushHook" "$@"; }
-if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-    case "${1:-}" in
-        --plan|--compile-plan|--coupling-plan|--quality-plan|--js-quality-plan|--py-quality-plan|--identity-change|\
-        --unit-plan|--unit-universe|--source-lints|--lint-plan|--per-file-lints|--script-test-plan|--failure-summary)
-            # ── a plan mode: the copy asked answers it, never handed over ──
-            exec python3 -I -B "$PrePushPy" "$PrePushHook" "$@" ;;
-    esac
-    # git exports GIT_DIR (and, by setup, GIT_INDEX_FILE / GIT_WORK_TREE) for the repository being pushed — for a
-    # worktree, ITS git dir: cleared once, for every check (the temporary checkout's git would read the pusher's).
-    unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX
-    root="$(git rev-parse --show-toplevel)" || exit 1
-    # ── The PUSHING checkout's own hook runs, whatever core.hooksPath says ──────────────────────────
-    # core.hooksPath=scripts/hooks is relative: each worktree runs its own checkout's copy. Rewritten to an absolute path
-    # (three times on 2026-10-14, very likely an IDE's git integration), every worktree's push ran the ROOT checkout's
-    # copy — an older hook, judging new work by stale checks. So a hook git runs for another checkout than its own hands
-    # over to that checkout's copy. Once only (PREPUSH_DELEGATED_FROM), and never for the dry runs (--range,
-    # --checks-only, --fast-only, --verify-only), which name the file they mean; the plan modes were answered above.
-    case "${1:-}" in
-        --range|--checks-only|--fast-only|--verify-only) ;;
-        *)
-            if [ -z "${PREPUSH_DELEGATED_FROM:-}" ]; then
-                hooks_path="$(git config --get core.hooksPath || true)"
-                case "$hooks_path" in
-                    /*|~*) printf '\033[33m! pre-push\033[0m core.hooksPath is absolute (%s): every worktree reaches that one copy — scripts/install-hooks.sh sets it back to the relative scripts/hooks\n' "$hooks_path" >&2 ;;
-                esac
-                hook_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
-                own="$(cd "$root" && pwd -P)/scripts/hooks/pre-push"
-                if [ "$(cd "$root" && pwd -P)" != "$hook_root" ] && [ -f "$own" ] && ! [ "$own" -ef "${BASH_SOURCE[0]}" ]; then
-                    export PREPUSH_DELEGATED_FROM="$hook_root"
-                    exec bash "$own" "$@"
-                fi
-            fi ;;
-    esac
-    unset PREPUSH_DELEGATED_FROM
+plan_mode() {
+    # ── a plan mode: the copy asked answers it, never handed over ── (pre-push-test.sh stamps the hook after this line)
+    exec python3 -I -B "$PrePushPy" "$PrePushHook" "$@"
+}
+# One arm a plan mode: agentctl reads `<mode>)` in this file for the modes it may ask (~/bin
+# lib/agentctl/queuerecheck.py hook_text_modes); one `a|b)` arm hid all but the last.
+case "${1:-}" in
+    --plan)              plan_mode "$@" ;;
+    --compile-plan)      plan_mode "$@" ;;
+    --coupling-plan)     plan_mode "$@" ;;
+    --quality-plan)      plan_mode "$@" ;;
+    --js-quality-plan)   plan_mode "$@" ;;
+    --py-quality-plan)   plan_mode "$@" ;;
+    --identity-change)   plan_mode "$@" ;;
+    --unit-plan)         plan_mode "$@" ;;
+    --unit-universe)     plan_mode "$@" ;;
+    --source-lints)      plan_mode "$@" ;;
+    --lint-plan)         plan_mode "$@" ;;
+    --per-file-lints)    plan_mode "$@" ;;
+    --script-test-plan)  plan_mode "$@" ;;
+    --failure-summary)   plan_mode "$@" ;;
+esac
+# git exports GIT_DIR (and, by setup, GIT_INDEX_FILE / GIT_WORK_TREE) for the repository being pushed — for a
+# worktree, ITS git dir: cleared once, for every check (the temporary checkout's git would read the pusher's).
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX
+root="$(git rev-parse --show-toplevel)" || exit 1
+# ── The PUSHING checkout's own hook runs, whatever core.hooksPath says ──────────────────────────
+# core.hooksPath=scripts/hooks is relative: each worktree runs its own checkout's copy. Rewritten to an absolute path
+# (three times on 2026-10-14, very likely an IDE's git integration), every worktree's push ran the ROOT checkout's
+# copy — an older hook, judging new work by stale checks. So a hook git runs for another checkout than its own hands
+# over to that checkout's copy. Once only (PREPUSH_DELEGATED_FROM), and never for the dry runs (--range,
+# --checks-only, --fast-only, --verify-only), which name the file they mean; the plan modes were answered above.
+case "${1:-}" in
+    --range|--checks-only|--fast-only|--verify-only) ;;
+    *)
+        if [ -z "${PREPUSH_DELEGATED_FROM:-}" ]; then
+            hooks_path="$(git config --get core.hooksPath || true)"
+            case "$hooks_path" in
+                /*|~*) printf '\033[33m! pre-push\033[0m core.hooksPath is absolute (%s): every worktree reaches that one copy — scripts/install-hooks.sh sets it back to the relative scripts/hooks\n' "$hooks_path" >&2 ;;
+            esac
+            hook_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+            own="$(cd "$root" && pwd -P)/scripts/hooks/pre-push"
+            if [ "$(cd "$root" && pwd -P)" != "$hook_root" ] && [ -f "$own" ] && ! [ "$own" -ef "${BASH_SOURCE[0]}" ]; then
+                export PREPUSH_DELEGATED_FROM="$hook_root"
+                exec bash "$own" "$@"
+            fi
+        fi ;;
+esac
+unset PREPUSH_DELEGATED_FROM
 # ── end of the hand-over ── (at the line's start: pre-push-test.sh stamps the hook after it)
 # A CI RUN'S REF checks nothing (scripts/lib/pre_push_push.py CI_REFS): refs/heads/measure/*, refs/heads/check/* and
 # refs/heads/land/* -- agentctl reads that this hook supports land/ refs by the literal `refs/heads/land/` in this file
-# (~/bin lib/agentctl/queuesubmit.py land_refs_supported), so it stays here, named.
-    # THE RUN FAILS CLOSED: no python3, and nothing would be selected -- the push BLOCKED (A MISSING LOCAL TOOL)
-    command -v python3 > /dev/null || {
-        printf '\033[33m! pre-push\033[0m python3 not found: the selection check cannot run, so the push is BLOCKED (never skipped). Fix: install Python 3 (brew install python) -- then push again (or PREPUSH_SKIP=selection, named in your report).\n' >&2
-        exit 1; }
-    cd "$root" || exit 1
-    exec python3 -I -B "$PrePushPy" "$PrePushHook" --run "$@"
-fi
-# ── sourced: nothing is left to define -- every check is Python's (scripts/lib/pre_push_registry.py: the light checks,
-# scripttests, sbt, the identity area, flipbacklog, identitydrift, the heavy rows), each started as `scripts/pre_push.py
-# <hook> --check <name> <state>` by pre_push_checks.Python ──
+# (~/bin lib/agentctl/queuesubmit.py land_refs_supported), so it stays here, named; scripts/hooks/pre-push-capabilities
+# says it too (`land-refs`), the file agentctl reads first.
+# THE RUN FAILS CLOSED: no python3, and nothing would be selected -- the push BLOCKED (A MISSING LOCAL TOOL)
+command -v python3 > /dev/null || {
+    printf '\033[33m! pre-push\033[0m python3 not found: the selection check cannot run, so the push is BLOCKED (never skipped). Fix: install Python 3 (brew install python) -- then push again (or PREPUSH_SKIP=selection, named in your report).\n' >&2
+    exit 1; }
+cd "$root" || exit 1
+exec python3 -I -B "$PrePushPy" "$PrePushHook" --run "$@"
