@@ -512,7 +512,7 @@
       "id": 9,
       "type": "timeseries",
       "title": "Design rules: the effects, stacked by kind",
-      "description": "Modules touching an injected effect outside its adapter, stacked: effect-clock-process-env is ONE row a module for those three (design-baseline.tsv does not split them), effect-files / -storage / -network one row each. Falls as modules receive them instead.",
+      "description": "Modules touching an injected effect outside its adapter, stacked: effect-clock-process-env is ONE row a module for those three (design-baseline.tsv does not split them), effect-files / -storage / -network one row each. Falls as modules receive them instead. Scala has no effect rows: its effects are project/Coupling.scala's collaborator reading, so its panel says so instead of No data.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"
@@ -550,7 +550,8 @@
               "mode": "normal",
               "group": "A"
             }
-          }
+          },
+          "noValue": "none held: Scala effects are Coupling.scala collaborator readings"
         },
         "overrides": []
       },

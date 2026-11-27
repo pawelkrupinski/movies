@@ -598,6 +598,19 @@ class PanelsReadTheSameAtEveryZoom(unittest.TestCase):
         self.assertTrue(checked, "no $__interval window found -- the detection above has gone blind")
 
 
+class CodeQualityBoard(unittest.TestCase):
+    """apps/code-quality.json (scripts/ci/quality_metrics.py's series): a language row repeats for every language, and
+    one with no row of a kind -- Scala has no design-rule effect rows, its effects are project/Coupling.scala's -- must
+    say so, not draw the "No data" that reads as a broken panel."""
+
+    def test_a_kind_one_language_never_has_says_so(self):
+        document = dict(dashboards())["apps/code-quality.json"]
+        effects = [p for p in query_panels(document) if any('measure=~"effect-.*"' in t.get("expr", "") for t in p.get("targets", []))]
+        self.assertTrue(effects, "no effects panel found")
+        for panel in effects:
+            self.assertIn("Scala", panel["fieldConfig"]["defaults"].get("noValue", ""), panel["title"])
+
+
 class TelegramMessagesArePlainText(unittest.TestCase):
     """Every Telegram receiver, Grafana's and Alertmanager's, sends with entity parsing OFF.
 
