@@ -17,9 +17,7 @@ object PodkarpackieVenues {
       msi(KinoNaBiegunach, "https://jaroslaw.kinonabiegunach.pl"),
       // The portal moved to MSI's standard month pages on 2026-11-25, and its old day page now lists nothing; the
       // day reader stays first for the recorded corpora, which hold the old pages.
-      own(kit => new services.cinemas.common.FirstAnsweringScraper(Seq(
-        new KinoSDKSanokClient(kit.http, KinoSDK, kit.today),
-        new MsiClient(kit.http, KinoSDKSanokClient.BaseUrl, KinoSDK, kit.today)))),
+      ownThenMsi(KinoSDK, KinoSDKSanokClient.BaseUrl)(kit => new KinoSDKSanokClient(kit.http, KinoSDK, kit.today)),
     )
 
     override val nearbyTowns: Seq[PolishVenue] = Seq(

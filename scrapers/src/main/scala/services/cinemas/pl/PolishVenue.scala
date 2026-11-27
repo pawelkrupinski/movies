@@ -112,9 +112,19 @@ trait PolishVenueRegistry {
                           titleSuffix:         Option[String] = None,
                           filmLabel:           Option[String] = None,
                           otherVenueLocations: Set[String]    = Set.empty,
-                          route:               PolishVenue.Route = PolishVenue.Route.Direct,
-                          monthOrder:          MsiClient.MonthOrder = MsiClient.MonthOrder.ByName): PolishVenue =
-    PolishVenue.Msi(cinema, baseUrl, mvcPath, titlePrefix, titleSuffix, filmLabel, otherVenueLocations, route, monthOrder)
+                          route:               PolishVenue.Route = PolishVenue.Route.Direct): PolishVenue =
+    PolishVenue.Msi(cinema, baseUrl, mvcPath, titlePrefix, titleSuffix, filmLabel, otherVenueLocations, route,
+      MsiClient.MonthOrder.ByName)
+  /** An MSI portal whose month pages are asked for by date ([[MsiClient.MonthOrder.ByDate]]). A helper of its own, not
+   *  a parameter of [[msi]]: a default argument is compiled into every caller, so each registry would name the type. */
+  protected final def msiByDate(cinema: Cinema, baseUrl: String): PolishVenue =
+    PolishVenue.Msi(cinema, baseUrl, MsiClient.DefaultMvcPath, None, None, None, Set.empty, PolishVenue.Route.Direct,
+      MsiClient.MonthOrder.ByDate)
+  /** A venue's own reader, then its portal's standard MSI month pages ([[MsiClient]]) when the reader lists nothing
+   *  (`FirstAnsweringScraper`): a portal moved to MSI's standard pages whose old pages the recorded corpora hold. */
+  protected final def ownThenMsi(cinema: Cinema, baseUrl: String)(build: PolishScraperKit => CinemaScraper): PolishVenue =
+    PolishVenue.OwnClient(kit => new services.cinemas.common.FirstAnsweringScraper(Seq(
+      build(kit), new MsiClient(kit.http, baseUrl, cinema, kit.today))))
   protected final def biletyna(cinema: Cinema, page: String): PolishVenue = PolishVenue.Biletyna(cinema, BiletynaPlacePage(page))
   protected final def biletynaHalls(cinema: Cinema, halls: Seq[(String, String)]): PolishVenue =
     PolishVenue.BiletynaHalls(cinema, halls.map { case (page, hall) => BiletynaPlacePage(page) -> hall })
