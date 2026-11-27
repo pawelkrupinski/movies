@@ -297,7 +297,7 @@ def run_on_linux(o: Options, s: Settings, env: MutableMapping[str, str], scratch
         return 0
     gate = compose_gate(env, o.root)
     try:
-        return run_in_container(o, s, scratch, env, tests, govern(gate, env, o.root, s.jobs, tests))
+        return run_in_container(o, s, env, scratch, tests, govern(gate, env, o.root, s.jobs, tests))
     finally:
         gate.release()
 

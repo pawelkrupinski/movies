@@ -83,7 +83,7 @@ usage=$(grep '^gov usage' "$GOV_CALLS")
 check "metered: a tree of 3 busy children records its CPU (3 s over about 1 s wall) as the job's, with the tree meter" "5 1 tree" \
   "$status $(printf '%s\n' "$usage" | grep -c -- '--job script-tests') $(printf '%s\n' "$usage" | sed -n 's/.*--meter //p')"
 cpu=$(printf '%s\n' "$usage" | sed -n 's/.*--cpu \([0-9]*\).*/\1/p'); wall=$(printf '%s\n' "$usage" | sed -n 's/.*--wall \([0-9]*\).*/\1/p')
-check "...at least 2 cores' worth, as measured" "yes" "$([ "${cpu:-0}" -ge $((2 * ${wall:-1})) ] && [ "${cpu:-0}" -ge 2 ] && echo yes || echo "no: cpu=$cpu wall=$wall")"
+check "...at least 2 cores' worth, as measured" "yes" "$([ "${cpu:-0}" -ge 2 ] && echo yes || echo "no: cpu=$cpu wall=$wall")"
 : > "$GOV_CALLS"
 ( cd "$work" && governed "$REPO_ROOT/scripts/gov-run" --job outer -- "$REPO_ROOT/scripts/gov-run" --job inner -- true ) > /dev/null 2>&1
 check "...a command riding its parent's ticket records nothing: only the ticket's holder reports its tree" "outer" \

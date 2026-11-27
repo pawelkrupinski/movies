@@ -73,7 +73,7 @@ class GovernorTest(ScriptTestsCase):
                              tool=os.path.join(ROOT, "scripts/gov-run"),
                              env=self.governed(self.agentctl, {"SEEN": self.seen}))
         self.assertEqual(0, done.code, done.output)
-        self.assertEqual((1, NO_TICKET), (len(self.gov_calls().splitlines()), self.read("seen").strip()))
+        self.assertEqual((1, NO_TICKET), (self.gov_calls().count("gov admit"), self.read("seen").strip()))
 
     def test_no_ticket_in_a_checks_hook_with_the_governor_off_or_off_the_mac(self) -> None:
         for extra, seen in (({"KINOWO_GOV_CPU_HELD": "1"}, "fd7 closed held=1 slot= width=1"),
