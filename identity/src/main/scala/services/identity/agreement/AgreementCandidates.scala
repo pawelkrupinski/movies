@@ -33,6 +33,8 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
    *  ([[waitsOn]])? What the stage's take and the fill's `broadcast.take` signal both wait on. */
   private[agreement] def undatedOf(lookups: IdentityLookups): Int => Boolean =
     film => lookups.releaseDay(film).isAwaited && waitsOn(film)
+  /** Is a record of the billed work dated by its year alone, as TMDB reads it ([[undatedOf]])? None is without TMDB. */
+  private[agreement] def undated(film: Int): Boolean = looked.exists(undatedOf(_)(film))
 
   /** The broadcast join ([[Broadcast.take]]) of the cluster's listings, as the model measures them ([[measured]]), over
    *  the `records` its evidence reaches — the house productions read for a production's credit ([[productionsOf]],
@@ -40,6 +42,20 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
   private[agreement] def broadcastOf(listings: Seq[Listing], records: Seq[(Int, services.identity.measures.Film)], asked: mutable.Set[Question],
                                      undated: Int => Boolean): Either[Seq[Int], Option[Broadcast.Taken]] =
     Broadcast.take(listings, measured, records, () => productionsOf(listings, asked, receipt = None))(undated)
+
+  /** The broadcast join of a relay a MODEL take is corrected by ([[RelayCorrection]]) over the `records` its evidence
+   *  reaches: no film database's productions read, a record of the billed work stored with its year alone read again
+   *  ([[undatedOf]]) before the day decides — what it waits on noted in `asked`; none while TMDB is not read. */
+  private[agreement] def relayTakeOf(listings: Seq[Listing], records: Seq[(Int, services.identity.measures.Film)],
+                                     asked: mutable.Set[Question]): Option[Broadcast.Taken] =
+    looked.flatMap(lookups => Broadcast.take(listings, measured, records)(undatedOf(lookups)).left.map(asked ++= _.map(Question.Record(_))).toOption.flatten)
+
+  /** Why a relay's take of `taken` is not the production its venues screen ([[Broadcast.superseded]]), its listings
+   *  measured as they bill it, no venue page read; `others`, the other records its titles find, read only once the rest
+   *  holds. */
+  private[agreement] def supersededBy(listings: Seq[Listing], taken: services.identity.measures.Film,
+                                      others: => Seq[(Int, services.identity.measures.Film)]): Option[String] =
+    Broadcast.superseded(listings, listing => Evidence.of(listing, None).measured, taken, others)
 
   /** The candidates of a relay whose listings link a listings site's catalogue entry as their page, read as the venues
    *  bill them — the entry's facts left out: Flicks links an encore to an old season's page, whose year denies the
@@ -137,12 +153,8 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
 
   /** The TMDB films the listings' own evidence reaches, none denied and no fallback id — None while a search they ask
    *  has no answer. */
-  private[agreement] def searchedFilms(listings: Seq[Listing], lookups: IdentityLookups): Option[Seq[Int]] = {
-    val noting = new AgreementEvidence.UnknownNoting(lookups)
-    val found  = evidence.nodesOf(listings, noting)
-      .flatMap(_.candidates.filterNot(_.denied).map(_.tmdbId)).filterNot(FallbackIds.isFallback).distinct.sorted
-    Option.unless(noting.unknown)(found)
-  }
+  private[agreement] def searchedFilms(listings: Seq[Listing], lookups: IdentityLookups): Option[Seq[Int]] =
+    evidence.knownNodesOf(listings, lookups).map(_.flatMap(_.candidates.filterNot(_.denied).map(_.tmdbId)).filterNot(FallbackIds.isFallback).distinct.sorted)
 
   /** The TMDB films the cluster's own evidence reaches, none denied — a cache of its listings and of every TMDB answer
    *  the read took (its receipt): kept while its listings' digest stands and none of those answers filed since moved (a

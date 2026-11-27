@@ -11,8 +11,7 @@ import services.identity.vocabulary.{Answer, Question, VoterFamily}
  *  ([[AgreementEvidence]]) and the cluster's `candidates`, by the selected `rules`. */
 private[agreement] final class FillTake(evidence: AgreementEvidence, candidates: AgreementCandidates,
                                         rules: services.identity.agreement.UnifiedRules, venueText: VenueText) {
-  import evidence.looked
-  import candidates.{measured, productionsOf, undatedOf}
+  import candidates.{measured, productionsOf}
   import AgreementTakes.{taking, Take}
 
   /** The film the first selected FILL rule takes for a cluster the families agreed on nothing for
@@ -22,22 +21,18 @@ private[agreement] final class FillTake(evidence: AgreementEvidence, candidates:
    *  reads is noted in `receipt`, the verdict's. */
   def filledOf(decision: ResolverDecision, listings: Seq[Listing], verdicts: Seq[FamilyVerdict], stated: Seq[Listing],
                thisYear: Int, asked: mutable.Set[Question], receipt: mutable.Map[services.identity.vocabulary.Dependency, Long]): Answer[Option[StoredFill]] =
-    looked.filter(_ => rules.fill.nonEmpty).fold[Answer[Option[StoredFill]]](Answer.Known(None)) { lookups =>
-      val noting  = new AgreementEvidence.UnknownNoting(lookups)
-      val nodes  = evidence.nodesOf(listings, noting)
-      if (noting.unknown) Answer.Unknown
-      else {
-        // the `broadcast.take` signal read as the stage's own take reads the join: the same productions, the same wait
-        val cluster = services.identity.agreement.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
-          Some(measured), venueText.names(listings), film => lookups.cast(film).answered.flatten,
-          productions = () => productionsOf(listings, asked, Some(receipt)), undated = { film =>
-            val attempt = services.identity.vocabulary.Dependency.Attempted(Question.Record(film))
-            evidence.readNow(attempt).foreach(receipt(attempt) = _)
-            undatedOf(lookups)(film)
-          })
-        Answer.Known(rules.filled(services.identity.agreement.UnifiedEvidence.contenders(cluster)).map { case (film, rule) =>
-          StoredFill(rule, film.tmdb, film.imdb, rules.explain(film, rule)) })
-      }
+    if (rules.fill.isEmpty || !evidence.hasTmdb) Answer.Known(None)
+    else evidence.tmdbNodesOf(listings).fold[Answer[Option[StoredFill]]](Answer.Unknown) { nodes =>
+      // the `broadcast.take` signal read as the stage's own take reads the join: the same productions, the same wait
+      val cluster = services.identity.agreement.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
+        Some(measured), venueText.names(listings), evidence.castOf,
+        productions = () => productionsOf(listings, asked, Some(receipt)), undated = { film =>
+          val attempt = services.identity.vocabulary.Dependency.Attempted(Question.Record(film))
+          evidence.readNow(attempt).foreach(receipt(attempt) = _)
+          candidates.undated(film)
+        })
+      Answer.Known(rules.filled(services.identity.agreement.UnifiedEvidence.contenders(cluster)).map { case (film, rule) =>
+        StoredFill(rule, film.tmdb, film.imdb, rules.explain(film, rule)) })
     }
 
   /** The decision of the cluster `id` (its `listings` digesting to `digest`) with the film a fill rule took on its

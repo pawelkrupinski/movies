@@ -8,7 +8,8 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import services.identity.measures.Film
+import models.ListingKey
+import services.identity.measures.{Film, Listing, ResolverDecision}
 import services.identity.vocabulary.{BsonFields, Dependency, VoterFamily}
 
 /** One cluster's agreement verdict as stored: the digest of its listings, its RECEIPT (`reads`: everything its decision
@@ -28,6 +29,29 @@ final case class StoredVerdict(id: String, listings: Long, reads: Map[Dependency
  *  answer. What it read is its verdict's receipt (a filing of any of it decides it again). */
 final case class StoredCorrection(film: Option[Int], line: Option[String], waiting: Boolean) {
   def outcome: Option[Correction.Outcome] = line.map(Correction.Outcome(film, _))
+
+  /** The model's `decision` as this correction takes it: withdrawn, or switched to its film, under its rule
+   *  ([[Correction.ruleOf]]) — as the model took it where the evidence corrects nothing. */
+  def takenAs(decision: ResolverDecision): ResolverDecision = outcome.fold(decision) { outcome =>
+    val rule = Some(Correction.ruleOf(outcome))
+    outcome.film.fold(AgreementTakes.taking(decision)(ResolverDecision.Basis.Withdrawn, outcome.line, film = None, rule = rule))(film =>
+      AgreementTakes.taking(decision)(ResolverDecision.Basis.Corrected, outcome.line, film = Some(film), rule = rule))
+  }
+}
+
+object StoredCorrection {
+  /** What a take's stored correction stands on, read without decoding an answer or building a string: the film, its
+   *  listings' keys and each one's poster and screening days — a take whose listings move is read afresh
+   *  ([[AgreementCorrections]]). */
+  def digestOf(decision: ResolverDecision, listingOf: ListingKey => Option[Listing]): Long = {
+    var members = 0
+    var facts   = 0
+    decision.members.foreach { key =>
+      members += key.hashCode
+      listingOf(key).foreach(listing => facts += listing.poster.hashCode * 31 + listing.screenings.hashCode)
+    }
+    (decision.film.hashCode.toLong << 32) ^ (members.toLong << 16) ^ (facts.toLong & 0xffffffffL)
+  }
 }
 
 /** The film a fill rule takes for a cluster: the rule's signal, the film's TMDB id or IMDb id, and the explanation line

@@ -34,6 +34,19 @@ private[agreement] final class AgreementEvidence(sources: AgreementSources.Evide
   def nodesOf(listings: Seq[Listing], lookups: IdentityLookups): Seq[services.identity.IdentityResolver.NodeEvidence] =
     services.identity.IdentityResolver.evidenceOf(listings, lookups, normalizer, calibration)(_ => true)
 
+  /** The evidence nodes ([[nodesOf]]) read through `lookups` — none while an answer they read is a gap. */
+  def knownNodesOf(listings: Seq[Listing], lookups: IdentityLookups): Option[Seq[services.identity.IdentityResolver.NodeEvidence]] = {
+    val noting = new AgreementEvidence.UnknownNoting(lookups)
+    val nodes  = nodesOf(listings, noting)
+    Option.unless(noting.unknown)(nodes)
+  }
+
+  /** The evidence nodes read through TMDB ([[knownNodesOf]]): none without TMDB, or while an answer they read is a gap. */
+  def tmdbNodesOf(listings: Seq[Listing]): Option[Seq[services.identity.IdentityResolver.NodeEvidence]] = looked.flatMap(knownNodesOf(listings, _))
+
+  /** The cast TMDB credits `film` with, as read through TMDB, if known. */
+  def castOf(film: Int): Option[Seq[String]] = looked.flatMap(_.cast(film).answered.flatten)
+
   /** The families in their order: the order their verdicts and searches are read in. */
   val familiesInOrder: Seq[(VoterFamily, FamilyAnswers)] = families.toSeq.sortBy(_._1.ordinal)
   /** Each family's calibration: TMDB's, its search priors' spread scaled by the family's [[VoterFamily.priorSpread]]. */

@@ -44,7 +44,7 @@ module-edge	common->geodata	14
 module-edge	common->http	65
 module-edge	http->base	10
 module-edge	identity->base	25
-module-edge	identity->common	540
+module-edge	identity->common	541
 module-edge	identity->http	5
 module-edge	scrapers->base	51
 module-edge	scrapers->common	1489
@@ -143,7 +143,6 @@ fanout	services.identity.SourceCannotLinks	11
 fanout	services.identity.VenueSlots	12
 fanout	services.identity.agreement.Agreement	17
 fanout	services.identity.agreement.AgreementCandidates	19
-fanout	services.identity.agreement.AgreementCorrections	21
 fanout	services.identity.agreement.AgreementEvidence	16
 fanout	services.identity.agreement.AgreementPipeline	21
 fanout	services.identity.agreement.AgreementSources	11
@@ -153,7 +152,7 @@ fanout	services.identity.agreement.Broadcast	12
 fanout	services.identity.agreement.Catalogue	11
 fanout	services.identity.agreement.ClusterVerdicts	15
 fanout	services.identity.agreement.FamilyVerdicts	10
-fanout	services.identity.agreement.FillTake	11
+fanout	services.identity.agreement.FillTake	10
 fanout	services.identity.agreement.SuspectTakes	16
 fanout	services.identity.agreement.UnifiedEvidence	17
 fanout	services.identity.measures.IdentityMeasures	15
@@ -192,7 +191,6 @@ datafanout	modules.wiring.ShareCardWiring	19
 datafanout	modules.wiring.WorkerWiring	18
 datafanout	services.identity.FilmRecordDrafts	17
 datafanout	services.identity.ScopeDrafting	17
-datafanout	services.identity.agreement.AgreementCorrections	18
 datafanout	settings.ProcessConfiguration	84
 databag	controllers.ApiFilm	13
 databag	controllers.TuneSamples	15

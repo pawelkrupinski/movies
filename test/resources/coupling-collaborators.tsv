@@ -1582,7 +1582,10 @@ services.identity.agreement.CatalogueTake	collaborator
 services.identity.agreement.ClusterKeys	collaborator
 services.identity.agreement.ClusterVerdicts	collaborator
 services.identity.agreement.Correction	collaborator
+services.identity.agreement.CorrectionReading	collaborator
+services.identity.agreement.CorrectionRecords	collaborator
 services.identity.agreement.FamilyAnswers	collaborator
+services.identity.agreement.FamilyCorrection	collaborator
 services.identity.agreement.FamilyIdentification	collaborator
 services.identity.agreement.FamilyLookups	collaborator
 services.identity.agreement.FamilyPick	data
@@ -1594,9 +1597,12 @@ services.identity.agreement.InMemoryAgreementVerdicts	collaborator
 services.identity.agreement.InlineAsker	collaborator
 services.identity.agreement.MongoAgreementKeys	collaborator
 services.identity.agreement.MongoAgreementVerdicts	collaborator
+services.identity.agreement.PosterCorrection	collaborator
 services.identity.agreement.PosterVoteTake	collaborator
+services.identity.agreement.ProgrammeCorrection	collaborator
 services.identity.agreement.QuestionHandOver	collaborator
 services.identity.agreement.RecordingAnswers	collaborator
+services.identity.agreement.RelayCorrection	collaborator
 services.identity.agreement.SameFilm	collaborator
 services.identity.agreement.Showing	data
 services.identity.agreement.SourceHit	data
