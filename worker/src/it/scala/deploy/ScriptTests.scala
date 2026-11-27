@@ -12,7 +12,7 @@ object ScriptTests {
   final case class Listed(path: String, tag: Option[String], reason: String)
 
   lazy val all: Seq[Listed] =
-    Process(Seq("bash", "scripts/run-script-tests", "--list", "--all")).!!.linesIterator.filter(_.nonEmpty).map { line =>
+    Process(Seq("scripts/run-script-tests", "--list", "--all")).!!.linesIterator.filter(_.nonEmpty).map { line =>
       line.split("\t", -1).toSeq match {
         case Seq(path, "-", _)         => Listed(path, None, "")
         case Seq(path, tag, reason)    => Listed(path, Some(tag), reason)

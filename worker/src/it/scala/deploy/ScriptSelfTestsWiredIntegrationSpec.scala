@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
  *
  * Each row was one line of a unit wiring spec (`ScriptTests.runInCi(...)`): a workflow spec reads a script's wiring as
  * text and leans on the script's own self-test for its behaviour. Whether the runner runs that self-test is the
- * runner's own discovery (`bash scripts/run-script-tests --list`, a real process), so the rows live here, in `it`,
+ * runner's own discovery (`scripts/run-script-tests --list`, a real process), so the rows live here, in `it`,
  * as one table (the owner, 2026-10-27: unit specs spawn no process).
  */
 class ScriptSelfTestsWiredIntegrationSpec extends AnyFlatSpec with Matchers {

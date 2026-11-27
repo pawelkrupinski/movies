@@ -53,7 +53,7 @@ class ToolSelfTestsOffGateSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "run on a change under every root scripts/run-script-tests searches" in {
-    val roots = """(?m)^Roots="([^"]*)"""".r.findFirstMatchIn(RepoFile.read("scripts/run-script-tests"))
+    val roots = """(?m)^(?:Roots=|ROOTS = )"([^"]*)"""".r.findFirstMatchIn(RepoFile.read("scripts/run-script-tests"))
       .getOrElse(fail("run-script-tests names no Roots")).group(1).split("\\s+").toSeq
     roots should not be empty
     roots.filterNot(r => paths.contains(s"$r/**")) shouldBe empty

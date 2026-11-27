@@ -186,7 +186,7 @@ class StallWatchTest(cli_harness.ToolCase):
     def test_the_shell_name_ended_while_it_picks_its_python3_says_nothing(self) -> None:
         # run-script-tests ends a quick test's watchdog at once; the probe for a python3 that answers had not finished,
         # and its echo into the dead parent's pipe wrote `echo: write error: Broken pipe` into the test's own log
-        # (Linux floor run of run-script-tests-test.sh, "its whole log kept": expected `line 1|boom`)
+        # (Linux floor run of run-script-tests-test.sh, now run_script_tests_test.py, "its whole log kept": expected `line 1|boom`)
         os.makedirs(self.path("slow"))
         with open(self.path("slow", "python3"), "w") as f:
             f.write('#!/bin/sh\nsleep 1\nexec %s "$@"\n' % sys.executable)
