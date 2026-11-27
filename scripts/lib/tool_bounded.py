@@ -18,11 +18,12 @@ import signal
 import subprocess
 import sys
 from types import FrameType
-from typing import List, MutableMapping, Optional
+from typing import List, MutableMapping, Optional, Set
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))  # run as `python3 -I`: its own directory is not there
 import machine  # noqa: E402
 
+ENDING = {signal.SIGINT, signal.SIGTERM}  # what ends the command, passed on to the caller
 GRACE_POLLS = 20  # a tenth of a second each: TERM, then KILL what is left two seconds later
 
 
@@ -93,17 +94,21 @@ def bounded(seconds: float, command: List[str], env: MutableMapping[str, str]) -
     home, tty = os.getpgrp(), foreground_tty()
     if tty is not None:
         signal.signal(signal.SIGTTOU, signal.SIG_IGN)  # a group out of the foreground may then move it, as a shell does
-    for signum in (signal.SIGINT, signal.SIGTERM):
+    for signum in ENDING:
         signal.signal(signum, interrupted)
+    # held back until finish can end the group: a Ctrl-C landing while Popen returns raised past it (#665)
+    held = signal.pthread_sigmask(signal.SIG_BLOCK, ENDING)
     try:
-        group = Group(machine.spawn_group(command, env, tty), tty, home)
+        group = Group(machine.spawn_group(command, env, tty, held), tty, home)
     except OSError:
+        signal.pthread_sigmask(signal.SIG_SETMASK, held)
         return 127
-    return finish(group, seconds, on_timeout)
+    return finish(group, seconds, on_timeout, held)
 
 
-def finish(group: Group, seconds: float, on_timeout: Optional[str]) -> int:
+def finish(group: Group, seconds: float, on_timeout: Optional[str], held: Set[int]) -> int:
     try:
+        signal.pthread_sigmask(signal.SIG_SETMASK, held)  # an interrupt held back is raised here, inside the try
         if group.tty is not None:
             try:  # whichever of the two runs first
                 os.setpgid(group.proc.pid, group.proc.pid)

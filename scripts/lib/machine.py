@@ -13,7 +13,7 @@ signal and wait for processes only through it; their tests hand in fakes where t
   send(pid, signal) / alive(pid)   a signal to a process (or its group) / whether it exists
   own_pid() / waited(proc, s)      this process's pid / whether a spawned command ended within s seconds
   replace(argv)                    this process becomes the command (exec)
-  spawn_group(argv, env, tty)      a command leading a process group of its own, handed the terminal (tool_bounded)
+  spawn_group(argv, env, tty[, mask]) a command leading a process group of its own, handed the terminal (tool_bounded)
   piped(producer, consumer, how)   one command's stdout the next one's stdin (`a | b`): the consumer's status
   ps(...), tree_pids, cpu_centis, any_runnable, any_gone, children_flag   the process table, through `ps` on the PATH
   tree_shrank, kept_pids, pid_list, centis                                pure readings of its listings"""
@@ -24,7 +24,7 @@ import signal
 import subprocess
 import time
 from dataclasses import dataclass
-from typing import IO, Dict, List, MutableMapping, NoReturn, Optional, Sequence, Tuple, Union
+from typing import IO, Dict, List, MutableMapping, NoReturn, Optional, Sequence, Set, Tuple, Union
 
 Sink = Union[int, IO[str], IO[bytes], None]
 QUIET: Sink = subprocess.DEVNULL  # a Sink dropping what is written to it
@@ -126,11 +126,15 @@ def spawn(argv: Sequence[str], how: Ran = Ran(), own_group: bool = False) -> "su
                             stderr=how.err, pass_fds=how.pass_fds, preexec_fn=os.setpgrp if own_group else None)
 
 
-def spawn_group(argv: Sequence[str], env: MutableMapping[str, str], tty: Optional[int]) -> "subprocess.Popen[bytes]":
+def spawn_group(argv: Sequence[str], env: MutableMapping[str, str], tty: Optional[int],
+                mask: Optional[Set[int]] = None) -> "subprocess.Popen[bytes]":
     """A command leading a process group of its own, this process's descriptors (a held ticket on 7 among them) and
     stdin passed on; with `tty` (the terminal it reads, whose foreground this process holds), its group handed that
-    foreground before it runs, so one touching the terminal (stty, a prompt) is not stopped."""
+    foreground before it runs, so one touching the terminal (stty, a prompt) is not stopped. With `mask`, the command
+    runs with that signal mask (the caller's own, while it holds signals back across the spawn)."""
     def lead() -> None:
+        if mask is not None:
+            signal.pthread_sigmask(signal.SIG_SETMASK, mask)
         os.setpgrp()
         if tty is not None:
             signal.signal(signal.SIGTTOU, signal.SIG_IGN)
