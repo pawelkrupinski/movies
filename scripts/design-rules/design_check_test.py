@@ -33,6 +33,7 @@ import packages  # noqa: E402
 import python_facts  # noqa: E402
 import rules_table  # noqa: E402
 import scala_names  # noqa: E402
+import splits  # noqa: E402
 from model import DataType, Module, Name  # noqa: E402
 
 RULES = rules_table.load(ROOT)
@@ -240,6 +241,54 @@ class MixedTest(unittest.TestCase):
                          kinds(design_lint.mixed_rows(m, EXTRA)))
 
 
+CORE = "import subprocess\n\ndef run_git(a):\n    return subprocess.run(a)\n\ndef keep(a):\n    return subprocess.run(a)\n"
+GITREPO = "import subprocess\n\ndef run_git(a):\n    return subprocess.run(a)\n"
+NET = "import urllib.request\n\ndef get(u):\n    return urllib.request.urlopen(u)\n"
+
+
+class SplitTest(unittest.TestCase):
+    """The split credit (splits.py): `split of lib/core.py into lib/gitrepo.py`, an importer's use of run_git moved."""
+
+    def sides(self, head_user: str, head_imports: Tuple[str, ...], extra: str = ""):
+        base = {m.path: m for m in [py("lib/core.py", CORE), py("lib/net.py", NET),
+                                    py("tools/t.py", "import core\ncore.run_git(1)\ncore.keep(2)\n", ("lib/core.py",))]}
+        head = {m.path: m for m in [py("lib/core.py", "import subprocess\n\ndef keep(a):\n    return subprocess.run(a)\n"),
+                                    py("lib/gitrepo.py", GITREPO + extra), py("lib/net.py", NET),
+                                    py("tools/t.py", head_user, head_imports)]}
+        found = (collaborators.collaborators(base, EXTRA), collaborators.collaborators(head, EXTRA))
+        fanouts = tuple({p: collaborators.fanout(m, c) for p, m in side.items()} for side, c in zip((base, head), found))
+        return (base, head), found, fanouts
+
+    def refusals(self, head_user: str, head_imports: Tuple[str, ...], extra: str = "",
+                 grown=(("fanout", "tools/t.py", None, 2),)) -> List[str]:
+        sides, found, fanouts = self.sides(head_user, head_imports, extra)
+        return splits.refusals("split of lib/core.py into gitrepo", list(grown), sides, found, fanouts)
+
+    def test_an_importer_using_the_moved_code_is_credited(self) -> None:
+        user = "import core\nimport gitrepo\ngitrepo.run_git(1)\ncore.keep(2)\n"
+        self.assertEqual([], self.refusals(user, ("lib/core.py", "lib/gitrepo.py")))
+
+    def test_an_importer_gaining_an_unrelated_collaborator_is_refused(self) -> None:
+        user = "import core\nimport gitrepo\nimport net\ngitrepo.run_git(1)\ncore.keep(2)\nnet.get(3)\n"
+        found = self.refusals(user, ("lib/core.py", "lib/gitrepo.py", "lib/net.py"))
+        self.assertIn("tools/t.py gained lib/net.py, no piece of lib/core.py", found)
+        self.assertTrue(any("more than the 1 piece" in r for r in found), found)
+
+    def test_a_name_read_from_the_piece_that_x_never_held_is_refused(self) -> None:
+        user = "import core\nimport gitrepo\ngitrepo.fresh(1)\ncore.keep(2)\n"
+        found = self.refusals(user, ("lib/core.py", "lib/gitrepo.py"), "\ndef fresh(a):\n    return a\n")
+        self.assertEqual(["tools/t.py reads fresh from lib/gitrepo.py: not code it read from lib/core.py at the base"], found)
+
+    def test_another_kinds_rise_and_a_malformed_split_are_refused(self) -> None:
+        user = "import core\nimport gitrepo\ngitrepo.run_git(1)\ncore.keep(2)\n"
+        found = self.refusals(user, ("lib/core.py", "lib/gitrepo.py"), grown=(("distance", "lib", 0.1, 0.3),))
+        self.assertEqual(["distance lib: a split excuses importers' fan-out only"], found)
+        sides, collab, fanouts = self.sides(user, ("lib/core.py", "lib/gitrepo.py"))
+        self.assertEqual(1, len(splits.refusals("split of nothing.py into gitrepo", [], sides, collab, fanouts)))
+        self.assertEqual(("x", ["a", "b"]), splits.parse("split of x into a, b"))
+        self.assertIsNone(splits.parse("a reason"))
+
+
 class ExemptionsTest(unittest.TestCase):
     def test_a_generic_or_undated_why_is_refused_and_a_specific_one_passes(self) -> None:
         bad = exemptions.parse("effect\ttools/t.py\tyesterday\tneeded for now\n")
@@ -314,6 +363,7 @@ class JsFactsTest(unittest.TestCase):
         facts = {f.name: f for f in m.functions}
         self.assertEqual(({"files": 1}, 3), (facts["mixed"].effects, facts["mixed"].cyclomatic))
         self.assertEqual(frozenset({"src/exec.ts"}), facts["viaAdapter"].calls)
+        self.assertEqual(frozenset({("src/exec.ts", "run")}), m.references)
         self.assertEqual(({"clock": 2}, 3), (facts["Page.tick"].effects, facts["Page.tick"].cyclomatic))
         adapters = rules_table.parse("limit\tmixed-cyclomatic\t3\tjs\nadapter\tjs\tsrc/exec.ts\tprocess\n")
         self.assertEqual({("mixed", "src/tool.ts:mixed"): 3, ("mixed", "src/tool.ts:viaAdapter"): 3,

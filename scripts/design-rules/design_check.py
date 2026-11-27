@@ -9,6 +9,8 @@ fall; a new row, or a frozen row rising, fails unless its commit carries the kin
              mixed <file>:<function> (an effect and decisions in one function)    design_lint.py (every language)
   Coupling:  fanout <file> (collaborators only), databag <file>:<type>, datafanout <file>   collaborators.py
              distance, unplaced, dircycle <directory>, layer <from>-><to>                    packages.py
+  A `Coupling: split of <X> into <A>[, <B>]` commit may raise its importers' fan-out where splits.py proves the use
+  moved from X into the pieces (the owner, 2026-11-27: the split credit for importers); nothing else of it rises.
   An exemption (test/resources/design-exemptions.tsv: kind, key, added date, a SPECIFIC why -- coupling_reasons.py's
   lint) admits one NEW row; its row added carries the kind's trailer too.
 
@@ -22,11 +24,12 @@ The blocking permutation rule and the action-name warning are naming_lint.py's, 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import dataclasses
 import os
 import sys
 import tempfile
-from typing import Dict, Iterable, List, Set, Tuple
+from typing import Dict, Generator, Iterable, List, Set, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -40,6 +43,7 @@ import extractors  # noqa: E402
 import naming  # noqa: E402
 import packages  # noqa: E402
 import rules_table  # noqa: E402
+import splits  # noqa: E402
 import tool_git  # noqa: E402
 from model import Module  # noqa: E402
 
@@ -108,12 +112,44 @@ def languages(args: argparse.Namespace) -> Set[str]:
     return asked
 
 
-def spec_for(asked: Set[str]) -> baseline_ratchet.Spec:
-    """SPEC holding only the asked languages' rows: a Python push measures no JS, and leaves its rows be."""
+@contextlib.contextmanager
+def revision_tree(git: tool_git.Git, rev: str) -> Generator[tool_git.Git, None, None]:
+    """A detached worktree of `rev` under the repository's own git directory, removed after: the tree the split credit
+    measures a side of the commit in."""
+    common = os.path.join(git.root, git.text("rev-parse", "--git-common-dir").strip())
+    tree = os.path.join(common, "design-split", git.text("rev-parse", rev).strip())
+    git.text("worktree", "add", "-q", "--detach", tree, rev)
+    try:
+        yield tool_git.Git(git.runner, git.env, tree)
+    finally:
+        git.ok("worktree", "remove", "--force", tree, quiet=True)
+
+
+def measured_side(git: tool_git.Git, asked: Set[str], rules: rules_table.Rules) -> Tuple[splits.Modules, Set[str], Dict[str, int]]:
+    """One side of a split commit: its modules, the collaborators among them and each module's fan-out."""
+    modules = {p: m for found in extractors.by_language(git, asked, []).values() for p, m in found.items()}
+    collaborating = collaborators.collaborators(modules, rules)
+    return modules, collaborating, {p: collaborators.fanout(m, collaborating) for p, m in modules.items()}
+
+
+def split_check_for(git: tool_git.Git, asked: Set[str]):  # -> baseline_ratchet.Spec's split_check
+    """The split credit (splits.py) over both sides of a `split of` commit, measured from its trees."""
+    def check(sha: str, value: str, grown: List[baseline_ratchet.Grown]) -> List[str]:
+        rules = rules_table.load(git.root)
+        held = {extractors.language_of(key) for _kind, key, _old, _new in grown} & asked
+        with revision_tree(git, f"{sha}^") as before, revision_tree(git, sha) as after:
+            base, head = measured_side(before, held, rules), measured_side(after, held, rules)
+        return splits.refusals(value, grown, (base[0], head[0]), (base[1], head[1]), (base[2], head[2]))
+    return check
+
+
+def spec_for(asked: Set[str], git: tool_git.Git) -> baseline_ratchet.Spec:
+    """SPEC holding only the asked languages' rows (a Python push measures no JS, and leaves its rows be), with the
+    split credit judging a `split of` commit's importers."""
     def held(part: str) -> bool:
         return extractors.language_of(part) in asked
 
-    return dataclasses.replace(SPEC, held=held)
+    return dataclasses.replace(SPEC, held=held, split_check=split_check_for(git, asked))
 
 
 def ratchet(git: tool_git.Git, args: argparse.Namespace) -> int:
@@ -123,7 +159,7 @@ def ratchet(git: tool_git.Git, args: argparse.Namespace) -> int:
     with tempfile.TemporaryDirectory(prefix="design-") as out:
         current = os.path.join(out, "current.tsv")
         write(current_rows(git, args), current)
-        status = baseline_ratchet.run(spec_for(languages(args)), args.command, current, args.range)
+        status = baseline_ratchet.run(spec_for(languages(args), git), args.command, current, args.range)
     return 1 if problems and status == 0 else status
 
 

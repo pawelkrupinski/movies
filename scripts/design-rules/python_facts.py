@@ -274,6 +274,20 @@ def imported_calls(nodes: List[ast.AST], names: Dict[str, str]) -> FrozenSet[str
     return frozenset(name for name in found if name)
 
 
+def references(tree: ast.Module, names: Dict[str, str]) -> FrozenSet[Tuple[str, str]]:
+    """(module, name) of each dotted name read through an import, at every prefix (`a.b.f`: (a, b), (a.b, f)) -- which
+    prefix is the module splits.py tells by matching it to a file."""
+    out: Set[Tuple[str, str]] = set()
+    for node in chain_tops(list(ast.walk(tree))):
+        head = node
+        while isinstance(head, ast.Attribute):
+            head = head.value
+        name = dotted(node, names) if isinstance(head, ast.Name) and head.id in names else None
+        parts = name.split(".") if name else []
+        out.update((".".join(parts[:i]), parts[i]) for i in range(1, len(parts)))
+    return frozenset(out)
+
+
 def functions(tree: ast.Module, names: Dict[str, str]) -> Tuple[Function, ...]:
     """Every def, qualified by the classes and defs holding it."""
     out: List[Function] = []
@@ -304,5 +318,5 @@ def module(path: str, tree: ast.Module, imports: FrozenSet[str]) -> Module:
         stateful_types=tuple(c.name for c in plain if is_stateful(c)),
         abstract_types=sum(1 for c in plain if base_names(c) & ABSTRACT_BASES),
         data_types=tuple(data_type(c) for c in types if is_dataclass(c)), imports=imports,
-        functions=functions(tree, local))
+        functions=functions(tree, local), references=references(tree, local))
 

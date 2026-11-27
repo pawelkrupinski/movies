@@ -216,17 +216,21 @@ function resolveLocal(file, source, known) {
 // local name -> { effect } for a binding of an effectful node module, { module } for one of a measured local module
 function importBindings(file, program, known) {
   const out = new Map();
-  const bind = (names, source) => {
+  // each binding: [local name, the name it imports (null: the whole module, read by its members)]
+  const bind = (pairs, source) => {
     const effect = typeof source === 'string' ? EffectModules.get(source.replace(/^node:/, '')) : null;
     const local = resolveLocal(file, source, known);
-    for (const name of names) if (effect || local) out.set(name, effect ? { effect } : { module: local });
+    for (const [name, imported] of pairs) if (effect || local) out.set(name, effect ? { effect } : { module: local, imported });
   };
-  const patternNames = (id) => (id.type === 'Identifier' ? [id.name]
-    : id.type === 'ObjectPattern' ? id.properties.filter((p) => p.value && p.value.type === 'Identifier').map((p) => p.value.name) : []);
+  const specifier = (sp) => [sp.local.name, sp.type === 'ImportSpecifier' ? (sp.imported.name || sp.imported.value)
+    : sp.type === 'ImportDefaultSpecifier' ? 'default' : null];
+  const patternPairs = (id) => (id.type === 'Identifier' ? [[id.name, null]]
+    : id.type === 'ObjectPattern' ? id.properties.filter((p) => p.value && p.value.type === 'Identifier' && p.key && p.key.type === 'Identifier')
+      .map((p) => [p.value.name, p.key.name]) : []);
   for (const statement of program.body) {
-    if (statement.type === 'ImportDeclaration') bind(statement.specifiers.map((sp) => sp.local.name), statement.source.value);
+    if (statement.type === 'ImportDeclaration') bind(statement.specifiers.map(specifier), statement.source.value);
     if (statement.type !== 'VariableDeclaration') continue;
-    for (const d of statement.declarations) if (d.init && moduleSource(d.init)) bind(patternNames(d.id), moduleSource(d.init));
+    for (const d of statement.declarations) if (d.init && moduleSource(d.init)) bind(patternPairs(d.id), moduleSource(d.init));
   }
   return out;
 }
@@ -279,6 +283,24 @@ function functionFacts(file, program, known) {
   return [...records.values()].map((r) => ({ name: r.name, line: r.line, effects: r.effects, calls: [...r.calls].sort(), cyclomatic: r.cyclomatic }));
 }
 
+// [module, name] of every name read through an import of a measured local module (a whole module's by its members):
+// the split credit's evidence (scripts/design-rules/splits.py).
+function moduleReferences(file, program, known) {
+  const bindings = importBindings(file, program, known);
+  const found = new Set();
+  const visit = (node, parent) => {
+    const bound = node.type === 'Identifier' && isReference(node, parent) ? bindings.get(node.name) : null;
+    if (bound && bound.module) {
+      const member = parent && parent.type === 'MemberExpression' && parent.object === node && !parent.computed ? parent.property.name : null;
+      const name = bound.imported || member;
+      if (name) found.add(JSON.stringify([bound.module, name]));
+    }
+    for (const child of children(node)) visit(child, node);
+  };
+  visit(program, null);
+  return [...found].sort().map((pair) => JSON.parse(pair));
+}
+
 // A file's facts, the shape model.Module reads.
 function factsOf(file, program, known = new Set()) {
   const { names: found, classes } = names(file, program);
@@ -291,6 +313,7 @@ function factsOf(file, program, known = new Set()) {
     statefulTypes: classes.filter((c) => c.stateful).map((c) => c.name),
     abstractTypes: classes.filter((c) => c.abstract).length + (exportsOnlyTypes(program) ? 1 : 0),
     functions: functionFacts(file, program, known),
+    references: moduleReferences(file, program, known),
   };
 }
 

@@ -62,3 +62,6 @@ class Module:
     imports: FrozenSet[str] = frozenset()  # the measured modules (paths) it uses
     new: bool = False                # added by the ranges checked (the action-name rule warns on new ones only)
     functions: Tuple[Function, ...] = ()  # every function's own effects, calls and decisions (the `mixed` rule)
+    # (imported module, name) of every name it reads through an import: the module a dotted import name (Python:
+    # each prefix of `a.b.f`, matched to a file by splits.py) or a resolved path (JS/TS) -- the split credit's evidence
+    references: FrozenSet[Tuple[str, str]] = frozenset()

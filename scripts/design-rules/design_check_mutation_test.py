@@ -67,6 +67,12 @@ MUTANTS: Dict[str, Tuple[str, str, str]] = {
     "js function effects not read": ("../js-quality/facts.js", "if (effect) here.effects[effect] = (here.effects[effect] || 0) + 1;", ";"),
     "js adapter calls not read": ("../js-quality/facts.js", "if (bound && bound.module) here.calls.add(bound.module);", ";"),
     "js decisions not counted": ("../js-quality/facts.js", "here.cyclomatic += decisionsAt(node);", ";"),
+    "split credits any collaborator": ("splits.py", 'out = [f"{importer} gained {other}, no piece of {x}" for other in sorted(gained - set(pieces))]', "out: List[str] = []"),
+    "split credits names x never held": ("splits.py", "foreign = read_from(after, piece) - (moved & read_from(before, x))", "foreign: Set[str] = set()"),
+    "split excuses any kind": ("splits.py", 'if kind != "fanout":', "if False:"),
+    "split ignores the rise count": ("splits.py", "if fanout[1] - fanout[0] > len(gained & set(pieces)):", "if False:"),
+    "python references not read": ("python_facts.py", "out.update((\".\".join(parts[:i]), parts[i]) for i in range(1, len(parts)))", "pass"),
+    "js references not read": ("../js-quality/facts.js", "if (name) found.add(JSON.stringify([bound.module, name]));", ";"),
 }
 
 

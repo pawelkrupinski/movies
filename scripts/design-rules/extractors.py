@@ -55,7 +55,8 @@ def js_module(row: Dict[str, Any], known: FrozenSet[str], added: Set[str]) -> Mo
         imports=frozenset(t for t in row["imports"] if t in known), new=path in added,
         functions=tuple(Function(str(f["name"]), int(f["line"]), {str(k): int(v) for k, v in f["effects"].items()},
                                  frozenset(str(c) for c in f["calls"]), int(f["cyclomatic"]))
-                        for f in row.get("functions", ())))
+                        for f in row.get("functions", ())),
+        references=frozenset((str(m), str(n)) for m, n in row.get("references", ())))
 
 
 def read_js(modules_json: str, added: Set[str]) -> Modules:

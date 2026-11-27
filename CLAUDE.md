@@ -235,7 +235,11 @@ an `adapter` row's module -- inject it; `state`: module-level names a function w
 exemptions' dated, specific why; its trailers are `Naming:`, `Design:` and `Coupling:`. A movies change to a vendored
 file (`scripts/design-rules/*`, `scripts/ci/baseline_ratchet.py`, `scripts/ci/trailers.py`, `scripts/lib/ps_table.py`,
 `scripts/lib/atomic.py`) is followed by agentctl's automatic sync: agentctl's `VENDOR_DRIFT` escalation (ef8d8bb). No
-manual follow-up is needed. The rest of this section
+manual follow-up is needed. **The split credit for importers** (the owner, 2026-11-27; `scripts/design-rules/splits.py`,
+every language): a commit whose final trailer block says `Coupling: split of <X> into <A>[, <B>]` may raise an
+importer's `fanout` row by at most the pieces it newly imports, only where its reads of each piece were reads of X's
+own names at the base and it gained no other collaborator; the row is re-frozen there and falls as callers move to
+parameters, and every other rise of that commit is refused. The rest of this section
 (SOLID, DI, reuse, fakes sharing logic, simplicity) is review-enforced in every language. The agreed adaptations:
 D is measured only where abstractions exist (Scala, TypeScript, Python `Protocol`/ABC in `scripts/lib` and `scripts/ci`;
 plain browser JS has none: cycles and layers hold it); a JS callback passed inline is no inner def; a Python tool's

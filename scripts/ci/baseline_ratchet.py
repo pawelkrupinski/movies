@@ -11,7 +11,10 @@ holds -- and gets the one check and the one update:
   - the baseline grows (a row added or raised, a limit raised) only in a commit changing it that carries the kind's
     trailer in its final trailer block (trailers.py, THE ATTRIBUTION RULE); a fall needs none, and `update` records it;
   - a STRICT row (one of the spec's strict paths: the Python ratchet's migrated tools) past a limit fails whatever the
-    baseline holds or a trailer says: no row admits it.
+    baseline holds or a trailer says: no row admits it;
+  - a commit whose final trailer block says `Coupling: split of <X> into <A>[, <B>]` has its own step's Coupling rises
+    judged by the spec's `split_check` (the design rules' split credit, scripts/design-rules/splits.py): a proven
+    importer's fan-out is admitted and re-frozen, every other rise refused -- the split trailer excuses nothing else.
 
 A row is `kind<TAB>key<TAB>value`, `limit<TAB>kind<TAB>value` a kind's limit; `#` lines are comments."""
 from __future__ import annotations
@@ -27,6 +30,7 @@ import trailers  # noqa: E402  (puts scripts/lib on the path)
 import tool_git  # noqa: E402
 
 Rows = Dict[Tuple[str, str], float]
+Grown = Tuple[str, str, Optional[float], float]   # kind, key, its row before (None: none), its row after
 Rows1 = Dict[str, float]
 N = TypeVar("N", int, float)
 
@@ -44,6 +48,8 @@ class Spec:
     held: Callable[[str], bool]               # whether one file or directory of a key is held
     strict: Callable[[str], bool] = lambda _: False  # a held part that may have NO row past a limit, trailer or not
     strict_hint: str = ""                     # what to do about a strict row
+    # (sha, its `split of` value, its step's Coupling rises) -> the rises its split does not excuse; None: no split rule
+    split_check: Optional[Callable[[str, str, List["Grown"]], List[str]]] = None
 
     @property
     def kinds(self) -> Tuple[str, ...]:
@@ -167,6 +173,15 @@ def carried(key: str, value: float, before: Rows1, after: Rows1, renames: Rename
     return key not in before and moved_from(key, value, before, after, renames) is not None
 
 
+def grown_rows(spec: Spec, kind: str, old: Rows, new: Rows, renames: Renames) -> List[Grown]:
+    """The rows of `kind` added past the old limit or raised from `old` to `new` (a renamed source's carried row aside)."""
+    old_limit = old.get(("limit", kind))
+    allowed = old_limit if old_limit is not None else limit_of(new, kind)
+    before, after = of_kind(spec, old, kind), of_kind(spec, new, kind)
+    return [(kind, key, before.get(key), value) for key, value in sorted(after.items())
+            if value > before.get(key, allowed) and not carried(key, value, before, after, renames)]
+
+
 def kind_growth(spec: Spec, kind: str, old: Rows, new: Rows, renames: Renames) -> List[str]:
     out: List[str] = []
     old_limit = old.get(("limit", kind))
@@ -174,11 +189,8 @@ def kind_growth(spec: Spec, kind: str, old: Rows, new: Rows, renames: Renames) -
     if old_limit is not None and new_limit > old_limit:
         out.append(f"limit {kind} raised {show(old_limit)} -> {show(new_limit)}")
     allowed = old_limit if old_limit is not None else new_limit
-    before, after = of_kind(spec, old, kind), of_kind(spec, new, kind)
-    for key, value in sorted(after.items()):
-        if value > before.get(key, allowed) and not carried(key, value, before, after, renames):
-            was = show(before[key]) if key in before else f"<={show(allowed)}"
-            out.append(f"{kind} {key} raised {was} -> {show(value)}")
+    for _kind, key, was, value in grown_rows(spec, kind, old, new, renames):
+        out.append(f"{kind} {key} raised {show(was) if was is not None else f'<={show(allowed)}'} -> {show(value)}")
     return out
 
 
@@ -219,6 +231,50 @@ def unjustified_growth(spec: Spec, rng: str, baseline: Rows, renames: Renames) -
     return found
 
 
+def split_values(sha: str, repo: tool_git.GitRepo) -> List[str]:
+    return [v for v in repo.trailer_values(sha, "Coupling") if v.startswith("split of ")]
+
+
+def commit_split_refusals(spec: Spec, sha: str, value: str, renames: Renames, repo: tool_git.GitRepo) -> List[str]:
+    """What one `split of` commit's own baseline step raised that its split does not excuse."""
+    assert spec.split_check is not None
+    old, new = (parse(trailers.text_at(rev, spec.baseline, repo)) for rev in (f"{sha}^", sha))
+    kinds = spec.trailers.get("Coupling", ())
+    grown = [g for kind in kinds for g in grown_rows(spec, kind, old, new, renames)] if old else []
+    return [f"{sha[:9]}: {why}" for why in spec.split_check(sha, value, grown)] if grown else []
+
+
+def split_refusals(spec: Spec, rng: str, renames: Renames, repo: tool_git.GitRepo) -> List[str]:
+    """`<sha9>: <why>` for every Coupling rise of a `split of` commit of `rng` its split does not excuse."""
+    if spec.split_check is None or "Coupling" not in spec.trailers:
+        return []
+    out: List[str] = []
+    for sha in repo.commits(rng, [spec.baseline], reverse=True):
+        out += [r for value in split_values(sha, repo)[:1] for r in commit_split_refusals(spec, sha, value, renames, repo)]
+    return out
+
+
+def checkout_repo() -> tool_git.GitRepo:
+    """The repository the ratchet runs in (its working directory's)."""
+    return tool_git.SubprocessGitRepo.here()
+
+
+def say_split_refusals(spec: Spec, ranges: List[str], renames: Renames) -> bool:
+    """Whether a split commit of the ranges raised what its split does not excuse; says each."""
+    repo = checkout_repo()
+    found = [r for rng in ranges for r in split_refusals(spec, rng, renames, repo)]
+    if found:
+        print(f"THE {spec.title} BASELINE GREW in a `Coupling: split of` commit past what the split credit admits:")
+        print("\n".join(f"  - {r}" for r in found))
+    return len(found) > 0
+
+
+def ranges_refused(spec: Spec, ranges: List[str], baseline: Rows, renames: Renames) -> bool:
+    """Whether a commit of the ranges grew the baseline unjustified, or past its split's credit; says each."""
+    unjustified = [rng for rng in ranges if unjustified_growth(spec, rng, baseline, renames)]
+    return say_split_refusals(spec, ranges, renames) or bool(unjustified)
+
+
 def say_falls(spec: Spec, current: Rows, baseline: Rows) -> None:
     down = falls(spec, current, baseline)
     if down:
@@ -256,9 +312,8 @@ def check(spec: Spec, current: Rows, ranges: List[str]) -> bool:
         print(f"{spec.title} PAST A LIMIT where no row is admitted:")
         print("\n".join(f"  - {v}" for v in strict))
         print(f"  {spec.strict_hint}")
-    for rng in ranges:
-        if unjustified_growth(spec, rng, baseline, renames):
-            ok = False
+    if ranges_refused(spec, ranges, baseline, renames):
+        ok = False
     say_falls(spec, current, baseline)
     if ok:
         held = sum(len(of_kind(spec, current, kind)) for kind in spec.kinds)
