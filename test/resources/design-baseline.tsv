@@ -363,7 +363,7 @@ effect	scripts/identity_stamp_carry.py	1
 effect	scripts/identity_stamp_carry.py:files	6
 effect	scripts/identity_stamp_carry_published.py:files	9
 effect	scripts/identity_stamp_carry_ranges.py:files	2
-effect	scripts/identity_tool_fixture.py:files	7
+effect	scripts/identity_tool_fixture.py:files	1
 effect	scripts/identity_what_if.py:files	9
 effect	scripts/identity_what_if_cli.py	1
 effect	scripts/identity_what_if_cli_context.py:files	3
@@ -490,7 +490,6 @@ effect	scripts/unmatched_census.py:files	7
 effect	scripts/vault_env.py	2
 effect	scripts/vault_env.py:files	1
 effect	scripts/venue_replay.py:files	5
-effect	scripts/venue_replay_diff.py:files	1
 effect	scripts/zinc_orphans.py:files	2
 effect	web/src/main/assets/js/i18n.js:storage	2
 effect	web/src/main/assets/js/shared/auth.js:network	2
@@ -1227,7 +1226,7 @@ mixed	scripts/identity_stamp_carry_published.py:publish	10
 mixed	scripts/identity_stamp_carry_published.py:read_text	3
 mixed	scripts/identity_stamp_carry_ranges.py:cited_range	7
 mixed	scripts/identity_stamp_carry_ranges.py:write_ranges	4
-mixed	scripts/identity_tool_fixture.py:tool_repo	6
+mixed	scripts/identity_tool_fixture.py:tool_repo	3
 mixed	scripts/identity_what_if.py:Sources.files	4
 mixed	scripts/identity_what_if.py:Sources.lines	4
 mixed	scripts/identity_what_if.py:changes_between	6

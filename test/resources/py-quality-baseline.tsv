@@ -544,5 +544,4 @@ pyright	scripts/recording_diff.py	769
 pyright	scripts/rule_firing_prod.py	109
 pyright	scripts/touched_methods.py	200
 pyright	scripts/unmatched_census.py	245
-pyright	scripts/venue_replay_diff.py	31
 pyright	scripts/zinc_orphans.py	11
