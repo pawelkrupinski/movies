@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import os
 import sys
-import tempfile
 from typing import Mapping, Optional, Sequence
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
@@ -47,20 +46,14 @@ class VerifiedRef:
         return oid
 
     def marker(self, commit: str) -> Optional[str]:
-        """A parentless commit recording `commit` as the base the row held on (its tree built in an index of its own)."""
-        with tempfile.TemporaryDirectory() as work:
-            named = os.path.join(work, "verified")
-            with open(named, "w") as f:
-                f.write(commit + "\n")
-            blob = self.git.out("hash-object", "-w", named)
-            alone = tool_git.Git(self.git.runner, {**self.git.env, "GIT_INDEX_FILE": os.path.join(work, "index")},
-                                 self.git.root)
-            if blob is None or not alone.ok("update-index", "--add", "--cacheinfo", f"100644,{blob.strip()},verified"):
-                return None
-            tree = alone.out("write-tree")
-        if tree is None:
+        """A parentless commit recording `commit` as the base the row held on (its one-file tree made by `git mktree`: no file or index written)."""
+        blob = self.git.call("hash-object", "-w", "--stdin", input=commit + "\n")
+        if blob.code != 0:
             return None
-        done = self.git.call("commit-tree", tree.strip(), "-m", f"{self.ref} held on main at {commit}",
+        tree = self.git.call("mktree", input=f"100644 blob {blob.stdout.strip()}\tverified\n")
+        if tree.code != 0:
+            return None
+        done = self.git.call("commit-tree", tree.stdout.strip(), "-m", f"{self.ref} held on main at {commit}",
                              options=["-c", "user.name=verified ref", "-c", "user.email=verified-ref@ci.invalid"])
         return done.stdout.strip() if done.code == 0 else None
 
