@@ -187,6 +187,36 @@ class DerivedReadsTest(ScriptTestsCase):
         self.assertEqual("", self.listed("--changed", self.derived, "--bash", "/bin/bash"))
 
 
+class HubReadsTest(ScriptTestsCase):
+    """A helper that many tests source names scripts for its own purpose: the tests through it do not read them
+    (2026-11-27: tool_python.py reached 215 tests through shell-spec.sh -> tool-conventions.sh -> gh_download.py);
+    a helper only a few tests source still lends them what it runs."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.put("scripts/hub.sh", 'run_it() { bash scripts/hubbed.sh; }')
+        self.put("scripts/hubbed.sh", "exit 0")
+        self.put("scripts/lib2.sh", 'run_it() { bash scripts/libbed.sh; }')
+        self.put("scripts/libbed.sh", "exit 0")
+        for n in range(12):
+            self.put(f"scripts/hubbing/h{n}-test.sh", ". scripts/hub.sh\nexit 0")
+        self.put("scripts/hubbing/lone-test.sh", ". scripts/lib2.sh\nexit 0")
+        self.hubbed = self.commit("twelve tests sourcing a hub, one a library")
+
+    def test_a_script_a_hub_runs_selects_none_of_the_tests_sourcing_it(self) -> None:
+        self.append("scripts/hubbed.sh", "# edited")
+        self.assertEqual("", self.listed("--changed", self.hubbed))
+
+    def test_the_hub_itself_still_selects_every_test_sourcing_it(self) -> None:
+        self.append("scripts/hub.sh", "# edited")
+        self.assertEqual(" ".join(f"scripts/hubbing/h{n}-test.sh" for n in sorted(range(12), key=str)),
+                         self.listed("--changed", self.hubbed))
+
+    def test_a_script_a_library_few_tests_source_runs_still_selects_them(self) -> None:
+        self.append("scripts/libbed.sh", "# edited")
+        self.assertEqual("scripts/hubbing/lone-test.sh", self.listed("--changed", self.hubbed))
+
+
 class BoundsTest(ScriptTestsCase):
     def test_a_hung_test_is_cut_at_its_timeout_and_left_running_none(self) -> None:
         self.put("scripts/slow-test.sh", "echo $$ >> '%s'; exec sleep 86400" % self.path("hung"))

@@ -203,13 +203,30 @@ class Derived:
     """THE DERIVED READS of each test: what it names in its code and, one step further, what those name -- a test
     runs its tool, the tool runs the next (pre-push-tools-test.sh -> scripts/hooks/pre-push -> stall-watch.sh) --
     each with all it sources or imports, never through another self-test. Two steps: a third doubled what a change
-    selects again (mean 5.4 -> 9.9 tests a changed script over this checkout, 2026-11-27) for chains no red has taken."""
+    selects again (mean 5.4 -> 9.9 tests a changed script over this checkout, 2026-11-27) for chains no red has taken.
+    What a HUB names is not followed: a harness or helper that HUB_TESTS or more tests
+    source or import (shell-spec.sh, tool-conventions.sh, machine.py) names scripts for ITS purpose, and every test
+    through it inherited them -- drop-test.sh read tool_python.py through shell-spec.sh -> tool-conventions.sh ->
+    gh_download.py, and a change to tool_python.py selected 215 tests. A hub still selects by a change to ITSELF (the
+    sources and imports above) and by its own name in a test's code."""
     DEPTH = 2
+    HUB_TESTS = 12
 
     def __init__(self, root: str, index: Index, tests: Sequence[str]) -> None:
         self.sources = forward(source_users(root, index))
         self.names = forward(run_users(root, index))
         self.tests = set(tests)
+        self.hubs = self.find_hubs(tests)
+
+    def find_hubs(self, tests: Sequence[str]) -> Set[str]:
+        """The files in the sources-and-imports closure of HUB_TESTS tests or more."""
+        counts: Dict[str, int] = {}
+        for test in tests:
+            closure: Set[str] = set()
+            self.with_sources(test, closure)
+            for used in closure - {test}:
+                counts[used] = counts.get(used, 0) + 1
+        return {used for used, n in counts.items() if n >= self.HUB_TESTS}
 
     def with_sources(self, path: str, seen: Set[str]) -> List[str]:
         """`path` and what it sources or imports, transitively, not yet in `seen` (added to it)."""
@@ -227,7 +244,7 @@ class Derived:
         seen: Set[str] = set()
         front = self.with_sources(test, seen)
         for _ in range(self.DEPTH):
-            named = [n for p in front for n in self.names.get(p, ()) if n not in seen]
+            named = [n for p in front if p not in self.hubs for n in self.names.get(p, ()) if n not in seen]
             front = [q for n in dict.fromkeys(named) if n not in seen for q in self.with_sources(n, seen)
                      if q not in self.tests]
         return seen
