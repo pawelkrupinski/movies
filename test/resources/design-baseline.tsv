@@ -1312,7 +1312,6 @@ mixed	scripts/lib/identity_kept_jvms.py:remove	3
 mixed	scripts/lib/identity_kept_jvms.py:tail_to_stderr	5
 mixed	scripts/lib/identity_ref_trees.py:RefTrees.run_java	4
 mixed	scripts/lib/js_quality_tools.py:ready	4
-mixed	scripts/lib/jvm_gate.py:JvmGate.gov_take	9
 mixed	scripts/lib/jvm_gate.py:JvmGate.keeper_start	3
 mixed	scripts/lib/jvm_gate.py:JvmGate.release	3
 mixed	scripts/lib/jvm_gate.py:JvmGate.slot_try	4

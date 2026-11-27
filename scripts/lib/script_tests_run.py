@@ -127,6 +127,11 @@ def expanded(paths: Sequence[str], stress: int) -> Tuple[List[str], List[str]]:
     return [p for p, _ in runs], [label for _, label in runs]
 
 
+def pool_shape(plan: Plan) -> str:
+    """How wide the pool runs, said at the start: `8 at a time`, with a budget `3 at a time, within 5 cores`."""
+    return f"{plan.jobs} at a time" + (f", within {plan.budget} cores" if plan.budget else "")
+
+
 def burners(count: int) -> List["subprocess.Popen[bytes]"]:
     """STRESS's load: busy loops, each ending once this run is gone (a killed run strands none)."""
     return [machine.spawn(["bash", "-c", BURNER, "run-script-tests-burner", str(os.getpid())],
@@ -149,8 +154,7 @@ class Run:
 
     def run(self, tests: int, changed: bool, heavy: Sequence[str], findings: Sequence[str]) -> int:
         plan, started = self.pool.plan, machine.monotonic()
-        print(f"\033[36m▸\033[0m {len(plan.paths)} script test(s), {plan.jobs} at a time"
-              + (f", within {plan.budget} cores" if plan.budget else ""), flush=True)
+        print(f"\033[36m▸\033[0m {len(plan.paths)} script test(s), {pool_shape(plan)}", flush=True)
         load = []
         if self.s.stress:
             burn = int(self.s.burn) if self.s.burn else (cores() or 2)

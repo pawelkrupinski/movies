@@ -256,10 +256,8 @@ class JvmGate:
         if g is None:
             return False
         cores = self.charge(label)
-        tickets = self.env.get("AGENTCTL_GOV_DIR") or os.path.join(self.host.home, ".cache/agentctl/gov")
-        os.makedirs(tickets, exist_ok=True)
-        lock = FileLock(os.path.join(tickets, f"t-{self.host.pid}-{random.randrange(10 ** 9)}.lock"), SLOT_FD)
-        fd = os.open(lock.path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
+        fd, path = self.open_ticket()
+        lock = FileLock(path, SLOT_FD)
         os.dup2(fd, SLOT_FD)
         os.close(fd)
         lock.fd = SLOT_FD
@@ -272,8 +270,7 @@ class JvmGate:
             if self.env.get("KINOWO_GOV_CORES"):
                 self.env["AGENTCTL_GOV_WIDTH"] = str(whole(self.granted or self.env["KINOWO_GOV_CORES"]))
             return True
-        lock.close()
-        os.remove(lock.path)
+        self.discard(lock)
         return False
 
     def _ticket(self, label: str, job: str, mem: str, cores: str = "", min_cores: str = "") -> bool:
@@ -326,6 +323,13 @@ class JvmGate:
         if not self.slot and not self._ticket(label, job, "0"):
             self.host.say(f"[{label}] the governor ({g} gov admit) failed: running without a cores ticket")
 
+    def open_ticket(self) -> Tuple[int, str]:
+        """A new ticket file, opened for a governor to lock: its descriptor and path."""
+        tickets = self.env.get("AGENTCTL_GOV_DIR") or os.path.join(self.host.home, ".cache/agentctl/gov")
+        os.makedirs(tickets, exist_ok=True)
+        path = os.path.join(tickets, f"t-{self.host.pid}-{random.randrange(10 ** 9)}.lock")
+        return os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644), path
+
     def core_try(self, label: str, job: str) -> Optional[Tuple[int, str]]:
         """ONE MORE CORE, if the governor has one free this moment (`gov admit --try`, never waiting): a cores-only ticket
         on a descriptor of its own, held by this process until core_give -- a pool that was granted less than it asked
@@ -334,11 +338,10 @@ class JvmGate:
         g = self.governor.bin()
         if g is None or not self.governor.has("cores"):
             return None
-        tickets = self.env.get("AGENTCTL_GOV_DIR") or os.path.join(self.host.home, ".cache/agentctl/gov")
-        os.makedirs(tickets, exist_ok=True)
-        path = os.path.join(tickets, f"t-{self.host.pid}-{random.randrange(10 ** 9)}.lock")
-        fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o644)
-        os.set_inheritable(fd, True)
+        return self.core_ticket(g, label, job)
+
+    def core_ticket(self, g: str, label: str, job: str) -> Optional[Tuple[int, str]]:
+        fd, path = self.open_ticket()
         argv = [g, "gov", "admit", "--fd", str(fd), "--ticket", path, "--class", self.gov_class(label), "--mem", "0",
                 "--label", label, "--pid", str(self.host.pid), "--cwd", self.env.get("PWD") or os.getcwd(),
                 "--job", job, "--cores", "1", "--try"]
@@ -349,12 +352,14 @@ class JvmGate:
 
     def core_give(self, held: Tuple[int, str]) -> None:
         """A core taken by core_try given back: the descriptor closed (the lock with it), the ticket's file removed."""
-        os.close(held[0])
-        for leftover in (held[1], held[1][: -len(".lock")] + ".json"):
-            try:
-                os.remove(leftover)
-            except OSError:
-                pass
+        lock = FileLock(held[1])
+        lock.fd = held[0]
+        self.discard(lock)
+
+    def discard(self, lock: FileLock) -> None:
+        """A ticket never admitted, or given back: its descriptor closed, its file removed."""
+        lock.close()
+        os.remove(lock.path)
 
     def slot_try(self, label: str = "tool") -> bool:
         """One pass over the slots, never waiting (with the governor: one look, its --try)."""
