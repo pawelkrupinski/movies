@@ -20,6 +20,8 @@ import services.titles.TitleNormalizer
  */
 private[agreement] final class AgreementEvidence(sources: AgreementSources.EvidenceSource, val tmdbReads: TmdbReadTracking) {
   val calibration: IdentityCalibration          = sources.calibration
+  /** The calibration the evidence is scored under, as a verdict's rules name it ([[AgreementStage.configured]]). */
+  private[agreement] def calibrationVersion: String = calibration.##.toString
   /** The TMDB film TMDB finds by an IMDb id ([[AgreementSources.EvidenceSource.tmdbOf]]): what the catalogue's take reads too. */
   val tmdbOf: String => Answer[Option[Int]]     = sources.tmdbOf
   val attempted: Question => Boolean            = sources.attempted
@@ -153,6 +155,8 @@ private[agreement] final class AgreementEvidence(sources: AgreementSources.Evide
 
   /** The families' verdicts the last applies resolved, each handed back while all it read reads alike ([[FamilyVerdicts]]). */
   val familyVerdicts = new FamilyVerdicts(venues, normalizer, calibrations)
+  /** The apply ends: the families' verdicts it did not read again dropped ([[FamilyVerdicts.applied]]). */
+  def applied(): Unit = familyVerdicts.applied()
 
   /** Every family's verdict on `listings`, in the families' order — each question read noted in `reads`, each gap in
    *  `gaps`. */

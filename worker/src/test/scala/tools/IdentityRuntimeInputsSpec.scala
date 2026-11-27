@@ -231,9 +231,11 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
       }
   }
 
+  // each named, or read through what holds it under its name (`evidence.calibrationVersion`: the calibration's version,
+  // read off the evidence scored under it -- the pipeline holds no calibration of its own)
   they should "be named where decidedUnder is built, each one versioned" in {
     val version   = definitionOf(Pipeline, "decidedUnder")
-    val unnamed   = PipelineParameters.collect { case (name, StageParameter.Versioned) if !s"\\b$name\\b".r.findFirstIn(version).isDefined => name }
+    val unnamed   = PipelineParameters.collect { case (name, StageParameter.Versioned) if !s"\\b$name(?:Version)?\\b".r.findFirstIn(version).isDefined => name }
     withClue(s"Versioned, yet decidedUnder does not read: ${unnamed.toSeq.sorted.mkString(", ")}\n") { unnamed shouldBe empty }
   }
 

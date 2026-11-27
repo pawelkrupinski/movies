@@ -22,18 +22,19 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
                                                  private[agreement] val clock: java.time.Clock,
                                                  private[agreement] val tmdbReads: TmdbReadTracking = new TmdbReadTracking) {
 
-  /** What a stored verdict was decided under: the stage's code, the selected rules' version, and what the composition
-   *  root configures it with outside that code ([[AgreementStage.configured]]) — a refit of the rules, or a family asked
-   *  or let a film stand in one more country, decides every verdict again, as a change of the code does. */
-  private[agreement] val decidedUnder: String =
-    s"${AgreementStage.RulesVersion}|${rules.version}|${AgreementStage.configured(sources.voters, identities, listedOn, sources.calibration)}"
-
-  /** What one apply reads of the posters' hashes and of `listedOn`'s programmes, afresh each apply ([[AgreementPass.Read]]). */
-  def reading(): AgreementPass.Read = new AgreementPass.Read(sources, listedOn)
-
   /** What every stage of the pipeline reads, through the receipt being made ([[AgreementEvidence]]). */
   private[agreement] val evidence = new AgreementEvidence(sources, tmdbReads)
   import evidence.verdictsOf
+
+  /** What a stored verdict was decided under: the stage's code, the selected rules' version, and what the composition
+   *  root configures it with outside that code ([[AgreementStage.configured]]) — a refit of the rules, or a family asked
+   *  or let a film stand in one more country, decides every verdict again, as a change of the code does. The
+   *  calibration is named by the evidence scored under it ([[AgreementEvidence.calibrationVersion]]). */
+  private[agreement] val decidedUnder: String =
+    s"${AgreementStage.RulesVersion}|${rules.version}|${AgreementStage.configured(sources.voters, identities, listedOn, evidence.calibrationVersion)}"
+
+  /** What one apply reads of the posters' hashes and of `listedOn`'s programmes, afresh each apply ([[AgreementPass.Read]]). */
+  def reading(): AgreementPass.Read = new AgreementPass.Read(sources, listedOn)
 
   /** The verdicts kept ([[VerdictIndex]]), by their cluster's key and by their listings' digest. */
   private[agreement] val verdicts = new VerdictIndex(sources)
@@ -162,11 +163,11 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
     // a verdict under other rules decided again to a wait, none under these rules in its place: a cache of nothing now
     val renewed    = pass.moved.iterator.filter(_.rules == decidedUnder).map(_.id).toSet
     val superseded = pass.backfilled.toSet -- renewed
-    val removed    = verdicts.memo.keys.toSet -- pass.seen -- pass.correcting ++ superseded
+    val removed    = verdicts.ids -- pass.seen -- pass.correcting ++ superseded
     val moved      = pass.moved.filterNot(verdict => superseded(verdict.id))
     clusterVerdicts.forgetAllBut(pass.seen)
     inline.asked.filterInPlace(pass.shapes)
-    (candidates.candidateFilms.keys.toSet -- pass.seen).foreach(candidates.candidateFilms.remove)   // a correction's candidates are read, never kept
+    candidates.forgetAllBut(pass.seen)   // a correction's candidates are read, never kept
     corrections.correctionWaits --= corrections.correctionWaits.keySet.toSet -- pass.correcting
     takes.forgetAllBut(pass.seen)
     if (removed.nonEmpty || moved.nonEmpty) verdicts.store(removed, moved.toSeq)
@@ -177,15 +178,12 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
     events.keySet.retainAll(current)
   }
 
-  /** The verdicts kept, by their cluster's key ([[VerdictIndex.memo]]). */
-  def held: services.identity.vocabulary.Memo[String, StoredVerdict] = verdicts.memo
-
   /** Does a verdict kept, or this apply's TMDB reads, read the TMDB record or search a filing under `id` comes as? */
-  def reads(id: String): Boolean = held.reads(id) || tmdbReads.reads(id)
+  def reads(id: String): Boolean = verdicts.reads(id) || tmdbReads.reads(id)
   /** How many verdicts are kept. */
-  def heldCount: Int = held.size
+  def heldCount: Int = verdicts.size
   /** The verdicts kept, read afresh at each call. */
-  def heldVerdicts(): Iterator[StoredVerdict] = held.values
+  def heldVerdicts(): Iterator[StoredVerdict] = verdicts.values
 
   /** What each cluster waits on, as the last apply left it ([[StageWaits]]): the waits the pipeline's stages keep, each
    *  cluster named by `keyOf`, and the takes standing meanwhile (`standingTakes`). */
@@ -203,30 +201,30 @@ private[agreement] final class AgreementPipeline(sources: AgreementSources.Stage
    *  read another is read again ([[services.identity.vocabulary.Dependency.Year]]: an input no filing announces). */
   def yearTurned(year: Int): Boolean = year != evidence.yearNow && {
     evidence.yearNow = year
-    verdicts.memo.moved(_ == services.identity.vocabulary.Dependency.Year, evidence.readNow)
+    verdicts.moved(_ == services.identity.vocabulary.Dependency.Year, evidence.readNow)
     true
   }
 
   /** The verdicts whose receipt read a question's attempt as it no longer reads, read again: how many. */
-  def uncheckAttempted(): Int = verdicts.memo.moved(VerdictIndex.isAttempt, evidence.readNow)
+  def uncheckAttempted(): Int = verdicts.moved(VerdictIndex.isAttempt, evidence.readNow)
 
   /** An apply at `version` begins: the kept verdicts' and candidates' passes begun, and — on the stage's `first` apply,
    *  which meets every cluster and asks none inline — every verdict stored under these rules, of the year it read,
    *  trusted to stand: what this worker's families answered cannot have moved while it was down (prod PL 2026-10-05:
    *  re-reading every verdict's answers at boot was a 40 s, 514 MB pass). */
   def opened(version: Long, first: Boolean): Unit = {
-    verdicts.memo.newPass(); candidates.candidateFilms.newPass()
+    verdicts.newPass(); candidates.newPass()
     inline.firstPass = first
     if (first) {
       val year = evidence.readNow(services.identity.vocabulary.Dependency.Year)
-      verdicts.memo.values.filter(v => v.rules == decidedUnder && v.reads.get(services.identity.vocabulary.Dependency.Year).forall(year.contains))
+      verdicts.values.filter(v => v.rules == decidedUnder && v.reads.get(services.identity.vocabulary.Dependency.Year).forall(year.contains))
         .foreach(v => verdicts.check(v.id, v.listings, version))
     }
     evidence.version = version
   }
 
   /** The apply ends: the families' verdicts it did not read again dropped. */
-  def closed(): Unit = evidence.familyVerdicts.applied()
+  def closed(): Unit = evidence.applied()
 
   /** Forget the listings read for every decision: each read again. */
   def forgetAllRead(): Unit = digested.clear()

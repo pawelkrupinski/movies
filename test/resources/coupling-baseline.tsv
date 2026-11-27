@@ -145,9 +145,9 @@ fanout	services.identity.agreement.Agreement	17
 fanout	services.identity.agreement.AgreementCandidates	20
 fanout	services.identity.agreement.AgreementCorrections	21
 fanout	services.identity.agreement.AgreementEvidence	16
-fanout	services.identity.agreement.AgreementPipeline	24
+fanout	services.identity.agreement.AgreementPipeline	21
 fanout	services.identity.agreement.AgreementSources	11
-fanout	services.identity.agreement.AgreementStage	14
+fanout	services.identity.agreement.AgreementStage	13
 fanout	services.identity.agreement.AgreementTakes	24
 fanout	services.identity.agreement.Broadcast	12
 fanout	services.identity.agreement.Catalogue	11

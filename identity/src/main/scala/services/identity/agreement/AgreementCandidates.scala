@@ -18,6 +18,11 @@ private[agreement] final class AgreementCandidates(evidence: AgreementEvidence, 
    *  of the TMDB answers the read took ([[Memo]]): kept while none of them was filed since. */
   private[agreement] val candidateFilms = new Memo[String, AgreementCandidates.CandidateFilms](_.reads, _ => false)
 
+  /** An apply's pass begins: the candidates' filings met in the last one forgotten ([[Memo.newPass]]). */
+  private[agreement] def newPass(): Unit = candidateFilms.newPass()
+  /** Forget the candidates of every cluster but those `seen`. */
+  private[agreement] def forgetAllBut(seen: collection.Set[String]): Unit = (candidateFilms.keys.toSet -- seen).foreach(candidateFilms.remove)
+
   /** How many reads of TMDB's answers met one not answered yet — a search, a record — since the stage was made: a
    *  correction that met one decided on what it could read, and is read again rather than kept ([[correctionOf]]). The
    *  stage applies on one thread at a time (`apply` is synchronized). */

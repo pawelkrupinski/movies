@@ -948,12 +948,12 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val beforeScrape = resolves
     stage.apply(model, Map(bare.key -> rescraped, matched.key -> matched).get, version = 3, republished = None).decisions.head.film shouldBe Some(913760)
     resolves should be > beforeScrape
-    stage.pipeline.held.values.flatMap(stage.pipeline.clusterVerdicts.unreached).collect { case q @ Question.Family(VoterFamily.Filmweb, _) => q } should not be empty
+    stage.pipeline.verdicts.memo.values.flatMap(stage.pipeline.clusterVerdicts.unreached).collect { case q @ Question.Family(VoterFamily.Filmweb, _) => q } should not be empty
     filmwebAnswered = true
     val beforeAnswer = resolves
     stage.apply(model, Map(bare.key -> rescraped, matched.key -> matched).get, version = 4).decisions.head.film shouldBe Some(913760)   // its answer came: read again
     resolves should be > beforeAnswer
-    stage.pipeline.held.values.flatMap(stage.pipeline.clusterVerdicts.unreached).toSeq shouldBe empty
+    stage.pipeline.verdicts.memo.values.flatMap(stage.pipeline.clusterVerdicts.unreached).toSeq shouldBe empty
   }
 
   // A quiet apply (nothing filed) reads what it waits on again only once the memory behind `attempted` marked something:
@@ -1239,11 +1239,11 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val read     = verdict("read", D.Attempted(record) -> D.digest(D.attemptRead(true)))
     val elsewise = verdict("elsewise", D.Attempted(other) -> D.digest(D.attemptRead(false)))
     val none     = verdict("none", D.Year -> D.digest(D.yearRead(2026)))
-    Seq(waiting, read, elsewise, none).foreach { v => stage.pipeline.held.put(v.id, v); stage.pipeline.held.check(v.id, 1L, 1L) }
+    Seq(waiting, read, elsewise, none).foreach { v => stage.pipeline.verdicts.memo.put(v.id, v); stage.pipeline.verdicts.memo.check(v.id, 1L, 1L) }
     tried = Set(record)
     stage.uncheckAttempted()
-    stage.pipeline.held.isChecked("waiting") shouldBe false
-    Seq("read", "elsewise", "none").foreach(id => withClue(id)(stage.pipeline.held.isChecked(id) shouldBe true))
+    stage.pipeline.verdicts.memo.isChecked("waiting") shouldBe false
+    Seq("read", "elsewise", "none").foreach(id => withClue(id)(stage.pipeline.verdicts.memo.isChecked(id) shouldBe true))
     stage.attemptUnchecked shouldBe 1
   }
 }

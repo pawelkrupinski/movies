@@ -513,7 +513,6 @@ services.identity.agreement.AgreementEvidence	services.identity.vocabulary.Answe
 services.identity.agreement.AgreementEvidence	services.identity.vocabulary.Dependency
 services.identity.agreement.AgreementEvidence	services.identity.vocabulary.Question
 services.identity.agreement.AgreementEvidence	services.titles.TitleNormalizer
-services.identity.agreement.AgreementPipeline	services.identity.IdentityCalibration
 services.identity.agreement.AgreementPipeline	services.identity.NonFilmEvents
 services.identity.agreement.AgreementPipeline	services.identity.agreement.AgreementCandidates
 services.identity.agreement.AgreementPipeline	services.identity.agreement.AgreementCorrections
@@ -523,7 +522,6 @@ services.identity.agreement.AgreementPipeline	services.identity.agreement.Agreem
 services.identity.agreement.AgreementPipeline	services.identity.agreement.AgreementStage
 services.identity.agreement.AgreementPipeline	services.identity.agreement.AgreementTakes
 services.identity.agreement.AgreementPipeline	services.identity.agreement.ClusterVerdicts
-services.identity.agreement.AgreementPipeline	services.identity.agreement.FamilyVerdicts
 services.identity.agreement.AgreementPipeline	services.identity.agreement.InlineAsker
 services.identity.agreement.AgreementPipeline	services.identity.agreement.StageWaits
 services.identity.agreement.AgreementPipeline	services.identity.agreement.StandingTakes
@@ -534,7 +532,6 @@ services.identity.agreement.AgreementPipeline	services.identity.measures.PosterE
 services.identity.agreement.AgreementPipeline	services.identity.measures.ResolverDecision
 services.identity.agreement.AgreementPipeline	services.identity.vocabulary.Answer
 services.identity.agreement.AgreementPipeline	services.identity.vocabulary.Dependency
-services.identity.agreement.AgreementPipeline	services.identity.vocabulary.Memo
 services.identity.agreement.AgreementPipeline	services.identity.vocabulary.Question
 services.identity.agreement.AgreementPipeline	services.identity.vocabulary.SortedHashes
 services.identity.agreement.AgreementSources	services.identity.IdentityCalibration
@@ -549,7 +546,6 @@ services.identity.agreement.AgreementSources	services.identity.vocabulary.Poster
 services.identity.agreement.AgreementSources	services.identity.vocabulary.Question
 services.identity.agreement.AgreementSources	services.titles.TitleNormalizer
 services.identity.agreement.AgreementStage	models.ListingKey
-services.identity.agreement.AgreementStage	services.identity.IdentityCalibration
 services.identity.agreement.AgreementStage	services.identity.agreement.AgreementPass
 services.identity.agreement.AgreementStage	services.identity.agreement.AgreementPipeline
 services.identity.agreement.AgreementStage	services.identity.agreement.ClusterKeys

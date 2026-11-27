@@ -3,7 +3,6 @@ package services.identity.agreement
 import scala.collection.mutable
 
 import models.ListingKey
-import services.identity.IdentityCalibration
 import services.identity.measures.{Listing, Resolution, ResolverDecision}
 import services.identity.vocabulary.{Question, VoterFamily}
 
@@ -438,11 +437,11 @@ object AgreementStage {
   lazy val RulesVersion: String = services.identity.vocabulary.ClasspathResource.stamp("agreement-rules")
 
   /** The stage's configuration as a verdict's rules name it: the families it asks, those a film may stand on, the site
-   *  whose programmes it joins and the calibration. The worker picks them per country in code no rules version digests
+   *  whose programmes it joins and the calibration's version. The worker picks them per country in code no rules version digests
    *  (`AgreementWiring.agreementFamilies`, `identities`, `listedOn`): a verdict decided without Filmweb stood
    *  as it was once Filmweb was asked, since a receipt names only the answers its verdict read. */
   private[agreement] def configured(families: Set[VoterFamily], identities: Seq[VoterFamily], listedOn: Option[VoterFamily],
-                                    calibration: IdentityCalibration): String =
+                                    calibration: String): String =
     Seq(families.toSeq.sortBy(_.ordinal).map(_.label).mkString(","), identities.map(_.label).mkString(","),
-      listedOn.fold("")(_.label), calibration.##.toString).mkString(";")
+      listedOn.fold("")(_.label), calibration).mkString(";")
 }

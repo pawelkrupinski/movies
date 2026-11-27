@@ -28,6 +28,18 @@ private[identity] final class VerdictIndex(sources: AgreementSources.VerdictSour
   }
 
   def get(id: String): Option[StoredVerdict] = memo.get(id)
+  /** The keys of the verdicts kept. */
+  def ids: Set[String] = memo.keys.toSet
+  /** The verdicts kept, read afresh at each call. */
+  def values: Iterator[StoredVerdict] = memo.values
+  /** How many verdicts are kept. */
+  def size: Int = memo.size
+  /** Does a verdict kept read the TMDB record or search a filing under `filing` comes as? */
+  def reads(filing: String): Boolean = memo.reads(filing)
+  /** An apply's pass begins: the filings met in the last one forgotten ([[Memo.newPass]]). */
+  def newPass(): Unit = memo.newPass()
+  /** The verdicts that read a dependency of `kind` as it no longer reads `now`, unchecked: how many ([[Memo.moved]]). */
+  def moved(kind: Dependency => Boolean, now: Dependency => Option[Long]): Int = memo.moved(kind, now)
   /** `id`'s verdict checked at `version` over the listings digesting to `digest`. */
   def check(id: String, digest: Long, version: Long): Unit = memo.check(id, digest, version)
   /** Does `id`'s verdict stand at `version` over the listings digesting to `digest`: none of its reads filed since it was
