@@ -23,6 +23,8 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOL = os.path.join(HERE, "identity_stamp_carry.py")
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(HERE, "lib"))
+import cli_harness  # noqa: E402
 import identity_stamp_carry as stamp_carry  # noqa: E402
 from pure_move_check_test import CLEAN_ENV, FOO, SCRATCH_GIT, FOO_PATH, NEW_FOO_PATH, SIBLING, USER, Repo  # noqa: E402
 
@@ -102,7 +104,8 @@ class StampCarryTest(unittest.TestCase):
         shas = set(self.repo.git("rev-list", "--all", "--reflog").split())
         with open(self.stamps_map, "w") as f:
             json.dump({sha: {stamp: fake_stamp(self.repo, sha, stamp) for stamp in STAMPS} for sha in shas}, f)
-        env = dict(CLEAN_ENV, KINOWO_STAMP_CARRY_STAMPS=self.maker, KINOWO_IDENTITY_CACHE=cache or self.cache,
+        # isolated as every scratch git is (cli_harness): `auto`'s own commit starts no detached maintenance
+        env = dict(cli_harness.isolated_env(CLEAN_ENV), KINOWO_STAMP_CARRY_STAMPS=self.maker, KINOWO_IDENTITY_CACHE=cache or self.cache,
                    KINOWO_FAKE_STAMPS_MAP=self.stamps_map, KINOWO_GH=self.gh, KINOWO_FAKE_RELEASE=self.release,
                    # `auto` commits its rows: an identity of its own, as a container with no git config has none
                    GIT_AUTHOR_NAME="Spec", GIT_AUTHOR_EMAIL="spec@example.com",
@@ -386,6 +389,20 @@ class StampCarryTest(unittest.TestCase):
         self.assertEqual(0, code, out)
         self.assertNotIn("proves nothing", out)
         self.assertEqual({(self.base, first)}, {(r[4], r[5]) for r in self.table_rows()}, out)
+
+    def test_auto_commits_its_rows_starting_no_background_maintenance(self):
+        # a repository whose own config packs loose objects after any commit, as a runner's git may run maintenance:
+        # a detached maintenance still writing .git as the case's directory is removed was ENOTEMPTY (Tool self-tests #644)
+        for key, value in (("maintenance.auto", "true"), ("maintenance.loose-objects.enabled", "true"),
+                           ("maintenance.loose-objects.auto", "1")):
+            self.repo.git("config", key, value)
+        first = self.move_foo()
+        code, out = self.run_tool("auto", f"{self.base}..{first}")
+        self.assertEqual(0, code, out)
+        self.assertEqual({(self.base, first)}, {(r[4], r[5]) for r in self.table_rows()}, out)
+        packs = os.path.join(self.repo.root, ".git", "objects", "pack")
+        packed = cli_harness.wait_until(lambda: any(p.endswith(".pack") for p in os.listdir(packs)), 3.0)
+        self.assertFalse(packed, "the tool's commit started a maintenance run")
 
     def test_the_digested_modules_are_the_builds_own(self):
         with open(os.path.join(os.path.dirname(HERE), "build.sbt")) as f:
