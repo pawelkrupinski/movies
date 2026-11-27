@@ -182,7 +182,7 @@ cognitive	scripts/identity_what_if.py:diff	13
 cognitive	scripts/identity_what_if.py:holder_at	14
 cognitive	scripts/identity_what_if.py:run_diff	26
 cognitive	scripts/ios-simulators:sweep	12
-cognitive	scripts/label-lookup:blame	27
+cognitive	scripts/label-lookup:blame	15
 cognitive	scripts/label-lookup:lookup	100
 cognitive	scripts/linux-tree-sync.py:main	11
 cognitive	scripts/linux-tree-sync.py:prune	11
@@ -194,7 +194,6 @@ cognitive	scripts/listing_history.py:report	69
 cognitive	scripts/listing_history.py:trace_reason	15
 cognitive	scripts/ml-identity/cross_country_experiment.py:bucket	11
 cognitive	scripts/ml-identity/cross_country_experiment.py:donors_of	17
-cognitive	scripts/mongo_grants.py:main	25
 cognitive	scripts/ops/dumpheap.py:attach	13
 cognitive	scripts/recording_diff.py:_field_changes	11
 cognitive	scripts/recording_diff.py:_spellings	12
@@ -383,7 +382,6 @@ cyclomatic	scripts/identity_what_if.py:diff	38
 cyclomatic	scripts/identity_what_if.py:holder_at	16
 cyclomatic	scripts/identity_what_if.py:run_diff	19
 cyclomatic	scripts/identity_what_if.py:side_take	14
-cyclomatic	scripts/label-lookup:blame	17
 cyclomatic	scripts/label-lookup:lookup	70
 cyclomatic	scripts/listing_history.py:_change_line	11
 cyclomatic	scripts/listing_history.py:mirror_lines	43
@@ -392,7 +390,6 @@ cyclomatic	scripts/listing_history.py:replay	19
 cyclomatic	scripts/listing_history.py:replay.take	12
 cyclomatic	scripts/listing_history.py:report	54
 cyclomatic	scripts/ml-identity/cross_country_experiment.py:donors_of	13
-cyclomatic	scripts/mongo_grants.py:main	17
 cyclomatic	scripts/recording_diff.py:compare_corpus	23
 cyclomatic	scripts/recording_diff.py:listing_view	38
 cyclomatic	scripts/recording_diff.py:report	71
@@ -507,8 +504,8 @@ pyright	scripts/ci/reusable_workflow_inputs.py	153
 pyright	scripts/ci/runner_cache.py	114
 pyright	scripts/ci/runner_scheduler.py	717
 pyright	scripts/ci/script_module.py	11
-pyright	scripts/ci/shard_tests.py	68
-pyright	scripts/ci/shard_weights.py	72
+pyright	scripts/ci/shard_tests.py	67
+pyright	scripts/ci/shard_weights.py	53
 pyright	scripts/ci/upstream_run.py	55
 pyright	scripts/ci/workflow_steps.py	23
 pyright	scripts/ci/xcresult_annotations.py	65
@@ -533,11 +530,10 @@ pyright	scripts/identity_slice_diff.py	52
 pyright	scripts/identity_stamp_carry.py	17
 pyright	scripts/identity_what_if.py	470
 pyright	scripts/ios-simulators	31
-pyright	scripts/label-lookup	301
+pyright	scripts/label-lookup	238
 pyright	scripts/linux-tree-sync.py	108
 pyright	scripts/listing_history.py	573
 pyright	scripts/ml-identity/cross_country_experiment.py	237
-pyright	scripts/mongo_grants.py	68
 pyright	scripts/ops/dumpheap.py	26
 pyright	scripts/poster_hash.py	95
 pyright	scripts/recording_diff.py	769
