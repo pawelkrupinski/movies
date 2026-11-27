@@ -61,7 +61,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from typing import Callable, List, Mapping, MutableMapping, Optional, Sequence, Tuple
+from typing import List, Mapping, MutableMapping, Optional, Sequence, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))  # run as `python3 -I`: its own directory is not there
 import machine  # noqa: E402
@@ -89,114 +89,105 @@ def number(env: Mapping[str, str], name: str, default: int) -> int:
     return int(env.get(name) or default)
 
 
-class Machine:
-    """What a download touches: its environment, the commands it runs, the clock, the jitter and its log (stderr)."""
-
-    def __init__(self, env: MutableMapping[str, str], rand: Callable[[int], int] = random.randrange,
-                 sleep: Callable[[float], None] = machine.sleep) -> None:
-        self.env, self.rand, self.sleep = env, rand, sleep
-
-    def gh_answer(self, seconds: int, args: Sequence[str]) -> Tuple[int, str]:
-        """gh's status and its stderr, its stdout this process's."""
-        return machine.errors(bounded(seconds, [self.env.get("KINOWO_GH") or "gh", *args]), env=self.env, out=None)
-
-    def output(self, seconds: int, argv: Sequence[str], quiet: bool) -> Tuple[int, str]:
-        return machine.run(bounded(seconds, argv), machine.Ran(env=self.env, out=subprocess.PIPE,
-                                                              err=subprocess.DEVNULL if quiet else None))
-
-    def say(self, line: str) -> None:
-        sys.stderr.write(line + "\n")
-        sys.stderr.flush()
+def gh(env: Mapping[str, str]) -> str:
+    return env.get("KINOWO_GH") or "gh"
 
 
-class Public:
-    """One release asset from its public URL (the `public` command)."""
+def say(line: str) -> None:
+    sys.stderr.write(line + "\n")
+    sys.stderr.flush()
 
-    def __init__(self, m: Machine) -> None:
-        self.m = m
 
-    def enabled(self) -> bool:
-        switch = self.m.env.get("GH_DOWNLOAD_PUBLIC", "")
-        return switch == "1" or (switch != "0" and self.m.env.get("GITHUB_ACTIONS") == "true")
+def captured(env: MutableMapping[str, str], seconds: int, argv: Sequence[str], quiet: bool) -> Tuple[int, str]:
+    """A bounded command's status and stdout; its stderr this process's, or dropped when `quiet`."""
+    return machine.run(bounded(seconds, argv), machine.Ran(env=env, out=subprocess.PIPE,
+                                                          err=subprocess.DEVNULL if quiet else None))
 
-    def fetch(self, seconds: int, args: Sequence[str]) -> int:
-        if not self.enabled() or len(args) < 3 or list(args[:2]) != ["release", "download"]:
-            return NOT_SERVED
-        asked = self.asked(args[2], args[3:])
-        if asked is None:
-            return NOT_SERVED
-        repo, tag, name, dest = asked
-        return self.into(seconds, f"https://github.com/{repo}/releases/download/{tag}/{name}", dest,
-                         f"{repo} {tag}/{name}")
 
-    def asked(self, tag: str, words: Sequence[str]) -> Optional[Tuple[str, str, str, str]]:
-        """(repo, tag, name, destination) of a download this serves; None for any other."""
-        given = {"repo": self.m.env.get("GH_REPO") or self.m.env.get("GITHUB_REPOSITORY") or "", "name": "",
-                 "dir": ".", "output": ""}
-        clobber, i = False, 0
-        while i < len(words):
-            if words[i] == "--clobber":
-                clobber, i = True, i + 1
-                continue
-            key = OPTIONS.get(words[i])
-            if key is None or i + 1 >= len(words) or (key == "name" and given["name"]):
-                return None
-            given[key], i = words[i + 1], i + 2
-        dest = given["output"] or os.path.join(given["dir"], given["name"])
-        return self.servable(given["repo"], tag, given["name"], dest, clobber)
+# ── the public asset URL ─────────────────────────────────────────────────────────────────────────────
+def public_enabled(env: Mapping[str, str]) -> bool:
+    switch = env.get("GH_DOWNLOAD_PUBLIC", "")
+    return switch == "1" or (switch != "0" and env.get("GITHUB_ACTIONS") == "true")
 
-    @staticmethod
-    def servable(repo: str, tag: str, name: str, dest: str, clobber: bool) -> Optional[Tuple[str, str, str, str]]:
-        """owner/name, and a tag and an asset name of URL-safe characters only: a glob, a host prefix or anything to
-        escape stays gh's; nor a file it would overwrite without --clobber."""
-        if not (REPOSITORY.fullmatch(repo) and URL_SAFE.fullmatch(tag) and URL_SAFE.fullmatch(name)):
+
+def public_fetch(env: MutableMapping[str, str], seconds: int, args: Sequence[str]) -> int:
+    if not public_enabled(env) or len(args) < 3 or list(args[:2]) != ["release", "download"]:
+        return NOT_SERVED
+    asked = public_asked(env, args[2], args[3:])
+    if asked is None:
+        return NOT_SERVED
+    repo, tag, name, dest = asked
+    return public_into(env, seconds, f"https://github.com/{repo}/releases/download/{tag}/{name}", dest,
+                       f"{repo} {tag}/{name}")
+
+
+def public_asked(env: Mapping[str, str], tag: str, words: Sequence[str]) -> Optional[Tuple[str, str, str, str]]:
+    """(repo, tag, name, destination) of a download the public URL serves; None for any other."""
+    given = {"repo": env.get("GH_REPO") or env.get("GITHUB_REPOSITORY") or "", "name": "", "dir": ".", "output": ""}
+    clobber, i = False, 0
+    while i < len(words):
+        if words[i] == "--clobber":
+            clobber, i = True, i + 1
+            continue
+        key = OPTIONS.get(words[i])
+        if key is None or i + 1 >= len(words) or (key == "name" and given["name"]):
             return None
-        if dest != "-" and not clobber and os.path.lexists(dest):
-            return None
-        return repo, tag, name, dest
+        given[key], i = words[i + 1], i + 2
+    dest = given["output"] or os.path.join(given["dir"], given["name"])
+    return servable(given["repo"], tag, given["name"], dest, clobber)
 
-    @staticmethod
-    def part_of(dest: str) -> Optional[str]:
-        """Where the fetch writes before it lands: a temporary file for stdout, else beside `dest`; None when its
-        directory cannot be made."""
-        if dest == "-":
-            fd, part = tempfile.mkstemp()
-            os.close(fd)
-            return part
-        try:
-            os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
-        except OSError:
-            return None
-        return dest + ".part"
 
-    def into(self, seconds: int, url: str, dest: str, what: str) -> int:
-        part = self.part_of(dest)
-        if part is None:
-            return FAILED
-        env = self.m.env
-        status, code = self.m.output(seconds, [env.get("KINOWO_CURL") or "curl", "-sSL", "--connect-timeout", "20",
-                                               "--speed-limit", env.get("GH_DOWNLOAD_STALL_BYTES") or "1024",
-                                               "--speed-time", env.get("GH_DOWNLOAD_STALL_SECONDS") or "60",
-                                               "-o", part, "-w", "%{http_code}", url], quiet=False)
-        if status == 0 and code == "200":
-            return self.landed(part, dest)
-        remove(part)
-        if code == "404":
-            return ABSENT
-        # curl 28: the transfer stalled under the speed limit (or the bound ended it)
-        self.m.say(f"public asset {what}: curl exit {status}, HTTP {code or 'none'}")
+def servable(repo: str, tag: str, name: str, dest: str, clobber: bool) -> Optional[Tuple[str, str, str, str]]:
+    """owner/name, and a tag and an asset name of URL-safe characters only: a glob, a host prefix or anything to escape
+    stays gh's; nor a file it would overwrite without --clobber."""
+    if not (REPOSITORY.fullmatch(repo) and URL_SAFE.fullmatch(tag) and URL_SAFE.fullmatch(name)):
+        return None
+    if dest != "-" and not clobber and os.path.lexists(dest):
+        return None
+    return repo, tag, name, dest
+
+
+def part_of(dest: str) -> Optional[str]:
+    """Where the fetch writes before it lands: a temporary file for stdout, else beside `dest`; None when its directory
+    cannot be made."""
+    if dest == "-":
+        fd, part = tempfile.mkstemp()
+        os.close(fd)
+        return part
+    try:
+        os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
+    except OSError:
+        return None
+    return dest + ".part"
+
+
+def public_into(env: MutableMapping[str, str], seconds: int, url: str, dest: str, what: str) -> int:
+    part = part_of(dest)
+    if part is None:
         return FAILED
+    status, code = captured(env, seconds, [env.get("KINOWO_CURL") or "curl", "-sSL", "--connect-timeout", "20",
+                                           "--speed-limit", env.get("GH_DOWNLOAD_STALL_BYTES") or "1024",
+                                           "--speed-time", env.get("GH_DOWNLOAD_STALL_SECONDS") or "60",
+                                           "-o", part, "-w", "%{http_code}", url], quiet=False)
+    if status == 0 and code == "200":
+        return landed(part, dest)
+    remove(part)
+    if code == "404":
+        return ABSENT
+    # curl 28: the transfer stalled under the speed limit (or the bound ended it)
+    say(f"public asset {what}: curl exit {status}, HTTP {code or 'none'}")
+    return FAILED
 
-    @staticmethod
-    def landed(part: str, dest: str) -> int:
-        if dest == "-":
-            with open(part, "rb") as f:
-                shutil.copyfileobj(f, sys.stdout.buffer)
-            sys.stdout.flush()
-            remove(part)
-        else:
-            os.replace(part, dest)
-        return OK
+
+def landed(part: str, dest: str) -> int:
+    if dest == "-":
+        with open(part, "rb") as f:
+            shutil.copyfileobj(f, sys.stdout.buffer)
+        sys.stdout.flush()
+        remove(part)
+    else:
+        os.replace(part, dest)
+    return OK
 
 
 def remove(path: str) -> None:
@@ -206,112 +197,105 @@ def remove(path: str) -> None:
         pass
 
 
-class Download:
-    """`gh <args>` until it answers: the `download` command."""
-
-    def __init__(self, m: Machine, public: Public) -> None:
-        self.m, self.public = m, public
-
-    def run(self, seconds: int, args: Sequence[str]) -> int:
-        if self.public_got(seconds, args):
-            return OK
-        attempt = 1
-        while True:
-            status, err = self.m.gh_answer(seconds, args)
-            if err:
-                sys.stderr.write(err.rstrip("\n") + "\n")
-                sys.stderr.flush()
-            verdict = self.verdict(args, status, err, attempt)
-            if verdict is not None:
-                return verdict
-            self.m.sleep(self.wait(args, err, status, attempt, self.attempts(err)))
-            self.emptied(args)
-            attempt += 1
-
-    def public_got(self, seconds: int, args: Sequence[str]) -> bool:
-        if not self.public.enabled():
-            return False
-        status = self.public.fetch(seconds, args)
-        if status not in (OK, NOT_SERVED):  # not a download the public URL serves: gh, quietly, as before
-            self.m.say(f"gh {self.what(args)}: the public asset URL did not serve it (status {status}); asking the API")
-        return status == OK
-
-    def verdict(self, args: Sequence[str], status: int, err: str, attempt: int) -> Optional[int]:
-        """The answer this attempt settles, or None to ask again."""
-        if status == 0:
-            return OK
-        if self.absent(err):
-            return ABSENT
-        if attempt >= self.attempts(err):
-            self.m.say(f"gh {self.what(args)}: failed after {attempt} attempt(s) (exit {status})")
-            return FAILED
-        return None
-
-    @staticmethod
-    def what(args: Sequence[str]) -> str:
-        return " ".join(list(args[:2]))
-
-    def absent(self, err: str) -> bool:
-        exists = bool(self.m.env.get("GH_DOWNLOAD_RELEASE_EXISTS")) and "release not found" in err
-        return bool(ABSENT_ANSWERS.search(err)) and not exists
-
-    def attempts(self, err: str) -> int:
-        if THROTTLED.search(err):
-            return number(self.m.env, "GH_DOWNLOAD_TRANSIENT_ATTEMPTS", 10)
-        return number(self.m.env, "GH_DOWNLOAD_ATTEMPTS", 3)
-
-    def wait(self, args: Sequence[str], err: str, status: int, attempt: int, attempts: int) -> int:
-        reset = rate_limit_wait(self.m) if RATE_LIMITED.search(err) else None
-        if reset is not None:
-            self.m.say(f"gh {self.what(args)}: the API rate limit is spent; it resets in {reset} s -- asking again then "
-                       f"(attempt {attempt} of {attempts})")
-            return reset
-        env = self.m.env
-        wait = min(number(env, "GH_DOWNLOAD_BACKOFF", 5) << (attempt - 1), number(env, "GH_DOWNLOAD_MAX_WAIT", 120))
-        wait += self.m.rand(wait // 2 + 1)
-        self.m.say(f"gh {self.what(args)}: attempt {attempt} of {attempts} failed (exit {status}); asking again in {wait}s")
-        return wait
-
-    @staticmethod
-    def emptied(args: Sequence[str]) -> None:
-        """A `run download`'s --dir emptied: gh refuses to overwrite what a cut-short attempt left."""
-        where = [args[i + 1] for i in range(len(args) - 1) if args[i] == "--dir"]
-        if args[:1] == ["run"] and where and os.path.isdir(where[-1]):
-            for entry in os.listdir(where[-1]):
-                path = os.path.join(where[-1], entry)
-                shutil.rmtree(path) if os.path.isdir(path) and not os.path.islink(path) else os.remove(path)
+# ── gh, until it answers ─────────────────────────────────────────────────────────────────────────────
+def download(env: MutableMapping[str, str], seconds: int, args: Sequence[str]) -> int:
+    if public_got(env, seconds, args):
+        return OK
+    attempt = 1
+    while True:
+        status, err = machine.errors(bounded(seconds, [gh(env), *args]), env=env, out=None)
+        if err:
+            sys.stderr.write(err.rstrip("\n") + "\n")
+            sys.stderr.flush()
+        verdict = settled(env, args, status, err, attempt)
+        if verdict is not None:
+            return verdict
+        machine.sleep(backoff(env, args, err, status, attempt))
+        emptied(args)
+        attempt += 1
 
 
-def rate_limit_wait(m: Machine) -> Optional[int]:
-    status, reset = m.output(30, [m.env.get("KINOWO_GH") or "gh", "api", "rate_limit", "--jq", RATE_LIMIT_RESET],
-                             quiet=True)
+def what(args: Sequence[str]) -> str:
+    return " ".join(list(args[:2]))
+
+
+def public_got(env: MutableMapping[str, str], seconds: int, args: Sequence[str]) -> bool:
+    if not public_enabled(env):
+        return False
+    status = public_fetch(env, seconds, args)
+    if status not in (OK, NOT_SERVED):  # not a download the public URL serves: gh, quietly, as before
+        say(f"gh {what(args)}: the public asset URL did not serve it (status {status}); asking the API")
+    return status == OK
+
+
+def settled(env: Mapping[str, str], args: Sequence[str], status: int, err: str, attempt: int) -> Optional[int]:
+    """The answer this attempt settles, or None to ask again."""
+    if status == 0:
+        return OK
+    exists = bool(env.get("GH_DOWNLOAD_RELEASE_EXISTS")) and "release not found" in err
+    if ABSENT_ANSWERS.search(err) and not exists:
+        return ABSENT
+    if attempt >= attempts(env, err):
+        say(f"gh {what(args)}: failed after {attempt} attempt(s) (exit {status})")
+        return FAILED
+    return None
+
+
+def attempts(env: Mapping[str, str], err: str) -> int:
+    if THROTTLED.search(err):
+        return number(env, "GH_DOWNLOAD_TRANSIENT_ATTEMPTS", 10)
+    return number(env, "GH_DOWNLOAD_ATTEMPTS", 3)
+
+
+def backoff(env: MutableMapping[str, str], args: Sequence[str], err: str, status: int, attempt: int) -> int:
+    reset = rate_limit_wait(env) if RATE_LIMITED.search(err) else None
+    if reset is not None:
+        say(f"gh {what(args)}: the API rate limit is spent; it resets in {reset} s -- asking again then "
+            f"(attempt {attempt} of {attempts(env, err)})")
+        return reset
+    wait = min(number(env, "GH_DOWNLOAD_BACKOFF", 5) << (attempt - 1), number(env, "GH_DOWNLOAD_MAX_WAIT", 120))
+    wait += random.randrange(wait // 2 + 1)
+    say(f"gh {what(args)}: attempt {attempt} of {attempts(env, err)} failed (exit {status}); asking again in {wait}s")
+    return wait
+
+
+def emptied(args: Sequence[str]) -> None:
+    """A `run download`'s --dir emptied: gh refuses to overwrite what a cut-short attempt left."""
+    where = [args[i + 1] for i in range(len(args) - 1) if args[i] == "--dir"]
+    if args[:1] == ["run"] and where and os.path.isdir(where[-1]):
+        for entry in os.listdir(where[-1]):
+            path = os.path.join(where[-1], entry)
+            shutil.rmtree(path) if os.path.isdir(path) and not os.path.islink(path) else os.remove(path)
+
+
+def rate_limit_wait(env: MutableMapping[str, str]) -> Optional[int]:
+    status, reset = captured(env, 30, [gh(env), "api", "rate_limit", "--jq", RATE_LIMIT_RESET], quiet=True)
     reset = reset.strip()
     if status != 0 or not reset.isdigit():
         return None
     wait = max(0, int(reset) - int(machine.wall()))
-    if wait > number(m.env, "GH_RATE_LIMIT_MAX_WAIT", 600):
+    if wait > number(env, "GH_RATE_LIMIT_MAX_WAIT", 600):
         return None
-    return wait + number(m.env, "GH_RATE_LIMIT_SLACK", 5) + m.rand(number(m.env, "GH_RATE_LIMIT_JITTER", 10) + 1)
+    return wait + number(env, "GH_RATE_LIMIT_SLACK", 5) + random.randrange(number(env, "GH_RATE_LIMIT_JITTER", 10) + 1)
 
 
-def prod_latest_run(m: Machine, cc: str) -> int:
-    env = m.env
+def prod_latest_run(env: MutableMapping[str, str], cc: str) -> int:
     release = env.get("FIXTURE_RELEASE_TAG") or "convergence-fixtures"
     scratch = tempfile.mkdtemp()
     try:
-        got = Download(m, Public(m)).run(number(env, "KINOWO_IDENTITY_GH_TIMEOUT", 60), [
+        got = download(env, number(env, "KINOWO_IDENTITY_GH_TIMEOUT", 60), [
             "release", "download", release, "-R", env.get("KINOWO_REPO") or "pawelkrupinski/movies",
             "--pattern", f"prod-latest-{cc}.txt", "--dir", scratch])
         if got != OK:
-            m.say(f"no prod-latest {cc} recording (no prod-latest-{cc}.txt on {release}, or it could not be read): the "
-                  f"nightly \"Record scrape fixtures\" writes it once a {cc} leg completes")
+            say(f"no prod-latest {cc} recording (no prod-latest-{cc}.txt on {release}, or it could not be read): the "
+                f"nightly \"Record scrape fixtures\" writes it once a {cc} leg completes")
             return FAILED
         with open(os.path.join(scratch, f"prod-latest-{cc}.txt")) as f:
             run = f.read().split("\n", 1)[0].split(" ", 1)[0]
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
     if not run.isdigit():
-        m.say(f"prod-latest-{cc}.txt names no run")
+        say(f"prod-latest-{cc}.txt names no run")
         return FAILED
     print(run, flush=True)
     return OK
@@ -323,34 +307,34 @@ def seconds_of(word: str) -> int:
     return int(word)
 
 
-def print_rate_limit_wait(m: Machine) -> int:
-    wait = rate_limit_wait(m)
+def print_rate_limit_wait(env: MutableMapping[str, str]) -> int:
+    wait = rate_limit_wait(env)
     if wait is None:
         return FAILED
     print(wait)
     return OK
 
 
-def bounded_command(m: Machine, command: str, rest: List[str]) -> int:
+def bounded_command(env: MutableMapping[str, str], command: str, rest: List[str]) -> int:
     try:
         seconds = seconds_of(rest[0])
     except ValueError as bad:
         print(f"gh_download.py: <seconds> must be a positive whole number, not '{bad}'", file=sys.stderr)
         return 64
     if command == "public":
-        return Public(m).fetch(seconds, rest[1:])
-    return Download(m, Public(m)).run(seconds, rest[1:])
+        return public_fetch(env, seconds, rest[1:])
+    return download(env, seconds, rest[1:])
 
 
 def main(argv: List[str]) -> int:
-    m = Machine(machine.environment())
+    env = machine.environment()
     command, rest = (argv[0], argv[1:]) if argv else ("", [])
     if command in ("download", "public") and rest:
-        return bounded_command(m, command, rest)
+        return bounded_command(env, command, rest)
     if command == "rate-limit-wait" and not rest:
-        return print_rate_limit_wait(m)
+        return print_rate_limit_wait(env)
     if command == "prod-latest" and len(rest) == 1:
-        return prod_latest_run(m, rest[0])
+        return prod_latest_run(env, rest[0])
     print("usage: gh_download.py download|public <seconds> <gh args...> | rate-limit-wait | prod-latest <cc>",
           file=sys.stderr)
     return 64

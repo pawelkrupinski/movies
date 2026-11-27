@@ -186,5 +186,5 @@ state	infra/version-dashboard/src/shared/http.ts	1
 import-io	scripts/label-lookup	1
 import-io	scripts/lib/cli_harness.py	2
 distance	scripts/ci	0.54
-distance	scripts/lib	0.8
+distance	scripts/lib	0.81
 dircycle	scripts|scripts/ci	2
