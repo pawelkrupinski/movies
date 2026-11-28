@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # script-test-reads: scripts/local-mirror/mirror* scripts/local-mirror/*.js scripts/local-mirror/prod-tunnel.sh scripts/local-mirror/local-mongo.sh scripts/local-mirror/log-path.sh scripts/local-mirror/mongosh-at.sh scripts/lib/prod_tunnel.py scripts/lib/mongo_local.py scripts/jvm-gate.sh scripts/vault-env.sh
-"""scripts/local-mirror/mirror.sh black-box (see mirror_fixture.py): the supervised tailer ending, failing, drifting or hanging.
+"""scripts/local-mirror/mirror.sh black-box (see mirror_test.py): the supervised tailer ending, failing, drifting or hanging.
 Run: python3 scripts/local-mirror/mirror_supervision_test.py
 """
 from __future__ import annotations
@@ -12,8 +12,8 @@ import subprocess
 import time
 import unittest
 
-from mirror_fixture import HERE, MirrorCase, NODE, STAMPED, gone
-import cli_harness  # noqa: E402  (on the path once mirror_fixture is imported)
+from mirror_test import HERE, MirrorCase, NODE, STAMPED, gone
+import cli_harness  # noqa: E402  (on the path once mirror_test is imported)
 
 
 class SupervisionTest(MirrorCase):

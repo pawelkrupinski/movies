@@ -502,7 +502,7 @@ scripts/local-mirror/mirror_supervision_test.py
 scripts/local-mirror/mirror_tunnel_test.py
 ```
 
-(three files run side by side; the fake daemon's fixtures are `mirror_fixture.py`)
+(three files run side by side; the fake daemon and its fixtures are in `mirror_test.py`)
 
 It covers the tunnel too: that a dead backend does not read as healthy, that a
 tunnel held by another process is never adopted or killed, and that the ssh

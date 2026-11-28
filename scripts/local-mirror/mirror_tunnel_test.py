@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # script-test-reads: scripts/local-mirror/mirror* scripts/local-mirror/*.js scripts/local-mirror/prod-tunnel.sh scripts/local-mirror/local-mongo.sh scripts/local-mirror/log-path.sh scripts/local-mirror/mongosh-at.sh scripts/lib/prod_tunnel.py scripts/lib/mongo_local.py scripts/jvm-gate.sh scripts/vault-env.sh
-"""scripts/local-mirror/mirror.sh black-box (see mirror_fixture.py): the tunnel keeper and a TERM in a wait.
+"""scripts/local-mirror/mirror.sh black-box (see mirror_test.py): the tunnel keeper and a TERM in a wait.
 Run: python3 scripts/local-mirror/mirror_tunnel_test.py
 """
 from __future__ import annotations
@@ -11,7 +11,7 @@ import subprocess
 import unittest
 from typing import Dict, Optional
 
-from mirror_fixture import MirrorCase, TERM_IN_WAIT, described, gone
+from mirror_test import MirrorCase, TERM_IN_WAIT, described, gone
 
 
 class TunnelTest(MirrorCase):
