@@ -101,3 +101,4 @@
 139	scripts/ci/order-phases.sh	
 111	scripts/ci/takes-skip-shadow-report.sh	
 125	scripts/ci/hook-beside.sh	
+179	scripts/review-commit	
