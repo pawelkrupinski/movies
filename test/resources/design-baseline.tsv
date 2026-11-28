@@ -1546,7 +1546,6 @@ mixed	scripts/touched_methods.py:range_lines	4
 mixed	scripts/touched_methods.py:read_spans	3
 mixed	scripts/touched_tree_fixture.py:TouchedTreeCase.assert_signal_cleans_up	4
 mixed	scripts/touched_tree_fixture.py:TouchedTreeCase.tools_copy	4
-mixed	scripts/unmatched_census.py:read_dump	3
 mixed	scripts/unmatched_census.py:read_patterns	5
 mixed	scripts/unmatched_census.py:read_rows	7
 mixed	scripts/unmatched_census.py:write_clusters	6

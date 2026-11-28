@@ -273,17 +273,27 @@ def render(since: str, results: Dict[str, Json]) -> str:
 
 
 def read_dump(arguments: argparse.Namespace, country: str) -> Json:
-    """The country's listings: the dump file asked for, else the mirror; written to --dump when asked."""
-    if arguments.from_dump:
-        with open(os.path.join(arguments.from_dump, country + '.json'), encoding='utf-8') as handle:
-            dump = json.load(handle)
-    else:
-        dump = query_mirror(arguments.mongo, country, arguments.since)
-    if arguments.dump:
-        os.makedirs(arguments.dump, exist_ok=True)
-        with open(os.path.join(arguments.dump, country + '.json'), 'w', encoding='utf-8') as handle:
-            json.dump(dump, handle, ensure_ascii=False)
-    return dump
+    """The country's listings: the dump file asked for, else the mirror."""
+    if not arguments.from_dump:
+        return query_mirror(arguments.mongo, country, arguments.since)
+    with open(os.path.join(arguments.from_dump, country + '.json'), encoding='utf-8') as handle:
+        return json.load(handle)
+
+
+def write_dump(directory: Optional[str], country: str, dump: Json) -> None:
+    """The country's listings written to DIR/<cc>.json, when --dump asked."""
+    if not directory:
+        return
+    os.makedirs(directory, exist_ok=True)
+    with open(os.path.join(directory, country + '.json'), 'w', encoding='utf-8') as handle:
+        json.dump(dump, handle, ensure_ascii=False)
+
+
+def census_of(arguments: argparse.Namespace, country: str, patterns: Sequence[Pattern[str]], verdicts: List[Json],
+              watch: List[Tuple[str, str]]) -> Json:
+    dump = read_dump(arguments, country)
+    write_dump(arguments.dump, country, dump)
+    return census(country, dump, patterns, verdicts, watch)
 
 
 def parse_arguments(argv: Optional[Sequence[str]]) -> argparse.Namespace:
@@ -324,7 +334,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     patterns = read_patterns(arguments.event_patterns)
     verdicts = read_verdicts(arguments.verdicts)
     watch = [(row[0].upper(), row[1]) for row in read_rows(arguments.watch) if len(row) > 1 and row[0] != 'country']
-    results = {country: census(country, read_dump(arguments, country), patterns, verdicts, watch) for country in countries}
+    results = {country: census_of(arguments, country, patterns, verdicts, watch) for country in countries}
     if emit_clusters(arguments, results):
         return 0
     for result in results.values():
