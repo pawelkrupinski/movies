@@ -23,6 +23,7 @@
 		DD00000000000000000005 /* Film.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000005 /* Film.swift */; };
 		DD00000000000000000500 /* DateLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000500 /* DateLabel.swift */; };
 		DD00000000000000000006 /* Filters.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000006 /* Filters.swift */; };
+		DD637B25D6041248EF4518 /* CinemaSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC637B25D6041248EF4518 /* CinemaSection.swift */; };
 		DD00000000000000005EA1 /* SearchDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000005EA1 /* SearchDay.swift */; };
 		DD0000000000000000B810 /* ListingFilters.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000B810 /* ListingFilters.swift */; };
 		DD00000000000000000261 /* CinemaCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000261 /* CinemaCatalog.swift */; };
@@ -162,6 +163,7 @@
 		CC00000000000000000005 /* Film.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Film.swift; sourceTree = "<group>"; };
 		CC00000000000000000500 /* DateLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateLabel.swift; sourceTree = "<group>"; };
 		CC00000000000000000006 /* Filters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Filters.swift; sourceTree = "<group>"; };
+		CC637B25D6041248EF4518 /* CinemaSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaSection.swift; sourceTree = "<group>"; };
 		CC00000000000000005EA1 /* SearchDay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchDay.swift; sourceTree = "<group>"; };
 		CC0000000000000000B810 /* ListingFilters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListingFilters.swift; sourceTree = "<group>"; };
 		CC00000000000000000261 /* CinemaCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaCatalog.swift; sourceTree = "<group>"; };
@@ -362,6 +364,7 @@
 				CC00000000000000000304 /* HiddenFilmsFilter.swift */,
 				CC00000000000000000303 /* CitySwitchSuppressor.swift */,
 				CC00000000000000000006 /* Filters.swift */,
+				CC637B25D6041248EF4518 /* CinemaSection.swift */,
 				CC00000000000000005EA1 /* SearchDay.swift */,
 				CC0000000000000000B810 /* ListingFilters.swift */,
 				CC00000000000000000261 /* CinemaCatalog.swift */,
@@ -607,6 +610,7 @@
 				DD00000000000000000005 /* Film.swift in Sources */,
 				DD00000000000000000500 /* DateLabel.swift in Sources */,
 				DD00000000000000000006 /* Filters.swift in Sources */,
+				DD637B25D6041248EF4518 /* CinemaSection.swift in Sources */,
 				DD00000000000000005EA1 /* SearchDay.swift in Sources */,
 				DD0000000000000000B810 /* ListingFilters.swift in Sources */,
 				DD00000000000000000261 /* CinemaCatalog.swift in Sources */,

@@ -17,7 +17,6 @@ cognitive	ios/Kinowo/Auth/StateSyncService.swift:sendPendingChanges	15
 cognitive	ios/Kinowo/Auth/StateSyncService.swift:sendPendingLanguage	16
 cognitive	ios/Kinowo/ContentView.swift:content	11
 cognitive	ios/Kinowo/Models/City.swift:mergedRows	12
-cognitive	ios/Kinowo/Models/Filters.swift:filteredFor	17
 cognitive	ios/Kinowo/Models/Filters.swift:groupedByCinema	14
 cognitive	ios/Kinowo/Views/CityGate.swift:body#4	28
 cognitive	ios/Kinowo/Views/RatingBadgesView.swift:body	15
@@ -27,13 +26,11 @@ cyclomatic	ios/Kinowo/Auth/StateSyncService.swift:sendPendingChanges	13
 cyclomatic	ios/Kinowo/Auth/StateSyncService.swift:sendPendingLanguage	14
 cyclomatic	ios/Kinowo/ContentView.swift:body	14
 cyclomatic	ios/Kinowo/Models/City.swift:searchRows	11
-cyclomatic	ios/Kinowo/Models/Filters.swift:filteredFor	21
 cyclomatic	ios/Kinowo/Views/CityGate.swift:body#4	21
 cyclomatic	ios/Kinowo/Views/RatingBadgesView.swift:body	11
 cyclomatic	ios/Kinowo/Views/ShowingsView.swift:body#2	12
 method-lines	ios/Kinowo/ContentView.swift:body	211
 method-lines	ios/Kinowo/KinowoApp.swift:body	57
-method-lines	ios/Kinowo/Models/Filters.swift:filteredFor	53
 method-lines	ios/Kinowo/Views/CityGate.swift:body#4	174
 method-lines	ios/Kinowo/Views/FilmCardView.swift:body	60
 method-lines	ios/Kinowo/Views/FilmDetailView.swift:body#2	69
@@ -48,8 +45,6 @@ method-lines	ios/Kinowo/Views/ShowingsView.swift:body	53
 method-lines	ios/Kinowo/Views/TopBar.swift:body	70
 file-lines	ios/Kinowo/ContentView.swift	515
 file-lines	ios/Kinowo/Models/City.swift	501
-file-lines	ios/Kinowo/Models/Filters.swift	580
 file-lines	ios/Kinowo/Views/CityGate.swift	636
 file-lines	ios/Kinowo/Views/ShowtimeTuningScreen.swift	637
 copies	ios/Kinowo/Auth/AuthService.swift	2
-copies	ios/Kinowo/Models/Filters.swift	5

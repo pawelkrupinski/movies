@@ -122,153 +122,6 @@ struct FormatFilter: Equatable {
     }
 }
 
-/// One cinema's slice of a filtered film list: every film that plays at
-/// this cinema, with each film's `showings` restricted to this cinema's
-/// dates and slots. Drives the Kina tab's cinema-grouped layout —
-/// mirrors the web's `_cinemaCards` (one `.cinema-section` per cinema,
-/// holding film cards whose `_filmShowings` see only that cinema's
-/// slots).
-struct CinemaSection: Identifiable, Hashable {
-    var id: String { cinema }
-    let cinema: String
-    let films: [Film]
-
-    /// Full cinema-name → short pill label map, one entry per cinema across
-    /// every city — mirrors the web's `Cinema.pillMap` (and grouped in the same
-    /// city order) so a pill reads identically on every platform. A name absent
-    /// here falls back to itself via `pillName(for:)`.
-    static let pillNames: [String: String] = [
-        // Poznań
-        "Kino Apollo": "Apollo",
-        "Kino Bułgarska 19": "Bułgarska 19",
-        "Kino Malta Charlie Monroe": "Malta Charlie Monroe",
-        "Helios Posnania": "Helios",
-        "Cinema City Kinepolis": "Kinepolis",
-        "Kino Muza": "Muza",
-        "Multikino Stary Browar": "Multikino",
-        "Kino Pałacowe": "Pałacowe",
-        "Cinema City Poznań Plaza": "Poznań Plaza",
-        "Kino Rialto": "Rialto",
-        // Wrocław
-        "Cinema City Wroclavia": "Wroclavia",
-        "Cinema City Korona": "Korona",
-        "Multikino Pasaż Grunwaldzki": "Pasaż Grunwaldzki",
-        "Helios Magnolia Park": "Magnolia",
-        "Helios Aleja Bielany": "Aleja Bielany",
-        "Kino Nowe Horyzonty": "Nowe Horyzonty",
-        "Dolnośląskie Centrum Filmowe": "DCF",
-        // Warszawa
-        "Cinema City Arkadia": "Arkadia",
-        "Cinema City Bemowo": "Bemowo",
-        "Cinema City Galeria Północna": "Galeria Północna",
-        "Cinema City Janki": "Janki",
-        "Cinema City Mokotów": "Mokotów",
-        "Cinema City Promenada": "Promenada",
-        "Cinema City Sadyba": "Sadyba",
-        "Multikino Złote Tarasy": "Złote Tarasy",
-        "Multikino Młociny": "Młociny",
-        "Multikino Reduta": "Reduta",
-        "Multikino Targówek": "Targówek",
-        "Multikino Wola Park": "Wola Park",
-        "Helios Blue City": "Blue City",
-        "Kino Muranów": "Muranów",
-        "Kino Luna": "Luna",
-        "Kino Elektronik": "Elektronik",
-        "Kino Iluzjon": "Iluzjon",
-        "KinoGram": "KinoGram",
-        "Kino Kultura": "Kultura",
-        "Kino Amondo": "Amondo",
-        "Kino na Boku": "na Boku",
-        "Kino Głębocka 66": "Głębocka 66",
-        "KINOMUZEUM": "Kinomuzeum",
-        "Kino Świt": "Świt",
-        "Kino Kępa": "Kępa",
-        "KINOkawiarnia Stacja Falenica": "Stacja Falenica",
-        "Służewski Dom Kultury": "SDK",
-        "Kino Atlantic": "Atlantic",
-        "Kinoteka": "Kinoteka",
-        "Kino U-jazdowski": "U-jazdowski",
-        "Kino Cytadela": "Cytadela",
-        // Kraków
-        "Cinema City Bonarka": "Bonarka",
-        "Cinema City Kazimierz": "Kazimierz",
-        "Cinema City Zakopianka": "Zakopianka",
-        "Multikino Kraków": "Multikino",
-        "Kino Mikro": "Mikro",
-        "Mikro Bronowice": "Mikro Bronowice",
-        "Kino Sfinks": "Sfinks",
-        // Łódź
-        "Cinema City Manufaktura": "Manufaktura",
-        "Multikino Łódź": "Multikino",
-        "Helios Łódź": "Helios",
-        "Kino Charlie": "Charlie",
-        // Katowice
-        "Cinema City Punkt 44": "Punkt 44",
-        "Cinema City Silesia": "Silesia",
-        "Multikino Katowice": "Multikino",
-        "Helios Katowice": "Helios",
-        "Kino Kosmos": "Kosmos",
-        "Kino Światowid": "Światowid",
-        // Szczecin
-        "Helios Kupiec": "Helios",
-        "Multikino Szczecin": "Multikino",
-        "Kino Pionier 1907": "Pionier",
-        // Białystok
-        "Helios Alfa": "Alfa",
-        "Helios Biała": "Biała",
-        "Helios Jurowiecka": "Jurowiecka",
-        "Kino Forum": "Forum",
-        // Trójmiasto (Gdańsk · Gdynia · Sopot)
-        "Multikino Gdańsk": "Multikino",
-        "Helios Metropolia": "Metropolia",
-        "Helios Forum": "Forum",
-        "Helios Riviera": "Riviera",
-        "Kino Spektrum": "Spektrum",
-        "Kino Kameralne Cafe": "Kameralne",
-        "Kino IKM": "IKM",
-        "Kino Muzeum": "Muzeum",
-        "Kino Żak": "Żak",
-        "KinoPort": "KinoPort",
-        // Bydgoszcz
-        "Cinema City Bydgoszcz": "Cinema City",
-        "Multikino Bydgoszcz": "Multikino",
-        "Helios Bydgoszcz": "Helios",
-        "Kino Orzeł": "Orzeł",
-        // Lublin
-        "Cinema City Felicity": "Felicity",
-        "Cinema City Lublin Plaza": "Lublin Plaza",
-        "Multikino Lublin": "Multikino",
-        "Kino Bajka": "Bajka",
-        // Częstochowa
-        "Cinema City Jurajska": "Jurajska",
-        "Cinema City Wolność": "Wolność",
-        // Radom
-        "Helios Radom": "Helios",
-        "Multikino Radom": "Multikino",
-        // Sosnowiec
-        "Helios Sosnowiec": "Helios",
-        "Cinema City Sosnowiec": "Cinema City",
-        // Toruń
-        "Cinema City Czerwona Droga": "Czerwona Droga",
-        "Cinema City Toruń Plaza": "Plaza",
-        // Kielce
-        "Helios Kielce": "Helios",
-        "Multikino Kielce": "Multikino",
-        // Rzeszów
-        "Helios Rzeszów": "Helios",
-        "Multikino Rzeszów": "Multikino",
-        "Kino Zorza": "Zorza",
-        // Gliwice
-        "Cinema City Gliwice": "Cinema City",
-        // Zabrze
-        "Multikino Zabrze": "Multikino",
-    ]
-
-    static func pillName(for cinema: String) -> String {
-        pillNames[cinema] ?? cinema
-    }
-}
-
 /// Mirrors the web's `#sort-by` dropdown (`js/shared/filters.js` `compareCards`).
 /// `earliest` puts the soonest remaining screening first (the default);
 /// `rating` orders by weighted rating, descending. Both are offered in the
@@ -329,14 +182,10 @@ extension Sequence where Element == Film {
     /// cutoff). That keeps the cutoff correct as wall-clock advances even when
     /// the payload itself hasn't changed.
     func prunedPastShowings(now: Date = Date(), zone: TimeZone = .warsaw) -> [Film] {
-        return self.compactMap { film in
+        compactMap { film in
             let days: [DayShowings] = film.showings.compactMap { day in
                 let kept: [CinemaShowings] = day.cinemas.compactMap { cg in
-                    let future = cg.showtimes.filter {
-                        ShowtimeClock.isFuture($0, on: day.date, now: now, zone: zone)
-                    }
-                    guard !future.isEmpty else { return nil }
-                    return CinemaShowings(cinema: cg.cinema, cinemaURL: cg.cinemaURL, showtimes: future)
+                    cg.keeping { ShowtimeClock.isFuture($0, on: day.date, now: now, zone: zone) }
                 }
                 guard !kept.isEmpty else { return nil }
                 let sorted = kept.sorted {
@@ -344,22 +193,7 @@ extension Sequence where Element == Film {
                 }
                 return DayShowings(date: day.date, label: day.label, cinemas: sorted)
             }
-            if days.isEmpty { return nil }
-            return Film(
-                title: film.title,
-                slug: film.slug,
-                posterURL: film.posterURL,
-                fallbackPosterURLs: film.fallbackPosterURLs,
-                runtimeMinutes: film.runtimeMinutes,
-                releaseYear: film.releaseYear,
-                genres: film.genres,
-                ageRating: film.ageRating,
-                ratings: film.ratings,
-                countries: film.countries,
-                directors: film.directors,
-                cast: film.cast,
-                showings: days
-            )
+            return film.narrowed(to: days)
         }
     }
 
@@ -403,44 +237,23 @@ extension Sequence where Element == Film {
         now: Date = Date(),
         zone: TimeZone = .warsaw
     ) -> [Film] {
-        let films = Array(self)
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return films.compactMap { film in
+        let excluded = ExcludedAxes(countries: excludedCountries, genres: excludedGenres,
+                                    directors: excludedDirectors, cast: excludedCast)
+        return compactMap { film in
             if hidden.contains(film.title) { return nil }
             if !trimmedQuery.isEmpty && !film.matchesSearch(trimmedQuery) { return nil }
-            if !excludedCountries.isEmpty && Set(film.countries).isSubset(of: excludedCountries) { return nil }
-            if !excludedGenres.isEmpty && !film.genres.isEmpty && Set(film.genres).isSubset(of: excludedGenres) { return nil }
-            if !excludedDirectors.isEmpty && !film.directors.isEmpty && Set(film.directors).isSubset(of: excludedDirectors) { return nil }
-            if !excludedCast.isEmpty && !film.cast.isEmpty && Set(film.cast).isSubset(of: excludedCast) { return nil }
+            if excluded.rules(out: film) { return nil }
             let days: [DayShowings] = film.showings.compactMap { day in
                 if !date.matches(date: day.date, now: now, zone: zone) { return nil }
                 let cinemas: [CinemaShowings] = day.cinemas.compactMap { cg in
                     if disabledCinemas.contains(cg.cinema) { return nil }
-                    let times = format.isEmpty
-                        ? cg.showtimes
-                        : cg.showtimes.filter { format.matches(showtime: $0) }
-                    guard !times.isEmpty else { return nil }
-                    return CinemaShowings(cinema: cg.cinema, cinemaURL: cg.cinemaURL, showtimes: times)
+                    return cg.keeping { format.isEmpty || format.matches(showtime: $0) }
                 }
                 guard !cinemas.isEmpty else { return nil }
                 return DayShowings(date: day.date, label: day.label, cinemas: cinemas)
             }
-            if days.isEmpty { return nil }
-            return Film(
-                title: film.title,
-                slug: film.slug,
-                posterURL: film.posterURL,
-                fallbackPosterURLs: film.fallbackPosterURLs,
-                runtimeMinutes: film.runtimeMinutes,
-                releaseYear: film.releaseYear,
-                genres: film.genres,
-                ageRating: film.ageRating,
-                ratings: film.ratings,
-                countries: film.countries,
-                directors: film.directors,
-                cast: film.cast,
-                showings: days
-            )
+            return film.narrowed(to: days)
         }
     }
 
@@ -500,27 +313,33 @@ extension Sequence where Element == Film {
                     guard !kept.isEmpty else { return nil }
                     return DayShowings(date: day.date, label: day.label, cinemas: kept)
                 }
-                guard !days.isEmpty else { continue }
-                perCinema[cinema, default: []].append(Film(
-                    title: film.title,
-                    slug: film.slug,
-                    posterURL: film.posterURL,
-                    fallbackPosterURLs: film.fallbackPosterURLs,
-                    runtimeMinutes: film.runtimeMinutes,
-                    releaseYear: film.releaseYear,
-                    genres: film.genres,
-                    ageRating: film.ageRating,
-                    ratings: film.ratings,
-                    countries: film.countries,
-                    directors: film.directors,
-                    cast: film.cast,
-                    showings: days
-                ))
+                if let narrowed = film.narrowed(to: days) { perCinema[cinema, default: []].append(narrowed) }
             }
         }
         return perCinema.keys.sorted { CinemaSection.pillName(for: $0) < CinemaSection.pillName(for: $1) }.map { name in
             CinemaSection(cinema: name, films: perCinema[name]!)
         }
+    }
+}
+
+/// The multi-value filter axes as EXCLUSION sets: a film is ruled out when every value it
+/// carries on an axis is excluded. A film with no genre / director / cast listed is never ruled
+/// out by that axis; one with no country is ruled out by any country exclusion (as the web does).
+private struct ExcludedAxes {
+    let countries: Set<String>
+    let genres: Set<String>
+    let directors: Set<String>
+    let cast: Set<String>
+
+    func rules(out film: Film) -> Bool {
+        if !countries.isEmpty && Set(film.countries).isSubset(of: countries) { return true }
+        return Self.allExcluded(film.genres, genres)
+            || Self.allExcluded(film.directors, directors)
+            || Self.allExcluded(film.cast, cast)
+    }
+
+    private static func allExcluded(_ values: [String], _ excluded: Set<String>) -> Bool {
+        !excluded.isEmpty && !values.isEmpty && Set(values).isSubset(of: excluded)
     }
 }
 

@@ -61,6 +61,27 @@ struct Film: Identifiable, Hashable, Codable {
     let cast: [String]
     let showings: [DayShowings]
 
+    /// This film narrowed to `days` for a listing, or `nil` when no day is left. The search
+    /// aliases are not carried: the narrowed copy is only displayed, the search already matched.
+    func narrowed(to days: [DayShowings]) -> Film? {
+        if days.isEmpty { return nil }
+        return Film(
+            title: title,
+            slug: slug,
+            posterURL: posterURL,
+            fallbackPosterURLs: fallbackPosterURLs,
+            runtimeMinutes: runtimeMinutes,
+            releaseYear: releaseYear,
+            genres: genres,
+            ageRating: ageRating,
+            ratings: ratings,
+            countries: countries,
+            directors: directors,
+            cast: cast,
+            showings: days
+        )
+    }
+
     /// Whether the search `query` (any case) is in the title or one of `searchTitles`.
     func matchesSearch(_ query: String) -> Bool {
         let needle = query.lowercased()
@@ -189,6 +210,12 @@ struct CinemaShowings: Hashable, Codable {
     let cinema: String
     let cinemaURL: URL?
     let showtimes: [Showtime]
+
+    /// This cinema-group with only the showtimes `isKept` passes, or `nil` when none is left.
+    func keeping(_ isKept: (Showtime) -> Bool) -> CinemaShowings? {
+        let kept = showtimes.filter(isKept)
+        return kept.isEmpty ? nil : CinemaShowings(cinema: cinema, cinemaURL: cinemaURL, showtimes: kept)
+    }
 }
 
 struct Showtime: Hashable, Identifiable, Codable {
