@@ -108,7 +108,7 @@ trait MongoSlotKeyedRows[Dto: ClassTag](
    *  once the collection grew (Sentry KINOWO-19). `replies` rows a reply. An INCOMPLETE scan (a page still failing
    *  after retries) is a failed read, never "no film has a row". */
   protected def allRowsChecked(c: MongoCollection[Dto], replies: Int): tools.ReadOutcome[Vector[Dto]] =
-    tools.KeysetScan.collect[Dto, Dto](
+    tools.KeysetScan.collect[Dto, Dto](tools.KeysetScan.scan[Dto](
       label          = s"$storeName keyset batch",
       batchSize      = paging.batchSize,
       maxAttempts    = paging.attempts,
@@ -118,7 +118,7 @@ trait MongoSlotKeyedRows[Dto: ClassTag](
         c.find(afterId.fold(Filters.empty())(Filters.gt("_id", _))).sort(Sorts.ascending("_id")).limit(limit).batchSize(replies).toFuture(), 60.seconds),
       onIncomplete   = exception =>
         logger.warn(s"$storeName.findAll keyset scan failed after retries: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-    )(Seq(_))
+    ))(Seq(_))
 
   /** One stored row, or None when it is absent OR unreadable — the two cases a point write treats alike, because both
    *  mean "we cannot say this write is redundant". */

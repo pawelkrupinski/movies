@@ -49,7 +49,8 @@ from typing import List, Mapping, NoReturn
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 from processes import machine  # noqa: E402
-from code_tools import pinned_npm_tools  # noqa: E402
+from code_tools import pinned_npm_tools, twirl_scripts  # noqa: E402
+from seams import tool_files  # noqa: E402
 import tool_process  # noqa: E402
 
 TOOLS = os.path.join(HERE, "js-quality")
@@ -154,12 +155,33 @@ def node_env(installed: str) -> Mapping[str, str]:
             "NODE_PATH": modules + (":" + node_path if node_path else "")}
 
 
+def inline_scripts(o: Options, out: str, env: Mapping[str, str]) -> int:
+    """The Twirl templates' inline `<script>`s (code_tools/twirl_scripts.py) measured as the production JS they are, in a
+    scratch checkout of virtual files, their rows over a limit appended to `out`'s over-limit.tsv (the limits are the first
+    pass's); the node status of the pass."""
+    files = tool_files.Files.here()
+    with files.scratch("js-quality-twirl-") as scratch:
+        if twirl_scripts.materialize(files, o.root, scratch) == 0:
+            return 0
+        where = os.path.join(scratch, "measured")
+        node = ["node", os.path.join(TOOLS, "report.js"), "--root", scratch, "--out", where,
+                "--areas", os.path.join(TOOLS, "ratchet-areas.tsv")]
+        status = subprocess.run(node, env=env, stdout=subprocess.DEVNULL).returncode
+        if status == 0:
+            rows = [line for line in files.read_text(os.path.join(where, "over-limit.tsv")).splitlines()
+                    if line and not line.startswith("limit\t")]
+            target = os.path.join(os.path.abspath(out), "over-limit.tsv")
+            files.write_text(target, files.read_text(target) + "".join(f"{line}\n" for line in rows))
+        return status
+
+
 def report(o: Options, out: str, env: Mapping[str, str]) -> int:
     node = ["node", os.path.join(TOOLS, "report.js"), "--root", o.root, "--out", out]
     if not o.ratchet:
         return subprocess.run(node + o.args, env=env).returncode
     measured = subprocess.run(node + ["--areas", os.path.join(TOOLS, "ratchet-areas.tsv")], env=env,
                               stdout=subprocess.DEVNULL).returncode
+    measured = measured or inline_scripts(o, out, env)
     if measured != 0:
         return measured
     current = os.path.join(os.path.abspath(out), "over-limit.tsv")

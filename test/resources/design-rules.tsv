@@ -47,6 +47,9 @@ limit	shell-lines	150	sh
 limit	shell-decisions	10	sh
 limit	shell-function-lines	50	sh
 limit	shell-nesting	4	sh
+# A `run:` block of a workflow or composite action is shell inside YAML (scripts/design-rules/workflow_runs.py): its code lines
+# are held to this, the rest to the limits above; past one, the block moves to a script (the owner, 2026-11-28).
+limit	run-lines	15	sh
 #
 # Naming (CLAUDE.md: "Never suffix a class with Impl"; Manager/Handler/Util/Helper/Processor are a smell; "no
 # abbreviations in names").

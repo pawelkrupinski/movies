@@ -1,7 +1,7 @@
 """THE LIGHT CHECKS (scripts/hooks/pre-push's header says what each guards): the checks that run a lint, a generator's
 drift check or a commit rule over what the push changed, each in seconds -- eslint, jsquality, pyquality, drift,
 snapshot, dashboards, metricalerts, actionlint, shellcheck, newchecks, schedules, allowlists, driftguards, puremove,
-stampcarry, judgements, ios. Each runs in a process of its own (`scripts/pre_push.py <hook> --check <name> <state>`,
+stampcarry, judgements, ios, configquality. Each runs in a process of its own (`scripts/pre_push.py <hook> --check <name> <state>`,
 pre_push_checks.Processes), at the checked tree, after the run's state (as JSON); its
 lines are the shell hook's: `▸ pre-push` on stdout, `! pre-push` on stderr, each tool's own output where it wrote it."""
 from __future__ import annotations
@@ -437,6 +437,16 @@ def mobilequality(c: Check) -> int:
     return int(c.run(["scripts/mobile-quality-report", "--check", *c.range_args()], out=STDERR) != 0)
 
 
+def configquality(c: Check) -> int:
+    # THE NIX, TERRAFORM AND TWIRL-MARKUP QUALITY RATCHETS: pure python3, so a missing python3 BLOCKS
+    if not c.need("configquality", "python3", PYTHON_FIX):
+        return 1
+    if not c.holds("-f", "scripts/config-quality-report"):
+        c.say.warn("configquality: this tree has no scripts/config-quality-report: nothing to gate")
+        return 0
+    return int(c.run(["scripts/config-quality-report", "--check", *c.range_args()], out=STDERR) != 0)
+
+
 def shellgate(c: Check) -> int:
     # THE SHELL MIGRATION GATE: a shell tool past a limit is migrated to Python, never admitted
     if not c.need("shellgate", "python3", PYTHON_FIX):
@@ -466,7 +476,7 @@ CHECKS: Dict[str, Light] = {
     "schedules": python_tool("schedules", "infra/nix/files/scheduled_dispatch.py", "check"),
     "allowlists": commit_rules("allowlists"), "driftguards": commit_rules("driftguards"),
     "puremove": puremove, "stampcarry": stampcarry, "judgements": judgements, "ios": ios,
-    "mobilequality": mobilequality, "shellgate": shellgate,
+    "mobilequality": mobilequality, "configquality": configquality, "shellgate": shellgate,
 }
 
 

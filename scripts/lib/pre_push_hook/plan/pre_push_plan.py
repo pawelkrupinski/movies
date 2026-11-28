@@ -12,7 +12,7 @@ from pre_push_hook.plan import pre_push_paths as paths_of
 from pre_push_hook.plan.pre_push_paths import FirstLine, matches
 
 ORDER = ("judgements", "allowlists", "newchecks", "schedules", "driftguards", "eslint", "jsquality", "pyquality",
-         "mobilequality", "shellgate", "drift", "snapshot", "dashboards", "metricalerts", "scripttests", "actionlint", "shellcheck", "sbt",
+         "mobilequality", "configquality", "shellgate", "drift", "snapshot", "dashboards", "metricalerts", "scripttests", "actionlint", "shellcheck", "sbt",
          "flipbacklog", "stampcarry", "identity", "ios")
 
 
@@ -34,14 +34,21 @@ BY_PATTERN = (
     ("jsquality", ("web/src/main/assets/js/*", "infra/version-dashboard/src/*", "test/resources/js-quality-baseline.tsv",
                    "scripts/ci/js_quality_ratchet.py", "scripts/ci/baseline_ratchet.py", "scripts/ci/trailers.py",
                    "scripts/js-quality/*", "scripts/js-quality-report", "scripts/js_quality_report.py",
-                   "scripts/lib/code_tools/pinned_npm_tools.py")),
+                   "scripts/lib/code_tools/pinned_npm_tools.py", "scripts/lib/code_tools/twirl_scripts.py",
+                   "web/src/main/twirl/*")),
     ("mobilequality", ("ios/*.swift", "android/*.kt", "android/*.kts", "test/resources/swift-quality-baseline.tsv",
                        "test/resources/kotlin-quality-baseline.tsv", "scripts/ci/mobile_quality_*",
                        "scripts/mobile-quality-report", "scripts/lizard-requirements.txt", "scripts/python-venv",
                        "scripts/lib/code_tools/clone_groups.py", "scripts/lib/code_tools/quality_report.py",
                        "scripts/ci/baseline_ratchet.py", "test/resources/design-rules.tsv")),
-    ("shellgate", ("test/resources/shell-baseline.tsv", "test/resources/shell-keeps.tsv",
-                   "scripts/design-rules/shell_gate.py", "scripts/design-rules/shell_measure.py",
+    ("configquality", ("*.nix", "*.tf", "web/src/main/twirl/*", "test/resources/nix-quality-baseline.tsv",
+                       "test/resources/terraform-quality-baseline.tsv", "test/resources/twirl-quality-baseline.tsv",
+                       "scripts/ci/config_quality_*", "scripts/config-quality-report",
+                       "scripts/lib/code_tools/clone_groups.py", "scripts/lib/code_tools/quality_report.py",
+                       "scripts/ci/baseline_ratchet.py", "test/resources/design-rules.tsv")),
+    ("shellgate", ("test/resources/shell-baseline.tsv", "test/resources/shell-keeps.tsv", ".github/workflows/*",
+                   ".github/actions/*", "scripts/design-rules/shell_gate.py", "scripts/design-rules/shell_measure.py",
+                   "scripts/design-rules/workflow_runs.py",
                    "scripts/ci/baseline_ratchet.py", "test/resources/design-rules.tsv")),
     ("eslint", ("web/src/main/assets/js/*.js", "web/src/page/resources/*.js", "eslint.config.js", "eslint-rules/*.js",
                 "package.json", "package-lock.json", "page-tests-playwright/tests/*.ts",

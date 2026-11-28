@@ -232,7 +232,7 @@ class MongoRatingCadenceReader(db: Option[MongoDatabase]) extends RatingCadenceR
     case Some(c) =>
       // An incomplete scan THROWS: the rows it read were handed back as the whole collection, and
       // the cadence page showed every film it did not reach as never refreshed.
-      KeysetScan.collect[Document, (String, RatingChangeStats)](
+      KeysetScan.collect[Document, (String, RatingChangeStats)](KeysetScan.scan[Document](
         label          = "RatingCadenceStore all",
         batchSize      = 2000,
         maxAttempts    = 3,
@@ -240,7 +240,7 @@ class MongoRatingCadenceReader(db: Option[MongoDatabase]) extends RatingCadenceR
         keyOf          = _.getString("_id"),
         fetchPage      = MongoStoreDocuments.documentsAfter(c, 60.seconds),
         onIncomplete   = exception => logger.warn(s"Rating-cadence read keyset scan failed: ${exception.getMessage}")
-      )(MongoRatingCadenceStore.decodeRecord).required
+      ))(MongoRatingCadenceStore.decodeRecord).required
   }
 
   override def forKeys(keys: Seq[String]): Map[String, RatingChangeStats] =

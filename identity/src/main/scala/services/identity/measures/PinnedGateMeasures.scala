@@ -128,13 +128,8 @@ object PinnedGateMeasures {
   def searchQueries(l: MeasuredListing): Seq[String] = (titleShapes(l) ++ l.originalTitle).map(_.trim).filter(_.nonEmpty).distinct
 
   /** The title relations under which another film RIVALS a listing's film: the listing's title
-   *  names it as closely (`rivals`). */
-  val Rivalling: Set[String] = Set("exact", "original", "alternative")
-
-  /** How many films of `pool` other than `film` the listing's title names as closely as a
-   *  rival does — the `rivals` measure, over whatever pool the caller searched. */
-  def rivals(l: MeasuredListing, pool: Map[Int, Film], film: Int): Int =
-    pool.count { case (id, f) => id != film && Rivalling(titleRelation(l, f).value) }
+   *  names it as closely — the `rivals` measure the pinned gate read. */
+  private val RivalRelations: Set[String] = Set("exact", "original", "alternative")
 
   /** What a listing's own yearless title searches ([[searchQueries]]) said about `film`: where it
    *  ranked (1-based, best over the queries; `None` when no query returned it) and how many other
@@ -145,7 +140,8 @@ object PinnedGateMeasures {
     Option.when(answers.nonEmpty) {
       val ranked = answers.flatMap(_.zipWithIndex).groupMapReduce(_._1.tmdbId)(h => h)((a, b) => if (a._2 <= b._2) a else b)
       val pool = ranked.map { case (id, (h, _)) => id -> Film(h.title, h.originalTitle, Nil, h.year, popularity = Some(h.popularity)) }
-      models.TitleSearch(key(l.title), ranked.get(film).map(_._2 + 1), rivals(l, pool, film))
+      val rivals = pool.iterator.count { case (id, f) => id != film && RivalRelations(titleRelation(l, f).value) }
+      models.TitleSearch(key(l.title), ranked.get(film).map(_._2 + 1), rivals)
     }
   }
 

@@ -97,6 +97,10 @@ check "the Swift and Kotlin ratchets' baselines and measure run them" "mobilequa
 check "the shell gate's baseline and keeps run it" "shellgate|shellgate" \
   "$(plan test/resources/shell-baseline.tsv)|$(plan test/resources/shell-keeps.tsv)"
 check "a roster generator runs the drift check and its self-tests" "drift scripttests" "$(plan data/uk/scripts/build_pages.py)"
+check "a Nix file, a Terraform file and a Twirl template run the declarative-config ratchet (the template's script, the JS one)" "configquality|configquality|configquality jsquality sbt" \
+  "$(plan infra/nix/modules/fleet/default.nix)|$(plan infra/terraform/main.tf)|$(plan web/src/main/twirl/views/film.scala.html)"
+check "a workflow or composite action runs the shell gate (its run: blocks are shell)" "shellgate actionlint|shellgate actionlint" \
+  "$(plan .github/workflows/ci.yml)|$(plan .github/actions/setup-jdk/action.yml)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
 check "checks come out once each, in run order" "newchecks schedules driftguards eslint jsquality shellgate snapshot scripttests actionlint shellcheck sbt" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"

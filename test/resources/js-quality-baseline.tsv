@@ -16,3 +16,30 @@ limit	file-lines	500
 limit	copies	0
 limit	clone-tokens	50
 limit	cycle	0
+cognitive	web/src/main/twirl/views/_repertoireView.scala.html.script1.js:applyFilters	71
+cognitive	web/src/main/twirl/views/_repertoireView.scala.html.script1.js:sweepExpired	23
+cognitive	web/src/main/twirl/views/_showingsHydrate.scala.html.script1.js:IIFE	13
+cognitive	web/src/main/twirl/views/admin/envConfig.scala.html.script1.js:buildOverrideCell	12
+cognitive	web/src/main/twirl/views/admin/identityStaging.scala.html.script1.js:evidence	12
+cognitive	web/src/main/twirl/views/admin/identityStaging.scala.html.script1.js:keyFields	11
+cognitive	web/src/main/twirl/views/admin/identityStaging.scala.html.script1.js:row	17
+cognitive	web/src/main/twirl/views/admin/identityStaging.scala.html.script1.js:section	11
+cognitive	web/src/main/twirl/views/film.scala.html.script1.js:IIFE	14
+cognitive	web/src/main/twirl/views/review.scala.html.script1.js:formed	14
+cognitive	web/src/main/twirl/views/review.scala.html.script1.js:fromUrl	27
+cognitive	web/src/main/twirl/views/uptime.scala.html.script1.js:rows.forEach() callback	24
+cyclomatic	web/src/main/twirl/views/_appBanner.scala.html.script1.js:IIFE	16
+cyclomatic	web/src/main/twirl/views/_repertoireView.scala.html.script1.js:applyFilters	27
+cyclomatic	web/src/main/twirl/views/_repertoireView.scala.html.script1.js:sweepExpired	12
+cyclomatic	web/src/main/twirl/views/admin/identityStaging.scala.html.script1.js:evidence	15
+cyclomatic	web/src/main/twirl/views/admin/identityStaging.scala.html.script1.js:row	12
+cyclomatic	web/src/main/twirl/views/admin/identityStaging.scala.html.script1.js:section	12
+cyclomatic	web/src/main/twirl/views/film.scala.html.script1.js:IIFE	15
+cyclomatic	web/src/main/twirl/views/review.scala.html.script1.js:formed	12
+cyclomatic	web/src/main/twirl/views/review.scala.html.script1.js:fromUrl	22
+cyclomatic	web/src/main/twirl/views/uptime.scala.html.script1.js:rows.forEach() callback	14
+cyclomatic	web/src/main/twirl/views/uptime.scala.html.script1.js:showBarDetail	11
+method-lines	web/src/main/twirl/views/_repertoireView.scala.html.script1.js:applyFilters	83
+method-lines	web/src/main/twirl/views/_repertoireView.scala.html.script1.js:applyFiltersForDay	60
+file-lines	web/src/main/twirl/views/_repertoireView.scala.html.script1.js	566
+copies	web/src/main/twirl/views/admin/identityStaging.scala.html.script1.js|web/src/main/twirl/views/tasks.scala.html.script1.js	2
