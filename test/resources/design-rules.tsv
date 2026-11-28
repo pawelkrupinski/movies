@@ -116,7 +116,7 @@ adapter	py	scripts/lib/governor/tool_pool.py	process env
 adapter	py	scripts/lib/harness/cli_harness.py	process env clock
 adapter	py	scripts/lib/processes/machine.py	process env clock
 adapter	js	web/src/main/assets/js/shared/clock.js	clock
-adapter	js	infra/version-dashboard/src/host/system.ts	clock env
+adapter	js	infra/version-dashboard/src/host/system.ts	clock env files
 adapter	js	infra/version-dashboard/src/shared/exec.ts	process
 adapter	js	infra/version-dashboard/src/mobile/release-run.ts	process
 adapter	js	infra/version-dashboard/src/mobile-release/android-signed.ts	process
