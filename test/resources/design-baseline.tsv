@@ -694,7 +694,7 @@ mixed	scripts/agent_procs_watchers.py:environment_lines	3
 mixed	scripts/agent_procs_watchers.py:script_is_watching	4
 mixed	scripts/agent_time.py:default_tasks_dir	8
 mixed	scripts/agent_time.py:load	10
-mixed	scripts/agent_time.py:read_events	15
+mixed	scripts/agent_time.py:read_events	3
 mixed	scripts/aot-class-list.py:kept_names	4
 mixed	scripts/ci/archive_recording.py:Archiver.corpus	5
 mixed	scripts/ci/archive_recording.py:Archiver.tree	9
@@ -1546,6 +1546,7 @@ mixed	scripts/touched_methods.py:range_lines	4
 mixed	scripts/touched_methods.py:read_spans	3
 mixed	scripts/touched_tree_fixture.py:TouchedTreeCase.assert_signal_cleans_up	4
 mixed	scripts/touched_tree_fixture.py:TouchedTreeCase.tools_copy	4
+mixed	scripts/unmatched_census.py:read_dump	3
 mixed	scripts/unmatched_census.py:read_patterns	5
 mixed	scripts/unmatched_census.py:read_rows	7
 mixed	scripts/unmatched_census.py:write_clusters	6

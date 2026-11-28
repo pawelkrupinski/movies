@@ -140,10 +140,6 @@ cognitive	scripts/rule_firing_prod.py:render	12
 cognitive	scripts/touched_methods.py:changed_lines	15
 cognitive	scripts/touched_methods.py:coverage_rows	13
 cognitive	scripts/touched_methods.py:mutation_rows	27
-cognitive	scripts/unmatched_census.py:census	13
-cognitive	scripts/unmatched_census.py:main	15
-cognitive	scripts/unmatched_census.py:render	23
-cognitive	scripts/unmatched_census.py:watched	18
 cognitive	scripts/zinc_orphans.py:_class_path_at	14
 cognitive	scripts/zinc_orphans.py:prune	20
 cognitive	scripts/zinc_orphans.py:strays	12
@@ -269,9 +265,8 @@ cyclomatic	scripts/touched_methods.py:coverage_report	12
 cyclomatic	scripts/touched_methods.py:mutation_report	12
 cyclomatic	scripts/touched_methods.py:mutation_rows	11
 cyclomatic	scripts/touched_methods.py:touched	11
-cyclomatic	scripts/unmatched_census.py:census	21
-cyclomatic	scripts/unmatched_census.py:main	20
-cyclomatic	scripts/unmatched_census.py:render	13
+cyclomatic	scripts/unmatched_census.py:census	14
+cyclomatic	scripts/unmatched_census.py:main	11
 cyclomatic	scripts/zinc_orphans.py:_class_path_at	11
 cyclomatic	scripts/zinc_orphans.py:prune	13
 inner-defs	infra/bin/image_pins.py:markdown	3
@@ -289,7 +284,6 @@ method-lines	infra/nix/files/nixos-auto-apply.py:publish	56
 method-lines	scripts/ci/runner_scheduler.py:decide	216
 method-lines	scripts/identity_rule_ablation.py:main	82
 method-lines	scripts/identity_stamp_carry.py:auto	56
-method-lines	scripts/unmatched_census.py:census	51
 file-lines	infra/bin/backtest-alerts	1157
 file-lines	infra/bin/backtest-alerts-local	540
 file-lines	infra/bin/deploy	721
@@ -383,5 +377,4 @@ pyright	scripts/poster_hash.py	13
 pyright	scripts/recording_diff.py	87
 pyright	scripts/rule_firing_prod.py	39
 pyright	scripts/touched_methods.py	69
-pyright	scripts/unmatched_census.py	65
 pyright	scripts/zinc_orphans.py	2
