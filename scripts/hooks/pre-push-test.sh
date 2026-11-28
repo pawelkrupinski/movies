@@ -376,7 +376,7 @@ if command -v shellcheck >/dev/null; then
   for f in sbt-warm jvm-gate.sh stall-watch.sh stall_watch.py zinc_orphans.py; do
     cp "$REPO_ROOT/scripts/$f" "$repo/scripts/$f"
   done
-  mkdir -p "$repo/scripts/lib"; cp "$REPO_ROOT"/scripts/lib/*.py "$repo/scripts/lib/"   # sbt-warm's Python modules
+  mkdir -p "$repo/scripts/lib"; cp -R "$REPO_ROOT"/scripts/lib/. "$repo/scripts/lib/"   # sbt-warm's Python modules
   printf '#!/usr/bin/env bash\necho "$1"\n' > "$repo/a.sh"
   scratch_git "$repo" add -A; scratch_git "$repo" commit -qm base
   base="$(scratch_git "$repo" rev-parse HEAD)"

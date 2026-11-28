@@ -12,7 +12,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import countries_disagree as cd  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 import identity_findings_report as report  # noqa: E402
 
 DAY = 86400000

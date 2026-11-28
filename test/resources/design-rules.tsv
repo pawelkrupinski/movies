@@ -97,26 +97,45 @@ idiom	kwargs
 # everyone else (files, storage and the network injected since 2026-11-27: each seam one real and one in-memory
 # implementation sharing the logic, held by one contract suite run against both).
 adapter	py	scripts/lib/atomic.py	files
-adapter	py	scripts/lib/tool_files.py	files
-adapter	py	scripts/lib/tool_state.py	storage
-adapter	py	scripts/lib/tool_http.py	network
+adapter	py	scripts/lib/seams/tool_files.py	files
+adapter	py	scripts/lib/seams/tool_state.py	storage
+adapter	py	scripts/lib/seams/tool_http.py	network
 adapter	js	infra/version-dashboard/src/shared/http.ts	network
 adapter	py	scripts/lib/tool_process.py	process clock
 adapter	py	scripts/lib/tool_git.py	process env
-adapter	py	scripts/lib/tool_pool.py	process env
-adapter	py	scripts/lib/cli_harness.py	process env clock
-adapter	py	scripts/lib/machine.py	process env clock
+adapter	py	scripts/lib/governor/tool_pool.py	process env
+adapter	py	scripts/lib/harness/cli_harness.py	process env clock
+adapter	py	scripts/lib/processes/machine.py	process env clock
 adapter	js	web/src/main/assets/js/shared/clock.js	clock
 adapter	js	infra/version-dashboard/src/host/system.ts	clock env
 adapter	js	infra/version-dashboard/src/shared/exec.ts	process
 adapter	js	infra/version-dashboard/src/mobile/release-run.ts	process
 adapter	js	infra/version-dashboard/src/mobile-release/android-signed.ts	process
-adapter	py	scripts/lib/hook_event.py	clock
+adapter	py	scripts/lib/cli/hook_event.py	clock
 adapter	py	scripts/claude-hooks/governed-kill-guard	env
 #
 # Distance D: where abstractions exist (the owner, 2026-11-26): the Python library packages and the TypeScript
 # dashboard. Plain browser JS (web/src/main/assets/js) has none, so D measures nothing there: cycles and layers hold it.
 distance	py	scripts/lib
+distance	py	scripts/lib/processes
+distance	py	scripts/lib/cli
+distance	py	scripts/lib/seams
+distance	py	scripts/lib/mongo
+distance	py	scripts/lib/governor
+distance	py	scripts/lib/vcs
+distance	py	scripts/lib/harness
+distance	py	scripts/lib/code_tools
+distance	py	scripts/lib/script_tests/select
+distance	py	scripts/lib/pre_push_hook/plan
+distance	py	scripts/lib/mobile
+distance	py	scripts/lib/sbt_warm
+distance	py	scripts/lib/script_tests
+distance	py	scripts/lib/identity_tooling/base
+distance	py	scripts/lib/identity_tooling/ci
+distance	py	scripts/lib/pre_push_hook/checks
+distance	py	scripts/lib/identity_tooling/cache
+distance	py	scripts/lib/pre_push_hook
+distance	py	scripts/lib/identity_tooling
 distance	py	scripts/ci
 distance	js	infra/version-dashboard/src
 distance	js	infra/version-dashboard/src/shared
@@ -127,23 +146,42 @@ distance	js	infra/version-dashboard/src/mobile-release
 # The layers (ranks, bottom up), Python: the shared library under the tools, the tools and gates over it (scripts/ and
 # scripts/ci use each other: their cycle is a frozen `dircycle` row), every other tool collection over those, and the
 # general rule core over the quality measure it reads.
-layer	py	scripts/lib	0	the shared library every tool stands on: processes, git, GitHub, pools, the CLI harness
-layer	py	scripts	1	the repository's tools, beside the CI gates they share code with
-layer	py	scripts/ci	1	the CI and pre-push gates and the measures they hold, beside the tools
-layer	py	scripts/py-quality	2	the Python quality measure, over the ratchet engine in scripts/ci
-layer	py	.github/scripts	2	the workflows' own steps, over the tools and the library
-layer	py	scripts/ml-identity	2	the identity model experiments, over the CI readers
-layer	py	infra/bin	2	the fleet's operator tools, over the library
-layer	py	infra/nix/bin	2	the NixOS hosts' own tools
-layer	py	infra/nix/files	2	the files the NixOS hosts run
-layer	py	android/scripts	2	the Android app's release tools, over the library
-layer	py	ios/scripts	2	the iOS app's release tools, over the library
-layer	py	scripts/local-mirror	2	the local prod mirror's tools, over the library
-layer	py	scripts/e2e	2	the tools' end-to-end harness and scenarios, over the library (cli_harness, machine, tool_files)
-layer	py	scripts/claude-hooks	2	the agents' Claude Code hooks
-layer	py	scripts/discover-cinemas	2	the venue discovery bot
-layer	py	scripts/ops	2	one-off operator tools
-layer	py	scripts/design-rules	3	the general rule core, over the quality measure and the ratchet engine it reads
+layer	py	scripts/lib	0	the shared library's core, copied byte for byte into agentctl: processes, git, atomic writes, the ps table, the rules table
+layer	py	scripts/lib/processes	1	the machine every tool runs on: spawning, bounded commands, Python children, shell functions
+layer	py	scripts/lib/cli	1	a tool's command line: usage exits, the countries, Actions' workflow commands, the hooks' event and shell words
+layer	py	scripts/lib/seams	1	the injected files, state and HTTP seams, each one real and one in-memory implementation
+layer	py	scripts/lib/mongo	1	the local password-free Mongo and the tunnel to prod's
+layer	py	scripts/lib/governor	2	the machine's governor: JVM slots, tickets, its queue, governed pools and kills, CPU and memory meters
+layer	py	scripts/lib/vcs	2	GitHub through gh: the API, bounded downloads, workflow dispatches
+layer	py	scripts/lib/harness	2	the black-box test harness and the sandbox closure a self-test copies
+layer	py	scripts/lib/code_tools	2	what the quality and refactoring tools share: the pinned node tools, the deployed Scala, the scalafix and touched-code trees
+layer	py	scripts/lib/script_tests/select	2	which self-tests run-script-tests runs: found, changed, floored, selected
+layer	py	scripts/lib/pre_push_hook/plan	2	the pre-push hook's plan: the paths a push changes, its modes, units, lints and the repository it reads
+layer	py	scripts/lib/mobile	3	the mobile apps' store screenshots and seeded test order
+layer	py	scripts/lib/sbt_warm	3	scripts/sbt-warm's kept sbt servers: their cache, keeper, client and calls
+layer	py	scripts/lib/script_tests	3	run-script-tests' run: the governed pool, its report, the Linux container
+layer	py	scripts/lib/identity_tooling/base	3	what every local identity tool reads first: its context, locks, tree seeds and older refs
+layer	py	scripts/lib/identity_tooling/ci	3	the identity tools' CI dispatches, JVM settings and kept JVMs
+layer	py	scripts/lib/pre_push_hook/checks	3	the pre-push hook's checks: light, area, heavy, sbt and the script tests, and their registry
+layer	py	scripts/lib/identity_tooling/cache	4	the identity tools' cache: captures, classpaths, recordings and trees
+layer	py	scripts/lib/pre_push_hook	4	the pre-push hook's run: its checks, red gate, push, reuse and tree
+layer	py	scripts/lib/identity_tooling	5	identity-tools.sh's Python: the refs measured and the what-if verdict record, over the cache
+layer	py	scripts	6	the repository's tools, beside the CI gates they share code with
+layer	py	scripts/ci	6	the CI and pre-push gates and the measures they hold, beside the tools
+layer	py	scripts/py-quality	7	the Python quality measure, over the ratchet engine in scripts/ci
+layer	py	.github/scripts	7	the workflows' own steps, over the tools and the library
+layer	py	scripts/ml-identity	7	the identity model experiments, over the CI readers
+layer	py	infra/bin	7	the fleet's operator tools, over the library
+layer	py	infra/nix/bin	7	the NixOS hosts' own tools
+layer	py	infra/nix/files	7	the files the NixOS hosts run
+layer	py	android/scripts	7	the Android app's release tools, over the library
+layer	py	ios/scripts	7	the iOS app's release tools, over the library
+layer	py	scripts/local-mirror	7	the local prod mirror's tools, over the library
+layer	py	scripts/e2e	7	the tools' end-to-end harness and scenarios, over the library (cli_harness, machine, tool_files)
+layer	py	scripts/claude-hooks	7	the agents' Claude Code hooks
+layer	py	scripts/discover-cinemas	7	the venue discovery bot
+layer	py	scripts/ops	7	one-off operator tools
+layer	py	scripts/design-rules	8	the general rule core, over the quality measure and the ratchet engine it reads
 # JS/TS: what every page builds on, then the store clients, then the pages and the servers over them.
 layer	js	web/src/main/assets/js/shared	0	what every web page's scripts build on
 layer	js	web/src/main/assets/js	1	the web pages' own scripts, over the shared ones

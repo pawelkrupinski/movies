@@ -36,7 +36,7 @@ from typing import Dict, List, Mapping, Optional, TextIO
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path[:0] = [os.path.join(ROOT, "scripts"), os.path.join(ROOT, "scripts", "lib")]
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import tool_process  # noqa: E402
 import vault_env  # noqa: E402
 

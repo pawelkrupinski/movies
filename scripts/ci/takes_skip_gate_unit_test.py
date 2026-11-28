@@ -13,7 +13,7 @@ from typing import Callable, List, Mapping
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 import takes_skip_gate  # noqa: E402
 from takes_skip_gate import Gate, Run  # noqa: E402

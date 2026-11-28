@@ -15,7 +15,7 @@ import tarfile
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/restore_country_corpus.py", "scripts/restore-country-corpus.sh")
 FIXTURES = "out/test/resources/fixtures"

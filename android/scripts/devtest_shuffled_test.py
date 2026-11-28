@@ -13,7 +13,7 @@ from typing import List
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "scripts", "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("android/scripts/devtest_shuffled.py", "android/scripts/devtest-shuffled.sh")
 # What the tool takes with it into the scratch layout, whichever of them exist: the shell tool and the seeded order it

@@ -36,11 +36,11 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, cast
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
-import tool_cli  # noqa: E402
+from processes import machine  # noqa: E402
+from cli import tool_cli  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
-import tool_shell  # noqa: E402
+from processes import tool_shell  # noqa: E402
 
 TOOL = "ci-sbt"
 HERE = os.path.dirname(os.path.abspath(__file__))

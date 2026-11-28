@@ -13,7 +13,7 @@ import sys
 from typing import Dict, List, Sequence, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 
 Rows = Dict[Tuple[str, str], Dict[str, str]]

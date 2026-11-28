@@ -13,11 +13,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "ci"))
 import drift_seeds  # noqa: E402
 import identity_drift_ci_runs as runs_  # noqa: E402
-import tool_countries  # noqa: E402
-import machine  # noqa: E402
-import tool_dispatch  # noqa: E402
+from cli import tool_countries  # noqa: E402
+from processes import machine  # noqa: E402
+from vcs import tool_dispatch  # noqa: E402
 from identity_drift_ci_runs import Row, say  # noqa: E402
-from tool_cli import UsageError  # noqa: E402
+from cli.tool_cli import UsageError  # noqa: E402
 
 ROW_ORDER = ("pl", "de", "uk", "es", "us")  # the rows' order when no country is named
 

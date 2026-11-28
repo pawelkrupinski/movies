@@ -14,7 +14,7 @@ import unittest
 from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/ci/wait_for_mongo_tunnel.py", "scripts/ci/wait-for-mongo-tunnel.sh")
 URI = "mongodb://reader:s3cret@127.0.0.1:27999/?authSource=admin&directConnection=true&maxPoolSize=8"

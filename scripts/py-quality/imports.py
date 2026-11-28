@@ -1,6 +1,8 @@
 """THE PYTHON MODULE GRAPH (scripts/py-quality/report.py): which of the measured files each one imports, as
 run-script-tests resolves an import -- the importer's own directory first, then the shared library (scripts/lib), then
-any measured file of that name -- and the standard library or a third-party package otherwise (no edge).
+any measured file of that name -- and the standard library or a third-party package otherwise (no edge). A dotted
+import names a module of a package directory below those (`from vcs import tool_github`, `from vcs.tool_github import
+Gh`, `import vcs.tool_github`: scripts/lib/vcs/tool_github.py).
 
   fan-out  the measured modules a file imports (each once): its collaborators' modules, as the JS ratchet counts them
   cycles   the strongly connected groups of two or more files that import one another"""
@@ -13,19 +15,31 @@ from typing import Dict, List, Optional, Set
 LIBRARY = "scripts/lib"
 
 
+def statement_names(node: ast.AST) -> List[str]:
+    """What one statement imports, dotted as written (`import a.b`: a.b; `from c.d import e`: c.d and c.d.e, the name a
+    module or a member of one); a relative import none."""
+    if isinstance(node, ast.Import):
+        return [alias.name for alias in node.names]
+    if isinstance(node, ast.ImportFrom) and node.module and not node.level:
+        return [node.module, *(f"{node.module}.{alias.name}" for alias in node.names if alias.name != "*")]
+    return []
+
+
 def imported_names(tree: ast.AST) -> Set[str]:
-    """The top-level module names `tree` imports (`a.b` is `a`), relative imports and __future__ left out."""
-    names: Set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            names.update(alias.name.split(".")[0] for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
-            names.add(node.module.split(".")[0])
-    names.discard("__future__")
-    return names
+    """The module names `tree` imports (statement_names), __future__ left out."""
+    return {n for node in ast.walk(tree) for n in statement_names(node) if n.split(".")[0] != "__future__"}
 
 
 def resolve(importer: str, name: str, by_name: Dict[str, List[str]]) -> Optional[str]:
+    """The measured file a (dotted) module name is: `a.b.c` as a/b/c.py beside the importer or in the library, else
+    its package `a.b`'s; a single name also as any one measured file of that name."""
+    if "." in name:
+        relative = name.replace(".", "/") + ".py"
+        candidates = by_name.get(os.path.basename(relative), [])
+        for preferred in (os.path.join(os.path.dirname(importer), relative), os.path.join(LIBRARY, relative)):
+            if preferred in candidates:
+                return preferred
+        return None
     own = os.path.join(os.path.dirname(importer), name + ".py")
     candidates = by_name.get(name + ".py", [])
     for preferred in (own, os.path.join(LIBRARY, name + ".py")):

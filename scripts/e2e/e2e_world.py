@@ -1,5 +1,5 @@
 """THE TOOLS' END-TO-END HARNESS (the owner, 2026-11-27: "for the important Python scripts, also add end-to-end tests").
-The black-box tests (scripts/lib/cli_harness.py) drive ONE tool with fakes around it; this runs the REAL tools
+The black-box tests (scripts/lib/harness/cli_harness.py) drive ONE tool with fakes around it; this runs the REAL tools
 TOGETHER, through their real chain -- `git push` running the installed pre-push hook running run-script-tests running a
 self-test -- each as a subprocess, with stubs only at the machine's edge. Modelled on agentctl's tests/e2e/.
 
@@ -36,9 +36,9 @@ HERE = os.path.dirname(os.path.realpath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(ROOT, "scripts", "lib"))
 sys.path.insert(0, HERE)
-import cli_harness  # noqa: E402
-import machine  # noqa: E402
-import tool_files  # noqa: E402
+from harness import cli_harness  # noqa: E402
+from processes import machine  # noqa: E402
+from seams import tool_files  # noqa: E402
 
 # The trees a tool runs from: what a mutation's copy holds, and what movies_clone lays over its checkout
 TOOL_TREES = ("scripts", "infra/bin", ".github/scripts", ".github/actions", "docs/tools.md")

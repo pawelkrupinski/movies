@@ -36,9 +36,9 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, TextI
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
 import ci_machine  # noqa: E402
-import tool_actions  # noqa: E402
+from cli import tool_actions  # noqa: E402
 import tool_git  # noqa: E402
-import tool_github  # noqa: E402
+from vcs import tool_github  # noqa: E402
 import tool_process  # noqa: E402
 
 RUN_FIELDS = "headSha,status,conclusion,createdAt,updatedAt,url"

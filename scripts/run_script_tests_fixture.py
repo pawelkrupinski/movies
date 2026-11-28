@@ -8,7 +8,7 @@ import sys
 from typing import Dict, Mapping, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 ROOT = cli_harness.ROOT
 RUNNER = cli_harness.tool_path("scripts/run-script-tests")

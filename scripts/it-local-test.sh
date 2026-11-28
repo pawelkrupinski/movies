@@ -72,7 +72,7 @@ for f in it-local.sh own-mongod.sh sbt-warm jvm-gate.sh tool-conventions.sh stal
   stall_watch.py zinc_orphans.py; do
   cp "$REPO_ROOT/scripts/$f" "$tree/scripts/$f"
 done
-cp "$REPO_ROOT"/scripts/lib/*.py "$tree/scripts/lib/"   # sbt-warm's Python modules (scripts/lib/sbt_warm_*.py and theirs)
+cp -R "$REPO_ROOT"/scripts/lib/. "$tree/scripts/lib/"   # sbt-warm's Python modules (scripts/lib/sbt_warm/ and theirs)
 export KINOWO_IDENTITY_CACHE="$SCRATCH/identity" KINOWO_SBT_CACHE="$SCRATCH/cache" \
   KINOWO_SBT_CACHE_PUBLISH=0 KINOWO_SBT_WARM_SEED="$SCRATCH/no-seed" KINOWO_SBT_WARM_GITOPS=0 \
   KINOWO_SBT_WARM_KEEPER_POLL=0.2 KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS=1

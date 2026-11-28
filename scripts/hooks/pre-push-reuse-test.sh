@@ -116,13 +116,13 @@ check "a failed run stores nothing: the same tree runs again" "1 10 0 11" \
   "$(reuse_push "$rbase..$failing" STUB_RUNNER_EXIT=1) $(reuse_push "$rbase..$failing")"
 # THE MUTANT: the same hook keyed without the pushed tree. It would answer a changed tree from the stored pass -- so
 # "a changed tree runs everything" above is a check that fails on a hook that could skip a changed tree.
-# (the key is the run's, scripts/lib/pre_push_reuse.py: the mutant is that module's copy beside the hook's)
+# (the key is the run's, scripts/lib/pre_push_hook/pre_push_reuse.py: the mutant is that module's copy beside the hook's)
 cp "$REPO_ROOT/scripts/hooks/pre-push" "$reuse/hook/scripts/hooks/pre-push"
-sed 's/^\(    tree = \)repo\.git_out(.*{v\.head}^{{tree}}").*/\1"mutant"/' "$REPO_ROOT/scripts/lib/pre_push_reuse.py" \
-  > "$reuse/hook/scripts/lib/pre_push_reuse.py"
+sed 's/^\(    tree = \)repo\.git_out(.*{v\.head}^{{tree}}").*/\1"mutant"/' "$REPO_ROOT/scripts/lib/pre_push_hook/pre_push_reuse.py" \
+  > "$reuse/hook/scripts/lib/pre_push_hook/pre_push_reuse.py"
 cp "$REPO_ROOT/scripts/tool-conventions.sh" "$reuse/hook/scripts/"
 check "the mutant differs from the hook in the tree's key only" "1" \
-  "$(diff "$REPO_ROOT/scripts/lib/pre_push_reuse.py" "$reuse/hook/scripts/lib/pre_push_reuse.py" | grep -c '^>  *tree = "mutant"$')"
+  "$(diff "$REPO_ROOT/scripts/lib/pre_push_hook/pre_push_reuse.py" "$reuse/hook/scripts/lib/pre_push_hook/pre_push_reuse.py" | grep -c '^>  *tree = "mutant"$')"
 HOOK="$reuse/hook/scripts/hooks/pre-push" reuse_push "$rbase..$docs_only" >/dev/null # the same paths as the next push
 mutated="$(commit_paths "a tree the mutant has not seen" -- scripts/z.sh)"
 check "...and it reuses a changed tree, which the check above refuses" "0 12" \

@@ -34,9 +34,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 FIXTURES = os.path.join(ROOT, "test", "resources", "fixtures")
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import tool_git  # noqa: E402
-import tool_github  # noqa: E402
+from vcs import tool_github  # noqa: E402
 import tool_process  # noqa: E402
 
 GH_RELEASE = os.path.join(HERE, "gh-release.sh")

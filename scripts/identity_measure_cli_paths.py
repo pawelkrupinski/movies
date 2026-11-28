@@ -14,7 +14,7 @@ import re
 import tempfile
 from typing import Dict, List, Optional, Tuple
 
-import tool_countries
+from cli import tool_countries
 import tool_process
 from identity_measure_cli_context import HERE, Context
 

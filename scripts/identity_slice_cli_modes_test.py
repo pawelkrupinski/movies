@@ -16,7 +16,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from identity_slice_cli_fixture import BACKLOG, SliceCase, count  # noqa: E402
-import cli_harness  # noqa: E402  (scripts/lib, on the path the fixture put it on)
+from harness import cli_harness  # noqa: E402  (scripts/lib, on the path the fixture put it on)
 
 KEY = ("de", "--recording", "777", "--key", "Kino|Lalka")
 # gh whose artifact read is throttled once (HTTP 502), then answers with the leg's takes

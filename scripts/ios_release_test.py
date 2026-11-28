@@ -19,7 +19,7 @@ import unittest
 from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OWN = ("ios-release.sh", "ios_release.py", "log.sh", "app-store-credentials.sh")

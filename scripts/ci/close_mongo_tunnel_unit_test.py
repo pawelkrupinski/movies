@@ -10,7 +10,7 @@ from typing import List
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [HERE, os.path.join(os.path.dirname(HERE), "lib")]
 import close_mongo_tunnel as tunnel  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 from tool_process import Captured, Command  # noqa: E402
 
 ENV = {"RUNNER_TEMP": "/runner", "GITHUB_ENV": "/runner-env/github-env"}

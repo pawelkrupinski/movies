@@ -11,8 +11,8 @@ from dataclasses import dataclass
 from typing import List, Sequence
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
-from tool_files import Files  # noqa: E402
+from harness import cli_harness  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 SBT = 'echo "$PWD/worker/target/scala-3.x/test-classes:/lib/a.jar"'
 
@@ -28,8 +28,9 @@ def tools_held(files: Files, scripts: Sequence[str]) -> List[str]:
     """The `scripts` this checkout holds (a name it lacks is skipped), and every scripts/lib module that is no test."""
     scripts_dir = os.path.join(cli_harness.ROOT, "scripts")
     held = [f"scripts/{name}" for name in scripts if files.exists(os.path.join(scripts_dir, name))]
-    return held + [f"scripts/lib/{name}" for name in files.list(os.path.join(scripts_dir, "lib"), ".py")
-                   if not name.endswith("_test.py")]
+    library = os.path.join(scripts_dir, "lib")
+    return held + [os.path.relpath(p, cli_harness.ROOT) for p in files.under(library)
+                   if p.endswith(".py") and not p.endswith("_test.py") and "__pycache__" not in p]
 
 
 def tool_repo(case: cli_harness.ToolCase, scripts: Sequence[str], tool_files: Sequence[str], base_build: str,

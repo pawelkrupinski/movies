@@ -35,8 +35,8 @@ from poster_eval_dataset import build, dataset, load, save  # noqa: F401  (build
 from poster_eval_images import Images, TmdbLists, chosen  # noqa: F401  (chosen: ditto)
 from poster_eval_report import coverage, labels, report
 from poster_eval_vote import Result, run_variant
-import machine  # noqa: E402
-from tool_files import Files  # noqa: E402
+from processes import machine  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 from tool_process import SubprocessRunner  # noqa: E402
 from identity_judgements import COLUMNS as Columns, read as read_judgements  # noqa: E402,F401  (the names the tests import)
 

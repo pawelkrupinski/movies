@@ -26,7 +26,7 @@ import collaborators  # noqa: E402
 import design_lint  # noqa: E402
 import exemptions  # noqa: E402
 import extractors  # noqa: E402
-import js_quality_tools  # noqa: E402
+from code_tools import js_quality_tools  # noqa: E402
 import tool_git  # noqa: E402
 import naming  # noqa: E402
 import packages  # noqa: E402

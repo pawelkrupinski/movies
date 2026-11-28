@@ -11,7 +11,7 @@ import re
 import unittest
 
 from sbt_warm_stall_fixture import StallCase
-import cli_harness
+from harness import cli_harness
 
 
 class ServeTest(StallCase):

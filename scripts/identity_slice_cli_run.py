@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 from typing import List, Sequence
 
-from identity_kept_jvms import KeptJvmFiles, alive, is_socket, read, remove  # (scripts/lib)
+from identity_tooling.ci.identity_kept_jvms import KeptJvmFiles, alive, is_socket, read, remove  # (scripts/lib)
 from identity_slice_cli_context import LABEL, Context
 from identity_slice_cli_keys import Keys
 

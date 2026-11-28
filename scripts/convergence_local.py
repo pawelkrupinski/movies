@@ -44,8 +44,8 @@ from types import FrameType
 from typing import Callable, Dict, List, Mapping, NoReturn, Optional, Sequence
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
-import mongo_local  # noqa: E402
+from processes import machine  # noqa: E402
+from mongo import mongo_local  # noqa: E402
 from tool_process import Command, Runner, SubprocessRunner  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

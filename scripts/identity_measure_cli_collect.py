@@ -11,7 +11,7 @@ import shlex
 import shutil
 from typing import Optional
 
-import tool_countries
+from cli import tool_countries
 from identity_measure_cli_context import IDENTITY_TOOLS, JUDGEMENTS, TAKES_ROW_JQ, Context, Die, say
 from identity_measure_cli_results import read_stripped
 

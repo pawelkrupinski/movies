@@ -19,7 +19,7 @@ both disagreeing → wrong; scripts.JudgeEvidence.suggest). Everything else stay
                   read (default: TMDB_API_KEY if set, else those records stay unknown); --offline: never ask TMDB
 
 The capture, the judgements and the classpath come from identity-tools.sh (identity_capture, identity_judgements,
-identity_classpath, IDENTITY_JAVA) through scripts/lib/identity_ref_trees.py until that library moves. Tested by
+identity_classpath, IDENTITY_JAVA) through scripts/lib/identity_tooling/ci/identity_ref_trees.py until that library moves. Tested by
 scripts/identity_judge_cards_test.py."""
 from __future__ import annotations
 
@@ -30,10 +30,10 @@ from dataclasses import dataclass, field
 from typing import List, Mapping, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
-import identity_ref_trees  # noqa: E402
-import tool_cli  # noqa: E402
-import tool_countries  # noqa: E402
+from processes import machine  # noqa: E402
+from identity_tooling.ci import identity_ref_trees  # noqa: E402
+from cli import tool_cli  # noqa: E402
+from cli import tool_countries  # noqa: E402
 import tool_process  # noqa: E402
 
 TOOL = "identity-judge-cards"

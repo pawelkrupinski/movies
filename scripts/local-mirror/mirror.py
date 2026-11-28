@@ -35,14 +35,12 @@ import subprocess
 import sys
 import tempfile
 import threading
-from typing import Callable, Dict, List, Sequence
+from typing import Dict, List
 
 import mirror_keeper
 import mirror_supervisor
 import mirror_upkeep
-from mirror_settings import Pauses, Settings, Stopped, here, say, warn
-
-THREAD_JOIN = 10  # seconds a stop waits for each upkeep thread to reach its next pause
+from mirror_settings import Pauses, Settings, here, say, warn
 
 
 def under_the_vault(argv: List[str]) -> int:
@@ -74,7 +72,6 @@ class Parent:
         self.pause = Pauses()
         self.tunnel = settings.tunnel(self.pause)
         self.children: List["subprocess.Popen[bytes]"] = []
-        self.threads: List[threading.Thread] = []
 
     def spawn(self, *role: str) -> "subprocess.Popen[bytes]":
         child = subprocess.Popen([sys.executable, os.path.abspath(__file__), *role], stdin=subprocess.DEVNULL,
@@ -90,7 +87,6 @@ class Parent:
             if child.poll() is None:
                 child.terminate()
         self.pause.stop()
-        self.join_background()
         if self.settings.targets_file:
             try:
                 os.remove(self.settings.targets_file)
@@ -136,30 +132,9 @@ class Parent:
         log = mirror_upkeep.log_path(self.settings.env)
         mirror_upkeep.rotate_log(log)
         mirror_upkeep.sweep_orphans(self.settings.env)
-        self.background(self.upkeep, log)
-        self.background(self.watch_code, code, poll)
+        threading.Thread(target=self.upkeep, args=(log,), daemon=True).start()
+        threading.Thread(target=self.watch_code, args=(code, poll), daemon=True).start()
         return self.await_supervisor_exit(supervisors)
-
-    def background(self, work: Callable[..., None], *args: str) -> None:
-        """`work` in a thread that stop() joins: no thread may be writing when the process exits. One still writing at
-        the interpreter's shutdown keeps stdout's or stderr's lock, and the exit's flush then aborts the daemon (Fatal
-        Python error: _enter_buffered_busy, exit -6 at a TERM on CI, 2026-11-28)."""
-        thread = threading.Thread(target=self.quietly, args=(work, args), daemon=True)
-        self.threads.append(thread)
-        thread.start()
-
-    def join_background(self) -> None:
-        for thread in self.threads:
-            thread.join(THREAD_JOIN)
-
-    @staticmethod
-    def quietly(work: Callable[..., None], args: Sequence[str]) -> None:
-        """A stop ends `work` at its next pause without a word: threading prints the traceback of every exception that
-        ends a thread but SystemExit itself, and Stopped is only a subclass of it."""
-        try:
-            work(*args)
-        except Stopped:
-            pass
 
     def publish(self, digest: str) -> None:
         if digest:

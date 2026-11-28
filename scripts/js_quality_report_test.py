@@ -22,8 +22,8 @@ import unittest
 from typing import Dict, List
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
-import js_quality_tools  # noqa: E402
+from harness import cli_harness  # noqa: E402
+from code_tools import js_quality_tools  # noqa: E402
 import tool_git  # noqa: E402
 
 ROOT = cli_harness.ROOT
@@ -118,8 +118,8 @@ class CommandLineTest(cli_harness.ToolCase):
         self.assertEqual(f"{self.path('x')}/kinowo/js-quality/{lock_key()}\n", xdg.stdout)
 
     def test_the_pre_push_hook_installs_no_js_quality_tools_in_the_tree(self) -> None:
-        # the check is Python's since the hook's stage 4 (scripts/lib/pre_push_light.py)
-        with open(os.path.join(ROOT, "scripts", "lib", "pre_push_light.py")) as f:
+        # the check is Python's since the hook's stage 4 (scripts/lib/pre_push_hook/checks/pre_push_light.py)
+        with open(os.path.join(ROOT, "scripts", "lib", "pre_push_hook", "checks", "pre_push_light.py")) as f:
             hook = f.read()
         body = re.search(r"^def jsquality\(c: Check\) -> int:\n(.*?)^\S", hook, re.S | re.M)
         assert body is not None

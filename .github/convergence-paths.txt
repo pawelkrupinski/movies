@@ -73,10 +73,10 @@ scripts/identity_drift_ci_baseline.py
 scripts/identity_drift_ci_options.py
 scripts/identity_drift_ci_runs.py
 scripts/identity_drift_ci_verdict.py
-scripts/lib/identity_dispatch.py
-scripts/lib/tool_countries.py
-scripts/lib/tool_dispatch.py
-scripts/lib/tool_shell.py
+scripts/lib/identity_tooling/ci/identity_dispatch.py
+scripts/lib/cli/tool_countries.py
+scripts/lib/vcs/tool_dispatch.py
+scripts/lib/processes/tool_shell.py
 scripts/ci/takes_skip_gate.py
 scripts/ci/takes-skip-proof.sh
 .github/order-independence-paths.txt
@@ -131,7 +131,7 @@ test/resources/fixtures/identity-unmatched/**
 test/resources/fixtures/identity-judgements.tsv
 # the shared Python modules the legs' Python tools import (an import is no path the generator below follows)
 scripts/lib/tool_git.py
-scripts/lib/tool_github.py
+scripts/lib/vcs/tool_github.py
 scripts/lib/tool_process.py
 # the Python tools behind kick-convergence.sh and identity-fetch-recording.sh (an exec is no path the generator follows)
 .github/scripts/kick_convergence.py

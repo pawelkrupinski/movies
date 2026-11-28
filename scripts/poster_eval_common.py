@@ -13,7 +13,7 @@ from typing import Any, Dict, Tuple
 
 Here = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [Here, os.path.join(Here, "ci"), os.path.join(Here, "lib")]
-import mongo_local  # noqa: E402
+from mongo import mongo_local  # noqa: E402
 
 np: Any = importlib.import_module("numpy")
 

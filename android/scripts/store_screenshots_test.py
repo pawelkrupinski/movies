@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """android/scripts/store-screenshots.sh, black-box, over a scratch copy of its layout: a fake adb that plays the app's
 screens (the gate's country pills and city search, the area picker, the listing), a fake emulator, Gradle, sips and
-`open`, and a backend of the test's own (scripts/lib/store_screenshots_fixture.py). Nothing reaches a device, a store
+`open`, and a backend of the test's own (scripts/lib/mobile/store_screenshots_fixture.py). Nothing reaches a device, a store
 or the live backend. The fake app's labels are the app's own strings, so a capture hunting a wrong one fails as it would
 on the emulator. Ported from store-screenshots-test.sh case for case; the same cases hold the shell tool and its Python
 rewrite (cli_harness.tool_path)."""
@@ -18,8 +18,8 @@ from typing import Dict, List, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "scripts", "lib"))
-import cli_harness  # noqa: E402
-from store_screenshots_fixture import Backend, City, copy_layout, png  # noqa: E402
+from harness import cli_harness  # noqa: E402
+from mobile.store_screenshots_fixture import Backend, City, copy_layout, png  # noqa: E402
 
 TOOL = cli_harness.tool_path("android/scripts/store_screenshots.py", "android/scripts/store-screenshots.sh")
 LISTINGS = "android/app/src/main/play/listings"

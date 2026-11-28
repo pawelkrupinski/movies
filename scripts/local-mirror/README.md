@@ -445,7 +445,7 @@ stream** open for days, which is a live cursor, not a dump.
 
 All of it lives in **`prod-tunnel.sh`**, sourced by the shell tools that reach
 prod (`../reset-corpus.sh`, `../with-prod-mongo.sh`, …), and in its Python twin
-**`scripts/lib/prod_tunnel.py`**, which the daemon (`mirror.py`) uses — repoint both together.
+**`scripts/lib/mongo/prod_tunnel.py`**, which the daemon (`mirror.py`) uses — repoint both together.
 Before, those scripts carried their own copies of the same `nc -z || flyctl proxy`
 block, and a move like this had to find every one of them — the copy that got
 missed would go on dialling a stopped machine and fail like a network blip

@@ -127,12 +127,12 @@ mutants=(
   'an unadmitted exemption never fails @@ return bool(unadmitted) @@ return False'
 )
 
-mkdir -p "$work/mutants/lib"
+mkdir -p "$work/mutants/lib/processes"
 # the tool's modules and the ones they import, side by side in a directory of each mutant (row parsing is
-# baseline_ratchet.parse_rows, the engine's: mutated by js-quality-ratchet-mutation-test.sh); tool_python is in ../lib
+# baseline_ratchet.parse_rows, the engine's: mutated by js-quality-ratchet-mutation-test.sh); tool_python is in ../lib/processes
 modules=(coupling_ratchet coupling_rows coupling_violations coupling_growth coupling_exemption_table
   coupling_exemption_history coupling_reasons coupling_renames coupling_splits coupling_verdicts trailers baseline_ratchet)
-cp "$REPO_ROOT/scripts/lib/tool_python.py" "$work/mutants/lib/"
+cp "$REPO_ROOT/scripts/lib/processes/tool_python.py" "$work/mutants/lib/processes/"
 i=0
 for m in "${mutants[@]}"; do
   i=$((i + 1))

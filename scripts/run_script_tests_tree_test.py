@@ -13,7 +13,7 @@ import sys
 import unittest
 
 from run_script_tests_fixture import ScriptTestsCase
-import cli_harness
+from harness import cli_harness
 
 POLLUTER = ("sleep 1; echo x > scripts/left-behind.txt; mkdir -p scripts/tools/node_modules/pkg; "
             "echo y > scripts/tools/node_modules/pkg/i.js")

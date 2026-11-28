@@ -396,7 +396,7 @@ Python tool (`scripts/`, `.github/scripts/`, `infra/bin/`, `infra/nix/files/`, `
 tool of `scripts/shell-py-progress/migrate-tools.tsv` and every `.py` file new since the migration's base that it reaches
 (`scripts/py-quality/migrated.py`) past a limit is refused even with a trailer -- "migrated tools stay under the bar --
 split it". A migrated tool keeps its path, CLI and output, and its
-black-box `<tool>_test.py` (`scripts/lib/cli_harness.py`) passes byte-unchanged on the shell tool and on the Python one.
+black-box `<tool>_test.py` (`scripts/lib/harness/cli_harness.py`) passes byte-unchanged on the shell tool and on the Python one.
 **The naming lint** (`scripts/design-rules/naming_lint.py`, the same step and `pyquality` / `jsquality` for their languages; the owner's "names must match behaviour", 2026-11-19):
 two top-level types of one package named with the same words in another order (`PruneSweep` / `SweepPrune`) refuse the
 push -- rename one after what makes it distinct (a pair mid-rename sits in its `ALLOWED_PERMUTATIONS` with an owner); a
@@ -529,7 +529,7 @@ Heavy jobs that are no JVM -- a `run-script-tests` run (and its `--linux` contai
 `page-tests-local`, `backtest-alerts-local`, the mirror's seed -- take a ticket too (`scripts/gov-run --job J [--cores
 N] -- <command>`, jvm-gate.sh `gov_hold`): they wait while the laptop is starved and start by themselves. **Every
 parallel fan-out is sized by THE GOVERNED FAN-OUT** (the owner, 2026-11-25: load 103, `gov status` 0 admitted, 43 test
-processes ticketless): `scripts/gov-parallel --job J -P N` for `xargs -P`, `scripts/lib/tool_pool.py` governed_workers
+processes ticketless): `scripts/gov-parallel --job J -P N` for `xargs -P`, `scripts/lib/governor/tool_pool.py` governed_workers
 for a Python pool, run-script-tests' own pool (jvm-gate.sh `gov_width`): a ticket charged its width, or under one
 already (`AGENTCTL_GOV_WIDTH`: a check's hook, a pool's own workers, which get 1) none and at most that wide, so a
 nested runner never waits on its parent. `scripts/ci/fanout_lint.py` refuses any other (a network-bound pool takes a

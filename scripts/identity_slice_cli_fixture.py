@@ -21,14 +21,14 @@ import zipfile
 from typing import Dict, List, Mapping, Optional, Set
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 import ps_table  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/identity_slice_cli.py", "scripts/identity-slice")
 ROOT = cli_harness.ROOT
 JUDGEMENTS = "test/resources/fixtures/identity-judgements.tsv"
 BACKLOG = "test/resources/fixtures/identity-flip-backlog.tsv"
-# the scripts besides scripts/*.py, *.sh, scripts/ci/*.py and scripts/lib/*.py the tool runs
+# the scripts besides scripts/*.py, *.sh, scripts/ci/*.py and scripts/lib/**/*.py the tool runs
 EXTENSIONLESS = ("identity-slice", "identity-explain", "identity-slice-tool-files.txt")
 HEADER = "selector\tkey\tvenue\trawTitle\tfilm\ttitle\tbasis\tconfidence\tmodel\trules\tblocker\trunnerUp\tverdict\texplanation"
 

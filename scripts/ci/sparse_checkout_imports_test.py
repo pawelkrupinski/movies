@@ -4,7 +4,7 @@
 (`sparse-checkout: |`) and runs a repository Python tool -- named in its steps, directly or through a shell file that
 execs it (`exec python3 "$(dirname "$0")/x.py"`) -- must check out every repository module that tool imports,
 transitively: Identity model convergence #1390 went red when dispatch-takes.sh became an exec of dispatch_takes.py,
-which imports scripts/lib/tool_dispatch, and the preflight checked out only scripts/ci and .github
+which imported scripts/lib/tool_dispatch, and the preflight checked out only scripts/ci and .github
 (ModuleNotFoundError, no takes run). A module is looked up where the tools put it on sys.path: the importing file's own
 directory, scripts/lib and scripts/ci."""
 from __future__ import annotations
@@ -66,16 +66,16 @@ def imported(path: str) -> Set[str]:
     """The repository modules `path` imports, as repository paths."""
     with open(os.path.join(ROOT, path)) as f:
         tree = ast.parse(f.read())
-    names: Set[str] = set()
+    names: Set[str] = set()  # dotted as written: `from vcs import tool_dispatch` may name scripts/lib/vcs/tool_dispatch.py
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            names |= {alias.name.split(".")[0] for alias in node.names}
+            names |= {alias.name for alias in node.names}
         elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
-            names.add(node.module.split(".")[0])
+            names |= {node.module, *(f"{node.module}.{alias.name}" for alias in node.names)}
     out: Set[str] = set()
     for name in names:
         for directory in (os.path.dirname(path), *SEARCHED):
-            candidate = os.path.join(directory, f"{name}.py")
+            candidate = os.path.join(directory, name.replace(".", "/") + ".py")
             if os.path.isfile(os.path.join(ROOT, candidate)):
                 out.add(candidate)
                 break
@@ -115,8 +115,8 @@ class SparseCheckoutImportsTest(unittest.TestCase):
         convergence = jobs(os.path.join(WORKFLOWS, "identity-model-convergence.yml"))
         self.assertIn("scripts/ci", sparse_paths(convergence["preflight"]))
         self.assertEqual("scripts/ci/dispatch_takes.py", python_of("scripts/ci/dispatch-takes.sh"))
-        self.assertIn("scripts/lib/tool_dispatch.py", closure("scripts/ci/dispatch_takes.py"))
-        self.assertFalse(covered("scripts/lib/tool_dispatch.py", ["scripts/ci", ".github"]))
+        self.assertIn("scripts/lib/vcs/tool_dispatch.py", closure("scripts/ci/dispatch_takes.py"))
+        self.assertFalse(covered("scripts/lib/vcs/tool_dispatch.py", ["scripts/ci", ".github"]))
 
 
 if __name__ == "__main__":

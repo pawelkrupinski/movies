@@ -22,9 +22,11 @@ def copy_runner(into: str, mutate: bool) -> str:
     os.makedirs(os.path.join(into, "scripts/lib"))
     for f in ("run-script-tests", "floor-constructs.tsv", "stall_watch.py", "stall-report.sh", "linux-tree-sync.py"):
         shutil.copy2(os.path.join(HERE, f), os.path.join(into, "scripts", f))
-    for f in glob.glob(os.path.join(HERE, "lib", "*.py")):
-        shutil.copy2(f, os.path.join(into, "scripts/lib"))
-    changed = os.path.join(into, "scripts/lib/script_tests_changed.py")
+    for f in glob.glob(os.path.join(HERE, "lib", "**", "*.py"), recursive=True):
+        target = os.path.join(into, "scripts", os.path.relpath(f, HERE))
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        shutil.copy2(f, target)
+    changed = os.path.join(into, "scripts/lib/script_tests/select/script_tests_changed.py")
     with open(changed) as f:
         text = f.read()
     if DERIVED not in text:

@@ -18,7 +18,7 @@ from typing import Dict, Tuple
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(SCRIPTS, "lib"))
-import js_quality_tools  # noqa: E402
+from code_tools import js_quality_tools  # noqa: E402
 import tool_git  # noqa: E402
 TEST = os.path.join(HERE, "design_check_test.py")
 TABLE = "test/resources/design-rules.tsv"

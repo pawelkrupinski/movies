@@ -12,9 +12,9 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_judgements as j  # noqa: E402
 import identity_judgements_lint as lint  # noqa: E402
-import machine  # noqa: E402  (identity_judgements put scripts/lib on the path)
+from processes import machine  # noqa: E402  (identity_judgements put scripts/lib on the path)
 import tool_process  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 HEAD = j.HEADER + "\n"
 OTHER_HARD = {lint.HARD_CLUSTERS.format(cc=cc): "# none\n" for cc in lint.COUNTRIES}  # every country's file is read

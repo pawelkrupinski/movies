@@ -15,7 +15,7 @@ from typing import Dict, List
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
                                 "scripts", "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path(".github/scripts/kick_convergence.py", ".github/scripts/kick-convergence.sh")
 # gh: `run list` answers $STUB/last (or, while $STUB/hang exists, records its pid there and never answers) -- the

@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
                                 "scripts", "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("infra/bin/cloudflare_ci_edge_allow.py", "infra/bin/cloudflare-ci-edge-allow")
 KEY = "f" * 64

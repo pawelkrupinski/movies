@@ -31,7 +31,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [HERE, os.path.join(os.path.dirname(HERE), "lib")]
 import ci_machine  # noqa: E402
 from mongo_tunnel import DEFAULT_PORT, TunnelPaths  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 from tool_process import Command, Runner, SubprocessRunner  # noqa: E402
 
 PROOF_SECONDS = 5  # a killed process can hold its socket for a moment; a few seconds, not forever

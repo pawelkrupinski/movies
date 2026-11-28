@@ -15,7 +15,7 @@ from typing import Dict, List, Optional
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import mongo_grants as grants  # noqa: E402
 import tool_process  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 LIST = "# principal\trole\tdatabase\napp\treadWrite\tkinowo\napp\tread\tkinowo_de\nci-read\tread\tkinowo\n"
 NIX = 'username = lib.mkOption { type = str; default = "ci-reader"; };\n'

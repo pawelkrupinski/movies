@@ -25,8 +25,8 @@ import tempfile
 from typing import List, Mapping, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
-import tool_cli  # noqa: E402
+from processes import machine  # noqa: E402
+from cli import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
 
 TOOL = "identity-slice-refresh"

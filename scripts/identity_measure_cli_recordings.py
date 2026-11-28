@@ -9,7 +9,7 @@ import re
 import sys
 from typing import List, Optional, Tuple
 
-import tool_countries
+from cli import tool_countries
 import tool_process
 from identity_measure_cli_context import HERE, Context, Die, csv_and, say
 from identity_measure_cli_results import read_stripped

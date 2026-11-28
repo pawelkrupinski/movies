@@ -1,7 +1,7 @@
 # The tools' end-to-end layer
 
 The owner, 2026-11-27: "for the important Python scripts, also add end-to-end tests". Each tool has black-box CLI
-tests (`scripts/lib/cli_harness.py`: one tool, fakes around it). Nothing ran the real tools together, through their
+tests (`scripts/lib/harness/cli_harness.py`: one tool, fakes around it). Nothing ran the real tools together, through their
 real chain. `scripts/e2e/` does that. It is modelled on agentctl's `~/bin/tests/e2e/`: real processes in one temp
 root, stubs only at the machine's edge, deterministic polling and a mutation proof for every scenario.
 

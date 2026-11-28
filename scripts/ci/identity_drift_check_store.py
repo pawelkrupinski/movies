@@ -10,7 +10,7 @@ import shutil
 from dataclasses import dataclass
 from typing import List, Mapping, Optional
 
-import tool_github
+from vcs import tool_github
 import tool_process
 
 # The top-level directories no build of worker/Test reads (infra and scripts each keep a part: below)

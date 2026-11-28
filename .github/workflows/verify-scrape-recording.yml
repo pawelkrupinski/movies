@@ -24,7 +24,7 @@
 #     runner's load, so contention reads as infra, not as a test failure.
 #
 # GATING: this workflow, not the recorder, is what the pre-push red gate reads for the nightly data
-# (scripts/lib/pre_push_gate.py's GATING_WORKFLOWS). A red here clears with a later green run on main -- tonight's,
+# (scripts/lib/pre_push_hook/pre_push_gate.py's GATING_WORKFLOWS). A red here clears with a later green run on main -- tonight's,
 # or one dispatched by hand on the SAME recording once a fix has landed, which takes this run's ~30 minutes
 # rather than another night:
 #

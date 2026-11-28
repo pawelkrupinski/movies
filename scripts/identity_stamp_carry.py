@@ -66,9 +66,9 @@ from identity_stamp_carry_published import (  # noqa: E402  (THE PUBLISHED VERDI
     ASSET, COUNTRIES, asset_name, cached_verdict, country_refusals, diff_id, fetch_asset, identity_cache,
     moved_rows, publish, release, verdict_path, what_if_verdicts)
 from pure_move_check import Undecidable, git  # noqa: E402  (the one git a proof reads, and its refusal)
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import tool_git  # noqa: E402
-import tool_python  # noqa: E402
+from processes import tool_python  # noqa: E402
 from identity_stamp_carry_ranges import RANGES, cited_range, record_of, write_ranges  # noqa: E402  (THE QUEUE REWRITES)
 
 TABLE = "test/resources/identity-stamp-carry.tsv"

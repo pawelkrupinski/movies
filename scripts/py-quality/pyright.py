@@ -15,7 +15,7 @@ from typing import Any, Dict, Mapping, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
-import pinned_npm_tools  # noqa: E402
+from code_tools import pinned_npm_tools  # noqa: E402
 import tool_process  # noqa: E402
 
 MANIFESTS = ("package.json", "package-lock.json")

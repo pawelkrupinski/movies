@@ -51,7 +51,7 @@
 # DERIVED READS (14eb62591d: stall-watch.sh changed, and --changed never selected pre-push-tools-test.sh, which runs the
 # hook, which runs the watchdog): a test is also selected by a change to what it names in its code and, one step
 # further, what those name -- each with what it sources or imports, never through another self-test
-# (scripts/lib/script_tests_changed.py, Derived). A `# script-test-reads:` line stays, for what no name says.
+# (scripts/lib/script_tests/select/script_tests_changed.py, Derived). A `# script-test-reads:` line stays, for what no name says.
 # `--readers` keeps, of what --changed selects, only the tests a declared glob selects: what the hook's --verify-only
 # runs over agentctl's combined tree, where a change and what landed beside it share no file, yet a test holding every
 # .py or spec to a rule can break on the two together.
@@ -78,7 +78,7 @@
 # is the only proxy there is. Only the order changes, never which tests run nor their verdicts.
 #
 # Each test runs from the checkout's root, `bash` for .sh and `python3` for .py, stdin closed, in a
-# process group of its own (scripts/lib/tool_bounded.py, tool-conventions.sh's `bounded`: the whole group ended, and a Ctrl-C
+# process group of its own (scripts/lib/processes/tool_bounded.py, tool-conventions.sh's `bounded`: the whole group ended, and a Ctrl-C
 # reaching it, which GNU timeout's own process group would not).
 #
 # A NO-PROGRESS BOUND, NOT A WALL CLOCK (scripts/stall_watch.py): a test is ended, STALLED, once it has
@@ -116,7 +116,7 @@
 # anyway. Skipped (RUN_SCRIPT_TESTS_TREE_CHECK=0 -- the landing check's beside run sets it, scripts/ci/hook-beside.sh:
 # another run writes the same checkout --, or a --root that is no writable git checkout: --linux's read-only copy). Tests install their tools outside the tree (~/.cache/kinowo/<tool>/<lock hash>, js-quality-report), and run
 # with PYTHONDONTWRITEBYTECODE=1: an import's __pycache__ is no test's to leave. `python3 -I` ignores that variable (-I
-# implies -E), so every launch passes -B beside it (scripts/lib/tool_python.py; its test refuses one without).
+# implies -E), so every launch passes -B beside it (scripts/lib/processes/tool_python.py; its test refuses one without).
 #
 # THE GOVERNOR. A run (and --linux's container, and its image build) holds a governor ticket on the Mac (jvm_gate.py's JvmGate.width, jvm-gate.sh's
 # gov_width, `agentctl gov`), charged its parallelism (--jobs, or fewer tests): while the laptop is starved it waits for
@@ -147,15 +147,15 @@ HERE = os.path.dirname(os.path.realpath(__file__))
 LIB = os.path.join(HERE, "lib")
 sys.path.insert(0, LIB)
 
-import machine  # noqa: E402
-from jvm_gate import Governor, Host, JvmGate, SubprocessCommands  # noqa: E402
-from jvm_memory import Clock, MemoryGate, SlotWait  # noqa: E402
-from script_tests_found import Found, concurrency_heavy, declared_reads, discover  # noqa: E402
-from script_tests_select import Options, Refused, Selection, git_in, heavy_only, select  # noqa: E402
-import script_tests_linux as linux  # noqa: E402
-from script_tests_pool import Pool  # noqa: E402
-from script_tests_run import Plan, Run, Settings, Width, govern, plan_run, provision, tools, widening  # noqa: E402
-from tool_cli import header_usage  # noqa: E402
+from processes import machine  # noqa: E402
+from governor.jvm_gate import Governor, Host, JvmGate, SubprocessCommands  # noqa: E402
+from governor.jvm_memory import Clock, MemoryGate, SlotWait  # noqa: E402
+from script_tests.select.script_tests_found import Found, concurrency_heavy, declared_reads, discover  # noqa: E402
+from script_tests.select.script_tests_select import Options, Refused, Selection, git_in, heavy_only, select  # noqa: E402
+from script_tests import script_tests_linux as linux  # noqa: E402
+from script_tests.script_tests_pool import Pool  # noqa: E402
+from script_tests.script_tests_run import Plan, Run, Settings, Width, govern, plan_run, provision, tools, widening  # noqa: E402
+from cli.tool_cli import header_usage  # noqa: E402
 
 ROOTS = "scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin infra/nix/bin infra/nix/files data"
 # The oldest python3 every Python tool runs on: macOS's /usr/bin/python3 (3.9). scripts/ci/python_floor_lint.py holds

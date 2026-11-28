@@ -27,7 +27,7 @@ import subprocess
 import sys
 
 sys.path[:0] = [os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib")]
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RULES_TSV = os.path.join(REPO, "common/src/main/resources/title-rules.tsv")

@@ -26,8 +26,8 @@ import sys
 from typing import List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
-import hook_event  # noqa: E402
-from shell_words import ASSIGNMENT, SHELLS, command_words, is_punctuation  # noqa: E402
+from cli import hook_event  # noqa: E402
+from cli.shell_words import ASSIGNMENT, SHELLS, command_words, is_punctuation  # noqa: E402
 
 WATCHED = {
     "sbt-warm", "sbt", "sbtn", "it-local.sh", "run-script-tests", "fail-before", "convergence-local.sh",

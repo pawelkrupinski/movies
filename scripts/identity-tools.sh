@@ -3,7 +3,7 @@
 # What the local identity tools (identity-slice and its --explain, identity-judge-cards, venue-replay, title-trace,
 # recording-diff, hard-clusters.sh, listing-history) share: the shared cache, a recording or a capture downloaded once
 # into it, a ref's sources laid out once, a tree's worker test classpath compiled once. Sourcing it defines functions only: the shim of
-# scripts/lib/identity_tools.py (the cache, the captures, the trees, the classpaths, the recordings, the verdict record),
+# scripts/lib/identity_tooling/identity_tools.py (the cache, the captures, the trees, the classpaths, the recordings, the verdict record),
 # and what must run in the calling shell (a lock held around a shell function, a JVM slot, a kept JVM).
 #
 #   identity_newest_recording [cc]  -> the newest successful "Record scrape fixtures" run (with cc: holding its corpus)
@@ -44,13 +44,13 @@ IDENTITY_GH_READ=${KINOWO_IDENTITY_GH_TIMEOUT:-60}
 # shellcheck disable=SC2034 # read by the scripts sourcing this
 IDENTITY_GH_DOWNLOAD=${KINOWO_IDENTITY_DOWNLOAD_TIMEOUT:-1800}
 
-# THE FUNCTIONS OF scripts/lib/identity_tools.py: each runs it, the repository and the settings this shell holds passed on
+# THE FUNCTIONS OF scripts/lib/identity_tooling/identity_tools.py: each runs it, the repository and the settings this shell holds passed on
 # (IDENTITY_REPO, IDENTITY_TOOL and IDENTITY_FILLS are often plain variables of the sourcing tool, never exported). Its
 # stdout is the function's answer; a failure is said on stderr and is its status.
 identity_py() {
   IDENTITY_REPO=$IDENTITY_REPO IDENTITY_TOOL=${IDENTITY_TOOL:-identity} IDENTITY_FILLS=${IDENTITY_FILLS:-} \
     KINOWO_GH=$KINOWO_GH KINOWO_GH_REPO=$KINOWO_GH_REPO KINOWO_IDENTITY_CACHE=$IDENTITY_CACHE \
-    python3 -I -B "$IDENTITY_LIB/identity_tools.py" "$@"
+    python3 -I -B "$IDENTITY_LIB/identity_tooling/identity_tools.py" "$@"
 }
 identity_capture() { identity_py capture "$@"; }
 identity_judgements() { identity_py judgements "$@"; }
@@ -71,7 +71,7 @@ identity_measure_branch() { identity_py measure-branch "$@"; }
 what_if_verdicts_file() { identity_py what-if-verdicts-file "$@"; }
 what_if_record_verdict() { identity_py what-if-record-verdict "$@"; }
 what_if_verdicts() { identity_py what-if-verdicts "$@"; }
-kept_jvm_call() { python3 -I -B "$IDENTITY_LIB/kept_jvm_call.py" "$@"; }
+kept_jvm_call() { python3 -I -B "$IDENTITY_LIB/identity_tooling/ci/kept_jvm_call.py" "$@"; }
 
 # identity_push_measure_branch <remote> <commit> <branch> -> <commit> pushed as refs/heads/<branch> (bounded), while no
 # other measure/ push of this machine is under way, git's output passed through. Fails with MEASURE_PUSH_ERROR set to the
@@ -139,7 +139,7 @@ identity_cpus=$(jvm_cpu_options); [ -z "$identity_cpus" ] || IDENTITY_JAVA+=("$i
 IDENTITY_SBT=(sbt "${IDENTITY_LOCALE[@]/#/-J}")
 
 # THE JVM SEQUENCES A PYTHON TOOL RUNS (identity-what-if's and identity-slice's, scripts/identity_what_if_cli.py and
-# scripts/identity_slice_cli.py, through scripts/lib/tool_shell.py): a JVM slot (jvm-gate.sh) is a lock held on
+# scripts/identity_slice_cli.py, through scripts/lib/processes/tool_shell.py): a JVM slot (jvm-gate.sh) is a lock held on
 # descriptor 7 by the PROCESS that took it and its children, so the take, the JVM it is for and the release are one bash
 # process's, never the Python tool's.
 #

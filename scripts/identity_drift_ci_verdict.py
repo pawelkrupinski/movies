@@ -11,7 +11,7 @@ from typing import List, Tuple
 
 import identity_drift_ci_runs as runs_
 from identity_drift_ci_runs import Row, open_findings
-import tool_countries
+from cli import tool_countries
 
 REPORT_LINE = re.compile(r"^## |^  [0-9]+ listing|^      ")
 

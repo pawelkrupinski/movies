@@ -48,7 +48,7 @@ import tool_git  # noqa: E402
 import header_tsv  # noqa: E402
 import identity_measure as measure  # noqa: E402
 from identity_judgements import read as read_judgements  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 ROOTS = os.path.join(HERE, "identity-what-if-roots.tsv")
 IDENTITY_SOURCES = "identity/src/main/scala/"

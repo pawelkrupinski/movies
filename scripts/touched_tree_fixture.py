@@ -14,7 +14,7 @@ import sys
 from typing import Dict, List, Mapping, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 ROOT = cli_harness.ROOT
 SOURCE = "scrapers/src/main/scala/services/cinemas/Genres.scala"

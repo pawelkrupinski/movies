@@ -12,7 +12,7 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts", "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("ios/scripts/swift_test_shuffled.py", "ios/scripts/swift-test-shuffled.sh")
 # `swift build` and `swift test list` answer from SHIM_TESTS; `swift test --filter <pattern>` reports by the test the

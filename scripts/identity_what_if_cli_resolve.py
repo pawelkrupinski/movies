@@ -11,7 +11,7 @@ import os
 from typing import List, Optional, Sequence, Tuple
 
 from identity_what_if_cli_context import TOOL, TOOL_FILES, Context
-from identity_kept_jvms import KeptJvmFiles, alive, is_socket, read, remove, tail_to_stderr  # (scripts/lib)
+from identity_tooling.ci.identity_kept_jvms import KeptJvmFiles, alive, is_socket, read, remove, tail_to_stderr  # (scripts/lib)
 
 WHAT_IF_RESOLVE = "services.identity.WhatIfResolve"
 KEPT_PATTERN = r"services\.identity\.WhatIfResolve"

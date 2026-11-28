@@ -18,7 +18,7 @@ The takes check reads the first and judges each move by the judgements; the slic
 """
 
 from identity_judgements import lines
-from tool_files import Files  # noqa: E402  (identity_judgements put scripts/lib on the path)
+from seams.tool_files import Files  # noqa: E402  (identity_judgements put scripts/lib on the path)
 
 EXPECTED_MATCHES = "test/resources/fixtures/identity-unmatched/expected-matches.tsv"
 

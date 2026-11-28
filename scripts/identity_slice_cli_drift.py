@@ -12,8 +12,8 @@ import sys
 from typing import List, Tuple
 
 from identity_slice_cli_context import Context, Exit, cat, say
-import tool_python  # (scripts/lib, on the path the context put it on)
-import tool_shell  # (scripts/lib, on the path the context put it on)
+from processes import tool_python  # (scripts/lib, on the path the context put it on)
+from processes import tool_shell  # (scripts/lib, on the path the context put it on)
 
 DRIFT = "scripts.IdentityDrift"
 WALK = "services.identity.PopulationMonotonicitySpec"

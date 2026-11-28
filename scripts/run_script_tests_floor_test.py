@@ -11,7 +11,7 @@ import unittest
 from typing import List
 
 from run_script_tests_fixture import ScriptTestsCase
-import cli_harness
+from harness import cli_harness
 
 CONSTRUCTS = ["mapfile -t lines < f", 'echo "${name,,}"', "wait -n", 'echo "${arr[-1]}"', "exec {fd}> f",
               "cmd |& tee f", "echo x &>> f", 'printf "%(%s)T" -1', "[[ -v name ]]", 'echo "${name@Q}"',

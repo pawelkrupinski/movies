@@ -46,7 +46,7 @@ usage: scripts/identity-drift-ci [<commit> | --head REF] [--countries pl,de,uk,u
                input is dispatched without it (movies-measure)
 
 It pushes the commit as `measure/<user>/<short sha>-drift-<random>` (the pre-push hook checks nothing on a measure/
-ref; the run deletes its branch as its last job), dispatches through scripts/lib/tool_dispatch.py, waits with backoff (60 s,
+ref; the run deletes its branch as its last job), dispatches through scripts/lib/vcs/tool_dispatch.py, waits with backoff (60 s,
 x1.5, at most 5 min; a line per poll, and $KINOWO_PROGRESS_FILE touched, so the pre-push hook's no-progress watchdog
 sees it alive), stops as soon as every requested drift row has ended (the run's tail goes on without it), then prints
 each row's verdict.txt and its report's divergence and flip lines.
@@ -67,8 +67,8 @@ from typing import Callable, Dict, List, Mapping, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
-import machine  # noqa: E402
-import identity_dispatch  # noqa: E402
+from processes import machine  # noqa: E402
+from identity_tooling.ci import identity_dispatch  # noqa: E402
 import identity_drift_ci_baseline as baseline_  # noqa: E402
 import identity_drift_ci_options as options_  # noqa: E402
 import identity_drift_ci_runs as runs_  # noqa: E402

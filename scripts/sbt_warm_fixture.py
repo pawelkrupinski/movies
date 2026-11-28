@@ -15,8 +15,8 @@ import sys
 from typing import Dict, List, Mapping, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
-import machine  # noqa: E402
+from harness import cli_harness  # noqa: E402
+from processes import machine  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/sbt-warm")
 ROOT = cli_harness.ROOT

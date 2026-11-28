@@ -13,7 +13,7 @@ import unittest
 from typing import Dict, Optional
 
 from run_script_tests_fixture import ROOT, RUNNER, ScriptTestsCase
-import cli_harness
+from harness import cli_harness
 
 
 class DiscoveryTest(ScriptTestsCase):
@@ -88,13 +88,16 @@ class ChangedTest(ScriptTestsCase):
         self.put("scripts/ci/n_test.py", "import sys\nimport takes_lib")
         self.put("scripts/ci/takes_lib.py", "def take(): return 1")
         self.put("scripts/ci/unrelated_test.py", "print(1)")
+        self.put("scripts/lib/pkg/packaged.py", "def take(): return 2")
+        self.put("scripts/ci/p_test.py", "from pkg import packaged")
         return self.commit("libraries")
 
     def test_what_a_tool_sources_or_imports_however_deep_selects_its_test(self) -> None:
         libs = self.libraries()
         for library, selected in (("scripts/lib/shared.sh", "scripts/k-test.sh"),
                                   ("scripts/lib/deeper.sh", "scripts/k-test.sh"),
-                                  ("scripts/ci/takes_lib.py", "scripts/ci/m_test.py scripts/ci/n_test.py")):
+                                  ("scripts/ci/takes_lib.py", "scripts/ci/m_test.py scripts/ci/n_test.py"),
+                                  ("scripts/lib/pkg/packaged.py", "scripts/ci/p_test.py")):  # a module of a package
             self.append(library, "# edited")
             self.assertEqual(selected, self.listed("--changed", libs), library)
             self.restore(library)

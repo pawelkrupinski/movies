@@ -34,12 +34,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "ci"))
 sys.path.insert(0, os.path.join(HERE, "lib"))
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 from tool_process import group_alive  # noqa: E402
 import atomic  # noqa: E402
 import identity_measure as measure  # noqa: E402
 from identity_judgements import read as read_judgements  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 IDENTITY_KINDS = ("accept:", "veto:", "join:", "apart:")
 HARMFUL = ("right-lost", "right->wrong", "new-wrong")

@@ -8,7 +8,7 @@ flips are the known rows. The base's rows are kept per base commit and slice und
 $KINOWO_IDENTITY_CACHE/population-walk/<sha>/ (a slice's data is the head's, so its key holds the slice's tree hash):
 a second push on the same base walks nothing again. The base's tree and classpath are identity-tools.sh's (laid out
 once, compiled seeded from the nearest compiled tree: only what the change touched recompiles), through
-scripts/lib/identity_ref_trees.py.
+scripts/lib/identity_tooling/ci/identity_ref_trees.py.
 A slice THE CHANGE BRINGS (its data or its `population` rows differ from the base's: population_walk_diff.py brought)
 is not walked at the base -- the base would walk the head's slice, and main's spec judges it on the known rows alone,
 so this judges it so too (Main #2515), each missing row printed ready to add.
@@ -25,10 +25,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(ROOT, "scripts", "lib"))
 import ci_machine  # noqa: E402
-import identity_ref_trees  # noqa: E402
+from identity_tooling.ci import identity_ref_trees  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
-import tool_python  # noqa: E402
+from processes import tool_python  # noqa: E402
 
 JUDGE = os.path.join("scripts", "ci", "population_walk_diff.py")
 FIXTURES = "test/resources/fixtures"

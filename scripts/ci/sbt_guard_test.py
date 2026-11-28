@@ -14,7 +14,7 @@ import unittest
 from typing import List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/ci/sbt_guard.py", "scripts/ci/sbt-guard/sbt")
 GUARD_DIR = os.path.join(cli_harness.ROOT, "scripts", "ci", "sbt-guard")

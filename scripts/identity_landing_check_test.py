@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# script-test-reads: scripts/identity-landing-check scripts/identity_landing_check*.py scripts/tool-conventions.sh scripts/ci/ci-row-scope.sh .github/actions/changed-paths/matches.sh .github/identity-drift-paths.txt scripts/lib/cli_harness.py scripts/lib/tool_process.py
+# script-test-reads: scripts/identity-landing-check scripts/identity_landing_check*.py scripts/tool-conventions.sh scripts/ci/ci-row-scope.sh .github/actions/changed-paths/matches.sh .github/identity-drift-paths.txt scripts/lib/harness/cli_harness.py scripts/lib/tool_process.py
 """scripts/identity-landing-check, black-box, over a fake identity-measure, a fake identity-ci-run (each group's sbt log
 from a fixture) and a fake identity-drift-ci: one verdict, LANDABLE only when the measure and every group pass, BLOCKED
 naming the failing spec, its test and the hint for its usual cause, and no verdict when a group could not run. Ported
@@ -13,7 +13,7 @@ import unittest
 from typing import List
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/identity_landing_check.py", "scripts/identity-landing-check")
 UNIT = ("testOnly services.identity.* services.titles.rules.* scripts.* tools.DocCommentPlacementSpec "

@@ -26,7 +26,7 @@ import sys
 from typing import Sequence
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 
 def read(files: Files, path: str, seed: str):

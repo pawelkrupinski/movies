@@ -36,7 +36,7 @@ two recordings is `scripts/recording-diff <runA> <runB> --country cc --venue S`;
 rule by rule, `scripts/title-trace` (each moved title prints its line).
 
 The tool's files dropped into each ref (as identity-slice does): VenueReplay and the recording reader it opens a
-recording with. The trees, classpath and recording come from identity-tools.sh through scripts/lib/identity_ref_trees.py
+recording with. The trees, classpath and recording come from identity-tools.sh through scripts/lib/identity_tooling/ci/identity_ref_trees.py
 until that library moves. Tested by scripts/venue_replay_test.py."""
 from __future__ import annotations
 
@@ -49,12 +49,12 @@ from dataclasses import dataclass, field
 from typing import List, Mapping
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
-import identity_ref_trees  # noqa: E402
-import tool_cli  # noqa: E402
+from processes import machine  # noqa: E402
+from identity_tooling.ci import identity_ref_trees  # noqa: E402
+from cli import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
-import tool_python  # noqa: E402
-import tool_shell  # noqa: E402
+from processes import tool_python  # noqa: E402
+from processes import tool_shell  # noqa: E402
 
 TOOL = "venue-replay"
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

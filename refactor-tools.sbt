@@ -1,5 +1,5 @@
 // THE TOUCHED-CODE TOOLS' sbt task (their plugins: project/refactor-tools.sbt). A file of its own:
-// scripts/lib/touched_tree.py lays it, with the plugins and the project/ sources it reads (AnalysisUnits, TouchedSpecs,
+// scripts/lib/code_tools/touched_tree.py lays it, with the plugins and the project/ sources it reads (AnalysisUnits, TouchedSpecs,
 // UsedNamesAccess), over an older commit's build to measure a range there.
 //
 // THE SPECS THAT REACH THE TOUCHED METHODS (project/TouchedSpecs.scala; scripts/mutation-check, scripts/coverage-touched):

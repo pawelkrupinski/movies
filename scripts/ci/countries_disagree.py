@@ -32,8 +32,8 @@ import sys
 sys.path[:0] = [os.path.dirname(os.path.abspath(__file__)), os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib")]
 import cross_country as X  # noqa: E402
 import ci_machine  # noqa: E402
-from tool_files import Files  # noqa: E402
-import mongo_local  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
+from mongo import mongo_local  # noqa: E402
 from identity_judgements import COUNTRIES, label_of, labels_by_country, read  # noqa: E402
 
 HEADING = "Countries disagree"

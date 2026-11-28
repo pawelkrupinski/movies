@@ -24,8 +24,8 @@ from typing import Dict, List, Mapping, TextIO, cast
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(HERE)), "scripts", "lib"))
-import machine  # noqa: E402
-import tool_actions  # noqa: E402
+from processes import machine  # noqa: E402
+from cli import tool_actions  # noqa: E402
 import tool_process  # noqa: E402
 
 # What `nix copy` passes to its own ssh. It must AGREE with the options bin/stage-nixos-closures uses for its direct

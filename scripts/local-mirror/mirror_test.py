@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# script-test-reads: scripts/local-mirror/mirror* scripts/local-mirror/*.js scripts/local-mirror/prod-tunnel.sh scripts/local-mirror/local-mongo.sh scripts/local-mirror/log-path.sh scripts/local-mirror/mongosh-at.sh scripts/lib/prod_tunnel.py scripts/lib/mongo_local.py scripts/jvm-gate.sh scripts/vault-env.sh
+# script-test-reads: scripts/local-mirror/mirror* scripts/local-mirror/*.js scripts/local-mirror/prod-tunnel.sh scripts/local-mirror/local-mongo.sh scripts/local-mirror/log-path.sh scripts/local-mirror/mongosh-at.sh scripts/lib/mongo/prod_tunnel.py scripts/lib/mongo/mongo_local.py scripts/jvm-gate.sh scripts/vault-env.sh
 """scripts/local-mirror/mirror.sh (the local prod mirror's daemon: one prod tunnel keeper, one supervised tailer a
 database), black-box, in three files that run side by side: this one (the vault re-exec, how the source URI is tuned, which
 databases it mirrors, the staleness gate, the collection-list digest and the code-change watch), mirror_supervision_test.py
@@ -29,7 +29,7 @@ import unittest
 from typing import Callable, Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/local-mirror/mirror.py", "scripts/local-mirror/mirror.sh")
 HERE = os.path.join(cli_harness.ROOT, "scripts", "local-mirror")
@@ -336,9 +336,7 @@ class MirrorCase(cli_harness.ToolCase):
     def mongosh_calls(self, kind: Optional[str] = None, db: Optional[str] = None) -> List[Dict[str, object]]:
         if not os.path.exists(self.path("mongosh.log")):
             return []
-        # whole lines only: a fake mongosh may be mid-append, its line not yet ended
-        complete = self.read("mongosh.log").split("\n")[:-1]
-        calls = [json.loads(line) for line in complete if line.strip()]
+        calls = [json.loads(line) for line in self.read("mongosh.log").splitlines() if line.strip()]
         return [c for c in calls if (kind is None or c["kind"] == kind) and (db is None or c["db"] == db)]
 
     def until_tailing(self, count: int = 1, db: Optional[str] = None) -> List[int]:
@@ -358,12 +356,6 @@ class MirrorCase(cli_harness.ToolCase):
         assert self.daemon is not None
         self.until("the daemon never ended", lambda: self.daemon is not None and self.daemon.poll() is not None)
         return int(self.daemon.returncode)
-
-
-class FixtureTest(MirrorCase):
-    def test_a_call_line_still_being_appended_is_not_read_yet(self) -> None:
-        self.write("mongosh.log", '{"kind": "tail", "db": "kinowo", "uri": "", "pid": 1}\n{"kind": "tail", "db": "kin')
-        self.assertEqual([1], [c["pid"] for c in self.mongosh_calls("tail")])
 
 
 class StartupTest(MirrorCase):

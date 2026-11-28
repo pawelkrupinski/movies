@@ -29,7 +29,7 @@ from typing import List, Mapping, Optional, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import tool_process  # noqa: E402
 
 TOOL = "fleet-db-finish"

@@ -8,9 +8,9 @@ import sys
 from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "lib"))
-import cli_harness  # noqa: E402
-import machine  # noqa: E402
-import tool_http  # noqa: E402
+from harness import cli_harness  # noqa: E402
+from processes import machine  # noqa: E402
+from seams import tool_http  # noqa: E402
 
 
 def printed(data: Any, jq: Optional[str], env: Dict[str, str]) -> int:

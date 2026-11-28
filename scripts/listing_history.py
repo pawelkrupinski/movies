@@ -36,8 +36,8 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "scripts", "lib"))
-import machine  # noqa: E402
-import mongo_local  # noqa: E402
+from processes import machine  # noqa: E402
+from mongo import mongo_local  # noqa: E402
 
 LOGS = "http://10.20.0.11:9428/select/logsql/query"
 PROMETHEUS = "http://10.20.0.11:9090/api/v1/query_range"

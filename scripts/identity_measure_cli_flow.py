@@ -8,7 +8,7 @@ import sys
 from typing import Optional
 
 import identity_measure_cli_options as options_
-import tool_countries
+from cli import tool_countries
 from identity_measure_cli_context import Context, Die, Exit, say
 from identity_measure_cli_dispatch import Dispatch, parts_of, what_if_gate
 from identity_measure_cli_footprint import Footprint

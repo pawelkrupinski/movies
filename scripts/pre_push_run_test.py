@@ -18,7 +18,7 @@ from typing import List, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 from pre_push_fixture import GREEN, RED, PushCase, lines, plain  # noqa: E402
-from cli_harness import Done  # noqa: E402
+from harness.cli_harness import Done  # noqa: E402
 
 # every check a path selects, with a path selecting it (the plan test holds the selection itself)
 SELECTING = {

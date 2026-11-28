@@ -11,7 +11,7 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 SHELL_TOOL = "#!/usr/bin/env bash\nset -euo pipefail\necho one\necho two\necho three\necho four\necho five\necho six\n"
 FORWARDER = '#!/bin/sh\n# the tool is its .py\nexec python3 "$(dirname "$0")/thin.py" "$@"\n'

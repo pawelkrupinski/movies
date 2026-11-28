@@ -14,7 +14,7 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_precision_sample as ps  # noqa: E402
 from identity_judgements import HEADER  # noqa: E402
-from tool_files import Files as DiskFiles  # noqa: E402
+from seams.tool_files import Files as DiskFiles  # noqa: E402
 
 
 def takes(*showtimes):

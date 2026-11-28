@@ -27,7 +27,7 @@ from itertools import combinations
 from typing import Dict, List, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-from production_scala import PRODUCTION_MODULES, is_production  # noqa: E402
+from code_tools.production_scala import PRODUCTION_MODULES, is_production  # noqa: E402
 
 
 def read_files(path: str) -> Dict[str, Tuple[int, int]]:

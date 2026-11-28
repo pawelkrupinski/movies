@@ -15,13 +15,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "ci"))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import convergence_reuse  # noqa: E402
-import identity_dispatch  # noqa: E402
-import tool_cli  # noqa: E402
-import tool_dispatch  # noqa: E402
+from identity_tooling.ci import identity_dispatch  # noqa: E402
+from cli import tool_cli  # noqa: E402
+from vcs import tool_dispatch  # noqa: E402
 import tool_git  # noqa: E402
-import tool_github  # noqa: E402
+from vcs import tool_github  # noqa: E402
 import tool_process  # noqa: E402
-import tool_shell  # noqa: E402
+from processes import tool_shell  # noqa: E402
 
 say = tool_cli.say_as("identity-drift-ci")
 

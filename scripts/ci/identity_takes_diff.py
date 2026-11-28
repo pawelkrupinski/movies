@@ -53,7 +53,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from identity_judgements import judgements_of, label_of, normalise  # noqa: E402
 from identity_takes import moved, table  # noqa: E402
 from report_fields import cell  # noqa: E402
-from tool_files import Files  # noqa: E402  (identity_judgements put scripts/lib on the path)
+from seams.tool_files import Files  # noqa: E402  (identity_judgements put scripts/lib on the path)
 
 
 def load(files: Files, path):

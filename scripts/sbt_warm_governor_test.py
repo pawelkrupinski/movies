@@ -13,7 +13,7 @@ import unittest
 from typing import Dict, Optional
 
 from sbt_warm_fixture import SbtWarmCase, lock_state
-import cli_harness
+from harness import cli_harness
 
 AGENTCTL = '''#!/usr/bin/env bash
 # its probe answers as the real one's does (jvm-gate.sh governor_bin)

@@ -58,11 +58,11 @@ from dataclasses import dataclass, field
 from typing import List, Mapping, Sequence, Set, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
-import tool_cli  # noqa: E402
+from processes import machine  # noqa: E402
+from cli import tool_cli  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
-import tool_shell  # noqa: E402
+from processes import tool_shell  # noqa: E402
 
 PURPOSE = "Proves the commit gate: a test that fails before the change and passes after it"
 USAGE = "usage: scripts/fail-before [<commit>] [--files <glob>]... [--ci | --local] -- <test command...>"

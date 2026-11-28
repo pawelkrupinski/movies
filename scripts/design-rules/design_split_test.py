@@ -17,7 +17,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 CORE = os.environ.get("DESIGN_RULES_UNDER_TEST") or HERE
 sys.path.insert(0, os.path.join(ROOT, "scripts", "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
 

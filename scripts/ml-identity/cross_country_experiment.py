@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(ROOT, "scripts/ci"))
 import cross_country as X  # noqa: E402  (the one reading of the countries' takes side by side)
 import identity_judgements as J  # noqa: E402
 sys.path.insert(0, os.path.join(ROOT, "scripts/lib"))
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 COUNTRIES = ["pl", "uk", "de", "es", "us"]
 title_key, overlap = X.title_key, X.overlap

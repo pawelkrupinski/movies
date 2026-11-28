@@ -21,9 +21,9 @@ from typing import Callable, Dict, Mapping, Optional, Sequence, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
-import machine  # noqa: E402
-import tool_countries  # noqa: E402
-import tool_github  # noqa: E402
+from processes import machine  # noqa: E402
+from cli import tool_countries  # noqa: E402
+from vcs import tool_github  # noqa: E402
 import tool_process  # noqa: E402
 
 

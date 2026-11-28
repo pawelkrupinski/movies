@@ -48,8 +48,8 @@ from typing import List, Mapping, NoReturn
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
-import machine  # noqa: E402
-import pinned_npm_tools  # noqa: E402
+from processes import machine  # noqa: E402
+from code_tools import pinned_npm_tools  # noqa: E402
 import tool_process  # noqa: E402
 
 TOOLS = os.path.join(HERE, "js-quality")

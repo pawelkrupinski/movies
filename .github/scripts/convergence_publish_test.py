@@ -15,7 +15,7 @@ from typing import Dict, Optional
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, "scripts/lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path(".github/scripts/convergence_publish.py", ".github/scripts/convergence-publish.sh")
 # The release is <work>/release (absent until created); an asset's createdAt is in <work>/created/<name>, else a fixed

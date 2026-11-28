@@ -15,9 +15,9 @@ from typing import Dict, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "scripts", "lib"))
-import cli_harness  # noqa: E402
-from store_screenshots_fixture import copy_layout, png  # noqa: E402
-from store_screenshots_common import png_size  # noqa: E402
+from harness import cli_harness  # noqa: E402
+from mobile.store_screenshots_fixture import copy_layout, png  # noqa: E402
+from mobile.store_screenshots_common import png_size  # noqa: E402
 
 TOOL = cli_harness.tool_path("android/scripts/store_graphics.py", "android/scripts/store-graphics.sh")
 LISTINGS = "android/app/src/main/play/listings"

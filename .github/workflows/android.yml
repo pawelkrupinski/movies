@@ -15,7 +15,7 @@ on:
             # Without these, editing the file that actually broke Spain's
             # capture would not run the test that catches it.
             - 'scripts/lib/store_screenshots*.py'
-            - 'scripts/lib/cli_harness.py'
+            - 'scripts/lib/harness/cli_harness.py'
             - 'ios/scripts/store-screenshots.sh'
             - 'ios/scripts/store_screenshots*.py'
             # The mobile RELEASE scripts' own specs run in the same step.
@@ -50,7 +50,7 @@ on:
             # Without these, editing the file that actually broke Spain's
             # capture would not run the test that catches it.
             - 'scripts/lib/store_screenshots*.py'
-            - 'scripts/lib/cli_harness.py'
+            - 'scripts/lib/harness/cli_harness.py'
             - 'ios/scripts/store-screenshots.sh'
             - 'ios/scripts/store_screenshots*.py'
             # The mobile RELEASE scripts' own specs run in the same step.
@@ -268,7 +268,7 @@ jobs:
                   python3 scripts/ios_release_test.py
                   scripts/ci/gh-release-test.sh
                   scripts/ci/gh-optional-test.sh
-                  python3 scripts/lib/seeded_order_test.py
+                  python3 scripts/lib/mobile/seeded_order_test.py
                   python3 ios/scripts/swift_test_shuffled_test.py
                   python3 android/scripts/devtest_shuffled_test.py
                   scripts/ci/order-seed-test.sh

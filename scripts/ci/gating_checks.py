@@ -20,7 +20,7 @@ reads: a gate workflow, and a job in one (a reusable workflow's included: they r
     marks a job that fails only because one it waits on did (a reusable call's wrapper, timings, a verdict job);
     `unproven` a check that has not had its green run yet.
   - AN UNPROVEN CHECK REPORTS, IT DOES NOT GATE: a gate run red only in unproven jobs (and the aggregates that follow
-    them) is no red for the push gate (the hook's red gate, scripts/lib/pre_push_gate.py, asks `report-only`). Its red is still listed --
+    them) is no red for the push gate (the hook's red gate, scripts/lib/pre_push_hook/pre_push_gate.py, asks `report-only`). Its red is still listed --
     and still somebody's -- but no push waits on it.
   - `lint` holds the registry to the workflows: every job a gate workflow (or a workflow it calls) defines has a row,
     every row names a job that exists, and every gate workflow the hook reads has a `workflow` row -- proven, or
@@ -53,7 +53,7 @@ import sys
 REGISTRY = ".github/gating-checks.tsv"
 HEADER = "kind\tworkflow\tname\tproven\tnote"
 GATE_WORKFLOWS = ("main.yml", "identity-model-convergence.yml", "identity-takes.yml")
-GATE = "scripts/lib/pre_push_gate.py"  # the hook's red gate: its GATING_WORKFLOW_FILES line
+GATE = "scripts/lib/pre_push_hook/pre_push_gate.py"  # the hook's red gate: its GATING_WORKFLOW_FILES line
 EXPR = re.compile(r"\$\{\{.*?\}\}")
 CALL = re.compile(r"^\s+uses:\s*\./\.github/workflows/(\S+\.ya?ml)\s*$", re.M)
 
@@ -161,7 +161,7 @@ def lint(root: str) -> list[str]:
     for file in hook_gate_files(root):
         # a gate workflow lands with its row `unproven` (owner and why) and reports until its first green run proves it
         if not any(r["kind"] == "workflow" and r["workflow"] == file and r["proven"] != "aggregate" for r in rows):
-            problems.append(f"{file} gates pushes (the hook's GATING_WORKFLOW_FILES, scripts/lib/pre_push_gate.py) but "
+            problems.append(f"{file} gates pushes (the hook's GATING_WORKFLOW_FILES, scripts/lib/pre_push_hook/pre_push_gate.py) but "
                             "has no `workflow` row (proven, or "
                             "`unproven` with its owner until its first green run)")
     for file in GATE_WORKFLOWS:

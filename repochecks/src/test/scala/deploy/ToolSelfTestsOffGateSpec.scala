@@ -60,12 +60,12 @@ class ToolSelfTestsOffGateSpec extends AnyFlatSpec with Matchers {
   }
 
   "the pre-push hook" should "still run the script self-tests before a change touching them lands, the old refs no more" in {
-    // the check is Python's since the hook's stage 5 (scripts/lib/pre_push_scripttests.py)
-    val check = RepoFile.read("scripts/lib/pre_push_scripttests.py")
+    // the check is Python's since the hook's stage 5 (scripts/lib/pre_push_hook/checks/pre_push_scripttests.py)
+    val check = RepoFile.read("scripts/lib/pre_push_hook/checks/pre_push_scripttests.py")
     check should include("RUNNER = \"scripts/run-script-tests\"")
     check should include("[RUNNER, \"--changed\"")
-    RepoFile.read("scripts/lib/pre_push_registry.py") should not include "\"oldrefs\""
-    RepoFile.read("scripts/lib/pre_push_plan.py") should not include "\"oldrefs\""
+    RepoFile.read("scripts/lib/pre_push_hook/checks/pre_push_registry.py") should not include "\"oldrefs\""
+    RepoFile.read("scripts/lib/pre_push_hook/plan/pre_push_plan.py") should not include "\"oldrefs\""
   }
 
   it should "run on a change to every checked-in file the judgements lint's self-test reads" in {

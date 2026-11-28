@@ -9,7 +9,7 @@ import os
 import re
 from typing import Optional, Tuple
 
-from store_screenshots_common import ALL_COUNTRIES, COUNTRY, city_area_count, fold, naps
+from mobile.store_screenshots_common import ALL_COUNTRIES, COUNTRY, city_area_count, fold, naps
 from store_screenshots_device import Device
 
 Point = Tuple[int, int]

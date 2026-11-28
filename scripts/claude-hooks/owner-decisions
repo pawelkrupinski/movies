@@ -35,9 +35,9 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import atomic  # noqa: E402
-import hook_event  # noqa: E402
+from cli import hook_event  # noqa: E402
 
 STATE_DIR = machine.environment().get("OWNER_DECISIONS_STATE_DIR", os.path.expanduser("~/.cache/claude-owner-decisions"))
 REMIND_SECONDS = float(machine.environment().get("OWNER_DECISIONS_REMIND_SECONDS", 30 * 60))

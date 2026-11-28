@@ -68,8 +68,8 @@ from typing import List, Mapping, Optional, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "scripts", "lib"))
-import machine  # noqa: E402
-from store_screenshots_common import (COUNTRY, Lock, Output, Store, all_top_counts,  # noqa: E402
+from processes import machine  # noqa: E402
+from mobile.store_screenshots_common import (COUNTRY, Lock, Output, Store, all_top_counts,  # noqa: E402
                                       capture_args, cmd_top, countries_of, country_top, effective_k, exit_code, naps,
                                       noise_file, open_preview, preview_all, run_worker, usage_of,
                                       worker_slice)

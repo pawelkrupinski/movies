@@ -15,7 +15,7 @@ from typing import Any, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
                                 "scripts", "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("infra/bin/flux_rotate_deploy_keys.py", "infra/bin/flux-rotate-deploy-keys")
 URL = "ssh://git@github.com/pawelkrupinski/movies-gitops.git"

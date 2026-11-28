@@ -13,7 +13,7 @@ import unittest
 from typing import Dict, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 STUB = """#!/bin/sh
 printf '%s\\n' "$*" > "$(dirname "$0")/../called"

@@ -20,7 +20,7 @@ import unittest
 from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/ci/identity_takes_check.py", "scripts/ci/identity-takes-check.sh")
 CI = os.path.join(cli_harness.ROOT, "scripts/ci")
@@ -224,9 +224,9 @@ class TakesCase(cli_harness.ToolCase):
                                               "corpus_shape_diff.py")]:
             os.makedirs(self.path("job/scripts/ci"), exist_ok=True)
             shutil.copy(f, self.path("job/scripts/ci"))
-        os.makedirs(self.path("job/scripts/lib"), exist_ok=True)
-        for n in ("tool_git.py", "tool_process.py", "tool_files.py", "atomic.py"):  # what harness_aa.py and identity_judgements.py import
-            shutil.copy(os.path.join(cli_harness.ROOT, "scripts/lib", n), self.path("job/scripts/lib"))
+        for n in ("tool_git.py", "tool_process.py", "seams/tool_files.py", "atomic.py"):  # what harness_aa.py and identity_judgements.py import
+            os.makedirs(os.path.dirname(self.path("job/scripts/lib/" + n)), exist_ok=True)
+            shutil.copy(os.path.join(cli_harness.ROOT, "scripts/lib", n), self.path("job/scripts/lib/" + n))
 
     def store_run(self, head: int, env: Optional[Env] = None, base: Optional[int] = 4) -> int:
         """The check of c<head> on main, storing on the release, against TAKES_BASE=c<base> (None: none named)."""

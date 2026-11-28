@@ -15,7 +15,7 @@ import unittest
 from typing import List
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/ci/close_mongo_tunnel.py", "scripts/ci/close-mongo-tunnel.sh")
 # holds the listening socket it is handed (fd argv[1]) and accepts on it until ended

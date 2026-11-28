@@ -9,9 +9,9 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Mapping, Optional
 
-import identity_jvm
+from identity_tooling.ci import identity_jvm
 import tool_git
-import tool_github
+from vcs import tool_github
 import tool_process
 
 IDENTITY_SBT = identity_jvm.SBT

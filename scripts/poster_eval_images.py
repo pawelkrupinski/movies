@@ -18,10 +18,10 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import poster_hash  # noqa: E402
 import atomic  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 from tool_process import Runner  # noqa: E402
 from poster_eval_common import Language, UserAgent, log  # noqa: E402
 

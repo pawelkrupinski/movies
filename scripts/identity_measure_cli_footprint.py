@@ -14,7 +14,7 @@ import sys
 from typing import List, Optional, Tuple
 
 import tool_process
-import tool_python
+from processes import tool_python
 from identity_measure_cli_context import HERE, IDENTITY_TOOLS, Context, say
 from identity_measure_cli_paths import TakePaths
 from identity_measure_cli_results import Results

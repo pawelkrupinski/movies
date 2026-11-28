@@ -14,7 +14,7 @@ import unittest
 from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 SCRIPTS = ("identity-judge-cards", "identity_judge_cards.py", "identity-tools.sh", "tool-conventions.sh", "jvm-gate.sh",
            "vault-env.sh")
@@ -38,8 +38,10 @@ class IdentityJudgeCardsTest(cli_harness.ToolCase):
             source = os.path.join(cli_harness.ROOT, "scripts", name)
             if os.path.exists(source):
                 shutil.copy2(source, os.path.join(self.checkout, "scripts", name))
-        for module in glob.glob(os.path.join(cli_harness.ROOT, "scripts", "lib", "*.py")):
-            shutil.copy2(module, os.path.join(self.checkout, "scripts", "lib"))
+        for module in glob.glob(os.path.join(cli_harness.ROOT, "scripts", "lib", "**", "*.py"), recursive=True):
+            target = os.path.join(self.checkout, os.path.relpath(module, cli_harness.ROOT))
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            shutil.copy2(module, target)
         for tree in ("worker/src", "common/src", "identity/src", "testkit/src"):
             os.makedirs(os.path.join(self.checkout, tree))
         self.write("repo/test/resources/fixtures/identity-unmatched/pl.json.gz", "pl\n")

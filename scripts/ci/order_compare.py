@@ -43,8 +43,8 @@ sys.path[:0] = [HERE, os.path.join(os.path.dirname(HERE), "lib")]
 import order_compare_readers as readers  # noqa: E402
 import order_compare_verdicts as verdicts  # noqa: E402
 import ci_machine  # noqa: E402
-import tool_actions  # noqa: E402
-import tool_cli  # noqa: E402
+from cli import tool_actions  # noqa: E402
+from cli import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
 
 LEGS = ("scala-reverse", "scala-shuffled", "android", "android-instrumented", "swift", "ios")

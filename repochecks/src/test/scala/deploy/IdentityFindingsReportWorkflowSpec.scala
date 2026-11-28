@@ -59,8 +59,8 @@ class IdentityFindingsReportWorkflowSpec extends AnyFlatSpec with Matchers {
   // Gating pushes on a recording's data would rebuild the coupling this report exists to undo:
   // no push makes or mends a recording.
   it should "not be one of the red-build gate's workflows" in {
-    val gating = """(?m)^GATING_WORKFLOWS = \(([^)]*)\)""".r.findFirstMatchIn(RepoFile.read("scripts/lib/pre_push_gate.py"))
-      .getOrElse(fail("scripts/lib/pre_push_gate.py names no GATING_WORKFLOWS")).group(1)
+    val gating = """(?m)^GATING_WORKFLOWS = \(([^)]*)\)""".r.findFirstMatchIn(RepoFile.read("scripts/lib/pre_push_hook/pre_push_gate.py"))
+      .getOrElse(fail("scripts/lib/pre_push_hook/pre_push_gate.py names no GATING_WORKFLOWS")).group(1)
     // THE GATE is exactly Main, Identity model convergence (the owner, 2026-10-27) and Identity takes (2026-11-08)
     "\"([^\"]+)\"".r.findAllMatchIn(gating).map(_.group(1)).toSeq shouldBe Seq("Main", "Identity model convergence",
       "Identity takes")

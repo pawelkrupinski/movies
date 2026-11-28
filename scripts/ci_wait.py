@@ -31,7 +31,7 @@ from typing import Any, Callable
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 
 EXIT_SUCCESS, EXIT_FAILURE, EXIT_NO_VERDICT, EXIT_CANCELLED = 0, 1, 2, 3
 RUN_FIELDS = "databaseId,headSha,headBranch,status,conclusion,workflowName,createdAt,updatedAt"

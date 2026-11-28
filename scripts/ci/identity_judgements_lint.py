@@ -53,9 +53,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_judgements as j  # noqa: E402  (the one reader of the judgements, shared with the takes check)
 import identity_takes  # noqa: E402  (the one reader of the take files)
 from identity_judgements import label_of, normalise  # noqa: E402
-import machine  # noqa: E402  (identity_judgements put scripts/lib on the path)
+from processes import machine  # noqa: E402  (identity_judgements put scripts/lib on the path)
 import tool_process  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 JUDGEMENTS = j.PATH
 EXPECTED_MATCHES = identity_takes.EXPECTED_MATCHES

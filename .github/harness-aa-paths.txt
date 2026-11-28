@@ -23,7 +23,7 @@ scripts/ci/harness_aa.py
 scripts/ci/identity-takes-check.sh
 scripts/ci/identity_takes_check
 scripts/lib/tool_process.py
-scripts/lib/tool_github.py
+scripts/lib/vcs/tool_github.py
 scripts/lib/tool_git.py
 scripts/ci/identity_takes_diff.py
 worker/src/it/scala/IdentityResolveDump.scala

@@ -14,13 +14,13 @@ from fnmatch import fnmatchcase
 from typing import Dict, List, Mapping, Optional, Sequence
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "lib"))
-import cli_harness  # noqa: E402
-from tool_files import Files, LocalDisk  # noqa: E402
+from harness import cli_harness  # noqa: E402
+from seams.tool_files import Files, LocalDisk  # noqa: E402
 
 ROOT = cli_harness.ROOT
 HOOK = "scripts/hooks/pre-push"
 # What the hook runs from its own tree, copied into every scratch checkout (globs from the repository root)
-COPIED = ["scripts/hooks/*", "scripts/hooks-path.sh", "scripts/stall-watch.sh", "scripts/stall_watch.py", "scripts/lib/*.py",
+COPIED = ["scripts/hooks/*", "scripts/hooks-path.sh", "scripts/stall-watch.sh", "scripts/stall_watch.py", "scripts/lib/**/*.py",
           "scripts/pre_push.py", "scripts/identity-tools.sh", "scripts/identity_tools*.py"]
 
 REGISTRY = "\n".join([
@@ -122,10 +122,15 @@ def copy_file(source: str, target: str) -> None:
 
 
 def copy_matching(dest: str, pattern: str) -> None:
-    """This checkout's files matching `pattern` (a directory, then a name pattern) into the same place under `dest`."""
+    """This checkout's files matching `pattern` (a directory, then a name pattern; `<directory>/**/<name>` the
+    directory and every one below it) into the same place under `dest`."""
     directory, name = pattern.rsplit("/", 1)
+    below = directory.endswith("/**")
+    directory = directory[:-3] if below else directory
     for found in FILES.list(f"{ROOT}/{directory}"):
-        if fnmatchcase(found, name) and FILES.is_file(f"{ROOT}/{directory}/{found}"):
+        if below and FILES.is_dir(f"{ROOT}/{directory}/{found}"):
+            copy_matching(dest, f"{directory}/{found}/**/{name}")
+        elif fnmatchcase(found, name) and FILES.is_file(f"{ROOT}/{directory}/{found}"):
             copy_file(f"{ROOT}/{directory}/{found}", f"{dest}/{directory}/{found}")
 
 

@@ -32,10 +32,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(HERE, "ci"))
 sys.path.insert(0, os.path.join(HERE, "lib"))
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import tool_process  # noqa: E402
 from mongo_tunnel import ci_read_uri as tunnel_uri  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 MONGOSH_AT = os.path.join(HERE, "local-mirror", "mongosh-at.sh")
 CI_READ_NIX = "infra/nix/modules/roles/mongo-ci-read.nix"

@@ -24,7 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TOOL = os.path.join(HERE, "identity_stamp_carry.py")
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 import identity_stamp_carry as stamp_carry  # noqa: E402
 from pure_move_check_test import CLEAN_ENV, FOO, SCRATCH_GIT, FOO_PATH, NEW_FOO_PATH, SIBLING, USER, Repo  # noqa: E402
 

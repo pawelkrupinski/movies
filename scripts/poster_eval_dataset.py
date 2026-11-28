@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from poster_eval_common import (Arrays, Countries, Databases, ExtractVersion, Here, Key, Mask, Meta, RefreshHours, log, np)
-import mongo_local  # noqa: E402  (after poster_eval_common, which puts scripts/lib on sys.path)
+from mongo import mongo_local  # noqa: E402  (after poster_eval_common, which puts scripts/lib on sys.path)
 
 Rows = List[Dict[str, Any]]
 

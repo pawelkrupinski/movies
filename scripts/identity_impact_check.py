@@ -37,7 +37,7 @@ from typing import List
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 sys.path[:0] = [HERE] + [os.path.join(HERE, sub) for sub in ("ci", "lib")]  # its modules, identity_impact, scripts/lib
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import identity_impact_check_tree as tree_module  # noqa: E402
 import identity_impact_check_modes as modes  # noqa: E402
 import tool_process  # noqa: E402

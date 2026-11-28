@@ -17,7 +17,7 @@ from typing import Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
                                 "scripts", "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("infra/bin/check.py", "infra/bin/check")
 HOSTS = ("mongo-1", "monitoring-1", "k3s-worker-1")

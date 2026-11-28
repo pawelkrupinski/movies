@@ -31,7 +31,7 @@ import unittest
 from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/ci/identity_drift_check.py", "scripts/ci/identity-drift-check.sh")
 CI = os.path.join(cli_harness.ROOT, "scripts/ci")

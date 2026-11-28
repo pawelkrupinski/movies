@@ -54,9 +54,9 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [os.path.join(HERE, "ci"), os.path.join(HERE, "lib")]
-import machine  # noqa: E402
-import mongo_local  # noqa: E402
-from tool_files import Files  # noqa: E402
+from processes import machine  # noqa: E402
+from mongo import mongo_local  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 from identity_judgements import COUNTRIES, label_of, labels_by_country, normalise, read  # noqa: E402
 
 EXPORT = os.path.join(HERE, "identity-precision-export.js")

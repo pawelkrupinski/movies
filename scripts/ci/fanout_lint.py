@@ -3,7 +3,7 @@
 """THE FAN-OUT LINT (the owner, 2026-11-25: "fix structurally"; a guard so it stays fixed). Load 103 on 18 cores while
 `agentctl gov status` said 0 admitted: the mutation tests' `xargs -P 4`, run beside eight others, held no ticket. Every
 parallel runner sizes itself through THE GOVERNED FAN-OUT (scripts/jvm-gate.sh gov_width): `scripts/gov-parallel` for
-`xargs -P`, `scripts/lib/tool_pool.py` governed_workers for a Python pool, run-script-tests' own pool. This refuses,
+`xargs -P`, `scripts/lib/governor/tool_pool.py` governed_workers for a Python pool, run-script-tests' own pool. This refuses,
 in every tool under the roots below:
 
 - an `xargs ... -P N` (or --max-procs) anywhere but scripts/gov-parallel;
@@ -28,7 +28,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 ROOTS = ("scripts/", ".github/scripts/", ".github/actions/", "infra/bin/", "infra/nix/files/", "android/scripts/",
          "ios/scripts/")
-HELPERS = {"scripts/gov-parallel", "scripts/lib/tool_pool.py", "scripts/ci/fanout_lint.py",
+HELPERS = {"scripts/gov-parallel", "scripts/lib/governor/tool_pool.py", "scripts/ci/fanout_lint.py",
            "scripts/ci/fanout_lint_test.py"}
 ALLOW = "scripts/ci/fanout-allow.tsv"
 XARGS = re.compile(r"\bxargs\b[^|;&]*?(\s-P\s*\S|\s--max-procs)")
@@ -90,7 +90,7 @@ def code_lines(text: str) -> List[Tuple[int, str]]:
 
 
 XARGS_WHY = "an `xargs -P` fan-out: run it through scripts/gov-parallel --job J -P N"
-POOL_WHY = f"a worker pool not sized by governed_workers (scripts/lib/tool_pool.py), nor allowed in {ALLOW}"
+POOL_WHY = f"a worker pool not sized by governed_workers (scripts/lib/governor/tool_pool.py), nor allowed in {ALLOW}"
 BACKGROUND_WHY = (f"a background job per loop iteration, then `wait`: a hand-rolled pool -- run it through "
                   f"scripts/gov-parallel --job J -P N, or say why in {ALLOW}")
 

@@ -12,7 +12,7 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 ROOT = cli_harness.ROOT
 # It pins under the emit root it is handed (KINOWO_IDENTITY_SLICE_EMIT_ROOT, as scripts/identity-slice reads it), saying

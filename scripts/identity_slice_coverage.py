@@ -19,7 +19,7 @@ main red twice that way (#2180, the Halstead and Keswick cases).
 Runs in this checkout's warm sbt (scripts/sbt-warm; IDENTITY_SLICE_COVERAGE_SBT names another, for its test): ~30 s
 over the ~110 slices once compiled (~2.5 min on a loaded laptop). The pre-push hook's identity area runs it before the area's specs
 (scripts/hooks/local-tests.txt's `identity first` line), so every missing answer is named before a push, not by main.
-The recordings come from identity-tools.sh (identity_recording_cached, identity_recording) through scripts/lib/tool_shell.py
+The recordings come from identity-tools.sh (identity_recording_cached, identity_recording) through scripts/lib/processes/tool_shell.py
 until that library moves. Tested by scripts/identity_slice_coverage_test.py."""
 from __future__ import annotations
 
@@ -31,9 +31,9 @@ import tempfile
 from typing import List, Mapping, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import tool_process  # noqa: E402
-import tool_shell  # noqa: E402
+from processes import tool_shell  # noqa: E402
 
 TOOL = "identity-slice-coverage"
 HERE = os.path.dirname(os.path.abspath(__file__))

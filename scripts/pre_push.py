@@ -8,8 +8,8 @@ questions of it while it runs: the checks a push runs, the test configs it compi
   scripts/pre_push.py <hook> <mode> [args]    what the hook runs: <hook> is its path (its tables lie beside it)
   scripts/pre_push.py <hook> --run [args]     THE RUN: what the hook does for a push (git's stdin) or a dry run
                                               (--range / --checks-only / --fast-only / --verify-only A..B):
-                                              scripts/lib/pre_push_run.py, the checks the hook's own shell functions
-  scripts/pre_push.py <hook> --check <c> <state>   one Python check (scripts/lib/pre_push_registry.py) here,
+                                              scripts/lib/pre_push_hook/pre_push_run.py, the checks the hook's own shell functions
+  scripts/pre_push.py <hook> --check <c> <state>   one Python check (scripts/lib/pre_push_hook/checks/pre_push_registry.py) here,
                                               after the run's state (JSON): what the run starts for each
 
 Paths are read on stdin, one a line; the answer goes to stdout. The checkout is the hook's working tree's root (git's);
@@ -23,13 +23,13 @@ import sys
 from typing import List, MutableMapping, Sequence, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "lib"))
-import machine  # noqa: E402
-import pre_push_modes as modes  # noqa: E402
-import pre_push_light as light  # noqa: E402
-import pre_push_registry as registry  # noqa: E402
-import pre_push_run  # noqa: E402
-from pre_push_repo import Repo, Terminal  # noqa: E402
-from tool_files import Files, LocalDisk  # noqa: E402
+from processes import machine  # noqa: E402
+from pre_push_hook.plan import pre_push_modes as modes  # noqa: E402
+from pre_push_hook.checks import pre_push_light as light  # noqa: E402
+from pre_push_hook.checks import pre_push_registry as registry  # noqa: E402
+from pre_push_hook import pre_push_run  # noqa: E402
+from pre_push_hook.plan.pre_push_repo import Repo, Terminal  # noqa: E402
+from seams.tool_files import Files, LocalDisk  # noqa: E402
 
 # git exports these for the repository being pushed; the hook runs at the checkout's root, where git finds it alone
 GIT_VARIABLES = pre_push_run.GIT_VARIABLES

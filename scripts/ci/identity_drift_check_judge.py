@@ -11,7 +11,7 @@ import sys
 from dataclasses import dataclass, field
 from typing import List, Mapping, Tuple
 
-import tool_actions
+from cli import tool_actions
 import tool_process
 
 

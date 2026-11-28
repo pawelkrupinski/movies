@@ -11,7 +11,7 @@ import unittest
 from typing import List
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/ci/scheduled_failure_issue.py", "scripts/ci/scheduled-failure-issue.sh")
 GH = r"""

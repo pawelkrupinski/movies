@@ -15,7 +15,7 @@ from identity_slice_cli_keys import Keys
 from identity_slice_cli_modes import Modes
 from identity_slice_cli_options import Usage
 from identity_slice_cli_run import Slicer
-import tool_python  # (scripts/lib, on the path the context put it on)
+from processes import tool_python  # (scripts/lib, on the path the context put it on)
 
 
 def ifs_fields(line: str, n: int) -> List[str]:

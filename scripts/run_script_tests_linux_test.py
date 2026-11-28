@@ -14,7 +14,7 @@ import unittest
 from typing import Dict, List, Optional
 
 from run_script_tests_fixture import ROOT, ScriptTestsCase
-import cli_harness
+from harness import cli_harness
 
 DOCKER = r'''#!/usr/bin/env bash
 echo "$*" >> "$DOCKER_CALLS"

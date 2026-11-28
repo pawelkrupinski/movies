@@ -12,7 +12,7 @@ import unittest
 from typing import Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/ci/precommit_share.py", "scripts/ci/precommit-share.sh")
 COPIED = ("scripts/hooks/pre-push", "scripts/hooks/local-tests.txt", "scripts/hooks-path.sh", "scripts/tool-conventions.sh",

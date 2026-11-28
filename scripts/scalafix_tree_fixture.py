@@ -9,7 +9,7 @@ import sys
 from typing import Any, Dict, List, Mapping, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 # every module's configurations, dependents first (as the shell tool spelled them)
 CONFIGURATIONS = """quality/Test quality/Compile e2e/Test web/PageTest web/IntegrationTest web/Test web/Compile

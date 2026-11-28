@@ -14,7 +14,7 @@ from typing import Optional
 
 import mirror_settings
 from mirror_settings import Pauses, Settings, Stopped, here, say, warn
-from prod_tunnel import shell_status
+from mongo.prod_tunnel import shell_status
 
 RESEED, TAIL = True, False
 

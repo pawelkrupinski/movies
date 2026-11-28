@@ -4,7 +4,7 @@
 # The one place that knows HOW a laptop reaches prod Mongo. Sourced by every
 # local shell script whose source is prod (../reset-corpus.sh, ../with-prod-mongo.sh,
 # ../prod-ops.sh, ../identity-capture.sh, ../identity-calibrate.sh); its Python
-# twin, for the /debug mirror daemon (mirror.py), is scripts/lib/prod_tunnel.py.
+# twin, for the /debug mirror daemon (mirror.py), is scripts/lib/mongo/prod_tunnel.py.
 # The URI rewrite and the free-port scan are written once, in the Python file; the forward itself (its pid, its
 # ssh options) is in both. Repoint both together.
 #
@@ -90,8 +90,8 @@ prod_tunnel_uri() { python3 -B "$PROD_TUNNEL_PY" uri --pid $$ ${PROD_TUNNEL_PORT
 # The local port this caller's tunnel binds: $PROD_TUNNEL_PORT when set, else the first port from a pid-derived start
 # (27100-27899) that nothing accepts on. $$ is the caller's pid even inside $(...), so the URI built before the tunnel
 # opens and the tunnel opened later pick the same port. Fails (nothing printed) when 200 in a row are taken. The
-# rewrite and the scan are scripts/lib/prod_tunnel.py's, the Python tools' too: written once.
-PROD_TUNNEL_PY="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/prod_tunnel.py"
+# rewrite and the scan are scripts/lib/mongo/prod_tunnel.py's, the Python tools' too: written once.
+PROD_TUNNEL_PY="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)/mongo/prod_tunnel.py"
 prod_tunnel_free_port() { python3 -B "$PROD_TUNNEL_PY" free-port --pid $$ ${PROD_TUNNEL_PORT:+--pin "$PROD_TUNNEL_PORT"}; }
 
 # The port of THIS caller's tunnel: the pinned one, else the one its probe URI already names (so the forward is the

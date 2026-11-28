@@ -3,7 +3,7 @@
 
 A CLASS MOVED TO ANOTHER PACKAGE, its references rewritten compiler-checked (scalafix's MoveSymbol rule,
 scripts/scalafix-rules/MoveSymbol.scala, reading what every name means from SemanticDB -- never a text search): in the
-kept scalafix tree (scripts/lib/scalafix_tree.py), every module's sources rewritten, the source moved to the new
+kept scalafix tree (scripts/lib/code_tools/scalafix_tree.py), every module's sources rewritten, the source moved to the new
 package's directory, then every configuration compiled; only a rewrite that compiles is laid back over the checkout and
 its index. Run scripts/scalafix-organize afterwards for the import order the rewrite's added imports left.
 
@@ -27,9 +27,9 @@ import sys
 from typing import List, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
-import scalafix_tree  # noqa: E402
-import tool_cli  # noqa: E402
+from processes import machine  # noqa: E402
+from code_tools import scalafix_tree  # noqa: E402
+from cli import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
 
 TOOL = "scalafix-move"

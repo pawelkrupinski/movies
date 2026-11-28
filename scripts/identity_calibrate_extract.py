@@ -17,7 +17,7 @@ from typing import Dict, List
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(HERE, "lib"))
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import tool_process  # noqa: E402
 
 URI = "KINOWO_CALIBRATE_URI"

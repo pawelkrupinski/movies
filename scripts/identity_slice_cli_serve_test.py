@@ -18,7 +18,7 @@ from typing import Set
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from identity_slice_cli_fixture import SliceCase, children, count, keeper_of  # noqa: E402
-import cli_harness  # noqa: E402  (scripts/lib, on the path the fixture put it on)
+from harness import cli_harness  # noqa: E402  (scripts/lib, on the path the fixture put it on)
 
 KEY = ("de", "--recording", "777", "--key", "Kino|Lalka")
 

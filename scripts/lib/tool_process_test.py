@@ -13,7 +13,7 @@ import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 import tool_process  # noqa: E402
 
 SH = ["/bin/sh", "-c"]
@@ -188,7 +188,7 @@ signal.signal(signal.SIGINT, signal.default_int_handler)  # whatever the run aro
 tool_process.SubprocessRunner().run(tool_process.Command(["/bin/sh", "-c", sys.argv[2]],
     dict(os.environ), log=sys.argv[3], timeout=600))"""
 RUN_IN_A_THREAD = TOOL + """import threading
-import cli_harness
+from harness import cli_harness
 runner = tool_process.SubprocessRunner()
 command = tool_process.Command(["/bin/sh", "-c", sys.argv[2]], dict(os.environ), log=sys.argv[3], timeout=600)
 thread = threading.Thread(target=runner.run, args=(command,), daemon=True)

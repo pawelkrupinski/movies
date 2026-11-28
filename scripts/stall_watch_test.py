@@ -19,7 +19,7 @@ import unittest.mock
 from typing import List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/stall_watch.py", "scripts/stall-watch.sh")
 SHELL_NAME = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stall-watch.sh")

@@ -36,15 +36,15 @@ from typing import Dict, List, Mapping, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
-import machine  # noqa: E402
-import identity_dispatch  # noqa: E402
+from processes import machine  # noqa: E402
+from identity_tooling.ci import identity_dispatch  # noqa: E402
 import ci_wait  # noqa: E402
-import tool_cli  # noqa: E402
-import tool_dispatch  # noqa: E402
+from cli import tool_cli  # noqa: E402
+from vcs import tool_dispatch  # noqa: E402
 import tool_git  # noqa: E402
-import tool_github  # noqa: E402
+from vcs import tool_github  # noqa: E402
 import tool_process  # noqa: E402
-import tool_shell  # noqa: E402
+from processes import tool_shell  # noqa: E402
 
 TOOL = "identity-ci-run"
 WORKFLOW = "identity-run.yml"

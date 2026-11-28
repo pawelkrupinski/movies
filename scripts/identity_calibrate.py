@@ -27,7 +27,7 @@ Inputs:
   VERSION   names the artefact (default calibration-<TODAY>, decorations-<TODAY> for --decorations-only); TODAY
             (YYYY-MM-DD, default today in UTC) is the clock, injectable for the test.
 
-The report formats numbers in the JVM locale: every sbt runs in en-US ("0.97", not "0,97"; scripts/lib/identity_jvm.py).
+The report formats numbers in the JVM locale: every sbt runs in en-US ("0.97", not "0,97"; scripts/lib/identity_tooling/ci/identity_jvm.py).
 
 --refit re-tunes the shipped identity-weights.json on the unmatched-cluster ratchet (no CORPORA, FIXTURES or PROD: the
 checked-in captures and identity-judgements.tsv) -- the weekly identity-refit.yml job's measure, run by hand
@@ -60,12 +60,12 @@ from typing import Dict, List, Sequence
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 sys.path.insert(0, HERE)
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import identity_calibrate_extract  # noqa: E402
-import identity_jvm  # noqa: E402
+from identity_tooling.ci import identity_jvm  # noqa: E402
 import tool_process  # noqa: E402
-import tool_python  # noqa: E402
-import tool_shell  # noqa: E402
+from processes import tool_python  # noqa: E402
+from processes import tool_shell  # noqa: E402
 
 ROOT = os.path.dirname(HERE)
 import vault_env  # noqa: E402

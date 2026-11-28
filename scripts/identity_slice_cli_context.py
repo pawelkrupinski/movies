@@ -1,7 +1,7 @@
 """What every part of identity-slice (scripts/identity_slice_cli.py) shares: the options, the environment it runs in and
 hands on, the injected runner, its log (`[identity-slice] ...`), the files it drops into every ref (TOOL_FILES:
 scripts/identity-slice-tool-files.txt), and the calls it makes of the shell library it shares with the other identity
-tools (scripts/identity-tools.sh, through scripts/lib/tool_shell.py: a ref laid out, a tree compiled, a recording or a
+tools (scripts/identity-tools.sh, through scripts/lib/processes/tool_shell.py: a ref laid out, a tree compiled, a recording or a
 capture fetched, a JVM run under a JVM slot) and of git."""
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from typing import Callable, Dict, List, Optional, Sequence
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import tool_process  # noqa: E402
-import tool_shell  # noqa: E402
+from processes import tool_shell  # noqa: E402
 from identity_slice_cli_options import TOOL, Options  # noqa: E402
 
 REPO = os.path.dirname(HERE)

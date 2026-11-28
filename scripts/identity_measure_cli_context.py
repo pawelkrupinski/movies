@@ -10,12 +10,12 @@ from typing import Callable, List, Mapping, Optional, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
-import tool_cli  # noqa: E402
-import tool_github  # noqa: E402
+from cli import tool_cli  # noqa: E402
+from vcs import tool_github  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
-import tool_python  # noqa: E402
-import tool_shell  # noqa: E402
+from processes import tool_python  # noqa: E402
+from processes import tool_shell  # noqa: E402
 from identity_measure_cli_options import Options  # noqa: E402
 
 TOOL = "identity-measure"

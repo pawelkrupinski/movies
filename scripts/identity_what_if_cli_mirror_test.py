@@ -17,7 +17,7 @@ from typing import List
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 from identity_what_if_cli_fixture import JUDGEMENTS, WhatIfCase  # noqa: E402
 
 

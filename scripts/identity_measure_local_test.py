@@ -19,7 +19,7 @@ import unittest
 from typing import Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL_SCRIPTS = ("identity-measure-local", "identity_measure_local.py", "jvm-gate.sh", "tool-conventions.sh")
 # it-local.sh: logs each sbt command, and writes what each would ("--out DIR --full CC", "--measure --out DIR")
@@ -90,8 +90,10 @@ class MeasureLocalTest(cli_harness.ToolCase):
                 os.makedirs(self.path("repo", "scripts"), exist_ok=True)
                 shutil.copy2(source, self.path("repo", "scripts", name))
         os.makedirs(self.path("repo", "scripts", "lib"), exist_ok=True)
-        for module in glob.glob(os.path.join(cli_harness.ROOT, "scripts", "lib", "*.py")):
-            shutil.copy2(module, self.path("repo", "scripts", "lib"))
+        for module in glob.glob(os.path.join(cli_harness.ROOT, "scripts", "lib", "**", "*.py"), recursive=True):
+            target = self.path("repo", os.path.relpath(module, cli_harness.ROOT))
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            shutil.copy2(module, target)
         os.chmod(self.write("repo/scripts/it-local.sh", IT_LOCAL), 0o755)
         self.write("repo/scripts/ci/identity_takes_diff.py", TAKES_DIFF)
         self.write("repo/scripts/identity_measure.py", CLASSIFY)

@@ -155,9 +155,9 @@ from typing import Dict, List, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import identity_measure_cli_options as options_  # noqa: E402
-import tool_cli  # noqa: E402
+from cli import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
 from identity_measure_cli_context import TOOL, Context, Die, Exit  # noqa: E402
 from identity_measure_cli_flow import Measure  # noqa: E402

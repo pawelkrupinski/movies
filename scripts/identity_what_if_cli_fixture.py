@@ -14,8 +14,8 @@ import sys
 from typing import Dict, List, Mapping, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
-import cli_harness  # noqa: E402
+from processes import machine  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/identity_what_if_cli.py", "scripts/identity-what-if")
 ROOT = cli_harness.ROOT

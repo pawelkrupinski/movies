@@ -12,7 +12,7 @@ import unittest
 from typing import List, Mapping, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/ci/xcuitest_each_class_alone.py", "scripts/ci/xcuitest-each-class-alone.sh")
 APP = "build/dd/Build/Products/Debug-iphonesimulator/Kinowo.app"

@@ -14,8 +14,8 @@ import sys
 from typing import List, Mapping, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
-import cli_harness  # noqa: E402
+from processes import machine  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/identity_measure_cli.py", "scripts/identity-measure")
 JUDGEMENTS = "test/resources/fixtures/identity-judgements.tsv"

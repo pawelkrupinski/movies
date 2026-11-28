@@ -2,7 +2,7 @@
 # Purpose: Pre-push: the checks that fail CI in seconds, run here in seconds, for what this push changes
 # PRE-PUSH: the checks that fail CI in seconds, run here in seconds, for what this push changes.
 # (The selection functions named below -- plan, js_quality_paths, lint_plan, is_shell_path, ... -- are Python's:
-# scripts/pre_push.py over scripts/lib/pre_push_{paths,plan,units,lints,modes}.py; the checks too, scripts/lib/pre_push_registry.py.)
+# scripts/pre_push.py over scripts/lib/pre_push_{paths,plan,units,lints,modes}.py; the checks too, scripts/lib/pre_push_hook/checks/pre_push_registry.py.)
 #
 # About one CI failure in nine over four weeks (2026-08-27 → 09-24) was a lint or a generated
 # artefact: nothing a ten-minute pipeline needed to discover. Each check below runs only when the
@@ -303,8 +303,8 @@ set -uo pipefail
 if [ "${KINOWO_PRE_PUSH_LEGACY:-}" = 1 ]; then exec bash -c '. "$0.sh-legacy"' "${BASH_SOURCE[0]}" "$@"; fi
 # THE HOOK IS PYTHON'S (scripts/pre_push.py over scripts/lib/pre_push_*.py): which checks, compiles, lint specs and
 # tests a list of paths selects (every plan mode), and the run itself -- what is pushed, the range rules, the red gate and
-# the stranded trailers (scripts/lib/pre_push_gate.py), the known-red baseline, the reuse, the check loop with its
-# watchdog, every check (scripts/lib/pre_push_registry.py) and the verdict lines (scripts/lib/pre_push_run.py; its process
+# the stranded trailers (scripts/lib/pre_push_hook/pre_push_gate.py), the known-red baseline, the reuse, the check loop with its
+# watchdog, every check (scripts/lib/pre_push_hook/checks/pre_push_registry.py) and the verdict lines (scripts/lib/pre_push_hook/pre_push_run.py; its process
 # keeps this hook's path on its command line, which agentctl finds a push's hook by). This entry only answers a plan
 # mode, hands a push over to the pushing checkout's own copy, and execs the run.
 PrePushHook="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
@@ -359,7 +359,7 @@ case "${1:-}" in
 esac
 unset PREPUSH_DELEGATED_FROM
 # ── end of the hand-over ── (at the line's start: pre-push-test.sh stamps the hook after it)
-# A CI RUN'S REF checks nothing (scripts/lib/pre_push_push.py CI_REFS): refs/heads/measure/*, refs/heads/check/* and
+# A CI RUN'S REF checks nothing (scripts/lib/pre_push_hook/pre_push_push.py CI_REFS): refs/heads/measure/*, refs/heads/check/* and
 # refs/heads/land/* -- agentctl reads that this hook supports land/ refs by the literal `refs/heads/land/` in this file
 # (~/bin lib/agentctl/queuesubmit.py land_refs_supported), so it stays here, named; scripts/hooks/pre-push-capabilities
 # says it too (`land-refs`), the file agentctl reads first.

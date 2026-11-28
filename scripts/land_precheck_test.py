@@ -13,7 +13,7 @@ import unittest
 from typing import Dict, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/land_precheck.py", "scripts/land-precheck")
 # The stub hook: its plan modes answer, its checks record what they were asked and fail on $HOOK_FAIL

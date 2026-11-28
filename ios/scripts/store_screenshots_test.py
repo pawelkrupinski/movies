@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ios/scripts/store-screenshots.sh, black-box, over a scratch copy of its layout: a fake xcrun (simctl's device list,
 boot, install, launch and screenshot), a fake xcodebuild and `open`, and a backend of the test's own
-(scripts/lib/store_screenshots_fixture.py). Nothing reaches a simulator, a store or the live backend. Ported from the
+(scripts/lib/mobile/store_screenshots_fixture.py). Nothing reaches a simulator, a store or the live backend. Ported from the
 shell test case for case, with the shared engine's numbering cases (the Android test covers the rest of it); the same
 cases hold the shell tool and its Python rewrite (cli_harness.tool_path)."""
 from __future__ import annotations
@@ -15,8 +15,8 @@ from typing import Dict, List, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "scripts", "lib"))
-import cli_harness  # noqa: E402
-from store_screenshots_fixture import Backend, City, copy_layout, png  # noqa: E402
+from harness import cli_harness  # noqa: E402
+from mobile.store_screenshots_fixture import Backend, City, copy_layout, png  # noqa: E402
 
 TOOL = cli_harness.tool_path("ios/scripts/store_screenshots.py", "ios/scripts/store-screenshots.sh")
 PHONE, TABLET, TABLET_11 = "iPhone 17 Pro Max", "iPad Pro 13-inch (M5)", "iPad Pro 11-inch (M5)"

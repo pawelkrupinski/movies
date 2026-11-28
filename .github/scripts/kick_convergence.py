@@ -19,7 +19,7 @@ is cheap next to a pipeline change that never gets one.
 A refused dispatch fails the job (after the other suites are tried): a green job that dispatched nothing reads as
 "nothing to verify" when a pipeline change went unverified. A 5xx is GitHub's own blip (2026-10-12: one HTTP 500 left a
 pipeline push unverified), and a spent API rate limit (2026-10-15: run 38818736115) resets within the hour, so the
-dispatcher (scripts/lib/tool_dispatch.py) retries it, twice, after a pause (DISPATCH_RETRY_SECONDS), and waits a near
+dispatcher (scripts/lib/vcs/tool_dispatch.py) retries it, twice, after a pause (DISPATCH_RETRY_SECONDS), and waits a near
 rate-limit reset out; any other refusal (403, 404, 422) fails at once. Every gh read is bounded by this process, not
 timeout(1): stock macOS has none, and there every read of a suite's last run failed, so a local run dispatched every
 suite whatever the push touched.
@@ -37,9 +37,9 @@ from typing import List, Mapping
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "..", "scripts", "lib"))
-import machine  # noqa: E402
-import tool_dispatch  # noqa: E402
-import tool_github  # noqa: E402
+from processes import machine  # noqa: E402
+from vcs import tool_dispatch  # noqa: E402
+from vcs import tool_github  # noqa: E402
 import tool_process  # noqa: E402
 
 IDENTITY = "Identity model convergence"

@@ -43,7 +43,7 @@ on:
             - 'worker/src/main/resources/residential-proxy.properties'
             - 'scripts/ci/scheduled-failure-issue.sh'
             - 'scripts/ci/scheduled_failure_issue*.py'
-            - 'scripts/lib/cli_harness.py'
+            - 'scripts/lib/harness/cli_harness.py'
             - 'scripts/ci/alert-step.sh'
             - '.github/actions/report-scheduled-run/**'
 

@@ -13,9 +13,9 @@ import sys
 from typing import List, Sequence
 
 from identity_what_if_cli_context import OWN_FILES, TOOL_FILES, Context, Exit, lines_of, tools_hash
-import machine  # (scripts/lib, too)
+from processes import machine  # (scripts/lib, too)
 import tool_process  # (scripts/lib, on the path the context put it on)
-import tool_python  # (scripts/lib, too)
+from processes import tool_python  # (scripts/lib, too)
 
 
 def record(ctx: Context, head: str, base: str, cc: str, verdict: str, *more: str) -> None:

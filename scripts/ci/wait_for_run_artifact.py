@@ -21,8 +21,8 @@ import time
 from typing import Callable, List, Mapping, Optional, Sequence
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import machine  # noqa: E402
-import tool_github  # noqa: E402
+from processes import machine  # noqa: E402
+from vcs import tool_github  # noqa: E402
 import tool_process  # noqa: E402
 
 USAGE = "usage: wait-for-run-artifact.sh <artifact name> <producing job name fragment> <timeout seconds>"

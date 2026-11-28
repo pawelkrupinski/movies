@@ -50,7 +50,7 @@ from types import FrameType
 from typing import List, Optional, Sequence, Set, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-from machine import any_runnable, children_flag, cpu_centis, pid_list, ps, send, tree_pids  # noqa: E402
+from processes.machine import any_runnable, children_flag, cpu_centis, pid_list, ps, send, tree_pids  # noqa: E402
 
 USAGE = ("usage: stall-watch.sh watch <root pid> <seconds> <label> <stalled file> [<progress file>] [<dir>]")
 REPORT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stall-report.sh")

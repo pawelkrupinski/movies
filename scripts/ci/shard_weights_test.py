@@ -19,9 +19,9 @@ import shard_weights as w  # noqa: E402
 
 LIB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib")
 sys.path.insert(0, LIB)
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 import tool_process  # noqa: E402
-import tool_http  # noqa: E402
+from seams import tool_http  # noqa: E402
 import tool_git  # noqa: E402
 
 TOOL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "shard_weights.py")

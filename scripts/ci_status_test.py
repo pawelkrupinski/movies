@@ -111,9 +111,9 @@ esac
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import ci_status  # noqa: E402
-import tool_github  # noqa: E402
+from vcs import tool_github  # noqa: E402
 import tool_process  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 
 class Gh:

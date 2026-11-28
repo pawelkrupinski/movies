@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 Row = Tuple[int, int, int]  # families, bytes, nanoseconds
 

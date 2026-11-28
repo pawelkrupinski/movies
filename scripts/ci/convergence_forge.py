@@ -18,7 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(HERE, os.pardir, "lib"))
 import ci_machine  # noqa: E402
 import tool_git  # noqa: E402
-import tool_github  # noqa: E402
+from vcs import tool_github  # noqa: E402
 PATHS_FILE = ".github/convergence-paths.txt"
 WORKFLOW = ".github/workflows/identity-model-convergence.yml"
 WORKFLOW_FILE = "identity-model-convergence.yml"

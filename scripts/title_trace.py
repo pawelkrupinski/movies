@@ -21,7 +21,7 @@ SearchQueryMarkersSpec / CinemaSlotInvariantsSpec findings it would raise. No re
             newer than that is reached by name (services.identity.OlderRefs; scripts/identity-slice-old-ref-test.sh)
 
 One JVM per ref; the compile is cached in $KINOWO_IDENTITY_CACHE (default ~/.cache/kinowo-identity), shared with
-scripts/identity-slice. The ref's tree and classpath come from identity-tools.sh through scripts/lib/identity_ref_trees.py
+scripts/identity-slice. The ref's tree and classpath come from identity-tools.sh through scripts/lib/identity_tooling/ci/identity_ref_trees.py
 until that library moves. Tested by scripts/title_trace_test.py."""
 from __future__ import annotations
 
@@ -34,9 +34,9 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
-import identity_ref_trees  # noqa: E402
-import tool_cli  # noqa: E402
+from processes import machine  # noqa: E402
+from identity_tooling.ci import identity_ref_trees  # noqa: E402
+from cli import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
 
 TOOL = "title-trace"

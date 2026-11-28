@@ -15,7 +15,7 @@ import unittest
 from typing import List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/ci/identity_ci_staleness.py", "scripts/ci/identity-ci-staleness.sh")
 NOW = 1792065600  # 2026-10-14T12:00:00Z

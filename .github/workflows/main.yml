@@ -302,16 +302,16 @@ jobs:
                       scripts/title-trace
                       scripts/title-trace-tool-files.txt
                       scripts/title_trace.py
-                      scripts/lib/tool_cli.py
-                      scripts/lib/tool_shell.py
+                      scripts/lib/cli/tool_cli.py
+                      scripts/lib/processes/tool_shell.py
                       scripts/identity-tools.sh
                       scripts/tool-conventions.sh
                       scripts/tool-conventions-files.txt
-                      scripts/lib/tool_bounded.py
-                      scripts/lib/machine.py
-                      scripts/lib/gh_download.py
-                      scripts/lib/tool_python.py
-                      scripts/lib/tool_countries.py
+                      scripts/lib/processes/tool_bounded.py
+                      scripts/lib/processes/machine.py
+                      scripts/lib/vcs/gh_download.py
+                      scripts/lib/processes/tool_python.py
+                      scripts/lib/cli/tool_countries.py
                       scripts/identity-slice-old-ref-test.sh
                       scripts/ci/verified-ref.sh
                       scripts/ci/verified_ref.py
@@ -400,7 +400,7 @@ jobs:
         # convergence judges main's commits.
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
         runs-on: ubuntu-26.04
-        # Room for the dispatcher's worst case (scripts/lib/tool_dispatch.py): two rate-limit waits of up to 900 s each
+        # Room for the dispatcher's worst case (scripts/lib/vcs/tool_dispatch.py): two rate-limit waits of up to 900 s each
         # (DISPATCH_RATE_LIMIT_MAX_WAIT) before its third attempt, plus the reads and checkout.
         timeout-minutes: 40
         permissions:

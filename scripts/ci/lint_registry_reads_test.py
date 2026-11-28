@@ -13,7 +13,7 @@ os.environ.setdefault("KINOWO_GOVERNOR", "0")  # the pool of misses() asks no go
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [HERE, os.path.join(os.path.dirname(HERE), "lib")]
 import lint_registry_reads as lrr  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 SPEC = "worker:scripts.ThingSpec"
 SOURCE = ('RepoFile.read("Dockerfile"); read("infra/nix/files/host.json"); read("data/rosters/"); '

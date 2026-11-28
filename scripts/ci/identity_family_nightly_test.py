@@ -12,7 +12,7 @@ import unittest
 from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/ci/identity_family_nightly.py", "scripts/ci/identity-family-nightly.sh")
 SHA = "0123456789abcdef0123456789abcdef01234567"

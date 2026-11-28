@@ -15,7 +15,7 @@ from typing import Callable, Dict, List, Mapping, Optional, TextIO
 
 sys.path[:0] = [os.path.join(os.path.dirname(os.path.abspath(__file__)), part) for part in ("ci", "lib")]
 import identity_takes  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 Row = Dict[str, str]
 COLUMNS = ["status", "country", "venue", "rawTitle", "film", "title", "basis", "ids", "was", "explanation"]

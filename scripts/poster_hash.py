@@ -17,7 +17,7 @@ from typing import Mapping, Optional
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 from tool_process import Command, Runner  # noqa: E402
 
 SlotWidth, SlotHeight = 420, 630

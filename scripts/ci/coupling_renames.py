@@ -10,7 +10,7 @@ import sys
 from typing import Dict, List, Optional, Set, Tuple
 
 import ci_machine
-import tool_python
+from processes import tool_python
 from coupling_rows import CLASS_KINDS, LAYERS_PATH, layer_units, moved, package_of
 from trailers import text_at as file_at
 import tool_git

@@ -6,7 +6,7 @@ have to pin.
 
   scripts/coverage-touched <base>..<head> [--below <percent>] [--out DIR]
 
-Over a throwaway worktree at <head> (scripts/lib/touched_tree.py; the caller's checkout and its build are never
+Over a throwaway worktree at <head> (scripts/lib/code_tools/touched_tree.py; the caller's checkout and its build are never
 touched): the touched methods (a hunk's line inside a `def`: scripts/touched_methods.py over quality.MethodSpans), the
 specs that reach them (`touchedSpecs`: a spec of the method's source, or of a production caller using its name), then
 ONLY the touched methods' modules compiled with coverage on (`set <module>/coverageEnabled := true`: the Scala 3
@@ -31,9 +31,9 @@ import sys
 from typing import List, Optional, Sequence, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import tool_cli  # noqa: E402
-import touched_tree  # noqa: E402
-from touched_tree import CommandLine, TouchedTree  # noqa: E402
+from cli import tool_cli  # noqa: E402
+from code_tools import touched_tree  # noqa: E402
+from code_tools.touched_tree import CommandLine, TouchedTree  # noqa: E402
 
 TOOL = "coverage-touched"
 

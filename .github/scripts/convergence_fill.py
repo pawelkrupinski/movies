@@ -40,7 +40,7 @@ from typing import Callable, List, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 import convergence_fill_folds  # noqa: E402  (its own directory is sys.path's first, run as a script)
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import convergence_release  # noqa: E402
 import tool_process  # noqa: E402
 

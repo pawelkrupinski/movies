@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * THE SPLIT CHECK (scripts/lib/pre_push_push.py split, PREPUSH_ONLY / PREPUSH_ELSEWHERE): the landing check's jobs share the hook's
+ * THE SPLIT CHECK (scripts/lib/pre_push_hook/pre_push_push.py split, PREPUSH_ONLY / PREPUSH_ELSEWHERE): the landing check's jobs share the hook's
  * selected checks and run at once. In one job they ran one after another under one 80-minute cap, and landing check run
  * 4025 (a 124-path batch) ran out of it with three checks still to go after the page area's 37 minutes (the page area
  * has since moved to Main: below).
@@ -49,7 +49,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
   "the landing check" should "leave identity-slice's old-ref compile to Main, after landing" in {
     jobs.keySet should not contain "check-oldrefs"
     jobs("plan") should not include "outputs.oldrefs"
-    RepoFile.read("scripts/lib/pre_push_registry.py") should not include "\"oldrefs\""
+    RepoFile.read("scripts/lib/pre_push_hook/checks/pre_push_registry.py") should not include "\"oldrefs\""
     RepoFile.read("scripts/land-precheck") should not include " oldrefs\""
     RepoFile.jobs(RepoFile.read(".github/workflows/main.yml"))("old-ref-compile") should include(
       "bash scripts/identity-slice-old-ref-test.sh")
@@ -67,10 +67,10 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     RepoFile.read("scripts/ci/precommit_share.py") should include("""SHARES = ("rest", "identity", "plan")""")
     RepoFile.read("scripts/hooks/local-tests.txt").linesIterator.filter(_.startsWith("page ")).toSeq shouldBe empty
     // every check is Python's since the hook's stage 6: no `page` or `e2e` check registered, none planned
-    val checks = RepoFile.read("scripts/lib/pre_push_registry.py")
+    val checks = RepoFile.read("scripts/lib/pre_push_hook/checks/pre_push_registry.py")
     checks should not include "\"page\""
     checks should not include "\"e2e\""
-    RepoFile.read("scripts/lib/pre_push_plan.py") should not include "rows.append(\"e2e\")"
+    RepoFile.read("scripts/lib/pre_push_hook/plan/pre_push_plan.py") should not include "rows.append(\"e2e\")"
     val gate = RepoFile.read(".github/gating-checks.tsv")
     gate should include("main.yml\te2e (rest)")
     gate should include("main.yml\tpage-tests-chrome (stable)")
@@ -102,7 +102,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     identity should include("shard: [1, 2, 3, 4]")
     identity should include("PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/4")
     identity should include("name: check (identity ${{ matrix.shard }}/4)")
-    RepoFile.read("scripts/lib/pre_push_area.py") should include(""""scripts/ci/shard_tests.py", "--shard", shard""")
+    RepoFile.read("scripts/lib/pre_push_hook/checks/pre_push_area.py") should include(""""scripts/ci/shard_tests.py", "--shard", shard""")
   }
 
   /** 8 of Main's 14 code reds in the five days to 2026-10-30 were in integration-test or e2e rows nothing ran before the
@@ -119,11 +119,11 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     rest should include("|| 'ubuntu-22.04' }}")
     rest should include("PREPUSH_HEAVY_MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true")
     rest.linesIterator.map(_.trim).filter(_.startsWith("MONGODB_URI:")).toSeq shouldBe empty
-    RepoFile.read("scripts/lib/pre_push_heavy.py") should include("""return split_value(c, "PREPUSH_HEAVY_MONGODB_URI") or c.repo.env.get("MONGODB_URI", "")""")
+    RepoFile.read("scripts/lib/pre_push_hook/checks/pre_push_heavy.py") should include("""return split_value(c, "PREPUSH_HEAVY_MONGODB_URI") or c.repo.env.get("MONGODB_URI", "")""")
   }
 
   "the heavy rows" should "run Main's own commands" in {
-    val rows = RepoFile.read("scripts/lib/pre_push_heavy.py")
+    val rows = RepoFile.read("scripts/lib/pre_push_hook/checks/pre_push_heavy.py")
     rows should include("""return heavy_row(c, "itrest", "itAll", "IT_ROW=rest")""")
     rows should include("""return heavy_row(c, "itidentity", "itAll", "IT_ROW=identity")""")
     rows should include("""return heavy_row(c, "e2ecorpus", "e2eCorpus")""")
@@ -148,7 +148,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
 
   "the pre-push hook" should "run only the checks its share names, and say which it leaves to the other jobs" in {
     // the run is Python's since the hook's stage 2 (shell-to-Python migration, section 10): pre_push_push.split
-    val push = RepoFile.read("scripts/lib/pre_push_push.py")
+    val push = RepoFile.read("scripts/lib/pre_push_hook/pre_push_push.py")
     push should include("def split(say: Say, env: Mapping[str, str], checks: List[str]) -> List[str]:")
     push should include("left to the landing check's other job(s): ")
   }

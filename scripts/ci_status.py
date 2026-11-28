@@ -9,11 +9,11 @@ import sys
 from typing import Any, Callable
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import tool_git  # noqa: E402
-import tool_github  # noqa: E402
-import tool_state  # noqa: E402
-from tool_files import Files  # noqa: E402
+from vcs import tool_github  # noqa: E402
+from seams import tool_state  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 GATE_WORKFLOWS = ["main.yml", "identity-model-convergence.yml", "identity-takes.yml"]
 CACHE_SECONDS = 30

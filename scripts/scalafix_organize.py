@@ -3,7 +3,7 @@
 
 IMPORTS ORGANISED BY SCALAFIX, never by hand (.scalafix.conf: OrganizeImports, Scala 3 dialect -- each source's imports
 sorted and grouped java/javax, scala, everything else -- and RemoveUnused): over every module's sources, rewritten
-from the compiler's own record (SemanticDB), in the kept scalafix tree (scripts/lib/scalafix_tree.py: the caller's
+from the compiler's own record (SemanticDB), in the kept scalafix tree (scripts/lib/code_tools/scalafix_tree.py: the caller's
 checkout never recompiles with SemanticDB on), the result laid back over the checkout and its index.
 
   scripts/scalafix-organize [--check] [--main]
@@ -24,9 +24,9 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import machine  # noqa: E402
-import scalafix_tree  # noqa: E402
-import tool_cli  # noqa: E402
+from processes import machine  # noqa: E402
+from code_tools import scalafix_tree  # noqa: E402
+from cli import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
 
 TOOL = "scalafix-organize"

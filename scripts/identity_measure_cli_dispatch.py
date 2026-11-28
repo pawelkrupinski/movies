@@ -6,9 +6,9 @@ from __future__ import annotations
 
 from typing import List, Optional, Tuple
 
-import identity_dispatch
+from identity_tooling.ci import identity_dispatch
 import ci_wait
-import tool_dispatch
+from vcs import tool_dispatch
 from identity_measure_cli_collect import Collector
 from identity_measure_cli_context import IDENTITY_TOOLS, Context, Die, Exit, say
 from identity_measure_cli_paths import TakePaths

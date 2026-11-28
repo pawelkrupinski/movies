@@ -13,7 +13,7 @@ import unittest
 from typing import Dict, Optional
 
 from run_script_tests_fixture import ROOT, ScriptTestsCase
-import cli_harness
+from harness import cli_harness
 
 SEES = ('echo "fd7 $({ : >&7; } 2>/dev/null && echo open || echo closed) held=${KINOWO_GOV_CPU_HELD:-} '
         'slot=${KINOWO_JVM_SLOT_HELD:-} width=${AGENTCTL_GOV_WIDTH:-}" > "$SEEN"')

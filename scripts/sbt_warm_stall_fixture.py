@@ -6,7 +6,7 @@ from __future__ import annotations
 import os
 
 from sbt_warm_fixture import SbtWarmCase
-import cli_harness
+from harness import cli_harness
 
 HANG = '#!/usr/bin/env bash\nif [ -n "${STUB_HANG_ONCE:-}" ] && [ -f "$STUB_HANG_ONCE" ]; then echo served; exit 0; fi\n' \
        '[ -n "${STUB_HANG_ONCE:-}" ] && touch "$STUB_HANG_ONCE"\necho $$ >> "@S@/hung"; exec sleep 86400\n'

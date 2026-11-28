@@ -1,7 +1,7 @@
 """THE MACHINE, for the scripts/ci tools that run in a sparse checkout (scripts/ci alone, no scripts/lib, so no
 `machine`, `tool_git` or `tool_process`): the one place they reach the environment, the clock and a process, so
 every other tool receives them from its `main()` and this module is the single adapter row for scripts/ci
-(test/resources/design-rules.tsv). The same shape as scripts/lib/machine.py, kept apart because that directory is
+(test/resources/design-rules.tsv). The same shape as scripts/lib/processes/machine.py, kept apart because that directory is
 not there."""
 from __future__ import annotations
 

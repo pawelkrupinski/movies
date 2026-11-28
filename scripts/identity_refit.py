@@ -44,11 +44,11 @@ from typing import Dict, List, Optional, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [HERE, os.path.join(HERE, "lib")]
-import machine  # noqa: E402
-import identity_jvm  # noqa: E402
+from processes import machine  # noqa: E402
+from identity_tooling.ci import identity_jvm  # noqa: E402
 import identity_refit_checks  # noqa: E402
-import tool_actions  # noqa: E402
-import tool_cli  # noqa: E402
+from cli import tool_actions  # noqa: E402
+from cli import tool_cli  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
 

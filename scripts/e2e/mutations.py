@@ -19,8 +19,8 @@ from typing import Dict, List, Tuple
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
-import cli_harness  # noqa: E402
-import machine  # noqa: E402
+from harness import cli_harness  # noqa: E402
+from processes import machine  # noqa: E402
 
 # (scenario module, the tool file, its text, the mutation, what it breaks)
 MUTATIONS: List[Tuple[str, str, str, str, str]] = [
@@ -60,7 +60,7 @@ MUTATIONS: List[Tuple[str, str, str, str, str]] = [
      "the generated block appended again on every run"),
     ("fleet_ssh_e2e_test", "infra/bin/fleet-ssh", "        updated = existing + sep + block", "        updated = block",
      "the person's own ssh config overwritten"),
-    ("sbt_warm_e2e_test", "scripts/lib/sbt_warm_servers.py", "        if not self.procs.signal(pid, signum):",
+    ("sbt_warm_e2e_test", "scripts/lib/sbt_warm/sbt_warm_servers.py", "        if not self.procs.signal(pid, signum):",
      "        if not self.procs.signal(pid, 0):", "--stop reporting a stop and leaving the server running"),
     ("sbt_warm_e2e_test", "scripts/ci/sbt_guard.py", "    if status == 0 or STALE_READ not in log or PLUGIN_RETRIED in log:",
      "    if True:", "a stale-TASTy failure not retried: the call fails"),

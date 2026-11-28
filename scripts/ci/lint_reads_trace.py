@@ -42,7 +42,7 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-from tool_pool import governed_workers  # noqa: E402  (THE GOVERNED FAN-OUT: the hook runs under a governor ticket)
+from governor.tool_pool import governed_workers  # noqa: E402  (THE GOVERNED FAN-OUT: the hook runs under a governor ticket)
 
 OLD_NS = 946684800 * 10**9  # 2000-01-01: before every mtime, so the next read moves the atime
 HOOK = "scripts/hooks/pre-push"

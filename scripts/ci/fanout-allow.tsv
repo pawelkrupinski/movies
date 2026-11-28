@@ -9,7 +9,7 @@ scripts/identity_ci_run_test.py	a race under test: three concurrent identity-ci-
 scripts/identity_landing_check.py	waits on CI: each group dispatches identity-ci-run on GitHub and polls it
 scripts/identity_measure_cli_recordings.py	waits on CI: one identity-measure dispatch per recording, polled on GitHub
 scripts/identity_stamp_carry.py	each worker's build takes its own JVM ticket (identity-stamp-carry stamps: jvm_slot_take)
-scripts/lib/store_screenshots_common.py	network-bound: the repertoire API of each city over HTTP
+scripts/lib/mobile/store_screenshots_common.py	network-bound: the repertoire API of each city over HTTP
 scripts/poster_eval_dataset.py	network-bound: reads of the local mirror Mongo, two countries at a time
 scripts/poster_eval_images.py	network-bound: poster and TMDB list fetches over HTTP
 scripts/design-rules/python_facts.py	no pool: the process-pool module is named as an effect the extractor reads, never run

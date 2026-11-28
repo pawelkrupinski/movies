@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (267)
+## Landing and CI (271)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -250,16 +250,20 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/land-before-queue` | What `agentctl land` runs after its rebase, before it queues the change (~/bin/lib/agentctl/queue.py enqueue) | `scripts/land-before-queue` | agentctl; skill CLAUDE.md, identity-investigation; 2 tools | land-before-queue-test.sh | KEEP |
 | `scripts/land-precheck` | The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here | `scripts/land-precheck` | agentctl; 1 tool | land_precheck_test.py | MIGRATE |
 | `scripts/land_precheck.py` | The fast precheck: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here | `scripts/land_precheck.py` | 2 tools | land_precheck_test.py | Python |
-| `scripts/lib/gov_queue.py` | WHERE A RUN STANDS IN THE GOVERNOR'S QUEUE, said while it waits (scripts/run-script-tests; jvm_gate.JvmGate's | `imported` | 1 tool | gov_queue_test.py | Python |
-| `scripts/lib/governed_kill.py` | THE KILL OF A GOVERNED RUN, judged (scripts/claude-hooks/governed-kill-guard): `run-script-tests` and `sbt-warm` | `imported` | 1 tool | governed_kill_test.py | Python |
-| `scripts/lib/js_quality_tools.py` | WHETHER scripts/js-quality-report CAN RUN HERE (scripts/lib; stdlib only): node on PATH, and its pinned tools either | `imported` | by hand | - | Python |
-| `scripts/lib/pre_push_sbt.py` | THE SBT CHECK (scripts/hooks/pre-push's header: `sbt`): a new repo-reading spec needs its lint-registry row, and | `imported` | 1 tool | - | Python |
-| `scripts/lib/sbt_warm_cache.py` | scripts/sbt-warm's SEEDING and THE SHARED BUILD CACHE (its header says what each copies, from where, and when): a | `imported` | 2 tools | - | Python |
-| `scripts/lib/sbt_warm_call.py` | One call of scripts/sbt-warm: its commands run in this checkout's kept server (its header says every rule this | `imported` | 1 tool | - | Python |
-| `scripts/lib/sbt_warm_client.py` | scripts/sbt-warm's sbt client and its watch (its header: ONE BUILD PATH, NO PROGRESS and SERVER LIVENESS): the client | `imported` | 1 tool | - | Python |
-| `scripts/lib/sbt_warm_keeper.py` | scripts/sbt-warm's KEEPER (`--keep`; its header: ONE JVM, ONE SLOT and IDLE EXIT): a small process beside a checkout's | `imported` | 1 tool | - | Python |
-| `scripts/lib/sbt_warm_servers.py` | scripts/sbt-warm's servers and keepers (its header: ONE SERVER, THE STOPS LOG, ONE KEEPER PER CHECKOUT): finding a | `imported` | 5 tools | sbt_warm_servers_test.py | Python |
-| `scripts/lib/script_tests_floor.py` | THE FLOOR'S STATIC HALF (scripts/run-script-tests --bash / --floor with --changed): every bash file the change | `imported` | 1 tool | - | Python |
+| `scripts/lib/code_tools/js_quality_tools.py` | WHETHER scripts/js-quality-report CAN RUN HERE (scripts/lib; stdlib only): node on PATH, and its pinned tools either | `imported` | by hand | - | Python |
+| `scripts/lib/governor/cpu_meter.py` | THE CPU METER (scripts/jvm-gate.sh's cpu_meter_start / cpu_meter_stop, for the Python tools): the CPU time of the | `imported` | 5 tools | - | Python |
+| `scripts/lib/governor/gov_queue.py` | WHERE A RUN STANDS IN THE GOVERNOR'S QUEUE, said while it waits (scripts/run-script-tests; jvm_gate.JvmGate's | `imported` | 1 tool | gov_queue_test.py | Python |
+| `scripts/lib/governor/governed_kill.py` | THE KILL OF A GOVERNED RUN, judged (scripts/claude-hooks/governed-kill-guard): `run-script-tests` and `sbt-warm` | `imported` | 1 tool | governed_kill_test.py | Python |
+| `scripts/lib/governor/jvm_gate.py` | THE JVM GATE for the Python tools: scripts/jvm-gate.sh's slots, locks and governor tickets (its header says why and | `imported` | 5 tools | jvm_gate_test.py | Python |
+| `scripts/lib/governor/jvm_memory.py` | THE MEMORY GATE and the wait for a JVM slot, for the Python tools (scripts/jvm-gate.sh's memory_gate and | `imported` | 1 tool | - | Python |
+| `scripts/lib/governor/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 2 tools | tool_pool_test.py | Python |
+| `scripts/lib/pre_push_hook/checks/pre_push_sbt.py` | THE SBT CHECK (scripts/hooks/pre-push's header: `sbt`): a new repo-reading spec needs its lint-registry row, and | `imported` | 1 tool | - | Python |
+| `scripts/lib/sbt_warm/sbt_warm_cache.py` | scripts/sbt-warm's SEEDING and THE SHARED BUILD CACHE (its header says what each copies, from where, and when): a | `imported` | by hand | - | Python |
+| `scripts/lib/sbt_warm/sbt_warm_call.py` | One call of scripts/sbt-warm: its commands run in this checkout's kept server (its header says every rule this | `imported` | by hand | - | Python |
+| `scripts/lib/sbt_warm/sbt_warm_client.py` | scripts/sbt-warm's sbt client and its watch (its header: ONE BUILD PATH, NO PROGRESS and SERVER LIVENESS): the client | `imported` | by hand | - | Python |
+| `scripts/lib/sbt_warm/sbt_warm_keeper.py` | scripts/sbt-warm's KEEPER (`--keep`; its header: ONE JVM, ONE SLOT and IDLE EXIT): a small process beside a checkout's | `imported` | by hand | - | Python |
+| `scripts/lib/sbt_warm/sbt_warm_servers.py` | scripts/sbt-warm's servers and keepers (its header: ONE SERVER, THE STOPS LOG, ONE KEEPER PER CHECKOUT): finding a | `imported` | 1 tool | sbt_warm_servers_test.py | Python |
+| `scripts/lib/script_tests/select/script_tests_floor.py` | THE FLOOR'S STATIC HALF (scripts/run-script-tests --bash / --floor with --changed): every bash file the change | `imported` | 1 tool | - | Python |
 | `scripts/py-quality-report` | The Python quality report and its ratchet (entry; the measure is scripts/py-quality/report.py) | `scripts/py-quality-report` | hook pre-push, pre-push.sh-legacy; skill CLAUDE.md; 4 tools | - | KEEP |
 | `scripts/py-quality/clones.py` | THE PYTHON CLONE GROUPS (scripts/py-quality/report.py): every run of MIN_TOKENS or more tokens appearing twice or more | `imported` | wf ios; hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, test-layers; 11 tools | - | Python |
 | `scripts/py-quality/functions.py` | THE PYTHON FUNCTION MEASURES (scripts/py-quality/report.py), from the source's own syntax tree (stdlib `ast`): | `imported` | wf ci; hook pre-push; skill CLAUDE.md; 27 tools | - | Python |
@@ -279,7 +283,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall_watch.py` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall_watch.py` | hook pre-push.sh-legacy; 8 tools | stall_watch_test.py | Python |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 7 tools | wait-for-test.sh | KEEP |
 
-## Identity (239)
+## Identity (240)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -494,23 +498,24 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity_what_if_cli_sides.py` | THE KEPT WHOLE SIDES (scripts/identity_what_if_cli.py): a commit's every family resolved at a snapshot -- takes, | `imported` | 4 tools | - | Python |
 | `scripts/identity_what_if_cli_verdict.py` | THE VERDICT RECORD (scripts/identity_what_if_cli.py): a line a country finished, under (head, base), written by | `imported` | 4 tools | - | Python |
 | `scripts/label-lookup` | Every hand judgement touching one listing or one film, with who added it and when, and what prod takes today. | `scripts/label-lookup` | skill CLAUDE.md, identity-investigation; 8 tools | label-lookup-test.sh | Python |
-| `scripts/lib/identity_captures.py` | A CAPTURE FETCHED ONCE INTO THE SHARED CACHE (scripts/lib; identity-tools.sh's identity_capture and | `imported` | 1 tool | - | Python |
-| `scripts/lib/identity_classpath.py` | A TREE'S WORKER TEST CLASSPATH COMPILED ONCE (scripts/lib; identity-tools.sh's identity_classpath and the compile it | `imported` | wf main; 8 tools | - | Python |
-| `scripts/lib/identity_context.py` | WHAT THE LOCAL IDENTITY TOOLS' CACHE FUNCTIONS SHARE (scripts/lib; identity-tools.sh's variables, identity_log, | `imported` | 10 tools | - | Python |
-| `scripts/lib/identity_dispatch.py` | A COMMIT MEASURED ON CI, the steps the identity tools share (scripts/lib; identity-tools.sh's identity_measure_branch, | `imported` | 6 tools | - | Python |
-| `scripts/lib/identity_jvm.py` | THE JVM EVERY IDENTITY TOOL RUNS IN, for the Python tools (scripts/lib; stdlib only): identity-tools.sh's | `imported` | 3 tools | - | Python |
-| `scripts/lib/identity_kept_jvms.py` | The kept JVMs of the identity tools in Python (identity-what-if's and identity-slice's): each a JVM started once and | `imported` | 3 tools | - | Python |
-| `scripts/lib/identity_lock.py` | THE MACHINE-WIDE LOCK OF A DOWNLOAD, A LAYOUT OR A COMPILE (scripts/lib; identity-tools.sh's identity_locked): one | `imported` | 6 tools | - | Python |
-| `scripts/lib/identity_measure_refs.py` | THE COMMITS AND BRANCHES A CI MEASURE RUNS ON (scripts/lib; identity-tools.sh's identity_main_ci_over, | `imported` | 1 tool | - | Python |
-| `scripts/lib/identity_older_refs.py` | A REF FROM BEFORE A MOVE COMPILES WITH THE TOOL FILES OF TODAY (scripts/lib; identity-tools.sh's | `imported` | 1 tool | - | Python |
-| `scripts/lib/identity_recordings.py` | A RECORDING DOWNLOADED ONCE INTO THE SHARED CACHE (scripts/lib; identity-tools.sh's identity_recording, | `imported` | 1 tool | - | Python |
-| `scripts/lib/identity_ref_trees.py` | A REF'S CODE LAID OUT AND COMPILED for the local identity tools that run a JVM under it (scripts/lib; title_trace.py, | `imported` | 4 tools | - | Python |
-| `scripts/lib/identity_tools.py` | WHAT THE LOCAL IDENTITY TOOLS SHARE, THE FUNCTIONS OF scripts/identity-tools.sh THAT NEED NO CALLING SHELL (scripts/lib; | `imported` | 4 tools | identity_tools_test.py | Python |
-| `scripts/lib/identity_tools_cache.py` | THE CACHE COMMANDS OF scripts/lib/identity_tools.py (captures, trees, classpaths, recordings), and the composition root | `imported` | 2 tools | - | Python |
-| `scripts/lib/identity_tools_refs.py` | THE COMMANDS OF scripts/lib/identity_tools.py ABOUT A CI MEASURE'S COMMITS AND A RUN'S RESULTS: the commits and branches a | `imported` | 1 tool | - | Python |
-| `scripts/lib/identity_tree_seeds.py` | THE NEAREST COMPILED TREE (scripts/lib; identity-tools.sh's identity_seed_distance and identity_nearest_compiled): a | `imported` | 3 tools | - | Python |
-| `scripts/lib/identity_trees.py` | A REF'S SOURCES LAID OUT ONCE UNDER THE CACHE (scripts/lib; identity-tools.sh's identity_tree and the layout it | `imported` | 1 tool | - | Python |
-| `scripts/lib/identity_what_if_record.py` | THE WHAT-IF VERDICT RECORD, AND A CONVERGENCE RUN'S TAKES (scripts/lib; identity-tools.sh's what_if_* functions and | `imported` | 1 tool | - | Python |
+| `scripts/lib/identity_tooling/base/identity_context.py` | WHAT THE LOCAL IDENTITY TOOLS' CACHE FUNCTIONS SHARE (scripts/lib; identity-tools.sh's variables, identity_log, | `imported` | by hand | - | Python |
+| `scripts/lib/identity_tooling/base/identity_lock.py` | THE MACHINE-WIDE LOCK OF A DOWNLOAD, A LAYOUT OR A COMPILE (scripts/lib; identity-tools.sh's identity_locked): one | `imported` | by hand | - | Python |
+| `scripts/lib/identity_tooling/base/identity_older_refs.py` | A REF FROM BEFORE A MOVE COMPILES WITH THE TOOL FILES OF TODAY (scripts/lib; identity-tools.sh's | `imported` | 1 tool | - | Python |
+| `scripts/lib/identity_tooling/base/identity_tree_seeds.py` | THE NEAREST COMPILED TREE (scripts/lib; identity-tools.sh's identity_seed_distance and identity_nearest_compiled): a | `imported` | by hand | - | Python |
+| `scripts/lib/identity_tooling/cache/identity_captures.py` | A CAPTURE FETCHED ONCE INTO THE SHARED CACHE (scripts/lib; identity-tools.sh's identity_capture and | `imported` | by hand | - | Python |
+| `scripts/lib/identity_tooling/cache/identity_classpath.py` | A TREE'S WORKER TEST CLASSPATH COMPILED ONCE (scripts/lib; identity-tools.sh's identity_classpath and the compile it | `imported` | wf main; 7 tools | - | Python |
+| `scripts/lib/identity_tooling/cache/identity_recordings.py` | A RECORDING DOWNLOADED ONCE INTO THE SHARED CACHE (scripts/lib; identity-tools.sh's identity_recording, | `imported` | by hand | - | Python |
+| `scripts/lib/identity_tooling/cache/identity_tools_cache.py` | THE CACHE COMMANDS OF scripts/lib/identity_tooling/identity_tools.py (captures, trees, classpaths, recordings), and the composition root | `imported` | 1 tool | - | Python |
+| `scripts/lib/identity_tooling/cache/identity_trees.py` | A REF'S SOURCES LAID OUT ONCE UNDER THE CACHE (scripts/lib; identity-tools.sh's identity_tree and the layout it | `imported` | by hand | - | Python |
+| `scripts/lib/identity_tooling/ci/identity_dispatch.py` | A COMMIT MEASURED ON CI, the steps the identity tools share (scripts/lib; identity-tools.sh's identity_measure_branch, | `imported` | 6 tools | - | Python |
+| `scripts/lib/identity_tooling/ci/identity_jvm.py` | THE JVM EVERY IDENTITY TOOL RUNS IN, for the Python tools (scripts/lib; stdlib only): identity-tools.sh's | `imported` | 3 tools | - | Python |
+| `scripts/lib/identity_tooling/ci/identity_kept_jvms.py` | The kept JVMs of the identity tools in Python (identity-what-if's and identity-slice's): each a JVM started once and | `imported` | by hand | - | Python |
+| `scripts/lib/identity_tooling/ci/identity_ref_trees.py` | A REF'S CODE LAID OUT AND COMPILED for the local identity tools that run a JVM under it (scripts/lib; title_trace.py, | `imported` | 4 tools | - | Python |
+| `scripts/lib/identity_tooling/ci/kept_jvm_call.py` | ONE REQUEST TO A KEPT JVM (scripts/lib; identity-tools.sh's kept_jvm_call): tools.KeptJvm's framing -- the args | `imported` | 2 tools | - | Python |
+| `scripts/lib/identity_tooling/identity_measure_refs.py` | THE COMMITS AND BRANCHES A CI MEASURE RUNS ON (scripts/lib; identity-tools.sh's identity_main_ci_over, | `imported` | 1 tool | - | Python |
+| `scripts/lib/identity_tooling/identity_tools.py` | WHAT THE LOCAL IDENTITY TOOLS SHARE, THE FUNCTIONS OF scripts/identity-tools.sh THAT NEED NO CALLING SHELL (scripts/lib; | `imported` | 4 tools | identity_tools_test.py | Python |
+| `scripts/lib/identity_tooling/identity_tools_refs.py` | THE COMMANDS OF scripts/lib/identity_tooling/identity_tools.py ABOUT A CI MEASURE'S COMMITS AND A RUN'S RESULTS: the commits and branches a | `imported` | 1 tool | - | Python |
+| `scripts/lib/identity_tooling/identity_what_if_record.py` | THE WHAT-IF VERDICT RECORD, AND A CONVERGENCE RUN'S TAKES (scripts/lib; identity-tools.sh's what_if_* functions and | `imported` | 1 tool | - | Python |
 | `scripts/listing-history` | One listing's identity take over time, grouped by the worker deploy that logged it | `scripts/listing-history` | skill CLAUDE.md, identity-investigation; 4 tools | listing_history_test.py | KEEP |
 | `scripts/listing_history.py` | ONE LISTING'S IDENTITY TAKE OVER TIME (scripts/listing-history). | `scripts/listing_history.py` | 4 tools | listing_history_test.py | Python |
 | `scripts/ml-identity/cross_country_experiment.py` | Cross-country agreement, OFFLINE experiment (2026-10-19, branch experiment-cross-country; docs/identity-experiments.md). | `imported` | 1 tool | - | Python |
@@ -523,7 +528,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/title-trace` | Every step one raw billing goes through, in production order, to the title the resolver reads | `scripts/title-trace` | wf main; skill CLAUDE.md, identity-investigation; 7 tools | title_trace_test.py | MIGRATE |
 | `scripts/venue-replay` | One venue's listings as the code at one or two git refs reads them, from a recording — never the network | `scripts/venue-replay` | skill CLAUDE.md, identity-investigation; 7 tools | venue_replay_test.py | MIGRATE |
 
-## Mirror and data (91)
+## Mirror and data (92)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -588,7 +593,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/wait_for_mongo_tunnel.py` | Open the CI end of the route to prod Mongo and DO NOT RETURN until bytes actually flow through it -- then hold it | `scripts/ci/wait_for_mongo_tunnel.py` | 2 tools | wait_for_mongo_tunnel_test.py | Python |
 | `scripts/discover-cinemas/discover.py` | Discover new UK cinemas on flicks.co.uk and wire them into the catalog. | `python3 scripts/discover-cinemas/discover.py` | wf decoration-discovery, discover-cinemas, nix-stage-closures; 6 tools | discover_test.py | Python |
 | `scripts/fleet-db-finish` | Count the fleet's three old collections in Poland's kinowo and drop them on an exact request (fleet DB migration, step 9) | `scripts/fleet-db-finish` | 3 tools | fleet_db_finish_test.py | KEEP |
-| `scripts/lib/mongo_local.py` | THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib; | `imported` | 11 tools | - | Python |
+| `scripts/lib/mongo/mongo_local.py` | THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib; | `imported` | 11 tools | - | Python |
+| `scripts/lib/mongo/prod_tunnel.py` | HOW A LAPTOP REACHES PROD MONGO, for the Python tools (scripts/lib): scripts/local-mirror/prod-tunnel.sh's | `imported` | 3 tools | prod_tunnel_test.py | Python |
 | `scripts/local-mirror/freshness` | How current the local prod mirror (:28017) is, per country — for every tool that reads it (identity-slice --prod-mirror, listing-history, …) | `scripts/local-mirror/freshness` | wf country-convergence-leg; skill CLAUDE.md, identity-investigation; 25 tools | freshness-test.sh | KEEP |
 | `scripts/local-mirror/local-mongo.sh` | The one place that knows how to make the local mirror Mongo reachable | `scripts/local-mirror/local-mongo.sh` | 1 tool | - | KEEP |
 | `scripts/local-mirror/log-path.sh` | Where the launchd agent's stdout/stderr land | `sourced` | 3 tools | - | KEEP |
@@ -705,7 +711,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (157)
+## Dev (151)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -730,7 +736,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/design-rules/model.py` | THE LANGUAGE-AGNOSTIC MODEL the general rule core reads (scripts/design-rules/): every language's extractor | `imported` | wf ci, convergence-bisect, country-convergence-leg +16; hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 95 tools | - | Python |
 | `scripts/design-rules/naming.py` | THE NAMING RULES, for every language (the owner's "names must match behaviour", 2026-11-19; CLAUDE.md, "Design | `imported` | wf ci, country-convergence-leg, discover-cinemas +8; hook lint-registry-missing, pre-push, pre-push.sh-legacy; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 103 tools | - | Python |
 | `scripts/design-rules/naming_lint.py` | THE NAMING LINT (the owner's "names must match behaviour", 2026-11-19), over EVERY language: the production Scala's | `python3 scripts/design-rules/naming_lint.py` | hook pre-push, pre-push.sh-legacy; skill CLAUDE.md; 6 tools | naming_lint_test.py | Python |
-| `scripts/design-rules/packages.py` | PACKAGES, for every language (CLAUDE.md, "Coupling is reviewed"): a Python or JS directory stands for a Scala | `imported` | wf android, branch-ci, ci +4; hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, identity-investigation; 28 tools | - | Python |
+| `scripts/design-rules/packages.py` | PACKAGES, for every language (CLAUDE.md, "Coupling is reviewed"): a Python or JS directory stands for a Scala | `imported` | wf android, branch-ci, ci +4; hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, identity-investigation; 29 tools | - | Python |
 | `scripts/design-rules/python_facts.py` | THE PYTHON EXTRACTOR of the general rule core: a Python tool's `ast` read into a `model.Module` -- its names, the | `imported` | 2 tools | - | Python |
 | `scripts/design-rules/scala_names.py` | THE SCALA EXTRACTOR of the general rule core's NAMING and MIXED rules: a production Scala source's top-level types | `imported` | hook pre-push.sh-legacy; 5 tools | - | Python |
 | `scripts/design-rules/splits.py` | THE SPLIT CREDIT FOR IMPORTERS (the owner, 2026-11-27): a module X split into pieces -- its git functions moved into | `imported` | wf ci, country-convergence-leg, verify-scrape-recording; hook pre-push.sh-legacy; skill CLAUDE.md, agent-ops; 16 tools | - | Python |
@@ -749,67 +755,61 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ios_release.py` | Archive, export and upload the iOS app to App Store Connect. | `scripts/ios_release.py` | 1 tool | ios_release_test.py | Python |
 | `scripts/it-local.sh` | Run the it/ layer locally against a MongoDB of this run's own | `scripts/it-local.sh` | skill agent-ops, identity-investigation, test-layers; 11 tools | it-local-test.sh | KEEP |
 | `scripts/lib/atomic.py` | ATOMIC FILE WRITES, the one way the Python tools replace a file (scripts/lib): the new content goes into a uniquely | `imported` | skill CLAUDE.md; 10 tools | atomic_test.py | Python |
-| `scripts/lib/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | wf android, security-headers; skill CLAUDE.md; 14 tools | cli_harness_test.py | Python |
-| `scripts/lib/cpu_meter.py` | THE CPU METER (scripts/jvm-gate.sh's cpu_meter_start / cpu_meter_stop, for the Python tools): the CPU time of the | `imported` | 6 tools | - | Python |
-| `scripts/lib/gh_download.py` | A GITHUB DOWNLOAD, BOUNDED AND RETRIED, absent told from failed (scripts/lib; tool-conventions.sh's gh_download, | `imported` | wf convergence-bisect, main; 16 tools | - | Python |
-| `scripts/lib/hook_event.py` | THE HOOK EVENT the claude-hooks read: the JSON Claude Code writes on a hook's stdin, read for a bounded time. | `imported` | 7 tools | hook_event_test.py | Python |
-| `scripts/lib/jvm_gate.py` | THE JVM GATE for the Python tools: scripts/jvm-gate.sh's slots, locks and governor tickets (its header says why and | `imported` | 10 tools | jvm_gate_test.py | Python |
-| `scripts/lib/jvm_memory.py` | THE MEMORY GATE and the wait for a JVM slot, for the Python tools (scripts/jvm-gate.sh's memory_gate and | `imported` | 5 tools | - | Python |
-| `scripts/lib/kept_jvm_call.py` | ONE REQUEST TO A KEPT JVM (scripts/lib; identity-tools.sh's kept_jvm_call): tools.KeptJvm's framing -- the args | `imported` | 2 tools | - | Python |
-| `scripts/lib/machine.py` | THE MACHINE: the processes, clock and environment the laptop tools touch, in one adapter (the design rules table's | `imported` | wf alert-backtest, android, archive-recording +44; hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, identity-investigation, test-layers; 167 tools | - | Python |
-| `scripts/lib/pinned_npm_tools.py` | PINNED NODE TOOLS, installed OUTSIDE the checkout: a tool's package.json and its lock, `npm ci`'d once per lock into | `imported` | hook pre-push.sh-legacy; 4 tools | - | Python |
-| `scripts/lib/pre_push_area.py` | AN AREA'S LOCAL TESTS (scripts/hooks/pre-push's header: the `identity` area; scripts/hooks/local-tests.txt): its | `imported` | 3 tools | - | Python |
-| `scripts/lib/pre_push_checks.py` | THE CHECKS, RUN (scripts/hooks/pre-push's header: NO STEP HANGS, THE KNOWN-RED BASELINE). Every check is Python's | `imported` | 1 tool | - | Python |
-| `scripts/lib/pre_push_gate.py` | RED BUILDS GATE THE PUSH (scripts/hooks/pre-push's header; CLAUDE.md, "Red builds gate every push to main"), and A | `imported` | wf verify-scrape-recording; hook pre-push; 2 tools | - | Python |
-| `scripts/lib/pre_push_heavy.py` | THE SBT-BACKED CHECKS BESIDE THE SBT CHECK (scripts/hooks/pre-push's header says what each guards): the flip backlog | `imported` | 1 tool | - | Python |
-| `scripts/lib/pre_push_known_red.py` | THE KNOWN-RED BASELINE (scripts/hooks/pre-push's header): a failing check is held against the push only when it fails | `imported` | 1 tool | - | Python |
-| `scripts/lib/pre_push_light.py` | THE LIGHT CHECKS (scripts/hooks/pre-push's header says what each guards): the checks that run a lint, a generator's | `imported` | 6 tools | - | Python |
-| `scripts/lib/pre_push_lints.py` | WHICH LINT SPECS THE PRE-PUSH HOOK'S SBT CHECK RUNS, read off THE LINT REGISTRY (scripts/hooks/lint-registry.tsv; its | `imported` | 1 tool | - | Python |
-| `scripts/lib/pre_push_modes.py` | THE PRE-PUSH HOOK'S PLAN MODES (scripts/hooks/pre-push; pre_push_test.py holds every one): each reads changed paths | `imported` | 4 tools | - | Python |
-| `scripts/lib/pre_push_paths.py` | THE PRE-PUSH HOOK'S PATH CLASSES (scripts/hooks/pre-push; its header says what each check guards): which changed path | `imported` | 4 tools | - | Python |
-| `scripts/lib/pre_push_plan.py` | WHICH CHECKS A SET OF CHANGED PATHS SELECTS (scripts/hooks/pre-push --plan; the hook's header says what each check | `imported` | 1 tool | - | Python |
-| `scripts/lib/pre_push_push.py` | WHAT A PUSH PUSHES, and the checks its commits add or drop (scripts/hooks/pre-push's header: the ranges git's stdin | `imported` | hook pre-push, pre-push-capabilities; 1 tool | - | Python |
-| `scripts/lib/pre_push_registry.py` | EVERY CHECK, by name (pre_push_checks.Processes starts them, scripts/pre_push.py --check answers one): | `imported` | hook pre-push; 3 tools | - | Python |
-| `scripts/lib/pre_push_repo.py` | THE PRE-PUSH HOOK'S RUN, its two ends (scripts/lib/pre_push_run.py composes them): `Repo`, the checkout the run | `imported` | 9 tools | - | Python |
-| `scripts/lib/pre_push_reuse.py` | THE REUSE and A REMOTE PASS (scripts/hooks/pre-push's header): a passed run's key answers a re-push of the SAME | `imported` | 1 tool | - | Python |
-| `scripts/lib/pre_push_run.py` | THE PRE-PUSH HOOK'S RUN (scripts/hooks/pre-push execs `scripts/pre_push.py <hook> --run [args]`; its header says | `imported` | hook pre-push; 2 tools | - | Python |
-| `scripts/lib/pre_push_scripttests.py` | THE SCRIPTS' OWN SELF-TESTS (scripts/hooks/pre-push's header: `scripttests`): scripts/run-script-tests over what the | `imported` | 1 tool | - | Python |
-| `scripts/lib/pre_push_tree.py` | WHERE THE HOOK RUNS (scripts/hooks/pre-push's header; the hook's shell entry hands a push over to the PUSHING | `imported` | 1 tool | - | Python |
-| `scripts/lib/pre_push_units.py` | WHAT THE PRE-PUSH HOOK COMPILES AND UNIT-TESTS (scripts/hooks/pre-push `--compile-plan`, `--unit-plan`, | `imported` | 1 tool | - | Python |
-| `scripts/lib/prod_tunnel.py` | HOW A LAPTOP REACHES PROD MONGO, for the Python tools (scripts/lib): scripts/local-mirror/prod-tunnel.sh's | `imported` | 4 tools | prod_tunnel_test.py | Python |
-| `scripts/lib/production_scala.py` | THE DEPLOYED SCALA SOURCES (scripts/lib): the modules whose `src/main` ships (quality.QualityReport.ProductionModules) | `imported` | 2 tools | production_scala_test.py | Python |
+| `scripts/lib/cli/hook_event.py` | THE HOOK EVENT the claude-hooks read: the JSON Claude Code writes on a hook's stdin, read for a bounded time. | `imported` | 7 tools | hook_event_test.py | Python |
+| `scripts/lib/cli/shell_words.py` | THE SHELL READER the claude-hooks share: a Bash command as words and operators, the way the shell splits it. | `imported` | 5 tools | shell_words_test.py | Python |
+| `scripts/lib/cli/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 7 tools | tool_actions_test.py | Python |
+| `scripts/lib/cli/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 28 tools | tool_cli_test.py | Python |
+| `scripts/lib/cli/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | wf main; 15 tools | - | Python |
+| `scripts/lib/code_tools/pinned_npm_tools.py` | PINNED NODE TOOLS, installed OUTSIDE the checkout: a tool's package.json and its lock, `npm ci`'d once per lock into | `imported` | hook pre-push.sh-legacy; 4 tools | - | Python |
+| `scripts/lib/code_tools/production_scala.py` | THE DEPLOYED SCALA SOURCES (scripts/lib): the modules whose `src/main` ships (quality.QualityReport.ProductionModules) | `imported` | by hand | production_scala_test.py | Python |
+| `scripts/lib/code_tools/scalafix_tree.py` | THE SCALAFIX TREE: what scripts/scalafix-move and scripts/scalafix-organize share -- a worktree KEPT between runs | `imported` | skill test-layers; 2 tools | - | Python |
+| `scripts/lib/code_tools/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
+| `scripts/lib/harness/cli_harness.py` | THE BLACK-BOX TEST HARNESS for the repository's command-line tools, in Python: a tool is driven through its command | `imported` | wf android, security-headers; skill CLAUDE.md; 14 tools | cli_harness_test.py | Python |
+| `scripts/lib/harness/sandbox_closure.py` | THE SANDBOX CLOSURE (scripts/lib): a self-test that runs a tool from a scratch tree copies the tool AND everything it | `imported` | 2 tools | - | Python |
+| `scripts/lib/mobile/seeded_order.py` | THE SEEDED TEST ORDER the nightly order-independence legs share (ios/scripts/swift_test_shuffled.py, | `imported` | wf android; 2 tools | seeded_order_test.py | Python |
+| `scripts/lib/mobile/store_screenshots_common.py` | The store-screenshot drivers' SHARED ENGINE -- android/scripts/store_screenshots.py and ios/scripts/ | `imported` | by hand | - | Python |
+| `scripts/lib/mobile/store_screenshots_fixture.py` | The store-screenshot drivers' TEST FIXTURE (android/scripts/store_screenshots_test.py, ios/scripts/ | `imported` | by hand | - | Python |
+| `scripts/lib/pre_push_hook/checks/pre_push_area.py` | AN AREA'S LOCAL TESTS (scripts/hooks/pre-push's header: the `identity` area; scripts/hooks/local-tests.txt): its | `imported` | 1 tool | - | Python |
+| `scripts/lib/pre_push_hook/checks/pre_push_heavy.py` | THE SBT-BACKED CHECKS BESIDE THE SBT CHECK (scripts/hooks/pre-push's header says what each guards): the flip backlog | `imported` | 1 tool | - | Python |
+| `scripts/lib/pre_push_hook/checks/pre_push_light.py` | THE LIGHT CHECKS (scripts/hooks/pre-push's header says what each guards): the checks that run a lint, a generator's | `imported` | 2 tools | - | Python |
+| `scripts/lib/pre_push_hook/checks/pre_push_registry.py` | EVERY CHECK, by name (pre_push_checks.Processes starts them, scripts/pre_push.py --check answers one): | `imported` | hook pre-push; 3 tools | - | Python |
+| `scripts/lib/pre_push_hook/checks/pre_push_scripttests.py` | THE SCRIPTS' OWN SELF-TESTS (scripts/hooks/pre-push's header: `scripttests`): scripts/run-script-tests over what the | `imported` | 1 tool | - | Python |
+| `scripts/lib/pre_push_hook/plan/pre_push_known_red.py` | THE KNOWN-RED BASELINE (scripts/hooks/pre-push's header): a failing check is held against the push only when it fails | `imported` | 1 tool | - | Python |
+| `scripts/lib/pre_push_hook/plan/pre_push_lints.py` | WHICH LINT SPECS THE PRE-PUSH HOOK'S SBT CHECK RUNS, read off THE LINT REGISTRY (scripts/hooks/lint-registry.tsv; its | `imported` | 1 tool | - | Python |
+| `scripts/lib/pre_push_hook/plan/pre_push_modes.py` | THE PRE-PUSH HOOK'S PLAN MODES (scripts/hooks/pre-push; pre_push_test.py holds every one): each reads changed paths | `imported` | 4 tools | - | Python |
+| `scripts/lib/pre_push_hook/plan/pre_push_paths.py` | THE PRE-PUSH HOOK'S PATH CLASSES (scripts/hooks/pre-push; its header says what each check guards): which changed path | `imported` | 3 tools | - | Python |
+| `scripts/lib/pre_push_hook/plan/pre_push_plan.py` | WHICH CHECKS A SET OF CHANGED PATHS SELECTS (scripts/hooks/pre-push --plan; the hook's header says what each check | `imported` | 1 tool | - | Python |
+| `scripts/lib/pre_push_hook/plan/pre_push_repo.py` | THE PRE-PUSH HOOK'S RUN, its two ends (scripts/lib/pre_push_hook/pre_push_run.py composes them): `Repo`, the checkout the run | `imported` | by hand | - | Python |
+| `scripts/lib/pre_push_hook/plan/pre_push_units.py` | WHAT THE PRE-PUSH HOOK COMPILES AND UNIT-TESTS (scripts/hooks/pre-push `--compile-plan`, `--unit-plan`, | `imported` | 1 tool | - | Python |
+| `scripts/lib/pre_push_hook/pre_push_checks.py` | THE CHECKS, RUN (scripts/hooks/pre-push's header: NO STEP HANGS, THE KNOWN-RED BASELINE). Every check is Python's | `imported` | 1 tool | - | Python |
+| `scripts/lib/pre_push_hook/pre_push_gate.py` | RED BUILDS GATE THE PUSH (scripts/hooks/pre-push's header; CLAUDE.md, "Red builds gate every push to main"), and A | `imported` | wf verify-scrape-recording; hook pre-push; 2 tools | - | Python |
+| `scripts/lib/pre_push_hook/pre_push_push.py` | WHAT A PUSH PUSHES, and the checks its commits add or drop (scripts/hooks/pre-push's header: the ranges git's stdin | `imported` | hook pre-push, pre-push-capabilities; 1 tool | - | Python |
+| `scripts/lib/pre_push_hook/pre_push_reuse.py` | THE REUSE and A REMOTE PASS (scripts/hooks/pre-push's header): a passed run's key answers a re-push of the SAME | `imported` | 1 tool | - | Python |
+| `scripts/lib/pre_push_hook/pre_push_run.py` | THE PRE-PUSH HOOK'S RUN (scripts/hooks/pre-push execs `scripts/pre_push.py <hook> --run [args]`; its header says | `imported` | hook pre-push; 2 tools | - | Python |
+| `scripts/lib/pre_push_hook/pre_push_tree.py` | WHERE THE HOOK RUNS (scripts/hooks/pre-push's header; the hook's shell entry hands a push over to the PUSHING | `imported` | 1 tool | - | Python |
+| `scripts/lib/processes/machine.py` | THE MACHINE: the processes, clock and environment the laptop tools touch, in one adapter (the design rules table's | `imported` | wf alert-backtest, android, archive-recording +44; hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, identity-investigation, test-layers; 167 tools | - | Python |
+| `scripts/lib/processes/tool_bounded.py` | BOUNDED: a command ended once it outlasts <seconds> (exit 124), else its own status -- timeout(1)'s contract without | `imported` | wf main; 11 tools | tool_bounded_test.py | Python |
+| `scripts/lib/processes/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | wf main; 26 tools | tool_python_test.py | Python |
+| `scripts/lib/processes/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 20 tools | - | Python |
 | `scripts/lib/proxy_properties.py` | THE RESIDENTIAL PROXY POOL, as the CI probes read it (scripts/lib): the worker's committed residential-proxy.properties | `imported` | 2 tools | proxy_properties_test.py | Python |
 | `scripts/lib/ps_table.py` | THE PROCESS TABLE, the one way the Python tools read `ps` (scripts/lib): every process a `Process` (pid, parent, its | `imported` | skill CLAUDE.md; 3 tools | ps_table_test.py | Python |
 | `scripts/lib/rules_table.py` | THE DESIGN RULES TABLE, read (test/resources/design-rules.tsv; its header says every row's shape): the limits, the | `imported` | hook pre-push.sh-legacy; 8 tools | - | Python |
-| `scripts/lib/sandbox_closure.py` | THE SANDBOX CLOSURE (scripts/lib): a self-test that runs a tool from a scratch tree copies the tool AND everything it | `imported` | 2 tools | - | Python |
-| `scripts/lib/scalafix_tree.py` | THE SCALAFIX TREE: what scripts/scalafix-move and scripts/scalafix-organize share -- a worktree KEPT between runs | `imported` | skill test-layers; 2 tools | - | Python |
-| `scripts/lib/script_tests_changed.py` | WHAT A --changed RUN SELECTS (scripts/run-script-tests): the paths changed since the base, and every self-test they | `imported` | 5 tools | - | Python |
-| `scripts/lib/script_tests_found.py` | THE SELF-TESTS scripts/run-script-tests finds, and what each says of itself in its first 40 lines: a `# script-test: | `imported` | 6 tools | - | Python |
-| `scripts/lib/script_tests_linux.py` | --linux (scripts/run-script-tests): the selected tests in a container like CI's ubuntu runner. The image is the | `imported` | 1 tool | - | Python |
-| `scripts/lib/script_tests_pool.py` | RUNNING THE SELF-TESTS (scripts/run-script-tests): each from the checkout's root, `bash` for .sh and `python3` for | `imported` | 3 tools | - | Python |
-| `scripts/lib/script_tests_report.py` | WHAT A RUN SAYS (scripts/run-script-tests): a row a test run -- `<STATUS> <seconds>s  <path>[ (run i/N)][ (floor)]`, | `imported` | 1 tool | - | Python |
-| `scripts/lib/script_tests_run.py` | A RUN OF THE SELECTED SELF-TESTS (scripts/run-script-tests, after its selection): its width under THE GOVERNOR (one | `imported` | 1 tool | - | Python |
-| `scripts/lib/script_tests_select.py` | WHAT A RUN OF scripts/run-script-tests SELECTS: its options, and the self-tests they pick -- by tag and filter, and | `imported` | 1 tool | - | Python |
-| `scripts/lib/script_tests_tree.py` | THE TREE IS LEFT AS FOUND (scripts/run-script-tests): the checkout's state (`git status --porcelain --ignored`: what | `imported` | 1 tool | - | Python |
-| `scripts/lib/seeded_order.py` | THE SEEDED TEST ORDER the nightly order-independence legs share (ios/scripts/swift_test_shuffled.py, | `imported` | wf android; 2 tools | seeded_order_test.py | Python |
-| `scripts/lib/shell_words.py` | THE SHELL READER the claude-hooks share: a Bash command as words and operators, the way the shell splits it. | `imported` | 6 tools | shell_words_test.py | Python |
-| `scripts/lib/store_screenshots_common.py` | The store-screenshot drivers' SHARED ENGINE -- android/scripts/store_screenshots.py and ios/scripts/ | `imported` | 5 tools | - | Python |
-| `scripts/lib/store_screenshots_fixture.py` | The store-screenshot drivers' TEST FIXTURE (android/scripts/store_screenshots_test.py, ios/scripts/ | `imported` | by hand | - | Python |
-| `scripts/lib/tool_actions.py` | GITHUB ACTIONS' WORKFLOW COMMANDS, the one way the Python tools speak to a step (scripts/lib): an annotation | `imported` | 7 tools | tool_actions_test.py | Python |
-| `scripts/lib/tool_bounded.py` | BOUNDED: a command ended once it outlasts <seconds> (exit 124), else its own status -- timeout(1)'s contract without | `imported` | wf main; 11 tools | tool_bounded_test.py | Python |
-| `scripts/lib/tool_cli.py` | THE COMMAND LINE CONVENTIONS the Python tools share (scripts/lib; tool-conventions.sh's `die` and usage exits): a | `imported` | wf main; 32 tools | tool_cli_test.py | Python |
-| `scripts/lib/tool_countries.py` | THE COUNTRIES every tool loops over, in one order, and the country flag (scripts/lib; tool-conventions.sh's | `imported` | wf main; 15 tools | - | Python |
-| `scripts/lib/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 11 tools | tool_dispatch_test.py | Python |
-| `scripts/lib/tool_files.py` | FILES, INJECTED (scripts/lib; CLAUDE.md, "Design rules": files are an injected effect since 2026-11-27): a tool | `imported` | skill CLAUDE.md; 48 tools | tool_files_test.py | Python |
+| `scripts/lib/script_tests/script_tests_linux.py` | --linux (scripts/run-script-tests): the selected tests in a container like CI's ubuntu runner. The image is the | `imported` | 1 tool | - | Python |
+| `scripts/lib/script_tests/script_tests_pool.py` | RUNNING THE SELF-TESTS (scripts/run-script-tests): each from the checkout's root, `bash` for .sh and `python3` for | `imported` | by hand | - | Python |
+| `scripts/lib/script_tests/script_tests_report.py` | WHAT A RUN SAYS (scripts/run-script-tests): a row a test run -- `<STATUS> <seconds>s  <path>[ (run i/N)][ (floor)]`, | `imported` | by hand | - | Python |
+| `scripts/lib/script_tests/script_tests_run.py` | A RUN OF THE SELECTED SELF-TESTS (scripts/run-script-tests, after its selection): its width under THE GOVERNOR (one | `imported` | by hand | - | Python |
+| `scripts/lib/script_tests/select/script_tests_changed.py` | WHAT A --changed RUN SELECTS (scripts/run-script-tests): the paths changed since the base, and every self-test they | `imported` | 2 tools | - | Python |
+| `scripts/lib/script_tests/select/script_tests_found.py` | THE SELF-TESTS scripts/run-script-tests finds, and what each says of itself in its first 40 lines: a `# script-test: | `imported` | by hand | - | Python |
+| `scripts/lib/script_tests/select/script_tests_select.py` | WHAT A RUN OF scripts/run-script-tests SELECTS: its options, and the self-tests they pick -- by tag and filter, and | `imported` | by hand | - | Python |
+| `scripts/lib/script_tests/select/script_tests_tree.py` | THE TREE IS LEFT AS FOUND (scripts/run-script-tests): the checkout's state (`git status --porcelain --ignored`: what | `imported` | by hand | - | Python |
+| `scripts/lib/seams/tool_files.py` | FILES, INJECTED (scripts/lib; CLAUDE.md, "Design rules": files are an injected effect since 2026-11-27): a tool | `imported` | skill CLAUDE.md; 10 tools | tool_files_test.py | Python |
+| `scripts/lib/seams/tool_http.py` | HTTP, INJECTED (scripts/lib; CLAUDE.md, "Design rules": the network is an injected effect since 2026-11-27): a tool | `imported` | skill CLAUDE.md; 3 tools | tool_http_test.py | Python |
+| `scripts/lib/seams/tool_state.py` | STATE AND KEY-VALUE STORAGE, INJECTED (scripts/lib; CLAUDE.md, "Design rules": storage is an injected effect since | `imported` | skill CLAUDE.md; 2 tools | tool_state_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; skill CLAUDE.md; 60 tools | tool_git_test.py | Python |
-| `scripts/lib/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | skill CLAUDE.md; 23 tools | tool_github_test.py | Python |
-| `scripts/lib/tool_http.py` | HTTP, INJECTED (scripts/lib; CLAUDE.md, "Design rules": the network is an injected effect since 2026-11-27): a tool | `imported` | skill CLAUDE.md; 3 tools | tool_http_test.py | Python |
-| `scripts/lib/tool_pool.py` | THE GOVERNED FAN-OUT FOR A PYTHON TOOL (scripts/lib; stdlib only): a worker pool sized by the governor. | `imported` | skill CLAUDE.md; 4 tools | tool_pool_test.py | Python |
 | `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 117 tools | tool_process_test.py | Python |
-| `scripts/lib/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | wf main; 26 tools | tool_python_test.py | Python |
-| `scripts/lib/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 21 tools | - | Python |
-| `scripts/lib/tool_state.py` | STATE AND KEY-VALUE STORAGE, INJECTED (scripts/lib; CLAUDE.md, "Design rules": storage is an injected effect since | `imported` | skill CLAUDE.md; 2 tools | tool_state_test.py | Python |
-| `scripts/lib/touched_tree.py` | The touched-code tree: what scripts/mutation-check and scripts/coverage-touched share | `imported` | skill test-layers; 2 tools | - | Python |
+| `scripts/lib/vcs/gh_download.py` | A GITHUB DOWNLOAD, BOUNDED AND RETRIED, absent told from failed (scripts/lib; tool-conventions.sh's gh_download, | `imported` | wf convergence-bisect, main; 16 tools | - | Python |
+| `scripts/lib/vcs/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 11 tools | tool_dispatch_test.py | Python |
+| `scripts/lib/vcs/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | skill CLAUDE.md; 26 tools | tool_github_test.py | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 2 tools | linux_tree_sync_test.py | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 6 tools | - | KEEP |
 | `scripts/mutation-check` | Mutation testing of the methods a change touches (Stryker4s; a report, never a gate; a name for mutation_check.py) | `scripts/mutation-check` | skill test-layers; 5 tools | mutation_check_test.py | KEEP |

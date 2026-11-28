@@ -39,7 +39,7 @@ from collections import defaultdict
 from typing import Dict, List, Sequence, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 PATH = "test/resources/fixtures/identity-judgements.tsv"
 COLUMNS = ("country", "venue", "rawTitle", "film", "verdict", "state", "scope", "filmTitle", "reason", "judged", "evidence")

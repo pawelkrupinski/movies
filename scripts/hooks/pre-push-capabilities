@@ -1,5 +1,5 @@
 # What scripts/hooks/pre-push supports, one capability a line (a `#` line is a comment): agentctl reads this file at
 # main instead of the hook's text (the literal `refs/heads/land/` stays in the hook, its fallback).
 #   land-refs   a push of refs/heads/land/* (as of measure/* and check/*) checks nothing: a CI run's ref
-#               (scripts/lib/pre_push_push.py CI_REFS)
+#               (scripts/lib/pre_push_hook/pre_push_push.py CI_REFS)
 land-refs

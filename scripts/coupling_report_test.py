@@ -18,7 +18,7 @@ import unittest
 from typing import List
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # the tool's own files, copied into the scratch checkout (whichever exist: the shell tool, or its Python rewrite)

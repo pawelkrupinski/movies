@@ -16,7 +16,7 @@ from typing import List, Optional
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, "scripts/lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path(".github/scripts/convergence_fill.py", ".github/scripts/convergence-fill.sh")
 GH = r"""

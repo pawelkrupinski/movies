@@ -139,15 +139,15 @@ SELF = os.path.join(HERE, "sbt-warm")
 sys.path.insert(0, os.path.join(HERE, "lib"))
 sys.path.insert(0, HERE)
 
-import machine  # noqa: E402
-from jvm_gate import Governor, Host, JvmGate, SubprocessCommands, lock_busy  # noqa: E402
-from jvm_memory import Clock, MemoryGate, SlotWait  # noqa: E402
-from sbt_warm_cache import Builds, Places  # noqa: E402
-from sbt_warm_call import Call, Tools  # noqa: E402
-from sbt_warm_keeper import Keeper, KeeperSettings  # noqa: E402
-from sbt_warm_servers import Checkout, Procs, Servers, read  # noqa: E402
+from processes import machine  # noqa: E402
+from governor.jvm_gate import Governor, Host, JvmGate, SubprocessCommands, lock_busy  # noqa: E402
+from governor.jvm_memory import Clock, MemoryGate, SlotWait  # noqa: E402
+from sbt_warm.sbt_warm_cache import Builds, Places  # noqa: E402
+from sbt_warm.sbt_warm_call import Call, Tools  # noqa: E402
+from sbt_warm.sbt_warm_keeper import Keeper, KeeperSettings  # noqa: E402
+from sbt_warm.sbt_warm_servers import Checkout, Procs, Servers, read  # noqa: E402
 import tool_git  # noqa: E402
-from tool_cli import UsageError, header_usage  # noqa: E402
+from cli.tool_cli import UsageError, header_usage  # noqa: E402
 
 
 def usage() -> str:

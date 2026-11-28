@@ -12,7 +12,7 @@ import subprocess
 import unittest
 
 from sbt_warm_fixture import SbtWarmCase, lock_state, state_word
-import cli_harness
+from harness import cli_harness
 
 
 class ServerSettingsTest(SbtWarmCase):

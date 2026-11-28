@@ -19,8 +19,8 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import poster_eval as pe  # noqa: E402
 import poster_hash  # noqa: E402
-import machine  # noqa: E402
-from tool_files import Files  # noqa: E402
+from processes import machine  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 from tool_process import Captured, Command, SubprocessRunner  # noqa: E402
 
 

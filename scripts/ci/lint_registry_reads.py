@@ -33,10 +33,10 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, Iterable, Iterator, List, Mapping, Sequence, Set, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import machine  # noqa: E402
-from tool_files import Files  # noqa: E402
+from processes import machine  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 from tool_git import Git, shared_runner  # noqa: E402
-from tool_pool import governed_workers  # noqa: E402  (THE GOVERNED FAN-OUT: the hook runs under a governor ticket)
+from governor.tool_pool import governed_workers  # noqa: E402  (THE GOVERNED FAN-OUT: the hook runs under a governor ticket)
 from tool_process import Command, Runner  # noqa: E402
 
 LITERAL = re.compile(r'"([A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+/?)"')

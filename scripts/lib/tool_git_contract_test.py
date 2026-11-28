@@ -12,7 +12,7 @@ import unittest
 from typing import Dict, List, Mapping, Optional, Protocol
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 import tool_git  # noqa: E402
 import tool_process  # noqa: E402
 

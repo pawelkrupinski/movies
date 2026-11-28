@@ -67,7 +67,7 @@ import identity_drift_check_base as base_  # noqa: E402
 import identity_drift_check_judge as judge_  # noqa: E402
 import identity_drift_check_replay as replay_  # noqa: E402
 import identity_drift_check_store as store_  # noqa: E402
-import tool_actions  # noqa: E402
+from cli import tool_actions  # noqa: E402
 import tool_process  # noqa: E402
 
 SUMMARY = re.compile(r"^## [a-z]+: ")

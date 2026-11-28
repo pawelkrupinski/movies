@@ -5,18 +5,18 @@ A governed run WAITS for its governor ticket while the laptop is starved; two la
 killed their own queued runs (2026-11-27). PreToolUse on Bash (.claude/settings.json): DENIES (exit 2, the reason on
 stderr) a `kill <pid>`, `pkill` or `killall` that would end a governed run the governor (`agentctl gov status`) still
 lists, unless the run is already past its own bound (its `--timeout S`, else 3000 s). The judgement is
-scripts/lib/governed_kill.py's; run-script-tests says its queue position while it waits.
+scripts/lib/governor/governed_kill.py's; run-script-tests says its queue position while it waits.
 
 It reads the command, not the shell; a broken guard never blocks (exit 0), and neither does a machine with no governor.
-Self-test: scripts/lib/governed_kill_test.py."""
+Self-test: scripts/lib/governor/governed_kill_test.py."""
 import os
 import sys
 from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
-import governed_kill  # noqa: E402
-import hook_event  # noqa: E402
-import shell_words  # noqa: E402
+from governor import governed_kill  # noqa: E402
+from cli import hook_event  # noqa: E402
+from cli import shell_words  # noqa: E402
 import tool_process  # noqa: E402
 
 

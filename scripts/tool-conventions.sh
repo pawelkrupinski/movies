@@ -66,7 +66,7 @@ bounded() {
   case "${1:-}" in
     ''|*[!0-9]*|0) echo "bounded: <seconds> must be a positive whole number, not '${1:-}'" >&2; return 64 ;;
   esac
-  python3 -I -B "$TOOL_CONVENTIONS_LIB/tool_bounded.py" "$@"
+  python3 -I -B "$TOOL_CONVENTIONS_LIB/processes/tool_bounded.py" "$@"
 }
 
 usage_from_header() { sed -n '2,/^set /p' "${1:-$0}" | sed -e '$d' -e 's/^# \{0,1\}//' -e 's/^#$//' | sed -e '1{/^$/d;}'; }
@@ -101,7 +101,7 @@ country_flag() {
     --country=*|--countries=*) value=${flag#*=}; flag=${flag%%=*} ;;
     *) value=${2:-}; [ $# -lt 2 ] || COUNTRY_FLAG_ARGS=2 ;;
   esac
-  codes=$(python3 -I -B "$TOOL_CONVENTIONS_LIB/tool_countries.py" "$flag" "$value" ${SELECTED_COUNTRIES[@]+"${SELECTED_COUNTRIES[@]}"}) ||
+  codes=$(python3 -I -B "$TOOL_CONVENTIONS_LIB/cli/tool_countries.py" "$flag" "$value" ${SELECTED_COUNTRIES[@]+"${SELECTED_COUNTRIES[@]}"}) ||
     usage_error "$codes"
   read -r -a SELECTED_COUNTRIES <<< "$codes"
 }
@@ -130,9 +130,9 @@ path_flag() {
 #   gh_release_public <seconds> release download <args...>  -> one asset from its public URL (4: not one it serves)
 #   gh_rate_limit_wait                                      -> the seconds until a spent API rate limit resets
 #   prod_latest_run <cc>                                    -> the freshest complete nightly recording's run id
-#   All in scripts/lib/gh_download.py, whose header holds the contract (the retries, absent against failed, the
+#   All in scripts/lib/vcs/gh_download.py, whose header holds the contract (the retries, absent against failed, the
 #   public URL, the rate limit) and every knob.
-gh_download() { python3 -I -B "$TOOL_CONVENTIONS_LIB/gh_download.py" download "$@"; }
-gh_rate_limit_wait() { python3 -I -B "$TOOL_CONVENTIONS_LIB/gh_download.py" rate-limit-wait; }
-gh_release_public() { python3 -I -B "$TOOL_CONVENTIONS_LIB/gh_download.py" public "$@"; }
-prod_latest_run() { python3 -I -B "$TOOL_CONVENTIONS_LIB/gh_download.py" prod-latest "$1"; }
+gh_download() { python3 -I -B "$TOOL_CONVENTIONS_LIB/vcs/gh_download.py" download "$@"; }
+gh_rate_limit_wait() { python3 -I -B "$TOOL_CONVENTIONS_LIB/vcs/gh_download.py" rate-limit-wait; }
+gh_release_public() { python3 -I -B "$TOOL_CONVENTIONS_LIB/vcs/gh_download.py" public "$@"; }
+prod_latest_run() { python3 -I -B "$TOOL_CONVENTIONS_LIB/vcs/gh_download.py" prod-latest "$1"; }

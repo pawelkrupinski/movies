@@ -8,7 +8,7 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/sandbox_copy.py")
 
@@ -20,9 +20,10 @@ class SandboxCopyTest(cli_harness.ToolCase):
         dest = self.path("tree")
         done = self.run_tool(dest, "scripts/ci/verified_ref.py")
         self.assertEqual(0, done.code, done.output)
-        for path in ("scripts/ci/verified_ref.py", "scripts/lib/tool_git.py", "scripts/lib/tool_process.py"):
+        for path in ("scripts/ci/verified_ref.py", "scripts/lib/tool_git.py", "scripts/lib/tool_process.py",
+                     "scripts/lib/processes/machine.py"):  # a module of a library package, by its dotted import
             self.assertIn(path, done.stdout.split())
-        self.assertNotIn("scripts/lib/cli_harness.py", done.stdout.split())
+        self.assertNotIn("scripts/lib/harness/cli_harness.py", done.stdout.split())
         ran = self.run_tool(tool=os.path.join(dest, "scripts/ci/verified_ref.py"))
         self.assertIn("usage: verified-ref.sh", ran.output)
 

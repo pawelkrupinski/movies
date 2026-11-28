@@ -17,7 +17,7 @@ import unittest
 from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/convergence_local.py", "scripts/convergence-local.sh")
 # What the tool takes with it into its tree, whichever of them exist: the shell tool and the libraries it sources, or

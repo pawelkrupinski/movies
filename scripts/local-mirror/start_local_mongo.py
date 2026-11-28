@@ -29,8 +29,8 @@ import time
 from typing import List, Optional, Sequence
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import machine  # noqa: E402
-import mongo_local  # noqa: E402
+from processes import machine  # noqa: E402
+from mongo import mongo_local  # noqa: E402
 
 FORMULA = re.compile(r"mongodb-community(@[0-9.]+)?")
 INITIATE = '''

@@ -6,7 +6,7 @@ re-projects the read model; serving is empty until that completes (a few minutes
 the "short downtime is fine" rule).
 
 Target: PROD -- the `web-<cc>` + `worker-<cc>` Deployments on k3s, prod Mongo over the ssh tunnel
-scripts/lib/prod_tunnel.py opens to the Hetzner Mongo host. Both are scaled to ZERO first so the worker can't race a
+scripts/lib/mongo/prod_tunnel.py opens to the Hetzner Mongo host. Both are scaled to ZERO first so the worker can't race a
 half-finished scrape into a collection we're dropping, and scaled back only after the wipe lands (or, when the reset
 does not finish, on the way out). Needs a kubeconfig for the cluster.
 
@@ -37,9 +37,9 @@ from typing import List, Mapping
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 sys.path.insert(0, HERE)
-import machine  # noqa: E402
-import prod_tunnel  # noqa: E402
-import tool_cli  # noqa: E402
+from processes import machine  # noqa: E402
+from mongo import prod_tunnel  # noqa: E402
+from cli import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
 import vault_env  # noqa: E402
 

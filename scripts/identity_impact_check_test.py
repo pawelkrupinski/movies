@@ -26,7 +26,7 @@ import unittest
 from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 ROOT = cli_harness.ROOT
 TAB = "\t"
@@ -106,7 +106,7 @@ class ImpactCheckCase(cli_harness.ToolCase):
         selection it proves and the shared modules it imports."""
         names = ["scripts/identity-impact-check", "scripts/ci/identity_impact.py"]
         names += [os.path.relpath(p, ROOT) for p in glob.glob(os.path.join(ROOT, "scripts", "identity_impact_check*.py"))
-                  + glob.glob(os.path.join(ROOT, "scripts", "lib", "*.py")) if not p.endswith("_test.py")]
+                  + glob.glob(os.path.join(ROOT, "scripts", "lib", "**", "*.py"), recursive=True) if not p.endswith("_test.py")]
         for name in names:
             os.makedirs(os.path.dirname(os.path.join(self.repo_dir, name)), exist_ok=True)
             shutil.copy2(os.path.join(ROOT, name), os.path.join(self.repo_dir, name))

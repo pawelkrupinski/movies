@@ -25,8 +25,8 @@ from typing import TYPE_CHECKING, Callable, Dict, Iterator, List, Sequence, Tupl
 
 if TYPE_CHECKING:  # the adapters are imported where they are built (main): shard_tests.py imports this module for read_rows alone
     import tool_git
-    import tool_http
-    from tool_files import Files
+    from seams import tool_http
+    from seams.tool_files import Files
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_FILE = os.path.join(HERE, "shard-weights-identity.tsv")
@@ -127,11 +127,11 @@ def refresh(a: argparse.Namespace, files: Files, git: tool_git.Git, http: tool_h
 
 def main(argv: Sequence[str]) -> int:
     sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
-    import machine
+    from processes import machine
     import tool_git
-    import tool_http
+    from seams import tool_http
     import tool_process
-    from tool_files import Files
+    from seams.tool_files import Files
     env = machine.environment()
     ap = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)

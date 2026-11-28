@@ -27,7 +27,7 @@ import xml.etree.ElementTree as ElementTree
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import tool_git  # noqa: E402
-from production_scala import is_production  # noqa: E402
+from code_tools.production_scala import is_production  # noqa: E402
 
 HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 

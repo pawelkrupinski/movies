@@ -13,7 +13,7 @@ from typing import Dict, Optional
 
 sys.path[:0] = [os.path.join(os.path.dirname(os.path.abspath(__file__)), part) for part in ("ci", "lib")]
 from identity_takes import OUTCOMES, outcome, table  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 
 def read(files: Files, path):

@@ -11,8 +11,8 @@ from __future__ import annotations
 import json
 from typing import Dict, NoReturn, Optional, Tuple
 
-import tool_countries
-import tool_dispatch
+from cli import tool_countries
+from vcs import tool_dispatch
 from identity_measure_cli_context import TAKES_ROW_JQ, Context, Die, Exit, say
 
 ENDED = ("completed", "success", "failure", "error", "cancelled", "skipped")

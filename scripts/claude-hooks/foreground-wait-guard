@@ -18,8 +18,8 @@ import sys
 from typing import List, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
-import hook_event  # noqa: E402
-import shell_words as shell  # noqa: E402
+from cli import hook_event  # noqa: E402
+from cli import shell_words as shell  # noqa: E402
 
 
 SHORT_WAIT_SECONDS = 60

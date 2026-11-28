@@ -53,13 +53,13 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, cast
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
-import machine  # noqa: E402
-import mongo_local  # noqa: E402
-import tool_countries  # noqa: E402
-import tool_dispatch  # noqa: E402
-import tool_github  # noqa: E402
+from processes import machine  # noqa: E402
+from mongo import mongo_local  # noqa: E402
+from cli import tool_countries  # noqa: E402
+from vcs import tool_dispatch  # noqa: E402
+from vcs import tool_github  # noqa: E402
 import tool_process  # noqa: E402
-import tool_shell  # noqa: E402
+from processes import tool_shell  # noqa: E402
 
 TOOL = "identity-repro"
 RECORDING_WORKFLOW = "Record scrape fixtures"

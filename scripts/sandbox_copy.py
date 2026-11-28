@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Purpose: copy tools and every repository module they import into a scratch tree, so a shell self-test can run them there
-"""THE SANDBOX COPY for a shell self-test (scripts/lib/sandbox_closure.py; cli_harness.ToolCase.sandbox is the Python
+"""THE SANDBOX COPY for a shell self-test (scripts/lib/harness/sandbox_closure.py; cli_harness.ToolCase.sandbox is the Python
 tests' way): a tool copied into a scratch repository alone cannot import the scripts/lib adapters it takes, so a test
 copies it with its import closure.
 
@@ -17,8 +17,8 @@ from typing import Sequence
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, os.path.join(HERE, "lib"))
-import sandbox_closure  # noqa: E402
-from tool_files import Files  # noqa: E402
+from harness import sandbox_closure  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 
 
 def main(argv: Sequence[str], files: Files) -> int:

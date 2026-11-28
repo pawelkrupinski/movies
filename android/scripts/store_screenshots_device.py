@@ -10,7 +10,7 @@ import subprocess
 from dataclasses import dataclass, field
 from typing import List, Mapping, Optional
 
-from store_screenshots_common import Died, Output, naps, png_size, play_safe_width
+from mobile.store_screenshots_common import Died, Output, naps, png_size, play_safe_width
 
 PKG = "net.pawel.kinowo"
 ACT = "pl.kinowo.MainActivity"

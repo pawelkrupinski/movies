@@ -58,7 +58,7 @@ import ci_machine  # noqa: E402
 import countries_disagree  # noqa: E402
 import gh_bounded  # noqa: E402
 from identity_judgements import judgements_of, label_of, normalise  # noqa: E402  (the one reading of a judgement)
-from tool_files import Files  # noqa: E402  (identity_judgements put scripts/lib on the path)
+from seams.tool_files import Files  # noqa: E402  (identity_judgements put scripts/lib on the path)
 
 COUNTRIES = ["pl", "de", "uk", "es", "us"]
 STATE = re.compile(r"<!-- identity-findings-state: (\{.*?\}) -->", re.S)

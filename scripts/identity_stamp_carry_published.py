@@ -16,9 +16,9 @@ from typing import Any
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pure_move_check import git  # noqa: E402  (the one git a proof reads)
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import tool_git  # noqa: E402
-import tool_github  # noqa: E402
+from vcs import tool_github  # noqa: E402
 import tool_process  # noqa: E402
 
 # the what-if records a what-if row stands on, committed with it (<head>-<base>.tsv, identity-tools.sh's format)

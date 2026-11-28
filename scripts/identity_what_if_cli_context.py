@@ -1,7 +1,7 @@
 """What every part of identity-what-if (scripts/identity_what_if_cli.py) shares: the options, the environment it runs
 in and hands on, the injected runner, clock and sleeper, its log (`[identity-what-if +Ns] ...`, the seconds since it
 started) and its HARNESS ERROR, the files it keys its sides by (TOOL_FILES), and the calls it makes of the shell
-library it still shares with the other identity tools (scripts/identity-tools.sh, through scripts/lib/tool_shell.py),
+library it still shares with the other identity tools (scripts/identity-tools.sh, through scripts/lib/processes/tool_shell.py),
 of git and of scripts/identity_what_if.py."""
 from __future__ import annotations
 
@@ -13,9 +13,9 @@ from typing import Callable, Dict, List, Optional, Sequence
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import tool_process  # noqa: E402
-import tool_python  # noqa: E402
-import tool_shell  # noqa: E402
-from identity_kept_jvms import alive as alive  # noqa: E402 (identity_what_if_cli_mirror's, _sides')
+from processes import tool_python  # noqa: E402
+from processes import tool_shell  # noqa: E402
+from identity_tooling.ci.identity_kept_jvms import alive as alive  # noqa: E402 (identity_what_if_cli_mirror's, _sides')
 from identity_what_if_cli_options import Options  # noqa: E402
 
 TOOL = "identity-what-if"

@@ -17,7 +17,7 @@ from typing import Dict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [HERE, os.path.join(os.path.dirname(HERE), "lib")]
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 import functions  # noqa: E402
 
 REPORT = os.path.join(HERE, "report.py")
@@ -116,6 +116,11 @@ class ReportTest(cli_harness.ToolCase):
         self.assert_check_fails("copies scripts/ci/a.py|scripts/ci/b.py: 2",
                                 "cycle scripts/ci/a.py|scripts/ci/b.py: 2")
         self.assertNotIn("fanout scripts/ci/wide.py", self.report("--check").output)
+
+    def test_a_cycle_through_a_library_package_is_found_by_its_dotted_imports(self) -> None:
+        self.files({"scripts/lib/shared/c.py": "from shared import d\n", "scripts/lib/shared/d.py": "from shared.c import X\n",
+                    "scripts/ci/user.py": "import shared.c\n"})
+        self.assert_check_fails("cycle scripts/lib/shared/c.py|scripts/lib/shared/d.py: 2")
 
     def test_a_self_tests_rows_are_reported_never_held(self) -> None:
         self.files({"scripts/ci/hairy_test.py": HAIRY + "x = 1  # type-error\n"})

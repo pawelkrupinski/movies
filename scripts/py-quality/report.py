@@ -33,7 +33,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "ci"))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import clones  # noqa: E402
 import functions  # noqa: E402
 import imports  # noqa: E402

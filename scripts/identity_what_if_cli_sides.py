@@ -14,7 +14,7 @@ import shutil
 from typing import List, Optional
 
 from identity_what_if_cli_context import Context, Exit, alive
-import machine  # scripts/lib, on the path the context put it on
+from processes import machine  # scripts/lib, on the path the context put it on
 from identity_what_if_cli_resolve import Resolver, read
 
 

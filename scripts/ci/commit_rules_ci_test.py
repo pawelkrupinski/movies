@@ -13,7 +13,7 @@ import unittest
 from typing import Dict, Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TOOL = cli_harness.tool_path("scripts/ci/commit_rules_ci.py", "scripts/ci/commit-rules-ci.sh")
 # what the tool calls, copied beside it: whichever of them exist

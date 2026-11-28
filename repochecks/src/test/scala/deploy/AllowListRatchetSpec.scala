@@ -30,16 +30,16 @@ class AllowListRatchetSpec extends AnyFlatSpec with Matchers {
   }
 
   "the pre-push hook" should "run the ratchet on a change to a registered list, and the birth check on the gate's files" in {
-    // the check is Python's (scripts/lib/pre_push_light.py, the hook's light checks since its stage 4)
-    val light = RepoFile.read("scripts/lib/pre_push_light.py")
+    // the check is Python's (scripts/lib/pre_push_hook/checks/pre_push_light.py, the hook's light checks since its stage 4)
+    val light = RepoFile.read("scripts/lib/pre_push_hook/checks/pre_push_light.py")
     light should include("""return c.run(["python3", "scripts/ci/commit_rules.py", rules, *c.range_args()])""")
     light should include(""""allowlists": commit_rules("allowlists")""")
     // the selection is Python's (scripts/pre_push.py): a registered list's own path selects the ratchet
-    RepoFile.read("scripts/lib/pre_push_modes.py") should include("allow_lists=set(allow.splitlines())")
-    RepoFile.read("scripts/lib/pre_push_plan.py") should include("(\"allowlists\", lambda p, t: p in t.allow_lists)")
+    RepoFile.read("scripts/lib/pre_push_hook/plan/pre_push_modes.py") should include("allow_lists=set(allow.splitlines())")
+    RepoFile.read("scripts/lib/pre_push_hook/plan/pre_push_plan.py") should include("(\"allowlists\", lambda p, t: p in t.allow_lists)")
     // the birth check runs every drift row against main's newest run, through drift_ci (which shows its progress); the
-    // check is Python's since the hook's stage 6 (scripts/lib/pre_push_heavy.py)
-    val drift = RepoFile.read("scripts/lib/pre_push_heavy.py")
+    // check is Python's since the hook's stage 6 (scripts/lib/pre_push_hook/checks/pre_push_heavy.py)
+    val drift = RepoFile.read("scripts/lib/pre_push_hook/checks/pre_push_heavy.py")
     drift should include("""drift_ci(c, log, ["--head", head, "--against", "main"])""")
     drift should include("""{ scripts/identity-drift-ci "$@" 2>&1;""")
     RepoFile.read(".github/identity-drift-gate-paths.txt") should include("test/resources/fixtures/identity-flips-allow.tsv")

@@ -12,7 +12,7 @@ import unittest
 from typing import List
 
 from sbt_warm_fixture import SbtWarmCase, lock_state, state_word
-import cli_harness
+from harness import cli_harness
 
 
 def aged(path: str) -> None:

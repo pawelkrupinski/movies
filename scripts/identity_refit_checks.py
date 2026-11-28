@@ -11,7 +11,7 @@ import re
 import sys
 from typing import Callable, List, Mapping, Optional, Sequence
 
-import machine
+from processes import machine
 import tool_git
 import tool_process
 

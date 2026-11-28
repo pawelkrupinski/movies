@@ -28,9 +28,9 @@ from typing import List, Mapping, Optional, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
-import machine  # noqa: E402
+from processes import machine  # noqa: E402
 import tool_git  # noqa: E402
-from tool_files import Files  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 import tool_process  # noqa: E402
 
 RULE_SETS = ("allowlists", "driftguards")

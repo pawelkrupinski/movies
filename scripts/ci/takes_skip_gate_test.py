@@ -19,7 +19,7 @@ import unittest
 from typing import Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-import cli_harness  # noqa: E402
+from harness import cli_harness  # noqa: E402
 
 TEMPLATE_ENV = "TAKES_SKIP_GATE_TEMPLATE"  # a Shared's directory to clone (set by the mutation test, which builds it once)
 TOOL = cli_harness.tool_path("scripts/ci/takes_skip_gate.py", "scripts/ci/takes-skip-gate.sh")

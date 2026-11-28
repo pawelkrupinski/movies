@@ -38,8 +38,8 @@ from typing import List, Mapping, Optional, Sequence
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "lib"))
-import machine  # noqa: E402
-from store_screenshots_common import COUNTRY, Died, Output, png_size  # noqa: E402
+from processes import machine  # noqa: E402
+from mobile.store_screenshots_common import COUNTRY, Died, Output, png_size  # noqa: E402
 
 LISTINGS = os.path.join(REPO_ROOT, "android/app/src/main/play/listings")
 # Deliberately OUTSIDE app/src/main/play: gradle-play-publisher validates that

@@ -16,10 +16,10 @@ from typing import Dict, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
-import sandbox_closure  # noqa: E402
+from harness import sandbox_closure  # noqa: E402
 import takes_skip_gate_test  # noqa: E402
-from tool_files import Files  # noqa: E402
-from tool_pool import governed_workers  # noqa: E402  (THE GOVERNED FAN-OUT: the mutants' pool under a governor ticket)
+from seams.tool_files import Files  # noqa: E402
+from governor.tool_pool import governed_workers  # noqa: E402  (THE GOVERNED FAN-OUT: the mutants' pool under a governor ticket)
 
 ROOT = os.path.dirname(os.path.dirname(HERE))
 GATE_PATH = "scripts/ci/takes_skip_gate.py"
