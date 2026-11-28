@@ -22,6 +22,7 @@ except ImportError:  # the tool's own dependency, as vips is: the CI container h
     sys.exit(0)
 import poster_eval as pe  # noqa: E402
 import poster_hash  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 Fixtures = os.path.join(os.path.dirname(os.path.abspath(__file__)), "poster_eval_fixtures")
 
@@ -80,7 +81,7 @@ class PosterEvalTest(unittest.TestCase):
             f.write("\t".join(pe.Columns) + "\n")
             for row in JudgementRows:
                 f.write("\t".join(row + ("open", "", "", "", "2026-11-11", "")) + "\n")
-        self.rows = pe.read_judgements(tsv)
+        self.rows = pe.read_judgements(Files.here(), tsv)
         # the unread venue poster is no image either: never fetched
         os.makedirs(os.path.join(self.cache, "img", "v"))
         open(os.path.join(self.cache, "img", pe.Images.venue_name("https://u/u.jpg") + ".fail"), "w").close()
