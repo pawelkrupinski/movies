@@ -2,7 +2,9 @@
 # Purpose: What the local identity tools share (sourced): the recording cache, classpaths, countries
 # What the local identity tools (identity-slice and its --explain, identity-judge-cards, venue-replay, title-trace,
 # recording-diff, hard-clusters.sh, listing-history) share: the shared cache, a recording or a capture downloaded once
-# into it, a ref's sources laid out once, a tree's worker test classpath compiled once. Sourcing it defines functions only.
+# into it, a ref's sources laid out once, a tree's worker test classpath compiled once. Sourcing it defines functions only: the shim of
+# scripts/lib/identity_tools.py (the cache, the captures, the trees, the classpaths, the recordings, the verdict record),
+# and what must run in the calling shell (a lock held around a shell function, a JVM slot, a kept JVM).
 #
 #   identity_newest_recording [cc]  -> the newest successful "Record scrape fixtures" run (with cc: holding its corpus)
 #   identity_recording <run> <cc> [corpus] -> the fixtures directory holding that run's corpus/ and enrichment-<cc>/
@@ -23,19 +25,67 @@
 # holder has gone.
 
 IDENTITY_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+IDENTITY_LIB="$IDENTITY_REPO/scripts/lib"
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "${BASH_SOURCE[0]}")/tool-conventions.sh"
 # shellcheck source=scripts/jvm-gate.sh
 . "$(dirname "${BASH_SOURCE[0]}")/jvm-gate.sh"
 IDENTITY_CACHE=$KINOWO_IDENTITY_CACHE
+# shellcheck disable=SC2034 # read by the scripts sourcing this
 IDENTITY_FIXTURES=test/resources/fixtures/identity-unmatched
+# shellcheck disable=SC2034 # read by the scripts sourcing this
 IDENTITY_JUDGEMENTS=test/resources/fixtures/identity-judgements.tsv
 identity_log() { echo "[${IDENTITY_TOOL:-identity}] $*" >&2; }
 
 # identity_gh <seconds> <gh args...> -> gh, killed when it outlasts <seconds> (a hung gh fails, it never waits forever)
 identity_gh() { local seconds=$1; shift; bounded "$seconds" "$KINOWO_GH" "$@"; }
+# shellcheck disable=SC2034 # read by the scripts sourcing this
 IDENTITY_GH_READ=${KINOWO_IDENTITY_GH_TIMEOUT:-60}
+# shellcheck disable=SC2034 # read by the scripts sourcing this
 IDENTITY_GH_DOWNLOAD=${KINOWO_IDENTITY_DOWNLOAD_TIMEOUT:-1800}
+
+# THE FUNCTIONS OF scripts/lib/identity_tools.py: each runs it, the repository and the settings this shell holds passed on
+# (IDENTITY_REPO, IDENTITY_TOOL and IDENTITY_FILLS are often plain variables of the sourcing tool, never exported). Its
+# stdout is the function's answer; a failure is said on stderr and is its status.
+identity_py() {
+  IDENTITY_REPO=$IDENTITY_REPO IDENTITY_TOOL=${IDENTITY_TOOL:-identity} IDENTITY_FILLS=${IDENTITY_FILLS:-} \
+    KINOWO_GH=$KINOWO_GH KINOWO_GH_REPO=$KINOWO_GH_REPO KINOWO_IDENTITY_CACHE=$IDENTITY_CACHE \
+    python3 -I -B "$IDENTITY_LIB/identity_tools.py" "$@"
+}
+identity_capture() { identity_py capture "$@"; }
+identity_judgements() { identity_py judgements "$@"; }
+identity_tree() { identity_py tree "$@"; }
+identity_tree_judgements() { identity_py tree-judgements "$@"; }
+identity_tools_hash() { identity_py tools-hash "$@"; }
+identity_classpath() { identity_py classpath "$@"; }
+identity_classpath_fresh() { identity_py classpath-fresh "$@"; }
+identity_classpath_line() { identity_py classpath-line "$@"; }
+identity_recording() { identity_py recording "$@"; }
+identity_recording_cached() { identity_py recording-cached "$@"; }
+identity_recording_run() { identity_py recording-run "$@"; }
+identity_recorded() { identity_py recorded "$@"; }
+identity_newest_recording() { identity_py newest-recording "$@"; }
+identity_takes_download() { identity_py takes-download "$@"; }
+identity_main_ci_over() { identity_py main-ci-over "$@"; }
+identity_measure_branch() { identity_py measure-branch "$@"; }
+what_if_verdicts_file() { identity_py what-if-verdicts-file "$@"; }
+what_if_record_verdict() { identity_py what-if-record-verdict "$@"; }
+what_if_verdicts() { identity_py what-if-verdicts "$@"; }
+kept_jvm_call() { python3 -I -B "$IDENTITY_LIB/kept_jvm_call.py" "$@"; }
+
+# identity_push_measure_branch <remote> <commit> <branch> -> <commit> pushed as refs/heads/<branch> (bounded), while no
+# other measure/ push of this machine is under way, git's output passed through. Fails with MEASURE_PUSH_ERROR set to the
+# remote's reason ("remote rejected (unable to migrate objects to permanent storage)").
+identity_push_measure_branch() {
+  local reason_file rc=0
+  MEASURE_PUSH_ERROR=""
+  reason_file=$(mktemp) || return 1
+  identity_py push-measure-branch "$reason_file" "$@" || rc=$?
+  # shellcheck disable=SC2034 # read by the callers
+  MEASURE_PUSH_ERROR=$(cat "$reason_file")
+  rm -f "$reason_file"
+  return "$rc"
+}
 
 # identity_locked <name> <command...> -> the command, run while no other agent runs one under the same name (a download
 # or layout into the shared cache): jvm-gate.sh's kernel lock, on descriptor 8, held by a subshell, so it is free the
@@ -67,75 +117,6 @@ identity_locked() {
 identity_country_code() { case "$1" in poland) echo pl ;; germany) echo de ;; united-kingdom) echo uk ;; spain) echo es ;; united-states) echo us ;; *) echo "$1" ;; esac; }
 identity_country_name() { case "$1" in pl) echo poland ;; de) echo germany ;; uk) echo united-kingdom ;; es) echo spain ;; us) echo united-states ;; *) echo "$1" ;; esac; }
 
-# identity_main_ci_over <remote> <commit> <message prefix> -> a commit whose tree is <commit>'s with <remote>/main's
-# .github/ and scripts/ci/ laid over it (child of <commit>), for a commit whose own workflows predate a dispatch input.
-# <remote>/main must be fetched. Fails, saying nothing, when git does.
-identity_main_ci_over() {
-  local remote=$1 commit=$2 prefix=$3 index tree rc=0 out=""
-  index=$(mktemp) || return 1
-  GIT_INDEX_FILE=$index git read-tree "$commit" \
-    && GIT_INDEX_FILE=$index git rm -rqf --cached --ignore-unmatch .github scripts/ci \
-    && GIT_INDEX_FILE=$index git read-tree --prefix=.github/ "$remote/main:.github" \
-    && GIT_INDEX_FILE=$index git read-tree --prefix=scripts/ci/ "$remote/main:scripts/ci" \
-    && tree=$(GIT_INDEX_FILE=$index git write-tree) \
-    && out=$(git commit-tree "$tree" -p "$commit" -m "$prefix: $remote/main's CI over ${commit:0:9}") || rc=1
-  rm -f "$index"
-  [ "$rc" -eq 0 ] && echo "$out"
-}
-
-# identity_measure_branch <commit> [tag] -> a fresh `measure/<user>/<short sha>[-<tag>]-<random>` branch name: the
-# pre-push hook checks nothing on a measure/ ref, and the run it carries deletes it as its last job.
-identity_measure_branch() {
-  echo "measure/$(id -un | tr -c 'A-Za-z0-9._\n-' -)/${1:0:9}${2:+-$2}-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
-}
-
-# identity_push_measure_branch <remote> <commit> <branch> -> <commit> pushed as refs/heads/<branch> (bounded), while no
-# other measure/ push of this machine is under way (identity_locked measure-push), git's output passed through. Fails
-# with MEASURE_PUSH_ERROR set to the remote's reason ("remote rejected (unable to migrate objects to permanent storage)").
-# ONE AT A TIME (2026-10-23): identity-landing-check pushes one commit to a measure/ branch per spec group and one for
-# its identity-measure, all at once. Concurrent receive-packs of the same new objects (100+, so kept as a pack)
-# each write pack-<hash>.keep with their own pid in it; the second to move its quarantine in finds the first's
-# .keep "differs in contents" and rejects the push. A push after the first finds the commit there and sends no objects.
-identity_push_measure_branch() {
-  local remote=$1 commit=$2 branch=$3 err rc
-  MEASURE_PUSH_ERROR=""
-  err=$(mktemp)
-  identity_locked measure-push bounded 300 git push -q "$remote" "$commit:refs/heads/$branch" 2> "$err"; rc=$?
-  cat "$err" >&2
-  if [ "$rc" -ne 0 ]; then
-    MEASURE_PUSH_ERROR=$(sed -nE 's/^ ! \[(remote rejected|rejected)\] .* \((.*)\)$/\1 (\2)/p' "$err" | head -1)
-    [ -n "$MEASURE_PUSH_ERROR" ] || MEASURE_PUSH_ERROR=$(grep -E '^(fatal|error):' "$err" | tail -1)
-    [ -n "$MEASURE_PUSH_ERROR" ] || MEASURE_PUSH_ERROR="git push exited $rc"
-  fi
-  rm -f "$err"
-  return "$rc"
-}
-
-identity_capture() {
-  local src=$1 dir sha cc; shift
-  if [ -z "$src" ]; then echo "$IDENTITY_REPO/$IDENTITY_FIXTURES"; return; fi
-  if [ -d "$src" ]; then (cd "$src" && pwd); return; fi
-  if [[ $src =~ ^[0-9]{6,}$ ]]; then
-    dir=$IDENTITY_CACHE/captures/run-$src
-    for cc in "$@"; do
-      [ -f "$dir/$cc.json.gz" ] || identity_locked "capture-$src-$cc" identity_capture_download "$src" "$dir" "$cc" || return 1
-    done
-    # a run's capture is judged by this checkout's judgements
-    identity_put "$dir/identity-judgements.tsv" cat "$IDENTITY_REPO/$IDENTITY_JUDGEMENTS" || return 1
-    echo "$dir"; return
-  fi
-  sha=$(git -C "$IDENTITY_REPO" rev-parse --verify "$src^{commit}") || { echo "no directory, run id or ref $src" >&2; return 2; }
-  dir=$IDENTITY_CACHE/captures/ref-$sha
-  for cc in "$@"; do
-    [ -f "$dir/$cc.json.gz" ] || identity_put "$dir/$cc.json.gz" git -C "$IDENTITY_REPO" show "$sha:$IDENTITY_FIXTURES/$cc.json.gz" || return 1
-  done
-  # a ref's capture is judged by that ref's judgements -- or, from before they were one file, its labels.tsv, which
-  # tools.IdentityJudgements reads too
-  [ -s "$dir/identity-judgements.tsv" ] || identity_put "$dir/identity-judgements.tsv" git -C "$IDENTITY_REPO" show "$sha:$IDENTITY_JUDGEMENTS" 2>/dev/null \
-    || identity_put "$dir/identity-judgements.tsv" git -C "$IDENTITY_REPO" show "$sha:$IDENTITY_FIXTURES/labels.tsv" || return 1
-  echo "$dir"
-}
-
 # identity_put <file> <command...> -> the command's output written to <file> whole or not at all: a reader never sees
 # it half written, and two writers never interleave
 identity_put() {
@@ -143,356 +124,6 @@ identity_put() {
   mkdir -p "$(dirname "$file")"
   part=$(mktemp "$file.part.XXXXXX") || return 1
   if "$@" > "$part"; then mv -f "$part" "$file"; else rm -f "$part"; return 1; fi
-}
-
-# identity_capture_download <run> <dir> <cc> -> the run's identity-capture-<cc> artifact's <cc>.json.gz, as <dir>/<cc>.json.gz
-identity_capture_download() {
-  local run=$1 dir=$2 cc=$3 dl file
-  [ -f "$dir/$cc.json.gz" ] && return 0
-  identity_log "downloading identity-capture-$cc of run $run"
-  mkdir -p "$dir"
-  dl=$(mktemp -d "$dir/dl-$cc.XXXXXX")
-  if ! gh_download "$IDENTITY_GH_DOWNLOAD" run download "$run" -R "$KINOWO_GH_REPO" --name "identity-capture-$cc" --dir "$dl" >&2; then
-    rm -rf "$dl"; identity_log "could not download identity-capture-$cc of run $run (gh failed or timed out)"; return 1
-  fi
-  file=$(find "$dl" -name "$cc.json.gz" | head -1)
-  [ -n "$file" ] || { rm -rf "$dl"; identity_log "run $run's identity-capture-$cc holds no $cc.json.gz"; return 1; }
-  mv -f "$file" "$dir/$cc.json.gz"; rm -rf "$dl"
-}
-
-identity_judgements() {
-  if [ -f "$1/identity-judgements.tsv" ]; then echo "$1/identity-judgements.tsv"; else echo "$IDENTITY_REPO/$IDENTITY_JUDGEMENTS"; fi
-}
-
-# identity_tree <ref> <file>... -> a compiled-once copy of the ref's sources under the cache, each named file (a path
-# relative to the repository) dropped in from this checkout — the tool's own code, so a ref from before the tool works.
-# The tree is shared by every checkout, so two checkouts whose tool files differ must not drop theirs into one tree (the
-# compile would be a mix, and each would run the other's code): the first set of tool files to reach refs/<sha> claims it
-# (target/identity-tools/tools-hash); a checkout with other tool files gets refs/<sha>-t<hash of its tool files>.
-identity_tree() {
-  local sha dir ref=$1; shift
-  sha=$(git -C "$IDENTITY_REPO" rev-parse --verify "$ref^{commit}") || { echo "no ref $ref" >&2; return 2; }
-  dir=$IDENTITY_CACHE/refs/$sha
-  identity_tree_whole "$dir" || identity_locked "tree-$sha" identity_tree_layout "$ref" "$sha" "$dir" || return 1
-  identity_tree_judgements "$sha" "$dir" || return 1
-  # one agent a tree drops the files in: a second, comparing while the first copies, would copy over it again and move
-  # the time the first's compile reads — or read (and remove) the seed marker the first still needs
-  identity_locked "tools-$sha" identity_tree_claimed "$ref" "$sha" "$dir" "$@"
-}
-
-# The hash of this checkout's <file>... (names and contents).
-identity_tools_hash() {
-  local t
-  for t in "$@"; do printf '%s\n' "$t"; cat "$IDENTITY_REPO/$t" 2>/dev/null; done | shasum | cut -c1-12
-}
-
-# identity_tree_claimed <ref> <sha> <dir> <file>... -> prints the tree holding exactly this checkout's tool files:
-# <dir> when unclaimed or claimed by the same tool files, else the variant tree for their hash
-identity_tree_claimed() {
-  local ref=$1 sha=$2 dir=$3 mark hash held; shift 3
-  hash=$(identity_tools_hash "$@")
-  mark=target/identity-tools/tools-hash
-  held=$(cat "$dir/$mark" 2>/dev/null || true)
-  if [ -n "$held" ] && [ "$held" != "$hash" ]; then
-    dir=$dir-t$hash
-    identity_tree_whole "$dir" || identity_locked "tree-$sha-t$hash" identity_tree_layout "$ref" "$sha" "$dir" || return 1
-    identity_tree_judgements "$sha" "$dir" || return 1
-  fi
-  identity_tree_tools "$dir" "$@" || return 1
-  mkdir -p "$dir/target/identity-tools"; echo "$hash" > "$dir/$mark"
-  echo "$dir"
-}
-
-# identity_tree_older_titles <dir> -> in a ref from before the title text took its own package (services.titles,
-# 2026-11-18), a file giving the moved classes their new names, so a tool file importing them compiles there too: each
-# top-level class of services.movies / services.resolution that moved, services.titlerules as services.titles.rules and
-# services.billing as services.titles.billing, exported under the new name (only those the ref has). A ref after the move
-# has the real ones, and gets none.
-identity_tree_older_titles() {
-  local dir=$1 main=$1/common/src/main/scala/services out f name pkg from to
-  [ -f "$main/movies/TitleNormalizer.scala" ] && [ ! -f "$main/titles/TitleNormalizer.scala" ] || return 0
-  out=$(
-    exports() { # <package> <dir> <name>...: the export clauses of a package's names its <dir> declares
-      local from=$1 d=$2 n; shift 2
-      for n in "$@"; do
-        [ -f "$d/$n.scala" ] && grep -qE "^(final |sealed |abstract |case |private\[[a-z]+\] )*(class|object|trait) $n\b" "$d/$n.scala" \
-          && echo "export $from.$n"
-      done
-      return 0
-    }
-    printf 'package services.titles\n\n// identity-tools.sh (identity_tree_older_titles): this ref predates services.titles\n'
-    exports services.movies "$main/movies" TitleNormalizer TitleWords FormatTags SequelMarker RelayBanner TitleText \
-      TitleContainment BbfcCertificate TitleSeason TitleFacts StageHouse
-    exports services.resolution "$main/resolution" TitleMatch YearWindow SearchTitles
-    for pkg in titlerules:rules billing:billing; do
-      from=${pkg%%:*} to=${pkg##*:}
-      [ -d "$main/$from" ] || continue
-      printf '\npackage %s {\n' "$to"
-      for f in "$main/$from"/*.scala; do
-        name=$(basename "$f" .scala)
-        exports "services.$from" "$main/$from" "$name" | sed 's/^/  /'
-      done
-      printf '}\n'
-    done
-  )
-  mkdir -p "$main/titles"
-  printf '%s\n' "$out" | cmp -s - "$main/titles/OlderRefTitles.scala" 2>/dev/null || printf '%s\n' "$out" > "$main/titles/OlderRefTitles.scala"
-}
-
-# identity_tree_older_models <dir> -> in a ref from before the corpus' value types moved into models (ListingKey,
-# ShowtimesDigest, EmbeddedYear, TrailerEmbed; 2026-11-18), a file exporting them under their new names from
-# services.movies, so a tool file naming models.ListingKey compiles there too. A ref after the move has the real ones.
-identity_tree_older_models() {
-  local dir=$1 movies=$1/common/src/main/scala/services/movies models=$1/common/src/main/scala/models n out
-  [ -f "$movies/ListingKey.scala" ] && [ ! -f "$models/ListingKey.scala" ] || return 0
-  out=$(
-    printf 'package models\n\n// identity-tools.sh (identity_tree_older_models): this ref predates models.ListingKey\n'
-    for n in ListingKey ShowtimesDigest EmbeddedYear TrailerEmbed; do
-      [ ! -f "$movies/$n.scala" ] || echo "export services.movies.$n"
-    done
-  )
-  printf '%s\n' "$out" | cmp -s - "$models/OlderRefModels.scala" 2>/dev/null || printf '%s\n' "$out" > "$models/OlderRefModels.scala"
-}
-
-# identity_tree_tools <dir> <file>... -> each named file dropped into the laid-out tree from this checkout, whole or not at all
-identity_tree_tools() {
-  local dir=$1 t seed=$1/target/identity-tools/seed; shift
-  identity_tree_older_titles "$dir"
-  identity_tree_older_models "$dir"
-  # copied only when it changed: an unchanged copy keeps its time, and the ref is not compiled again
-  for t in "$@"; do
-    mkdir -p "$(dirname "$dir/$t")"
-    cmp -s "$IDENTITY_REPO/$t" "$dir/$t" 2>/dev/null || { cp "$IDENTITY_REPO/$t" "$dir/$t.part" && mv -f "$dir/$t.part" "$dir/$t"; }
-  done
-  # a classpath kept from a seed (identity_tree_layout) holds the classes of the SEED's tool files: one differing from
-  # those now dropped in is made newer than it, and compiles
-  if [ -f "$seed" ]; then
-    for t in "$@"; do [ ! -f "$dir/$t" ] || cmp -s "$(cat "$seed")/$t" "$dir/$t" 2>/dev/null || touch "$dir/$t"; done
-    rm -f "$seed"
-  fi
-}
-
-# identity_tree_judgements <sha> <dir> -> the ref's judgements in <dir> (a tree laid out before they were, too): the
-# worker's build bundles them as a resource (build.sbt) and fails to compile without them
-identity_tree_judgements() {
-  local sha=$1 dir=$2
-  [ -f "$dir/$IDENTITY_JUDGEMENTS" ] && return 0
-  git -C "$IDENTITY_REPO" cat-file -e "$sha:$IDENTITY_JUDGEMENTS" 2>/dev/null || return 0
-  identity_archive_into "$dir" "$sha" -- "$IDENTITY_JUDGEMENTS"
-}
-
-# identity_archive_into <dir> <sha> <git archive paths...> -> the paths of <sha> extracted into <dir>. Through a file,
-# never a pipe: tar may stop reading at the archive's end while git archive still writes its last record's padding,
-# and under pipefail (identity-what-if's, when it was shell) git's SIGPIPE then failed the layout with nothing said
-# (Order independence #90, #97). Each side's failure is its own, and named.
-identity_archive_into() {
-  local dir=$1 sha=$2 tarball; shift 2
-  tarball=$dir.tar-$$
-  git -C "$IDENTITY_REPO" archive -o "$tarball" "$sha" "$@" ||
-    { rm -f "$tarball"; identity_log "git archive of $sha failed"; return 1; }
-  tar -x -C "$dir" -f "$tarball" || { rm -f "$tarball"; identity_log "extracting $sha into $dir failed"; return 1; }
-  rm -f "$tarball"
-}
-
-# identity_tree_layout <ref> <sha> <dir> -> the ref's sources in <dir>, laid out beside it and moved in whole
-# identity_tree_whole <dir> -> whether <dir> is a whole laid-out tree: its mark, written last into <dir>.part before
-# the move. (build.sbt was the mark until 2026-11-20: a tree holding none -- identity-what-if's tests' scratch refs --
-# was removed and laid out again by every call, under the steps still reading it: Order independence #90.)
-IDENTITY_TREE_MARK=.identity-tree-whole
-identity_tree_whole() { [ -f "$1/$IDENTITY_TREE_MARK" ]; }
-
-identity_tree_layout() {
-  local ref=$1 sha=$2 dir=$3 t part
-  identity_tree_whole "$dir" && return 0
-  identity_log "laying out $ref ($sha) in $dir"
-  part=$dir.part
-  rm -rf "$part" "$dir"; mkdir -p "$part"
-  identity_archive_into "$part" "$sha" -- . ':(exclude)test/resources' ':(exclude)ios' ':(exclude)android' || return 1
-  identity_tree_judgements "$sha" "$part" || return 1
-  # Seed the compile from the nearest compiled code (APFS clones, no copy): sbt recompiles only what the ref changed.
-  local seed apart=""
-  seed=$(identity_nearest_compiled "$sha")
-  [ -z "$seed" ] || { apart=$(identity_seed_distance "$seed" "$sha"); identity_log "seeding its compile from ${seed} ($apart source file(s) apart)"; }
-  # every module the ref has (each */src), as sbt-warm's seed reads them: a fixed list missed the scrapers and geodata
-  local modules=() m
-  for m in "$part"/*/src; do modules+=("$(basename "$(dirname "$m")")/target"); done
-  for t in project/target "${modules[@]}" target; do
-    if [ -n "$seed" ] && [ -d "$seed/$t" ]; then mkdir -p "$part/$(dirname "$t")"; cp -cR "$seed/$t" "$part/$t" 2>/dev/null || cp -R "$seed/$t" "$part/$t"; fi
-  done
-  # Zinc never deletes a class file it did not produce: one another build wrote into the seed's classes/ (IntelliJ's JPS,
-  # 2026-10-18) would shadow the real class here for good
-  [ -z "$seed" ] || python3 "$IDENTITY_REPO/scripts/zinc_orphans.py" "$part"
-  rm -rf "$part/target/identity-tools"
-  # The very sources of a compiled ref (a commit changing no source: a judgement, a doc): its classes ARE this ref's, so
-  # its classpath is kept, pointed here -- no sbt start to find nothing to compile (~15 s). The tool files dropped in
-  # afterwards (identity_tree) are newer than it when they differ, and recompile as ever.
-  if [ "$apart" = 0 ] && [ "$seed" != "$IDENTITY_REPO" ] && [ -s "$seed/target/identity-tools/classpath" ]; then
-    mkdir -p "$part/target/identity-tools"
-    sed "s#$seed/#$dir/#g" "$seed/target/identity-tools/classpath" > "$part/target/identity-tools/classpath"
-    echo "$seed" > "$part/target/identity-tools/seed"
-  fi
-  : > "$part/$IDENTITY_TREE_MARK"
-  mv "$part" "$dir"
-}
-
-# The source paths a compile reads: how far two commits' compiles stand apart is how many of these files differ.
-IDENTITY_COMPILED_PATHS=(geodata/src common/src identity/src scrapers/src worker/src testkit/src build.sbt project)
-# identity_seed_distance <tree> <sha> -> the source files the compiled <tree> differs from <sha> by (this checkout: its HEAD's)
-identity_seed_distance() {
-  local from
-  if [ "$1" = "$IDENTITY_REPO" ]; then from=$(git -C "$IDENTITY_REPO" rev-parse HEAD); else from=$(basename "$1"); fi
-  # a commit this clone lacks (another clone's tree) is no distance -- never a failed diff read as none
-  git -C "$IDENTITY_REPO" cat-file -e "$from^{commit}" 2>/dev/null || return 0
-  local files
-  files=$(git -C "$IDENTITY_REPO" diff --name-only "$from" "$2" -- "${IDENTITY_COMPILED_PATHS[@]}") || return 0
-  if [ -z "$files" ]; then echo 0; else printf '%s\n' "$files" | wc -l | tr -d ' '; fi
-}
-# identity_nearest_compiled <sha> -> the compiled tree nearest <sha> by changed source files: this checkout, or one of the
-# cache's most recently compiled refs (a fresh worktree has nothing compiled: seeded from it, a new ref compiled all
-# 1,766 sources, 108 s idle and ~10 min with five agents compiling beside it -- 2026-10-15). Empty when none is compiled.
-identity_nearest_compiled() {
-  local sha=$1 best="" best_n="" t n lock candidates=()
-  [ -d "$IDENTITY_REPO/worker/target" ] && candidates+=("$IDENTITY_REPO")
-  while IFS= read -r t; do candidates+=("$(dirname "$(dirname "$(dirname "$t")")")"); done < <(
-    ls -t "$IDENTITY_CACHE"/refs/*/target/identity-tools/classpath 2>/dev/null | head -n "${KINOWO_IDENTITY_SEED_CANDIDATES:-40}")
-  for t in ${candidates[@]+"${candidates[@]}"}; do
-    [ "$(basename "$t")" != "$sha" ] || continue
-    # a tree compiling now (identity_classpath_compile holds its lock) may hold half-written classes
-    # (a lock given back holds no pid: only one with a pid in is asked)
-    lock=$IDENTITY_CACHE/locks/$(identity_classpath_lock "$t").flock
-    { [ -s "$lock" ] && lock_busy "$lock"; } && continue
-    n=$(identity_seed_distance "$t" "$sha")
-    [ -n "$n" ] || continue
-    if [ -z "$best_n" ] || [ "$n" -lt "$best_n" ]; then best=$t best_n=$n; fi
-  done
-  echo "$best"
-}
-
-# identity_recording <run> <cc> [corpus] -> the directory holding that "Record scrape fixtures" run's corpus/ and
-# enrichment-<cc>/ (with `corpus`: its scrape corpus alone), downloaded once into the shared cache
-# (scripts/identity-fetch-recording.sh), one download of a run's country at a time across agents. With IDENTITY_FILLS
-# (the fill assets a hermetic leg laid over its tree, as its log names them), the pair with those fills laid over it,
-# cached apart from the bare pair: the two answer differently.
-identity_recording() {
-  local run=$1 cc=$2 what=${3:-} fixtures
-  fixtures=$(identity_recording_dir "$run")
-  identity_recorded "$fixtures" "$cc" "$what" ||
-    identity_locked "recording-$(identity_recording_key "$run")-$cc" identity_recording_download "$run" "$cc" "$what" || return 1
-  echo "$fixtures"
-}
-
-# identity_recording_key <run> -> the run's cache key: the run, and with IDENTITY_FILLS a digest of the fills it names
-identity_recording_key() {
-  if [ -z "${IDENTITY_FILLS:-}" ]; then echo "$1"
-  else echo "$1-fills-$(printf '%s' "${IDENTITY_FILLS//,/ }" | tr -s ' ' '\n' | sort | cksum | cut -d' ' -f1)"; fi
-}
-
-identity_recording_dir() { echo "$IDENTITY_CACHE/recordings/$(identity_recording_key "$1")/pair/test/resources/fixtures"; }
-
-# identity_recording_cached <run> <cc> -> the directory holding the run's corpus/ and enrichment-<cc>/ when the cache
-# holds both, else fails saying so: for a caller that must not reach GitHub (identity-slice-coverage)
-identity_recording_cached() {
-  local fixtures
-  fixtures=$(identity_recording_dir "$1")
-  identity_recorded "$fixtures" "$2" || { identity_log "recording $1 holds no $2 corpus and tree in $fixtures (fetch it: scripts/identity-fetch-recording.sh)"; return 1; }
-  echo "$fixtures"
-}
-
-# identity_recorded <fixtures> <cc> [corpus] -> whether the recording is laid out: the corpus is laid out last
-identity_recorded() {
-  [ -f "$1/corpus/cinema-scrapes-$2.json.gz" ] && { [ "${3:-}" = corpus ] || [ -d "$1/enrichment-$2" ]; }
-}
-
-identity_recording_download() {
-  local run=$1 cc=$2 what=$3 dir
-  dir=$IDENTITY_CACHE/recordings/$(identity_recording_key "$run")
-  identity_recorded "$(identity_recording_dir "$run")" "$cc" "$what" && return 0
-  identity_log "downloading recording $run ($cc${what:+, its $what alone}${IDENTITY_FILLS:+, with its fills}) into $dir"
-  "$IDENTITY_REPO/scripts/identity-fetch-recording.sh" ${what:+--corpus-only} ${IDENTITY_FILLS:+--fills "$IDENTITY_FILLS"} \
-    "$run" "$dir" "$cc" >&2 && return 0
-  identity_log "could not download recording $run ($cc)"
-  return 1
-}
-
-# identity_newest_recording [cc] -> the id of the newest successful "Record scrape fixtures" run; with a country, the
-# newest that actually holds that country's corpus (already cached, or a live scrape-fixtures-<cc> artifact), each newer
-# run skipped said on stderr. 1 when none of the newest 20 holds it — or when a run's artifacts could not be read: an
-# unreadable run is never skipped for an older one.
-identity_newest_recording() {
-  local cc=${1:-} repo=$KINOWO_GH_REPO id ids held
-  # newest by CREATION time, not listing order: GitHub's status-filtered listing is not in creation order
-  # (`--limit 1` named 2026-09-25's run on 2026-10-07, the newest being 2026-10-06's -- 2026-10-17)
-  ids=$(identity_gh "$IDENTITY_GH_READ" run list -R "$repo" --workflow "Record scrape fixtures" --status success \
-    -L 100 --json databaseId,createdAt -q '.[] | "\(.databaseId)\t\(.createdAt)"') &&
-    ids=$(printf '%s\n' "$ids" | sort -t "$(printf '\t')" -k2 -r | cut -f1 | head -n "$([ -n "$cc" ] && echo 20 || echo 1)") ||
-    { identity_log "could not list the \"Record scrape fixtures\" runs (gh failed or timed out): name one with --recording"; return 1; }
-  [ -n "$ids" ] || { identity_log "no successful \"Record scrape fixtures\" run"; return 1; }
-  [ -n "$cc" ] || { echo "${ids%%$'\n'*}"; return; }
-  for id in $ids; do
-    if identity_recorded "$(identity_recording_dir "$id")" "$cc" corpus; then held=yes
-    else
-      held=$(identity_gh "$IDENTITY_GH_READ" api "repos/$repo/actions/runs/$id/artifacts?per_page=100" --paginate \
-        -q ".artifacts[] | select(.name == \"scrape-fixtures-$cc\" and (.expired | not)) | .name") ||
-        { identity_log "could not read recording $id's artifacts (gh failed or timed out): name one with --recording"; return 1; }
-    fi
-    if [ -n "$held" ]; then
-      identity_log "recording $id: the newest holding a $cc corpus"
-      echo "$id"; return
-    fi
-    identity_log "recording $id skipped: it holds no $cc corpus (no live scrape-fixtures-$cc artifact)"
-  done
-  identity_log "none of the newest 20 successful recordings holds a $cc corpus: name one with --recording"
-  return 1
-}
-
-# identity_recording_run <run | prod-latest> <cc> -> the run id a --recording names. `prod-latest`: the freshest COMPLETE
-# nightly recording of that country (its corpus scraped from prod that night, its enrichment tree filled live over it),
-# as `prod-latest-<cc>.txt` on the convergence-fixtures release names it (.github/scripts/convergence-publish.sh latest).
-# Not the hermetic pair identity-measure lands on (573): the one a prod listing reproduces on.
-identity_recording_run() {
-  local spec=$1 cc=$2 run
-  [ "$spec" = prod-latest ] || { echo "$spec"; return 0; }
-  run=$(prod_latest_run "$cc") || return 1
-  identity_log "prod-latest $cc recording: run $run"
-  echo "$run"
-}
-
-identity_classpath() {
-  local tree=$1
-  identity_classpath_fresh "$tree" || identity_locked "$(identity_classpath_lock "$tree")" identity_classpath_compile "$tree" || return 1
-  cat "$tree/target/identity-tools/classpath"
-}
-
-# identity_classpath_lock <tree> -> the name of the lock its compile holds (identity_locked)
-identity_classpath_lock() { echo "classpath-$(printf '%s' "$1" | shasum | cut -c1-12)"; }
-
-# identity_classpath_fresh <tree> -> whether the kept classpath is newer than every source
-identity_classpath_fresh() {
-  local cp=$1/target/identity-tools/classpath
-  [ -s "$cp" ] && [ -z "$(find "$1/geodata/src" "$1/common/src" "$1/identity/src" "$1/scrapers/src" "$1/worker/src" "$1/testkit/src" "$1/build.sbt" -newer "$cp" -type f -print -quit 2>/dev/null)" ]
-}
-
-# identity_classpath_line <sbt log> -> the last line of it that IS a classpath (sbt prints more than `export` asked)
-identity_classpath_line() { grep -E '^/[^ ]*worker/target/[^ ]*test-classes' "$1" | tail -n 1; }
-
-# identity_classpath_compile <tree> -> sbt over the tree, its classpath kept — one sbt a tree at a time
-identity_classpath_compile() {
-  local tree=$1 cp=$1/target/identity-tools/classpath log=$1/target/identity-tools/sbt.log
-  identity_classpath_fresh "$tree" && return 0
-  mkdir -p "$(dirname "$cp")"
-  # a checkout never compiled (a fresh worktree) gets sbt-warm's seed first -- the nearest local build of main, APFS
-  # clones: its first compile is incremental (2026-11-15: 72 s cold, 2 s seed + 10 s compile seeded)
-  if [ "$tree" = "$IDENTITY_REPO" ] && [ -x "$tree/scripts/sbt-warm" ]; then (cd "$tree" && scripts/sbt-warm --seed) >&2 || true; fi
-  identity_log "compiling $tree (sbt; then cached until a source changes)"
-  jvm_slot_take "${IDENTITY_TOOL:-identity}"
-  # shellcheck disable=SC2046 # jvm_cpu_options: none, or one option
-  if ! (cd "$tree" && sbt $(jvm_cpu_options | sed 's/^/-J/') -batch "worker/Test/compile" "export worker/Test/fullClasspath") > "$log" 2>&1; then
-    jvm_slot_release
-    tail -40 "$log" >&2; identity_log "compile failed in $tree (log: $log)"; return 1
-  fi
-  jvm_slot_release
-  identity_put "$cp" identity_classpath_line "$log" || true
-  [ -s "$cp" ] || { rm -f "$cp"; tail -40 "$log" >&2; identity_log "no classpath in sbt's output ($log)"; return 1; }
 }
 
 # The JVM every identity tool runs in: English number formats ("0.97", never "0,97"), no Unsafe warnings, AWT headless
@@ -506,37 +137,6 @@ IDENTITY_JAVA=(java -Xmx6g "${IDENTITY_LOCALE[@]}" -Djava.awt.headless=true --su
 identity_cpus=$(jvm_cpu_options); [ -z "$identity_cpus" ] || IDENTITY_JAVA+=("$identity_cpus")
 # shellcheck disable=SC2034 # read by the scripts sourcing this
 IDENTITY_SBT=(sbt "${IDENTITY_LOCALE[@]/#/-J}")
-
-# kept_jvm_call <socket> <args...> -> one request to a kept JVM (tools.KeptJvm: the args NUL-separated behind their
-# length), its answer on stdout as it streams, and the request's exit code; 111 when nothing listens at <socket>, 112
-# when the JVM went away mid-request. identity-slice's and identity-what-if's kept JVMs.
-kept_jvm_call() {
-  python3 -I -B - "$@" <<'PY'
-import socket, struct, sys
-path, args = sys.argv[1], sys.argv[2:]
-s = socket.socket(socket.AF_UNIX)
-try:
-    s.connect(path)
-except OSError:
-    sys.exit(111)
-payload = "\0".join(args).encode()
-s.sendall(struct.pack(">i", len(payload)) + payload)
-marker, held, out = b"\0EXIT ", b"", sys.stdout.buffer
-while True:
-    chunk = s.recv(65536)
-    if not chunk:
-        break
-    held += chunk
-    at = held.find(marker)
-    if at >= 0:
-        out.write(held[:at]); out.flush()
-        sys.exit(int(held[at + len(marker):].split(b"\n")[0] or b"1"))
-    keep = len(marker) - 1
-    out.write(held[:-keep]); out.flush(); held = held[-keep:]
-out.write(held); out.flush()
-sys.exit(112)
-PY
-}
 
 # THE JVM SEQUENCES A PYTHON TOOL RUNS (identity-what-if's and identity-slice's, scripts/identity_what_if_cli.py and
 # scripts/identity_slice_cli.py, through scripts/lib/tool_shell.py): a JVM slot (jvm-gate.sh) is a lock held on
@@ -589,45 +189,4 @@ identity_kept_jvm_keep() {
     if jvm_slot_take_if_free; then identity_log "took JVM slot ${JVM_SLOT##*/}"; fi
     sleep "${KINOWO_IDENTITY_SLICE_KEEPER_POLL:-10}"
   done
-}
-
-# identity_takes_download <run> <cc> <dir> -> an "Identity model convergence" run's convergence-diagnostics-<cc>-convergence
-# artifact's <cc>-takes, as <dir>/<cc>-takes (identity-slice --faithfulness RUN), downloaded beside it and moved in whole.
-# A subshell of its own, so its trap removes the download directory however it ends (a Ctrl-C mid-download too) without
-# replacing the trap of identity_locked's subshell, which gives the lock back.
-identity_takes_download() (
-  run=$1 cc=$2 diag=$3
-  [ -f "$diag/$cc-takes/$cc.json.gz" ] && exit 0
-  mkdir -p "$diag"; dl=$(mktemp -d "$diag.dl.XXXXXX") || exit 1
-  # every ending signal made an exit, so the EXIT trap runs: bash 3.2 can end a subshell on TERM without it
-  trap 'rm -rf "$dl"' EXIT; trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM
-  if gh_download "$IDENTITY_GH_DOWNLOAD" run download "$run" -R "$KINOWO_GH_REPO" \
-       --name "convergence-diagnostics-$cc-convergence" --dir "$dl" >&2 && [ -f "$dl/$cc-takes/$cc.json.gz" ]; then
-    rm -rf "$diag/$cc-takes"; mv "$dl/$cc-takes" "$diag/$cc-takes"
-  else
-    identity_log "could not download run $run's convergence-diagnostics-$cc-convergence (gh failed or timed out, or it holds no $cc-takes)"; exit 1
-  fi
-)
-
-# THE WHAT-IF VERDICT RECORD (review 2026-11-06 P3): scripts/identity-what-if writes one line a country it finished --
-# `<cc> TAB <verdict> TAB <finished, UTC> TAB <takes diff> TAB <takes moved> TAB <mode> TAB <published asset>` -- under (head, base);
-# scripts/identity-measure refuses to dispatch a CI measure without one (its what-if gate). One file read: the gate is a
-# lookup, never a run. <takes moved> counts the model's and the final takes' diff rows; <mode> is `whole` (every family
-# re-resolved: --all, --verify) or `selected`, then `final` or `model-only` -- what scripts/identity-stamp-carry reads to
-# carry a stamp (only a whole, nothing-moved verdict of every country does, published as <published asset>:
-# scripts/identity_stamp_carry.py, THE PUBLISHED VERDICT).
-what_if_verdicts_file() { echo "$IDENTITY_CACHE/what-if-verdicts/$1-$2.tsv"; } # <head sha> <base sha>
-what_if_record_verdict() { # <head sha> <base sha> <cc> <verdict> <takes diff> [<takes moved> <mode> <published asset>]
-  local file
-  file=$(what_if_verdicts_file "$1" "$2")
-  mkdir -p "$(dirname "$file")" &&
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$3" "$4" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$5" "${6:--}" "${7:--}" "${8:--}" >> "$file"
-}
-# what_if_verdicts <head sha> <base sha> -> `pl done, de done` (each country's newest), or fails when there is none
-what_if_verdicts() {
-  local file
-  file=$(what_if_verdicts_file "$1" "$2")
-  [ -s "$file" ] || return 1
-  awk -F'\t' '{ v[$1] = $2; if (!($1 in seen)) { seen[$1] = 1; order[++n] = $1 } }
-    END { for (i = 1; i <= n; i++) printf "%s%s %s", (i > 1 ? ", " : ""), order[i], v[order[i]]; print "" }' "$file"
 }

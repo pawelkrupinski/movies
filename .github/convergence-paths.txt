@@ -245,7 +245,6 @@ scripts/ci/verified-ref.sh
 scripts/ci/verified_ref.py
 scripts/ci/wait_out_registry_outage.py
 scripts/identity-explain
-scripts/identity-fetch-recording.sh
 scripts/identity-judge-cards
 scripts/identity-repro
 scripts/identity-slice
@@ -275,5 +274,4 @@ scripts/title_trace.py
 scripts/title_trace_test.py
 scripts/tool-conventions-files.txt
 scripts/tool-conventions.sh
-scripts/zinc_orphans.py
 # END GENERATED
