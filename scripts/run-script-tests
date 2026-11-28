@@ -151,6 +151,7 @@ import machine  # noqa: E402
 from jvm_gate import Governor, Host, JvmGate, SubprocessCommands  # noqa: E402
 from jvm_memory import Clock, MemoryGate, SlotWait  # noqa: E402
 from script_tests_found import Found, concurrency_heavy, declared_reads, discover  # noqa: E402
+from script_tests_requires import provision  # noqa: E402
 from script_tests_select import Options, Refused, Selection, git_in, heavy_only, select  # noqa: E402
 import script_tests_linux as linux  # noqa: E402
 from script_tests_pool import Pool  # noqa: E402
@@ -369,10 +370,17 @@ def run(o: Options, env: MutableMapping[str, str], scratch: str, tree_check: boo
 def run_here(o: Options, s: Settings, env: MutableMapping[str, str], scratch: str, scope: Floor,
              chosen: Selection) -> int:
     tests = [t.path for t in chosen.tests]
+    bins, refusals = provision(o.root, tests, env.get("RUN_SCRIPT_TESTS_PYTHON_VENV") or os.path.join(HERE, "python-venv"),
+                               lambda argv: machine.captured(argv, env=env))
+    if refusals:
+        say("\n".join(refusals))
+        return 1
     gate = compose_gate(env, o.root)
     try:
         width = govern(gate, env, o.root, s.jobs, tests)
-        return run_planned(o, s, env, scratch, scope, chosen, plan_run(o.root, scratch, tests, s, width), gate)
+        planned = plan_run(o.root, scratch, tests, s, width)
+        planned[0].python_bins = bins
+        return run_planned(o, s, env, scratch, scope, chosen, planned, gate)
     finally:
         gate.release()
 

@@ -10,6 +10,7 @@ import os
 import re
 import sys
 import unittest
+from typing import Dict, Optional
 
 from run_script_tests_fixture import ROOT, RUNNER, ScriptTestsCase
 import cli_harness
@@ -303,6 +304,37 @@ class UsageTest(ScriptTestsCase):
         self.assertEqual(0, done.code, done.output)
         self.assertIn("scripts/run_script_tests_test.py\t-\t\n", done.stdout)
         self.assertTrue(os.access(RUNNER, os.X_OK))
+
+
+class RequiresTest(ScriptTestsCase):
+    """`# script-test-requires: <requirements.txt> <module>`: the test runs under the python3 scripts/python-venv names, and
+    a package that cannot be had refuses the run instead of the test skipping itself (poster_eval_test passed on a laptop
+    without numpy and failed in CI)."""
+
+    def needing_test(self) -> None:
+        self.put("scripts/needs_test.py",
+                 "# script-test-requires: scripts/needs-requirements.txt somemod\n"
+                 "import os, sys\nfirst = os.environ['PATH'].split(os.pathsep)[0]\nsys.exit(0 if first == '/the/venv/bin' else 'first on PATH: ' + first)")
+        self.put("scripts/needs-requirements.txt", "somemod==1.0")
+
+    def venv_tool(self, body: str) -> Dict[str, Optional[str]]:
+        path = self.write("venv-tool", "#!/bin/sh\n" + body)
+        os.chmod(path, 0o755)
+        return {"RUN_SCRIPT_TESTS_PYTHON_VENV": path}
+
+    def test_a_test_runs_with_the_venv_the_tool_names_first_on_its_path(self) -> None:
+        self.needing_test()
+        done = self.runner("scripts/needs_test.py", env=self.venv_tool("echo /the/venv/bin"))
+        self.assertEqual(0, done.code, done.output)
+        self.assertEqual(1, self.rows(done, "PASS", "scripts/needs_test.py"), done.output)
+
+    def test_a_package_that_cannot_be_had_refuses_the_run_naming_the_module_and_the_install_command(self) -> None:
+        self.needing_test()
+        done = self.runner("scripts/needs_test.py", env=self.venv_tool("exit 1"))
+        self.assertEqual(1, done.code, done.output)
+        self.assertIn("scripts/needs_test.py needs the python module somemod", done.output)
+        self.assertRegex(done.output, r"install it with `\S+ scripts/needs-requirements\.txt somemod`")
+        self.assertEqual(0, self.rows(done, "PASS", "needs_test"), done.output)
 
 
 class CallersTest(ScriptTestsCase):

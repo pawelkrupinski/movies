@@ -42,6 +42,7 @@ class Plan:
     stall: int
     floor_tests: Sequence[str] = ()
     floor_bin: str = ""
+    python_bins: Dict[str, str] = field(default_factory=lambda: {})  # a test's python3 with its required packages
     test_width: Optional[int] = None
     wide_tests: bool = False
     budget: int = 0  # cores the tests running at once may add up to (0: no budget, only `jobs`)
@@ -126,6 +127,8 @@ class Pool:
             env.pop("AGENTCTL_GOV_WIDTH", None)
         if path in self.plan.floor_tests:
             env["PATH"] = self.plan.floor_bin + os.pathsep + env.get("PATH", "")
+        if path in self.plan.python_bins:
+            env["PATH"] = self.plan.python_bins[path] + os.pathsep + env.get("PATH", "")
         env["BOUNDED_ON_TIMEOUT"] = self.tools.report
         return env
 

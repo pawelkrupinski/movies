@@ -1,0 +1,6 @@
+# The pinned numpy the poster tools' self-tests need (scripts/poster_hash.py, poster_eval_test.py), installed by
+# scripts/python-venv into a venv of its own and put first on PATH by scripts/run-script-tests for each test that names
+# it (`# script-test-requires:`): the laptop runs them as CI does, never skipped. One pin per Python the tools run on.
+numpy==2.0.2; python_version < "3.10"
+numpy==2.2.6; python_version == "3.10"
+numpy==2.3.5; python_version >= "3.11"

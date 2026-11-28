@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# script-test-requires: scripts/numpy-requirements.txt numpy
 """Unit tests for poster_eval.py and poster_hash.py over a tiny fixture dataset -- no mirror, no network:
 
   - the hash reproduces prod's filed hashes bit for bit (three images in scripts/poster_eval_fixtures/; needs vips);
@@ -15,11 +16,6 @@ import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-try:
-    import numpy  # noqa: F401
-except ImportError:  # the tool's own dependency, as vips is: the CI container has neither
-    print("poster_eval_test: SKIPPED -- numpy is not installed (brew install numpy / apt install python3-numpy)")
-    sys.exit(0)
 import poster_eval as pe  # noqa: E402
 import poster_hash  # noqa: E402
 from tool_files import Files  # noqa: E402
