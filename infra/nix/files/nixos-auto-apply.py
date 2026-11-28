@@ -2,18 +2,24 @@
 """Activate the closure CI already staged here, but ONLY when doing so would disturb nothing.
 
 WHY THIS EXISTS. `.github/workflows/nix-stage-closures.yml` builds every host's closure on merge,
-signs it and `nix copy`s it here, then deliberately stops: the staging key is restricted to a forced
-command that cannot activate anything, and `nixdeploy` has no sudo. The closure is pinned at
-`/var/lib/nixdeploy/staged-system`; the one step nobody automated is activating it, because that is
-the step that can break a running machine. This is that step, taken only when it provably breaks
-nothing; anything that would disturb a running service, or that this script cannot classify, is left
-for a person.
+signs it and `nix copy`s it here, then deliberately stops: the staging key is restricted to a
+forced command that cannot activate anything, and `nixdeploy` has no sudo. So the closure is
+already on this disk, pinned at `/var/lib/nixdeploy/staged-system`, and the only step left is the
+one nobody automated -- because activating is the step that can break a running machine.
 
-IT DOES NOT FETCH, BUILD, OR TRUST ANYTHING NEW: no git remote, no deploy key, no evaluation. It acts
-on a path CI pinned through a channel that can do nothing else, whose store paths carry a signature
-from `trustedPublicKeys`. The trust decision was made upstream; this file decides only WHEN. That is
-worth the machinery because routine commits (a package, an ssh key) are the ones nobody schedules a
-deploy for, and they accumulate until a real deploy carries six months of unrelated change.
+This is that step, taken only when it provably breaks nothing. Anything that would disturb a
+running service, and anything at all that this script cannot classify, is left for a person.
+
+IT DOES NOT FETCH, BUILD, OR TRUST ANYTHING NEW. There is no git remote here, no deploy key and no
+evaluation -- an earlier draft of this file did all three, and staging made every one of them
+unnecessary. What it acts on is a path CI pinned through a channel that can do nothing else, whose
+store paths were accepted only because they carry a signature from `trustedPublicKeys`. The trust
+decision was made upstream; this file decides only WHEN.
+
+The reason that division is worth the machinery: the routine commits (a package, an ssh key, a
+comment in a vendored script) are the ones nobody schedules a deploy for, and they are the ones
+that accumulate until a real deploy carries six months of unrelated change with it. Applying them
+continuously means the only pending change is ever the one somebody meant to make.
 
 WHAT DECIDES. Three tests, and a deployment happens only if all three agree it is inert:
 
@@ -24,42 +30,78 @@ WHAT DECIDES. Three tests, and a deployment happens only if all three agree it i
      or reloaded" -- and, unlike parsing a message, it stays true across NixOS releases. This is
      the primary test.
 
-  2. THE BOOT CHAIN, against `/run/booted-system` and never `/run/current-system`: a new kernel
-     activates silently and the machine keeps running the old one, so comparing generation symlinks
-     answers a different question. Like nixpkgs' `allowReboot` it compares kernel, initrd and
-     kernel-modules, plus `systemd` (replacing pid 1's package is not for unattended). Only the debt
-     THIS switch introduces refuses it; a reboot already owed (current != booted with all four
-     components matching, the residue of any post-boot switch) is reported and blocks nothing.
+  2. THE BOOT CHAIN, against `/run/booted-system` and never `/run/current-system`. A new kernel
+     activates silently and the machine keeps running the old one, so comparing the generation
+     symlinks answers a different question than the one being asked. nixpkgs' own
+     `system.autoUpgrade.allowReboot` compares kernel, initrd and kernel-modules; `systemd` is
+     included here as well, because a switch that would replace pid 1's package is not something
+     to do unattended. Measured on this fleet on 2026-08-24: dev-bitcoind and dev-postgres both
+     have current != booted while all four components match, which is the ordinary residue of a
+     post-boot switch -- a symlink comparison would have called both hosts reboot-pending forever.
+     Only the part of that debt THIS switch introduces (the candidate differs from the running
+     system too) refuses it; a reboot already owed is reported and blocks nothing (`boot_chain`).
 
-  3. `switch-to-configuration dry-activate`, as a CROSS-CHECK and never alone: its man page says "The
-     list of changes is not guaranteed to be complete" and its wording is not a stable interface. It
-     earns its place by being able to disagree: if the unit tree says nothing changes and dry-activate
-     names a unit it would restart, the model in test 1 is wrong, and the response is to refuse.
+  3. `switch-to-configuration dry-activate`, as a CROSS-CHECK and never alone. Its own man page
+     says "The list of changes is not guaranteed to be complete", so it cannot be the gate; and
+     its wording is not a stable interface (nixpkgs pins these strings only in its own
+     switch-test.nix, and nix-community/nixos-cli already prints different ones). It earns its
+     place by being able to disagree: if the unit tree says nothing changes and dry-activate names
+     a unit it would restart, then the model in test 1 is wrong, and the right response to that is
+     to refuse and say so rather than to trust the half that gives the convenient answer.
 
-FAIL CLOSED, INCLUDING ON SILENCE. An unrecognised line from dry-activate blocks the deployment: new
-wording turns the gate OFF, not on. The cost is that a nixpkgs bump can wedge auto-apply until
-somebody adds a pattern here, visible in the metric; the alternative is a gate that silently matches
-nothing and applies everything.
+FAIL CLOSED, INCLUDING ON SILENCE. An unrecognised line from dry-activate blocks the deployment.
+That is deliberate and it is the direction a NixOS upgrade should break in: new wording turns the
+gate OFF, not on. The cost is that a nixpkgs bump can wedge auto-apply until somebody adds a
+pattern here, which is a morning's work and is visible in the metric; the alternative cost is a
+gate that silently matches nothing and applies everything, which is the same shape of defect as a
+check that passes because it measured nothing.
 
-NOT COVERED: ACTIVATION SCRIPTS. `sops-install-secrets` genuinely runs during a dry run, and activation
-snippets may do work neither test predicts. Differences are REPORTED (`activation_changed`) and do not
-block. That is the residual risk of this design, the reason the first hosts to run it are development
-and sandbox ones, and the thing to revisit before a host holding real money is added.
+WHAT IS NOT COVERED, stated plainly because the man page says it and this script cannot fix it:
+ACTIVATION SCRIPTS. `sops-install-secrets` genuinely runs during a dry run -- measured, it imports
+the host key as an age identity on every invocation -- and activation snippets may do work that
+neither test predicts. Differences in the activation script are therefore REPORTED (the metric
+carries `activation_changed`) and do not by themselves block. That is the residual risk of this
+design, it is why the first hosts to run it are development and sandbox ones, and it is the thing
+to revisit before a host holding real money is added.
 
-EXIT CODES follow terraform's `plan -detailed-exitcode`: 0 nothing to do or a change was applied, 1 a
-change is pending that a person must decide on, 2 nothing could be determined. 2 must never be read as
-0: "nobody could ask" and "there is nothing to ask about" are different claims.
+EXIT CODES follow terraform's `plan -detailed-exitcode`, which is the clearest three-way split
+anybody has shipped: 0 nothing to do or a change was applied, 1 a change is pending that a person
+must decide on, 2 nothing could be determined. 2 must never be read as 0 -- "nobody could ask" and
+"there is nothing to ask about" are different claims, and the whole point of the metric below is
+that the build can tell them apart.
 """
-# PORT NOTE. A FAITHFUL PORT of bitcashier's nix/files/nixos-auto-apply.py: every rule in the
-# classification table was put there by a specific measurement, and a rewrite would have kept the
-# rules and lost the reasons. The host names and addresses in the comments (`dev-bitcoind`,
-# `dev-postgres`, `ci-runner`, `10.0.0.12`) belong to the fleet it came from; they are kept, with
-# their dates, because "measured on a real host on this date" is what makes a rule worth obeying.
-# test/test_auto_apply_classify.py drives `classify_output` with recorded switch output.
+# -------------------------------------------------------------------------------------------------
+# PORT NOTE -- read this before the incident citations below confuse you.
+# -------------------------------------------------------------------------------------------------
+#
+# This file is a FAITHFUL PORT of bitcashier's nix/files/nixos-auto-apply.py. It is ported rather
+# than rewritten because every rule in the classification table below was put there by a specific
+# measurement, and a rewrite would have kept the rules and lost the reasons -- which is how a
+# classifier quietly stops matching and starts activating everything.
+#
+# THE HOST NAMES AND ADDRESSES IN THE COMMENTS BELONG TO THE FLEET IT CAME FROM. `dev-bitcoind`,
+# `dev-postgres`, `ci-runner`, `10.0.0.12` and the wireguard gateway are not machines in this
+# project and never will be. They are kept, with their dates, because "measured on a real host on
+# this date" is what makes a rule worth obeying and "it seemed sensible" is not. Where such a note
+# says something that would be FALSE here it has been corrected in place and says so.
+#
+# WHY THE WHOLE MECHANISM APPLIES TO A THREE-HOST FLEET. It is not about scale. It is about the
+# fact that a NixOS host changes only when somebody deploys it, so "merged" and "deployed" are
+# different claims and nothing on the machine distinguishes them. Three hosts drift exactly as
+# silently as thirty; there are simply fewer people likely to notice.
+#
+# WHAT IS NOT PORTED YET: `bin/prove-nixos-auto-apply`, the harness that drives `classify_output`
+# with recorded switch-to-configuration output and fails when a rule stops matching. Everything in
+# this file is written to be driven by it -- `classify_output` is split out from the subprocess for
+# exactly that reason -- and until it exists, THE TABLE BELOW IS UNGUARDED. That is the single
+# biggest gap in this port, and the failure mode is not a red build: it is a classifier that
+# recognises nothing, decides nothing would be disturbed, and applies.
 
-# `from __future__ import annotations` so this file parses on any Python from 3.7 up: it runs in a
-# NixOS host's systemd unit (3.12+), a CI container and an operator's Mac (system Python 3.9, which
-# evaluates `str | None` at import time as a TypeError); the test imports the module directly.
+# `from __future__ import annotations` so that this file parses on any Python from 3.7 up. It runs
+# in three places -- a NixOS host's systemd unit (Python 3.12+), a CI container, and an operator's
+# Mac, where the system Python is still 3.9 and evaluates `str | None` at import time as a TypeError.
+# a prover imports this module directly (see the PORT NOTE: that harness is not ported yet), so a
+# version floor here is a prover that cannot run, which is the same as no prover.
 from __future__ import annotations
 import argparse
 import fcntl
@@ -84,10 +126,18 @@ EXIT_UNDETERMINED = 2
 # A unit's own installing switch racing this pass's dry-activate for the same Nix lock. Distinct
 # from EXIT_UNDETERMINED because systemd must NOT mark the unit failed for it -- see LockContended.
 EXIT_LOCK_CONTENDED = 3
-# A host CI has never staged to: the ordinary state of a freshly converted machine, so NOT a failure.
-# Exit 2 made the unit fail during activation and the FIRST deploy to any new host report failure
-# while succeeding (k3s-worker-1, 2026-08-29). The verdict is still published as
-# `undetermined`/`never_staged`; the alert on a host stuck here fires once it has persisted.
+# A host CI has never staged to. Distinct from EXIT_UNDETERMINED, and NOT a failure, because it is
+# the ordinary state of a freshly converted machine rather than an anomaly: every host spends the
+# window between `convert-host` and its first staged closure here. Exit 2 for it made the unit fail
+# during activation, which made `nixos-rebuild switch` itself return non-zero -- so the FIRST deploy
+# to any new host reported failure while having succeeded completely. Observed on k3s-worker-1,
+# 2026-08-29, immediately after its conversion.
+#
+# The signal is not lost by this: the verdict is still `undetermined`/`never_staged`, it is still
+# published to the textfile so `nixos_auto_apply_*` carries it, and the alert rule that watches for
+# a host stuck here is what should complain -- after it has persisted, not the instant the machine
+# is born. A red systemd unit on every new host is an alarm nobody can act on and everybody learns
+# to ignore.
 EXIT_NEVER_STAGED = 4
 
 # Components of the boot chain that a switch cannot bring into use on its own. `systemd` is here
@@ -114,13 +164,24 @@ BENIGN_LINES = (
     re.compile(r"^would activate the configuration\.\.\.$"),
     # Runs for real during a dry run, on every invocation, and says only that it read the host key.
     re.compile(r"^sops-install-secrets: Imported /etc/ssh/ssh_host_[a-z0-9]+_key as (?:GPG|age) key with fingerprint \S+$"),
-    # ADDED 2026-08-27. A secret with no prior existence cannot be depended on by anything already
-    # running; a unit that reads the new path prints its own line and is classified by UNIT_LINES.
-    # Only the secret's ARRIVAL is covered: a secret CHANGED or REMOVED under a process that already
-    # read it stays a person's decision.
-    # `secrets?` SINCE 2026-09-05: sops-nix pluralises against the number of secrets added, and
-    # monitoring-1 adding exactly one (`would add secret:`) refused a closure as `unrecognised_output`.
-    # Recorded verbatim in test/test_auto_apply_classify.py.
+    # ADDED 2026-08-27, found the same way the changed-but-skipped rule above was: a host that had
+    # never added a NEW secret before this one, and so had never printed this line. A secret with
+    # no prior existence cannot be depended on by anything already running -- there is no process
+    # today whose behavior changes because a file it never read now exists. Whatever DOES depend on
+    # it (a unit that reads the new path and gets restarted because of it) prints its own line and
+    # is classified by UNIT_LINES exactly as any other restart would be; this rule only covers the
+    # secret's own arrival, never a unit's reaction to it. A secret being CHANGED or REMOVED is
+    # deliberately NOT covered by a lookalike rule here -- an existing secret disappearing or
+    # changing value out from under a process that already read it is the "changed-but-skipped"
+    # shape, not the "arrived from nothing" shape, and stays a person's decision.
+    #
+    # `secrets?` SINCE 2026-09-05, AND THE MISSING "s" COST A BLOCKED HOST. sops-nix pluralises
+    # this line against the NUMBER OF SECRETS IT IS ADDING, and the 2026-08-27 observation happened
+    # to be of a switch adding more than one. monitoring-1 then added exactly one --
+    # `alertmanager/smtp-password`, for the alerting email path -- printed `would add secret:` in
+    # the singular, matched nothing here, and refused the whole closure as `unrecognised_output`.
+    # Recorded verbatim as a case in test/test_auto_apply_classify.py so the singular cannot go
+    # missing again.
     re.compile(r"^would add secrets?: (.+)$"),
 )
 
@@ -156,11 +217,16 @@ HARD_LINES = (
     (re.compile(r"^would stop swap device: (.+)$"), "stop-swap"),
 )
 
-# WHICH KINDS AN ALLOW-LIST MAY FORGIVE: the three ways a switch disturbs a unit -- stopped (removed),
-# started (added), restarted (changed); naming a unit restartable accepts all three.
-# `changed-but-skipped` IS DELIBERATELY NOT HERE: the running process no longer matches its definition,
-# a divergence rather than a disturbance, and an allow-list is permission to disturb, not to leave the
-# host quietly inconsistent with main.
+# WHICH KINDS AN ALLOW-LIST MAY FORGIVE. `stop`, `start` and `restart` are the three ways a unit is
+# disturbed by a switch, and a host that has named a unit as restartable has said it accepts all
+# three -- a unit removed from a closure is stopped, one added is started, and one whose definition
+# changed is restarted, and no operator naming `github-runner-*` means "restart yes, start no".
+#
+# `changed-but-skipped` IS DELIBERATELY NOT HERE, and it is the one exclusion worth arguing. Those
+# lines are printed when a unit CHANGED and systemd was told not to act on it, which leaves the
+# running process no longer matching its own definition -- a divergence, not a disturbance. An
+# allow-list is permission to disturb something; it is not permission to leave the host quietly
+# inconsistent with main, which is the state this whole script exists to end.
 FORGIVABLE_KINDS = ("stop", "start", "restart")
 
 # The suffixes systemd gives units, used to find the unit a path under etc/systemd/system belongs
@@ -173,12 +239,23 @@ UNIT_SUFFIXES = (".service", ".socket", ".target", ".timer", ".path", ".mount",
 def unit_named_by(path: str) -> str | None:
     """The unit a path under `etc/systemd/system` belongs to, or None if it names no unit.
 
-    Three shapes reach here: `x.service` (the unit), `multi-user.target.wants/x.service` (the link that
-    ENABLES it) and `x.service.d/override.conf` (a drop-in that configures it). A component ending `.d`
-    is a drop-in directory and is stripped; `multi-user.target.wants` ends `.wants`, not a unit suffix,
-    so the link is not read as a change to `multi-user.target`. Last-wins: the change is to the leaf.
+    Three shapes reach here and all three matter:
+
+      github-runner-x.service                         -> the unit itself
+      multi-user.target.wants/github-runner-x.service -> the link that ENABLES it
+      github-runner-x.service.d/override.conf         -> a drop-in that configures it
+
+    A component ending `.d` is the unit's drop-in directory and is stripped. What keeps
+    `multi-user.target.wants/x.service` from being read as a change to `multi-user.target` is that
+    `multi-user.target.wants` ends `.wants`, which is not a unit suffix and so matches nothing --
+    NOT the last-wins tie-break below, which on every path shape systemd actually produces has only
+    one candidate to choose from and is therefore unobservable. It is written last-wins anyway
+    because that is the semantically right answer if a second candidate ever appears: the change is
+    to the leaf, and the directories above it are only where the leaf lives.
+
     A `.wants` directory itself names no unit and returns None, so creating one is never forgiven:
-    enabling a unit is visible as the link inside it.
+    enabling a unit is visible as the link inside it, and the directory appearing is a structural
+    change nobody has declared acceptable.
     """
     found = None
     for component in path.split("/"):
@@ -193,13 +270,19 @@ def matches_any(unit: str, patterns: Patterns) -> bool:
 
 
 def unit_forgiven(unit: str, patterns: Patterns, never: Patterns = ()) -> bool:
-    """Whether an allow-list covers this unit. `fnmatchcase`: systemd unit names are case-sensitive.
+    """Whether an allow-list covers this unit. `fnmatchcase`, so the match is never locale- or
+    case-folded -- systemd unit names are case-sensitive and `SSHD.service` is not `sshd.service`.
 
-    `never` OUTRANKS EVERY ALLOW-LIST and is checked first. Both allow-lists are globs whose useful
-    value is `*`, which alone is all-or-nothing; the unit this carves out is `sshd.service`, because a
-    reload that loads a configuration refusing every key SUCCEEDS, so nothing rolls back, and on a
-    Hetzner Cloud machine the way back in is then a rescue boot. A deny-list is the one list whose failure
-    mode is refusing a switch somebody wanted, the direction this module errs in anyway.
+    `never` OUTRANKS EVERY ALLOW-LIST and is checked first, which is the whole reason it exists.
+    Both allow-lists are written as globs and the useful value for each is `*` -- the fleet permits
+    reloads that way, and ci-runner permits restarts that way -- and `*` with no way to carve
+    anything back out is an all-or-nothing switch. The unit this is for is `sshd.service`: a reload
+    or restart that loads a configuration refusing every key SUCCEEDS, so `rollbackOnFailure` never
+    sees a failed unit and nothing rolls back. On a Hetzner Cloud machine the way back in is then
+    the web console, which reaches a login prompt no account on this fleet has a password for (see
+    nix/modules/fleet/accounts.nix), so the recovery is a rescue boot and a disk mount. A deny-list
+    is the only one of the three lists whose failure mode is refusing a switch somebody wanted,
+    which is the direction this whole module errs in anyway.
     """
     if matches_any(unit, never):
         return False
@@ -210,20 +293,43 @@ def unit_forgiven(unit: str, patterns: Patterns, never: Patterns = ()) -> bool:
 # Leniency -- NEW units, and a short ROUTINE list, without a per-host `restartable = '*'`
 # -------------------------------------------------------------------------------------------------
 #
-# ADDED 2026-10-23. A host with a narrow `restartableUnits` refused every closure that ADDED a unit or
-# touched a timer or this applier's own unit, and a person then switched by hand -- the step this
-# module exists to end. None of these restarts anything that holds state:
-#   NEW UNITS (`--start-new-units`): absent from the RUNNING tree, so no process to disturb. By unit,
-#   not path (a new drop-in for an existing unit is not new); its `.wants` link goes with it. Mounts
-#   and swaps are excluded: mounting changes what an existing process sees at a path.
-#   ROUTINE UNITS (`--routine`, globs): disturb nothing anybody depends on, including
-#   changed-but-skipped (how this applier's own unit arrives). A routine timer also covers its
-#   same-named `.service`, STRUCTURALLY ONLY: if dry-activate says it would restart, both refuse.
-#   IDLE UNITS (always on, structural only; 2026-11-02): a changed `.service` that is `inactive` now
-#   has no process to disturb, which is why dry-activate is silent about it; without this every
-#   such closure raised `classifier_disagreement` (monitoring-1 held back 21 commits).
-# `never` outranks both, and STATEFUL_UNITS is a floor no host setting can widen: `routine = [ "*" ]`
-# still cannot restart postgres. `restartable` is not fenced by it: that is a host's reviewed decision.
+# ADDED 2026-10-23. A host with a narrow `restartableUnits` refused every closure that ADDED a unit
+# (a new timer, a new exporter) or touched a timer or this applier's own unit, as
+# `units_would_change` -- and the person then ran nix-env + switch-to-configuration by hand, which is
+# the exact hand step this module exists to end. Neither kind of change restarts anything that
+# holds state:
+#
+#   NEW UNITS (`--start-new-units`). A unit absent from the RUNNING unit tree has no process to
+#   disturb; starting it is the whole of its effect. It is named in the candidate's tree and not the
+#   running one -- by unit, not by path, so a new drop-in for an EXISTING unit is not "new". Its
+#   `.wants`/`.requires` link is forgiven with it, and so is a NEW `.wants` directory whose every
+#   entry is forgiven. Mounts and swaps are excluded: mounting something changes what an existing
+#   process sees at a path.
+#
+#   ROUTINE UNITS (`--routine`, globs). Units whose stop/start/restart -- and changed-but-skipped,
+#   which is how this applier's own unit (`restartIfChanged = false`) arrives -- disturbs nothing
+#   anybody depends on: timers, exporters, the applier itself. A routine timer also covers its
+#   same-named `.service`, STRUCTURALLY ONLY: a changed oneshot between firings is inert, but if
+#   dry-activate says it would restart (it is running now -- a backup mid-flight), that is refused
+#   on both sides.
+#
+#   IDLE UNITS (always on, structural only; ADDED 2026-11-02). A changed `.service` that exists in
+#   both trees and is `inactive` on the host right now has no process to disturb: the switch leaves
+#   it alone and its next start reads the new definition -- which is why dry-activate, correctly,
+#   says nothing about it. bin/deploy has always shown these as "unit files changed, unit idle".
+#   Without this rule the unit tree counted them while dry-activate stayed silent, and every closure
+#   touching one raised `classifier_disagreement`: monitoring-1 on 2026-11-02, held back 21 commits
+#   by `generate-shutdown-ramfs.service` (a nixpkgs bump; it runs only at shutdown). If dry-activate
+#   DOES name an idle unit (it started between the two reads), that refusal is fed back to the
+#   structural test as for a routine timer's service, so both halves refuse it together.
+#
+# NONE OF THEM CAN REACH A STATEFUL SERVICE. `never` outranks both, as it outranks every allow-list, and
+# STATEFUL_UNITS is a floor under these two rules that no host setting can widen -- so `routine =
+# [ "*" ]` written by mistake still cannot restart postgres. `restartable` is NOT fenced by it: that
+# list is a host's own explicit, reviewed decision (monitoring-1 names prometheus.service in it).
+#
+# PORTED FROM bitcashier's applier on the same day, rules and floor unchanged; bitcashier's prover
+# drives the same functions, test/test_auto_apply_classify.py drives them here.
 STATEFUL_UNITS = (
     "postgresql*", "pgbouncer*", "mongod.service", "mongodb.service", "bitcoind*", "vault*",
     "consul*", "nomad*", "k3s*", "containerd*", "docker*", "podman*", "redis*", "etcd*", "sshd*",
@@ -307,21 +413,32 @@ class Undetermined(Exception):
 
 
 class LockContended(Undetermined):
-    """dry-activate could not get the Nix profile lock -- a KNOWN, self-resolving race (2026-08-25).
+    """dry-activate could not get the Nix profile lock -- a KNOWN, self-resolving race.
 
-    The module's own timer, adopted on a host that has been up a while, fires within the activation that
-    installs it, while `nixos-rebuild switch` still holds this lock. Still `undetermined`, but the next
-    pass finds the lock free; a unit failing for a race it did not cause would page fleet-wide and make
-    nixos_deploy refuse to call a good deploy finished.
+    Found 2026-08-25: the module's own timer, adopted on a host that has been up for a while,
+    computes its OnBootSec trigger as already elapsed and fires within the same activation that
+    installs it -- while `nixos-rebuild switch` is itself still holding this exact lock. Every
+    host that adopts the module hits this on its FIRST run.
+
+    It is still `undetermined` -- nothing was measured -- but it is not the open-ended
+    "something is wrong" the base class means. The next scheduled pass (or the next switch)
+    finds the lock free and succeeds; verified by hand on the host that found this, first try.
+    A unit failing for a race it did not cause and will resolve on its own is worse than useless:
+    it pages fleet-wide (failed units are alarmed everywhere) and makes nixos_deploy refuse to
+    call a perfectly good deploy finished, on a host that ends up fine two minutes later.
     """
 
 
 class NeverStaged(Undetermined):
     """CI has never pinned a closure here.
 
-    A SEPARATE CLAIM from "this pass could not measure": the repair differs (staging wired up, or a first
-    deploy from a checkout, versus reading why). 10.0.0.12 on 2026-08-24 runs the tip of main with no pin
-    because it was last deployed by hand, and a generic error would leave it amber for no actionable reason.
+    A SEPARATE CLAIM from "this pass could not measure", and separate because the repair is
+    different: a host CI has never reached needs staging wired up or a first deploy from a
+    checkout, whereas a pass that could not measure needs somebody to read why. Measured on
+    10.0.0.12 on 2026-08-24, this is not hypothetical -- the host runs the exact tip of main and
+    has `nixdeploy` present, and still has no pin, because it was last deployed by hand rather
+    than through CI. Reporting that as a generic error would leave every such host amber for a
+    reason nobody could act on.
     """
 
 
@@ -397,9 +514,11 @@ def staged_system(pin: pathlib.Path) -> pathlib.Path:
 def unit_tree(system: pathlib.Path) -> dict[str, str]:
     """Map every path under the system's systemd unit directory to what it resolves to.
 
-    Symlink targets are compared, not contents: every unit in a NixOS closure is a store symlink, so an
-    identical target IS identical content; regular files (drop-ins) are hashed. The directory structure
-    is part of the map because `.wants/` and `.requires/` links enable a unit, and that is not nothing.
+    Symlink targets are compared rather than file contents, and that is not a shortcut: every unit
+    in a NixOS closure is a symlink into the store, so an identical target IS identical content, by
+    the store's own construction. Regular files (which drop-ins occasionally are) are hashed. The
+    directory structure is part of the map because `.wants/` and `.requires/` links are how a unit
+    is enabled, and enabling something is not nothing.
     """
     root = system / "etc" / "systemd" / "system"
     tree: dict[str, str] = {}
@@ -452,14 +571,19 @@ def unit_changes(running: pathlib.Path, candidate: pathlib.Path,
                  restartable: Patterns = (), never: Patterns = (), leniency: Leniency = Leniency()) -> UnitChanges:
     """Every difference in the unit tree, split by whether this host has declared it acceptable.
 
-    THE FORGIVEN HALF IS KEPT, NOT DISCARDED: an allow-list makes a switch that restarts six units
-    ALLOWED, not invisible. What is forgiven is named in the log line and counted in
-    `nixos_auto_apply_forgiven_units`, so "auto-apply restarted your CI runners at 04:12" has an answer.
+    THE FORGIVEN HALF IS KEPT RATHER THAN DISCARDED. A switch that restarts six units is not the
+    same event as one that restarts nothing, and an allow-list must not make the difference
+    invisible -- it makes it ALLOWED. What is forgiven here is named in the log line and counted in
+    `nixos_auto_apply_forgiven_units`, so "auto-apply restarted your CI runners at 04:12" is a
+    question the journal can answer afterwards.
     """
     before, after = unit_tree(running), unit_tree(candidate)
     decided = {name: (describe_change(name, before, after),
                       change_forgiven(name, restartable, never, leniency))
                for name in sorted(set(before) | set(after)) if before.get(name) != after.get(name)}
+        # A NEW `.wants`/`.requires` directory names no unit and is otherwise never forgiven. It is
+        # forgiven here only when it is new and EVERYTHING inside it was forgiven -- i.e. it exists
+        # only to enable units the rules above already accepted.
     for name, (description, ok) in list(decided.items()):
         if not ok and enable_directory_forgiven(name, decided, before):
             decided[name] = (description, True)
@@ -537,12 +661,18 @@ def pid1_reexec_is_inert(candidate: pathlib.Path, pid1_exe="/proc/1/exe",
                          system_conf="/etc/systemd/system.conf") -> bool:
     """True when re-executing PID 1 into the candidate's systemd would change nothing at all.
 
-    switch-to-configuration-ng prints `would restart systemd` when `canonicalize("/proc/1/exe")` differs
-    from the candidate's `lib/systemd/systemd`. That has a FALSE POSITIVE this fleet hit: the nightly
-    `nix-store --optimise` hard-links a duplicate over the running binary's store path, the kernel reports
-    PID 1's exe as "<path> (deleted)", and the switch compares against "/unknown" -- 4.5h and 18h of
-    `classifier_disagreement` on 2026-09-28/29. BYTES, NOT PATHS: `open("/proc/1/exe")` still reaches the
-    inode PID 1 runs. Anything unreadable answers False, so this only ever forgives the one line.
+    switch-to-configuration-ng prints `would restart systemd` when `canonicalize("/proc/1/exe")`
+    differs from the candidate's `lib/systemd/systemd`, or `/etc/systemd/system.conf` resolves
+    elsewhere. The first half has a FALSE POSITIVE this fleet hit: the nightly `nix-store --optimise`
+    (fleet/nix-gc.nix) hard-links a duplicate over the running binary's store path, the kernel then
+    reports PID 1's exe as "<path> (deleted)", the canonicalize fails, and the switch compares
+    against the literal "/unknown" -- so every closure after it "restarts systemd" and the unit tree,
+    which rightly sees nothing, disagrees. Measured 2026-09-28/29 on all three hosts: 4.5h and 18h of
+    `classifier_disagreement`, cleared only by a hand switch re-executing the identical binary.
+
+    BYTES, NOT PATHS, because the path is exactly what the optimiser broke. `open("/proc/1/exe")`
+    still reaches the inode PID 1 runs, deleted name or not. Anything unreadable answers False, so
+    this can only ever forgive the one line, never block more than before.
     """
     try:
         if os.path.realpath(system_conf) != os.path.realpath(candidate / "etc" / "systemd" / "system.conf"):
@@ -557,9 +687,10 @@ def dry_activate(candidate: pathlib.Path, timeout: int, restartable: Patterns = 
                  leniency: Leniency = Leniency()) -> DryActivate:
     """Run the dry activation and classify EVERY line it prints.
 
-    Output goes to stderr and the exit code is 0 whatever it finds, so the lines are the signal. A genuine
-    no-op is not silent: it still prints the inhibitor note, "would activate the configuration..." and
-    two sops-install-secrets lines (measured on 10.0.0.12).
+    Output goes to stderr and the exit code is 0 whatever it finds, so neither of those is the
+    signal; the lines are. Note that a genuine no-op is not silent -- measured on 10.0.0.12, an
+    unchanged system still prints the inhibitor note, "would activate the configuration..." and two
+    sops-install-secrets lines.
     """
     binary = candidate / "bin" / "switch-to-configuration"
     if not binary.exists():
@@ -629,10 +760,15 @@ def classify_output(text: str, restartable: Patterns = (), never: Patterns = (),
                     leniency: Leniency = Leniency()) -> DryActivate:
     """Sort every line into disturbs-something, merely-reloads, or not-recognised.
 
-    SPLIT OUT FROM THE SUBPROCESS so the test can drive it with output recorded from a real host: a
-    classifier nobody can exercise fails open into "nothing would happen" if its patterns stop matching.
-    `pid1_unchanged` is `pid1_reexec_is_inert` for the candidate, passed in so the cases can state it:
-    when true, `would restart systemd` re-executes the binary PID 1 already runs, and is benign.
+    SPLIT OUT FROM THE SUBPROCESS ON PURPOSE, so that bin/prove-nixos-auto-apply can drive it with
+    recorded output -- including output recorded from a real host -- rather than needing a NixOS
+    machine and a genuine pending change to find out whether the table below still matches. A
+    classifier nobody can exercise is a classifier nobody knows the state of, and this one fails
+    open into "nothing would happen" if its patterns ever stop matching.
+
+    `pid1_unchanged` is `pid1_reexec_is_inert` for the candidate, passed in rather than computed so
+    the recorded-output cases can state it: when true, `would restart systemd` re-executes the very
+    binary and config PID 1 already runs, and is benign.
     """
     disruptive: list[str] = []
     reloads: list[str] = []
@@ -673,6 +809,35 @@ def classify_output(text: str, restartable: Patterns = (), never: Patterns = (),
 #   last_deployment -- a pass that actually switched; absent on a host with nothing to apply.
 # `run_produced_verdict` states the second as a gauge: an absent series and a series saying zero are
 # different claims, and inferring one from the other is how a broken publisher reads as a clean fleet.
+
+# -------------------------------------------------------------------------------------------------
+# The metric
+# -------------------------------------------------------------------------------------------------
+#
+# THE SHAPE HERE IS A WIRE CONTRACT with the alert rules on monitoring-1, and CHANGING A NAME HERE
+# TURNS AN ALERT GREEN RATHER THAN RED: a PromQL query that matches nothing returns no rows, and no
+# rows is indistinguishable from a fleet with nothing pending unless the rule insists on the roster.
+# So renaming a series here is a two-file change, and the second file is the one that fails silently.
+#
+# Three timestamps rather than one, and the distinction is the whole value of the metric. It is
+# taken straight from `bitcashier::fleet_spec`, which learned it the expensive way: a textfile
+# collector is NOT a heartbeat, so a publisher that stops running leaves its last good numbers
+# being scraped and reported as current for ever.
+#
+#   last_attempt   -- every pass that finished, including one that could determine nothing.
+#                     Its age is what says the applier itself is alive.
+#   last_verdict   -- a pass that actually produced an answer about this host. A run that could not
+#                     reach git, or could not build, does NOT advance this, so "we have not known
+#                     anything for six hours" is expressible and is not the same claim as
+#                     "the applier is dead".
+#   last_deployment -- a pass that actually switched. Absent forever on a host that has simply had
+#                     nothing to apply, which is why it is not a health signal on its own.
+#
+# `run_produced_verdict` states the second of those as a gauge rather than leaving a reader to
+# infer it from a missing timestamp, for the reason the ops screen records: an absent series and a
+# series saying zero are different claims, and inferring one from the other is how a broken
+# publisher comes to read as a clean fleet.
+
 
 def escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
@@ -729,8 +894,11 @@ class Metrics:
 def configuration_revision(system: pathlib.Path) -> str:
     """The commit the staged closure was built from, for the metric's label.
 
-    Best effort: a label a human reads, never something a decision turns on. A closure built from a tree
-    that was not a checkout reports the sentinel, which bin/check-nixos-closure-current treats as its own state.
+    Best effort by design: this is a label a human reads, never something a decision turns on. CI
+    stamps it via `system.configurationRevision` (nix/modules/fleet/deploy-staging.nix), so a
+    closure built from a tree that was not a checkout reports the sentinel rather than a commit --
+    which bin/check-nixos-closure-current already treats as its own state, and which is worth
+    carrying here for the same reason.
     """
     version = system / "sw" / "bin" / "nixos-version"
     if not version.is_file():
@@ -750,11 +918,14 @@ def failed_units() -> set[str]:
     return {line.split()[0] for line in completed.stdout.splitlines() if line.split()}
 
 
-# WHAT `switch-to-configuration switch` EXITING 4 CAN MEAN: one code for every failure it noticed,
-# system and per-user alike. `warning: user activation for <name> failed` is a user manager logind is
-# stopping (ten seconds after CI's own `nixdeploy` session disconnects) failing the whole switch while
-# every system unit is fine: it paged `SystemdUnitFailed` for landed deploys on monitoring-1
-# (2026-09-02, 09-25). Every OTHER failure line below is system scope and keeps exit 4 fatal.
+# WHAT `switch-to-configuration switch` EXITING 4 CAN MEAN, from the pinned nixpkgs'
+# switch-to-configuration-ng. It is one code for every failure it noticed, system and per-user alike.
+# The per-user one is `warning: user activation for <name> failed`: it re-runs itself inside each
+# logged-in user's systemd manager, and a manager that logind is stopping at that moment (ten
+# seconds after that user's last session closes -- CI's own `nixdeploy` session, which starts this
+# unit and disconnects) fails the whole switch while every system unit is fine. That race failed
+# monitoring-1's pass on 2026-09-02 and 2026-09-25 and paged `SystemdUnitFailed` for deploys that
+# had landed. Every OTHER failure line below is system scope, and any one of them keeps exit 4 fatal.
 USER_ACTIVATION_FAILED = re.compile(r"^warning: user activation for \S+ failed$")
 SYSTEM_SCOPE_FAILURES = re.compile(
     r"^(Unable to list users with logind"
@@ -839,6 +1010,8 @@ def logind_race(returncode: int, output: str, on_candidate: bool) -> bool:
 
 
 def logind_retry_note(output: str) -> str:
+    # ONE retry, bounded by the switch's own timeout: the race is a window of milliseconds,
+    # and a second failure is reported below like any other.
     return ("nixos-auto-apply: the switch stopped midway because a logind user vanished under it; "
             "retrying once: " + " | ".join(line.strip() for line in output.splitlines()
                                            if "Error:" in line or "Unknown object" in line))
@@ -920,19 +1093,27 @@ def aftermath(newly_failed: set[str], previous: pathlib.Path, rollback_on_failur
 def activate(candidate: pathlib.Path, rollback_on_failure: bool) -> str:
     """Switch to the candidate, then confirm the host is no worse than it was.
 
-    THE VERIFICATION IS A COMPARISON, NOT AN ABSOLUTE: the set of failed units is recorded beforehand and
-    only units that were healthy and are not any more are objected to, or the first pre-existing fault
-    would disable auto-apply on a host permanently and silently. Rolling back is cheap because the gate
-    established that this switch restarts nothing, so only files are undone; a rollback that itself fails
-    is reported and not retried -- the host needs a person.
+    THE VERIFICATION IS A COMPARISON, NOT AN ABSOLUTE. A host with a unit already failing before
+    the switch would fail an "are there any failed units" test every time, so this records the set
+    beforehand and objects only to units that were healthy and are not any more. Otherwise the
+    first pre-existing fault on a host disables auto-apply on it permanently and silently.
+
+    Rolling back is cheap here in a way it is not in general: the gate has already established that
+    this switch restarts nothing, so the only things to undo are files. A rollback that itself
+    fails is reported and not retried -- at that point the host needs a person, and the useful
+    thing this script can do is stop touching it.
     """
     before = failed_units()
     previous = pathlib.Path(os.path.realpath(SYSTEM_PROFILE))
 
-    # THE PROFILE IS SET FIRST, AND THAT ORDER IS LOAD-BEARING: `switch-to-configuration switch` runs
-    # the bootloader installer, which builds the boot menu from the generations in the profile.
-    # Without it the DEFAULT BOOT ENTRY still points at the old generation -- correct until a reboot,
-    # and `--rollback` has no generation to roll back to.
+    # THE PROFILE IS SET FIRST, AND THAT ORDER IS LOAD-BEARING. `switch-to-configuration switch`
+    # runs the bootloader installer, and the installer builds the boot menu from the generations in
+    # /nix/var/nix/profiles/system. Activate without setting the profile and the running system is
+    # the new one while the DEFAULT BOOT ENTRY still points at the old generation -- so the machine
+    # is correct until it reboots and then silently is not. That is also why this does not simply
+    # run the command the staging tool prints: `sudo <path>/bin/switch-to-configuration switch`
+    # alone leaves the profile untouched, records no generation, and gives `--rollback` nothing to
+    # roll back to.
     run(["nix-env", "--profile", SYSTEM_PROFILE, "--set", str(candidate)], timeout=600)
     returncode, output = run_switch(candidate)
     check_switch(candidate, returncode, output)
@@ -951,12 +1132,21 @@ class Verdict(typing.NamedTuple):
     candidate: str
     reboot_owed: bool
     activation_changed: bool
-    # WHICH components force the reboot, not merely that one is owed: a replaced `kernel` may carry
-    # a CVE, while a replaced `initrd` usually means a mount option changed (2026-08-24: all four hosts
-    # owed a reboot for `initrd` alone, after one commit added `nofail` to a data volume).
+    # WHICH components force the reboot, not merely that one is owed. A bare 0/1 tells an operator
+    # a reboot is needed and nothing about what it buys them -- and the answer changes the urgency
+    # completely: a replaced `kernel` may carry a published CVE, while a replaced `initrd` usually
+    # means a mount option or a stage-1 module changed and the running machine is simply still on
+    # the old boot path. Measured on 2026-08-24: all four hosts owed a reboot for `initrd` alone,
+    # from one commit that added `nofail` to a data volume -- which is worth knowing precisely,
+    # because until the reboot the host still has the boot behaviour that halts into emergency
+    # mode when the volume does not attach.
     reboot_components: tuple = ()
     # WHAT AN ALLOW-LIST LET THROUGH: non-empty only when a per-host decision is being exercised, so
     # it is said out loud in the log line and the metric ("applied" would mean two sizes of event).
+    # WHAT AN ALLOW-LIST LET THROUGH. Empty on every host that has declared nothing restartable,
+    # which is the fleet default -- so a non-empty value is always a deliberate per-host decision
+    # being exercised, and is worth saying out loud in the log line and the metric rather than
+    # leaving "applied" to mean two different sizes of event.
     forgiven: tuple[str, ...] = ()
 
 
@@ -964,23 +1154,26 @@ def structural_changes(running: pathlib.Path, candidate: pathlib.Path, dry: DryA
                        restartable: Patterns = (), reload_forgiven: Patterns = (),
                        never: Patterns = (),
                        leniency: Leniency = Leniency()) -> UnitChanges:
-    """The unit-tree test, given what dry-activate refused. A routine timer's service or an idle unit that
-    dry-activate would RESTART or START (it is running now) is denied here too, so both halves refuse it
-    together. Split out so the test drives the code that ships rather than a copy of it."""
+    """The unit-tree test, given what dry-activate refused. A routine timer's service or an idle
+    unit that dry-activate would RESTART or START (it is running now) is denied here too, so both halves refuse it
+    together instead of disagreeing. Split out so test/test_auto_apply_classify.py drives the code
+    that ships rather than a copy of it."""
     taken_back = tuple(unit for unit in dry.refused if unit in leniency.structural_only())
     return unit_changes(running, candidate, set(restartable) | set(reload_forgiven),
                         tuple(never) + taken_back, leniency)
 
 
 def refusal(units, chain: BootChain, dry: DryActivate, reloadable: Patterns = (), never: Patterns = ()) -> str | None:
-    """Why this pass must refuse, or None when the switch is inert. Pure, so the recorded-output cases
-    in test/test_auto_apply_classify.py drive the decision that ships.
+    """Why this pass must refuse, or None when the switch is inert. Pure, so the recorded-output
+    cases in test/test_auto_apply_classify.py drive the decision that ships.
 
-    THE CROSS-CHECK COMPARES ONLY WHAT BOTH HALVES CAN SEE: the unit tree and the one boot-chain
-    component dry-activate reports, a `systemd` this switch replaces. A new kernel, initrd or module tree
-    is invisible to dry-activate, and a reboot already owed is not caused by this switch; counting either
-    on the structural side alone made dry-activate "disagree" with a fact it cannot state (k3s-worker-1
-    and mongo-1, 2026-11-09/10). Both stay refusals or reports in their own right, never disagreements.
+    THE CROSS-CHECK COMPARES ONLY WHAT BOTH HALVES CAN SEE: the unit tree (`units`, what no list
+    forgives) and the one boot-chain component dry-activate reports, a `systemd` this switch
+    replaces ("would restart systemd"). A new kernel, initrd or module tree is invisible to
+    dry-activate, and a reboot the running system already owes is not caused by this switch at
+    all; counting either on the structural side alone made dry-activate "disagree" with a fact it
+    has no way to state (k3s-worker-1 and mongo-1, 2026-11-09/10). Both stay refusals or reports in
+    their own right below, never disagreements.
     """
     structural_noop = not units and "systemd" not in chain.introduced
     dry_noop = not dry.disruptive and not dry.unrecognised and all(
@@ -1064,6 +1257,27 @@ def inspect_switch(args: argparse.Namespace, running: pathlib.Path, candidate: p
     SURVIVES: a changed unit dry-activate mentions NOWHERE is still blocked and still disagrees --
     the dangerous case, a change systemd did not tell us about.
     """
+    # BOTH TESTS ARE GIVEN THE SAME ALLOW-LIST, and they have to be. They are deliberately
+    # redundant -- `refusal` calls any difference a disagreement -- so an allow-list applied to one
+    # and not the other would turn every forgiven change into a `classifier_disagreement` and make
+    # the feature look broken rather than strict.
+    #
+    # THE RELOAD LIST USED TO BREAK THAT RULE AND IT WAS INERT, WHICH IS WHY NOBODY NOTICED. It was
+    # consulted only in `dry_noop`, and by exact string match (`unit in args.reloadable`) while
+    # `restartable` went through globs -- so `reloadableUnits = [ "*" ]` looked for a unit literally
+    # named `*`, matched none, and permitted nothing. Making it a glob without this block would have
+    # been worse than leaving it broken: `dry_noop` would go true while `structural_noop` stayed
+    # false, and every benign reload on every host would raise `classifier_disagreement`, which is
+    # the one reason in this module that pages at CRITICAL.
+    #
+    # DRY-ACTIVATE RUNS FIRST NOW, because it is the only thing that knows a changed unit would be
+    # RELOADED rather than restarted -- the unit tree shows a file differing and cannot tell which.
+    # Units it names as reloads, and that this host permits reloading, are then forgiven
+    # structurally too, so the two tests describe the same event.
+    #
+    # THE REDUNDANCY SURVIVES, which is the point of doing it this way rather than widening the
+    # structural test: a changed unit that dry-activate mentions NOWHERE is still blocked and still
+    # disagrees, and that is the dangerous case -- a change systemd did not tell us about.
     running_tree, candidate_tree = unit_tree(running), unit_tree(candidate)
     leniency = leniency_for(running_tree, candidate_tree, args.start_new_units,
                             tuple(sorted(args.routine)),

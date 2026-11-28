@@ -253,10 +253,14 @@ def address_of(name):
 
 
 def timed(timings: dict[str, float], label: str, fn: Callable[[], Any]) -> Any:
-    """`fn()`, its duration kept in <timings>. PER-STEP TIMING, kept from the port: raising concurrency on
-    the fleet this came from bought almost nothing (105s -> 95s across 29 hosts), which only makes sense if
-    the SLOWEST host's own SEQUENTIAL chain sets the floor. Here that chain crosses the public internet
-    twice per host, so the copy step is expected to dominate, and this is what will say so."""
+    """`fn()`, its duration kept in <timings>.
+
+    PER-STEP TIMING, kept from the port. It exists because raising concurrency on the fleet this
+    came from bought almost nothing (105s -> 95s across 29 hosts) instead of the speedup a
+    CPU-bound job would show -- which only makes sense if the SLOWEST host's own SEQUENTIAL chain
+    sets the floor. Here that chain crosses the public internet twice per host instead of a LAN,
+    so the copy step is expected to dominate far more than it did there, and this is what will
+    say so rather than leaving it to be guessed."""
     start = time.monotonic()
     result = fn()
     timings[label] = time.monotonic() - start
@@ -264,9 +268,10 @@ def timed(timings: dict[str, float], label: str, fn: Callable[[], Any]) -> Any:
 
 
 def eval_verdict(error: str) -> str:
-    """A nix ERROR (it starts with "error:") means the flake could not be evaluated -- a problem with this run,
-    not a claim about the host. Only a host that evaluates fine but declares no address is
-    `unreachable-by-declaration` (run 37968909524 printed the latter for a fetcher race)."""
+    """A nix ERROR (it starts with "error:") means the flake could not be evaluated -- a problem
+    with this run, not a claim about the host. Only a host that evaluates fine but declares no
+    address is `unreachable-by-declaration`. Run 37968909524 printed the latter for a fetcher
+    race and sent the reader looking at the wrong thing."""
     return "eval-failed" if error.lstrip().startswith("error:") else "unreachable-by-declaration"
 
 
@@ -276,8 +281,9 @@ def stage(name: str) -> "tuple[str, str | None, str, str | None, dict[str, float
     if error:
         return name, None, eval_verdict(error), error, timings
 
-    # --no-link so this leaves nothing in the working tree; the GC root on the HOST is what keeps the closure
-    # alive, and a result symlink here would only keep it alive on a runner destroyed minutes later.
+    # --no-link so this leaves nothing in the working tree; the GC root on the HOST is what keeps
+    # the closure alive, and a result symlink here would only keep it alive on a runner that is
+    # destroyed minutes later.
     path, error = timed(timings, "build", lambda: run(["nix", "build", "--no-link", "--print-out-paths",
                         f".#nixosConfigurations.{name}.config.system.build.toplevel"]))
     if error:
@@ -295,9 +301,10 @@ def stage(name: str) -> "tuple[str, str | None, str, str | None, dict[str, float
     if error:
         return name, address, "copy failed", error, timings
 
-    # Pinned through the same restricted endpoint, which writes an indirect GC root inside its own directory:
-    # without it the copied closure is unreferenced and the next collection deletes it. Writing the pin is ALSO
-    # what triggers auto-apply's path unit, so this is the step that makes a merge reach a host.
+    # Pinned through the same restricted endpoint, which writes an indirect GC root inside its own
+    # directory. Without this the copied closure is unreferenced and the next collection deletes it
+    # -- the host would stop being staged with nothing saying so. Writing the pin is ALSO what
+    # triggers auto-apply's path unit, so this is the step that makes a merge reach a host.
     _, error = timed(timings, "pin", lambda: endpoint(address, f"pin {path}"))
     if error:
         return name, address, "pin failed", error, timings
@@ -330,8 +337,8 @@ def hosts_to_stage(wanted: list[str]) -> "tuple[list[str] | None, str | None]":
 
 def result_line(name: str, address: "str | None", state: str, detail: "str | None",
                 timings: dict[str, float]) -> str:
-    """WHICH STEP, printed on every line and not just on failures: the question this exists to answer is
-    "which step is slow on a host that SUCCEEDED"."""
+    """WHICH STEP, printed on every line and not just on failures, because the question this
+    exists to answer is "which step is slow on a host that SUCCEEDED"."""
     breakdown = " ".join(f"{step}={duration:.1f}s" for step, duration in timings.items())
     total = f"total={sum(timings.values()):.1f}s"
     if state == "staged":
@@ -342,12 +349,24 @@ def result_line(name: str, address: "str | None", state: str, detail: "str | Non
 
 
 def activation_help(pending: "list[tuple[str, str, str]]") -> list[str]:
-    """How to activate what was staged, by hand. BOTH HALVES, AND THE FIRST IS EASY TO LEAVE OUT:
-    `switch-to-configuration` installs the bootloader but does NOT move the system profile, so
-    `nixos-rebuild list-generations` and `--rollback` still describe the OLD generation, and the bootloader
-    builds the boot menu FROM that profile -- the host is correct until it reboots and then silently is not.
-    This is what `nixos-rebuild switch` does around the same call, and what nixos-auto-apply.py's
-    `activate()` does."""
+    """How to activate what was staged, by hand.
+
+    BOTH HALVES, AND THE FIRST IS THE ONE THAT IS EASY TO LEAVE OUT.
+    `switch-to-configuration` activates the closure and installs the bootloader, but it
+    does NOT move the system profile. Two things follow, and the second is the expensive
+    one:
+
+      * `nixos-rebuild list-generations` and `--rollback` still describe the OLD one, so
+        the rollback an operator reaches for in an incident takes them somewhere else
+        entirely -- and this switch records no generation of its own to return to.
+      * the bootloader installer builds the boot menu FROM that profile. So the running
+        system is the new one while the DEFAULT BOOT ENTRY still points at the old
+        generation -- the host is correct until it reboots and then silently is not.
+
+    This is what `nixos-rebuild switch` does around the same call, and what
+    nix/files/nixos-auto-apply.py's `activate()` does in the same order and for the same
+    reason.
+    """
     lines = [f"\n{len(pending)} host(s) have a newer closure staged and NOT activated. Nothing on "
              f"them has changed. To activate one, when you mean to:"]
     for name, address, path in pending:
@@ -380,9 +399,10 @@ def main():
         print(f"  covering every host this flake declares ({', '.join(sorted(names))}); "
               f"excluded by name: {excluded}")
 
-    # FOUR WORKERS AGAINST THREE HOSTS -- all of them at once, left as the port had it rather than tuned to
-    # `len(names)`: the work is network-bound and the hosts independent, so a spare worker costs a thread
-    # that never gets a task, and tuning to today's fleet would silently serialise a fourth host.
+    # FOUR WORKERS AGAINST THREE HOSTS -- i.e. all of them at once, with the number left where the
+    # port had it rather than tuned down to `len(names)`. The work is network-bound and the hosts
+    # are independent, so the only cost of a spare worker is a thread that never gets a task, and
+    # the only cost of tuning it to today's fleet size is that a fourth host silently serialises.
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         results = sorted(pool.map(stage, names))
 
