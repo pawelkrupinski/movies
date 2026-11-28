@@ -77,10 +77,10 @@ device NEW "iPhone 16e"; rm -rf "$KINOWO_IOS_SIM_LEDGER"
 : > "$work/gov.log"; device NEW "iPhone 16e"
 "$TOOL" run -- bash -c "'$work/xcrun' simctl boot NEW" > /dev/null
 check "run takes a governor ticket for the boot and the test run" "--job ios-simulator --cores 6 -- bash" "$(sed 's/ -c .*//' "$work/gov.log")"
-device NEW "iPhone 16e"; touch "$work/busy"; rm -f "$work/admit" "$work/shutdowns"
+device NEW "iPhone 16e"; : > "$work/gov.log"; touch "$work/busy"; rm -f "$work/admit" "$work/shutdowns"
 "$TOOL" run -- bash -c "'$work/xcrun' simctl boot NEW" > /dev/null &
 waiter=$!
-sleep 0.5
+wait_until "the run reached the governor" '[ -s "$work/gov.log" ]'
 check "a busy governor makes the boot wait" "Shutdown" "$(state NEW)"
 touch "$work/admit"; wait "$waiter"; rm -f "$work/busy" "$work/admit"
 check "...and the run goes on once admitted (booted, then shut down by it)" "1" "$(grep -c NEW "$work/shutdowns")"
