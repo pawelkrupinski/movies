@@ -12,7 +12,7 @@ import os
 import sys
 from typing import List, Sequence
 
-from identity_what_if_cli_context import OWN_FILES, TOOL_FILES, Context, Exit, lines_of, tools_hash
+from identity_what_if_cli_context import TOOL_FILES, Context, Exit, lines_of, own_files, tools_hash
 from processes import machine  # (scripts/lib, too)
 import tool_process  # (scripts/lib, on the path the context put it on)
 from processes import tool_python  # (scripts/lib, too)
@@ -38,7 +38,7 @@ class Verdicts:
         self.head = head if head != "." or not ctx.clean_tree() else ctx.git("rev-parse", "HEAD").stdout.strip()
         stamp = datetime.datetime.fromtimestamp(machine.wall(), datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         self.publish_args = [self.head, base, ",".join(ctx.o.ccs),
-                             tools_hash(ctx.repo, [*TOOL_FILES, *OWN_FILES]), f"{stamp}-{ctx.pid}"]
+                             tools_hash(ctx.repo, [*TOOL_FILES, *own_files(ctx.repo)]), f"{stamp}-{ctx.pid}"]
         self.asset = ""
         if self.head != ".":
             done = self.carry("asset-name", self.publish_args)

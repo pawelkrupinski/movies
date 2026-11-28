@@ -20,6 +20,7 @@ Exit 0, 2 on usage or an unreadable input. Tested by family_reach_test.py.
 
 import argparse
 import os
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -40,6 +41,7 @@ CHECK_TOOLS = (
     "scripts/ci/identity-family-check.sh",
     "scripts/ci/family_reach.py",
     "scripts/identity_what_if.py",
+    "scripts/identity_what_if_attribution.py",
     "scripts/identity-what-if-roots.tsv",
 )
 
@@ -94,7 +96,7 @@ def main(argv=None):
                 patterns = [x.strip() for x in f if x.strip()]
             n, seconds, total, every = price(read_walks(a.walks), patterns)
             print(f"price: {n} of {total} families, {seconds:.0f} of {every:.0f} s of walking")
-    except (OSError, KeyError, ValueError, what_if.subprocess.CalledProcessError) as e:
+    except (OSError, KeyError, ValueError, subprocess.CalledProcessError) as e:
         print(f"family_reach.py: {e}", file=sys.stderr)
         return 2
     return 0

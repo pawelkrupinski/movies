@@ -15,6 +15,8 @@ sys.path.insert(0, os.path.join(HERE, "lib"))
 import tool_process  # noqa: E402
 from processes import tool_python  # noqa: E402
 from processes import tool_shell  # noqa: E402
+from harness import tooling_closure  # noqa: E402
+from seams import tool_files  # noqa: E402
 from identity_tooling.ci.identity_kept_jvms import alive as alive  # noqa: E402 (identity_what_if_cli_mirror's, _sides')
 from identity_what_if_cli_options import Options  # noqa: E402
 
@@ -31,14 +33,15 @@ TOOL_FILES = (
     "worker/src/fixtures/scala/services/identity/measures/OlderRefsPackage.scala",
     "worker/src/fixtures/scala/tools/KeptJvm.scala", "worker/src/test/scala/services/identity/MirrorWorld.scala",
     "worker/src/fixtures/scala/services/identityadapters/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/tmdb/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/agreementasks/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identitystaging/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/lookupfill/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identityvenuepages/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identityprojection/OlderRefsPackage.scala", "worker/src/fixtures/scala/services/identitymodel/OlderRefsPackage.scala")
-# the what-if's own code: with the tool files, the tooling hash a published verdict is keyed by
-OWN_FILES = (
-    "scripts/identity-what-if", "scripts/identity_what_if.py", IDENTITY_TOOLS, "scripts/identity_what_if_cli.py",
-    "scripts/identity_what_if_cli_bisect.py", "scripts/identity_what_if_cli_context.py",
-    "scripts/identity_what_if_cli_country.py", "scripts/identity_what_if_cli_flow.py",
-    "scripts/identity_what_if_cli_mirror.py", "scripts/identity_what_if_cli_options.py",
-    "scripts/identity_what_if_cli_resolve.py", "scripts/identity_what_if_cli_sides.py",
-    "scripts/identity_what_if_cli_verdict.py")
+# the what-if's own code: with the tool files, the tooling hash a published verdict is keyed by. The modules come from the
+# entry points' imports (harness/tooling_closure.py), so a module split out of the tool is covered without a list edit;
+# what no import reaches (the shell entry, the shell library, the publisher the tool runs) is listed
+OWN_ENTRIES = ("scripts/identity_what_if_cli.py", "scripts/identity_what_if.py")
+OWN_EXTRA = ("scripts/identity-what-if", IDENTITY_TOOLS)
+
+
+def own_files(repo: str) -> List[str]:
+    return tooling_closure.own_files(tool_files.Files.here(), repo, OWN_ENTRIES, OWN_EXTRA)
 
 
 class Exit(BaseException):

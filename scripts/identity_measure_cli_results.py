@@ -11,16 +11,22 @@ import os
 import time
 from typing import Any, List, Optional
 
+from harness import tooling_closure
 from identity_measure_cli_context import HERE, Context, say
+from seams import tool_files
 
 ROOT = os.path.dirname(HERE)
-TOOLING = ["scripts/identity-measure", "scripts/identity_measure.py", "scripts/identity-tools.sh",
+# the measure's own modules come from its entry points' imports (harness/tooling_closure.py), so a module split out of it
+# is covered without an edit here; what no import reaches (the shell entry and library) and the shared lib, ci and
+# workflow files it keys on are listed
+ENTRIES = ["scripts/identity_measure_cli.py", "scripts/identity_measure.py"]
+TOOLING = ["scripts/identity-measure", "scripts/identity-tools.sh",
            "scripts/tool-conventions.sh", "scripts/ci/identity_takes.py", "scripts/ci/identity_takes_diff.py",
            "scripts/lib/tool_process.py", "scripts/lib/vcs/tool_github.py", "scripts/lib/tool_git.py",
-           "scripts/lib/vcs/tool_dispatch.py", "scripts/lib/identity_tooling/ci/identity_dispatch.py", "scripts/ci_wait.py",
+           "scripts/lib/vcs/tool_dispatch.py", "scripts/lib/identity_tooling/ci/identity_dispatch.py",
            "scripts/lib/processes/tool_shell.py", "scripts/ci/dispatch-takes.sh", ".github/workflows/identity-takes.yml",
            ".github/workflows/identity-model-convergence.yml", ".github/workflows/country-convergence-leg.yml"]
-TOOLING_GLOBS = ["scripts/identity_measure_cli*.py", "scripts/ci/identity_takes_check*.py"]
+TOOLING_GLOBS = ["scripts/ci/identity_takes_check*.py"]
 
 
 def blob(path: str) -> str:
@@ -32,6 +38,7 @@ def blob(path: str) -> str:
 
 def tooling_hash() -> str:
     found = [f for f in TOOLING if os.path.isfile(os.path.join(ROOT, f))]
+    found += tooling_closure.own_files(tool_files.Files.here(), ROOT, ENTRIES)
     found += sorted(os.path.relpath(p, ROOT) for g in TOOLING_GLOBS for p in glob.glob(os.path.join(ROOT, g))
                     if not p.endswith(("_test.py", "_fixture.py")))
     listing = "".join(f"{f} {blob(os.path.join(ROOT, f))}\n" for f in found)

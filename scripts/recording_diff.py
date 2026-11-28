@@ -23,7 +23,6 @@ and, when given, `enrichment-<cc>/`) and prints, per country and venue, what the
 the tree's per-origin manifest needs. Tests: recording_diff_test.py beside it.
 """
 import argparse
-import gzip
 import json
 import os
 import sys
@@ -33,195 +32,13 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "ci"))
 sys.path.insert(0, HERE)
-import recording_health  # noqa: E402  (scripts/ci/recording_health.py)
-from title_markers import marker_spellings  # noqa: E402
-from title_respelling import respelling, strip_accents  # noqa: E402
+from recording_diff_compare import (  # noqa: E402
+    compare_corpus as compare_corpus, compare_origins as compare_origins, field_values, fold, health, load_corpus as load_corpus,
+    pair_listings, same_field, venues_of)
+from title_respelling import respelling as respelling  # noqa: E402,F401  (its tests')
 
-DETAIL_BEFORE, DETAIL_AFTER, DETAIL_MIN = 0.5, 0.1, 3
-ORIGIN_SHARE_MOVE = 0.2      # a refusal share that moved this much between the runs is reported
 FIELD_MOVE_MIN = 2           # a venue's field change needs this many listings to be printed
 
-
-
-# ---------------------------------------------------------------------------------------------------------------------
-# The corpus
-
-def load_corpus(corpus_dir, cc):
-    with gzip.open(os.path.join(corpus_dir, f"cinema-scrapes-{cc}.json.gz"), "rt", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def listing_title(entry):
-    """The listing as the identity tools name it (`venue|raw title`): the scraper's raw title when it kept one."""
-    movie = entry["movie"]
-    return movie.get("rawTitle") or movie["title"]
-
-
-def _venues(corpus):
-    """venue → {raw title → the first scrape entry billed so}."""
-    out = {}
-    for venue in corpus:
-        films = out.setdefault(venue["_id"], {})
-        for entry in venue.get("films", []):
-            films.setdefault(listing_title(entry), entry)
-    return out
-
-
-def _synopsis(entry):
-    return entry.get("synopsis") or entry.get("synopsisExcerpt")
-
-
-FIELDS = {
-    "synopsis": _synopsis,
-    "runtime": lambda e: e["movie"].get("runtimeMinutes"),
-    "year": lambda e: e["movie"].get("releaseYear"),
-    "director": lambda e: tuple(e.get("director") or ()) or None,
-    "cast": lambda e: tuple(e.get("cast") or ()) or None,
-    "originalTitle": lambda e: e["movie"].get("originalTitle"),
-}
-DETAIL_FIELDS = ("synopsis", "runtime", "director", "cast")
-
-
-def _field_values(entry):
-    values = {name: read(entry) for name, read in FIELDS.items()}
-    for feed, value in (entry.get("externalIds") or {}).items():
-        values[f"feed:{feed}"] = value
-    return values
-
-
-def _same(field, a, b):
-    if field == "synopsis":   # a re-worded synopsis is no shape change; one cut to an excerpt (or grown back) is
-        return 0.5 <= len(a) / max(len(b), 1) <= 2
-    return a == b
-
-
-def _field_changes(pairs):
-    """{field: {lost, gained, changed}} over (before, after) entries, the fields that moved only."""
-    out = defaultdict(lambda: {"lost": 0, "gained": 0, "changed": 0})
-    for before, after in pairs:
-        va, vb = _field_values(before), _field_values(after)
-        for field in set(va) | set(vb):
-            a, b = va.get(field), vb.get(field)
-            if a and not b:
-                out[field]["lost"] += 1
-            elif b and not a:
-                out[field]["gained"] += 1
-            elif a and b and not _same(field, a, b):
-                out[field]["changed"] += 1
-    return dict(out)
-
-
-def _detail_share(films):
-    if not films:
-        return 0.0
-    return sum(1 for e in films.values() if any(FIELDS[f](e) for f in DETAIL_FIELDS)) / len(films)
-
-
-def _showtimes(entry):
-    return frozenset(s["dateTime"] for s in entry.get("showtimes") or ())
-
-
-def pair_listings(fa, fb, lost, added):
-    """A venue's lost and added titles paired into the same listings: RE-SPELLED (`respelling`), then RE-TITLED — the
-    very same showtimes under another title (a feed's film name replacing the venue's, a renamed event). Returns
-    (respelled [(old, new, kinds)], retitled [(old, new)], lost, added), the last two what stayed unpaired, sorted."""
-    lost, added = sorted(lost), sorted(added)
-    respelled, retitled = [], []
-    for old in list(lost):
-        for new in added:
-            kinds = respelling(old, new)
-            if kinds:
-                respelled.append((old, new, kinds))
-                lost.remove(old)
-                added.remove(new)
-                break
-    for old in list(lost):
-        for new in added:
-            if _showtimes(fa[old]) and _showtimes(fa[old]) == _showtimes(fb[new]):
-                retitled.append((old, new))
-                lost.remove(old)
-                added.remove(new)
-                break
-    return respelled, retitled, lost, added
-
-
-def compare_corpus(a, b, venue_filter=None):
-    """What the scrape data did between corpus `a` and corpus `b` (lists of venue documents)."""
-    va, vb = _venues(a), _venues(b)
-    keep = (lambda v: _fold(venue_filter) in _fold(v)) if venue_filter else (lambda v: True)
-    venues = {}
-    detail_vanished, detail_appeared = [], []
-    for venue in sorted((set(va) & set(vb))):
-        if not keep(venue):
-            continue
-        fa, fb = va[venue], vb[venue]
-        respelled, retitled, lost, added = pair_listings(fa, fb, set(fa) - set(fb), set(fb) - set(fa))
-        pairs = ([(fa[t], fb[t]) for t in set(fa) & set(fb)] + [(fa[o], fb[n]) for o, n, _ in respelled]
-                 + [(fa[o], fb[n]) for o, n in retitled])
-        venues[venue] = {"added": added, "lost": lost, "respelled": respelled, "retitled": retitled,
-                         "fields": _field_changes(pairs), "listings": (len(fa), len(fb))}
-        before, after = _detail_share(fa), _detail_share(fb)
-        venues[venue]["detail"] = (before, after)
-        if len(fb) >= DETAIL_MIN and before >= DETAIL_BEFORE and after <= DETAIL_AFTER:
-            detail_vanished.append((venue, round(before, 2), round(after, 2), len(fb)))
-        if len(fb) >= DETAIL_MIN and before <= DETAIL_AFTER and after >= DETAIL_BEFORE:
-            detail_appeared.append((venue, round(before, 2), round(after, 2), len(fb)))
-    sa = marker_spellings({v: f for v, f in va.items() if keep(v)})
-    sb = marker_spellings({v: f for v, f in vb.items() if keep(v)})
-    return {
-        "venues": venues,
-        "venues_added": sorted(v for v in set(vb) - set(va) if keep(v)),
-        "venues_lost": sorted(v for v in set(va) - set(vb) if keep(v)),
-        "detail_vanished": detail_vanished,
-        "detail_appeared": detail_appeared,
-        "markers": {
-            "new": [(m, s, sb[(m, s)][:3]) for m, s in sorted(set(sb) - set(sa))],
-            "gone": [(m, s, sa[(m, s)][:3]) for m, s in sorted(set(sa) - set(sb))],
-        },
-    }
-
-
-def _fold(s):
-    return strip_accents(s).casefold()
-
-
-# ---------------------------------------------------------------------------------------------------------------------
-# The trees
-
-def compare_origins(a, b):
-    """Origins whose refusal share moved between manifests `a` and `b` (recording_health.manifest), or that b flags."""
-    flags = {f.origin: f.reason for f in recording_health.judge(b, a)}
-    out = []
-    for origin in sorted(set(a["origins"]) | set(b["origins"])):
-        ca = a["origins"].get(origin, recording_health.origin_counts())
-        cb = b["origins"].get(origin, recording_health.origin_counts())
-        share_a = ca["refused"] / recording_health.asked(ca) if recording_health.asked(ca) else 0
-        share_b = cb["refused"] / recording_health.asked(cb) if recording_health.asked(cb) else 0
-        enough = max(recording_health.asked(ca), recording_health.asked(cb)) >= recording_health.MIN_REQUESTS
-        if origin in flags:
-            verdict = flags[origin]
-        elif enough and abs(share_b - share_a) >= ORIGIN_SHARE_MOVE:
-            verdict = "refusing more" if share_b > share_a else "recovered"
-        else:
-            continue
-        out.append({"origin": origin, "verdict": verdict, "before": recording_health.share(ca),
-                    "after": recording_health.share(cb), "tree": (ca["tree"], cb["tree"]),
-                    "refusals": ", ".join(f"{k}×{n}" for k, n in sorted(cb["refusals"].items(), key=lambda kv: -kv[1]))})
-    return sorted(out, key=lambda m: (m["verdict"] not in ("refusing", "gone"), m["origin"]))
-
-
-def health(tree, since, cache=None):
-    """The tree's per-origin manifest, kept in `cache` (a JSON path) once computed: a tree is never re-recorded."""
-    if cache and os.path.isfile(cache):
-        with open(cache) as handle:
-            return json.load(handle)
-    manifest = recording_health.manifest(tree, recording_health.since(str(since)))
-    if cache:
-        os.makedirs(os.path.dirname(cache), exist_ok=True)
-        with open(cache + ".part", "w") as handle:
-            json.dump(manifest, handle)
-        os.replace(cache + ".part", cache)
-    return manifest
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -253,9 +70,9 @@ def _pair_head(old: str, new: str, kinds: "Optional[Union[str, List[str]]]") -> 
 
 def _pair_line(fa: "Dict[str, Any]", fb: "Dict[str, Any]", old: str, new: str, kinds: "Optional[Union[str, List[str]]]") -> str:
     """One listing in both runs: how it is billed and each field that moved, value by value."""
-    va, vb = _field_values(fa[old]), _field_values(fb[new])
+    va, vb = field_values(fa[old]), field_values(fb[new])
     moved = [f"{f} {_value(f, va.get(f))} → {_value(f, vb.get(f))}" for f in sorted(set(va) | set(vb))
-             if (va.get(f) or vb.get(f)) and not (va.get(f) and vb.get(f) and _same(f, va[f], vb[f]))]
+             if (va.get(f) or vb.get(f)) and not (va.get(f) and vb.get(f) and same_field(f, va[f], vb[f]))]
     return _pair_head(old, new, kinds) + (", fields alike" if not moved else "; " + "; ".join(moved))
 
 
@@ -268,8 +85,8 @@ def _own_pairs(fb: "Dict[str, Any]", mine: "Set[str]", ta: "List[str]", respelle
 
 def _venue_listing_lines(fa: "Dict[str, Any]", fb: "Dict[str, Any]", wanted: str, labels: "Tuple[str, str]") -> "List[str]":
     """The listings of one venue whose title holds `wanted`: billed alike, re-spelled, re-titled or in one run only."""
-    ta = sorted(t for t in fa if wanted in _fold(t))
-    mine = set(ta) | {t for t in fb if wanted in _fold(t)}
+    ta = sorted(t for t in fa if wanted in fold(t))
+    mine = set(ta) | {t for t in fb if wanted in fold(t)}
     # paired against every listing of the venue: a title the filter matches in one run only can be re-titled
     respelled, retitled, only_a, only_b = pair_listings(fa, fb, set(fa) - set(fb), set(fb) - set(fa))
     lines = [_pair_line(fa, fb, old, new, kinds) for old, new, kinds in _own_pairs(fb, mine, ta, respelled, retitled)]
@@ -281,12 +98,12 @@ def listing_view(a: "List[Dict[str, Any]]", b: "List[Dict[str, Any]]", venue_fil
                  labels: "Tuple[str, str]") -> "List[str]":
     """Every listing whose title holds `title_filter` (case and accents aside), at the venues matching `venue_filter`:
     billed alike in both, re-spelled, or in one run only, and each field that moved, value by value."""
-    va, vb = _venues(a), _venues(b)
+    va, vb = venues_of(a), venues_of(b)
     lines: "List[str]" = []
     for venue in sorted(set(va) | set(vb)):
-        if venue_filter and _fold(venue_filter) not in _fold(venue):
+        if venue_filter and fold(venue_filter) not in fold(venue):
             continue
-        found = _venue_listing_lines(va.get(venue, {}), vb.get(venue, {}), _fold(title_filter), labels)
+        found = _venue_listing_lines(va.get(venue, {}), vb.get(venue, {}), fold(title_filter), labels)
         if found:
             lines += [_venue_heading(venue, venue in va, venue in vb, labels)] + found
     return lines or [f"no listing billed with {_quote(title_filter)}" + (f" at {_quote(venue_filter)}" if venue_filter else "")]
