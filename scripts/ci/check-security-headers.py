@@ -63,7 +63,14 @@ import urllib.request
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 import ci_machine  # noqa: E402
-from proxy_properties import read_pool as proxy_pool  # noqa: E402
+import proxy_properties  # noqa: E402
+from seams import tool_files  # noqa: E402
+
+
+def proxy_pool():
+    """The residential pool's host and ports, the committed properties file read through Files."""
+    return proxy_properties.pool(tool_files.Files.here().read_text(proxy_properties.DEFAULT))
+
 
 HOSTS = ("kinowo.net", "showtimes.cc")
 ONE_YEAR = 365 * 24 * 3600

@@ -18,9 +18,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import script_module  # noqa: E402
 sys.path.insert(0, os.path.join(HERE, "..", "lib"))
-from proxy_properties import read_pool as proxy_pool  # noqa: E402
 
 headers = script_module.load(os.path.join(HERE, "check-security-headers.py"))
+proxy_pool = headers.proxy_pool
 URL = "https://kinowo.net/"
 TIMEOUT = 20
 

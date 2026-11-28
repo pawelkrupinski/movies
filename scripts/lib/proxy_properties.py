@@ -1,8 +1,10 @@
 """THE RESIDENTIAL PROXY POOL, as the CI probes read it (scripts/lib): the worker's committed residential-proxy.properties
 (`host=` and a comma-separated `ports=`), a Java properties file -- `key=value` lines, `#` comments and blanks aside.
 
-  read(path) -> {key: value}          every property
-  read_pool(path=DEFAULT) -> (host, [port, ...])"""
+  parse(text) -> {key: value}          every property of the file's text
+  pool(text) -> (host, [port, ...])    the pool the text names
+
+Pure: the caller reads DEFAULT (or any file) through its Files and hands the text in."""
 from __future__ import annotations
 
 import os
@@ -12,17 +14,16 @@ DEFAULT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.a
                        "worker", "src", "main", "resources", "residential-proxy.properties")
 
 
-def read(path: str) -> Dict[str, str]:
+def parse(text: str) -> Dict[str, str]:
     properties: Dict[str, str] = {}
-    with open(path, encoding="utf-8") as source:
-        for line in source:
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, value = line.split("=", 1)
-                properties[key.strip()] = value.strip()
+    for line in text.splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            properties[key.strip()] = value.strip()
     return properties
 
 
-def read_pool(path: str = DEFAULT) -> Tuple[str, List[str]]:
-    properties = read(path)
+def pool(text: str) -> Tuple[str, List[str]]:
+    properties = parse(text)
     return properties["host"], [port.strip() for port in properties["ports"].split(",") if port.strip()]
