@@ -124,51 +124,48 @@ data class DeepLink(
             val scheme = uri.scheme?.lowercase() ?: return null
             val host = uri.host?.lowercase() ?: return null
 
-            val linked: String
-            val trailing: List<String>
-            // The country the URL itself names, where it names one.
-            var named: String? = null
-            val slugs = cities.map { it.slug }.toSet()
-            when (scheme) {
-                "https", "http" -> {
-                    if (host !in WEB_HOSTS) return null
-                    if (host.endsWith("kinowo.net")) named = "pl"
-                    val raw = pathSegments(uri.rawPath)
-                    val first = raw.firstOrNull()
-                    val segments =
-                        if (first in COUNTRY_PATH_SEGMENTS && (first !in slugs || raw.size > 1)) {
-                            named = first
-                            raw.drop(1)
-                        } else raw
-                    linked = segments.firstOrNull() ?: return null
-                    trailing = segments.drop(1)
-                }
-                "kinowo" -> {
-                    if (host in RESERVED_SCHEME_HOSTS) return null
-                    linked = host
-                    trailing = pathSegments(uri.rawPath)
-                }
-                else -> return null
-            }
+            val place = when (scheme) {
+                "https", "http" -> webPlace(host, uri.rawPath, cities.map { it.slug }.toSet())
+                "kinowo" -> schemePlace(host, uri.rawPath)
+                else -> null
+            } ?: return null
 
-            val (country, city) = resolve(linked, named, cities, bareSlugOwners) ?: return null
+            val (country, city) = resolve(place.linked, place.named, cities, bareSlugOwners) ?: return null
 
             val query = parseQuery(rawQuery)
             // `movie` is the current spelling; `film` was its address before
             // the rename and is still minted by installed app builds and every
             // link shared before it, so both open the detail screen. The server
             // 301s the old one, but an App Link never reaches the server.
-            val isFilm = trailing.firstOrNull().let { it == "movie" || it == "film" }
+            val isFilm = place.trailing.firstOrNull().let { it == "movie" || it == "film" }
             // `/movie/{slug}` is the canonical form, `/movie?title=…` the legacy
             // one. Both are parsed: a link shared from an older app build, or
             // saved from the web before the switch, must still open the film.
-            val filmSlug = if (isFilm) trailing.getOrNull(1)?.takeIf { it.isNotEmpty() } else null
+            val filmSlug = if (isFilm) place.trailing.getOrNull(1)?.takeIf { it.isNotEmpty() } else null
             val filmTitle = if (isFilm) {
                 query.firstOrNull { it.first == "title" }?.second?.takeIf { it.isNotEmpty() }
             } else null
 
             return DeepLink(city, filmTitle, filmSlug, DeepLinkFilters.from(query, versionTokensOfCountry(country), genreSpellings), country)
         }
+
+        /** Where a link points before the catalog is asked: the slug it names, the
+         *  path segments that follow it and the country the URL itself names, where
+         *  it names one. */
+        private class Place(val linked: String, val trailing: List<String>, val named: String?)
+
+        private fun webPlace(host: String, rawPath: String?, slugs: Set<String>): Place? {
+            if (host !in WEB_HOSTS) return null
+            val raw = pathSegments(rawPath)
+            val first = raw.firstOrNull()
+            val countrySegment = first in COUNTRY_PATH_SEGMENTS && (first !in slugs || raw.size > 1)
+            val named = if (countrySegment) first else if (host.endsWith("kinowo.net")) "pl" else null
+            val segments = if (countrySegment) raw.drop(1) else raw
+            return Place(segments.firstOrNull() ?: return null, segments.drop(1), named)
+        }
+
+        private fun schemePlace(host: String, rawPath: String?): Place? =
+            if (host in RESERVED_SCHEME_HOSTS) null else Place(host, pathSegments(rawPath), null)
 
         /** `(country, city slug)` for a link's [slug]: within the country the URL
          *  [named], else the one [owners] (the server's old-owner table) names,

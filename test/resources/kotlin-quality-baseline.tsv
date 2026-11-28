@@ -15,7 +15,6 @@ limit	clone-tokens	50
 cognitive	android/app/src/main/java/pl/kinowo/auth/StateSyncService.kt:reconcile	26
 cognitive	android/app/src/main/java/pl/kinowo/auth/StateSyncService.kt:sendPendingOps	14
 cognitive	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:disabledCinemas	15
-cognitive	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:parse	20
 cognitive	android/app/src/main/java/pl/kinowo/filter/FilmFilters.kt:(anonymous)#6	13
 cognitive	android/app/src/main/java/pl/kinowo/filter/SearchDay.kt:queryChanged	13
 cognitive	android/app/src/main/java/pl/kinowo/ui/city/CityChoiceScreen.kt:CityChoiceScreen	30
@@ -25,7 +24,7 @@ cognitive	android/app/src/main/java/pl/kinowo/ui/common/Showings.kt:ShowtimeChip
 cognitive	android/app/src/main/java/pl/kinowo/ui/common/SynopsisMarkdown.kt:annotated	14
 cyclomatic	android/app/src/main/java/pl/kinowo/auth/StateSyncService.kt:reconcile	13
 cyclomatic	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:disabledCinemas	14
-cyclomatic	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:parse	18
+cyclomatic	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:parse	12
 cyclomatic	android/app/src/main/java/pl/kinowo/filter/FilmFilters.kt:(anonymous)#6	16
 cyclomatic	android/app/src/main/java/pl/kinowo/model/City.kt:searchFold	11
 cyclomatic	android/app/src/main/java/pl/kinowo/ui/city/CityChoiceScreen.kt:CityChoiceScreen	22
@@ -33,7 +32,7 @@ cyclomatic	android/app/src/main/java/pl/kinowo/ui/common/Showings.kt:Showings	12
 method-lines	android/app/src/main/java/pl/kinowo/MainActivity.kt:onCreate	70
 method-lines	android/app/src/main/java/pl/kinowo/auth/StateSyncService.kt:reconcile	57
 method-lines	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:disabledCinemas	57
-method-lines	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:parse	76
+method-lines	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:parse	55
 method-lines	android/app/src/main/java/pl/kinowo/filter/FilmFilters.kt:get	139
 method-lines	android/app/src/main/java/pl/kinowo/ui/CountryPicker.kt:CountryPicker	64
 method-lines	android/app/src/main/java/pl/kinowo/ui/KinowoApp.kt:CityGate	134

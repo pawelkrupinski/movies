@@ -91,47 +91,22 @@ struct DeepLink: Equatable {
                       languageTokensOfCountry: (String) -> Set<String> = { _ in DeepLinkFilters.polishLanguageTokens })
         -> DeepLink? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let scheme = components.scheme?.lowercased() else { return nil }
+              let scheme = components.scheme?.lowercased(),
+              let place = place(of: components, scheme: scheme, slugs: Set(cities.map(\.slug)))
+        else { return nil }
 
-        // Path segments that follow the city slug (e.g. ["movie"]).
-        let linked: String
-        let trailing: [String]
-        // The country the URL itself names, where it names one.
-        var named: String? = nil
-        let slugs = Set(cities.map(\.slug))
-        switch scheme {
-        case "https", "http":
-            guard let host = components.host?.lowercased(), webHosts.contains(host) else { return nil }
-            if host.hasSuffix("kinowo.net") { named = "pl" }
-            var segments = pathSegments(components.path)
-            if let first = segments.first,
-               countryPathSegments.contains(first), !slugs.contains(first) || segments.count > 1 {
-                named = first
-                segments = Array(segments.dropFirst())
-            }
-            guard let first = segments.first else { return nil }
-            linked = first
-            trailing = Array(segments.dropFirst())
-        case "kinowo":
-            guard let host = components.host?.lowercased(), !reservedSchemeHosts.contains(host) else { return nil }
-            linked = host
-            trailing = pathSegments(components.path)
-        default:
-            return nil
-        }
-
-        guard let (country, city) = resolve(linked, named: named, owners: bareSlugOwners, in: cities)
+        guard let (country, city) = resolve(place.linked, named: place.named, owners: bareSlugOwners, in: cities)
         else { return nil }
 
         // `movie` is the current spelling; `film` was its address before the
         // rename and is still minted by installed app builds and every link
         // shared before it, so both open the detail screen. The server 301s the
         // old one, but a Universal Link never reaches the server.
-        let isFilm = trailing.first == "movie" || trailing.first == "film"
+        let isFilm = place.trailing.first == "movie" || place.trailing.first == "film"
         // `/movie/{slug}` is the canonical form; `/movie?title=…` the legacy one.
         // Both are parsed: a link shared from an older app build, or one saved
         // from the web before the switch, must still open the right film.
-        let filmSlug: String? = isFilm ? trailing.dropFirst().first : nil
+        let filmSlug: String? = isFilm ? place.trailing.dropFirst().first : nil
         let filmTitle: String? = isFilm
             ? components.queryItems?.first(where: { $0.name == "title" })?.value
             : nil
@@ -145,6 +120,41 @@ struct DeepLink: Equatable {
                                      genreSpellings: genreSpellings),
             countryCode: country
         )
+    }
+
+    /// Where a link points before the catalog is asked: the slug it names, the
+    /// path segments that follow it (e.g. `["movie"]`) and the country the URL
+    /// itself names, where it names one.
+    private struct Place {
+        let linked: String
+        let trailing: [String]
+        let named: String?
+    }
+
+    private static func place(of components: URLComponents, scheme: String, slugs: Set<String>) -> Place? {
+        switch scheme {
+        case "https", "http": return webPlace(of: components, slugs: slugs)
+        case "kinowo": return schemePlace(of: components)
+        default: return nil
+        }
+    }
+
+    private static func webPlace(of components: URLComponents, slugs: Set<String>) -> Place? {
+        guard let host = components.host?.lowercased(), webHosts.contains(host) else { return nil }
+        var named: String? = host.hasSuffix("kinowo.net") ? "pl" : nil
+        var segments = pathSegments(components.path)
+        if let first = segments.first,
+           countryPathSegments.contains(first), !slugs.contains(first) || segments.count > 1 {
+            named = first
+            segments = Array(segments.dropFirst())
+        }
+        guard let first = segments.first else { return nil }
+        return Place(linked: first, trailing: Array(segments.dropFirst()), named: named)
+    }
+
+    private static func schemePlace(of components: URLComponents) -> Place? {
+        guard let host = components.host?.lowercased(), !reservedSchemeHosts.contains(host) else { return nil }
+        return Place(linked: host, trailing: pathSegments(components.path), named: nil)
     }
 
     /// `(country, city slug)` for a link's slug: within the country the URL
