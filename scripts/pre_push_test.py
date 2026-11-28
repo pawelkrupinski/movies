@@ -102,6 +102,10 @@ class PlanTest(PlanCase):
     def test_the_allow_lists(self):
         self.assertPlans(["allowlists", "sbt"], [".github/allow-lists.txt"])
 
+    def test_the_commit_rules_modules_run_the_allow_lists_check(self):
+        for module in ("commit_facts", "allow_list_rules", "drift_guard_rules", "retype_rules"):
+            self.assertIn("allowlists", self.plan("--plan", [f"scripts/ci/{module}.py"], None), module)
+
     def test_a_declared_read_runs_the_script_tests(self):
         self.assertPlans(["scripttests"], ["docs/read-by-a-test.md"])
 

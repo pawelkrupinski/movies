@@ -41,7 +41,8 @@ TAKES = (
 IDENTITY_REACH = ("common/src/main/scala/*", "common/src/main/java/*", "testkit/src/main/scala/*")
 DRIFT = ("worker/src/main/*", "worker/src/test/scala/scripts/IdentityDrift*",
          "worker/src/test/scala/scripts/IdentityLiveDrift*", "scripts/ci/identity-drift-check*",
-         "scripts/ci/identity_drift_check*", "scripts/ci/commit_rules*")
+         "scripts/ci/identity_drift_check*", "scripts/ci/commit_rules*", "scripts/ci/commit_facts.py",
+         "scripts/ci/allow_list_rules.py", "scripts/ci/drift_guard_rules.py", "scripts/ci/retype_rules.py")
 PRODUCTION = ("*/src/main/*", "conf/*", "*/conf/*", "build.sbt", "project/*", "infra/nix/*", "infra/kubernetes/*",
               "Dockerfile")
 LINT_READ = ("scripts/*", ".github/*", ".claude/*", "CLAUDE.md", "build.sbt", "project/*", "*/src/test/*",

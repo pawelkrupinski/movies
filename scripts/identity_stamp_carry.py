@@ -16,7 +16,7 @@ writes the rows (`propose`) and proves them again (`verify`, the pre-push hook's
        Carries identity-rules; agreement-rules only when the final takes were compared (not `--model-only`); never
        venue-slot (a what-if builds no venue slot);
   3. THE RANGE CHANGES NO SEMANTICS A PROOF CANNOT SEE: no commit says `Identity-Design:` (a rule change by design); for
-     a what-if, none touches the drift harness (scripts/ci/commit_rules.py's HARNESS_FILES: a what-if never resolves
+     a what-if, none touches the drift harness (scripts/ci/drift_guard_rules.py's HARNESS_FILES: a what-if never resolves
      through it, so it cannot vouch for it -- a pure move of it carries, as any pure move does, the owner 2026-11-21) and
      (it sees today's corpus only) none touches the title rules, a resource of a module's src/main (weights, tables,
      data: the model's inputs) or a store or codec (*Store*, *Codec*, *Bson* under src/main: what a stored family is
@@ -60,8 +60,8 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path[:0] = [HERE, os.path.join(HERE, "lib"), os.path.join(HERE, "ci")]  # its own modules, tool_python, commit_rules
-from commit_rules import HARNESS_FILES  # noqa: E402  (the drift harness: one definition)
+sys.path[:0] = [HERE, os.path.join(HERE, "lib"), os.path.join(HERE, "ci")]  # its own modules, tool_python, drift_guard_rules
+from drift_guard_rules import HARNESS_FILES  # noqa: E402  (the drift harness: one definition)
 from identity_stamp_carry_published import (  # noqa: E402  (THE PUBLISHED VERDICT: the what-if's record)
     ASSET, COUNTRIES, asset_name, cached_verdict, country_refusals, diff_id, fetch_asset, identity_cache,
     moved_rows, publish, release, verdict_path, what_if_verdicts)
