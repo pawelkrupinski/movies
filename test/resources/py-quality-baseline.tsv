@@ -93,10 +93,6 @@ cognitive	scripts/ci/gating_checks.py:yaml_jobs	19
 cognitive	scripts/ci/harness_aa.py:main	11
 cognitive	scripts/ci/identity_findings_report.py:render_at	24
 cognitive	scripts/ci/identity_findings_report.py:report	16
-cognitive	scripts/ci/identity_impact.py:path_reach	12
-cognitive	scripts/ci/identity_impact.py:plan	36
-cognitive	scripts/ci/identity_impact.py:roster_names	36
-cognitive	scripts/ci/identity_impact.py:title_rules_reach.loads	18
 cognitive	scripts/ci/identity_judgements_lint.py:served_findings	19
 cognitive	scripts/ci/identity_run_shards.py:plan	16
 cognitive	scripts/ci/identity_takes_diff.py:main	16
@@ -264,11 +260,6 @@ cyclomatic	scripts/ci/harness_aa.py:main	11
 cyclomatic	scripts/ci/identity_findings_report.py:main	11
 cyclomatic	scripts/ci/identity_findings_report.py:render_at	16
 cyclomatic	scripts/ci/identity_findings_report.py:report	14
-cyclomatic	scripts/ci/identity_impact.py:main	14
-cyclomatic	scripts/ci/identity_impact.py:path_reach	11
-cyclomatic	scripts/ci/identity_impact.py:plan	22
-cyclomatic	scripts/ci/identity_impact.py:roster_names	16
-cyclomatic	scripts/ci/identity_impact.py:title_rules_reach.loads	13
 cyclomatic	scripts/ci/identity_run_shards.py:plan	13
 cyclomatic	scripts/ci/identity_takes_diff.py:main	19
 cyclomatic	scripts/ci/identity_takes_diff.py:render	17
@@ -420,7 +411,6 @@ pyright	scripts/ci/gating_checks.py	18
 pyright	scripts/ci/harness_aa.py	14
 pyright	scripts/ci/hotspots.py	19
 pyright	scripts/ci/identity_findings_report.py	120
-pyright	scripts/ci/identity_impact.py	77
 pyright	scripts/ci/identity_judgements_lint.py	69
 pyright	scripts/ci/identity_live_drift.py	29
 pyright	scripts/ci/identity_run_shards.py	7
