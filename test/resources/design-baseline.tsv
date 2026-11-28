@@ -334,7 +334,7 @@ effect	scripts/identity_refit.py:files	3
 effect	scripts/identity_refit_checks.py:files	4
 effect	scripts/identity_repro.py:files	4
 effect	scripts/identity_rule_ablation.py	2
-effect	scripts/identity_rule_ablation.py:files	21
+effect	scripts/identity_rule_ablation.py:files	20
 effect	scripts/identity_slice_cli.py	1
 effect	scripts/identity_slice_cli_context.py:files	2
 effect	scripts/identity_slice_cli_drift.py	1
@@ -1172,7 +1172,6 @@ mixed	scripts/identity_rule_ablation.py:read_title_rules	4
 mixed	scripts/identity_rule_ablation.py:recording_countries	3
 mixed	scripts/identity_rule_ablation.py:relay	4
 mixed	scripts/identity_rule_ablation.py:run_plan	15
-mixed	scripts/identity_rule_ablation.py:shard_states	3
 mixed	scripts/identity_rule_ablation.py:write_report	13
 mixed	scripts/identity_slice_cli.py:guarded	5
 mixed	scripts/identity_slice_cli_context.py:Context.need_ref	3

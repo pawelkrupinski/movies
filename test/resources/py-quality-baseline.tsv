@@ -115,7 +115,6 @@ cognitive	scripts/identity_measure.py:main	12
 cognitive	scripts/identity_measure.py:read_country	18
 cognitive	scripts/identity_measure.py:render	29
 cognitive	scripts/identity_rule_ablation.py:batches	11
-cognitive	scripts/identity_rule_ablation.py:main	25
 cognitive	scripts/identity_rule_ablation.py:next_round	17
 cognitive	scripts/identity_stamp_carry.py:auto	22
 cognitive	scripts/identity_stamp_carry.py:main	17
@@ -241,7 +240,6 @@ cyclomatic	scripts/identity_precision_sample.py:billing_of	12
 cyclomatic	scripts/identity_precision_sample.py:cmd_sample	11
 cyclomatic	scripts/identity_precision_sample.py:draw	18
 cyclomatic	scripts/identity_precision_sample.py:estimate	25
-cyclomatic	scripts/identity_rule_ablation.py:main	22
 cyclomatic	scripts/identity_rule_ablation.py:next_round	13
 cyclomatic	scripts/identity_rule_ablation.py:run_plan	15
 cyclomatic	scripts/identity_rule_ablation.py:write_report	13
@@ -282,7 +280,6 @@ method-lines	infra/nix/files/nixos-auto-apply.py:classify_output	59
 method-lines	infra/nix/files/nixos-auto-apply.py:main	92
 method-lines	infra/nix/files/nixos-auto-apply.py:publish	56
 method-lines	scripts/ci/runner_scheduler.py:decide	216
-method-lines	scripts/identity_rule_ablation.py:main	82
 method-lines	scripts/identity_stamp_carry.py:auto	56
 file-lines	infra/bin/backtest-alerts	1157
 file-lines	infra/bin/backtest-alerts-local	540
@@ -365,7 +362,7 @@ pyright	scripts/identity-stage-works.py	2
 pyright	scripts/identity_boot_cost.py	18
 pyright	scripts/identity_measure.py	48
 pyright	scripts/identity_precision_sample.py	84
-pyright	scripts/identity_rule_ablation.py	158
+pyright	scripts/identity_rule_ablation.py	128
 pyright	scripts/identity_slice_diff.py	11
 pyright	scripts/identity_what_if.py	122
 pyright	scripts/ios-simulators	12

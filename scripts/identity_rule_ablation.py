@@ -19,6 +19,7 @@ exits 0 (a CI row stops inside its step's bound, and the next dispatch's resume-
 """
 
 import argparse
+import functools
 import json
 import os
 import re
@@ -26,9 +27,9 @@ import signal
 import subprocess
 import sys
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
-from typing import Dict, List, TypedDict
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -40,6 +41,7 @@ import atomic  # noqa: E402
 import identity_measure as measure  # noqa: E402
 from identity_judgements import read as read_judgements  # noqa: E402
 from seams.tool_files import Files  # noqa: E402
+from identity_ablation_shards import merge, shard_of, shard_states  # noqa: E402
 
 IDENTITY_KINDS = ("accept:", "veto:", "join:", "apart:")
 HARMFUL = ("right-lost", "right->wrong", "new-wrong")
@@ -279,39 +281,6 @@ def sbt_argv(repo, command):
     return ["nice", "-n", "10", os.path.join(repo, "scripts", "it-local.sh"), command]
 
 
-def shard_of(configs, shard):
-    """The configurations of shard "I/N": every N-th, from the I-th (0-based); all for none."""
-    if not shard:
-        return configs
-    i, n = (int(x) for x in shard.split("/"))
-    return [c for k, c in enumerate(configs) if k % n == i]
-
-
-def shard_states(root):
-    """Every shard's state.json under root, at any depth: download-artifact@v6 extracts a pattern matching ONE artifact
-    straight into its path, two or more each into a directory of its name (run 42377038878's collect)."""
-    return sorted(os.path.join(d, "state.json") for d, _, files in os.walk(root) if "state.json" in files)
-
-
-class MergedState(TypedDict):
-    round: int
-    settled: Dict[str, object]
-    interactions: List[object]
-    pending: List[object]
-    fired: Dict[str, object]
-
-
-def merge(states) -> MergedState:
-    """One state of several shards' (each settling its own rules): their settled rules, interactions and fired counts."""
-    out: MergedState = {"round": max((s.get("round", 0) for s in states), default=0), "settled": {}, "interactions": [], "pending": [], "fired": {}}
-    for s in states:
-        out["settled"].update(s.get("settled", {}))
-        out["interactions"] += s.get("interactions", [])
-        out["fired"].update(s.get("fired", {}))
-        out["pending"] += s.get("pending") or []
-    return out
-
-
 def run_recordings(repo, recordings, configs, round_dir, lock, chunk, out, past_deadline=lambda: False):
     """run_plan over every recording, ONE AFTER ANOTHER: two sbt runs in one checkout collide on its server socket
     ("ServerAlreadyBootingException: Address already in use") and its compile output."""
@@ -359,7 +328,7 @@ def determinism(round_dir, recordings):
 DOCSTRING = __doc__ or ""  # None under python -OO
 
 
-def main(argv=None):
+def parse_arguments(argv: Optional[Sequence[str]]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     p.add_argument("--recordings", default="38713274617,573,528")
     p.add_argument("--out", required=True)
@@ -371,61 +340,78 @@ def main(argv=None):
     p.add_argument("--only", default="", help="comma-separated rule names: ablate these alone")
     p.add_argument("--kinds", default="title", help="the kinds of rule ablated, comma-separated: title, accept, veto, join, apart")
     p.add_argument("--shard", default="", help="I/N: bisect only every N-th first-round batch, from the I-th (a CI row's)")
-    p.add_argument("--max-rounds", type=int, default=0, help="stop after this many bisection rounds (0: until settled); "
-                   "a later run with the same --out resumes from its state.json")
-    p.add_argument("--deadline-minutes", type=float, default=0,
-                   help="stop a round's sbt run this many minutes in, keeping its state for a resumed run (0: none)")
-    p.add_argument("--merge", metavar="DIR", help="the shards' downloaded artifacts: merge every state.json under DIR into "
-                   "one report in --out, run nothing")
-    a = p.parse_args(argv)
+    p.add_argument("--max-rounds", type=int, default=0, help="stop after this many bisection rounds (0: until settled); a later run with the same --out resumes from its state.json")
+    p.add_argument("--deadline-minutes", type=float, default=0, help="stop a round's sbt run this many minutes in, keeping its state for a resumed run (0: none)")
+    p.add_argument("--merge", metavar="DIR", help="the shards' downloaded artifacts: merge every state.json under DIR into one report in --out, run nothing")
+    return p.parse_args(argv)
+
+
+def write_merged(out: str, paths: List[str]) -> Dict[str, Any]:
+    """The shards' states merged into one, written with its report to `out`."""
+    state: Dict[str, Any] = merge([json.load(open(path, encoding="utf-8")) for path in paths])
+    os.makedirs(out, exist_ok=True)
+    with open(os.path.join(out, "state.json"), "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=1)
+    write_report(state, os.path.join(out, "report.md"))
+    return state
+
+
+def merge_shards(a: argparse.Namespace) -> int:
+    """--merge: every shard's state.json under DIR in one state and report; nothing is run."""
+    states = shard_states(Files.here(), a.merge)
+    if not states:
+        print(f"[ablation] no shard state.json under {a.merge}: no row uploaded its state", file=sys.stderr)
+        return 1
+    state = write_merged(a.out, states)
+    print(f"[ablation] merged {len(states)} shards: {len(state['settled'])} rules settled, {len(state['pending'])} unsettled")
+    return 0  # configurations left are a sweep's next dispatch (resume-run), not a failure: every `rounds`-bounded row leaves some
+
+
+def baseline_fired(a: argparse.Namespace, r0: str, recordings: Dict[str, str]) -> Tuple[Counter[str], Dict[str, Any]]:
+    """The rules the baselines fire, over every recording and country, and the title rules read last."""
+    fired: Counter[str] = Counter()
+    title_countries: Dict[str, Any] = {}
+    for rec in recordings:
+        title_countries = read_title_rules(os.path.join(r0, rec, "title-rules.tsv"))
+        for cc in recording_countries(recordings[rec]):
+            fired.update(read_fired(os.path.join(r0, rec, "base", f"fired-{cc}.tsv")))
+    return fired, title_countries
+
+
+def first_round(a: argparse.Namespace, repo: str, recordings: Dict[str, str], state: Dict[str, Any], save: Callable[[], None]) -> None:
+    """Round 0: the baselines alone (their fired rules choose the batches; base-again proves the replay deterministic)."""
+    r0 = os.path.join(a.out, "round-0")
+    run_recordings(repo, recordings, [], r0, a.lock, a.chunk, a.out)
+    noisy = determinism(r0, recordings)
+    if noisy:
+        raise SystemExit(f"[ablation] the baseline moved on a second resolve in {noisy}: the replay is not deterministic")
+    fired, title_countries = baseline_fired(a, r0, recordings)
+    rules = dict(title_countries) if "title" in a.kinds.split(",") else {}
+    idfired = identity_rules(fired)
+    rules.update({r: None for r in idfired if r.split(":", 1)[0] in a.kinds.split(",")})
+    if a.only:
+        rules = {r: rules.get(r) for r in a.only.split(",")}
+    state["fired"] = {r: fired.get(r, 0) or idfired.get(r, 0) for r in rules}
+    state["pending"] = shard_of(batches(rules, lambda r: rules[r], state["fired"], a.hot, a.cold), a.shard)
+    state["round"] = 1
+    save()
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    a = parse_arguments(argv)
     started = machine.monotonic()
     if a.merge is not None:
-        states = shard_states(a.merge)
-        if not states:
-            print(f"[ablation] no shard state.json under {a.merge}: no row uploaded its state", file=sys.stderr)
-            return 1
-        state = merge([json.load(open(path, encoding="utf-8")) for path in states])
-        os.makedirs(a.out, exist_ok=True)
-        with open(os.path.join(a.out, "state.json"), "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=1)
-        write_report(state, os.path.join(a.out, "report.md"))
-        print(f"[ablation] merged {len(states)} shards: {len(state['settled'])} rules settled, {len(state['pending'])} unsettled")
-        # configurations left are a sweep's next dispatch (resume-run), not a failure: every `rounds`-bounded row leaves some
-        return 0
+        return merge_shards(a)
     repo = os.path.dirname(HERE)
     cache = machine.environment().get("KINOWO_IDENTITY_CACHE", os.path.expanduser("~/.cache/kinowo-identity"))
     recordings = {r: os.path.join(cache, "recordings", r, "pair", "test", "resources", "fixtures") for r in a.recordings.split(",")}
     rows = read_judgements(Files.here(), a.judgements or os.path.join(repo, "test", "resources", "fixtures", "identity-judgements.tsv"))
     os.makedirs(a.out, exist_ok=True)
     state_path = os.path.join(a.out, "state.json")
-    state = json.load(open(state_path)) if os.path.exists(state_path) else {"round": 0, "settled": {}, "interactions": [], "pending": None}
-
-    def save():
-        atomic.write_json(state_path, state, indent=1)
-
-    # round 0: the baselines alone (their fired rules choose the batches; base-again proves the replay deterministic).
-    # A resumed state has chosen its batches already, and every later round resolves its own baseline.
-    r0 = os.path.join(a.out, "round-0")
-    if state["pending"] is None:
-        run_recordings(repo, recordings, [], r0, a.lock, a.chunk, a.out)
-        noisy = determinism(r0, recordings)
-        if noisy:
-            raise SystemExit(f"[ablation] the baseline moved on a second resolve in {noisy}: the replay is not deterministic")
-        fired, title_countries = defaultdict(int), {}
-        for rec in recordings:
-            title_countries = read_title_rules(os.path.join(r0, rec, "title-rules.tsv"))
-            for cc in recording_countries(recordings[rec]):
-                for rule, n in read_fired(os.path.join(r0, rec, "base", f"fired-{cc}.tsv")).items():
-                    fired[rule] += n
-        rules = dict(title_countries) if "title" in a.kinds.split(",") else {}
-        rules.update({r: None for r in identity_rules(fired) if r.split(":", 1)[0] in a.kinds.split(",")})
-        if a.only:
-            rules = {r: rules.get(r) for r in a.only.split(",")}
-        idfired = identity_rules(fired)
-        state["fired"] = {r: fired.get(r, 0) or idfired.get(r, 0) for r in rules}
-        state["pending"] = shard_of(batches(rules, lambda r: rules[r], state["fired"], a.hot, a.cold), a.shard)
-        state["round"] = 1
-        save()
+    state: Dict[str, Any] = json.load(open(state_path)) if os.path.exists(state_path) else {"round": 0, "settled": {}, "interactions": [], "pending": None}
+    save = functools.partial(atomic.write_json, state_path, state, indent=1)
+    if state["pending"] is None:  # a resumed state has chosen its batches already, and every later round resolves its own baseline
+        first_round(a, repo, recordings, state, save)
     # read from round 1 only: a round-0 cut would leave baselines (fired-<cc>.tsv) a resumed run does not carry
     past_deadline = (lambda: machine.monotonic() - started > a.deadline_minutes * 60) if a.deadline_minutes else (lambda: False)
     try:
@@ -443,7 +429,8 @@ def main(argv=None):
     return 0
 
 
-def resolve_rounds(a, repo, recordings, rows, state, save, past_deadline):
+def resolve_rounds(a: argparse.Namespace, repo: str, recordings: Dict[str, str], rows: List[Any], state: Dict[str, Any],
+                   save: Callable[[], None], past_deadline: Callable[[], bool]) -> None:
     """Resolve the pending rounds, up to --max-rounds, saving the state after each."""
     rounds = 0
     while state["pending"] and (not a.max_rounds or rounds < a.max_rounds):
@@ -464,7 +451,7 @@ def resolve_rounds(a, repo, recordings, rows, state, save, past_deadline):
         save()
 
 
-def write_report(state, path):
+def write_report(state: Dict[str, Any], path: str) -> None:
     settled, fired = state["settled"], state.get("fired", {})
     movers = sorted((r for r, o in settled.items() if total(o)), key=lambda r: -settled[r]["moved"])
     zero = sorted(r for r, o in settled.items() if not total(o))
