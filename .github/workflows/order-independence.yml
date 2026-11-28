@@ -1,7 +1,7 @@
-# Purpose: Nightly: every suite in an order it never meets on push, so an order-dependent test shows
+# Purpose: Weekly: every suite in an order it never meets on push, so an order-dependent test shows
 name: Order independence
 
-# Nightly: run the suites in an order they never meet on push, so a test that passes only
+# Weekly (the owner, 2026-11-28; nightly before): run the suites in an order they never meet on push, so a test that passes only
 # because of what ran before it (or fails only after something else) is caught the night it
 # lands, not the day a harmless rename reshuffles the order.
 #
@@ -49,7 +49,7 @@ name: Order independence
 # push touching the tools, and nightly in full): a red there is no order red.
 on:
     schedule:
-        - cron: '40 2 * * *'
+        - cron: '40 2 * * 1'
     # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
     # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
     repository_dispatch:

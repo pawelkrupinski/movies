@@ -152,11 +152,11 @@
     },
     "order-independence": {
       "crons": [
-        "40 2 * * *"
+        "40 2 * * 1"
       ],
       "file": "order-independence.yml",
       "onCalendar": [
-        "*-*-* 02:40:00 UTC"
+        "Mon *-*-* 02:40:00 UTC"
       ]
     },
     "prune-actions-caches": {
