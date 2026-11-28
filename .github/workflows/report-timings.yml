@@ -17,7 +17,7 @@ name: Report run timings
 #     for that one to end and reports it; THE GATE's verdict is that run's end (2026-11-06).
 #   * Verify scrape recording (Record scrape fixtures' dispatch) and Convergence bisect (the convergence's) -- a call
 #     of this workflow as their last `timings` job. Nothing waits on either run's end.
-# CHAINS: GitHub starts no `workflow_run` more than three levels deep. Landing check build cache, Identity lean vs whole,
+# CHAINS: GitHub starts no `workflow_run` more than three levels deep. Landing check build cache,
 # Identity live drift and Identity findings report are themselves `workflow_run`s (level 2): their reports are level 3.
 # NO `secrets:` DECLARATION: callers pass `secrets: inherit`.
 on:
@@ -42,7 +42,6 @@ on:
             - Identity drift explorer
             - Identity family explorer
             - Identity findings report
-            - Identity lean vs whole
             - Identity live drift
             - Identity rule refit
             - Identity rule ablation
