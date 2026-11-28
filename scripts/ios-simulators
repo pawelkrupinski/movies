@@ -11,6 +11,15 @@ booted; nothing shut it down.
                                                xcodebuild owns that one), on any exit, TERM and INT too. A Simulator the
                                                owner had open is in the "before" set: never shut. Each one it claims is
                                                written to the ledger (below) as it boots, so a killed run's is swept.
+                                               THE GOVERNOR (2026-11-28: a fresh boot put 114 runnable simulator daemons in the run queue,
+                                               load 355 on 18 cores for ~5 min, outside any ticket): the command runs under a
+                                               governor ticket (scripts/gov-run --job ios-simulator, $IOS_SIM_GOV_CORES cores,
+                                               default 6: the boot plus the test run), so a boot waits while the laptop is busy.
+                                               REUSE: a `-destination` naming a device (`name=iPhone 17`) that is already booted
+                                               is rewritten to `id=<udid>`, so xcodebuild boots nothing; the storm happens once
+                                               per machine, not once per run. A reused Simulator was booted before the run, so
+                                               it is never shut down by it; one this run booted is shut down only when no other
+                                               run's test process names it.
   scripts/ios-simulators sweep [--idle-hours H] [--dry-run]
                                                shuts down booted Simulators booted by agents and up for more than H hours
                                                (default 2), no xcodebuild / xctest process naming them. Run by hand, from
@@ -23,7 +32,7 @@ A Simulator's age is its launchd_sim process's elapsed time (ps), the clock that
 
 Test seams (scripts/ios-simulators-test.sh): XCRUN names the xcrun to call; IOS_SIM_PS_COMMAND prints `pid etime args` per
 process;
-IOS_SIM_TREE_COMMAND prints `pid ppid` per process (the tree of the run's command).
+IOS_SIM_TREE_COMMAND prints `pid ppid` per process (the tree of the run's command); GOV_RUN names the gov-run to call.
 """
 import argparse
 import json
@@ -146,9 +155,28 @@ def watch_boots(before: Set[str], child_pid: int, claimed: Set[str], stop: threa
         claim_fresh(before, child_pid, claimed)
 
 
+def reuse_booted(command: List[str], devices: Dict[str, str]) -> List[str]:
+    """`command` with each `-destination ...name=N...` whose device N is already booted pointed at its udid: no boot."""
+    by_name = {name: udid for udid, name in sorted(devices.items())}
+    out: List[str] = []
+    for index, word in enumerate(command):
+        named = re.search(r"(?:^|,)name=([^,]+)", word) if index and command[index - 1] == "-destination" else None
+        if named and "id=" not in word and named.group(1) in by_name:
+            word = f"platform=iOS Simulator,id={by_name[named.group(1)]}"
+        out.append(word)
+    return out
+
+
+def governed(command: List[str]) -> List[str]:
+    """`command` under a governor ticket sized for a Simulator boot plus the test run (a boot waits while the laptop is busy)."""
+    gov_run = os.environ.get("GOV_RUN", os.path.join(os.path.dirname(os.path.abspath(__file__)), "gov-run"))
+    return [gov_run, "--job", "ios-simulator", "--cores", os.environ.get("IOS_SIM_GOV_CORES", "6"), "--", *command]
+
+
 def run(command: List[str]) -> int:
-    before = set(booted())
-    child = subprocess.Popen(command)
+    devices = booted()
+    before = set(devices)
+    child = subprocess.Popen(governed(reuse_booted(command, devices)))
     claimed: Set[str] = set()
     stop = threading.Event()
     watcher = threading.Thread(target=watch_boots, args=(before, child.pid, claimed, stop), daemon=True)

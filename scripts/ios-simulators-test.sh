@@ -35,6 +35,16 @@ device OWNER "iPhone 17" Booted
 : > "$work/no-ps"; export IOS_SIM_PS_COMMAND="cat $work/no-ps"  # no foreign test process, whatever runs on this machine
 device NEW "iPhone 16e"
 
+# the stub gov-run: logs its arguments, and waits for $work/admit while $work/busy exists (a busy governor), then execs
+cat > "$work/gov-run" <<STUB
+#!/usr/bin/env bash
+echo "\$*" >> "$work/gov.log"
+while [ -e "$work/busy" ] && [ ! -e "$work/admit" ]; do sleep 0.05; done
+while [ "\$1" != -- ]; do shift; done; shift
+exec "\$@"
+STUB
+chmod +x "$work/gov-run"; export GOV_RUN="$work/gov-run"
+
 # run: shuts down what its command booted, not the owner's
 "$TOOL" run -- bash -c "'$work/xcrun' simctl boot NEW" > /dev/null; rc=$?
 check "run shuts down the Simulator its command booted" "0 Shutdown" "$rc $(state NEW)"
@@ -62,6 +72,29 @@ wait_until "the run claimed the Simulator it booted" '[ -e "$KINOWO_IOS_SIM_LEDG
 kill -9 "$wrapper" 2>/dev/null; kill "$(cat "$work/child.pid")" 2>/dev/null; wait "$wrapper" 2>/dev/null
 check "run writes the Simulator it booted to the ledger while it runs" "yes" "$([ -e "$KINOWO_IOS_SIM_LEDGER/NEW" ] && echo yes || echo no)"
 device NEW "iPhone 16e"; rm -rf "$KINOWO_IOS_SIM_LEDGER"
+
+# governor: the command runs under a ticket, sized and named; a busy governor makes the boot wait
+: > "$work/gov.log"; device NEW "iPhone 16e"
+"$TOOL" run -- bash -c "'$work/xcrun' simctl boot NEW" > /dev/null
+check "run takes a governor ticket for the boot and the test run" "--job ios-simulator --cores 6 -- bash" "$(sed 's/ -c .*//' "$work/gov.log")"
+device NEW "iPhone 16e"; touch "$work/busy"; rm -f "$work/admit" "$work/shutdowns"
+"$TOOL" run -- bash -c "'$work/xcrun' simctl boot NEW" > /dev/null &
+waiter=$!
+sleep 0.5
+check "a busy governor makes the boot wait" "Shutdown" "$(state NEW)"
+touch "$work/admit"; wait "$waiter"; rm -f "$work/busy" "$work/admit"
+check "...and the run goes on once admitted (booted, then shut down by it)" "1" "$(grep -c NEW "$work/shutdowns")"
+
+# reuse: a device of the destination's name already booted is addressed by udid, boots nothing, and is never shut down
+device HAND "iPhone 17 Pro" Booted
+: > "$work/args"
+"$TOOL" run -- bash -c 'echo "$@" > "'"$work"'/args"' _ xcodebuild test -destination "platform=iOS Simulator,name=iPhone 17 Pro,OS=latest" > /dev/null
+check "run points a destination at the already-booted device of that name" "xcodebuild test -destination platform=iOS Simulator,id=HAND" "$(cat "$work/args")"
+check "...and leaves that device booted" "Booted" "$(state HAND)"
+: > "$work/args"
+"$TOOL" run -- bash -c 'echo "$@" > "'"$work"'/args"' _ xcodebuild test -destination "platform=iOS Simulator,name=iPhone 16e" > /dev/null
+check "a destination whose device is not booted is left alone (xcodebuild boots it, under the ticket)" "xcodebuild test -destination platform=iOS Simulator,name=iPhone 16e" "$(cat "$work/args")"
+device HAND "iPhone 17 Pro"
 
 # sweep
 device NEW "iPhone 16e"
