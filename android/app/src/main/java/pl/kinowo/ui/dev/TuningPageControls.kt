@@ -22,19 +22,7 @@ import pl.kinowo.ui.common.RatingPillStyle
 import pl.kinowo.ui.common.ShowtimeChipStyle
 
 @Composable
-internal fun PageControls(
-    page: TuningPage,
-    style: ShowtimeChipStyle,
-    onStyleChange: (ShowtimeChipStyle) -> Unit,
-    ratingStyle: RatingPillStyle,
-    onRatingStyleChange: (RatingPillStyle) -> Unit,
-    cardSpacing: CardSpacingStyle,
-    onCardSpacingChange: (CardSpacingStyle) -> Unit,
-    cinemaHeader: CinemaHeaderStyle,
-    onCinemaHeaderChange: (CinemaHeaderStyle) -> Unit,
-    filmStyle: FilmDetailStyle,
-    onFilmStyleChange: (FilmDetailStyle) -> Unit,
-) {
+internal fun PageControls(page: TuningPage, styles: TuningStyles) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -44,9 +32,11 @@ internal fun PageControls(
     ) {
         ResolutionReadout()
         when (page) {
-            TuningPage.Card -> CardControls(style, onStyleChange, ratingStyle, onRatingStyleChange, cardSpacing, onCardSpacingChange)
-            TuningPage.Kina -> KinaControls(cinemaHeader, onCinemaHeaderChange)
-            TuningPage.Film -> FilmControls(filmStyle, onFilmStyleChange)
+            TuningPage.Card -> CardControls(
+                styles.chip, { styles.chip = it }, styles.rating, { styles.rating = it }, styles.spacing, { styles.spacing = it },
+            )
+            TuningPage.Kina -> KinaControls(styles.cinemaHeader) { styles.cinemaHeader = it }
+            TuningPage.Film -> FilmControls(styles.film) { styles.film = it }
         }
     }
 }

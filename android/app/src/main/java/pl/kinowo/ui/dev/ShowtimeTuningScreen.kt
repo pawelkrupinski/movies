@@ -115,19 +115,14 @@ fun ShowtimeTuningScreen() {
         ControlsSheet(
             page = TuningPage.entries[pager.currentPage],
             onSelectPage = { p -> scope.launch { pager.animateScrollToPage(p.ordinal) } },
-            style = styles.chip, onStyleChange = { styles.chip = it },
-            ratingStyle = styles.rating, onRatingStyleChange = { styles.rating = it },
-            cardSpacing = styles.spacing, onCardSpacingChange = { styles.spacing = it },
-            cinemaHeader = styles.cinemaHeader, onCinemaHeaderChange = { styles.cinemaHeader = it },
-            filmStyle = styles.film, onFilmStyleChange = { styles.film = it },
-            onReset = { styles.reset(TuningPage.entries[pager.currentPage]) },
+            styles = styles,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
 }
 
 /** The live styles the tuning controls edit, one per previewed view. */
-private class TuningStyles {
+internal class TuningStyles {
     var chip by mutableStateOf(ShowtimeChipStyle())
     var rating by mutableStateOf(RatingPillStyle())
     var spacing by mutableStateOf(CardSpacingStyle())
@@ -216,17 +211,7 @@ private val SheetMinHeight = 56.dp
 private fun ControlsSheet(
     page: TuningPage,
     onSelectPage: (TuningPage) -> Unit,
-    style: ShowtimeChipStyle,
-    onStyleChange: (ShowtimeChipStyle) -> Unit,
-    ratingStyle: RatingPillStyle,
-    onRatingStyleChange: (RatingPillStyle) -> Unit,
-    cardSpacing: CardSpacingStyle,
-    onCardSpacingChange: (CardSpacingStyle) -> Unit,
-    cinemaHeader: CinemaHeaderStyle,
-    onCinemaHeaderChange: (CinemaHeaderStyle) -> Unit,
-    filmStyle: FilmDetailStyle,
-    onFilmStyleChange: (FilmDetailStyle) -> Unit,
-    onReset: () -> Unit,
+    styles: TuningStyles,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier.fillMaxWidth()) {
@@ -251,13 +236,10 @@ private fun ControlsSheet(
 
             PageTabs(current = page, onSelect = onSelectPage)
             SheetHeader(
-                page = page, style = style, ratingStyle = ratingStyle, cardSpacing = cardSpacing,
-                cinemaHeader = cinemaHeader, filmStyle = filmStyle, onReset = onReset,
+                page = page, style = styles.chip, ratingStyle = styles.rating, cardSpacing = styles.spacing,
+                cinemaHeader = styles.cinemaHeader, filmStyle = styles.film, onReset = { styles.reset(page) },
             )
-            PageControls(
-                page, style, onStyleChange, ratingStyle, onRatingStyleChange, cardSpacing, onCardSpacingChange,
-                cinemaHeader, onCinemaHeaderChange, filmStyle, onFilmStyleChange,
-            )
+            PageControls(page, styles)
         }
     }
 }

@@ -138,21 +138,25 @@ struct CityChoiceView: View {
             }
             .accessibilityIdentifier(A11y.CityGate.picker)
             .toolbar { locateToolbarItem }
-            // A hit re-uses the exact confirm UI the first-launch flow shows —
-            // "you're near X", adopt or choose another — rather than a second,
-            // divergent presentation for what is the same decision.
-            .sheet(isPresented: Binding(
-                get: { located != nil },
-                set: { if !$0 { located = nil } }
-            )) {
-                if let city = located {
-                    CityConfirmView(
-                        city: city,
-                        onConfirm: { choose(city); located = nil },
-                        onChooseOther: { located = nil }
-                    )
-                }
-            }
+            .sheet(isPresented: locatedSheetShown) { locatedSheet }
+        }
+    }
+
+    private var locatedSheetShown: Binding<Bool> {
+        Binding(get: { located != nil }, set: { if !$0 { located = nil } })
+    }
+
+    /// A hit re-uses the exact confirm UI the first-launch flow shows — "you're near X", adopt
+    /// or choose another — rather than a second, divergent presentation for what is the same
+    /// decision.
+    @ViewBuilder
+    private var locatedSheet: some View {
+        if let city = located {
+            CityConfirmView(
+                city: city,
+                onConfirm: { choose(city); located = nil },
+                onChooseOther: { located = nil }
+            )
         }
     }
 
