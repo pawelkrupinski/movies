@@ -24,8 +24,6 @@ cognitive	infra/bin/image_pins.py:Registry._open	12
 cognitive	infra/bin/image_pins.py:check	25
 cognitive	infra/bin/nix-update:bump_mongodb	11
 cognitive	infra/bin/nix-update:update	12
-cognitive	infra/bin/snapshot-label-values:main	11
-cognitive	infra/bin/snapshot-label-values:wanted_pairs	13
 cognitive	infra/nix/files/identity-regressions.py:build_net_lost	14
 cognitive	infra/nix/files/identity-regressions.py:episodes	13
 cognitive	infra/nix/files/identity-regressions.py:film_net_lost	13
@@ -104,7 +102,6 @@ cyclomatic	infra/bin/image_pins.py:choose	13
 cyclomatic	infra/bin/image_pins.py:propose_gitops	12
 cyclomatic	infra/bin/nix-update:bump_mongodb	12
 cyclomatic	infra/bin/nix-update:update	15
-cyclomatic	infra/bin/snapshot-label-values:main	11
 cyclomatic	infra/nix/files/identity-regressions.py:build_net_lost	17
 cyclomatic	infra/nix/files/identity-regressions.py:episodes	11
 cyclomatic	infra/nix/files/identity-regressions.py:film_net_lost	12
@@ -173,7 +170,6 @@ cyclomatic	scripts/touched_methods.py:touched	11
 cyclomatic	scripts/unmatched_census.py:census	14
 cyclomatic	scripts/unmatched_census.py:main	11
 inner-defs	infra/bin/image_pins.py:markdown	3
-method-lines	infra/bin/snapshot-label-values:main	55
 method-lines	scripts/identity_stamp_carry.py:auto	56
 file-lines	infra/bin/backtest-alerts-local	540
 file-lines	infra/bin/nix-update	565
@@ -186,7 +182,6 @@ pyright	infra/bin/fleet_hosts.py	13
 pyright	infra/bin/image_pins.py	131
 pyright	infra/bin/nix-update	55
 pyright	infra/bin/nix_path.py	12
-pyright	infra/bin/snapshot-label-values	18
 pyright	infra/bin/stage-nixos-closures	16
 pyright	infra/nix/files/identity-regressions.py	86
 pyright	scripts/adopt_ci_budgets.py	2

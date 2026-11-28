@@ -20,6 +20,8 @@ enrichment row) -- the test names the missing pair.
 Usage: infra/bin/snapshot-label-values [--days 14] [--prometheus http://10.20.0.11:9090] [--names-only]
 """
 
+from __future__ import annotations
+
 import argparse
 import concurrent.futures
 import json
@@ -28,6 +30,7 @@ import subprocess
 import sys
 import time
 import urllib.parse
+from typing import Any, Dict, List, Mapping, Set, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "test"))
@@ -41,7 +44,7 @@ SOCKS = "127.0.0.1:1080"
 WORKERS = 8
 
 
-def fetch(base, path, params):
+def fetch(base: str, path: str, params: Mapping[str, Any]) -> Any:
     url = "%s%s?%s" % (base, path, urllib.parse.urlencode(params, doseq=True))
     out = subprocess.run(["curl", "-sfS", "--max-time", "60", "--socks5-hostname", SOCKS, url],
                          check=True, capture_output=True, text=True).stdout
@@ -51,22 +54,23 @@ def fetch(base, path, params):
     return body["data"]
 
 
-def wanted_pairs(all_metric_names):
+def _selector_metrics(selector: Any, all_metric_names: List[str]) -> List[str]:
+    name = selector.name_matcher
+    return [name.value] if name is not None and name.op == "=" else selector.metrics(all_metric_names)
+
+
+def wanted_pairs(all_metric_names: List[str]) -> Dict[str, Set[str]]:
     """{metric: {label, ...}} for every literal matcher in every rule, Grafana alert and panel."""
-    pairs = {}
+    pairs: Dict[str, Set[str]] = {}
     for _, expr in promql_selectors.all_expressions():
         for selector in promql_selectors.selectors(expr):
             labels = {m.label for m in selector.label_matchers if not m.is_templated}
-            if not labels:
-                continue
-            name = selector.name_matcher
-            metrics = [name.value] if name is not None and name.op == "=" else selector.metrics(all_metric_names)
-            for metric in metrics:
+            for metric in (_selector_metrics(selector, all_metric_names) if labels else []):
                 pairs.setdefault(metric, set()).update(labels)
     return pairs
 
 
-def referenced_names(all_metric_names):
+def referenced_names(all_metric_names: List[str]) -> List[str]:
     """The fleet names every rule, Grafana alert, panel and template variable reads that the
     build cannot vouch for itself -- not a `kinowo_*` family (GrafanaMetricCoverageSpec checks
     those against the code) and not a recording rule's output (test_metric_names.py checks those
@@ -83,7 +87,7 @@ def referenced_names(all_metric_names):
     return sorted(n for n in wanted & known if not n.startswith("kinowo_") and ":" not in n)
 
 
-def write_metric_names(names, days, taken):
+def write_metric_names(names: List[str], days: int, taken: float) -> None:
     document = {
         "comment": "Written by infra/bin/snapshot-label-values from the fleet Prometheus; read by "
                    "infra/test/test_metric_names.py. Do not edit by hand -- re-run the script "
@@ -102,7 +106,48 @@ def write_metric_names(names, days, taken):
 DOCSTRING = __doc__ or ""  # None under python -OO
 
 
-def main():
+def _fetch_values(base: str, window: Mapping[str, int], jobs: List[Tuple[str, str]]) -> Dict[str, Dict[str, Any]]:
+    """{metric: {label: sorted values}} -- the pairs the fleet holds values for -- over a pool of WORKERS curls."""
+    snapshot: Dict[str, Dict[str, Any]] = {metric: {} for metric, _ in jobs}
+    with concurrent.futures.ThreadPoolExecutor(WORKERS) as pool:
+        futures = {
+            pool.submit(fetch, base, "/api/v1/label/%s/values" % label, dict(window, **{"match[]": metric})): (metric, label)
+            for metric, label in jobs
+        }
+        for future in concurrent.futures.as_completed(futures):
+            metric, label = futures[future]
+            values = sorted(future.result())
+            if values:
+                snapshot[metric][label] = values
+    return snapshot
+
+
+def _share_equal_lists(snapshot: Dict[str, Dict[str, Any]]) -> None:
+    """The three kinowo_uptime_recent_* families carry the same ~9,000 service names; writing each
+    list once keeps the fixture reviewable. The reader resolves `same_as` back to the list."""
+    first_seen: Dict[Tuple[str, Tuple[str, ...]], str] = {}
+    for metric in sorted(snapshot):
+        for label, values in sorted(snapshot[metric].items()):
+            key = (label, tuple(values))
+            if key in first_seen:
+                snapshot[metric][label] = {"same_as": first_seen[key]}
+            else:
+                first_seen[key] = metric
+
+
+def _write_label_values(days: int, snapshot: Mapping[str, Any]) -> None:
+    document = {
+        "comment": "Written by infra/bin/snapshot-label-values from the fleet Prometheus; read by "
+                   "infra/test/test_label_shapes.py. Do not edit by hand -- re-run the script.",
+        "window_days": days,
+        "metrics": snapshot,
+    }
+    with open(OUTPUT, "w", encoding="utf-8") as handle:
+        json.dump(document, handle, indent=1, sort_keys=True, ensure_ascii=False)
+        handle.write("\n")
+
+
+def main() -> None:
     parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("--days", type=int, default=14)
     parser.add_argument("--prometheus", default="http://10.20.0.11:9090")
@@ -119,42 +164,11 @@ def main():
         return
     pairs = wanted_pairs(names)
     jobs = [(metric, label) for metric, labels in sorted(pairs.items()) for label in sorted(labels)]
-
     started = machine.wall()
-    snapshot = {metric: {} for metric in pairs}
-    with concurrent.futures.ThreadPoolExecutor(WORKERS) as pool:
-        futures = {
-            pool.submit(fetch, args.prometheus, "/api/v1/label/%s/values" % label,
-                        dict(window, **{"match[]": metric})): (metric, label)
-            for metric, label in jobs
-        }
-        for future in concurrent.futures.as_completed(futures):
-            metric, label = futures[future]
-            values = sorted(future.result())
-            if values:
-                snapshot[metric][label] = values
+    snapshot = _fetch_values(args.prometheus, window, jobs)
     elapsed = machine.wall() - started
-
-    # The three kinowo_uptime_recent_* families carry the same ~9,000 service names; writing each
-    # list once keeps the fixture reviewable. The reader resolves `same_as` back to the list.
-    first_seen = {}
-    for metric in sorted(snapshot):
-        for label, values in sorted(snapshot[metric].items()):
-            key = (label, tuple(values))
-            if key in first_seen:
-                snapshot[metric][label] = {"same_as": first_seen[key]}
-            else:
-                first_seen[key] = metric
-
-    document = {
-        "comment": "Written by infra/bin/snapshot-label-values from the fleet Prometheus; read by "
-                   "infra/test/test_label_shapes.py. Do not edit by hand -- re-run the script.",
-        "window_days": args.days,
-        "metrics": snapshot,
-    }
-    with open(OUTPUT, "w", encoding="utf-8") as handle:
-        json.dump(document, handle, indent=1, sort_keys=True, ensure_ascii=False)
-        handle.write("\n")
+    _share_equal_lists(snapshot)
+    _write_label_values(args.days, snapshot)
     print("%d (metric, label) pairs over %d metrics in %.1fs (%.1f/s) -> %s"
           % (len(jobs), len(pairs), elapsed, len(jobs) / max(elapsed, 0.001), os.path.relpath(OUTPUT)))
 
