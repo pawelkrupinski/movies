@@ -17,6 +17,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 TOOL = os.path.join(HERE, "shell_gate.py")
 RULES = os.path.join(ROOT, "test", "resources", "design-rules.tsv")
+sys.path.insert(0, os.path.join(ROOT, "scripts", "lib"))
+from harness import cli_harness  # noqa: E402  (scratch repositories through the isolating helper)
 
 
 def branches(n: int) -> str:
@@ -40,10 +42,7 @@ class ShellGateTest(unittest.TestCase):
         self.base = self.commit("the scripts")
 
     def git(self, *args: str) -> str:
-        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-        env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1", GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
-                   GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
-        return subprocess.run(["git", "-C", self.dir, *args], check=True, capture_output=True, text=True, env=env).stdout
+        return cli_harness.scratch_git(self.dir, *args)
 
     def write(self, files: Dict[str, str]) -> None:
         for path, text in files.items():
@@ -56,7 +55,7 @@ class ShellGateTest(unittest.TestCase):
     def commit(self, message: str) -> str:
         self.git("add", "-A")
         self.git("commit", "-q", "--allow-empty", "-m", message)
-        return self.git("rev-parse", "HEAD").strip()
+        return self.git("rev-parse", "HEAD")
 
     def gate(self, *args: str) -> subprocess.CompletedProcess[str]:
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
