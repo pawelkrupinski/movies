@@ -14,6 +14,7 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_precision_sample as ps  # noqa: E402
 from identity_judgements import HEADER  # noqa: E402
+from tool_files import Files as DiskFiles  # noqa: E402
 
 
 def takes(*showtimes):
@@ -156,7 +157,7 @@ class Files(unittest.TestCase):
                 f.write(HEADER + "\n")
                 f.write("pl\t*\tLalka\ttmdb:2\tright\topen\t\t\t\t2026-11-13\te\n")
                 f.write("pl\tIluzjon\tLalka\ttmdb:1\tright\topen\t\t\t\t2026-11-13\te\n")
-            labels = ps.labels_by_country(ps.read(path))
+            labels = ps.labels_by_country(ps.read(DiskFiles.here(), path))
         rows = ps.judge([{"country": "pl", "venue": "Iluzjon", "rawTitle": "Lalka", "film": "tmdb:1"},
                          {"country": "pl", "venue": "Muza", "rawTitle": "Lalka", "film": "tmdb:1"},
                          {"country": "pl", "venue": "Muza", "rawTitle": "Lalka", "film": "tmdb:2"},
@@ -173,7 +174,7 @@ class Files(unittest.TestCase):
             path = os.path.join(d, "j.tsv")
             with open(path, "w", encoding="utf-8") as f:
                 f.write(HEADER + "\npl\tKino\tLalka\ttmdb:1\twrong\topen\t\t\t\t2026-11-13\te\n")
-            text = ps.report(d, path, ["pl"])
+            text = ps.report(DiskFiles.here(), d, path, ["pl"])
         self.assertIn("100.00%", text.splitlines()[2])
 
     def test_a_billing_sample_reports_the_share_of_billings_wrong_not_of_showtimes(self):
@@ -188,7 +189,7 @@ class Files(unittest.TestCase):
             with open(path, "w", encoding="utf-8") as f:
                 f.write(HEADER + "\npl\tKino\tLalka\ttmdb:1\twrong\topen\t\t\t\t2026-11-13\te\n"
                         "pl\tKino\tFaraon\ttmdb:1\tright\topen\t\t\t\t2026-11-13\te\n")
-            text = ps.report(d, path, ["pl"])
+            text = ps.report(DiskFiles.here(), d, path, ["pl"])
         self.assertIn("billings-wrong", text.splitlines()[1])
         self.assertIn("50.00%", text.splitlines()[2])
 

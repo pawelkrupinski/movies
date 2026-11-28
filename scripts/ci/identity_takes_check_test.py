@@ -225,7 +225,7 @@ class TakesCase(cli_harness.ToolCase):
             os.makedirs(self.path("job/scripts/ci"), exist_ok=True)
             shutil.copy(f, self.path("job/scripts/ci"))
         os.makedirs(self.path("job/scripts/lib"), exist_ok=True)
-        for n in ("tool_git.py", "tool_process.py"):  # what harness_aa.py imports
+        for n in ("tool_git.py", "tool_process.py", "tool_files.py", "atomic.py"):  # what harness_aa.py and identity_judgements.py import
             shutil.copy(os.path.join(cli_harness.ROOT, "scripts/lib", n), self.path("job/scripts/lib"))
 
     def store_run(self, head: int, env: Optional[Env] = None, base: Optional[int] = 4) -> int:
