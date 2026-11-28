@@ -124,6 +124,7 @@ adapter	py	scripts/lib/cli/hook_event.py	clock
 adapter	py	scripts/claude-hooks/governed-kill-guard	env
 adapter	py	infra/nix/files/nixos_auto_apply/applier_clock.py	clock
 adapter	py	infra/nix/files/scheduled_dispatch_parts/dispatch_clock.py	clock
+adapter	py	infra/bin/backtest_clock.py	clock
 #
 # Distance D: where abstractions exist (the owner, 2026-11-26): the Python library packages and the TypeScript
 # dashboard. Plain browser JS (web/src/main/assets/js) has none, so D measures nothing there: cycles and layers hold it.
