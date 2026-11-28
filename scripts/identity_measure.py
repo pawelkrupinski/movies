@@ -47,8 +47,9 @@ import os
 import sys
 from typing import Dict, List, Optional, TypedDict
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci"))
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.abspath(__file__)), part) for part in ("ci", "lib")]
 import identity_takes_diff as takes  # noqa: E402
+from tool_files import Files  # noqa: E402
 from identity_judgements import country_views, label_of, normalise, own_or_every, read  # noqa: E402
 
 COUNTRIES = ("pl", "uk", "de", "us", "es")
@@ -121,37 +122,33 @@ class Country(TypedDict):
     unmeasured: bool
 
 
-def read_country(directory, cc, rows, conclusions=None) -> Country:
+def read_country(files: Files, directory, cc, rows, conclusions=None) -> Country:
     """{"verdict": [lines], "base": sha, "stages": {stage: buckets}, "missing": reason or None, "unmeasured": bool} of one
     country's artifact. `conclusions`, the run's takes rows ({cc: conclusion}), tells a row that never ran from one that
     failed before uploading."""
-    root = os.path.join(directory, f"identity-takes-{cc}")
-    if not os.path.isdir(root):
+    root = files.path(directory, f"identity-takes-{cc}")
+    if not files.is_dir(root):
         if conclusions and conclusions.get(cc, "skipped") == "skipped":
             return {"verdict": [], "base": None, "stages": {}, "missing": None, "unmeasured": True}
         return {"verdict": [], "base": None, "stages": {}, "unmeasured": False,
                 "missing": "no identity-takes artifact (the row did not run, or failed before uploading)"}
     def text(name):
-        path = os.path.join(root, name)
-        if not os.path.exists(path):
-            return ""
-        with open(path, encoding="utf-8") as f:
-            return f.read()
+        return files.read_text_or(files.path(root, name), "")
     verdict = [l for l in text("verdict.txt").splitlines() if l.strip()]
     out: Country = {"verdict": verdict, "base": text("base.txt").strip() or None, "stages": {}, "missing": None, "unmeasured": False}
     unchanged = any("nothing can have moved" in l or "no take can have moved" in l for l in verdict)
     for stage, name in STAGES:
-        b_path, h_path = (os.path.join(root, side, name.format(cc=cc)) for side in ("base", "head"))
-        if not (os.path.exists(b_path) and os.path.exists(h_path)):
+        b_path, h_path = (files.path(root, side, name.format(cc=cc)) for side in ("base", "head"))
+        if not (files.exists(b_path) and files.exists(h_path)):
             if unchanged:
                 out["stages"][stage] = {b: [] for b in BUCKETS}
             else:
                 out["missing"] = out["missing"] or f"no {stage} takes in the artifact (the check could not resolve both sides)"
             continue
         if stage == "final":
-            base, head = takes.final_sides(b_path, h_path, cc)
+            base, head = takes.final_sides(files, b_path, h_path, cc)
         else:
-            base, head = takes.load(b_path), takes.load(h_path)
+            base, head = takes.load(files, b_path), takes.load(files, h_path)
         out["stages"][stage] = classify(cc, base, head, rows)
     return out
 
@@ -247,12 +244,13 @@ def main(argv=None):
     p.add_argument("--kind", choices=KINDS, default="full", help="the kind of measure the takes come from (THE KIND)")
     a = p.parse_args(argv)
     try:
-        rows = read(a.judgements)
+        files = Files.here()
+        rows = read(files, a.judgements)
         conclusions = {}
         if a.rows:
             with open(a.rows, encoding="utf-8") as f:
                 conclusions = json.load(f)
-        countries = {cc: read_country(a.dir, cc, rows, conclusions) for cc in a.countries.split(",") if cc}
+        countries = {cc: read_country(files, a.dir, cc, rows, conclusions) for cc in a.countries.split(",") if cc}
     except (OSError, ValueError, KeyError, TypeError, IndexError) as e:
         print(f"identity-measure: could not read the inputs: {type(e).__name__}: {e}", file=sys.stderr)
         return 2

@@ -7,11 +7,12 @@ import contextlib
 import io
 import os
 import sys
-import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import identity_slice_diff as diff  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 HEADER = "selector\tkey\tvenue\trawTitle\tfilm\ttitle\tbasis\tconfidence\tmodel\trules\tblocker\trunnerUp\tverdict\texplanation\n"
 
@@ -62,26 +63,22 @@ TALLY cured 1, lost 1, new-wrong 1, won 1, moved (unjudged) 2
 
 class SliceDiffTest(unittest.TestCase):
     def write(self, name, lines):
-        path = os.path.join(self.dir.name, name)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(HEADER + "".join(lines))
-        return path
+        return self.files.write_text(name, HEADER + "".join(lines)) or self.files.path(name)
 
     def setUp(self):
-        self.dir = tempfile.TemporaryDirectory()
-        self.addCleanup(self.dir.cleanup)
+        self.files = Files.in_memory()
 
     def test_every_move_is_listed_under_its_verdicts_and_tallied(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            code = diff.main([self.write("base.tsv", BASE), self.write("head.tsv", HEAD), "base1", "head1"])
+            code = diff.main([self.write("base.tsv", BASE), self.write("head.tsv", HEAD), "base1", "head1"], self.files)
         self.assertEqual(0, code)
         self.assertEqual(GOLDEN, out.getvalue())
 
     def test_two_identical_slices_move_nothing(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            diff.main([self.write("a.tsv", BASE), self.write("b.tsv", BASE), "a", "b"])
+            diff.main([self.write("a.tsv", BASE), self.write("b.tsv", BASE), "a", "b"], self.files)
         self.assertEqual("\n6 listing(s) decided; 0 moved between a and b\n\n"
                          "TALLY cured 0, lost 0, new-wrong 0, won 0, moved (unjudged) 0\n", out.getvalue())
 
@@ -90,7 +87,7 @@ class SliceDiffTest(unittest.TestCase):
         # come from the slices' own `verdict` column.
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
-            code = diff.main([self.write("a.tsv", BASE), self.write("b.tsv", BASE), "a", "b", "labels.tsv"])
+            code = diff.main([self.write("a.tsv", BASE), self.write("b.tsv", BASE), "a", "b", "labels.tsv"], self.files)
         self.assertEqual(64, code)
         self.assertIn("usage:", err.getvalue())
 

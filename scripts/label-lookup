@@ -56,10 +56,10 @@ class Entry:
         self.history = ""
 
 
-def judgement_entries(root):
+def judgement_entries(files: Files, root):
     """Each row of the judgements file: its verdict, and its state, scope and reason beside the evidence."""
     out = []
-    for r in store.read_at(root):
+    for r in store.read_at(files, root):
         state = "" if r.state == "open" else f" {r.state}" + (f" ({r.scope})" if r.scope else "")
         verdict = r.verdict + state if state else r.verdict
         note = "; ".join(x for x in (r.reason and f"reason: {r.reason}", r.evidence, r.judged and f"judged {r.judged}") if x)
@@ -68,11 +68,11 @@ def judgement_entries(root):
 
 
 def all_entries(root: str, files: Files) -> "List[Entry]":
-    out = judgement_entries(root)
-    expected = os.path.join(root, takes.EXPECTED_MATCHES)
+    out = judgement_entries(files, root)
+    expected = files.path(root, takes.EXPECTED_MATCHES)
     if files.exists(expected):
         out += [Entry(takes.EXPECTED_MATCHES, n, cc, venue, title, [film], "expected take", note)
-                for n, cc, venue, title, film, note in takes.expected_matches(expected)]
+                for n, cc, venue, title, film, note in takes.expected_matches(files, expected)]
     return out
 
 
@@ -160,10 +160,10 @@ class ProdMirror:
         return fresh, [(v, single_spaced(t), f"tmdb:{film}" if film is not None else "none", b) for v, t, film, b in takes]
 
 
-def lookup(root, cc, files, git, mirror, title=None, venue=None, film=None, prod=True, history=True):
+def lookup(root, cc, files: Files, git, mirror, title=None, venue=None, film=None, prod=True, history=True):
     out = []
     entries = [e for e in all_entries(root, files) if e.cc == cc]
-    judgements = store.read_at(root)
+    judgements = store.read_at(files, root)
     labels = store.labels_by_country(judgements)[cc]
 
     exact = None
@@ -257,7 +257,7 @@ def lookup(root, cc, files, git, mirror, title=None, venue=None, film=None, prod
             if not takes and not fresh.startswith("no mirror"):
                 out.append("  none: prod's identity traces hold no such listing")
 
-    found = lint.lint(root)
+    found = lint.lint(files, root)
     keys_titles = {lint.key(t) for t in titles}
 
     def touches(k):

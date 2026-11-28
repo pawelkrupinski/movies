@@ -18,6 +18,7 @@ The takes check reads the first and judges each move by the judgements; the slic
 """
 
 from identity_judgements import lines
+from tool_files import Files  # noqa: E402  (identity_judgements put scripts/lib on the path)
 
 EXPECTED_MATCHES = "test/resources/fixtures/identity-unmatched/expected-matches.tsv"
 
@@ -32,11 +33,11 @@ class Record(dict):
         self.line = line
 
 
-def table(path):
+def table(files: Files, path):
     """[Record] of a header-led tab-separated file, in file order: blank lines, "#" comments and a repeated header line
     skipped."""
     header, out = None, []
-    for n, cols in lines(path):
+    for n, cols in lines(files, path):
         if header is None:
             header = cols
         elif cols[0] != header[0]:
@@ -44,10 +45,10 @@ def table(path):
     return out
 
 
-def expected_matches(path):
+def expected_matches(files: Files, path):
     """[(line, country, venue, rawTitle, film, title)]: expected-matches.tsv's expected takes, a row naming no film
     skipped."""
-    return [(r.line, r["country"], r["venue"], r["rawTitle"], r["film"], r.get("title", "")) for r in table(path)
+    return [(r.line, r["country"], r["venue"], r["rawTitle"], r["film"], r.get("title", "")) for r in table(files, path)
             if "film" in r]
 
 

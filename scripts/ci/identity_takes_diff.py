@@ -53,11 +53,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from identity_judgements import judgements_of, label_of, normalise  # noqa: E402
 from identity_takes import moved, table  # noqa: E402
 from report_fields import cell  # noqa: E402
+from tool_files import Files  # noqa: E402  (identity_judgements put scripts/lib on the path)
 
 
-def load(path):
-    with open(path, encoding="utf-8") as f:
-        return [json.loads(line) for line in f if line.strip()]
+def load(files: Files, path):
+    return [json.loads(line) for line in files.read_text(path).splitlines() if line.strip()]
 
 
 def take(row):
@@ -69,19 +69,18 @@ def ref(film):
     return "none" if film is None else f"tmdb:{film}"
 
 
-def ratchet_ran(path):
+def ratchet_ran(files: Files, path):
     """Whether a ratchet wrote this ratchet-takes.tsv: it writes its header whole with every row at once, so the header
     alone is a ratchet that ran and took nothing -- a row scoped to Spain, whose capture takes none -- and an empty file
     one that never wrote it."""
-    with open(path, encoding="utf-8") as f:
-        return f.readline().startswith("status\t")
+    return files.read_text(path).startswith("status\t")
 
 
-def ratchet_rows(path, cc):
+def ratchet_rows(files: Files, path, cc):
     """{(venue, rawTitle): row} of the takes a ratchet-takes.tsv holds for `cc` -- every status but LOST (an expected take
     now taking none) carries the film the listing takes; a TMDB id only, as the model's decisions carry."""
     out = {}
-    for cols in table(path):
+    for cols in table(files, path):
         if cols.get("country") != cc or cols.get("status") == "LOST" or not cols.get("film", "").startswith("tmdb:"):
             continue
         out[(cols["venue"], cols["rawTitle"])] = {
@@ -91,9 +90,9 @@ def ratchet_rows(path, cc):
     return out
 
 
-def final_sides(base_path, head_path, cc):
+def final_sides(files: Files, base_path, head_path, cc):
     """The base's and the head's final takes, each listing on both sides: absent from one took no film there."""
-    base, head = ratchet_rows(base_path, cc), ratchet_rows(head_path, cc)
+    base, head = ratchet_rows(files, base_path, cc), ratchet_rows(files, head_path, cc)
     def side(rows, k):
         return rows.get(k) or {"key": f"{k[0]}|{k[1]}", "venue": k[0], "rawTitle": k[1], "film": None, "filmTitle": None,
                                "basis": "none", "explanation": ["takes no film"], "blocker": "no film"}
@@ -284,7 +283,7 @@ def render(cc, moves, unpaired, base_name, head_name, listings, what="identity t
     return "\n".join(text), "\n".join(md) + "\n", failing
 
 
-def main(argv=None):
+def main(argv, files: Files):
     p = argparse.ArgumentParser()
     p.add_argument("cc")
     p.add_argument("base")
@@ -298,17 +297,17 @@ def main(argv=None):
     # Exit 2 for anything that is not a verdict -- an unreadable file, a row without its fields -- so it can never read as
     # exit 1's "the code moved a take".
     try:
-        base, head = final_sides(a.base, a.head, a.cc) if a.final else (load(a.base), load(a.head))
+        base, head = final_sides(files, a.base, a.head, a.cc) if a.final else (load(files, a.base), load(files, a.head))
         # The final takes list only listings some side took a film for: a country whose captured clusters take none on
         # either side (Spain's on 10-14) has no move to judge -- a verdict, provided both ratchets wrote takes at all.
-        if a.final and not base and not head and ratchet_ran(a.base) and ratchet_ran(a.head):
+        if a.final and not base and not head and ratchet_ran(files, a.base) and ratchet_ran(files, a.head):
             print(f"identity final takes ({a.cc}): the capture holds no taken listing on either side -- no move")
             return 0
         if not base or not head:
             print(f"identity takes ({a.cc}): an empty side (base {len(base)}, head {len(head)} listings) -- nothing resolved",
                   file=sys.stderr)
             return 2
-        labels, accepted, baseline = judgements_of(a.judgements, a.cc)
+        labels, accepted, baseline = judgements_of(files, a.judgements, a.cc)
         pairs, unpaired, heads_alone = pair(base, head)
         moves = moves_of(a.cc, pairs, labels, accepted)
         # the final takes carry no suspect signals: the model's decisions are where a suspect is judged
@@ -323,10 +322,9 @@ def main(argv=None):
         if m["judge"] and m["accepted"]:
             print(f"::warning::identity takes ({a.cc}): gained {m['venue']} | {m['rawTitle']} -> {m['new']} needs judgement")
     if a.summary:
-        with open(a.summary, "a", encoding="utf-8") as f:
-            f.write(md)
+        files.write_text(a.summary, files.read_text_or(a.summary, "") + md)
     return 1 if failing or (suspects and suspects["new"]) else 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(None, Files.here()))

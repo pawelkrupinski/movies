@@ -35,6 +35,7 @@ from poster_eval_dataset import build, dataset, load, save  # noqa: F401  (build
 from poster_eval_images import Images, TmdbLists, chosen  # noqa: F401  (chosen: ditto)
 from poster_eval_report import coverage, labels, report
 from poster_eval_vote import Result, run_variant
+from tool_files import Files  # noqa: E402
 from identity_judgements import COLUMNS as Columns, read as read_judgements  # noqa: E402,F401  (the names the tests import)
 
 __all__ = ["Baseline", "Columns", "Images", "TmdbLists", "build", "chosen", "coverage", "labels", "load", "main", "read_judgements",
@@ -76,7 +77,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     os.makedirs(args.cache, exist_ok=True)
     started = time.time()
     meta, arrays = dataset(args.cache, countries, args.refresh)
-    rows = read_judgements(args.judgements)
+    rows = read_judgements(Files.here(), args.judgements)
     if args.command == "coverage":
         coverage(meta, rows)
     else:

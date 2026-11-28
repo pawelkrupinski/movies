@@ -44,17 +44,18 @@ import gzip
 import json
 import os
 import re
-import subprocess
 import sys
-import tempfile
 import unicodedata
 from collections import defaultdict
-from typing import Any, Dict, Iterable, List, Set, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Set, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_judgements as j  # noqa: E402  (the one reader of the judgements, shared with the takes check)
 import identity_takes  # noqa: E402  (the one reader of the take files)
 from identity_judgements import label_of, normalise  # noqa: E402
+import machine  # noqa: E402  (identity_judgements put scripts/lib on the path)
+import tool_process  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 JUDGEMENTS = j.PATH
 EXPECTED_MATCHES = identity_takes.EXPECTED_MATCHES
@@ -73,9 +74,9 @@ def key(title):
     return "".join(ch for ch in folded.lower() if ch.isalnum() and not unicodedata.combining(ch))
 
 
-def store_findings(root, judged):
+def store_findings(files: Files, root, judged):
     blank = [(("store", "blank", str(n)), f"{JUDGEMENTS}:{n}: a blank line -- drop it (the file is rewritten byte for byte)")
-             for n in j.blank_lines(os.path.join(root, JUDGEMENTS))]
+             for n in j.blank_lines(files, files.path(root, JUDGEMENTS))]
     return blank + [(("store", r.country, r.venue, normalise(r.rawTitle), r.film), m) for r, m in j.problems(judged)]
 
 
@@ -156,43 +157,41 @@ def hard_line_finding(cc: str, m: "re.Match[str]", wrong: Venues, right: Venues)
              f"-- regenerate the file")]
 
 
-def hard_file_findings(cc: str, path: str, wrong: Venues, right: Venues) -> List[Finding]:
+def hard_file_findings(files: Files, cc: str, path: str, wrong: Venues, right: Venues) -> List[Finding]:
     out: List[Finding] = []
-    with open(path, encoding="utf-8") as f:
-        for number, line in enumerate(f, 1):
-            m = HARD_LINE.match(line)
-            if m:
-                out += hard_line_finding(cc, m, wrong, right)
-            elif line.strip() and not line.startswith("#") and "tmdb=—" not in line:
-                out.append((("expected", cc, "hard-clusters", "unparseable", str(number)),
-                            f"expected-hard-clusters-{cc}.txt line {number} matches no known shape, so it was not "
-                            f"checked against the judgements: {line.strip()[:80]}"))
+    for number, line in enumerate(files.read_text(path).splitlines(), 1):
+        m = HARD_LINE.match(line)
+        if m:
+            out += hard_line_finding(cc, m, wrong, right)
+        elif line.strip() and not line.startswith("#") and "tmdb=—" not in line:
+            out.append((("expected", cc, "hard-clusters", "unparseable", str(number)),
+                        f"expected-hard-clusters-{cc}.txt line {number} matches no known shape, so it was not "
+                        f"checked against the judgements: {line.strip()[:80]}"))
     return out
 
 
-def hard_cluster_findings(root: str, judged: Iterable[Any]) -> List[Finding]:
+def hard_cluster_findings(files: Files, root: str, judged: Iterable[Any]) -> List[Finding]:
     """The hard-cluster expectations that take a film the judgements call wrong for the billing at one of its cinemas.
     The projection withdraws every such take (TakeJudgements.withdraw, 176074559) -- its venue's or every venue's wrong,
     unless its venue's calls the film right -- so HardClusterConvergenceIntegrationSpec cannot come out so: the file is
     stale (Main #2600), and no known-wrong row can let it stand. A file that is gone while its siblings stay, or a line
     of no known shape, is a finding too: the check would pass over it."""
     wrong, right = judged_venues(judged)
-    paths = {cc: os.path.join(root, HARD_CLUSTERS.format(cc=cc)) for cc in COUNTRIES}
-    present = any(os.path.exists(path) for path in paths.values())
+    paths = {cc: files.path(root, HARD_CLUSTERS.format(cc=cc)) for cc in COUNTRIES}
+    present = any(files.exists(path) for path in paths.values())
     out: List[Finding] = []
     for cc, path in paths.items():
-        if os.path.exists(path):
-            out += hard_file_findings(cc, path, wrong, right)
+        if files.exists(path):
+            out += hard_file_findings(files, cc, path, wrong, right)
         elif present:
             out.append((("expected", cc, "hard-clusters", "missing"), f"{HARD_CLUSTERS.format(cc=cc)} is missing"))
     return out
 
 
-def served_findings(served_paths, labels, listed, before=None):
+def served_findings(files: Files, served_paths, labels, listed, before=None):
     out = {}
     for path in served_paths:
-        with gzip.open(path, "rt", encoding="utf-8") as f:
-            capture = json.load(f)
+        capture = json.loads(gzip.decompress(files.read_bytes(path)).decode("utf-8"))
         cc = capture["country"]
         for decision in capture["decisions"]:
             if not decision.get("film"):
@@ -234,17 +233,16 @@ def at_head(found, replay):
     return out
 
 
-def slice_replay(command):
+def slice_replay(files: Files, runner: tool_process.Runner, env: Mapping[str, str], command: str):
     """A replay by scripts/identity-slice at the checked-out code: one --batch per country, its takes read off --out."""
     def replay(cc, listings):
-        with tempfile.TemporaryDirectory() as d:
-            batch, takes = os.path.join(d, "batch.tsv"), os.path.join(d, "takes.tsv")
-            with open(batch, "w", encoding="utf-8") as f:
-                f.writelines(f"{venue}\t{title}\n" for venue, title in listings)
-            r = subprocess.run([command, cc, "--batch", batch, "--out", takes], capture_output=True, text=True, timeout=1800)
-            if r.returncode not in (0, 3) or not os.path.exists(takes):
-                raise RuntimeError(f"identity-slice exited {r.returncode}: {(r.stderr or '').strip().splitlines()[-1:] or ''}")
-            return {(row["venue"], normalise(row["rawTitle"])): row["film"] for row in identity_takes.table(takes)}
+        with files.scratch("slice-replay-") as d:
+            batch, takes = files.path(d, "batch.tsv"), files.path(d, "takes.tsv")
+            files.write_text(batch, "".join(f"{venue}\t{title}\n" for venue, title in listings))
+            r = runner.capture(tool_process.Command([command, cc, "--batch", batch, "--out", takes], env, timeout=1800))
+            if r.code not in (0, 3) or not files.exists(takes):
+                raise RuntimeError(f"identity-slice exited {r.code}: {(r.stderr or '').strip().splitlines()[-1:] or ''}")
+            return {(row["venue"], normalise(row["rawTitle"])): row["film"] for row in identity_takes.table(files, takes)}
     return replay
 
 
@@ -258,20 +256,20 @@ def notices(judged):
             for r in judged if r.state == "accepted-right-loss"]
 
 
-def lint(root, served_paths=(), before=None, replay=None):
+def lint(files: Files, root, served_paths=(), before=None, replay=None):
     """Every finding (key, message). `before`: the judgements file the push started from; `replay` (with it): the newly
     wrong served takes judged at the pushed code ([[at_head]])."""
-    judged = j.read_at(root)
+    judged = j.read_at(files, root)
     labels = j.labels_by_country(judged)
     listed = j.tolerated(judged, "served") | j.tolerated(judged, "capture")
-    return (store_findings(root, judged) + accepted_findings(judged, labels) + scattered_findings(judged)
+    return (store_findings(files, root, judged) + accepted_findings(judged, labels) + scattered_findings(judged)
             + repeated_findings(judged) + tolerated_right_findings(judged, labels)
-            + expected_match_findings(identity_takes.expected_matches(os.path.join(root, EXPECTED_MATCHES)), labels) + hard_cluster_findings(root, judged)
-            + served(served_findings(served_paths, labels, listed, j.labels_by_country(j.read(before)) if before else None),
+            + expected_match_findings(identity_takes.expected_matches(files, files.path(root, EXPECTED_MATCHES)), labels) + hard_cluster_findings(files, root, judged)
+            + served(served_findings(files, served_paths, labels, listed, j.labels_by_country(j.read(files, before)) if before else None),
                      replay if before else None))
 
 
-def main(argv=None):
+def main(argv, files: Files):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", default=".")
     ap.add_argument("--served", nargs="*", default=[])
@@ -279,10 +277,12 @@ def main(argv=None):
     ap.add_argument("--replay-head", action="store_true",
                     help="replay the newly-wrong served takes at the checked-out code (scripts/identity-slice, or $IDENTITY_SLICE)")
     a = ap.parse_args(argv)
-    replay = slice_replay(os.environ.get("IDENTITY_SLICE", os.path.join(a.root, "scripts/identity-slice"))) if a.replay_head else None
+    env = machine.environment()
+    replay = (slice_replay(files, tool_process.SubprocessRunner(), env, env.get("IDENTITY_SLICE", os.path.join(a.root, "scripts/identity-slice")))
+              if a.replay_head else None)
     try:
-        findings = lint(a.root, a.served, a.before, replay)
-        named = notices(j.read_at(a.root))
+        findings = lint(files, a.root, a.served, a.before, replay)
+        named = notices(j.read_at(files, a.root))
     except (OSError, ValueError, KeyError) as e:
         print(f"identity judgements: unreadable input: {e}", file=sys.stderr)
         return 2
@@ -298,4 +298,4 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(None, Files.here()))

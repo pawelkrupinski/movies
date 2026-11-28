@@ -12,7 +12,9 @@ import unittest
 from contextlib import redirect_stdout
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import identity_what_if as w  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 ACCEPTANCE = """package services.identity
 
@@ -235,16 +237,12 @@ class SelectAndDiffTest(unittest.TestCase):
         self.assertEqual(w.select(self.BASE, ["refused:sole-work:*"])[0], ["D|Obcy"])
 
     def judgements(self):
-        tmp = tempfile.NamedTemporaryFile("w", suffix=".tsv", delete=False, encoding="utf-8")
-        tmp.write("country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence\n")
-        tmp.write(judged("*", "Hen", "tmdb:1", "right"))
-        tmp.write(judged("*", "Lalka", "tmdb:6", "wrong"))
-        tmp.write(judged("*", "Lalka", "tmdb:5", "right"))
-        tmp.write(judged("*", "Obcy", "tmdb:7", "right"))
-        tmp.close()
-        self.addCleanup(os.unlink, tmp.name)
+        files = Files.in_memory()
+        files.write_text("j.tsv", "country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence\n"
+                         + judged("*", "Hen", "tmdb:1", "right") + judged("*", "Lalka", "tmdb:6", "wrong")
+                         + judged("*", "Lalka", "tmdb:5", "right") + judged("*", "Obcy", "tmdb:7", "right"))
         from identity_judgements import read
-        return read(tmp.name)
+        return read(files, "j.tsv")
 
     def test_the_diff_buckets_as_the_measure_and_reads_the_base_where_the_head_did_not_resolve(self):
         head = [row("A|Hen", "A|Hen", "none"), row("B|Hen", "A|Hen", "tmdb:1"), row("C|Lalka", "C|Lalka", "tmdb:6"),

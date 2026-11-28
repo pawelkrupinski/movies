@@ -4,11 +4,11 @@
 import json
 import os
 import sys
-import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_takes_diff as d  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 
 def judged(cc, venue, title, film, verdict, state="open", reason=""):
@@ -26,23 +26,25 @@ def row(venue, title, film, key=None, title_of=None, basis="OwnMatch", why="titl
 
 class TakesDiffTest(unittest.TestCase):
     def setUp(self):
-        self.dir = tempfile.mkdtemp()
+        self.files = Files.in_memory()
+        self.dir = self.files.path("run")
 
     def write(self, name, lines):
-        path = os.path.join(self.dir, name)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("".join(l if isinstance(l, str) else json.dumps(l) + "\n" for l in lines))
+        path = self.files.path(self.dir, name)
+        self.files.write_text(path, "".join(l if isinstance(l, str) else json.dumps(l) + "\n" for l in lines))
         return path
+
+    def read(self, path):
+        return self.files.read_text(path)
 
     def run_diff(self, base, head, labels=None, accepted=None, baseline=None, judgements=None):
         """The check over `base` and `head`, judged by identity-judgements.tsv rows built from the old files' lines:
         a label (cc, venue, title, film, verdict, note) is an open row, an accepted loss (cc, venue, title, film, none,
         note) the base film's row in state accepted-loss, a baseline line (cc, title, film, ...) an undecided row in scope
         `served` for every venue."""
-        summary = os.path.join(self.dir, "summary.md")
+        summary = self.files.path(self.dir, "summary.md")
         args = ["pl", self.write("base.jsonl", base), self.write("head.jsonl", head), "--summary", summary]
-        if os.path.exists(summary):
-            os.remove(summary)
+        self.files.remove(summary)
         if judgements is not None:
             args += ["--judgements", self.write("identity-judgements.tsv", [JUDGEMENTS_HEADER] + judgements)]
         elif labels is not None or accepted is not None or baseline is not None:
@@ -59,9 +61,8 @@ class TakesDiffTest(unittest.TestCase):
                 c = line.rstrip("\n").split("\t")
                 rows.setdefault((c[0], "*", c[1], c[2]), [c[0], "*", c[1], c[2], "undecided", "open", "served", "", "", "2026-10-14", ""])
             args += ["--judgements", self.write("identity-judgements.tsv", [JUDGEMENTS_HEADER] + ["\t".join(r) + "\n" for r in rows.values()])]
-        code = d.main(args)
-        with open(summary, encoding="utf-8") as f:
-            return code, f.read()
+        code = d.main(args, self.files)
+        return code, self.read(summary)
 
     BASE = [row("Helios", "Lalka", 501, title_of="Lalka (2026)"), row("Rialto", "Obcy", 502), row("Muza", "Diuna", None)]
 
@@ -177,12 +178,12 @@ class TakesDiffTest(unittest.TestCase):
 
     def test_unreadable_inputs_exit_2_never_1(self):
         base = self.write("b.jsonl", self.BASE)
-        self.assertEqual(2, d.main(["pl", base, base, "--judgements", os.path.join(self.dir, "missing.tsv")]))
+        self.assertEqual(2, d.main(["pl", base, base, "--judgements", self.files.path(self.dir, "missing.tsv")], self.files))
         broken = self.write("broken.jsonl", [{"key": "k", "venue": "Helios", "film": 1}])
-        self.assertEqual(2, d.main(["pl", base, broken]))
+        self.assertEqual(2, d.main(["pl", base, broken], self.files))
 
     def test_an_empty_side_is_an_error_not_a_pass(self):
-        self.assertEqual(2, d.main(["pl", self.write("b.jsonl", self.BASE), self.write("h.jsonl", [])]))
+        self.assertEqual(2, d.main(["pl", self.write("b.jsonl", self.BASE), self.write("h.jsonl", [])], self.files))
 
     # THE FINAL TAKES: the ratchet's takes over the capture, model and agreement stage both. 9c8170f5e's range dropped
     # 211 UK "CBeebies Panto 2026: Treasure Island" takes in the agreement stage with the model check at 0/0/0, and three
@@ -201,11 +202,10 @@ class TakesDiffTest(unittest.TestCase):
         judgements = self.write("identity-judgements.tsv", [JUDGEMENTS_HEADER,
                                                              judged("uk", "*", "CBeebies Panto 2026: Treasure Island", "tmdb:1710881", "wrong"),
                                                              judged("de", "Cinema Münster", "Transit", "tmdb:471853", "right")])
-        summary = os.path.join(self.dir, "s.md")
-        self.assertEqual(0, d.main(["uk", base, head, "--final", "--judgements", judgements, "--summary", summary]))
-        self.assertEqual(1, d.main(["de", base, head, "--final", "--judgements", judgements, "--summary", summary]))
-        with open(summary, encoding="utf-8") as f:
-            md = f.read()
+        summary = self.files.path(self.dir, "s.md")
+        self.assertEqual(0, d.main(["uk", base, head, "--final", "--judgements", judgements, "--summary", summary], self.files))
+        self.assertEqual(1, d.main(["de", base, head, "--final", "--judgements", judgements, "--summary", summary], self.files))
+        md = self.read(summary)
         self.assertIn("identity final takes (uk): 1 listings, base base vs head head on one capture -- lost 1", md)
         self.assertIn("| ✓ | lost | Central Cinema Barnstaple | CBeebies Panto 2026: Treasure Island |", md)
         self.assertIn("| ❌ | lost | Cinema Münster | Transit |", md)
@@ -215,25 +215,25 @@ class TakesDiffTest(unittest.TestCase):
         base = self.ratchet("b.tsv", ["LOST\tpl\tHelios\tLalka\ttmdb:1\tLalka\tnone\t\ttmdb:1\t\n",
                                        "NEW\tpl\tMuza\tObcy\timdb:tt1\tObcy\tAgreed\t\t\t\n"])
         head = self.write("h.tsv", [])
-        self.assertEqual(2, d.main(["pl", base, head, "--final"]))  # a head ratchet that wrote nothing: no verdict
+        self.assertEqual(2, d.main(["pl", base, head, "--final"], self.files))  # a head ratchet that wrote nothing: no verdict
         base = self.ratchet("b.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
         head = self.ratchet("h.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
-        self.assertEqual(0, d.main(["pl", base, head, "--final"]))
+        self.assertEqual(0, d.main(["pl", base, head, "--final"], self.files))
 
 
     # Spain's capture on 10-14: both ratchets ran (other countries' rows), neither took a Spanish listing -- no move.
     def test_a_country_neither_ratchet_took_a_listing_for_passes_when_both_ran(self):
         base = self.ratchet("b.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
         head = self.ratchet("h.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
-        self.assertEqual(0, d.main(["es", base, head, "--final"]))
+        self.assertEqual(0, d.main(["es", base, head, "--final"], self.files))
         never = self.write("n.tsv", [])
-        self.assertEqual(2, d.main(["es", never, never, "--final"]))
+        self.assertEqual(2, d.main(["es", never, never, "--final"], self.files))
 
     # A ratchet scoped to the row's country (--countries es) writes its header and no row when the capture takes nothing:
     # it ran, and there is no move.
     def test_a_ratchet_scoped_to_a_country_that_took_nothing_passes(self):
         scoped = self.ratchet("s.tsv", [])
-        self.assertEqual(0, d.main(["es", scoped, scoped, "--final"]))
+        self.assertEqual(0, d.main(["es", scoped, scoped, "--final"], self.files))
 
     # SUSPECT TAKES, scoped to the code. Recording 38625654132 (2026-10-14) failed PL's whole-corpus audit on suspects it
     # brought itself -- Kino Kosmos' "KF Ambasada: Diabły" taken as Diabły (1971) among them -- and that red blocked every
@@ -294,10 +294,9 @@ class TakesDiffTest(unittest.TestCase):
 
     def test_the_final_takes_judge_no_suspects(self):
         base = self.ratchet("b.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
-        summary = os.path.join(self.dir, "f.md")
-        self.assertEqual(0, d.main(["pl", base, base, "--final", "--summary", summary]))
-        with open(summary, encoding="utf-8") as f:
-            self.assertNotIn("Suspect takes", f.read())
+        summary = self.files.path(self.dir, "f.md")
+        self.assertEqual(0, d.main(["pl", base, base, "--final", "--summary", summary], self.files))
+        self.assertNotIn("Suspect takes", self.read(summary))
 
 
 if __name__ == "__main__":

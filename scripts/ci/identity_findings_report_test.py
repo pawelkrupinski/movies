@@ -10,6 +10,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_findings_report as r  # noqa: E402
+from tool_files import Files  # noqa: E402
 from gh_bounded_test import hung_gh  # noqa: E402
 
 # What recording 38625654132 (2026-10-14) brought, which turned PL, UK and DE red with no commit touching any of it.
@@ -57,38 +58,35 @@ class FakeGitHub:
 
 class FindingsReportTest(unittest.TestCase):
     def setUp(self):
-        self.dir = tempfile.mkdtemp()
+        self.files = Files.in_memory()
+        self.dir = self.files.path("run")
         self.gh = FakeGitHub()
         self.labels = self.file("labels.tsv", ["country\tvenue\trawTitle\tfilm\tverdict\tnote\n"])
         self.baseline = self.file("baseline.tsv", ["country\trawTitle\tfilm\ttitle\treasons\n"])
 
     def file(self, name, lines):
-        path = os.path.join(self.dir, name)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("".join(lines))
+        path = self.files.path(self.dir, name)
+        self.files.write_text(path, "".join(lines))
         return path
 
     def recording(self, name, files):
         for (cc, file), lines in files.items():
             self.file(os.path.join(name, cc, file), lines)
-        return os.path.join(self.dir, name)
+        return self.files.path(self.dir, name)
 
     def judgements(self):
         """identity-judgements.tsv rows of this test's labels (open rows) and suspect baseline (undecided, scope served)."""
         rows = {}
-        with open(self.labels, encoding="utf-8") as f:
-            for c in (line.rstrip("\n").split("\t") for line in f.readlines()[1:] if line.strip()):
-                rows[(c[0], c[1], c[2], c[3])] = [c[0], c[1], c[2], c[3], c[4], "open", "", "", "", "2026-10-14", ""]
-        with open(self.baseline, encoding="utf-8") as f:
-            for c in (line.rstrip("\n").split("\t") for line in f.readlines()[1:] if line.strip()):
-                rows.setdefault((c[0], "*", c[1], c[2]), [c[0], "*", c[1], c[2], "undecided", "open", "served", "", "", "2026-10-14", ""])
+        for c in (line.split("\t") for line in self.files.read_text(self.labels).splitlines()[1:] if line.strip()):
+            rows[(c[0], c[1], c[2], c[3])] = [c[0], c[1], c[2], c[3], c[4], "open", "", "", "", "2026-10-14", ""]
+        for c in (line.split("\t") for line in self.files.read_text(self.baseline).splitlines()[1:] if line.strip()):
+            rows.setdefault((c[0], "*", c[1], c[2]), [c[0], "*", c[1], c[2], "undecided", "open", "served", "", "", "2026-10-14", ""])
         return self.file("identity-judgements.tsv", ["country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence\n"] +
                          ["\t".join(row) + "\n" for row in rows.values()])
 
     def run_report(self, diagnostics, today, countries="pl,uk,de"):
         return r.main(["--run", "38625654132", "--countries", countries, "--judgements", self.judgements(),
-                       "--today", today, "--diagnostics", diagnostics, "--repo", "o/r", "--assignee", "owner"], run_gh=self.gh)
+                       "--today", today, "--diagnostics", diagnostics, "--repo", "o/r", "--assignee", "owner"], self.gh, self.files)
 
     RED = {("pl", "pl-suspect-unjudged.txt"): [DIABLY, NOC],
            ("pl", "corpus-shape-recorded-pl-SearchQueryMarkers.txt"): [],
@@ -192,10 +190,10 @@ class FindingsReportTest(unittest.TestCase):
     def test_no_run_named_reports_the_newest_completed_recording_on_main_and_none_is_an_error(self):
         red = self.recording("a", self.RED)
         args = ["--countries", "pl", "--judgements", self.judgements(), "--today", "2026-10-14", "--diagnostics", red, "--repo", "o/r"]
-        self.assertEqual(2, r.main(args, run_gh=self.gh))
+        self.assertEqual(2, r.main(args, self.gh, self.files))
         self.assertEqual({}, self.gh.issues)
         self.gh.recordings = [38625654132]
-        self.assertEqual(0, r.main(args, run_gh=self.gh))
+        self.assertEqual(0, r.main(args, self.gh, self.files))
         self.assertIn("actions/runs/38625654132", self.gh.body("pl"))
         listed = next(c for c in self.gh.calls if c[:2] == ["run", "list"])
         for flag in (["--workflow", "Record scrape fixtures"], ["--branch", "main"], ["--status", "completed"], ["--limit", "1"]):

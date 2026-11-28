@@ -11,12 +11,13 @@ import os
 import sys
 from typing import Dict, Optional
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci"))
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.abspath(__file__)), part) for part in ("ci", "lib")]
 from identity_takes import OUTCOMES, outcome, table  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 
-def read(path):
-    return {r["key"]: r for r in table(path)}
+def read(files: Files, path):
+    return {r["key"]: r for r in table(files, path)}
 
 
 def classify(a, b):
@@ -41,11 +42,11 @@ def print_move(a: Optional[Dict[str, str]], b: Optional[Dict[str, str]]):
         print(f"      {why[:220]}")
 
 
-def main(argv):
+def main(argv, files: Files):
     if len(argv) != 4:
         print("usage: identity_slice_diff.py BASE.tsv HEAD.tsv BASE_NAME HEAD_NAME", file=sys.stderr)
         return 64
-    base, head, base_name, head_name = read(argv[0]), read(argv[1]), argv[2], argv[3]
+    base, head, base_name, head_name = read(files, argv[0]), read(files, argv[1]), argv[2], argv[3]
     keys = sorted(set(base) | set(head))
     moves = [(k, base.get(k), head.get(k)) for k in keys
              if (base.get(k) or {}).get("film") != (head.get(k) or {}).get("film")]
@@ -64,4 +65,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main(sys.argv[1:], Files.here()))

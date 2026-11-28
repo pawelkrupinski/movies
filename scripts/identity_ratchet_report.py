@@ -19,6 +19,7 @@ Downloads are kept in $KINOWO_IDENTITY_CACHE/ratchet/<run>/ (default ~/.cache/ki
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import re
@@ -33,6 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 import machine  # noqa: E402
 import identity_ratchet_findings as findings  # noqa: E402
+import tool_files  # noqa: E402
 import tool_github  # noqa: E402
 import tool_process  # noqa: E402
 
@@ -112,6 +114,7 @@ def options(argv: List[str]) -> Options:
 class Sources:
     """Where findings come from: a capture run (its artifact, else its pull-request job's log), cached under `cache`."""
     github: tool_github.GitHub
+    files: tool_files.Files
     repo: str
     cache: str
     timeout: int
@@ -132,9 +135,9 @@ class Sources:
 
     def of(self, source: str) -> List[Row]:
         if source == "--local":
-            return findings.read_tsv(LOCAL)
-        if os.path.isfile(source):
-            return findings.read_tsv(source)
+            return findings.read_tsv(self.files, LOCAL)
+        if self.files.is_file(source):
+            return findings.read_tsv(self.files, source)
         if re.fullmatch(r"\d{6,}", source):
             return self.of_run(source)
         if re.fullmatch(r"\d{1,5}", source):
@@ -152,19 +155,20 @@ class Sources:
         """The run's findings, cached: its artifact, else its pull-request job's log."""
         folder = os.path.join(self.cache, "ratchet", run)
         cached = os.path.join(folder, "ratchet-takes.tsv")
-        if os.path.exists(cached):
-            return findings.read_tsv(cached)
-        os.makedirs(folder, exist_ok=True)
+        if self.files.exists(cached):
+            return findings.read_tsv(self.files, cached)
+        self.files.make_directories(folder)
         done = self.download(run, folder, cached)
-        if done.code == 0 and os.path.exists(cached):
-            return findings.read_tsv(cached)
+        if done.code == 0 and self.files.exists(cached):
+            return findings.read_tsv(self.files, cached)
         # only an artifact gh says is not there sends the read to the log: a failed download is not an absent artifact
         if done.code != 0 and not ABSENT.search(done.stderr):
             raise Failed(f"[identity-ratchet-report] could not download run {run}'s identity-ratchet artifact: "
                          f"{done.stderr.strip() or f'exit {done.code}'}")
         rows = self.of_log(run)
-        with open(cached, "w", encoding="utf-8") as f:
-            findings.write_tsv(rows, f)
+        out = io.StringIO()
+        findings.write_tsv(rows, out)
+        self.files.write_text(cached, out.getvalue())
         return rows
 
     def download(self, run: str, folder: str, cached: str) -> tool_process.Captured:
@@ -189,8 +193,8 @@ class Sources:
         return findings.parse_log(self.read("run", "view", "-R", self.repo, "--job", str(job["databaseId"]), "--log"))
 
 
-def sources(env: Mapping[str, str]) -> Sources:
-    return Sources(tool_github.GitHub(tool_process.SubprocessRunner(), env),
+def sources(env: Mapping[str, str], files: tool_files.Files) -> Sources:
+    return Sources(tool_github.GitHub(tool_process.SubprocessRunner(), env), files,
                    env.get("KINOWO_REPO", "pawelkrupinski/movies"),
                    env.get("KINOWO_IDENTITY_CACHE", os.path.expanduser("~/.cache/kinowo-identity")),
                    int(env.get("KINOWO_IDENTITY_DOWNLOAD_TIMEOUT", "1800")))
@@ -216,7 +220,7 @@ def main(argv: List[str]) -> int:
         return 0 if argv else 2
     try:
         o = options(argv)
-        report(sources(machine.environment()).of(o.source), o)
+        report(sources(machine.environment(), tool_files.Files.here()).of(o.source), o)
     except Usage as e:
         print(e, file=sys.stderr)
         return 2

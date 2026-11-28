@@ -34,8 +34,12 @@ The lint (identity_judgements_lint.py) checks the file's shape with `problems`.
 import gzip
 import os
 import re
+import sys
 from collections import defaultdict
-from typing import List
+from typing import Dict, List, Sequence, Tuple
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+from tool_files import Files  # noqa: E402
 
 PATH = "test/resources/fixtures/identity-judgements.tsv"
 COLUMNS = ("country", "venue", "rawTitle", "film", "verdict", "state", "scope", "filmTitle", "reason", "judged", "evidence")
@@ -94,22 +98,21 @@ class Row:
         return [getattr(self, c) for c in COLUMNS]
 
 
-def lines(path):
+def lines(files: Files, path: str) -> List[Tuple[int, List[str]]]:
     """[(line number, fields)] of a tab-separated file -- this one, or any of the identity tools' others
     (identity_takes.table) -- its blank lines and "#" comments skipped; a ".gz" file is read through gzip."""
+    text_all = gzip.decompress(files.read_bytes(path)).decode("utf-8") if path.endswith(".gz") else files.read_text(path)
     out = []
-    with (gzip.open(path, "rt", encoding="utf-8") if path.endswith(".gz") else open(path, encoding="utf-8")) as f:
-        for n, line in enumerate(f, 1):
-            text = line.rstrip("\n")
-            if text.strip() and not text.startswith("#"):
-                out.append((n, text.split("\t")))
+    for n, line in enumerate(text_all.splitlines(), 1):
+        if line.strip() and not line.startswith("#"):
+            out.append((n, line.split("\t")))
     return out
 
 
-def read(path: str) -> List["Row"]:
+def read(files: Files, path: str) -> List["Row"]:
     """Every row, in file order. Raises ValueError on a malformed line."""
     out = []
-    for n, cols in lines(path):
+    for n, cols in lines(files, path):
         if cols[0] == "country":
             if tuple(cols) != COLUMNS:
                 raise ValueError(f"{path}:{n}: header is not {HEADER!r}")
@@ -121,33 +124,28 @@ def read(path: str) -> List["Row"]:
     return out
 
 
-def blank_lines(path):
+def blank_lines(files: Files, path: str) -> List[int]:
     """The numbers of `path`'s blank (or whitespace-only) lines: `read` skips them, but the file is rewritten byte for
     byte (LabelsExport, `write`), so one is a diff waiting to happen."""
-    with open(path, encoding="utf-8") as f:
-        return [n for n, line in enumerate(f, 1) if not line.strip()]
+    return [n for n, line in enumerate(files.read_text(path).splitlines(), 1) if not line.strip()]
 
 
-def read_at(root, rel=PATH):
-    return read(os.path.join(root, rel))
+def read_at(files: Files, root: str, rel: str = PATH) -> List["Row"]:
+    return read(files, files.path(root, rel))
 
 
-def write(path, rows, preamble=""):
+def write(files: Files, path: str, rows: Sequence["Row"], preamble: str = "") -> None:
     """The rows in their canonical order (country, raw title, film, venue), after `preamble`'s comment lines."""
     rows = sorted(rows, key=lambda r: (r.country, normalise(r.rawTitle), r.film, r.venue != "*", r.venue))
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(preamble)
-        f.write(HEADER + "\n")
-        for r in rows:
-            f.write("\t".join(r.cols()) + "\n")
+    body = "".join("\t".join(r.cols()) + "\n" for r in rows)
+    files.write_text(path, preamble + HEADER + "\n" + body)
 
 
-def edit_in_place(path, replaced, added=()):
+def edit_in_place(files: Files, path: str, replaced: Dict[int, "Row"], added: Sequence[Tuple[int, "Row"]] = ()) -> None:
     """Edits the file where it stands, not re-sorted (`write` would move most of a file kept in the order it was judged in):
     `replaced` is {line number: Row} for rows changed, `added` is [(line number, Row)] for rows inserted after that line.
     Every other line -- comments, blanks, order -- is kept byte for byte."""
-    with open(path, encoding="utf-8") as f:
-        text = f.read().split("\n")
+    text = files.read_text(path).split("\n")
     after = defaultdict(list)
     for n, row in added:
         after[n].append("\t".join(row.cols()))
@@ -155,8 +153,7 @@ def edit_in_place(path, replaced, added=()):
     for n, line in enumerate(text, 1):
         out.append("\t".join(replaced[n].cols()) if n in replaced else line)
         out.extend(after.get(n, []))
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("\n".join(out))
+    files.write_text(path, "\n".join(out))
 
 
 # ── the views every gate reads ───────────────────────────────────────────────────────────────
@@ -189,9 +186,9 @@ def country_views(rows, cc):
             {(title, film) for country, title, film in tolerated(rows, "served") if country == cc})
 
 
-def judgements_of(path, cc):
+def judgements_of(files: Files, path, cc):
     """country_views of the judgements at `path`; none when no path is given."""
-    return country_views(read(path), cc) if path else ({}, [], set())
+    return country_views(read(files, path), cc) if path else ({}, [], set())
 
 
 def own_or_every(table, venue, title, film):

@@ -39,6 +39,7 @@ from tool_process import group_alive  # noqa: E402
 import atomic  # noqa: E402
 import identity_measure as measure  # noqa: E402
 from identity_judgements import read as read_judgements  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 IDENTITY_KINDS = ("accept:", "veto:", "join:", "apart:")
 HARMFUL = ("right-lost", "right->wrong", "new-wrong")
@@ -394,7 +395,7 @@ def main(argv=None):
     repo = os.path.dirname(HERE)
     cache = machine.environment().get("KINOWO_IDENTITY_CACHE", os.path.expanduser("~/.cache/kinowo-identity"))
     recordings = {r: os.path.join(cache, "recordings", r, "pair", "test", "resources", "fixtures") for r in a.recordings.split(",")}
-    rows = read_judgements(a.judgements or os.path.join(repo, "test", "resources", "fixtures", "identity-judgements.tsv"))
+    rows = read_judgements(Files.here(), a.judgements or os.path.join(repo, "test", "resources", "fixtures", "identity-judgements.tsv"))
     os.makedirs(a.out, exist_ok=True)
     state_path = os.path.join(a.out, "state.json")
     state = json.load(open(state_path)) if os.path.exists(state_path) else {"round": 0, "settled": {}, "interactions": [], "pending": None}

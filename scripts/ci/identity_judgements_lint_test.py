@@ -12,10 +12,14 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_judgements as j  # noqa: E402
 import identity_judgements_lint as lint  # noqa: E402
+import machine  # noqa: E402  (identity_judgements put scripts/lib on the path)
+import tool_process  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 HEAD = j.HEADER + "\n"
 OTHER_HARD = {lint.HARD_CLUSTERS.format(cc=cc): "# none\n" for cc in lint.COUNTRIES}  # every country's file is read
 REPO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+ROOT = "/repo"
 
 
 def row(cc, venue, title, film, verdict, state="open", scope="", film_title="", reason="", judged="2026-10-14", evidence=""):
@@ -24,20 +28,19 @@ def row(cc, venue, title, film, verdict, state="open", scope="", film_title="", 
 
 class JudgementsLintTest(unittest.TestCase):
     def setUp(self):
-        self.root = tempfile.mkdtemp()
+        self.root = ROOT
+        self.disk = Files.in_memory()
         self.files = {lint.JUDGEMENTS: HEAD, lint.EXPECTED_MATCHES: "country\tvenue\trawTitle\tfilm\ttitle\n"}
 
     def write(self, rel, text):
-        path = os.path.join(self.root, rel)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(text)
+        path = self.disk.path(self.root, rel)
+        self.disk.write_text(path, text)
         return path
 
     def run_lint(self, extra=None, served=(), before=None):
         for rel, text in dict(self.files, **(extra or {})).items():
             self.write(rel, text)
-        return lint.lint(self.root, served, before)
+        return lint.lint(self.disk, self.root, served, before)
 
     def messages(self, judgements=None, **kw):
         extra = dict(kw.pop("extra", {}), **({lint.JUDGEMENTS: HEAD + "".join(judgements)} if judgements is not None else {}))
@@ -100,7 +103,7 @@ class JudgementsLintTest(unittest.TestCase):
         exception = row("pl", "Kino Powiśle", "OPERA-OTELLO", "tmdb:1703634", "right", "accepted-right-loss", reason="the 11-for-2 trade")
         self.assertEqual([], self.messages([row("uk", "Plaza", "Carmen", "tmdb:6", "wrong", "accepted-loss", reason="drop"), exception]))
         self.assertEqual(["accepted-right-loss: pl Kino Powiśle | OPERA-OTELLO: losing tmdb:1703634 accepted -- the 11-for-2 trade"],
-                         lint.notices(j.read_at(self.root)))
+                         lint.notices(j.read_at(self.disk, self.root)))
 
     def test_a_billing_judged_wrong_venue_by_venue_at_five_venues_fails_until_one_row_judges_every_venue(self):
         # 911d8f486: 81 of 82 Odeons' Bear Hunt double bill judged one by one; Odeon Luxe Peterborough was left out
@@ -178,9 +181,9 @@ class JudgementsLintTest(unittest.TestCase):
         self.assertTrue(any("scope hard-clusters is none of" in f for f in found), found)
 
     def served(self, decisions):
-        path = os.path.join(self.root, "de.json.gz")
-        with gzip.open(path, "wt", encoding="utf-8") as f:
-            json.dump({"country": "de", "decisions": decisions}, f)
+        path = self.disk.path(self.root, "de.json.gz")
+        self.disk.write_text(path, "")
+        self.disk.disk.write(path, gzip.compress(json.dumps({"country": "de", "decisions": decisions}).encode("utf-8")))
         return path
 
     def test_a_served_take_the_judgements_call_wrong_fails_unless_known_wrong(self):
@@ -218,7 +221,7 @@ class JudgementsLintTest(unittest.TestCase):
         before = self.write("before.tsv", HEAD)
         self.write(lint.JUDGEMENTS, HEAD + row("de", "Union", "Der Diplomat", "tmdb:1", "wrong") + row("de", "Thalia", "Blutgericht in Texas", "tmdb:2", "wrong"))
         self.write(lint.EXPECTED_MATCHES, self.files[lint.EXPECTED_MATCHES])
-        return [m for _, m in lint.lint(self.root, [cap], before, replay)]
+        return [m for _, m in lint.lint(self.disk, self.root, [cap], before, replay)]
 
     def test_a_take_the_pushed_code_cures_is_no_served_finding(self):
         # the push judges a take wrong AND cures it: the last leg still served it, the head does not
@@ -242,29 +245,33 @@ class JudgementsLintTest(unittest.TestCase):
                             for m in found))
 
     def test_the_slice_replay_reads_identity_slices_takes_at_the_checked_out_code(self):
-        # a stub identity-slice: the batch it is handed and the takes TSV it writes where --out says
-        stub = self.write("identity-slice", "#!/usr/bin/env bash\n"
-                          "while [ $# -gt 0 ]; do case $1 in --batch) b=$2;; --out) o=$2;; esac; shift; done\n"
-                          "cp \"$b\" \"$(dirname \"$o\")/batch-seen\"\n"
-                          "printf 'selector\\tkey\\tvenue\\trawTitle\\tfilm\\n' > \"$o\"\n"
-                          "printf 'k\\tUnion|Der Diplomat\\tUnion\\tDer Diplomat\\tnone\\n' >> \"$o\"\n")
-        os.chmod(stub, 0o755)
-        takes = lint.slice_replay(stub)("de", [("Union", "Der Diplomat")])
-        self.assertEqual({("Union", "Der Diplomat"): "none"}, takes)
+        # a stub identity-slice (a real executable: the process boundary is the behaviour): the batch it is handed and the
+        # takes TSV it writes where --out says
+        with tempfile.TemporaryDirectory() as directory:
+            stub = os.path.join(directory, "identity-slice")
+            with open(stub, "w", encoding="utf-8") as f:
+                f.write("#!/usr/bin/env bash\n"
+                        "while [ $# -gt 0 ]; do case $1 in --batch) b=$2;; --out) o=$2;; esac; shift; done\n"
+                        "cp \"$b\" \"$(dirname \"$o\")/batch-seen\"\n"
+                        "printf 'selector\\tkey\\tvenue\\trawTitle\\tfilm\\n' > \"$o\"\n"
+                        "printf 'k\\tUnion|Der Diplomat\\tUnion\\tDer Diplomat\\tnone\\n' >> \"$o\"\n")
+            os.chmod(stub, 0o755)
+            replay = lint.slice_replay(Files.here(), tool_process.SubprocessRunner(), machine.environment(), stub)
+            self.assertEqual({("Union", "Der Diplomat"): "none"}, replay("de", [("Union", "Der Diplomat")]))
 
     def test_the_main_exit_codes(self):
         for rel, text in self.files.items():
             self.write(rel, text)
-        self.assertEqual(0, lint.main(["--root", self.root]))
+        self.assertEqual(0, lint.main(["--root", self.root], self.disk))
         self.write(lint.JUDGEMENTS, HEAD + row("pl", "H", "L", "tmdb:1", "right") + row("pl", "H", "L", "tmdb:1", "wrong"))
-        self.assertEqual(1, lint.main(["--root", self.root]))
+        self.assertEqual(1, lint.main(["--root", self.root], self.disk))
         self.write(lint.JUDGEMENTS, "country\tvenue\trawTitle\tfilm\tverdict\tnote\n")
-        self.assertEqual(2, lint.main(["--root", self.root]))
-        os.remove(os.path.join(self.root, lint.JUDGEMENTS))
-        self.assertEqual(2, lint.main(["--root", self.root]))
+        self.assertEqual(2, lint.main(["--root", self.root], self.disk))
+        self.disk.remove(self.disk.path(self.root, lint.JUDGEMENTS))
+        self.assertEqual(2, lint.main(["--root", self.root], self.disk))
 
     def test_the_checked_in_judgements_are_consistent(self):
-        self.assertEqual([], [m for _, m in lint.lint(REPO)])
+        self.assertEqual([], [m for _, m in lint.lint(Files.here(), REPO)])
 
 
 if __name__ == "__main__":

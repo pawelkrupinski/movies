@@ -12,6 +12,7 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import countries_disagree as cd  # noqa: E402
+from tool_files import Files  # noqa: E402
 import identity_findings_report as report  # noqa: E402
 
 DAY = 86400000
@@ -85,7 +86,7 @@ def fixture(directory):
 class CountriesDisagreeTest(unittest.TestCase):
     def setUp(self):
         self.data, self.judgements = fixture(tempfile.mkdtemp())
-        self.found = cd.read_found(self.data, self.judgements)
+        self.found = cd.read_found(Files.here(), self.data, self.judgements)
 
     def test_lists_the_unjudged_disagreement_and_flags_the_wrong_side_only(self):
         self.assertEqual([(d["key"], d["action"]) for d in self.found],
@@ -114,8 +115,8 @@ class CountriesDisagreeTest(unittest.TestCase):
         with mock.patch.dict(os.environ, {"LOCAL_MIRROR_PORT": "28099"}), \
                 mock.patch.object(cd, "export", lambda mirror, data, countries: exported.append(mirror)), \
                 mock.patch("sys.stdout"), mock.patch("sys.stderr"):
-            self.assertEqual(cd.main(["--mirror", "mongodb://127.0.0.1:28017", "--data", self.data]), 64)
-            self.assertEqual(cd.main(["--mirror", "mongodb://127.0.0.1:28099", "--data", self.data]), 0)
+            self.assertEqual(cd.main(["--mirror", "mongodb://127.0.0.1:28017", "--data", self.data], Files.here()), 64)
+            self.assertEqual(cd.main(["--mirror", "mongodb://127.0.0.1:28099", "--data", self.data], Files.here()), 0)
         self.assertEqual(exported, ["mongodb://127.0.0.1:28099"])
 
 

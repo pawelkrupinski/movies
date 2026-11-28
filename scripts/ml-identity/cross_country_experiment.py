@@ -15,11 +15,13 @@ ROOT, DATA = sys.argv[1], sys.argv[2]
 sys.path.insert(0, os.path.join(ROOT, "scripts/ci"))
 import cross_country as X  # noqa: E402  (the one reading of the countries' takes side by side)
 import identity_judgements as J  # noqa: E402
+sys.path.insert(0, os.path.join(ROOT, "scripts/lib"))
+from tool_files import Files  # noqa: E402
 
 COUNTRIES = ["pl", "uk", "de", "es", "us"]
 title_key, overlap = X.title_key, X.overlap
 
-rows = J.read(os.path.join(ROOT, "test/resources/fixtures/identity-judgements.tsv"))
+rows = J.read(Files.here(), os.path.join(ROOT, "test/resources/fixtures/identity-judgements.tsv"))
 labels = J.labels_by_country(rows)
 films = X.read_films(DATA, COUNTRIES)
 listings = X.read_listings(DATA, COUNTRIES, films)  # one per trace, with the facts its billing states

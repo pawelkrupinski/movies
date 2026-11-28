@@ -92,7 +92,6 @@ cognitive	scripts/ci/gating_checks.py:main	24
 cognitive	scripts/ci/gating_checks.py:sync	13
 cognitive	scripts/ci/gating_checks.py:yaml_jobs	19
 cognitive	scripts/ci/harness_aa.py:main	11
-cognitive	scripts/ci/identity_findings_report.py:read_findings	21
 cognitive	scripts/ci/identity_findings_report.py:render_at	24
 cognitive	scripts/ci/identity_findings_report.py:report	16
 cognitive	scripts/ci/identity_impact.py:path_reach	12
@@ -180,7 +179,7 @@ cognitive	scripts/identity_what_if.py:Sources.callers	32
 cognitive	scripts/identity_what_if.py:attribute	32
 cognitive	scripts/identity_what_if.py:diff	13
 cognitive	scripts/identity_what_if.py:holder_at	14
-cognitive	scripts/identity_what_if.py:run_diff	26
+cognitive	scripts/identity_what_if.py:run_diff	25
 cognitive	scripts/ios-simulators:sweep	12
 cognitive	scripts/label-lookup:blame	15
 cognitive	scripts/label-lookup:lookup	100
@@ -288,7 +287,6 @@ cyclomatic	scripts/ci/gating_checks.py:sync	12
 cyclomatic	scripts/ci/gating_checks.py:yaml_jobs	14
 cyclomatic	scripts/ci/harness_aa.py:main	11
 cyclomatic	scripts/ci/identity_findings_report.py:main	11
-cyclomatic	scripts/ci/identity_findings_report.py:read_findings	13
 cyclomatic	scripts/ci/identity_findings_report.py:render_at	16
 cyclomatic	scripts/ci/identity_findings_report.py:report	14
 cyclomatic	scripts/ci/identity_impact.py:main	14
@@ -439,7 +437,7 @@ file-lines	infra/nix/files/nixos-auto-apply.py	1343
 file-lines	infra/nix/files/scheduled_dispatch.py	599
 file-lines	scripts/ci/commit_rules.py	594
 file-lines	scripts/ci/runner_scheduler.py	1245
-file-lines	scripts/identity_what_if.py	519
+file-lines	scripts/identity_what_if.py	518
 file-lines	scripts/listing_history.py	530
 file-lines	scripts/recording_diff.py	553
 copies	infra/bin/backtest-alerts	2
@@ -481,13 +479,13 @@ pyright	scripts/ci/fix_replay_exemptions.py	2
 pyright	scripts/ci/gating_checks.py	110
 pyright	scripts/ci/harness_aa.py	59
 pyright	scripts/ci/hotspots.py	40
-pyright	scripts/ci/identity_findings_report.py	291
+pyright	scripts/ci/identity_findings_report.py	273
 pyright	scripts/ci/identity_impact.py	257
-pyright	scripts/ci/identity_judgements.py	269
-pyright	scripts/ci/identity_judgements_lint.py	272
+pyright	scripts/ci/identity_judgements.py	214
+pyright	scripts/ci/identity_judgements_lint.py	267
 pyright	scripts/ci/identity_live_drift.py	65
 pyright	scripts/ci/identity_run_shards.py	25
-pyright	scripts/ci/identity_takes.py	37
+pyright	scripts/ci/identity_takes.py	29
 pyright	scripts/ci/identity_takes_diff.py	348
 pyright	scripts/ci/job_metrics.py	161
 pyright	scripts/ci/junit_failures.py	16
@@ -530,7 +528,7 @@ pyright	scripts/identity_slice_diff.py	52
 pyright	scripts/identity_stamp_carry.py	17
 pyright	scripts/identity_what_if.py	470
 pyright	scripts/ios-simulators	31
-pyright	scripts/label-lookup	238
+pyright	scripts/label-lookup	233
 pyright	scripts/linux-tree-sync.py	108
 pyright	scripts/listing_history.py	573
 pyright	scripts/ml-identity/cross_country_experiment.py	237

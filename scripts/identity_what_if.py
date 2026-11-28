@@ -48,6 +48,7 @@ import tool_git  # noqa: E402
 import header_tsv  # noqa: E402
 import identity_measure as measure  # noqa: E402
 from identity_judgements import read as read_judgements  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 ROOTS = os.path.join(HERE, "identity-what-if-roots.tsv")
 IDENTITY_SOURCES = "identity/src/main/scala/"
@@ -422,7 +423,7 @@ def verified(report, stage):
     return True
 
 
-def run_diff(args):
+def run_diff(args, files: Files):
     base_rows = header_tsv.read(os.path.join(args.base, "takes.tsv"))
     head_rows = header_tsv.read(os.path.join(args.head, "takes.tsv"))
     prod = {r["key"]: r["prod"] for r in header_tsv.read(os.path.join(args.base, "prod.tsv"))}
@@ -431,7 +432,7 @@ def run_diff(args):
     if args.verify and whole is None:
         print("--verify: the head wrote no takes-whole.tsv", file=sys.stderr)
         return 2
-    judgements = read_judgements(args.judgements)
+    judgements = read_judgements(files, args.judgements)
     report, rows = diff(args.cc, base_rows, head_rows, prod, judgements, whole)
     base_final = final_rows(base_rows, os.path.join(args.base, "final.tsv"))
     head_final = final_rows(base_rows, os.path.join(args.head, "final.tsv"))
@@ -448,10 +449,8 @@ def run_diff(args):
         print(json.dumps(report))
     else:
         print(render(report, "model"))
-        if final_report:
-            print(render(final_report, "final"))
-        else:
-            print(f"== {args.cc} final: not settled (--model-only, or a side without final.tsv)")
+        print(render(final_report, "final") if final_report
+              else f"== {args.cc} final: not settled (--model-only, or a side without final.tsv)")
     if args.verify:
         ok = verified(report, "model")
         if final_report:
@@ -512,7 +511,7 @@ def main(argv=None):
         return 0
     if args.command == "reaches":
         return run_reaches(args)
-    return run_select(args) if args.command == "select" else run_diff(args)
+    return run_select(args) if args.command == "select" else run_diff(args, Files.here())
 
 
 if __name__ == "__main__":

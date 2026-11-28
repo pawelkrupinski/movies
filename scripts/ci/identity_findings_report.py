@@ -43,7 +43,6 @@ findings could be read, or a country's issue could not be read or written.
 
 import argparse
 import datetime
-import glob
 import hashlib
 import json
 import os
@@ -52,12 +51,14 @@ import shlex
 import shutil
 import subprocess
 import sys
+from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ci_machine  # noqa: E402
 import countries_disagree  # noqa: E402
 import gh_bounded  # noqa: E402
 from identity_judgements import judgements_of, label_of, normalise  # noqa: E402  (the one reading of a judgement)
+from tool_files import Files  # noqa: E402  (identity_judgements put scripts/lib on the path)
 
 COUNTRIES = ["pl", "de", "uk", "es", "us"]
 STATE = re.compile(r"<!-- identity-findings-state: (\{.*?\}) -->", re.S)
@@ -67,46 +68,53 @@ def title_of(cc):
     return f"Identity findings: {cc}"
 
 
-def read_findings(directory, cc):
+def read_findings(files: Files, directory: str, cc: str) -> Optional[List[Dict[str, str]]]:
     """The findings a convergence row's diagnostics hold for `cc`, each a dict with its `id`; None unless they hold
     both the suspect file and a corpus-shape file. Each is written findings or none, so one missing is a half the row
     never reached (a suite that died before its audit): reporting the other alone would drop -- and close -- findings
     nobody looked for."""
-    suspects = os.path.join(directory, f"{cc}-suspect-unjudged.txt")
-    shapes = sorted(glob.glob(os.path.join(directory, f"corpus-shape-recorded-{cc}-*.txt")))
-    if not os.path.exists(suspects) or not shapes:
+    names = files.list(directory, ".txt") if files.is_dir(directory) else []
+    shapes = [n for n in names if n.startswith(f"corpus-shape-recorded-{cc}-")]
+    if f"{cc}-suspect-unjudged.txt" not in names or not shapes:
         return None
-    out = []
-    with open(suspects, encoding="utf-8") as f:
-        for line in f:
-            cols = line.rstrip("\n").split("\t")
-            if len(cols) < 6:
-                continue
-            kind, venues, raw, film, title, reasons = cols[:6]
-            venue = venues.split(", ")[0]
-            out.append({"kind": kind, "venue": venue, "venues": venues, "rawTitle": raw, "film": film, "title": title,
-                        "what": reasons, "id": f"{kind}|{normalise(raw)}|{film}"})
-    for path in shapes:
-        spec = os.path.basename(path)[len(f"corpus-shape-recorded-{cc}-"):-len(".txt")]
-        with open(path, encoding="utf-8") as f:
-            for line in f:
-                cols = line.rstrip("\n").split("\t")
-                if len(cols) < 3:
-                    continue
-                kind, venue, listing = cols[:3]
-                out.append({"kind": f"shape-{kind}", "spec": spec, "venue": venue, "venues": venue, "rawTitle": listing,
-                            "what": cols[3] if len(cols) > 3 else "", "id": f"shape|{spec}|{kind}|{normalise(listing)}"})
-    for path in sorted(glob.glob(os.path.join(directory, f"{cc}-served-*.txt"))):
-        check = os.path.basename(path)[len(f"{cc}-served-"):-len(".txt")]
-        with open(path, encoding="utf-8") as f:
-            for line in f:
-                cols = line.rstrip("\n").split("\t")
-                if line.startswith("#") or len(cols) < 3:
-                    continue
-                what, subject, said = cols[:3]
-                out.append({"kind": "served", "spec": check, "venue": "", "venues": "read model", "rawTitle": subject,
-                            "what": f"{what}: {said}", "id": f"served|{check}|{what}|{subject}"})
+    out = suspect_findings(files, files.path(directory, f"{cc}-suspect-unjudged.txt"))
+    for name in shapes:
+        out += shape_findings(files, files.path(directory, name), name[len(f"corpus-shape-recorded-{cc}-"):-len(".txt")])
+    for name in (n for n in names if n.startswith(f"{cc}-served-")):
+        out += served_file_findings(files, files.path(directory, name), name[len(f"{cc}-served-"):-len(".txt")])
     return merged(out)
+
+
+def tab_rows(files: Files, path: str, width: int) -> List[List[str]]:
+    """The tab-separated lines of `path` with at least `width` columns."""
+    return [cols for cols in (line.split("\t") for line in files.read_text(path).splitlines()) if len(cols) >= width]
+
+
+def suspect_findings(files: Files, path: str) -> List[Dict[str, str]]:
+    out: List[Dict[str, str]] = []
+    for kind, venues, raw, film, title, reasons in (cols[:6] for cols in tab_rows(files, path, 6)):
+        out.append({"kind": kind, "venue": venues.split(", ")[0], "venues": venues, "rawTitle": raw, "film": film,
+                    "title": title, "what": reasons, "id": f"{kind}|{normalise(raw)}|{film}"})
+    return out
+
+
+def shape_findings(files: Files, path: str, spec: str) -> List[Dict[str, str]]:
+    out: List[Dict[str, str]] = []
+    for cols in tab_rows(files, path, 3):
+        kind, venue, listing = cols[:3]
+        out.append({"kind": f"shape-{kind}", "spec": spec, "venue": venue, "venues": venue, "rawTitle": listing,
+                    "what": cols[3] if len(cols) > 3 else "", "id": f"shape|{spec}|{kind}|{normalise(listing)}"})
+    return out
+
+
+def served_file_findings(files: Files, path: str, check: str) -> List[Dict[str, str]]:
+    out: List[Dict[str, str]] = []
+    for cols in tab_rows(files, path, 3):
+        what, subject, said = cols[:3]
+        if not what.startswith("#"):
+            out.append({"kind": "served", "spec": check, "venue": "", "venues": "read model", "rawTitle": subject,
+                        "what": f"{what}: {said}", "id": f"served|{check}|{what}|{subject}"})
+    return out
 
 
 def merged(findings):
@@ -278,19 +286,19 @@ def publish(cc, body, has_findings, run_gh, assignee):
     return "updated"
 
 
-def report(countries, run, directory_of, judgements_path, today, max_age, run_url, run_gh, assignee, dry_run,
+def report(files: Files, countries, run, directory_of, judgements_path, today, max_age, run_url, run_gh, assignee, dry_run,
            disagree_of=lambda cc: []):
     """(overdue total, countries read, countries whose issue gh could not read or write). `disagree_of(cc)`: the
     country's "countries disagree" section lines."""
     overdue_total, read, unwritten = 0, 0, 0
     for cc in countries:
-        found = read_findings(directory_of(cc), cc)
+        found = read_findings(files, directory_of(cc), cc)
         if found is None:
             print(f"::warning::{title_of(cc)}: run {run} left no suspect file or no corpus-shape file for {cc} -- "
                   "its issue stays as it was")
             continue
         read += 1
-        labels, _, baseline = judgements_of(judgements_path, cc)
+        labels, _, baseline = judgements_of(files, judgements_path, cc)
         found = [f for f in found if still_unjudged(f, labels, baseline)]
         try:
             issue = None if dry_run else find_issue(cc, run_gh)
@@ -333,7 +341,7 @@ def newest_recording(run_gh):
     return str(listed[0]["databaseId"]) if listed else None
 
 
-def main(argv=None, run_gh=gh):
+def main(argv, run_gh, files: Files):
     p = argparse.ArgumentParser()
     p.add_argument("--run", default="", help="the Record scrape fixtures run whose recording to report "
                                              "(default the newest completed one on main)")
@@ -359,8 +367,8 @@ def main(argv=None, run_gh=gh):
     run_url = f"{a.server}/{a.repo}/actions/runs/{a.run}"
     def directory_of(cc):
         return os.path.join(a.diagnostics, cc) if a.diagnostics else download(a.run, cc, a.work, run_gh)
-    disagreeing = countries_disagree.read_found(a.countries_disagree, a.judgements) if a.countries_disagree else []
-    overdue, read, unwritten = report([c for c in a.countries.split(",") if c], a.run, directory_of, a.judgements, today,
+    disagreeing = countries_disagree.read_found(files, a.countries_disagree, a.judgements) if a.countries_disagree else []
+    overdue, read, unwritten = report(files, [c for c in a.countries.split(",") if c], a.run, directory_of, a.judgements, today,
                            a.max_age_days, run_url, run_gh, a.assignee, a.dry_run,
                            lambda cc: countries_disagree.section(disagreeing, cc))
     if read == 0:
@@ -373,4 +381,4 @@ def main(argv=None, run_gh=gh):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(None, gh, Files.here()))

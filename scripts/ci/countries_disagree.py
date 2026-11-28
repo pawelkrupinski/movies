@@ -32,6 +32,7 @@ import sys
 sys.path[:0] = [os.path.dirname(os.path.abspath(__file__)), os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib")]
 import cross_country as X  # noqa: E402
 import ci_machine  # noqa: E402
+from tool_files import Files  # noqa: E402
 import mongo_local  # noqa: E402
 from identity_judgements import COUNTRIES, label_of, labels_by_country, read  # noqa: E402
 
@@ -124,12 +125,12 @@ def export(mirror, data, countries):
                                stdout=out, check=True, env=dict(ci_machine.environment(), CC=cc, MODE=mode, LIGHT="1"))
 
 
-def read_found(data, judgements, countries=COUNTRIES):
+def read_found(files: Files, data, judgements, countries=COUNTRIES):
     films = X.read_films(data, countries)
-    return disagreements(X.read_listings(data, countries, films), labels_by_country(read(judgements)), films)
+    return disagreements(X.read_listings(data, countries, films), labels_by_country(read(files, judgements)), films)
 
 
-def main(argv=None):
+def main(argv, files: Files):
     p = argparse.ArgumentParser()
     p.add_argument("--mirror", help="export the LOCAL prod mirror (mongodb://127.0.0.1:28017) into --data first")
     p.add_argument("--data", required=True)
@@ -143,9 +144,9 @@ def main(argv=None):
             print(f"--mirror reads the LOCAL prod mirror only (127.0.0.1:{port})", file=sys.stderr)
             return 64
         export(a.mirror, a.data, COUNTRIES)
-    print("\n".join(section(read_found(a.data, a.judgements), a.country, a.limit)).lstrip("\n"))
+    print("\n".join(section(read_found(files, a.data, a.judgements), a.country, a.limit)).lstrip("\n"))
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(None, Files.here()))

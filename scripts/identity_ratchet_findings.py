@@ -3,7 +3,7 @@ the ratchet's ratchet-takes.tsv (scripts.UnmatchedClustersRatchet), read from th
 artifact existed, from the assertion messages its pull-request job's log prints; written back as that TSV, or as the
 table a person reads, a status a section.
 
-  read_tsv(path) / write_tsv(rows, out)   the artifact's TSV (identity_takes.table, the one reader of the take files)
+  read_tsv(files, path) / write_tsv(rows, out)   the artifact's TSV (identity_takes.table, the one reader of the take files)
   parse_log(text)                         the findings a job log's WRONG / UNJUDGED / right takes LOST sections print
   table(rows, explain, out)               the table, in ORDER, each take's explanation under it with `explain`"""
 from __future__ import annotations
@@ -13,8 +13,9 @@ import re
 import sys
 from typing import Callable, Dict, List, Mapping, Optional, TextIO
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci"))
+sys.path[:0] = [os.path.join(os.path.dirname(os.path.abspath(__file__)), part) for part in ("ci", "lib")]
 import identity_takes  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 Row = Dict[str, str]
 COLUMNS = ["status", "country", "venue", "rawTitle", "film", "title", "basis", "ids", "was", "explanation"]
@@ -25,11 +26,11 @@ LOST = re.compile(r"\(([a-z]{2}),(.*),([a-z]+:[^,]+)\)\s*")
 COUNTRY = re.compile(r"[a-z]{2}")
 # the table's columns: (column, width) of each cut cell after the country
 WIDTHS = (("venue", 34), ("rawTitle", 46), ("film", 30), ("title", 40))
-TAKE_TABLE: Callable[[str], List[Mapping[str, str]]] = getattr(identity_takes, "table")
+TAKE_TABLE: Callable[[Files, str], List[Mapping[str, str]]] = getattr(identity_takes, "table")
 
 
-def read_tsv(path: str) -> List[Row]:
-    return [{c: (r.get(c) or "") for c in COLUMNS} for r in TAKE_TABLE(path)]
+def read_tsv(files: Files, path: str) -> List[Row]:
+    return [{c: (r.get(c) or "") for c in COLUMNS} for r in TAKE_TABLE(files, path)]
 
 
 def write_tsv(rows: List[Row], out: TextIO) -> None:

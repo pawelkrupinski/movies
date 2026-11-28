@@ -56,6 +56,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [os.path.join(HERE, "ci"), os.path.join(HERE, "lib")]
 import machine  # noqa: E402
 import mongo_local  # noqa: E402
+from tool_files import Files  # noqa: E402
 from identity_judgements import COUNTRIES, label_of, labels_by_country, normalise, read  # noqa: E402
 
 EXPORT = os.path.join(HERE, "identity-precision-export.js")
@@ -259,11 +260,11 @@ def countries_of(text):
     return ccs
 
 
-def cmd_sample(a):
+def cmd_sample(a, files: Files):
     if subprocess.run([os.path.join(HERE, "local-mirror", "freshness"), *a.countries, "--quiet"]).returncode != 0:
         raise SystemExit("the local prod mirror is not fresh (scripts/local-mirror/freshness): not sampling a stale corpus")
     os.makedirs(a.out, exist_ok=True)
-    labels = labels_by_country(read(a.judgements))
+    labels = labels_by_country(read(files, a.judgements))
     meta = {"seed": a.seed, "n": a.n, "now": a.now, "unit": a.unit, "countries": {}}
     for cc in a.countries:
         takes = export(cc, a.now)
@@ -285,10 +286,10 @@ def cmd_sample(a):
     print(f"wrote {a.out}")
 
 
-def report(out, judgements, countries):
+def report(files: Files, out, judgements, countries):
     with open(os.path.join(out, "sample.json"), encoding="utf-8") as f:
         meta = json.load(f)
-    labels = labels_by_country(read(judgements))
+    labels = labels_by_country(read(files, judgements))
     per, totals, lines = {}, {}, []
     by_billing = meta.get("unit") == "billing"
     lines.append(f"seed {meta['seed']}, n {meta['n']}, served at {meta['now']}, unit {meta.get('unit', 'showtimes')}")
@@ -329,9 +330,9 @@ def main(argv=None):
     a = p.parse_args(argv)
     a.countries, a.out = countries_of(a.countries), a.out or default_out()
     if a.cmd == "sample":
-        cmd_sample(a)
+        cmd_sample(a, Files.here())
     else:
-        print(report(a.out, a.judgements, a.countries))
+        print(report(Files.here(), a.out, a.judgements, a.countries))
 
 
 if __name__ == "__main__":

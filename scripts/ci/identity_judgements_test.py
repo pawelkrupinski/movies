@@ -5,11 +5,11 @@
 import json
 import os
 import sys
-import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_judgements as j  # noqa: E402
+from tool_files import Files  # noqa: E402
 
 HEAD = j.HEADER + "\n"
 REPO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
@@ -38,12 +38,11 @@ class JudgementsTest(unittest.TestCase):
         self.assertIsNone(j.label_of(labels, "Rialto", "Diuna", "tmdb:3"))
 
     def test_the_views(self):
-        path = os.path.join(tempfile.mkdtemp(), "j.tsv")
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(HEAD + row("de", "Caligari", "ES (ULRICH SCHAMONI)", "tmdb:1", "wrong", "known-wrong", "capture,served", reason="why")
+        files, path = Files.in_memory(), "j.tsv"
+        files.write_text(path, HEAD + row("de", "Caligari", "ES (ULRICH SCHAMONI)", "tmdb:1", "wrong", "known-wrong", "capture,served", reason="why")
                     + row("de", "*", "Halloween [OV]", "tmdb:2", "undecided", "open", "served", reason="which", judged="2026-10-13")
                     + row("pl", "Kino Powiśle", "OPERA-OTELLO", "tmdb:3", "right", "accepted-right-loss", reason="a trade"))
-        rows = j.read(path)
+        rows = j.read(files, path)
         self.assertEqual({("de", "ES (ULRICH SCHAMONI)", "tmdb:1")}, j.tolerated(rows, "capture"))
         self.assertEqual({("de", "ES (ULRICH SCHAMONI)", "tmdb:1"), ("de", "Halloween [OV]", "tmdb:2")}, j.tolerated(rows, "served"))
         self.assertEqual([("Kino Powiśle", "OPERA-OTELLO", "tmdb:3")], j.accepted(rows, "pl"))
@@ -54,11 +53,10 @@ class JudgementsTest(unittest.TestCase):
         # tools.UnmatchedClustersFindingsSpec's Lalka: UnmatchedClusters.verdict calls a take WRONG when the judgements
         # name the listing's right film in its database and this is not it -- the suspect gate fails such a take, so the
         # lint's served check and the takes check must read it alike.
-        path = os.path.join(tempfile.mkdtemp(), "j.tsv")
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(HEAD + row("pl", "*", "Lalka", "tmdb:81315", "wrong") + row("pl", "*", "Lalka", "tmdb:1321666", "right")
+        files, path = Files.in_memory(), "j.tsv"
+        files.write_text(path, HEAD + row("pl", "*", "Lalka", "tmdb:81315", "wrong") + row("pl", "*", "Lalka", "tmdb:1321666", "right")
                     + row("pl", "Kino Iluzjon", "Lalka", "tmdb:81315", "right") + row("pl", "*", "Diuna", "imdb:tt1160419", "right"))
-        labels = j.labels_by_country(j.read(path))["pl"]
+        labels = j.labels_by_country(j.read(files, path))["pl"]
         self.assertEqual("right", j.label_of(labels, "Kino Iluzjon", "Lalka", "tmdb:81315"))
         self.assertEqual("wrong", j.label_of(labels, "Kino Kadr", "Lalka", "tmdb:81315"))
         self.assertEqual("right", j.label_of(labels, "Kino Kadr", "Lalka", "tmdb:1321666"))
@@ -69,7 +67,7 @@ class JudgementsTest(unittest.TestCase):
         self.assertEqual({"tmdb:81315", "tmdb:1321666"}, j.right_films(labels, "Kino Iluzjon", "Lalka"))
 
     def test_judgements_of_no_file_is_no_judgement(self):
-        self.assertEqual(({}, [], set()), j.judgements_of(None, "pl"))
+        self.assertEqual(({}, [], set()), j.judgements_of(Files.in_memory(), None, "pl"))
 
 
 if __name__ == "__main__":

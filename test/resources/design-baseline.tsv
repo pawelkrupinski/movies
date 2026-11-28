@@ -185,11 +185,8 @@ effect	scripts/ci/identity_drift_check_replay.py:files	13
 effect	scripts/ci/identity_drift_check_store.py:files	7
 effect	scripts/ci/identity_family_nightly.py:files	17
 effect	scripts/ci/identity_findings_report.py	1
-effect	scripts/ci/identity_findings_report.py:files	9
+effect	scripts/ci/identity_findings_report.py:files	3
 effect	scripts/ci/identity_impact.py:files	11
-effect	scripts/ci/identity_judgements.py:files	5
-effect	scripts/ci/identity_judgements_lint.py	2
-effect	scripts/ci/identity_judgements_lint.py:files	6
 effect	scripts/ci/identity_live_drift.py	1
 effect	scripts/ci/identity_live_drift.py:files	2
 effect	scripts/ci/identity_takes_check.py:files	6
@@ -200,7 +197,6 @@ effect	scripts/ci/identity_takes_check_runs.py:files	19
 effect	scripts/ci/identity_takes_check_sides.py:files	7
 effect	scripts/ci/identity_takes_check_store.py:files	9
 effect	scripts/ci/identity_takes_check_verdict.py:files	3
-effect	scripts/ci/identity_takes_diff.py:files	3
 effect	scripts/ci/job_metrics.py:files	17
 effect	scripts/ci/job_metrics.py:network	1
 effect	scripts/ci/js_quality_ratchet.py:files	1
@@ -320,7 +316,7 @@ effect	scripts/identity_judge_cards.py:files	2
 effect	scripts/identity_landing_check.py:files	7
 effect	scripts/identity_landing_check_sbt.py:files	1
 effect	scripts/identity_landing_check_verdict.py:files	3
-effect	scripts/identity_measure.py:files	7
+effect	scripts/identity_measure.py:files	2
 effect	scripts/identity_measure_cli.py:files	1
 effect	scripts/identity_measure_cli_collect.py:files	7
 effect	scripts/identity_measure_cli_context.py:files	3
@@ -337,7 +333,7 @@ effect	scripts/identity_measure_local.py	1
 effect	scripts/identity_measure_local.py:files	26
 effect	scripts/identity_precision_sample.py	2
 effect	scripts/identity_precision_sample.py:files	6
-effect	scripts/identity_ratchet_report.py:files	9
+effect	scripts/identity_ratchet_report.py:files	4
 effect	scripts/identity_refit.py:files	3
 effect	scripts/identity_refit_checks.py:files	4
 effect	scripts/identity_repro.py:files	4
@@ -830,16 +826,10 @@ mixed	scripts/ci/identity_family_nightly.py:Walk.reach_argument	6
 mixed	scripts/ci/identity_family_nightly.py:Walk.report	9
 mixed	scripts/ci/identity_family_nightly.py:refusal	3
 mixed	scripts/ci/identity_findings_report.py:download	3
-mixed	scripts/ci/identity_findings_report.py:read_findings	13
 mixed	scripts/ci/identity_impact.py:read_excluded	3
 mixed	scripts/ci/identity_impact.py:read_impact	6
 mixed	scripts/ci/identity_impact.py:read_reads	4
 mixed	scripts/ci/identity_impact.py:roster_names	16
-mixed	scripts/ci/identity_judgements.py:blank_lines	3
-mixed	scripts/ci/identity_judgements.py:edit_in_place	4
-mixed	scripts/ci/identity_judgements.py:lines	5
-mixed	scripts/ci/identity_judgements_lint.py:hard_cluster_findings	6
-mixed	scripts/ci/identity_judgements_lint.py:hard_file_findings	6
 mixed	scripts/ci/identity_judgements_lint.py:slice_replay.replay	7
 mixed	scripts/ci/identity_takes_check.py:check	10
 mixed	scripts/ci/identity_takes_check.py:state_of	3
@@ -866,7 +856,6 @@ mixed	scripts/ci/identity_takes_check_verdict.py:Gate.ask	6
 mixed	scripts/ci/identity_takes_check_verdict.py:Verdict.python	4
 mixed	scripts/ci/identity_takes_check_verdict.py:Verdict.shadow	8
 mixed	scripts/ci/identity_takes_check_verdict.py:refresh_marker	3
-mixed	scripts/ci/identity_takes_diff.py:load	3
 mixed	scripts/ci/job_metrics.py:artifact_name	4
 mixed	scripts/ci/job_metrics.py:finish	9
 mixed	scripts/ci/job_metrics.py:gc_of	7
@@ -1100,7 +1089,6 @@ mixed	scripts/identity_landing_check.py:resolve	9
 mixed	scripts/identity_landing_check_sbt.py:lines_of	3
 mixed	scripts/identity_landing_check_verdict.py:Verdict.group	9
 mixed	scripts/identity_landing_check_verdict.py:lines	4
-mixed	scripts/identity_measure.py:read_country	17
 mixed	scripts/identity_measure_cli.py:measured	6
 mixed	scripts/identity_measure_cli_collect.py:Collector.collect	4
 mixed	scripts/identity_measure_cli_collect.py:Collector.judgements	5
@@ -1153,8 +1141,6 @@ mixed	scripts/identity_precision_sample.py:read_sample	4
 mixed	scripts/identity_precision_sample.py:report	7
 mixed	scripts/identity_precision_sample.py:write_sample	3
 mixed	scripts/identity_ratchet_report.py:Sources.download	3
-mixed	scripts/identity_ratchet_report.py:Sources.of	5
-mixed	scripts/identity_ratchet_report.py:Sources.of_run	7
 mixed	scripts/identity_refit.py:Refit.classpath	9
 mixed	scripts/identity_refit.py:Refit.cpu	6
 mixed	scripts/identity_refit.py:Refit.main	10
