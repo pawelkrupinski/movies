@@ -41,6 +41,7 @@ import mirror_keeper
 import mirror_supervisor
 import mirror_upkeep
 from mirror_settings import Pauses, Settings, here, say, warn
+from mongo import port_probe
 
 
 def under_the_vault(argv: List[str]) -> int:
@@ -122,7 +123,7 @@ class Parent:
         handle, path = tempfile.mkstemp(prefix="kinowo-mirror-targets.", dir=os.environ.get("TMPDIR") or "/tmp")
         os.close(handle)
         self.settings = Settings(self.settings.env, self.settings.source, self.settings.target, self.settings.parent,
-                                 path)
+                                 path, self.settings.probe)
         self.publish(mirror_upkeep.targets_fingerprint(self.settings))
         code = mirror_upkeep.code_fingerprint()
         poll = self.settings.knob("TARGETS_POLL", "60")
@@ -171,7 +172,7 @@ def daemon(argv: List[str], env: Dict[str, str]) -> int:
     if not env.get("MONGODB_URI"):
         return under_the_vault(argv)
     stamp_output(env)
-    parent = Parent(Settings.for_parent(env, env["MONGODB_URI"]), argv[:1] == ["--reseed"])
+    parent = Parent(Settings.for_parent(env, env["MONGODB_URI"], port_probe.SocketProbe()), argv[:1] == ["--reseed"])
     signal.signal(signal.SIGTERM, parent.pause.on_signal)  # it stops at its next pause, mirror_settings.Stopped
     signal.signal(signal.SIGINT, parent.pause.on_signal)
     try:

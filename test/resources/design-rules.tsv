@@ -100,6 +100,7 @@ adapter	py	scripts/lib/atomic.py	files
 adapter	py	scripts/lib/seams/tool_files.py	files
 adapter	py	scripts/lib/seams/tool_state.py	storage
 adapter	py	scripts/lib/seams/tool_http.py	network
+adapter	py	scripts/lib/mongo/port_probe.py	network
 adapter	js	infra/version-dashboard/src/shared/http.ts	network
 adapter	py	scripts/lib/tool_process.py	process clock
 adapter	py	scripts/lib/tool_git.py	process env

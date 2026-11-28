@@ -1,10 +1,9 @@
 """THE LOCAL, PASSWORD-FREE MONGO the prod mirror, the it/ suites and the identity tools share (scripts/lib;
 tool-conventions.sh's local_mongo_port / local_mongo_uri, own-mongod.sh's throwaway_replica_set_initiate): its port
-(LOCAL_MIRROR_PORT, default 28017), its URI (a direct connection), whether something answers on a port, and the
+(LOCAL_MIRROR_PORT, default 28017), its URI (a direct connection) and the
 mongosh expression that initiates a throwaway single-node replica set; and the prod mirror's database of a country."""
 from __future__ import annotations
 
-import socket
 from typing import Mapping
 
 DEFAULT_PORT = "28017"
@@ -26,17 +25,6 @@ def local_mongo_uri(env: Mapping[str, str], database: str = "") -> str:
 def mirror_database(cc: str) -> str:
     """The prod mirror's database of country `cc` (any case): Poland's is the unprefixed one, as in prod."""
     return "kinowo_prod_mirror" if cc.lower() == "pl" else f"kinowo_{cc.lower()}_prod_mirror"
-
-
-def answers(port: str, host: str = "127.0.0.1", timeout: float = 0.5) -> bool:
-    """Whether something accepts a TCP connection on `host`:`port` (the shell tools' `echo > /dev/tcp/...`). A loopback
-    listener answers in milliseconds (its backlog takes the connection whatever its process is doing); only macOS lets
-    a connection to a bound, never listening port hang to the timeout instead of refusing it, so the bound is short."""
-    try:
-        with socket.create_connection((host, int(port)), timeout=timeout):
-            return True
-    except (OSError, ValueError):
-        return False
 
 
 def throwaway_replica_set_initiate(member: str) -> str:

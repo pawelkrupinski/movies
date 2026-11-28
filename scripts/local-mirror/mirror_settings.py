@@ -19,6 +19,7 @@ from typing import Dict, List, Mapping, Optional, Set
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 from mongo import mongo_local  # noqa: E402
+from mongo import port_probe  # noqa: E402
 from mongo import prod_tunnel  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -116,18 +117,19 @@ class Settings:
     target: str  # DST: the local mirror
     parent: Optional[int]
     targets_file: str
+    probe: port_probe.PortProbe
 
     @staticmethod
-    def for_parent(env: Mapping[str, str], source_uri: str) -> "Settings":
-        port = prod_tunnel.free_port(env, os.getpid()) or "27017"
+    def for_parent(env: Mapping[str, str], source_uri: str, probe: port_probe.PortProbe) -> "Settings":
+        port = prod_tunnel.free_port(env, os.getpid(), probe) or "27017"
         return Settings(dict(env), prod_tunnel.tunnel_uri(source_uri, port),
                         env.get("MONGODB_MOVIES_MIRROR_URI") or mongo_local.local_mongo_uri(env, "kinowo_prod_mirror"),
-                        os.getpid(), "")
+                        os.getpid(), "", probe)
 
     @staticmethod
-    def for_child(env: Mapping[str, str]) -> "Settings":
+    def for_child(env: Mapping[str, str], probe: port_probe.PortProbe) -> "Settings":
         return Settings(dict(env), env["KINOWO_MIRROR_SOURCE"], env["KINOWO_MIRROR_TARGET"],
-                        int(env["KINOWO_MIRROR_PARENT"]), env.get("KINOWO_MIRROR_TARGETS_FILE", ""))
+                        int(env["KINOWO_MIRROR_PARENT"]), env.get("KINOWO_MIRROR_TARGETS_FILE", ""), probe)
 
     def child_env(self) -> Dict[str, str]:
         return {**self.env, "KINOWO_MIRROR_SOURCE": self.source, "KINOWO_MIRROR_TARGET": self.target,
@@ -161,7 +163,8 @@ class Settings:
         return f"var DST='{self.target}'; var SRC_DB='{database}'"
 
     def tunnel(self, pause: Pauses) -> prod_tunnel.ProdTunnel:
-        return prod_tunnel.ProdTunnel(TAG, self.source, self.env, [here("mongosh-at.sh")], pause)
+        return prod_tunnel.ProdTunnel(TAG, self.source, self.env, [here("mongosh-at.sh")], pause,
+                                      self.probe)
 
     def nodb(self, *args: str) -> str:
         """A check that needs no server, under plain node (nodb.js), never mongosh: each mongosh start checks in with
@@ -176,7 +179,7 @@ class Settings:
     def local_mongo(self) -> bool:
         """The local mirror Mongo answers, its idempotent starter re-run only when it does not (local-mongo.sh)."""
         port = mongo_local.local_mongo_port(self.env)
-        if mongo_local.answers(port):
+        if self.probe.answers(port):
             return True
         say(f"local Mongo not reachable on :{port} — (re)starting")
         return subprocess.run([here("start-local-mongo.sh")], stdin=subprocess.DEVNULL, env=self.env).returncode == 0

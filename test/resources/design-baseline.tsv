@@ -403,9 +403,7 @@ effect	scripts/lib/mobile/store_screenshots_common.py	2
 effect	scripts/lib/mobile/store_screenshots_common.py:files	16
 effect	scripts/lib/mobile/store_screenshots_common.py:network	1
 effect	scripts/lib/mobile/store_screenshots_fixture.py:files	4
-effect	scripts/lib/mongo/mongo_local.py:network	1
 effect	scripts/lib/mongo/prod_tunnel.py	1
-effect	scripts/lib/proxy_properties.py:files	1
 effect	scripts/lib/rules_table.py:files	1
 effect	scripts/lib/sbt_warm/sbt_warm_cache.py:files	38
 effect	scripts/lib/sbt_warm/sbt_warm_call.py:files	11
@@ -1351,7 +1349,6 @@ mixed	scripts/lib/processes/tool_bounded.py:bounded	4
 mixed	scripts/lib/processes/tool_bounded.py:finish	6
 mixed	scripts/lib/processes/tool_bounded.py:passed_on	4
 mixed	scripts/lib/processes/tool_shell.py:shell_command	3
-mixed	scripts/lib/proxy_properties.py:read	5
 mixed	scripts/lib/sbt_warm/sbt_warm_cache.py:Builds.candidates	9
 mixed	scripts/lib/sbt_warm/sbt_warm_cache.py:Builds.copy	5
 mixed	scripts/lib/sbt_warm/sbt_warm_cache.py:Builds.prune	7

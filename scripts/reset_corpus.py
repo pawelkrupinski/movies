@@ -38,7 +38,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 sys.path.insert(0, HERE)
 from processes import machine  # noqa: E402
-from mongo import prod_tunnel  # noqa: E402
+from mongo import port_probe, prod_tunnel  # noqa: E402
 from cli import tool_cli  # noqa: E402
 import tool_process  # noqa: E402
 import vault_env  # noqa: E402
@@ -103,12 +103,14 @@ class Fatal(Exception):
 
 
 class Reset:
-    def __init__(self, env: Mapping[str, str], options: Options, uri: str, runner: tool_process.Runner) -> None:
+    def __init__(self, env: Mapping[str, str], options: Options, uri: str, runner: tool_process.Runner,
+                 probe: port_probe.PortProbe) -> None:
         self.env, self.options, self.runner = env, options, runner
         self.namespace = env.get("KUBE_NAMESPACE") or "kinowo"
         self.country = env.get("KINOWO_RESET_COUNTRY") or "pl"
         self.database = country_database(self.country)
-        self.tunnel = prod_tunnel.ProdTunnel("reset", uri, env, [MONGOSH_AT], lambda seconds: time.sleep(float(seconds)))
+        self.tunnel = prod_tunnel.ProdTunnel("reset", uri, env, [MONGOSH_AT], lambda seconds: time.sleep(float(seconds)),
+                                         probe)
         self.uri = uri
         self.scaled_down = False
 
@@ -196,8 +198,8 @@ class Reset:
             self.scale_back_up()
 
 
-def tunnel_form(uri: str, env: Mapping[str, str]) -> str:
-    return prod_tunnel.tunnel_uri(uri, prod_tunnel.free_port(env, os.getpid()) or "27017")
+def tunnel_form(uri: str, env: Mapping[str, str], probe: port_probe.PortProbe) -> str:
+    return prod_tunnel.tunnel_uri(uri, prod_tunnel.free_port(env, os.getpid(), probe) or "27017")
 
 
 def main(argv: List[str], env: Mapping[str, str]) -> int:
@@ -218,7 +220,8 @@ def main(argv: List[str], env: Mapping[str, str]) -> int:
         return 1
     tool_cli.raise_on_signals()
     try:
-        return Reset(env, options, tunnel_form(env["MONGODB_URI"], env), tool_process.SubprocessRunner()).run()
+        probe = port_probe.SocketProbe()
+        return Reset(env, options, tunnel_form(env["MONGODB_URI"], env, probe), tool_process.SubprocessRunner(), probe).run()
     except tool_cli.Interrupted as e:
         return 128 + e.signum
 

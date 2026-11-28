@@ -14,6 +14,7 @@ from typing import Optional
 
 import mirror_settings
 from mirror_settings import Pauses, Settings, Stopped, here, say, warn
+from mongo import port_probe
 from mongo.prod_tunnel import shell_status
 
 RESEED, TAIL = True, False
@@ -189,4 +190,4 @@ class Supervisor:
 
 
 def supervise(env: "dict[str, str]", database: str, force: bool) -> int:
-    return Supervisor(Settings.for_child(env), database, force).run()
+    return Supervisor(Settings.for_child(env, port_probe.SocketProbe()), database, force).run()

@@ -13,7 +13,7 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from mongo import prod_tunnel  # noqa: E402
+from mongo import port_probe, prod_tunnel  # noqa: E402
 
 
 class AnswersTest(unittest.TestCase):
@@ -32,7 +32,7 @@ class AnswersTest(unittest.TestCase):
             out.write("#!/bin/sh\n" + body + "\n")
         os.chmod(stub, os.stat(stub).st_mode | stat.S_IXUSR)
         uri = f"mongodb://u:p@127.0.0.1:{self.port}/db"
-        return prod_tunnel.ProdTunnel("t", uri, {}, [stub], lambda _s: None)
+        return prod_tunnel.ProdTunnel("t", uri, {}, [stub], lambda _s: None, port_probe.SocketProbe())
 
     def test_a_ping_that_stalls_is_no_answer_not_a_hang(self) -> None:
         tunnel = self.tunnel("exec sleep 30")
@@ -47,11 +47,11 @@ class AnswersTest(unittest.TestCase):
 class CommandLineTest(unittest.TestCase):
     """What the shell library asks of this file: the URI rewrite and the free-port pick, written once."""
 
-    def run_main(self, argv: list, env: dict) -> tuple:
+    def run_main(self, argv: list, env: dict, probe: port_probe.PortProbe = port_probe.OpenPorts(set())) -> tuple:
         out, err = io.StringIO(), io.StringIO()
         pin = ["--pin", env["PROD_TUNNEL_PORT"]] if "PROD_TUNNEL_PORT" in env else []
         with redirect_stdout(out), redirect_stderr(err):
-            code = prod_tunnel.main(argv[:1] + pin + argv[1:])
+            code = prod_tunnel.main(argv[:1] + pin + argv[1:], probe)
         return code, out.getvalue(), err.getvalue()
 
     def test_uri_names_the_pinned_port_and_keeps_the_rest(self) -> None:
@@ -66,10 +66,8 @@ class CommandLineTest(unittest.TestCase):
         self.assertGreaterEqual(int(out), prod_tunnel.PORT_LOW + 5)
 
     def test_no_free_port_fails_instead_of_naming_27017(self) -> None:
-        original = prod_tunnel.mongo_local.answers
-        prod_tunnel.mongo_local.answers = lambda *_a, **_k: True  # every port taken
-        self.addCleanup(setattr, prod_tunnel.mongo_local, "answers", original)
-        code, out, err = self.run_main(["uri", "--pid", "9", "mongodb://u:p@h:27017/db"], {})
+        every_port = {str(port) for port in range(prod_tunnel.PORT_LOW, prod_tunnel.PORT_HIGH)}
+        code, out, err = self.run_main(["uri", "--pid", "9", "mongodb://u:p@h:27017/db"], {}, port_probe.OpenPorts(every_port))
         self.assertEqual((1, ""), (code, out))
         self.assertIn("no free local port", err)
 

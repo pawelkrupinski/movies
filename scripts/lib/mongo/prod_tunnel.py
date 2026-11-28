@@ -6,8 +6,8 @@ prod-ops.sh, identity-capture.sh, identity-calibrate.sh, reset-corpus.sh), which
 ssh option. Repoint both together.
 
   tunnel_uri(uri, port)    the laptop's view of a prod URI: 127.0.0.1:<port>, directConnection=true, the rest kept
-  free_port(env, pid)      PROD_TUNNEL_PORT, else the first port nothing accepts on from a pid-derived start
-  ProdTunnel(tag, probe_uri, env, mongosh_at, pause)   .answers(), .ensure(), .close(), .alive(): ONE caller's forward
+  free_port(env, pid, probe)   PROD_TUNNEL_PORT, else the first port nothing accepts on (`probe`) from a pid-derived start
+  ProdTunnel(tag, probe_uri, env, mongosh_at, pause, probe)   .answers(), .ensure(), .close(), .alive(): ONE caller's forward
 
 The shell library calls the two pure steps through this file's command line, so each is written once:
   prod_tunnel.py uri --pid <caller's pid> [--pin $PROD_TUNNEL_PORT] <prod uri>   the laptop's URI (exit 1, nothing printed: no free port)
@@ -22,7 +22,7 @@ import sys
 from typing import Callable, List, Mapping, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from mongo import mongo_local  # noqa: E402
+from mongo import port_probe  # noqa: E402
 
 DEFAULT_TARGET = "root@178.105.221.61"  # mongo-1's public address (infra/nix/hosts/mongo-1/default.nix)
 PORT_LOW, PORT_HIGH, PORT_TRIES = 27100, 27900, 200
@@ -50,12 +50,12 @@ def tunnel_uri(uri: str, port: str) -> str:
     return f"mongodb://{creds}127.0.0.1:{port}{tail}?{query + '&' if query else ''}directConnection=true"
 
 
-def free_port(env: Mapping[str, str], pid: int) -> Optional[str]:
+def free_port(env: Mapping[str, str], pid: int, probe: port_probe.PortProbe) -> Optional[str]:
     if env.get("PROD_TUNNEL_PORT"):
         return env["PROD_TUNNEL_PORT"]
     port = PORT_LOW + pid % (PORT_HIGH - PORT_LOW)
     for _ in range(PORT_TRIES):
-        if not mongo_local.answers(str(port)):
+        if not probe.answers(str(port)):
             return str(port)
         port = port + 1 if port + 1 < PORT_HIGH else PORT_LOW
     return None
@@ -72,15 +72,17 @@ def shell_status(code: int) -> int:
 
 class ProdTunnel:
     """One caller's forward. `mongosh_at` is the argv prefix that runs mongosh at a URI (mongosh-at.sh); `pause`
-    waits the seconds given."""
+    waits the seconds given; `probe`
+    says whether a local port is taken."""
 
     def __init__(self, tag: str, probe_uri: str, env: Mapping[str, str], mongosh_at: List[str],
-                 pause: Callable[[str], None]) -> None:
+                 pause: Callable[[str], None], probe: port_probe.PortProbe) -> None:
         self.tag = tag
         self.probe_uri = probe_uri
         self.env = env
         self.mongosh_at = mongosh_at
         self.pause = pause
+        self.probe = probe
         self.ssh: Optional[subprocess.Popen[bytes]] = None
         self.port = ""
 
@@ -94,10 +96,10 @@ class ProdTunnel:
         if self.env.get("PROD_TUNNEL_PORT"):
             return self.env["PROD_TUNNEL_PORT"]
         found = URI_PORT.match(self.probe_uri)
-        return found.group(2) if found else free_port(self.env, os.getpid())
+        return found.group(2) if found else free_port(self.env, os.getpid(), self.probe)
 
     def answers(self) -> bool:
-        if not mongo_local.answers(self.current_port() or "27017"):
+        if not self.probe.answers(self.current_port() or "27017"):
             return False
         if not self.probe_uri:
             return True  # nothing to authenticate with; TCP is all we have
@@ -126,7 +128,7 @@ class ProdTunnel:
         if self.ssh is not None:
             self.say("tunnel to prod Mongo is down — restarting it")
             self.close()
-        elif mongo_local.answers(port):
+        elif self.probe.answers(port):
             self.warn(f":{port} is held by another process but prod does NOT answer through it.")
             self.warn(f"Find the holder with 'lsof -nP -iTCP:{port} -sTCP:LISTEN' and stop that one pid yourself,")
             self.warn("or unset PROD_TUNNEL_PORT to take a free port.")
@@ -164,7 +166,7 @@ class ProdTunnel:
             ssh.wait()
 
 
-def main(argv: List[str]) -> int:
+def main(argv: List[str], probe: port_probe.PortProbe) -> int:
     """`uri --pid N [--pin PORT] <prod uri>` or `free-port --pid N [--pin PORT]`: what the shell library asks of this
     file (see the header); --pin is its $PROD_TUNNEL_PORT, when set."""
     rest = argv[1:]
@@ -176,7 +178,7 @@ def main(argv: List[str]) -> int:
     if len(rest) < 2 or argv[0] not in ("uri", "free-port") or rest[0] != "--pid" or not rest[1].isdigit():
         print("usage: prod_tunnel.py uri --pid N [--pin PORT] <prod uri> | free-port --pid N [--pin PORT]", file=sys.stderr)
         return 64
-    port = free_port(pinned, int(rest[1]))
+    port = free_port(pinned, int(rest[1]), probe)
     if port is None:
         print(f"no free local port in {PORT_LOW}-{PORT_HIGH - 1} for the prod tunnel", file=sys.stderr)
         return 1
@@ -191,4 +193,4 @@ def main(argv: List[str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main(sys.argv[1:], port_probe.SocketProbe()))

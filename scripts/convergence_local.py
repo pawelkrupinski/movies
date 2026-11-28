@@ -45,7 +45,7 @@ from typing import Callable, Dict, List, Mapping, NoReturn, Optional, Sequence
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 from processes import machine  # noqa: E402
-from mongo import mongo_local  # noqa: E402
+from mongo import mongo_local, port_probe  # noqa: E402
 from tool_process import Command, Runner, SubprocessRunner  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -77,12 +77,13 @@ def warn(text: str) -> None:
 
 
 class Leg:
-    def __init__(self, runner: Runner, env: Mapping[str, str], code: str, suite: str,
+    def __init__(self, runner: Runner, env: Mapping[str, str], code: str, suite: str, probe: port_probe.PortProbe,
                  sleep: Callable[[float], None] = time.sleep) -> None:
         self.runner = runner
         self.env: Dict[str, str] = dict(env)
         self.code = code
         self.suite = suite
+        self.probe = probe
         self.sleep = sleep
         self.container = f"{CONTAINER_PREFIX}-{os.getpid()}"
         self.started_container = False
@@ -146,10 +147,10 @@ class Leg:
         if self.env.get("MONGODB_URI"):
             say("==> MongoDB from MONGODB_URI")
             return self.env["MONGODB_URI"]
-        if mongo_local.answers(mongo_local.local_mongo_port(self.env)):
+        if self.probe.answers(mongo_local.local_mongo_port(self.env)):
             say(f"==> reusing the itAll MongoDB on :{mongo_local.local_mongo_port(self.env)}")
             return mongo_local.local_mongo_uri(self.env)
-        if mongo_local.answers(fallback):
+        if self.probe.answers(fallback):
             # REUSE whatever already answers on the port: `docker run -p` fails outright when it is taken.
             say(f"==> reusing the MongoDB already listening on :{fallback}")
         else:
@@ -242,7 +243,7 @@ def execute(argv: List[str], env: Mapping[str, str]) -> NoReturn:
         sys.exit(127 if isinstance(e, FileNotFoundError) else 126)
 
 
-def run(argv: Sequence[str], env: Mapping[str, str], runner: Runner) -> int:
+def run(argv: Sequence[str], env: Mapping[str, str], runner: Runner, probe: port_probe.PortProbe) -> int:
     local_leg = FLAG in argv
     args = [a for a in argv if a != FLAG]
     code = args[0] if args else ""
@@ -257,7 +258,7 @@ def run(argv: Sequence[str], env: Mapping[str, str], runner: Runner) -> int:
     warn("convergence-local: running a local leg (tens of minutes). If you only need take changes, stop and use:")
     sys.stderr.write(FASTER_TOOLS)
     os.chdir(ROOT)
-    leg = Leg(runner, env, code, args[1] if len(args) > 1 and args[1] else SUITES[code])
+    leg = Leg(runner, env, code, args[1] if len(args) > 1 and args[1] else SUITES[code], probe)
     try:
         run_leg(leg)
     except Stop as stop:
@@ -275,7 +276,7 @@ def end_by_signal(signum: int, _frame: Optional[FrameType]) -> NoReturn:
 def main() -> int:
     for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):  # before the runner, which passes a signal on to this
         signal.signal(sig, end_by_signal)
-    return run(sys.argv[1:], machine.environment(), SubprocessRunner())
+    return run(sys.argv[1:], machine.environment(), SubprocessRunner(), port_probe.SocketProbe())
 
 
 if __name__ == "__main__":

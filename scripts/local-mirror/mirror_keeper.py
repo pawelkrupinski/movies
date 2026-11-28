@@ -10,6 +10,7 @@ import signal
 from typing import Dict
 
 from mirror_settings import Pauses, Settings, Stopped, say, seconds
+from mongo import port_probe
 
 
 class Keeper:
@@ -63,4 +64,4 @@ class Keeper:
 
 
 def keep_tunnel(env: Dict[str, str]) -> int:
-    return Keeper(Settings.for_child(env)).run()
+    return Keeper(Settings.for_child(env, port_probe.SocketProbe())).run()
