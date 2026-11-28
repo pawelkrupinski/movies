@@ -75,7 +75,10 @@ if [ -n "$nix_bin" ]; then
   local_repo="$work/local"; mkdir -p "$local_repo/infra/bin" "$local_repo/infra/test" "$local_repo/infra/nix/files/monitoring/rules"
   scratch_repo "$local_repo"
   mkdir -p "$local_repo/scripts"; : > "$local_repo/scripts/.keep"
-  for tool in backtest-alerts backtest-alerts-local backtest-alerts-replay; do cp "$REPO_ROOT/infra/bin/$tool" "$local_repo/infra/bin/"; done
+  for tool in backtest-alerts backtest-alerts-local backtest-alerts-replay backtest_checks.py backtest_clock.py \
+      backtest_prometheus.py backtest_replay.py backtest_rules.py backtest_run.py backtest_series.py; do
+    cp "$REPO_ROOT/infra/bin/$tool" "$local_repo/infra/bin/"
+  done
   cp "$REPO_ROOT/infra/test/promql_selectors.py" "$local_repo/infra/test/"
   echo '{}' > "$local_repo/infra/test/alert-backtest-allowlist.yml"
   echo 'incidents: []' > "$local_repo/infra/test/alert-incidents.yml"
