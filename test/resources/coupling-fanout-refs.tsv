@@ -907,7 +907,6 @@ services.movies.CorpusHydrate	settings.BootHydrateRetryInterval
 services.movies.CorpusHydrate	tools.ReadOutcome
 services.movies.CorpusHydrate	tools.Stopwatch
 services.movies.InPlaceMovieUpdate	models.MovieRecord
-services.movies.InPlaceMovieUpdate	services.MongoGuard
 services.movies.InPlaceMovieUpdate	services.movies.MovieRecordPatch
 services.movies.InPlaceMovieUpdate	services.movies.MovieRepository
 services.movies.InPlaceMovieUpdate	services.movies.MovieUpdates

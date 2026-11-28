@@ -5,7 +5,6 @@ import scala.concurrent.Await
 import com.mongodb.client.model.UpdateOptions
 import models.{CacheKey, FilmId, StoredMovieRecord}
 import models.{MovieRecord, SourceData}
-import org.mongodb.scala.bson.BsonString
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.SingleObservableFuture
 
@@ -14,7 +13,7 @@ import org.mongodb.scala.SingleObservableFuture
  *  `movie_slots`), each skipped when empty, the side writes applied only once the row is known present, and a patch
  *  naming a dotted cinema written as a guarded whole-document replace.
  *
- *  Built by [[WholeRecordUpsert.inPlaceUpdate]] over the stores that upsert writes whole: the `movies` collection, the
+ *  Built over a [[WholeRecordUpsert]], the stores it writes whole: the `movies` collection, the
  *  side collections, the stamp sequence, the write metrics and the repository's `logger`. `readWhole` is the
  *  repository's read of the stored document the dotted-name fallback patches, decoded under its title rules — its
  *  seam, so a spec can land another write between that read and the replace. */
@@ -100,9 +99,7 @@ private[movies] final class InPlaceMovieUpdate(
       InPlaceMovieUpdate.dottedReplaceRecord(asRead.map(_.record), patch)
     } { (asRead, merged) =>
       // An absent row decided nothing above, so only a row as read reaches here.
-      asRead.exists(read => services.MongoGuard.replaceIfUnchanged(movies,
-        services.MongoGuard.wholeUnchanged(BsonString(id), read.whole),
-        StoredMovieDto.fromDomain(id, key, merged, stamps.next()), MovieRepository.WriteTimeout, insert = false))
+      asRead.exists(read => sides.replaceIfUnchanged(id, key, merged, read.whole))
     } match {
       case tools.GuardedWrite.Landed(_)                 => 1L
       case tools.GuardedWrite.Unneeded                  => 0L

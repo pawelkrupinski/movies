@@ -2526,7 +2526,6 @@ tools.ConcurrentCandidateProbe	collaborator
 tools.ConstructByType	collaborator
 tools.CountingHttpFetch	collaborator
 tools.CreditSpelling	data
-tools.CyrillicLetters	data
 tools.DaemonExecutors	collaborator
 tools.DelegatingExecutorService	collaborator
 tools.Digest	data

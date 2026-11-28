@@ -203,7 +203,7 @@ private[identity] object TitleTextMeasures {
   /** "And" in each language a country bills in. */
   private val Conjunctions = Set("and", "und", "y", "i", "et")
 
-  private val Cyrillic: Map[Char, String] = tools.CyrillicLetters.Shared ++ Map(
+  private val Cyrillic: Map[Char, String] = tools.TextNormalization.CyrillicShared ++ Map(
     'г' -> "g", 'є' -> "ye", 'ё' -> "yo", 'ї' -> "yi", 'й' -> "y", 'ю' -> "yu", 'я' -> "ya")
 
   /** One title's comparison forms, each computed on first use: the same titles are compared across

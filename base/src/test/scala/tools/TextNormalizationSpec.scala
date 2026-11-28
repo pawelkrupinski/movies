@@ -213,4 +213,9 @@ class TextNormalizationSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "CyrillicShared" should "hold the 30 letters both schemes spell alike, and none of the seven they spell apart" in {
+    TextNormalization.CyrillicShared should have size 30
+    TextNormalization.CyrillicShared.keySet.intersect("гєёїйюя".toSet) shouldBe empty
+    "щука".map(TextNormalization.CyrillicShared).mkString shouldBe "shchuka"
+  }
 }

@@ -30,10 +30,11 @@ private[movies] final class WholeRecordUpsert(
   val logger:          play.api.Logger
 ) {
 
-  /** The field-level update over the stores this upsert writes whole — [[InPlaceMovieUpdate]]; `readWhole` is the
-   *  repository's read of the stored document its dotted-name fallback patches. */
-  def inPlaceUpdate(readWhole: String => Option[InPlaceMovieUpdate.ReadDocument]): InPlaceMovieUpdate =
-    new InPlaceMovieUpdate(this, readWhole)
+  /** Replace the stored row `id` with `merged` when it is still the document `asRead`, never inserting: false when it
+   *  changed since (or is gone) — [[services.MongoGuard.replaceIfUnchanged]] over this upsert's `movies` and stamps. */
+  def replaceIfUnchanged(id: String, key: String, merged: MovieRecord, asRead: org.bson.BsonDocument): Boolean =
+    services.MongoGuard.replaceIfUnchanged(movies, services.MongoGuard.wholeUnchanged(org.mongodb.scala.bson.BsonString(id), asRead),
+      StoredMovieDto.fromDomain(id, key, merged, stamps.next()), MovieRepository.WriteTimeout, insert = false)
 
   /** Write the film `film` as `e` into `movies` and its side collections — see [[MovieRepository.upsert]]. */
   def upsert(film: FilmId, cacheKey: CacheKey, e: MovieRecord): WriteOutcome = {
