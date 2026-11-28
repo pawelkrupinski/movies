@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""port_probe.py: ONE contract suite over the real loopback probe and the in-memory one -- a taken port answers, a free
-one and one that is no number do not."""
+"""port_probe.py: ONE contract suite over the real loopback probe and the in-memory one -- a taken port answers, one nobody
+listens on and one that is no number do not."""
 from __future__ import annotations
 
 import os
@@ -20,10 +20,11 @@ def listening() -> Tuple[socket.socket, str]:
     return server, str(server.getsockname()[1])
 
 
-def free_port() -> str:
-    with socket.socket() as holder:
-        holder.bind(("127.0.0.1", 0))
-        return str(holder.getsockname()[1])
+def bound_not_listening() -> Tuple[socket.socket, str]:
+    """A port this test holds but nobody listens on: no other process can take it while the test runs."""
+    holder = socket.socket()
+    holder.bind(("127.0.0.1", 0))
+    return holder, str(holder.getsockname()[1])
 
 
 class Contract:
@@ -35,8 +36,9 @@ class Contract:
         self.addCleanup(server.close)  # type: ignore[attr-defined]
         self.assertTrue(self.probe_over(port).answers(port))  # type: ignore[attr-defined]
 
-    def test_a_free_port_does_not(self) -> None:
-        port = free_port()
+    def test_a_port_nobody_listens_on_does_not(self) -> None:
+        holder, port = bound_not_listening()
+        self.addCleanup(holder.close)  # type: ignore[attr-defined]
         self.assertFalse(self.probe_over("").answers(port))  # type: ignore[attr-defined]
 
     def test_a_port_that_is_no_number_does_not(self) -> None:
