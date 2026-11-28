@@ -176,7 +176,7 @@ repochecks:deploy.SbtCachePathsSpec	.github/actions/*.yaml .github/actions/*.yml
 repochecks:deploy.SbtDependencyFanOutSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml scripts/ci/sbt-deps-resolve.sh
 repochecks:deploy.SbtTargetCacheJarsSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml
 repochecks:deploy.ScheduledRunReportSpec	.github/workflows/*
-repochecks:deploy.SelfHostedRunnersSpec	.github/workflows/* scripts/ci/runner_scheduler.py
+repochecks:deploy.SelfHostedRunnersSpec	.github/workflows/* scripts/ci/runner_scheduler.py scripts/ci/runner_scheduling/*
 repochecks:deploy.SetupSbtRunnerPinSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml project/build.properties scripts/ci/seed-sbt-runner.sh
 repochecks:deploy.SharedFileLayoutSpec	docs/design/identity-no-drift/state/* docs/identity-experiments/* .gitattributes docs/* test/resources/fixtures/* .github/convergence-paths.txt test/resources/identity-stamp-carry.tsv test/resources/identity-stamp-carry-ranges.tsv
 repochecks:deploy.SharedJdkSetupSpec	.github/actions/*.yaml .github/actions/*.yml .github/workflows/*.yaml .github/workflows/*.yml

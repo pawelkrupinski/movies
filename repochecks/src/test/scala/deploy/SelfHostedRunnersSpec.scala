@@ -97,7 +97,7 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
   private val Identity = "check-identity"
 
   "a landing check" should "run the rest on ci-runner's movies-check slots, pinned to its run, its plan on the light lane" in {
-    // OLDEST FIRST (2026-11-17, runner_scheduler.py PIN_PREFIX): the run's pin lets the scheduler start a runner that
+    // OLDEST FIRST (2026-11-17, runner_scheduling PIN_PREFIX): the run's pin lets the scheduler start a runner that
     // can take this run's jobs alone, for the oldest queued one; the plan job, on the light lane, is not pinned
     val check = landing("refs/heads/check/x")
     check.keySet shouldBe Set("plan", "check", Identity)
@@ -114,14 +114,14 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
       withClue(s"$ref, $vars: ")(landing(ref, vars)(Identity) shouldBe "ubuntu-26.04")
   }
 
-  it should "run a gate-red fix's on the red-fix check lane, served first (runner_scheduler.py CHECK_LANES, 2026-11-17)" in {
+  it should "run a gate-red fix's on the red-fix check lane, served first (runner_scheduling CHECK_LANES, 2026-11-17)" in {
     val red = landing("refs/heads/check/red-20261117-110122-movies-x-2ed6cd")
     red("check") shouldBe s"movies-check-red-fix,movies-run-$RunId"
     all(landing("refs/heads/check/red-x", vars = Map.empty).values) should startWith("ubuntu-")
   }
 
   it should "ask for no pin the scheduler cannot serve: the pin prefix is the scheduler's" in {
-    RepoFile.read("scripts/ci/runner_scheduler.py") should include("""PIN_PREFIX = "movies-run-"""")
+    RepoFile.read("scripts/ci/runner_scheduling/model.py") should include("""PIN_PREFIX = "movies-run-"""")
   }
 
   "a measurement" should "run its convergence legs on movies-measure and the rest on ci-runner" in {
@@ -136,7 +136,7 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
 
   "a landing check's takes rows" should "queue in the measure lane their plan job names, never hosted (2026-11-16)" in {
     // scripts/ci/measure-lane.sh writes the lane step's label: movies-red-fix or movies-landing where ci-runner's
-    // scheduler serves the lanes (runner_scheduler.py MEASURE_LANES), movies-measure otherwise; main never reads it
+    // scheduler serves the lanes (runner_scheduling MEASURE_LANES), movies-measure otherwise; main never reads it
     val drift = ctx("refs/heads/measure/agent/abc-123-drift-x")
     for (lane <- Seq("movies-red-fix", "movies-landing"))
       legRunner(drift.copy(steps = Map("lane.label" -> lane)), "identity-takes.yml") shouldBe lane
@@ -229,7 +229,7 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
   }
 
   /** THE EXPLORER LANE (the owner, 2026-11-18, "7"): the nightly explorers' rows queue below every optional measurement,
-   *  and none starts while a landing check waits for a runner (runner_scheduler.py EXPLORE_LANE) -- on 2026-11-17
+   *  and none starts while a landing check waits for a runner (runner_scheduling EXPLORE_LANE) -- on 2026-11-17
    *  21:15-21:40Z the drift explorer's rows refilled the measure CPUs and a landing check could not borrow them. Each
    *  asks for the lane its plan's measure-lane.sh names: movies-explore where ci-runner's scheduler serves it. */
   "the explorers' rows" should "queue in the explorer lane where ci-runner's scheduler serves it, movies-measure otherwise" in {
@@ -241,7 +241,7 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     walk("walk") shouldBe "movies-explore"
     labels("identity-family-explorer.yml", main)("walk") shouldBe "movies-measure"
     RepoFile.jobs(yml("identity-family-explorer.yml"))("plan") should include("scripts/ci/measure-lane.sh explore")
-    RepoFile.read("scripts/ci/runner_scheduler.py") should include("""EXPLORE_LANE = MEASURE_LANES[-1]""")
+    RepoFile.read("scripts/ci/runner_scheduling/model.py") should include("""EXPLORE_LANE = MEASURE_LANES[-1]""")
   }
 
   "the timings report" should "run where its caller does: hosted for THE GATE's workflows on main, ci-runner otherwise" in {
