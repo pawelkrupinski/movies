@@ -32,7 +32,6 @@ shell-decisions	scripts/own-mongod.sh:own_mongod_start	12
 shell-decisions	scripts/python-venv:<top>	13
 shell-decisions	scripts/recording-diff:<top>	19
 shell-decisions	scripts/review-commit:<top>	12
-shell-decisions	scripts/unit-changed:<top>	11
 shell-decisions	scripts/wait-for:<top>	28
 shell-function-lines	scripts/ci/bounded-step.sh:bounded_step_reap	54
 shell-nesting	infra/nix/files/heap-dumps.sh:<top>	6
