@@ -109,7 +109,6 @@ cognitive	scripts/claude-hooks/unbounded-poll-guard:fix_for	19
 cognitive	scripts/claude-hooks/unbounded-poll-guard:positions	14
 cognitive	scripts/convergence-findings.py:main	13
 cognitive	scripts/deploy_watch.py:judge	11
-cognitive	scripts/deploy_watch.py:main	47
 cognitive	scripts/deploy_watch.py:parse_checks	13
 cognitive	scripts/discover-cinemas/discover.py:build_plan	16
 cognitive	scripts/discover-cinemas/discover.py:render_report	12
@@ -242,7 +241,7 @@ cyclomatic	scripts/claude-hooks/foreground-wait-guard:waits	19
 cyclomatic	scripts/claude-hooks/owner-decisions:pending_decisions	11
 cyclomatic	scripts/claude-hooks/unbounded-poll-guard:fix_for	23
 cyclomatic	scripts/claude-hooks/unbounded-poll-guard:positions	11
-cyclomatic	scripts/deploy_watch.py:main	37
+cyclomatic	scripts/deploy_watch.py:main	11
 cyclomatic	scripts/discover-cinemas/discover.py:build_plan	12
 cyclomatic	scripts/discover-cinemas/discover.py:render_report	11
 cyclomatic	scripts/identity-stage-works.py:main	13
@@ -297,7 +296,6 @@ method-lines	infra/nix/files/nixos-auto-apply.py:classify_output	59
 method-lines	infra/nix/files/nixos-auto-apply.py:main	92
 method-lines	infra/nix/files/nixos-auto-apply.py:publish	56
 method-lines	scripts/ci/runner_scheduler.py:decide	216
-method-lines	scripts/deploy_watch.py:main	79
 method-lines	scripts/identity_rule_ablation.py:main	82
 method-lines	scripts/identity_stamp_carry.py:auto	56
 method-lines	scripts/unmatched_census.py:census	51
