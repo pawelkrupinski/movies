@@ -14,8 +14,7 @@ questions of it while it runs: the checks a push runs, the test configs it compi
 
 Paths are read on stdin, one a line; the answer goes to stdout. The checkout is the hook's working tree's root (git's);
 the hook's tables (lint-registry.tsv, local-tests.txt) and scripts/run-script-tests are read beside the hook, as the
-shell hook read them. scripts/hooks/pre_push_test.py holds every mode, on this and on the shell copy
-(KINOWO_PRE_PUSH_LEGACY=1 runs scripts/hooks/pre-push.sh-legacy whole)."""
+shell hook read them. scripts/hooks/pre_push_test.py holds every mode."""
 from __future__ import annotations
 
 import os

@@ -3,8 +3,7 @@ of this checkout's hook and everything it runs from its own tree (scripts/hooks/
 scripts/lib/ and the hook's Python modules), with FIXTURE tables in place of the real ones -- a small lint registry,
 local-tests.txt, build.sbt's worker rows -- and a stub scripts/run-script-tests, so every expectation reads off
 this file, never off the repository's own tables. The tests hold the hook to its command line, its output and its
-exit status only: they pass unchanged on the shell hook and on its Python rewrite (scripts/hooks/pre-push either
-way; KINOWO_PRE_PUSH_LEGACY=1 runs the frozen shell copy, when there is one)."""
+exit status only: they passed unchanged on the shell hook and on its Python rewrite (scripts/hooks/pre-push)."""
 from __future__ import annotations
 
 import os

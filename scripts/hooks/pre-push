@@ -297,11 +297,7 @@
 # `waiting` branch while main is red (the gate is judged again when that branch is pushed). `--range A..B` runs the
 # hook for the commits in A..B (diffed from their merge-base) instead of reading git's stdin.
 set -uo pipefail
-# THE LEGACY FALLBACK (shell-to-Python migration, section 10): KINOWO_PRE_PUSH_LEGACY=1 runs the whole hook as it was
-# before its selection moved to Python, scripts/hooks/pre-push.sh-legacy, sourced so its command line still names
-# this hook (agentctl finds a push's hook by `hooks/pre-push` in it).
-if [ "${KINOWO_PRE_PUSH_LEGACY:-}" = 1 ]; then exec bash -c '. "$0.sh-legacy"' "${BASH_SOURCE[0]}" "$@"; fi
-# THE HOOK IS PYTHON'S (scripts/pre_push.py over scripts/lib/pre_push_*.py): which checks, compiles, lint specs and
+# THE HOOK IS PYTHON'S (scripts/pre_push.py over scripts/lib/pre_push_hook/): which checks, compiles, lint specs and
 # tests a list of paths selects (every plan mode), and the run itself -- what is pushed, the range rules, the red gate and
 # the stranded trailers (scripts/lib/pre_push_hook/pre_push_gate.py), the known-red baseline, the reuse, the check loop with its
 # watchdog, every check (scripts/lib/pre_push_hook/checks/pre_push_registry.py) and the verdict lines (scripts/lib/pre_push_hook/pre_push_run.py; its process

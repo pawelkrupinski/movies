@@ -5,7 +5,7 @@ selects (`--plan`), which test configs it compiles (`--compile-plan`), the ratch
 their universe (`--unit-plan`, `--unit-universe`, `--source-lints`), the lint registry's rows (`--lint-plan`,
 `--per-file-lints`), the script self-tests (`--script-test-plan`) and a failed run's summary (`--failure-summary`).
 agentctl's land queue and MINIMAL RECHECKS read these lines; the hook's own run reads the same selection. Hermetic: a
-scratch checkout with the fixture's tables (pre_push_fixture.py). Passes unchanged on the shell hook and on the Python
+scratch checkout with the fixture's tables (pre_push_fixture.py). Passed unchanged on the shell hook and on the Python
 one (the migration's equivalence proof, /Users/pawel/Documents/shell-to-python-migration.md section 10)."""
 from __future__ import annotations
 
@@ -32,6 +32,12 @@ class PlanTest(PlanCase):
     def test_nothing_changed_selects_nothing(self):
         self.assertPlans([], [])
         self.assertPlans([], ["docs/x.md", "README"])
+
+    def test_the_retired_legacy_switch_runs_the_hook_itself(self):
+        legacy = f"{self.checkout}/scripts/hooks/pre-push.sh-legacy"  # retired 2026-11-28 with KINOWO_PRE_PUSH_LEGACY
+        if os.path.exists(legacy):
+            os.remove(legacy)
+        self.assertPlans(["eslint", "jsquality", "sbt"], ["web/src/main/assets/js/a.js"], {"KINOWO_PRE_PUSH_LEGACY": "1"})
 
     def test_the_browser_assets(self):
         self.assertPlans(["eslint", "jsquality", "sbt"], ["web/src/main/assets/js/a.js"])
