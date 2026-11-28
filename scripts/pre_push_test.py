@@ -365,6 +365,11 @@ class UnreadTableTest(PlanCase):
         self.assertEqual("", done.stdout)
         self.assertIn("run-script-tests --reads exited 3", done.stderr)
 
+    def test_a_checkout_with_no_runner_has_no_self_tests_to_select(self):
+        os.remove(os.path.join(self.checkout, "scripts", "run-script-tests"))
+        done = self.hook("--plan", stdin="docs/read-by-a-test.md\n")
+        self.assertEqual(0, done.code, done.output)
+
 
 class AgentctlReadsTest(PlanCase):
     """What agentctl reads off the hook's TEXT at main: each mode it may ask as `<mode>)` (~/bin

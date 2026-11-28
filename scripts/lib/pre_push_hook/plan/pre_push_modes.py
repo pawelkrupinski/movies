@@ -58,9 +58,13 @@ class Checkout:
                           self.skipped("lintspecs"))
 
     def tree(self) -> planning.Tree:
-        code, reads = self.run([f"{self.hooks}/../run-script-tests", "--reads"], "")
-        if code != 0:  # an empty list would select no self-test for any path a test reads
-            raise Unreadable(f"scripts/run-script-tests --reads exited {code}")
+        runner = f"{self.hooks}/../run-script-tests"
+        if self.files.is_file(runner):  # a checkout with no runner has no self-tests: nothing for a path to select
+            code, reads = self.run([runner, "--reads"], "")
+            if code != 0:  # an empty list would select no self-test for any path a test reads
+                raise Unreadable(f"scripts/run-script-tests --reads exited {code}")
+        else:
+            reads = ""
         allow = self.files.read_text_or(".github/allow-lists.txt", "")
         local_tests = self.table("local-tests.txt")
         return planning.Tree(
