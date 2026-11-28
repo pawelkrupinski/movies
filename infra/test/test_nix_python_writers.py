@@ -59,6 +59,14 @@ def built_text(writer: Writer) -> str:
     return BUILT_SHEBANG + text
 
 
+def module_files(writer: Writer) -> List[pathlib.Path]:
+    """The pieces a writer's script imports from beside it: `nix/files/<name with _>/*.py` (nixos-auto-apply.py's
+    `nixos_auto_apply/`), shipped as a store copy the one swapped line of the script points at. The build lints only
+    the script, so the pieces are linted here with the writer's ignores."""
+    folder = writer.source.parent / writer.source.stem.replace("-", "_")
+    return sorted(folder.glob("*.py")) if folder.is_dir() else []
+
+
 def flake8() -> str:
     """The pinned flake8's directory (scripts/python-venv builds it once)."""
     done = subprocess.run([str(REPO / "scripts" / "python-venv"), str(REPO / "scripts" / "flake8-requirements.txt"),
@@ -97,6 +105,24 @@ class NixPythonWritersTest(unittest.TestCase):
         for writer in writers():
             with self.subTest(writer=writer.name):
                 self.assertEqual("", lint(writer, flake8_dir), f"{writer.nix.relative_to(REPO)} would not build")
+
+    def test_the_pieces_beside_a_script_pass_the_same_flake8(self) -> None:
+        flake8_dir = flake8()
+        pieces = {w.name: module_files(w) for w in writers()}
+        self.assertTrue(pieces["nixos-auto-apply"], "nixos_auto_apply/ holds the applier's modules")
+        for writer in writers():
+            if not pieces[writer.name]:
+                continue
+            args = [os.path.join(flake8_dir, "python3"), "-m", "flake8", "--ignore=" + ",".join(writer.ignore)]
+            done = subprocess.run([*args, *map(str, pieces[writer.name])], capture_output=True, text=True)
+            self.assertEqual("", done.stdout + done.stderr, f"{writer.name}'s modules would not lint")
+
+    def test_the_line_nix_swaps_for_the_store_copy_is_still_in_the_script(self) -> None:
+        swapped = ('sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), '
+                   '"nixos_auto_apply"))')
+        writer = next(w for w in writers() if w.name == "nixos-auto-apply")
+        self.assertEqual(1, writer.source.read_text().count(swapped))
+        self.assertEqual(1, writer.nix.read_text().count(swapped))
 
     def test_the_lint_sees_what_only_the_build_sees(self) -> None:
         # a file keeping its own shebang: under the prepended one it is line 2, a block comment (E265)

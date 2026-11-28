@@ -4,7 +4,7 @@
   "exclude": ["**/node_modules", "**/__pycache__", "**/.*"],
   "typeCheckingMode": "strict",
   "pythonVersion": "3.9",
-  "extraPaths": ["scripts/lib", "scripts/ci", "scripts/design-rules", "scripts/py-quality", "infra/test", "data/uk/scripts"],
+  "extraPaths": ["scripts/lib", "scripts/ci", "scripts/design-rules", "scripts/py-quality", "infra/test", "infra/nix/files/nixos_auto_apply", "data/uk/scripts"],
   "reportMissingModuleSource": "none",
   "reportUnknownVariableType": "warning",
   "reportUnknownArgumentType": "warning",

@@ -26,18 +26,44 @@ import io
 import os
 import pathlib
 import shutil
+import subprocess
+import sys
 import tempfile
+import time
 import unittest
 
 HERE = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
 APPLIER = HERE / ".." / "nix" / "files" / "nixos-auto-apply.py"
 
-# The file is a script, not a module on the path; load it by location. It is also EMBEDDED into the
-# nix module by `builtins.readFile` with its first line dropped, which is why importing the file
-# itself -- rather than a copy -- is the only way to test what actually ships.
+# The file is a script, not a module on the path; load it by location. Nix embeds it with `builtins.readFile`, its
+# first line dropped and the one line that names its own directory swapped for the store copy of the modules
+# beside it, which is why importing the file itself -- rather than a copy -- is the only way to test what ships.
 _spec = importlib.util.spec_from_file_location("nixos_auto_apply", APPLIER)
 applier = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(applier)
+
+# The script finds the modules beside it (`nixos_auto_apply/`) on its own sys.path entry, so they import by name now.
+import applier_classify  # noqa: E402,F401
+import applier_closure  # noqa: E402
+import applier_decide  # noqa: E402
+import applier_dry_activate  # noqa: E402,F401
+import applier_metrics  # noqa: E402
+import applier_process  # noqa: E402
+import applier_switch  # noqa: E402
+import applier_units  # noqa: E402,F401
+import applier_verdict  # noqa: E402,F401
+
+MODULES = (applier_classify, applier_closure, applier_decide, applier_dry_activate, applier_metrics,
+           applier_process, applier_switch, applier_units, applier_verdict)
+
+
+def rebind(case: unittest.TestCase, name: str, value) -> None:
+    """Replace `name` in every module that imported it (`from m import name` copies the binding, so the
+    one defining it is not the only one to patch); undone when the test ends."""
+    for module in MODULES:
+        if hasattr(module, name):
+            case.addCleanup(setattr, module, name, getattr(module, name))
+            setattr(module, name, value)
 
 
 class BenignLines(unittest.TestCase):
@@ -45,7 +71,7 @@ class BenignLines(unittest.TestCase):
 
     def test_a_single_new_secret_is_benign(self):
         # VERBATIM from monitoring-1, 2026-09-05, the line that blocked the host.
-        got = applier.classify_output("would add secret: alertmanager/smtp-password")
+        got = applier_classify.classify_output("would add secret: alertmanager/smtp-password")
         self.assertEqual(got.unrecognised, [],
                          "sops-nix pluralises this line against the number of secrets; the "
                          "singular form must be recognised or a one-secret change blocks the host")
@@ -54,12 +80,12 @@ class BenignLines(unittest.TestCase):
 
     def test_several_new_secrets_are_benign(self):
         # The plural the original rule was written from, which must keep working.
-        got = applier.classify_output("would add secrets: grafana/admin-password, k3s/cluster-token")
+        got = applier_classify.classify_output("would add secrets: grafana/admin-password, k3s/cluster-token")
         self.assertEqual(got.unrecognised, [])
         self.assertEqual(got.disruptive, [])
 
     def test_the_ordinary_preamble_is_benign(self):
-        got = applier.classify_output(
+        got = applier_classify.classify_output(
             "Not checking switch inhibitors (action = dry-activate)\n"
             "would activate the configuration...")
         self.assertEqual(got.unrecognised, [])
@@ -75,12 +101,12 @@ class SecretsThatAreNotBenign(unittest.TestCase):
     """
 
     def test_a_changed_secret_is_not_waved_through(self):
-        got = applier.classify_output("would modify secret: alertmanager/telegram-bot-token")
+        got = applier_classify.classify_output("would modify secret: alertmanager/telegram-bot-token")
         self.assertEqual(got.unrecognised, ["would modify secret: alertmanager/telegram-bot-token"],
                          "an existing secret changing value is not the 'arrived from nothing' shape")
 
     def test_a_removed_secret_is_not_waved_through(self):
-        got = applier.classify_output("would remove secret: prometheus/fly-token")
+        got = applier_classify.classify_output("would remove secret: prometheus/fly-token")
         self.assertEqual(got.unrecognised, ["would remove secret: prometheus/fly-token"])
 
 
@@ -89,15 +115,15 @@ class UnitLines(unittest.TestCase):
 
     def test_a_restart_is_disruptive_unless_forgiven(self):
         line = "would restart the following units: alertmanager.service"
-        self.assertTrue(applier.classify_output(line).disruptive)
-        forgiven = applier.classify_output(line, restartable=("alertmanager.service",))
+        self.assertTrue(applier_classify.classify_output(line).disruptive)
+        forgiven = applier_classify.classify_output(line, restartable=("alertmanager.service",))
         self.assertEqual(forgiven.disruptive, [])
         self.assertEqual(forgiven.forgiven, ("restart alertmanager.service",))
 
     def test_never_disturb_beats_the_allow_list(self):
         # `neverDisturbUnits` is checked BEFORE either allow-list, so naming a unit in both must
         # still refuse -- the floor (sshd, mongodb, k3s) has to survive a `*` allow-list.
-        got = applier.classify_output(
+        got = applier_classify.classify_output(
             "would restart the following units: mongodb.service",
             restartable=("*",), never=("mongodb.service",))
         self.assertEqual(got.forgiven, ())
@@ -106,7 +132,7 @@ class UnitLines(unittest.TestCase):
     def test_a_changed_but_skipped_unit_is_disruptive(self):
         # It disturbs nothing TODAY, which is exactly why it is worth refusing: the running service
         # no longer matches its definition, and that must be a person's decision.
-        got = applier.classify_output(
+        got = applier_classify.classify_output(
             "would NOT restart the following changed units: nixos-auto-apply.service")
         self.assertTrue(got.disruptive)
         self.assertEqual(got.unrecognised, [])
@@ -116,7 +142,7 @@ class AnythingElse(unittest.TestCase):
     def test_an_unknown_line_blocks_rather_than_passing(self):
         # THE WHOLE SAFETY PROPERTY. A line nobody has a rule for must land in `unrecognised`,
         # which blocks -- never be silently dropped, which would read as "nothing would happen".
-        got = applier.classify_output("would reticulate the following splines: 3")
+        got = applier_classify.classify_output("would reticulate the following splines: 3")
         self.assertEqual(got.unrecognised, ["would reticulate the following splines: 3"])
         self.assertEqual(got.disruptive, [])
 
@@ -163,20 +189,18 @@ class SwitchExitingFour(unittest.TestCase):
         # Stubbed at the process boundary, so the script's own `run` wrapper is what is tested.
         def fake_subprocess_run(argv, **_kwargs):
             code = 4 if argv[-1] == "switch" else 0
-            return applier.subprocess.CompletedProcess(argv, code, "", output if code else "")
+            return subprocess.CompletedProcess(argv, code, "", output if code else "")
 
         states = iter([set(), set(failed_after)])
-        saved = applier.subprocess.run, applier.failed_units, applier.time.sleep
-        applier.subprocess.run = fake_subprocess_run
-        applier.failed_units = lambda: next(states)
-        applier.time.sleep = lambda _s: None
+        self.addCleanup(setattr, subprocess, "run", subprocess.run)
+        self.addCleanup(setattr, time, "sleep", time.sleep)
+        subprocess.run = fake_subprocess_run
+        rebind(self, "failed_units", lambda: next(states))
+        time.sleep = lambda _s: None
         self.journal = io.StringIO()
-        try:
-            with contextlib.redirect_stderr(self.journal):
-                return applier.activate(applier.pathlib.Path("/nix/store/x-candidate"),
-                                        rollback_on_failure=False)
-        finally:
-            applier.subprocess.run, applier.failed_units, applier.time.sleep = saved
+        with contextlib.redirect_stderr(self.journal):
+            return applier_switch.activate(pathlib.Path("/nix/store/x-candidate"),
+                                           rollback_on_failure=False)
 
     def test_a_user_manager_going_away_mid_switch_is_not_a_failed_deploy(self):
         failure = self.switch(self.HEAD_2026_09_25 + self.USER_ACTIVATION_RACE)
@@ -193,7 +217,7 @@ class SwitchExitingFour(unittest.TestCase):
     def test_a_system_unit_failing_still_stops_the_pass_and_says_which(self):
         output = (self.HEAD_2026_09_25 + self.USER_ACTIVATION_RACE
                   + "warning: the following units failed: prometheus.service\n")
-        with self.assertRaises(applier.SwitchFailed) as raised:
+        with self.assertRaises(applier_process.SwitchFailed) as raised:
             self.switch(output)
         self.assertIn("warning: the following units failed: prometheus.service",
                       str(raised.exception),
@@ -204,11 +228,11 @@ class SwitchExitingFour(unittest.TestCase):
         output = ("activating the configuration...\n"
                   "warning: user activation for nixdeploy failed\n"
                   "Failed to start grafana.service: Unit grafana.service is masked.\n")
-        with self.assertRaises(applier.SwitchFailed):
+        with self.assertRaises(applier_process.SwitchFailed):
             self.switch(output)
 
     def test_exit_four_with_no_user_activation_failure_is_not_tolerated(self):
-        with self.assertRaises(applier.SwitchFailed):
+        with self.assertRaises(applier_process.SwitchFailed):
             self.switch(self.HEAD_2026_09_25)
 
     def test_a_system_unit_that_failed_afterwards_is_still_caught_by_verification(self):
@@ -261,17 +285,13 @@ class SwitchFailedMidway(unittest.TestCase):
         self.current = self.root / "current-system"
         self.profile = self.root / "profile"
         self.profile.symlink_to(self.candidate)
-        saved = (applier.subprocess.run, applier.failed_units, applier.time.sleep,
-                 applier.CURRENT_SYSTEM, applier.SYSTEM_PROFILE, applier.SWITCH_STATE_DIRECTORY)
-        def restore():
-            (applier.subprocess.run, applier.failed_units, applier.time.sleep,
-             applier.CURRENT_SYSTEM, applier.SYSTEM_PROFILE, applier.SWITCH_STATE_DIRECTORY) = saved
-        self.addCleanup(restore)
-        applier.CURRENT_SYSTEM = str(self.current)
-        applier.SYSTEM_PROFILE = str(self.profile)
-        applier.SWITCH_STATE_DIRECTORY = str(self.root / "run-nixos")
-        applier.failed_units = lambda: set()
-        applier.time.sleep = lambda _s: None
+        self.addCleanup(setattr, subprocess, "run", subprocess.run)
+        self.addCleanup(setattr, time, "sleep", time.sleep)
+        rebind(self, "CURRENT_SYSTEM", str(self.current))
+        rebind(self, "SYSTEM_PROFILE", str(self.profile))
+        rebind(self, "SWITCH_STATE_DIRECTORY", str(self.root / "run-nixos"))
+        rebind(self, "failed_units", lambda: set())
+        time.sleep = lambda _s: None
 
     def switch(self, *results, current_is_candidate=True):
         """Drive the real `activate`; each `switch` call takes the next (exit code, output)."""
@@ -280,14 +300,14 @@ class SwitchFailedMidway(unittest.TestCase):
         self.switches = 0
         def fake_subprocess_run(argv, **_kwargs):
             if argv[-1] != "switch":
-                return applier.subprocess.CompletedProcess(argv, 0, "", "")
+                return subprocess.CompletedProcess(argv, 0, "", "")
             self.switches += 1
             code, output = next(outcomes)
-            return applier.subprocess.CompletedProcess(argv, code, "", output)
-        applier.subprocess.run = fake_subprocess_run
+            return subprocess.CompletedProcess(argv, code, "", output)
+        subprocess.run = fake_subprocess_run
         self.journal = io.StringIO()
         with contextlib.redirect_stderr(self.journal):
-            return applier.activate(self.candidate, rollback_on_failure=False)
+            return applier_switch.activate(self.candidate, rollback_on_failure=False)
 
     def test_the_logind_race_is_retried_once_and_a_clean_retry_lands(self):
         failure = self.switch((1, self.LOGIND_USER_VANISHED_2026_11_10), (0, ""))
@@ -297,16 +317,16 @@ class SwitchFailedMidway(unittest.TestCase):
                       "the retried race is still named in the journal")
 
     def test_a_retry_that_fails_again_is_a_failed_switch_with_its_tail(self):
-        with self.assertRaises(applier.SwitchFailed) as raised:
+        with self.assertRaises(applier_process.SwitchFailed) as raised:
             self.switch((1, self.LOGIND_USER_VANISHED_2026_11_10),
                         (1, self.LOGIND_USER_VANISHED_2026_11_10))
         self.assertEqual(self.switches, 2, "ONE retry, never a loop")
         self.assertIn("Failed to get GID for root", str(raised.exception))
-        self.assertNotIsInstance(raised.exception, applier.Undetermined,
+        self.assertNotIsInstance(raised.exception, applier_process.Undetermined,
                                  "a half-applied host is a verdict, not could_not_measure")
 
     def test_no_retry_unless_the_host_is_on_the_candidate(self):
-        with self.assertRaises(applier.SwitchFailed):
+        with self.assertRaises(applier_process.SwitchFailed):
             self.switch((1, self.LOGIND_USER_VANISHED_2026_11_10), (0, ""),
                         current_is_candidate=False)
         self.assertEqual(self.switches, 1,
@@ -315,34 +335,34 @@ class SwitchFailedMidway(unittest.TestCase):
     def test_another_failure_after_activating_is_a_failed_switch_and_not_retried(self):
         output = ("activating the configuration...\n"
                   "Error: Failed to open dbus connection\n")
-        with self.assertRaises(applier.SwitchFailed):
+        with self.assertRaises(applier_process.SwitchFailed):
             self.switch((1, output), (0, ""))
         self.assertEqual(self.switches, 1)
 
     def test_a_switch_refused_before_activating_changed_nothing(self):
-        with self.assertRaises(applier.Undetermined) as raised:
+        with self.assertRaises(applier_process.Undetermined) as raised:
             self.switch((1, self.BEFORE_ACTIVATING), current_is_candidate=False)
-        self.assertNotIsInstance(raised.exception, applier.SwitchFailed)
+        self.assertNotIsInstance(raised.exception, applier_process.SwitchFailed)
 
     def test_an_interrupted_switch_is_named_from_its_leftover_lists(self):
-        state = pathlib.Path(applier.SWITCH_STATE_DIRECTORY)
-        self.assertEqual(applier.interrupted_switch(), [], "no directory, no leftovers")
+        state = pathlib.Path(applier_switch.SWITCH_STATE_DIRECTORY)
+        self.assertEqual(applier_switch.interrupted_switch(), [], "no directory, no leftovers")
         state.mkdir()
         (state / "start-list").write_text("local-fs.target\nremote-fs.target\n")
         (state / "restart-list").write_text("")
-        self.assertEqual(applier.interrupted_switch(),
+        self.assertEqual(applier_switch.interrupted_switch(),
                          ["start local-fs.target", "start remote-fs.target"])
 
     def test_leftover_lists_of_a_switch_still_running_are_not_a_stopped_switch(self):
         import fcntl
-        state = pathlib.Path(applier.SWITCH_STATE_DIRECTORY)
+        state = pathlib.Path(applier_switch.SWITCH_STATE_DIRECTORY)
         state.mkdir()
         (state / "start-list").write_text("local-fs.target\n")
         with open(state / "switch-to-configuration.lock", "w") as held:
             fcntl.flock(held, fcntl.LOCK_EX)
-            with self.assertRaises(applier.LockContended):
-                applier.interrupted_switch()
-        self.assertEqual(applier.interrupted_switch(), ["start local-fs.target"],
+            with self.assertRaises(applier_process.LockContended):
+                applier_switch.interrupted_switch()
+        self.assertEqual(applier_switch.interrupted_switch(), ["start local-fs.target"],
                          "a released lock leaves the lists as a stopped switch's")
 
     def test_a_pass_on_a_half_applied_host_reports_switch_failed(self):
@@ -350,17 +370,13 @@ class SwitchFailedMidway(unittest.TestCase):
         # up_to_date (or, once a newer closure was staged, classifier_disagreement) while the
         # host still owed local-fs.target and remote-fs.target.
         self.current.symlink_to(self.candidate)
-        state = pathlib.Path(applier.SWITCH_STATE_DIRECTORY)
+        state = pathlib.Path(applier_switch.SWITCH_STATE_DIRECTORY)
         state.mkdir()
         (state / "start-list").write_text("local-fs.target\nremote-fs.target\n")
-        saved = applier.staged_system, applier.configuration_revision
-        applier.staged_system = lambda _pin: self.candidate
-        applier.configuration_revision = lambda _system: "cc8ad36eed"
-        try:
-            verdict = applier.classify_and_apply(
-                type("Args", (), {"staged_system": "/unused"})(), metrics=None)
-        finally:
-            applier.staged_system, applier.configuration_revision = saved
+        rebind(self, "staged_system", lambda _pin: self.candidate)
+        rebind(self, "configuration_revision", lambda _system: "cc8ad36eed")
+        verdict = applier_decide.classify_and_apply(
+            type("Args", (), {"staged_system": "/unused"})(), metrics=None)
         self.assertEqual((verdict.state, verdict.reason), ("blocked", "switch_failed"))
         self.assertIn("start local-fs.target", verdict.detail)
 
@@ -386,13 +402,13 @@ class SystemdReexecAfterStoreOptimise(unittest.TestCase):
                 "would reload the following units: dbus-broker.service")
 
     def test_a_reexec_of_the_identical_systemd_is_not_disruptive(self):
-        got = applier.classify_output(self.RECORDED, pid1_unchanged=True)
+        got = applier_classify.classify_output(self.RECORDED, pid1_unchanged=True)
         self.assertEqual(got.disruptive, [],
                          "PID 1 runs the candidate's systemd byte for byte; re-exec changes nothing")
         self.assertEqual(got.reloads, ["dbus-broker.service"])
 
     def test_a_reexec_into_a_different_systemd_still_blocks(self):
-        got = applier.classify_output(self.RECORDED)
+        got = applier_classify.classify_output(self.RECORDED)
         self.assertEqual(got.disruptive, ["restart-systemd"])
 
     def _tree(self, binary: bytes, conf: str):
@@ -414,24 +430,24 @@ class SystemdReexecAfterStoreOptimise(unittest.TestCase):
     def test_identical_bytes_at_another_path_and_the_same_config_is_inert(self):
         pid1, conf = self._files(b"systemd-260.4", "[Manager]\n")
         candidate = self._tree(b"systemd-260.4", str(conf))
-        self.assertTrue(applier.pid1_reexec_is_inert(candidate, pid1, conf))
+        self.assertTrue(applier_dry_activate.pid1_reexec_is_inert(candidate, pid1, conf))
 
     def test_a_different_binary_is_not_inert(self):
         pid1, conf = self._files(b"systemd-260.3", "[Manager]\n")
         candidate = self._tree(b"systemd-260.4", str(conf))
-        self.assertFalse(applier.pid1_reexec_is_inert(candidate, pid1, conf))
+        self.assertFalse(applier_dry_activate.pid1_reexec_is_inert(candidate, pid1, conf))
 
     def test_a_changed_system_conf_is_not_inert(self):
         pid1, conf = self._files(b"systemd-260.4", "[Manager]\n")
         other = conf.parent / "other.conf"
         other.write_text("[Manager]\nDefaultTimeoutStopSec=5s\n")
         candidate = self._tree(b"systemd-260.4", str(other))
-        self.assertFalse(applier.pid1_reexec_is_inert(candidate, pid1, conf))
+        self.assertFalse(applier_dry_activate.pid1_reexec_is_inert(candidate, pid1, conf))
 
     def test_an_unreadable_pid1_is_not_inert(self):
         pid1, conf = self._files(b"systemd-260.4", "[Manager]\n")
         candidate = self._tree(b"systemd-260.4", str(conf))
-        self.assertFalse(applier.pid1_reexec_is_inert(candidate, pid1.parent / "absent", conf))
+        self.assertFalse(applier_dry_activate.pid1_reexec_is_inert(candidate, pid1.parent / "absent", conf))
 
 
 
@@ -471,11 +487,11 @@ class Leniency(unittest.TestCase):
     def _both(self, changes, text, start_new=True, routine=(), never=(), inactive=()):
         """(structural_noop, dry_noop), each computed by the code that ships."""
         candidate = self._tree(f"c{len(list(self.base.iterdir()))}", changes)
-        leniency = applier.leniency_for(applier.unit_tree(self.running),
-                                        applier.unit_tree(candidate), start_new, tuple(routine),
+        leniency = applier_units.leniency_for(applier_closure.unit_tree(self.running),
+                                        applier_closure.unit_tree(candidate), start_new, tuple(routine),
                                         tuple(inactive))
-        dry = applier.classify_output(text, (), never, leniency=leniency)
-        changed = applier.structural_changes(self.running, candidate, dry, (), (), never, leniency)
+        dry = applier_classify.classify_output(text, (), never, leniency=leniency)
+        changed = applier_decide.structural_changes(self.running, candidate, dry, (), (), never, leniency)
         return not changed.blocked, not dry.disruptive and not dry.unrecognised
 
     def test_a_new_timer_applies(self):
@@ -538,7 +554,7 @@ class Leniency(unittest.TestCase):
                 "would restart the following units: scheduled-dispatch-nightly.timer")
         self.assertEqual(self._both(changes, line, routine=("scheduled-dispatch-*",)), (True, True))
         restartable = ("scheduled-dispatch-nightly.service", "scheduled-dispatch-nightly.timer")
-        dry = applier.classify_output(line, restartable, (), leniency=applier.Leniency())
+        dry = applier_classify.classify_output(line, restartable, (), leniency=applier_units.Leniency())
         self.assertEqual(dry.disruptive, ["changed-but-skipped scheduled-dispatch-nightly.service"])
 
     def test_routine_star_cannot_restart_a_database(self):
@@ -581,7 +597,7 @@ class Leniency(unittest.TestCase):
                          False)
 
     def test_idle_covers_only_changed_services_already_running_tree(self):
-        leniency = applier.leniency_for(
+        leniency = applier_units.leniency_for(
             {"a.service": "x", "b.socket": "y", "c.service": "z"},
             {"a.service": "x2", "b.socket": "y2", "c.service": "z", "n.service": "n"},
             False, (), ("a.service", "b.socket", "c.service", "n.service"))
@@ -591,20 +607,18 @@ class Leniency(unittest.TestCase):
         import subprocess
         def answering(stdout, code=0):
             return lambda argv, **_: subprocess.CompletedProcess(argv, code, stdout, "")
-        original = applier.run
-        self.addCleanup(setattr, applier, "run", original)
-        applier.run = answering("active\ninactive\n")
-        self.assertEqual(applier.inactive_units({"b.service", "a.service"}), {"b.service"})
-        applier.run = answering("inactive\n")
-        self.assertEqual(applier.inactive_units({"a.service", "b.service"}), set(),
+        rebind(self, "run", answering("active\ninactive\n"))
+        self.assertEqual(applier_closure.inactive_units({"b.service", "a.service"}), {"b.service"})
+        rebind(self, "run", answering("inactive\n"))
+        self.assertEqual(applier_closure.inactive_units({"a.service", "b.service"}), set(),
                          "an answer that does not line up forgives nothing")
-        applier.run = answering("inactive\ninactive\n", code=1)
-        self.assertEqual(applier.inactive_units({"a.service", "b.service"}), set())
+        rebind(self, "run", answering("inactive\ninactive\n", code=1))
+        self.assertEqual(applier_closure.inactive_units({"a.service", "b.service"}), set())
 
     def test_user_units_are_never_lenient(self):
-        got = applier.classify_output(
+        got = applier_classify.classify_output(
             "would restart the following user units: gc.timer",
-            leniency=applier.Leniency(routine=("*.timer",)))
+            leniency=applier_units.Leniency(routine=("*.timer",)))
         self.assertTrue(got.disruptive)
 
 class RebootAlreadyOwed(unittest.TestCase):
@@ -629,7 +643,7 @@ class RebootAlreadyOwed(unittest.TestCase):
         "sops-install-secrets: Imported /etc/ssh/ssh_host_ed25519_key as age key with fingerprint "
         "age1cdw35s3ezp0ekt3wf5766flefmelngsr36kx57crwj3xan6xkdnsrwml9w\n"
         "would reload the following units: dbus-broker.service\n")
-    ALL = list(applier.BOOT_CHAIN)
+    ALL = list(applier_closure.BOOT_CHAIN)
     RELOADABLE = ("dbus-broker.service",)
 
     def setUp(self):
@@ -639,49 +653,49 @@ class RebootAlreadyOwed(unittest.TestCase):
     def _system(self, name, **components):
         system = self.base / name
         system.mkdir()
-        for component in applier.BOOT_CHAIN:
+        for component in applier_closure.BOOT_CHAIN:
             target = self.base / "store" / f"{component}-{components.get(component, 'old')}"
             target.mkdir(parents=True, exist_ok=True)
             (system / component).symlink_to(target)
         return system
 
     def test_the_boot_chain_splits_what_the_switch_introduces_from_what_is_already_owed(self):
-        new = dict.fromkeys(applier.BOOT_CHAIN, "new")
+        new = dict.fromkeys(applier_closure.BOOT_CHAIN, "new")
         booted = self._system("booted")
         running = self._system("running", **new)
-        chain = applier.boot_chain(booted, running, self._system("candidate", **new))
+        chain = applier_closure.boot_chain(booted, running, self._system("candidate", **new))
         self.assertEqual((chain.owed, chain.introduced), (self.ALL, []))
-        chain = applier.boot_chain(booted, booted, self._system("bump", kernel="new"))
+        chain = applier_closure.boot_chain(booted, booted, self._system("bump", kernel="new"))
         self.assertEqual((chain.owed, chain.introduced), (["kernel"], ["kernel"]))
-        chain = applier.boot_chain(booted, running, booted)
+        chain = applier_closure.boot_chain(booted, running, booted)
         self.assertEqual(chain.owed, [], "a switch back to the booted system owes nothing")
 
     def test_a_files_only_switch_while_a_reboot_is_already_owed_applies(self):
-        dry = applier.classify_output(self.MONGO_1)
-        chain = applier.BootChain(owed=self.ALL, introduced=[])
-        self.assertIsNone(applier.refusal([], chain, dry, self.RELOADABLE),
+        dry = applier_classify.classify_output(self.MONGO_1)
+        chain = applier_closure.BootChain(owed=self.ALL, introduced=[])
+        self.assertIsNone(applier_decide.refusal([], chain, dry, self.RELOADABLE),
                           "the 2026-11-10 pair must apply, not raise classifier_disagreement")
 
     def test_a_new_kernel_dry_activate_is_silent_about_is_reboot_owed_not_a_disagreement(self):
-        dry = applier.classify_output(self.MONGO_1)
-        chain = applier.BootChain(owed=["kernel"], introduced=["kernel"])
-        self.assertEqual(applier.refusal([], chain, dry, self.RELOADABLE), "reboot_owed")
+        dry = applier_classify.classify_output(self.MONGO_1)
+        chain = applier_closure.BootChain(owed=["kernel"], introduced=["kernel"])
+        self.assertEqual(applier_decide.refusal([], chain, dry, self.RELOADABLE), "reboot_owed")
 
     def test_a_new_systemd_is_seen_by_both_halves(self):
-        dry = applier.classify_output(self.MONGO_1 + "would restart systemd\n")
-        chain = applier.BootChain(owed=["systemd"], introduced=["systemd"])
-        self.assertEqual(applier.refusal([], chain, dry, self.RELOADABLE), "reboot_owed")
-        silent = applier.classify_output(self.MONGO_1)
-        self.assertEqual(applier.refusal([], chain, silent, self.RELOADABLE),
+        dry = applier_classify.classify_output(self.MONGO_1 + "would restart systemd\n")
+        chain = applier_closure.BootChain(owed=["systemd"], introduced=["systemd"])
+        self.assertEqual(applier_decide.refusal([], chain, dry, self.RELOADABLE), "reboot_owed")
+        silent = applier_classify.classify_output(self.MONGO_1)
+        self.assertEqual(applier_decide.refusal([], chain, silent, self.RELOADABLE),
                          "classifier_disagreement",
                          "a new systemd dry-activate does not re-execute is a real disagreement")
 
     def test_a_changed_unit_dry_activate_is_silent_about_still_disagrees(self):
-        dry = applier.classify_output(self.MONGO_1)
-        chain = applier.BootChain(owed=self.ALL, introduced=[])
-        self.assertEqual(applier.refusal(["caddy.service"], chain, dry, self.RELOADABLE),
+        dry = applier_classify.classify_output(self.MONGO_1)
+        chain = applier_closure.BootChain(owed=self.ALL, introduced=[])
+        self.assertEqual(applier_decide.refusal(["caddy.service"], chain, dry, self.RELOADABLE),
                          "classifier_disagreement")
-        self.assertEqual(applier.refusal([], chain, dry, ()), "classifier_disagreement",
+        self.assertEqual(applier_decide.refusal([], chain, dry, ()), "classifier_disagreement",
                          "a reload the host does not permit is still refused by dry-activate")
 
 
@@ -697,15 +711,15 @@ class PublishedMetrics(unittest.TestCase):
     def test_every_metric_family_is_described_once(self):
         directory = pathlib.Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, directory)
-        metrics = applier.Metrics(directory / "nixos-auto-apply.prom", "monitoring-1")
-        verdict = applier.Verdict("blocked", "reboot_owed", "detail", "rev", "/nix/store/c",
-                                  True, True, tuple(applier.BOOT_CHAIN))
-        applier.publish(metrics, verdict, 1)
+        metrics = applier_metrics.Metrics(directory / "nixos-auto-apply.prom", "monitoring-1")
+        verdict = applier_verdict.Verdict("blocked", "reboot_owed", "detail", "rev", "/nix/store/c",
+                                  True, True, tuple(applier_closure.BOOT_CHAIN))
+        applier_metrics.publish(metrics, verdict, 1)
         lines = (directory / "nixos-auto-apply.prom").read_text().splitlines()
         described = [line.split()[2] for line in lines if line.startswith("# HELP ")]
         self.assertEqual(len(described), len(set(described)), described)
         components = [line for line in lines if line.startswith("nixos_auto_apply_reboot_component{")]
-        self.assertEqual(len(components), len(applier.BOOT_CHAIN))
+        self.assertEqual(len(components), len(applier_closure.BOOT_CHAIN))
 
 
 if __name__ == "__main__":

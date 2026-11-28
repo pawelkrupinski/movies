@@ -15,7 +15,7 @@
 # This module takes that step for the changes where there is nothing to decide. If the staged
 # closure would stop, start, restart or reload NOTHING, it is activated. Anything else -- including
 # anything the classifier cannot categorise -- is left pinned and reported as owed.
-# ../../files/nixos-auto-apply.py holds the whole classification and its header is the argument.
+# ../../files/nixos-auto-apply.py holds the argument in its header; the classification and the rest sit in the modules of ../../files/nixos_auto_apply/, split by concept.
 #
 # WHY A THREE-HOST FLEET WANTS THIS AT ALL, since the obvious objection is that three machines are
 # few enough to deploy by hand. They are. The problem is not the deploy, it is the ACCUMULATION:
@@ -56,8 +56,17 @@ let
     # builder, so every configuration evaluating cleanly said nothing about whether one of them
     # would build. The shebang stays in the source file so it remains runnable and lintable on its
     # own.
-    (lib.concatStringsSep "\n"
-      (lib.drop 1 (lib.splitString "\n" (builtins.readFile ../../files/nixos-auto-apply.py))));
+    #
+    # THE PIECES BESIDE IT ARE THE STORE COPY OF `nix/files/nixos_auto_apply/`. The script is split by
+    # concept into modules that sit in that directory, and the built script lives in the store while
+    # its siblings do not, so the one line of the source that puts its own directory on sys.path is
+    # swapped for that copy's path. infra/test/test_nix_python_writers.py lints the modules with this
+    # writer's ignores and fails when the line it swaps is no longer in the source.
+    (builtins.replaceStrings
+      [ ''sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "nixos_auto_apply"))'' ]
+      [ ''sys.path.insert(0, "${../../files/nixos_auto_apply}")'' ]
+      (lib.concatStringsSep "\n"
+        (lib.drop 1 (lib.splitString "\n" (builtins.readFile ../../files/nixos-auto-apply.py)))));
 
   matchesUnit = import ../../lib/unit-glob.nix { inherit lib; };
 
