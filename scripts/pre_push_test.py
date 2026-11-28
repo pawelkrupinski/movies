@@ -355,6 +355,17 @@ class PlanFailsClosedTest(PlanCase):
         self.assertIn("pre-push --plan: no checkout: git rev-parse --show-toplevel exited 128", done.stderr)
 
 
+class UnreadTableTest(PlanCase):
+    """A selection whose input table cannot be read is no selection: the plan exits nonzero (the run BLOCKS) rather than
+    selecting no self-test for the paths a test reads."""
+
+    def test_a_failing_reads_listing_fails_the_plan(self):
+        done = self.hook("--plan", stdin="docs/read-by-a-test.md\n", env={"STUB_READS_EXIT": "3"})
+        self.assertEqual(1, done.code, done.output)
+        self.assertEqual("", done.stdout)
+        self.assertIn("run-script-tests --reads exited 3", done.stderr)
+
+
 class AgentctlReadsTest(PlanCase):
     """What agentctl reads off the hook's TEXT at main: each mode it may ask as `<mode>)` (~/bin
     lib/agentctl/queuerecheck.py hook_text_modes; stage 1's one `a|b|...)` arm hid every mode but the last, so its

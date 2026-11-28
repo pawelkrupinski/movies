@@ -8,6 +8,7 @@ root), the hook's tables from beside the hook, run-script-tests through `Run`.""
 from __future__ import annotations
 
 import re
+import sys
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Mapping, Sequence, Tuple
 
@@ -18,6 +19,10 @@ from pre_push_hook.plan import pre_push_units as units
 from seams.tool_files import Files
 
 Run = Callable[[Sequence[str], str], Tuple[int, str]]  # (argv, stdin) -> (status, stdout)
+
+
+class Unreadable(Exception):
+    """A table the selection reads could not be read: no selection, never a narrower one."""
 
 
 @dataclass(frozen=True)
@@ -54,10 +59,12 @@ class Checkout:
 
     def tree(self) -> planning.Tree:
         code, reads = self.run([f"{self.hooks}/../run-script-tests", "--reads"], "")
+        if code != 0:  # an empty list would select no self-test for any path a test reads
+            raise Unreadable(f"scripts/run-script-tests --reads exited {code}")
         allow = self.files.read_text_or(".github/allow-lists.txt", "")
         local_tests = self.table("local-tests.txt")
         return planning.Tree(
-            script_test_reads=[g for g in reads.splitlines() if g] if code == 0 else [],
+            script_test_reads=[g for g in reads.splitlines() if g],
             registry_files=set(lints.named_files(self.table("lint-registry.tsv"))),
             allow_lists=set(allow.splitlines()),
             identity_tests=bool(re.search(r"(?m)^identity[ \t]+(sbt|sh|first)[ \t]", local_tests)),
@@ -153,7 +160,11 @@ def answer(checkout: Checkout, mode: str, args: Sequence[str], stdin: str) -> Tu
     if mode == "--failure-summary":
         return 0, failure_summary(checkout.files.read_text_or(args[0], "") if args else "")
     given = [line for line in stdin.split("\n") if line] if mode != "--source-lints" else stdin.split("\n")
-    code, out = ANSWERS[mode](checkout, given, args)
+    try:
+        code, out = ANSWERS[mode](checkout, given, args)
+    except Unreadable as why:
+        sys.stderr.write(f"pre-push {mode}: {why}: no selection\n")
+        return 1, ""
     return code, "".join(line + "\n" for line in out)
 
 

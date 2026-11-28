@@ -62,7 +62,7 @@ BUILD = "\n".join([
 RUNNER = r'''#!/usr/bin/env bash
 # the stub accepts --bash --floor) --linux --stress) --readers, as the real runner does (the hook greps for them)
 case "$1" in
-  --reads) printf '%s\n' "${STUB_READS:-docs/read-by-a-test.md}"; exit 0 ;;
+  --reads) [ -z "${STUB_READS_EXIT:-}" ] || exit "$STUB_READS_EXIT"; printf '%s\n' "${STUB_READS:-docs/read-by-a-test.md}"; exit 0 ;;
   --paths) while IFS= read -r p; do printf '%s-test.sh\tuntagged\tchanged\n' "${p%.*}"; done < "$2"; exit 0 ;;
 esac
 [ -z "${STUB_RUNNER_ARGS:-}" ] || echo "$*" >> "$STUB_RUNNER_ARGS"
