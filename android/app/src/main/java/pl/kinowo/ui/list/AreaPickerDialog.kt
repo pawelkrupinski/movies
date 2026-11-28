@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.kinowo.R
+import pl.kinowo.model.CinemaArea
 import pl.kinowo.model.CinemaCatalog
 import pl.kinowo.ui.theme.TextSecondary
 
@@ -71,41 +72,9 @@ internal fun AreaPickerDialog(
                     color = TextSecondary, fontSize = 13.sp,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { toggleAll() }
-                        .testTag("areapicker.all"),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TriStateCheckbox(
-                        state = when {
-                            allKept        -> ToggleableState.On
-                            kept.isEmpty() -> ToggleableState.Off
-                            else           -> ToggleableState.Indeterminate
-                        },
-                        onClick = { toggleAll() },
-                    )
-                    Text(
-                        stringResource(R.string.areapicker_all),
-                        fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+                AllAreasRow(kept, allKept, ::toggleAll)
                 HorizontalDivider(Modifier.padding(bottom = 4.dp))
-                catalog.areas.forEach { area ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { toggle(area.slug) }
-                            .testTag("areapicker.area.${area.slug}"),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(checked = area.slug in kept, onCheckedChange = { toggle(area.slug) })
-                        Text(area.name, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                        Text("${area.cinemas.size}", color = TextSecondary, fontSize = 12.sp)
-                    }
-                }
+                catalog.areas.forEach { area -> AreaRow(area, area.slug in kept) { toggle(area.slug) } }
             }
         },
         confirmButton = {
@@ -114,4 +83,44 @@ internal fun AreaPickerDialog(
             }
         },
     )
+}
+
+@Composable
+private fun AllAreasRow(kept: Set<String>, allKept: Boolean, onToggleAll: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable { onToggleAll() }
+            .testTag("areapicker.all"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TriStateCheckbox(
+            state = when {
+                allKept        -> ToggleableState.On
+                kept.isEmpty() -> ToggleableState.Off
+                else           -> ToggleableState.Indeterminate
+            },
+            onClick = onToggleAll,
+        )
+        Text(
+            stringResource(R.string.areapicker_all),
+            fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun AreaRow(area: CinemaArea, checked: Boolean, onToggle: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable { onToggle() }
+            .testTag("areapicker.area.${area.slug}"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = { onToggle() })
+        Text(area.name, fontSize = 15.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+        Text("${area.cinemas.size}", color = TextSecondary, fontSize = 12.sp)
+    }
 }

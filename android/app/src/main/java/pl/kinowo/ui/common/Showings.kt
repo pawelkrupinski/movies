@@ -43,8 +43,11 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import pl.kinowo.R
 import pl.kinowo.filter.FormatTokenFilter
+import pl.kinowo.model.CinemaShowings
 import pl.kinowo.model.DateLabel
+import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
+import pl.kinowo.model.Showtime
 import pl.kinowo.ui.theme.CinemaBlue
 import pl.kinowo.ui.theme.OutsideDayChipBackground
 import pl.kinowo.ui.theme.OutsideDayChipText
@@ -120,7 +123,6 @@ fun ShowtimeChipStyle.scaledBy(scale: Float): ShowtimeChipStyle =
  * @param maxChips truncate to roughly this many chips on cards, appending a
  *   "+N seansów" hint; `null` shows everything (detail screen).
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun Showings(
     film: Film,
@@ -128,7 +130,6 @@ fun Showings(
     maxChips: Int? = null,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     // Chips (and the showings-internal gaps) scale with the device's PORTRAIT
     // width off the 360 dp baseline (layoutWidthDp, not the live width — so a
     // chip is the same size in landscape as in portrait); two-per-row stays safe
@@ -136,81 +137,110 @@ fun Showings(
     // ShowtimeChipMetrics). scale == 1f at the 360 dp floor.
     val scale = ShowtimeChipMetrics.scale(layoutWidthDp())
     val chipStyle = LocalShowtimeChipStyle.current.scaledBy(scale)
-    val cardSpacing = LocalCardSpacingStyle.current
-    val showingsBlock = cardSpacing.showingsBlock * scale
-    val dayToCinema = cardSpacing.dayToCinema * scale
+    val showingsBlock = LocalCardSpacingStyle.current.showingsBlock * scale
     val total = film.showings.sumOf { d -> d.cinemas.sumOf { it.showtimes.size } }
+    val days = visibleDays(film.showings, maxChips)
     // One strip set for the whole card: a token every slot on it carries
     // separates no slot from any other, whichever cinema or day it sits in.
     val common = FormatTokenFilter.tokensToStrip(film.showings)
-    var budget = maxChips ?: Int.MAX_VALUE
-    var shown = 0
-    val outsideDays = LocalOutsideDays.current
 
     // Provide the scaled chip style so the leaf ShowtimeChip reads it directly.
     CompositionLocalProvider(LocalShowtimeChipStyle provides chipStyle) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(showingsBlock)) {
-        for (day in film.showings) {
-            if (budget <= 0) break
-            val outside = outsideDays?.invoke(day.date) ?: false
-            // Each day is its own block so the gap below the day label
-            // (`dayToCinema`) is independent of `showingsBlock`, which spaces the
-            // cinema/pills rows and the day blocks from one another.
-            Column {
+        Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(showingsBlock)) {
+            for (day in days) DayBlock(day, showCinemaHeaders, common, scale)
+            val hidden = total - days.sumOf { d -> d.cinemas.sumOf { it.slots.size } }
+            if (hidden > 0) {
                 Text(
-                    text = DateLabel.format(day.date).uppercase(),
-                    color = if (outside) Color.White else TextSecondary,
+                    text = pluralStringResource(R.plurals.showings_more, hidden, hidden),
+                    color = TextSecondary,
                     fontSize = (11 * scale).sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                 )
-                Column(
-                    modifier = Modifier.padding(top = dayToCinema),
-                    verticalArrangement = Arrangement.spacedBy(showingsBlock),
-                ) {
-                    for (cg in day.cinemas) {
-                        if (budget <= 0) break
-                        if (showCinemaHeaders) {
-                            Text(
-                                text = cg.cinema,
-                                color = CinemaBlue,
-                                fontSize = (12 * scale).sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = if (cg.cinemaURL != null) {
-                                    Modifier.clickable { openUrl(context, cg.cinemaURL) }
-                                } else Modifier,
-                            )
-                        }
-                        val slots = cg.showtimes.take(budget)
-                        budget -= slots.size
-                        shown += slots.size
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(chipStyle.interPillGap),
-                            verticalArrangement = Arrangement.spacedBy(chipStyle.interPillGap),
-                        ) {
-                            for (st in slots) {
-                                ShowtimeChip(
-                                    time = st.time,
-                                    format = FormatTokenFilter.filter(st.format, common),
-                                    room = st.displayRoom,
-                                    onClick = st.bookingURL?.let { url -> { openUrl(context, url) } },
-                                    outside = outside,
-                                )
-                            }
-                        }
-                    }
-                }
             }
         }
-        val hidden = total - shown
-        if (hidden > 0) {
-            Text(
-                text = pluralStringResource(R.plurals.showings_more, hidden, hidden),
-                color = TextSecondary,
-                fontSize = (11 * scale).sp,
-                fontWeight = FontWeight.Medium,
-            )
+    }
+}
+
+private class ShownCinema(val cinema: CinemaShowings, val slots: List<Showtime>)
+private class ShownDay(val day: DayShowings, val cinemas: List<ShownCinema>)
+
+/** The days and cinemas that fit the [maxChips] budget (`null`: all of them), each cinema cut to
+ *  the chips left. */
+private fun visibleDays(days: List<DayShowings>, maxChips: Int?): List<ShownDay> {
+    var budget = maxChips ?: Int.MAX_VALUE
+    val shown = mutableListOf<ShownDay>()
+    for (day in days) {
+        if (budget <= 0) break
+        val cinemas = mutableListOf<ShownCinema>()
+        for (cg in day.cinemas) {
+            if (budget <= 0) break
+            val slots = cg.showtimes.take(budget)
+            budget -= slots.size
+            cinemas += ShownCinema(cg, slots)
+        }
+        shown += ShownDay(day, cinemas)
+    }
+    return shown
+}
+
+/** Each day is its own block so the gap below the day label (`dayToCinema`) is independent of
+ *  `showingsBlock`, which spaces the cinema/pills rows and the day blocks from one another. */
+@Composable
+private fun DayBlock(shown: ShownDay, showCinemaHeaders: Boolean, common: Set<String>, scale: Float) {
+    val outside = LocalOutsideDays.current?.invoke(shown.day.date) ?: false
+    val cardSpacing = LocalCardSpacingStyle.current
+    val showingsBlock = cardSpacing.showingsBlock * scale
+    Column {
+        Text(
+            text = DateLabel.format(shown.day.date).uppercase(),
+            color = if (outside) Color.White else TextSecondary,
+            fontSize = (11 * scale).sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Column(
+            modifier = Modifier.padding(top = cardSpacing.dayToCinema * scale),
+            verticalArrangement = Arrangement.spacedBy(showingsBlock),
+        ) {
+            for (cinema in shown.cinemas) {
+                if (showCinemaHeaders) CinemaLabel(cinema.cinema, scale)
+                ChipRow(cinema.slots, common, outside)
+            }
         }
     }
+}
+
+@Composable
+private fun CinemaLabel(cinema: CinemaShowings, scale: Float) {
+    val context = LocalContext.current
+    Text(
+        text = cinema.cinema,
+        color = CinemaBlue,
+        fontSize = (12 * scale).sp,
+        fontWeight = FontWeight.Medium,
+        modifier = if (cinema.cinemaURL != null) {
+            Modifier.clickable { openUrl(context, cinema.cinemaURL) }
+        } else Modifier,
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ChipRow(slots: List<Showtime>, common: Set<String>, outside: Boolean) {
+    val context = LocalContext.current
+    val gap = LocalShowtimeChipStyle.current.interPillGap
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(gap),
+        verticalArrangement = Arrangement.spacedBy(gap),
+    ) {
+        for (st in slots) {
+            ShowtimeChip(
+                time = st.time,
+                format = FormatTokenFilter.filter(st.format, common),
+                room = st.displayRoom,
+                onClick = st.bookingURL?.let { url -> { openUrl(context, url) } },
+                outside = outside,
+            )
+        }
     }
 }
 
@@ -223,10 +253,7 @@ fun Showings(
 @Composable
 private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (() -> Unit)?, outside: Boolean = false) {
     var holding by remember { mutableStateOf(false) }
-    val style = LocalShowtimeChipStyle.current
-    // The room tooltip grows with the viewport in lockstep with the chip it pops
-    // from — same factor `Showings` scales `chipStyle` by. scale == 1f at 360 dp.
-    val scale = ShowtimeChipMetrics.scale(layoutWidthDp())
+    val palette = chipPalette(outside)
     val base = Modifier
         // Outermost, so the tagged node's bounds include the padding (a tag
         // placed after .padding() would wrap only the inner text).
@@ -242,43 +269,58 @@ private fun ShowtimeChip(time: String, format: String, room: String?, onClick: (
                 },
             )
         }
-        .background(if (holding) ShowtimeChipBackgroundPressed else if (outside) OutsideDayChipBackground else ShowtimeChipBackground)
-        // The time uses the trimmed `pillTextStyle` (no includeFontPadding), so it
-        // doesn't read tall on its own; the inset (4dp by default) then adds the
-        // breathing room around it. Inset + trim pinned by ShowtimeChipPaddingTest.
-        .padding(horizontal = style.horizontalInset, vertical = style.verticalInset)
+        .background(if (holding) ShowtimeChipBackgroundPressed else palette.fill)
     Box(contentAlignment = Alignment.TopCenter) {
-        // Center the smaller format tag vertically against the time (matching
-        // iOS's `.center` HStack) rather than letting it ride the top — Row's
-        // default is Alignment.Top. Pinned by ShowtimeChipAlignmentTest.
-        Row(
-            base,
-            horizontalArrangement = Arrangement.spacedBy(style.internalGap),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(time, color = if (outside) OutsideDayChipText else CinemaBlue, style = pillTextStyle(style.timeFontSize, style.timeWeight))
-            if (format.isNotEmpty()) {
-                // 7sp default, not larger: the time's 11sp is the most that still lets
-                // two chips share a row on the narrowest card; an 8sp+ tag pushes
-                // the second chip onto a new line. See ShowtimeChipFitTest.
-                Text(format, color = if (outside) OutsideDayChipText.copy(alpha = 0.7f) else ShowtimeFormatTag, style = pillTextStyle(style.formatFontSize, style.formatWeight))
-            }
+        ChipLabels(time, format, palette, base)
+        if (holding && room != null) RoomTooltipPopup(room)
+    }
+}
+
+private class ChipPalette(val fill: Color, val time: Color, val format: Color)
+
+private fun chipPalette(outside: Boolean) =
+    if (outside) ChipPalette(OutsideDayChipBackground, OutsideDayChipText, OutsideDayChipText.copy(alpha = 0.7f))
+    else ChipPalette(ShowtimeChipBackground, CinemaBlue, ShowtimeFormatTag)
+
+/** The time and, when there is one, the format tag. The time uses the trimmed `pillTextStyle`
+ *  (no includeFontPadding), so it doesn't read tall on its own; the inset (4dp by default) then
+ *  adds the breathing room around it. Inset + trim pinned by ShowtimeChipPaddingTest. */
+@Composable
+private fun ChipLabels(time: String, format: String, palette: ChipPalette, modifier: Modifier) {
+    val style = LocalShowtimeChipStyle.current
+    // Center the smaller format tag vertically against the time (matching
+    // iOS's `.center` HStack) rather than letting it ride the top — Row's
+    // default is Alignment.Top. Pinned by ShowtimeChipAlignmentTest.
+    Row(
+        modifier.padding(horizontal = style.horizontalInset, vertical = style.verticalInset),
+        horizontalArrangement = Arrangement.spacedBy(style.internalGap),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(time, color = palette.time, style = pillTextStyle(style.timeFontSize, style.timeWeight))
+        if (format.isNotEmpty()) {
+            // 7sp default, not larger: the time's 11sp is the most that still lets
+            // two chips share a row on the narrowest card; an 8sp+ tag pushes
+            // the second chip onto a new line. See ShowtimeChipFitTest.
+            Text(format, color = palette.format, style = pillTextStyle(style.formatFontSize, style.formatWeight))
         }
-        if (holding && room != null) {
-            // The tooltip rides in a Popup, NOT as a child of this Box: a Box
-            // sizes itself to its largest child, so an in-layout bubble would
-            // grow the Box the instant it appeared and shove the pill (and its
-            // FlowRow neighbours) sideways. A Popup is its own window — it never
-            // resizes the pill, and with clipping disabled it floats free of the
-            // card's rounded-Surface clip. It's anchored just above the pill.
-            val gapPx = with(LocalDensity.current) { (RoomTooltipGap * scale).roundToPx() }
-            Popup(
-                popupPositionProvider = remember(gapPx) { RoomTooltipPositionProvider(gapPx) },
-                properties = PopupProperties(focusable = false, clippingEnabled = false),
-            ) {
-                RoomTooltip(room, scale)
-            }
-        }
+    }
+}
+
+/** The tooltip rides in a Popup, NOT as a child of the pill's Box: a Box sizes itself to its
+ *  largest child, so an in-layout bubble would grow the Box the instant it appeared and shove
+ *  the pill (and its FlowRow neighbours) sideways. A Popup is its own window — it never resizes
+ *  the pill, and with clipping disabled it floats free of the card's rounded-Surface clip. It's
+ *  anchored just above the pill, and grows with the viewport in lockstep with the chip it pops
+ *  from — same factor `Showings` scales `chipStyle` by. scale == 1f at 360 dp. */
+@Composable
+private fun RoomTooltipPopup(room: String) {
+    val scale = ShowtimeChipMetrics.scale(layoutWidthDp())
+    val gapPx = with(LocalDensity.current) { (RoomTooltipGap * scale).roundToPx() }
+    Popup(
+        popupPositionProvider = remember(gapPx) { RoomTooltipPositionProvider(gapPx) },
+        properties = PopupProperties(focusable = false, clippingEnabled = false),
+    ) {
+        RoomTooltip(room, scale)
     }
 }
 

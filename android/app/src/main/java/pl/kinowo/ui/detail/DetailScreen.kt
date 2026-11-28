@@ -1,6 +1,7 @@
 package pl.kinowo.ui.detail
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Outline
 import android.view.View
 import android.view.ViewOutlineProvider
@@ -256,7 +257,6 @@ private fun TrailerSection(trailers: List<String>) {
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun TrailerPlayer(embedUrl: String) {
     val html = remember(embedUrl) { embedHtml(embedUrl) }
@@ -264,43 +264,7 @@ private fun TrailerPlayer(embedUrl: String) {
         // No `Modifier.clip` here — it forces the view into an offscreen layer the
         // video can't composite into. Corners are rounded on the wrapper below.
         modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-        factory = { context ->
-            val web = WebView(context).apply {
-                settings.javaScriptEnabled = true
-                settings.mediaPlaybackRequiresUserGesture = false
-                settings.domStorageEnabled = true
-                // An HTML5 iframe player (YouTube/Vimeo) needs a chrome client to
-                // actually play video in a WebView (and to hand off fullscreen) —
-                // without it the embed renders but tapping play does nothing.
-                webChromeClient = WebChromeClient()
-                // YouTube renders inline video into a SurfaceView that punches a
-                // transparent hole through the window compositor. An OPAQUE WebView
-                // background (e.g. BLACK) paints over that hole, so the trailer
-                // plays audio but shows black. Keep it transparent and on a
-                // hardware layer so the video surface composites through.
-                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                setLayerType(View.LAYER_TYPE_HARDWARE, null)
-            }
-            // Wrap the WebView in a plain ViewGroup: returning the SurfaceView-hosting
-            // WebView directly as the AndroidView root lets Compose impose an
-            // offscreen layer that blacks the video; the FrameLayout insulates it.
-            // Round the corners here, on the wrapper, not on the video surface.
-            FrameLayout(context).apply {
-                val radiusPx = 8f * context.resources.displayMetrics.density
-                clipToOutline = true
-                outlineProvider = object : ViewOutlineProvider() {
-                    override fun getOutline(view: View, outline: Outline) =
-                        outline.setRoundRect(0, 0, view.width, view.height, radiusPx)
-                }
-                addView(
-                    web,
-                    FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                    ),
-                )
-            }
-        },
+        factory = ::trailerFrame,
         // `update` re-fires on every recomposition; only (re)load when the embed
         // actually changes, otherwise an in-progress trailer is reloaded from
         // scratch each time the flow-driven detail screen recomposes.
@@ -312,6 +276,44 @@ private fun TrailerPlayer(embedUrl: String) {
             }
         },
     )
+}
+
+/** The trailer's views. The WebView is wrapped in a plain ViewGroup: returning the
+ *  SurfaceView-hosting WebView directly as the AndroidView root lets Compose impose an
+ *  offscreen layer that blacks the video; the FrameLayout insulates it, and the corners are
+ *  rounded on it, not on the video surface. */
+private fun trailerFrame(context: Context): FrameLayout = FrameLayout(context).apply {
+    val radiusPx = 8f * context.resources.displayMetrics.density
+    clipToOutline = true
+    outlineProvider = object : ViewOutlineProvider() {
+        override fun getOutline(view: View, outline: Outline) =
+            outline.setRoundRect(0, 0, view.width, view.height, radiusPx)
+    }
+    addView(
+        trailerWebView(context),
+        FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT,
+        ),
+    )
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+private fun trailerWebView(context: Context): WebView = WebView(context).apply {
+    settings.javaScriptEnabled = true
+    settings.mediaPlaybackRequiresUserGesture = false
+    settings.domStorageEnabled = true
+    // An HTML5 iframe player (YouTube/Vimeo) needs a chrome client to
+    // actually play video in a WebView (and to hand off fullscreen) —
+    // without it the embed renders but tapping play does nothing.
+    webChromeClient = WebChromeClient()
+    // YouTube renders inline video into a SurfaceView that punches a
+    // transparent hole through the window compositor. An OPAQUE WebView
+    // background (e.g. BLACK) paints over that hole, so the trailer
+    // plays audio but shows black. Keep it transparent and on a
+    // hardware layer so the video surface composites through.
+    setBackgroundColor(android.graphics.Color.TRANSPARENT)
+    setLayerType(View.LAYER_TYPE_HARDWARE, null)
 }
 
 /**

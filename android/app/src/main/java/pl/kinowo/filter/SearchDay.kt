@@ -22,15 +22,15 @@ data class SearchDay(
     /** The search box now reads [query] while the listing shows [showing]. */
     fun queryChanged(query: String, showing: DateFilter): Change {
         val searching = query.isNotBlank()
-        if (searching && origin == null) {
-            return Change(SearchDay(origin = showing), if (showing == DateFilter.Anytime) null else DateFilter.Anytime)
+        return when {
+            searching && origin == null -> Change(SearchDay(origin = showing), moveUnless(showing, DateFilter.Anytime))
+            !searching && origin != null -> Change(SearchDay(), moveUnless(showing, if (picked) null else origin))
+            else -> Change(this, null)
         }
-        if (!searching && origin != null) {
-            val back = if (picked) null else origin
-            return Change(SearchDay(), if (back == showing) null else back)
-        }
-        return Change(this, null)
     }
+
+    /** [target], unless the listing is already showing it. */
+    private fun moveUnless(showing: DateFilter, target: DateFilter?): DateFilter? = target?.takeIf { it != showing }
 
     /** The person moved the day (not [queryChanged]'s answer): mid-search, that day stays. */
     fun dayPicked(): SearchDay = if (origin != null) copy(picked = true) else this

@@ -191,9 +191,10 @@ class KinowoViewModel(
     var excludedCast: Set<String> by filters::excludedCast
 
     /** On the page for [page], the days the search brought in, drawn lighter; null when none is. */
-    fun outsideDays(page: DateFilter): ((String) -> Boolean)? =
+    fun outsideDays(page: DateFilter): ((String) -> Boolean)? {
         // `now` as `filmsFor`'s: the filter's own default, read as the page is drawn.
-        searchDay.outsideDays(page, zone = currentZone())
+        return searchDay.outsideDays(page, zone = currentZone())
+    }
 
     /** Lands inbound links; see [DeepLinkRouter]. */
     internal val deepLinks = DeepLinkRouter(
@@ -267,19 +268,7 @@ class KinowoViewModel(
         // Alongside it, ask whether this version is still served (best-effort:
         // any failure leaves the app usable).
         viewModelScope.launch { clientSupportGate.check() }
-        // A saved city whose page was retired or renamed answers at another slug
-        // now ([pl.kinowo.model.slugsLeadingHere]): its listing still arrives
-        // through the server's 301, but the picker found no city by the old slug
-        // and labelled the list with the country's default. Adopt the slug it
-        // answers at, as the web's redirect does for a browser.
-        viewModelScope.launch {
-            combine(prefs.selectedCity, prefs.selectedCountryCode, countryCatalog) { slug, code, catalog ->
-                val country = Country.byCode(code).code
-                slug?.takeIf { catalog.cities.city(it, country) == null }?.let(catalog.cities.currentSlugByFormer(country)::get)
-            }
-                .filterNotNull()
-                .collect { current -> prefs.setCity(current) }
-        }
+        viewModelScope.launch { adoptCurrentSlugOfRetiredCity() }
         // The network fetch is gated on a city being chosen — until the
         // first-launch gate resolves one, `selectedCity` is null and nothing
         // hits the wire. Each distinct (non-null) slug triggers a fresh load,
@@ -293,6 +282,21 @@ class KinowoViewModel(
         // A cross-country deep link the previous ViewModel handed over (see
         // [DeepLinkRouter.handleDeepLink]) — its country and city are already stored.
         viewModelScope.launch { prefs.takePendingDeepLink()?.let { handleDeepLink(it) } }
+    }
+
+    /** A saved city whose page was retired or renamed answers at another slug now
+     *  ([pl.kinowo.model.slugsLeadingHere]): its listing still arrives through the server's
+     *  301, but the picker found no city by the old slug and labelled the list with the
+     *  country's default. Adopt the slug it answers at, as the web's redirect does for a
+     *  browser. */
+    private suspend fun adoptCurrentSlugOfRetiredCity() {
+        combine(prefs.selectedCity, prefs.selectedCountryCode, countryCatalog) { slug, code, catalog ->
+            val country = Country.byCode(code).code
+            slug?.takeIf { catalog.cities.city(it, country) == null }
+                ?.let { catalog.cities.currentSlugByFormer(country)[it] }
+        }
+            .filterNotNull()
+            .collect { current -> prefs.setCity(current) }
     }
 
     /** Listing + details fetched concurrently for [citySlug] — the grid paints

@@ -5,41 +5,25 @@ import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.res.painterResource
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SheetState
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TriStateCheckbox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,38 +34,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
-import androidx.compose.ui.state.ToggleableState
 import pl.kinowo.R
-import pl.kinowo.filter.CinemaCheck
-import pl.kinowo.filter.CinemaFilterSection
-import pl.kinowo.filter.CinemaSection
-import pl.kinowo.filter.FormatFilter
 import pl.kinowo.model.Cities
-import pl.kinowo.model.CinemaArea
-import pl.kinowo.model.CinemaCatalog
 import pl.kinowo.model.Country
 import pl.kinowo.model.defaultCity
 import pl.kinowo.model.sortedForPicker
@@ -131,24 +92,6 @@ internal fun FiltersSheetContent(
     }
 }
 
-/**
- * The "Ukryte filmy" card as a full-screen overlay over the Filtry sheet: a
- * [Dialog] sized to the whole window (default platform width removed, content
- * filling max size) so the hidden list gets the entire screen. System back and
- * a scrim tap both close it back to the filter list.
- */
-@Composable
-private fun HiddenFilmsScreen(viewModel: KinowoViewModel, onClose: () -> Unit) {
-    Dialog(
-        onDismissRequest = onClose,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Surface(Modifier.fillMaxSize()) {
-            HiddenFilmsCard(viewModel, onBack = onClose)
-        }
-    }
-}
-
 @Composable
 private fun FiltersList(
     viewModel: KinowoViewModel,
@@ -160,14 +103,17 @@ private fun FiltersList(
     val catalogCountries = viewModel.countryCatalog.collectAsState().value.countries
     val selectedCountryCode by viewModel.selectedCountryCode.collectAsState()
     val selectedCountry = catalogCountries.selected(selectedCountryCode)
-    val allCountries = remember(films) { FilterFacets.allCountries(films) }
-    val allGenres = remember(films) { FilterFacets.allGenres(films) }
-    val allDirectors = remember(films) { FilterFacets.allDirectors(films) }
-    val allCast = remember(films) { FilterFacets.allCast(films) }
-    val countryTitle = stringResource(R.string.filter_country)
-    val genreTitle = stringResource(R.string.filter_genre)
-    val directorTitle = stringResource(R.string.meta_director)
-    val castTitle = stringResource(R.string.meta_cast)
+    // Kraj / Gatunek / Reżyseria / Obsada: the entries each lists, and the excluded set it edits.
+    val nameFilters = listOf(
+        NameFilter(stringResource(R.string.filter_country), remember(films) { FilterFacets.allCountries(films) },
+            viewModel.excludedCountries) { viewModel.excludedCountries = it },
+        NameFilter(stringResource(R.string.filter_genre), remember(films) { FilterFacets.allGenres(films) },
+            viewModel.excludedGenres) { viewModel.excludedGenres = it },
+        NameFilter(stringResource(R.string.meta_director), remember(films) { FilterFacets.allDirectors(films) },
+            viewModel.excludedDirectors) { viewModel.excludedDirectors = it },
+        NameFilter(stringResource(R.string.meta_cast), remember(films) { FilterFacets.allCast(films) },
+            viewModel.excludedCast) { viewModel.excludedCast = it },
+    )
 
     // Drag-to-close must only fire when the gesture STARTS with the list already
     // at the top. Otherwise a downward swipe to scroll back up — which rolls the
@@ -188,107 +134,106 @@ private fun FiltersList(
     }
 
     Box(Modifier.nestedScroll(gate.connection)) {
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-            item {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.filters), fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { viewModel.clearFilters(films); onClose() }) { Text(stringResource(R.string.clear)) }
-                }
-            }
-
-            // Sortuj — view-ordering axis above the content filters, mirroring
-            // the web "Sortuj" dropdown.
-            item(key = "sec_sort") {
-                FilterSectionLabel(stringResource(R.string.sort))
-                SegmentedChoice(
-                    options = SortOption.entries.map { it.labelText() to it },
-                    selected = viewModel.sortBy,
-                ) { viewModel.sortBy = it }
-            }
-
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             // Section order mirrors the web Filtry panel (_navbar.scala.html):
             // Sortuj → Ukryte filmy → Kina → Kraj/Gatunek/Reżyseria/Obsada →
             // Wymiar/Wersja/IMAX/Od godziny. (Web's "Sale" room picker has no
             // Android equivalent.)
-
-            // Ukryte filmy — a nav row that opens its own card (HiddenFilmsCard),
-            // mirroring iOS; the inline list would crowd out every other filter
-            // once the hidden set grows. Stays below Sortuj.
+            headerItems(viewModel, films, onClose)
             if (hidden.isNotEmpty()) {
-                item(key = "sec_hidden") {
-                    HiddenFilmsRow(count = hidden.size, onClick = onOpenHidden)
-                }
+                // Ukryte filmy — a nav row that opens its own card (HiddenFilmsCard),
+                // mirroring iOS; the inline list would crowd out every other filter
+                // once the hidden set grows. Stays below Sortuj.
+                item(key = "sec_hidden") { HiddenFilmsRow(count = hidden.size, onClick = onOpenHidden) }
             }
-
             // Kina — the one cinema filter. Flat cities get a plain checkbox
             // list, split cities the same universe grouped into areas.
             item(key = "sec_cinemas") { CinemasSection(viewModel, films) }
-
-            // Kraj / Gatunek / Reżyseria / Obsada (excluded sets)
-            collapsibleNameFilter(this, countryTitle, allCountries, viewModel.excludedCountries) { viewModel.excludedCountries = it }
-            collapsibleNameFilter(this, genreTitle, allGenres, viewModel.excludedGenres) { viewModel.excludedGenres = it }
-            collapsibleNameFilter(this, directorTitle, allDirectors, viewModel.excludedDirectors) { viewModel.excludedDirectors = it }
-            collapsibleNameFilter(this, castTitle, allCast, viewModel.excludedCast) { viewModel.excludedCast = it }
-
-            // Wymiar
-            item {
-                FilterSectionLabel(stringResource(R.string.filter_dimension))
-                SegmentedChoice(
-                    options = listOf(stringResource(R.string.all) to "", "2D" to "2D", "3D" to "3D"),
-                    selected = viewModel.formatFilter.dimension,
-                ) { viewModel.formatFilter = viewModel.formatFilter.copy(dimension = it) }
-            }
-            // Wersja — the two choices filter on a LITERAL format token, so they
-            // carry the selected country's own pair from the catalog (`OmU`/`DF`
-            // in Germany, `VOSE`/`DOB` in Spain); Poland's, hardcoded here before,
-            // matched nothing anywhere else.
-            item {
-                val versionTokens = selectedCountry.versionTokens
-                FilterSectionLabel(stringResource(R.string.filter_version))
-                SegmentedChoice(
-                    options = listOf(
-                        stringResource(R.string.all) to "",
-                        stringResource(R.string.version_subtitles) to versionTokens.subtitled,
-                        stringResource(R.string.version_dubbing) to versionTokens.dubbed,
-                    ),
-                    selected = viewModel.formatFilter.language,
-                ) { viewModel.formatFilter = viewModel.formatFilter.copy(language = it) }
-            }
-            // IMAX — only where some loaded showtime is IMAX; elsewhere the
-            // toggle could only blank the list (the web and iOS hide it too).
-            if (films.hasImaxShowtime()) {
-                item {
-                    ToggleRow(stringResource(R.string.imax_only), viewModel.formatFilter.imax) {
-                        viewModel.formatFilter = viewModel.formatFilter.copy(imax = it)
-                    }
-                }
-            }
-            // Od godziny
-            item {
-                FilterSectionLabel(stringResource(R.string.from_time))
-                FromHourRow(viewModel.formatFilter) { viewModel.formatFilter = it }
-            }
-
-            // Miasto — a single entry point back to the first-launch picker,
-            // replacing the inline Kraj/Miasto dropdowns. Last filter, right
-            // above the account section, mirroring iOS FiltersSheet. Usable
-            // before login (it's just a city switch).
-            item(key = "sec_city") { CitySection(viewModel, onClose) }
-
-            // Język — independent of Miasto/Kraj now (see KinowoViewModel.selectedLanguage):
-            // picking a country no longer implies a language, so this gets its own row
-            // right below it, mirroring where iOS/web surface the same picker.
-            item(key = "sec_language") { LanguageSection(viewModel) }
-
-            item { AccountSection(viewModel) }
-
-            item { Column(Modifier.padding(bottom = 24.dp)) {} }
+            for (filter in nameFilters) collapsibleNameFilter(this, filter.title, filter.entries, filter.excluded, filter.onChange)
+            formatItems(viewModel, films, selectedCountry)
+            tailItems(viewModel, onClose)
         }
     }
+}
+
+/** One collapsible name filter: its [entries] and the [excluded] subset [onChange] edits. */
+private class NameFilter(
+    val title: String,
+    val entries: List<NameCount>,
+    val excluded: Set<String>,
+    val onChange: (Set<String>) -> Unit,
+)
+
+/** The title row with Wyczyść, and Sortuj — the view-ordering axis above the content filters,
+ *  mirroring the web "Sortuj" dropdown. */
+private fun LazyListScope.headerItems(viewModel: KinowoViewModel, films: List<Film>, onClose: () -> Unit) {
+    item {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.filters), fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            TextButton(onClick = { viewModel.clearFilters(films); onClose() }) { Text(stringResource(R.string.clear)) }
+        }
+    }
+    item(key = "sec_sort") {
+        FilterSectionLabel(stringResource(R.string.sort))
+        SegmentedChoice(
+            options = SortOption.entries.map { it.labelText() to it },
+            selected = viewModel.sortBy,
+        ) { viewModel.sortBy = it }
+    }
+}
+
+/** Wymiar, Wersja, IMAX (only where some loaded showtime is IMAX; elsewhere the toggle could
+ *  only blank the list, and the web and iOS hide it too) and Od godziny. */
+private fun LazyListScope.formatItems(viewModel: KinowoViewModel, films: List<Film>, selectedCountry: Country) {
+    item {
+        FilterSectionLabel(stringResource(R.string.filter_dimension))
+        SegmentedChoice(
+            options = listOf(stringResource(R.string.all) to "", "2D" to "2D", "3D" to "3D"),
+            selected = viewModel.formatFilter.dimension,
+        ) { viewModel.formatFilter = viewModel.formatFilter.copy(dimension = it) }
+    }
+    // Wersja — the two choices filter on a LITERAL format token, so they carry the selected
+    // country's own pair from the catalog (`OmU`/`DF` in Germany, `VOSE`/`DOB` in Spain);
+    // Poland's, hardcoded here before, matched nothing anywhere else.
+    item {
+        val versionTokens = selectedCountry.versionTokens
+        FilterSectionLabel(stringResource(R.string.filter_version))
+        SegmentedChoice(
+            options = listOf(
+                stringResource(R.string.all) to "",
+                stringResource(R.string.version_subtitles) to versionTokens.subtitled,
+                stringResource(R.string.version_dubbing) to versionTokens.dubbed,
+            ),
+            selected = viewModel.formatFilter.language,
+        ) { viewModel.formatFilter = viewModel.formatFilter.copy(language = it) }
+    }
+    if (films.hasImaxShowtime()) {
+        item {
+            ToggleRow(stringResource(R.string.imax_only), viewModel.formatFilter.imax) {
+                viewModel.formatFilter = viewModel.formatFilter.copy(imax = it)
+            }
+        }
+    }
+    item {
+        FilterSectionLabel(stringResource(R.string.from_time))
+        FromHourRow(viewModel.formatFilter) { viewModel.formatFilter = it }
+    }
+}
+
+/** Miasto — a single entry point back to the first-launch picker, replacing the inline
+ *  Kraj/Miasto dropdowns; last filter, right above the account section, mirroring iOS
+ *  FiltersSheet and usable before login (it's just a city switch). Język — independent of
+ *  Miasto/Kraj (see KinowoViewModel.selectedLanguage): picking a country no longer implies a
+ *  language, so it gets its own row right below, as iOS and the web surface the same picker. */
+private fun LazyListScope.tailItems(viewModel: KinowoViewModel, onClose: () -> Unit) {
+    item(key = "sec_city") { CitySection(viewModel, onClose) }
+    item(key = "sec_language") { LanguageSection(viewModel) }
+    item { AccountSection(viewModel) }
+    item { Column(Modifier.padding(bottom = 24.dp)) {} }
 }
 
 /**
@@ -347,15 +292,13 @@ private fun AccountSection(viewModel: KinowoViewModel) {
     }
 }
 
-
-
 /**
  * A collapsible exclude-list: each entry is checked when *included*; un-checking
  * adds it to the excluded set. Mirrors iOS NameFilterList (toggle = visible).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 private fun collapsibleNameFilter(
-    scope: androidx.compose.foundation.lazy.LazyListScope,
+    scope: LazyListScope,
     title: String,
     entries: List<NameCount>,
     excluded: Set<String>,
@@ -388,7 +331,7 @@ private fun collapsibleNameFilter(
  * rememberSaveable per item key, so it stays expanded when scrolled back.
  */
 @Composable
-private fun CollapsibleSection(
+internal fun CollapsibleSection(
     title: String,
     countLabel: String?,
     content: @Composable () -> Unit,
@@ -406,127 +349,6 @@ private fun CollapsibleSection(
             Icon(if (expanded) painterResource(R.drawable.ic_expand_less) else painterResource(R.drawable.ic_expand_more), contentDescription = null)
         }
         if (expanded) content()
-    }
-}
-
-/**
- * Kina — the single cinema filter, over the `disabledCinemas` exclusion set.
- *
- * A **flat** city renders one checkbox per cinema under a "Wszystkie kina"
- * master; a **split** city (e.g. London) renders the same universe grouped into
- * collapsible areas, each with its own tri-state checkbox. Both shapes and all
- * the toggle arithmetic come from [CinemaFilterSection] — this composable only
- * draws it. Mirrors the web's Filtry cinema panel and iOS FiltersSheet's "Kina".
- *
- * Cinema universe: the city catalog when it has loaded (it includes venues with
- * no showings today, so the list doesn't flicker as the day changes), otherwise
- * the cinemas actually present in [films]. Exercised by
- * FiltersSheetCinemaSectionTest.
- */
-@Composable
-private fun CinemasSection(viewModel: KinowoViewModel, films: List<Film>) {
-    val catalog by viewModel.catalog.collectAsState()
-    val disabled by viewModel.disabledCinemas.collectAsState()
-    val fromFilms = remember(films) { FilterFacets.allCinemas(films) }
-    val effective = remember(catalog, fromFilms) {
-        if (catalog.cinemas.isNotEmpty()) catalog else CinemaCatalog(fromFilms, emptyList())
-    }
-    if (effective.cinemas.isEmpty()) return
-
-    val section = CinemaFilterSection(effective, disabled)
-    val offCount = section.cityCinemas.size - section.enabledCount
-
-    CollapsibleSection(
-        stringResource(R.string.filter_cinemas),
-        if (offCount > 0) pluralStringResource(R.plurals.cinemas_off_count, offCount, offCount) else null,
-    ) {
-        // A plain Column (not a capped, inner-scrolling LazyColumn) so expanding
-        // shows EVERY cinema — the outer sheet scrolls.
-        Column(Modifier.fillMaxWidth()) {
-            ToggleRow(stringResource(R.string.areabar_all_cinemas), section.allCheck == CinemaCheck.ON) { on ->
-                viewModel.setDisabledCinemas(section.settingAll(on))
-            }
-            if (section.isSplit) {
-                effective.areas.forEach { area ->
-                    CinemaAreaGroup(
-                        area = area,
-                        catalog = effective,
-                        section = section,
-                        onSetArea = { on -> viewModel.setDisabledCinemas(section.settingArea(area, on)) },
-                        onSetCinema = { cinema, on ->
-                            viewModel.setDisabledCinemas(section.settingCinema(cinema, on))
-                        },
-                    )
-                }
-            } else {
-                effective.seasonOrdered(section.cityCinemas).forEach { cinema ->
-                    CinemaRow(
-                        cinema = cinema,
-                        catalog = effective,
-                        checked = section.checkOfCinema(cinema) == CinemaCheck.ON,
-                    ) { on -> viewModel.setDisabledCinemas(section.settingCinema(cinema, on)) }
-                }
-            }
-        }
-    }
-}
-
-/**
- * One area group inside [CinemasSection]: a checkbox covering the whole area
- * (ticked / cleared / indeterminate) beside a tappable name that folds out the
- * area's own cinemas. Only used by split cities.
- */
-@Composable
-private fun CinemaAreaGroup(
-    area: CinemaArea,
-    catalog: CinemaCatalog,
-    section: CinemaFilterSection,
-    onSetArea: (Boolean) -> Unit,
-    onSetCinema: (String, Boolean) -> Unit,
-) {
-    var open by rememberSaveable(area.slug) { mutableStateOf(false) }
-    val check = section.checkOfArea(area)
-    Column(Modifier.fillMaxWidth()) {
-        Row(
-            Modifier.fillMaxWidth().padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TriStateCheckbox(
-                state = when (check) {
-                    CinemaCheck.ON -> ToggleableState.On
-                    CinemaCheck.OFF -> ToggleableState.Off
-                    CinemaCheck.MIXED -> ToggleableState.Indeterminate
-                },
-                onClick = { onSetArea(check != CinemaCheck.ON) },
-            )
-            Row(
-                Modifier.weight(1f).clickable { open = !open },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(area.name, modifier = Modifier.weight(1f))
-                Text(
-                    "${area.cinemas.size}",
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(end = 8.dp),
-                )
-                Icon(
-                    if (open) painterResource(R.drawable.ic_expand_less) else painterResource(R.drawable.ic_expand_more),
-                    contentDescription = null,
-                )
-            }
-        }
-        if (open) {
-            Column(Modifier.fillMaxWidth().padding(start = 24.dp)) {
-                catalog.seasonOrdered(area.cinemas).forEach { cinema ->
-                    CinemaRow(
-                        cinema = cinema,
-                        catalog = catalog,
-                        checked = section.checkOfCinema(cinema) == CinemaCheck.ON,
-                    ) { on -> onSetCinema(cinema, on) }
-                }
-            }
-        }
     }
 }
 
@@ -608,317 +430,4 @@ private fun LanguageSection(viewModel: KinowoViewModel) {
         onExpandedChange = { expanded = it },
         items = LanguageOptions.map { (tag, name) -> name to tag },
     ) { tag -> viewModel.setLanguage(tag); expanded = false }
-}
-
-/**
- * The "Ukryte filmy" entry in the filter list: a tappable row (title, count
- * badge, forward chevron) that opens [HiddenFilmsCard]. Mirrors iOS's
- * NavigationLink row rather than the old inline collapsible.
- */
-@Composable
-private fun HiddenFilmsRow(count: Int, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(stringResource(R.string.hidden_films), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-        Text("$count", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(end = 8.dp))
-        Icon(painterResource(R.drawable.ic_keyboard_arrow_right), contentDescription = null)
-    }
-}
-
-/**
- * The "Ukryte filmy" card body (hosted full-screen by [HiddenFilmsScreen]): a
- * back header, a search box that narrows the list as you type (case-insensitive
- * substring, shared shape with iOS HiddenFilmsFilter), each title with a "Pokaż"
- * un-hide, and a "Pokaż wszystkie" bulk action. The list fills the rest of the
- * screen. Closes automatically once the set drains empty — there is nothing
- * left to manage.
- */
-@Composable
-private fun HiddenFilmsCard(viewModel: KinowoViewModel, onBack: () -> Unit) {
-    val hidden by viewModel.hiddenFilms.collectAsState()
-    // Unhiding the last film leaves nothing to manage — close back to the filter
-    // list (its "Ukryte filmy" row has vanished too). Run as an effect so the
-    // state change doesn't happen mid-composition.
-    LaunchedEffect(hidden.isEmpty()) {
-        if (hidden.isEmpty()) onBack()
-    }
-    var query by remember { mutableStateOf("") }
-    val titles = remember(hidden, query) {
-        hidden.sortedWith(String.CASE_INSENSITIVE_ORDER)
-            .filter { query.isBlank() || it.contains(query.trim(), ignoreCase = true) }
-    }
-    Column(Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = 16.dp)) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = stringResource(R.string.back))
-            }
-            Text(stringResource(R.string.hidden_films), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        }
-        HiddenFilmsSearchField(query) { query = it }
-        LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
-            items(titles, key = { "hid_$it" }) { title ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(title, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { viewModel.unhide(title) }) { Text(stringResource(R.string.show)) }
-                }
-            }
-            item(key = "hid_unhide_all") {
-                Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = { viewModel.unhideAll() }) { Text(stringResource(R.string.show_all)) }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Search box on the Ukryte filmy card: a Material3 [OutlinedTextField] with a
- * magnifier lead and a clear glyph, fitting the sheet surface (the dark
- * top-bar SearchFieldContent in ListScreen would clash here).
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun HiddenFilmsSearchField(query: String, onChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onChange,
-        singleLine = true,
-        placeholder = { Text(stringResource(R.string.search_films)) },
-        leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                Icon(
-                    painterResource(R.drawable.ic_close),
-                    contentDescription = stringResource(R.string.clear),
-                    modifier = Modifier.clickable { onChange("") },
-                )
-            }
-        },
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-    )
-}
-
-@Composable
-private fun FilterSectionLabel(text: String) {
-    Text(text, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 8.dp, bottom = 2.dp))
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun <T> SegmentedChoice(options: List<Pair<String, T>>, selected: T, onSelect: (T) -> Unit) {
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        options.forEachIndexed { i, (label, value) ->
-            SegmentedButton(
-                selected = selected == value,
-                onClick = { onSelect(value) },
-                shape = SegmentedButtonDefaults.itemShape(i, options.size),
-            ) { Text(label) }
-        }
-    }
-}
-
-@Composable
-private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onChange)
-    }
-}
-
-/**
- * One cinema's checkbox row, labelled with its pill name. An out-of-season venue
- * (open-air, drive-in) carries a muted second line, "back in season · May–Sept",
- * in the UI language. Exercised by CinemaRowTest.
- */
-@Composable
-internal fun CinemaRow(cinema: String, catalog: CinemaCatalog, checked: Boolean, onChange: (Boolean) -> Unit) {
-    val language = LocalConfiguration.current.locales[0].language
-    val season = catalog.seasonOf(cinema)?.takeIf { it.offSeason }
-    Row(
-        Modifier.fillMaxWidth().clickable { onChange(!checked) }.padding(vertical = 1.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(checked = checked, onCheckedChange = onChange)
-        Column {
-            Text(CinemaSection.pillName(cinema), fontSize = 14.sp)
-            if (season != null) {
-                Text(season.backInSeasonLine(language), fontSize = 12.sp, color = TextSecondary)
-            }
-        }
-    }
-}
-
-@Composable
-private fun CheckRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clickable { onChange(!checked) }.padding(vertical = 1.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(checked = checked, onCheckedChange = onChange)
-        Text(label, fontSize = 14.sp)
-    }
-}
-
-/**
- * Od godziny — the hour and minute floor as a pair of (window-centred)
- * dropdowns. The hour leads with "Dowolna" (no floor); the minute dropdown only
- * appears once a real hour is picked, and choosing "Dowolna" clears the minute.
- */
-@Composable
-private fun FromHourRow(filter: FormatFilter, onChange: (FormatFilter) -> Unit) {
-    val hours = listOf(-1) + (0..23).toList()
-    var hourExpanded by remember { mutableStateOf(false) }
-    var minExpanded by remember { mutableStateOf(false) }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Dropdown(
-            label = if (filter.fromHour < 0) stringResource(R.string.any) else "%02d".format(filter.fromHour),
-            expanded = hourExpanded,
-            onExpandedChange = { hourExpanded = it },
-            items = hours.map { (if (it < 0) stringResource(R.string.any) else "%02d".format(it)) to it },
-            modifier = Modifier.weight(1f),
-        ) { onChange(filter.copy(fromHour = it, fromMinute = if (it < 0) 0 else filter.fromMinute)); hourExpanded = false }
-        if (filter.fromHour >= 0) {
-            Dropdown(
-                label = "%02d".format(filter.fromMinute),
-                expanded = minExpanded,
-                onExpandedChange = { minExpanded = it },
-                items = listOf(0, 15, 30, 45).map { "%02d".format(it) to it },
-                modifier = Modifier.weight(1f),
-            ) { onChange(filter.copy(fromMinute = it)); minExpanded = false }
-        }
-    }
-}
-
-@Composable
-private fun <T> Dropdown(
-    label: String,
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
-    items: List<Pair<String, T>>,
-    modifier: Modifier = Modifier,
-    onPick: (T) -> Unit,
-) {
-    Box(modifier) {
-        OutlinedButton(onClick = { onExpandedChange(true) }, modifier = Modifier.fillMaxWidth()) {
-            Text(label, modifier = Modifier.weight(1f))
-            Icon(
-                if (expanded) painterResource(R.drawable.ic_expand_less) else painterResource(R.drawable.ic_expand_more),
-                contentDescription = null,
-            )
-        }
-        if (expanded) {
-            // A plain DropdownMenu anchors to the button's left edge; for the
-            // full-width city picker that reads as "stuck to the left", and the
-            // half-width Od-godziny pickers would sit off to one side. Centre the
-            // menu in the window instead (see WindowCenteredMenuPositionProvider).
-            val gapPx = with(LocalDensity.current) { MenuAnchorGap.roundToPx() }
-            Popup(
-                popupPositionProvider = remember(gapPx) { WindowCenteredMenuPositionProvider(gapPx) },
-                onDismissRequest = { onExpandedChange(false) },
-                properties = PopupProperties(focusable = true),
-            ) {
-                Surface(
-                    shape = MaterialTheme.shapes.extraSmall,
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                    tonalElevation = 3.dp,
-                    shadowElevation = 3.dp,
-                ) {
-                    Column(
-                        Modifier
-                            .padding(vertical = 8.dp)
-                            .width(IntrinsicSize.Max)
-                            .verticalScroll(rememberScrollState()),
-                    ) {
-                        items.forEach { (text, value) ->
-                            DropdownMenuItem(text = { Text(text) }, onClick = { onPick(value) })
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-private val MenuAnchorGap = 4.dp
-
-/**
- * Gates the Filtry [ModalBottomSheet]'s drag-to-close so it only fires when a
- * downward drag STARTS with the list already at the top. [onDragStart] snapshots
- * whether the list was at the top at finger-down; while it wasn't, [connection]
- * keeps the leftover from the sheet's own nested-scroll connection so it can't
- * yank the sheet closed mid-scroll.
- *
- * Two leftovers, handled differently:
- *  - [onPostScroll] is swallowed ONLY for a real drag ([NestedScrollSource.UserInput]).
- *    During a fling ([NestedScrollSource.SideEffect]) it must pass through as zero:
- *    swallowing it would make the LazyColumn's fling believe it's still scrolling, so
- *    it never cancels at the top and keeps "flinging in place" — leaving the list in
- *    scrollInProgress, which eats the first tap after a flick. The sheet ignores
- *    SideEffect in its own onPostScroll anyway, so letting it through can't close it.
- *  - [onPostFling] (the leftover velocity, where the sheet DOES close on a flick) is
- *    always swallowed, so a flick that began below the top still can't close it.
- *
- * The decisions are pure functions of the snapshot + direction + source, so they're
- * unit-tested directly (TopOnlyDismissScrollGateTest).
- */
-internal class TopOnlyDismissScrollGate(private val atTop: () -> Boolean) {
-    private var atTopAtDragStart = true
-
-    /** Snapshot, when a drag begins, whether the list was already at the top.
-     *  Driven by the list's own [DragInteraction.Start] (see FiltersList) — that
-     *  fires once per real drag and ignores programmatic scrolls, so the snapshot
-     *  is taken at the true gesture start, not on a stray earlier scroll event. */
-    fun onDragStart() {
-        atTopAtDragStart = atTop()
-    }
-
-    /** Leftover downward DRAG scroll the sheet must not see (positive Y, user input),
-     *  else [Offset.Zero]. Fling frames pass through so the list's fling can stop. */
-    fun swallowedPostScroll(available: Offset, source: NestedScrollSource): Offset =
-        if (source == NestedScrollSource.UserInput && !atTopAtDragStart && available.y > 0f)
-            Offset(0f, available.y)
-        else Offset.Zero
-
-    /** Leftover downward fling velocity the sheet must not see (positive Y), else [Velocity.Zero]. */
-    fun swallowedPostFling(available: Velocity): Velocity =
-        if (!atTopAtDragStart && available.y > 0f) Velocity(0f, available.y) else Velocity.Zero
-
-    val connection: NestedScrollConnection = object : NestedScrollConnection {
-        override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
-            swallowedPostScroll(available, source)
-
-        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
-            swallowedPostFling(available)
-    }
-}
-
-/**
- * Positions a popup horizontally centred in the window, dropping below the
- * anchor (and flipping above it when there isn't room below). Used by
- * [Dropdown] so the filter menus open in the middle of the screen rather than
- * pinned to the anchor's left edge. [calculatePosition] is a pure function of
- * its geometry inputs, so it's unit-tested directly (WindowCenteredMenuPositionProviderTest).
- */
-internal class WindowCenteredMenuPositionProvider(
-    private val verticalGapPx: Int,
-) : PopupPositionProvider {
-    override fun calculatePosition(
-        anchorBounds: IntRect,
-        windowSize: IntSize,
-        layoutDirection: LayoutDirection,
-        popupContentSize: IntSize,
-    ): IntOffset {
-        val horizontalOffset = ((windowSize.width - popupContentSize.width) / 2).coerceAtLeast(0)
-        val below = anchorBounds.bottom + verticalGapPx
-        val verticalOffset =
-            if (below + popupContentSize.height <= windowSize.height || anchorBounds.top < popupContentSize.height) {
-                below
-            } else {
-                (anchorBounds.top - verticalGapPx - popupContentSize.height).coerceAtLeast(0)
-            }
-        return IntOffset(horizontalOffset, verticalOffset)
-    }
 }

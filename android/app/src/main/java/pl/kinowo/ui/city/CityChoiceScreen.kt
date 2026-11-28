@@ -2,14 +2,9 @@ package pl.kinowo.ui.city
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
@@ -27,7 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +44,7 @@ import pl.kinowo.model.searchRows
 import pl.kinowo.model.secondLevelRows
 import pl.kinowo.model.topLevelRows
 import pl.kinowo.ui.CountryPicker
+import pl.kinowo.ui.common.SystemBarsColumn
 import pl.kinowo.ui.theme.TextSecondary
 
 /** Height floor for the city-gate controls — a comfortable native touch target,
@@ -67,6 +62,30 @@ private val CitySearchLevel.labelRes: Int
         CitySearchLevel.UsRegion -> R.string.search_level_us_region
         CitySearchLevel.DeRegion -> R.string.search_level_de_region
     }
+
+/** What the picker is browsing: the search text, and the region and subregion drilled into. */
+private class PickerState {
+    var query by mutableStateOf("")
+    /** The region being browsed, on a country whose cities are grouped. Null is
+     *  the first step (pick a state); non-null the second (pick a city in it). */
+    var region by mutableStateOf<String?>(null)
+    /** The subregion being browsed, within [region] — the third step, reached
+     *  only where [region] itself splits into sub-groups holding more than one
+     *  city (a UK county: Glamorgan, West Midlands…). Null everywhere else. */
+    var subregion by mutableStateOf<String?>(null)
+
+    fun reset() {
+        query = ""
+        region = null
+        subregion = null
+    }
+
+    fun open(region: String?, subregion: String? = null) {
+        this.region = region
+        this.subregion = subregion
+        query = ""
+    }
+}
 
 /**
  * Fallback city picker shown when the location gate can't place the user
@@ -87,39 +106,116 @@ fun CityChoiceScreen(
     locateFailed: Boolean = false,
 ) {
     val country = Country.normalizeCode(selectedCountryCode) ?: Country.default.code
-    var query by remember { mutableStateOf("") }
-    // The region being browsed, on a country whose cities are grouped. Null is
-    // the first step (pick a state); non-null the second (pick a city in it).
-    var region by remember { mutableStateOf<String?>(null) }
-    // The subregion being browsed, within [region] — the third step, reached
-    // only where [region] itself splits into sub-groups holding more than one
-    // city (a UK county: Glamorgan, West Midlands…). Null everywhere else.
-    var subregion by remember { mutableStateOf<String?>(null) }
+    val picker = remember { PickerState() }
     // Switching country changes what every step means, so neither a half-typed
     // query nor a state from the country just left may survive it.
-    LaunchedEffect(country) {
-        query = ""
-        region = null
-        subregion = null
-    }
+    LaunchedEffect(country) { picker.reset() }
 
-    // A country that groups its cities — the US by state, Germany by Bundesland,
-    // the UK by nation — is picked in two steps: 468 US places in one A-to-Z is
-    // not a list anybody reads. In Poland and Spain the regions are empty and
-    // this collapses to the single flat list it always was.
+    // A country that groups its cities (US states, Bundesländer, UK nations) is picked in
+    // two steps; in Poland and Spain the regions are empty and it is the single flat list.
     val regions = catalog.cities.regionsIn(country)
-    val pickingRegion = regions.isNotEmpty() && region == null
-    // A query flattens the WHOLE country instead of narrowing just the level
-    // currently drilled into — see `searchRows`. Only meaningful for a
-    // grouped country: Poland and Spain have no regions to flatten, so their
-    // own per-level search above already reaches every city.
-    val searchingAcrossLevels = regions.isNotEmpty() && query.isNotBlank()
-    // The search box's own copy names what a query can ACTUALLY reach from
-    // THIS level — "state" in the US, "nation"/"county" in the UK, never a
-    // one-size-fits-all "region" that would misname either. Mirrors
-    // `pickerSearchLevels`/`updatePickerSearchCopy` in landing.scala.html so
-    // the same visitor reads the same wording on web and here.
-    val searchLevels = searchLevelsFor(country, region, subregion)
+    val pickingRegion = regions.isNotEmpty() && picker.region == null
+
+    // The inset padding keeps the "Country" label from sitting under the clock and the inline
+    // locate button under the battery icon on tall-status-bar phones (Pixel 9 Pro XL).
+    SystemBarsColumn {
+        CountryPicker(
+            countries = catalog.countries,
+            selectedCode = selectedCountryCode,
+            onSelect = onCountry,
+            onLocateMe = onLocateMe,
+            locating = locating,
+            modifier = Modifier.padding(top = 24.dp),
+        )
+        if (locateFailed) NoNearbyNote()
+        PickerHeading(picker, pickingRegion)
+        BackControl(picker)
+        PickerSearchField(picker, country)
+        PickerStep(catalog, country, regions.isNotEmpty(), pickingRegion, picker, onPick)
+    }
+}
+
+/** The step the picker is on. A query flattens the WHOLE country instead of narrowing just
+ *  the level currently drilled into — see `searchRows`. Only meaningful for a grouped
+ *  country: Poland and Spain have no regions to flatten, so their own per-level search
+ *  already reaches every city. */
+@Composable
+private fun PickerStep(
+    catalog: Catalog,
+    country: String,
+    grouped: Boolean,
+    pickingRegion: Boolean,
+    picker: PickerState,
+    onPick: (City) -> Unit,
+) {
+    when {
+        grouped && picker.query.isNotBlank() -> SearchStep(catalog, country, picker, onPick)
+        pickingRegion -> RegionStep(catalog, country, picker, onPick)
+        picker.subregion == null -> CityStep(catalog, country, picker, onPick)
+        else -> SubregionStep(catalog, country, picker, onPick)
+    }
+}
+
+@Composable
+private fun NoNearbyNote() {
+    Text(
+        stringResource(R.string.no_city_nearby_locate),
+        fontSize = 13.sp,
+        color = TextSecondary,
+        modifier = Modifier.padding(top = 8.dp),
+    )
+}
+
+@Composable
+private fun PickerHeading(picker: PickerState, pickingRegion: Boolean) {
+    Text(
+        stringResource(if (pickingRegion) R.string.choose_region_title else R.string.choose_city_title),
+        fontSize = 22.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 24.dp),
+    )
+    Text(
+        // Inside a region or subregion, the subtitle names it: it is the
+        // only thing on this screen that says which state's (or county's)
+        // cities these are.
+        picker.subregion ?: picker.region ?: stringResource(
+            if (pickingRegion) R.string.choose_region_subtitle else R.string.choose_city_subtitle
+        ),
+        fontSize = 14.sp,
+        color = TextSecondary,
+        modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
+    )
+}
+
+/** The back control of the second and third step. The subregion's own returns to the
+ *  region's list, not all the way out to the top region list (`back_to_regions`, one
+ *  step further). */
+@Composable
+private fun BackControl(picker: PickerState) {
+    val subregion = picker.subregion
+    val region = picker.region
+    if (subregion != null) {
+        BackButton(R.string.back) { picker.open(region) }
+    } else if (region != null) {
+        BackButton(R.string.back_to_regions) { picker.open(null) }
+    }
+}
+
+@Composable
+private fun BackButton(label: Int, onClick: () -> Unit) {
+    TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp)) {
+        Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = null)
+        Text(stringResource(label), fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp))
+    }
+}
+
+/** The search box. Its own copy names what a query can ACTUALLY reach from THIS level —
+ *  "state" in the US, "nation"/"county" in the UK, never a one-size-fits-all "region" that
+ *  would misname either. Mirrors `pickerSearchLevels`/`updatePickerSearchCopy` in
+ *  landing.scala.html so the same visitor reads the same wording on web and here. */
+@Composable
+private fun PickerSearchField(picker: PickerState, country: String) {
+    val searchLevels = searchLevelsFor(country, picker.region, picker.subregion)
     val searchHint = when (searchLevels.size) {
         2 -> stringResource(
             R.string.search_levels_2,
@@ -129,173 +225,100 @@ fun CityChoiceScreen(
         1 -> stringResource(R.string.search_levels_1, stringResource(searchLevels[0].labelRes))
         else -> stringResource(R.string.search_city_hint)
     }
-
-    // Edge-to-edge (MainActivity.enableEdgeToEdge): inset padding on this
-    // Column so the "Country" label doesn't sit under the clock and the
-    // now-inline locate button doesn't sit under the battery icon on
-    // tall-status-bar phones (Pixel 9 Pro XL).
-    Column(
-        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        CountryPicker(
-            countries = catalog.countries,
-            selectedCode = selectedCountryCode,
-            onSelect = onCountry,
-            onLocateMe = onLocateMe,
-            locating = locating,
-            modifier = Modifier.padding(top = 24.dp),
-        )
-        if (locateFailed) {
-            Text(
-                stringResource(R.string.no_city_nearby_locate),
-                fontSize = 13.sp,
-                color = TextSecondary,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
-        Text(
-            stringResource(if (pickingRegion) R.string.choose_region_title else R.string.choose_city_title),
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 24.dp),
-        )
-        Text(
-            // Inside a region or subregion, the subtitle names it: it is the
-            // only thing on this screen that says which state's (or county's)
-            // cities these are.
-            subregion ?: region ?: stringResource(
-                if (pickingRegion) R.string.choose_region_subtitle else R.string.choose_city_subtitle
-            ),
-            fontSize = 14.sp,
-            color = TextSecondary,
-            modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
-        )
-        if (subregion != null) {
-            // Its own back control — returns to the region's own list, not all
-            // the way out to the top region list (that's `back_to_regions`,
-            // one step further).
-            TextButton(
-                onClick = { subregion = null; query = "" },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-            ) {
-                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = null)
-                Text(stringResource(R.string.back), fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp))
-            }
-        } else if (region != null) {
-            TextButton(
-                onClick = { region = null; query = "" },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-            ) {
-                Icon(painterResource(R.drawable.ic_arrow_back), contentDescription = null)
-                Text(
-                    stringResource(R.string.back_to_regions),
-                    fontSize = 15.sp,
-                    modifier = Modifier.padding(start = 8.dp),
+    OutlinedTextField(
+        value = picker.query,
+        onValueChange = { picker.query = it },
+        singleLine = true,
+        placeholder = { Text(searchHint) },
+        leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
+        trailingIcon = {
+            if (picker.query.isNotEmpty()) {
+                Icon(
+                    painterResource(R.drawable.ic_close),
+                    contentDescription = stringResource(R.string.clear),
+                    modifier = Modifier.clickable { picker.query = "" },
                 )
             }
+        },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+/** One step's rows as tall buttons, or the "nothing matched" line when there are none. */
+@Composable
+private fun <T> StepRows(
+    rows: List<T>,
+    query: String,
+    noMatchMessage: Int,
+    key: (T) -> Any,
+    row: @Composable (T) -> Unit,
+) {
+    if (rows.isEmpty()) {
+        NoMatches(query, noMatchMessage)
+    } else {
+        LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            items(rows, key = key) { row(it) }
         }
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            singleLine = true,
-            placeholder = { Text(searchHint) },
-            leadingIcon = { Icon(painterResource(R.drawable.ic_search), contentDescription = null) },
-            trailingIcon = {
-                if (query.isNotEmpty()) {
-                    Icon(
-                        painterResource(R.drawable.ic_close),
-                        contentDescription = stringResource(R.string.clear),
-                        modifier = Modifier.clickable { query = "" },
-                    )
-                }
-            },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (searchingAcrossLevels) {
-            // Replaces whichever step was open with ONE flat, alphabetically
-            // merged list spanning every region, subregion and city in the
-            // country — the whole point of flattening the search is that it
-            // no longer matters which level the visitor was browsing when
-            // they started typing.
-            val rows = catalog.cities.searchRows(query, country)
-            if (rows.isEmpty()) {
-                NoMatches(query, R.string.no_city_matching)
-            } else {
-                LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    items(rows, key = { it.rowKey }) { row ->
-                        when (row) {
-                            is CitySearchRow.Region -> TallFilledButton(row.label) {
-                                region = row.label; subregion = null; query = ""
-                            }
-                            is CitySearchRow.Subregion -> TallFilledButton(row.label) {
-                                region = row.region; subregion = row.label; query = ""
-                            }
-                            is CitySearchRow.CityRow -> TallFilledButton(row.city.name) { onPick(row.city) }
-                        }
-                    }
-                }
-            }
-        } else if (pickingRegion) {
-            // Each region's heading interleaved with any city whose top group
-            // collapsed onto it alone (Berlin, Hamburg; Delaware, Vermont), in
-            // the catalog's own order (see `mergedPickerRows`) — not every
-            // heading followed by every direct city, which stranded a heading
-            // like "West Midlands" ahead of its alphabetical neighbours.
-            val rows = catalog.cities.topLevelRows(query, country)
-            if (rows.isEmpty()) {
-                NoMatches(query, R.string.no_region_matching)
-            } else {
-                LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    items(rows, key = { it.rowKey }) { row ->
-                        when (row) {
-                            is CityPickerRow.Heading -> TallFilledButton(row.label) { region = row.label; query = "" }
-                            is CityPickerRow.CityRow -> TallFilledButton(row.city.name) { onPick(row.city) }
-                        }
-                    }
-                }
-            }
-        } else if (subregion == null) {
-            val currentRegion = region
-            // The second step's rows — subregion headings (the UK's
-            // counties: Glamorgan, West Midlands…) interleaved with `region`'s own
-            // directly-listed cities, same merge as the first step. Falls back
-            // to the whole flat list (as plain city rows) for a country with
-            // no grouping, where `region` is always null.
-            val rows = if (currentRegion != null) {
-                catalog.cities.secondLevelRows(query, country, currentRegion)
-            } else {
-                catalog.cities.matching(query, country).map { CityPickerRow.CityRow(it) }
-            }
-            if (rows.isEmpty()) {
-                NoMatches(query, R.string.no_city_matching)
-            } else {
-                LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    items(rows, key = { it.rowKey }) { row ->
-                        when (row) {
-                            is CityPickerRow.Heading -> TallFilledButton(row.label) { subregion = row.label; query = "" }
-                            is CityPickerRow.CityRow -> TallFilledButton(row.city.name) { onPick(row.city) }
-                        }
-                    }
-                }
-            }
-        } else {
-            val currentRegion = region
-            val currentSubregion = subregion
-            checkNotNull(currentRegion) { "subregion is set, so its region must be too" }
-            checkNotNull(currentSubregion)
-            val cities = catalog.cities.matchingInSubregion(query, country, currentRegion, currentSubregion)
-            if (cities.isEmpty()) {
-                NoMatches(query, R.string.no_city_matching)
-            } else {
-                LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    items(cities, key = { it.slug }) { city ->
-                        TallFilledButton(city.name) { onPick(city) }
-                    }
-                }
-            }
+    }
+}
+
+/** Replaces whichever step was open with ONE flat, alphabetically merged list spanning
+ *  every region, subregion and city in the country — the whole point of flattening the
+ *  search is that it no longer matters which level the visitor was browsing when they
+ *  started typing. */
+@Composable
+private fun SearchStep(catalog: Catalog, country: String, picker: PickerState, onPick: (City) -> Unit) {
+    StepRows(catalog.cities.searchRows(picker.query, country), picker.query, R.string.no_city_matching, { it.rowKey }) { row ->
+        when (row) {
+            is CitySearchRow.Region -> TallFilledButton(row.label) { picker.open(row.label) }
+            is CitySearchRow.Subregion -> TallFilledButton(row.label) { picker.open(row.region, row.label) }
+            is CitySearchRow.CityRow -> TallFilledButton(row.city.name) { onPick(row.city) }
         }
+    }
+}
+
+/** Each region's heading interleaved with any city whose top group collapsed onto it alone
+ *  (Berlin, Hamburg; Delaware, Vermont), in the catalog's own order (see `mergedPickerRows`)
+ *  — not every heading followed by every direct city, which stranded a heading like "West
+ *  Midlands" ahead of its alphabetical neighbours. */
+@Composable
+private fun RegionStep(catalog: Catalog, country: String, picker: PickerState, onPick: (City) -> Unit) {
+    StepRows(catalog.cities.topLevelRows(picker.query, country), picker.query, R.string.no_region_matching, { it.rowKey }) { row ->
+        when (row) {
+            is CityPickerRow.Heading -> TallFilledButton(row.label) { picker.open(row.label) }
+            is CityPickerRow.CityRow -> TallFilledButton(row.city.name) { onPick(row.city) }
+        }
+    }
+}
+
+/** The second step's rows — subregion headings (the UK's counties: Glamorgan, West
+ *  Midlands…) interleaved with the region's own directly-listed cities, same merge as the
+ *  first step. Falls back to the whole flat list (as plain city rows) for a country with no
+ *  grouping, where the region is always null. */
+@Composable
+private fun CityStep(catalog: Catalog, country: String, picker: PickerState, onPick: (City) -> Unit) {
+    val region = picker.region
+    val rows = if (region != null) {
+        catalog.cities.secondLevelRows(picker.query, country, region)
+    } else {
+        catalog.cities.matching(picker.query, country).map { CityPickerRow.CityRow(it) }
+    }
+    StepRows(rows, picker.query, R.string.no_city_matching, { it.rowKey }) { row ->
+        when (row) {
+            is CityPickerRow.Heading -> TallFilledButton(row.label) { picker.open(region, row.label) }
+            is CityPickerRow.CityRow -> TallFilledButton(row.city.name) { onPick(row.city) }
+        }
+    }
+}
+
+@Composable
+private fun SubregionStep(catalog: Catalog, country: String, picker: PickerState, onPick: (City) -> Unit) {
+    val region = checkNotNull(picker.region) { "subregion is set, so its region must be too" }
+    val subregion = checkNotNull(picker.subregion)
+    val cities = catalog.cities.matchingInSubregion(picker.query, country, region, subregion)
+    StepRows(cities, picker.query, R.string.no_city_matching, { it.slug }) { city ->
+        TallFilledButton(city.name) { onPick(city) }
     }
 }
 
@@ -318,14 +341,7 @@ private fun NoMatches(query: String, message: Int) {
  */
 @Composable
 fun CityConfirmScreen(city: City, onConfirm: () -> Unit, onChooseOther: () -> Unit) {
-    // Edge-to-edge: same gap as CityChoiceScreen — centering hides it on most
-    // screens, but a short one (landscape, a small phone) can still clip
-    // against the status/nav bar without this.
-    Column(
-        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+    SystemBarsColumn(verticalArrangement = Arrangement.Center) {
         Text(stringResource(R.string.near_city_label), fontSize = 14.sp, color = TextSecondary)
         Text(
             city.name,

@@ -80,35 +80,7 @@ fun CountryPicker(
 ) {
     val current = countries.selected(selectedCode)
     Column(modifier.fillMaxWidth()) {
-        Row(
-            Modifier.fillMaxWidth().padding(bottom = CountryPickerGap),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(R.string.country_label),
-                fontSize = 19.5.sp,
-                color = TextSecondary,
-                modifier = Modifier.weight(1f),
-            )
-            // The default 48dp touch target is meant for a row with no other
-            // height driver — here it would inflate the whole header row well
-            // past what the "Country" label needs, pushing the city list (and
-            // on a short subregion list, its last row) further down for no
-            // visual gain. Sized instead to sit comfortably beside the label.
-            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 32.dp) {
-                IconButton(onClick = onLocateMe, enabled = !locating, modifier = Modifier.size(32.dp)) {
-                    if (locating) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(
-                            painterResource(R.drawable.ic_my_location),
-                            contentDescription = stringResource(R.string.locate_me),
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                }
-            }
-        }
+        CountryHeader(onLocateMe, locating)
         Row(
             Modifier
                 .fillMaxWidth()
@@ -116,21 +88,56 @@ fun CountryPicker(
                 .selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            countries.forEach { country ->
-                val selected = country.code == current.code
-                if (selected) {
-                    Button(onClick = { onSelect(country.code) }) {
-                        Text(stringResource(countryNameRes(country.code)), fontWeight = FontWeight.SemiBold, maxLines = 1)
-                    }
+            countries.forEach { CountryPill(it, selected = it.code == current.code, onSelect) }
+        }
+    }
+}
+
+@Composable
+private fun CountryHeader(onLocateMe: () -> Unit, locating: Boolean) {
+    Row(
+        Modifier.fillMaxWidth().padding(bottom = CountryPickerGap),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(R.string.country_label),
+            fontSize = 19.5.sp,
+            color = TextSecondary,
+            modifier = Modifier.weight(1f),
+        )
+        // The default 48dp touch target is meant for a row with no other
+        // height driver — here it would inflate the whole header row well
+        // past what the "Country" label needs, pushing the city list (and
+        // on a short subregion list, its last row) further down for no
+        // visual gain. Sized instead to sit comfortably beside the label.
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 32.dp) {
+            IconButton(onClick = onLocateMe, enabled = !locating, modifier = Modifier.size(32.dp)) {
+                if (locating) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {
-                    OutlinedButton(
-                        onClick = { onSelect(country.code) },
-                        colors = ButtonDefaults.outlinedButtonColors(),
-                    ) {
-                        Text(stringResource(countryNameRes(country.code)), maxLines = 1)
-                    }
+                    Icon(
+                        painterResource(R.drawable.ic_my_location),
+                        contentDescription = stringResource(R.string.locate_me),
+                        modifier = Modifier.size(20.dp),
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CountryPill(country: Country, selected: Boolean, onSelect: (String) -> Unit) {
+    if (selected) {
+        Button(onClick = { onSelect(country.code) }) {
+            Text(stringResource(countryNameRes(country.code)), fontWeight = FontWeight.SemiBold, maxLines = 1)
+        }
+    } else {
+        OutlinedButton(
+            onClick = { onSelect(country.code) },
+            colors = ButtonDefaults.outlinedButtonColors(),
+        ) {
+            Text(stringResource(countryNameRes(country.code)), maxLines = 1)
         }
     }
 }

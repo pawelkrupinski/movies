@@ -116,6 +116,15 @@ data class DeepLink(
             val base = withoutFragment.substringBefore("?")
             val rawQuery = if (withoutFragment.contains("?")) withoutFragment.substringAfter("?") else null
 
+            val place = placeOf(base, cities) ?: return null
+            val (country, city) = resolve(place.linked, place.named, cities, bareSlugOwners) ?: return null
+
+            val query = parseQuery(rawQuery)
+            val (filmSlug, filmTitle) = filmTarget(place, query)
+            return DeepLink(city, filmTitle, filmSlug, DeepLinkFilters.from(query, versionTokensOfCountry(country), genreSpellings), country)
+        }
+
+        private fun placeOf(base: String, cities: List<City>): Place? {
             val uri = try {
                 URI(base)
             } catch (_: Exception) {
@@ -123,30 +132,26 @@ data class DeepLink(
             }
             val scheme = uri.scheme?.lowercase() ?: return null
             val host = uri.host?.lowercase() ?: return null
-
-            val place = when (scheme) {
+            return when (scheme) {
                 "https", "http" -> webPlace(host, uri.rawPath, cities.map { it.slug }.toSet())
                 "kinowo" -> schemePlace(host, uri.rawPath)
                 else -> null
-            } ?: return null
+            }
+        }
 
-            val (country, city) = resolve(place.linked, place.named, cities, bareSlugOwners) ?: return null
-
-            val query = parseQuery(rawQuery)
-            // `movie` is the current spelling; `film` was its address before
-            // the rename and is still minted by installed app builds and every
-            // link shared before it, so both open the detail screen. The server
-            // 301s the old one, but an App Link never reaches the server.
+        /** The `(slug, title)` of the film a link opens, each `null` when absent.
+         *  `movie` is the current spelling; `film` was its address before the rename and
+         *  is still minted by installed app builds and every link shared before it, so
+         *  both open the detail screen (the server 301s the old one, but an App Link
+         *  never reaches the server). `/movie/{slug}` is the canonical form,
+         *  `/movie?title=…` the legacy one; both are parsed, so a link from an older
+         *  build, or saved from the web before the switch, still opens the film. */
+        private fun filmTarget(place: Place, query: List<Pair<String, String>>): Pair<String?, String?> {
             val isFilm = place.trailing.firstOrNull().let { it == "movie" || it == "film" }
-            // `/movie/{slug}` is the canonical form, `/movie?title=…` the legacy
-            // one. Both are parsed: a link shared from an older app build, or
-            // saved from the web before the switch, must still open the film.
-            val filmSlug = if (isFilm) place.trailing.getOrNull(1)?.takeIf { it.isNotEmpty() } else null
-            val filmTitle = if (isFilm) {
-                query.firstOrNull { it.first == "title" }?.second?.takeIf { it.isNotEmpty() }
-            } else null
-
-            return DeepLink(city, filmTitle, filmSlug, DeepLinkFilters.from(query, versionTokensOfCountry(country), genreSpellings), country)
+            if (!isFilm) return null to null
+            val slug = place.trailing.getOrNull(1)?.takeIf { it.isNotEmpty() }
+            val title = query.firstOrNull { it.first == "title" }?.second?.takeIf { it.isNotEmpty() }
+            return slug to title
         }
 
         /** Where a link points before the catalog is asked: the slug it names, the
@@ -253,8 +258,10 @@ data class DeepLinkFilters(
 
     /** Cinemas to DISABLE: every known cinema not in the enabled list. `null`
      *  when the `cinema` param was absent (don't touch the choice). */
-    fun disabledCinemas(allCinemas: Set<String>): Set<String>? =
-        enabledCinemas?.let { allCinemas - it.toSet() }
+    fun disabledCinemas(allCinemas: Set<String>): Set<String>? {
+        val enabled = enabledCinemas ?: return null
+        return allCinemas - enabled.toSet()
+    }
 
     companion object {
         val EMPTY = DeepLinkFilters()
@@ -269,27 +276,22 @@ data class DeepLinkFilters(
             versionTokens: VersionTokens = VersionTokens.POLAND,
             genreSpellings: GenreSpellings = GenreSpellings(),
         ): DeepLinkFilters {
-            fun first(key: String): String? =
-                query.firstOrNull { it.first == key }?.second?.takeIf { it.isNotEmpty() }
-            // Repeated params AND legacy comma-lists both flatten to one set.
-            fun all(key: String): List<String> =
-                query.filter { it.first == key }.flatMap { it.second.split(",") }.filter { it.isNotEmpty() }
-
-            val from = first("from")?.let(::parseFrom)
+            val params = QueryParams(query)
+            val from = params.first("from")?.let(::parseFrom)
             return DeepLinkFilters(
-                date = first("date")?.let(::parseDate),
-                query = first("q"),
-                dimension = first("dim")?.takeIf { it == "2D" || it == "3D" },
-                language = first("lang")?.takeIf { it in versionTokens.accepted },
-                imax = if (query.any { it.first == "imax" }) first("imax") == "1" else null,
+                date = params.first("date")?.let(::parseDate),
+                query = params.first("q"),
+                dimension = params.first("dim")?.takeIf { it == "2D" || it == "3D" },
+                language = params.first("lang")?.takeIf { it in versionTokens.accepted },
+                imax = if (params.has("imax")) params.first("imax") == "1" else null,
                 fromHour = from?.first,
                 fromMinute = from?.second,
-                sort = first("sort")?.let { v -> SortOption.entries.firstOrNull { it.name.equals(v, ignoreCase = true) } },
-                includedCountries = all("country"),
-                includedGenres = genreSpellings.expanded(all("genre")),
-                includedDirectors = all("director"),
-                includedCast = all("cast"),
-                enabledCinemas = if (query.any { it.first == "cinema" }) all("cinema") else null,
+                sort = params.first("sort")?.let { v -> SortOption.entries.firstOrNull { it.name.equals(v, ignoreCase = true) } },
+                includedCountries = params.all("country"),
+                includedGenres = genreSpellings.expanded(params.all("genre")),
+                includedDirectors = params.all("director"),
+                includedCast = params.all("cast"),
+                enabledCinemas = if (params.has("cinema")) params.all("cinema") else null,
             )
         }
 
@@ -309,4 +311,16 @@ data class DeepLinkFilters(
             return if (h in 0..23 && m in 0..59) h to m else null
         }
     }
+}
+
+/** A link's decoded query: the first non-empty value of a key, or every value of it. */
+private class QueryParams(private val query: List<Pair<String, String>>) {
+    fun first(key: String): String? =
+        query.firstOrNull { it.first == key }?.second?.takeIf { it.isNotEmpty() }
+
+    /** Repeated params AND legacy comma-lists both flatten to one set. */
+    fun all(key: String): List<String> =
+        query.filter { it.first == key }.flatMap { it.second.split(",") }.filter { it.isNotEmpty() }
+
+    fun has(key: String): Boolean = query.any { it.first == key }
 }

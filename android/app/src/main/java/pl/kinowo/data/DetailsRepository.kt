@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.net.DetailsApi
-import java.time.Duration
 import java.time.Instant
 
 /**
@@ -23,8 +22,7 @@ class DetailsRepository(
     private val _byTitle = MutableStateFlow<Map<String, FilmDetails>>(emptyMap())
     val byTitle: StateFlow<Map<String, FilmDetails>> = _byTitle.asStateFlow()
 
-    private var lastReloadedAt: Instant? = null
-    private val staleAfter: Duration = Duration.ofSeconds(60)
+    private val freshness = ReloadFreshness()
 
     fun loadCachedData() {
         if (_byTitle.value.isEmpty()) {
@@ -38,19 +36,18 @@ class DetailsRepository(
         runCatchingCancellable {
             val result = api.fetchDetails(citySlug, cache.lastModifiedFor(citySlug))
             if (result.notModified) {
-                lastReloadedAt = now
+                freshness.markReloaded(now)
                 return
             }
             val details = result.items ?: return
             _byTitle.value = details.associateBy(FilmDetails::title)
-            lastReloadedAt = now
+            freshness.markReloaded(now)
             cache.save(citySlug, details, result.lastModified)
         }
     }
 
     suspend fun reloadIfStale(citySlug: String, now: Instant = Instant.now()) {
-        val last = lastReloadedAt
-        if (last != null && Duration.between(last, now) < staleAfter) return
+        if (freshness.isFresh(now)) return
         reload(citySlug, now)
     }
 }

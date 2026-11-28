@@ -19,22 +19,21 @@ import androidx.compose.ui.text.withStyle
  */
 object SynopsisMarkdown {
     fun annotated(s: String): AnnotatedString = buildAnnotatedString {
+        for (segment in segments(s)) appendSegment(segment)
+    }
+
+    /** A run of text under one emphasis state. */
+    private class Segment(val text: String, val bold: Boolean, val italic: Boolean)
+
+    private fun segments(s: String): List<Segment> {
+        val out = mutableListOf<Segment>()
         var bold = false
         var italic = false
         val buf = StringBuilder()
 
         fun flush() {
             if (buf.isEmpty()) return
-            if (bold || italic) {
-                withStyle(
-                    SpanStyle(
-                        fontWeight = if (bold) FontWeight.Bold else null,
-                        fontStyle = if (italic) FontStyle.Italic else null,
-                    )
-                ) { append(buf.toString()) }
-            } else {
-                append(buf.toString())
-            }
+            out += Segment(buf.toString(), bold, italic)
             buf.setLength(0)
         }
 
@@ -47,5 +46,19 @@ object SynopsisMarkdown {
             }
         }
         flush()
+        return out
+    }
+
+    private fun AnnotatedString.Builder.appendSegment(segment: Segment) {
+        if (segment.bold || segment.italic) {
+            withStyle(
+                SpanStyle(
+                    fontWeight = if (segment.bold) FontWeight.Bold else null,
+                    fontStyle = if (segment.italic) FontStyle.Italic else null,
+                )
+            ) { append(segment.text) }
+        } else {
+            append(segment.text)
+        }
     }
 }

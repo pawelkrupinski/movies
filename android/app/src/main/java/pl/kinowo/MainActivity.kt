@@ -90,6 +90,20 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        watchCountry()
+        watchLanguage()
+        // A restored activity is not a new link: `recreate()` (rotation, a
+        // language switch) and a restore after process death both relaunch
+        // with an intent whose link was already handled — replayed, it would
+        // re-apply its filters over the user's later changes and reopen its
+        // film. A cross-country link that must survive its own country-switch
+        // recreate is carried by the ViewModel instead (see
+        // [KinowoViewModel.handleDeepLink]).
+        if (savedInstanceState == null) consumeLinks(intent)
+        showContent()
+    }
+
+    private fun watchCountry() {
         // Re-create the activity when the selected country changes so the API base
         // URL is re-derived at wiring time. `recreate()` alone is NOT enough to
         // re-point the data layer: like any configuration change it RETAINS the
@@ -108,6 +122,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
             .launchIn(lifecycleScope)
+    }
+
+    private fun watchLanguage() {
         // Re-create the activity when the selected LANGUAGE changes so
         // attachBaseContext re-runs and forces the new locale. Deliberately
         // recreate() ONLY — unlike the country watcher above, this must NOT clear
@@ -123,14 +140,9 @@ class MainActivity : ComponentActivity() {
             .drop(1)
             .onEach { recreate() }
             .launchIn(lifecycleScope)
-        // A restored activity is not a new link: `recreate()` (rotation, a
-        // language switch) and a restore after process death both relaunch
-        // with an intent whose link was already handled — replayed, it would
-        // re-apply its filters over the user's later changes and reopen its
-        // film. A cross-country link that must survive its own country-switch
-        // recreate is carried by the ViewModel instead (see
-        // [KinowoViewModel.handleDeepLink]).
-        if (savedInstanceState == null) consumeLinks(intent)
+    }
+
+    private fun showContent() {
         // Non-prod tweak screen, gated behind a launch extra so it never shows in
         // a normal run, AND behind TUNING_ENABLED so it's compiled out
         // of the public `release` build (it's on for `debug` + `tuneRelease`).

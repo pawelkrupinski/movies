@@ -2,6 +2,7 @@ package pl.kinowo.ui
 
 import android.Manifest
 import android.content.Intent
+import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -170,45 +171,16 @@ internal fun CityGate(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    // Show the chooser once the location attempt is done without a hit — until
-    // then we keep it hidden so the chooser doesn't flash before the fix lands.
-    var showChooser by remember { mutableStateOf(false) }
-    // The detected city awaiting the user's confirmation (null until a fix
-    // lands on a supported city).
-    var detected by remember { mutableStateOf<City?>(null) }
-    // The detected nearest city, retained even after "choose other" clears
-    // `detected`, so a deliberate pick of a different city can pre-suppress the
-    // "you're nearer …" prompt that would otherwise fire on the next screen.
-    var nearest by remember { mutableStateOf<City?>(null) }
-    // An attempt is in flight AND was triggered by the chooser's own "use my
-    // location" button — the first-launch attempt below never sets this, so a
-    // denial/miss there stays silent exactly as it always has. Doubles as the
-    // button's busy flag.
-    var locating by remember { mutableStateOf(false) }
-    // The last MANUAL attempt (via `locating`) found nothing within 100 km, or
-    // was denied. Shown inline on the chooser; cleared on the next attempt or
-    // a fresh gate open.
-    var locateFailed by remember { mutableStateOf(false) }
+    val gate = remember { GateState() }
 
     // One resolution attempt: the first-launch one scoped to the gate's
     // country, or the chooser's own "use my location" button's (`manual`),
     // which searches every country so it finds the right city even when the
     // country tab open at the moment isn't the one the device is actually in —
     // `onConfirm` (wired at the ViewModel) switches the app's country to match.
-    // A miss only reports `locateFailed` for the manual button; a first-launch
-    // miss stays silent and just opens the chooser.
     fun resolve(manual: Boolean, find: suspend () -> City?) = scope.launch {
         val city = find()
-        if (city != null) {
-            // `showChooser` may already be true here — a manual tap runs this
-            // from the chooser itself — so a hit must explicitly hand control
-            // back to the confirm screen.
-            detected = city; nearest = city; showChooser = false
-        } else {
-            showChooser = true
-            if (manual) locateFailed = true
-        }
-        locating = false
+        if (city != null) gate.found(city) else gate.missed(manual)
     }
 
     fun resolveIn(country: String) = resolve(manual = false) { resolveNearest(country, catalog.cities) }
@@ -220,14 +192,10 @@ internal fun CityGate(
         val country = start?.countryCode
         when {
             // `locating` is only ever true for the chooser's own button (see
-            // its declaration above), so this branch is the manual flow.
-            granted && locating -> resolveAny()
+            // GateState), so this branch is the manual flow.
+            granted && gate.locating -> resolveAny()
             granted && country != null -> resolveIn(country)
-            else -> {
-                showChooser = true
-                if (locating) locateFailed = true
-                locating = false
-            }
+            else -> gate.denied()
         }
     }
 
@@ -239,22 +207,15 @@ internal fun CityGate(
     // while the new one resolves.
     LaunchedEffect(start) {
         val opening = start ?: return@LaunchedEffect
-        detected = null
-        nearest = null
-        showChooser = false
-        locating = false
-        locateFailed = false
+        gate.restart()
         // The user reached this gate by naming a country, so the answer they are
         // owed is that country's cities — not a location fix, and not the
         // permission dialog that taking one would raise.
         if (!opening.locate) {
-            showChooser = true
+            gate.showChooser = true
             return@LaunchedEffect
         }
-        val alreadyGranted = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_COARSE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED
-        if (alreadyGranted) resolveIn(opening.countryCode)
+        if (hasCoarseLocation(context)) resolveIn(opening.countryCode)
         else permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
     }
 
@@ -263,34 +224,100 @@ internal fun CityGate(
     // `resolveAny`): reuses `permissionLauncher` rather than a parallel
     // permission flow.
     fun locateMe() {
-        locating = true
-        locateFailed = false
-        val alreadyGranted = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_COARSE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED
-        if (alreadyGranted) resolveAny()
+        gate.locating = true
+        gate.locateFailed = false
+        if (hasCoarseLocation(context)) resolveAny()
         else permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
     }
 
-    val city = detected
+    GateContent(gate, catalog, start?.countryCode, onPick, onConfirm, onCountry, onLocateMe = ::locateMe)
+}
+
+@Composable
+private fun GateContent(
+    gate: GateState,
+    catalog: Catalog,
+    countryCode: String?,
+    onPick: (City, City?) -> Unit,
+    onConfirm: (City) -> Unit,
+    onCountry: (String) -> Unit,
+    onLocateMe: () -> Unit,
+) {
+    val city = gate.detected
     when {
-        showChooser     -> CityChoiceScreen(
+        gate.showChooser -> CityChoiceScreen(
             catalog = catalog,
-            onPick = { onPick(it, nearest) },
-            selectedCountryCode = start?.countryCode,
+            onPick = { onPick(it, gate.nearest) },
+            selectedCountryCode = countryCode,
             onCountry = onCountry,
-            onLocateMe = ::locateMe,
-            locating = locating,
-            locateFailed = locateFailed,
+            onLocateMe = onLocateMe,
+            locating = gate.locating,
+            locateFailed = gate.locateFailed,
         )
-        city != null    -> CityConfirmScreen(
+        city != null -> CityConfirmScreen(
             city = city,
             onConfirm = { onConfirm(city) },
-            onChooseOther = { detected = null; showChooser = true },
+            onChooseOther = { gate.detected = null; gate.showChooser = true },
         )
         // else: still resolving (or still waiting for the stored country) — keep
         // the screen blank (no flash) until the fix lands or the chooser/confirm
         // takes over.
+    }
+}
+
+private fun hasCoarseLocation(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+        PackageManager.PERMISSION_GRANTED
+
+/** What the gate is showing: the location attempt's outcome and the chooser's own flags. */
+private class GateState {
+    /** Show the chooser once the location attempt is done without a hit — until then it
+     *  stays hidden so the chooser doesn't flash before the fix lands. */
+    var showChooser by mutableStateOf(false)
+    /** The detected city awaiting the user's confirmation (null until a fix lands on a
+     *  supported city). */
+    var detected by mutableStateOf<City?>(null)
+    /** The detected nearest city, retained even after "choose other" clears [detected], so a
+     *  deliberate pick of a different city can pre-suppress the "you're nearer …" prompt
+     *  that would otherwise fire on the next screen. */
+    var nearest by mutableStateOf<City?>(null)
+    /** An attempt is in flight AND was triggered by the chooser's own "use my location"
+     *  button — the first-launch attempt never sets this, so a denial/miss there stays
+     *  silent. Doubles as the button's busy flag. */
+    var locating by mutableStateOf(false)
+    /** The last MANUAL attempt found nothing within 100 km, or was denied. Shown inline on
+     *  the chooser; cleared on the next attempt or a fresh gate open. */
+    var locateFailed by mutableStateOf(false)
+
+    fun restart() {
+        detected = null
+        nearest = null
+        showChooser = false
+        locating = false
+        locateFailed = false
+    }
+
+    /** A hit. [showChooser] may already be true — a manual tap runs from the chooser itself
+     *  — so it must explicitly hand control back to the confirm screen. */
+    fun found(city: City) {
+        detected = city
+        nearest = city
+        showChooser = false
+        locating = false
+    }
+
+    /** A miss only reports [locateFailed] for the manual button; a first-launch miss stays
+     *  silent and just opens the chooser. */
+    fun missed(manual: Boolean) {
+        showChooser = true
+        if (manual) locateFailed = true
+        locating = false
+    }
+
+    fun denied() {
+        showChooser = true
+        if (locating) locateFailed = true
+        locating = false
     }
 }
 

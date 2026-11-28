@@ -1,5 +1,6 @@
 package pl.kinowo.ui.common
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -88,62 +89,81 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
     // Pills scale with the device's portrait width, anchored at the Pixel 9a's
     // ~411dp where the base sizes were tuned (scale 1.0). Keyed off layoutWidthDp
     // (not the live width) so pills are the same size in landscape as in
-    // portrait. See RatingBadgeMetrics. The style holds the pre-scale base
-    // values; we multiply the dimensional ones here.
-    val scale = RatingBadgeMetrics.scale(layoutWidthDp())
-    val fontSize = (style.baseFontSize.value * scale).sp
-    val hPad = (style.hPad.value * scale).dp
-    // vPad stacks on the trimmed font box, which already carries ~4px above the
-    // caps and the descent below the baseline (the pill text has no descenders)
-    // — see RatingPillVisualPaddingTest, which gates that box net of vPad.
-    val vPad = (style.vPad.value * scale).dp
-    val corner = (style.corner.value * scale).dp
-    val gap = (style.interPillGap.value * scale).dp
+    // portrait. See RatingBadgeMetrics.
+    val m = PillMetrics.scaled(style, RatingBadgeMetrics.scale(layoutWidthDp()))
     FlowRow(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(gap),
-        verticalArrangement = Arrangement.spacedBy(gap),
+        horizontalArrangement = Arrangement.spacedBy(m.gap),
+        verticalArrangement = Arrangement.spacedBy(m.gap),
     ) {
-        if (ratings.imdb != null || ratings.imdbPending) {
-            LabelValuePill(
-                label = "IMDb", labelBg = ImdbYellow, labelFg = Color.Black,
-                value = ratings.imdb?.let(::oneDecimal), valueFg = ImdbYellow,
-                spokenLabel = if (ratings.imdb == null) stringResource(R.string.rating_imdb_pending) else null,
-                fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
-                labelWeight = style.labelWeight, valueWeight = style.valueWeight,
-                onClick = { openImdb(context, ratings.imdbURL) },
-            )
-        }
-        ratings.metascore?.let { v ->
-            val color = if (v >= 61) MetaGood else if (v >= 40) MetaMid else MetaBad
-            SinglePill(
-                text = v.toString(), fg = color,
-                fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
-                weight = style.solidWeight,
-                onClick = { openUrl(context, ratings.metacriticURL) },
-            )
-        }
-        ratings.rottenTomatoes?.let { v ->
-            val color = if (v >= 60) RtFresh else RtRotten
-            LabelValuePill(
-                label = "RT", labelBg = color, labelFg = Color.White,
-                value = "$v%", valueFg = color,
-                fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
-                labelWeight = style.labelWeight, valueWeight = style.valueWeight,
-                onClick = { openUrl(context, ratings.rottenTomatoesURL) },
-            )
-        }
-        if (ratings.filmweb != null || ratings.filmwebPending) {
-            LabelValuePill(
-                label = "FW", labelBg = FwOrange, labelFg = Color.White,
-                value = ratings.filmweb?.let(::oneDecimal), valueFg = FwOrangeLight,
-                spokenLabel = if (ratings.filmweb == null) stringResource(R.string.rating_filmweb_pending) else null,
-                fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
-                labelWeight = style.labelWeight, valueWeight = style.valueWeight,
-                onClick = { openUrl(context, ratings.filmwebURL) },
-            )
-        }
+        if (ratings.imdb != null || ratings.imdbPending) ImdbPill(ratings, m, style, context)
+        ratings.metascore?.let { MetascorePill(it, ratings, m, style, context) }
+        ratings.rottenTomatoes?.let { RottenTomatoesPill(it, ratings, m, style, context) }
+        if (ratings.filmweb != null || ratings.filmwebPending) FilmwebPill(ratings, m, style, context)
     }
+}
+
+/** [RatingPillStyle]'s dimensional base values multiplied by the viewport scale. */
+private class PillMetrics(val fontSize: TextUnit, val hPad: Dp, val vPad: Dp, val corner: Dp, val gap: Dp) {
+    companion object {
+        fun scaled(style: RatingPillStyle, scale: Float) = PillMetrics(
+            fontSize = (style.baseFontSize.value * scale).sp,
+            hPad = (style.hPad.value * scale).dp,
+            // vPad stacks on the trimmed font box, which already carries ~4px above the
+            // caps and the descent below the baseline (the pill text has no descenders)
+            // — see RatingPillVisualPaddingTest, which gates that box net of vPad.
+            vPad = (style.vPad.value * scale).dp,
+            corner = (style.corner.value * scale).dp,
+            gap = (style.interPillGap.value * scale).dp,
+        )
+    }
+}
+
+@Composable
+private fun ImdbPill(ratings: Ratings, m: PillMetrics, style: RatingPillStyle, context: Context) {
+    LabelValuePill(
+        label = "IMDb", labelBg = ImdbYellow, labelFg = Color.Black,
+        value = ratings.imdb?.let(::oneDecimal), valueFg = ImdbYellow,
+        spokenLabel = if (ratings.imdb == null) stringResource(R.string.rating_imdb_pending) else null,
+        fontSize = m.fontSize, hPad = m.hPad, vPad = m.vPad, corner = m.corner,
+        labelWeight = style.labelWeight, valueWeight = style.valueWeight,
+        onClick = { openImdb(context, ratings.imdbURL) },
+    )
+}
+
+@Composable
+private fun MetascorePill(score: Int, ratings: Ratings, m: PillMetrics, style: RatingPillStyle, context: Context) {
+    val color = if (score >= 61) MetaGood else if (score >= 40) MetaMid else MetaBad
+    SinglePill(
+        text = score.toString(), fg = color,
+        fontSize = m.fontSize, hPad = m.hPad, vPad = m.vPad, corner = m.corner,
+        weight = style.solidWeight,
+        onClick = { openUrl(context, ratings.metacriticURL) },
+    )
+}
+
+@Composable
+private fun RottenTomatoesPill(score: Int, ratings: Ratings, m: PillMetrics, style: RatingPillStyle, context: Context) {
+    val color = if (score >= 60) RtFresh else RtRotten
+    LabelValuePill(
+        label = "RT", labelBg = color, labelFg = Color.White,
+        value = "$score%", valueFg = color,
+        fontSize = m.fontSize, hPad = m.hPad, vPad = m.vPad, corner = m.corner,
+        labelWeight = style.labelWeight, valueWeight = style.valueWeight,
+        onClick = { openUrl(context, ratings.rottenTomatoesURL) },
+    )
+}
+
+@Composable
+private fun FilmwebPill(ratings: Ratings, m: PillMetrics, style: RatingPillStyle, context: Context) {
+    LabelValuePill(
+        label = "FW", labelBg = FwOrange, labelFg = Color.White,
+        value = ratings.filmweb?.let(::oneDecimal), valueFg = FwOrangeLight,
+        spokenLabel = if (ratings.filmweb == null) stringResource(R.string.rating_filmweb_pending) else null,
+        fontSize = m.fontSize, hPad = m.hPad, vPad = m.vPad, corner = m.corner,
+        labelWeight = style.labelWeight, valueWeight = style.valueWeight,
+        onClick = { openUrl(context, ratings.filmwebURL) },
+    )
 }
 
 /** The trimmed text style shared by every pill — rating badges *and* the

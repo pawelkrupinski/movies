@@ -73,7 +73,6 @@ fun FilmCard(
     // The share link is city-scoped; the slug comes from the city-gate root.
     val citySlug = LocalCitySlug.current
     val shareOrigin = LocalShareOrigin.current
-    val spacing = LocalCardSpacingStyle.current
     // Card gaps scale with the device's portrait width off the 360 dp baseline,
     // in lockstep with the chips (layoutWidthDp, so landscape matches portrait —
     // see ShowtimeChipMetrics). scale == 1f at the 360 dp floor.
@@ -101,75 +100,88 @@ fun FilmCard(
                 onShare = { shareFilm(context, shareOrigin, citySlug, film.title, film.slug) },
                 onCopy = { copyFilmLink(context, shareOrigin, citySlug, film.title, film.slug) },
             )
-            // The poster owns the long-press → share menu (Udostępnij / Skopiuj
-            // link), mirroring iOS `FilmCardView`, where the `.contextMenu` now
-            // sits on `PosterView`. A tap still opens the detail screen.
-            Box(
-                modifier = Modifier
-                    .testTag(FilmCardPosterTestTag)
-                    .combinedClickable(
-                        onClick = onOpen,
-                        onLongClick = { menuExpanded = true },
-                    ),
-            ) {
-                PosterImage(
-                    chain = film.posterChain,
-                    contentDescription = film.title,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(2f / 3f),
-                )
-                // Hide (⊗) button, top-right.
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding((6 * scale).dp)
-                        .size((28 * scale).dp)
-                        .clip(RoundedCornerShape((14 * scale).dp))
-                        .background(PosterHideScrim)
-                        .clickable(onClick = onHide),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painterResource(R.drawable.ic_close),
-                        contentDescription = stringResource(R.string.hide_film),
-                        tint = Color.White,
-                        modifier = Modifier.size((16 * scale).dp),
-                    )
-                }
-            }
-            // Card content padding stays a fixed 12dp: the shared grid geometry
-            // (PosterGridMetrics.cardContentDp) subtracts exactly this to derive
-            // the showings-column width the two-per-row guarantee is proven
-            // against, so scaling it would silently shrink that column on wide
-            // phones. Everything INSIDE scales with the viewport instead.
-            Column(Modifier.padding(12.dp)) {
-                Text(
-                    text = film.title,
-                    color = Color.White,
-                    fontSize = (14 * scale).sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                // Runtime + year + age rating only — the listing card drops
-                // genres (they stay on the detail screen).
-                MetaPills(
-                    runtimeMinutes = film.runtimeMinutes,
-                    releaseYear = film.releaseYear,
-                    ageRating = film.ageRating,
-                    scale = scale,
-                    modifier = Modifier.padding(top = spacing.titleToMeta * scale),
-                )
-                if (!film.ratings.isEmpty) {
-                    RatingBadges(film.ratings, Modifier.padding(top = spacing.metaToRatings * scale))
-                }
-                Showings(
-                    film = film,
-                    showCinemaHeaders = showCinemaHeaders,
-                    maxChips = 14,
-                    modifier = Modifier.padding(top = spacing.ratingsToShowings * scale),
-                )
-            }
+            PosterBlock(film, menuOnLongPress = { menuExpanded = true }, onOpen, onHide, scale)
+            CardBody(film, showCinemaHeaders, scale)
+        }
+    }
+}
+
+@Composable
+private fun CardBody(film: Film, showCinemaHeaders: Boolean, scale: Float) {
+    val spacing = LocalCardSpacingStyle.current
+    // Card content padding stays a fixed 12dp: the shared grid geometry
+    // (PosterGridMetrics.cardContentDp) subtracts exactly this to derive
+    // the showings-column width the two-per-row guarantee is proven
+    // against, so scaling it would silently shrink that column on wide
+    // phones. Everything INSIDE scales with the viewport instead.
+    Column(Modifier.padding(12.dp)) {
+        Text(
+            text = film.title,
+            color = Color.White,
+            fontSize = (14 * scale).sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        // Runtime + year + age rating only — the listing card drops
+        // genres (they stay on the detail screen).
+        MetaPills(
+            runtimeMinutes = film.runtimeMinutes,
+            releaseYear = film.releaseYear,
+            ageRating = film.ageRating,
+            scale = scale,
+            modifier = Modifier.padding(top = spacing.titleToMeta * scale),
+        )
+        if (!film.ratings.isEmpty) {
+            RatingBadges(film.ratings, Modifier.padding(top = spacing.metaToRatings * scale))
+        }
+        Showings(
+            film = film,
+            showCinemaHeaders = showCinemaHeaders,
+            maxChips = 14,
+            modifier = Modifier.padding(top = spacing.ratingsToShowings * scale),
+        )
+    }
+}
+
+/**
+ * The poster, which owns the long-press → share menu (Udostępnij / Skopiuj link), mirroring
+ * iOS `FilmCardView`, where the `.contextMenu` sits on `PosterView`, and the hide (⊗) button,
+ * top-right. A tap still opens the detail screen.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PosterBlock(film: Film, menuOnLongPress: () -> Unit, onOpen: () -> Unit, onHide: () -> Unit, scale: Float) {
+    Box(
+        modifier = Modifier
+            .testTag(FilmCardPosterTestTag)
+            .combinedClickable(
+                onClick = onOpen,
+                onLongClick = menuOnLongPress,
+            ),
+    ) {
+        PosterImage(
+            chain = film.posterChain,
+            contentDescription = film.title,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding((6 * scale).dp)
+                .size((28 * scale).dp)
+                .clip(RoundedCornerShape((14 * scale).dp))
+                .background(PosterHideScrim)
+                .clickable(onClick = onHide),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_close),
+                contentDescription = stringResource(R.string.hide_film),
+                tint = Color.White,
+                modifier = Modifier.size((16 * scale).dp),
+            )
         }
     }
 }

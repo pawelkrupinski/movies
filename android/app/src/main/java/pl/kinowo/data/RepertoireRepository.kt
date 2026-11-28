@@ -8,7 +8,6 @@ import pl.kinowo.filter.WARSAW
 import pl.kinowo.filter.prunedPastShowings
 import pl.kinowo.model.Film
 import pl.kinowo.net.RepertoireApi
-import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 
@@ -39,8 +38,7 @@ class RepertoireRepository(
     private val _loadedCity = MutableStateFlow<String?>(null)
     val loadedCity: StateFlow<String?> = _loadedCity.asStateFlow()
 
-    private var lastReloadedAt: Instant? = null
-    private val staleAfter: Duration = Duration.ofSeconds(60)
+    private val freshness = ReloadFreshness()
 
     /** Paint cached data instantly on cold start (before the network call). */
     fun loadCachedData() {
@@ -70,13 +68,13 @@ class RepertoireRepository(
                 // header is city-bound, so a 304 only comes back for the same
                 // city). Mark it loaded so a deep link can proceed.
                 _loadedCity.value = citySlug
-                lastReloadedAt = now
+                freshness.markReloaded(now)
                 return
             }
             val films = result.items ?: return
             _films.value = films
             _loadedCity.value = citySlug
-            lastReloadedAt = now
+            freshness.markReloaded(now)
             cache.save(citySlug, films, result.lastModified)
         } catch (e: CancellationException) {
             throw e // a superseded reload (city switch), not a failure
@@ -88,8 +86,7 @@ class RepertoireRepository(
     }
 
     suspend fun reloadIfStale(citySlug: String, now: Instant = Instant.now()) {
-        val last = lastReloadedAt
-        if (last != null && Duration.between(last, now) < staleAfter) return
+        if (freshness.isFresh(now)) return
         reload(citySlug, now)
     }
 

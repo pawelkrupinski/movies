@@ -1,18 +1,12 @@
 package pl.kinowo.ui.update
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -20,6 +14,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.kinowo.R
+import pl.kinowo.ui.common.SystemBarsColumn
 import pl.kinowo.ui.theme.TextSecondary
 
 /**
@@ -29,11 +24,7 @@ import pl.kinowo.ui.theme.TextSecondary
  */
 @Composable
 fun UpdateRequiredScreen(onUpdate: () -> Unit) {
-    Column(
-        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
+    SystemBarsColumn(verticalArrangement = Arrangement.Center) {
         Text(
             stringResource(R.string.update_required_title),
             fontSize = 24.sp,
