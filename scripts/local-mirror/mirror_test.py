@@ -325,7 +325,9 @@ class MirrorCase(cli_harness.ToolCase):
     def mongosh_calls(self, kind: Optional[str] = None, db: Optional[str] = None) -> List[Dict[str, object]]:
         if not os.path.exists(self.path("mongosh.log")):
             return []
-        calls = [json.loads(line) for line in self.read("mongosh.log").splitlines() if line.strip()]
+        # whole lines only: a fake mongosh may be mid-append, its line not yet ended
+        complete = self.read("mongosh.log").split("\n")[:-1]
+        calls = [json.loads(line) for line in complete if line.strip()]
         return [c for c in calls if (kind is None or c["kind"] == kind) and (db is None or c["db"] == db)]
 
     def until_tailing(self, count: int = 1, db: Optional[str] = None) -> List[int]:
@@ -345,6 +347,12 @@ class MirrorCase(cli_harness.ToolCase):
         assert self.daemon is not None
         self.until("the daemon never ended", lambda: self.daemon is not None and self.daemon.poll() is not None)
         return int(self.daemon.returncode)
+
+
+class FixtureTest(MirrorCase):
+    def test_a_call_line_still_being_appended_is_not_read_yet(self) -> None:
+        self.write("mongosh.log", '{"kind": "tail", "db": "kinowo", "uri": "", "pid": 1}\n{"kind": "tail", "db": "kin')
+        self.assertEqual([1], [c["pid"] for c in self.mongosh_calls("tail")])
 
 
 class StartupTest(MirrorCase):
