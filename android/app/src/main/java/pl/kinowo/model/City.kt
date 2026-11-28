@@ -625,18 +625,12 @@ object Cities {
      * ("lodz" → "Łódź", "krakow" → "Kraków"). Unicode normalisation won't fold
      * ł/ą/ę/ń, so map the Polish letters explicitly.
      */
-    fun searchFold(s: String): String {
-        val out = StringBuilder(s.length)
-        for (ch in s.lowercase()) {
-            out.append(
-                when (ch) {
-                    'ą' -> 'a'; 'ć' -> 'c'; 'ę' -> 'e'; 'ł' -> 'l'; 'ń' -> 'n'
-                    'ó' -> 'o'; 'ś' -> 's'; 'ź' -> 'z'; 'ż' -> 'z'; else -> ch
-                }
-            )
-        }
-        return out.toString()
-    }
+    fun searchFold(s: String): String = s.lowercase().map { SEARCH_FOLD[it] ?: it }.joinToString("")
+
+    private val SEARCH_FOLD = mapOf(
+        'ą' to 'a', 'ć' to 'c', 'ę' to 'e', 'ł' to 'l', 'ń' to 'n',
+        'ó' to 'o', 'ś' to 's', 'ź' to 'z', 'ż' to 'z',
+    )
 
     /**
      * [sortedIn] narrowed to the cities whose folded name contains the folded

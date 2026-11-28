@@ -779,8 +779,7 @@ extension City {
         var rows: [PickerRow] = []
         for city in cities {
             if let group = groupField(city) {
-                guard seen.insert(group).inserted else { continue }
-                if q.isEmpty || City.searchFold(group).contains(q) { rows.append(.heading(group)) }
+                if seen.insert(group).inserted, q.isEmpty || City.searchFold(group).contains(q) { rows.append(.heading(group)) }
             } else if q.isEmpty || city.matches(folded: q) {
                 rows.append(.city(city))
             }
@@ -892,16 +891,14 @@ extension Array where Element == City {
         var seenSubregion = Set<String>()
         var rows: [City.SearchRow] = []
         for city in inCountry(countryCode) {
-            if let region = city.region, seenRegion.insert(region).inserted, City.searchFold(region).contains(q) {
-                rows.append(.region(region))
+            if let region = city.region {
+                if seenRegion.insert(region).inserted, City.searchFold(region).contains(q) { rows.append(.region(region)) }
+                if let subregion = city.subregion, seenSubregion.insert("\(region)\u{0}\(subregion)").inserted,
+                   City.searchFold(subregion).contains(q) {
+                    rows.append(.subregion(subregion, region: region))
+                }
             }
-            if let region = city.region, let subregion = city.subregion, seenSubregion.insert("\(region)\u{0}\(subregion)").inserted,
-               City.searchFold(subregion).contains(q) {
-                rows.append(.subregion(subregion, region: region))
-            }
-            if city.matches(folded: q) {
-                rows.append(.city(city))
-            }
+            if city.matches(folded: q) { rows.append(.city(city)) }
         }
         let locale = City.collationLocale(for: countryCode)
         return rows.sorted { $0.label.compare($1.label, options: .caseInsensitive, range: nil, locale: locale) == .orderedAscending }

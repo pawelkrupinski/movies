@@ -21,7 +21,6 @@ cognitive	android/app/src/main/java/pl/kinowo/ui/common/Showings.kt:ShowtimeChip
 cognitive	android/app/src/main/java/pl/kinowo/ui/common/SynopsisMarkdown.kt:annotated	14
 cyclomatic	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:disabledCinemas	14
 cyclomatic	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:parse	12
-cyclomatic	android/app/src/main/java/pl/kinowo/model/City.kt:searchFold	11
 cyclomatic	android/app/src/main/java/pl/kinowo/ui/city/CityChoiceScreen.kt:CityChoiceScreen	22
 cyclomatic	android/app/src/main/java/pl/kinowo/ui/common/Showings.kt:Showings	12
 method-lines	android/app/src/main/java/pl/kinowo/MainActivity.kt:onCreate	70
