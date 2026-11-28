@@ -8,7 +8,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { runCommand, type Executor } from "../shared/exec.js";
 import { httpRequest, type HttpRequest } from "../shared/http.js";
-import { systemClock } from "../host/system.js";
+import { explainUnlockFailure } from "../host/binary-watch.js";
+import { systemClock, systemExecutable, systemFileExists } from "../host/system.js";
 import { withNetworkRetries } from "./network.js";
 
 export const IOS_APP_ID = "6792566321";
@@ -61,7 +62,11 @@ const UNLOCK_TIMEOUT_MS = 120_000;
  * dashboard has an unlock of its own (`unlock`, behind the page's button) that lasts while it runs;
  * a release run from a terminal or Claude session uses that session's.
  */
-export function vaultSecrets(exec: Executor = runCommand, bin: string = SECRETS_BIN): { readonly get: Secrets; readonly unlock: () => Promise<void> } {
+export function vaultSecrets(
+  exec: Executor = runCommand,
+  bin: string = SECRETS_BIN,
+  nodeBinaryGone: () => boolean = () => !systemFileExists(systemExecutable()),
+): { readonly get: Secrets; readonly unlock: () => Promise<void> } {
   const get: Secrets = async (name) => {
     const result = await exec([bin, "get", VAULT_NAMESPACE, name], { timeoutMs: VAULT_TIMEOUT_MS });
     if (result.code === 0) return result.stdout.trim();
@@ -70,7 +75,9 @@ export function vaultSecrets(exec: Executor = runCommand, bin: string = SECRETS_
   };
   const unlock = async () => {
     const result = await exec([bin, "unlock", VAULT_NAMESPACE], { timeoutMs: UNLOCK_TIMEOUT_MS });
-    if (result.code !== 0) throw new Error(result.stderr.trim() || (result.timedOut ? "Touch ID prompt timed out" : `exit ${String(result.code)}`));
+    if (result.code === 0) return;
+    const message = result.stderr.trim() || (result.timedOut ? "Touch ID prompt timed out" : `exit ${String(result.code)}`);
+    throw new Error(explainUnlockFailure(message, nodeBinaryGone()));
   };
   return { get, unlock };
 }

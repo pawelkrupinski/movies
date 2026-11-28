@@ -4,7 +4,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Autodeploy } from "./autodeploy.js";
 import { autodeploy as autodeployOn, HOST, port, ROOT } from "./shared/config.js";
-import { systemClock, systemEnvironment } from "./host/system.js";
+import { watchOwnBinary } from "./host/binary-watch.js";
+import { systemClock, systemEnvironment, systemEvery, systemExecutable, systemFileExists } from "./host/system.js";
 import { killRunningCommands as killFleetCommands } from "fleetkit/exec";
 import { killRunningCommands } from "./shared/exec.js";
 import { drain, isDraining, runningWork } from "./lifecycle.js";
@@ -132,6 +133,13 @@ async function main(): Promise<void> {
     await app.close();
     process.exit(0);
   };
+  watchOwnBinary({
+    executable: systemExecutable(),
+    exists: systemFileExists,
+    every: systemEvery,
+    onGone: () => void shutdown("node binary replaced"),
+    log: console.log,
+  });
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
 
