@@ -397,6 +397,19 @@ tool of `scripts/shell-py-progress/migrate-tools.tsv` and every `.py` file new s
 (`scripts/py-quality/migrated.py`) past a limit is refused even with a trailer -- "migrated tools stay under the bar --
 split it". A migrated tool keeps its path, CLI and output, and its
 black-box `<tool>_test.py` (`scripts/lib/harness/cli_harness.py`) passes byte-unchanged on the shell tool and on the Python one.
+**Every reduction is locked in; every language but bash is ratcheted** (the owner, 2026-11-28: "all complexity that you
+reduce -- add ratchets for it, make it a rule"). THE FALL LOCK: every ratchet -- Scala quality and coupling, `pyquality`
+(pyright too), `jsquality`, `mobilequality`, the design rules, `shellgate` -- REFUSES a push whose measure is below its
+baseline unrecorded, naming the update command (`baseline_ratchet.refused_falls`, vendored to agentctl): record the fall
+(or a rename's re-key) in the push making it, no trailer needed. Swift (`ios/Kinowo/`) and Kotlin (an `android/`
+module's `src/main|tuning|noTuning`) are held on the one limits table by `scripts/mobile-quality-report` (pinned lizard;
+`test/resources/{swift,kotlin}-quality-baseline.tsv`, the same trailers). Bash is MEASURED, never ratcheted:
+`scripts/design-rules/shell_gate.py` (pre-push `shellgate`; design-rules.tsv's `shell-*` limits: 150 code lines, 10
+decisions a body, a 50-line function, nesting 4) refuses a new shell tool past a limit or a frozen one growing --
+migrate it to Python (`scripts/shell-py-progress/migrate-tools.tsv`, same path, CLI and output, plus a black-box
+`<tool>_test.py`); `test/resources/shell-baseline.tsv` only falls (no trailer raises it), its keeps are dated rows of
+`test/resources/shell-keeps.tsv`, and `shell_gate.py queue` lists the migration queue. Not ratcheted yet: Nix, Terraform,
+the Twirl templates' markup and inline `<script>`, the Gradle `.kts` (measured, not held), workflow `run:` blocks.
 **The naming lint** (`scripts/design-rules/naming_lint.py`, the same step and `pyquality` / `jsquality` for their languages; the owner's "names must match behaviour", 2026-11-19):
 two top-level types of one package named with the same words in another order (`PruneSweep` / `SweepPrune`) refuse the
 push -- rename one after what makes it distinct (a pair mid-rename sits in its `ALLOWED_PERMUTATIONS` with an owner); a
