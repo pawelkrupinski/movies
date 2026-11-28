@@ -143,7 +143,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     step should include("CHECKS: ${{ steps.share.outputs.checks }}")
     // ... with run-script-tests' tree check off: it moves what it did not find aside, and the rest's itrest had just
     // fetched the GitOps manifests (landing checks 44984605717, 44998261508: the deploy specs found no infra/kubernetes)
-    RepoFile.read("scripts/ci/hook-beside.sh") should include("""PREPUSH_ONLY="$check" RUN_SCRIPT_TESTS_TREE_CHECK=0 "$@"""")
+    RepoFile.read("scripts/ci/hook_beside.py") should include(""""PREPUSH_ONLY": check, "RUN_SCRIPT_TESTS_TREE_CHECK": "0"""")
   }
 
   "the pre-push hook" should "run only the checks its share names, and say which it leaves to the other jobs" in {

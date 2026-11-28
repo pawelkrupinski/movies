@@ -495,7 +495,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     suite should include("order-phases: ${{ steps.order.outputs.phases || 'both' }}")
     RepoFile.step(suite, "Which order-independence rows can this ref move?") should include(
       """scripts/ci/order-phases.sh "$GITHUB_REF" "$GITHUB_SHA"""")
-    RepoFile.read("scripts/ci/order-phases.sh") should include("""[ "$ref" = refs/heads/main ] && both""")
+    RepoFile.read("scripts/ci/order_phases.py") should include("""if ref == "refs/heads/main":""")
   }
 
   /** THE TAKES SKIP GATE (scripts/ci/takes_skip_gate.py): SHADOW by default everywhere -- every takes row runs in full and
