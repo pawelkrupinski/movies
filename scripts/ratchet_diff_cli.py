@@ -2,7 +2,8 @@
 """The ratchet diff (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs
 THE RATCHET DIFF (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs --
 complexity (cognitive, cyclomatic, inner-defs), length (method, file), duplication, fan-out, package D, cycles, and the
-JS/TS ratchet's rows (`js <kind>`, test/resources/js-quality-baseline.tsv) -- as a
+JS/TS ratchet's rows (`js <kind>`, test/resources/js-quality-baseline.tsv), the Swift and Kotlin ratchets' (`swift <kind>`,
+`kotlin <kind>`) -- as a
 before -> after table marked fell / rose / new / measured / removed / moved, then per metric the totals and how many rows are
 still over the limit. A lane's report pastes this, never numbers written by hand.
 
@@ -11,7 +12,8 @@ still over the limit. A lane's report pastes this, never numbers written by hand
   scripts/ratchet-diff --tsv <base>..<head>    the same rows as TSV
   scripts/ratchet-diff --measure <base>        the head side measured from this WORKING TREE (scripts/quality-report
                                                and scripts/coupling-report --out, through sbt-warm, and
-                                               scripts/js-quality-report's production areas) instead of its
+                                               scripts/js-quality-report's production areas, and
+                                               scripts/mobile-quality-report per language) instead of its
                                                committed baselines: a fall nobody recorded with --update shows too
                                                (run this checkout's own copy: another's measures its tree)
 
@@ -30,10 +32,12 @@ from typing import List, NoReturn, Optional
 
 # stdlib only: ratchet_diff_cli_test.py runs a copy of it in a scratch checkout, beside own-checkout and nothing else
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# each measure: its tool, its --out directory's name, and the rows file it must leave there
-MEASURES = (("quality", "quality-report", "rows.tsv"), ("coupling", "coupling-report", "rows.tsv"),
-            ("js", "js-quality-report", "over-limit.tsv"))
-ROW_FLAGS = {"quality": "--quality-rows", "coupling": "--coupling-rows", "js": "--js-rows"}
+# each measure: its name (its --out directory's and the table's --<name>-rows flag), its tool, the rows file it must
+# leave there, and the arguments it takes before --out
+MEASURES = (("quality", "quality-report", "rows.tsv", ()), ("coupling", "coupling-report", "rows.tsv", ()),
+            ("js", "js-quality-report", "over-limit.tsv", ("--areas", os.path.join(ROOT, "scripts", "js-quality", "ratchet-areas.tsv"))),
+            ("swift", "mobile-quality-report", "swift-over-limit.tsv", ("--language", "swift")),
+            ("kotlin", "mobile-quality-report", "kotlin-over-limit.tsv", ("--language", "kotlin")))
 
 
 class Refused(Exception):
@@ -85,19 +89,17 @@ def measured_rows(work: str) -> List[str]:
     """Each measure run over this tree, its output in a log; the table's row flags, or Refused naming one that wrote
     none (its log's tail first)."""
     rows: List[str] = []
-    for name, tool, _ in MEASURES:
-        command = [os.path.join(ROOT, "scripts", tool), "--out", os.path.join(work, name)]
-        if name == "js":
-            command[1:1] = ["--areas", os.path.join(ROOT, "scripts", "js-quality", "ratchet-areas.tsv")]
+    for name, tool, _, before_out in MEASURES:
+        command = [os.path.join(ROOT, "scripts", tool), *before_out, "--out", os.path.join(work, name)]
         with open(os.path.join(work, name + ".log"), "w") as log:
             subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
-    for name, _, rows_file in MEASURES:
+    for name, _, rows_file, _ in MEASURES:
         path = os.path.join(work, name, rows_file)
         if not os.path.isfile(path) or os.path.getsize(path) == 0:
             with open(os.path.join(work, name + ".log")) as log:
                 sys.stderr.write("".join(log.readlines()[-20:]))
             raise Refused(f"ratchet-diff: the {name} measure wrote no rows")
-        rows += [ROW_FLAGS[name], path]
+        rows += [f"--{name}-rows", path]
     return rows
 
 

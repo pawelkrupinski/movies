@@ -31,6 +31,16 @@
 #                 kind's trailer (`Complexity:`, `Length:`, `Duplication:`, `Coupling:`, `Typing: <why>`). Self-tests
 #                 are reported, never held. Pyright: `npm ci` once per lock, outside the tree in ~/.cache/kinowo/py-quality
 #                 (npm or node missing BLOCKS)
+#   `mobilequality` THE SWIFT AND KOTLIN QUALITY RATCHETS (CLAUDE.md, "Code quality ratchets"), on a change to a .swift
+#                 under ios/, a .kt / .kts under android/, their baselines or the measure: scripts/mobile-quality-report
+#                 --check measures both (pinned lizard: cognitive / cyclomatic 10, function 50 lines, file 500, clones 50
+#                 tokens; ~2 s) and scripts/ci/mobile_quality_ratchet.py holds the production code (ios/Kinowo/, an
+#                 android/ module's src/main|tuning|noTuning) to test/resources/{swift,kotlin}-quality-baseline.tsv under
+#                 the kinds' trailers. Its venv: scripts/python-venv, once, in ~/.cache/kinowo-python-venvs (a venv that
+#                 cannot be built BLOCKS)
+#   Every ratchet (jsquality, pyquality, mobilequality, sbt's quality and coupling, the design rules) also
+#                 REFUSES A FALL ITS BASELINE DOES NOT RECORD (THE FALL LOCK, baseline_ratchet.refused_falls): the
+#                 refusal names the update command; a fall needs no trailer
 #   `drift`       the generated roster chain (scripts/ci/generated-artefacts-drift.sh)
 #   `snapshot`    the read-model snapshot's input stamp (scripts/read-model-snapshot-inputs.sh)
 #   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, the two Grafana metric-coverage

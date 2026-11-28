@@ -1,0 +1,7 @@
+#!/bin/sh
+# Purpose: The Swift and Kotlin quality report and its ratchet (entry; the measure is scripts/ci/mobile_quality_report.py, under the pinned lizard)
+# THE SWIFT AND KOTLIN QUALITY REPORT's entry: scripts/ci/mobile_quality_report.py (its header says what it measures), run
+# by the python3 of the pinned lizard venv (scripts/python-venv: built once, shared by every worktree).
+here="$(cd "$(dirname "$0")" && pwd)"
+bin="$(PYTHON_VENV_RERUN="scripts/mobile-quality-report" "$here/python-venv" "$here/lizard-requirements.txt" lizard)" || exit 2
+exec "$bin/python3" -B "$here/ci/mobile_quality_report.py" "$@"

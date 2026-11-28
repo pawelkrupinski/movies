@@ -5,14 +5,17 @@
 # ones. Read from the committed baselines at each ref (cheap), or, with --measure, the head side from fresh measures
 # of the working tree (an agent may have skipped --update on a fall).
 #
-#   ratchet_diff.py --base A [--head B] [--quality-rows F] [--coupling-rows F] [--js-rows F] [--tsv]
-#       A, B: refs (B defaults to HEAD). --quality-rows / --coupling-rows / --js-rows: the head side from those measured
-#       rows (quality.QualityReport's rows.tsv, couplingReport's rows.tsv, js-quality-report's over-limit.tsv) instead of
-#       B's baselines -- what --measure passes.
+#   ratchet_diff.py --base A [--head B] [--quality-rows F] [--coupling-rows F] [--js-rows F] [--swift-rows F]
+#                   [--kotlin-rows F] [--tsv]
+#       A, B: refs (B defaults to HEAD). --quality-rows / --coupling-rows / --js-rows / --swift-rows / --kotlin-rows: the
+#       head side from those measured rows (quality.QualityReport's rows.tsv, couplingReport's rows.tsv,
+#       js-quality-report's over-limit.tsv, mobile-quality-report's <language>-over-limit.tsv) instead of B's baselines
+#       -- what --measure passes.
 #
 # The metrics: cognitive, cyclomatic, inner-defs (complexity-baseline.tsv); method-lines, file-lines (length-baseline.tsv);
-# copies (duplication-baseline.tsv); fanout, distance, cycle-edge (coupling-baseline.tsv); and the JS/TS ratchet's, each
-# printed `js <kind>` (js-quality-baseline.tsv, scripts/ci/js_quality_ratchet.py: no move credit). Each changed row is marked
+# copies (duplication-baseline.tsv); fanout, distance, cycle-edge (coupling-baseline.tsv); the JS/TS ratchet's, each
+# printed `js <kind>` (js-quality-baseline.tsv, scripts/ci/js_quality_ratchet.py: no move credit); the Swift and Kotlin
+# ratchets', `swift <kind>` / `kotlin <kind>` ({swift,kotlin}-quality-baseline.tsv, scripts/ci/mobile_quality_ratchet.py). Each changed row is marked
 #   fell      its value fell
 #   rose      its value rose (or it moved and rose)
 #   new       a newly frozen piece (a row past the limit that the base did not have)
@@ -37,6 +40,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import baseline_ratchet  # noqa: E402
 import coupling_ratchet  # noqa: E402
 import js_quality_ratchet  # noqa: E402
+import mobile_quality_ratchet  # noqa: E402
 import quality_ratchet  # noqa: E402
 import tool_git  # noqa: E402
 
@@ -47,8 +51,13 @@ METRICS: List[Tuple[str, str, str]] = [
     for r in [quality_ratchet.RATCHETS[name]] for kind in r.kinds
 ] + [("fanout", COUPLING, "coupling"), ("distance", COUPLING, "coupling"), ("cycle-edge", COUPLING, "coupling")] + [
     (kind, js_quality_ratchet.BASELINE, "js") for kind in js_quality_ratchet.KINDS if kind != "clone-tokens"
+] + [
+    (kind, mobile_quality_ratchet.BASELINES[language], language) for language in sorted(mobile_quality_ratchet.BASELINES)
+    for kind in mobile_quality_ratchet.KINDS if kind != "clone-tokens"
 ]
-JS_PREFIX = "js "  # a JS/TS metric's printed name: `js cognitive`, `js fanout` -- apart from the Scala rows of one kind
+PREFIXED = ("js", "swift", "kotlin")  # printed `<family> <kind>` (`js cognitive`): apart from the Scala rows of one kind
+PATH_KEYED = ("quality", "swift", "kotlin")  # rows keyed by source path: a renamed source's move credit
+SCALA = ("quality", "coupling")  # integer rows (quality_ratchet.parse); the others' are the engine's (baseline_ratchet)
 LIMIT_ZERO = ("copies", "cycle-edge")  # every row of these is over the limit (a clone group, a cycle edge)
 
 Row = Tuple[str, str, Optional[int], Optional[int], str]  # metric, key, before, after, mark
@@ -103,7 +112,7 @@ def limit_of(rows, metric: str) -> int:
 def _moved_from(metric: str, family: str, key: str, gone: Dict[str, int], moves: RefRenames) -> Optional[str]:
     """The removed key a new `key` is the move of: a renamed source's quality row, a fan-out class of the same simple
     name; none for any other row."""
-    if family == "quality":
+    if family in PATH_KEYED:
         return next((old for old in sorted(gone) if baseline_ratchet.moved_key(old, moves) == key), None)
     if metric == "fanout":
         simple = key.rsplit(".", 1)[-1]
@@ -122,20 +131,22 @@ def diff_metric(metric: str, family: str, before: Dict[str, int], after: Dict[st
             was = gone.pop(origin)
             out.append((metric, f"{origin} => {key}", was, value, "rose" if value > was else "moved"))
         else:
-            measured = family == "quality" and untouched is not None and untouched.holds(key)
+            measured = family in PATH_KEYED and untouched is not None and untouched.holds(key)
             out.append((metric, key, None, value, "measured" if measured else "new"))
     return out + [(metric, key, value, None, "removed (within the limit)") for key, value in sorted(gone.items())]
 
 
 def rows_at(ref: str, path: str, family: str = ""):
-    parse = js_quality_ratchet.parse if family == "js" else quality_ratchet.parse
+    parse = quality_ratchet.parse if family in SCALA or not family else baseline_ratchet.parse
     return parse(quality_ratchet.file_at(ref, path))
 
 
 def measured_rows(texts: Dict[str, str], production: Callable[[], Tuple[str, ...]]) -> Dict[str, Dict[Tuple[str, str], Any]]:
     """{family: the rows of the measure's text for it}; the JS measure's rows of tests and scripts (outside `production`'s
     paths) are reported, never frozen."""
-    measured: Dict[str, Dict[Tuple[str, str], Any]] = {family: quality_ratchet.parse(text) for family, text in texts.items() if family != "js"}
+    measured: Dict[str, Dict[Tuple[str, str], Any]] = {
+        family: (quality_ratchet.parse if family in SCALA else baseline_ratchet.parse)(text)
+        for family, text in texts.items() if family != "js"}
     if "js" in texts:
         paths = production()
         measured["js"] = {(k, key): v for (k, key), v in js_quality_ratchet.parse(texts["js"]).items()
@@ -148,9 +159,9 @@ def _read_text(path: str) -> str:
         return f.read()
 
 
-def _measured_rows(quality_rows: str, coupling_rows: str, js_rows: str) -> Dict[str, Dict[Tuple[str, str], Any]]:
-    """{family: the rows the measure wrote to the given files}."""
-    texts = {family: _read_text(path) for family, path in (("quality", quality_rows), ("coupling", coupling_rows), ("js", js_rows)) if path}
+def _measured_rows(files: Dict[str, str]) -> Dict[str, Dict[Tuple[str, str], Any]]:
+    """{family: the rows the measure wrote to the given files} (family -> its file; "" for none)."""
+    texts = {family: _read_text(path) for family, path in files.items() if path}
     return measured_rows(texts, js_quality_ratchet.production_paths)
 
 
@@ -164,11 +175,13 @@ def _total(metric: str, before: Dict[str, int], after: Dict[str, int], old: Any,
             over(before, limit_of(old, metric)), over(after, limit_of(new, metric)), limit_of(new, metric), marks)
 
 
-def collect(base: str, head: Optional[str], quality_rows: str = "", coupling_rows: str = "", js_rows: str = ""):
+def collect(base: str, head: Optional[str], quality_rows: str = "", coupling_rows: str = "", js_rows: str = "",
+            mobile_rows: Optional[Dict[str, str]] = None):
     """Every changed row, and per metric (rows, sum, over the limit) before and after."""
-    head_ref = head if not (quality_rows or coupling_rows or js_rows) else None
+    files = {"quality": quality_rows, "coupling": coupling_rows, "js": js_rows, **(mobile_rows or {})}
+    head_ref = head if not any(files.values()) else None
     moves, untouched = RefRenames(renames(base, head_ref)), Untouched(base, head_ref)
-    measured = _measured_rows(quality_rows, coupling_rows, js_rows)
+    measured = _measured_rows(files)
     changed: List[Row] = []
     totals = []
     for metric, baseline, family in METRICS:
@@ -176,8 +189,8 @@ def collect(base: str, head: Optional[str], quality_rows: str = "", coupling_row
         new = measured.get(family) if family in measured else rows_at(head or "HEAD", baseline, family)
         before, after = coupling_ratchet.of_kind(old, metric), coupling_ratchet.of_kind(new, metric)
         rows = diff_metric(metric, family, before, after, moves, untouched)
-        if family == "js":
-            metric = JS_PREFIX + metric
+        if family in PREFIXED:
+            metric = f"{family} {metric}"
             rows = [(metric, *row[1:]) for row in rows]
         changed += rows
         totals.append(_total(metric, before, after, old, new, rows))
@@ -219,12 +232,16 @@ def main(argv: List[str]) -> int:
     parser.add_argument("--quality-rows", default="")
     parser.add_argument("--coupling-rows", default="")
     parser.add_argument("--js-rows", default="")
+    parser.add_argument("--swift-rows", default="")
+    parser.add_argument("--kotlin-rows", default="")
     parser.add_argument("--tsv", action="store_true")
     args = parser.parse_args(argv)
     try:
         head = args.head or "HEAD"
-        changed, totals = collect(args.base, head, args.quality_rows, args.coupling_rows, args.js_rows)
-        shown_head = "the working tree (measured)" if args.quality_rows or args.coupling_rows or args.js_rows else head
+        mobile = {"swift": args.swift_rows, "kotlin": args.kotlin_rows}
+        changed, totals = collect(args.base, head, args.quality_rows, args.coupling_rows, args.js_rows, mobile)
+        measured = args.quality_rows or args.coupling_rows or args.js_rows or any(mobile.values())
+        shown_head = "the working tree (measured)" if measured else head
         sys.stdout.write(tsv(changed, totals) if args.tsv else markdown(args.base, shown_head, changed, totals))
         return 0
     except (OSError, ValueError, subprocess.CalledProcessError) as e:

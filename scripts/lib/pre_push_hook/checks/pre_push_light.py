@@ -426,6 +426,14 @@ def judgements(c: Check) -> int:
     return c.run(argv)
 
 
+def mobilequality(c: Check) -> int:
+    # THE SWIFT AND KOTLIN QUALITY RATCHETS: lizard is scripts/python-venv's to build, once per lock and OUTSIDE the
+    # checkout (~/.cache/kinowo-python-venvs); a venv that cannot be built fails the check with its fix (BLOCKS)
+    if not c.need("mobilequality", "python3", PYTHON_FIX):
+        return 1
+    return int(c.run(["scripts/mobile-quality-report", "--check", *c.range_args()], out=STDERR) != 0)
+
+
 def ios(c: Check) -> int:
     return c.run(["scripts/ios-compile-check.sh"])
 
@@ -445,6 +453,7 @@ CHECKS: Dict[str, Light] = {
     "schedules": python_tool("schedules", "infra/nix/files/scheduled_dispatch.py", "check"),
     "allowlists": commit_rules("allowlists"), "driftguards": commit_rules("driftguards"),
     "puremove": puremove, "stampcarry": stampcarry, "judgements": judgements, "ios": ios,
+    "mobilequality": mobilequality,
 }
 
 

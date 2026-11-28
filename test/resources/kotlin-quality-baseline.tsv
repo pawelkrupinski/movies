@@ -1,0 +1,60 @@
+# THE KOTLIN QUALITY BASELINE (scripts/mobile-quality-report --update writes it; scripts/ci/mobile_quality_ratchet.py
+# holds every push touching the Kotlin code to it). Every production Kotlin function, file and clone set past a limit
+# of test/resources/design-rules.tsv, frozen:
+#   cognitive / cyclomatic <file>:<function>[#n]                                Complexity:
+#   method-lines <file>:<function>[#n], file-lines <file>                       Length:
+#   copies <file>|<file>... (clone groups spanning exactly them), clone-tokens  Duplication:
+# A row may only fall, and the push making a fall records it (--update, no trailer); a row added or raised, or a limit
+# raised, lands only in a commit carrying its kind's trailer (CLAUDE.md, "Code quality ratchets").
+limit	cognitive	10
+limit	cyclomatic	10
+limit	method-lines	50
+limit	file-lines	500
+limit	copies	0
+limit	clone-tokens	50
+cognitive	android/app/src/main/java/pl/kinowo/auth/StateSyncService.kt:reconcile	26
+cognitive	android/app/src/main/java/pl/kinowo/auth/StateSyncService.kt:sendPendingOps	14
+cognitive	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:disabledCinemas	15
+cognitive	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:parse	20
+cognitive	android/app/src/main/java/pl/kinowo/filter/FilmFilters.kt:(anonymous)#6	13
+cognitive	android/app/src/main/java/pl/kinowo/filter/SearchDay.kt:queryChanged	13
+cognitive	android/app/src/main/java/pl/kinowo/ui/city/CityChoiceScreen.kt:CityChoiceScreen	30
+cognitive	android/app/src/main/java/pl/kinowo/ui/common/RatingBadges.kt:RatingBadges	11
+cognitive	android/app/src/main/java/pl/kinowo/ui/common/Showings.kt:Showings	23
+cognitive	android/app/src/main/java/pl/kinowo/ui/common/Showings.kt:ShowtimeChip	12
+cognitive	android/app/src/main/java/pl/kinowo/ui/common/SynopsisMarkdown.kt:annotated	14
+cyclomatic	android/app/src/main/java/pl/kinowo/auth/StateSyncService.kt:reconcile	13
+cyclomatic	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:disabledCinemas	14
+cyclomatic	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:parse	18
+cyclomatic	android/app/src/main/java/pl/kinowo/filter/FilmFilters.kt:(anonymous)#6	16
+cyclomatic	android/app/src/main/java/pl/kinowo/model/City.kt:searchFold	11
+cyclomatic	android/app/src/main/java/pl/kinowo/ui/city/CityChoiceScreen.kt:CityChoiceScreen	22
+cyclomatic	android/app/src/main/java/pl/kinowo/ui/common/Showings.kt:Showings	12
+method-lines	android/app/src/main/java/pl/kinowo/MainActivity.kt:onCreate	70
+method-lines	android/app/src/main/java/pl/kinowo/auth/StateSyncService.kt:reconcile	57
+method-lines	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:disabledCinemas	57
+method-lines	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:parse	76
+method-lines	android/app/src/main/java/pl/kinowo/filter/FilmFilters.kt:get	139
+method-lines	android/app/src/main/java/pl/kinowo/ui/CountryPicker.kt:CountryPicker	64
+method-lines	android/app/src/main/java/pl/kinowo/ui/KinowoApp.kt:CityGate	134
+method-lines	android/app/src/main/java/pl/kinowo/ui/KinowoViewModel.kt:(anonymous)#3	205
+method-lines	android/app/src/main/java/pl/kinowo/ui/city/CityChoiceScreen.kt:CityChoiceScreen	221
+method-lines	android/app/src/main/java/pl/kinowo/ui/common/RatingBadges.kt:RatingBadges	64
+method-lines	android/app/src/main/java/pl/kinowo/ui/common/Showings.kt:Showings	91
+method-lines	android/app/src/main/java/pl/kinowo/ui/common/Showings.kt:ShowtimeChip	60
+method-lines	android/app/src/main/java/pl/kinowo/ui/detail/DetailScreen.kt:TrailerPlayer	55
+method-lines	android/app/src/main/java/pl/kinowo/ui/dev/ShowtimeTuningScreen.kt:CardControls	53
+method-lines	android/app/src/main/java/pl/kinowo/ui/dev/ShowtimeTuningScreen.kt:ControlsSheet	75
+method-lines	android/app/src/main/java/pl/kinowo/ui/dev/ShowtimeTuningScreen.kt:ShowtimeTuningScreen	64
+method-lines	android/app/src/main/java/pl/kinowo/ui/list/AreaPickerDialog.kt:AreaPickerDialog	71
+method-lines	android/app/src/main/java/pl/kinowo/ui/list/FilmCard.kt:FilmCard	111
+method-lines	android/app/src/main/java/pl/kinowo/ui/list/FiltersSheet.kt:(anonymous)	107
+method-lines	android/app/src/main/java/pl/kinowo/ui/list/FiltersSheet.kt:(anonymous)#3	55
+method-lines	android/app/src/main/java/pl/kinowo/ui/list/ListScreen.kt:(anonymous)#5	80
+file-lines	android/app/src/main/java/pl/kinowo/ui/dev/ShowtimeTuningScreen.kt	867
+file-lines	android/app/src/main/java/pl/kinowo/ui/list/FiltersSheet.kt	924
+file-lines	android/app/src/main/java/pl/kinowo/ui/list/ListScreen.kt	797
+copies	android/app/src/main/java/pl/kinowo/data/DetailsRepository.kt|android/app/src/main/java/pl/kinowo/data/RepertoireRepository.kt	2
+copies	android/app/src/main/java/pl/kinowo/ui/city/CityChoiceScreen.kt	6
+copies	android/app/src/main/java/pl/kinowo/ui/city/CityChoiceScreen.kt|android/app/src/main/java/pl/kinowo/ui/list/FiltersSheet.kt	2
+copies	android/app/src/main/java/pl/kinowo/ui/city/CityChoiceScreen.kt|android/app/src/main/java/pl/kinowo/ui/update/UpdateRequiredScreen.kt	2

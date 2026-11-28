@@ -12,7 +12,8 @@ re-measured -- as two OTLP gauges per repo, language, family and measure, pushed
     # TYPE kinowo_quality_sum gauge
 
   family quality   Scala's complexity / length / duplication / coupling baselines, py-quality's (pyright: the strict
-                   errors), js-quality's; agentctl's quality/quality-baseline.tsv and its mypy-errors
+                   errors), js-quality's, the Swift and Kotlin ratchets' (swift / kotlin-quality-baseline.tsv);
+                   agentctl's quality/quality-baseline.tsv and its mypy-errors
   family design    the general rule core's design-baseline.tsv, each key's language by its path; an `effect` row is
                    effect-clock-process-env (ONE row a module for those three: the baseline does not split them) or
                    effect-files / effect-storage / effect-network
@@ -60,6 +61,7 @@ JS_AREAS = "scripts/js-quality/ratchet-areas.tsv"
 BATCH = 40  # revisions a POST
 
 FUNCTION_KINDS = ("cognitive", "cyclomatic", "inner-defs", "method-lines", "file-lines", "copies")
+MOBILE_KINDS = ("cognitive", "cyclomatic", "method-lines", "file-lines", "copies")  # lizard reads no inner defs
 NAMING = ("suffix", "abbreviation")
 EFFECTS = ("effect-clock-process-env", "effect-files", "effect-storage", "effect-network", "state", "import-io")
 MODULE_DESIGN = EFFECTS + ("fanout", "distance", "layer", "unplaced")
@@ -89,11 +91,15 @@ MOVIES = Repo("movies", (
     Baseline("test/resources/coupling-baseline.tsv", "quality", "scala"),
     Baseline("test/resources/py-quality-baseline.tsv", "quality", "py"),
     Baseline("test/resources/js-quality-baseline.tsv", "quality", "js"),
+    Baseline("test/resources/swift-quality-baseline.tsv", "quality", "swift"),
+    Baseline("test/resources/kotlin-quality-baseline.tsv", "quality", "kotlin"),
     Baseline("test/resources/design-baseline.tsv", "design", ""),
 ), {
     ("quality", "scala"): FUNCTION_KINDS + ("fanout", "distance", "cycle-edge", "datafanout", "databag"),
     ("quality", "py"): FUNCTION_KINDS + ("cycle", "pyright"),
     ("quality", "js"): FUNCTION_KINDS + ("cycle",),
+    ("quality", "swift"): MOBILE_KINDS,
+    ("quality", "kotlin"): MOBILE_KINDS,
     ("design", "scala"): NAMING,
     ("design", "py"): NAMING + MODULE_DESIGN + ("dircycle", "databag", "datafanout"),
     ("design", "js"): NAMING + MODULE_DESIGN,

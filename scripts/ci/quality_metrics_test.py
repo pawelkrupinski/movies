@@ -175,14 +175,20 @@ class QualityMetricsTest(unittest.TestCase):
         totals = qm.snapshot(qm.MOVIES, qm.shell_py_progress.Tree(ROOT, "HEAD"))
         oracle: Dict[tuple, int] = {}
         for baseline in (b for b in qm.MOVIES.baselines if b.language):
-            text = qm.shell_py_progress.Tree(ROOT, "HEAD").texts([baseline.path])[baseline.path]
+            text = qm.shell_py_progress.Tree(ROOT, "HEAD").texts([baseline.path]).get(baseline.path, "")
             for line in text.splitlines():
                 kind = line.split("\t")[0]
                 if not line.startswith("#") and line.count("\t") == 2 and kind not in qm.SKIPPED_KINDS:
-                    oracle[(baseline.language, kind)] = oracle.get((baseline.language, kind), 0) + 1
+                    key = (baseline.family, baseline.language, kind)
+                    oracle[key] = oracle.get(key, 0) + 1
         self.assertGreater(sum(oracle.values()), 100)
-        for (language, kind), count in oracle.items():
-            self.assertEqual(count, totals[("quality", language, kind)][0], (language, kind))
+        for key, count in oracle.items():
+            self.assertEqual(count, totals[key][0], key)
+
+    def test_the_swift_and_kotlin_baselines_are_sent(self) -> None:
+        totals = qm.snapshot(qm.MOVIES, qm.shell_py_progress.Tree(ROOT, "HEAD"))
+        for key in (("quality", "swift", "cognitive"), ("quality", "kotlin", "copies")):
+            self.assertIn(key, totals)
 
 if __name__ == "__main__":
     unittest.main()

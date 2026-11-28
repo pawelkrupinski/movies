@@ -35,6 +35,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(HERE), "ci"))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
 from processes import machine  # noqa: E402
 import clones  # noqa: E402
+from code_tools import quality_report  # noqa: E402
 import functions  # noqa: E402
 import imports  # noqa: E402
 import migrated  # noqa: E402
@@ -92,10 +93,8 @@ def parse_all(sources: Dict[str, str]) -> Dict[str, ast.AST]:
 def function_rows(trees: Dict[str, ast.AST]) -> List[Row]:
     rows: List[Row] = []
     for path, tree in sorted(trees.items()):
-        seen: Dict[str, int] = {}
-        for fn in functions.functions(tree):
-            seen[fn.name] = seen.get(fn.name, 0) + 1
-            key = f"{path}:{fn.name}" + (f"#{seen[fn.name]}" if seen[fn.name] > 1 else "")
+        found = functions.functions(tree)
+        for fn, key in zip(found, quality_report.numbered_keys(path, (fn.name for fn in found))):
             rows += [("cognitive", key, fn.cognitive), ("cyclomatic", key, fn.cyclomatic),
                      ("inner-defs", key, fn.inner_defs), ("method-lines", key, fn.lines)]
     return rows
@@ -149,16 +148,6 @@ def write_rows(path: str, rows: List[Row]) -> None:
         f.write("".join(f"{k}\t{key}\t{baseline_ratchet.show(v)}\n" for k, key, v in rows))
 
 
-def markdown(rows: List[Row]) -> str:
-    lines = ["# Python quality report", ""]
-    for kind, limit in LIMITS:
-        worst = sorted((r for r in rows if r[0] == kind), key=lambda r: -r[2])[:10]
-        lines += [f"## {kind} (limit {baseline_ratchet.show(limit)})", ""]
-        lines += [f"- `{key}`: {baseline_ratchet.show(v)}" for _, key, v in worst if v > limit] or ["- none past it"]
-        lines.append("")
-    return "\n".join(lines)
-
-
 def read_paths(path: Optional[str]) -> Optional[List[str]]:
     if path is None:
         return None
@@ -179,18 +168,15 @@ def run(args: argparse.Namespace) -> int:
     write_rows(current, over_limit(rows))
     if args.ratchet:
         return baseline_ratchet.run(py_quality_ratchet.spec_for(migrated_files), args.ratchet, current, args.range)
-    print(markdown(rows))
+    print(quality_report.markdown("Python quality report", rows, LIMITS))
     return 0
 
 
 def main(argv: List[str]) -> int:
     parser = argparse.ArgumentParser(prog="py-quality-report", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--check", dest="ratchet", action="store_const", const="check")
-    parser.add_argument("--update", dest="ratchet", action="store_const", const="update")
-    parser.add_argument("--range", action="append", default=[])
+    quality_report.ratchet_arguments(parser)
     parser.add_argument("--paths")
-    parser.add_argument("--out")
     parser.add_argument("--root", default=os.path.dirname(os.path.dirname(HERE)))
     parser.add_argument("--tools-dir", action="store_true")
     try:

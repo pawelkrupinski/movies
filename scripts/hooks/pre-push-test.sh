@@ -38,7 +38,7 @@ check "a roster source runs the generated-artefact drift check, the roster gener
 check "a model file runs the drift check AND the sbt lints, and the identity area (narrowed to the specs reading it)" "drift sbt identity" "$(plan common/src/main/scala/models/Cinema.scala)"
 check "a generated geodata table runs the drift check AND the sbt lints" "drift sbt" "$(plan geodata/src/main/scala/models/VenueTowns.scala)"
 check "...and so does a generated table resource" "drift sbt" "$(plan geodata/src/main/resources/generated/venue-towns.tsv)"
-check "the iOS City list runs the drift check and the iOS compile" "drift ios" "$(plan ios/Kinowo/Models/City.swift)"
+check "the iOS City list runs the Swift ratchet, the drift check and the iOS compile" "mobilequality drift ios" "$(plan ios/Kinowo/Models/City.swift)"
 check "a recorded fixture runs the snapshot stamp check" "snapshot" \
   "$(plan test/resources/fixtures/08-06-2026/www.bilety24.pl/kino/organizator/x)"
 check "any Scala source runs the sbt lints" "sbt" "$(plan web/src/main/scala/controllers/Foo.scala)"
@@ -88,10 +88,12 @@ check "...a script no row runs none" "" "$(heavy scripts/ci/order-seed.sh)"
 check "the hook itself runs shellcheck and the self-tests, its own among them" "newchecks scripttests shellcheck sbt" "$(plan scripts/hooks/pre-push)"
 check "the hooks-path helper and install-hooks.sh, both exercised here, run the self-tests" "scripttests shellcheck sbt scripttests shellcheck sbt" \
   "$(plan scripts/hooks-path.sh) $(plan scripts/install-hooks.sh)"
-check "an iOS view runs the iOS compile check" "ios" "$(plan ios/Kinowo/Views/FilmCard.swift)"
-check "an Android-only change runs nothing" "" "$(plan android/app/src/main/java/pl/kinowo/ui/X.kt)"
+check "an iOS view runs the Swift ratchet and the iOS compile check" "mobilequality ios" "$(plan ios/Kinowo/Views/FilmCard.swift)"
+check "an Android-only change runs only the Kotlin ratchet" "mobilequality" "$(plan android/app/src/main/java/pl/kinowo/ui/X.kt)"
 check "a mobile or fleet script runs the self-tests" "scripttests shellcheck|scripttests shellcheck ios|scripttests" \
   "$(plan android/scripts/store-graphics.sh)|$(plan ios/scripts/x.sh)|$(plan infra/bin/x)"
+check "the Swift and Kotlin ratchets' baselines and measure run them" "mobilequality|mobilequality|mobilequality" \
+  "$(plan test/resources/swift-quality-baseline.tsv)|$(plan test/resources/kotlin-quality-baseline.tsv)|$(plan scripts/ci/mobile_quality_measure.py | tr ' ' '\n' | grep -x mobilequality)"
 check "a roster generator runs the drift check and its self-tests" "drift scripttests" "$(plan data/uk/scripts/build_pages.py)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
 check "checks come out once each, in run order" "newchecks schedules driftguards eslint jsquality snapshot scripttests actionlint shellcheck sbt" \
@@ -306,7 +308,7 @@ check "a rules-only push leaves the GitOps-reading alert specs out without the m
   "$(has "$(lints infra/nix/files/monitoring/rules/x.rules)" worker:deploy.CinemaScrapeStalenessAlertSpec) $(has "$(PREPUSH_GITOPS=1 lints infra/nix/files/monitoring/rules/x.rules)" worker:deploy.CinemaScrapeStalenessAlertSpec)"
 check "PREPUSH_SKIP=lintspecs drops them, keeping the standing lints" "$Always" \
   "$(PREPUSH_SKIP=lintspecs lints scripts/x.sh)"
-check "an iOS-only push selects no sbt check" "ios" "$(plan ios/Kinowo/Views/A.swift)"
+check "an iOS-only push selects no sbt check" "mobilequality ios" "$(plan ios/Kinowo/Views/A.swift)"
 check "a Python self-test runs the self-tests, and the sbt check for the self-test lint" "scripttests sbt" "$(plan scripts/ci/x_test.py)"
 check "worker's fixtures config selects the sbt check, and the identity area (its capture readers)" "driftguards sbt identity" "$(plan worker/src/fixtures/resources/x.json)"
 
