@@ -11,7 +11,6 @@ from __future__ import annotations
 import gzip
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,8 +18,12 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
+sys.path.insert(0, os.path.join(ROOT, "scripts/lib"))
+from harness import sandbox_closure  # noqa: E402
+from seams.tool_files import Files  # noqa: E402
 SCRATCH_GIT = os.path.join(ROOT, "scripts/scratch-git.sh")
-TOOL = os.path.join(HERE, "commit_rules.py")
+TOOL_PATH = "scripts/ci/commit_rules.py"
+TOOL = os.path.join(ROOT, TOOL_PATH)
 LIST = "test/resources/fixtures/identity-flips-allow.tsv"
 HEAD = "# reviewed flips\ncountry\tvenue\trawTitle\treason\n"
 BASELINE = "test/resources/fixtures/identity-flips-baseline.tsv"
@@ -557,9 +560,9 @@ class RatchetTest(unittest.TestCase):
             source = f.read()
         for old, new, case, edit, shape in self.RETYPE_MUTATIONS:
             self.assertIn(old, source, f"the mutation for {case} no longer applies: update RETYPE_MUTATIONS")
-            mutant = os.path.join(self.dir.name, "commit_rules_mutant.py")
-            for module in ("scripts/ci/trailers.py", "scripts/lib/tool_git.py", "scripts/lib/tool_process.py"):
-                shutil.copy(os.path.join(ROOT, module), self.dir.name)  # the modules it imports, beside it
+            sandbox = os.path.join(self.dir.name, "sandbox")
+            sandbox_closure.copy(Files.here(), ROOT, sandbox, [TOOL_PATH])  # the tool and every module it imports
+            mutant = os.path.join(sandbox, TOOL_PATH)
             with open(mutant, "w") as f:
                 f.write(source.replace(old, new, 1))
             if shape == "using":
