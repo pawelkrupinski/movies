@@ -270,7 +270,7 @@ class MirrorCase(cli_harness.ToolCase):
         super().tearDown()
 
     def recorded_pids(self) -> List[int]:
-        pids = [int(c["pid"]) for c in self.mongosh_calls()]
+        pids = [int(str(c["pid"])) for c in self.mongosh_calls()]
         if os.path.exists(self.path("ssh.pids")):
             pids += [int(line) for line in self.read("ssh.pids").split()]
         return pids
