@@ -6,7 +6,7 @@ parent, `at` (a path at a revision) and the `Rule` shape every rule has. Importe
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Any, Callable
 
 import tool_git
 import trailers
@@ -61,4 +61,5 @@ class Commit:
         return f"{self.sha[:9]} {self.subject}"
 
 
-Rule = Callable[[Commit, dict], list[str]]
+Opts = dict[str, Any]  # the walker's facts about a push: registry, pushed, in_push, declared
+Rule = Callable[[Commit, Opts], list[str]]

@@ -18,11 +18,11 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
+SCRATCH_GIT = os.path.join(ROOT, "scripts/scratch-git.sh")
+TOOL_PATH = "scripts/ci/commit_rules.py"
 sys.path.insert(0, os.path.join(ROOT, "scripts/lib"))
 from harness import sandbox_closure  # noqa: E402
 from seams.tool_files import Files  # noqa: E402
-SCRATCH_GIT = os.path.join(ROOT, "scripts/scratch-git.sh")
-TOOL_PATH = "scripts/ci/commit_rules.py"
 RETYPES_PATH = "scripts/ci/retype_rules.py"  # where retypes_only and its guards live
 TOOL = os.path.join(ROOT, TOOL_PATH)
 LIST = "test/resources/fixtures/identity-flips-allow.tsv"
@@ -546,11 +546,11 @@ class RatchetTest(unittest.TestCase):
     # MUTATION: each guard of retypes_only is load-bearing -- with it removed, a change one of the cases above refuses
     # is let through (so that case would catch the regression).
     RETYPE_MUTATIONS = (
-        ("    return all(same_type(c, old, new) for old, new in renamed.items())", "    return True",
+        ("        and all(same_type(c, old, new) for old, new in renamed.items())", "        and True",
          "test_int_to_long_needs_its_gauges", lambda t: t.replace("limit: Int", "limit: Long"), None),
-        ("    if any(RETYPE_UNSAFE.search(line) for line in code):\n        return False\n", "",
+        ("    if any(RETYPE_UNSAFE.search(line) for line in code_removed + code_added):\n        return False\n", "",
          "using clause", lambda t: t.replace("using clock: Clock", "using clock: Clocks"), "using"),
-        ("        if not explicit_import_of(line, names):", "        if False:",
+        ("all(explicit_import_of(line, names) for line in imports)", "True",
          "given import", lambda t: t.replace("import services.tasks.TaskQueue\n",
                                              "import services.tasks.TaskQueue\nimport services.time.given\n"), None),
         ("    if ALIAS_OPAQUE.search(line):", "    if False:", "opaque", None, "opaque"),

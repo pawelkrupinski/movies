@@ -9,7 +9,7 @@ import re
 import subprocess
 
 import tool_git
-from commit_facts import SLICES, Commit, at
+from commit_facts import SLICES, Commit, Opts, at
 from retype_rules import retypes_only
 
 _ID = "identity/src/main/scala/services/identity"
@@ -52,7 +52,7 @@ DRIFT_WORDS = re.compile(r"(^|[^a-z])(drift|flip)", re.I)
 SLICE_NONE = re.compile(r"^none\s*(--|\u2014|-)\s*\S", re.I)
 
 
-def drift_fix_carries_its_slice(c: Commit, opts: dict) -> list[str]:
+def drift_fix_carries_its_slice(c: Commit, opts: Opts) -> list[str]:
     if not c.claims_fix() or not DRIFT_WORDS.search(c.message):
         return []
     declared = c.trailers.get("drift-slice", []) + [v for sha, v in opts.get("declared", ()) if c.sha.startswith(sha)]
@@ -75,7 +75,7 @@ def restores_its_reverted_rules(c: Commit, rules: list[str]) -> bool:
     return bool(reverted) and all(at(c.sha, p) == at(f"{reverted.group(1)}^", p) for p in rules)
 
 
-def red_fix_is_no_rule(c: Commit, _opts: dict) -> list[str]:
+def red_fix_is_no_rule(c: Commit, _opts: Opts) -> list[str]:
     rules = sorted(p for p in c.changed if RULE_FILES.match(p))
     if not c.claims_fix() or not rules or restores_its_reverted_rules(c, rules):
         return []
@@ -89,7 +89,7 @@ def red_fix_is_no_rule(c: Commit, _opts: dict) -> list[str]:
             "  in every country: it lands outside red fixing, or with 'Identity-Design: <doc>' naming the design doc that measured it." + c.misplaced("Identity-Design")]
 
 
-def harness_carries_self_test(c: Commit, _opts: dict) -> list[str]:
+def harness_carries_self_test(c: Commit, _opts: Opts) -> list[str]:
     harness = sorted(p for p in c.changed if HARNESS_FILES.match(p))
     if not harness or any(SELF_TEST_FILES.match(p) for p in c.changed) or c.has("Drift-Harness-Refactor"):
         return []
@@ -99,30 +99,43 @@ def harness_carries_self_test(c: Commit, _opts: dict) -> list[str]:
             "  A pure refactor: the trailer 'Drift-Harness-Refactor: <why>'." + c.misplaced("Drift-Harness-Refactor")]
 
 
-def gauges_before_behaviour(c: Commit, opts: dict) -> list[str]:
+def shipped_gauge_problem(c: Commit, value: str, in_push: set[str]) -> str | None:
+    """Why a `Gauges-Shipped: <sha>` trailer does not show the gauges shipped earlier, None when it does."""
+    sha = value.split()[0]
+    try:
+        full = tool_git.Git.here().text("rev-parse", "--verify", "-q", f"{sha}^{{commit}}").strip()
+    except subprocess.CalledProcessError:
+        return f"Gauges-Shipped: {sha} names no commit"
+    if full in in_push:
+        return f"Gauges-Shipped: {sha} is in the same push, so the same deploy: land the gauges first"
+    if not tool_git.Git.here().ok("merge-base", "--is-ancestor", full, c.parent):
+        return f"Gauges-Shipped: {sha} is not an ancestor of this commit"
+    if not any(GAUGE_FILES.match(p) for p in Commit.read(full).changed):
+        return f"Gauges-Shipped: {sha} changes no gauge, alert or dashboard file"
+    return None
+
+
+def unmet_gauge_claims(c: Commit, in_push: set[str]) -> list[str] | None:
+    """Why the commit's `Gauges:` and `Gauges-Shipped:` trailers do not answer for its gauges, None when one does."""
+    gauges = c.trailers.get("gauges", [])
+    if any(SLICE_NONE.match(value) for value in gauges):
+        return None
+    why = [f"'Gauges: {value}' gives no why (write 'Gauges: none -- <why>')" for value in gauges]
+    for value in c.trailers.get("gauges-shipped", []):
+        problem = shipped_gauge_problem(c, value, in_push)
+        if problem is None:
+            return None
+        why.append(problem)
+    return why
+
+
+def gauges_before_behaviour(c: Commit, opts: Opts) -> list[str]:
     behaviour = sorted(p for p in c.changed if SERVING_FILES.match(p) and not retypes_only(c, p))
     if not behaviour or any(GAUGE_FILES.match(p) for p in c.changed):
         return []
-    why = []
-    for value in c.trailers.get("gauges", []):
-        if SLICE_NONE.match(value):
-            return []
-        why.append(f"'Gauges: {value}' gives no why (write 'Gauges: none -- <why>')")
-    for value in c.trailers.get("gauges-shipped", []):
-        sha = value.split()[0]
-        try:
-            full = tool_git.Git.here().text("rev-parse", "--verify", "-q", f"{sha}^{{commit}}").strip()
-        except subprocess.CalledProcessError:
-            why.append(f"Gauges-Shipped: {sha} names no commit")
-            continue
-        if full in opts["in_push"]:
-            why.append(f"Gauges-Shipped: {sha} is in the same push, so the same deploy: land the gauges first")
-        elif not tool_git.Git.here().ok("merge-base", "--is-ancestor", full, c.parent):
-            why.append(f"Gauges-Shipped: {sha} is not an ancestor of this commit")
-        elif not any(GAUGE_FILES.match(p) for p in Commit.read(full).changed):
-            why.append(f"Gauges-Shipped: {sha} changes no gauge, alert or dashboard file")
-        else:
-            return []
+    why = unmet_gauge_claims(c, opts["in_push"])
+    if why is None:
+        return []
     return [f"changes what the worker serves over time ({' '.join(behaviour)}) without its gauges.\n"
             + "".join(f"  {w}.\n" for w in why) +
             "  A gate, hold, settle or ask change ships the gauges, alert and dashboard that see it in the same commit\n"

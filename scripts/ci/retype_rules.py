@@ -22,7 +22,8 @@ ALIAS_OPAQUE = re.compile(r"\bopaque\b")
 
 def code_lines(c: Commit, path: str) -> tuple[list[str], list[str]]:
     """The (removed, added) lines of `c` in `path`, blank and comment lines dropped, stripped, in diff order."""
-    removed, added = [], []
+    removed: list[str] = []
+    added: list[str] = []
     for line in tool_git.Git.here().text("diff", "-U0", "--no-color", c.parent, c.sha, "--", path).splitlines():
         if line.startswith(("---", "+++")) or not line[:1] in "+-":
             continue
@@ -32,6 +33,18 @@ def code_lines(c: Commit, path: str) -> tuple[list[str], list[str]]:
     return removed, added
 
 
+def type_renames(old: str, new: str) -> list[tuple[str, str]] | None:
+    """The (old, new) names that differ between two declared types of one shape (`Queue` / `Producer`), None when the
+    types are of another shape (`A` to `A & B`, `List[Int]` to `Map[K, V]`)."""
+    if IDENTIFIER.sub("#", old).replace(" ", "") != IDENTIFIER.sub("#", new).replace(" ", ""):
+        return None
+    return [(o, n) for o, n in zip(IDENTIFIER.findall(old), IDENTIFIER.findall(new)) if o != n]
+
+
+def declared_types(line: str) -> list[str]:
+    return [m.group(2) for m in TYPE_ANNOTATION.finditer(line)]
+
+
 def renamed_types(removed: list[str], added: list[str]) -> dict[str, str] | None:
     """{old type name: new} that turns every removed line into an added one, the lines differing only in the names of
     their declared types (paired by their shape, `name: _`, in diff order); None when they differ otherwise -- another
@@ -39,20 +52,16 @@ def renamed_types(removed: list[str], added: list[str]) -> dict[str, str] | None
     shape = lambda line: TYPE_ANNOTATION.sub(r"\1: _", line)  # noqa: E731
     if sorted(map(shape, removed)) != sorted(map(shape, added)):
         return None
-    pending = {}
+    pending: dict[str, list[str]] = {}
     for line in added:
         pending.setdefault(shape(line), []).append(line)
-    renamed = {}
+    renamed: dict[str, str] = {}
     for line in removed:
         new_line = pending[shape(line)].pop(0)
-        olds = [m.group(2) for m in TYPE_ANNOTATION.finditer(line)]
-        news = [m.group(2) for m in TYPE_ANNOTATION.finditer(new_line)]
-        for old, new in zip(olds, news):
-            if IDENTIFIER.sub("#", old).replace(" ", "") != IDENTIFIER.sub("#", new).replace(" ", ""):
+        for old, new in zip(declared_types(line), declared_types(new_line)):
+            pairs = type_renames(old, new)
+            if pairs is None or any(renamed.setdefault(o, n) != n for o, n in pairs):
                 return None
-            for o, n in zip(IDENTIFIER.findall(old), IDENTIFIER.findall(new)):
-                if o != n and renamed.setdefault(o, n) != n:
-                    return None
     return renamed
 
 
@@ -85,6 +94,18 @@ def same_type(c: Commit, old: str, new: str) -> bool:
         and not defines(c.sha, old)
 
 
+def split_imports(lines: list[str]) -> tuple[list[str], list[str]]:
+    """`lines` as (their import lines, the others)."""
+    return [line for line in lines if line.startswith("import ")], [line for line in lines if not line.startswith("import ")]
+
+
+def names_provable(c: Commit, imports: list[str], renamed: dict[str, str]) -> bool:
+    """Whether the imports name only the renamed types and each rename provably names the same type."""
+    names = set(renamed) | set(renamed.values())
+    return all(explicit_import_of(line, names) for line in imports) \
+        and all(same_type(c, old, new) for old, new in renamed.items())
+
+
 def retypes_only(c: Commit, path: str) -> bool:
     """Whether `c` changes `path` only in its comments and in names of the types it declares that provably name the
     same types -- a rename of the type, or an alias of it (same_type) -- with the imports of those names. Only then do
@@ -94,17 +115,9 @@ def retypes_only(c: Commit, path: str) -> bool:
     so it is behaviour (the owner, 2026-11-18; the narrowed VenuePageWait queue of 2026-11-17 was exempted as "a
     retype" before)."""
     removed, added = code_lines(c, path)
-    imports = [line for line in removed + added if line.startswith("import ")]
-    code_removed = [line for line in removed if not line.startswith("import ")]
-    code_added = [line for line in added if not line.startswith("import ")]
-    code = code_removed + code_added
-    if any(RETYPE_UNSAFE.search(line) for line in code):
+    imports_removed, code_removed = split_imports(removed)
+    imports_added, code_added = split_imports(added)
+    if any(RETYPE_UNSAFE.search(line) for line in code_removed + code_added):
         return False
     renamed = renamed_types(code_removed, code_added)
-    if renamed is None:
-        return False
-    names = set(renamed) | set(renamed.values())
-    for line in imports:
-        if not explicit_import_of(line, names):
-            return False
-    return all(same_type(c, old, new) for old, new in renamed.items())
+    return renamed is not None and names_provable(c, imports_removed + imports_added, renamed)

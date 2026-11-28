@@ -72,7 +72,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # its modules be
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 import tool_git  # noqa: E402
 from allow_list_rules import REGISTRY, allow_lists, registered  # noqa: E402
-from commit_facts import Commit, Rule  # noqa: E402
+from commit_facts import Commit, Opts, Rule  # noqa: E402
 from drift_guard_rules import (drift_fix_carries_its_slice, gauges_before_behaviour,  # noqa: E402
                                harness_carries_self_test, red_fix_is_no_rule)
 
@@ -84,7 +84,7 @@ RULE_SETS: dict[str, list[Rule]] = {
 }
 
 
-def check(rule_set: str, ranges: list[str], opts: dict) -> list[str]:
+def check(rule_set: str, ranges: list[str], opts: Opts) -> list[str]:
     refused = []
     for rng in ranges:
         # what the whole push changes: a drift fix's slice may come in a later commit of it
@@ -100,25 +100,41 @@ def check(rule_set: str, ranges: list[str], opts: dict) -> list[str]:
     return refused
 
 
-def main(argv: list[str]) -> int:
-    usage = "usage: commit_rules.py allowlists|driftguards --range A..B [--range ...] [--registry FILE]"
-    if not argv or argv[0] not in RULE_SETS:
-        print(usage, file=sys.stderr)
-        return 2
-    rule_set, ranges, opts, rest = argv[0], [], {"registry": REGISTRY}, argv[1:]
+USAGE = "usage: commit_rules.py allowlists|driftguards --range A..B [--range ...] [--registry FILE]"
+
+
+def read_options(rest: list[str]) -> tuple[list[str], Opts, str | None]:
+    """The --range values and the options of the arguments after the rule set, and the first argument it does not know."""
+    ranges: list[str] = []
+    opts: Opts = {"registry": REGISTRY}
     while rest:
-        if rest[0] in ("--range", "--registry") and len(rest) > 1:
-            (ranges.append(rest[1]) if rest[0] == "--range" else opts.update(registry=rest[1]))
-            rest = rest[2:]
-        else:
-            print(f"commit-rules: unknown argument {rest[0]!r}\n{usage}", file=sys.stderr)
-            return 2
+        if rest[0] not in ("--range", "--registry") or len(rest) < 2:
+            return ranges, opts, rest[0]
+        (ranges.append(rest[1]) if rest[0] == "--range" else opts.update(registry=rest[1]))
+        rest = rest[2:]
+    return ranges, opts, None
+
+
+def read_command(argv: list[str]) -> tuple[str, list[str], Opts] | str:
+    """The rule set, ranges and options the arguments ask for, or the message (for stderr) saying they are no command."""
+    if not argv or argv[0] not in RULE_SETS:
+        return USAGE
+    ranges, opts, unknown = read_options(argv[1:])
+    if unknown is not None:
+        return f"commit-rules: unknown argument {unknown!r}\n{USAGE}"
     if not ranges:
-        print(usage, file=sys.stderr)
+        return USAGE
+    if argv[0] == "allowlists" and not registered(opts["registry"]):
+        return f"commit-rules: no registry {opts['registry']}"
+    return argv[0], ranges, opts
+
+
+def main(argv: list[str]) -> int:
+    command = read_command(argv)
+    if isinstance(command, str):
+        print(command, file=sys.stderr)
         return 2
-    if rule_set == "allowlists" and not registered(opts["registry"]):
-        print(f"commit-rules: no registry {opts['registry']}", file=sys.stderr)
-        return 2
+    rule_set, ranges, opts = command
     try:
         refused = check(rule_set, ranges, opts)
     except subprocess.CalledProcessError as e:

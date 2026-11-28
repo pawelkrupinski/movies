@@ -54,12 +54,6 @@ cognitive	infra/nix/files/scheduled_dispatch.py:staggering	17
 cognitive	scripts/adopt_ci_budgets.py:adopt	17
 cognitive	scripts/adopt_ci_budgets.py:read_figures	12
 cognitive	scripts/aot-class-list.py:loaded_classes	20
-cognitive	scripts/ci/commit_rules.py:allow_lists	28
-cognitive	scripts/ci/commit_rules.py:gauges_before_behaviour	14
-cognitive	scripts/ci/commit_rules.py:judge	11
-cognitive	scripts/ci/commit_rules.py:known	23
-cognitive	scripts/ci/commit_rules.py:main	18
-cognitive	scripts/ci/commit_rules.py:renamed_types	16
 cognitive	scripts/ci/convergence_paths.py:main	14
 cognitive	scripts/ci/corpus_shape_diff.py:findings_of	11
 cognitive	scripts/ci/drift_explorer.py:merge	11
@@ -157,13 +151,6 @@ cyclomatic	infra/nix/files/scheduled_dispatch.py:staggering	12
 cyclomatic	scripts/adopt_ci_budgets.py:adopt	12
 cyclomatic	scripts/agent_time.py:main	11
 cyclomatic	scripts/aot-class-list.py:loaded_classes	16
-cyclomatic	scripts/ci/commit_rules.py:allow_lists	31
-cyclomatic	scripts/ci/commit_rules.py:gauges_before_behaviour	16
-cyclomatic	scripts/ci/commit_rules.py:judge	12
-cyclomatic	scripts/ci/commit_rules.py:known	16
-cyclomatic	scripts/ci/commit_rules.py:main	15
-cyclomatic	scripts/ci/commit_rules.py:renamed_types	11
-cyclomatic	scripts/ci/commit_rules.py:retypes_only	13
 cyclomatic	scripts/ci/countries_disagree.py:line_of	11
 cyclomatic	scripts/ci/countries_disagree.py:takes_of	12
 cyclomatic	scripts/ci/drift_diff.py:main	14
@@ -236,7 +223,6 @@ file-lines	infra/bin/deploy	721
 file-lines	infra/bin/nix-update	565
 file-lines	infra/nix/files/nixos-auto-apply.py	1343
 file-lines	infra/nix/files/scheduled_dispatch.py	599
-file-lines	scripts/ci/commit_rules.py	594
 file-lines	scripts/identity_what_if.py	518
 copies	infra/bin/backtest-alerts	2
 copies	scripts/ci/lint_per_file_check.py|scripts/ci/lint_reads_trace.py	2
@@ -259,7 +245,6 @@ pyright	scripts/agent_time.py	1
 pyright	scripts/aot-class-list.py	11
 pyright	scripts/ci/check-security-headers.py	104
 pyright	scripts/ci/ci_http_calls.py	30
-pyright	scripts/ci/commit_rules.py	15
 pyright	scripts/ci/convergence_paths.py	24
 pyright	scripts/ci/convergence_slots.py	14
 pyright	scripts/ci/corpus_shape_diff.py	29
