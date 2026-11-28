@@ -5,14 +5,14 @@ import models.{ListingKey, MovieRecord, Tmdb}
 import org.bson.{BsonDocument, BsonInt64, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identitymodel.{MongoPendingListingStore, MongoRetainedListingStore, RetainedListingStore}, services.identityprojection.ProjectionDrafter, services.tmdb.HistoryEntry
+import services.identityprojection.ProjectionDrafter, services.tmdb.{HistoryEntry, MongoPendingListingStore, MongoRetainedListingStore, RetainedListingStore}
 
 /** What the identity adapters read and could not use -- a stored listing that no longer decodes, a film's TMDB details
  *  that failed -- each left out as before, and now said out loud: the read gives less than the store holds. */
 class IdentityReadSwallowsSpec extends AnyFlatSpec with Matchers {
 
   private val undecodable = new BsonDocument("not", new BsonString("a listing"))
-  private val listingLogger = "services.identitymodel.StoredListing"
+  private val listingLogger = "services.tmdb.StoredListing"
   private def warnings(loggerName: String)(body: => Unit): Seq[String] =
     tools.LogCapture.capture(loggerName)(body).map(_.getFormattedMessage)
 

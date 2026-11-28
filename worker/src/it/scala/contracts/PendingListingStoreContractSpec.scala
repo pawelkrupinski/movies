@@ -11,8 +11,8 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.ModelRead
-import services.identitymodel.{MongoPendingListingStore, PendingListingStore}
-import services.identitymodel.PendingListingStore.Pending
+import services.tmdb.{MongoPendingListingStore, PendingListingStore}
+import services.tmdb.PendingListingStore.Pending
 import services.movies.SingleCountryNormalizer
 import tools.{IsolatedMongoDatabase, SpecTimeouts}
 

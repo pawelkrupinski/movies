@@ -11,6 +11,7 @@ import play.api.Logging
 import services.identity.*
 import services.identity.measures.Listing
 import services.identity.vocabulary.Question
+import services.tmdb.PendingListingStore
 
 /**
  * The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing VERSION is taken into the model only

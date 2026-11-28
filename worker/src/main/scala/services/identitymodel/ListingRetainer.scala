@@ -9,6 +9,7 @@ import play.api.Logging
 import services.identity.*
 import services.identity.measures.Listing
 import services.titles.TitleNormalizer
+import services.tmdb.RetainedListingStore
 
 /**
  * The model's kept listings ([[ListingRetention]], R1: a pure function of the inputs): every listing that left, with its

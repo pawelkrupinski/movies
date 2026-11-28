@@ -36,19 +36,19 @@ trait IdentityModelWiring { self: WorkerWiring =>
   def identityModelReadiness(pages: services.identity.PageWait): services.identity.ListingReadiness =
     WorkerWiring.modelReadiness(services.identity.ListingReadiness.ofPage(pages), identityListingReadiness)
   /** The listings the model's input gate holds, persisted (`identity_pending`): what a take-up resumes. */
-  lazy val identityPendingStore: services.identitymodel.PendingListingStore =
-    mongoConnection.database.fold[services.identitymodel.PendingListingStore](new services.identitymodel.PendingListingStore.InMemory())(
-      new services.identitymodel.MongoPendingListingStore(_))
+  lazy val identityPendingStore: services.tmdb.PendingListingStore =
+    mongoConnection.database.fold[services.tmdb.PendingListingStore](new services.tmdb.PendingListingStore.InMemory())(
+      new services.tmdb.MongoPendingListingStore(_))
   /** Every listing that left, with its facts and departure, persisted (`identity_retained`): the input ListingRetention keeps from. */
-  lazy val identityRetainedStore: services.identitymodel.RetainedListingStore =
-    mongoConnection.database.fold[services.identitymodel.RetainedListingStore](new services.identitymodel.RetainedListingStore.InMemory())(
-      services.identitymodel.MongoRetainedListingStore.indexed(_, clock))
+  lazy val identityRetainedStore: services.tmdb.RetainedListingStore =
+    mongoConnection.database.fold[services.tmdb.RetainedListingStore](new services.tmdb.RetainedListingStore.InMemory())(
+      services.tmdb.MongoRetainedListingStore.indexed(_, clock))
   /** The listings the identity history last saw the model hold: what the kept set starts from before it was ever
    *  persisted (`RetainedListingStore.fromHistory`). */
   protected def identityHeldBefore(): Seq[services.identity.measures.Listing] =
     mongoConnection.database.fold(Seq.empty[services.identity.measures.Listing]) { db =>
       val reader = new services.tmdb.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches)
-      services.identitymodel.RetainedListingStore.fromHistory(
+      services.tmdb.RetainedListingStore.fromHistory(
         reader.since(Seq(services.tmdb.HistoryEntry.Listing), clock.millis() - services.tmdb.IdentityHistory.Kept.toMillis))
     }
   /** The take history's last film change of each listing within the reversal count's horizon, as the count holds them

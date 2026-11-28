@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{ListingRetention, ModelRead}
 import services.identity.vocabulary.ScreeningDays
-import services.identitymodel.MongoRetainedListingStore
+import services.tmdb.MongoRetainedListingStore
 import services.movies.SingleCountryNormalizer
 import tools.{IsolatedMongoDatabase, MutableClock, SpecTimeouts}
 

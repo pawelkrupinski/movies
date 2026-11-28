@@ -1,4 +1,4 @@
-package services.identitymodel
+package services.tmdb
 
 import scala.util.Try
 
