@@ -141,7 +141,7 @@ import sys
 import tempfile
 import time
 from dataclasses import dataclass, field
-from typing import Callable, List, MutableMapping, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, MutableMapping, Optional, Sequence, Tuple
 
 HERE = os.path.dirname(os.path.realpath(__file__))
 LIB = os.path.join(HERE, "lib")
@@ -151,11 +151,10 @@ import machine  # noqa: E402
 from jvm_gate import Governor, Host, JvmGate, SubprocessCommands  # noqa: E402
 from jvm_memory import Clock, MemoryGate, SlotWait  # noqa: E402
 from script_tests_found import Found, concurrency_heavy, declared_reads, discover  # noqa: E402
-from script_tests_requires import provision  # noqa: E402
 from script_tests_select import Options, Refused, Selection, git_in, heavy_only, select  # noqa: E402
 import script_tests_linux as linux  # noqa: E402
 from script_tests_pool import Pool  # noqa: E402
-from script_tests_run import Plan, Run, Settings, Width, govern, plan_run, tools, widening  # noqa: E402
+from script_tests_run import Plan, Run, Settings, Width, govern, plan_run, provision, tools, widening  # noqa: E402
 from tool_cli import header_usage  # noqa: E402
 
 ROOTS = "scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin infra/nix/bin infra/nix/files data"
@@ -281,6 +280,16 @@ def too_old_python(tests: Sequence[Found]) -> bool:
     return True
 
 
+def unprovided(o: Options, env: MutableMapping[str, str], tests: Sequence[str], bins: Dict[str, str]) -> bool:
+    """Whether a package a test requires cannot be had (said, the run refused); else `bins` has each test's python."""
+    venv_tool = env.get("RUN_SCRIPT_TESTS_PYTHON_VENV", os.path.join(HERE, "python-venv"))
+    found, refusals = provision(o.root, tests, venv_tool, lambda argv: machine.captured(argv, env=env))
+    bins.update(found)
+    if refusals:
+        say("\n".join(refusals))
+    return bool(refusals)
+
+
 def settings(o: Options, env: MutableMapping[str, str], tree_check: bool) -> Settings:
     home = os.path.expanduser("~")
     return Settings(int(o.jobs), o.jobs_given, int(o.stress or 0), o.burn, int(o.timeout), int(o.stall),
@@ -364,17 +373,14 @@ def run(o: Options, env: MutableMapping[str, str], scratch: str, tree_check: boo
         return run_on_linux(o, s, env, scratch, [t.path for t in chosen.tests])
     if not chosen.tests:
         return nothing_selected(o, chosen.findings)
-    return 1 if too_old_python(chosen.tests) else run_here(o, s, env, scratch, scope, chosen)
+    bins: Dict[str, str] = {}
+    refused = too_old_python(chosen.tests) or unprovided(o, env, [t.path for t in chosen.tests], bins)
+    return 1 if refused else run_here(o, s, env, scratch, scope, chosen, bins)
 
 
 def run_here(o: Options, s: Settings, env: MutableMapping[str, str], scratch: str, scope: Floor,
-             chosen: Selection) -> int:
+             chosen: Selection, bins: Dict[str, str]) -> int:
     tests = [t.path for t in chosen.tests]
-    bins, refusals = provision(o.root, tests, env.get("RUN_SCRIPT_TESTS_PYTHON_VENV") or os.path.join(HERE, "python-venv"),
-                               lambda argv: machine.captured(argv, env=env))
-    if refusals:
-        say("\n".join(refusals))
-        return 1
     gate = compose_gate(env, o.root)
     try:
         width = govern(gate, env, o.root, s.jobs, tests)

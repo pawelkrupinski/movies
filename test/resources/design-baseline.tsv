@@ -445,8 +445,6 @@ effect	scripts/poster_eval_images.py	1
 effect	scripts/poster_eval_images.py:files	10
 effect	scripts/poster_eval_images.py:network	2
 effect	scripts/poster_eval_images.py:storage	1
-effect	scripts/poster_hash.py	2
-effect	scripts/poster_hash.py:files	3
 effect	scripts/pure_move_git.py	1
 effect	scripts/py-quality/migrated.py	1
 effect	scripts/py-quality/migrated.py:files	2
@@ -1427,8 +1425,6 @@ mixed	scripts/poster_eval_images.py:Images.ensure	10
 mixed	scripts/poster_eval_images.py:Images.hash_of	3
 mixed	scripts/poster_eval_images.py:TmdbLists.ensure	5
 mixed	scripts/poster_eval_images.py:http_get	5
-mixed	scripts/poster_hash.py:hash_file	3
-mixed	scripts/poster_hash.py:read_vips	3
 mixed	scripts/pre_push.py:checkout	4
 mixed	scripts/pure_move_check.py:check	6
 mixed	scripts/py-quality/migrated.py:files	4

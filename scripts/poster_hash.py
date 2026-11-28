@@ -11,11 +11,14 @@ This module runs the same vips command and the same arithmetic (numpy), so a has
 """
 import os
 import struct
-import subprocess
-import tempfile
-from typing import Optional
+import sys
+from typing import Mapping, Optional
 
 import numpy as np
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+from tool_files import Files  # noqa: E402
+from tool_process import Command, Runner  # noqa: E402
 
 SlotWidth, SlotHeight = 420, 630
 Side, Low = 32, 8
@@ -56,10 +59,8 @@ def of_grey(grey):
     return int(sum(1 << i for i, v in enumerate(low) if v > median))
 
 
-def read_vips(path):
-    """The pixels of a vips native (.v) file as an h x w x bands uint8/uint16 array."""
-    with open(path, "rb") as f:
-        data = f.read()
+def parse_vips(data: bytes):
+    """The pixels of a vips native (.v) file's bytes as an h x w x bands uint8/uint16 array."""
     endian = "<" if data[:4] == b"\xb6\xa6\xf2\x08" else ">"
     width, height, bands, _, band_format = struct.unpack(endian + "5i", data[4:24])
     dtype = {0: np.uint8, 2: np.uint16}.get(band_format)
@@ -92,20 +93,21 @@ def hash_slot(pixels):
     return of_grey(0.299 * rgb[..., 0] + 0.587 * rgb[..., 1] + 0.114 * rgb[..., 2])
 
 
-def hash_file(path: str, vips: str = "vips") -> Optional[int]:
-    """`path`'s hash as the worker files it, or None when vips cannot read it."""
-    fd, out = tempfile.mkstemp(suffix=".v")
-    os.close(fd)
+def slot_hash(vips_status: int, native: bytes) -> Optional[int]:
+    """The hash of the slot file vips wrote, None when vips failed."""
+    return hash_slot(parse_vips(native)) if vips_status == 0 else None
+
+
+def hash_file(path: str, runner: Runner, files: Files, env: Mapping[str, str], vips: str = "vips") -> Optional[int]:
+    """`path`'s hash as the worker files it, or None when vips cannot read it. `env` is the environment vips runs in."""
     try:
-        done = subprocess.run([vips, "thumbnail", path, out, str(SlotWidth), "--height", str(SlotHeight), "--crop", "centre"],
-                              capture_output=True, env=dict(os.environ, VIPS_CONCURRENCY="1"), timeout=60)
-        if done.returncode != 0:
-            return None
-        return hash_slot(read_vips(out))
-    except (OSError, ValueError, subprocess.TimeoutExpired):
+        with files.scratch("poster-hash-") as scratch:
+            out = os.path.join(scratch, "slot.v")
+            argv = [vips, "thumbnail", path, out, str(SlotWidth), "--height", str(SlotHeight), "--crop", "centre"]
+            done = runner.capture(Command(argv, dict(env, VIPS_CONCURRENCY="1"), timeout=60))
+            return slot_hash(done.code, files.read_bytes(out))
+    except (OSError, ValueError):
         return None
-    finally:
-        os.remove(out)
 
 
 def distance(a, b):

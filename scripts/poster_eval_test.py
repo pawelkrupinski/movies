@@ -11,6 +11,7 @@
 """
 import os
 import shutil
+import struct
 import sys
 import tempfile
 import unittest
@@ -18,7 +19,36 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import poster_eval as pe  # noqa: E402
 import poster_hash  # noqa: E402
+import machine  # noqa: E402
 from tool_files import Files  # noqa: E402
+from tool_process import Captured, Command, SubprocessRunner  # noqa: E402
+
+
+def hash_with_vips(path):
+    return poster_hash.hash_file(path, SubprocessRunner(), Files.here(), machine.environment())
+
+
+class FakeVips:
+    """vips as a runner sees it: writes the .v file a `thumbnail` names (what `pixels` bytes it was given), or fails."""
+
+    def __init__(self, files, native, code=0):
+        self.files, self.native, self.code, self.commands = files, native, code, []
+
+    def run(self, command):
+        return self.capture(command).code
+
+    def capture(self, command):
+        self.commands.append(command)
+        if self.code == 0:
+            self.files.disk.write(command.argv[3], self.native)
+        return Captured(self.code, "", "")
+
+
+def native_vips(width, height, pixels):
+    """A one-band 8-bit vips native file: its 64-byte header (little-endian magic) and the pixels."""
+    header = b"\xb6\xa6\xf2\x08" + struct.pack("<5i", width, height, 1, 0, 0)
+    return header.ljust(64, b"\0") + bytes(pixels)
+
 
 Fixtures = os.path.join(os.path.dirname(os.path.abspath(__file__)), "poster_eval_fixtures")
 
@@ -87,7 +117,7 @@ class PosterEvalTest(unittest.TestCase):
         self.clusters = {c["keys"][0][1]: i for i, c in enumerate(self.meta["clusters"])}
 
     def run_variant(self, **variant):
-        images, tmdb = pe.Images(self.cache), pe.TmdbLists(self.cache)
+        images, tmdb = pe.Images(self.cache, SubprocessRunner(), Files.here(), machine.environment()), pe.TmdbLists(self.cache)
         return pe.run_variant(self.meta, self.arrays, images, tmdb, dict(pe.Baseline, **variant))
 
     def test_the_dataset_keeps_real_candidates_and_drops_a_feeds_poster(self):
@@ -134,7 +164,29 @@ class PosterEvalTest(unittest.TestCase):
             filed = [line.split() for line in f if not line.startswith("#")]
         self.assertEqual(len(filed), 3)
         for name, h in filed:
-            self.assertEqual(poster_hash.hash_file(os.path.join(Fixtures, name)), int(h), name)
+            self.assertEqual(hash_with_vips(os.path.join(Fixtures, name)), int(h), name)
+
+
+class HashFileOverFakesTest(unittest.TestCase):
+    """hash_file's decisions with no vips and no disk: the runner and the files are the fakes."""
+
+    def setUp(self):
+        self.files = Files.in_memory()
+        self.pixels = [(x * 7 + y * 13) % 256 for y in range(64) for x in range(48)]
+
+    def test_it_hashes_the_slot_vips_wrote_and_runs_vips_single_threaded_for_a_minute_at_most(self):
+        vips = FakeVips(self.files, native_vips(48, 64, self.pixels))
+        got = poster_hash.hash_file("/p.jpg", vips, self.files, {"PATH": "/bin"})
+        self.assertEqual(got, poster_hash.hash_slot(poster_hash.parse_vips(native_vips(48, 64, self.pixels))))
+        command = vips.commands[0]
+        self.assertEqual((command.argv[:3], command.env, command.timeout),
+                         (["vips", "thumbnail", "/p.jpg"], {"PATH": "/bin", "VIPS_CONCURRENCY": "1"}, 60))
+
+    def test_a_poster_vips_cannot_read_has_no_hash(self):
+        self.assertIsNone(poster_hash.hash_file("/p.jpg", FakeVips(self.files, b"", code=1), self.files, {}))
+
+    def test_a_slot_file_that_is_not_a_vips_image_has_no_hash(self):
+        self.assertIsNone(poster_hash.hash_file("/p.jpg", FakeVips(self.files, (b"\xb6\xa6\xf2\x08" + struct.pack("<5i", 2, 2, 1, 0, 7)).ljust(70, b"\0")), self.files, {}))
 
 
 if __name__ == "__main__":

@@ -8,16 +8,39 @@ import signal
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Callable, List, MutableMapping, Optional, Protocol, Sequence, Tuple, cast
+from typing import Callable, Dict, List, MutableMapping, Optional, Protocol, Sequence, Tuple, cast
 
 import gov_queue
 import machine
-from script_tests_found import declared_width
+from script_tests_found import declared_requirement, declared_width
 from script_tests_pool import Plan, Pool, Tools, Widening
 from script_tests_report import Report, floor_block, heavy_hint, keep_times, longest_first
 from script_tests_tree import Attribution, Leftovers, Window, tree_state
 
 from script_tests_changed import Git
+def provision(root: str, tests: Sequence[str], venv_tool: str,
+              run: Callable[[Sequence[str]], Tuple[int, str]]) -> Tuple[Dict[str, str], List[str]]:
+    """THE PYTHON PACKAGES A SELF-TEST NEEDS: a test saying `# script-test-requires: <requirements.txt> <module>` runs
+    under a python3 that imports <module> -- CI's own when it does already, else the pinned venv scripts/python-venv
+    builds once. Returns the directory to put first on each such test's PATH (`run` is the venv tool's `argv ->
+    (status, stdout)`) and one refusal for each package that cannot be had, naming the module and the install command:
+    a test that skipped itself for want of numpy passed on the laptop and failed in CI (2026-11-28)."""
+    bins: Dict[str, str] = {}
+    refusals: List[str] = []
+    for path in tests:
+        need = declared_requirement(os.path.join(root, path))
+        if need is None:
+            continue
+        code, out = run([venv_tool, os.path.join(root, need.requirements), need.module])
+        if code == 0 and out.strip():
+            bins[path] = out.strip().splitlines()[-1]
+        else:
+            refusals.append(f"run-script-tests: {path} needs the python module {need.module}, which python3 lacks: "
+                            f"install it with `{venv_tool} {need.requirements} {need.module}` "
+                            f"(a pinned venv, built once) and run again")
+    return bins, refusals
+
+
 BURNER = 'while kill -0 "$1" 2> /dev/null; do i=0; while [ "$i" -lt 20000 ]; do i=$((i + 1)); done; done'
 
 

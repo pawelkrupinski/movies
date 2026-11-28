@@ -533,7 +533,7 @@ pyright	scripts/linux-tree-sync.py	108
 pyright	scripts/listing_history.py	573
 pyright	scripts/ml-identity/cross_country_experiment.py	237
 pyright	scripts/ops/dumpheap.py	26
-pyright	scripts/poster_hash.py	95
+pyright	scripts/poster_hash.py	92
 pyright	scripts/recording_diff.py	769
 pyright	scripts/rule_firing_prod.py	109
 pyright	scripts/touched_methods.py	200

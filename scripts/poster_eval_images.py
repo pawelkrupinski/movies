@@ -15,12 +15,14 @@ import urllib.parse
 import urllib.request
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import machine  # noqa: E402
-import atomic  # noqa: E402
 import poster_hash  # noqa: E402
+import atomic  # noqa: E402
+from tool_files import Files  # noqa: E402
+from tool_process import Runner  # noqa: E402
 from poster_eval_common import Language, UserAgent, log  # noqa: E402
 
 Poster = Tuple[str, Optional[str], int]  # TMDB's file path, its language, its votes
@@ -106,8 +108,9 @@ class Images:
     """The image cache (<cache>/img/v/<sha1(url)>, img/t/<tmdb path>) and the hash cache (<cache>/hashes.sqlite: each
     image's content sha1 and the hash of that content, so no content is hashed twice)."""
 
-    def __init__(self, cache: str) -> None:
+    def __init__(self, cache: str, runner: Runner, files: Files, env: Mapping[str, str]) -> None:
         self.cache = cache
+        self.runner, self.files, self.env = runner, files, env  # what vips runs through, writes to and runs in
         for d in ("v", "t"):
             os.makedirs(os.path.join(cache, "img", d), exist_ok=True)
         self.db = sqlite3.connect(os.path.join(cache, "hashes.sqlite"), check_same_thread=False)
@@ -166,7 +169,7 @@ class Images:
             known = sha in self.by_sha
             h = self.by_sha.get(sha)
         if not known:
-            h = poster_hash.hash_file(path)
+            h = poster_hash.hash_file(path, self.runner, self.files, self.env)
         with self.lock:
             self.by_sha[sha] = h
             self.known[name] = h

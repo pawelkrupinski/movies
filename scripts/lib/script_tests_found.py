@@ -1,6 +1,7 @@
 """THE SELF-TESTS scripts/run-script-tests finds, and what each says of itself in its first 40 lines: a `# script-test:
 <tag> <why>` keeping it out of the default run, the globs `# script-test-reads:` declares it reads, the width
-`# script-test-width: N` it fans out to, and `# script-test-stress:` marking it concurrency-heavy. Files only: no
+`# script-test-width: N` it fans out to, and `# script-test-stress:` marking it concurrency-heavy, and the python package `# script-test-requires: <requirements.txt>
+<module>` it needs. Files only: no
 process, clock or environment."""
 from __future__ import annotations
 
@@ -8,7 +9,7 @@ import fnmatch
 import os
 import re
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Sequence
+from typing import Dict, Iterable, List, Optional, Sequence
 
 HEADER_LINES = 40
 PRUNED = ("node_modules", "build", ".build", "target")
@@ -16,6 +17,7 @@ TAG = re.compile(r"^#\s*script-test:\s*(.*)$")
 READS = re.compile(r"^#\s*script-test-reads:\s*(.*)$")
 WIDTH = re.compile(r"^# script-test-width: *([0-9]+)")
 STRESS = re.compile(r"^#\s*script-test-stress:")
+REQUIRES = re.compile(r"^#\s*script-test-requires:\s*(\S+)\s+(\S+)\s*$")
 
 
 @dataclass(frozen=True)
@@ -93,6 +95,21 @@ def declared_width(path: str) -> int:
         if width:
             return max(1, int(width.group(1)))
     return 1
+
+
+@dataclass(frozen=True)
+class Requirement:
+    requirements: str  # the pinned requirements file, relative to the root
+    module: str
+
+
+def declared_requirement(path: str) -> Optional[Requirement]:
+    """What a test's `# script-test-requires:` line (first 40 lines) names; None for a test without one."""
+    for line in header(path):
+        declared = REQUIRES.match(line)
+        if declared:
+            return Requirement(declared.group(1), declared.group(2))
+    return None
 
 
 def concurrency_heavy(path: str) -> bool:

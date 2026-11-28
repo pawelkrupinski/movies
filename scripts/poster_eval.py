@@ -35,7 +35,9 @@ from poster_eval_dataset import build, dataset, load, save  # noqa: F401  (build
 from poster_eval_images import Images, TmdbLists, chosen  # noqa: F401  (chosen: ditto)
 from poster_eval_report import coverage, labels, report
 from poster_eval_vote import Result, run_variant
+import machine  # noqa: E402
 from tool_files import Files  # noqa: E402
+from tool_process import SubprocessRunner  # noqa: E402
 from identity_judgements import COLUMNS as Columns, read as read_judgements  # noqa: E402,F401  (the names the tests import)
 
 __all__ = ["Baseline", "Columns", "Images", "TmdbLists", "build", "chosen", "coverage", "labels", "load", "main", "read_judgements",
@@ -60,9 +62,9 @@ def _parse(argv: Optional[Sequence[str]]) -> Tuple[argparse.Namespace, List[str]
     return args, countries
 
 
-def _evaluate(args: argparse.Namespace, countries: List[str], meta: Meta, arrays: Arrays, rows: Sequence[object]) -> None:
+def _evaluate(args: argparse.Namespace, countries: List[str], meta: Meta, arrays: Arrays, rows: Sequence[object],
+              images: Images, tmdb: TmdbLists) -> None:
     variant: Variant = {"posters": args.posters, "vote": args.vote, "veto_match": args.veto_match, "veto": args.veto}
-    images, tmdb = Images(args.cache), TmdbLists(args.cache)
     results: Dict[str, Result] = {"baseline": run_variant(meta, arrays, images, tmdb, Baseline)}
     if variant != Baseline:
         results["variant"] = run_variant(meta, arrays, images, tmdb, variant)
@@ -81,7 +83,8 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
     if args.command == "coverage":
         coverage(meta, rows)
     else:
-        _evaluate(args, countries, meta, arrays, rows)
+        _evaluate(args, countries, meta, arrays, rows,
+                  Images(args.cache, SubprocessRunner(), Files.here(), machine.environment()), TmdbLists(args.cache))
     log(f"poster-eval: {time.time() - started:.1f}s")
 
 
