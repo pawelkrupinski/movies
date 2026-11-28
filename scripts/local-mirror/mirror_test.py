@@ -161,18 +161,29 @@ def role():
     return {"--keep-tunnel": "keeper", "--supervise": "supervisor"}.get((sys.argv[1:] or [""])[0], "daemon")
 
 
+def claimed():
+    # Whether this process takes the armed TERM: the file names its role and this process's removal of it succeeded.
+    # Every mirror.py process's probe waits read the file at once, and this runs holding the wait's lock: an OSError
+    # raised here (the file removed by the process it named since this one looked) left the lock held, the Popen's own
+    # cleanup wait blocked on it forever, and the hung keeper's ssh outlived the TERMed daemon (~1 stress run in 1,100).
+    try:
+        with open(ARMED) as f:
+            if f.read().strip() != role():
+                return False
+        os.remove(ARMED)
+    except OSError:
+        return False
+    return True
+
+
 class Window:
     def __init__(self, child):
         self.lock, self.child = threading.Lock(), child
 
     def acquire(self, blocking=True, timeout=-1):
         got = self.lock.acquire(blocking, timeout)
-        if got and "mongosh-at.sh" in str(self.child.args) and os.path.exists(ARMED):
-            with open(ARMED) as f:
-                wanted = f.read().strip()
-            if wanted == role():
-                os.remove(ARMED)
-                os.kill(os.getpid(), signal.SIGTERM)
+        if got and "mongosh-at.sh" in str(self.child.args) and claimed():
+            os.kill(os.getpid(), signal.SIGTERM)
         return got
 
     def release(self):
