@@ -2,24 +2,18 @@
 """Activate the closure CI already staged here, but ONLY when doing so would disturb nothing.
 
 WHY THIS EXISTS. `.github/workflows/nix-stage-closures.yml` builds every host's closure on merge,
-signs it and `nix copy`s it here, then deliberately stops: the staging key is restricted to a
-forced command that cannot activate anything, and `nixdeploy` has no sudo. So the closure is
-already on this disk, pinned at `/var/lib/nixdeploy/staged-system`, and the only step left is the
-one nobody automated -- because activating is the step that can break a running machine.
+signs it and `nix copy`s it here, then deliberately stops: the staging key is restricted to a forced
+command that cannot activate anything, and `nixdeploy` has no sudo. The closure is pinned at
+`/var/lib/nixdeploy/staged-system`; the one step nobody automated is activating it, because that is
+the step that can break a running machine. This is that step, taken only when it provably breaks
+nothing; anything that would disturb a running service, or that this script cannot classify, is left
+for a person.
 
-This is that step, taken only when it provably breaks nothing. Anything that would disturb a
-running service, and anything at all that this script cannot classify, is left for a person.
-
-IT DOES NOT FETCH, BUILD, OR TRUST ANYTHING NEW. There is no git remote here, no deploy key and no
-evaluation -- an earlier draft of this file did all three, and staging made every one of them
-unnecessary. What it acts on is a path CI pinned through a channel that can do nothing else, whose
-store paths were accepted only because they carry a signature from `trustedPublicKeys`. The trust
-decision was made upstream; this file decides only WHEN.
-
-The reason that division is worth the machinery: the routine commits (a package, an ssh key, a
-comment in a vendored script) are the ones nobody schedules a deploy for, and they are the ones
-that accumulate until a real deploy carries six months of unrelated change with it. Applying them
-continuously means the only pending change is ever the one somebody meant to make.
+IT DOES NOT FETCH, BUILD, OR TRUST ANYTHING NEW: no git remote, no deploy key, no evaluation. It acts
+on a path CI pinned through a channel that can do nothing else, whose store paths carry a signature
+from `trustedPublicKeys`. The trust decision was made upstream; this file decides only WHEN. That is
+worth the machinery because routine commits (a package, an ssh key) are the ones nobody schedules a
+deploy for, and they accumulate until a real deploy carries six months of unrelated change.
 
 WHAT DECIDES. Three tests, and a deployment happens only if all three agree it is inert:
 
@@ -30,78 +24,42 @@ WHAT DECIDES. Three tests, and a deployment happens only if all three agree it i
      or reloaded" -- and, unlike parsing a message, it stays true across NixOS releases. This is
      the primary test.
 
-  2. THE BOOT CHAIN, against `/run/booted-system` and never `/run/current-system`. A new kernel
-     activates silently and the machine keeps running the old one, so comparing the generation
-     symlinks answers a different question than the one being asked. nixpkgs' own
-     `system.autoUpgrade.allowReboot` compares kernel, initrd and kernel-modules; `systemd` is
-     included here as well, because a switch that would replace pid 1's package is not something
-     to do unattended. Measured on this fleet on 2026-08-24: dev-bitcoind and dev-postgres both
-     have current != booted while all four components match, which is the ordinary residue of a
-     post-boot switch -- a symlink comparison would have called both hosts reboot-pending forever.
-     Only the part of that debt THIS switch introduces (the candidate differs from the running
-     system too) refuses it; a reboot already owed is reported and blocks nothing (`boot_chain`).
+  2. THE BOOT CHAIN, against `/run/booted-system` and never `/run/current-system`: a new kernel
+     activates silently and the machine keeps running the old one, so comparing generation symlinks
+     answers a different question. Like nixpkgs' `allowReboot` it compares kernel, initrd and
+     kernel-modules, plus `systemd` (replacing pid 1's package is not for unattended). Only the debt
+     THIS switch introduces refuses it; a reboot already owed (current != booted with all four
+     components matching, the residue of any post-boot switch) is reported and blocks nothing.
 
-  3. `switch-to-configuration dry-activate`, as a CROSS-CHECK and never alone. Its own man page
-     says "The list of changes is not guaranteed to be complete", so it cannot be the gate; and
-     its wording is not a stable interface (nixpkgs pins these strings only in its own
-     switch-test.nix, and nix-community/nixos-cli already prints different ones). It earns its
-     place by being able to disagree: if the unit tree says nothing changes and dry-activate names
-     a unit it would restart, then the model in test 1 is wrong, and the right response to that is
-     to refuse and say so rather than to trust the half that gives the convenient answer.
+  3. `switch-to-configuration dry-activate`, as a CROSS-CHECK and never alone: its man page says "The
+     list of changes is not guaranteed to be complete" and its wording is not a stable interface. It
+     earns its place by being able to disagree: if the unit tree says nothing changes and dry-activate
+     names a unit it would restart, the model in test 1 is wrong, and the response is to refuse.
 
-FAIL CLOSED, INCLUDING ON SILENCE. An unrecognised line from dry-activate blocks the deployment.
-That is deliberate and it is the direction a NixOS upgrade should break in: new wording turns the
-gate OFF, not on. The cost is that a nixpkgs bump can wedge auto-apply until somebody adds a
-pattern here, which is a morning's work and is visible in the metric; the alternative cost is a
-gate that silently matches nothing and applies everything, which is the same shape of defect as a
-check that passes because it measured nothing.
+FAIL CLOSED, INCLUDING ON SILENCE. An unrecognised line from dry-activate blocks the deployment: new
+wording turns the gate OFF, not on. The cost is that a nixpkgs bump can wedge auto-apply until
+somebody adds a pattern here, visible in the metric; the alternative is a gate that silently matches
+nothing and applies everything.
 
-WHAT IS NOT COVERED, stated plainly because the man page says it and this script cannot fix it:
-ACTIVATION SCRIPTS. `sops-install-secrets` genuinely runs during a dry run -- measured, it imports
-the host key as an age identity on every invocation -- and activation snippets may do work that
-neither test predicts. Differences in the activation script are therefore REPORTED (the metric
-carries `activation_changed`) and do not by themselves block. That is the residual risk of this
-design, it is why the first hosts to run it are development and sandbox ones, and it is the thing
-to revisit before a host holding real money is added.
+NOT COVERED: ACTIVATION SCRIPTS. `sops-install-secrets` genuinely runs during a dry run, and activation
+snippets may do work neither test predicts. Differences are REPORTED (`activation_changed`) and do not
+block. That is the residual risk of this design, the reason the first hosts to run it are development
+and sandbox ones, and the thing to revisit before a host holding real money is added.
 
-EXIT CODES follow terraform's `plan -detailed-exitcode`, which is the clearest three-way split
-anybody has shipped: 0 nothing to do or a change was applied, 1 a change is pending that a person
-must decide on, 2 nothing could be determined. 2 must never be read as 0 -- "nobody could ask" and
-"there is nothing to ask about" are different claims, and the whole point of the metric below is
-that the build can tell them apart.
+EXIT CODES follow terraform's `plan -detailed-exitcode`: 0 nothing to do or a change was applied, 1 a
+change is pending that a person must decide on, 2 nothing could be determined. 2 must never be read as
+0: "nobody could ask" and "there is nothing to ask about" are different claims.
 """
-# -------------------------------------------------------------------------------------------------
-# PORT NOTE -- read this before the incident citations below confuse you.
-# -------------------------------------------------------------------------------------------------
-#
-# This file is a FAITHFUL PORT of bitcashier's nix/files/nixos-auto-apply.py. It is ported rather
-# than rewritten because every rule in the classification table below was put there by a specific
-# measurement, and a rewrite would have kept the rules and lost the reasons -- which is how a
-# classifier quietly stops matching and starts activating everything.
-#
-# THE HOST NAMES AND ADDRESSES IN THE COMMENTS BELONG TO THE FLEET IT CAME FROM. `dev-bitcoind`,
-# `dev-postgres`, `ci-runner`, `10.0.0.12` and the wireguard gateway are not machines in this
-# project and never will be. They are kept, with their dates, because "measured on a real host on
-# this date" is what makes a rule worth obeying and "it seemed sensible" is not. Where such a note
-# says something that would be FALSE here it has been corrected in place and says so.
-#
-# WHY THE WHOLE MECHANISM APPLIES TO A THREE-HOST FLEET. It is not about scale. It is about the
-# fact that a NixOS host changes only when somebody deploys it, so "merged" and "deployed" are
-# different claims and nothing on the machine distinguishes them. Three hosts drift exactly as
-# silently as thirty; there are simply fewer people likely to notice.
-#
-# WHAT IS NOT PORTED YET: `bin/prove-nixos-auto-apply`, the harness that drives `classify_output`
-# with recorded switch-to-configuration output and fails when a rule stops matching. Everything in
-# this file is written to be driven by it -- `classify_output` is split out from the subprocess for
-# exactly that reason -- and until it exists, THE TABLE BELOW IS UNGUARDED. That is the single
-# biggest gap in this port, and the failure mode is not a red build: it is a classifier that
-# recognises nothing, decides nothing would be disturbed, and applies.
+# PORT NOTE. A FAITHFUL PORT of bitcashier's nix/files/nixos-auto-apply.py: every rule in the
+# classification table was put there by a specific measurement, and a rewrite would have kept the
+# rules and lost the reasons. The host names and addresses in the comments (`dev-bitcoind`,
+# `dev-postgres`, `ci-runner`, `10.0.0.12`) belong to the fleet it came from; they are kept, with
+# their dates, because "measured on a real host on this date" is what makes a rule worth obeying.
+# test/test_auto_apply_classify.py drives `classify_output` with recorded switch output.
 
-# `from __future__ import annotations` so that this file parses on any Python from 3.7 up. It runs
-# in three places -- a NixOS host's systemd unit (Python 3.12+), a CI container, and an operator's
-# Mac, where the system Python is still 3.9 and evaluates `str | None` at import time as a TypeError.
-# a prover imports this module directly (see the PORT NOTE: that harness is not ported yet), so a
-# version floor here is a prover that cannot run, which is the same as no prover.
+# `from __future__ import annotations` so this file parses on any Python from 3.7 up: it runs in a
+# NixOS host's systemd unit (3.12+), a CI container and an operator's Mac (system Python 3.9, which
+# evaluates `str | None` at import time as a TypeError); the test imports the module directly.
 from __future__ import annotations
 import argparse
 import fcntl
@@ -118,24 +76,18 @@ import tempfile
 import time
 import typing
 
+Patterns = typing.Collection[str]
+Tree = dict[str, str]
 EXIT_CURRENT = 0
 EXIT_PENDING = 1
 EXIT_UNDETERMINED = 2
 # A unit's own installing switch racing this pass's dry-activate for the same Nix lock. Distinct
 # from EXIT_UNDETERMINED because systemd must NOT mark the unit failed for it -- see LockContended.
 EXIT_LOCK_CONTENDED = 3
-# A host CI has never staged to. Distinct from EXIT_UNDETERMINED, and NOT a failure, because it is
-# the ordinary state of a freshly converted machine rather than an anomaly: every host spends the
-# window between `convert-host` and its first staged closure here. Exit 2 for it made the unit fail
-# during activation, which made `nixos-rebuild switch` itself return non-zero -- so the FIRST deploy
-# to any new host reported failure while having succeeded completely. Observed on k3s-worker-1,
-# 2026-08-29, immediately after its conversion.
-#
-# The signal is not lost by this: the verdict is still `undetermined`/`never_staged`, it is still
-# published to the textfile so `nixos_auto_apply_*` carries it, and the alert rule that watches for
-# a host stuck here is what should complain -- after it has persisted, not the instant the machine
-# is born. A red systemd unit on every new host is an alarm nobody can act on and everybody learns
-# to ignore.
+# A host CI has never staged to: the ordinary state of a freshly converted machine, so NOT a failure.
+# Exit 2 made the unit fail during activation and the FIRST deploy to any new host report failure
+# while succeeding (k3s-worker-1, 2026-08-29). The verdict is still published as
+# `undetermined`/`never_staged`; the alert on a host stuck here fires once it has persisted.
 EXIT_NEVER_STAGED = 4
 
 # Components of the boot chain that a switch cannot bring into use on its own. `systemd` is here
@@ -162,24 +114,13 @@ BENIGN_LINES = (
     re.compile(r"^would activate the configuration\.\.\.$"),
     # Runs for real during a dry run, on every invocation, and says only that it read the host key.
     re.compile(r"^sops-install-secrets: Imported /etc/ssh/ssh_host_[a-z0-9]+_key as (?:GPG|age) key with fingerprint \S+$"),
-    # ADDED 2026-08-27, found the same way the changed-but-skipped rule above was: a host that had
-    # never added a NEW secret before this one, and so had never printed this line. A secret with
-    # no prior existence cannot be depended on by anything already running -- there is no process
-    # today whose behavior changes because a file it never read now exists. Whatever DOES depend on
-    # it (a unit that reads the new path and gets restarted because of it) prints its own line and
-    # is classified by UNIT_LINES exactly as any other restart would be; this rule only covers the
-    # secret's own arrival, never a unit's reaction to it. A secret being CHANGED or REMOVED is
-    # deliberately NOT covered by a lookalike rule here -- an existing secret disappearing or
-    # changing value out from under a process that already read it is the "changed-but-skipped"
-    # shape, not the "arrived from nothing" shape, and stays a person's decision.
-    #
-    # `secrets?` SINCE 2026-09-05, AND THE MISSING "s" COST A BLOCKED HOST. sops-nix pluralises
-    # this line against the NUMBER OF SECRETS IT IS ADDING, and the 2026-08-27 observation happened
-    # to be of a switch adding more than one. monitoring-1 then added exactly one --
-    # `alertmanager/smtp-password`, for the alerting email path -- printed `would add secret:` in
-    # the singular, matched nothing here, and refused the whole closure as `unrecognised_output`.
-    # Recorded verbatim as a case in test/test_auto_apply_classify.py so the singular cannot go
-    # missing again.
+    # ADDED 2026-08-27. A secret with no prior existence cannot be depended on by anything already
+    # running; a unit that reads the new path prints its own line and is classified by UNIT_LINES.
+    # Only the secret's ARRIVAL is covered: a secret CHANGED or REMOVED under a process that already
+    # read it stays a person's decision.
+    # `secrets?` SINCE 2026-09-05: sops-nix pluralises against the number of secrets added, and
+    # monitoring-1 adding exactly one (`would add secret:`) refused a closure as `unrecognised_output`.
+    # Recorded verbatim in test/test_auto_apply_classify.py.
     re.compile(r"^would add secrets?: (.+)$"),
 )
 
@@ -215,16 +156,11 @@ HARD_LINES = (
     (re.compile(r"^would stop swap device: (.+)$"), "stop-swap"),
 )
 
-# WHICH KINDS AN ALLOW-LIST MAY FORGIVE. `stop`, `start` and `restart` are the three ways a unit is
-# disturbed by a switch, and a host that has named a unit as restartable has said it accepts all
-# three -- a unit removed from a closure is stopped, one added is started, and one whose definition
-# changed is restarted, and no operator naming `github-runner-*` means "restart yes, start no".
-#
-# `changed-but-skipped` IS DELIBERATELY NOT HERE, and it is the one exclusion worth arguing. Those
-# lines are printed when a unit CHANGED and systemd was told not to act on it, which leaves the
-# running process no longer matching its own definition -- a divergence, not a disturbance. An
-# allow-list is permission to disturb something; it is not permission to leave the host quietly
-# inconsistent with main, which is the state this whole script exists to end.
+# WHICH KINDS AN ALLOW-LIST MAY FORGIVE: the three ways a switch disturbs a unit -- stopped (removed),
+# started (added), restarted (changed); naming a unit restartable accepts all three.
+# `changed-but-skipped` IS DELIBERATELY NOT HERE: the running process no longer matches its definition,
+# a divergence rather than a disturbance, and an allow-list is permission to disturb, not to leave the
+# host quietly inconsistent with main.
 FORGIVABLE_KINDS = ("stop", "start", "restart")
 
 # The suffixes systemd gives units, used to find the unit a path under etc/systemd/system belongs
@@ -237,23 +173,12 @@ UNIT_SUFFIXES = (".service", ".socket", ".target", ".timer", ".path", ".mount",
 def unit_named_by(path: str) -> str | None:
     """The unit a path under `etc/systemd/system` belongs to, or None if it names no unit.
 
-    Three shapes reach here and all three matter:
-
-      github-runner-x.service                         -> the unit itself
-      multi-user.target.wants/github-runner-x.service -> the link that ENABLES it
-      github-runner-x.service.d/override.conf         -> a drop-in that configures it
-
-    A component ending `.d` is the unit's drop-in directory and is stripped. What keeps
-    `multi-user.target.wants/x.service` from being read as a change to `multi-user.target` is that
-    `multi-user.target.wants` ends `.wants`, which is not a unit suffix and so matches nothing --
-    NOT the last-wins tie-break below, which on every path shape systemd actually produces has only
-    one candidate to choose from and is therefore unobservable. It is written last-wins anyway
-    because that is the semantically right answer if a second candidate ever appears: the change is
-    to the leaf, and the directories above it are only where the leaf lives.
-
+    Three shapes reach here: `x.service` (the unit), `multi-user.target.wants/x.service` (the link that
+    ENABLES it) and `x.service.d/override.conf` (a drop-in that configures it). A component ending `.d`
+    is a drop-in directory and is stripped; `multi-user.target.wants` ends `.wants`, not a unit suffix,
+    so the link is not read as a change to `multi-user.target`. Last-wins: the change is to the leaf.
     A `.wants` directory itself names no unit and returns None, so creating one is never forgiven:
-    enabling a unit is visible as the link inside it, and the directory appearing is a structural
-    change nobody has declared acceptable.
+    enabling a unit is visible as the link inside it.
     """
     found = None
     for component in path.split("/"):
@@ -263,67 +188,42 @@ def unit_named_by(path: str) -> str | None:
     return found
 
 
-def unit_forgiven(unit: str, patterns, never=()) -> bool:
-    """Whether an allow-list covers this unit. `fnmatchcase`, so the match is never locale- or
-    case-folded -- systemd unit names are case-sensitive and `SSHD.service` is not `sshd.service`.
-
-    `never` OUTRANKS EVERY ALLOW-LIST and is checked first, which is the whole reason it exists.
-    Both allow-lists are written as globs and the useful value for each is `*` -- the fleet permits
-    reloads that way, and ci-runner permits restarts that way -- and `*` with no way to carve
-    anything back out is an all-or-nothing switch. The unit this is for is `sshd.service`: a reload
-    or restart that loads a configuration refusing every key SUCCEEDS, so `rollbackOnFailure` never
-    sees a failed unit and nothing rolls back. On a Hetzner Cloud machine the way back in is then
-    the web console, which reaches a login prompt no account on this fleet has a password for (see
-    nix/modules/fleet/accounts.nix), so the recovery is a rescue boot and a disk mount. A deny-list
-    is the only one of the three lists whose failure mode is refusing a switch somebody wanted,
-    which is the direction this whole module errs in anyway.
-    """
-    if any(fnmatch.fnmatchcase(unit, pattern) for pattern in never):
-        return False
+def matches_any(unit: str, patterns: Patterns) -> bool:
     return any(fnmatch.fnmatchcase(unit, pattern) for pattern in patterns)
+
+
+def unit_forgiven(unit: str, patterns: Patterns, never: Patterns = ()) -> bool:
+    """Whether an allow-list covers this unit. `fnmatchcase`: systemd unit names are case-sensitive.
+
+    `never` OUTRANKS EVERY ALLOW-LIST and is checked first. Both allow-lists are globs whose useful
+    value is `*`, which alone is all-or-nothing; the unit this carves out is `sshd.service`, because a
+    reload that loads a configuration refusing every key SUCCEEDS, so nothing rolls back, and on a
+    Hetzner Cloud machine the way back in is then a rescue boot. A deny-list is the one list whose failure
+    mode is refusing a switch somebody wanted, the direction this module errs in anyway.
+    """
+    if matches_any(unit, never):
+        return False
+    return matches_any(unit, patterns)
 
 
 # -------------------------------------------------------------------------------------------------
 # Leniency -- NEW units, and a short ROUTINE list, without a per-host `restartable = '*'`
 # -------------------------------------------------------------------------------------------------
 #
-# ADDED 2026-10-23. A host with a narrow `restartableUnits` refused every closure that ADDED a unit
-# (a new timer, a new exporter) or touched a timer or this applier's own unit, as
-# `units_would_change` -- and the person then ran nix-env + switch-to-configuration by hand, which is
-# the exact hand step this module exists to end. Neither kind of change restarts anything that
-# holds state:
-#
-#   NEW UNITS (`--start-new-units`). A unit absent from the RUNNING unit tree has no process to
-#   disturb; starting it is the whole of its effect. It is named in the candidate's tree and not the
-#   running one -- by unit, not by path, so a new drop-in for an EXISTING unit is not "new". Its
-#   `.wants`/`.requires` link is forgiven with it, and so is a NEW `.wants` directory whose every
-#   entry is forgiven. Mounts and swaps are excluded: mounting something changes what an existing
-#   process sees at a path.
-#
-#   ROUTINE UNITS (`--routine`, globs). Units whose stop/start/restart -- and changed-but-skipped,
-#   which is how this applier's own unit (`restartIfChanged = false`) arrives -- disturbs nothing
-#   anybody depends on: timers, exporters, the applier itself. A routine timer also covers its
-#   same-named `.service`, STRUCTURALLY ONLY: a changed oneshot between firings is inert, but if
-#   dry-activate says it would restart (it is running now -- a backup mid-flight), that is refused
-#   on both sides.
-#
-#   IDLE UNITS (always on, structural only; ADDED 2026-11-02). A changed `.service` that exists in
-#   both trees and is `inactive` on the host right now has no process to disturb: the switch leaves
-#   it alone and its next start reads the new definition -- which is why dry-activate, correctly,
-#   says nothing about it. bin/deploy has always shown these as "unit files changed, unit idle".
-#   Without this rule the unit tree counted them while dry-activate stayed silent, and every closure
-#   touching one raised `classifier_disagreement`: monitoring-1 on 2026-11-02, held back 21 commits
-#   by `generate-shutdown-ramfs.service` (a nixpkgs bump; it runs only at shutdown). If dry-activate
-#   DOES name an idle unit (it started between the two reads), that refusal is fed back to the
-#   structural test as for a routine timer's service, so both halves refuse it together.
-#
-# NONE OF THEM CAN REACH A STATEFUL SERVICE. `never` outranks both, as it outranks every allow-list, and
-# STATEFUL_UNITS is a floor under these two rules that no host setting can widen -- so `routine =
-# [ "*" ]` written by mistake still cannot restart postgres. `restartable` is NOT fenced by it: that
-# list is a host's own explicit, reviewed decision (monitoring-1 names prometheus.service in it).
-#
-# PORTED FROM bitcashier's applier on the same day, rules and floor unchanged; bitcashier's prover
-# drives the same functions, test/test_auto_apply_classify.py drives them here.
+# ADDED 2026-10-23. A host with a narrow `restartableUnits` refused every closure that ADDED a unit or
+# touched a timer or this applier's own unit, and a person then switched by hand -- the step this
+# module exists to end. None of these restarts anything that holds state:
+#   NEW UNITS (`--start-new-units`): absent from the RUNNING tree, so no process to disturb. By unit,
+#   not path (a new drop-in for an existing unit is not new); its `.wants` link goes with it. Mounts
+#   and swaps are excluded: mounting changes what an existing process sees at a path.
+#   ROUTINE UNITS (`--routine`, globs): disturb nothing anybody depends on, including
+#   changed-but-skipped (how this applier's own unit arrives). A routine timer also covers its
+#   same-named `.service`, STRUCTURALLY ONLY: if dry-activate says it would restart, both refuse.
+#   IDLE UNITS (always on, structural only; 2026-11-02): a changed `.service` that is `inactive` now
+#   has no process to disturb, which is why dry-activate is silent about it; without this every
+#   such closure raised `classifier_disagreement` (monitoring-1 held back 21 commits).
+# `never` outranks both, and STATEFUL_UNITS is a floor no host setting can widen: `routine = [ "*" ]`
+# still cannot restart postgres. `restartable` is not fenced by it: that is a host's reviewed decision.
 STATEFUL_UNITS = (
     "postgresql*", "pgbouncer*", "mongod.service", "mongodb.service", "bitcoind*", "vault*",
     "consul*", "nomad*", "k3s*", "containerd*", "docker*", "podman*", "redis*", "etcd*", "sshd*",
@@ -335,30 +235,30 @@ ENABLE_DIRECTORY_SUFFIXES = (".wants", ".requires", ".upholds")
 
 
 class Leniency(typing.NamedTuple):
-    new_units: frozenset = frozenset()       # units the running tree does not have at all
-    routine: tuple = ()                      # glob patterns: routine units
-    timer_services: frozenset = frozenset()  # `.service` of a routine timer; structural only
-    idle: frozenset = frozenset()            # changed `.service` units inactive now; structural only
+    new_units: frozenset[str] = frozenset()       # units the running tree does not have at all
+    routine: tuple[str, ...] = ()                 # glob patterns: routine units
+    timer_services: frozenset[str] = frozenset()  # `.service` of a routine timer; structural only
+    idle: frozenset[str] = frozenset()            # changed `.service` units inactive now; structural only
 
-    def forgives(self, unit: str, never=(), structural: bool = False) -> bool:
-        if any(fnmatch.fnmatchcase(unit, pattern) for pattern in tuple(never) + STATEFUL_UNITS):
+    def forgives(self, unit: str, never: Patterns = (), structural: bool = False) -> bool:
+        if matches_any(unit, tuple(never) + STATEFUL_UNITS):
             return False
         if unit in self.new_units:
             return True
-        if any(fnmatch.fnmatchcase(unit, pattern) for pattern in self.routine):
+        if matches_any(unit, self.routine):
             return True
         return structural and (unit in self.timer_services or unit in self.idle)
 
-    def structural_only(self) -> frozenset:
+    def structural_only(self) -> frozenset[str]:
         """Units forgiven by the unit tree alone, which dry-activate naming them must take back."""
         return self.timer_services | self.idle
 
 
-def units_named(tree) -> set[str]:
+def units_named(tree: Tree) -> set[str]:
     return {unit for unit in (unit_named_by(path) for path in tree) if unit is not None}
 
 
-def changed_units(running_tree, candidate_tree) -> set[str]:
+def changed_units(running_tree: Tree, candidate_tree: Tree) -> set[str]:
     """Units present in both trees with some path of theirs differing -- the only ones `idle` may
     cover, and the ones classify_and_apply asks systemd about."""
     before, after = units_named(running_tree), units_named(candidate_tree)
@@ -367,23 +267,28 @@ def changed_units(running_tree, candidate_tree) -> set[str]:
     return {unit for unit in differing if unit in before and unit in after}
 
 
-def leniency_for(running_tree, candidate_tree, start_new_units: bool, routine=(),
-                 inactive=()) -> Leniency:
+def new_units_forgiven(before: set[str], after: set[str], start_new_units: bool) -> frozenset[str]:
+    return frozenset(unit for unit in after - before
+                     if start_new_units and not matches_any(unit, NEW_UNIT_EXCLUDED))
+
+
+def routine_timer_services(after: set[str], routine) -> frozenset[str]:
+    return frozenset(unit[:-len(".timer")] + ".service" for unit in after
+                     if unit.endswith(".timer") and matches_any(unit, routine))
+
+
+def leniency_for(running_tree: Tree, candidate_tree: Tree, start_new_units: bool, routine: Patterns = (),
+                 inactive: Patterns = ()) -> Leniency:
     """Which units the lenient rules cover for THIS pair of trees. Pure, so it is provable:
     `inactive` is what systemd said, read by the caller (`inactive_units`)."""
     before, after = units_named(running_tree), units_named(candidate_tree)
-    new = frozenset(
-        unit for unit in after - before
-        if start_new_units and not any(fnmatch.fnmatchcase(unit, p) for p in NEW_UNIT_EXCLUDED))
-    timer_services = frozenset(
-        unit[:-len(".timer")] + ".service" for unit in after
-        if unit.endswith(".timer") and any(fnmatch.fnmatchcase(unit, p) for p in routine))
     idle = frozenset(unit for unit in changed_units(running_tree, candidate_tree)
                      if unit.endswith(".service") and unit in set(inactive))
-    return Leniency(new, tuple(routine), timer_services, idle)
+    return Leniency(new_units_forgiven(before, after, start_new_units), tuple(routine),
+                    routine_timer_services(after, routine), idle)
 
 
-def inactive_units(units) -> set[str]:
+def inactive_units(units: typing.Iterable[str]) -> set[str]:
     """The given units systemd reports `inactive` right now. Any doubt -- systemctl failing, or
     output that does not line up with the request -- answers NONE, which forgives nothing."""
     units = sorted(units)
@@ -402,32 +307,21 @@ class Undetermined(Exception):
 
 
 class LockContended(Undetermined):
-    """dry-activate could not get the Nix profile lock -- a KNOWN, self-resolving race.
+    """dry-activate could not get the Nix profile lock -- a KNOWN, self-resolving race (2026-08-25).
 
-    Found 2026-08-25: the module's own timer, adopted on a host that has been up for a while,
-    computes its OnBootSec trigger as already elapsed and fires within the same activation that
-    installs it -- while `nixos-rebuild switch` is itself still holding this exact lock. Every
-    host that adopts the module hits this on its FIRST run.
-
-    It is still `undetermined` -- nothing was measured -- but it is not the open-ended
-    "something is wrong" the base class means. The next scheduled pass (or the next switch)
-    finds the lock free and succeeds; verified by hand on the host that found this, first try.
-    A unit failing for a race it did not cause and will resolve on its own is worse than useless:
-    it pages fleet-wide (failed units are alarmed everywhere) and makes nixos_deploy refuse to
-    call a perfectly good deploy finished, on a host that ends up fine two minutes later.
+    The module's own timer, adopted on a host that has been up a while, fires within the activation that
+    installs it, while `nixos-rebuild switch` still holds this lock. Still `undetermined`, but the next
+    pass finds the lock free; a unit failing for a race it did not cause would page fleet-wide and make
+    nixos_deploy refuse to call a good deploy finished.
     """
 
 
 class NeverStaged(Undetermined):
     """CI has never pinned a closure here.
 
-    A SEPARATE CLAIM from "this pass could not measure", and separate because the repair is
-    different: a host CI has never reached needs staging wired up or a first deploy from a
-    checkout, whereas a pass that could not measure needs somebody to read why. Measured on
-    10.0.0.12 on 2026-08-24, this is not hypothetical -- the host runs the exact tip of main and
-    has `nixdeploy` present, and still has no pin, because it was last deployed by hand rather
-    than through CI. Reporting that as a generic error would leave every such host amber for a
-    reason nobody could act on.
+    A SEPARATE CLAIM from "this pass could not measure": the repair differs (staging wired up, or a first
+    deploy from a checkout, versus reading why). 10.0.0.12 on 2026-08-24 runs the tip of main with no pin
+    because it was last deployed by hand, and a generic error would leave it amber for no actionable reason.
     """
 
 
@@ -446,24 +340,30 @@ class Blocked(Exception):
         self.detail = detail
 
 
-def run(argv: list[str], *, cwd: str | None = None, env: dict | None = None,
-        check: bool = True, timeout: int = 3600) -> subprocess.CompletedProcess:
-    try:
-        completed = subprocess.run(
-            argv, cwd=cwd, env=env, capture_output=True, text=True, timeout=timeout)
-    except FileNotFoundError as exc:
-        raise Undetermined(f"{argv[0]} is not on PATH: {exc}") from exc
-    except subprocess.TimeoutExpired as exc:
-        raise Undetermined(f"{' '.join(argv)} did not finish within {timeout}s") from exc
+def unrunnable(argv: list[str], exc: Exception, timeout: int) -> str:
+    if isinstance(exc, FileNotFoundError):
+        return f"{argv[0]} is not on PATH: {exc}"
+    return f"{' '.join(argv)} did not finish within {timeout}s"
+
+
+def checked(argv: list[str], completed: subprocess.CompletedProcess[str], check: bool) -> None:
     if check and completed.returncode != 0:
         raise Undetermined(
             f"{' '.join(argv)} exited {completed.returncode}: "
             f"{(completed.stderr or completed.stdout).strip()[:400]}")
+
+
+def run(argv: list[str], *, cwd: str | None = None, env: dict[str, str] | None = None,
+        check: bool = True, timeout: int = 3600) -> subprocess.CompletedProcess[str]:
+    try:
+        completed = subprocess.run(
+            argv, cwd=cwd, env=env, capture_output=True, text=True, timeout=timeout)
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        raise Undetermined(unrunnable(argv, exc, timeout)) from exc
+    checked(argv, completed, check)
     return completed
 
 
-# -------------------------------------------------------------------------------------------------
-# The repository
 # -------------------------------------------------------------------------------------------------
 # What CI staged
 # -------------------------------------------------------------------------------------------------
@@ -497,11 +397,9 @@ def staged_system(pin: pathlib.Path) -> pathlib.Path:
 def unit_tree(system: pathlib.Path) -> dict[str, str]:
     """Map every path under the system's systemd unit directory to what it resolves to.
 
-    Symlink targets are compared rather than file contents, and that is not a shortcut: every unit
-    in a NixOS closure is a symlink into the store, so an identical target IS identical content, by
-    the store's own construction. Regular files (which drop-ins occasionally are) are hashed. The
-    directory structure is part of the map because `.wants/` and `.requires/` links are how a unit
-    is enabled, and enabling something is not nothing.
+    Symlink targets are compared, not contents: every unit in a NixOS closure is a store symlink, so an
+    identical target IS identical content; regular files (drop-ins) are hashed. The directory structure
+    is part of the map because `.wants/` and `.requires/` links enable a unit, and that is not nothing.
     """
     root = system / "etc" / "systemd" / "system"
     tree: dict[str, str] = {}
@@ -525,39 +423,45 @@ class UnitChanges(typing.NamedTuple):
     forgiven: list[str]   # changes a host declared acceptable, kept so they can be REPORTED
 
 
+def describe_change(name: str, before: Tree, after: Tree) -> str:
+    if name not in before:
+        return f"{name} (new)"
+    if name not in after:
+        return f"{name} (removed)"
+    return name
+
+
+def change_forgiven(name: str, restartable: Patterns, never: Patterns, leniency: Leniency) -> bool:
+    unit = unit_named_by(name)
+    return unit is not None and (
+        unit_forgiven(unit, restartable, never)
+        or leniency.forgives(unit, never, structural=True))
+
+
+def enable_directory_forgiven(name: str, decided: dict[str, tuple[str, bool]], before: Tree) -> bool:
+    """A NEW `.wants`/`.requires` directory names no unit and is otherwise never forgiven. It is
+    forgiven only when it is new and EVERYTHING inside it was forgiven -- i.e. it exists only to
+    enable units the rules above already accepted."""
+    if name in before or not name.endswith(ENABLE_DIRECTORY_SUFFIXES):
+        return False
+    inside = [ok for other, (_, ok) in decided.items() if other.startswith(name + "/")]
+    return bool(inside) and all(inside)
+
+
 def unit_changes(running: pathlib.Path, candidate: pathlib.Path,
-                 restartable=(), never=(), leniency: Leniency = Leniency()) -> UnitChanges:
+                 restartable: Patterns = (), never: Patterns = (), leniency: Leniency = Leniency()) -> UnitChanges:
     """Every difference in the unit tree, split by whether this host has declared it acceptable.
 
-    THE FORGIVEN HALF IS KEPT RATHER THAN DISCARDED. A switch that restarts six units is not the
-    same event as one that restarts nothing, and an allow-list must not make the difference
-    invisible -- it makes it ALLOWED. What is forgiven here is named in the log line and counted in
-    `nixos_auto_apply_forgiven_units`, so "auto-apply restarted your CI runners at 04:12" is a
-    question the journal can answer afterwards.
+    THE FORGIVEN HALF IS KEPT, NOT DISCARDED: an allow-list makes a switch that restarts six units
+    ALLOWED, not invisible. What is forgiven is named in the log line and counted in
+    `nixos_auto_apply_forgiven_units`, so "auto-apply restarted your CI runners at 04:12" has an answer.
     """
     before, after = unit_tree(running), unit_tree(candidate)
-    decided: dict[str, tuple[str, bool]] = {}
-    for name in sorted(set(before) | set(after)):
-        if before.get(name) == after.get(name):
-            continue
-        if name not in before:
-            description = f"{name} (new)"
-        elif name not in after:
-            description = f"{name} (removed)"
-        else:
-            description = name
-        unit = unit_named_by(name)
-        decided[name] = (description, unit is not None and (
-            unit_forgiven(unit, restartable, never)
-            or leniency.forgives(unit, never, structural=True)))
-    # A NEW `.wants`/`.requires` directory names no unit and is otherwise never forgiven. It is
-    # forgiven here only when it is new and EVERYTHING inside it was forgiven -- i.e. it exists
-    # only to enable units the rules above already accepted.
+    decided = {name: (describe_change(name, before, after),
+                      change_forgiven(name, restartable, never, leniency))
+               for name in sorted(set(before) | set(after)) if before.get(name) != after.get(name)}
     for name, (description, ok) in list(decided.items()):
-        if ok or name in before or not name.endswith(ENABLE_DIRECTORY_SUFFIXES):
-            continue
-        inside = [ok_ for other, (_, ok_) in decided.items() if other.startswith(name + "/")]
-        if inside and all(inside):
+        if not ok and enable_directory_forgiven(name, decided, before):
             decided[name] = (description, True)
     blocked = [description for description, ok in decided.values() if not ok]
     forgiven = [description for description, ok in decided.values() if ok]
@@ -565,7 +469,7 @@ def unit_changes(running: pathlib.Path, candidate: pathlib.Path,
 
 
 def unit_differences(running: pathlib.Path, candidate: pathlib.Path,
-                     restartable=(), never=()) -> list[str]:
+                     restartable: Patterns = (), never: Patterns = ()) -> list[str]:
     """The changes that REFUSE a switch. With no allow-list this is every change, which is the
     fleet default and the behaviour every host had before allow-lists existed.
     """
@@ -621,7 +525,7 @@ class DryActivate(typing.NamedTuple):
     disruptive: list[str]        # what would be disturbed AND no allow-list covers -- these block
     reloads: list[str]           # unit names that would merely be reloaded
     unrecognised: list[str]      # lines no rule matched -- each one blocks
-    forgiven: tuple = ()         # disturbances a host declared acceptable; reported, never decisive
+    forgiven: tuple[str, ...] = ()         # disturbances a host declared acceptable; reported, never decisive
     # Every SYSTEM unit this classifier refused, as bare names. Only the units the unit tree alone
     # forgives (a routine timer's service, an idle unit: Leniency.structural_only) are fed back
     # to the structural test, so a unit that is running after all is refused by both halves
@@ -633,18 +537,12 @@ def pid1_reexec_is_inert(candidate: pathlib.Path, pid1_exe="/proc/1/exe",
                          system_conf="/etc/systemd/system.conf") -> bool:
     """True when re-executing PID 1 into the candidate's systemd would change nothing at all.
 
-    switch-to-configuration-ng prints `would restart systemd` when `canonicalize("/proc/1/exe")`
-    differs from the candidate's `lib/systemd/systemd`, or `/etc/systemd/system.conf` resolves
-    elsewhere. The first half has a FALSE POSITIVE this fleet hit: the nightly `nix-store --optimise`
-    (fleet/nix-gc.nix) hard-links a duplicate over the running binary's store path, the kernel then
-    reports PID 1's exe as "<path> (deleted)", the canonicalize fails, and the switch compares
-    against the literal "/unknown" -- so every closure after it "restarts systemd" and the unit tree,
-    which rightly sees nothing, disagrees. Measured 2026-09-28/29 on all three hosts: 4.5h and 18h of
-    `classifier_disagreement`, cleared only by a hand switch re-executing the identical binary.
-
-    BYTES, NOT PATHS, because the path is exactly what the optimiser broke. `open("/proc/1/exe")`
-    still reaches the inode PID 1 runs, deleted name or not. Anything unreadable answers False, so
-    this can only ever forgive the one line, never block more than before.
+    switch-to-configuration-ng prints `would restart systemd` when `canonicalize("/proc/1/exe")` differs
+    from the candidate's `lib/systemd/systemd`. That has a FALSE POSITIVE this fleet hit: the nightly
+    `nix-store --optimise` hard-links a duplicate over the running binary's store path, the kernel reports
+    PID 1's exe as "<path> (deleted)", and the switch compares against "/unknown" -- 4.5h and 18h of
+    `classifier_disagreement` on 2026-09-28/29. BYTES, NOT PATHS: `open("/proc/1/exe")` still reaches the
+    inode PID 1 runs. Anything unreadable answers False, so this only ever forgives the one line.
     """
     try:
         if os.path.realpath(system_conf) != os.path.realpath(candidate / "etc" / "systemd" / "system.conf"):
@@ -655,14 +553,13 @@ def pid1_reexec_is_inert(candidate: pathlib.Path, pid1_exe="/proc/1/exe",
         return False
 
 
-def dry_activate(candidate: pathlib.Path, timeout: int, restartable=(), never=(),
+def dry_activate(candidate: pathlib.Path, timeout: int, restartable: Patterns = (), never: Patterns = (),
                  leniency: Leniency = Leniency()) -> DryActivate:
     """Run the dry activation and classify EVERY line it prints.
 
-    Output goes to stderr and the exit code is 0 whatever it finds, so neither of those is the
-    signal; the lines are. Note that a genuine no-op is not silent -- measured on 10.0.0.12, an
-    unchanged system still prints the inhibitor note, "would activate the configuration..." and two
-    sops-install-secrets lines.
+    Output goes to stderr and the exit code is 0 whatever it finds, so the lines are the signal. A genuine
+    no-op is not silent: it still prints the inhibitor note, "would activate the configuration..." and
+    two sops-install-secrets lines (measured on 10.0.0.12).
     """
     binary = candidate / "bin" / "switch-to-configuration"
     if not binary.exists():
@@ -680,19 +577,62 @@ def dry_activate(candidate: pathlib.Path, timeout: int, restartable=(), never=()
                            pid1_unchanged=pid1_reexec_is_inert(candidate), leniency=leniency)
 
 
-def classify_output(text: str, restartable=(), never=(), pid1_unchanged=False,
+def is_benign(line: str, pid1_unchanged: bool) -> bool:
+    return (any(pattern.match(line) for pattern in BENIGN_LINES)
+            or (pid1_unchanged and line == "would restart systemd"))
+
+
+def hard_disruption(line: str) -> str | None:
+    for pattern, kind in HARD_LINES:
+        match = pattern.match(line)
+        if match:
+            return kind if not match.groups() else f"{kind}: {match.group(1)}"
+    return None
+
+
+def unit_line(line: str) -> tuple[str, list[str], bool] | None:
+    """`(kind, units, system_scope)` of a line naming units. The lenient rules read the SYSTEM unit
+    tree, so they say nothing about a user unit of the same name."""
+    for pattern, kind in UNIT_LINES:
+        match = pattern.match(line)
+        if match:
+            units = [unit.strip() for unit in match.group(1).split(",") if unit.strip()]
+            return kind, units, "user units" not in pattern.pattern
+    return None
+
+
+def unit_forgivable(kind: str, unit: str, system_scope: bool, restartable: Patterns, never: Patterns,
+                    leniency: Leniency) -> bool:
+    forgivable = kind in FORGIVABLE_KINDS and unit_forgiven(unit, restartable, never)
+    # changed-but-skipped is forgiven ONLY by the lenient rules (a routine unit such as this
+    # applier's own, or a new one), never by restartable.
+    if system_scope and kind in FORGIVABLE_KINDS + ("changed-but-skipped",):
+        forgivable = forgivable or leniency.forgives(unit, never)
+    return forgivable
+
+
+def judge_units(kind: str, units: list[str], system_scope: bool, restartable: Patterns, never: Patterns,
+                leniency: Leniency) -> tuple[list[str], list[str], list[str]]:
+    """`(forgiven, disruptive, refused)` for the units one line names."""
+    forgiven: list[str] = []
+    disruptive: list[str] = []
+    refused: list[str] = []
+    for unit in units:
+        forgivable = unit_forgivable(kind, unit, system_scope, restartable, never, leniency)
+        if not forgivable and system_scope:
+            refused.append(unit)
+        (forgiven if forgivable else disruptive).append(f"{kind} {unit}")
+    return forgiven, disruptive, refused
+
+
+def classify_output(text: str, restartable: Patterns = (), never: Patterns = (), pid1_unchanged=False,
                     leniency: Leniency = Leniency()) -> DryActivate:
     """Sort every line into disturbs-something, merely-reloads, or not-recognised.
 
-    SPLIT OUT FROM THE SUBPROCESS ON PURPOSE, so that bin/prove-nixos-auto-apply can drive it with
-    recorded output -- including output recorded from a real host -- rather than needing a NixOS
-    machine and a genuine pending change to find out whether the table below still matches. A
-    classifier nobody can exercise is a classifier nobody knows the state of, and this one fails
-    open into "nothing would happen" if its patterns ever stop matching.
-
-    `pid1_unchanged` is `pid1_reexec_is_inert` for the candidate, passed in rather than computed so
-    the recorded-output cases can state it: when true, `would restart systemd` re-executes the very
-    binary and config PID 1 already runs, and is benign.
+    SPLIT OUT FROM THE SUBPROCESS so the test can drive it with output recorded from a real host: a
+    classifier nobody can exercise fails open into "nothing would happen" if its patterns stop matching.
+    `pid1_unchanged` is `pid1_reexec_is_inert` for the candidate, passed in so the cases can state it:
+    when true, `would restart systemd` re-executes the binary PID 1 already runs, and is benign.
     """
     disruptive: list[str] = []
     reloads: list[str] = []
@@ -700,43 +640,22 @@ def classify_output(text: str, restartable=(), never=(), pid1_unchanged=False,
     forgiven: list[str] = []
     refused: list[str] = []
 
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line:
+    for line in (raw.strip() for raw in text.splitlines()):
+        if not line or is_benign(line, pid1_unchanged):
             continue
-        if any(pattern.match(line) for pattern in BENIGN_LINES):
-            continue
-        if pid1_unchanged and line == "would restart systemd":
-            continue
-        for pattern, kind in HARD_LINES:
-            match = pattern.match(line)
-            if match:
-                disruptive.append(kind if not match.groups() else f"{kind}: {match.group(1)}")
-                break
+        hard = hard_disruption(line)
+        named = unit_line(line)
+        if hard is not None:
+            disruptive.append(hard)
+        elif named is None:
+            unrecognised.append(line)
+        elif named[0] == "reload":
+            reloads.extend(named[1])
         else:
-            for pattern, kind in UNIT_LINES:
-                match = pattern.match(line)
-                if match:
-                    units = [unit.strip() for unit in match.group(1).split(",") if unit.strip()]
-                    # The lenient rules read the SYSTEM unit tree, so they say nothing about a
-                    # user unit of the same name.
-                    system_scope = "user units" not in pattern.pattern
-                    if kind == "reload":
-                        reloads.extend(units)
-                    else:
-                        for unit in units:
-                            forgivable = (kind in FORGIVABLE_KINDS
-                                          and unit_forgiven(unit, restartable, never))
-                            # changed-but-skipped is forgiven ONLY by the lenient rules (a routine
-                            # unit such as this applier's own, or a new one), never by restartable.
-                            if system_scope and kind in FORGIVABLE_KINDS + ("changed-but-skipped",):
-                                forgivable = forgivable or leniency.forgives(unit, never)
-                            if not forgivable and system_scope:
-                                refused.append(unit)
-                            (forgiven if forgivable else disruptive).append(f"{kind} {unit}")
-                    break
-            else:
-                unrecognised.append(line)
+            kind, units, system_scope = named
+            judged = judge_units(kind, units, system_scope, restartable, never, leniency)
+            for into, found in zip((forgiven, disruptive, refused), judged):
+                into.extend(found)
 
     return DryActivate(disruptive, reloads, unrecognised, tuple(forgiven), tuple(sorted(set(refused))))
 
@@ -745,30 +664,15 @@ def classify_output(text: str, restartable=(), never=(), pid1_unchanged=False,
 # The metric
 # -------------------------------------------------------------------------------------------------
 #
-# THE SHAPE HERE IS A WIRE CONTRACT with the alert rules on monitoring-1, and CHANGING A NAME HERE
-# TURNS AN ALERT GREEN RATHER THAN RED: a PromQL query that matches nothing returns no rows, and no
-# rows is indistinguishable from a fleet with nothing pending unless the rule insists on the roster.
-# So renaming a series here is a two-file change, and the second file is the one that fails silently.
-#
-# Three timestamps rather than one, and the distinction is the whole value of the metric. It is
-# taken straight from `bitcashier::fleet_spec`, which learned it the expensive way: a textfile
-# collector is NOT a heartbeat, so a publisher that stops running leaves its last good numbers
-# being scraped and reported as current for ever.
-#
-#   last_attempt   -- every pass that finished, including one that could determine nothing.
-#                     Its age is what says the applier itself is alive.
-#   last_verdict   -- a pass that actually produced an answer about this host. A run that could not
-#                     reach git, or could not build, does NOT advance this, so "we have not known
-#                     anything for six hours" is expressible and is not the same claim as
-#                     "the applier is dead".
-#   last_deployment -- a pass that actually switched. Absent forever on a host that has simply had
-#                     nothing to apply, which is why it is not a health signal on its own.
-#
-# `run_produced_verdict` states the second of those as a gauge rather than leaving a reader to
-# infer it from a missing timestamp, for the reason the ops screen records: an absent series and a
-# series saying zero are different claims, and inferring one from the other is how a broken
-# publisher comes to read as a clean fleet.
-
+# A WIRE CONTRACT with the alert rules on monitoring-1: renaming a series turns an alert GREEN, since
+# a PromQL query that matches nothing returns no rows. Three timestamps rather than one, because a
+# textfile collector is NOT a heartbeat: a stopped publisher's last numbers are scraped as current.
+#   last_attempt    -- every pass that finished, even one that determined nothing: the applier is alive.
+#   last_verdict    -- a pass that produced an answer about this host: "nothing known for six hours"
+#                      is not the same claim as "the applier is dead".
+#   last_deployment -- a pass that actually switched; absent on a host with nothing to apply.
+# `run_produced_verdict` states the second as a gauge: an absent series and a series saying zero are
+# different claims, and inferring one from the other is how a broken publisher reads as a clean fleet.
 
 def escape(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
@@ -825,11 +729,8 @@ class Metrics:
 def configuration_revision(system: pathlib.Path) -> str:
     """The commit the staged closure was built from, for the metric's label.
 
-    Best effort by design: this is a label a human reads, never something a decision turns on. CI
-    stamps it via `system.configurationRevision` (nix/modules/fleet/deploy-staging.nix), so a
-    closure built from a tree that was not a checkout reports the sentinel rather than a commit --
-    which bin/check-nixos-closure-current already treats as its own state, and which is worth
-    carrying here for the same reason.
+    Best effort: a label a human reads, never something a decision turns on. A closure built from a tree
+    that was not a checkout reports the sentinel, which bin/check-nixos-closure-current treats as its own state.
     """
     version = system / "sw" / "bin" / "nixos-version"
     if not version.is_file():
@@ -849,14 +750,11 @@ def failed_units() -> set[str]:
     return {line.split()[0] for line in completed.stdout.splitlines() if line.split()}
 
 
-# WHAT `switch-to-configuration switch` EXITING 4 CAN MEAN, from the pinned nixpkgs'
-# switch-to-configuration-ng. It is one code for every failure it noticed, system and per-user alike.
-# The per-user one is `warning: user activation for <name> failed`: it re-runs itself inside each
-# logged-in user's systemd manager, and a manager that logind is stopping at that moment (ten
-# seconds after that user's last session closes -- CI's own `nixdeploy` session, which starts this
-# unit and disconnects) fails the whole switch while every system unit is fine. That race failed
-# monitoring-1's pass on 2026-09-02 and 2026-09-25 and paged `SystemdUnitFailed` for deploys that
-# had landed. Every OTHER failure line below is system scope, and any one of them keeps exit 4 fatal.
+# WHAT `switch-to-configuration switch` EXITING 4 CAN MEAN: one code for every failure it noticed,
+# system and per-user alike. `warning: user activation for <name> failed` is a user manager logind is
+# stopping (ten seconds after CI's own `nixdeploy` session disconnects) failing the whole switch while
+# every system unit is fine: it paged `SystemdUnitFailed` for landed deploys on monitoring-1
+# (2026-09-02, 09-25). Every OTHER failure line below is system scope and keeps exit 4 fatal.
 USER_ACTIVATION_FAILED = re.compile(r"^warning: user activation for \S+ failed$")
 SYSTEM_SCOPE_FAILURES = re.compile(
     r"^(Unable to list users with logind"
@@ -876,27 +774,45 @@ ACTIVATION_STARTED = "activating the configuration..."
 LOGIND_RACE_RETRY_DELAY_SECONDS = 15  # past logind's UserStopDelaySec (10 s) for the leaving user
 
 
+def lock_is_held(lock: pathlib.Path) -> bool:
+    with open(lock) as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(handle, fcntl.LOCK_UN)
+    return False
+
+
+def switch_in_progress() -> bool:
+    """Whether a switch-to-configuration holds its lock right now."""
+    lock = pathlib.Path(SWITCH_STATE_DIRECTORY) / "switch-to-configuration.lock"
+    return lock.exists() and lock_is_held(lock)
+
+
+def leftover_lists() -> list[tuple[str, str]]:
+    """`(verb, text)` of each list an earlier switch left behind; a list that is absent is skipped."""
+    found = []
+    for name, verb in SWITCH_LEFTOVER_LISTS:
+        try:
+            found.append((verb, (pathlib.Path(SWITCH_STATE_DIRECTORY) / name).read_text()))
+        except FileNotFoundError:
+            continue
+    return found
+
+
+def owed_lines(lists: list[tuple[str, str]]) -> list[str]:
+    return [f"{verb} {unit}" for verb, text in lists for unit in sorted(set(text.split()))]
+
+
 def interrupted_switch() -> list[str]:
     """What an earlier switch left undone, as `start x.target` lines; empty when nothing is owed.
 
     The lists also exist WHILE a switch runs (an `infra/bin/deploy --apply` beside this pass), so a
     held switch lock is LockContended -- the next pass decides -- never a stopped switch."""
-    lock = pathlib.Path(SWITCH_STATE_DIRECTORY) / "switch-to-configuration.lock"
-    if lock.exists():
-        with open(lock) as handle:
-            try:
-                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
-                raise LockContended("a switch-to-configuration is running right now") from exc
-            fcntl.flock(handle, fcntl.LOCK_UN)
-    owed = []
-    for name, verb in SWITCH_LEFTOVER_LISTS:
-        try:
-            text = (pathlib.Path(SWITCH_STATE_DIRECTORY) / name).read_text()
-        except FileNotFoundError:
-            continue
-        owed += [f"{verb} {unit}" for unit in sorted(set(text.split()))]
-    return owed
+    if switch_in_progress():
+        raise LockContended("a switch-to-configuration is running right now")
+    return owed_lines(leftover_lists())
 
 
 def host_is_on(candidate: pathlib.Path) -> bool:
@@ -913,83 +829,114 @@ def only_user_activation_failed(output: str) -> bool:
             and not any(SYSTEM_SCOPE_FAILURES.match(line) for line in lines))
 
 
-def activate(candidate: pathlib.Path, rollback_on_failure: bool) -> str:
-    """Switch to the candidate, then confirm the host is no worse than it was.
+def switch_output(switched: subprocess.CompletedProcess[str]) -> str:
+    return (switched.stderr or "") + (switched.stdout or "")
 
-    THE VERIFICATION IS A COMPARISON, NOT AN ABSOLUTE. A host with a unit already failing before
-    the switch would fail an "are there any failed units" test every time, so this records the set
-    beforehand and objects only to units that were healthy and are not any more. Otherwise the
-    first pre-existing fault on a host disables auto-apply on it permanently and silently.
 
-    Rolling back is cheap here in a way it is not in general: the gate has already established that
-    this switch restarts nothing, so the only things to undo are files. A rollback that itself
-    fails is reported and not retried -- at that point the host needs a person, and the useful
-    thing this script can do is stop touching it.
-    """
-    before = failed_units()
-    previous = pathlib.Path(os.path.realpath(SYSTEM_PROFILE))
+def logind_race(returncode: int, output: str, on_candidate: bool) -> bool:
+    return (returncode != 0 and on_candidate
+            and any(LOGIND_USER_VANISHED.match(line) for line in output.splitlines()))
 
-    # THE PROFILE IS SET FIRST, AND THAT ORDER IS LOAD-BEARING. `switch-to-configuration switch`
-    # runs the bootloader installer, and the installer builds the boot menu from the generations in
-    # /nix/var/nix/profiles/system. Activate without setting the profile and the running system is
-    # the new one while the DEFAULT BOOT ENTRY still points at the old generation -- so the machine
-    # is correct until it reboots and then silently is not. That is also why this does not simply
-    # run the command the staging tool prints: `sudo <path>/bin/switch-to-configuration switch`
-    # alone leaves the profile untouched, records no generation, and gives `--rollback` nothing to
-    # roll back to.
-    run(["nix-env", "--profile", SYSTEM_PROFILE, "--set", str(candidate)], timeout=600)
+
+def logind_retry_note(output: str) -> str:
+    return ("nixos-auto-apply: the switch stopped midway because a logind user vanished under it; "
+            "retrying once: " + " | ".join(line.strip() for line in output.splitlines()
+                                           if "Error:" in line or "Unknown object" in line))
+
+
+def wait_out_logind_race(output: str) -> None:
+    print(logind_retry_note(output), file=sys.stderr)
+    time.sleep(LOGIND_RACE_RETRY_DELAY_SECONDS)
+
+
+def run_switch(candidate: pathlib.Path) -> tuple[int, str]:
+    """`switch-to-configuration switch`, retried ONCE when the logind race stopped it midway: the
+    race is a window of milliseconds, and a second failure is reported like any other."""
     switch = [str(candidate / "bin" / "switch-to-configuration"), "switch"]
     switched = run(switch, check=False, timeout=3600)
-    output = (switched.stderr or "") + (switched.stdout or "")
-    if (switched.returncode != 0 and host_is_on(candidate)
-            and any(LOGIND_USER_VANISHED.match(line) for line in output.splitlines())):
-        # ONE retry, bounded by the switch's own timeout: the race is a window of milliseconds,
-        # and a second failure is reported below like any other.
-        print("nixos-auto-apply: the switch stopped midway because a logind user vanished under "
-              "it; retrying once: "
-              + " | ".join(line.strip() for line in output.splitlines()
-                           if "Error:" in line or "Unknown object" in line),
-              file=sys.stderr)
-        time.sleep(LOGIND_RACE_RETRY_DELAY_SECONDS)
+    output = switch_output(switched)
+    if logind_race(switched.returncode, output, host_is_on(candidate)):
+        wait_out_logind_race(output)
         switched = run(switch, check=False, timeout=3600)
-        output = (switched.stderr or "") + (switched.stdout or "")
-    if switched.returncode == 4 and only_user_activation_failed(output):
+        output = switch_output(switched)
+    return switched.returncode, output
+
+
+def check_switch(candidate: pathlib.Path, returncode: int, output: str) -> None:
+    """Raise when the switch failed, SwitchFailed once it had started and Undetermined before."""
+    if returncode == 4 and only_user_activation_failed(output):
         print("nixos-auto-apply: the system switch completed; only a per-user activation failed "
               "(a user manager stopping mid-switch): "
               + " | ".join(line for line in output.splitlines() if "fail" in line.lower()),
               file=sys.stderr)
-    elif switched.returncode != 0:
+    elif returncode != 0:
         # THE TAIL, NOT THE HEAD: switch-to-configuration names what failed at the END of its
         # output, and the first 400 characters are the preamble -- which is all the journal kept
         # of both exit-4 incidents above.
-        failure = f"{' '.join(switch)} exited {switched.returncode}: ...{output.strip()[-600:]}"
+        switch = str(candidate / "bin" / "switch-to-configuration")
+        failure = f"{switch} switch exited {returncode}: ...{output.strip()[-600:]}"
         if ACTIVATION_STARTED in output or host_is_on(candidate):
             raise SwitchFailed(failure)
         raise Undetermined(failure)  # refused before activating: nothing on the host changed
 
+
+def failures_after_settling(before: set[str]) -> set[str]:
     time.sleep(5)  # systemd settles; a unit that fails on activation does so within seconds
-    newly_failed = failed_units() - before
+    return failed_units() - before
 
-    if not newly_failed:
-        return ""
 
-    if not rollback_on_failure:
-        return f"units failed after the switch and no rollback was attempted: {', '.join(sorted(newly_failed))}"
+def rollback_message(previous: pathlib.Path, newly_failed: set[str], undo_failed: bool,
+                     undo_output: str) -> str:
+    failed = ", ".join(sorted(newly_failed))
+    if undo_failed:
+        return (f"units failed after the switch ({failed}) AND the rollback to {previous.name} "
+                f"failed: {undo_output.strip()[:300]}")
+    return f"units failed after the switch and it was rolled back to {previous.name}: {failed}"
 
-    # Named explicitly rather than `nix-env --rollback`, which walks to the previous GENERATION --
-    # not necessarily the closure this pass replaced, if anything else touched the profile in
-    # between. What is being undone is this switch, so say which path that was.
+
+def roll_back(previous: pathlib.Path, newly_failed: set[str]) -> str:
+    """Named explicitly rather than `nix-env --rollback`, which walks to the previous GENERATION --
+    not necessarily the closure this pass replaced, if anything else touched the profile in
+    between. What is being undone is this switch, so say which path that was."""
     undo = run(["nix-env", "--profile", SYSTEM_PROFILE, "--set", str(previous)],
                check=False, timeout=600)
     if undo.returncode == 0:
         undo = run([str(previous / "bin" / "switch-to-configuration"), "switch"],
                    check=False, timeout=3600)
-    if undo.returncode != 0:
-        return (f"units failed after the switch ({', '.join(sorted(newly_failed))}) AND the "
-                f"rollback to {previous.name} failed: "
-                f"{(undo.stderr or undo.stdout).strip()[:300]}")
-    return (f"units failed after the switch and it was rolled back to {previous.name}: "
-            f"{', '.join(sorted(newly_failed))}")
+    return rollback_message(previous, newly_failed, undo.returncode != 0,
+                            undo.stderr or undo.stdout)
+
+
+def aftermath(newly_failed: set[str], previous: pathlib.Path, rollback_on_failure: bool) -> str:
+    """The failure text for units the switch broke, rolled back when asked; empty when none."""
+    if not newly_failed:
+        return ""
+    if not rollback_on_failure:
+        return ("units failed after the switch and no rollback was attempted: "
+                + ", ".join(sorted(newly_failed)))
+    return roll_back(previous, newly_failed)
+
+
+def activate(candidate: pathlib.Path, rollback_on_failure: bool) -> str:
+    """Switch to the candidate, then confirm the host is no worse than it was.
+
+    THE VERIFICATION IS A COMPARISON, NOT AN ABSOLUTE: the set of failed units is recorded beforehand and
+    only units that were healthy and are not any more are objected to, or the first pre-existing fault
+    would disable auto-apply on a host permanently and silently. Rolling back is cheap because the gate
+    established that this switch restarts nothing, so only files are undone; a rollback that itself fails
+    is reported and not retried -- the host needs a person.
+    """
+    before = failed_units()
+    previous = pathlib.Path(os.path.realpath(SYSTEM_PROFILE))
+
+    # THE PROFILE IS SET FIRST, AND THAT ORDER IS LOAD-BEARING: `switch-to-configuration switch` runs
+    # the bootloader installer, which builds the boot menu from the generations in the profile.
+    # Without it the DEFAULT BOOT ENTRY still points at the old generation -- correct until a reboot,
+    # and `--rollback` has no generation to roll back to.
+    run(["nix-env", "--profile", SYSTEM_PROFILE, "--set", str(candidate)], timeout=600)
+    returncode, output = run_switch(candidate)
+    check_switch(candidate, returncode, output)
+    return aftermath(failures_after_settling(before), previous, rollback_on_failure)
 
 
 # -------------------------------------------------------------------------------------------------
@@ -1004,45 +951,36 @@ class Verdict(typing.NamedTuple):
     candidate: str
     reboot_owed: bool
     activation_changed: bool
-    # WHICH components force the reboot, not merely that one is owed. A bare 0/1 tells an operator
-    # a reboot is needed and nothing about what it buys them -- and the answer changes the urgency
-    # completely: a replaced `kernel` may carry a published CVE, while a replaced `initrd` usually
-    # means a mount option or a stage-1 module changed and the running machine is simply still on
-    # the old boot path. Measured on 2026-08-24: all four hosts owed a reboot for `initrd` alone,
-    # from one commit that added `nofail` to a data volume -- which is worth knowing precisely,
-    # because until the reboot the host still has the boot behaviour that halts into emergency
-    # mode when the volume does not attach.
+    # WHICH components force the reboot, not merely that one is owed: a replaced `kernel` may carry
+    # a CVE, while a replaced `initrd` usually means a mount option changed (2026-08-24: all four hosts
+    # owed a reboot for `initrd` alone, after one commit added `nofail` to a data volume).
     reboot_components: tuple = ()
-    # WHAT AN ALLOW-LIST LET THROUGH. Empty on every host that has declared nothing restartable,
-    # which is the fleet default -- so a non-empty value is always a deliberate per-host decision
-    # being exercised, and is worth saying out loud in the log line and the metric rather than
-    # leaving "applied" to mean two different sizes of event.
-    forgiven: tuple = ()
+    # WHAT AN ALLOW-LIST LET THROUGH: non-empty only when a per-host decision is being exercised, so
+    # it is said out loud in the log line and the metric ("applied" would mean two sizes of event).
+    forgiven: tuple[str, ...] = ()
 
 
 def structural_changes(running: pathlib.Path, candidate: pathlib.Path, dry: DryActivate,
-                       restartable=(), reload_forgiven=(), never=(),
+                       restartable: Patterns = (), reload_forgiven: Patterns = (),
+                       never: Patterns = (),
                        leniency: Leniency = Leniency()) -> UnitChanges:
-    """The unit-tree test, given what dry-activate refused. A routine timer's service or an idle
-    unit that dry-activate would RESTART or START (it is running now) is denied here too, so both halves refuse it
-    together instead of disagreeing. Split out so test/test_auto_apply_classify.py drives the code
-    that ships rather than a copy of it."""
+    """The unit-tree test, given what dry-activate refused. A routine timer's service or an idle unit that
+    dry-activate would RESTART or START (it is running now) is denied here too, so both halves refuse it
+    together. Split out so the test drives the code that ships rather than a copy of it."""
     taken_back = tuple(unit for unit in dry.refused if unit in leniency.structural_only())
     return unit_changes(running, candidate, set(restartable) | set(reload_forgiven),
                         tuple(never) + taken_back, leniency)
 
 
-def refusal(units, chain: BootChain, dry: DryActivate, reloadable=(), never=()) -> str | None:
-    """Why this pass must refuse, or None when the switch is inert. Pure, so the recorded-output
-    cases in test/test_auto_apply_classify.py drive the decision that ships.
+def refusal(units, chain: BootChain, dry: DryActivate, reloadable: Patterns = (), never: Patterns = ()) -> str | None:
+    """Why this pass must refuse, or None when the switch is inert. Pure, so the recorded-output cases
+    in test/test_auto_apply_classify.py drive the decision that ships.
 
-    THE CROSS-CHECK COMPARES ONLY WHAT BOTH HALVES CAN SEE: the unit tree (`units`, what no list
-    forgives) and the one boot-chain component dry-activate reports, a `systemd` this switch
-    replaces ("would restart systemd"). A new kernel, initrd or module tree is invisible to
-    dry-activate, and a reboot the running system already owes is not caused by this switch at
-    all; counting either on the structural side alone made dry-activate "disagree" with a fact it
-    has no way to state (k3s-worker-1 and mongo-1, 2026-11-09/10). Both stay refusals or reports in
-    their own right below, never disagreements.
+    THE CROSS-CHECK COMPARES ONLY WHAT BOTH HALVES CAN SEE: the unit tree and the one boot-chain
+    component dry-activate reports, a `systemd` this switch replaces. A new kernel, initrd or module tree
+    is invisible to dry-activate, and a reboot already owed is not caused by this switch; counting either
+    on the structural side alone made dry-activate "disagree" with a fact it cannot state (k3s-worker-1
+    and mongo-1, 2026-11-09/10). Both stay refusals or reports in their own right, never disagreements.
     """
     structural_noop = not units and "systemd" not in chain.introduced
     dry_noop = not dry.disruptive and not dry.unrecognised and all(
@@ -1058,58 +996,74 @@ def refusal(units, chain: BootChain, dry: DryActivate, reloadable=(), never=()) 
     return None
 
 
-def classify_and_apply(args, metrics: Metrics) -> Verdict:
-    running = pathlib.Path(CURRENT_SYSTEM).resolve()
-    booted = pathlib.Path("/run/booted-system").resolve()
+class PassFacts(typing.NamedTuple):
+    """What a pass knows of the candidate before it decides: shared by every blocked verdict."""
+    revision: str
+    candidate: str
+    reboot: tuple[str, ...]    # the boot components the candidate replaces, owed or introduced
+    activation_changed: bool
 
-    candidate = staged_system(pathlib.Path(args.staged_system))
-    revision = configuration_revision(candidate)
 
-    # BEFORE ANY CLASSIFYING. A switch that stopped midway leaves its owed units in the leftover
-    # lists, and every later dry-activate prints them ("start local-fs.target") -- which read as a
-    # classifier_disagreement against a candidate, or not at all once the candidate is what runs.
-    owed = interrupted_switch()
-    if owed:
-        return Verdict(
-            "blocked", "switch_failed",
-            f"a switch to {running.name} stopped midway and still owes: {', '.join(owed[:8])}"
-            f"{f' and {len(owed) - 8} more' if len(owed) > 8 else ''}. Finish it with "
-            "`infra/bin/deploy <host> --apply`.",
-            revision, str(candidate), False, False)
+def blocked_verdict(facts: PassFacts, reason: str, detail: str, forgiven: tuple[str, ...] = (),
+                    reboot_owed: bool | None = None) -> Verdict:
+    owed = bool(facts.reboot) if reboot_owed is None else reboot_owed
+    return Verdict("blocked", reason, detail, facts.revision, facts.candidate, owed,
+                   facts.activation_changed, facts.reboot, forgiven)
 
-    if candidate == running:
-        return Verdict("up_to_date", "", "", revision, str(candidate), False, False)
 
-    # Reported, never decisive. See the module header: activation scripts are the part of a switch
-    # that neither test below can predict, and the man page says as much.
-    activation_changed = (
-        os.path.realpath(running / "activate") != os.path.realpath(candidate / "activate")
-        if (running / "activate").exists() and (candidate / "activate").exists() else True)
+def listed(items: typing.Sequence[str], shown: int = 8) -> str:
+    return ", ".join(items[:shown]) + (f" and {len(items) - shown} more" if len(items) > shown else "")
 
-    chain = boot_chain(booted, running, candidate)
-    reboot = tuple(chain.owed)  # reported on every verdict; refuses only via chain.introduced
 
-    # BOTH TESTS ARE GIVEN THE SAME ALLOW-LIST, and they have to be. They are deliberately
-    # redundant -- `refusal` calls any difference a disagreement -- so an allow-list applied to one
-    # and not the other would turn every forgiven change into a `classifier_disagreement` and make
-    # the feature look broken rather than strict.
-    #
-    # THE RELOAD LIST USED TO BREAK THAT RULE AND IT WAS INERT, WHICH IS WHY NOBODY NOTICED. It was
-    # consulted only in `dry_noop`, and by exact string match (`unit in args.reloadable`) while
-    # `restartable` went through globs -- so `reloadableUnits = [ "*" ]` looked for a unit literally
-    # named `*`, matched none, and permitted nothing. Making it a glob without this block would have
-    # been worse than leaving it broken: `dry_noop` would go true while `structural_noop` stayed
-    # false, and every benign reload on every host would raise `classifier_disagreement`, which is
-    # the one reason in this module that pages at CRITICAL.
-    #
-    # DRY-ACTIVATE RUNS FIRST NOW, because it is the only thing that knows a changed unit would be
-    # RELOADED rather than restarted -- the unit tree shows a file differing and cannot tell which.
-    # Units it names as reloads, and that this host permits reloading, are then forgiven
-    # structurally too, so the two tests describe the same event.
-    #
-    # THE REDUNDANCY SURVIVES, which is the point of doing it this way rather than widening the
-    # structural test: a changed unit that dry-activate mentions NOWHERE is still blocked and still
-    # disagrees, and that is the dangerous case -- a change systemd did not tell us about.
+def refusal_detail(reason: str, units: list[str], chain: BootChain, dry: DryActivate) -> str:
+    if reason == "unrecognised_output":
+        return ("switch-to-configuration printed lines this classifier has no rule for, so what "
+                "the switch would do is unknown: " + " | ".join(dry.unrecognised[:5]))
+    if reason == "classifier_disagreement":
+        # The two tests are meant to be redundant. When they are not, the model is wrong, and the
+        # convenient half is exactly the one that must not be believed.
+        return (f"the unit tree says this change is {'inert' if not units else 'not inert'} "
+                f"(changed units: {len(units)}, systemd replaced: {'systemd' in chain.introduced}) "
+                f"but dry-activate says otherwise ({'; '.join(dry.disruptive[:5]) or 'nothing'}"
+                f"{', reloads ' + ', '.join(dry.reloads) if dry.reloads else ''}). "
+                "Refusing until the disagreement is understood.")
+    if reason == "reboot_owed":
+        return (f"this change replaces {', '.join(chain.introduced)}, which a switch cannot bring "
+                "into use. Nothing here reboots a host; schedule one.")
+    return (f"{len(units)} systemd unit(s) differ, so this switch would disturb running services: "
+            f"{listed(units)}. Deploy it by hand.")
+
+
+def activation_script_changed(running: pathlib.Path, candidate: pathlib.Path) -> bool:
+    """Reported, never decisive. See the module header: activation scripts are the part of a switch
+    that neither test can predict, and the man page says as much."""
+    if not (running / "activate").exists() or not (candidate / "activate").exists():
+        return True
+    return os.path.realpath(running / "activate") != os.path.realpath(candidate / "activate")
+
+
+def owed_switch_verdict(running: pathlib.Path, owed: list[str], revision: str,
+                        candidate: pathlib.Path) -> Verdict:
+    return Verdict(
+        "blocked", "switch_failed",
+        f"a switch to {running.name} stopped midway and still owes: {listed(owed)}. Finish it "
+        "with `infra/bin/deploy <host> --apply`.",
+        revision, str(candidate), False, False)
+
+
+def inspect_switch(args: argparse.Namespace, running: pathlib.Path, candidate: pathlib.Path):
+    """`(units, dry, forgiven)`: what the unit tree and dry-activate each say about the candidate.
+
+    BOTH TESTS GET THE SAME ALLOW-LIST, and must: they are deliberately redundant (`refusal` calls
+    any difference a disagreement), so an allow-list applied to one only would turn every forgiven
+    change into a `classifier_disagreement`. `reloadableUnits = [ "*" ]` once looked for a unit
+    literally named `*` (exact match, while `restartable` used globs) and permitted nothing.
+
+    DRY-ACTIVATE RUNS FIRST, because only it knows a changed unit would be RELOADED rather than
+    restarted; reloads this host permits are then forgiven structurally too. THE REDUNDANCY
+    SURVIVES: a changed unit dry-activate mentions NOWHERE is still blocked and still disagrees --
+    the dangerous case, a change systemd did not tell us about.
+    """
     running_tree, candidate_tree = unit_tree(running), unit_tree(candidate)
     leniency = leniency_for(running_tree, candidate_tree, args.start_new_units,
                             tuple(sorted(args.routine)),
@@ -1119,75 +1073,84 @@ def classify_and_apply(args, metrics: Metrics) -> Verdict:
                        if unit_forgiven(unit, args.reloadable, args.never)}
     changes = structural_changes(running, candidate, dry, args.restartable, reload_forgiven,
                                  args.never, leniency)
-    units = changes.blocked
-    forgiven = tuple(sorted(set(changes.forgiven) | set(dry.forgiven)))
+    return changes.blocked, dry, tuple(sorted(set(changes.forgiven) | set(dry.forgiven)))
 
-    reason = refusal(units, chain, dry, args.reloadable, args.never)
 
-    if reason == "unrecognised_output":
-        return Verdict(
-            "blocked", reason,
-            "switch-to-configuration printed lines this classifier has no rule for, so what the "
-            "switch would do is unknown: " + " | ".join(dry.unrecognised[:5]),
-            revision, str(candidate), bool(reboot), activation_changed, reboot)
+def dry_run_verdict(facts: PassFacts, forgiven: tuple[str, ...]) -> Verdict:
+    return blocked_verdict(
+        facts, "dry_run",
+        "this change is inert and would have been applied, but --dry-run was given"
+        + (f", forgiving {len(forgiven)} declared-restartable unit change(s): "
+           + ", ".join(forgiven[:8]) if forgiven else ""), forgiven)
 
-    if reason == "classifier_disagreement":
-        # The two tests are meant to be redundant. When they are not, the model is wrong, and the
-        # convenient half is exactly the one that must not be believed.
-        return Verdict(
-            "blocked", reason,
-            f"the unit tree says this change is {'inert' if not units else 'not inert'} (changed "
-            f"units: {len(units)}, systemd replaced: {'systemd' in chain.introduced}) but "
-            f"dry-activate says otherwise ({'; '.join(dry.disruptive[:5]) or 'nothing'}"
-            f"{', reloads ' + ', '.join(dry.reloads) if dry.reloads else ''}). "
-            "Refusing until the disagreement is understood.",
-            revision, str(candidate), bool(reboot), activation_changed, reboot)
 
-    if reason == "reboot_owed":
-        return Verdict(
-            "blocked", reason,
-            f"this change replaces {', '.join(chain.introduced)}, which a switch cannot bring into "
-            "use. Nothing here reboots a host; schedule one.",
-            revision, str(candidate), True, activation_changed, reboot)
+def applied_detail(forgiven: tuple[str, ...]) -> str:
+    """NAMED, NOT COUNTED, in the detail an operator reads. A switch that disturbed nothing and one
+    that restarted every CI runner are both "applied", and the difference is exactly what
+    somebody chasing a killed job needs -- the journal line is the durable record, because the
+    metrics file is rewritten from scratch by the next pass."""
+    if not forgiven:
+        return ""
+    return (f"restarted {listed(forgiven)} (declared restartable, new or routine on this host)")
 
-    if reason == "units_would_change":
-        shown = ", ".join(units[:8]) + (f" and {len(units) - 8} more" if len(units) > 8 else "")
-        return Verdict(
-            "blocked", reason,
-            f"{len(units)} systemd unit(s) differ, so this switch would disturb running services: "
-            f"{shown}. Deploy it by hand.",
-            revision, str(candidate), bool(reboot), activation_changed, reboot)
 
-    if args.dry_run:
-        return Verdict("blocked", "dry_run",
-                       "this change is inert and would have been applied, but --dry-run was given"
-                       + (f", forgiving {len(forgiven)} declared-restartable unit change(s): "
-                          + ", ".join(forgiven[:8]) if forgiven else ""),
-                       revision, str(candidate), bool(reboot), activation_changed, reboot, forgiven)
-
-    try:
-        failure = activate(candidate, args.rollback_on_failure)
-    except SwitchFailed as exc:
-        return Verdict("blocked", "switch_failed", str(exc), revision, str(candidate),
-                       bool(reboot), activation_changed, reboot, forgiven)
-    if failure:
-        return Verdict("blocked", "verification_failed", failure, revision, str(candidate),
-                       bool(reboot), activation_changed, reboot, forgiven)
-
+def record_deployment(metrics: Metrics) -> None:
     metrics.gauge("nixos_auto_apply_last_deployment_timestamp_seconds", int(time.time()),
                   help_text="When this host last actually switched to a new closure.")
-    # NAMED, NOT COUNTED, in the detail an operator reads. A switch that disturbed nothing and one
-    # that restarted every CI runner are both "applied", and the difference is exactly what
-    # somebody chasing a killed job needs -- the journal line is the durable record, because the
-    # metrics file is rewritten from scratch by the next pass.
-    detail = ("restarted " + ", ".join(forgiven[:8])
-              + (f" and {len(forgiven) - 8} more" if len(forgiven) > 8 else "")
-              + " (declared restartable, new or routine on this host)") if forgiven else ""
-    return Verdict("applied", "", detail, revision, str(candidate), bool(reboot),
-                   activation_changed, reboot, forgiven)
 
 
-def main() -> int:
+def apply_candidate(args: argparse.Namespace, metrics: Metrics, facts: PassFacts, forgiven: tuple[str, ...]) -> Verdict:
+    try:
+        failure = activate(pathlib.Path(facts.candidate), args.rollback_on_failure)
+    except SwitchFailed as exc:
+        return blocked_verdict(facts, "switch_failed", str(exc), forgiven)
+    if failure:
+        return blocked_verdict(facts, "verification_failed", failure, forgiven)
+    record_deployment(metrics)
+    return Verdict("applied", "", applied_detail(forgiven), facts.revision, facts.candidate,
+                   bool(facts.reboot), facts.activation_changed, facts.reboot, forgiven)
+
+
+def early_verdict(running: pathlib.Path, candidate: pathlib.Path, revision: str) -> Verdict | None:
+    """The verdicts that need no classifying. BEFORE ANY CLASSIFYING, a switch that stopped midway
+    leaves its owed units in the leftover lists, and every later dry-activate prints them
+    ("start local-fs.target") -- which read as a classifier_disagreement against a candidate, or
+    not at all once the candidate is what runs."""
+    owed = interrupted_switch()
+    if owed:
+        return owed_switch_verdict(running, owed, revision, candidate)
+    if candidate == running:
+        return Verdict("up_to_date", "", "", revision, str(candidate), False, False)
+    return None
+
+
+def classify_and_apply(args: argparse.Namespace, metrics: Metrics) -> Verdict:
+    running = pathlib.Path(CURRENT_SYSTEM).resolve()
+    candidate = staged_system(pathlib.Path(args.staged_system))
+    revision = configuration_revision(candidate)
+    early = early_verdict(running, candidate, revision)
+    if early is not None:
+        return early
+
+    chain = boot_chain(pathlib.Path("/run/booted-system").resolve(), running, candidate)
+    # Reported on every verdict; refuses only via chain.introduced.
+    facts = PassFacts(revision, str(candidate), tuple(chain.owed),
+                      activation_script_changed(running, candidate))
+    units, dry, forgiven = inspect_switch(args, running, candidate)
+    reason = refusal(units, chain, dry, args.reloadable, args.never)
+    if reason is not None:
+        return blocked_verdict(facts, reason, refusal_detail(reason, units, chain, dry),
+                               reboot_owed=True if reason == "reboot_owed" else None)
+    if args.dry_run:
+        return dry_run_verdict(facts, forgiven)
+    return apply_candidate(args, metrics, facts, forgiven)
+
+
+def split_patterns(value: str) -> set[str]:
+    return {pattern.strip() for pattern in value.split(",") if pattern.strip()}
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--host", required=True, help="flake attribute in nixosConfigurations")
@@ -1214,74 +1177,95 @@ def main() -> int:
                         action="store_false", default=True)
     parser.add_argument("--dry-run", action="store_true",
                         help="classify and report, never switch")
-    args = parser.parse_args()
-    args.reloadable = {p.strip() for p in args.reloadable.split(",") if p.strip()}
-    args.restartable = {p.strip() for p in args.restartable.split(",") if p.strip()}
-    args.never = {p.strip() for p in args.never.split(",") if p.strip()}
-    args.routine = {p.strip() for p in args.routine.split(",") if p.strip()}
+    args = parser.parse_args(argv)
+    for name in ("reloadable", "restartable", "never", "routine"):
+        setattr(args, name, split_patterns(getattr(args, name)))
+    return args
 
-    metrics = Metrics(pathlib.Path(args.metrics_file), args.host)
-    started = int(time.time())
 
-    # THE LOCK IS HELD FOR THE WHOLE PASS AND IS NEVER STOLEN. Two rebuilds on one host is the
-    # failure this fleet has already had -- a host reverted three times in an afternoon by parallel
-    # deploys, each of which exited 0. flock is released by the kernel when the holder dies, so
-    # there is no stale lock to time out; what a TTL would be for is instead reported, because
-    # kured's lesson is that an un-expiring lock wedges silently. A pass that cannot take the lock
-    # publishes how long the holder has held it and returns "undetermined" rather than nothing.
+def undetermined(reason: str, detail: str) -> Verdict:
+    return Verdict("undetermined", reason, detail, "", "", False, False)
+
+
+# Subclasses first: the first kind an exception is an instance of names its reason.
+UNDETERMINED_REASONS = ((NeverStaged, "never_staged"), (LockContended, "lock_contended"),
+                        (Undetermined, "could_not_measure"))
+
+
+def failure_verdict(exc: Exception) -> Verdict:
+    if isinstance(exc, Blocked):
+        return Verdict("blocked", exc.reason, exc.detail, "", "", False, False)
+    for kind, reason in UNDETERMINED_REASONS:
+        if isinstance(exc, kind):
+            return undetermined(reason, str(exc))
+    return undetermined("unexpected_error", f"{type(exc).__name__}: {exc}")
+
+
+def pass_verdict(args: argparse.Namespace, metrics: Metrics) -> Verdict:
+    try:
+        return classify_and_apply(args, metrics)
+    except Exception as exc:  # noqa: BLE001 -- an unexpected failure must still publish
+        return failure_verdict(exc)
+
+
+def seconds_held(lock_path: pathlib.Path) -> int:
+    return int(time.time() - lock_path.stat().st_mtime)
+
+
+def locked_pass(args: argparse.Namespace, metrics: Metrics) -> Verdict:
+    """THE LOCK IS HELD FOR THE WHOLE PASS AND IS NEVER STOLEN. Two rebuilds on one host is the
+    failure this fleet has already had -- a host reverted three times in an afternoon by parallel
+    deploys, each of which exited 0. flock is released by the kernel when the holder dies, so
+    there is no stale lock to time out; what a TTL would be for is instead reported, because
+    kured's lesson is that an un-expiring lock wedges silently. A pass that cannot take the lock
+    publishes how long the holder has held it and returns "undetermined" rather than nothing."""
     lock_path = pathlib.Path(args.lock_file)
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_handle = open(lock_path, "a+")
     try:
         fcntl.flock(lock_handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
-        held_for = int(time.time() - lock_path.stat().st_mtime)
-        verdict = Verdict("undetermined", "already_running",
-                          f"another pass has held the lock for {held_for}s", "", "", False, False)
-        publish(metrics, verdict, started, deployment_written=False)
-        print(f"nixos-auto-apply: {verdict.detail}", file=sys.stderr)
-        return EXIT_UNDETERMINED
-
+        return undetermined("already_running",
+                            f"another pass has held the lock for {seconds_held(lock_path)}s")
     os.utime(lock_path, None)
     try:
-        verdict = classify_and_apply(args, metrics)
-    except Blocked as exc:
-        verdict = Verdict("blocked", exc.reason, exc.detail, "", "", False, False)
-    except NeverStaged as exc:
-        verdict = Verdict("undetermined", "never_staged", str(exc), "", "", False, False)
-    except LockContended as exc:
-        verdict = Verdict("undetermined", "lock_contended", str(exc), "", "", False, False)
-    except Undetermined as exc:
-        verdict = Verdict("undetermined", "could_not_measure", str(exc), "", "", False, False)
-    except Exception as exc:  # noqa: BLE001 -- an unexpected failure must still publish
-        verdict = Verdict("undetermined", "unexpected_error",
-                          f"{type(exc).__name__}: {exc}", "", "", False, False)
+        return pass_verdict(args, metrics)
     finally:
         fcntl.flock(lock_handle, fcntl.LOCK_UN)
         lock_handle.close()
 
-    publish(metrics, verdict, started, deployment_written=True)
 
+# What a verdict exits with, beyond the state's own code.
+REASON_EXITS = {("undetermined", "lock_contended"): EXIT_LOCK_CONTENDED,
+                ("undetermined", "never_staged"): EXIT_NEVER_STAGED}
+STATE_EXITS = {
+    "up_to_date": EXIT_CURRENT,
+    "applied": EXIT_CURRENT,
+    "blocked": EXIT_PENDING,
+    "undetermined": EXIT_UNDETERMINED,
+}
+
+
+def exit_code(verdict: Verdict) -> int:
+    return REASON_EXITS.get((verdict.state, verdict.reason), STATE_EXITS[verdict.state])
+
+
+def verdict_message(verdict: Verdict) -> str:
     message = f"nixos-auto-apply: {verdict.state}"
-    if verdict.reason:
-        message += f" ({verdict.reason}): {verdict.detail}"
-    print(message, file=sys.stderr if verdict.state != "applied" else sys.stdout)
-
-    if verdict.state == "undetermined" and verdict.reason == "lock_contended":
-        return EXIT_LOCK_CONTENDED
-
-    if verdict.state == "undetermined" and verdict.reason == "never_staged":
-        return EXIT_NEVER_STAGED
-
-    return {
-        "up_to_date": EXIT_CURRENT,
-        "applied": EXIT_CURRENT,
-        "blocked": EXIT_PENDING,
-        "undetermined": EXIT_UNDETERMINED,
-    }[verdict.state]
+    return message + (f" ({verdict.reason}): {verdict.detail}" if verdict.reason else "")
 
 
-def publish(metrics: Metrics, verdict: Verdict, started: int, deployment_written: bool) -> None:
+def main() -> int:
+    args = parse_args()
+    metrics = Metrics(pathlib.Path(args.metrics_file), args.host)
+    started = int(time.time())
+    verdict = locked_pass(args, metrics)
+    publish(metrics, verdict, started)
+    print(verdict_message(verdict), file=sys.stderr if verdict.state != "applied" else sys.stdout)
+    return exit_code(verdict)
+
+
+def publish_liveness(metrics: Metrics, verdict: Verdict, started: int) -> None:
     produced = verdict.state in ("up_to_date", "applied", "blocked")
     metrics.gauge("nixos_auto_apply_last_attempt_timestamp_seconds", started,
                   help_text="When a pass last finished, whatever it concluded. Its age says "
@@ -1292,10 +1276,9 @@ def publish(metrics: Metrics, verdict: Verdict, started: int, deployment_written
     if produced:
         metrics.gauge("nixos_auto_apply_last_verdict_timestamp_seconds", started,
                       help_text="When this host's state was last actually determined.")
-    metrics.gauge("nixos_auto_apply_pending", 0 if verdict.state in ("up_to_date", "applied") else 1,
-                  help_text="1 when main would give this host a closure it is not running.")
-    metrics.gauge("nixos_auto_apply_blocked", 1 if verdict.state == "blocked" else 0,
-                  help_text="1 when a pending change must be decided on by a person.")
+
+
+def publish_reboot(metrics: Metrics, verdict: Verdict) -> None:
     metrics.gauge("nixos_auto_apply_reboot_owed", 1 if verdict.reboot_owed else 0,
                   help_text="1 when the pending change replaces the kernel, initrd, kernel "
                             "modules or systemd, which a switch cannot bring into use.")
@@ -1305,6 +1288,13 @@ def publish(metrics: Metrics, verdict: Verdict, started: int, deployment_written
                                 "alert can say WHICH -- a replaced kernel and a replaced initrd "
                                 "are the same gauge and very different news. Labelled by host and "
                                 "component only, both stable while the same reboot is owed.")
+
+
+def publish_pending(metrics: Metrics, verdict: Verdict) -> None:
+    metrics.gauge("nixos_auto_apply_pending", 0 if verdict.state in ("up_to_date", "applied") else 1,
+                  help_text="1 when main would give this host a closure it is not running.")
+    metrics.gauge("nixos_auto_apply_blocked", 1 if verdict.state == "blocked" else 0,
+                  help_text="1 when a pending change must be decided on by a person.")
     # Zero on every host that has declared nothing restartable, which is most of them -- and zero
     # rather than absent on purpose, so an alert can distinguish "this host forgives nothing" from
     # "this host is not publishing", the same rule the rest of this file follows.
@@ -1315,12 +1305,15 @@ def publish(metrics: Metrics, verdict: Verdict, started: int, deployment_written
     metrics.gauge("nixos_auto_apply_activation_changed", 1 if verdict.activation_changed else 0,
                   help_text="1 when the activation script differs. Reported, never decisive: "
                             "activation is the part of a switch no pre-check can predict.")
-    # THE SERIES ALERTS ARE WRITTEN AGAINST, and it is separate from the info gauge below for one
-    # reason: `nixos_auto_apply_info` carries a `detail` label that changes whenever the pending
-    # change does. In Prometheus a changed label is a NEW SERIES, which resets every `for:` clause
-    # watching it -- so an alert keyed on the info gauge would restart its clock at each merge and
-    # a host that is permanently a restart behind would never fire one. This carries `host` and
-    # `reason` only, both stable for as long as the same kind of change is waiting.
+
+
+def publish_blocked_reason(metrics: Metrics, verdict: Verdict) -> None:
+    """THE SERIES ALERTS ARE WRITTEN AGAINST, and it is separate from the info gauge for one
+    reason: `nixos_auto_apply_info` carries a `detail` label that changes whenever the pending
+    change does. In Prometheus a changed label is a NEW SERIES, which resets every `for:` clause
+    watching it -- so an alert keyed on the info gauge would restart its clock at each merge and
+    a host that is permanently a restart behind would never fire one. This carries `host` and
+    `reason` only, both stable for as long as the same kind of change is waiting."""
     if verdict.state == "blocked":
         metrics.gauge("nixos_auto_apply_blocked_reason", 1,
                       labels={"reason": verdict.reason or "unknown"},
@@ -1328,6 +1321,13 @@ def publish(metrics: Metrics, verdict: Verdict, started: int, deployment_written
                                 "person must decide on. Labelled by WHY, and by nothing that "
                                 "churns, so an alert's `for:` clause measures how long the host "
                                 "has been waiting rather than how long ago the detail last changed.")
+
+
+def publish(metrics: Metrics, verdict: Verdict, started: int) -> None:
+    publish_liveness(metrics, verdict, started)
+    publish_pending(metrics, verdict)
+    publish_reboot(metrics, verdict)
+    publish_blocked_reason(metrics, verdict)
     metrics.gauge("nixos_auto_apply_info", 1,
                   labels={"state": verdict.state, "reason": verdict.reason or "none",
                           "revision": verdict.revision or "unknown",

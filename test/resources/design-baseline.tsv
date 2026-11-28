@@ -644,10 +644,6 @@ mixed	infra/nix/bin/convert_host.py:output	3
 mixed	infra/nix/bin/convert_host.py:wait_for_rescue	4
 mixed	infra/nix/files/identity-regressions.py:load_judgements	9
 mixed	infra/nix/files/identity-regressions.py:run_backtest	6
-mixed	infra/nix/files/nixos-auto-apply.py:activate	24
-mixed	infra/nix/files/nixos-auto-apply.py:classify_and_apply	22
-mixed	infra/nix/files/nixos-auto-apply.py:interrupted_switch	6
-mixed	infra/nix/files/nixos-auto-apply.py:run	6
 mixed	infra/nix/files/scheduled_dispatch.py:GitHub._http	6
 mixed	infra/nix/files/scheduled_dispatch.py:GitHub.token	3
 mixed	infra/nix/files/scheduled_dispatch.py:app_jwt	3

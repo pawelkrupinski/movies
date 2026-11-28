@@ -700,7 +700,7 @@ class PublishedMetrics(unittest.TestCase):
         metrics = applier.Metrics(directory / "nixos-auto-apply.prom", "monitoring-1")
         verdict = applier.Verdict("blocked", "reboot_owed", "detail", "rev", "/nix/store/c",
                                   True, True, tuple(applier.BOOT_CHAIN))
-        applier.publish(metrics, verdict, 1, deployment_written=True)
+        applier.publish(metrics, verdict, 1)
         lines = (directory / "nixos-auto-apply.prom").read_text().splitlines()
         described = [line.split()[2] for line in lines if line.startswith("# HELP ")]
         self.assertEqual(len(described), len(set(described)), described)
