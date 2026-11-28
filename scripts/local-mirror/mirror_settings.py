@@ -46,8 +46,9 @@ class Stopped(SystemExit):
     """A TERM (or INT) taken, raised at the process's next pause or wait (Pauses.check), never by the signal handler: an
     exception raised from a handler lands wherever the process is, and inside subprocess's timed child-wait (Python
     3.12) it left the Popen's lock held, so the wait the cleanup then made never returned (ci-runner, 2026-11-27: the
-    keeper hung on it, its ssh holding the tunnel and the daemon's output open). A SystemExit, so a thread it ends
-    ends quietly."""
+    keeper hung on it, its ssh holding the tunnel and the daemon's output open). A SystemExit, so a process it ends exits
+    with its status; a thread it would end catches it (mirror.Parent.quietly), as threading prints any subclass's
+    traceback."""
 
     def __init__(self, status: int) -> None:
         super().__init__(status)

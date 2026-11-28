@@ -65,7 +65,8 @@ class TunnelTest(MirrorCase):
         tailers = self.until_tailing(2)
         assert self.daemon is not None
         os.kill(self.daemon.pid, signal.SIGTERM)
-        self.assertEqual(143, self.ended())
+        self.assertEqual(143, self.ended(), self.output())
+        self.assertNotIn("Exception in thread", self.output())
         for pid in tailers + self.ssh_pids():
             self.until(f"pid {pid} outlived the TERMed daemon", lambda: gone(pid))
 
@@ -116,7 +117,8 @@ class TermInWaitTest(MirrorCase):
         self.term_in_wait("daemon")
         self.start(**self.armed())
         self.fired()
-        self.assertEqual(143, self.ended())
+        self.assertEqual(143, self.ended(), self.output())
+        self.assertNotIn("Exception in thread", self.output())  # a thread still writing it at the exit aborted it (-6)
         for pid in self.ssh_pids():
             self.until(f"pid {pid} outlived the TERMed daemon", lambda: gone(pid))
 
