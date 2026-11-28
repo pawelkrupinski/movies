@@ -31,6 +31,7 @@ import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "test"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(HERE)), "scripts", "lib"))  # machine (Alert backtest #38)
 from processes import machine  # noqa: E402
 import promql_selectors  # noqa: E402
 
