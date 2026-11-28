@@ -80,7 +80,6 @@ cognitive	scripts/ci/drift_scenario.py:compare	12
 cognitive	scripts/ci/drift_scenario.py:main	13
 cognitive	scripts/ci/drift_scenario.py:read	14
 cognitive	scripts/ci/drift_seeds.py:main	20
-cognitive	scripts/ci/drift_seeds.py:slices	31
 cognitive	scripts/ci/family_flips_report.py:report	15
 cognitive	scripts/ci/fix_replay_exemptions.py:exemptions	11
 cognitive	scripts/ci/gating_checks.py:sync	13
@@ -233,7 +232,6 @@ cyclomatic	scripts/ci/drift_explorer.py:new_flips	13
 cyclomatic	scripts/ci/drift_scenario.py:compare	12
 cyclomatic	scripts/ci/drift_scenario.py:main	14
 cyclomatic	scripts/ci/drift_seeds.py:main	18
-cyclomatic	scripts/ci/drift_seeds.py:slices	18
 cyclomatic	scripts/ci/family_flips_report.py:report	19
 cyclomatic	scripts/ci/family_shards.py:main	12
 cyclomatic	scripts/ci/gating_checks.py:prove	13

@@ -166,37 +166,42 @@ def add(cc: str, seed: int, why: str, date: str, path: str | None = None) -> boo
     return True
 
 
-def slices(cc: str, fixtures: str, tsvs: list[str]) -> list[str]:
-    """The drift slices of `cc` whose core listings a TSV row (columns venue, rawTitle) names."""
-    named = set()
+def _named_listings(tsvs: list[str]) -> set[tuple[str, str]]:
+    """The (venue, rawTitle) of every row of the TSVs that has both columns; a missing file names none."""
+    named: set[tuple[str, str]] = set()
     for path in tsvs:
         if not os.path.isfile(path):
             continue
         with open(path, newline="") as f:
-            for row in csv.DictReader(f, delimiter="\t"):
-                if row.get("venue") is not None and row.get("rawTitle") is not None:
-                    named.add((row["venue"], row["rawTitle"]))
+            named |= {(row["venue"], row["rawTitle"]) for row in csv.DictReader(f, delimiter="\t")
+                      if row.get("venue") is not None and row.get("rawTitle") is not None}
+    return named
+
+
+def _core_of(path: str) -> list[object]:
+    """The `core` listings of a slice file; none where it cannot be read."""
+    try:
+        with gzip.open(path, "rt") as f:
+            return json.load(f).get("core") or []
+    except (OSError, ValueError):
+        return []
+
+
+def _core_listing(entry: object) -> tuple[str | None, str]:
+    """(venue, title) of a core listing: "N\0venue\0url\0title" (a listing) or "P\0venue\0title\0" (a page's)."""
+    parts = str(entry).split("\0")
+    title = parts[3] if parts[0] == "N" and len(parts) > 3 else parts[2] if len(parts) > 2 else ""
+    return (parts[1] if len(parts) > 1 else None, title)
+
+
+def slices(cc: str, fixtures: str, tsvs: list[str]) -> list[str]:
+    """The drift slices of `cc` whose core listings a TSV row (columns venue, rawTitle) names."""
+    named = _named_listings(tsvs)
     root = os.path.join(fixtures, "drift-slices", cc)
-    out = []
     if not named or not os.path.isdir(root):
-        return out
-    for name in sorted(os.listdir(root)):
-        path = os.path.join(root, name, "slice.json.gz")
-        if not os.path.isfile(path):
-            continue
-        try:
-            with gzip.open(path, "rt") as f:
-                core = json.load(f).get("core") or []
-        except (OSError, ValueError):
-            continue
-        # a core listing: "N\0venue\0url\0title" (a listing) or "P\0venue\0title\0" (a page's)
-        for entry in core:
-            parts = str(entry).split("\0")
-            title = parts[3] if parts[0] == "N" and len(parts) > 3 else parts[2] if len(parts) > 2 else ""
-            if len(parts) > 1 and (parts[1], title) in named:
-                out.append(os.path.join(root, name))
-                break
-    return out
+        return []
+    return [os.path.join(root, name) for name in sorted(os.listdir(root))
+            if any(_core_listing(entry) in named for entry in _core_of(os.path.join(root, name, "slice.json.gz")))]
 
 
 def options(argv):
