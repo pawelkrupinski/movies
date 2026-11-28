@@ -4,8 +4,8 @@
 # timezonefinder; `-m venv DIR` makes a venv whose python3 imports it once that venv's pip has installed the lock
 # (STUB_PIP_FAIL set: the install fails as a missing wheel would). Every venv build appends a line to $STUB_BUILDS.
 # An isolated run (`-I` first: tool-conventions.sh's shims over scripts/lib) goes to the python3 the PATH had when
-# the stub was made, so `bounded` still works under it; so does a script file (`python3 run-script-tests`, which the
-# hook's plan runs for the self-tests' reads and which must not fail for the stub's sake).
+# the stub was made, so `bounded` still works under it; so does a script file (the hook's plan runs the self-test runner so, for
+# the self-tests' reads, and it must not fail for the stub's sake).
 #   timezonefinder_python_stub <dir>   -> <dir>/bin/python3; `: > <dir>/installed` gives that python3 timezonefinder
 timezonefinder_python_stub() { # <dir>
   mkdir -p "$1/bin"
