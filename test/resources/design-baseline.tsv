@@ -130,8 +130,6 @@ effect	scripts/ci/ci_row_scope.py:files	5
 effect	scripts/ci/ci_timings.py	1
 effect	scripts/ci/ci_timings.py:files	1
 effect	scripts/ci/ci_trends.py	2
-effect	scripts/ci/close_mongo_tunnel.py	2
-effect	scripts/ci/close_mongo_tunnel.py:files	2
 effect	scripts/ci/close_mongo_tunnel.py:network	1
 effect	scripts/ci/commit_rules.py	1
 effect	scripts/ci/commit_rules.py:files	1
@@ -203,8 +201,6 @@ effect	scripts/ci/js_quality_ratchet.py:files	1
 effect	scripts/ci/lint_per_file_check.py:files	10
 effect	scripts/ci/lint_reads_trace.py	2
 effect	scripts/ci/lint_reads_trace.py:files	17
-effect	scripts/ci/lint_registry_reads.py	2
-effect	scripts/ci/lint_registry_reads.py:files	12
 effect	scripts/ci/mirror_pinned_images.py	1
 effect	scripts/ci/mirror_pinned_images.py:files	1
 effect	scripts/ci/mongo-ping.py:network	1
@@ -721,7 +717,6 @@ mixed	scripts/ci/ci_timings.py:GitHub.json	4
 mixed	scripts/ci/ci_timings.py:GitHub.log	3
 mixed	scripts/ci/ci_timings.py:handle	7
 mixed	scripts/ci/ci_trends.py:repo_of	4
-mixed	scripts/ci/close_mongo_tunnel.py:close	5
 mixed	scripts/ci/commit_rules.py:Commit.read	7
 mixed	scripts/ci/commit_rules.py:check	10
 mixed	scripts/ci/commit_rules.py:code_lines	7
@@ -875,12 +870,7 @@ mixed	scripts/ci/lint_reads_trace.py:read_observed	3
 mixed	scripts/ci/lint_reads_trace.py:registry_specs	7
 mixed	scripts/ci/lint_reads_trace.py:resource_copies	13
 mixed	scripts/ci/lint_reads_trace.py:tracked	6
-mixed	scripts/ci/lint_registry_reads.py:Repo.__init__	5
 mixed	scripts/ci/lint_registry_reads.py:misses	15
-mixed	scripts/ci/lint_registry_reads.py:probes	9
-mixed	scripts/ci/lint_registry_reads.py:pushable	6
-mixed	scripts/ci/lint_registry_reads.py:registry_rows	4
-mixed	scripts/ci/lint_registry_reads.py:rowless_readers	8
 mixed	scripts/ci/mirror_pinned_images.py:Skopeo.call	4
 mixed	scripts/ci/mirror_pinned_images.py:Skopeo.served	3
 mixed	scripts/ci/mirror_pinned_images.py:rows	4

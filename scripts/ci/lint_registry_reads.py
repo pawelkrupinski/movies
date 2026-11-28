@@ -28,12 +28,16 @@ reads something this cannot name: its row declares it by hand, and `--missing` s
 import bisect
 import os
 import re
-import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from typing import Callable, Dict, Iterable, Iterator, List, Mapping, Sequence, Set, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+import machine  # noqa: E402
+from tool_files import Files  # noqa: E402
+from tool_git import Git, shared_runner  # noqa: E402
 from tool_pool import governed_workers  # noqa: E402  (THE GOVERNED FAN-OUT: the hook runs under a governor ticket)
+from tool_process import Command, Runner  # noqa: E402
 
 LITERAL = re.compile(r'"([A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+/?)"')
 ROOT_LITERAL = re.compile(r'"([A-Za-z0-9_.-]+)"')
@@ -47,17 +51,18 @@ SPEC_PATH = re.compile(r"^([^/]+)/src/test/scala/(.+Spec)\.scala$")
 
 
 class Repo:
-    """The tracked files, listed once: the root's files and every module's resource trees."""
+    """The tracked files, listed once (`git ls-files`): the root's files and every module's resource trees; the files
+    on disk are read through `files`."""
 
-    def __init__(self):
-        run = subprocess.run(["git", "ls-files"], capture_output=True, text=True, check=True)
-        self.tracked = sorted(run.stdout.splitlines())
+    def __init__(self, tracked: Iterable[str], files: Files):
+        self.files = files
+        self.tracked = sorted(tracked)
         self.tracked_set = set(self.tracked)
         self.root_files = {p for p in self.tracked if "/" not in p}
         self.resource_roots = sorted({m.group(1) for m in map(re.compile(r"^([^/]+/src/[^/]+/resources/)").match,
                                                               self.tracked) if m})
 
-    def under(self, prefix):
+    def under(self, prefix: str) -> Iterator[str]:
         """The tracked paths under a directory prefix, in order."""
         start = bisect.bisect_left(self.tracked, prefix)
         for path in self.tracked[start:]:
@@ -65,39 +70,42 @@ class Repo:
                 break
             yield path
 
+    def on_disk_under(self, directory: str) -> List[str]:
+        """Every file below a directory on disk (paths from the root), none when it is no directory."""
+        if not self.files.is_dir(directory):
+            return []
+        return [os.path.relpath(f, self.files.base) for f in self.files.under(directory)]
 
-def probes(literal, repo):
+
+def probes(literal: str, repo: Repo) -> List[str]:
     """The pushed paths standing for `literal`: itself, or one file per extension below a directory -- tracked files
     (the index, listed once) and, for a path the index lacks, the files on disk (a file about to be committed)."""
     path = os.path.normpath(literal)
-    if path in repo.tracked_set or os.path.isfile(path):
+    if path in repo.tracked_set or repo.files.is_file(path):
         return [path]
-    found = {}
-    below = list(repo.under(path + "/"))
-    if not below and os.path.isdir(path):
-        below = [os.path.join(root, name) for root, _dirs, files in sorted(os.walk(path)) for name in sorted(files)]
+    found: Dict[str, str] = {}
+    below = list(repo.under(path + "/")) or repo.on_disk_under(path)
     for file in below:
         extension = os.path.splitext(file)[1]
         found.setdefault(extension if EXTENSION.fullmatch(extension) else "", file)
     return list(found.values())
 
 
-def pushable(paths, repo):
-    """`paths` less those git ignores: a push never carries an ignored path -- the GitOps manifests that
-    infra/bin/fetch-gitops lays under infra/kubernetes/ are movies-gitops' files, and probing them failed this check on
-    every clone that had fetched them (the landing checks' among them, Tool self-tests #158) and on none without. A
+def pushable(paths: List[str], repo: Repo, ignored_of: Callable[[List[str]], Set[str]]) -> List[str]:
+    """`paths` less those git ignores (`ignored_of` asks it): a push never carries an ignored path -- the GitOps manifests
+    that infra/bin/fetch-gitops lays under infra/kubernetes/ are movies-gitops' files, and probing them failed this check
+    on every clone that had fetched them (the landing checks' among them, Tool self-tests #158) and on none without. A
     tracked path is never ignored, so only the rest are asked (one git call a spec, and only when it has any)."""
     untracked = [p for p in paths if p not in repo.tracked_set]
     if not untracked:
         return paths
-    run = subprocess.run(["git", "check-ignore", "--stdin"], input="\n".join(untracked) + "\n", capture_output=True, text=True)
-    ignored = set(run.stdout.split("\n"))
+    ignored = ignored_of(untracked)
     return [p for p in paths if p not in ignored]
 
 
-def reads(text, repo):
+def reads(text: str, repo: Repo, ignored_of: Callable[[List[str]], Set[str]]) -> Dict[str, List[str]]:
     """{literal: [probe paths]}: what a spec's source reads of the repository (the module docstring's rules)."""
-    candidates = {}
+    candidates: Dict[str, List[str]] = {}
     for literal in set(LITERAL.findall(text)):
         candidates.setdefault(literal, []).extend(probes(literal, repo))
     for literal in set(ROOT_LITERAL.findall(text)) & repo.root_files:
@@ -106,98 +114,110 @@ def reads(text, repo):
     for literal in {r for r in RESOURCE_CALL.findall(text) if r.strip("/")}:
         candidates.setdefault(literal, []).extend(p for root in repo.resource_roots for p in probes(root + literal.rstrip("/"), repo))
     keep = set(pushable(sorted({p for paths in candidates.values() for p in paths
-                                if not p.startswith(("target/", ".git/"))}), repo))
+                                if not p.startswith(("target/", ".git/"))}), repo, ignored_of))
     found = {literal: sorted(set(paths) & keep) for literal, paths in sorted(candidates.items())}
     return {literal: paths for literal, paths in found.items() if paths}
 
 
-def spec_source(spec):
+def spec_source(spec: str) -> str:
     module, name = spec.split(":", 1)
     return f"{module}/src/test/scala/{name.replace('.', '/')}.scala"
 
 
-def registry_rows(registry):
-    with open(registry) as rows:
-        return [line.rstrip("\n").split("\t") for line in rows if line.strip() and not line.startswith("#")]
+def registry_rows(registry: str, files: Files) -> List[List[str]]:
+    return [line.split("\t") for line in files.read_text(registry).splitlines() if line.strip() and not line.startswith("#")]
 
 
-def selected_specs(path):
-    run = subprocess.run([HOOK, "--lint-plan"], input=path + "\n", capture_output=True, text=True,
-                         env={**os.environ, "PREPUSH_GITOPS": "1"})
-    return set(run.stdout.split())
+def git_ignored(git: Git) -> Callable[[List[str]], Set[str]]:
+    """Which of the paths git ignores (`git check-ignore --stdin`)."""
+    return lambda paths: set(git.call("check-ignore", "--stdin", quiet=True, input="\n".join(paths) + "\n").stdout.split("\n"))
 
 
-def misses(registry, only):
-    repo = Repo()
-    wanted = {}  # spec -> {literal: [probe, ...]}
-    for columns in registry_rows(registry):
+def hook_selection(runner: Runner, env: Mapping[str, str]) -> Callable[[str], Set[str]]:
+    """The specs the hook selects for a push of one path (`pre-push --lint-plan`, the GitOps manifests in place)."""
+    def selected(path: str) -> Set[str]:
+        done = runner.capture(Command([HOOK, "--lint-plan"], {**env, "PREPUSH_GITOPS": "1"}, input=path + "\n"))
+        return set(done.stdout.split())
+    return selected
+
+
+def misses(registry: str, only: Set[str], repo: Repo, ignored_of: Callable[[List[str]], Set[str]],
+           selected_specs: Callable[[str], Set[str]]) -> List[str]:
+    """The `<spec>TAB<literal>` lines of the registry rows that miss a path their spec reads."""
+    wanted: Dict[str, Dict[str, List[str]]] = {}  # spec -> {literal: [probe, ...]}
+    for columns in registry_rows(registry, repo.files):
         spec, declared = columns[0], columns[1] if len(columns) > 1 else ""
         source = spec_source(spec)
-        if declared.split() == ["-"] or not os.path.isfile(source) or (only and spec not in only):
+        if declared.split() == ["-"] or not repo.files.is_file(source) or (only and spec not in only):
             continue
-        with open(source) as text:
-            per = reads(text.read(), repo)
+        per = reads(repo.files.read_text(source), repo, ignored_of)
         if per:
             wanted[spec] = per
     unique = sorted({p for per in wanted.values() for found in per.values() for p in found})
     with governed_workers("lint-plan", 8) as width, ThreadPoolExecutor(max_workers=width) as pool:
         selection = dict(zip(unique, pool.map(selected_specs, unique)))
-    for spec, per in wanted.items():
-        for literal, found in per.items():
-            if not any(spec in selection[p] for p in found):
-                print(f"{spec}\t{literal}")
+    return [f"{spec}\t{literal}" for spec, per in wanted.items() for literal, found in per.items()
+            if not any(spec in selection[p] for p in found)]
 
 
-def rowless_readers(registry):
+def rowless_readers(registry: str, repo: Repo, ignored_of: Callable[[List[str]], Set[str]]
+                    ) -> List[Tuple[str, Dict[str, List[str]]]]:
     """[(spec, {literal: probes})]: the specs reading a checked-in artefact that have no row, in C order."""
-    repo = Repo()
-    rows = {columns[0] for columns in registry_rows(registry)}
-    out = []
+    rows = {columns[0] for columns in registry_rows(registry, repo.files)}
+    out: List[Tuple[str, Dict[str, List[str]]]] = []
     for path in repo.tracked:
         match = SPEC_PATH.match(path)
         if not match:
             continue
         spec = f"{match.group(1)}:{match.group(2).replace('/', '.')}"
-        if spec in rows or not os.path.isfile(path):
+        if spec in rows or not repo.files.is_file(path):
             continue
-        with open(path) as text:
-            source = text.read()
-        per = reads(source, repo)
+        source = repo.files.read_text(path)
+        per = reads(source, repo, ignored_of)
         if per or OPENER.search(source):
             out.append((spec, per))
     return sorted(out, key=lambda row: row[0].encode())
 
 
-def main(args):
+def suggested(per: Dict[str, List[str]], files: Files) -> str:
+    """The reads a row would declare: a directory read as everything under it; a resource as the files it resolved to."""
+    globs = sorted({literal.rstrip("/") + "/*" if files.is_dir(literal) else literal if files.exists(literal) else p
+                    for literal, found in per.items() for p in found})
+    return " ".join(globs) or "?"
+
+
+def report(args: Sequence[str], registry: str, repo: Repo, ignored_of: Callable[[List[str]], Set[str]],
+           selected_specs: Callable[[str], Set[str]]) -> List[str]:
+    """The lines a mode prints (the module docstring's modes); none for a usage error, said by the caller."""
+    mode, rest = (args[0], list(args[1:])) if args else ("", [])
+    if mode == "--missing":
+        return [spec for spec, _ in rowless_readers(registry, repo, ignored_of)]
+    if mode == "--suggest":
+        return [f"{spec}\t{suggested(per, repo.files)}" for spec, per in rowless_readers(registry, repo, ignored_of)]
+    if mode == "--reads":
+        return [f"{spec}\t{literal}\t{' '.join(found)}" for spec in rest
+                for literal, found in reads(repo.files.read_text(spec_source(spec)), repo, ignored_of).items()]
+    return misses(registry, set(rest), repo, ignored_of, selected_specs)
+
+
+MODES = ("", "--missing", "--suggest", "--reads", "--only")
+
+
+def main(args: List[str]) -> int:
+    files, git = Files.here(), Git.here()
     registry = "scripts/hooks/lint-registry.tsv"
     if args[:1] == ["--registry"]:
         registry, args = args[1], args[2:]
     elif args and not args[0].startswith("--"):  # the positional form
         registry, args = args[0], args[1:]
-    if not os.path.isfile(registry):
+    if not files.is_file(registry):
         return 0
-    if args[:1] == ["--missing"]:
-        for spec, _ in rowless_readers(registry):
-            print(spec)
-    elif args[:1] == ["--suggest"]:
-        for spec, per in rowless_readers(registry):
-            # a directory read as everything under it; a resource as the files it resolved to
-            globs = sorted({literal.rstrip("/") + "/*" if os.path.isdir(literal) else literal if os.path.exists(literal) else p
-                            for literal, found in per.items() for p in found})
-            print(f"{spec}\t{' '.join(globs) or '?'}")
-    elif args[:1] == ["--reads"]:
-        repo = Repo()
-        for spec in args[1:]:
-            with open(spec_source(spec)) as text:
-                for literal, found in reads(text.read(), repo).items():
-                    print(f"{spec}\t{literal}\t{' '.join(found)}")
-    elif args[:1] == ["--only"]:
-        misses(registry, set(args[1:]))
-    elif not args:
-        misses(registry, set())
-    else:
+    if (args[0] if args else "") not in MODES:
         print(__doc__, file=sys.stderr)
         return 2
+    selected = hook_selection(shared_runner(), machine.environment())
+    repo = Repo(git.lines("ls-files"), files)
+    print("".join(line + "\n" for line in report(args, registry, repo, git_ignored(git), selected)), end="")
     return 0
 
 
