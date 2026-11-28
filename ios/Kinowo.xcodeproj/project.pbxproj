@@ -128,6 +128,7 @@
 		DD00000000000000000052 /* PosterChainImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000052 /* PosterChainImage.swift */; };
 		DD0000000000000000A601 /* InterfaceOrientationReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000A601 /* InterfaceOrientationReader.swift */; };
 		DD00000000000000000300 /* City.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000300 /* City.swift */; };
+		DD7185CD2ED7C01174CA90 /* CitySearchRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC7185CD2ED7C01174CA90 /* CitySearchRows.swift */; };
 		DD00000000000000000304 /* HiddenFilmsFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000304 /* HiddenFilmsFilter.swift */; };
 		DD00000000000000000303 /* CitySwitchSuppressor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000303 /* CitySwitchSuppressor.swift */; };
 		DD00000000000000000301 /* CityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000301 /* CityGate.swift */; };
@@ -268,6 +269,7 @@
 		CC00000000000000000052 /* PosterChainImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterChainImage.swift; sourceTree = "<group>"; };
 		CC0000000000000000A601 /* InterfaceOrientationReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterfaceOrientationReader.swift; sourceTree = "<group>"; };
 		CC00000000000000000300 /* City.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = City.swift; sourceTree = "<group>"; };
+		CC7185CD2ED7C01174CA90 /* CitySearchRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitySearchRows.swift; sourceTree = "<group>"; };
 		CC00000000000000000304 /* HiddenFilmsFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenFilmsFilter.swift; sourceTree = "<group>"; };
 		CC00000000000000000303 /* CitySwitchSuppressor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitySwitchSuppressor.swift; sourceTree = "<group>"; };
 		CC00000000000000000301 /* CityGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityGate.swift; sourceTree = "<group>"; };
@@ -358,6 +360,7 @@
 				CC00000000000000000040 /* FilmDetails.swift */,
 				CC00000000000000000041 /* CinemaLink.swift */,
 				CC00000000000000000300 /* City.swift */,
+				CC7185CD2ED7C01174CA90 /* CitySearchRows.swift */,
 				CC00000000000000000E01 /* Country.swift */,
 				CC00000000000000000E07 /* CatalogCache.swift */,
 				CC0000000000000000A5C1 /* ClientSupport.swift */,
@@ -678,6 +681,7 @@
 				DD00000000000000000052 /* PosterChainImage.swift in Sources */,
 				DD0000000000000000A601 /* InterfaceOrientationReader.swift in Sources */,
 				DD00000000000000000300 /* City.swift in Sources */,
+				DD7185CD2ED7C01174CA90 /* CitySearchRows.swift in Sources */,
 				DD00000000000000000E01 /* Country.swift in Sources */,
 				DD00000000000000000E07 /* CatalogCache.swift in Sources */,
 				DD0000000000000000A5C1 /* ClientSupport.swift in Sources */,
