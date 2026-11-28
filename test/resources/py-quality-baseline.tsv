@@ -59,10 +59,6 @@ cognitive	infra/nix/files/scheduled_dispatch.py:problems	19
 cognitive	infra/nix/files/scheduled_dispatch.py:staggering	17
 cognitive	scripts/adopt_ci_budgets.py:adopt	17
 cognitive	scripts/adopt_ci_budgets.py:read_figures	12
-cognitive	scripts/agent_time.py:Agent._sweep	57
-cognitive	scripts/agent_time.py:bash_bucket	30
-cognitive	scripts/agent_time.py:read_events	29
-cognitive	scripts/agent_time.py:wait_kind	12
 cognitive	scripts/aot-class-list.py:loaded_classes	20
 cognitive	scripts/ci/commit_rules.py:allow_lists	28
 cognitive	scripts/ci/commit_rules.py:gauges_before_behaviour	14
@@ -190,12 +186,7 @@ cyclomatic	infra/nix/files/scheduled_dispatch.py:problems	13
 cyclomatic	infra/nix/files/scheduled_dispatch.py:rate_limit_reset	12
 cyclomatic	infra/nix/files/scheduled_dispatch.py:staggering	12
 cyclomatic	scripts/adopt_ci_budgets.py:adopt	12
-cyclomatic	scripts/agent_time.py:Agent._sweep	26
-cyclomatic	scripts/agent_time.py:bash_bucket	23
-cyclomatic	scripts/agent_time.py:launch_kind	11
 cyclomatic	scripts/agent_time.py:main	11
-cyclomatic	scripts/agent_time.py:read_events	15
-cyclomatic	scripts/agent_time.py:wait_kind	13
 cyclomatic	scripts/aot-class-list.py:loaded_classes	16
 cyclomatic	scripts/ci/commit_rules.py:allow_lists	31
 cyclomatic	scripts/ci/commit_rules.py:gauges_before_behaviour	16
@@ -325,7 +316,7 @@ pyright	infra/nix/files/identity-regressions.py	86
 pyright	infra/nix/files/nixos-auto-apply.py	73
 pyright	infra/nix/files/scheduled_dispatch.py	175
 pyright	scripts/adopt_ci_budgets.py	2
-pyright	scripts/agent_time.py	20
+pyright	scripts/agent_time.py	1
 pyright	scripts/aot-class-list.py	11
 pyright	scripts/ci/check-security-headers.py	104
 pyright	scripts/ci/ci_http_calls.py	30

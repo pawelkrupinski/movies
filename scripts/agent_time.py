@@ -23,6 +23,7 @@ import re
 import subprocess
 import sys
 from collections import Counter
+from typing import Any, Dict, List, NamedTuple, Optional, Set, Tuple, Union
 
 IDLE_GAP_SECONDS = 180
 POLL = re.compile(r"\bsleep\s+\d|(?<!-)\buntil\b(?!-)|\bwhile\b|for \w+ in \$\(seq|\bgh run watch\b|\bci-wait\b"
@@ -31,6 +32,22 @@ RUN_ID = re.compile(r"\b3\d{10}\b")
 TASK_OUTPUT = re.compile(r"tasks/(b[a-z0-9]+)\.output")
 LAUNCHED = re.compile(r"running in background with ID: (b[a-z0-9]+)")
 NOTIFIED = re.compile(r"<task-notification>.*?<task-id>([a-z0-9]+)</task-id>", re.S)
+
+
+class ToolUse(NamedTuple):
+    tool_id: Optional[str]
+    name: Optional[str]
+    given: Dict[str, Any]
+
+
+class ToolResult(NamedTuple):
+    tool_id: Optional[str]
+    text: str
+
+
+# (time, kind, payload): use (a ToolUse), result (a ToolResult), notify (a task id), model, user (none)
+Event = Tuple[datetime.datetime, str, Union[None, str, ToolUse, ToolResult]]
+OpenCall = Tuple[datetime.datetime, str, str]  # (start, bucket, what)
 
 
 def timestamp(text: str) -> datetime.datetime:
@@ -55,28 +72,19 @@ LAND = re.compile(r"\bagentctl (land|inbox wait|status|wait)\b|\breland\b|\bwait
 WHAT_IF = "identity-what-if"
 
 
+CONVERGENCE = re.compile(r"convergence-local|country-convergence|Convergence(Spec|Poland|Germany|Uk|Us|Spain)|convergence[A-Z]"
+                         r"|convergence leg|legs\.sh", re.I)
+CI_WAIT = re.compile(r"\bgh run (watch|view|list)\b|\bci-wait\b|\b3\d{10}\b")
+SBT = re.compile(r"sbt-warm|\bsbt\b")
+# a background command's kind by the first pattern its text matches
+LAUNCH_KINDS = ((LAND, "land"), (re.compile(WHAT_IF), "what-if"), (re.compile("identity-measure"), "measure"),
+                (re.compile("identity-slice"), "slice"), (CONVERGENCE, "local convergence"), (SBT, "sbt suite"),
+                (CI_WAIT, "CI wait"), (re.compile(r"mongodump|mongoexport|\bdump\b"), "dump"), (re.compile("git push"), "pre-push"))
+
+
 def launch_kind(command: str) -> str:
     """What a background command was, for the waits on it."""
-    if LAND.search(command):
-        return "land"
-    if WHAT_IF in command:
-        return "what-if"
-    if "identity-measure" in command:
-        return "measure"
-    if "identity-slice" in command:
-        return "slice"
-    if re.search(r"convergence-local|country-convergence|Convergence(Spec|Poland|Germany|Uk|Us|Spain)|convergence[A-Z]"
-                 r"|convergence leg|legs\.sh", command, re.I):
-        return "local convergence"
-    if re.search(r"sbt-warm|\bsbt\b", command):
-        return "sbt suite"
-    if re.search(r"\bgh run (watch|view|list)\b|\bci-wait\b", command) or RUN_ID.search(command):
-        return "CI wait"
-    if re.search(r"mongodump|mongoexport|\bdump\b", command):
-        return "dump"
-    if "git push" in command:
-        return "pre-push"
-    return "other"
+    return next((kind for pattern, kind in LAUNCH_KINDS if pattern.search(command)), "other")
 
 
 WRITES = re.compile(r"(?:>>?|\btee(?: -a)?)\s*\"?([^\s;|&\"<>()]+)")
@@ -108,25 +116,26 @@ def same_file(a: str, b: str) -> bool:
     return b.startswith("/") and not a.startswith("/") and a.count("/") >= 1 and b.endswith("/" + a)
 
 
+# (the file's name, the pattern waited for, the kind) by the first row that matches: either one
+WAIT_TARGETS = ((re.compile("what-?if", re.I), None, "what-if"), (re.compile("measure", re.I), re.compile("LANDABLE"), "measure"),
+                (re.compile("slice", re.I), None, "slice"), (re.compile("convergence|legs|conv-", re.I), None, "local convergence"),
+                (re.compile("testUnit|itAll|sbt|PageTest|test", re.I), re.compile(r"\^exit "), "sbt suite"))
+
+
+def waits_for_land(target: str, pattern: str) -> bool:
+    return bool(re.search(r"(^|/)(re)?land[^/]*$", target, re.I)) or (bool(re.search(r"\bLANDED\b", pattern)) and "LANDABLE" not in pattern)
+
+
 def wait_kind(command: str) -> str | None:
     """What a `wait-for <file> <pattern>` waits on, by the file's name and the pattern, when no launch explains it."""
     wait = WAIT_FOR.search(command)
     if not wait:
         return None
     target, pattern = wait.group(1), wait.group(2) or ""
-    if re.search(r"(^|/)(re)?land[^/]*$", target, re.I) or re.search(r"\bLANDED\b", pattern) and "LANDABLE" not in pattern:
+    if waits_for_land(target, pattern):
         return "land"
-    if re.search(r"what-?if", target, re.I):
-        return "what-if"
-    if re.search(r"measure", target, re.I) or "LANDABLE" in pattern:
-        return "measure"
-    if re.search(r"slice", target, re.I):
-        return "slice"
-    if re.search(r"convergence|legs|conv-", target, re.I):
-        return "local convergence"
-    if re.search(r"testUnit|itAll|sbt|PageTest|test", target, re.I) or "^exit " in pattern:
-        return "sbt suite"
-    return None
+    return next((kind for on_target, on_pattern, kind in WAIT_TARGETS
+                 if on_target.search(target) or (on_pattern and on_pattern.search(pattern))), None)
 
 
 class Launches:
@@ -155,54 +164,41 @@ class Launches:
         return None
 
 
+# a polling command's bucket by the first pattern its text matches, once no launch or file explains it
+POLL_KINDS = ((LAND, "poll: land"), (re.compile("identity-measure"), "poll: measure"), (re.compile("identity-slice"), "poll: slice"),
+              (re.compile(r"\bgh (run|api)\b|\bci-wait\b|record-scrape|\b3\d{10}\b"), "poll: CI wait"),
+              (re.compile(r"=== \w+ exit|legs|conv-|convergence|order\.log"), "poll: local convergence"),
+              (re.compile(r"Total time|\[success\]|Tests: |\[error\]"), "poll: sbt suite"))
+# a foreground command's bucket (a label, or a function of the command) by the first pattern its text matches
+FOREGROUND_BUCKETS = ((re.compile("git push"), "pre-push (git push)"), (LAND, "land (foreground)"),
+                      (re.compile(WHAT_IF), "what-if (foreground)"), (re.compile("identity-measure"), "measure (foreground)"),
+                      (re.compile("identity-slice|identity-explain"), "slice (foreground)"), (re.compile("fail-before"), "fail-before"),
+                      (re.compile("convergence-local"), "local convergence (foreground)"),
+                      (re.compile(r"run-script-tests|-test\.sh|_test\.py"), "script tests"), (SBT, sbt_shape),
+                      (re.compile(r"\bgh\b"), "gh"), (re.compile(r"\bgit\b"), "git"))
+
+
+def poll_bucket(command: str, launches: Launches) -> str:
+    kind = launches.waited_on(command)
+    if kind and kind != "other":
+        return "poll: " + kind
+    kind = wait_kind(command)
+    if kind:
+        return "poll: " + kind
+    return next((bucket for pattern, bucket in POLL_KINDS if pattern.search(command)), "poll: other")
+
+
 def bash_bucket(command: str, launches: Launches) -> str:
     """A foreground Bash command's bucket."""
     if POLL.search(command):
-        kind = launches.waited_on(command)
-        if kind and kind != "other":
-            return "poll: " + kind
-        kind = wait_kind(command)
-        if kind:
-            return "poll: " + kind
-        if LAND.search(command):
-            return "poll: land"
-        if "identity-measure" in command:
-            return "poll: measure"
-        if "identity-slice" in command:
-            return "poll: slice"
-        if re.search(r"\bgh (run|api)\b|\bci-wait\b|record-scrape", command) or RUN_ID.search(command):
-            return "poll: CI wait"
-        if re.search(r"=== \w+ exit|legs|conv-|convergence|order\.log", command):
-            return "poll: local convergence"
-        if re.search(r"Total time|\[success\]|Tests: |\[error\]", command):
-            return "poll: sbt suite"
-        return "poll: other"
-    if "git push" in command:
-        return "pre-push (git push)"
-    if LAND.search(command):
-        return "land (foreground)"
-    if WHAT_IF in command:
-        return "what-if (foreground)"
-    if "identity-measure" in command:
-        return "measure (foreground)"
-    if re.search(r"identity-slice|identity-explain", command):
-        return "slice (foreground)"
-    if "fail-before" in command:
-        return "fail-before"
-    if "convergence-local" in command:
-        return "local convergence (foreground)"
-    if re.search(r"run-script-tests|-test\.sh|_test\.py", command):
-        return "script tests"
-    if re.search(r"sbt-warm|\bsbt\b", command):
-        return sbt_shape(command)
-    if re.search(r"\bgh\b", command):
-        return "gh"
-    if re.search(r"\bgit\b", command):
-        return "git"
+        return poll_bucket(command, launches)
+    for pattern, bucket in FOREGROUND_BUCKETS:
+        if pattern.search(command):
+            return bucket(command) if callable(bucket) else bucket
     return "bash: other"
 
 
-def text_of(content) -> str:
+def text_of(content: object) -> str:
     if isinstance(content, str):
         return content
     if isinstance(content, list):
@@ -218,111 +214,130 @@ def is_agent_transcript(path: str) -> bool:
         return False
 
 
-def read_events(path: str) -> list:
+def block_events(at: datetime.datetime, content: object) -> List[Event]:
+    """The tool calls and results among a message's content blocks."""
+    events: List[Event] = []
+    for block in content if isinstance(content, list) else []:
+        if not isinstance(block, dict):
+            continue
+        if block.get("type") == "tool_use":
+            events.append((at, "use", ToolUse(block.get("id"), block.get("name"), block.get("input") or {})))
+        elif block.get("type") == "tool_result":
+            events.append((at, "result", ToolResult(block.get("tool_use_id"), text_of(block.get("content")))))
+    return events
+
+
+def record_events(record: Dict[str, Any]) -> List[Event]:
+    """The events of one transcript record (none when it holds no timestamped message)."""
+    when, message = record.get("timestamp"), record.get("message")
+    if not when or not isinstance(message, dict):
+        return []
+    at, content = timestamp(when), message.get("content")
+    events: List[Event] = [(at, "model", None)] if record.get("type") == "assistant" else []
+    events += block_events(at, content)
+    if record.get("type") == "user":
+        notified = NOTIFIED.search(text_of(content))
+        if notified:
+            events.append((at, "notify", notified.group(1)))
+        elif isinstance(content, str):
+            events.append((at, "user", None))
+    return events
+
+
+def read_events(path: str) -> List[Event]:
     """(time, kind, payload) of one transcript: use (id, name, input), result (tool id, text), notify (task id),
     model, user."""
-    events = []
+    events: List[Event] = []
     with open(path, encoding="utf-8") as f:
         for line in f:
             try:
                 record = json.loads(line)
             except ValueError:
                 continue
-            when = record.get("timestamp")
-            message = record.get("message")
-            if not when or not isinstance(message, dict):
-                continue
-            at = timestamp(when)
-            content = message.get("content")
-            if record.get("type") == "assistant":
-                events.append((at, "model", None))
-            if isinstance(content, list):
-                for block in content:
-                    if not isinstance(block, dict):
-                        continue
-                    if block.get("type") == "tool_use":
-                        events.append((at, "use", (block.get("id"), block.get("name"), block.get("input") or {})))
-                    elif block.get("type") == "tool_result":
-                        events.append((at, "result", (block.get("tool_use_id"), text_of(block.get("content")))))
-            if record.get("type") == "user":
-                notified = NOTIFIED.search(text_of(content))
-                if notified:
-                    events.append((at, "notify", notified.group(1)))
-                elif isinstance(content, str):
-                    events.append((at, "user", None))
+            events += record_events(record)
     events.sort(key=lambda e: e[0])
     return events
 
 
-def background_launches(events: list, launches: Launches) -> None:
+def background_launches(events: List[Event], launches: Launches) -> None:
     """The background commands one transcript launched, into <launches>."""
-    commands = {}
-    for _, kind, payload in events:
-        if kind == "use" and payload[1] in ("Bash", "bash") and isinstance(payload[2], dict) \
-                and payload[2].get("run_in_background"):
+    commands: Dict[Optional[str], str] = {}
+    for _, _, payload in events:
+        if isinstance(payload, ToolUse) and payload.name in ("Bash", "bash") and payload.given.get("run_in_background"):
             # the description too: `bash scratchpad/legs.sh` says what it is only there ("Run four convergence legs")
-            commands[payload[0]] = payload[2].get("command", "") + "\n" + str(payload[2].get("description", ""))
-        elif kind == "result" and payload[0] in commands:
-            launched = LAUNCHED.search(payload[1])
+            commands[payload.tool_id] = payload.given.get("command", "") + "\n" + str(payload.given.get("description", ""))
+        elif isinstance(payload, ToolResult) and payload.tool_id in commands:
+            launched = LAUNCHED.search(payload.text)
             if launched:
-                launches.add(launched.group(1), commands[payload[0]])
+                launches.add(launched.group(1), commands[payload.tool_id])
 
 
 class Agent:
-    def __init__(self, agent_id: str, events: list, launches: Launches, since=None):
+    def __init__(self, agent_id: str, events: List[Event], launches: Launches, since: Optional[datetime.datetime] = None):
         self.id = agent_id
         self.since = since  # count only the seconds after it (a datetime), None: all
         self.buckets = Counter()
-        self.steps = []  # (start, seconds, bucket, what)
+        self.steps: List[Tuple[datetime.datetime, float, str, str]] = []  # (start, seconds, bucket, what)
         self.span = (events[-1][0] - events[0][0]).total_seconds() if events else 0.0
         self._sweep(events, launches)
 
-    def _sweep(self, events: list, launches: Launches) -> None:
-        monitors = set()  # task ids of Monitor watches
-        background = set()  # tool ids of background launches and monitors: they return at once
-        open_calls = {}  # tool id -> (start, bucket, what)
-        for (at, kind, payload), following in zip(events, events[1:] + [None]):
-            if kind == "use":
-                tool_id, name, given = payload
-                command = given.get("command", "") if isinstance(given, dict) else ""
-                if (name in ("Bash", "bash") and given.get("run_in_background")) or name == "Monitor":
-                    background.add(tool_id if name != "Monitor" else "monitor:" + str(tool_id))
-                else:
-                    bucket = bash_bucket(command, launches) if name in ("Bash", "bash") else "tool: " + str(name)
-                    if bucket == "bash: other" and QUICK.search(command):
-                        bucket = "quick command"
-                    open_calls[tool_id] = (at, bucket, command or str(given.get("description", name))[:200])
-            elif kind == "result":
-                tool_id, text = payload
-                if "monitor:" + str(tool_id) in background:
-                    monitors.update(re.findall(r"\b(b[a-z0-9]{7,})\b", text))
-                if tool_id in open_calls:
-                    start, bucket, what = open_calls.pop(tool_id)
-                    if self.since is None or start >= self.since:
-                        self.steps.append((start, (at - start).total_seconds(), bucket, what))
+    def _sweep(self, events: List[Event], launches: Launches) -> None:
+        monitors: Set[str] = set()  # task ids of Monitor watches
+        background: Set[str] = set()  # tool ids of background launches and monitors: they return at once
+        open_calls: Dict[Optional[str], OpenCall] = {}
+        for (at, _, payload), following in zip(events, [*events[1:], None]):
+            if isinstance(payload, ToolUse):
+                self._open(at, payload, launches, background, open_calls)
+            elif isinstance(payload, ToolResult):
+                self._close(at, payload, monitors, background, open_calls)
             if following is None:
                 break
             gap = (following[0] - at).total_seconds()
-            if gap <= 0:
-                continue
-            if self.since is not None and at < self.since:
-                continue
-            if open_calls:
-                bucket = min(open_calls.values(), key=lambda call: call[0])[1]
-            elif following[1] == "notify":
-                task = following[2]
-                bucket = "bg wait: " + ("monitor" if task in monitors else "subagent" if re.fullmatch(r"a[0-9a-f]{16}", task)
-                                        else launches.by_task.get(task, "other"))
-                self.steps.append((at, gap, bucket, "until task " + following[2]))
-            elif gap > IDLE_GAP_SECONDS:
-                bucket = "idle gap >3m"
-                self.steps.append((at, gap, bucket, "next: " + following[1]))
-            else:
-                bucket = "model"
-            self.buckets[bucket] += gap
+            if gap > 0 and (self.since is None or at >= self.since):
+                self.buckets[self._gap_bucket(at, following, gap, open_calls, monitors, launches)] += gap
+
+    def _open(self, at: datetime.datetime, payload: ToolUse, launches: Launches, background: Set[str],
+              open_calls: Dict[Optional[str], OpenCall]) -> None:
+        """A tool call begins: a background launch or monitor returns at once; any other stays open until its result."""
+        tool_id, name, given = payload
+        command = given.get("command", "")
+        if (name in ("Bash", "bash") and given.get("run_in_background")) or name == "Monitor":
+            background.add(str(tool_id) if name != "Monitor" else "monitor:" + str(tool_id))
+            return
+        bucket = bash_bucket(command, launches) if name in ("Bash", "bash") else "tool: " + str(name)
+        if bucket == "bash: other" and QUICK.search(command):
+            bucket = "quick command"
+        open_calls[tool_id] = (at, bucket, command or str(given.get("description", name))[:200])
+
+    def _close(self, at: datetime.datetime, payload: ToolResult, monitors: Set[str], background: Set[str],
+               open_calls: Dict[Optional[str], OpenCall]) -> None:
+        """A tool result: the call's step is recorded, a Monitor's result names the tasks it watches."""
+        tool_id, text = payload
+        if "monitor:" + str(tool_id) in background:
+            monitors.update(re.findall(r"\b(b[a-z0-9]{7,})\b", text))
+        if tool_id in open_calls:
+            start, bucket, what = open_calls.pop(tool_id)
+            if self.since is None or start >= self.since:
+                self.steps.append((start, (at - start).total_seconds(), bucket, what))
+
+    def _gap_bucket(self, at: datetime.datetime, following: Event, gap: float, open_calls: Dict[Optional[str], OpenCall],
+                    monitors: Set[str], launches: Launches) -> str:
+        """The bucket the seconds before the next event go to (a wait or an idle gap is also a step)."""
+        if open_calls:
+            return min(open_calls.values(), key=lambda call: call[0])[1]
+        if following[1] == "notify":
+            task = str(following[2])
+            bucket = "bg wait: " + ("monitor" if task in monitors else "subagent" if re.fullmatch(r"a[0-9a-f]{16}", task)
+                                    else launches.by_task.get(task, "other"))
+            self.steps.append((at, gap, bucket, "until task " + task))
+            return bucket
+        if gap > IDLE_GAP_SECONDS:
+            self.steps.append((at, gap, "idle gap >3m", "next: " + following[1]))
+            return "idle gap >3m"
+        return "model"
 
 
-def load(tasks_dir: str, since=None) -> list:
+def load(tasks_dir: str, since: Optional[datetime.datetime] = None) -> List[Agent]:
     transcripts = {}
     launches = Launches()
     sessions = set()
@@ -350,7 +365,7 @@ def minutes(seconds: float) -> str:
     return f"{seconds / 60:.0f}m"
 
 
-def report(agents: list, tasks_dir: str, longest: int = 10) -> str:
+def report(agents: List[Agent], tasks_dir: str, longest: int = 10) -> str:
     total = Counter()
     for agent in agents:
         total.update(agent.buckets)
@@ -396,7 +411,7 @@ def default_tasks_dir() -> str | None:
 DOCSTRING = __doc__ or ""  # None under python -OO
 
 
-def main(argv: list) -> int:
+def main(argv: List[str]) -> int:
     parser = argparse.ArgumentParser(prog="agent-time", description=DOCSTRING.splitlines()[0])
     parser.add_argument("tasks_dir", nargs="?", help="a session's tasks directory (default: the newest session's)")
     parser.add_argument("--agent", help="one agent's slowest steps (its id, or a prefix of it)")
