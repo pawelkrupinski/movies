@@ -16,6 +16,12 @@ name: Landing check build cache
 # After Main, never beside it: on a GitHub-hosted runner, so it takes none of ci-runner's check slots, and none of the
 # 20 Main starts with (CiRunnerBudgetSpec). Runs queue rather than cancel: the cache is saved at the job's end, so a
 # cancelled run would save nothing. Off the gate: a red here costs the landing check speed, never correctness.
+#
+# ONLY WHEN SBT'S INPUTS MOVED (the owner, 2026-11-28; ~3,500 wall-min/month): `plan` diffs main's newest commit against the
+# commit of this workflow's newest successful run and runs both jobs only when a path the cache covers changed -- a module's
+# `src/`, the build definition, the walk's data. A push of scripts, docs or workflows leaves the cache as it was (a
+# skipped run counts as that commit's run: what it skipped changed nothing sbt reads). A dispatch, a first run or an
+# unreachable base runs everything. PrecheckBuildCachePlanSpec holds the filter.
 on:
     workflow_run:
         workflows: [Main]
@@ -35,7 +41,80 @@ env:
     LANG: C.UTF-8
 
 jobs:
+    plan:
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            actions: read
+        outputs:
+            changed: ${{ steps.decide.outputs.changed }}
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+            - id: decide
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  EVENT: ${{ github.event_name }}
+                  # What the cache is compiled from: the modules' sources, the build definition, the population walk's
+                  # data, and the workflow and actions that build it.
+                  PATTERNS: |
+                      base/src/**
+                      common/src/**
+                      e2e/src/**
+                      geodata/src/**
+                      http/src/**
+                      identity/src/**
+                      itkit/src/**
+                      quality/src/**
+                      repochecks/src/**
+                      scrapers/src/**
+                      testkit/src/**
+                      web/src/**
+                      worker/src/**
+                      build.sbt
+                      coupling.sbt
+                      dead-code.sbt
+                      identity-impact.sbt
+                      refactor-tools.sbt
+                      project/**
+                      conf/**
+                      test/resources/**
+                      .github/workflows/precheck-build-cache.yml
+                      .github/actions/setup-sbt-build/**
+                      .github/actions/install-floor-bash/**
+              run: |
+                  set -euo pipefail
+                  if [ "$EVENT" != "workflow_run" ]; then
+                      echo "changed=true" >> "$GITHUB_OUTPUT"; echo "$EVENT: a build was asked for"; exit 0
+                  fi
+                  base=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow precheck-build-cache.yml --branch main \
+                      --status success --limit 1 --json headSha --jq '.[0].headSha // ""')
+                  if [ -z "$base" ]; then
+                      echo "changed=true" >> "$GITHUB_OUTPUT"; echo "no earlier successful run: building"; exit 0
+                  fi
+                  git cat-file -e "$base^{commit}" 2>/dev/null \
+                      || git fetch --no-tags --depth=1 --filter=blob:none origin "$base" \
+                      || { echo "changed=true" >> "$GITHUB_OUTPUT"; echo "base $base unreachable: building"; exit 0; }
+                  printf '%s\n' "$PATTERNS" > "$RUNNER_TEMP/precheck-patterns"
+                  git diff --name-only "$base" HEAD > "$RUNNER_TEMP/precheck-files"
+                  echo "changed since $base:"; sed 's/^/  /' "$RUNNER_TEMP/precheck-files"
+                  changed=$(.github/actions/changed-paths/matches.sh "$RUNNER_TEMP/precheck-patterns" < "$RUNNER_TEMP/precheck-files")
+                  echo "sbt's inputs changed: $changed"
+                  echo "changed=$changed" >> "$GITHUB_OUTPUT"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+
     build:
+        needs: plan
+        if: ${{ !cancelled() && needs.plan.outputs.changed != 'false' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 45
         steps:
@@ -73,6 +152,8 @@ jobs:
     # entry: a main commit that leaves the walk's code and data as they were walks only the slices whose files moved. Rows
     # are kept whether or not the spec passes (main's own flips are the identity tests' to judge, not this cache's).
     population-walk:
+        needs: plan
+        if: ${{ !cancelled() && needs.plan.outputs.changed != 'false' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 45
         steps:
