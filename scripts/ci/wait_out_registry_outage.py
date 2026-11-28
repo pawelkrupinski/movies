@@ -23,7 +23,7 @@ import re
 import subprocess
 import sys
 import time
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 import ci_machine  # noqa: E402
 
 LOST = re.compile(r"connection refused|connection reset by peer|i/o timeout|no such host|502 Bad Gateway"
@@ -66,13 +66,15 @@ def wait_for(host: str, lost: str, limit: float, poll: float) -> Tuple[str, floa
         time.sleep(poll)
 
 
-def why_gone(hhmm: str) -> str:
+def why_gone(wall: float) -> str:
+    """The reason to give for the outage, by the UTC time of day `wall` (epoch seconds) it was met at."""
+    hhmm = time.strftime("%H%M", time.gmtime(wall))
     if "0400" <= hhmm < "0420":
         return "the image registry was stopped by its daily 04:00 UTC registry-prune (infra/nix/modules/roles/registry.nix)"
     return "the image registry was down or restarting (a host switch on k3s-worker-1, or its daily prune)"
 
 
-def main(argv: List[str]) -> int:
+def main(argv: List[str], wall: Callable[[], float]) -> int:
     if len(argv) < 3 or argv[1] != "--":
         print("usage: wait_out_registry_outage.py <registry host> -- <command>...", file=sys.stderr)
         return 2
@@ -81,7 +83,7 @@ def main(argv: List[str]) -> int:
     lost = lost_registry(host, said) if status else None
     if not lost:
         return status
-    why = why_gone(time.strftime("%H%M", time.gmtime()))
+    why = why_gone(wall())
     limit = float(ci_machine.environment().get("IMAGE_PUSH_WAIT_SECONDS", "600"))
     answer, waited = wait_for(host, lost, limit, float(ci_machine.environment().get("IMAGE_PUSH_POLL_SECONDS", "15")))
     if answer not in SERVING:
@@ -92,4 +94,4 @@ def main(argv: List[str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main(sys.argv[1:], ci_machine.wall))

@@ -11,6 +11,9 @@ from typing import Dict, Optional
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 from harness import cli_harness  # noqa: E402
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import wait_out_registry_outage  # noqa: E402
+
 TOOL = cli_harness.tool_path("scripts/ci/wait_out_registry_outage.py")
 HOST = "registry.example"
 COMMAND = ["docker", "login", HOST, "-u", "ci", "--password-stdin"]
@@ -65,8 +68,8 @@ class WaitOutRegistryOutageTest(cli_harness.ToolCase):
         self.assertEqual(3, len(self.fakes.calls("curl")))
         self.assertIn(f"https://{HOST}/v2/", self.fakes.calls("curl")[0])
         self.assertIn(f"lost {HOST} (connection refused): it answers 000, waiting for it", done.stdout)
-        self.assertIn(f"::warning::lost {HOST}: connection refused -- the image registry was down or restarting",
-                      done.stdout)
+        # The reason depends on the UTC time of day (the real clock here): WhyGoneTest pins it.
+        self.assertIn(f"::warning::lost {HOST}: connection refused -- the image registry was ", done.stdout)
 
     def test_a_registry_still_gone_at_the_deadline_fails_naming_it(self) -> None:
         done = self.wrapped("refused", answers="000")
@@ -84,6 +87,24 @@ class WaitOutRegistryOutageTest(cli_harness.ToolCase):
                 self.assertEqual(1, done.code, done.output)
                 self.assertEqual(1, len(self.fakes.calls("docker")))
                 self.assertEqual([], self.fakes.calls("curl"))
+
+
+class WhyGoneTest(unittest.TestCase):
+    """The reason given for an outage is chosen by an injected clock: 04:00 <= UTC time of day < 04:20 is the prune."""
+    DAY = 1_700_000_000 - 1_700_000_000 % 86400  # a UTC midnight
+
+    def reason(self, hour: int, minute: int, second: int = 0) -> str:
+        return wait_out_registry_outage.why_gone(self.DAY + hour * 3600 + minute * 60 + second)
+
+    def test_inside_the_prune_window_it_names_the_prune(self) -> None:
+        for moment in ((4, 0, 0), (4, 10, 0), (4, 19, 59)):
+            with self.subTest(moment):
+                self.assertIn("daily 04:00 UTC registry-prune", self.reason(*moment))
+
+    def test_outside_the_prune_window_it_does_not(self) -> None:
+        for moment in ((3, 59, 59), (4, 20, 0), (12, 0, 0), (0, 0, 0)):
+            with self.subTest(moment):
+                self.assertIn("down or restarting", self.reason(*moment))
 
 
 if __name__ == "__main__":
