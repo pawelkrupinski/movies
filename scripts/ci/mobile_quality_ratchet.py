@@ -8,8 +8,8 @@ baselines -- the Python and JS/TS ratchets' engine (baseline_ratchet.py), each k
   Duplication:  copies <file>|<file>... (the copies of every clone group spanning exactly those files), clone-tokens
 
 HELD is the production code: Swift under ios/Kinowo/ (the app; ios/Tests and ios/KinowoUITests are reported, never
-held), Kotlin under an android/ module's src/main/, src/tuning/ or src/noTuning/ (src/test, androidTest, sharedTest and
-the Gradle scripts are reported, never held). A row only falls, and the fall is recorded in the push making it."""
+held), Kotlin under an android/ module's src/main/, src/tuning/ or src/noTuning/ and the Gradle scripts (`*.kts`: build
+configuration is code, 2026-11-28) -- src/test, androidTest and sharedTest are reported, never held. A row only falls, and the fall is recorded in the push making it."""
 from __future__ import annotations
 
 import os
@@ -35,7 +35,7 @@ def held(language: str, part: str) -> bool:
     path = part.split(":", 1)[0]
     if language == "swift":
         return path.startswith(PRODUCTION["swift"])
-    return path.startswith("android/") and any(root in path for root in PRODUCTION["kotlin"])
+    return path.startswith("android/") and (path.endswith(".kts") or any(root in path for root in PRODUCTION["kotlin"]))
 
 
 def header(language: str) -> str:

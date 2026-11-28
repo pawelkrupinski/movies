@@ -9,6 +9,10 @@ measured by shell_measure.py against the design rules table's shell limits (test
   shell-function-lines  <file>:<function>   a function's code lines             50 (the method-lines limit)
   shell-nesting         <file>:<body>       its deepest block nest              4 (a cognitive 1+2+3+4 = 10)
 
+and every workflow's and composite action's `run:` block (workflow_runs.py), keyed `<file>#<job>/<step>`, is shell too:
+the same decisions, function and nesting limits, and a block's code lines against its own `run-lines` limit (15): a `run:`
+past a limit moves to a script, Python by the migration rule.
+
 A NEW script past a limit, or a frozen one GROWING past its row, is refused: migrate it to Python
 (scripts/shell-py-progress/migrate-tools.tsv: the same path, CLI and output, plus a black-box `<tool>_test.py`). Today's
 scripts past a limit are frozen in test/resources/shell-baseline.tsv, rows that ONLY fall: no trailer admits a rise.
@@ -34,19 +38,21 @@ sys.path[:0] = [HERE, os.path.join(ROOT, "scripts", "ci"), os.path.join(ROOT, "s
 import baseline_ratchet  # noqa: E402
 import rules_table  # noqa: E402
 import shell_measure  # noqa: E402
+import workflow_runs  # noqa: E402
 from seams import tool_files  # noqa: E402
 import tool_git  # noqa: E402
 import trailers  # noqa: E402
 
 BASELINE = "test/resources/shell-baseline.tsv"
 KEEPS = "test/resources/shell-keeps.tsv"
-KINDS = ("shell-lines", "shell-decisions", "shell-function-lines", "shell-nesting")
+KINDS = ("shell-lines", "shell-decisions", "shell-function-lines", "shell-nesting", "run-lines")
 SHELL_SHEBANG = re.compile(r"^#!.*[/ ](ba|da|k|z)?sh( |$)")
 TEST = re.compile(r"(-test\.sh|_test\.sh)$|(^|/)test_[^/]*$|(^|/)tests?/")
 NOT_MEASURED = re.compile(r"(^|/)(fixtures|node_modules)/|^android/gradlew$")
 ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 MIGRATE = ("migrate it to Python (scripts/shell-py-progress/migrate-tools.tsv: the same path, CLI and output, plus a"
-           " black-box `<tool>_test.py`) -- a shell script past a limit is never admitted, and no trailer raises a row")
+           " black-box `<tool>_test.py`; a workflow's `run:` block moves to such a script) -- a shell script or run block"
+           " past a limit is never admitted, and no trailer raises a row")
 HEADER = """# THE SHELL BASELINE (scripts/design-rules/shell_gate.py update writes it; the pre-push `shellgate` check holds every
 # push touching a shell tool to it). Every shell tool past a limit of test/resources/design-rules.tsv, frozen -- the
 # migration queue (shell_gate.py queue). A row ONLY falls: a new row or a rise is refused whatever a trailer says
@@ -96,11 +102,23 @@ def shell_files(git: tool_git.Git, files: tool_files.Files) -> Dict[str, str]:
     return {p: t for p, t in texts.items() if is_shell(p, t)}
 
 
-def measure(sources: Dict[str, str], table: rules_table.Rules) -> Rows:
+def run_blocks(git: tool_git.Git, files: tool_files.Files) -> Dict[str, str]:
+    """Every `run:` block of the workflows and composite actions, `<file>#<job>/<step>` -> its shell text."""
+    return {f"{path}#{label}": text for path in git.lines("ls-files") if workflow_runs.holds_runs(path)
+            for label, text in workflow_runs.run_blocks(read_or_empty(files, path)).items()}
+
+
+def run_rows(path: str, text: str) -> List[Tuple[str, str, int]]:
+    """A run block's rows: the shell measure's, its code lines under `run-lines`."""
+    return [("run-lines" if kind == "shell-lines" else kind, key, value) for kind, key, value in shell_measure.rows(path, text)]
+
+
+def measure(sources: Dict[str, str], runs: Dict[str, str], table: rules_table.Rules) -> Rows:
     """The held rows past their limits, and every kind's limit."""
     current: Rows = {("limit", kind): table.limit(kind) for kind in KINDS}
-    for path, text in sorted(sources.items()):
-        current.update({(kind, key): float(value) for kind, key, value in shell_measure.rows(path, text)
+    for rows in ([row for path, text in sorted(sources.items()) for row in shell_measure.rows(path, text)],
+                 [row for path, text in sorted(runs.items()) for row in run_rows(path, text)]):
+        current.update({(kind, key): float(value) for kind, key, value in rows
                         if value > table.limit(kind) and held(key)})
     return current
 
@@ -185,7 +203,7 @@ def main(argv: List[str]) -> int:
     args = parser.parse_args(argv)
     files, git = tool_files.Files.here(), tool_git.Git.here()  # the composition root: the checkout it runs in
     try:
-        current = measure(shell_files(git, files), rules_table.load("."))
+        current = measure(shell_files(git, files), run_blocks(git, files), rules_table.load("."))
         baseline = baseline_ratchet.parse(files.read_text_or(BASELINE, ""))
         keeps_text = files.read_text_or(KEEPS, "")
         if args.command == "update":

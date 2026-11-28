@@ -114,8 +114,7 @@ class MongoMovieRepository(
   // How a whole record is written over `movies` and its side collections; none without a store.
   private lazy val upserts = coll.map(new WholeRecordUpsert(_, screenings, slots, slotsForStorage, stamps, writeMetrics, logger))
   // How a stored row is updated field by field, its dotted-name fallback reading through this class's seam; none without a store.
-  private lazy val updates = coll.map(c => new InPlaceMovieUpdate(c, screenings, slots, slotsForStorage, stamps, writeMetrics,
-    logger, readWhole = dottedReplaceRead(c, _)))
+  private lazy val updates = upserts.map(u => u.inPlaceUpdate(dottedReplaceRead(u.movies, _)))
 
   /** The film's slots at `cinemas`, read from those venues alone — see [[MovieSideStitch.readVenues]]. */
   private[movies] def readVenues(filmId: String, cinemas: Set[models.Cinema]): Option[VenueSlots] = stitch.readVenues(filmId, cinemas)

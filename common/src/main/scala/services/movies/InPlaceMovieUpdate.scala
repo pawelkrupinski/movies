@@ -4,31 +4,25 @@ import scala.concurrent.Await
 
 import com.mongodb.client.model.UpdateOptions
 import models.{CacheKey, FilmId, StoredMovieRecord}
-import models.{MovieRecord, Source, SourceData}
+import models.MovieRecord
 import org.mongodb.scala.bson.BsonString
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{MongoCollection, SingleObservableFuture}
+import org.mongodb.scala.SingleObservableFuture
 
 /** THE FIELD-LEVEL UPDATE of a stored film — [[MongoMovieRepository.updateIfPresent]]: the diff from `before` to
  *  `after` split into its three writes (the `movies` patch, the showtime deltas to `screenings`, the slot deltas to
  *  `movie_slots`), each skipped when empty, the side writes applied only once the row is known present, and a patch
  *  naming a dotted cinema written as a guarded whole-document replace.
  *
- *  Built by the repository over its side collections, stamp sequence and write metrics, and logging under its
- *  `logger`. `readWhole` is the repository's read of the stored document the dotted-name fallback patches, decoded
- *  under its title rules — its seam, so a spec can land another write between that read and the replace.
- *
- *  @param slotsForStorage the repository's [[MovieRepository.slotsForStorage]]. */
+ *  Built by [[WholeRecordUpsert.inPlaceUpdate]] over the stores that upsert writes whole: the `movies` collection, the
+ *  side collections, the stamp sequence, the write metrics and the repository's `logger`. `readWhole` is the
+ *  repository's read of the stored document the dotted-name fallback patches, decoded under its title rules — its
+ *  seam, so a spec can land another write between that read and the replace. */
 private[movies] final class InPlaceMovieUpdate(
-  movies:          MongoCollection[StoredMovieDto],
-  screenings:      Option[ScreeningsRepository],
-  slots:           Option[SlotsRepository],
-  slotsForStorage: Map[Source, SourceData] => Map[Source, SourceData],
-  stamps:          tools.MonotonicStampSequence,
-  writeMetrics:    RepositoryWriteMetrics,
-  logger:          play.api.Logger,
-  readWhole:       String => Option[InPlaceMovieUpdate.ReadDocument]
+  sides:     WholeRecordUpsert,
+  readWhole: String => Option[InPlaceMovieUpdate.ReadDocument]
 ) {
+  import sides.{logger, movies, screenings, slots, slotsForStorage, stamps, writeMetrics}
 
   /** Update the stored row of `film` from `before` to `after` — see [[MovieRepository.updateIfPresent]]. */
   def updateIfPresent(film: FilmId, cacheKey: CacheKey, before: MovieRecord, after: MovieRecord): Boolean = {

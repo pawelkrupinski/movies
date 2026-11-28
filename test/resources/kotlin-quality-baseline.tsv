@@ -30,6 +30,7 @@ cyclomatic	android/app/src/main/java/pl/kinowo/filter/FilmFilters.kt:(anonymous)
 cyclomatic	android/app/src/main/java/pl/kinowo/model/City.kt:searchFold	11
 cyclomatic	android/app/src/main/java/pl/kinowo/ui/city/CityChoiceScreen.kt:CityChoiceScreen	22
 cyclomatic	android/app/src/main/java/pl/kinowo/ui/common/Showings.kt:Showings	12
+method-lines	android/app/build.gradle.kts:(anonymous)#2	181
 method-lines	android/app/src/main/java/pl/kinowo/MainActivity.kt:onCreate	70
 method-lines	android/app/src/main/java/pl/kinowo/auth/StateSyncService.kt:reconcile	57
 method-lines	android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt:disabledCinemas	57
@@ -51,9 +52,11 @@ method-lines	android/app/src/main/java/pl/kinowo/ui/list/FilmCard.kt:FilmCard	11
 method-lines	android/app/src/main/java/pl/kinowo/ui/list/FiltersSheet.kt:(anonymous)	107
 method-lines	android/app/src/main/java/pl/kinowo/ui/list/FiltersSheet.kt:(anonymous)#3	55
 method-lines	android/app/src/main/java/pl/kinowo/ui/list/ListScreen.kt:(anonymous)#5	80
+file-lines	android/app/build.gradle.kts	966
 file-lines	android/app/src/main/java/pl/kinowo/ui/dev/ShowtimeTuningScreen.kt	867
 file-lines	android/app/src/main/java/pl/kinowo/ui/list/FiltersSheet.kt	924
 file-lines	android/app/src/main/java/pl/kinowo/ui/list/ListScreen.kt	797
+copies	android/app/build.gradle.kts	11
 copies	android/app/src/main/java/pl/kinowo/data/DetailsRepository.kt|android/app/src/main/java/pl/kinowo/data/RepertoireRepository.kt	2
 copies	android/app/src/main/java/pl/kinowo/ui/city/CityChoiceScreen.kt	6
 copies	android/app/src/main/java/pl/kinowo/ui/city/CityChoiceScreen.kt|android/app/src/main/java/pl/kinowo/ui/list/FiltersSheet.kt	2

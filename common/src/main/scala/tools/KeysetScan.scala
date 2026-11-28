@@ -82,20 +82,11 @@ object KeysetScan {
     outcome.get
   }
 
-  /** [[scan]], gathering what `decode` makes of each row — answered only when the scan read
-   *  the whole collection, so a partial collection is never handed out as the whole one. */
-  def collect[A, B](
-    label:          String,
-    batchSize:      Int,
-    maxAttempts:    Int,
-    initialBackoff: FiniteDuration,
-    keyOf:          A => String,
-    fetchPage:      (Option[String], Int) => Seq[A],
-    onIncomplete:   Throwable => Unit = _ => ()
-  )(decode: A => IterableOnce[B]): tools.ReadOutcome[Vector[B]] = {
+  /** What `decode` makes of each row of `scanning` — a [[scan]] with its paging given, awaiting its `onBatch` —
+   *  answered only when the scan read the whole collection, so a partial collection is never handed out as the whole one. */
+  def collect[A, B](scanning: (Seq[A] => Unit) => ScanOutcome)(decode: A => IterableOnce[B]): tools.ReadOutcome[Vector[B]] = {
     val rows = Vector.newBuilder[B]
-    scan(label, batchSize, maxAttempts, initialBackoff, keyOf, fetchPage, onIncomplete)(_.foreach(rows ++= decode(_)))
-      .collected(rows.result())
+    scanning(_.foreach(rows ++= decode(_))).collected(rows.result())
   }
 
   /** The rows of `keys`, a `batchSize` page at a time — `inFlight` pages fetched side by side and

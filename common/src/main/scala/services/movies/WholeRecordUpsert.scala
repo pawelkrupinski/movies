@@ -21,14 +21,19 @@ import org.mongodb.scala.{MongoCollection, ObservableFuture, SingleObservableFut
  *  @param slotsForStorage the repository's [[MovieRepository.slotsForStorage]] — what of a record's slots `movies`
  *                         keeps under the split. */
 private[movies] final class WholeRecordUpsert(
-  movies:          MongoCollection[StoredMovieDto],
-  screenings:      Option[ScreeningsRepository],
-  slots:           Option[SlotsRepository],
-  slotsForStorage: Map[Source, SourceData] => Map[Source, SourceData],
-  stamps:          tools.MonotonicStampSequence,
-  writeMetrics:    RepositoryWriteMetrics,
-  logger:          play.api.Logger
+  val movies:          MongoCollection[StoredMovieDto],
+  val screenings:      Option[ScreeningsRepository],
+  val slots:           Option[SlotsRepository],
+  val slotsForStorage: Map[Source, SourceData] => Map[Source, SourceData],
+  val stamps:          tools.MonotonicStampSequence,
+  val writeMetrics:    RepositoryWriteMetrics,
+  val logger:          play.api.Logger
 ) {
+
+  /** The field-level update over the stores this upsert writes whole — [[InPlaceMovieUpdate]]; `readWhole` is the
+   *  repository's read of the stored document its dotted-name fallback patches. */
+  def inPlaceUpdate(readWhole: String => Option[InPlaceMovieUpdate.ReadDocument]): InPlaceMovieUpdate =
+    new InPlaceMovieUpdate(this, readWhole)
 
   /** Write the film `film` as `e` into `movies` and its side collections — see [[MovieRepository.upsert]]. */
   def upsert(film: FilmId, cacheKey: CacheKey, e: MovieRecord): WriteOutcome = {
