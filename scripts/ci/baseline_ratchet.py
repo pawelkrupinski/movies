@@ -10,6 +10,10 @@ holds -- and gets the one check and the one update:
   - only HELD rows count: a row whose files all lie outside the spec's held paths is reported, never gated;
   - the baseline grows (a row added or raised, a limit raised) only in a commit changing it that carries the kind's
     trailer in its final trailer block (trailers.py, THE ATTRIBUTION RULE); a fall needs none, and `update` records it;
+  - THE FALL LOCK (the owner, 2026-11-28: "all complexity that you reduce -- add ratchets for it"): a measured row
+    BELOW its baseline row (or gone) fails until the baseline records it, the message naming the update command --
+    an unrecorded fall is headroom for the code to creep back to the old row (`refused_falls`, which the Scala
+    quality and coupling ratchets call too);
   - a STRICT row (one of the spec's strict paths: the Python ratchet's migrated tools) past a limit fails whatever the
     baseline holds or a trailer says: no row admits it;
   - a commit whose final trailer block says `Coupling: split of <X> into <A>[, <B>]` has its own step's Coupling rises
@@ -281,14 +285,17 @@ def ranges_refused(spec: Spec, ranges: List[str], baseline: Rows, renames: Renam
     return say_split_refusals(spec, ranges, renames) or bool(unjustified)
 
 
-def say_falls(spec: Spec, current: Rows, baseline: Rows) -> None:
-    down = falls(spec, current, baseline)
-    if down:
-        print(f"{spec.tool} fell ({len(down)} rows below {spec.baseline}, not yet recorded: {spec.update_command}"
-              " records them, no trailer needed):")
-        print("\n".join(f"  - {d}" for d in down[:20]))
-        if len(down) > 20:
-            print(f"  - ... and {len(down) - 20} more")
+def refused_falls(title: str, baseline: str, update_command: str, down: List[str]) -> bool:
+    """THE FALL LOCK: whether the measure fell below `baseline` with the fall unrecorded (each said, with the command
+    that records it). Every ratchet refuses it: a fall is recorded in the push making it, so the row cannot creep back."""
+    if not down:
+        return False
+    print(f"{title} FELL BELOW {baseline}, UNRECORDED ({len(down)} rows): lock the fall in -- run `{update_command}`"
+          " and commit the baseline with the change (a fall needs no trailer):")
+    print("\n".join(f"  - {d}" for d in down[:20]))
+    if len(down) > 20:
+        print(f"  - ... and {len(down) - 20} more")
+    return True
 
 
 def read_baseline(spec: Spec) -> Optional[Rows]:
@@ -320,7 +327,8 @@ def check(spec: Spec, current: Rows, ranges: List[str]) -> bool:
         print(f"  {spec.strict_hint}")
     if ranges_refused(spec, ranges, baseline, renames):
         ok = False
-    say_falls(spec, current, baseline)
+    if refused_falls(spec.title, spec.baseline, spec.update_command, falls(spec, current, baseline)):
+        ok = False
     if ok:
         held = sum(len(of_kind(spec, current, kind)) for kind in spec.kinds)
         print(f"{spec.tool}: within {spec.baseline} ({held} {spec.held_rows})")

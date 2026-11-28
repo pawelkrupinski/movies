@@ -90,7 +90,10 @@ class PyQualityRatchetRenameTest(unittest.TestCase):
 
     def test_a_row_follows_its_tool_renamed_at_the_same_value(self) -> None:
         done = self.check(LIMITS + "cognitive\tscripts/renamed.py:work\t12\n")
-        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+        # within its carried row; only THE FALL LOCK refuses until the baseline records the re-key
+        self.assertEqual(1, done.returncode, done.stdout + done.stderr)
+        self.assertIn("UNRECORDED (1 rows)", done.stdout)
+        self.assertNotIn("past the limit", done.stdout)
 
     def test_a_renamed_tools_row_rising_fails(self) -> None:
         done = self.check(LIMITS + "cognitive\tscripts/renamed.py:work\t13\n")

@@ -28,9 +28,9 @@ mutants=(
             found = True @@ if unjustified:
             found = False'
   'growth is judged on one trailer @@ trailers.unjustified_rises(rng, spec.baseline, trailer, rose) @@ trailers.unjustified_rises(rng, spec.baseline, "Complexity", rose)'
-  'falls are not said @@     if down:
-        print @@     if False:
-        print'
+  'an unrecorded fall passes (THE FALL LOCK) @@     if not down:
+        return False @@     if True:
+        return False'
   'update keeps no production row @@ for key, value in sorted(of_kind(spec, current, kind).items())] @@ for key, value in []]'
   'a malformed row is skipped @@ raise ValueError(f"line {n}: not @@ return rows  # (f"line {n}: not'
 )

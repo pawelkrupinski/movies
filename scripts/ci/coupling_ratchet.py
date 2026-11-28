@@ -70,7 +70,8 @@
 #                             [--fanouts <file>] [--collaborators <file>] [--range A..B ...]
 #       violations: a package cycle edge and the measured rows past the baseline (exit 1), and, for each range, a
 #       baseline grown or a layer table loosened between A and B by a commit of the range not carrying `Coupling:`
-#       (exit 1). Falls not yet recorded are said, and pass. `--edges` (couplingReport's third output, every
+#       (exit 1), and falls not yet recorded (exit 1: THE FALL LOCK, baseline_ratchet.refused_falls --
+#       `scripts/coupling-report --update` records them, no trailer). `--edges` (couplingReport's third output, every
 #       class reference with its package edge) names the class references behind each refused edge.
 #   coupling_ratchet.py split-check --current <rows> --fanouts <file> --split <X> --into <A> [--into <B> ...] [--base REV]
 #       whether a split of X into those pieces, in the WORKING TREE, would pass: the same split_credit and
@@ -113,6 +114,7 @@ from typing import Callable, Dict, List, Optional, Set, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path[:0] = [HERE, os.path.join(HERE, "..", "lib")]  # baseline_ratchet.py and trailers.py beside it, tool_python in lib
+import baseline_ratchet  # noqa: E402
 import trailers  # noqa: E402
 from coupling_exemption_history import check_exemptions, new_exemptions  # noqa: E402
 from coupling_growth import DISTANCE_CUT, falls, frozen_growth, growth, loosening  # noqa: E402
@@ -259,17 +261,6 @@ def check_range(rng: str, baseline: Rows, fanouts: Optional[Fanouts], renamed: R
     return failed
 
 
-def say_falls(current: Rows, baseline: Rows) -> None:
-    down = falls(current, baseline)
-    if down:
-        print(f"coupling fell ({len(down)} rows below the baseline, not yet recorded: scripts/coupling-report --update"
-              " records them, no trailer needed):")
-        for d in down[:20]:
-            print(f"  - {d}")
-        if len(down) > 20:
-            print(f"  - ... and {len(down) - 20} more")
-
-
 def check(current_path: str, baseline_path: str, ranges: List[str], layers_path: str = LAYERS_PATH,
           edges_path: str = "", exemptions_path: str = EXEMPTIONS_PATH, fanouts_path: str = "",
           collaborators_path: str = "") -> int:
@@ -288,7 +279,8 @@ def check(current_path: str, baseline_path: str, ranges: List[str], layers_path:
         failed |= check_range(rng, baseline, fanouts, renamed, layers_path)
     failed |= check_exemptions(rise_refused, ranges, exemptions_path)
     failed |= check_verdicts(rise_refused, ranges, collaborators_path, fanouts_path)
-    say_falls(current, baseline)
+    failed |= baseline_ratchet.refused_falls("COUPLING", baseline_path, "scripts/coupling-report --update",
+                                             falls(current, baseline))
     if not failed:
         print(f"coupling: within {baseline_path} ({len(current)} rows)")
     return 1 if failed else 0

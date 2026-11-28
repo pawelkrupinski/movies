@@ -101,6 +101,18 @@ class JsQualityRatchetTest(unittest.TestCase):
         self.assertEqual(0, rc, out)
         return out
 
+    def assert_only_unrecorded(self, current, *said, **kwargs):
+        """Refused by THE FALL LOCK alone (2026-11-28): within every row, but a fall or a re-key the baseline does not
+        record yet -- what `update` then writes, and the check passes."""
+        rc, out = self.check(current, **kwargs)
+        self.assertEqual(1, rc, out)
+        self.assertIn("UNRECORDED", out)
+        for refusal in ("GREW", "past the limit", "past its", "ADMITS", "REFUSED"):
+            self.assertNotIn(refusal, out)
+        for s in said:
+            self.assertIn(s, out)
+        return out
+
     def baseline(self):
         with open(os.path.join(self.repo, BASELINE)) as f:
             return f.read()
@@ -173,7 +185,7 @@ class JsQualityRatchetTest(unittest.TestCase):
 
     def test_a_row_follows_its_file_renamed_at_the_same_value(self):
         self.move_a_js()
-        self.assert_passes(rows(f"cognitive\t{WEB}/moved.js:render\t15", drop=("cognitive",)))
+        self.assert_only_unrecorded(rows(f"cognitive\t{WEB}/moved.js:render\t15", drop=("cognitive",)))
 
     def test_a_renamed_files_row_rising_still_fails(self):
         self.move_a_js()
@@ -199,10 +211,14 @@ class JsQualityRatchetTest(unittest.TestCase):
 
     # ── falls ──
 
-    def test_a_fall_passes_is_said_and_update_records_it(self):
+    def test_an_unrecorded_fall_is_refused_and_update_records_it(self):
+        """THE FALL LOCK (2026-11-28): a fall the baseline does not record is headroom to creep back -- refused until
+        `update` records it, and then it passes."""
         fell = rows(f"cognitive\t{WEB}/a.js:render\t12", drop=("cognitive",))
-        out = self.assert_passes(fell)
-        self.assertIn("js quality fell (1 rows", out)
+        rc, out = self.check(fell)
+        self.assertEqual(1, rc, out)
+        self.assertIn("UNRECORDED (1 rows)", out)
+        self.assertIn("run `scripts/js-quality-report --update`", out)
         self.assertIn(f"cognitive {WEB}/a.js:render 15 -> 12", out)
         rc, out = self.run_tool("update", fell)
         self.assertEqual(0, rc, out)

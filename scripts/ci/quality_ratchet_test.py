@@ -98,6 +98,18 @@ class QualityRatchetTest(unittest.TestCase):
         self.assertEqual(0, rc, out)
         return out
 
+    def assert_only_unrecorded(self, current, *said, **kwargs):
+        """Refused by THE FALL LOCK alone (2026-11-28): within every row, but a fall or a re-key the baseline does not
+        record yet -- what `update` then writes, and the check passes."""
+        rc, out = self.check(current, **kwargs)
+        self.assertEqual(1, rc, out)
+        self.assertIn("UNRECORDED", out)
+        for refusal in ("GREW", "past the limit", "past its", "ADMITS", "REFUSED"):
+            self.assertNotIn(refusal, out)
+        for s in said:
+            self.assertIn(s, out)
+        return out
+
     # ── the measured rows against the baseline ──
 
     def test_a_run_of_the_tool_writes_no_bytecode_beside_it(self):
@@ -149,13 +161,13 @@ class QualityRatchetTest(unittest.TestCase):
     def test_a_source_moved_to_another_package_keeps_its_rows(self):
         self.move_a()
         moved = rows(*self.MOVED, drop=self.MOVED_FROM)
-        self.assert_passes(moved)
+        self.assert_only_unrecorded(moved)
         head = self.commit({COMPLEXITY: moved, LENGTH: moved, DUPLICATION: moved}, "the baselines follow the move")
         self.assert_passes(moved, rng=f"{self.base}..{head}")
 
     def test_a_moved_source_lowering_a_value_keeps_its_rows(self):
         self.move_a()
-        self.assert_passes(rows("cognitive\tb/src/main/scala/x/A.scala:A.f\t18", drop=("cognitive\ta/src/main/scala/A",)))
+        self.assert_only_unrecorded(rows("cognitive\tb/src/main/scala/x/A.scala:A.f\t18", drop=("cognitive\ta/src/main/scala/A",)))
 
     def test_a_moved_source_growing_fails(self):
         # THE MOVE LOOPHOLE: a source moved and one method's score raised, no trailer -- a rise, not a move
@@ -195,9 +207,12 @@ class QualityRatchetTest(unittest.TestCase):
         self.assert_fails(rows("limit\tcognitive\t25", drop=("limit\tcognitive",)),
                           "the measure's cognitive limit 25 is past the baseline's 15")
 
-    def test_falls_pass_and_are_said(self):
-        out = self.assert_passes(rows("cognitive\ta/src/main/scala/A.scala:A.f\t18", drop=("cognitive\ta/", "inner-defs")))
-        self.assertIn("complexity fell", out)
+    def test_an_unrecorded_fall_is_refused_naming_the_update(self):
+        """THE FALL LOCK (2026-11-28): a fall the baseline does not record is headroom to creep back -- refused."""
+        rc, out = self.check(rows("cognitive\ta/src/main/scala/A.scala:A.f\t18", drop=("cognitive\ta/", "inner-defs")))
+        self.assertEqual(1, rc, out)
+        self.assertIn("COMPLEXITY FELL BELOW test/resources/complexity-baseline.tsv, UNRECORDED (2 rows)", out)
+        self.assertIn("run `scripts/quality-report --update`", out)
         self.assertIn("cognitive a/src/main/scala/A.scala:A.f 20 -> 18", out)
         self.assertIn("inner-defs a/src/main/scala/B.scala:B.g 4 -> within the limit", out)
 
@@ -209,10 +224,10 @@ class QualityRatchetTest(unittest.TestCase):
         self.assert_fails(rows("file-lines\ta/src/main/scala/C.scala\t801"),
                           "file-lines a/src/main/scala/C.scala: 801, past the limit 800 (no baseline row)")
 
-    def test_a_frozen_file_growing_fails_and_shrinking_passes(self):
+    def test_a_frozen_file_growing_fails_and_shrinking_is_refused_until_recorded(self):
         self.assert_fails(rows("file-lines\ta/src/main/scala/A.scala\t901", drop=("file-lines\ta/",)),
                           "file-lines a/src/main/scala/A.scala: 901, past its baseline 900")
-        out = self.assert_passes(rows("file-lines\ta/src/main/scala/A.scala\t850", drop=("file-lines\ta/",)))
+        out = self.assert_only_unrecorded(rows("file-lines\ta/src/main/scala/A.scala\t850", drop=("file-lines\ta/",)))
         self.assertIn("file-lines a/src/main/scala/A.scala 900 -> 850", out)
 
     def test_a_new_clone_group_fails(self):
@@ -227,7 +242,7 @@ class QualityRatchetTest(unittest.TestCase):
                                drop=("copies\ta/",)), "a/src/main/scala/C.scala: 3, past the limit 0")
 
     def test_an_extracted_clone_is_a_fall(self):
-        out = self.assert_passes(rows(drop=("copies\ta/",)))
+        out = self.assert_only_unrecorded(rows(drop=("copies\ta/",)))
         self.assertIn("copies a/src/main/scala/A.scala|a/src/main/scala/B.scala 2 -> within the limit", out)
 
     def test_a_grown_duplication_baseline_needs_its_trailer(self):

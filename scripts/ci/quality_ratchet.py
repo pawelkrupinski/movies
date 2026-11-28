@@ -31,7 +31,8 @@
 #
 #   quality_ratchet.py check --current <rows> [--ratchet NAME ...] [--range A..B ...]
 #       violations: measured rows past a baseline (exit 1), and, for each range, a baseline grown between A and B by a
-#       commit of the range not carrying its trailer (exit 1). Falls not yet recorded are said, and pass.
+#       commit of the range not carrying its trailer (exit 1), and falls not yet recorded (exit 1: THE FALL LOCK,
+#       baseline_ratchet.refused_falls -- `scripts/quality-report --update` records them, no trailer).
 #   quality_ratchet.py update --current <rows> [--ratchet NAME ...]
 #       each ratchet's baseline rewritten from the measured rows (a rise is then committed with its trailer).
 from __future__ import annotations
@@ -287,15 +288,6 @@ def _range_grew_unjustified(ratchet: Ratchet, rng: str, baseline: Rows, renames:
     return True
 
 
-def _print_falls(ratchet: Ratchet, down: List[str]) -> None:
-    print(f"{ratchet.name} fell ({len(down)} rows below {ratchet.baseline}, not yet recorded: scripts/quality-report"
-          " --update records them, no trailer needed):")
-    for d in down[:20]:
-        print(f"  - {d}")
-    if len(down) > 20:
-        print(f"  - ... and {len(down) - 20} more")
-
-
 def _read_baseline(path: str) -> Rows:
     with open(path) as f:
         return parse(f.read())
@@ -307,10 +299,9 @@ def check_one(ratchet: Ratchet, current: Rows, ranges: List[str], renames: Renam
     if found:
         _print_violations(ratchet, found)
     grew = [_range_grew_unjustified(ratchet, rng, baseline, renames) for rng in ranges]
-    down = falls(ratchet, current, baseline)
-    if down:
-        _print_falls(ratchet, down)
-    failed = bool(found) or any(grew)
+    fell = baseline_ratchet.refused_falls(ratchet.name.upper(), ratchet.baseline, "scripts/quality-report --update",
+                                          falls(ratchet, current, baseline))
+    failed = bool(found) or any(grew) or fell
     if not failed:
         rows = sum(len(of_kind(current, kind)) for kind in ratchet.kinds)
         print(f"{ratchet.name}: within {ratchet.baseline} ({rows} rows past a limit)")

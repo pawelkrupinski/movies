@@ -139,6 +139,18 @@ class RatchetHarness(unittest.TestCase):
         self.assertEqual(0, rc, out)
         return out
 
+    def assert_only_unrecorded(self, current, *said, **kwargs):
+        """Refused by THE FALL LOCK alone (2026-11-28): within every row, but a fall or a re-key the baseline does not
+        record yet -- what `update` then writes, and the check passes."""
+        rc, out = self.check(current, **kwargs)
+        self.assertEqual(1, rc, out)
+        self.assertIn("UNRECORDED", out)
+        for refusal in ("GREW", "past the limit", "past its", "ADMITS", "REFUSED"):
+            self.assertNotIn(refusal, out)
+        for s in said:
+            self.assertIn(s, out)
+        return out
+
 class CouplingRatchetTest(RatchetHarness):
     def test_the_baseline_itself_passes(self):
         self.assertIn("coupling: within", self.assert_passes(ROWS))
@@ -195,12 +207,12 @@ class CouplingRatchetTest(RatchetHarness):
         self.assert_fails(rows("distance\tservices.movies\t49", drop=("distance",)),
                           "package services.movies: distance D (hundredths) 49 past its frozen row 48")
 
-    def test_a_frozen_row_falling_passes(self):
-        self.assert_passes(rows("fanout\tservices.movies.MovieService\t20", "distance\tservices.movies\t30",
+    def test_a_frozen_row_falling_is_refused_until_recorded(self):
+        self.assert_only_unrecorded(rows("fanout\tservices.movies.MovieService\t20", "distance\tservices.movies\t30",
                                 drop=("fanout", "distance")))
 
     def test_a_frozen_class_that_moved_keeps_its_row(self):
-        self.assert_passes(rows("fanout\tservices.corpus.MovieService\t35", drop=("fanout",)))
+        self.assert_only_unrecorded(rows("fanout\tservices.corpus.MovieService\t35", drop=("fanout",)))
         self.assert_fails(rows("fanout\tservices.corpus.MovieService\t36", drop=("fanout",)), "past the limit 9")
 
     def test_a_frozen_class_that_moved_keeps_its_row_once_not_for_two_new_classes(self):
@@ -316,9 +328,12 @@ class CouplingRatchetTest(RatchetHarness):
     def test_a_package_without_its_rank_fails(self):
         self.assert_fails(rows("rank-violation\tservices.fresh->?\t0"), "package services.fresh has no rank in its layer")
 
-    def test_falls_pass_and_are_said(self):
-        out = self.assert_passes(rows("ce\tmodels\t3", drop=("ce\tmodels", "fanout")))
-        self.assertIn("coupling fell", out)
+    def test_an_unrecorded_fall_is_refused_naming_the_update(self):
+        """THE FALL LOCK (2026-11-28): a fall the baseline does not record is headroom to creep back -- refused."""
+        rc, out = self.check(rows("ce\tmodels\t3", drop=("ce\tmodels", "fanout")))
+        self.assertEqual(1, rc, out)
+        for said in ("COUPLING FELL BELOW", "UNRECORDED", "run `scripts/coupling-report --update`"):
+            self.assertIn(said, out)
         self.assertIn("ce models 12 -> 3", out)
         self.assertIn("fanout services.movies.MovieService 35 -> below the limit", out)
 
@@ -573,11 +588,11 @@ class CouplingRenameTest(RatchetHarness):
         self.assert_fails(recorded, "fanout services.identity.ListingCannotLinks added at 16",
                           "but 16 is past services.identity.ListingsApart's frozen row 15", rng=f"{self.base}..{head}")
 
-    def test_a_rename_not_yet_recorded_in_the_baseline_passes_against_the_measured_rows(self):
+    def test_a_rename_not_yet_recorded_in_the_baseline_is_within_the_rows_and_refused_only_until_recorded(self):
         _, head = self.rename({"ListingsApart": "ListingCannotLinks"})
         self.commit({BASELINE: frozen_identity(*((old, v) for old, _, v in REAL_RENAMES))}, "the baseline as it was")
         measured = frozen_identity(*((("ListingCannotLinks" if old == "ListingsApart" else old), v) for old, _, v in REAL_RENAMES))
-        self.assert_passes(measured, rng=f"{self.base}..{head}")
+        self.assert_only_unrecorded(measured, rng=f"{self.base}..{head}")
 
     def test_a_new_class_without_a_rename_gets_no_credit(self):
         recorded = frozen_identity(*((old, v) for old, _, v in REAL_RENAMES if old != "ListingsApart"), ("ListingCannotLinks", 15))
@@ -1167,7 +1182,7 @@ class DataGuardTest(RatchetHarness):
 
     def test_a_frozen_bag_may_fall_but_not_rise(self):
         self.frozen("databag", "models.Bag", 12)
-        self.assert_passes(rows("databag\tmodels.Bag\t11"))
+        self.assert_only_unrecorded(rows("databag\tmodels.Bag\t11"))
         self.assert_fails(rows("databag\tmodels.Bag\t13"), "type models.Bag: data references 13 past its frozen row 12")
 
     def test_a_class_newly_past_the_data_fan_out_limit_fails(self):
@@ -1175,7 +1190,7 @@ class DataGuardTest(RatchetHarness):
 
     def test_a_frozen_data_fan_out_may_fall_but_not_rise(self):
         self.frozen("datafanout", "services.a.Wide", 20)
-        self.assert_passes(rows("datafanout\tservices.a.Wide\t19"))
+        self.assert_only_unrecorded(rows("datafanout\tservices.a.Wide\t19"))
         self.assert_fails(rows("datafanout\tservices.a.Wide\t21"), "data fan-out 21 past its frozen row 20")
 
     def test_a_new_frozen_data_row_in_a_range_fails_without_a_new_limit(self):
@@ -1184,7 +1199,7 @@ class DataGuardTest(RatchetHarness):
 
     def test_a_renamed_bag_keeps_its_row(self):
         self.frozen("databag", "models.Bag", 12)
-        self.assert_passes(rows("databag\tmodels.other.Bag\t12"))
+        self.assert_only_unrecorded(rows("databag\tmodels.other.Bag\t12"))
 
     def verdict_check(self, measured, rng=None, types=None):
         """The ratchet over a measured verdict set {type: data|collaborator} (couplingReport's collaborators and fanouts)."""
