@@ -283,7 +283,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/stall_watch.py` | A no-progress bound: a step is ended once it has made no progress for N seconds | `scripts/stall_watch.py` | 8 tools | stall_watch_test.py | Python |
 | `scripts/wait-for` | Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt suite, a capture) | `scripts/wait-for` | skill CLAUDE.md, agent-ops; 7 tools | wait-for-test.sh | KEEP |
 
-## Identity (240)
+## Identity (241)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -427,6 +427,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity-tools.sh` | What the local identity tools share (sourced): the recording cache, classpaths, countries | `bash scripts/identity-tools.sh` | wf main; skill identity-investigation; 55 tools | identity-tools-test.sh | MIGRATE |
 | `scripts/identity-what-if` | A local what-if of a resolver change over prod's current corpus, in minutes | `scripts/identity-what-if` | hook pre-push; skill CLAUDE.md, identity-investigation; 24 tools | identity_what_if_test.py | MIGRATE |
 | `scripts/identity-why` | Why a listing changed film at a moment, from the identity history alone (identity_history, a month of it) | `scripts/identity-why` | skill identity-investigation; 1 tool | - | KEEP |
+| `scripts/identity_ablation_shards.py` | SHARDS OF A RULE ABLATION (scripts/identity_rule_ablation.py): which configurations a CI row bisects, where the rows' | `imported` | 1 tool | - | Python |
 | `scripts/identity_boot_cost.py` | THE IDENTITY BOOT-COST RATCHET (scripts/identity-boot-cost): what `scripts.IdentityBootCost` measured -- bytes and | `python3 scripts/identity_boot_cost.py` | 1 tool | identity_boot_cost_test.py | Python |
 | `scripts/identity_boot_cost_cli.py` | THE IDENTITY BOOT-COST CHECK: what the identity model allocates and spends a family -- a cold resolve, the worker's | `scripts/identity_boot_cost_cli.py` | 1 tool | identity_boot_cost_cli_test.py | Python |
 | `scripts/identity_calibrate.py` | Regenerate the identity resolver's calibrated evidence model from data (docs/design/identity-resolver.md §14). | `scripts/identity_calibrate.py` | 2 tools | identity_calibrate_test.py | Python |
@@ -468,7 +469,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/identity_refit.py` | The weekly identity rule refit, whole -- the one script `.github/workflows/identity-refit.yml` runs and a local run | `scripts/identity_refit.py` | 2 tools | identity_refit_test.py | Python |
 | `scripts/identity_refit_checks.py` | The checks a calibration change answers to, step 3 of scripts/identity-refit (identity_refit.py), run only when the | `imported` | 1 tool | - | Python |
 | `scripts/identity_repro.py` | Turn a PRODUCTION listing — one a regression alert, a drift-check line or the user names — into a slice case on the | `scripts/identity_repro.py` | 1 tool | identity_repro_test.py | Python |
-| `scripts/identity_rule_ablation.py` | RULE ABLATION: which identity and title rules move takes when switched off, over recorded corpora. | `python3 scripts/identity_rule_ablation.py` | wf identity-rule-ablation; 1 tool | identity_rule_ablation_test.py | Python |
+| `scripts/identity_rule_ablation.py` | RULE ABLATION: which identity and title rules move takes when switched off, over recorded corpora. | `python3 scripts/identity_rule_ablation.py` | wf identity-rule-ablation; 2 tools | identity_rule_ablation_test.py | Python |
 | `scripts/identity_slice_cli.py` | Reproduce ONE listing's identity take — matched or not, model and agreement — from a recording, in seconds, at one or | `scripts/identity_slice_cli.py` | wf main; 10 tools | identity_slice_cli_test.py | Python |
 | `scripts/identity_slice_cli_context.py` | What every part of identity-slice (scripts/identity_slice_cli.py) shares: the options, the environment it runs in and | `imported` | wf main; 6 tools | - | Python |
 | `scripts/identity_slice_cli_drift.py` | identity-slice's drift modes (scripts/identity_slice_cli.py): --drift (the WHOLE recording through production's | `imported` | wf main; 1 tool | - | Python |
