@@ -202,9 +202,9 @@ def _refusing_flag(origin: str, counts: OriginCounts) -> 'Flag | None':
     """`refusing` / `proxy-unreachable` / `origin-down` for an origin that refused most of what it was asked, else None."""
     if asked(counts) < MIN_REQUESTS or counts["refused"] <= REFUSING_SHARE * asked(counts):
         return None
-    if counts["proxyDown"] > REFUSING_SHARE * counts["refused"]:
+    if counts.get("proxyDown", 0) > REFUSING_SHARE * counts["refused"]:
         return Flag(origin, "proxy-unreachable")
-    if counts["originDown"] > REFUSING_SHARE * counts["refused"]:
+    if counts.get("originDown", 0) > REFUSING_SHARE * counts["refused"]:
         return Flag(origin, "origin-down")
     return Flag(origin, "refusing")
 
@@ -285,13 +285,13 @@ def _unknown_notes(this: Manifest, unknown: list[Flag]) -> str:
     text = ""
     if unreachable:
         text += ("\n\n**UNKNOWN: the residential proxy was unreachable** for " +
-                 ", ".join(f"{f.origin} ({origins[f.origin]['proxyDown']} of {origins[f.origin]['refused']} refusals)"
+                 ", ".join(f"{f.origin} ({origins[f.origin].get('proxyDown', 0)} of {origins[f.origin]['refused']} refusals)"
                            for f in unreachable) +
                  " -- production's route to them was not there to ask, so their health is not judged: fix the proxy, "
                  "not the code")
     if down:
         text += ("\n\n**UNKNOWN: down for everyone** -- " +
-                 ", ".join(f"{f.origin} ({origins[f.origin]['originDown']} of {origins[f.origin]['refused']} "
+                 ", ".join(f"{f.origin} ({origins[f.origin].get('originDown', 0)} of {origins[f.origin]['refused']} "
                            "refusals a 5xx or a timeout both direct and through the proxy)" for f in down) +
                  ": the site's own outage, not a block on us; its previous recording is kept")
     return text
@@ -315,10 +315,10 @@ def _what(flag: Flag, counts: OriginCounts) -> str:
     if flag.reason == "refusing":
         return f"refused {share(counts)} of what this recording asked it"
     if flag.reason == "proxy-unreachable":
-        return (f"refused {share(counts)} of what this recording asked it, {counts['proxyDown']} with the residential "
+        return (f"refused {share(counts)} of what this recording asked it, {counts.get('proxyDown', 0)} with the residential "
                 "proxy unreachable -- proxy unreachable, the origin not judged")
     if flag.reason == "origin-down":
-        return (f"answered {counts['originDown']} of {counts['refused']} refusals with a 5xx or a timeout both direct and "
+        return (f"answered {counts.get('originDown', 0)} of {counts['refused']} refusals with a 5xx or a timeout both direct and "
                 "through the proxy -- down for everyone, its previous recording kept")
     return "held responses in the last green recording and holds none now"
 
