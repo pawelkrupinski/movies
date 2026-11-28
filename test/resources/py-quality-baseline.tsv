@@ -152,7 +152,6 @@ cognitive	scripts/ci_wait.py:poll	58
 cognitive	scripts/ci_wait.py:wait	37
 cognitive	scripts/claude-hooks/foreground-wait-guard:unbounded_wait	12
 cognitive	scripts/claude-hooks/foreground-wait-guard:waits	28
-cognitive	scripts/claude-hooks/unbounded-poll-guard:Reader.check	87
 cognitive	scripts/claude-hooks/unbounded-poll-guard:fix_for	19
 cognitive	scripts/claude-hooks/unbounded-poll-guard:positions	14
 cognitive	scripts/convergence-findings.py:main	13
@@ -344,7 +343,6 @@ cyclomatic	scripts/ci_wait.py:poll	55
 cyclomatic	scripts/ci_wait.py:wait	22
 cyclomatic	scripts/claude-hooks/foreground-wait-guard:waits	19
 cyclomatic	scripts/claude-hooks/owner-decisions:pending_decisions	11
-cyclomatic	scripts/claude-hooks/unbounded-poll-guard:Reader.check	60
 cyclomatic	scripts/claude-hooks/unbounded-poll-guard:fix_for	23
 cyclomatic	scripts/claude-hooks/unbounded-poll-guard:positions	11
 cyclomatic	scripts/deploy_watch.py:main	37
@@ -414,7 +412,6 @@ method-lines	scripts/ci/population_walk_diff.py:main	52
 method-lines	scripts/ci/recording_health.py:main	70
 method-lines	scripts/ci/runner_scheduler.py:decide	216
 method-lines	scripts/ci_wait.py:poll	81
-method-lines	scripts/claude-hooks/unbounded-poll-guard:Reader.check	105
 method-lines	scripts/deploy_watch.py:main	79
 method-lines	scripts/identity_rule_ablation.py:main	82
 method-lines	scripts/identity_stamp_carry.py:auto	56
@@ -503,7 +500,7 @@ pyright	scripts/claude-hooks/gh-run-guard	3
 pyright	scripts/claude-hooks/masked-exit-guard	2
 pyright	scripts/claude-hooks/owner-decisions	30
 pyright	scripts/claude-hooks/root-checkout-guard	40
-pyright	scripts/claude-hooks/unbounded-poll-guard	45
+pyright	scripts/claude-hooks/unbounded-poll-guard	32
 pyright	scripts/convergence-findings.py	3
 pyright	scripts/dead_code.py	24
 pyright	scripts/deploy_watch.py	15

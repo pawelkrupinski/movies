@@ -27,7 +27,7 @@ import os
 import re
 import shlex
 import sys
-from typing import Any
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
 from cli import hook_event  # noqa: E402
@@ -163,14 +163,108 @@ def fix_for(condition, region, keyword):
     return None
 
 
+def expand_variables(path: str, assigned: "Dict[str, str]") -> str:
+    return re.sub(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?",
+                  lambda m: assigned.get(m.group(1), os.environ.get(m.group(1), m.group(0))), path)
+
+
+def assignments(words: "List[str]") -> "Dict[str, str]":
+    return dict(w.split("=", 1) for w in words if shell.ASSIGNMENT.match(w))
+
+
+def timeout_end(words: "List[str]", index: int) -> "Tuple[int, Optional[bool]]":
+    """Past the options of a `timeout` at index - 1: where its command starts, and whether a duration bounded it
+    (None when the words ran out before one)."""
+    while index < len(words) and not shell.is_punctuation(words[index]):
+        value = words[index]
+        if value in OPTION_VALUES:
+            index += 2
+        elif value.startswith("-"):
+            index += 1
+        else:
+            return index + 1, bool(seconds(value))
+    return index, None
+
+
+def check_while(words: "List[str]", where: "List[bool]", index: int) -> None:
+    """Raises Finding for the `while` / `until` loop at index when it sleeps and has no bound."""
+    end = loop_end(words, where, index)
+    region, region_where = words[index:end + 1], where[index:end + 1]
+    if not sleeps(region, region_where) or has_bound(region):
+        return
+    body_start = next((i for i in range(len(region)) if region_where[i] and region[i] == "do"), len(region))
+    condition = [w for w in region[1:body_start] if w not in (";", "\n")]
+    raise Finding(f"`{words[index]} {' '.join(condition)[:80]}; do ... sleep ...; done` has no bound",
+                  fix_for(condition, region, words[index]))
+
+
+def check_for(words: "List[str]", where: "List[bool]", index: int) -> None:
+    """Raises Finding for the `for ((;;))` loop at index when it sleeps."""
+    end = loop_end(words, where, index)
+    region, region_where = words[index:end + 1], where[index:end + 1]
+    endless = region[1:3] == ["(", "("] and re.match(r"\( \( ;\s*; \) \)", " ".join(region[1:7]))
+    if endless and sleeps(region, region_where):
+        raise Finding("`for ((;;)); do ... sleep ...; done` has no bound")
+
+
+def check_tail(arguments: "List[str]") -> None:
+    follows = any(re.fullmatch(r"-[a-zA-Z0-9]*[fF][a-zA-Z0-9]*", a) or a.startswith("--follow") for a in arguments)
+    if follows and not any(a.startswith("--pid") for a in arguments):
+        raise Finding("`tail -f` never ends by itself")
+
+
+def arguments_after(words: "List[str]", index: int) -> "List[str]":
+    """The words of the command at index, up to its next punctuation."""
+    arguments: "List[str]" = []
+    for later in words[index + 1:]:
+        if shell.is_punctuation(later):
+            break
+        arguments.append(later)
+    return arguments
+
+
+def shell_script_operand(arguments: "List[str]") -> "Tuple[bool, Optional[str]]":
+    """For a shell's (or `source`'s) arguments: (whether the script is inline, its inline text or its file's path)."""
+    rest = list(arguments)
+    while rest and rest[0].startswith("-") and rest[0] != "-c":
+        rest.pop(0)
+    if rest[:1] == ["-c"]:
+        return True, rest[1] if len(rest) > 1 else None
+    return False, rest[0] if rest else None
+
+
+def heredoc_header(header: str) -> "Optional[List[str]]":
+    try:
+        return shell.tokens(header)
+    except ValueError:
+        return None
+
+
+def fed_to_shell(head: "List[str]") -> bool:
+    """Whether the heredoc's opening line runs a shell reading the body as its script (no `-c`)."""
+    commands = [w for w, p in zip(head, positions(head)) if p and w not in COMMAND_START]
+    return bool(commands) and os.path.basename(commands[0]) in SHELLS and "-c" not in head
+
+
+def written_files(command: str, depth: int, check: "Callable[[str, int], None]") -> "Dict[str, str]":
+    """Every file a heredoc of the command writes (path -> body); a heredoc fed to a shell is checked on the way."""
+    written: "Dict[str, str]" = {}
+    for header, body in heredocs(command):
+        head = heredoc_header(header)
+        if head is None:
+            continue
+        written.update({os.path.expanduser(head[i + 1]): body for i, w in enumerate(head[:-1]) if w in (">", ">>", ">|")})
+        if fed_to_shell(head):
+            check(body, depth + 1)
+    return written
+
+
 class Reader:
-    def __init__(self, cwd):
+    def __init__(self, cwd: "Optional[str]") -> None:
         self.cwd = cwd or os.getcwd()
 
-    def script_text(self, path, assigned, written):
-        expanded = re.sub(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?",
-                          lambda m: assigned.get(m.group(1), os.environ.get(m.group(1), m.group(0))), path)
-        expanded = os.path.expanduser(expanded)
+    def script_text(self, path: str, assigned: "Dict[str, str]", written: "Dict[str, str]") -> "Optional[str]":
+        expanded = os.path.expanduser(expand_variables(path, assigned))
         if expanded in written:
             return written[expanded]
         if "$" in expanded:
@@ -186,111 +280,64 @@ class Reader:
         except OSError:
             return None
 
-    def check(self, command, depth=0):
+    def script_run_by(self, word: str, arguments: "List[str]", assigned: "Dict[str, str]",
+                      written: "Dict[str, str]") -> "Optional[str]":
+        """The text of the script the command word runs (a shell's -c text, a scratch script file), if readable."""
+        name = os.path.basename(word)
+        if name in SHELLS or name in ("source", "."):
+            inline, operand = shell_script_operand(arguments)
+            if inline or operand is None:
+                return operand
+            return self.script_text(operand, assigned, written)
+        return self.script_text(word, assigned, written) if "/" in word else None
+
+    def check_command(self, words: "List[str]", index: int, bounded: bool, assigned: "Dict[str, str]",
+                      written: "Dict[str, str]", depth: int) -> int:
+        """Checks the command at index (its tail, the script it runs); returns where the next word is."""
+        arguments = arguments_after(words, index)
+        if os.path.basename(words[index]) == "tail" and not bounded:
+            check_tail(arguments)
+        script = self.script_run_by(words[index], arguments, assigned, written)
+        if script is not None and not bounded:
+            self.check(script, depth + 1)
+        return index + 1 + len(arguments)
+
+    def check(self, command: str, depth: int = 0) -> None:
         """Raises Finding for the first unbounded poll in `command`."""
         if depth > MAX_DEPTH:
             return
-        assigned, written = {}, {}
-        for header, body in heredocs(command):
-            try:
-                head = shell.tokens(header)
-            except ValueError:
-                continue
-            for index, word in enumerate(head[:-1]):
-                if word in (">", ">>", ">|"):
-                    written[os.path.expanduser(head[index + 1])] = body
-            commands = [w for w, p in zip(head, positions(head)) if p and w not in COMMAND_START]
-            if commands and os.path.basename(commands[0]) in SHELLS and "-c" not in head:
-                self.check(body, depth + 1)
+        written = written_files(command, depth, self.check)
         try:
             words = shell.command_words(command)
         except ValueError:
             return
-        for word in words:
-            if shell.ASSIGNMENT.match(word):
-                name, value = word.split("=", 1)
-                assigned[name] = value
+        assigned = assignments(words)
         # written files are keyed by the path as written; also by the path with its variables expanded
         for path in list(written):
-            expanded = re.sub(r"\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?",
-                              lambda m: assigned.get(m.group(1), os.environ.get(m.group(1), m.group(0))), path)
-            written[expanded] = written[path]
+            written[expand_variables(path, assigned)] = written[path]
         where = positions(words)
-        bounded_by_timeout = False
+        bounded = False
         index = 0
         while index < len(words):
-            word = words[index]
-            if shell.is_punctuation(word):
-                if word not in REDIRECTS:
-                    bounded_by_timeout = False
-                index += 1
-                continue
-            if not where[index]:
-                index += 1
-                continue
-            if word in TIMEOUTS:
-                index += 1
-                while index < len(words) and not shell.is_punctuation(words[index]):
-                    value = words[index]
-                    if value in OPTION_VALUES:
-                        index += 2
-                        continue
-                    if value.startswith("-"):
-                        index += 1
-                        continue
-                    duration = seconds(value)
-                    bounded_by_timeout = bool(duration)
-                    index += 1
-                    break
-                continue
-            if word in ("while", "until"):
-                end = loop_end(words, where, index)
-                region, region_where = words[index:end + 1], where[index:end + 1]
-                body_start = next((i for i in range(len(region)) if region_where[i] and region[i] == "do"),
-                                  len(region))
-                if sleeps(region, region_where) and not has_bound(region):
-                    condition = [w for w in region[1:body_start] if w not in (";", "\n")]
-                    raise Finding(f"`{word} {' '.join(condition)[:80]}; do ... sleep ...; done` has no bound",
-                                  fix_for(condition, region, word))
-                index += 1
-                continue
-            if word == "for":
-                end = loop_end(words, where, index)
-                region, region_where = words[index:end + 1], where[index:end + 1]
-                endless = region[1:3] == ["(", "("] and re.match(r"\( \( ;\s*; \) \)", " ".join(region[1:7]))
-                if endless and sleeps(region, region_where):
-                    raise Finding("`for ((;;)); do ... sleep ...; done` has no bound")
-                index += 1
-                continue
-            if index + 1 < len(words) and where[index + 1]:
-                index += 1  # a prefix (`nohup`, `env X=1`, `nice -n 5`): the command is still to come
-                continue
-            name = os.path.basename(word)
-            arguments = []
-            for later in words[index + 1:]:
-                if shell.is_punctuation(later):
-                    break
-                arguments.append(later)
-            if name == "tail" and not bounded_by_timeout:
-                follows = any(re.fullmatch(r"-[a-zA-Z0-9]*[fF][a-zA-Z0-9]*", a) or a.startswith("--follow")
-                              for a in arguments)
-                if follows and not any(a.startswith("--pid") for a in arguments):
-                    raise Finding("`tail -f` never ends by itself")
-            script = None
-            if name in SHELLS or name in ("source", "."):
-                rest = list(arguments)
-                while rest and rest[0].startswith("-") and rest[0] != "-c":
-                    rest.pop(0)
-                if rest[:1] == ["-c"] and len(rest) > 1:
-                    script = rest[1]
-                elif rest and rest[0] != "-c":
-                    script = self.script_text(rest[0], assigned, written)
-            elif "/" in word:
-                script = self.script_text(word, assigned, written)
-            if script is not None and not bounded_by_timeout:
-                self.check(script, depth + 1)
-            bounded_by_timeout = False
-            index += 1 + len(arguments)
+            index, bounded = self.step(words, where, index, bounded, assigned, written, depth)
+
+    def step(self, words: "List[str]", where: "List[bool]", index: int, bounded: bool, assigned: "Dict[str, str]",
+             written: "Dict[str, str]", depth: int) -> "Tuple[int, bool]":
+        """Reads the word at index: the next index, and whether a `timeout` still bounds the command to come."""
+        word = words[index]
+        if shell.is_punctuation(word):
+            return index + 1, bounded and word in REDIRECTS
+        if not where[index]:
+            return index + 1, bounded
+        if word in TIMEOUTS:
+            index, duration = timeout_end(words, index + 1)
+            return index, bounded if duration is None else duration
+        if word in ("while", "until", "for"):
+            (check_for if word == "for" else check_while)(words, where, index)
+            return index + 1, bounded
+        if where[index + 1:index + 2] == [True]:
+            return index + 1, bounded  # a prefix (`nohup`, `env X=1`, `nice -n 5`): the command is still to come
+        return self.check_command(words, index, bounded, assigned, written, depth), False
 
 
 def backgrounds_itself(command):
