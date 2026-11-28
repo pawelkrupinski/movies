@@ -32,9 +32,10 @@ import subprocess
 import sys
 import urllib.request
 import xml.etree.ElementTree as ElementTree
-from typing import Any, Callable, List, Mapping, Optional, TypedDict
+from typing import Any, Callable, Dict, List, Mapping, Optional, Set, Tuple, TypedDict
 import ci_machine  # noqa: E402
 
+Line = Dict[str, Any]   # one JSON line of the metrics file
 HERE = os.path.dirname(os.path.abspath(__file__))
 SAMPLE_SECONDS = 5
 # Linux's /proc/stat counts USER_HZ ticks and Mach's host_statistics CPU ticks, both 100 a second.
@@ -63,7 +64,7 @@ def gc_dir():
     return os.path.join(temp_dir(), "ci-gc")
 
 
-def append(*objects):
+def append(*objects: Line) -> None:
     path = metrics_file()
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "a", encoding="utf-8") as handle:
@@ -71,14 +72,14 @@ def append(*objects):
             handle.write(json.dumps(obj, separators=(",", ":"), sort_keys=False) + "\n")
 
 
-def github_env(name, value):
+def github_env(name: str, value: str) -> None:
     path = ci_machine.environment().get("GITHUB_ENV")
     if path:
         with open(path, "a", encoding="utf-8") as handle:
             handle.write("%s=%s\n" % (name, value))
 
 
-def rate_limit(token, opener=urllib.request.urlopen):
+def rate_limit(token: Optional[str], opener: Callable[..., Any] = urllib.request.urlopen) -> Optional[Dict[str, Any]]:
     if not token:
         return None
     request = urllib.request.Request("https://api.github.com/rate_limit",
@@ -91,7 +92,7 @@ def rate_limit(token, opener=urllib.request.urlopen):
         return None
 
 
-def identity():
+def identity() -> Dict[str, Optional[str]]:
     return {"github_job": ci_machine.environment().get("GITHUB_JOB"), "runner_name": ci_machine.environment().get("RUNNER_NAME"),
             "run_id": ci_machine.environment().get("GITHUB_RUN_ID"), "run_attempt": ci_machine.environment().get("GITHUB_RUN_ATTEMPT"),
             "label": ci_machine.environment().get("CI_METRICS_LABEL") or None}
@@ -121,7 +122,7 @@ def start(env: Mapping[str, str] = ci_machine.environment(), run: Callable[..., 
     print("metrics: started (machine-id, sampler every %d s, GC logs in %s)" % (SAMPLE_SECONDS, gc_dir()))
 
 
-def table(path):
+def table(path: str) -> Tuple[Optional[List[str]], List[List[Any]]]:
     """A tab-separated file with a header as (columns, rows of numbers or strings)."""
     if not os.path.exists(path):
         return None, []
@@ -139,7 +140,7 @@ def table(path):
     return columns, rows
 
 
-def number(cell):
+def number(cell: str) -> Any:
     try:
         value = float(cell)
         return int(value) if value.is_integer() else value
@@ -147,8 +148,8 @@ def number(cell):
         return cell if cell else None
 
 
-def jvm_commands(path):
-    commands = {}
+def jvm_commands(path: str) -> Dict[str, str]:
+    commands: Dict[str, str] = {}
     if os.path.exists(path):
         with open(path, encoding="utf-8", errors="replace") as handle:
             for line in handle:
@@ -157,26 +158,36 @@ def jvm_commands(path):
     return commands
 
 
-def main_class(command):
-    words = command.split()
-    skip = False
-    for index, word in enumerate(words[1:], 1):
-        if skip:
-            skip = False
-            continue
-        if word in ("-cp", "-classpath", "--class-path", "--module-path", "-p"):
-            skip = True
-            continue
-        if word == "-jar":
-            return os.path.basename(words[index + 1]) if index + 1 < len(words) else "-jar"
-        if word.startswith("@") or re.match(r"^sbt-args\d+\.tmp$", word.rsplit("/", 1)[-1]):
-            return "sbt forked test JVM"
-        if not word.startswith("-"):
-            return word.rsplit("/", 1)[-1][:120]
+VALUE_OPTIONS = ("-cp", "-classpath", "--class-path", "--module-path", "-p")
+
+
+def _launcher_label(word: str) -> Optional[str]:
+    """What a command word that starts the program says of the JVM: an sbt argument file is sbt's forked test JVM, a
+    plain word is the main class; a flag says nothing."""
+    if word.startswith("@") or re.match(r"^sbt-args\d+\.tmp$", word.rsplit("/", 1)[-1]):
+        return "sbt forked test JVM"
+    return None if word.startswith("-") else word.rsplit("/", 1)[-1][:120]
+
+
+def _jar_name(path: Optional[str]) -> str:
+    return os.path.basename(path) if path else "-jar"
+
+
+def main_class(command: str) -> Optional[str]:
+    words = iter(command.split()[1:])
+    for word in words:
+        if word in VALUE_OPTIONS:
+            next(words, None)
+        elif word == "-jar":
+            return _jar_name(next(words, None))
+        else:
+            label = _launcher_label(word)
+            if label:
+                return label
     return None
 
 
-def jvm_flags(command):
+def jvm_flags(command: str) -> str:
     return " ".join(word for word in command.split() if word.startswith(("-X", "-XX:", "-Dsbt", "-Dfile"))
                     and not word.startswith("-Xlog"))[:600]
 
@@ -192,7 +203,7 @@ class GcFigures(TypedDict):
     gc_overhead: Optional[float]
 
 
-def gc_of(path) -> GcFigures:
+def gc_of(path: str) -> GcFigures:
     """One GC log (`-Xlog:gc`, the uptime decorator first): pauses, their total and max, the largest after-GC heap."""
     count = full = 0
     pause_ms = max_ms = 0.0
@@ -220,8 +231,8 @@ def gc_of(path) -> GcFigures:
             "gc_overhead": round(pause_ms / 1000.0 / uptime, 4) if uptime > 0 else None}
 
 
-def jvms(commands):
-    found = []
+def jvms(commands: Mapping[str, str]) -> List[Line]:
+    found: List[Line] = []
     # The job's own GC logs (job-telemetry's JDK_JAVA_OPTIONS); a job's older /tmp/gc-*.log only when it has none,
     # since a JVM that writes both would count twice.
     paths = sorted(glob.glob(os.path.join(gc_dir(), "gc-*.log"))) or sorted(glob.glob("/tmp/gc-*.log"))
@@ -240,53 +251,90 @@ def jvms(commands):
     return found
 
 
-def junit(root="."):
-    """Every JUnit report under the job's known report paths: totals, the slowest suites and tests."""
-    paths = set()
-    for pattern in JUNIT_GLOBS:
-        paths.update(glob.glob(os.path.join(root, pattern), recursive=True))
-    suites, tests = [], []
-    totals = {"files": 0, "tests": 0, "failed": 0, "skipped": 0, "time_s": 0.0}
-    seen = set()
-    for path in sorted(paths):
+def _failed(case: Any) -> bool:
+    return case.find("failure") is not None or case.find("error") is not None
+
+
+def _status(case: Any) -> str:
+    if _failed(case):
+        return "failed"
+    return "skipped" if case.find("skipped") is not None else "passed"
+
+
+def _parsed_reports(paths: List[str]) -> List[Tuple[str, Any]]:
+    """(path, root element) of each JUnit report that parses."""
+    parsed: List[Tuple[str, Any]] = []
+    for path in paths:
         try:
-            tree = ElementTree.parse(path)
+            parsed.append((path, ElementTree.parse(path).getroot()))
         except (ElementTree.ParseError, OSError):
             continue
-        totals["files"] += 1
-        root_ = tree.getroot()
-        elements = [root_] if root_.tag == "testsuite" else list(root_.iter("testsuite"))
-        for suite in elements:
+    return parsed
+
+
+def _suites_in(root: Any) -> List[Any]:
+    return [root] if root.tag == "testsuite" else list(root.iter("testsuite"))
+
+
+def _suite_line(name: str, cases: List[Any], suite: Any) -> Line:
+    """The `suite` line of one suite."""
+    seconds = _suite_seconds(suite, cases)
+    return {"kind": "suite", "suite": name[:200], "tests": len(cases), "failed": sum(map(_failed, cases)),
+            "skipped": sum(1 for case in cases if case.find("skipped") is not None), "time_s": round(seconds, 2)}
+
+
+def _suite_seconds(suite: Any, cases: List[Any]) -> float:
+    return float(suite.get("time") or sum(float(case.get("time") or 0) for case in cases) or 0)
+
+
+def _test_line(name: str, case: Any) -> Line:
+    return {"kind": "test", "suite": name[:200], "test": (case.get("name") or "")[:200],
+            "time_s": round(float(case.get("time") or 0), 3), "status": _status(case)}
+
+
+def _report_paths(root: str) -> List[str]:
+    return sorted({path for pattern in JUNIT_GLOBS for path in glob.glob(os.path.join(root, pattern), recursive=True)})
+
+
+def _unseen_suites(reports: List[Tuple[str, Any]]) -> List[Tuple[str, List[Any], Any]]:
+    """(name, cases, suite) of every suite of the reports. sbt writes a suite's report twice (the root's
+    target/test-reports and the module's): each is counted once."""
+    found: List[Tuple[str, List[Any], Any]] = []
+    seen: Set[Tuple[Any, ...]] = set()
+    for path, root in reports:
+        for suite in _suites_in(root):
             cases = list(suite.findall("testcase"))
             name = suite.get("name") or os.path.basename(path)
-            # sbt writes a suite's report twice (the root's target/test-reports and the module's): count it once.
-            identity_ = (name, len(cases), suite.get("time"), suite.get("timestamp"), suite.get("hostname"))
-            if identity_ in seen or (name, len(cases), suite.get("time")) in seen:
-                continue
-            seen.add(identity_)
-            seen.add((name, len(cases), suite.get("time")))
-            failed = sum(1 for case in cases if case.find("failure") is not None or case.find("error") is not None)
-            skipped = sum(1 for case in cases if case.find("skipped") is not None)
-            seconds = float(suite.get("time") or sum(float(case.get("time") or 0) for case in cases) or 0)
-            totals["tests"] += len(cases)
-            totals["failed"] += failed
-            totals["skipped"] += skipped
-            totals["time_s"] += seconds
-            suites.append({"kind": "suite", "suite": name[:200], "tests": len(cases), "failed": failed,
-                           "skipped": skipped, "time_s": round(seconds, 2)})
-            for case in cases:
-                tests.append({"kind": "test", "suite": name[:200], "test": (case.get("name") or "")[:200],
-                              "time_s": round(float(case.get("time") or 0), 3),
-                              "status": "failed" if (case.find("failure") is not None or case.find("error") is not None)
-                              else ("skipped" if case.find("skipped") is not None else "passed")})
-    if not totals["files"]:
-        return []
-    totals["time_s"] = round(totals["time_s"], 1)
-    slow_suites = sorted(suites, key=lambda s: -s["time_s"])[:TOP]
+            full, short = (name, len(cases), suite.get("time"), suite.get("timestamp"), suite.get("hostname")), (name, len(cases), suite.get("time"))
+            if full not in seen and short not in seen:
+                found.append((name, cases, suite))
+            seen.update((full, short))
+    return found
+
+
+def _totals(files: int, found: List[Tuple[str, List[Any], Any]], suites: List[Line]) -> Line:
+    """The `tests` line's figures: reports read, tests, failed, skipped and the suites' total seconds."""
+    return {"files": files, "tests": sum(s["tests"] for s in suites), "failed": sum(s["failed"] for s in suites),
+            "skipped": sum(s["skipped"] for s in suites),
+            "time_s": round(sum(_suite_seconds(suite, cases) for _, cases, suite in found), 1)}
+
+
+def _slowest(suites: List[Line], tests: List[Line]) -> List[Line]:
+    """The slowest suites and tests, then the failed tests the slowest do not already hold."""
     slow_tests = sorted(tests, key=lambda t: -t["time_s"])[:TOP]
     failed_tests = [t for t in tests if t["status"] == "failed"][:TOP]
-    return [dict(kind="tests", suites=len(suites), **totals)] + slow_suites + slow_tests + \
-        [t for t in failed_tests if t not in slow_tests]
+    return sorted(suites, key=lambda s: -s["time_s"])[:TOP] + slow_tests + [t for t in failed_tests if t not in slow_tests]
+
+
+def junit(root: str = ".") -> List[Line]:
+    """Every JUnit report under the job's known report paths: totals, the slowest suites and tests."""
+    reports = _parsed_reports(_report_paths(root))
+    if not reports:
+        return []
+    found = _unseen_suites(reports)
+    suites = [_suite_line(name, cases, suite) for name, cases, suite in found]
+    tests = [_test_line(name, case) for name, cases, _ in found for case in cases]
+    return [dict(kind="tests", suites=len(suites), **_totals(len(reports), found, suites))] + _slowest(suites, tests)
 
 
 def psi_line(first: Optional[float], last: Optional[float], seconds: float) -> List[str]:
@@ -296,32 +344,48 @@ def psi_line(first: Optional[float], last: Optional[float], seconds: float) -> L
     return []
 
 
-def summary(lines):
+def _number_at(row: List[Any], columns: List[str], name: str) -> Optional[Any]:
+    """The cell of column `name` where it is a number, else None."""
+    value = row[columns.index(name)] if name in columns else None
+    return value if isinstance(value, (int, float)) else None
+
+
+def _series_parts(series: Line) -> List[str]:
+    """The summary's machine part: CPU use, memory pressure and the sample count of a series of two or more rows."""
+    columns, rows = series["columns"], series["rows"]
+    first, last = rows[0], rows[-1]
+
+    def delta(name: str) -> float:
+        return (_number_at(last, columns, name) or 0) - (_number_at(first, columns, name) or 0)
+
+    ticks, seconds, busy = delta("cpu_total"), delta("t"), delta("cpu_busy")
+    cpu = ["CPU %.0f%% (%.0f CPU-s)" % (100.0 * busy / ticks, busy / float(TICKS_PER_SECOND))] if ticks > 0 else []
+    pressure = psi_line(_number_at(first, columns, "psi_mem_some_us"), _number_at(last, columns, "psi_mem_some_us"), seconds)
+    return cpu + pressure + ["%d samples" % len(rows)]
+
+
+def _jvm_parts(jvm_lines: List[Line]) -> List[str]:
+    if not jvm_lines:
+        return []
+    return ["GC %.1f s over %d JVMs (max pause %.0f ms)" % (
+        sum(l["gc_pause_ms"] for l in jvm_lines) / 1000.0, len(jvm_lines), max(l["gc_max_pause_ms"] for l in jvm_lines))]
+
+
+def _tests_parts(tests: Optional[Line]) -> List[str]:
+    if not tests:
+        return []
+    return ["%d tests (%d failed, %d skipped) in %.0f s" % (tests["tests"], tests["failed"], tests["skipped"], tests["time_s"])]
+
+
+def summary(lines: List[Line]) -> str:
     series = next((l for l in lines if l["kind"] == "series"), None)
-    parts = []
-    if series and len(series["rows"]) >= 2:
-        columns = series["columns"]
-        first, last = series["rows"][0], series["rows"][-1]
-        get = lambda row, name: row[columns.index(name)] if name in columns and isinstance(row[columns.index(name)], (int, float)) else None
-        ticks = (get(last, "cpu_total") or 0) - (get(first, "cpu_total") or 0)
-        seconds = (get(last, "t") or 0) - (get(first, "t") or 0)
-        busy = (get(last, "cpu_busy") or 0) - (get(first, "cpu_busy") or 0)
-        if ticks > 0:
-            parts.append("CPU %.0f%% (%.0f CPU-s)" % (100.0 * busy / ticks, busy / float(TICKS_PER_SECOND)))
-        parts += psi_line(get(first, "psi_mem_some_us"), get(last, "psi_mem_some_us"), seconds)
-        parts.append("%d samples" % len(series["rows"]))
-    jvm_lines = [l for l in lines if l["kind"] == "jvm"]
-    if jvm_lines:
-        parts.append("GC %.1f s over %d JVMs (max pause %.0f ms)" % (
-            sum(l["gc_pause_ms"] for l in jvm_lines) / 1000.0, len(jvm_lines), max(l["gc_max_pause_ms"] for l in jvm_lines)))
-    tests = next((l for l in lines if l["kind"] == "tests"), None)
-    if tests:
-        parts.append("%d tests (%d failed, %d skipped) in %.0f s" % (tests["tests"], tests["failed"], tests["skipped"],
-                                                                      tests["time_s"]))
+    parts = (_series_parts(series) if series and len(series["rows"]) >= 2 else []) + \
+        _jvm_parts([l for l in lines if l["kind"] == "jvm"]) + \
+        _tests_parts(next((l for l in lines if l["kind"] == "tests"), None))
     return "metrics: " + (", ".join(parts) if parts else "nothing sampled")
 
 
-def artifact_name(now=None):
+def artifact_name(now: Optional[float] = None) -> str:
     """`ci-metrics-<job>-<runner>-<finish epoch>`: one runner runs several jobs of a run, the matrix rows of one job id
     among them (the landing check's identity shards), and without the time the second upload overwrote the first."""
     raw = "ci-metrics-%s-%s-%d" % (ci_machine.environment().get("GITHUB_JOB") or "job", ci_machine.environment().get("RUNNER_NAME") or str(os.getpid()),
@@ -329,9 +393,9 @@ def artifact_name(now=None):
     return re.sub(r"[^A-Za-z0-9_.-]+", "-", raw)[:200]
 
 
-def finish(env=ci_machine.environment(), root="."):
+def finish(env: Mapping[str, str] = ci_machine.environment(), root: str = ".") -> None:
     out = sampler_out()
-    lines = []
+    lines: List[Line] = []
     columns, rows = table(out + ".series")
     if columns:
         lines.append({"kind": "series", "every_s": SAMPLE_SECONDS, "columns": columns, "rows": rows})
@@ -361,7 +425,7 @@ def finish(env=ci_machine.environment(), root="."):
                 sink.write(source.read())
 
 
-def main(argv=None):
+def main(argv: Optional[List[str]] = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     command = argv[0] if argv else ""
     try:

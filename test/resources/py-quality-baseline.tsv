@@ -95,9 +95,6 @@ cognitive	scripts/ci/identity_run_shards.py:plan	16
 cognitive	scripts/ci/identity_takes_diff.py:main	16
 cognitive	scripts/ci/identity_takes_diff.py:pair	12
 cognitive	scripts/ci/identity_takes_diff.py:suspects_of	13
-cognitive	scripts/ci/job_metrics.py:junit	32
-cognitive	scripts/ci/job_metrics.py:main_class	15
-cognitive	scripts/ci/job_metrics.py:summary	17
 cognitive	scripts/ci/junit_failures.py:failed	16
 cognitive	scripts/ci/lint_per_file_check.py:check_command	11
 cognitive	scripts/ci/python_floor_lint.py:annotations	20
@@ -254,8 +251,6 @@ cyclomatic	scripts/ci/identity_findings_report.py:report	14
 cyclomatic	scripts/ci/identity_run_shards.py:plan	13
 cyclomatic	scripts/ci/identity_takes_diff.py:main	19
 cyclomatic	scripts/ci/identity_takes_diff.py:render	17
-cyclomatic	scripts/ci/job_metrics.py:junit	29
-cyclomatic	scripts/ci/job_metrics.py:summary	23
 cyclomatic	scripts/ci/lint_per_file_check.py:check_command	25
 cyclomatic	scripts/ci/lint_per_file_check.py:main	11
 cyclomatic	scripts/ci/lint_per_file_check.py:pairs	11
@@ -400,7 +395,6 @@ pyright	scripts/ci/identity_live_drift.py	29
 pyright	scripts/ci/identity_run_shards.py	7
 pyright	scripts/ci/identity_takes.py	19
 pyright	scripts/ci/identity_takes_diff.py	115
-pyright	scripts/ci/job_metrics.py	39
 pyright	scripts/ci/junit_failures.py	8
 pyright	scripts/ci/landing_check_for_tree.py	9
 pyright	scripts/ci/lint_per_file_check.py	52
