@@ -79,7 +79,7 @@ class MeasureTest(unittest.TestCase):
         self.assertTrue(kotlin("android/app/src/main/java/pl/kinowo/A.kt:f"))
         self.assertTrue(kotlin("android/app/src/tuning/java/pl/kinowo/A.kt"))
         self.assertFalse(kotlin("android/app/src/test/java/pl/kinowo/ATest.kt:f"))
-        self.assertFalse(kotlin("android/app/build.gradle.kts"))
+        self.assertTrue(kotlin("android/app/build.gradle.kts"))  # the Gradle scripts are held (2026-11-28)
 
     def test_each_language_holds_its_own_files(self) -> None:
         self.assertTrue(measure.LANGUAGES["swift"].holds("ios/Kinowo/A.swift"))

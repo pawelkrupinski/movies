@@ -97,19 +97,11 @@ def tokens_of(raw: Iterable[str], generated: Set[int]) -> List[clone_groups.Toke
     return out
 
 
-def copies_rows(tokens: Dict[str, List[clone_groups.Token]]) -> List[Row]:
-    copies: Dict[str, int] = {}
-    for group in clone_groups.groups_of_tokens(tokens):
-        key = "|".join(sorted({c.file for c in group.copies}))
-        copies[key] = copies.get(key, 0) + len(group.copies)
-    return [("copies", key, n) for key, n in sorted(copies.items())]
-
-
 def rows(lizard: Lizard, sources: Dict[str, str]) -> List[Row]:
     """Every row of one language's sources (path -> text): functions, files, clone sets."""
     out: List[Row] = []
     for path, text in sorted(sources.items()):
         out += function_rows(path, lizard.analyze(path, text))
         out.append(("file-lines", path, len(text.splitlines()) - len(generated_lines(text))))
-    return out + copies_rows({path: tokens_of(lizard.tokens(path, text), generated_lines(text))
+    return out + clone_groups.copies_rows({path: tokens_of(lizard.tokens(path, text), generated_lines(text))
                               for path, text in sources.items()})

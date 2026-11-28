@@ -16,17 +16,15 @@ missing python3 or a venv that cannot be built BLOCKS the push, with the fix):
 L is swift or kotlin (default both). Exit 0; 1 on a violation; 2 on an error."""
 from __future__ import annotations
 
-import argparse
 import importlib
 import os
 import sys
-from typing import Dict, Iterable, List, Protocol, Sequence, Tuple, cast
+from typing import Dict, Iterable, List, Protocol, Tuple, cast
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))  # scripts/lib
-import baseline_ratchet  # noqa: E402
-from code_tools import quality_report  # noqa: E402
 import mobile_quality_measure as measure  # noqa: E402
 import mobile_quality_ratchet as ratchet  # noqa: E402
+import ratchet_report_cli  # noqa: E402
 import rules_table  # noqa: E402
 from seams import tool_files  # noqa: E402
 import tool_git  # noqa: E402
@@ -75,53 +73,12 @@ def limits(table: rules_table.Rules) -> Dict[str, float]:
             "clone-tokens": table.limit("clone-tokens")}
 
 
-def over_limit(rows: Sequence[Row], limit: Dict[str, float]) -> baseline_ratchet.Rows:
-    """The rows past their kind's limit, and every limit: what a baseline freezes."""
-    current: baseline_ratchet.Rows = {("limit", kind): value for kind, value in limit.items()}
-    current.update({(kind, key): float(value) for kind, key, value in rows if value > limit[kind]})
-    return current
-
-
-def sources(git: tool_git.Git, files: tool_files.Files, language: measure.Language) -> Dict[str, str]:
-    return {p: files.read_text(p) for p in git.lines("ls-files", "--", language.root) if language.holds(p)}
-
-
-def run_one(language: str, rows: Sequence[Row], limit: Dict[str, float], args: argparse.Namespace) -> bool:
-    """One language's verdict (check), baseline (update) or report: whether it passed."""
-    current = over_limit(rows, limit)
-    spec = ratchet.SPECS[language]
-    if args.ratchet == "update":
-        baseline_ratchet.update(spec, current)
-        return True
-    if args.ratchet == "check":
-        return baseline_ratchet.check(spec, current, args.range)
-    print(quality_report.markdown(f"{language.capitalize()} quality report", rows,
-                                  [(kind, limit[kind]) for kind in (*FUNCTION_KINDS, "copies")]))
-    return True
-
-
 def measured(git: tool_git.Git, files: tool_files.Files, lizard: PinnedLizard, language: str) -> List[Row]:
-    return measure.rows(lizard, sources(git, files, measure.LANGUAGES[language]))
-
-
-def write_over_limit(files: tool_files.Files, out: str, language: str, current: baseline_ratchet.Rows) -> None:
-    """The held rows past a limit, and the limits (what the baseline would freeze: scripts/ratchet-diff --measure)."""
-    spec = ratchet.SPECS[language]
-    files.write_text(os.path.join(out, f"{language}-over-limit.tsv"), "".join(
-        f"{k}\t{key}\t{baseline_ratchet.show(v)}\n" for (k, key), v in sorted(current.items())
-        if k == "limit" or baseline_ratchet.gated(spec, key)))
-
-
-def parse(argv: List[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(prog="mobile-quality-report", description=__doc__,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
-    quality_report.ratchet_arguments(parser)
-    parser.add_argument("--language", action="append", choices=sorted(measure.LANGUAGES))
-    return parser.parse_args(argv)
+    return measure.rows(lizard, ratchet_report_cli.sources(git, files, measure.LANGUAGES[language].holds))
 
 
 def main(argv: List[str]) -> int:
-    args = parse(argv)
+    args = ratchet_report_cli.parse("mobile-quality-report", __doc__ or "", measure.LANGUAGES, argv)
     files, git = tool_files.Files.here(), tool_git.Git.here()  # the composition root: the checkout it runs in
     try:
         lizard = PinnedLizard(cast(LizardModule, importlib.import_module("lizard")),
@@ -131,8 +88,10 @@ def main(argv: List[str]) -> int:
         for language in args.language or sorted(measure.LANGUAGES):
             rows = measured(git, files, lizard, language)
             if args.out:
-                write_over_limit(files, args.out, language, over_limit(rows, limit))
-            results.append((language, run_one(language, rows, limit, args)))
+                ratchet_report_cli.write_over_limit(files, args.out, language, ratchet.SPECS[language],
+                                                    ratchet_report_cli.over_limit(rows, limit))
+            results.append((language, ratchet_report_cli.run_one(ratchet.SPECS[language], language, rows, limit, args,
+                                                                 (*FUNCTION_KINDS, "copies"))))
         return 0 if all(ok for _, ok in results) else 1
     except ImportError as e:
         print(f"mobile-quality-report: {e}: run it as scripts/mobile-quality-report (the pinned venv)", file=sys.stderr)

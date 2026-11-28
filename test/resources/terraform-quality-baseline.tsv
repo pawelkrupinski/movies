@@ -1,0 +1,10 @@
+# THE TERRAFORM QUALITY BASELINE (scripts/config-quality-report --update writes it; scripts/ci/config_quality_ratchet.py
+# holds every push touching Terraform files to it). Every Terraform file and clone set past a limit of
+# test/resources/design-rules.tsv, frozen:
+#   file-lines <file>                                                           Length:
+#   copies <file>|<file>... (clone groups spanning exactly them), clone-tokens  Duplication:
+# A row may only fall, and the push making a fall records it (--update, no trailer); a row added or raised, or a limit
+# raised, lands only in a commit carrying its kind's trailer (CLAUDE.md, "Design rules").
+limit	file-lines	500
+limit	copies	0
+limit	clone-tokens	50

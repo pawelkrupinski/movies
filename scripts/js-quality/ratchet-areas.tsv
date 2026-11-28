@@ -3,3 +3,4 @@
 # (areas.tsv), not gated: a row of theirs never fails a push.
 web-js	globals	web/src/main/assets/js
 version-dashboard	imports	infra/version-dashboard/src
+twirl-inline	globals	web/src/main/twirl

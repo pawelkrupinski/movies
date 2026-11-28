@@ -55,9 +55,9 @@ check "a metrics source runs the metric-alert lint and the sbt lints" "metricale
   "$(plan web/src/main/scala/services/metrics/web/WebCacheMetrics.scala)"
 check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint" "dashboards sbt" \
   "$(plan infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
-check "a workflow runs the gating-checks registry lint, the schedules check, the workflow lints' self-tests, actionlint, and the silenced-read lint" "newchecks schedules scripttests actionlint sbt" "$(plan .github/workflows/ci.yml)"
+check "a workflow runs the gating-checks registry lint, the schedules check, the workflow lints' self-tests, actionlint, and the silenced-read lint" "newchecks schedules shellgate scripttests actionlint sbt" "$(plan .github/workflows/ci.yml)"
 check "the external scheduler's generated schedule runs the schedules check" "schedules" "$(plan infra/nix/files/scheduled-workflows.json)"
-check "a composite action runs actionlint (its run blocks' shellcheck), the self-tests, and the lint specs" "scripttests actionlint sbt" \
+check "a composite action runs the shell gate, actionlint (its run blocks' shellcheck), the self-tests, and the lint specs" "shellgate scripttests actionlint sbt" \
   "$(plan .github/actions/convergence-setup/action.yml)"
 check "the local-tests list selects shellcheck by its directory (which skips it) and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/hooks/local-tests.txt)"
 check "a shell script runs the shell gate, its self-tests, shellcheck, and the lint specs" "shellgate scripttests shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
@@ -97,6 +97,10 @@ check "the Swift and Kotlin ratchets' baselines and measure run them" "mobilequa
 check "the shell gate's baseline and keeps run it" "shellgate|shellgate" \
   "$(plan test/resources/shell-baseline.tsv)|$(plan test/resources/shell-keeps.tsv)"
 check "a roster generator runs the drift check and its self-tests" "drift scripttests" "$(plan data/uk/scripts/build_pages.py)"
+check "a Nix file and a Terraform file run the declarative-config ratchet" "configquality|configquality" \
+  "$(plan infra/nix/modules/fleet/default.nix)|$(plan infra/terraform/outputs.tf)"
+check "the config ratchet's baselines and measure run it" "configquality|configquality" \
+  "$(plan test/resources/nix-quality-baseline.tsv)|$(plan scripts/ci/config_quality_measure.py | tr ' ' '\n' | grep -x configquality)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
 check "checks come out once each, in run order" "newchecks schedules driftguards eslint jsquality shellgate snapshot scripttests actionlint shellcheck sbt" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
@@ -125,7 +129,7 @@ check "the stamp carry table runs the stampcarry check (its rows proven again) a
   "$(plan test/resources/identity-stamp-carry.tsv)"
 check "an identity spec runs them (and, a spec, the self-tests reading every spec)" "driftguards scripttests sbt identity" "$(plan identity/src/test/scala/services/identity/agreement/MemoSpec.scala)"
 # NO PAGE AREA (the owner, 2026-11-17, "B1"): the page specs and Playwright run after landing, on Main's page-tests rows
-check "a template runs the sbt check (web compiles it, PageSnapshotSpec reads it), no page area" "sbt" "$(plan web/src/main/twirl/views/repertoire.scala.html)"
+check "a template runs the sbt check (web compiles it, PageSnapshotSpec reads it), no page area; its inline script the JS ratchet, its markup the config one" "jsquality configquality sbt" "$(plan web/src/main/twirl/views/repertoire.scala.html)"
 check "a stylesheet runs it" "sbt" "$(plan web/src/main/assets/css/main.css)"
 check "a Playwright spec runs ESLint alone" "eslint" "$(plan page-tests-playwright/tests/card-tap.spec.ts)"
 check "a page spec runs the sbt check" "sbt" "$(plan web/src/page/scala/views/PageJsBehaviourSpec.scala)"

@@ -408,7 +408,21 @@ module's `src/main|tuning|noTuning`) are held on the one limits table by `script
 decisions a body, a 50-line function, nesting 4) refuses a new shell tool past a limit or a frozen one growing --
 migrate it to Python (`scripts/shell-py-progress/migrate-tools.tsv`, same path, CLI and output, plus a black-box
 `<tool>_test.py`); `test/resources/shell-baseline.tsv` only falls (no trailer raises it), its keeps are dated rows of
-`test/resources/shell-keeps.tsv`, and `shell_gate.py queue` lists the migration queue. Not ratcheted yet: Nix, Terraform,
+`test/resources/shell-keeps.tsv`, and `shell_gate.py queue` lists the migration queue.
+**The last gaps, closed** (the owner, 2026-11-28; every one decided, none left unratcheted): (1) **a workflow's or composite
+action's `run:` block is shell** -- `scripts/design-rules/workflow_runs.py` reads each step's `run:` (keyed
+`<file>#<job>/<step>`) into the shell gate, held to the shell limits and to `run-lines` 15 (design-rules.tsv); a block past
+one moves to a script (Python), today's 16 are frozen in `shell-baseline.tsv`, rows that only fall. (2) **A Twirl template's
+inline `<script>` is production JS** -- `scripts/lib/web_templates/twirl_scripts.py` extracts each as a virtual
+`<template>.scriptN.js` (Twirl neutralised) and `jsquality` measures them beside `web/src/main/assets/js` (area `twirl-inline`
+of `ratchet-areas.tsv`; 27 rows frozen in `js-quality-baseline.tsv`, the cognitive, cyclomatic, length and clone kinds under
+the same trailers); the design-lint rows (naming, effects, fan-out) are not extracted from inline scripts, a known limit.
+(3) **Gradle `.kts`** is held in the Kotlin ratchet (`mobilequality`; `android/**/*.kts` rows in `kotlin-quality-baseline.tsv`).
+(4) **Nix, Terraform and the Twirl templates' markup are declarative** -- no function to be complex, so they are held to what a
+declarative file can grow past, a file of at most 500 lines and no clone group of 50+ tokens, never exempt:
+`scripts/config-quality-report` (pure python3, pre-push `configquality`, trailers `Length:` / `Duplication:`;
+`test/resources/{nix,terraform,twirl}-quality-baseline.tsv`: Nix 8 files and 2 clone sets frozen, Terraform none, Twirl
+5 files and 14 clone sets). `scripts/ratchet-diff` and the Grafana code-quality series read all of them.
 the Twirl templates' markup and inline `<script>`, the Gradle `.kts` (measured, not held), workflow `run:` blocks.
 **The naming lint** (`scripts/design-rules/naming_lint.py`, the same step and `pyquality` / `jsquality` for their languages; the owner's "names must match behaviour", 2026-11-19):
 two top-level types of one package named with the same words in another order (`PruneSweep` / `SweepPrune`) refuse the

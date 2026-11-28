@@ -187,7 +187,8 @@ class QualityMetricsTest(unittest.TestCase):
 
     def test_the_swift_kotlin_and_shell_baselines_are_sent(self) -> None:
         totals = qm.snapshot(qm.MOVIES, qm.shell_py_progress.Tree(ROOT, "HEAD"))
-        for key in (("quality", "swift", "cognitive"), ("quality", "kotlin", "copies"), ("migration", "shell", "shell-decisions")):
+        for key in (("quality", "swift", "cognitive"), ("quality", "kotlin", "copies"), ("migration", "shell", "shell-decisions"),
+                    ("quality", "nix", "file-lines"), ("quality", "twirl", "copies")):
             self.assertIn(key, totals)
 
 if __name__ == "__main__":

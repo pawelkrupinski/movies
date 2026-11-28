@@ -44,7 +44,7 @@ class PlanTest(PlanCase):
         self.assertPlans(["eslint"], ["page-tests-playwright/tests/a.ts"])
         self.assertPlans(["eslint"], ["package.json"])
         self.assertPlans(["jsquality"], ["infra/version-dashboard/src/a.ts"])
-        self.assertPlans(["sbt"], ["web/src/main/twirl/a.scala.html"])
+        self.assertPlans(["jsquality", "configquality", "sbt"], ["web/src/main/twirl/a.scala.html"])  # its script, its markup
 
     def test_the_shell_tools_by_shebang(self):
         # the shell gate reads every extension-less tool: a shell one, or one migrated from shell (its rows gone)
@@ -59,8 +59,8 @@ class PlanTest(PlanCase):
         self.assertPlans(["pyquality"], ["pyrightconfig.json"])
 
     def test_the_workflows(self):
-        self.assertPlans(["newchecks", "schedules", "actionlint", "sbt"], [".github/workflows/x.yml"])
-        self.assertPlans(["scripttests", "actionlint", "sbt"], [".github/actions/a/action.yml"])
+        self.assertPlans(["newchecks", "schedules", "shellgate", "actionlint", "sbt"], [".github/workflows/x.yml"])
+        self.assertPlans(["shellgate", "scripttests", "actionlint", "sbt"], [".github/actions/a/action.yml"])
         self.assertPlans(["newchecks", "sbt"], [".github/gating-checks.tsv"])
         self.assertPlans(["schedules"], ["infra/nix/files/scheduled-workflows.json"])
 
@@ -123,7 +123,7 @@ class PlanTest(PlanCase):
         self.assertPlans(["driftguards", "sbt", "identity", "itrest", "itidentity"],
                          ["identity/src/main/scala/A.scala"], heavy)
         self.assertPlans(["driftguards", "sbt", "itrest", "itidentity"], ["worker/src/main/scala/A.scala"], heavy)
-        self.assertPlans(["newchecks", "schedules", "actionlint", "sbt"], [".github/workflows/x.yml"], heavy)
+        self.assertPlans(["newchecks", "schedules", "shellgate", "actionlint", "sbt"], [".github/workflows/x.yml"], heavy)
         self.assertPlans(["sbt"], ["web/src/main/scala/A.scala"])
 
 

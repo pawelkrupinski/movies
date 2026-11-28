@@ -12,3 +12,6 @@ limit	method-lines	50
 limit	file-lines	500
 limit	copies	0
 limit	clone-tokens	50
+method-lines	android/app/build.gradle.kts:(anonymous)#2	181
+file-lines	android/app/build.gradle.kts	966
+copies	android/app/build.gradle.kts	11

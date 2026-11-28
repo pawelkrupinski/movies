@@ -1,0 +1,4 @@
+#!/bin/sh
+# Purpose: The Nix, Terraform and Twirl-markup quality report and its ratchet (entry; the measure is scripts/ci/config_quality_report.py)
+# THE DECLARATIVE-CONFIG QUALITY REPORT's entry: scripts/ci/config_quality_report.py (its header says what it measures).
+exec python3 -B "$(cd "$(dirname "$0")" && pwd)/ci/config_quality_report.py" "$@"

@@ -3,7 +3,7 @@
 THE RATCHET DIFF (CLAUDE.md, the coupling and code-quality ratchets): every frozen row that changed between two refs --
 complexity (cognitive, cyclomatic, inner-defs), length (method, file), duplication, fan-out, package D, cycles, and the
 JS/TS ratchet's rows (`js <kind>`, test/resources/js-quality-baseline.tsv), the Swift and Kotlin ratchets' (`swift <kind>`,
-`kotlin <kind>`) and the shell migration gate's (`shell-*`, test/resources/shell-baseline.tsv) -- as a
+`kotlin <kind>`), the Nix, Terraform and Twirl-markup ratchets' (`nix <kind>`...) and the shell migration gate's (`shell-*`, test/resources/shell-baseline.tsv) -- as a
 before -> after table marked fell / rose / new / measured / removed / moved, then per metric the totals and how many rows are
 still over the limit. A lane's report pastes this, never numbers written by hand.
 
@@ -37,7 +37,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MEASURES = (("quality", "quality-report", "rows.tsv", ()), ("coupling", "coupling-report", "rows.tsv", ()),
             ("js", "js-quality-report", "over-limit.tsv", ("--areas", os.path.join(ROOT, "scripts", "js-quality", "ratchet-areas.tsv"))),
             ("swift", "mobile-quality-report", "swift-over-limit.tsv", ("--language", "swift")),
-            ("kotlin", "mobile-quality-report", "kotlin-over-limit.tsv", ("--language", "kotlin")))
+            ("kotlin", "mobile-quality-report", "kotlin-over-limit.tsv", ("--language", "kotlin")),
+            ("nix", "config-quality-report", "nix-over-limit.tsv", ("--language", "nix")),
+            ("terraform", "config-quality-report", "terraform-over-limit.tsv", ("--language", "terraform")),
+            ("twirl", "config-quality-report", "twirl-over-limit.tsv", ("--language", "twirl")))
 
 
 class Refused(Exception):

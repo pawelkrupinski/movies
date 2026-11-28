@@ -47,6 +47,9 @@ limit	shell-lines	150	sh
 limit	shell-decisions	10	sh
 limit	shell-function-lines	50	sh
 limit	shell-nesting	4	sh
+# A `run:` block of a workflow or composite action is shell inside YAML (scripts/design-rules/workflow_runs.py): its code lines
+# are held to this, the rest to the limits above; past one, the block moves to a script (the owner, 2026-11-28).
+limit	run-lines	15	sh
 #
 # Naming (CLAUDE.md: "Never suffix a class with Impl"; Manager/Handler/Util/Helper/Processor are a smell; "no
 # abbreviations in names").
@@ -166,6 +169,7 @@ layer	py	scripts/lib/mongo	1	the local password-free Mongo and the tunnel to pro
 layer	py	scripts/lib/governor	2	the machine's governor: JVM slots, tickets, its queue, governed pools and kills, CPU and memory meters
 layer	py	scripts/lib/vcs	2	GitHub through gh: the API, bounded downloads, workflow dispatches
 layer	py	scripts/lib/harness	2	the black-box test harness and the sandbox closure a self-test copies
+layer	py	scripts/lib/web_templates	2	what reads the web tier's Twirl templates as the code they hold: the inline <script>s as virtual JavaScript files
 layer	py	scripts/lib/code_tools	2	what the quality and refactoring tools share: the pinned node tools, the deployed Scala, the scalafix and touched-code trees
 layer	py	scripts/lib/script_tests/select	2	which self-tests run-script-tests runs: found, changed, floored, selected
 layer	py	scripts/lib/pre_push_hook/plan	2	the pre-push hook's plan: the paths a push changes, its modes, units, lints and the repository it reads

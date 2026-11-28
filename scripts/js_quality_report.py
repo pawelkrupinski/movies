@@ -50,6 +50,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
 from processes import machine  # noqa: E402
 from code_tools import pinned_npm_tools  # noqa: E402
+from web_templates import twirl_scripts  # noqa: E402
+from seams import tool_files  # noqa: E402
 import tool_process  # noqa: E402
 
 TOOLS = os.path.join(HERE, "js-quality")
@@ -154,12 +156,24 @@ def node_env(installed: str) -> Mapping[str, str]:
             "NODE_PATH": modules + (":" + node_path if node_path else "")}
 
 
+def measure_production(o: Options, out: str, env: Mapping[str, str]) -> int:
+    """The production areas measured (their over-limit rows into `out`), then the Twirl templates' inline `<script>`s
+    (web_templates/twirl_scripts.py: the production JS they are, as virtual files of a scratch checkout, their rows appended);
+    the first pass's node status, else the second's."""
+    def measure(root: str, where: str) -> int:
+        node = ["node", os.path.join(TOOLS, "report.js"), "--root", root, "--out", where,
+                "--areas", os.path.join(TOOLS, "ratchet-areas.tsv")]
+        return subprocess.run(node, env=env, stdout=subprocess.DEVNULL).returncode
+
+    return measure(o.root, out) or twirl_scripts.measure(tool_files.Files.here(), o.root, measure,
+                                                          os.path.join(os.path.abspath(out), "over-limit.tsv"))
+
+
 def report(o: Options, out: str, env: Mapping[str, str]) -> int:
     node = ["node", os.path.join(TOOLS, "report.js"), "--root", o.root, "--out", out]
     if not o.ratchet:
         return subprocess.run(node + o.args, env=env).returncode
-    measured = subprocess.run(node + ["--areas", os.path.join(TOOLS, "ratchet-areas.tsv")], env=env,
-                              stdout=subprocess.DEVNULL).returncode
+    measured = measure_production(o, out, env)
     if measured != 0:
         return measured
     current = os.path.join(os.path.abspath(out), "over-limit.tsv")

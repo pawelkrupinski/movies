@@ -6,7 +6,7 @@
 # of the working tree (an agent may have skipped --update on a fall).
 #
 #   ratchet_diff.py --base A [--head B] [--quality-rows F] [--coupling-rows F] [--js-rows F] [--swift-rows F]
-#                   [--kotlin-rows F] [--tsv]
+#                   [--kotlin-rows F] [--nix-rows F] [--terraform-rows F] [--twirl-rows F] [--tsv]
 #       A, B: refs (B defaults to HEAD). --quality-rows / --coupling-rows / --js-rows / --swift-rows / --kotlin-rows: the
 #       head side from those measured rows (quality.QualityReport's rows.tsv, couplingReport's rows.tsv,
 #       js-quality-report's over-limit.tsv, mobile-quality-report's <language>-over-limit.tsv) instead of B's baselines
@@ -16,6 +16,7 @@
 # copies (duplication-baseline.tsv); fanout, distance, cycle-edge (coupling-baseline.tsv); the JS/TS ratchet's, each
 # printed `js <kind>` (js-quality-baseline.tsv, scripts/ci/js_quality_ratchet.py: no move credit); the Swift and Kotlin
 # ratchets', `swift <kind>` / `kotlin <kind>` ({swift,kotlin}-quality-baseline.tsv, scripts/ci/mobile_quality_ratchet.py);
+# the Nix, Terraform and Twirl-markup ratchets', `nix <kind>` ... ({nix,terraform,twirl}-quality-baseline.tsv, config_quality_ratchet.py);
 # and the shell migration gate's shell-* rows (shell-baseline.tsv, scripts/design-rules/shell_gate.py). Each changed row is marked
 #   fell      its value fell
 #   rose      its value rose (or it moved and rose)
@@ -39,6 +40,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import baseline_ratchet  # noqa: E402
+import config_quality_ratchet  # noqa: E402
 import coupling_ratchet  # noqa: E402
 import js_quality_ratchet  # noqa: E402
 import mobile_quality_ratchet  # noqa: E402
@@ -55,10 +57,13 @@ METRICS: List[Tuple[str, str, str]] = [
 ] + [
     (kind, mobile_quality_ratchet.BASELINES[language], language) for language in sorted(mobile_quality_ratchet.BASELINES)
     for kind in mobile_quality_ratchet.KINDS if kind != "clone-tokens"
+] + [
+    (kind, config_quality_ratchet.BASELINES[language], language) for language in sorted(config_quality_ratchet.BASELINES)
+    for kind in config_quality_ratchet.KINDS if kind != "clone-tokens"
 ] + [(kind, "test/resources/shell-baseline.tsv", "shell")  # the shell gate's (scripts/design-rules: above this layer)
-     for kind in ("shell-lines", "shell-decisions", "shell-function-lines", "shell-nesting")]
-PREFIXED = ("js", "swift", "kotlin")  # printed `<family> <kind>` (`js cognitive`): apart from the Scala rows of one kind
-PATH_KEYED = ("quality", "swift", "kotlin", "shell")  # rows keyed by source path: a renamed source's move credit
+     for kind in ("shell-lines", "shell-decisions", "shell-function-lines", "shell-nesting", "run-lines")]
+PREFIXED = ("js", "swift", "kotlin", "nix", "terraform", "twirl")  # printed `<family> <kind>` (`js cognitive`): apart from the Scala rows of one kind
+PATH_KEYED = ("quality", "swift", "kotlin", "shell", "nix", "terraform", "twirl")  # rows keyed by source path: a renamed source's move credit
 SCALA = ("quality", "coupling")  # integer rows (quality_ratchet.parse); the others' are the engine's (baseline_ratchet)
 LIMIT_ZERO = ("copies", "cycle-edge")  # every row of these is over the limit (a clone group, a cycle edge)
 
@@ -241,11 +246,15 @@ def main(argv: List[str]) -> int:
     parser.add_argument("--js-rows", default="")
     parser.add_argument("--swift-rows", default="")
     parser.add_argument("--kotlin-rows", default="")
+    parser.add_argument("--nix-rows", default="")
+    parser.add_argument("--terraform-rows", default="")
+    parser.add_argument("--twirl-rows", default="")
     parser.add_argument("--tsv", action="store_true")
     args = parser.parse_args(argv)
     try:
         head = args.head or "HEAD"
-        mobile = {"swift": args.swift_rows, "kotlin": args.kotlin_rows}
+        mobile = {"swift": args.swift_rows, "kotlin": args.kotlin_rows, "nix": args.nix_rows, "terraform": args.terraform_rows,
+                  "twirl": args.twirl_rows}
         changed, totals = collect(args.base, head, args.quality_rows, args.coupling_rows, args.js_rows, mobile)
         measured = args.quality_rows or args.coupling_rows or args.js_rows or any(mobile.values())
         shown_head = "the working tree (measured)" if measured else head

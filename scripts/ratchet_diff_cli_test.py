@@ -30,8 +30,8 @@ with open(os.path.join(here, "..", "measured"), "a") as f:
 out = sys.argv[sys.argv.index("--out") + 1]
 os.makedirs(out, exist_ok=True)
 if name not in os.environ.get("STUB_NO_ROWS", "").split():
-    rows_file = {"js-quality-report": "over-limit.tsv", "mobile-quality-report":
-                 sys.argv[sys.argv.index("--language") + 1] + "-over-limit.tsv" if "--language" in sys.argv else ""}
+    language = sys.argv[sys.argv.index("--language") + 1] + "-over-limit.tsv" if "--language" in sys.argv else ""
+    rows_file = {"js-quality-report": "over-limit.tsv", "mobile-quality-report": language, "config-quality-report": language}
     with open(os.path.join(out, rows_file.get(name, "rows.tsv")), "w") as f:
         f.write(name + " rows\n")
 print(name + " said this")
@@ -41,7 +41,7 @@ TABLE = r'''#!/usr/bin/env python3
 import json, os, sys
 here = os.path.dirname(os.path.abspath(__file__))
 rows = {}
-for flag in ("--quality-rows", "--coupling-rows", "--js-rows", "--swift-rows", "--kotlin-rows"):
+for flag in ("--quality-rows", "--coupling-rows", "--js-rows", "--swift-rows", "--kotlin-rows", "--nix-rows", "--terraform-rows", "--twirl-rows"):
     if flag in sys.argv:
         with open(sys.argv[sys.argv.index(flag) + 1]) as f:
             rows[flag] = f.read()
@@ -59,7 +59,7 @@ class RatchetDiffTest(cli_harness.ToolCase):
         for relative in COPIED:
             if os.path.exists(os.path.join(ROOT, relative)):
                 shutil.copy(os.path.join(ROOT, relative), os.path.join(self.root, relative))
-        for name in ("quality-report", "coupling-report", "js-quality-report", "mobile-quality-report"):
+        for name in ("quality-report", "coupling-report", "js-quality-report", "mobile-quality-report", "config-quality-report"):
             self.executable(f"root/scripts/{name}", MEASURE)
         self.executable("root/scripts/ci/ratchet_diff.py", TABLE)
         self.TOOL = os.path.join(self.root, os.path.relpath(TOOL, ROOT))
@@ -127,14 +127,17 @@ class RatchetDiffTest(cli_harness.ToolCase):
         done = self.diff_from(self.root, "--measure", "HEAD")
         self.assertEqual((0, "the table\n"), (done.code, done.output))
         self.assertEqual(["quality-report", "coupling-report", "js-quality-report", "mobile-quality-report",
-                          "mobile-quality-report"], self.measured())
+                          "mobile-quality-report", "config-quality-report", "config-quality-report", "config-quality-report"], self.measured())
         with open(os.path.join(self.root, "table.log")) as f:
             [table] = [json.loads(line) for line in f]
-        self.assertEqual(["--base", "HEAD", "--quality-rows", "--coupling-rows", "--js-rows", "--swift-rows", "--kotlin-rows"],
+        self.assertEqual(["--base", "HEAD", "--quality-rows", "--coupling-rows", "--js-rows", "--swift-rows", "--kotlin-rows", "--nix-rows",
+                          "--terraform-rows", "--twirl-rows"],
                          [arg for arg in table["argv"] if not arg.startswith("/")])
         self.assertEqual({"--quality-rows": "quality-report rows\n", "--coupling-rows": "coupling-report rows\n",
                           "--js-rows": "js-quality-report rows\n", "--swift-rows": "mobile-quality-report rows\n",
-                          "--kotlin-rows": "mobile-quality-report rows\n"}, table["rows"])
+                          "--kotlin-rows": "mobile-quality-report rows\n", "--nix-rows": "config-quality-report rows\n",
+                          "--terraform-rows": "config-quality-report rows\n", "--twirl-rows": "config-quality-report rows\n"},
+                         table["rows"])
         with open(os.path.join(self.root, "measured")) as f:
             js = f.read().splitlines()[2].split()
         self.assertEqual(["--areas", os.path.join(self.root, "scripts/js-quality/ratchet-areas.tsv"), "--out"], js[1:4])

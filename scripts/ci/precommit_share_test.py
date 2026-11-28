@@ -110,7 +110,7 @@ class PrecommitShareTest(cli_harness.ToolCase):
 
     def test_a_page_change_has_no_share_of_its_own(self) -> None:
         self.change("web/src/main/twirl/views/x.scala.html")
-        self.assertEqual("sbt itrest|", f"{self.checks('rest')}|{self.checks('identity')}")
+        self.assertEqual("jsquality configquality sbt itrest|", f"{self.checks('rest')}|{self.checks('identity')}")
 
     def test_a_docs_change_has_no_identity_or_heavy_share(self) -> None:
         self.change("docs/notes.md")

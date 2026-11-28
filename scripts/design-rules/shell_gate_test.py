@@ -124,6 +124,33 @@ class ShellGateTest(unittest.TestCase):
         self.write({"test/resources/shell-keeps.tsv": f"scripts/small.sh\t2026-11-28\t{why}\n"})
         self.assert_refused("scripts/small.sh is within every shell limit now (or gone): strike its keep")
 
+    def test_a_workflow_run_block_is_shell_held_to_its_own_line_limit(self) -> None:
+        body = "".join(f"          echo line{i}\n" for i in range(16))
+        workflow = "jobs:\n  build:\n    steps:\n      - name: Long one\n        run: |\n" + body
+        self.write({".github/workflows/w.yml": workflow})
+        self.assert_refused("run-lines .github/workflows/w.yml#build/Long-one: 16, past the limit 15", "a workflow's `run:` block moves")
+        self.assertEqual(0, self.gate("update").returncode)
+        self.assert_passes()
+        self.write({".github/workflows/w.yml": workflow.replace("          echo line15\n", "")})
+        self.assert_refused("UNRECORDED", "run-lines .github/workflows/w.yml#build/Long-one 16 -> within the limit")
+
+    def test_the_first_freeze_of_run_blocks_is_admitted_once_and_a_later_rise_is_not(self) -> None:
+        body = "".join(f"          echo line{i}\n" for i in range(16))
+        workflow = "jobs:\n  build:\n    steps:\n      - name: Long one\n        run: |\n" + body
+        self.write({".github/workflows/w.yml": workflow})
+        legacy = "".join(line for line in open(os.path.join(self.dir, "test/resources/shell-baseline.tsv"))
+                         if "run-lines" not in line)
+        self.write({"test/resources/shell-baseline.tsv": legacy})
+        base = self.commit("before the run blocks were held")
+        self.assertEqual(0, self.gate("update").returncode)
+        head = self.commit("freeze the run blocks")
+        done = self.gate("check", "--range", f"{base}..{head}")
+        self.assertEqual(0, done.returncode, done.stdout)
+        self.write({".github/workflows/w.yml": workflow + "          echo more\n"})
+        self.assertEqual(0, self.gate("update").returncode)
+        later = self.commit("grow it")
+        self.assertEqual(1, self.gate("check", "--range", f"{head}..{later}").returncode)
+
 
 if __name__ == "__main__":
     unittest.main()

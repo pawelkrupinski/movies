@@ -26,6 +26,7 @@ class Group:
 
 
 Token = Tuple[str, int]  # its text and its line
+Row = Tuple[str, str, float]  # a ratchet row: kind, key, value
 Site = Tuple[int, int]   # (file index, token index)
 
 
@@ -94,3 +95,13 @@ def groups_of_tokens(tokenized: Dict[str, List[Token]]) -> List[Group]:
     found = [Group(tokens=max(size[c] for c in cs), copies=tuple(sorted(cs, key=lambda c: (c.file, c.start))))
              for cs in joined.values()]
     return sorted(found, key=lambda g: (-g.tokens, g.copies[0].file, g.copies[0].start))
+
+
+def copies_rows(tokens: Dict[str, List[Token]]) -> List[Row]:
+    """The ratchets' `copies` rows of files already split into tokens: for each set of files a clone group spans exactly,
+    the copies of every group spanning exactly them (`copies <file>|<file>... <n>`)."""
+    copies: Dict[str, int] = {}
+    for group in groups_of_tokens(tokens):
+        key = "|".join(sorted({c.file for c in group.copies}))
+        copies[key] = copies.get(key, 0) + len(group.copies)
+    return [("copies", key, n) for key, n in sorted(copies.items())]

@@ -1,0 +1,20 @@
+# THE NIX QUALITY BASELINE (scripts/config-quality-report --update writes it; scripts/ci/config_quality_ratchet.py
+# holds every push touching Nix files to it). Every Nix file and clone set past a limit of
+# test/resources/design-rules.tsv, frozen:
+#   file-lines <file>                                                           Length:
+#   copies <file>|<file>... (clone groups spanning exactly them), clone-tokens  Duplication:
+# A row may only fall, and the push making a fall records it (--update, no trailer); a row added or raised, or a limit
+# raised, lands only in a commit carrying its kind's trailer (CLAUDE.md, "Design rules").
+limit	file-lines	500
+limit	copies	0
+limit	clone-tokens	50
+file-lines	infra/nix/hosts/monitoring-1/default.nix	504
+file-lines	infra/nix/modules/fleet/auto-apply.nix	536
+file-lines	infra/nix/modules/fleet/default.nix	518
+file-lines	infra/nix/modules/fleet/logs.nix	779
+file-lines	infra/nix/modules/roles/grafana.nix	604
+file-lines	infra/nix/modules/roles/mongodb.nix	1054
+file-lines	infra/nix/modules/roles/prometheus.nix	932
+file-lines	infra/nix/modules/roles/public-proxy.nix	708
+copies	infra/nix/hosts/k3s-worker-1/disko.nix|infra/nix/hosts/mongo-1/disko.nix|infra/nix/hosts/monitoring-1/disko.nix	3
+copies	infra/nix/modules/roles/k3s-agent.nix|infra/nix/modules/roles/k3s-server.nix	2

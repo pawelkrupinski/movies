@@ -1,0 +1,29 @@
+# THE TWIRL QUALITY BASELINE (scripts/config-quality-report --update writes it; scripts/ci/config_quality_ratchet.py
+# holds every push touching Twirl markup files to it). Every Twirl markup file and clone set past a limit of
+# test/resources/design-rules.tsv, frozen:
+#   file-lines <file>                                                           Length:
+#   copies <file>|<file>... (clone groups spanning exactly them), clone-tokens  Duplication:
+# A row may only fall, and the push making a fall records it (--update, no trailer); a row added or raised, or a limit
+# raised, lands only in a commit carrying its kind's trailer (CLAUDE.md, "Design rules").
+limit	file-lines	500
+limit	copies	0
+limit	clone-tokens	50
+file-lines	web/src/main/twirl/views/_repertoireView.scala.html	595
+file-lines	web/src/main/twirl/views/_sharedStyles.scala.html	1221
+file-lines	web/src/main/twirl/views/admin/identityStaging.scala.html	580
+file-lines	web/src/main/twirl/views/landing.scala.html	765
+file-lines	web/src/main/twirl/views/uptime.scala.html	569
+copies	web/src/main/twirl/views/_countrySwitch.scala.html|web/src/main/twirl/views/uptime.scala.html	2
+copies	web/src/main/twirl/views/_filmDetailStyles.scala.html	2
+copies	web/src/main/twirl/views/_ratingStyles.scala.html	3
+copies	web/src/main/twirl/views/_repertoireView.scala.html|web/src/main/twirl/views/landing.scala.html	4
+copies	web/src/main/twirl/views/_repertoireView.scala.html|web/src/main/twirl/views/landing.scala.html|web/src/main/twirl/views/uptime.scala.html	5
+copies	web/src/main/twirl/views/_reviewHead.scala.html	4
+copies	web/src/main/twirl/views/_sharedStyles.scala.html	6
+copies	web/src/main/twirl/views/admin/envConfig.scala.html|web/src/main/twirl/views/tasks.scala.html	2
+copies	web/src/main/twirl/views/admin/envConfig.scala.html|web/src/main/twirl/views/tasks.scala.html|web/src/main/twirl/views/uptime.scala.html	3
+copies	web/src/main/twirl/views/admin/identityStaging.scala.html|web/src/main/twirl/views/tasks.scala.html	6
+copies	web/src/main/twirl/views/browse.scala.html|web/src/main/twirl/views/repertoire.scala.html	2
+copies	web/src/main/twirl/views/cadence.scala.html|web/src/main/twirl/views/debug.scala.html|web/src/main/twirl/views/debugReadModel.scala.html	3
+copies	web/src/main/twirl/views/debug.scala.html|web/src/main/twirl/views/debugReadModel.scala.html	8
+copies	web/src/main/twirl/views/tasks.scala.html|web/src/main/twirl/views/uptime.scala.html	2
