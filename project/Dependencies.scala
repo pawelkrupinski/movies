@@ -43,7 +43,7 @@ object Dependencies {
   // tokenizer, and the scalameta parser the complexity and length measures read the production sources with -- the
   // SAME scalameta PMD's Scala module is built on (pmd-scala-common's `scalameta.version`), both its 2.13 build, so one
   // classpath holds one scalameta. Bump them together.
-  private val pmdVersion           = "7.29.0"
+  private val pmdVersion           = "7.30.0"
   private val scalametaVersion     = "4.17.4"
 
   // ── Artifacts ──────────────────────────────────────────────────────────────
