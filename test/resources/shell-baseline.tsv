@@ -19,7 +19,6 @@ shell-decisions	scripts/ci/hook-beside.sh:<top>	11
 shell-decisions	scripts/ci/machine-id.sh:main	12
 shell-decisions	scripts/ci/seed-sbt-runner.sh:<top>	12
 shell-decisions	scripts/ci/stop-stray-sbt.sh:<top>	13
-shell-decisions	scripts/ci/takes-skip-shadow-report.sh:<top>	14
 shell-decisions	scripts/floor-bash:<top>	20
 shell-decisions	scripts/gov-run:<top>	14
 shell-decisions	scripts/hooks/pre-commit:<top>	12
