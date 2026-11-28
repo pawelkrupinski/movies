@@ -7,7 +7,7 @@ workflows, `hook` git hooks, `agentctl` ~/bin (scripts/tool-catalogue/agentctl-c
 CLAUDE.md or a .claude skill, `N tools` other tools; `by hand` is none of them. Class: the shell tool's
 migration class (MIGRATE / KEEP), `Python` for one already in Python.
 
-## Landing and CI (288)
+## Landing and CI (289)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -161,12 +161,13 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/no_network.py` | No network for the tests: run a command that may reach loopback and nothing else. Order independence's test steps run | `scripts/ci/no_network.py` | 1 tool | no_network_test.py | Python |
 | `scripts/ci/old-ref-deps-key.sh` | The old refs' dependency cache: its key and fallback prefix, as GITHUB_OUTPUT lines (.github/actions/old-ref-deps) | `scripts/ci/old-ref-deps-key.sh` | wf main; 1 tool | - | KEEP |
 | `scripts/ci/order-passes-present.sh` | Are both corpus files the order comparison reads present in <dir>? | `scripts/ci/order-passes-present.sh` | 1 tool | order-passes-present-test.sh | KEEP |
-| `scripts/ci/order-phases.sh` | How many of a country's split order-independence rows a convergence run runs | `scripts/ci/order-phases.sh` | wf country-convergence-leg, identity-model-convergence; 2 tools | order-phases-test.sh | KEEP |
+| `scripts/ci/order-phases.sh` | How many of a country's split order-independence rows a convergence run runs (a name for order_phases.py) | `scripts/ci/order-phases.sh` | wf country-convergence-leg, identity-model-convergence; 3 tools | order_phases_test.py | KEEP |
 | `scripts/ci/order-preflight.sh` | Runner preflight for an Order independence leg: before a minute of tests, check that this runner can run them | `scripts/ci/order-preflight.sh` | wf order-independence; agentctl; 1 tool | order_preflight_test.py | KEEP |
 | `scripts/ci/order-seed.sh` | The order seed for the nightly order-independence run | `scripts/ci/order-seed.sh` | wf order-independence | order-seed-test.sh | KEEP |
 | `scripts/ci/order_compare.py` | THE ORDER INDEPENDENCE VERDICT: a leg's red says an ORDER dependence only when the tests it failed pass in DEFAULT | `scripts/ci/order_compare.py` | wf order-independence; 5 tools | order_compare_test.py | Python |
 | `scripts/ci/order_compare_readers.py` | What order_compare.py reads a leg's failing tests from -- sbt's log, Gradle's JUnit reports, XCTest's log, the | `imported` | 1 tool | - | Python |
 | `scripts/ci/order_compare_verdicts.py` | order_compare.py's records read back: every leg's verdict as markdown (`summary`), scala's reverse and shuffled legs | `imported` | 1 tool | - | Python |
+| `scripts/ci/order_phases.py` | How many of a country's split order-independence rows a convergence run runs | `scripts/ci/order_phases.py` | 4 tools | order_phases_test.py | Python |
 | `scripts/ci/order_preflight.py` | RUNNER PREFLIGHT for an Order independence leg: before a minute of tests, check that this runner can run them -- the | `scripts/ci/order_preflight.py` | 1 tool | order_preflight_test.py | Python |
 | `scripts/ci/population-walk-diff` | The population walk's base side, for the pre-push hook's identity check | `scripts/ci/population-walk-diff` | hook pre-push; 3 tools | population_walk_diff_test.py | KEEP |
 | `scripts/ci/population_walk_base.py` | The population walk's base side, for the pre-push hook's identity check | `scripts/ci/population_walk_base.py` | 1 tool | population_walk_base_test.py | Python |
@@ -198,7 +199,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/ci/runner_scheduling/host.py` | Our runner instances on ci-runner (Host): <state>/<slot>.env says which class, slice and labels a slot was started | `imported` | wf ci, country-convergence-leg, country-fixture-artifact +8; skill CLAUDE.md, agent-ops, external-api-rate-limits, identity-investigation; 106 tools | - | Python |
 | `scripts/ci/runner_scheduling/jobs.py` | The queue, pure: the jobs-API's queued jobs as each class's demand and each lane's queued jobs (oldest first, with | `imported` | wf alert-backtest, android, archive-recording +45; skill CLAUDE.md, agent-ops; 91 tools | - | Python |
 | `scripts/ci/runner_scheduling/loop.py` | The loop: a tick reads bitcashier's runners, GitHub's queue, ours and the host, decides, says what it saw and did in | `imported` | wf country-convergence-leg, nix-stage-closures, order-independence; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 44 tools | - | Python |
-| `scripts/ci/runner_scheduling/machine.py` | THE SCHEDULER'S ONE ADAPTER (test/resources/design-rules.tsv's `adapter` row): ci-runner's files (the cgroup tree, | `imported` | wf alert-backtest, android, archive-recording +43; hook pre-push; skill CLAUDE.md, identity-investigation, test-layers; 179 tools | - | Python |
+| `scripts/ci/runner_scheduling/machine.py` | THE SCHEDULER'S ONE ADAPTER (test/resources/design-rules.tsv's `adapter` row): ci-runner's files (the cgroup tree, | `imported` | wf alert-backtest, android, archive-recording +43; hook pre-push; skill CLAUDE.md, identity-investigation, test-layers; 180 tools | - | Python |
 | `scripts/ci/runner_scheduling/model.py` | The scheduler's vocabulary: the job classes and their lanes' labels, the config every number of the rule lives in | `imported` | wf ci, convergence-bisect, country-convergence-leg +15; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 109 tools | - | Python |
 | `scripts/ci/runner_scheduling/readings.py` | The host's live readings (read_readings): its memory and ci.slice's, each class's slice's headroom and limit, bitcashier's | `imported` | skill identity-investigation; 19 tools | - | Python |
 | `scripts/ci/runner_scheduling/stops.py` | The idle runners a tick stops, pure (decide's first step): bitcashier saturated, past max_slots or memory short of | `imported` | wf convergence-bisect, convergence-fill, country-convergence-leg +4; hook pre-commit; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 58 tools | - | Python |
@@ -845,7 +846,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/pre_push_hook/pre_push_reuse.py` | THE REUSE and A REMOTE PASS (scripts/hooks/pre-push's header): a passed run's key answers a re-push of the SAME | `imported` | 1 tool | - | Python |
 | `scripts/lib/pre_push_hook/pre_push_run.py` | THE PRE-PUSH HOOK'S RUN (scripts/hooks/pre-push execs `scripts/pre_push.py <hook> --run [args]`; its header says | `imported` | hook pre-push; 2 tools | - | Python |
 | `scripts/lib/pre_push_hook/pre_push_tree.py` | WHERE THE HOOK RUNS (scripts/hooks/pre-push's header; the hook's shell entry hands a push over to the PUSHING | `imported` | 1 tool | - | Python |
-| `scripts/lib/processes/machine.py` | THE MACHINE: the processes, clock and environment the laptop tools touch, in one adapter (the design rules table's | `imported` | wf alert-backtest, android, archive-recording +43; hook pre-push; skill CLAUDE.md, identity-investigation, test-layers; 179 tools | - | Python |
+| `scripts/lib/processes/machine.py` | THE MACHINE: the processes, clock and environment the laptop tools touch, in one adapter (the design rules table's | `imported` | wf alert-backtest, android, archive-recording +43; hook pre-push; skill CLAUDE.md, identity-investigation, test-layers; 180 tools | - | Python |
 | `scripts/lib/processes/tool_bounded.py` | BOUNDED: a command ended once it outlasts <seconds> (exit 124), else its own status -- timeout(1)'s contract without | `imported` | wf main; 11 tools | tool_bounded_test.py | Python |
 | `scripts/lib/processes/tool_python.py` | HOW A TOOL LAUNCHES A PYTHON CHILD (scripts/lib; stdlib only): isolated and writing no bytecode. | `imported` | wf main; 27 tools | tool_python_test.py | Python |
 | `scripts/lib/processes/tool_shell.py` | A FUNCTION OF A SHELL LIBRARY NOT MIGRATED YET, called from a Python tool (scripts/lib): the library sourced in a | `imported` | wf main; 20 tools | - | Python |
@@ -860,14 +861,14 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/script_tests/select/script_tests_found.py` | THE SELF-TESTS scripts/run-script-tests finds, and what each says of itself in its first 40 lines: a `# script-test: | `imported` | by hand | - | Python |
 | `scripts/lib/script_tests/select/script_tests_select.py` | WHAT A RUN OF scripts/run-script-tests SELECTS: its options, and the self-tests they pick -- by tag and filter, and | `imported` | by hand | - | Python |
 | `scripts/lib/script_tests/select/script_tests_tree.py` | THE TREE IS LEFT AS FOUND (scripts/run-script-tests): the checkout's state (`git status --porcelain --ignored`: what | `imported` | by hand | - | Python |
-| `scripts/lib/seams/tool_files.py` | FILES, INJECTED (scripts/lib; CLAUDE.md, "Design rules": files are an injected effect since 2026-11-27): a tool | `imported` | skill CLAUDE.md; 16 tools | tool_files_test.py | Python |
+| `scripts/lib/seams/tool_files.py` | FILES, INJECTED (scripts/lib; CLAUDE.md, "Design rules": files are an injected effect since 2026-11-27): a tool | `imported` | skill CLAUDE.md; 17 tools | tool_files_test.py | Python |
 | `scripts/lib/seams/tool_http.py` | HTTP, INJECTED (scripts/lib; CLAUDE.md, "Design rules": the network is an injected effect since 2026-11-27): a tool | `imported` | skill CLAUDE.md; 3 tools | tool_http_test.py | Python |
 | `scripts/lib/seams/tool_state.py` | STATE AND KEY-VALUE STORAGE, INJECTED (scripts/lib; CLAUDE.md, "Design rules": storage is an injected effect since | `imported` | skill CLAUDE.md; 2 tools | tool_state_test.py | Python |
 | `scripts/lib/tool_git.py` | GIT, the one way the Python tools run it (scripts/lib): in one repository (`git -C <root>`), each call through the | `imported` | wf main; skill CLAUDE.md; 68 tools | tool_git_test.py | Python |
 | `scripts/lib/tool_process.py` | RUNNING ANOTHER COMMAND, the one way the Python tools do it (scripts/lib; the shell tools' `bounded` and `"$@" 2>&1 \| | `imported` | wf main; 118 tools | tool_process_test.py | Python |
 | `scripts/lib/vcs/gh_download.py` | A GITHUB DOWNLOAD, BOUNDED AND RETRIED, absent told from failed (scripts/lib; tool-conventions.sh's gh_download, | `imported` | wf convergence-bisect, main; 16 tools | - | Python |
 | `scripts/lib/vcs/tool_dispatch.py` | DISPATCHING A WORKFLOW and finding the run it made, the one way the tools do it (scripts/lib; it took over the | `imported` | wf convergence-daily, identity-model-convergence, main; 11 tools | tool_dispatch_test.py | Python |
-| `scripts/lib/vcs/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | skill CLAUDE.md; 26 tools | tool_github_test.py | Python |
+| `scripts/lib/vcs/tool_github.py` | GITHUB THROUGH `gh`, the one way the Python tools ask it (scripts/lib): every call bounded (a hung API read is no | `imported` | skill CLAUDE.md; 27 tools | tool_github_test.py | Python |
 | `scripts/linux-tree-sync.py` | Copy a checkout's files (tracked and untracked, never ignored) into DEST, and keep DEST in step with it. | `scripts/linux-tree-sync.py` | 2 tools | linux_tree_sync_test.py | Python |
 | `scripts/listing_mirror.py` | WHAT THE LOCAL PROD MIRROR HOLDS of a listing (scripts/listing_history.py): the mongosh query over its identity | `imported` | 1 tool | - | Python |
 | `scripts/log.sh` | The four coloured output helpers long-running scripts print through (sourced) | `scripts/log.sh` | wf android; 6 tools | - | KEEP |

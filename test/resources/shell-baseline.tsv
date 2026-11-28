@@ -17,7 +17,6 @@ shell-decisions	scripts/ci/bounded-step.sh:<top>	11
 shell-decisions	scripts/ci/bounded-step.sh:bounded_step_reap	29
 shell-decisions	scripts/ci/hook-beside.sh:<top>	11
 shell-decisions	scripts/ci/machine-id.sh:main	12
-shell-decisions	scripts/ci/order-phases.sh:<top>	12
 shell-decisions	scripts/ci/seed-sbt-runner.sh:<top>	12
 shell-decisions	scripts/ci/stop-stray-sbt.sh:<top>	13
 shell-decisions	scripts/ci/takes-skip-shadow-report.sh:<top>	14
