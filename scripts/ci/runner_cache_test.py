@@ -131,5 +131,16 @@ class RunnerCacheTest(unittest.TestCase):
         self.assertEqual((0, ""), self.run_tool("save", "--key", "K1", "--paths", TARGET_PATHS))
 
 
+class IncludedUnderTest(unittest.TestCase):
+    def test_an_excluded_entry_is_dropped_and_an_excluded_directory_not_entered(self):
+        tree = {"/t": [("/t/a", True), ("/t/x", True), ("/t/f", False)], "/t/a": [("/t/a/g", False)],
+                "/t/x": [("/t/x/h", False)]}
+        self.assertEqual(runner_cache.included_under("/t", tree.__getitem__, ["/t/x"]), {"/t/a", "/t/a/g", "/t/f"})
+
+    def test_an_entry_not_to_descend_into_is_kept_but_not_listed(self):
+        tree = {"/t": [("/t/link", False)]}
+        self.assertEqual(runner_cache.included_under("/t", tree.__getitem__, []), {"/t/link"})
+
+
 if __name__ == "__main__":
     unittest.main()

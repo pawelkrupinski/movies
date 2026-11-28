@@ -92,5 +92,15 @@ class DiffTest(unittest.TestCase):
         self.assertEqual(self.run_diff("--head", "/nonexistent", "--same-code")[0], 2)
 
 
+class NewTableTest(unittest.TestCase):
+    def test_the_header_then_each_new_flips_head_row_in_column_order(self):
+        sys.path.insert(0, os.path.dirname(SCRIPT))
+        import drift_diff
+        head = {("v", "T"): {"country": "de", "seed": "8", "venue": "v", "rawTitle": "T", "takes": "x"}}
+        self.assertEqual(drift_diff.new_table([("v", "T")], head),
+                         [drift_diff.NEW_COLUMNS, ["de", "8", "v", "T", "", "", "x", ""]])
+        self.assertEqual(drift_diff.new_table([], head), [drift_diff.NEW_COLUMNS])
+
+
 if __name__ == "__main__":
     unittest.main()

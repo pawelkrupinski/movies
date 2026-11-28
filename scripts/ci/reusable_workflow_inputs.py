@@ -151,8 +151,16 @@ def _call_problems(where: str, callee: str, texts: Dict[str, str], given: Dict[s
     return _input_problems(where, declared, given)
 
 
-def problems(workflow_dir):
-    texts = {os.path.basename(p): read(p) for p in sorted(glob.glob(os.path.join(workflow_dir, "*.y*ml")))}
+def _workflow_texts(workflow_dir: str) -> Dict[str, str]:
+    return {os.path.basename(p): read(p) for p in sorted(glob.glob(os.path.join(workflow_dir, "*.y*ml")))}
+
+
+def problems(workflow_dir: str) -> List[str]:
+    return problems_of(_workflow_texts(workflow_dir))
+
+
+def problems_of(texts: Dict[str, str]) -> List[str]:
+    """The problems of every reusable-workflow call among the workflows' texts ({file name: text})."""
     return [found for caller, text in texts.items() for job, callee, given in calls(text)
             for found in _call_problems(f"{caller}: job {job} calls {callee}", callee, texts, given)]
 

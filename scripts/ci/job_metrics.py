@@ -292,8 +292,12 @@ def _test_line(name: str, case: Any) -> Line:
             "time_s": round(float(case.get("time") or 0), 3), "status": _status(case)}
 
 
+def _glob(root: str, pattern: str) -> List[str]:
+    return glob.glob(os.path.join(root, pattern), recursive=True)
+
+
 def _report_paths(root: str) -> List[str]:
-    return sorted({path for pattern in JUNIT_GLOBS for path in glob.glob(os.path.join(root, pattern), recursive=True)})
+    return sorted({path for pattern in JUNIT_GLOBS for path in _glob(root, pattern)})
 
 
 def _unseen_suites(reports: List[Tuple[str, Any]]) -> List[Tuple[str, List[Any], Any]]:

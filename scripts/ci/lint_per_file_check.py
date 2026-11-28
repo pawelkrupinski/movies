@@ -28,7 +28,7 @@ Run from the root, after `scripts/sbt-warm "<module>/Test/compile"` for every mo
 """
 import os
 import sys
-from typing import Callable, Dict, List, Set, Tuple
+from typing import Callable, Dict, Iterable, List, Set, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lint_reads_trace as trace  # noqa: E402
@@ -161,16 +161,26 @@ def _with_copies(texts: Dict[str, bytes], copies: Dict[str, str]) -> Dict[str, b
     return {q: x for p, x in texts.items() for q in [p, *copy_of.get(p, [])]}
 
 
+def _kinds(reads: Iterable[str]) -> List[Tuple[str, bool, bool]]:
+    """(path, is a file, is a directory) of every path read."""
+    return [(p, os.path.isfile(p), os.path.isdir(p)) for p in reads]
+
+
+def split_reads(kinds: List[Tuple[str, bool, bool]]) -> Tuple[List[str], Set[str]]:
+    """(the files read, sorted; the directories read, a trailing slash dropped) of `_kinds`' triples."""
+    return sorted(p for p, is_file, _ in kinds if is_file), {p.rstrip("/") for p, _, is_directory in kinds if is_directory}
+
+
 def check_command(command, cwd, watched, copies, n):
     """(verdict, why) of the lint command (run from the root, or cwd) over the watched files: PER-FILE, CROSS-FILE or
     UNRUN (it fails unchanged)."""
     reads, first = trace.observe(command, watched, copies, cwd)
     if not trace.green(first):
         return "UNRUN", "it does not run green unchanged"
-    files = sorted(p for p in reads if os.path.isfile(p))
+    files, directories = split_reads(_kinds(reads))
     if len(files) < 2:
         return "CROSS-FILE", "it reads fewer than two files: nothing to prove"
-    trials = _trials(files, {p.rstrip("/") for p in reads if os.path.isdir(p)}, _reader(), n)
+    trials = _trials(files, directories, _reader(), n)
     run = lambda: trace.observe(command, watched, copies, cwd)[1]  # noqa: E731
     for name, texts, created in trials:
         why = verdict_of(mutated(_with_copies(texts, copies), created, run), set(texts) | set(created), files)

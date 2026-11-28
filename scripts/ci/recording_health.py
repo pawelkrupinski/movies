@@ -124,15 +124,41 @@ def origin_counts() -> OriginCounts:
     return {"tree": 0, "answered": 0, "notFound": 0, "refused": 0, "refusals": {}, "proxyDown": 0, "originDown": 0}
 
 
+def _listing(directory: str) -> list[str]:
+    return sorted(os.listdir(directory))
+
+
+def _directory_flags(tree: str, names: list[str]) -> dict[str, bool]:
+    return {name: os.path.isdir(os.path.join(tree, name)) for name in names}
+
+
+def _walk(top: str) -> list[tuple[str, list[str]]]:
+    return [(directory, files) for directory, _, files in os.walk(top)]
+
+
+def _mtimes(directory: str, files: list[str]) -> list[float]:
+    return [os.stat(os.path.join(directory, name)).st_mtime for name in files]
+
+
+def host_names(is_directory: dict[str, bool]) -> list[str]:
+    """The origins a recording tree holds: its directories, a dot-named one aside."""
+    return [name for name, directory in is_directory.items() if directory and not name.startswith(".")]
+
+
+def add_responses(origins: dict[str, OriginCounts], mtimes: dict[str, list[list[float]]], since: float) -> None:
+    """Count each origin's files (their mtimes, a list a directory): all of them held, those written at or after
+    `since` answered."""
+    for host, directories in mtimes.items():
+        counts = origins.setdefault(host, origin_counts())
+        for written in directories:
+            counts["tree"] += len(written)
+            counts["answered"] += sum(m >= since for m in written)
+
+
 def _count_responses(tree: str, since: float, origins: dict[str, OriginCounts]) -> None:
     """Count each origin's files under `tree`: all of them held, and those written at or after `since` answered."""
-    for host in sorted(os.listdir(tree)):
-        if host.startswith(".") or not os.path.isdir(os.path.join(tree, host)):
-            continue
-        counts = origins.setdefault(host, origin_counts())
-        for directory, _, files in os.walk(os.path.join(tree, host)):
-            counts["tree"] += len(files)
-            counts["answered"] += sum(os.stat(os.path.join(directory, name)).st_mtime >= since for name in files)
+    hosts = host_names(_directory_flags(tree, _listing(tree)))
+    add_responses(origins, {host: [_mtimes(d, files) for d, files in _walk(os.path.join(tree, host))] for host in hosts}, since)
 
 
 def _read_failure(path: str, since: float) -> tuple[str, str, str] | None:
@@ -164,13 +190,15 @@ def manifest(tree: str, since: float) -> Manifest:
     """Per-origin counts for the recording that started at `since` (epoch seconds) over `tree`."""
     origins: dict[str, OriginCounts] = {}
     _count_responses(tree, since, origins)
-    for directory, _, files in os.walk(os.path.join(tree, CACHE_DIRECTORY)):
-        for name in files:
-            failure = _read_failure(os.path.join(directory, name), since) if name.endswith(".entry") else None
-            if failure:
-                key, status, message = failure
-                _count_failure(origins.setdefault(_origin(key), origin_counts()), status, message)
+    entries = [os.path.join(d, name) for d, files in _walk(os.path.join(tree, CACHE_DIRECTORY)) for name in files if name.endswith(".entry")]
+    add_failures(origins, [f for f in (_read_failure(path, since) for path in entries) if f])
     return {"since": since, "origins": origins}
+
+
+def add_failures(origins: dict[str, OriginCounts], failures: list[tuple[str, str, str]]) -> None:
+    """Count each (key, status, message) failure against its origin."""
+    for key, status, message in failures:
+        _count_failure(origins.setdefault(_origin(key), origin_counts()), status, message)
 
 
 def asked(counts: OriginCounts) -> int:
@@ -270,11 +298,14 @@ def _heading_title(title: str) -> str:
 
 def _load(args: argparse.Namespace) -> tuple[Manifest, Manifest | None]:
     """(this manifest, previous manifest or None); OSError / ValueError when the tree or `--previous` is unreadable."""
-    this = manifest(args.tree, since(args.since))
-    if not (args.previous and os.path.isfile(args.previous)):
-        return this, None
-    with open(args.previous) as handle:
-        return this, json.load(handle)
+    return manifest(args.tree, since(args.since)), (_previous_manifest(args.previous) if args.previous else None)
+
+
+def _previous_manifest(path: str) -> Manifest | None:
+    if not os.path.isfile(path):
+        return None
+    with open(path) as handle:
+        return json.load(handle)
 
 
 def _unknown_notes(this: Manifest, unknown: list[Flag]) -> str:
@@ -353,13 +384,21 @@ def _no_verdict(args: argparse.Namespace, why: str) -> int:
     return 2
 
 
+def outputs(write: str | None, summary: str | None, this: Manifest, flags: list[Flag], report: str) -> list[tuple[str, str, str]]:
+    """(path, mode, text) of each output asked: the manifest with its flags (`--write`), the report appended to the
+    step summary (`--summary`)."""
+    out = []
+    if write:
+        out.append((write, "w", json.dumps({**this, "flags": {f.origin: f.reason for f in flags}}, indent=1, sort_keys=True)))
+    if summary:
+        out.append((summary, "a", report + "\n"))
+    return out
+
+
 def _write_outputs(args: argparse.Namespace, this: Manifest, flags: list[Flag], report: str) -> None:
-    if args.write:
-        with open(args.write, "w") as handle:
-            json.dump({**this, "flags": {f.origin: f.reason for f in flags}}, handle, indent=1, sort_keys=True)
-    if args.summary:
-        with open(args.summary, "a") as handle:
-            handle.write(report + "\n")
+    for path, mode, text in outputs(args.write, args.summary, this, flags, report):
+        with open(path, mode) as handle:
+            handle.write(text)
 
 
 def _exit_code(blocking: list[Flag], unknown: list[Flag]) -> int:

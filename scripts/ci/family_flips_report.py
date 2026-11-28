@@ -29,7 +29,7 @@ import glob
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import header_tsv  # noqa: E402
@@ -122,27 +122,51 @@ def _summary(lines: List[str], notes: List[str], current: List[Dict[str, Any]], 
     return "\n".join(out)
 
 
-def report(shards_dir, expect, previous_dir, out_dir):
-    os.makedirs(out_dir, exist_ok=True)
-    lines, current, new_rows, notes = [], [], [], []
+Rows = List[Dict[str, Any]]
+Table = Tuple[str, List[str], Rows]  # (file name, its columns, its rows)
+
+
+def published(expect: Dict[str, int], inputs: Dict[str, Tuple[Tuple[Rows, List[int]], Optional[Rows]]]) -> Tuple[List[Table], str]:
+    """(the tables to publish, the markdown report) from each expected country's (joined shards, missing shards) and
+    last night's rows (None: no earlier file). A country missing a shard publishes nothing and keeps last night's rows."""
+    lines: List[str] = []
+    current: Rows = []
+    new_rows: Rows = []
+    notes: List[str] = []
+    tables: List[Table] = []
     for code, count in expect.items():
-        rows, missing = joined(shards_dir, code, count)
-        before = os.path.join(previous_dir, f"family-flips-{code}.tsv")
-        previous = read_rows(before) if os.path.isfile(before) else None
+        (rows, missing), previous = inputs[code]
         if missing:
             notes.append(f"{code}: shard(s) {' '.join(map(str, missing))} of {count} missing -- last night's file kept, nothing published")
             current += previous or []
             continue
-        header_tsv.write(os.path.join(out_dir, f"family-flips-{code}.tsv"), BACKLOG_COLUMNS, rows)
+        tables.append((f"family-flips-{code}.tsv", BACKLOG_COLUMNS, rows))
         current += rows
         if previous is None:
             notes.append(f"{code}: no file from an earlier night -- this one is the baseline, nothing is new")
         else:
             new_rows += _new_rows_of(rows, previous)
         lines.append(_country_row(code, count, rows, previous, new_rows))
-    header_tsv.write(os.path.join(out_dir, "family-flips-ranked.tsv"), RANKED_COLUMNS, ranked(current))
-    header_tsv.write(os.path.join(out_dir, "family-flips-new.tsv"), BACKLOG_COLUMNS, new_rows)
-    return _summary(lines, notes, current, new_rows)
+    tables += [("family-flips-ranked.tsv", RANKED_COLUMNS, ranked(current)), ("family-flips-new.tsv", BACKLOG_COLUMNS, new_rows)]
+    return tables, _summary(lines, notes, current, new_rows)
+
+
+def _previous_rows(previous_dir: str, code: str) -> Optional[Rows]:
+    before = os.path.join(previous_dir, f"family-flips-{code}.tsv")
+    return read_rows(before) if os.path.isfile(before) else None
+
+
+def _write_tables(out_dir: str, tables: List[Table]) -> None:
+    os.makedirs(out_dir, exist_ok=True)
+    for name, columns, rows in tables:
+        header_tsv.write(os.path.join(out_dir, name), columns, rows)
+
+
+def report(shards_dir, expect, previous_dir, out_dir):
+    tables, summary = published(expect, {code: (joined(shards_dir, code, count), _previous_rows(previous_dir, code))
+                                         for code, count in expect.items()})
+    _write_tables(out_dir, tables)
+    return summary
 
 
 def main(argv=None):

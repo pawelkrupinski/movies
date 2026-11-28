@@ -153,5 +153,21 @@ class RatchetDiffTest(unittest.TestCase):
         self.assertIn("fanout\tservices.web.Shrunk\t15\t12\tfell", done.stdout)
 
 
+class MeasuredRowsTest(unittest.TestCase):
+    def test_each_familys_rows_and_the_js_rows_outside_production_dropped(self):
+        sys.path.insert(0, HERE)
+        import ratchet_diff
+        texts = {"quality": "cognitive\ta.scala:f\t12\n",
+                 "js": "limit\tcognitive\t10\ncognitive\tweb/x.js:f\t11\ncognitive\tscripts/y.js:g\t13\n"}
+        got = ratchet_diff.measured_rows(texts, lambda: ("web/",))
+        self.assertEqual(got, {"quality": {("cognitive", "a.scala:f"): 12},
+                               "js": {("limit", "cognitive"): 10, ("cognitive", "web/x.js:f"): 11}})
+
+    def test_no_js_text_never_asks_for_the_production_paths(self):
+        sys.path.insert(0, HERE)
+        import ratchet_diff
+        self.assertEqual(ratchet_diff.measured_rows({}, lambda: self.fail("asked")), {})
+
+
 if __name__ == "__main__":
     unittest.main()

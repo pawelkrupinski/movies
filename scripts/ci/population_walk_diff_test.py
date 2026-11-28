@@ -301,5 +301,12 @@ class Brought(unittest.TestCase):
         self.assertEqual(t.differential([1, 2, 3], [3, 4]), ([1, 2], [4], [3]))
 
 
+class CandidateOfTest(unittest.TestCase):
+    def test_a_candidate_files_slice_head_flips_and_known_rows(self):
+        lines = ["slice\tde-1\n", "head\tv\tT\tline\n", "known\tw\tU\tnote\n", "head\tshort\n", "x\n"]
+        self.assertEqual(t.candidate_of(lines), ("de-1", {("v", "T"): "line"}, {("w", "U"): "note"}))
+        self.assertEqual(t.candidate_of([]), (None, {}, {}))
+
+
 if __name__ == "__main__":
     unittest.main()

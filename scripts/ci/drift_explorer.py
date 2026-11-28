@@ -29,6 +29,7 @@
 from __future__ import annotations
 
 import csv
+import io
 import os
 import random
 import sys
@@ -72,16 +73,21 @@ def pick(cc: str, count: int | str, salt: str, path: str | None = None) -> list[
     return sorted(random.Random(f"{cc}:{salt}").sample(pool, min(count, len(pool))))
 
 
+def flip_rows(path: str, text: str) -> list[list[str]]:
+    """The data rows of a flips TSV's text (header FLIP_COLUMNS first; an empty file holds none) that name a listing and
+    a seed; `path` names it in the error."""
+    reader = csv.reader(io.StringIO(text, newline=""), delimiter="\t", quoting=csv.QUOTE_NONE)
+    header = next(reader, None)
+    if header is None:
+        return []
+    if header[: len(FLIP_COLUMNS)] != FLIP_COLUMNS:
+        raise ValueError(f"{path}: not a flips TSV (header {header!r})")
+    return [cols for cols in reader if len(cols) >= 4 and cols[0] and cols[1].isdigit()]
+
+
 def _flip_rows(path: str) -> list[list[str]]:
-    """The data rows of a flips TSV (header FLIP_COLUMNS first; an empty file holds none) that name a listing and a seed."""
     with open(path, newline="", encoding="utf-8") as f:
-        reader = csv.reader(f, delimiter="\t", quoting=csv.QUOTE_NONE)
-        header = next(reader, None)
-        if header is None:
-            return []
-        if header[: len(FLIP_COLUMNS)] != FLIP_COLUMNS:
-            raise ValueError(f"{path}: not a flips TSV (header {header!r})")
-        return [cols for cols in reader if len(cols) >= 4 and cols[0] and cols[1].isdigit()]
+        return flip_rows(path, f.read())
 
 
 def new_flips(backlog: str, date: str, ref: str, paths: list[str]) -> list[list[str]]:

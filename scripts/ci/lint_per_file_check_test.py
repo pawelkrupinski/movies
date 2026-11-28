@@ -75,5 +75,11 @@ class LintPerFileCheckTest(unittest.TestCase):
         self.assertEqual(self.verdict(SILENT), "CROSS-FILE")
 
 
+class SplitReadsTest(unittest.TestCase):
+    def test_files_sorted_and_directories_without_their_trailing_slash(self):
+        kinds = [("b", True, False), ("d/", False, True), ("a", True, False), ("gone", False, False)]
+        self.assertEqual(T.split_reads(kinds), (["a", "b"], {"d"}))
+
+
 if __name__ == "__main__":
     unittest.main()

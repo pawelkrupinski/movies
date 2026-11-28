@@ -77,9 +77,16 @@ def _resources_by_module(files: List[str]) -> Dict[str, List[Tuple[str, str, str
     return by_module
 
 
+def _entries(directory: str) -> List[str]:
+    return os.listdir(directory) if os.path.isdir(directory) else []
+
+
+def _file_flags(paths: Iterable[str]) -> Dict[str, bool]:
+    return {p: os.path.isfile(p) for p in paths}
+
+
 def _scala_targets(module: str) -> List[str]:
-    target = os.path.join(module, "target")
-    return [d for d in (os.listdir(target) if os.path.isdir(target) else []) if d.startswith("scala-")]
+    return [d for d in _entries(os.path.join(module, "target")) if d.startswith("scala-")]
 
 
 def resource_copies(files: List[str]) -> Dict[str, str]:
@@ -89,7 +96,8 @@ def resource_copies(files: List[str]) -> Dict[str, str]:
                   for module, rows in _resources_by_module(files).items()
                   for scala in _scala_targets(module)
                   for config, rel, path in rows}
-    return {copy: path for copy, path in candidates.items() if os.path.isfile(copy)}
+    present = _file_flags(candidates)
+    return {copy: path for copy, path in candidates.items() if present[copy]}
 
 
 def is_main_copy(path):
@@ -167,22 +175,37 @@ def green(run):
     return run.returncode == 0 and "*** RUN ABORTED ***" not in run.stdout and "Suites: completed 0" not in run.stdout
 
 
+def classpath_lines(lines: List[str]) -> Dict[str, str]:
+    """{module: classpath} of the `<module>TAB<classpath>` lines."""
+    return dict(line.rstrip("\n").split("\t", 1) for line in lines if "\t" in line)
+
+
 def _given_classpaths(path: Optional[str]) -> Dict[str, str]:
     """The `<module>TAB<classpath>` lines of `--classpaths`."""
     if not path:
         return {}
     with open(path) as f:
-        return dict(line.rstrip("\n").split("\t", 1) for line in f if "\t" in line)
+        return classpath_lines(list(f))
+
+
+def exported_classpaths(missing: List[str], returncode: int, stdout: str) -> Optional[Dict[str, str]]:
+    """{module: Test classpath} of an sbt-warm export of `missing`'s, in order; None unless it gave one each."""
+    cps = [line for line in (x.replace("\x1b[0J", "") for x in stdout.splitlines()) if line.startswith("/") and ":" in line]
+    return dict(zip(missing, cps)) if returncode == 0 and len(cps) == len(missing) else None
+
+
+def _export(missing: List[str]) -> "subprocess.CompletedProcess[str]":
+    return subprocess.run(["scripts/sbt-warm", *[f"export {m}/Test/fullClasspath" for m in missing]],
+                          capture_output=True, text=True)
 
 
 def _exported_classpaths(missing: List[str]) -> Dict[str, str]:
     """The Test classpaths of `missing` modules, from one sbt-warm export; exits where it could not."""
-    run = subprocess.run(["scripts/sbt-warm", *[f"export {m}/Test/fullClasspath" for m in missing]],
-                         capture_output=True, text=True)
-    cps = [line for line in (x.replace("\x1b[0J", "") for x in run.stdout.splitlines()) if line.startswith("/") and ":" in line]
-    if run.returncode != 0 or len(cps) != len(missing):
+    run = _export(missing)
+    found = exported_classpaths(missing, run.returncode, run.stdout)
+    if found is None:
         sys.exit(f"lint_reads_trace: could not export the classpaths of {' '.join(missing)}")
-    return dict(zip(missing, cps))
+    return found
 
 
 def classpaths(modules: List[str], given: Optional[str]) -> Dict[str, str]:
@@ -381,14 +404,27 @@ def _trace_spec(spec: str, classpath: str, watched: List[str], copies: Dict[str,
     if not green_both:
         print(f"lint_reads_trace: {spec} did not run green; its reads are partial:\n{runs[0][1].stdout[-2000:]}",
               file=sys.stderr)
-    both = set(runs[0][0]) & set(runs[1][0])
-    return sorted(p + "/" if os.path.isdir(p) else p for p in both), green_both
+    return marked_directories(_directory_flags(set(runs[0][0]) & set(runs[1][0]))), green_both
+
+
+def _directory_flags(paths: Iterable[str]) -> Dict[str, bool]:
+    return {p: os.path.isdir(p) for p in paths}
+
+
+def marked_directories(is_directory: Dict[str, bool]) -> List[str]:
+    """The paths sorted, a directory's with a trailing slash."""
+    return sorted(p + "/" if directory else p for p, directory in is_directory.items())
+
+
+def observed_text(observed: Dict[str, List[str]]) -> str:
+    """`<spec>TAB<path>` a line for every read, then `<spec>TAB` for each spec that read nothing."""
+    return ("".join(f"{spec}\t{p}\n" for spec, reads in observed.items() for p in reads)
+            + "".join(f"{spec}\t\n" for spec, reads in observed.items() if not reads))
 
 
 def _write_observed(path: str, observed: Dict[str, List[str]]) -> None:
     with open(path, "w") as f:
-        f.write("".join(f"{spec}\t{p}\n" for spec, reads in observed.items() for p in reads)
-                + "".join(f"{spec}\t\n" for spec, reads in observed.items() if not reads))
+        f.write(observed_text(observed))
 
 
 def _trace_all(specs: List[str], cps: Dict[str, str]) -> Tuple[Dict[str, List[str]], List[str]]:

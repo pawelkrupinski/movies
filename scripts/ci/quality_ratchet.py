@@ -296,9 +296,13 @@ def _print_falls(ratchet: Ratchet, down: List[str]) -> None:
         print(f"  - ... and {len(down) - 20} more")
 
 
+def _read_baseline(path: str) -> Rows:
+    with open(path) as f:
+        return parse(f.read())
+
+
 def check_one(ratchet: Ratchet, current: Rows, ranges: List[str], renames: Renames) -> bool:
-    with open(ratchet.baseline) as f:
-        baseline = parse(f.read())
+    baseline = _read_baseline(ratchet.baseline)
     found = violations(ratchet, current, baseline, renames)
     if found:
         _print_violations(ratchet, found)

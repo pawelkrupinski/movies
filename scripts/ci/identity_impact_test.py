@@ -331,5 +331,20 @@ class LocalTestsTest(unittest.TestCase):
         self.assertIn("scrapers/testOnly clients.helios.HeliosClientFullRepertoireSpec -- -Didentity.countries=pl", plan)
 
 
+class RosterReadingTest(unittest.TestCase):
+    def test_every_json_file_of_a_walked_country_directory(self):
+        walks = [("de", [("d", ["a.json", "b.txt"]), ("d/x", ["c.json"])]), ("uk", [])]
+        self.assertEqual(ii.roster_json_paths(walks), [("de", os.path.join("d", "a.json")), ("de", os.path.join("d/x", "c.json"))])
+
+    def test_a_case_object_extending_cinema_names_its_display_and_its_key(self):
+        lines = ['case object KinoMuza extends Cinema("Kino Muza", "Poznań")\n', "val x = 1\n",
+                 'case object A extends Cinema("a", "b") case object BbC extends Cinema("c", "d")\n']
+        self.assertEqual(ii.model_roster_names(lines), [("pl", "Kino Muza"), ("pl", "Kino-Muza"), ("pl", "a"), ("pl", "A"),
+                                                        ("pl", "c"), ("pl", "Bb-C")])
+
+    def test_blank_lines_are_dropped_and_the_rest_stripped(self):
+        self.assertEqual(ii.non_blank([" a \n", "\n", "  ", "b"]), ["a", "b"])
+
+
 if __name__ == "__main__":
     unittest.main()

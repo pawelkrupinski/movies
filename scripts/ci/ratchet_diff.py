@@ -28,7 +28,7 @@ import argparse
 import os
 import subprocess
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 # Its sibling ratchets' bytecode stays out of the checkout: under `python3 -I` (its test's run) PYTHONDONTWRITEBYTECODE
 # is ignored, and their __pycache__ landed in scripts/ci (Order independence #105).
@@ -132,22 +132,26 @@ def rows_at(ref: str, path: str, family: str = ""):
     return parse(quality_ratchet.file_at(ref, path))
 
 
-def _measured_rows(quality_rows: str, coupling_rows: str, js_rows: str) -> Dict[str, Dict[Tuple[str, str], Any]]:
-    """{family: the rows the measure wrote to the given files}; the JS measure's rows of tests and scripts are reported,
-    never frozen."""
-    measured: Dict[str, Dict[Tuple[str, str], Any]] = {}
-    for family, path in (("quality", quality_rows), ("coupling", coupling_rows), ("js", js_rows)):
-        if not path:
-            continue
-        with open(path) as f:
-            text = f.read()
-        if family != "js":
-            measured[family] = quality_ratchet.parse(text)
-            continue
-        production = js_quality_ratchet.production_paths()
-        measured[family] = {(k, key): v for (k, key), v in js_quality_ratchet.parse(text).items()
-                            if k == "limit" or js_quality_ratchet.gated(key, production)}
+def measured_rows(texts: Dict[str, str], production: Callable[[], Tuple[str, ...]]) -> Dict[str, Dict[Tuple[str, str], Any]]:
+    """{family: the rows of the measure's text for it}; the JS measure's rows of tests and scripts (outside `production`'s
+    paths) are reported, never frozen."""
+    measured: Dict[str, Dict[Tuple[str, str], Any]] = {family: quality_ratchet.parse(text) for family, text in texts.items() if family != "js"}
+    if "js" in texts:
+        paths = production()
+        measured["js"] = {(k, key): v for (k, key), v in js_quality_ratchet.parse(texts["js"]).items()
+                          if k == "limit" or js_quality_ratchet.gated(key, paths)}
     return measured
+
+
+def _read_text(path: str) -> str:
+    with open(path) as f:
+        return f.read()
+
+
+def _measured_rows(quality_rows: str, coupling_rows: str, js_rows: str) -> Dict[str, Dict[Tuple[str, str], Any]]:
+    """{family: the rows the measure wrote to the given files}."""
+    texts = {family: _read_text(path) for family, path in (("quality", quality_rows), ("coupling", coupling_rows), ("js", js_rows)) if path}
+    return measured_rows(texts, js_quality_ratchet.production_paths)
 
 
 def _total(metric: str, before: Dict[str, int], after: Dict[str, int], old: Any, new: Any, rows: List[Row]

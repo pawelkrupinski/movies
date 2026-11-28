@@ -106,12 +106,14 @@ def _pre_existing_where(k: Key, known: dict[Key, Row], gone: dict[Key, Row]) -> 
     return "not in the backlog yet: the explorer files it"
 
 
+def new_table(new: list[Key], head: dict[Key, Row]) -> list[list[str]]:
+    """The rows of the new-flips TSV: its header, then each new flip's head row in NEW_COLUMNS."""
+    return [NEW_COLUMNS] + [[head[k].get(c, "") for c in NEW_COLUMNS] for k in new]
+
+
 def _write_new(path: str, new: list[Key], head: dict[Key, Row]) -> None:
     with open(path, "w", newline="") as f:
-        w = csv.writer(f, delimiter="\t", lineterminator="\n", quoting=csv.QUOTE_NONE, quotechar=None)
-        w.writerow(NEW_COLUMNS)
-        for k in new:
-            w.writerow([head[k].get(c, "") for c in NEW_COLUMNS])
+        csv.writer(f, delimiter="\t", lineterminator="\n", quoting=csv.QUOTE_NONE, quotechar=None).writerows(new_table(new, head))
 
 
 def _load(o: dict[str, str]) -> tuple[dict[Key, Row], dict[Key, Row], list[Key], dict[Key, Row], dict[Key, Row]]:

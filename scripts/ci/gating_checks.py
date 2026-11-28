@@ -296,10 +296,18 @@ def _parse(argv: list[str]) -> Optional[tuple[str, dict[str, str]]]:
     return cmd, args
 
 
+def _git_user(root: str) -> str:
+    return subprocess.run(["git", "-C", root, "config", "user.name"], capture_output=True, text=True).stdout.strip()
+
+
+def _default_owner(root: str) -> str:
+    """Who a synced row names when `--owner` does not: the checkout's git user, else $USER."""
+    return _git_user(root) or os.environ.get("USER", "unknown")
+
+
 def _sync_command(args: dict[str, str]) -> int:
     root = args["--root"]
-    owner = args.get("--owner") or subprocess.run(["git", "-C", root, "config", "user.name"], capture_output=True,
-                                                    text=True).stdout.strip() or os.environ.get("USER", "unknown")
+    owner = args.get("--owner") or _default_owner(root)
     for line in sync(root, owner):
         print(f"gating-checks: {line}", file=sys.stderr)
     return 0

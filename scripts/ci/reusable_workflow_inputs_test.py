@@ -104,5 +104,14 @@ class ReusableWorkflowInputsTest(unittest.TestCase):
         self.assertTrue(all(any(c[1] == "country-convergence-leg.yml" for c in check.calls(t)) for t in texts))
 
 
+class ProblemsOfTest(unittest.TestCase):
+    def test_the_texts_are_judged_without_a_directory(self):
+        texts = {"leg.yml": CALLEE, "caller.yml": caller("            code: pl\n            stray: 1\n")}
+        found = check.problems_of(texts)
+        self.assertEqual(len(found), 1)
+        self.assertIn("stray", found[0])
+        self.assertEqual(check.problems_of({"leg.yml": CALLEE, "caller.yml": caller("            code: pl\n")}), [])
+
+
 if __name__ == "__main__":
     unittest.main()

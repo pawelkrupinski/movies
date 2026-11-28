@@ -163,5 +163,22 @@ class LintReadsTraceTest(unittest.TestCase):
                          {"scrapers:clients.ASpec": ["data/x.json", "test/resources/fixtures/kinoteka/film/*"]})
 
 
+class PureReadingsTest(unittest.TestCase):
+    def test_classpath_lines_take_the_tabbed_lines(self):
+        self.assertEqual(T.classpath_lines(["web\t/a:/b\n", "no tab\n", "worker\t/c\n"]), {"web": "/a:/b", "worker": "/c"})
+
+    def test_an_export_gives_one_classpath_each_in_order_or_none(self):
+        out = "[info] x\n\x1b[0J/a/b:/c\n/d:/e\n"
+        self.assertEqual(T.exported_classpaths(["web", "worker"], 0, out), {"web": "/a/b:/c", "worker": "/d:/e"})
+        self.assertIsNone(T.exported_classpaths(["web", "worker", "common"], 0, out))
+        self.assertIsNone(T.exported_classpaths(["web", "worker"], 1, out))
+
+    def test_directories_are_marked_with_a_slash_and_paths_sorted(self):
+        self.assertEqual(T.marked_directories({"b": False, "a": True}), ["a/", "b"])
+
+    def test_observed_lists_every_read_then_the_specs_reading_nothing(self):
+        self.assertEqual(T.observed_text({"s": ["a", "b"], "t": [], "u": ["c"]}), "s\ta\ns\tb\nu\tc\nt\t\n")
+
+
 if __name__ == "__main__":
     unittest.main()

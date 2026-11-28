@@ -91,5 +91,17 @@ class DriftExplorerTest(unittest.TestCase):
         self.assertEqual(2, len(header_tsv.read(self.backlog)))
 
 
+class FlipRowsTest(unittest.TestCase):
+    def test_the_rows_naming_a_listing_and_a_seed_and_none_of_an_empty_text(self):
+        header = "\t".join(explorer.FLIP_COLUMNS) + "\n"
+        text = header + "de\t8\tv\tT\r\n\t9\tv\tT\nde\tx\tv\tT\nde\t3\tv\n"
+        self.assertEqual(explorer.flip_rows("f.tsv", text), [["de", "8", "v", "T"]])
+        self.assertEqual(explorer.flip_rows("f.tsv", ""), [])
+
+    def test_another_header_is_refused_naming_the_file(self):
+        with self.assertRaisesRegex(ValueError, "f.tsv: not a flips TSV"):
+            explorer.flip_rows("f.tsv", "a\tb\n")
+
+
 if __name__ == "__main__":
     unittest.main()

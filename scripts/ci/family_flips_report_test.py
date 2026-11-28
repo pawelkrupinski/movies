@@ -86,5 +86,22 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(report.main(["--shards", self.shards, "--expect", "de=1", "--previous", self.previous, "--out", self.out]), 2)
 
 
+class PublishedTest(unittest.TestCase):
+    def test_a_country_missing_a_shard_publishes_nothing_and_a_new_one_is_its_baseline(self):
+        flip = {"country": "de", "venue": "v", "rawTitle": "T", "takes": "x", "note": ""}
+        tables, summary = report.published({"uk": 2, "de": 1}, {"uk": (([], [2]), [flip]), "de": (([flip], []), None)})
+        self.assertEqual([name for name, _, _ in tables], ["family-flips-de.tsv", "family-flips-ranked.tsv", "family-flips-new.tsv"])
+        self.assertEqual(tables[0][2], [flip])
+        self.assertEqual(tables[2][2], [])
+        self.assertIn("uk: shard(s) 2 of 2 missing", summary)
+        self.assertIn("de: no file from an earlier night", summary)
+
+    def test_the_flips_last_nights_rows_lack_are_new(self):
+        old, new = ({"country": "de", "venue": v, "rawTitle": "T", "takes": "x", "note": ""} for v in ("a", "b"))
+        tables, summary = report.published({"de": 1}, {"de": (([old, new], []), [old])})
+        self.assertEqual(tables[-1][2], [new])
+        self.assertIn("| de | 1 | 2 | 1 |", summary)
+
+
 if __name__ == "__main__":
     unittest.main()

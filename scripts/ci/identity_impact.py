@@ -127,35 +127,38 @@ def _load_json(path: str) -> object:
         return None
 
 
-def _data_roster_names(tree: str) -> List[Tuple[str, str]]:
-    """(country, name) for every string of data/<country>/**.json that reads as JSON."""
-    return [(cc, v)
-            for directory, cc in DATA_DIRS.items()
-            for root, _, files in os.walk(os.path.join(tree, "data", directory))
-            for f in files if f.endswith(".json")
-            for v in _json_strings(_load_json(os.path.join(root, f)))]
+def _walk(top: str) -> List[Tuple[str, List[str]]]:
+    return [(root, files) for root, _, files in os.walk(top)]
 
 
-def _models_roster_names(tree: str) -> List[Tuple[str, str]]:
-    """(country, name) of the Cinema(...) names and case objects of models/*.scala: every hand-written venue is Poland's
-    or a chain network's; the rest are data-driven."""
-    out: List[Tuple[str, str]] = []
-    models = os.path.join(tree, MODELS_SCALA)
-    for f in sorted(os.listdir(models)) if os.path.isdir(models) else []:
-        if not f.endswith(".scala"):
-            continue
-        with open(os.path.join(models, f), encoding="utf-8") as fh:
-            for line in fh:
-                for name, display in re.findall(r"case object (\w+)\s+extends\s+Cinema\(\"([^\"]*)\"", line):
-                    out.append(("pl", display))
-                    out.append(("pl", re.sub(r"([a-z0-9])([A-Z])", r"\1-\2", name)))
-    return out
+def roster_json_paths(walks: List[Tuple[str, List[Tuple[str, List[str]]]]]) -> List[Tuple[str, str]]:
+    """(country, path) of every `.json` file of each country's walked data directory ((directory, file names) each)."""
+    return [(cc, os.path.join(root, f)) for cc, walk in walks for root, files in walk for f in files if f.endswith(".json")]
+
+
+def model_roster_names(lines: List[str]) -> List[Tuple[str, str]]:
+    """("pl", name) of the Cinema(...) names and case objects the models' lines declare: every hand-written venue is
+    Poland's or a chain network's; the rest are data-driven."""
+    found = [m for line in lines for m in re.findall(r"case object (\w+)\s+extends\s+Cinema\(\"([^\"]*)\"", line)]
+    return [("pl", n) for name, display in found for n in (display, re.sub(r"([a-z0-9])([A-Z])", r"\1-\2", name))]
+
+
+def _sorted_names(directory: str) -> List[str]:
+    return sorted(os.listdir(directory)) if os.path.isdir(directory) else []
+
+
+def _lines(path: str) -> List[str]:
+    with open(path, encoding="utf-8") as fh:
+        return list(fh)
 
 
 def roster_names(tree: str) -> List[Tuple[str, str]]:
-    """(country, name) for every venue name the rosters hold: every string of data/<country>/**.json, and the
-    Cinema(...) names and case objects of models/*.scala (Poland's `*Cinemas.scala`, the networks')."""
-    return _data_roster_names(tree) + _models_roster_names(tree)
+    """(country, name) for every venue name the rosters hold: every string of data/<country>/**.json that reads as
+    JSON, and the Cinema(...) names and case objects of models/*.scala (Poland's `*Cinemas.scala`, the networks')."""
+    data = roster_json_paths([(cc, _walk(os.path.join(tree, "data", directory))) for directory, cc in DATA_DIRS.items()])
+    models = os.path.join(tree, MODELS_SCALA)
+    scala = [line for f in _sorted_names(models) if f.endswith(".scala") for line in _lines(os.path.join(models, f))]
+    return [(cc, v) for cc, path in data for v in _json_strings(_load_json(path))] + model_roster_names(scala)
 
 
 class Rosters:
@@ -463,9 +466,8 @@ def _countries_command(a: argparse.Namespace) -> int:
     return 0
 
 
-def _read_lines(path: str) -> List[str]:
-    with open(path, encoding="utf-8") as fh:
-        return [line.strip() for line in fh if line.strip()]
+def non_blank(lines: List[str]) -> List[str]:
+    return [line.strip() for line in lines if line.strip()]
 
 
 def _scope(csv: Optional[str]) -> Optional[List[str]]:
@@ -477,7 +479,7 @@ def _plan_command(a: argparse.Namespace) -> int:
     why, tests = read_impact(a.impact)
     every_test = read_impact(a.every_test)[1] if why and a.every_test else None
     scope = _scope(a.countries)
-    reads_lines = _read_lines(a.reads) if a.reads else []
+    reads_lines = non_blank(_lines(a.reads)) if a.reads else []
     excluded = read_excluded(a.excluded) if a.excluded else frozenset()
     for line in plan([line.rstrip("\n") for line in sys.stdin if line.strip()], why, tests, scope,
                      reads=read_reads(a.impact), reads_lines=reads_lines, excluded=excluded, every_test=every_test):

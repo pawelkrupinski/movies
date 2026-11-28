@@ -66,30 +66,36 @@ def differential(head: Sequence[T], base: Sequence[T]) -> Tuple[List[T], List[T]
     return ([k for k in head if k not in bset], [k for k in base if k not in hset], [k for k in head if k in bset])
 
 
-def _read_candidate_file(path: str) -> Tuple[Optional[str], Flips, Flips]:
-    """(slice name or None, head flips, known rows) of one candidate file."""
+def candidate_of(lines: Iterable[str]) -> Tuple[Optional[str], Flips, Flips]:
+    """(slice name or None, head flips, known rows) of one candidate file's lines."""
     slice_name: Optional[str] = None
     head: Dict[Key, str] = {}
     known: Dict[Key, str] = {}
-    with open(path, encoding="utf-8") as fh:
-        for raw in fh:
-            cols = raw.rstrip("\n").split("\t")
-            if len(cols) < 2:
-                continue
-            if cols[0] == "slice":
-                slice_name = cols[1]
-            elif len(cols) >= 4 and cols[0] in ("head", "known"):
-                (head if cols[0] == "head" else known)[(cols[1], cols[2])] = cols[3]
+    for raw in lines:
+        cols = raw.rstrip("\n").split("\t")
+        if len(cols) < 2:
+            continue
+        if cols[0] == "slice":
+            slice_name = cols[1]
+        elif len(cols) >= 4 and cols[0] in ("head", "known"):
+            (head if cols[0] == "head" else known)[(cols[1], cols[2])] = cols[3]
     return slice_name, head, known
+
+
+def _lines(path: str) -> List[str]:
+    with open(path, encoding="utf-8") as fh:
+        return list(fh)
+
+
+def _sorted_entries(directory: str) -> List[str]:
+    return sorted(os.listdir(directory)) if os.path.isdir(directory) else []
 
 
 def read_candidates(directory: str) -> Dict[str, Candidate]:
     """{slice: {"head": {(venue, title): line}, "known": {(venue, title): note}}} of every candidate file."""
     out: Dict[str, Candidate] = {}
-    if not os.path.isdir(directory):
-        return out
-    for name in sorted(n for n in os.listdir(directory) if n.endswith(".tsv")):
-        slice_name, head, known = _read_candidate_file(os.path.join(directory, name))
+    for name in (n for n in _sorted_entries(directory) if n.endswith(".tsv")):
+        slice_name, head, known = candidate_of(_lines(os.path.join(directory, name)))
         if slice_name:
             out[slice_name] = {"head": head, "known": known}
     return out
@@ -378,8 +384,7 @@ def _verdict_line(refusals: List[str], clean: str) -> str:
 
 
 def _judge_walk_command(argv: List[str]) -> int:
-    with open(argv[1], encoding="utf-8") as fh:
-        refusals, notes = judge_walk(fh)
+    refusals, notes = judge_walk(_lines(argv[1]))
     for line in notes + refusals:
         print(f"population walk: {line}")
     print(f"population walk: {len(notes)} slice(s) the change brings, judged on the known rows: "
@@ -388,8 +393,13 @@ def _judge_walk_command(argv: List[str]) -> int:
 
 
 def _rows_command(argv: List[str]) -> int:
+    return _rows_from(argv, datetime.date.today().isoformat())
+
+
+def _rows_from(argv: List[str], today: str) -> int:
+    """`rows` over stdin, first seen `today` unless `--first-seen` says otherwise."""
     opts = dict(zip(argv[1::2], argv[2::2]))
-    out, failed = rows(sys.stdin, opts.get("--first-seen", datetime.date.today().isoformat()), opts.get("--owner", "identity"))
+    out, failed = rows(sys.stdin, opts.get("--first-seen", today), opts.get("--owner", "identity"))
     if "--into" in opts and not failed:
         out = file_rows(opts["--into"], out)
     for r in out:
@@ -402,10 +412,7 @@ def _rows_command(argv: List[str]) -> int:
 def _judge_files(candidates_dir: str, base_rows: str, brought_file: Optional[str]) -> int:
     candidates = read_candidates(candidates_dir)
     walked, failed = read_base(base_rows)
-    listed: Set[str] = set()
-    if brought_file:
-        with open(brought_file, encoding="utf-8") as fh:
-            listed = {ln.strip() for ln in fh if ln.strip()}
+    listed = {ln.strip() for ln in (_lines(brought_file) if brought_file else []) if ln.strip()}
     refusals, notes = judge(candidates, walked, failed, listed)
     for line in notes + refusals:
         print(f"population walk: {line}")

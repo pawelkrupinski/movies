@@ -50,6 +50,7 @@ from __future__ import annotations
 import csv
 import datetime
 import gzip
+import io
 import json
 import os
 import subprocess
@@ -168,16 +169,18 @@ def add(cc: str, seed: int, why: str, date: str, path: str | None = None) -> boo
     return True
 
 
-def _named_listings(tsvs: list[str]) -> set[tuple[str, str]]:
-    """The (venue, rawTitle) of every row of the TSVs that has both columns; a missing file names none."""
-    named: set[tuple[str, str]] = set()
-    for path in tsvs:
-        if not os.path.isfile(path):
-            continue
-        with open(path, newline="") as f:
-            named |= {(row["venue"], row["rawTitle"]) for row in csv.DictReader(f, delimiter="\t")
-                      if row.get("venue") is not None and row.get("rawTitle") is not None}
-    return named
+def named_listings(texts: list[str]) -> set[tuple[str, str]]:
+    """The (venue, rawTitle) of every row of the TSV texts that has both columns."""
+    return {(row["venue"], row["rawTitle"]) for text in texts for row in csv.DictReader(io.StringIO(text, newline=""), delimiter="\t")
+            if row.get("venue") is not None and row.get("rawTitle") is not None}
+
+
+def _text_if_file(path: str) -> str:
+    """The text of `path`; a missing file reads as empty (it names nothing)."""
+    if not os.path.isfile(path):
+        return ""
+    with open(path, newline="") as f:
+        return f.read()
 
 
 def _core_of(path: str) -> list[object]:
@@ -196,14 +199,22 @@ def _core_listing(entry: object) -> tuple[str | None, str]:
     return (parts[1] if len(parts) > 1 else None, title)
 
 
+def _slice_names(root: str) -> list[str]:
+    return sorted(os.listdir(root)) if os.path.isdir(root) else []
+
+
+def matching_slices(root: str, named: set[tuple[str, str]], cores: dict[str, list[object]]) -> list[str]:
+    """The slice directories under `root` (in `cores`' order) with a core listing that `named` holds."""
+    return [os.path.join(root, name) for name, core in cores.items() if any(_core_listing(entry) in named for entry in core)]
+
+
 def slices(cc: str, fixtures: str, tsvs: list[str]) -> list[str]:
     """The drift slices of `cc` whose core listings a TSV row (columns venue, rawTitle) names."""
-    named = _named_listings(tsvs)
-    root = os.path.join(fixtures, "drift-slices", cc)
-    if not named or not os.path.isdir(root):
+    named = named_listings([_text_if_file(path) for path in tsvs])
+    if not named:
         return []
-    return [os.path.join(root, name) for name in sorted(os.listdir(root))
-            if any(_core_listing(entry) in named for entry in _core_of(os.path.join(root, name, "slice.json.gz")))]
+    root = os.path.join(fixtures, "drift-slices", cc)
+    return matching_slices(root, named, {name: _core_of(os.path.join(root, name, "slice.json.gz")) for name in _slice_names(root)})
 
 
 def options(argv):
@@ -235,12 +246,17 @@ def _gate(opts: Dict[str, str], rest: List[str]) -> None:
     print(" ".join(map(str, fixed(opts["cc"], None, opts.get("file")))))
 
 
-def _add(opts: Dict[str, str], rest: List[str]) -> None:
+def add_seed(opts: Dict[str, str], today: str) -> str:
+    """`add`'s options applied (the date `today` unless given): what it says, "added" or "already there"."""
     seed = int(opts["seed"])
     if seed < 1:
         raise ValueError(f"seed {seed}: seeds are positive")
-    added = add(opts["cc"], seed, opts.get("why", ""), opts.get("date") or datetime.date.today().isoformat(), opts.get("file"))
-    print("added" if added else "already there")
+    added = add(opts["cc"], seed, opts.get("why", ""), opts.get("date") or today, opts.get("file"))
+    return "added" if added else "already there"
+
+
+def _add(opts: Dict[str, str], rest: List[str]) -> None:
+    print(add_seed(opts, datetime.date.today().isoformat()))
 
 
 def _pins(opts: Dict[str, str], rest: List[str]) -> None:

@@ -34,7 +34,7 @@ import subprocess
 import sys
 import tempfile
 from fnmatch import fnmatchcase
-from typing import List, Set
+from typing import Callable, List, Set, Tuple
 import ci_machine  # noqa: E402
 
 ENTRY_SUFFIX = ".tar.zst"
@@ -82,23 +82,49 @@ def _excluded(path, excludes):
     return any(pattern.count("/") == depth and fnmatchcase(path, pattern) for pattern in excludes)
 
 
-def _walk_included(top: str, excludes: List[str]) -> Set[str]:
-    """Every entry under directory `top` that is not excluded, an excluded directory not entered."""
-    found = set()
-    for parent, directories, files in os.walk(top):
-        found |= {path for path in (os.path.join(parent, name) for name in directories + files) if not _excluded(path, excludes)}
-        directories[:] = [d for d in directories if not _excluded(os.path.join(parent, d), excludes)]
+def _scan(directory: str) -> List["os.DirEntry[str]"]:
+    """The entries of `directory`; none where it cannot be listed (os.walk's own way with an unreadable directory)."""
+    try:
+        return list(os.scandir(directory))
+    except OSError:
+        return []
+
+
+def _children(directory: str) -> List[Tuple[str, bool]]:
+    """(path, whether to descend: a directory, not a symlink to one) of every entry of `directory`."""
+    return [(entry.path, entry.is_dir(follow_symlinks=False)) for entry in _scan(directory)]
+
+
+def included_under(top: str, children: Callable[[str], List[Tuple[str, bool]]], excludes: List[str]) -> Set[str]:
+    """Every entry under directory `top` that is not excluded, an excluded directory not entered; `children` lists one."""
+    found: Set[str] = set()
+    todo = [top]
+    while todo:
+        for path, descend in children(todo.pop()):
+            if _excluded(path, excludes):
+                continue
+            found.add(path)
+            if descend:
+                todo.append(path)
     return found
+
+
+def _glob(pattern: str) -> List[str]:
+    return glob.glob(pattern)
+
+
+def _real_directory(path: str) -> bool:
+    return os.path.isdir(path) and not os.path.islink(path)
 
 
 def collect(paths_text):
     """Every directory, file and symlink the patterns cover, excluded entries dropped, sorted."""
     includes, excludes = parse_patterns(paths_text)
     found = set()
-    for top in (t for pattern in includes for t in glob.glob(pattern) if not _excluded(t, excludes)):
+    for top in (t for pattern in includes for t in _glob(pattern) if not _excluded(t, excludes)):
         found.add(top)
-        if os.path.isdir(top) and not os.path.islink(top):
-            found |= _walk_included(top, excludes)
+        if _real_directory(top):
+            found |= included_under(top, _children, excludes)
     return sorted(found), includes
 
 

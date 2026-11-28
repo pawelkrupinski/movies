@@ -332,7 +332,7 @@ pyright	scripts/ci/lint_per_file_check.py	46
 pyright	scripts/ci/lint_reads_trace.py	43
 pyright	scripts/ci/python_floor_lint.py	32
 pyright	scripts/ci/ratchet_diff.py	11
-pyright	scripts/ci/reusable_workflow_inputs.py	32
+pyright	scripts/ci/reusable_workflow_inputs.py	30
 pyright	scripts/ci/runner_cache.py	36
 pyright	scripts/ci/runner_scheduler.py	126
 pyright	scripts/ci/script_module.py	4

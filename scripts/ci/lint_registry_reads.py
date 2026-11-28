@@ -162,13 +162,17 @@ def _wanted(registry: str, only: Set[str], repo: Repo, ignored_of: Callable[[Lis
     return wanted
 
 
+def _selections(paths: List[str], selected_specs: Callable[[str], Set[str]]) -> Dict[str, Set[str]]:
+    """{path: the specs selecting it}, asked over a governed pool."""
+    with governed_workers("lint-plan", 8) as width, ThreadPoolExecutor(max_workers=width) as pool:
+        return dict(zip(paths, pool.map(selected_specs, paths)))
+
+
 def misses(registry: str, only: Set[str], repo: Repo, ignored_of: Callable[[List[str]], Set[str]],
            selected_specs: Callable[[str], Set[str]]) -> List[str]:
     """The `<spec>TAB<literal>` lines of the registry rows that miss a path their spec reads."""
     wanted = _wanted(registry, only, repo, ignored_of)
-    unique = sorted({p for per in wanted.values() for found in per.values() for p in found})
-    with governed_workers("lint-plan", 8) as width, ThreadPoolExecutor(max_workers=width) as pool:
-        selection = dict(zip(unique, pool.map(selected_specs, unique)))
+    selection = _selections(sorted({p for per in wanted.values() for found in per.values() for p in found}), selected_specs)
     return [f"{spec}\t{literal}" for spec, per in wanted.items() for literal, found in per.items()
             if not any(spec in selection[p] for p in found)]
 

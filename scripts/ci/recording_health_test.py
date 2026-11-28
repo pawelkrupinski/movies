@@ -287,5 +287,28 @@ class RecordingHealthTest(unittest.TestCase):
         torn.write_text('{"origins": ')
         self.assertEqual(health.main([str(self.tree.root), "--since", str(SINCE), "--previous", str(torn)]), 2)
 
+class PureCountsTest(unittest.TestCase):
+    def test_an_origin_is_a_directory_not_named_with_a_dot(self):
+        self.assertEqual(health.host_names({"a.com": True, ".git": True, "notes.txt": False}), ["a.com"])
+
+    def test_every_file_is_held_and_those_written_since_answered(self):
+        origins = {}
+        health.add_responses(origins, {"a.com": [[5.0, 15.0], [20.0]], "b.com": []}, 10.0)
+        self.assertEqual((origins["a.com"]["tree"], origins["a.com"]["answered"]), (3, 2))
+        self.assertEqual(origins["b.com"], health.origin_counts())
+
+    def test_a_failure_counts_against_its_origin(self):
+        origins = {}
+        health.add_failures(origins, [("GET https://a.com/x", "404", ""), ("https://a.com/y", "403", "Forbidden")])
+        self.assertEqual((origins["a.com"]["notFound"], origins["a.com"]["refused"], origins["a.com"]["refusals"]), (1, 1, {"403": 1}))
+
+    def test_only_the_outputs_asked_are_written(self):
+        this = {"since": 1.0, "origins": {}}
+        self.assertEqual(health.outputs(None, None, this, [], "r"), [])
+        self.assertEqual(health.outputs("m.json", "s.md", this, [health.Flag("a.com", "gone")], "r"),
+                         [("m.json", "w", json.dumps({**this, "flags": {"a.com": "gone"}}, indent=1, sort_keys=True)),
+                          ("s.md", "a", "r\n")])
+
+
 if __name__ == "__main__":
     unittest.main()

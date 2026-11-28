@@ -180,5 +180,28 @@ class SparseCheckoutTest(unittest.TestCase):
             self.assertEqual(["1", "2", "3"], rows)
 
 
+class AddSeedTest(unittest.TestCase):
+    setUp = FixedSetTest.setUp
+
+    def test_the_date_is_today_unless_given_and_a_seed_below_one_is_refused(self):
+        self.assertEqual(ds.add_seed({"cc": "pl", "seed": "3", "file": self.path}, "2026-11-28"), "added")
+        self.assertEqual(ds.add_seed({"cc": "pl", "seed": "3", "file": self.path}, "2026-11-28"), "already there")
+        self.assertEqual(ds.add_seed({"cc": "pl", "seed": "4", "date": "2026-01-02", "file": self.path}, "2026-11-28"), "added")
+        with open(self.path) as f:
+            self.assertIn("pl\t3\t1\t2026-11-28\t", f.read())
+        with self.assertRaisesRegex(ValueError, "seeds are positive"):
+            ds.add_seed({"cc": "pl", "seed": "0"}, "2026-11-28")
+
+
+class SliceSelectionTest(unittest.TestCase):
+    def test_rows_with_both_columns_name_a_listing(self):
+        texts = ["venue\trawTitle\nv\tT\n", "", "venue\tother\nw\tU\n"]
+        self.assertEqual(ds.named_listings(texts), {("v", "T")})
+
+    def test_a_slice_matches_when_one_core_listing_is_named(self):
+        cores = {"a": ["N\0v\0url\0T"], "b": ["P\0w\0U\0"], "c": []}
+        self.assertEqual(ds.matching_slices("r", {("v", "T")}, cores), [os.path.join("r", "a")])
+
+
 if __name__ == "__main__":
     unittest.main()
