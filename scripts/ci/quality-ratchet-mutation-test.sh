@@ -19,9 +19,9 @@ trap 'rm -rf "$work"' EXIT
 
 # <name> @@ <exact text in the tool> @@ <what replaces it>
 mutants=(
-  'a frozen row rising passes @@ if value > base[key]: @@ if False:'
-  'a new key past the limit passes @@ elif value > limit and not moved_from @@ elif False and not moved_from'
-  'the measure'"'"'s limit is not compared @@ if limit_of(current, kind) > limit: @@ if False:'
+  'a frozen row rising passes @@ if key in base and value > base[key]: @@ if False:'
+  'a new key past the limit passes @@ elif key not in base and value > limit and not moved_from @@ elif False and not moved_from'
+  'the measure'"'"'s limit is not compared @@ if limit_of(current, kind) > limit else [] @@ if False else []'
   'a missing limit row passes @@ raise ValueError(f"no `limit @@ return 10**9  # (f"no `limit'
   'a raised limit is no growth @@ if old_limit is not None and new_limit > old_limit: @@ if False:'
   'an added or raised row is no growth @@ if value > before.get(key, allowed_new) and not @@ if False and not'
@@ -30,10 +30,8 @@ mutants=(
   'trailers.py: any commit of the range justifies a rise @@ if not carries(sha, key, repo): @@ if not any(carries(s, key, repo) for s in changed):'
   'trailers.py: a step is judged against the range'"'"'s base @@ before, after = text_at(f"{sha}^", path, repo), text_at(sha, path, repo) @@ before, after = text_at(rng.split("..")[0], path, repo), text_at(sha, path, repo)'
   'growth is judged on another ratchet'"'"'s trailer @@ trailers.unjustified_rises(rng, ratchet.baseline, ratchet.trailer, @@ trailers.unjustified_rises(rng, ratchet.baseline, "Complexity",'
-  'growth never fails @@ if unjustified: @@ if False:'
-  'violations never fail @@     if found:
-        failed = True @@     if found:
-        failed = False'
+  'growth never fails @@ if not unjustified: @@ if True:'
+  'violations never fail @@ failed = bool(found) or any(grew) @@ failed = any(grew)'
   'baseline_ratchet.py: a move needs no departure @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if moved_key(old, renames) == key and was >= value), None)'
   'baseline_ratchet.py: a move may grow @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if old not in present and moved_key(old, renames) == key), None)'
   'baseline_ratchet.py: a same-named source is a move @@ if old not in present and moved_key(old, renames) == key and was >= value), None) @@ if old not in present and old.rsplit("/", 1)[-1] == key.rsplit("/", 1)[-1] and was >= value), None)'
