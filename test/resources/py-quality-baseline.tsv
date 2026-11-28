@@ -99,8 +99,6 @@ cognitive	scripts/ci/trailers.py:unjustified_rises	11
 cognitive	scripts/ci/upstream_run.py:main	11
 cognitive	scripts/ci/workflow_steps.py:action_steps	13
 cognitive	scripts/ci/xcresult_annotations.py:annotations	11
-cognitive	scripts/claude-hooks/foreground-wait-guard:unbounded_wait	12
-cognitive	scripts/claude-hooks/foreground-wait-guard:waits	28
 cognitive	scripts/claude-hooks/unbounded-poll-guard:fix_for	19
 cognitive	scripts/claude-hooks/unbounded-poll-guard:positions	14
 cognitive	scripts/convergence-findings.py:main	13
@@ -223,7 +221,6 @@ cyclomatic	scripts/ci/upstream_run.py:main	11
 cyclomatic	scripts/ci_status.py:run_lines	13
 cyclomatic	scripts/ci_status.py:workflow_lines	11
 cyclomatic	scripts/ci_wait.py:parse	11
-cyclomatic	scripts/claude-hooks/foreground-wait-guard:waits	19
 cyclomatic	scripts/claude-hooks/owner-decisions:pending_decisions	11
 cyclomatic	scripts/claude-hooks/unbounded-poll-guard:fix_for	23
 cyclomatic	scripts/claude-hooks/unbounded-poll-guard:positions	11

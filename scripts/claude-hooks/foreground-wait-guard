@@ -43,6 +43,46 @@ def seconds(value: Optional[str], bare_unit: str) -> Optional[float]:
 Wait = Tuple[str, List[str], Optional[float]]  # (tool, its arguments, the seconds a `timeout` prefix bounds it to)
 
 
+REDIRECTS = ("<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|")
+TIMEOUT_OPTIONS = ("-k", "--kill-after", "-s", "--signal")
+
+
+def timeout_word(words: List[str], index: int, prefix_timeout: bool, bound: Optional[float]) -> Optional[Tuple[bool, Optional[float]]]:
+    """The (in a timeout prefix, its bound) after words[index] when the word belongs to a `timeout` prefix, else None."""
+    word = words[index]
+    if word in ("timeout", "gtimeout"):
+        return True, bound
+    if prefix_timeout and bound is None and words[index - 1] in TIMEOUT_OPTIONS:
+        return prefix_timeout, bound  # an option's value (-s KILL, -k 5), never timeout's duration nor the command
+    if re.fullmatch(r"[0-9.]+[smhd]?", word):
+        # timeout's DURATION (its options come before it); 0 disables the timeout: no bound
+        return prefix_timeout, (seconds(word, "s") or None) if prefix_timeout and bound is None else bound
+    return None
+
+
+def is_prefix(word: str) -> bool:
+    """A prefix of a command or its option: the command is still to come."""
+    return word in COMMAND_START or bool(shell.ASSIGNMENT.match(word)) or word.startswith("-") or word in ("env", "nice")
+
+
+def arguments_after(words: List[str], index: int) -> List[str]:
+    """The words of the command at index, up to its next punctuation."""
+    rest: List[str] = []
+    for later in words[index + 1:]:
+        if shell.is_punctuation(later):
+            break
+        rest.append(later)
+    return rest
+
+
+def after_punctuation(word: str, prefix_timeout: bool, bound: Optional[float]) -> Tuple[bool, bool, Optional[float]]:
+    """(command position, in a timeout prefix, its bound) after a punctuation word: a redirect keeps the state of the
+    command it belongs to, anything else starts a new command."""
+    if word in REDIRECTS:
+        return False, prefix_timeout, bound
+    return True, False, None
+
+
 def waits(words: List[str]) -> List[Wait]:
     """Each (tool, its arguments, the seconds a `timeout` prefix bounds it to or None) a waiting tool runs with, in
     command position. `timeout 30 scripts/wait-for ...` is a bounded check as much as `--timeout 30` is."""
@@ -50,32 +90,14 @@ def waits(words: List[str]) -> List[Wait]:
     position, prefix_timeout, bound = True, False, None
     for index, word in enumerate(words):
         if shell.is_punctuation(word):
-            position = word not in ("<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|")
-            if position:
-                prefix_timeout, bound = False, None
+            position, prefix_timeout, bound = after_punctuation(word, prefix_timeout, bound)
             continue
-        if not position:
-            continue
-        if word in ("timeout", "gtimeout"):
-            prefix_timeout = True
-            continue
-        if prefix_timeout and bound is None and words[index - 1] in ("-k", "--kill-after", "-s", "--signal"):
-            continue  # an option's value (-s KILL, -k 5), never timeout's duration nor the command
-        if re.fullmatch(r"[0-9.]+[smhd]?", word):
-            # timeout's DURATION (its options come before it); 0 disables the timeout: no bound
-            if prefix_timeout and bound is None:
-                bound = seconds(word, "s") or None
-            continue
-        if word in COMMAND_START or shell.ASSIGNMENT.match(word) or word.startswith("-") or word in ("env", "nice"):
-            continue  # a prefix or its option: the command is still to come
-        name = os.path.basename(word)
-        rest: List[str] = []
-        for later in words[index + 1:]:
-            if shell.is_punctuation(later):
-                break
-            rest.append(later)
-        found.extend(waiting_tool(name, rest, bound))
-        position, prefix_timeout, bound = False, False, None
+        state = timeout_word(words, index, prefix_timeout, bound) if position else None
+        if state:
+            prefix_timeout, bound = state
+        elif position and not is_prefix(word):
+            found.extend(waiting_tool(os.path.basename(word), arguments_after(words, index), bound))
+            position, prefix_timeout, bound = False, False, None
     return found
 
 
@@ -130,6 +152,12 @@ def flag_timeout(name: str, arguments: List[str]) -> Optional[float]:
     return limit
 
 
+def effective_limit(name: str, arguments: List[str], bound: Optional[float]) -> Optional[float]:
+    """The seconds a wait is bounded to by its --timeout or the `timeout` prefix, the tighter; None: unbounded."""
+    limit = flag_timeout(name, arguments)
+    return bound if bound is not None and (limit is None or bound < limit) else limit
+
+
 def unbounded_wait(command: str) -> Optional[str]:
     """The waiting tool `command` runs for longer than a short check, or None."""
     try:
@@ -139,9 +167,7 @@ def unbounded_wait(command: str) -> Optional[str]:
     for name, arguments, bound in waits(words):
         if "-h" in arguments or "--help" in arguments:
             continue
-        limit = flag_timeout(name, arguments)
-        if bound is not None and (limit is None or bound < limit):
-            limit = bound
+        limit = effective_limit(name, arguments, bound)
         if limit is None or limit > SHORT_WAIT_SECONDS:
             return name
     return None
