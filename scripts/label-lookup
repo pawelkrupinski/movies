@@ -29,7 +29,7 @@ import sys
 import unicodedata
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "lib"))
@@ -44,21 +44,21 @@ import identity_takes as takes  # noqa: E402  (the one reader of the take files)
 from identity_judgements import label_of, normalise as single_spaced  # noqa: E402
 
 
-def folded(s):
+def folded(s: str) -> str:
     s = unicodedata.normalize("NFKD", single_spaced(s).replace("ł", "l").replace("Ł", "L").lower())
     return "".join(ch for ch in s if not unicodedata.combining(ch))
 
 
 class Entry:
-    def __init__(self, path, line, cc, venue, title, films, verdict, note):
+    def __init__(self, path: str, line: int, cc: str, venue: str, title: str, films: "List[str]", verdict: str, note: str) -> None:
         self.path, self.line, self.cc, self.venue, self.title = path, line, cc, venue, single_spaced(title)
         self.films, self.verdict, self.note = films, verdict, note
         self.history = ""
 
 
-def judgement_entries(files: Files, root):
+def judgement_entries(files: Files, root: str) -> "List[Entry]":
     """Each row of the judgements file: its verdict, and its state, scope and reason beside the evidence."""
-    out = []
+    out: "List[Entry]" = []
     for r in store.read_at(files, root):
         state = "" if r.state == "open" else f" {r.state}" + (f" ({r.scope})" if r.scope else "")
         verdict = r.verdict + state if state else r.verdict
@@ -117,6 +117,9 @@ def blame(git: tool_git.Git, entries: "List[Entry]") -> None:
                     e.history = history_of(sha, c)
 
 
+Take = Tuple[str, str, str, str]  # (venue, rawTitle, film, basis)
+
+
 def mirror_db(cc: str) -> str:
     return "kinowo_prod_mirror" if cc == "pl" else f"kinowo_{cc}_prod_mirror"
 
@@ -143,7 +146,7 @@ class ProdMirror:
     def ask(self, argv: "List[str]", env: "Mapping[str, str]") -> tool_process.Captured:
         return self.runner.capture(tool_process.Command(argv, env, timeout=60))
 
-    def takes(self, cc: str, query: "Dict[str, Any]") -> "Tuple[str, List[Tuple[str, str, str, str]]]":
+    def takes(self, cc: str, query: "Dict[str, Any]") -> "Tuple[str, List[Take]]":
         """(freshness, [(venue, rawTitle, film, basis)]), or (why not, [])."""
         f = self.ask([os.path.join(HERE, "local-mirror", "freshness"), cc, "--quiet", "--need", "identity_traces"], self.env)
         fresh = " ".join((f.stdout.strip().split("\n") or [""])[0].split()[1:]) or f.stderr.strip()
@@ -160,46 +163,60 @@ class ProdMirror:
         return fresh, [(v, single_spaced(t), f"tmdb:{film}" if film is not None else "none", b) for v, t, film, b in takes]
 
 
-def lookup(root, cc, files: Files, git, mirror, title=None, venue=None, film=None, prod=True, history=True):
-    out = []
-    entries = [e for e in all_entries(root, files) if e.cc == cc]
-    judgements = store.read_at(files, root)
-    labels = store.labels_by_country(judgements)[cc]
+def at_venue(entries: "List[Entry]", venue: "Optional[str]") -> "List[Entry]":
+    if not venue:
+        return entries
+    return [e for e in entries if e.venue in ("", "*") or folded(e.venue) == folded(venue)]
 
-    exact = None
+
+def titled(entries: "List[Entry]", want: str, exact: bool) -> "List[Entry]":
+    """The entries titled exactly `want`, or (none are) holding it, case and accents aside."""
+    if exact:
+        return [e for e in entries if e.title == want]
+    return [e for e in entries if folded(want) in folded(e.title)]
+
+
+def selected_entries(entries: "List[Entry]", cc: str, film: "Optional[str]", title: "Optional[str]",
+                     venue: "Optional[str]") -> "Tuple[List[Entry], Optional[bool], str]":
+    """The entries a film or a listing names, whether the title matched exactly, and the report's heading."""
     if film:
-        hits = [e for e in entries if film in e.films]
-        out.append(f"label-lookup {cc.upper()} · film {film}")
-    else:
-        assert title is not None  # the caller gives a film or a title
-        want = single_spaced(title)
-        exact = any(e.title == want for e in entries)
-        hits = [e for e in entries if (e.title == want if exact else folded(want) in folded(e.title))]
-        if venue:
-            hits = [e for e in hits if e.venue in ("", "*") or folded(e.venue) == folded(venue)]
-        out.append(f"label-lookup {cc.upper()} · listing '{want}'" + (f" at '{venue}'" if venue else " at every venue") +
-                   (" (exact title)" if exact else " (titles holding it, case and accents aside)"))
-    titles = sorted({e.title for e in hits})
+        return [e for e in entries if film in e.films], None, f"label-lookup {cc.upper()} · film {film}"
+    assert title is not None  # the caller gives a film or a title
+    want = single_spaced(title)
+    exact = any(e.title == want for e in entries)
+    hits = at_venue(titled(entries, want, exact), venue)
+    heading = (f"label-lookup {cc.upper()} · listing '{want}'" + (f" at '{venue}'" if venue else " at every venue") +
+               (" (exact title)" if exact else " (titles holding it, case and accents aside)"))
+    return hits, exact, heading
 
-    if venue and not film:
-        out.append(f"effective verdict at '{venue}' (the judgements: the venue's own row overrides '*'):")
-        any_judged = False
-        for t in titles:
-            for f in sorted({e.films[0] for e in hits if e.path == store.PATH and e.title == t}):
-                own, every = labels.get((venue, t, f)), labels.get(("*", t, f))
-                why = ("the venue's own" if own and not every else "'*'" if every and not own else
-                       f"the venue's own {own} beside '*' {every}" if own and every else "")
-                out.append(f"  {t} · {f}: {(label_of(labels, venue, t, f) or '-').upper()} ({why})")
-                any_judged = True
-        if not any_judged:
-            out.append("  none: the judgements judge no film for it")
-        right = {e.films[0] for e in hits if e.path == store.PATH and e.films[0].startswith("tmdb:") and label_of(labels, venue, e.title, e.films[0]) == "right"}
-        if len(right) > 1:
-            out.append(f"  NOTE {len(right)} films judged right for one venue: {', '.join(sorted(right))} (two listings, or a label to settle)")
 
-    if history:
-        blame(git, hits)
-    out.append(f"entries ({len(hits)}):")
+def verdict_origin(own: "Optional[str]", every: "Optional[str]") -> str:
+    if own and every:
+        return f"the venue's own {own} beside '*' {every}"
+    return "the venue's own" if own else "'*'" if every else ""
+
+
+def right_at_venue(hits: "List[Entry]", labels: "store.Labels", venue: str) -> "List[str]":
+    """The TMDB films the judgements call right at the venue, once each."""
+    judged = [e for e in hits if e.path == store.PATH and e.films[0].startswith("tmdb:")]
+    return sorted({e.films[0] for e in judged if label_of(labels, venue, e.title, e.films[0]) == "right"})
+
+
+def effective_verdict_lines(hits: "List[Entry]", titles: "List[str]", labels: "store.Labels", venue: str) -> "List[str]":
+    out = [f"effective verdict at '{venue}' (the judgements: the venue's own row overrides '*'):"]
+    judged = [(t, f) for t in titles for f in sorted({e.films[0] for e in hits if e.path == store.PATH and e.title == t})]
+    for t, f in judged:
+        why = verdict_origin(labels.get((venue, t, f)), labels.get(("*", t, f)))
+        out.append(f"  {t} · {f}: {(label_of(labels, venue, t, f) or '-').upper()} ({why})")
+    out += [] if judged else ["  none: the judgements judge no film for it"]
+    right = right_at_venue(hits, labels, venue)
+    if len(right) > 1:
+        out.append(f"  NOTE {len(right)} films judged right for one venue: {', '.join(right)} (two listings, or a label to settle)")
+    return out
+
+
+def entry_lines(hits: "List[Entry]") -> "List[str]":
+    out = [f"entries ({len(hits)}):"]
     for e in sorted(hits, key=lambda e: (e.path, e.title, e.venue, e.line)):
         where = f"{e.venue} | {e.title}" if e.venue else e.title
         shown = e.verdict.split(" ", 1)
@@ -209,74 +226,110 @@ def lookup(root, cc, files: Files, git, mirror, title=None, venue=None, film=Non
             out.append(f"      note: {e.note}")
         if e.history:
             out.append(f"      last changed: {e.history}")
-
-    if prod:
-        query = {"film": int(film.split(":")[1])} if film and film.startswith("tmdb:") else \
-                {"title": single_spaced(title), "exact": bool(exact), "titleRegex": re.escape(single_spaced(title))} if title else None
-        if query is not None:
-            if venue and not film:
-                query["venue"] = venue
-            fresh, takes = mirror.takes(cc, query)
-            out.append(f"prod takes now (local mirror {mirror_db(cc)}, identity_traces; {fresh}):")
-            def judged(v, t, f):
-                # label_of's verdict, its implied WRONG (another film judged right for the listing) said as the miss
-                j = store.stated(labels, v, t, f) if f != "none" else None
-                if j:
-                    return j
-                missed = sorted(r for r in store.right_films(labels, v, t) if r != f and r.startswith("tmdb:")
-                                and label_of(labels, v, t, r) == "right")
-                return f"misses RIGHT {', '.join(missed)}" if missed else "unjudged"
-
-            def shown(j):
-                return f"labels: {j.upper()}" if j in ("right", "wrong") else j
-
-            def warning(verdicts):
-                if "wrong" in verdicts:
-                    return "  <- prod takes a film the judgements call WRONG"
-                if any(j.startswith("misses") for j in verdicts):
-                    return "  <- prod misses the film the judgements call RIGHT"
-                return ""
-
-            if len(takes) <= 12:
-                for v, t, f, b in sorted(takes):
-                    j = judged(v, t, f)
-                    out.append(f"  {v} | {t} -> {f} ({b})  [{shown(j)}]" + warning({j}))
-            else:  # one line per take, its venues counted and judged venue by venue
-                groups = defaultdict(list)
-                for v, t, f, b in takes:
-                    groups[(t, f, b)].append(v)
-                for (t, f, b), vs in sorted(groups.items(), key=lambda g: (-len(g[1]), g[0])):
-                    tally = defaultdict(int)
-                    for v in vs:
-                        tally[judged(v, t, f)] += 1
-                    verdicts = ", ".join(f"{n} {shown(j)}" for j, n in sorted(tally.items()))
-                    out.append(f"  {t} -> {f} ({b}) at {len(vs)} venue(s), e.g. {', '.join(sorted(vs)[:3])}  [{verdicts}]" +
-                               warning(set(tally)))
-            if len(takes) == 200:
-                out.append("  … the first 200 listings only")
-            if not takes and not fresh.startswith("no mirror"):
-                out.append("  none: prod's identity traces hold no such listing")
-
-    found = lint.lint(files, root)
-    keys_titles = {lint.key(t) for t in titles}
-
-    def touches(k):
-        if k[1] != cc:
-            return False
-        if film:
-            return film in k
-        return any(x in titles for x in k[2:]) or (k[2] == "hard-clusters" and k[3] in keys_titles)
-
-    mine = [(k, m) for k, m in found if touches(k)]
-    out.append(f"conflicts (identity_judgements_lint): {'none' if not mine else len(mine)}")
-    for k, m in mine:
-        out.append(f"  {k[0]}: {m}")
-    for m in lint.notices([r for r in judgements if r.country == cc and (film == r.film if film else single_spaced(r.rawTitle) in titles)]):
-        out.append(f"  note: {m}")
     return out
 
 
-def main(argv=None):
+def prod_query(film: "Optional[str]", title: "Optional[str]", exact: "Optional[bool]", venue: "Optional[str]") -> "Optional[Dict[str, Any]]":
+    if film and film.startswith("tmdb:"):
+        return {"film": int(film.split(":")[1])}
+    if not title:
+        return None
+    query: "Dict[str, Any]" = {"title": single_spaced(title), "exact": bool(exact), "titleRegex": re.escape(single_spaced(title))}
+    if venue and not film:
+        query["venue"] = venue
+    return query
+
+
+def take_judgement(labels: "store.Labels", v: str, t: str, f: str) -> str:
+    """label_of's verdict, its implied WRONG (another film judged right for the listing) said as the miss."""
+    j = store.stated(labels, v, t, f) if f != "none" else None
+    if j:
+        return j
+    missed = sorted(r for r in store.right_films(labels, v, t) if r != f and r.startswith("tmdb:")
+                    and label_of(labels, v, t, r) == "right")
+    return f"misses RIGHT {', '.join(missed)}" if missed else "unjudged"
+
+
+def shown_judgement(j: str) -> str:
+    return f"labels: {j.upper()}" if j in ("right", "wrong") else j
+
+
+def take_warning(verdicts: "Set[str]") -> str:
+    if "wrong" in verdicts:
+        return "  <- prod takes a film the judgements call WRONG"
+    if any(j.startswith("misses") for j in verdicts):
+        return "  <- prod misses the film the judgements call RIGHT"
+    return ""
+
+
+def take_lines(takes: "List[Take]", labels: "store.Labels") -> "List[str]":
+    if len(takes) <= 12:
+        lines = []
+        for v, t, f, b in sorted(takes):
+            j = take_judgement(labels, v, t, f)
+            lines.append(f"  {v} | {t} -> {f} ({b})  [{shown_judgement(j)}]" + take_warning({j}))
+        return lines
+    groups = defaultdict(list)  # one line per take, its venues counted and judged venue by venue
+    for v, t, f, b in takes:
+        groups[(t, f, b)].append(v)
+    lines = []
+    for (t, f, b), vs in sorted(groups.items(), key=lambda g: (-len(g[1]), g[0])):
+        tally = defaultdict(int)
+        for v in vs:
+            tally[take_judgement(labels, v, t, f)] += 1
+        verdicts = ", ".join(f"{n} {shown_judgement(j)}" for j, n in sorted(tally.items()))
+        lines.append(f"  {t} -> {f} ({b}) at {len(vs)} venue(s), e.g. {', '.join(sorted(vs)[:3])}  [{verdicts}]" + take_warning(set(tally)))
+    return lines
+
+
+def prod_lines(mirror: "ProdMirror", cc: str, query: "Dict[str, Any]", labels: "store.Labels") -> "List[str]":
+    fresh, takes = mirror.takes(cc, query)
+    out = [f"prod takes now (local mirror {mirror_db(cc)}, identity_traces; {fresh}):"] + take_lines(takes, labels)
+    if len(takes) == 200:
+        out.append("  … the first 200 listings only")
+    if not takes and not fresh.startswith("no mirror"):
+        out.append("  none: prod's identity traces hold no such listing")
+    return out
+
+
+def touches(k: "Tuple[str, ...]", cc: str, film: "Optional[str]", titles: "List[str]") -> bool:
+    """Whether a lint finding's key names the film or one of the titles, in this country."""
+    if k[1] != cc:
+        return False
+    if film:
+        return film in k
+    return any(x in titles for x in k[2:]) or (k[2] == "hard-clusters" and k[3] in {lint.key(t) for t in titles})
+
+
+def conflict_lines(files: Files, root: str, judgements: "List[store.Row]", cc: str, film: "Optional[str]",
+                   titles: "List[str]") -> "List[str]":
+    mine = [(k, m) for k, m in lint.lint(files, root) if touches(k, cc, film, titles)]
+    out = [f"conflicts (identity_judgements_lint): {'none' if not mine else len(mine)}"]
+    out += [f"  {k[0]}: {m}" for k, m in mine]
+    notes = lint.notices([r for r in judgements if r.country == cc and (film == r.film if film else single_spaced(r.rawTitle) in titles)])
+    return out + [f"  note: {m}" for m in notes]
+
+
+def lookup(root: str, cc: str, files: Files, git: tool_git.Git, mirror: "ProdMirror", title: "Optional[str]" = None,
+           venue: "Optional[str]" = None, film: "Optional[str]" = None, prod: bool = True, history: bool = True) -> "List[str]":
+    entries = [e for e in all_entries(root, files) if e.cc == cc]
+    judgements = store.read_at(files, root)
+    labels = store.labels_by_country(judgements)[cc]
+    hits, exact, heading = selected_entries(entries, cc, film, title, venue)
+    titles = sorted({e.title for e in hits})
+    out = [heading]
+    if venue and not film:
+        out += effective_verdict_lines(hits, titles, labels, venue)
+    if history:
+        blame(git, hits)
+    out += entry_lines(hits)
+    query = prod_query(film, title, exact, venue) if prod else None
+    if query is not None:
+        out += prod_lines(mirror, cc, query, labels)
+    return out + conflict_lines(files, root, judgements, cc, film, titles)
+
+
+def main(argv: "Optional[List[str]]" = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cc")
     ap.add_argument("--title")

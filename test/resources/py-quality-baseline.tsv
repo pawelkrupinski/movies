@@ -180,7 +180,6 @@ cognitive	scripts/identity_what_if.py:holder_at	14
 cognitive	scripts/identity_what_if.py:run_diff	25
 cognitive	scripts/ios-simulators:sweep	12
 cognitive	scripts/label-lookup:blame	15
-cognitive	scripts/label-lookup:lookup	100
 cognitive	scripts/linux-tree-sync.py:main	11
 cognitive	scripts/linux-tree-sync.py:prune	11
 cognitive	scripts/listing_history.py:mirror_lines	62
@@ -377,7 +376,6 @@ cyclomatic	scripts/identity_what_if.py:diff	38
 cyclomatic	scripts/identity_what_if.py:holder_at	16
 cyclomatic	scripts/identity_what_if.py:run_diff	19
 cyclomatic	scripts/identity_what_if.py:side_take	14
-cyclomatic	scripts/label-lookup:lookup	70
 cyclomatic	scripts/listing_history.py:_change_line	11
 cyclomatic	scripts/listing_history.py:mirror_lines	43
 cyclomatic	scripts/listing_history.py:parse_change	15
@@ -399,7 +397,6 @@ cyclomatic	scripts/zinc_orphans.py:_class_path_at	11
 cyclomatic	scripts/zinc_orphans.py:prune	13
 inner-defs	infra/bin/image_pins.py:markdown	3
 inner-defs	scripts/ci/runner_scheduler.py:decide	9
-inner-defs	scripts/label-lookup:lookup	4
 method-lines	infra/bin/backtest-alerts:run_backtest	199
 method-lines	infra/bin/deploy:deploy	100
 method-lines	infra/bin/nix-update:self_test	59
@@ -421,7 +418,6 @@ method-lines	scripts/claude-hooks/unbounded-poll-guard:Reader.check	105
 method-lines	scripts/deploy_watch.py:main	79
 method-lines	scripts/identity_rule_ablation.py:main	82
 method-lines	scripts/identity_stamp_carry.py:auto	56
-method-lines	scripts/label-lookup:lookup	114
 method-lines	scripts/listing_history.py:replay	69
 method-lines	scripts/listing_history.py:report	113
 method-lines	scripts/recording_diff.py:report	135
@@ -520,7 +516,6 @@ pyright	scripts/identity_rule_ablation.py	158
 pyright	scripts/identity_slice_diff.py	11
 pyright	scripts/identity_what_if.py	122
 pyright	scripts/ios-simulators	12
-pyright	scripts/label-lookup	61
 pyright	scripts/linux-tree-sync.py	25
 pyright	scripts/listing_history.py	77
 pyright	scripts/ml-identity/cross_country_experiment.py	19
