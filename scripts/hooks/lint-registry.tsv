@@ -332,4 +332,4 @@ worker:services.identity.adapters.TmdbIdentityLookupsSpec	test/resources/fixture
 worker:services.scrapes.OwnSiteEvidenceSpec	worker/src/main/resources/venue-websites.json
 worker:services.tasks.ScrapeCadenceSustainabilitySpec	@gitops worker/src/test/resources/logback-test.xml
 worker:tools.AotClassListSpec	worker/src/main/resources/aot-classes.txt scrapers/src/main/scala/services/cinemas/*	the list (ClassArchiveTraining.ClassListResource) must name every class the scrapers module ships under services.cinemas: a scraper change, which can add a class (a new source, an anonymous or inner class), selects it (Main #2601)
-repochecks:deploy.PrecheckBuildCachePlanSpec	.github/workflows/precheck-build-cache.yml .github/actions/changed-paths/matches.sh
+repochecks:deploy.PrecheckBuildCachePlanSpec	.github/workflows/precheck-build-cache.yml .github/actions/changed-paths/matches.sh .github/actions/setup-sbt-build/action.yml .github/workflows/main.yml docs/tools.md identity-impact.sbt scripts/ci/order_compare.py test/resources/fixtures/identity-judgements.tsv

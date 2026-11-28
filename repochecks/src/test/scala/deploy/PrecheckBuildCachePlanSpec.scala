@@ -60,9 +60,9 @@ class PrecheckBuildCachePlanSpec extends AnyFlatSpec with Matchers {
   }
 
   "every sbt module" should "have its sources in the filter" in {
-    val modules = new java.io.File(".").listFiles.filter(d => new java.io.File(d, "src").isDirectory && new java.io.File(d, "build.sbt").exists == false)
-      .map(_.getName).filter(Set("android", "ios").contains(_) == false).sorted
-    val missing = modules.filterNot(m => filter.contains(s"$m/src/**"))
+    val modules = """project in file\("([\w-]+)"\)""".r.findAllMatchIn(RepoFile.read("build.sbt")).map(_.group(1)).toSeq
+    modules should not be empty
+    val missing = modules.filterNot(m => filter.contains(m + "/**") || filter.exists(_.startsWith(m + "/")))
     withClue("modules whose sources the cache compiles but the filter leaves out: ")(missing shouldBe empty)
   }
 
