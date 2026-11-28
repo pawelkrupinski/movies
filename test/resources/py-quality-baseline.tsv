@@ -136,7 +136,6 @@ cognitive	scripts/recording_diff.py:pair_listings	13
 cognitive	scripts/rule_firing_prod.py:render	12
 cognitive	scripts/touched_methods.py:changed_lines	15
 cognitive	scripts/touched_methods.py:coverage_rows	13
-cognitive	scripts/touched_methods.py:mutation_rows	27
 cognitive	scripts/zinc_orphans.py:_class_path_at	14
 cognitive	scripts/zinc_orphans.py:prune	20
 cognitive	scripts/zinc_orphans.py:strays	12
@@ -258,7 +257,6 @@ cyclomatic	scripts/ml-identity/cross_country_experiment.py:donors_of	13
 cyclomatic	scripts/recording_diff.py:compare_corpus	23
 cyclomatic	scripts/touched_methods.py:coverage_report	12
 cyclomatic	scripts/touched_methods.py:mutation_report	12
-cyclomatic	scripts/touched_methods.py:mutation_rows	11
 cyclomatic	scripts/touched_methods.py:touched	11
 cyclomatic	scripts/unmatched_census.py:census	14
 cyclomatic	scripts/unmatched_census.py:main	11
@@ -370,5 +368,5 @@ pyright	scripts/ops/dumpheap.py	13
 pyright	scripts/poster_hash.py	13
 pyright	scripts/recording_diff.py	87
 pyright	scripts/rule_firing_prod.py	39
-pyright	scripts/touched_methods.py	69
+pyright	scripts/touched_methods.py	64
 pyright	scripts/zinc_orphans.py	2

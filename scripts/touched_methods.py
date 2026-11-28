@@ -24,6 +24,7 @@ import os
 import re
 import sys
 import xml.etree.ElementTree as ElementTree
+from typing import Any, Dict, Iterator, Sequence, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 import tool_git  # noqa: E402
@@ -92,7 +93,7 @@ def method_of(spans, path, line):
     return None
 
 
-def repo_relative(source, roots):
+def repo_relative(source: str, roots: Sequence[str]) -> str:
     """A report's absolute (or module-relative) source path, as a path from the repository root."""
     for root in roots:
         prefix = root.rstrip("/") + "/"
@@ -147,6 +148,22 @@ def coverage_report(spans, counts, below):
 MUTANT_KINDS = ("Killed", "Survived", "NoCoverage")
 
 
+def mutant_kind(status: str) -> str:
+    """The tally a mutant's status goes to; a Timeout is a mutant the tests stopped (an endless loop): killed, as Stryker counts it."""
+    if status == "Timeout":
+        return "Killed"
+    return status if status in MUTANT_KINDS else "Other"
+
+
+def file_mutants(report: Dict[str, Any], roots: Sequence[str]) -> Iterator[Tuple[str, Dict[str, Any]]]:
+    """(repo-relative path, mutant) of every mutant of a Stryker report."""
+    base = report.get("projectRoot", "")
+    for name, entry in report.get("files", {}).items():
+        path = repo_relative(os.path.join(base, name) if base and not os.path.isabs(name) else name, roots)
+        for mutant in entry.get("mutants", []):
+            yield path, mutant
+
+
 def mutation_rows(spans, reports, roots):
     """Each touched method's mutants, and the mutants of touched files outside every touched method (a count)."""
     by_method = {s[1]: {"Killed": 0, "Survived": 0, "NoCoverage": 0, "Other": 0, "survivors": []} for s in spans}
@@ -154,22 +171,16 @@ def mutation_rows(spans, reports, roots):
     for report_path in reports:
         with open(report_path, encoding="utf-8") as f:
             report = json.load(f)
-        base = report.get("projectRoot", "")
-        for name, entry in report.get("files", {}).items():
-            path = repo_relative(os.path.join(base, name) if base and not os.path.isabs(name) else name, roots)
-            for mutant in entry.get("mutants", []):
-                line = mutant["location"]["start"]["line"]
-                span = method_of(spans, path, line)
-                if span is None:
-                    outside += 1
-                    continue
-                row = by_method[span[1]]
-                status = mutant.get("status", "")
-                # a Timeout is a mutant the tests stopped (an endless loop): killed, as Stryker counts it
-                kind = "Killed" if status == "Timeout" else status if status in MUTANT_KINDS else "Other"
-                row[kind] += 1
-                if kind in ("Survived", "NoCoverage"):
-                    row["survivors"].append((line, kind, mutant.get("mutatorName", ""), mutant.get("replacement", "")))
+        for path, mutant in file_mutants(report, roots):
+            line = mutant["location"]["start"]["line"]
+            span = method_of(spans, path, line)
+            if span is None:
+                outside += 1
+                continue
+            row, kind = by_method[span[1]], mutant_kind(mutant.get("status", ""))
+            row[kind] += 1
+            if kind in ("Survived", "NoCoverage"):
+                row["survivors"].append((line, kind, mutant.get("mutatorName", ""), mutant.get("replacement", "")))
     return by_method, outside
 
 
