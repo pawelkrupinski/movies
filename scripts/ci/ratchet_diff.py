@@ -28,7 +28,7 @@ import argparse
 import os
 import subprocess
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # Its sibling ratchets' bytecode stays out of the checkout: under `python3 -I` (its test's run) PYTHONDONTWRITEBYTECODE
 # is ignored, and their __pycache__ landed in scripts/ci (Order independence #105).
@@ -100,31 +100,31 @@ def limit_of(rows, metric: str) -> int:
     return coupling_ratchet.of_kind(rows, "limit").get(metric, 0)
 
 
+def _moved_from(metric: str, family: str, key: str, gone: Dict[str, int], moves: RefRenames) -> Optional[str]:
+    """The removed key a new `key` is the move of: a renamed source's quality row, a fan-out class of the same simple
+    name; none for any other row."""
+    if family == "quality":
+        return next((old for old in sorted(gone) if baseline_ratchet.moved_key(old, moves) == key), None)
+    if metric == "fanout":
+        simple = key.rsplit(".", 1)[-1]
+        return next((old for old in sorted(gone) if old.rsplit(".", 1)[-1] == simple), None)
+    return None
+
+
 def diff_metric(metric: str, family: str, before: Dict[str, int], after: Dict[str, int], moves: RefRenames,
                 untouched: Optional[Untouched] = None) -> List[Row]:
-    out: List[Row] = []
     gone = {k: v for k, v in before.items() if k not in after}
-    fresh = {k: v for k, v in after.items() if k not in before}
-    for key in sorted(set(before) & set(after)):
-        a, b = before[key], after[key]
-        if a != b:
-            out.append((metric, key, a, b, "fell" if b < a else "rose"))
-    for key, value in sorted(fresh.items()):
-        if family == "quality":
-            origin = next((old for old in sorted(gone) if baseline_ratchet.moved_key(old, moves) == key), None)
-        elif metric == "fanout":
-            simple = key.rsplit(".", 1)[-1]
-            origin = next((old for old in sorted(gone) if old.rsplit(".", 1)[-1] == simple), None)
-        else:
-            origin = None
+    out: List[Row] = [(metric, key, before[key], after[key], "fell" if after[key] < before[key] else "rose")
+                      for key in sorted(set(before) & set(after)) if before[key] != after[key]]
+    for key, value in sorted((k, v) for k, v in after.items() if k not in before):
+        origin = _moved_from(metric, family, key, gone, moves)
         if origin is not None:
             was = gone.pop(origin)
             out.append((metric, f"{origin} => {key}", was, value, "rose" if value > was else "moved"))
         else:
             measured = family == "quality" and untouched is not None and untouched.holds(key)
             out.append((metric, key, None, value, "measured" if measured else "new"))
-    out += [(metric, key, value, None, "removed (within the limit)") for key, value in sorted(gone.items())]
-    return out
+    return out + [(metric, key, value, None, "removed (within the limit)") for key, value in sorted(gone.items())]
 
 
 def rows_at(ref: str, path: str, family: str = ""):
@@ -132,20 +132,39 @@ def rows_at(ref: str, path: str, family: str = ""):
     return parse(quality_ratchet.file_at(ref, path))
 
 
+def _measured_rows(quality_rows: str, coupling_rows: str, js_rows: str) -> Dict[str, Dict[Tuple[str, str], Any]]:
+    """{family: the rows the measure wrote to the given files}; the JS measure's rows of tests and scripts are reported,
+    never frozen."""
+    measured: Dict[str, Dict[Tuple[str, str], Any]] = {}
+    for family, path in (("quality", quality_rows), ("coupling", coupling_rows), ("js", js_rows)):
+        if not path:
+            continue
+        with open(path) as f:
+            text = f.read()
+        if family != "js":
+            measured[family] = quality_ratchet.parse(text)
+            continue
+        production = js_quality_ratchet.production_paths()
+        measured[family] = {(k, key): v for (k, key), v in js_quality_ratchet.parse(text).items()
+                            if k == "limit" or js_quality_ratchet.gated(key, production)}
+    return measured
+
+
+def _total(metric: str, before: Dict[str, int], after: Dict[str, int], old: Any, new: Any, rows: List[Row]
+           ) -> Tuple[str, int, int, int, int, int, int, int, Dict[str, int]]:
+    """(metric, rows, sum, rows over the limit before and after, the limit, per-mark counts) of one metric."""
+    def over(values: Dict[str, int], lim: int) -> int:
+        return sum(1 for v in values.values() if v > lim)
+    marks = {m: sum(1 for r in rows if r[4] == m) for m in MARKS}
+    return (metric, len(before), len(after), sum(before.values()), sum(after.values()),
+            over(before, limit_of(old, metric)), over(after, limit_of(new, metric)), limit_of(new, metric), marks)
+
+
 def collect(base: str, head: Optional[str], quality_rows: str = "", coupling_rows: str = "", js_rows: str = ""):
     """Every changed row, and per metric (rows, sum, over the limit) before and after."""
     head_ref = head if not (quality_rows or coupling_rows or js_rows) else None
     moves, untouched = RefRenames(renames(base, head_ref)), Untouched(base, head_ref)
-    measured = {}
-    for family, path in (("quality", quality_rows), ("coupling", coupling_rows), ("js", js_rows)):
-        if path:
-            with open(path) as f:
-                text = f.read()
-            measured[family] = js_quality_ratchet.parse(text) if family == "js" else quality_ratchet.parse(text)
-            if family == "js":  # the measure's rows of tests and scripts are reported, never frozen
-                production = js_quality_ratchet.production_paths()
-                measured[family] = {(k, key): v for (k, key), v in measured[family].items()
-                                    if k == "limit" or js_quality_ratchet.gated(key, production)}
+    measured = _measured_rows(quality_rows, coupling_rows, js_rows)
     changed: List[Row] = []
     totals = []
     for metric, baseline, family in METRICS:
@@ -157,10 +176,7 @@ def collect(base: str, head: Optional[str], quality_rows: str = "", coupling_row
             metric = JS_PREFIX + metric
             rows = [(metric, *row[1:]) for row in rows]
         changed += rows
-        over = lambda values, lim: sum(1 for v in values.values() if v > lim)
-        marks = {m: sum(1 for r in rows if r[4] == m) for m in MARKS}
-        totals.append((metric, len(before), len(after), sum(before.values()), sum(after.values()),
-                       over(before, limit_of(old, metric)), over(after, limit_of(new, metric)), limit_of(new, metric), marks))
+        totals.append(_total(metric, before, after, old, new, rows))
     return changed, totals
 
 

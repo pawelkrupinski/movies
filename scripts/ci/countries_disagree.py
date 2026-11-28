@@ -23,11 +23,14 @@ Prints the section (markdown). `--mirror` reads only the LOCAL mirror (127.0.0.1
 scripts/local-mirror/freshness first.
 """
 
+from __future__ import annotations
+
 import argparse
 import collections
 import os
 import subprocess
 import sys
+from typing import Any
 
 sys.path[:0] = [os.path.dirname(os.path.abspath(__file__)), os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib")]
 import cross_country as X  # noqa: E402
@@ -70,17 +73,21 @@ def lone(take, takes):
     return not take["backed"] and not any(t["film"] == take["film"] and t["cc"] != take["cc"] for t in takes)
 
 
+def _worth_triage(takes: list[dict[str, Any]], alone: list[dict[str, Any]]) -> bool:
+    """Whether a title's takes need a person: a lone take, not all judged right, not all events."""
+    return bool(alone) and not all(t["verdict"] == "right" for t in takes) and not all(t["event"] for t in takes)
+
+
 def disagreements(listings, labels, films):
     """[{key, listings, action, lone, others}] to triage, most listings first."""
     out = []
     for key, linked in X.disagreeing(X.index_by_title(listings)):
         takes = takes_of(linked, labels, films)
         alone = [t for t in takes if lone(t, takes)]
-        if not alone or all(t["verdict"] == "right" for t in takes) or all(t["event"] for t in takes):
-            continue
-        action = "check" if any(t["verdict"] == "wrong" for t in takes) else "judge"
-        out.append(dict(key=key, listings=sum(t["listings"] for t in takes), action=action, lone=alone,
-                        others=[t for t in takes if t not in alone]))
+        if _worth_triage(takes, alone):
+            action = "check" if any(t["verdict"] == "wrong" for t in takes) else "judge"
+            out.append(dict(key=key, listings=sum(t["listings"] for t in takes), action=action, lone=alone,
+                            others=[t for t in takes if t not in alone]))
     return sorted(out, key=lambda d: (-d["listings"], d["key"]))
 
 

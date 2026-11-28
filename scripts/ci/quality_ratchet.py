@@ -212,21 +212,23 @@ def limit_of(rows: Rows, kind: str) -> int:
 from baseline_ratchet import Renames, moved_from  # noqa: E402
 
 
+def _kind_violations(ratchet: Ratchet, kind: str, current: Rows, baseline: Rows, renames: Renames) -> List[str]:
+    """The measured rows of one kind past the baseline."""
+    limit = limit_of(baseline, kind)
+    out = [f"the measure's {kind} limit {limit_of(current, kind)} is past the baseline's {limit}"] \
+        if limit_of(current, kind) > limit else []
+    base, now = of_kind(baseline, kind), of_kind(current, kind)
+    for key, value in sorted(now.items()):
+        if key in base and value > base[key]:
+            out.append(f"{kind} {key}: {value}, past its baseline {base[key]}")
+        elif key not in base and value > limit and not moved_from(key, value, base, now, renames):
+            out.append(f"{kind} {key}: {value}, past the limit {limit} (no baseline row)")
+    return out
+
+
 def violations(ratchet: Ratchet, current: Rows, baseline: Rows, renames: Renames) -> List[str]:
     """The measured rows past the baseline, one sentence each."""
-    out = []
-    for kind in ratchet.kinds:
-        limit = limit_of(baseline, kind)
-        if limit_of(current, kind) > limit:
-            out.append(f"the measure's {kind} limit {limit_of(current, kind)} is past the baseline's {limit}")
-        base = of_kind(baseline, kind)
-        for key, value in sorted(of_kind(current, kind).items()):
-            if key in base:
-                if value > base[key]:
-                    out.append(f"{kind} {key}: {value}, past its baseline {base[key]}")
-            elif value > limit and not moved_from(key, value, base, of_kind(current, kind), renames):
-                out.append(f"{kind} {key}: {value}, past the limit {limit} (no baseline row)")
-    return out
+    return [v for kind in ratchet.kinds for v in _kind_violations(ratchet, kind, current, baseline, renames)]
 
 
 def growth(ratchet: Ratchet, old: Rows, new: Rows, renames: Renames) -> List[str]:
@@ -257,42 +259,54 @@ def falls(ratchet: Ratchet, current: Rows, baseline: Rows) -> List[str]:
     return out
 
 
+def _print_violations(ratchet: Ratchet, found: List[str]) -> None:
+    print(f"{ratchet.name.upper()} GREW past {ratchet.baseline}:")
+    for v in found:
+        print(f"  - {v}")
+    print(f"  {ratchet.hint}")
+    print("  (A moved source keeps its rows only when git sees a rename -- `git mv`, the content mostly unchanged --"
+          " and no value rises in the move.)")
+
+
+def _range_grew_unjustified(ratchet: Ratchet, rng: str, baseline: Rows, renames: Renames) -> bool:
+    """Whether the baseline grew in `rng` in a commit without the ratchet's trailer (said, with the rises)."""
+    old = file_at(rng.split("..")[0], ratchet.baseline)
+    grown = growth(ratchet, parse(old), baseline, renames) if old else []
+    unjustified = trailers.unjustified_rises(rng, ratchet.baseline, ratchet.trailer, lambda a, b: growth(
+        ratchet, parse(a), parse(b), renames)) if grown else []
+    if not unjustified:
+        return False
+    print(f"THE {ratchet.name.upper()} BASELINE GREW in {rng} with no `{ratchet.trailer}: <why>` trailer on the"
+          " commit changing it:")
+    for g in grown:
+        print(f"  - {g}")
+    print(f"  Each rise needs the trailer on the commit making it, not on another commit of the push; without one:")
+    for u in unjustified:
+        print(f"  - {u}")
+    trailers.print_misplaced(rng, ratchet.trailer, ratchet.baseline)
+    return True
+
+
+def _print_falls(ratchet: Ratchet, down: List[str]) -> None:
+    print(f"{ratchet.name} fell ({len(down)} rows below {ratchet.baseline}, not yet recorded: scripts/quality-report"
+          " --update records them, no trailer needed):")
+    for d in down[:20]:
+        print(f"  - {d}")
+    if len(down) > 20:
+        print(f"  - ... and {len(down) - 20} more")
+
+
 def check_one(ratchet: Ratchet, current: Rows, ranges: List[str], renames: Renames) -> bool:
     with open(ratchet.baseline) as f:
         baseline = parse(f.read())
-    failed = False
     found = violations(ratchet, current, baseline, renames)
     if found:
-        failed = True
-        print(f"{ratchet.name.upper()} GREW past {ratchet.baseline}:")
-        for v in found:
-            print(f"  - {v}")
-        print(f"  {ratchet.hint}")
-        print("  (A moved source keeps its rows only when git sees a rename -- `git mv`, the content mostly unchanged --"
-              " and no value rises in the move.)")
-    for rng in ranges:
-        old = file_at(rng.split("..")[0], ratchet.baseline)
-        grown = growth(ratchet, parse(old), baseline, renames) if old else []
-        unjustified = trailers.unjustified_rises(rng, ratchet.baseline, ratchet.trailer, lambda a, b: growth(
-            ratchet, parse(a), parse(b), renames)) if grown else []
-        if unjustified:
-            failed = True
-            print(f"THE {ratchet.name.upper()} BASELINE GREW in {rng} with no `{ratchet.trailer}: <why>` trailer on the"
-                  " commit changing it:")
-            for g in grown:
-                print(f"  - {g}")
-            print(f"  Each rise needs the trailer on the commit making it, not on another commit of the push; without one:")
-            for u in unjustified:
-                print(f"  - {u}")
-            trailers.print_misplaced(rng, ratchet.trailer, ratchet.baseline)
+        _print_violations(ratchet, found)
+    grew = [_range_grew_unjustified(ratchet, rng, baseline, renames) for rng in ranges]
     down = falls(ratchet, current, baseline)
     if down:
-        print(f"{ratchet.name} fell ({len(down)} rows below {ratchet.baseline}, not yet recorded: scripts/quality-report"
-              " --update records them, no trailer needed):")
-        for d in down[:20]:
-            print(f"  - {d}")
-        if len(down) > 20:
-            print(f"  - ... and {len(down) - 20} more")
+        _print_falls(ratchet, down)
+    failed = bool(found) or any(grew)
     if not failed:
         rows = sum(len(of_kind(current, kind)) for kind in ratchet.kinds)
         print(f"{ratchet.name}: within {ratchet.baseline} ({rows} rows past a limit)")

@@ -27,7 +27,7 @@ from __future__ import annotations
 import datetime
 import os
 import statistics
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -96,6 +96,20 @@ def plan(phases_by_code: Mapping[str, List[str]], costs: Costs, total: int = RUN
     return plan_suites({"": phases_by_code}, costs, total, {"": tails or {}}, drift_twice)[""]
 
 
+def _share_slots(legs: List[Tuple[str, str]], rows: Mapping[Tuple[str, str], int], ends: Callable[[Tuple[str, str], int], float],
+                 total: int) -> Dict[Tuple[str, str], int]:
+    """Every leg one slot at least, each next slot to the leg that ends last (`rows`: how many rows each leg runs)."""
+    share = {leg: 1 for leg in legs}
+    while sum(share.values()) < total:
+        # a leg can still end sooner with more slots (perhaps only with more than one: 4 rows of 10 end at 20 on 2 or 3)
+        growable = [leg for leg in legs if share[leg] < rows[leg] and ends(leg, rows[leg]) < ends(leg, share[leg])]
+        if not growable:
+            break
+        # a slot that cannot shorten the run still gives a leg room for a row slower than its median
+        share[max(growable, key=lambda leg: (ends(leg, share[leg]), -legs.index(leg)))] += 1
+    return share
+
+
 def plan_suites(phases_by_suite: Mapping[str, Mapping[str, List[str]]], costs: Costs, total: int = RUNNERS,
                 tails_by_suite: Optional[Mapping[str, Mapping[str, float]]] = None, drift_twice: bool = False) -> Dict[str, Shares]:
     """plan() over the legs of suites that run side by side (Identity model convergence and Identity takes, the owner
@@ -107,18 +121,11 @@ def plan_suites(phases_by_suite: Mapping[str, Mapping[str, List[str]]], costs: C
     order = {(suite, c): longest_first(c, phases_by_suite[suite][c], costs, drift_twice) for suite, c in legs}
     minutes = {(suite, c): [cost(c, p, costs, drift_twice) for p in ps] for (suite, c), ps in order.items()}
 
-    def ends(leg, n):
+    def ends(leg: Tuple[str, str], n: int) -> float:
         return round(makespan(minutes[leg], n) + (tails_by_suite.get(leg[0]) or {}).get(leg[1], 0.0), 1)
 
-    share = {leg: 1 for leg in legs}
-    while sum(share.values()) < total:
-        # a leg can still end sooner with more slots (perhaps only with more than one: 4 rows of 10 end at 20 on 2 or 3)
-        growable = [leg for leg in legs if share[leg] < len(order[leg]) and ends(leg, len(order[leg])) < ends(leg, share[leg])]
-        if not growable:
-            break
-        # a slot that cannot shorten the run still gives a leg room for a row slower than its median
-        share[max(growable, key=lambda leg: (ends(leg, share[leg]), -legs.index(leg)))] += 1
-    out = {suite: {} for suite in phases_by_suite}
+    share = _share_slots(legs, {leg: len(rows) for leg, rows in order.items()}, ends, total)
+    out: Dict[str, Shares] = {suite: {} for suite in phases_by_suite}
     for suite, c in legs:
         out[suite][c] = {"phases": order[(suite, c)], "max-parallel": share[(suite, c)], "minutes": ends((suite, c), share[(suite, c)])}
     return out

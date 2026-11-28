@@ -34,6 +34,7 @@ import subprocess
 import sys
 import tempfile
 from fnmatch import fnmatchcase
+from typing import List, Set
 import ci_machine  # noqa: E402
 
 ENTRY_SUFFIX = ".tar.zst"
@@ -81,22 +82,23 @@ def _excluded(path, excludes):
     return any(pattern.count("/") == depth and fnmatchcase(path, pattern) for pattern in excludes)
 
 
+def _walk_included(top: str, excludes: List[str]) -> Set[str]:
+    """Every entry under directory `top` that is not excluded, an excluded directory not entered."""
+    found = set()
+    for parent, directories, files in os.walk(top):
+        found |= {path for path in (os.path.join(parent, name) for name in directories + files) if not _excluded(path, excludes)}
+        directories[:] = [d for d in directories if not _excluded(os.path.join(parent, d), excludes)]
+    return found
+
+
 def collect(paths_text):
     """Every directory, file and symlink the patterns cover, excluded entries dropped, sorted."""
     includes, excludes = parse_patterns(paths_text)
     found = set()
-    for pattern in includes:
-        for top in glob.glob(pattern):
-            if _excluded(top, excludes):
-                continue
-            found.add(top)
-            if os.path.isdir(top) and not os.path.islink(top):
-                for parent, directories, files in os.walk(top):
-                    for name in directories + files:
-                        path = os.path.join(parent, name)
-                        if not _excluded(path, excludes):
-                            found.add(path)
-                    directories[:] = [d for d in directories if not _excluded(os.path.join(parent, d), excludes)]
+    for top in (t for pattern in includes for t in glob.glob(pattern) if not _excluded(t, excludes)):
+        found.add(top)
+        if os.path.isdir(top) and not os.path.islink(top):
+            found |= _walk_included(top, excludes)
     return sorted(found), includes
 
 

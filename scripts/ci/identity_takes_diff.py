@@ -48,6 +48,7 @@ import argparse
 import json
 import os
 import sys
+from typing import Any, Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from identity_judgements import judgements_of, label_of, normalise  # noqa: E402
@@ -249,26 +250,36 @@ def render_suspects(cc, suspects):
     return log, md
 
 
-def render(cc, moves, unpaired, base_name, head_name, listings, what="identity takes", where="one recording", suspects=None):
-    failing = [m for m in moves if not m["accepted"]]
+def _head_line(cc: str, moves: List[Dict[str, Any]], failing: List[Dict[str, Any]], unpaired: int, base_name: str, head_name: str, listings: int,
+               what: str, where: str, suspects: Optional[Dict[str, Any]]) -> str:
     counts = {k: sum(1 for m in moves if m["kind"] == k) for k in ("lost", "changed", "gained")}
     judge = sum(1 for m in moves if m["judge"])
-    head_line = (f"{what} ({cc}): {listings} listings, base {base_name} vs head {head_name} on {where} -- "
-                 f"lost {counts['lost']}, changed {counts['changed']}, gained {counts['gained']}; "
-                 f"{len(failing)} not accepted, {judge} need judgement" + (f"; {unpaired} listing(s) on one side only" if unpaired else "")
-                 + (f"; {len(suspects['new'])} new suspect(s), {len(suspects['standing'])} standing" if suspects else ""))
+    return (f"{what} ({cc}): {listings} listings, base {base_name} vs head {head_name} on {where} -- "
+            f"lost {counts['lost']}, changed {counts['changed']}, gained {counts['gained']}; "
+            f"{len(failing)} not accepted, {judge} need judgement" + (f"; {unpaired} listing(s) on one side only" if unpaired else "")
+            + (f"; {len(suspects['new'])} new suspect(s), {len(suspects['standing'])} standing" if suspects else ""))
+
+
+def _moves_table(moves: List[Dict[str, Any]]) -> List[str]:
+    """The summary's table of the moves (the first 300) and what more the job log holds."""
+    if not moves:
+        return []
+    md = ["| | kind | venue | listing | base film | head film | base reason | head reason | verdict |",
+          "|---|---|---|---|---|---|---|---|---|"]
+    md += [f"| {mark(m, '❌', '⚠', '✓')} | {m['kind']} | {cell(m['venue'])} | {cell(m['rawTitle'])} | "
+           f"{cell(m['old'])} | {cell(m['new'])} | {cell(m['oldWhy'])} | {cell(m['newWhy'])} | {cell(m['verdict'])} |"
+           for m in moves[:300]]
+    return md + ([f"\n... and {len(moves) - 300} more (the job log has them all)"] if len(moves) > 300 else [])
+
+
+def render(cc, moves, unpaired, base_name, head_name, listings, what="identity takes", where="one recording", suspects=None):
+    failing = [m for m in moves if not m["accepted"]]
+    judge = any(m["judge"] for m in moves)
+    head_line = _head_line(cc, moves, failing, unpaired, base_name, head_name, listings, what, where, suspects)
     text = [head_line] + [
         f"  {mark(m, 'FAIL', 'WARN', 'ok  ')} {m['kind']:7} {m['venue']} | {m['rawTitle']}: {m['old']} -> {m['new']} "
         f"[{m['verdict']}]\n        base: {m['oldWhy']}\n        head: {m['newWhy']}" for m in moves]
-    md = [f"### {what[0].upper() + what[1:]} ({cc})", "", head_line, ""]
-    if moves:
-        md += ["| | kind | venue | listing | base film | head film | base reason | head reason | verdict |",
-               "|---|---|---|---|---|---|---|---|---|"]
-        md += [f"| {mark(m, '❌', '⚠', '✓')} | {m['kind']} | {cell(m['venue'])} | {cell(m['rawTitle'])} | "
-               f"{cell(m['old'])} | {cell(m['new'])} | {cell(m['oldWhy'])} | {cell(m['newWhy'])} | {cell(m['verdict'])} |"
-               for m in moves[:300]]
-        if len(moves) > 300:
-            md.append(f"\n... and {len(moves) - 300} more (the job log has them all)")
+    md = [f"### {what[0].upper() + what[1:]} ({cc})", "", head_line, ""] + _moves_table(moves)
     if judge:
         md += ["", "To judge a gain, judge its film `right` or `wrong` in `test/resources/fixtures/identity-judgements.tsv` "
                    "(`scripts/label-lookup`, `scripts/identity-judge-cards` for the evidence)."]
@@ -283,7 +294,7 @@ def render(cc, moves, unpaired, base_name, head_name, listings, what="identity t
     return "\n".join(text), "\n".join(md) + "\n", failing
 
 
-def main(argv, files: Files):
+def _parse(argv: List[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("cc")
     p.add_argument("base")
@@ -293,29 +304,42 @@ def main(argv, files: Files):
     p.add_argument("--base-name", default="base")
     p.add_argument("--head-name", default="head")
     p.add_argument("--final", action="store_true", help="the inputs are ratchet-takes.tsv files: the final takes")
-    a = p.parse_args(argv)
+    return p.parse_args(argv)
+
+
+def _analyse(a: argparse.Namespace, files: Files) -> Tuple[Optional[int], Optional[Tuple[List[Dict[str, Any]], int, int, Optional[Dict[str, Any]]]]]:
+    """(exit code, None) where the inputs say the verdict at once, else (None, (moves, unpaired, head listings, suspects))."""
+    base, head = final_sides(files, a.base, a.head, a.cc) if a.final else (load(files, a.base), load(files, a.head))
+    # The final takes list only listings some side took a film for: a country whose captured clusters take none on
+    # either side (Spain's on 10-14) has no move to judge -- a verdict, provided both ratchets wrote takes at all.
+    if a.final and not base and not head and ratchet_ran(files, a.base) and ratchet_ran(files, a.head):
+        print(f"identity final takes ({a.cc}): the capture holds no taken listing on either side -- no move")
+        return 0, None
+    if not base or not head:
+        print(f"identity takes ({a.cc}): an empty side (base {len(base)}, head {len(head)} listings) -- nothing resolved",
+              file=sys.stderr)
+        return 2, None
+    labels, accepted, baseline = judgements_of(files, a.judgements, a.cc)
+    pairs, unpaired, heads_alone = pair(base, head)
+    moves = moves_of(a.cc, pairs, labels, accepted)
+    # the final takes carry no suspect signals: the model's decisions are where a suspect is judged
+    suspects = None if a.final else suspects_of(pairs, heads_alone, labels, baseline, accepted)
+    return None, (moves, unpaired, len(head), suspects)
+
+
+def main(argv, files: Files):
+    a = _parse(argv)
     # Exit 2 for anything that is not a verdict -- an unreadable file, a row without its fields -- so it can never read as
     # exit 1's "the code moved a take".
     try:
-        base, head = final_sides(files, a.base, a.head, a.cc) if a.final else (load(files, a.base), load(files, a.head))
-        # The final takes list only listings some side took a film for: a country whose captured clusters take none on
-        # either side (Spain's on 10-14) has no move to judge -- a verdict, provided both ratchets wrote takes at all.
-        if a.final and not base and not head and ratchet_ran(files, a.base) and ratchet_ran(files, a.head):
-            print(f"identity final takes ({a.cc}): the capture holds no taken listing on either side -- no move")
-            return 0
-        if not base or not head:
-            print(f"identity takes ({a.cc}): an empty side (base {len(base)}, head {len(head)} listings) -- nothing resolved",
-                  file=sys.stderr)
-            return 2
-        labels, accepted, baseline = judgements_of(files, a.judgements, a.cc)
-        pairs, unpaired, heads_alone = pair(base, head)
-        moves = moves_of(a.cc, pairs, labels, accepted)
-        # the final takes carry no suspect signals: the model's decisions are where a suspect is judged
-        suspects = None if a.final else suspects_of(pairs, heads_alone, labels, baseline, accepted)
+        early, analysed = _analyse(a, files)
     except (OSError, ValueError, KeyError, TypeError, IndexError) as e:
         print(f"identity takes ({a.cc}): could not read the inputs: {type(e).__name__}: {e}", file=sys.stderr)
         return 2
-    text, md, failing = render(a.cc, moves, unpaired, a.base_name, a.head_name, len(head),
+    if analysed is None:
+        return early
+    moves, unpaired, listings, suspects = analysed
+    text, md, failing = render(a.cc, moves, unpaired, a.base_name, a.head_name, listings,
                                *(("identity final takes", "one capture") if a.final else ()), suspects=suspects)
     print(text)
     for m in moves:

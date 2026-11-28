@@ -48,11 +48,13 @@
 from __future__ import annotations
 
 import csv
+import datetime
 import gzip
 import json
 import os
 import subprocess
 import sys
+from typing import Callable, Dict, List
 
 ROWS = (1, 2)
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -215,46 +217,58 @@ def options(argv):
     return opts, rest
 
 
+def _outputs(opts: Dict[str, str], rest: List[str]) -> None:
+    one, two = resolve(1, opts.get("pins", ""))
+    print(f"drift-seed-1={one or ''}")
+    print(f"drift-seed-2={two or ''}")
+
+
+def _seeds(opts: Dict[str, str], rest: List[str]) -> None:
+    print(" ".join(map(str, seeds_of_row(opts["cc"], int(opts["row"]), opts.get("pins", ""), opts.get("file")))))
+
+
+def _rows(opts: Dict[str, str], rest: List[str]) -> None:
+    print(" ".join(map(str, rows_of(opts["cc"], opts.get("file"), opts.get("pins", "")))))
+
+
+def _gate(opts: Dict[str, str], rest: List[str]) -> None:
+    print(" ".join(map(str, fixed(opts["cc"], None, opts.get("file")))))
+
+
+def _add(opts: Dict[str, str], rest: List[str]) -> None:
+    seed = int(opts["seed"])
+    if seed < 1:
+        raise ValueError(f"seed {seed}: seeds are positive")
+    added = add(opts["cc"], seed, opts.get("why", ""), opts.get("date") or datetime.date.today().isoformat(), opts.get("file"))
+    print("added" if added else "already there")
+
+
+def _pins(opts: Dict[str, str], rest: List[str]) -> None:
+    one, two = parse_pins(rest[0] if rest else "")
+    print(f"{one or ''},{two or ''}")
+
+
+def _slices(opts: Dict[str, str], rest: List[str]) -> None:
+    print("\n".join(slices(rest[0], rest[1], rest[2:])))
+
+
+COMMANDS: Dict[str, Callable[[Dict[str, str], List[str]], None]] = {"outputs": _outputs, "seeds": _seeds, "rows": _rows, "gate": _gate, "add": _add, "pins": _pins, "slices": _slices}
+
+
 def main(argv):
     if not argv:
         print("usage: drift_seeds.py outputs|seeds|rows|gate|add|pins|slices ... (see the header)", file=sys.stderr)
         return 2
     command, (opts, rest) = argv[0], options(argv[1:])
+    if command not in COMMANDS:
+        print(f"drift_seeds.py: no command {command!r}", file=sys.stderr)
+        return 2
     try:
-        if command == "outputs":
-            one, two = resolve(1, opts.get("pins", ""))
-            print(f"drift-seed-1={one or ''}")
-            print(f"drift-seed-2={two or ''}")
-            return 0
-        if command == "seeds":
-            print(" ".join(map(str, seeds_of_row(opts["cc"], int(opts["row"]), opts.get("pins", ""), opts.get("file")))))
-            return 0
-        if command == "rows":
-            print(" ".join(map(str, rows_of(opts["cc"], opts.get("file"), opts.get("pins", "")))))
-            return 0
-        if command == "gate":
-            print(" ".join(map(str, fixed(opts["cc"], None, opts.get("file")))))
-            return 0
-        if command == "add":
-            import datetime
-            seed = int(opts["seed"])
-            if seed < 1:
-                raise ValueError(f"seed {seed}: seeds are positive")
-            added = add(opts["cc"], seed, opts.get("why", ""), opts.get("date") or datetime.date.today().isoformat(), opts.get("file"))
-            print("added" if added else "already there")
-            return 0
-        if command == "pins":
-            one, two = parse_pins(rest[0] if rest else "")
-            print(f"{one or ''},{two or ''}")
-            return 0
-        if command == "slices":
-            print("\n".join(slices(rest[0], rest[1], rest[2:])))
-            return 0
+        COMMANDS[command](opts, rest)
     except (KeyError, ValueError, IndexError) as e:
         print(f"drift_seeds.py {command}: {e}", file=sys.stderr)
         return 2
-    print(f"drift_seeds.py: no command {command!r}", file=sys.stderr)
-    return 2
+    return 0
 
 
 if __name__ == "__main__":

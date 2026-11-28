@@ -12,6 +12,7 @@ import glob
 import os
 import re
 import sys
+from typing import Any, Dict, List
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 LOCAL_CALL = re.compile(r"^\./\.github/workflows/([\w.-]+\.ya?ml)$")
@@ -25,28 +26,15 @@ def read(path):
         return f.read()
 
 
+# What a line holds that hides a `#`, or is one: an expression `${{ }}`, a quoted string (to the line's end when never
+# closed), or a `#` at the line's start or after whitespace.
+_LINE_TOKEN = re.compile(r"\$\{\{.*?(?:\}\}|$)|'[^']*'?|\"[^\"]*\"?|(?:(?<=[ \t])|^)#")
+
+
 def strip_comment(line):
     """`line` without a trailing `# comment` (one outside quotes and `${{ }}`), and a whole-comment line as empty."""
-    quote, depth, i = None, 0, 0
-    while i < len(line):
-        c = line[i]
-        if quote:
-            if c == quote:
-                quote = None
-        elif line.startswith("${{", i):
-            depth += 1
-            i += 3
-            continue
-        elif depth and line.startswith("}}", i):
-            depth -= 1
-            i += 2
-            continue
-        elif c in "'\"" and not depth:
-            quote = c
-        elif c == "#" and not depth and (i == 0 or line[i - 1] in " \t"):
-            return line[:i].rstrip()
-        i += 1
-    return line.rstrip()
+    comment = next((m for m in _LINE_TOKEN.finditer(line) if m.group() == "#"), None)
+    return line.rstrip() if comment is None else line[:comment.start()].rstrip()
 
 
 def mapping(lines):
@@ -141,27 +129,32 @@ def matrix_problems(given, declared, rows):
     return found
 
 
+def _input_problems(where: str, declared: Dict[str, Dict[str, Any]], given: Dict[str, str]) -> List[str]:
+    """What one call gets wrong of the callee's declared inputs: one it does not declare, a required one missing, a value
+    of the wrong type."""
+    found = [f"{where} with `{name}`, an input it does not declare" for name in sorted(set(given) - set(declared))]
+    for name, spec in sorted(declared.items()):
+        if spec["required"] and not spec["default"] and name not in given:
+            found.append(f"{where} without `{name}`, which it requires")
+        elif name in given and (why := value_problem(spec["type"], given[name])):
+            found.append(f"{where} passing `{name}` {why}")
+    return found
+
+
+def _call_problems(where: str, callee: str, texts: Dict[str, str], given: Dict[str, str]) -> List[str]:
+    """What one call of `callee` gets wrong: no such workflow, no `workflow_call`, or its inputs."""
+    if callee not in texts:
+        return [f"{where}, which does not exist"]
+    declared = declared_inputs(texts[callee])
+    if declared is None:
+        return [f"{where}, which declares no `on: workflow_call`"]
+    return _input_problems(where, declared, given)
+
+
 def problems(workflow_dir):
     texts = {os.path.basename(p): read(p) for p in sorted(glob.glob(os.path.join(workflow_dir, "*.y*ml")))}
-    found = []
-    for caller, text in texts.items():
-        for job, callee, given in calls(text):
-            where = f"{caller}: job {job} calls {callee}"
-            if callee not in texts:
-                found.append(f"{where}, which does not exist")
-                continue
-            declared = declared_inputs(texts[callee])
-            if declared is None:
-                found.append(f"{where}, which declares no `on: workflow_call`")
-                continue
-            for name in sorted(set(given) - set(declared)):
-                found.append(f"{where} with `{name}`, an input it does not declare")
-            for name, spec in sorted(declared.items()):
-                if spec["required"] and not spec["default"] and name not in given:
-                    found.append(f"{where} without `{name}`, which it requires")
-                elif name in given and (why := value_problem(spec["type"], given[name])):
-                    found.append(f"{where} passing `{name}` {why}")
-    return found
+    return [found for caller, text in texts.items() for job, callee, given in calls(text)
+            for found in _call_problems(f"{caller}: job {job} calls {callee}", callee, texts, given)]
 
 
 def main(argv):

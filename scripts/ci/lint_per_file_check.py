@@ -28,6 +28,7 @@ Run from the root, after `scripts/sbt-warm "<module>/Test/compile"` for every mo
 """
 import os
 import sys
+from typing import Callable, Dict, List, Set, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lint_reads_trace as trace  # noqa: E402
@@ -111,52 +112,68 @@ def check(spec, cp, watched, copies, n):
     return check_command(trace.spec_command(spec, cp), trace.SPEC_CWD.get(module), watched, copies, n)
 
 
-def check_command(command, cwd, watched, copies, n):
-    """(verdict, why) of the lint command (run from the root, or cwd) over the watched files: PER-FILE, CROSS-FILE or
-    UNRUN (it fails unchanged)."""
-    run = lambda: trace.observe(command, watched, copies, cwd)[1]
-    reads, first = trace.observe(command, watched, copies, cwd)
-    if not trace.green(first):
-        return "UNRUN", "it does not run green unchanged"
-    files = sorted(p for p in reads if os.path.isfile(p))
-    listed = {p.rstrip("/") for p in reads if os.path.isdir(p)}
-    if len(files) < 2:
-        return "CROSS-FILE", "it reads fewer than two files: nothing to prove"
-    copy_of = {}
-    for c, src in copies.items():
-        copy_of.setdefault(src, []).append(c)
-    content = {}
-    def text(p):
-        if p not in content:
-            with open(p, "rb") as f:
-                content[p] = f.read()
-        return content[p]
-    def with_copies(texts):  # a test resource is read through its classpath copy too
-        return {q: x for p, x in texts.items() for q in [p, *copy_of.get(p, [])]}
-    trials = []
-    # TWINS: every file it lists gets a new twin holding its text -- a spec judging files alone judges each twin as its
-    # original; one reading across them (a name registered twice, the exact set of a workflow's dispatchers) names the
-    # original
-    walked = [p for p in files if os.path.dirname(p) in listed]
-    if walked:
-        trials.append(("twins", {}, {twin(p): text(p) for p in walked}))
-    # QUARTERS: each quarter of what it read emptied at once -- one reading across files (the script no workflow calls
-    # any more) names a file of another quarter
-    for q in range(4):
-        part = files[q::4]
-        if part:
-            trials.append((f"quarter {q + 1} emptied", {p: b"" for p in part}, {}))
-    # BY NAME: each file it opens by name (outside what it lists), and each of a kind it reads few of, emptied alone
-    by_kind = {}
+Trial = Tuple[str, Dict[str, bytes], Dict[str, bytes]]   # (name, files emptied or overwritten, files created)
+
+
+def _quarter_trials(files: List[str]) -> List[Trial]:
+    """QUARTERS: each quarter of what it read emptied at once -- one reading across files (the script no workflow calls
+    any more) names a file of another quarter."""
+    return [(f"quarter {q + 1} emptied", {p: b"" for p in files[q::4]}, {}) for q in range(4) if files[q::4]]
+
+
+def _by_name_trials(files: List[str], listed: Set[str]) -> List[Trial]:
+    """BY NAME: each file it opens by name (outside what it lists), and each of a kind it reads few of, emptied alone."""
+    by_kind: Dict[str, List[str]] = {}
     for f in files:
         by_kind.setdefault(trace.extension(f), []).append(f)
     alone = sorted({p for p in files if os.path.dirname(p) not in listed}
                    | {p for g in by_kind.values() if len(g) <= LONE_AT for p in g})
-    trials += [(f"{p} emptied", {p: b""}, {}) for p in alone[:BY_NAME_MAX]]
-    # PAIRS: A holding B's text
-    trials += [(f"{a} holding {b}", {a: text(b)}, {}) for a, b in pairs(files, n)]
+    return [(f"{p} emptied", {p: b""}, {}) for p in alone[:BY_NAME_MAX]]
+
+
+def _trials(files: List[str], listed: Set[str], text: Callable[[str], bytes], n: int) -> List[Trial]:
+    """The mutations that would move another file's verdict if the spec reads across files. TWINS: every file it lists
+    gets a new twin holding its text -- a spec judging files alone judges each twin as its original; one reading across
+    them (a name registered twice, the exact set of a workflow's dispatchers) names the original."""
+    walked = [p for p in files if os.path.dirname(p) in listed]
+    twins: List[Trial] = [("twins", {}, {twin(p): text(p) for p in walked})] if walked else []
+    pair_trials: List[Trial] = [(f"{a} holding {b}", {a: text(b)}, {}) for a, b in pairs(files, n)]  # PAIRS: A holding B's text
+    return twins + _quarter_trials(files) + _by_name_trials(files, listed) + pair_trials
+
+
+def _reader() -> Callable[[str], bytes]:
+    """A file's bytes, read once."""
+    content: Dict[str, bytes] = {}
+
+    def text(p: str) -> bytes:
+        if p not in content:
+            with open(p, "rb") as f:
+                content[p] = f.read()
+        return content[p]
+    return text
+
+
+def _with_copies(texts: Dict[str, bytes], copies: Dict[str, str]) -> Dict[str, bytes]:
+    """`texts` with each test resource's classpath copy holding its text too (a resource is read through the copy)."""
+    copy_of: Dict[str, List[str]] = {}
+    for c, src in copies.items():
+        copy_of.setdefault(src, []).append(c)
+    return {q: x for p, x in texts.items() for q in [p, *copy_of.get(p, [])]}
+
+
+def check_command(command, cwd, watched, copies, n):
+    """(verdict, why) of the lint command (run from the root, or cwd) over the watched files: PER-FILE, CROSS-FILE or
+    UNRUN (it fails unchanged)."""
+    reads, first = trace.observe(command, watched, copies, cwd)
+    if not trace.green(first):
+        return "UNRUN", "it does not run green unchanged"
+    files = sorted(p for p in reads if os.path.isfile(p))
+    if len(files) < 2:
+        return "CROSS-FILE", "it reads fewer than two files: nothing to prove"
+    trials = _trials(files, {p.rstrip("/") for p in reads if os.path.isdir(p)}, _reader(), n)
+    run = lambda: trace.observe(command, watched, copies, cwd)[1]  # noqa: E731
     for name, texts, created in trials:
-        why = verdict_of(mutated(with_copies(texts), created, run), set(texts) | set(created), files)
+        why = verdict_of(mutated(_with_copies(texts, copies), created, run), set(texts) | set(created), files)
         if why:
             return "CROSS-FILE", f"{name}: {why}"
     return "PER-FILE", f"{len(trials)} mutations (twins, quarters, files by name, pairs): no other file's verdict moved"

@@ -10,6 +10,7 @@ scripts/ci/stress_races.py. Tested by scripts/ci/junit_failures_test.py.
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Iterable, Iterator, List, Tuple
 
 
 def xml_files(paths):
@@ -20,18 +21,25 @@ def xml_files(paths):
             yield p
 
 
-def failed(paths):
-    seen = {}
+def _roots(paths: Iterable[str]) -> Iterator[ET.Element]:
+    """The root element of each readable JUnit file of `paths`."""
     for f in xml_files(paths):
         try:
-            root = ET.parse(f).getroot()
+            yield ET.parse(f).getroot()
         except ET.ParseError:
             continue
-        for suite in [root] if root.tag == "testsuite" else root.iter("testsuite"):
-            for case in suite.findall("testcase"):
-                if case.find("failure") is not None or case.find("error") is not None:
-                    seen[(case.get("classname", ""), case.get("name", ""))] = True
-    return list(seen)
+
+
+def _failed_cases(root: ET.Element) -> Iterator[Tuple[str, str]]:
+    """(class, name) of each testcase under `root` with a <failure> or an <error>."""
+    for suite in [root] if root.tag == "testsuite" else root.iter("testsuite"):
+        for case in suite.findall("testcase"):
+            if case.find("failure") is not None or case.find("error") is not None:
+                yield case.get("classname", ""), case.get("name", "")
+
+
+def failed(paths: Iterable[str]) -> List[Tuple[str, str]]:
+    return list(dict.fromkeys(case for root in _roots(paths) for case in _failed_cases(root)))
 
 
 def main(argv):

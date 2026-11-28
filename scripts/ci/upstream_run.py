@@ -31,6 +31,7 @@ import datetime
 import json
 import os
 import sys
+from typing import List, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ci_machine  # noqa: E402
@@ -57,6 +58,21 @@ def taken_as_is(trigger, conclusion, branch):
     return bool(trigger) and (not conclusion or (conclusion == "success" and branch == "main"))
 
 
+def _why(trigger: str, conclusion: str, branch: str, workflow: str) -> str:
+    """Why the triggering run is not the one to read."""
+    if not trigger:
+        return "no %s run named" % workflow
+    return "%s run %s %s" % (workflow, trigger, "ran off main (%s)" % branch if branch != "main" else "ended %s" % conclusion)
+
+
+def _no_fresh_run(why: str, runs: List[Tuple[str, datetime.datetime]], max_age_hours: int) -> str:
+    """The message when no successful run on main is fresh enough."""
+    newest = ("; the newest successful one is %s, created %s" % (runs[0][0], runs[0][1].isoformat())
+              if runs else "; there is no successful one")
+    limit = " is newer than %d h" % max_age_hours if max_age_hours else ""
+    return "%s, and no successful run on main%s%s" % (why, limit, newest)
+
+
 def choose(trigger, conclusion, branch, runs, now, max_age_hours=MAX_AGE_HOURS, workflow="the producing workflow",
            on_fallback="newest"):
     """(run id, message) for the run read; ("", message) when skipped; (None, message) when none may be.
@@ -65,16 +81,12 @@ def choose(trigger, conclusion, branch, runs, now, max_age_hours=MAX_AGE_HOURS, 
         return trigger, "reading %s run %s, as dispatched" % (workflow, trigger)
     if taken_as_is(trigger, conclusion, branch):
         return trigger, "reading %s run %s, which just succeeded" % (workflow, trigger)
-    why = ("no %s run named" % workflow if not trigger else
-           "%s run %s %s" % (workflow, trigger, "ran off main (%s)" % branch if branch != "main" else "ended %s" % conclusion))
+    why = _why(trigger, conclusion, branch, workflow)
     if trigger and on_fallback == "skip":
         return "", "%s: nothing to read, and this workflow reads no older run in its place" % why
     fresh = [(run, at) for run, at in runs if not max_age_hours or now - at <= datetime.timedelta(hours=max_age_hours)]
     if not fresh:
-        newest = ("; the newest successful one is %s, created %s" % (runs[0][0], runs[0][1].isoformat())
-                  if runs else "; there is no successful one")
-        limit = " is newer than %d h" % max_age_hours if max_age_hours else ""
-        return None, "%s, and no successful run on main%s%s" % (why, limit, newest)
+        return None, _no_fresh_run(why, runs, max_age_hours)
     run, at = fresh[0]
     return run, "%s: reading the newest successful run on main instead, %s (created %s)" % (why, run, at.isoformat())
 

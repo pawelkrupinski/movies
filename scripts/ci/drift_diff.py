@@ -87,49 +87,73 @@ def options(argv):
     return opts
 
 
-def main(argv) -> int:
+Key = tuple[str, str]   # (venue, raw title)
+Row = dict[str, str]
+NEW_COLUMNS = ["country", "seed", "venue", "rawTitle", "films", "reasons", "takes", "cause"]
+
+
+def _take(row: Row) -> str:
+    return " ".join((row.get("takes") or row.get("films") or "").split())
+
+
+def _pre_existing_where(k: Key, known: dict[Key, Row], gone: dict[Key, Row]) -> str:
+    """Where a flip both sides show is accounted for: the backlog, the struck list, or nowhere yet."""
+    row = known.get(k)
+    if row:
+        return f"backlog: owner {row.get('owner') or '?'}, first seen {row.get('firstSeen') or '?'}"
+    if k in gone:
+        return f"struck (identity-flips-struck.tsv): {gone[k].get('decision', '')}"
+    return "not in the backlog yet: the explorer files it"
+
+
+def _write_new(path: str, new: list[Key], head: dict[Key, Row]) -> None:
+    with open(path, "w", newline="") as f:
+        w = csv.writer(f, delimiter="\t", lineterminator="\n", quoting=csv.QUOTE_NONE, quotechar=None)
+        w.writerow(NEW_COLUMNS)
+        for k in new:
+            w.writerow([head[k].get(c, "") for c in NEW_COLUMNS])
+
+
+def _load(o: dict[str, str]) -> tuple[dict[Key, Row], dict[Key, Row], list[Key], dict[Key, Row], dict[Key, Row]]:
+    """(head flips, base flips, allow-listed listings, backlog, struck flips) of the seed's options."""
+    cc, seed = o["cc"], o["seed"]
+    head = flips(o["head"], seed)
+    base = dict(head) if o.get("same-code") else flips(o["base"], seed)
+    return head, base, allowed(cc, o.get("allow")), backlog(cc, o.get("backlog")), struck(cc, o.get("backlog"))
+
+
+def _print_flips(o: dict[str, str], head: dict[Key, Row], new: list[Key], temporary: list[Key], pre: list[Key],
+                 removed: list[Key], known: dict[Key, Row], gone: dict[Key, Row]) -> None:
+    cc, seed = o["cc"], o["seed"]
+    said = o.get("base-said") or ("the base (the same identity code)" if o.get("same-code") else "the base")
+    print(f"## {cc} flips the change adds (seed {seed}, head vs {said}): {len(new)} flip(s), "
+          f"{len(temporary)} allow-listed, {len(pre)} pre-existing, {len(removed)} removed")
+    for k in new:
+        print(f"      {k[0]} | {k[1]}: {_take(head[k])} [seed {seed}]")
+    for k in temporary:
+        print(f"      allow-listed (identity-flips-allow.tsv): {k[0]} | {k[1]} [seed {seed}]")
+    for k in pre:
+        print(f"      pre-existing (backlog): {k[0]} | {k[1]} [seed {seed}] -- in the base too, not failed; "
+              f"{_pre_existing_where(k, known, gone)}")
+    for k in removed:
+        print(f"      removed: {k[0]} | {k[1]} [seed {seed}] -- the base flips it, the head does not")
+
+
+def main(argv: list[str]) -> int:
     try:
         o = options(argv)
-        cc, seed = o["cc"], o["seed"]
-        head = flips(o["head"], seed)
-        base = dict(head) if o.get("same-code") else flips(o["base"], seed)
-        allow = allowed(cc, o.get("allow"))
-        known = backlog(cc, o.get("backlog"))
-        gone = struck(cc, o.get("backlog"))
+        head, base, allow, known, gone = _load(o)
     except (KeyError, ValueError, OSError) as e:
         print(f"drift_diff.py: {e}", file=sys.stderr)
         return 2
-    said = o.get("base-said") or ("the base (the same identity code)" if o.get("same-code") else "the base")
     added = sorted(k for k in head if k not in base)
     temporary = [k for k in added if covered(k, allow)]
     new = [k for k in added if k not in temporary]
     pre = sorted(k for k in head if k in base)
     removed = sorted(k for k in base if k not in head)
-
-    def take(row):
-        return " ".join((row.get("takes") or row.get("films") or "").split())
-
-    print(f"## {cc} flips the change adds (seed {seed}, head vs {said}): {len(new)} flip(s), "
-          f"{len(temporary)} allow-listed, {len(pre)} pre-existing, {len(removed)} removed")
-    for k in new:
-        print(f"      {k[0]} | {k[1]}: {take(head[k])} [seed {seed}]")
-    for k in temporary:
-        print(f"      allow-listed (identity-flips-allow.tsv): {k[0]} | {k[1]} [seed {seed}]")
-    for k in pre:
-        row = known.get(k)
-        where = (f"backlog: owner {row.get('owner') or '?'}, first seen {row.get('firstSeen') or '?'}" if row
-                 else f"struck (identity-flips-struck.tsv): {gone[k].get('decision', '')}" if k in gone
-                 else "not in the backlog yet: the explorer files it")
-        print(f"      pre-existing (backlog): {k[0]} | {k[1]} [seed {seed}] -- in the base too, not failed; {where}")
-    for k in removed:
-        print(f"      removed: {k[0]} | {k[1]} [seed {seed}] -- the base flips it, the head does not")
+    _print_flips(o, head, new, temporary, pre, removed, known, gone)
     if o.get("new-out"):
-        cols = ["country", "seed", "venue", "rawTitle", "films", "reasons", "takes", "cause"]
-        with open(o["new-out"], "w", newline="") as f:
-            w = csv.writer(f, delimiter="\t", lineterminator="\n", quoting=csv.QUOTE_NONE, quotechar=None)
-            w.writerow(cols)
-            for k in new:
-                w.writerow([head[k].get(c, "") for c in cols])
+        _write_new(o["new-out"], new, head)
     print(f"new={len(new)} pre-existing={len(pre)} removed={len(removed)}")
     return 1 if new else 0
 

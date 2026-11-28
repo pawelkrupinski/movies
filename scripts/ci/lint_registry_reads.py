@@ -103,8 +103,8 @@ def pushable(paths: List[str], repo: Repo, ignored_of: Callable[[List[str]], Set
     return [p for p in paths if p not in ignored]
 
 
-def reads(text: str, repo: Repo, ignored_of: Callable[[List[str]], Set[str]]) -> Dict[str, List[str]]:
-    """{literal: [probe paths]}: what a spec's source reads of the repository (the module docstring's rules)."""
+def _candidates(text: str, repo: Repo) -> Dict[str, List[str]]:
+    """{literal: [probe paths]} a spec's source names, before the paths git ignores are dropped."""
     candidates: Dict[str, List[str]] = {}
     for literal in set(LITERAL.findall(text)):
         candidates.setdefault(literal, []).extend(probes(literal, repo))
@@ -113,6 +113,12 @@ def reads(text: str, repo: Repo, ignored_of: Callable[[List[str]], Set[str]]) ->
     # a resource named at run time (`getResource("/" + pkg)`: compiled classes, no checked-in file) names nothing here
     for literal in {r for r in RESOURCE_CALL.findall(text) if r.strip("/")}:
         candidates.setdefault(literal, []).extend(p for root in repo.resource_roots for p in probes(root + literal.rstrip("/"), repo))
+    return candidates
+
+
+def reads(text: str, repo: Repo, ignored_of: Callable[[List[str]], Set[str]]) -> Dict[str, List[str]]:
+    """{literal: [probe paths]}: what a spec's source reads of the repository (the module docstring's rules)."""
+    candidates = _candidates(text, repo)
     keep = set(pushable(sorted({p for paths in candidates.values() for p in paths
                                 if not p.startswith(("target/", ".git/"))}), repo, ignored_of))
     found = {literal: sorted(set(paths) & keep) for literal, paths in sorted(candidates.items())}
@@ -141,10 +147,10 @@ def hook_selection(runner: Runner, env: Mapping[str, str]) -> Callable[[str], Se
     return selected
 
 
-def misses(registry: str, only: Set[str], repo: Repo, ignored_of: Callable[[List[str]], Set[str]],
-           selected_specs: Callable[[str], Set[str]]) -> List[str]:
-    """The `<spec>TAB<literal>` lines of the registry rows that miss a path their spec reads."""
-    wanted: Dict[str, Dict[str, List[str]]] = {}  # spec -> {literal: [probe, ...]}
+def _wanted(registry: str, only: Set[str], repo: Repo, ignored_of: Callable[[List[str]], Set[str]]
+            ) -> Dict[str, Dict[str, List[str]]]:
+    """{spec: {literal: [probe, ...]}} of the registry's rows (not `-`, with a source, within `only`) whose spec reads some."""
+    wanted: Dict[str, Dict[str, List[str]]] = {}
     for columns in registry_rows(registry, repo.files):
         spec, declared = columns[0], columns[1] if len(columns) > 1 else ""
         source = spec_source(spec)
@@ -153,6 +159,13 @@ def misses(registry: str, only: Set[str], repo: Repo, ignored_of: Callable[[List
         per = reads(repo.files.read_text(source), repo, ignored_of)
         if per:
             wanted[spec] = per
+    return wanted
+
+
+def misses(registry: str, only: Set[str], repo: Repo, ignored_of: Callable[[List[str]], Set[str]],
+           selected_specs: Callable[[str], Set[str]]) -> List[str]:
+    """The `<spec>TAB<literal>` lines of the registry rows that miss a path their spec reads."""
+    wanted = _wanted(registry, only, repo, ignored_of)
     unique = sorted({p for per in wanted.values() for found in per.values() for p in found})
     with governed_workers("lint-plan", 8) as width, ThreadPoolExecutor(max_workers=width) as pool:
         selection = dict(zip(unique, pool.map(selected_specs, unique)))

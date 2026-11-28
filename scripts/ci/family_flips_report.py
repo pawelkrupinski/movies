@@ -29,6 +29,7 @@ import glob
 import os
 import re
 import sys
+from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import header_tsv  # noqa: E402
@@ -96,6 +97,31 @@ def joined(shards_dir, code, count):
     return sorted(rows, key=key), missing
 
 
+def _new_rows_of(rows: List[Dict[str, Any]], previous: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """The rows of `rows` whose listing the previous night's file did not hold."""
+    held = {key(r) for r in previous}
+    return [r for r in rows if key(r) not in held]
+
+
+def _country_row(code: str, count: int, rows: List[Dict[str, Any]], previous: Optional[List[Dict[str, Any]]], new_rows: List[Dict[str, Any]]) -> str:
+    """The report table's row of one country, its new flips counted among the report's `new_rows` so far."""
+    new = sum(1 for r in new_rows if r["country"] == code) if previous is not None else "baseline"
+    return f"| {code} | {count} | {len(rows)} | {new} |"
+
+
+def _summary(lines: List[str], notes: List[str], current: List[Dict[str, Any]], new_rows: List[Dict[str, Any]]) -> str:
+    """The markdown report: the table, the notes, the top rules and the new flips."""
+    top = {}
+    for r in ranked(current):
+        top.setdefault((r["rank"], r["rule"]), r["listings"])
+    out = ["### Family explorer: flips by country", "", "| country | shards | flipping listings | new since last night |", "|---|---|---|---|", *lines, ""]
+    out += [f"- {n}" for n in notes] + ([""] if notes else [])
+    out += ["Top rules (listings): " + (", ".join(f"{rule} {n}" for (_, rule), n in sorted(top.items())[:8]) or "none"), ""]
+    if new_rows:
+        out += ["New since last night:", "", "```", *(f"{r['country']} | {r['venue']} | {r['rawTitle']}: {r['takes']}" for r in new_rows), "```"]
+    return "\n".join(out)
+
+
 def report(shards_dir, expect, previous_dir, out_dir):
     os.makedirs(out_dir, exist_ok=True)
     lines, current, new_rows, notes = [], [], [], []
@@ -112,21 +138,11 @@ def report(shards_dir, expect, previous_dir, out_dir):
         if previous is None:
             notes.append(f"{code}: no file from an earlier night -- this one is the baseline, nothing is new")
         else:
-            held = {key(r) for r in previous}
-            new_rows += [r for r in rows if key(r) not in held]
-        lines.append(f"| {code} | {count} | {len(rows)} | {sum(1 for r in new_rows if r['country'] == code) if previous is not None else 'baseline'} |")
+            new_rows += _new_rows_of(rows, previous)
+        lines.append(_country_row(code, count, rows, previous, new_rows))
     header_tsv.write(os.path.join(out_dir, "family-flips-ranked.tsv"), RANKED_COLUMNS, ranked(current))
     header_tsv.write(os.path.join(out_dir, "family-flips-new.tsv"), BACKLOG_COLUMNS, new_rows)
-
-    top = {}
-    for r in ranked(current):
-        top.setdefault((r["rank"], r["rule"]), r["listings"])
-    out = ["### Family explorer: flips by country", "", "| country | shards | flipping listings | new since last night |", "|---|---|---|---|", *lines, ""]
-    out += [f"- {n}" for n in notes] + ([""] if notes else [])
-    out += ["Top rules (listings): " + (", ".join(f"{rule} {n}" for (_, rule), n in sorted(top.items())[:8]) or "none"), ""]
-    if new_rows:
-        out += ["New since last night:", "", "```", *(f"{r['country']} | {r['venue']} | {r['rawTitle']}: {r['takes']}" for r in new_rows), "```"]
-    return "\n".join(out)
+    return _summary(lines, notes, current, new_rows)
 
 
 def main(argv=None):

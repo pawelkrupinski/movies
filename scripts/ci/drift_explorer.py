@@ -72,26 +72,25 @@ def pick(cc: str, count: int | str, salt: str, path: str | None = None) -> list[
     return sorted(random.Random(f"{cc}:{salt}").sample(pool, min(count, len(pool))))
 
 
+def _flip_rows(path: str) -> list[list[str]]:
+    """The data rows of a flips TSV (header FLIP_COLUMNS first; an empty file holds none) that name a listing and a seed."""
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.reader(f, delimiter="\t", quoting=csv.QUOTE_NONE)
+        header = next(reader, None)
+        if header is None:
+            return []
+        if header[: len(FLIP_COLUMNS)] != FLIP_COLUMNS:
+            raise ValueError(f"{path}: not a flips TSV (header {header!r})")
+        return [cols for cols in reader if len(cols) >= 4 and cols[0] and cols[1].isdigit()]
+
+
 def new_flips(backlog: str, date: str, ref: str, paths: list[str]) -> list[list[str]]:
     have, out = known(backlog), {}
-    for path in paths:
-        with open(path, newline="", encoding="utf-8") as f:
-            reader = csv.reader(f, delimiter="\t", quoting=csv.QUOTE_NONE)
-            header = next(reader, None)
-            if header is None:
-                continue
-            if header[: len(FLIP_COLUMNS)] != FLIP_COLUMNS:
-                raise ValueError(f"{path}: not a flips TSV (header {header!r})")
-            for cols in reader:
-                if len(cols) < 4 or not cols[0] or not cols[1].isdigit():
-                    continue
-                cc, seed, venue, title = cols[0], int(cols[1]), clean(cols[2]), clean(cols[3])
-                if (cc, venue, title) in have:
-                    continue
-                takes = clean(cols[6]) if len(cols) > 6 else ""
-                key = (cc, venue, title)
-                if key not in out or seed < int(out[key][3]):
-                    out[key] = [venue, title, cc, str(seed), date, ref, takes]
+    for cols in (cols for path in paths for cols in _flip_rows(path)):
+        cc, seed, venue, title = cols[0], int(cols[1]), clean(cols[2]), clean(cols[3])
+        key = (cc, venue, title)
+        if key not in have and (key not in out or seed < int(out[key][3])):
+            out[key] = [venue, title, cc, str(seed), date, ref, clean(cols[6]) if len(cols) > 6 else ""]
     return [out[k] for k in sorted(out)]
 
 
@@ -126,30 +125,42 @@ def file(asset: str, backlog: str, seeds: str, owner: str) -> list[str]:
     return filed
 
 
-def main(argv: list[str]) -> int:
-    if not argv or argv[0] not in ("pick", "new-flips", "merge", "file"):
-        print(__doc__ or "usage: drift_explorer.py pick|new-flips|file ...", file=sys.stderr)
-        return 2
-    command, rest, opts = argv[0], [], {}
-    it = iter(argv[1:])
+def _parse(argv: list[str]) -> tuple[list[str], dict[str, str]]:
+    """(the positional arguments, {--option: value}) of the arguments."""
+    rest, opts = [], {}
+    it = iter(argv)
     for a in it:
         if a.startswith("--"):
             opts[a[2:]] = next(it, "")
         else:
             rest.append(a)
+    return rest, opts
+
+
+def _write_rows(rows: list[list[str]]) -> None:
+    sys.stdout.write("\t".join(NEW_HEADER) + "\n" + "".join("\t".join(r) + "\n" for r in rows))
+
+
+def _run(command: str, rest: list[str], opts: dict[str, str]) -> None:
+    backlog = opts.get("backlog") or BACKLOG
+    if command == "pick":
+        print(" ".join(map(str, pick(opts["cc"], opts.get("count", "auto"), opts.get("salt", ""), opts.get("file") or None))))
+    elif command == "new-flips":
+        _write_rows(new_flips(backlog, opts["date"], opts.get("ref", ""), rest))
+    elif command == "merge":
+        _write_rows(merge(backlog, rest))
+    else:
+        for line in file(opts["asset"], backlog, opts.get("seeds") or drift_seeds.SEEDS_FILE, opts.get("owner") or "convergence-fixer"):
+            print(line)
+
+
+def main(argv: list[str]) -> int:
+    if not argv or argv[0] not in ("pick", "new-flips", "merge", "file"):
+        print(__doc__ or "usage: drift_explorer.py pick|new-flips|file ...", file=sys.stderr)
+        return 2
+    rest, opts = _parse(argv[1:])
     try:
-        if command == "pick":
-            print(" ".join(map(str, pick(opts["cc"], opts.get("count", "auto"), opts.get("salt", ""), opts.get("file") or None))))
-        elif command == "new-flips":
-            rows = new_flips(opts.get("backlog") or BACKLOG, opts["date"], opts.get("ref", ""), rest)
-            sys.stdout.write("\t".join(NEW_HEADER) + "\n" + "".join("\t".join(r) + "\n" for r in rows))
-        elif command == "merge":
-            rows = merge(opts.get("backlog") or BACKLOG, rest)
-            sys.stdout.write("\t".join(NEW_HEADER) + "\n" + "".join("\t".join(r) + "\n" for r in rows))
-        else:
-            for line in file(opts["asset"], opts.get("backlog") or BACKLOG, opts.get("seeds") or drift_seeds.SEEDS_FILE,
-                             opts.get("owner") or "convergence-fixer"):
-                print(line)
+        _run(argv[0], rest, opts)
     except (KeyError, OSError, ValueError) as e:
         print(f"drift_explorer: {e}", file=sys.stderr)
         return 2

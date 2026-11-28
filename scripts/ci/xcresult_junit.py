@@ -13,6 +13,7 @@ import ci_machine
 import json
 import sys
 from xml.sax.saxutils import escape, quoteattr
+from typing import Any, Dict, List
 
 
 def load_tree(argv):
@@ -67,40 +68,43 @@ def test_cases(tree):
     return cases
 
 
+def _testcase(suite: str, c: Dict[str, Any]) -> List[str]:
+    """The `<testcase>` lines of one case: passed, failed (with its message) or skipped."""
+    name = c.get("name", "").removesuffix("()")
+    attrs = f'classname={quoteattr(suite)} name={quoteattr(name)} time="{c.get("durationInSeconds", 0.0):.3f}"'
+    result = c.get("result")
+    if result == "Failed":
+        text = "\n".join(messages(c, "Failure Message")) or "failed"
+        return [f'    <testcase {attrs}>',
+                f'      <failure message={quoteattr(text.splitlines()[0])}>{escape(text)}</failure>',
+                '    </testcase>']
+    if result == "Skipped":
+        why = "\n".join(messages(c, "Skip Message"))
+        return [f'    <testcase {attrs}><skipped message={quoteattr(why)}/></testcase>']
+    return [f'    <testcase {attrs}/>']
+
+
+def _testsuite(suite: str, members: List[Dict[str, Any]]) -> List[str]:
+    """The `<testsuite>` lines of one suite of cases."""
+    failed = sum(1 for c in members if c.get("result") == "Failed")
+    skipped = sum(1 for c in members if c.get("result") == "Skipped")
+    time = sum(c.get("durationInSeconds", 0.0) for c in members)
+    out = [f'  <testsuite name={quoteattr(suite)} tests="{len(members)}" failures="{failed}" skipped="{skipped}" time="{time:.3f}">']
+    for c in members:
+        out += _testcase(suite, c)
+    return out + ['  </testsuite>']
+
+
 def junit(tree):
     cases = test_cases(tree)
-
     suites = {}
     for suite, case in cases:
         suites.setdefault(suite, []).append(case)
-
-    out = ['<?xml version="1.0" encoding="UTF-8"?>']
     total = sum(len(c) for c in suites.values())
     failed = sum(1 for _, c in cases if c.get("result") == "Failed")
-    out.append(f'<testsuites name="xcresult" tests="{total}" failures="{failed}">')
+    out = ['<?xml version="1.0" encoding="UTF-8"?>', f'<testsuites name="xcresult" tests="{total}" failures="{failed}">']
     for suite, members in suites.items():
-        s_failed = sum(1 for c in members if c.get("result") == "Failed")
-        s_skipped = sum(1 for c in members if c.get("result") == "Skipped")
-        s_time = sum(c.get("durationInSeconds", 0.0) for c in members)
-        out.append(f'  <testsuite name={quoteattr(suite)} tests="{len(members)}" '
-                   f'failures="{s_failed}" skipped="{s_skipped}" time="{s_time:.3f}">')
-        for c in members:
-            name = c.get("name", "").removesuffix("()")
-            attrs = (f'classname={quoteattr(suite)} name={quoteattr(name)} '
-                     f'time="{c.get("durationInSeconds", 0.0):.3f}"')
-            result = c.get("result")
-            if result == "Failed":
-                text = "\n".join(messages(c, "Failure Message")) or "failed"
-                first = text.splitlines()[0]
-                out.append(f'    <testcase {attrs}>')
-                out.append(f'      <failure message={quoteattr(first)}>{escape(text)}</failure>')
-                out.append('    </testcase>')
-            elif result == "Skipped":
-                why = "\n".join(messages(c, "Skip Message"))
-                out.append(f'    <testcase {attrs}><skipped message={quoteattr(why)}/></testcase>')
-            else:
-                out.append(f'    <testcase {attrs}/>')
-        out.append('  </testsuite>')
+        out += _testsuite(suite, members)
     out.append('</testsuites>')
     return "\n".join(out) + "\n"
 

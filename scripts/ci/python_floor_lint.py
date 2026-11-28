@@ -26,6 +26,7 @@ import shutil
 import subprocess
 import sys
 import tokenize
+from typing import Any, Iterator, Optional, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 import ci_machine  # noqa: E402
@@ -59,17 +60,22 @@ def python_files(root):
                 yield path
 
 
+def _def_annotations(node: Any) -> Iterator[Tuple[int, ast.expr]]:
+    """(line, annotation) of a def's parameters and return."""
+    a = node.args
+    for arg in a.posonlyargs + a.args + a.kwonlyargs + [a.vararg, a.kwarg]:
+        if arg is not None and arg.annotation is not None:
+            yield node.lineno, arg.annotation
+    if node.returns is not None:
+        yield node.lineno, node.returns
+
+
 def annotations(tree, in_function=False):
     """(line, annotation) of every annotation Python evaluates at runtime: a def's (when it runs), and a variable's in a
     module or class body -- a function's local variable annotation is never evaluated (PEP 526)."""
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            a = node.args
-            for arg in a.posonlyargs + a.args + a.kwonlyargs + [a.vararg, a.kwarg]:
-                if arg is not None and arg.annotation is not None:
-                    yield node.lineno, arg.annotation
-            if node.returns is not None:
-                yield node.lineno, node.returns
+            yield from _def_annotations(node)
             yield from annotations(node, True)
         elif isinstance(node, ast.ClassDef):
             yield from annotations(node, False)
@@ -121,6 +127,24 @@ def floor_syntax(interpreter, root, paths):
     return [(os.path.relpath(path, root), line, msg) for path, line, msg in json.loads(done.stdout)]
 
 
+def _bare_quote(token_string: str) -> str:
+    """A string token's quote, its prefix letters off."""
+    return token_string.lstrip("rRfFbBuU")
+
+
+def _expression_problem(tok: tokenize.TokenInfo, quote: str) -> Optional[str]:
+    """What inside an f-string's expression (the quote it is open with) only Python 3.12 reads, else None."""
+    if tok.type in (tokenize.STRING, getattr(tokenize, "FSTRING_START")) and _bare_quote(tok.string).startswith(quote):
+        return f"a quote ({quote}) inside an f-string of the same quote (Python 3.12)"
+    if tok.type == tokenize.COMMENT:
+        return "a comment inside an f-string's expression (Python 3.12)"
+    if "\\" in tok.string:
+        return "a backslash inside an f-string's expression (Python 3.12)"
+    if tok.type == tokenize.NL and len(quote) == 1:
+        return "a single-quoted f-string's expression across lines (Python 3.12)"
+    return None
+
+
 def newer_fstrings(source):
     """[(line, what)] for each PEP 701 (3.12) f-string: the tokenizer that reads them is the only one that sees them. An
     older tokenizer ends an f-string at its first own quote and has no FSTRING_* tokens (its parser refuses them)."""
@@ -135,22 +159,15 @@ def newer_fstrings(source):
     for tok in tokens:
         if tok.type == fstring_end:
             open_fstrings.pop()
-            continue
-        if not open_fstrings or tok.type == fstring_middle:
+        elif not open_fstrings or tok.type == fstring_middle:
             if tok.type == fstring_start:
-                open_fstrings.append(tok.string.lstrip("rRfFbBuU"))
-            continue
-        quote = open_fstrings[-1]
-        if tok.type in (tokenize.STRING, fstring_start) and tok.string.lstrip("rRfFbBuU").startswith(quote):
-            found.add((tok.start[0], f"a quote ({quote}) inside an f-string of the same quote (Python 3.12)"))
-        elif tok.type == tokenize.COMMENT:
-            found.add((tok.start[0], "a comment inside an f-string's expression (Python 3.12)"))
-        elif "\\" in tok.string:
-            found.add((tok.start[0], "a backslash inside an f-string's expression (Python 3.12)"))
-        elif tok.type == tokenize.NL and len(quote) == 1:
-            found.add((tok.start[0], "a single-quoted f-string's expression across lines (Python 3.12)"))
-        if tok.type == fstring_start:
-            open_fstrings.append(tok.string.lstrip("rRfFbBuU"))
+                open_fstrings.append(_bare_quote(tok.string))
+        else:
+            problem = _expression_problem(tok, open_fstrings[-1])
+            if problem:
+                found.add((tok.start[0], problem))
+            if tok.type == fstring_start:
+                open_fstrings.append(_bare_quote(tok.string))
     return sorted(found)
 
 

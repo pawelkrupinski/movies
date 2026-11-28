@@ -51,7 +51,7 @@ import shlex
 import shutil
 import subprocess
 import sys
-from typing import Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ci_machine  # noqa: E402
@@ -214,37 +214,53 @@ def state_key(finding_id):
     return hashlib.sha1(finding_id.encode("utf-8")).hexdigest()[:16]
 
 
-def render_at(cc, findings, seen, today, max_age, run, run_url, detailed, listed, disagree=()):
-    def age(f):
+def _preamble(cc: str, findings: List[Dict[str, Any]], overdue: List[Dict[str, Any]], run: str, run_url: str, max_age: int) -> List[str]:
+    """The issue's title line, the recording's finding count and the standing note."""
+    counts = (f"Recording [run {run}]({run_url}): **{len(findings)} finding(s)**, **{len(overdue)} untriaged for more than "
+              f"{max_age} days**." if findings else f"Recording [run {run}]({run_url}): no finding to triage.")
+    return [f"# {title_of(cc)}", "", counts, "",
+            "These are the RECORDING's: no commit made them, so no build fails on them -- the identity takes check fails "
+            "only what a commit's code makes, base against head. A finding untriaged for more than "
+            f"{max_age} days is marked overdue here (⏰). A suspect judged into identity-judgements.tsv leaves this issue on "
+            "the next report; the rest leave when a recording no longer carries them. Updated in place by "
+            "`scripts/ci/identity_findings_report.py`."]
+
+
+def _finding_lines(cc: str, kind: str, f: Dict[str, Any], seen: Dict[str, str], age: int, flag: str, run: str, detailed: bool) -> List[str]:
+    """One finding: its heading and triage commands (`detailed`), else a bullet."""
+    film = f" → {f['film']} {f.get('title', '')}".rstrip() if kind in TAKES else ""
+    where = f" · {f['spec']}" if f.get("spec") else ""
+    facts = f"{f['venues']}{where} · first seen {seen[f['id']]} ({age} d) · {f['what']}"
+    if not detailed:
+        return [f"- {flag}**{f['rawTitle']}**{film} -- {facts}"]
+    triage = commands(cc, f, run)
+    return ["", f"### {flag}{f['rawTitle']}{film}", facts] + (["", "```sh"] + triage + ["```"] if triage else [])
+
+
+def _section_lines(cc: str, kind: str, heading: str, how: str, group: List[Dict[str, Any]], seen: Dict[str, str],
+                   age: Callable[[Dict[str, Any]], int], max_age: int, run: str, detailed: int, listed: int) -> List[str]:
+    """One section: its heading, how to read it and its findings, the oldest first: the first `detailed` with their
+    triage commands, up to `listed` as bullets, the rest as a pointer to the run's artifact."""
+    lines = ["", f"## {heading} ({len(group)})", "", how]
+    shown = group[:max(detailed, listed)]
+    for n, f in enumerate(shown):
+        flag = "⏰ " if age(f) > max_age else ""
+        lines += _finding_lines(cc, kind, f, seen, age(f), flag, run, n < detailed)
+    if len(group) > len(shown):
+        lines.append(f"- … and {len(group) - len(shown)} more: the run's `convergence-diagnostics-{cc}-convergence` artifact")
+    return lines
+
+
+def render_at(cc: str, findings: List[Dict[str, Any]], seen: Dict[str, str], today: datetime.date, max_age: int, run: str,
+              run_url: str, detailed: int, listed: int, disagree: Sequence[str] = ()) -> Tuple[str, int]:
+    def age(f: Dict[str, Any]) -> int:
         return (today - datetime.date.fromisoformat(seen[f["id"]])).days
     overdue = [f for f in findings if age(f) > max_age]
-    lines = [f"# {title_of(cc)}", "",
-             f"Recording [run {run}]({run_url}): **{len(findings)} finding(s)**, **{len(overdue)} untriaged for more than "
-             f"{max_age} days**." if findings else
-             f"Recording [run {run}]({run_url}): no finding to triage.", "",
-             "These are the RECORDING's: no commit made them, so no build fails on them -- the identity takes check fails "
-             "only what a commit's code makes, base against head. A finding untriaged for more than "
-             f"{max_age} days is marked overdue here (⏰). A suspect judged into identity-judgements.tsv leaves this issue on "
-             "the next report; the rest leave when a recording no longer carries them. Updated in place by "
-             "`scripts/ci/identity_findings_report.py`."]
+    lines = _preamble(cc, findings, overdue, run, run_url, max_age)
     for kind, heading, how in SECTIONS:
         group = sorted((f for f in findings if f["kind"] == kind), key=lambda f: (-age(f), f["rawTitle"]))
-        if not group:
-            continue
-        lines += ["", f"## {heading} ({len(group)})", "", how]
-        for n, f in enumerate(group):
-            flag = "⏰ " if age(f) > max_age else ""
-            film = f" → {f['film']} {f.get('title', '')}".rstrip() if kind in TAKES else ""
-            where = f" · {f['spec']}" if f.get("spec") else ""
-            facts = f"{f['venues']}{where} · first seen {seen[f['id']]} ({age(f)} d) · {f['what']}"
-            if n < detailed:
-                triage = commands(cc, f, run)
-                lines += ["", f"### {flag}{f['rawTitle']}{film}", facts] + (["", "```sh"] + triage + ["```"] if triage else [])
-            elif n < listed:
-                lines.append(f"- {flag}**{f['rawTitle']}**{film} -- {facts}")
-            else:
-                lines.append(f"- … and {len(group) - n} more: the run's `convergence-diagnostics-{cc}-convergence` artifact")
-                break
+        if group:
+            lines += _section_lines(cc, kind, heading, how, group, seen, age, max_age, run, detailed, listed)
     lines += list(disagree)
     state = {state_key(f["id"]): seen[f["id"]] for f in findings}
     lines += ["", f"<!-- identity-findings-state: {json.dumps(state, ensure_ascii=False, sort_keys=True)} -->", ""]
@@ -286,27 +302,40 @@ def publish(cc, body, has_findings, run_gh, assignee):
     return "updated"
 
 
+def _unjudged_findings(files: Files, cc: str, run: str, directory_of: Callable[[str], str], judgements_path: Optional[str]) -> Optional[List[Dict[str, Any]]]:
+    """The country's findings no judgement covers yet; None (said) where the run left no suspect or corpus-shape file."""
+    found = read_findings(files, directory_of(cc), cc)
+    if found is None:
+        print(f"::warning::{title_of(cc)}: run {run} left no suspect file or no corpus-shape file for {cc} -- "
+              "its issue stays as it was")
+        return None
+    labels, _, baseline = judgements_of(files, judgements_path, cc)
+    return [f for f in found if still_unjudged(f, labels, baseline)]
+
+
+def _write_issue(cc: str, found: List[Dict[str, Any]], today: datetime.date, max_age: int, run: str, run_url: str, run_gh: Callable[..., str],
+                 assignee: Optional[str], dry_run: bool, disagree_of: Callable[[str], List[str]]) -> Tuple[int, str]:
+    """(overdue findings, what happened to the country's issue): rendered from the issue's own first-seen state."""
+    issue = None if dry_run else find_issue(cc, run_gh)
+    seen = first_seen_of(issue[2] if issue else "")
+    seen = {f["id"]: seen.get(state_key(f["id"]), today.isoformat()) for f in found}
+    disagree = disagree_of(cc)
+    body, overdue = render(cc, found, seen, today, max_age, run, run_url, disagree)
+    return overdue, "dry run" if dry_run else publish(cc, body, bool(found or disagree), run_gh, assignee)
+
+
 def report(files: Files, countries, run, directory_of, judgements_path, today, max_age, run_url, run_gh, assignee, dry_run,
            disagree_of=lambda cc: []):
     """(overdue total, countries read, countries whose issue gh could not read or write). `disagree_of(cc)`: the
     country's "countries disagree" section lines."""
     overdue_total, read, unwritten = 0, 0, 0
     for cc in countries:
-        found = read_findings(files, directory_of(cc), cc)
+        found = _unjudged_findings(files, cc, run, directory_of, judgements_path)
         if found is None:
-            print(f"::warning::{title_of(cc)}: run {run} left no suspect file or no corpus-shape file for {cc} -- "
-                  "its issue stays as it was")
             continue
         read += 1
-        labels, _, baseline = judgements_of(files, judgements_path, cc)
-        found = [f for f in found if still_unjudged(f, labels, baseline)]
         try:
-            issue = None if dry_run else find_issue(cc, run_gh)
-            seen = first_seen_of(issue[2] if issue else "")
-            seen = {f["id"]: seen.get(state_key(f["id"]), today.isoformat()) for f in found}
-            disagree = disagree_of(cc)
-            body, overdue = render(cc, found, seen, today, max_age, run, run_url, disagree)
-            outcome = "dry run" if dry_run else publish(cc, body, bool(found or disagree), run_gh, assignee)
+            overdue, outcome = _write_issue(cc, found, today, max_age, run, run_url, run_gh, assignee, dry_run, disagree_of)
         except subprocess.CalledProcessError as e:
             # one country's issue gh cannot reach is that country's no verdict: the others still report
             print(f"::error title={title_of(cc)}::gh could not read or write its issue: {(e.stderr or '').strip() or e}")
