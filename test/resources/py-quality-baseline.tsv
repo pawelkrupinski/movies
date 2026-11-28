@@ -39,7 +39,6 @@ cognitive	infra/bin/nix-update:bump_mongodb	11
 cognitive	infra/bin/nix-update:update	12
 cognitive	infra/bin/snapshot-label-values:main	11
 cognitive	infra/bin/snapshot-label-values:wanted_pairs	13
-cognitive	infra/bin/stage-nixos-closures:main	20
 cognitive	infra/nix/files/identity-regressions.py:build_net_lost	14
 cognitive	infra/nix/files/identity-regressions.py:episodes	13
 cognitive	infra/nix/files/identity-regressions.py:film_net_lost	13
@@ -130,9 +129,6 @@ cognitive	scripts/recording_diff.py:pair_listings	13
 cognitive	scripts/rule_firing_prod.py:render	12
 cognitive	scripts/touched_methods.py:changed_lines	15
 cognitive	scripts/touched_methods.py:coverage_rows	13
-cognitive	scripts/zinc_orphans.py:_class_path_at	14
-cognitive	scripts/zinc_orphans.py:prune	20
-cognitive	scripts/zinc_orphans.py:strays	12
 cyclomatic	infra/bin/backtest-alerts-local:prepare	19
 cyclomatic	infra/bin/backtest-alerts-local:scope_arguments	12
 cyclomatic	infra/bin/backtest-alerts-replay:verdict	14
@@ -154,7 +150,7 @@ cyclomatic	infra/bin/image_pins.py:propose_gitops	12
 cyclomatic	infra/bin/nix-update:bump_mongodb	12
 cyclomatic	infra/bin/nix-update:update	15
 cyclomatic	infra/bin/snapshot-label-values:main	11
-cyclomatic	infra/bin/stage-nixos-closures:main	20
+cyclomatic	infra/bin/stage-nixos-closures:main	13
 cyclomatic	infra/nix/files/identity-regressions.py:build_net_lost	17
 cyclomatic	infra/nix/files/identity-regressions.py:episodes	11
 cyclomatic	infra/nix/files/identity-regressions.py:film_net_lost	12
@@ -243,15 +239,11 @@ cyclomatic	scripts/touched_methods.py:mutation_report	12
 cyclomatic	scripts/touched_methods.py:touched	11
 cyclomatic	scripts/unmatched_census.py:census	14
 cyclomatic	scripts/unmatched_census.py:main	11
-cyclomatic	scripts/zinc_orphans.py:_class_path_at	11
-cyclomatic	scripts/zinc_orphans.py:prune	13
 inner-defs	infra/bin/image_pins.py:markdown	3
 inner-defs	scripts/ci/runner_scheduler.py:decide	9
 method-lines	infra/bin/backtest-alerts:run_backtest	199
 method-lines	infra/bin/deploy:deploy	100
 method-lines	infra/bin/snapshot-label-values:main	55
-method-lines	infra/bin/stage-nixos-closures:main	91
-method-lines	infra/bin/stage-nixos-closures:stage	53
 method-lines	scripts/ci/runner_scheduler.py:decide	216
 method-lines	scripts/identity_stamp_carry.py:auto	56
 file-lines	infra/bin/backtest-alerts	1157
@@ -275,7 +267,7 @@ pyright	infra/bin/image_pins.py	131
 pyright	infra/bin/nix-update	55
 pyright	infra/bin/nix_path.py	12
 pyright	infra/bin/snapshot-label-values	18
-pyright	infra/bin/stage-nixos-closures	26
+pyright	infra/bin/stage-nixos-closures	16
 pyright	infra/nix/files/identity-regressions.py	86
 pyright	infra/nix/files/nixos-auto-apply.py	13
 pyright	infra/nix/files/scheduled_dispatch.py	175

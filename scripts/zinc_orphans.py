@@ -49,19 +49,26 @@ def products(analysis: pathlib.Path) -> "set[str]":
     return found
 
 
+def _varint_before(data: bytes, start: int, width: int) -> "int | None":
+    """The length a protobuf varint of <width> bytes ending right at <start> encodes, or None when those bytes are no
+    varint (a continuation bit missing inside it, or set on its last byte)."""
+    if start - width < 0:
+        return None
+    varint = data[start - width:start]
+    if varint[-1] & 0x80 or any(b & 0x80 == 0 for b in varint[:-1]):
+        return None
+    length = 0
+    for shift, b in enumerate(varint):
+        length |= (b & 0x7F) << (7 * shift)
+    return length
+
+
 def _class_path_at(data: bytes, start: int):
     """The protobuf string beginning at <start>, when it names a .class: its varint length ends right before it (1-3
     bytes; a longer length's last byte alone also reads as a 1-byte one, so each width is tried), or None."""
     for width in (1, 2, 3):
-        if start - width < 0:
-            break
-        varint = data[start - width:start]
-        if varint[-1] & 0x80 or any(b & 0x80 == 0 for b in varint[:-1]):
-            continue
-        length = 0
-        for shift, b in enumerate(varint):
-            length |= (b & 0x7F) << (7 * shift)
-        if start + length <= len(data):
+        length = _varint_before(data, start, width)
+        if length is not None and start + length <= len(data):
             s = data[start:start + length]
             if s.endswith(b".class") and all(0x20 <= b < 0x7F for b in s):
                 return s
@@ -88,40 +95,64 @@ def unowned(checkout: pathlib.Path):
                 yield classes
 
 
+def stray_path(root: str, name: str, here: "set[str]") -> "str | None":
+    """The path of a .class/.tasty file named <name> in <root> whose class is not in <here>, else None."""
+    if not name.endswith(SUFFIXES):
+        return None
+    path = os.path.join(root, name)
+    cls = path if name.endswith(".class") else path[: -len(".tasty")] + ".class"
+    return None if os.path.normpath(cls) in here else path
+
+
+def stray_paths(walked: "list[tuple[str, list[str], list[str]]]", here: "set[str]") -> "list[str]":
+    """The .class/.tasty files of an `os.walk` listing whose class is not in <here>."""
+    found = (stray_path(root, f, here) for root, _, files in walked for f in files)
+    return [path for path in found if path is not None]
+
+
 def strays(classes: pathlib.Path, here: "set[str]") -> "list[str]":
     """The .class/.tasty files under <classes> whose class is not in <here>."""
-    gone = []
-    for root, _, files in os.walk(classes):
-        for f in files:
-            if not f.endswith(SUFFIXES):
-                continue
-            path = os.path.join(root, f)
-            cls = path if f.endswith(".class") else path[: -len(".tasty")] + ".class"
-            if os.path.normpath(cls) not in here:
-                gone.append(path)
-    return gone
+    return stray_paths(list(os.walk(classes)), here)
+
+
+def remove_files(paths: "list[str]") -> None:
+    for path in paths:
+        os.remove(path)
+
+
+def readable_products(analysis: pathlib.Path, classes: pathlib.Path) -> "set[str] | None":
+    """What <analysis> lists, or None when it cannot be read: never delete on a failed read."""
+    try:
+        return products(analysis)
+    except (OSError, zipfile.BadZipFile) as e:
+        print(f"zinc-orphans: {analysis} unreadable ({e}): {classes} left as it is", file=sys.stderr)
+        return None
+
+
+def products_here(listed: "set[str]", classes: pathlib.Path, checkout: pathlib.Path) -> "set[str] | None":
+    """The listed products as paths under <checkout>, or None when none lies in <classes>: an empty build, or a
+    format this cannot read."""
+    here = {os.path.normpath(checkout / p) for p in listed}
+    return here if any(p.startswith(str(classes) + os.sep) for p in here) else None
+
+
+def doomed_directories(checkout: pathlib.Path) -> "list[tuple[pathlib.Path, list[str]]]":
+    """Every classes directory of <checkout> with the files no build of it produced."""
+    doomed = [(classes, strays(classes, set())) for classes in unowned(checkout)]
+    for analysis, classes in analyses(checkout):
+        listed = readable_products(analysis, classes) if classes.is_dir() else None
+        here = None if listed is None else products_here(listed, classes, checkout)
+        if here is not None:
+            doomed.append((classes, strays(classes, here)))
+    return doomed
 
 
 def prune(checkout: pathlib.Path, dry_run: bool) -> int:
-    doomed = [(classes, strays(classes, set())) for classes in unowned(checkout)]
-    for analysis, classes in analyses(checkout):
-        if not classes.is_dir():
-            continue
-        try:
-            listed = products(analysis)
-        except (OSError, zipfile.BadZipFile) as e:
-            print(f"zinc-orphans: {analysis} unreadable ({e}): {classes} left as it is", file=sys.stderr)
-            continue
-        here = {os.path.normpath(checkout / p) for p in listed}
-        if not any(p.startswith(str(classes) + os.sep) for p in here):
-            continue   # lists nothing in this directory: an empty build, or a format this cannot read
-        doomed.append((classes, strays(classes, here)))
     removed = 0
-    for classes, gone in doomed:
+    for classes, gone in doomed_directories(checkout):
         if gone:
             if not dry_run:
-                for path in gone:
-                    os.remove(path)
+                remove_files(gone)
             print(f"zinc-orphans: {'would remove' if dry_run else 'removed'} {len(gone)} class file(s) "
                   f"no build of {os.path.relpath(classes, checkout)} produced", file=sys.stderr)
             removed += len(gone)

@@ -637,7 +637,6 @@ mixed	infra/bin/nix_path.py:put_nix_on_path	4
 mixed	infra/bin/nix_stage_steps.py:Steps.evaluate	4
 mixed	infra/bin/nix_stage_steps.py:Steps.hosts	5
 mixed	infra/bin/nix_stage_steps.py:Steps.stage	4
-mixed	infra/bin/stage-nixos-closures:run	9
 mixed	infra/nix/bin/convert_host.py:check_root_disk	3
 mixed	infra/nix/bin/convert_host.py:install	3
 mixed	infra/nix/bin/convert_host.py:output	3
@@ -1514,8 +1513,6 @@ mixed	scripts/unmatched_census.py:write_clusters	6
 mixed	scripts/venue_replay.py:Options.word	8
 mixed	scripts/venue_replay.py:Replay.prod	6
 mixed	scripts/venue_replay.py:Replay.replay	8
-mixed	scripts/zinc_orphans.py:prune	13
-mixed	scripts/zinc_orphans.py:strays	6
 mixed	web/src/main/assets/js/i18n.js:bootLanguage.applyStoredPick	5
 mixed	web/src/main/assets/js/i18n.js:onLanguageChange	4
 mixed	web/src/main/assets/js/shared/auth.js:hydrateAuth	10

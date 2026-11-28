@@ -74,6 +74,7 @@ import os
 import subprocess
 import sys
 import time
+from typing import Any, Callable
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nix_path  # noqa: E402  (beside this tool)
@@ -122,20 +123,37 @@ NOT_A_MACHINE: set = set()
 FETCH_CACHE_RACE = ("opening Git repository", "tarball-cache")
 
 
-def run(argv, **kwargs):
-    attempt = 0
-    while True:
-        result = subprocess.run(argv, cwd=REPO, capture_output=True, text=True, **kwargs)
-        if result.returncode == 0:
-            return result.stdout.strip(), None
-        stderr = result.stderr or ""
-        if attempt < 2 and all(marker in stderr for marker in FETCH_CACHE_RACE):
-            time.sleep(2 * (attempt + 1))
-            attempt += 1
-            continue
-        break
+FETCH_CACHE_RETRY_DELAYS = (2, 4)
+
+
+def run_once(argv: list[str], kwargs: dict[str, Any]) -> "subprocess.CompletedProcess[str]":
+    return subprocess.run(argv, cwd=REPO, capture_output=True, text=True, **kwargs)
+
+
+def pause(seconds: float) -> None:
+    time.sleep(seconds)
+
+
+def fetch_cache_raced(result: "subprocess.CompletedProcess[str]") -> bool:
+    return all(marker in (result.stderr or "") for marker in FETCH_CACHE_RACE)
+
+
+def outcome(result: "subprocess.CompletedProcess[str]") -> "tuple[str | None, str | None]":
+    """`(stdout, None)` for a command that succeeded, else `(None, the last line it said)`."""
+    if result.returncode == 0:
+        return result.stdout.strip(), None
     detail = (result.stderr or result.stdout).strip().splitlines()
     return None, detail[-1] if detail else f"exit {result.returncode}"
+
+
+def run(argv: list[str], **kwargs: Any) -> "tuple[str | None, str | None]":
+    result = run_once(argv, kwargs)
+    for delay in FETCH_CACHE_RETRY_DELAYS:
+        if result.returncode == 0 or not fetch_cache_raced(result):
+            break
+        pause(delay)
+        result = run_once(argv, kwargs)
+    return outcome(result)
 
 
 def prefetch_inputs():
@@ -234,84 +252,125 @@ def address_of(name):
     return address, None
 
 
-def stage(name):
-    # PER-STEP TIMING, kept from the port. It exists because raising concurrency on the fleet this
-    # came from bought almost nothing (105s -> 95s across 29 hosts) instead of the speedup a
-    # CPU-bound job would show -- which only makes sense if the SLOWEST host's own SEQUENTIAL chain
-    # sets the floor. Here that chain crosses the public internet twice per host instead of a LAN,
-    # so the copy step is expected to dominate far more than it did there, and this is what will
-    # say so rather than leaving it to be guessed.
+def timed(timings: dict[str, float], label: str, fn: Callable[[], Any]) -> Any:
+    """`fn()`, its duration kept in <timings>. PER-STEP TIMING, kept from the port: raising concurrency on
+    the fleet this came from bought almost nothing (105s -> 95s across 29 hosts), which only makes sense if
+    the SLOWEST host's own SEQUENTIAL chain sets the floor. Here that chain crosses the public internet
+    twice per host, so the copy step is expected to dominate, and this is what will say so."""
+    start = time.monotonic()
+    result = fn()
+    timings[label] = time.monotonic() - start
+    return result
+
+
+def eval_verdict(error: str) -> str:
+    """A nix ERROR (it starts with "error:") means the flake could not be evaluated -- a problem with this run,
+    not a claim about the host. Only a host that evaluates fine but declares no address is
+    `unreachable-by-declaration` (run 37968909524 printed the latter for a fetcher race)."""
+    return "eval-failed" if error.lstrip().startswith("error:") else "unreachable-by-declaration"
+
+
+def stage(name: str) -> "tuple[str, str | None, str, str | None, dict[str, float]]":
     timings = {}
-
-    def timed(label, fn):
-        start = time.monotonic()
-        result = fn()
-        timings[label] = time.monotonic() - start
-        return result
-
-    address, error = timed("eval", lambda: address_of(name))
+    address, error = timed(timings, "eval", lambda: address_of(name))
     if error:
-        # A nix ERROR (it starts with "error:") means the flake could not be evaluated -- a problem
-        # with this run, not a claim about the host. Only a host that evaluates fine but declares no
-        # address is `unreachable-by-declaration`. Run 37968909524 printed the latter for a fetcher
-        # race and sent the reader looking at the wrong thing.
-        verdict = "eval-failed" if error.lstrip().startswith("error:") else "unreachable-by-declaration"
-        return name, None, verdict, error, timings
+        return name, None, eval_verdict(error), error, timings
 
-    # --no-link so this leaves nothing in the working tree; the GC root on the HOST is what keeps
-    # the closure alive, and a result symlink here would only keep it alive on a runner that is
-    # destroyed minutes later.
-    path, error = timed("build", lambda: run(["nix", "build", "--no-link", "--print-out-paths",
+    # --no-link so this leaves nothing in the working tree; the GC root on the HOST is what keeps the closure
+    # alive, and a result symlink here would only keep it alive on a runner destroyed minutes later.
+    path, error = timed(timings, "build", lambda: run(["nix", "build", "--no-link", "--print-out-paths",
                         f".#nixosConfigurations.{name}.config.system.build.toplevel"]))
     if error:
         return name, address, "build failed", error, timings
 
-    running, error = timed("check-current", lambda: endpoint(address, "current"))
+    running, error = timed(timings, "check-current", lambda: endpoint(address, "current"))
     if error:
         return name, address, "unreachable", error, timings
 
-    error = timed("sign", lambda: sign(path))
+    error = timed(timings, "sign", lambda: sign(path))
     if error:
         return name, address, "signing failed", error, timings
 
-    _, error = timed("copy", lambda: run(["nix", "copy", "--to", f"ssh://{target(address)}", path]))
+    _, error = timed(timings, "copy", lambda: run(["nix", "copy", "--to", f"ssh://{target(address)}", path]))
     if error:
         return name, address, "copy failed", error, timings
 
-    # Pinned through the same restricted endpoint, which writes an indirect GC root inside its own
-    # directory. Without this the copied closure is unreferenced and the next collection deletes it
-    # -- the host would stop being staged with nothing saying so. Writing the pin is ALSO what
-    # triggers auto-apply's path unit, so this is the step that makes a merge reach a host.
-    _, error = timed("pin", lambda: endpoint(address, f"pin {path}"))
+    # Pinned through the same restricted endpoint, which writes an indirect GC root inside its own directory:
+    # without it the copied closure is unreferenced and the next collection deletes it. Writing the pin is ALSO
+    # what triggers auto-apply's path unit, so this is the step that makes a merge reach a host.
+    _, error = timed(timings, "pin", lambda: endpoint(address, f"pin {path}"))
     if error:
         return name, address, "pin failed", error, timings
 
     return name, address, ("already running" if running == path else "staged"), path, timings
 
 
-def main():
-    wanted = sys.argv[1:]
+def preflight() -> "str | None":
+    """The reason NOTHING can be staged (no nix, or inputs that cannot be fetched), or None."""
     try:
         nix_path.put_nix_on_path()
     except nix_path.NixNotFound as exc:
-        print(f"NOTHING was staged: {exc}")
-        return 2
+        return f"NOTHING was staged: {exc}"
     error = prefetch_inputs()
-    if error:
-        print(f"could not fetch this flake's inputs, so NOTHING was staged: {error}")
-        return 2
+    return f"could not fetch this flake's inputs, so NOTHING was staged: {error}" if error else None
+
+
+def hosts_to_stage(wanted: list[str]) -> "tuple[list[str] | None, str | None]":
+    """`(names, None)` or `(None, why not)`: every host the flake declares, or the ones asked for."""
     names, error = configurations()
     if names is None:
-        print(f"could not read this flake's hosts, so NOTHING was staged: {error}")
-        return 2
-    if wanted:
-        unknown = [n for n in wanted if n not in names]
-        if unknown:
-            print(f"no such configuration: {', '.join(unknown)}")
-            return 2
-        names = wanted
+        return None, f"could not read this flake's hosts, so NOTHING was staged: {error}"
+    unknown = [n for n in wanted if n not in names]
+    if unknown:
+        return None, f"no such configuration: {', '.join(unknown)}"
     if not names:
-        print("this flake declares no host configurations, so nothing was staged")
+        return None, "this flake declares no host configurations, so nothing was staged"
+    return (wanted or names), None
+
+
+def result_line(name: str, address: "str | None", state: str, detail: "str | None",
+                timings: dict[str, float]) -> str:
+    """WHICH STEP, printed on every line and not just on failures: the question this exists to answer is
+    "which step is slow on a host that SUCCEEDED"."""
+    breakdown = " ".join(f"{step}={duration:.1f}s" for step, duration in timings.items())
+    total = f"total={sum(timings.values()):.1f}s"
+    if state == "staged":
+        return f"  STAGED       {name:<22} {address}  {total}  {breakdown}"
+    if state == "already running":
+        return f"  CURRENT      {name:<22} {address}  (nothing to activate)  {total}  {breakdown}"
+    return f"  FAILED       {name:<22} {address or '?'}  {state}: {detail}  {total}  {breakdown}"
+
+
+def activation_help(pending: "list[tuple[str, str, str]]") -> list[str]:
+    """How to activate what was staged, by hand. BOTH HALVES, AND THE FIRST IS EASY TO LEAVE OUT:
+    `switch-to-configuration` installs the bootloader but does NOT move the system profile, so
+    `nixos-rebuild list-generations` and `--rollback` still describe the OLD generation, and the bootloader
+    builds the boot menu FROM that profile -- the host is correct until it reboots and then silently is not.
+    This is what `nixos-rebuild switch` does around the same call, and what nixos-auto-apply.py's
+    `activate()` does."""
+    lines = [f"\n{len(pending)} host(s) have a newer closure staged and NOT activated. Nothing on "
+             f"them has changed. To activate one, when you mean to:"]
+    for name, address, path in pending:
+        lines += [f"  ssh {admin_target(address)} \\",
+                  f"    'sudo nix-env --profile /nix/var/nix/profiles/system --set {path} && \\",
+                  f"     sudo {path}/bin/switch-to-configuration switch'"]
+    lines += ["\nThat needs no build and no tree on the host -- the closure is already there. See "
+              "what it would do first with `dry-activate` in place of `switch`, which is safe to "
+              "run on its own and changes nothing (the profile line is not needed to look).",
+              "NOT as `nixdeploy`: that key is a forced command that can only receive and pin a "
+              "closure, and the account has no sudo. Use your own login.",
+              "\nOn a host running `fleet.autoApply`, none of this is needed for a change that "
+              "disturbs nothing -- it activates itself within about a second of the pin being "
+              "written, and what is listed above is what it declined to do unattended."]
+    return lines
+
+
+def main():
+    wanted = sys.argv[1:]
+    problem = preflight()
+    names, why_not = (None, problem) if problem else hosts_to_stage(wanted)
+    if names is None:
+        print(why_not)
         return 2
 
     print(f"staging {len(names)} host closure(s) -- building, copying, pinning; activating nothing")
@@ -321,58 +380,18 @@ def main():
         print(f"  covering every host this flake declares ({', '.join(sorted(names))}); "
               f"excluded by name: {excluded}")
 
-    # FOUR WORKERS AGAINST THREE HOSTS -- i.e. all of them at once, with the number left where the
-    # port had it rather than tuned down to `len(names)`. The work is network-bound and the hosts
-    # are independent, so the only cost of a spare worker is a thread that never gets a task, and
-    # the only cost of tuning it to today's fleet size is that a fourth host silently serialises.
+    # FOUR WORKERS AGAINST THREE HOSTS -- all of them at once, left as the port had it rather than tuned to
+    # `len(names)`: the work is network-bound and the hosts independent, so a spare worker costs a thread
+    # that never gets a task, and tuning to today's fleet would silently serialise a fourth host.
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         results = sorted(pool.map(stage, names))
 
-    pending, failed = [], []
-    for name, address, state, detail, timings in results:
-        # WHICH STEP, printed on every line and not just on failures, because the question this
-        # exists to answer is "which step is slow on a host that SUCCEEDED".
-        breakdown = " ".join(f"{step}={duration:.1f}s" for step, duration in timings.items())
-        total = sum(timings.values())
-        if state == "staged":
-            pending.append((name, address, detail))
-            print(f"  STAGED       {name:<22} {address}  total={total:.1f}s  {breakdown}")
-        elif state == "already running":
-            print(f"  CURRENT      {name:<22} {address}  (nothing to activate)  total={total:.1f}s  {breakdown}")
-        else:
-            failed.append((name, state, detail))
-            print(f"  FAILED       {name:<22} {address or '?'}  {state}: {detail}  total={total:.1f}s  {breakdown}")
-
+    for result in results:
+        print(result_line(*result))
+    pending = [(name, address, detail) for name, address, state, detail, _ in results if state == "staged"]
+    failed = [result for result in results if result[2] not in ("staged", "already running")]
     if pending:
-        print(f"\n{len(pending)} host(s) have a newer closure staged and NOT activated. Nothing on "
-              f"them has changed. To activate one, when you mean to:")
-        for name, address, path in pending:
-            # BOTH HALVES, AND THE FIRST IS THE ONE THAT IS EASY TO LEAVE OUT.
-            # `switch-to-configuration` activates the closure and installs the bootloader, but it
-            # does NOT move the system profile. Two things follow, and the second is the expensive
-            # one:
-            #
-            #   * `nixos-rebuild list-generations` and `--rollback` still describe the OLD one, so
-            #     the rollback an operator reaches for in an incident takes them somewhere else
-            #     entirely -- and this switch records no generation of its own to return to.
-            #   * the bootloader installer builds the boot menu FROM that profile. So the running
-            #     system is the new one while the DEFAULT BOOT ENTRY still points at the old
-            #     generation -- the host is correct until it reboots and then silently is not.
-            #
-            # This is what `nixos-rebuild switch` does around the same call, and what
-            # nix/files/nixos-auto-apply.py's `activate()` does in the same order and for the same
-            # reason.
-            print(f"  ssh {admin_target(address)} \\")
-            print(f"    'sudo nix-env --profile /nix/var/nix/profiles/system --set {path} && \\")
-            print(f"     sudo {path}/bin/switch-to-configuration switch'")
-        print("\nThat needs no build and no tree on the host -- the closure is already there. See "
-              "what it would do first with `dry-activate` in place of `switch`, which is safe to "
-              "run on its own and changes nothing (the profile line is not needed to look).")
-        print("NOT as `nixdeploy`: that key is a forced command that can only receive and pin a "
-              "closure, and the account has no sudo. Use your own login.")
-        print("\nOn a host running `fleet.autoApply`, none of this is needed for a change that "
-              "disturbs nothing -- it activates itself within about a second of the pin being "
-              "written, and what is listed above is what it declined to do unattended.")
+        print("\n".join(activation_help(pending)))
     if failed:
         print(f"\n{len(failed)} host(s) could not be staged, so what they would run is not "
               f"prepared and not known.")
