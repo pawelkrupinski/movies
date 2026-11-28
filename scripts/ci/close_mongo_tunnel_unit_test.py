@@ -13,7 +13,7 @@ import close_mongo_tunnel as tunnel  # noqa: E402
 from tool_files import Files  # noqa: E402
 from tool_process import Captured, Command  # noqa: E402
 
-ENV = {"RUNNER_TEMP": "/tmp/r", "GITHUB_ENV": "/tmp/github-env"}
+ENV = {"RUNNER_TEMP": "/runner", "GITHUB_ENV": "/runner-env/github-env"}
 
 
 class RecordingRunner:
@@ -32,21 +32,21 @@ class CloseTest(unittest.TestCase):
     def setUp(self) -> None:
         self.files, self.runner = Files.in_memory(), RecordingRunner()
         for name in ("mongo-ci-read.key", "mongo-ci-read.known_hosts", "mongo-relay.sh", "mongo-tunnel-supervisor.sh"):
-            self.files.write_text(f"/tmp/r/{name}", "x")
-        self.files.write_text("/tmp/github-env", "A=1\n")
+            self.files.write_text(f"/runner/{name}", "x")
+        self.files.write_text("/runner-env/github-env", "A=1\n")
 
     def test_it_ends_the_supervisor_first_then_the_listener_then_the_key_users(self) -> None:
         tunnel.close("27018", ENV, self.runner, self.files)
-        self.assertEqual(["/tmp/r/mongo-tunnel-supervisor.sh", "TCP4-LISTEN:27018", "/tmp/r/mongo-ci-read.key"],
+        self.assertEqual(["/runner/mongo-tunnel-supervisor.sh", "TCP4-LISTEN:27018", "/runner/mongo-ci-read.key"],
                          [c.argv[2] for c in self.runner.commands])
 
     def test_it_removes_the_files_and_blanks_the_credential_keeping_what_the_env_file_held(self) -> None:
         tunnel.close("27018", ENV, self.runner, self.files)
-        self.assertEqual([], [p for p in ("mongo-ci-read.key", "mongo-relay.sh") if self.files.exists(f"/tmp/r/{p}")])
-        self.assertEqual("A=1\nKINOWO_CONVERGENCE_SCRAPES_URI=\n", self.files.read_text("/tmp/github-env"))
+        self.assertEqual([], [p for p in ("mongo-ci-read.key", "mongo-relay.sh") if self.files.exists(f"/runner/{p}")])
+        self.assertEqual("A=1\nKINOWO_CONVERGENCE_SCRAPES_URI=\n", self.files.read_text("/runner-env/github-env"))
 
     def test_closing_what_was_never_opened_is_a_success(self) -> None:
-        code = tunnel.run([], {"RUNNER_TEMP": "/tmp/none"}, self.runner, Files.in_memory(), lambda port: False, lambda s: None)
+        code = tunnel.run([], {"RUNNER_TEMP": "/runner-none"}, self.runner, Files.in_memory(), lambda port: False, lambda s: None)
         self.assertEqual(0, code)
 
     def test_a_port_that_keeps_answering_fails_after_the_proof_window(self) -> None:
