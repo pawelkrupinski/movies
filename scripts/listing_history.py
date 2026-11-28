@@ -300,22 +300,37 @@ def _deploy_lines(known: "List[Deploy]", unplaced: "List[Change]") -> "List[str]
     return lines
 
 
-def _mirror_state(args: argparse.Namespace, run: Run) -> "Tuple[List[str], Optional[State]]":
-    """The prod-now lines, and the mirror's state (None when the mirror is not readable)."""
-    code, text = run([os.path.join(REPO, "scripts/local-mirror/freshness"), args.cc, "--need", MIRROR_NEEDS, "--quiet"])
-    prod = [f"  {line}" for line in text.strip().splitlines()]
+def _freshness_lines(code: int, text: str) -> "Tuple[List[str], bool]":
+    """What the freshness check says: its lines, and whether the mirror can be read at all."""
+    lines = [f"  {line}" for line in text.strip().splitlines()]
     if code == 2:
-        return prod + ["  the mirror is not readable: its state is not shown"], None
-    if code != 0:
-        prod.append("  the mirror is not fresh: what follows is as of its sync, not now")
-    script = f"const VENUE = {json.dumps(re2_escape(args.venue))}, TITLE = {json.dumps(re2_escape(args.title))};" + MIRROR_QUERY
-    port = mongo_local.local_mongo_port(machine.environment())
-    code, text = run(["mongosh", "--quiet", MIRROR.format(port=port, db=mongo_local.mirror_database(args.cc)), "--eval", script])
+        return lines + ["  the mirror is not readable: its state is not shown"], False
+    return lines + (["  the mirror is not fresh: what follows is as of its sync, not now"] if code else []), True
+
+
+def _mirror_answer(text: str) -> "Tuple[List[str], State]":
+    """The mirror query's lines and state from mongosh's output, or the line saying it failed."""
     try:
         state = json.loads(text.strip().splitlines()[-1])
     except (ValueError, IndexError):
-        return prod + [f"  mirror query failed: {text.strip()[:300]}"], {}
-    return prod + [f"  {line}" for line in mirror_lines(state)], state
+        return [f"  mirror query failed: {text.strip()[:300]}"], {}
+    return [f"  {line}" for line in mirror_lines(state)], state
+
+
+def _query_mirror(args: argparse.Namespace, run: Run) -> "Tuple[List[str], State]":
+    script = f"const VENUE = {json.dumps(re2_escape(args.venue))}, TITLE = {json.dumps(re2_escape(args.title))};" + MIRROR_QUERY
+    port = mongo_local.local_mongo_port(machine.environment())
+    return _mirror_answer(run(["mongosh", "--quiet", MIRROR.format(port=port, db=mongo_local.mirror_database(args.cc)), "--eval", script])[1])
+
+
+def _mirror_state(args: argparse.Namespace, run: Run) -> "Tuple[List[str], Optional[State]]":
+    """The prod-now lines, and the mirror's state (None when the mirror is not readable)."""
+    code, text = run([os.path.join(REPO, "scripts/local-mirror/freshness"), args.cc, "--need", MIRROR_NEEDS, "--quiet"])
+    prod, readable = _freshness_lines(code, text)
+    if not readable:
+        return prod, None
+    lines, state = _query_mirror(args, run)
+    return prod + lines, state
 
 
 def _label_lines(args: argparse.Namespace, run: Run, titles: "Set[str]") -> "List[str]":

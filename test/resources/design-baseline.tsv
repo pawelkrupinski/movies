@@ -1004,7 +1004,6 @@ mixed	scripts/claude-hooks/root-checkout-guard:guard_bash_post	10
 mixed	scripts/claude-hooks/root-checkout-guard:guard_bash_pre	4
 mixed	scripts/claude-hooks/root-checkout-guard:nearest_dir	5
 mixed	scripts/claude-hooks/root-checkout-guard:state_file	4
-mixed	scripts/claude-hooks/unbounded-poll-guard:Reader.check	60
 mixed	scripts/claude-hooks/unbounded-poll-guard:Reader.script_text	7
 mixed	scripts/convergence_local.py:Leg.lay_cached	8
 mixed	scripts/convergence_local.py:Leg.lay_pair	3
@@ -1421,7 +1420,7 @@ mixed	scripts/linux-tree-sync.py:copy_one	7
 mixed	scripts/linux-tree-sync.py:ensure_parent	6
 mixed	scripts/linux-tree-sync.py:prune	10
 mixed	scripts/linux-tree-sync.py:remove	4
-mixed	scripts/listing_history.py:report	54
+mixed	scripts/listing_history.py:report	8
 mixed	scripts/listing_history.py:run_command	3
 mixed	scripts/local-mirror/mirror.py:Parent.databases	3
 mixed	scripts/local-mirror/mirror.py:Parent.mirror	4
