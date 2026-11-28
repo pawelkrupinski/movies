@@ -90,8 +90,7 @@ class Parent:
             if child.poll() is None:
                 child.terminate()
         self.pause.stop()
-        for thread in self.threads:
-            thread.join(THREAD_JOIN)
+        self.join_background()
         if self.settings.targets_file:
             try:
                 os.remove(self.settings.targets_file)
@@ -148,6 +147,10 @@ class Parent:
         thread = threading.Thread(target=self.quietly, args=(work, args), daemon=True)
         self.threads.append(thread)
         thread.start()
+
+    def join_background(self) -> None:
+        for thread in self.threads:
+            thread.join(THREAD_JOIN)
 
     @staticmethod
     def quietly(work: Callable[..., None], args: Sequence[str]) -> None:
