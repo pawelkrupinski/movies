@@ -258,7 +258,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/sbt_warm_call.py` | One call of scripts/sbt-warm: its commands run in this checkout's kept server (its header says every rule this | `imported` | 1 tool | - | Python |
 | `scripts/lib/sbt_warm_client.py` | scripts/sbt-warm's sbt client and its watch (its header: ONE BUILD PATH, NO PROGRESS and SERVER LIVENESS): the client | `imported` | 1 tool | - | Python |
 | `scripts/lib/sbt_warm_keeper.py` | scripts/sbt-warm's KEEPER (`--keep`; its header: ONE JVM, ONE SLOT and IDLE EXIT): a small process beside a checkout's | `imported` | 1 tool | - | Python |
-| `scripts/lib/sbt_warm_servers.py` | scripts/sbt-warm's servers and keepers (its header: ONE SERVER, THE STOPS LOG, ONE KEEPER PER CHECKOUT): finding a | `imported` | 5 tools | - | Python |
+| `scripts/lib/sbt_warm_servers.py` | scripts/sbt-warm's servers and keepers (its header: ONE SERVER, THE STOPS LOG, ONE KEEPER PER CHECKOUT): finding a | `imported` | 5 tools | sbt_warm_servers_test.py | Python |
 | `scripts/lib/script_tests_floor.py` | THE FLOOR'S STATIC HALF (scripts/run-script-tests --bash / --floor with --changed): every bash file the change | `imported` | 1 tool | - | Python |
 | `scripts/py-quality-report` | The Python quality report and its ratchet (entry; the measure is scripts/py-quality/report.py) | `scripts/py-quality-report` | hook pre-push, pre-push.sh-legacy; skill CLAUDE.md; 4 tools | - | KEEP |
 | `scripts/py-quality/clones.py` | THE PYTHON CLONE GROUPS (scripts/py-quality/report.py): every run of MIN_TOKENS or more tokens appearing twice or more | `imported` | wf ios; hook pre-push, pre-push.sh-legacy; skill CLAUDE.md, test-layers; 9 tools | - | Python |
@@ -765,7 +765,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/prod_tunnel.py` | HOW A LAPTOP REACHES PROD MONGO, for the Python tools (scripts/lib): scripts/local-mirror/prod-tunnel.sh's | `imported` | 4 tools | prod_tunnel_test.py | Python |
 | `scripts/lib/production_scala.py` | THE DEPLOYED SCALA SOURCES (scripts/lib): the modules whose `src/main` ships (quality.QualityReport.ProductionModules) | `imported` | 2 tools | production_scala_test.py | Python |
 | `scripts/lib/proxy_properties.py` | THE RESIDENTIAL PROXY POOL, as the CI probes read it (scripts/lib): the worker's committed residential-proxy.properties | `imported` | 2 tools | proxy_properties_test.py | Python |
-| `scripts/lib/ps_table.py` | THE PROCESS TABLE, the one way the Python tools read `ps` (scripts/lib): every process a `Process` (pid, parent, its | `imported` | skill CLAUDE.md; 2 tools | ps_table_test.py | Python |
+| `scripts/lib/ps_table.py` | THE PROCESS TABLE, the one way the Python tools read `ps` (scripts/lib): every process a `Process` (pid, parent, its | `imported` | skill CLAUDE.md; 3 tools | ps_table_test.py | Python |
 | `scripts/lib/rules_table.py` | THE DESIGN RULES TABLE, read (test/resources/design-rules.tsv; its header says every row's shape): the limits, the | `imported` | hook pre-push.sh-legacy; 8 tools | - | Python |
 | `scripts/lib/sandbox_closure.py` | THE SANDBOX CLOSURE (scripts/lib): a self-test that runs a tool from a scratch tree copies the tool AND everything it | `imported` | 2 tools | - | Python |
 | `scripts/lib/scalafix_tree.py` | THE SCALAFIX TREE: what scripts/scalafix-move and scripts/scalafix-organize share -- a worktree KEPT between runs | `imported` | skill test-layers; 2 tools | - | Python |
