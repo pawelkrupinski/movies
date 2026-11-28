@@ -517,10 +517,10 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/lib/identity_tooling/identity_tools_refs.py` | THE COMMANDS OF scripts/lib/identity_tooling/identity_tools.py ABOUT A CI MEASURE'S COMMITS AND A RUN'S RESULTS: the commits and branches a | `imported` | 1 tool | - | Python |
 | `scripts/lib/identity_tooling/identity_what_if_record.py` | THE WHAT-IF VERDICT RECORD, AND A CONVERGENCE RUN'S TAKES (scripts/lib; identity-tools.sh's what_if_* functions and | `imported` | 1 tool | - | Python |
 | `scripts/listing-history` | One listing's identity take over time, grouped by the worker deploy that logged it | `scripts/listing-history` | skill CLAUDE.md, identity-investigation; 4 tools | listing_history_test.py | KEEP |
-| `scripts/listing_history.py` | ONE LISTING'S IDENTITY TAKE OVER TIME (scripts/listing-history). | `scripts/listing_history.py` | 4 tools | listing_history_test.py | Python |
+| `scripts/listing_history.py` | ONE LISTING'S IDENTITY TAKE OVER TIME (scripts/listing-history). | `scripts/listing_history.py` | 5 tools | listing_history_test.py | Python |
 | `scripts/ml-identity/cross_country_experiment.py` | Cross-country agreement, OFFLINE experiment (2026-10-19, branch experiment-cross-country; docs/identity-experiments.md). | `imported` | 1 tool | - | Python |
 | `scripts/recording-diff` | Two "Record scrape fixtures" recordings compared — "is it the code, or new data?" in seconds | `scripts/recording-diff` | skill CLAUDE.md, identity-investigation; 4 tools | recording-diff-test.sh | KEEP |
-| `scripts/recording_diff.py` | TWO RECORDINGS COMPARED: did the input change, or the code? (scripts/recording-diff) | `scripts/recording_diff.py` | 1 tool | recording_diff_test.py | Python |
+| `scripts/recording_diff.py` | TWO RECORDINGS COMPARED: did the input change, or the code? (scripts/recording-diff) | `scripts/recording_diff.py` | 3 tools | recording_diff_test.py | Python |
 | `scripts/reset-corpus.sh` | Full corpus reset: wipe the scrape, enrichment, staging and read-model collections so the worker rebuilds them (incidents) | `scripts/reset-corpus.sh` | 3 tools | reset_corpus_test.py | KEEP |
 | `scripts/reset_corpus.py` | Full corpus reset: wipe the scrape, enrichment, staging and read-model collections so the worker rebuilds them (incidents) | `scripts/reset_corpus.py` | 1 tool | reset_corpus_test.py | Python |
 | `scripts/restore-country-corpus.sh` | Restore the recorded pair a hermetic convergence leg replays into this checkout | `scripts/restore-country-corpus.sh` | skill test-layers; 4 tools | restore_country_corpus_test.py | KEEP |
@@ -712,7 +712,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/mobile-version-check.sh` | Assert the Xcode project carries the shared mobile version: every MARKETING_VERSION in project.pbxproj equals mobile-version.txt | `scripts/mobile-version-check.sh` | wf ios | - | KEEP |
 | `scripts/tag-mobile-release.sh` | Force-tags the commit that actually produced a shipped mobile store build | `scripts/tag-mobile-release.sh` | wf android; 1 tool | tag-mobile-release-test.sh | KEEP |
 
-## Dev (151)
+## Dev (153)
 
 | Tool | Purpose | Run as | Called by | Self-test | Class |
 |---|---|---|---|---|---|
@@ -735,7 +735,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/design-rules/exemptions.py` | THE DESIGN EXEMPTIONS (test/resources/design-exemptions.tsv): a NEW row past a general rule admitted on purpose, as | `imported` | wf coupling-exemptions, report-timings; skill CLAUDE.md; 8 tools | - | Python |
 | `scripts/design-rules/extractors.py` | EVERY LANGUAGE'S MODULES, for the general rule core: the Python tools (python_facts.py over the quality report's | `imported` | 4 tools | - | Python |
 | `scripts/design-rules/model.py` | THE LANGUAGE-AGNOSTIC MODEL the general rule core reads (scripts/design-rules/): every language's extractor | `imported` | wf ci, convergence-bisect, country-convergence-leg +16; hook pre-push; skill CLAUDE.md, agent-ops, identity-investigation, regenerate-snapshots, test-layers; 96 tools | - | Python |
-| `scripts/design-rules/naming.py` | THE NAMING RULES, for every language (the owner's "names must match behaviour", 2026-11-19; CLAUDE.md, "Design | `imported` | wf ci, country-convergence-leg, discover-cinemas +8; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 103 tools | - | Python |
+| `scripts/design-rules/naming.py` | THE NAMING RULES, for every language (the owner's "names must match behaviour", 2026-11-19; CLAUDE.md, "Design | `imported` | wf ci, country-convergence-leg, discover-cinemas +8; hook lint-registry-missing, pre-push; skill CLAUDE.md, agent-ops, identity-investigation, test-layers; 102 tools | - | Python |
 | `scripts/design-rules/naming_lint.py` | THE NAMING LINT (the owner's "names must match behaviour", 2026-11-19), over EVERY language: the production Scala's | `python3 scripts/design-rules/naming_lint.py` | hook pre-push; skill CLAUDE.md; 6 tools | naming_lint_test.py | Python |
 | `scripts/design-rules/packages.py` | PACKAGES, for every language (CLAUDE.md, "Coupling is reviewed"): a Python or JS directory stands for a Scala | `imported` | wf android, branch-ci, ci +4; hook pre-push; skill CLAUDE.md, identity-investigation; 29 tools | - | Python |
 | `scripts/design-rules/python_facts.py` | THE PYTHON EXTRACTOR of the general rule core: a Python tool's `ast` read into a `model.Module` -- its names, the | `imported` | 2 tools | - | Python |
@@ -851,6 +851,8 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/source-refresh` | Ask a country's prod worker to fetch again what one stored external source holds for given keys | `scripts/source-refresh` | by hand | source-refresh-test.sh | KEEP |
 | `scripts/timezonefinder-python` | Print a directory whose python3 imports timezonefinder, for the pre-push drift check | `scripts/timezonefinder-python` | 4 tools | timezonefinder-python-test.sh | KEEP |
 | `scripts/timezonefinder-python-stub.sh` | A python3 like Homebrew's for the specs of scripts/timezonefinder-python and the pre-push drift check: it has no timezonefinder | `sourced` | by hand | - | KEEP |
+| `scripts/title_markers.py` | KNOWN TITLE MARKERS and their spellings in a corpus (scripts/recording_diff.py): sneak, preview, pokaz, double bill, | `imported` | 1 tool | - | Python |
+| `scripts/title_respelling.py` | TITLE RE-SPELLINGS: how one title re-spells another (scripts/recording_diff.py, scripts/listing_history.py read it). | `imported` | 1 tool | - | Python |
 | `scripts/title_trace.py` | Every step one raw billing goes through, in production order: the ingest tidy, the venue's own title rules, the format | `python3 scripts/title_trace.py` | wf main; 2 tools | title_trace_test.py | Python |
 | `scripts/tool-conventions.sh` | What every Bash tool in this repository shares, one copy each | `bash scripts/tool-conventions.sh` | wf convergence-bisect, country-convergence-leg, main; 64 tools | tool-conventions-test.sh | MIGRATE |
 | `scripts/tool_catalogue.py` | The tool catalogue: docs/tools.md, generated from every tool's own one-line purpose. | `python3 scripts/tool_catalogue.py` | skill CLAUDE.md | tool_catalogue_test.py | Python |

@@ -34,10 +34,13 @@ import sys
 import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass, field
+from typing import Callable, Dict, List, Optional, Set, Tuple
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "scripts", "lib"))
+sys.path.insert(0, os.path.join(REPO, "scripts"))
 from processes import machine  # noqa: E402
 from mongo import mongo_local  # noqa: E402
+from listing_mirror import MIRROR_QUERY, State, mirror_lines, trace_reason  # noqa: E402
 
 LOGS = "http://10.20.0.11:9428/select/logsql/query"
 PROMETHEUS = "http://10.20.0.11:9090/api/v1/query_range"
@@ -176,83 +179,6 @@ def deploy_of(change, known):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# The mirror
-
-MIRROR_QUERY = """
-const venue = new RegExp(VENUE, 'i'), title = new RegExp(TITLE, 'i');
-const traces = db.identity_traces.find({'listing.venue': venue, 'listing.rawTitle': title}).limit(40).toArray();
-const families = db.identity_model_families.find({_id: {$in: traces.map(t => t.family)}},
-  {decisions: 1}).toArray();
-const venues = db.identity_listings.find({_id: venue}).limit(40).toArray().map(v => ({_id: v._id,
-  films: (v.films || []).filter(f => title.test((f.movie || {}).rawTitle || (f.movie || {}).title || ''))}))
-  .filter(v => v.films.length > 0);
-// the agreement stage's stored verdict (filed under the cluster's key, whose first listing is its family's id; under the
-// family's id itself before keys, else one naming the title) and pins
-const ids = traces.map(t => t.family);
-const keyed = db.identity_agreement_keys.find({first: {$in: ids}}).toArray().map(k => k._id.toString());
-const agreements = db.identity_agreements.find({$or: [{_id: {$in: ids.concat(keyed)}}, {_id: title}]}).limit(10).toArray()
-  .map(a => ({_id: a._id, agreed: a.agreed, filled: a.filled, correction: a.correction, rules: a.rules}));
-const pins = db.identity_pins.find({'listings.rawTitle': title}).limit(10).toArray();
-print(EJSON.stringify({traces: traces, families: families, venues: venues, agreements: agreements, pins: pins},
-  {relaxed: true}));
-"""
-
-
-def _family_id(raw):
-    return raw.replace("\x00", " · ")
-
-
-def mirror_lines(state):
-    lines = []
-    for trace in state.get("traces", []):
-        listing = trace.get("listing", {})
-        lines.append(f"TRACE {listing.get('venue')} | {listing.get('rawTitle')}: film {trace.get('film') or 'none'} via "
-                     f"{trace.get('basis')}" + (f", vetoed by {trace['vetoedBy']}" if trace.get("vetoedBy") else "")
-                     + (f"; rules {', '.join(trace['rules'])}" if trace.get("rules") else ""))
-        if trace.get("evidence"):
-            lines.append(f"    evidence: {'; '.join(trace['evidence'][:5])}")
-        for refusal in trace.get("refusals", [])[:3]:
-            lines.append(f"    refused: {refusal if isinstance(refusal, str) else json.dumps(refusal, ensure_ascii=False)}")
-        if trace.get("candidates"):
-            lines.append(f"    candidates: {'; '.join(trace['candidates'][:3])}")
-        lines.append(f"    family: {_family_id(trace.get('family', ''))}")
-    keys = {(t["listing"].get("venue"), t["listing"].get("rawTitle")) for t in state.get("traces", []) if t.get("listing")}
-    for family in state.get("families", []):
-        for decision in family.get("decisions", []):
-            # a decision's members: its listings, or its listings by node (a list of lists)
-            flat = [m for group in decision.get("members", []) for m in (group if isinstance(group, list) else [group])]
-            members = {(m.get("venue"), m.get("rawTitle")) for m in flat}
-            if keys and not members & keys:
-                continue
-            confidence = decision.get("confidence")
-            lines.append(f"FAMILY {_family_id(family['_id'])}: film {decision.get('film') or 'none'} via {decision.get('basis')}"
-                         + (f" at {confidence:.0%}" if isinstance(confidence, (int, float)) else "")
-                         + f", {len(members)} member(s)" + (f", agreed {json.dumps(decision['agreed'], ensure_ascii=False)}"
-                                                         if decision.get("agreed") else ""))
-            lines.extend(f"    {line}" for line in decision.get("explanation", [])[:3])
-    for agreement in state.get("agreements", []):
-        agreed, filled, correction = agreement.get("agreed"), agreement.get("filled"), agreement.get("correction")
-        what = [f"agreed «{agreed.get('title')}» by {', '.join(agreed.get('families', []))}" if agreed else "agreed on nothing",
-                f"filled by {filled.get('rule')} (tmdb {filled.get('tmdb')})" if filled else None,
-                f"corrected to {correction.get('film')}" if correction and correction.get("film") else None]
-        lines.append(f"AGREEMENT {_family_id(agreement['_id'])}: " + "; ".join(w for w in what if w))
-    for pin in state.get("pins", []):
-        lines.append(f"PIN {pin.get('kind')} {pin.get('tmdbId') or ''} by {pin.get('author')}: {pin.get('reason')}")
-    for venue in state.get("venues", []):
-        for film in venue.get("films", []):
-            movie = film.get("movie", {})
-            facts = [f"year {movie['releaseYear']}" if movie.get("releaseYear") else None,
-                     f"runtime {movie['runtimeMinutes']}" if movie.get("runtimeMinutes") else None,
-                     f"original title «{movie['originalTitle']}»" if movie.get("originalTitle") else None,
-                     f"director {', '.join(film['director'])}" if film.get("director") else None,
-                     f"{len(film.get('showtimes', []))} showtimes",
-                     f"ids {json.dumps(film['externalIds'])}" if film.get("externalIds") else None]
-            lines.append(f"LISTING {venue['_id']} | {movie.get('rawTitle') or movie.get('title')}: "
-                         + ", ".join(f for f in facts if f))
-    return lines or ["the mirror holds no trace, family or listing matching it"]
-
-
-# ---------------------------------------------------------------------------------------------------------------------
 # The report
 
 def run_command(argv, timeout=900):
@@ -285,118 +211,140 @@ def parse_args(argv):
     return args
 
 
-def report(args, run=run_command, now=None):
-    now = now or datetime.datetime.now(datetime.timezone.utc).timestamp()
-    window = seconds(args.since)
-    out = [f"== {args.cc.upper()} «{args.venue}» | «{args.title}», last {args.since}"]
+Run = Callable[..., Tuple[int, str]]  # run_command's shape: argv (and a timeout) -> (exit code, output)
 
+
+def _logged_changes(args: argparse.Namespace, run: Run) -> "Tuple[List[Change], List[str]]":
+    """The listing's take changes VictoriaLogs holds (oldest first), and the line saying so when it did not answer."""
     code, text = run(_remote_curl(LOGS, [("query", logsql(args.cc, args.venue, args.title, args.since)), ("limit", LOG_LIMIT)]))
-    changes = []
     if code != 0:
-        out.append(f"VictoriaLogs did not answer (ssh {MONITORING_HOST}): {text.strip()[:300]}")
-    for raw in text.splitlines() if code == 0 else []:
+        return [], [f"VictoriaLogs did not answer (ssh {MONITORING_HOST}): {text.strip()[:300]}"]
+    changes = []
+    for raw in text.splitlines():
         try:
             change = parse_change(json.loads(raw))
         except (ValueError, KeyError):
             continue
         if change and fold(args.venue) in fold(change.venue) and fold(args.title) in fold(change.listing):
             changes.append(change)
-    changes.sort(key=lambda c: c.time)
+    return sorted(changes, key=lambda c: c.time), []
 
-    step = max(300, window // 2000)
+
+def _known_deploys(args: argparse.Namespace, run: Run, now: float) -> "Tuple[List[Deploy], List[str]]":
+    """The worker images Prometheus saw in the window, and the line saying so when it did not answer."""
+    window = seconds(args.since)
     query = (f'max by (image) (kube_pod_container_info{{namespace="kinowo",container="worker",'
              f'pod=~"worker-{args.cc}-.*"}})')
-    code, prom = run(_remote_curl(PROMETHEUS, [("query", query), ("start", int(now - window)), ("end", int(now)), ("step", step)]))
-    known = deploys(prom) if code == 0 else []
+    code, prom = run(_remote_curl(PROMETHEUS, [("query", query), ("start", int(now - window)), ("end", int(now)),
+                                               ("step", max(300, window // 2000))]))
     if code != 0:
-        out.append(f"Prometheus did not answer: {prom.strip()[:300]}")
-    unplaced = []
+        return [], [f"Prometheus did not answer: {prom.strip()[:300]}"]
+    return deploys(prom), []
+
+
+def _place_changes(changes: "List[Change]", known: "List[Deploy]", run: Run) -> "List[Change]":
+    """Each change given to the deploy that logged it (the commit subject read for those that logged any); the
+    changes no deploy owns are returned."""
+    unplaced: "List[Change]" = []
     for change in changes:
         deploy = deploy_of(change, known)
         (deploy.changes if deploy else unplaced).append(change)
     known.sort(key=lambda d: d.first)
-    for deploy in known:
-        if deploy.changes:
-            code, line = run(["git", "-C", REPO, "log", "-1", "--format=%H%x09%s", deploy.sha7])
-            if code == 0 and "\t" in line:
-                deploy.sha, deploy.subject = line.strip().split("\t", 1)
-            else:
-                deploy.subject = "(commit not in this clone: git fetch)"
+    for deploy in (d for d in known if d.changes):
+        code, line = run(["git", "-C", REPO, "log", "-1", "--format=%H%x09%s", deploy.sha7])
+        if code == 0 and "\t" in line:
+            deploy.sha, deploy.subject = line.strip().split("\t", 1)
+        else:
+            deploy.subject = "(commit not in this clone: git fetch)"
+    return unplaced
 
-    if not changes:
-        out.append(f"no take change logged for it in the last {args.since} (lines before 2026-10-14 are text; both are searched)")
-    else:
-        by_key = defaultdict(list)
-        for change in changes:
-            by_key[change.key].append(change)
-        sha = lambda c: next((d.sha7 for d in known if c in d.changes), "?")
-        # listings of one billing that went through the same takes in the same deploys: one line, their venues counted
-        alike = defaultdict(list)
-        for key, seq in by_key.items():
-            run_of = f"{seq[0].before} " + " ".join(f"→ {c.after} ({_clock(c.time, False)}, {sha(c)})" for c in seq)
-            alike[(seq[0].listing, run_of)].append(seq[0].venue)
-        for (listing, run_of), venues in alike.items():
-            where = venues[0] if len(venues) == 1 else f"{len(venues)} venues ({', '.join(venues[:3])}, …)"
-            out.append(f"TAKES {where} | {listing}: {run_of}")
-        for deploy in known:
-            per_key = defaultdict(list)
-            for change in deploy.changes:
-                per_key[change.key].append(change)
-            for key, seq in per_key.items():
-                if len(seq) > 1:
-                    pods = {c.pod for c in seq if c.pod}
-                    out.append(f"FLIPS within deploy {deploy.sha7}: {len(seq)} changes, {len(pods) or '?'} pods — {key}")
-    quiet = [d.sha7 for d in known if not d.changes]
-    for deploy in known:
-        if not deploy.changes:
-            continue
-        out.append("")
-        out.append(f"DEPLOY {deploy.sha7} {deploy.tag} · running {_clock(deploy.first, False)}–{_clock(deploy.last, False)} · "
-                   f"{deploy.subject}")
-        out.extend(_change_lines(deploy.changes))
+
+def _takes_lines(changes: "List[Change]", known: "List[Deploy]") -> "List[str]":
+    """One line per billing that went through the same takes in the same deploys (its venues counted), then the
+    deploys that flipped one listing's take more than once."""
+    by_key: "Dict[str, List[Change]]" = defaultdict(list)
+    for change in changes:
+        by_key[change.key].append(change)
+    sha = lambda c: next((d.sha7 for d in known if c in d.changes), "?")  # noqa: E731
+    alike: "Dict[Tuple[str, str], List[str]]" = defaultdict(list)
+    for seq in by_key.values():
+        run_of = f"{seq[0].before} " + " ".join(f"→ {c.after} ({_clock(c.time, False)}, {sha(c)})" for c in seq)
+        alike[(seq[0].listing, run_of)].append(seq[0].venue)
+    lines = [f"TAKES {_venues_said(venues)} | {listing}: {run_of}" for (listing, run_of), venues in alike.items()]
+    return lines + [line for deploy in known for line in _flip_lines(deploy)]
+
+
+def _venues_said(venues: "List[str]") -> str:
+    return venues[0] if len(venues) == 1 else f"{len(venues)} venues ({', '.join(venues[:3])}, …)"
+
+
+def _flip_lines(deploy: "Deploy") -> "List[str]":
+    per_key: "Dict[str, List[Change]]" = defaultdict(list)
+    for change in deploy.changes:
+        per_key[change.key].append(change)
+    return [f"FLIPS within deploy {deploy.sha7}: {len(seq)} changes, {len({c.pod for c in seq if c.pod}) or '?'} pods — {key}"
+            for key, seq in per_key.items() if len(seq) > 1]
+
+
+def _deploy_lines(known: "List[Deploy]", unplaced: "List[Change]") -> "List[str]":
+    lines: "List[str]" = []
+    for deploy in (d for d in known if d.changes):
+        lines += ["", f"DEPLOY {deploy.sha7} {deploy.tag} · running {_clock(deploy.first, False)}–{_clock(deploy.last, False)} · "
+                      f"{deploy.subject}", *_change_lines(deploy.changes)]
     if unplaced:
-        out.append("")
-        out.append("DEPLOY unknown (no build field, outside every image Prometheus saw)")
-        out.extend(_change_lines(unplaced))
+        lines += ["", "DEPLOY unknown (no build field, outside every image Prometheus saw)", *_change_lines(unplaced)]
+    quiet = [d.sha7 for d in known if not d.changes]
     if quiet:
-        out.append("")
-        out.append(f"{len(quiet)} other deploy(s) in the window logged no change of it: {', '.join(quiet[:12])}"
-                   + (" …" if len(quiet) > 12 else ""))
+        lines += ["", f"{len(quiet)} other deploy(s) in the window logged no change of it: {', '.join(quiet[:12])}"
+                  + (" …" if len(quiet) > 12 else "")]
+    return lines
 
-    prod, state, readable = [], {}, False
-    port = mongo_local.local_mongo_port(machine.environment())
+
+def _mirror_state(args: argparse.Namespace, run: Run) -> "Tuple[List[str], Optional[State]]":
+    """The prod-now lines, and the mirror's state (None when the mirror is not readable)."""
     code, text = run([os.path.join(REPO, "scripts/local-mirror/freshness"), args.cc, "--need", MIRROR_NEEDS, "--quiet"])
-    prod.extend(f"  {line}" for line in text.strip().splitlines())
+    prod = [f"  {line}" for line in text.strip().splitlines()]
     if code == 2:
-        prod.append("  the mirror is not readable: its state is not shown")
-    else:
-        readable = True
-        if code != 0:
-            prod.append("  the mirror is not fresh: what follows is as of its sync, not now")
-        script = f"const VENUE = {json.dumps(re2_escape(args.venue))}, TITLE = {json.dumps(re2_escape(args.title))};" + MIRROR_QUERY
-        code, text = run(["mongosh", "--quiet", MIRROR.format(port=port, db=mongo_local.mirror_database(args.cc)), "--eval", script])
-        try:
-            state = json.loads(text.strip().splitlines()[-1])
-            prod.extend(f"  {line}" for line in mirror_lines(state))
-        except (ValueError, IndexError):
-            prod.append(f"  mirror query failed: {text.strip()[:300]}")
+        return prod + ["  the mirror is not readable: its state is not shown"], None
+    if code != 0:
+        prod.append("  the mirror is not fresh: what follows is as of its sync, not now")
+    script = f"const VENUE = {json.dumps(re2_escape(args.venue))}, TITLE = {json.dumps(re2_escape(args.title))};" + MIRROR_QUERY
+    port = mongo_local.local_mongo_port(machine.environment())
+    code, text = run(["mongosh", "--quiet", MIRROR.format(port=port, db=mongo_local.mirror_database(args.cc)), "--eval", script])
+    try:
+        state = json.loads(text.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        return prod + [f"  mirror query failed: {text.strip()[:300]}"], {}
+    return prod + [f"  {line}" for line in mirror_lines(state)], state
 
-    # the labels of every spelling the listing went by: the logged ones and the one prod bills now
-    titles = {c.listing for c in changes} | {t["listing"]["rawTitle"] for t in state.get("traces", []) if t.get("listing")}
-    out.append("")
-    out.append("LABELS (scripts/label-lookup):")
+
+def _label_lines(args: argparse.Namespace, run: Run, titles: "Set[str]") -> "List[str]":
+    """scripts/label-lookup for every spelling the listing went by."""
+    lines = ["", "LABELS (scripts/label-lookup):"]
     for title in sorted(titles) or [args.title]:
         code, text = run([os.path.join(REPO, "scripts", "label-lookup"), args.cc, "--title", title, "--no-prod"]
                          + (["--venue", args.venue] if args.venue else []))
-        out.extend(f"  {line}" for line in text.rstrip().splitlines()) if text.strip() else out.append(f"  none for «{title}»")
+        lines += [f"  {line}" for line in text.rstrip().splitlines()] if text.strip() else [f"  none for «{title}»"]
+    return lines
 
-    out.append("")
-    out.append(f"PROD NOW (local mirror {mongo_local.mirror_database(args.cc)}, read-only):")
-    out.extend(prod)
 
+def report(args: argparse.Namespace, run: Run = run_command, now: "Optional[float]" = None) -> str:
+    now = now or datetime.datetime.now(datetime.timezone.utc).timestamp()
+    out = [f"== {args.cc.upper()} «{args.venue}» | «{args.title}», last {args.since}"]
+    changes, said = _logged_changes(args, run)
+    out += said
+    known, said = _known_deploys(args, run, now)
+    out += said
+    unplaced = _place_changes(changes, known, run)
+    out += _takes_lines(changes, known) if changes else [f"no take change logged for it in the last {args.since} (lines before 2026-10-14 are text; both are searched)"]
+    out += _deploy_lines(known, unplaced)
+    prod, state = _mirror_state(args, run)
+    # the labels of every spelling the listing went by: the logged ones and the one prod bills now
+    titles = {c.listing for c in changes} | {t["listing"]["rawTitle"] for t in (state or {}).get("traces", []) if t.get("listing")}
+    out += _label_lines(args, run, titles)
+    out += ["", f"PROD NOW (local mirror {mongo_local.mirror_database(args.cc)}, read-only):", *prod]
     if args.replay:
-        out.append("")
-        out.extend(replay(args, known, run, state if readable else None))
+        out += ["", *replay(args, known, run, state)]
     return "\n".join(out) + "\n"
 
 
@@ -436,89 +384,98 @@ VIEWS = (("CI (no filed answers)", ["--families", "none"]), ("with prod's filed 
 MIRROR_VIEW = ("with prod's state now (--prod-mirror)", ["--prod-mirror"])
 
 
-def trace_reason(state, key):
-    """Prod's reason for `key` (`venue | raw title`) now, from the mirror's identity_traces: film, basis, rules, blocker."""
-    if state is None:
-        return "the mirror is not readable"
-    venue, listing = key.split(" | ", 1)
-    for trace in state.get("traces", []):
-        if trace.get("listing", {}).get("venue") == venue and trace.get("listing", {}).get("rawTitle") == listing:
-            return (f"film {trace.get('film') or 'none'} via {trace.get('basis')}"
-                    + (f"; rules {' '.join(trace['rules'])}" if trace.get("rules") else "")
-                    + (f"; blocker {trace['blocker']}" if trace.get("blocker") else "")
-                    + (f"; vetoed by {trace['vetoedBy']}" if trace.get("vetoedBy") else ""))
-    return "the mirror holds no trace of it now (not listed, or billed otherwise)"
+def _newest_recording(args: argparse.Namespace, run: Run) -> "Tuple[str, str]":
+    """The recording a replay runs on: the one named, else the one every identity tool defaults to (the newest green
+    run that holds this country's corpus). (recording, why not) -- one of them empty."""
+    if args.recording:
+        return args.recording, ""
+    code, text = run(["bash", "-c", '. "$0" && identity_newest_recording "$1"', TOOLS, args.cc], timeout=300)
+    recording = text.strip() if code == 0 else ""
+    return recording, "" if recording else (text.strip().splitlines() or ["no answer"])[-1]
 
 
-def replay(args, known, run, state=None):
+class SliceTakes:
+    """The take identity-slice makes of a listing at a deploy's commit, in one view, decided once per (deploy, key, view)."""
+
+    def __init__(self, cc: str, recording: str, run: Run) -> None:
+        self.cc, self.recording, self.run = cc, recording, run
+        self.taken: "Dict[Tuple[str, str, str], Tuple[Optional[str], List[str]]]" = {}
+
+    def commit_of(self, deploy: "Deploy") -> str:
+        """The deploy's full commit sha, read once; empty when this clone lacks it."""
+        if not deploy.sha:
+            code, line = self.run(["git", "-C", REPO, "log", "-1", "--format=%H%x09%s", deploy.sha7])
+            deploy.sha = line.split("\t", 1)[0].strip() if code == 0 and "\t" in line else ""
+        return deploy.sha
+
+    def slice(self, deploy: "Deploy", key: str, view: "Tuple[str, List[str]]") -> "Tuple[Optional[str], List[str]]":
+        venue, listing = key.split(" | ", 1)
+        code, text = self.run([SLICE, self.cc, "--key", f"{venue}|{listing}", "--ref", deploy.sha, "--recording", self.recording]
+                              + view[1], timeout=1800)
+        takes = [t for t in text.splitlines() if t.startswith("TAKE ")]
+        if code != 0 or not takes:
+            return None, ["no take — " + " | ".join(text.strip().splitlines()[-3:])]
+        return _film(takes[0]), takes + [t for t in text.splitlines() if t.startswith(("model:", "agreement:", "PROD ", "  prod "))]
+
+    def take(self, deploy: "Deploy", key: str, view: "Tuple[str, List[str]]") -> "Tuple[Optional[str], List[str]]":
+        """(film or None, lines) — the slice's take of `key` at `deploy` in one view."""
+        memo = (deploy.sha7, key, view[0])
+        if memo not in self.taken:
+            self.taken[memo] = self.slice(deploy, key, view) if self.commit_of(deploy) else (None, [f"commit {deploy.sha7} not in this clone"])
+        return self.taken[memo]
+
+
+def _reproduced_line(before: "Deploy", deploy: "Deploy", film: str, film_before: "Optional[str]", shown_before: "List[str]") -> str:
+    if film_before is None:
+        return f"      at {before.sha7}: {shown_before[0]}"
+    if film_before == film:
+        return f"      NOT REPRODUCED: {before.sha7} takes {film_before} too — in this view the code did not move it"
+    return f"      REPRODUCED: {before.sha7} takes {film_before}, {deploy.sha7} {film}"
+
+
+def _view_lines(takes: SliceTakes, deploy: "Deploy", before: "Optional[Deploy]", key: str, view: "Tuple[str, List[str]]") -> "List[str]":
+    film, shown = takes.take(deploy, key, view)
+    lines = [f"  {view[0]}: {shown[0]}", *(f"      {t}" for t in shown[1:])]
+    if film is None:
+        return lines
+    if before is None:
+        return lines + ["      no earlier deploy in the window to replay against"]
+    film_before, shown_before = takes.take(before, key, view)
+    return lines + [_reproduced_line(before, deploy, film, film_before, shown_before)]
+
+
+def _replay_deploy(takes: SliceTakes, views: "Tuple[Tuple[str, List[str]], ...]", state: "Optional[State]",
+                   deploy: "Deploy", before: "Optional[Deploy]") -> "List[str]":
+    """One listing per billing that moved alike: its slice holds the family, so it stands for the venues moved with it."""
+    keys: "Dict[Tuple[str, str, str], str]" = {}
+    for c in deploy.changes:
+        keys.setdefault((c.listing, c.before, c.after), c.key)
+    lines: "List[str]" = []
+    for (_listing, was, now), key in keys.items():
+        lines += [f"REPLAY {deploy.sha7} {key} (prod: {was} → {now}):",
+                  f"  prod now (mirror identity_traces): {trace_reason(state, key)}"]
+        for view in views:
+            lines += _view_lines(takes, deploy, before, key, view)
+    return lines
+
+
+def replay(args: argparse.Namespace, known: "List[Deploy]", run: Run, state: "Optional[State]" = None) -> "List[str]":
     """identity-slice at each deploy's commit that logged a change and at the deploy before it, every one on ONE
     recording, in CI's view and in prod's: a change is reproduced where the replayed take moves between the two deploys
     as prod's did. With the mirror readable (`state`), a third view reads prod's state now, and each change is shown
     beside prod's reason for the listing now (its identity_traces)."""
     views = VIEWS + ((MIRROR_VIEW,) if state is not None else ())
-    recording = args.recording
+    recording, why_not = _newest_recording(args, run)
     if not recording:
-        # the one every identity tool defaults to: the newest green run that holds this country's corpus
-        code, text = run(["bash", "-c", '. "$0" && identity_newest_recording "$1"', TOOLS, args.cc], timeout=300)
-        recording = text.strip() if code == 0 else ""
-        if not recording:
-            reason = (text.strip().splitlines() or ["no answer"])[-1]
-            return [f"REPLAY: no recording named, and the newest green one holding a {args.cc} corpus could not be read: {reason}"]
+        return [f"REPLAY: no recording named, and the newest green one holding a {args.cc} corpus could not be read: {why_not}"]
     lines = [f"REPLAY on recording {recording} (identity-slice, one ref at a time):"]
-    taken = {}
-
-    def take(deploy, key, view):
-        """(film or None, lines) — the slice's take of `key` at `deploy` in one view, decided once."""
-        memo = (deploy.sha7, key, view[0])
-        if memo not in taken:
-            if not deploy.sha:
-                code, line = run(["git", "-C", REPO, "log", "-1", "--format=%H%x09%s", deploy.sha7])
-                deploy.sha = line.split("\t", 1)[0].strip() if code == 0 and "\t" in line else ""
-            if not deploy.sha:
-                taken[memo] = (None, [f"commit {deploy.sha7} not in this clone"])
-                return taken[memo]
-            venue, listing = key.split(" | ", 1)
-            code, text = run([SLICE, args.cc, "--key", f"{venue}|{listing}", "--ref", deploy.sha, "--recording", recording]
-                             + view[1], timeout=1800)
-            takes = [l for l in text.splitlines() if l.startswith("TAKE ")]
-            if code != 0 or not takes:
-                taken[memo] = (None, ["no take — " + " | ".join(text.strip().splitlines()[-3:])])
-            else:
-                taken[memo] = (_film(takes[0]), takes + [l for l in text.splitlines()
-                                                         if l.startswith(("model:", "agreement:", "PROD ", "  prod "))])
-        return taken[memo]
-
+    takes = SliceTakes(args.cc, recording, run)
     changed = [d for d in known if d.changes]
     for deploy in changed[: args.replay_limit]:
-        # one listing per billing that moved alike: its slice holds the family, so it stands for the venues moved with it
-        keys = {}
-        for c in deploy.changes:
-            keys.setdefault((c.listing, c.before, c.after), c.key)
-        before = known[known.index(deploy) - 1] if known.index(deploy) > 0 else None
-        for (_listing, was, now), key in keys.items():
-            lines.append(f"REPLAY {deploy.sha7} {key} (prod: {was} → {now}):")
-            lines.append(f"  prod now (mirror identity_traces): {trace_reason(state, key)}")
-            for view in views:
-                film, shown = take(deploy, key, view)
-                lines.append(f"  {view[0]}: {shown[0]}")
-                lines.extend(f"      {l}" for l in shown[1:])
-                if film is None:
-                    continue
-                if before is None:
-                    lines.append("      no earlier deploy in the window to replay against")
-                    continue
-                film_before, shown_before = take(before, key, view)
-                if film_before is None:
-                    lines.append(f"      at {before.sha7}: {shown_before[0]}")
-                elif film_before == film:
-                    lines.append(f"      NOT REPRODUCED: {before.sha7} takes {film_before} too — in this view the code did not "
-                                 "move it")
-                else:
-                    lines.append(f"      REPRODUCED: {before.sha7} takes {film_before}, {deploy.sha7} {film}")
+        position = known.index(deploy)
+        lines += _replay_deploy(takes, views, state, deploy, known[position - 1] if position > 0 else None)
     skipped = len(changed) - args.replay_limit
-    if skipped > 0:
-        lines.append(f"REPLAY: {skipped} later deploy(s) not replayed (--replay-limit)")
-    return lines
+    return lines + ([f"REPLAY: {skipped} later deploy(s) not replayed (--replay-limit)"] if skipped > 0 else [])
 
 
 def main(argv):
