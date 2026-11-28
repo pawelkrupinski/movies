@@ -83,11 +83,12 @@ effect	infra/bin/fleet_hosts.py	1
 effect	infra/bin/flux_rotate_deploy_keys.py	3
 effect	infra/bin/flux_rotate_deploy_keys.py:files	3
 effect	infra/bin/image_pins.py:network	4
-effect	infra/bin/nix-update	1
-effect	infra/bin/nix-update:network	4
 effect	infra/bin/nix_path.py	1
 effect	infra/bin/nix_path.py:files	3
 effect	infra/bin/nix_stage_steps.py:files	2
+effect	infra/bin/nix_update_mongodb.py	1
+effect	infra/bin/nix_update_mongodb.py:network	4
+effect	infra/bin/nix_update_selftest.py:files	1
 effect	infra/bin/snapshot-label-values	2
 effect	infra/bin/snapshot-label-values:files	2
 effect	infra/bin/stage-nixos-closures	3
@@ -627,7 +628,6 @@ mixed	infra/bin/flux_rotate_deploy_keys.py:Rotation.preflight	8
 mixed	infra/bin/flux_rotate_deploy_keys.py:Rotation.reconcile	3
 mixed	infra/bin/flux_rotate_deploy_keys.py:run	4
 mixed	infra/bin/image_pins.py:Registry._open	9
-mixed	infra/bin/nix-update:docker_hub_digest	5
 mixed	infra/bin/nix_path.py:find_nix	9
 mixed	infra/bin/nix_path.py:put_nix_on_path	4
 mixed	infra/bin/nix_stage_steps.py:Steps.evaluate	4

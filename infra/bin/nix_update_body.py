@@ -2,7 +2,8 @@
 that moved, the container image pins, the hosts that do not build, the package version changes -- as Markdown."""
 import dataclasses
 import datetime
-from typing import Any, Dict, List
+import re
+from typing import Any, Dict, List, Optional
 
 import image_pins  # beside this script: the container image pins no other bumper owns
 
@@ -125,3 +126,16 @@ def compare_link(old: Dict[str, Any], new: Dict[str, Any]) -> str:
 def date(locked: Dict[str, Any]) -> str:
     t = locked.get("lastModified")
     return datetime.datetime.fromtimestamp(t, datetime.timezone.utc).strftime("%Y-%m-%d") if t else "?"
+
+
+# ---- reading `nix store diff-closures` ----------------------------------------------------------
+
+def changed(line: str) -> Optional[str]:
+    """The `old → new` part of a diff-closures line, None for a line that is not a version change."""
+    matched = DIFF_LINE.match(line)
+    return matched["change"] if matched else None
+
+
+DIFF_LINE = re.compile(r"^(?P<pkg>[^:]+): (?P<change>.*→.*?)(?:, [+-][\d.]+ [KMG]?i?B)?$")
+# diff-closures colours the size even when its output is not a terminal.
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
