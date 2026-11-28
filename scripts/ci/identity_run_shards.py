@@ -19,7 +19,21 @@ import json
 import sys
 
 
-def plan(command, countries):
+def _country_shards(number: int, prefix: str, line: str, ccs: list[str]) -> list[dict[str, str]]:
+    """One shard per country for a command line naming `{cc}`."""
+    if not ccs:
+        raise ValueError(f"line {number} names {{cc}} but no country is given")
+    return [{"name": prefix + cc, "cc": cc, "out": prefix + cc, "log": f"sbt-{prefix}{cc}.log", "command": line}
+            for cc in ccs]
+
+
+def _single_shard(number: int, several: bool, line: str) -> dict[str, str]:
+    """The one shard of a command line that names no country."""
+    name = str(number) if several else "all"
+    return {"name": name, "cc": "", "out": "", "log": f"sbt-{name}.log" if several else "sbt.log", "command": line}
+
+
+def plan(command: str, countries: str) -> list[dict[str, str]]:
     lines = [line.strip() for line in command.splitlines() if line.strip()]
     if not lines:
         raise ValueError("no command")
@@ -27,23 +41,17 @@ def plan(command, countries):
     several = len(lines) > 1
     shards = []
     for number, line in enumerate(lines, 1):
-        prefix = f"{number}-" if several else ""
         if "{cc}" in line:
-            if not ccs:
-                raise ValueError(f"line {number} names {{cc}} but no country is given")
-            shards += [{"name": prefix + cc, "cc": cc, "out": prefix + cc, "log": f"sbt-{prefix}{cc}.log", "command": line}
-                       for cc in ccs]
+            shards += _country_shards(number, f"{number}-" if several else "", line, ccs)
         else:
-            name = str(number) if several else "all"
-            shards.append({"name": name, "cc": "", "out": "", "log": f"sbt-{name}.log" if several else "sbt.log",
-                           "command": line})
+            shards.append(_single_shard(number, several, line))
     return shards
 
 
 DOCSTRING = __doc__ or ""  # None under python -OO
 
 
-def main(argv):
+def main(argv: list[str]) -> str:
     parser = argparse.ArgumentParser(description=DOCSTRING.splitlines()[0])
     parser.add_argument("--command", required=True)
     parser.add_argument("--countries", default="")

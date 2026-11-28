@@ -17,6 +17,7 @@ exit status grades the tests."""
 import os
 import subprocess
 import sys
+from typing import Any, Dict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -44,6 +45,14 @@ def in_checkout(path, checkout):
     return real[len(root):] if real.startswith(root) else None
 
 
+def _failure_line(level: str, test: str, failure: Dict[str, Any], checkout: str) -> str:
+    """The workflow command annotating one failure message of a failed test, at its source line when it is in the checkout."""
+    location = failure.get("sourceLocation") or {}
+    path = in_checkout(location.get("filePath"), checkout)
+    where = f"file={prop(path)},line={location['lineNumber']}," if path and "lineNumber" in location else ""
+    return f"::{level} {where}title={prop(test)}::{data(test + ': ' + failure.get('name', ''))}"
+
+
 def annotations(tree, level, checkout):
     lines = []
     for suite, case in xcresult_junit.test_cases(tree):
@@ -51,10 +60,7 @@ def annotations(tree, level, checkout):
             continue
         test = f"{suite}.{case.get('name', '').removesuffix('()')}"
         for failure in xcresult_junit.message_nodes(case, "Failure Message") or [{"name": "failed"}]:
-            location = failure.get("sourceLocation") or {}
-            path = in_checkout(location.get("filePath"), checkout)
-            where = f"file={prop(path)},line={location['lineNumber']}," if path and "lineNumber" in location else ""
-            lines.append(f"::{level} {where}title={prop(test)}::{data(test + ': ' + failure.get('name', ''))}")
+            lines.append(_failure_line(level, test, failure, checkout))
     return lines
 
 

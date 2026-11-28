@@ -27,8 +27,8 @@ mutants=(
   'an added or raised row is no growth @@ if value > before.get(key, allowed_new) and not @@ if False and not'
   'trailers.py: the trailer is not read @@ return bool(value.strip()) @@ return True'
   'trailers.py: any trailer counts @@ repository(repo).trailer_values(sha, key) @@ [v for _k, v in repository(repo).trailers(sha)]'
-  'trailers.py: any commit of the range justifies a rise @@ if not carries(sha, key, repo): @@ if not any(carries(s, key, repo) for s in changed):'
-  'trailers.py: a step is judged against the range'"'"'s base @@ before, after = text_at(f"{sha}^", path, repo), text_at(sha, path, repo) @@ before, after = text_at(rng.split("..")[0], path, repo), text_at(sha, path, repo)'
+  'trailers.py: any commit of the range justifies a rise @@ if own and not carries(sha, key, repo) @@ if own and not any(carries(s, key, repo) for s in changed)'
+  'trailers.py: a step is judged against the range'"'"'s base @@ return rose(text_at(f"{sha}^", path, repo), @@ return rose(text_at("HEAD~1000", path, repo),'
   'growth is judged on another ratchet'"'"'s trailer @@ trailers.unjustified_rises(rng, ratchet.baseline, ratchet.trailer, @@ trailers.unjustified_rises(rng, ratchet.baseline, "Complexity",'
   'growth never fails @@ if not unjustified: @@ if True:'
   'violations never fail @@ failed = bool(found) or any(grew) @@ failed = any(grew)'
@@ -43,10 +43,10 @@ mutants=(
   'a declared table holding logic passes @@         if key in data:
             continue @@         if True:
             continue'
-  'a table row'"'"'s why is not linted @@ problems += [f"{where}: {cols[1]}'"'"'s why: {p}" for p in table_reason_problems(cols[1], cols[3])] @@ pass'
+  'a table row'"'"'s why is not linted @@ return cols, problems + [f"{where}: {cols[1]}'"'"'s why: {p}" for p in table_reason_problems(cols[1], cols[3])] @@ return cols, problems'
   'a table row needs no date @@ if not ISO_DATE.match(cols[2]): @@ if False:'
   'a generic why passes @@ out += [f"`{phrase}` is generic: say what the table holds and what reads it" for rx, phrase in GENERIC_REASONS @@ out += [f"`{phrase}` is generic: say what the table holds and what reads it" for rx, phrase in ()'
-  'a malformed table row is skipped @@ problems.append(f"{where}: not `table<TAB> @@ (f"{where}: not `table<TAB>'
+  'a malformed table row is skipped @@ return None, [f"{where}: not `table<TAB> @@ return None, [] and [f"{where}: not `table<TAB>'
   'a table added needs no trailer @@         if refused:
             problems.append @@         if False:
             problems.append'

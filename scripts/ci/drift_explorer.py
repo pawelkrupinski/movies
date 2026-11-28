@@ -100,15 +100,22 @@ def new_flips(backlog: str, date: str, ref: str, paths: list[str]) -> list[list[
     return [out[k] for k in sorted(out)]
 
 
+def _explore_key(r: dict[str, str]) -> tuple[str, str, str]:
+    return r.get("country", ""), r.get("venue", ""), r.get("rawTitle", "")
+
+
+def _is_new_listing(r: dict[str, str], key: tuple[str, str, str], have: set[tuple[str, str, str]]) -> bool:
+    """Whether an explore row names a whole listing the backlog lacks, with a numeric seed."""
+    return all(key) and key not in have and r.get("seed", "").isdigit()
+
+
 def merge(backlog: str, paths: list[str]) -> list[list[str]]:
     """The rows (NEW_HEADER) of several explore-<cc>.tsv, one per listing (its lowest seed), none the backlog names now."""
     have, out = known(backlog), {}
     for path in paths:
         for r in header_tsv.read(path, missing_ok=True):
-            key = (r.get("country", ""), r.get("venue", ""), r.get("rawTitle", ""))
-            if not all(key) or key in have or not r.get("seed", "").isdigit():
-                continue
-            if key not in out or int(r["seed"]) < int(out[key][3]):
+            key = _explore_key(r)
+            if _is_new_listing(r, key, have) and (key not in out or int(r["seed"]) < int(out[key][3])):
                 out[key] = [r.get(c, "") for c in NEW_HEADER]
     return [out[k] for k in sorted(out)]
 
@@ -116,8 +123,8 @@ def merge(backlog: str, paths: list[str]) -> list[list[str]]:
 def file(asset: str, backlog: str, seeds: str, owner: str) -> list[str]:
     have, filed, rows = known(backlog), [], []
     for r in header_tsv.read(asset, missing_ok=True):
-        key = (r.get("country", ""), r.get("venue", ""), r.get("rawTitle", ""))
-        if not all(key) or not r.get("seed", "").isdigit() or key in have:
+        key = _explore_key(r)
+        if not _is_new_listing(r, key, have):
             continue
         have.add(key)
         rows.append(["drift", key[0], r["seed"], "", key[1], key[2], r.get("takes", ""), r.get("firstSeen", ""), owner,

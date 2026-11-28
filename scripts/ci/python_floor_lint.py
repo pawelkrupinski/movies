@@ -26,7 +26,7 @@ import shutil
 import subprocess
 import sys
 import tokenize
-from typing import Any, Iterator, Optional, Tuple
+from typing import Any, Iterator, List, Optional, Set, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 import ci_machine  # noqa: E402
@@ -44,20 +44,26 @@ def floor_of(root):
     return int(found.group(1)), int(found.group(2))
 
 
+def _is_python_file(root: str, path: str) -> bool:
+    """A tracked `.py` file, or an extension-less one whose first line is a python shebang."""
+    name = os.path.basename(path)
+    if name.endswith(".py"):
+        return True
+    if "." in name:
+        return False
+    try:
+        with open(os.path.join(root, path), "rb") as f:
+            first = f.readline()
+    except OSError:
+        return False
+    return first.startswith(b"#!") and b"python" in first
+
+
 def python_files(root):
     tracked = tool_git.Git.here(root).text("ls-files", "-z")
     for path in sorted(p for p in tracked.split("\0") if p):
-        name = os.path.basename(path)
-        if name.endswith(".py"):
+        if _is_python_file(root, path):
             yield path
-        elif "." not in name:
-            try:
-                with open(os.path.join(root, path), "rb") as f:
-                    first = f.readline()
-            except OSError:
-                continue
-            if first.startswith(b"#!") and b"python" in first:
-                yield path
 
 
 def _def_annotations(node: Any) -> Iterator[Tuple[int, ast.expr]]:
@@ -145,6 +151,22 @@ def _expression_problem(tok: tokenize.TokenInfo, quote: str) -> Optional[str]:
     return None
 
 
+def _fstring_problems(tokens: List[tokenize.TokenInfo]) -> Set[Tuple[int, str]]:
+    """{(line, what)} of the f-string expressions in `tokens` that only Python 3.12 reads."""
+    fstring_start, fstring_middle, fstring_end = (getattr(tokenize, kind) for kind in ("FSTRING_START", "FSTRING_MIDDLE", "FSTRING_END"))
+    found, open_fstrings = set(), []  # each open f-string's quote
+    for tok in tokens:
+        if tok.type == fstring_end:
+            open_fstrings.pop()
+            continue
+        problem = _expression_problem(tok, open_fstrings[-1]) if open_fstrings and tok.type != fstring_middle else None
+        if problem:
+            found.add((tok.start[0], problem))
+        if tok.type == fstring_start:
+            open_fstrings.append(_bare_quote(tok.string))
+    return found
+
+
 def newer_fstrings(source):
     """[(line, what)] for each PEP 701 (3.12) f-string: the tokenizer that reads them is the only one that sees them. An
     older tokenizer ends an f-string at its first own quote and has no FSTRING_* tokens (its parser refuses them)."""
@@ -154,21 +176,20 @@ def newer_fstrings(source):
         tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))
     except (tokenize.TokenError, SyntaxError):
         return []
-    found, open_fstrings = set(), []  # each open f-string's quote
-    fstring_start, fstring_middle, fstring_end = getattr(tokenize, "FSTRING_START"), getattr(tokenize, "FSTRING_MIDDLE"), getattr(tokenize, "FSTRING_END")
-    for tok in tokens:
-        if tok.type == fstring_end:
-            open_fstrings.pop()
-        elif not open_fstrings or tok.type == fstring_middle:
-            if tok.type == fstring_start:
-                open_fstrings.append(_bare_quote(tok.string))
-        else:
-            problem = _expression_problem(tok, open_fstrings[-1])
-            if problem:
-                found.add((tok.start[0], problem))
-            if tok.type == fstring_start:
-                open_fstrings.append(_bare_quote(tok.string))
-    return sorted(found)
+    return sorted(_fstring_problems(tokens))
+
+
+def _defers_annotations(tree: ast.Module) -> bool:
+    """Whether the module says `from __future__ import annotations`."""
+    return any(isinstance(n, ast.ImportFrom) and n.module == "__future__" and any(a.name == "annotations" for a in n.names)
+               for n in tree.body)
+
+
+def _bitor_annotations(tree: ast.Module) -> Set[Tuple[int, str]]:
+    """{(line, what)} of the annotations spelled `X | Y`, which Python 3.10 first reads."""
+    return {(line, "an `X | Y` annotation (Python 3.10) without `from __future__ import annotations`")
+            for line, ann in annotations(tree)
+            if any(isinstance(n, ast.BinOp) and isinstance(n.op, ast.BitOr) for n in ast.walk(ann))}
 
 
 def findings_in(source, floor, syntax=True):
@@ -178,17 +199,10 @@ def findings_in(source, floor, syntax=True):
         tree = ast.parse(source, feature_version=floor)
     except SyntaxError as e:
         return [(e.lineno or 0, f"syntax newer than Python {floor[0]}.{floor[1]}: {e.msg}")] if syntax else []
-    if syntax:
-        newer = newer_fstrings(source)
-        if newer:
-            return [(line, f"syntax newer than Python {floor[0]}.{floor[1]}: {what}") for line, what in newer]
-    deferred = any(isinstance(n, ast.ImportFrom) and n.module == "__future__" and any(a.name == "annotations" for a in n.names)
-                   for n in tree.body)
-    if deferred:
-        return []
-    return sorted({(line, "an `X | Y` annotation (Python 3.10) without `from __future__ import annotations`")
-                   for line, ann in annotations(tree)
-                   if any(isinstance(n, ast.BinOp) and isinstance(n.op, ast.BitOr) for n in ast.walk(ann))})
+    newer = newer_fstrings(source) if syntax else []
+    if newer:
+        return [(line, f"syntax newer than Python {floor[0]}.{floor[1]}: {what}") for line, what in newer]
+    return [] if _defers_annotations(tree) else sorted(_bitor_annotations(tree))
 
 
 def main(argv):

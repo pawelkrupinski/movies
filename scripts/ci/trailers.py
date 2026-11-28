@@ -33,7 +33,7 @@ from __future__ import annotations
 import os
 import re
 import sys
-from typing import Callable, Iterable, List, NamedTuple, Optional, Set, Tuple, cast
+from typing import Callable, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 import tool_git  # noqa: E402
@@ -132,6 +132,14 @@ def exists_at(rev: str, path: str, repo: Optional[tool_git.GitRepo] = None) -> b
     return repository(repo).exists(rev, path)
 
 
+def _own_rise(sha: str, path: str, rose: Callable[[str, str], List[str]], repo: tool_git.GitRepo) -> List[str]:
+    """What `sha`'s own change to `path` grows (`rose(its parent's text, its text)`). A commit creating or deleting `path`
+    is no step; a baseline committed EMPTY is a file, and what is added to it is growth."""
+    if not (exists_at(f"{sha}^", path, repo) and exists_at(sha, path, repo)):
+        return []
+    return rose(text_at(f"{sha}^", path, repo), text_at(sha, path, repo))
+
+
 def unjustified_rises(rng: str, path: str, key: str, rose: Callable[[str, str], List[str]],
                       repo: Optional[tool_git.GitRepo] = None) -> List[str]:
     """The commits of `rng` whose own change to `path` grows it (`rose(its parent's text, its text)`, the ratchet's growth,
@@ -141,16 +149,10 @@ def unjustified_rises(rng: str, path: str, key: str, rose: Callable[[str, str], 
     range changing `path` must carry the trailer. Empty when every rise is justified where it was made."""
     repo = repository(repo)
     changed = repo.commits(rng, [path], reverse=True)
-    raisers, refused = 0, cast(List[str], [])
-    for sha in changed:
-        before, after = text_at(f"{sha}^", path, repo), text_at(sha, path, repo)
-        # created or deleted is no step; a baseline committed EMPTY is a file, and what is added to it is growth
-        own = rose(before, after) if exists_at(f"{sha}^", path, repo) and exists_at(sha, path, repo) else []
-        if own:
-            raisers += 1
-            if not carries(sha, key, repo):
-                refused.append(f"{sha[:9]} {repo.subject(sha)}: " + "; ".join(own))
-    if not raisers and not any(carries(sha, key, repo) for sha in changed):
+    rises = {sha: _own_rise(sha, path, rose, repo) for sha in changed}
+    refused = [f"{sha[:9]} {repo.subject(sha)}: " + "; ".join(own)
+               for sha, own in rises.items() if own and not carries(sha, key, repo)]
+    if not any(rises.values()) and not any(carries(sha, key, repo) for sha in changed):
         refused.append(f"no commit of {rng} changing {path} carries `{key}:`")
     return refused
 

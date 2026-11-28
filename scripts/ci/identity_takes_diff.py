@@ -48,7 +48,7 @@ import argparse
 import json
 import os
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from identity_judgements import judgements_of, label_of, normalise  # noqa: E402
@@ -101,11 +101,11 @@ def final_sides(files: Files, base_path, head_path, cc):
     return [side(base, k) for k in keys], [side(head, k) for k in keys]
 
 
-def pair(base, head):
-    """(base row, head row) per listing, the count of listings on one side only, and the head's rows among those -- by
-    key, then by venue + raw title for keys the change re-spelled -- only where
-    that title is billed ONCE at the venue on each side: two same-titled listings (Belle 2013 and Belle 2021) are never
-    paired by guess, which could read as a swap or hide a move; they count as on one side only."""
+TakeRow = Dict[str, Any]
+
+
+def _pair_by_key(base: List[TakeRow], head: List[TakeRow]) -> Tuple[List[Tuple[TakeRow, TakeRow]], List[TakeRow], Dict[str, TakeRow]]:
+    """(pairs of rows with one key on both sides, the base rows with no head row of their key, the head rows with no base one)."""
     head_by_key = {r["key"]: r for r in head}
     pairs, base_left = [], []
     for b in base:
@@ -114,11 +114,24 @@ def pair(base, head):
             base_left.append(b)
         else:
             pairs.append((b, h))
-    head_by_title, base_by_title = {}, {}
-    for h in head_by_key.values():
-        head_by_title.setdefault((h["venue"], h["rawTitle"]), []).append(h)
-    for b in base_left:
-        base_by_title.setdefault((b["venue"], b["rawTitle"]), []).append(b)
+    return pairs, base_left, head_by_key
+
+
+def _group_by_title(rows: Iterable[TakeRow]) -> Dict[Tuple[str, str], List[TakeRow]]:
+    """{(venue, raw title): [the rows billed under it]}."""
+    out = {}
+    for r in rows:
+        out.setdefault((r["venue"], r["rawTitle"]), []).append(r)
+    return out
+
+
+def pair(base, head):
+    """(base row, head row) per listing, the count of listings on one side only, and the head's rows among those -- by
+    key, then by venue + raw title for keys the change re-spelled -- only where
+    that title is billed ONCE at the venue on each side: two same-titled listings (Belle 2013 and Belle 2021) are never
+    paired by guess, which could read as a swap or hide a move; they count as on one side only."""
+    pairs, base_left, head_by_key = _pair_by_key(base, head)
+    head_by_title, base_by_title = _group_by_title(head_by_key.values()), _group_by_title(base_left)
     unpaired, heads_alone = 0, []
     for title, bs in base_by_title.items():
         hs = head_by_title.pop(title, [])
@@ -197,22 +210,30 @@ def unjudged_suspect(row, labels, baseline):
         (normalise(row["rawTitle"]), ref(film)) not in baseline
 
 
+def _suspect_entry(b: Optional[TakeRow], h: TakeRow, flagged: TakeRow) -> TakeRow:
+    """The listing, its head film, its base film and the reasons flagging `flagged`'s take."""
+    return {"venue": h["venue"], "rawTitle": h["rawTitle"], "film": film_name(h), "base": film_name(b) if b else "-",
+            "reasons": list(flagged.get("suspect") or [])}
+
+
+def _suspect_kind(b: TakeRow, h: TakeRow, accepted: Any) -> str:
+    """How a head's unjudged suspect take stands against the base's row: standing, accepted or new."""
+    if take(b) == take(h) and bool(b.get("suspect")):
+        return "standing"
+    move = {"venue": h["venue"], "rawTitle": h["rawTitle"], "before": take(b), "after": take(h)}
+    return "accepted" if accepted_move(move, accepted) else "new"
+
+
 def suspects_of(pairs, heads_alone, labels, baseline, accepted):
     """{"new", "standing", "accepted", "cured"}: the unjudged suspect takes, each classified against the base's row for its listing
     (the module doc). A head row on one side only (its key re-spelled ambiguously) has no base to stand on: new."""
     out = {"new": [], "standing": [], "accepted": [], "cured": []}
-    def entry(b, h, flagged):
-        """The listing, its head film, its base film and the reasons flagging `flagged`'s take."""
-        return {"venue": h["venue"], "rawTitle": h["rawTitle"], "film": film_name(h), "base": film_name(b) if b else "-",
-                "reasons": list(flagged.get("suspect") or [])}
     for b, h in pairs:
         if unjudged_suspect(h, labels, baseline):
-            stood = take(b) == take(h) and bool(b.get("suspect"))
-            move = {"venue": h["venue"], "rawTitle": h["rawTitle"], "before": take(b), "after": take(h)}
-            out["standing" if stood else "accepted" if accepted_move(move, accepted) else "new"].append(entry(b, h, h))
+            out[_suspect_kind(b, h, accepted)].append(_suspect_entry(b, h, h))
         elif unjudged_suspect(b, labels, baseline):
-            out["cured"].append(entry(b, h, b))
-    out["new"] += [entry(None, h, h) for h in heads_alone if unjudged_suspect(h, labels, baseline)]
+            out["cured"].append(_suspect_entry(b, h, b))
+    out["new"] += [_suspect_entry(None, h, h) for h in heads_alone if unjudged_suspect(h, labels, baseline)]
     for kind in out:
         out[kind].sort(key=lambda e: (e["rawTitle"], e["venue"]))
     return out

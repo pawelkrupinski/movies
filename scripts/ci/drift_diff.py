@@ -141,6 +141,13 @@ def _print_flips(o: dict[str, str], head: dict[Key, Row], new: list[Key], tempor
         print(f"      removed: {k[0]} | {k[1]} [seed {seed}] -- the base flips it, the head does not")
 
 
+def _partition(head: dict[Key, Row], base: dict[Key, Row], allow: list[tuple[str, str]]) -> tuple[list[Key], list[Key], list[Key], list[Key]]:
+    """(new, temporary, pre-existing, removed) flips: the head's not in the base (the allow-listed apart), in both, in the base alone."""
+    added = sorted(set(head) - set(base))
+    temporary = [k for k in added if covered(k, allow)]
+    return [k for k in added if k not in temporary], temporary, sorted(set(head) & set(base)), sorted(set(base) - set(head))
+
+
 def main(argv: list[str]) -> int:
     try:
         o = options(argv)
@@ -148,11 +155,7 @@ def main(argv: list[str]) -> int:
     except (KeyError, ValueError, OSError) as e:
         print(f"drift_diff.py: {e}", file=sys.stderr)
         return 2
-    added = sorted(k for k in head if k not in base)
-    temporary = [k for k in added if covered(k, allow)]
-    new = [k for k in added if k not in temporary]
-    pre = sorted(k for k in head if k in base)
-    removed = sorted(k for k in base if k not in head)
+    new, temporary, pre, removed = _partition(head, base, allow)
     _print_flips(o, head, new, temporary, pre, removed, known, gone)
     if o.get("new-out"):
         _write_new(o["new-out"], new, head)

@@ -99,25 +99,34 @@ def jobs_block(text: str) -> list[str]:
     return lines[start + 1:]
 
 
+JOB_KEY = re.compile(r"^    ([A-Za-z][\w-]*):\s*$")
+
+
+def _split_jobs(lines: list[str]) -> list[tuple[str, list[str]]]:
+    """(key, own lines) of each job under `jobs:`, up to the first top-level line that is no comment."""
+    jobs: list[tuple[str, list[str]]] = []
+    for line in lines:
+        m = JOB_KEY.match(line)
+        if m:
+            jobs.append((m.group(1), []))
+        elif line and not line.startswith((" ", "#")):
+            break
+        elif jobs:
+            jobs[-1][1].append(line)
+    return jobs
+
+
+def _job_name(key: str, body: list[str]) -> str:
+    """The job's `name:`, else its key: github.com names each row of a matrix job without one `<key> (<matrix values>)`."""
+    default = f"{key} (*)" if any(re.match(r"^            matrix:", l) for l in body) else key
+    return next((re.sub(r"^\s+name:\s*", "", l).strip().strip("'\"") for l in body
+                 if re.match(r"^        name:\s*\S", l)), default)
+
+
 def yaml_jobs(text: str) -> list[tuple[str, str, str]]:
     """(key, display-name template, the job's own lines) of each top-level job: its `name:`, else its key (`<key> (*)` for a
     matrix job, whose rows github.com names off the matrix vector)."""
-    out, key, body = [], None, []
-    for line in jobs_block(text) + ["END:"]:
-        m = re.match(r"^    ([A-Za-z][\w-]*):\s*$", line)
-        if m or (line and not line.startswith(" ") and not line.startswith("#")):
-            if key:
-                # no `name:` on a matrix job: github.com names each row `<key> (<matrix vector values>)`
-                default = f"{key} (*)" if any(re.match(r"^            matrix:", l) for l in body) else key
-                name = next((re.sub(r"^\s+name:\s*", "", l).strip().strip("'\"") for l in body
-                             if re.match(r"^        name:\s*\S", l)), default)
-                out.append((key, name, "\n".join(body)))
-            key, body = (m.group(1), []) if m else (None, [])
-            if not m:
-                break
-        elif key:
-            body.append(line)
-    return out
+    return [(key, _job_name(key, body), "\n".join(body)) for key, body in _split_jobs(jobs_block(text))]
 
 
 def glob_of(template: str) -> str:
@@ -219,21 +228,29 @@ def row_state(state: dict[str, str], name: str) -> str:
     return "missing"
 
 
+def _failed_names(jobs: list[Row]) -> list[str]:
+    return [j["name"] for j in jobs if j.get("conclusion") in ("failure", "timed_out")]
+
+
+def _report_verdict(proven: list[tuple[str, str]]) -> tuple[bool, str]:
+    """(report only?, why) of the failed jobs' registry states."""
+    unproven = [n for n, p in proven if p == "unproven"]
+    gating = [n for n, p in proven if p not in ("unproven", "aggregate")]
+    if gating:
+        return False, "gates: " + ", ".join(gating)
+    if not unproven:
+        return False, "only aggregates failed: " + ", ".join(n for n, _ in proven)
+    return True, "report only, unproven: " + ", ".join(unproven)
+
+
 def report_only(rows: list[Row], file: str, jobs: list[Row]) -> tuple[bool, str]:
     """(True, why) when every failed job of a red run is unproven -- or an aggregate following one -- and one is. A failed
     job with no registry row gates: a new job's row lands `unproven`, so a missing one is a lint miss, never a pass."""
     state = {r["name"]: r["proven"] for r in rows if r["kind"] == "job" and r["workflow"] == file}
-    failed = [j["name"] for j in jobs if j.get("conclusion") in ("failure", "timed_out")]
+    failed = _failed_names(jobs)
     if not failed:
         return False, "no failed job"
-    proven = {n: row_state(state, n) for n in failed}
-    unproven = [n for n in failed if proven[n] == "unproven"]
-    gating = [n for n in failed if proven[n] not in ("unproven", "aggregate")]
-    if gating:
-        return False, "gates: " + ", ".join(gating)
-    if not unproven:
-        return False, "only aggregates failed: " + ", ".join(failed)
-    return True, "report only, unproven: " + ", ".join(unproven)
+    return _report_verdict([(n, row_state(state, n)) for n in failed])
 
 
 def run_jobs(run: str) -> list[Row]:
@@ -242,41 +259,51 @@ def run_jobs(run: str) -> list[Row]:
     return json.loads(out).get("jobs", [])
 
 
+def _prove_job(rows: list[Row], file: str, job: Row, number: str) -> Optional[str]:
+    """The registry name proven by a green job: its unproven row, or a new row for a job with none; None otherwise."""
+    mine = [r for r in rows if r["kind"] == "job" and r["workflow"] == file]
+    row = next((r for n in (job["name"], registry_name(job["name"])) for r in mine if r["name"] == n), None)
+    if row is None:
+        rows.append({"kind": "job", "workflow": file, "name": registry_name(job["name"]), "proven": number, "note": ""})
+        return registry_name(job["name"])
+    if row["proven"] != "unproven":
+        return None
+    row["proven"], row["note"] = number, ""
+    return row["name"]
+
+
 def prove(rows: list[Row], file: str, jobs: list[Row], number: str) -> list[str]:
     """Rows proven by green run `number`: its green jobs unproven or missing. Changed names."""
-    changed = []
-    for j in jobs:
-        if j.get("conclusion") != "success":
-            continue
-        mine = [r for r in rows if r["kind"] == "job" and r["workflow"] == file]
-        row = next((r for r in mine if r["name"] == j["name"]), None) \
-            or next((r for r in mine if r["name"] == registry_name(j["name"])), None)
-        if row is None:
-            rows.append({"kind": "job", "workflow": file, "name": registry_name(j["name"]), "proven": number, "note": ""})
-            changed.append(registry_name(j["name"]))
-        elif row["proven"] == "unproven":
-            row["proven"], row["note"] = number, ""
-            changed.append(row["name"])
-    return changed
+    proven = (_prove_job(rows, file, j, number) for j in jobs if j.get("conclusion") == "success")
+    return [name for name in proven if name]
+
+
+def _drop_stale(rows: list[Row], named: list[Row], file: str, globs: list[str]) -> list[str]:
+    """Remove (and name) every row of `named` that matches no job glob."""
+    stale = [r for r in named if not any(fnmatch.fnmatchcase(r["name"], g) for g in globs)]
+    for r in stale:
+        rows.remove(r)
+    return [f"- {file}: {r['name']}" for r in stale]
+
+
+def _add_missing(rows: list[Row], named: list[Row], file: str, globs: list[str], owner: str) -> list[str]:
+    """Add (and name) an unproven row for every job glob that no row of `named` matches."""
+    missing = [g for g in dict.fromkeys(globs) if not any(fnmatch.fnmatchcase(r["name"], g) for r in named)]
+    rows += [{"kind": "job", "workflow": file, "name": g, "proven": "unproven",
+              "note": f"added by gating_checks.py sync; owner: {owner}"} for g in missing]
+    return [f"+ {file}: {g}" for g in missing]
 
 
 def sync(root: str, owner: str) -> list[str]:
     """Add an unproven row for every gate job with none, drop every row naming no job; the changes, as lines."""
     path = os.path.join(root, REGISTRY)
     rows = load(path)
-    changed = []
+    changed: list[str] = []
     for file in GATE_WORKFLOWS:
         globs = workflow_globs(root, file)
         named = [r for r in rows if r["kind"] == "job" and r["workflow"] == file]
-        for r in named:
-            if not any(fnmatch.fnmatchcase(r["name"], g) for g in globs):
-                rows.remove(r)
-                changed.append(f"- {file}: {r['name']}")
-        for g in dict.fromkeys(globs):
-            if not any(fnmatch.fnmatchcase(r["name"], g) for r in named):
-                rows.append({"kind": "job", "workflow": file, "name": g, "proven": "unproven",
-                             "note": f"added by gating_checks.py sync; owner: {owner}"})
-                changed.append(f"+ {file}: {g}")
+        changed += _drop_stale(rows, named, file, globs)
+        changed += _add_missing(rows, named, file, globs, owner)
     if changed:
         save(path, rows)
     return changed

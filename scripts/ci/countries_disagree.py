@@ -48,6 +48,18 @@ HOW = ("The same title billed in two or more countries in the same week, one cou
 EXPORT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ml-identity", "cross_country_export.js")
 
 
+def _take_of(cc: str, film: str, ls: list[dict[str, Any]], labels: dict[str, Any], films: dict[str, Any]) -> dict[str, Any]:
+    """The take of one film by one country: its listings, venues, basis, verdict, whether any billing backs it, event/relay."""
+    verdicts = {label_of(labels.get(cc, {}), l["v"], l["r"], f"tmdb:{film}") for l in ls}
+    record = films.get(film) or {}
+    return dict(cc=cc, film=film, title=record.get("t"), year=record.get("y"), listings=len(ls),
+                rawTitle=collections.Counter(l["r"] for l in ls).most_common(1)[0][0],
+                basis=collections.Counter(l["b"] for l in ls).most_common(1)[0][0],
+                verdict="wrong" if "wrong" in verdicts else "right" if "right" in verdicts else None,
+                backed=any(l["backed"] for l in ls),
+                event=all(X.EVENT_RULES.intersection(l["rules"]) for l in ls))
+
+
 def takes_of(linked, labels, films):
     """[take] of one title's linked listings: one per (country, film taken), with its listings, venues, basis, verdict,
     whether any billing of it backs it, and whether it is an event/relay take."""
@@ -55,17 +67,7 @@ def takes_of(linked, labels, films):
     for l in linked:
         if l["f"]:
             grouped[(l["cc"], l["f"])].append(l)
-    out = []
-    for (cc, film), ls in sorted(grouped.items()):
-        verdicts = {label_of(labels.get(cc, {}), l["v"], l["r"], f"tmdb:{film}") for l in ls}
-        record = films.get(film) or {}
-        out.append(dict(cc=cc, film=film, title=record.get("t"), year=record.get("y"), listings=len(ls),
-                        rawTitle=collections.Counter(l["r"] for l in ls).most_common(1)[0][0],
-                        basis=collections.Counter(l["b"] for l in ls).most_common(1)[0][0],
-                        verdict="wrong" if "wrong" in verdicts else "right" if "right" in verdicts else None,
-                        backed=any(l["backed"] for l in ls),
-                        event=all(X.EVENT_RULES.intersection(l["rules"]) for l in ls)))
-    return out
+    return [_take_of(cc, film, ls, labels, films) for (cc, film), ls in sorted(grouped.items())]
 
 
 def lone(take, takes):
@@ -96,16 +98,21 @@ def film_of(t):
     return f"tmdb:{t['film']} {t['title'] or '?'}{year}"
 
 
+def _others_lines(others: list[dict[str, Any]]) -> list[str]:
+    """The other countries' takes by film, each film's countries and listings together, the most listed first."""
+    by_film = collections.defaultdict(list)
+    for t in others:
+        by_film[t["film"]].append(t)
+    return [f"{'/'.join(t['cc'] for t in ts)} → {film_of(ts[0])} ×{sum(t['listings'] for t in ts)} "
+            f"{'/'.join(t['verdict'] or 'unjudged' for t in ts)}"
+            for ts in sorted(by_film.values(), key=lambda ts: -sum(t["listings"] for t in ts))]
+
+
 def line_of(d):
     """One title: each lone take in full, then the other takes by film, their countries and listings together."""
     alone = [f"{t['cc']} «{t['rawTitle']}» → {film_of(t)} {t['basis']} ×{t['listings']} {t['verdict'] or 'unjudged'}"
              for t in d["lone"]]
-    by_film = collections.defaultdict(list)
-    for t in d["others"]:
-        by_film[t["film"]].append(t)
-    others = [f"{'/'.join(t['cc'] for t in ts)} → {film_of(ts[0])} ×{sum(t['listings'] for t in ts)} "
-              f"{'/'.join(t['verdict'] or 'unjudged' for t in ts)}"
-              for ts in sorted(by_film.values(), key=lambda ts: -sum(t["listings"] for t in ts))]
+    others = _others_lines(d["others"])
     return (f"- **{d['action']}** «{d['key']}» ({d['listings']} listings) -- " + " · ".join(alone)
             + (" | vs " + " · ".join(others) if others else ""))
 

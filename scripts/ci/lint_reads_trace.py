@@ -234,10 +234,14 @@ def misses(observed, hook=HOOK):
             if not p.endswith("/") and spec not in selection[p]]
 
 
-def registry_specs():
+def registry_rows() -> List[List[str]]:
+    """The lint registry's rows, split into columns."""
     with open(REGISTRY) as f:
-        rows = [l.rstrip("\n").split("\t") for l in f if l.strip() and not l.startswith("#")]
-    return [r[0] for r in rows if len(r) > 1 and r[1].split() != ["-"]]
+        return [l.rstrip("\n").split("\t") for l in f if l.strip() and not l.startswith("#")]
+
+
+def registry_specs():
+    return [r[0] for r in registry_rows() if len(r) > 1 and r[1].split() != ["-"]]
 
 
 def ancestors(path):
@@ -388,13 +392,19 @@ def read_observed(path):
     return observed
 
 
+def split_options(args: List[str], names: Tuple[str, ...]) -> Tuple[Dict[str, str], List[str]]:
+    """({name: its last value} of the leading `--name value` options among `names`, the arguments after them)."""
+    options: Dict[str, str] = {}
+    while args[:1] and args[0] in names and len(args) > 1:
+        options[args[0]] = args[1]
+        args = args[2:]
+    return options, args
+
+
 def _options(args: List[str]) -> Tuple[Optional[str], Optional[str], List[str]]:
     """(--classpaths file, --out file, the rest) of the arguments."""
-    given = out_path = None
-    while args[:1] in (["--classpaths"], ["--out"]) and len(args) > 1:
-        given, out_path = (args[1], out_path) if args[0] == "--classpaths" else (given, args[1])
-        args = args[2:]
-    return given, out_path, args
+    options, rest = split_options(args, ("--classpaths", "--out"))
+    return options.get("--classpaths"), options.get("--out"), rest
 
 
 def _trace_spec(spec: str, classpath: str, watched: List[str], copies: Dict[str, str]) -> Tuple[List[str], bool]:

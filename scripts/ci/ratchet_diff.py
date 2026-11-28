@@ -122,19 +122,24 @@ def _moved_from(metric: str, family: str, key: str, gone: Dict[str, int], moves:
     return None
 
 
+def _added_row(metric: str, family: str, key: str, value: int, gone: Dict[str, int], moves: RefRenames,
+               untouched: Optional[Untouched]) -> Row:
+    """The row of a key the new baseline has and the old lacked: a move of a removed key (taken off `gone`), measured or new."""
+    origin = _moved_from(metric, family, key, gone, moves)
+    if origin is not None:
+        was = gone.pop(origin)
+        return metric, f"{origin} => {key}", was, value, "rose" if value > was else "moved"
+    measured = family in PATH_KEYED and untouched is not None and untouched.holds(key)
+    return metric, key, None, value, "measured" if measured else "new"
+
+
 def diff_metric(metric: str, family: str, before: Dict[str, int], after: Dict[str, int], moves: RefRenames,
                 untouched: Optional[Untouched] = None) -> List[Row]:
     gone = {k: v for k, v in before.items() if k not in after}
     out: List[Row] = [(metric, key, before[key], after[key], "fell" if after[key] < before[key] else "rose")
                       for key in sorted(set(before) & set(after)) if before[key] != after[key]]
-    for key, value in sorted((k, v) for k, v in after.items() if k not in before):
-        origin = _moved_from(metric, family, key, gone, moves)
-        if origin is not None:
-            was = gone.pop(origin)
-            out.append((metric, f"{origin} => {key}", was, value, "rose" if value > was else "moved"))
-        else:
-            measured = family in PATH_KEYED and untouched is not None and untouched.holds(key)
-            out.append((metric, key, None, value, "measured" if measured else "new"))
+    out += [_added_row(metric, family, key, value, gone, moves, untouched)
+            for key, value in sorted((k, v) for k, v in after.items() if k not in before)]
     return out + [(metric, key, value, None, "removed (within the limit)") for key, value in sorted(gone.items())]
 
 

@@ -151,29 +151,42 @@ def moved(cc: str, a: str, b: str) -> int:
 DOCSTRING = __doc__ or ""  # None under python -OO
 
 
+def _options(rest: list[str]) -> dict[str, str]:
+    """{option: value} of `--name value` pairs; ValueError names an argument that is no pair."""
+    opts = {}
+    while rest:
+        if not rest[0].startswith("--") or len(rest) < 2:
+            raise ValueError(rest[0])
+        opts[rest[0][2:]] = rest[1]
+        rest = rest[2:]
+    return opts
+
+
+def _run(command: str, opts: dict[str, str]) -> int:
+    if command == "decide":
+        return decide(opts["head"], opts.get("since", ""), opts.get("paths", PATHS))
+    if command == "since":
+        print(since(int(opts["run-id"]), json.load(sys.stdin)))
+        return 0
+    if command == "takes":
+        return takes(opts["cc"], opts["a"], opts["b"])
+    if command == "moved":
+        return moved(opts["cc"], opts["a"], opts["b"])
+    return judge(opts["cc"], int(opts["code"]), opts["verdict"])
+
+
 def main(argv: list[str]) -> int:
     usage = DOCSTRING.split("usage: ", 1)[1].split("Tested by", 1)[0]
     if not argv or argv[0] not in ("decide", "since", "judge", "takes", "moved"):
         print(f"usage: {usage}", file=sys.stderr)
         return 2
-    opts, rest = {}, argv[1:]
-    while rest:
-        if not rest[0].startswith("--") or len(rest) < 2:
-            print(f"harness-aa: unknown argument {rest[0]!r}", file=sys.stderr)
-            return 2
-        opts[rest[0][2:]] = rest[1]
-        rest = rest[2:]
     try:
-        if argv[0] == "decide":
-            return decide(opts["head"], opts.get("since", ""), opts.get("paths", PATHS))
-        if argv[0] == "since":
-            print(since(int(opts["run-id"]), json.load(sys.stdin)))
-            return 0
-        if argv[0] == "takes":
-            return takes(opts["cc"], opts["a"], opts["b"])
-        if argv[0] == "moved":
-            return moved(opts["cc"], opts["a"], opts["b"])
-        return judge(opts["cc"], int(opts["code"]), opts["verdict"])
+        opts = _options(argv[1:])
+    except ValueError as e:
+        print(f"harness-aa: unknown argument {str(e)!r}", file=sys.stderr)
+        return 2
+    try:
+        return _run(argv[0], opts)
     except (KeyError, ValueError) as e:
         print(f"harness-aa: missing or bad argument {e}\nusage: {usage}", file=sys.stderr)
         return 2

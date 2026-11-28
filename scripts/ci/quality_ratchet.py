@@ -43,7 +43,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # baseline_ratchet.py and trailers.py beside it, under `python3 -I` too
 import baseline_ratchet  # noqa: E402
@@ -109,25 +109,32 @@ TABLE_REASON_SHAPE = ("`<what the table holds>: <what reads it, and why it is ha
                       " each host's pace and timeouts, with the incident behind each value beside it`")
 
 
+def _table_row(n: int, line: str, rows: Dict[str, List[str]]) -> Tuple[Optional[List[str]], List[str]]:
+    """The columns of one data-table row (None when malformed) and what is wrong with it."""
+    cols = line.split("\t")
+    where = f"{DATA_TABLES}:{n}"
+    if len(cols) != 4 or cols[0] != "table" or ":" not in cols[1]:
+        return None, [f"{where}: not `table<TAB><path>:<Owner.member><TAB>added<TAB>why`: {line!r}"]
+    problems = []
+    if cols[1] in rows:
+        problems.append(f"{where}: {cols[1]} declared twice")
+    if not ISO_DATE.match(cols[2]):
+        problems.append(f"{where}: no `added` date (the third column, YYYY-MM-DD: the day it is added)")
+    return cols, problems + [f"{where}: {cols[1]}'s why: {p}" for p in table_reason_problems(cols[1], cols[3])]
+
+
 def declared_tables(text: str) -> Tuple[Dict[str, List[str]], List[str]]:
     """The data-table file's rows, key -> columns, and what is wrong with each malformed one (its columns, its `added`
     date, its why)."""
     rows: Dict[str, List[str]] = {}
-    problems = []
+    problems: List[str] = []
     for n, line in enumerate(text.splitlines(), 1):
         if not line.strip() or line.startswith("#"):
             continue
-        cols = line.split("\t")
-        where = f"{DATA_TABLES}:{n}"
-        if len(cols) != 4 or cols[0] != "table" or ":" not in cols[1]:
-            problems.append(f"{where}: not `table<TAB><path>:<Owner.member><TAB>added<TAB>why`: {line!r}")
-            continue
-        if cols[1] in rows:
-            problems.append(f"{where}: {cols[1]} declared twice")
-        if not ISO_DATE.match(cols[2]):
-            problems.append(f"{where}: no `added` date (the third column, YYYY-MM-DD: the day it is added)")
-        problems += [f"{where}: {cols[1]}'s why: {p}" for p in table_reason_problems(cols[1], cols[3])]
-        rows[cols[1]] = cols
+        cols, found = _table_row(n, line, rows)
+        problems += found
+        if cols:
+            rows[cols[1]] = cols
     return rows, problems
 
 
@@ -232,21 +239,25 @@ def violations(ratchet: Ratchet, current: Rows, baseline: Rows, renames: Renames
     return [v for kind in ratchet.kinds for v in _kind_violations(ratchet, kind, current, baseline, renames)]
 
 
+def _kind_growth(ratchet: Ratchet, kind: str, old: Rows, new: Rows, renames: Renames) -> List[str]:
+    """How one kind's rows grew from `old` to `new`: its limit raised, a row added past the old limit or raised."""
+    out = []
+    old_limit = of_kind(old, "limit").get(kind)
+    new_limit = limit_of(new, kind)
+    if old_limit is not None and new_limit > old_limit:
+        out.append(f"limit {kind} raised {old_limit} -> {new_limit}")
+    allowed_new = old_limit if old_limit is not None else new_limit
+    before = of_kind(old, kind)
+    after = of_kind(new, kind)
+    for key, value in sorted(after.items()):
+        if value > before.get(key, allowed_new) and not (key not in before and moved_from(key, value, before, after, renames)):
+            out.append(f"{kind} {key} raised {before.get(key, f'<={allowed_new}')} -> {value}")
+    return out
+
+
 def growth(ratchet: Ratchet, old: Rows, new: Rows, renames: Renames) -> List[str]:
     """How the baseline grew from `old` to `new`: a limit raised, a row added past the old limit or raised."""
-    out = []
-    for kind in ratchet.kinds:
-        old_limit = of_kind(old, "limit").get(kind)
-        new_limit = limit_of(new, kind)
-        if old_limit is not None and new_limit > old_limit:
-            out.append(f"limit {kind} raised {old_limit} -> {new_limit}")
-        allowed_new = old_limit if old_limit is not None else new_limit
-        before = of_kind(old, kind)
-        after = of_kind(new, kind)
-        for key, value in sorted(after.items()):
-            if value > before.get(key, allowed_new) and not (key not in before and moved_from(key, value, before, after, renames)):
-                out.append(f"{kind} {key} raised {before.get(key, f'<={allowed_new}')} -> {value}")
-    return out
+    return [g for kind in ratchet.kinds for g in _kind_growth(ratchet, kind, old, new, renames)]
 
 
 def falls(ratchet: Ratchet, current: Rows, baseline: Rows) -> List[str]:
@@ -318,7 +329,7 @@ def update_one(ratchet: Ratchet, current: Rows) -> None:
     print(f"{ratchet.name}: wrote {ratchet.baseline} -- a rise is committed with a `{ratchet.trailer}: <why>` trailer")
 
 
-def main(argv: List[str]) -> int:
+def _parse_args(argv: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     for name in ("check", "update"):
@@ -327,20 +338,28 @@ def main(argv: List[str]) -> int:
         c.add_argument("--ratchet", action="append", choices=sorted(RATCHETS), default=[])
         if name == "check":
             c.add_argument("--range", action="append", default=[])
-    args = parser.parse_args(argv)
+    return parser.parse_args(argv)
+
+
+def _run(args: argparse.Namespace) -> int:
+    with open(args.current) as f:
+        current = parse(f.read())
+    chosen = [RATCHETS[name] for name in (args.ratchet or sorted(RATCHETS))]
+    if args.command == "update":
+        for ratchet in chosen:
+            update_one(ratchet, current)
+        return 0
+    renames = Renames()
+    results = [check_one(ratchet, current, args.range, renames) for ratchet in chosen]
+    if RATCHETS["length"] in chosen:
+        results.append(check_tables(current, args.range))
+    return 0 if all(results) else 1
+
+
+def main(argv: List[str]) -> int:
+    args = _parse_args(argv)
     try:
-        with open(args.current) as f:
-            current = parse(f.read())
-        chosen = [RATCHETS[name] for name in (args.ratchet or sorted(RATCHETS))]
-        if args.command == "update":
-            for ratchet in chosen:
-                update_one(ratchet, current)
-            return 0
-        renames = Renames()
-        results = [check_one(ratchet, current, args.range, renames) for ratchet in chosen]
-        if RATCHETS["length"] in chosen:
-            results.append(check_tables(current, args.range))
-        return 0 if all(results) else 1
+        return _run(args)
     except (OSError, ValueError, subprocess.CalledProcessError) as e:
         print(f"quality_ratchet: {e}", file=sys.stderr)
         return 2

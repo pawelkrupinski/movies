@@ -13,6 +13,8 @@ they name, transitively -- so a new helper a leg runs is listed the moment it is
                                                (ConvergenceDispatchGateSpec runs it on CI)
 Tested by convergence_paths_test.py.
 """
+from __future__ import annotations
+
 import os
 import re
 import sys
@@ -87,32 +89,40 @@ def render(hand, block):
     return f"{body}\n{BEGIN}\n{BEGIN_2}\n" + "".join(f"{p}\n" for p in block) + f"{END}\n"
 
 
+def _write(path: str, text: str, hand: list[str], want: list[str]) -> int:
+    """`--write`: the generated block rewritten, said when it moved."""
+    new = render(hand, want)
+    if new != text:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(new)
+        print(f"{PATHS}: generated block rewritten ({len(want)} path(s))")
+    return 0
+
+
+def _check(text: str, hand: list[str], current: list[str], want: list[str]) -> int:
+    """`--check`: 0 when the generated block is what the workflows run, else 1, each difference said."""
+    missing, extra = sorted(set(want) - set(current)), sorted(set(current) - set(want))
+    if not (missing or extra or render(hand, want) != text):
+        return 0
+    for p in missing:
+        print(f"{PATHS}: the convergence workflows run {p}, which is not listed", file=sys.stderr)
+    for p in extra:
+        print(f"{PATHS}: {p} is listed but no convergence workflow runs it", file=sys.stderr)
+    print(f"run: python3 scripts/ci/convergence_paths.py --write", file=sys.stderr)
+    return 1
+
+
 def main(argv):
-    root = "."
-    if "--root" in argv:
-        root = argv[argv.index("--root") + 1]
+    root = argv[argv.index("--root") + 1] if "--root" in argv else "."
     path = os.path.join(root, PATHS)
     with open(path, encoding="utf-8") as f:
         text = f.read()
     hand, current = split(text)
     want = generated(root, hand)
     if "--write" in argv:
-        new = render(hand, want)
-        if new != text:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(new)
-            print(f"{PATHS}: generated block rewritten ({len(want)} path(s))")
-        return 0
+        return _write(path, text, hand, want)
     if "--check" in argv:
-        missing, extra = sorted(set(want) - set(current)), sorted(set(current) - set(want))
-        if missing or extra or render(hand, want) != text:
-            for p in missing:
-                print(f"{PATHS}: the convergence workflows run {p}, which is not listed", file=sys.stderr)
-            for p in extra:
-                print(f"{PATHS}: {p} is listed but no convergence workflow runs it", file=sys.stderr)
-            print(f"run: python3 scripts/ci/convergence_paths.py --write", file=sys.stderr)
-            return 1
-        return 0
+        return _check(text, hand, current, want)
     print(__doc__, file=sys.stderr)
     return 2
 

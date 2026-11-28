@@ -114,18 +114,24 @@ MATRIX_REFERENCE = re.compile(r"^\$\{\{\s*matrix\.([\w-]+)\s*}}$")
 PYTHON_TYPES = {"number": (int, float), "boolean": (bool,)}
 
 
+def _matrix_row_problems(name: str, key: str, kind: str, rows: List[Dict[str, Any]]) -> List[str]:
+    """The rows whose `key` is no `kind` (a number or boolean input `name` is handed `matrix.<key>`)."""
+    found = []
+    for row in rows:
+        got = row.get(key)
+        if not isinstance(got, PYTHON_TYPES[kind]) or (kind == "number" and isinstance(got, bool)):
+            found.append(f"row {row.get('code', row)}: `{name}` takes matrix.{key} = {got!r}, not a {kind}")
+    return found
+
+
 def matrix_problems(given, declared, rows):
     """A planned matrix's rows (a preflight's JSON, typed only when it runs) against the inputs: each `${{ matrix.k }}`
     handed to a number or boolean input must be one in every row -- a JSON "55" or "true" is a string."""
     found = []
     for name, value in sorted(given.items()):
         ref, kind = MATRIX_REFERENCE.match(value.strip()), declared.get(name, {}).get("type")
-        if not ref or kind not in PYTHON_TYPES:
-            continue
-        for row in rows:
-            got = row.get(ref.group(1))
-            if not isinstance(got, PYTHON_TYPES[kind]) or (kind == "number" and isinstance(got, bool)):
-                found.append(f"row {row.get('code', row)}: `{name}` takes matrix.{ref.group(1)} = {got!r}, not a {kind}")
+        if ref and kind in PYTHON_TYPES:
+            found += _matrix_row_problems(name, ref.group(1), kind, rows)
     return found
 
 

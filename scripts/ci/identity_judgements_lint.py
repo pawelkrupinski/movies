@@ -47,7 +47,7 @@ import re
 import sys
 import unicodedata
 from collections import defaultdict
-from typing import Any, Dict, Iterable, List, Mapping, Set, Tuple
+from typing import Any, Dict, Iterable, Iterator, List, Mapping, Optional, Set, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_judgements as j  # noqa: E402  (the one reader of the judgements, shared with the takes check)
@@ -188,25 +188,35 @@ def hard_cluster_findings(files: Files, root: str, judged: Iterable[Any]) -> Lis
     return out
 
 
-def served_findings(files: Files, served_paths, labels, listed, before=None):
-    out = {}
+def _served_members(files: Files, served_paths: Iterable[str]) -> Iterator[Tuple[str, str, Dict[str, Any]]]:
+    """(country, film, member) of every member of a captured decision that took a film."""
     for path in served_paths:
         capture = json.loads(gzip.decompress(files.read_bytes(path)).decode("utf-8"))
-        cc = capture["country"]
         for decision in capture["decisions"]:
-            if not decision.get("film"):
-                continue
-            film = f"tmdb:{decision['film']}"
-            for m in decision["members"]:
-                title = normalise(m["rawTitle"])
-                if (cc, title, film) in listed or label_of(labels[cc], m["venue"], title, film) != "wrong":
-                    continue
-                if before is not None and label_of(before[cc], m["venue"], title, film) == "wrong":
-                    continue
-                k = ("served", cc, title, film)
-                out.setdefault(k, (k, f"{cc} serves {film} for '{title}' (at {m['venue']}), which the judgements call wrong and "
-                                      f"no known-wrong row tolerates: fix it, or make the row known-wrong (scope served) with why", []))
-                out[k][2].append(m["venue"])
+            if decision.get("film"):
+                for m in decision["members"]:
+                    yield capture["country"], f"tmdb:{decision['film']}", m
+
+
+def _newly_wrong(labels: Mapping[str, Any], listed: Set[Tuple[str, str, str]], before: Optional[Mapping[str, Any]],
+                 cc: str, venue: str, title: str, film: str) -> bool:
+    """Whether a served listing is judged wrong, tolerated by no known-wrong row, and (given `before`) not wrong already."""
+    if (cc, title, film) in listed or label_of(labels[cc], venue, title, film) != "wrong":
+        return False
+    return before is None or label_of(before[cc], venue, title, film) != "wrong"
+
+
+def served_findings(files: Files, served_paths: Iterable[str], labels: Mapping[str, Any], listed: Set[Tuple[str, str, str]],
+                    before: Optional[Mapping[str, Any]] = None) -> List[Tuple[Tuple[str, ...], str, List[str]]]:
+    out = {}
+    for cc, film, m in _served_members(files, served_paths):
+        title = normalise(m["rawTitle"])
+        if not _newly_wrong(labels, listed, before, cc, m["venue"], title, film):
+            continue
+        k = ("served", cc, title, film)
+        out.setdefault(k, (k, f"{cc} serves {film} for '{title}' (at {m['venue']}), which the judgements call wrong and "
+                              f"no known-wrong row tolerates: fix it, or make the row known-wrong (scope served) with why", []))
+        out[k][2].append(m["venue"])
     return list(out.values())
 
 

@@ -28,7 +28,7 @@ Run from the root, after `scripts/sbt-warm "<module>/Test/compile"` for every mo
 """
 import os
 import sys
-from typing import Callable, Dict, Iterable, List, Set, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lint_reads_trace as trace  # noqa: E402
@@ -39,26 +39,27 @@ BY_NAME_MAX = 40  # files opened by name emptied one at a time, at most
 
 
 def marked_specs():
-    with open(REGISTRY) as f:
-        rows = [l.rstrip("\n").split("\t") for l in f if l.strip() and not l.startswith("#")]
-    return [r[0] for r in rows if len(r) > 1 and "@per-file" in r[1].split()]
+    return [r[0] for r in trace.registry_rows() if len(r) > 1 and "@per-file" in r[1].split()]
 
 
-def pairs(files, n):
+def _pick_pair(group: List[str], i: int) -> Tuple[str, str]:
+    """The i-th (A, B) of a group of files of one kind: B in another directory than A where it can be."""
+    a = group[(i * 7) % len(group)]
+    b = next((x for x in group[::-1] if os.path.dirname(x) != os.path.dirname(a)), next(x for x in group if x != a))
+    return a, b
+
+
+def pairs(files: Iterable[str], n: int) -> List[Tuple[str, str]]:
     """Up to n (A, B) pairs of files of one kind, A and B in different directories where it can: spread over the reads."""
     by_kind = {}
     for f in sorted(files):
         by_kind.setdefault(trace.extension(f), []).append(f)
     groups = sorted((g for g in by_kind.values() if len(g) > 1), key=len, reverse=True)
     out = []
-    for i in range(n):
-        if not groups:
-            break
-        g = groups[i % len(groups)]
-        a = g[(i * 7) % len(g)]
-        b = next((x for x in g[::-1] if os.path.dirname(x) != os.path.dirname(a)), next(x for x in g if x != a))
-        if (a, b) not in out:
-            out.append((a, b))
+    for i in range(n if groups else 0):
+        pair = _pick_pair(groups[i % len(groups)], i)
+        if pair not in out:
+            out.append(pair)
     return out
 
 
@@ -189,19 +190,14 @@ def check_command(command, cwd, watched, copies, n):
     return "PER-FILE", f"{len(trials)} mutations (twins, quarters, files by name, pairs): no other file's verdict moved"
 
 
-def main(args):
-    given, n = None, 3
-    while args[:1] in (["--classpaths"], ["--pairs"]) and len(args) > 1:
-        given, n = (args[1], n) if args[0] == "--classpaths" else (given, int(args[1]))
-        args = args[2:]
-    specs = marked_specs() if args == ["--marked"] else args
-    if not specs or any(":" not in s for s in specs):
-        print(__doc__, file=sys.stderr)
-        return 2
-    why = trace.blind(trace.atime_moves())
-    if why:
-        print(f"lint_per_file_check: cannot see reads here: {why}; run it on the laptop (APFS)", file=sys.stderr)
-        return 2
+def _options(args: List[str]) -> Tuple[Optional[str], int, List[str]]:
+    """(--classpaths FILE or None, --pairs N, the arguments after the options)."""
+    options, rest = trace.split_options(args, ("--classpaths", "--pairs"))
+    return options.get("--classpaths"), int(options.get("--pairs", 3)), rest
+
+
+def _check_all(specs: List[str], given: Optional[str], n: int) -> int:
+    """Each spec's verdict printed; the worst exit code (0 per-file, 1 cross-file, 2 unrun)."""
     cps = trace.classpaths(sorted({s.split(":", 1)[0] for s in specs}), given)
     files, dirs = trace.tracked()
     copies = trace.resource_copies(files)
@@ -212,6 +208,19 @@ def main(args):
         print(f"{spec}\t{verdict}\t{why}", flush=True)
         worst = max(worst, {"PER-FILE": 0, "CROSS-FILE": 1, "UNRUN": 2}[verdict])
     return worst
+
+
+def main(args: List[str]) -> int:
+    given, n, args = _options(args)
+    specs = marked_specs() if args == ["--marked"] else args
+    if not specs or any(":" not in s for s in specs):
+        print(__doc__, file=sys.stderr)
+        return 2
+    why = trace.blind(trace.atime_moves())
+    if why:
+        print(f"lint_per_file_check: cannot see reads here: {why}; run it on the laptop (APFS)", file=sys.stderr)
+        return 2
+    return _check_all(specs, given, n)
 
 
 if __name__ == "__main__":

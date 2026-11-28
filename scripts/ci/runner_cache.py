@@ -34,7 +34,7 @@ import subprocess
 import sys
 import tempfile
 from fnmatch import fnmatchcase
-from typing import Callable, List, Set, Tuple
+from typing import Callable, List, Optional, Set, Tuple
 import ci_machine  # noqa: E402
 
 ENTRY_SUFFIX = ".tar.zst"
@@ -159,17 +159,22 @@ def save(directory, key, paths_text, root):
             os.unlink(temporary.name)
 
 
+def _remove_path(path: str) -> None:
+    """A restored path gone, whatever it is: a directory tree, or a file or link (one already gone is no matter)."""
+    if os.path.isdir(path) and not os.path.islink(path):
+        shutil.rmtree(path, ignore_errors=True)
+        return
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
+
+
 def _remove_restored(paths_text):
     includes, _ = parse_patterns(paths_text)
     for pattern in includes:
         for path in glob.glob(pattern):
-            if os.path.isdir(path) and not os.path.islink(path):
-                shutil.rmtree(path, ignore_errors=True)
-            else:
-                try:
-                    os.unlink(path)
-                except OSError:
-                    pass
+            _remove_path(path)
 
 
 def restore(directory, key, paths_text, root):
@@ -196,25 +201,34 @@ def restore(directory, key, paths_text, root):
 DOCSTRING = __doc__ or ""  # None under python -OO
 
 
-def main(argv=None):
+def _parse_args(argv: Optional[List[str]]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("command", choices=["dir", "restore", "save"])
     parser.add_argument("--key", default="")
     parser.add_argument("--paths", default="")
     parser.add_argument("--root", default="/")
-    args = parser.parse_args(argv)
-    directory = mirror_dir()
-    if args.command == "dir":
-        print(directory or "")
-        return 0
-    if directory is None or not args.key or not args.paths.strip():
-        return 1 if args.command == "restore" else 0
+    return parser.parse_args(argv)
+
+
+def _run(args: argparse.Namespace, directory: str) -> int:
+    """`restore` or `save` against the mirror at `directory`: the entry's state said, restore's exit 1 on a miss."""
     if args.command == "restore":
         restored = restore(directory, args.key, args.paths, args.root)
         print(f"runner-cache {'hit' if restored else 'miss'} {args.key}")
         return 0 if restored else 1
     print(f"runner-cache {save(directory, args.key, args.paths, args.root)} {args.key}")
     return 0
+
+
+def main(argv=None):
+    args = _parse_args(argv)
+    directory = mirror_dir()
+    if args.command == "dir":
+        print(directory or "")
+        return 0
+    if directory is None or not args.key or not args.paths.strip():
+        return 1 if args.command == "restore" else 0
+    return _run(args, directory)
 
 
 if __name__ == "__main__":

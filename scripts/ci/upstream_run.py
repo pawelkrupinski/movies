@@ -31,7 +31,7 @@ import datetime
 import json
 import os
 import sys
-from typing import List, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ci_machine  # noqa: E402
@@ -94,7 +94,7 @@ def choose(trigger, conclusion, branch, runs, now, max_age_hours=MAX_AGE_HOURS, 
 DOCSTRING = __doc__ or ""  # None under python -OO
 
 
-def main(argv=None, now=None, listing=None):
+def _parse_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("--workflow", required=True, help="the producing workflow's name")
     parser.add_argument("--trigger", default="", help="the run named or triggering; empty: none")
@@ -103,7 +103,21 @@ def main(argv=None, now=None, listing=None):
     parser.add_argument("--repo", default=ci_machine.environment().get("KINOWO_REPO", "pawelkrupinski/movies"))
     parser.add_argument("--max-age-hours", type=int, default=MAX_AGE_HOURS)
     parser.add_argument("--on-fallback", choices=("newest", "skip"), default="newest")
-    args = parser.parse_args(argv)
+    return parser.parse_args(argv)
+
+
+def _announce(run: Optional[str], message: str, as_is: bool) -> int:
+    """The verdict's message on stderr (an error where there is no run) and the run id on stdout; the exit code."""
+    if run is None:
+        print("::error::%s" % message, file=sys.stderr)
+        return 1
+    print(("%s" if as_is else "::notice::%s" if run == "" else "::warning::%s") % message, file=sys.stderr)
+    print(run)
+    return 0
+
+
+def main(argv=None, now=None, listing=None):
+    args = _parse_args(argv)
     if args.trigger and not args.trigger.isdigit():
         print("::error::the upstream run is a run id, not %r" % args.trigger, file=sys.stderr)
         return 1
@@ -113,12 +127,7 @@ def main(argv=None, now=None, listing=None):
     runs = (listing or (lambda: successful_runs(args.workflow, args.repo)))() if needs_listing else []
     run, message = choose(args.trigger, args.conclusion, args.branch, runs, now, args.max_age_hours, args.workflow,
                           args.on_fallback)
-    if run is None:
-        print("::error::%s" % message, file=sys.stderr)
-        return 1
-    print(("%s" if as_is else "::notice::%s" if run == "" else "::warning::%s") % message, file=sys.stderr)
-    print(run)
-    return 0
+    return _announce(run, message, as_is)
 
 
 if __name__ == "__main__":

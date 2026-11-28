@@ -43,19 +43,21 @@ def default_rev() -> str:
     return "origin/main" if GIT.ok("rev-parse", "-q", "--verify", "origin/main", quiet=True) else "HEAD"
 
 
-def exemptions(since: str, rev: str) -> List[Exemption]:
-    """The `Fix-Replay: none` trailers (git's own trailer parse: the final block only) of rev's commits since `since`
-    (`7d`, or anything `git log --since` reads), oldest first."""
+def _commit_records(since: str, rev: str) -> List[List[str]]:
+    """The columns (sha, day, subject, Fixes-Red, Fix-Replay) of each commit of rev since `since`, oldest first."""
     days = re.fullmatch(r"(\d+)d", since)
     after = f"{days.group(1)} days ago" if days else since
     fmt = FIELD.join(("%H", "%cs", "%s", "%(trailers:key=Fixes-Red,valueonly,unfold,separator=%x2c )",
                       "%(trailers:key=Fix-Replay,valueonly,unfold,separator=%x1d)")) + RECORD
+    records = git("log", "--reverse", f"--since={after}", f"--format={fmt}", rev).split(RECORD)
+    return [cols for cols in (record.strip("\n").split(FIELD) for record in records) if len(cols) >= 5]
+
+
+def exemptions(since: str, rev: str) -> List[Exemption]:
+    """The `Fix-Replay: none` trailers (git's own trailer parse: the final block only) of rev's commits since `since`
+    (`7d`, or anything `git log --since` reads), oldest first."""
     out = []
-    for record in git("log", "--reverse", f"--since={after}", f"--format={fmt}", rev).split(RECORD):
-        cols = record.strip("\n").split(FIELD)
-        if len(cols) < 5:
-            continue
-        sha, day, subject, fixes, replays = cols
+    for sha, day, subject, fixes, replays in (cols[:5] for cols in _commit_records(since, rev)):
         for value in replays.split("\x1d"):
             m = NONE.match(value.strip())
             if value.strip() and m:

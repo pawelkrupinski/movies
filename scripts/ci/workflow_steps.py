@@ -19,22 +19,26 @@ def _indent(line: str) -> int:
     return len(line) - len(line.lstrip())
 
 
+def _with_block(lines: list[str], uses: int) -> str:
+    """The `with:` block of the step whose `uses:` is lines[uses]; "" when no `with:` line follows."""
+    j = uses + 1
+    while j < len(lines) and not re.match(r"\s*with:\s*$", lines[j]):
+        j += 1
+    if j == len(lines):
+        return ""
+    w_indent = _indent(lines[j])
+    block = []
+    j += 1
+    while j < len(lines) and (not lines[j].strip() or _indent(lines[j]) > w_indent):
+        block.append(lines[j])
+        j += 1
+    return "\n".join(block)
+
+
 def action_steps(text, action):
     """(line number, the step's `with:` block) for each `uses: <action>@...` in text."""
     lines = text.split("\n")
     for i, line in enumerate(lines):
         if line.lstrip().startswith("#") or not re.search(r"uses:\s*" + re.escape(action) + "@", line):
             continue
-        j = i + 1
-        while j < len(lines) and not re.match(r"\s*with:\s*$", lines[j]):
-            j += 1
-        if j == len(lines):
-            yield i + 1, ""
-            continue
-        w_indent = _indent(lines[j])
-        block = []
-        j += 1
-        while j < len(lines) and (not lines[j].strip() or _indent(lines[j]) > w_indent):
-            block.append(lines[j])
-            j += 1
-        yield i + 1, "\n".join(block)
+        yield i + 1, _with_block(lines, i)

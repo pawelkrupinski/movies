@@ -22,10 +22,13 @@ Exit 1 on a new finding, 2 when a side wrote no findings file for <cc>, or the h
 specs did not run): no verdict. A spec only the head has (one the change brings) judges its findings as new.
 """
 
+from __future__ import annotations
+
 import argparse
 import glob
 import os
 import sys
+from typing import Iterator
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from report_fields import cell  # noqa: E402
@@ -38,6 +41,15 @@ def specs_of(directory, cc):
     return {os.path.basename(p)[len(prefix):-len(".txt")]: p for p in glob.glob(os.path.join(directory, prefix + "*.txt"))}
 
 
+def _spec_findings(spec: str, path: str) -> Iterator[tuple[tuple[str, str, str, str], str]]:
+    """((spec, kind, venue, listing), what) of each finding line of one spec's corpus-shape file."""
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            cols = line.rstrip("\n").split("\t")
+            if len(cols) >= 3:
+                yield (spec, cols[0], cols[1], cols[2]), (cols[3] if len(cols) > 3 else "")
+
+
 def findings_of(directory, cc):
     """{(spec, kind, venue, listing): [what, ...]} of every corpus-shape file `directory` holds for `cc`'s recorded corpus;
     None when it holds none."""
@@ -46,11 +58,8 @@ def findings_of(directory, cc):
         return None
     out = {}
     for spec, path in sorted(specs.items()):
-        with open(path, encoding="utf-8") as f:
-            for line in f:
-                cols = line.rstrip("\n").split("\t")
-                if len(cols) >= 3:
-                    out.setdefault((spec, cols[0], cols[1], cols[2]), []).append(cols[3] if len(cols) > 3 else "")
+        for key, what in _spec_findings(spec, path):
+            out.setdefault(key, []).append(what)
     return out
 
 

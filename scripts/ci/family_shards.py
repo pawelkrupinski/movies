@@ -58,22 +58,30 @@ def costs(source, out):
     return sorted(rows)
 
 
+def _dated(argv: list[str]) -> tuple[datetime.date, list[str]]:
+    """(the date `--date` names, else today; the arguments without that option)."""
+    today = ci_machine.today()
+    argv = list(argv)
+    if "--date" in argv:
+        i = argv.index("--date")
+        today = datetime.date.fromisoformat(argv[i + 1])
+        del argv[i:i + 2]
+    return today, argv
+
+
+def _is_costs_command(argv: list[str]) -> bool:
+    return len(argv) == 5 and argv[0] == "costs" and argv[1] == "--from" and argv[3] == "--out"
+
+
 def main(argv):
-    if argv and argv[0] == "costs" and len(argv) == 5 and argv[1] == "--from" and argv[3] == "--out":
+    if _is_costs_command(argv):
         print(" ".join(costs(argv[2], argv[4])))
         return 0
     if not argv or argv[0] != "plan":
         print(__doc__, file=sys.stderr)
         return 2
-    argv = list(argv)
-    today = ci_machine.today()
-    if "--date" in argv:
-        i = argv.index("--date")
-        today = datetime.date.fromisoformat(argv[i + 1])
-        del argv[i:i + 2]
-    countries = []
-    if len(argv) >= 3 and argv[1] == "--countries":
-        countries = argv[2].replace(",", " ").split()
+    today, argv = _dated(argv)
+    countries = argv[2].replace(",", " ").split() if len(argv) >= 3 and argv[1] == "--countries" else []
     try:
         matrix, expect, codes = plan(countries)
     except ValueError as e:
