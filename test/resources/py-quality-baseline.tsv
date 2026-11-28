@@ -126,10 +126,6 @@ cognitive	scripts/ci/quality_ratchet.py:growth	13
 cognitive	scripts/ci/quality_ratchet.py:violations	14
 cognitive	scripts/ci/ratchet_diff.py:collect	18
 cognitive	scripts/ci/ratchet_diff.py:diff_metric	21
-cognitive	scripts/ci/recording_health.py:judge	14
-cognitive	scripts/ci/recording_health.py:main	43
-cognitive	scripts/ci/recording_health.py:manifest	36
-cognitive	scripts/ci/recording_health.py:table	15
 cognitive	scripts/ci/reusable_workflow_inputs.py:matrix_problems	11
 cognitive	scripts/ci/reusable_workflow_inputs.py:problems	22
 cognitive	scripts/ci/reusable_workflow_inputs.py:strip_comment	14
@@ -305,9 +301,6 @@ cyclomatic	scripts/ci/quality_ratchet.py:check_one	14
 cyclomatic	scripts/ci/quality_ratchet.py:main	11
 cyclomatic	scripts/ci/ratchet_diff.py:collect	21
 cyclomatic	scripts/ci/ratchet_diff.py:diff_metric	21
-cyclomatic	scripts/ci/recording_health.py:main	42
-cyclomatic	scripts/ci/recording_health.py:manifest	17
-cyclomatic	scripts/ci/recording_health.py:table	11
 cyclomatic	scripts/ci/reusable_workflow_inputs.py:problems	13
 cyclomatic	scripts/ci/reusable_workflow_inputs.py:strip_comment	13
 cyclomatic	scripts/ci/runner_cache.py:collect	11
@@ -387,7 +380,6 @@ method-lines	infra/nix/files/nixos-auto-apply.py:main	92
 method-lines	infra/nix/files/nixos-auto-apply.py:publish	56
 method-lines	scripts/ci/identity_judgements.py:problems	51
 method-lines	scripts/ci/population_walk_diff.py:main	52
-method-lines	scripts/ci/recording_health.py:main	70
 method-lines	scripts/ci/runner_scheduler.py:decide	216
 method-lines	scripts/deploy_watch.py:main	79
 method-lines	scripts/identity_rule_ablation.py:main	82
@@ -455,7 +447,6 @@ pyright	scripts/ci/lint_reads_trace.py	65
 pyright	scripts/ci/population_walk_diff.py	88
 pyright	scripts/ci/python_floor_lint.py	32
 pyright	scripts/ci/ratchet_diff.py	11
-pyright	scripts/ci/recording_health.py	34
 pyright	scripts/ci/reusable_workflow_inputs.py	33
 pyright	scripts/ci/runner_cache.py	36
 pyright	scripts/ci/runner_scheduler.py	126
@@ -490,7 +481,7 @@ pyright	scripts/listing_history.py	46
 pyright	scripts/ml-identity/cross_country_experiment.py	19
 pyright	scripts/ops/dumpheap.py	13
 pyright	scripts/poster_hash.py	13
-pyright	scripts/recording_diff.py	88
+pyright	scripts/recording_diff.py	87
 pyright	scripts/rule_firing_prod.py	39
 pyright	scripts/touched_methods.py	69
 pyright	scripts/unmatched_census.py	65

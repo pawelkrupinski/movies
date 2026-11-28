@@ -53,6 +53,8 @@ not the code; the manifest's `flags` says which); 2 when the tree (or the
 file is the absolute floor alone (a country's first recording, or the manifest not yet published).
 Tests: recording_health_test.py beside it.
 """
+from __future__ import annotations
+
 import argparse
 import gzip
 import json
@@ -62,6 +64,7 @@ import sys
 import urllib.parse
 import zlib
 from dataclasses import dataclass
+from typing import TypedDict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from report_fields import parse_instant  # noqa: E402
@@ -87,13 +90,29 @@ UNKNOWN_EXIT = 3
 UNKNOWN_REASONS = ("proxy-unreachable", "origin-down")
 
 
-def _origin(key):
+class OriginCounts(TypedDict):
+    """What one origin's tree and cache entries hold (the manifest's per-origin row)."""
+    tree: int
+    answered: int
+    notFound: int
+    refused: int
+    refusals: dict[str, int]
+    proxyDown: int
+    originDown: int
+
+
+class Manifest(TypedDict):
+    since: float
+    origins: dict[str, OriginCounts]
+
+
+def _origin(key: str) -> str:
     """`BYTES https://host/...` / `GET https://...` (the cache's request-kind prefix) or a bare URL → host."""
     url = key.split(" ", 1)[1] if " " in key and not key.startswith("http") else key
     return urllib.parse.urlsplit(url).hostname or "?"
 
 
-def _refusal(status, message):
+def _refusal(status: str, message: str) -> str:
     """A refusal's label: its HTTP status, else the exception's simple class name (`HttpTimeoutException`)."""
     if status:
         return status
@@ -101,52 +120,66 @@ def _refusal(status, message):
     return head.rsplit(".", 1)[-1] or "error"
 
 
-def origin_counts():
+def origin_counts() -> OriginCounts:
     return {"tree": 0, "answered": 0, "notFound": 0, "refused": 0, "refusals": {}, "proxyDown": 0, "originDown": 0}
 
 
-def manifest(tree, since):
-    """Per-origin counts for the recording that started at `since` (epoch seconds) over `tree`."""
-    origins = {}
-    tree = str(tree)
+def _count_responses(tree: str, since: float, origins: dict[str, OriginCounts]) -> None:
+    """Count each origin's files under `tree`: all of them held, and those written at or after `since` answered."""
     for host in sorted(os.listdir(tree)):
         if host.startswith(".") or not os.path.isdir(os.path.join(tree, host)):
             continue
         counts = origins.setdefault(host, origin_counts())
         for directory, _, files in os.walk(os.path.join(tree, host)):
-            for name in files:
-                counts["tree"] += 1
-                if os.stat(os.path.join(directory, name)).st_mtime >= since:
-                    counts["answered"] += 1
+            counts["tree"] += len(files)
+            counts["answered"] += sum(os.stat(os.path.join(directory, name)).st_mtime >= since for name in files)
+
+
+def _read_failure(path: str, since: float) -> tuple[str, str, str] | None:
+    """(key, status, message) of a `failed` cache entry fetched at or after `since`, else None (also undecodable)."""
+    try:
+        with gzip.open(path) as entry:
+            fields = entry.read().decode("utf-8", "replace").split("\n", 5)
+        key, kind, fetched_at, status, _method, message = fields
+        fetched_at = int(fetched_at) / 1000
+    except (OSError, ValueError, EOFError, zlib.error):
+        return None   # undecodable: FileEnrichmentCacheStore skips it too
+    return (key, status, message) if kind == "failed" and fetched_at >= since else None
+
+
+def _count_failure(counts: OriginCounts, status: str, message: str) -> None:
+    if status in NOT_FOUND:
+        counts["notFound"] += 1
+        return
+    counts["refused"] += 1
+    if PROXY_DOWN.search(message):
+        counts["proxyDown"] += 1
+    elif DIRECT_5XX.search(message) and PROXY_5XX.search(message):
+        counts["originDown"] += 1
+    label = _refusal(status, message)
+    counts["refusals"][label] = counts["refusals"].get(label, 0) + 1
+
+
+def manifest(tree: str, since: float) -> Manifest:
+    """Per-origin counts for the recording that started at `since` (epoch seconds) over `tree`."""
+    origins: dict[str, OriginCounts] = {}
+    _count_responses(tree, since, origins)
     for directory, _, files in os.walk(os.path.join(tree, CACHE_DIRECTORY)):
         for name in files:
-            if not name.endswith(".entry"):
-                continue
-            try:
-                with gzip.open(os.path.join(directory, name)) as entry:
-                    fields = entry.read().decode("utf-8", "replace").split("\n", 5)
-                key, kind, fetched_at, status, _method, message = fields
-                fetched_at = int(fetched_at) / 1000
-            except (OSError, ValueError, EOFError, zlib.error):
-                continue   # undecodable: FileEnrichmentCacheStore skips it too
-            if kind != "failed" or fetched_at < since:
-                continue
-            counts = origins.setdefault(_origin(key), origin_counts())
-            if status in NOT_FOUND:
-                counts["notFound"] += 1
-            else:
-                counts["refused"] += 1
-                if PROXY_DOWN.search(message):
-                    counts["proxyDown"] = counts.get("proxyDown", 0) + 1
-                elif DIRECT_5XX.search(message) and PROXY_5XX.search(message):
-                    counts["originDown"] = counts.get("originDown", 0) + 1
-                label = _refusal(status, message)
-                counts["refusals"][label] = counts["refusals"].get(label, 0) + 1
+            failure = _read_failure(os.path.join(directory, name), since) if name.endswith(".entry") else None
+            if failure:
+                key, status, message = failure
+                _count_failure(origins.setdefault(_origin(key), origin_counts()), status, message)
     return {"since": since, "origins": origins}
 
 
-def asked(counts):
+def asked(counts: OriginCounts) -> int:
     return counts["answered"] + counts["notFound"] + counts["refused"]
+
+
+def _held(previous: Manifest | None) -> dict[str, OriginCounts]:
+    """The previous green recording's per-origin counts (none for a country's first recording)."""
+    return previous["origins"] if previous else {}
 
 
 @dataclass
@@ -165,48 +198,63 @@ class Flag:
         return self.reason in UNKNOWN_REASONS
 
 
-def judge(this, previous):
+def _refusing_flag(origin: str, counts: OriginCounts) -> 'Flag | None':
+    """`refusing` / `proxy-unreachable` / `origin-down` for an origin that refused most of what it was asked, else None."""
+    if asked(counts) < MIN_REQUESTS or counts["refused"] <= REFUSING_SHARE * asked(counts):
+        return None
+    if counts["proxyDown"] > REFUSING_SHARE * counts["refused"]:
+        return Flag(origin, "proxy-unreachable")
+    if counts["originDown"] > REFUSING_SHARE * counts["refused"]:
+        return Flag(origin, "origin-down")
+    return Flag(origin, "refusing")
+
+
+def judge(this: Manifest, previous: Manifest | None) -> list['Flag']:
     """The flagged origins, in name order: see the module doc for the two rules."""
-    flags = []
-    before = (previous or {}).get("origins", {})
+    flags: list[Flag] = []
+    before = _held(previous)
     for origin in sorted(set(this["origins"]) | set(before)):
         counts = this["origins"].get(origin, origin_counts())
-        if asked(counts) >= MIN_REQUESTS and counts["refused"] > REFUSING_SHARE * asked(counts):
-            proxy_down = counts.get("proxyDown", 0) > REFUSING_SHARE * counts["refused"]
-            down = counts.get("originDown", 0) > REFUSING_SHARE * counts["refused"]
-            flags.append(Flag(origin, "proxy-unreachable" if proxy_down else "origin-down" if down else "refusing"))
+        flag = _refusing_flag(origin, counts)
+        if flag:
+            flags.append(flag)
         elif before.get(origin, {}).get("tree", 0) >= MIN_REQUESTS and counts["tree"] == 0:
             flags.append(Flag(origin, "gone"))
     return flags
 
 
-def share(counts):
+def share(counts: OriginCounts) -> str:
     total = asked(counts)
     if total == 0:
         return "—"
     return f"{counts['refused']}/{total} ({round(100 * counts['refused'] / total)}%)"
 
 
-def table(this, previous, flags):
+def _verdict_cell(origin: str, flagged: dict[str, str]) -> str:
+    if origin not in flagged:
+        return "ok"
+    reason = flagged[origin]
+    return f"**{reason.upper()}{' (UNKNOWN)' if reason in UNKNOWN_REASONS else ''}{' (BEST EFFORT)' if origin in BEST_EFFORT else ''}**"
+
+
+def _table_row(origin: str, counts: OriginCounts, was: OriginCounts | None, verdict: str) -> str:
+    refusals = ", ".join(f"{label}×{n}" for label, n in sorted(counts["refusals"].items(), key=lambda kv: -kv[1]))
+    return (f"| {origin} | {verdict} | {share(counts)} | {refusals or '—'} | {counts['tree']} | "
+            f"{share(was) if was else 'n/a'} | {was['tree'] if was else 'n/a'} |")
+
+
+def table(this: Manifest, previous: Manifest | None, flags: list[Flag]) -> str:
     """Markdown: every origin this recording asked or the previous one held, flagged ones first."""
-    before = (previous or {}).get("origins", {})
+    before = _held(previous)
     flagged = {flag.origin: flag.reason for flag in flags}
     origins = sorted(set(this["origins"]) | set(before), key=lambda o: (o not in flagged, o))
     lines = ["| origin | verdict | refused / asked | refusals | in tree | last green: refused / asked | last green: in tree |",
              "|---|---|---|---|---|---|---|"]
-    for origin in origins:
-        counts = this["origins"].get(origin, origin_counts())
-        was = before.get(origin)
-        refusals = ", ".join(f"{label}×{n}" for label, n in sorted(counts["refusals"].items(), key=lambda kv: -kv[1]))
-        verdict = (f"**{flagged[origin].upper()}{' (UNKNOWN)' if flagged[origin] in UNKNOWN_REASONS else ''}"
-                   f"{' (BEST EFFORT)' if origin in BEST_EFFORT else ''}**"
-                   if origin in flagged else "ok")
-        lines.append(f"| {origin} | {verdict} | {share(counts)} | {refusals or '—'} | {counts['tree']} | "
-                     f"{share(was) if was else 'n/a'} | {was['tree'] if was else 'n/a'} |")
+    lines += [_table_row(o, this["origins"].get(o, origin_counts()), before.get(o), _verdict_cell(o, flagged)) for o in origins]
     return "\n".join(lines)
 
 
-def since(raw):
+def since(raw: str) -> float:
     try:
         return float(raw)
     except ValueError:
@@ -216,7 +264,80 @@ def since(raw):
 DOCSTRING = __doc__ or ""  # None under python -OO
 
 
-def main(argv):
+def _heading_title(title: str) -> str:
+    return f" ({title})" if title else ""
+
+
+def _load(args: argparse.Namespace) -> tuple[Manifest, Manifest | None]:
+    """(this manifest, previous manifest or None); OSError / ValueError when the tree or `--previous` is unreadable."""
+    this = manifest(args.tree, since(args.since))
+    if not (args.previous and os.path.isfile(args.previous)):
+        return this, None
+    with open(args.previous) as handle:
+        return this, json.load(handle)
+
+
+def _unknown_notes(this: Manifest, unknown: list[Flag]) -> str:
+    """The UNKNOWN paragraphs: origins whose refusals were the proxy's or the origin's own outage, not our block."""
+    origins = this["origins"]
+    unreachable = [f for f in unknown if f.reason == "proxy-unreachable"]
+    down = [f for f in unknown if f.reason == "origin-down"]
+    text = ""
+    if unreachable:
+        text += ("\n\n**UNKNOWN: the residential proxy was unreachable** for " +
+                 ", ".join(f"{f.origin} ({origins[f.origin]['proxyDown']} of {origins[f.origin]['refused']} refusals)"
+                           for f in unreachable) +
+                 " -- production's route to them was not there to ask, so their health is not judged: fix the proxy, "
+                 "not the code")
+    if down:
+        text += ("\n\n**UNKNOWN: down for everyone** -- " +
+                 ", ".join(f"{f.origin} ({origins[f.origin]['originDown']} of {origins[f.origin]['refused']} "
+                           "refusals a 5xx or a timeout both direct and through the proxy)" for f in down) +
+                 ": the site's own outage, not a block on us; its previous recording is kept")
+    return text
+
+
+def _best_effort_notes(this: Manifest, flags: list[Flag]) -> str:
+    return "".join(
+        f"\n\n**{BEST_EFFORT[f.origin]} unavailable: {this['origins'].get(f.origin, origin_counts())['refused']} call(s) refused** "
+        f"({f.origin} {f.reason}; best effort -- warned, not failing the recording)"
+        for f in flags if not f.blocking)
+
+
+def _verdict(this: Manifest, flags: list[Flag], blocking: list[Flag], unknown: list[Flag]) -> str:
+    head = (f"**{len(blocking)} origin(s) flagged:** " + ", ".join(f"{f.origin} ({f.reason})" for f in blocking)
+            if blocking else "No origin refused most of what it was asked, and none vanished.")
+    return head + _unknown_notes(this, unknown) + _best_effort_notes(this, flags)
+
+
+def _what(flag: Flag, counts: OriginCounts) -> str:
+    """The annotation's account of why `flag` was raised."""
+    if flag.reason == "refusing":
+        return f"refused {share(counts)} of what this recording asked it"
+    if flag.reason == "proxy-unreachable":
+        return (f"refused {share(counts)} of what this recording asked it, {counts['proxyDown']} with the residential "
+                "proxy unreachable -- proxy unreachable, the origin not judged")
+    if flag.reason == "origin-down":
+        return (f"answered {counts['originDown']} of {counts['refused']} refusals with a 5xx or a timeout both direct and "
+                "through the proxy -- down for everyone, its previous recording kept")
+    return "held responses in the last green recording and holds none now"
+
+
+def _annotation(flag: Flag, counts: OriginCounts, title: str) -> str:
+    level = "error" if flag.blocking and flag.reason != "origin-down" else "warning"
+    return (f"::{level}::{'UNKNOWN: ' if flag.unknown and flag.blocking else ''}{title + ': ' if title else ''}"
+            f"{flag.origin} {_what(flag, counts)}{'' if flag.blocking else ' (best effort: not failing the recording)'}")
+
+
+def _report(args: argparse.Namespace, this: Manifest, previous: Manifest | None, flags: list[Flag],
+            blocking: list[Flag], unknown: list[Flag]) -> str:
+    basis = "against the last green recording" if previous else "absolute floor only — no previous manifest"
+    return (f"### Recording health{_heading_title(args.title)}\n\n{_verdict(this, flags, blocking, unknown)} "
+            f"({basis}; flagged at ≥{MIN_REQUESTS} asked and >{round(100 * REFUSING_SHARE)}% "
+            f"refused, or ≥{MIN_REQUESTS} held last time and none now)\n\n{table(this, previous, flags)}\n")
+
+
+def _parse(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=DOCSTRING.split("\n")[0])
     parser.add_argument("tree")
     parser.add_argument("--since", required=True, help="the recording's start: ISO-8601 or epoch seconds")
@@ -224,68 +345,46 @@ def main(argv):
     parser.add_argument("--write", help="where to write this recording's manifest")
     parser.add_argument("--summary", help="a markdown file to append the table to ($GITHUB_STEP_SUMMARY)")
     parser.add_argument("--title", default="", help="the country, for the table's heading")
-    args = parser.parse_args(argv)
+    return parser.parse_args(argv)
 
-    try:
-        this = manifest(args.tree, since(args.since))
-        previous = None
-        if args.previous and os.path.isfile(args.previous):
-            with open(args.previous) as handle:
-                previous = json.load(handle)
-    except (OSError, ValueError) as e:
-        print(f"::error::recording health{f' ({args.title})' if args.title else ''}: could not judge -- {type(e).__name__}: {e}",
-              file=sys.stderr)
-        return 2
-    if not this["origins"]:
-        print(f"::error::recording health{f' ({args.title})' if args.title else ''}: {args.tree} holds no origin's responses "
-              "-- no recording to judge", file=sys.stderr)
-        return 2
-    flags = judge(this, previous)
-    blocking = [f for f in flags if f.blocking and not f.unknown]
-    unknown = [f for f in flags if f.blocking and f.unknown]
+
+def _no_verdict(args: argparse.Namespace, why: str) -> int:
+    print(f"::error::recording health{_heading_title(args.title)}: {why}", file=sys.stderr)
+    return 2
+
+
+def _write_outputs(args: argparse.Namespace, this: Manifest, flags: list[Flag], report: str) -> None:
     if args.write:
         with open(args.write, "w") as handle:
             json.dump({**this, "flags": {f.origin: f.reason for f in flags}}, handle, indent=1, sort_keys=True)
-    heading = f"### Recording health{f' ({args.title})' if args.title else ''}"
-    basis = "against the last green recording" if previous else "absolute floor only — no previous manifest"
-    verdict = (f"**{len(blocking)} origin(s) flagged:** " + ", ".join(f"{f.origin} ({f.reason})" for f in blocking)
-               if blocking else "No origin refused most of what it was asked, and none vanished.")
-    unreachable = [f for f in unknown if f.reason == "proxy-unreachable"]
-    down = [f for f in unknown if f.reason == "origin-down"]
-    if unreachable:
-        verdict += ("\n\n**UNKNOWN: the residential proxy was unreachable** for " +
-                    ", ".join(f"{f.origin} ({this['origins'][f.origin].get('proxyDown', 0)} of {this['origins'][f.origin]['refused']} "
-                              "refusals)" for f in unreachable) +
-                    " -- production's route to them was not there to ask, so their health is not judged: fix the proxy, "
-                    "not the code")
-    if down:
-        verdict += ("\n\n**UNKNOWN: down for everyone** -- " +
-                    ", ".join(f"{f.origin} ({this['origins'][f.origin].get('originDown', 0)} of {this['origins'][f.origin]['refused']} "
-                              "refusals a 5xx or a timeout both direct and through the proxy)" for f in down) +
-                    ": the site's own outage, not a block on us; its previous recording is kept")
-    for flag in flags:
-        if not flag.blocking:
-            refused = this["origins"].get(flag.origin, origin_counts())["refused"]
-            verdict += (f"\n\n**{BEST_EFFORT[flag.origin]} unavailable: {refused} call(s) refused** ({flag.origin} {flag.reason}; "
-                        "best effort -- warned, not failing the recording)")
-    report = (f"{heading}\n\n{verdict} ({basis}; flagged at ≥{MIN_REQUESTS} asked and >{round(100 * REFUSING_SHARE)}% "
-              f"refused, or ≥{MIN_REQUESTS} held last time and none now)\n\n{table(this, previous, flags)}\n")
-    print(report)
     if args.summary:
         with open(args.summary, "a") as handle:
             handle.write(report + "\n")
+
+
+def _exit_code(blocking: list[Flag], unknown: list[Flag]) -> int:
+    if blocking:
+        return 1
+    return UNKNOWN_EXIT if unknown else 0
+
+
+def main(argv: list[str]) -> int:
+    args = _parse(argv)
+    try:
+        this, previous = _load(args)
+    except (OSError, ValueError) as e:
+        return _no_verdict(args, f"could not judge -- {type(e).__name__}: {e}")
+    if not this["origins"]:
+        return _no_verdict(args, f"{args.tree} holds no origin's responses -- no recording to judge")
+    flags = judge(this, previous)
+    blocking = [f for f in flags if f.blocking and not f.unknown]
+    unknown = [f for f in flags if f.blocking and f.unknown]
+    report = _report(args, this, previous, flags, blocking, unknown)
+    print(report)
+    _write_outputs(args, this, flags, report)
     for flag in flags:
-        counts = this["origins"].get(flag.origin, origin_counts())
-        what = (f"refused {share(counts)} of what this recording asked it" if flag.reason == "refusing"
-                else f"refused {share(counts)} of what this recording asked it, {counts.get('proxyDown', 0)} with the residential "
-                     "proxy unreachable -- proxy unreachable, the origin not judged" if flag.reason == "proxy-unreachable"
-                else f"answered {counts.get('originDown', 0)} of {counts['refused']} refusals with a 5xx or a timeout both direct and through the "
-                     "proxy -- down for everyone, its previous recording kept" if flag.reason == "origin-down"
-                else "held responses in the last green recording and holds none now")
-        level = "error" if flag.blocking and flag.reason != "origin-down" else "warning"
-        print(f"::{level}::{'UNKNOWN: ' if flag.unknown and flag.blocking else ''}{args.title + ': ' if args.title else ''}"
-              f"{flag.origin} {what}{'' if flag.blocking else ' (best effort: not failing the recording)'}", file=sys.stderr)
-    return 1 if blocking else UNKNOWN_EXIT if unknown else 0
+        print(_annotation(flag, this["origins"].get(flag.origin, origin_counts()), args.title), file=sys.stderr)
+    return _exit_code(blocking, unknown)
 
 
 if __name__ == "__main__":
