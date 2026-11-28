@@ -77,7 +77,6 @@ def _clock(ts, with_seconds=True):
     return datetime.datetime.fromtimestamp(ts, datetime.timezone.utc).strftime("%m-%d %H:%M:%S" if with_seconds else "%m-%d %H:%M")
 
 
-# ---------------------------------------------------------------------------------------------------------------------
 # Take-change lines
 
 @dataclass
@@ -136,7 +135,6 @@ def logsql(cc, venue, title, since):
     return (f'_time:{since} "identity take change" country:{cc} _msg:~{json.dumps(pattern, ensure_ascii=False)} | sort by (_time)')
 
 
-# ---------------------------------------------------------------------------------------------------------------------
 # Deploys
 
 @dataclass
@@ -178,7 +176,6 @@ def deploy_of(change, known):
     return None
 
 
-# ---------------------------------------------------------------------------------------------------------------------
 # The report
 
 def run_command(argv, timeout=900):
