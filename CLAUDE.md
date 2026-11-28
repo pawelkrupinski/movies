@@ -391,7 +391,7 @@ records falls, and `scripts/ratchet-diff` lists its rows as `js <kind>`. Tests, 
 reported (`scripts/js-quality-report`), never gated. No rename credit: a moved file's rows are new rows.
 **The Python quality ratchet** (the owner, 2026-11-22, with the shell-to-Python migration; pre-push `pyquality`) holds every
 Python tool (`scripts/`, `.github/scripts/`, `infra/bin/`, `infra/nix/files/`, `android/` / `ios/scripts/`) to
-`test/resources/py-quality-baseline.tsv` on the same limits and trailers, plus a strict-pyright error count that only falls
+`test/resources/py-quality-baseline.tsv` on the same limits and trailers, plus a strict-pyright error count that only falls (the Unknown{Variable,Argument,Member,Lambda}Type cascade rules and reportMissingImports are warnings, not counted: `docs/pyright-rules-review.md`)
 (`Typing:`); `scripts/py-quality-report --update` records falls. **A migrated tool has no row** (the owner, 2026-11-23): a
 tool of `scripts/shell-py-progress/migrate-tools.tsv` and every `.py` file new since the migration's base that it reaches
 (`scripts/py-quality/migrated.py`) past a limit is refused even with a trailer -- "migrated tools stay under the bar --

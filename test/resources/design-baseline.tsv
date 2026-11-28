@@ -456,7 +456,7 @@ effect	scripts/pure_move_git.py	1
 effect	scripts/py-quality/migrated.py	1
 effect	scripts/py-quality/migrated.py:files	2
 effect	scripts/py-quality/pyright.py	1
-effect	scripts/py-quality/pyright.py:files	7
+effect	scripts/py-quality/pyright.py:files	8
 effect	scripts/py-quality/report.py	1
 effect	scripts/py-quality/report.py:files	10
 effect	scripts/ratchet_diff_cli.py	1
@@ -1466,7 +1466,8 @@ mixed	scripts/py-quality/migrated.py:files	4
 mixed	scripts/py-quality/migrated.py:reached	9
 mixed	scripts/py-quality/pyright.py:ensure	3
 mixed	scripts/py-quality/pyright.py:install	4
-mixed	scripts/py-quality/pyright.py:run	3
+mixed	scripts/py-quality/pyright.py:python_directory	4
+mixed	scripts/py-quality/pyright.py:run	4
 mixed	scripts/py-quality/pyright.py:run_staged	5
 mixed	scripts/py-quality/report.py:is_python	5
 mixed	scripts/py-quality/report.py:measure	4

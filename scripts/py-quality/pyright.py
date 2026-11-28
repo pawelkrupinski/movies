@@ -11,7 +11,7 @@ import os
 import shutil
 import subprocess
 import sys
-from typing import Any, Dict, Mapping, Sequence
+from typing import Any, Dict, Mapping, Optional, Sequence
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "lib"))
@@ -70,7 +70,7 @@ def errors(root: str, files: Sequence[str], env: Mapping[str, str]) -> Dict[str,
         return {}
     pyright = ensure(env)
     staged = {f + STAGED: f for f in files if not f.endswith(".py")}
-    report = run_staged(root, pyright, files, staged)
+    report = run_staged(root, pyright, files, staged, env)
     counts = {f: 0 for f in files}
     for diagnostic in report.get("generalDiagnostics", []):
         if diagnostic.get("severity") == "error":
@@ -80,21 +80,42 @@ def errors(root: str, files: Sequence[str], env: Mapping[str, str]) -> Dict[str,
     return counts
 
 
-def run_staged(root: str, pyright: str, files: Sequence[str], staged: Mapping[str, str]) -> Dict[str, Any]:
+def run_staged(root: str, pyright: str, files: Sequence[str], staged: Mapping[str, str],
+               env: Mapping[str, str]) -> Dict[str, Any]:
     """pyright's report over `files`, each of `staged` (copy -> original) written beside its original for the run."""
     for copy, original in staged.items():
         shutil.copyfile(os.path.join(root, original), os.path.join(root, copy))
     try:
-        return run(root, pyright, [f + STAGED if f + STAGED in staged else f for f in files])
+        return run(root, pyright, [f + STAGED if f + STAGED in staged else f for f in files], env)
     finally:
         for copy in staged:
             os.remove(os.path.join(root, copy))
 
 
-def run(root: str, pyright: str, files: Sequence[str]) -> Dict[str, Any]:
-    """pyright's --outputjson report over `files`."""
+NUMPY_REQUIREMENTS = "scripts/numpy-requirements.txt"
+
+
+def python_directory(root: str, env: Mapping[str, str]) -> Optional[str]:
+    """The directory whose python3 imports numpy (the pinned tools venv, scripts/python-venv), which pyright resolves
+    `import numpy` in scripts/poster_hash.py through; None when the checkout has no such tool or the venv cannot be had
+    (the import then reads as a missing-import warning, which the ratchet does not count)."""
+    tool = os.path.join(root, "scripts", "python-venv")
+    if not os.path.isfile(tool):
+        return None
+    done = subprocess.run([tool, os.path.join(root, NUMPY_REQUIREMENTS), "numpy"], cwd=root, env=dict(env),
+                          capture_output=True, text=True)
+    lines = done.stdout.strip().splitlines()
+    return lines[-1] if done.returncode == 0 and lines else None
+
+
+def run(root: str, pyright: str, files: Sequence[str], env: Mapping[str, str]) -> Dict[str, Any]:
+    """pyright's --outputjson report over `files`, run under a python3 that has numpy."""
+    environment = dict(env)
+    directory = python_directory(root, environment)
+    if directory:
+        environment["PATH"] = directory + os.pathsep + environment.get("PATH", "")
     done = subprocess.run(["node", pyright, "--outputjson", "--project", os.path.join(root, "pyrightconfig.json"),
-                           *files], cwd=root, capture_output=True, text=True)
+                           *files], cwd=root, capture_output=True, text=True, env=environment)
     if done.returncode not in (0, 1):
         raise RuntimeError(f"pyright exited {done.returncode}: {done.stderr.strip()[-400:] or done.stdout[-400:]}")
     return json.loads(done.stdout)

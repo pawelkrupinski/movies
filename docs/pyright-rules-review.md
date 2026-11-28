@@ -3,6 +3,13 @@
 Measured 2026-11-27 over the 100 frozen files of `test/resources/py-quality-baseline.tsv`: 15,663 errors before this
 review's fixes, 15,319 after (the Part 1 landings). `pyrightconfig.json` is unchanged: the owner decides.
 
+**Decision: applied 2026-11-28** (the owner approved the verdicts below as recommended). `pyrightconfig.json` sets
+`reportUnknownVariableType`, `reportUnknownArgumentType`, `reportUnknownMemberType`, `reportUnknownLambdaType` and
+`reportMissingImports` to warning; every other rule stays an error. The ratchet counts severity error only (pinned by
+`report_test.py`). The 4 `reportMissingImports` false positives are gone, not merely warned: `extraPaths` gained
+`infra/test` and `data/uk/scripts`, and pyright runs under the pinned numpy venv (`scripts/numpy-requirements.txt`, via
+`scripts/python-venv`). Baseline re-frozen: 15,036 -> 4,135 pyright errors over 97 -> 92 files.
+
 ## What the non-"Unknown" rules found (274 diagnostics)
 
 Classes: (a) a real bug, (b) a typing gap (behaviour fine, the types did not say so: fixed with a real type, narrowing

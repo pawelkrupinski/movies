@@ -41,8 +41,8 @@ CLONE = "def table():\n    return [" + ", ".join(f"('row{n}', {n}, {n * 2})" for
 # A fake pyright run: one error per `# type-error` line of each file asked, in pyright's --outputjson shape
 NODE = """
 files = [a for a in argv[1:] if a.endswith('.py')]  # like pyright: .py only
-diagnostics = [{'file': os.path.abspath(f), 'severity': 'error'}
-               for f in files for line in open(f) if '# type-error' in line]
+diagnostics = [{'file': os.path.abspath(f), 'severity': 'error' if '# type-error' in line else 'warning'}
+               for f in files for line in open(f) if '# type-error' in line or '# type-warning' in line]
 out(json.dumps({'generalDiagnostics': diagnostics}))
 exit(1 if diagnostics else 0)
 """
@@ -135,6 +135,12 @@ class ReportTest(cli_harness.ToolCase):
         self.assertIn("pyright scripts/ci/typed.py: 1, past the limit 0", done.output)
         self.assertNotIn("plain.py", done.output)  # not asked: its baseline row (none) stands
         self.assertEqual([["scripts/ci/typed.py"]], [[a for a in c if a.endswith(".py")] for c in self.fakes.calls("node")][-1:])
+
+    def test_a_file_with_only_pyright_warnings_has_no_row_and_an_error_still_counts(self) -> None:
+        self.files({"scripts/ci/warned.py": "x = 1  # type-warning\n", "scripts/ci/typed.py": "y = 1  # type-warning\nz = 2  # type-error\n"})
+        self.assert_check_fails("pyright scripts/ci/typed.py: 1, past the limit 0")
+        done = self.report("--check")
+        self.assertNotIn("warned.py", done.output)
 
     def test_an_extensionless_python_tools_type_errors_are_counted_under_its_own_name(self) -> None:
         self.files({"scripts/ci/tool": "#!/usr/bin/env python3\nx = 1  # type-error\n"})

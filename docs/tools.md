@@ -620,7 +620,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/poster_eval_images.py` | IMAGES AND HASHES of poster_eval: the image cache and the hash cache, the fetches (a concurrency cap a 429/503 halves), | `imported` | 2 tools | - | Python |
 | `scripts/poster_eval_report.py` | LABELS AND REPORTS of poster_eval: the judged and weak labels of each cluster, the vote's tallies per country and the | `imported` | 1 tool | - | Python |
 | `scripts/poster_eval_vote.py` | THE EVALUATION of poster_eval: a variant's posters resolved to hashes, each (cluster, url, candidate) pair's nearest bits, | `imported` | 2 tools | - | Python |
-| `scripts/poster_hash.py` | Production's poster hash, bit for bit: the 63-bit pHash `services.identity.PosterHash.of` files for a poster. | `python3 scripts/poster_hash.py` | skill identity-investigation; 3 tools | - | Python |
+| `scripts/poster_hash.py` | Production's poster hash, bit for bit: the 63-bit pHash `services.identity.PosterHash.of` files for a poster. | `python3 scripts/poster_hash.py` | skill identity-investigation; 4 tools | - | Python |
 | `scripts/prod-ops-fixture.sh` | The fake prod the prod-ops scripts' tests share (see scripts/prod-ops.sh) | `bash scripts/prod-ops-fixture.sh` | 1 tool | - | KEEP |
 | `scripts/prod-ops.sh` | The shared harness of the prod-ops scripts (scripts/mongo-grants, scripts/fleet-db-finish, and the next one) | `bash scripts/prod-ops.sh` | 5 tools | prod-ops-test.sh | KEEP |
 | `scripts/with-prod-mongo.sh` | Run one command against prod Mongo from a laptop: the credential from the Touch ID vault, the connection through the ssh tunnel | `scripts/with-prod-mongo.sh` | 8 tools | with-prod-mongo-test.sh | KEEP |
@@ -829,7 +829,7 @@ migration class (MIGRATE / KEEP), `Python` for one already in Python.
 | `scripts/pure_move_normalise.py` | THE PURE MOVE CHECK'S NORMAL FORM (scripts/pure_move_check.py): a Scala (or twirl) source with its comments dropped, | `imported` | 2 tools | - | Python |
 | `scripts/pure_move_risks.py` | THE PURE MOVE CHECK'S NAME RISK (scripts/pure_move_check.py): a moved class's old name in a production string literal, | `imported` | 1 tool | - | Python |
 | `scripts/pure_move_source.py` | THE PURE MOVE CHECK'S SOURCE READING (scripts/pure_move_check.py): which paths are Scala, twirl, production or a | `imported` | 5 tools | - | Python |
-| `scripts/python-venv` | Prints a directory whose python3 imports <module>, from a pinned venv of <requirements.txt> built once and reused | `scripts/python-venv` | wf alert-backtest; hook pre-push; 8 tools | - | KEEP |
+| `scripts/python-venv` | Prints a directory whose python3 imports <module>, from a pinned venv of <requirements.txt> built once and reused | `scripts/python-venv` | wf alert-backtest; hook pre-push; 9 tools | - | KEEP |
 | `scripts/read-model-snapshot-inputs.sh` | The read-model snapshot's input stamp: a hash of the fixture corpus the snapshot was projected from, checked in beside it | `scripts/read-model-snapshot-inputs.sh` | wf ci; hook pre-push; skill regenerate-snapshots; 3 tools | - | KEEP |
 | `scripts/review-commit` | Commit the review pages' answers as the user's judgements | `scripts/review-commit` | skill identity-investigation; 2 tools | review-commit-test.sh | KEEP |
 | `scripts/review-server` | The dev server for the /debug review pages, run from the review worktree -- never from the root checkout | `scripts/review-server` | skill identity-investigation; 4 tools | review-server-test.sh | KEEP |
