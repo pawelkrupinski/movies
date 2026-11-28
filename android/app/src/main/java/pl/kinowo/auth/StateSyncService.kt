@@ -178,53 +178,56 @@ class StateSyncService(
         val localBeforeFetch = prefs.hiddenFilmsFor(country)
         // A network error leaves local state authoritative: prefs + flags untouched.
         runCatchingCancellable {
-            if (prefs.isHiddenFilmsMigrated(country)) {
-                when (val result = client.fetch(country, prefs.hiddenFilmsEtag(country), prefs.hiddenFilmsLastModified(country))) {
-                    is HiddenFilmsFetchResult.NotModified -> Unit
-                    is HiddenFilmsFetchResult.Changed -> {
-                        if (editedDuringFetch(country, localBeforeFetch)) return@runCatchingCancellable
-                        val state = result.state
-                        // Under the lock a logout clears the sync state under, so a
-                        // logout mid-write cannot land between the check and the writes.
-                        queueMutex.withLock {
-                            if (endedDuringFetch(startedIn)) return@runCatchingCancellable
-                            if (state.hiddenFilms != prefs.hiddenFilmsFor(country)) prefs.setHiddenFilms(country, state.hiddenFilms)
-                            prefs.setHiddenFilmsValidators(country, state.etag, state.lastModified)
-                        }
-                    }
-                }
+            if (prefs.isHiddenFilmsMigrated(country)) refreshMigrated(country, startedIn, localBeforeFetch)
+            else unionFirst(country, startedIn, localBeforeFetch)
+        }
+    }
+
+    /** An already migrated country: a changed answer REPLACES local; a "not modified" leaves it. */
+    private suspend fun refreshMigrated(country: String, startedIn: Int, localBeforeFetch: Set<String>) {
+        val result = client.fetch(country, prefs.hiddenFilmsEtag(country), prefs.hiddenFilmsLastModified(country))
+        if (result !is HiddenFilmsFetchResult.Changed || editedDuringFetch(country, localBeforeFetch)) return
+        val state = result.state
+        // Under the lock a logout clears the sync state under, so a
+        // logout mid-write cannot land between the check and the writes.
+        queueMutex.withLock {
+            if (endedDuringFetch(startedIn)) return
+            if (state.hiddenFilms != prefs.hiddenFilmsFor(country)) prefs.setHiddenFilms(country, state.hiddenFilms)
+            prefs.setHiddenFilmsValidators(country, state.etag, state.lastModified)
+        }
+    }
+
+    /** A country's first reconcile: the fetch unioned with local, each local-only title
+     *  queued as a hide, and the country migrated once everything owed has landed. */
+    private suspend fun unionFirst(country: String, startedIn: Int, localBeforeFetch: Set<String>) {
+        val remote = (client.fetch(country, null, null) as? HiddenFilmsFetchResult.Changed)?.state
+        if (editedDuringFetch(country, localBeforeFetch)) return
+        val remoteFilms = remote?.hiddenFilms ?: emptySet()
+        // Each local-only title is owed to the server as a hide, queued
+        // like any edit — so an unhide made meanwhile is sent after it,
+        // never beside it — and the merge is written under the same lock.
+        // Checked under the lock a logout clears the queue under: a
+        // logout while the fetch was out must find nothing re-queued.
+        queueMutex.withLock {
+            if (endedDuringFetch(startedIn)) return
+            val local = prefs.hiddenFilmsFor(country)
+            if (!local.containsAll(remoteFilms)) prefs.setHiddenFilms(country, local + remoteFilms)
+            val titles = local - remoteFilms
+            if (titles.isNotEmpty()) {
+                prefs.setPendingHiddenFilmsOps(country, prefs.pendingHiddenFilmsOps(country) + titles.map(HiddenFilmsOp::Hide))
             } else {
-                val remote = (client.fetch(country, null, null) as? HiddenFilmsFetchResult.Changed)?.state
-                if (editedDuringFetch(country, localBeforeFetch)) return@runCatchingCancellable
-                val remoteFilms = remote?.hiddenFilms ?: emptySet()
-                // Each local-only title is owed to the server as a hide, queued
-                // like any edit — so an unhide made meanwhile is sent after it,
-                // never beside it — and the merge is written under the same lock.
-                // Checked under the lock a logout clears the queue under: a
-                // logout while the fetch was out must find nothing re-queued.
-                val localOnly = queueMutex.withLock {
-                    if (endedDuringFetch(startedIn)) return@runCatchingCancellable
-                    val local = prefs.hiddenFilmsFor(country)
-                    if (!local.containsAll(remoteFilms)) prefs.setHiddenFilms(country, local + remoteFilms)
-                    (local - remoteFilms).also { titles ->
-                        if (titles.isNotEmpty()) {
-                            prefs.setPendingHiddenFilmsOps(country, prefs.pendingHiddenFilmsOps(country) + titles.map(HiddenFilmsOp::Hide))
-                        } else {
-                            // Nothing owed: the merged set IS the server's. Otherwise the
-                            // flush settles the validators (see [sendPendingOps]).
-                            remote?.let { prefs.setHiddenFilmsValidators(country, it.etag, it.lastModified) }
-                        }
-                    }
-                }
-                // Migrated only once everything owed has landed; until then the
-                // next reconcile re-sends the queue and runs the union again. And
-                // only while the session lasts: a logout cleared the flag for the
-                // next account, whose first sign-in owes the union (an empty queue
-                // sends nothing, so [sendPendingOps] alone cannot tell).
-                if (sendPendingOps(country)) queueMutex.withLock {
-                    if (!endedDuringFetch(startedIn)) prefs.setHiddenFilmsMigrated(country, true)
-                }
+                // Nothing owed: the merged set IS the server's. Otherwise the
+                // flush settles the validators (see [sendPendingOps]).
+                remote?.let { prefs.setHiddenFilmsValidators(country, it.etag, it.lastModified) }
             }
+        }
+        // Migrated only once everything owed has landed; until then the
+        // next reconcile re-sends the queue and runs the union again. And
+        // only while the session lasts: a logout cleared the flag for the
+        // next account, whose first sign-in owes the union (an empty queue
+        // sends nothing, so [sendPendingOps] alone cannot tell).
+        if (sendPendingOps(country)) queueMutex.withLock {
+            if (!endedDuringFetch(startedIn)) prefs.setHiddenFilmsMigrated(country, true)
         }
     }
 
@@ -406,26 +409,34 @@ class StateSyncService(
         var op = prefs.pendingHiddenFilmsOps(country).firstOrNull()
         while (op != null) {
             if (!loggedIn) return@withLock false
-            val result = runCatchingCancellable {
-                when (op) {
-                    is HiddenFilmsOp.Hide -> client.hide(country, op.title)
-                    is HiddenFilmsOp.Unhide -> client.unhide(country, op.title)
-                    HiddenFilmsOp.Clear -> client.clear(country)
-                }
-            }.getOrElse { failure -> if (failure is HiddenFilmsWriteRefused) null else return@withLock false }
+            val current: HiddenFilmsOp = op
+            val result = runCatchingCancellable { send(current, country) }
+                .getOrElse { failure -> if (failure is HiddenFilmsWriteRefused) null else return@withLock false }
             // A logout while it was on the wire forgot the queue it came from.
             if (session != startedIn) return@withLock false
             val remaining = queueMutex.withLock {
                 prefs.pendingHiddenFilmsOps(country).drop(1).also { prefs.setPendingHiddenFilmsOps(country, it) }
             }
-            if (result != null && remaining.isEmpty() && result.hiddenFilms == prefs.hiddenFilmsFor(country)) {
-                prefs.setHiddenFilmsValidators(country, result.etag, result.lastModified)
-            } else {
-                prefs.setHiddenFilmsValidators(country, null, null)
-            }
+            settleValidators(result, remaining.isEmpty(), country)
             op = remaining.firstOrNull()
         }
         true
+    }
+
+    private suspend fun send(op: HiddenFilmsOp, country: String): HiddenFilmsState = when (op) {
+        is HiddenFilmsOp.Hide -> client.hide(country, op.title)
+        is HiddenFilmsOp.Unhide -> client.unhide(country, op.title)
+        HiddenFilmsOp.Clear -> client.clear(country)
+    }
+
+    /** The validators after an op left the queue: the answer's, when it is the last one owed
+     *  and matches the local set; else dropped, so the next fetch is fresh. */
+    private suspend fun settleValidators(result: HiddenFilmsState?, queueEmpty: Boolean, country: String) {
+        if (result != null && queueEmpty && result.hiddenFilms == prefs.hiddenFilmsFor(country)) {
+            prefs.setHiddenFilmsValidators(country, result.etag, result.lastModified)
+        } else {
+            prefs.setHiddenFilmsValidators(country, null, null)
+        }
     }
 
     private companion object {

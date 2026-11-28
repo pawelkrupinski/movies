@@ -192,38 +192,46 @@ final class StateSyncService: PreferencesEditListener {
         let startedIn = session
         let localBeforeFetch = prefs.hiddenFilms(country: country)
         do {
-            if prefs.isHiddenFilmsMigrated(country: country) {
-                let (etag, lastModified) = prefs.hiddenFilmsValidators(country: country)
-                if case .current(let remote) = try await client.fetch(country: country, etag: etag, lastModified: lastModified) {
-                    guard !endedDuringFetch(startedIn),
-                          !editedDuringFetch(country: country, localBeforeFetch: localBeforeFetch) else { return }
-                    prefs.setHiddenFilms(remote.hiddenFilms, country: country)
-                    prefs.setHiddenFilmsValidators(country: country, etag: remote.etag, lastModified: remote.lastModified)
-                }
-            } else {
-                // No usable validators, so this is always a fresh 200.
-                guard case .current(let remote) = try await client.fetch(country: country, etag: nil, lastModified: nil),
-                      !endedDuringFetch(startedIn),
-                      !editedDuringFetch(country: country, localBeforeFetch: localBeforeFetch) else { return }
-                let local     = prefs.hiddenFilms(country: country)
-                let localOnly = local.subtracting(remote.hiddenFilms)
-                prefs.setHiddenFilms(local.union(remote.hiddenFilms), country: country)
-                prefs.setHiddenFilmsValidators(country: country, etag: remote.etag, lastModified: remote.lastModified)
-                // Uploaded through the edit queue (empty here — see
-                // `editedDuringFetch`), so an edit the user makes meanwhile is
-                // sent after these hides rather than racing them, and the queue's
-                // own rules settle the validators and a hide refused for good.
-                if !localOnly.isEmpty {
-                    prefs.setPendingHiddenFilmsChanges(localOnly.sorted().map(HiddenFilmsChange.hidden), country: country)
-                    guard await sendPendingChanges(country: country) else { return }
-                }
-            }
-            prefs.setHiddenFilmsMigrated(country: country)
+            let proceed = prefs.isHiddenFilmsMigrated(country: country)
+                ? try await refreshMigrated(country: country, startedIn: startedIn, localBeforeFetch: localBeforeFetch)
+                : try await unionFirst(country: country, startedIn: startedIn, localBeforeFetch: localBeforeFetch)
+            if proceed { prefs.setHiddenFilmsMigrated(country: country) }
         } catch {
             // Network error — local state is authoritative; leave prefs + flags
             // alone, a later reconcile (resume, country switch, next login)
             // retries.
         }
+    }
+
+    /// An already migrated country: a fresh result REPLACES local. False when it is stale.
+    private func refreshMigrated(country: String, startedIn: Int, localBeforeFetch: Set<String>) async throws -> Bool {
+        let (etag, lastModified) = prefs.hiddenFilmsValidators(country: country)
+        guard case .current(let remote) = try await client.fetch(country: country, etag: etag, lastModified: lastModified)
+        else { return true }
+        guard !endedDuringFetch(startedIn),
+              !editedDuringFetch(country: country, localBeforeFetch: localBeforeFetch) else { return false }
+        prefs.setHiddenFilms(remote.hiddenFilms, country: country)
+        prefs.setHiddenFilmsValidators(country: country, etag: remote.etag, lastModified: remote.lastModified)
+        return true
+    }
+
+    /// A country's first reconcile: a fresh 200 unioned with local, every local-only
+    /// title queued as a `hide` and sent. False when the answer is stale or a send failed.
+    private func unionFirst(country: String, startedIn: Int, localBeforeFetch: Set<String>) async throws -> Bool {
+        guard case .current(let remote) = try await client.fetch(country: country, etag: nil, lastModified: nil),
+              !endedDuringFetch(startedIn),
+              !editedDuringFetch(country: country, localBeforeFetch: localBeforeFetch) else { return false }
+        let local = prefs.hiddenFilms(country: country)
+        let localOnly = local.subtracting(remote.hiddenFilms)
+        prefs.setHiddenFilms(local.union(remote.hiddenFilms), country: country)
+        prefs.setHiddenFilmsValidators(country: country, etag: remote.etag, lastModified: remote.lastModified)
+        // Uploaded through the edit queue (empty here — see
+        // `editedDuringFetch`), so an edit the user makes meanwhile is
+        // sent after these hides rather than racing them, and the queue's
+        // own rules settle the validators and a hide refused for good.
+        guard !localOnly.isEmpty else { return true }
+        prefs.setPendingHiddenFilmsChanges(localOnly.sorted().map(HiddenFilmsChange.hidden), country: country)
+        return await sendPendingChanges(country: country)
     }
 
     /// Whether the session the fetch was made in ended while it was on the
@@ -297,26 +305,7 @@ final class StateSyncService: PreferencesEditListener {
         let task = Task { @MainActor [weak self] in
             while let self, self.isLoggedIn, let pending = self.pendingLanguage {
                 let picksBeforeSend = self.languagePicks
-                do {
-                    try await self.languageClient.push(pending)
-                } catch is LanguagePushRefused {
-                    // Refused for good: it can never land, so stop owing it, and
-                    // take the account's pick instead — never pushing this one back,
-                    // and never over a pick made while that fetch was on the wire.
-                    self.accountLanguage = nil
-                    if self.pendingLanguage == pending {
-                        self.pendingLanguage = nil
-                        if let remote = try? await self.languageClient.fetch(), self.pendingLanguage == nil {
-                            self.adopt(remote)
-                        }
-                    }
-                    break
-                } catch {
-                    // It may or may not have landed: the account's value is
-                    // unknown until the next fetch, so no pick is a no-op.
-                    self.accountLanguage = nil
-                    break
-                }
+                guard await self.push(language: pending) else { break }
                 self.accountLanguage = pending
                 self.languagePushesConfirmed += 1
                 // A pick made meanwhile is newer than whatever else reached the
@@ -327,6 +316,28 @@ final class StateSyncService: PreferencesEditListener {
         }
         languageSendTask = task
         await task.value
+    }
+
+    /// One language PUT; false when it did not land (refused for good, or failed).
+    private func push(language pending: String) async -> Bool {
+        do {
+            try await languageClient.push(pending)
+            return true
+        } catch is LanguagePushRefused {
+            // Refused for good: it can never land, so stop owing it, and
+            // take the account's pick instead — never pushing this one back,
+            // and never over a pick made while that fetch was on the wire.
+            accountLanguage = nil
+            if pendingLanguage == pending {
+                pendingLanguage = nil
+                if let remote = try? await languageClient.fetch(), pendingLanguage == nil { adopt(remote) }
+            }
+        } catch {
+            // It may or may not have landed: the account's value is
+            // unknown until the next fetch, so no pick is a no-op.
+            accountLanguage = nil
+        }
+        return false
     }
 
     /// Take the account's pick as this device's.
@@ -375,31 +386,40 @@ final class StateSyncService: PreferencesEditListener {
             while let change = self.prefs.pendingHiddenFilmsChanges(country: country).first {
                 guard self.isLoggedIn else { return false }
                 let result: HiddenFilmsResult?
-                do {
-                    switch change {
-                    case .hidden(let title):   result = try await self.client.hide(country: country, title: title)
-                    case .unhidden(let title): result = try await self.client.unhide(country: country, title: title)
-                    case .clearedAll:          result = try await self.client.clear(country: country)
-                    }
-                } catch is HiddenFilmsWriteRefused {
-                    result = nil
-                } catch {
-                    return false
-                }
+                do { result = try await self.send(change, country: country) } catch { return false }
                 // A logout while it was on the wire forgot the queue it came from.
                 guard self.session == startedIn else { return false }
                 let remaining = Array(self.prefs.pendingHiddenFilmsChanges(country: country).dropFirst())
                 self.prefs.setPendingHiddenFilmsChanges(remaining, country: country)
-                if let result, remaining.isEmpty, result.hiddenFilms == self.prefs.hiddenFilms(country: country) {
-                    self.prefs.setHiddenFilmsValidators(country: country, etag: result.etag, lastModified: result.lastModified)
-                } else {
-                    self.prefs.clearHiddenFilmsValidators(country: country)
-                }
+                self.settleValidators(after: result, queueEmpty: remaining.isEmpty, country: country)
             }
             return true
         }
         flushTask = task
         return await task.value
+    }
+
+    /// One queued change on the wire; nil when the server refused it for good.
+    private func send(_ change: HiddenFilmsChange, country: String) async throws -> HiddenFilmsResult? {
+        do {
+            switch change {
+            case .hidden(let title):   return try await client.hide(country: country, title: title)
+            case .unhidden(let title): return try await client.unhide(country: country, title: title)
+            case .clearedAll:          return try await client.clear(country: country)
+            }
+        } catch is HiddenFilmsWriteRefused {
+            return nil
+        }
+    }
+
+    /// The validators after a change left the queue: the answer's, when it is the
+    /// last one owed and matches the local set; else dropped, so the next fetch is fresh.
+    private func settleValidators(after result: HiddenFilmsResult?, queueEmpty: Bool, country: String) {
+        if let result, queueEmpty, result.hiddenFilms == prefs.hiddenFilms(country: country) {
+            prefs.setHiddenFilmsValidators(country: country, etag: result.etag, lastModified: result.lastModified)
+        } else {
+            prefs.clearHiddenFilmsValidators(country: country)
+        }
     }
 
     /// Every language change after launch goes through `setLanguage`: either
