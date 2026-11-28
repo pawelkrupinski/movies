@@ -62,8 +62,9 @@ class SplitCreditTest(unittest.TestCase):
             os.makedirs(os.path.dirname(full), exist_ok=True)
             with open(full, "w", encoding="utf-8") as f:
                 f.write(text)
-        done = self.design("update")
-        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+        done = self.design("update")  # a rise is recorded too, said and exit 1 (baseline_ratchet.say_rises)
+        self.assertIn(done.returncode, (0, 1), done.stdout + done.stderr)
+        self.assertEqual(done.returncode == 1, "RISES RECORDED" in done.stderr, done.stdout + done.stderr)
         self.git.text("add", "-A")
         self.git.text("commit", "-q", "-F", "-", input=message)
         return self.git.text("rev-parse", "HEAD").strip()

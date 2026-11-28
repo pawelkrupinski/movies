@@ -105,7 +105,9 @@ class ReportTest(cli_harness.ToolCase):
     def test_a_new_function_past_a_limit_fails_and_update_records_it(self) -> None:
         self.files({"scripts/ci/hairy.py": HAIRY})
         self.assert_check_fails("cognitive scripts/ci/hairy.py:hairy: 12, past the limit 10 (no baseline row)")
-        self.assertEqual(0, self.report("--update").code)
+        updated = self.report("--update")
+        self.assertEqual(1, updated.code)  # recorded, but a rise: said, and exit 1
+        self.assertIn("cognitive scripts/ci/hairy.py:hairy raised <=10 -> 12", updated.output)
         self.assertIn("cognitive\tscripts/ci/hairy.py:hairy\t12\n", self.baseline())
         self.assertEqual(0, self.report("--check").code)
 
