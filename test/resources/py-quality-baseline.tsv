@@ -72,9 +72,6 @@ cognitive	scripts/ci/commit_rules.py:main	18
 cognitive	scripts/ci/commit_rules.py:renamed_types	16
 cognitive	scripts/ci/convergence_paths.py:main	14
 cognitive	scripts/ci/corpus_shape_diff.py:findings_of	11
-cognitive	scripts/ci/cross_country.py:disagreeing	11
-cognitive	scripts/ci/cross_country.py:read_films	11
-cognitive	scripts/ci/cross_country.py:read_listings	28
 cognitive	scripts/ci/drift_diff.py:main	19
 cognitive	scripts/ci/drift_explorer.py:main	20
 cognitive	scripts/ci/drift_explorer.py:merge	11
@@ -235,7 +232,6 @@ cyclomatic	scripts/ci/convergence_slots.py:plan_suites	15
 cyclomatic	scripts/ci/countries_disagree.py:disagreements	14
 cyclomatic	scripts/ci/countries_disagree.py:line_of	11
 cyclomatic	scripts/ci/countries_disagree.py:takes_of	12
-cyclomatic	scripts/ci/cross_country.py:read_listings	36
 cyclomatic	scripts/ci/drift_diff.py:main	27
 cyclomatic	scripts/ci/drift_explorer.py:main	19
 cyclomatic	scripts/ci/drift_explorer.py:new_flips	13
@@ -388,7 +384,6 @@ pyright	scripts/ci/convergence_paths.py	24
 pyright	scripts/ci/convergence_slots.py	18
 pyright	scripts/ci/corpus_shape_diff.py	29
 pyright	scripts/ci/countries_disagree.py	43
-pyright	scripts/ci/cross_country.py	37
 pyright	scripts/ci/decodo-probe.py	10
 pyright	scripts/ci/drift_diff.py	13
 pyright	scripts/ci/drift_scenario.py	6
