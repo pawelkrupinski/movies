@@ -168,6 +168,7 @@ layer	py	scripts/lib/identity_tooling/cache	4	the identity tools' cache: capture
 layer	py	scripts/lib/pre_push_hook	4	the pre-push hook's run: its checks, red gate, push, reuse and tree
 layer	py	scripts/lib/identity_tooling	5	identity-tools.sh's Python: the refs measured and the what-if verdict record, over the cache
 layer	py	scripts	6	the repository's tools, beside the CI gates they share code with
+layer	py	scripts/ci/runner_scheduling	0	ci-runner's movies runner scheduler, fetched file by file at a pinned commit: it imports nothing of the repository
 layer	py	scripts/ci	6	the CI and pre-push gates and the measures they hold, beside the tools
 layer	py	scripts/py-quality	7	the Python quality measure, over the ratchet engine in scripts/ci
 layer	py	.github/scripts	7	the workflows' own steps, over the tools and the library
@@ -193,3 +194,4 @@ layer	js	infra/version-dashboard/src/mobile	2	the /mobile page, over the store c
 layer	js	infra/version-dashboard/src/mobile-release	3	the mobile release run, over the /mobile page's readings
 layer	js	infra/version-dashboard/src	3	the dashboard's server and pages, over everything below
 adapter	py	scripts/ci/ci_machine.py	process env clock
+adapter	py	scripts/ci/runner_scheduling/machine.py	process clock files network

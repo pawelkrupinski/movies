@@ -230,9 +230,6 @@ effect	scripts/ci/recording_preflight.py:files	3
 effect	scripts/ci/reusable_workflow_inputs.py:files	2
 effect	scripts/ci/runner_cache.py	1
 effect	scripts/ci/runner_cache.py:files	20
-effect	scripts/ci/runner_scheduler.py	2
-effect	scripts/ci/runner_scheduler.py:files	9
-effect	scripts/ci/runner_scheduler.py:network	2
 effect	scripts/ci/sbt_guard.py	1
 effect	scripts/ci/sbt_guard.py:files	1
 effect	scripts/ci/shard_tests.py:files	1
@@ -916,15 +913,6 @@ mixed	scripts/ci/runner_cache.py:_remove_restored	6
 mixed	scripts/ci/runner_cache.py:mirror_dir	6
 mixed	scripts/ci/runner_cache.py:restore	6
 mixed	scripts/ci/runner_cache.py:save	8
-mixed	scripts/ci/runner_scheduler.py:Config.load	3
-mixed	scripts/ci/runner_scheduler.py:GitHub._token	5
-mixed	scripts/ci/runner_scheduler.py:GitHub.request	12
-mixed	scripts/ci/runner_scheduler.py:Host.instances	17
-mixed	scripts/ci/runner_scheduler.py:Host.start	5
-mixed	scripts/ci/runner_scheduler.py:_comms	7
-mixed	scripts/ci/runner_scheduler.py:busy_units	3
-mixed	scripts/ci/runner_scheduler.py:cmd_run	5
-mixed	scripts/ci/runner_scheduler.py:tick	18
 mixed	scripts/ci/sbt_guard.py:real_sbt	6
 mixed	scripts/ci/sbt_guard.py:retry_after_seconds	5
 mixed	scripts/ci/sbt_guard.py:run	4
@@ -1572,5 +1560,5 @@ mixed	worker/src/main/scala/tools/HeapDumper.scala:HeapDumper.dump	3
 mixed	worker/src/main/scala/tools/HeapPressure.scala:HeapPressure.heldAfterCollection	3
 mixed	worker/src/main/scala/tools/ResidentialProxyProbe.scala:ResidentialProxyProbe.statusThrough	3
 fanout	scripts/design-rules/design_check.py	10
-distance	scripts/ci	0.49
+distance	scripts/ci	0.48
 dircycle	scripts|scripts/ci	2

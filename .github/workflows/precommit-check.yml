@@ -18,10 +18,10 @@ name: Pre-commit check
 # for ~10 min of work (a trace-driven model of 2026-11-07..21: 12% less time to production, 20% less to LANDED, for
 # ~0.9-1.75k hosted job-minutes a day on a public repository's free runners). (SelfHostedRunnersSpec)
 # A GATE-RED FIX'S CHECK (agentctl pushes it to check/red-<entry>) asks for movies-check-red-fix, the check lane ci-runner's
-# scheduler serves first (runner_scheduler.py CHECK_LANES), so its jobs never queue behind other landings' (2026-11-17:
+# scheduler serves first (runner_scheduling CHECK_LANES), so its jobs never queue behind other landings' (2026-11-17:
 # a red fix still checking 41 min after it was queued).
 # OLDEST FIRST: the check job on ci-runner (the rest) also asks for its run's pin label, movies-run-<run id>, and the
-# scheduler registers a check runner with the pin of the oldest queued check job no runner waits for (runner_scheduler.py
+# scheduler registers a check runner with the pin of the oldest queued check job no runner waits for (runner_scheduling
 # PIN_PREFIX), so a landing's jobs are never overtaken by later landings' (2026-11-17: run 44061032302's `heavy rows
 # (e2e)` queued 10:09-10:45Z while later runs' jobs started: a runner with the lane's label alone takes whichever job
 # GitHub picks).

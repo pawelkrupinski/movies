@@ -10,6 +10,7 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -17,7 +18,9 @@ import unittest.mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import runner_scheduler as rs  # noqa: E402
+import runner_scheduling as rs  # noqa: E402
+
+MACHINE = rs.Machine()  # the readings below are read off a cgroup tree and /proc in a temporary directory
 
 CFG = rs.Config()
 # The recorded readings below predate the check lane and test the memory and CPU accounting alone: they run without it
@@ -66,12 +69,12 @@ def on_cpusets(check_busy, measure_busy, check_cpus=CHECK_CPUS, measure_cpus=MEA
 
 def memory_room(cfg, bc, r, pending_gib):
     """Whole measurements the host's free memory holds."""
-    return rs._whole_jobs(rs.memory_free_gib(cfg, bc, r, pending_gib), cfg.job_expected_gib["measure"])
+    return rs.whole_jobs(rs.memory_free_gib(cfg, bc, r, pending_gib), cfg.job_expected_gib["measure"])
 
 
 def cpu_room(cfg, r, pending_cpus):
     """Whole 4-core measurements the CPU holds."""
-    return rs._whole_jobs(rs.cpu_spare(cfg, r, pending_cpus, cfg.cpu_start_below), cfg.job_cpus["measure"])
+    return rs.whole_jobs(rs.cpu_spare(cfg, r, pending_cpus, cfg.cpu_start_below), cfg.job_cpus["measure"])
 
 
 # Plenty of everything: only the queue, the slots and bitcashier's runners decide. The recorded tests pass ci-runner's 32.
@@ -1152,7 +1155,7 @@ class ListedJobs(rs.GitHub):
     """GitHub.queued_jobs over canned pages: one in-progress run whose jobs are `jobs`."""
 
     def __init__(self, jobs):
-        super().__init__(CFG, "", "")
+        super().__init__(MACHINE, CFG, "", "")
         self.jobs = jobs
 
     def request(self, method, path, body=None):
@@ -1284,7 +1287,7 @@ class ConfigTest(unittest.TestCase):
             json.dump({"max_slot": 12}, f)
         try:
             with self.assertRaises(ValueError):
-                rs.Config.load(f.name)
+                rs.Config.load(MACHINE, f.name)
         finally:
             os.remove(f.name)
 
@@ -1295,7 +1298,7 @@ class ConfigTest(unittest.TestCase):
                 json.dump({key: 1}, f)
             try:
                 with self.assertRaises(ValueError, msg=key):
-                    rs.Config.load(f.name)
+                    rs.Config.load(MACHINE, f.name)
             finally:
                 os.remove(f.name)
 
@@ -1310,17 +1313,17 @@ class FakeDocker:
     def __call__(self, cmd, timeout=30):
         self.calls.append(cmd)
         if cmd[0] == "systemctl":
-            return rs.subprocess.CompletedProcess(cmd, 0, f"{self.state}\n" if cmd[1] == "is-active" else "", "")
+            return subprocess.CompletedProcess(cmd, 0, f"{self.state}\n" if cmd[1] == "is-active" else "", "")
         if cmd[1] == "inspect":  # the container's id, which names its cgroup scope
             if self.top_fails:
-                return rs.subprocess.CompletedProcess(cmd, 1, "", "Error: No such object\n")
-            return rs.subprocess.CompletedProcess(cmd, 0, "c0ffee\n", "")
+                return subprocess.CompletedProcess(cmd, 1, "", "Error: No such object\n")
+            return subprocess.CompletedProcess(cmd, 0, "c0ffee\n", "")
         fields = cmd[cmd.index("-eo") + 1].split(",")
         if self.top_fails or "pid" not in fields:
-            return rs.subprocess.CompletedProcess(cmd, 1, "", "Error response from daemon: Couldn't find PID field in ps output\n")
+            return subprocess.CompletedProcess(cmd, 1, "", "Error response from daemon: Couldn't find PID field in ps output\n")
         rows = [" ".join("PID" if f == "pid" else f.upper() for f in fields)]
         rows += [" ".join(str(100 + i) if f == "pid" else c for f in fields) for i, c in enumerate(self.comms)]
-        return rs.subprocess.CompletedProcess(cmd, 0, "\n".join(rows) + "\n", "")
+        return subprocess.CompletedProcess(cmd, 0, "\n".join(rows) + "\n", "")
 
 
 class HostTest(unittest.TestCase):
@@ -1336,10 +1339,7 @@ class HostTest(unittest.TestCase):
         case.addCleanup(shutil.rmtree, state)
         with open(os.path.join(state, "2.env"), "w") as f:
             f.write("RUNNER_CLASS=check\n")
-        patcher = unittest.mock.patch.object(rs, "_run", docker)
-        patcher.start()
-        case.addCleanup(patcher.stop)
-        return rs.Host(rs.Config(state_dir=state, class_cgroup=os.path.join(state, "cg", "ci-movies-{cls}.slice")))
+        return rs.Host(rs.Machine(run=docker), rs.Config(state_dir=state, class_cgroup=os.path.join(state, "cg", "ci-movies-{cls}.slice")))
 
     def container(self, host, current_gib, inactive_gib, cpu_seconds):
         d = os.path.join(host.cfg.class_cgroup.format(cls="check"), "docker-c0ffee.scope")
@@ -1499,7 +1499,7 @@ class ReadingsTest(unittest.TestCase):
             self.process(d, 100 + n, comm)
         self.proc(58 * 2**20, user=0, idle=0)
         cpu = rs.CpuMeters(window_seconds=300)
-        r = rs.read_readings(self.cfg(), cpu, NOW)
+        r = rs.read_readings(MACHINE, self.cfg(), cpu, NOW)
         self.assertEqual(r.mem_available_gib, 58)
         self.assertEqual(r.ci_free_gib, 76)
         self.assertEqual(r.class_free_gib, {"measure": 55})
@@ -1549,10 +1549,10 @@ class ReadingsTest(unittest.TestCase):
         self.cpusets()
         cpu = rs.CpuMeters(window_seconds=300)
         self.write_stat([(0, 0)] * 4)
-        first = rs.read_readings(self.cfg(), cpu, NOW - 30)
+        first = rs.read_readings(MACHINE, self.cfg(), cpu, NOW - 30)
         self.assertIsNone(first.class_cpu["measure"].busy_cores)  # one sample: no rate yet
         self.write_stat([(0, 100), (50, 50), (100, 0), (100, 0)])
-        r = rs.read_readings(self.cfg(), cpu, NOW)
+        r = rs.read_readings(MACHINE, self.cfg(), cpu, NOW)
         self.assertEqual(r.class_cpu["measure"].cpus, frozenset({2, 3}))
         self.assertAlmostEqual(r.class_cpu["measure"].busy_cores, 2.0)
         self.assertAlmostEqual(r.class_cpu["check"].busy_cores, 0.5)
@@ -1565,26 +1565,44 @@ class ReadingsTest(unittest.TestCase):
         # and the host 0.5 of 4 -- not a job's cores for cpu_window_seconds after it ended, under the next one's charge
         self.cpusets()
         cfg = self.cfg()
-        cpu, unreleased, usage = rs.CpuMeters(window_seconds=300), rs.CpuMeters(window_seconds=300), rs.RunnerUsage(300)
+        cpu, unreleased, usage = rs.CpuMeters(window_seconds=300), rs.CpuMeters(window_seconds=300), rs.RunnerUsage(MACHINE, 300)
         container = self.cgroup("ci.slice/ci-movies.slice/ci-movies-check.slice/docker-c0ffee.scope", 0, 0, 0)
         for at, seconds in ((NOW - 60, 0), (NOW - 30, 30)):
             with open(os.path.join(container, "cpu.stat"), "w") as f:
                 f.write(f"usage_usec {seconds * 10**6}\n")
             usage.read(container, at)
         self.write_stat([(0, 0)] * 4)
-        rs.read_readings(cfg, cpu, NOW - 60, usage)
-        rs.read_readings(cfg, unreleased, NOW - 60)
+        rs.read_readings(MACHINE, cfg, cpu, NOW - 60, usage)
+        rs.read_readings(MACHINE, cfg, unreleased, NOW - 60)
         usage.keep_only(set(), NOW)  # the tick after it ended
         self.write_stat([(60, 0), (0, 60), (0, 60), (0, 60)])
-        r = rs.read_readings(cfg, cpu, NOW, usage)
+        r = rs.read_readings(MACHINE, cfg, cpu, NOW, usage)
         self.assertAlmostEqual(r.class_cpu["check"].busy_cores, 0.5)
         self.assertAlmostEqual(r.class_cpu["measure"].busy_cores, 0.0)
         self.assertAlmostEqual(r.cpu_busy_cores, 0.5)
         # without the ended runner's samples (the scheduler before RELEASED ON FINISH), its whole core reads busy
-        self.assertAlmostEqual(rs.read_readings(cfg, unreleased, NOW).class_cpu["check"].busy_cores, 1.0)
+        self.assertAlmostEqual(rs.read_readings(MACHINE, cfg, unreleased, NOW).class_cpu["check"].busy_cores, 1.0)
         # and once its last sample is older than the window, it is forgotten
         usage.keep_only(set(), NOW + 300)
         self.assertEqual(usage.ended, {})
+
+
+class FetchedFilesTest(unittest.TestCase):
+    """ci-runner fetches runner_scheduler.py and runner_scheduling/'s files at the pinned commit and nothing else of
+    movies (bitcashier infra, nix/hosts/ci-runner/movies-runner-scheduler-pin.nix): the entry runs from a directory
+    holding those alone, on the standard library."""
+
+    def test_the_entry_runs_from_the_fetched_files_alone(self):
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root)
+        shutil.copy(os.path.join(HERE, "runner_scheduler.py"), root)
+        shutil.copytree(os.path.join(HERE, "runner_scheduling"), os.path.join(root, "runner_scheduling"),
+                        ignore=shutil.ignore_patterns("__pycache__"))
+        done = subprocess.run([sys.executable, "-E", "-s", os.path.join(root, "runner_scheduler.py")], cwd=root,
+                              capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.returncode, 64, done.stderr)
+        self.assertIn("runner_scheduler.py run --config FILE", done.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

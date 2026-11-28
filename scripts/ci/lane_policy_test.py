@@ -6,7 +6,7 @@ fails here.
 
     python3 scripts/ci/lane_policy_test.py
 """
-# script-test-reads: scripts/ci/lane-policy.tsv scripts/ci/runner_scheduler.py
+# script-test-reads: scripts/ci/lane-policy.tsv scripts/ci/runner_scheduler.py scripts/ci/runner_scheduling/*
 import csv
 import os
 import sys
@@ -14,7 +14,7 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import runner_scheduler as rs  # noqa: E402
+import runner_scheduling as rs  # noqa: E402
 
 POLICY = os.path.join(HERE, "lane-policy.tsv")
 CLASSES = ("red-fix", "landing-check", "deploy-feeding", "optional-measurement", "consumer", "exploration")
