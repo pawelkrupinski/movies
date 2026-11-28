@@ -5,11 +5,14 @@ from __future__ import annotations
 import json
 import urllib.error
 from email.message import Message
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from .machine import Machine
 from .model import Config
 
+# every run status but completed: a run holding its workflow's concurrency slot may be listed `pending` while its jobs
+# are queued (Landing check build cache #936, 2026-11-28: read as queued and in progress only, it got no runner for 2 h)
+OPEN_RUN_STATUSES = ("queued", "in_progress", "pending", "waiting", "requested")
 TOKEN_SECONDS = 45 * 60  # an installation token lives an hour: minted again after this
 
 
@@ -69,11 +72,14 @@ class GitHub:
         raise e
 
     def queued_jobs(self) -> List[Dict[str, Any]]:
-        """Every queued job of the repository's queued and in-progress runs (a matrix row waits inside a running run)."""
+        """Every queued job of the repository's runs not yet completed (a matrix row waits inside a running run), each
+        run read once."""
         jobs: List[Dict[str, Any]] = []
-        for status in ("queued", "in_progress"):
+        seen: Set[int] = set()
+        for status in OPEN_RUN_STATUSES:
             runs = self.request("GET", f"/repos/{self.cfg.repo}/actions/runs?status={status}&per_page=100") or {}
-            for run in runs.get("workflow_runs", []):
+            for run in [r for r in runs.get("workflow_runs", []) if r["id"] not in seen]:
+                seen.add(run["id"])
                 page = self.request("GET", f"/repos/{self.cfg.repo}/actions/runs/{run['id']}/jobs?filter=latest&per_page=100")
                 jobs += [j for j in (page or {}).get("jobs", []) if j.get("status") == "queued"]
         return jobs

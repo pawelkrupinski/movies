@@ -1152,16 +1152,38 @@ def plan_job(run, created, status="in_progress", branch="check/20261118-0001-mov
 
 
 class ListedJobs(rs.GitHub):
-    """GitHub.queued_jobs over canned pages: one in-progress run whose jobs are `jobs`."""
+    """GitHub.queued_jobs over canned pages: one run, listed under `run_status` (in progress by default), whose jobs
+    are `jobs`."""
 
-    def __init__(self, jobs):
+    def __init__(self, jobs, run_status="in_progress"):
         super().__init__(MACHINE, CFG, "", "")
-        self.jobs = jobs
+        self.jobs, self.run_status = jobs, run_status
 
     def request(self, method, path, body=None):
         if "/jobs" in path:
             return {"jobs": self.jobs}
-        return {"workflow_runs": [{"id": 100}] if "in_progress" in path else []}
+        return {"workflow_runs": [{"id": 100}] if f"status={self.run_status}&" in path else []}
+
+
+class PendingRunTest(unittest.TestCase):
+    """Landing check build cache #936 (2026-11-28): GitHub listed the run holding its workflow's concurrency slot as
+    `pending`, its two jobs queued on movies-measure; the scheduler read only queued and in-progress runs, saw no
+    measurement waiting, and started no runner for 2 h while every newer run of the group was cancelled behind it."""
+
+    def test_a_pending_runs_queued_job_gets_a_runner(self):
+        waiting = {"status": "queued", "labels": ["movies-measure"], "created_at": "2026-11-28T10:22:57Z",
+                   "run_id": 100, "name": "build"}
+        jobs = ListedJobs([waiting], run_status="pending").queued_jobs()
+        self.assertEqual(jobs, [waiting])
+        d = rs.decide(CFG, IDLE, rs.demand_of(jobs), [], NOW, ROOMY, queue=rs.queue_of(jobs))
+        self.assertEqual(len(d.starts), 1, d)
+
+    def test_a_run_listed_under_two_statuses_counts_its_jobs_once(self):
+        # between the two listings a run may move from queued to in progress: its queued job is one demand, not two
+        github = ListedJobs([{"status": "queued", "labels": ["movies-measure"]}])
+        github.request = lambda method, path, body=None: (
+            {"jobs": github.jobs} if "/jobs" in path else {"workflow_runs": [{"id": 100}]})
+        self.assertEqual(len(github.queued_jobs()), 1)
 
 
 class NoWarmCheckRunnerTest(unittest.TestCase):
