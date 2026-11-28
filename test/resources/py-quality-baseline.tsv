@@ -83,8 +83,6 @@ cognitive	scripts/ci/drift_seeds.py:main	20
 cognitive	scripts/ci/drift_seeds.py:slices	31
 cognitive	scripts/ci/family_flips_report.py:report	15
 cognitive	scripts/ci/fix_replay_exemptions.py:exemptions	11
-cognitive	scripts/ci/gating_checks.py:lint	28
-cognitive	scripts/ci/gating_checks.py:main	24
 cognitive	scripts/ci/gating_checks.py:sync	13
 cognitive	scripts/ci/gating_checks.py:yaml_jobs	19
 cognitive	scripts/ci/harness_aa.py:main	11
@@ -238,8 +236,6 @@ cyclomatic	scripts/ci/drift_seeds.py:main	18
 cyclomatic	scripts/ci/drift_seeds.py:slices	18
 cyclomatic	scripts/ci/family_flips_report.py:report	19
 cyclomatic	scripts/ci/family_shards.py:main	12
-cyclomatic	scripts/ci/gating_checks.py:lint	28
-cyclomatic	scripts/ci/gating_checks.py:main	20
 cyclomatic	scripts/ci/gating_checks.py:prove	13
 cyclomatic	scripts/ci/gating_checks.py:report_only	14
 cyclomatic	scripts/ci/gating_checks.py:sync	12
@@ -386,7 +382,6 @@ pyright	scripts/ci/drift_seeds.py	9
 pyright	scripts/ci/family_flips_report.py	31
 pyright	scripts/ci/family_reach.py	15
 pyright	scripts/ci/family_shards.py	9
-pyright	scripts/ci/gating_checks.py	18
 pyright	scripts/ci/harness_aa.py	14
 pyright	scripts/ci/hotspots.py	19
 pyright	scripts/ci/identity_findings_report.py	120

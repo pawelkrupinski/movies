@@ -49,9 +49,11 @@ import os
 import re
 import subprocess
 import sys
+from typing import Any, Optional
 
 REGISTRY = ".github/gating-checks.tsv"
 HEADER = "kind\tworkflow\tname\tproven\tnote"
+Row = dict[str, Any]   # one registry row: kind, workflow, name, proven, note, line
 GATE_WORKFLOWS = ("main.yml", "identity-model-convergence.yml", "identity-takes.yml")
 GATE = "scripts/lib/pre_push_hook/pre_push_gate.py"  # the hook's red gate: its GATING_WORKFLOW_FILES line
 EXPR = re.compile(r"\$\{\{.*?\}\}")
@@ -59,7 +61,7 @@ CALL = re.compile(r"^\s+uses:\s*\./\.github/workflows/(\S+\.ya?ml)\s*$", re.M)
 
 
 
-def load(path: str) -> list[dict]:
+def load(path: str) -> list[Row]:
     rows = []
     with open(path) as f:
         for n, line in enumerate(f, 1):
@@ -74,7 +76,7 @@ def load(path: str) -> list[dict]:
     return rows
 
 
-def save(path: str, rows: list[dict]) -> None:
+def save(path: str, rows: list[Row]) -> None:
     with open(path) as f:
         head = [l for l in f.read().splitlines() if l.startswith("#")]
     with open(path, "w") as f:
@@ -83,7 +85,7 @@ def save(path: str, rows: list[dict]) -> None:
             f.write("\t".join([r["kind"], r["workflow"], r["name"], r["proven"], r.get("note", "")]).rstrip("\t") + "\n")
 
 
-def is_proven(row: dict) -> bool:
+def is_proven(row: Row) -> bool:
     return row["proven"].isdigit()
 
 
@@ -122,7 +124,7 @@ def glob_of(template: str) -> str:
     return EXPR.sub("*", template)
 
 
-def workflow_globs(root: str, file: str, seen: frozenset = frozenset()) -> list[str]:
+def workflow_globs(root: str, file: str, seen: frozenset[str] = frozenset()) -> list[str]:
     """Every job-name glob a run of `file` shows: its own jobs and, for a reusable call, the called workflow's."""
     text = open(os.path.join(root, ".github/workflows", file)).read()
     globs = []
@@ -143,40 +145,58 @@ def hook_gate_files(root: str) -> list[str]:
     return re.findall(r'"([^"]+)"', m.group(1)) if m else []
 
 
+def _matches_any(name: str, globs: list[str]) -> bool:
+    return any(fnmatch.fnmatchcase(name, g) for g in globs)
+
+
+def _one_row_problems(r: Row) -> list[str]:
+    """What a row gets wrong on its own: its kind, its proven column, an unproven row's note."""
+    problems = []
+    if r["kind"] not in ("workflow", "job"):
+        problems.append(f"line {r['line']}: kind {r['kind']!r} (workflow or job)")
+    if not (is_proven(r) or r["proven"] in ("unproven", "aggregate")):
+        problems.append(f"line {r['line']}: proven {r['proven']!r} (a run number, `aggregate` or `unproven`)")
+    if r["proven"] == "unproven" and not r["note"].strip():
+        problems.append(f"line {r['line']}: an unproven row says who owns it and why: {r['name']}")
+    return problems
+
+
+def _row_problems(rows: list[Row]) -> list[str]:
+    """What the rows of the registry get wrong: each on its own, and a key given twice."""
+    problems = [p for r in rows for p in _one_row_problems(r)]
+    keys = [(r["kind"], r["workflow"], r["name"]) for r in rows]
+    return problems + [f"twice: {k}" for k in sorted({k for k in keys if keys.count(k) > 1})]
+
+
+def _gate_workflow_problems(root: str, rows: list[Row]) -> list[str]:
+    """A gate workflow lands with its row `unproven` (owner and why) and reports until its first green run proves it."""
+    return [f"{file} gates pushes (the hook's GATING_WORKFLOW_FILES, scripts/lib/pre_push_hook/pre_push_gate.py) but "
+            "has no `workflow` row (proven, or `unproven` with its owner until its first green run)"
+            for file in hook_gate_files(root)
+            if not any(r["kind"] == "workflow" and r["workflow"] == file and r["proven"] != "aggregate" for r in rows)]
+
+
+def _job_problems(root: str, rows: list[Row], file: str) -> list[str]:
+    """The jobs `file` runs against the registry's job rows of it: each has a row, each row a job."""
+    try:
+        globs = workflow_globs(root, file)
+    except OSError as e:
+        return [f"{file}: cannot read it ({e.strerror})"]
+    named = [r["name"] for r in rows if r["kind"] == "job" and r["workflow"] == file]
+    missing = [f"{file}: job {g!r} has no row: add it as `unproven` (with its owner) until a green run proves it"
+               for g in globs if not any(fnmatch.fnmatchcase(n, g) for n in named)]
+    stale = [f"{file}: row {n!r} names no job the workflow runs: remove it" for n in named if not _matches_any(n, globs)]
+    return missing + stale
+
+
 def lint(root: str) -> list[str]:
     try:
         rows = load(os.path.join(root, REGISTRY))
     except (OSError, ValueError) as e:
         return [str(e)]
-    problems = []
-    for r in rows:
-        if r["kind"] not in ("workflow", "job"):
-            problems.append(f"line {r['line']}: kind {r['kind']!r} (workflow or job)")
-        if not (is_proven(r) or r["proven"] in ("unproven", "aggregate")):
-            problems.append(f"line {r['line']}: proven {r['proven']!r} (a run number, `aggregate` or `unproven`)")
-        if r["proven"] == "unproven" and not r["note"].strip():
-            problems.append(f"line {r['line']}: an unproven row says who owns it and why: {r['name']}")
-    keys = [(r["kind"], r["workflow"], r["name"]) for r in rows]
-    problems += [f"twice: {k}" for k in sorted({k for k in keys if keys.count(k) > 1})]
-    for file in hook_gate_files(root):
-        # a gate workflow lands with its row `unproven` (owner and why) and reports until its first green run proves it
-        if not any(r["kind"] == "workflow" and r["workflow"] == file and r["proven"] != "aggregate" for r in rows):
-            problems.append(f"{file} gates pushes (the hook's GATING_WORKFLOW_FILES, scripts/lib/pre_push_hook/pre_push_gate.py) but "
-                            "has no `workflow` row (proven, or "
-                            "`unproven` with its owner until its first green run)")
+    problems = _row_problems(rows) + _gate_workflow_problems(root, rows)
     for file in GATE_WORKFLOWS:
-        try:
-            globs = workflow_globs(root, file)
-        except OSError as e:
-            problems.append(f"{file}: cannot read it ({e.strerror})")
-            continue
-        named = [r for r in rows if r["kind"] == "job" and r["workflow"] == file]
-        for g in globs:
-            if not any(fnmatch.fnmatchcase(r["name"], g) for r in named):
-                problems.append(f"{file}: job {g!r} has no row: add it as `unproven` (with its owner) until a green run proves it")
-        for r in named:
-            if not any(fnmatch.fnmatchcase(r["name"], g) for g in globs):
-                problems.append(f"{file}: row {r['name']!r} names no job the workflow runs: remove it")
+        problems += _job_problems(root, rows, file)
     return problems
 
 
@@ -199,7 +219,7 @@ def row_state(state: dict[str, str], name: str) -> str:
     return "missing"
 
 
-def report_only(rows: list[dict], file: str, jobs: list[dict]) -> tuple[bool, str]:
+def report_only(rows: list[Row], file: str, jobs: list[Row]) -> tuple[bool, str]:
     """(True, why) when every failed job of a red run is unproven -- or an aggregate following one -- and one is. A failed
     job with no registry row gates: a new job's row lands `unproven`, so a missing one is a lint miss, never a pass."""
     state = {r["name"]: r["proven"] for r in rows if r["kind"] == "job" and r["workflow"] == file}
@@ -216,13 +236,13 @@ def report_only(rows: list[dict], file: str, jobs: list[dict]) -> tuple[bool, st
     return True, "report only, unproven: " + ", ".join(unproven)
 
 
-def run_jobs(run: str) -> list[dict]:
+def run_jobs(run: str) -> list[Row]:
     out = subprocess.run(["gh", "run", "view", run, "--json", "jobs"],
                          check=True, capture_output=True, text=True, timeout=60).stdout
     return json.loads(out).get("jobs", [])
 
 
-def prove(rows: list[dict], file: str, jobs: list[dict], number: str) -> list[str]:
+def prove(rows: list[Row], file: str, jobs: list[Row], number: str) -> list[str]:
     """Rows proven by green run `number`: its green jobs unproven or missing. Changed names."""
     changed = []
     for j in jobs:
@@ -265,52 +285,76 @@ def sync(root: str, owner: str) -> list[str]:
 DOCSTRING = __doc__ or ""  # None under python -OO
 
 
-def main(argv: list[str]) -> int:
+def _parse(argv: list[str]) -> Optional[tuple[str, dict[str, str]]]:
+    """(command, {--option: value}) of the arguments; None where an option has no value."""
     args = {"--root": "."}
     cmd, rest = (argv[0], argv[1:]) if argv else ("", [])
     while rest:
         if len(rest) < 2:
-            print(DOCSTRING.split("usage:")[1], file=sys.stderr)
-            return 2
+            return None
         args[rest[0]], rest = rest[1], rest[2:]
+    return cmd, args
+
+
+def _sync_command(args: dict[str, str]) -> int:
     root = args["--root"]
-    if cmd == "sync":
-        owner = args.get("--owner") or subprocess.run(["git", "-C", root, "config", "user.name"], capture_output=True,
-                                                        text=True).stdout.strip() or os.environ.get("USER", "unknown")
-        for line in sync(root, owner):
-            print(f"gating-checks: {line}", file=sys.stderr)
-        return 0
-    if cmd == "lint":
-        problems = lint(root)
-        for p in problems:
-            print(f"gating-checks: {p}", file=sys.stderr)
-        return 1 if problems else 0
-    if cmd not in ("report-only", "prove") or "--workflow-file" not in args:
-        print("usage: " + DOCSTRING.split("usage:")[1].split("Exit:")[0].strip(), file=sys.stderr)
-        return 2
-    file = args["--workflow-file"]
-    try:
-        rows = load(os.path.join(root, REGISTRY))
-        if "--jobs-json" in args:
-            with open(args["--jobs-json"]) as f:
-                jobs = json.load(f).get("jobs", [])
-        else:
-            jobs = run_jobs(args["--run"])
-    except (OSError, ValueError, KeyError, subprocess.SubprocessError) as e:
-        print(f"gating-checks: cannot read the run's jobs or the registry: {e}", file=sys.stderr)
-        return 2
-    if cmd == "report-only":
-        only, why = report_only(rows, file, jobs)
-        print(why)
-        return 0 if only else 1
+    owner = args.get("--owner") or subprocess.run(["git", "-C", root, "config", "user.name"], capture_output=True,
+                                                    text=True).stdout.strip() or os.environ.get("USER", "unknown")
+    for line in sync(root, owner):
+        print(f"gating-checks: {line}", file=sys.stderr)
+    return 0
+
+
+def _lint_command(args: dict[str, str]) -> int:
+    problems = lint(args["--root"])
+    for p in problems:
+        print(f"gating-checks: {p}", file=sys.stderr)
+    return 1 if problems else 0
+
+
+def _jobs_of(args: dict[str, str]) -> list[Row]:
+    """The jobs of the run: the `--jobs-json` file's, else the `--run`'s read through gh."""
+    if "--jobs-json" not in args:
+        return run_jobs(args["--run"])
+    with open(args["--jobs-json"]) as f:
+        return json.load(f).get("jobs", [])
+
+
+def _prove_command(rows: list[Row], file: str, jobs: list[Row], args: dict[str, str]) -> int:
     number = args.get("--number")
     if not number or not number.isdigit():
         print("gating-checks: prove needs --number <the run's #n>", file=sys.stderr)
         return 2
     changed = prove(rows, file, jobs, number)
-    save(os.path.join(root, REGISTRY), rows)
+    save(os.path.join(args["--root"], REGISTRY), rows)
     print(f"proven by #{number}: " + (", ".join(changed) or "nothing new"))
     return 0
+
+
+def main(argv: list[str]) -> int:
+    parsed = _parse(argv)
+    if parsed is None:
+        print(DOCSTRING.split("usage:")[1], file=sys.stderr)
+        return 2
+    cmd, args = parsed
+    if cmd == "sync":
+        return _sync_command(args)
+    if cmd == "lint":
+        return _lint_command(args)
+    if cmd not in ("report-only", "prove") or "--workflow-file" not in args:
+        print("usage: " + DOCSTRING.split("usage:")[1].split("Exit:")[0].strip(), file=sys.stderr)
+        return 2
+    try:
+        rows = load(os.path.join(args["--root"], REGISTRY))
+        jobs = _jobs_of(args)
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError) as e:
+        print(f"gating-checks: cannot read the run's jobs or the registry: {e}", file=sys.stderr)
+        return 2
+    if cmd == "prove":
+        return _prove_command(rows, args["--workflow-file"], jobs, args)
+    only, why = report_only(rows, args["--workflow-file"], jobs)
+    print(why)
+    return 0 if only else 1
 
 
 if __name__ == "__main__":
