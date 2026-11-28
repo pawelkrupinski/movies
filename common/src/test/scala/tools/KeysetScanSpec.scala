@@ -187,15 +187,15 @@ class KeysetScanSpec extends AnyFlatSpec with Matchers {
   // A collecting reader once returned the rows it had read as the whole collection when a later
   // page failed (the cadence page's `all`): `collect` hands rows out only for a complete scan.
   "collect" should "answer every decoded row of a complete scan" in {
-    KeysetScan.collect[String, String]("test", batchSize = 2, maxAttempts = 1, initialBackoff = 1.milli,
-      keyOf = identity, fetchPage = collectionOf("a", "b", "c"))(row => Seq(row.toUpperCase(java.util.Locale.ROOT)))
+    KeysetScan.collect[String, String](KeysetScan.scan[String]("test", batchSize = 2, maxAttempts = 1, initialBackoff = 1.milli,
+      keyOf = identity, fetchPage = collectionOf("a", "b", "c")))(row => Seq(row.toUpperCase(java.util.Locale.ROOT)))
       .shouldBe(tools.ReadOutcome.Answered(Vector("A", "B", "C")))
   }
 
   it should "fail — never answer the rows it got — when a page still fails" in {
     val base = collectionOf("a", "b", "c", "d", "e")
-    val outcome = KeysetScan.collect[String, String]("test", batchSize = 2, maxAttempts = 1, initialBackoff = 1.milli,
-      keyOf = identity, fetchPage = (after, limit) => if (after.contains("b")) throw new RuntimeException("down") else base(after, limit))(Seq(_))
+    val outcome = KeysetScan.collect[String, String](KeysetScan.scan[String]("test", batchSize = 2, maxAttempts = 1, initialBackoff = 1.milli,
+      keyOf = identity, fetchPage = (after, limit) => if (after.contains("b")) throw new RuntimeException("down") else base(after, limit)))(Seq(_))
     outcome match {
       case tools.ReadOutcome.Failed(cause) => cause.exception.getMessage shouldBe "down"
       case other                           => fail(s"a short scan answered $other")

@@ -10,7 +10,3 @@
 # `Duplication: <why>` (CLAUDE.md, "Code quality ratchets").
 limit	copies	0
 limit	clone-tokens	50
-copies	base/src/main/scala/tools/TextNormalization.scala|identity/src/main/scala/services/identity/measures/TitleTextMeasures.scala	2
-copies	common/src/main/scala/services/movies/InPlaceMovieUpdate.scala|common/src/main/scala/services/movies/WholeRecordUpsert.scala	2
-copies	common/src/main/scala/tools/KeysetScan.scala	2
-copies	identity/src/main/scala/services/identity/measures/PinnedGateMeasures.scala|identity/src/main/scala/services/identity/measures/SearchMeasures.scala	2

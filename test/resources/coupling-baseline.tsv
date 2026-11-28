@@ -43,7 +43,7 @@ module-edge	common->base	56
 module-edge	common->geodata	14
 module-edge	common->http	65
 module-edge	http->base	10
-module-edge	identity->base	25
+module-edge	identity->base	26
 module-edge	identity->common	543
 module-edge	identity->http	5
 module-edge	scrapers->base	51
@@ -182,7 +182,7 @@ fanout	services.lookupfill.LookupFill	12
 fanout	services.lookupfill.StoredTmdbLookups	10
 fanout	services.movies.CaffeineMovieCache	18
 fanout	services.movies.CorpusHydrate	12
-fanout	services.movies.InPlaceMovieUpdate	11
+fanout	services.movies.InPlaceMovieUpdate	12
 fanout	services.movies.MongoMovieChangeFeed	15
 fanout	services.movies.MongoMovieRepository	21
 fanout	services.movies.MongoScreeningsRepository	13
@@ -264,7 +264,7 @@ databag	services.identity.measures.SearchMeasures	18
 databag	services.identity.measures.StageRelays	15
 databag	services.identity.measures.TitleRelationMeasures	17
 databag	services.identity.measures.TitleShapeMeasures	17
-databag	services.identity.measures.TitleTextMeasures	16
+databag	services.identity.measures.TitleTextMeasures	17
 databag	services.identity.measures.YearRuntimeMeasures	14
 databag	services.identity.vocabulary.ListingIntake	10
 databag	services.identitystaging.StagedClusters	13

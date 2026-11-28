@@ -916,6 +916,7 @@ services.movies.InPlaceMovieUpdate	services.movies.RepositoryWriteMetrics
 services.movies.InPlaceMovieUpdate	services.movies.ScreeningsRepository
 services.movies.InPlaceMovieUpdate	services.movies.ScreeningsSplit
 services.movies.InPlaceMovieUpdate	services.movies.SlotsRepository
+services.movies.InPlaceMovieUpdate	services.movies.WholeRecordUpsert
 services.movies.InPlaceMovieUpdate	tools.MonotonicStampSequence
 services.movies.MongoMovieChangeFeed	models.Cinema
 services.movies.MongoMovieChangeFeed	services.movies.ChangeEventDecoder

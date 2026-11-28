@@ -115,15 +115,10 @@ object TextNormalization {
   // is deliberately lossy, and that is SAFE here: the canonicalizer union edge is
   // EXACT-match gated, so an imperfect transliteration can only fail to merge two
   // rows — it can never merge two genuinely different films.
-  private val CyrillicToLatin: Map[Char, String] = Map(
-    'а' -> "a", 'б' -> "b", 'в' -> "v", 'г' -> "h", 'ґ' -> "g", 'д' -> "d",
-    'е' -> "e", 'є' -> "ie", 'ж' -> "zh", 'з' -> "z", 'и' -> "y", 'і' -> "i",
-    'ї' -> "i", 'й' -> "i", 'к' -> "k", 'л' -> "l", 'м' -> "m", 'н' -> "n",
-    'о' -> "o", 'п' -> "p", 'р' -> "r", 'с' -> "s", 'т' -> "t", 'у' -> "u",
-    'ф' -> "f", 'х' -> "kh", 'ц' -> "ts", 'ч' -> "ch", 'ш' -> "sh",
-    'щ' -> "shch", 'ю' -> "iu", 'я' -> "ia",
-    // Russian-only letters that also surface in imported titles.
-    'ё' -> "e", 'ы' -> "y", 'э' -> "e", 'ъ' -> "", 'ь' -> ""
+  private val CyrillicToLatin: Map[Char, String] = CyrillicLetters.Shared ++ Map(
+    'г' -> "h", 'є' -> "ie", 'ї' -> "i", 'й' -> "i", 'ю' -> "iu", 'я' -> "ia",
+    // Russian-only letter that also surfaces in imported titles.
+    'ё' -> "e"
   )
 
   /** Transliterate Cyrillic letters in `s` to Latin, leaving every other
